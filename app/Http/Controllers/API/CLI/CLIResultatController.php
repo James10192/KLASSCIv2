@@ -110,7 +110,10 @@ class CLIResultatController extends BaseApiController
             ->orderBy('periode')
             ->get();
 
-        $weights = $this->bulletinService->getSemesterWeights();
+        $weightsClasse = $requestedClasseId
+            ? \App\Models\ESBTPClasse::with(['filiere', 'niveau', 'niveauEtude'])->find($requestedClasseId)
+            : null;
+        $weights = $this->bulletinService->getSemesterWeights($weightsClasse);
 
         $requestedClassAverages = $this->buildClassAverageSnapshot($etudiant->id, $requestedClasseId, $requestedAnneeId, $weights);
         $currentControllerClassAverages = $this->buildClassAverageSnapshot($etudiant->id, $currentControllerClasseId, $requestedAnneeId, $weights);

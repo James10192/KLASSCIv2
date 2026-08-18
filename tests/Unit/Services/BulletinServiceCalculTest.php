@@ -34,7 +34,8 @@ class BulletinServiceCalculTest extends TestCase
         $this->service = new BulletinService(
             $absenceService,
             new BtsAnnualClassMapResolver(new BtsPhaseResolver()),
-            new BtsBulletinCohortResolver(new BtsAnnualClassMapResolver(new BtsPhaseResolver()))
+            new BtsBulletinCohortResolver(new BtsAnnualClassMapResolver(new BtsPhaseResolver())),
+            new \App\Domain\BtsTroncCommun\BtsClassCohortCounter(new BtsPhaseResolver())
         );
     }
 

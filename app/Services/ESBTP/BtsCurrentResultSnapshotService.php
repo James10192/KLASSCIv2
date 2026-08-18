@@ -236,7 +236,8 @@ class BtsCurrentResultSnapshotService
             $anneeUniversitaireId,
             'semestre2'
         );
-        $weights = $this->bulletinService->getSemesterWeights(ESBTPClasse::find($classeId));
+        $classe = ESBTPClasse::with(['filiere', 'niveau', 'niveauEtude'])->find($classeId);
+        $weights = $this->bulletinService->getSemesterWeights($classe);
 
         $annualEffective = $this->bulletinService->calculateAnnualAverage(
             $semestre1['effective_total'],

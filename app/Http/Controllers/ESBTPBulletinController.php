@@ -716,14 +716,19 @@ class ESBTPBulletinController extends Controller
                 }
             }
 
-            // Calculer le rang si pas déjà fait
-            if ($persist && ! $bulletin->rang) {
+            // Recalculer toujours le rang de toute la classe. Un rang déjà
+            // égal à 1 n'est pas un signal de "déjà calculé".
+            if ($persist) {
                 try {
-                    $bulletin->calculerRang();
+                    $this->bulletinService->calculerRangsPourClasse(
+                        (int) $bulletin->classe_id,
+                        (int) $bulletin->annee_universitaire_id,
+                        (string) $bulletin->periode
+                    );
+                    $bulletin->refresh();
                 } catch (\Exception $e) {
                     Log::error('Erreur lors du calcul du rang: '.$e->getMessage());
                     Log::error('Trace: '.$e->getTraceAsString());
-                    $bulletin->rang = 0;
                 }
             }
 
@@ -857,7 +862,7 @@ class ESBTPBulletinController extends Controller
                             'matiere_id' => $matiere->id,
                             'moyenne_matiere' => round($moyenneMatiere, 2),
                             'coefficient' => $coefficient,
-                            'rang' => 1, // À calculer si nécessaire
+                            'rang' => null, // À calculer si nécessaire
                             'evaluations_detail' => $evaluationsDetail,
                             'total_coefficients' => $totalCoefficients,
                         ];
@@ -930,9 +935,15 @@ class ESBTPBulletinController extends Controller
             // Pour "Moyenne 1er/2e Semestre" il faut $moyenneGlobale (= général + technique = 10.49).
             // Bug observé : 7.00 + 0.13 = 7.13 au lieu de 10.49 + 0.13 = 10.62.
             $moyenneAvecAssiduite = $moyenneGlobale + ($noteAssiduite ?? 0);
+            $classeIdS1 = (int) $bulletin->classe_id;
+            $classMap = app(\App\Domain\BtsTroncCommun\BtsAnnualClassMapResolver::class)
+                ->resolve((int) $bulletin->etudiant_id, (int) $bulletin->classe_id, (int) $bulletin->annee_universitaire_id);
+            if (! empty($classMap['semestre1_classe_id'])) {
+                $classeIdS1 = (int) $classMap['semestre1_classe_id'];
+            }
             $moyenneSemestre1 = $this->bulletinService->getAlignedBulletinAverageForPeriode(
                 $bulletin->etudiant_id,
-                $bulletin->classe_id,
+                $classeIdS1,
                 $bulletin->annee_universitaire_id,
                 'semestre1',
                 $periodeCourante,
@@ -949,8 +960,50 @@ class ESBTPBulletinController extends Controller
             $moyenneAnnuelle = $this->bulletinService->calculateAnnualAverage($moyenneSemestre1, $moyenneSemestre2, $semesterWeights);
             $effectifClasse = $this->bulletinService->getValidatedClassStudentCount(
                 $bulletin->classe_id,
-                $bulletin->annee_universitaire_id
+                $bulletin->annee_universitaire_id,
+                (string) $bulletin->periode
             );
+            $rangAnnuel = $this->bulletinService->calculerRangAnnuel(
+                (int) $bulletin->etudiant_id,
+                (int) $bulletin->classe_id,
+                (int) $bulletin->annee_universitaire_id,
+                $moyenneAnnuelle
+            );
+            $classe = $bulletin->classe;
+            $levelYear = $classe?->niveau?->year ?? $classe?->niveauEtude?->year;
+            $levelYear = is_numeric($levelYear) ? (int) $levelYear : null;
+            $automaticCouncilDecision = null;
+            if ($classe) {
+                $settings = \App\Services\BtsBulletinPolicy::readSettings(
+                    fn (string $key, string $default) => \App\Helpers\SettingsHelper::get($key, $default)
+                );
+                $source = $settings["bulletin_bts{$levelYear}_council_average_source"] ?? 'semestre2';
+                $decisionAverage = \App\Services\BtsBulletinPolicy::decisionAverage($source, $moyenneSemestre2, $moyenneAnnuelle);
+                $automaticCouncilDecision = \App\Services\BtsBulletinPolicy::councilDecision(
+                    (bool) $classe->isBTS(),
+                    $levelYear,
+                    $this->bulletinService->normalizePeriode((string) $bulletin->periode),
+                    $decisionAverage,
+                    $settings
+                );
+            }
+            $decisionConseil = \App\Services\BtsBulletinPolicy::displayCouncilDecision(
+                (bool) ($classe?->isBTS() ?? false),
+                $levelYear,
+                $this->bulletinService->normalizePeriode((string) $bulletin->periode),
+                $automaticCouncilDecision,
+                $bulletin->decision_conseil
+            );
+            $councilDecision = [
+                'title' => (\App\Helpers\SettingsHelper::get('bulletin_style', 'yakro') === 'abidjan'
+                    && $classe
+                    && $classe->isBTS()
+                    && $levelYear === 1
+                    && $this->bulletinService->normalizePeriode((string) $bulletin->periode) === 'semestre1')
+                    ? "Appréciation du Conseil de Classe"
+                    : 'Décision du conseil de classe',
+                'text' => (string) ($decisionConseil ?? ''),
+            ];
 
             if ((int) $bulletin->effectif_classe !== $effectifClasse) {
                 $bulletin->forceFill(['effectif_classe' => $effectifClasse]);
@@ -977,8 +1030,11 @@ class ESBTPBulletinController extends Controller
                 'semesterWeights' => $semesterWeights,
                 'noteAssiduite' => $noteAssiduite,
                 'rang' => $bulletin->rang,
+                'rangAnnuel' => $rangAnnuel,
+                'councilDecision' => $councilDecision,
                 'effectif' => $effectifClasse,
                 'appreciation' => $bulletin->mention,
+                'decisionConseil' => $decisionConseil,
                 'date_edition' => now()->format('d/m/Y'),
                 'absencesJustifiees' => $bulletin->absences_justifiees,
                 'absencesNonJustifiees' => $bulletin->absences_non_justifiees,
@@ -1735,7 +1791,11 @@ class ESBTPBulletinController extends Controller
             }
 
             // Statistiques de la classe
-            $totalEtudiants = ESBTPEtudiant::where('classe_id', $classe->id)->count();
+            $totalEtudiants = $this->bulletinService->getValidatedClassStudentCount(
+                (int) $classe->id,
+                (int) $anneeUniversitaire->id,
+                $periode
+            );
 
             return view($this->bulletinService->getBulletinPreviewView(), compact(
                 'etudiant',

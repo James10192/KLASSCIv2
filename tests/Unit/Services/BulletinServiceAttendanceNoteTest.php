@@ -24,7 +24,8 @@ class BulletinServiceAttendanceNoteTest extends TestCase
         return new BulletinService(
             $absenceService,
             new BtsAnnualClassMapResolver(new BtsPhaseResolver()),
-            new BtsBulletinCohortResolver(new BtsAnnualClassMapResolver(new BtsPhaseResolver()))
+            new BtsBulletinCohortResolver(new BtsAnnualClassMapResolver(new BtsPhaseResolver())),
+            new \App\Domain\BtsTroncCommun\BtsClassCohortCounter(new BtsPhaseResolver())
         );
     }
 

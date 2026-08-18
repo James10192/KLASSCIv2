@@ -576,7 +576,7 @@ class CLIBtsTroncCommunController extends BaseApiController
                 (float) $this->bulletinService->calculateAnnualAverage(
                     $noteS1 + $this->resolveAttendanceNote($etudiant->id, $semestre1Classe->id, $anneeId, 'semestre1'),
                     $noteS2 + $this->resolveAttendanceNote($etudiant->id, $semestre2Classe->id, $anneeId, 'semestre2'),
-                    $this->bulletinService->getSemesterWeights()
+                    $this->bulletinService->getSemesterWeights($semestre2Classe)
                 ),
                 2
             );

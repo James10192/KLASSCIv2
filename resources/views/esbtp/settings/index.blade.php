@@ -433,6 +433,24 @@
     }
     .bc-hint i { color: var(--primary); }
 
+
+    .mga-rows, .council-editor { display: grid; gap: 12px; }
+    .mga-row, .council-card {
+        display: grid;
+        gap: 12px;
+        padding: 14px 16px;
+        border-radius: 8px;
+        background: #f8fafc;
+        border: 1px solid #e5e7eb;
+    }
+    .mga-row { grid-template-columns: 140px 140px 140px 1fr auto; align-items: end; }
+    .council-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
+    .mga-row label, .council-card label { font-size: .78rem; color: #475569; font-weight: 600; display: grid; gap: 6px; }
+    .mga-preview { font-size: .78rem; color: #334155; padding-bottom: 8px; }
+    @media (max-width: 900px) {
+        .mga-row { grid-template-columns: 1fr; }
+    }
+
     .app-scale-editor {
         border: 1px solid #dbe4f0;
         border-radius: 8px;
@@ -2026,7 +2044,7 @@
                 </div>
                 <div class="bc-hint">
                     <i class="fas fa-info-circle"></i>
-                    Exemple : S1 = 1, S2 = 2 -- (S1*1 + S2*2) / 3. La somme est normalisee automatiquement.
+                    Fallback global. Les coefficients BTS 1 et BTS 2 ci-dessous priment : 1re année (S1 + 2 x S2) / 3, 2e année (S1 + S2) / 2.
                 </div>
 
                 <div class="bc-grid bc-grid-2" style="margin-top: 20px;">
@@ -4121,6 +4139,8 @@ document.addEventListener('DOMContentLoaded', () => {
 // ====================================================================
 // Phase 9 — Sections avancées PDF (mise en page, footer, watermark)
 // ====================================================================
+
+
 window.pdfAdvancedSection = function () {
     return {
         settings: {

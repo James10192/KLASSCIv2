@@ -17,6 +17,7 @@ use App\Models\ESBTPPlanificationAcademique;
 use App\Models\ESBTPResultat;
 use App\Domain\BtsTroncCommun\BtsAnnualClassMapResolver;
 use App\Domain\BtsTroncCommun\BtsBulletinCohortResolver;
+use App\Domain\BtsTroncCommun\BtsClassCohortCounter;
 use App\Services\ESBTP\ESBTPAbsenceService;
 use App\Support\Attendance\AttendanceNoteRule;
 use App\Support\InscriptionWorkflowAlertPresenter;
@@ -49,6 +50,8 @@ class BulletinService
 
     private BtsBulletinCohortResolver $cohortResolver;
 
+    private BtsClassCohortCounter $classCohortCounter;
+
     private array $coefficientCache = [];
 
     private array $classeCache = [];
@@ -65,11 +68,16 @@ class BulletinService
 
     private array $effectifCache = [];
 
-    public function __construct(ESBTPAbsenceService $absenceService, BtsAnnualClassMapResolver $classMapResolver, BtsBulletinCohortResolver $cohortResolver)
-    {
+    public function __construct(
+        ESBTPAbsenceService $absenceService,
+        BtsAnnualClassMapResolver $classMapResolver,
+        BtsBulletinCohortResolver $cohortResolver,
+        BtsClassCohortCounter $classCohortCounter
+    ) {
         $this->absenceService = $absenceService;
         $this->classMapResolver = $classMapResolver;
         $this->cohortResolver = $cohortResolver;
+        $this->classCohortCounter = $classCohortCounter;
     }
 
     public function isAttendanceNoteEnabled(): bool
@@ -242,16 +250,12 @@ class BulletinService
             return null;
         }
 
-        $attendanceNote = $currentNoteAssiduite;
-        if ($attendanceNote === null) {
-            $attendancePeriode = $currentPeriode === 'annuel' ? 'annuel' : $periode;
-            $attendanceNote = $this->calculateEffectiveAttendanceNoteForStudent(
-                $etudiantId,
-                $classeId,
-                $anneeUniversitaireId,
-                $attendancePeriode
-            );
-        }
+        $attendanceNote = $this->calculateEffectiveAttendanceNoteForStudent(
+            $etudiantId,
+            $classeId,
+            $anneeUniversitaireId,
+            $periode
+        );
 
         return $rawAvg + $attendanceNote;
     }
@@ -505,10 +509,11 @@ class BulletinService
         $noteAssiduite = $afficherNoteAssiduite ? $this->calculerNoteAssiduite($absences['justifiees'], $absences['non_justifiees']) : 0;
         $moyenneAvecAssiduite = $moyenneGlobale + $noteAssiduite;
 
-        // Effectif de la classe aligné sur classes.show: inscriptions validées uniquement.
-        $effectif = $this->getValidatedClassStudentCount($classe->id, $anneeUniversitaire->id);
+        // Effectif de la classe: inscriptions validées présentes dans cette classe pour la période.
+        $effectif = $this->getValidatedClassStudentCount($classe->id, $anneeUniversitaire->id, $periode);
 
-        $rang = $bulletin?->rang ?? 1;
+        $rang = null;
+        $rangAnnuel = null;
 
         if ($persistOfficial && $bulletin) {
             // Persister la moyenne BRUTE (sans assiduite) dans le bulletin.
@@ -525,10 +530,17 @@ class BulletinService
             $bulletin->total_absences = $absences['total'] ?? (($absences['justifiees'] ?? 0) + ($absences['non_justifiees'] ?? 0));
             $bulletin->save();
 
-            // Calculer le vrai rang (base sur tous les bulletins de la classe/periode).
-            $this->calculerRang($bulletin);
+            // Recalculer toute la classe: un rang séquentiel contre un set incomplet
+            // donnait 1 à tout le monde.
+            $this->calculerRangsPourClasse($classe->id, $anneeUniversitaire->id, $periode);
             $bulletin->refresh();
-            $rang = $bulletin->rang ?? 1;
+            $rang = $bulletin->rang;
+        } else {
+            $rang = $this->rankAmongAverages($this->collectSemesterAveragesForClasse(
+                (int) $classe->id,
+                (int) $anneeUniversitaire->id,
+                (string) $periode
+            ), $moyenneAvecAssiduite);
         }
 
         // Calculer les vraies statistiques de classe.
@@ -553,9 +565,6 @@ class BulletinService
         foreach ($resultatsTechniques as $resultat) {
             $resultat->rang = $rangsParMatiere[$resultat->matiere_id] ?? '-';
         }
-
-        // Déterminer l'appréciation selon la moyenne
-        $appreciation = $this->getAppreciation($moyenneGlobale);
 
         // Préparer la configuration PDF
         $settings = $this->getPDFConfig();
@@ -604,6 +613,12 @@ class BulletinService
             $noteAssiduite
         );
         $moyenneAnnuelle = $this->calculateAnnualAverage($moyenneSemestre1, $moyenneSemestre2, $semesterWeights);
+        $rangAnnuel = $this->calculerRangAnnuel(
+            (int) $etudiantId,
+            (int) $classe->id,
+            (int) $anneeUniversitaire->id,
+            $moyenneAnnuelle
+        );
         $levelYear = $this->classeLevelYear($classe);
         $automaticCouncilDecision = $this->automaticCouncilDecision(
             $classe,
@@ -619,6 +634,16 @@ class BulletinService
             $automaticCouncilDecision,
             $bulletin?->decision_conseil
         );
+        $councilDecision = [
+            'title' => $this->councilDecisionTitle($classe, $periode),
+            'text' => (string) ($decisionConseil ?? ''),
+            'mode' => $this->councilDecisionMode($levelYear),
+        ];
+        $appreciation = $this->getAppreciation($moyenneAvecAssiduite);
+        if ($persistOfficial && $bulletin) {
+            $bulletin->decision_conseil = $councilDecision['text'] !== '' ? $councilDecision['text'] : null;
+            $bulletin->save();
+        }
 
         // Warning si le bulletin de l'autre semestre n'a pas été généré officiellement
         if (! $otherBulletinExists && ($periode === 'semestre2' && $moyenneSemestre1 !== null)) {
@@ -673,6 +698,8 @@ class BulletinService
             'noteAssiduite' => $noteAssiduite,
             'note_assiduite' => $noteAssiduite,
             'rang' => $rang,
+            'rangAnnuel' => $rangAnnuel,
+            'councilDecision' => $councilDecision,
             'effectif' => $effectif,
             'meilleure_moyenne' => $statsClasse['meilleure_moyenne'],
             'plus_faible_moyenne' => $statsClasse['plus_faible_moyenne'],
@@ -961,8 +988,8 @@ class BulletinService
     {
         $style = SettingsHelper::get('bulletin_style', 'yakro');
         return $style === 'abidjan'
-            ? 'esbtp.bulletins.preview-configurable-abidjan'
-            : 'esbtp.bulletins.preview-configurable';
+            ? 'esbtp.bulletins.preview-abidjan'
+            : 'esbtp.bulletins.preview';
     }
 
     public function getSemesterWeights(?ESBTPClasse $classe = null): array
@@ -1000,50 +1027,15 @@ class BulletinService
             }
         }
 
-        return BtsBulletinPolicy::annualWeights($classe->isBTS(), $levelYear, $settings, $fallback);
+        $weights = BtsBulletinPolicy::annualWeights($classe->isBTS(), $levelYear, $settings, $fallback);
+        $weights['year'] = $levelYear;
+
+        return $weights;
     }
 
     public function recalculerRangsClasse(int $classeId, int $anneeUniversitaireId, string $periode): void
     {
-        $period = $this->normalizePeriode($periode);
-        $bulletins = ESBTPBulletin::query()
-            ->where('classe_id', $classeId)
-            ->where('annee_universitaire_id', $anneeUniversitaireId)
-            ->whereIn('periode', $this->periodeAliases($period))
-            ->whereNotNull('moyenne_generale')
-            ->get();
-
-        $cohorts = $bulletins->groupBy(
-            fn (ESBTPBulletin $bulletin) => $this->cohortResolver->resolveRankCohortClasseId($bulletin)
-        );
-
-        foreach ($cohorts as $cohortClassId => $cohortBulletins) {
-            $activeStudentIds = ESBTPInscription::query()
-                ->where('classe_id', $cohortClassId)
-                ->where('annee_universitaire_id', $anneeUniversitaireId)
-                ->where('status', 'active')
-                ->where('workflow_step', 'etudiant_cree')
-                ->pluck('etudiant_id');
-            $cohortAverages = ESBTPBulletin::query()
-                ->where('classe_id', $cohortClassId)
-                ->where('annee_universitaire_id', $anneeUniversitaireId)
-                ->whereIn('periode', $this->periodeAliases($period))
-                ->whereIn('etudiant_id', $activeStudentIds)
-                ->whereNotNull('moyenne_generale')
-                ->pluck('moyenne_generale');
-            $effectif = $this->getValidatedClassStudentCount((int) $cohortClassId, $anneeUniversitaireId);
-
-            foreach ($cohortBulletins as $bulletin) {
-                $rank = $cohortAverages->filter(
-                    fn ($average) => (float) $average > (float) $bulletin->moyenne_generale
-                )->count() + 1;
-
-                $bulletin->forceFill([
-                    'rang' => $rank,
-                    'effectif_classe' => $effectif,
-                ])->save();
-            }
-        }
+        $this->calculerRangsPourClasse($classeId, $anneeUniversitaireId, $periode);
     }
 
     private function automaticCouncilDecision(
@@ -1075,6 +1067,27 @@ class BulletinService
         );
     }
 
+
+    private function councilDecisionTitle(ESBTPClasse $classe, string $periode): string
+    {
+        $periode = $this->normalizePeriode($periode);
+        $levelYear = $this->classeLevelYear($classe);
+        $style = SettingsHelper::get('bulletin_style', 'yakro');
+        if ($style === 'abidjan' && $classe->isBTS() && $levelYear === 1 && $periode === 'semestre1') {
+            return "Appréciation du Conseil de Classe";
+        }
+
+        return 'Décision du conseil de classe';
+    }
+
+    private function councilDecisionMode(?int $levelYear): string
+    {
+        if (! in_array($levelYear, [1, 2], true)) {
+            return 'manual';
+        }
+
+        return (string) (SettingsHelper::get("bulletin_bts{$levelYear}_council_mode", 'manual') ?: 'manual');
+    }
     private function classeLevelYear(ESBTPClasse $classe): ?int
     {
         return $classe->relationLoaded('niveau')
@@ -2115,24 +2128,87 @@ class BulletinService
 
     public function calculerRang($bulletin)
     {
-        // Tronc commun : pour un bulletin S1 d'un étudiant orienté, la cohorte de rang
-        // est la classe TC qui portait les notes du S1 (pas la spécialité courante).
-        $cohorteClasseId = $this->cohortResolver->resolveRankCohortClasseId($bulletin);
-
-        $base = ESBTPBulletin::where('classe_id', $cohorteClasseId)
-            ->where('annee_universitaire_id', $bulletin->annee_universitaire_id)
-            ->where('periode', $bulletin->periode)
-            ->whereNotNull('moyenne_generale');
-
-        $bulletin->effectif_classe = $this->getValidatedClassStudentCount(
-            $cohorteClasseId,
-            $bulletin->annee_universitaire_id
+        $this->calculerRangsPourClasse(
+            (int) $bulletin->classe_id,
+            (int) $bulletin->annee_universitaire_id,
+            (string) $bulletin->periode
         );
-        $bulletin->rang = (clone $base)
-            ->where('moyenne_generale', '>', $bulletin->moyenne_generale ?? 0)
-            ->count() + 1;
+        $bulletin->refresh();
+    }
 
-        $bulletin->save();
+    public function calculerRangsPourClasse(int $classeId, int $anneeUniversitaireId, string $periode): void
+    {
+        $periode = $this->normalizePeriode($periode);
+        $cohortIds = [$classeId];
+
+        $classBulletins = ESBTPBulletin::query()
+            ->where('classe_id', $classeId)
+            ->where('annee_universitaire_id', $anneeUniversitaireId)
+            ->whereIn('periode', $this->periodeAliases($periode))
+            ->whereNotNull('moyenne_generale')
+            ->get();
+
+        foreach ($classBulletins as $bulletin) {
+            $cohortIds[] = $this->cohortResolver->resolveRankCohortClasseId($bulletin);
+        }
+
+        foreach (array_values(array_unique($cohortIds)) as $cohortId) {
+            $this->recalculateRanksForCohort((int) $cohortId, $anneeUniversitaireId, $periode);
+        }
+    }
+
+    private function recalculateRanksForCohort(int $cohortClasseId, int $anneeUniversitaireId, string $periode): void
+    {
+        $bulletins = $this->bulletinsInRankCohort($cohortClasseId, $anneeUniversitaireId, $periode);
+        if ($bulletins->isEmpty()) {
+            return;
+        }
+
+        $averages = [];
+        foreach ($bulletins as $bulletin) {
+            $average = $this->getEffectiveBulletinAverage($bulletin);
+            if ($average === null) {
+                continue;
+            }
+            $averages[(int) $bulletin->id] = $average;
+        }
+
+        $effectif = $this->getValidatedClassStudentCount($cohortClasseId, $anneeUniversitaireId, $periode);
+        foreach ($bulletins as $bulletin) {
+            $average = $averages[(int) $bulletin->id] ?? null;
+            $bulletin->effectif_classe = $effectif;
+            $bulletin->rang = $average === null ? null : $this->rankAmongAverages($averages, $average);
+            $bulletin->save();
+        }
+    }
+
+    private function bulletinsInRankCohort(int $cohortClasseId, int $anneeUniversitaireId, string $periode)
+    {
+        $periodeAliases = $this->periodeAliases($periode);
+        $direct = ESBTPBulletin::query()
+            ->where('classe_id', $cohortClasseId)
+            ->where('annee_universitaire_id', $anneeUniversitaireId)
+            ->whereIn('periode', $periodeAliases)
+            ->whereNotNull('moyenne_generale')
+            ->get();
+
+        if ($this->normalizePeriode($periode) !== 'semestre1') {
+            return $direct;
+        }
+
+        $cohortEtudiantIds = $this->classCohortCounter->etudiantIds($cohortClasseId, $anneeUniversitaireId, $periode);
+        $others = $cohortEtudiantIds === []
+            ? collect()
+            : ESBTPBulletin::query()
+                ->where('annee_universitaire_id', $anneeUniversitaireId)
+                ->where('classe_id', '!=', $cohortClasseId)
+                ->whereIn('etudiant_id', $cohortEtudiantIds)
+                ->whereIn('periode', $periodeAliases)
+                ->whereNotNull('moyenne_generale')
+                ->get()
+                ->filter(fn (ESBTPBulletin $bulletin): bool => $this->cohortResolver->resolveRankCohortClasseId($bulletin) === $cohortClasseId);
+
+        return $direct->concat($others)->unique('id')->values();
     }
 
     /**
@@ -2155,20 +2231,126 @@ class BulletinService
         return is_array($decoded) ? $decoded : [];
     }
 
-    public function getValidatedClassStudentCount(int $classeId, int $anneeUniversitaireId): int
+    public function getValidatedClassStudentCount(int $classeId, int $anneeUniversitaireId, string $periode = 'semestre1'): int
     {
-        // Memoize : effectif identique pour tous les bulletins d'une même classe/année.
-        $effectifKey = $classeId.':'.$anneeUniversitaireId;
+        $periode = $this->normalizePeriode($periode);
+        $effectifKey = $classeId.':'.$anneeUniversitaireId.':'.$periode;
         if (isset($this->effectifCache[$effectifKey])) {
             return $this->effectifCache[$effectifKey];
         }
 
-        return $this->effectifCache[$effectifKey] = ESBTPInscription::where('classe_id', $classeId)
+        return $this->effectifCache[$effectifKey] = $this->classCohortCounter->count(
+            $classeId,
+            $anneeUniversitaireId,
+            $periode
+        );
+    }
+
+    public function calculerRangAnnuel(int $etudiantId, int $classeId, int $anneeUniversitaireId, ?float $moyenneAnnuelle): ?int
+    {
+        if ($moyenneAnnuelle === null) {
+            return null;
+        }
+
+        $averages = $this->collectAnnualAveragesForClasse($classeId, $anneeUniversitaireId);
+        if ($averages === []) {
+            return 1;
+        }
+
+        return $this->rankAmongAverages($averages, $moyenneAnnuelle);
+    }
+
+    /**
+     * @return array<int, float>
+     */
+    private function collectSemesterAveragesForClasse(int $classeId, int $anneeUniversitaireId, string $periode): array
+    {
+        $periode = $this->normalizePeriode($periode);
+        $averages = [];
+
+        $bulletins = ESBTPBulletin::query()
+            ->where('classe_id', $classeId)
             ->where('annee_universitaire_id', $anneeUniversitaireId)
-            ->where('status', 'active')
-            ->where('workflow_step', 'etudiant_cree')
-            ->distinct('etudiant_id')
-            ->count('etudiant_id');
+            ->whereIn('periode', $this->periodeAliases($periode))
+            ->whereNotNull('moyenne_generale')
+            ->get();
+
+        foreach ($bulletins as $bulletin) {
+            $average = $this->getEffectiveBulletinAverage($bulletin);
+            if ($average === null) {
+                continue;
+            }
+            $averages[(int) $bulletin->etudiant_id] = $average;
+        }
+
+        return $averages;
+    }
+
+    /**
+     * @return array<int, float>
+     */
+    private function collectAnnualAveragesForClasse(int $classeId, int $anneeUniversitaireId): array
+    {
+        $classe = ESBTPClasse::with(['filiere', 'niveau', 'niveauEtude'])->find($classeId);
+        $weights = $this->getSemesterWeights($classe);
+        $averages = [];
+
+        $etudiantIds = $this->classCohortCounter->etudiantIds($classeId, $anneeUniversitaireId, 'semestre2');
+        foreach ($etudiantIds as $etudiantId) {
+            $classMap = $this->classMapResolver->resolve($etudiantId, $classeId, $anneeUniversitaireId);
+            $classeIdS1 = (int) ($classMap['semestre1_classe_id'] ?? $classeId);
+            $classeIdS2 = (int) ($classMap['semestre2_classe_id'] ?? $classeId);
+            $s1 = $this->averageFromStoredBulletin($etudiantId, $classeIdS1, $anneeUniversitaireId, 'semestre1');
+            $s2 = $this->averageFromStoredBulletin($etudiantId, $classeIdS2, $anneeUniversitaireId, 'semestre2');
+            $annual = $this->calculateAnnualAverage($s1, $s2, $weights);
+            if ($annual === null) {
+                continue;
+            }
+            $averages[$etudiantId] = $annual;
+        }
+
+        return $averages;
+    }
+
+    private function averageFromStoredBulletin(int $etudiantId, int $classeId, int $anneeUniversitaireId, string $periode): ?float
+    {
+        $bulletin = ESBTPBulletin::query()
+            ->where('etudiant_id', $etudiantId)
+            ->where('classe_id', $classeId)
+            ->where('annee_universitaire_id', $anneeUniversitaireId)
+            ->whereIn('periode', $this->periodeAliases($periode))
+            ->first();
+
+        if ($bulletin && $bulletin->moyenne_generale !== null && $bulletin->moyenne_generale > 0) {
+            return $this->getEffectiveBulletinAverage($bulletin);
+        }
+
+        $rawAvg = $this->calculateStudentAverageForPeriode($etudiantId, $classeId, $anneeUniversitaireId, $periode);
+        if ($rawAvg === null) {
+            return null;
+        }
+
+        return $rawAvg + $this->calculateEffectiveAttendanceNoteForStudent(
+            $etudiantId,
+            $classeId,
+            $anneeUniversitaireId,
+            $periode
+        );
+    }
+
+    /**
+     * @param array<int, float> $averages
+     */
+    private function rankAmongAverages(array $averages, float $target): int
+    {
+        $rank = 1;
+        foreach ($averages as $average) {
+            if ($average > $target) {
+                $rank++;
+            }
+        }
+
+        return $rank;
     }
 
     /**
@@ -3026,8 +3208,12 @@ class BulletinService
             if ($rawAvg === null) {
                 return null;
             }
-            // L'assiduité est par année (pas par semestre), on utilise celle du semestre courant
-            return $rawAvg + $currentNoteAssiduite;
+            return $rawAvg + $this->calculateEffectiveAttendanceNoteForStudent(
+                $etudiantId,
+                $classeId,
+                $anneeUniversitaireId,
+                $periode
+            );
         }
 
         return floatval($bulletin->moyenne_generale + ($bulletin->note_assiduite ?? 0));

@@ -45,7 +45,13 @@ class ESBTPSettingsController extends Controller
         $backupStats = SettingsBackup::getStats();
         $appreciationScales = $appreciationScaleSettings->scales();
 
-        return view('esbtp.settings.index', compact('settings', 'flatSettings', 'missingSettings', 'backupStats', 'appreciationScales'));
+        return view('esbtp.settings.index', compact(
+            'settings',
+            'flatSettings',
+            'missingSettings',
+            'backupStats',
+            'appreciationScales'
+        ));
     }
 
     /**
@@ -160,6 +166,8 @@ class ESBTPSettingsController extends Controller
             // Barème d'assiduité à tranches (JSON) : validation structurelle dédiée via
             // le value object (contiguïté, dernière tranche ouverte, bornes) — la boucle
             // générique setting_ ne sait pas valider ce shape. Traité + skippé ensuite.
+
+
             if ($request->has('setting_attendance_note_rules')) {
                 $raw = $request->input('setting_attendance_note_rules');
                 $decoded = is_string($raw) ? json_decode($raw, true) : $raw;
@@ -1521,4 +1529,5 @@ class ESBTPSettingsController extends Controller
             );
         }
     }
+
 }

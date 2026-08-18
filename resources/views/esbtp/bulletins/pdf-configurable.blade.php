@@ -811,9 +811,15 @@
                                     @endif
                                     @if(($settings['bulletin_show_student_rank'] ?? '1') == '1')
                                     <tr>
-                                        <td>Rang</td>
-                                        <td class="center"><span class="result-value-box">{{ $rang }}</span></td>
+                                        <td>{{ in_array($periode, ['semestre2', 'annuel'], true) ? 'Rang semestre' : 'Rang' }}</td>
+                                        <td class="center"><span class="result-value-box">{{ $rang ?: '-' }}</span></td>
                                     </tr>
+                                    @if(in_array($periode, ['semestre2', 'annuel'], true))
+                                    <tr>
+                                        <td>Rang annuel</td>
+                                        <td class="center"><span class="result-value-box">{{ ($rangAnnuel ?? null) ?: '-' }}</span></td>
+                                    </tr>
+                                    @endif
                                     @endif
                                 </tbody>
                             </table>
@@ -893,11 +899,14 @@
         </div>
         @endif
 
+        @php
+            $councilDecision = $councilDecision ?? ['title' => 'Décision du conseil de classe', 'text' => $appreciation ?? ''];
+        @endphp
         {{-- Décision du conseil --}}
         @if(($settings['bulletin_show_council_decision'] ?? '1') == '1')
         <div class="decision-container">
-            <div class="decision-title">Décision du conseil de classe</div>
-            <div style="min-height: 36px; font-size: 11.5px;">{{ $decisionConseil ?? $bulletin->decision_conseil ?? '' }}</div>
+            <div class="decision-title">{{ $councilDecision['title'] ?? 'Décision du conseil de classe' }}</div>
+            <div style="min-height: 36px; font-size: 11.5px;">{{ $decisionConseil ?? $councilDecision['text'] ?? $bulletin->decision_conseil ?? '' }}</div>
         </div>
         @endif
 

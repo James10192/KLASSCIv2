@@ -997,7 +997,7 @@ class ESBTPResultatController extends Controller
             $moyenneAvecAssiduite = $moyenneGenerale + $noteAssiduite;
         }
 
-        $semesterWeights = $this->bulletinService->getSemesterWeights();
+        $semesterWeights = $this->bulletinService->getSemesterWeights($classe);
         $annualSnapshot = $classe
             ? $this->currentResultSnapshotService->getAnnualSnapshot($etudiant->id, $classe->id, $annee_universitaire_id)
             : null;
@@ -1164,7 +1164,7 @@ class ESBTPResultatController extends Controller
                 // Calculate stats for these students
                 if (! $semestre) {
                     // Mode Annuel : calculer la moyenne annuelle pondérée S1/S2 pour chaque étudiant
-                    $weights = $this->bulletinService->getSemesterWeights();
+                    $weights = $this->bulletinService->getSemesterWeights($classe_id ? \App\Models\ESBTPClasse::with(['filiere', 'niveau', 'niveauEtude'])->find($classe_id) : null);
 
                     // Pré-charger les inscriptions pour éviter N+1
                     $inscriptionMap = collect();
