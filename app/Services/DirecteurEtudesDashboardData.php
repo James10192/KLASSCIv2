@@ -41,6 +41,7 @@ class DirecteurEtudesDashboardData
                 'attendance_rate' => 0,
             ],
             'pendingInscriptionsCount' => 0,
+            'unpaidStudentsCount' => 0,
             'academicHealth' => [
                 'academic_score' => null,
                 'operational_score' => null,
@@ -156,6 +157,15 @@ class DirecteurEtudesDashboardData
             // Keep defaults when the pilotage tables are not available.
         }
 
+
+        try {
+            if (Auth::user()?->can('finance.unpaid_count.view')) {
+                $data['unpaidStudentsCount'] = app(UnpaidStudentCountService::class)->count($anneeEnCours?->id);
+            }
+        } catch (\Throwable $e) {
+            // Keep the unpaid count at zero when finance tables are unavailable.
+        }
+
         return $data;
     }
 
@@ -163,7 +173,18 @@ class DirecteurEtudesDashboardData
     {
         $data = $this->build();
         unset($data['user'], $data['anneeEnCours']);
+        $this->assertNoAmounts($data);
 
         return $data;
+    }
+
+    private function assertNoAmounts(array $payload): void
+    {
+        $encoded = strtolower(json_encode($payload, JSON_UNESCAPED_UNICODE) ?: '');
+        foreach (['montant', 'fcfa', 'amount', 'totalencaisse'] as $needle) {
+            if (str_contains($encoded, $needle)) {
+                throw new \RuntimeException('Directeur des etudes payloads must not expose financial amounts.');
+            }
+        }
     }
 }

@@ -2253,6 +2253,46 @@
                 ])
             </div>
 
+            <div class="settings-section">
+                <div class="section-header">
+                    <div class="section-icon"><i class="fas fa-user-check"></i></div>
+                    <div>
+                        <h3 class="section-title">Scolarite</h3>
+                        <p class="section-description">Roles ISLG-USAT-Rostan et workflow d impression. Laissez desactive pour Yakro.</p>
+                    </div>
+                </div>
+                <div class="bc-grid bc-grid-1">
+                    <div class="bc-card">
+                        <div class="bc-icon"><i class="fas fa-users"></i></div>
+                        <div class="bc-body">
+                            <div class="bc-label">Roles responsable / service scolarite</div>
+                            <div class="bc-desc">Affiche les onglets personnel et les dashboards dedies. Yakro reste sur secretaire tant que cette option est desactivee.</div>
+                        </div>
+                        <div class="bc-toggle">
+                            <label class="form-switch-modern">
+                                <input type="checkbox" name="scolarite.split_roles" value="1"
+                                       {{ \App\Helpers\SettingsHelper::get('scolarite.split_roles', '0') == '1' ? 'checked' : '' }}>
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="bc-card">
+                        <div class="bc-icon"><i class="fas fa-stamp"></i></div>
+                        <div class="bc-body">
+                            <div class="bc-label">Approbation avant impression</div>
+                            <div class="bc-desc">Le responsable valide certificat, attestation et bulletin. Le service imprime ensuite. L apercu reste libre.</div>
+                        </div>
+                        <div class="bc-toggle">
+                            <label class="form-switch-modern">
+                                <input type="checkbox" name="documents.print_requires_approval" value="1"
+                                       {{ \App\Helpers\SettingsHelper::get('documents.print_requires_approval', '0') == '1' ? 'checked' : '' }}>
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Section 6b: Assiduite / Saisie manuelle d'heures -->
             <div class="settings-section">
                 <div class="section-header">

@@ -32,7 +32,12 @@ class DirecteurEtudesPermissionsTest extends TestCase
         $this->assertContains('identity.direct_studies', $defaults);
         $this->assertContains('identity.coordinate', $defaults);
         $this->assertContains('notes.view', $defaults);
-        $this->assertContains('lmd.jury.preside', $defaults);
+        $this->assertContains('lmd.jury.view', $defaults);
+        $this->assertContains('finance.unpaid_count.view', $defaults);
+        $this->assertNotContains('lmd.jury.preside', $defaults);
+        $this->assertNotContains('notes.create', $defaults);
+        $this->assertNotContains('inscriptions.validate', $defaults);
+        $this->assertNotContains('bulletins.generate', $defaults);
         $this->assertContains('academic_pilotage.view', $defaults);
         $this->assertContains('personnel.view', $defaults);
         $this->assertContains('coordinateurs.view', $defaults);

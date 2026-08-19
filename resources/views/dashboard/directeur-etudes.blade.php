@@ -161,7 +161,7 @@
                 <div class="de-alert-title">{{ $evaluationsSansNotesCount }} évaluation(s) passée(s) sans notes</div>
                 <div class="de-alert-text">Des évaluations déjà passées n'ont toujours aucune note enregistrée.</div>
             </div>
-            <a href="{{ route('esbtp.evaluations.index') }}" class="btn-acasi primary" style="margin-left:auto;">Saisir</a>
+            <a href="{{ route('esbtp.evaluations.index') }}" class="btn-acasi primary" style="margin-left:auto;">Consulter</a>
         </div>
     @endif
 
@@ -169,8 +169,15 @@
         <div class="de-kpi">
             <div class="de-kpi-label">Inscriptions en attente</div>
             <div class="de-kpi-value" data-kpi="pendingInscriptionsCount">{{ $pendingInscriptionsCount ?? 0 }}</div>
-            <a class="de-kpi-link" href="{{ route('esbtp.inscriptions.index', ['status' => 'non_validee']) }}">Valider</a>
+            <a class="de-kpi-link" href="{{ route('esbtp.inscriptions.index', ['status' => 'non_validee']) }}">Consulter</a>
         </div>
+        @can('finance.unpaid_count.view')
+        <div class="de-kpi">
+            <div class="de-kpi-label">Etudiants non soldes</div>
+            <div class="de-kpi-value" data-kpi="unpaidStudentsCount">{{ $unpaidStudentsCount ?? 0 }}</div>
+            <div class="de-kpi-sub">Nombre uniquement, sans montant</div>
+        </div>
+        @endcan
         <div class="de-kpi">
             <div class="de-kpi-label">Inscrits {{ $anneeLabel ?? 'année courante' }}</div>
             <div class="de-kpi-value" data-kpi="totalStudents">{{ $totalStudents ?? 0 }}</div>
@@ -264,10 +271,12 @@
                 </div>
                 <div class="de-card-body">
                     <div class="de-actions-grid">
-                        <a class="de-action-btn" href="{{ route('esbtp.planning-general.index') }}"><i class="fas fa-calendar-check"></i>Planning</a>
-                        <a class="de-action-btn" href="{{ route('esbtp.resultats.index') }}"><i class="fas fa-list-ol"></i>Résultats</a>
-                        <a class="de-action-btn" href="{{ route('esbtp.bulletins.index') }}"><i class="fas fa-file-alt"></i>Bulletins</a>
-                        <a class="de-action-btn" href="{{ route('esbtp.lmd.jurys.index') }}"><i class="fas fa-gavel"></i>Jury LMD</a>
+                        <a class="de-action-btn" href="{{ route('esbtp.emploi-temps.index') }}"><i class="fas fa-calendar-alt"></i>Emploi du temps</a>
+                        <a class="de-action-btn" href="{{ route('esbtp.planning-general.index') }}"><i class="fas fa-calendar-check"></i>Planning general</a>
+                        <a class="de-action-btn" href="{{ route('esbtp.rapports.rentree') }}"><i class="fas fa-door-open"></i>Rapport de rentree</a>
+                        <a class="de-action-btn" href="{{ route('esbtp.rapports.trimestre') }}"><i class="fas fa-calendar-week"></i>Fin de trimestre</a>
+                        <a class="de-action-btn" href="{{ route('esbtp.rapports.annuel') }}"><i class="fas fa-book"></i>Rapport annuel</a>
+                        <a class="de-action-btn" href="{{ route('esbtp.resultats.index') }}"><i class="fas fa-list-ol"></i>Resultats</a>
                         <a class="de-action-btn" href="{{ route('esbtp.notes.index') }}"><i class="fas fa-pen"></i>Notes</a>
                         <a class="de-action-btn" href="{{ route('esbtp.personnel.unified.index') }}"><i class="fas fa-users"></i>Personnel</a>
                     </div>
@@ -291,6 +300,7 @@ function deRefreshData() {
         var health = data.academicHealth || {};
         var kpiMap = {
             pendingInscriptionsCount: data.pendingInscriptionsCount,
+            unpaidStudentsCount: data.unpaidStudentsCount,
             totalStudents: data.totalStudents,
             evaluationsSansNotesCount: data.evaluationsSansNotesCount,
             attendanceRate: ((data.attendanceStats || {}).attendance_rate || 0) + '%',

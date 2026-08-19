@@ -50,6 +50,20 @@ class ESBTPPersonnelUnifiedController extends Controller
             'edit' => 'secretaires.edit',
             'delete' => 'secretaires.delete',
         ],
+        'responsables_scolarite' => [
+            'role' => 'responsableScolarite',
+            'view' => 'responsables_scolarite.view',
+            'create' => 'responsables_scolarite.create',
+            'edit' => 'responsables_scolarite.edit',
+            'delete' => 'responsables_scolarite.delete',
+        ],
+        'services_scolarite' => [
+            'role' => 'serviceScolarite',
+            'view' => 'services_scolarite.view',
+            'create' => 'services_scolarite.create',
+            'edit' => 'services_scolarite.edit',
+            'delete' => 'services_scolarite.delete',
+        ],
         'comptables' => [
             'role' => 'comptable',
             'view' => 'comptables.view',
@@ -74,6 +88,8 @@ class ESBTPPersonnelUnifiedController extends Controller
         'coordinateur' => ['specialite'],
         'comptable' => ['department'],
         'secretaire' => [],
+        'responsableScolarite' => [],
+        'serviceScolarite' => [],
         'caissier' => [],
     ];
 
@@ -100,13 +116,24 @@ class ESBTPPersonnelUnifiedController extends Controller
             ->filter(fn ($tab) => ($personnelAccess[$tab]['view'] ?? false)
                 && ! ($tab === 'directeurs_etudes' && $userRole === 'directeurEtudes')
                 && ! ($tab === 'coordinateurs' && $userRole === 'coordinateur')
-                && ! ($tab === 'secretaires' && $userRole === 'secretaire'))
+                && ! ($tab === 'secretaires' && $userRole === 'secretaire')
+                && ! ($tab === 'responsables_scolarite' && $userRole === 'responsableScolarite')
+                && ! ($tab === 'services_scolarite' && $userRole === 'serviceScolarite'))
             ->values()
             ->all();
+
+        if (! app(\App\Services\TenantScolariteSettings::class)->splitRolesEnabled()) {
+            $visiblePersonnelTabs = array_values(array_filter(
+                $visiblePersonnelTabs,
+                fn ($tab) => ! in_array($tab, ['responsables_scolarite', 'services_scolarite'], true)
+            ));
+        }
 
         $directeursEtudes = in_array('directeurs_etudes', $visiblePersonnelTabs, true) ? $this->loadActiveByRole('directeurEtudes') : collect();
         $coordinateurs = in_array('coordinateurs', $visiblePersonnelTabs, true) ? $this->loadActiveByRole('coordinateur') : collect();
         $secretaires = in_array('secretaires', $visiblePersonnelTabs, true) ? $this->loadActiveByRole('secretaire') : collect();
+        $responsablesScolarite = in_array('responsables_scolarite', $visiblePersonnelTabs, true) ? $this->loadActiveByRole('responsableScolarite') : collect();
+        $servicesScolarite = in_array('services_scolarite', $visiblePersonnelTabs, true) ? $this->loadActiveByRole('serviceScolarite') : collect();
         $comptables = in_array('comptables', $visiblePersonnelTabs, true) ? $this->loadActiveByRole('comptable') : collect();
         $caissiers = in_array('caissiers', $visiblePersonnelTabs, true) ? $this->loadActiveByRole('caissier') : collect();
 
@@ -122,9 +149,12 @@ class ESBTPPersonnelUnifiedController extends Controller
             'coordinateurs' => $coordinateurs->count(),
             'enseignants' => $enseignants->count(),
             'secretaires' => $secretaires->count(),
+            'responsables_scolarite' => $responsablesScolarite->count(),
+            'services_scolarite' => $servicesScolarite->count(),
             'comptables' => $comptables->count(),
             'caissiers' => $caissiers->count(),
             'total' => $directeursEtudes->count() + $coordinateurs->count() + $enseignants->count() + $secretaires->count()
+                + $responsablesScolarite->count() + $servicesScolarite->count()
                 + $comptables->count() + $caissiers->count(),
         ];
 
@@ -208,6 +238,8 @@ class ESBTPPersonnelUnifiedController extends Controller
             'coordinateurs',
             'enseignants',
             'secretaires',
+            'responsablesScolarite',
+            'servicesScolarite',
             'comptables',
             'caissiers',
             'stats',
@@ -264,7 +296,7 @@ class ESBTPPersonnelUnifiedController extends Controller
             return false;
         }
 
-        if ($tab === 'directeurs_etudes') {
+        if (in_array($tab, ['directeurs_etudes', 'responsables_scolarite', 'services_scolarite'], true)) {
             return $user->can($permission);
         }
 
@@ -280,7 +312,7 @@ class ESBTPPersonnelUnifiedController extends Controller
             return false;
         }
 
-        if ($tab === 'directeurs_etudes') {
+        if (in_array($tab, ['directeurs_etudes', 'responsables_scolarite', 'services_scolarite'], true)) {
             return $user->can($permission);
         }
 
@@ -430,7 +462,7 @@ class ESBTPPersonnelUnifiedController extends Controller
             }
 
             $data = $query->orderBy('created_at', 'desc')->get();
-        } elseif (in_array($type, ['directeurEtudes', 'coordinateur', 'secretaire', 'comptable', 'caissier'], true)) {
+        } elseif (in_array($type, ['directeurEtudes', 'coordinateur', 'secretaire', 'responsableScolarite', 'serviceScolarite', 'comptable', 'caissier'], true)) {
             $data = $this->searchByRole($type, $search, $status);
         } else {
             $data = collect();
@@ -455,7 +487,7 @@ class ESBTPPersonnelUnifiedController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
             'telephone' => 'nullable|string|max:20',
-            'type' => 'required|in:directeurEtudes,coordinateur,enseignant,secretaire,comptable,caissier',
+            'type' => 'required|in:directeurEtudes,coordinateur,enseignant,secretaire,responsableScolarite,serviceScolarite,comptable,caissier',
         ];
 
         // Règles spécifiques selon le type

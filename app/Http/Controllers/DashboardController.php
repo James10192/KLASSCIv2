@@ -80,6 +80,16 @@ class DashboardController extends Controller
             return $this->serviceTechniqueDashboard();
         }
 
+        // Responsable scolarite before secretaire: dedicated dashboard, no amounts.
+        if ($user->can('identity.registrar')) {
+            return redirect()->route('dashboard.responsable-scolarite');
+        }
+
+        // Service scolarite before secretaire: print queue + notes window.
+        if ($user->can('identity.registrar_clerk')) {
+            return redirect()->route('dashboard.service-scolarite');
+        }
+
         // Secrétaire
         if ($user->can('identity.school_manager')) {
             return $this->secretaireDashboard();
@@ -705,6 +715,16 @@ class DashboardController extends Controller
 
         $anneeEnCours = ESBTPAnneeUniversitaire::where('is_current', true)->first();
         $data['anneeEnCours'] = $anneeEnCours;
+        $data['validatedInscriptionsCount'] = 0;
+        try {
+            $validatedQuery = ESBTPInscription::query()->where('status', 'active');
+            if ($anneeEnCours) {
+                $validatedQuery->where('annee_universitaire_id', $anneeEnCours->id);
+            }
+            $data['validatedInscriptionsCount'] = $validatedQuery->count();
+        } catch (\Exception $e) {
+            $data['validatedInscriptionsCount'] = 0;
+        }
 
         // --- KPIs financiers ---
         try {

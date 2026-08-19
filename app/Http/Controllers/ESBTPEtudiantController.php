@@ -26,6 +26,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use App\Services\InscriptionWorkflowService;
 use App\Services\ClasseManagementService;
 use App\Services\FuzzyNameMatcher;
+use App\Services\DocumentPrintGuard;
 use App\Services\LMD\LmdCreditWalletService;
 
 class ESBTPEtudiantController extends Controller
@@ -1596,6 +1597,14 @@ class ESBTPEtudiantController extends Controller
      */
     private function respondWithCertificatPdf($id, string $disposition)
     {
+        if ($disposition === 'attachment') {
+            abort_unless(
+                app(DocumentPrintGuard::class)->canPrint(auth()->user(), 'certificat', (int) $id),
+                403,
+                'Ce certificat doit etre approuve avant impression.'
+            );
+        }
+
         try {
             // Récupérer l'étudiant avec toutes ses inscriptions
             $etudiant = ESBTPEtudiant::with([
@@ -2371,6 +2380,14 @@ class ESBTPEtudiantController extends Controller
      */
     private function respondWithAttestationPdf($id, string $disposition)
     {
+        if ($disposition === 'attachment') {
+            abort_unless(
+                app(DocumentPrintGuard::class)->canPrint(auth()->user(), 'attestation', (int) $id),
+                403,
+                'Cette attestation doit etre approuvee avant impression.'
+            );
+        }
+
         try {
             // Récupérer l'étudiant avec ses inscriptions
             $etudiant = ESBTPEtudiant::with([

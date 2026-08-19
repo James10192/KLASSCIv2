@@ -255,6 +255,21 @@
                 </div>
             </div>
 
+            <div class="col-lg-3 col-md-6 col-12">
+                <div class="card-moderne kpi-card">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="kpi-label">Inscrits valides</div>
+                            <div class="kpi-value">{{ $validatedInscriptionsCount ?? 0 }}</div>
+                            <div class="text-muted small">Annee en cours</div>
+                        </div>
+                        <div class="kpi-icon" style="background: rgba(4, 83, 203, 0.12); color: var(--primary);">
+                            <i class="fas fa-user-check"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             {{-- Encaissé --}}
             <div class="col-lg-3 col-md-6 col-12">
                 <div class="card-moderne kpi-card">
@@ -316,9 +331,19 @@
                     </div>
                     <div class="h5 mb-0 mt-1 text-success">{{ number_format($encaisseMois, 0, ',', ' ') }} FCFA</div>
                 </div>
-                <a href="{{ route('esbtp.comptabilite.dashboard') }}" class="btn-acasi primary">
-                    <i class="fas fa-chart-line me-1"></i>Dashboard avancé
-                </a>
+                <div class="d-flex gap-2">
+                    @canany(['paiements.create', 'paiements.create.mobile_money'])
+                    <a href="{{ route('esbtp.paiements.create') }}" class="btn-acasi primary">
+                        <i class="fas fa-mobile-alt me-1"></i>Nouveau paiement
+                    </a>
+                    @endcanany
+                    <a href="{{ route('esbtp.comptabilite.journal-caisse.index') }}" class="btn-acasi">
+                        <i class="fas fa-book me-1"></i>Point journalier
+                    </a>
+                    <a href="{{ route('esbtp.comptabilite.dashboard') }}" class="btn-acasi primary">
+                        <i class="fas fa-chart-line me-1"></i>Dashboard avance
+                    </a>
+                </div>
             </div>
         </div>
 

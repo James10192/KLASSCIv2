@@ -9,6 +9,7 @@ use App\Models\ESBTPAnneeUniversitaire;
 use App\Http\Requests\Paiement\StorePaiementRequest;
 use App\Http\Requests\Paiement\UpdatePaiementRequest;
 use App\Services\PaymentFilterService;
+use App\Services\MobileMoneyPaymentGuard;
 use App\Services\PaymentStatsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -38,7 +39,7 @@ class ESBTPPaiementController extends Controller
         $this->middleware('auth');
         // Accepter soit `paiements.view` (voit tous), soit `paiements.view_own` (voit ses encaissements)
         $this->middleware('permission:paiements.view|paiements.view_own', ['only' => ['index', 'show', 'paiementsEtudiant']]);
-        $this->middleware('permission:paiements.create', ['only' => ['create', 'store']]);
+        $this->middleware('permission:paiements.create|paiements.create.mobile_money', ['only' => ['create', 'store']]);
         $this->middleware('permission:paiements.edit', ['only' => ['edit', 'update']]);
         $this->middleware('permission:paiements.delete', ['only' => ['destroy']]);
         $this->middleware('permission:paiements.validate', ['only' => ['valider', 'rejeter', 'genererRecu']]);
@@ -325,8 +326,9 @@ class ESBTPPaiementController extends Controller
         // Seuil "montant inhabituel" — au-delà, le caissier doit confirmer explicitement
         // Configurable par l'école via /esbtp/settings (tenant-level), default 500 000 FCFA
         $unusualAmountThreshold = (int) \App\Helpers\SettingsHelper::get('comptabilite.unusual_amount_threshold', 500000);
+        $allowedPaymentModes = app(MobileMoneyPaymentGuard::class)->allowedModes(auth()->user());
 
-        return view('esbtp.paiements.create', compact('etudiant', 'inscription', 'anneeEnCours', 'unusualAmountThreshold'));
+        return view('esbtp.paiements.create', compact('etudiant', 'inscription', 'anneeEnCours', 'unusualAmountThreshold', 'allowedPaymentModes'));
     }
 
     /**
@@ -337,6 +339,12 @@ class ESBTPPaiementController extends Controller
      */
     public function store(StorePaiementRequest $request)
     {
+        abort_unless(
+            app(MobileMoneyPaymentGuard::class)->allowsMode($request->user(), $request->input('mode_paiement')),
+            403,
+            'Ce mode de paiement n est pas autorise pour votre role.'
+        );
+
         $validated = $request->validated();
 
         // LOG DÉTAILLÉ: Début de la requête de création de paiement
