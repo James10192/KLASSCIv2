@@ -1690,7 +1690,7 @@
 
                     <!-- Students Section -->
                     @can('module.etudiants.access')
-                    @if(!auth()->user()->can('module.caisse.access') || auth()->user()->canAny(['module.comptabilite.access', 'identity.school_manager', 'identity.direct_studies', 'identity.registrar', 'identity.registrar_clerk', 'admin.access']))
+                    @if(!auth()->user()->can('module.caisse.access') || auth()->user()->canAny(['module.comptabilite.access', 'identity.school_manager', 'identity.direct_studies', 'identity.registrar', 'identity.registrar_clerk']) || auth()->user()->hasRole(['superAdmin', 'admin', 'serviceTechnique']))
                     @if(auth()->user()->canAny(['students.view', 'inscriptions.view', 'inscriptions.create']))
                         <div class="menu-category">Étudiants</div>
 
@@ -1750,7 +1750,7 @@
 
                     <!-- Personnel (non-superAdmin — superAdmin has accordion in Administration) -->
                     @can('personnel.view')
-                        @if(!auth()->user()->can('admin.access') && !auth()->user()->can('identity.direct_studies'))
+                        @if(!auth()->user()->can('admin.access'))
                         <div class="menu-category">Personnel</div>
                         <div class="menu-item">
                             <a href="{{ route('esbtp.personnel.unified.index') }}" class="menu-link {{ Request::routeIs('esbtp.personnel.unified.*') ? 'active' : '' }}">
@@ -2093,15 +2093,6 @@
                     <!-- Caissier Section -->
                     @can('module.caisse.access')
                         <div class="menu-category">Caisse</div>
-
-                        @can('inscriptions.create')
-                        <div class="menu-item">
-                            <a href="{{ route('esbtp.inscriptions.pre-inscription') }}" class="menu-link {{ Request::routeIs('esbtp.inscriptions.pre-inscription') ? 'active' : '' }}">
-                                <div class="menu-icon"><i class="fas fa-user-plus"></i></div>
-                                <div class="menu-text">Pré-inscription</div>
-                            </a>
-                        </div>
-                        @endcan
 
                         @canany(['paiements.create', 'paiements.create.mobile_money'])
                         <div class="menu-item">

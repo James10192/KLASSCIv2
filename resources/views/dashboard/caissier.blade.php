@@ -158,13 +158,13 @@
         {{-- Quick Actions --}}
         <div class="card-moderne mb-4" style="padding: var(--space-lg);">
             <div class="d-flex flex-wrap gap-3 quick-actions-row">
-                <a href="{{ route('esbtp.inscriptions.pre-inscription') }}" class="quick-action-btn primary">
-                    <i class="fas fa-user-plus"></i>
-                    Nouvelle pré-inscription
+                <a href="{{ route('esbtp.paiements.create') }}" class="quick-action-btn primary">
+                    <i class="fas fa-plus"></i>
+                    Encaissement
                 </a>
-                <a href="{{ route('esbtp.etudiants.index') }}" class="quick-action-btn secondary">
-                    <i class="fas fa-search"></i>
-                    Rechercher un étudiant
+                <a href="{{ route('esbtp.paiements.index') }}" class="quick-action-btn secondary">
+                    <i class="fas fa-list"></i>
+                    Liste de paiements
                 </a>
             </div>
         </div>
@@ -242,7 +242,7 @@
                 <h6 class="mb-0 fw-semibold">
                     <i class="fas fa-history me-2" style="color: var(--primary);"></i>Derniers paiements
                 </h6>
-                @can('paiements.view')
+                @canany(['paiements.view', 'paiements.view_own'])
                 <a href="{{ route('esbtp.paiements.index') }}" class="text-decoration-none small" style="color: var(--primary);">
                     Voir tout <i class="fas fa-arrow-right ms-1"></i>
                 </a>
