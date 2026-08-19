@@ -2290,6 +2290,20 @@
                             </label>
                         </div>
                     </div>
+                    <div class="bc-card">
+                        <div class="bc-icon"><i class="fas fa-cash-register"></i></div>
+                        <div class="bc-body">
+                            <div class="bc-label">Pre-inscription par la caisse</div>
+                            <div class="bc-desc">Yakro et Abidjan: la caisse saisit la pre-inscription. ISLG et USAT: laissez desactive, la caisse encaisse seulement.</div>
+                        </div>
+                        <div class="bc-toggle">
+                            <label class="form-switch-modern">
+                                <input type="checkbox" name="caisse.pre_inscription.enabled" value="1"
+                                       {{ \App\Helpers\SettingsHelper::get('caisse.pre_inscription.enabled', '1') == '1' ? 'checked' : '' }}>
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                    </div>
                 </div>
             </div>
 

@@ -2094,6 +2094,17 @@
                     @can('module.caisse.access')
                         <div class="menu-category">Caisse</div>
 
+                        @if(app(\App\Services\TenantScolariteSettings::class)->cashierPreEnrollmentEnabled())
+                        @can('inscriptions.create')
+                        <div class="menu-item">
+                            <a href="{{ route('esbtp.inscriptions.pre-inscription') }}" class="menu-link {{ Request::routeIs('esbtp.inscriptions.pre-inscription') ? 'active' : '' }}">
+                                <div class="menu-icon"><i class="fas fa-user-plus"></i></div>
+                                <div class="menu-text">Pré-inscription</div>
+                            </a>
+                        </div>
+                        @endcan
+                        @endif
+
                         @canany(['paiements.create', 'paiements.create.mobile_money'])
                         <div class="menu-item">
                             <a href="{{ route('esbtp.paiements.create') }}" class="menu-link {{ Request::routeIs('esbtp.paiements.create') ? 'active' : '' }}">

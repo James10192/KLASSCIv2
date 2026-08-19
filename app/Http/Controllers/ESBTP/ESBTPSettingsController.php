@@ -277,6 +277,21 @@ class ESBTPSettingsController extends Controller
             );
 
             Setting::firstOrCreate(
+                ['key' => 'caisse.pre_inscription.enabled'],
+                [
+                    'value' => '1',
+                    'type' => 'boolean',
+                    'group' => 'scolarite',
+                    'category' => 'scolarite',
+                    'description' => 'Autorise la caisse a faire les pre-inscriptions. Laissez active pour Yakro et Abidjan, desactivez pour ISLG et USAT.',
+                    'is_required' => false,
+                    'default_value' => '1',
+                    'validation_rules' => null,
+                    'sort_order' => 155,
+                ]
+            );
+
+            Setting::firstOrCreate(
                 ['key' => 'attendance_manual_hours_global_enabled'],
                 [
                     'value' => '0',
@@ -330,7 +345,7 @@ class ESBTPSettingsController extends Controller
                 'bulletin_auto_calculate_mention', 'bulletin_show_felicitation', 'bulletin_show_encouragement',
                 'certificat_show_classe', 'certificat_show_niveau', 'certificat_show_filiere',
                 'bulletin_conduite_enabled', 'bulletin_show_absences_par_matiere',
-                'attendance_manual_hours_global_enabled', 'scolarite.split_roles', 'documents.print_requires_approval',
+                'attendance_manual_hours_global_enabled', 'scolarite.split_roles', 'documents.print_requires_approval', 'caisse.pre_inscription.enabled',
             ], array_keys($troncCommunDefaults)))->get();
 
             $treatMissingCheckboxesAsOff = $request->boolean('settings_save_display');

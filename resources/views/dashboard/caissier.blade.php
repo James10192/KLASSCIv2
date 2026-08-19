@@ -158,7 +158,13 @@
         {{-- Quick Actions --}}
         <div class="card-moderne mb-4" style="padding: var(--space-lg);">
             <div class="d-flex flex-wrap gap-3 quick-actions-row">
-                <a href="{{ route('esbtp.paiements.create') }}" class="quick-action-btn primary">
+                @if(app(\App\Services\TenantScolariteSettings::class)->cashierPreEnrollmentEnabled())
+                <a href="{{ route('esbtp.inscriptions.pre-inscription') }}" class="quick-action-btn primary">
+                    <i class="fas fa-user-plus"></i>
+                    Nouvelle pré-inscription
+                </a>
+                @endif
+                <a href="{{ route('esbtp.paiements.create') }}" class="quick-action-btn {{ app(\App\Services\TenantScolariteSettings::class)->cashierPreEnrollmentEnabled() ? 'secondary' : 'primary' }}">
                     <i class="fas fa-plus"></i>
                     Encaissement
                 </a>
@@ -203,7 +209,8 @@
                 </div>
             </div>
 
-            {{-- Pré-inscriptions aujourd'hui --}}
+            @if(app(\App\Services\TenantScolariteSettings::class)->cashierPreEnrollmentEnabled())
+        {{-- Pré-inscriptions aujourd'hui --}}
             <div class="col-lg-3 col-md-6 col-12">
                 <div class="card-moderne kpi-card">
                     <div class="d-flex justify-content-between align-items-start">
@@ -234,6 +241,7 @@
                     </div>
                 </div>
             </div>
+            @endif
         </div>
 
         {{-- Recent Payments --}}

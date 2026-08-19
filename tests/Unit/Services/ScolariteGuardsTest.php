@@ -51,6 +51,13 @@ class ScolariteGuardsTest extends TestCase
         $this->assertTrue($guard->canPrint($user, 'certificat', 12));
     }
 
+    public function test_cashier_pre_enrollment_defaults_on(): void
+    {
+        $settings = new TenantScolariteSettings();
+
+        $this->assertTrue($settings->cashierPreEnrollmentEnabled());
+    }
+
     public function test_notes_window_does_not_bind_teachers(): void
     {
         $settings = Mockery::mock(TenantScolariteSettings::class);

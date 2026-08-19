@@ -15,6 +15,7 @@ Cette rule s'active automatiquement quand tu envisages :
 Exceptions assumees (aout 2026, Marcel) :
 - `directeurEtudes` est un poste standard des ecoles superieures ivoiriennes. Canonique, pedagogique uniquement, sans `*` ni finance/systeme.
 - `responsableScolarite` et `serviceScolarite` sont les deux roles d'organigramme scolarite. Actives seulement si le setting `scolarite.split_roles` est ON. Sans `*`, sans finance, sans `admin.access` ni `identity.school_manager`. Yakro reste sur `secretaire` tant que le setting est OFF.
+- La caisse fait la pre-inscription par defaut (`caisse.pre_inscription.enabled` ON). Yakro et Abidjan gardent ce flux. ISLG et USAT le desactivent: encaissement + liste seulement.
 
 
 Tout besoin métier nouveau (« il faut un directeur financier qui voit l'audit mais ne valide pas », « il faut un auditeur externe qui consulte sans modifier ») se traite **EXCLUSIVEMENT** via :

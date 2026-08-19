@@ -2176,6 +2176,8 @@ class ESBTPInscriptionController extends Controller
      */
     public function createPreInscription()
     {
+        abort_unless(app(\App\Services\TenantScolariteSettings::class)->cashierPreEnrollmentEnabled(), 403);
+
         $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->first();
         $classes = ESBTPClasse::with(['filiere', 'niveau'])
             ->where('is_active', true)
@@ -2352,6 +2354,8 @@ class ESBTPInscriptionController extends Controller
      */
     public function storePreInscription(\App\Http\Requests\Inscription\StorePreInscriptionRequest $request)
     {
+        abort_unless(app(\App\Services\TenantScolariteSettings::class)->cashierPreEnrollmentEnabled(), 403);
+
         try {
             DB::beginTransaction();
 
