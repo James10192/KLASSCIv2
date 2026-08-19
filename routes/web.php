@@ -229,6 +229,12 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
         ->name('esbtp.rapports.trimestre');
     Route::middleware(['permission:reports.academic.annuel'])->get('/esbtp/rapports/annuel', [\App\Http\Controllers\AcademicPilotageReportController::class, 'annuel'])
         ->name('esbtp.rapports.annuel');
+    Route::middleware(['permission:reports.academic.rentree'])->get('/esbtp/rapports/rentree/pdf', [\App\Http\Controllers\AcademicPilotageReportController::class, 'rentreePdf'])
+        ->name('esbtp.rapports.rentree.pdf');
+    Route::middleware(['permission:reports.academic.trimestre'])->get('/esbtp/rapports/trimestre/pdf', [\App\Http\Controllers\AcademicPilotageReportController::class, 'trimestrePdf'])
+        ->name('esbtp.rapports.trimestre.pdf');
+    Route::middleware(['permission:reports.academic.annuel'])->get('/esbtp/rapports/annuel/pdf', [\App\Http\Controllers\AcademicPilotageReportController::class, 'annuelPdf'])
+        ->name('esbtp.rapports.annuel.pdf');
 
     // Lot 9 â€” Dashboard widget-based (universel, gated par permissions)
     // Premier consommateur : rÃ´les custom (Lot 8). Accessible Ã  tous via /dashboard/widgets.
