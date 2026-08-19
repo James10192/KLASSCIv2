@@ -1690,6 +1690,7 @@
 
                     <!-- Students Section -->
                     @can('module.etudiants.access')
+                    @if(!auth()->user()->can('module.caisse.access') || auth()->user()->canAny(['module.comptabilite.access', 'identity.school_manager', 'identity.direct_studies', 'identity.registrar', 'identity.registrar_clerk', 'admin.access']))
                     @if(auth()->user()->canAny(['students.view', 'inscriptions.view', 'inscriptions.create']))
                         <div class="menu-category">Étudiants</div>
 
@@ -1743,6 +1744,7 @@
                                 @endcan
                             </div>
                         </div>
+                    @endif
                     @endif
                     @endcan
 
@@ -1809,6 +1811,34 @@
                     <!-- Grades & Reports Section -->
                     @can('module.notes_evaluations.access')
                     @can('notes.view')
+                        @canany(['reports.academic.rentree', 'reports.academic.trimestre', 'reports.academic.annuel'])
+                        <div class="menu-category">Rapports pedagogiques</div>
+                        @can('reports.academic.rentree')
+                        <div class="menu-item">
+                            <a href="{{ route('esbtp.rapports.rentree') }}" class="menu-link {{ Request::routeIs('esbtp.rapports.rentree') ? 'active' : '' }}">
+                                <div class="menu-icon"><i class="fas fa-door-open"></i></div>
+                                <div class="menu-text">Rapport de rentree</div>
+                            </a>
+                        </div>
+                        @endcan
+                        @can('reports.academic.trimestre')
+                        <div class="menu-item">
+                            <a href="{{ route('esbtp.rapports.trimestre') }}" class="menu-link {{ Request::routeIs('esbtp.rapports.trimestre') ? 'active' : '' }}">
+                                <div class="menu-icon"><i class="fas fa-calendar-check"></i></div>
+                                <div class="menu-text">Fin de trimestre</div>
+                            </a>
+                        </div>
+                        @endcan
+                        @can('reports.academic.annuel')
+                        <div class="menu-item">
+                            <a href="{{ route('esbtp.rapports.annuel') }}" class="menu-link {{ Request::routeIs('esbtp.rapports.annuel') ? 'active' : '' }}">
+                                <div class="menu-icon"><i class="fas fa-book"></i></div>
+                                <div class="menu-text">Rapport annuel</div>
+                            </a>
+                        </div>
+                        @endcan
+                        @endcanany
+
                         <div class="menu-category">Notes & Rapports</div>
 
                         <!-- Grades Management -->
@@ -2073,89 +2103,24 @@
                         </div>
                         @endcan
 
-                        {{-- Consultation : uniquement pour les users caisse SANS acces module etudiants complet --}}
-                        @if(!auth()->user()->can('module.etudiants.access'))
-                        <div class="menu-category">Consultation</div>
-
-                        @can('students.view')
+                        @canany(['paiements.create', 'paiements.create.mobile_money'])
                         <div class="menu-item">
-                            <a href="{{ route('esbtp.etudiants.index') }}" class="menu-link {{ Request::routeIs('esbtp.etudiants.*') ? 'active' : '' }}">
-                                <div class="menu-icon"><i class="fas fa-user-graduate"></i></div>
-                                <div class="menu-text">Etudiants</div>
+                            <a href="{{ route('esbtp.paiements.create') }}" class="menu-link {{ Request::routeIs('esbtp.paiements.create') ? 'active' : '' }}">
+                                <div class="menu-icon"><i class="fas fa-plus"></i></div>
+                                <div class="menu-text">Encaissement</div>
                             </a>
                         </div>
-                        @endcan
+                        @endcanany
 
-                        @can('inscriptions.view')
-                        <div class="menu-item">
-                            <a href="{{ route('esbtp.inscriptions.index') }}" class="menu-link {{ Request::routeIs('esbtp.inscriptions.*') && !Request::routeIs('esbtp.inscriptions.pre-inscription') ? 'active' : '' }}">
-                                <div class="menu-icon"><i class="fas fa-file-signature"></i></div>
-                                <div class="menu-text">Inscriptions</div>
-                            </a>
-                        </div>
-                        <div class="menu-item">
-                            <a href="{{ route('esbtp.reinscription.index') }}" class="menu-link {{ Request::routeIs('esbtp.reinscription.*') ? 'active' : '' }}">
-                                <div class="menu-icon"><i class="fas fa-redo"></i></div>
-                                <div class="menu-text">Reinscriptions</div>
-                            </a>
-                        </div>
-                        <div class="menu-item">
-                            <a href="{{ route('esbtp.inscriptions.sous-reserve') }}" class="menu-link {{ Request::routeIs('esbtp.inscriptions.sous-reserve') ? 'active' : '' }}">
-                                <div class="menu-icon"><i class="fas fa-clipboard-check"></i></div>
-                                <div class="menu-text">Sous réserve</div>
-                            </a>
-                        </div>
-                        @endcan
-                        @endif
-
-                        {{-- Comptabilité simplifiée : uniquement pour les users caisse SANS accès module comptabilité complet --}}
-                        @if(!auth()->user()->can('module.comptabilite.access'))
-                        <div class="menu-category">Comptabilité</div>
-
-                        <div class="menu-item">
-                            <a href="{{ route('dashboard') }}" class="menu-link {{ Request::routeIs('dashboard') ? 'active' : '' }}">
-                                <div class="menu-icon"><i class="fas fa-chart-line"></i></div>
-                                <div class="menu-text">Tableau de bord</div>
-                            </a>
-                        </div>
-
-                        @can('paiements.view')
+                        @can('paiements.view_own')
                         <div class="menu-item">
                             <a href="{{ route('esbtp.paiements.index') }}" class="menu-link {{ Request::routeIs('esbtp.paiements.index') ? 'active' : '' }}">
-                                <div class="menu-icon"><i class="fas fa-money-bill-wave"></i></div>
-                                <div class="menu-text">Paiements</div>
+                                <div class="menu-icon"><i class="fas fa-list"></i></div>
+                                <div class="menu-text">Liste de paiements</div>
                             </a>
                         </div>
                         @endcan
 
-                        {{-- Lot 15 — Export détaillé (visible aussi pour caissier sans accès module comptabilité) --}}
-                        @can('paiements.export')
-                        <div class="menu-item">
-                            <a href="{{ route('esbtp.paiements.export-detaille.index') }}" class="menu-link {{ Request::routeIs('esbtp.paiements.export-detaille.*') ? 'active' : '' }}">
-                                <div class="menu-icon"><i class="fas fa-file-export"></i></div>
-                                <div class="menu-text">Export détaillé</div>
-                            </a>
-                        </div>
-                        @endcan
-
-                        @can('comptabilite.relances.send')
-                        <div class="menu-item">
-                            <a href="{{ route('esbtp.comptabilite.relances.index') }}" class="menu-link {{ Request::routeIs('esbtp.comptabilite.relances.*') ? 'active' : '' }}">
-                                <div class="menu-icon"><i class="fas fa-bell"></i></div>
-                                <div class="menu-text">Relances</div>
-                            </a>
-                        </div>
-                        @endcan
-
-                        @can('frais.view')
-                        <div class="menu-item">
-                            <a href="{{ route('esbtp.frais.index') }}" class="menu-link {{ Request::routeIs('esbtp.frais.*') ? 'active' : '' }}">
-                                <div class="menu-icon"><i class="fas fa-tags"></i></div>
-                                <div class="menu-text">Suivi catégories</div>
-                            </a>
-                        </div>
-                        @endcan
-                        @endif
                     @endcan
 
                     {{-- Chat interactif (issue #298) — réservé staff (permission messages.send).

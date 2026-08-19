@@ -99,7 +99,15 @@ class AcademicPilotagePermissionsTest extends TestCase
 
         $this->assertSame($expected, $this->pilotageDefaultsFor('secretaire'));
         $this->assertSame($expected, $this->pilotageDefaultsFor('coordinateur'));
-        $this->assertSame($expected, $this->pilotageDefaultsFor('directeurEtudes'));
+        $this->assertSame([
+            'module.academic_pilotage.access',
+            'academic_pilotage.view',
+            'academic_pilotage.view_all',
+            'academic_sheets.view',
+            'academic_alerts.view',
+            'academic_alerts.acknowledge',
+            'academic_health.view',
+        ], $this->pilotageDefaultsFor('directeurEtudes'));
     }
 
     public function test_teacher_receives_limited_pilotage_permissions(): void

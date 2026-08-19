@@ -23,6 +23,7 @@ use App\Models\ESBTPResultat;
 use App\Models\ESBTPResultatMatiere;
 use App\Services\BulletinBulkPdfExporter;
 use App\Services\BulletinService;
+use App\Services\DocumentPrintGuard;
 use App\Services\BtsBulletinPolicy;
 use App\Services\ESBTP\BulletinConsistencyService;
 use App\Services\ESBTP\ESBTPAbsenceService;
@@ -614,6 +615,19 @@ class ESBTPBulletinController extends Controller
     public function genererPDF(ESBTPBulletin $bulletin, bool $inline = false)
     {
         $this->authorize('download', $bulletin);
+
+        if (! $inline) {
+            abort_unless(
+                app(DocumentPrintGuard::class)->canPrint(
+                    auth()->user(),
+                    'bulletin',
+                    (int) $bulletin->etudiant_id,
+                    (int) $bulletin->id
+                ),
+                403,
+                'Ce bulletin doit etre approuve avant impression.'
+            );
+        }
 
         try {
             $pdf = $this->buildBulletinPdf($bulletin);

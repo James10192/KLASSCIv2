@@ -84,7 +84,7 @@ class CLIUserController extends BaseApiController
             'phone' => 'nullable|string|max:20',
         ]);
 
-        $validRoles = ['superAdmin', 'admin', 'secretaire', 'coordinateur', 'directeurEtudes', 'enseignant',
+        $validRoles = ['superAdmin', 'admin', 'secretaire', 'responsableScolarite', 'serviceScolarite', 'coordinateur', 'directeurEtudes', 'enseignant',
                         'etudiant', 'parent', 'comptable', 'caissier', 'teacher'];
 
         if (!in_array($validated['role'], $validRoles)) {

@@ -41,6 +41,8 @@ class ESBTPCustomRoleController extends Controller
      */
     public const EDITABLE_STANDARD_ROLES = [
         'secretaire',
+        'responsableScolarite',
+        'serviceScolarite',
         'comptable',
         'caissier',
         'coordinateur',

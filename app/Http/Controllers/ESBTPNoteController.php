@@ -19,6 +19,7 @@ use App\Models\User;
 use App\Services\NoteCalculationService;
 use App\Services\Notes\NoteStudentCohortService;
 use App\Services\NotesImportService;
+use App\Services\NotesWindowGuard;
 use App\Services\NotificationService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -31,21 +32,28 @@ class ESBTPNoteController extends Controller
 {
     protected $notificationService;
     protected NoteStudentCohortService $noteStudentCohortService;
+    protected NotesWindowGuard $notesWindowGuard;
 
     public function __construct(
         NotificationService $notificationService,
-        NoteStudentCohortService $noteStudentCohortService
+        NoteStudentCohortService $noteStudentCohortService,
+        NotesWindowGuard $notesWindowGuard
     )
     {
         $this->middleware(['auth']);
         $this->middleware('permission:module.notes_evaluations.access');
         $this->notificationService = $notificationService;
         $this->noteStudentCohortService = $noteStudentCohortService;
+        $this->notesWindowGuard = $notesWindowGuard;
     }
 
     private function canManageEvaluationNotes(?User $user, ESBTPEvaluation $evaluation): bool
     {
         if (! $user) {
+            return false;
+        }
+
+        if (! $this->notesWindowGuard->canWrite($user, (int) $evaluation->classe_id)) {
             return false;
         }
 

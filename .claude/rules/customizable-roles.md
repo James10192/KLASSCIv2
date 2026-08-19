@@ -10,9 +10,12 @@ Cette rule s'active automatiquement quand tu envisages :
 ## Règle absolue
 
 **Tu n'inventes PAS de nouveau rôle.** Le set des rôles **canoniques** est figé :
-`superAdmin`, `secretaire`, `comptable`, `caissier`, `coordinateur`, `directeurEtudes`, `enseignant`, `etudiant`, `serviceTechnique` (masqué).
+`superAdmin`, `secretaire`, `responsableScolarite`, `serviceScolarite`, `comptable`, `caissier`, `coordinateur`, `directeurEtudes`, `enseignant`, `etudiant`, `serviceTechnique` (masque).
 
-Exception assumée (août 2026, Marcel) : `directeurEtudes` est un poste standard des écoles supérieures ivoiriennes, pas un custom role ponctuel. Il est canonique, pédagogique uniquement, sans `*` ni finance/système.
+Exceptions assumees (aout 2026, Marcel) :
+- `directeurEtudes` est un poste standard des ecoles superieures ivoiriennes. Canonique, pedagogique uniquement, sans `*` ni finance/systeme.
+- `responsableScolarite` et `serviceScolarite` sont les deux roles d'organigramme scolarite. Actives seulement si le setting `scolarite.split_roles` est ON. Sans `*`, sans finance, sans `admin.access` ni `identity.school_manager`. Yakro reste sur `secretaire` tant que le setting est OFF.
+
 
 Tout besoin métier nouveau (« il faut un directeur financier qui voit l'audit mais ne valide pas », « il faut un auditeur externe qui consulte sans modifier ») se traite **EXCLUSIVEMENT** via :
 

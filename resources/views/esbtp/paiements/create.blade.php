@@ -331,13 +331,27 @@
         })
         ->all();
 
-    $modeOptions = [
-        'Espèces' => 'Espèces',
-        'Chèque' => 'Chèque',
-        'Virement' => 'Virement bancaire',
-        'Mobile Money' => 'Mobile Money',
-        'Carte bancaire' => 'Carte bancaire',
+    $allModeOptions = [
+        'Espèces' => 'especes',
+        'Chèque' => 'cheque',
+        'Virement' => 'virement',
+        'Mobile Money' => 'mobile_money',
+        'Orange Money' => 'orange_money',
+        'MTN Money' => 'mtn_money',
+        'Moov Money' => 'moov_money',
+        'Wave' => 'wave',
+        'Carte bancaire' => 'carte',
     ];
+    $allowedPaymentModes = $allowedPaymentModes ?? array_values($allModeOptions);
+    $modeOptions = [];
+    foreach ($allModeOptions as $label => $canonical) {
+        if (in_array($canonical, $allowedPaymentModes, true) || in_array(strtolower($label), $allowedPaymentModes, true)) {
+            $modeOptions[$label] = $label;
+        }
+    }
+    if ($modeOptions === []) {
+        $modeOptions = ['Mobile Money' => 'Mobile Money', 'Orange Money' => 'Orange Money', 'MTN Money' => 'MTN Money', 'Moov Money' => 'Moov Money', 'Wave' => 'Wave'];
+    }
 
     $trancheOptions = [
         'Première tranche' => 'Première tranche',

@@ -1474,14 +1474,16 @@
 @php
     // Tabs cachés selon le rôle de l'utilisateur connecté
     $hiddenTabs = [];
-    $visiblePersonnelTabs = $visiblePersonnelTabs ?? ['directeurs_etudes', 'coordinateurs', 'enseignants', 'secretaires', 'comptables', 'caissiers'];
+    $visiblePersonnelTabs = $visiblePersonnelTabs ?? ['directeurs_etudes', 'coordinateurs', 'enseignants', 'secretaires', 'responsables_scolarite', 'services_scolarite', 'comptables', 'caissiers'];
     $personnelAccess = $personnelAccess ?? [];
     $ur = $userRole ?? '';
     if ($ur === 'directeurEtudes') $hiddenTabs[] = 'directeurs_etudes';
     if ($ur === 'coordinateur') $hiddenTabs[] = 'coordinateurs';
     if ($ur === 'secretaire') $hiddenTabs[] = 'secretaires';
+    if ($ur === 'responsableScolarite') $hiddenTabs[] = 'responsables_scolarite';
+    if ($ur === 'serviceScolarite') $hiddenTabs[] = 'services_scolarite';
     // Premier tab visible = actif par défaut
-    $tabOrder = ['directeurs_etudes', 'coordinateurs', 'enseignants', 'secretaires', 'comptables', 'caissiers'];
+    $tabOrder = ['directeurs_etudes', 'coordinateurs', 'enseignants', 'secretaires', 'responsables_scolarite', 'services_scolarite', 'comptables', 'caissiers'];
     $canAnyCreatePersonnel = collect($tabOrder)->contains(fn($t) => $personnelAccess[$t]['create'] ?? false);
     $firstVisibleTab = collect($tabOrder)->first(fn($t) => in_array($t, $visiblePersonnelTabs, true) && !in_array($t, $hiddenTabs));
 @endphp
@@ -1537,6 +1539,16 @@
                                 <i class="fas fa-user-shield"></i>Secrétaire
                             </a></li>
                             @endif
+                            @if(($personnelAccess['responsables_scolarite']['create'] ?? false) && ($userRole ?? '') !== 'responsableScolarite')
+                            <li><a class="dropdown-item" href="{{ route('esbtp.responsables-scolarite.create') }}">
+                                <i class="fas fa-user-check"></i>Responsable scolarite
+                            </a></li>
+                            @endif
+                            @if(($personnelAccess['services_scolarite']['create'] ?? false) && ($userRole ?? '') !== 'serviceScolarite')
+                            <li><a class="dropdown-item" href="{{ route('esbtp.services-scolarite.create') }}">
+                                <i class="fas fa-print"></i>Service scolarite
+                            </a></li>
+                            @endif
                             @if($personnelAccess['comptables']['create'] ?? false)
                             <li><a class="dropdown-item" href="{{ route('esbtp.comptables.create') }}">
                                 <i class="fas fa-calculator"></i>Comptable
@@ -1576,6 +1588,18 @@
                 <div class="pu-hero-kpi">
                     <div class="pu-hero-kpi-value">{{ $stats['secretaires'] ?? 0 }}</div>
                     <div class="pu-hero-kpi-label">Secrétaires</div>
+                </div>
+                @endif
+                @if(in_array('responsables_scolarite', $visiblePersonnelTabs, true) && !in_array('responsables_scolarite', $hiddenTabs))
+                <div class="pu-hero-kpi">
+                    <div class="pu-hero-kpi-value">{{ $stats['responsables_scolarite'] ?? 0 }}</div>
+                    <div class="pu-hero-kpi-label">Responsables</div>
+                </div>
+                @endif
+                @if(in_array('services_scolarite', $visiblePersonnelTabs, true) && !in_array('services_scolarite', $hiddenTabs))
+                <div class="pu-hero-kpi">
+                    <div class="pu-hero-kpi-value">{{ $stats['services_scolarite'] ?? 0 }}</div>
+                    <div class="pu-hero-kpi-label">Service scolarite</div>
                 </div>
                 @endif
                 @if(in_array('comptables', $visiblePersonnelTabs, true))
@@ -1734,6 +1758,20 @@
                     <span class="pu-tab-icon"><i class="fas fa-user-shield"></i></span>
                     <span class="pu-tab-label">Secrétaires</span>
                     <span class="pu-tab-count">{{ $stats['secretaires'] ?? 0 }} personnes</span>
+                </button>
+                @endif
+                @if(in_array('responsables_scolarite', $visiblePersonnelTabs, true) && !in_array('responsables_scolarite', $hiddenTabs))
+                <button class="pu-tab slider-tab {{ $firstVisibleTab === 'responsables_scolarite' ? 'active' : '' }}" data-tab="responsables_scolarite">
+                    <span class="pu-tab-icon"><i class="fas fa-user-check"></i></span>
+                    <span class="pu-tab-label">Responsables scolarite</span>
+                    <span class="pu-tab-count">{{ $stats['responsables_scolarite'] ?? 0 }} personnes</span>
+                </button>
+                @endif
+                @if(in_array('services_scolarite', $visiblePersonnelTabs, true) && !in_array('services_scolarite', $hiddenTabs))
+                <button class="pu-tab slider-tab {{ $firstVisibleTab === 'services_scolarite' ? 'active' : '' }}" data-tab="services_scolarite">
+                    <span class="pu-tab-icon"><i class="fas fa-print"></i></span>
+                    <span class="pu-tab-label">Service scolarite</span>
+                    <span class="pu-tab-count">{{ $stats['services_scolarite'] ?? 0 }} personnes</span>
                 </button>
                 @endif
                 @if(in_array('comptables', $visiblePersonnelTabs, true))
@@ -2104,6 +2142,129 @@
                                 @if($personnelAccess['secretaires']['create'] ?? false)
                                 <a href="{{ route('esbtp.secretaires.create') }}" class="pu-empty-btn">
                                     <i class="fas fa-plus"></i>Créer un secrétaire
+                                </a>
+                                @endif
+                            </div>
+                        @endif
+                    </div>
+                </div>
+                @endif
+
+
+                @if(in_array('responsables_scolarite', $visiblePersonnelTabs, true) && !in_array('responsables_scolarite', $hiddenTabs))
+                <div class="pu-panel slider-panel {{ $firstVisibleTab === 'responsables_scolarite' ? 'active' : '' }}" id="responsables_scolarite-panel">
+                    <div class="pu-panel-header">
+                        <div class="pu-search">
+                            <input type="text" placeholder="Rechercher un responsable scolarite..." id="search-responsables_scolarite">
+                        </div>
+                        @if($personnelAccess['responsables_scolarite']['create'] ?? false)
+                        <a href="{{ route('esbtp.responsables-scolarite.create') }}" class="pu-panel-btn pu-panel-btn-primary">
+                            <i class="fas fa-plus"></i>Nouveau responsable scolarite
+                        </a>
+                        @endif
+                    </div>
+                    <div id="responsables_scolarite-list">
+                        @if(isset($responsablesScolarite) && $responsablesScolarite->count() > 0)
+                            @foreach($responsablesScolarite as $responsable)
+                            <div class="pu-card personnel-card">
+                                <div class="pu-avatar">{{ strtoupper(substr($responsable->name, 0, 2)) }}</div>
+                                <div class="pu-info">
+                                    <div class="pu-name">{{ $responsable->name }}</div>
+                                    <div class="pu-meta">
+                                        <span class="pu-meta-item"><i class="fas fa-envelope"></i>{{ $responsable->email }}</span>
+                                        @if($responsable->telephone)
+                                        <span class="pu-meta-item"><i class="fas fa-phone"></i>{{ $responsable->telephone }}</span>
+                                        @endif
+                                    </div>
+                                </div>
+                                <span class="pu-status {{ $responsable->is_active ? 'pu-status-active' : 'pu-status-inactive' }}">
+                                    {{ $responsable->is_active ? 'Actif' : 'Inactif' }}
+                                </span>
+                                <div class="pu-actions">
+                                    <a href="{{ route('esbtp.responsables-scolarite.show', $responsable) }}" class="pu-action-btn" title="Voir"><i class="fas fa-eye"></i></a>
+                                    @if($personnelAccess['responsables_scolarite']['edit'] ?? false)
+                                    <a href="{{ route('esbtp.responsables-scolarite.edit', $responsable) }}" class="pu-action-btn pu-act-edit" title="Modifier"><i class="fas fa-pen"></i></a>
+                                    @if($responsable->id !== auth()->id())
+                                    <form action="{{ route('esbtp.responsables-scolarite.toggle-status', $responsable) }}" method="POST" class="d-inline">
+                                        @csrf
+                                        @method('PATCH')
+                                        <button type="submit" class="pu-action-btn {{ $responsable->is_active ? 'pu-act-danger' : 'pu-act-success' }}" title="{{ $responsable->is_active ? 'Désactiver' : 'Activer' }}">
+                                            <i class="fas fa-{{ $responsable->is_active ? 'pause' : 'play' }}"></i>
+                                        </button>
+                                    </form>
+                                    @endif
+                                    @endif
+                                </div>
+                            </div>
+                            @endforeach
+                        @else
+                            <div class="pu-empty">
+                                <div class="pu-empty-icon"><i class="fas fa-user-check"></i></div>
+                                <h3>Aucun responsable scolarite</h3>
+                                @if($personnelAccess['responsables_scolarite']['create'] ?? false)
+                                <a href="{{ route('esbtp.responsables-scolarite.create') }}" class="pu-empty-btn">
+                                    <i class="fas fa-plus"></i>Créer un responsable scolarite
+                                </a>
+                                @endif
+                            </div>
+                        @endif
+                    </div>
+                </div>
+                @endif
+
+                @if(in_array('services_scolarite', $visiblePersonnelTabs, true) && !in_array('services_scolarite', $hiddenTabs))
+                <div class="pu-panel slider-panel {{ $firstVisibleTab === 'services_scolarite' ? 'active' : '' }}" id="services_scolarite-panel">
+                    <div class="pu-panel-header">
+                        <div class="pu-search">
+                            <input type="text" placeholder="Rechercher un service scolarite..." id="search-services_scolarite">
+                        </div>
+                        @if($personnelAccess['services_scolarite']['create'] ?? false)
+                        <a href="{{ route('esbtp.services-scolarite.create') }}" class="pu-panel-btn pu-panel-btn-primary">
+                            <i class="fas fa-plus"></i>Nouveau service scolarite
+                        </a>
+                        @endif
+                    </div>
+                    <div id="services_scolarite-list">
+                        @if(isset($servicesScolarite) && $servicesScolarite->count() > 0)
+                            @foreach($servicesScolarite as $service)
+                            <div class="pu-card personnel-card">
+                                <div class="pu-avatar">{{ strtoupper(substr($service->name, 0, 2)) }}</div>
+                                <div class="pu-info">
+                                    <div class="pu-name">{{ $service->name }}</div>
+                                    <div class="pu-meta">
+                                        <span class="pu-meta-item"><i class="fas fa-envelope"></i>{{ $service->email }}</span>
+                                        @if($service->telephone)
+                                        <span class="pu-meta-item"><i class="fas fa-phone"></i>{{ $service->telephone }}</span>
+                                        @endif
+                                    </div>
+                                </div>
+                                <span class="pu-status {{ $service->is_active ? 'pu-status-active' : 'pu-status-inactive' }}">
+                                    {{ $service->is_active ? 'Actif' : 'Inactif' }}
+                                </span>
+                                <div class="pu-actions">
+                                    <a href="{{ route('esbtp.services-scolarite.show', $service) }}" class="pu-action-btn" title="Voir"><i class="fas fa-eye"></i></a>
+                                    @if($personnelAccess['services_scolarite']['edit'] ?? false)
+                                    <a href="{{ route('esbtp.services-scolarite.edit', $service) }}" class="pu-action-btn pu-act-edit" title="Modifier"><i class="fas fa-pen"></i></a>
+                                    @if($service->id !== auth()->id())
+                                    <form action="{{ route('esbtp.services-scolarite.toggle-status', $service) }}" method="POST" class="d-inline">
+                                        @csrf
+                                        @method('PATCH')
+                                        <button type="submit" class="pu-action-btn {{ $service->is_active ? 'pu-act-danger' : 'pu-act-success' }}" title="{{ $service->is_active ? 'Désactiver' : 'Activer' }}">
+                                            <i class="fas fa-{{ $service->is_active ? 'pause' : 'play' }}"></i>
+                                        </button>
+                                    </form>
+                                    @endif
+                                    @endif
+                                </div>
+                            </div>
+                            @endforeach
+                        @else
+                            <div class="pu-empty">
+                                <div class="pu-empty-icon"><i class="fas fa-print"></i></div>
+                                <h3>Aucun service scolarite</h3>
+                                @if($personnelAccess['services_scolarite']['create'] ?? false)
+                                <a href="{{ route('esbtp.services-scolarite.create') }}" class="pu-empty-btn">
+                                    <i class="fas fa-plus"></i>Créer un service scolarite
                                 </a>
                                 @endif
                             </div>
