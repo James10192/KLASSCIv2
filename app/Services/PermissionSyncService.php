@@ -7,19 +7,19 @@ use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
 
 /**
- * Synchronise rôles & permissions depuis le registry (config/permissions.php).
+ * Synchronise rÃ´les & permissions depuis le registry (config/permissions.php).
  *
- * Source de vérité unique pour les deux entrypoints :
+ * Source de vÃ©ritÃ© unique pour les deux entrypoints :
  * - bin/deploy/fix_permissions.php (script CLI deploy)
  * - App\Http\Controllers\API\CLI\CLIPermissionController::sync (API klassci-cli)
  *
  * Comportement :
- * - Crée toutes les permissions canoniques + leurs aliases (rétrocompat)
- * - Crée tous les rôles canoniques
- * - Synchronise les permissions par défaut UNIQUEMENT pour les rôles vides
- *   (préserve les configurations live des tenants en prod)
- * - Healing : pour chaque rôle existant, ajoute les canoniques manquantes
- *   correspondant à ses aliases legacy (migration douce)
+ * - CrÃ©e toutes les permissions canoniques + leurs aliases (rÃ©trocompat)
+ * - CrÃ©e tous les rÃ´les canoniques
+ * - Synchronise les permissions par dÃ©faut UNIQUEMENT pour les rÃ´les vides
+ *   (prÃ©serve les configurations live des tenants en prod)
+ * - Healing : pour chaque rÃ´le existant, ajoute les canoniques manquantes
+ *   correspondant Ã  ses aliases legacy (migration douce)
  */
 class PermissionSyncService
 {
@@ -28,8 +28,8 @@ class PermissionSyncService
     }
 
     /**
-     * Lance la synchronisation. Retourne un payload structuré décrivant les
-     * changements appliqués (utile pour la réponse JSON CLI / le log script).
+     * Lance la synchronisation. Retourne un payload structurÃ© dÃ©crivant les
+     * changements appliquÃ©s (utile pour la rÃ©ponse JSON CLI / le log script).
      *
      * @return array{
      *   permissions_count: int,
@@ -71,6 +71,33 @@ class PermissionSyncService
             $assignedRoles[] = ['role' => $roleName, 'permissions_count' => count($expanded)];
         }
 
+        $missingDefaultsHealed = [];
+        foreach ($roles->keys() as $roleName) {
+            $role = $roleModels[$roleName];
+            $defaults = $this->expandWithAliases(
+                $this->applyPermissionDependencies($this->registry->defaultPermissionsFor($roleName), $roleName)
+            );
+            $existingNames = $role->permissions()->pluck('name')->all();
+            $toAdd = array_values(array_intersect(
+                array_diff($defaults, $existingNames),
+                $this->expandWithAliases($this->newFeaturePermissions())
+            ));
+            if ($toAdd !== []) {
+                $role->givePermissionTo($toAdd);
+                $missingDefaultsHealed[] = [
+                    'role' => $roleName,
+                    'permissions_added' => count($toAdd),
+                ];
+            }
+
+            if ($roleName === 'comptable'
+                && in_array('paiements.create', $existingNames, true)
+                && ! in_array('paiements.create', $defaults, true)
+            ) {
+                $role->revokePermissionTo('paiements.create');
+            }
+        }
+
         $healed = [];
         foreach ($roles->keys() as $roleName) {
             $role = $roleModels[$roleName];
@@ -110,13 +137,14 @@ class PermissionSyncService
             'roles_preserved' => $preservedRoles,
             'aliases_healed' => $healed,
             'dependencies_healed' => $dependenciesHealed,
+            'missing_defaults_healed' => $missingDefaultsHealed,
         ];
     }
 
     /**
-     * Étend une liste de permissions canoniques avec leurs aliases legacy
-     * (Lot 6 rétrocompat). @can('view_students') doit continuer de marcher
-     * tant qu'on n'a pas migré tout le code vers les canoniques.
+     * Ã‰tend une liste de permissions canoniques avec leurs aliases legacy
+     * (Lot 6 rÃ©trocompat). @can('view_students') doit continuer de marcher
+     * tant qu'on n'a pas migrÃ© tout le code vers les canoniques.
      *
      * @param  array<int, string>  $canonicals
      * @return array<int, string>
@@ -131,6 +159,42 @@ class PermissionSyncService
             }
         }
         return array_values(array_unique($expanded));
+    }
+
+    /**
+     * New canonical permissions that must land on existing non-empty roles
+     * without overwriting a tenant customization.
+     *
+     * @return array<int, string>
+     */
+    private function newFeaturePermissions(): array
+    {
+        return [
+            'identity.direct_studies',
+            'identity.registrar',
+            'identity.registrar_clerk',
+            'documents.view',
+            'documents.approve',
+            'documents.print',
+            'notes.window.manage',
+            'paiements.create.mobile_money',
+            'finance.unpaid_count.view',
+            'reports.academic.rentree',
+            'reports.academic.trimestre',
+            'reports.academic.annuel',
+            'directeurs_etudes.view',
+            'directeurs_etudes.create',
+            'directeurs_etudes.edit',
+            'directeurs_etudes.delete',
+            'responsables_scolarite.view',
+            'responsables_scolarite.create',
+            'responsables_scolarite.edit',
+            'responsables_scolarite.delete',
+            'services_scolarite.view',
+            'services_scolarite.create',
+            'services_scolarite.edit',
+            'services_scolarite.delete',
+        ];
     }
 
     /**
@@ -154,11 +218,11 @@ class PermissionSyncService
             }
         }
 
-        // Self-service baseline : tout rôle portant l'identité étudiant DOIT pouvoir
-        // consulter ses propres données (notes, bulletin, EDT, absences, profil...).
-        // Évite la dérive multi-tenant où un rôle etudiant seedé avant l'ajout d'une
+        // Self-service baseline : tout rÃ´le portant l'identitÃ© Ã©tudiant DOIT pouvoir
+        // consulter ses propres donnÃ©es (notes, bulletin, EDT, absences, profil...).
+        // Ã‰vite la dÃ©rive multi-tenant oÃ¹ un rÃ´le etudiant seedÃ© avant l'ajout d'une
         // permission view_own (ex: notes.view_own) la garde manquante (403 silencieux),
-        // car le sync préserve les rôles non vides. Healing idempotent.
+        // car le sync prÃ©serve les rÃ´les non vides. Healing idempotent.
         if ($roleName === 'etudiant' || in_array('identity.student', $permissions, true)) {
             foreach ([
                 'identity.student',
@@ -183,3 +247,4 @@ class PermissionSyncService
         return array_values(array_unique($permissions));
     }
 }
+
