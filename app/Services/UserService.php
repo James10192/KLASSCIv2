@@ -68,6 +68,11 @@ class UserService
         return $this->ensureUniqueUsername($this->createBaseUsername('scol', $prenom, $nom));
     }
 
+    public function generateAgentInscriptionUsername(string $prenom, string $nom): string
+    {
+        return $this->ensureUniqueUsername($this->createBaseUsername('insc', $prenom, $nom));
+    }
+
     /**
      * Génère le mot de passe générique de l'année courante
      */
@@ -109,6 +114,9 @@ class UserService
                 break;
             case 'serviceScolarite':
                 $username = $this->generateServiceScolariteUsername($nameParts['prenom'], $nameParts['nom']);
+                break;
+            case 'agentInscription':
+                $username = $this->generateAgentInscriptionUsername($nameParts['prenom'], $nameParts['nom']);
                 break;
             default:
                 throw new \InvalidArgumentException("Type de rôle non supporté: {$roleType}");

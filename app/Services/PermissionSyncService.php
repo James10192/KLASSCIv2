@@ -178,6 +178,7 @@ class PermissionSyncService
             'identity.direct_studies',
             'identity.registrar',
             'identity.registrar_clerk',
+            'identity.enrollment_officer',
             'documents.view',
             'documents.approve',
             'documents.print',
@@ -199,6 +200,10 @@ class PermissionSyncService
             'services_scolarite.create',
             'services_scolarite.edit',
             'services_scolarite.delete',
+            'agents_inscription.view',
+            'agents_inscription.create',
+            'agents_inscription.edit',
+            'agents_inscription.delete',
         ];
     }
 
@@ -213,7 +218,7 @@ class PermissionSyncService
      */
     private function revokeCanonicalDrift($role, string $roleName, array $existingNames, array $defaults): array
     {
-        if (! in_array($roleName, ['directeurEtudes', 'responsableScolarite', 'serviceScolarite'], true)) {
+        if (! in_array($roleName, ['directeurEtudes', 'responsableScolarite', 'serviceScolarite', 'agentInscription'], true)) {
             return [];
         }
 
@@ -242,7 +247,7 @@ class PermissionSyncService
             $permissions[] = 'personnel.view';
         }
 
-        foreach (['teachers', 'coordinateurs', 'directeurs_etudes', 'secretaires', 'comptables', 'caissiers'] as $scope) {
+        foreach (['teachers', 'coordinateurs', 'directeurs_etudes', 'secretaires', 'comptables', 'caissiers', 'agents_inscription'] as $scope) {
             $view = $scope.'.view';
             foreach (['create', 'edit', 'delete'] as $action) {
                 if (in_array($scope.'.'.$action, $permissions, true) && ! in_array($view, $permissions, true)) {

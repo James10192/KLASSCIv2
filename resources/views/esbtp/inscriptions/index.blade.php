@@ -545,6 +545,9 @@ tr[data-inscription-id] > td { transition: background .15s ease; }
 @endpush
 
 @section('content')
+@php
+    $hideAmounts = $hideAmounts ?? app(\App\Services\EnrollmentAmountVisibility::class)->hideAmounts(auth()->user());
+@endphp
 <div class="dashboard-acasi">
     <div class="main-content">
 
@@ -984,6 +987,7 @@ tr[data-inscription-id] > td { transition: background .15s ease; }
     </div>
 </div>
 
+@unless($hideAmounts ?? false)
 {{-- Modal: Valider Paiement (action rapide) --}}
 <div class="modal fade" id="modalValiderPaiement" tabindex="-1" aria-labelledby="modalValiderPaiementLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
@@ -1154,6 +1158,8 @@ tr[data-inscription-id] > td { transition: background .15s ease; }
 </div>
 
 @endsection
+
+@endunless
 
 @push('scripts')
 <script>

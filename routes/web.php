@@ -209,6 +209,11 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             ->name('dashboard.service-scolarite');
     });
 
+    Route::middleware(['permission:identity.enrollment_officer'])->group(function () {
+        Route::get('/dashboard/agent-inscription', [\App\Http\Controllers\AgentInscriptionDashboardController::class, 'index'])
+            ->name('dashboard.agent-inscription');
+    });
+
     Route::middleware(['permission:notes.window.manage'])->group(function () {
         Route::post('/esbtp/notes-windows', [\App\Http\Controllers\ESBTPNotesWindowController::class, 'store'])
             ->name('esbtp.notes-windows.store');
@@ -294,7 +299,7 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
     });
 
     // Routes pour la gestion du profil admin, enseignants et coordinateurs
-    Route::middleware(['permission:admin.access|identity.direct_studies|identity.registrar|identity.registrar_clerk'])->group(function () {
+    Route::middleware(['permission:admin.access|identity.direct_studies|identity.registrar|identity.registrar_clerk|identity.enrollment_officer'])->group(function () {
         Route::get('/admin/profile', [AdminProfileController::class, 'index'])->name('admin.profile');
         Route::put('/admin/profile/update', [AdminProfileController::class, 'update'])->name('admin.profile.update');
         Route::put('/admin/profile/update-professional', [AdminProfileController::class, 'updateProfessionalInfo'])->name('admin.profile.update.professional');
@@ -410,7 +415,7 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             Route::resource('roles', \App\Http\Controllers\ESBTP\RoleController::class)->middleware(['role:superAdmin']);
         });
 
-        Route::middleware(['auth', 'permission:admin.access|identity.direct_studies|identity.registrar|identity.registrar_clerk', 'paywall'])->group(function () {
+        Route::middleware(['auth', 'permission:admin.access|identity.direct_studies|identity.registrar|identity.registrar_clerk|identity.enrollment_officer', 'paywall'])->group(function () {
 
             // Routes pour les filiÃ¨res â€” gates per-mÃ©thode (avant: middleware OR'd cassÃ© qui laissait passer view â†’ write)
             // /!\ Les routes statiques (create) DOIVENT Ãªtre dÃ©clarÃ©es AVANT les routes paramÃ©trÃ©es ({filiere})
@@ -538,7 +543,7 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             Route::resource('partnerships', \App\Http\Controllers\ESBTP\PartnershipController::class);
         });
 
-        Route::middleware(['auth', 'permission:admin.access|identity.direct_studies|identity.registrar|identity.registrar_clerk', 'paywall'])->group(function () {
+        Route::middleware(['auth', 'permission:admin.access|identity.direct_studies|identity.registrar|identity.registrar_clerk|identity.enrollment_officer', 'paywall'])->group(function () {
             // Routes du module comptabilitÃ© - PROVISOIREMENT SUPPRIMÃ‰ POUR REDÃ‰FINITION
 
             // Routes pour le systÃ¨me de rÃ©inscription
@@ -546,19 +551,21 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 Route::get('/', [\App\Http\Controllers\ESBTP\ESBTPReinscriptionController::class, 'index'])->name('index');
 
                 // Routes statiques AVANT les routes avec paramÃ¨tres
-                Route::get('export/results', [\App\Http\Controllers\ESBTP\ESBTPReinscriptionController::class, 'exportResults'])->name('export');
+                Route::middleware('permission:admin.access|identity.school_manager|identity.registrar')->group(function () {
+                    Route::get('export/results', [\App\Http\Controllers\ESBTP\ESBTPReinscriptionController::class, 'exportResults'])->name('export');
 
-                // Routes pour la gestion des rÃ¨gles acadÃ©miques
-                Route::prefix('regles')->name('regles.')->group(function () {
-                    Route::get('/', [\App\Http\Controllers\ESBTP\ESBTPReinscriptionController::class, 'regles'])->name('index');
-                    Route::post('/', [\App\Http\Controllers\ESBTP\ESBTPReinscriptionController::class, 'storeRegle'])->name('store');
-                    Route::put('{id}', [\App\Http\Controllers\ESBTP\ESBTPReinscriptionController::class, 'updateRegle'])->name('update');
-                    Route::delete('{id}', [\App\Http\Controllers\ESBTP\ESBTPReinscriptionController::class, 'destroyRegle'])->name('destroy');
+                    // Routes pour la gestion des rÃ¨gles acadÃ©miques
+                    Route::prefix('regles')->name('regles.')->group(function () {
+                        Route::get('/', [\App\Http\Controllers\ESBTP\ESBTPReinscriptionController::class, 'regles'])->name('index');
+                        Route::post('/', [\App\Http\Controllers\ESBTP\ESBTPReinscriptionController::class, 'storeRegle'])->name('store');
+                        Route::put('{id}', [\App\Http\Controllers\ESBTP\ESBTPReinscriptionController::class, 'updateRegle'])->name('update');
+                        Route::delete('{id}', [\App\Http\Controllers\ESBTP\ESBTPReinscriptionController::class, 'destroyRegle'])->name('destroy');
+                    });
+
+                    // Routes pour la gestion des abandons
+                    Route::post('{etudiant}/abandon', [\App\Http\Controllers\ESBTP\ESBTPReinscriptionController::class, 'marquerAbandon'])->name('marquer-abandon');
+                    Route::post('{etudiant}/restaurer', [\App\Http\Controllers\ESBTP\ESBTPReinscriptionController::class, 'restaurerAbandon'])->name('restaurer-abandon');
                 });
-
-                // Routes pour la gestion des abandons
-                Route::post('{etudiant}/abandon', [\App\Http\Controllers\ESBTP\ESBTPReinscriptionController::class, 'marquerAbandon'])->name('marquer-abandon');
-                Route::post('{etudiant}/restaurer', [\App\Http\Controllers\ESBTP\ESBTPReinscriptionController::class, 'restaurerAbandon'])->name('restaurer-abandon');
                 Route::post('{etudiant}/valider', [\App\Http\Controllers\ESBTP\ESBTPReinscriptionController::class, 'validerReinscription'])->name('valider-reinscription');
 
                 // Route AJAX pour lazy loading des catÃ©gories
@@ -616,7 +623,7 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
         });
 
         // Routes accessibles aux superAdmin, secrÃ©taires, coordinateurs et enseignants
-        Route::middleware(['auth', 'permission:admin.access|identity.direct_studies|identity.registrar|identity.registrar_clerk', 'paywall'])->group(function () {
+        Route::middleware(['auth', 'permission:admin.access|identity.direct_studies|identity.registrar|identity.registrar_clerk|identity.enrollment_officer', 'paywall'])->group(function () {
             // Routes pour les classes ESBTP - index et show avec permission view_classes
             Route::get('classes', [ESBTPClasseController::class, 'index'])
                 ->name('classes.index')
@@ -1218,7 +1225,7 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
         });
 
         // Routes prÃ©-inscription caissier â€” gates par permission
-        Route::middleware(['auth', 'permission:admin.access|identity.direct_studies|identity.registrar|identity.registrar_clerk', 'paywall'])->group(function () {
+        Route::middleware(['auth', 'permission:admin.access|identity.direct_studies|identity.registrar|identity.registrar_clerk|identity.enrollment_officer', 'paywall'])->group(function () {
             Route::middleware('permission:inscriptions.create')->group(function () {
                 Route::get('/inscriptions/pre-inscription', [ESBTPInscriptionController::class, 'createPreInscription'])->name('inscriptions.pre-inscription');
                 Route::post('/inscriptions/pre-inscription', [ESBTPInscriptionController::class, 'storePreInscription'])->name('inscriptions.store-pre-inscription');
@@ -1230,7 +1237,7 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
         });
 
         // Routes accessibles pour les secrÃ©taires, super-admins, coordinateurs et caissier (consultation)
-        Route::middleware(['auth', 'permission:admin.access|identity.direct_studies|identity.registrar|identity.registrar_clerk', 'paywall'])->group(function () {
+        Route::middleware(['auth', 'permission:admin.access|identity.direct_studies|identity.registrar|identity.registrar_clerk|identity.enrollment_officer', 'paywall'])->group(function () {
             // Nouvelle route pour la vue fusionnÃ©e des Ã©tudiants et inscriptions
             Route::get('/etudiants-inscriptions', [ESBTPEtudiantController::class, 'indexFusionne'])
                 ->name('etudiants-inscriptions.index')
@@ -1648,7 +1655,7 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
     });
 
     // Endpoints matricule utilisÃ©s par les inscriptions
-    Route::prefix('esbtp')->name('esbtp.')->middleware(['auth', 'permission:admin.access|identity.direct_studies|identity.registrar|identity.registrar_clerk', 'paywall'])->group(function () {
+    Route::prefix('esbtp')->name('esbtp.')->middleware(['auth', 'permission:admin.access|identity.direct_studies|identity.registrar|identity.registrar_clerk|identity.enrollment_officer', 'paywall'])->group(function () {
         Route::get('/matricule-config/mode-info', [ESBTPMatriculeConfigController::class, 'getModeInfo'])->name('matricule-config.mode-info');
         Route::post('/matricule-config/generate', [ESBTPMatriculeConfigController::class, 'genererMatricule'])->name('matricule-config.generate');
         Route::post('/matricule-config/check', [ESBTPMatriculeConfigController::class, 'checkMatricule'])->name('matricule-config.check');
@@ -1737,13 +1744,19 @@ Route::prefix('api/esbtp')->name('api.esbtp.')->middleware(['auth'])->group(func
     Route::get('matieres/list', [ESBTPMatiereController::class, 'apiList'])->name('matieres.list');
 });
 
-Route::prefix('esbtp/api')->name('esbtp.api.')->middleware(['auth', 'permission:admin.access|identity.direct_studies|identity.registrar|identity.registrar_clerk'])->group(function () {
+Route::prefix('esbtp/api')->name('esbtp.api.')->middleware(['auth', 'permission:admin.access|identity.direct_studies|identity.registrar|identity.registrar_clerk|identity.enrollment_officer|paiements.create|paiements.create.mobile_money'])->group(function () {
+    Route::get('etudiants/search', [ESBTPEtudiantController::class, 'searchForApi'])->name('etudiants.search');
+    Route::get('etudiants/inscriptions', [ESBTPEtudiantController::class, 'getInscriptionsForApi'])->name('etudiants.inscriptions');
+});
+
+Route::prefix('esbtp/api')->name('esbtp.api.')->middleware(['auth', 'permission:admin.access|identity.direct_studies|identity.registrar|identity.registrar_clerk|identity.enrollment_officer'])->group(function () {
     Route::get('classes/{id}', [ESBTPClasseController::class, 'getClasseById'])->name('classes.get');
     Route::get('classes/{id}/niveau-config', [ESBTPClasseController::class, 'getNiveauConfig'])->name('classes.niveau-config');
     Route::get('get-classes', [ESBTPInscriptionApiController::class, 'getClasses'])->name('get-classes');
     Route::get('search-parents', [ESBTPEtudiantController::class, 'searchParents'])->name('search-parents');
-    Route::get('etudiants/search', [ESBTPEtudiantController::class, 'searchForApi'])->name('etudiants.search');
-    Route::get('etudiants/inscriptions', [ESBTPEtudiantController::class, 'getInscriptionsForApi'])->name('etudiants.inscriptions');
+});
+
+Route::prefix('esbtp/api')->name('esbtp.api.')->middleware(['auth', 'permission:admin.access|paiements.view|comptabilite.access|module.caisse.access'])->group(function () {
     Route::get('etudiants/soldes', [ESBTPEtudiantController::class, 'getSoldesForApi'])->name('etudiants.soldes');
     Route::get('frais/categories', [\App\Http\Controllers\ESBTPFraisController::class, 'getCategoriesForApi'])->name('frais.categories');
 });
@@ -2253,7 +2266,7 @@ Route::middleware(['auth', 'permission:system.manage'])->group(function () {
 });
 
 // Routes pour la gestion des Ã©tudiants
-Route::middleware(['auth', 'permission:admin.access|identity.direct_studies|identity.registrar|identity.registrar_clerk', 'paywall'])->group(function () {
+Route::middleware(['auth', 'permission:admin.access|identity.direct_studies|identity.registrar|identity.registrar_clerk|identity.enrollment_officer', 'paywall'])->group(function () {
     // AJAX pour charger toutes les inscriptions d'un Ã©tudiant
     Route::get('esbtp/etudiants/{etudiant}/all-inscriptions', [ESBTPStudentController::class, 'getAllInscriptions'])
         ->name('esbtp.etudiants.all-inscriptions')
@@ -2635,6 +2648,10 @@ Route::middleware(['auth', 'permission:admin.access|identity.direct_studies|iden
         ->parameters(['services-scolarite' => 'serviceScolarite']);
     Route::patch('services-scolarite/{serviceScolarite}/toggle-status', [\App\Http\Controllers\ESBTPServiceScolariteController::class, 'toggleStatus'])
         ->name('services-scolarite.toggle-status');
+    Route::resource('agents-inscription', \App\Http\Controllers\ESBTPAgentInscriptionController::class)
+        ->parameters(['agents-inscription' => 'agentInscription']);
+    Route::patch('agents-inscription/{agentInscription}/toggle-status', [\App\Http\Controllers\ESBTPAgentInscriptionController::class, 'toggleStatus'])
+        ->name('agents-inscription.toggle-status');
 });
 
 // Routes pour les coordinateurs et rÃ´les admin avec permissions spÃ©cifiques

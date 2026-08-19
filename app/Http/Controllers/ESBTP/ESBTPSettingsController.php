@@ -292,6 +292,21 @@ class ESBTPSettingsController extends Controller
             );
 
             Setting::firstOrCreate(
+                ['key' => 'inscriptions.split_role'],
+                [
+                    'value' => '0',
+                    'type' => 'boolean',
+                    'group' => 'scolarite',
+                    'category' => 'scolarite',
+                    'description' => 'Affiche le role Agent d inscription dans le personnel et active son dashboard. Additif, Yakro et Abidjan restent sur secretaire tant que cette option est desactivee.',
+                    'is_required' => false,
+                    'default_value' => '0',
+                    'validation_rules' => null,
+                    'sort_order' => 156,
+                ]
+            );
+
+            Setting::firstOrCreate(
                 ['key' => 'attendance_manual_hours_global_enabled'],
                 [
                     'value' => '0',
@@ -345,7 +360,7 @@ class ESBTPSettingsController extends Controller
                 'bulletin_auto_calculate_mention', 'bulletin_show_felicitation', 'bulletin_show_encouragement',
                 'certificat_show_classe', 'certificat_show_niveau', 'certificat_show_filiere',
                 'bulletin_conduite_enabled', 'bulletin_show_absences_par_matiere',
-                'attendance_manual_hours_global_enabled', 'scolarite.split_roles', 'documents.print_requires_approval', 'caisse.pre_inscription.enabled',
+                'attendance_manual_hours_global_enabled', 'scolarite.split_roles', 'documents.print_requires_approval', 'caisse.pre_inscription.enabled', 'inscriptions.split_role',
             ], array_keys($troncCommunDefaults)))->get();
 
             $treatMissingCheckboxesAsOff = $request->boolean('settings_save_display');

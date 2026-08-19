@@ -1690,7 +1690,7 @@
 
                     <!-- Students Section -->
                     @can('module.etudiants.access')
-                    @if(!auth()->user()->can('module.caisse.access') || auth()->user()->canAny(['module.comptabilite.access', 'identity.school_manager', 'identity.direct_studies', 'identity.registrar', 'identity.registrar_clerk']) || auth()->user()->hasRole(['superAdmin', 'admin', 'serviceTechnique']))
+                    @if(!auth()->user()->can('module.caisse.access') || auth()->user()->canAny(['module.comptabilite.access', 'identity.school_manager', 'identity.direct_studies', 'identity.registrar', 'identity.registrar_clerk', 'identity.enrollment_officer']) || auth()->user()->hasRole(['superAdmin', 'admin', 'serviceTechnique']))
                     @if(auth()->user()->canAny(['students.view', 'inscriptions.view', 'inscriptions.create']))
                         <div class="menu-category">Étudiants</div>
 

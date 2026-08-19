@@ -2304,6 +2304,20 @@
                             </label>
                         </div>
                     </div>
+                    <div class="bc-card">
+                        <div class="bc-icon"><i class="fas fa-user-plus"></i></div>
+                        <div class="bc-body">
+                            <div class="bc-label">Role agent d inscription</div>
+                            <div class="bc-desc">Active l onglet personnel et le dashboard dedie. Additif: n enleve aucun droit existant. A cocher sur ISLG et USAT uniquement.</div>
+                        </div>
+                        <div class="bc-toggle">
+                            <label class="form-switch-modern">
+                                <input type="checkbox" name="inscriptions.split_role" value="1"
+                                       {{ \App\Helpers\SettingsHelper::get('inscriptions.split_role', '0') == '1' ? 'checked' : '' }}>
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                    </div>
                 </div>
             </div>
 

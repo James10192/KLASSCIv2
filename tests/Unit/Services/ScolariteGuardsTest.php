@@ -58,6 +58,14 @@ class ScolariteGuardsTest extends TestCase
         $this->assertTrue($settings->cashierPreEnrollmentEnabled());
     }
 
+    public function test_agent_inscription_setting_defaults_off(): void
+    {
+        $this->assertSame('inscriptions.split_role', TenantScolariteSettings::AGENT_INSCRIPTION_ROLE);
+        $source = file_get_contents((new \ReflectionClass(TenantScolariteSettings::class))->getFileName());
+        $this->assertStringContainsString('return $this->flag(self::AGENT_INSCRIPTION_ROLE);', $source);
+        $this->assertStringContainsString('private function flag(string $key, string $default = ', $source);
+    }
+
     public function test_notes_window_does_not_bind_teachers(): void
     {
         $settings = Mockery::mock(TenantScolariteSettings::class);

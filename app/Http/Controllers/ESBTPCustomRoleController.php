@@ -43,6 +43,7 @@ class ESBTPCustomRoleController extends Controller
         'secretaire',
         'responsableScolarite',
         'serviceScolarite',
+        'agentInscription',
         'comptable',
         'caissier',
         'coordinateur',

@@ -18,6 +18,7 @@ use App\Services\ESBTPInscriptionService;
 use App\Services\FuzzyNameMatcher;
 use App\Services\InscriptionWorkflowService;
 use App\Services\StudentDuplicateDetector;
+use App\Services\EnrollmentAmountVisibility;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\QueryException;
 use App\Http\Requests\Inscription\AnnulerInscriptionRequest;
@@ -394,12 +395,35 @@ class ESBTPInscriptionApiController extends Controller
                 "has_unconfigured_fees" => $hasUnconfiguredFees,
             ]);
 
+            if (app(EnrollmentAmountVisibility::class)->hideAmounts(auth()->user())) {
+                $fraisData = array_map(static function (array $item): array {
+                    $item["default_amount"] = null;
+                    $item["configured_amount"] = null;
+                    $item["category_default_amount"] = null;
+                    $item["hide_amounts"] = true;
+                    $options = $item["options"] ?? collect();
+                    $item["options"] = collect($options)->map(function ($option) {
+                        if (is_object($option)) {
+                            $option->additional_amount = null;
+                            $option->amount = null;
+                        } elseif (is_array($option)) {
+                            $option["additional_amount"] = null;
+                            $option["amount"] = null;
+                        }
+                        return $option;
+                    })->values();
+                    $item["variants"] = $item["options"];
+                    return $item;
+                }, $fraisData);
+            }
+
             return response()->json([
                 "success" => true,
                 "classe" => $classe,
                 "frais" => $fraisData,
                 "has_unconfigured_fees" => $hasUnconfiguredFees,
                 "configure_url" => route("esbtp.frais.configure"),
+                "hide_amounts" => app(EnrollmentAmountVisibility::class)->hideAmounts(auth()->user()),
             ]);
         } catch (\Exception $e) {
             \Log::error("Erreur getFraisByClasse: " . $e->getMessage(), [
@@ -476,6 +500,8 @@ class ESBTPInscriptionApiController extends Controller
      */
     public function getPaiementEnAttente(ESBTPInscription $inscription)
     {
+        app(EnrollmentAmountVisibility::class)->abortIfHidden(auth()->user());
+
         try {
             $paiement = ESBTPPaiement::where("inscription_id", $inscription->id)
                 ->where("status", "en_attente")

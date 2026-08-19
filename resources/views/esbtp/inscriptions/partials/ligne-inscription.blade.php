@@ -148,6 +148,21 @@
     {{-- Statut via Blade component --}}
     <td class="ii-col-status">
         <x-inscription-status-badge :inscription="$inscription" />
+        @php
+            $hideAmounts = $hideAmounts ?? app(\App\Services\EnrollmentAmountVisibility::class)->hideAmounts(auth()->user());
+            $hasValidatedPayment = $inscription->relationLoaded('paiements')
+                ? $inscription->paiements->contains(fn ($p) => $p->status === 'validé')
+                : $inscription->paiements()->where('status', 'validé')->exists();
+            $hasPendingPayment = ! $hasValidatedPayment && (
+                $inscription->relationLoaded('paiements')
+                    ? $inscription->paiements->contains(fn ($p) => $p->status === 'en_attente')
+                    : $inscription->paiements()->where('status', 'en_attente')->exists()
+            );
+            $paymentBadge = $hasValidatedPayment ? 'Paye' : ($hasPendingPayment ? 'En attente' : 'Aucun');
+        @endphp
+        @if($hideAmounts)
+            <div class="ii-probleme-chip" style="margin-top:.35rem;">{{ $paymentBadge }}</div>
+        @endif
         @if($hasProbleme)
             <div class="ii-probleme-chip" data-no-row-click>
                 <i class="fas {{ $problemeInfo['type'] === 'error' ? 'fa-exclamation-circle' : 'fa-exclamation-triangle' }}"></i>
@@ -190,6 +205,14 @@
             <div class="inscription-actions-buttons ii-actions">
                 @if($inscription->status === 'pending' || $inscription->status === 'en_attente')
                     @can('inscriptions.validate')
+                        @php
+                            $canValidateEnrollment = ! auth()->user()->can('identity.enrollment_officer')
+                                || auth()->user()->can('paiements.view')
+                                || ($inscription->relationLoaded('paiements')
+                                    ? $inscription->paiements->contains(fn ($p) => $p->status === 'validé')
+                                    : $inscription->paiements()->where('status', 'validé')->exists());
+                        @endphp
+                        @if($canValidateEnrollment)
                         <button type="button"
                                 class="ii-btn ii-btn--primary valider-btn"
                                 data-id="{{ $inscription->id }}"
@@ -202,6 +225,7 @@
                             @csrf
                             @method('PUT')
                         </form>
+                        @endif
                     @endcan
                 @endif
 

@@ -409,10 +409,11 @@
                     </div>
                 </div>
 
+                @if(!($hideAmounts ?? app(\App\Services\EnrollmentAmountVisibility::class)->hideAmounts(auth()->user())))
                 <div class="row mb-3">
                     <div class="col-md-6">
                         <div class="form-group">
-                            <label for="montant_scolarite">Montant scolarité <span class="text-danger">*</span></label>
+                            <label for="montant_scolarite">Montant scolarite <span class="text-danger">*</span></label>
                             <input type="number" class="form-control @error('montant_scolarite') is-invalid @enderror" id="montant_scolarite" name="montant_scolarite" value="{{ old('montant_scolarite', $inscription->montant_scolarite) }}" min="0" required>
                             @error('montant_scolarite')
                                 <div class="invalid-feedback">{{ $message }}</div>
@@ -420,6 +421,7 @@
                         </div>
                     </div>
                 </div>
+                @endif
 
                 <div class="row mb-3">
                     <div class="col-md-12">

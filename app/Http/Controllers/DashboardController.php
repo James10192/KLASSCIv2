@@ -90,6 +90,11 @@ class DashboardController extends Controller
             return redirect()->route('dashboard.service-scolarite');
         }
 
+        // Agent d'inscription before secretaire: dedicated file, no amounts.
+        if ($user->can('identity.enrollment_officer')) {
+            return redirect()->route('dashboard.agent-inscription');
+        }
+
         // Secrétaire
         if ($user->can('identity.school_manager')) {
             return $this->secretaireDashboard();
