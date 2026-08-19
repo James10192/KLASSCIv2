@@ -71,4 +71,22 @@ class PermissionSyncServiceParentChatbotDependencyTest extends TestCase
 
         $this->assertNotNull(Permission::findByName('parent_chatbot.manage', 'web'));
     }
+
+    public function test_it_revokes_write_drift_from_canonical_directeur_etudes(): void
+    {
+        $role = Role::create(['name' => 'directeurEtudes', 'guard_name' => 'web']);
+        foreach (['dashboard.view', 'inscriptions.create', 'notes.create', 'bulletins.generate'] as $name) {
+            Permission::firstOrCreate(['name' => $name, 'guard_name' => 'web']);
+        }
+        $role->givePermissionTo(['dashboard.view', 'inscriptions.create', 'notes.create', 'bulletins.generate']);
+
+        app(PermissionSyncService::class)->run();
+
+        $fresh = Role::findByName('directeurEtudes', 'web');
+        $this->assertFalse($fresh->hasPermissionTo('inscriptions.create'));
+        $this->assertFalse($fresh->hasPermissionTo('notes.create'));
+        $this->assertFalse($fresh->hasPermissionTo('bulletins.generate'));
+        $this->assertTrue($fresh->hasPermissionTo('identity.direct_studies'));
+        $this->assertTrue($fresh->hasPermissionTo('reports.academic.rentree'));
+    }
 }

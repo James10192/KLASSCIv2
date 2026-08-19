@@ -96,6 +96,11 @@ class PermissionSyncService
             ) {
                 $role->revokePermissionTo('paiements.create');
             }
+
+            $revoked = $this->revokeCanonicalDrift($role, $roleName, $existingNames, $defaults);
+            if ($revoked !== []) {
+                $existingNames = array_values(array_diff($existingNames, $revoked));
+            }
         }
 
         $healed = [];
@@ -195,6 +200,34 @@ class PermissionSyncService
             'services_scolarite.edit',
             'services_scolarite.delete',
         ];
+    }
+
+
+    /**
+     * Canonical org-chart roles stay on their registry pack.
+     * SuperAdmin, service technique and tenant custom roles stay untouched.
+     *
+     * @param  array<int, string>  $existingNames
+     * @param  array<int, string>  $defaults
+     * @return array<int, string>
+     */
+    private function revokeCanonicalDrift($role, string $roleName, array $existingNames, array $defaults): array
+    {
+        if (! in_array($roleName, ['directeurEtudes', 'responsableScolarite', 'serviceScolarite'], true)) {
+            return [];
+        }
+
+        $allowed = array_flip($defaults);
+        $revoked = [];
+        foreach ($existingNames as $name) {
+            $canonical = $this->registry->canonicalize($name);
+            if (! isset($allowed[$name]) && ! isset($allowed[$canonical])) {
+                $role->revokePermissionTo($name);
+                $revoked[] = $name;
+            }
+        }
+
+        return $revoked;
     }
 
     /**
