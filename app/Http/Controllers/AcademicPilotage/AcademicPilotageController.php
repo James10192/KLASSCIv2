@@ -79,7 +79,9 @@ class AcademicPilotageController extends Controller
     {
         $year = $this->selectedYear($request);
 
-        return response()->json($this->trends->forYear($year?->id));
+        return response()->json(
+            $this->trends->forYear($year?->id, $request->boolean('recalculer')),
+        );
     }
 
     public function data(Request $request): JsonResponse

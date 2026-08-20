@@ -610,6 +610,7 @@ document.addEventListener('alpine:init', () => {
             this.tendances.erreur = null;
             try {
                 const params = new URLSearchParams(annee ? { year_id: annee } : {});
+                if (forcer) params.set('recalculer', '1');
                 const payload = await this.fetchJson(`${config.tendancesUrl}?${params.toString()}`);
                 this.tendances.labels = payload.labels || [];
                 this.tendances.series = payload.series || [];

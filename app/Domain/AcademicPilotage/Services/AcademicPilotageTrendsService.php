@@ -28,7 +28,7 @@ final class AcademicPilotageTrendsService
     /**
      * @return array{ok: bool, message: ?string, labels: array<int, string>, series: array<int, array{key: string, label: string, unit: string, hint: string, values: array<int, float|int|null>}>}
      */
-    public function forYear(?int $yearId): array
+    public function forYear(?int $yearId, bool $recalculer = false): array
     {
         $annee = $yearId
             ? ESBTPAnneeUniversitaire::find($yearId)
@@ -43,11 +43,14 @@ final class AcademicPilotageTrendsService
             ];
         }
 
-        return Cache::remember(
-            'pilotage.tendances.'.$annee->id,
-            self::TTL,
-            fn (): array => $this->calculer($annee),
-        );
+        $cle = 'pilotage.tendances.'.$annee->id;
+        // Sans cela, « Recalculer » ne recalculait rien : le serveur renvoyait
+        // la valeur en cache et le bouton n'avait aucun effet visible.
+        if ($recalculer) {
+            Cache::forget($cle);
+        }
+
+        return Cache::remember($cle, self::TTL, fn (): array => $this->calculer($annee));
     }
 
     /**
