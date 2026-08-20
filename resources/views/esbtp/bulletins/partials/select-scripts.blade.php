@@ -266,6 +266,8 @@ window.busCard = function (cfg) {
         preflightAbort: null,
         previewIssue: null,
         lastGeneration: null,
+        // Message de progression pendant une generation decoupee en tranches.
+        progression: null,
         // Année universitaire courante pré-sélectionnée (le user peut changer ensuite).
         form: {
             classe_id: '',
@@ -666,32 +668,83 @@ window.busCard = function (cfg) {
                         return;
                     }
 
-                    const fd = new FormData();
-                    fd.append('classe_id', this.form.classe_id);
-                    fd.append('annee_universitaire_id', this.form.annee_universitaire_id);
-                    fd.append('periode', this.form.periode);
-                    if (this.form.recalculer) fd.append('recalculer', '1');
-                    if (this.form.incomplete_reason) fd.append('incomplete_reason', this.form.incomplete_reason.trim());
-                    const res = await fetch(`{{ route('esbtp.bulletins.generer-classe') }}`, {
-                        method: 'POST',
-                        headers: {
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                            'X-Requested-With': 'XMLHttpRequest',
-                            'Accept': 'application/json',
-                        },
-                        body: fd,
-                    });
-                    const data = await this.parseJsonResponse(res);
-                    this.lastGeneration = data;
-
-                    if (res.redirected) {
-                        this.notify('error', 'Le serveur a redirige la requete au lieu de retourner le resultat JSON.');
-                        return;
+                    // La generation coute O(N^2) et l'hebergement coupe a 30 s :
+                    // on envoie la classe par tranches et on cumule les
+                    // resultats. Le serveur recalcule les rangs sur la cohorte
+                    // entiere a chaque passe, l'etat final est donc identique.
+                    const tousLesIds = Array.isArray(preflight.student_ids) ? preflight.student_ids : [];
+                    const taille = preflight.batch_size || 10;
+                    const tranches = [];
+                    if (tousLesIds.length > taille) {
+                        for (let i = 0; i < tousLesIds.length; i += taille) {
+                            tranches.push(tousLesIds.slice(i, i + taille));
+                        }
+                    } else {
+                        tranches.push(null); // classe assez petite : une seule passe
                     }
 
-                    if (!res.ok) {
-                        const msg = Object.values(data.errors || {}).flat().join(' - ') || data.message || `Erreur HTTP ${res.status}`;
-                        this.notify('error', msg);
+                    const envoyerTranche = async (ids) => {
+                        const fd = new FormData();
+                        fd.append('classe_id', this.form.classe_id);
+                        fd.append('annee_universitaire_id', this.form.annee_universitaire_id);
+                        fd.append('periode', this.form.periode);
+                        if (this.form.recalculer) fd.append('recalculer', '1');
+                        if (this.form.incomplete_reason) fd.append('incomplete_reason', this.form.incomplete_reason.trim());
+                        if (ids) ids.forEach((id) => fd.append('student_ids[]', id));
+
+                        const reponse = await fetch(`{{ route('esbtp.bulletins.generer-classe') }}`, {
+                            method: 'POST',
+                            headers: {
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                                'X-Requested-With': 'XMLHttpRequest',
+                                'Accept': 'application/json',
+                            },
+                            body: fd,
+                        });
+                        return { reponse, charge: await this.parseJsonResponse(reponse) };
+                    };
+
+                    let data = { created: 0, regenerated: 0, skipped: [], blocking_errors: [], errors: [] };
+                    let res = null;
+                    let echec = null;
+
+                    for (let i = 0; i < tranches.length; i++) {
+                        if (tranches.length > 1) {
+                            this.progression = `Traitement ${Math.min((i + 1) * taille, tousLesIds.length)} / ${tousLesIds.length} etudiants...`;
+                        }
+
+                        const { reponse, charge } = await envoyerTranche(tranches[i]);
+                        res = reponse;
+
+                        if (reponse.redirected) {
+                            this.progression = null;
+                            this.notify('error', 'Le serveur a redirige la requete au lieu de retourner le resultat JSON.');
+                            return;
+                        }
+                        if (!reponse.ok) {
+                            echec = Object.values(charge.errors || {}).flat().join(' - ')
+                                || charge.message
+                                || `Erreur HTTP ${reponse.status}`;
+                            break;
+                        }
+
+                        data.created += charge.created || 0;
+                        data.regenerated += charge.regenerated || 0;
+                        data.skipped = data.skipped.concat(charge.skipped || []);
+                        data.blocking_errors = data.blocking_errors.concat(charge.blocking_errors || []);
+                        data.errors = data.errors.concat(charge.errors || []);
+                        data.message = charge.message;
+                        data.ok = charge.ok;
+                    }
+
+                    this.progression = null;
+                    this.lastGeneration = data;
+
+                    if (echec) {
+                        const traites = data.created + data.regenerated;
+                        this.notify('error', traites > 0
+                            ? `${echec} — ${traites} bulletin(s) deja traite(s), relancez pour reprendre.`
+                            : echec);
                         return;
                     }
 
