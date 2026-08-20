@@ -146,7 +146,10 @@ class SettingsHelper
                 public_path($normalized),
             ];
         }
-        $candidates[] = public_path('images/esbtp_logo.png');
+        // Repli generique : la marque KLASSCI, jamais le logo d'un
+        // etablissement. esbtp_logo.png figurait ici en premier : toute ecole
+        // sans logo configure affichait donc celui de l'ESBTP, sur ses
+        // bulletins, ses attestations et son apercu de partage.
         $candidates[] = public_path('images/LOGO-KLASSCI-PNG.png');
 
         foreach ($candidates as $candidate) {

@@ -2118,11 +2118,11 @@ class BulletinService
         }
 
         // Essayer les chemins alternatifs
+        // Repli generique uniquement : servir esbtp_logo a une autre ecole
+        // lui imprimait le logo d'un concurrent sur ses propres bulletins.
         $alternativePaths = [
-            'images/esbtp_logo.png',
-            'images/logo.jpeg',
-            'images/esbtp_logo_white.png',
             'storage/logos/'.basename($logoPath),
+            'images/LOGO-KLASSCI-PNG.png',
         ];
 
         foreach ($alternativePaths as $altPath) {
