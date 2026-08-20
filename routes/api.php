@@ -439,5 +439,17 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
         Route::get('/user/{id}/credentials', [App\Http\Controllers\API\CLI\CLIUserController::class, 'userCredentials'])->name('user.credentials');
         Route::post('/user/create', [App\Http\Controllers\API\CLI\CLIUserController::class, 'userCreate'])->name('user.create');
         Route::post('/user/{id}/delete', [App\Http\Controllers\API\CLI\CLIUserController::class, 'userDelete'])->name('user.delete');
+        // Changer le role d'un compte existant : le CLI ne savait l'attribuer
+        // qu'a la creation, corriger imposait un acces web superAdmin.
+        Route::post('/user/{id}/role', [App\Http\Controllers\API\CLI\CLIUserController::class, 'userSetRole'])->name('user.set-role');
+
+        // Filieres — ouverture d'un nouveau tenant sans passer par l'interface.
+        Route::get('/filieres', [App\Http\Controllers\API\CLI\CLIFiliereController::class, 'index'])->name('filieres.index');
+        Route::post('/filieres', [App\Http\Controllers\API\CLI\CLIFiliereController::class, 'store'])->name('filieres.store');
+
+        // Diagnostic en lecture seule : evaluations dont la nature de la
+        // matiere ne suit pas le systeme academique de la classe.
+        Route::get('/diagnostics/evaluation-system-mismatch', [App\Http\Controllers\API\CLI\CLIMaintenanceController::class, 'evaluationSystemMismatch'])
+            ->name('diagnostics.evaluation-system-mismatch');
     });
 });

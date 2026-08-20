@@ -18,6 +18,17 @@ use Illuminate\Support\Facades\Log;
 class CLIUserController extends BaseApiController
 {
     /**
+     * Roles attribuables par le CLI. Partagee entre la creation et le
+     * changement de role : deux listes divergeraient a la premiere evolution
+     * de l'organigramme.
+     */
+    private const VALID_ROLES = [
+        'superAdmin', 'admin', 'secretaire', 'responsableScolarite', 'serviceScolarite',
+        'agentInscription', 'coordinateur', 'directeurEtudes', 'enseignant',
+        'etudiant', 'parent', 'comptable', 'caissier', 'teacher',
+    ];
+
+    /**
      * GET /api/cli/users — List user accounts
      */
     public function users(Request $request): JsonResponse
@@ -89,11 +100,12 @@ class CLIUserController extends BaseApiController
             'must_change_password' => 'nullable|boolean',
         ]);
 
-        $validRoles = ['superAdmin', 'admin', 'secretaire', 'responsableScolarite', 'serviceScolarite', 'agentInscription', 'coordinateur', 'directeurEtudes', 'enseignant',
-                        'etudiant', 'parent', 'comptable', 'caissier', 'teacher'];
-
-        if (!in_array($validated['role'], $validRoles)) {
-            return $this->errorResponse("Invalid role '{$validated['role']}'. Valid: " . implode(', ', $validRoles), [], 422);
+        if (! in_array($validated['role'], self::VALID_ROLES, true)) {
+            return $this->errorResponse(
+                "Invalid role '{$validated['role']}'. Valid: ".implode(', ', self::VALID_ROLES),
+                [],
+                422
+            );
         }
 
         try {
@@ -313,5 +325,110 @@ class CLIUserController extends BaseApiController
             ['name' => $user->name, 'email' => $user->email, 'username' => $user->username],
             'Password reset successfully.'
         );
+    }
+/**
+     * POST /api/cli/user/{id}/role — Change or add a role on an existing account.
+     *
+     * Le CLI ne savait attribuer un role qu'a la creation : corriger un compte
+     * deja cree imposait de passer par l'interface web, donc de disposer d'un
+     * compte superAdmin sur le tenant.
+     *
+     * Body: { role: string, mode?: 'replace'|'add' }
+     */
+    public function userSetRole(Request $request, $id): JsonResponse
+    {
+        if (! $request->user()->tokenCan('cli:admin')) {
+            return $this->errorResponse('Token missing cli:admin ability', [], 403);
+        }
+
+        $user = User::find($id);
+        if (! $user) {
+            return $this->errorResponse("User #{$id} not found", [], 404);
+        }
+
+        $validated = $request->validate([
+            'role' => 'required|string',
+            'mode' => 'nullable|in:replace,add',
+        ]);
+        $mode = $validated['mode'] ?? 'replace';
+        $role = $validated['role'];
+
+        if (! in_array($role, self::VALID_ROLES, true)) {
+            return $this->errorResponse(
+                "Invalid role '{$role}'. Valid: ".implode(', ', self::VALID_ROLES),
+                [],
+                422
+            );
+        }
+
+        // Memes gardes que reset-password (audit securite 2026-05-21), dans les
+        // deux sens : on ne touche pas a un compte privilegie, et surtout on
+        // n'en fabrique pas un. Sans le second test, un jeton cli:admin vole
+        // suffirait a se promouvoir superAdmin, ce qui serait pire qu'un reset.
+        $caller = $request->user();
+        $callerIsSuperAdmin = $caller->hasRole('superAdmin');
+        $targetIsPrivileged = $user->hasAnyRole(['superAdmin', 'serviceTechnique']);
+        $grantIsPrivileged = in_array($role, ['superAdmin', 'serviceTechnique'], true);
+
+        if (($targetIsPrivileged || $grantIsPrivileged) && ! $callerIsSuperAdmin) {
+            Log::warning('CLI: set-role DENIED on privileged target or grant', [
+                'target_user_id' => $user->id,
+                'target_roles' => $user->getRoleNames()->toArray(),
+                'requested_role' => $role,
+                'caller_user_id' => $caller->id,
+                'caller_roles' => $caller->getRoleNames()->toArray(),
+                'ip' => $request->ip(),
+            ]);
+
+            return $this->errorResponse(
+                'Cannot change roles of, or grant, a privileged role (superAdmin or serviceTechnique) without superAdmin caller.',
+                [],
+                403
+            );
+        }
+
+        $avant = $user->getRoleNames()->toArray();
+
+        // Retirer le dernier superAdmin actif fermerait le tenant a clef.
+        // Meme definition que SuperAdminLifecycleGuard : un autre superAdmin
+        // actif doit subsister ailleurs.
+        if ($mode === 'replace' && in_array('superAdmin', $avant, true) && ! $grantIsPrivileged) {
+            $autreSuperAdminActif = User::role('superAdmin')
+                ->where('users.is_active', true)
+                ->where('users.id', '!=', $user->id)
+                ->exists();
+
+            if (! $autreSuperAdminActif) {
+                return $this->errorResponse(
+                    "Refus : #{$user->id} est le dernier superAdmin actif du tenant. Promouvoir un autre compte avant de lui retirer ce role.",
+                    [],
+                    422
+                );
+            }
+        }
+
+        $mode === 'replace' ? $user->syncRoles([$role]) : $user->assignRole($role);
+
+        $apres = $user->fresh()->getRoleNames()->toArray();
+
+        Log::info('CLI: role changed', [
+            'target_user_id' => $user->id,
+            'mode' => $mode,
+            'roles_before' => $avant,
+            'roles_after' => $apres,
+            'caller_user_id' => $caller->id,
+            'caller_roles' => $caller->getRoleNames()->toArray(),
+            'ip' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+        ]);
+
+        return $this->successResponse([
+            'user_id' => $user->id,
+            'name' => $user->name,
+            'username' => $user->username,
+            'mode' => $mode,
+            'roles_before' => $avant,
+            'roles_after' => $apres,
+        ], "Roles updated for '{$user->name}': ".implode(', ', $apres));
     }
 }

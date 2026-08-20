@@ -1175,4 +1175,84 @@ class CLIMaintenanceController extends BaseApiController
 
         return file_exists($legacy) ? $legacy : null;
     }
+/**
+     * GET /api/cli/diagnostics/evaluation-system-mismatch — lecture seule.
+     *
+     * La table esbtp_evaluations est partagee entre BTS et LMD. Une evaluation
+     * est coherente quand la nature de sa matiere suit le systeme de sa classe :
+     * une classe BTS attend une matiere sans unite d'enseignement, une classe
+     * LMD attend une ECUE. L'inverse trahit une fuite de selecteur.
+     */
+    public function evaluationSystemMismatch(Request $request): JsonResponse
+    {
+        if (! $request->user()->tokenCan('cli:read')) {
+            return $this->errorResponse('Token missing cli:read ability', [], 403);
+        }
+
+        $lignes = AppModelsESBTPEvaluation::query()
+            ->join('esbtp_classes', 'esbtp_classes.id', '=', 'esbtp_evaluations.classe_id')
+            ->join('esbtp_matieres', 'esbtp_matieres.id', '=', 'esbtp_evaluations.matiere_id')
+            ->whereNull('esbtp_evaluations.deleted_at')
+            ->where(function ($q) {
+                // Classe BTS portant une ECUE.
+                $q->where(function ($bts) {
+                    $bts->where(function ($sys) {
+                        $sys->where('esbtp_classes.systeme_academique', '!=', 'LMD')
+                            ->orWhereNull('esbtp_classes.systeme_academique');
+                    })->whereNotNull('esbtp_matieres.unite_enseignement_id');
+                })
+                // Classe LMD portant une matiere BTS.
+                ->orWhere(function ($lmd) {
+                    $lmd->where('esbtp_classes.systeme_academique', 'LMD')
+                        ->whereNull('esbtp_matieres.unite_enseignement_id');
+                });
+            })
+            ->orderBy('esbtp_evaluations.id')
+            ->limit(500)
+            ->get([
+                'esbtp_evaluations.id as evaluation_id',
+                'esbtp_evaluations.titre',
+                'esbtp_evaluations.date_evaluation',
+                'esbtp_evaluations.created_at',
+                'esbtp_classes.id as classe_id',
+                'esbtp_classes.name as classe',
+                'esbtp_classes.systeme_academique as systeme_classe',
+                'esbtp_matieres.id as matiere_id',
+                'esbtp_matieres.name as matiere',
+                'esbtp_matieres.code as code_matiere',
+                'esbtp_matieres.unite_enseignement_id',
+            ]);
+
+        $avecNotes = AppModelsESBTPNote::whereIn('evaluation_id', $lignes->pluck('evaluation_id'))
+            ->selectRaw('evaluation_id, COUNT(*) as total')
+            ->groupBy('evaluation_id')
+            ->pluck('total', 'evaluation_id');
+
+        $details = $lignes->map(fn ($l) => [
+            'evaluation_id' => (int) $l->evaluation_id,
+            'titre' => $l->titre,
+            'date_evaluation' => $l->date_evaluation,
+            'created_at' => (string) $l->created_at,
+            'classe' => $l->classe,
+            'classe_id' => (int) $l->classe_id,
+            'systeme_classe' => $l->systeme_classe ?: 'BTS',
+            'matiere' => $l->matiere,
+            'matiere_id' => (int) $l->matiere_id,
+            'code_matiere' => $l->code_matiere,
+            'nature_matiere' => $l->unite_enseignement_id ? 'ECUE LMD' : 'matiere BTS',
+            'notes_saisies' => (int) ($avecNotes[$l->evaluation_id] ?? 0),
+        ])->all();
+
+        $sansNote = array_filter($details, static fn (array $d): bool => $d['notes_saisies'] === 0);
+
+        return $this->successResponse([
+            'total' => count($details),
+            'sans_note' => count($sansNote),
+            'avec_notes' => count($details) - count($sansNote),
+            'tronque' => count($details) === 500,
+            'details' => $details,
+        ], count($details) === 0
+            ? 'Aucune incoherence entre le systeme de la classe et la nature de la matiere.'
+            : count($details).' evaluation(s) incoherente(s).');
+    }
 }
