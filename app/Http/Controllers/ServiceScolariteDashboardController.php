@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\Dashboard\RoleDashboardBreakdowns;
+
 use App\Models\ESBTPDocumentApproval;
 use App\Models\ESBTPNotesWindow;
 use Illuminate\Support\Facades\Auth;
@@ -34,6 +36,7 @@ class ServiceScolariteDashboardController extends Controller
             ->get();
 
         return view('dashboard.service-scolarite', [
+            'workload' => app(RoleDashboardBreakdowns::class)->clerkWorkload(),
             'user' => $user,
             'approvedDocuments' => $approvedDocuments,
             'openWindows' => $openWindows,

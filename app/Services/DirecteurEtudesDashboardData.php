@@ -29,6 +29,7 @@ class DirecteurEtudesDashboardData
             'totalClasses' => 0,
             'totalTeachers' => 0,
             'totalExamens' => 0,
+            'coverage' => ['rows' => [], 'total' => 0, 'incompletes' => 0],
             'evaluationsSansNotesCount' => 0,
             'totalEmploiTemps' => 0,
             'activeEmploiTemps' => 0,
@@ -66,6 +67,15 @@ class DirecteurEtudesDashboardData
             $data['totalTeachers'] = ESBTPTeacher::query()->count();
         } catch (\Throwable $e) {
             // Keep defaults.
+        }
+
+        try {
+            // Ventilation « quelles classes ne sont pas prêtes », mise en cache
+            // par le service : c'est le bloc focal du tableau de bord.
+            $data['coverage'] = app(\App\Services\Dashboard\RoleDashboardBreakdowns::class)
+                ->pedagogicalCoverage();
+        } catch (\Throwable $e) {
+            $data['coverage'] = ['rows' => [], 'total' => 0, 'incompletes' => 0];
         }
 
         try {

@@ -7,6 +7,32 @@
 @endpush
 
 @section('content')
+@php
+    $etapes = $funnel['etapes'] ?? [];
+    $totalDossiers = $funnel['total'] ?? 0;
+    $bloques = $funnel['bloquees'] ?? 0;
+
+    $urlParStatut = [
+        'en_attente' => route('esbtp.inscriptions.index', ['status' => 'en_attente']),
+        'sous_reserve' => route('esbtp.inscriptions.sous-reserve'),
+        'active' => route('esbtp.inscriptions.index', ['status' => 'active']),
+    ];
+
+    // Les deux premières étapes bloquent, les deux dernières avancent : la
+    // teinte suit le sens, elle ne décore pas.
+    $tons = ['alerte', '#0453cb', 'alerte', '#3b7ddb'];
+
+    $chartData = [
+        'labels' => array_column($etapes, 'label'),
+        'datasets' => [[
+            'label' => 'Dossiers',
+            'data' => array_column($etapes, 'value'),
+            'tones' => $tons,
+        ]],
+        'links' => array_map(fn ($e) => $urlParStatut[$e['statut']] ?? '#', $etapes),
+    ];
+@endphp
+
 <div class="main-content">
 
     <x-role-hero
@@ -49,117 +75,155 @@
         </x-slot:actions>
     </x-role-hero>
 
-    <div class="rdx-grid">
+    <x-role-dashboard>
 
-        <x-role-panel
-            icon="fa-bolt"
-            title="Actions courantes"
-            subtitle="Les gestes du quotidien, à portée de clic">
-            <div class="ai-actions">
-                @can('inscriptions.create')
-                    <a class="ai-action" href="{{ route('esbtp.inscriptions.create') }}">
-                        <span class="ai-action-icon"><i class="fas fa-user-plus"></i></span>
-                        <span class="ai-action-body">
-                            <span class="ai-action-title">Nouvelle inscription</span>
-                            <span class="ai-action-hint">Créer un dossier étudiant</span>
+        @if($bloques > 0)
+            <x-slot:alerts>
+                <a class="dsh-alert dsh-alert--warning" href="{{ route('esbtp.inscriptions.index', ['status' => 'en_attente']) }}">
+                    <span class="dsh-alert-icon"><i class="fas fa-hourglass-half"></i></span>
+                    <span class="dsh-alert-body">
+                        <span class="dsh-alert-title">{{ $bloques }} dossier{{ $bloques > 1 ? 's' : '' }} ne peu{{ $bloques > 1 ? 'vent' : 't' }} pas avancer</span>
+                        <span class="dsh-alert-text">En attente d'encaissement ou sous réserve : la validation est bloquée tant que la caisse n'a pas encaissé.</span>
+                    </span>
+                    <i class="fas fa-chevron-right dsh-alert-go"></i>
+                </a>
+            </x-slot:alerts>
+        @endif
+
+        <x-slot:focal>
+            <x-role-panel
+                icon="fa-filter-circle-dollar"
+                title="Où stagnent les dossiers"
+                subtitle="Cliquez une barre pour ouvrir la liste correspondante">
+                <x-role-chart
+                    id="ai-funnel"
+                    type="bar"
+                    :data="$chartData"
+                    :is-empty="$totalDossiers === 0"
+                    empty-icon="fa-folder-open"
+                    empty-title="Aucun dossier en cours"
+                    empty-hint="Dès qu'une inscription sera créée, sa progression apparaîtra ici."
+                    :height="270" />
+
+                @if($totalDossiers > 0)
+                    <div class="dsh-legend">
+                        <span class="dsh-legend-item">
+                            <span class="dsh-legend-dot" style="background:#f59e0b"></span>Bloqué, en attente d'un tiers
                         </span>
-                        <i class="fas fa-chevron-right ai-action-go"></i>
+                        <span class="dsh-legend-item">
+                            <span class="dsh-legend-dot" style="background:#0453cb"></span>Action possible de votre part
+                        </span>
+                    </div>
+
+                    <div class="dsh-figures">
+                        <div class="dsh-figure">
+                            <span class="dsh-figure-value">{{ $totalDossiers }}</span>
+                            <span class="dsh-figure-label">Dossiers suivis</span>
+                        </div>
+                        <div class="dsh-figure {{ $bloques > 0 ? 'dsh-figure--warn' : 'dsh-figure--ok' }}">
+                            <span class="dsh-figure-value">{{ $bloques }}</span>
+                            <span class="dsh-figure-label">Bloqués</span>
+                        </div>
+                        <div class="dsh-figure dsh-figure--ok">
+                            <span class="dsh-figure-value">{{ $totalDossiers > 0 ? round(($totalDossiers - $bloques) / $totalDossiers * 100) : 0 }}%</span>
+                            <span class="dsh-figure-label">Peuvent avancer</span>
+                        </div>
+                    </div>
+                @endif
+            </x-role-panel>
+        </x-slot:focal>
+
+        <x-slot:rail>
+            <x-role-panel
+                icon="fa-bolt"
+                title="Actions courantes">
+                <div class="ai-actions">
+                    @can('inscriptions.create')
+                        <a class="ai-action" href="{{ route('esbtp.inscriptions.create') }}">
+                            <span class="ai-action-icon"><i class="fas fa-user-plus"></i></span>
+                            <span class="ai-action-body">
+                                <span class="ai-action-title">Nouvelle inscription</span>
+                                <span class="ai-action-hint">Créer un dossier étudiant</span>
+                            </span>
+                        </a>
+                    @endcan
+                    <a class="ai-action" href="{{ route('esbtp.inscriptions.index') }}">
+                        <span class="ai-action-icon"><i class="fas fa-folder-open"></i></span>
+                        <span class="ai-action-body">
+                            <span class="ai-action-title">Liste des inscriptions</span>
+                            <span class="ai-action-hint">Rechercher et éditer</span>
+                        </span>
                     </a>
-                @endcan
-                <a class="ai-action" href="{{ route('esbtp.inscriptions.index') }}">
-                    <span class="ai-action-icon"><i class="fas fa-folder-open"></i></span>
-                    <span class="ai-action-body">
-                        <span class="ai-action-title">Liste des inscriptions</span>
-                        <span class="ai-action-hint">Rechercher et éditer un dossier</span>
-                    </span>
-                    <i class="fas fa-chevron-right ai-action-go"></i>
-                </a>
-                <a class="ai-action" href="{{ route('esbtp.etudiants.index') }}">
-                    <span class="ai-action-icon"><i class="fas fa-user-graduate"></i></span>
-                    <span class="ai-action-body">
-                        <span class="ai-action-title">Liste des étudiants</span>
-                        <span class="ai-action-hint">Consulter les fiches</span>
-                    </span>
-                    <i class="fas fa-chevron-right ai-action-go"></i>
-                </a>
-                <a class="ai-action" href="{{ route('esbtp.reinscription.index') }}">
-                    <span class="ai-action-icon"><i class="fas fa-rotate"></i></span>
-                    <span class="ai-action-body">
-                        <span class="ai-action-title">Réinscriptions</span>
-                        <span class="ai-action-hint">Renouveler une année</span>
-                    </span>
-                    <i class="fas fa-chevron-right ai-action-go"></i>
-                </a>
-            </div>
-        </x-role-panel>
+                    <a class="ai-action" href="{{ route('esbtp.etudiants.index') }}">
+                        <span class="ai-action-icon"><i class="fas fa-user-graduate"></i></span>
+                        <span class="ai-action-body">
+                            <span class="ai-action-title">Liste des étudiants</span>
+                            <span class="ai-action-hint">Consulter les fiches</span>
+                        </span>
+                    </a>
+                    <a class="ai-action" href="{{ route('esbtp.reinscription.index') }}">
+                        <span class="ai-action-icon"><i class="fas fa-rotate"></i></span>
+                        <span class="ai-action-body">
+                            <span class="ai-action-title">Réinscriptions</span>
+                            <span class="ai-action-hint">Renouveler une année</span>
+                        </span>
+                    </a>
+                </div>
+            </x-role-panel>
 
-        <x-role-panel
-            icon="fa-circle-info"
-            title="Votre périmètre"
-            subtitle="Ce que ce compte peut faire, et ce qu'il ne voit pas">
-            <ul class="ai-scope">
-                <li class="ai-scope-item ai-scope-item--yes">
-                    <i class="fas fa-check"></i>
-                    <span>Créer, éditer et valider les dossiers d'inscription</span>
-                </li>
-                <li class="ai-scope-item ai-scope-item--yes">
-                    <i class="fas fa-check"></i>
-                    <span>Consulter les étudiants, les classes et les filières</span>
-                </li>
-                <li class="ai-scope-item ai-scope-item--no">
-                    <i class="fas fa-xmark"></i>
-                    <span>Aucun montant, solde ni reçu financier n'est affiché</span>
-                </li>
-                <li class="ai-scope-item ai-scope-item--no">
-                    <i class="fas fa-xmark"></i>
-                    <span>Pas d'accès aux notes, au personnel ni aux paramètres</span>
-                </li>
-            </ul>
-            <p class="ai-scope-note">
-                La validation d'un dossier intervient <strong>après l'encaissement</strong> par la caisse.
-            </p>
-        </x-role-panel>
+            <x-role-panel
+                icon="fa-circle-info"
+                title="Votre périmètre">
+                <ul class="ai-scope">
+                    <li class="ai-scope-item ai-scope-item--yes">
+                        <i class="fas fa-check"></i><span>Créer, éditer et valider les dossiers</span>
+                    </li>
+                    <li class="ai-scope-item ai-scope-item--yes">
+                        <i class="fas fa-check"></i><span>Consulter étudiants, classes et filières</span>
+                    </li>
+                    <li class="ai-scope-item ai-scope-item--no">
+                        <i class="fas fa-xmark"></i><span>Aucun montant ni solde affiché</span>
+                    </li>
+                    <li class="ai-scope-item ai-scope-item--no">
+                        <i class="fas fa-xmark"></i><span>Pas de notes, personnel ni paramètres</span>
+                    </li>
+                </ul>
+            </x-role-panel>
+        </x-slot:rail>
 
-    </div>
+    </x-role-dashboard>
 </div>
 @endsection
 
 @push('styles')
 <style>
     /* Namespace ai-* : tableau de bord agent d'inscription */
-    .ai-actions { display: flex; flex-direction: column; gap: .55rem; }
+    .ai-actions { display: flex; flex-direction: column; gap: .5rem; }
     .ai-action {
-        display: flex; align-items: center; gap: .85rem;
-        padding: .8rem .9rem;
+        display: flex; align-items: center; gap: .7rem;
+        padding: .65rem .75rem;
         border: 1px solid #e2e8f0; border-radius: 10px;
         text-decoration: none; background: #fff;
         transition: border-color .2s ease, box-shadow .2s ease;
     }
     .ai-action:hover { border-color: #c7d4e5; box-shadow: 0 4px 16px rgba(4, 83, 203, .06); }
     .ai-action-icon {
-        width: 36px; height: 36px; border-radius: 9px; flex-shrink: 0;
+        width: 32px; height: 32px; border-radius: 8px; flex-shrink: 0;
         background: rgba(4, 83, 203, .08); color: #0453cb;
-        display: flex; align-items: center; justify-content: center; font-size: .85rem;
+        display: flex; align-items: center; justify-content: center; font-size: .8rem;
     }
     .ai-action-body { display: flex; flex-direction: column; min-width: 0; }
-    .ai-action-title { font-size: .88rem; font-weight: 600; color: #1e293b; }
-    .ai-action-hint { font-size: .75rem; color: #64748b; margin-top: .1rem; }
-    .ai-action-go { margin-left: auto; color: #94a3b8; font-size: .72rem; }
+    .ai-action-title { font-size: .84rem; font-weight: 600; color: #1e293b; }
+    .ai-action-hint { font-size: .73rem; color: #64748b; margin-top: .05rem; }
 
-    .ai-scope { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .6rem; }
-    .ai-scope-item { display: flex; align-items: flex-start; gap: .6rem; font-size: .84rem; color: #1e293b; }
+    .ai-scope { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .5rem; }
+    .ai-scope-item { display: flex; align-items: flex-start; gap: .55rem; font-size: .81rem; color: #1e293b; }
     .ai-scope-item i {
-        width: 20px; height: 20px; border-radius: 6px; flex-shrink: 0; margin-top: .1rem;
-        display: flex; align-items: center; justify-content: center; font-size: .65rem;
+        width: 18px; height: 18px; border-radius: 5px; flex-shrink: 0; margin-top: .12rem;
+        display: flex; align-items: center; justify-content: center; font-size: .6rem;
     }
     .ai-scope-item--yes i { background: rgba(16, 185, 129, .12); color: #10b981; }
     .ai-scope-item--no i { background: rgba(100, 116, 139, .12); color: #64748b; }
     .ai-scope-item--no span { color: #64748b; }
-    .ai-scope-note {
-        margin: 1rem 0 0; padding: .7rem .85rem;
-        background: rgba(4, 83, 203, .05); border-left: 3px solid #0453cb;
-        border-radius: 0 8px 8px 0;
-        font-size: .8rem; color: #1e293b;
-    }
 </style>
 @endpush
