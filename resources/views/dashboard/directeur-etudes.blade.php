@@ -62,6 +62,7 @@
                 'icon' => 'fa-heart-pulse',
                 'value' => $score !== null ? $score : '—',
                 'label' => 'Santé académique',
+                'hint' => $score !== null ? null : 'aucune fiche de pilotage',
                 'data_kpi' => 'academicScore',
                 'href' => route('esbtp.pilotage-academique.index'),
             ],
@@ -112,13 +113,10 @@
         </div>
     @endif
 
-    {{-- Indicateurs de suivi --}}
+    {{-- Contexte de suivi. Les compteurs qui appellent une action sont deja
+         remontes en bandeau d'alerte au-dessus : les repeter ici ferait de ce
+         tableau de bord une pile de chiffres, ce qu'il ne doit pas etre. --}}
     <div class="de-kpis">
-        <a class="de-kpi" href="{{ route('esbtp.inscriptions.index', ['status' => 'non_validee']) }}">
-            <span class="de-kpi-icon"><i class="fas fa-clipboard-list"></i></span>
-            <span class="de-kpi-value" data-kpi="pendingInscriptionsCount">{{ $pendingInscriptionsCount ?? 0 }}</span>
-            <span class="de-kpi-label">Inscriptions en attente</span>
-        </a>
         @can('finance.unpaid_count.view')
             <div class="de-kpi">
                 <span class="de-kpi-icon"><i class="fas fa-user-clock"></i></span>
@@ -127,11 +125,6 @@
                 <span class="de-kpi-hint">Effectif seul, aucun montant</span>
             </div>
         @endcan
-        <a class="de-kpi" href="{{ route('esbtp.evaluations.index') }}">
-            <span class="de-kpi-icon"><i class="fas fa-pen-clip"></i></span>
-            <span class="de-kpi-value" data-kpi="evaluationsSansNotesCount">{{ $evaluationsSansNotesCount ?? 0 }}</span>
-            <span class="de-kpi-label">Évaluations sans notes</span>
-        </a>
         <a class="de-kpi" href="{{ route('esbtp.attendances.index') }}">
             <span class="de-kpi-icon"><i class="fas fa-user-check"></i></span>
             <span class="de-kpi-value" data-kpi="attendanceRate">{{ $rate }}%</span>
@@ -142,11 +135,6 @@
             <span class="de-kpi-value" data-kpi="totalEmploiTemps">{{ $totalEmploiTemps ?? 0 }}</span>
             <span class="de-kpi-label">Emplois du temps</span>
             <span class="de-kpi-hint">{{ $sansEdt }} classe{{ $sansEdt > 1 ? 's' : '' }} sans EDT</span>
-        </a>
-        <a class="de-kpi" href="{{ route('esbtp.pilotage-academique.index') }}">
-            <span class="de-kpi-icon"><i class="fas fa-triangle-exclamation"></i></span>
-            <span class="de-kpi-value">{{ $health['open_alerts'] ?? 0 }}</span>
-            <span class="de-kpi-label">Alertes ouvertes</span>
         </a>
     </div>
 
@@ -332,12 +320,11 @@
     .de-alert--danger .de-alert-icon { background: rgba(220, 38, 38, .1); color: #dc2626; }
     .de-alert--info .de-alert-icon { background: rgba(4, 83, 203, .08); color: #0453cb; }
 
-    /* ===== Indicateurs ===== */
-    /* 165px : les six indicateurs tiennent sur une seule ligne en poste de
-       travail, au lieu de laisser une carte orpheline sur un second rang. */
+    /* ===== Contexte de suivi ===== */
+    /* Trois indicateurs seulement, jamais de carte orpheline sur un second rang. */
     .de-kpis {
         display: grid; gap: 1rem; margin-bottom: 1.25rem;
-        grid-template-columns: repeat(auto-fit, minmax(165px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
     }
     .de-kpi {
         display: flex; flex-direction: column;

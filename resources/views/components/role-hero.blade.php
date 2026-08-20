@@ -45,6 +45,9 @@
                     <span class="rdx-kpi-body">
                         <span class="rdx-kpi-value" @isset($kpi['data_kpi']) data-kpi="{{ $kpi['data_kpi'] }}" @endisset>{{ $kpi['value'] }}</span>
                         <span class="rdx-kpi-label">{{ $kpi['label'] }}</span>
+                        @isset($kpi['hint'])
+                            <span class="rdx-kpi-hint">{{ $kpi['hint'] }}</span>
+                        @endisset
                     </span>
                     @if($href)<i class="fas fa-arrow-right rdx-kpi-go"></i>@endif
                 </{{ $href ? 'a' : 'div' }}>
@@ -105,6 +108,7 @@
     .rdx-kpi-body { display: flex; flex-direction: column; min-width: 0; }
     .rdx-kpi-value { font-size: 1.35rem; font-weight: 700; line-height: 1.1; }
     .rdx-kpi-label { font-size: .72rem; color: rgba(255, 255, 255, .65); margin-top: .15rem; }
+    .rdx-kpi-hint { display: block; font-size: .66rem; color: rgba(255, 255, 255, .5); margin-top: .1rem; }
     .rdx-kpi-go { margin-left: auto; font-size: .7rem; opacity: .55; }
 
     /* ===== Boutons du hero ===== */
