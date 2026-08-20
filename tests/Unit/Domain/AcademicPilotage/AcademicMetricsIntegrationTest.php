@@ -487,10 +487,17 @@ class AcademicMetricsIntegrationTest extends AcademicPilotageDatabaseTestCase
 
     private function createResolvedSheet(string $system, string $semester, int $studentId): void
     {
+        // GradeCompletionMetricService ne retient que les fiches « validated »
+        // ET de source « evaluation ». Le test n'en posait aucune des deux, la
+        // requete ne trouvait donc aucune fiche et la metrique restait nulle.
+        // Une fiche seulement saisie annoncerait d'ailleurs un travail termine
+        // alors qu'il ne l'est pas : c'est bien « validated » qui est attendu,
+        // conformement au nom de cette methode.
         $sheet = $this->createGradeSheet([
             'academic_system' => $system,
             'semester' => $semester,
-            'status' => 'entered',
+            'status' => 'validated',
+            'source' => 'evaluation',
         ]);
         $this->createEntry($sheet, $studentId, ['status' => 'entered']);
     }
