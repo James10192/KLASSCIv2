@@ -122,6 +122,13 @@
 .cpa-tendance-dernier { font-size: 1.05rem; font-weight: 800; color: #0453cb; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .cpa-tendance-aide { margin: .2rem 0 .6rem; font-size: .74rem; color: #64748b; }
 .cpa-tendance-toile { position: relative; width: 100%; height: 170px; }
+.cpa-tendance-vide {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: .5rem; text-align: center; height: 170px; padding: 1rem;
+    background: #f8fafc; border: 1px dashed #dbe3ec; border-radius: 10px;
+    font-size: .78rem; color: #64748b;
+}
+.cpa-tendance-vide i { font-size: 1.1rem; color: #94a3b8; }
 .cpa-drawer { border: 1px solid #dbe5f2; border-radius: 8px; background: #f8fafc; padding: 1rem; min-height: 160px; }
 .cpa-muted { color: #64748b; font-size: .82rem; margin: 0; }
 .cpa-error { border-color: #fecaca; background: #fef2f2; color: #991b1b; }

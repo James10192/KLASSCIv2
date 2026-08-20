@@ -203,8 +203,12 @@
                             <span class="cpa-tendance-dernier" x-text="dernierPoint(serie)"></span>
                         </div>
                         <p class="cpa-tendance-aide" x-text="serie.hint"></p>
-                        <div class="cpa-tendance-toile">
+                        <div class="cpa-tendance-toile" x-show="!serieVide(serie)">
                             <canvas :id="'cpa-tendance-' + serie.key"></canvas>
+                        </div>
+                        <div class="cpa-tendance-vide" x-show="serieVide(serie)">
+                            <i class="fas fa-wave-square"></i>
+                            <span>Aucune mesure sur l'année : rien n'a encore été enregistré pour cet indicateur.</span>
                         </div>
                     </div>
                 </template>

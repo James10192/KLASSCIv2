@@ -622,6 +622,12 @@ document.addEventListener('alpine:init', () => {
                 this.tendances.chargement = false;
             }
         },
+        // Une serie sans aucune mesure ne doit pas afficher des axes nus :
+        // le lecteur croirait a un graphique casse plutot qu'a une absence
+        // de donnee.
+        serieVide(serie) {
+            return !(serie.values || []).some((v) => v !== null && v !== undefined);
+        },
         dernierPoint(serie) {
             const valeurs = (serie.values || []).filter((v) => v !== null && v !== undefined);
             if (!valeurs.length) return '—';
@@ -631,6 +637,7 @@ document.addEventListener('alpine:init', () => {
         dessinerTendances() {
             if (typeof window.klassciGraphique !== 'function') return;
             this.tendances.series.forEach((serie) => {
+                if (this.serieVide(serie)) return;
                 const toile = document.getElementById('cpa-tendance-' + serie.key);
                 if (!toile) return;
                 const maximum = serie.unit === '%' ? { max: 100 } : {};
