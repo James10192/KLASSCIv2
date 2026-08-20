@@ -1522,7 +1522,9 @@ class ESBTPBulletinController extends Controller
             'preflight' => $preflight,
             'message' => $preflight['message'],
             'student_ids' => $studentIds,
-            'batch_size' => 10,
+            // 6 et non 10 : mesure a 24,6 s pour 10 etudiants, trop pres de la
+            // limite de 30 s pour tenir sous charge.
+            'batch_size' => 6,
         ], $preflight['ok'] ? 200 : 422);
     }
     /**
