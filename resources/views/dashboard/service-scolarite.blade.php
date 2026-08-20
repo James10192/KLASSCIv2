@@ -74,6 +74,9 @@
         @endif
 
         <x-slot:focal>
+            {{-- Un graphique de rien n'apprend rien : les deux listes plus bas
+                 portent deja leur propre etat vide, plus precis. --}}
+            @if($totalCharge > 0)
             <x-role-panel
                 icon="fa-chart-simple"
                 title="Ce qu'il vous reste à traiter"
@@ -82,23 +85,20 @@
                     id="ss-workload"
                     type="bar"
                     :data="$chartData"
-                    :is-empty="$totalCharge === 0"
                     empty-icon="fa-circle-check"
                     empty-title="Rien en attente"
-                    empty-hint="Les documents approuvés et les classes ouvertes à la saisie apparaîtront ici."
                     :height="240" />
 
-                @if($totalCharge > 0)
-                    <div class="dsh-legend">
-                        <span class="dsh-legend-item">
-                            <span class="dsh-legend-dot" style="background:#f59e0b"></span>Impression, un étudiant attend
-                        </span>
-                        <span class="dsh-legend-item">
-                            <span class="dsh-legend-dot" style="background:#0453cb"></span>Saisie, dans la fenêtre ouverte
-                        </span>
-                    </div>
-                @endif
+                <div class="dsh-legend">
+                    <span class="dsh-legend-item">
+                        <span class="dsh-legend-dot" style="background:#f59e0b"></span>Impression, un étudiant attend
+                    </span>
+                    <span class="dsh-legend-item">
+                        <span class="dsh-legend-dot" style="background:#0453cb"></span>Saisie, dans la fenêtre ouverte
+                    </span>
+                </div>
             </x-role-panel>
+            @endif
 
             <x-role-panel
                 icon="fa-print"

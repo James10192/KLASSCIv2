@@ -50,8 +50,9 @@
             ],
             [
                 'icon' => 'fa-circle-check',
-                'value' => $completes.' / '.max($nbFenetres, 1),
+                'value' => $nbFenetres > 0 ? $completes.' / '.$nbFenetres : '—',
                 'label' => 'Classes prêtes à fermer',
+                'hint' => $nbFenetres > 0 ? null : 'aucune fenêtre ouverte',
             ],
             [
                 'icon' => 'fa-clipboard-list',
@@ -126,6 +127,46 @@
                             </div>
                         @endforeach
                     </div>
+                @endif
+            </x-role-panel>
+
+            <x-role-panel
+                icon="fa-clipboard-check"
+                title="Inscriptions à valider"
+                subtitle="Dossiers en attente de votre décision"
+                :count="$pendingInscriptions">
+                @forelse($inscriptionsAValider as $inscription)
+                    <div class="rdx-row">
+                        <div class="rdx-row-icon"><i class="fas fa-user-plus"></i></div>
+                        <div class="rdx-row-main">
+                            <div class="rdx-row-title">
+                                {{ trim(($inscription->etudiant->nom ?? '').' '.($inscription->etudiant->prenoms ?? '')) ?: 'Dossier #'.$inscription->id }}
+                            </div>
+                            <div class="rdx-row-meta">
+                                {{ $inscription->classe->name ?? 'Classe non affectée' }}
+                                @if($inscription->created_at)
+                                    · déposé le {{ $inscription->created_at->format('d/m/Y') }}
+                                @endif
+                            </div>
+                        </div>
+                        <div class="rdx-row-actions">
+                            <a class="rdx-act rdx-act--primary" href="{{ route('esbtp.inscriptions.show', $inscription) }}">
+                                <i class="fas fa-eye"></i>Ouvrir
+                            </a>
+                        </div>
+                    </div>
+                @empty
+                    <x-role-empty
+                        icon="fa-circle-check"
+                        title="Aucune inscription en attente"
+                        hint="Les dossiers déposés par la caisse ou l'agent d'inscription arriveront ici." />
+                @endforelse
+
+                @if($pendingInscriptions > $inscriptionsAValider->count())
+                    <a class="rs-voir-tout" href="{{ route('esbtp.inscriptions.index', ['status' => 'en_attente']) }}">
+                        Voir les {{ $pendingInscriptions }} dossiers en attente
+                        <i class="fas fa-arrow-right"></i>
+                    </a>
                 @endif
             </x-role-panel>
         </x-slot:focal>
@@ -241,6 +282,15 @@
     .rs-ligne-reste.is-soon { color: #b45309; font-weight: 600; }
 
     .rs-approbation { display: flex; gap: .4rem; margin: .4rem 0 .8rem; }
+
+    .rs-voir-tout {
+        display: flex; align-items: center; justify-content: center; gap: .4rem;
+        margin-top: .75rem; padding: .55rem;
+        border: 1px dashed #dbe3ec; border-radius: 9px;
+        font-size: .8rem; font-weight: 600; color: #0453cb; text-decoration: none;
+        transition: background .15s ease, border-color .15s ease;
+    }
+    .rs-voir-tout:hover { background: rgba(4, 83, 203, .05); border-color: #0453cb; }
 
     .rs-window-form {
         background: rgba(4, 83, 203, .04);

@@ -18,18 +18,36 @@
         'active' => route('esbtp.inscriptions.index', ['status' => 'active']),
     ];
 
-    // Les deux premières étapes bloquent, les deux dernières avancent : la
-    // teinte suit le sens, elle ne décore pas.
-    $tons = ['alerte', '#0453cb', 'alerte', '#3b7ddb'];
+    // Un dossier finalisé ne stagne pas : le garder dans le graphique
+    // ecraserait les trois etapes ou un dossier peut rester coince, qui sont
+    // precisement celles sur lesquelles ce role agit. Il est repris en
+    // chiffre de reference sous le graphique.
+    $finalisees = 0;
+    $enCours = [];
+    foreach ($etapes as $etape) {
+        if ($etape['statut'] === 'active') {
+            $finalisees = $etape['value'];
+            continue;
+        }
+        $enCours[] = $etape;
+    }
+    $totalEnCours = array_sum(array_column($enCours, 'value'));
+
+    // « À valider » est la seule etape ou l'agent peut agir seul : elle est
+    // bleue. Les deux autres attendent un tiers, elles sont orange.
+    $tons = array_map(
+        fn ($e) => $e['label'] === 'À valider' ? '#0453cb' : 'alerte',
+        $enCours
+    );
 
     $chartData = [
-        'labels' => array_column($etapes, 'label'),
+        'labels' => array_column($enCours, 'label'),
         'datasets' => [[
             'label' => 'Dossiers',
-            'data' => array_column($etapes, 'value'),
+            'data' => array_column($enCours, 'value'),
             'tones' => $tons,
         ]],
-        'links' => array_map(fn ($e) => $urlParStatut[$e['statut']] ?? '#', $etapes),
+        'links' => array_map(fn ($e) => $urlParStatut[$e['statut']] ?? '#', $enCours),
     ];
 @endphp
 
@@ -99,13 +117,13 @@
                     id="ai-funnel"
                     type="bar"
                     :data="$chartData"
-                    :is-empty="$totalDossiers === 0"
+                    :is-empty="$totalEnCours === 0"
                     empty-icon="fa-folder-open"
                     empty-title="Aucun dossier en cours"
-                    empty-hint="Dès qu'une inscription sera créée, sa progression apparaîtra ici."
+                    empty-hint="Tous les dossiers de l'année sont finalisés. Une nouvelle inscription réapparaîtra ici."
                     :height="270" />
 
-                @if($totalDossiers > 0)
+                @if($totalEnCours > 0)
                     <div class="dsh-legend">
                         <span class="dsh-legend-item">
                             <span class="dsh-legend-dot" style="background:#f59e0b"></span>Bloqué, en attente d'un tiers
@@ -117,16 +135,16 @@
 
                     <div class="dsh-figures">
                         <div class="dsh-figure">
-                            <span class="dsh-figure-value">{{ $totalDossiers }}</span>
-                            <span class="dsh-figure-label">Dossiers suivis</span>
+                            <span class="dsh-figure-value">{{ $totalEnCours }}</span>
+                            <span class="dsh-figure-label">Dossiers en cours</span>
                         </div>
                         <div class="dsh-figure {{ $bloques > 0 ? 'dsh-figure--warn' : 'dsh-figure--ok' }}">
                             <span class="dsh-figure-value">{{ $bloques }}</span>
-                            <span class="dsh-figure-label">Bloqués</span>
+                            <span class="dsh-figure-label">Attendent un tiers</span>
                         </div>
                         <div class="dsh-figure dsh-figure--ok">
-                            <span class="dsh-figure-value">{{ $totalDossiers > 0 ? round(($totalDossiers - $bloques) / $totalDossiers * 100) : 0 }}%</span>
-                            <span class="dsh-figure-label">Peuvent avancer</span>
+                            <span class="dsh-figure-value">{{ $finalisees }}</span>
+                            <span class="dsh-figure-label">Finalisés cette année</span>
                         </div>
                     </div>
                 @endif

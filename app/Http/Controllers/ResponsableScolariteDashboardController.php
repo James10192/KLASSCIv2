@@ -37,9 +37,19 @@ class ResponsableScolariteDashboardController extends Controller
             ->orderBy('ends_at')
             ->get();
 
-        $pendingInscriptions = ESBTPInscription::query()
-            ->whereIn('status', ['en_attente', 'pending'])
-            ->count();
+        $inscriptionsEnAttente = ESBTPInscription::query()
+            ->whereIn('status', ['en_attente', 'pending']);
+
+        $pendingInscriptions = (clone $inscriptionsEnAttente)->count();
+
+        // Quand aucune fenetre de saisie n'est ouverte, la validation des
+        // inscriptions est le seul travail en cours de ce role : la liste
+        // evite un tableau de bord vide qui n'oriente vers rien.
+        $inscriptionsAValider = $inscriptionsEnAttente
+            ->with(['etudiant:id,nom,prenoms', 'classe:id,name'])
+            ->latest()
+            ->limit(8)
+            ->get();
 
         $classes = ESBTPClasse::query()->where('is_active', true)->orderBy('name')->get(['id', 'name']);
 
@@ -49,6 +59,7 @@ class ResponsableScolariteDashboardController extends Controller
             'pendingApprovals' => $pendingApprovals,
             'openWindows' => $openWindows,
             'pendingInscriptions' => $pendingInscriptions,
+            'inscriptionsAValider' => $inscriptionsAValider,
             'classes' => $classes,
         ]);
     }
