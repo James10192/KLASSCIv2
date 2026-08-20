@@ -2265,7 +2265,7 @@
                     <div class="bc-card">
                         <div class="bc-icon"><i class="fas fa-users"></i></div>
                         <div class="bc-body">
-                            <div class="bc-label">Roles responsable / service scolarite</div>
+                            <div class="bc-label">Rôles responsable / service scolarité</div>
                             <div class="bc-desc">Affiche les onglets personnel et les dashboards dedies. Yakro reste sur secretaire tant que cette option est desactivee.</div>
                         </div>
                         <div class="bc-toggle">
@@ -2307,7 +2307,7 @@
                     <div class="bc-card">
                         <div class="bc-icon"><i class="fas fa-user-plus"></i></div>
                         <div class="bc-body">
-                            <div class="bc-label">Role agent d inscription</div>
+                            <div class="bc-label">Rôle agent d'inscription</div>
                             <div class="bc-desc">Active l onglet personnel et le dashboard dedie. Additif: n enleve aucun droit existant. A cocher sur ISLG et USAT uniquement.</div>
                         </div>
                         <div class="bc-toggle">
