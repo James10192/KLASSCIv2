@@ -1287,7 +1287,7 @@ class CLIMaintenanceController extends BaseApiController
             return $this->errorResponse("Evaluation #{$id} not found", [], 404);
         }
 
-        $cible = AppModelsESBTPMatiere::find($validated['matiere_id']);
+        $cible = ESBTPMatiere::find($validated['matiere_id']);
         $classeEstLmd = ($evaluation->classe?->systeme_academique ?? '') === 'LMD';
         $cibleEstEcue = $cible->unite_enseignement_id !== null;
 
