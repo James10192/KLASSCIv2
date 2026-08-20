@@ -42,6 +42,10 @@ document.addEventListener('alpine:init', () => {
         setTab(tab) {
             this.tab = tab;
             history.replaceState({}, '', `${location.pathname}${location.search}#${tab}`);
+            // Un canvas rendu pendant qu'il est masque se dimensionne a zero :
+            // si un filtre a recharge la page depuis un autre onglet, les
+            // graphiques reviendraient ecrases. On les redessine a l'arrivee.
+            if (tab === 'direction') this.$nextTick(() => this.dessinerGraphiques());
             if (tab === 'assignments') this.$nextTick(() => this.primeAssignmentClass());
         },
         formFilters() {

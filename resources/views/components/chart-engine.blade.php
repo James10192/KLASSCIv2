@@ -172,6 +172,9 @@
         var existant = Chart.getChart(canvas);
         if (existant) {
             existant.data = appliquerTheme(type, payload);
+            // Un graphique mis a jour pendant que son canvas etait masque garde
+            // une taille de zero : update() seul ne la recalcule pas.
+            existant.resize();
             existant.update();
             return existant;
         }
