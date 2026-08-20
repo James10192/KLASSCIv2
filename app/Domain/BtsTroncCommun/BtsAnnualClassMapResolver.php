@@ -17,6 +17,14 @@ use App\Models\ESBTPInscription;
  */
 class BtsAnnualClassMapResolver
 {
+    /**
+     * Resultats deja calcules, indexes par « etudiant:classe:annee ».
+     * Portee requete, comme l'instance du service.
+     *
+     * @var array<string, array{inscription_id: int|null, source_model: string, semestre1_classe_id: int, semestre2_classe_id: int}>
+     */
+    private array $resolveCache = [];
+
     public function __construct(private BtsPhaseResolver $btsPhaseResolver)
     {
     }
@@ -25,6 +33,28 @@ class BtsAnnualClassMapResolver
      * @return array{inscription_id: int|null, source_model: string, semestre1_classe_id: int, semestre2_classe_id: int}
      */
     public function resolve(int $etudiantId, int $requestedClasseId, int $anneeUniversitaireId): array
+    {
+        // Memoisation par triplet d'arguments, portee requete. La generation en
+        // masse appelait ce resolveur plusieurs fois par etudiant et par
+        // etudiant de la cohorte, soit un cout quadratique pour un resultat
+        // strictement identique a arguments egaux.
+        $cacheKey = $etudiantId.':'.$requestedClasseId.':'.$anneeUniversitaireId;
+
+        if (array_key_exists($cacheKey, $this->resolveCache)) {
+            return $this->resolveCache[$cacheKey];
+        }
+
+        return $this->resolveCache[$cacheKey] = $this->resolveUncached(
+            $etudiantId,
+            $requestedClasseId,
+            $anneeUniversitaireId
+        );
+    }
+
+    /**
+     * @return array{inscription_id: int|null, source_model: string, semestre1_classe_id: int, semestre2_classe_id: int}
+     */
+    private function resolveUncached(int $etudiantId, int $requestedClasseId, int $anneeUniversitaireId): array
     {
         $inscription = ESBTPInscription::query()
             ->with([
