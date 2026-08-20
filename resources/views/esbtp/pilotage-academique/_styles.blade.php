@@ -112,6 +112,16 @@
     transition: background .15s ease, border-color .15s ease;
 }
 .cpa-lien-bloc:hover { background: rgba(4, 83, 203, .05); border-color: #0453cb; }
+
+/* ===== Tendances de l'annee ===== */
+.cpa-tendances { grid-column: 1 / -1; }
+.cpa-tendances-grille { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; margin-top: .85rem; }
+.cpa-tendance { border: 1px solid #e8ecf1; border-radius: 12px; padding: .9rem 1rem 1rem; background: #fff; }
+.cpa-tendance-tete { display: flex; align-items: baseline; justify-content: space-between; gap: .75rem; }
+.cpa-tendance-titre { font-size: .88rem; font-weight: 700; color: #1e293b; }
+.cpa-tendance-dernier { font-size: 1.05rem; font-weight: 800; color: #0453cb; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.cpa-tendance-aide { margin: .2rem 0 .6rem; font-size: .74rem; color: #64748b; }
+.cpa-tendance-toile { position: relative; width: 100%; height: 170px; }
 .cpa-drawer { border: 1px solid #dbe5f2; border-radius: 8px; background: #f8fafc; padding: 1rem; min-height: 160px; }
 .cpa-muted { color: #64748b; font-size: .82rem; margin: 0; }
 .cpa-error { border-color: #fecaca; background: #fef2f2; color: #991b1b; }
@@ -283,7 +293,7 @@
 .cpa-assignment-empty { min-height: 112px; display: grid; place-content: center; }
 .cpa-assignment-panel .cpa-row { box-shadow: 0 4px 14px rgba(15,23,42,.04); }
 [x-cloak] { display: none !important; }
-@media (max-width: 1100px) { .cpa-grid, .cpa-filters, .cpa-hero-kpis, .cpa-assignment-form, .cpa-coverage-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } .cpa-split, .cpa-note-workbench, .cpa-direction { grid-template-columns: 1fr; } .cpa-assignment-submit { width: 100%; } }
+@media (max-width: 1100px) { .cpa-grid, .cpa-filters, .cpa-hero-kpis, .cpa-assignment-form, .cpa-coverage-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } .cpa-split, .cpa-note-workbench, .cpa-direction, .cpa-tendances-grille { grid-template-columns: 1fr; } .cpa-assignment-submit { width: 100%; } }
 @media (max-width: 900px) { .cpa-audit { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 640px) {
     .cpa-hero { padding: 1.5rem 1.25rem 1.25rem; border-radius: 14px; }

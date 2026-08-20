@@ -24,6 +24,7 @@ document.addEventListener('alpine:init', () => {
         transitioning: false,
         alertTransitioning: false,
         filters: { ...config.initialFilters },
+        tendances: { chargement: false, erreur: null, labels: [], series: [], anneeChargee: null },
         init() {
             this.selectTabFromUrl();
             const params = new URLSearchParams(location.search);
@@ -45,7 +46,10 @@ document.addEventListener('alpine:init', () => {
             // Un canvas rendu pendant qu'il est masque se dimensionne a zero :
             // si un filtre a recharge la page depuis un autre onglet, les
             // graphiques reviendraient ecrases. On les redessine a l'arrivee.
-            if (tab === 'direction') this.$nextTick(() => this.dessinerGraphiques());
+            if (tab === 'direction') {
+                this.$nextTick(() => this.dessinerGraphiques());
+                this.chargerTendances();
+            }
             if (tab === 'assignments') this.$nextTick(() => this.primeAssignmentClass());
         },
         formFilters() {
@@ -123,6 +127,7 @@ document.addEventListener('alpine:init', () => {
                 const payload = await this.fetchJson(`${config.dataUrl}?${params.toString()}`);
                 this.data = payload;
                 this.$nextTick(() => this.dessinerGraphiques());
+                if (this.tab === 'direction') this.chargerTendances();
                 if (config.canManageAssignments) await this.loadAssignments();
             } catch (e) {
                 this.error = e.message;
@@ -592,6 +597,57 @@ document.addEventListener('alpine:init', () => {
             const suffix = (student.missing_subjects || []).length > 2 ? ` +${student.missing_subjects.length - 2}` : '';
             return `${student.name} · ${student.missing_subjects_count} matière(s), ${student.missing_evaluations_count} évaluation(s) · ${subjects}${suffix}`;
         },
+        // ===== Tendances de l'annee =====
+        async chargerTendances(forcer = false) {
+            const annee = this.filters.year_id ?? null;
+            // Deja calculees pour cette annee : inutile de refaire quatre
+            // agregations a chaque aller-retour entre les onglets.
+            if (!forcer && this.tendances.anneeChargee === annee && this.tendances.series.length) {
+                this.$nextTick(() => this.dessinerTendances());
+                return;
+            }
+            this.tendances.chargement = true;
+            this.tendances.erreur = null;
+            try {
+                const params = new URLSearchParams(annee ? { year_id: annee } : {});
+                const payload = await this.fetchJson(`${config.tendancesUrl}?${params.toString()}`);
+                this.tendances.labels = payload.labels || [];
+                this.tendances.series = payload.series || [];
+                this.tendances.erreur = payload.ok === false ? (payload.message || 'Tendances indisponibles.') : null;
+                this.tendances.anneeChargee = annee;
+                this.$nextTick(() => this.dessinerTendances());
+            } catch (e) {
+                this.tendances.erreur = e.message;
+            } finally {
+                this.tendances.chargement = false;
+            }
+        },
+        dernierPoint(serie) {
+            const valeurs = (serie.values || []).filter((v) => v !== null && v !== undefined);
+            if (!valeurs.length) return '—';
+            const dernier = valeurs[valeurs.length - 1];
+            return serie.unit === '%' ? `${Number(dernier).toFixed(0)} %` : String(dernier);
+        },
+        dessinerTendances() {
+            if (typeof window.klassciGraphique !== 'function') return;
+            this.tendances.series.forEach((serie) => {
+                const toile = document.getElementById('cpa-tendance-' + serie.key);
+                if (!toile) return;
+                const maximum = serie.unit === '%' ? { max: 100 } : {};
+                window.klassciGraphique(toile, 'line', {
+                    labels: this.tendances.labels,
+                    datasets: [{
+                        label: serie.label,
+                        data: serie.values,
+                        // Un mois sans donnee reste un trou dans la courbe : le
+                        // relier ferait passer une absence de mesure pour une
+                        // valeur intermediaire.
+                        spanGaps: false,
+                    }],
+                }, { scales: { y: maximum } });
+            });
+        },
+
         // ===== Vue direction =====
         // Les classes arrivent triees par date de calcul : pour repondre a
         // « qui decroche », on les retrie par score croissant.

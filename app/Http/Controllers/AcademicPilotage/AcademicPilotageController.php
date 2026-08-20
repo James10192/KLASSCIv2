@@ -13,6 +13,7 @@ use App\Domain\AcademicPilotage\Services\AcademicPilotageManualSyncService;
 use App\Domain\AcademicPilotage\Services\AcademicPilotageSummaryService;
 use App\Domain\AcademicPilotage\Services\AcademicActorScopeService;
 use App\Domain\AcademicPilotage\Services\AcademicNoteCoverageService;
+use App\Domain\AcademicPilotage\Services\AcademicPilotageTrendsService;
 use App\Http\Controllers\Controller;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPClasse;
@@ -33,6 +34,7 @@ class AcademicPilotageController extends Controller
         private readonly AcademicActorActivityService $actorActivity,
         private readonly AcademicPilotageSummaryService $summary,
         private readonly AcademicNoteCoverageService $noteCoverage,
+        private readonly AcademicPilotageTrendsService $trends,
     ) {}
 
     public function index(Request $request): View
@@ -66,6 +68,18 @@ class AcademicPilotageController extends Controller
                 'class_id' => $request->input('class_id', ''),
             ],
         ]);
+    }
+
+    /**
+     * Tendances mensuelles de l'annee. Endpoint separe, charge a la demande :
+     * quatre agregations sur toute l'annee n'ont pas a ralentir l'ouverture
+     * de la page, qui doit repondre d'abord sur l'etat du jour.
+     */
+    public function trends(Request $request): JsonResponse
+    {
+        $year = $this->selectedYear($request);
+
+        return response()->json($this->trends->forYear($year?->id));
     }
 
     public function data(Request $request): JsonResponse

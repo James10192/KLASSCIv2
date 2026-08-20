@@ -10,6 +10,7 @@
      x-data="cpaDashboard({
         dataUrl: @js(route('esbtp.pilotage-academique.data')),
         syncUrl: @js(route('esbtp.pilotage-academique.synchronize')),
+        tendancesUrl: @js(route('esbtp.pilotage-academique.tendances')),
         alertTransitionUrl: @js(url('/esbtp/academic-alerts')),
         classUrl: @js(url('/esbtp/pilotage-academique/classes')),
         studentUrl: @js(url('/esbtp/pilotage-academique/etudiants')),
@@ -168,6 +169,45 @@
                 <button type="button" class="cpa-lien-bloc" x-show="totalFiches() > 0" @click="tab = 'sheets'">
                     Ouvrir le suivi des fiches<i class="fas fa-arrow-right"></i>
                 </button>
+            </div>
+        </div>
+
+        {{-- Tendances de l'annee. Charge a la demande : quatre agregations sur
+             toute l'annee n'ont pas a retarder l'ouverture de la page, qui
+             doit d'abord repondre sur l'etat du jour. --}}
+        <div class="cpa-panel cpa-tendances">
+            <div class="cpa-panel-head">
+                <div>
+                    <h2 class="cpa-panel-title"><i class="fas fa-chart-line"></i>Comment l'année avance</h2>
+                    <p class="cpa-muted mt-1">Mois par mois, sur l'année universitaire sélectionnée. Un mois sans donnée reste vide plutôt que d'être compté à zéro.</p>
+                </div>
+                <button type="button" class="cpa-btn cpa-btn--ghost" @click="chargerTendances(true)" :disabled="tendances.chargement">
+                    <i class="fas" :class="tendances.chargement ? 'fa-spinner fa-spin' : 'fa-rotate'"></i>
+                    <span x-text="tendances.chargement ? 'Calcul...' : 'Recalculer'"></span>
+                </button>
+            </div>
+
+            <div class="cpa-state" x-show="tendances.chargement">
+                <i class="fas fa-spinner fa-spin"></i><span>Calcul des tendances de l'année en cours...</span>
+            </div>
+
+            <div class="cpa-state cpa-error" x-show="!tendances.chargement && tendances.erreur">
+                <i class="fas fa-circle-exclamation"></i><span x-text="tendances.erreur"></span>
+            </div>
+
+            <div class="cpa-tendances-grille" x-show="!tendances.chargement && !tendances.erreur && tendances.series.length > 0">
+                <template x-for="serie in tendances.series" :key="serie.key">
+                    <div class="cpa-tendance">
+                        <div class="cpa-tendance-tete">
+                            <span class="cpa-tendance-titre" x-text="serie.label"></span>
+                            <span class="cpa-tendance-dernier" x-text="dernierPoint(serie)"></span>
+                        </div>
+                        <p class="cpa-tendance-aide" x-text="serie.hint"></p>
+                        <div class="cpa-tendance-toile">
+                            <canvas :id="'cpa-tendance-' + serie.key"></canvas>
+                        </div>
+                    </div>
+                </template>
             </div>
         </div>
     </section>
