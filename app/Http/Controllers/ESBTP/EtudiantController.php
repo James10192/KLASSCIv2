@@ -180,7 +180,7 @@ class EtudiantController extends Controller
             $bulletins = collect(); // Collection vide si erreur
         }
 
-        $matieres = ESBTPMatiere::orderBy('name')->get();
+        $matieres = ESBTPMatiere::btsOnly()->orderBy('name')->get();
 
         return view('dashboard.etudiant', compact(
             'student',

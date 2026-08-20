@@ -303,4 +303,25 @@ class ESBTPMatiere extends Model implements Auditable
         return $this->heures_cm + $this->heures_td + $this->heures_tp + $this->heures_stage + $this->heures_perso ??
                $this->niveaux()->pluck('pivot.heures_cours')->sum() ?? 0;
     }
+/**
+     * Matieres du cursus BTS : celles qui ne dependent d'aucune unite
+     * d'enseignement.
+     *
+     * A utiliser dans tout selecteur destine au BTS. Les ECUE importees par
+     * les maquettes LMD sont des matieres a part entiere en base : sans ce
+     * filtre, un listing global les propose a cote des matieres BTS, et un
+     * enseignant peut creer une evaluation dessus sans s'en apercevoir.
+     */
+    public function scopeBtsOnly($query)
+    {
+        return $query->whereNull('unite_enseignement_id');
+    }
+
+    /**
+     * ECUE : les matieres rattachees a une unite d'enseignement.
+     */
+    public function scopeLmdOnly($query)
+    {
+        return $query->whereNotNull('unite_enseignement_id');
+    }
 }

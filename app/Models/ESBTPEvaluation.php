@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Validation\ValidationException;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -378,5 +379,51 @@ class ESBTPEvaluation extends Model implements Auditable
             self::STATUS_COMPLETED => 'Terminée',
             self::STATUS_CANCELLED => 'Annulée',
         ];
+    }
+/**
+     * Coherence entre le systeme academique de la classe et la nature de la
+     * matiere.
+     *
+     * La table esbtp_evaluations est partagee par le BTS et le LMD. Une
+     * evaluation est coherente quand une classe BTS porte une matiere sans
+     * unite d'enseignement, et une classe LMD une ECUE. L'inverse trahit un
+     * selecteur qui a propose la mauvaise liste, et les notes saisies
+     * atterrissent alors sur une matiere etrangere au cursus.
+     *
+     * Le controle se declenche a la creation, et a la modification seulement
+     * si la classe ou la matiere change : une evaluation historiquement
+     * incoherente reste modifiable sur son titre ou sa date, sinon on ne
+     * pourrait meme plus la corriger.
+     */
+    protected static function booted(): void
+    {
+        static::saving(function (self $evaluation): void {
+            $doitControler = ! $evaluation->exists
+                || $evaluation->isDirty(['matiere_id', 'classe_id']);
+
+            if (! $doitControler || ! $evaluation->matiere_id || ! $evaluation->classe_id) {
+                return;
+            }
+
+            $classe = ESBTPClasse::find($evaluation->classe_id);
+            $matiere = ESBTPMatiere::find($evaluation->matiere_id);
+
+            if (! $classe || ! $matiere) {
+                return;
+            }
+
+            $classeEstLmd = ($classe->systeme_academique ?? '') === 'LMD';
+            $matiereEstEcue = $matiere->unite_enseignement_id !== null;
+
+            if ($classeEstLmd === $matiereEstEcue) {
+                return;
+            }
+
+            throw ValidationException::withMessages([
+                'matiere_id' => $classeEstLmd
+                    ? "La classe « {$classe->name} » est en LMD : elle attend une ECUE, or « {$matiere->name} » est une matière BTS."
+                    : "La classe « {$classe->name} » est en BTS : elle attend une matière BTS, or « {$matiere->name} » est une ECUE du LMD.",
+            ]);
+        });
     }
 }
