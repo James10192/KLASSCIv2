@@ -364,13 +364,25 @@ class ESBTPSettingsController extends Controller
             ], array_keys($troncCommunDefaults)))->get();
 
             $treatMissingCheckboxesAsOff = $request->boolean('settings_save_display');
+            // Les cles pointees (scolarite.split_roles, caisse.pre_inscription.enabled...)
+            // ne peuvent pas passer par $request->boolean() / exists() : Laravel y voit
+            // un acces imbrique, et PHP a de toute facon remplace le point par un
+            // underscore dans $_POST. Sans ce contournement, toute sauvegarde de la page
+            // remettait ces bascules a 0 quel que soit l'etat reel des cases.
+            $rawInput = $request->all();
             foreach ($allCheckboxSettings as $setting) {
                 $formKey = $setting->key;  // Les champs n'ont pas le préfixe "setting_"
-                if (! $treatMissingCheckboxesAsOff && ! $request->exists($formKey)) {
+                $underscoreKey = str_replace('.', '_', $formKey);
+
+                $isSubmitted = array_key_exists($formKey, $rawInput)
+                    || array_key_exists($underscoreKey, $rawInput);
+
+                if (! $treatMissingCheckboxesAsOff && ! $isSubmitted) {
                     continue;
                 }
 
-                $value = $request->boolean($formKey) ? '1' : '0';
+                $submittedValue = $rawInput[$formKey] ?? $rawInput[$underscoreKey] ?? null;
+                $value = filter_var($submittedValue, FILTER_VALIDATE_BOOLEAN) ? '1' : '0';
 
                 $setting->update([
                     'value' => $value,
