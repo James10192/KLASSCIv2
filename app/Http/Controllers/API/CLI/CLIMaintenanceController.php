@@ -1076,6 +1076,84 @@ class CLIMaintenanceController extends BaseApiController
     }
 
     /**
+     * POST /api/cli/logs/prune — Supprime les fichiers de log obsoletes.
+     *
+     * Cible uniquement storage/logs, et uniquement les fichiers applicatifs :
+     * l'ancien laravel.log sans rotation (190 Mo constates sur esbtp-abidjan
+     * avant le passage au canal quotidien), debug.log, et les fichiers dates
+     * anterieurs a la retention. Le fichier du jour n'est jamais touche.
+     *
+     * Dry-run par defaut : il faut apply=1 pour supprimer reellement.
+     */
+    public function logsPrune(Request $request): JsonResponse
+    {
+        if (! $request->user()->tokenCan('cli:admin')) {
+            return $this->errorResponse('Token missing cli:admin ability', [], 403);
+        }
+
+        $apply = $request->boolean('apply');
+        $keepDays = max(1, (int) $request->input('keep_days', 14));
+        $current = $this->currentLogFile();
+        $limite = now()->subDays($keepDays)->getTimestamp();
+
+        $candidats = array_merge(
+            glob(storage_path('logs/laravel*.log')) ?: [],
+            glob(storage_path('logs/debug*.log')) ?: [],
+        );
+
+        $supprimes = [];
+        $octets = 0;
+
+        foreach ($candidats as $fichier) {
+            if (! is_file($fichier)) {
+                continue;
+            }
+            // Ne jamais supprimer le fichier en cours d'ecriture.
+            if ($current !== null && realpath($fichier) === realpath($current)) {
+                continue;
+            }
+
+            $estLegacy = basename($fichier) === 'laravel.log' || basename($fichier) === 'debug.log';
+            $estPerime = filemtime($fichier) < $limite;
+
+            if (! $estLegacy && ! $estPerime) {
+                continue;
+            }
+
+            $taille = filesize($fichier) ?: 0;
+
+            if ($apply && @unlink($fichier) === false) {
+                continue;
+            }
+
+            $supprimes[] = [
+                'fichier' => basename($fichier),
+                'taille_mo' => round($taille / 1048576, 2),
+                'raison' => $estLegacy ? 'fichier sans rotation' : 'au-dela de la retention',
+            ];
+            $octets += $taille;
+        }
+
+        Log::warning('CLI: purge des logs', [
+            'apply' => $apply,
+            'fichiers' => count($supprimes),
+            'octets' => $octets,
+            'caller_user_id' => $request->user()->id,
+        ]);
+
+        return $this->successResponse([
+            'mode' => $apply ? 'APPLIQUE' : 'DRY-RUN (aucune suppression)',
+            'fichier_courant' => $current ? basename($current) : null,
+            'retention_jours' => $keepDays,
+            'fichiers' => $supprimes,
+            'total_fichiers' => count($supprimes),
+            'espace_libere_mo' => round($octets / 1048576, 2),
+        ], $apply
+            ? 'Purge des logs effectuee'
+            : 'Simulation : ajoutez apply=1 pour supprimer');
+    }
+
+    /**
      * Fichier de log courant.
      *
      * Le canal applicatif tourne desormais quotidiennement : laravel.log ne
