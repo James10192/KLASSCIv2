@@ -18,16 +18,43 @@
     $nbClassesSuivies = $coverage['total'] ?? 0;
 
     // Trois acquis par classe : emploi du temps, notes a jour, assiduite
-    // relevee. Une classe a 3 sur 3 est prete, en dessous il manque quelque
-    // chose et la barre vire a l'orange.
+    // relevee. Un score agrege 0-3 aplatirait tout le monde au meme niveau
+    // sans dire ce qui manque : on empile donc un segment par acquis, chacun
+    // de hauteur constante. Bleu = acquis, orange = manquant. Une barre
+    // entierement bleue est une classe prete.
+    $acquis = [
+        ['cle' => 'edt', 'titre' => 'Emploi du temps', 'teinte' => '#0453cb'],
+        ['cle' => 'notes', 'titre' => 'Notes à jour', 'teinte' => '#3b7ddb'],
+        ['cle' => 'assiduite', 'titre' => 'Assiduité relevée', 'teinte' => '#5e91de'],
+    ];
+
+    $series = [];
+    $phrases = [];
+    foreach ($acquis as $a) {
+        $series[] = [
+            'label' => $a['titre'],
+            'data' => array_fill(0, count($couverture), 1),
+            'tones' => array_map(fn ($c) => $c[$a['cle']] ? $a['teinte'] : 'alerte', $couverture),
+        ];
+        $phrases[] = array_map(
+            fn ($c) => $a['titre'].' : '.($c[$a['cle']] ? 'oui' : 'manquant'),
+            $couverture
+        );
+    }
+
     $chartData = [
         'labels' => array_map(fn ($c) => $c['name'], $couverture),
-        'datasets' => [[
-            'label' => 'Couverture',
-            'data' => array_map(fn ($c) => $c['score'], $couverture),
-            'tones' => array_map(fn ($c) => $c['score'] === 3 ? '#0453cb' : 'alerte', $couverture),
-        ]],
+        'datasets' => $series,
+        'tooltips' => $phrases,
         'links' => array_map(fn ($c) => route('esbtp.classes.show', $c['id']), $couverture),
+    ];
+
+    // L'axe vertical ne porte aucun sens ici : chaque segment vaut un acquis.
+    $chartOptions = [
+        'scales' => [
+            'x' => ['stacked' => true],
+            'y' => ['stacked' => true, 'max' => 3, 'ticks' => ['display' => false], 'grid' => ['display' => false]],
+        ],
     ];
 @endphp
 <div class="main-content">
@@ -149,7 +176,7 @@
                 id="de-coverage"
                 type="bar"
                 :data="$chartData"
-                :options="['scales' => ['y' => ['max' => 3]]]"
+                :options="$chartOptions"
                 :is-empty="$nbClassesSuivies === 0"
                 empty-icon="fa-school"
                 empty-title="Aucune classe active"
@@ -157,11 +184,13 @@
 
             @if($nbClassesSuivies > 0)
                 <div class="dsh-legend">
+                    @foreach($acquis as $a)
+                        <span class="dsh-legend-item">
+                            <span class="dsh-legend-dot" style="background:{{ $a['teinte'] }}"></span>{{ $a['titre'] }}
+                        </span>
+                    @endforeach
                     <span class="dsh-legend-item">
-                        <span class="dsh-legend-dot" style="background:#0453cb"></span>Prête, 3 acquis sur 3
-                    </span>
-                    <span class="dsh-legend-item">
-                        <span class="dsh-legend-dot" style="background:#f59e0b"></span>Il manque quelque chose
+                        <span class="dsh-legend-dot" style="background:#f59e0b"></span>Manquant
                     </span>
                     @if($nbClassesSuivies > count($couverture))
                         <span class="dsh-legend-item">

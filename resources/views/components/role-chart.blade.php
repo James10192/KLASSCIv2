@@ -156,6 +156,21 @@
         var type = canvas.dataset.chartType || 'bar';
         var options = fusionner(BASE, payload.options || {});
 
+        // Une valeur brute ne veut souvent rien dire dans un empilement de
+        // segments binaires. `data.tooltips[serie][index]` permet au gabarit
+        // de fournir la phrase exacte, sans passer de fonction depuis PHP.
+        var phrases = (payload.data || {}).tooltips;
+        if (Array.isArray(phrases)) {
+            options.plugins.tooltip.callbacks = {
+                label: function (ctx) {
+                    var serie = phrases[ctx.datasetIndex] || [];
+                    return serie[ctx.dataIndex] !== undefined
+                        ? serie[ctx.dataIndex]
+                        : ctx.formattedValue;
+                },
+            };
+        }
+
         // Un graphique de tableau de bord est un sélecteur : cliquer un segment
         // ouvre la liste filtrée correspondante quand une URL est fournie.
         options.onClick = function (evt, elements) {
