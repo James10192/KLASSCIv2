@@ -49,9 +49,18 @@ return [
     */
 
     'channels' => [
+        // Un seul canal, qui tourne. L'empilement precedent ecrivait chaque
+        // ligne trois fois : dans « single » (laravel.log, sans aucune
+        // rotation, donc 190 Mo constates sur esbtp-abidjan), dans « daily »
+        // (14 jours), et dans « debug » dont le niveau est force a debug quelle
+        // que soit la valeur de LOG_LEVEL.
+        //
+        // « single » et « debug » restent definis ci-dessous : on peut toujours
+        // les cibler ponctuellement avec Log::channel('debug') pour une
+        // investigation, sans qu'ils recoivent tout le trafic applicatif.
         'stack' => [
             'driver' => 'stack',
-            'channels' => ['single', 'daily', 'debug'],
+            'channels' => ['daily'],
             'ignore_exceptions' => false,
         ],
 

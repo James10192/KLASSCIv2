@@ -38,20 +38,20 @@ class CheckInstalled
         }
 
         // Journaliser l'état de l'installation pour le débogage
-        \Log::info("Middleware CheckInstalled - Installation status: " . ($installed ? 'Installed' : 'Not installed') .
+        \Log::debug("Middleware CheckInstalled - Installation status: " . ($installed ? 'Installed' : 'Not installed') .
                   ", Match: {$matchPercentage}%, Admin user: " . ($hasAdminUser ? 'Yes' : 'No') .
                   ", Route: " . $request->path());
 
         // Si nous sommes sur les routes d'installation, toujours permettre l'accès
         if ($request->is('install') || $request->is('install/*')) {
-            \Log::info("Allowing access to installation routes");
+            \Log::debug("Allowing access to installation routes");
             return $next($request);
         }
 
         // Si l'application n'est pas installée du tout ou s'il n'y a pas d'utilisateur admin,
         // rediriger vers l'installation
         if (!$installed || !$hasAdminUser) {
-            \Log::info("Redirecting to installation page. Installed: " . ($installed ? 'Yes' : 'No') .
+            \Log::debug("Redirecting to installation page. Installed: " . ($installed ? 'Yes' : 'No') .
                       ", Admin user exists: " . ($hasAdminUser ? 'Yes' : 'No'));
 
             // Si l'utilisateur essaie d'accéder au login, rediriger vers l'installation
@@ -67,7 +67,7 @@ class CheckInstalled
 
         // Si nous sommes sur la page de login, autoriser l'accès
         if ($request->is('login')) {
-            \Log::info("Allowing access to login page");
+            \Log::debug("Allowing access to login page");
             return $next($request);
         }
 

@@ -13,7 +13,13 @@ class InstallationHelper
 {
     private const INSTALL_STATUS_CACHE_KEY = 'installation_status_v1';
     private const ADMIN_EXISTS_CACHE_KEY = 'installation_has_admin_v1';
-    private const INSTALL_CACHE_TTL_SECONDS = 30;
+    // Une heure et non trente secondes : l'etat d'installation ne change pas
+    // d'une minute a l'autre, alors que le recalcul compare les 206 tables de
+    // migration au schema reel. A trente secondes, la comparaison repartait en
+    // pleine generation de bulletins et volait du budget sur une operation
+    // deja limitee a 30 s par l'hebergement. Le cache est de toute facon vide
+    // par cache:clear apres chaque deploiement.
+    private const INSTALL_CACHE_TTL_SECONDS = 3600;
 
     /**
      * Check if the application is installed
@@ -39,7 +45,7 @@ class InstallationHelper
             $hasAdminUser = self::hasAdminUser();
 
             // Journaliser l'état de l'installation
-            \Log::info(
+            \Log::debug(
                 "Installation status check: ENV=" . ($envInstalled ? 'true' : 'false') .
                 ", DB=" . ($dbConfigured ? 'true' : 'false') .
                 ", AdminUser=" . ($hasAdminUser ? 'true' : 'false')
@@ -151,7 +157,7 @@ class InstallationHelper
                     ->where('model_has_roles.model_type', '=', User::class)
                     ->exists();
 
-                Log::info('Utilisateur superAdmin existe: ' . ($superAdminExists ? 'Oui' : 'Non'));
+                Log::debug('Utilisateur superAdmin existe: ' . ($superAdminExists ? 'Oui' : 'Non'));
 
                 return $superAdminExists;
             });
@@ -209,9 +215,9 @@ class InstallationHelper
                         $allTablesPresent = count($missingTables) === 0;
 
                         // Journaliser les résultats pour le débogage
-                        \Log::info("Match percentage: {$matchPercentage}%");
-                        \Log::info("Missing tables: " . count($missingTables));
-                        \Log::info("Extra tables: " . count($extraTables));
+                        \Log::debug("Match percentage: {$matchPercentage}%");
+                        \Log::debug("Missing tables: " . count($missingTables));
+                        \Log::debug("Extra tables: " . count($extraTables));
                     } catch (\Exception $e) {
                         \Log::error("Erreur lors du calcul du statut d'installation: " . $e->getMessage());
                     }
@@ -276,7 +282,7 @@ class InstallationHelper
         try {
             foreach ($requiredTables as $table) {
                 if (!Schema::hasTable($table)) {
-                    \Log::info("Table '$table' does not exist");
+                    \Log::debug("Table '$table' does not exist");
                     return false;
                 }
             }
@@ -337,7 +343,7 @@ class InstallationHelper
         }
 
         // Log pour le débogage
-        Log::info('Tables attendues: ' . implode(', ', $tableNames));
+        Log::debug('Tables attendues: ' . implode(', ', $tableNames));
 
         return $tableNames;
     }
@@ -351,7 +357,7 @@ class InstallationHelper
     {
         try {
             if (!self::isDatabaseConfigured()) {
-                Log::info("allESBTPTablesExist: La base de données n'est pas configurée");
+                Log::debug("allESBTPTablesExist: La base de données n'est pas configurée");
                 return false;
             }
 
@@ -377,15 +383,15 @@ class InstallationHelper
 
             foreach ($esbtpTables as $table) {
                 $exists = Schema::hasTable($table);
-                Log::info("Table {$table} existe: " . ($exists ? 'Oui' : 'Non'));
+                Log::debug("Table {$table} existe: " . ($exists ? 'Oui' : 'Non'));
 
                 if (!$exists) {
-                    Log::info("Table ESBTP manquante: {$table}");
+                    Log::debug("Table ESBTP manquante: {$table}");
                     return false;
                 }
             }
 
-            Log::info("Toutes les tables ESBTP existent");
+            Log::debug("Toutes les tables ESBTP existent");
             return true;
         } catch (\Exception $e) {
             Log::error("Erreur lors de la vérification des tables ESBTP: " . $e->getMessage());
@@ -404,7 +410,7 @@ class InstallationHelper
     {
         try {
             if (!self::isDatabaseConfigured()) {
-                Log::info("checkAllRequiredTables: La base de données n'est pas configurée");
+                Log::debug("checkAllRequiredTables: La base de données n'est pas configurée");
                 return [
                     'all_exist' => false,
                     'missing_tables' => [],
@@ -424,7 +430,7 @@ class InstallationHelper
             // Vérifier l'existence de chaque table
             foreach ($expectedTables as $table) {
                 $exists = Schema::hasTable($table);
-                Log::info("Table {$table} existe: " . ($exists ? 'Oui' : 'Non'));
+                Log::debug("Table {$table} existe: " . ($exists ? 'Oui' : 'Non'));
 
                 if ($exists) {
                     $existingTables[] = $table;
@@ -443,9 +449,9 @@ class InstallationHelper
             ];
 
             // Journalisation du résultat
-            Log::info("Vérification des tables requises: " . count($existingTables) . "/" . count($expectedTables) . " tables existent");
+            Log::debug("Vérification des tables requises: " . count($existingTables) . "/" . count($expectedTables) . " tables existent");
             if (count($missingTables) > 0) {
-                Log::info("Tables manquantes: " . implode(', ', $missingTables));
+                Log::debug("Tables manquantes: " . implode(', ', $missingTables));
             }
 
             return $result;
@@ -473,7 +479,7 @@ class InstallationHelper
     {
         try {
             if (!self::isDatabaseConfigured()) {
-                Log::info("checkTablesByCategory: La base de données n'est pas configurée");
+                Log::debug("checkTablesByCategory: La base de données n'est pas configurée");
                 return [
                     'categories' => [],
                     'all_complete' => false
@@ -573,7 +579,7 @@ class InstallationHelper
                         : 0
                 ];
 
-                Log::info("Catégorie {$category['name']}: {$results[$key]['percentage']}% complet");
+                Log::debug("Catégorie {$category['name']}: {$results[$key]['percentage']}% complet");
             }
 
             return [
@@ -612,7 +618,7 @@ class InstallationHelper
                 }
             }
 
-            Log::info('Tables existantes récupérées: ' . count($tables));
+            Log::debug('Tables existantes récupérées: ' . count($tables));
             return $tables;
         } catch (\Exception $e) {
             Log::error('Erreur lors de la récupération des tables existantes: ' . $e->getMessage());
@@ -684,8 +690,8 @@ class InstallationHelper
             }
 
             // Journaliser pour le débogage
-            \Log::info('Fichiers de migration trouvés: ' . count($migrationFiles));
-            \Log::info('Noms de tables extraits: ' . count($tableNames));
+            \Log::debug('Fichiers de migration trouvés: ' . count($migrationFiles));
+            \Log::debug('Noms de tables extraits: ' . count($tableNames));
 
             return $tableNames;
         } catch (\Exception $e) {
@@ -771,7 +777,7 @@ class InstallationHelper
 
             // Vérifier la table étudiants
             if (Schema::hasTable('esbtp_etudiants')) {
-                \Log::info('Table esbtp_etudiants existe');
+                \Log::debug('Table esbtp_etudiants existe');
             } else {
                 $result['success'] = false;
                 $result['etudiants'] = false;
@@ -781,7 +787,7 @@ class InstallationHelper
 
             // Vérifier la table parents
             if (Schema::hasTable('esbtp_parents')) {
-                \Log::info('Table esbtp_parents existe');
+                \Log::debug('Table esbtp_parents existe');
             } else {
                 $result['success'] = false;
                 $result['parents'] = false;
@@ -791,7 +797,7 @@ class InstallationHelper
 
             // Vérifier la table paiements
             if (Schema::hasTable('esbtp_paiements')) {
-                \Log::info('Table esbtp_paiements existe');
+                \Log::debug('Table esbtp_paiements existe');
             } else {
                 $result['success'] = false;
                 $result['paiements'] = false;
