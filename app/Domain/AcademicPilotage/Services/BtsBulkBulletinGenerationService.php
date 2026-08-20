@@ -205,6 +205,7 @@ final class BtsBulkBulletinGenerationService
         ?User $actor,
         bool $recalculate = false,
         ?string $incompleteReason = null,
+        ?array $studentIds = null,
     ): BulkBulletinGenerationResult {
         $period = $this->bulletinService->normalizePeriode($period);
         $preflight = $this->preflight($classe, $academicYearId, $period, $actor, $recalculate);
@@ -225,6 +226,20 @@ final class BtsBulkBulletinGenerationService
         }
 
         $students = $this->activeStudentsForClass($classe->id, $academicYearId);
+
+        // Traitement par lots : la generation coute O(N^2) et l'hebergement
+        // coupe a 30 secondes. Restreindre le lot permet de tenir dans le
+        // budget et de reprendre la ou on s'est arrete. Le recalcul des rangs
+        // en fin de methode reste calcule sur la cohorte entiere, le resultat
+        // final est donc identique a un traitement en une passe.
+        $totalStudents = $students->count();
+        if ($studentIds !== null) {
+            $wanted = array_map('intval', $studentIds);
+            $students = $students->filter(
+                static fn ($student) => in_array((int) $student->id, $wanted, true)
+            )->values();
+        }
+
         $created = 0;
         $regenerated = 0;
         $skipped = [];
