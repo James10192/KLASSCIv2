@@ -66,7 +66,10 @@
 </head>
 <body>
     <div class="header">
-        <img src="{{ public_path('images/logo.png') }}" alt="Logo" class="logo">
+        @php $_logo = \App\Helpers\SettingsHelper::resolveLogoBase64(); @endphp
+        @if($_logo)
+            <img src="{{ $_logo['data_uri'] }}" alt="Logo" class="logo">
+        @endif
         <div class="school-info">
             <h2>ÉCOLE SUPÉRIEURE DU BÂTIMENT ET DES TRAVAUX PUBLICS</h2>
             <p>Année Universitaire {{ $bulletin->annee_universitaire->annee }}</p>

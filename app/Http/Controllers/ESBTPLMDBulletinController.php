@@ -499,7 +499,6 @@ class ESBTPLMDBulletinController extends Controller
             $logoPath ? storage_path('app/public/'.$logoPath) : null,
             // Repli generique uniquement : jamais le logo d'un etablissement.
             public_path('images/LOGO-KLASSCI-PNG.png'),
-            public_path('images/logo.png'),
         ];
 
         foreach (array_filter($paths) as $path) {
