@@ -125,8 +125,11 @@ class DirecteurEtudesDashboardData
             }
 
             $data['todayAttendances'] = (clone $attendanceQuery)->count();
-            $totalPresent = (clone $attendanceQuery)->where('status', 'present')->count();
-            $totalAbsent = (clone $attendanceQuery)->where('status', 'absent')->count();
+            // esbtp_attendances porte statut, pas status, depuis mars 2025.
+            // L'ancien nom levait une QueryException avalee par le catch plus
+            // bas : le taux de presence affichait 0 % en permanence.
+            $totalPresent = (clone $attendanceQuery)->where('statut', 'present')->count();
+            $totalAbsent = (clone $attendanceQuery)->where('statut', 'absent')->count();
             $data['attendanceStats'] = [
                 'total_present' => $totalPresent,
                 'total_absent' => $totalAbsent,

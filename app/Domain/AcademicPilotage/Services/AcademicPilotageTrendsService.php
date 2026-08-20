@@ -150,9 +150,11 @@ final class AcademicPilotageTrendsService
     {
         $lignes = ESBTPAttendance::query()
             ->where('annee_universitaire_id', $annee->id)
-            ->whereIn('status', ['present', 'absent'])
+            // La colonne s'appelle statut depuis le renommage de mars 2025 :
+            // esbtp_attendances n'a plus de colonne status.
+            ->whereIn('statut', ['present', 'absent'])
             ->selectRaw("DATE_FORMAT(date, '%Y-%m') as mois")
-            ->selectRaw("SUM(CASE WHEN status = 'present' THEN 1 ELSE 0 END) as presents")
+            ->selectRaw("SUM(CASE WHEN statut = 'present' THEN 1 ELSE 0 END) as presents")
             ->selectRaw('COUNT(*) as appels')
             ->groupBy('mois')
             ->get()
