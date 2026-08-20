@@ -148,8 +148,13 @@ final class AcademicPilotageTrendsService
      */
     private function presence(ESBTPAnneeUniversitaire $annee, array $cles): array
     {
+        // Borne par date et non par annee_universitaire_id : cette colonne
+        // n'est pas systematiquement renseignee sur les presences, alors que
+        // les dates de l'annee en donnent la definition exacte. C'est aussi
+        // ce que fait la couverture des notes plus bas.
         $lignes = ESBTPAttendance::query()
-            ->where('annee_universitaire_id', $annee->id)
+            ->whereDate('date', '>=', $annee->start_date)
+            ->whereDate('date', '<=', $annee->end_date)
             // La colonne s'appelle statut depuis le renommage de mars 2025 :
             // esbtp_attendances n'a plus de colonne status.
             ->whereIn('statut', ['present', 'absent'])
