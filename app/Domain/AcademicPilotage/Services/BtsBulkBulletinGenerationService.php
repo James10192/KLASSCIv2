@@ -45,9 +45,22 @@ final class BtsBulkBulletinGenerationService
         string $period,
         ?User $actor,
         bool $recalculate = false,
+        ?array $studentIds = null,
     ): array {
         $period = $this->bulletinService->normalizePeriode($period);
         $students = $this->activeStudentsForClass($classe->id, $academicYearId);
+
+        // Quand la generation traite une tranche, inspecter toute la classe
+        // reviendrait a payer le pre-controle complet a chaque requete : c'est
+        // le cout fixe qui dominait le temps d'execution. Les controles de
+        // configuration de classe (professeurs, matieres) restent evalues, ils
+        // ne dependent pas de la liste d'etudiants.
+        if ($studentIds !== null) {
+            $wanted = array_map('intval', $studentIds);
+            $students = $students->filter(
+                static fn ($student) => in_array((int) $student->id, $wanted, true)
+            )->values();
+        }
         $skipped = [];
         $blockingErrors = [];
         $missingCoefficientBuckets = [];
@@ -208,7 +221,7 @@ final class BtsBulkBulletinGenerationService
         ?array $studentIds = null,
     ): BulkBulletinGenerationResult {
         $period = $this->bulletinService->normalizePeriode($period);
-        $preflight = $this->preflight($classe, $academicYearId, $period, $actor, $recalculate);
+        $preflight = $this->preflight($classe, $academicYearId, $period, $actor, $recalculate, $studentIds);
         $classConfigurationBlocks = collect($preflight['blocking_errors'] ?? [])
             ->whereIn('code', ['professeurs_missing'])
             ->values()
