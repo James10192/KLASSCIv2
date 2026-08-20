@@ -167,9 +167,14 @@
     .rp-flag-title { font-size: .9rem; font-weight: 700; color: #1e293b; }
     .rp-flag-text { font-size: .8rem; color: #64748b; margin-top: .15rem; }
 
+    /* Six indicateurs : trois colonnes donnent deux rangs pleins, la grille
+       auto-fit laissait deux cartes seules sur le second rang. */
     .rp-grid {
         display: grid; gap: 1rem;
-        grid-template-columns: repeat(auto-fit, minmax(215px, 1fr));
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+    @media (max-width: 1200px) {
+        .rp-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
     .rp-card {
         position: relative;

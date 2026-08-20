@@ -265,9 +265,11 @@
     .de-alert--info .de-alert-icon { background: rgba(4, 83, 203, .08); color: #0453cb; }
 
     /* ===== Indicateurs ===== */
+    /* 165px : les six indicateurs tiennent sur une seule ligne en poste de
+       travail, au lieu de laisser une carte orpheline sur un second rang. */
     .de-kpis {
         display: grid; gap: 1rem; margin-bottom: 1.25rem;
-        grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(165px, 1fr));
     }
     .de-kpi {
         display: flex; flex-direction: column;

@@ -80,7 +80,9 @@
     }
     .rdx-hero h1 { font-size: 1.45rem; font-weight: 700; color: #fff; margin: 0; line-height: 1.25; }
     .rdx-hero p { color: rgba(255, 255, 255, .7); font-size: .88rem; margin: .2rem 0 0; }
-    .rdx-hero-actions { display: flex; gap: .5rem; flex-wrap: wrap; }
+    /* margin-left auto : les actions restent alignées à droite même quand
+       elles passent à la ligne sous un titre long. */
+    .rdx-hero-actions { display: flex; gap: .5rem; flex-wrap: wrap; margin-left: auto; }
 
     /* ===== KPIs dans le hero ===== */
     .rdx-kpis { display: flex; gap: .75rem; margin-top: 1.5rem; flex-wrap: wrap; }

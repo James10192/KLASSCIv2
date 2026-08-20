@@ -1542,17 +1542,17 @@
                             @endif
                             @if(($personnelAccess['responsables_scolarite']['create'] ?? false) && ($userRole ?? '') !== 'responsableScolarite')
                             <li><a class="dropdown-item" href="{{ route('esbtp.responsables-scolarite.create') }}">
-                                <i class="fas fa-user-check"></i>Responsable scolarite
+                                <i class="fas fa-user-check"></i>Responsable scolarité
                             </a></li>
                             @endif
                             @if(($personnelAccess['services_scolarite']['create'] ?? false) && ($userRole ?? '') !== 'serviceScolarite')
                             <li><a class="dropdown-item" href="{{ route('esbtp.services-scolarite.create') }}">
-                                <i class="fas fa-print"></i>Service scolarite
+                                <i class="fas fa-print"></i>Service scolarité
                             </a></li>
                             @endif
                             @if(($personnelAccess['agents_inscription']['create'] ?? false) && ($userRole ?? '') !== 'agentInscription')
                             <li><a class="dropdown-item" href="{{ route('esbtp.agents-inscription.create') }}">
-                                <i class="fas fa-user-plus"></i>Agent d inscription
+                                <i class="fas fa-user-plus"></i>Agent d'inscription
                             </a></li>
                             @endif
                             @if($personnelAccess['comptables']['create'] ?? false)
@@ -1605,13 +1605,13 @@
                 @if(in_array('services_scolarite', $visiblePersonnelTabs, true) && !in_array('services_scolarite', $hiddenTabs))
                 <div class="pu-hero-kpi">
                     <div class="pu-hero-kpi-value">{{ $stats['services_scolarite'] ?? 0 }}</div>
-                    <div class="pu-hero-kpi-label">Service scolarite</div>
+                    <div class="pu-hero-kpi-label">Service scolarité</div>
                 </div>
                 @endif
                 @if(in_array('agents_inscription', $visiblePersonnelTabs, true) && !in_array('agents_inscription', $hiddenTabs))
                 <div class="pu-hero-kpi">
                     <div class="pu-hero-kpi-value">{{ $stats['agents_inscription'] ?? 0 }}</div>
-                    <div class="pu-hero-kpi-label">Agents d inscription</div>
+                    <div class="pu-hero-kpi-label">Agents d'inscription</div>
                 </div>
                 @endif
                 @if(in_array('comptables', $visiblePersonnelTabs, true))
@@ -1775,21 +1775,21 @@
                 @if(in_array('responsables_scolarite', $visiblePersonnelTabs, true) && !in_array('responsables_scolarite', $hiddenTabs))
                 <button class="pu-tab slider-tab {{ $firstVisibleTab === 'responsables_scolarite' ? 'active' : '' }}" data-tab="responsables_scolarite">
                     <span class="pu-tab-icon"><i class="fas fa-user-check"></i></span>
-                    <span class="pu-tab-label">Responsables scolarite</span>
+                    <span class="pu-tab-label">Responsables scolarité</span>
                     <span class="pu-tab-count">{{ $stats['responsables_scolarite'] ?? 0 }} personnes</span>
                 </button>
                 @endif
                 @if(in_array('services_scolarite', $visiblePersonnelTabs, true) && !in_array('services_scolarite', $hiddenTabs))
                 <button class="pu-tab slider-tab {{ $firstVisibleTab === 'services_scolarite' ? 'active' : '' }}" data-tab="services_scolarite">
                     <span class="pu-tab-icon"><i class="fas fa-print"></i></span>
-                    <span class="pu-tab-label">Service scolarite</span>
+                    <span class="pu-tab-label">Service scolarité</span>
                     <span class="pu-tab-count">{{ $stats['services_scolarite'] ?? 0 }} personnes</span>
                 </button>
                 @endif
                 @if(in_array('agents_inscription', $visiblePersonnelTabs, true) && !in_array('agents_inscription', $hiddenTabs))
                 <button class="pu-tab slider-tab {{ $firstVisibleTab === 'agents_inscription' ? 'active' : '' }}" data-tab="agents_inscription">
                     <span class="pu-tab-icon"><i class="fas fa-user-plus"></i></span>
-                    <span class="pu-tab-label">Agents d inscription</span>
+                    <span class="pu-tab-label">Agents d'inscription</span>
                     <span class="pu-tab-count">{{ $stats['agents_inscription'] ?? 0 }} personnes</span>
                 </button>
                 @endif
@@ -2174,11 +2174,11 @@
                 <div class="pu-panel slider-panel {{ $firstVisibleTab === 'responsables_scolarite' ? 'active' : '' }}" id="responsables_scolarite-panel">
                     <div class="pu-panel-header">
                         <div class="pu-search">
-                            <input type="text" placeholder="Rechercher un responsable scolarite..." id="search-responsables_scolarite">
+                            <input type="text" placeholder="Rechercher un responsable scolarité..." id="search-responsables_scolarite">
                         </div>
                         @if($personnelAccess['responsables_scolarite']['create'] ?? false)
                         <a href="{{ route('esbtp.responsables-scolarite.create') }}" class="pu-panel-btn pu-panel-btn-primary">
-                            <i class="fas fa-plus"></i>Nouveau responsable scolarite
+                            <i class="fas fa-plus"></i>Nouveau responsable scolarité
                         </a>
                         @endif
                     </div>
@@ -2219,10 +2219,10 @@
                         @else
                             <div class="pu-empty">
                                 <div class="pu-empty-icon"><i class="fas fa-user-check"></i></div>
-                                <h3>Aucun responsable scolarite</h3>
+                                <h3>Aucun responsable scolarité</h3>
                                 @if($personnelAccess['responsables_scolarite']['create'] ?? false)
                                 <a href="{{ route('esbtp.responsables-scolarite.create') }}" class="pu-empty-btn">
-                                    <i class="fas fa-plus"></i>Créer un responsable scolarite
+                                    <i class="fas fa-plus"></i>Créer un responsable scolarité
                                 </a>
                                 @endif
                             </div>
@@ -2235,11 +2235,11 @@
                 <div class="pu-panel slider-panel {{ $firstVisibleTab === 'services_scolarite' ? 'active' : '' }}" id="services_scolarite-panel">
                     <div class="pu-panel-header">
                         <div class="pu-search">
-                            <input type="text" placeholder="Rechercher un service scolarite..." id="search-services_scolarite">
+                            <input type="text" placeholder="Rechercher un service scolarité..." id="search-services_scolarite">
                         </div>
                         @if($personnelAccess['services_scolarite']['create'] ?? false)
                         <a href="{{ route('esbtp.services-scolarite.create') }}" class="pu-panel-btn pu-panel-btn-primary">
-                            <i class="fas fa-plus"></i>Nouveau service scolarite
+                            <i class="fas fa-plus"></i>Nouveau service scolarité
                         </a>
                         @endif
                     </div>
@@ -2280,10 +2280,10 @@
                         @else
                             <div class="pu-empty">
                                 <div class="pu-empty-icon"><i class="fas fa-print"></i></div>
-                                <h3>Aucun service scolarite</h3>
+                                <h3>Aucun service scolarité</h3>
                                 @if($personnelAccess['services_scolarite']['create'] ?? false)
                                 <a href="{{ route('esbtp.services-scolarite.create') }}" class="pu-empty-btn">
-                                    <i class="fas fa-plus"></i>Créer un service scolarite
+                                    <i class="fas fa-plus"></i>Créer un service scolarité
                                 </a>
                                 @endif
                             </div>
@@ -2296,11 +2296,11 @@
                 <div class="pu-panel slider-panel {{ $firstVisibleTab === 'agents_inscription' ? 'active' : '' }}" id="agents_inscription-panel">
                     <div class="pu-panel-header">
                         <div class="pu-search">
-                            <input type="text" placeholder="Rechercher un agent d inscription..." id="search-agents_inscription">
+                            <input type="text" placeholder="Rechercher un agent d'inscription..." id="search-agents_inscription">
                         </div>
                         @if($personnelAccess['agents_inscription']['create'] ?? false)
                         <a href="{{ route('esbtp.agents-inscription.create') }}" class="pu-panel-btn pu-panel-btn-primary">
-                            <i class="fas fa-plus"></i>Nouveau agent d inscription
+                            <i class="fas fa-plus"></i>Nouvel agent d'inscription
                         </a>
                         @endif
                     </div>
@@ -2341,10 +2341,10 @@
                         @else
                             <div class="pu-empty">
                                 <div class="pu-empty-icon"><i class="fas fa-user-plus"></i></div>
-                                <h3>Aucun agent d inscription</h3>
+                                <h3>Aucun agent d'inscription</h3>
                                 @if($personnelAccess['agents_inscription']['create'] ?? false)
                                 <a href="{{ route('esbtp.agents-inscription.create') }}" class="pu-empty-btn">
-                                    <i class="fas fa-plus"></i>Créer un agent d inscription
+                                    <i class="fas fa-plus"></i>Créer un agent d'inscription
                                 </a>
                                 @endif
                             </div>
