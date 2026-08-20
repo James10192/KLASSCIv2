@@ -19,6 +19,10 @@ class GenerateClasseBulletinsRequest extends FormRequest
             'periode'                => 'required|in:semestre1,semestre2,annuel',
             'recalculer'             => 'sometimes|boolean',
             'incomplete_reason'      => 'nullable|string|min:8|max:1000',
+            // Tranche optionnelle : le front decoupe la classe pour tenir dans
+            // la limite d'execution de l'hebergement.
+            'student_ids'            => 'sometimes|array|max:60',
+            'student_ids.*'          => 'integer',
         ];
     }
 }

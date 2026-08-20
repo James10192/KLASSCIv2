@@ -603,6 +603,16 @@
     .bus-config-table th:nth-child(2),
     .bus-config-table td:nth-child(2) { display: none; }
 }
+
+    /* Progression d une generation par tranches */
+    .bus-progress {
+        display: flex; align-items: center; gap: .6rem;
+        margin-top: .85rem; padding: .7rem .9rem;
+        background: rgba(4, 83, 203, .06);
+        border: 1px solid rgba(4, 83, 203, .18);
+        border-radius: 10px;
+        font-size: .84rem; font-weight: 600; color: #0453cb;
+    }
 </style>
 @endpush
 
@@ -891,6 +901,11 @@
                             <span x-text="(form.incomplete_reason || '').trim().length + ' / 1000'"></span>
                         </div>
                     </div>
+                </div>
+                {{-- Progression d'une generation decoupee en tranches --}}
+                <div class="bus-progress" x-show="progression" x-cloak>
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <span x-text="progression"></span>
                 </div>
                 <div class="bus-inline-panel"
                      :class="lastGeneration?.ok ? 'bus-inline-panel--ok' : 'bus-inline-panel--danger'"

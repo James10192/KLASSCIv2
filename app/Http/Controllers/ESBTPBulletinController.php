@@ -1434,13 +1434,22 @@ class ESBTPBulletinController extends Controller
             'Cette classe est LMD. Utilisez /esbtp/lmd/bulletins pour generer des bulletins LMD en masse.'
         );
 
+        // Traitement par tranches : la generation coute O(N^2) et l'hebergement
+        // coupe a 30 secondes. Le front envoie une tranche a la fois et affiche
+        // la progression. Le recalcul des rangs porte sur la cohorte entiere a
+        // chaque passe, l'etat final est donc identique a une passe unique.
+        $studentIds = $request->filled('student_ids')
+            ? array_map('intval', (array) $request->input('student_ids'))
+            : null;
+
         $result = $this->bulkBulletinGeneration->generate(
             $classe,
             $request->integer('annee_universitaire_id'),
             (string) $request->input('periode'),
             $request->user(),
             $request->boolean('recalculer'),
-            $request->input('incomplete_reason')
+            $request->input('incomplete_reason'),
+            $studentIds
         );
 
         if ($request->expectsJson()) {
@@ -1495,10 +1504,24 @@ class ESBTPBulletinController extends Controller
             $request->boolean('recalculer')
         );
 
+        // Identifiants exposes pour que le front decoupe la generation en
+        // tranches : la classe entiere ne tient pas dans la limite
+        // d'execution de l'hebergement.
+        $studentIds = ESBTPInscription::query()
+            ->where('classe_id', (int) $classe->id)
+            ->where('annee_universitaire_id', $request->integer('annee_universitaire_id'))
+            ->where('status', 'active')
+            ->orderBy('etudiant_id')
+            ->pluck('etudiant_id')
+            ->map(static fn ($id) => (int) $id)
+            ->all();
+
         return response()->json([
             'ok' => $preflight['ok'],
             'preflight' => $preflight,
             'message' => $preflight['message'],
+            'student_ids' => $studentIds,
+            'batch_size' => 10,
         ], $preflight['ok'] ? 200 : 422);
     }
     /**
