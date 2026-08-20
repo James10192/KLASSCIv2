@@ -738,15 +738,21 @@ window.busCard = function (cfg) {
                     }
 
                     this.progression = null;
-                    this.lastGeneration = data;
 
                     if (echec) {
                         const traites = data.created + data.regenerated;
+                        // N'afficher le panneau de resultat que si quelque chose
+                        // a reellement ete ecrit : sinon on affichait « 0 partout »,
+                        // ce qui laissait croire a une generation vide alors que
+                        // la requete avait echoue.
+                        this.lastGeneration = traites > 0 ? { ...data, ok: false } : null;
                         this.notify('error', traites > 0
                             ? `${echec} — ${traites} bulletin(s) deja traite(s), relancez pour reprendre.`
                             : echec);
                         return;
                     }
+
+                    this.lastGeneration = data;
 
                     const writes = (data.created || 0) + (data.regenerated || 0);
                     const failures = (data.blocking_errors?.length || 0) + (data.errors?.length || 0);

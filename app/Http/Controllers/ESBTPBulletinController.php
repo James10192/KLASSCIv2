@@ -1517,14 +1517,17 @@ class ESBTPBulletinController extends Controller
             ->map(static fn ($id) => (int) $id)
             ->all();
 
+        // Dans $preflight et non a la racine : le front ne conserve que
+        // data.preflight, tout ce qui est place a cote est perdu.
+        $preflight['student_ids'] = $studentIds;
+        // 6 et non 10 : mesure a 24,6 s pour 10 etudiants, trop pres de la
+        // limite de 30 s pour tenir sous charge.
+        $preflight['batch_size'] = 6;
+
         return response()->json([
             'ok' => $preflight['ok'],
             'preflight' => $preflight,
             'message' => $preflight['message'],
-            'student_ids' => $studentIds,
-            // 6 et non 10 : mesure a 24,6 s pour 10 etudiants, trop pres de la
-            // limite de 30 s pour tenir sous charge.
-            'batch_size' => 6,
         ], $preflight['ok'] ? 200 : 422);
     }
     /**
