@@ -14,6 +14,15 @@ use App\Models\ESBTPInscription;
  */
 final class BtsClassCohortCounter
 {
+    /**
+     * Cohortes deja resolues, indexees par « annee:semestre » puis par classe.
+     * Portee requete : le service est resolu par le conteneur, l'instance vit
+     * le temps de la requete HTTP ou de la commande.
+     *
+     * @var array<string, array<int, array<int, true>>>
+     */
+    private array $cohortCache = [];
+
     public function __construct(private BtsPhaseResolver $phaseResolver)
     {
     }
@@ -30,25 +39,40 @@ final class BtsClassCohortCounter
     {
         $semester = $this->semesterNumber($periode);
 
-        $inscriptions = ESBTPInscription::query()
-            ->with([
-                'filiere',
-                'classe.filiere',
-                'phases.classe.filiere',
-                'inscriptionOrigine.classe.filiere',
-                'inscriptionSpecialisation.classe.filiere',
-            ])
-            ->where('annee_universitaire_id', $anneeUniversitaireId)
-            ->where('status', 'active')
-            ->where('workflow_step', 'etudiant_cree')
-            ->get();
+        // Le balayage porte volontairement sur toute l'annee : la classe de
+        // rattachement d'un etudiant depend de ses phases tronc commun et ne
+        // peut pas etre filtree en SQL. On memoise donc le resultat par
+        // (annee, semestre) le temps de la requete : la generation en masse
+        // appelait cette methode plusieurs fois par etudiant, rechargeant a
+        // chaque fois plus de 2000 inscriptions avec cinq arbres de relations.
+        $cacheKey = $anneeUniversitaireId.':'.$semester;
 
-        $ids = [];
-        foreach ($inscriptions as $inscription) {
-            if ($this->resolveClasseId($inscription, $semester) === $classeId) {
-                $ids[(int) $inscription->etudiant_id] = true;
+        if (! array_key_exists($cacheKey, $this->cohortCache)) {
+            $inscriptions = ESBTPInscription::query()
+                ->with([
+                    'filiere',
+                    'classe.filiere',
+                    'phases.classe.filiere',
+                    'inscriptionOrigine.classe.filiere',
+                    'inscriptionSpecialisation.classe.filiere',
+                ])
+                ->where('annee_universitaire_id', $anneeUniversitaireId)
+                ->where('status', 'active')
+                ->where('workflow_step', 'etudiant_cree')
+                ->get();
+
+            $parClasse = [];
+            foreach ($inscriptions as $inscription) {
+                $resolved = $this->resolveClasseId($inscription, $semester);
+                if ($resolved !== null) {
+                    $parClasse[$resolved][(int) $inscription->etudiant_id] = true;
+                }
             }
+
+            $this->cohortCache[$cacheKey] = $parClasse;
         }
+
+        $ids = $this->cohortCache[$cacheKey][$classeId] ?? [];
 
         $sorted = array_keys($ids);
         sort($sorted);
