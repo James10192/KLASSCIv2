@@ -14,10 +14,19 @@
 
     $ogTitre = $ogNom.' — Espace en ligne';
 
+    $ogEtablissement = $ogSigle !== '' && $ogSigle !== $ogNom ? $ogSigle : $ogNom;
+
+    // « scolarité de ESBTP » ne se dit pas : devant une voyelle, la préposition
+    // s'élide. Le sigle d'une école commence souvent par une voyelle.
+    $ogInitiale = mb_strtoupper(mb_substr($ogEtablissement, 0, 1, 'UTF-8'), 'UTF-8');
+    $ogLiaison = in_array($ogInitiale, ['A', 'E', 'I', 'O', 'U', 'Y', 'H', 'É', 'È', 'Ê', 'À'], true)
+        ? "d'"
+        : 'de ';
+
     // La description dit à quoi sert le lien. « Bienvenue » n'apprend rien à
     // celui qui hésite à cliquer.
-    $ogDescription = 'Inscriptions, notes, bulletins et scolarité de '
-        .($ogSigle !== '' && $ogSigle !== $ogNom ? $ogSigle : $ogNom)
+    $ogDescription = 'Inscriptions, notes, bulletins et scolarité '
+        .$ogLiaison.$ogEtablissement
         .($ogVille !== '' ? ' à '.$ogVille : '')
         .'. Connectez-vous avec les identifiants remis par votre établissement.';
 
