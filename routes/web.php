@@ -93,6 +93,12 @@ if (app()->environment('local')) {
 // redirige vers le login pour ne plus exposer de page marketing.
 Route::get('/', fn () => redirect()->route('login'))->name('welcome');
 
+// Apercu partage sur les reseaux et messageries. Publique et sans
+// authentification : un robot ne se connecte pas, et une image derriere
+// un login ne s'afficherait jamais dans un apercu.
+Route::get('/og-image.png', \App\Http\Controllers\OpenGraphImageController::class)
+    ->name('og.image');
+
 // PWA â€” manifest dynamique par tenant (hors auth : disponible avant login).
 Route::get('/manifest.webmanifest', [\App\Http\Controllers\PwaController::class, 'manifest'])
     ->name('pwa.manifest');

@@ -7,6 +7,8 @@
 
     <title>{{ \App\Helpers\SettingsHelper::get('school_name', 'KLASSCI') }} — Connexion</title>
 
+    @include('partials.og-meta')
+
     <!-- Fonts — same as landing page -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
