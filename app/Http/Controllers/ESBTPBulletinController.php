@@ -10,6 +10,7 @@ use App\Exceptions\BulletinConfigurationException;
 use App\Exceptions\CoefficientMissingException;
 use App\Helpers\SettingsHelper;
 use App\Http\Requests\Bulletin\GenerateClasseBulletinsRequest;
+use App\Models\ESBTPInscription;
 use App\Http\Requests\Bulletin\StoreBulletinRequest;
 use App\Http\Requests\Bulletin\UpdateBulletinRequest;
 use App\Models\Classe;
