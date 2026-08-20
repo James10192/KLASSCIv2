@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\Dashboard\RoleDashboardBreakdowns;
+
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPDocumentApproval;
 use App\Models\ESBTPInscription;
@@ -42,6 +44,7 @@ class ResponsableScolariteDashboardController extends Controller
         $classes = ESBTPClasse::query()->where('is_active', true)->orderBy('name')->get(['id', 'name']);
 
         return view('dashboard.responsable-scolarite', [
+            'noteProgress' => app(RoleDashboardBreakdowns::class)->noteEntryProgress(),
             'user' => $user,
             'pendingApprovals' => $pendingApprovals,
             'openWindows' => $openWindows,

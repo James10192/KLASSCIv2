@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\Dashboard\RoleDashboardBreakdowns;
+
 use App\Models\ESBTPInscription;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
@@ -43,6 +45,7 @@ class AgentInscriptionDashboardController extends Controller
             ->count();
 
         return view('dashboard.agent-inscription', [
+            'funnel' => app(RoleDashboardBreakdowns::class)->enrollmentFunnel(),
             'user' => $user,
             'pendingValidation' => $pendingValidation,
             'waitingPayment' => $waitingPayment,

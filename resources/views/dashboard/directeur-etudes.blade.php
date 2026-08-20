@@ -12,6 +12,23 @@
     $health = $academicHealth ?? [];
     $sansEdt = $classesWithoutTimetable ?? 0;
     $score = $health['academic_score'] ?? null;
+
+    $couverture = $coverage['rows'] ?? [];
+    $incompletes = $coverage['incompletes'] ?? 0;
+    $nbClassesSuivies = $coverage['total'] ?? 0;
+
+    // Trois acquis par classe : emploi du temps, notes a jour, assiduite
+    // relevee. Une classe a 3 sur 3 est prete, en dessous il manque quelque
+    // chose et la barre vire a l'orange.
+    $chartData = [
+        'labels' => array_map(fn ($c) => $c['name'], $couverture),
+        'datasets' => [[
+            'label' => 'Couverture',
+            'data' => array_map(fn ($c) => $c['score'], $couverture),
+            'tones' => array_map(fn ($c) => $c['score'] === 3 ? '#0453cb' : 'alerte', $couverture),
+        ]],
+        'links' => array_map(fn ($c) => route('esbtp.classes.show', $c['id']), $couverture),
+    ];
 @endphp
 <div class="main-content">
 
@@ -133,7 +150,54 @@
         </a>
     </div>
 
-    <div class="rdx-grid">
+    <x-role-dashboard>
+    <x-slot:focal>
+
+        <x-role-panel
+            icon="fa-school"
+            title="Quelles classes ne sont pas prêtes"
+            subtitle="Emploi du temps posé, notes à jour, assiduité relevée. Cliquez une barre pour ouvrir la classe.">
+            <x-role-chart
+                id="de-coverage"
+                type="bar"
+                :data="$chartData"
+                :options="['scales' => ['y' => ['max' => 3]]]"
+                :is-empty="$nbClassesSuivies === 0"
+                empty-icon="fa-school"
+                empty-title="Aucune classe active"
+                empty-hint="La couverture pédagogique apparaîtra dès qu'une classe sera ouverte." />
+
+            @if($nbClassesSuivies > 0)
+                <div class="dsh-legend">
+                    <span class="dsh-legend-item">
+                        <span class="dsh-legend-dot" style="background:#0453cb"></span>Prête, 3 acquis sur 3
+                    </span>
+                    <span class="dsh-legend-item">
+                        <span class="dsh-legend-dot" style="background:#f59e0b"></span>Il manque quelque chose
+                    </span>
+                    @if($nbClassesSuivies > count($couverture))
+                        <span class="dsh-legend-item">
+                            {{ count($couverture) }} classes les moins couvertes, sur {{ $nbClassesSuivies }}
+                        </span>
+                    @endif
+                </div>
+
+                <div class="dsh-figures">
+                    <div class="dsh-figure {{ $incompletes > 0 ? 'dsh-figure--warn' : 'dsh-figure--ok' }}">
+                        <span class="dsh-figure-value">{{ $incompletes }}</span>
+                        <span class="dsh-figure-label">Classes incomplètes</span>
+                    </div>
+                    <div class="dsh-figure dsh-figure--ok">
+                        <span class="dsh-figure-value">{{ $nbClassesSuivies - $incompletes }}</span>
+                        <span class="dsh-figure-label">Classes prêtes</span>
+                    </div>
+                    <div class="dsh-figure">
+                        <span class="dsh-figure-value">{{ $nbClassesSuivies > 0 ? round(($nbClassesSuivies - $incompletes) / $nbClassesSuivies * 100) : 0 }}%</span>
+                        <span class="dsh-figure-label">Taux de préparation</span>
+                    </div>
+                </div>
+            @endif
+        </x-role-panel>
 
         <x-role-panel
             icon="fa-calendar-days"
@@ -181,6 +245,9 @@
             </div>
         </x-role-panel>
 
+    </x-slot:focal>
+    <x-slot:rail>
+
         <x-role-panel
             icon="fa-file-lines"
             title="Rapports de pilotage"
@@ -227,7 +294,8 @@
             </div>
         </x-role-panel>
 
-    </div>
+    </x-slot:rail>
+    </x-role-dashboard>
 </div>
 @endsection
 
