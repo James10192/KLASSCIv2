@@ -61,7 +61,9 @@ class ESBTPFiliereController extends Controller
     {
         $filieres = ESBTPFiliere::where('is_active', true)->get();
         $niveaux = ESBTPNiveauEtude::all();
-        $matieres = ESBTPMatiere::where('is_active', true)->orderBy('name')->get();
+        // Rattachement a une filiere BTS : les ECUE des maquettes LMD n'ont
+        // rien a y faire, elles appartiennent a une unite d'enseignement.
+        $matieres = ESBTPMatiere::btsOnly()->where('is_active', true)->orderBy('name')->get();
 
         return view('esbtp.filieres.create', compact('filieres', 'niveaux', 'matieres'));
     }
@@ -302,7 +304,7 @@ class ESBTPFiliereController extends Controller
             ->where('is_active', true)
             ->get();
         $niveaux = ESBTPNiveauEtude::all();
-        $matieres = ESBTPMatiere::where('is_active', true)->orderBy('name')->get();
+        $matieres = ESBTPMatiere::btsOnly()->where('is_active', true)->orderBy('name')->get();
 
         return view('esbtp.filieres.edit', compact('filiere', 'filieres', 'niveaux', 'matieres'));
     }

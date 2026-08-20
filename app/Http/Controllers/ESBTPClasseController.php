@@ -1194,7 +1194,9 @@ class ESBTPClasseController extends Controller
             // Si encore vide, toutes les matières
             if ($matieres->isEmpty()) {
                 \Log::info("Fallback final: toutes les matières...");
-                $matieres = \App\Models\ESBTPMatiere::all();
+                // Dernier repli. Sans le filtre, il deversait les 200 ECUE
+                // des maquettes LMD dans une classe BTS.
+                $matieres = \App\Models\ESBTPMatiere::btsOnly()->get();
                 \Log::info("Toutes les matières: " . $matieres->count());
             }
 
