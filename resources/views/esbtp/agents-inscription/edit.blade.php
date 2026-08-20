@@ -1,53 +1,23 @@
 @extends('layouts.app')
 
-@section('title', 'Modifier l agent d inscription')
+@section('title', 'Modifier — '.$agent->name.' - KLASSCI')
+
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+@endpush
 
 @section('content')
-<div class="main-content">
-    <div class="dashboard-header mb-xl" style="background-color: var(--primary); color: white; border-radius: var(--radius-medium);">
-        <h1 style="color:white;margin:0;">Modifier {{ $agent->name }}</h1>
-    </div>
-
-    <form method="POST" action="{{ route('esbtp.agents-inscription.update', $agent) }}" class="card-moderne" style="padding: var(--space-xl);">
-        @csrf
-        @method('PUT')
-        <div class="row g-3">
-            <div class="col-md-6">
-                <label class="form-label">Nom complet</label>
-                <input class="form-control" name="name" value="{{ old('name', $agent->name) }}" required>
-            </div>
-            <div class="col-md-6">
-                <label class="form-label">Email</label>
-                <input class="form-control" type="email" name="email" value="{{ old('email', $agent->email) }}">
-            </div>
-            <div class="col-md-6">
-                <label class="form-label">Téléphone</label>
-                <input class="form-control" name="telephone" value="{{ old('telephone', $agent->telephone) }}">
-            </div>
-            <div class="col-md-6">
-                <label class="form-label">Spécialité</label>
-                <input class="form-control" name="specialite" value="{{ old('specialite', $agent->specialite) }}">
-            </div>
-            <div class="col-md-6">
-                <label class="form-label">Nouveau mot de passe</label>
-                <input class="form-control" type="password" name="password">
-            </div>
-            <div class="col-md-6">
-                <label class="form-label">Confirmation</label>
-                <input class="form-control" type="password" name="password_confirmation">
-            </div>
-            <div class="col-md-6">
-                <label class="form-label">Statut</label>
-                <select class="form-select" name="is_active">
-                    <option value="1" @selected(old('is_active', $agent->is_active))>Actif</option>
-                    <option value="0" @selected(! old('is_active', $agent->is_active))>Inactif</option>
-                </select>
-            </div>
-        </div>
-        <div class="mt-4 d-flex gap-2">
-            <button class="btn-acasi" type="submit">Enregistrer</button>
-            <a class="btn-acasi secondary" href="{{ route('esbtp.personnel.unified.index') }}">Annuler</a>
-        </div>
-    </form>
-</div>
+@include('esbtp.partials.role-staff-form', [
+    'routeBase' => 'esbtp.agents-inscription',
+    'icon' => 'fa-user-plus',
+    'heading' => 'Nouvel agent d\'inscription',
+    'subtitle' => 'Compte dédié aux inscriptions, sans aucun accès à la finance, aux notes ni au système.',
+    'model' => $agent,
+    'scope' => [
+        ['allowed' => true, 'text' => 'Créer, éditer et valider les dossiers d\'inscription'],
+        ['allowed' => true, 'text' => 'Consulter les étudiants, les classes et les filières'],
+        ['allowed' => false, 'text' => 'Aucun montant, solde ni reçu financier n\'est affiché'],
+        ['allowed' => false, 'text' => 'Pas d\'accès aux notes, au personnel ni aux paramètres'],
+    ],
+])
 @endsection

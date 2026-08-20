@@ -1,38 +1,23 @@
 @extends('layouts.app')
 
-@section('title', 'Creer un agent d inscription')
+@section('title', 'Nouvel agent d\'inscription - KLASSCI')
+
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+@endpush
 
 @section('content')
-<div class="main-content">
-    <div class="dashboard-header mb-xl" style="background-color: var(--primary); color: white; border-radius: var(--radius-medium);">
-        <h1 style="color:white;margin:0;">Nouvel agent d inscription</h1>
-        <p style="color:rgba(255,255,255,.8);margin:6px 0 0;">Compte inscriptions sans acces finance, notes ni systeme.</p>
-    </div>
-
-    <form method="POST" action="{{ route('esbtp.agents-inscription.store') }}" class="card-moderne" style="padding: var(--space-xl);">
-        @csrf
-        <div class="row g-3">
-            <div class="col-md-6">
-                <label class="form-label">Nom complet</label>
-                <input class="form-control" name="name" value="{{ old('name') }}" required>
-            </div>
-            <div class="col-md-6">
-                <label class="form-label">Email</label>
-                <input class="form-control" type="email" name="email" value="{{ old('email') }}">
-            </div>
-            <div class="col-md-6">
-                <label class="form-label">Téléphone</label>
-                <input class="form-control" name="telephone" value="{{ old('telephone') }}">
-            </div>
-            <div class="col-md-6">
-                <label class="form-label">Spécialité</label>
-                <input class="form-control" name="specialite" value="{{ old('specialite') }}">
-            </div>
-        </div>
-        <div class="mt-4 d-flex gap-2">
-            <button class="btn-acasi" type="submit">Créer</button>
-            <a class="btn-acasi secondary" href="{{ route('esbtp.personnel.unified.index') }}">Annuler</a>
-        </div>
-    </form>
-</div>
+@include('esbtp.partials.role-staff-form', [
+    'routeBase' => 'esbtp.agents-inscription',
+    'icon' => 'fa-user-plus',
+    'heading' => 'Nouvel agent d\'inscription',
+    'subtitle' => 'Compte dédié aux inscriptions, sans aucun accès à la finance, aux notes ni au système.',
+    'model' => null,
+    'scope' => [
+        ['allowed' => true, 'text' => 'Créer, éditer et valider les dossiers d\'inscription'],
+        ['allowed' => true, 'text' => 'Consulter les étudiants, les classes et les filières'],
+        ['allowed' => false, 'text' => 'Aucun montant, solde ni reçu financier n\'est affiché'],
+        ['allowed' => false, 'text' => 'Pas d\'accès aux notes, au personnel ni aux paramètres'],
+    ],
+])
 @endsection
