@@ -130,6 +130,9 @@
                 <span class="cpa-legende-item"><span class="cpa-legende-pastille" style="background:#dc2626"></span>Critique, sous 50 %</span>
                 <span class="cpa-legende-item"><span class="cpa-legende-pastille" style="background:#f59e0b"></span>À surveiller, sous 70 %</span>
                 <span class="cpa-legende-item"><span class="cpa-legende-pastille" style="background:#0453cb"></span>Satisfaisant</span>
+                <span class="cpa-legende-item cpa-muted" x-show="classesSansScore() > 0">
+                    <span x-text="classesSansScore()"></span>&nbsp;classe(s) sans score calculé, non représentée(s)
+                </span>
                 <span class="cpa-legende-item cpa-muted" x-show="data.classes && data.classes.length >= 12">
                     Les 12 classes calculées le plus récemment
                 </span>

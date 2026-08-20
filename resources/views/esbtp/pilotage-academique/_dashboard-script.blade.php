@@ -613,11 +613,21 @@ document.addEventListener('alpine:init', () => {
             if (n < 70) return 'alerte';
             return '#0453cb';
         },
+        // Rampe de gravite croissante. Bloquante et critique doivent se
+        // distinguer a l'oeil : deux rouges identiques rendaient le camembert
+        // illisible.
         teinteGravite(cle) {
-            if (cle === 'blocking') return 'critique';
-            if (cle === 'critical') return '#dc2626';
+            if (cle === 'blocking') return '#dc2626';
+            if (cle === 'critical') return '#ea580c';
             if (cle === 'warning') return 'alerte';
             return '#3b7ddb';
+        },
+        // Une classe sans snapshot calcule n'a pas de score a tracer. La
+        // masquer sans le dire ferait croire a un perimetre plus petit.
+        classesSansScore() {
+            return (this.data.classes || [])
+                .filter((c) => c.academic_score === null || c.academic_score === undefined)
+                .length;
         },
         dessinerGraphiques() {
             if (typeof window.klassciGraphique !== 'function') return;

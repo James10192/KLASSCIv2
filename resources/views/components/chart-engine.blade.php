@@ -65,6 +65,9 @@
             if (type === 'bar') {
                 dataset.borderRadius = dataset.borderRadius === undefined ? 6 : dataset.borderRadius;
                 dataset.borderSkipped = false;
+                // Sans plafond, une seule categorie occupe toute la largeur du
+                // cadre et la barre ne ressemble plus a une barre.
+                if (dataset.maxBarThickness === undefined) dataset.maxBarThickness = 56;
             }
         });
         return data;
