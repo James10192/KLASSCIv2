@@ -11,6 +11,9 @@
 @endsection
 
 @section('content')
+@php
+    $hideAmounts = $hideAmounts ?? app(\App\Services\EnrollmentAmountVisibility::class)->hideAmounts(auth()->user());
+@endphp
 <div class="dashboard-acasi">
     <div class="main-content">
 
@@ -843,6 +846,7 @@
 <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
 
 <script>
+    window.hideEnrollmentAmounts = @json($hideAmounts ?? false);
 document.addEventListener('DOMContentLoaded', function() {
     let parentIndex = 1;
     let isLoadingFrais = false;
@@ -1499,7 +1503,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // Hint affiché sous le nom (avant souscription)
             const hintText = options.length > 0
                 ? `${options.length} formule${options.length > 1 ? 's' : ''} disponible${options.length > 1 ? 's' : ''}`
-                : `${baseAmt.toLocaleString('fr-FR')} FCFA`;
+                : (window.hideEnrollmentAmounts ? 'Formule unique' : `${baseAmt.toLocaleString('fr-FR')} FCFA`);
 
             // Zone de sélection (révélée après souscription)
             let selectionHTML = '';
@@ -1517,7 +1521,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <div class="frais-single-amount">
                         <i class="fas fa-tag"></i>
                         <span>Forfait annuel</span>
-                        <strong>${baseAmt.toLocaleString('fr-FR')} FCFA</strong>
+                        ${window.hideEnrollmentAmounts ? '' : `<strong>${baseAmt.toLocaleString('fr-FR')} FCFA</strong>`}
                     </div>`;
             } else {
                 // Options disponibles : grille de cartes cliquables (pas de radio "montant de base")
@@ -1536,8 +1540,8 @@ document.addEventListener('DOMContentLoaded', function() {
                                    style="display:none;">
                             <div class="frais-option-check"><i class="fas fa-check"></i></div>
                             <div class="frais-option-name">${option.name}</div>
-                            <div class="frais-option-price">${totalAmt.toLocaleString('fr-FR')}</div>
-                            <div class="frais-option-unit">FCFA / an</div>
+                            ${window.hideEnrollmentAmounts ? '' : `<div class="frais-option-price">${totalAmt.toLocaleString('fr-FR')}</div>`}
+                            ${window.hideEnrollmentAmounts ? '' : '<div class="frais-option-unit">FCFA / an</div>'}
                             ${option.description ? `<small class="frais-option-desc">${option.description}</small>` : ''}
                         </label>`;
                 });
@@ -1611,7 +1615,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         ${configurationType === 'variant' ? 'Tarif configuré pour cette classe' :
                           configurationType === 'rule' ? 'Tarif configuré' :
                           configurationType === 'configuration' ? 'Tarif configuré pour cette classe' :
-                          'Montant par défaut'} — <strong>${(parseFloat(defaultAmount) || 0).toLocaleString()} FCFA</strong>
+                          'Formule de base'} ${window.hideEnrollmentAmounts ? '' : '— <strong>' + (parseFloat(defaultAmount) || 0).toLocaleString() + ' FCFA</strong>'}
                     </label>
                 </div>`;
         }
@@ -1633,7 +1637,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                id="frais_${category.id}_${option.id}"
                                data-amount="${totalAmount}">
                         <label class="form-check-label" for="frais_${category.id}_${option.id}">
-                            ${option.name} — <strong>${totalAmount.toLocaleString()} FCFA</strong>
+                            ${option.name}${window.hideEnrollmentAmounts ? '' : ' — <strong>' + totalAmount.toLocaleString() + ' FCFA</strong>'}
                             ${option.description ? `<small class="text-muted d-block">${option.description}</small>` : ''}
                         </label>
                     </div>`;
@@ -1688,14 +1692,14 @@ document.addEventListener('DOMContentLoaded', function() {
             totalAmount += amount;
             resumeHTML += `<div class="d-flex justify-content-between mb-1" style="font-size:13px;">
                     <span>${categoryName}</span>
-                    <span class="fw-bold">${amount.toLocaleString()} FCFA</span>
+                    <span class="fw-bold">${window.hideEnrollmentAmounts ? 'Souscrit' : amount.toLocaleString() + ' FCFA'}</span>
                 </div>`;
         });
 
         if (resumeHTML) {
             resumeHTML += `<hr><div class="d-flex justify-content-between fw-bold" style="font-size:14px;">
                 <span>Total</span>
-                <span style="color:var(--kl-primary);">${(totalAmount || 0).toLocaleString()} FCFA</span>
+                <span style="color:var(--kl-primary);">${window.hideEnrollmentAmounts ? selectedOptions.length + ' formule(s)' : ((totalAmount || 0).toLocaleString() + ' FCFA')}</span>
             </div>`;
             resumeContainer.innerHTML = resumeHTML;
         } else {

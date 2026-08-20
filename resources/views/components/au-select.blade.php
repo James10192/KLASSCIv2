@@ -412,6 +412,33 @@ if (typeof window.auSelect !== 'function') {
                 const first = this.filteredOptions.find(o => !o.placeholder);
                 if (first) this.select(first);
             },
+            setOptions(items, selectedValue = '') {
+                const native = this.$refs.native;
+                if (!native) {
+                    return;
+                }
+
+                const keepPlaceholder = native.querySelector('option[data-placeholder="1"]');
+                native.innerHTML = '';
+                if (keepPlaceholder) {
+                    native.appendChild(keepPlaceholder);
+                }
+
+                (items || []).forEach((item) => {
+                    const option = document.createElement('option');
+                    option.value = item.value == null ? '' : String(item.value);
+                    option.textContent = item.label == null ? '' : String(item.label);
+                    native.appendChild(option);
+                });
+
+                const nextValue = selectedValue == null ? '' : String(selectedValue);
+                const exists = Array.from(native.options).some(option => option.value === nextValue);
+                this._value = exists ? nextValue : (native.value || '');
+                native.value = this._value;
+                this.optionsVersion++;
+                this.search = '';
+                this.focusedIndex = -1;
+            },
         };
     };
 }

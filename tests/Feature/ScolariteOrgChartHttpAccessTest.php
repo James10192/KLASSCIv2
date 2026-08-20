@@ -93,4 +93,65 @@ class ScolariteOrgChartHttpAccessTest extends TestCase
             $this->assertNotContains('*', $defaults, $role);
         }
     }
+
+    public function test_dashboard_router_checks_enrollment_officer_before_school_manager(): void
+    {
+        $source = file_get_contents((new \ReflectionClass(DashboardController::class))->getFileName());
+
+        $this->assertLessThan(
+            strpos($source, "can('identity.school_manager')"),
+            strpos($source, "can('identity.enrollment_officer')")
+        );
+        $this->assertGreaterThan(
+            strpos($source, "can('identity.registrar_clerk')"),
+            strpos($source, "can('identity.enrollment_officer')")
+        );
+        $this->assertStringContainsString("route('dashboard.agent-inscription')", $source);
+    }
+
+    public function test_agent_inscription_dashboard_is_gated(): void
+    {
+        $route = \Route::getRoutes()->getByName('dashboard.agent-inscription');
+
+        $this->assertInstanceOf(Route::class, $route);
+        $this->assertSame(\App\Http\Controllers\AgentInscriptionDashboardController::class.'@index', $route->getActionName());
+        $this->assertTrue(
+            collect($route->gatherMiddleware())->contains(fn ($middleware) => str_contains((string) $middleware, 'identity.enrollment_officer'))
+        );
+    }
+
+    public function test_agent_can_reach_inscriptions_but_not_finance_or_settings(): void
+    {
+        $etudiants = \Route::getRoutes()->getByName('esbtp.etudiants.index');
+        $inscriptions = \Route::getRoutes()->getByName('esbtp.inscriptions.index');
+        $reinscriptions = \Route::getRoutes()->getByName('esbtp.reinscription.index');
+        $settings = \Route::getRoutes()->getByName('esbtp.settings.index');
+        $compta = \Route::getRoutes()->getByName('esbtp.comptabilite.dashboard');
+        $notes = \Route::getRoutes()->getByName('esbtp.notes.index');
+
+        foreach ([$etudiants, $inscriptions, $reinscriptions] as $route) {
+            $this->assertInstanceOf(Route::class, $route);
+            $this->assertTrue(
+                collect($route->gatherMiddleware())->contains(fn ($item) => str_contains((string) $item, 'identity.enrollment_officer'))
+            );
+        }
+
+        foreach ([$settings, $compta, $notes] as $route) {
+            $this->assertInstanceOf(Route::class, $route);
+            $this->assertFalse(
+                collect($route->gatherMiddleware())->contains(fn ($item) => str_contains((string) $item, 'identity.enrollment_officer'))
+            );
+        }
+    }
+
+    public function test_registry_keeps_agent_without_finance(): void
+    {
+        $registry = new PermissionRegistry();
+        $defaults = $registry->defaultPermissionsFor('agentInscription');
+
+        $this->assertNotContains('paiements.view', $defaults);
+        $this->assertNotContains('system.manage', $defaults);
+        $this->assertNotContains('admin.access', $defaults);
+        $this->assertNotContains('*', $defaults);
+    }
 }

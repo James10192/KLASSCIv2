@@ -17,7 +17,7 @@ class ScolariteOrgChartPermissionsTest extends TestCase
 
     public function test_new_scolarite_roles_are_canonical_and_visible(): void
     {
-        foreach (['responsableScolarite', 'serviceScolarite'] as $role) {
+        foreach (['responsableScolarite', 'serviceScolarite', 'agentInscription'] as $role) {
             $this->assertTrue($this->registry->roles()->has($role), $role.' must exist');
             $this->assertContains($role, $this->registry->rolesVisibleInUi()->keys()->all());
         }
@@ -29,6 +29,10 @@ class ScolariteOrgChartPermissionsTest extends TestCase
         $service = $this->registry->roleMeta('serviceScolarite');
         $this->assertSame('Service scolarite', $service['label']);
         $this->assertSame('Administration', $service['group']);
+
+        $agent = $this->registry->roleMeta('agentInscription');
+        $this->assertSame("Agent d'inscription", $agent['label']);
+        $this->assertSame('Administration', $agent['group']);
     }
 
     public function test_new_permissions_are_canonical(): void
@@ -53,6 +57,11 @@ class ScolariteOrgChartPermissionsTest extends TestCase
             'services_scolarite.create',
             'services_scolarite.edit',
             'services_scolarite.delete',
+            'identity.enrollment_officer',
+            'agents_inscription.view',
+            'agents_inscription.create',
+            'agents_inscription.edit',
+            'agents_inscription.delete',
         ];
 
         foreach ($expected as $permission) {
@@ -160,12 +169,47 @@ class ScolariteOrgChartPermissionsTest extends TestCase
         $this->assertNotContains('paiements.create.mobile_money', $defaults);
     }
 
+
+    public function test_agent_inscription_has_enrollment_without_finance_or_system(): void
+    {
+        $defaults = $this->registry->defaultPermissionsFor('agentInscription');
+
+        $this->assertContains('identity.enrollment_officer', $defaults);
+        $this->assertContains('students.view', $defaults);
+        $this->assertContains('students.create', $defaults);
+        $this->assertContains('students.edit', $defaults);
+        $this->assertContains('inscriptions.view', $defaults);
+        $this->assertContains('inscriptions.create', $defaults);
+        $this->assertContains('inscriptions.edit', $defaults);
+        $this->assertContains('inscriptions.validate', $defaults);
+        $this->assertContains('classes.view', $defaults);
+        $this->assertContains('filieres.view', $defaults);
+        $this->assertContains('niveaux.view', $defaults);
+
+        $this->assertNotContains('annees.view', $defaults);
+        $this->assertNotContains('inscriptions.cancel', $defaults);
+        $this->assertNotContains('inscriptions.reject', $defaults);
+        $this->assertNotContains('inscriptions.delete', $defaults);
+        $this->assertNotContains('admin.access', $defaults);
+        $this->assertNotContains('identity.school_manager', $defaults);
+        $this->assertNotContains('identity.registrar', $defaults);
+        $this->assertNotContains('paiements.view', $defaults);
+        $this->assertNotContains('frais.view', $defaults);
+        $this->assertNotContains('notes.create', $defaults);
+        $this->assertNotContains('personnel.view', $defaults);
+        $this->assertNotContains('system.manage', $defaults);
+        $this->assertNotContains('*', $defaults);
+    }
+
     public function test_role_management_covers_the_new_scolarite_roles(): void
     {
         $this->assertContains('responsableScolarite', $this->registry->manageableRoles('superAdmin'));
         $this->assertContains('serviceScolarite', $this->registry->manageableRoles('superAdmin'));
+        $this->assertContains('agentInscription', $this->registry->manageableRoles('superAdmin'));
         $this->assertContains('responsableScolarite', $this->registry->manageableRoles('serviceTechnique'));
+        $this->assertContains('agentInscription', $this->registry->manageableRoles('serviceTechnique'));
         $this->assertSame(['serviceScolarite', 'enseignant', 'etudiant'], $this->registry->manageableRoles('responsableScolarite'));
         $this->assertSame([], $this->registry->manageableRoles('serviceScolarite'));
+        $this->assertSame([], $this->registry->manageableRoles('agentInscription'));
     }
 }

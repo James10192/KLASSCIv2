@@ -5,6 +5,7 @@ namespace App\Http\Controllers\ESBTP;
 use App\Http\Controllers\Controller;
 use App\Services\ReeinscriptionService;
 use App\Services\FuzzyNameMatcher;
+use App\Services\EnrollmentAmountVisibility;
 use App\Models\ESBTPRegleAcademique;
 use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPClasse;
@@ -1315,7 +1316,8 @@ class ESBTPReinscriptionController extends Controller
 
                 $etudiant = $analyse['etudiant'] ?? $inscription->etudiant;
 
-                $results[] = [
+                $hideAmounts = app(EnrollmentAmountVisibility::class)->hideAmounts(auth()->user());
+                $row = [
                     'etudiant_id'    => (int) $etudiantId,
                     'matricule'      => $etudiant?->matricule,
                     'nom_complet'    => $etudiant?->nom_complet,
@@ -1324,13 +1326,16 @@ class ESBTPReinscriptionController extends Controller
                     'moyenne'        => isset($analyse['moyenne']) ? round((float) $analyse['moyenne'], 2) : null,
                     'decision'       => $analyse['decision'] ?? null,
                     'decision_label' => $this->decisionLabel($analyse['decision'] ?? null),
-                    'montant_attendu' => (float) $totalAttendu,
-                    'montant_paye'    => (float) $totalPaye,
-                    'solde_restant'   => (float) $soldeRestant,
                     'frais_soldes'    => $fraisSoldes,
                     'peut_reinscrire' => $peutReinscrire,
                     'status'          => 'ok',
                 ];
+                if (! $hideAmounts) {
+                    $row['montant_attendu'] = (float) $totalAttendu;
+                    $row['montant_paye'] = (float) $totalPaye;
+                    $row['solde_restant'] = (float) $soldeRestant;
+                }
+                $results[] = $row;
             } catch (\Exception $e) {
                 \Log::warning('bulkSummary échec sur étudiant ' . $etudiantId . ' : ' . $e->getMessage());
                 $results[] = [

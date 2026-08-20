@@ -21,6 +21,7 @@ use App\Services\ComptabiliteService;
 use App\Services\ESBTPInscriptionService;
 use App\Services\InscriptionWorkflowService;
 use App\Services\StudentDuplicateDetector;
+use App\Services\EnrollmentAmountVisibility;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\QueryException;
 use App\Http\Requests\Inscription\AnnulerInscriptionRequest;
@@ -142,6 +143,7 @@ class ESBTPInscriptionController extends Controller
             "phases.classe.filiere",
             "inscriptionOrigine.classe.filiere",
             "inscriptionSpecialisation.classe.filiere",
+            "paiements",
         ]);
 
         // Filtre Filière BTS : ne s'applique qu'en mode BTS (ou Tous systèmes en mode legacy).
@@ -334,6 +336,8 @@ class ESBTPInscriptionController extends Controller
             ]);
         }
 
+        $hideAmounts = app(EnrollmentAmountVisibility::class)->hideAmounts(auth()->user());
+
         return view(
             "esbtp.inscriptions.index",
             compact(
@@ -353,6 +357,7 @@ class ESBTPInscriptionController extends Controller
                 "sort",
                 "dir",
                 "perPage",
+                "hideAmounts",
             ),
         );
     }
@@ -390,7 +395,9 @@ class ESBTPInscriptionController extends Controller
                 "anneeUniversitaires",
                 "niveauEtudes",
                 "annees",
-            ),
+            ) + [
+                "hideAmounts" => app(EnrollmentAmountVisibility::class)->hideAmounts(auth()->user()),
+            ],
         );
     }
 
@@ -1122,7 +1129,7 @@ class ESBTPInscriptionController extends Controller
 
         return view(
             "esbtp.inscriptions.edit",
-            compact("inscription", "filieres", "niveaux", "classes", "annees", "mentions", "parcours"),
+            compact("inscription", "filieres", "niveaux", "classes", "annees", "mentions", "parcours") + ["hideAmounts" => app(EnrollmentAmountVisibility::class)->hideAmounts(auth()->user())],
         );
     }
 
@@ -1159,7 +1166,9 @@ class ESBTPInscriptionController extends Controller
             "date_inscription" => "required|date",
             "type_inscription" =>
                 "required|in:première_inscription,réinscription,transfert",
-            "montant_scolarite" => "required|numeric|min:0",
+            "montant_scolarite" => app(EnrollmentAmountVisibility::class)->hideAmounts(auth()->user())
+                ? "nullable|numeric|min:0"
+                : "required|numeric|min:0",
             "frais_inscription" => "nullable|numeric|min:0",
             "observations" => "nullable|string",
             "status" => "required|in:en_attente,active,annulée,terminée",
@@ -1212,6 +1221,9 @@ class ESBTPInscriptionController extends Controller
                 'observations', 'status', 'affectation_status',
                 'est_transfert', 'etablissement_origine',
             ]);
+            if (app(EnrollmentAmountVisibility::class)->hideAmounts(auth()->user())) {
+                unset($data['montant_scolarite'], $data['frais_inscription']);
+            }
 
             // Stocker les anciennes valeurs pour détecter les changements
             $ancienneFiliere = $inscription->filiere_id;

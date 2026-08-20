@@ -18,6 +18,7 @@ use App\Services\ESBTPInscriptionService;
 use App\Services\FuzzyNameMatcher;
 use App\Services\InscriptionWorkflowService;
 use App\Services\StudentDuplicateDetector;
+use App\Services\EnrollmentAmountVisibility;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\QueryException;
 use App\Http\Requests\Inscription\AnnulerInscriptionRequest;
@@ -783,6 +784,8 @@ class ESBTPInscriptionPaiementController extends Controller
      */
     public function previewSituationFinanciere(ESBTPInscription $inscription)
     {
+        app(EnrollmentAmountVisibility::class)->abortIfHidden(auth()->user());
+
         // Charger toutes les données nécessaires
         $inscription->load([
             "etudiant.user",
@@ -880,6 +883,8 @@ class ESBTPInscriptionPaiementController extends Controller
      */
     public function exportSituationFinanciere(ESBTPInscription $inscription, bool $inline = false)
     {
+        app(EnrollmentAmountVisibility::class)->abortIfHidden(auth()->user());
+
         // Récupérer les mêmes données que pour la preview
         $inscription->load([
             "etudiant.user",
@@ -1022,6 +1027,8 @@ class ESBTPInscriptionPaiementController extends Controller
      */
     public function getMontantRestant(ESBTPInscription $inscription, $category)
     {
+        app(EnrollmentAmountVisibility::class)->abortIfHidden(auth()->user());
+
         // Vérifier que la catégorie existe
         $fraisCategory = \App\Models\ESBTPFraisCategory::find($category);
         if (!$fraisCategory) {
@@ -1097,6 +1104,8 @@ class ESBTPInscriptionPaiementController extends Controller
      */
     public function getFraisRestants(ESBTPInscription $inscription)
     {
+        app(EnrollmentAmountVisibility::class)->abortIfHidden(auth()->user());
+
         $inscription->load(['fraisSubscriptions.fraisCategory', 'classe', 'anneeUniversitaire']);
 
         // Single grouped query instead of N individual SUM queries

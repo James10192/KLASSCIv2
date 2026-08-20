@@ -59,6 +59,13 @@ return [
             'group' => 'Administration',
             'visible_in_ui' => true,
         ],
+        'agentInscription' => [
+            'label' => 'Agent d\'inscription',
+            'description' => 'Cree, edite et valide les inscriptions apres encaissement. Sans finance, notes, personnel ni configuration systeme.',
+            'icon' => 'fa-user-plus',
+            'group' => 'Administration',
+            'visible_in_ui' => true,
+        ],
         'comptable' => [
             'label' => 'Comptable',
             'description' => 'Gestion financière complète : paiements, frais, relances, rapports',
@@ -1287,6 +1294,26 @@ return [
             'group' => 'Personnel',
             'icon' => 'fa-trash',
         ],
+        'agents_inscription.view' => [
+            'label' => 'Voir les agents d inscription',
+            'group' => 'Personnel',
+            'icon' => 'fa-user-plus',
+        ],
+        'agents_inscription.create' => [
+            'label' => 'Creer un agent d inscription',
+            'group' => 'Personnel',
+            'icon' => 'fa-plus',
+        ],
+        'agents_inscription.edit' => [
+            'label' => 'Modifier un agent d inscription',
+            'group' => 'Personnel',
+            'icon' => 'fa-edit',
+        ],
+        'agents_inscription.delete' => [
+            'label' => 'Supprimer un agent d inscription',
+            'group' => 'Personnel',
+            'icon' => 'fa-trash',
+        ],
         'secretaires.view' => [
             'label' => 'Voir les secrétaires',
             'group' => 'Personnel',
@@ -1684,6 +1711,11 @@ return [
             'label' => 'Identite service scolarite (routing UI)',
             'group' => 'Identité',
             'icon' => 'fa-print',
+        ],
+        'identity.enrollment_officer' => [
+            'label' => 'Identite agent d inscription (routing UI)',
+            'group' => 'Identité',
+            'icon' => 'fa-user-plus',
         ],
 
         // ===== Modules (toggles d'abonnement par tenant) =====
@@ -2159,6 +2191,17 @@ return [
             'module.notes_evaluations.access',
             'module.communication.access',
         ],
+
+        'agentInscription' => [
+            'dashboard.view',
+            'students.view', 'students.create', 'students.edit',
+            'inscriptions.view', 'inscriptions.create', 'inscriptions.edit', 'inscriptions.validate',
+            'classes.view',
+            'filieres.view', 'niveaux.view',
+            'identity.enrollment_officer',
+            'module.etudiants.access',
+            'module.academique.access',
+        ],
         'enseignant' => [
             'admin.access', 'dashboard.view',
             'students.view_own',
@@ -2212,11 +2255,12 @@ return [
     */
 
     'role_management' => [
-        'superAdmin'       => ['secretaire', 'responsableScolarite', 'serviceScolarite', 'comptable', 'caissier', 'coordinateur', 'directeurEtudes', 'enseignant', 'etudiant'],
-        'serviceTechnique' => ['superAdmin', 'secretaire', 'responsableScolarite', 'serviceScolarite', 'comptable', 'caissier', 'coordinateur', 'directeurEtudes', 'enseignant', 'etudiant'],
+        'superAdmin'       => ['secretaire', 'responsableScolarite', 'serviceScolarite', 'agentInscription', 'comptable', 'caissier', 'coordinateur', 'directeurEtudes', 'enseignant', 'etudiant'],
+        'serviceTechnique' => ['superAdmin', 'secretaire', 'responsableScolarite', 'serviceScolarite', 'agentInscription', 'comptable', 'caissier', 'coordinateur', 'directeurEtudes', 'enseignant', 'etudiant'],
         'secretaire'       => ['enseignant', 'etudiant', 'caissier'],
         'responsableScolarite' => ['serviceScolarite', 'enseignant', 'etudiant'],
         'serviceScolarite' => [],
+        'agentInscription' => [],
         'coordinateur'     => ['enseignant', 'etudiant'],
         'directeurEtudes'  => ['coordinateur', 'enseignant', 'etudiant'],
         'comptable'        => [],

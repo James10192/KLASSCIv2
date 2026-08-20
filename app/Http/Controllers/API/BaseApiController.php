@@ -151,6 +151,7 @@ class BaseApiController extends Controller
             'secretaire' => 'identity.school_manager',
             'coordinateur' => 'identity.coordinate',
             'directeurEtudes' => 'identity.direct_studies',
+            'agentInscription' => 'identity.enrollment_officer',
             'enseignant' => 'identity.teach',
             'teacher' => 'identity.teach',
             'etudiant' => 'identity.student',

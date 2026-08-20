@@ -197,7 +197,7 @@
         margin-bottom: 0.45rem;
     }
 
-    .pc-select-field .au-select {
+    .pc-field .au-select {
         width: 100%;
         max-width: 100%;
     }
@@ -321,15 +321,14 @@
 
 @section('content')
 @php
-    $studentOptions = \App\Models\ESBTPEtudiant::with('user')
-        ->limit(10)
-        ->get()
-        ->mapWithKeys(function ($student) {
-            $label = ($student->matricule ?? 'N/A') . ' - ' . ($student->user->name ?? $student->nom_complet ?? 'N/A');
-
-            return [(string) $student->id => $label];
-        })
-        ->all();
+    $studentOptions = [];
+    $selectedStudentId = old('etudiant_id', request('etudiant_id', $etudiant->id ?? ''));
+    if ($selectedStudentId) {
+        $selectedStudent = $etudiant ?? \App\Models\ESBTPEtudiant::with('user')->find($selectedStudentId);
+        if ($selectedStudent) {
+            $studentOptions[(string) $selectedStudent->id] = ($selectedStudent->matricule ?? 'N/A') . ' - ' . ($selectedStudent->user->name ?? $selectedStudent->nom_complet ?? 'N/A');
+        }
+    }
 
     $allModeOptions = [
         'Espèces' => 'especes',
@@ -417,14 +416,14 @@
                             <input type="hidden" name="etudiant_id" value="{{ $etudiant->id }}">
                         </div>
                     @else
-                        <div class="form-floating-modern pc-select-field">
+                        <div class="form-floating-modern pc-field">
                             <label for="etudiant_id" class="pc-field-label">Étudiant <span class="text-danger">*</span></label>
                             <x-au-select
                                 id="etudiant_id"
                                 name="etudiant_id"
                                 :value="(string) old('etudiant_id', request('etudiant_id', ''))"
                                 :options="$studentOptions"
-                                placeholder="Rechercher et sélectionner un étudiant"
+                                placeholder="Rechercher un etudiant (3 caracteres minimum)"
                                 icon="fa-user-graduate"
                                 required
                                 searchable />
@@ -478,7 +477,7 @@
                                 </div>
                             </div>
                         @else
-                            <div class="form-floating-modern pc-select-field">
+                            <div class="form-floating-modern pc-field">
                                 <label for="inscription_id" class="pc-field-label">Inscription <span class="text-danger">*</span></label>
                                 <x-au-select
                                     id="inscription_id"
@@ -581,7 +580,7 @@
                         
                         <div class="row">
                             <div class="col-md-6">
-                                <div class="form-floating-modern pc-select-field">
+                                <div class="form-floating-modern pc-field">
                                     <label for="mode_paiement" class="pc-field-label">Mode de paiement <span class="text-danger">*</span></label>
                                     <x-au-select
                                         id="mode_paiement"
@@ -605,7 +604,7 @@
                         
                         <div class="row">
                             <div class="col-md-6">
-                                <div class="form-floating-modern pc-select-field">
+                                <div class="form-floating-modern pc-field">
                                     <label for="tranche" class="pc-field-label">Tranche de paiement</label>
                                     <x-au-select
                                         id="tranche"
@@ -652,6 +651,49 @@ $(function() {
     let categories = [];
     let selectedCategory = null;
     
+    const studentSearchUrl = @json(route('esbtp.api.etudiants.search'));
+    let studentSearchTimer = null;
+    const studentRoot = document.getElementById('etudiant_id')?.closest('[x-data]');
+    const studentSelect = studentRoot ? Alpine.$data(studentRoot) : null;
+
+    function bindStudentSearch() {
+        if (!studentSelect || !studentSelect.$refs || !studentSelect.$refs.searchInput) {
+            return;
+        }
+        studentSelect.$refs.searchInput.addEventListener('input', function () {
+            const query = this.value.trim();
+            clearTimeout(studentSearchTimer);
+            if (query.length < 3) {
+                return;
+            }
+            studentSearchTimer = setTimeout(async function () {
+                try {
+                    const response = await fetch(studentSearchUrl + '?q=' + encodeURIComponent(query), {
+                        headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+                    });
+                    if (!response.ok) {
+                        return;
+                    }
+                    const payload = await response.json();
+                    const options = (payload.results || []).map(function (item) {
+                        return { value: String(item.id), label: item.text };
+                    });
+                    studentSelect.setOptions(options, studentSelect.currentValue || '');
+                } catch (error) {
+                    debugWarn('Recherche etudiant indisponible', error);
+                }
+            }, 220);
+        });
+    }
+
+    if (studentSelect) {
+        studentSelect.$watch('open', function (isOpen) {
+            if (isOpen) {
+                studentSelect.$nextTick(bindStudentSearch);
+            }
+        });
+    }
+
     // Gestion de la sélection d'étudiant
     $('#etudiant_id').on('change', function() {
         var etudiantId = $(this).val();
@@ -723,32 +765,26 @@ $(function() {
                 var inscriptions = Array.isArray(data) ? data : (Array.isArray(data.data) ? data.data : []);
                 debugLog('Nombre d\'inscriptions:', inscriptions.length);
 
-                var $inscriptionSelect = $('#inscription_id');
-                $inscriptionSelect.empty();
-
-                var placeholderOption = new Option('Sélectionner une inscription', '');
-                placeholderOption.setAttribute('data-placeholder', '1');
-                $inscriptionSelect.append(placeholderOption);
-
                 var selectedInscriptionId = '';
                 var noticeType = null;
                 var noticeMessage = null;
+                var inscriptionOptions = [];
 
                 if (inscriptions.length === 0) {
-                    $inscriptionSelect.append(new Option('Aucune inscription trouvée pour cet étudiant', ''));
                     noticeType = 'warning';
-                    noticeMessage = 'Aucune inscription disponible pour cet étudiant.';
+                    noticeMessage = 'Aucune inscription disponible pour cet etudiant.';
                 } else {
-                    $.each(inscriptions, function(index, inscription) {
+                    inscriptions.forEach(function(inscription) {
                         if (!inscription || !inscription.id) {
                             return;
                         }
 
-                        var label = (inscription.filiere || 'Filière non définie') + ' - ' +
-                            (inscription.niveau || 'Niveau non défini') +
-                            ' (' + (inscription.annee || 'Année non définie') + ')';
-
-                        $inscriptionSelect.append(new Option(label, String(inscription.id)));
+                        inscriptionOptions.push({
+                            value: String(inscription.id),
+                            label: (inscription.filiere || 'Filiere non definie') + ' - ' +
+                                (inscription.niveau || 'Niveau non defini') +
+                                ' (' + (inscription.annee || 'Annee non definie') + ')'
+                        });
                     });
 
                     var preferredInscriptionId = @json($inscription->id ?? null);
@@ -759,7 +795,7 @@ $(function() {
                     if (preferredExists) {
                         selectedInscriptionId = String(preferredInscriptionId);
                         noticeType = 'success';
-                        noticeMessage = 'Inscription chargée automatiquement depuis le contexte courant.';
+                        noticeMessage = 'Inscription chargee automatiquement depuis le contexte courant.';
                     } else {
                         var currentYearInscription = inscriptions.find(function(inscription) {
                             return Boolean(inscription && inscription.is_current_year);
@@ -768,16 +804,21 @@ $(function() {
                         if (currentYearInscription && currentYearInscription.id) {
                             selectedInscriptionId = String(currentYearInscription.id);
                             noticeType = 'info';
-                            noticeMessage = 'Inscription de l\'année courante sélectionnée automatiquement.';
+                            noticeMessage = 'Inscription de l annee courante selectionnee automatiquement.';
                         } else if (inscriptions[0] && inscriptions[0].id) {
                             selectedInscriptionId = String(inscriptions[0].id);
                             noticeType = 'warning';
-                            noticeMessage = 'Aucune inscription de l\'année courante trouvée. La plus récente a été sélectionnée automatiquement.';
+                            noticeMessage = 'Aucune inscription de l annee courante trouvee. La plus recente a ete selectionnee automatiquement.';
                         }
                     }
                 }
 
-                $inscriptionSelect.val(selectedInscriptionId);
+                var inscriptionRoot = document.getElementById('inscription_id')?.closest('[x-data]');
+                var inscriptionSelect = inscriptionRoot ? Alpine.$data(inscriptionRoot) : null;
+                if (inscriptionSelect && typeof inscriptionSelect.setOptions === 'function') {
+                    inscriptionSelect.setOptions(inscriptionOptions, selectedInscriptionId);
+                }
+
                 currentInscription = selectedInscriptionId || null;
 
                 if (noticeMessage) {
@@ -790,10 +831,9 @@ $(function() {
                 debugLog('Nouvelles options dans le select:', $inscriptionSelect.find('option').length);
 
                 // Important: force le composant premium à relire les options dynamiques.
-                $inscriptionSelect.trigger('input');
 
                 if (selectedInscriptionId) {
-                    $inscriptionSelect.trigger('change');
+                    $('#inscription_id').trigger('change');
                 } else {
                     resetProgressDisplay();
                     $('#student-progress-section').hide();
