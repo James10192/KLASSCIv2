@@ -4,6 +4,8 @@ namespace App\Http\Controllers\API\CLI;
 
 use App\Http\Controllers\API\BaseApiController;
 use App\Models\Setting;
+use App\Models\ESBTPEvaluation;
+use App\Models\ESBTPNote;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Artisan;
@@ -1189,7 +1191,7 @@ class CLIMaintenanceController extends BaseApiController
             return $this->errorResponse('Token missing cli:read ability', [], 403);
         }
 
-        $lignes = AppModelsESBTPEvaluation::query()
+        $lignes = ESBTPEvaluation::query()
             ->join('esbtp_classes', 'esbtp_classes.id', '=', 'esbtp_evaluations.classe_id')
             ->join('esbtp_matieres', 'esbtp_matieres.id', '=', 'esbtp_evaluations.matiere_id')
             ->whereNull('esbtp_evaluations.deleted_at')
@@ -1223,7 +1225,7 @@ class CLIMaintenanceController extends BaseApiController
                 'esbtp_matieres.unite_enseignement_id',
             ]);
 
-        $avecNotes = AppModelsESBTPNote::whereIn('evaluation_id', $lignes->pluck('evaluation_id'))
+        $avecNotes = ESBTPNote::whereIn('evaluation_id', $lignes->pluck('evaluation_id'))
             ->selectRaw('evaluation_id, COUNT(*) as total')
             ->groupBy('evaluation_id')
             ->pluck('total', 'evaluation_id');
