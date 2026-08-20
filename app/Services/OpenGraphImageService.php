@@ -4,16 +4,17 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use App\Helpers\SettingsHelper;
 use Illuminate\Support\Facades\Log;
 
 /**
  * Image d'apercu partagee sur les reseaux et les messageries.
  *
- * Un logo d'ecole est presque toujours carre et petit. Envoye tel quel, il
- * s'affiche rogne ou minuscule dans un apercu WhatsApp ou LinkedIn, qui
- * attendent un format paysage. On le recentre donc sur un fond aux couleurs
- * KLASSCI, aux dimensions attendues.
+ * Elle porte le logo KLASSCI, quel que soit le tenant : c'est l'application
+ * qu'on ouvre en cliquant le lien.
+ *
+ * Le logo est carre, alors qu'un apercu WhatsApp ou LinkedIn attend du
+ * paysage. Envoye tel quel il s'affiche rogne ou minuscule ; on le recentre
+ * donc sur un fond de marque, aux dimensions attendues.
  *
  * Aucune dependance obligatoire : sans GD, on sert le logo brut plutot que
  * rien du tout.
@@ -27,16 +28,17 @@ final class OpenGraphImageService
     private const PROPORTION_LOGO = 0.62;
 
     /**
+     * L'apercu porte toujours le logo KLASSCI, jamais celui de l'ecole : c'est
+     * le logo de l'application, et c'est bien l'application qu'on ouvre en
+     * cliquant le lien. Le nom de l'etablissement, lui, reste dans le titre et
+     * la description, ou il dit a l'utilisateur ou il arrive.
+     *
      * @return array{contenu: string, mime: string, etag: string}|null
      */
     public function image(): ?array
     {
-        $logo = SettingsHelper::resolveLogoBase64();
-        if ($logo === null) {
-            return null;
-        }
-
-        $brut = base64_decode($logo['b64'], true);
+        $chemin = public_path('images/LOGO-KLASSCI-PNG.png');
+        $brut = @file_get_contents($chemin);
         if ($brut === false || $brut === '') {
             return null;
         }
@@ -49,7 +51,7 @@ final class OpenGraphImageService
         }
 
         // Repli : le logo tel quel. Un apercu imparfait vaut mieux qu'un lien nu.
-        return ['contenu' => $brut, 'mime' => $logo['mime'], 'etag' => $etag];
+        return ['contenu' => $brut, 'mime' => 'image/png', 'etag' => $etag];
     }
 
     /**
@@ -123,9 +125,9 @@ final class OpenGraphImageService
     }
 
     /**
-     * Fond blanc casse plutot que bleu plein : la plupart des logos d'ecole
-     * sont sur fond transparent et concus pour du clair. Un bandeau bleu en
-     * bas rappelle la marque sans avaler le logo.
+     * Fond blanc casse plutot que bleu plein : le logo KLASSCI est bleu sur
+     * transparent, il disparaitrait sur un aplat de sa propre couleur. Un
+     * bandeau en bas rappelle la marque sans avaler le logo.
      */
     private function peindreFond(\GdImage $toile): void
     {
