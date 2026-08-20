@@ -102,19 +102,70 @@
     <template x-if="data.prerequisites && !data.prerequisites.year_configured">
         <div class="cpa-state cpa-error"><i class="fas fa-calendar-xmark"></i><span x-text="data.prerequisites.message"></span></div>
     </template>
-    <section class="cpa-panel" :class="{ 'cpa-loading': loading }" x-show="tab === 'direction'">
-        <div class="cpa-panel-head">
-            <h2 class="cpa-panel-title"><i class="fas fa-gauge-high"></i>Vue direction</h2>
-            <p class="cpa-muted" x-text="freshnessLabel()"></p>
-        </div>
-        <div class="cpa-grid">
-            <template x-for="item in kpis()" :key="item.label">
-                <div class="cpa-kpi">
-                    <div class="cpa-kpi-label" x-text="item.label"></div>
-                    <div class="cpa-kpi-value" x-text="item.value"></div>
-                    <small x-text="item.help"></small>
+    {{-- Vue direction. Les quatre chiffres de synthese sont deja dans le hero :
+         les repeter ici ne dirait rien de plus. Cet onglet repond a trois
+         questions d'affilee : quelles classes decrochent, ou en sont les
+         alertes, et ou bloque le circuit des fiches. --}}
+    <section class="cpa-direction" :class="{ 'cpa-loading': loading }" x-show="tab === 'direction'">
+
+        <div class="cpa-panel cpa-direction-focal">
+            <div class="cpa-panel-head">
+                <div>
+                    <h2 class="cpa-panel-title"><i class="fas fa-school"></i>Quelles classes décrochent</h2>
+                    <p class="cpa-muted mt-1">Score académique par classe, du plus faible au plus élevé. Cliquez une barre pour filtrer toute la page sur cette classe.</p>
                 </div>
-            </template>
+                <p class="cpa-muted" x-text="freshnessLabel()"></p>
+            </div>
+
+            <div class="cpa-chart-wrap" x-show="classesTriees().length > 0">
+                <canvas x-ref="chartClasses" height="280"></canvas>
+            </div>
+
+            <div class="cpa-state" x-show="classesTriees().length === 0 && !loading">
+                <i class="fas fa-hourglass-half"></i>
+                <span>Aucun score calculé pour ce périmètre. Lancez « Synchroniser la vue » pour produire les premiers snapshots.</span>
+            </div>
+
+            <div class="cpa-chart-legende" x-show="classesTriees().length > 0">
+                <span class="cpa-legende-item"><span class="cpa-legende-pastille" style="background:#dc2626"></span>Critique, sous 50 %</span>
+                <span class="cpa-legende-item"><span class="cpa-legende-pastille" style="background:#f59e0b"></span>À surveiller, sous 70 %</span>
+                <span class="cpa-legende-item"><span class="cpa-legende-pastille" style="background:#0453cb"></span>Satisfaisant</span>
+                <span class="cpa-legende-item cpa-muted" x-show="data.classes && data.classes.length >= 12">
+                    Les 12 classes calculées le plus récemment
+                </span>
+            </div>
+        </div>
+
+        <div class="cpa-direction-rail">
+            <div class="cpa-panel">
+                <div class="cpa-panel-head">
+                    <h3 class="cpa-panel-title"><i class="fas fa-triangle-exclamation"></i>Alertes par gravité</h3>
+                </div>
+                <div class="cpa-chart-wrap cpa-chart-wrap--court" x-show="totalAlertes() > 0">
+                    <canvas x-ref="chartAlertes" height="210"></canvas>
+                </div>
+                <div class="cpa-state" x-show="totalAlertes() === 0 && !loading">
+                    <i class="fas fa-circle-check"></i><span>Aucune alerte active sur ce périmètre.</span>
+                </div>
+                <button type="button" class="cpa-lien-bloc" x-show="totalAlertes() > 0" @click="tab = 'alerts'">
+                    Ouvrir la liste des alertes<i class="fas fa-arrow-right"></i>
+                </button>
+            </div>
+
+            <div class="cpa-panel">
+                <div class="cpa-panel-head">
+                    <h3 class="cpa-panel-title"><i class="fas fa-clipboard-check"></i>Où bloque le circuit</h3>
+                </div>
+                <div class="cpa-chart-wrap cpa-chart-wrap--court" x-show="totalFiches() > 0">
+                    <canvas x-ref="chartFiches" height="210"></canvas>
+                </div>
+                <div class="cpa-state" x-show="totalFiches() === 0 && !loading">
+                    <i class="fas fa-circle-check"></i><span>Aucune fiche en cours : tout est validé ou annulé.</span>
+                </div>
+                <button type="button" class="cpa-lien-bloc" x-show="totalFiches() > 0" @click="tab = 'sheets'">
+                    Ouvrir le suivi des fiches<i class="fas fa-arrow-right"></i>
+                </button>
+            </div>
         </div>
     </section>
     <section class="cpa-split" x-show="tab === 'sheets'">
@@ -669,4 +720,10 @@
     </div>
 </div>
 @endsection
+
+{{-- Moteur de graphique partage avec les tableaux de bord de role : meme
+     palette, memes tooltips. Cette page pilote ses canvas depuis Alpine via
+     window.klassciGraphique, elle n'utilise donc pas le gabarit statique. --}}
+<x-chart-engine />
+
 @include('esbtp.pilotage-academique._dashboard-script')

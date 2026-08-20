@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\AcademicPilotage\Services;
 
+use App\Domain\AcademicPilotage\Enums\AcademicAlertSeverity;
 use App\Domain\AcademicPilotage\Enums\AcademicAlertStatus;
 use App\Domain\AcademicPilotage\Enums\GradeSheetStatus;
 use App\Domain\AcademicPilotage\Models\AcademicAlert;
@@ -65,7 +66,64 @@ final class AcademicPilotageSummaryService
                 ->whereIn('status', $activeStatuses)
                 ->where('type', 'bulletin_blocked')
                 ->count(),
+            // Les tableaux alerts et sheets de la reponse sont plafonnes a dix
+            // lignes : les representer comme une repartition mentirait. Ces
+            // deux ventilations comptent la totalite, en une requete chacune.
+            'alerts_by_severity' => $this->alertsBySeverity($alerts, $activeStatuses),
+            'sheets_by_status' => $this->sheetsByStatus($sheets),
         ];
+    }
+
+    /**
+     * Repartition complete des alertes actives par severite, dans l'ordre de
+     * gravite croissante de l'enum.
+     *
+     * @param  array<int, string>  $activeStatuses
+     * @return array<int, array{key: string, label: string, value: int}>
+     */
+    private function alertsBySeverity(Builder $alerts, array $activeStatuses): array
+    {
+        $counts = (clone $alerts)
+            ->whereIn('status', $activeStatuses)
+            ->selectRaw('severity, COUNT(*) as total')
+            ->groupBy('severity')
+            ->pluck('total', 'severity');
+
+        return collect(AcademicAlertSeverity::cases())
+            ->map(fn (AcademicAlertSeverity $severity): array => [
+                'key' => $severity->value,
+                'label' => $severity->label(),
+                'value' => (int) ($counts[$severity->value] ?? 0),
+            ])
+            ->all();
+    }
+
+    /**
+     * Repartition complete des fiches encore en cours, dans l'ordre du
+     * circuit. Validees et annulees sont exclues : elles ne sont plus a
+     * suivre, exactement comme dans sheets_pending.
+     *
+     * @return array<int, array{key: string, label: string, value: int}>
+     */
+    private function sheetsByStatus(Builder $sheets): array
+    {
+        $termines = [GradeSheetStatus::VALIDATED->value, GradeSheetStatus::CANCELLED->value];
+
+        $counts = (clone $sheets)
+            ->whereNotIn('status', $termines)
+            ->selectRaw('status, COUNT(*) as total')
+            ->groupBy('status')
+            ->pluck('total', 'status');
+
+        return collect(GradeSheetStatus::cases())
+            ->reject(fn (GradeSheetStatus $statut): bool => in_array($statut->value, $termines, true))
+            ->map(fn (GradeSheetStatus $statut): array => [
+                'key' => $statut->value,
+                'label' => $statut->label(),
+                'value' => (int) ($counts[$statut->value] ?? 0),
+            ])
+            ->values()
+            ->all();
     }
 
     private function scopeClasses(Builder $query, ?Collection $classIds): Builder

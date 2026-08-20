@@ -93,6 +93,25 @@
 .cpa-state { border: 1px dashed #cbd5e1; border-radius: 12px; padding: 1.2rem; color: #64748b; text-align: center; background: #f8fafc; }
 .cpa-state i { color: #0453cb; display: block; font-size: 1.35rem; margin-bottom: .4rem; }
 .cpa-split { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(280px, .65fr); gap: 1rem; align-items: start; }
+
+/* ===== Vue direction ===== */
+/* Deliberement asymetrique : la question principale occupe la colonne large,
+   les deux ventilations complementaires tiennent dans le rail. */
+.cpa-direction { display: grid; grid-template-columns: minmax(0, 2fr) minmax(300px, 1fr); gap: 1rem; align-items: start; }
+.cpa-direction-rail { display: grid; gap: 1rem; }
+.cpa-chart-wrap { position: relative; width: 100%; height: 280px; margin-top: .75rem; }
+.cpa-chart-wrap--court { height: 210px; }
+.cpa-chart-legende { display: flex; flex-wrap: wrap; gap: .9rem; margin-top: .75rem; padding-top: .75rem; border-top: 1px solid #eef2f7; font-size: .76rem; color: #475569; }
+.cpa-legende-item { display: inline-flex; align-items: center; gap: .35rem; }
+.cpa-legende-pastille { width: 9px; height: 9px; border-radius: 3px; flex-shrink: 0; }
+.cpa-lien-bloc {
+    display: flex; align-items: center; justify-content: center; gap: .4rem;
+    width: 100%; margin-top: .85rem; padding: .55rem;
+    border: 1px dashed #dbe3ec; border-radius: 9px; background: transparent;
+    font-size: .8rem; font-weight: 600; color: #0453cb; cursor: pointer;
+    transition: background .15s ease, border-color .15s ease;
+}
+.cpa-lien-bloc:hover { background: rgba(4, 83, 203, .05); border-color: #0453cb; }
 .cpa-drawer { border: 1px solid #dbe5f2; border-radius: 8px; background: #f8fafc; padding: 1rem; min-height: 160px; }
 .cpa-muted { color: #64748b; font-size: .82rem; margin: 0; }
 .cpa-error { border-color: #fecaca; background: #fef2f2; color: #991b1b; }
@@ -264,7 +283,7 @@
 .cpa-assignment-empty { min-height: 112px; display: grid; place-content: center; }
 .cpa-assignment-panel .cpa-row { box-shadow: 0 4px 14px rgba(15,23,42,.04); }
 [x-cloak] { display: none !important; }
-@media (max-width: 1100px) { .cpa-grid, .cpa-filters, .cpa-hero-kpis, .cpa-assignment-form, .cpa-coverage-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } .cpa-split, .cpa-note-workbench { grid-template-columns: 1fr; } .cpa-assignment-submit { width: 100%; } }
+@media (max-width: 1100px) { .cpa-grid, .cpa-filters, .cpa-hero-kpis, .cpa-assignment-form, .cpa-coverage-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } .cpa-split, .cpa-note-workbench, .cpa-direction { grid-template-columns: 1fr; } .cpa-assignment-submit { width: 100%; } }
 @media (max-width: 900px) { .cpa-audit { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 640px) {
     .cpa-hero { padding: 1.5rem 1.25rem 1.25rem; border-radius: 14px; }

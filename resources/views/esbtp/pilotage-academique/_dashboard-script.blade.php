@@ -118,6 +118,7 @@ document.addEventListener('alpine:init', () => {
                 const params = new URLSearchParams(this.compactFilters(this.filters));
                 const payload = await this.fetchJson(`${config.dataUrl}?${params.toString()}`);
                 this.data = payload;
+                this.$nextTick(() => this.dessinerGraphiques());
                 if (config.canManageAssignments) await this.loadAssignments();
             } catch (e) {
                 this.error = e.message;
@@ -586,6 +587,106 @@ document.addEventListener('alpine:init', () => {
             const subjects = (student.missing_subjects || []).slice(0, 2).map((subject) => subject.name).join(', ');
             const suffix = (student.missing_subjects || []).length > 2 ? ` +${student.missing_subjects.length - 2}` : '';
             return `${student.name} · ${student.missing_subjects_count} matière(s), ${student.missing_evaluations_count} évaluation(s) · ${subjects}${suffix}`;
+        },
+        // ===== Vue direction =====
+        // Les classes arrivent triees par date de calcul : pour repondre a
+        // « qui decroche », on les retrie par score croissant.
+        classesTriees() {
+            return (this.data.classes || [])
+                .filter((c) => c.academic_score !== null && c.academic_score !== undefined)
+                .slice()
+                .sort((a, b) => Number(a.academic_score) - Number(b.academic_score));
+        },
+        totalAlertes() {
+            return (this.data.summary?.alerts_by_severity || [])
+                .reduce((somme, ligne) => somme + Number(ligne.value || 0), 0);
+        },
+        totalFiches() {
+            return (this.data.summary?.sheets_by_status || [])
+                .reduce((somme, ligne) => somme + Number(ligne.value || 0), 0);
+        },
+        // Sous 50 % la classe est en echec, sous 70 % elle decroche : les
+        // deux seuils reprennent ceux des badges de niveau de la page.
+        teinteScore(valeur) {
+            const n = Number(valeur);
+            if (n < 50) return 'critique';
+            if (n < 70) return 'alerte';
+            return '#0453cb';
+        },
+        teinteGravite(cle) {
+            if (cle === 'blocking') return 'critique';
+            if (cle === 'critical') return '#dc2626';
+            if (cle === 'warning') return 'alerte';
+            return '#3b7ddb';
+        },
+        dessinerGraphiques() {
+            if (typeof window.klassciGraphique !== 'function') return;
+
+            const classes = this.classesTriees();
+            if (this.$refs.chartClasses && classes.length) {
+                window.klassciGraphique(this.$refs.chartClasses, 'bar', {
+                    labels: classes.map((c) => c.name),
+                    datasets: [{
+                        label: 'Score académique',
+                        data: classes.map((c) => Number(c.academic_score)),
+                        tones: classes.map((c) => this.teinteScore(c.academic_score)),
+                    }],
+                    tooltips: [classes.map((c) => {
+                        const couverture = c.coverage_pct === null || c.coverage_pct === undefined
+                            ? 'couverture inconnue'
+                            : `couverture ${Number(c.coverage_pct).toFixed(0)} %`;
+                        return `Score ${Number(c.academic_score).toFixed(0)} % · ${couverture}`;
+                    })],
+                }, { scales: { y: { max: 100 } } });
+
+                // Cliquer une barre filtre toute la page sur cette classe :
+                // c'est l'action que la question « qui decroche » appelle.
+                const graphe = window.Chart && window.Chart.getChart(this.$refs.chartClasses);
+                if (graphe) {
+                    graphe.options.onClick = (evt, elements) => {
+                        if (!elements.length) return;
+                        const classe = classes[elements[0].index];
+                        if (classe?.id) this.filtrerSurClasse(classe.id);
+                    };
+                    this.$refs.chartClasses.style.cursor = 'pointer';
+                    graphe.update();
+                }
+            }
+
+            const gravites = (this.data.summary?.alerts_by_severity || []).filter((l) => Number(l.value) > 0);
+            if (this.$refs.chartAlertes && gravites.length) {
+                window.klassciGraphique(this.$refs.chartAlertes, 'doughnut', {
+                    labels: gravites.map((l) => l.label),
+                    datasets: [{
+                        data: gravites.map((l) => Number(l.value)),
+                        tones: gravites.map((l) => this.teinteGravite(l.key)),
+                    }],
+                });
+            }
+
+            const etapes = (this.data.summary?.sheets_by_status || []).filter((l) => Number(l.value) > 0);
+            if (this.$refs.chartFiches && etapes.length) {
+                window.klassciGraphique(this.$refs.chartFiches, 'bar', {
+                    labels: etapes.map((l) => l.label),
+                    datasets: [{
+                        label: 'Fiches',
+                        data: etapes.map((l) => Number(l.value)),
+                        tones: etapes.map((l) => (
+                            l.key === 'rejected' || l.key === 'correction_requested' ? 'critique' : '#0453cb'
+                        )),
+                    }],
+                }, { indexAxis: 'y', scales: { x: { grid: { color: '#eef2f7' } }, y: { grid: { display: false } } } });
+            }
+        },
+        filtrerSurClasse(id) {
+            const champ = document.querySelector('select[name="class_id"], input[name="class_id"]');
+            if (champ) {
+                champ.value = String(id);
+                champ.dispatchEvent(new Event('change', { bubbles: true }));
+                return;
+            }
+            this.filters = { ...this.filters, class_id: String(id) };
+            this.load();
         },
         kpis() {
             const s = this.data.summary || {};
