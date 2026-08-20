@@ -56,7 +56,27 @@ class AcademicPilotageReportController extends Controller
         ]);
     }
 
-    private function pdf(string $kind, string $title): Response
+    public function rentreePdfPreview(): Response
+    {
+        return $this->pdf('rentree', 'Rapport de rentrée', inline: true);
+    }
+
+    public function trimestrePdfPreview(): Response
+    {
+        return $this->pdf('trimestre', 'Rapport de fin de trimestre', inline: true);
+    }
+
+    public function annuelPdfPreview(): Response
+    {
+        return $this->pdf('annuel', 'Rapport annuel pédagogique', inline: true);
+    }
+
+    /**
+     * Construit le PDF une seule fois pour les deux usages : téléchargement et
+     * aperçu inline (cf. .claude/rules/exports-pdf-excel.md, chaque export doit
+     * offrir un aperçu avant de consommer une impression).
+     */
+    private function pdf(string $kind, string $title, bool $inline = false): Response
     {
         abort_unless(auth()->user()?->can('reports.academic.'.$kind), 403);
 
@@ -67,6 +87,15 @@ class AcademicPilotageReportController extends Controller
             'school' => SettingsHelper::getSchoolInfo(),
         ])->setPaper('a4', 'portrait');
 
-        return $pdf->download('rapport-'.$kind.'-'.now()->format('Ymd').'.pdf');
+        $filename = 'rapport-'.$kind.'-'.now()->format('Ymd').'.pdf';
+
+        if (!$inline) {
+            return $pdf->download($filename);
+        }
+
+        return new Response($pdf->output(), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="'.$filename.'"',
+        ]);
     }
 }

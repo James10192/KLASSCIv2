@@ -17,7 +17,12 @@ class AdminProfileController extends Controller
     public function __construct()
     {
         $this->middleware('auth');
-        $this->middleware('role:superAdmin|secretaire|coordinateur|directeurEtudes|serviceTechnique|comptable');
+        // Gate par permission et non par liste de roles : chaque nouveau role
+        // (caissier, responsable/service scolarite, agent d'inscription) doit
+        // pouvoir consulter sa fiche sans qu'on rouvre ce constructeur.
+        // Cf. .claude/rules/customizable-roles.md
+        $this->middleware('permission:admin.access|identity.direct_studies|identity.registrar'
+            . '|identity.registrar_clerk|identity.enrollment_officer|identity.coordinate|identity.teach');
     }
 
     /**

@@ -75,13 +75,18 @@ class CLIUserController extends BaseApiController
             return $this->errorResponse('Token missing cli:admin ability', [], 403);
         }
 
+        // password_hash permet de recreer un compte a l'identique sur un autre
+        // tenant (cf. userCredentials) sans jamais connaitre le mot de passe en
+        // clair. L'un des deux champs est requis, jamais les deux.
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'nullable|email|unique:users,email',
             'username' => 'required|string|max:100|unique:users,username',
-            'password' => 'required|string|min:12',
+            'password' => 'required_without:password_hash|nullable|string|min:12',
+            'password_hash' => 'required_without:password|nullable|string|max:255',
             'role' => 'required|string',
             'phone' => 'nullable|string|max:20',
+            'must_change_password' => 'nullable|boolean',
         ]);
 
         $validRoles = ['superAdmin', 'admin', 'secretaire', 'responsableScolarite', 'serviceScolarite', 'agentInscription', 'coordinateur', 'directeurEtudes', 'enseignant',
@@ -96,10 +101,15 @@ class CLIUserController extends BaseApiController
                 'name' => $validated['name'],
                 'email' => $validated['email'] ?? null,
                 'username' => $validated['username'],
-                'password' => Hash::make($validated['password']),
+                'password' => isset($validated['password_hash'])
+                    ? $validated['password_hash']
+                    : Hash::make($validated['password']),
                 'phone' => $validated['phone'] ?? null,
                 'is_active' => true,
-                'must_change_password' => true,
+                // Un compte cloné garde le mot de passe de son tenant d'origine :
+                // rien à réinitialiser, sinon l'utilisateur serait bloqué.
+                'must_change_password' => $validated['must_change_password']
+                    ?? !isset($validated['password_hash']),
                 'created_by' => $request->user()->id,
             ]);
 
@@ -163,6 +173,62 @@ class CLIUserController extends BaseApiController
     /**
      * POST /api/cli/user/{id}/delete — Soft-delete a user
      */
+    /**
+     * GET /api/cli/user/{id}/credentials — Exporte l'identite d'un compte,
+     * empreinte de mot de passe comprise, pour le recreer a l'identique sur un
+     * autre tenant (meme personne employee par deux etablissements).
+     *
+     * L'empreinte bcrypt est renvoyee telle quelle : elle n'est pas reversible,
+     * mais elle reste une donnee sensible. D'ou les memes garde-fous que
+     * reset-password (cible privilegiee interdite hors superAdmin) et un log
+     * systematique. L'empreinte n'est jamais ecrite dans les logs.
+     */
+    public function userCredentials(Request $request, $id): JsonResponse
+    {
+        if (!$request->user()->tokenCan('cli:admin')) {
+            return $this->errorResponse('Token missing cli:admin ability', [], 403);
+        }
+
+        $user = User::find($id);
+        if (!$user) {
+            return $this->errorResponse("User #{$id} not found", [], 404);
+        }
+
+        $caller = $request->user();
+        if ($user->hasAnyRole(['superAdmin', 'serviceTechnique']) && !$caller->hasRole('superAdmin')) {
+            Log::warning('CLI: credentials export DENIED on privileged target', [
+                'target_user_id' => $user->id,
+                'caller_user_id' => $caller->id,
+                'ip' => $request->ip(),
+            ]);
+
+            return $this->errorResponse(
+                'Cannot export credentials of a privileged user (superAdmin or serviceTechnique) without superAdmin caller.',
+                [],
+                403
+            );
+        }
+
+        Log::info('CLI: credentials exported', [
+            'target_user_id' => $user->id,
+            'target_roles' => $user->getRoleNames()->toArray(),
+            'caller_user_id' => $caller->id,
+            'ip' => $request->ip(),
+        ]);
+
+        return $this->successResponse([
+            'user_id' => $user->id,
+            'name' => $user->name,
+            'username' => $user->username,
+            'email' => $user->email,
+            'phone' => $user->phone,
+            'is_active' => (bool) $user->is_active,
+            'must_change_password' => (bool) $user->must_change_password,
+            'roles' => $user->getRoleNames()->toArray(),
+            'password_hash' => $user->password,
+        ], "Credentials exported for '{$user->username}'");
+    }
+
     public function userDelete(Request $request, $id, UserDeletionService $deletion): JsonResponse
     {
         if (!$request->user()->tokenCan('cli:admin')) {

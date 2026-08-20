@@ -1,67 +1,134 @@
 @extends('layouts.app')
 
-@section('title', 'Dashboard Service scolarite - KLASSCI')
+@section('title', 'Tableau de bord Service scolarité - KLASSCI')
 
-@section('styles')
+@push('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
-<style>
-    body { background-color: var(--background); }
-    .ss-header { background: var(--primary); color: #fff; border-radius: var(--radius-medium); padding: var(--space-xl) var(--space-lg); margin-bottom: var(--space-lg); }
-    .ss-header h1 { color: #fff; margin: 0; font-size: 1.35rem; font-weight: 700; }
-    .ss-header p { color: rgba(255,255,255,.82); margin: 6px 0 0; }
-    .ss-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-medium); padding: var(--space-lg); height: 100%; }
-</style>
-@endsection
+@endpush
 
 @section('content')
 <div class="main-content">
-    <div class="ss-header">
-        <h1>Service scolarite</h1>
-        <p>Documents approuves a imprimer et saisie des notes uniquement pendant la fenetre ouverte.</p>
-    </div>
-    <div class="row g-4">
-        <div class="col-lg-6">
-            <div class="ss-card">
-                <h2 class="h5">File d impression</h2>
-                @forelse($approvedDocuments as $document)
-                    <div class="border rounded p-3 mb-2 d-flex justify-content-between align-items-center">
-                        <div>
-                            <strong>{{ $document->document_type }}</strong>
-                            <div class="small text-muted">Etudiant #{{ $document->etudiant_id }}</div>
+
+    <x-role-hero
+        icon="fa-print"
+        title="Service scolarité"
+        subtitle="Documents approuvés à imprimer et saisie des notes limitée aux fenêtres ouvertes."
+        :kpis="[
+            [
+                'icon' => 'fa-file-circle-check',
+                'value' => $approvedDocuments->count(),
+                'label' => 'Documents à imprimer',
+                'tone' => $approvedDocuments->count() > 0 ? 'alert' : null,
+            ],
+            [
+                'icon' => 'fa-door-open',
+                'value' => $openWindows->count(),
+                'label' => 'Classes ouvertes à la saisie',
+            ],
+        ]">
+        <x-slot:actions>
+            <a class="rdx-btn rdx-btn--white" href="{{ route('esbtp.etudiants.index') }}">
+                <i class="fas fa-user-graduate"></i>Liste des étudiants
+            </a>
+        </x-slot:actions>
+    </x-role-hero>
+
+    <div class="rdx-grid">
+
+        <x-role-panel
+            icon="fa-print"
+            title="File d'impression"
+            subtitle="Uniquement les documents déjà approuvés par le responsable"
+            :count="$approvedDocuments->count()">
+            @forelse($approvedDocuments as $document)
+                @php
+                    $printUrl = match ($document->document_type) {
+                        'certificat' => route('esbtp.etudiants.certificat', $document->etudiant_id),
+                        'attestation' => route('esbtp.etudiants.attestation-frequentation', $document->etudiant_id),
+                        'bulletin' => $document->document_id ? route('esbtp.bulletins.download', $document->document_id) : null,
+                        default => null,
+                    };
+                @endphp
+                <div class="rdx-row">
+                    <div class="rdx-row-icon"><i class="fas fa-file-signature"></i></div>
+                    <div class="rdx-row-main">
+                        <div class="rdx-row-title">{{ ucfirst($document->document_type) }}</div>
+                        <div class="rdx-row-meta">
+                            Étudiant&nbsp;#{{ $document->etudiant_id }}
+                            @if($document->updated_at)
+                                · approuvé le {{ $document->updated_at->format('d/m/Y') }}
+                            @endif
                         </div>
-                        @php
-                            $printUrl = match ($document->document_type) {
-                                'certificat' => route('esbtp.etudiants.certificat', $document->etudiant_id),
-                                'attestation' => route('esbtp.etudiants.attestation-frequentation', $document->etudiant_id),
-                                'bulletin' => $document->document_id ? route('esbtp.bulletins.download', $document->document_id) : null,
-                                default => null,
-                            };
-                        @endphp
+                    </div>
+                    <div class="rdx-row-actions">
                         @if($printUrl)
-                            <a class="btn btn-sm btn-primary" href="{{ $printUrl }}">Imprimer</a>
+                            <a class="rdx-act rdx-act--primary" href="{{ $printUrl }}">
+                                <i class="fas fa-print"></i>Imprimer
+                            </a>
+                        @else
+                            <span class="ss-unavailable" title="Document introuvable">
+                                <i class="fas fa-triangle-exclamation"></i>Indisponible
+                            </span>
                         @endif
                     </div>
-                @empty
-                    <p class="text-muted mb-0">Aucun document approuve.</p>
-                @endforelse
-            </div>
-        </div>
-        <div class="col-lg-6">
-            <div class="ss-card">
-                <h2 class="h5">Saisie des notes autorisee</h2>
-                @forelse($openWindows as $window)
-                    <div class="border rounded p-3 mb-2 d-flex justify-content-between align-items-center">
-                        <div>
-                            <strong>{{ $window->classe->name ?? ('Classe #'.$window->classe_id) }}</strong>
-                            <div class="small text-muted">Jusqu au {{ $window->ends_at->format('d/m/Y') }}</div>
+                </div>
+            @empty
+                <x-role-empty
+                    icon="fa-inbox"
+                    title="Aucun document approuvé"
+                    hint="Les documents validés par le responsable scolarité arriveront dans cette file." />
+            @endforelse
+        </x-role-panel>
+
+        <x-role-panel
+            icon="fa-pen-to-square"
+            title="Saisie des notes autorisée"
+            subtitle="Une classe disparaît de cette liste dès que sa fenêtre se referme"
+            :count="$openWindows->count()">
+            @forelse($openWindows as $window)
+                @php $joursRestants = (int) now()->startOfDay()->diffInDays($window->ends_at, false); @endphp
+                <div class="rdx-row">
+                    <div class="rdx-row-icon"><i class="fas fa-chalkboard"></i></div>
+                    <div class="rdx-row-main">
+                        <div class="rdx-row-title">{{ $window->classe->name ?? 'Classe #'.$window->classe_id }}</div>
+                        <div class="rdx-row-meta">
+                            Jusqu'au {{ $window->ends_at->format('d/m/Y') }}
+                            @if($joursRestants >= 0)
+                                · <span class="ss-remaining {{ $joursRestants <= 2 ? 'ss-remaining--soon' : '' }}">
+                                    {{ $joursRestants === 0 ? 'dernier jour' : $joursRestants.' jour'.($joursRestants > 1 ? 's' : '').' restant'.($joursRestants > 1 ? 's' : '') }}
+                                </span>
+                            @endif
                         </div>
-                        <a class="btn btn-sm btn-outline-primary" href="{{ route('esbtp.notes.index', ['classe_id' => $window->classe_id]) }}">Saisir</a>
                     </div>
-                @empty
-                    <p class="text-muted mb-0">Aucune fenetre ouverte pour le moment.</p>
-                @endforelse
-            </div>
-        </div>
+                    <div class="rdx-row-actions">
+                        <a class="rdx-act rdx-act--primary" href="{{ route('esbtp.notes.index', ['classe_id' => $window->classe_id]) }}">
+                            <i class="fas fa-pen"></i>Saisir
+                        </a>
+                    </div>
+                </div>
+            @empty
+                <x-role-empty
+                    icon="fa-lock"
+                    title="Saisie fermée"
+                    hint="Demandez au responsable scolarité d'ouvrir une fenêtre pour la classe concernée." />
+            @endforelse
+        </x-role-panel>
+
     </div>
 </div>
 @endsection
+
+@push('styles')
+<style>
+    /* Namespace ss-* : tableau de bord service scolarité */
+    .ss-unavailable {
+        display: inline-flex; align-items: center; gap: .35rem;
+        padding: .35rem .7rem; border-radius: 8px;
+        font-size: .76rem; font-weight: 600;
+        background: rgba(245, 158, 11, .1); color: #b45309;
+        border: 1px solid rgba(245, 158, 11, .25);
+    }
+    .ss-remaining { font-weight: 600; color: #0453cb; }
+    .ss-remaining--soon { color: #b45309; }
+</style>
+@endpush

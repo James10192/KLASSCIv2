@@ -240,6 +240,13 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
         ->name('esbtp.rapports.trimestre.pdf');
     Route::middleware(['permission:reports.academic.annuel'])->get('/esbtp/rapports/annuel/pdf', [\App\Http\Controllers\AcademicPilotageReportController::class, 'annuelPdf'])
         ->name('esbtp.rapports.annuel.pdf');
+    // Aperçus inline : throttle généreux car ce sont des lectures.
+    Route::middleware(['permission:reports.academic.rentree', 'throttle:60,1'])->get('/esbtp/rapports/rentree/pdf/preview', [\App\Http\Controllers\AcademicPilotageReportController::class, 'rentreePdfPreview'])
+        ->name('esbtp.rapports.rentree.pdf-preview');
+    Route::middleware(['permission:reports.academic.trimestre', 'throttle:60,1'])->get('/esbtp/rapports/trimestre/pdf/preview', [\App\Http\Controllers\AcademicPilotageReportController::class, 'trimestrePdfPreview'])
+        ->name('esbtp.rapports.trimestre.pdf-preview');
+    Route::middleware(['permission:reports.academic.annuel', 'throttle:60,1'])->get('/esbtp/rapports/annuel/pdf/preview', [\App\Http\Controllers\AcademicPilotageReportController::class, 'annuelPdfPreview'])
+        ->name('esbtp.rapports.annuel.pdf-preview');
 
     // Lot 9 â€” Dashboard widget-based (universel, gated par permissions)
     // Premier consommateur : rÃ´les custom (Lot 8). Accessible Ã  tous via /dashboard/widgets.
