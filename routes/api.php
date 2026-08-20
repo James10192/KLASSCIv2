@@ -447,6 +447,10 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
         Route::get('/filieres', [App\Http\Controllers\API\CLI\CLIFiliereController::class, 'index'])->name('filieres.index');
         Route::post('/filieres', [App\Http\Controllers\API\CLI\CLIFiliereController::class, 'store'])->name('filieres.store');
 
+        // Niveaux d'etudes — pendant des filieres pour l'ouverture d'un tenant.
+        Route::get('/niveaux', [App\Http\Controllers\API\CLI\CLINiveauEtudeController::class, 'index'])->name('niveaux.index');
+        Route::post('/niveaux', [App\Http\Controllers\API\CLI\CLINiveauEtudeController::class, 'store'])->name('niveaux.store');
+
         // Diagnostic en lecture seule : evaluations dont la nature de la
         // matiere ne suit pas le systeme academique de la classe.
         Route::get('/diagnostics/evaluation-system-mismatch', [App\Http\Controllers\API\CLI\CLIMaintenanceController::class, 'evaluationSystemMismatch'])
