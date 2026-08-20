@@ -6,6 +6,7 @@ use App\Http\Controllers\API\BaseApiController;
 use App\Models\Setting;
 use App\Models\ESBTPEvaluation;
 use App\Models\ESBTPNote;
+use App\Models\ESBTPMatiere;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Artisan;
@@ -326,13 +327,13 @@ class CLIMaintenanceController extends BaseApiController
         if (!$anneeId) {
             $anneeId = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->value('id');
         }
-        $coefs = \App\Models\ESBTPMatiereCoefficient::where('matiere_id', $matiere)
+        $coefs = ESBTPMatiereCoefficient::where('matiere_id', $matiere)
             ->where('filiere_id', $classe->filiere_id)
             ->where('niveau_etude_id', $classe->niveau_etude_id)
             ->where('annee_universitaire_id', $anneeId)
             ->get(['matiere_id', 'filiere_id', 'niveau_etude_id', 'annee_universitaire_id', 'periode', 'coefficient'])
             ->toArray();
-        $matiereModel = \App\Models\ESBTPMatiere::find($matiere);
+        $matiereModel = ESBTPMatiere::find($matiere);
         return $this->successResponse([
             'matiere' => $matiereModel ? ['id' => $matiereModel->id, 'name' => $matiereModel->name, 'code' => $matiereModel->code] : null,
             'classe' => ['id' => $classe->id, 'name' => $classe->name, 'filiere_id' => $classe->filiere_id, 'niveau_etude_id' => $classe->niveau_etude_id],
@@ -1256,5 +1257,92 @@ class CLIMaintenanceController extends BaseApiController
         ], count($details) === 0
             ? 'Aucune incoherence entre le systeme de la classe et la nature de la matiere.'
             : count($details).' evaluation(s) incoherente(s).');
+    }
+/**
+     * POST /api/cli/evaluations/{id}/matiere — rebascule une evaluation.
+     *
+     * Sert a reparer une fuite de selecteur : une evaluation posee sur une
+     * matiere du mauvais systeme academique. Le mouvement n'est autorise que
+     * s'il RETABLIT la coherence, jamais s'il la rompt.
+     *
+     * esbtp_notes porte une copie denormalisee de matiere_id : la deplacer en
+     * meme temps est obligatoire, sinon les notes restent rattachees a
+     * l'ancienne matiere et le bulletin continue de l'afficher.
+     *
+     * Body: { matiere_id: int, dry_run?: bool }
+     */
+    public function evaluationChangeMatiere(Request $request, $id): JsonResponse
+    {
+        if (! $request->user()->tokenCan('cli:admin')) {
+            return $this->errorResponse('Token missing cli:admin ability', [], 403);
+        }
+
+        $validated = $request->validate([
+            'matiere_id' => 'required|integer|exists:esbtp_matieres,id',
+            'dry_run' => 'nullable|boolean',
+        ]);
+
+        $evaluation = ESBTPEvaluation::with(['classe', 'matiere'])->find($id);
+        if (! $evaluation) {
+            return $this->errorResponse("Evaluation #{$id} not found", [], 404);
+        }
+
+        $cible = AppModelsESBTPMatiere::find($validated['matiere_id']);
+        $classeEstLmd = ($evaluation->classe?->systeme_academique ?? '') === 'LMD';
+        $cibleEstEcue = $cible->unite_enseignement_id !== null;
+
+        if ($classeEstLmd !== $cibleEstEcue) {
+            return $this->errorResponse(
+                'Refus : la matiere cible ne correspond pas au systeme de la classe. '
+                .'Classe '.($classeEstLmd ? 'LMD' : 'BTS').', matiere cible '
+                .($cibleEstEcue ? 'ECUE LMD' : 'BTS').'.',
+                [],
+                422
+            );
+        }
+
+        $notes = ESBTPNote::where('evaluation_id', $evaluation->id)->count();
+
+        if ((bool) ($validated['dry_run'] ?? false)) {
+            return $this->successResponse([
+                'dry_run' => true,
+                'evaluation_id' => $evaluation->id,
+                'titre' => $evaluation->titre,
+                'classe' => $evaluation->classe?->name,
+                'matiere_actuelle' => $evaluation->matiere?->name,
+                'matiere_cible' => $cible->name,
+                'notes_a_deplacer' => $notes,
+            ], 'Aucune ecriture : previsualisation seulement.');
+        }
+
+        $avant = ['matiere_id' => $evaluation->matiere_id, 'matiere' => $evaluation->matiere?->name];
+
+        DB::transaction(function () use ($evaluation, $cible) {
+            $evaluation->matiere_id = $cible->id;
+            $evaluation->save();
+
+            // Colonne denormalisee : sans cette mise a jour, les notes
+            // resteraient rattachees a l'ancienne matiere.
+            ESBTPNote::where('evaluation_id', $evaluation->id)
+                ->update(['matiere_id' => $cible->id]);
+        });
+
+        Log::warning('CLI: evaluation rebasculee', [
+            'evaluation_id' => $evaluation->id,
+            'classe' => $evaluation->classe?->name,
+            'avant' => $avant,
+            'apres' => ['matiere_id' => $cible->id, 'matiere' => $cible->name],
+            'notes_deplacees' => $notes,
+            'caller_user_id' => $request->user()->id,
+            'ip' => $request->ip(),
+        ]);
+
+        return $this->successResponse([
+            'evaluation_id' => $evaluation->id,
+            'classe' => $evaluation->classe?->name,
+            'matiere_avant' => $avant['matiere'],
+            'matiere_apres' => $cible->name,
+            'notes_deplacees' => $notes,
+        ], "Evaluation #{$evaluation->id} rebasculee sur '{$cible->name}' ({$notes} note(s) suivie(s)).");
     }
 }
