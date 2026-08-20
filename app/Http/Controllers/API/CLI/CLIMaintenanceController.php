@@ -109,7 +109,7 @@ class CLIMaintenanceController extends BaseApiController
             return $this->errorResponse('Token missing cli:read ability', [], 403);
         }
         $limit = min((int) $request->query('limit', 10), 100);
-        $logFile = storage_path('logs/laravel.log');
+        $logFile = $this->currentLogFile() ?? '';
         if (!file_exists($logFile)) {
             return $this->successResponse(['batches' => []], 'No logs');
         }
@@ -352,7 +352,7 @@ class CLIMaintenanceController extends BaseApiController
         $level = $request->get('level'); // error, warning, info, debug
         $search = $request->get('search');
 
-        $logFile = storage_path('logs/laravel.log');
+        $logFile = $this->currentLogFile() ?? '';
 
         if (!file_exists($logFile)) {
             return $this->successResponse(['entries' => [], 'total' => 0], 'Log file not found');
@@ -1073,5 +1073,28 @@ class CLIMaintenanceController extends BaseApiController
             ]);
             return $this->errorResponse('Seed failed: ' . $e->getMessage(), [], 500);
         }
+    }
+
+    /**
+     * Fichier de log courant.
+     *
+     * Le canal applicatif tourne desormais quotidiennement : laravel.log ne
+     * recoit plus rien, c'est laravel-AAAA-MM-JJ.log qui est ecrit. On prend
+     * donc le plus recent, avec repli sur l'ancien fichier pour un tenant qui
+     * n'aurait pas encore produit de fichier date.
+     */
+    private function currentLogFile(): ?string
+    {
+        $dated = glob(storage_path('logs/laravel-*.log')) ?: [];
+
+        if ($dated !== []) {
+            usort($dated, static fn ($a, $b) => filemtime($b) <=> filemtime($a));
+
+            return $dated[0];
+        }
+
+        $legacy = storage_path('logs/laravel.log');
+
+        return file_exists($legacy) ? $legacy : null;
     }
 }
