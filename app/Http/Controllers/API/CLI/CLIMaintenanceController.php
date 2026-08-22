@@ -1345,4 +1345,61 @@ class CLIMaintenanceController extends BaseApiController
             'notes_deplacees' => $notes,
         ], "Evaluation #{$evaluation->id} rebasculee sur '{$cible->name}' ({$notes} note(s) suivie(s)).");
     }
+
+    /**
+     * GET /api/cli/diagnostics/settings-duplicates
+     *
+     * Setting::get() fait « where(key)->first() » SANS ordre : quand deux
+     * lignes portent la meme cle, la valeur lue depend de l ordre rendu par
+     * la base. Une ecole peut donc televerser son logo et continuer a voir
+     * l ancienne valeur, sans aucune erreur.
+     *
+     * Lecture seule : on expose les cles en double et le detail de chaque
+     * ligne, y compris celles inactives, pour pouvoir trancher.
+     */
+    public function settingsDuplicates(Request $request): JsonResponse
+    {
+        if (!$request->user()->tokenCan('cli:read')) {
+            return $this->errorResponse('Token missing cli:read ability', [], 403);
+        }
+
+        $filtre = trim((string) $request->query('key', ''));
+
+        $clesEnDouble = Setting::query()
+            ->select('key')
+            ->when($filtre !== '', fn ($q) => $q->where('key', 'like', '%' . $filtre . '%'))
+            ->groupBy('key')
+            ->havingRaw('COUNT(*) > 1')
+            ->pluck('key');
+
+        $details = Setting::query()
+            ->whereIn('key', $clesEnDouble)
+            ->orderBy('key')
+            ->orderBy('id')
+            ->get(['id', 'key', 'value', 'type', 'group', 'is_active', 'updated_at'])
+            ->groupBy('key')
+            ->map(function ($lignes) {
+                // Ce que Setting::get() renverrait : la premiere ligne active,
+                // sans tri explicite.
+                $lue = $lignes->firstWhere('is_active', true);
+
+                return [
+                    'nombre' => $lignes->count(),
+                    'valeur_lue_par_le_code' => $lue?->value,
+                    'ligne_lue' => $lue?->id,
+                    'lignes' => $lignes->map(fn ($l) => [
+                        'id' => $l->id,
+                        'group' => $l->group,
+                        'value' => $l->value,
+                        'is_active' => (bool) $l->is_active,
+                        'updated_at' => optional($l->updated_at)->toIso8601String(),
+                    ])->values(),
+                ];
+            });
+
+        return $this->successResponse([
+            'cles_en_double' => $details,
+            'total' => $details->count(),
+        ]);
+    }
 }
