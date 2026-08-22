@@ -428,6 +428,7 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
 
         // Settings
         Route::put('/settings/{key}', [App\Http\Controllers\API\CLI\CLIDataController::class, 'settingsUpdate'])->name('settings.update');
+        Route::post('/settings/{key}/image', [App\Http\Controllers\API\CLI\CLIDataController::class, 'settingsUploadImage'])->name('settings.upload-image');
 
         // Academic years
         Route::post('/annee/set/{id}', [App\Http\Controllers\API\CLI\CLIAcademicController::class, 'anneeSet'])->name('annee.set');
