@@ -2,6 +2,7 @@
 
 namespace Tests\Unit\Services;
 
+use App\Domain\BtsTroncCommun\ClasseOuvertureResolver;
 use App\Domain\BtsTroncCommun\BtsAnnualClassMapResolver;
 use App\Domain\BtsTroncCommun\BtsBulletinCohortResolver;
 use App\Domain\BtsTroncCommun\BtsClassCohortCounter;
@@ -175,7 +176,8 @@ class BulletinRankRecalculationServiceTest extends TestCase
             Mockery::mock(ESBTPAbsenceService::class),
             new BtsAnnualClassMapResolver($phaseResolver),
             new BtsBulletinCohortResolver(new BtsAnnualClassMapResolver($phaseResolver)),
-            new BtsClassCohortCounter($phaseResolver)
+            new BtsClassCohortCounter($phaseResolver),
+            new ClasseOuvertureResolver()
         );
 
         return new BulletinRankRecalculationService($bulletinService);

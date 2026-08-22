@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Domain\BtsTroncCommun\ClasseOuvertureResolver;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -457,17 +458,14 @@ class ESBTPEvaluation extends Model implements Auditable
             return;
         }
 
-        $activation = \Illuminate\Support\Facades\DB::table('esbtp_classe_orientation_targets')
-            ->where('target_classe_id', $this->classe_id)
-            ->where('is_active', true)
-            ->min('semestre_activation');
+        $ouvertures = app(ClasseOuvertureResolver::class);
 
-        if ($activation === null || $semestre >= (int) $activation) {
+        if ($ouvertures->estOuverteAu((int) $this->classe_id, $semestre)) {
             return;
         }
 
-        $classe = ESBTPClasse::find($this->classe_id);
-        $nomClasse = $classe->name ?? "#{$this->classe_id}";
+        $activation = $ouvertures->semestreDOuverture((int) $this->classe_id);
+        $nomClasse = ESBTPClasse::find($this->classe_id)->name ?? "#{$this->classe_id}";
 
         throw ValidationException::withMessages([
             'periode' => "La classe « {$nomClasse} » est une classe de spécialité : "
@@ -488,6 +486,23 @@ class ESBTPEvaluation extends Model implements Auditable
             'semestre1', '1' => 1,
             'semestre2', '2' => 2,
             default => null,
+        };
+    }
+
+    /**
+     * Toutes les écritures d'une période, à passer à un `whereIn`.
+     *
+     * Le modèle porte la colonne `periode` : c'est ici que vit la
+     * connaissance de ses valeurs, et non recopiée chez chaque appelant.
+     *
+     * @return list<string>
+     */
+    public static function aliasDePeriode(string $periode): array
+    {
+        return match (self::numeroDeSemestre($periode)) {
+            1 => ['semestre1', '1'],
+            2 => ['semestre2', '2'],
+            default => [$periode],
         };
     }
 }

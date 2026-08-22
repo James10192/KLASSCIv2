@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\API\CLI;
 
+use App\Domain\BtsTroncCommun\ClasseOuvertureResolver;
 use App\Http\Controllers\API\BaseApiController;
 use App\Models\ESBTPEvaluation;
 use App\Models\ESBTPNote;
@@ -123,19 +124,15 @@ class CLIEvaluationPeriodeController extends BaseApiController
      */
     private function detecter(?string $anneeId): array
     {
-        // Semestre d ouverture le plus precoce, par classe cible.
-        $ouvertures = DB::table('esbtp_classe_orientation_targets')
-            ->where('is_active', true)
-            ->groupBy('target_classe_id')
-            ->pluck(DB::raw('MIN(semestre_activation)'), 'target_classe_id');
+        $ouvertures = app(ClasseOuvertureResolver::class)->ouverturesParClasse();
 
-        if ($ouvertures->isEmpty()) {
+        if ($ouvertures === []) {
             return [];
         }
 
         $evaluations = ESBTPEvaluation::query()
             ->with(['classe:id,name', 'matiere:id,name'])
-            ->whereIn('classe_id', $ouvertures->keys())
+            ->whereIn('classe_id', array_keys($ouvertures))
             ->when($anneeId, fn ($q) => $q->where('annee_universitaire_id', (int) $anneeId))
             ->where('status', '!=', 'cancelled')
             ->get();
