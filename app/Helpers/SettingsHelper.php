@@ -153,7 +153,9 @@ class SettingsHelper
         $candidates[] = public_path('images/LOGO-KLASSCI-PNG.png');
 
         foreach ($candidates as $candidate) {
-            if (!is_string($candidate) || $candidate === '') {
+            // is_file : les candidats « .../logos/ » sans nom de fichier sont
+            // des dossiers, illisibles comme image.
+            if (!is_string($candidate) || $candidate === '' || !is_file($candidate)) {
                 continue;
             }
             $contents = @file_get_contents($candidate);

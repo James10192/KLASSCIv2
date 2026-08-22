@@ -516,14 +516,14 @@ class ESBTPPDFService
         }
 
         $storagePath = storage_path('app/public/' . $logoPath);
-        if (file_exists($storagePath)) {
+        if (is_file($storagePath)) {
             $logoType = pathinfo($storagePath, PATHINFO_EXTENSION);
             $logoData = file_get_contents($storagePath);
             return 'data:image/' . $logoType . ';base64,' . base64_encode($logoData);
         }
 
         $publicPath = public_path($logoPath);
-        if (file_exists($publicPath)) {
+        if (is_file($publicPath)) {
             $logoType = pathinfo($publicPath, PATHINFO_EXTENSION);
             $logoData = file_get_contents($publicPath);
             return 'data:image/' . $logoType . ';base64,' . base64_encode($logoData);
