@@ -81,7 +81,7 @@ class ESBTPStudentBulletinController extends Controller
 
         // Récupérer les paramètres de filtre
         $anneeId = $request->input('annee_universitaire_id',
-            ESBTPAnneeUniversitaire::where('is_active', true)->first()->id ?? null);
+            ESBTPAnneeUniversitaire::anneeCourante()->id ?? null);
         $periode = $request->input('periode');
 
         // Récupérer l'inscription active de l'étudiant

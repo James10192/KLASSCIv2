@@ -12,6 +12,26 @@ class ESBTPAnneeUniversitaire extends Model
 {
     use HasFactory, SoftDeletes;
 
+    /**
+     * L'année universitaire en cours.
+     *
+     * `is_active` ne désigne pas l'année courante mais toute année ouverte :
+     * l'ESBTP Yamoussoukro en compte dix-sept, jusqu'à 2040-2041. Plusieurs
+     * écrans faisaient `where('is_active', true)->first()`, sans tri : la base
+     * rendait la plus ancienne, soit 2024-2025, et une page de résultats
+     * affichait « aucune note exploitable » pour un étudiant qui en avait
+     * dix-sept sur l'année en cours.
+     *
+     * `is_current` est le drapeau qui désigne l'année courante — c'est déjà ce
+     * que font les commandes du projet. On retombe sur la plus récente des
+     * années ouvertes si aucune n'est marquée, plutôt que sur la plus ancienne.
+     */
+    public static function anneeCourante(): ?self
+    {
+        return static::query()->where('is_current', true)->first()
+            ?? static::query()->where('is_active', true)->orderByDesc('annee_debut')->first();
+    }
+
     /** Clé de cache pour l'année courante (TTL court : tenants stables). */
     public const CURRENT_CACHE_KEY = 'esbtp:annee_universitaire:current';
 

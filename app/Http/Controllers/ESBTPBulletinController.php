@@ -183,7 +183,7 @@ class ESBTPBulletinController extends Controller
     {
         $classes = ESBTPClasse::where('is_active', true)->orderBy('name')->get();
         $anneesUniversitaires = ESBTPAnneeUniversitaire::orderBy('annee_debut', 'desc')->get();
-        $anneeActuelle = ESBTPAnneeUniversitaire::where('is_active', true)->first();
+        $anneeActuelle = ESBTPAnneeUniversitaire::anneeCourante();
 
         return view('esbtp.bulletins.create', compact('classes', 'anneesUniversitaires', 'anneeActuelle'));
     }
@@ -1558,7 +1558,7 @@ class ESBTPBulletinController extends Controller
         // L'année par défaut : on prend l'année marquée is_current (l'année académique
         // en cours pour l'école), avec fallback sur is_active si jamais aucune is_current.
         $anneeActuelle = ESBTPAnneeUniversitaire::where('is_current', true)->first()
-            ?? ESBTPAnneeUniversitaire::where('is_active', true)->first();
+            ?? ESBTPAnneeUniversitaire::anneeCourante();
 
         return view('esbtp.bulletins.select', compact('classes', 'anneesUniversitaires', 'anneeActuelle'));
     }
