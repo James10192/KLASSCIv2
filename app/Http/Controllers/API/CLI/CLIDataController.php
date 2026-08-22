@@ -7,6 +7,7 @@ use App\Domain\Analytics\DTOs\AnalyticsContext;
 use App\Domain\Analytics\Predictors\DefaultRiskPredictor;
 use App\DTOs\Comptabilite\ComptabiliteFilters;
 use App\Http\Controllers\API\BaseApiController;
+use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPInscription;
 use App\Models\ESBTPPaiement;
@@ -31,20 +32,9 @@ class CLIDataController extends BaseApiController
             return $this->errorResponse('Token missing cli:read ability', [], 403);
         }
 
-        // ?annee_id= permet de regarder une annee passee. Sans lui, on ne peut
-        // diagnostiquer que l annee en cours, ce qui rend tout controle sur des
-        // bulletins anterieurs impossible.
-        $anneeId = $request->query('annee_id');
-        if ($anneeId !== null && $anneeId !== '') {
-            $annee = AppModelsESBTPAnneeUniversitaire::find((int) $anneeId);
-            if (!$annee) {
-                return $this->errorResponse("Annee universitaire {$anneeId} introuvable.", ['code' => 'ACADEMIC_YEAR_NOT_FOUND'], 404);
-            }
-        } else {
-            $annee = $this->getAnneeCouraante();
-            if (!$annee) {
-                return $this->errorResponse('Aucune annee universitaire courante configuree. Creez-en une avec: klassci annee:create <tenant> "2025-2026" 2025-09-15 2026-07-31', ['code' => 'NO_ACADEMIC_YEAR'], 422);
-            }
+        $annee = $this->getAnneeCouraante();
+        if (!$annee) {
+            return $this->errorResponse('Aucune annee universitaire courante configuree. Creez-en une avec: klassci annee:create <tenant> "2025-2026" 2025-09-15 2026-07-31', ['code' => 'NO_ACADEMIC_YEAR'], 422);
         }
 
         $activeStudents = ESBTPInscription::where('annee_universitaire_id', $annee->id)
@@ -107,9 +97,20 @@ class CLIDataController extends BaseApiController
             return $this->errorResponse('Token missing cli:read ability', [], 403);
         }
 
-        $annee = $this->getAnneeCouraante();
-        if (!$annee) {
-            return $this->errorResponse('Aucune annee universitaire courante configuree. Creez-en une avec: klassci annee:create <tenant> "2025-2026" 2025-09-15 2026-07-31', ['code' => 'NO_ACADEMIC_YEAR'], 422);
+        // ?annee_id= vise une annee precise. Sans ce parametre, on ne peut
+        // diagnostiquer que l annee en cours, ce qui rend tout controle sur des
+        // bulletins anterieurs impossible.
+        $anneeId = $request->query('annee_id');
+        if ($anneeId !== null && $anneeId !== '') {
+            $annee = ESBTPAnneeUniversitaire::find((int) $anneeId);
+            if (!$annee) {
+                return $this->errorResponse("Annee universitaire {$anneeId} introuvable.", ['code' => 'ACADEMIC_YEAR_NOT_FOUND'], 404);
+            }
+        } else {
+            $annee = $this->getAnneeCouraante();
+            if (!$annee) {
+                return $this->errorResponse('Aucune annee universitaire courante configuree. Creez-en une avec: klassci annee:create <tenant> "2025-2026" 2025-09-15 2026-07-31', ['code' => 'NO_ACADEMIC_YEAR'], 422);
+            }
         }
 
         $classes = ESBTPClasse::withCount(['inscriptions as effectif' => function ($q) use ($annee) {
