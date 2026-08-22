@@ -120,7 +120,7 @@ class ESBTPResultatController extends Controller
                 Log::info('Année avec données trouvée: '.$anneeWithData->name.' (ID: '.$anneeWithData->id.')');
             } else {
                 // Fallback to active academic year
-                $annee_universitaire_id = ESBTPAnneeUniversitaire::where('is_active', true)->first()->id ?? null;
+                $annee_universitaire_id = ESBTPAnneeUniversitaire::anneeCourante()->id ?? null;
             }
         }
 
@@ -501,7 +501,13 @@ class ESBTPResultatController extends Controller
                 );
                 $noteAssid = $this->bulletinService->resolveAttendanceNote($absences['justifiees'] ?? 0, $absences['non_justifiees'] ?? 0);
                 $r['note_assiduite'] = $noteAssid;
-                $r['moyenne_avec_assiduite'] = $r['moyenne'] + $noteAssid;
+
+                // Sans note exploitable, le bonus d'assiduité produisait une
+                // moyenne à lui seul : un étudiant sans aucune note s'affichait
+                // à 0,13. L'assiduité ajuste une moyenne, elle n'en crée pas.
+                $r['moyenne_avec_assiduite'] = $r['has_average']
+                    ? $r['moyenne'] + $noteAssid
+                    : null;
             }
             unset($r);
         }
@@ -637,7 +643,7 @@ class ESBTPResultatController extends Controller
 
         // Get current academic year if not specified
         if (! $annee_universitaire_id) {
-            $annee_universitaire_id = ESBTPAnneeUniversitaire::where('is_active', true)->first()->id ?? null;
+            $annee_universitaire_id = ESBTPAnneeUniversitaire::anneeCourante()->id ?? null;
         }
 
         // For view compatibility
