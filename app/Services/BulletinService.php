@@ -1311,11 +1311,22 @@ class BulletinService
             return $this->classStatsCache[$statsKey];
         }
 
-        // Récupérer tous les étudiants de la classe
-        $etudiants = ESBTPEtudiant::whereHas('inscriptions', function ($q) use ($classeId, $anneeUniversitaireId) {
-            $q->where('classe_id', $classeId)
-                ->where('annee_universitaire_id', $anneeUniversitaireId);
-        })->get();
+        // La cohorte vient du compteur de phases, pas de la classe courante.
+        // Un etudiant passe en specialite au semestre 2 garde une seule
+        // inscription, deplacee vers sa nouvelle classe. Interroger
+        // inscriptions.classe_id revenait donc a chercher les eleves du
+        // semestre 1 dans une classe qu ils ont quittee : la classe paraissait
+        // vide et les statistiques tombaient a zero. Le rang, lui, utilisait
+        // deja ce compteur : les deux portent desormais sur la meme population.
+        $etudiantIds = $this->classCohortCounter->etudiantIds(
+            (int) $classeId,
+            (int) $anneeUniversitaireId,
+            (string) $periode
+        );
+
+        $etudiants = $etudiantIds === []
+            ? collect()
+            : ESBTPEtudiant::whereIn('id', $etudiantIds)->get();
 
         if ($etudiants->isEmpty()) {
             return $this->cacheClassStats($statsKey, [
