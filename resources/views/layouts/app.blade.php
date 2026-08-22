@@ -2489,6 +2489,7 @@
                             <i class="fas fa-bars"></i>
                         </button>
                         <!-- Le titre KLASSCI est déjà dans la sidebar, pas besoin de le dupliquer -->
+                        @include('partials.navbar-etablissement')
                     </div>
 
                     <div class="navbar-center d-none d-lg-block">
