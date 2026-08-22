@@ -1862,6 +1862,15 @@ Route::get('/esbtp/bulletins/export-precheck', [ESBTPBulletinController::class, 
 Route::get('/esbtp/bulletins/export-pdf', [ESBTPBulletinController::class, 'exportBulkPdf'])
     ->name('esbtp.bulletins.export-pdf')
     ->middleware(['auth', 'permission:bulletins.export.bulk', 'throttle:5,1']);
+    Route::post('/esbtp/bulletins/export-pdf/ouvrir', [ESBTPBulletinController::class, 'ouvrirExportParTranches'])
+        ->name('esbtp.bulletins.export-pdf.ouvrir')
+        ->middleware(['auth', 'permission:bulletins.export.bulk', 'throttle:60,1']);
+    Route::post('/esbtp/bulletins/export-pdf/tranche', [ESBTPBulletinController::class, 'rendreTrancheExport'])
+        ->name('esbtp.bulletins.export-pdf.tranche')
+        ->middleware(['auth', 'permission:bulletins.export.bulk', 'throttle:60,1']);
+    Route::get('/esbtp/bulletins/export-pdf/assembler', [ESBTPBulletinController::class, 'assemblerExportParTranches'])
+        ->name('esbtp.bulletins.export-pdf.assembler')
+        ->middleware(['auth', 'permission:bulletins.export.bulk', 'throttle:60,1']);
 Route::get('/esbtp/bulletins/export-pdf/preview', [ESBTPBulletinController::class, 'exportBulkPdfPreview'])
     ->name('esbtp.bulletins.export-pdf-preview')
     ->middleware(['auth', 'permission:bulletins.export.bulk', 'throttle:10,1']);

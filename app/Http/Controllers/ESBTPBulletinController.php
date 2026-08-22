@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\ExporteBulletinsParTranches;
 use App\Domain\BtsTroncCommun\BtsClassCohortCounter;
 use App\Domain\AcademicPilotage\Exceptions\AcademicPilotageException;
 use App\Domain\AcademicPilotage\Services\BtsBulkBulletinGenerationService;
@@ -44,6 +45,8 @@ use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 class ESBTPBulletinController extends Controller
 {
+    use ExporteBulletinsParTranches;
+
     private array $coefficientCache = [];
 
     private array $classeCache = [];
