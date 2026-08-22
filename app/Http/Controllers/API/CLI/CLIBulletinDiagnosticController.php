@@ -1,0 +1,262 @@
+<?php
+
+namespace App\Http\Controllers\API\CLI;
+
+use App\Http\Controllers\API\BaseApiController;
+use App\Models\ESBTPBulletin;
+use App\Models\ESBTPEtudiant;
+use App\Models\ESBTPInscription;
+use App\Models\ESBTPNote;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+
+/**
+ * Diagnostic d'un bulletin : ce qu'il a fige contre ce qui est recalcule.
+ *
+ * Un bulletin conserve la classe, l'effectif, la moyenne et le rang tels
+ * qu'ils etaient au moment de sa generation. Les statistiques de classe et le
+ * rang, eux, sont recalcules a chaque lecture contre l'etat courant des
+ * inscriptions. Quand un etudiant change de classe entre les deux, les deux
+ * sources divergent sans que rien ne le signale.
+ *
+ * Lecture seule. Aucune correction n'est appliquee ici : on etablit les faits.
+ */
+class CLIBulletinDiagnosticController extends BaseApiController
+{
+    /**
+     * GET /api/cli/diagnostics/bulletins
+     *
+     * Retrouve des bulletins par nom de classe FIGE. La liste des classes
+     * ordinaire masque les classes sans inscription active : elle ne permet
+     * donc pas d'atteindre une classe videe par les reorientations, qui est
+     * precisement le cas a instruire.
+     */
+    public function index(Request $request): JsonResponse
+    {
+        if (! $request->user()->tokenCan('cli:read')) {
+            return $this->errorResponse('Token missing cli:read ability', [], 403);
+        }
+
+        $limite = min(50, max(1, (int) $request->query('limit', 10)));
+
+        $bulletins = ESBTPBulletin::query()
+            ->with([
+                'etudiant:id,nom,prenoms,matricule',
+                'classe:id,name',
+                'anneeUniversitaire:id,name',
+            ])
+            ->when($request->filled('classe'), function ($q) use ($request) {
+                $motif = '%'.$request->query('classe').'%';
+                $q->whereHas('classe', fn ($c) => $c->where('name', 'like', $motif));
+            })
+            ->when($request->filled('etudiant_id'), fn ($q) => $q->where('etudiant_id', (int) $request->query('etudiant_id')))
+            ->when($request->filled('periode'), fn ($q) => $q->where('periode', $request->query('periode')))
+            ->when($request->filled('annee_id'), fn ($q) => $q->where('annee_universitaire_id', (int) $request->query('annee_id')))
+            ->orderByDesc('id')
+            ->limit($limite)
+            ->get()
+            ->map(fn (ESBTPBulletin $b) => [
+                'bulletin_id' => $b->id,
+                'etudiant' => $this->nomComplet($b),
+                'matricule' => $b->etudiant->matricule ?? null,
+                'classe_figee' => $b->classe->name ?? null,
+                'periode' => $b->periode,
+                'annee' => $b->anneeUniversitaire->name ?? null,
+                'moyenne_figee' => $b->moyenne_generale,
+                'rang_fige' => $b->rang,
+                'effectif_fige' => $b->effectif_classe,
+            ]);
+
+        return $this->successResponse([
+            'bulletins' => $bulletins,
+            'total' => $bulletins->count(),
+        ]);
+    }
+
+    /**
+     * GET /api/cli/diagnostics/bulletin/{id}
+     *
+     * Confronte les valeurs figees du bulletin a ce que le code recalculerait
+     * aujourd'hui, et retrace l'origine de chaque matiere affichee.
+     */
+    public function show(Request $request, int $id): JsonResponse
+    {
+        if (! $request->user()->tokenCan('cli:read')) {
+            return $this->errorResponse('Token missing cli:read ability', [], 403);
+        }
+
+        $bulletin = ESBTPBulletin::with([
+            'etudiant:id,nom,prenoms,matricule',
+            'classe:id,name',
+            'anneeUniversitaire:id,name',
+        ])->find($id);
+
+        if (! $bulletin) {
+            return $this->errorResponse("Bulletin {$id} introuvable.", ['code' => 'BULLETIN_NOT_FOUND'], 404);
+        }
+
+        $divergences = [];
+
+        $inscription = $this->inscriptionCourante($bulletin);
+        if ($inscription && (int) $inscription->classe_id !== (int) $bulletin->classe_id) {
+            $divergences[] = "L'etudiant est aujourd'hui inscrit en "
+                .($inscription->classe->name ?? 'classe inconnue')
+                .', alors que le bulletin a fige '
+                .($bulletin->classe->name ?? 'classe inconnue').'.';
+        }
+
+        $population = $this->populationDeLaClasse($bulletin);
+        if ($population === 0) {
+            $divergences[] = 'Aucun etudiant n\'est rattache a la classe figee pour cette annee. '
+                .'Les statistiques de classe et le rang portent donc sur une population vide, '
+                .'ce qui produit les zeros constates a l\'affichage.';
+        } elseif ($bulletin->effectif_classe && $population !== (int) $bulletin->effectif_classe) {
+            $divergences[] = "L'effectif imprime est {$bulletin->effectif_classe}, "
+                ."alors que la classe compte aujourd'hui {$population} inscrits. "
+                .'Le rang affiche et l\'effectif imprime ne portent pas sur la meme population.';
+        }
+
+        $matieres = $this->matieresAffichees($bulletin);
+        $etrangeres = array_values(array_map(
+            fn (array $m) => $m['matiere'],
+            array_filter($matieres, fn (array $m) => $m['vient_d_une_autre_classe'])
+        ));
+
+        if ($etrangeres !== []) {
+            $divergences[] = 'Ces matieres proviennent d\'evaluations rattachees a une autre classe '
+                .'que celle du bulletin : '.implode(', ', $etrangeres).'. '
+                .'La requete des notes ne filtre pas par classe.';
+        }
+
+        return $this->successResponse([
+            'bulletin' => [
+                'id' => $bulletin->id,
+                'etudiant' => $this->nomComplet($bulletin),
+                'matricule' => $bulletin->etudiant->matricule ?? null,
+                'periode' => $bulletin->periode,
+                'annee' => $bulletin->anneeUniversitaire->name ?? null,
+                'classe_figee' => [
+                    'id' => $bulletin->classe_id,
+                    'nom' => $bulletin->classe->name ?? null,
+                ],
+                'effectif_fige' => $bulletin->effectif_classe,
+                'moyenne_figee' => $bulletin->moyenne_generale,
+                'rang_fige' => $bulletin->rang,
+                'mention_figee' => $bulletin->mention,
+            ],
+            'etat_actuel' => [
+                'inscription_active' => $inscription ? [
+                    'classe_id' => $inscription->classe_id,
+                    'classe' => $inscription->classe->name ?? null,
+                    'workflow_step' => $inscription->workflow_step,
+                ] : null,
+                'population_de_la_classe_figee' => $population,
+            ],
+            'matieres_affichees' => $matieres,
+            'divergences' => $divergences,
+            'verdict' => $divergences === []
+                ? 'Aucune divergence detectee sur ce bulletin.'
+                : count($divergences).' divergence(s) detectee(s).',
+        ]);
+    }
+
+    private function nomComplet(ESBTPBulletin $bulletin): string
+    {
+        return trim(($bulletin->etudiant->nom ?? '').' '.($bulletin->etudiant->prenoms ?? ''));
+    }
+
+    private function inscriptionCourante(ESBTPBulletin $bulletin): ?ESBTPInscription
+    {
+        return ESBTPInscription::with('classe:id,name')
+            ->where('etudiant_id', $bulletin->etudiant_id)
+            ->where('annee_universitaire_id', $bulletin->annee_universitaire_id)
+            ->where('status', 'active')
+            ->orderByDesc('id')
+            ->first();
+    }
+
+    /**
+     * Reproduit la requete de BulletinService::calculerStatistiquesClasse, qui
+     * est privee. On expose ici la population, pas le resultat : c'est elle qui
+     * explique les zeros quand la classe s'est videe.
+     */
+    private function populationDeLaClasse(ESBTPBulletin $bulletin): int
+    {
+        return ESBTPEtudiant::whereHas('inscriptions', fn ($q) => $q
+            ->where('classe_id', $bulletin->classe_id)
+            ->where('annee_universitaire_id', $bulletin->annee_universitaire_id))
+            ->count();
+    }
+
+    /**
+     * Le bulletin construit sa liste de matieres a partir des notes de
+     * l'etudiant, sans filtrer par classe. Une note prise ailleurs remonte donc
+     * sur ce bulletin : la colonne classes_des_evaluations le montre.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function matieresAffichees(ESBTPBulletin $bulletin): array
+    {
+        $notes = ESBTPNote::with([
+            'evaluation:id,titre,matiere_id,classe_id,periode',
+            'evaluation.matiere:id,name',
+            'evaluation.classe:id,name',
+        ])
+            ->where('etudiant_id', $bulletin->etudiant_id)
+            ->whereHas('evaluation', fn ($q) => $q
+                ->where('annee_universitaire_id', $bulletin->annee_universitaire_id)
+                ->where('status', '!=', 'cancelled')
+                ->whereIn('periode', $this->aliasPeriode((string) $bulletin->periode)))
+            ->get();
+
+        $parMatiere = [];
+
+        foreach ($notes as $note) {
+            $evaluation = $note->evaluation;
+            if (! $evaluation || ! $evaluation->matiere) {
+                continue;
+            }
+
+            $nom = $evaluation->matiere->name;
+            $classeEvaluation = $evaluation->classe->name ?? null;
+            $ailleurs = $evaluation->classe_id
+                && (int) $evaluation->classe_id !== (int) $bulletin->classe_id;
+
+            if (! isset($parMatiere[$nom])) {
+                $parMatiere[$nom] = [
+                    'matiere' => $nom,
+                    'nb_notes' => 0,
+                    'classes_des_evaluations' => [],
+                    'vient_d_une_autre_classe' => false,
+                ];
+            }
+
+            $parMatiere[$nom]['nb_notes']++;
+
+            if ($classeEvaluation && ! in_array($classeEvaluation, $parMatiere[$nom]['classes_des_evaluations'], true)) {
+                $parMatiere[$nom]['classes_des_evaluations'][] = $classeEvaluation;
+            }
+
+            if ($ailleurs) {
+                $parMatiere[$nom]['vient_d_une_autre_classe'] = true;
+            }
+        }
+
+        return array_values($parMatiere);
+    }
+
+    /**
+     * Le champ periode a connu des valeurs heritees ('1', '2') avant les
+     * libelles actuels. Les deux coexistent en base.
+     *
+     * @return array<int, string>
+     */
+    private function aliasPeriode(string $periode): array
+    {
+        return match ($periode) {
+            'semestre1' => ['semestre1', '1'],
+            'semestre2' => ['semestre2', '2'],
+            default => [$periode],
+        };
+    }
+}

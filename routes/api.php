@@ -454,6 +454,10 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
 
         // Diagnostic en lecture seule : evaluations dont la nature de la
         // matiere ne suit pas le systeme academique de la classe.
+        Route::get('/diagnostics/bulletins', [App\Http\Controllers\API\CLI\CLIBulletinDiagnosticController::class, 'index'])
+            ->name('diagnostics.bulletins');
+        Route::get('/diagnostics/bulletin/{id}', [App\Http\Controllers\API\CLI\CLIBulletinDiagnosticController::class, 'show'])
+            ->name('diagnostics.bulletin');
         Route::get('/diagnostics/settings-duplicates', [App\Http\Controllers\API\CLI\CLIMaintenanceController::class, 'settingsDuplicates'])
             ->name('diagnostics.settings-duplicates');
         Route::get('/diagnostics/evaluation-system-mismatch', [App\Http\Controllers\API\CLI\CLIMaintenanceController::class, 'evaluationSystemMismatch'])
