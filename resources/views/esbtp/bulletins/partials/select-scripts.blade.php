@@ -266,8 +266,22 @@ window.busCard = function (cfg) {
         preflightAbort: null,
         previewIssue: null,
         lastGeneration: null,
-        // Message de progression pendant une generation decoupee en tranches.
+        // Avancee d'une generation decoupee en tranches. Null tant qu'aucune
+        // n'est en cours ; sinon un objet { faits, total, tranche, tranches,
+        // pourcent, restant, restantTexte }.
         progression: null,
+
+        /** Duree en secondes rendue lisible, ou null si on ne sait pas encore. */
+        dureeLisible(secondes) {
+            if (secondes === null || secondes === undefined || !isFinite(secondes)) {
+                return null;
+            }
+            if (secondes < 60) {
+                return `environ ${Math.max(5, Math.round(secondes / 5) * 5)} s`;
+            }
+            const minutes = Math.round(secondes / 60);
+            return `environ ${minutes} min`;
+        },
         // Année universitaire courante pré-sélectionnée (le user peut changer ensuite).
         form: {
             classe_id: '',
@@ -708,9 +722,30 @@ window.busCard = function (cfg) {
                     let res = null;
                     let echec = null;
 
+                    // Une classe entiere prend plusieurs minutes, decoupee en
+                    // tranches. Sans reperes, l'utilisateur croit que rien ne se
+                    // passe et relance : on montre donc l'avancee reelle et une
+                    // estimation du temps restant, calculee sur les tranches
+                    // deja faites plutot que sur une moyenne devinee.
+                    const debut = Date.now();
+
                     for (let i = 0; i < tranches.length; i++) {
                         if (tranches.length > 1) {
-                            this.progression = `Traitement ${Math.min((i + 1) * taille, tousLesIds.length)} / ${tousLesIds.length} etudiants...`;
+                            const faits = Math.min(i * taille, tousLesIds.length);
+                            const ecoule = (Date.now() - debut) / 1000;
+                            const restant = i > 0
+                                ? Math.round((ecoule / i) * (tranches.length - i))
+                                : null;
+
+                            this.progression = {
+                                faits,
+                                total: tousLesIds.length,
+                                tranche: i + 1,
+                                tranches: tranches.length,
+                                pourcent: Math.round((faits / tousLesIds.length) * 100),
+                                restant,
+                                restantTexte: this.dureeLisible(restant),
+                            };
                         }
 
                         const { reponse, charge } = await envoyerTranche(tranches[i]);

@@ -604,14 +604,56 @@
     .bus-config-table td:nth-child(2) { display: none; }
 }
 
-    /* Progression d une generation par tranches */
+    /* Progression d une generation par tranches.
+       Une classe entiere prend plusieurs minutes : sans reperes, l utilisateur
+       croit que rien ne se passe et relance. On donne donc l avancee chiffree,
+       une barre, et le temps restant estime. */
     .bus-progress {
-        display: flex; align-items: center; gap: .6rem;
-        margin-top: .85rem; padding: .7rem .9rem;
+        margin-top: .85rem; padding: .75rem .9rem;
         background: rgba(4, 83, 203, .06);
         border: 1px solid rgba(4, 83, 203, .18);
         border-radius: 10px;
-        font-size: .84rem; font-weight: 600; color: #0453cb;
+        color: #0453cb;
+    }
+
+    .bus-progress__head {
+        display: flex; align-items: baseline; justify-content: space-between;
+        gap: .75rem;
+    }
+
+    .bus-progress__label {
+        display: inline-flex; align-items: center; gap: .5rem;
+        font-size: .84rem; font-weight: 600;
+    }
+
+    .bus-progress__pct {
+        font-size: .95rem; font-weight: 700;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .bus-progress__rail {
+        margin: .55rem 0 .45rem;
+        height: 6px; border-radius: 999px;
+        background: rgba(4, 83, 203, .14);
+        overflow: hidden;
+    }
+
+    /* La transition lisse le saut d une tranche a l autre : sans elle, la barre
+       avance par a-coups de huit points et parait cassee. */
+    .bus-progress__fill {
+        height: 100%; border-radius: 999px;
+        background: linear-gradient(90deg, #0453cb, #5e91de);
+        transition: width .45s cubic-bezier(.4, 0, .2, 1);
+    }
+
+    .bus-progress__foot {
+        display: flex; align-items: center; justify-content: space-between;
+        gap: .75rem;
+        font-size: .72rem; color: #64748b; font-weight: 500;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .bus-progress__fill { transition: none; }
     }
 </style>
 @endpush
@@ -904,8 +946,21 @@
                 </div>
                 {{-- Progression d'une generation decoupee en tranches --}}
                 <div class="bus-progress" x-show="progression" x-cloak>
-                    <i class="fas fa-spinner fa-spin"></i>
-                    <span x-text="progression"></span>
+                    <div class="bus-progress__head">
+                        <span class="bus-progress__label">
+                            <i class="fas fa-spinner fa-spin"></i>
+                            <span x-text="`${progression?.faits ?? 0} / ${progression?.total ?? 0} étudiants`"></span>
+                        </span>
+                        <span class="bus-progress__pct" x-text="`${progression?.pourcent ?? 0} %`"></span>
+                    </div>
+                    <div class="bus-progress__rail" role="progressbar"
+                         :aria-valuenow="progression?.pourcent ?? 0" aria-valuemin="0" aria-valuemax="100">
+                        <div class="bus-progress__fill" :style="`width:${progression?.pourcent ?? 0}%`"></div>
+                    </div>
+                    <div class="bus-progress__foot">
+                        <span x-text="`Tranche ${progression?.tranche ?? 0} sur ${progression?.tranches ?? 0}`"></span>
+                        <span x-show="progression?.restantTexte" x-text="`Il reste ${progression?.restantTexte}`"></span>
+                    </div>
                 </div>
                 <div class="bus-inline-panel"
                      :class="lastGeneration?.ok ? 'bus-inline-panel--ok' : 'bus-inline-panel--danger'"
