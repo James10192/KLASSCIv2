@@ -62,6 +62,10 @@ class BulletinBulkPdfExporter
      */
     public function assembler(string $dossier, ?callable $coverBuilder = null, array $echecs = []): string
     {
+        // Concatener soixante-dix PDF demande autant de marge que les rendre.
+        $this->raiseMemoryLimit('512M');
+        @set_time_limit(300);
+
         $fichiers = glob($dossier.'/blt_*.pdf') ?: [];
         sort($fichiers, SORT_STRING);
 
@@ -77,7 +81,10 @@ class BulletinBulkPdfExporter
         }
 
         try {
-            return $this->mergePdfs($fichiers, $dossier);
+            // Le PDF final est ecrit dans le dossier PARENT, pas dans celui de
+            // la session : celle-ci est supprimee juste apres l assemblage, et
+            // le document servi disparaissait avec elle.
+            return $this->mergePdfs($fichiers, $this->dossierTemporaire());
         } finally {
             foreach ($fichiers as $f) {
                 @unlink($f);
