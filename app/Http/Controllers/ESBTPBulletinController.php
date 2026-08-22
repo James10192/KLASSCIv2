@@ -1228,6 +1228,15 @@ class ESBTPBulletinController extends Controller
      * l'ordre choisi. Snapshot-only (bulletins déjà générés uniquement) : aucun
      * recalcul n'est déclenché depuis ce GET. Borné par un plafond configurable
      * (bulletins_bulk_export_cap) pour protéger mémoire/temps d'exécution.
+     *
+     * Le plafond par defaut est de 6, mesure sur esbtp-yakro le 22/08/2026 :
+     * sept bulletins prennent 32 secondes en telechargement et 26 en apercu,
+     * pour une limite d execution de l hebergeur autour de 30. Au-dela, la
+     * requete est tuee et l utilisateur ne voit rien d exploitable.
+     *
+     * C est le meme nombre que la tranche de generation, qui repond a la meme
+     * contrainte. Exporter une classe entiere demandera un decoupage en
+     * plusieurs requetes, comme la generation le fait deja.
      */
     /**
      * Pré-vérification JSON de l'export groupé : renvoie les compteurs (total filtré,
@@ -1243,7 +1252,7 @@ class ESBTPBulletinController extends Controller
 
         $total = (clone $filtered)->count();
         $generated = (clone $filtered)->whereNotNull('esbtp_bulletins.moyenne_generale')->count();
-        $cap = (int) SettingsHelper::get('bulletins_bulk_export_cap', 150);
+        $cap = (int) SettingsHelper::get('bulletins_bulk_export_cap', 6);
 
         return response()->json([
             'total' => $total,
@@ -1327,7 +1336,7 @@ class ESBTPBulletinController extends Controller
             throw new \RuntimeException("Aucun bulletin généré parmi les $totalFiltered filtrés. Générez d'abord les bulletins, puis réessayez.");
         }
 
-        $cap = (int) SettingsHelper::get('bulletins_bulk_export_cap', 150);
+        $cap = (int) SettingsHelper::get('bulletins_bulk_export_cap', 6);
         if ($generatedCount > $cap) {
             throw new \RuntimeException("Trop de bulletins générés ($generatedCount) pour un export groupé. Affinez le filtre (classe et/ou période) — la limite est de $cap bulletins par export.");
         }
