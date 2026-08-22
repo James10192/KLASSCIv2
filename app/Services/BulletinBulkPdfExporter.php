@@ -22,6 +22,150 @@ class BulletinBulkPdfExporter
     private int $gcEvery = 25;
 
     /**
+     * Dossier de travail d'un export découpé.
+     *
+     * Un export d'une classe entière ne tient pas dans une requête : sept
+     * bulletins consomment déjà trente secondes. Chaque tranche écrit donc ses
+     * PDF dans un dossier propre à la session, et l'assemblage n'a plus qu'à
+     * les concaténer.
+     */
+    public function dossierDeSession(string $jeton): string
+    {
+        $chemin = storage_path('app/temp/export_'.preg_replace('/[^a-z0-9]/i', '', $jeton));
+
+        if (! is_dir($chemin) && ! mkdir($chemin, 0755, true) && ! is_dir($chemin)) {
+            throw new \RuntimeException("Impossible de créer le dossier de session d'export : $chemin");
+        }
+
+        return $chemin;
+    }
+
+    /**
+     * Rend une tranche de bulletins dans le dossier de session.
+     *
+     * Les fichiers sont numérotés sur l'ordre global pour que l'assemblage
+     * respecte l'ordre demandé, quel que soit l'ordre d'arrivée des tranches.
+     *
+     * @return array{rendus: int, echecs: array<int, array{id: int, message: string}>}
+     */
+    public function rendreTranche(Collection $bulletins, callable $renderer, string $dossier, int $depart): array
+    {
+        $rendu = $this->rendreDansDossier($bulletins, $renderer, $dossier, $depart);
+
+        return ['rendus' => $rendu['rendus'], 'echecs' => $rendu['echecs']];
+    }
+
+    /**
+     * Assemble les tranches déjà rendues en un seul PDF, page de garde comprise.
+     *
+     * @param  array<int, array{id: int, message: string}>  $echecs
+     */
+    public function assembler(string $dossier, ?callable $coverBuilder = null, array $echecs = []): string
+    {
+        $fichiers = glob($dossier.'/blt_*.pdf') ?: [];
+        sort($fichiers, SORT_STRING);
+
+        if ($fichiers === []) {
+            throw new \RuntimeException("Aucun bulletin n'a pu être rendu.");
+        }
+
+        if ($coverBuilder !== null) {
+            $garde = $this->rendreLaPageDeGarde($coverBuilder, $echecs, $dossier);
+            if ($garde !== null) {
+                array_unshift($fichiers, $garde);
+            }
+        }
+
+        try {
+            return $this->mergePdfs($fichiers, $dossier);
+        } finally {
+            foreach ($fichiers as $f) {
+                @unlink($f);
+            }
+        }
+    }
+
+    /** Supprime le dossier de session et tout ce qu'il contient encore. */
+    public function oublierLaSession(string $dossier): void
+    {
+        foreach (glob($dossier.'/*') ?: [] as $f) {
+            @unlink($f);
+        }
+        @rmdir($dossier);
+    }
+
+    private function dossierTemporaire(): string
+    {
+        $chemin = storage_path('app/temp');
+
+        if (! is_dir($chemin) && ! mkdir($chemin, 0755, true) && ! is_dir($chemin)) {
+            throw new \RuntimeException("Impossible de créer le dossier temporaire d'export : $chemin");
+        }
+
+        return $chemin;
+    }
+
+    /**
+     * @return array{fichiers: array<int, string>, rendus: int, echecs: array<int, array{id: int, message: string}>}
+     */
+    private function rendreDansDossier(Collection $bulletins, callable $renderer, string $dossier, int $depart = 0): array
+    {
+        // Gardes mémoire/temps : un export groupé est plus lourd qu'un bulletin
+        // seul. On n'ÉLÈVE la limite mémoire que si la valeur courante est plus
+        // basse — ne jamais rabaisser un serveur mieux doté.
+        $this->raiseMemoryLimit('512M');
+        @set_time_limit(300);
+
+        $fichiers = [];
+        $echecs = [];
+        $rendus = 0;
+        $i = 0;
+
+        foreach ($bulletins as $bulletin) {
+            $rang = $depart + $i;
+
+            try {
+                $pdf = $renderer($bulletin);
+                $chemin = sprintf('%s/blt_%06d_%s.pdf', $dossier, $rang, uniqid('', true));
+                file_put_contents($chemin, $pdf->output());
+                $fichiers[] = $chemin;
+                $rendus++;
+                unset($pdf);
+            } catch (\Throwable $e) {
+                $echecs[] = ['id' => (int) $bulletin->id, 'message' => $e->getMessage()];
+                Log::error('BulletinBulkPdfExporter: rendu échoué bulletin #'.$bulletin->id.' — '.$e->getMessage());
+            }
+
+            if ((++$i % $this->gcEvery) === 0) {
+                gc_collect_cycles();
+            }
+        }
+
+        return ['fichiers' => $fichiers, 'rendus' => $rendus, 'echecs' => $echecs];
+    }
+
+    /** @param array<int, array{id: int, message: string}> $echecs */
+    private function rendreLaPageDeGarde(callable $coverBuilder, array $echecs, string $dossier): ?string
+    {
+        try {
+            $pdf = $coverBuilder($echecs);
+            if ($pdf === null) {
+                return null;
+            }
+
+            // Préfixe « blt_000000 » volontaire : le tri place la garde en tête.
+            $chemin = $dossier.'/blt_000000_garde_'.uniqid('', true).'.pdf';
+            file_put_contents($chemin, $pdf->output());
+
+            return $chemin;
+        } catch (\Throwable $e) {
+            Log::error('BulletinBulkPdfExporter: page de garde non générée — '.$e->getMessage());
+
+            return null;
+        }
+    }
+
+    /**
      * @param  Collection  $bulletins  Collection ORDONNÉE de bulletins à exporter.
      * @param  callable  $renderer  fn(ESBTPBulletin): \Barryvdh\DomPDF\PDF — rend un bulletin.
      * @param  callable|null  $coverBuilder  fn(array $failed): ?\Barryvdh\DomPDF\PDF — page de
@@ -31,57 +175,24 @@ class BulletinBulkPdfExporter
      */
     public function export(Collection $bulletins, callable $renderer, ?callable $coverBuilder = null): array
     {
-        // Gardes mémoire/temps : un export groupé est plus lourd qu'un bulletin seul.
-        // On n'ÉLÈVE la limite mémoire que si la valeur courante est plus basse
-        // (ne jamais rabaisser un serveur mieux doté).
-        $this->raiseMemoryLimit('512M');
-        @set_time_limit(300);
+        $tempDir = $this->dossierTemporaire();
+        $rendu = $this->rendreDansDossier($bulletins, $renderer, $tempDir);
 
-        $tempDir = storage_path('app/temp');
-        if (! is_dir($tempDir) && ! mkdir($tempDir, 0755, true) && ! is_dir($tempDir)) {
-            throw new \RuntimeException("Impossible de créer le dossier temporaire d'export : $tempDir");
-        }
-
-        $tempFiles = [];
-        $failed = [];
-        $rendered = 0;
-        $i = 0;
-
-        foreach ($bulletins as $bulletin) {
-            try {
-                $pdf = $renderer($bulletin);
-                $tempPath = $tempDir.'/blt_'.uniqid('', true).'.pdf';
-                file_put_contents($tempPath, $pdf->output());
-                $tempFiles[] = $tempPath;
-                $rendered++;
-                unset($pdf);
-            } catch (\Throwable $e) {
-                $failed[] = ['id' => (int) $bulletin->id, 'message' => $e->getMessage()];
-                Log::error('BulletinBulkPdfExporter: rendu échoué bulletin #'.$bulletin->id.' — '.$e->getMessage());
-            }
-
-            if ((++$i % $this->gcEvery) === 0) {
-                gc_collect_cycles();
-            }
-        }
+        $tempFiles = $rendu['fichiers'];
+        $failed = $rendu['echecs'];
+        $rendered = $rendu['rendus'];
 
         if (empty($tempFiles)) {
             throw new \RuntimeException("Aucun bulletin n'a pu être rendu.");
         }
 
-        // Page de garde d'avertissement (bulletins absents = non générés + échecs de rendu),
-        // construite APRÈS le rendu pour inclure $failed, puis placée en TÊTE du PDF.
+        // Page de garde d'avertissement (bulletins absents = non générés + échecs
+        // de rendu), construite APRÈS le rendu pour connaître $failed, puis
+        // placée en TÊTE du PDF.
         if ($coverBuilder !== null) {
-            try {
-                $coverPdf = $coverBuilder($failed);
-                if ($coverPdf !== null) {
-                    $coverPath = $tempDir.'/blt_cover_'.uniqid('', true).'.pdf';
-                    file_put_contents($coverPath, $coverPdf->output());
-                    array_unshift($tempFiles, $coverPath);
-                    unset($coverPdf);
-                }
-            } catch (\Throwable $e) {
-                Log::error('BulletinBulkPdfExporter: page de garde non générée — '.$e->getMessage());
+            $garde = $this->rendreLaPageDeGarde($coverBuilder, $failed, $tempDir);
+            if ($garde !== null) {
+                array_unshift($tempFiles, $garde);
             }
         }
 
