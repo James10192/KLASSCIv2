@@ -454,6 +454,10 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
 
         // Diagnostic en lecture seule : evaluations dont la nature de la
         // matiere ne suit pas le systeme academique de la classe.
+        Route::get('/diagnostics/evaluations-periode', [App\Http\Controllers\API\CLI\CLIEvaluationPeriodeController::class, 'index'])
+            ->name('diagnostics.evaluations-periode');
+        Route::post('/diagnostics/evaluations-periode/repair', [App\Http\Controllers\API\CLI\CLIEvaluationPeriodeController::class, 'repair'])
+            ->name('diagnostics.evaluations-periode.repair');
         Route::get('/diagnostics/bulletins', [App\Http\Controllers\API\CLI\CLIBulletinDiagnosticController::class, 'index'])
             ->name('diagnostics.bulletins');
         Route::get('/diagnostics/bulletin/{id}', [App\Http\Controllers\API\CLI\CLIBulletinDiagnosticController::class, 'show'])

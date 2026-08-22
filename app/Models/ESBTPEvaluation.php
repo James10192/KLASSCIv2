@@ -425,5 +425,69 @@ class ESBTPEvaluation extends Model implements Auditable
                     : "La classe « {$classe->name} » est en BTS : elle attend une matière BTS, or « {$matiere->name} » est une ECUE du LMD.",
             ]);
         });
+
+        static::saving(function (self $evaluation): void {
+            $evaluation->assertPeriodeCoherenteAvecLaClasse();
+        });
+    }
+
+    /**
+     * Une classe de spécialité issue du tronc commun ne s'ouvre qu'au semestre
+     * porté par `semestre_activation`. Y créer une évaluation sur un semestre
+     * antérieur produit une note que l'étudiant n'aurait pas dû avoir, et qui
+     * remonte ensuite sur son bulletin de tronc commun.
+     *
+     * Cas constaté à l'ESBTP Yamoussoukro : une évaluation de « Sécurité »
+     * créée en semestre 1 sur une classe de spécialité s'affichait sur les
+     * bulletins de tronc commun des étudiants concernés.
+     *
+     * Le contrôle tient en une requête indexée : il ne charge pas les
+     * inscriptions, contrairement au compteur de cohortes.
+     */
+    protected function assertPeriodeCoherenteAvecLaClasse(): void
+    {
+        $doitControler = ! $this->exists || $this->isDirty(['periode', 'classe_id']);
+
+        if (! $doitControler || ! $this->classe_id || ! $this->periode) {
+            return;
+        }
+
+        $semestre = self::numeroDeSemestre((string) $this->periode);
+        if ($semestre === null) {
+            return;
+        }
+
+        $activation = \Illuminate\Support\Facades\DB::table('esbtp_classe_orientation_targets')
+            ->where('target_classe_id', $this->classe_id)
+            ->where('is_active', true)
+            ->min('semestre_activation');
+
+        if ($activation === null || $semestre >= (int) $activation) {
+            return;
+        }
+
+        $classe = ESBTPClasse::find($this->classe_id);
+        $nomClasse = $classe->name ?? "#{$this->classe_id}";
+
+        throw ValidationException::withMessages([
+            'periode' => "La classe « {$nomClasse} » est une classe de spécialité : "
+                ."les étudiants n'y arrivent qu'au semestre {$activation}, après leur "
+                .'orientation depuis le tronc commun. Une évaluation de semestre '
+                ."{$semestre} y créerait une note qui remonterait à tort sur leur "
+                .'bulletin de tronc commun.',
+        ]);
+    }
+
+    /**
+     * Le champ periode a connu des valeurs héritées ('1', '2') avant les
+     * libellés actuels. Les deux coexistent en base.
+     */
+    public static function numeroDeSemestre(string $periode): ?int
+    {
+        return match ($periode) {
+            'semestre1', '1' => 1,
+            'semestre2', '2' => 2,
+            default => null,
+        };
     }
 }
