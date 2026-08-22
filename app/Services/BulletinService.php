@@ -2114,11 +2114,15 @@ class BulletinService
 
         foreach ($notesByMatiere as $matiereId => $matiereData) {
             if ($matiereData['moyenne'] > 0) {
+                // $periodePourBDD appartient a calculateMoyennesForStudent : ici
+                // il n existe pas, et PHP levait « Undefined variable » des
+                // qu une matiere avait une moyenne positive. La page de
+                // resultats d un etudiant renvoyait alors une erreur serveur.
                 $coeff = $this->getCoefficientForCombination(
                     $matiereId,
                     $classeId ?? 0,
                     $anneeUniversitaireId ?? 0,
-                    $periodePourBDD,
+                    $this->normalizePeriode($periode),
                     $etudiantId
                 );
                 $sommePoints += $matiereData['moyenne'] * $coeff;
