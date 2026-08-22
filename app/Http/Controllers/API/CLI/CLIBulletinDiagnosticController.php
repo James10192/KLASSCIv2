@@ -144,6 +144,7 @@ class CLIBulletinDiagnosticController extends BaseApiController
                 'rang_fige' => $bulletin->rang,
                 'mention_figee' => $bulletin->mention,
             ],
+            'generation' => $this->etatDeGeneration($bulletin),
             'etat_actuel' => [
                 'inscription_active' => $inscription ? [
                     'classe_id' => $inscription->classe_id,
@@ -163,6 +164,38 @@ class CLIBulletinDiagnosticController extends BaseApiController
     private function nomComplet(ESBTPBulletin $bulletin): string
     {
         return trim(($bulletin->etudiant->nom ?? '').' '.($bulletin->etudiant->prenoms ?? ''));
+    }
+
+    /**
+     * Une ligne de bulletin est d'abord creee pour porter la configuration des
+     * matieres, puis renseignee par la generation officielle. Une moyenne nulle
+     * ne signale donc pas une anomalie : elle dit que la generation n'a jamais
+     * ete lancee, et que tout est recalcule a chaque affichage.
+     *
+     * C'est la distinction que fait deja le controleur des bulletins, qui
+     * compte les bulletins generes avec whereNotNull('moyenne_generale').
+     *
+     * @return array<string, mixed>
+     */
+    private function etatDeGeneration(ESBTPBulletin $bulletin): array
+    {
+        $config = $bulletin->config_matieres;
+        if (is_string($config)) {
+            $config = json_decode($config, true);
+        }
+        $config = is_array($config) ? $config : [];
+
+        $genere = $bulletin->moyenne_generale !== null;
+
+        return [
+            'genere' => $genere,
+            'publie' => (bool) $bulletin->is_published,
+            'matieres_configurees' => count($config['generales'] ?? []) + count($config['techniques'] ?? []),
+            'lecture' => $genere
+                ? 'Le bulletin a ete genere : ses valeurs sont figees.'
+                : 'Le bulletin n\'a jamais ete genere. Moyenne, rang et effectif sont '
+                    .'recalcules a chaque affichage, donc contre l\'etat courant des inscriptions.',
+        ];
     }
 
     private function inscriptionCourante(ESBTPBulletin $bulletin): ?ESBTPInscription
