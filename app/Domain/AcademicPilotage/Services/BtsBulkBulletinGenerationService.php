@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\AcademicPilotage\Services;
 
+use App\Domain\BtsTroncCommun\BtsClassCohortCounter;
 use App\Domain\AcademicPilotage\DTO\BulkBulletinGenerationResult;
 use App\Domain\AcademicPilotage\DTO\BulletinPreparationResult;
 use App\Domain\AcademicPilotage\Exceptions\AcademicPilotageException;
@@ -11,6 +12,7 @@ use App\Exceptions\BulletinConfigurationException;
 use App\Helpers\SettingsHelper;
 use App\Models\ESBTPBulletin;
 use App\Models\ESBTPClasse;
+use App\Models\ESBTPEvaluation;
 use App\Models\ESBTPConfigMatiere;
 use App\Models\ESBTPInscription;
 use App\Models\ESBTPMatiere;
@@ -37,6 +39,7 @@ final class BtsBulkBulletinGenerationService
     public function __construct(
         private readonly BulletinService $bulletinService,
         private readonly BulletinGenerationReadinessService $readiness,
+        private readonly BtsClassCohortCounter $cohortCounter,
     ) {}
 
     public function preflight(
@@ -48,7 +51,7 @@ final class BtsBulkBulletinGenerationService
         ?array $studentIds = null,
     ): array {
         $period = $this->bulletinService->normalizePeriode($period);
-        $students = $this->activeStudentsForClass($classe->id, $academicYearId);
+        $students = $this->activeStudentsForClass($classe->id, $academicYearId, $period);
 
         // Quand la generation traite une tranche, inspecter toute la classe
         // reviendrait a payer le pre-controle complet a chaque requete : c'est
@@ -238,7 +241,7 @@ final class BtsBulkBulletinGenerationService
             );
         }
 
-        $students = $this->activeStudentsForClass($classe->id, $academicYearId);
+        $students = $this->activeStudentsForClass($classe->id, $academicYearId, $period);
 
         // Traitement par lots : la generation coute O(N^2) et l'hebergement
         // coupe a 30 secondes. Restreindre le lot permet de tenir dans le
@@ -379,11 +382,31 @@ final class BtsBulkBulletinGenerationService
         );
     }
 
-    private function activeStudentsForClass(int $classeId, int $academicYearId): Collection
+    /**
+     * Etudiants dont le bulletin de CE semestre appartient a CETTE classe.
+     *
+     * La selection passe par la cohorte de phases et non par l'inscription
+     * courante. Un etudiant de BTS suit le tronc commun au semestre 1 puis sa
+     * specialite au semestre 2, avec une seule inscription, deplacee vers la
+     * nouvelle classe. Chercher par `inscriptions.classe_id` revenait donc a
+     * chercher les eleves du semestre 1 dans une classe qu'ils ont quittee :
+     * la generation repondait « rien a generer » et les bulletins de tronc
+     * commun restaient sans valeurs figees.
+     *
+     * Constate sur esbtp-yakro : TRONC COMMUN K comptait 3 inscrits courants
+     * pour une cohorte de 70 au semestre 1.
+     */
+    private function activeStudentsForClass(int $classeId, int $academicYearId, string $period): Collection
     {
+        $etudiantIds = $this->cohortCounter->etudiantIds($classeId, $academicYearId, $period);
+
+        if ($etudiantIds === []) {
+            return collect();
+        }
+
         return ESBTPInscription::query()
             ->with(['etudiant:id,nom,prenoms,matricule'])
-            ->where('classe_id', $classeId)
+            ->whereIn('etudiant_id', $etudiantIds)
             ->where('annee_universitaire_id', $academicYearId)
             ->where('status', 'active')
             ->where('workflow_step', 'etudiant_cree')
@@ -526,6 +549,19 @@ final class BtsBulkBulletinGenerationService
             return [];
         }
 
+        // On n'exige un professeur que pour les matieres reellement notees sur
+        // ce semestre dans cette classe. Le bulletin construit sa liste a partir
+        // des notes : une matiere configuree mais jamais evaluee n'y figurera
+        // pas, et bloquer la generation pour elle n'a aucun sens. C'est ce qui
+        // faisait echouer le pre-controle sur des matieres de l'autre semestre,
+        // et jusqu'a des identifiants sans matiere correspondante.
+        $noteesIds = $this->matieresNoteesIds($classeId, $academicYearId, $period);
+        $subjectIds = $subjectIds->intersect($noteesIds)->values();
+
+        if ($subjectIds->isEmpty()) {
+            return [];
+        }
+
         $professeurs = $this->professeursTemplate($classeId, $academicYearId, $period);
         $missingIds = $subjectIds
             ->filter(fn (int $id) => trim((string) ($professeurs[$id] ?? $professeurs[(string) $id] ?? '')) === '')
@@ -543,6 +579,31 @@ final class BtsBulkBulletinGenerationService
                 'matiere' => $names[$id] ?? "Matiere #{$id}",
             ])
             ->all();
+    }
+
+    /**
+     * Matieres qui portent au moins une note sur ce semestre dans cette classe.
+     *
+     * Meme source que le bulletin lui-meme, qui construit sa liste de matieres
+     * a partir des notes et non de la configuration. Les evaluations annulees
+     * sont exclues, et les alias de periode heritees prises en compte.
+     *
+     * @return \Illuminate\Support\Collection<int, int>
+     */
+    private function matieresNoteesIds(int $classeId, int $academicYearId, string $period): Collection
+    {
+        return ESBTPEvaluation::query()
+            ->where('classe_id', $classeId)
+            ->where('annee_universitaire_id', $academicYearId)
+            ->where('status', '!=', 'cancelled')
+            ->whereIn('periode', ESBTPEvaluation::aliasDePeriode($period))
+            ->whereHas('notes')
+            ->distinct()
+            ->pluck('matiere_id')
+            ->map(static fn ($id) => (int) $id)
+            ->filter()
+            ->unique()
+            ->values();
     }
 
     private function missingCoefficientRows(BulletinPreparationResult $preparation): array
