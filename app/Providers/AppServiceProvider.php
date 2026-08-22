@@ -2,6 +2,9 @@
 
 namespace App\Providers;
 
+use App\Domain\BtsTroncCommun\BtsPhaseResolver;
+use App\Domain\BtsTroncCommun\BtsClassCohortCounter;
+use App\Domain\BtsTroncCommun\ClasseOuvertureResolver;
 use App\Domain\AcademicPilotage\Contracts\AcademicSystemMetricsProvider;
 use App\Domain\AcademicPilotage\Services\AcademicMetricsProviderResolver;
 use App\Domain\AcademicPilotage\Services\OpenAlertMetricService;
@@ -46,6 +49,14 @@ class AppServiceProvider extends ServiceProvider
         // analytics partagent le même cache de buckets attendu/encaissé.
         $this->app->scoped(RecouvrementGapService::class);
         $this->app->scoped(OpenAlertMetricService::class);
+
+        // Resolveurs du parcours BTS : une seule instance par requete, sinon
+        // leur memoire ne sert a rien. Le compteur de cohorte balaie toutes les
+        // inscriptions de l'annee — plus de deux mille sur les grosses ecoles —
+        // et l'export groupe d'une classe l'interroge une fois par etudiant.
+        $this->app->scoped(BtsPhaseResolver::class);
+        $this->app->scoped(BtsClassCohortCounter::class);
+        $this->app->scoped(ClasseOuvertureResolver::class);
         $this->app->bind(AcademicSystemMetricsProvider::class, AcademicMetricsProviderResolver::class);
 
         // TPE — Strategy de validation pilotée par Setting tenant.
