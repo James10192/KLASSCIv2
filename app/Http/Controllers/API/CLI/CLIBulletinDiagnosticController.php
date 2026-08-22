@@ -4,7 +4,9 @@ namespace App\Http\Controllers\API\CLI;
 
 use App\Http\Controllers\API\BaseApiController;
 use App\Models\ESBTPBulletin;
+use App\Domain\BtsTroncCommun\BtsClassCohortCounter;
 use App\Models\ESBTPEtudiant;
+use App\Models\ESBTPEvaluation;
 use App\Models\ESBTPInscription;
 use App\Models\ESBTPNote;
 use Illuminate\Http\JsonResponse;
@@ -105,14 +107,14 @@ class CLIBulletinDiagnosticController extends BaseApiController
                 .($bulletin->classe->name ?? 'classe inconnue').'.';
         }
 
-        $population = $this->populationDeLaClasse($bulletin);
-        if ($population === 0) {
-            $divergences[] = 'Aucun etudiant n\'est rattache a la classe figee pour cette annee. '
-                .'Les statistiques de classe et le rang portent donc sur une population vide, '
+        $populations = $this->populationsDeLaClasse($bulletin);
+        if ($populations['cohorte_du_semestre'] === 0) {
+            $divergences[] = 'Aucun etudiant n\'appartient a la cohorte de ce semestre pour la '
+                .'classe figee. Les statistiques et le rang portent donc sur une population vide, '
                 .'ce qui produit les zeros constates a l\'affichage.';
-        } elseif ($bulletin->effectif_classe && $population !== (int) $bulletin->effectif_classe) {
+        } elseif ($bulletin->effectif_classe && $populations['cohorte_du_semestre'] !== (int) $bulletin->effectif_classe) {
             $divergences[] = "L'effectif imprime est {$bulletin->effectif_classe}, "
-                ."alors que la classe compte aujourd'hui {$population} inscrits. "
+                ."alors que la cohorte du semestre en compte {$populations['cohorte_du_semestre']}. "
                 .'Le rang affiche et l\'effectif imprime ne portent pas sur la meme population.';
         }
 
@@ -151,7 +153,7 @@ class CLIBulletinDiagnosticController extends BaseApiController
                     'classe' => $inscription->classe->name ?? null,
                     'workflow_step' => $inscription->workflow_step,
                 ] : null,
-                'population_de_la_classe_figee' => $population,
+                'populations' => $populations,
             ],
             'matieres_affichees' => $matieres,
             'divergences' => $divergences,
@@ -209,16 +211,43 @@ class CLIBulletinDiagnosticController extends BaseApiController
     }
 
     /**
-     * Reproduit la requete de BulletinService::calculerStatistiquesClasse, qui
-     * est privee. On expose ici la population, pas le resultat : c'est elle qui
-     * explique les zeros quand la classe s'est videe.
+     * Deux facons de compter une classe, et leur ecart.
+     *
+     * `par_inscription` compte les etudiants actuellement rattaches a la
+     * classe. C'est ce que faisait le calcul des statistiques avant d'etre
+     * corrige : sur un bulletin de semestre 1, il cherchait les eleves dans une
+     * classe que la reorientation avait videe, d'ou des zeros.
+     *
+     * `cohorte_du_semestre` resout la classe depuis l'historique de phases.
+     * C'est ce que le calcul utilise desormais, et ce sur quoi le rang portait
+     * deja.
+     *
+     * Les deux sont exposees parce que leur ecart est le symptome : une seule
+     * ne dirait pas d'ou vient le probleme.
+     *
+     * @return array<string, int|string>
      */
-    private function populationDeLaClasse(ESBTPBulletin $bulletin): int
+    private function populationsDeLaClasse(ESBTPBulletin $bulletin): array
     {
-        return ESBTPEtudiant::whereHas('inscriptions', fn ($q) => $q
+        $parInscription = ESBTPEtudiant::whereHas('inscriptions', fn ($q) => $q
             ->where('classe_id', $bulletin->classe_id)
             ->where('annee_universitaire_id', $bulletin->annee_universitaire_id))
             ->count();
+
+        $cohorte = app(BtsClassCohortCounter::class)->count(
+            (int) $bulletin->classe_id,
+            (int) $bulletin->annee_universitaire_id,
+            (string) $bulletin->periode
+        );
+
+        return [
+            'par_inscription' => $parInscription,
+            'cohorte_du_semestre' => $cohorte,
+            'lecture' => $parInscription === $cohorte
+                ? 'Les deux comptes concordent.'
+                : 'Les deux comptes different : des etudiants ont change de classe '
+                    .'depuis ce semestre. Seule la cohorte du semestre fait foi.',
+        ];
     }
 
     /**
@@ -239,7 +268,7 @@ class CLIBulletinDiagnosticController extends BaseApiController
             ->whereHas('evaluation', fn ($q) => $q
                 ->where('annee_universitaire_id', $bulletin->annee_universitaire_id)
                 ->where('status', '!=', 'cancelled')
-                ->whereIn('periode', $this->aliasPeriode((string) $bulletin->periode)))
+                ->whereIn('periode', ESBTPEvaluation::aliasDePeriode((string) $bulletin->periode)))
             ->get();
 
         $parMatiere = [];
@@ -276,20 +305,5 @@ class CLIBulletinDiagnosticController extends BaseApiController
         }
 
         return array_values($parMatiere);
-    }
-
-    /**
-     * Le champ periode a connu des valeurs heritees ('1', '2') avant les
-     * libelles actuels. Les deux coexistent en base.
-     *
-     * @return array<int, string>
-     */
-    private function aliasPeriode(string $periode): array
-    {
-        return match ($periode) {
-            'semestre1' => ['semestre1', '1'],
-            'semestre2' => ['semestre2', '2'],
-            default => [$periode],
-        };
     }
 }

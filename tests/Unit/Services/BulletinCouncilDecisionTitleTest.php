@@ -2,6 +2,7 @@
 
 namespace Tests\Unit\Services;
 
+use App\Domain\BtsTroncCommun\ClasseOuvertureResolver;
 use App\Domain\BtsTroncCommun\BtsAnnualClassMapResolver;
 use App\Domain\BtsTroncCommun\BtsBulletinCohortResolver;
 use App\Domain\BtsTroncCommun\BtsClassCohortCounter;
@@ -56,7 +57,8 @@ class BulletinCouncilDecisionTitleTest extends TestCase
             Mockery::mock(ESBTPAbsenceService::class),
             new BtsAnnualClassMapResolver(new BtsPhaseResolver()),
             new BtsBulletinCohortResolver(new BtsAnnualClassMapResolver(new BtsPhaseResolver())),
-            new BtsClassCohortCounter(new BtsPhaseResolver())
+            new BtsClassCohortCounter(new BtsPhaseResolver()),
+            new ClasseOuvertureResolver()
         );
     }
 

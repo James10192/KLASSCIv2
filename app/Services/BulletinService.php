@@ -19,6 +19,7 @@ use App\Models\ESBTPResultatMatiere;
 use App\Domain\BtsTroncCommun\BtsAnnualClassMapResolver;
 use App\Domain\BtsTroncCommun\BtsBulletinCohortResolver;
 use App\Domain\BtsTroncCommun\BtsClassCohortCounter;
+use App\Domain\BtsTroncCommun\ClasseOuvertureResolver;
 use App\Services\ESBTP\ESBTPAbsenceService;
 use App\Support\Attendance\AttendanceNoteRule;
 use App\Support\InscriptionWorkflowAlertPresenter;
@@ -53,6 +54,8 @@ class BulletinService
 
     private BtsClassCohortCounter $classCohortCounter;
 
+    private ClasseOuvertureResolver $ouvertureResolver;
+
     private array $coefficientCache = [];
 
     private array $classeCache = [];
@@ -65,14 +68,6 @@ class BulletinService
 
     private array $classStatsCache = [];
 
-    /**
-     * Classes de spécialité pas encore ouvertes, indexées par semestre. Même
-     * portée requête que les caches voisins : la génération en masse interroge
-     * ce filtre une fois par étudiant.
-     *
-     * @var array<string, list<int>>
-     */
-    private array $classesNonOuvertesCache = [];
 
     private array $logoBase64Cache = [];
 
@@ -82,12 +77,14 @@ class BulletinService
         ESBTPAbsenceService $absenceService,
         BtsAnnualClassMapResolver $classMapResolver,
         BtsBulletinCohortResolver $cohortResolver,
-        BtsClassCohortCounter $classCohortCounter
+        BtsClassCohortCounter $classCohortCounter,
+        ClasseOuvertureResolver $ouvertureResolver
     ) {
         $this->absenceService = $absenceService;
         $this->classMapResolver = $classMapResolver;
         $this->cohortResolver = $cohortResolver;
         $this->classCohortCounter = $classCohortCounter;
+        $this->ouvertureResolver = $ouvertureResolver;
     }
 
     public function forgetPDFConfigCache(): void
@@ -1180,15 +1177,8 @@ class BulletinService
     /**
      * Classes de specialite qui ne s'ouvrent qu'apres le semestre demande.
      *
-     * Une classe issue du tronc commun n'accueille ses etudiants qu'a partir
-     * de esbtp_classe_orientation_targets.semestre_activation. Une note prise
-     * dans une telle classe ne peut donc pas figurer sur un bulletin d'un
-     * semestre anterieur : l'etudiant y etait encore en tronc commun.
-     *
-     * Le garde-fou du modele empeche desormais d'en creer. Ce filtre protege
-     * les donnees deja en base, et le cas d'une reorientation en cours de
-     * semestre. Il est volontairement conservateur : il n'ecarte que les
-     * classes prouvees non ouvertes, jamais une classe qui sert ce semestre.
+     * Une note prise dans une telle classe ne peut pas figurer sur un bulletin
+     * d'un semestre anterieur : l'etudiant y etait encore en tronc commun.
      *
      * Pour une periode annuelle, aucune exclusion : le bulletin annuel doit
      * couvrir les deux classes du parcours.
@@ -1203,22 +1193,9 @@ class BulletinService
             default => null,
         };
 
-        if ($semestre === null) {
-            return [];
-        }
-
-        $cle = 'classes_non_ouvertes:'.$semestre;
-        if (array_key_exists($cle, $this->classesNonOuvertesCache)) {
-            return $this->classesNonOuvertesCache[$cle];
-        }
-
-        return $this->classesNonOuvertesCache[$cle] = DB::table('esbtp_classe_orientation_targets')
-            ->where('is_active', true)
-            ->groupBy('target_classe_id')
-            ->havingRaw('MIN(semestre_activation) > ?', [$semestre])
-            ->pluck('target_classe_id')
-            ->map(fn ($id) => (int) $id)
-            ->all();
+        return $semestre === null
+            ? []
+            : $this->ouvertureResolver->classesNonOuvertesAu($semestre);
     }
 
     private function persistResultats(array $resultatsParMatiere, int $etudiantId, int $classeId, int $anneeUniversitaireId, string $periode): void
