@@ -442,6 +442,8 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
         Route::post('/user/{id}/delete', [App\Http\Controllers\API\CLI\CLIUserController::class, 'userDelete'])->name('user.delete');
         // Changer le role d'un compte existant : le CLI ne savait l'attribuer
         // qu'a la creation, corriger imposait un acces web superAdmin.
+        Route::get('/user/{id}/permissions', [App\Http\Controllers\API\CLI\CLIUserPermissionController::class, 'index'])->name('user.permissions.index');
+        Route::post('/user/{id}/permissions', [App\Http\Controllers\API\CLI\CLIUserPermissionController::class, 'update'])->name('user.permissions.update');
         Route::post('/user/{id}/role', [App\Http\Controllers\API\CLI\CLIUserController::class, 'userSetRole'])->name('user.set-role');
 
         // Filieres — ouverture d'un nouveau tenant sans passer par l'interface.
