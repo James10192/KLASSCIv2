@@ -2098,7 +2098,7 @@ class BulletinService
         // Essayer d'abord le chemin depuis storage (logos uploadés)
         if ($logoPath) {
             $storagePath = storage_path('app/public/'.$logoPath);
-            if (file_exists($storagePath)) {
+            if (is_file($storagePath)) {
                 $logoType = pathinfo($storagePath, PATHINFO_EXTENSION);
                 $logoData = file_get_contents($storagePath);
                 Log::info('Logo uploadé chargé avec succès depuis: '.$storagePath);
@@ -2108,7 +2108,7 @@ class BulletinService
 
             // Essayer aussi dans public/ pour compatibilité
             $publicPath = public_path($logoPath);
-            if (file_exists($publicPath)) {
+            if (is_file($publicPath)) {
                 $logoType = pathinfo($publicPath, PATHINFO_EXTENSION);
                 $logoData = file_get_contents($publicPath);
                 Log::info('Logo public chargé avec succès depuis: '.$publicPath);
@@ -2120,14 +2120,22 @@ class BulletinService
         // Essayer les chemins alternatifs
         // Repli generique uniquement : servir esbtp_logo a une autre ecole
         // lui imprimait le logo d'un concurrent sur ses propres bulletins.
-        $alternativePaths = [
-            'storage/logos/'.basename($logoPath),
-            'images/LOGO-KLASSCI-PNG.png',
-        ];
+        $alternativePaths = ['images/LOGO-KLASSCI-PNG.png'];
+
+        // Sans logo configure, basename('') vaut '' et ce candidat devenait
+        // « storage/logos/ », c'est-a-dire un DOSSIER. file_exists le validait,
+        // puis file_get_contents levait « Is a directory » et interrompait
+        // toute la generation du bulletin.
+        $logoBasename = $logoPath ? basename($logoPath) : '';
+        if ($logoBasename !== '') {
+            array_unshift($alternativePaths, 'storage/logos/'.$logoBasename);
+        }
 
         foreach ($alternativePaths as $altPath) {
             $fullPath = public_path($altPath);
-            if (file_exists($fullPath)) {
+            // is_file et non file_exists : un dossier existe aussi, et le lire
+            // comme un fichier casse la generation au lieu de replier proprement.
+            if (is_file($fullPath)) {
                 $logoType = pathinfo($fullPath, PATHINFO_EXTENSION);
                 $logoData = file_get_contents($fullPath);
                 Log::info('Logo alternatif chargé avec succès depuis: '.$fullPath);

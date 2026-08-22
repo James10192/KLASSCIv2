@@ -37,7 +37,9 @@
         // Fallback KLASSCI générique uniquement (jamais d'esbtp_logo qui est tenant-specific)
         $candidates[] = public_path('images/LOGO-KLASSCI-PNG.png');
         foreach ($candidates as $candidate) {
-            if (file_exists($candidate)) {
+            // is_file : « storage/logos/ » sans nom de fichier est un dossier,
+            // que file_exists valide et que file_get_contents fait exploser.
+            if (is_file($candidate)) {
                 $logoBase64 = base64_encode(file_get_contents($candidate));
                 $logoExt = pathinfo($candidate, PATHINFO_EXTENSION) ?: 'png';
                 $logoMime = match (strtolower($logoExt)) {
