@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Domain\BtsTroncCommun\BtsClassCohortCounter;
 use App\Domain\AcademicPilotage\Exceptions\AcademicPilotageException;
 use App\Domain\AcademicPilotage\Services\BtsBulkBulletinGenerationService;
 use App\Domain\AcademicPilotage\Services\BulletinGenerationReadinessService;
@@ -1508,14 +1509,17 @@ class ESBTPBulletinController extends Controller
         // Identifiants exposes pour que le front decoupe la generation en
         // tranches : la classe entiere ne tient pas dans la limite
         // d'execution de l'hebergement.
-        $studentIds = ESBTPInscription::query()
-            ->where('classe_id', (int) $classe->id)
-            ->where('annee_universitaire_id', $request->integer('annee_universitaire_id'))
-            ->where('status', 'active')
-            ->orderBy('etudiant_id')
-            ->pluck('etudiant_id')
-            ->map(static fn ($id) => (int) $id)
-            ->all();
+        // Cohorte de phases et non inscription courante : au semestre 1, les
+        // etudiants d'une classe de tronc commun sont deja passes en specialite,
+        // et leur inscription a suivi. Chercher par `inscriptions.classe_id`
+        // rendait une liste vide, le front n'avait aucune tranche a envoyer, et
+        // les bulletins de tronc commun restaient sans valeurs figees.
+        $studentIds = app(BtsClassCohortCounter::class)->etudiantIds(
+            (int) $classe->id,
+            $request->integer('annee_universitaire_id'),
+            $this->bulletinService->normalizePeriode((string) $request->input('periode'))
+        );
+        sort($studentIds);
 
         // Dans $preflight et non a la racine : le front ne conserve que
         // data.preflight, tout ce qui est place a cote est perdu.
