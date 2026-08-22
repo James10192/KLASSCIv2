@@ -17,6 +17,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use OwenIt\Auditing\Models\Audit;
 
 class CLIDataController extends BaseApiController
@@ -625,6 +626,92 @@ class CLIDataController extends BaseApiController
             return $this->successResponse($report, 'Analytics diagnostic generated');
         } catch (\Throwable $e) {
             Log::error('CLI: analytics diagnose failed', ['error' => $e->getMessage()]);
+            return $this->errorResponse('Operation failed. Check server logs for details.', [], 500);
+        }
+    }
+
+    /**
+     * POST /api/cli/settings/{key}/image
+     *
+     * Televerse une image de reglage (logo, favicon, filigrane) et pointe le
+     * reglage dessus. Sans cela, poser le logo d une ecole obligeait a passer
+     * par l ecran des parametres avec un compte de l etablissement : impossible
+     * a faire pour un tenant qu on provisionne ou qu on depanne.
+     *
+     * La cle est restreinte a une liste : ce point d entree ecrit un fichier,
+     * il ne doit pas pouvoir viser un reglage arbitraire.
+     */
+    public function settingsUploadImage(Request $request, $key): JsonResponse
+    {
+        if (!$request->user()->tokenCan('cli:admin')) {
+            return $this->errorResponse('Token missing cli:admin ability', [], 403);
+        }
+
+        $dossiers = [
+            'school_logo' => 'logos',
+            'school_favicon' => 'logos',
+            'bulletin_logo' => 'logos',
+            'header_logo' => 'logos',
+            'watermark_image' => 'documents',
+            'signature_image' => 'documents',
+        ];
+
+        if (!array_key_exists($key, $dossiers)) {
+            return $this->errorResponse(
+                "Setting '{$key}' is not an image setting. Allowed: " . implode(', ', array_keys($dossiers)),
+                [],
+                422
+            );
+        }
+
+        if (!$request->hasFile('file')) {
+            return $this->errorResponse('Missing required file field: file', [], 422);
+        }
+
+        // Pas de SVG : servi depuis la meme origine, il peut porter du script.
+        $validator = validator(
+            ['file' => $request->file('file')],
+            ['file' => 'required|image|mimes:jpeg,jpg,png,gif,webp|max:2048']
+        );
+
+        if ($validator->fails()) {
+            return $this->errorResponse($validator->errors()->first('file'), [], 422);
+        }
+
+        try {
+            $setting = Setting::where('key', $key)->first();
+            $ancien = $setting?->value;
+
+            $chemin = $request->file('file')->store($dossiers[$key], 'public');
+
+            if ($setting) {
+                // update() sur l instance, et non sur le query builder : c est ce
+                // qui declenche l evenement saved, donc la purge du cache.
+                $setting->update(['value' => $chemin, 'updated_by' => $request->user()->id]);
+            } else {
+                $setting = Setting::create([
+                    'key' => $key,
+                    'value' => $chemin,
+                    'type' => 'file',
+                    'group' => 'establishment',
+                    'description' => "CLI-provisioned: {$key}",
+                    'is_required' => false,
+                ]);
+            }
+
+            // L ancien fichier n est retire qu une fois le nouveau en place.
+            if ($ancien && $ancien !== $chemin && Storage::disk('public')->exists($ancien)) {
+                Storage::disk('public')->delete($ancien);
+            }
+
+            return $this->successResponse([
+                'key' => $key,
+                'value' => $chemin,
+                'previous_value' => $ancien,
+                'url' => asset('storage/' . $chemin),
+            ], "Image setting '{$key}' uploaded");
+        } catch (\Exception $e) {
+            Log::error('CLI: settings image upload failed', ['key' => $key, 'error' => $e->getMessage()]);
             return $this->errorResponse('Operation failed. Check server logs for details.', [], 500);
         }
     }
