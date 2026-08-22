@@ -31,9 +31,20 @@ class CLIDataController extends BaseApiController
             return $this->errorResponse('Token missing cli:read ability', [], 403);
         }
 
-        $annee = $this->getAnneeCouraante();
-        if (!$annee) {
-            return $this->errorResponse('Aucune annee universitaire courante configuree. Creez-en une avec: klassci annee:create <tenant> "2025-2026" 2025-09-15 2026-07-31', ['code' => 'NO_ACADEMIC_YEAR'], 422);
+        // ?annee_id= permet de regarder une annee passee. Sans lui, on ne peut
+        // diagnostiquer que l annee en cours, ce qui rend tout controle sur des
+        // bulletins anterieurs impossible.
+        $anneeId = $request->query('annee_id');
+        if ($anneeId !== null && $anneeId !== '') {
+            $annee = AppModelsESBTPAnneeUniversitaire::find((int) $anneeId);
+            if (!$annee) {
+                return $this->errorResponse("Annee universitaire {$anneeId} introuvable.", ['code' => 'ACADEMIC_YEAR_NOT_FOUND'], 404);
+            }
+        } else {
+            $annee = $this->getAnneeCouraante();
+            if (!$annee) {
+                return $this->errorResponse('Aucune annee universitaire courante configuree. Creez-en une avec: klassci annee:create <tenant> "2025-2026" 2025-09-15 2026-07-31', ['code' => 'NO_ACADEMIC_YEAR'], 422);
+            }
         }
 
         $activeStudents = ESBTPInscription::where('annee_universitaire_id', $annee->id)
