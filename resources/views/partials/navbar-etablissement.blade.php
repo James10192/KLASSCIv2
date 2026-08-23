@@ -16,9 +16,10 @@
     $etbVille = trim((string) ($etb['city'] ?? ''));
     $etbLogo = trim((string) ($etb['logo'] ?? ''));
 
-    // Le nom complet d'une école tient rarement dans une barre. Le sigle
-    // identifie mieux d'un coup d'oeil ; le nom complet reste en infobulle.
-    $etbCourt = $etbSigle !== '' ? $etbSigle : $etbNom;
+    // On affiche le NOM, pas le sigle : deux campus d'un même groupe
+    // partagent le sigle et deviendraient indiscernables. Un nom trop long
+    // est coupé par le CSS, l'infobulle porte la version entière.
+    $etbCourt = $etbNom !== '' ? $etbNom : $etbSigle;
 
     // is_file et non file_exists : un chemin de dossier passerait le test et
     // afficherait une image cassée.
