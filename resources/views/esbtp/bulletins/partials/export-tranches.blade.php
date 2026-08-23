@@ -68,6 +68,9 @@
 @push('styles')
 <style>
     .bex {
+        /* La rangee d export est un conteneur flex : sans cela le panneau
+           se glisse a cote des boutons au lieu de prendre sa ligne. */
+        flex: 1 1 100%;
         margin-top: .85rem;
         padding: .85rem 1rem;
         border: 1px solid #e2e8f0;
