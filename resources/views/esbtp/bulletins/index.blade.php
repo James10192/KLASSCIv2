@@ -830,12 +830,8 @@ function bulIndex() {
             if (search) search.value = '';
             this.fetchPage(1);
         },
-
-        // Export groupé : pré-vérifie les compteurs et AVERTIT si des bulletins ne sont
-        // pas encore générés (ils seront absents du PDF), puis ouvre le PDF fusionné
-        // (téléchargement binaire = navigation GET directe, exception documentée à
-        // ajax-no-reload-premium). On reprend les filtres courants + l'ordre choisi.
-        // Paramètres d'export = filtres courants + tri/sens choisis.
+        // Les filtres tels que la page les affiche. Le serveur les renormalise
+        // de son côté : ce qu'on exporte est ce que le tableau montre.
         buildExportParams() {
             const form = document.getElementById('bul-filter-form');
             const params = new URLSearchParams(new FormData(form));

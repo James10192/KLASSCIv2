@@ -575,25 +575,38 @@ body {
 
 /* Indicateur d'etablissement : repond a « chez qui suis-je ? », la ou la
    marque KLASSCI de la barre laterale repond a « quel outil ? ».
-   Statique : une instance ne dessert qu'un etablissement, et la navbar porte
-   un backdrop-filter qui casserait le placement d'un menu deroulant. */
+
+   Statique, pour deux raisons : une instance ne dessert qu'un etablissement,
+   donc un menu deroulant n'aurait rien a proposer ; et la navbar porte un
+   backdrop-filter, qui casserait le placement d'un menu en position fixed.
+   Voir .claude/rules/universal-dropdowns.md — l'incident a deja eu lieu.
+
+   Le gabarit s'aligne sur .btn-acasi.profile-btn, son vrai voisin de droite :
+   meme arrondi, meme fond translucide, meme hauteur finale de 52 px (36 px de
+   tuile + 2 x 8 px de padding). .btn-acasi.icon-only, a sa gauche, fait 48 px.
+   .navbar-user et .navbar-icon ne servent plus : voir layouts/app.blade.php. */
 .etb-badge {
     display: flex;
     align-items: center;
-    gap: 0.6rem;
-    padding: 0.3rem 0.75rem 0.3rem 0.35rem;
-    border-radius: 10px;
-    background: rgba(4, 83, 203, 0.06);
-    border: 1px solid rgba(4, 83, 203, 0.12);
-    max-width: 320px;
+    gap: var(--space-3);
+    padding: var(--space-2) var(--space-4) var(--space-2) var(--space-2);
+    background: rgba(255, 255, 255, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: var(--radius-xl);
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+    max-width: 340px;
 }
 
+/* Le padding est indispensable : beaucoup de logos d'ecole sont des blocs
+   pleins, avec baseline et cadre. Sans marge interne ils touchent les quatre
+   bords de la tuile et donnent l'impression de deborder. */
 .etb-media {
-    width: 30px;
-    height: 30px;
-    border-radius: 8px;
+    width: 36px;
+    height: 36px;
+    padding: 5px;
+    border-radius: var(--radius-lg);
     background: #fff;
-    border: 1px solid rgba(15, 23, 42, 0.07);
+    border: 1px solid rgba(15, 23, 42, 0.06);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -610,40 +623,46 @@ body {
 }
 
 .etb-initiales {
-    font-size: 0.72rem;
+    font-size: 0.86rem;
     font-weight: 700;
-    color: #0453cb;
+    color: var(--primary, #0453cb);
 }
 
 .etb-texte {
     display: flex;
     flex-direction: column;
     min-width: 0;
-    line-height: 1.15;
+    line-height: 1.2;
 }
 
 .etb-nom {
-    font-size: 0.82rem;
+    font-size: 0.84rem;
     font-weight: 700;
-    color: #1e293b;
+    color: var(--gray-800, #1e293b);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 
 .etb-ville {
-    font-size: 0.68rem;
-    color: #64748b;
+    font-size: 0.7rem;
+    color: var(--gray-500, #64748b);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 
-/* Sous 992 px la barre se resserre et la recherche disparait : le logo seul
-   suffit alors a identifier l'etablissement. */
+/* Sous 992 px la barre se resserre et le texte disparait. Le badge se depouille
+   alors de son habillage pour ne laisser que la tuile, qui s'aligne exactement
+   sur les autres icones de 44 px. */
 @media (max-width: 991.98px) {
     .etb-texte { display: none; }
-    .etb-badge { padding: 0.3rem; }
+    .etb-badge {
+        padding: 0;
+        background: transparent;
+        border-color: transparent;
+        box-shadow: none;
+    }
 }
 
 .navbar-toggle {

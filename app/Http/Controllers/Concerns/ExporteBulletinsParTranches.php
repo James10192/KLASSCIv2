@@ -35,6 +35,17 @@ use Illuminate\Support\Str;
  */
 trait ExporteBulletinsParTranches
 {
+    /**
+     * Nombre maximum de bulletins dans un seul document.
+     *
+     * Le découpage protège l'exécution d'une requête, rien d'autre. Sans borne,
+     * un export lancé sans choisir de classe part sur tous les bulletins de
+     * l'année — plusieurs milliers sur les grosses écoles : autant de requêtes,
+     * autant de fichiers sur le disque, et un assemblage qui n'a plus de sens.
+     * Une classe entière tient très largement dessous.
+     */
+    private const PLAFOND_EXPORT = 400;
+
     /** POST /esbtp/bulletins/export-pdf/ouvrir */
     public function ouvrirExportParTranches(Request $request): JsonResponse
     {
@@ -48,9 +59,11 @@ trait ExporteBulletinsParTranches
 
         $this->rangerEtatExport($jeton, [
             'user_id' => (int) $request->user()->id,
+            'entete' => $contexte['entete'],
             'bulletin_ids' => $contexte['bulletin_ids'],
             'ungenerated_ids' => $contexte['ungenerated_ids'],
             'echecs' => [],
+            'rendus' => 0,
             'fichier' => null,
         ]);
 
@@ -81,6 +94,13 @@ trait ExporteBulletinsParTranches
         $total = count($etat['bulletin_ids']);
         $ids = array_slice($etat['bulletin_ids'], $valide['depart'], $this->tailleTrancheExport());
 
+        if (count($ids) > self::PLAFOND_EXPORT) {
+            throw new RuntimeException(sprintf(
+                "%s bulletins correspondent au filtre : c'est trop pour un seul document. Choisissez une classe, ou un semestre.",
+                count($ids)
+            ));
+        }
+
         if ($ids === []) {
             return $this->trancheRendue(0, 0, $total, $total);
         }
@@ -98,6 +118,7 @@ trait ExporteBulletinsParTranches
         );
 
         $etat['echecs'] = array_merge($etat['echecs'], $rendu['echecs']);
+        $etat['rendus'] += $rendu['rendus'];
         $this->rangerEtatExport($valide['jeton'], $etat);
 
         return $this->trancheRendue(
@@ -129,9 +150,11 @@ trait ExporteBulletinsParTranches
 
         // Déjà assemblé : on ne refait pas cinq minutes de travail.
         if (! is_string($etat['fichier'] ?? null) || ! is_file($etat['fichier'])) {
-            $dossier = $exporter->dossierDeSession($valide['jeton']);
+            $dossier = null;
 
             try {
+                $dossier = $exporter->dossierDeSession($valide['jeton']);
+
                 $absents = ESBTPBulletin::whereIn('id', $etat['ungenerated_ids'])
                     ->with(['etudiant:id,matricule,nom,prenoms', 'classe:id,name'])
                     ->get();
@@ -145,13 +168,13 @@ trait ExporteBulletinsParTranches
 
                 $etat['fichier'] = $exporter->assembler($dossier, $garde, $etat['echecs']);
             } catch (\RuntimeException $e) {
-                $exporter->oublierLaSession($dossier);
+                $dossier === null ?: $exporter->oublierLaSession($dossier);
                 $this->oublierEtatExport($valide['jeton']);
 
                 return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
             } catch (\Throwable $e) {
                 Log::error("assemblerExportParTranches: échec de l'assemblage — ".$e->getMessage());
-                $exporter->oublierLaSession($dossier);
+                $dossier === null ?: $exporter->oublierLaSession($dossier);
                 $this->oublierEtatExport($valide['jeton']);
 
                 return response()->json([
@@ -160,7 +183,7 @@ trait ExporteBulletinsParTranches
                 ], 500);
             }
 
-            $exporter->oublierLaSession($dossier);
+            $dossier === null ?: $exporter->oublierLaSession($dossier);
             $this->rangerEtatExport($valide['jeton'], $etat);
 
             if ($etat['echecs'] !== []) {
@@ -236,6 +259,11 @@ trait ExporteBulletinsParTranches
         }
 
         return [
+            'entete' => [
+                'annee' => optional($filtres->annees->firstWhere('id', $filtres->anneeId))->name,
+                'classe' => optional($filtres->classes->firstWhere('id', $filtres->classeId))->name,
+                'periode' => $filtres->periode === null ? null : (FiltresBulletins::PERIODES[$filtres->periode] ?? null),
+            ],
             'bulletin_ids' => $ids,
             'ungenerated_ids' => (clone $filtre)
                 ->whereNull('esbtp_bulletins.moyenne_generale')
@@ -244,12 +272,16 @@ trait ExporteBulletinsParTranches
     }
 
     /**
-     * Nombre de bulletins par tranche. Même ordre de grandeur que la
-     * génération : les deux répondent à la même limite d'exécution.
+     * Nombre de bulletins par tranche.
+     *
+     * Mesuré sur esbtp-yakro : sept bulletins consomment déjà les trente
+     * secondes de la limite d'exécution, six laisse la marge. C'est une
+     * constante et non un réglage : aucun écran ne l'expose, et un réglage
+     * que personne ne peut changer coûte une lecture par requête pour rien.
      */
     private function tailleTrancheExport(): int
     {
-        return max(1, (int) \App\Helpers\SettingsHelper::get('bulletins_taille_tranche', 6));
+        return 6;
     }
 
     private function trancheRendue(int $rendus, int $echecs, int $traites, int $total): JsonResponse

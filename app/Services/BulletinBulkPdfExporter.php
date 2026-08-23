@@ -26,9 +26,6 @@ class BulletinBulkPdfExporter
      */
     public const DUREE_VIE_MINUTES = 60;
 
-    /** Nombre de bulletins entre deux passes de garbage collection. */
-    private int $gcEvery = 25;
-
     /**
      * Dossier de travail d'un export découpé.
      *
@@ -56,13 +53,6 @@ class BulletinBulkPdfExporter
      *
      * @return array{rendus: int, echecs: array<int, array{id: int, message: string}>}
      */
-    public function rendreTranche(Collection $bulletins, callable $renderer, string $dossier, int $depart): array
-    {
-        $rendu = $this->rendreDansDossier($bulletins, $renderer, $dossier, $depart);
-
-        return ['rendus' => $rendu['rendus'], 'echecs' => $rendu['echecs']];
-    }
-
     /**
      * Assemble les tranches déjà rendues en un seul PDF, page de garde comprise.
      *
@@ -71,6 +61,13 @@ class BulletinBulkPdfExporter
     public function assembler(string $dossier, ?callable $coverBuilder = null, array $echecs = []): string
     {
         // Concatener soixante-dix PDF demande autant de marge que les rendre.
+        //
+        // L'assemblage est la seule etape non decoupee, et c'est assume :
+        // mesure sur esbtp-yakro, il prend 0,8 s pour six bulletins et 2,5 s
+        // pour soixante-dix -- deux ordres de grandeur sous la limite, la ou
+        // le RENDU des memes soixante-dix demande douze tranches. Concatener
+        // est sans commune mesure avec produire. Le plafond de PLAFOND_EXPORT
+        // borne le pire cas ; au-dela, il faudra decouper ici aussi.
         $this->raiseMemoryLimit('512M');
         @set_time_limit(300);
 
@@ -100,6 +97,48 @@ class BulletinBulkPdfExporter
         }
     }
 
+    /**
+     * Balaie les restes des exports abandonnés — dossiers de tranches et PDF
+     * assemblés que personne n'est venu chercher.
+     *
+     * Le service possède ces conventions de nommage ; la commande ne fait que
+     * l'appeler. Le jour où le préfixe change, rien à retrouver ailleurs.
+     *
+     * @return array<int, string> les chemins supprimés, ou à supprimer
+     */
+    public function purger(?int $minutes = null, bool $simulation = false): array
+    {
+        $limite = now()->subMinutes($minutes ?? self::DUREE_VIE_MINUTES)->getTimestamp();
+        $racine = storage_path('app/temp');
+
+        if (! is_dir($racine)) {
+            return [];
+        }
+
+        $restes = array_merge(
+            glob($racine.'/export_*', GLOB_ONLYDIR) ?: [],
+            glob($racine.'/bulletins_export_*.pdf') ?: [],
+        );
+
+        $supprimes = [];
+
+        foreach ($restes as $reste) {
+            if (filemtime($reste) > $limite) {
+                continue;
+            }
+
+            $supprimes[] = $reste;
+
+            if ($simulation) {
+                continue;
+            }
+
+            is_dir($reste) ? $this->oublierLaSession($reste) : @unlink($reste);
+        }
+
+        return $supprimes;
+    }
+
     /** Supprime le dossier de session et tout ce qu'il contient encore. */
     public function oublierLaSession(string $dossier): void
     {
@@ -121,9 +160,15 @@ class BulletinBulkPdfExporter
     }
 
     /**
-     * @return array{fichiers: array<int, string>, rendus: int, echecs: array<int, array{id: int, message: string}>}
+     * Rend une tranche de bulletins dans le dossier de session.
+     *
+     * Les fichiers sont numérotés sur l'ordre global : l'assemblage respecte
+     * l'ordre demandé quel que soit l'ordre d'arrivée des tranches, et une
+     * tranche rejouée ne désordonne pas le document.
+     *
+     * @return array{rendus: int, echecs: array<int, array{id: int, message: string}>}
      */
-    private function rendreDansDossier(Collection $bulletins, callable $renderer, string $dossier, int $depart = 0): array
+    public function rendreTranche(Collection $bulletins, callable $renderer, string $dossier, int $depart = 0): array
     {
         // Gardes mémoire/temps : un export groupé est plus lourd qu'un bulletin
         // seul. On n'ÉLÈVE la limite mémoire que si la valeur courante est plus
@@ -131,32 +176,26 @@ class BulletinBulkPdfExporter
         $this->raiseMemoryLimit('512M');
         @set_time_limit(300);
 
-        $fichiers = [];
         $echecs = [];
         $rendus = 0;
-        $i = 0;
 
-        foreach ($bulletins as $bulletin) {
-            $rang = $depart + $i;
+        foreach ($bulletins->values() as $position => $bulletin) {
+            // Rang global : c'est lui qui porte l'ordre du document final.
+            $rang = $depart + $position;
 
             try {
                 $pdf = $renderer($bulletin);
                 $chemin = sprintf('%s/blt_%06d_%s.pdf', $dossier, $rang, uniqid('', true));
                 file_put_contents($chemin, $pdf->output());
-                $fichiers[] = $chemin;
                 $rendus++;
                 unset($pdf);
             } catch (\Throwable $e) {
                 $echecs[] = ['id' => (int) $bulletin->id, 'message' => $e->getMessage()];
                 Log::error('BulletinBulkPdfExporter: rendu échoué bulletin #'.$bulletin->id.' — '.$e->getMessage());
             }
-
-            if ((++$i % $this->gcEvery) === 0) {
-                gc_collect_cycles();
-            }
         }
 
-        return ['fichiers' => $fichiers, 'rendus' => $rendus, 'echecs' => $echecs];
+        return ['rendus' => $rendus, 'echecs' => $echecs];
     }
 
     /** @param array<int, array{id: int, message: string}> $echecs */
@@ -168,8 +207,9 @@ class BulletinBulkPdfExporter
                 return null;
             }
 
-            // Préfixe « blt_000000 » volontaire : le tri place la garde en tête.
-            $chemin = $dossier.'/blt_000000_garde_'.uniqid('', true).'.pdf';
+            // C'est array_unshift qui place la garde en tête, pas le tri : le
+            // nom ne doit surtout pas laisser croire l'inverse à un relecteur.
+            $chemin = $dossier.'/garde_'.uniqid('', true).'.pdf';
             file_put_contents($chemin, $pdf->output());
 
             return $chemin;
