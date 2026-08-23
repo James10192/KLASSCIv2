@@ -1128,6 +1128,21 @@
 
                     <div class="form-group">
                         <label class="form-label-modern">
+                            <i class="fas fa-tag text-primary"></i>
+                            Sigle
+                        </label>
+                        <input type="text" class="form-control form-control-modern @error('setting_school_acronym') is-invalid @enderror"
+                               name="setting_school_acronym"
+                               value="{{ old('setting_school_acronym', \App\Helpers\SettingsHelper::get('school_acronym', '')) }}"
+                               placeholder="Ex: ESBTP">
+                        <small class="text-muted d-block mt-1">Forme courte du nom, utilisée là où la place manque.</small>
+                        @error('setting_school_acronym')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label-modern">
                             <i class="fas fa-map-marker-alt text-primary"></i>
                             Adresse
                         </label>
@@ -1164,6 +1179,46 @@
                                value="{{ old('setting_school_email', \App\Helpers\SettingsHelper::get('school_email', '')) }}"
                                placeholder="Ex: contact@votre-ecole.com">
                         @error('setting_school_email')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label-modern">
+                            <i class="fas fa-mobile-screen text-primary"></i>
+                            Mobile
+                        </label>
+                        <input type="text" class="form-control form-control-modern @error('setting_school_mobile') is-invalid @enderror"
+                               name="setting_school_mobile"
+                               value="{{ old('setting_school_mobile', \App\Helpers\SettingsHelper::get('school_mobile', '')) }}"
+                               placeholder="Ex: +225 07 00 00 00 00">
+                        @error('setting_school_mobile')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label-modern">
+                            <i class="fas fa-envelope-open-text text-primary"></i>
+                            Code postal
+                        </label>
+                        <input type="text" class="form-control form-control-modern @error('setting_school_postal_code') is-invalid @enderror"
+                               name="setting_school_postal_code"
+                               value="{{ old('setting_school_postal_code', \App\Helpers\SettingsHelper::get('school_postal_code', '')) }}"
+                               placeholder="Ex: 01 BP 1234">
+                        @error('setting_school_postal_code')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label-modern">
+                            <i class="fas fa-globe text-primary"></i>
+                            Site web
+                        </label>
+                        <input type="text" class="form-control form-control-modern @error('setting_school_website') is-invalid @enderror"
+                               name="setting_school_website"
+                               value="{{ old('setting_school_website', \App\Helpers\SettingsHelper::get('school_website', '')) }}"
+                               placeholder="Ex: https://www.mon-ecole.ci">
+                        @error('setting_school_website')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>

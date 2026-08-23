@@ -34,8 +34,8 @@ class BulletinServiceCalculTest extends TestCase
         $absenceService = Mockery::mock(ESBTPAbsenceService::class);
         $this->service = new BulletinService(
             $absenceService,
-            new BtsAnnualClassMapResolver(new BtsPhaseResolver()),
-            new BtsBulletinCohortResolver(new BtsAnnualClassMapResolver(new BtsPhaseResolver())),
+            new BtsAnnualClassMapResolver(new BtsPhaseResolver(), new ClasseOuvertureResolver()),
+            new BtsBulletinCohortResolver(new BtsAnnualClassMapResolver(new BtsPhaseResolver(), new ClasseOuvertureResolver())),
             new \App\Domain\BtsTroncCommun\BtsClassCohortCounter(new BtsPhaseResolver()),
             new ClasseOuvertureResolver()
         );

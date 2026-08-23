@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Domain\BtsTroncCommun\BtsPhaseResolver;
 use App\Domain\BtsTroncCommun\BtsClassCohortCounter;
+use App\Domain\BtsTroncCommun\BtsAnnualClassMapResolver;
 use App\Domain\BtsTroncCommun\ClasseOuvertureResolver;
 use App\Domain\AcademicPilotage\Contracts\AcademicSystemMetricsProvider;
 use App\Domain\AcademicPilotage\Services\AcademicMetricsProviderResolver;
@@ -57,6 +58,9 @@ class AppServiceProvider extends ServiceProvider
         $this->app->scoped(BtsPhaseResolver::class);
         $this->app->scoped(BtsClassCohortCounter::class);
         $this->app->scoped(ClasseOuvertureResolver::class);
+        // Quatre services injectent la carte annuelle et memoisaient chacun de
+        // leur cote le meme triplet : une seule instance par requete suffit.
+        $this->app->scoped(BtsAnnualClassMapResolver::class);
         $this->app->bind(AcademicSystemMetricsProvider::class, AcademicMetricsProviderResolver::class);
 
         // TPE — Strategy de validation pilotée par Setting tenant.

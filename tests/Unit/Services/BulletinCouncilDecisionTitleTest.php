@@ -55,8 +55,8 @@ class BulletinCouncilDecisionTitleTest extends TestCase
 
         $this->service = new BulletinService(
             Mockery::mock(ESBTPAbsenceService::class),
-            new BtsAnnualClassMapResolver(new BtsPhaseResolver()),
-            new BtsBulletinCohortResolver(new BtsAnnualClassMapResolver(new BtsPhaseResolver())),
+            new BtsAnnualClassMapResolver(new BtsPhaseResolver(), new ClasseOuvertureResolver()),
+            new BtsBulletinCohortResolver(new BtsAnnualClassMapResolver(new BtsPhaseResolver(), new ClasseOuvertureResolver())),
             new BtsClassCohortCounter(new BtsPhaseResolver()),
             new ClasseOuvertureResolver()
         );
