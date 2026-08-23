@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Concerns;
 
+use App\Domain\Bulletins\FiltresBulletins;
 use App\Models\ESBTPBulletin;
 use App\Services\BulletinBulkPdfExporter;
 use Illuminate\Http\JsonResponse;
@@ -218,10 +219,11 @@ trait ExporteBulletinsParTranches
      */
     private function contexteExport(Request $request): array
     {
-        $anneeId = $this->resolveAnneeId($request);
+        // Le même objet que la liste : ce qu'on exporte est ce qu'on voit.
+        $filtres = FiltresBulletins::depuis($request);
 
         $filtre = ESBTPBulletin::query();
-        $this->applyBulletinFilters($filtre, $request, $anneeId);
+        $filtres->appliquerA($filtre);
 
         $generes = (clone $filtre)->whereNotNull('esbtp_bulletins.moyenne_generale');
         $this->applyBulletinExportOrder($generes, $request);

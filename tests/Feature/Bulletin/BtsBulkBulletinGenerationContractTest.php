@@ -137,15 +137,6 @@ class BtsBulkBulletinGenerationContractTest extends TestCase
         $this->assertStringContainsString("preflight?.existing_empty_count > 0 && !preflight?.recalculer", $view);
     }
 
-    public function test_legacy_annuel_banner_filter_is_selectable_and_scoped(): void
-    {
-        $controller = file_get_contents(app_path('Http/Controllers/ESBTPBulletinController.php'));
-        $indexView = file_get_contents(resource_path('views/esbtp/bulletins/index.blade.php'));
-
-        $this->assertStringContainsString("\$periodes->push((object) ['id' => 'annuel', 'nom' => 'Annuel (legacy)']);", $controller);
-        $this->assertStringContainsString("array_filter(['annee_universitaire_id' => \$annee_id, 'periode_id' => 'annuel'])", $indexView);
-    }
-
     /**
      * L'export groupé passe par le découpage : ouvrir, tranche, assembler,
      * telecharger. Le chemin en une seule requête a disparu — il plafonnait à

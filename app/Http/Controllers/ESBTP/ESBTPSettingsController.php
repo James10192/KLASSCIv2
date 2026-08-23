@@ -22,6 +22,27 @@ use Barryvdh\DomPDF\Facade\Pdf;
 
 class ESBTPSettingsController extends Controller
 {
+    /**
+     * Champs d'identité de l'établissement apparus après la plupart des bases.
+     *
+     * La sauvegarde ne modifiait que des réglages déjà présents : ceux-ci,
+     * absents, étaient acceptés puis perdus en silence. Ils sont créés à la
+     * première saisie.
+     */
+    private const CHAMPS_ETABLISSEMENT = [
+        'school_mobile',
+        'school_postal_code',
+        'school_website',
+        'school_acronym',
+    ];
+
+    private const CHAMPS_ETABLISSEMENT_LIBELLES = [
+        'school_mobile' => "Téléphone mobile de l'établissement",
+        'school_postal_code' => 'Code postal',
+        'school_website' => 'Site web',
+        'school_acronym' => "Sigle de l'établissement",
+    ];
+
     public function __construct()
     {
         $this->middleware('auth');
@@ -533,6 +554,33 @@ class ESBTPSettingsController extends Controller
                         ]);
 
                         $updatedSettings[] = $settingKey;
+                    } elseif (in_array($settingKey, self::CHAMPS_ETABLISSEMENT, true)) {
+                        // Ces champs sont plus récents que la plupart des bases :
+                        // sans cette branche, l'administrateur saisissait son site
+                        // web, voyait « enregistré », et rien n'était gardé.
+                        //
+                        // firstOrCreate, comme le reste de cette méthode : deux
+                        // enregistrements simultanés heurteraient la clé unique et
+                        // feraient échouer tout le formulaire.
+                        $valeur = is_string($value) ? trim($value) : $value;
+
+                        if ($valeur !== null && $valeur !== '') {
+                            Setting::firstOrCreate(
+                                ['key' => $settingKey],
+                                [
+                                    'value' => $valeur,
+                                    'type' => 'string',
+                                    'group' => 'establishment',
+                                    'category' => 'establishment',
+                                    'description' => self::CHAMPS_ETABLISSEMENT_LIBELLES[$settingKey] ?? $settingKey,
+                                    'is_required' => false,
+                                    'created_by' => auth()->id(),
+                                    'updated_by' => auth()->id(),
+                                ]
+                            );
+
+                            $updatedSettings[] = $settingKey;
+                        }
                     }
                 }
             }

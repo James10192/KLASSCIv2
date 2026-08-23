@@ -507,7 +507,7 @@
                 <div class="bul-kpi-icon"><i class="fas fa-file-lines"></i></div>
                 <div class="bul-kpi-body">
                     <div class="bul-kpi-value">{{ number_format($stats['total']) }}</div>
-                    <div class="bul-kpi-label">Bulletins {{ $annee_id ? 'année active' : 'tous' }}</div>
+                    <div class="bul-kpi-label">Bulletins année active</div>
                 </div>
             </div>
             <div class="bul-kpi">
@@ -575,10 +575,14 @@
               class="bul-filters" @submit.prevent="fetchPage(1)">
             <div class="bul-filter-field">
                 <label class="bul-filter-label">Année universitaire</label>
+                {{-- Pas de choix vide : une liste de bulletins est toujours bornée
+                     à une année. Proposer « Toutes les années » afficherait un
+                     état que le filtre n'honore jamais. --}}
                 <x-au-select
                     name="annee_universitaire_id"
                     :value="$annee_id"
-                    placeholder="Toutes les années"
+                    :placeholder-is-first-option="false"
+                    placeholder="Année universitaire"
                     icon="fa-calendar"
                     :options="$anneesUniversitaires->mapWithKeys(fn($a) => [$a->id => $a->name])->toArray()" />
             </div>
@@ -601,7 +605,7 @@
                     :value="$periode_id"
                     placeholder="Toutes les périodes"
                     icon="fa-layer-group"
-                    :options="$periodes->mapWithKeys(fn($p) => [$p->id => $p->nom])->toArray()" />
+                    :options="$periodes" />
             </div>
 
             <div class="bul-filter-field">
@@ -816,7 +820,12 @@ function bulIndex() {
         resetFilters() {
             const form = document.getElementById('bul-filter-form');
             if (!form) return;
-            form.querySelectorAll('select[name]').forEach(sel => { sel.value = ''; sel.dispatchEvent(new Event('change', { bubbles: true })); });
+            // L'année n'est pas vidée : elle n'a pas d'état « toutes ».
+            const anneeParDefaut = @json((string) (optional($anneesUniversitaires->firstWhere('is_current', true))->id ?? $annee_id ?? ''));
+            form.querySelectorAll('select[name]').forEach(sel => {
+                sel.value = sel.name === 'annee_universitaire_id' ? anneeParDefaut : '';
+                sel.dispatchEvent(new Event('change', { bubbles: true }));
+            });
             const search = form.querySelector('input[name="search"]');
             if (search) search.value = '';
             this.fetchPage(1);
