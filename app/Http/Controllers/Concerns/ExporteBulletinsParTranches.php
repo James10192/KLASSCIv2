@@ -94,13 +94,6 @@ trait ExporteBulletinsParTranches
         $total = count($etat['bulletin_ids']);
         $ids = array_slice($etat['bulletin_ids'], $valide['depart'], $this->tailleTrancheExport());
 
-        if (count($ids) > self::PLAFOND_EXPORT) {
-            throw new RuntimeException(sprintf(
-                "%s bulletins correspondent au filtre : c'est trop pour un seul document. Choisissez une classe, ou un semestre.",
-                count($ids)
-            ));
-        }
-
         if ($ids === []) {
             return $this->trancheRendue(0, 0, $total, $total);
         }
@@ -251,6 +244,13 @@ trait ExporteBulletinsParTranches
         $generes = (clone $filtre)->whereNotNull('esbtp_bulletins.moyenne_generale');
         $this->applyBulletinExportOrder($generes, $request);
         $ids = $generes->pluck('esbtp_bulletins.id')->map(fn ($id) => (int) $id)->all();
+
+        if (count($ids) > self::PLAFOND_EXPORT) {
+            throw new \RuntimeException(sprintf(
+                "%d bulletins correspondent au filtre : c'est trop pour un seul document. Choisissez une classe, ou un semestre.",
+                count($ids)
+            ));
+        }
 
         if ($ids === []) {
             $total = (clone $filtre)->count();
