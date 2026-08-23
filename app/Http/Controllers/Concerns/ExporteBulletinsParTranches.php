@@ -6,34 +6,35 @@ use App\Models\ESBTPBulletin;
 use App\Services\BulletinBulkPdfExporter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 /**
  * Export groupé découpé en tranches.
  *
- * Un export d'une classe entière ne tient pas dans une requête : sept bulletins
- * consomment déjà trente secondes, mesurées sur esbtp-yakro, pour une limite
- * d'exécution du même ordre. L'export d'un coup est donc plafonné à six.
+ * Une classe entière ne tient pas dans une requête : sept bulletins consomment
+ * déjà trente secondes, mesurées sur esbtp-yakro, pour une limite d'exécution
+ * du même ordre. Le découpage reprend le chemin de la génération, qui traite la
+ * même classe en douze tranches sans jamais approcher la limite.
  *
- * Le découpage reprend le chemin de la génération, qui traite la même classe en
- * douze tranches sans jamais approcher la limite. Trois étapes :
- *
- *   1. `ouvrir`    — fige la liste des bulletins et rend un jeton ;
- *   2. `tranche`   — rend N bulletins dans le dossier de session ;
- *   3. `assembler` — concatène le tout et sert le PDF.
+ *   1. ouvrir      — fige la liste des bulletins et rend un jeton ;
+ *   2. tranche     — rend N bulletins dans le dossier de session ;
+ *   3. assembler   — concatène le tout et rend l'adresse du document ;
+ *   4. telecharger — sert le document, autant de fois qu'on le demande.
  *
  * L'ordre est porté par le numéro de chaque fichier, pas par l'ordre d'arrivée
  * des tranches : une tranche rejouée ne désordonne pas le document.
+ *
+ * L'état vit dans le cache, pas dans la session : le tableau des identifiants
+ * n'a rien à faire dans une session relue à chaque requête, et le verrou du
+ * pilote « file » sérialiserait tout le trafic de l'utilisateur pendant les
+ * vingt-cinq secondes de chaque tranche. Le cache apporte en prime l'expiration
+ * qui manquait aux exports abandonnés.
  */
 trait ExporteBulletinsParTranches
 {
-    /** Durée de vie d'une session d'export, au-delà de laquelle elle est balayée. */
-    private const SESSION_TTL_MINUTES = 60;
-
-    /**
-     * POST /esbtp/bulletins/export-pdf/ouvrir
-     */
+    /** POST /esbtp/bulletins/export-pdf/ouvrir */
     public function ouvrirExportParTranches(Request $request): JsonResponse
     {
         try {
@@ -44,12 +45,12 @@ trait ExporteBulletinsParTranches
 
         $jeton = Str::lower(Str::random(24));
 
-        session()->put($this->cleDeSession($jeton), [
+        $this->rangerEtatExport($jeton, [
+            'user_id' => (int) $request->user()->id,
             'bulletin_ids' => $contexte['bulletin_ids'],
             'ungenerated_ids' => $contexte['ungenerated_ids'],
             'echecs' => [],
-            'ouvert_a' => now()->toIso8601String(),
-            'filtres' => $request->only(['classe_id', 'periode', 'annee_universitaire_id']),
+            'fichier' => null,
         ]);
 
         return response()->json([
@@ -63,9 +64,7 @@ trait ExporteBulletinsParTranches
         ]);
     }
 
-    /**
-     * POST /esbtp/bulletins/export-pdf/tranche
-     */
+    /** POST /esbtp/bulletins/export-pdf/tranche */
     public function rendreTrancheExport(Request $request, BulletinBulkPdfExporter $exporter): JsonResponse
     {
         $valide = $request->validate([
@@ -73,24 +72,16 @@ trait ExporteBulletinsParTranches
             'depart' => 'required|integer|min:0',
         ]);
 
-        $cle = $this->cleDeSession($valide['jeton']);
-        $etat = session()->get($cle);
-
-        if (! $etat) {
-            return response()->json([
-                'success' => false,
-                'message' => "Cette session d'export a expiré. Relancez l'export.",
-            ], 410);
+        $etat = $this->etatExport($request, $valide['jeton']);
+        if ($etat === null) {
+            return $this->exportExpire();
         }
 
-        $taille = $this->tailleTrancheExport();
-        $ids = array_slice($etat['bulletin_ids'], $valide['depart'], $taille);
+        $total = count($etat['bulletin_ids']);
+        $ids = array_slice($etat['bulletin_ids'], $valide['depart'], $this->tailleTrancheExport());
 
         if ($ids === []) {
-            return response()->json([
-                'success' => true,
-                'data' => ['rendus' => 0, 'termine' => true],
-            ]);
+            return $this->trancheRendue(0, 0, $total, $total);
         }
 
         // whereIn ne garantit pas l'ordre : on le rétablit sur la liste figée.
@@ -106,75 +97,108 @@ trait ExporteBulletinsParTranches
         );
 
         $etat['echecs'] = array_merge($etat['echecs'], $rendu['echecs']);
-        session()->put($cle, $etat);
+        $this->rangerEtatExport($valide['jeton'], $etat);
 
-        $traites = $valide['depart'] + count($ids);
-
-        return response()->json([
-            'success' => true,
-            'data' => [
-                'rendus' => $rendu['rendus'],
-                'echecs' => count($rendu['echecs']),
-                'traites' => $traites,
-                'total' => count($etat['bulletin_ids']),
-                'termine' => $traites >= count($etat['bulletin_ids']),
-            ],
-        ]);
+        return $this->trancheRendue(
+            $rendu['rendus'],
+            count($rendu['echecs']),
+            $valide['depart'] + count($ids),
+            $total
+        );
     }
 
     /**
-     * GET /esbtp/bulletins/export-pdf/assembler
+     * POST /esbtp/bulletins/export-pdf/assembler
+     *
+     * Rend l'adresse du document plutôt que le document : les erreurs de
+     * l'assemblage — l'étape la plus coûteuse — reviennent ainsi dans la page
+     * au lieu de s'échouer dans un onglet que personne ne regarde.
      */
-    public function assemblerExportParTranches(Request $request, BulletinBulkPdfExporter $exporter)
+    public function assemblerExportParTranches(Request $request, BulletinBulkPdfExporter $exporter): JsonResponse
     {
         $valide = $request->validate([
             'jeton' => 'required|string|max:64',
             'mode' => 'nullable|in:apercu,telechargement',
         ]);
 
-        $cle = $this->cleDeSession($valide['jeton']);
-        $etat = session()->get($cle);
+        $etat = $this->etatExport($request, $valide['jeton']);
+        if ($etat === null) {
+            return $this->exportExpire();
+        }
 
-        if (! $etat) {
-            return response("Cette session d'export a expiré. Relancez l'export.", 410)
+        // Déjà assemblé : on ne refait pas cinq minutes de travail.
+        if (! is_string($etat['fichier'] ?? null) || ! is_file($etat['fichier'])) {
+            $dossier = $exporter->dossierDeSession($valide['jeton']);
+
+            try {
+                $absents = ESBTPBulletin::whereIn('id', $etat['ungenerated_ids'])
+                    ->with(['etudiant:id,matricule,nom,prenoms', 'classe:id,name'])
+                    ->get();
+
+                $garde = fn (array $echecs): ?\Barryvdh\DomPDF\PDF => $this->buildExportCoverPdf(
+                    $absents,
+                    $echecs,
+                    $request,
+                    count($etat['bulletin_ids'])
+                );
+
+                $etat['fichier'] = $exporter->assembler($dossier, $garde, $etat['echecs']);
+            } catch (\RuntimeException $e) {
+                $exporter->oublierLaSession($dossier);
+                $this->oublierEtatExport($valide['jeton']);
+
+                return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
+            } catch (\Throwable $e) {
+                Log::error("assemblerExportParTranches: échec de l'assemblage — ".$e->getMessage());
+                $exporter->oublierLaSession($dossier);
+                $this->oublierEtatExport($valide['jeton']);
+
+                return response()->json([
+                    'success' => false,
+                    'message' => "Échec de l'assemblage du PDF groupé. Réessayez, et prévenez le support si cela persiste.",
+                ], 500);
+            }
+
+            $exporter->oublierLaSession($dossier);
+            $this->rangerEtatExport($valide['jeton'], $etat);
+
+            if ($etat['echecs'] !== []) {
+                Log::warning('assemblerExportParTranches: '.count($etat['echecs']).' bulletin(s) non rendus', $etat['echecs']);
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'url' => route('esbtp.bulletins.export-pdf.telecharger', [
+                    'jeton' => $valide['jeton'],
+                    'mode' => $valide['mode'] ?? 'telechargement',
+                ]),
+                'echecs' => count($etat['echecs']),
+            ],
+        ]);
+    }
+
+    /**
+     * GET /esbtp/bulletins/export-pdf/telecharger
+     *
+     * Idempotent : recharger l'onglet resert le même document au lieu de
+     * réclamer cinq minutes de travail refait. Le ménage revient à la purge.
+     */
+    public function telechargerExportParTranches(Request $request)
+    {
+        $valide = $request->validate([
+            'jeton' => 'required|string|max:64',
+            'mode' => 'nullable|in:apercu,telechargement',
+        ]);
+
+        $etat = $this->etatExport($request, $valide['jeton']);
+        $chemin = $etat['fichier'] ?? null;
+
+        if (! is_string($chemin) || ! is_file($chemin)) {
+            return response("Ce document n'est plus disponible. Relancez l'export.", 410)
                 ->header('Content-Type', 'text/plain; charset=UTF-8');
         }
-
-        $dossier = $exporter->dossierDeSession($valide['jeton']);
-
-        try {
-            $absents = ESBTPBulletin::whereIn('id', $etat['ungenerated_ids'])
-                ->with(['etudiant:id,matricule,nom,prenoms', 'classe:id,name'])
-                ->get();
-
-            $garde = fn (array $echecs): ?\Barryvdh\DomPDF\PDF => $this->buildExportCoverPdf(
-                $absents,
-                $echecs,
-                $request,
-                count($etat['bulletin_ids'])
-            );
-
-            $chemin = $exporter->assembler($dossier, $garde, $etat['echecs']);
-        } catch (\RuntimeException $e) {
-            $exporter->oublierLaSession($dossier);
-            session()->forget($cle);
-
-            return response($e->getMessage(), 422)->header('Content-Type', 'text/plain; charset=UTF-8');
-        } catch (\Throwable $e) {
-            Log::error("assemblerExportParTranches: échec de l'assemblage — ".$e->getMessage());
-            $exporter->oublierLaSession($dossier);
-            session()->forget($cle);
-
-            return response("Échec de l'assemblage du PDF groupé.", 500)
-                ->header('Content-Type', 'text/plain; charset=UTF-8');
-        }
-
-        if (! empty($etat['echecs'])) {
-            Log::warning('assemblerExportParTranches: '.count($etat['echecs']).' bulletin(s) non rendus', $etat['echecs']);
-        }
-
-        $exporter->oublierLaSession($dossier);
-        session()->forget($cle);
 
         $nom = $this->bulkExportFilename();
 
@@ -182,8 +206,8 @@ trait ExporteBulletinsParTranches
             ? response()->file($chemin, [
                 'Content-Type' => 'application/pdf',
                 'Content-Disposition' => 'inline; filename="'.$nom.'"',
-            ])->deleteFileAfterSend(true)
-            : response()->download($chemin, $nom)->deleteFileAfterSend(true);
+            ])
+            : response()->download($chemin, $nom);
     }
 
     /**
@@ -218,15 +242,62 @@ trait ExporteBulletinsParTranches
     }
 
     /**
-     * Même taille que la génération : les deux répondent à la même limite
-     * d'exécution, et six bulletins tiennent largement dessous.
+     * Nombre de bulletins par tranche. Même ordre de grandeur que la
+     * génération : les deux répondent à la même limite d'exécution.
      */
     private function tailleTrancheExport(): int
     {
-        return max(1, (int) \App\Helpers\SettingsHelper::get('bulletins_bulk_export_cap', 6));
+        return max(1, (int) \App\Helpers\SettingsHelper::get('bulletins_taille_tranche', 6));
     }
 
-    private function cleDeSession(string $jeton): string
+    private function trancheRendue(int $rendus, int $echecs, int $traites, int $total): JsonResponse
+    {
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'rendus' => $rendus,
+                'echecs' => $echecs,
+                'traites' => $traites,
+                'total' => $total,
+                'termine' => $traites >= $total,
+            ],
+        ]);
+    }
+
+    private function exportExpire(): JsonResponse
+    {
+        return response()->json([
+            'success' => false,
+            'message' => "Cette session d'export a expiré. Relancez l'export.",
+        ], 410);
+    }
+
+    /** @return array<string, mixed>|null */
+    private function etatExport(Request $request, string $jeton): ?array
+    {
+        $etat = Cache::get($this->cleExport($jeton));
+
+        // Le jeton est un secret, mais on vérifie quand même le porteur : un
+        // export appartient à celui qui l'a ouvert.
+        if (! is_array($etat) || ($etat['user_id'] ?? null) !== (int) $request->user()->id) {
+            return null;
+        }
+
+        return $etat;
+    }
+
+    /** @param array<string, mixed> $etat */
+    private function rangerEtatExport(string $jeton, array $etat): void
+    {
+        Cache::put($this->cleExport($jeton), $etat, now()->addMinutes(BulletinBulkPdfExporter::DUREE_VIE_MINUTES));
+    }
+
+    private function oublierEtatExport(string $jeton): void
+    {
+        Cache::forget($this->cleExport($jeton));
+    }
+
+    private function cleExport(string $jeton): string
     {
         return 'export_bulletins.'.preg_replace('/[^a-z0-9]/i', '', $jeton);
     }
