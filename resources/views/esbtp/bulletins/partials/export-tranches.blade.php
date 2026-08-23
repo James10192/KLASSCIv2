@@ -120,7 +120,7 @@
  * @param {object} o
  * @param {URLSearchParams} o.params  filtres de la vue (classe, période, tri…)
  * @param {'apercu'|'telechargement'} o.mode
- * @param {{ouvrir:string, tranche:string, assembler:string}} o.urls
+ * @param o.urls   adresses des trois etapes : ouvrir, tranche, assembler
  * @param {string} o.csrf
  * @param {(etat:object|null)=>void} o.onEtat
  */
