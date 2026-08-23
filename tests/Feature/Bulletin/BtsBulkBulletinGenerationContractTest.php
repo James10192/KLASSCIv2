@@ -4,6 +4,12 @@ namespace Tests\Feature\Bulletin;
 
 use Tests\TestCase;
 
+/**
+ * Le sort des bulletins existants mais vides se joue dans
+ * @see \Tests\Feature\Bts\PreflightBulletinVideTest : il pose de vrais
+ * bulletins en base et regarde ou le pre-controle les range. Un test qui lit
+ * la source ne le voyait pas : il restait vert avec et sans le correctif.
+ */
 class BtsBulkBulletinGenerationContractTest extends TestCase
 {
     public function test_bulk_generation_has_structured_json_preflight_and_recalculate_contract(): void
@@ -83,20 +89,6 @@ class BtsBulkBulletinGenerationContractTest extends TestCase
         $this->assertStringContainsString("return (! \$hasHardBlocks && \$canOverrideIncomplete) ? 'needs_reason' : 'blocked';", $service);
         $this->assertStringContainsString("in_array(\$b['code'] ?? '', self::HARD_BLOCK_CODES, true)", $service);
         $this->assertStringNotContainsString("'severity' =>", $service);
-    }
-
-    public function test_preflight_zero_students_and_all_existing_are_not_treated_as_ready(): void
-    {
-        $service = $this->bulkServiceSource();
-
-        // Newline-agnostic (le repo est en CRLF sous Windows) : on vérifie les états, pas la mise en page.
-        $this->assertStringContainsString("return 'no_students';", $service);
-        $this->assertStringContainsString("return 'nothing_to_generate';", $service);
-        $this->assertStringContainsString('if ($studentsCount === 0)', $service);
-        $this->assertStringContainsString('if ($generatableCount === 0)', $service);
-        // Un bulletin existant sans moyenne est signalé, pas silencieusement ignoré.
-        $this->assertStringContainsString("'bulletin_exists_empty'", $service);
-        $this->assertStringContainsString("'existing_empty_count' => \$existingEmptyCount,", $service);
     }
 
     public function test_professeurs_requirement_ignores_unselected_matieres(): void

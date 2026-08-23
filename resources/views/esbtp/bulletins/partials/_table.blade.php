@@ -10,7 +10,11 @@
             @endif
         </div>
         @can('bulletins.generate')
-        <a href="{{ route('esbtp.bulletins.select') }}" class="bul-btn bul-btn--primary">
+        <a href="{{ route('esbtp.bulletins.select', array_filter([
+                    'classe_id' => $classe_id ?? null,
+                    'periode' => $periode_id ?? null,
+                    'annee_universitaire_id' => $annee_id ?? null,
+                ])) }}" class="bul-btn bul-btn--primary">
             <i class="fas fa-magic-wand-sparkles"></i> Générer mes premiers bulletins
         </a>
         @endcan

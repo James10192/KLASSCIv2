@@ -283,17 +283,47 @@ window.busCard = function (cfg) {
             return `environ ${minutes} min`;
         },
         // Année universitaire courante pré-sélectionnée (le user peut changer ensuite).
-        form: {
-            classe_id: '',
-            annee_universitaire_id: @json($anneeActuelle?->id ? (string) $anneeActuelle->id : ''),
-            etudiant_id: '',
-            semestre: '',
-            periode: '',
-            recalculer: false,
-            incomplete_reason: '',
-        },
+        // L'ecran s'ouvre sur ce que l'adresse demande : un lien vers la
+        // generation d'une classe arrivait sur trois selecteurs vides, et il
+        // fallait refaire a la main un choix deja exprime dans l'URL.
+        form: (() => {
+            const url = new URLSearchParams(window.location.search);
+            // L'adresse ne peut demander que ce que les selecteurs offrent.
+            // Une classe absente de la liste de l'utilisateur laisserait le
+            // champ vide a l'ecran pendant que le pre-controle partirait
+            // quand meme dessus : le choix serait invisible et pourtant actif.
+            const proposees = @json($optionsProposees);
+            const depuisUrl = (cle) => {
+                const valeur = url.get(cle) || '';
+
+                return proposees[cle].includes(valeur) ? valeur : '';
+            };
+
+            return {
+                classe_id: depuisUrl('classe_id'),
+                annee_universitaire_id: depuisUrl('annee_universitaire_id')
+                    || @json($anneeActuelle?->id ? (string) $anneeActuelle->id : ''),
+                etudiant_id: '',
+                semestre: '',
+                periode: depuisUrl('periode'),
+                recalculer: false,
+                incomplete_reason: '',
+            };
+        })(),
 
         init() {
+            // Les champs venus de l'adresse ne declenchent aucun watcher : on
+            // amorce nous-memes ce que le premier choix aurait declenche.
+            // Sans garde de carte : fetchStudents() ne fait rien hors
+            // « apercu », queuePreflight() rien hors « generation ». Filtrer
+            // ici en plus laissait l'apercu avec une classe choisie, une liste
+            // d'etudiants jamais chargee, et un « 0 etudiant inscrit » faux
+            // que le watcher ne pouvait plus corriger.
+            if (this.form.classe_id) {
+                this.fetchStudents();
+                this.queuePreflight();
+            }
+
             this.$watch('form.classe_id', () => {
                 this.form.etudiant_id = '';
                 this.previewIssue = null;

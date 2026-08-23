@@ -489,7 +489,11 @@
             </div>
             <div class="bul-hero-actions">
                 @can('bulletins.generate')
-                <a href="{{ route('esbtp.bulletins.select') }}" class="bul-btn bul-btn--white">
+                <a href="{{ route('esbtp.bulletins.select', array_filter([
+                    'classe_id' => $classe_id ?? null,
+                    'periode' => $periode_id ?? null,
+                    'annee_universitaire_id' => $annee_id ?? null,
+                ])) }}" class="bul-btn bul-btn--white">
                     <i class="fas fa-magic-wand-sparkles"></i> Générer
                 </a>
                 @endcan
@@ -721,7 +725,7 @@
 
     {{-- ══ TABLE (partial AJAX) ═══════════════════════════ --}}
     <div class="bul-table-wrap" id="bul-table-wrap" :class="loading ? 'bul-table-wrap--loading' : ''">
-        @include('esbtp.bulletins.partials._table', compact('bulletins', 'classe_id', 'periode_id', 'published', 'search'))
+        @include('esbtp.bulletins.partials._table', compact('bulletins', 'classe_id', 'periode_id', 'annee_id', 'published', 'search'))
     </div>
 
     {{-- Toast container --}}

@@ -661,6 +661,17 @@
 @section('content')
 @php
     $anneeOptions = $anneesUniversitaires->mapWithKeys(fn ($annee) => [$annee->id => $annee->display_name])->toArray();
+    $classeOptions = $classes->mapWithKeys(fn ($c) => [$c->id => $c->name])->toArray();
+    $periodeOptions = ['semestre1' => 'Semestre 1', 'semestre2' => 'Semestre 2'];
+
+    // Les memes listes peuplent les selecteurs ET filtrent ce que l'adresse
+    // peut pre-selectionner : deux listes divergentes laisseraient passer un
+    // choix que l'ecran n'affiche pas.
+    $optionsProposees = [
+        'classe_id' => array_map('strval', array_keys($classeOptions)),
+        'annee_universitaire_id' => array_map('strval', array_keys($anneeOptions)),
+        'periode' => array_keys($periodeOptions),
+    ];
 @endphp
 
 <div class="container-fluid" x-data="busSelect()" x-init="init()">
@@ -702,7 +713,7 @@
                 <div class="bus-field">
                     <label class="bus-field-label"><span class="bus-field-step">1</span>Classe</label>
                     <x-au-select
-                        :options="$classes->mapWithKeys(fn($c) => [$c->id => $c->name])->toArray()"
+                        :options="$classeOptions"
                         label="Classe a consulter"
                         placeholder="Choisir la classe…"
                         icon="fa-school"
@@ -754,7 +765,7 @@
                 <div class="bus-field">
                     <label class="bus-field-label"><span class="bus-field-step">1</span>Classe</label>
                     <x-au-select
-                        :options="$classes->mapWithKeys(fn($c) => [$c->id => $c->name])->toArray()"
+                        :options="$classeOptions"
                         label="Classe de l'apercu"
                         placeholder="Choisir la classe…"
                         icon="fa-school"
@@ -839,7 +850,7 @@
                 <div class="bus-field">
                     <label class="bus-field-label"><span class="bus-field-step">1</span>Classe</label>
                     <x-au-select
-                        :options="$classes->mapWithKeys(fn($c) => [$c->id => $c->name])->toArray()"
+                        :options="$classeOptions"
                         label="Classe a generer"
                         placeholder="Choisir la classe…"
                         icon="fa-school"
@@ -868,7 +879,7 @@
                 <div class="bus-field" :class="(!form.classe_id || !form.annee_universitaire_id) ? 'bus-field--disabled' : ''">
                     <label class="bus-field-label"><span class="bus-field-step">3</span>Période</label>
                     <x-au-select
-                        :options="['semestre1' => 'Semestre 1', 'semestre2' => 'Semestre 2']"
+                        :options="$periodeOptions"
                         label="Periode a generer"
                         x-bind:disabled="!form.classe_id || !form.annee_universitaire_id"
                         placeholder="Choisir la période…"
@@ -918,10 +929,19 @@
                     <template x-if="preflight?.blocking_errors?.length && !preflight?.missing_coefficients?.length && !preflight?.missing_professeurs?.length">
                         <p class="bus-inline-panel__body" x-text="preflight.blocking_errors.length + ' blocage(s) detecte(s).'"></p>
                     </template>
+                    {{-- Un bulletin vide est repris d'office : plus rien à cocher.
+                         Ceux que le verrou empêche de reprendre sont comptés à part,
+                         sinon le message promettrait de remplir ce qu'il ne touche pas. --}}
                     <template x-if="preflight?.existing_empty_count > 0 && !preflight?.recalculer">
                         <p class="bus-inline-panel__body">
                             <span x-text="preflight.existing_empty_count"></span>
-                            bulletin(s) existant(s) sans moyenne — cochez « Recalculer » pour les regenerer.
+                            bulletin(s) existant(s) sans moyenne : ils seront repris par cette génération.
+                        </p>
+                    </template>
+                    <template x-if="preflight?.existing_empty_locked_count > 0">
+                        <p class="bus-inline-panel__body">
+                            <span x-text="preflight.existing_empty_locked_count"></span>
+                            bulletin(s) sans moyenne mais publié(s) ou signé(s) : déverrouillez-les pour les reprendre.
                         </p>
                     </template>
                     <template x-if="preflight?.has_hard_blocks">

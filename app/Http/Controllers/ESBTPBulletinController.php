@@ -136,7 +136,7 @@ class ESBTPBulletinController extends Controller
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json([
                 'html' => view('esbtp.bulletins.partials._table', compact(
-                    'bulletins', 'classe_id', 'periode_id', 'published', 'search'
+                    'bulletins', 'classe_id', 'periode_id', 'annee_id', 'published', 'search'
                 ))->render(),
                 'stats' => $stats,
                 'count' => $bulletins->count(),

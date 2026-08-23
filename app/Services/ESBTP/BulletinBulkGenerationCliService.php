@@ -137,6 +137,7 @@ class BulletinBulkGenerationCliService
             'generatable_count' => $preflight['generatable_count'] ?? 0,
             'existing_count' => $preflight['existing_count'] ?? 0,
             'existing_empty_count' => $preflight['existing_empty_count'] ?? 0,
+            'existing_empty_locked_count' => $preflight['existing_empty_locked_count'] ?? 0,
             'has_hard_blocks' => (bool) ($preflight['has_hard_blocks'] ?? false),
             'missing_professeurs' => $preflight['missing_professeurs'] ?? [],
             'missing_coefficients' => $preflight['missing_coefficients'] ?? [],

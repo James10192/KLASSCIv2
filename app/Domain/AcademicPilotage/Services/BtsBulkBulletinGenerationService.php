@@ -36,6 +36,12 @@ final class BtsBulkBulletinGenerationService
         'bulletin_locked',
     ];
 
+    /** Un bulletin porte deja une moyenne : il n'y a rien a refaire. */
+    public const ECART_DEJA_GENERE = 'bulletin_exists';
+
+    /** Bulletin sans moyenne, mais publie ou signe : le verrou interdit de le reprendre. */
+    public const ECART_VIDE_VERROUILLE = 'bulletin_exists_empty_locked';
+
     public function __construct(
         private readonly BulletinService $bulletinService,
         private readonly BulletinGenerationReadinessService $readiness,
@@ -85,20 +91,17 @@ final class BtsBulkBulletinGenerationService
         foreach ($students as $student) {
             $existing = $this->findBulletin((int) $student->id, $classe->id, $academicYearId, $period);
 
-            // Bulletin déjà généré et pas de recalcul demandé : on ne réévalue pas
-            // la configuration (elle n'a aucun effet ici), on signale juste s'il est vide.
-            if ($existing && ! $recalculate) {
-                $isEmpty = $existing->moyenne_generale === null;
-                $existingEmptyCount += $isEmpty ? 1 : 0;
-                $skipped[] = $this->studentPayload($student) + [
-                    'code' => $isEmpty ? 'bulletin_exists_empty' : 'bulletin_exists',
-                    'message' => $isEmpty
-                        ? 'Bulletin existant sans moyenne : cochez « Recalculer » pour le regenerer.'
-                        : 'Bulletin deja genere pour cette periode.',
-                    'bulletin_id' => $existing->id,
-                ];
+            if ($ecart = $this->ecartPourBulletinExistant($existing, $recalculate)) {
+                $skipped[] = $this->studentPayload($student) + $ecart + ['bulletin_id' => $existing->id];
+
                 continue;
             }
+
+            // Un bulletin vide est a refaire, mais il ne sera repris que s'il
+            // franchit tous les controles qui suivent. Le compter ici, avant
+            // eux, ferait promettre a l'ecran des bulletins que la generation
+            // laissera dans les blocages : le comptage attend la fin de boucle.
+            $videAReprendre = $existing && ! $recalculate && $existing->moyenne_generale === null;
 
             if ($existing && $this->isProtected($existing)) {
                 $blockingErrors[] = $this->studentPayload($student) + [
@@ -151,7 +154,13 @@ final class BtsBulkBulletinGenerationService
             }
 
             $generatableCount++;
+            $existingEmptyCount += $videAReprendre ? 1 : 0;
         }
+
+        // Un seul compteur est tenu a la main, celui des bulletins vides qui
+        // seront effectivement repris. Les verrouilles se lisent dans `skipped`,
+        // qui les porte deja : deux comptabilites de la meme verite derivent.
+        $verrouillesVides = collect($skipped)->where('code', self::ECART_VIDE_VERROUILLE)->count();
 
         $blockingErrors = $this->deduplicateStudentBlocks($blockingErrors);
         $canOverrideIncomplete = (bool) ($actor?->can('bulletins.generate_incomplete') ?? false);
@@ -174,15 +183,18 @@ final class BtsBulkBulletinGenerationService
             'periode' => $period,
             'students_count' => $students->count(),
             'generatable_count' => $generatableCount,
-            'existing_count' => collect($skipped)->whereIn('code', ['bulletin_exists', 'bulletin_exists_empty'])->count(),
+            'existing_count' => collect($skipped)
+                ->whereIn('code', [self::ECART_DEJA_GENERE, self::ECART_VIDE_VERROUILLE])
+                ->count(),
             'existing_empty_count' => $existingEmptyCount,
+            'existing_empty_locked_count' => $verrouillesVides,
             'recalculer' => $recalculate,
             'skipped' => $skipped,
             'blocking_errors' => $blockingErrors,
             'missing_coefficients' => array_values($missingCoefficientBuckets),
             'missing_professeurs' => $missingProfesseurs,
             'configuration_url' => $configurationUrl,
-            'message' => $this->preflightMessage($status, $students->count(), $existingEmptyCount, $hasHardBlocks, $classe),
+            'message' => $this->preflightMessage($status, $verrouillesVides, $hasHardBlocks, $classe),
         ];
     }
 
@@ -265,12 +277,8 @@ final class BtsBulkBulletinGenerationService
         foreach ($students as $student) {
             $existing = $this->findBulletin((int) $student->id, $classe->id, $academicYearId, $period);
 
-            if ($existing && ! $recalculate) {
-                $skipped[] = $this->studentPayload($student) + [
-                    'code' => 'bulletin_exists',
-                    'message' => 'Bulletin deja genere pour cette periode.',
-                    'bulletin_id' => $existing->id,
-                ];
+            if ($ecart = $this->ecartPourBulletinExistant($existing, $recalculate)) {
+                $skipped[] = $this->studentPayload($student) + $ecart + ['bulletin_id' => $existing->id];
                 continue;
             }
 
@@ -419,6 +427,46 @@ final class BtsBulkBulletinGenerationService
                 ['prenoms', 'asc'],
             ])
             ->values();
+    }
+
+    /**
+     * Le sort d'un bulletin qui existe deja, decide en un seul endroit.
+     *
+     * Un bulletin SANS MOYENNE n'est pas un travail fait : il est a refaire,
+     * que le recalcul soit demande ou non. Le traiter comme « deja genere »
+     * laissait des classes entieres avec soixante-dix bulletins vides et un
+     * ecran qui annoncait « rien a generer ».
+     *
+     * Un bulletin publie ou signe reste intouchable, meme vide : on l'ecarte
+     * sans bloquer le reste de la classe. Le pre-controle et la generation
+     * lisent cette meme methode : quand ils portaient chacun leur version de
+     * la regle, une tranche composee uniquement de vides-verrouilles renvoyait
+     * 422, la boucle du front s'arretait, et les tranches suivantes ne
+     * partaient jamais, a chaque relance.
+     *
+     * @return array{code: string, message: string}|null null = a (re)faire
+     */
+    private function ecartPourBulletinExistant(?ESBTPBulletin $bulletin, bool $recalculate): ?array
+    {
+        if (! $bulletin || $recalculate) {
+            return null;
+        }
+
+        if ($bulletin->moyenne_generale !== null) {
+            return [
+                'code' => self::ECART_DEJA_GENERE,
+                'message' => 'Bulletin deja genere pour cette periode.',
+            ];
+        }
+
+        if (! $this->isProtected($bulletin)) {
+            return null;
+        }
+
+        return [
+            'code' => self::ECART_VIDE_VERROUILLE,
+            'message' => 'Bulletin publie ou signe mais sans moyenne : deverrouillez-le pour le regenerer.',
+        ];
     }
 
     private function findBulletin(int $studentId, int $classeId, int $academicYearId, string $period): ?ESBTPBulletin
@@ -647,12 +695,15 @@ final class BtsBulkBulletinGenerationService
         return $deduped;
     }
 
-    private function preflightMessage(string $status, int $studentsCount, int $existingEmptyCount, bool $hasHardBlocks, ?ESBTPClasse $classe = null): string
+    private function preflightMessage(string $status, int $verrouillesVides, bool $hasHardBlocks, ?ESBTPClasse $classe = null): string
     {
         return match ($status) {
             'no_students' => $this->noStudentsMessage($classe),
-            'nothing_to_generate' => $existingEmptyCount > 0
-                ? "Tous les bulletins existent deja, dont {$existingEmptyCount} sans moyenne : cochez « Recalculer » pour les regenerer."
+            // Conseiller « Recalculer » a une classe entierement verrouillee
+            // enverrait l'utilisateur dans le mur : le recalcul y produit des
+            // blocages durs. Le seul geste utile est de deverrouiller.
+            'nothing_to_generate' => $verrouillesVides > 0
+                ? 'Aucun bulletin ne peut etre repris : '.$verrouillesVides.' bulletin(s) sans moyenne sont publies ou signes. Deverrouillez-les avant de relancer.'
                 : 'Tous les bulletins existent deja pour cette periode : cochez « Recalculer » pour les mettre a jour.',
             'needs_reason' => 'Donnees academiques incompletes : renseignez un motif (8 caracteres minimum) pour generer des bulletins incomplets.',
             'blocked' => $hasHardBlocks
