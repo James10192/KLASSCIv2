@@ -18,6 +18,14 @@ use Illuminate\Support\Facades\Log;
  */
 class BulletinBulkPdfExporter
 {
+    /**
+     * Durée de vie des restes d'un export, en minutes.
+     *
+     * Un export abandonné laisse son dossier de travail, parfois son PDF
+     * assemblé. Au-delà de ce délai, la purge les balaie.
+     */
+    public const DUREE_VIE_MINUTES = 60;
+
     /** Nombre de bulletins entre deux passes de garbage collection. */
     private int $gcEvery = 25;
 
@@ -170,48 +178,6 @@ class BulletinBulkPdfExporter
 
             return null;
         }
-    }
-
-    /**
-     * @param  Collection  $bulletins  Collection ORDONNÉE de bulletins à exporter.
-     * @param  callable  $renderer  fn(ESBTPBulletin): \Barryvdh\DomPDF\PDF — rend un bulletin.
-     * @param  callable|null  $coverBuilder  fn(array $failed): ?\Barryvdh\DomPDF\PDF — page de
-     *         garde optionnelle (avertissement bulletins absents), reçue APRÈS rendu pour
-     *         connaître les échecs. Retourne null pour ne pas ajouter de page de garde.
-     * @return array{path: string, rendered: int, failed: array<int, array{id: int, message: string}>}
-     */
-    public function export(Collection $bulletins, callable $renderer, ?callable $coverBuilder = null): array
-    {
-        $tempDir = $this->dossierTemporaire();
-        $rendu = $this->rendreDansDossier($bulletins, $renderer, $tempDir);
-
-        $tempFiles = $rendu['fichiers'];
-        $failed = $rendu['echecs'];
-        $rendered = $rendu['rendus'];
-
-        if (empty($tempFiles)) {
-            throw new \RuntimeException("Aucun bulletin n'a pu être rendu.");
-        }
-
-        // Page de garde d'avertissement (bulletins absents = non générés + échecs
-        // de rendu), construite APRÈS le rendu pour connaître $failed, puis
-        // placée en TÊTE du PDF.
-        if ($coverBuilder !== null) {
-            $garde = $this->rendreLaPageDeGarde($coverBuilder, $failed, $tempDir);
-            if ($garde !== null) {
-                array_unshift($tempFiles, $garde);
-            }
-        }
-
-        try {
-            $finalPath = $this->mergePdfs($tempFiles, $tempDir);
-        } finally {
-            foreach ($tempFiles as $file) {
-                @unlink($file);
-            }
-        }
-
-        return ['path' => $finalPath, 'rendered' => $rendered, 'failed' => $failed];
     }
 
     /**

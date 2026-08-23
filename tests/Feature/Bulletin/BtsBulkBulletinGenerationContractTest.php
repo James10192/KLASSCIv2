@@ -146,24 +146,50 @@ class BtsBulkBulletinGenerationContractTest extends TestCase
         $this->assertStringContainsString("array_filter(['annee_universitaire_id' => \$annee_id, 'periode_id' => 'annuel'])", $indexView);
     }
 
-    public function test_grouped_export_has_preview_alongside_download_and_shares_builder(): void
+    /**
+     * L'export groupé passe par le découpage : ouvrir, tranche, assembler,
+     * telecharger. Le chemin en une seule requête a disparu — il plafonnait à
+     * six bulletins alors qu'une classe en compte soixante-dix.
+     *
+     * Ce test interroge le routeur et la classe, il ne relit pas leur source.
+     */
+    public function test_grouped_export_is_chunked_and_serves_the_document_separately(): void
     {
-        $controller = file_get_contents(app_path('Http/Controllers/ESBTPBulletinController.php'));
-        $routes = file_get_contents(base_path('routes/web.php'));
-        $indexView = file_get_contents(resource_path('views/esbtp/bulletins/index.blade.php'));
+        foreach (['ouvrir', 'tranche', 'assembler', 'telecharger'] as $etape) {
+            $this->assertTrue(
+                \Illuminate\Support\Facades\Route::has("esbtp.bulletins.export-pdf.$etape"),
+                "La route esbtp.bulletins.export-pdf.$etape doit exister."
+            );
+        }
 
-        // Aperçu inline + téléchargement partagent un unique constructeur (pas de duplication).
-        $this->assertStringContainsString('public function exportBulkPdfPreview(', $controller);
-        $this->assertStringContainsString('protected function prepareBulkExport(', $controller);
-        $this->assertStringContainsString("'Content-Disposition' => 'inline; filename=\"'.\$this->bulkExportFilename().'\"'", $controller);
-        $this->assertStringContainsString("name('esbtp.bulletins.export-pdf-preview')", $routes);
+        // Produire le document et le servir sont deux gestes distincts : le
+        // second est rejouable, donc recharger l'onglet ne perd pas le travail.
+        $assembler = \Illuminate\Support\Facades\Route::getRoutes()->getByName('esbtp.bulletins.export-pdf.assembler');
+        $telecharger = \Illuminate\Support\Facades\Route::getRoutes()->getByName('esbtp.bulletins.export-pdf.telecharger');
+        $this->assertContains('POST', $assembler->methods());
+        $this->assertContains('GET', $telecharger->methods());
 
-        // UI : bouton Aperçu + précheck partagé avec le téléchargement.
-        $this->assertStringContainsString('previewPdf()', $indexView);
-        $this->assertStringContainsString('runExportPrecheck(params)', $indexView);
-        $this->assertStringContainsString("route('esbtp.bulletins.export-pdf-preview')", $indexView);
+        foreach (['export-pdf', 'export-pdf-preview', 'export-precheck'] as $mort) {
+            $this->assertFalse(
+                \Illuminate\Support\Facades\Route::has("esbtp.bulletins.$mort"),
+                "La route esbtp.bulletins.$mort plafonnait l'export : elle doit avoir disparu."
+            );
+        }
+
+        $controleur = new \ReflectionClass(\App\Http\Controllers\ESBTPBulletinController::class);
+        foreach ([
+            'ouvrirExportParTranches',
+            'rendreTrancheExport',
+            'assemblerExportParTranches',
+            'telechargerExportParTranches',
+        ] as $methode) {
+            $this->assertTrue($controleur->hasMethod($methode), "Le contrôleur doit exposer $methode().");
+        }
+
+        foreach (['exportBulkPdf', 'exportBulkPdfPreview', 'prepareBulkExport', 'exportPrecheck'] as $mort) {
+            $this->assertFalse($controleur->hasMethod($mort), "$mort() appartient au chemin retiré.");
+        }
     }
-
     public function test_official_generation_persists_subject_rows_and_partial_config_cannot_hide_the_table(): void
     {
         $service = file_get_contents(app_path('Services/BulletinService.php'));

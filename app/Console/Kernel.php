@@ -35,6 +35,10 @@ class Kernel extends ConsoleKernel
         // Tâches existantes
         $schedule->command('attendance:mark-unattended-teacher-sessions')->everyTenMinutes();
 
+        // Restes des exports groupés abandonnés (dossiers de tranches, PDF
+        // assemblés jamais récupérés). Sans ça, rien ne les reprenait.
+        $schedule->command('bulletins:purger-exports')->hourly();
+
         // Marquage automatique des absences enseignants (toutes les 15 minutes)
         $schedule->command('teacher:mark-absences')
             ->everyFifteenMinutes()

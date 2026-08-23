@@ -668,16 +668,18 @@
                     :options="['asc' => 'Croissant', 'desc' => 'Décroissant']" />
             </div>
             <button type="button" class="bul-btn bul-btn--ghost bul-export-btn"
-                    :disabled="exporting || previewing" @click="previewPdf()">
-                <span x-show="!previewing"><i class="fas fa-eye"></i> Aperçu</span>
-                <span x-show="previewing" x-cloak><i class="fas fa-spinner fa-spin"></i> Aperçu…</span>
+                    :disabled="exportEnCours !== null" @click="previewPdf()">
+                <span x-show="exportEnCours !== 'apercu'"><i class="fas fa-eye"></i> Aperçu</span>
+                <span x-show="exportEnCours === 'apercu'" x-cloak><i class="fas fa-spinner fa-spin"></i> Aperçu…</span>
             </button>
             <button type="button" class="bul-btn bul-btn--primary bul-export-btn"
-                    :disabled="exporting || previewing" @click="exportPdf()">
-                <span x-show="!exporting"><i class="fas fa-file-pdf"></i> Exporter PDF groupé</span>
-                <span x-show="exporting" x-cloak><i class="fas fa-spinner fa-spin"></i> Préparation…</span>
+                    :disabled="exportEnCours !== null" @click="exportPdf()">
+                <span x-show="exportEnCours !== 'telechargement'"><i class="fas fa-file-pdf"></i> Exporter PDF groupé</span>
+                <span x-show="exportEnCours === 'telechargement'" x-cloak><i class="fas fa-spinner fa-spin"></i> Préparation…</span>
             </button>
         </div>
+
+        @include('esbtp.bulletins.partials.export-tranches')
     </div>
     @endcan
 
@@ -736,8 +738,8 @@ function bulIndex() {
     return {
         selected: [],
         busy: false,
-        exporting: false,
-        previewing: false,
+        exportEnCours: null,   // null | apercu | telechargement
+        exportEtat: null,
         loading: false,
         toasts: [],
         toastSeq: 0,
@@ -836,46 +838,28 @@ function bulIndex() {
             return params;
         },
 
-        // Pré-check partagé (aperçu + téléchargement) : renvoie true si on peut poursuivre.
-        async runExportPrecheck(params) {
-            const pre = await fetch(@json(route('esbtp.bulletins.export-precheck')) + '?' + params.toString(), {
-                headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
-            }).then(r => r.ok ? r.json() : null).catch(() => null);
+        async exportPdf() { await this.lancerExportGroupe('telechargement'); },
+        async previewPdf() { await this.lancerExportGroupe('apercu'); },
 
-            if (!pre) return true; // pré-check indisponible → on laisse le backend trancher.
-            if (pre.generated === 0) {
-                this.pushToast({ type: 'error', message: `Aucun bulletin généré parmi les ${pre.total} filtrés. Générez-les d'abord.` });
-                return false;
-            }
-            if (pre.over_cap) {
-                this.pushToast({ type: 'error', message: `Trop de bulletins générés (${pre.generated}). Affinez le filtre (limite ${pre.cap}).` });
-                return false;
-            }
-            if (pre.ungenerated > 0) {
-                return confirm(`${pre.ungenerated} bulletin(s) ne sont pas encore générés et seront ABSENTS du PDF.\n\n${pre.generated} bulletin(s) sur ${pre.total} seront inclus (une page de récapitulatif listera les absents).\n\nContinuer ?`);
-            }
-            return true;
-        },
-
-        async exportPdf() {
-            const params = this.buildExportParams();
-            this.exporting = true;
+        // L'export d'une classe entière passe par le découpage en tranches :
+        // sept bulletins consomment déjà la limite d'exécution d'une requête.
+        // Le panneau porte l'avancement, la confirmation et les erreurs.
+        async lancerExportGroupe(mode) {
+            this.exportEnCours = mode;
             try {
-                if (!(await this.runExportPrecheck(params))) return;
-                window.open(@json(route('esbtp.bulletins.export-pdf')) + '?' + params.toString(), '_blank');
+                await window.exportBulletinsParTranches({
+                    params: this.buildExportParams(),
+                    mode,
+                    urls: {
+                        ouvrir: @json(route('esbtp.bulletins.export-pdf.ouvrir')),
+                        tranche: @json(route('esbtp.bulletins.export-pdf.tranche')),
+                        assembler: @json(route('esbtp.bulletins.export-pdf.assembler')),
+                    },
+                    csrf: document.querySelector('meta[name="csrf-token"]').content,
+                    onEtat: (etat) => { this.exportEtat = etat; },
+                });
             } finally {
-                setTimeout(() => { this.exporting = false; }, 2500);
-            }
-        },
-
-        async previewPdf() {
-            const params = this.buildExportParams();
-            this.previewing = true;
-            try {
-                if (!(await this.runExportPrecheck(params))) return;
-                window.open(@json(route('esbtp.bulletins.export-pdf-preview')) + '?' + params.toString(), '_blank');
-            } finally {
-                setTimeout(() => { this.previewing = false; }, 2500);
+                this.exportEnCours = null;
             }
         },
 
