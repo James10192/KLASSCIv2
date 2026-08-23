@@ -2,6 +2,7 @@
 
 namespace Tests\Unit\Services;
 
+use App\Domain\BtsTroncCommun\ClasseOuvertureResolver;
 use App\Domain\BtsTroncCommun\BtsAnnualClassMapResolver;
 use App\Domain\BtsTroncCommun\BtsPhaseResolver;
 use App\Enums\JustificationStatus;
@@ -43,7 +44,7 @@ class ESBTPAbsenceServiceJustificationStatusTest extends TestCase
 
     public function test_session_duration_preserves_fractional_hours(): void
     {
-        $service = new ESBTPAbsenceService(new ManualHoursResolver(), new BtsAnnualClassMapResolver(new BtsPhaseResolver()));
+        $service = new ESBTPAbsenceService(new ManualHoursResolver(), new BtsAnnualClassMapResolver(new BtsPhaseResolver(), new ClasseOuvertureResolver()));
         $method = new ReflectionMethod($service, 'durationInHours');
 
         $this->assertSame(1.5, $method->invoke(
@@ -55,7 +56,7 @@ class ESBTPAbsenceServiceJustificationStatusTest extends TestCase
 
     private function isApprovedOrExcused(ESBTPAttendance $absence): bool
     {
-        $service = new ESBTPAbsenceService(new ManualHoursResolver(), new BtsAnnualClassMapResolver(new BtsPhaseResolver()));
+        $service = new ESBTPAbsenceService(new ManualHoursResolver(), new BtsAnnualClassMapResolver(new BtsPhaseResolver(), new ClasseOuvertureResolver()));
         $method = new ReflectionMethod($service, 'isApprovedOrExcused');
 
         return $method->invoke($service, $absence);

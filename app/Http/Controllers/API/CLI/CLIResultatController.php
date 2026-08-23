@@ -150,8 +150,15 @@ class CLIResultatController extends BaseApiController
                 'current_behavior_classe' => $this->formatClasseSummary($currentControllerClasseId),
                 'expected_if_request_wins_classe_id' => $expectedClasseId,
                 'expected_if_request_wins_classe' => $this->formatClasseSummary($expectedClasseId),
-                'phase_resolved_classe_id' => $aggregationContext['effective_classe_id'] ?? null,
-                'phase_resolved_classe' => $this->formatClasseSummary($aggregationContext['effective_classe_id'] ?? null),
+                // « phase_resolved » ne dit plus la verite depuis que la classe
+                // effective vient de la carte annuelle, qui sait aussi lire les
+                // notes : on nomme les deux separement, sinon le diagnostic bati
+                // pour detecter ces divergences devient aveugle a elles.
+                'phase_resolved_classe_id' => $aggregationContext['effective_phase']['classe_id'] ?? null,
+                'phase_resolved_classe' => $this->formatClasseSummary($aggregationContext['effective_phase']['classe_id'] ?? null),
+                'effective_classe_id' => $aggregationContext['effective_classe_id'] ?? null,
+                'effective_classe' => $this->formatClasseSummary($aggregationContext['effective_classe_id'] ?? null),
+                'classe_par_semestre' => $aggregationContext['classe_par_semestre'] ?? [],
             ],
             'source_model' => $aggregationContext['source_model'] ?? 'phase_based',
             'current_phase' => $aggregationContext['effective_phase'] ?? null,

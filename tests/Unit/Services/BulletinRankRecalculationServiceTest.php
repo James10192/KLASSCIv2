@@ -174,8 +174,8 @@ class BulletinRankRecalculationServiceTest extends TestCase
         $phaseResolver = new BtsPhaseResolver();
         $bulletinService = new BulletinService(
             Mockery::mock(ESBTPAbsenceService::class),
-            new BtsAnnualClassMapResolver($phaseResolver),
-            new BtsBulletinCohortResolver(new BtsAnnualClassMapResolver($phaseResolver)),
+            new BtsAnnualClassMapResolver($phaseResolver, new ClasseOuvertureResolver()),
+            new BtsBulletinCohortResolver(new BtsAnnualClassMapResolver($phaseResolver, new ClasseOuvertureResolver())),
             new BtsClassCohortCounter($phaseResolver),
             new ClasseOuvertureResolver()
         );

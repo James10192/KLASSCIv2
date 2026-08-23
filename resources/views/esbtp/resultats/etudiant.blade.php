@@ -162,6 +162,7 @@
 
         {{-- 2. Filtres (Classe + Année, sans Période) --}}
         @include('esbtp.partials.bts-journey', ['btsJourney' => $btsJourney ?? null])
+        @include('esbtp.resultats.partials.parcours-semestres')
         @include('components.student-results.filters-section')
 
         {{-- 2b. Period Tabs --}}

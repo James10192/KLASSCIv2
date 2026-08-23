@@ -661,6 +661,10 @@ class ESBTPResultatController extends Controller
         $inscription = $aggregationContext['inscription'];
         $inscriptionForAlert = $inscription ?? $allYearInscriptions->first();
         $classe_id = $aggregationContext['effective_classe_id'] ?? $requestedClasseId;
+
+        // La classe suit la periode : elle vient du service, pas du selecteur.
+        $classeParSemestre = $aggregationContext['classe_par_semestre'] ?? [];
+
         $classe = $classe_id ? ESBTPClasse::with(['filiere', 'niveau'])->find($classe_id) : null;
         // Get the academic year object for display
         $anneeUniversitaire = ESBTPAnneeUniversitaire::find($annee_universitaire_id);
@@ -1078,10 +1082,19 @@ class ESBTPResultatController extends Controller
             ? $this->buildAnnualSubjectBlocks($annualSnapshot, $notes)
             : [];
 
+        // Les classes de chaque semestre, pour que la page dise le parcours au
+        // lieu de le laisser deviner.
+        $parcoursSemestres = collect($classeParSemestre)
+            ->filter()
+            ->map(fn ($id) => ESBTPClasse::select('id', 'name')->find($id))
+            ->filter()
+            ->all();
+
         return view('esbtp.resultats.etudiant', compact(
             'etudiant',
             'classe',
             'classe_id',
+            'parcoursSemestres',
             'anneeUniversitaire',
             'notes',
             'notesByMatiere',
