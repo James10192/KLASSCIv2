@@ -43,6 +43,13 @@ class BtsAnnualAggregationService
             ? $allYearInscriptions->firstWhere('classe_id', $requestedClasseId)
             : $allYearInscriptions->first();
 
+        // Demander une classe ou l'etudiant n'a aucune inscription rendait cette
+        // classe telle quelle : sur la page de resultats, choisir « Semestre 2 »
+        // en restant sur le tronc commun cherchait alors des notes de S2 sur une
+        // classe qui n'en porte aucune. On retombe sur l'inscription reelle, et
+        // la carte annuelle tranche ensuite quelle classe porte le semestre.
+        $selected ??= $allYearInscriptions->first();
+
         if (! $selected) {
             return [
                 'inscription' => null,
