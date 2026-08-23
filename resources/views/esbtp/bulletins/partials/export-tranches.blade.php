@@ -101,7 +101,6 @@
         gap: .75rem; margin-top: .5rem;
         font-size: .72rem; color: #64748b;
     }
-    .bex__foot:empty { display: none; }
     .bex__actions {
         display: flex; align-items: center; justify-content: flex-end;
         gap: .5rem; margin-top: .7rem;

@@ -1189,7 +1189,17 @@ class ESBTPBulletinController extends Controller
      * @param  \Illuminate\Support\Collection  $ungenerated  bulletins non générés (moyenne NULL)
      * @param  array<int, array{id: int, message: string}>  $failed  bulletins générés mais non rendus
      */
-    protected function buildExportCoverPdf(\Illuminate\Support\Collection $ungenerated, array $failed, Request $request, int $includedCount): ?\Barryvdh\DomPDF\PDF
+    /**
+     * Page de garde : ce qui manque au document, et sur quel périmètre.
+     *
+     * Le périmètre est figé à l'ouverture de l'export et transporté jusqu'ici :
+     * l'assemblage ne porte plus que le jeton, et la garde annonçait « Toutes
+     * les classes, toutes les périodes » sur un export borné à une classe et
+     * un semestre.
+     *
+     * @param  array{annee: ?string, classe: ?string, periode: ?string}  $entete
+     */
+    protected function buildExportCoverPdf(\Illuminate\Support\Collection $ungenerated, array $failed, array $entete, int $includedCount): ?\Barryvdh\DomPDF\PDF
     {
         $failedIds = collect($failed)->pluck('id')->filter();
         $failedBulletins = $failedIds->isNotEmpty()
@@ -1202,14 +1212,6 @@ class ESBTPBulletinController extends Controller
             return null;
         }
 
-        $annee = $request->input('annee_universitaire_id')
-            ? optional(ESBTPAnneeUniversitaire::find($request->input('annee_universitaire_id')))->name
-            : null;
-        $classe = $request->input('classe_id')
-            ? optional(ESBTPClasse::find($request->input('classe_id')))->name
-            : null;
-        $periodeLabels = ['semestre1' => 'Premier Semestre', 'semestre2' => 'Deuxième Semestre', 'annuel' => 'Annuel'];
-
         // Liste plafonnée pour éviter une page de garde démesurée (ex: 600+ absents).
         $coverListLimit = 60;
 
@@ -1219,9 +1221,9 @@ class ESBTPBulletinController extends Controller
             'ungeneratedTotal' => $ungenerated->count(),
             'failed' => $failedBulletins->take($coverListLimit),
             'failedTotal' => $failedBulletins->count(),
-            'annee' => $annee,
-            'classe' => $classe,
-            'periode' => $periodeLabels[$request->input('periode_id')] ?? null,
+            'annee' => $entete['annee'] ?? null,
+            'classe' => $entete['classe'] ?? null,
+            'periode' => $entete['periode'] ?? null,
             'config' => $this->bulletinService->getPDFConfig(),
             // Couleurs configurées par le tenant, comme les pages de bulletin elles-mêmes.
             'pdfSettings' => SettingsHelper::getPdfSettings(),
