@@ -155,8 +155,8 @@ trait ExporteBulletinsParTranches
                 $garde = fn (array $echecs): ?\Barryvdh\DomPDF\PDF => $this->buildExportCoverPdf(
                     $absents,
                     $echecs,
-                    $request,
-                    count($etat['bulletin_ids'])
+                    $etat['entete'] ?? [],
+                    $etat['rendus'] ?? count($etat['bulletin_ids'])
                 );
 
                 $etat['fichier'] = $exporter->assembler($dossier, $garde, $etat['echecs']);
