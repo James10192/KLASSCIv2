@@ -20,7 +20,29 @@ Cette rule s'active dès qu'une PR sur KLASSCI touche **au moins un** de ces pat
 
 Coût : ~4h de plan + agents + ultrathink pour réparer ce qui aurait été 1h de tests avant merge.
 
-## Les 6 commandements pre-merge
+## Les 7 commandements pre-merge
+
+### 0. Revue thermo-nucléaire — obligatoire, avant commit, merge ET déploiement
+
+Avant tout commit, toute fusion et tout déploiement qui touche du code, lancer
+le skill `thermo-nuclear-code-quality-review` **en sous-agent** (voir la section
+« Running it yourself, as an agent » du skill).
+
+```bash
+git diff origin/presentation...HEAD --stat   # la plage à donner au sous-agent
+```
+
+- Verdict `BLOCK` → on ne commit pas, on ne merge pas, on ne déploie pas. On
+  corrige, puis on relance la revue sur le nouveau diff.
+- Sous-agent indisponible (contexte saturé, outil refusé) → le dire clairement
+  et faire la revue soi-même contre les mêmes standards. La sauter en silence
+  n'est jamais acceptable.
+- Exemptions : docs seuls, config seule, suppressions pures, diff de moins de
+  cinq lignes dans un seul fichier.
+
+Cette revue s'ajoute à l'audit 4 axes (`quality-gate.md`), elle ne le remplace
+pas : l'audit 4 axes cherche les régressions, la revue thermo-nucléaire cherche
+la complexité qu'on aurait pu supprimer.
 
 ### 1. Test Feature obligatoire si on touche un FormRequest
 
