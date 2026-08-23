@@ -8,6 +8,40 @@ use App\Models\ESBTPInscriptionPhase;
 
 class BtsPhaseResolver
 {
+    /**
+     * Parcours deja construits, indexes par inscription. Portee requete.
+     *
+     * Construire un parcours n'est pas gratuit : sur le modele legacy, chaque
+     * construction refait une recherche d'inscription de specialisation et un
+     * chargement de classe par phase. Or resoudre la carte annuelle d'un seul
+     * etudiant l'appelait cinq fois -- une par point d'entree, trois dans la
+     * carte elle-meme -- pour un resultat strictement identique. Sur une
+     * generation de soixante-dix bulletins, deja juste au regard de la limite
+     * d'execution, la depense etait multipliee d'autant.
+     *
+     * @var array<int, array<string, mixed>>
+     */
+    private array $parcours = [];
+
+    /**
+     * Oublie le parcours d'une inscription.
+     *
+     * Le hook de ESBTPInscriptionPhase couvre les ecritures par instance ; les
+     * suppressions de masse, elles, ne declenchent aucun evenement et appellent
+     * cette methode explicitement.
+     *
+     * Deux chemins restent hors de portee : le changement de classe d'une
+     * inscription legacy a double enregistrement, et la cascade SQL qui efface
+     * les phases avec leur classe. Ils sont surs parce que TOUT chemin mutant
+     * se termine par une redirection : le cache ne survit pas a la requete. Un
+     * futur appelant qui muterait puis re-rendrait dans la meme requete devra
+     * appeler cette methode.
+     */
+    public function oublier(int $inscriptionId): void
+    {
+        unset($this->parcours[$inscriptionId]);
+    }
+
     public function detectSourceModel(ESBTPInscription $inscription): string
     {
         if ($inscription->phases->isNotEmpty()) {
@@ -51,9 +85,19 @@ class BtsPhaseResolver
 
     public function buildJourney(ESBTPInscription $inscription): array
     {
-        $sourceModel = $this->detectSourceModel($inscription);
+        // Une inscription non encore enregistree n'a pas d'identite : on ne la
+        // memorise pas, sous peine de servir le parcours d'une autre.
+        if (! $inscription->exists) {
+            return $this->construireParcours($inscription);
+        }
 
-        return $sourceModel === 'legacy_dual_inscription'
+        return $this->parcours[$inscription->id] ??= $this->construireParcours($inscription);
+    }
+
+    /** @return array<string, mixed> */
+    private function construireParcours(ESBTPInscription $inscription): array
+    {
+        return $this->detectSourceModel($inscription) === 'legacy_dual_inscription'
             ? $this->buildLegacyJourney($inscription)
             : $this->buildPhaseBasedJourney($inscription);
     }

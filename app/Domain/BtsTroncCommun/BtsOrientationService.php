@@ -13,7 +13,8 @@ use InvalidArgumentException;
 class BtsOrientationService
 {
     public function __construct(
-        private BtsOrientationPolicySupport $policySupport
+        private BtsOrientationPolicySupport $policySupport,
+        private BtsPhaseResolver $phaseResolver,
     ) {
     }
 
@@ -131,12 +132,20 @@ class BtsOrientationService
                     ])
                     ->delete();
 
+                // Une suppression par le constructeur de requetes ne declenche
+                // aucun evenement Eloquent : le parcours memorise resterait
+                // celui d'avant. On l'oublie ici, faute de hook.
+                $this->phaseResolver->oublier((int) $inscription->id);
+
                 return $this->freshInscription($inscription);
             }
 
             $inscription->phases()
                 ->where('type_phase', ESBTPInscriptionPhase::TYPE_SPECIALISATION)
                 ->delete();
+
+            // Meme raison : suppression de masse, aucun evenement.
+            $this->phaseResolver->oublier((int) $inscription->id);
 
             $initialPhase = $inscription->phases()
                 ->where('type_phase', ESBTPInscriptionPhase::TYPE_TRONC_COMMUN)

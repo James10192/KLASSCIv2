@@ -13,6 +13,23 @@ class ESBTPInscriptionPhase extends Model implements Auditable
     public const TYPE_TRONC_COMMUN = 'tronc_commun';
     public const TYPE_SPECIALISATION = 'specialisation';
 
+    /**
+     * Le parcours d'une inscription est memorise le temps d'une requete.
+     * Toute phase creee, modifiee ou supprimee le rend caduc : on l'oublie ici
+     * plutot que dans chaque appelant, ou l'oubli finirait par etre oublie.
+     */
+    protected static function booted(): void
+    {
+        $oublier = static function (self $phase): void {
+            if ($phase->inscription_id) {
+                app(\App\Domain\BtsTroncCommun\BtsPhaseResolver::class)->oublier((int) $phase->inscription_id);
+            }
+        };
+
+        static::saved($oublier);
+        static::deleted($oublier);
+    }
+
     protected $table = 'esbtp_inscription_phases';
 
     protected $fillable = [

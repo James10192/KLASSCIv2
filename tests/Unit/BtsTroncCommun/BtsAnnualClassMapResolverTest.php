@@ -3,6 +3,7 @@
 namespace Tests\Unit\BtsTroncCommun;
 
 use App\Domain\BtsTroncCommun\BtsAnnualClassMapResolver;
+use App\Domain\BtsTroncCommun\BtsPhaseResolver;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPEtudiant;
@@ -348,6 +349,64 @@ class BtsAnnualClassMapResolverTest extends TestCase
 
         $this->assertSame($parEtudiant['semestre1_classe_id'], $parInscription['semestre1_classe_id']);
         $this->assertSame($parEtudiant['semestre2_classe_id'], $parInscription['semestre2_classe_id']);
+    }
+
+    /**
+     * Le parcours est construit une fois par requete, et oublie des qu'une
+     * phase bouge.
+     *
+     * Resoudre la carte annuelle d'un seul etudiant appelait buildJourney cinq
+     * fois pour un resultat identique -- une depense multipliee par soixante-dix
+     * sur une generation de classe, deja juste au regard de la limite
+     * d'execution.
+     *
+     * @test
+     */
+    public function le_parcours_est_memorise_puis_oublie_quand_une_phase_bouge(): void
+    {
+        [$inscription, $tcClasse] = $this->makePhaseBasedInscription();
+        $resolver = app(BtsPhaseResolver::class);
+        $id = $inscription->id;
+
+        $requetes = 0;
+        DB::listen(function () use (&$requetes) { $requetes++; });
+
+        // Instances NEUVES a chaque appel : sur une meme instance, le chargement
+        // paresseux masquerait l'absence de cache.
+        $cout = function () use ($resolver, $id, &$requetes): array {
+            $avant = $requetes;
+            $parcours = $resolver->buildJourney(ESBTPInscription::findOrFail($id));
+
+            return [$requetes - $avant, $parcours];
+        };
+
+        [$coutPremier, $premier] = $cout();
+        $this->assertCount(2, $premier['timeline']);
+        $this->assertGreaterThan(1, $coutPremier, 'Construire un parcours coute plus que le chargement.');
+
+        // Le second appel ne doit plus rien demander que l'inscription elle-meme :
+        // sans memorisation, il couterait autant que le premier.
+        // La reference est mesuree, non ecrite en dur : un eager-load ajoute un
+        // jour au modele ferait rougir ce test en accusant le cache a tort.
+        $avant = $requetes;
+        ESBTPInscription::findOrFail($id);
+        $chargementSeul = $requetes - $avant;
+
+        [$coutSecond] = $cout();
+        $this->assertSame($chargementSeul, $coutSecond, 'Le parcours ne doit pas etre reconstruit.');
+
+        // Une phase qui bouge le rend caduc. L'assertion porte sur le CONTENU :
+        // si l'oubli ne faisait rien, la timeline garderait ses deux etapes.
+        ESBTPInscriptionPhase::create([
+            'inscription_id' => $id,
+            'type_phase' => 'specialisation',
+            'classe_id' => $tcClasse->id,
+            'semestre_debut' => 2,
+            'is_active' => false,
+        ]);
+
+        [, $apresMutation] = $cout();
+        $this->assertCount(3, $apresMutation['timeline']);
     }
 
     /**
