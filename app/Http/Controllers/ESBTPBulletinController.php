@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Domain\Bulletins\FiltresBulletins;
 use App\Http\Controllers\Concerns\ExporteBulletinsParTranches;
-use App\Domain\BtsTroncCommun\BtsClassCohortCounter;
 use App\Domain\AcademicPilotage\Exceptions\AcademicPilotageException;
 use App\Domain\AcademicPilotage\Services\BtsBulkBulletinGenerationService;
 use App\Domain\AcademicPilotage\Services\BulletinGenerationReadinessService;
@@ -1326,24 +1325,13 @@ class ESBTPBulletinController extends Controller
             $request->boolean('recalculer')
         );
 
-        // Identifiants exposes pour que le front decoupe la generation en
-        // tranches : la classe entiere ne tient pas dans la limite
-        // d'execution de l'hebergement.
-        // Cohorte de phases et non inscription courante : au semestre 1, les
-        // etudiants d'une classe de tronc commun sont deja passes en specialite,
-        // et leur inscription a suivi. Chercher par `inscriptions.classe_id`
-        // rendait une liste vide, le front n'avait aucune tranche a envoyer, et
-        // les bulletins de tronc commun restaient sans valeurs figees.
-        $studentIds = app(BtsClassCohortCounter::class)->etudiantIds(
-            (int) $classe->id,
-            $request->integer('annee_universitaire_id'),
-            $this->bulletinService->normalizePeriode((string) $request->input('periode'))
-        );
-        sort($studentIds);
-
-        // Dans $preflight et non a la racine : le front ne conserve que
-        // data.preflight, tout ce qui est place a cote est perdu.
-        $preflight['student_ids'] = $studentIds;
+        // `student_ids` vient du pre-controle lui-meme : c'est lui qui sait
+        // qui sera traite. La liste etait ici la cohorte entiere, donc soixante-dix
+        // identifiants quand le pre-controle en annonçait soixante-neuf
+        // generables. Deux nombres pour la meme chose a l'ecran, et surtout des
+        // tranches composees uniquement d'etudiants refuses : elles repondaient
+        // 422 et arretaient la boucle du front.
+        //
         // 6 et non 10 : mesure a 24,6 s pour 10 etudiants, trop pres de la
         // limite de 30 s pour tenir sous charge.
         $preflight['batch_size'] = 6;

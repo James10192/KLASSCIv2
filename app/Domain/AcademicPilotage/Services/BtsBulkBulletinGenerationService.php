@@ -163,6 +163,31 @@ final class BtsBulkBulletinGenerationService
         $verrouillesVides = collect($skipped)->where('code', self::ECART_VIDE_VERROUILLE)->count();
 
         $blockingErrors = $this->deduplicateStudentBlocks($blockingErrors);
+
+        // Les etudiants qu'aucun blocage individuel n'ecarte. Le front decoupe
+        // la classe sur cette liste : lui donner la cohorte entiere faisait
+        // partir des tranches composees uniquement d'etudiants que le serveur
+        // refuse, qui repondaient 422 et arretaient la boucle.
+        //
+        // Derive de ce que la boucle a deja produit, sans accumulateur : tout
+        // etudiant non traite est pousse soit dans `skipped`, soit dans
+        // `blockingErrors`. Un compteur a la main aurait redit la regle une
+        // troisieme fois, en creux, dans les branches qui n'ajoutent rien.
+        // La severite vient de HARD_BLOCK_CODES, seule table qui la definit :
+        // un blocage souple reste envoyable, puisque le motif le leve.
+        $horsJeu = collect($skipped)
+            ->concat(collect($blockingErrors)->whereIn('code', self::HARD_BLOCK_CODES))
+            ->pluck('student_id')
+            ->filter() // le blocage « professeurs » vise la classe, pas un etudiant
+            ->map(static fn ($id) => (int) $id)
+            ->all();
+
+        $aTraiter = $students->pluck('id')
+            ->map(static fn ($id) => (int) $id)
+            ->diff($horsJeu)
+            ->values()
+            ->all();
+
         $canOverrideIncomplete = (bool) ($actor?->can('bulletins.generate_incomplete') ?? false);
         $hasHardBlocks = collect($blockingErrors)->contains(fn ($b) => in_array($b['code'] ?? '', self::HARD_BLOCK_CODES, true));
         $status = $this->resolveStatus($students->count(), $blockingErrors, $hasHardBlocks, $generatableCount, $canOverrideIncomplete);
@@ -183,6 +208,7 @@ final class BtsBulkBulletinGenerationService
             'periode' => $period,
             'students_count' => $students->count(),
             'generatable_count' => $generatableCount,
+            'student_ids' => $aTraiter,
             'existing_count' => collect($skipped)
                 ->whereIn('code', [self::ECART_DEJA_GENERE, self::ECART_VIDE_VERROUILLE])
                 ->count(),
@@ -619,7 +645,10 @@ final class BtsBulkBulletinGenerationService
             return [];
         }
 
-        $names = ESBTPMatiere::whereIn('id', $missingIds)->pluck('name', 'id');
+        // withTrashed : une matiere en corbeille garde ses notes et ses resultats
+        // manuels. Sans elle, le libelle retombait sur « Matiere #56 », introuvable
+        // pour qui doit corriger. Un identifiant nu ne doit jamais atteindre un ecran.
+        $names = ESBTPMatiere::withTrashed()->whereIn('id', $missingIds)->pluck('name', 'id');
 
         return $missingIds
             ->map(fn (int $id) => [
@@ -646,6 +675,13 @@ final class BtsBulkBulletinGenerationService
             ->where('status', '!=', 'cancelled')
             ->whereIn('periode', ESBTPEvaluation::aliasDePeriode($period))
             ->whereHas('notes')
+            // Une matiere supprimee garde ses evaluations et ses notes, mais le
+            // bulletin l'ignore : il construit sa liste depuis la relation, qui
+            // ne rend rien pour une matiere en corbeille. Exiger un professeur
+            // pour elle bloquait la classe sur « Matiere #56 », un libelle que
+            // personne ne peut retrouver et une case que rien ne permet de
+            // remplir. La relation exclut la corbeille : le blocage disparait.
+            ->whereHas('matiere')
             ->distinct()
             ->pluck('matiere_id')
             ->map(static fn ($id) => (int) $id)
@@ -667,7 +703,10 @@ final class BtsBulkBulletinGenerationService
             return [];
         }
 
-        $names = ESBTPMatiere::whereIn('id', $ids)->pluck('name', 'id');
+        // withTrashed : une matiere en corbeille garde ses notes et ses resultats
+        // manuels. Sans elle, le libelle retombait sur « Matiere #56 », introuvable
+        // pour qui doit corriger. Un identifiant nu ne doit jamais atteindre un ecran.
+        $names = ESBTPMatiere::withTrashed()->whereIn('id', $ids)->pluck('name', 'id');
 
         return $ids
             ->map(fn (int $id) => [

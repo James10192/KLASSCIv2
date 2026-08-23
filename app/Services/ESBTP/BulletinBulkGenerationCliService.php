@@ -5,7 +5,6 @@ namespace App\Services\ESBTP;
 use App\Domain\AcademicPilotage\Services\BtsBulkBulletinGenerationService;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPClasse;
-use App\Models\ESBTPInscription;
 use App\Services\BulletinService;
 
 class BulletinBulkGenerationCliService
@@ -76,14 +75,14 @@ class BulletinBulkGenerationCliService
             // Les identifiants permettent d'appeler ensuite l'endpoint par
             // tranches via student_ids, quand la classe entiere ne tient pas
             // dans le budget d'execution de l'hebergement.
-            $payload['student_ids'] = ESBTPInscription::query()
-                ->where('classe_id', (int) $classe->id)
-                ->where('annee_universitaire_id', (int) $annee->id)
-                ->where('status', 'active')
-                ->orderBy('etudiant_id')
-                ->pluck('etudiant_id')
-                ->map(static fn ($id) => (int) $id)
-                ->all();
+            //
+            // La liste vient du pre-controle, seul a savoir qui sera traite.
+            // Elle etait recalculee ici par `inscriptions.classe_id`, qui rend
+            // une liste vide au semestre 1 d'un tronc commun -- les etudiants
+            // ont suivi leur inscription en specialite -- et qui, ailleurs,
+            // renvoyait des deja-generes et des blocages durs : les tranches
+            // correspondantes repondaient 422.
+            $payload['student_ids'] = $preflight['student_ids'] ?? [];
             $payload['note'] = 'Preflight seulement. apply=1 cree les bulletins manquants puis recalcule les rangs. student_ids permet de traiter la classe par tranches.';
 
             return $payload;

@@ -3,19 +3,12 @@
 namespace Tests\Feature\Bts;
 
 use App\Domain\AcademicPilotage\Services\BtsBulkBulletinGenerationService;
-use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPBulletin;
-use App\Models\ESBTPClasse;
-use App\Models\ESBTPConfigMatiere;
 use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPEvaluation;
-use App\Models\ESBTPFiliere;
-use App\Models\ESBTPInscription;
 use App\Models\ESBTPMatiere;
-use App\Models\ESBTPMatiereCoefficient;
-use App\Models\ESBTPNiveauEtude;
-use App\Models\ESBTPNote;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Feature\Bts\Concerns\MonteUneClasseBts;
 use Tests\TestCase;
 
 /**
@@ -33,11 +26,7 @@ use Tests\TestCase;
  */
 class PreflightBulletinVideTest extends TestCase
 {
-    use RefreshDatabase;
-
-    private ESBTPClasse $classe;
-
-    private ESBTPAnneeUniversitaire $annee;
+    use MonteUneClasseBts, RefreshDatabase;
 
     private ESBTPMatiere $matiere;
 
@@ -46,73 +35,21 @@ class PreflightBulletinVideTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-
-        // La fabrique d evaluation signe `created_by = 1` en dur. L identifiant
-        // est donc impose : l auto-increment ne repart pas de un entre deux
-        // tests, et un auteur cree librement porterait le numero suivant.
-        \App\Models\User::factory()->create(['id' => 1]);
-
-        $this->annee = ESBTPAnneeUniversitaire::factory()->create();
-        $niveau = ESBTPNiveauEtude::factory()->create(['year' => 1, 'type' => 'BTS']);
-        $filiere = ESBTPFiliere::factory()->create(['is_tronc_commun' => true, 'parent_id' => null]);
-        $this->classe = ESBTPClasse::factory()->create([
-            'filiere_id' => $filiere->id,
-            'niveau_etude_id' => $niveau->id,
-            'annee_universitaire_id' => $this->annee->id,
-        ]);
+        $this->monterLaClasse();
 
         // Une classe generable, c'est une matiere configuree, notee et
         // coefficientee : sans ces trois, le pre-controle bloque avant meme
         // d'avoir a trancher le sort du bulletin existant.
-        $this->matiere = ESBTPMatiere::factory()->create(['unite_enseignement_id' => null]);
-        ESBTPConfigMatiere::create([
-            'matiere_id' => $this->matiere->id,
-            'classe_id' => $this->classe->id,
-            'annee_universitaire_id' => $this->annee->id,
-            'periode' => 'semestre1',
-            'config' => ['type' => 'general', 'coefficient' => 2],
-        ]);
-        ESBTPMatiereCoefficient::create([
-            'matiere_id' => $this->matiere->id,
-            'filiere_id' => $filiere->id,
-            'niveau_etude_id' => $niveau->id,
-            'annee_universitaire_id' => $this->annee->id,
-            'periode' => 'semestre1',
-            'coefficient' => 2,
-        ]);
-        $this->evaluation = ESBTPEvaluation::factory()->create([
-            'matiere_id' => $this->matiere->id,
-            'classe_id' => $this->classe->id,
-            'annee_universitaire_id' => $this->annee->id,
-            'periode' => 'semestre1',
-            'status' => 'published',
-            'bareme' => 20,
-            'coefficient' => 1,
-        ]);
+        $this->matiere = $this->matiereConfiguree();
+        $this->evaluation = $this->evaluationDe($this->matiere);
     }
 
     private function etudiantAvecBulletin(?float $moyenne, bool $publie = false, bool $avecNote = true): ESBTPEtudiant
     {
-        $etudiant = ESBTPEtudiant::factory()->create();
-        ESBTPInscription::factory()->create([
-            'etudiant_id' => $etudiant->id,
-            'classe_id' => $this->classe->id,
-            'annee_universitaire_id' => $this->annee->id,
-            'status' => 'active',
-            'workflow_step' => 'etudiant_cree',
-        ]);
+        $etudiant = $this->etudiantInscrit();
 
         if ($avecNote) {
-            // Note posee sans la fabrique : celle-ci ecrit une colonne
-            // `observation` que la table ne porte plus.
-            ESBTPNote::create([
-                'evaluation_id' => $this->evaluation->id,
-                'etudiant_id' => $etudiant->id,
-                'matiere_id' => $this->matiere->id,
-                'classe_id' => $this->classe->id,
-                'note' => 13,
-                'is_absent' => false,
-            ]);
+            $this->noter($etudiant, $this->evaluation);
         }
 
         $bulletin = ESBTPBulletin::factory()->create([

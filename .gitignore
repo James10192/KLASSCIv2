@@ -62,3 +62,6 @@ node_modules/
 # E2E audit artifacts (captures/PDF jetables — local only, jamais versionnés)
 docs/audits/e2e/
 .codex-run/
+
+# Cache de polices DomPDF, regenere au premier rendu PDF
+storage/fonts/*.ufm.json
