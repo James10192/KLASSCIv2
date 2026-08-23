@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Domain\Bulletins\FiltresBulletins;
 use App\Http\Controllers\Concerns\ExporteBulletinsParTranches;
 use App\Domain\BtsTroncCommun\BtsClassCohortCounter;
 use App\Domain\AcademicPilotage\Exceptions\AcademicPilotageException;
@@ -92,34 +93,21 @@ class ESBTPBulletinController extends Controller
      */
     public function index(Request $request)
     {
-        $classes = ESBTPClasse::where('is_active', true)
-            ->where(fn ($q) => $q->whereNull('systeme_academique')->orWhere('systeme_academique', '!=', 'LMD'))
-            ->orderBy('name')->get();
-        $anneesUniversitaires = ESBTPAnneeUniversitaire::orderBy('annee_debut', 'desc')->get();
+        // Les choix offerts et la sélection normalisée viennent du même objet :
+        // ce que la vue affiche est exactement ce qui filtre.
+        $filtres = FiltresBulletins::depuis($request);
+        $classes = $filtres->classes;
+        $anneesUniversitaires = $filtres->annees;
+        $periodes = $filtres->periodes();
 
-        // Périodes canoniques BTS : S1 + S2. L'annuel n'est pas une période isolée
-        // mais l'agrégation S1+S2 (les infos annuelles sont affichées au bas du
-        // bulletin S2). On expose toutefois 'annuel' dans le filtre pour pouvoir
-        // retrouver les artefacts legacy en base.
-        $periodes = collect([
-            (object) ['id' => 'semestre1', 'nom' => 'Premier Semestre'],
-            (object) ['id' => 'semestre2', 'nom' => 'Deuxième Semestre'],
-        ]);
-
-        // Valeurs par défaut filtre
-        $classe_id = $request->input('classe_id');
-        // Année par défaut : is_current (en cours), fallback is_active.
-        $annee_id = $request->input('annee_universitaire_id',
-            $anneesUniversitaires->firstWhere('is_current', true)?->id
-            ?? $anneesUniversitaires->firstWhere('is_active', true)?->id);
-        $periode_id = $request->input('periode_id');
-        $published = $request->input('published');
-        $search = trim((string) $request->input('search', ''));
+        $classe_id = $filtres->classeId;
+        $annee_id = $filtres->anneeId;
+        $periode_id = $filtres->periode;
+        $published = $filtres->publie;
+        $search = $filtres->recherche;
 
         $query = ESBTPBulletin::with(['etudiant:id,matricule,nom,prenoms', 'classe:id,name', 'anneeUniversitaire:id,name']);
-
-        // Filtres partagés avec l'export groupé (exportBulkPdf) → export ≡ vue.
-        $this->applyBulletinFilters($query, $request, $annee_id ? (int) $annee_id : null);
+        $filtres->appliquerA($query);
 
         $bulletins = $query->orderBy('created_at', 'desc')->paginate(20)->appends($request->query());
 
@@ -143,13 +131,6 @@ class ESBTPBulletinController extends Controller
         $stats['publish_pct'] = $stats['total'] > 0
             ? (int) round($stats['published'] / $stats['total'] * 100)
             : 0;
-
-        // Le filtre 'annuel' n'est proposé que si des bulletins legacy existent, pour
-        // que le bandeau « Voir ces bulletins » reste sélectionnable (sinon le select
-        // premium sans option 'annuel' réinitialise le filtre et n'affiche rien).
-        if ($stats['legacy_annuel'] > 0) {
-            $periodes->push((object) ['id' => 'annuel', 'nom' => 'Annuel (legacy)']);
-        }
 
         // AJAX no-reload : si requête AJAX, renvoyer le partial table + stats en JSON.
         if ($request->ajax() || $request->wantsJson()) {
@@ -1129,57 +1110,11 @@ class ESBTPBulletinController extends Controller
     }
 
     /**
-     * Résout l'année universitaire cible : celle du filtre, sinon l'année en
-     * cours, sinon l'année active. Partagé par index() et exportBulkPdf().
-     */
-    protected function resolveAnneeId(Request $request): ?int
-    {
-        $id = $request->input('annee_universitaire_id');
-        if ($id) {
-            return (int) $id;
-        }
-
-        return ESBTPAnneeUniversitaire::where('is_current', true)->value('id')
-            ?? ESBTPAnneeUniversitaire::where('is_active', true)->value('id');
-    }
-
-    /**
-     * Applique les filtres bulletins (classe, année, période, statut, recherche)
-     * à une requête. Source UNIQUE partagée entre la liste et l'export groupé
-     * afin que l'export reflète exactement la vue filtrée.
-     */
-    protected function applyBulletinFilters($query, Request $request, ?int $anneeId): void
-    {
-        // Colonnes qualifiées `esbtp_bulletins.` : l'export groupé joint esbtp_classes
-        // (qui porte aussi une colonne legacy annee_universitaire_id) → sans le préfixe,
-        // le WHERE devient ambigu (1052). Inoffensif pour index() (pas de join).
-        if ($classeId = $request->input('classe_id')) {
-            $query->where('esbtp_bulletins.classe_id', $classeId);
-        }
-        if ($anneeId) {
-            $query->where('esbtp_bulletins.annee_universitaire_id', $anneeId);
-        }
-        if ($periodeId = $request->input('periode_id')) {
-            $query->where('esbtp_bulletins.periode', $periodeId);
-        }
-        $published = $request->input('published');
-        if ($published !== null && $published !== '') {
-            $query->where('esbtp_bulletins.is_published', (int) $published);
-        }
-        $search = trim((string) $request->input('search', ''));
-        if ($search !== '') {
-            $like = '%'.$search.'%';
-            $query->whereHas('etudiant', function ($q) use ($like) {
-                $q->where('matricule', 'like', $like)
-                    ->orWhere('nom', 'like', $like)
-                    ->orWhere('prenoms', 'like', $like);
-            });
-        }
-    }
-
-    /**
-     * Ordonne la requête d'export selon un critère WHITELISTÉ (anti-injection).
-     * Retourne le libellé lisible de l'ordre appliqué.
+     * Ordonne l'export groupé selon le tri demandé.
+     *
+     * Le nom de colonne n'est jamais repris tel quel de la requête : seules
+     * les valeurs de la liste blanche ci-dessous atteignent le SQL, et le sens
+     * est réduit à « asc » ou « desc ». Retourne l'ordre effectivement appliqué.
      */
     protected function applyBulletinExportOrder($query, Request $request): string
     {
@@ -1189,7 +1124,7 @@ class ESBTPBulletinController extends Controller
 
         switch ($order) {
             case 'nom':
-                $query->join('esbtp_etudiants as e_ord', 'e_ord.id', '=', 'esbtp_bulletins.etudiant_id')
+                $query->leftJoin('esbtp_etudiants as e_ord', 'e_ord.id', '=', 'esbtp_bulletins.etudiant_id')
                     ->orderBy('e_ord.nom', $dir ?? 'asc')
                     ->orderBy('e_ord.prenoms', $dir ?? 'asc')
                     ->select('esbtp_bulletins.*');
@@ -1197,7 +1132,7 @@ class ESBTPBulletinController extends Controller
                 return 'Nom';
 
             case 'matricule':
-                $query->join('esbtp_etudiants as e_ord', 'e_ord.id', '=', 'esbtp_bulletins.etudiant_id')
+                $query->leftJoin('esbtp_etudiants as e_ord', 'e_ord.id', '=', 'esbtp_bulletins.etudiant_id')
                     ->orderBy('e_ord.matricule', $dir ?? 'asc')
                     ->select('esbtp_bulletins.*');
 
@@ -1216,8 +1151,8 @@ class ESBTPBulletinController extends Controller
 
             case 'classe':
             default:
-                $query->join('esbtp_classes as c_ord', 'c_ord.id', '=', 'esbtp_bulletins.classe_id')
-                    ->join('esbtp_etudiants as e_ord', 'e_ord.id', '=', 'esbtp_bulletins.etudiant_id')
+                $query->leftJoin('esbtp_classes as c_ord', 'c_ord.id', '=', 'esbtp_bulletins.classe_id')
+                    ->leftJoin('esbtp_etudiants as e_ord', 'e_ord.id', '=', 'esbtp_bulletins.etudiant_id')
                     ->orderBy('c_ord.name', $dir ?? 'asc')
                     ->orderBy('e_ord.nom', $dir ?? 'asc')
                     ->select('esbtp_bulletins.*');
