@@ -239,7 +239,7 @@ class Setting extends Model
     }
 
     // Cast des valeurs selon le type
-    protected static function castValue($value, $type)
+    public static function castValue($value, $type)
     {
         switch ($type) {
             case 'boolean':

@@ -507,9 +507,19 @@ class ESBTPSettingsController extends Controller
                         // — ex: current_academic_year qui ne sert plus, l'année courante
                         // venant de esbtp_annee_universitaires.is_current). Pas de
                         // modification = pas de raison de re-valider.
+                        // Comparer au brut ET au caste. Le formulaire affiche la
+                        // valeur CASTEE (Setting::get) : une base qui porte ''
+                        // pour un setting de type integer s'affiche « 0 », le
+                        // navigateur renvoie « 0 », et la comparaison au seul
+                        // brut '' ne matchait jamais. La validation tournait
+                        // alors sur une valeur que l'utilisateur n'a pas
+                        // touchee, et CHAQUE enregistrement de la page echouait
+                        // sur les memes cinq reglages PDF a zero, quel que soit
+                        // le champ modifie.
                         $currentValue = (string) ($setting->value ?? '');
+                        $currentCastee = (string) (Setting::castValue($setting->value, $setting->type) ?? '');
                         $newValue = $value === null ? '' : (string) $value;
-                        if ($currentValue === $newValue) {
+                        if ($newValue === $currentValue || $newValue === $currentCastee) {
                             continue;
                         }
 

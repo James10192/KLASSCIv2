@@ -4342,6 +4342,12 @@
 
     <!-- Scripts additionnels -->
     @stack('scripts')
+    {{-- Retro-compat : 48 vues poussent leur script via @section('scripts'),
+         que @stack ne lit pas -- leur JavaScript etait silencieusement perdu,
+         d'ou des pages entieres sous x-show restees invisibles (configuration
+         des bulletins) et des boutons morts. Meme precedent que les styles,
+         qui rendent deja @yield ET @stack. --}}
+    @yield('scripts')
     @stack('modals')
 
     {{-- Compte à rebours expiration contrat (affiché max 1x/12h si ≤ 30 jours) --}}

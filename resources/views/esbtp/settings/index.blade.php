@@ -1041,6 +1041,17 @@
             <div class="alert alert-danger alert-modern alert-dismissible fade show" role="alert">
                 <i class="fas fa-exclamation-circle me-2"></i>
                 {{ session('error') }}
+                {{-- Sans cette liste, « Certaines configurations contiennent des
+                     erreurs » restait la seule information : les champs fautifs
+                     vivent souvent dans un AUTRE onglet, et l'utilisateur voyait
+                     sa page revenir identique, comme si le bouton etait mort. --}}
+                @if($errors->any())
+                    <ul class="mb-0 mt-2" style="padding-left: 1.1rem;">
+                        @foreach($errors->all() as $messageErreur)
+                            <li>{{ $messageErreur }}</li>
+                        @endforeach
+                    </ul>
+                @endif
                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             </div>
         @endif
