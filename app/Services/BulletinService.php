@@ -2425,19 +2425,9 @@ class BulletinService
             return $this->effectifCache[$effectifKey];
         }
 
-        // Meme cohorte que le classement de la page de resultats et que la
-        // generation : un effectif annuel qui compterait le seul semestre 2
-        // rendait zero pour une classe de tronc commun.
-        //
-        // L'alignement n'est PAS complet. Sur le bulletin annuel d'un tronc
-        // commun, `calculerRangAnnuel` classe encore parmi la cohorte du
-        // semestre 2 -- vide pour cette classe -- via le litteral 'semestre2'
-        // de `collectAnnualAveragesForClasse`. L'effectif dira donc soixante-dix
-        // et le rang restera absent : « N/A sur 70 » au lieu de « N/A sur 0 ».
-        // Aucun chiffre faux de plus, mais la moitie du chemin. La question qui
-        // reste appartient a l'ecole : un etudiant de tronc commun doit-il etre
-        // classe, sur son bulletin annuel, parmi ceux de la classe qui l'a
-        // porte au premier semestre ?
+        // Meme cohorte que le classement et que la generation : un etudiant
+        // appartient a une seule classe par periode, et l'effectif compte
+        // exactement ceux-la.
         return $this->effectifCache[$effectifKey] = $this->classCohortCounter->countPourPeriode(
             $classeId,
             $anneeUniversitaireId,

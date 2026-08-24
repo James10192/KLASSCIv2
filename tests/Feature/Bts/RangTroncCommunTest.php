@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Bts;
 
+use App\Domain\BtsTroncCommun\BtsClassCohortCounter;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPFiliere;
@@ -95,22 +96,37 @@ class RangTroncCommunTest extends TestCase
     }
 
     /**
-     * L'ecran fautif etait en periode « Annuel », et c'est le cas le plus
-     * fragile : les cohortes semestrielles font valoir « annuel » pour le
-     * semestre 2, ou ces etudiants ne sont plus dans le tronc commun.
+     * L'invariant sur lequel tout le reste est bati : un etudiant appartient
+     * a AU PLUS UNE classe par periode.
+     *
+     * Une version du compteur rendait, pour « annuel », l'union des deux
+     * semestres, afin de donner un rang annuel aux classes de tronc commun.
+     * Elle placait le meme etudiant dans la cohorte annuelle du tronc commun
+     * ET de sa specialite : la generation annuelle lancee sur les deux classes
+     * lui creait deux bulletins annuels, que la cle unique laisse passer
+     * puisqu'elle porte `classe_id`.
+     *
+     * Le rang annuel d'un tronc commun reste donc vide, et c'est voulu : son
+     * proprietaire annuel est la classe de specialite, ou le semestre 1 est
+     * agrege. Rouvrir la question demande de choisir UN proprietaire, dans
+     * BtsAnnualClassMapResolver, pas d'en accepter deux.
      */
-    public function test_le_rang_annuel_du_tronc_commun_n_est_pas_vide(): void
+    public function test_un_etudiant_appartient_a_une_seule_classe_par_periode(): void
     {
         $specialite = $this->classeDeSpecialite();
         $this->etudiantOriente($specialite, 16);
         $this->etudiantOriente($specialite, 11);
 
-        $rangs = app(RankingService::class)
-            ->calculerRangsClasse((int) $this->classe->id, (int) $this->annee->id, 'annuel');
+        $compteur = app(BtsClassCohortCounter::class);
 
-        $this->assertSame(2, $rangs['total'],
-            'En annuel aussi, le tronc commun garde les etudiants qu il a portes au semestre 1.');
-        $this->assertSame([1, 2], $rangs['rows']->pluck('rang')->sort()->values()->all());
+        foreach (['semestre1', 'semestre2', 'annuel'] as $periode) {
+            $this->assertSame(
+                2,
+                $compteur->countPourPeriode((int) $this->classe->id, (int) $this->annee->id, $periode)
+                    + $compteur->countPourPeriode((int) $specialite->id, (int) $this->annee->id, $periode),
+                "Periode $periode : deux etudiants, donc deux appartenances au total, jamais quatre."
+            );
+        }
     }
 
     /**

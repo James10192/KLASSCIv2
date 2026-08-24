@@ -84,28 +84,29 @@ final class BtsClassCohortCounter
     /**
      * Qui appartient a cette classe sur cette periode. Point d'entree unique.
      *
-     * `annuel` designe le semestre 2 dans les cohortes semestrielles, ce qui
-     * convient a une classe ordinaire mais vide une classe de tronc commun :
-     * elle ne porte ses etudiants qu'au semestre 1, ils sont en specialite au
-     * semestre 2. « Sur l'annee » n'est donc pas « au semestre 2 », et laisser
-     * chaque appelant deviner laquelle des deux il veut ferait dire a l'ecran
-     * soixante-dix la ou le bouton de generation dirait « rien a generer ».
+     * INVARIANT : un etudiant appartient a AU PLUS UNE classe par periode.
+     * `resolveSemesterPhase` elit une seule phase par semestre, et tous les
+     * consommateurs sont ecrits la-dessus : la generation reclame ses etudiants
+     * a la classe, le rang les classe entre eux, l'effectif les compte.
+     *
+     * Une version de cette methode rendait, pour « annuel », l'union des deux
+     * semestres. Elle voulait donner un rang annuel aux classes de tronc
+     * commun, dont les etudiants passent en specialite au semestre 2. Elle
+     * abandonnait l'exclusivite : le meme etudiant appartenait a la cohorte
+     * annuelle du tronc commun ET de sa specialite, et la generation annuelle
+     * lancee sur les deux classes lui creait DEUX bulletins annuels, que la
+     * cle unique (qui porte `classe_id`) laisse passer.
+     *
+     * Si l'ecole veut un rang annuel sur le tronc commun, la decision doit
+     * rester exclusive -- un proprietaire annuel par etudiant, et un seul --
+     * et se prendre dans BtsAnnualClassMapResolver, qui est deja le domicile
+     * de cette carte. Pas dans une union.
      *
      * @return list<int>
      */
     public function etudiantIdsPourPeriode(int $classeId, int $anneeUniversitaireId, string $periode): array
     {
-        if ($periode !== 'annuel') {
-            return $this->etudiantIds($classeId, $anneeUniversitaireId, $periode);
-        }
-
-        $ids = array_unique(array_merge(
-            $this->etudiantIds($classeId, $anneeUniversitaireId, 'semestre1'),
-            $this->etudiantIds($classeId, $anneeUniversitaireId, 'semestre2'),
-        ));
-        sort($ids);
-
-        return $ids;
+        return $this->etudiantIds($classeId, $anneeUniversitaireId, $periode);
     }
 
     public function countPourPeriode(int $classeId, int $anneeUniversitaireId, string $periode): int

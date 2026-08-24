@@ -716,15 +716,34 @@ window.busCard = function (cfg) {
                     // on envoie la classe par tranches et on cumule les
                     // resultats. Le serveur recalcule les rangs sur la cohorte
                     // entiere a chaque passe, l'etat final est donc identique.
-                    const tousLesIds = Array.isArray(preflight.student_ids) ? preflight.student_ids : [];
-                    const taille = preflight.batch_size || 10;
+                    // Une tranche `null` veut dire « pas de filtre », donc la
+                    // CLASSE ENTIERE en une requete. Tant que `student_ids`
+                    // valait la cohorte complete, s'en remettre a null pour
+                    // les petites listes etait equivalent. Ce n'est plus vrai :
+                    // le serveur n'y met que les etudiants qu'il acceptera, et
+                    // une classe de soixante-dix dont soixante-sept sont deja
+                    // generes renvoie trois identifiants. La condition « plus
+                    // long qu'une tranche » retombait alors sur null et
+                    // relançait les soixante-dix d'un coup, dans la limite de
+                    // trente secondes que le decoupage existe pour eviter.
+                    //
+                    // Des que le serveur fournit une liste, on la respecte,
+                    // meme courte. `null` ne subsiste que pour une reponse
+                    // ancienne qui n'en fournirait aucune.
+                    const tousLesIds = Array.isArray(preflight.student_ids) ? preflight.student_ids : null;
+                    const taille = preflight.batch_size || 6;
                     const tranches = [];
-                    if (tousLesIds.length > taille) {
+                    if (tousLesIds === null) {
+                        tranches.push(null);
+                    } else {
                         for (let i = 0; i < tousLesIds.length; i += taille) {
                             tranches.push(tousLesIds.slice(i, i + taille));
                         }
-                    } else {
-                        tranches.push(null); // classe assez petite : une seule passe
+                    }
+
+                    if (tranches.length === 0) {
+                        this.notify('info', 'Aucun etudiant a generer pour cette periode.');
+                        return;
                     }
 
                     const envoyerTranche = async (ids) => {
