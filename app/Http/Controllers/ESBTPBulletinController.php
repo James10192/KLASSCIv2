@@ -1076,6 +1076,11 @@ class ESBTPBulletinController extends Controller
                 }
             }
 
+            // Ce rendu EST un export PDF : sans ce drapeau, le gabarit n'emet pas
+            // son bloc @page et DomPDF retombe sur ses marges par defaut (~27 mm),
+            // ce qui rendait les marges reglees dans la configuration sans effet.
+            $data['isPdfExport'] = true;
+
             Log::debug('Chargement de la vue PDF avec le template configurable pour le bulletin #'.$bulletin->id);
             $pdf = PDF::loadView($this->bulletinService->getBulletinTemplateView(), $data);
 
