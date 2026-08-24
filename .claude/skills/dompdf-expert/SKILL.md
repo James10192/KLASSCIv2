@@ -758,6 +758,32 @@ for f in storage/framework/views/*.php; do php -l "$f" 2>&1 | grep -v "No syntax
 
 ---
 
+## 12.6. Pièges payés en production (bulletins Abidjan, août 2026)
+
+Quatre bugs réels, chacun vu sur un bulletin imprimé avant d'être compris :
+
+1. **Spécificité contre les resets de table.** `.parent td { border:none; padding:0 }` = (0,1,1)
+   et bat TOUTE simple classe `.ma-cellule` = (0,1,0). Conséquence : bordure/padding d'une
+   cellule « spéciale » silencieusement annulés. Règle : dans un tableau qui a un reset sur
+   `td`, toute cellule particulière se cible `.parent td.ma-cellule`. Ce piège a frappé 3 fois
+   dans la même session (filet vertical invisible, cellule sans padding, valeur collée aux
+   deux points du libellé).
+2. **Un flag qui gate `@page`.** Si le template n'émet son bloc `@page` que sous condition
+   (`@if($isPdfExport ?? false)`), TOUT chemin de rendu PDF doit poser ce flag. Un chemin
+   l'oubliait → DomPDF appliquait ses marges par défaut (~27mm) et les réglages de marges
+   étaient sans effet. Vérifier avec grep que chaque `PDF::loadView` du domaine pose le flag.
+3. **`inline-block` n'aligne pas les lignes de base.** Deux spans `inline-block` côte à côte
+   (libellé + valeur) apparaissent décalés verticalement. Seul montage fiable : deux `<td>`
+   d'une même `<tr>`. Largeur du libellé en `em` pour suivre `bulletin_font_size`.
+4. **`td:first-child` traverse les tableaux imbriqués.** Une règle sur
+   `.outer td:first-child` (cellule photo) attrape aussi la première cellule de chaque ligne
+   d'un tableau imbriqué dans une autre cellule. Toujours une classe explicite.
+
+Et le rappel du §6 vécu en vrai : `background` sur `<tr>` n'est pas rendu mais `color:#fff`
+EST hérité par les `td` → bandeau blanc avec texte blanc, invisible à l'impression.
+
+---
+
 ## 13. Debugging Tips
 
 ### Check if images load
