@@ -234,7 +234,7 @@ class CLIBulletinDiagnosticController extends BaseApiController
             ->where('annee_universitaire_id', $bulletin->annee_universitaire_id))
             ->count();
 
-        $cohorte = app(BtsClassCohortCounter::class)->count(
+        $cohorte = app(BtsClassCohortCounter::class)->countPourPeriode(
             (int) $bulletin->classe_id,
             (int) $bulletin->annee_universitaire_id,
             (string) $bulletin->periode

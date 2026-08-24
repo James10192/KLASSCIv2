@@ -27,15 +27,16 @@ final class BtsClassCohortCounter
     {
     }
 
-    public function count(int $classeId, int $anneeUniversitaireId, string $periode): int
-    {
-        return count($this->etudiantIds($classeId, $anneeUniversitaireId, $periode));
-    }
-
     /**
+     * Cohorte d'UN semestre. Volontairement privee : c'est la porte derobee
+     * par laquelle le bug reviendrait. Son nom est le plus evident des deux,
+     * et l'appeler avec « annuel » rend le semestre 2 sans le moindre signal,
+     * donc une classe de tronc commun vide. La seule question qu'on pose de
+     * l'exterieur est celle d'une periode, et `etudiantIdsPourPeriode` y repond.
+     *
      * @return list<int>
      */
-    public function etudiantIds(int $classeId, int $anneeUniversitaireId, string $periode): array
+    private function etudiantIds(int $classeId, int $anneeUniversitaireId, string $periode): array
     {
         $semester = $this->semesterNumber($periode);
 
@@ -78,6 +79,38 @@ final class BtsClassCohortCounter
         sort($sorted);
 
         return $sorted;
+    }
+
+    /**
+     * Qui appartient a cette classe sur cette periode. Point d'entree unique.
+     *
+     * `annuel` designe le semestre 2 dans les cohortes semestrielles, ce qui
+     * convient a une classe ordinaire mais vide une classe de tronc commun :
+     * elle ne porte ses etudiants qu'au semestre 1, ils sont en specialite au
+     * semestre 2. « Sur l'annee » n'est donc pas « au semestre 2 », et laisser
+     * chaque appelant deviner laquelle des deux il veut ferait dire a l'ecran
+     * soixante-dix la ou le bouton de generation dirait « rien a generer ».
+     *
+     * @return list<int>
+     */
+    public function etudiantIdsPourPeriode(int $classeId, int $anneeUniversitaireId, string $periode): array
+    {
+        if ($periode !== 'annuel') {
+            return $this->etudiantIds($classeId, $anneeUniversitaireId, $periode);
+        }
+
+        $ids = array_unique(array_merge(
+            $this->etudiantIds($classeId, $anneeUniversitaireId, 'semestre1'),
+            $this->etudiantIds($classeId, $anneeUniversitaireId, 'semestre2'),
+        ));
+        sort($ids);
+
+        return $ids;
+    }
+
+    public function countPourPeriode(int $classeId, int $anneeUniversitaireId, string $periode): int
+    {
+        return count($this->etudiantIdsPourPeriode($classeId, $anneeUniversitaireId, $periode));
     }
 
     private function resolveClasseId(ESBTPInscription $inscription, int $semester): ?int

@@ -1360,7 +1360,7 @@ class BulletinService
         // semestre 1 dans une classe qu ils ont quittee : la classe paraissait
         // vide et les statistiques tombaient a zero. Le rang, lui, utilisait
         // deja ce compteur : les deux portent desormais sur la meme population.
-        $etudiantIds = $this->classCohortCounter->etudiantIds(
+        $etudiantIds = $this->classCohortCounter->etudiantIdsPourPeriode(
             (int) $classeId,
             (int) $anneeUniversitaireId,
             (string) $periode
@@ -1799,7 +1799,7 @@ class BulletinService
         $periodeOptions = array_unique($this->periodeOptionsForRang($periode));
         $wanted = array_flip(array_map('intval', $matiereIds));
 
-        $etudiantIds = $this->classCohortCounter->etudiantIds($classeId, $anneeUniversitaireId, $periode);
+        $etudiantIds = $this->classCohortCounter->etudiantIdsPourPeriode($classeId, $anneeUniversitaireId, $periode);
         if ($etudiantIds === []) {
             $etudiantIds = ESBTPEtudiant::whereHas('inscriptions', function ($q) use ($classeId, $anneeUniversitaireId) {
                 $q->where('classe_id', $classeId)
@@ -2382,7 +2382,7 @@ class BulletinService
             return $direct;
         }
 
-        $cohortEtudiantIds = $this->classCohortCounter->etudiantIds($cohortClasseId, $anneeUniversitaireId, $periode);
+        $cohortEtudiantIds = $this->classCohortCounter->etudiantIdsPourPeriode($cohortClasseId, $anneeUniversitaireId, $periode);
         $others = $cohortEtudiantIds === []
             ? collect()
             : ESBTPBulletin::query()
@@ -2425,7 +2425,20 @@ class BulletinService
             return $this->effectifCache[$effectifKey];
         }
 
-        return $this->effectifCache[$effectifKey] = $this->classCohortCounter->count(
+        // Meme cohorte que le classement de la page de resultats et que la
+        // generation : un effectif annuel qui compterait le seul semestre 2
+        // rendait zero pour une classe de tronc commun.
+        //
+        // L'alignement n'est PAS complet. Sur le bulletin annuel d'un tronc
+        // commun, `calculerRangAnnuel` classe encore parmi la cohorte du
+        // semestre 2 -- vide pour cette classe -- via le litteral 'semestre2'
+        // de `collectAnnualAveragesForClasse`. L'effectif dira donc soixante-dix
+        // et le rang restera absent : « N/A sur 70 » au lieu de « N/A sur 0 ».
+        // Aucun chiffre faux de plus, mais la moitie du chemin. La question qui
+        // reste appartient a l'ecole : un etudiant de tronc commun doit-il etre
+        // classe, sur son bulletin annuel, parmi ceux de la classe qui l'a
+        // porte au premier semestre ?
+        return $this->effectifCache[$effectifKey] = $this->classCohortCounter->countPourPeriode(
             $classeId,
             $anneeUniversitaireId,
             $periode
@@ -2452,7 +2465,7 @@ class BulletinService
     private function collectSemesterAveragesForClasse(int $classeId, int $anneeUniversitaireId, string $periode): array
     {
         $periode = $this->normalizePeriode($periode);
-        $etudiantIds = $this->classCohortCounter->etudiantIds($classeId, $anneeUniversitaireId, $periode);
+        $etudiantIds = $this->classCohortCounter->etudiantIdsPourPeriode($classeId, $anneeUniversitaireId, $periode);
         $stored = $this->storedBulletinAveragesByEtudiant($etudiantIds, $classeId, $anneeUniversitaireId, $periode);
 
         $averages = [];
@@ -2481,7 +2494,7 @@ class BulletinService
         $weights = $this->getSemesterWeights($classe);
         $averages = [];
 
-        $etudiantIds = $this->classCohortCounter->etudiantIds($classeId, $anneeUniversitaireId, 'semestre2');
+        $etudiantIds = $this->classCohortCounter->etudiantIdsPourPeriode($classeId, $anneeUniversitaireId, 'semestre2');
         $s1Stored = [];
         $s2Stored = [];
         foreach ($etudiantIds as $etudiantId) {

@@ -2,7 +2,8 @@
 
 namespace App\Services;
 
-use App\Models\ESBTPInscription;
+use App\Domain\BtsTroncCommun\BtsClassCohortCounter;
+use App\Models\ESBTPEtudiant;
 use App\Services\ESBTP\BtsCurrentResultSnapshotService;
 
 /**
@@ -25,6 +26,7 @@ class RankingService
     public function __construct(
         private readonly BtsCurrentResultSnapshotService $snapshotService,
         private readonly BulletinService $bulletinService,
+        private readonly BtsClassCohortCounter $cohortCounter,
     ) {}
 
     /**
@@ -71,23 +73,24 @@ class RankingService
     ): array {
         $attendanceEnabled = $this->bulletinService->isAttendanceNoteEnabled();
 
-        // Cohort canonique : seuls les VRAIS inscrits (status active + workflow validé).
-        // Évite la pollution par les inscriptions en attente, transférées, abandonnées.
-        $inscriptions = ESBTPInscription::where('classe_id', $classeId)
-            ->where('annee_universitaire_id', $anneeUniversitaireId)
-            ->where('status', 'active')
-            ->where('workflow_step', 'etudiant_cree')
-            ->with('etudiant:id,matricule,nom,prenoms')
-            ->get();
+        // Cohorte canonique, resolue par les phases et non par la classe portee
+        // par l'inscription courante. Un etudiant de tronc commun oriente en
+        // specialite a vu son inscription suivre : chercher par `classe_id`
+        // rendait une cohorte VIDE pour la classe de tronc commun, donc aucun
+        // rang, et la colonne affichait « N/A » pour toute la classe alors que
+        // les moyennes, elles, s'affichaient.
+        //
+        // Hors tronc commun, le resolveur retombe sur `inscription->classe_id` :
+        // le comportement des autres classes, BTS comme LMD, est inchange.
+        $etudiants = ESBTPEtudiant::whereIn(
+            'id',
+            $this->cohortCounter->etudiantIdsPourPeriode($classeId, $anneeUniversitaireId, $periode)
+        )->get(['id', 'matricule', 'nom', 'prenoms']);
 
         $rows = collect();
-        foreach ($inscriptions as $inscription) {
-            if (! $inscription->etudiant) {
-                continue;
-            }
-
+        foreach ($etudiants as $etudiant) {
             $snapshot = $this->snapshotService->getPeriodeSnapshot(
-                $inscription->etudiant->id,
+                $etudiant->id,
                 $classeId,
                 $anneeUniversitaireId,
                 $periode
@@ -105,10 +108,9 @@ class RankingService
             }
 
             $rows->push([
-                'etudiant_id' => $inscription->etudiant->id,
-                'matricule' => $inscription->etudiant->matricule,
-                'nom_complet' => trim($inscription->etudiant->nom . ' ' . $inscription->etudiant->prenoms),
-                'inscription_id' => $inscription->id,
+                'etudiant_id' => $etudiant->id,
+                'matricule' => $etudiant->matricule,
+                'nom_complet' => trim($etudiant->nom . ' ' . $etudiant->prenoms),
                 'moyenne_brute' => $rawTotal,
                 'moyenne_avec_assiduite' => $effectiveTotal,
                 'note_assiduite' => $attendanceNote,

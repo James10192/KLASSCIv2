@@ -432,7 +432,7 @@ final class BtsBulkBulletinGenerationService
      */
     private function activeStudentsForClass(int $classeId, int $academicYearId, string $period): Collection
     {
-        $etudiantIds = $this->cohortCounter->etudiantIds($classeId, $academicYearId, $period);
+        $etudiantIds = $this->cohortCounter->etudiantIdsPourPeriode($classeId, $academicYearId, $period);
 
         if ($etudiantIds === []) {
             return collect();
