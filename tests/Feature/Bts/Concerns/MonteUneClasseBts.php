@@ -105,14 +105,18 @@ trait MonteUneClasseBts
     /**
      * Note posee sans la fabrique : celle-ci ecrit une colonne `observation`
      * que la table ne porte plus.
+     *
+     * `esbtp_notes.classe_id` est denormalisee : elle doit suivre la classe de
+     * l'evaluation, sinon le decor ment sur l'etat des donnees et un test qui
+     * s'appuierait dessus virerait au faux vert.
      */
-    protected function noter(ESBTPEtudiant $etudiant, ESBTPEvaluation $evaluation, float $note = 13): void
+    protected function noter(ESBTPEtudiant $etudiant, ESBTPEvaluation $evaluation, float $note = 13, ?ESBTPClasse $classe = null): void
     {
         ESBTPNote::create([
             'evaluation_id' => $evaluation->id,
             'etudiant_id' => $etudiant->id,
             'matiere_id' => $evaluation->matiere_id,
-            'classe_id' => $this->classe->id,
+            'classe_id' => ($classe ?? $this->classe)->id,
             'note' => $note,
             'is_absent' => false,
         ]);

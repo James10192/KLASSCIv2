@@ -38,18 +38,84 @@ final class BtsClassCohortCounter
      */
     private function etudiantIds(int $classeId, int $anneeUniversitaireId, string $periode): array
     {
-        $semester = $this->semesterNumber($periode);
+        // Perimetre STRICT : les vrais inscrits. C'est ce filtre qui donne au
+        // compteur son sens d'effectif, il n'est pas negociable ici.
+        return $this->appartenance(
+            $classeId,
+            $anneeUniversitaireId,
+            $this->semesterNumber($periode),
+            'effectif',
+            fn ($q) => $q->where('status', 'active')->where('workflow_step', 'etudiant_cree')
+        );
+    }
 
-        // Le balayage porte volontairement sur toute l'annee : la classe de
-        // rattachement d'un etudiant depend de ses phases tronc commun et ne
-        // peut pas etre filtree en SQL. On memoise donc le resultat par
-        // (annee, semestre) le temps de la requete : la generation en masse
-        // appelait cette methode plusieurs fois par etudiant, rechargeant a
-        // chaque fois plus de 2000 inscriptions avec cinq arbres de relations.
-        $cacheKey = $anneeUniversitaireId.':'.$semester;
+    /**
+     * Meme regle d'appartenance que l'effectif, perimetre elargi a TOUTES les
+     * inscriptions de l'annee, quel que soit leur statut.
+     *
+     * Pour les LISTES uniquement -- « inclure les inscriptions inactives » de
+     * la page de resultats. Un etudiant oriente porte `terminee` sur son
+     * inscription d'origine ; un abandon porte `annulee`. Les exclure les
+     * faisait disparaitre de l'ecran, mais les rattraper par une requete
+     * directe sur les phases posait l'AUTRE question -- « cette classe a-t-elle
+     * un jour ete mentionnee » -- et ramenait l'etudiant sur son ancienne
+     * specialite corrigee, voire dans deux classes au meme semestre. Ici la
+     * meme election de phase s'applique : une seule classe par semestre.
+     *
+     * @return list<int>
+     */
+    public function etudiantIdsToutesInscriptions(int $classeId, int $anneeUniversitaireId, string $periode): array
+    {
+        return $this->appartenance(
+            $classeId,
+            $anneeUniversitaireId,
+            $this->semesterNumber($periode),
+            'toutes',
+            fn ($q) => $q
+        );
+    }
+
+    /**
+     * Perimetre intermediaire pour les listes quand les inactifs sont exclus :
+     * les inscriptions actives, workflow compris ou non. Le filtre
+     * `workflow_step` de l'effectif ecarterait les dossiers « en attente »,
+     * que la page de resultats a toujours montres.
+     *
+     * @return list<int>
+     */
+    public function etudiantIdsInscriptionsActives(int $classeId, int $anneeUniversitaireId, string $periode): array
+    {
+        return $this->appartenance(
+            $classeId,
+            $anneeUniversitaireId,
+            $this->semesterNumber($periode),
+            'actives',
+            fn ($q) => $q->where('status', 'active')
+        );
+    }
+
+    /**
+     * La regle d'appartenance, unique : resoudre la classe de rattachement de
+     * chaque inscription du perimetre pour ce semestre, par l'election de
+     * phase. Seul le perimetre d'inscriptions varie ; la regle, jamais.
+     *
+     * Le balayage porte volontairement sur toute l'annee : la classe de
+     * rattachement depend des phases et ne peut pas etre filtree en SQL. On
+     * memoise par (annee, semestre, perimetre) le temps de la requete -- la
+     * generation en masse appelait cette methode plusieurs fois par etudiant,
+     * rechargeant a chaque fois plus de 2000 inscriptions. Le perimetre fait
+     * partie de la cle : un appel en mode liste ne doit jamais empoisonner le
+     * mode effectif dans la meme requete.
+     *
+     * @param  \Closure(\Illuminate\Database\Eloquent\Builder): mixed  $perimetre
+     * @return list<int>
+     */
+    private function appartenance(int $classeId, int $anneeUniversitaireId, int $semester, string $modePerimetre, \Closure $perimetre): array
+    {
+        $cacheKey = $anneeUniversitaireId.':'.$semester.':'.$modePerimetre;
 
         if (! array_key_exists($cacheKey, $this->cohortCache)) {
-            $inscriptions = ESBTPInscription::query()
+            $requete = ESBTPInscription::query()
                 ->with([
                     'filiere',
                     'classe.filiere',
@@ -57,13 +123,12 @@ final class BtsClassCohortCounter
                     'inscriptionOrigine.classe.filiere',
                     'inscriptionSpecialisation.classe.filiere',
                 ])
-                ->where('annee_universitaire_id', $anneeUniversitaireId)
-                ->where('status', 'active')
-                ->where('workflow_step', 'etudiant_cree')
-                ->get();
+                ->where('annee_universitaire_id', $anneeUniversitaireId);
+
+            $perimetre($requete);
 
             $parClasse = [];
-            foreach ($inscriptions as $inscription) {
+            foreach ($requete->get() as $inscription) {
                 $resolved = $this->resolveClasseId($inscription, $semester);
                 if ($resolved !== null) {
                     $parClasse[$resolved][(int) $inscription->etudiant_id] = true;
@@ -73,12 +138,10 @@ final class BtsClassCohortCounter
             $this->cohortCache[$cacheKey] = $parClasse;
         }
 
-        $ids = $this->cohortCache[$cacheKey][$classeId] ?? [];
+        $ids = array_keys($this->cohortCache[$cacheKey][$classeId] ?? []);
+        sort($ids);
 
-        $sorted = array_keys($ids);
-        sort($sorted);
-
-        return $sorted;
+        return $ids;
     }
 
     /**

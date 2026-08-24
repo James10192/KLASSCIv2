@@ -1198,6 +1198,43 @@ class BulletinService
             : $this->ouvertureResolver->classesNonOuvertesAu($semestre);
     }
 
+    /**
+     * Matieres dont une moyenne est enregistree pour cet etudiant sur cette
+     * periode alors qu'aucune note ne la porte plus.
+     *
+     * Une evaluation deplacee d'un semestre a l'autre laisse sa ligne derriere
+     * elle. Le calcul « courant » la reprend -- il fusionne les moyennes
+     * enregistrees -- donc l'officiel et le courant affichent la meme valeur
+     * perimee et aucun ecart n'est signale. Seule cette liste le dit.
+     *
+     * @return array<int, array{matiere_id: int, matiere: string, moyenne: string|null}>
+     */
+    public function moyennesSansNotePourEtudiant(int $etudiantId, int $classeId, int $anneeUniversitaireId, string $periode): array
+    {
+        $lignes = ESBTPResultat::query()
+            ->sansNoteSurLaPeriode($classeId, $anneeUniversitaireId, $this->periodeAliases($this->normalizePeriode($periode)))
+            ->where('etudiant_id', $etudiantId)
+            ->get();
+
+        if ($lignes->isEmpty()) {
+            return [];
+        }
+
+        // withTrashed : la matiere peut etre en corbeille, son nom doit rester
+        // lisible -- un identifiant nu n'atteint jamais un ecran.
+        $noms = ESBTPMatiere::withTrashed()
+            ->whereIn('id', $lignes->pluck('matiere_id'))
+            ->pluck('name', 'id');
+
+        return $lignes
+            ->map(fn (ESBTPResultat $r) => [
+                'matiere_id' => (int) $r->matiere_id,
+                'matiere' => $noms[$r->matiere_id] ?? 'Matiere #'.$r->matiere_id,
+                'moyenne' => $r->moyenne,
+            ])
+            ->all();
+    }
+
     private function persistResultats(array $resultatsParMatiere, int $etudiantId, int $classeId, int $anneeUniversitaireId, string $periode): void
     {
         $userId = Auth::id();
@@ -1211,22 +1248,34 @@ class BulletinService
                 continue;
             }
 
-            ESBTPResultat::updateOrCreate(
-                [
-                    'etudiant_id' => $etudiantId,
-                    'classe_id' => $classeId,
-                    'matiere_id' => $resultat->matiere_id,
-                    'periode' => $periode,
-                    'annee_universitaire_id' => $anneeUniversitaireId,
-                ],
-                [
-                    'moyenne' => $resultat->moyenne,
-                    'coefficient' => $resultat->coefficient ?? 1,
-                    'appreciation' => $resultat->appreciation ?? $this->getAppreciation($resultat->moyenne),
-                    'updated_by' => $userId,
-                    'created_by' => $userId,
-                ]
-            );
+            // withTrashed + sans le scope d'archivage : une ligne supprimee ou
+            // archivee occupe la cle unique mais reste invisible au
+            // updateOrCreate par defaut, qui tentait alors un INSERT sur le
+            // meme quintuple -- `Duplicate entry`, 500 definitif sur cet
+            // etudiant des qu'une note revenait apres une suppression.
+            $ligne = ESBTPResultat::withTrashed()
+                ->withoutGlobalScope('not_archived')
+                ->updateOrCreate(
+                    [
+                        'etudiant_id' => $etudiantId,
+                        'classe_id' => $classeId,
+                        'matiere_id' => $resultat->matiere_id,
+                        'periode' => $periode,
+                        'annee_universitaire_id' => $anneeUniversitaireId,
+                    ],
+                    [
+                        'moyenne' => $resultat->moyenne,
+                        'coefficient' => $resultat->coefficient ?? 1,
+                        'appreciation' => $resultat->appreciation ?? $this->getAppreciation($resultat->moyenne),
+                        'updated_by' => $userId,
+                        'created_by' => $userId,
+                    ]
+                );
+
+            // Une note qui revient rend la moyenne legitime : la ligne revit.
+            if ($ligne->trashed()) {
+                $ligne->restore();
+            }
         }
     }
 
@@ -2900,38 +2949,48 @@ class BulletinService
     }
 
 
-    public function buildEtudiantsQuery($classe_id, $annee_universitaire_id, $include_all_statuses)
+    public function buildEtudiantsQuery($classe_id, $annee_universitaire_id, $include_all_statuses, string $periode)
     {
         if ($classe_id) {
-            // Get students through inscriptions for the selected class and year.
-            // Lot 3 fix: élargir avec UNION des étudiants ayant notes/résultats persistés
-            // dans cette classe pour cette année — couvre les cas BTS TC orientation
-            // (étudiant passé en S1 puis orienté vers spécialité en S2 : son inscription
-            // pointe sur la nouvelle classe mais ses notes S1 vivent toujours sur
-            // classe_source). Sans ça, l'index "perd" l'étudiant dès qu'on change la
-            // classe sur son inscription.
+            // UNE source : la cohorte de phases, qui applique la meme election
+            // partout -- une classe par semestre. Seul le PERIMETRE varie avec
+            // le bouton « inclure les inscriptions inactives » : toutes les
+            // inscriptions de l'annee quand il est actif (l'orientation laisse
+            // `terminee`, un abandon laisse `annulee`), les actives sinon.
             //
-            // On résout via 3 sous-queries pluck() puis whereIn() unifié — plus robuste
-            // que orWhereHas qui peut buguer sur relations indirectes (notes.evaluation).
-            $inscriptionEtudiantIds = \App\Models\ESBTPInscription::where('classe_id', $classe_id)
-                ->where('annee_universitaire_id', $annee_universitaire_id)
-                ->when(! $include_all_statuses, fn ($q) => $q->where('status', 'active'))
-                ->pluck('etudiant_id');
+            // La liste a longtemps ajoute les inscriptions pointant sur la
+            // classe, sans regard sur la periode. Pour un etudiant oriente,
+            // cette source le rattachait a sa specialite DES LE SEMESTRE 1,
+            // pendant que la cohorte le laissait au tronc commun : deux
+            // classes au meme semestre, le signalement de Yamoussoukro sous
+            // une autre forme. Un etudiant sans phase, lui, passe par le repli
+            // de l'election (sa classe d'inscription) : il n'a rien perdu.
+            //
+            // Sur « annuel », union des deux semestres. Licite ICI et nulle
+            // part ailleurs : cette methode construit une LISTE, aucune
+            // generation ne suit. Le compteur, lui, reste exclusif, sans quoi
+            // la generation annuelle lancee sur deux classes creerait deux
+            // bulletins pour le meme etudiant.
+            $normalisee = $this->normalizePeriode($periode);
+            $periodesCohorte = $normalisee === 'annuel'
+                ? ['semestre1', 'semestre2']
+                : [$normalisee];
 
-            $notesEtudiantIds = \App\Models\ESBTPNote::whereHas('evaluation', function ($query) use ($classe_id, $annee_universitaire_id) {
-                    $query->where('classe_id', $classe_id)
-                        ->where('annee_universitaire_id', $annee_universitaire_id)
-                        ->where('status', '!=', 'cancelled');
-                })
-                ->pluck('etudiant_id');
+            $cohorteIds = collect($periodesCohorte)->flatMap(
+                fn (string $p) => $include_all_statuses
+                    ? $this->classCohortCounter->etudiantIdsToutesInscriptions((int) $classe_id, (int) $annee_universitaire_id, $p)
+                    : $this->classCohortCounter->etudiantIdsInscriptionsActives((int) $classe_id, (int) $annee_universitaire_id, $p)
+            );
 
-            $resultatsEtudiantIds = \App\Models\ESBTPResultat::where('classe_id', $classe_id)
-                ->where('annee_universitaire_id', $annee_universitaire_id)
-                ->pluck('etudiant_id');
-
-            $allEtudiantIds = $inscriptionEtudiantIds
-                ->merge($notesEtudiantIds)
-                ->merge($resultatsEtudiantIds)
+            // Ces trois sources remplacent une union par les NOTES et les
+            // RESULTATS persistes. Celle-ci ramenait les partis : une specialite
+            // corrigee garde les notes prises avant la correction, et l'etudiant
+            // reapparaissait dans son ANCIENNE classe en plus de la nouvelle.
+            // Les notes disent ou l'on a evalue ; l'appartenance est une autre
+            // question. Consequence assumee : une moyenne saisie a la main dans
+            // une classe ou l'etudiant n'a ni inscription ni phase ne le fait
+            // plus apparaitre -- c'est un etat incoherent, mieux vaut le voir.
+            $allEtudiantIds = $cohorteIds
                 ->unique()
                 ->filter()
                 ->values();

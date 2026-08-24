@@ -56,6 +56,42 @@ class ESBTPResultat extends Model implements Auditable
     }
 
     /**
+     * Moyennes enregistrees pour une periode alors que la matiere n'y a plus
+     * aucune note.
+     *
+     * Une evaluation deplacee d'un semestre a l'autre laisse sa ligne derriere
+     * elle : la generation la reecrit sans jamais l'effacer, le calcul courant
+     * la fusionne comme moyenne manuelle, et la valeur perimee continue de
+     * s'afficher partout sans qu'aucun ecart ne la trahisse.
+     *
+     * La condition vit ICI, et seulement ici : la detection du pre-controle,
+     * l'encart de la page etudiant et la suppression a la demande la lisent
+     * tous trois. Trois copies divergeaient -- l'une en SQL brut ignorait
+     * `deleted_at` et `archived_at`, si bien qu'une ligne deja supprimee
+     * restait comptee et que l'ecran redemandait sans fin la meme suppression.
+     * Passer par ce scope force Eloquent, donc les deux gardes du modele.
+     *
+     * @param  list<string>  $periodes  aliases inclus (periodeAliases)
+     */
+    public function scopeSansNoteSurLaPeriode(Builder $query, int $classeId, int $anneeUniversitaireId, array $periodes): Builder
+    {
+        return $query
+            ->where('esbtp_resultats.classe_id', $classeId)
+            ->where('esbtp_resultats.annee_universitaire_id', $anneeUniversitaireId)
+            ->whereIn('esbtp_resultats.periode', $periodes)
+            ->whereNotExists(fn ($sub) => $sub
+                ->select(\Illuminate\Support\Facades\DB::raw(1))
+                ->from('esbtp_notes as n')
+                ->join('esbtp_evaluations as e', 'e.id', '=', 'n.evaluation_id')
+                ->whereColumn('n.etudiant_id', 'esbtp_resultats.etudiant_id')
+                ->whereColumn('n.matiere_id', 'esbtp_resultats.matiere_id')
+                ->where('e.classe_id', $classeId)
+                ->where('e.annee_universitaire_id', $anneeUniversitaireId)
+                ->where('e.status', '!=', 'cancelled')
+                ->whereIn('e.periode', $periodes));
+    }
+
+    /**
      * La table associée au modèle.
      *
      * @var string

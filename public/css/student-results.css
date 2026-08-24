@@ -2510,3 +2510,23 @@
 .sr-scope-chip i {
     font-size: .68rem;
 }
+
+/* Moyennes restees en base sans note sur la periode. Ton d'alerte : la valeur
+   affichee au-dessus est fausse, et l'ecart officiel/courant ne peut pas le
+   dire puisque les deux la reprennent. */
+.srb-perimees {
+    margin-top: .85rem;
+    padding: .7rem .8rem;
+    border: 1px solid rgba(245, 158, 11, .3);
+    border-radius: 10px;
+    background: rgba(245, 158, 11, .05);
+    display: flex; flex-direction: column; gap: .45rem;
+}
+.srb-perimees__titre {
+    display: flex; align-items: center; gap: .4rem;
+    font-size: .8rem; font-weight: 700; color: #92400e;
+}
+.srb-perimees__texte { margin: 0; font-size: .75rem; line-height: 1.45; color: #78350f; }
+.srb-perimees__liste { margin: 0; padding-left: 1.1rem; font-size: .78rem; color: #1e293b; }
+.srb-perimees__liste li { margin-bottom: .15rem; }
+.srb-perimees .srb-action { align-self: flex-start; margin-top: .2rem; }

@@ -219,6 +219,7 @@ final class BtsBulkBulletinGenerationService
             'blocking_errors' => $blockingErrors,
             'missing_coefficients' => array_values($missingCoefficientBuckets),
             'missing_professeurs' => $missingProfesseurs,
+            'moyennes_sans_note' => $this->moyennesSansNote($classe->id, $academicYearId, $period),
             'configuration_url' => $configurationUrl,
             'message' => $this->preflightMessage($status, $verrouillesVides, $hasHardBlocks, $classe),
         ];
@@ -493,6 +494,49 @@ final class BtsBulkBulletinGenerationService
             'code' => self::ECART_VIDE_VERROUILLE,
             'message' => 'Bulletin publie ou signe mais sans moyenne : deverrouillez-le pour le regenerer.',
         ];
+    }
+
+    /**
+     * Moyennes enregistrees pour cette periode alors que la matiere n'y a plus
+     * aucune note, regroupees par matiere.
+     *
+     * Une evaluation deplacee d'un semestre a l'autre laisse sa ligne derriere
+     * elle : la generation la reecrit sans jamais l'effacer, et la moyenne
+     * continue de s'afficher sur le bulletin. On ne supprime rien ici -- une
+     * moyenne saisie a la main pour une matiere jamais evaluee ressemble
+     * exactement a une ligne perimee. C'est a l'ecole de reconnaitre la
+     * sienne, matiere par matiere, d'ou le regroupement.
+     *
+     * @return array<int, array{matiere_id: int, matiere: string, etudiants: int}>
+     */
+    private function moyennesSansNote(int $classeId, int $academicYearId, string $period): array
+    {
+        // Par le scope du modele, jamais en SQL brut : le brut ignorait
+        // `deleted_at` et `archived_at`, et une ligne deja supprimee restait
+        // comptee -- l'ecran redemandait sans fin la meme suppression.
+        $lignes = \App\Models\ESBTPResultat::query()
+            ->sansNoteSurLaPeriode($classeId, $academicYearId, $this->bulletinService->periodeAliases($period))
+            ->groupBy('matiere_id')
+            ->selectRaw('matiere_id, COUNT(*) as etudiants')
+            ->get();
+
+        if ($lignes->isEmpty()) {
+            return [];
+        }
+
+        $noms = ESBTPMatiere::withTrashed()
+            ->whereIn('id', $lignes->pluck('matiere_id'))
+            ->pluck('name', 'id');
+
+        return $lignes
+            ->map(fn ($l) => [
+                'matiere_id' => (int) $l->matiere_id,
+                'matiere' => $noms[$l->matiere_id] ?? 'Matiere #'.$l->matiere_id,
+                'etudiants' => (int) $l->etudiants,
+            ])
+            ->sortByDesc('etudiants')
+            ->values()
+            ->all();
     }
 
     private function findBulletin(int $studentId, int $classeId, int $academicYearId, string $period): ?ESBTPBulletin

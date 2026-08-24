@@ -263,6 +263,8 @@ window.busCard = function (cfg) {
         studentsRequestSeq: 0,
         preflight: null,
         preflightBusy: false,
+        // Matiere dont on supprime les moyennes sans note, le temps de l'appel.
+        nettoyage: null,
         preflightAbort: null,
         previewIssue: null,
         lastGeneration: null,
@@ -549,6 +551,41 @@ window.busCard = function (cfg) {
                 blocked: false,
                 url: data.resolved_url || `{{ route('esbtp.bulletins.pdf-params-preview') }}?${this.bulletinParams().toString()}`,
             };
+        },
+
+        /**
+         * Supprime les moyennes d'une matiere qui n'a plus de note sur la
+         * periode. Le serveur revalide la condition : si une note est revenue
+         * entre l'affichage et le clic, il ne supprime rien.
+         */
+        async supprimerLesMoyennesSansNote(matiere) {
+            this.nettoyage = matiere.matiere_id;
+            try {
+                const reponse = await fetch(`{{ route('esbtp.bulletins.moyennes-sans-note.destroy') }}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        classe_id: this.form.classe_id,
+                        annee_universitaire_id: this.form.annee_universitaire_id,
+                        periode: this.form.periode,
+                        matiere_id: matiere.matiere_id,
+                    }),
+                });
+                const charge = await this.parseJsonResponse(reponse);
+                if (!reponse.ok) throw new Error(charge.message || `Erreur HTTP ${reponse.status}`);
+
+                this.notify('success', charge.message);
+                this.queuePreflight();
+            } catch (err) {
+                this.notify('error', err.message || 'Suppression impossible.');
+            } finally {
+                this.nettoyage = null;
+            }
         },
 
         queuePreflight() {

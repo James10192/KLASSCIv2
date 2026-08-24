@@ -1307,6 +1307,67 @@ class ESBTPBulletinController extends Controller
             ->with('bulk_bulletin_generation', $result->toArray());
     }
 
+    /**
+     * Supprime les moyennes enregistrees pour une matiere qui n'a plus aucune
+     * note sur la periode, dans une classe.
+     *
+     * Le pre-controle les signale sans jamais les toucher : une moyenne saisie
+     * a la main a exactement la meme apparence qu'une ligne laissee par une
+     * evaluation deplacee d'un semestre a l'autre. La suppression est donc
+     * demandee matiere par matiere, par quelqu'un qui sait laquelle est la
+     * sienne, et jamais deduite.
+     */
+    public function supprimerMoyennesSansNote(Request $request)
+    {
+        $valide = $request->validate([
+            'classe_id' => 'required|integer|exists:esbtp_classes,id',
+            'annee_universitaire_id' => 'required|integer|exists:esbtp_annee_universitaires,id',
+            'periode' => 'required|string',
+            'matiere_id' => 'required|integer|exists:esbtp_matieres,id',
+        ]);
+
+        $periodes = $this->bulletinService->periodeAliases(
+            $this->bulletinService->normalizePeriode($valide['periode'])
+        );
+
+        // La garde « plus aucune note » est REAPPLIQUEE sur la suppression
+        // elle-meme, dans la meme requete SQL : lister puis supprimer par
+        // identifiants laissait une fenetre entre les deux ou une note
+        // reapparue rendait la ligne legitime -- elle doit survivre. Chaque
+        // ligne detruite laisse sa valeur dans `audits` (modele Auditable,
+        // evenement deleted, moyenne dans la whitelist).
+        $requete = ESBTPResultat::query()
+            ->sansNoteSurLaPeriode((int) $valide['classe_id'], (int) $valide['annee_universitaire_id'], $periodes)
+            ->where('matiere_id', $valide['matiere_id']);
+
+        $etudiants = (clone $requete)->pluck('etudiant_id')->all();
+        $supprimees = 0;
+
+        // Suppression modele par modele et non en masse : le delete de masse
+        // contourne les evenements Eloquent, donc l'audit.
+        foreach ((clone $requete)->get() as $ligne) {
+            $supprimees += $ligne->delete() ? 1 : 0;
+        }
+
+        Log::warning('Moyennes sans note supprimees', [
+            'classe_id' => (int) $valide['classe_id'],
+            'annee_universitaire_id' => (int) $valide['annee_universitaire_id'],
+            'periode' => $valide['periode'],
+            'matiere_id' => (int) $valide['matiere_id'],
+            'supprimees' => $supprimees,
+            'etudiants' => $etudiants,
+            'par' => Auth::id(),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'supprimees' => $supprimees,
+            'message' => $supprimees > 0
+                ? "$supprimees moyenne(s) supprimee(s)."
+                : 'Aucune moyenne a supprimer : elles ont retrouve une note.',
+        ]);
+    }
+
     public function preflightClasseBulletins(GenerateClasseBulletinsRequest $request)
     {
         $classe = ESBTPClasse::findOrFail($request->integer('classe_id'));

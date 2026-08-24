@@ -307,6 +307,45 @@
                         @endif
                     @endcan
                 </div>
+
+                {{-- Moyennes restees en base pour une matiere qui n'a plus de
+                     note sur cette periode. Le calcul « courant » les reprend
+                     lui aussi, donc l'officiel et le courant affichent la meme
+                     valeur perimee et l'ecart ci-dessus reste a zero : rien
+                     d'autre sur cette page ne peut le signaler. Regenerer n'y
+                     change rien, la ligne survit a la generation. --}}
+                @if(!empty($moyennesSansNote))
+                    <div class="srb-perimees">
+                        <div class="srb-perimees__titre">
+                            <i class="fas fa-triangle-exclamation"></i>
+                            Moyenne(s) sans note sur cette période
+                        </div>
+                        <p class="srb-perimees__texte">
+                            Ces matières n'ont plus aucune note sur la période, mais leur moyenne reste
+                            enregistrée et compte encore dans le bulletin. C'est ce qui arrive quand une
+                            évaluation est déplacée d'un semestre à l'autre. Régénérer ne les enlève pas.
+                        </p>
+                        <ul class="srb-perimees__liste">
+                            @foreach($moyennesSansNote as $perimee)
+                                <li>
+                                    <strong>{{ $perimee['matiere'] }}</strong>
+                                    @if($perimee['moyenne'] !== null)
+                                        &mdash; {{ number_format((float) $perimee['moyenne'], 2) }}/20
+                                    @endif
+                                </li>
+                            @endforeach
+                        </ul>
+                        @can('bulletins.generate')
+                            <a href="{{ route('esbtp.bulletins.select', array_filter([
+                                    'classe_id' => $classe?->id,
+                                    'periode' => $bulletinWorkflowPeriode,
+                                    'annee_universitaire_id' => $annee_id,
+                                ])) }}" class="srb-action srb-action--outline">
+                                <i class="fas fa-broom"></i> Nettoyer depuis la génération de la classe
+                            </a>
+                        @endcan
+                    </div>
+                @endif
             </div>
         @endif
 

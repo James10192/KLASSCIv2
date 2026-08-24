@@ -2416,6 +2416,15 @@ Route::middleware(['auth', 'permission:admin.access|identity.direct_studies|iden
     Route::get('/esbtp/bulletins/preview', [ESBTPBulletinController::class, 'previewBulletin'])->name('esbtp.bulletins.preview');
     Route::get('/esbtp/bulletins/generer-classe/preflight', [ESBTPBulletinController::class, 'preflightClasseBulletins'])->name('esbtp.bulletins.generer-classe.preflight');
     Route::post('/esbtp/bulletins/generer-classe', [ESBTPBulletinController::class, 'genererClasseBulletins'])->name('esbtp.bulletins.generer-classe');
+    // bulletins.delete et non bulletins.generate : detruire des moyennes
+    // enregistrees est un pouvoir plus etroit que generer des bulletins, et le
+    // registre le distingue deja.
+    // /esbtp-special et non /esbtp/bulletins/... : une route parametree
+    // `esbtp/bulletins/{bulletin}` capturerait « moyennes-sans-note » comme
+    // identifiant de bulletin et repondrait 404.
+    Route::delete('/esbtp-special/bulletins-moyennes-sans-note', [ESBTPBulletinController::class, 'supprimerMoyennesSansNote'])
+        ->middleware(['permission:bulletins.delete', 'throttle:20,1'])
+        ->name('esbtp.bulletins.moyennes-sans-note.destroy');
 
     // Routes spÃ©ciales moyennes
     Route::get('/esbtp-special/bulletins/moyennes-preview', [ESBTPResultatController::class, 'previewMoyennes'])->name('esbtp.bulletins.moyennes-preview');

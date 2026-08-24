@@ -158,17 +158,12 @@ class ESBTPResultatController extends Controller
         $tauxReussite = null;
         $totalBulletins = 0;
 
-        // Calculer rapidement le nombre total d'étudiants sans charger toutes les données
-        if ($classe_id || $annee_universitaire_id) {
-            $studentsCountQuery = $this->bulletinService->buildEtudiantsQuery($classe_id, $annee_universitaire_id, $include_all_statuses);
-            $totalEtudiants = $studentsCountQuery->count();
-
-            Log::info('KPIs calculés pour l\'affichage initial', [
-                'total_etudiants' => $totalEtudiants,
-                'classe_id' => $classe_id,
-                'annee_universitaire_id' => $annee_universitaire_id,
-            ]);
-        }
+        // Aucun comptage ici. Le bandeau affiche `$totalEtudiants` puis l'appel
+        // AJAX qui suit immediatement l'ecrase avec `kpis.total_etudiants`,
+        // calcule sur la meme liste que le tableau. Compter une premiere fois
+        // ne servait qu'a peindre une valeur remplacee une seconde plus tard,
+        // au prix d'un balayage complet des inscriptions de l'annee sur une
+        // page deja lente.
 
         // Variables minimales pour la compatibilité de la vue
         $etudiants = collect(); // Collection vide pour la compatibilité
@@ -1036,6 +1031,20 @@ class ESBTPResultatController extends Controller
             )
             : null;
 
+        // Matieres dont la moyenne persiste alors qu'aucune note ne la porte
+        // plus sur cette periode. Le calcul « courant » les inclut lui aussi --
+        // il fusionne les moyennes enregistrees -- donc aucun ecart n'apparait
+        // entre l'officiel et le courant : les deux affichent la meme valeur
+        // periemee. C'est pourquoi il faut le dire ici explicitement.
+        $moyennesSansNote = $classe
+            ? $this->bulletinService->moyennesSansNotePourEtudiant(
+                (int) $etudiant->id,
+                (int) $classe->id,
+                (int) $annee_universitaire_id,
+                (string) $bulletinWorkflowPeriode
+            )
+            : [];
+
         if ($bulletinConsistency && in_array($periode, ['semestre1', 'semestre2'], true)) {
             $moyenneGenerale = $bulletinConsistency['current_recomputed_raw_total'] ?? $moyenneGenerale;
             $noteAssiduite = $bulletinConsistency['current_recomputed_note_assiduite'] ?? $noteAssiduite;
@@ -1098,6 +1107,7 @@ class ESBTPResultatController extends Controller
             'anneeUniversitaire',
             'notes',
             'notesByMatiere',
+            'moyennesSansNote',
             'annualSubjectBlocks',
             'moyenneGenerale',
             'moyenneAvecAssiduite',
@@ -1139,8 +1149,9 @@ class ESBTPResultatController extends Controller
         $include_all_statuses = $request->get('include_all_statuses', true);
 
         try {
-            // Get students query based on the same logic as resultats method
-            $studentsQuery = $this->bulletinService->buildEtudiantsQuery($classe_id, $annee_universitaire_id, $include_all_statuses);
+            // La periode decide de la cohorte : au semestre 1, une classe de
+            // tronc commun porte encore ses etudiants passes en specialite.
+            $studentsQuery = $this->bulletinService->buildEtudiantsQuery($classe_id, $annee_universitaire_id, $include_all_statuses, $detail_periode);
             $total = (clone $studentsQuery)->count();
             $etudiants = (clone $studentsQuery)->skip(($page - 1) * $perPage)->take($perPage)->get();
             $studentIds = (clone $studentsQuery)->pluck('id');

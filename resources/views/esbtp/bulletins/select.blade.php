@@ -231,6 +231,29 @@
 .bus-inline-panel__list {
     padding-left: 1rem;
 }
+.bus-orphelines {
+    display: flex; flex-direction: column; gap: .5rem;
+    padding: .6rem .7rem;
+    border: 1px solid rgba(245, 158, 11, .3);
+    border-radius: 8px;
+    background: rgba(245, 158, 11, .05);
+}
+.bus-orphelines .bus-inline-panel__body { color: #92400e; }
+.bus-orphelines__liste { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .35rem; }
+.bus-orphelines__ligne {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: .75rem; flex-wrap: wrap;
+    font-size: .78rem; color: var(--bus-text);
+}
+.bus-orphelines__action {
+    border: 1px solid rgba(220, 38, 38, .32);
+    background: #fff; color: var(--bus-danger);
+    border-radius: 7px; padding: .3rem .65rem;
+    font-size: .72rem; font-weight: 600; cursor: pointer;
+    transition: background .15s, border-color .15s;
+}
+.bus-orphelines__action:hover:not(:disabled) { background: rgba(220, 38, 38, .07); border-color: rgba(220, 38, 38, .5); }
+.bus-orphelines__action:disabled { opacity: .55; cursor: wait; }
 .bus-inline-panel__link {
     display: inline-flex;
     align-items: center;
@@ -943,6 +966,43 @@
                             <span x-text="preflight.existing_empty_locked_count"></span>
                             bulletin(s) sans moyenne mais publié(s) ou signé(s) : déverrouillez-les pour les reprendre.
                         </p>
+                    </template>
+                    {{-- Moyennes restees en base pour une matiere qui n'a plus
+                         de note sur la periode. Typiquement une evaluation
+                         deplacee d'un semestre a l'autre : la moyenne continue
+                         de s'afficher sur le bulletin, et regenerer n'y change
+                         rien. On avertit, on ne supprime pas : une moyenne
+                         saisie a la main ressemble exactement a une ligne
+                         perimee, seule l'ecole sait laquelle est la sienne. --}}
+                    <template x-if="(preflight?.moyennes_sans_note?.length || 0) > 0">
+                        <div class="bus-orphelines">
+                            <p class="bus-inline-panel__body">
+                                <i class="fas fa-triangle-exclamation"></i>
+                                Des moyennes restent enregistrées pour des matières qui n'ont plus aucune note
+                                sur cette période. Elles continueront de s'afficher sur les bulletins, et
+                                régénérer ne les enlèvera pas. Vérifiez chaque ligne : une moyenne saisie à la
+                                main a la même apparence.
+                            </p>
+                            <ul class="bus-orphelines__liste">
+                                <template x-for="m in preflight.moyennes_sans_note" :key="m.matiere_id">
+                                    <li class="bus-orphelines__ligne">
+                                        <span>
+                                            <strong x-text="m.matiere"></strong>
+                                            &mdash; <span x-text="m.etudiants"></span> étudiant(s)
+                                        </span>
+                                        @can('bulletins.delete')
+                                        <button type="button"
+                                                class="bus-orphelines__action"
+                                                :disabled="nettoyage === m.matiere_id"
+                                                @click="supprimerLesMoyennesSansNote(m)">
+                                            <span x-show="nettoyage !== m.matiere_id">Supprimer ces moyennes</span>
+                                            <span x-show="nettoyage === m.matiere_id" x-cloak>Suppression…</span>
+                                        </button>
+                                        @endcan
+                                    </li>
+                                </template>
+                            </ul>
+                        </div>
                     </template>
                     <template x-if="preflight?.has_hard_blocks">
                         <button type="button" class="bus-inline-panel__link bus-inline-panel__button" @click="openInlineConfig(preflight)">
