@@ -17,7 +17,12 @@
 @endphp
 
 <div class="dashboard-acasi">
-    <div class="main-content" x-data="bulletinConfiguration(@json($currentStyle), {{ $currentFont }})">
+    {{-- Quotes simples DANS l'attribut double-quote, jamais @json ici : @json
+         rend "yakro" avec des guillemets doubles, le HTML coupait l'attribut au
+         premier d'entre eux et Alpine recevait `bulletinConfiguration(` --
+         SyntaxError, aucune section visible. $currentStyle est un slug
+         controle (yakro|abidjan), pas une donnee libre. --}}
+    <div class="main-content" x-data="bulletinConfiguration('{{ $currentStyle }}', {{ $currentFont }})">
         <div class="bcfg-hero">
             <div class="bcfg-hero-top">
                 <div class="bcfg-hero-left">
