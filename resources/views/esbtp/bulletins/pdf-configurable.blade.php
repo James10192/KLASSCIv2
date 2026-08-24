@@ -254,13 +254,12 @@
             padding: 3px 6px;
             font-size: {{ $typeScale['table'] }}px;
         }
-        /* La parite est marquee a la source ($loop->even) plutot qu'avec
-           nth-child, qui compterait aussi les bandeaux de section et les lignes
-           de synthese du tbody. ATTENTION : la classe .subject-row-even est
-           emise par les boucles mais AUCUNE regle ne la stylise ici, donc le
-           zebrage de ce gabarit ne s'affiche pas. A trancher avec l'ecole avant
-           d'ajouter la regle, pour ne pas changer l'aspect des bulletins Yakro
-           sans son accord. */
+        /* Zebrage : la parite est marquee a la source ($loop->even) plutot
+           qu'avec nth-child, qui compterait aussi les bandeaux de section et
+           les lignes de synthese du tbody et inverserait le rythme selon le
+           nombre de matieres. Teinte plus claire que .summary-row pour rester
+           en second plan. */
+        .subject-row-even td { background-color: #f8fafb; }
 
         /* Absences */
         .absences-table { width: 100%; margin-bottom: 8px; }
