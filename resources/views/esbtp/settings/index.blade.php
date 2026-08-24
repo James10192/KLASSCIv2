@@ -1100,7 +1100,12 @@
             </li>
         </ul>
 
-        <form action="{{ route('esbtp.settings.update') }}" method="POST" enctype="multipart/form-data">
+        {{-- novalidate : la validation vit cote serveur, qui liste ses erreurs
+             dans l'alerte. La validation navigateur, elle, bloque la soumission
+             sur un champ `min` invalide situe dans un onglet CACHE -- « not
+             focusable », aucun message, bouton apparemment mort. C'est le piege
+             classique des formulaires a onglets. --}}
+        <form action="{{ route('esbtp.settings.update') }}" method="POST" enctype="multipart/form-data" novalidate>
             @csrf
             @method('PUT')
             <input type="hidden" name="settings_save_display" value="1">
