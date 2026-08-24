@@ -22,10 +22,10 @@ class BtsClassCohortCounterTest extends TestCase
         $ctx = $this->makeOrientedContext();
         $counter = app(BtsClassCohortCounter::class);
 
-        $this->assertSame(1, $counter->count($ctx['tcClasse']->id, $ctx['annee']->id, 'semestre1'));
-        $this->assertSame(0, $counter->count($ctx['specClasse']->id, $ctx['annee']->id, 'semestre1'));
-        $this->assertSame(0, $counter->count($ctx['tcClasse']->id, $ctx['annee']->id, 'semestre2'));
-        $this->assertSame(1, $counter->count($ctx['specClasse']->id, $ctx['annee']->id, 'semestre2'));
+        $this->assertSame(1, $counter->countPourPeriode($ctx['tcClasse']->id, $ctx['annee']->id, 'semestre1'));
+        $this->assertSame(0, $counter->countPourPeriode($ctx['specClasse']->id, $ctx['annee']->id, 'semestre1'));
+        $this->assertSame(0, $counter->countPourPeriode($ctx['tcClasse']->id, $ctx['annee']->id, 'semestre2'));
+        $this->assertSame(1, $counter->countPourPeriode($ctx['specClasse']->id, $ctx['annee']->id, 'semestre2'));
     }
 
     /**
