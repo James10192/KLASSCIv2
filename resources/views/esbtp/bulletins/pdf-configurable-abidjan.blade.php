@@ -56,7 +56,7 @@
         /* ── Header principal ─────────────────────────────────── */
         .header {
             width: 100%;
-            margin-bottom: 10px;
+            margin-bottom: 6px;
             border: 1.5px solid {{ $pdfPrimary }};
             border-radius: 10px;
             overflow: hidden;
@@ -145,7 +145,7 @@
         /* ── Fiche étudiant ───────────────────────────────────── */
         .student-info {
             width: 100%;
-            margin-bottom: 10px;
+            margin-bottom: 6px;
             border: 1px solid #d1d5db;
             border-radius: 8px;
             background: #fff;
@@ -164,7 +164,7 @@
         }
 
         /* Colonne photo */
-        .student-info-table td:first-child {
+        .student-info-table td.student-photo-cell {
             width: 118px;
             min-width: 118px;
             text-align: center;
@@ -174,7 +174,7 @@
             border-right: 1px solid #e5e7eb;
             display: table-cell;
         }
-        .student-info-table td:first-child img {
+        .student-info-table td.student-photo-cell img {
             width: 90px;
             height: 90px;
             border-radius: 8px;
@@ -196,18 +196,29 @@
             width: 40%;
             vertical-align: top;
         }
-        .info-row { margin-bottom: 4px; font-size: {{ $typeScale['info'] }}px; }
-        /* Largeur en em : suit la taille de police choisie, donc les libelles
-           ne repassent pas sur deux lignes quand l'ecole agrandit le texte. */
-        .info-label {
+        /* Libelle et valeur dans deux cellules d'une meme ligne : c'est le seul
+           montage qui garantit leur alignement sous DomPDF. En inline-block,
+           les deux boites se calaient sur des lignes de base differentes et le
+           texte apparaissait decale. Largeur du libelle en em pour suivre la
+           taille de police choisie par l'ecole. */
+        .info-table { width: 100%; border-collapse: collapse; }
+        .info-table td {
+            border: none;
+            padding: 1px 0;
+            vertical-align: top;
+            font-size: {{ $typeScale['info'] }}px;
+        }
+        /* Selecteurs qualifies par td : `.info-table td` porte deja un padding,
+           et une simple classe (0,1,0) perdrait contre lui (0,1,1). Sans cela la
+           valeur venait coller les deux points du libelle. */
+        .info-table td.info-label {
             font-weight: 700;
-            display: inline-block;
             width: 10.5em;
             white-space: nowrap;
             color: #374151;
-            font-size: {{ $typeScale['info'] }}px;
+            padding: 1px 10px 1px 0;
         }
-        .info-value { color: #111827; font-size: {{ $typeScale['info'] }}px; }
+        .info-table td.info-value { color: #111827; padding: 1px 0; }
 
         /* ── Tableau matières ─────────────────────────────────── */
         table {
@@ -216,9 +227,11 @@
             margin-bottom: 8px;
             font-size: {{ $typeScale['table'] }}px;
         }
+        /* Interligne resserre : a police 14 le document doit tenir sur une
+           seule page, sinon la signature part sur une deuxieme feuille vide. */
         th, td {
             border: 1px solid #d1d5db;
-            padding: 4px 5px;
+            padding: 2px 5px;
             text-align: left;
         }
         th {
@@ -248,10 +261,10 @@
         }
 
         /* Absences */
-        .absences-table { width: 100%; margin-bottom: 8px; }
+        .absences-table { width: 100%; margin-bottom: 6px; }
 
         /* ── Résultats & Statistiques ─────────────────────────── */
-        .results-container { width: 100%; margin-bottom: 10px; }
+        .results-container { width: 100%; margin-bottom: 6px; }
         .results-container-table { width: 100%; border-collapse: collapse; }
         .results-container-table td {
             border: none;
@@ -345,14 +358,14 @@
         /* Distinctions : colonne gauche (3 cases) sous les resultats,
            colonne droite (2 cases) dans la zone vide sous les statistiques.
            Paddings alignes sur .results-left / .results-right (5px). */
-        .mention-columns { border-collapse: collapse; margin-bottom: 8px; table-layout: fixed; }
+        .mention-columns { border-collapse: collapse; margin-bottom: 4px; table-layout: fixed; }
         .mention-col { width: 50%; border: none; vertical-align: top; }
         .mention-col--left { padding: 0 5px 0 0; }
         .mention-col--right { padding: 0 0 0 5px; }
 
         /* ── Décision conseil ─────────────────────────────────── */
         .decision-container {
-            margin: 10px 0;
+            margin: 6px 0;
             border: 1px solid #d1d5db;
             border-radius: 8px;
             padding: 8px 10px;
@@ -371,7 +384,7 @@
 
         /* ── Signature ────────────────────────────────────────── */
         .signature-container {
-            margin-top: 12px;
+            margin-top: 6px;
             text-align: right;
         }
         .signature-box {
@@ -505,7 +518,7 @@
         <div class="student-info">
             <table class="student-info-table">
                 <tr>
-                    <td>
+                    <td class="student-photo-cell">
                         @if(isset($photoEtudiantBase64) && $photoEtudiantBase64)
                             <img src="{{ $photoEtudiantBase64 }}" alt="Photo">
                         @elseif($avatarFallbackBase64)
@@ -513,64 +526,68 @@
                         @endif
                     </td>
                     <td class="info-group">
-                        <div class="info-row">
-                            <span class="info-label">Nom et Prénoms :</span>
-                            <span class="info-value">{{ $etudiant->nom }} {{ $etudiant->prenoms ?? $etudiant->prenom }}</span>
-                        </div>
+                        <table class="info-table">
+                        <tr>
+                                <td class="info-label">Nom et Prénoms :</td>
+                                <td class="info-value">{{ $etudiant->nom }} {{ $etudiant->prenoms ?? $etudiant->prenom }}</td>
+                            </tr>
                         @if(($settings['bulletin_show_birth_date'] ?? '1') == '1')
-                            <div class="info-row">
-                                <span class="info-label">Date de Naissance :</span>
-                                <span class="info-value">{{ $etudiant->date_naissance ? \Carbon\Carbon::parse($etudiant->date_naissance)->format('d/m/Y') : 'Non renseignée' }}</span>
-                            </div>
+                            <tr>
+                                <td class="info-label">Date de Naissance :</td>
+                                <td class="info-value">{{ $etudiant->date_naissance ? \Carbon\Carbon::parse($etudiant->date_naissance)->format('d/m/Y') : 'Non renseignée' }}</td>
+                            </tr>
                         @endif
-                        <div class="info-row">
-                            <span class="info-label">Lieu de Naissance :</span>
-                            <span class="info-value">{{ $etudiant->lieu_naissance ?? 'Non renseigné' }}</span>
-                        </div>
-                        <div class="info-row">
-                            <span class="info-label">Genre :</span>
-                            <span class="info-value">{{ $etudiant->genre == 'M' ? 'Masculin' : 'Féminin' }}</span>
-                        </div>
+                        <tr>
+                                <td class="info-label">Lieu de Naissance :</td>
+                                <td class="info-value">{{ $etudiant->lieu_naissance ?? 'Non renseigné' }}</td>
+                            </tr>
+                        <tr>
+                                <td class="info-label">Genre :</td>
+                                <td class="info-value">{{ $etudiant->genre == 'M' ? 'Masculin' : 'Féminin' }}</td>
+                            </tr>
                         @if(($settings['bulletin_show_redoublant'] ?? '1') == '1')
-                            <div class="info-row">
-                                <span class="info-label">Redoublant :</span>
-                                <span class="info-value">{{ $etudiant->inscriptions->first()->is_redoublant ?? false ? 'Oui' : 'Non' }}</span>
-                            </div>
+                            <tr>
+                                <td class="info-label">Redoublant :</td>
+                                <td class="info-value">{{ $etudiant->inscriptions->first()->is_redoublant ?? false ? 'Oui' : 'Non' }}</td>
+                            </tr>
                         @endif
-                        <div class="info-row">
-                            <span class="info-label">Téléphone :</span>
-                            <span class="info-value">{{ $etudiant->telephone ?? 'Non renseigné' }}</span>
-                        </div>
+                        <tr>
+                                <td class="info-label">Téléphone :</td>
+                                <td class="info-value">{{ $etudiant->telephone ?? 'Non renseigné' }}</td>
+                            </tr>
+                        </table>
                     </td>
                     <td class="info-group">
+                        <table class="info-table">
                         @if(($settings['bulletin_show_matricule'] ?? '1') == '1')
-                            <div class="info-row">
-                                <span class="info-label">Matricule :</span>
-                                <span class="info-value">{{ $etudiant->matricule }}</span>
-                            </div>
+                            <tr>
+                                <td class="info-label">Matricule :</td>
+                                <td class="info-value">{{ $etudiant->matricule }}</td>
+                            </tr>
                         @endif
-                        <div class="info-row">
-                            <span class="info-label">Classe :</span>
-                            <span class="info-value">{{ $classe->libelle ?? $classe->name }}</span>
-                        </div>
+                        <tr>
+                                <td class="info-label">Classe :</td>
+                                <td class="info-value">{{ $classe->libelle ?? $classe->name }}</td>
+                            </tr>
                         @if(!empty($isSpecialisation) && !empty($classeTroncCommun) && ($settings['tronc_commun_bulletin_show_origin'] ?? '1') == '1')
-                        <div class="info-row">
-                            <span class="info-label">Classe S1 (TC) :</span>
-                            <span class="info-value">{{ $classeTroncCommun->libelle ?? $classeTroncCommun->name }}</span>
-                        </div>
+                        <tr>
+                                <td class="info-label">Classe S1 (TC) :</td>
+                                <td class="info-value">{{ $classeTroncCommun->libelle ?? $classeTroncCommun->name }}</td>
+                            </tr>
                         @endif
-                        <div class="info-row">
-                            <span class="info-label">Année d'étude :</span>
-                            <span class="info-value">{{ $classe->niveau->libelle ?? $classe->niveau->name ?? ($classe->annee ?? 'N/A') }}</span>
-                        </div>
-                        <div class="info-row">
-                            <span class="info-label">Filière :</span>
-                            <span class="info-value">{{ $classe->filiere->name ?? 'N/A' }}</span>
-                        </div>
-                        <div class="info-row">
-                            <span class="info-label">Effectif :</span>
-                            <span class="info-value">{{ $effectif }}</span>
-                        </div>
+                        <tr>
+                                <td class="info-label">Année d'étude :</td>
+                                <td class="info-value">{{ $classe->niveau->libelle ?? $classe->niveau->name ?? ($classe->annee ?? 'N/A') }}</td>
+                            </tr>
+                        <tr>
+                                <td class="info-label">Filière :</td>
+                                <td class="info-value">{{ $classe->filiere->name ?? 'N/A' }}</td>
+                            </tr>
+                        <tr>
+                                <td class="info-label">Effectif :</td>
+                                <td class="info-value">{{ $effectif }}</td>
+                            </tr>
+                        </table>
                     </td>
                 </tr>
             </table>
