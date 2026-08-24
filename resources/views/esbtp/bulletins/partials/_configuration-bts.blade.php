@@ -153,6 +153,10 @@
                             <span class="bcfg-toggle-label">Appréciations</span>
                             <input class="form-check-input" type="checkbox" id="bulletin_show_appreciations" name="bulletin_show_appreciations" value="1" {{ ($settings['bulletin_show_appreciations'] ?? '1') == '1' ? 'checked' : '' }}>
                         </label>
+                        <label class="bcfg-toggle" for="bulletin_appreciation_plain">
+                            <span class="bcfg-toggle-label">Appréciations en noir sans couleur de fond</span>
+                            <input class="form-check-input" type="checkbox" id="bulletin_appreciation_plain" name="bulletin_appreciation_plain" value="1" {{ ($settings['bulletin_appreciation_plain'] ?? '0') == '1' ? 'checked' : '' }}>
+                        </label>
                     </div>
                 </div>
             </div>

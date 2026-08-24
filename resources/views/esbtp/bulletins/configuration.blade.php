@@ -122,6 +122,27 @@
                                         <option value="{{ $size }}" {{ $currentFont === $size ? 'selected' : '' }}>{{ $size }} px</option>
                                     @endforeach
                                 </select>
+
+                                <label class="bcfg-label" style="margin-top:.85rem;">Marge haut / bas (mm)</label>
+                                <input type="number" class="bcfg-input" name="bulletin_margin_vertical"
+                                       min="2" max="25" step="1"
+                                       value="{{ $settings['bulletin_margin_vertical'] ?: '5' }}">
+
+                                <label class="bcfg-label" style="margin-top:.85rem;">Marge gauche / droite (mm)</label>
+                                <input type="number" class="bcfg-input" name="bulletin_margin_horizontal"
+                                       min="2" max="25" step="1"
+                                       value="{{ $settings['bulletin_margin_horizontal'] ?: '5' }}">
+                                <div class="bcfg-hint" style="margin-top:.35rem;">Plus la marge est petite, plus le contenu du bulletin est grand. En dessous de 5 mm, certaines imprimantes rognent les bords.</div>
+
+                                <label class="bcfg-label" style="margin-top:.85rem;">Hauteur de la case décision (px)</label>
+                                <input type="number" class="bcfg-input" name="bulletin_decision_min_height"
+                                       min="30" max="200" step="2"
+                                       value="{{ $settings['bulletin_decision_min_height'] ?: '84' }}">
+
+                                <label class="bcfg-label" style="margin-top:.85rem;">Hauteur de l'espace signature (px)</label>
+                                <input type="number" class="bcfg-input" name="bulletin_signature_height"
+                                       min="20" max="160" step="2"
+                                       value="{{ $settings['bulletin_signature_height'] ?: '44' }}">
                             </div>
                             <div class="col-md-8">
                                 <label class="bcfg-label">Aperçu live</label>

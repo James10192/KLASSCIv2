@@ -227,8 +227,13 @@
 
             <div class="bulletin-container" id="bulletin-preview">
                 <div class="top-entete">
-                    <div><strong>{{ \App\Helpers\SettingsHelper::get('bulletin_ministry_text', "Ministere de l'Enseignement Superieur") }}</strong></div>
-                    <div>{{ \App\Helpers\SettingsHelper::get('bulletin_union_text', 'Union - Travail - Progres') }}</div>
+                    @if(\App\Helpers\SettingsHelper::get('bulletin_show_republic_info', '1') == '1')
+                        <div><strong>{{ \App\Helpers\SettingsHelper::get('bulletin_republic_text', 'République de Côte d\'Ivoire') }}</strong></div>
+                        <div>{{ \App\Helpers\SettingsHelper::get('bulletin_union_text', 'Union - Discipline - Travail') }}</div>
+                    @endif
+                    @if(\App\Helpers\SettingsHelper::get('bulletin_show_ministry_info', '1') == '1')
+                        <div><strong>{{ \App\Helpers\SettingsHelper::get('bulletin_ministry_text', "Ministère de l'Enseignement Supérieur et de la Recherche Scientifique") }}</strong></div>
+                    @endif
                 </div>
 
                 @php

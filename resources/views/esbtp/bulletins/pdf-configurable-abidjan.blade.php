@@ -8,6 +8,16 @@
         $pdfHeaderText = $pdfSettings['header_text_color'] ?? '#ffffff';
         $pdfPrimary    = $pdfSettings['primary_color']     ?? $pdfHeaderBg;
         $pdfText       = $pdfSettings['text_color']        ?? '#1f2937';
+        // Meme echelle typographique que le gabarit Yakro : la taille choisie
+        // dans /esbtp/bulletins/configuration pilote tout le document.
+        $typeScale     = \App\Services\BulletinTypography::scale($settings['bulletin_font_size'] ?? 13);
+        // Marges de page reglees dans /esbtp/bulletins/configuration. Les bornes
+        // ecartent seulement les valeurs aberrantes : sous ~5 mm, certaines
+        // imprimantes rognent encore.
+        $marginVertical   = max(2, min(25, (int) ($settings['bulletin_margin_vertical'] ?? 5)));
+        $marginHorizontal = max(2, min(25, (int) ($settings['bulletin_margin_horizontal'] ?? 5)));
+        $decisionHeight   = max(30, min(200, (int) ($settings['bulletin_decision_min_height'] ?? 84)));
+        $signatureHeight  = max(20, min(160, (int) ($settings['bulletin_signature_height'] ?? 44)));
     @endphp
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -17,7 +27,7 @@
         * { box-sizing: border-box; }
         body {
             font-family: DejaVu Sans, Arial, sans-serif;
-            font-size: {{ $settings['bulletin_font_size'] ?? '11' }}px;
+            font-size: {{ $typeScale['body'] }}px;
             margin: 0;
             padding: 0;
             background: #fff;
@@ -35,7 +45,7 @@
         /* ── En-tête institution ──────────────────────────────── */
         .top-entete {
             text-align: center;
-            font-size: 9.5px;
+            font-size: {{ $typeScale['info'] }}px;
             color: #374151;
             padding-bottom: 5px;
             margin-bottom: 8px;
@@ -61,10 +71,11 @@
             border: none;
             padding: 0;
             vertical-align: middle;
+            word-wrap: break-word;
         }
 
         /* Colonne gauche : logo — largeur % explicite requise par DomPDF */
-        .header-logo-cell {
+        .header-table td.header-logo-cell {
             width: 16%;
             padding: 10px 8px 10px 12px;
             vertical-align: middle;
@@ -81,47 +92,55 @@
         }
 
         /* Colonne droite : infos école + titre bulletin — largeur % explicite requise par DomPDF */
-        .header-info-cell {
-            width: 84%;
-            padding: 10px 12px 10px 14px;
-            vertical-align: top;
+        .header-table td.header-school-cell {
+            width: 50%;
+            padding: 10px 10px 10px 14px;
+            vertical-align: middle;
+        }
+        /* Bloc titre a droite, separe par un filet vertical (pas d'encadre) */
+        .header-table td.header-title-cell {
+            width: 34%;
+            padding: 10px 12px 10px 10px;
+            vertical-align: middle;
+            text-align: right;
+            border-left: 1px solid #e5e7eb;
         }
         .school-name {
             font-weight: 700;
-            font-size: 13px;
+            font-size: {{ $typeScale['heading'] }}px;
             color: {{ $pdfPrimary }};
             text-transform: uppercase;
             letter-spacing: 0.04em;
             margin-bottom: 2px;
         }
         .school-contact {
-            font-size: 8.5px;
+            font-size: {{ $typeScale['meta'] }}px;
             color: #4b5563;
             margin-bottom: 6px;
         }
-        .header-divider {
-            height: 1px;
-            background: #e5e7eb;
-            margin: 6px 0;
-        }
         .bulletin-title {
             font-weight: 700;
-            font-size: 13px;
+            font-size: {{ $typeScale['title'] }}px;
             text-transform: uppercase;
             letter-spacing: 0.05em;
             color: {{ $pdfPrimary }};
             margin-bottom: 2px;
         }
         .bulletin-period {
-            font-size: 9.5px;
+            font-size: {{ $typeScale['info'] }}px;
             color: #374151;
             margin-bottom: 1px;
         }
         .academic-year {
-            font-size: 9.5px;
+            font-size: {{ $typeScale['info'] }}px;
             font-weight: 700;
             color: #111827;
         }
+
+        /* Sections critiques : jamais coupees par un saut de page. */
+        .student-info, .header, .results-container, .signature-container,
+        .decision-container, tr.section-header, tr.summary-row,
+        tr.subject-row { page-break-inside: avoid; }
 
         /* ── Fiche étudiant ───────────────────────────────────── */
         .student-info {
@@ -164,29 +183,12 @@
             display: block;
             margin: 0 auto;
         }
-        .avatar-fallback {
-            width: 90px;
-            height: 90px;
-            border-radius: 8px;
-            border: 2px solid {{ $pdfPrimary }};
-            display: table;
-            margin: 0 auto;
-            background: #e5e7eb;
-        }
-        .avatar-fallback span {
-            display: table-cell;
-            vertical-align: middle;
-            text-align: center;
-            font-size: 26px;
-            color: {{ $pdfPrimary }};
-            font-weight: 700;
-        }
-        .matricule-text {
-            margin-top: 5px;
-            font-weight: 700;
-            font-size: 8.5px;
-            text-align: center;
-            color: #374151;
+        /* Date d'edition en bas de page */
+        .edition-footer {
+            margin-top: 10px;
+            font-size: {{ $typeScale['label'] }}px;
+            color: #6b7280;
+            text-align: left;
         }
 
         /* Colonnes infos */
@@ -194,22 +196,22 @@
             width: 40%;
             vertical-align: top;
         }
-        .info-row { margin-bottom: 4px; font-size: 10px; }
+        .info-row { margin-bottom: 4px; font-size: {{ $typeScale['info'] }}px; }
         .info-label {
             font-weight: 700;
             display: inline-block;
             width: 115px;
             color: #374151;
-            font-size: 9.5px;
+            font-size: {{ $typeScale['info'] }}px;
         }
-        .info-value { color: #111827; font-size: 10px; }
+        .info-value { color: #111827; font-size: {{ $typeScale['info'] }}px; }
 
         /* ── Tableau matières ─────────────────────────────────── */
         table {
             width: 100%;
             border-collapse: collapse;
             margin-bottom: 8px;
-            font-size: 9.5px;
+            font-size: {{ $typeScale['table'] }}px;
         }
         th, td {
             border: 1px solid #d1d5db;
@@ -220,22 +222,25 @@
             background: {{ $pdfPrimary }};
             font-weight: 700;
             text-align: center;
-            font-size: 9px;
+            font-size: {{ $typeScale['table_head'] }}px;
             color: #ffffff;
         }
         .center { text-align: center; }
 
-        .section-header {
-            background: {{ $pdfPrimary }};
+        /* DomPDF n'applique pas background-color sur <tr> : il faut viser les
+           <td> enfants. Sans cela le bandeau reste blanc et son texte, qui
+           herite color:#fff, devient invisible (blanc sur blanc). */
+        .section-header td {
+            background-color: {{ $pdfPrimary }};
             color: #ffffff;
             font-weight: 700;
             text-align: center;
             padding: 5px 8px;
-            font-size: 9.5px;
+            font-size: {{ $typeScale['table'] }}px;
         }
-        .subject-row:nth-child(even) { background: #f8fafb; }
-        .summary-row {
-            background: #e5e7eb;
+        .subject-row-even td { background-color: #f8fafb; }
+        .summary-row td {
+            background-color: #e5e7eb;
             font-weight: 700;
         }
 
@@ -261,7 +266,7 @@
         }
         .results-table, .stats-table {
             width: 100%;
-            font-size: 9.5px;
+            font-size: {{ $typeScale['table'] }}px;
             border-collapse: collapse;
             background: #fff;
         }
@@ -269,7 +274,7 @@
             background: {{ $pdfPrimary }};
             color: #ffffff;
             padding: 5px 8px;
-            font-size: 9px;
+            font-size: {{ $typeScale['table_head'] }}px;
             border: none;
             text-align: left;
         }
@@ -292,13 +297,13 @@
             text-align: center;
             font-weight: 700;
             background: #f8fafb;
-            font-size: 10px;
+            font-size: {{ $typeScale['info'] }}px;
         }
         .appreciation-badge {
             display: inline-block;
             border-radius: 4px;
             padding: 2px 5px;
-            font-size: 8.5px;
+            font-size: {{ $typeScale['label'] }}px;
             font-weight: 700;
             white-space: nowrap;
             border: 1px solid #d1d5db;
@@ -317,7 +322,7 @@
             margin-bottom: 4px;
             border: 1px solid #d1d5db;
             border-radius: 6px;
-            font-size: 9px;
+            font-size: {{ $typeScale['table'] }}px;
             background: #fff;
             overflow: hidden;
         }
@@ -329,11 +334,18 @@
             border-right: none;
             border-top: none;
         }
-        .mention-label { font-weight: 600; color: #111827; }
+        .mention-label { font-weight: 600; color: #111827; word-wrap: break-word; }
         .mention-value {
             width: 28px;
             text-align: right;
         }
+        /* Distinctions : colonne gauche (3 cases) sous les resultats,
+           colonne droite (2 cases) dans la zone vide sous les statistiques.
+           Paddings alignes sur .results-left / .results-right (5px). */
+        .mention-columns { border-collapse: collapse; margin-bottom: 8px; table-layout: fixed; }
+        .mention-col { width: 50%; border: none; vertical-align: top; }
+        .mention-col--left { padding: 0 5px 0 0; }
+        .mention-col--right { padding: 0 0 0 5px; }
 
         /* ── Décision conseil ─────────────────────────────────── */
         .decision-container {
@@ -341,14 +353,14 @@
             border: 1px solid #d1d5db;
             border-radius: 8px;
             padding: 8px 10px;
-            min-height: 52px;
+            min-height: {{ $decisionHeight }}px;
             background: #f9fafb;
         }
         .decision-title {
             font-weight: 700;
             margin-bottom: 5px;
             text-transform: uppercase;
-            font-size: 9.5px;
+            font-size: {{ $typeScale['table'] }}px;
             color: {{ $pdfPrimary }};
             border-bottom: 1px solid #e5e7eb;
             padding-bottom: 3px;
@@ -364,10 +376,11 @@
             text-align: center;
             min-width: 200px;
         }
+        /* Espace de signature sans trait : la barre au-dessus du nom du
+           directeur des etudes est retiree sur le gabarit Abidjan. */
         .signature-line {
             width: 200px;
-            height: 44px;
-            border-bottom: 1.5px solid {{ $pdfPrimary }};
+            height: {{ $signatureHeight }}px;
             margin-top: 4px;
         }
 
@@ -375,7 +388,7 @@
         @if($isPdfExport ?? false)
         @page {
             size: A4 portrait;
-            margin: 12mm 10mm;
+            margin: {{ $marginVertical }}mm {{ $marginHorizontal }}mm;
         }
         body.pdf-export {
             margin: 0;
@@ -410,11 +423,12 @@
         @if(($settings['bulletin_show_header'] ?? '1') == '1')
             @if(($settings['bulletin_show_ministry_info'] ?? '1') == '1' || ($settings['bulletin_show_republic_info'] ?? '1') == '1')
                 <div class="top-entete">
-                    @if(($settings['bulletin_show_ministry_info'] ?? '1') == '1')
-                        <div class="line-strong">{{ $settings['bulletin_ministry_text'] ?? "Ministere de l'Enseignement Superieur" }}</div>
-                    @endif
                     @if(($settings['bulletin_show_republic_info'] ?? '1') == '1')
-                        <div>{{ $settings['bulletin_union_text'] ?? 'Union - Travail - Progres' }}</div>
+                        <div class="line-strong">{{ $settings['bulletin_republic_text'] ?? 'République de Côte d\'Ivoire' }}</div>
+                        <div>{{ $settings['bulletin_union_text'] ?? 'Union - Discipline - Travail' }}</div>
+                    @endif
+                    @if(($settings['bulletin_show_ministry_info'] ?? '1') == '1')
+                        <div class="line-strong">{{ $settings['bulletin_ministry_text'] ?? "Ministère de l'Enseignement Supérieur et de la Recherche Scientifique" }}</div>
                     @endif
                 </div>
             @endif
@@ -449,7 +463,7 @@
                                 <img src="{{ $logoBase64 }}" alt="Logo" class="logo">
                             @endif
                         </td>
-                        <td class="header-info-cell">
+                        <td class="header-school-cell">
                             @if(($settings['bulletin_show_school_info'] ?? '1') == '1')
                                 <div class="school-name">
                                     {{ $settings['bulletin_school_name_custom'] ?: $settings['school_name'] }}
@@ -460,7 +474,8 @@
                                     @if($settings['school_email'] ?? null) &bull; {{ $settings['school_email'] }}@endif
                                 </div>
                             @endif
-                            <div class="header-divider"></div>
+                        </td>
+                        <td class="header-title-cell">
                             <div class="bulletin-title">Bulletin de Notes</div>
                             <div class="bulletin-period">
                                 @if($periode == 'semestre1') Premier Semestre
@@ -468,9 +483,6 @@
                                 @else Annuel
                                 @endif
                             </div>
-                            @if(($settings['bulletin_show_edition_date'] ?? '1') == '1')
-                                <div class="bulletin-period">Édition du : {{ $date_edition }}</div>
-                            @endif
                             <div class="academic-year">Année universitaire : {{ $anneeLabel }}</div>
                         </td>
                     </tr>
@@ -480,8 +492,12 @@
 
         {{-- Fiche étudiant --}}
         @php
-            $prenom = $etudiant->prenoms ?? $etudiant->prenom ?? '';
-            $initials = strtoupper(substr($etudiant->nom ?? 'E', 0, 1) . substr($prenom ?: 'T', 0, 1));
+            // Fallback photo : silhouette generique embarquee en base64 (DomPDF-safe),
+            // a la place des initiales.
+            $avatarFallbackPath = public_path('images/placeholders/student-avatar-fallback.png');
+            $avatarFallbackBase64 = is_file($avatarFallbackPath)
+                ? 'data:image/png;base64,'.base64_encode(file_get_contents($avatarFallbackPath))
+                : null;
         @endphp
         <div class="student-info">
             <table class="student-info-table">
@@ -489,11 +505,8 @@
                     <td>
                         @if(isset($photoEtudiantBase64) && $photoEtudiantBase64)
                             <img src="{{ $photoEtudiantBase64 }}" alt="Photo">
-                        @else
-                            <div class="avatar-fallback"><span>{{ $initials }}</span></div>
-                        @endif
-                        @if(($settings['bulletin_show_matricule'] ?? '1') == '1')
-                            <div class="matricule-text">{{ $etudiant->matricule }}</div>
+                        @elseif($avatarFallbackBase64)
+                            <img src="{{ $avatarFallbackBase64 }}" alt="Avatar">
                         @endif
                     </td>
                     <td class="info-group">
@@ -527,6 +540,12 @@
                         </div>
                     </td>
                     <td class="info-group">
+                        @if(($settings['bulletin_show_matricule'] ?? '1') == '1')
+                            <div class="info-row">
+                                <span class="info-label">Matricule :</span>
+                                <span class="info-value">{{ $etudiant->matricule }}</span>
+                            </div>
+                        @endif
                         <div class="info-row">
                             <span class="info-label">Classe :</span>
                             <span class="info-value">{{ $classe->libelle ?? $classe->name }}</span>
@@ -596,7 +615,7 @@
                     @if(($settings['bulletin_show_general_subjects'] ?? '1') == '1')
                         @if(isset($resultatsGeneraux) && $resultatsGeneraux->count() > 0)
                             @foreach($resultatsGeneraux as $resultat)
-                                <tr class="subject-row">
+                                <tr class="subject-row{{ $loop->even ? ' subject-row-even' : '' }}">
                                     <td>{{ $resultat->matiere->name ?? $resultat->matiere->nom ?? 'N/A' }}</td>
                                     @if($showSubjectAverage)<td class="center">{{ number_format($resultat->moyenne, 2) }}</td>@endif
                                     @if($showCoefficient)<td class="center">{{ $resultat->coefficient }}</td>@endif
@@ -633,7 +652,7 @@
                         </tr>
                         @if(isset($resultatsTechniques) && $resultatsTechniques->count() > 0)
                             @foreach($resultatsTechniques as $resultat)
-                                <tr class="subject-row">
+                                <tr class="subject-row{{ $loop->even ? ' subject-row-even' : '' }}">
                                     <td>{{ $resultat->matiere->name ?? $resultat->matiere->nom ?? 'N/A' }}</td>
                                     @if($showSubjectAverage)<td class="center">{{ number_format($resultat->moyenne, 2) }}</td>@endif
                                     @if($showCoefficient)<td class="center">{{ $resultat->coefficient }}</td>@endif
@@ -791,29 +810,6 @@
                                 </table>
                             </div>
 
-                            @if(($settings['bulletin_show_mentions'] ?? '1') == '1')
-                                <div style="margin-top: 8px;">
-                                    @if(($settings['bulletin_show_felicitation'] ?? '1') == '1')
-                                        @php $felicitationThreshold = floatval($settings['bulletin_felicitation_threshold'] ?? 16); $isChecked = ($settings['bulletin_auto_calculate_mention'] ?? '1') == '1' ? ($moyenneGlobale >= $felicitationThreshold) : false; @endphp
-                                        <div class="mention-box"><table class="mention-table"><tr><td class="mention-label">Félicitation</td><td class="mention-value"><input type="checkbox" {{ $isChecked ? 'checked' : '' }}></td></tr></table></div>
-                                    @endif
-                                    @if(($settings['bulletin_show_encouragement'] ?? '1') == '1')
-                                        @php $encouragementThreshold = floatval($settings['bulletin_encouragement_threshold'] ?? 14); $felicitationThreshold = floatval($settings['bulletin_felicitation_threshold'] ?? 16); $isChecked = ($settings['bulletin_auto_calculate_mention'] ?? '1') == '1' ? ($moyenneGlobale >= $encouragementThreshold && $moyenneGlobale < $felicitationThreshold) : false; @endphp
-                                        <div class="mention-box"><table class="mention-table"><tr><td class="mention-label">Encouragement</td><td class="mention-value"><input type="checkbox" {{ $isChecked ? 'checked' : '' }}></td></tr></table></div>
-                                    @endif
-                                    @if(($settings['bulletin_show_honor_roll'] ?? '1') == '1')
-                                        @php $honorRollThreshold = floatval($settings['bulletin_honor_roll_threshold'] ?? 12); $encouragementThreshold = floatval($settings['bulletin_encouragement_threshold'] ?? 14); $isChecked = ($settings['bulletin_auto_calculate_mention'] ?? '1') == '1' ? ($moyenneGlobale >= $honorRollThreshold && $moyenneGlobale < $encouragementThreshold) : false; @endphp
-                                        <div class="mention-box"><table class="mention-table"><tr><td class="mention-label">Tableau d'honneur</td><td class="mention-value"><input type="checkbox" {{ $isChecked ? 'checked' : '' }}></td></tr></table></div>
-                                    @endif
-                                    @if(($settings['bulletin_show_work_warning'] ?? '1') == '1')
-                                        @php $workWarningThreshold = floatval($settings['bulletin_work_warning_threshold'] ?? 8); $isChecked = ($settings['bulletin_auto_calculate_mention'] ?? '1') == '1' ? ($moyenneGlobale >= $workWarningThreshold && $moyenneGlobale < 10) : false; @endphp
-                                        <div class="mention-box"><table class="mention-table"><tr><td class="mention-label">Avertissement (Travail)</td><td class="mention-value"><input type="checkbox" {{ $isChecked ? 'checked' : '' }}></td></tr></table></div>
-                                    @endif
-                                    @if(($settings['bulletin_show_conduct_blame'] ?? '1') == '1')
-                                        <div class="mention-box"><table class="mention-table"><tr><td class="mention-label">Blâme (Conduite)</td><td class="mention-value"><input type="checkbox"></td></tr></table></div>
-                                    @endif
-                                </div>
-                            @endif
                         </td>
 
                         @if(($settings['bulletin_show_statistics'] ?? '1') == '1')
@@ -841,6 +837,49 @@
                     </tr>
                 </table>
             </div>
+
+            {{-- Distinctions : 3 cases sous les resultats, 2 cases a droite dans
+                 la zone vide sous les statistiques (disposition validee ecole). --}}
+            @if(($settings['bulletin_show_mentions'] ?? '1') == '1')
+                @php
+                    $autoMention = ($settings['bulletin_auto_calculate_mention'] ?? '1') == '1';
+                    $felicitationThreshold = floatval($settings['bulletin_felicitation_threshold'] ?? 16);
+                    $encouragementThreshold = floatval($settings['bulletin_encouragement_threshold'] ?? 14);
+                    $honorRollThreshold = floatval($settings['bulletin_honor_roll_threshold'] ?? 12);
+                    $workWarningThreshold = floatval($settings['bulletin_work_warning_threshold'] ?? 8);
+
+                    $mentionItems = [];
+                    if (($settings['bulletin_show_felicitation'] ?? '1') == '1') {
+                        $mentionItems[] = ['label' => 'Félicitation', 'checked' => $autoMention && $moyenneGlobale >= $felicitationThreshold];
+                    }
+                    if (($settings['bulletin_show_encouragement'] ?? '1') == '1') {
+                        $mentionItems[] = ['label' => 'Encouragement', 'checked' => $autoMention && $moyenneGlobale >= $encouragementThreshold && $moyenneGlobale < $felicitationThreshold];
+                    }
+                    if (($settings['bulletin_show_honor_roll'] ?? '1') == '1') {
+                        $mentionItems[] = ['label' => "Tableau d'honneur", 'checked' => $autoMention && $moyenneGlobale >= $honorRollThreshold && $moyenneGlobale < $encouragementThreshold];
+                    }
+                    if (($settings['bulletin_show_work_warning'] ?? '1') == '1') {
+                        $mentionItems[] = ['label' => 'Avertissement (Travail)', 'checked' => $autoMention && $moyenneGlobale >= $workWarningThreshold && $moyenneGlobale < 10];
+                    }
+                    if (($settings['bulletin_show_conduct_blame'] ?? '1') == '1') {
+                        $mentionItems[] = ['label' => 'Blâme (Conduite)', 'checked' => false];
+                    }
+                @endphp
+                @php $mentionSplit = (int) ceil(count($mentionItems) / 2); @endphp
+                @if(count($mentionItems) > 0)
+                    <table class="mention-columns">
+                        <tr>
+                            @foreach(['left' => array_slice($mentionItems, 0, $mentionSplit), 'right' => array_slice($mentionItems, $mentionSplit)] as $cote => $colonne)
+                                <td class="mention-col mention-col--{{ $cote }}">
+                                    @foreach($colonne as $item)
+                                        <div class="mention-box"><table class="mention-table"><tr><td class="mention-label">{{ $item['label'] }}</td><td class="mention-value"><input type="checkbox" {{ $item['checked'] ? 'checked' : '' }}></td></tr></table></div>
+                                    @endforeach
+                                </td>
+                            @endforeach
+                        </tr>
+                    </table>
+                @endif
+            @endif
         @endif
 
         @php
@@ -850,7 +889,7 @@
         @if(($settings['bulletin_show_council_decision'] ?? '1') == '1')
             <div class="decision-container">
                 <div class="decision-title">{{ $councilDecision['title'] ?? 'Décision du conseil de classe' }}</div>
-                <div style="min-height: 36px; font-size: 10px;">{{ $decisionConseil ?? $councilDecision['text'] ?? $bulletin->decision_conseil ?? '' }}</div>
+                <div style="min-height: {{ max(20, $decisionHeight - 20) }}px; font-size: {{ $typeScale['decision'] }}px;">{{ $decisionConseil ?? $councilDecision['text'] ?? $bulletin->decision_conseil ?? '' }}</div>
             </div>
         @endif
 
@@ -862,13 +901,18 @@
             @endphp
             <div class="signature-container">
                 <div class="signature-box">
-                    <div style="font-size: 10px;">{{ $directorTitle }}</div>
+                    <div style="font-size: {{ $typeScale['signature'] }}px;">{{ $directorTitle }}</div>
                     <div class="signature-line"></div>
                     @if($directorName)
-                        <div style="margin-top: 4px; font-weight: 700; font-size: 9.5px;">{{ $directorName }}</div>
+                        <div style="margin-top: 4px; font-weight: 700; font-size: {{ $typeScale['signature'] }}px;">{{ $directorName }}</div>
                     @endif
                 </div>
             </div>
+        @endif
+
+        {{-- Date d'edition en bas de page (retiree de l'en-tete) --}}
+        @if(($settings['bulletin_show_edition_date'] ?? '1') == '1')
+            <div class="edition-footer">Édition du : {{ $date_edition }}</div>
         @endif
 
     </div>

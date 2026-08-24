@@ -2206,6 +2206,7 @@ class ESBTPBulletinController extends Controller
                 'bulletin_show_coefficient',
                 'bulletin_show_teachers',
                 'bulletin_show_appreciations',
+                'bulletin_appreciation_plain',
                 'bulletin_show_general_average',
                 'bulletin_show_technical_average',
                 'bulletin_show_global_average',
@@ -2237,6 +2238,10 @@ class ESBTPBulletinController extends Controller
             // Liste de tous les paramètres de bulletin (BTS + LMD)
             $allBulletinFields = array_merge($checkboxFields, [
                 'bulletin_font_size',
+                'bulletin_margin_vertical',
+                'bulletin_margin_horizontal',
+                'bulletin_decision_min_height',
+                'bulletin_signature_height',
                 'bulletin_school_name_custom',
                 'bulletin_republic_text',
                 'bulletin_union_text',

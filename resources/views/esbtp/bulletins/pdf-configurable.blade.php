@@ -254,8 +254,13 @@
             padding: 3px 6px;
             font-size: {{ $typeScale['table'] }}px;
         }
-        /* :nth-child n'est pas supporté par DomPDF — on utilise .subject-row-even
-           posée via $loop->even dans le template Blade (voir tbody ci-dessous). */
+        /* La parite est marquee a la source ($loop->even) plutot qu'avec
+           nth-child, qui compterait aussi les bandeaux de section et les lignes
+           de synthese du tbody. ATTENTION : la classe .subject-row-even est
+           emise par les boucles mais AUCUNE regle ne la stylise ici, donc le
+           zebrage de ce gabarit ne s'affiche pas. A trancher avec l'ecole avant
+           d'ajouter la regle, pour ne pas changer l'aspect des bulletins Yakro
+           sans son accord. */
 
         /* Absences */
         .absences-table { width: 100%; margin-bottom: 8px; }

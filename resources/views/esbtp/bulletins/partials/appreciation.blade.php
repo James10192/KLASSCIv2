@@ -6,9 +6,12 @@
         $emptyLabel ?? '-'
     );
     $badgeClass = $badgeClass ?? null;
+    // Setting instance : appreciations en noir sans couleur de fond
+    // (jamais hardcode, l'ecole choisit dans /esbtp/bulletins/configuration).
+    $plainAppreciation = \App\Helpers\SettingsHelper::get('bulletin_appreciation_plain', '0') == '1';
 @endphp
 
-@if($badgeClass)
+@if($badgeClass && ! $plainAppreciation)
     <span class="{{ $badgeClass }} {{ $badgeClass }}--{{ $appreciationScale->toneFor($classification['slug']) }}">{{ $classification['label'] }}</span>
 @else
     {{ $classification['label'] }}
