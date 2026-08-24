@@ -87,6 +87,15 @@ class CLIMaintenanceController extends BaseApiController
         if ($request->boolean('clean_resultats')) {
             $params['--clean-resultats'] = true;
         }
+        // Perimetre du nettoyage : sans lui la commande balaie l'ecole entiere.
+        foreach (['matiere', 'classe', 'periode', 'niveau', 'filiere'] as $portee) {
+            if ($request->filled($portee)) {
+                $params['--'.$portee] = $request->input($portee);
+            }
+        }
+        if ($request->boolean('liste')) {
+            $params['--liste'] = true;
+        }
 
         try {
             $exitCode = Artisan::call('evaluations:sync-notes', $params);
