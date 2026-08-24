@@ -120,6 +120,7 @@ class ESBTPInscription extends Model implements Auditable
         'affectation_status', // Nouveau: statut d'affectation (affecté, réaffecté, non_affecté)
         'date_inscription',
         'type_inscription', // Première inscription, réinscription, etc.
+        'is_redoublant', // Réinscription sur le même niveau d'étude
         'status', // active, annulée, etc.
         'is_sous_reserve', // Inscription conditionnelle (ex: sous réserve du BAC)
         'condition_reserve', // Motif de la réserve (ex: BACCALAURÉAT)
@@ -163,6 +164,7 @@ class ESBTPInscription extends Model implements Auditable
         'is_sous_reserve' => 'boolean',
         'affectation_status' => 'string',
         'est_transfert' => 'boolean',
+        'is_redoublant' => 'boolean',
     ];
 
     // Constants for affectation status

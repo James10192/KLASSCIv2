@@ -410,6 +410,13 @@ class ReeinscriptionService
 
             $nouvelleClasse = ESBTPClasse::findOrFail($nouvelleClasseId);
 
+            // Rester sur le meme niveau d'etude, c'est redoubler. C'est le seul
+            // endroit du domaine ou cette information peut etre etablie de facon
+            // fiable : la regle « nombre maximum de redoublements » s'appuiera
+            // dessus, et les bulletins l'affichent deja.
+            $estRedoublement = $inscriptionActuelle->niveau_id !== null
+                && (int) $inscriptionActuelle->niveau_id === (int) $nouvelleClasse->niveau_etude_id;
+
         // 4. Créer nouvelle inscription
 
         $nouvelleInscription = \App\Models\ESBTPInscription::create([
@@ -422,6 +429,7 @@ class ReeinscriptionService
                 'montant_scolarite' => 0, // À définir plus tard comme les autres inscriptions
                 'frais_inscription' => 0, // À définir plus tard
                 'type_inscription' => 'reinscription',
+                'is_redoublant' => $estRedoublement,
                 'date_inscription' => now(),
                 'status' => 'active',
                 'workflow_step' => 'documents_complets',
@@ -636,15 +644,25 @@ class ReeinscriptionService
         }
     }
 
+    /**
+     * Regle de repli, en memoire uniquement.
+     *
+     * Cette methode est appelee depuis un chemin de LECTURE (analyse de la
+     * situation d'un etudiant). Elle creait auparavant une ligne en base a
+     * chaque consultation d'un couple niveau/filiere non configure, ce qui
+     * peuplait esbtp_regles_academiques de regles fantomes que personne
+     * n'avait saisies, avec des seuils inventes. On retourne desormais une
+     * instance non persistee : l'ecole reste seule a decider de ses regles
+     * depuis /esbtp/reinscriptions/regles.
+     */
     private function creerRegleParDefaut($niveau, $filiere)
     {
-        \Log::info("Création automatique d'une règle académique", [
+        \Log::info("Aucune règle académique configurée, application des valeurs de repli", [
             'niveau' => $niveau,
             'filiere' => $filiere
         ]);
 
-        // Créer une règle académique avec des valeurs par défaut sensées
-        $regle = ESBTPRegleAcademique::create([
+        $regle = new ESBTPRegleAcademique([
             'niveau' => $niveau,
             'filiere' => $filiere,
             'moyenne_passage' => 12.00, // Moyenne classique pour passer
@@ -652,7 +670,7 @@ class ReeinscriptionService
             'max_matieres_rattrapage' => 3, // Maximum 3 matières en rattrapage
             'autoriser_redoublement' => true,
             'max_redoublements' => 2, // Maximum 2 redoublements
-            'conditions_speciales' => 'Règle créée automatiquement - À ajuster selon les besoins',
+            'conditions_speciales' => 'Valeurs de repli - aucune règle configurée pour ce niveau et cette filière',
             'actif' => true
         ]);
 

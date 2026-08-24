@@ -52,7 +52,6 @@ use App\Http\Controllers\ESBTPStudentInscriptionRepairController;
 use App\Http\Controllers\InstallController;
 use App\Http\Controllers\NavbarController;
 use App\Http\Controllers\SearchController;
-use App\Http\Controllers\StudentProgressionController;
 use App\Http\Controllers\TeacherController;
 use App\Http\Controllers\TeacherDashboardController;
 use App\Http\Controllers\TimetableController;
@@ -1578,11 +1577,8 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
         Route::get('/unread-count', [ESBTPNotificationController::class, 'getUnreadCount'])->name('notifications.unreadCount');
     });
 
-    // Student Progression Routes
+    // Parametres d'etablissement et reglages avances
     Route::prefix('esbtp')->middleware(['auth', 'permission:admin.access|identity.direct_studies|identity.registrar|identity.registrar_clerk', 'paywall'])->group(function () {
-        Route::get('/progression', [StudentProgressionController::class, 'index'])->name('esbtp.progression.index');
-        Route::get('/api/progression/recommendations/{classe}/{annee}', [StudentProgressionController::class, 'getRecommendations'])->name('esbtp.progression.recommendations');
-        Route::post('/api/progression/process', [StudentProgressionController::class, 'processProgression'])->name('esbtp.progression.process');
 
         // ESBTP Settings Routes (require manage_system)
         Route::middleware(['permission:system.manage'])->group(function () {
