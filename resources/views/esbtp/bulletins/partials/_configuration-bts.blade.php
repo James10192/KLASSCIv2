@@ -120,6 +120,42 @@
                 </div>
             </div>
 
+            {{-- Ces options etaient enregistrees par le controleur sans avoir de
+                 controle ici : chaque sauvegarde les remettait a zero en silence
+                 et rien ne permettait de les reactiver. --}}
+            <div class="bcfg-card">
+                <div class="bcfg-card-header">
+                    <div class="bcfg-section-header">
+                        <div class="bcfg-section-icon"><i class="fas fa-id-card"></i></div>
+                        <div>
+                            <h3>Fiche étudiant et identité</h3>
+                            <p>Blocs affichés en haut du bulletin, autour de la photo.</p>
+                        </div>
+                    </div>
+                    <span class="bcfg-card-badge">9 toggles</span>
+                </div>
+                <div class="bcfg-card-body">
+                    <div class="bcfg-toggles">
+                        @foreach([
+                            'bulletin_show_school_info'   => "Nom et coordonnées de l'école",
+                            'bulletin_show_edition_date'  => "Date d'édition (bas de page)",
+                            'bulletin_show_student_info'  => 'Bloc identité étudiant',
+                            'bulletin_show_matricule'     => 'Matricule',
+                            'bulletin_show_birth_date'    => 'Date de naissance',
+                            'bulletin_show_redoublant'    => 'Redoublant',
+                            'bulletin_show_class_info'    => 'Classe et filière',
+                            'bulletin_show_effectif'      => 'Effectif de la classe',
+                            'bulletin_show_global_average' => 'Moyenne globale',
+                        ] as $champ => $libelle)
+                            <label class="bcfg-toggle" for="{{ $champ }}">
+                                <span class="bcfg-toggle-label">{{ $libelle }}</span>
+                                <input class="form-check-input" type="checkbox" id="{{ $champ }}" name="{{ $champ }}" value="1" {{ ($settings[$champ] ?? '1') == '1' ? 'checked' : '' }}>
+                            </label>
+                        @endforeach
+                    </div>
+                </div>
+            </div>
+
             <div class="bcfg-card">
                 <div class="bcfg-card-header">
                     <div class="bcfg-section-header">

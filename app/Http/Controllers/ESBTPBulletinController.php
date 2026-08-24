@@ -2295,8 +2295,20 @@ class ESBTPBulletinController extends Controller
             $treatMissingCheckboxesAsOff = $request->boolean('bulletin_save_display');
 
             if ($treatMissingCheckboxesAsOff) {
-                foreach ($checkboxFields as $field) {
+                // Le formulaire annonce qu'il porte les cases d'affichage, mais il
+                // n'en rend pas forcement la totalite. Balayer aveuglement mettait
+                // a zero, en silence, les reglages sans controle dans l'UI (nom de
+                // l'ecole, matricule...) sans aucun moyen de les reactiver.
+                $renderedCheckboxes = array_filter(
+                    $checkboxFields,
+                    fn (string $field) => $request->exists($field) || $request->exists($field.'_present')
+                );
+                $sweep = $renderedCheckboxes !== [] ? $renderedCheckboxes : $checkboxFields;
+                foreach ($sweep as $field) {
                     $bulletinSettings[$field] = $request->boolean($field) ? '1' : '0';
+                }
+                foreach (array_diff($checkboxFields, $sweep) as $field) {
+                    unset($bulletinSettings[$field]);
                 }
             } else {
                 foreach ($submittedCheckboxFields as $field) {

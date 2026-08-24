@@ -197,10 +197,13 @@
             vertical-align: top;
         }
         .info-row { margin-bottom: 4px; font-size: {{ $typeScale['info'] }}px; }
+        /* Largeur en em : suit la taille de police choisie, donc les libelles
+           ne repassent pas sur deux lignes quand l'ecole agrandit le texte. */
         .info-label {
             font-weight: 700;
             display: inline-block;
-            width: 115px;
+            width: 10.5em;
+            white-space: nowrap;
             color: #374151;
             font-size: {{ $typeScale['info'] }}px;
         }
