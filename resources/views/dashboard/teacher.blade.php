@@ -994,16 +994,12 @@ $(document).ready(function() {
         }, 500);
     });
 
-    // Auto-refresh dashboard every 2 minutes to update course statuses
-    setInterval(function() {
-        // Only refresh if no modals are open and no forms are being filled
-        const modals = document.querySelectorAll('.modal.show');
-        const activeInputs = document.querySelectorAll('input:focus, textarea:focus, select:focus');
-        
-        if (modals.length === 0 && activeInputs.length === 0) {
-            window.location.reload();
-        }
-    }, 120000); // 2 minutes
+    // Pas de rechargement automatique. Ce bloc rechargeait la page toutes les
+    // deux minutes ; il n'avait jamais tourne (script perdu par @section) et
+    // son reveil aurait fait perdre position et lecture a tous les enseignants
+    // sur leur page d'atterrissage. Un enseignant qui lit ou scrolle n'est ni
+    // un modal ouvert ni un champ en focus : la garde ne protegeait rien.
+    // (rule no-full-reload-on-state-change)
 
     // Add visual countdown for expiring courses/attendance windows
     function updateTimeBasedElements() {

@@ -507,19 +507,18 @@ class ESBTPSettingsController extends Controller
                         // — ex: current_academic_year qui ne sert plus, l'année courante
                         // venant de esbtp_annee_universitaires.is_current). Pas de
                         // modification = pas de raison de re-valider.
-                        // Comparer au brut ET au caste. Le formulaire affiche la
-                        // valeur CASTEE (Setting::get) : une base qui porte ''
-                        // pour un setting de type integer s'affiche « 0 », le
-                        // navigateur renvoie « 0 », et la comparaison au seul
-                        // brut '' ne matchait jamais. La validation tournait
-                        // alors sur une valeur que l'utilisateur n'a pas
-                        // touchee, et CHAQUE enregistrement de la page echouait
-                        // sur les memes cinq reglages PDF a zero, quel que soit
-                        // le champ modifie.
+                        // La comparaison reste sur le BRUT. Une version comparait
+                        // aussi au caste pour absorber les settings integer qui
+                        // portaient '' en base (affiches « 0 », renvoyes « 0 »,
+                        // jamais egaux au brut, donc echec permanent de la
+                        // page) : mais castValue rend un TABLEAU pour les types
+                        // json, et le (string) plantait tout l'enregistrement
+                        // en rollback muet. La donnee sale est reparee par
+                        // migration (les integer vides valent '0') ; la garde
+                        // n'a plus a la compenser.
                         $currentValue = (string) ($setting->value ?? '');
-                        $currentCastee = (string) (Setting::castValue($setting->value, $setting->type) ?? '');
                         $newValue = $value === null ? '' : (string) $value;
-                        if ($newValue === $currentValue || $newValue === $currentCastee) {
+                        if ($currentValue === $newValue) {
                             continue;
                         }
 

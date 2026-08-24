@@ -265,6 +265,9 @@ window.busCard = function (cfg) {
         preflightBusy: false,
         // Matiere dont on supprime les moyennes sans note, le temps de l'appel.
         nettoyage: null,
+        // Matiere dont le bouton de suppression est arme (premier clic donne).
+        nettoyageArme: null,
+        _desarmement: null,
         preflightAbort: null,
         previewIssue: null,
         lastGeneration: null,
@@ -553,12 +556,21 @@ window.busCard = function (cfg) {
             };
         },
 
+        /** Premier clic : armer le bouton, qui se desarme seul apres 5 s. */
+        armerLeNettoyage(matiere) {
+            this.nettoyageArme = matiere.matiere_id;
+            clearTimeout(this._desarmement);
+            this._desarmement = setTimeout(() => { this.nettoyageArme = null; }, 5000);
+        },
+
         /**
-         * Supprime les moyennes d'une matiere qui n'a plus de note sur la
-         * periode. Le serveur revalide la condition : si une note est revenue
-         * entre l'affichage et le clic, il ne supprime rien.
+         * Second clic : supprime les moyennes d'une matiere qui n'a plus de
+         * note sur la periode. Le serveur revalide la condition : si une note
+         * est revenue entre l'affichage et le clic, il ne supprime rien.
          */
         async supprimerLesMoyennesSansNote(matiere) {
+            clearTimeout(this._desarmement);
+            this.nettoyageArme = null;
             this.nettoyage = matiere.matiere_id;
             try {
                 const reponse = await fetch(`{{ route('esbtp.bulletins.moyennes-sans-note.destroy') }}`, {

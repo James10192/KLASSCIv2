@@ -254,6 +254,11 @@
 }
 .bus-orphelines__action:hover:not(:disabled) { background: rgba(220, 38, 38, .07); border-color: rgba(220, 38, 38, .5); }
 .bus-orphelines__action:disabled { opacity: .55; cursor: wait; }
+.bus-orphelines__action--arme {
+    background: var(--bus-danger); color: #fff;
+    border-color: var(--bus-danger);
+}
+.bus-orphelines__action--arme:hover:not(:disabled) { background: #b91c1c; border-color: #b91c1c; }
 .bus-inline-panel__link {
     display: inline-flex;
     align-items: center;
@@ -991,12 +996,22 @@
                                             &mdash; <span x-text="m.etudiants"></span> étudiant(s)
                                         </span>
                                         @can('bulletins.delete')
+                                        {{-- Confirmation en deux temps, sans window.confirm :
+                                             le premier clic arme le bouton et nomme ce qui va
+                                             etre detruit, le second execute. Le bouton se
+                                             desarme seul apres cinq secondes. --}}
                                         <button type="button"
                                                 class="bus-orphelines__action"
+                                                :class="nettoyageArme === m.matiere_id ? 'bus-orphelines__action--arme' : ''"
                                                 :disabled="nettoyage === m.matiere_id"
-                                                @click="supprimerLesMoyennesSansNote(m)">
-                                            <span x-show="nettoyage !== m.matiere_id">Supprimer ces moyennes</span>
+                                                @click="nettoyageArme === m.matiere_id
+                                                    ? supprimerLesMoyennesSansNote(m)
+                                                    : armerLeNettoyage(m)">
                                             <span x-show="nettoyage === m.matiere_id" x-cloak>Suppression…</span>
+                                            <span x-show="nettoyage !== m.matiere_id && nettoyageArme === m.matiere_id" x-cloak>
+                                                Confirmer : effacer <span x-text="m.etudiants"></span> moyenne(s) de <span x-text="m.matiere"></span>
+                                            </span>
+                                            <span x-show="nettoyage !== m.matiere_id && nettoyageArme !== m.matiere_id">Supprimer ces moyennes</span>
                                         </button>
                                         @endcan
                                     </li>
