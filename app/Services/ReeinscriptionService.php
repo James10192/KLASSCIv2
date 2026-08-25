@@ -34,7 +34,7 @@ class ReeinscriptionService
         
         // Si toujours pas de règle, créer une règle par défaut
         if (!$regle) {
-            $regle = $this->creerRegleParDefaut($niveauNom, $filiereNom);
+            $regle = $this->regleDeRepli($niveauNom, $filiereNom);
         }
 
         $notes = $this->getNotesEtudiant($etudiantId, $anneeAcademique);
@@ -75,7 +75,7 @@ class ReeinscriptionService
 
         // Si toujours pas de règle, créer une règle par défaut
         if (!$regle) {
-            $regle = $this->creerRegleParDefaut($niveauNom, $filiereNom);
+            $regle = $this->regleDeRepli($niveauNom, $filiereNom);
         }
 
         $notes = $this->getNotesEtudiant($etudiant->id, $anneeAcademique);
@@ -410,12 +410,24 @@ class ReeinscriptionService
 
             $nouvelleClasse = ESBTPClasse::findOrFail($nouvelleClasseId);
 
-            // Rester sur le meme niveau d'etude, c'est redoubler. C'est le seul
-            // endroit du domaine ou cette information peut etre etablie de facon
-            // fiable : la regle « nombre maximum de redoublements » s'appuiera
-            // dessus, et les bulletins l'affichent deja.
-            $estRedoublement = $inscriptionActuelle->niveau_id !== null
-                && (int) $inscriptionActuelle->niveau_id === (int) $nouvelleClasse->niveau_etude_id;
+            // Le redoublement se juge par rapport a l'annee QUITTEE, pas a la
+            // derniere inscription creee : un etudiant accumule des inscriptions
+            // actives au fil des ans, et une reinscription rejouee sur l'annee
+            // en cours (correction de classe) prendrait sinon sa propre
+            // inscription comme reference et se marquerait redoublante a tort.
+            $inscriptionPrecedente = $etudiant->inscriptions()
+                ->where('annee_universitaire_id', '!=', $nouvelleAnnee->id)
+                ->whereHas('anneeUniversitaire', function ($q) use ($nouvelleAnnee) {
+                    $q->where('start_date', '<', $nouvelleAnnee->start_date);
+                })
+                ->orderByDesc('annee_universitaire_id')
+                ->orderByDesc('id')
+                ->first() ?? $inscriptionActuelle;
+
+            $estRedoublement = \App\Models\ESBTPInscription::estUnRedoublement(
+                $inscriptionPrecedente,
+                $nouvelleClasse->niveau_etude_id
+            );
 
         // 4. Créer nouvelle inscription
 
@@ -655,7 +667,7 @@ class ReeinscriptionService
      * instance non persistee : l'ecole reste seule a decider de ses regles
      * depuis /esbtp/reinscriptions/regles.
      */
-    private function creerRegleParDefaut($niveau, $filiere)
+    private function regleDeRepli($niveau, $filiere): ESBTPRegleAcademique
     {
         \Log::info("Aucune règle académique configurée, application des valeurs de repli", [
             'niveau' => $niveau,

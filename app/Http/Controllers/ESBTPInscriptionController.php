@@ -2397,6 +2397,27 @@ class ESBTPInscriptionController extends Controller
                 ]);
             }
 
+            // Une reinscription passee par la caisse doit etre marquee comme un
+            // redoublement au meme titre que celle passee par le service de
+            // reinscription, sinon deux etudiants de la meme classe afficheraient
+            // des mentions differentes selon le guichet emprunte.
+            $estRedoublement = false;
+            if ($isReinscription) {
+                $inscriptionPrecedente = $etudiant->inscriptions()
+                    ->where('annee_universitaire_id', '!=', $anneeCourante->id)
+                    ->whereHas('anneeUniversitaire', function ($q) use ($anneeCourante) {
+                        $q->where('start_date', '<', $anneeCourante->start_date);
+                    })
+                    ->orderByDesc('annee_universitaire_id')
+                    ->orderByDesc('id')
+                    ->first();
+
+                $estRedoublement = ESBTPInscription::estUnRedoublement(
+                    $inscriptionPrecedente,
+                    $classe->niveau_etude_id
+                );
+            }
+
             // 2. Créer l'inscription en mode prospect
             $inscription = ESBTPInscription::create([
                 'etudiant_id' => $etudiant->id,
@@ -2408,6 +2429,7 @@ class ESBTPInscriptionController extends Controller
                 'status' => 'en_attente',
                 'workflow_step' => 'prospect',
                 'type_inscription' => $isReinscription ? 'réinscription' : 'première_inscription',
+                'is_redoublant' => $estRedoublement,
                 'affectation_status' => ESBTPInscription::DEFAULT_AFFECTATION_STATUS,
                 'montant_scolarite' => 0,
                 'frais_inscription' => 0,

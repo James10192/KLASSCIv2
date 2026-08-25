@@ -125,14 +125,21 @@ class MarquageRedoublementTest extends TestCase
 
         $this->assertSame(0, ESBTPRegleAcademique::count());
 
-        try {
-            app(ReeinscriptionService::class)
-                ->analyserSituationEtudiant($etudiant->id, $this->anneeEnCours->name);
-        } catch (\Throwable $e) {
-            // L'analyse peut echouer faute de notes : seule compte l'absence
-            // d'ecriture en base.
-        }
+        // On exige que le chemin de repli soit REELLEMENT atteint : sans cette
+        // assertion, un echec precoce de l'analyse laisserait le compteur a zero
+        // et le test passerait sans rien prouver.
+        $analyse = app(ReeinscriptionService::class)
+            ->analyserSituationEtudiant($etudiant->id, $this->anneeEnCours->name);
 
+        $this->assertInstanceOf(
+            ESBTPRegleAcademique::class,
+            $analyse['regle'],
+            'Le repli doit fournir une regle exploitable par les vues.'
+        );
+        $this->assertFalse(
+            $analyse['regle']->exists,
+            "La regle de repli ne doit pas etre persistee : c'est une lecture."
+        );
         $this->assertSame(
             0,
             ESBTPRegleAcademique::count(),

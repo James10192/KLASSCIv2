@@ -560,7 +560,7 @@
                             @if(($settings['bulletin_show_redoublant'] ?? '1') == '1')
                             <tr>
                                 <td class="info-label">Redoublant</td>
-                                <td class="info-value">{{ $etudiant->inscriptions->first()->is_redoublant ?? false ? 'Oui' : 'Non' }}</td>
+                                <td class="info-value">{{ ($inscription?->is_redoublant ?? false) ? 'Oui' : 'Non' }}</td>
                             </tr>
                             @endif
                             <tr>

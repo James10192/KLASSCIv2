@@ -27,10 +27,6 @@ return new class extends Migration
             $table->boolean('is_redoublant')
                 ->default(false)
                 ->after('type_inscription');
-
-            // La regle compte les redoublements d'un etudiant sur un niveau :
-            // l'index sert ce comptage, pas un filtre d'affichage.
-            $table->index(['etudiant_id', 'niveau_id', 'is_redoublant'], 'idx_inscriptions_redoublement');
         });
     }
 
@@ -41,7 +37,6 @@ return new class extends Migration
         }
 
         Schema::table('esbtp_inscriptions', function (Blueprint $table) {
-            $table->dropIndex('idx_inscriptions_redoublement');
             $table->dropColumn('is_redoublant');
         });
     }

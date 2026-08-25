@@ -707,4 +707,27 @@ class ESBTPInscription extends Model implements Auditable
         $this->condition_reserve = null;
         return $this->save();
     }
+
+    /**
+     * Redoubler, c'est rester au niveau d'etude qu'on occupait l'annee
+     * precedente. Definition unique du domaine : les deux portes d'entree
+     * d'une reinscription (le service de reinscription et la pre-inscription
+     * en caisse) l'appellent, pour qu'un meme etudiant ne soit pas marque
+     * differemment selon le guichet par lequel il est passe.
+     *
+     * @param  self|null  $inscriptionPrecedente  Inscription de l'annee quittee.
+     * @param  int|null   $niveauCible            Niveau de la classe visee.
+     */
+    public static function estUnRedoublement(?self $inscriptionPrecedente, ?int $niveauCible): bool
+    {
+        if ($inscriptionPrecedente === null || $niveauCible === null) {
+            return false;
+        }
+
+        if ($inscriptionPrecedente->niveau_id === null) {
+            return false;
+        }
+
+        return (int) $inscriptionPrecedente->niveau_id === (int) $niveauCible;
+    }
 }
