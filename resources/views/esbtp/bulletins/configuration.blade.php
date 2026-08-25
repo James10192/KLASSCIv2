@@ -82,7 +82,7 @@
             </button>
         </div>
 
-        <form method="POST" action="{{ route('esbtp.bulletins.save-configuration') }}" @submit.prevent="save()">
+        <form method="POST" action="{{ route('esbtp.bulletins.save-configuration') }}" x-ref="configForm" @submit.prevent="save()">
             @csrf
             <input type="hidden" name="bulletin_save_display" value="1">
 
@@ -229,7 +229,10 @@ if (typeof window.bulletinConfiguration !== 'function') {
             async save() {
                 this.saving = true;
                 try {
-                    const form = this.$el.querySelector('form');
+                    const form = this.$refs.configForm;
+                    if (!form) {
+                        throw new Error('Formulaire introuvable.');
+                    }
                     const response = await fetch(form.action, {
                         method: 'POST',
                         headers: {

@@ -262,6 +262,9 @@ class BtsBulkBulletinGenerationContractTest extends TestCase
         $this->assertStringContainsString('...BtsBulletinPolicy::readSettings(', $service);
         $this->assertStringContainsString('fn (string $key, string $default) => \\App\\Helpers\\SettingsHelper::get($key, $default)', $service);
         $this->assertStringContainsString('BtsBulletinPolicy::settingDefinitions()', $settingsController);
+        $this->assertStringContainsString('x-ref="configForm"', $view);
+        $this->assertStringContainsString('const form = this.$refs.configForm;', $view);
+        $this->assertStringNotContainsString('this.$el.querySelector(\'form\')', $view);
     }
 
     public function test_grouped_export_cover_uses_tenant_pdf_colors(): void
