@@ -347,7 +347,7 @@ class ReeinscriptionService
         $actionReliquat = null,
         bool $skipTransaction = false,
         bool $sendNotification = true
-    ) {
+    ): ESBTPInscription {
         if (!$skipTransaction) {
             \DB::beginTransaction();
         }
@@ -359,7 +359,7 @@ class ReeinscriptionService
             $isSuperAdmin = auth()->user() && auth()->user()->can('admin.access');
 
             if (!$this->peutSeReinscrire($etudiantId) && !$isSuperAdmin) {
-                throw new \Exception("L'étudiant doit solder tous ses frais avant la réinscription");
+                throw new \App\Exceptions\ReinscriptionRefuseeException("L'étudiant doit solder tous ses frais avant la réinscription");
             }
 
             // Note: Si SuperAdmin et que l'étudiant a des impayés, les reliquats seront créés automatiquement
@@ -371,7 +371,7 @@ class ReeinscriptionService
                 ->first();
 
             if (!$inscriptionActuelle) {
-                throw new \Exception("Aucune inscription active trouvée pour cet étudiant");
+                throw new \App\Exceptions\ReinscriptionRefuseeException("Aucune inscription active trouvée pour cet étudiant");
             }
 
             // 3. Déterminer l'année universitaire pour la nouvelle inscription
@@ -383,7 +383,7 @@ class ReeinscriptionService
                 $nouvelleAnnee = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
 
                 if (!$nouvelleAnnee) {
-                    throw new \Exception("Aucune année universitaire active trouvée");
+                    throw new \App\Exceptions\ReinscriptionRefuseeException("Aucune année universitaire active trouvée");
                 }
             }
 
@@ -496,7 +496,14 @@ class ReeinscriptionService
 
             return $nouvelleInscription;
 
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
+            // \Throwable, et non \Exception : un \Error — « call to a member
+            // function on null », la panne la plus banale d'une methode qui
+            // deref une dizaine de modeles — laisserait sinon la transaction
+            // ouverte. L'appelant qui tente ensuite de reparer son etat ecrirait
+            // DANS cette transaction orpheline, que MySQL annulerait a la
+            // fermeture de la connexion : sa reparation serait perdue en
+            // silence, et la demande resterait figee.
             if (!$skipTransaction) {
                 \DB::rollback();
             }

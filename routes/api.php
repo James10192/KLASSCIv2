@@ -16,6 +16,39 @@ use App\Http\Controllers\ESBTPEtudiantController;
 |
 */
 
+/*
+ * Export securise de reinscription — SEULE surface non authentifiee de
+ * l'application. Consomme par le site klassci.com, qui signe chaque appel avec
+ * le secret partage de l'etablissement.
+ *
+ * La limitation de debit ne figure PAS ici, volontairement : Laravel trie la
+ * pile d'intergiciels par `middlewarePriority`, ou `ThrottleRequests` figure,
+ * si bien que l'ordre ecrit dans ce fichier n'est pas l'ordre d'execution — un
+ * `throttle:` pose ici passait AVANT le garde, et comptait donc sur des champs
+ * non authentifies. Elle vit desormais dans le garde, apres verification de la
+ * signature. Voir PortailReinscriptionGuard.
+ *
+ * `throttle:api` du groupe API est retire pour la meme famille de raisons : il
+ * compte sur `$request->ip()`, qui vaut ici l'adresse de sortie du site
+ * vitrine — partagee par toute l'ecole, et renouvelee a chaque demarrage a
+ * froid chez l'hebergeur. Le laisser plafonnerait le portail a 60 requetes par
+ * minute pour l'etablissement entier, et permettrait a un voisin d'hebergement
+ * de fermer le canal.
+ *
+ * Le plancher de temps de reponse n'enveloppe que le traitement reel, pas les
+ * refus : un refus rapide ne revele rien, et le faire attendre offrirait un
+ * amplificateur de deni de service.
+ */
+Route::prefix('public/reinscription')
+    ->withoutMiddleware(['throttle:api'])
+    ->middleware(['reinscription.portail', 'reinscription.plancher'])
+    ->group(function () {
+        Route::post('/lookup', [\App\Http\Controllers\API\Public\ReinscriptionPortalController::class, 'lookup'])
+            ->name('api.public.reinscription.lookup');
+        Route::post('/submit', [\App\Http\Controllers\API\Public\ReinscriptionPortalController::class, 'submit'])
+            ->name('api.public.reinscription.submit');
+    });
+
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });

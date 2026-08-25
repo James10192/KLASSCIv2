@@ -16,6 +16,7 @@ use App\Models\ESBTPInscription;
 use App\Models\ESBTPLMDBulletin;
 use App\Models\ESBTPNote;
 use App\Models\ESBTPPlanificationAcademique;
+use App\Models\ESBTPReinscriptionDemande;
 use App\Observers\ESBTPAttendanceAcademicPilotageObserver;
 use App\Observers\ESBTPEvaluationAcademicPilotageObserver;
 use App\Observers\ESBTPInscriptionAcademicPilotageObserver;
@@ -29,9 +30,11 @@ use App\Services\LMD\Tpe\TeacherValidateStrategy;
 use App\Services\LMD\Tpe\TpeValidationStrategy;
 use App\Services\SsoSecretValidator;
 use Illuminate\Pagination\Paginator;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -90,6 +93,8 @@ class AppServiceProvider extends ServiceProvider
 
         SsoSecretValidator::validate();
 
+        $this->partagerCompteurDemandesReinscription();
+
         // Observers
         ESBTPNote::observe(ESBTPNoteObserver::class);
         $academicPilotageObserversEnabled = (bool) config('academic_pilotage.observers_enabled', true);
@@ -128,5 +133,34 @@ class AppServiceProvider extends ServiceProvider
 
             URL::forceScheme('http');
         }
+    }
+
+    /**
+     * Compteur du badge « Demandes en ligne » de la barre laterale.
+     *
+     * Le calcul vit ici, et non dans le gabarit, pour deux raisons. D'abord le
+     * cout : le gabarit est rendu par CHAQUE page, le compte serait donc paye
+     * en permanence par tous les agents de scolarite. Ensuite et surtout le
+     * deploiement : la sequence est `pull` puis `migrate`, donc le code
+     * precede la table de quelques secondes. Une requete dans le gabarit
+     * global ferait tomber l'application ENTIERE pendant cette fenetre.
+     */
+    private function partagerCompteurDemandesReinscription(): void
+    {
+        View::composer('layouts.app', function ($view): void {
+            $enAttente = 0;
+
+            if (auth()->check() && auth()->user()->can('reinscriptions.demandes.view')) {
+                $enAttente = Cache::remember(ESBTPReinscriptionDemande::CLE_CACHE_EN_ATTENTE, 60, function (): int {
+                    if (! Schema::hasTable('esbtp_reinscription_demandes')) {
+                        return 0;
+                    }
+
+                    return ESBTPReinscriptionDemande::enAttente()->count();
+                });
+            }
+
+            $view->with('reinscriptionDemandesEnAttente', $enAttente);
+        });
     }
 }

@@ -340,6 +340,17 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
 
     // Routes pour les fonctionnalitÃ©s ESBTP
     Route::prefix('esbtp')->name('esbtp.')->group(function () {
+        // Corbeille des demandes de reinscription deposees en ligne.
+        // La conversion passe par le flux canonique : aucune re-saisie.
+        Route::prefix('reinscriptions')->middleware(['auth', 'paywall'])->name('reinscription-demandes.')->group(function () {
+            Route::get('/demandes', [\App\Http\Controllers\ESBTP\ESBTPReinscriptionDemandeController::class, 'index'])
+                ->name('index');
+            Route::post('/demandes/{demande}/convertir', [\App\Http\Controllers\ESBTP\ESBTPReinscriptionDemandeController::class, 'convertir'])
+                ->middleware('throttle:30,1')->name('convertir');
+            Route::post('/demandes/{demande}/rejeter', [\App\Http\Controllers\ESBTP\ESBTPReinscriptionDemandeController::class, 'rejeter'])
+                ->middleware('throttle:30,1')->name('rejeter');
+        });
+
         // Routes protÃ©gÃ©es pour les super-administrateurs, secrÃ©taires, coordinateurs et enseignants
         Route::middleware(['auth', 'permission:admin.access', 'paywall'])->group(function () {
             // Routes pour les paiements

@@ -1691,17 +1691,17 @@
                     <!-- Students Section -->
                     @can('module.etudiants.access')
                     @if(!auth()->user()->can('module.caisse.access') || auth()->user()->canAny(['module.comptabilite.access', 'identity.school_manager', 'identity.direct_studies', 'identity.registrar', 'identity.registrar_clerk', 'identity.enrollment_officer']) || auth()->user()->hasRole(['superAdmin', 'admin', 'serviceTechnique']))
-                    @if(auth()->user()->canAny(['students.view', 'inscriptions.view', 'inscriptions.create']))
+                    @if(auth()->user()->canAny(['students.view', 'inscriptions.view', 'inscriptions.create', 'reinscriptions.demandes.view']))
                         <div class="menu-category">Étudiants</div>
 
                         <!-- Student Management -->
                         <div class="menu-accordion">
-                            <button class="menu-accordion-btn {{ Request::routeIs('esbtp.etudiants.*') || Request::routeIs('esbtp.inscriptions.*') || Request::routeIs('esbtp.reinscription.*') ? 'active' : '' }}">
+                            <button class="menu-accordion-btn {{ Request::routeIs('esbtp.etudiants.*') || Request::routeIs('esbtp.inscriptions.*') || Request::routeIs('esbtp.reinscription.*') || Request::routeIs('esbtp.reinscription-demandes.*') ? 'active' : '' }}">
                                 <div class="menu-icon"><i class="fas fa-user-graduate"></i></div>
                                 <div class="menu-text">Étudiants</div>
                                 <div class="menu-arrow"><i class="fas fa-chevron-down"></i></div>
                             </button>
-                            <div class="menu-accordion-content {{ Request::routeIs('esbtp.etudiants.*') || Request::routeIs('esbtp.inscriptions.*') || Request::routeIs('esbtp.reinscription.*') ? 'show' : '' }}">
+                            <div class="menu-accordion-content {{ Request::routeIs('esbtp.etudiants.*') || Request::routeIs('esbtp.inscriptions.*') || Request::routeIs('esbtp.reinscription.*') || Request::routeIs('esbtp.reinscription-demandes.*') ? 'show' : '' }}">
                                 @can('students.view')
                                 <a href="{{ route('esbtp.etudiants.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.etudiants.*') ? 'active' : '' }}">
                                     <div class="menu-icon"><i class="fas fa-list"></i></div>
@@ -1728,6 +1728,22 @@
                                 <a href="{{ route('esbtp.inscriptions.sous-reserve') }}" class="menu-sublink {{ Request::routeIs('esbtp.inscriptions.sous-reserve') ? 'active' : '' }}">
                                     <div class="menu-icon"><i class="fas fa-clipboard-check"></i></div>
                                     <div class="menu-text">Sous réserve</div>
+                                </a>
+                                @endcan
+                                {{-- Hors du bloc `inscriptions.view`, et `reinscriptions.demandes.view`
+                                     ouvre aussi la section Etudiants plus haut : le produit vend les
+                                     roles personnalises, et une ecole peut creer un role d'accueil qui
+                                     ne porte que cette permission. Il lui faut encore le module
+                                     `module.etudiants.access`, comme pour tout le reste de la section. --}}
+                                @can('reinscriptions.demandes.view')
+                                <a href="{{ route('esbtp.reinscription-demandes.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.reinscription-demandes.*') ? 'active' : '' }}">
+                                    <div class="menu-icon"><i class="fas fa-inbox"></i></div>
+                                    <div class="menu-text">
+                                        Demandes en ligne
+                                        @if(($reinscriptionDemandesEnAttente ?? 0) > 0)
+                                            <span class="badge bg-warning text-dark" style="margin-left:.35rem;">{{ $reinscriptionDemandesEnAttente }}</span>
+                                        @endif
+                                    </div>
                                 </a>
                                 @endcan
                                 @can('students.accessibility.view')
