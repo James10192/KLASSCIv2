@@ -10,6 +10,8 @@ use App\Domain\Notifications\PhoneNormalizer;
 use App\Services\AppreciationScaleSettingsService;
 use App\Services\BtsBulletinPolicy;
 use App\Services\MailPulse\MailPulseTestNotificationService;
+use App\Services\Reinscription\PortailReinscriptionService;
+use App\Services\TenantScolariteSettings;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -81,6 +83,16 @@ class ESBTPSettingsController extends Controller
      */
     public function update(Request $request)
     {
+        // Validation d'entree pure : elle precede la transaction. La faire
+        // dans la boucle d'ecriture obligerait a sortir par un `return` au
+        // milieu d'une transaction ouverte — ni `commit` ni `rollBack`, verrous
+        // InnoDB retenus jusqu'a la fin de la connexion. Le formulaire couvrant
+        // toute la page, une seule date mal formee abandonnerait en silence
+        // bulletins, PDF, MailPulse et tronc commun.
+        if (($refus = $this->refuserLesBornesInvalides($request)) !== null) {
+            return $refus;
+        }
+
         try {
             DB::beginTransaction();
             $this->ensureAttendanceNoteSettings();
@@ -370,7 +382,7 @@ class ESBTPSettingsController extends Controller
                 );
             }
 
-            $allCheckboxSettings = Setting::whereIn('key', array_merge([
+            $basculesGerees = array_merge([
                 'bulletin_show_logo', 'bulletin_show_header', 'bulletin_show_republic_info',
                 'bulletin_show_ministry_info', 'bulletin_show_school_info', 'bulletin_show_cycle_info',
                 'bulletin_show_edition_date', 'bulletin_show_student_info', 'bulletin_show_matricule',
@@ -381,33 +393,54 @@ class ESBTPSettingsController extends Controller
                 'bulletin_auto_calculate_mention', 'bulletin_show_felicitation', 'bulletin_show_encouragement',
                 'certificat_show_classe', 'certificat_show_niveau', 'certificat_show_filiere',
                 'bulletin_conduite_enabled', 'bulletin_show_absences_par_matiere',
-                'attendance_manual_hours_global_enabled', 'scolarite.split_roles', 'documents.print_requires_approval', 'caisse.pre_inscription.enabled', 'inscriptions.split_role',
-            ], array_keys($troncCommunDefaults)))->get();
+                'attendance_manual_hours_global_enabled',
+                // Bascules a cle pointee : les constantes, jamais les chaines.
+                // Une faute de frappe passerait les tests et remettrait la
+                // bascule a zero en silence — c'est l'incident de la PR #591.
+                TenantScolariteSettings::SPLIT_ROLES,
+                TenantScolariteSettings::PRINT_REQUIRES_APPROVAL,
+                TenantScolariteSettings::CASHIER_PRE_ENROLLMENT,
+                TenantScolariteSettings::AGENT_INSCRIPTION_ROLE,
+                TenantScolariteSettings::REINSCRIPTION_EN_LIGNE,
+            ], array_keys($troncCommunDefaults));
+
+            // Reglages a cle pointee qui ne sont PAS des cases a cocher. La
+            // distinction ne peut PAS se lire sur la colonne `type` : plusieurs
+            // bascules historiques y sont enregistrees en « string », et les
+            // traiter comme du texte les empecherait de repasser a zero.
+            $reglagesTexte = [
+                PortailReinscriptionService::REGLAGE_OUVERTURE,
+                PortailReinscriptionService::REGLAGE_FERMETURE,
+            ];
+
+            $reglagesPointes = Setting::whereIn('key', array_merge($basculesGerees, $reglagesTexte))->get();
 
             $treatMissingCheckboxesAsOff = $request->boolean('settings_save_display');
             // Les cles pointees (scolarite.split_roles, caisse.pre_inscription.enabled...)
-            // ne peuvent pas passer par $request->boolean() / exists() : Laravel y voit
-            // un acces imbrique, et PHP a de toute facon remplace le point par un
+            // ne peuvent pas passer par $request->boolean() / exists() / input() : Laravel
+            // y voit un acces imbrique, et PHP a de toute facon remplace le point par un
             // underscore dans $_POST. Sans ce contournement, toute sauvegarde de la page
             // remettait ces bascules a 0 quel que soit l'etat reel des cases.
             $rawInput = $request->all();
-            foreach ($allCheckboxSettings as $setting) {
-                $formKey = $setting->key;  // Les champs n'ont pas le préfixe "setting_"
-                $underscoreKey = str_replace('.', '_', $formKey);
 
-                $isSubmitted = array_key_exists($formKey, $rawInput)
-                    || array_key_exists($underscoreKey, $rawInput);
+            foreach ($reglagesPointes as $setting) {
+                $estBascule = ! in_array($setting->key, $reglagesTexte, true);
+                $estSoumis = $this->estSoumis($rawInput, $setting->key);
+                $soumis = $this->valeurSoumise($rawInput, $setting->key);
 
-                if (! $treatMissingCheckboxesAsOff && ! $isSubmitted) {
+                // Une case decochee n'est pas envoyee par le navigateur : son
+                // absence VAUT « off », mais seulement quand le formulaire qui
+                // la porte a bien ete soumis. Un champ texte absent, lui, ne
+                // vaut jamais « vide » : on ne le touche pas.
+                if (! $estSoumis && ! ($estBascule && $treatMissingCheckboxesAsOff)) {
                     continue;
                 }
 
-                $submittedValue = $rawInput[$formKey] ?? $rawInput[$underscoreKey] ?? null;
-                $value = filter_var($submittedValue, FILTER_VALIDATE_BOOLEAN) ? '1' : '0';
-
                 $setting->update([
-                    'value' => $value,
-                    'updated_by' => auth()->id()
+                    'value' => $estBascule
+                        ? (filter_var($soumis, FILTER_VALIDATE_BOOLEAN) ? '1' : '0')
+                        : (is_string($soumis) ? trim($soumis) : ''),
+                    'updated_by' => auth()->id(),
                 ]);
 
                 $updatedSettings[] = $setting->key;
@@ -471,7 +504,7 @@ class ESBTPSettingsController extends Controller
                     $settingKey = str_replace('setting_', '', $key);
 
                     // Skip les checkboxes déjà traitées
-                    if (in_array($settingKey, $allCheckboxSettings->pluck('key')->toArray())) {
+                    if (in_array($settingKey, $reglagesPointes->pluck('key')->toArray())) {
                         continue;
                     }
 
@@ -707,6 +740,67 @@ class ESBTPSettingsController extends Controller
         }
     }
 
+
+    /**
+     * Valeur soumise pour un reglage, que sa cle contienne un point ou non.
+     *
+     * PHP remplace les points par des tirets bas dans $_POST : le champ
+     * `reinscriptions.en_ligne.enabled` arrive sous le nom
+     * `reinscriptions_en_ligne_enabled`. On accepte les deux orthographes.
+     *
+     * Cette methode ne dit PAS si le champ etait present : une valeur nulle et
+     * une absence rendent toutes deux null. Utiliser estSoumis() pour cela —
+     * une requete JSON peut envoyer un champ a null, et le confondre avec une
+     * absence remettrait silencieusement une bascule a zero.
+     */
+    private function valeurSoumise(array $rawInput, string $cle): mixed
+    {
+        $cleFormulaire = str_replace('.', '_', $cle);
+
+        return $rawInput[$cle] ?? $rawInput[$cleFormulaire] ?? null;
+    }
+
+    /** Le champ figurait-il dans la requete, quelle que soit sa valeur ? */
+    private function estSoumis(array $rawInput, string $cle): bool
+    {
+        return array_key_exists($cle, $rawInput)
+            || array_key_exists(str_replace('.', '_', $cle), $rawInput);
+    }
+
+    /**
+     * Les bornes de la fenetre de reinscription sont des dates.
+     *
+     * La verification delegue a PortailReinscriptionService : c'est le service
+     * qui les relit, et deux analyseurs de severites differentes creeraient un
+     * ecart entre ce que l'ecole croit avoir enregistre et ce que le portail
+     * applique — une date qui deborde y serait acceptee puis reportee de
+     * plusieurs mois, en silence.
+     */
+    private function refuserLesBornesInvalides(Request $request)
+    {
+        $rawInput = $request->all();
+
+        foreach ([PortailReinscriptionService::REGLAGE_OUVERTURE, PortailReinscriptionService::REGLAGE_FERMETURE] as $cle) {
+            if (! $this->estSoumis($rawInput, $cle)) {
+                continue;
+            }
+
+            $valeur = $this->valeurSoumise($rawInput, $cle);
+            $valeur = is_string($valeur) ? trim($valeur) : '';
+
+            if ($valeur === '' || PortailReinscriptionService::interpreterDateIso($valeur) !== null) {
+                continue;
+            }
+
+            $message = "La date « {$valeur} » est invalide. Format attendu : AAAA-MM-JJ.";
+
+            return $request->expectsJson()
+                ? response()->json(['success' => false, 'message' => $message], 422)
+                : back()->withInput()->with('error', $message);
+        }
+
+        return null;
+    }
 
     private function ensureBulletinStyleSetting(): void
     {

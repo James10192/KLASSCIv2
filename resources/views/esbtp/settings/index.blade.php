@@ -2376,6 +2376,34 @@
                         </div>
                     </div>
                     <div class="bc-card">
+                        <div class="bc-icon"><i class="fas fa-globe"></i></div>
+                        <div class="bc-body">
+                            <div class="bc-label">Réinscription en ligne depuis klassci.com</div>
+                            <div class="bc-desc">Ouvre le portail public. Les demandes arrivent dans Scolarité &rsaquo; Demandes de réinscription et ne deviennent des inscriptions qu'une fois converties par vos soins. Desactive par defaut.</div>
+                            <div class="row g-2" style="margin-top:.6rem;max-width:420px;">
+                                <div class="col-6">
+                                    <label class="bc-desc" for="rd-ouverture" style="display:block;margin-bottom:.2rem;">Ouverture</label>
+                                    <input type="date" class="form-control form-control-sm" id="rd-ouverture"
+                                           name="reinscriptions.en_ligne.ouverture"
+                                           value="{{ \App\Helpers\SettingsHelper::get('reinscriptions.en_ligne.ouverture', '') }}">
+                                </div>
+                                <div class="col-6">
+                                    <label class="bc-desc" for="rd-fermeture" style="display:block;margin-bottom:.2rem;">Fermeture</label>
+                                    <input type="date" class="form-control form-control-sm" id="rd-fermeture"
+                                           name="reinscriptions.en_ligne.fermeture"
+                                           value="{{ \App\Helpers\SettingsHelper::get('reinscriptions.en_ligne.fermeture', '') }}">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bc-toggle">
+                            <label class="form-switch-modern">
+                                <input type="checkbox" name="reinscriptions.en_ligne.enabled" value="1"
+                                       {{ app(\App\Services\TenantScolariteSettings::class)->reinscriptionEnLigneEnabled() ? 'checked' : '' }}>
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="bc-card">
                         <div class="bc-icon"><i class="fas fa-user-plus"></i></div>
                         <div class="bc-body">
                             <div class="bc-label">Rôle agent d'inscription</div>

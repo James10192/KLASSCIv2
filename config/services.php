@@ -70,6 +70,13 @@ return [
         'secret' => env('GROUP_SSO_SHARED_SECRET'),
     ],
 
+    // Secret partage avec le site klassci.com pour l'export de reinscription.
+    // Distinct du secret SSO : une fuite de l'un ne compromet pas l'autre, et
+    // les deux canaux se revoquent separement.
+    'reinscription_portal' => [
+        'secret' => env('REINSCRIPTION_PORTAL_SECRET'),
+    ],
+
     'mailpulse' => [
         'enabled' => env('MAILPULSE_ENABLED', true),
         'base_url' => env('MAILPULSE_BASE_URL', 'https://mailpulse-two.vercel.app'),

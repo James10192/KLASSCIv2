@@ -350,6 +350,16 @@ return [
             'icon' => 'fa-trash',
             'aliases' => ['delete_inscriptions', 'delete inscriptions'],
         ],
+        'reinscriptions.demandes.view' => [
+            'label' => 'Voir les demandes de réinscription en ligne',
+            'group' => 'Inscriptions',
+            'icon' => 'fa-inbox',
+        ],
+        'reinscriptions.demandes.process' => [
+            'label' => 'Traiter une demande de réinscription en ligne',
+            'group' => 'Inscriptions',
+            'icon' => 'fa-user-check',
+        ],
         'inscriptions.manage' => [
             'label' => 'Gérer toutes les inscriptions (action globale)',
             'group' => 'Inscriptions',
@@ -1915,6 +1925,7 @@ return [
             'students.view', 'students.create', 'students.edit', 'students.delete',
             'students.accessibility.view', 'students.accessibility.edit', 'students.accessibility.export',
             'inscriptions.view', 'inscriptions.create', 'inscriptions.edit', 'inscriptions.validate',
+            'reinscriptions.demandes.view', 'reinscriptions.demandes.process',
             'inscriptions.cancel', 'inscriptions.manage', 'inscriptions.specialisation.manage',
             // Sous-lot C+ : corbeille (restore tout, force_delete réservé superAdmin via Gate::before)
             'trash.view', 'students.restore', 'inscriptions.restore', 'paiements.restore',
@@ -2022,6 +2033,7 @@ return [
             'students.accessibility.edit', 'students.accessibility.export',
             'inscriptions.view', 'inscriptions.create', 'inscriptions.edit',
             'inscriptions.validate', 'inscriptions.cancel', 'inscriptions.reject',
+            'reinscriptions.demandes.view', 'reinscriptions.demandes.process',
             'paiements.view', 'frais.view',
             // PR1 réconciliation — view + approve (séparation OHADA : approve ≠ comptable qui a ouvert)
             'comptabilite.reconciliation.view', 'comptabilite.reconciliation.approve',
@@ -2130,6 +2142,7 @@ return [
             'students.view', 'students.create', 'students.edit',
             'students.accessibility.view', 'students.accessibility.edit', 'students.accessibility.export',
             'inscriptions.view', 'inscriptions.create', 'inscriptions.edit', 'inscriptions.validate',
+            'reinscriptions.demandes.view', 'reinscriptions.demandes.process',
             'inscriptions.cancel', 'inscriptions.manage', 'inscriptions.specialisation.manage',
             'cycles.view',
             'classes.view',
@@ -2173,6 +2186,11 @@ return [
             'students.view',
             'students.accessibility.view',
             'inscriptions.view',
+            // Lecture seule sur la file du portail, coherent avec
+            // inscriptions.view : ce role constate, il ne convertit pas. La
+            // conversion cree une inscription et genere des frais, elle
+            // appartient a qui detient deja inscriptions.create.
+            'reinscriptions.demandes.view',
             'classes.view',
             'filieres.view', 'niveaux.view',
             'matieres.view',
@@ -2196,6 +2214,7 @@ return [
             'dashboard.view',
             'students.view', 'students.create', 'students.edit',
             'inscriptions.view', 'inscriptions.create', 'inscriptions.edit', 'inscriptions.validate',
+            'reinscriptions.demandes.view', 'reinscriptions.demandes.process',
             'classes.view',
             'filieres.view', 'niveaux.view',
             'identity.enrollment_officer',

@@ -709,6 +709,27 @@ class ESBTPInscription extends Model implements Auditable
     }
 
     /**
+     * Cet etudiant a-t-il deja une inscription VIVANTE pour cette annee ?
+     *
+     * Definition unique de l'invariant qui empeche la double facturation : le
+     * portail public s'en sert pour refuser un depot, la scolarite pour
+     * refuser une conversion. Les deux doivent repondre la meme chose, donc
+     * ils posent la meme question au meme endroit.
+     *
+     * « Vivante » exclut « annulee » : une inscription annulee ne facture rien,
+     * et la compter condamnerait definitivement un dossier legitime — invisible
+     * au portail, refuse a la conversion, sans qu'aucun ecran n'explique
+     * pourquoi. Elle exclut aussi « terminee », etat d'une annee achevee.
+     */
+    public static function aUneInscriptionVivantePour(int $etudiantId, int $anneeUniversitaireId): bool
+    {
+        return static::where('etudiant_id', $etudiantId)
+            ->where('annee_universitaire_id', $anneeUniversitaireId)
+            ->whereIn('status', ['en_attente', 'active'])
+            ->exists();
+    }
+
+    /**
      * Inscription de l'annee qui precede chronologiquement l'annee cible.
      *
      * Le tri se fait sur la date de debut, jamais sur l'identifiant : chez
