@@ -73,6 +73,12 @@ class ESBTPReinscriptionDemande extends Model implements Auditable
         'traite_par',
         'traite_at',
         'inscription_id',
+        // Rouvrir une demande traitee reecrit l'horodatage du consentement.
+        // Sans cette ligne, la preuve du consentement initial — que la loi
+        // ivoirienne 2013-450 impose de pouvoir produire — serait detruite
+        // sans laisser de trace. L'empreinte d'adresse, elle, reste hors audit :
+        // la conserver en plusieurs exemplaires irait contre la minimisation.
+        'consentement_at',
     ];
 
     public function etudiant(): BelongsTo

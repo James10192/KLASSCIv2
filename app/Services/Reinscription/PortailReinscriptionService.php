@@ -123,8 +123,18 @@ class PortailReinscriptionService
             $anneeCible,
             $inscriptionPrecedente,
             dejaReinscrit: ESBTPInscription::aUneInscriptionVivantePour($etudiant->id, $anneeCible->id),
+            // « Une demande EN ATTENTE existe », pas « une demande existe ».
+            //
+            // Le site vitrine se sert de ce drapeau pour masquer le formulaire
+            // de depot. Sans le filtre de statut, une demande rejetee le
+            // masquerait aussi : l'etudiant qui a corrige sa piece manquante ne
+            // pourrait plus redeposer, et sa famille attendrait un traitement
+            // qui ne viendrait jamais. C'est exactement ce que la reouverture
+            // d'une demande traitee (voir deposer()) sert a eviter — la fermer
+            // ici la rendrait inatteignable.
             demandeExistante: ESBTPReinscriptionDemande::where('etudiant_id', $etudiant->id)
                 ->where('annee_universitaire_id', $anneeCible->id)
+                ->where('statut', ESBTPReinscriptionDemande::STATUT_EN_ATTENTE)
                 ->exists(),
         );
     }
