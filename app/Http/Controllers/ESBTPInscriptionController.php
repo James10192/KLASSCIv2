@@ -2401,22 +2401,12 @@ class ESBTPInscriptionController extends Controller
             // redoublement au meme titre que celle passee par le service de
             // reinscription, sinon deux etudiants de la meme classe afficheraient
             // des mentions differentes selon le guichet emprunte.
-            $estRedoublement = false;
-            if ($isReinscription) {
-                $inscriptionPrecedente = $etudiant->inscriptions()
-                    ->where('annee_universitaire_id', '!=', $anneeCourante->id)
-                    ->whereHas('anneeUniversitaire', function ($q) use ($anneeCourante) {
-                        $q->where('start_date', '<', $anneeCourante->start_date);
-                    })
-                    ->orderByDesc('annee_universitaire_id')
-                    ->orderByDesc('id')
-                    ->first();
-
-                $estRedoublement = ESBTPInscription::estUnRedoublement(
-                    $inscriptionPrecedente,
+            $estRedoublement = $isReinscription
+                ? ESBTPInscription::estUnRedoublement(
+                    ESBTPInscription::precedantAnnee($etudiant->id, $anneeCourante),
                     $classe->niveau_etude_id
-                );
-            }
+                )
+                : false;
 
             // 2. Créer l'inscription en mode prospect
             $inscription = ESBTPInscription::create([

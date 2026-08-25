@@ -415,17 +415,10 @@ class ReeinscriptionService
             // actives au fil des ans, et une reinscription rejouee sur l'annee
             // en cours (correction de classe) prendrait sinon sa propre
             // inscription comme reference et se marquerait redoublante a tort.
-            $inscriptionPrecedente = $etudiant->inscriptions()
-                ->where('annee_universitaire_id', '!=', $nouvelleAnnee->id)
-                ->whereHas('anneeUniversitaire', function ($q) use ($nouvelleAnnee) {
-                    $q->where('start_date', '<', $nouvelleAnnee->start_date);
-                })
-                ->orderByDesc('annee_universitaire_id')
-                ->orderByDesc('id')
-                ->first() ?? $inscriptionActuelle;
-
+            // Sans annee anterieure, il n'y a rien a redoubler : la reponse est
+            // non, pas un repli sur l'inscription courante.
             $estRedoublement = \App\Models\ESBTPInscription::estUnRedoublement(
-                $inscriptionPrecedente,
+                \App\Models\ESBTPInscription::precedantAnnee($etudiantId, $nouvelleAnnee),
                 $nouvelleClasse->niveau_etude_id
             );
 

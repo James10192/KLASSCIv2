@@ -718,6 +718,44 @@ class ESBTPInscription extends Model implements Auditable
      * @param  self|null  $inscriptionPrecedente  Inscription de l'annee quittee.
      * @param  int|null   $niveauCible            Niveau de la classe visee.
      */
+    /**
+     * Inscription de l'annee qui precede chronologiquement l'annee cible.
+     *
+     * Le tri se fait sur la date de debut, jamais sur l'identifiant : chez
+     * ESBTP Abidjan l'annee 2023-2024 porte l'identifiant 3 quand 2024-2025
+     * porte l'identifiant 1. Un tri par identifiant designerait la mauvaise
+     * annee de reference.
+     *
+     * `start_date` etant nullable sur cette table, une annee cible sans date
+     * rendrait la comparaison SQL indeterminee et donc silencieusement fausse
+     * pour tout le monde. Ce cas est journalise et traite comme « reference
+     * inconnue » plutot que comme « pas de redoublement » implicite.
+     */
+    public static function precedantAnnee(int $etudiantId, ESBTPAnneeUniversitaire $anneeCible): ?self
+    {
+        $debutCible = $anneeCible->start_date;
+
+        if ($debutCible === null) {
+            \Log::warning("Annee universitaire sans date de debut : reference de redoublement indeterminable", [
+                'annee_universitaire_id' => $anneeCible->id,
+                'etudiant_id' => $etudiantId,
+            ]);
+
+            return null;
+        }
+
+        return static::query()
+            ->join('esbtp_annee_universitaires as au', 'au.id', '=', 'esbtp_inscriptions.annee_universitaire_id')
+            ->where('esbtp_inscriptions.etudiant_id', $etudiantId)
+            ->where('esbtp_inscriptions.annee_universitaire_id', '!=', $anneeCible->id)
+            ->whereNotNull('au.start_date')
+            ->where('au.start_date', '<', $debutCible)
+            ->orderByDesc('au.start_date')
+            ->orderByDesc('esbtp_inscriptions.id')
+            ->select('esbtp_inscriptions.*')
+            ->first();
+    }
+
     public static function estUnRedoublement(?self $inscriptionPrecedente, ?int $niveauCible): bool
     {
         if ($inscriptionPrecedente === null || $niveauCible === null) {
