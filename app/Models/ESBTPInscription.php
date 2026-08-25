@@ -120,6 +120,7 @@ class ESBTPInscription extends Model implements Auditable
         'affectation_status', // Nouveau: statut d'affectation (affecté, réaffecté, non_affecté)
         'date_inscription',
         'type_inscription', // Première inscription, réinscription, etc.
+        'is_redoublant', // Réinscription sur le même niveau d'étude
         'status', // active, annulée, etc.
         'is_sous_reserve', // Inscription conditionnelle (ex: sous réserve du BAC)
         'condition_reserve', // Motif de la réserve (ex: BACCALAURÉAT)
@@ -163,6 +164,7 @@ class ESBTPInscription extends Model implements Auditable
         'is_sous_reserve' => 'boolean',
         'affectation_status' => 'string',
         'est_transfert' => 'boolean',
+        'is_redoublant' => 'boolean',
     ];
 
     // Constants for affectation status
@@ -704,5 +706,74 @@ class ESBTPInscription extends Model implements Auditable
         $this->is_sous_reserve = false;
         $this->condition_reserve = null;
         return $this->save();
+    }
+
+    /**
+     * Inscription de l'annee qui precede chronologiquement l'annee cible.
+     *
+     * Le tri se fait sur la date de debut, jamais sur l'identifiant : chez
+     * ESBTP Abidjan l'annee 2023-2024 porte l'identifiant 3 quand 2024-2025
+     * porte l'identifiant 1. Un tri par identifiant designerait la mauvaise
+     * annee de reference.
+     *
+     * `start_date` etant nullable sur cette table, une annee cible sans date
+     * rendrait la comparaison SQL indeterminee et donc silencieusement fausse
+     * pour tout le monde. Ce cas est journalise et traite comme « reference
+     * inconnue » plutot que comme « pas de redoublement » implicite.
+     *
+     * Aucun filtre sur le statut : la question posee est factuelle — a quel
+     * niveau cet etudiant etait-il l'annee d'avant — et non administrative.
+     * Une inscription « terminee » est l'etat normal d'une annee achevee, donc
+     * le cas dominant. Une inscription « annulee » compte aussi aujourd'hui ;
+     * le jour ou max_redoublements sera applique, il faudra demander aux ecoles
+     * si une annee annulee consomme un droit au redoublement. Les inscriptions
+     * reellement supprimees sont deja ecartees par SoftDeletes.
+     */
+    public static function precedantAnnee(int $etudiantId, ESBTPAnneeUniversitaire $anneeCible): ?self
+    {
+        $debutCible = $anneeCible->start_date;
+
+        if ($debutCible === null) {
+            \Log::warning("Annee universitaire sans date de debut : reference de redoublement indeterminable", [
+                'annee_universitaire_id' => $anneeCible->id,
+                'etudiant_id' => $etudiantId,
+            ]);
+
+            return null;
+        }
+
+        return static::query()
+            ->join('esbtp_annee_universitaires as au', 'au.id', '=', 'esbtp_inscriptions.annee_universitaire_id')
+            ->where('esbtp_inscriptions.etudiant_id', $etudiantId)
+            ->where('esbtp_inscriptions.annee_universitaire_id', '!=', $anneeCible->id)
+            ->whereNotNull('au.start_date')
+            ->where('au.start_date', '<', $debutCible)
+            ->orderByDesc('au.start_date')
+            ->orderByDesc('esbtp_inscriptions.id')
+            ->select('esbtp_inscriptions.*')
+            ->first();
+    }
+
+    /**
+     * Redoubler, c'est rester au niveau d'etude qu'on occupait l'annee
+     * precedente. Definition unique du domaine : les deux portes d'entree
+     * d'une reinscription (le service de reinscription et la pre-inscription
+     * en caisse) l'appellent, pour qu'un meme etudiant ne soit pas marque
+     * differemment selon le guichet par lequel il est passe.
+     *
+     * @param  self|null  $inscriptionPrecedente  Inscription de l'annee quittee.
+     * @param  int|null   $niveauCible            Niveau de la classe visee.
+     */
+    public static function estUnRedoublement(?self $inscriptionPrecedente, ?int $niveauCible): bool
+    {
+        if ($inscriptionPrecedente === null || $niveauCible === null) {
+            return false;
+        }
+
+        if ($inscriptionPrecedente->niveau_id === null) {
+            return false;
+        }
+
+        return (int) $inscriptionPrecedente->niveau_id === (int) $niveauCible;
     }
 }

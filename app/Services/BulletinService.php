@@ -720,6 +720,12 @@ class BulletinService
 
         return [
             'etudiant' => $etudiant,
+            // L'inscription de CETTE classe et de CETTE annee. Les gabarits
+            // lisaient auparavant $etudiant->inscriptions->first(), c'est-a-dire
+            // la toute premiere inscription de l'etudiant, jamais celle de la
+            // periode affichee : la mention « Redoublant » etait donc toujours
+            // fausse. Cette ligne est deja calculee plus haut, triee.
+            'inscription' => $inscription,
             'classe' => $classe,
             'anneeUniversitaire' => $anneeUniversitaire,
             'periode' => $periode,
