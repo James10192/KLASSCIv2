@@ -110,11 +110,15 @@ class RechercheAnneePrecedenteTest extends TestCase
         $etudiant = ESBTPEtudiant::factory()->create();
         $this->inscrire($etudiant, $ancienne);
 
-        Log::shouldReceive('warning')
-            ->once()
-            ->withArgs(fn ($message) => str_contains($message, 'sans date de debut'));
+        // Espion et non mock complet : on verifie que le cas est signale, sans
+        // interdire d'autres ecritures au journal sur ce chemin.
+        Log::spy();
 
         $this->assertNull(ESBTPInscription::precedantAnnee($etudiant->id, $cible));
+
+        Log::shouldHaveReceived('warning')
+            ->once()
+            ->withArgs(fn ($message) => str_contains($message, 'sans date de debut'));
     }
 
     public function test_une_annee_anterieure_sans_date_est_ecartee_sans_planter(): void

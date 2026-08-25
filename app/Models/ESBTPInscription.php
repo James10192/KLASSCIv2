@@ -709,16 +709,6 @@ class ESBTPInscription extends Model implements Auditable
     }
 
     /**
-     * Redoubler, c'est rester au niveau d'etude qu'on occupait l'annee
-     * precedente. Definition unique du domaine : les deux portes d'entree
-     * d'une reinscription (le service de reinscription et la pre-inscription
-     * en caisse) l'appellent, pour qu'un meme etudiant ne soit pas marque
-     * differemment selon le guichet par lequel il est passe.
-     *
-     * @param  self|null  $inscriptionPrecedente  Inscription de l'annee quittee.
-     * @param  int|null   $niveauCible            Niveau de la classe visee.
-     */
-    /**
      * Inscription de l'annee qui precede chronologiquement l'annee cible.
      *
      * Le tri se fait sur la date de debut, jamais sur l'identifiant : chez
@@ -730,6 +720,14 @@ class ESBTPInscription extends Model implements Auditable
      * rendrait la comparaison SQL indeterminee et donc silencieusement fausse
      * pour tout le monde. Ce cas est journalise et traite comme « reference
      * inconnue » plutot que comme « pas de redoublement » implicite.
+     *
+     * Aucun filtre sur le statut : la question posee est factuelle — a quel
+     * niveau cet etudiant etait-il l'annee d'avant — et non administrative.
+     * Une inscription « terminee » est l'etat normal d'une annee achevee, donc
+     * le cas dominant. Une inscription « annulee » compte aussi aujourd'hui ;
+     * le jour ou max_redoublements sera applique, il faudra demander aux ecoles
+     * si une annee annulee consomme un droit au redoublement. Les inscriptions
+     * reellement supprimees sont deja ecartees par SoftDeletes.
      */
     public static function precedantAnnee(int $etudiantId, ESBTPAnneeUniversitaire $anneeCible): ?self
     {
@@ -756,6 +754,16 @@ class ESBTPInscription extends Model implements Auditable
             ->first();
     }
 
+    /**
+     * Redoubler, c'est rester au niveau d'etude qu'on occupait l'annee
+     * precedente. Definition unique du domaine : les deux portes d'entree
+     * d'une reinscription (le service de reinscription et la pre-inscription
+     * en caisse) l'appellent, pour qu'un meme etudiant ne soit pas marque
+     * differemment selon le guichet par lequel il est passe.
+     *
+     * @param  self|null  $inscriptionPrecedente  Inscription de l'annee quittee.
+     * @param  int|null   $niveauCible            Niveau de la classe visee.
+     */
     public static function estUnRedoublement(?self $inscriptionPrecedente, ?int $niveauCible): bool
     {
         if ($inscriptionPrecedente === null || $niveauCible === null) {
