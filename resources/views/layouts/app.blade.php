@@ -1731,10 +1731,12 @@
                                 </a>
                                 @endcan
                                 {{-- Hors du bloc `inscriptions.view`, et `reinscriptions.demandes.view`
-                                     ouvre aussi la section Etudiants plus haut : le produit vend les
-                                     roles personnalises, et une ecole peut creer un role d'accueil qui
-                                     ne porte que cette permission. Il lui faut encore le module
-                                     `module.etudiants.access`, comme pour tout le reste de la section. --}}
+                                     ouvre aussi la section Etudiants plus haut, pour qu'un role
+                                     d'accueil ne portant que cette permission voie le lien.
+                                     Deux conditions de section subsistent, plus larges que la route :
+                                     `module.etudiants.access`, et la garde caisse juste au-dessus. Un
+                                     role porteur de `module.caisse.access` sans identite scolarite
+                                     atteint donc la page sans voir l'entree de menu. --}}
                                 @can('reinscriptions.demandes.view')
                                 <a href="{{ route('esbtp.reinscription-demandes.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.reinscription-demandes.*') ? 'active' : '' }}">
                                     <div class="menu-icon"><i class="fas fa-inbox"></i></div>

@@ -299,6 +299,36 @@ class PortailPublicExportTest extends TestCase
         );
     }
 
+    public function test_apres_un_rejet_la_consultation_ne_dit_plus_qu_une_demande_existe(): void
+    {
+        // `demande_existante` est le drapeau dont le site vitrine se sert pour
+        // masquer le formulaire de depot. S'il restait vrai apres un rejet,
+        // l'etudiant qui a corrige sa piece manquante ne verrait plus le
+        // formulaire : la reouverture cote serveur existerait, mais serait
+        // inatteignable. Ce test passe par lookup, la ou les deux tests de
+        // reouverture appellent submit directement et sont donc aveugles.
+        $depot = [
+            'matricule' => 'DEMO-0001',
+            'date_naissance' => '2004-03-15',
+            'consentement' => '1',
+        ];
+
+        $this->appeler('submit', $depot)->assertStatus(201);
+
+        $this->appeler('lookup', ['matricule' => 'DEMO-0001', 'date_naissance' => '2004-03-15'])
+            ->assertOk()
+            ->assertJson(['demande_existante' => true]);
+
+        ESBTPReinscriptionDemande::firstOrFail()->update([
+            'statut' => ESBTPReinscriptionDemande::STATUT_REJETEE,
+            'motif_rejet' => 'Acte de naissance manquant.',
+        ]);
+
+        $this->appeler('lookup', ['matricule' => 'DEMO-0001', 'date_naissance' => '2004-03-15'])
+            ->assertOk()
+            ->assertJson(['trouve' => true, 'eligible' => true, 'demande_existante' => false]);
+    }
+
     public function test_une_demande_rejetee_peut_etre_redeposee(): void
     {
         // L'ecole rejette pour piece manquante, l'etudiant corrige et revient.
