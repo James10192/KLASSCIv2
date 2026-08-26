@@ -271,13 +271,13 @@
 
         /* ── Résultats / Statistiques / Conseil ───────────────── */
         .results-container { width: 100%; margin-bottom: 4px; }
-        .results-container-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+        .results-container-table { width: 100%; border-collapse: separate; border-spacing: 10px 0; table-layout: fixed; }
         .results-container-table td {
             border: none;
             padding: 0;
             vertical-align: top;
         }
-        .results-main { width: 50%; padding-right: 10px; }
+        .results-main { width: 50%; }
         .results-container-table td.results-council {
             width: 50%;
             border: 1px solid #d1d5db;
