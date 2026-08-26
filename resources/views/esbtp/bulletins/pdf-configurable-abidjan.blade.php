@@ -269,39 +269,45 @@
         /* Absences */
         .absences-table { width: 100%; margin-bottom: 6px; }
 
-        /* ── Résultats & Statistiques ─────────────────────────── */
-        .results-container { width: 100%; margin-bottom: 6px; }
-        .results-container-table { width: 100%; border-collapse: collapse; }
+        /* ── Résultats / Statistiques / Conseil ───────────────── */
+        .results-container { width: 100%; margin-bottom: 4px; }
+        .results-container-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
         .results-container-table td {
             border: none;
             padding: 0;
             vertical-align: top;
         }
-        .results-left { width: 50%; padding-right: 5px; }
-        .results-right { width: 50%; padding-left: 5px; }
+        .results-main { width: 50%; padding-right: 4px; }
+        .results-council { width: 50%; padding-left: 4px; }
+        .results-pair { width: 100%; border-collapse: collapse; table-layout: fixed; margin-bottom: 4px; }
+        .results-pair td { border: none; padding: 0; vertical-align: top; }
+        .results-left { width: 50%; padding-right: 3px; }
+        .results-mid { width: 50%; padding-left: 3px; }
 
-        .results-card, .stats-card {
+        .results-card, .stats-card, .council-card {
             border: 1px solid #d1d5db;
             border-radius: 8px;
             background: #fff;
             overflow: hidden;
         }
-        .results-table, .stats-table {
+        .results-table, .stats-table, .council-table {
             width: 100%;
-            font-size: {{ $typeScale['table'] }}px;
+            font-size: {{ $typeScale['body'] }}px;
             border-collapse: collapse;
             background: #fff;
         }
-        .results-table th, .stats-table th {
+        .results-table th, .stats-table th, .council-table th {
             background: {{ $pdfPrimary }};
             color: #ffffff;
-            padding: 5px 8px;
-            font-size: {{ $typeScale['table_head'] }}px;
+            padding: 6px 8px;
+            font-size: {{ $typeScale['info'] }}px;
             border: none;
             text-align: left;
+            font-weight: 700;
+            letter-spacing: 0.03em;
         }
         .results-table td, .stats-table td {
-            padding: 4px 8px;
+            padding: 5px 8px;
             border-bottom: 1px solid #f3f4f6;
             border-left: none;
             border-right: none;
@@ -310,16 +316,47 @@
         .results-table tr:last-child td, .stats-table tr:last-child td {
             border-bottom: none;
         }
+        .result-key { font-weight: 700; color: #111827; }
         .result-value-box {
             border: 1px solid #d1d5db;
             border-radius: 4px;
-            padding: 2px 6px;
-            min-width: 52px;
+            padding: 3px 7px;
+            min-width: 56px;
             display: inline-block;
             text-align: center;
             font-weight: 700;
             background: #f8fafb;
+            font-size: {{ $typeScale['body'] }}px;
+        }
+        .council-table td {
+            border: none;
+            padding: 8px 8px 6px;
+            vertical-align: top;
+        }
+        .council-text {
+            min-height: {{ max(36, (int) $decisionHeight - 28) }}px;
+            font-size: {{ $typeScale['body'] }}px;
+            font-weight: 700;
+            color: #111827;
+            line-height: 1.35;
+        }
+        .council-sign {
+            text-align: center;
+            padding-top: 8px;
+            border-top: 1px solid #e5e7eb;
+        }
+        .council-sign-title {
             font-size: {{ $typeScale['info'] }}px;
+            font-weight: 700;
+            color: #111827;
+        }
+        .council-sign-space {
+            height: {{ max(28, (int) $signatureHeight - 8) }}px;
+        }
+        .council-sign-name {
+            font-size: {{ $typeScale['info'] }}px;
+            font-weight: 700;
+            color: {{ $pdfPrimary }};
         }
         .appreciation-badge {
             display: inline-block;
@@ -364,10 +401,10 @@
         /* Distinctions : colonne gauche (3 cases) sous les resultats,
            colonne droite (2 cases) dans la zone vide sous les statistiques.
            Paddings alignes sur .results-left / .results-right (5px). */
-        .mention-columns { border-collapse: collapse; margin-bottom: 4px; table-layout: fixed; }
-        .mention-col { width: 50%; border: none; vertical-align: top; }
-        .mention-col--left { padding: 0 5px 0 0; }
-        .mention-col--right { padding: 0 0 0 5px; }
+        .mention-columns { width: 100%; border-collapse: collapse; table-layout: fixed; }
+        .mention-col { width: 50%; border: none; vertical-align: top; padding: 0 0 3px; }
+        .mention-col--left { padding-right: 3px; }
+        .mention-col--right { padding-left: 3px; }
 
         /* ── Décision conseil ─────────────────────────────────── */
         .decision-container {
@@ -764,157 +801,161 @@
             </table>
         @endif
 
-        {{-- Résultats & Statistiques --}}
+        {{-- Gauche 1/2 : resultats + stats + mentions. Droite 1/2 : conseil + signature. --}}
         @if(($settings['bulletin_show_results_section'] ?? '1') == '1')
+            @php
+                $councilDecision = $councilDecision ?? ['title' => 'Appréciation du conseil de classe', 'text' => $appreciation ?? ''];
+                $directorTitle = $settings['director_title'] ?? \App\Helpers\SettingsHelper::get('director_title', 'Directeur des études');
+                $directorName  = $settings['director_name']  ?? \App\Helpers\SettingsHelper::get('director_name', '');
+                $mentionItems = (($settings['bulletin_show_mentions'] ?? '1') == '1')
+                    ? \App\Services\BulletinMentionResolver::resolveFromSettings(
+                        isset($moyenneGlobale) ? (float) $moyenneGlobale : null,
+                        isset($noteConduite) ? (float) $noteConduite : null
+                    )
+                    : [];
+                $mentionRows = array_chunk($mentionItems, 2);
+            @endphp
             <div class="results-container">
                 <table class="results-container-table">
                     <tr>
-                        <td class="results-left">
-                            <div class="results-card">
-                                <table class="results-table">
+                        <td class="results-main">
+                            <table class="results-pair">
+                                <tr>
+                                    <td class="results-left">
+                                        <div class="results-card">
+                                            <table class="results-table">
+                                                <thead>
+                                                    <tr><th colspan="2">RÉSULTATS</th></tr>
+                                                </thead>
+                                                <tbody>
+                                                    @if(($settings['bulletin_show_raw_average'] ?? '1') == '1')
+                                                        <tr>
+                                                            <td>Moyenne brute</td>
+                                                            <td class="center"><span class="result-value-box">{{ number_format($moyenneGlobale, 2) }}</span></td>
+                                                        </tr>
+                                                    @endif
+                                                    @if(($settings['bulletin_show_attendance_note'] ?? '1') == '1')
+                                                        <tr>
+                                                            <td>Note d'assiduité</td>
+                                                            <td class="center"><span class="result-value-box">{{ $note_assiduite > 0 ? '+'.number_format($note_assiduite, 2) : number_format($note_assiduite, 2) }}</span></td>
+                                                        </tr>
+                                                    @endif
+                                                    @if(($settings['bulletin_show_semester_average'] ?? '1') == '1')
+                                                        @if($periode == 'semestre1' || $periode == 'semestre2')
+                                                        <tr>
+                                                            <td class="result-key">Moyenne {{ $periode == 'semestre1' ? '1er' : '2e' }} semestre</td>
+                                                            <td class="center"><span class="result-value-box">{{ number_format($moyenneAvecAssiduite, 2) }}</span></td>
+                                                        </tr>
+                                                        @endif
+                                                        @if($periode == 'semestre2')
+                                                            <tr>
+                                                                <td>Moyenne semestre 1</td>
+                                                                <td class="center"><span class="result-value-box">{{ $moyenneSemestre1 !== null ? number_format($moyenneSemestre1, 2) : '-' }}</span></td>
+                                                            </tr>
+                                                            <tr>
+                                                                <td class="result-key">Moyenne annuelle</td>
+                                                                <td class="center"><span class="result-value-box">{{ $moyenneAnnuelle !== null ? number_format($moyenneAnnuelle, 2) : '-' }}</span></td>
+                                                            </tr>
+                                                        @endif
+                                                        @if($periode == 'annuel')
+                                                            <tr>
+                                                                <td>Moyenne semestre 1</td>
+                                                                <td class="center"><span class="result-value-box">{{ $moyenneSemestre1 !== null ? number_format($moyenneSemestre1, 2) : '-' }}</span></td>
+                                                            </tr>
+                                                            <tr>
+                                                                <td>Moyenne semestre 2</td>
+                                                                <td class="center"><span class="result-value-box">{{ $moyenneSemestre2 !== null ? number_format($moyenneSemestre2, 2) : '-' }}</span></td>
+                                                            </tr>
+                                                            <tr>
+                                                                <td class="result-key">Moyenne annuelle</td>
+                                                                <td class="center"><span class="result-value-box">{{ $moyenneAnnuelle !== null ? number_format($moyenneAnnuelle, 2) : '-' }}</span></td>
+                                                            </tr>
+                                                        @endif
+                                                    @endif
+                                                    @if(($settings['bulletin_show_student_rank'] ?? '1') == '1')
+                                                        <tr>
+                                                            <td class="result-key">{{ in_array($periode, ['semestre2', 'annuel'], true) ? 'Rang semestre 2' : 'Rang' }}</td>
+                                                            <td class="center"><span class="result-value-box">{{ $rang ?: '-' }}</span></td>
+                                                        </tr>
+                                                        @if(in_array($periode, ['semestre2', 'annuel'], true))
+                                                        <tr>
+                                                            <td class="result-key">Rang annuel</td>
+                                                            <td class="center"><span class="result-value-box">{{ ($rangAnnuel ?? null) ?: '-' }}</span></td>
+                                                        </tr>
+                                                        @endif
+                                                    @endif
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </td>
+                                    @if(($settings['bulletin_show_statistics'] ?? '1') == '1')
+                                    <td class="results-mid">
+                                        <div class="stats-card">
+                                            <table class="stats-table">
+                                                <thead>
+                                                    <tr><th colspan="2">STATISTIQUES — {{ $periode == 'semestre1' ? 'SEMESTRE 1' : ($periode == 'semestre2' ? 'SEMESTRE 2' : 'ANNUEL') }}</th></tr>
+                                                </thead>
+                                                <tbody>
+                                                    @if(($settings['bulletin_show_highest_average'] ?? '1') == '1')
+                                                        <tr><td>Plus forte moyenne</td><td class="center result-key">{{ number_format($meilleure_moyenne, 2) }}</td></tr>
+                                                    @endif
+                                                    @if(($settings['bulletin_show_lowest_average'] ?? '1') == '1')
+                                                        <tr><td>Plus faible moyenne</td><td class="center">{{ number_format($plus_faible_moyenne, 2) }}</td></tr>
+                                                    @endif
+                                                    @if(($settings['bulletin_show_class_average'] ?? '1') == '1')
+                                                        <tr><td class="result-key">Moyenne de la classe</td><td class="center result-key">{{ number_format($moyenne_classe, 2) }}</td></tr>
+                                                    @endif
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </td>
+                                    @endif
+                                </tr>
+                            </table>
+                            @if(count($mentionRows) > 0)
+                                <table class="mention-columns">
+                                    @foreach($mentionRows as $row)
+                                        <tr>
+                                            @foreach($row as $i => $item)
+                                                <td class="mention-col {{ $i === 0 ? 'mention-col--left' : 'mention-col--right' }}">
+                                                    <div class="mention-box"><table class="mention-table"><tr><td class="mention-label">{{ $item['label'] }}</td><td class="mention-value"><input type="checkbox" {{ $item['checked'] ? 'checked' : '' }}></td></tr></table></div>
+                                                </td>
+                                            @endforeach
+                                            @if(count($row) === 1)
+                                                <td class="mention-col mention-col--right"></td>
+                                            @endif
+                                        </tr>
+                                    @endforeach
+                                </table>
+                            @endif
+                        </td>
+                        <td class="results-council">
+                            <div class="council-card">
+                                <table class="council-table">
                                     <thead>
-                                        <tr><th colspan="2">RÉSULTATS</th></tr>
+                                        <tr><th>Appréciation du conseil de classe</th></tr>
                                     </thead>
                                     <tbody>
-                                        @if(($settings['bulletin_show_raw_average'] ?? '1') == '1')
-                                            <tr>
-                                                <td>Moyenne Brute</td>
-                                                <td class="center"><span class="result-value-box">{{ number_format($moyenneGlobale, 2) }}</span></td>
-                                            </tr>
-                                        @endif
-                                        @if(($settings['bulletin_show_attendance_note'] ?? '1') == '1')
-                                            <tr>
-                                                <td>Note d'assiduité</td>
-                                                <td class="center"><span class="result-value-box">{{ $note_assiduite > 0 ? '+'.number_format($note_assiduite, 2) : number_format($note_assiduite, 2) }}</span></td>
-                                            </tr>
-                                        @endif
-                                        @if(($settings['bulletin_show_semester_average'] ?? '1') == '1')
-                                            @if($periode == 'semestre1' || $periode == 'semestre2')
-                                            <tr>
-                                                <td>Moyenne {{ $periode == 'semestre1' ? '1er' : '2e' }} Semestre</td>
-                                                <td class="center"><span class="result-value-box">{{ number_format($moyenneAvecAssiduite, 2) }}</span></td>
-                                            </tr>
-                                            @endif
-                                            @if($periode == 'semestre2')
-                                                <tr>
-                                                    <td>Moyenne Semestre 1</td>
-                                                    <td class="center"><span class="result-value-box">{{ $moyenneSemestre1 !== null ? number_format($moyenneSemestre1, 2) : '-' }}</span></td>
-                                                </tr>
-                                                <tr>
-                                                    <td>Moyenne Annuelle</td>
-                                                    <td class="center"><span class="result-value-box">{{ $moyenneAnnuelle !== null ? number_format($moyenneAnnuelle, 2) : '-' }}</span></td>
-                                                </tr>
-                                            @endif
-                                            @if($periode == 'annuel')
-                                                <tr>
-                                                    <td>Moyenne Semestre 1</td>
-                                                    <td class="center"><span class="result-value-box">{{ $moyenneSemestre1 !== null ? number_format($moyenneSemestre1, 2) : '-' }}</span></td>
-                                                </tr>
-                                                <tr>
-                                                    <td>Moyenne Semestre 2</td>
-                                                    <td class="center"><span class="result-value-box">{{ $moyenneSemestre2 !== null ? number_format($moyenneSemestre2, 2) : '-' }}</span></td>
-                                                </tr>
-                                                <tr>
-                                                    <td><strong>Moyenne Annuelle</strong></td>
-                                                    <td class="center"><span class="result-value-box"><strong>{{ $moyenneAnnuelle !== null ? number_format($moyenneAnnuelle, 2) : '-' }}</strong></span></td>
-                                                </tr>
-                                            @endif
-                                        @endif
-                                        @if(($settings['bulletin_show_student_rank'] ?? '1') == '1')
-                                            <tr>
-                                                <td>{{ in_array($periode, ['semestre2', 'annuel'], true) ? 'Rang semestre 2' : 'Rang' }}</td>
-                                                <td class="center"><span class="result-value-box">{{ $rang ?: '-' }}</span></td>
-                                            </tr>
-                                            @if(in_array($periode, ['semestre2', 'annuel'], true))
-                                            <tr>
-                                                <td>Rang annuel</td>
-                                                <td class="center"><span class="result-value-box">{{ ($rangAnnuel ?? null) ?: '-' }}</span></td>
-                                            </tr>
-                                            @endif
-                                        @endif
+                                        <tr>
+                                            <td>
+                                                <div class="council-text">{{ $decisionConseil ?? $councilDecision['text'] ?? $bulletin->decision_conseil ?? '' }}</div>
+                                                @if(($settings['bulletin_show_signature'] ?? '1') == '1' || ($settings['bulletin_show_director_signature'] ?? '1') == '1')
+                                                    <div class="council-sign">
+                                                        <div class="council-sign-title">{{ $directorTitle }}</div>
+                                                        <div class="council-sign-space"></div>
+                                                        @if($directorName)
+                                                            <div class="council-sign-name">{{ $directorName }}</div>
+                                                        @endif
+                                                    </div>
+                                                @endif
+                                            </td>
+                                        </tr>
                                     </tbody>
                                 </table>
                             </div>
-
                         </td>
-
-                        @if(($settings['bulletin_show_statistics'] ?? '1') == '1')
-                            <td class="results-right">
-                                <div class="stats-card">
-                                    <table class="stats-table">
-                                        <thead>
-                                            <tr><th colspan="2">STATISTIQUES — {{ $periode == 'semestre1' ? 'SEMESTRE 1' : ($periode == 'semestre2' ? 'SEMESTRE 2' : 'ANNUEL') }}</th></tr>
-                                        </thead>
-                                        <tbody>
-                                            @if(($settings['bulletin_show_highest_average'] ?? '1') == '1')
-                                                <tr><td>Plus forte moyenne</td><td class="center">{{ number_format($meilleure_moyenne, 2) }}</td></tr>
-                                            @endif
-                                            @if(($settings['bulletin_show_lowest_average'] ?? '1') == '1')
-                                                <tr><td>Plus faible moyenne</td><td class="center">{{ number_format($plus_faible_moyenne, 2) }}</td></tr>
-                                            @endif
-                                            @if(($settings['bulletin_show_class_average'] ?? '1') == '1')
-                                                <tr><td>Moyenne de la classe</td><td class="center">{{ number_format($moyenne_classe, 2) }}</td></tr>
-                                            @endif
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </td>
-                        @endif
                     </tr>
                 </table>
-            </div>
-
-            {{-- Distinctions : 3 cases sous les resultats, 2 cases a droite dans
-                 la zone vide sous les statistiques (disposition validee ecole). --}}
-            @if(($settings['bulletin_show_mentions'] ?? '1') == '1')
-                @php
-                    $mentionItems = \App\Services\BulletinMentionResolver::resolveFromSettings(
-                        isset($moyenneGlobale) ? (float) $moyenneGlobale : null,
-                        isset($noteConduite) ? (float) $noteConduite : null
-                    );
-                @endphp
-                @php $mentionSplit = (int) ceil(count($mentionItems) / 2); @endphp
-                @if(count($mentionItems) > 0)
-                    <table class="mention-columns">
-                        <tr>
-                            @foreach(['left' => array_slice($mentionItems, 0, $mentionSplit), 'right' => array_slice($mentionItems, $mentionSplit)] as $cote => $colonne)
-                                <td class="mention-col mention-col--{{ $cote }}">
-                                    @foreach($colonne as $item)
-                                        <div class="mention-box"><table class="mention-table"><tr><td class="mention-label">{{ $item['label'] }}</td><td class="mention-value"><input type="checkbox" {{ $item['checked'] ? 'checked' : '' }}></td></tr></table></div>
-                                    @endforeach
-                                </td>
-                            @endforeach
-                        </tr>
-                    </table>
-                @endif
-            @endif
-        @endif
-
-        @php
-            $councilDecision = $councilDecision ?? ['title' => 'Décision du conseil de classe', 'text' => $appreciation ?? ''];
-        @endphp
-        {{-- Décision du conseil au-dessus de la signature --}}
-        @if(($settings['bulletin_show_council_decision'] ?? '1') == '1')
-            <div class="decision-container">
-                <div class="decision-title">{{ $councilDecision['title'] ?? 'Décision du conseil de classe' }}</div>
-                <div style="min-height: {{ max(20, $decisionHeight - 20) }}px; font-size: {{ $typeScale['decision'] }}px;">{{ $decisionConseil ?? $councilDecision['text'] ?? $bulletin->decision_conseil ?? '' }}</div>
-            </div>
-        @endif
-
-        {{-- Signature --}}
-        @if(($settings['bulletin_show_signature'] ?? '1') == '1' || ($settings['bulletin_show_director_signature'] ?? '1') == '1')
-            @php
-                $directorTitle = $settings['director_title'] ?? \App\Helpers\SettingsHelper::get('director_title', 'Directeur');
-                $directorName  = $settings['director_name']  ?? \App\Helpers\SettingsHelper::get('director_name', '');
-            @endphp
-            <div class="signature-container">
-                <div class="signature-box">
-                    <div style="font-size: {{ $typeScale['signature'] }}px;">{{ $directorTitle }}</div>
-                    <div class="signature-line"></div>
-                    @if($directorName)
-                        <div style="margin-top: 4px; font-weight: 700; font-size: {{ $typeScale['signature'] }}px;">{{ $directorName }}</div>
-                    @endif
-                </div>
             </div>
         @endif
 
