@@ -285,19 +285,11 @@
             vertical-align: top;
             padding: 0;
         }
-        .results-pair { width: 100%; border-collapse: collapse; table-layout: fixed; margin-bottom: 4px; }
-        .results-pair td { border: none; padding: 0; vertical-align: top; }
-        .results-left { width: 50%; padding-right: 3px; }
-        .results-mid { width: 50%; padding-left: 3px; }
-
-        .pair-card, .council-card {
+        .pair-card {
             border: 1px solid #d1d5db;
             border-radius: 8px;
             background: #fff;
             overflow: hidden;
-        }
-        .results-council .council-card {
-            border: 1px solid #d1d5db;
         }
         .pair-table, .council-table {
             width: 100%;
@@ -305,7 +297,6 @@
             border-collapse: collapse;
             background: #fff;
         }
-        .results-council .pair-card { height: auto; }
         .pair-table th, .council-table th {
             background: {{ $pdfPrimary }};
             color: #ffffff;
@@ -339,11 +330,7 @@
             background: #f8fafb;
             font-size: {{ $typeScale['heading'] }}px;
         }
-        .council-grow, .council-sign { vertical-align: top; padding: 0; }
-        .council-half-table { width: 100%; border-collapse: collapse; }
-        .council-half-cell {
-            padding: 12px 16px;
-        }
+        .council-half-cell { padding: 12px 16px; }
         .council-half-cell--sign { text-align: center; }
         .council-sub {
             font-size: {{ $typeScale['body'] }}px;
@@ -364,7 +351,8 @@
             text-align: left;
             padding: 10px 16px 4px;
         }
-        .council-sign { border-top: 1px solid #e5e7eb; background: #f8fafb; }
+        .council-sign { background: #f8fafb; }
+        .council-sign-start { border-top: 1px solid #e5e7eb; }
         .council-sign-title, .council-half-cell--sign {
             font-size: {{ $typeScale['heading'] }}px;
             font-weight: 700;
