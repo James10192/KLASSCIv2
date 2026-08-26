@@ -1797,20 +1797,39 @@ class ESBTPSettingsController extends Controller
             ]);
         }
 
-        Setting::firstOrCreate(
-            ['key' => BulletinMentionResolver::AUTH_TEXT_KEY],
-            [
+        foreach ([
+            BulletinMentionResolver::AUTH_TEXT_KEY => [
                 'value' => BulletinMentionResolver::AUTH_TEXT_DEFAULT,
-                'type' => 'string',
-                'group' => 'bulletin',
-                'category' => 'bulletin',
                 'description' => 'Texte anti-duplicata en pied de bulletin',
-                'is_required' => false,
-                'default_value' => BulletinMentionResolver::AUTH_TEXT_DEFAULT,
-                'validation_rules' => ['nullable', 'string'],
-                'sort_order' => 52,
-            ]
-        );
+            ],
+            BulletinMentionResolver::FAIT_A_KEY => [
+                'value' => '',
+                'description' => 'Lieu du « Fait à » sur le bulletin',
+            ],
+            BulletinMentionResolver::FAIT_LE_MODE_KEY => [
+                'value' => 'edition',
+                'description' => 'Source de la date du « Fait le » (edition, empty, custom)',
+            ],
+            BulletinMentionResolver::FAIT_LE_DATE_KEY => [
+                'value' => '',
+                'description' => 'Date personnalisée du « Fait le »',
+            ],
+        ] as $key => $attrs) {
+            Setting::firstOrCreate(
+                ['key' => $key],
+                [
+                    'value' => $attrs['value'],
+                    'type' => 'string',
+                    'group' => 'bulletin',
+                    'category' => 'bulletin',
+                    'description' => $attrs['description'],
+                    'is_required' => false,
+                    'default_value' => $attrs['value'],
+                    'validation_rules' => ['nullable', 'string'],
+                    'sort_order' => 52,
+                ]
+            );
+        }
     }
 
     private function ensureMailPulseSettings(): void

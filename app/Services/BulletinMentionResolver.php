@@ -12,6 +12,12 @@ class BulletinMentionResolver
 
     public const AUTH_TEXT_DEFAULT = 'Ce document ne peut faire l\'objet d\'aucun duplicata';
 
+    public const FAIT_A_KEY = 'bulletin_fait_a';
+
+    public const FAIT_LE_MODE_KEY = 'bulletin_fait_le_mode';
+
+    public const FAIT_LE_DATE_KEY = 'bulletin_fait_le_date';
+
     public const SOURCE_AVERAGE = 'moyenne';
 
     public const SOURCE_CONDUCT = 'conduite';
@@ -35,6 +41,50 @@ class BulletinMentionResolver
         $text = SettingsHelper::get(self::AUTH_TEXT_KEY, self::AUTH_TEXT_DEFAULT);
 
         return is_string($text) && trim($text) !== '' ? trim($text) : self::AUTH_TEXT_DEFAULT;
+    }
+
+    public static function faitA(): string
+    {
+        $value = SettingsHelper::get(self::FAIT_A_KEY, '');
+
+        return is_string($value) ? trim($value) : '';
+    }
+
+    public static function faitLe(?string $editionDate): string
+    {
+        $mode = (string) SettingsHelper::get(self::FAIT_LE_MODE_KEY, 'edition');
+
+        if ($mode === 'empty') {
+            return '';
+        }
+
+        if ($mode === 'custom') {
+            $custom = SettingsHelper::get(self::FAIT_LE_DATE_KEY, '');
+
+            return is_string($custom) ? trim($custom) : '';
+        }
+
+        return trim((string) $editionDate);
+    }
+
+    public static function faitALeLine(?string $editionDate): string
+    {
+        $place = self::faitA();
+        $date = self::faitLe($editionDate);
+
+        if ($place === '' && $date === '') {
+            return '';
+        }
+
+        if ($place !== '' && $date !== '') {
+            return 'Fait à '.$place.' le '.$date;
+        }
+
+        if ($place !== '') {
+            return 'Fait à '.$place;
+        }
+
+        return 'Fait le '.$date;
     }
 
     /**

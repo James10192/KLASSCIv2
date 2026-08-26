@@ -56,6 +56,38 @@
     </div>
 </div>
 
+@php
+    $faitA = \App\Helpers\SettingsHelper::get(\App\Services\BulletinMentionResolver::FAIT_A_KEY, '');
+    $faitLeMode = \App\Helpers\SettingsHelper::get(\App\Services\BulletinMentionResolver::FAIT_LE_MODE_KEY, 'edition');
+    $faitLeDate = \App\Helpers\SettingsHelper::get(\App\Services\BulletinMentionResolver::FAIT_LE_DATE_KEY, '');
+@endphp
+<div class="bc-input-row" style="margin-top: 12px;">
+    <div class="bc-icon"><i class="fas fa-map-marker-alt"></i></div>
+    <div class="bc-body">
+        <div class="bc-label">Fait à (ville sur le bulletin)</div>
+        <input type="text" class="form-control form-control-modern"
+               name="setting_bulletin_fait_a"
+               value="{{ $faitA }}" placeholder="Abidjan">
+    </div>
+</div>
+<div class="bc-input-row" style="margin-top: 12px;">
+    <div class="bc-icon"><i class="fas fa-calendar-day"></i></div>
+    <div class="bc-body">
+        <div class="bc-label">Fait le (date)</div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+            <select class="form-control form-control-modern" style="max-width: 220px;"
+                    name="setting_bulletin_fait_le_mode">
+                <option value="edition" {{ $faitLeMode === 'edition' ? 'selected' : '' }}>Date d'édition du bulletin</option>
+                <option value="empty" {{ $faitLeMode === 'empty' ? 'selected' : '' }}>Vide</option>
+                <option value="custom" {{ $faitLeMode === 'custom' ? 'selected' : '' }}>Date spécifique</option>
+            </select>
+            <input type="text" class="form-control form-control-modern" style="max-width: 180px;"
+                   name="setting_bulletin_fait_le_date"
+                   value="{{ $faitLeDate }}" placeholder="26/08/2026">
+        </div>
+    </div>
+</div>
+
 <script>
 document.getElementById('mention-rule-add')?.addEventListener('click', function () {
     const list = document.getElementById('mention-rules');

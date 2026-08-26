@@ -138,8 +138,8 @@
         }
 
         /* Sections critiques : jamais coupees par un saut de page. */
-        .student-info, .header, .results-container, .signature-container,
-        .decision-container, tr.section-header, tr.summary-row,
+        .student-info, .header, .results-container, .council-card,
+        tr.section-header, tr.summary-row,
         tr.subject-row { page-break-inside: avoid; }
 
         /* ── Fiche étudiant ───────────────────────────────────── */
@@ -284,38 +284,38 @@
         .results-left { width: 50%; padding-right: 3px; }
         .results-mid { width: 50%; padding-left: 3px; }
 
-        .results-card, .stats-card, .council-card {
+        .pair-card, .council-card {
             border: 1px solid #d1d5db;
             border-radius: 8px;
             background: #fff;
             overflow: hidden;
         }
-        .results-table, .stats-table, .council-table {
+        .council-card { height: 100%; }
+        .pair-table, .council-table {
             width: 100%;
-            font-size: {{ $typeScale['body'] }}px;
+            height: 100%;
+            font-size: {{ $typeScale['heading'] }}px;
             border-collapse: collapse;
             background: #fff;
         }
-        .results-table th, .stats-table th, .council-table th {
+        .pair-table th, .council-label {
             background: {{ $pdfPrimary }};
             color: #ffffff;
-            padding: 6px 8px;
-            font-size: {{ $typeScale['info'] }}px;
+            padding: 7px 8px;
+            font-size: {{ $typeScale['body'] }}px;
             border: none;
             text-align: left;
             font-weight: 700;
-            letter-spacing: 0.03em;
         }
-        .results-table td, .stats-table td {
+        .pair-table th.pair-split, .pair-table td.pair-split {
+            border-left: 1px solid #cbd5e1;
+        }
+        .pair-table td {
             padding: 5px 8px;
             border-bottom: 1px solid #f3f4f6;
-            border-left: none;
-            border-right: none;
-            border-top: none;
+            vertical-align: top;
         }
-        .results-table tr:last-child td, .stats-table tr:last-child td {
-            border-bottom: none;
-        }
+        .pair-table tr:last-child td { border-bottom: none; }
         .result-key { font-weight: 700; color: #111827; }
         .result-value-box {
             border: 1px solid #d1d5db;
@@ -326,35 +326,40 @@
             text-align: center;
             font-weight: 700;
             background: #f8fafb;
-            font-size: {{ $typeScale['body'] }}px;
+            font-size: {{ $typeScale['heading'] }}px;
         }
-        .council-table td {
-            border: none;
-            padding: 8px 8px 6px;
-            vertical-align: top;
+        .council-label {
+            display: block;
         }
+        .council-grow { height: 100%; vertical-align: top; padding: 10px 10px 6px; }
         .council-text {
-            min-height: {{ max(36, (int) $decisionHeight - 28) }}px;
-            font-size: {{ $typeScale['body'] }}px;
+            min-height: {{ max(48, (int) $decisionHeight - 16) }}px;
+            font-size: {{ $typeScale['heading'] }}px;
             font-weight: 700;
             color: #111827;
             line-height: 1.35;
         }
+        .council-place {
+            margin-top: 10px;
+            font-size: {{ $typeScale['body'] }}px;
+            font-weight: 700;
+            color: #111827;
+        }
         .council-sign {
             text-align: center;
-            padding-top: 8px;
+            padding: 12px 10px 10px;
             border-top: 1px solid #e5e7eb;
         }
         .council-sign-title {
-            font-size: {{ $typeScale['info'] }}px;
+            font-size: {{ $typeScale['heading'] }}px;
             font-weight: 700;
             color: #111827;
         }
         .council-sign-space {
-            height: {{ max(28, (int) $signatureHeight - 8) }}px;
+            height: {{ max(36, (int) $signatureHeight) }}px;
         }
         .council-sign-name {
-            font-size: {{ $typeScale['info'] }}px;
+            font-size: {{ $typeScale['title'] }}px;
             font-weight: 700;
             color: {{ $pdfPrimary }};
         }
@@ -398,50 +403,10 @@
             width: 28px;
             text-align: right;
         }
-        /* Distinctions : colonne gauche (3 cases) sous les resultats,
-           colonne droite (2 cases) dans la zone vide sous les statistiques.
-           Paddings alignes sur .results-left / .results-right (5px). */
         .mention-columns { width: 100%; border-collapse: collapse; table-layout: fixed; }
         .mention-col { width: 50%; border: none; vertical-align: top; padding: 0 0 3px; }
         .mention-col--left { padding-right: 3px; }
         .mention-col--right { padding-left: 3px; }
-
-        /* ── Décision conseil ─────────────────────────────────── */
-        .decision-container {
-            margin: 6px 0;
-            border: 1px solid #d1d5db;
-            border-radius: 8px;
-            padding: 8px 10px;
-            min-height: {{ $decisionHeight }}px;
-            background: #f9fafb;
-        }
-        .decision-title {
-            font-weight: 700;
-            margin-bottom: 5px;
-            text-transform: uppercase;
-            font-size: {{ $typeScale['table'] }}px;
-            color: {{ $pdfPrimary }};
-            border-bottom: 1px solid #e5e7eb;
-            padding-bottom: 3px;
-        }
-
-        /* ── Signature ────────────────────────────────────────── */
-        .signature-container {
-            margin-top: 6px;
-            text-align: right;
-        }
-        .signature-box {
-            display: inline-block;
-            text-align: center;
-            min-width: 200px;
-        }
-        /* Espace de signature sans trait : la barre au-dessus du nom du
-           directeur des etudes est retiree sur le gabarit Abidjan. */
-        .signature-line {
-            width: 200px;
-            height: {{ $signatureHeight }}px;
-            margin-top: 4px;
-        }
 
         /* ── Mode PDF export ──────────────────────────────────── */
         @if($isPdfExport ?? false)
@@ -801,162 +766,8 @@
             </table>
         @endif
 
-        {{-- Gauche 1/2 : resultats + stats + mentions. Droite 1/2 : conseil + signature. --}}
         @if(($settings['bulletin_show_results_section'] ?? '1') == '1')
-            @php
-                $councilDecision = $councilDecision ?? ['title' => 'Appréciation du conseil de classe', 'text' => $appreciation ?? ''];
-                $directorTitle = $settings['director_title'] ?? \App\Helpers\SettingsHelper::get('director_title', 'Directeur des études');
-                $directorName  = $settings['director_name']  ?? \App\Helpers\SettingsHelper::get('director_name', '');
-                $mentionItems = (($settings['bulletin_show_mentions'] ?? '1') == '1')
-                    ? \App\Services\BulletinMentionResolver::resolveFromSettings(
-                        isset($moyenneGlobale) ? (float) $moyenneGlobale : null,
-                        isset($noteConduite) ? (float) $noteConduite : null
-                    )
-                    : [];
-                $mentionRows = array_chunk($mentionItems, 2);
-            @endphp
-            <div class="results-container">
-                <table class="results-container-table">
-                    <tr>
-                        <td class="results-main">
-                            <table class="results-pair">
-                                <tr>
-                                    <td class="results-left">
-                                        <div class="results-card">
-                                            <table class="results-table">
-                                                <thead>
-                                                    <tr><th colspan="2">RÉSULTATS</th></tr>
-                                                </thead>
-                                                <tbody>
-                                                    @if(($settings['bulletin_show_raw_average'] ?? '1') == '1')
-                                                        <tr>
-                                                            <td>Moyenne brute</td>
-                                                            <td class="center"><span class="result-value-box">{{ number_format($moyenneGlobale, 2) }}</span></td>
-                                                        </tr>
-                                                    @endif
-                                                    @if(($settings['bulletin_show_attendance_note'] ?? '1') == '1')
-                                                        <tr>
-                                                            <td>Note d'assiduité</td>
-                                                            <td class="center"><span class="result-value-box">{{ $note_assiduite > 0 ? '+'.number_format($note_assiduite, 2) : number_format($note_assiduite, 2) }}</span></td>
-                                                        </tr>
-                                                    @endif
-                                                    @if(($settings['bulletin_show_semester_average'] ?? '1') == '1')
-                                                        @if($periode == 'semestre1' || $periode == 'semestre2')
-                                                        <tr>
-                                                            <td class="result-key">Moyenne {{ $periode == 'semestre1' ? '1er' : '2e' }} semestre</td>
-                                                            <td class="center"><span class="result-value-box">{{ number_format($moyenneAvecAssiduite, 2) }}</span></td>
-                                                        </tr>
-                                                        @endif
-                                                        @if($periode == 'semestre2')
-                                                            <tr>
-                                                                <td>Moyenne semestre 1</td>
-                                                                <td class="center"><span class="result-value-box">{{ $moyenneSemestre1 !== null ? number_format($moyenneSemestre1, 2) : '-' }}</span></td>
-                                                            </tr>
-                                                            <tr>
-                                                                <td class="result-key">Moyenne annuelle</td>
-                                                                <td class="center"><span class="result-value-box">{{ $moyenneAnnuelle !== null ? number_format($moyenneAnnuelle, 2) : '-' }}</span></td>
-                                                            </tr>
-                                                        @endif
-                                                        @if($periode == 'annuel')
-                                                            <tr>
-                                                                <td>Moyenne semestre 1</td>
-                                                                <td class="center"><span class="result-value-box">{{ $moyenneSemestre1 !== null ? number_format($moyenneSemestre1, 2) : '-' }}</span></td>
-                                                            </tr>
-                                                            <tr>
-                                                                <td>Moyenne semestre 2</td>
-                                                                <td class="center"><span class="result-value-box">{{ $moyenneSemestre2 !== null ? number_format($moyenneSemestre2, 2) : '-' }}</span></td>
-                                                            </tr>
-                                                            <tr>
-                                                                <td class="result-key">Moyenne annuelle</td>
-                                                                <td class="center"><span class="result-value-box">{{ $moyenneAnnuelle !== null ? number_format($moyenneAnnuelle, 2) : '-' }}</span></td>
-                                                            </tr>
-                                                        @endif
-                                                    @endif
-                                                    @if(($settings['bulletin_show_student_rank'] ?? '1') == '1')
-                                                        <tr>
-                                                            <td class="result-key">{{ in_array($periode, ['semestre2', 'annuel'], true) ? 'Rang semestre 2' : 'Rang' }}</td>
-                                                            <td class="center"><span class="result-value-box">{{ $rang ?: '-' }}</span></td>
-                                                        </tr>
-                                                        @if(in_array($periode, ['semestre2', 'annuel'], true))
-                                                        <tr>
-                                                            <td class="result-key">Rang annuel</td>
-                                                            <td class="center"><span class="result-value-box">{{ ($rangAnnuel ?? null) ?: '-' }}</span></td>
-                                                        </tr>
-                                                        @endif
-                                                    @endif
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    </td>
-                                    @if(($settings['bulletin_show_statistics'] ?? '1') == '1')
-                                    <td class="results-mid">
-                                        <div class="stats-card">
-                                            <table class="stats-table">
-                                                <thead>
-                                                    <tr><th colspan="2">STATISTIQUES — {{ $periode == 'semestre1' ? 'SEMESTRE 1' : ($periode == 'semestre2' ? 'SEMESTRE 2' : 'ANNUEL') }}</th></tr>
-                                                </thead>
-                                                <tbody>
-                                                    @if(($settings['bulletin_show_highest_average'] ?? '1') == '1')
-                                                        <tr><td>Plus forte moyenne</td><td class="center result-key">{{ number_format($meilleure_moyenne, 2) }}</td></tr>
-                                                    @endif
-                                                    @if(($settings['bulletin_show_lowest_average'] ?? '1') == '1')
-                                                        <tr><td>Plus faible moyenne</td><td class="center">{{ number_format($plus_faible_moyenne, 2) }}</td></tr>
-                                                    @endif
-                                                    @if(($settings['bulletin_show_class_average'] ?? '1') == '1')
-                                                        <tr><td class="result-key">Moyenne de la classe</td><td class="center result-key">{{ number_format($moyenne_classe, 2) }}</td></tr>
-                                                    @endif
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    </td>
-                                    @endif
-                                </tr>
-                            </table>
-                            @if(count($mentionRows) > 0)
-                                <table class="mention-columns">
-                                    @foreach($mentionRows as $row)
-                                        <tr>
-                                            @foreach($row as $i => $item)
-                                                <td class="mention-col {{ $i === 0 ? 'mention-col--left' : 'mention-col--right' }}">
-                                                    <div class="mention-box"><table class="mention-table"><tr><td class="mention-label">{{ $item['label'] }}</td><td class="mention-value"><input type="checkbox" {{ $item['checked'] ? 'checked' : '' }}></td></tr></table></div>
-                                                </td>
-                                            @endforeach
-                                            @if(count($row) === 1)
-                                                <td class="mention-col mention-col--right"></td>
-                                            @endif
-                                        </tr>
-                                    @endforeach
-                                </table>
-                            @endif
-                        </td>
-                        <td class="results-council">
-                            <div class="council-card">
-                                <table class="council-table">
-                                    <thead>
-                                        <tr><th>Appréciation du conseil de classe</th></tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr>
-                                            <td>
-                                                <div class="council-text">{{ $decisionConseil ?? $councilDecision['text'] ?? $bulletin->decision_conseil ?? '' }}</div>
-                                                @if(($settings['bulletin_show_signature'] ?? '1') == '1' || ($settings['bulletin_show_director_signature'] ?? '1') == '1')
-                                                    <div class="council-sign">
-                                                        <div class="council-sign-title">{{ $directorTitle }}</div>
-                                                        <div class="council-sign-space"></div>
-                                                        @if($directorName)
-                                                            <div class="council-sign-name">{{ $directorName }}</div>
-                                                        @endif
-                                                    </div>
-                                                @endif
-                                            </td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </td>
-                    </tr>
-                </table>
-            </div>
+            @include('esbtp.bulletins.partials.abidjan-results-footer')
         @endif
 
         {{-- Date d'edition en bas de page (retiree de l'en-tete) --}}
