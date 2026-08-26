@@ -284,6 +284,7 @@
             border-radius: 8px;
             background: #fff;
             vertical-align: top;
+            padding: 0;
         }
         .results-pair { width: 100%; border-collapse: collapse; table-layout: fixed; margin-bottom: 4px; }
         .results-pair td { border: none; padding: 0; vertical-align: top; }
@@ -308,11 +309,14 @@
         .pair-table th, .council-label {
             background: {{ $pdfPrimary }};
             color: #ffffff;
-            padding: 7px 8px;
+            padding: 8px 14px;
             font-size: {{ $typeScale['body'] }}px;
             border: none;
             text-align: left;
             font-weight: 700;
+        }
+        .council-label {
+            border-radius: 8px 8px 0 0;
         }
         .pair-table th.pair-split, .pair-table td.pair-split {
             border-left: 1px solid #cbd5e1;
@@ -340,7 +344,7 @@
         }
         .results-council .council-table { height: 100%; }
         .council-half { height: 50%; vertical-align: top; }
-        .council-grow { vertical-align: top; padding: 10px; }
+        .council-grow { vertical-align: top; padding: 14px 16px 12px; }
         .council-text {
             min-height: 48px;
             font-size: {{ $typeScale['heading'] }}px;
@@ -349,7 +353,7 @@
             line-height: 1.35;
         }
         .council-place {
-            margin-top: 10px;
+            margin-top: 12px;
             font-size: {{ $typeScale['body'] }}px;
             font-weight: 700;
             color: #111827;
@@ -358,8 +362,9 @@
             height: 50%;
             text-align: center;
             vertical-align: middle;
-            padding: 12px 10px;
+            padding: 16px 16px 18px;
             border-top: 1px solid #e5e7eb;
+            border-radius: 0 0 8px 8px;
         }
         .council-sign-title {
             font-size: {{ $typeScale['heading'] }}px;
