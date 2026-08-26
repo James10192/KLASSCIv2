@@ -139,7 +139,7 @@
                         <tr>
                             <td class="council-label">{{ $councilTitle }}</td>
                         </tr>
-                        <tr>
+                        <tr class="council-half">
                             <td class="council-grow">
                                 <div class="council-text">{{ $decisionConseil ?? $councilDecision['text'] ?? $bulletin->decision_conseil ?? '' }}</div>
                                 @if($faitALe !== '')
@@ -148,7 +148,7 @@
                             </td>
                         </tr>
                         @if($showSignature)
-                            <tr>
+                            <tr class="council-half">
                                 <td class="council-sign">
                                     <div class="council-sign-title">{{ $directorTitle }}</div>
                                     <div class="council-sign-space"></div>

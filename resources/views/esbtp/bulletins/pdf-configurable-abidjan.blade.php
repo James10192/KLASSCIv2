@@ -338,9 +338,11 @@
         .council-label {
             display: block;
         }
-        .council-grow { vertical-align: top; padding: 8px 10px 6px; }
+        .results-council .council-table { height: 100%; }
+        .council-half { height: 50%; vertical-align: top; }
+        .council-grow { vertical-align: top; padding: 10px; }
         .council-text {
-            min-height: 28px;
+            min-height: 48px;
             font-size: {{ $typeScale['heading'] }}px;
             font-weight: 700;
             color: #111827;
@@ -353,8 +355,10 @@
             color: #111827;
         }
         .council-sign {
+            height: 50%;
             text-align: center;
-            padding: 12px 10px 10px;
+            vertical-align: middle;
+            padding: 12px 10px;
             border-top: 1px solid #e5e7eb;
         }
         .council-sign-title {
