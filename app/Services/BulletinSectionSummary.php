@@ -16,6 +16,46 @@ class BulletinSectionSummary
      * @param  array{etudiant_id: int, classe_id: int, annee_id: int, periode: string}|null  $rankContext
      * @return array{general: array{moyenne: ?float, coefficient: float, weighted: float, absences: float, rang: ?int}, technical: array{moyenne: ?float, coefficient: float, weighted: float, absences: float, rang: ?int}}
      */
+    /**
+     * @param  array<string, mixed>  $settings
+     * @param  iterable<int, object>  $resultatsGeneraux
+     * @param  iterable<int, object>  $resultatsTechniques
+     * @param  array<int|string, array{total_heures?: float|int}>  $absencesParMatiere
+     * @return array{general: ?array{moyenne: ?float, coefficient: float, weighted: float, absences: float, rang: ?int}, technical: ?array{moyenne: ?float, coefficient: float, weighted: float, absences: float, rang: ?int}}
+     */
+    public static function forView(
+        array $settings,
+        iterable $resultatsGeneraux,
+        iterable $resultatsTechniques,
+        array $absencesParMatiere,
+        ?float $moyenneGenerale,
+        ?float $moyenneTechnique,
+        bool $withRank,
+        ?object $etudiant,
+        ?object $classe,
+        ?object $anneeUniversitaire,
+        ?object $bulletin,
+        string $periode
+    ): array {
+        if (($settings['bulletin_show_section_averages'] ?? '1') != '1') {
+            return ['general' => null, 'technical' => null];
+        }
+
+        return app(self::class)->pair(
+            $resultatsGeneraux,
+            $resultatsTechniques,
+            $absencesParMatiere,
+            $moyenneGenerale,
+            $moyenneTechnique,
+            $withRank ? [
+                'etudiant_id' => (int) ($etudiant->id ?? 0),
+                'classe_id' => (int) ($classe->id ?? 0),
+                'annee_id' => (int) ($anneeUniversitaire->id ?? $bulletin->annee_universitaire_id ?? 0),
+                'periode' => $periode,
+            ] : null
+        );
+    }
+
     public function pair(
         iterable $resultatsGeneraux,
         iterable $resultatsTechniques,

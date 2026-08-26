@@ -622,8 +622,21 @@
                     + ($showAbsencesParMatiere ? 1 : 0)
                     + ($showTeachers ? 1 : 0)
                     + ($showAppreciations ? 1 : 0);
+                $sections = \App\Services\BulletinSectionSummary::forView(
+                    $settings ?? [],
+                    $resultatsGeneraux ?? collect(),
+                    $resultatsTechniques ?? collect(),
+                    $absencesParMatiere ?? [],
+                    isset($moyenneGenerale) ? (float) $moyenneGenerale : null,
+                    isset($moyenneTechnique) ? (float) $moyenneTechnique : null,
+                    $showRankPerSubject,
+                    $etudiant ?? null,
+                    $classe ?? null,
+                    $anneeUniversitaire ?? null,
+                    $bulletin ?? null,
+                    (string) $periode
+                );
             @endphp
-            @include('esbtp.bulletins.partials.section-summaries')
             <table>
                 <thead>
                     <tr>
