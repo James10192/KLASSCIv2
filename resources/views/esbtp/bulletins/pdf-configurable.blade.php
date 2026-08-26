@@ -37,6 +37,18 @@
             background: #fff;
             padding: 0;
         }
+        .edition-footer {
+            margin-top: 10px;
+            font-size: {{ $typeScale['label'] }}px;
+            color: #6b7280;
+            text-align: left;
+        }
+        .edition-authenticity {
+            margin-top: 4px;
+            font-size: {{ $typeScale['label'] }}px;
+            color: #6b7280;
+            text-align: center;
+        }
 
         /* ── Header principal ─────────────────────────────────── */
         .header {
@@ -505,9 +517,7 @@
                             @else Annuel
                             @endif
                         </div>
-                        @if(($settings['bulletin_show_edition_date'] ?? '1') == '1')
-                        <div class="year">Édition : {{ $date_edition }}</div>
-                        @endif
+
                         @if(($settings['bulletin_show_cycle_info'] ?? '1') == '1')
                         <div class="year">{{ $settings['bulletin_cycle_text'] ?? 'Brevet de Technicien Supérieur' }}</div>
                         <div class="year">{{ $settings['bulletin_cycle_abbreviation'] ?? 'BTS' }}</div>
@@ -832,28 +842,10 @@
 
                         @if(($settings['bulletin_show_mentions'] ?? '1') == '1')
                         @php
-                            // Collecte des mentions actives → grid 2 colonnes pour économiser l'espace
-                            $_mentions = [];
-                            $_autoCalc = ($settings['bulletin_auto_calculate_mention'] ?? '1') == '1';
-                            $_felThresh = floatval($settings['bulletin_felicitation_threshold'] ?? 16);
-                            $_encThresh = floatval($settings['bulletin_encouragement_threshold'] ?? 14);
-                            $_honThresh = floatval($settings['bulletin_honor_roll_threshold'] ?? 12);
-                            $_warnThresh = floatval($settings['bulletin_work_warning_threshold'] ?? 8);
-                            if (($settings['bulletin_show_felicitation'] ?? '1') == '1') {
-                                $_mentions[] = ['label' => 'Félicitation', 'checked' => $_autoCalc && $moyenneGlobale >= $_felThresh];
-                            }
-                            if (($settings['bulletin_show_encouragement'] ?? '1') == '1') {
-                                $_mentions[] = ['label' => 'Encouragement', 'checked' => $_autoCalc && $moyenneGlobale >= $_encThresh && $moyenneGlobale < $_felThresh];
-                            }
-                            if (($settings['bulletin_show_honor_roll'] ?? '1') == '1') {
-                                $_mentions[] = ['label' => 'Tableau d\'honneur', 'checked' => $_autoCalc && $moyenneGlobale >= $_honThresh && $moyenneGlobale < $_encThresh];
-                            }
-                            if (($settings['bulletin_show_work_warning'] ?? '1') == '1') {
-                                $_mentions[] = ['label' => 'Avertissement (Travail)', 'checked' => $_autoCalc && $moyenneGlobale >= $_warnThresh && $moyenneGlobale < 10];
-                            }
-                            if (($settings['bulletin_show_conduct_blame'] ?? '1') == '1') {
-                                $_mentions[] = ['label' => 'Blâme (Conduite)', 'checked' => false];
-                            }
+                            $_mentions = \App\Services\BulletinMentionResolver::resolveFromSettings(
+                                isset($moyenneGlobale) ? (float) $moyenneGlobale : null,
+                                isset($noteConduite) ? (float) $noteConduite : null
+                            );
                             $_mentionsChunks = array_chunk($_mentions, 2);
                         @endphp
                         <div style="margin-top: 5px;">
@@ -933,6 +925,8 @@
             @endif
         </div>
         @endif
+
+        @include('esbtp.bulletins.partials.edition-footer')
 
     </div>
 

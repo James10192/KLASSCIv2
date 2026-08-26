@@ -1229,54 +1229,29 @@ class SettingsSeeder extends Seeder
                 'sort_order' => 50
             ],
 
-            // Seuils de mentions
             [
-                'key' => 'bulletin_felicitation_threshold',
-                'value' => '16',
-                'type' => 'string',
+                'key' => \App\Services\BulletinMentionResolver::SETTING_KEY,
+                'value' => json_encode(\App\Services\BulletinMentionResolver::catalog()),
+                'type' => 'json',
                 'group' => 'bulletin',
                 'category' => 'bulletin',
-                'description' => 'Seuil pour félicitation',
+                'description' => 'Règles de mentions bulletin (libellé, min, max, source)',
                 'is_required' => false,
-                'default_value' => '16',
-                'validation_rules' => ['string'],
+                'default_value' => json_encode(\App\Services\BulletinMentionResolver::catalog()),
+                'validation_rules' => null,
                 'sort_order' => 51
             ],
             [
-                'key' => 'bulletin_encouragement_threshold',
-                'value' => '14',
+                'key' => \App\Services\BulletinMentionResolver::AUTH_TEXT_KEY,
+                'value' => \App\Services\BulletinMentionResolver::AUTH_TEXT_DEFAULT,
                 'type' => 'string',
                 'group' => 'bulletin',
                 'category' => 'bulletin',
-                'description' => 'Seuil pour encouragement',
+                'description' => 'Texte anti-duplicata en pied de bulletin',
                 'is_required' => false,
-                'default_value' => '14',
-                'validation_rules' => ['string'],
+                'default_value' => \App\Services\BulletinMentionResolver::AUTH_TEXT_DEFAULT,
+                'validation_rules' => ['nullable', 'string'],
                 'sort_order' => 52
-            ],
-            [
-                'key' => 'bulletin_honor_roll_threshold',
-                'value' => '12',
-                'type' => 'string',
-                'group' => 'bulletin',
-                'category' => 'bulletin',
-                'description' => 'Seuil pour tableau d\'honneur',
-                'is_required' => false,
-                'default_value' => '12',
-                'validation_rules' => ['string'],
-                'sort_order' => 53
-            ],
-            [
-                'key' => 'bulletin_work_warning_threshold',
-                'value' => '8',
-                'type' => 'string',
-                'group' => 'bulletin',
-                'category' => 'bulletin',
-                'description' => 'Seuil pour avertissement travail',
-                'is_required' => false,
-                'default_value' => '8',
-                'validation_rules' => ['string'],
-                'sort_order' => 54
             ],
 
             // Personnalisation du texte

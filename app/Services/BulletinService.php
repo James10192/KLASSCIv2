@@ -1743,18 +1743,8 @@ class BulletinService
             'bulletin_show_class_rank' => \App\Helpers\SettingsHelper::get('bulletin_show_class_rank', '1'),
             'bulletin_show_class_size' => \App\Helpers\SettingsHelper::get('bulletin_show_class_size', '1'),
 
-            // Mentions
             'bulletin_show_mentions' => \App\Helpers\SettingsHelper::get('bulletin_show_mentions', '1'),
-            'bulletin_show_felicitation' => \App\Helpers\SettingsHelper::get('bulletin_show_felicitation', '1'),
-            'bulletin_show_encouragement' => \App\Helpers\SettingsHelper::get('bulletin_show_encouragement', '1'),
-            'bulletin_show_honor_roll' => \App\Helpers\SettingsHelper::get('bulletin_show_honor_roll', '1'),
-            'bulletin_show_work_warning' => \App\Helpers\SettingsHelper::get('bulletin_show_work_warning', '1'),
-            'bulletin_show_conduct_blame' => \App\Helpers\SettingsHelper::get('bulletin_show_conduct_blame', '1'),
             'bulletin_auto_calculate_mention' => \App\Helpers\SettingsHelper::get('bulletin_auto_calculate_mention', '1'),
-            'bulletin_felicitation_threshold' => \App\Helpers\SettingsHelper::get('bulletin_felicitation_threshold', '16'),
-            'bulletin_encouragement_threshold' => \App\Helpers\SettingsHelper::get('bulletin_encouragement_threshold', '14'),
-            'bulletin_honor_roll_threshold' => \App\Helpers\SettingsHelper::get('bulletin_honor_roll_threshold', '12'),
-            'bulletin_work_warning_threshold' => \App\Helpers\SettingsHelper::get('bulletin_work_warning_threshold', '8'),
 
             // Statistiques
             'bulletin_show_statistics' => \App\Helpers\SettingsHelper::get('bulletin_show_statistics', '1'),
@@ -3492,32 +3482,20 @@ class BulletinService
      */
     public function getMentionConduite($noteConduite)
     {
-        if ($noteConduite <= 0) {
-            return 'Blâme';
-        }
-        if ($noteConduite <= 10) {
-            return 'Avertissement';
-        }
-        return '';
+        return BulletinMentionResolver::stackedLabels(
+            null,
+            $noteConduite === null ? null : (float) $noteConduite,
+            BulletinMentionResolver::SOURCE_CONDUCT
+        );
     }
-
-
 
     public function getMention($moyenne)
     {
-        if ($moyenne >= 16) {
-            return 'Félicitation';
-        } elseif ($moyenne >= 14) {
-            return 'Tableau d\'honneur';
-        } elseif ($moyenne >= 12) {
-            return 'Encouragement';
-        } elseif ($moyenne >= 10) {
-            return 'Passable';
-        } elseif ($moyenne >= 8) {
-            return 'Avertissement (Travail)';
-        } else {
-            return 'Blâme (Conduite)';
-        }
+        return BulletinMentionResolver::stackedLabels(
+            $moyenne === null ? null : (float) $moyenne,
+            null,
+            BulletinMentionResolver::SOURCE_AVERAGE
+        );
     }
 
 

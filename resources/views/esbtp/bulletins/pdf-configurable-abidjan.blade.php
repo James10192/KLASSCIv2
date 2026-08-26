@@ -190,6 +190,12 @@
             color: #6b7280;
             text-align: left;
         }
+        .edition-authenticity {
+            margin-top: 4px;
+            font-size: {{ $typeScale['label'] }}px;
+            color: #6b7280;
+            text-align: center;
+        }
 
         /* Colonnes infos */
         .info-group {
@@ -862,28 +868,10 @@
                  la zone vide sous les statistiques (disposition validee ecole). --}}
             @if(($settings['bulletin_show_mentions'] ?? '1') == '1')
                 @php
-                    $autoMention = ($settings['bulletin_auto_calculate_mention'] ?? '1') == '1';
-                    $felicitationThreshold = floatval($settings['bulletin_felicitation_threshold'] ?? 16);
-                    $encouragementThreshold = floatval($settings['bulletin_encouragement_threshold'] ?? 14);
-                    $honorRollThreshold = floatval($settings['bulletin_honor_roll_threshold'] ?? 12);
-                    $workWarningThreshold = floatval($settings['bulletin_work_warning_threshold'] ?? 8);
-
-                    $mentionItems = [];
-                    if (($settings['bulletin_show_felicitation'] ?? '1') == '1') {
-                        $mentionItems[] = ['label' => 'Félicitation', 'checked' => $autoMention && $moyenneGlobale >= $felicitationThreshold];
-                    }
-                    if (($settings['bulletin_show_encouragement'] ?? '1') == '1') {
-                        $mentionItems[] = ['label' => 'Encouragement', 'checked' => $autoMention && $moyenneGlobale >= $encouragementThreshold && $moyenneGlobale < $felicitationThreshold];
-                    }
-                    if (($settings['bulletin_show_honor_roll'] ?? '1') == '1') {
-                        $mentionItems[] = ['label' => "Tableau d'honneur", 'checked' => $autoMention && $moyenneGlobale >= $honorRollThreshold && $moyenneGlobale < $encouragementThreshold];
-                    }
-                    if (($settings['bulletin_show_work_warning'] ?? '1') == '1') {
-                        $mentionItems[] = ['label' => 'Avertissement (Travail)', 'checked' => $autoMention && $moyenneGlobale >= $workWarningThreshold && $moyenneGlobale < 10];
-                    }
-                    if (($settings['bulletin_show_conduct_blame'] ?? '1') == '1') {
-                        $mentionItems[] = ['label' => 'Blâme (Conduite)', 'checked' => false];
-                    }
+                    $mentionItems = \App\Services\BulletinMentionResolver::resolveFromSettings(
+                        isset($moyenneGlobale) ? (float) $moyenneGlobale : null,
+                        isset($noteConduite) ? (float) $noteConduite : null
+                    );
                 @endphp
                 @php $mentionSplit = (int) ceil(count($mentionItems) / 2); @endphp
                 @if(count($mentionItems) > 0)
@@ -931,9 +919,7 @@
         @endif
 
         {{-- Date d'edition en bas de page (retiree de l'en-tete) --}}
-        @if(($settings['bulletin_show_edition_date'] ?? '1') == '1')
-            <div class="edition-footer">Édition du : {{ $date_edition }}</div>
-        @endif
+        @include('esbtp.bulletins.partials.edition-footer')
 
     </div>
 </body>

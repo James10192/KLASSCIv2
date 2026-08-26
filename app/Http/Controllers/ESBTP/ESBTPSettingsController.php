@@ -8,6 +8,7 @@ use App\Models\SettingsBackup;
 use App\Http\Middleware\CheckRequiredSettings;
 use App\Domain\Notifications\PhoneNormalizer;
 use App\Services\AppreciationScaleSettingsService;
+use App\Services\BulletinMentionResolver;
 use App\Services\BtsBulletinPolicy;
 use App\Services\MailPulse\MailPulseTestNotificationService;
 use App\Services\Reinscription\PortailReinscriptionService;
@@ -66,6 +67,7 @@ class ESBTPSettingsController extends Controller
         $settings = $allSettings->groupBy('category');
         $flatSettings = $allSettings; // Collection plate pour l'accès direct par clé
         $missingSettings = CheckRequiredSettings::getAllMissingSettings();
+        $this->ensureMentionSettings();
         $backupStats = SettingsBackup::getStats();
         $appreciationScales = $appreciationScaleSettings->scales();
 
@@ -96,6 +98,7 @@ class ESBTPSettingsController extends Controller
         try {
             DB::beginTransaction();
             $this->ensureAttendanceNoteSettings();
+            $this->ensureMentionSettings();
             $this->ensureBtsBulletinPolicySettings();
             $this->ensureBulletinStyleSetting();
             $appreciationScaleSettings = app(AppreciationScaleSettingsService::class);
@@ -224,6 +227,18 @@ class ESBTPSettingsController extends Controller
                         ]);
                         $updatedSettings[] = 'attendance_note_rules';
                     }
+                }
+            }
+
+            if ($request->has('mention_rules')) {
+                $rules = BulletinMentionResolver::normalize($request->input('mention_rules', []));
+                $ruleSetting = Setting::where('key', BulletinMentionResolver::SETTING_KEY)->first();
+                if ($ruleSetting) {
+                    $ruleSetting->update([
+                        'value' => json_encode($rules),
+                        'updated_by' => auth()->id(),
+                    ]);
+                    $updatedSettings[] = BulletinMentionResolver::SETTING_KEY;
                 }
             }
 
@@ -390,7 +405,7 @@ class ESBTPSettingsController extends Controller
                 'bulletin_show_teachers', 'bulletin_show_absences', 'bulletin_show_statistics',
                 'bulletin_show_signature', 'bulletin_show_attendance_note', 'bulletin_show_council_decision',
                 'bulletin_show_highest_average', 'bulletin_show_lowest_average', 'bulletin_show_class_average',
-                'bulletin_auto_calculate_mention', 'bulletin_show_felicitation', 'bulletin_show_encouragement',
+                'bulletin_auto_calculate_mention',
                 'certificat_show_classe', 'certificat_show_niveau', 'certificat_show_filiere',
                 'bulletin_conduite_enabled', 'bulletin_show_absences_par_matiere',
                 'attendance_manual_hours_global_enabled',
@@ -509,7 +524,7 @@ class ESBTPSettingsController extends Controller
                     }
 
                     // Barème assiduité JSON : déjà validé + sauvegardé plus haut.
-                    if ($settingKey === 'attendance_note_rules') {
+                    if (in_array($settingKey, ['attendance_note_rules', BulletinMentionResolver::SETTING_KEY], true)) {
                         continue;
                     }
 
@@ -1759,6 +1774,43 @@ class ESBTPSettingsController extends Controller
                 'sort_order' => 127,
             ]);
         }
+    }
+
+    private function ensureMentionSettings(): void
+    {
+        if (! Setting::where('key', BulletinMentionResolver::SETTING_KEY)->exists()) {
+            $rules = BulletinMentionResolver::fromLegacySettings(
+                static fn (string $key, mixed $default) => \App\Helpers\SettingsHelper::get($key, $default)
+            );
+
+            Setting::create([
+                'key' => BulletinMentionResolver::SETTING_KEY,
+                'value' => json_encode($rules),
+                'type' => 'json',
+                'group' => 'bulletin',
+                'category' => 'bulletin',
+                'description' => 'Règles de mentions bulletin (libellé, min, max, source)',
+                'is_required' => false,
+                'default_value' => json_encode(BulletinMentionResolver::catalog()),
+                'validation_rules' => null,
+                'sort_order' => 51,
+            ]);
+        }
+
+        Setting::firstOrCreate(
+            ['key' => BulletinMentionResolver::AUTH_TEXT_KEY],
+            [
+                'value' => BulletinMentionResolver::AUTH_TEXT_DEFAULT,
+                'type' => 'string',
+                'group' => 'bulletin',
+                'category' => 'bulletin',
+                'description' => 'Texte anti-duplicata en pied de bulletin',
+                'is_required' => false,
+                'default_value' => BulletinMentionResolver::AUTH_TEXT_DEFAULT,
+                'validation_rules' => ['nullable', 'string'],
+                'sort_order' => 52,
+            ]
+        );
     }
 
     private function ensureMailPulseSettings(): void

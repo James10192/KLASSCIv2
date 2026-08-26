@@ -414,7 +414,7 @@
     {{ $etab['nom'] ?? 'KLASSCI' }}, Etablissement privé, Côte d'Ivoire
 </div>
 <div style="text-align: center; font-size: 8.5px; font-weight: bold; margin-top: 4px;">
-    {{ $bCfg['bottom_text'] ?? 'Conservez soigneusement ce bulletin de notes. Aucun duplicata ne sera délivré.' }}
+    {{ \App\Services\BulletinMentionResolver::authenticityText() }}
 </div>
 
 </div>{{-- /.container --}}
