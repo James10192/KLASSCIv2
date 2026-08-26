@@ -306,7 +306,7 @@
             border-collapse: collapse;
             background: #fff;
         }
-        .pair-table th, .council-label {
+        .pair-table th, .council-table th {
             background: {{ $pdfPrimary }};
             color: #ffffff;
             padding: 8px 14px;
@@ -315,7 +315,7 @@
             text-align: left;
             font-weight: 700;
         }
-        .council-label {
+        .council-table th {
             border-radius: 8px 8px 0 0;
         }
         .pair-table th.pair-split, .pair-table td.pair-split {
@@ -339,14 +339,16 @@
             background: #f8fafb;
             font-size: {{ $typeScale['heading'] }}px;
         }
-        .council-label {
-            display: block;
+        .council-grow { vertical-align: top; padding: 0; }
+        .council-half-box {
+            height: 140px;
+            padding: 12px 16px;
         }
-        .council-half { vertical-align: top; }
-        .council-grow {
-            vertical-align: top;
-            padding: 14px 16px 12px;
-            height: 120px;
+        .council-sub {
+            font-size: {{ $typeScale['body'] }}px;
+            font-weight: 700;
+            color: #64748b;
+            margin-bottom: 6px;
         }
         .council-text {
             font-size: {{ $typeScale['heading'] }}px;
@@ -355,19 +357,19 @@
             line-height: 1.35;
         }
         .council-place {
-            margin-top: 12px;
+            margin-top: 10px;
             font-size: {{ $typeScale['body'] }}px;
             font-weight: 700;
             color: #111827;
         }
         .council-sign {
             text-align: center;
-            vertical-align: middle;
-            padding: 16px 16px 18px;
-            height: 120px;
+            vertical-align: top;
+            padding: 0;
             border-top: 1px solid #e5e7eb;
             border-radius: 0 0 8px 8px;
         }
+        .council-half-box--sign { padding-top: 16px; }
         .council-sign-title {
             font-size: {{ $typeScale['heading'] }}px;
             font-weight: 700;
