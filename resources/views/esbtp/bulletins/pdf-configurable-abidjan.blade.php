@@ -18,6 +18,7 @@
         $marginHorizontal = max(2, min(25, (int) ($settings['bulletin_margin_horizontal'] ?? 5)));
         $decisionHeight   = max(30, min(200, (int) ($settings['bulletin_decision_min_height'] ?? 84)));
         $signatureHeight  = max(20, min(160, (int) ($settings['bulletin_signature_height'] ?? 44)));
+        $photoSize        = max(110, min(160, (int) ($settings['bulletin_photo_size'] ?? ($typeScale['base'] * 10))));
     @endphp
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -165,8 +166,8 @@
 
         /* Colonne photo */
         .student-info-table td.student-photo-cell {
-            width: 118px;
-            min-width: 118px;
+            width: {{ $photoSize + 20 }}px;
+            min-width: {{ $photoSize + 20 }}px;
             text-align: center;
             vertical-align: middle;
             padding: 8px;
@@ -175,8 +176,8 @@
             display: table-cell;
         }
         .student-info-table td.student-photo-cell img {
-            width: 90px;
-            height: 90px;
+            width: {{ $photoSize }}px;
+            height: {{ $photoSize }}px;
             border-radius: 8px;
             object-fit: cover;
             border: 2px solid {{ $pdfPrimary }};
