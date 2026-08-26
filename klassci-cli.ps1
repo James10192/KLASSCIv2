@@ -772,6 +772,18 @@ switch ($Command) {
         Invoke-KlassciApi -Method "GET" -Path "/classes" -Config $cfg | ConvertTo-Json -Depth 8
         break
     }
+    "evaluations:coverage" {
+        $cfg = Get-KlassciConfig -TenantCode $Tenant
+        $query = @{}
+        foreach ($arg in $ExtraArgs) {
+            if ($arg -match '^([^=]+)=(.*)$') {
+                $query[$matches[1]] = $matches[2]
+            }
+        }
+        $path = "/evaluations/coverage{0}" -f (New-KlassciQueryString -Query $query)
+        Invoke-KlassciApi -Method "GET" -Path $path -Config $cfg | ConvertTo-Json -Depth 12
+        break
+    }
     "lmd:tree" {
         $cfg = Get-KlassciConfig -TenantCode $Tenant
         Invoke-KlassciApi -Method "GET" -Path "/lmd/tree" -Config $cfg | ConvertTo-Json -Depth 8
@@ -1059,6 +1071,7 @@ switch ($Command) {
         Write-Host "  .\klassci-cli.ps1 academic-pilotage:backfill [presentation] [--dry-run=true] [--confirm=false]"
         Write-Host "  .\klassci-cli.ps1 academic-pilotage:refresh [presentation] [--limit=100]"
         Write-Host "  .\klassci-cli.ps1 classes [presentation]"
+        Write-Host "  .\klassci-cli.ps1 evaluations:coverage [presentation] [systeme=BTS] [year=1] [filiere_id=] [periode=] [annee_id=]"
         Write-Host "  .\klassci-cli.ps1 classes:raw [presentation]"
         Write-Host "  .\klassci-cli.ps1 lmd:tree [presentation]"
         Write-Host "  .\klassci-cli.ps1 lmd:coverage [presentation]"

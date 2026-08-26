@@ -350,6 +350,8 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
 
     // Read endpoints — Academic years
     Route::get('/annee', [App\Http\Controllers\API\CLI\CLIAcademicController::class, 'annee'])->name('annee');
+    Route::get('/evaluations/coverage', [App\Http\Controllers\API\CLI\CLIEvaluationCoverageController::class, 'index'])
+        ->name('evaluations.coverage');
 
     // Read endpoints — Users
     Route::get('/users', [App\Http\Controllers\API\CLI\CLIUserController::class, 'users'])->name('users');
