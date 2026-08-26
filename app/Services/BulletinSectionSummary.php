@@ -2,14 +2,8 @@
 
 namespace App\Services;
 
-use App\Domain\BtsTroncCommun\BtsClassCohortCounter;
-use App\Models\ESBTPResultat;
-
 class BulletinSectionSummary
 {
-    /** @var array<string, array<int, float>> */
-    private static array $classAverages = [];
-
     /**
      * @param  array<string, mixed>  $settings
      * @param  iterable<int, object>  $resultatsGeneraux
@@ -31,27 +25,11 @@ class BulletinSectionSummary
             return ['general' => null, 'technical' => null];
         }
 
-        return app(self::class)->pair(
-            $resultatsGeneraux,
-            $resultatsTechniques,
-            $absencesParMatiere,
-            $moyenneGenerale,
-            $moyenneTechnique,
-            $rankContext
-        );
-    }
+        $summary = new self;
 
-    public function pair(
-        iterable $resultatsGeneraux,
-        iterable $resultatsTechniques,
-        array $absencesParMatiere,
-        ?float $moyenneGenerale,
-        ?float $moyenneTechnique,
-        ?array $rankContext = null
-    ): array {
         return [
-            'general' => $this->forSection($resultatsGeneraux, $absencesParMatiere, $moyenneGenerale, $rankContext),
-            'technical' => $this->forSection($resultatsTechniques, $absencesParMatiere, $moyenneTechnique, $rankContext),
+            'general' => $summary->forSection($resultatsGeneraux, $absencesParMatiere, $moyenneGenerale, $rankContext),
+            'technical' => $summary->forSection($resultatsTechniques, $absencesParMatiere, $moyenneTechnique, $rankContext),
         ];
     }
 
@@ -70,7 +48,8 @@ class BulletinSectionSummary
         $coefficient = 0.0;
         $weighted = 0.0;
         $absences = 0.0;
-        $matiereIds = [];
+        $matiereCoefficients = [];
+        $subjectRank = null;
 
         foreach ($resultats as $resultat) {
             $coef = (float) ($resultat->coefficient ?? 0);
@@ -81,7 +60,10 @@ class BulletinSectionSummary
             if ($matiereId <= 0) {
                 continue;
             }
-            $matiereIds[] = $matiereId;
+            $matiereCoefficients[$matiereId] = $coef;
+            if (is_numeric($resultat->rang ?? null)) {
+                $subjectRank = (int) $resultat->rang;
+            }
             $absences += (float) (
                 $absencesParMatiere[$matiereId]['total_heures']
                 ?? $absencesParMatiere[(string) $matiereId]['total_heures']
@@ -91,14 +73,16 @@ class BulletinSectionSummary
 
         $average = $officialAverage ?? ($coefficient > 0 ? $weighted / $coefficient : null);
         $rang = null;
-        if ($rankContext !== null && $average !== null && $matiereIds !== []) {
-            $rang = $this->rank(
-                $matiereIds,
-                $average,
+        if (count($matiereCoefficients) === 1 && $subjectRank !== null) {
+            $rang = $subjectRank;
+        } elseif ($rankContext !== null && $average !== null && $matiereCoefficients !== []) {
+            $rang = app(BulletinService::class)->rankAmongMatiereSet(
+                $matiereCoefficients,
                 (int) $rankContext['etudiant_id'],
                 (int) $rankContext['classe_id'],
                 (int) $rankContext['annee_id'],
-                (string) $rankContext['periode']
+                (string) $rankContext['periode'],
+                $average
             );
         }
 
@@ -109,27 +93,6 @@ class BulletinSectionSummary
             'absences' => $absences,
             'rang' => $rang,
         ];
-    }
-
-    /**
-     * @param  list<int>  $matiereIds
-     */
-    public function rank(
-        array $matiereIds,
-        float $target,
-        int $etudiantId,
-        int $classeId,
-        int $anneeId,
-        string $periode
-    ): ?int {
-        if ($matiereIds === [] || $classeId <= 0 || $anneeId <= 0) {
-            return null;
-        }
-
-        $averages = $this->classSectionAverages($matiereIds, $classeId, $anneeId, $periode);
-        $averages[$etudiantId] = $target;
-
-        return self::rankAmong($averages, $target);
     }
 
     /**
@@ -145,85 +108,5 @@ class BulletinSectionSummary
         }
 
         return $rank;
-    }
-
-    /**
-     * @param  list<object>  $rows
-     * @param  list<int>|null  $cohortIds
-     * @return array<int, float>
-     */
-    public static function aggregateSectionAverages(array $rows, ?array $cohortIds = null): array
-    {
-        $cohort = $cohortIds === null ? null : array_flip(array_map('intval', $cohortIds));
-        $picked = [];
-
-        foreach ($rows as $row) {
-            $etudiantId = (int) ($row->etudiant_id ?? 0);
-            $matiereId = (int) ($row->matiere_id ?? 0);
-            if ($etudiantId <= 0 || $matiereId <= 0) {
-                continue;
-            }
-            if ($cohort !== null && ! isset($cohort[$etudiantId])) {
-                continue;
-            }
-
-            $key = $etudiantId.'|'.$matiereId;
-            $periode = (string) ($row->periode ?? '');
-            if (! isset($picked[$key]) || self::periodePreference($periode) > self::periodePreference((string) $picked[$key]->periode)) {
-                $picked[$key] = $row;
-            }
-        }
-
-        $totals = [];
-        foreach ($picked as $row) {
-            $id = (int) $row->etudiant_id;
-            $totals[$id]['weighted'] = ($totals[$id]['weighted'] ?? 0) + ((float) $row->moyenne * (float) $row->coefficient);
-            $totals[$id]['coefficient'] = ($totals[$id]['coefficient'] ?? 0) + (float) $row->coefficient;
-        }
-
-        $averages = [];
-        foreach ($totals as $id => $total) {
-            if ($total['coefficient'] > 0) {
-                $averages[$id] = $total['weighted'] / $total['coefficient'];
-            }
-        }
-
-        return $averages;
-    }
-
-    /**
-     * @param  list<int>  $matiereIds
-     * @return array<int, float>
-     */
-    private function classSectionAverages(array $matiereIds, int $classeId, int $anneeId, string $periode): array
-    {
-        $matiereIds = array_values(array_unique(array_map('intval', $matiereIds)));
-        sort($matiereIds);
-        $key = $classeId.'|'.$anneeId.'|'.$periode.'|'.implode(',', $matiereIds);
-        if (isset(self::$classAverages[$key])) {
-            return self::$classAverages[$key];
-        }
-
-        $bulletinService = app(BulletinService::class);
-        $cohortIds = app(BtsClassCohortCounter::class)->etudiantIdsPourPeriode($classeId, $anneeId, $periode);
-        $query = ESBTPResultat::query()
-            ->where('classe_id', $classeId)
-            ->where('annee_universitaire_id', $anneeId)
-            ->whereIn('periode', $bulletinService->periodeAliases($periode))
-            ->whereIn('matiere_id', $matiereIds)
-            ->whereNotNull('moyenne');
-        if ($cohortIds !== []) {
-            $query->whereIn('etudiant_id', $cohortIds);
-        }
-
-        return self::$classAverages[$key] = self::aggregateSectionAverages(
-            $query->get(['etudiant_id', 'matiere_id', 'periode', 'moyenne', 'coefficient'])->all(),
-            $cohortIds !== [] ? $cohortIds : null
-        );
-    }
-
-    private static function periodePreference(string $periode): int
-    {
-        return in_array($periode, ['semestre1', 'semestre2', 'annuel'], true) ? 1 : 0;
     }
 }

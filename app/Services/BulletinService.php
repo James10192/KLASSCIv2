@@ -2698,6 +2698,75 @@ class BulletinService
         return $rangs;
     }
 
+    /**
+     * @param  array<int, float>  $matiereCoefficients
+     */
+    public function rankAmongMatiereSet(
+        array $matiereCoefficients,
+        int $etudiantId,
+        int $classeId,
+        int $anneeUniversitaireId,
+        string $periode,
+        ?float $officialAverage = null
+    ): ?int {
+        $matiereIds = array_values(array_map('intval', array_keys($matiereCoefficients)));
+        if ($matiereIds === []) {
+            return null;
+        }
+
+        if (count($matiereIds) === 1) {
+            $ranks = $this->calculerRangsParMatierePourEtudiant(
+                $matiereIds,
+                $etudiantId,
+                $classeId,
+                $anneeUniversitaireId,
+                $periode
+            );
+            $rank = $ranks[$matiereIds[0]] ?? '-';
+
+            return is_numeric($rank) ? (int) $rank : null;
+        }
+
+        $periode = $this->normalizePeriode($periode);
+        $periodeOptions = array_unique($this->periodeOptionsForRang($periode));
+        $etudiantIds = $this->classCohortCounter->etudiantIdsPourPeriode($classeId, $anneeUniversitaireId, $periode);
+        if ($etudiantIds === []) {
+            $etudiantIds = ESBTPEtudiant::whereHas('inscriptions', function ($q) use ($classeId, $anneeUniversitaireId) {
+                $q->where('classe_id', $classeId)
+                    ->where('annee_universitaire_id', $anneeUniversitaireId)
+                    ->where('status', 'active')
+                    ->where('workflow_step', 'etudiant_cree');
+            })->pluck('id')->map(fn ($id) => (int) $id)->all();
+        }
+
+        $averages = [];
+        foreach ($etudiantIds as $sid) {
+            $perMatiere = $this->moyennesParMatiereEtudiant((int) $sid, $classeId, $anneeUniversitaireId, $periodeOptions);
+            $weighted = 0.0;
+            $coef = 0.0;
+            foreach ($matiereCoefficients as $matiereId => $coefficient) {
+                $matiereId = (int) $matiereId;
+                if (! isset($perMatiere[$matiereId]) || $coefficient <= 0) {
+                    continue;
+                }
+                $weighted += $perMatiere[$matiereId] * (float) $coefficient;
+                $coef += (float) $coefficient;
+            }
+            if ($coef > 0) {
+                $averages[(int) $sid] = $weighted / $coef;
+            }
+        }
+
+        if ($officialAverage !== null) {
+            $averages[$etudiantId] = $officialAverage;
+        }
+        if (! isset($averages[$etudiantId])) {
+            return null;
+        }
+
+        return $this->rankAmongAverages($averages, $averages[$etudiantId]);
+    }
+
     public function recalculerRangsParMatierePourClasse(int $classeId, int $anneeUniversitaireId, string $periode): array
     {
         $periode = $this->normalizePeriode($periode);
