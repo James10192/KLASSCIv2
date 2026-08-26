@@ -133,32 +133,30 @@
             </td>
             @if($showCouncil)
                 <td class="results-council">
-                    <div class="council-card">
-                        <table class="council-table">
+                    <table class="council-table council-card">
+                        <tr>
+                            <td class="council-label">{{ $councilTitle }}</td>
+                        </tr>
+                        <tr>
+                            <td class="council-grow">
+                                <div class="council-text">{{ $decisionConseil ?? $councilDecision['text'] ?? $bulletin->decision_conseil ?? '' }}</div>
+                                @if($faitALe !== '')
+                                    <div class="council-place">{{ $faitALe }}</div>
+                                @endif
+                            </td>
+                        </tr>
+                        @if($showSignature)
                             <tr>
-                                <td class="council-label">{{ $councilTitle }}</td>
-                            </tr>
-                            <tr>
-                                <td class="council-grow">
-                                    <div class="council-text">{{ $decisionConseil ?? $councilDecision['text'] ?? $bulletin->decision_conseil ?? '' }}</div>
-                                    @if($faitALe !== '')
-                                        <div class="council-place">{{ $faitALe }}</div>
+                                <td class="council-sign">
+                                    <div class="council-sign-title">{{ $directorTitle }}</div>
+                                    <div class="council-sign-space"></div>
+                                    @if($directorName)
+                                        <div class="council-sign-name">{{ $directorName }}</div>
                                     @endif
                                 </td>
                             </tr>
-                            @if($showSignature)
-                                <tr>
-                                    <td class="council-sign">
-                                        <div class="council-sign-title">{{ $directorTitle }}</div>
-                                        <div class="council-sign-space"></div>
-                                        @if($directorName)
-                                            <div class="council-sign-name">{{ $directorName }}</div>
-                                        @endif
-                                    </td>
-                                </tr>
-                            @endif
-                        </table>
-                    </div>
+                        @endif
+                    </table>
                 </td>
             @endif
         </tr>

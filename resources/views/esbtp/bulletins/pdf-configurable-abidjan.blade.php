@@ -138,7 +138,7 @@
         }
 
         /* Sections critiques : jamais coupees par un saut de page. */
-        .student-info, .header, .results-container, .council-card,
+        .student-info, .header, .pair-card,
         tr.section-header, tr.summary-row,
         tr.subject-row { page-break-inside: avoid; }
 
@@ -290,10 +290,11 @@
             background: #fff;
             overflow: hidden;
         }
-        .council-card { height: 100%; }
+        .results-council .council-card {
+            border: 1px solid #d1d5db;
+        }
         .pair-table, .council-table {
             width: 100%;
-            height: 100%;
             font-size: {{ $typeScale['heading'] }}px;
             border-collapse: collapse;
             background: #fff;
@@ -331,9 +332,9 @@
         .council-label {
             display: block;
         }
-        .council-grow { height: 100%; vertical-align: top; padding: 10px 10px 6px; }
+        .council-grow { vertical-align: top; padding: 8px 10px 6px; }
         .council-text {
-            min-height: {{ max(48, (int) $decisionHeight - 16) }}px;
+            min-height: 28px;
             font-size: {{ $typeScale['heading'] }}px;
             font-weight: 700;
             color: #111827;
