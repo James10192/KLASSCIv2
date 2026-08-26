@@ -280,9 +280,8 @@
         .results-main { width: 50%; }
         .results-container-table td.results-council {
             width: 50%;
-            border: 1px solid #d1d5db;
-            border-radius: 8px;
-            background: #fff;
+            border: none;
+            background: transparent;
             vertical-align: top;
             padding: 0;
         }
@@ -306,6 +305,7 @@
             border-collapse: collapse;
             background: #fff;
         }
+        .results-council .pair-card { height: auto; }
         .pair-table th, .council-table th {
             background: {{ $pdfPrimary }};
             color: #ffffff;
@@ -339,11 +339,12 @@
             background: #f8fafb;
             font-size: {{ $typeScale['heading'] }}px;
         }
-        .council-grow { vertical-align: top; padding: 0; }
-        .council-half-box {
-            height: 140px;
+        .council-grow, .council-sign { vertical-align: top; padding: 0; }
+        .council-half-table { width: 100%; border-collapse: collapse; }
+        .council-half-cell {
             padding: 12px 16px;
         }
+        .council-half-cell--sign { text-align: center; }
         .council-sub {
             font-size: {{ $typeScale['body'] }}px;
             font-weight: 700;
@@ -362,22 +363,13 @@
             font-weight: 700;
             color: #111827;
         }
-        .council-sign {
-            text-align: center;
-            vertical-align: top;
-            padding: 0;
-            border-top: 1px solid #e5e7eb;
-            border-radius: 0 0 8px 8px;
-        }
-        .council-half-box--sign { padding-top: 16px; }
-        .council-sign-title {
+        .council-sign { border-top: 1px solid #e5e7eb; background: #f8fafb; }
+        .council-sign-title, .council-half-cell--sign {
             font-size: {{ $typeScale['heading'] }}px;
             font-weight: 700;
             color: #111827;
         }
-        .council-sign-space {
-            height: {{ max(36, (int) $signatureHeight) }}px;
-        }
+        .council-sign-gap { font-size: 1px; line-height: 1px; }
         .council-sign-name {
             font-size: {{ $typeScale['title'] }}px;
             font-weight: 700;

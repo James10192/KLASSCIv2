@@ -14,6 +14,46 @@
     $mentionRows = array_chunk($mentionItems, 2);
     $faitALe = \App\Services\BulletinMentionResolver::faitALeLine($date_edition ?? null);
     $statsLabel = $periode == 'semestre1' ? 'SEMESTRE 1' : ($periode == 'semestre2' ? 'SEMESTRE 2' : 'ANNUEL');
+    $resultRows = 0;
+    if (($settings['bulletin_show_raw_average'] ?? '1') == '1') {
+        $resultRows++;
+    }
+    if (($settings['bulletin_show_attendance_note'] ?? '1') == '1') {
+        $resultRows++;
+    }
+    if (($settings['bulletin_show_semester_average'] ?? '1') == '1') {
+        if ($periode == 'semestre1' || $periode == 'semestre2') {
+            $resultRows++;
+        }
+        if ($periode == 'semestre2') {
+            $resultRows += 2;
+        }
+        if ($periode == 'annuel') {
+            $resultRows += 3;
+        }
+    }
+    if (($settings['bulletin_show_student_rank'] ?? '1') == '1') {
+        $resultRows++;
+        if (in_array($periode, ['semestre2', 'annuel'], true)) {
+            $resultRows++;
+        }
+    }
+    $statsRows = 0;
+    if (($settings['bulletin_show_statistics'] ?? '1') == '1') {
+        if (($settings['bulletin_show_highest_average'] ?? '1') == '1') {
+            $statsRows++;
+        }
+        if (($settings['bulletin_show_lowest_average'] ?? '1') == '1') {
+            $statsRows++;
+        }
+        if (($settings['bulletin_show_class_average'] ?? '1') == '1') {
+            $statsRows++;
+        }
+    }
+    $bodyRows = max($resultRows, $statsRows);
+    $leftPx = 32 + ($bodyRows * 46) + (count($mentionRows) > 0 ? 16 + (count($mentionRows) * 40) : 0);
+    $halfH = (int) max(120, (int) ceil(($leftPx - 32) / ($showSignature ? 2 : 1)) + 16);
+    $signGap = (int) max(48, $halfH - 56);
 @endphp
 <div class="results-container">
     <table class="results-container-table">
@@ -135,39 +175,53 @@
             </td>
             @if($showCouncil)
                 <td class="results-council">
-                    <table class="council-table">
-                        <thead>
-                            <tr>
-                                <th>CONSEIL DE CLASSE</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td class="council-grow">
-                                    <div class="council-half-box">
-                                        <div class="council-sub">{{ $councilTitle }}</div>
-                                        <div class="council-text">{{ $decisionConseil ?? $councilDecision['text'] ?? $bulletin->decision_conseil ?? '' }}</div>
-                                        @if($faitALe !== '')
-                                            <div class="council-place">{{ $faitALe }}</div>
-                                        @endif
-                                    </div>
-                                </td>
-                            </tr>
-                            @if($showSignature)
+                    <div class="pair-card">
+                        <table class="council-table">
+                            <thead>
                                 <tr>
-                                    <td class="council-sign">
-                                        <div class="council-half-box council-half-box--sign">
-                                            <div class="council-sign-title">{{ $directorTitle }}</div>
-                                            <div class="council-sign-space"></div>
-                                            @if($directorName)
-                                                <div class="council-sign-name">{{ $directorName }}</div>
-                                            @endif
-                                        </div>
+                                    <th>CONSEIL DE CLASSE</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td class="council-grow">
+                                        <table class="council-half-table">
+                                            <tr>
+                                                <td class="council-half-cell" height="{{ $halfH }}" valign="top">
+                                                    <div class="council-sub">{{ $councilTitle }}</div>
+                                                    <div class="council-text">{{ $decisionConseil ?? $councilDecision['text'] ?? $bulletin->decision_conseil ?? '' }}</div>
+                                                    @if($faitALe !== '')
+                                                        <div class="council-place">{{ $faitALe }}</div>
+                                                    @endif
+                                                </td>
+                                            </tr>
+                                        </table>
                                     </td>
                                 </tr>
-                            @endif
-                        </tbody>
-                    </table>
+                                @if($showSignature)
+                                    <tr>
+                                        <td class="council-sign">
+                                            <table class="council-half-table">
+                                                <tr>
+                                                    <td class="council-half-cell council-half-cell--sign" align="center" valign="top">{{ $directorTitle }}</td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="council-sign-gap" height="{{ $signGap }}">&nbsp;</td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="council-half-cell council-half-cell--sign" align="center" valign="bottom">
+                                                        @if($directorName)
+                                                            <div class="council-sign-name">{{ $directorName }}</div>
+                                                        @endif
+                                                    </td>
+                                                </tr>
+                                            </table>
+                                        </td>
+                                    </tr>
+                                @endif
+                            </tbody>
+                        </table>
+                    </div>
                 </td>
             @endif
         </tr>
