@@ -277,8 +277,14 @@
             padding: 0;
             vertical-align: top;
         }
-        .results-main { width: 50%; padding-right: 4px; }
-        .results-council { width: 50%; padding-left: 4px; }
+        .results-main { width: 50%; padding-right: 10px; }
+        .results-container-table td.results-council {
+            width: 50%;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            background: #fff;
+            vertical-align: top;
+        }
         .results-pair { width: 100%; border-collapse: collapse; table-layout: fixed; margin-bottom: 4px; }
         .results-pair td { border: none; padding: 0; vertical-align: top; }
         .results-left { width: 50%; padding-right: 3px; }
@@ -404,6 +410,7 @@
             width: 28px;
             text-align: right;
         }
+        .mention-in-card { padding: 6px 6px 4px; border-top: 1px solid #e5e7eb; }
         .mention-columns { width: 100%; border-collapse: collapse; table-layout: fixed; }
         .mention-col { width: 50%; border: none; vertical-align: top; padding: 0 0 3px; }
         .mention-col--left { padding-right: 3px; }

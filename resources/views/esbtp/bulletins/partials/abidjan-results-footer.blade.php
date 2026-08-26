@@ -113,27 +113,29 @@
                             </tr>
                         </tbody>
                     </table>
-                </div>
-                @if(count($mentionRows) > 0)
-                    <table class="mention-columns">
-                        @foreach($mentionRows as $row)
-                            <tr>
-                                @foreach($row as $i => $item)
-                                    <td class="mention-col {{ $i === 0 ? 'mention-col--left' : 'mention-col--right' }}">
-                                        <div class="mention-box"><table class="mention-table"><tr><td class="mention-label">{{ $item['label'] }}</td><td class="mention-value"><input type="checkbox" {{ $item['checked'] ? 'checked' : '' }}></td></tr></table></div>
-                                    </td>
+                    @if(count($mentionRows) > 0)
+                        <div class="mention-in-card">
+                            <table class="mention-columns">
+                                @foreach($mentionRows as $row)
+                                    <tr>
+                                        @foreach($row as $i => $item)
+                                            <td class="mention-col {{ $i === 0 ? 'mention-col--left' : 'mention-col--right' }}">
+                                                <div class="mention-box"><table class="mention-table"><tr><td class="mention-label">{{ $item['label'] }}</td><td class="mention-value"><input type="checkbox" {{ $item['checked'] ? 'checked' : '' }}></td></tr></table></div>
+                                            </td>
+                                        @endforeach
+                                        @if(count($row) === 1)
+                                            <td class="mention-col mention-col--right"></td>
+                                        @endif
+                                    </tr>
                                 @endforeach
-                                @if(count($row) === 1)
-                                    <td class="mention-col mention-col--right"></td>
-                                @endif
-                            </tr>
-                        @endforeach
-                    </table>
-                @endif
+                            </table>
+                        </div>
+                    @endif
+                </div>
             </td>
             @if($showCouncil)
                 <td class="results-council">
-                    <table class="council-table council-card">
+                    <table class="council-table">
                         <tr>
                             <td class="council-label">{{ $councilTitle }}</td>
                         </tr>
