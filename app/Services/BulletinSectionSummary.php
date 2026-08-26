@@ -10,12 +10,6 @@ class BulletinSectionSummary
     private static array $classAverages = [];
 
     /**
-     * @param  iterable<int, object>  $resultats
-     * @param  array<int|string, array{total_heures?: float|int}>  $absencesParMatiere
-     * @param  array{etudiant_id: int, classe_id: int, annee_id: int, periode: string}|null  $rankContext
-     * @return array{moyenne: ?float, coefficient: float, weighted: float, absences: float, rang: ?int}
-     */
-    /**
      * @param  iterable<int, object>  $resultatsGeneraux
      * @param  iterable<int, object>  $resultatsTechniques
      * @param  array<int|string, array{total_heures?: float|int}>  $absencesParMatiere
@@ -36,6 +30,12 @@ class BulletinSectionSummary
         ];
     }
 
+    /**
+     * @param  iterable<int, object>  $resultats
+     * @param  array<int|string, array{total_heures?: float|int}>  $absencesParMatiere
+     * @param  array{etudiant_id: int, classe_id: int, annee_id: int, periode: string}|null  $rankContext
+     * @return array{moyenne: ?float, coefficient: float, weighted: float, absences: float, rang: ?int}
+     */
     public function forSection(
         iterable $resultats,
         array $absencesParMatiere,
