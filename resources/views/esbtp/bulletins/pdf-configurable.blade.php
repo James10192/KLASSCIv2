@@ -39,13 +39,13 @@
         }
         .edition-footer {
             margin-top: 10px;
-            font-size: {{ $typeScale['label'] }}px;
+            font-size: {{ $typeScale['body'] }}px;
             color: #6b7280;
             text-align: left;
         }
         .edition-authenticity {
             margin-top: 4px;
-            font-size: {{ $typeScale['label'] }}px;
+            font-size: {{ $typeScale['body'] }}px;
             color: #6b7280;
             text-align: center;
         }

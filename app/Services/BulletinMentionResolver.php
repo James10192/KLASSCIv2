@@ -12,6 +12,10 @@ class BulletinMentionResolver
 
     public const AUTH_TEXT_DEFAULT = 'Ce document ne peut faire l\'objet d\'aucun duplicata';
 
+    public const EDITION_LABEL_KEY = 'bulletin_edition_label';
+
+    public const EDITION_LABEL_DEFAULT = 'Édition du :';
+
     public const FAIT_A_KEY = 'bulletin_fait_a';
 
     public const FAIT_LE_MODE_KEY = 'bulletin_fait_le_mode';
@@ -41,6 +45,23 @@ class BulletinMentionResolver
         $text = SettingsHelper::get(self::AUTH_TEXT_KEY, self::AUTH_TEXT_DEFAULT);
 
         return is_string($text) && trim($text) !== '' ? trim($text) : self::AUTH_TEXT_DEFAULT;
+    }
+
+    public static function editionLabel(): string
+    {
+        $label = SettingsHelper::get(self::EDITION_LABEL_KEY, self::EDITION_LABEL_DEFAULT);
+
+        return is_string($label) && trim($label) !== '' ? trim($label) : self::EDITION_LABEL_DEFAULT;
+    }
+
+    public static function editionLine(?string $editionDate): string
+    {
+        $date = trim((string) $editionDate);
+        if ($date === '') {
+            return '';
+        }
+
+        return self::editionLabel().' '.$date;
     }
 
     public static function faitA(): string

@@ -55,6 +55,15 @@
                value="{{ $authenticityText }}">
     </div>
 </div>
+<div class="bc-input-row" style="margin-top: 12px;">
+    <div class="bc-icon"><i class="fas fa-calendar-alt"></i></div>
+    <div class="bc-body">
+        <div class="bc-label">Libellé de la date d'édition</div>
+        <input type="text" class="form-control form-control-modern"
+               name="setting_bulletin_edition_label"
+               value="{{ \App\Services\BulletinMentionResolver::editionLabel() }}">
+    </div>
+</div>
 
 @php
     $faitA = \App\Helpers\SettingsHelper::get(\App\Services\BulletinMentionResolver::FAIT_A_KEY, '');

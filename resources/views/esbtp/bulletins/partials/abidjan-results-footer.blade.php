@@ -11,7 +11,6 @@
         isset($noteConduite) ? (float) $noteConduite : null
     );
     $mentionRows = array_chunk($mentionItems, 2);
-    $faitALe = \App\Services\BulletinMentionResolver::faitALeLine($date_edition ?? null);
     $statsLabel = $periode == 'semestre1' ? 'SEMESTRE 1' : ($periode == 'semestre2' ? 'SEMESTRE 2' : 'ANNUEL');
     $fmt = static fn ($value) => $value === null ? '-' : number_format((float) $value, 2);
     $resultLines = [];
@@ -166,13 +165,8 @@
                                     </td>
                                 </tr>
                                 @if($showSignature)
-                                    @if($faitALe !== '')
-                                        <tr>
-                                            <td class="council-sign council-sign-start council-place" valign="top">{{ $faitALe }}</td>
-                                        </tr>
-                                    @endif
                                     <tr>
-                                        <td class="council-sign {{ $faitALe === '' ? 'council-sign-start' : '' }} council-half-cell--sign" align="center" valign="top">{{ $directorTitle }}</td>
+                                        <td class="council-sign council-sign-start council-half-cell--sign" align="center" valign="top">{{ $directorTitle }}</td>
                                     </tr>
                                     <tr>
                                         <td class="council-sign council-sign-gap" height="{{ $signatureHeight }}">&nbsp;</td>

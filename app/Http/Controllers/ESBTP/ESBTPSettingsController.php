@@ -1802,6 +1802,10 @@ class ESBTPSettingsController extends Controller
                 'value' => BulletinMentionResolver::AUTH_TEXT_DEFAULT,
                 'description' => 'Texte anti-duplicata en pied de bulletin',
             ],
+            BulletinMentionResolver::EDITION_LABEL_KEY => [
+                'value' => BulletinMentionResolver::EDITION_LABEL_DEFAULT,
+                'description' => 'Libellé de la date d\'édition en pied de bulletin',
+            ],
             BulletinMentionResolver::FAIT_A_KEY => [
                 'value' => '',
                 'description' => 'Lieu du « Fait à » sur le bulletin',
