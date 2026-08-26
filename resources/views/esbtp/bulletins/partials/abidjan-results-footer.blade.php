@@ -60,13 +60,13 @@
     $statLines = [];
     if (($settings['bulletin_show_statistics'] ?? '1') == '1') {
         if (($settings['bulletin_show_highest_average'] ?? '1') == '1') {
-            $statLines[] = ['label' => 'Plus forte moyenne', 'value' => $fmt($meilleure_moyenne ?? null), 'strong' => true];
+            $statLines[] = ['label' => 'Plus forte moyenne', 'value' => $fmt($meilleure_moyenne ?? null), 'boxed' => true, 'strong' => true];
         }
         if (($settings['bulletin_show_lowest_average'] ?? '1') == '1') {
-            $statLines[] = ['label' => 'Plus faible moyenne', 'value' => $fmt($plus_faible_moyenne ?? null), 'strong' => false];
+            $statLines[] = ['label' => 'Plus faible moyenne', 'value' => $fmt($plus_faible_moyenne ?? null), 'boxed' => true, 'strong' => false];
         }
         if (($settings['bulletin_show_class_average'] ?? '1') == '1') {
-            $statLines[] = ['label' => 'Moyenne de la classe', 'value' => $fmt($moyenne_classe ?? null), 'strong' => true];
+            $statLines[] = ['label' => 'Moyenne de la classe', 'value' => $fmt($moyenne_classe ?? null), 'boxed' => true, 'strong' => true];
         }
     }
     $decisionHeight = $decisionHeight ?? 84;
@@ -93,7 +93,7 @@
                                         <tbody>
                                             @foreach($resultLines as $line)
                                                 <tr>
-                                                    <td @class(['result-key' => $line['strong']])>{{ $line['label'] }}</td>
+                                                    <td class="{{ $line['strong'] ? 'result-key' : '' }}">{{ $line['label'] }}</td>
                                                     <td class="center">
                                                         @if($line['boxed'])
                                                             <span class="result-value-box">{{ $line['value'] }}</span>
@@ -113,7 +113,13 @@
                                                 @foreach($statLines as $line)
                                                     <tr>
                                                         <td class="{{ $line['strong'] ? 'result-key' : '' }}">{{ $line['label'] }}</td>
-                                                        <td class="center {{ $line['strong'] ? 'result-key' : '' }}">{{ $line['value'] }}</td>
+                                                        <td class="center">
+                                                            @if($line['boxed'] ?? false)
+                                                                <span class="result-value-box">{{ $line['value'] }}</span>
+                                                            @else
+                                                                {{ $line['value'] }}
+                                                            @endif
+                                                        </td>
                                                     </tr>
                                                 @endforeach
                                             </tbody>

@@ -629,6 +629,7 @@
                 + ($showTeachers ? 1 : 0)
                 + ($showAppreciations ? 1 : 0);
         @endphp
+        @include('esbtp.bulletins.partials.section-summaries')
         <table>
             <thead>
                 <tr>
@@ -673,10 +674,10 @@
                         <tr><td colspan="{{ $subjectColumnCount }}" class="center">Aucune mati&egrave;re d'enseignement g&eacute;n&eacute;ral</td></tr>
                     @endif
                     @if(($settings['bulletin_show_section_averages'] ?? '1') == '1')
-                    <tr class="summary-row">
-                        <td colspan="{{ max($subjectColumnCount - 1, 1) }}">Moyenne enseignement g&eacute;n&eacute;ral</td>
-                        <td class="center">{{ number_format($moyenneGenerale, 2) }}</td>
-                    </tr>
+                        @include('esbtp.bulletins.partials.section-summary-row', [
+                            'label' => 'Moyenne enseignement général',
+                            'summary' => $sections['general'],
+                        ])
                     @endif
                 @endif
 
@@ -708,10 +709,10 @@
                     <tr><td colspan="{{ $subjectColumnCount }}" class="center">Aucune mati&egrave;re d'enseignement technique</td></tr>
                 @endif
                 @if(($settings['bulletin_show_section_averages'] ?? '1') == '1')
-                <tr class="summary-row">
-                    <td colspan="{{ max($subjectColumnCount - 1, 1) }}">Moyenne enseignement technique</td>
-                    <td class="center">{{ number_format($moyenneTechnique, 2) }}</td>
-                </tr>
+                    @include('esbtp.bulletins.partials.section-summary-row', [
+                        'label' => 'Moyenne enseignement technique',
+                            'summary' => $sections['technical'],
+                    ])
                 @endif
                 @endif
             </tbody>
