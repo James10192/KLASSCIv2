@@ -51,9 +51,9 @@
         }
     }
     $bodyRows = max($resultRows, $statsRows);
-    $leftPx = 32 + ($bodyRows * 46) + (count($mentionRows) > 0 ? 16 + (count($mentionRows) * 40) : 0);
-    $halfH = (int) max(120, (int) ceil(($leftPx - 32) / ($showSignature ? 2 : 1)) + 16);
-    $signGap = (int) max(48, $halfH - 56);
+    $leftPx = 32 + ($bodyRows * 28) + (count($mentionRows) > 0 ? 10 + (count($mentionRows) * 30) : 0);
+    $halfH = (int) max(80, (int) floor(($leftPx - 32) / ($showSignature ? 2 : 1)));
+    $signGap = (int) max(36, $halfH - 48);
 @endphp
 <div class="results-container">
     <table class="results-container-table">
@@ -184,38 +184,28 @@
                             </thead>
                             <tbody>
                                 <tr>
-                                    <td class="council-grow">
-                                        <table class="council-half-table">
-                                            <tr>
-                                                <td class="council-half-cell" height="{{ $halfH }}" valign="top">
-                                                    <div class="council-sub">{{ $councilTitle }}</div>
-                                                    <div class="council-text">{{ $decisionConseil ?? $councilDecision['text'] ?? $bulletin->decision_conseil ?? '' }}</div>
-                                                    @if($faitALe !== '')
-                                                        <div class="council-place">{{ $faitALe }}</div>
-                                                    @endif
-                                                </td>
-                                            </tr>
-                                        </table>
+                                    <td class="council-half-cell" height="{{ $halfH }}" valign="top">
+                                        <div class="council-sub">{{ $councilTitle }}</div>
+                                        <div class="council-text">{{ $decisionConseil ?? $councilDecision['text'] ?? $bulletin->decision_conseil ?? '' }}</div>
                                     </td>
                                 </tr>
                                 @if($showSignature)
+                                    @if($faitALe !== '')
+                                        <tr>
+                                            <td class="council-sign council-place" valign="top">{{ $faitALe }}</td>
+                                        </tr>
+                                    @endif
                                     <tr>
-                                        <td class="council-sign">
-                                            <table class="council-half-table">
-                                                <tr>
-                                                    <td class="council-half-cell council-half-cell--sign" align="center" valign="top">{{ $directorTitle }}</td>
-                                                </tr>
-                                                <tr>
-                                                    <td class="council-sign-gap" height="{{ $signGap }}">&nbsp;</td>
-                                                </tr>
-                                                <tr>
-                                                    <td class="council-half-cell council-half-cell--sign" align="center" valign="bottom">
-                                                        @if($directorName)
-                                                            <div class="council-sign-name">{{ $directorName }}</div>
-                                                        @endif
-                                                    </td>
-                                                </tr>
-                                            </table>
+                                        <td class="council-sign council-half-cell--sign" align="center" valign="top">{{ $directorTitle }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="council-sign council-sign-gap" height="{{ $signGap }}">&nbsp;</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="council-sign council-half-cell--sign" align="center" valign="bottom">
+                                            @if($directorName)
+                                                <div class="council-sign-name">{{ $directorName }}</div>
+                                            @endif
                                         </td>
                                     </tr>
                                 @endif

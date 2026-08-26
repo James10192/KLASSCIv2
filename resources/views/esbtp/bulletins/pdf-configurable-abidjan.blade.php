@@ -358,10 +358,11 @@
             line-height: 1.35;
         }
         .council-place {
-            margin-top: 10px;
             font-size: {{ $typeScale['body'] }}px;
             font-weight: 700;
             color: #111827;
+            text-align: left;
+            padding: 10px 16px 4px;
         }
         .council-sign { border-top: 1px solid #e5e7eb; background: #f8fafb; }
         .council-sign-title, .council-half-cell--sign {
