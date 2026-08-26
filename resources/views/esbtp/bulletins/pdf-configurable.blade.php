@@ -635,12 +635,12 @@
                 $absencesParMatiere ?? [],
                 isset($moyenneGenerale) ? (float) $moyenneGenerale : null,
                 isset($moyenneTechnique) ? (float) $moyenneTechnique : null,
-                $showRankPerSubject,
-                $etudiant ?? null,
-                $classe ?? null,
-                $anneeUniversitaire ?? null,
-                $bulletin ?? null,
-                (string) $periode
+                $showRankPerSubject ? [
+                    'etudiant_id' => (int) ($etudiant->id ?? 0),
+                    'classe_id' => (int) ($classe->id ?? 0),
+                    'annee_id' => (int) ($anneeUniversitaire->id ?? $bulletin->annee_universitaire_id ?? 0),
+                    'periode' => (string) $periode,
+                ] : null
             );
         @endphp
         <table>

@@ -10,17 +10,11 @@ class BulletinSectionSummary
     private static array $classAverages = [];
 
     /**
-     * @param  iterable<int, object>  $resultatsGeneraux
-     * @param  iterable<int, object>  $resultatsTechniques
-     * @param  array<int|string, array{total_heures?: float|int}>  $absencesParMatiere
-     * @param  array{etudiant_id: int, classe_id: int, annee_id: int, periode: string}|null  $rankContext
-     * @return array{general: array{moyenne: ?float, coefficient: float, weighted: float, absences: float, rang: ?int}, technical: array{moyenne: ?float, coefficient: float, weighted: float, absences: float, rang: ?int}}
-     */
-    /**
      * @param  array<string, mixed>  $settings
      * @param  iterable<int, object>  $resultatsGeneraux
      * @param  iterable<int, object>  $resultatsTechniques
      * @param  array<int|string, array{total_heures?: float|int}>  $absencesParMatiere
+     * @param  array{etudiant_id: int, classe_id: int, annee_id: int, periode: string}|null  $rankContext
      * @return array{general: ?array{moyenne: ?float, coefficient: float, weighted: float, absences: float, rang: ?int}, technical: ?array{moyenne: ?float, coefficient: float, weighted: float, absences: float, rang: ?int}}
      */
     public static function forView(
@@ -30,12 +24,7 @@ class BulletinSectionSummary
         array $absencesParMatiere,
         ?float $moyenneGenerale,
         ?float $moyenneTechnique,
-        bool $withRank,
-        ?object $etudiant,
-        ?object $classe,
-        ?object $anneeUniversitaire,
-        ?object $bulletin,
-        string $periode
+        ?array $rankContext
     ): array {
         if (($settings['bulletin_show_section_averages'] ?? '1') != '1') {
             return ['general' => null, 'technical' => null];
@@ -47,12 +36,7 @@ class BulletinSectionSummary
             $absencesParMatiere,
             $moyenneGenerale,
             $moyenneTechnique,
-            $withRank ? [
-                'etudiant_id' => (int) ($etudiant->id ?? 0),
-                'classe_id' => (int) ($classe->id ?? 0),
-                'annee_id' => (int) ($anneeUniversitaire->id ?? $bulletin->annee_universitaire_id ?? 0),
-                'periode' => $periode,
-            ] : null
+            $rankContext
         );
     }
 
