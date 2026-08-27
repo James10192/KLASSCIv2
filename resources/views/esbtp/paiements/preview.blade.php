@@ -5,16 +5,22 @@
 @section('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
 @include('pdf.partials.theme')
+@php
+    $rcPdf = \App\Helpers\SettingsHelper::getPdfSettings();
+    $rcPrimary = $rcPdf['primary_color'] ?? '#0453cb';
+    $rcHdrText = $rcPdf['header_text_on_bg'] ?? $rcPdf['header_text_color'] ?? '#111827';
+    $rcBarText = $rcPdf['header_text_on_primary'] ?? '#ffffff';
+@endphp
 <style>
     :root {
-        --rc-primary: #0453cb;
-        --rc-primary-dark: #0343ab;
-        --rc-primary-light: #5e91de;
+        --rc-primary: {{ $rcPrimary }};
+        --rc-header-text: {{ $rcHdrText }};
+        --rc-bar-text: {{ $rcBarText }};
         --rc-success: #059669;
         --rc-success-bg: #ecfdf5;
         --rc-danger: #dc2626;
-        --rc-text: #1e293b;
-        --rc-text-secondary: #64748b;
+        --rc-text: {{ $rcPdf['text_color'] ?? '#1e293b' }};
+        --rc-text-secondary: {{ $rcPdf['secondary_color'] ?? '#64748b' }};
         --rc-border: #e2e8f0;
         --rc-surface: #f8fafc;
     }
@@ -139,7 +145,7 @@
     .rc-header-logo .fallback-letter {
         font-size: 40px;
         font-weight: 900;
-        color: white;
+        color: var(--rc-header-text);
         opacity: 0.6;
     }
 
@@ -152,13 +158,14 @@
     .rc-header-school {
         font-size: 22px;
         font-weight: 700;
-        color: white;
+        color: var(--rc-header-text);
         margin-bottom: 2px;
     }
 
     .rc-header-contact {
         font-size: 14px;
-        color: rgba(255,255,255,0.8);
+        color: var(--rc-header-text);
+        opacity: 0.85;
         margin-bottom: 8px;
     }
 
@@ -173,13 +180,14 @@
     .rc-header-doc-title {
         font-size: 18px;
         font-weight: 700;
-        color: white;
+        color: var(--rc-header-text);
         letter-spacing: 0.5px;
     }
 
     .rc-header-doc-date {
         font-size: 12px;
-        color: rgba(255,255,255,0.7);
+        color: var(--rc-header-text);
+        opacity: 0.75;
         margin-left: auto;
     }
 
@@ -232,7 +240,7 @@
 
     .rc-card-header {
         background: var(--rc-primary);
-        color: white;
+        color: var(--rc-bar-text);
         padding: 10px 18px;
         font-size: 16px;
         font-weight: 700;
@@ -477,7 +485,7 @@
                         use App\Helpers\SettingsHelper;
                         $pdfCfg = SettingsHelper::getPdfSettings();
                         $hdrBg = $pdfCfg['header_bg_color'] ?? $pdfCfg['primary_color'] ?? '#0453cb';
-                        $hdrText = $pdfCfg['header_text_color'] ?? '#ffffff';
+                        $hdrText = $pdfCfg['header_text_on_bg'] ?? $pdfCfg['header_text_color'] ?? '#111827';
                         $primary = $pdfCfg['primary_color'] ?? '#0453cb';
 
                         $schoolName = SettingsHelper::get('school_name', config('app.name', 'KLASSCI'));

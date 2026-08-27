@@ -1,7 +1,7 @@
 @php
     $emailPrimaryColor = $emailPrimaryColor ?? \App\Helpers\SettingsHelper::get('pdf_primary_color', '#0453cb');
     $emailHeaderBgColor = $emailHeaderBgColor ?? \App\Helpers\SettingsHelper::get('pdf_header_bg_color', $emailPrimaryColor);
-    $emailHeaderTextColor = $emailHeaderTextColor ?? \App\Helpers\SettingsHelper::get('pdf_header_text_color', '#ffffff');
+    $emailHeaderTextColor = $emailHeaderTextColor ?? \App\Helpers\SettingsHelper::getPdfSettings()['header_text_on_bg'];
     $emailSecondaryColor = $emailSecondaryColor ?? \App\Helpers\SettingsHelper::get('pdf_secondary_color', '#64748b');
     $safeEmailColor = fn ($value, $fallback) => preg_match('/^#[0-9A-Fa-f]{6}$/', (string) $value) ? (string) $value : $fallback;
     $emailPrimaryColor = $safeEmailColor($emailPrimaryColor, '#0453cb');

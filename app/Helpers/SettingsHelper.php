@@ -216,8 +216,9 @@ class SettingsHelper
             'accent_color' => self::get('pdf_accent_color', '#f59e0b'),
             'text_color' => self::get('pdf_text_color', '#1f2937'),
             'header_bg_color' => $headerBg = self::get('pdf_header_bg_color', '#0453cb'),
-            'header_text_color' => $headerText = self::get('pdf_header_text_color', '#ffffff'),
-            'header_text_on_bg' => self::contrastingText($headerBg, $headerText),
+            'header_text_color_raw' => $headerText = self::get('pdf_header_text_color', '#ffffff'),
+            'header_text_color' => $headerTextOnBg = self::contrastingText($headerBg, $headerText),
+            'header_text_on_bg' => $headerTextOnBg,
             'header_text_on_primary' => self::contrastingText(
                 self::get('pdf_primary_color', '#0453cb'),
                 $headerText
