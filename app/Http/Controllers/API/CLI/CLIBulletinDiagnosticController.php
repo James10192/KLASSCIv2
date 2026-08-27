@@ -196,6 +196,7 @@ class CLIBulletinDiagnosticController extends BaseApiController
             })->values();
 
             $canonRows = $matieres->filter(fn ($m) => $m['canon'] !== null)->values();
+            $horsNorme = $matieres->filter(fn ($m) => $m['canon'] === null)->values();
             $sansProf = $canonRows->filter(fn ($m) => $m['professeur'] === null)->pluck('canon')->values();
             $sansCoef = $canonRows->filter(fn ($m) => $m['coefficient'] === null)->pluck('canon')->values();
             $presentes = $canonRows->pluck('canon')->unique()->values();
@@ -212,6 +213,7 @@ class CLIBulletinDiagnosticController extends BaseApiController
                 'sans_professeur' => $sansProf->all(),
                 'pret_config' => $manquantes->isEmpty() && $sansCoef->isEmpty() && $sansProf->isEmpty(),
                 'matieres' => $canonRows->all(),
+                'hors_norme' => $horsNorme->all(),
             ];
         });
 
