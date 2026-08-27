@@ -337,13 +337,20 @@ class BulletinService
         // evaluation mal datee remontait sur le bulletin de tronc commun
         // (cas « Securite » a l'ESBTP Yamoussoukro).
         $classesPasEncoreOuvertes = $this->classesPasEncoreOuvertes((string) $periode);
+        $classesDuBulletin = $this->evaluationClassIdsForBulletin(
+            (int) $etudiantId,
+            (int) $classeId,
+            (int) $anneeUniversitaireId,
+            (string) $periode
+        );
 
         $notesAvecEvaluations = ESBTPNote::where('etudiant_id', $etudiant->id)
             ->with(['evaluation.matiere', 'evaluation.enseignant'])
-            ->whereHas('evaluation', function ($q) use ($anneeUniversitaire, $periodeAliases, $classesPasEncoreOuvertes) {
+            ->whereHas('evaluation', function ($q) use ($anneeUniversitaire, $periodeAliases, $classesPasEncoreOuvertes, $classesDuBulletin) {
                 $q->where('annee_universitaire_id', $anneeUniversitaire->id)
                     ->where('status', '!=', 'cancelled')
-                    ->whereIn('periode', $periodeAliases);
+                    ->whereIn('periode', $periodeAliases)
+                    ->whereIn('classe_id', $classesDuBulletin);
 
                 if ($classesPasEncoreOuvertes !== []) {
                     $q->whereNotIn('classe_id', $classesPasEncoreOuvertes);
@@ -1178,6 +1185,33 @@ class BulletinService
             'semestre2' => ['semestre2', '2'],
             default => [$this->normalizePeriode($periode)],
         };
+    }
+
+    /**
+     * Classes dont les notes ont le droit d'entrer sur ce bulletin.
+     *
+     * Sans ce perimetre, une note d'Hydrologie prise dans une autre classe
+     * (TP, transfert) etait reecrite sur le bulletin 1BTS GBAT B a chaque
+     * generation : le pre-controle demandait de supprimer la moyenne, le
+     * recalcul la restaurait via persistResultats().
+     *
+     * @return list<int>
+     */
+    private function evaluationClassIdsForBulletin(int $etudiantId, int $classeId, int $anneeUniversitaireId, string $periode): array
+    {
+        $ids = [(int) $classeId];
+        $classMap = $this->classMapResolver->resolve($etudiantId, $classeId, $anneeUniversitaireId);
+        $normalized = $this->normalizePeriode($periode);
+
+        if (in_array($normalized, ['semestre1', 'annuel'], true) && ! empty($classMap['semestre1_classe_id'])) {
+            $ids[] = (int) $classMap['semestre1_classe_id'];
+        }
+
+        if (in_array($normalized, ['semestre2', 'annuel'], true) && ! empty($classMap['semestre2_classe_id'])) {
+            $ids[] = (int) $classMap['semestre2_classe_id'];
+        }
+
+        return array_values(array_unique(array_filter($ids)));
     }
 
     /**
