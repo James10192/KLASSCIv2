@@ -2393,6 +2393,24 @@
                                            name="reinscriptions.en_ligne.fermeture"
                                            value="{{ \App\Helpers\SettingsHelper::get('reinscriptions.en_ligne.fermeture', '') }}">
                                 </div>
+                                @php
+                                    $_anneeCible = (string) \App\Helpers\SettingsHelper::get('inscriptions.annee_cible', '');
+                                    $_annees = \App\Models\ESBTPAnneeUniversitaire::orderByDesc('start_date')->get(['id', 'name', 'is_current']);
+                                @endphp
+                                <div class="col-12" style="margin-top:.4rem;">
+                                    <label class="bc-desc" for="rd-annee-cible" style="display:block;margin-bottom:.2rem;">Année visée par les inscriptions</label>
+                                    <select class="form-control form-control-sm" id="rd-annee-cible" name="inscriptions.annee_cible">
+                                        <option value="">Année courante (par défaut)</option>
+                                        @foreach($_annees as $_a)
+                                            <option value="{{ $_a->id }}" {{ $_anneeCible === (string) $_a->id ? 'selected' : '' }}>
+                                                {{ $_a->name }}{{ $_a->is_current ? ' — année courante' : '' }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                    <div class="bc-desc" style="margin-top:.25rem;">
+                                        À renseigner si vous ouvrez la rentrée avant d'avoir clos l'année précédente : la saisie des notes reste sur l'année courante pendant que les inscriptions visent la suivante.
+                                    </div>
+                                </div>
                             </div>
                         </div>
                         <div class="bc-toggle">

@@ -360,6 +360,16 @@ return [
             'group' => 'Inscriptions',
             'icon' => 'fa-user-check',
         ],
+        'inscriptions.candidatures.view' => [
+            'label' => 'Voir les candidatures des nouveaux élèves',
+            'group' => 'Inscriptions',
+            'icon' => 'fa-address-card',
+        ],
+        'inscriptions.candidatures.process' => [
+            'label' => 'Traiter une candidature de nouvel élève',
+            'group' => 'Inscriptions',
+            'icon' => 'fa-user-plus',
+        ],
         'inscriptions.manage' => [
             'label' => 'Gérer toutes les inscriptions (action globale)',
             'group' => 'Inscriptions',
@@ -1926,6 +1936,7 @@ return [
             'students.accessibility.view', 'students.accessibility.edit', 'students.accessibility.export',
             'inscriptions.view', 'inscriptions.create', 'inscriptions.edit', 'inscriptions.validate',
             'reinscriptions.demandes.view', 'reinscriptions.demandes.process',
+            'inscriptions.candidatures.view', 'inscriptions.candidatures.process',
             'inscriptions.cancel', 'inscriptions.manage', 'inscriptions.specialisation.manage',
             // Sous-lot C+ : corbeille (restore tout, force_delete réservé superAdmin via Gate::before)
             'trash.view', 'students.restore', 'inscriptions.restore', 'paiements.restore',
@@ -2034,6 +2045,7 @@ return [
             'inscriptions.view', 'inscriptions.create', 'inscriptions.edit',
             'inscriptions.validate', 'inscriptions.cancel', 'inscriptions.reject',
             'reinscriptions.demandes.view', 'reinscriptions.demandes.process',
+            'inscriptions.candidatures.view', 'inscriptions.candidatures.process',
             'paiements.view', 'frais.view',
             // PR1 réconciliation — view + approve (séparation OHADA : approve ≠ comptable qui a ouvert)
             'comptabilite.reconciliation.view', 'comptabilite.reconciliation.approve',
@@ -2143,6 +2155,7 @@ return [
             'students.accessibility.view', 'students.accessibility.edit', 'students.accessibility.export',
             'inscriptions.view', 'inscriptions.create', 'inscriptions.edit', 'inscriptions.validate',
             'reinscriptions.demandes.view', 'reinscriptions.demandes.process',
+            'inscriptions.candidatures.view', 'inscriptions.candidatures.process',
             'inscriptions.cancel', 'inscriptions.manage', 'inscriptions.specialisation.manage',
             'cycles.view',
             'classes.view',
@@ -2215,6 +2228,7 @@ return [
             'students.view', 'students.create', 'students.edit',
             'inscriptions.view', 'inscriptions.create', 'inscriptions.edit', 'inscriptions.validate',
             'reinscriptions.demandes.view', 'reinscriptions.demandes.process',
+            'inscriptions.candidatures.view', 'inscriptions.candidatures.process',
             'classes.view',
             'filieres.view', 'niveaux.view',
             'identity.enrollment_officer',

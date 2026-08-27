@@ -49,6 +49,27 @@ Route::prefix('public/reinscription')
             ->name('api.public.reinscription.submit');
     });
 
+/*
+ * Candidatures des NOUVEAUX eleves. Meme garde, meme signature, meme fenetre
+ * de dates — seul l'interrupteur differe, une ecole pouvant vouloir reinscrire
+ * les siens sans ouvrir aux exterieurs, ou l'inverse.
+ *
+ * Pas de plancher de temps de reponse ici, et c'est deliberé : le plancher
+ * existe pour rendre indistinguables « ce dossier existe » et « il n'existe
+ * pas ». Une candidature ne consulte aucun dossier — il n'y a rien a
+ * enumerer — donc rien a masquer, et faire attendre chaque envoi ne
+ * protegerait personne tout en immobilisant un processus PHP.
+ */
+Route::prefix('public/inscription')
+    ->withoutMiddleware(['throttle:api'])
+    ->middleware(['reinscription.portail:candidatures'])
+    ->group(function () {
+        Route::post('/choix', [\App\Http\Controllers\API\Public\CandidaturePortalController::class, 'choix'])
+            ->name('api.public.inscription.choix');
+        Route::post('/submit', [\App\Http\Controllers\API\Public\CandidaturePortalController::class, 'submit'])
+            ->name('api.public.inscription.submit');
+    });
+
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });

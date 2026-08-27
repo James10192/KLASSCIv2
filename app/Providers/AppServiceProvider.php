@@ -11,6 +11,7 @@ use App\Domain\AcademicPilotage\Services\AcademicMetricsProviderResolver;
 use App\Domain\AcademicPilotage\Services\OpenAlertMetricService;
 use App\Helpers\SettingsHelper;
 use App\Models\ESBTPAttendance;
+use App\Models\ESBTPCandidature;
 use App\Models\ESBTPEvaluation;
 use App\Models\ESBTPInscription;
 use App\Models\ESBTPLMDBulletin;
@@ -161,6 +162,31 @@ class AppServiceProvider extends ServiceProvider
             }
 
             $view->with('reinscriptionDemandesEnAttente', $enAttente);
+            $view->with('candidaturesEnAttente', $this->candidaturesEnAttente());
+        });
+    }
+
+    /**
+     * Compteur du badge « Candidatures en ligne ».
+     *
+     * Meme discipline que pour les demandes de reinscription : cache court, et
+     * garde sur l'existence de la table. Le deploiement fait `pull` puis
+     * `migrate` — le code precede donc la table de quelques secondes, et une
+     * requete non gardee dans le gabarit global ferait tomber l'application
+     * ENTIERE pendant cette fenetre.
+     */
+    private function candidaturesEnAttente(): int
+    {
+        if (! auth()->check() || ! auth()->user()->can('inscriptions.candidatures.view')) {
+            return 0;
+        }
+
+        return Cache::remember('inscriptions.candidatures.en_attente', 60, function (): int {
+            if (! Schema::hasTable('esbtp_candidatures')) {
+                return 0;
+            }
+
+            return ESBTPCandidature::enAttente()->count();
         });
     }
 }

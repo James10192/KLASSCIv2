@@ -1748,6 +1748,20 @@
                                     </div>
                                 </a>
                                 @endcan
+                                {{-- Candidatures des NOUVEAUX eleves. Entree distincte des demandes
+                                     de reinscription : ce ne sont pas les memes dossiers, et la
+                                     scolarite ne les traite pas au meme moment de la rentree. --}}
+                                @can('inscriptions.candidatures.view')
+                                <a href="{{ route('esbtp.candidatures.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.candidatures.*') ? 'active' : '' }}">
+                                    <div class="menu-icon"><i class="fas fa-address-card"></i></div>
+                                    <div class="menu-text">
+                                        Candidatures en ligne
+                                        @if(($candidaturesEnAttente ?? 0) > 0)
+                                            <span class="badge bg-warning text-dark" style="margin-left:.35rem;">{{ $candidaturesEnAttente }}</span>
+                                        @endif
+                                    </div>
+                                </a>
+                                @endcan
                                 @can('students.accessibility.view')
                                 <a href="{{ route('esbtp.accessibility.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.accessibility.*') ? 'active' : '' }}">
                                     <div class="menu-icon"><i class="fas fa-universal-access"></i></div>

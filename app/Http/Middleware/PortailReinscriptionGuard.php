@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Services\Inscription\PortailCandidatureService;
 use App\Services\Reinscription\PortailReinscriptionService;
 use App\Services\Reinscription\PortailSignatureVerifier;
 use Closure;
@@ -54,7 +55,14 @@ class PortailReinscriptionGuard
         private readonly PortailSignatureVerifier $signature,
     ) {}
 
-    public function handle(Request $request, Closure $next): Response
+    /**
+     * @param  string  $canal  `reinscriptions` (defaut) ou `candidatures`. Les
+     *                         deux partagent signature, debit et fenetre de
+     *                         dates ; seul l'interrupteur differe, une ecole
+     *                         pouvant reinscrire les siens sans ouvrir aux
+     *                         nouveaux — ou l'inverse.
+     */
+    public function handle(Request $request, Closure $next, string $canal = 'reinscriptions'): Response
     {
         if (! $this->signatureValide($request)) {
             return response()->json([
@@ -70,14 +78,23 @@ class PortailReinscriptionGuard
             ], 429);
         }
 
-        if (! $this->portail->canalOuvert()) {
+        if (! $this->canalOuvert($canal)) {
             return response()->json([
                 'ouvert' => false,
-                'message' => "Les réinscriptions en ligne ne sont pas ouvertes actuellement.",
+                'message' => $canal === 'candidatures'
+                    ? "Les inscriptions en ligne ne sont pas ouvertes actuellement."
+                    : "Les réinscriptions en ligne ne sont pas ouvertes actuellement.",
             ], 503);
         }
 
         return $next($request);
+    }
+
+    private function canalOuvert(string $canal): bool
+    {
+        return $canal === 'candidatures'
+            ? app(PortailCandidatureService::class)->canalOuvert()
+            : $this->portail->canalOuvert();
     }
 
     /**
@@ -141,10 +158,18 @@ class PortailReinscriptionGuard
             ['rp-global', self::MAX_GLOBAL_PAR_MINUTE, 60],
         ];
 
-        $aConsulter = array_merge([[
-            PortailReinscriptionService::cleDebitMatricule($request->input('matricule')),
-            PortailReinscriptionService::DEBIT_MATRICULE_MAX,
-        ]], $seauxDeVolume);
+        // Le seau par matricule ne vaut que pour la reinscription. Une
+        // candidature n'en porte pas : garder ce seau lui donnerait une cle
+        // vide, donc UN seul compteur partage par tous les candidats du pays,
+        // et cinq envois fermeraient le canal pour tout le monde.
+        $matricule = $request->input('matricule');
+
+        $aConsulter = is_string($matricule) && trim($matricule) !== ''
+            ? array_merge([[
+                PortailReinscriptionService::cleDebitMatricule($matricule),
+                PortailReinscriptionService::DEBIT_MATRICULE_MAX,
+            ]], $seauxDeVolume)
+            : $seauxDeVolume;
 
         foreach ($aConsulter as [$cle, $maximum]) {
             if (RateLimiter::tooManyAttempts($cle, $maximum)) {

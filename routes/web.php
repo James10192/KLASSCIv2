@@ -351,6 +351,19 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 ->middleware('throttle:30,1')->name('rejeter');
         });
 
+        // Candidatures des NOUVEAUX eleves, deposees depuis klassci.com.
+        // Corbeille jumelle de celle des reinscriptions, mais sans conversion
+        // automatique : admettre un nouveau est une decision, pas la
+        // reconduction d'un dossier qui existe deja.
+        Route::prefix('inscriptions')->middleware(['auth', 'paywall'])->name('candidatures.')->group(function () {
+            Route::get('/candidatures', [\App\Http\Controllers\ESBTP\ESBTPCandidatureController::class, 'index'])
+                ->name('index');
+            Route::post('/candidatures/{candidature}/accepter', [\App\Http\Controllers\ESBTP\ESBTPCandidatureController::class, 'accepter'])
+                ->middleware('throttle:30,1')->name('accepter');
+            Route::post('/candidatures/{candidature}/rejeter', [\App\Http\Controllers\ESBTP\ESBTPCandidatureController::class, 'rejeter'])
+                ->middleware('throttle:30,1')->name('rejeter');
+        });
+
         // Routes protÃ©gÃ©es pour les super-administrateurs, secrÃ©taires, coordinateurs et enseignants
         Route::middleware(['auth', 'permission:admin.access', 'paywall'])->group(function () {
             // Routes pour les paiements

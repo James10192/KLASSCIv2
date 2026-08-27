@@ -29,6 +29,16 @@ class PortailReinscriptionService
 
     public const REGLAGE_FERMETURE = 'reinscriptions.en_ligne.fermeture';
 
+    /**
+     * Annee visee par les inscriptions en ligne. Vide = l'annee courante.
+     *
+     * Volontairement dans l'espace `inscriptions.*` et non `reinscriptions.*` :
+     * il vaudra aussi pour les nouvelles inscriptions le jour ou ce canal
+     * existera, et une ecole ne visera pas deux annees differentes selon qu'un
+     * eleve est nouveau ou non.
+     */
+    public const REGLAGE_ANNEE_CIBLE = 'inscriptions.annee_cible';
+
     /** Sentinelle : borne de fenetre presente mais impossible a interpreter. */
     private const BORNE_ILLISIBLE = 'illisible';
 
@@ -40,10 +50,20 @@ class PortailReinscriptionService
      */
     public function canalOuvert(): bool
     {
-        if (! $this->reglages->reinscriptionEnLigneEnabled()) {
-            return false;
-        }
+        return $this->reglages->reinscriptionEnLigneEnabled() && $this->fenetreOuverte();
+    }
 
+    /**
+     * La fenetre de dates de la rentree, sans l'interrupteur.
+     *
+     * Publique et separee parce que les candidatures des nouveaux eleves la
+     * PARTAGENT : c'est la meme saison. Seul l'interrupteur differe, une ecole
+     * pouvant vouloir reinscrire les siens sans ouvrir aux exterieurs. Deux
+     * fenetres a maintenir finiraient par diverger, et une ecole qui deplace sa
+     * periode d'inscription ne penserait pas a le faire deux fois.
+     */
+    public function fenetreOuverte(): bool
+    {
         $aujourdhui = Carbon::today();
 
         foreach ([self::REGLAGE_OUVERTURE, self::REGLAGE_FERMETURE] as $cle) {
@@ -256,9 +276,59 @@ class PortailReinscriptionService
         return 'rp-mat:'.hash('sha256', $normalise);
     }
 
+    /**
+     * L'annee pour laquelle on s'inscrit — pas forcement l'annee courante.
+     *
+     * Le decouplage existe pour une raison operationnelle precise : la rentree
+     * arrive toujours avant que l'annee precedente soit close. Une ecole qui
+     * n'a pas fini de saisir ses notes ne PEUT pas basculer `is_current`, parce
+     * que les ecrans de saisie des notes et des evaluations filtrent dessus,
+     * sans selecteur d'annee : le jour de la bascule, les evaluations de
+     * l'annee ecoulee disparaissent de l'ecran. Lier l'inscription en ligne a
+     * `is_current` obligerait donc a choisir entre finir ses bulletins et
+     * ouvrir sa rentree.
+     *
+     * Vide — le cas par defaut — signifie « l'annee courante », donc rien ne
+     * change pour une ecole qui ne configure rien.
+     *
+     * Le reglage est nomme `inscriptions.*` et non `reinscriptions.*` a
+     * dessein : une reinscription EST une inscription, et l'annee visee sera la
+     * meme pour les nouveaux eleves quand ce canal-la existera.
+     */
     public function anneeCible(): ?ESBTPAnneeUniversitaire
     {
-        return ESBTPAnneeUniversitaire::where('is_current', true)->first();
+        $choisie = $this->anneeChoisie();
+
+        return $choisie ?? ESBTPAnneeUniversitaire::where('is_current', true)->first();
+    }
+
+    /**
+     * L'annee explicitement designee par l'ecole, si elle existe encore.
+     *
+     * Une annee supprimee apres avoir ete designee ferait pointer le reglage
+     * dans le vide. On retombe alors sur l'annee courante — le portail continue
+     * de fonctionner — mais bruyamment : une ecole qui croit ouvrir 2026-2027
+     * et ouvre 2025-2026 s'en apercevrait autrement en constatant que personne
+     * n'est eligible, sans savoir pourquoi.
+     */
+    private function anneeChoisie(): ?ESBTPAnneeUniversitaire
+    {
+        $valeur = SettingsHelper::get(self::REGLAGE_ANNEE_CIBLE, '');
+
+        if (! is_scalar($valeur) || trim((string) $valeur) === '') {
+            return null;
+        }
+
+        $annee = ESBTPAnneeUniversitaire::find((int) $valeur);
+
+        if ($annee === null) {
+            Log::warning("Annee cible d'inscription introuvable, repli sur l'annee courante", [
+                'reglage' => self::REGLAGE_ANNEE_CIBLE,
+                'valeur' => $valeur,
+            ]);
+        }
+
+        return $annee;
     }
 
     /**

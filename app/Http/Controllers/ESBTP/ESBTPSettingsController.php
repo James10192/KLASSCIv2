@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\ESBTP;
 
 use App\Http\Controllers\Controller;
+use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\Setting;
 use App\Models\SettingsBackup;
 use App\Http\Middleware\CheckRequiredSettings;
@@ -426,6 +427,7 @@ class ESBTPSettingsController extends Controller
             $reglagesTexte = [
                 PortailReinscriptionService::REGLAGE_OUVERTURE,
                 PortailReinscriptionService::REGLAGE_FERMETURE,
+                PortailReinscriptionService::REGLAGE_ANNEE_CIBLE,
             ];
 
             $reglagesPointes = Setting::whereIn('key', array_merge($basculesGerees, $reglagesTexte))->get();
@@ -809,12 +811,45 @@ class ESBTPSettingsController extends Controller
 
             $message = "La date « {$valeur} » est invalide. Format attendu : AAAA-MM-JJ.";
 
-            return $request->expectsJson()
-                ? response()->json(['success' => false, 'message' => $message], 422)
-                : back()->withInput()->with('error', $message);
+            return $this->refus($request, $message);
         }
 
-        return null;
+        return $this->refuserAnneeCibleInconnue($request);
+    }
+
+    /**
+     * L'annee visee par les inscriptions doit exister.
+     *
+     * Une valeur pointant dans le vide ne casse rien visiblement : le portail
+     * retombe sur l'annee courante. L'ecole croirait donc ouvrir sa rentree
+     * tout en ouvrant l'annee en cours, ou personne n'est eligible — et elle
+     * chercherait longtemps pourquoi.
+     */
+    private function refuserAnneeCibleInconnue(Request $request)
+    {
+        $cle = PortailReinscriptionService::REGLAGE_ANNEE_CIBLE;
+        $rawInput = $request->all();
+
+        if (! $this->estSoumis($rawInput, $cle)) {
+            return null;
+        }
+
+        $valeur = $this->valeurSoumise($rawInput, $cle);
+        $valeur = is_scalar($valeur) ? trim((string) $valeur) : '';
+
+        // Vide est le cas normal : « l'annee courante ».
+        if ($valeur === '' || ESBTPAnneeUniversitaire::whereKey((int) $valeur)->exists()) {
+            return null;
+        }
+
+        return $this->refus($request, "L'année universitaire choisie pour les inscriptions n'existe pas.");
+    }
+
+    private function refus(Request $request, string $message)
+    {
+        return $request->expectsJson()
+            ? response()->json(['success' => false, 'message' => $message], 422)
+            : back()->withInput()->with('error', $message);
     }
 
     private function ensureBulletinStyleSetting(): void
