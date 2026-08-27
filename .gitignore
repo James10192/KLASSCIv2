@@ -5,6 +5,13 @@
 /vendor
 .env
 .env.backup
+# Sans joker, la ligne ci-dessus ne couvrait QUE le nom exact : une sauvegarde
+# horodatee .env.backup-20260827-030000 restait visible dans `git status`, a un
+# `git add -A` de l'historique, et etait balayee dans les objets de .git/ par le
+# `git stash --include-untracked` que fait /api/cli/pull. Elle contient APP_KEY,
+# le mot de passe MySQL et le jeton de l'API maitre, en clair.
+.env.backup*
+.env.bak*
 .env.production
 .env.local
 .env.staging

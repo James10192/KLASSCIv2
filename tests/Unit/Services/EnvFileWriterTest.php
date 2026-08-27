@@ -27,6 +27,11 @@ class EnvFileWriterTest extends TestCase
 
     protected function tearDown(): void
     {
+        foreach (glob($this->chemin.'-backups/*') ?: [] as $fichier) {
+            @unlink($fichier);
+        }
+        @rmdir($this->chemin.'-backups');
+
         foreach (glob($this->chemin.'*') ?: [] as $fichier) {
             @unlink($fichier);
         }
@@ -38,7 +43,7 @@ class EnvFileWriterTest extends TestCase
     {
         file_put_contents($this->chemin, $contenu);
 
-        return new EnvFileWriter($this->chemin);
+        return new EnvFileWriter($this->chemin, $this->chemin.'-backups');
     }
 
     public function test_une_cle_absente_est_ajoutee_sans_toucher_au_reste(): void
@@ -83,13 +88,49 @@ class EnvFileWriterTest extends TestCase
         $this->assertStringContainsString('AUTRE=x', $contenu);
     }
 
-    public function test_une_valeur_a_espaces_est_entre_guillemets(): void
+    /**
+     * La faille que la suite precedente ne voyait pas.
+     *
+     * Une valeur multiligne s'ecrivait sur N lignes physiques. A la reecriture
+     * suivante, la boucle de remplacement — qui raisonne en lignes — remplacait
+     * la premiere et abandonnait les N-1 autres, devenues des entrees .env a
+     * part entiere. Deux appels sur la SEULE cle autorisee suffisaient donc a
+     * poser DB_SOCKET, APP_DEBUG ou MAIL_MAILER.
+     */
+    public function test_une_valeur_multiligne_ne_peut_pas_injecter_une_autre_cle(): void
     {
-        $ecrivain = $this->poser("APP_NAME=KLASSCI\n");
+        $ecrivain = $this->poser("APP_NAME=KLASSCI\nDB_HOST=127.0.0.1\n");
 
-        $ecrivain->ecrire('MA_CLE', 'valeur avec espaces');
+        $this->expectException(RuntimeException::class);
 
-        $this->assertStringContainsString('MA_CLE="valeur avec espaces"', file_get_contents($this->chemin));
+        $ecrivain->ecrire('MA_CLE', "valeur\nAPP_DEBUG=true");
+    }
+
+    public function test_le_fichier_reste_intact_apres_une_valeur_refusee(): void
+    {
+        $ecrivain = $this->poser("APP_NAME=KLASSCI\nDB_HOST=127.0.0.1\n");
+        $avant = file_get_contents($this->chemin);
+
+        foreach (["a\nB=1", "a\r\nB=1", "a\0B=1", "a\rB=1"] as $charge) {
+            try {
+                $ecrivain->ecrire('MA_CLE', $charge);
+                $this->fail('Une valeur a caractere de controle aurait du etre refusee : '.addcslashes($charge, "\0..\37"));
+            } catch (RuntimeException) {
+                // attendu
+            }
+        }
+
+        $this->assertSame($avant, file_get_contents($this->chemin), 'Un refus ne doit rien ecrire du tout.');
+    }
+
+    public function test_une_valeur_a_espaces_est_refusee(): void
+    {
+        // Les secrets poses ici sont des jetons opaques. Accepter un espace
+        // obligeait a un mecanisme de guillemets dont la relecture etait
+        // asymetrique : refuser a la frontiere supprime le probleme.
+        $this->expectException(RuntimeException::class);
+
+        $this->poser("APP_NAME=KLASSCI\n")->ecrire('MA_CLE', 'valeur avec espaces');
     }
 
     public function test_l_empreinte_identifie_la_valeur_sans_la_reveler(): void
@@ -128,9 +169,25 @@ class EnvFileWriterTest extends TestCase
 
         $ecrivain->ecrire('MA_CLE', 'nouvelle');
 
-        $sauvegardes = glob($this->chemin.'.backup-*') ?: [];
+        // Hors du depot : une copie en clair du .env a la racine du projet
+        // n'etait pas ignoree par git et se retrouvait balayee dans .git/ par
+        // le `git stash --include-untracked` de /api/cli/pull.
+        $sauvegardes = glob($this->chemin.'-backups/env-*') ?: [];
         $this->assertCount(1, $sauvegardes);
         $this->assertStringContainsString('MA_CLE=ancienne', file_get_contents($sauvegardes[0]));
+    }
+
+    public function test_les_sauvegardes_ne_s_accumulent_pas_sans_limite(): void
+    {
+        // A soixante ecritures par minute, une accumulation sans limite
+        // saturerait le disque d'un hebergement mutualise.
+        $ecrivain = $this->poser("MA_CLE=depart\n");
+
+        for ($i = 0; $i < 9; $i++) {
+            $ecrivain->ecrire('MA_CLE', 'valeur'.$i);
+        }
+
+        $this->assertLessThanOrEqual(5, count(glob($this->chemin.'-backups/env-*') ?: []));
     }
 
     public function test_un_fichier_absent_leve_plutot_que_d_en_creer_un(): void
@@ -139,7 +196,7 @@ class EnvFileWriterTest extends TestCase
         // muette au demarrage, sans indiquer pourquoi.
         $this->expectException(RuntimeException::class);
 
-        (new EnvFileWriter($this->chemin.'-inexistant'))->ecrire('MA_CLE', 'valeur');
+        (new EnvFileWriter($this->chemin.'-inexistant', $this->chemin.'-backups'))->ecrire('MA_CLE', 'valeur');
     }
 
     public function test_aucun_fichier_temporaire_ne_subsiste(): void

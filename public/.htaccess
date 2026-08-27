@@ -30,3 +30,11 @@
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteRule ^ index.php [L]
 </IfModule>
+
+# Refus explicite de tout fichier .env (.env, .env.backup-*, .env.example).
+# La racine web est public/, donc ces fichiers ne sont deja pas servis — mais
+# cette protection depend d une reecriture sous <IfModule mod_rewrite.c>, qui
+# disparait en silence si le module manque ou si AllowOverride change.
+<FilesMatch "^\.env">
+    Require all denied
+</FilesMatch>

@@ -12,12 +12,16 @@ use RuntimeException;
  * n'y a pas de SSH vers l'hebergement, et passer par le terminal cPanel a la
  * main sur six ecoles est une source d'erreur en soi.
  *
- * Il ne sait ecrire QUE les cles que CleEnvAutorisee declare. Ce n'est pas une
- * precaution de forme : un ecrivain de .env generique, atteignable par jeton,
- * equivaut a une prise de controle de l'instance — il suffirait de detourner
- * DB_HOST vers une machine tierce, de faire tourner APP_KEY pour rendre
- * illisible tout ce qui est chiffre, ou de rediriger MAIL_* pour intercepter
- * les reinitialisations de mot de passe.
+ * Il ne sait ecrire QUE les cles que CleEnvAutorisee declare — mais soyons
+ * exacts sur ce que cela protege, parce que sur-promettre puis echouer est
+ * pire que ne rien promettre.
+ *
+ * Ce n'est PAS une frontiere de securite contre un jeton vole : la capacite
+ * `cli:admin` ouvre deja /api/cli/pull et /api/cli/composer/install, qui
+ * executent du code arbitraire sur l'instance. Qui detient ce jeton a deja
+ * tout. La liste blanche est un garde-fou contre l'erreur d'operation et la
+ * derive de perimetre — qu'un futur appelant se serve de ce chemin pour poser
+ * DB_HOST ou APP_DEBUG « juste une fois ».
  *
  * L'ecriture est atomique : on ecrit un fichier voisin puis on le renomme. Une
  * ecriture en place interrompue — disque plein, processus tue — laisserait un
@@ -25,11 +29,20 @@ use RuntimeException;
  */
 class EnvFileWriter
 {
-    public function __construct(private readonly string $chemin) {}
+    /** Au-dela, les plus anciennes sont supprimees a chaque ecriture. */
+    private const SAUVEGARDES_CONSERVEES = 5;
+
+    /** Doit rester identique a la regle de validation de CLIEnvController. */
+    private const ALPHABET_VALEUR = '/^[A-Za-z0-9_\-.:\/+=~]+$/';
+
+    public function __construct(
+        private readonly string $chemin,
+        private readonly string $dossierSauvegardes,
+    ) {}
 
     public static function pourApplication(): self
     {
-        return new self(base_path('.env'));
+        return new self(base_path('.env'), storage_path('app/env-backups'));
     }
 
     /**
@@ -42,8 +55,31 @@ class EnvFileWriter
      */
     public function ecrire(string $cle, string $valeur): bool
     {
+        // Une valeur ne peut occuper qu'UNE ligne physique. Ce n'est pas une
+        // commodite, c'est ce qui rend le reste de cette methode correct.
+        //
+        // Une valeur multiligne s'ecrivait sur N lignes ; a la reecriture
+        // suivante, la boucle ci-dessous — qui raisonne en lignes physiques —
+        // remplacait la premiere et abandonnait les N-1 autres, orphelines et
+        // devenues des entrees .env a part entiere. Deux appels suffisaient
+        // ainsi a poser une cle que la liste blanche interdit. Et sans
+        // malveillance, un secret colle avec un retour a la ligne finissait par
+        // corrompre le fichier au premier remplacement.
+        //
+        // Refuser le probleme a la frontiere le supprime au lieu de le gerer.
+        // Liste POSITIVE plutot que liste de caracteres interdits : les secrets
+        // poses ici sont des jetons opaques, et une valeur qui sort de cet
+        // alphabet est une erreur, pas un cas a supporter. Cela dispense de
+        // tout mecanisme de guillemets — dont la relecture etait justement
+        // asymetrique — et rend vraie l'affirmation « une valeur = une ligne ».
+        if (preg_match(self::ALPHABET_VALEUR, $valeur) !== 1) {
+            throw new RuntimeException(
+                'Valeur .env invalide : seuls lettres, chiffres et _-.:/+=~ sont acceptes.'
+            );
+        }
+
         $contenu = $this->lire();
-        $ligne = $cle.'='.$this->echapper($valeur);
+        $ligne = $cle.'='.$valeur;
 
         $lignes = preg_split('/\R/', $contenu);
         $trouvee = false;
@@ -94,7 +130,9 @@ class EnvFileWriter
             return null;
         }
 
-        $valeur = $this->desechapper(trim($trouve[1]));
+        // Une valeur posee par ce service ne porte ni guillemet ni retour a la
+        // ligne (voir la garde d'ecrire), donc la ligne physique EST la valeur.
+        $valeur = trim($trouve[1]);
 
         return $valeur === '' ? null : substr(hash('sha256', $valeur), 0, 12);
     }
@@ -114,6 +152,54 @@ class EnvFileWriter
         return $contenu;
     }
 
+    /**
+     * Sauvegarde horodatee, HORS du depot.
+     *
+     * Le .env de production contient APP_KEY, le mot de passe MySQL et le jeton
+     * de l'API maitre. Depose a la racine du depot, une copie en clair etait
+     * certes non suivie, mais pas ignoree non plus : elle apparaissait dans
+     * `git status`, a un `git add -A` de l'historique, et surtout
+     * `/api/cli/pull` fait un `git stash --include-untracked` qui l'aurait
+     * balayee dans les objets de `.git/`. storage/ est ignore en entier.
+     *
+     * Retention volontairement courte : a soixante ecritures par minute, une
+     * accumulation sans limite saturerait le disque d'un hebergement mutualise.
+     */
+    private function sauvegarder(): void
+    {
+        $dossier = $this->dossierSauvegardes;
+
+        if (! is_dir($dossier) && ! @mkdir($dossier, 0700, true) && ! is_dir($dossier)) {
+            throw new RuntimeException('Dossier de sauvegarde du .env impossible a creer.');
+        }
+
+        // Suffixe aleatoire : deux ecritures dans la meme seconde ecrasaient
+        // silencieusement la premiere sauvegarde.
+        $sauvegarde = $dossier.'/env-'.date('Ymd-His').'-'.bin2hex(random_bytes(3));
+
+        if (@copy($this->chemin, $sauvegarde) === false) {
+            throw new RuntimeException('Sauvegarde du .env impossible, ecriture annulee.');
+        }
+
+        @chmod($sauvegarde, 0600);
+        $this->purger($dossier);
+    }
+
+    private function purger(string $dossier): void
+    {
+        $fichiers = glob($dossier.'/env-*') ?: [];
+
+        if (count($fichiers) <= self::SAUVEGARDES_CONSERVEES) {
+            return;
+        }
+
+        sort($fichiers);
+
+        foreach (array_slice($fichiers, 0, count($fichiers) - self::SAUVEGARDES_CONSERVEES) as $vieille) {
+            @unlink($vieille);
+        }
+    }
+
     private function ecrireAtomiquement(string $contenu): void
     {
         $dossier = dirname($this->chemin);
@@ -122,14 +208,7 @@ class EnvFileWriter
             throw new RuntimeException('Fichier .env non modifiable (droits insuffisants).');
         }
 
-        // Sauvegarde horodatee avant toute modification. Elle ne coute rien et
-        // c'est la seule chose qui permette de revenir en arriere si la valeur
-        // posee se revele fausse.
-        $sauvegarde = $this->chemin.'.backup-'.date('Ymd-His');
-
-        if (@copy($this->chemin, $sauvegarde) === false) {
-            throw new RuntimeException('Sauvegarde du .env impossible, ecriture annulee.');
-        }
+        $this->sauvegarder();
 
         $temporaire = $this->chemin.'.tmp-'.bin2hex(random_bytes(4));
 
@@ -154,26 +233,4 @@ class EnvFileWriter
         }
     }
 
-    /**
-     * Les secrets que ce service pose n'ont ni espace ni guillemet, mais on ne
-     * parie pas la-dessus : une valeur non echappee couperait la ligne et
-     * rendrait le fichier incoherent.
-     */
-    private function echapper(string $valeur): string
-    {
-        if (preg_match('/^[A-Za-z0-9_\-.:\/+=]*$/', $valeur) === 1) {
-            return $valeur;
-        }
-
-        return '"'.str_replace(['\\', '"'], ['\\\\', '\\"'], $valeur).'"';
-    }
-
-    private function desechapper(string $valeur): string
-    {
-        if (strlen($valeur) >= 2 && $valeur[0] === '"' && str_ends_with($valeur, '"')) {
-            return str_replace(['\\"', '\\\\'], ['"', '\\'], substr($valeur, 1, -1));
-        }
-
-        return $valeur;
-    }
 }

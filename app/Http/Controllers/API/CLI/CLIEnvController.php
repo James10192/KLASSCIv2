@@ -72,7 +72,12 @@ class CLIEnvController extends BaseApiController
 
         $valide = $request->validate([
             'cle' => ['required', 'string', 'max:100'],
-            'valeur' => ['required', 'string', 'max:512'],
+            // Jeton opaque : ni espace, ni retour a la ligne, ni caractere de
+            // controle. Un retour a la ligne dans la valeur permettait, en deux
+            // appels, d'ecrire une cle que la liste blanche interdit. La garde
+            // vit AUSSI dans EnvFileWriter — ici pour rendre un 422 lisible,
+            // la-bas parce qu'un service ne fait pas confiance a son appelant.
+            'valeur' => ['required', 'string', 'max:512', 'regex:/^[A-Za-z0-9_\-.:\/+=~]+$/'],
         ]);
 
         $cle = $valide['cle'];
@@ -102,7 +107,18 @@ class CLIEnvController extends BaseApiController
             // l'ancienne valeur : le secret serait pose dans le fichier et sans
             // effet, ce qui est exactement le genre de panne qu'on ne diagnostique
             // pas — le fichier dit une chose, l'application en fait une autre.
-            Artisan::call('config:clear');
+            //
+            // Le code de retour est verifie, et le fichier de cache aussi :
+            // ConfigClearCommand ignore le booleen de Filesystem::delete, donc
+            // un fichier non supprimable ne leve rien et ne retourne pas
+            // d'erreur. On repondrait « pose » sur une valeur sans effet — la
+            // panne muette que ce bloc existe justement pour empecher.
+            if (Artisan::call('config:clear') !== 0 || is_file(base_path('bootstrap/cache/config.php'))) {
+                throw new RuntimeException(
+                    'Cle ecrite, mais le cache de configuration n\'a pas pu etre purge : '
+                    .'la valeur posee reste sans effet. Purgez le cache sur le serveur.'
+                );
+            }
 
             $empreinte = $ecrivain->empreinte($cle);
         } catch (Throwable $e) {
