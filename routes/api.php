@@ -524,6 +524,8 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
             ->name('diagnostics.evaluations-periode.repair');
         Route::get('/diagnostics/bulletins', [App\Http\Controllers\API\CLI\CLIBulletinDiagnosticController::class, 'index'])
             ->name('diagnostics.bulletins');
+        Route::get('/diagnostics/bulletins/config', [App\Http\Controllers\API\CLI\CLIBulletinDiagnosticController::class, 'configCoverage'])
+            ->name('diagnostics.bulletins.config');
         Route::get('/diagnostics/bulletin/{id}', [App\Http\Controllers\API\CLI\CLIBulletinDiagnosticController::class, 'show'])
             ->name('diagnostics.bulletin');
         Route::get('/diagnostics/settings-duplicates', [App\Http\Controllers\API\CLI\CLIMaintenanceController::class, 'settingsDuplicates'])

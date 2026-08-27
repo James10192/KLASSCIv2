@@ -772,6 +772,18 @@ switch ($Command) {
         Invoke-KlassciApi -Method "GET" -Path "/classes" -Config $cfg | ConvertTo-Json -Depth 8
         break
     }
+    "bulletins:config" {
+        $cfg = Get-KlassciConfig -TenantCode $Tenant
+        $query = @{}
+        foreach ($arg in $ExtraArgs) {
+            if ($arg -match '^([^=]+)=(.*)$') {
+                $query[$matches[1]] = $matches[2]
+            }
+        }
+        $path = "/diagnostics/bulletins/config{0}" -f (New-KlassciQueryString -Query $query)
+        Invoke-KlassciApi -Method "GET" -Path $path -Config $cfg | ConvertTo-Json -Depth 12
+        break
+    }
     "evaluations:coverage" {
         $cfg = Get-KlassciConfig -TenantCode $Tenant
         $query = @{}

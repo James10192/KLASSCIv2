@@ -3,12 +3,17 @@
 namespace App\Http\Controllers\API\CLI;
 
 use App\Http\Controllers\API\BaseApiController;
+use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPBulletin;
 use App\Domain\BtsTroncCommun\BtsClassCohortCounter;
+use App\Models\ESBTPClasse;
+use App\Models\ESBTPConfigMatiere;
 use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPEvaluation;
 use App\Models\ESBTPInscription;
+use App\Models\ESBTPMatiereCoefficient;
 use App\Models\ESBTPNote;
+use App\Models\ESBTPPlanificationAcademique;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -72,6 +77,156 @@ class CLIBulletinDiagnosticController extends BaseApiController
         return $this->successResponse([
             'bulletins' => $bulletins,
             'total' => $bulletins->count(),
+        ]);
+    }
+
+    /**
+     * GET /api/cli/diagnostics/bulletins/config
+     *
+     * Coefficients, type general/technique et professeurs figes, pour
+     * les 11 matieres S1 de 1ere annee BTS (hors MGP).
+     */
+    public function configCoverage(Request $request): JsonResponse
+    {
+        if (! $request->user()->tokenCan('cli:read')) {
+            return $this->errorResponse('Token missing cli:read ability', [], 403);
+        }
+
+        $annee = $request->filled('annee_id')
+            ? ESBTPAnneeUniversitaire::find((int) $request->query('annee_id'))
+            : ESBTPAnneeUniversitaire::where('is_current', true)->first();
+
+        if (! $annee) {
+            return $this->errorResponse('Aucune annee universitaire courante configuree.', ['code' => 'NO_ACADEMIC_YEAR'], 422);
+        }
+
+        $periode = $request->query('periode', 'semestre1');
+        $year = (int) $request->query('year', 1);
+
+        $classes = ESBTPClasse::query()
+            ->where('systeme_academique', 'BTS')
+            ->whereHas('niveau', fn ($q) => $q->where('year', $year))
+            ->with(['filiere:id,name', 'niveau:id,name,year'])
+            ->withCount(['inscriptions as effectif' => function ($q) use ($annee) {
+                $q->where('annee_universitaire_id', $annee->id)
+                    ->where('status', 'active')
+                    ->where('workflow_step', 'etudiant_cree');
+            }])
+            ->orderBy('filiere_id')
+            ->orderBy('name')
+            ->get()
+            ->filter(function (ESBTPClasse $c) {
+                $filiere = mb_strtoupper((string) ($c->filiere->name ?? ''));
+
+                return $c->effectif > 0
+                    && ! str_contains(mb_strtolower($c->name), 'soir')
+                    && ! str_contains(mb_strtolower($c->name), 'test')
+                    && ! str_contains($filiere, 'MINE')
+                    && ! str_contains($filiere, 'PETROLE');
+            })
+            ->values();
+
+        $classIds = $classes->pluck('id');
+        $configs = ESBTPConfigMatiere::query()
+            ->with('matiere:id,name')
+            ->whereIn('classe_id', $classIds)
+            ->where('annee_universitaire_id', $annee->id)
+            ->whereIn('periode', [$periode, str_replace('semestre', '', $periode)])
+            ->get()
+            ->groupBy('classe_id');
+
+        $bulletins = ESBTPBulletin::query()
+            ->whereIn('classe_id', $classIds)
+            ->where('annee_universitaire_id', $annee->id)
+            ->where('periode', $periode)
+            ->whereNotNull('professeurs')
+            ->where('professeurs', '!=', '')
+            ->where('professeurs', '!=', '{}')
+            ->orderByDesc('updated_at')
+            ->get(['classe_id', 'professeurs', 'config_matieres'])
+            ->unique('classe_id')
+            ->keyBy('classe_id');
+
+        $filiereNiveauPairs = $classes->map(fn (ESBTPClasse $c) => $c->filiere_id.'|'.$c->niveau_etude_id)->unique()->values();
+        $coefficients = ESBTPMatiereCoefficient::query()
+            ->where('annee_universitaire_id', $annee->id)
+            ->where('periode', $periode)
+            ->get()
+            ->groupBy(fn ($row) => $row->filiere_id.'|'.$row->niveau_etude_id);
+
+        $planifs = ESBTPPlanificationAcademique::query()
+            ->with('enseignantPrincipal:id,name')
+            ->where('annee_universitaire_id', $annee->id)
+            ->whereIn('semestre', $periode === 'semestre2' ? [2] : [1])
+            ->whereNotNull('enseignant_principal_id')
+            ->get(['filiere_id', 'niveau_etude_id', 'matiere_id', 'enseignant_principal_id']);
+
+        $rows = $classes->map(function (ESBTPClasse $classe) use ($configs, $bulletins, $coefficients, $planifs) {
+            $classConfigs = $configs->get($classe->id, collect());
+            $bulletin = $bulletins->get($classe->id);
+            $profsBulletin = [];
+            if ($bulletin) {
+                $raw = is_string($bulletin->professeurs) ? json_decode($bulletin->professeurs, true) : $bulletin->professeurs;
+                $profsBulletin = is_array($raw) ? $raw : [];
+            }
+            $coefKey = $classe->filiere_id.'|'.$classe->niveau_etude_id;
+            $coefs = ($coefficients->get($coefKey, collect()))->keyBy('matiere_id');
+            $profsPlanif = $planifs
+                ->where('filiere_id', $classe->filiere_id)
+                ->where('niveau_etude_id', $classe->niveau_etude_id)
+                ->filter(fn ($p) => trim((string) ($p->enseignantPrincipal->name ?? '')) !== '')
+                ->mapWithKeys(fn ($p) => [(int) $p->matiere_id => trim($p->enseignantPrincipal->name)]);
+
+            $matieres = $classConfigs->map(function (ESBTPConfigMatiere $row) use ($coefs, $profsBulletin, $profsPlanif) {
+                $cfg = is_array($row->config) ? $row->config : [];
+                $type = $cfg['type'] ?? null;
+                $matiereId = (int) $row->matiere_id;
+                $canon = $this->canonS1($row->matiere->name ?? '');
+                $prof = trim((string) ($profsBulletin[$matiereId] ?? $profsBulletin[(string) $matiereId] ?? $profsPlanif[$matiereId] ?? ''));
+                $coef = $coefs->get($matiereId)?->coefficient;
+
+                return [
+                    'matiere_id' => $matiereId,
+                    'matiere' => $row->matiere->name ?? null,
+                    'canon' => $canon,
+                    'type' => $type,
+                    'coefficient' => $coef !== null ? (float) $coef : null,
+                    'professeur' => $prof !== '' ? $prof : null,
+                ];
+            })->values();
+
+            $canonRows = $matieres->filter(fn ($m) => $m['canon'] !== null)->values();
+            $sansProf = $canonRows->filter(fn ($m) => $m['professeur'] === null)->pluck('canon')->values();
+            $sansCoef = $canonRows->filter(fn ($m) => $m['coefficient'] === null)->pluck('canon')->values();
+            $presentes = $canonRows->pluck('canon')->unique()->values();
+            $manquantes = collect($this->canonAttendues())->diff($presentes)->values();
+
+            return [
+                'classe_id' => (int) $classe->id,
+                'classe' => $classe->name,
+                'filiere' => $classe->filiere->name ?? null,
+                'effectif' => (int) $classe->effectif,
+                'canon_presentes' => $presentes->count(),
+                'canon_manquantes' => $manquantes->all(),
+                'sans_coefficient' => $sansCoef->all(),
+                'sans_professeur' => $sansProf->all(),
+                'pret_config' => $manquantes->isEmpty() && $sansCoef->isEmpty() && $sansProf->isEmpty(),
+                'matieres' => $canonRows->all(),
+            ];
+        });
+
+        return $this->successResponse([
+            'annee' => ['id' => $annee->id, 'name' => $annee->name ?? $annee->libelle],
+            'periode' => $periode,
+            'norme' => $this->canonAttendues(),
+            'summary' => [
+                'classes' => $rows->count(),
+                'pret_config' => $rows->where('pret_config', true)->count(),
+                'sans_professeur' => $rows->filter(fn ($r) => $r['sans_professeur'] !== [])->count(),
+                'sans_coefficient' => $rows->filter(fn ($r) => $r['sans_coefficient'] !== [])->count(),
+                'canon_incomplete' => $rows->filter(fn ($r) => $r['canon_manquantes'] !== [])->count(),
+            ],
+            'classes' => $rows->all(),
         ]);
     }
 
@@ -305,5 +460,46 @@ class CLIBulletinDiagnosticController extends BaseApiController
         }
 
         return array_values($parMatiere);
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function canonAttendues(): array
+    {
+        return [
+            'Maths',
+            'Expression',
+            'Eco',
+            'Entrepr',
+            'Droit',
+            'Chimie',
+            'Physique',
+            'Anglais',
+            'Dessin',
+            'Info',
+            'Secu',
+        ];
+    }
+
+    private function canonS1(?string $name): ?string
+    {
+        $n = mb_strtolower((string) $name);
+        $n = strtr($n, ['é' => 'e', 'è' => 'e', 'ê' => 'e', 'à' => 'a', 'î' => 'i', 'ô' => 'o', 'ù' => 'u', 'ç' => 'c']);
+
+        return match (true) {
+            str_contains($n, 'mathematiques') => 'Maths',
+            str_contains($n, 'expression') && ! str_contains($n, 'anglais') => 'Expression',
+            str_contains($n, 'economie') => 'Eco',
+            str_contains($n, 'entrepreneuriat') => 'Entrepr',
+            $n === 'droit' || str_starts_with($n, 'droit ') => 'Droit',
+            $n === 'chimie' || str_starts_with($n, 'chimie ') => 'Chimie',
+            $n === 'physique' || str_starts_with($n, 'physique ') => 'Physique',
+            str_contains($n, 'anglais technique') => 'Anglais',
+            str_contains($n, 'dessin technique') && str_contains($n, 'lecture') => 'Dessin',
+            str_contains($n, 'informatique') => 'Info',
+            str_contains($n, 'securite') => 'Secu',
+            default => null,
+        };
     }
 }
