@@ -183,6 +183,23 @@ class EnvFileWriter
 
         @chmod($sauvegarde, 0600);
         $this->purger($dossier);
+        $this->balayerAncienEmplacement();
+    }
+
+    /**
+     * Supprime les sauvegardes laissees a la racine du depot par la version
+     * precedente de ce service.
+     *
+     * Transitoire, et a retirer une fois les six instances passees. Chacune de
+     * ces copies contient APP_KEY, le mot de passe MySQL et MASTER_API_TOKEN en
+     * clair, a un endroit ou `.gitignore` ne les couvrait pas. Le motif est
+     * etroit et ces fichiers n'ont jamais eu d'autre auteur que ce service.
+     */
+    private function balayerAncienEmplacement(): void
+    {
+        foreach (glob($this->chemin.'.backup-*') ?: [] as $ancienne) {
+            @unlink($ancienne);
+        }
     }
 
     private function purger(string $dossier): void
