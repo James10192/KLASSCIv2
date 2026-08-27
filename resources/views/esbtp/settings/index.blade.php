@@ -1439,7 +1439,7 @@
                             </div>
                             <div class="pdf-picker-meta">
                                 <div class="pdf-picker-label">Texte dans l'en-tête établissement</div>
-                                <div class="pdf-picker-desc">Nom de l'école, adresse, téléphone affichés sur la bannière colorée</div>
+                                <div class="pdf-picker-desc">Nom de l'école sur la bannière. Si le contraste est trop faible, les PDF basculent automatiquement sur une couleur lisible.</div>
                                 <div class="pdf-contrast-badge" id="contrastHeaderText"></div>
                             </div>
                         </div>

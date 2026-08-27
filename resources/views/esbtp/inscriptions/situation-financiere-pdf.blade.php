@@ -8,7 +8,8 @@
         $pdfCfg  = \App\Helpers\SettingsHelper::getPdfSettings();
         $primary = $pdfCfg['primary_color'] ?? '#0453cb';
         $hdrBg   = $pdfCfg['header_bg_color'] ?? $primary;
-        $hdrText = $pdfCfg['header_text_color'] ?? '#ffffff';
+        $hdrText = $pdfCfg['header_text_on_bg'] ?? $pdfCfg['header_text_color'] ?? '#ffffff';
+        $barText = $pdfCfg['header_text_on_primary'] ?? $hdrText;
     @endphp
     <style>
         body {
@@ -147,11 +148,13 @@
         .data-table tbody tr:nth-child(even) td {
             background-color: #f8fafc;
         }
+        .data-table tbody tr:last-child td { border-bottom: none; }
         .data-table tfoot td {
             padding: 7px 10px;
             font-weight: 800;
             font-size: 11px;
             border-top: 2px solid {{ $primary }};
+            border-bottom: none;
             background-color: #f0f4ff;
         }
         .text-right { text-align: right; }
@@ -317,7 +320,7 @@
         <div class="card-section">
             <table width="100%" border="0" cellspacing="0" cellpadding="0">
                 <tr>
-                    <td style="background-color: {{ $primary }}; color: {{ $hdrText }}; padding: 8px 14px; font-size: 14px; font-weight: 700; letter-spacing: 0.3px;">
+                    <td style="background-color: {{ $primary }}; color: {{ $barText }}; padding: 8px 14px; font-size: 14px; font-weight: 700; letter-spacing: 0.3px;">
                         INFORMATIONS DE L'ÉTUDIANT
                     </td>
                 </tr>
@@ -405,7 +408,7 @@
         <div class="card-section">
             <table width="100%" border="0" cellspacing="0" cellpadding="0">
                 <tr>
-                    <td style="background-color: {{ $primary }}; color: {{ $hdrText }}; padding: 8px 14px; font-size: 14px; font-weight: 700; letter-spacing: 0.3px;">
+                    <td style="background-color: {{ $primary }}; color: {{ $barText }}; padding: 8px 14px; font-size: 14px; font-weight: 700; letter-spacing: 0.3px;">
                         DÉTAIL DES FRAIS — {{ $inscription->anneeUniversitaire->name ?? '' }}
                     </td>
                 </tr>
@@ -510,7 +513,7 @@
         <div class="card-section">
             <table width="100%" border="0" cellspacing="0" cellpadding="0">
                 <tr>
-                    <td style="background-color: {{ $primary }}; color: {{ $hdrText }}; padding: 8px 14px; font-size: 14px; font-weight: 700; letter-spacing: 0.3px;">
+                    <td style="background-color: {{ $primary }}; color: {{ $barText }}; padding: 8px 14px; font-size: 14px; font-weight: 700; letter-spacing: 0.3px;">
                         HISTORIQUE DES PAIEMENTS
                     </td>
                 </tr>

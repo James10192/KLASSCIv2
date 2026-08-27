@@ -8,7 +8,8 @@
         $pdfCfg  = \App\Helpers\SettingsHelper::getPdfSettings();
         $primary = $pdfCfg['primary_color'] ?? '#0453cb';
         $hdrBg   = $pdfCfg['header_bg_color'] ?? $primary;
-        $hdrText = $pdfCfg['header_text_color'] ?? '#ffffff';
+        $hdrText = $pdfCfg['header_text_on_bg'] ?? $pdfCfg['header_text_color'] ?? '#ffffff';
+        $barText = $pdfCfg['header_text_on_primary'] ?? $hdrText;
     @endphp
     <style>
         body {
@@ -259,7 +260,7 @@
         <div class="card-section">
             <table width="100%" border="0" cellspacing="0" cellpadding="0">
                 <tr>
-                    <td style="background-color: {{ $primary }}; color: {{ $hdrText }}; padding: 8px 14px; font-size: 15px; font-weight: 700; letter-spacing: 0.3px;">
+                    <td style="background-color: {{ $primary }}; color: {{ $barText }}; padding: 8px 14px; font-size: 15px; font-weight: 700; letter-spacing: 0.3px;">
                         INFORMATIONS DE L'ÉTUDIANT
                     </td>
                 </tr>
@@ -296,7 +297,7 @@
         <div class="card-section">
             <table width="100%" border="0" cellspacing="0" cellpadding="0">
                 <tr>
-                    <td style="background-color: {{ $primary }}; color: {{ $hdrText }}; padding: 8px 14px; font-size: 15px; font-weight: 700; letter-spacing: 0.3px;">
+                    <td style="background-color: {{ $primary }}; color: {{ $barText }}; padding: 8px 14px; font-size: 15px; font-weight: 700; letter-spacing: 0.3px;">
                         DÉTAILS DU PAIEMENT
                     </td>
                 </tr>

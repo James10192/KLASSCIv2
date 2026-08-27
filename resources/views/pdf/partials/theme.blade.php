@@ -5,7 +5,8 @@
     $pdfAccent = $pdfSettings['accent_color'] ?? '#f59e0b';
     $pdfText = $pdfSettings['text_color'] ?? '#1f2937';
     $pdfHeaderBg = $pdfSettings['header_bg_color'] ?? $pdfPrimary;
-    $pdfHeaderText = $pdfSettings['header_text_color'] ?? '#ffffff';
+    $pdfHeaderText = $pdfSettings['header_text_on_bg'] ?? $pdfSettings['header_text_color'] ?? '#ffffff';
+    $pdfOnPrimary = $pdfSettings['header_text_on_primary'] ?? $pdfHeaderText;
 @endphp
 <style>
     body {
@@ -37,7 +38,7 @@
     .table-header th,
     .header-table th {
         background: {{ $pdfPrimary }} !important;
-        color: #ffffff !important;
+        color: {{ $pdfOnPrimary }} !important;
     }
 
     .table-header,
@@ -56,7 +57,7 @@
 
     .kpi-value {
         background: transparent !important;
-        color: {{ $pdfHeaderText }} !important;
+        color: {{ $pdfPrimary }} !important;
     }
 
     .pdf-kpi-cell,
@@ -132,6 +133,10 @@
     /* Keep alternating row stripes if defined */
     table tbody tr:nth-child(even) {
         background-color: rgba(0, 0, 0, 0.02);
+    }
+    table tbody tr:last-child > td,
+    table tfoot tr:last-child > td {
+        border-bottom: none;
     }
 
     .border-accent {

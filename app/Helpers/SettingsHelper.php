@@ -215,9 +215,48 @@ class SettingsHelper
             'secondary_color' => self::get('pdf_secondary_color', '#64748b'),
             'accent_color' => self::get('pdf_accent_color', '#f59e0b'),
             'text_color' => self::get('pdf_text_color', '#1f2937'),
-            'header_bg_color' => self::get('pdf_header_bg_color', '#0453cb'),
-            'header_text_color' => self::get('pdf_header_text_color', '#ffffff'),
+            'header_bg_color' => $headerBg = self::get('pdf_header_bg_color', '#0453cb'),
+            'header_text_color' => $headerText = self::get('pdf_header_text_color', '#ffffff'),
+            'header_text_on_bg' => self::contrastingText($headerBg, $headerText),
+            'header_text_on_primary' => self::contrastingText(
+                self::get('pdf_primary_color', '#0453cb'),
+                $headerText
+            ),
         ];
+    }
+
+    public static function contrastingText(string $background, string $preferred = '#ffffff', string $dark = '#111827'): string
+    {
+        $bgLum = self::relativeLuminance($background);
+        $fgLum = self::relativeLuminance($preferred);
+        $lighter = max($bgLum, $fgLum);
+        $darker = min($bgLum, $fgLum);
+        $ratio = ($lighter + 0.05) / ($darker + 0.05);
+        if ($ratio >= 3.0) {
+            return $preferred;
+        }
+
+        return $bgLum > 0.55 ? $dark : '#ffffff';
+    }
+
+    public static function relativeLuminance(string $hex): float
+    {
+        $hex = ltrim(trim($hex), '#');
+        if (strlen($hex) === 3) {
+            $hex = $hex[0].$hex[0].$hex[1].$hex[1].$hex[2].$hex[2];
+        }
+        if (strlen($hex) !== 6 || ! ctype_xdigit($hex)) {
+            return 0.0;
+        }
+        $channel = static function (string $part): float {
+            $value = hexdec($part) / 255;
+
+            return $value <= 0.03928 ? $value / 12.92 : (($value + 0.055) / 1.055) ** 2.4;
+        };
+
+        return 0.2126 * $channel(substr($hex, 0, 2))
+            + 0.7152 * $channel(substr($hex, 2, 2))
+            + 0.0722 * $channel(substr($hex, 4, 2));
     }
 
     /**

@@ -77,7 +77,7 @@
         ? $pdf['footer_custom_text']
         : ($pdf['footer_text'] ?? ($school['name'] ?? config('app.name')));
     $hdrBg = $pdf['header_bg_color'] ?? $pdf['primary_color'] ?? '#0453cb';
-    $hdrText = $pdf['header_text_color'] ?? '#ffffff';
+    $hdrText = $pdf['header_text_on_bg'] ?? $pdf['header_text_color'] ?? '#ffffff';
     $primary = $pdf['primary_color'] ?? '#0453cb';
     $secondary = $pdf['secondary_color'] ?? '#64748b';
     // Dans l'UI settings, "Couleur d'accent" est stockée dans pdf_primary_color.
