@@ -417,6 +417,12 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
         Route::post('/cache/clear', [App\Http\Controllers\API\CLI\CLIMaintenanceController::class, 'cacheClear'])->name('cache.clear');
         Route::post('/logs/prune', [App\Http\Controllers\API\CLI\CLIMaintenanceController::class, 'logsPrune'])->name('logs.prune');
         Route::post('/permissions/fix', [App\Http\Controllers\API\CLI\CLIMaintenanceController::class, 'permissionsFix'])->name('permissions.fix');
+
+        // Secrets d'integration. Liste blanche stricte cote controleur : ce
+        // n'est PAS un ecrivain de .env generique, qui equivaudrait a une prise
+        // de controle de l'instance par jeton. La valeur ne revient jamais.
+        Route::get('/env', [App\Http\Controllers\API\CLI\CLIEnvController::class, 'index'])->name('env.index');
+        Route::post('/env', [App\Http\Controllers\API\CLI\CLIEnvController::class, 'store'])->name('env.store');
         Route::post('/permissions/sync', [App\Http\Controllers\API\CLI\CLIPermissionController::class, 'sync'])->name('permissions.sync');
         Route::post('/db/fix-duplicates', [App\Http\Controllers\API\CLI\CLIMaintenanceController::class, 'fixDuplicates'])->name('db.fix-duplicates');
         Route::post('/migrate', [App\Http\Controllers\API\CLI\CLIMaintenanceController::class, 'migrate'])->name('migrate');
