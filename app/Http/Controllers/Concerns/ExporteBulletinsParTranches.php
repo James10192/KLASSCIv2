@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Concerns;
 
+use App\Domain\BtsTroncCommun\BtsClassCohortCounter;
 use App\Domain\Bulletins\FiltresBulletins;
 use App\Models\ESBTPBulletin;
 use App\Services\BulletinBulkPdfExporter;
@@ -73,6 +74,7 @@ trait ExporteBulletinsParTranches
                 'jeton' => $jeton,
                 'total' => count($contexte['bulletin_ids']),
                 'absents' => count($contexte['ungenerated_ids']),
+                'absents_noms' => $contexte['ungenerated_noms'] ?? [],
                 'taille_tranche' => $this->tailleTrancheExport(),
             ],
         ]);
@@ -231,7 +233,7 @@ trait ExporteBulletinsParTranches
      * Bulletins à imprimer et bulletins absents, sans plafond : c'est le
      * découpage qui protège l'exécution, plus la taille du lot.
      *
-     * @return array{bulletin_ids: array<int, int>, ungenerated_ids: array<int, int>}
+     * @return array{bulletin_ids: array<int, int>, ungenerated_ids: array<int, int>, ungenerated_noms: array<int, string>}
      */
     private function contexteExport(Request $request): array
     {
@@ -258,6 +260,26 @@ trait ExporteBulletinsParTranches
             throw new \RuntimeException("Aucun bulletin généré parmi les $total filtrés. Générez d'abord les bulletins, puis réessayez.");
         }
 
+        $brouillons = (clone $filtre)
+            ->whereNull('esbtp_bulletins.moyenne_generale')
+            ->with('etudiant:id,nom,prenoms,matricule')
+            ->get(['esbtp_bulletins.id', 'esbtp_bulletins.etudiant_id']);
+
+        // Un brouillon d'étudiant plus dans la classe n'est pas un oubli de
+        // génération : la masse ne le verra jamais. Le compter comme « non
+        // généré » alarme pour rien (cas DOUKOURE / 1BTS GBAT G).
+        if ($filtres->classeId && $filtres->anneeId && $filtres->periode
+            && \Illuminate\Support\Facades\Schema::hasTable('esbtp_inscriptions')) {
+            $cohorte = array_flip(app(BtsClassCohortCounter::class)->etudiantIdsPourPeriode(
+                $filtres->classeId,
+                $filtres->anneeId,
+                $filtres->periode
+            ));
+            $brouillons = $brouillons->filter(
+                fn (ESBTPBulletin $b) => isset($cohorte[(int) $b->etudiant_id])
+            );
+        }
+
         return [
             'entete' => [
                 'annee' => optional($filtres->annees->firstWhere('id', $filtres->anneeId))->name,
@@ -265,9 +287,12 @@ trait ExporteBulletinsParTranches
                 'periode' => $filtres->periode === null ? null : (FiltresBulletins::PERIODES[$filtres->periode] ?? null),
             ],
             'bulletin_ids' => $ids,
-            'ungenerated_ids' => (clone $filtre)
-                ->whereNull('esbtp_bulletins.moyenne_generale')
-                ->pluck('esbtp_bulletins.id')->map(fn ($id) => (int) $id)->all(),
+            'ungenerated_ids' => $brouillons->pluck('id')->map(fn ($id) => (int) $id)->all(),
+            'ungenerated_noms' => $brouillons->map(function (ESBTPBulletin $b) {
+                $e = $b->etudiant;
+
+                return trim(($e->nom ?? '').' '.($e->prenoms ?? '')).($e?->matricule ? ' · '.$e->matricule : '');
+            })->filter()->values()->all(),
         ];
     }
 

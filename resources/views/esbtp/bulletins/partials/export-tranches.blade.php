@@ -168,15 +168,20 @@ window.exportBulletinsParTranches = async function ({ params, mode, urls, csrf, 
     try {
         // 1. Ouvrir : le serveur fige la liste des bulletins et rend un jeton.
         etat('ouverture', 'Préparation de l\'export…', { pourcent: 0 });
-        const { jeton, total, absents, taille_tranche: taille } = await poster(urls.ouvrir, params);
+        const { jeton, total, absents, absents_noms: nomsAbsents, taille_tranche: taille } = await poster(urls.ouvrir, params);
 
         // 2. Prévenir avant de lancer cinq minutes de travail pour rien.
         if (absents > 0) {
+            const qui = Array.isArray(nomsAbsents) && nomsAbsents.length
+                ? nomsAbsents.slice(0, 5).join(' · ') + (nomsAbsents.length > 5 ? '…' : '')
+                : '';
             const suite = await new Promise((resoudre) => etat(
                 'confirmation',
-                `${absents} bulletin(s) ne sont pas générés`,
+                `${absents} élève(s) de la classe n'ont pas de bulletin généré`,
                 {
-                    detail: `${total} bulletin(s) seront inclus ; les absents seront listés en page de garde.`,
+                    detail: qui
+                        ? `${qui}. ${total} bulletin(s) seront inclus.`
+                        : `${total} bulletin(s) seront inclus ; les absents seront listés en page de garde.`,
                     repondre: resoudre,
                 }
             ));
