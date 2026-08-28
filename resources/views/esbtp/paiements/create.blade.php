@@ -821,22 +821,18 @@ $(function() {
 
                 currentInscription = selectedInscriptionId || null;
 
+                $('#student-progress-section').show();
+
                 if (noticeMessage) {
                     showInscriptionNotice(noticeType, noticeMessage);
                 } else {
                     hideInscriptionNotice();
                 }
 
-                debugLog('Select #inscription_id mis à jour');
-                debugLog('Nouvelles options dans le select:', $inscriptionSelect.find('option').length);
-
-                // Important: force le composant premium à relire les options dynamiques.
-
                 if (selectedInscriptionId) {
                     $('#inscription_id').trigger('change');
                 } else {
                     resetProgressDisplay();
-                    $('#student-progress-section').hide();
                     $('#category-selection-section').hide();
                     $('#payment-details-section').hide();
                     $('#submit-section').hide();
@@ -844,6 +840,8 @@ $(function() {
             },
             error: function(xhr, status, error) {
                 debugError('Erreur chargement inscriptions:', {status, error, response: xhr.responseText});
+                $('#student-progress-section').show();
+                showInscriptionNotice('warning', 'Impossible de charger les inscriptions. Reessayez.');
             }
         });
     }

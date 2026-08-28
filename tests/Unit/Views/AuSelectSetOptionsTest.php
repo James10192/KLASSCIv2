@@ -21,7 +21,7 @@ class AuSelectSetOptionsTest extends TestCase
         $this->assertStringContainsString('setOptions(', $source);
         $this->assertStringContainsString("route('esbtp.api.etudiants.search')", $source);
         $this->assertStringNotContainsString('new Option(', $source);
-        $this->assertStringNotContainsString('$inscriptionSelect.empty()', $source);
+        $this->assertStringNotContainsString('$inscriptionSelect', $source);
         $this->assertStringNotContainsString('pc-select-field', $source);
         $this->assertStringNotContainsString('->limit(10)', $source);
     }
