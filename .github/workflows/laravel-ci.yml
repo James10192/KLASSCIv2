@@ -11,6 +11,10 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Le verificateur de noms de classe compare la branche a sa cible :
+          # il lui faut les deux, pas seulement le dernier commit.
+          fetch-depth: 0
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
@@ -35,6 +39,40 @@ jobs:
 
       - name: Check PHP syntax errors
         run: find app config routes -name "*.php" -print0 | xargs -0 -n1 php -l
+
+      # `php -l` ne voit PAS un `use` oublie : la syntaxe est correcte, le nom
+      # ne se resout qu'a l'execution. En aout 2026, une extraction de classe a
+      # laisse `ESBTPCandidature` sans import, et le catalogue du portail public
+      # a rendu 500 pour les six ecoles. Ce controle-la existait deja, en ligne
+      # de commande, a taper a la main — c'est-a-dire protege par la meme
+      # discipline humaine qui avait laisse passer l'incident.
+      #
+      # Sur le DIFF, pas sur `app/` entier : le depot porte une soixantaine de
+      # noms irresolus anterieurs, chacun demandant de decider si le modele doit
+      # naitre ou la relation mourir. Les traiter est un chantier ; les laisser
+      # bloquer chaque PR en serait un autre.
+      - name: Check unresolved class names (changed files)
+        # Pas de `|| true` sur le `git diff` : une base introuvable, une
+        # recuperation partielle ou une branche renommee rendraient une liste
+        # vide, et l'etape afficherait « aucun fichier PHP modifie » — une
+        # phrase fausse — avant de sortir en succes. Ce controle existe parce
+        # qu'un defaut est passe une fois sans que personne ne le voie ; le
+        # remplacer par un garde qui peut se taire, et se taire en mentant,
+        # reconduirait la meme faiblesse sous un autre nom.
+        run: |
+          set -euo pipefail
+          BASE="origin/${{ github.base_ref }}"
+          if ! git rev-parse --verify --quiet "$BASE" > /dev/null; then
+            echo "::error::Base $BASE introuvable : impossible de determiner les fichiers modifies."
+            exit 1
+          fi
+          mapfile -t FICHIERS < <(git diff --name-only --diff-filter=d "$BASE...HEAD" -- '*.php')
+          if [ ${#FICHIERS[@]} -eq 0 ]; then
+            echo "Aucun fichier PHP modifie par rapport a $BASE."
+            exit 0
+          fi
+          printf '%s\n' "${FICHIERS[@]}"
+          php bin/verifier-classes.php "${FICHIERS[@]}"
 
       - name: Check Blade syntax
         run: |

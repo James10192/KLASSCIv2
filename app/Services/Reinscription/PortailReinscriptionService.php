@@ -8,6 +8,7 @@ use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPInscription;
 use App\Models\ESBTPReinscriptionDemande;
 use App\Services\TenantScolariteSettings;
+use App\Support\SeauDeDebit;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
@@ -56,7 +57,7 @@ class PortailReinscriptionService
     /**
      * La fenetre de dates de la rentree, sans l'interrupteur.
      *
-     * Publique et separee parce que les candidatures des nouveaux eleves la
+     * Publique et separee parce que les candidatures des nouveaux etudiants la
      * PARTAGENT : c'est la meme saison. Seul l'interrupteur differe, une ecole
      * pouvant vouloir reinscrire les siens sans ouvrir aux exterieurs. Deux
      * fenetres a maintenir finiraient par diverger, et une ecole qui deplace sa
@@ -277,6 +278,24 @@ class PortailReinscriptionService
     }
 
     /**
+     * Le seau de ce matricule, entier : cle, plafond et fenetre.
+     *
+     * Une seule construction pour les deux cotes. Le garde le CONSULTE avant
+     * tout travail, le controleur l'INCREMENTE sur echec — et jusqu'ici chacun
+     * rassemblait les trois constantes de son cote. Rien n'obligeait le
+     * consultant et l'incrementeur a viser le meme seau : deux lectures d'une
+     * meme constante ne sont pas un lien, juste une habitude.
+     */
+    public static function seauDuMatricule(mixed $matricule): SeauDeDebit
+    {
+        return SeauDeDebit::parIdentifiant(
+            self::cleDebitMatricule($matricule),
+            self::DEBIT_MATRICULE_MAX,
+            self::DEBIT_MATRICULE_FENETRE_SECONDES
+        );
+    }
+
+    /**
      * L'annee pour laquelle on s'inscrit — pas forcement l'annee courante.
      *
      * Le decouplage existe pour une raison operationnelle precise : la rentree
@@ -292,8 +311,12 @@ class PortailReinscriptionService
      * change pour une ecole qui ne configure rien.
      *
      * Le reglage est nomme `inscriptions.*` et non `reinscriptions.*` a
-     * dessein : une reinscription EST une inscription, et l'annee visee sera la
-     * meme pour les nouveaux eleves quand ce canal-la existera.
+     * dessein : une reinscription EST une inscription, et le canal des nouveaux
+     * etudiants vise la meme annee. Il ne la lit pas par cette methode-ci pour
+     * autant : PortailCandidaturePublication::anneeVisee() appelle
+     * `anneeChoisie()` directement, parce que le repli sur `is_current`
+     * ci-dessous est juste pour une reinscription et faux pour une candidature —
+     * il rangerait une cohorte de nouveaux sous l'annee qui s'acheve.
      */
     public function anneeCible(): ?ESBTPAnneeUniversitaire
     {
@@ -311,7 +334,7 @@ class PortailReinscriptionService
      * et ouvre 2025-2026 s'en apercevrait autrement en constatant que personne
      * n'est eligible, sans savoir pourquoi.
      */
-    private function anneeChoisie(): ?ESBTPAnneeUniversitaire
+    public function anneeChoisie(): ?ESBTPAnneeUniversitaire
     {
         $valeur = SettingsHelper::get(self::REGLAGE_ANNEE_CIBLE, '');
 

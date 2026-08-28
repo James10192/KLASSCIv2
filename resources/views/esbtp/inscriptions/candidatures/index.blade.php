@@ -52,6 +52,15 @@
     .cd-vide { padding: 3rem 1rem; text-align: center; color: #64748b; }
     .cd-vide i { font-size: 2.2rem; color: #cbd5e1; display: block; margin-bottom: .75rem; }
     .cd-contact { font-size: .78rem; color: #64748b; }
+    /* Le tuteur est souvent le seul numero qui repond : il se distingue du
+       contact du candidat sans pour autant crier. */
+    .cd-tuteur { font-size: .78rem; color: #475569; margin-top: .3rem; }
+    .cd-tuteur i { color: #94a3b8; margin-right: .25rem; }
+    /* Declare par le candidat, pas verifie : le libelle porte la nuance, la
+       couleur reste neutre pour ne pas se lire comme une decision de l'ecole. */
+    .cd-affect { display: inline-block; margin-top: .2rem; padding: .1rem .45rem;
+                 border-radius: 5px; background: #f1f5f9; color: #475569; font-size: .72rem; }
+    .cd-affect em { font-style: normal; color: #94a3b8; }
     .cd-actions { display: flex; gap: .4rem; justify-content: flex-end; }
 </style>
 @endpush
@@ -64,7 +73,7 @@
                 <div class="cd-hero-icon"><i class="fas fa-address-card"></i></div>
                 <div>
                     <h1>Candidatures en ligne</h1>
-                    <p>Nouveaux élèves ayant postulé depuis klassci.com. Rien n'est inscrit tant que vous n'avez pas décidé.</p>
+                    <p>Nouveaux étudiants ayant postulé depuis klassci.com. Rien n'est inscrit tant que vous n'avez pas décidé.</p>
                 </div>
             </div>
         </div>
@@ -102,7 +111,7 @@
                 <i class="fas fa-inbox"></i>
                 Aucune candidature pour ce filtre.
                 <div style="font-size:.8rem;margin-top:.4rem;">
-                    Les candidatures arrivent ici dès qu'un nouvel élève postule depuis klassci.com.
+                    Les candidatures arrivent ici dès qu'un nouvel étudiant postule depuis klassci.com.
                 </div>
             </div>
         @else
@@ -125,14 +134,28 @@
                                 <td>
                                     <strong>{{ $c->nomComplet() }}</strong>
                                     <div class="cd-contact">
-                                        {{ $c->date_naissance?->format('d/m/Y') }}
+                                        {{ $c->date_naissance?->format('d/m/Y') }}@if($c->lieu_naissance) à {{ $c->lieu_naissance }}@endif
                                         @if($c->sexe) &middot; {{ $c->sexe === 'F' ? 'Féminin' : 'Masculin' }} @endif
+                                        @if($c->nationalite) &middot; {{ $c->nationalite }} @endif
                                     </div>
                                 </td>
                                 <td>
-                                    <div>{{ $c->telephone }}</div>
+                                    {{-- Stocké en E.164 (« +2250707121234 »), parce que c'est la clé
+                                         d'unicité du canal public. C'est un agent qui va le composer :
+                                         on le lui rend lisible. --}}
+                                    <div>{{ \App\Domain\Notifications\PhoneFormatter::toReadable($c->telephone) ?: $c->telephone }}</div>
                                     @if($c->email)
                                         <div class="cd-contact">{{ $c->email }}</div>
+                                    @endif
+                                    @if($c->ville || $c->commune)
+                                        <div class="cd-contact">{{ collect([$c->commune, $c->ville])->filter()->join(', ') }}</div>
+                                    @endif
+                                    @if($c->tuteur_nom || $c->tuteur_telephone)
+                                        <div class="cd-tuteur">
+                                            <i class="fas fa-user-shield"></i>
+                                            {{ $c->tuteur_nom ?: 'Tuteur' }}@if($c->tuteur_lien) ({{ $c->tuteur_lien }})@endif
+                                            @if($c->tuteur_telephone) &middot; {{ $c->tuteur_telephone }} @endif
+                                        </div>
                                     @endif
                                 </td>
                                 <td>
@@ -142,8 +165,16 @@
                                 <td class="cd-contact">
                                     @if($c->serie_bac) Série {{ $c->serie_bac }}<br> @endif
                                     @if($c->etablissement_origine) {{ $c->etablissement_origine }}<br> @endif
-                                    @if($c->annee_bac) Bac {{ $c->annee_bac }} @endif
-                                    @if(! $c->serie_bac && ! $c->etablissement_origine && ! $c->annee_bac) — @endif
+                                    @if($c->annee_bac) Bac {{ $c->annee_bac }}<br> @endif
+                                    @if($c->affectation_status)
+                                        <span class="cd-affect">{{-- Le libellé canonique, pas une reconstruction : `affectationsDeclarables()`
+     existe pour que valeur et libellé voyagent ensemble. Écrit à la main, cette
+     ligne rendait « Affecté » là où le portail public affiche « Affecté par
+     l'État » — deux mots différents pour la même donnée, sur les deux écrans
+     que la scolarité compare. --}}
+{{ \App\Models\ESBTPCandidature::affectationsDeclarables()[$c->affectation_status] ?? $c->affectation_status }} <em>(déclaré)</em></span>
+                                    @endif
+                                    @if(! $c->serie_bac && ! $c->etablissement_origine && ! $c->annee_bac && ! $c->affectation_status) — @endif
                                 </td>
                                 <td class="cd-contact">{{ $c->created_at?->format('d/m/Y H:i') }}</td>
                                 <td>
@@ -178,9 +209,24 @@
                                                 </button>
                                             </div>
                                         @else
-                                            <div class="cd-contact" style="text-align:right;">
-                                                {{ $c->traitePar?->name ? 'par '.$c->traitePar->name : '' }}
-                                                {{ $c->traite_at?->format('d/m/Y') }}
+                                            <div class="cd-actions">
+                                                {{-- La suite du parcours. Sans ce lien, la scolarité
+                                                     retaperait à la main ce que le candidat a déjà
+                                                     saisi. Ne pas compter les champs ici : le compte
+                                                     a déjà vieilli une fois, et
+                                                     PreRemplissageCandidature::valeurs() fait foi. --}}
+                                                @if($c->statut === \App\Models\ESBTPCandidature::STATUT_ACCEPTEE)
+                                                    @can('inscriptions.ouvrir-formulaire')
+                                                        <a href="{{ route('esbtp.inscriptions.create', ['candidature' => $c->id]) }}"
+                                                           class="btn-acasi primary btn-sm">
+                                                            <i class="fas fa-user-plus"></i> Créer l'inscription
+                                                        </a>
+                                                    @endcan
+                                                @endif
+                                                <div class="cd-contact" style="text-align:right;">
+                                                    {{ $c->traitePar?->name ? 'par '.$c->traitePar->name : '' }}
+                                                    {{ $c->traite_at?->format('d/m/Y') }}
+                                                </div>
                                             </div>
                                         @endif
                                     @endcan

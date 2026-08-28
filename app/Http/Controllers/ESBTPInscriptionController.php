@@ -6,6 +6,7 @@ use App\Domain\Students\Accessibility\Actions\AttachAccessibilityProfile;
 use App\Domain\BtsTroncCommun\BtsOrientationService;
 use App\Domain\BtsTroncCommun\BtsUiPresenter;
 use App\Models\ESBTPAnneeUniversitaire;
+use App\Models\ESBTPCandidature;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPFiliere;
 use App\Models\ESBTPFraisCategory;
@@ -17,6 +18,8 @@ use App\Models\ESBTPNiveauEtude;
 use App\Models\ESBTPPaiement;
 use App\Models\ESBTPParent;
 use App\Models\Setting;
+use App\Services\Inscription\PreRemplissageCandidature;
+use App\Services\Inscription\RattachementCandidature;
 use App\Services\ComptabiliteService;
 use App\Services\ESBTPInscriptionService;
 use App\Services\InscriptionWorkflowService;
@@ -68,6 +71,7 @@ class ESBTPInscriptionController extends Controller
         \App\Services\InscriptionSearchService $searchService,
         BtsUiPresenter $btsUiPresenter,
         BtsOrientationService $btsOrientationService,
+        private readonly RattachementCandidature $rattachement,
     ) {
         $this->inscriptionService = $inscriptionService;
         $this->comptabiliteService = $comptabiliteService;
@@ -363,10 +367,54 @@ class ESBTPInscriptionController extends Controller
     }
 
     /**
-     * Afficher le formulaire de création d'inscription.
+     * Le formulaire d'inscription, éventuellement pré-rempli par une candidature.
+     *
+     * La candidature vient du portail public : le futur étudiant a déjà saisi
+     * son identité, sa résidence et son statut d'affectation. Les retaper
+     * serait leur faire remplir deux fois le même formulaire, et introduirait
+     * des écarts entre ce qu'ils ont déclaré et ce que l'école enregistre.
+     *
+     * Rien n'est validé pour autant : ce sont des valeurs de départ, que la
+     * scolarité corrige avec les pièces sous les yeux. Le matricule, lui,
+     * n'est jamais pré-rempli — une candidature n'en porte pas, il est attribué
+     * ici.
      */
-    public function create()
+    public function create(Request $request)
     {
+        // Le droit se verifie dans `acceptee()`, pas ici. Deux des trois
+        // chemins qui lisent une candidature y passent — l'ouverture du
+        // formulaire et le controle de date de naissance — et le garder au
+        // passage plutot que chez chacun des passants est ce qui evite de
+        // l'oublier : il manquait a l'un des deux.
+        //
+        // Le troisieme, `RattachementCandidature::fermer()`, le verifie
+        // lui-meme, et doit le faire : il intervient APRES l'enregistrement de
+        // l'inscription, ou se taire laisserait la candidature ouverte sans
+        // que personne ne le sache. Il rend donc une phrase, la ou ici on
+        // n'affiche rien — l'agent n'a rien demande de particulier, il a suivi
+        // un lien, et un formulaire vide est ce qu'il attend d'un lien mort.
+        //
+        // L'identifiant vient de la query string OU de la saisie precedente.
+        //
+        // Le second n'est pas un luxe : tous les refus de `store()` — doublon,
+        // date divergente, classe pleine, validation — repassent par
+        // `redirect()->back()`, donc par l'en-tete Referer. Il porte la query
+        // aujourd'hui parce qu'un middleware sans rapport pose
+        // `strict-origin-when-cross-origin` ; un durcissement en
+        // `same-origin`, un proxy d'entreprise ou une extension suffirait a la
+        // perdre. Le formulaire reviendrait alors SANS son champ cache :
+        // l'inscription se creerait, la cloture sortirait sur `id <= 0` sans
+        // un mot, et la candidature garderait son bouton « Creer
+        // l'inscription » — le doublon meme que tout ce dispositif empeche,
+        // produit en silence.
+        $idCandidature = (int) old("candidature_id", $request->integer("candidature"));
+
+        $candidatureSource = PreRemplissageCandidature::acceptee($idCandidature);
+
+        $preRemplissage = $candidatureSource === null
+            ? []
+            : PreRemplissageCandidature::valeurs($candidatureSource);
+
         $filieres = ESBTPFiliere::where("is_active", true)->get();
         $niveaux = ESBTPNiveauEtude::where("is_active", true)->get();
         $academicYears = ESBTPAnneeUniversitaire::where(
@@ -397,6 +445,8 @@ class ESBTPInscriptionController extends Controller
                 "annees",
             ) + [
                 "hideAmounts" => app(EnrollmentAmountVisibility::class)->hideAmounts(auth()->user()),
+                "preRemplissage" => $preRemplissage,
+                "candidatureSource" => $candidatureSource,
             ],
         );
     }
@@ -484,6 +534,12 @@ class ESBTPInscriptionController extends Controller
                         $blockingDuplicates->toArray(),
                     );
             }
+        }
+
+        // Avant la creation, tant que la decision est reversible : voir
+        // RattachementCandidature::refuserSiNaissanceDivergente().
+        if (($refus = $this->rattachement->refuserSiNaissanceDivergente($request)) !== null) {
+            return $refus;
         }
 
         try {
@@ -592,6 +648,8 @@ class ESBTPInscriptionController extends Controller
                 );
             }
 
+            $avertissementCandidature = $this->rattachement->fermer($request, $inscription);
+
             // Envoyer les notifications aux admins, coordonnateurs et secrétaires
             try {
                 $notificationService = app(
@@ -661,8 +719,18 @@ class ESBTPInscriptionController extends Controller
                     'Inscription enregistrée avec succès. L\'administration pourra valider l\'inscription en associant un paiement.',
                 );
 
-            if ($accessibilityWarning !== null) {
-                $redirect->with('warning', $accessibilityWarning);
+            // Les deux avertissements partagent la même clé de session, et le
+            // gabarit n'en rend qu'un. Les concaténer plutôt que de laisser le
+            // second écraser le premier : ils ne se remplacent pas, ils
+            // s'ajoutent — l'un parle du profil d'accessibilité, l'autre de la
+            // corbeille des candidatures, et l'agent doit lire les deux.
+            $avertissements = array_filter([
+                $accessibilityWarning,
+                $avertissementCandidature,
+            ]);
+
+            if ($avertissements !== []) {
+                $redirect->with('warning', implode(' ', $avertissements));
             }
 
             return $redirect;

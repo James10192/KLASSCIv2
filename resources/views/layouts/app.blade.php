@@ -1691,17 +1691,21 @@
                     <!-- Students Section -->
                     @can('module.etudiants.access')
                     @if(!auth()->user()->can('module.caisse.access') || auth()->user()->canAny(['module.comptabilite.access', 'identity.school_manager', 'identity.direct_studies', 'identity.registrar', 'identity.registrar_clerk', 'identity.enrollment_officer']) || auth()->user()->hasRole(['superAdmin', 'admin', 'serviceTechnique']))
-                    @if(auth()->user()->canAny(['students.view', 'inscriptions.view', 'inscriptions.create', 'reinscriptions.demandes.view']))
+                    {{-- `inscriptions.candidatures.view` fait partie de la liste : sans elle,
+                         l'agent d'un role taille sur mesure — candidatures seules, ce que le
+                         produit encourage — ne voyait pas la categorie qui contient sa seule
+                         entree, et arrivait sur la corbeille sans que rien ne l'y situe. --}}
+                    @if(auth()->user()->canAny(['students.view', 'inscriptions.view', 'inscriptions.create', 'reinscriptions.demandes.view', 'inscriptions.candidatures.view']))
                         <div class="menu-category">Étudiants</div>
 
                         <!-- Student Management -->
                         <div class="menu-accordion">
-                            <button class="menu-accordion-btn {{ Request::routeIs('esbtp.etudiants.*') || Request::routeIs('esbtp.inscriptions.*') || Request::routeIs('esbtp.reinscription.*') || Request::routeIs('esbtp.reinscription-demandes.*') ? 'active' : '' }}">
+                            <button class="menu-accordion-btn {{ Request::routeIs('esbtp.etudiants.*') || Request::routeIs('esbtp.inscriptions.*') || Request::routeIs('esbtp.reinscription.*') || Request::routeIs('esbtp.reinscription-demandes.*') || Request::routeIs('esbtp.candidatures.*') ? 'active' : '' }}">
                                 <div class="menu-icon"><i class="fas fa-user-graduate"></i></div>
                                 <div class="menu-text">Étudiants</div>
                                 <div class="menu-arrow"><i class="fas fa-chevron-down"></i></div>
                             </button>
-                            <div class="menu-accordion-content {{ Request::routeIs('esbtp.etudiants.*') || Request::routeIs('esbtp.inscriptions.*') || Request::routeIs('esbtp.reinscription.*') || Request::routeIs('esbtp.reinscription-demandes.*') ? 'show' : '' }}">
+                            <div class="menu-accordion-content {{ Request::routeIs('esbtp.etudiants.*') || Request::routeIs('esbtp.inscriptions.*') || Request::routeIs('esbtp.reinscription.*') || Request::routeIs('esbtp.reinscription-demandes.*') || Request::routeIs('esbtp.candidatures.*') ? 'show' : '' }}">
                                 @can('students.view')
                                 <a href="{{ route('esbtp.etudiants.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.etudiants.*') ? 'active' : '' }}">
                                     <div class="menu-icon"><i class="fas fa-list"></i></div>
@@ -1748,7 +1752,7 @@
                                     </div>
                                 </a>
                                 @endcan
-                                {{-- Candidatures des NOUVEAUX eleves. Entree distincte des demandes
+                                {{-- Candidatures des NOUVEAUX etudiants. Entree distincte des demandes
                                      de reinscription : ce ne sont pas les memes dossiers, et la
                                      scolarite ne les traite pas au meme moment de la rentree. --}}
                                 @can('inscriptions.candidatures.view')

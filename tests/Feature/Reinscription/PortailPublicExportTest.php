@@ -259,7 +259,7 @@ class PortailPublicExportTest extends TestCase
 
         // Le plafond global est deja atteint : l'ecole subit une inondation.
         for ($i = 0; $i < 121; $i++) {
-            RateLimiter::hit('rp-global', 60);
+            RateLimiter::hit('rp-global:reinscriptions', 60);
         }
 
         $this->appeler('lookup', [

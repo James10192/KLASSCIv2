@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Candidature deposee depuis le portail public par un NOUVEL eleve.
+ * Candidature deposee depuis le portail public par un NOUVEL etudiant.
  *
  * Le pendant de esbtp_reinscription_demandes pour ceux qui n'ont pas encore de
  * dossier : les nouveaux bacheliers. Une candidature est inerte au meme titre
@@ -108,7 +108,7 @@ return new class extends Migration
     /**
      * Le canal des nouvelles inscriptions a son propre interrupteur.
      *
-     * Une ecole peut vouloir ouvrir la reinscription de ses eleves sans ouvrir
+     * Une ecole peut vouloir ouvrir la reinscription de ses etudiants sans ouvrir
      * les candidatures exterieures, ou l'inverse. Les fenetres de dates, elles,
      * restent communes : c'est la meme saison.
      */
@@ -129,7 +129,7 @@ return new class extends Migration
             'group' => 'scolarite',
             'category' => 'scolarite',
             'default_value' => '0',
-            'description' => "Ouvre les candidatures des NOUVEAUX eleves depuis klassci.com. Independant de la reinscription. Desactive par defaut.",
+            'description' => "Ouvre les candidatures des NOUVEAUX etudiants depuis klassci.com. Independant de la reinscription. Desactive par defaut.",
             'is_required' => 0,
             'validation_rules' => null,
             'is_active' => 1,

@@ -14,9 +14,9 @@ use Illuminate\Support\Facades\RateLimiter;
 /**
  * Export securise consomme par le site klassci.com.
  *
- * Seule surface non authentifiee de l'application. Les gardes transverses
+ * Premiere des deux surfaces non authentifiees de l'application. Les gardes transverses
  * — signature du site vitrine, limitation de debit, fenetre saisonniere —
- * vivent dans `PortailReinscriptionGuard`, et le plancher de temps de reponse
+ * vivent dans `PortailPublicGuard`, et le plancher de temps de reponse
  * dans `PortailReinscriptionPlancher`. Il ne reste ici que deux disciplines,
  * celles qui portent sur le CONTENU des reponses :
  *
@@ -104,14 +104,13 @@ class ReinscriptionPortalController extends Controller
      */
     private function introuvable(mixed $matricule): JsonResponse
     {
-        RateLimiter::hit(
-            PortailReinscriptionService::cleDebitMatricule($matricule),
-            PortailReinscriptionService::DEBIT_MATRICULE_FENETRE_SECONDES
-        );
+        $seau = PortailReinscriptionService::seauDuMatricule($matricule);
+
+        RateLimiter::hit($seau->cle, $seau->fenetreSecondes);
 
         return response()->json([
             'trouve' => false,
-            'message' => "Aucun dossier ne correspond. Vérifiez votre matricule et votre date de naissance, ou rapprochez-vous de votre établissement.",
+            'message' => 'Aucun dossier ne correspond. Vérifiez votre matricule et votre date de naissance, ou rapprochez-vous de votre établissement.',
         ]);
     }
 

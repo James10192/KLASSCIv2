@@ -26,7 +26,7 @@ use App\Http\Controllers\ESBTPEtudiantController;
  * si bien que l'ordre ecrit dans ce fichier n'est pas l'ordre d'execution — un
  * `throttle:` pose ici passait AVANT le garde, et comptait donc sur des champs
  * non authentifies. Elle vit desormais dans le garde, apres verification de la
- * signature. Voir PortailReinscriptionGuard.
+ * signature. Voir PortailPublicGuard.
  *
  * `throttle:api` du groupe API est retire pour la meme famille de raisons : il
  * compte sur `$request->ip()`, qui vaut ici l'adresse de sortie du site
@@ -41,7 +41,7 @@ use App\Http\Controllers\ESBTPEtudiantController;
  */
 Route::prefix('public/reinscription')
     ->withoutMiddleware(['throttle:api'])
-    ->middleware(['reinscription.portail', 'reinscription.plancher'])
+    ->middleware(['portail.public', 'reinscription.plancher'])
     ->group(function () {
         Route::post('/lookup', [\App\Http\Controllers\API\Public\ReinscriptionPortalController::class, 'lookup'])
             ->name('api.public.reinscription.lookup');
@@ -50,7 +50,7 @@ Route::prefix('public/reinscription')
     });
 
 /*
- * Candidatures des NOUVEAUX eleves. Meme garde, meme signature, meme fenetre
+ * Candidatures des NOUVEAUX etudiants. Meme garde, meme signature, meme fenetre
  * de dates — seul l'interrupteur differe, une ecole pouvant vouloir reinscrire
  * les siens sans ouvrir aux exterieurs, ou l'inverse.
  *
@@ -62,11 +62,22 @@ Route::prefix('public/reinscription')
  */
 Route::prefix('public/inscription')
     ->withoutMiddleware(['throttle:api'])
-    ->middleware(['reinscription.portail:candidatures'])
     ->group(function () {
+        // Le garde est declare POINT PAR POINT, et non sur le groupe : les
+        // deux entrees ne pesent pas pareil, et un garde de groupe s'ajouterait
+        // a celui de la route au lieu de le remplacer — chaque appel serait
+        // alors compte deux fois, dans deux seaux differents.
+        //
+        // `catalogue` : /choix ne sert que des noms de filieres, de niveaux et
+        // de nationalites — rien d'un etudiant, rien a enumerer. Il compte donc
+        // dans un seau a part et large, sans quoi OUVRIR le formulaire couterait
+        // autant que le deposer, et la file d'attente devant le formulaire
+        // fermerait le canal des envois.
         Route::post('/choix', [\App\Http\Controllers\API\Public\CandidaturePortalController::class, 'choix'])
+            ->middleware('portail.public:candidatures,catalogue')
             ->name('api.public.inscription.choix');
         Route::post('/submit', [\App\Http\Controllers\API\Public\CandidaturePortalController::class, 'submit'])
+            ->middleware('portail.public:candidatures')
             ->name('api.public.inscription.submit');
     });
 

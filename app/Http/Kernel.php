@@ -83,7 +83,7 @@ class Kernel extends HttpKernel
         'comptabilite.access' => \App\Http\Middleware\CheckComptabiliteAccess::class,
         'validate.device' => \App\Http\Middleware\ValidateAttendanceDevice::class,
         'attendance.rate_limit' => \App\Http\Middleware\AttendanceRateLimiter::class,
-        'reinscription.portail' => \App\Http\Middleware\PortailReinscriptionGuard::class,
+        'portail.public' => \App\Http\Middleware\PortailPublicGuard::class,
         'reinscription.plancher' => \App\Http\Middleware\PortailReinscriptionPlancher::class,
         'force.password.change' => \App\Http\Middleware\ForcePasswordChange::class,
         'paywall' => \App\Http\Middleware\PaywallMiddleware::class,

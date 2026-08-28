@@ -2379,7 +2379,11 @@
                         <div class="bc-icon"><i class="fas fa-globe"></i></div>
                         <div class="bc-body">
                             <div class="bc-label">Réinscription en ligne depuis klassci.com</div>
-                            <div class="bc-desc">Ouvre le portail public. Les demandes arrivent dans Scolarité &rsaquo; Demandes de réinscription et ne deviennent des inscriptions qu'une fois converties par vos soins. Desactive par defaut.</div>
+                            {{-- Même remède que la carte des candidatures ci-dessous : un lien,
+                                 pas un chemin de menu. Celui-ci nommait « Scolarité › Demandes de
+                                 réinscription » — une section qui n'existe pas, et un intitulé qui
+                                 n'est pas celui du lien (« Demandes en ligne », sous Étudiants). --}}
+                            <div class="bc-desc">Ouvre le portail public. Les demandes arrivent dans @can('reinscriptions.demandes.view')<a href="{{ route('esbtp.reinscription-demandes.index') }}">la liste des demandes en ligne</a>@else la liste des demandes en ligne @endcan et ne deviennent des inscriptions qu'une fois converties par vos soins. Désactivé par défaut.</div>
                             <div class="row g-2" style="margin-top:.6rem;max-width:420px;">
                                 <div class="col-6">
                                     <label class="bc-desc" for="rd-ouverture" style="display:block;margin-bottom:.2rem;">Ouverture</label>
@@ -2400,15 +2404,21 @@
                                 <div class="col-12" style="margin-top:.4rem;">
                                     <label class="bc-desc" for="rd-annee-cible" style="display:block;margin-bottom:.2rem;">Année visée par les inscriptions</label>
                                     <select class="form-control form-control-sm" id="rd-annee-cible" name="inscriptions.annee_cible">
-                                        <option value="">Année courante (par défaut)</option>
+                                        <option value="">Non précisée</option>
                                         @foreach($_annees as $_a)
                                             <option value="{{ $_a->id }}" {{ $_anneeCible === (string) $_a->id ? 'selected' : '' }}>
                                                 {{ $_a->name }}{{ $_a->is_current ? ' — année courante' : '' }}
                                             </option>
                                         @endforeach
                                     </select>
+                                    {{-- Les deux canaux ne lisent pas ce champ pareil, et l'écran
+                                         doit le dire : la réinscription retombe sur l'année
+                                         courante quand il est vide, la candidature refuse. Écrire
+                                         « par défaut » ici laissait ouvrir les candidatures sur un
+                                         champ vide et faisait répondre au portail, à chaque
+                                         bachelier, que l'école n'avait pas fini son paramétrage. --}}
                                     <div class="bc-desc" style="margin-top:.25rem;">
-                                        À renseigner si vous ouvrez la rentrée avant d'avoir clos l'année précédente : la saisie des notes reste sur l'année courante pendant que les inscriptions visent la suivante.
+                                        <strong>Obligatoire pour ouvrir les candidatures</strong> des nouveaux étudiants ci-dessous. Pour les réinscriptions seules, laissez « Non précisée » : elles visent alors l'année courante. Renseignez-la si vous ouvrez la rentrée avant d'avoir clos l'année précédente : la saisie des notes reste sur l'année courante pendant que les inscriptions visent la suivante.
                                     </div>
                                 </div>
                             </div>
@@ -2417,6 +2427,46 @@
                             <label class="form-switch-modern">
                                 <input type="checkbox" name="reinscriptions.en_ligne.enabled" value="1"
                                        {{ app(\App\Services\TenantScolariteSettings::class)->reinscriptionEnLigneEnabled() ? 'checked' : '' }}>
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                    {{-- Le canal des NOUVEAUX candidats. Distinct de la réinscription
+                         juste au-dessus : une école peut vouloir réinscrire les siens
+                         sans ouvrir aux extérieurs, ou l'inverse. La fenêtre de dates,
+                         elle, est commune — c'est la même rentrée. --}}
+                    <div class="bc-card">
+                        <div class="bc-icon"><i class="fas fa-user-graduate"></i></div>
+                        <div class="bc-body">
+                            <div class="bc-label">Inscription en ligne des nouveaux étudiants</div>
+                            {{-- Un lien plutôt qu'un chemin de menu à suivre : le chemin exact
+                                 dépend du rôle qui lit, et il a déjà été décrit faux une fois.
+                                 Le lien, lui, mène au même endroit pour tout le monde — et n'est
+                                 montré qu'à qui a le droit d'y aller. --}}
+                            <div class="bc-desc">Ouvre les candidatures des nouveaux bacheliers depuis klassci.com. Elles arrivent dans @can('inscriptions.candidatures.view')<a href="{{ route('esbtp.candidatures.index') }}">la corbeille des candidatures</a>@else la corbeille des candidatures @endcan et ne deviennent des inscriptions qu'une fois acceptées puis créées par vos soins. Désactivé par défaut. La période d'ouverture est celle de la réinscription ci-dessus ; <strong>l'année visée doit y être renseignée</strong>, sans quoi ce canal refuse toutes les candidatures.</div>
+                            <div class="row g-2" style="margin-top:.6rem;max-width:420px;">
+                                <div class="col-12">
+                                    <label class="bc-desc" for="ci-physiques" style="display:block;margin-bottom:.2rem;">Début des inscriptions sur place</label>
+                                    {{-- Les clés viennent des constantes, jamais de chaînes
+                                         écrites ici : un renommage laisserait sinon le
+                                         formulaire poster une clé disparue, et la bascule
+                                         retomberait à zéro en silence. C'est la leçon de
+                                         la PR #591, que le contrôleur applique déjà. --}}
+                                    @php $_clePhysiques = \App\Services\Inscription\PortailCandidaturePublication::REGLAGE_PHYSIQUES; @endphp
+                                    <input type="date" class="form-control form-control-sm" id="ci-physiques"
+                                           name="{{ $_clePhysiques }}"
+                                           value="{{ \App\Helpers\SettingsHelper::get($_clePhysiques, '') }}">
+                                    <div class="bc-desc" style="margin-top:.25rem;">
+                                        Premier jour où vous recevez les candidats pour finaliser leur dossier (pièces et paiement). Le portail l'annonce à la fin du formulaire : avant cette date il indique quand venir, à partir de cette date il invite à se présenter. Laissez vide pour n'annoncer aucune date.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bc-toggle">
+                            <label class="form-switch-modern">
+                                @php $_cleCandidatures = \App\Services\Inscription\PortailCandidaturePublication::REGLAGE_ACTIF; @endphp
+                                <input type="checkbox" name="{{ $_cleCandidatures }}" value="1"
+                                       {{ \App\Helpers\SettingsHelper::get($_cleCandidatures, '0') == '1' ? 'checked' : '' }}>
                                 <span class="slider"></span>
                             </label>
                         </div>
