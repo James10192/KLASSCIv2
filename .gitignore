@@ -72,3 +72,14 @@ docs/audits/e2e/
 
 # Cache de polices DomPDF, regenere au premier rendu PDF
 storage/fonts/*.ufm.json
+
+# Jetons de session d'outils locaux (LinkedIn, navigateurs pilotes...).
+# Ce dossier a contenu un cookie `li_at` en clair : non suivi, mais non ignore
+# non plus, donc a un `git add -A` de partir dans l'historique.
+/data/
+/.playwright-mcp/
+
+# Repertoire cree par une variable Windows non substituee dans un script
+# (`%SystemDrive%`). Meme raison que les deux precedents : non suivi et non
+# ignore, il attend un `git add -A` pour entrer dans l'historique.
+/%SystemDrive%/

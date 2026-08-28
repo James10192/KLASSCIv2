@@ -6,10 +6,11 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Str;
 use OwenIt\Auditing\Contracts\Auditable;
 
 /**
- * Candidature deposee par un NOUVEL eleve depuis le portail public.
+ * Candidature deposee par un NOUVEL etudiant depuis le portail public.
  *
  * Inerte, comme une demande de reinscription : elle n'ouvre aucun droit, ne
  * genere aucun frais, ne compte dans aucun effectif. C'est l'ecole qui la
@@ -31,12 +32,97 @@ class ESBTPCandidature extends Model implements Auditable
 
     public const STATUT_CONVERTIE = 'convertie';
 
+    /**
+     * Les statuts d'affectation qu'un candidat peut declarer.
+     *
+     * Ils viennent de ESBTPEcheancierRule, et pas d'une liste ecrite ici,
+     * parce que c'est cette classe qui les fait vivre : c'est elle qui choisit
+     * le bareme de frais selon le statut. Un accent qui divergerait entre les
+     * deux ne se verrait pas a la relecture — il se verrait a la caisse, sur
+     * un etudiant qu'on ne saurait pas facturer.
+     *
+     * STATUS_ALL en est exclu a dessein : c'est un joker de regle de frais
+     * (« quel que soit le statut »), pas un etat d'etudiant.
+     *
+     * Le LIBELLE voyage avec la valeur, comme pour les nationalites juste a
+     * cote. La forme precedente servait une cle ASCII que le site vitrine
+     * utilisait pour indexer sa propre table de traduction : le jour ou une
+     * ecole obtient un quatrieme statut, le portail public aurait affiche la
+     * chaine « inscription.formulaire.affectations.boursier » dans son menu
+     * deroulant — next-intl rend le chemin de cle quand elle manque. Ni le
+     * compilateur, ni les tests d'aucun des deux depots ne peuvent voir cela,
+     * puisque les deux moities se deploient separement.
+     *
+     * @return array<string, string> valeur stockee => libelle affichable
+     */
+    public static function affectationsDeclarables(): array
+    {
+        return [
+            ESBTPEcheancierRule::STATUS_AFFECTE => "Affecté par l'État",
+            ESBTPEcheancierRule::STATUS_REAFFECTE => 'Réaffecté',
+            ESBTPEcheancierRule::STATUS_NON_AFFECTE => 'Non affecté',
+        ];
+    }
+
+    /**
+     * Le lien declare, ramene aux quatre options du formulaire d'inscription.
+     *
+     * Cote portail, « Lien avec vous » est un champ LIBRE : on y lit « père »,
+     * « Mon oncle », « Grand frere », « tutrice ». Le formulaire d'inscription,
+     * lui, propose quatre choix fermes. Sans cette table, reprendre le tuteur
+     * laisserait le selecteur sur « Selectionner » — donc vide, donc en faute
+     * sur une regle `required` que le meme geste vient de declencher.
+     *
+     * Le repli est « Autre », qui est une option VALIDE : on ne bloque jamais
+     * l'agent sur une formulation qu'on n'avait pas prevue.
+     */
+    public static function relationTuteurNormalisee(?string $lien): string
+    {
+        $normalise = mb_strtolower(trim(Str::ascii((string) $lien)), 'UTF-8');
+
+        if ($normalise === '') {
+            return '';
+        }
+
+        // Un lien QUALIFIE n'est aucune des trois options.
+        //
+        // La version precedente cherchait « pere » n'importe ou dans la chaine.
+        // « Grand-pere » contient « pere » : le bandeau proposait donc « Pere »,
+        // l'agent cliquait « Reprendre ce tuteur » sans relire, et la fiche de
+        // l'etudiant affirmait que son grand-pere etait son pere. Meme chose
+        // pour « belle-mere », « beau-pere », « arriere-grand-mere ».
+        //
+        // Ces liens-la existent et sont frequents : un bachelier d'Abidjan
+        // heberge chez sa grand-mere le declare tel quel. « Autre » est la
+        // reponse juste — le formulaire l'offre, et l'agent precisera.
+        if (preg_match('/\b(grand|arriere|beau|belle|demi)\b|grand-|beau-|belle-/', $normalise) === 1) {
+            return 'Autre';
+        }
+
+        // Mot entier, et non fragment : « esperer » ne fait pas un pere, ni
+        // « intendant » un gardien.
+        foreach ([
+            'Père' => ['pere', 'papa', 'daron'],
+            'Mère' => ['mere', 'maman'],
+            'Tuteur' => ['tuteur', 'tutrice', 'gardien'],
+        ] as $option => $formes) {
+            foreach ($formes as $forme) {
+                if (preg_match('/\b'.preg_quote($forme, '/').'\b/', $normalise) === 1) {
+                    return $option;
+                }
+            }
+        }
+
+        return 'Autre';
+    }
+
     protected $fillable = [
-        'nom', 'prenoms', 'date_naissance', 'sexe',
-        'telephone', 'email',
+        'nom', 'prenoms', 'date_naissance', 'lieu_naissance', 'sexe', 'nationalite',
+        'telephone', 'email', 'ville', 'commune',
         'filiere_id', 'niveau_id', 'voeu_libre',
         'annee_universitaire_id',
-        'serie_bac', 'etablissement_origine', 'annee_bac',
+        'serie_bac', 'etablissement_origine', 'annee_bac', 'affectation_status',
+        'tuteur_nom', 'tuteur_telephone', 'tuteur_lien', 'tuteur_profession',
         'message', 'statut', 'consentement_at', 'ip_hash',
         'motif_rejet', 'traite_par', 'traite_at',
         'etudiant_id', 'inscription_id',
@@ -59,6 +145,13 @@ class ESBTPCandidature extends Model implements Auditable
         'statut', 'filiere_id', 'niveau_id', 'motif_rejet',
         'traite_par', 'traite_at', 'etudiant_id', 'inscription_id',
         'consentement_at',
+        // L'identite est auditee parce qu'elle est REECRITE par une surface
+        // non authentifiee : la cle d'unicite est le telephone, et un foyer le
+        // partage. Un redepot met a jour la ligne existante ; sans ces trois
+        // colonnes, le journal dirait « acceptée → en attente » sans jamais
+        // dire que le dossier a change de personne. Les autres champs restent
+        // dehors, par minimisation : ce sont ceux-la qui portent la decision.
+        'nom', 'prenoms', 'date_naissance',
     ];
 
     public function anneeUniversitaire(): BelongsTo

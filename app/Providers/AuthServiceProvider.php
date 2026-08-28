@@ -64,6 +64,21 @@ class AuthServiceProvider extends ServiceProvider
             return $user && $user->hasRole('superAdmin') ? true : null;
         });
 
+        // Peut-on EMMENER cet utilisateur au formulaire d'inscription, ou lui
+        // en montrer le lien ?
+        //
+        // Un Gate, et non un helper appele des deux cotes, parce que la vue
+        // demandait deja `@can('inscriptions.create')` : une permission seule,
+        // alors que la route exige aussi l'une des permissions d'identite. Un
+        // agent d'inscription taille sur mesure par une ecole — ce que le
+        // produit encourage — voyait donc le bouton « Creer l'inscription » et
+        // recevait un 403 en cliquant. Le contrôleur avait été corrigé, la vue
+        // non : la moitié posée rassurait sans protéger.
+        Gate::define(
+            'inscriptions.ouvrir-formulaire',
+            static fn ($utilisateur) => \App\Support\PorteDeRoute::ouverte('esbtp.inscriptions.create', $utilisateur)
+        );
+
         // `users.manage` : exposé en Gate explicite pour éviter toute ambiguïté
         // entre les routes qui consomment Gate::* et le résolveur Spatie.
         Gate::define('users.manage', function ($user) {

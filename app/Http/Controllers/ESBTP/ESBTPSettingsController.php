@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\ESBTP;
 
+use App\Helpers\SettingsHelper;
 use App\Http\Controllers\Controller;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\Setting;
@@ -12,6 +13,7 @@ use App\Services\AppreciationScaleSettingsService;
 use App\Services\BulletinMentionResolver;
 use App\Services\BtsBulletinPolicy;
 use App\Services\MailPulse\MailPulseTestNotificationService;
+use App\Services\Inscription\PortailCandidaturePublication;
 use App\Services\Reinscription\PortailReinscriptionService;
 use App\Services\TenantScolariteSettings;
 use Illuminate\Http\JsonResponse;
@@ -418,6 +420,7 @@ class ESBTPSettingsController extends Controller
                 TenantScolariteSettings::CASHIER_PRE_ENROLLMENT,
                 TenantScolariteSettings::AGENT_INSCRIPTION_ROLE,
                 TenantScolariteSettings::REINSCRIPTION_EN_LIGNE,
+                PortailCandidaturePublication::REGLAGE_ACTIF,
             ], array_keys($troncCommunDefaults));
 
             // Reglages a cle pointee qui ne sont PAS des cases a cocher. La
@@ -428,6 +431,7 @@ class ESBTPSettingsController extends Controller
                 PortailReinscriptionService::REGLAGE_OUVERTURE,
                 PortailReinscriptionService::REGLAGE_FERMETURE,
                 PortailReinscriptionService::REGLAGE_ANNEE_CIBLE,
+                PortailCandidaturePublication::REGLAGE_PHYSIQUES,
             ];
 
             $reglagesPointes = Setting::whereIn('key', array_merge($basculesGerees, $reglagesTexte))->get();
@@ -797,7 +801,17 @@ class ESBTPSettingsController extends Controller
     {
         $rawInput = $request->all();
 
-        foreach ([PortailReinscriptionService::REGLAGE_OUVERTURE, PortailReinscriptionService::REGLAGE_FERMETURE] as $cle) {
+        $reglagesDate = [
+            PortailReinscriptionService::REGLAGE_OUVERTURE,
+            PortailReinscriptionService::REGLAGE_FERMETURE,
+            // Le debut des inscriptions sur place, annonce au candidat a la fin
+            // du formulaire public. Sans cette ligne, une date qui deborde
+            // serait acceptee ici puis rejetee a la lecture : l'ecole croirait
+            // avoir annonce une date, le portail n'en annoncerait aucune.
+            PortailCandidaturePublication::REGLAGE_PHYSIQUES,
+        ];
+
+        foreach ($reglagesDate as $cle) {
             if (! $this->estSoumis($rawInput, $cle)) {
                 continue;
             }
@@ -814,16 +828,73 @@ class ESBTPSettingsController extends Controller
             return $this->refus($request, $message);
         }
 
-        return $this->refuserAnneeCibleInconnue($request);
+        if (($refus = $this->refuserAnneeCibleInconnue($request)) !== null) {
+            return $refus;
+        }
+
+        return $this->refuserCandidaturesSansAnnee($request);
+    }
+
+    /**
+     * Ouvrir les candidatures exige de designer l'annee visee.
+     *
+     * Les deux canaux ne lisent pas ce champ de la meme facon, et c'est
+     * volontaire : la reinscription retombe sur l'annee courante quand il est
+     * vide (reconduire un dossier dans l'annee en cours a un sens), la
+     * candidature refuse (ranger une cohorte de nouveaux sous l'annee
+     * sortante n'en a aucun, et personne ne s'en apercevrait avant les
+     * bulletins).
+     *
+     * Ce refus est donc ce qui empeche cette asymetrie de se decouvrir cote
+     * public. Sans lui : l'ecole coche l'interrupteur, laisse le selecteur sur
+     * son option vide, enregistre — la sauvegarde reussit, l'interrupteur est
+     * vert, aucun journal ne bronche — et CHAQUE bachelier lit « l'etablissement
+     * n'a pas termine la configuration de cette rentree ». Le seul signal
+     * arrive par telephone, en pleine rentree.
+     *
+     * Ici plutot que dans le service : c'est au moment ou l'ecole enregistre
+     * qu'on peut encore lui dire quoi faire.
+     */
+    private function refuserCandidaturesSansAnnee(Request $request)
+    {
+        $rawInput = $request->all();
+        $cleCanal = PortailCandidaturePublication::REGLAGE_ACTIF;
+
+        // La case n'etait pas dans le formulaire soumis : on ne juge pas un
+        // reglage que cette page n'a pas presente.
+        if (! $this->estSoumis($rawInput, $cleCanal)) {
+            return null;
+        }
+
+        if ((string) $this->valeurSoumise($rawInput, $cleCanal) !== '1') {
+            return null;
+        }
+
+        $cleAnnee = PortailReinscriptionService::REGLAGE_ANNEE_CIBLE;
+
+        // L'annee peut venir du formulaire courant OU d'un enregistrement
+        // precedent : les deux comptent, seul le resultat final importe.
+        $annee = $this->estSoumis($rawInput, $cleAnnee)
+            ? $this->valeurSoumise($rawInput, $cleAnnee)
+            : SettingsHelper::get($cleAnnee, '');
+
+        if (trim((string) (is_scalar($annee) ? $annee : '')) !== '') {
+            return null;
+        }
+
+        return $this->refus(
+            $request,
+            "Choisissez l'année visée par les inscriptions avant d'ouvrir les candidatures des nouveaux étudiants : sans elle, le portail refuse toutes les candidatures."
+        );
     }
 
     /**
      * L'annee visee par les inscriptions doit exister.
      *
-     * Une valeur pointant dans le vide ne casse rien visiblement : le portail
-     * retombe sur l'annee courante. L'ecole croirait donc ouvrir sa rentree
-     * tout en ouvrant l'annee en cours, ou personne n'est eligible — et elle
-     * chercherait longtemps pourquoi.
+     * Une valeur pointant dans le vide ne casse rien visiblement du cote de la
+     * reinscription : elle retombe sur l'annee courante. L'ecole croirait donc
+     * ouvrir sa rentree tout en ouvrant l'annee en cours, ou personne n'est
+     * eligible — et elle chercherait longtemps pourquoi.
      */
     private function refuserAnneeCibleInconnue(Request $request)
     {

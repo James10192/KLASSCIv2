@@ -30,6 +30,64 @@
             </div>
         </div>
 
+        {{-- Le formulaire est parti d'une candidature en ligne : on le dit, sinon
+             l'agent croit que quelqu'un a saisi ces valeurs avant lui et n'ose
+             pas les corriger. Elles restent des déclarations du candidat. --}}
+        @if(!empty($candidatureSource))
+            <div class="alert alert-info d-flex align-items-start gap-2" style="border-radius:12px;">
+                <i class="fas fa-file-import mt-1"></i>
+                <div>
+                    <strong>Pré-rempli depuis la candidature en ligne de
+                        {{ $candidatureSource->nomComplet() }}</strong>
+                    <div class="small">
+                        Déposée le {{ $candidatureSource->created_at?->format('d/m/Y') }}. Ces
+                        informations sont déclarées par le candidat : vérifiez-les avec les pièces
+                        avant d'enregistrer. Le matricule n'est pas repris, il est attribué ici.
+                        {{-- Le tuteur ne se pré-remplit PAS tout seul, et c'est délibéré.
+                             Le bloc « Parent / Tuteur » rend nom, prénoms, téléphone et
+                             relation obligatoires dès qu'un seul d'entre eux porte une
+                             valeur. Or la candidature collecte le nom en un champ unique
+                             quand ce formulaire le sépare, et découper au premier espace
+                             se trompe une fois sur deux sur les noms composés ivoiriens.
+                             Remplir automatiquement le téléphone rendait donc le nom
+                             obligatoire sans le remplir — sous une section annoncée
+                             « optionnelle ». D'où ce bouton : c'est l'agent qui décide,
+                             et il obtient les quatre champs d'un coup, à ajuster. --}}
+                        @if($candidatureSource->tuteur_nom || $candidatureSource->tuteur_telephone)
+                            <br>Tuteur déclaré :
+                            {{ $candidatureSource->tuteur_nom ?: '—' }}@if($candidatureSource->tuteur_lien) ({{ $candidatureSource->tuteur_lien }})@endif
+                            @if($candidatureSource->tuteur_telephone)
+                                &middot; {{ \App\Domain\Notifications\PhoneFormatter::toReadable($candidatureSource->tuteur_telephone) ?: $candidatureSource->tuteur_telephone }}
+                            @endif
+                            @php
+                                // Le champ du formulaire est borne a 20 caracteres quand le
+                                // portail en accepte 30 — deliberement, pour laisser passer
+                                // un fixe ou un numero etranger. Un numero qui ne rentre pas
+                                // n'est pas tronque : un telephone tronque est un mauvais
+                                // telephone. On ne le reprend pas, et il reste lisible dans
+                                // le bandeau juste au-dessus.
+                                $_telTuteur = \App\Domain\Notifications\PhoneFormatter::toReadable($candidatureSource->tuteur_telephone)
+                                    ?: (string) $candidatureSource->tuteur_telephone;
+
+                                $_tuteurRepris = [
+                                    'nom' => (string) $candidatureSource->tuteur_nom,
+                                    'telephone' => mb_strlen($_telTuteur) <= 20 ? $_telTuteur : '',
+                                    'relation' => \App\Models\ESBTPCandidature::relationTuteurNormalisee($candidatureSource->tuteur_lien),
+                                    'profession' => (string) $candidatureSource->tuteur_profession,
+                                ];
+                            @endphp
+                            <div class="mt-2">
+                                <button type="button" class="btn btn-sm btn-outline-primary"
+                                        id="reprendreTuteur" data-tuteur='@json($_tuteurRepris)'>
+                                    <i class="fas fa-user-plus me-1"></i> Reprendre ce tuteur dans le formulaire
+                                </button>
+                            </div>
+                        @endif
+                    </div>
+                </div>
+            </div>
+        @endif
+
         <!-- Stepper de progression — indicateur visuel fixed (scroll-driven) -->
         <nav class="form-stepper" id="formStepper" aria-label="Progression du formulaire">
             <div class="step-item active" data-step="1">
@@ -108,15 +166,60 @@
         </nav>
 
         <form id="inscriptionForm" method="POST" action="{{ route('esbtp.inscriptions.store') }}" enctype="multipart/form-data">
+            {{-- L'identifiant voyage avec le formulaire : sans lui, la candidature
+                 resterait « acceptée » après l'inscription, et son bouton
+                 « Créer l'inscription » inviterait à la refaire. --}}
+            @if(!empty($candidatureSource))
+                <input type="hidden" name="candidature_id" value="{{ $candidatureSource->id }}">
+            @endif
             @csrf
             <input type="hidden" name="duplicate_override" id="duplicate_override" value="0">
 
+            {{-- La date saisie ne correspond pas à celle du dossier déposé en ligne.
+                 Le cas fréquent est la correction : le candidat a tapé 2007 sur son
+                 téléphone, la pièce d'identité dit 2006. Une case à cocher plutôt
+                 qu'un refus sec, donc — mais posée AVANT la création, tant que la
+                 décision est encore réversible. --}}
+            @error('candidature_naissance')
+                <div class="alert alert-warning mb-4" role="alert">
+                    <h6 class="fw-bold mb-2"><i class="fas fa-calendar-day me-2"></i>Date de naissance différente de la candidature</h6>
+                    <p class="mb-2">{{ $message }}</p>
+                    <label class="form-check-label d-flex align-items-start gap-2 mb-0" style="cursor:pointer;">
+                        <input class="form-check-input mt-1" type="checkbox"
+                               name="candidature_naissance_confirmee" value="1"
+                               {{ old('candidature_naissance_confirmee') ? 'checked' : '' }}>
+                        <span>Je confirme qu'il s'agit bien de ce candidat : la date saisie ici fait foi.</span>
+                    </label>
+                </div>
+            @else
+                {{-- La confirmation survit aux autres refus. Sans cette ligne, un
+                     retour pour classe pleine ou pour doublon, qui s'intercale
+                     entre la coche et l'enregistrement, effaçait la case : l'agent
+                     relisait l'alerte alarmante et recochait, pour rien. Les deux
+                     blocs s'excluent, donc jamais deux champs du même nom. --}}
+                @if(old('candidature_naissance_confirmee'))
+                    <input type="hidden" name="candidature_naissance_confirmee" value="1">
+                @endif
+            @enderror
+
             <!-- Erreurs globales -->
-            @if ($errors->any())
+            @php
+                // La date de naissance divergente a DEJA son encart, juste au-dessus,
+                // avec la case a cocher qui la resout. La repeter ici la placerait
+                // sous « Erreurs de validation », c'est-a-dire sous une consigne qui
+                // demande de corriger une saisie — quand ce qu'on attend est de
+                // confirmer qu'on a bien lu. Deux fois la meme phrase de deux cents
+                // caracteres, dont une qui prescrit le mauvais geste.
+                $_erreursGlobales = collect($errors->keys())
+                    ->reject(fn ($cle) => $cle === 'candidature_naissance')
+                    ->flatMap(fn ($cle) => $errors->get($cle))
+                    ->all();
+            @endphp
+            @if (count($_erreursGlobales) > 0)
                 <div class="alert alert-danger alert-dismissible fade show mb-4" role="alert">
                     <h6 class="fw-bold mb-2"><i class="fas fa-exclamation-triangle me-2"></i>Erreurs de validation :</h6>
                     <ul class="mb-0 ps-3">
-                        @foreach ($errors->all() as $error)
+                        @foreach ($_erreursGlobales as $error)
                             <li>{{ $error }}</li>
                         @endforeach
                     </ul>
@@ -174,7 +277,7 @@
                                    class="form-control @error('nom') is-invalid @enderror"
                                    name="nom"
                                    id="nom-field"
-                                   value="{{ old('nom') }}"
+                                   value="{{ old('nom', $preRemplissage['nom'] ?? '') }}"
                                    required
                                    placeholder="Ex : KOUASSI">
                             @error('nom')
@@ -191,7 +294,7 @@
                                    class="form-control @error('prenoms') is-invalid @enderror"
                                    name="prenoms"
                                    id="prenoms-field"
-                                   value="{{ old('prenoms') }}"
+                                   value="{{ old('prenoms', $preRemplissage['prenoms'] ?? '') }}"
                                    required
                                    placeholder="Ex : Jean-Marc">
                             @error('prenoms')
@@ -206,8 +309,8 @@
                             </label>
                             <select class="form-control @error('sexe') is-invalid @enderror" name="sexe" required>
                                 <option value="">Sélectionner</option>
-                                <option value="M" {{ old('sexe') == 'M' ? 'selected' : '' }}>Masculin</option>
-                                <option value="F" {{ old('sexe') == 'F' ? 'selected' : '' }}>Féminin</option>
+                                <option value="M" {{ old('sexe', $preRemplissage['sexe'] ?? '') == 'M' ? 'selected' : '' }}>Masculin</option>
+                                <option value="F" {{ old('sexe', $preRemplissage['sexe'] ?? '') == 'F' ? 'selected' : '' }}>Féminin</option>
                             </select>
                             @error('sexe')
                                 <div class="invalid-feedback">{{ $message }}</div>
@@ -225,7 +328,7 @@
                             <input type="date"
                                    class="form-control @error('date_naissance') is-invalid @enderror"
                                    name="date_naissance"
-                                   value="{{ old('date_naissance') }}"
+                                   value="{{ old('date_naissance', $preRemplissage['date_naissance'] ?? '') }}"
                                    required>
                             @error('date_naissance')
                                 <div class="invalid-feedback">{{ $message }}</div>
@@ -240,7 +343,7 @@
                             <input type="text"
                                    class="form-control @error('lieu_naissance') is-invalid @enderror"
                                    name="lieu_naissance"
-                                   value="{{ old('lieu_naissance') }}"
+                                   value="{{ old('lieu_naissance', $preRemplissage['lieu_naissance'] ?? '') }}"
                                    required
                                    placeholder="Ex : Abidjan">
                             @error('lieu_naissance')
@@ -254,7 +357,7 @@
                                 <i class="fas fa-flag field-icon"></i> Nationalité <span class="req">*</span>
                             </label>
                             <select class="form-control @error('nationalite') is-invalid @enderror" name="nationalite" required>
-                                @include('esbtp.partials.nationality-options', ['selected' => old('nationalite')])
+                                @include('esbtp.partials.nationality-options', ['selected' => old('nationalite', $preRemplissage['nationalite'] ?? '')])
                             </select>
                             @error('nationalite')
                                 <div class="invalid-feedback">{{ $message }}</div>
@@ -272,7 +375,7 @@
                             <input type="tel"
                                    class="form-control @error('telephone') is-invalid @enderror"
                                    name="telephone"
-                                   value="{{ old('telephone') }}"
+                                   value="{{ old('telephone', $preRemplissage['telephone'] ?? '') }}"
                                    required
                                    placeholder="+225 XX XX XXX XXX">
                             @error('telephone')
@@ -288,7 +391,7 @@
                             <input type="email"
                                    class="form-control @error('email_personnel') is-invalid @enderror"
                                    name="email_personnel"
-                                   value="{{ old('email_personnel') }}"
+                                   value="{{ old('email_personnel', $preRemplissage['email_personnel'] ?? '') }}"
                                    placeholder="exemple@email.com">
                             @error('email_personnel')
                                 <div class="invalid-feedback">{{ $message }}</div>
@@ -349,7 +452,7 @@
                             <input type="text"
                                    class="form-control @error('ville') is-invalid @enderror"
                                    name="ville"
-                                   value="{{ old('ville') }}"
+                                   value="{{ old('ville', $preRemplissage['ville'] ?? '') }}"
                                    required
                                    placeholder="Ex : Abidjan">
                             @error('ville')
@@ -365,7 +468,7 @@
                             <input type="text"
                                    class="form-control @error('commune') is-invalid @enderror"
                                    name="commune"
-                                   value="{{ old('commune') }}"
+                                   value="{{ old('commune', $preRemplissage['commune'] ?? '') }}"
                                    required
                                    placeholder="Ex : Cocody">
                             @error('commune')
@@ -486,9 +589,9 @@
                                 required
                                 onchange="updateAffectationInfo()">
                             <option value="">Sélectionnez le statut d'affectation</option>
-                            <option value="affecté"     {{ old('affectation_status') == 'affecté'     ? 'selected' : '' }}>Affecté</option>
-                            <option value="réaffecté"   {{ old('affectation_status') == 'réaffecté'   ? 'selected' : '' }}>Réaffecté</option>
-                            <option value="non_affecté" {{ old('affectation_status') == 'non_affecté' ? 'selected' : '' }}>Non affecté</option>
+                            <option value="affecté"     {{ old('affectation_status', $preRemplissage['affectation_status'] ?? '') == 'affecté'     ? 'selected' : '' }}>Affecté</option>
+                            <option value="réaffecté"   {{ old('affectation_status', $preRemplissage['affectation_status'] ?? '') == 'réaffecté'   ? 'selected' : '' }}>Réaffecté</option>
+                            <option value="non_affecté" {{ old('affectation_status', $preRemplissage['affectation_status'] ?? '') == 'non_affecté' ? 'selected' : '' }}>Non affecté</option>
                         </select>
                         @error('affectation_status')
                             <div class="invalid-feedback">{{ $message }}</div>
@@ -537,7 +640,13 @@
                 <div class="parents-body" id="parents-body">
                     <div class="alert-kl alert-kl-info mb-4">
                         <i class="fas fa-info-circle"></i>
-                        <span>Vous pouvez ajouter un ou plusieurs parents/tuteurs. Chaque section est optionnelle — si vous laissez les champs vides, aucun parent ne sera créé.</span>
+                        {{-- Le déclencheur et l'exigence ne sont PAS la même liste, et la
+                             phrase les confondait. Ce qui déclenche : nom, prénoms,
+                             téléphone, e-mail, profession ou adresse (StoreInscriptionRequest,
+                             $hasData). Ce qui devient alors obligatoire : nom, prénoms,
+                             téléphone et relation. Choisir seulement une relation ne
+                             déclenche donc rien, et la phrase affirmait le contraire. --}}
+                        <span>Vous pouvez ajouter un ou plusieurs parents/tuteurs. Chaque section est optionnelle : laissez-la entièrement vide et aucun parent ne sera créé. Dès que vous renseignez l'un de ces champs (nom, prénoms, téléphone, e-mail, profession ou adresse), quatre deviennent obligatoires : le nom, les prénoms, le téléphone et la relation.</span>
                     </div>
 
                     <!-- Container des parents -->
@@ -584,6 +693,7 @@
                                                 <option value="Tuteur">Tuteur</option>
                                                 <option value="Autre">Autre</option>
                                             </select>
+                                            @error('parents.0.relation')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                                         </div>
                                     </div>
                                 </div>
@@ -593,43 +703,76 @@
                                     <div class="row g-3">
                                         <div class="col-md-6">
                                             <label class="form-label"><i class="fas fa-user field-icon"></i> Nom</label>
-                                            <input type="text" class="form-control" name="parents[0][nom]" placeholder="Nom du parent">
+                                            <input type="text" class="form-control" name="parents[0][nom]"
+                                                   value="{{ old('parents.0.nom') }}" placeholder="Nom du parent">
+                                            @error('parents.0.nom')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                                         </div>
                                         <div class="col-md-6">
                                             <label class="form-label"><i class="fas fa-user field-icon"></i> Prénom(s)</label>
-                                            <input type="text" class="form-control" name="parents[0][prenoms]" placeholder="Prénom(s) du parent">
+                                            <input type="text" class="form-control" name="parents[0][prenoms]"
+                                                   value="{{ old('parents.0.prenoms') }}" placeholder="Prénom(s) du parent">
+                                            @error('parents.0.prenoms')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                                         </div>
                                     </div>
                                     <div class="row g-3 mt-1">
                                         <div class="col-md-6">
                                             <label class="form-label"><i class="fas fa-phone field-icon"></i> Téléphone</label>
-                                            <input type="tel" class="form-control" name="parents[0][telephone]" placeholder="+225 XX XX XXX XXX">
+                                            {{-- Rempli par le bouton « Reprendre ce tuteur » du bandeau, jamais
+                                                 d'office : ce bloc rend nom, prénoms, téléphone et relation
+                                                 obligatoires dès qu'un seul porte une valeur. Le nom arrive
+                                                 entier, tel que la candidature le collecte, et c'est l'agent
+                                                 qui le répartit en nom et prénoms. --}}
+                                            <input type="tel" class="form-control" name="parents[0][telephone]"
+                                                   value="{{ old('parents.0.telephone') }}"
+                                                   placeholder="+225 XX XX XXX XXX">
+                                            @error('parents.0.telephone')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                                         </div>
                                         <div class="col-md-6">
                                             <label class="form-label"><i class="fas fa-envelope field-icon"></i> Email <span class="opt">(optionnel)</span></label>
-                                            <input type="email" class="form-control" name="parents[0][email]" placeholder="email@exemple.com">
+                                            <input type="email" class="form-control" name="parents[0][email]"
+                                                   value="{{ old('parents.0.email') }}" placeholder="email@exemple.com">
                                         </div>
                                     </div>
                                     <div class="row g-3 mt-1">
                                         <div class="col-md-6">
                                             <label class="form-label"><i class="fas fa-briefcase field-icon"></i> Profession <span class="opt">(optionnel)</span></label>
-                                            <input type="text" class="form-control" name="parents[0][profession]" placeholder="Ex : Ingénieur">
+                                            <input type="text" class="form-control" name="parents[0][profession]"
+                                                   value="{{ old('parents.0.profession') }}"
+                                                   placeholder="Ex : Ingénieur">
+                                            {{-- Pas de marque ici : aucune règle ne vise la profession, donc
+                                                 rien ne peut l'allumer. Une marque morte laisse croire que le
+                                                 champ est surveillé. --}}
                                         </div>
                                         <div class="col-md-6">
                                             <label class="form-label"><i class="fas fa-link field-icon"></i> Relation</label>
+                                            @php $_lienTuteur = old('parents.0.relation'); @endphp
                                             <select class="form-control" name="parents[0][relation]">
                                                 <option value="">Sélectionner</option>
-                                                <option value="Père">Père</option>
-                                                <option value="Mère">Mère</option>
-                                                <option value="Tuteur">Tuteur</option>
-                                                <option value="Autre">Autre</option>
+                                                @foreach(['Père', 'Mère', 'Tuteur', 'Autre'] as $_lien)
+                                                    <option value="{{ $_lien }}" {{ $_lienTuteur === $_lien ? 'selected' : '' }}>{{ $_lien }}</option>
+                                                @endforeach
                                             </select>
+                                            {{-- La marque manquait ici, et c'est le champ qui en a le plus
+                                                 besoin : « Lien avec vous » est facultatif sur le portail, donc
+                                                 le bouton « Reprendre ce tuteur » laisse souvent ce select
+                                                 vide — alors qu'il devient obligatoire dès qu'un autre champ
+                                                 du bloc porte une valeur. Sans elle, l'agent lisait la
+                                                 bannière rouge et cherchait le champ fautif parmi ceux qui,
+                                                 eux, étaient marqués. --}}
+                                            @error('parents.0.relation')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                                         </div>
                                     </div>
                                     <div class="row g-3 mt-1">
                                         <div class="col-md-12">
                                             <label class="form-label"><i class="fas fa-map-marker-alt field-icon"></i> Adresse <span class="opt">(optionnel)</span></label>
-                                            <textarea class="form-control" name="parents[0][adresse]" rows="2" placeholder="Adresse complète du parent"></textarea>
+                                            {{-- Le sixième et dernier champ du bloc à repeupler. Repeupler
+                                                 les cinq autres et l'oublier était pire que de n'en repeupler
+                                                 aucun : l'agent retrouvait un bloc rempli, en corrigeait le
+                                                 champ marqué, et renvoyait sans voir que l'adresse avait
+                                                 disparu. Et comme elle fait partie des six déclencheurs de la
+                                                 règle, la remplir SEULE produisait quatre erreurs, puis un
+                                                 renvoi identique sans erreur et sans parent créé. --}}
+                                            <textarea class="form-control" name="parents[0][adresse]" rows="2" placeholder="Adresse complète du parent">{{ old('parents.0.adresse') }}</textarea>
                                         </div>
                                     </div>
                                 </div>
@@ -850,6 +993,130 @@
 document.addEventListener('DOMContentLoaded', function() {
     let parentIndex = 1;
     let isLoadingFrais = false;
+
+    // Reprendre le tuteur déclaré dans la candidature.
+    //
+    // Sur demande, jamais tout seul : le bloc « Parent / Tuteur » rend nom,
+    // prénoms, téléphone et relation obligatoires dès qu'un seul d'entre eux
+    // porte une valeur. Un pré-remplissage partiel — le téléphone sans le
+    // nom — rendait donc le nom obligatoire sans le remplir, sous une section
+    // annoncée « optionnelle ». Ici les quatre partent ensemble, et l'agent
+    // finit de répartir nom et prénoms, que la candidature collecte en un seul
+    // champ.
+    const boutonTuteur = document.getElementById('reprendreTuteur');
+
+    if (boutonTuteur) {
+        boutonTuteur.addEventListener('click', function() {
+            let tuteur;
+
+            try {
+                tuteur = JSON.parse(boutonTuteur.dataset.tuteur);
+            } catch (e) {
+                return;
+            }
+
+            // Scopé à la moitié « nouveau » : `parents[0][relation]` existe
+            // AUSSI dans la moitié « parent existant », qui la précède dans le
+            // document. Un `querySelector` global posait donc la relation dans
+            // le champ caché, et le formulaire repartait avec une relation vide
+            // — requise dès que le nom est rempli.
+            const bloc = document.querySelector('.parent-nouveau-section');
+
+            // Si l'agent a coché « Sélectionner un parent existant », cette
+            // moitié est masquée ET désactivée : la remplir écrirait dans des
+            // champs que le navigateur n'enverra pas, pendant que le bouton
+            // annoncerait « Tuteur repris ». On bascule donc d'abord, et le
+            // libellé redevient vrai.
+            const carte = bloc && bloc.closest('.parent-item');
+            const caseExistant = carte && carte.querySelector('.parent-existant-checkbox');
+
+            if (caseExistant && caseExistant.checked) {
+                caseExistant.checked = false;
+                caseExistant.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+
+            const poser = (nom, valeur) => {
+                const champ = bloc && bloc.querySelector('[name="parents[0][' + nom + ']"]');
+
+                if (champ && valeur) champ.value = valeur;
+            };
+
+            poser('nom', tuteur.nom);
+            poser('telephone', tuteur.telephone);
+            poser('relation', tuteur.relation);
+            poser('profession', tuteur.profession);
+
+            // Déplier le bloc AVANT de viser un champ dedans.
+            //
+            // La section « Parents / Tuteurs » est repliée au chargement, et ne
+            // s'ouvre d'elle-même qu'au retour d'une validation ratée. Sur le
+            // parcours nominal — on arrive de la corbeille, on clique — elle est
+            // donc fermée : `focus()` sur un élément en `display:none` ne fait
+            // rien, `scrollIntoView` ne mène nulle part, et le bouton annonçait
+            // pourtant de compléter des champs invisibles. Le formulaire partait
+            // ensuite en erreur sur `parents.0.prenoms`, dont le message
+            // s'affichait lui aussi à l'intérieur du bloc replié.
+            // On CLIQUE la bascule au lieu de refaire ce qu'elle fait.
+            //
+            // Reproduire son effet à la main laissait derrière deux auditeurs
+            // branchés sur ce clic : celui qui recalcule le rail de progression
+            // et celui qui met le stepper à jour. Le bloc s'ouvrait, le fil de
+            // gauche restait à la hauteur du bloc fermé, et rien ne le
+            // corrigeait jusqu'au prochain redimensionnement de la fenêtre.
+            const corpsParents = document.getElementById('parents-body');
+            const basculeParents = document.getElementById('parents-toggle-btn');
+
+            if (corpsParents && basculeParents
+                && window.getComputedStyle(corpsParents).display === 'none') {
+                basculeParents.click();
+            }
+
+            // Ce qu'il reste à taper, et non ce qu'on suppose qu'il reste.
+            //
+            // LES QUATRE champs que le bloc rend obligatoires dès qu'un seul
+            // porte une valeur, et pas seulement les deux qu'on remplit le plus
+            // souvent. Chacun peut rester vide après le clic :
+            //
+            // - `relation` quand le candidat n'a pas renseigné le lien, qui est
+            //   facultatif sur le portail ;
+            // - `telephone` quand celui du tuteur dépasse ce que ce formulaire
+            //   accepte, cas où le bandeau l'omet volontairement ;
+            // - `nom` et `prenoms` selon ce que la candidature portait.
+            //
+            // N'en nommer que deux revenait à annoncer la moitié du travail et
+            // laisser l'agent découvrir le reste au refus du formulaire — la
+            // faute même que cette liste existe pour éviter.
+            const OBLIGATOIRES = {
+                nom: 'le nom',
+                prenoms: 'les prénoms',
+                telephone: 'le téléphone',
+                relation: 'le lien de parenté',
+            };
+
+            const restants = Object.keys(OBLIGATOIRES).filter((champ) => {
+                const cible = bloc && bloc.querySelector('[name="parents[0][' + champ + ']"]');
+
+                return cible && cible.value.trim() === '';
+            });
+
+            const premierVide = restants[0] || 'prenoms';
+            const aFocaliser = bloc && bloc.querySelector('[name="parents[0][' + premierVide + ']"]');
+
+            if (aFocaliser) {
+                aFocaliser.focus();
+                aFocaliser.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+
+            const nommes = restants.map((champ) => OBLIGATOIRES[champ]);
+            const aCompleter = nommes.length > 1
+                ? nommes.slice(0, -1).join(', ') + ' et ' + nommes[nommes.length - 1]
+                : (nommes[0] || '');
+
+            boutonTuteur.disabled = true;
+            boutonTuteur.innerHTML = '<i class="fas fa-check me-1"></i> Tuteur repris'
+                + (aCompleter ? ' : complétez ' + aCompleter : '');
+        });
+    }
 
     // =============================================
     // REFS DOUBLON
@@ -1246,27 +1513,55 @@ document.addEventListener('DOMContentLoaded', function() {
         .catch(() => {});
     }
 
-    // Checkbox toggle existant/nouveau
+    // Bascule « parent existant » / « nouveau parent ».
+    //
+    // Les deux moitiés portent les MÊMES noms de champ — `parents[N][relation]`
+    // existe des deux côtés. Masquer par `display` ne suffit donc pas : un champ
+    // caché est quand même envoyé, et PHP garde le DERNIER. En mode « existant »,
+    // la relation choisie était écrasée par le select vide de la moitié
+    // « nouveau », et `parents.N.relation` repartait vide alors qu'il est requis
+    // dès qu'un autre champ du bloc porte une valeur. On désactive : un champ
+    // désactivé n'est pas soumis.
+    const basculerMoitieParent = (section, actif) => {
+        if (!section) return;
+
+        section.style.display = actif ? 'block' : 'none';
+        section.querySelectorAll('input, select, textarea').forEach((champ) => {
+            champ.disabled = !actif;
+        });
+    };
+
     document.addEventListener('change', function(e) {
         if (e.target.classList.contains('parent-existant-checkbox')) {
-            const parentItem     = e.target.closest('.parent-item');
+            const parentItem      = e.target.closest('.parent-item');
             const existantSection = parentItem.querySelector('.parent-existant-section');
             const nouveauSection  = parentItem.querySelector('.parent-nouveau-section');
             const typeInput       = parentItem.querySelector('input[name*="[type]"]');
 
-            if (e.target.checked) {
-                if (existantSection) {
-                    existantSection.style.display = 'block';
-                    const sel = existantSection.querySelector('.parent-select');
-                    if (sel) loadParentsExistants(sel);
-                }
-                if (nouveauSection) nouveauSection.style.display = 'none';
-                if (typeInput) typeInput.value = 'existant';
-            } else {
-                if (existantSection) existantSection.style.display = 'none';
-                if (nouveauSection) nouveauSection.style.display = 'block';
-                if (typeInput) typeInput.value = 'nouveau';
+            basculerMoitieParent(existantSection, e.target.checked);
+            basculerMoitieParent(nouveauSection, !e.target.checked);
+
+            if (e.target.checked && existantSection) {
+                const sel = existantSection.querySelector('.parent-select');
+                if (sel) loadParentsExistants(sel);
             }
+
+            if (typeInput) typeInput.value = e.target.checked ? 'existant' : 'nouveau';
+        }
+    });
+
+    // État initial : la moitié « existant » est masquée au rendu, donc
+    // désactivée. Sans cette ligne, elle envoie ses champs vides dès le premier
+    // enregistrement — et écrase ceux de la moitié visible, les deux portant
+    // les mêmes `name`.
+    //
+    // On interroge le style CALCULÉ, pas l'attribut `style` en ligne. Le
+    // masquage est écrit en ligne aujourd'hui ; le jour où il passe par une
+    // classe CSS, un test sur l'attribut cesse de voir le masquage sans rien
+    // dire, et le bloc redevient soumis à vide.
+    document.querySelectorAll('.parent-existant-section').forEach((section) => {
+        if (window.getComputedStyle(section).display === 'none') {
+            basculerMoitieParent(section, false);
         }
     });
 

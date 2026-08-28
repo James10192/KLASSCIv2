@@ -361,12 +361,12 @@ return [
             'icon' => 'fa-user-check',
         ],
         'inscriptions.candidatures.view' => [
-            'label' => 'Voir les candidatures des nouveaux élèves',
+            'label' => 'Voir les candidatures des nouveaux étudiants',
             'group' => 'Inscriptions',
             'icon' => 'fa-address-card',
         ],
         'inscriptions.candidatures.process' => [
-            'label' => 'Traiter une candidature de nouvel élève',
+            'label' => 'Traiter une candidature de nouvel étudiant',
             'group' => 'Inscriptions',
             'icon' => 'fa-user-plus',
         ],
