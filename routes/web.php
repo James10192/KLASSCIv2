@@ -542,8 +542,6 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             Route::post('secretaires/{secretaire}/reset-password', [ESBTPSecretaireController::class, 'resetPassword'])
                 ->name('secretaires.reset-password');
 
-            // Dashboard superAdmin
-            Route::get('/dashboard', [App\Http\Controllers\ESBTP\SuperAdminController::class, 'dashboard'])->name('superadmin.dashboard');
 
             // Routes de modification des classes â€” gates per-mÃ©thode (avant: middleware OR'd)
             Route::middleware('permission:classes.create')->group(function () {
