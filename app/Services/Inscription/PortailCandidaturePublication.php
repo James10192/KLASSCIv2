@@ -164,6 +164,10 @@ class PortailCandidaturePublication
                 ->map(fn (string $libelle, string $valeur) => ['valeur' => $valeur, 'libelle' => $libelle])
                 ->values()
                 ->all(),
+            'liens_tuteur' => collect(ESBTPCandidature::liensTuteurDeclarables())
+                ->map(fn (string $libelle, string $valeur) => ['valeur' => $valeur, 'libelle' => $libelle])
+                ->values()
+                ->all(),
             'nationalites' => Nationalites::pourSelecteur(),
             'filieres' => ESBTPFiliere::where('is_active', true)
                 ->orderBy('name')

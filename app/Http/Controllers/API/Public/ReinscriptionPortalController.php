@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Reinscription\PortailRequest;
 use App\Http\Requests\Reinscription\PortailSubmitRequest;
 use App\Models\ESBTPEtudiant;
+use App\Services\Inscription\PortailCandidaturePublication;
 use App\Services\Reinscription\PortailReinscriptionService;
 use App\Services\Reinscription\SituationReinscription;
 use Illuminate\Http\JsonResponse;
@@ -77,9 +78,18 @@ class ReinscriptionPortalController extends Controller
 
         RateLimiter::clear(PortailReinscriptionService::cleDebitMatricule($donnees['matricule']));
 
+        // Une reinscription se finalise SUR PLACE, elle aussi.
+        //
+        // C'est une inscription comme une autre : l'etudiant existe deja en
+        // base, mais les pieces se remettent et les frais se reglent au
+        // guichet — il n'y a pas de paiement a distance. La confirmation
+        // emporte donc la meme date d'ouverture que celle d'une candidature,
+        // et pour la meme raison : « je viens quand ? » est la question que la
+        // scolarite entend le plus.
         return response()->json([
             'enregistre' => true,
             'message' => 'Votre demande a bien été transmise à votre établissement.',
+            'inscriptions_physiques' => app(PortailCandidaturePublication::class)->inscriptionsPhysiques(),
         ], 201);
     }
 

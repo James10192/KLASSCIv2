@@ -113,7 +113,12 @@ class PortailCandidatureRequest extends FormRequest
             // ce tuteur » y recopie cette valeur telle quelle.
             'tuteur_nom' => ['nullable', 'string', 'max:100'],
             'tuteur_telephone' => ['nullable', 'string', 'max:30'],
-            'tuteur_lien' => ['nullable', 'string', 'max:60'],
+            // Liste fermee, la meme que le formulaire de l'ecole : le champ
+            // etait libre, et sa valeur atterrit dans un menu deroulant a quatre
+            // entrees. Le menu du portail suffit a guider un candidat ; il ne
+            // suffit pas a garantir la valeur, puisque ce point d'entree est
+            // public.
+            'tuteur_lien' => ['nullable', 'string', Rule::in(array_keys(ESBTPCandidature::liensTuteurDeclarables()))],
             'tuteur_profession' => ['nullable', 'string', 'max:120'],
 
             'message' => ['nullable', 'string', 'max:2000'],

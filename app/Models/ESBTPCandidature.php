@@ -55,6 +55,26 @@ class ESBTPCandidature extends Model implements Auditable
      *
      * @return array<string, string> valeur stockee => libelle affichable
      */
+    public static function liensTuteurDeclarables(): array
+    {
+        // Exactement les valeurs du menu deroulant du formulaire d'inscription
+        // (resources/views/esbtp/inscriptions/create.blade.php). C'est ce qui
+        // rend la reprise du tuteur fidele : une valeur choisie ici se recopie
+        // telle quelle la-bas.
+        //
+        // Le champ etait libre sur le portail. « Grand-pere », « oncle »,
+        // « tuteur legal » arrivaient donc dans un champ que l'ecole restreint
+        // a quatre valeurs, et il fallait deviner laquelle — une normalisation
+        // qui rendait « Pere » pour un grand-pere jusqu'a ce qu'on la corrige.
+        // Une liste fermee supprime la devinette au lieu de l'ameliorer.
+        return [
+            'Père' => 'Père',
+            'Mère' => 'Mère',
+            'Tuteur' => 'Tuteur',
+            'Autre' => 'Autre',
+        ];
+    }
+
     public static function affectationsDeclarables(): array
     {
         return [
