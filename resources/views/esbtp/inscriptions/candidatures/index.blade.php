@@ -386,16 +386,16 @@ document.addEventListener('DOMContentLoaded', function () {
         // L'ordre de lecture d'un dossier : qui, comment le joindre, ce qu'il
         // demande, d'ou il vient, qui repond de lui, ce qu'il a ecrit.
         var BLOCS = [
-            ['Identite', [['naissance', 'Naissance'], ['sexe', 'Sexe'], ['nationalite', 'Nationalite']]],
-            ['Contact', [['telephone', 'Telephone'], ['email', 'E-mail'], ['residence', 'Residence']]],
-            ['Voeu', [['voeu', 'Formation'], ['annee', 'Annee visee']]],
-            ['Scolarite anterieure', [['serie_bac', 'Serie du bac'], ['annee_bac', 'Annee du bac'], ['etablissement_origine', 'Etablissement'], ['affectation', 'Affectation declaree']]],
-            ['Tuteur', [['tuteur_nom', 'Nom'], ['tuteur_lien', 'Lien'], ['tuteur_telephone', 'Telephone'], ['tuteur_profession', 'Profession']]],
+            ['Identité', [['naissance', 'Naissance'], ['sexe', 'Sexe'], ['nationalite', 'Nationalité']]],
+            ['Contact', [['telephone', 'Téléphone'], ['email', 'E-mail'], ['residence', 'Résidence']]],
+            ['Vœu', [['voeu', 'Formation'], ['annee', 'Année visée']]],
+            ['Scolarité antérieure', [['serie_bac', 'Série du bac'], ['annee_bac', 'Année du bac'], ['etablissement_origine', 'Établissement'], ['affectation', 'Affectation déclarée']]],
+            ['Tuteur', [['tuteur_nom', 'Nom'], ['tuteur_lien', 'Lien'], ['tuteur_telephone', 'Téléphone'], ['tuteur_profession', 'Profession']]],
         ];
 
         var ouvrir = function (dossier) {
             titre.textContent = dossier.nom;
-            recue.textContent = dossier.recue_le ? 'Recue le ' + dossier.recue_le : '';
+            recue.textContent = dossier.recue_le ? 'Reçue le ' + dossier.recue_le : '';
             corps.innerHTML = '';
 
             BLOCS.forEach(function (bloc) {
