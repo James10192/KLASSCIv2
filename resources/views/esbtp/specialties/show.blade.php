@@ -23,9 +23,6 @@
                             <b>Responsable</b> <a class="float-right">{{ $specialty->coordinator_name ?? 'Non défini' }}</a>
                         </li>
                         <li class="list-group-item">
-                            <b>Années d'études</b> <a class="float-right">{{ $specialty->studyYears->count() }}</a>
-                        </li>
-                        <li class="list-group-item">
                             <b>Statut</b> 
                             <a class="float-right">
                                 @if($specialty->trashed())
@@ -81,7 +78,6 @@
                     <ul class="nav nav-pills">
                         <li class="nav-item"><a class="nav-link active" href="#description" data-toggle="tab">Description</a></li>
                         <li class="nav-item"><a class="nav-link" href="#career" data-toggle="tab">Débouchés</a></li>
-                        <li class="nav-item"><a class="nav-link" href="#study-years" data-toggle="tab">Années d'études</a></li>
                         <li class="nav-item"><a class="nav-link" href="#students" data-toggle="tab">Étudiants</a></li>
                     </ul>
                 </div><!-- /.card-header -->
@@ -106,76 +102,6 @@
                             </div>
                         </div>
                         
-                        <!-- Onglet Années d'études -->
-                        <div class="tab-pane" id="study-years">
-                            @if(session('success'))
-                                <div class="alert alert-success alert-dismissible">
-                                    <button type="button" class="close" data-dismiss="alert" aria-hidden="true">×</button>
-                                    {{ session('success') }}
-                                </div>
-                            @endif
-                            
-                            @if(session('error'))
-                                <div class="alert alert-danger alert-dismissible">
-                                    <button type="button" class="close" data-dismiss="alert" aria-hidden="true">×</button>
-                                    {{ session('error') }}
-                                </div>
-                            @endif
-                            
-                            <!-- Bouton pour ajouter une année d'études -->
-                            <div class="mb-3">
-                                <a href="{{ route('esbtp.study-years.create', ['specialty_id' => $specialty->id]) }}" class="btn btn-primary">
-                                    <i class="fas fa-plus"></i> Ajouter une année d'études
-                                </a>
-                            </div>
-                            
-                            <!-- Liste des années d'études -->
-                            @if($specialty->studyYears->count() > 0)
-                                <div class="table-responsive">
-                                    <table class="table table-bordered table-striped">
-                                        <thead>
-                                            <tr>
-                                                <th>Niveau</th>
-                                                <th>Nom</th>
-                                                <th>Semestres</th>
-                                                <th>Statut</th>
-                                                <th>Actions</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            @foreach($specialty->studyYears as $studyYear)
-                                                <tr>
-                                                    <td>{{ $studyYear->level }}</td>
-                                                    <td>{{ $studyYear->name }}</td>
-                                                    <td>{{ $studyYear->semesters->count() }}</td>
-                                                    <td>
-                                                        @if($studyYear->is_active)
-                                                            <span class="badge badge-success">Actif</span>
-                                                        @else
-                                                            <span class="badge badge-warning">Inactif</span>
-                                                        @endif
-                                                    </td>
-                                                    <td>
-                                                        <div class="btn-group">
-                                                            <a href="{{ route('esbtp.study-years.show', $studyYear->id) }}" class="btn btn-info btn-sm">
-                                                                <i class="fas fa-eye"></i> Voir
-                                                            </a>
-                                                            <a href="{{ route('esbtp.study-years.edit', $studyYear->id) }}" class="btn btn-warning btn-sm">
-                                                                <i class="fas fa-edit"></i> Modifier
-                                                            </a>
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            @endforeach
-                                        </tbody>
-                                    </table>
-                                </div>
-                            @else
-                                <div class="alert alert-info">
-                                    Aucune année d'études associée à cette spécialité.
-                                </div>
-                            @endif
-                        </div>
                         
                         <!-- Onglet Étudiants -->
                         <div class="tab-pane" id="students">

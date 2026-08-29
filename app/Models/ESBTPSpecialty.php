@@ -37,13 +37,5 @@ class ESBTPSpecialty extends Model
         return $this->belongsTo(ESBTPCycle::class, 'cycle_id');
     }
 
-    public function studyYears()
-    {
-        return $this->hasMany(ESBTPStudyYear::class, 'specialty_id');
-    }
 
-    public function students()
-    {
-        return $this->hasManyThrough(ESBTPEtudiant::class, ESBTPStudyYear::class);
-    }
 }

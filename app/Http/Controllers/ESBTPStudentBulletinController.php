@@ -8,6 +8,7 @@ use App\Models\Classe;
 use App\Models\ESBTPAbsence;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPBulletin;
+use App\Models\ESBTPBulletinDetail;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPConfigMatiere;
 use App\Models\ESBTPFiliere;

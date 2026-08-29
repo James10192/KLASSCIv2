@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\ESBTPDailyCode;
-use App\Models\ESBTPEnseignant;
 use App\Models\ESBTPTeacherAttendance;
 use App\Models\ESBTPSeanceCours;
 use Carbon\Carbon;

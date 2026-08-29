@@ -43,15 +43,6 @@ class Parcours extends Model
         'deleted_at' => 'datetime',
     ];
 
-    /**
-     * Obtenir la formation à laquelle appartient le parcours.
-     * 
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
-     */
-    public function formation()
-    {
-        return $this->belongsTo(Formation::class);
-    }
 
     /**
      * Obtenir le responsable du parcours.

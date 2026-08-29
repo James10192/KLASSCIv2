@@ -15,6 +15,18 @@
  * tableau), et les noms absolus (`\Foo\Bar`) — ces derniers ne dependant
  * d'aucun `use`, ils ne peuvent pas souffrir de l'oubli qu'on traque.
  *
+ * Les traits (`use MonTrait;` dans un corps de classe) n'y sont pas non plus,
+ * et cette absence-la est un vrai trou, pas une exclusion de principe : un
+ * trait absent est une fatale au chargement, exactement ce que l'outil existe
+ * pour attraper. Il est nomme ici plutot que tu, parce qu'un manque connu et
+ * ecrit se comble un jour, tandis qu'un manque tu se prend pour une garantie.
+ *
+ * Deux resolutions que PHP seul ne fait pas, et qu'il faut donc refaire ici :
+ * les alias de facade (`PDF`, `DB`), que seul le demarrage de Laravel installe
+ * et qui se relisent dans config/app.php et dans les paquets ; et les classes
+ * d'extension nommees dans EXTENSIONS_PHP, signalees a part car leur existence
+ * depend du php.ini qui execute l'outil, pas du code qu'il juge.
+ *
  * `php -l` ne fait rien de tout cela : il analyse la syntaxe, jamais les noms.
  * Un `use` oublie passe donc le lint, passe la revue de diff — le nom parait
  * correct — et n'echoue qu'a l'execution, avec un « Class not found » non
@@ -42,23 +54,41 @@
  * Pourquoi pas PHPStan, qui couvrirait tout ceci et davantage : il le ferait,
  * et c'est la bonne destination. Deux obstacles concrets pour aujourd'hui —
  * l'installation echoue depuis cette machine (delai reseau depasse), et le
- * depot porte une soixantaine de noms irresolus anterieurs qui feraient echouer
+ * depot porte une cinquantaine de noms irresolus anterieurs qui feraient echouer
  * le premier passage sur toute base de code existante. La bascule se prepare :
  * elle supprimera ce fichier, ce qui est une bonne nouvelle pour lui.
  *
- * Sur `app/` entier, il remonte une soixantaine de noms irresolus ANTERIEURS a
- * cet outil : des relations Eloquent vers des modeles qui n'ont jamais existe
- * (`ESBTPFraisVariant`, `ESBTPDepense`, `Formation`...), donc des 500 en
- * sommeil sur les chemins qui les appellent. Ce sont de vraies fautes, pas du
- * bruit — mais elles ne se corrigent pas au detour d'un autre chantier :
- * chacune demande de decider si le modele doit naitre ou la relation mourir.
+ * Sur `app/` entier, il remontait en aout 2026 une cinquantaine de noms
+ * irresolus ANTERIEURS a cet outil : des relations Eloquent vers des modeles
+ * qui n'ont jamais existe (`ESBTPFraisVariant`, `ESBTPDepense`, `Formation`),
+ * et des imports oublies vers des modeles bien presents. Les uns et les autres
+ * etaient des 500 en sommeil ; dix etaient sur des routes servies. Ils ont ete
+ * traites un par un — creer l'import, corriger le nom, ou supprimer le code
+ * mort — et le balayage rend zero depuis.
  *
- * Ce balayage-la s'interrompt aujourd'hui sur `App\Exports\
- * NotesClasseMatiereExport`, qui declare `WithColumnFormatting` sans
- * implementer `columnFormats()`. PHP le refuse a la DECLARATION, et cette
- * erreur-la n'est pas rattrapable : elle arrete le processus. Autre faute
- * dormante du meme lot a traiter, et raison de plus de lancer l'outil sur le
- * diff plutot que sur tout le depot.
+ * Une part de ces constats venait des defauts de l'outil lui-meme : un `use` de
+ * trait lu comme un import ecrasait l'import homonyme (vingt-deux modeles
+ * signales a tort sur `Auditable`, le motif le plus courant du depot), les
+ * alias de facade n'etaient pas resolus, et un `strrpos` sans antislash
+ * mangeait la premiere lettre des imports racine.
+ *
+ * La mesure se refait a tout moment, et c'est ce qui la rend utile :
+ *   git show HEAD~1:bin/verifier-classes.php > bin/_a.php
+ *   php bin/_a.php app database routes config ; rm bin/_a.php
+ * L'ancienne version crie 35 fois sur un arbre ou la nouvelle ne dit rien —
+ * 22 `Auditable`, 9 `PDF`, 3 `DB`, 1 `ZipArchive`, tous demontrables comme
+ * faux. Un outil branche en CI qui crie faux sur le motif dominant du depot
+ * apprend a ses lecteurs a l'ignorer, et il ne sert alors plus a rien.
+ *
+ * Une limite demeure, et il faut la connaitre : les fatales de DECLARATION.
+ * `App\Exports\NotesClasseMatiereExport` declarait `WithColumnFormatting` sans
+ * implementer `columnFormats()` — un contrat d'interface non tenu. PHP refuse
+ * une telle classe au moment de la LIER, et ce refus n'est pas rattrapable :
+ * il arrete le processus, `catch` compris, donc le balayage entier. Celle-la
+ * est corrigee (c'etait aussi un 500 sur `GET .../notes/export-excel`), mais
+ * une autre du meme genre arreterait de nouveau l'outil au fichier fautif.
+ * C'est une raison de plus de le lancer sur le DIFF, ou l'obstacle est dans ce
+ * qu'on vient d'ecrire, donc devant celui qui peut le lever.
  */
 
 require __DIR__.'/../vendor/autoload.php';
@@ -69,6 +99,52 @@ const RESERVES = [
     'array', 'object', 'mixed', 'void', 'null', 'true', 'false', 'iterable',
     'callable', 'never', 'fn', 'function',
 ];
+
+/**
+ * Les classes d'extension PHP que le depot utilise.
+ *
+ * Leur existence depend des extensions chargees par le php.ini qui execute CET
+ * outil, pas du code qu'il juge : sans ext-zip, `ZipArchive` parait introuvable
+ * ici et resolu sur le serveur. Un verdict qui change avec la machine n'est pas
+ * un verdict.
+ *
+ * La liste est explicite, et c'est voulu. La regle qui semblait plus elegante —
+ * « un nom sans antislash appartient a PHP » — est fausse : dans un fichier
+ * SANS namespace, tout nom applicatif est nu lui aussi. Elle aurait eteint
+ * l'outil sur les 375 migrations, sur routes/ et sur config/, c'est-a-dire sur
+ * des fichiers que la CI lui donne vraiment a lire. Une ligne a ajouter de temps
+ * en temps coute moins cher qu'un angle mort de quatre cents fichiers.
+ */
+const EXTENSIONS_PHP = [
+    'ZipArchive',
+];
+
+/**
+ * Le voisin SIGNIFIANT d'un jeton, espaces et commentaires sautes.
+ *
+ * Sans cela, `extends Foo` ne se voyait pas : le jeton juste avant `Foo` est
+ * l'espace, pas le mot-cle. La premiere version de cet outil ratait ainsi
+ * extends, implements, instanceof, les types de retour et les proprietes
+ * typees — la moitie des positions qu'elle pretendait couvrir.
+ *
+ * @param  int  $pas  -1 pour remonter, +1 pour avancer
+ */
+function indexVoisin(array $jetons, int $depuis, int $pas): ?int
+{
+    $total = count($jetons);
+
+    for ($j = $depuis + $pas; $j >= 0 && $j < $total; $j += $pas) {
+        $candidat = $jetons[$j];
+
+        if (is_array($candidat) && in_array($candidat[0], [T_WHITESPACE, T_COMMENT, T_DOC_COMMENT], true)) {
+            continue;
+        }
+
+        return $j;
+    }
+
+    return null;
+}
 
 /**
  * Les references de classe d'un fichier, avec la ligne ou elles paraissent.
@@ -84,27 +160,7 @@ function referencesDe(string $code): array
     $refs = [];
     $total = count($jetons);
 
-    /**
-     * Le voisin SIGNIFIANT, espaces et commentaires sautes.
-     *
-     * Sans cela, `extends Foo` ne se voyait pas : le jeton juste avant `Foo`
-     * est l'espace, pas le mot-cle. La premiere version de cet outil ratait
-     * ainsi extends, implements, instanceof, les types de retour et les
-     * proprietes typees — la moitie des positions qu'elle pretendait couvrir.
-     */
-    $indexVoisin = static function (int $depuis, int $pas) use ($jetons, $total): ?int {
-        for ($j = $depuis + $pas; $j >= 0 && $j < $total; $j += $pas) {
-            $candidat = $jetons[$j];
-
-            if (is_array($candidat) && in_array($candidat[0], [T_WHITESPACE, T_COMMENT, T_DOC_COMMENT], true)) {
-                continue;
-            }
-
-            return $j;
-        }
-
-        return null;
-    };
+    $indexVoisin = static fn (int $depuis, int $pas): ?int => indexVoisin($jetons, $depuis, $pas);
 
     $voisin = static function (int $depuis, int $pas) use ($jetons, $indexVoisin) {
         $j = $indexVoisin($depuis, $pas);
@@ -210,22 +266,140 @@ function contexteDe(string $code): array
         $espace = trim($m[1]);
     }
 
-    if (preg_match_all('/^\s*use\s+([^;(]+);/m', $code, $tous) !== false) {
-        foreach ($tous[1] as $ligne) {
-            $ligne = trim($ligne);
+    // Les imports se lisent aux JETONS, et a la profondeur d'accolade zero.
+    //
+    // Un `use` en debut de ligne n'est pas forcement un import : dans un corps
+    // de classe, c'est un trait. Une expression reguliere ne les distingue pas,
+    // et la confusion ne se contentait pas d'ajouter du bruit — elle ECRASAIT
+    // de vrais imports. Le motif Laravel le plus courant du depot suffisait :
+    //
+    //     use OwenIt\Auditing\Contracts\Auditable;          // l'import
+    //     class X extends Model implements Auditable {
+    //         use HasFactory, SoftDeletes, \OwenIt\Auditing\Auditable;
+    //
+    // La seconde ligne etait lue comme un import, son dernier segment est
+    // « Auditable », et elle remplacait le premier par une chaine qui n'est pas
+    // un nom de classe. Resultat : vingt-deux modeles signales a tort, sur une
+    // interface parfaitement importee. Un outil qui crie faux sur le motif le
+    // plus repandu du depot cesse d'etre lu — et il etait branche en CI.
+    // Pourquoi une profondeur, et non « tout ce qui precede la premiere classe
+    // est un import » — qui serait plus court : parce qu'un import place APRES
+    // une declaration de classe est du PHP legal, et fonctionne (verifie a
+    // l'execution). Ce depot n'en contient aucun aujourd'hui : la profondeur
+    // defend donc une construction que le langage autorise, pas un cas observe.
+    // C'est un filet, et il faut le lire comme tel.
+    $jetons = token_get_all($code);
+    $profondeur = 0;
+    $total = count($jetons);
 
-            if (str_starts_with($ligne, 'function ') || str_starts_with($ligne, 'const ')) {
+    for ($i = 0; $i < $total; $i++) {
+        $jeton = $jetons[$i];
+
+        // Une accolade ouvrante n'est pas toujours le caractere `{` : dans une
+        // chaine interpolee, `"{$x}"` et `"${x}"` s'ouvrent sur un jeton
+        // TABLEAU (T_CURLY_OPEN, T_DOLLAR_OPEN_CURLY_BRACES) mais se ferment
+        // sur un `}` brut. Ne compter que le caractere faisait donc descendre
+        // le compteur sans jamais le remonter. Mesure sur app + routes + config
+        // + database + tests : 338 fichiers sur 1844 finissaient a une
+        // profondeur negative, et un corps de classe y repassait pour du niveau
+        // fichier — soit exactement le defaut que cette fonction existe pour
+        // corriger. Avec les deux jetons comptes, la derive tombe a zero.
+        if ($jeton === '{'
+            || (is_array($jeton) && in_array($jeton[0], [T_CURLY_OPEN, T_DOLLAR_OPEN_CURLY_BRACES], true))) {
+            $profondeur++;
+
+            continue;
+        }
+
+        if ($jeton === '}') {
+            $profondeur--;
+
+            continue;
+        }
+
+        if (! is_array($jeton) || $jeton[0] !== T_USE || $profondeur !== 0) {
+            continue;
+        }
+
+        // `function () use ($x)` : un `use` de fermeture, pas un import. Une
+        // fermeture declaree au niveau fichier en porterait un a profondeur
+        // zero ; ce depot n'en a aucun, donc ce garde protege lui aussi une
+        // possibilite du langage et non un cas observe. Il se reconnait a la
+        // parenthese qui le precede.
+        $avantIndex = indexVoisin($jetons, $i, -1);
+
+        if ($avantIndex !== null && $jetons[$avantIndex] === ')') {
+            continue;
+        }
+
+        // On rassemble le texte jusqu'au `;`. On consomme les accolades d'un
+        // import groupe au passage : elles sont equilibrees a l'interieur de ce
+        // qu'on avale, donc le compteur reste juste. S'arreter sur `{` sans
+        // consommer le `}` correspondant — ce que faisait la version
+        // precedente — desequilibrait la profondeur et faisait disparaitre tous
+        // les imports suivants.
+        $declaration = '';
+
+        for ($j = $i + 1; $j < $total; $j++) {
+            if ($jetons[$j] === ';') {
+                $i = $j;
+                break;
+            }
+
+            $declaration .= is_array($jetons[$j]) ? $jetons[$j][1] : $jetons[$j];
+        }
+
+        $declaration = trim(preg_replace('/\s+/', ' ', $declaration));
+
+        if ($declaration === '' || str_starts_with($declaration, 'function ') || str_starts_with($declaration, 'const ')) {
+            continue;
+        }
+
+        // `use Illuminate\Support\{Str, Collection};` — import groupe. On le
+        // developpe : le prefixe se distribue sur chaque entree des accolades.
+        $entrees = [];
+
+        if (preg_match('/^(.*\\\\)\{(.+)\}$/', $declaration, $groupe) === 1) {
+            foreach (explode(',', $groupe[2]) as $membre) {
+                $entrees[] = $groupe[1].trim($membre);
+            }
+        } else {
+            $entrees = explode(',', $declaration);
+        }
+
+        foreach ($entrees as $entree) {
+            $entree = trim($entree);
+
+            if ($entree === '') {
                 continue;
             }
 
-            if (preg_match('/^(.+)\s+as\s+(\S+)$/i', $ligne, $alias) === 1) {
-                $imports[$alias[2]] = ltrim($alias[1], '\\');
+            // La table est indexee en minuscules : PHP resout les noms de
+            // classe sans egard a la casse, donc `use ...\Pdf;` doit repondre a
+            // `PDF::`.
+            if (preg_match('/^(.+)\s+as\s+(\S+)$/i', $entree, $alias) === 1) {
+                $imports[strtolower($alias[2])] = ltrim(trim($alias[1]), '\\');
 
                 continue;
             }
 
-            $court = substr($ligne, (int) strrpos($ligne, '\\') + 1);
-            $imports[$court] = ltrim($ligne, '\\');
+            // Le nom court est le dernier segment. Attention au cas sans
+            // antislash — `use ZipArchive;` — ou strrpos rend `false` : le
+            // transtyper en entier donne 0, et `+1` mangeait alors la premiere
+            // lettre. L'import s'enregistrait sous « ipArchive », donc le vrai
+            // nom n'etait jamais reconnu.
+            $dernier = strrpos($entree, '\\');
+            $court = $dernier === false ? $entree : substr($entree, $dernier + 1);
+
+            // Un groupe a virgule finale — `use A\{B, C,};` — laisse un membre
+            // vide, donc un nom court vide. Une cle vide dans la table des
+            // imports n'est jamais consultee, mais elle decrit un etat que le
+            // type de retour ne prevoit pas.
+            if ($court === '') {
+                continue;
+            }
+
+            $imports[strtolower($court)] = ltrim($entree, '\\');
         }
     }
 
@@ -238,6 +412,67 @@ if ($chemins === []) {
     fwrite(STDERR, "Usage : php bin/verifier-classes.php <fichier|dossier>...\n");
     exit(2);
 }
+
+/**
+ * Les alias de facade, que seul le demarrage de Laravel installe.
+ *
+ * `PDF::loadView(...)` et `DB::table(...)` ne designent aucune classe declaree :
+ * ce sont des raccourcis que l'AliasLoader enregistre au boot. Un outil qui lit
+ * des fichiers sans demarrer le framework ne les voit pas et les signale comme
+ * introuvables — huit fois dans ce depot, sur du code parfaitement correct.
+ *
+ * Attention : un alias vit a la RACINE. Il ne sauve un nom nu que dans un
+ * fichier SANS namespace. Voir la resolution, plus bas, pour la raison.
+ *
+ * Ils se lisent pourtant sans rien demarrer, aux deux endroits ou Laravel les
+ * declare : le tableau `aliases` de config/app.php, et la cle
+ * `extra.laravel.aliases` de chaque paquet installe (c'est de la que vient
+ * `PDF`, fourni par barryvdh/laravel-dompdf).
+ */
+function aliasDeFacades(string $racine): array
+{
+    $alias = [];
+
+    $config = $racine.'/config/app.php';
+
+    // `require` execute le fichier. Il peut rendre autre chose qu'un tableau,
+    // ou lever — et cet echec-la viendrait de la CONFIGURATION, pas du code
+    // juge. Le laisser remonter arreterait tout le balayage sur un obstacle
+    // hors sujet, ce que ce fichier reproche par ailleurs a `class_exists`.
+    // Sans alias, l'outil rend au pire quelques faux positifs ; sans verdict,
+    // il ne rend rien.
+    if (is_file($config)) {
+        try {
+            $charge = require $config;
+        } catch (\Throwable $e) {
+            $charge = null;
+        }
+
+        foreach ((is_array($charge) ? ($charge['aliases'] ?? []) : []) as $court => $cible) {
+            if (is_string($court) && is_string($cible)) {
+                $alias[$court] = ltrim($cible, '\\');
+            }
+        }
+    }
+
+    $installes = $racine.'/vendor/composer/installed.json';
+
+    if (is_file($installes)) {
+        $manifeste = json_decode((string) file_get_contents($installes), true);
+
+        foreach ((is_array($manifeste) ? ($manifeste['packages'] ?? $manifeste) : []) as $paquet) {
+            foreach (($paquet['extra']['laravel']['aliases'] ?? []) as $court => $cible) {
+                if (is_string($court) && is_string($cible)) {
+                    $alias[$court] = ltrim($cible, '\\');
+                }
+            }
+        }
+    }
+
+    return $alias;
+}
+
+$alias = aliasDeFacades(dirname(__DIR__));
 
 $fichiers = [];
 
@@ -268,11 +503,38 @@ foreach ($fichiers as $fichier) {
     [$espace, $imports] = contexteDe($code);
 
     foreach (referencesDe($code) as $nom => $ligne) {
+        // Les noms de classe sont insensibles a la casse en PHP : `use ...\Pdf;`
+        // suivi de `PDF::loadView(...)` resout parfaitement. Une table indexee
+        // sur la casse exacte raterait l'import et declarerait le nom irresolu.
+        $import = $imports[strtolower($nom)] ?? null;
+
         // Resolution PHP : l'import d'abord, sinon le namespace courant, sinon
         // la racine.
-        $candidats = isset($imports[$nom])
-            ? [$imports[$nom]]
+        $candidats = $import !== null
+            ? [$import]
             : array_filter([$espace !== '' ? $espace.'\\'.$nom : null, $nom]);
+
+        // Les alias de facade vivent a la RACINE, et PHP ne fait pas de repli
+        // global pour les classes : dans `namespace App\Models`, un `DB::raw()`
+        // sans import vise `App\Models\DB` et rien d'autre — verifie a
+        // l'execution, alias reellement installes. C'est une fatale dormante,
+        // et le depot en portait une, que ce garde a fait ressortir :
+        // app/Models/ESBTPKPI.php appelait `DB::raw()` sans importer la facade.
+        // Elle est corrigee depuis ; l'outil ne la signale donc plus, et c'est
+        // le resultat attendu, pas une regression.
+        //
+        // L'alias n'est donc un candidat que dans deux cas : le fichier n'a pas
+        // de namespace, ou le nom est importe nu (`use PDF;`). Une premiere
+        // version acceptait aussi le nom sans import dans un fichier namespace,
+        // ce qui rendait muet l'outil sur les quarante-trois facades — soit la
+        // liste des oublis d'import les plus courants de tout Laravel, et
+        // precisement ce qu'il existe pour attraper.
+        $aliasApplicable = $espace === ''
+            || ($import !== null && ! str_contains($import, '\\'));
+
+        if ($aliasApplicable && isset($alias[$nom])) {
+            $candidats[] = $alias[$nom];
+        }
 
         foreach ($candidats as $candidat) {
             // `class_exists` CHARGE la classe, donc execute son fichier — avec
@@ -314,6 +576,20 @@ foreach ($fichiers as $fichier) {
             if ($existe) {
                 continue 2;
             }
+        }
+
+        if (in_array($nom, EXTENSIONS_PHP, true)) {
+            fwrite(STDERR, sprintf(
+                // Le prefixe compte : cette ligne n'est PAS un constat, elle ne
+                // fait pas echouer, et rien d'autre ne la distingue dans un
+                // journal de CI par ailleurs vert.
+                "IGNORE  %s:%d  %s : extension PHP non chargee sur cette machine\n",
+                $fichier,
+                $ligne,
+                $nom
+            ));
+
+            continue;
         }
 
         $fautes++;

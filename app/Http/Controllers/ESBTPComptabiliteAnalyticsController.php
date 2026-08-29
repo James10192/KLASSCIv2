@@ -16,7 +16,6 @@ use App\Models\ESBTPInscription;
 use App\Models\ESBTPClasse;
 use App\Models\User;
 use App\Services\ComptabiliteService;
-use App\Services\BonDepenseService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
@@ -31,11 +30,9 @@ class ESBTPComptabiliteAnalyticsController extends Controller
      * Constructeur avec injection des services optimisés
      */
     public function __construct(
-        ComptabiliteService $comptabiliteService,
-        BonDepenseService $bonDepenseService
+        ComptabiliteService $comptabiliteService
     ) {
         $this->comptabiliteService = $comptabiliteService;
-        $this->bonDepenseService = $bonDepenseService;
 
         $this->middleware('auth');
         $this->middleware('comptabilite.access');
@@ -80,11 +77,6 @@ class ESBTPComptabiliteAnalyticsController extends Controller
             ];
 
             $rapport = $reportingService->genererRapportPersonnalise($parametres);
-
-            // Ajouter les données d'analytics prédictives si demandées
-            if ($request->has('include_predictive')) {
-                $rapport['analytics_predictives'] = $this->genererAnalyticsPredictives($parametres);
-            }
 
             // Exporter selon le format demandé
             $format = $request->input('format');
@@ -262,38 +254,6 @@ class ESBTPComptabiliteAnalyticsController extends Controller
     }
 
 
-    /**
-     * Create a new bon de sortie quickly.
-     */
-    public function createBonRapide(Request $request)
-    {
-        // This would be an AJAX method called from the depense creation form
-        $validator = Validator::make($request->all(), [
-            'titre' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'destinataire' => 'nullable|string',
-            'approbateur_id' => 'required|exists:users,id',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
-        }
-
-        $bon = ESBTPBonSortie::create([
-            'titre' => $request->titre,
-            'description' => $request->description,
-            'destinataire' => $request->destinataire,
-            'date_sortie' => now(),
-            'statut' => 'en_attente',
-            'createur_id' => Auth::id(),
-            'approbateur_id' => $request->approbateur_id,
-        ]);
-
-        // Notify approver
-        // $this->notificationService->notifyBonApproval($bon->id, $request->approbateur_id);
-
-        return response()->json(['success' => true, 'bon' => $bon]);
-    }
 
 
     /**
@@ -315,200 +275,12 @@ class ESBTPComptabiliteAnalyticsController extends Controller
 
     // === MÉTHODES PRIVÉES POUR ANALYTICS PRÉDICTIVES ===
 
-    /**
-     * Projection cash-flow détaillée avec IA
-     */
-    private function projectionCashFlowDetailed($mois, $parametres = [])
-    {
-        $includeIA = $parametres['include_ia'] ?? true;
-        $facteursSaisonniers = $parametres['facteurs_saisonniers'] ?? true;
-
-        // Récupérer l'historique des 24 derniers mois
-        $historiqueRecettes = $this->getHistoriqueRecettes(24);
-        $historiqueDepenses = $this->getHistoriqueDepenses(24);
-
-        // Calculer les tendances
-        $tendanceRecettes = $this->calculerTendance($historiqueRecettes);
-        $tendanceDepenses = $this->calculerTendance($historiqueDepenses);
-
-        // Générer les projections
-        $projections = [];
-        $dateBase = now();
-
-        for ($i = 1; $i <= $mois; $i++) {
-            $dateProjection = $dateBase->copy()->addMonths($i);
-
-            // Projection basique (tendance linéaire)
-            $recetteProjetee = $this->projetterValeur($tendanceRecettes, $i);
-            $depenseProjetee = $this->projetterValeur($tendanceDepenses, $i);
-
-            // Ajustements saisonniers
-            if ($facteursSaisonniers) {
-                $facteurSaisonnier = $this->getFacteurSaisonnier($dateProjection->month);
-                $recetteProjetee *= $facteurSaisonnier;
-            }
-
-            // Prédictions IA (si activées)
-            if ($includeIA) {
-                $adjustmentIA = $this->predictionIA($dateProjection, $historiqueRecettes, $historiqueDepenses);
-                $recetteProjetee *= $adjustmentIA['facteur_recettes'];
-                $depenseProjetee *= $adjustmentIA['facteur_depenses'];
-            }
-
-            $cashFlow = $recetteProjetee - $depenseProjetee;
-
-            $projections[] = [
-                'mois' => $dateProjection->format('M Y'),
-                'date' => $dateProjection->format('Y-m-d'),
-                'recettes_projetees' => round($recetteProjetee),
-                'depenses_projetees' => round($depenseProjetee),
-                'cash_flow' => round($cashFlow),
-                'cash_flow_cumule' => round($cashFlow + ($projections[count($projections)-1]['cash_flow_cumule'] ?? 0)),
-                'confiance' => $this->calculerNiveauConfiance($i, $includeIA),
-                'scenario' => $this->determinerScenario($cashFlow)
-            ];
-        }
-
-        return [
-            'projections' => $projections,
-            'tendances' => [
-                'recettes' => $tendanceRecettes,
-                'depenses' => $tendanceDepenses
-            ],
-            'recommandations' => $this->genererRecommandationsCashFlow($projections),
-            'risques_identifies' => $this->identifierRisquesCashFlow($projections),
-            'opportunites' => $this->identifierOpportunites($projections),
-            'metadonnees' => [
-                'genere_le' => now(),
-                'algorithme' => $includeIA ? 'IA + Tendances' : 'Tendances Linéaires',
-                'fiabilite_globale' => $this->calculerFiabiliteGlobale($projections)
-            ]
-        ];
-    }
 
 
-    /**
-     * Détection d'anomalies avec machine learning
-     */
-    private function detectionAnomaliesDetailed($parametres = [])
-    {
-        $periodeJours = $parametres['periode_jours'] ?? 30;
-        $seuilsPersonnalises = $parametres['seuils_personnalises'] ?? [];
-        $analysePatterns = $parametres['analyse_patterns'] ?? true;
-
-        $dateDebut = now()->subDays($periodeJours);
-        $dateFin = now();
-
-        // Récupérer les données de la période
-        $paiements = ESBTPPaiement::whereBetween('date_paiement', [$dateDebut, $dateFin])
-            ->with(['etudiant', 'anneeUniversitaire'])
-            ->get();
-
-        $depenses = ESBTPDepense::whereBetween('date_depense', [$dateDebut, $dateFin])
-            ->with(['categorie', 'fournisseur'])
-            ->get();
-
-        // Calculer les seuils automatiques si non fournis
-        $seuils = $this->calculerSeuilsAnomalies($paiements, $depenses, $seuilsPersonnalises);
-
-        $anomalies = [];
-
-        // 1. Anomalies de montants (Z-score)
-        $anomalies['montants'] = $this->detecterAnomaliesMontants($paiements, $depenses, $seuils);
-
-        // 2. Anomalies temporelles
-        $anomalies['temporelles'] = $this->detecterAnomaliesTemporelles($paiements, $depenses);
-
-        // 3. Anomalies de fréquence
-        $anomalies['frequence'] = $this->detecterAnomaliesFrequence($paiements, $depenses);
-
-        // 4. Patterns suspects
-        if ($analysePatterns) {
-            $anomalies['patterns'] = $this->detecterPatternsSuspects($paiements, $depenses);
-        }
-
-        // 5. Anomalies par catégorie/filière
-        $anomalies['categories'] = $this->detecterAnomaliesCategories($paiements, $depenses);
-
-        return [
-            'periode' => [
-                'debut' => $dateDebut->format('d/m/Y'),
-                'fin' => $dateFin->format('d/m/Y'),
-                'jours' => $periodeJours
-            ],
-            'resume' => [
-                'total_anomalies' => array_sum(array_map('count', $anomalies)),
-                'niveau_risque' => $this->evaluerNiveauRisqueGlobal($anomalies),
-                'score_confiance' => $this->calculerScoreConfiance($anomalies)
-            ],
-            'anomalies' => $anomalies,
-            'seuils_utilises' => $seuils,
-            'recommandations' => $this->genererRecommandationsAnomalies($anomalies),
-            'actions_immediates' => $this->identifierActionsImmediates($anomalies)
-        ];
-    }
 
 
-    /**
-     * Analyse des tendances avec prédictions
-     */
-    private function analyseTendancesDetailed($periode, $parametres = [])
-    {
-        // Récupérer les données historiques
-        $donnees = $this->getDonneesHistoriques($periode + 12); // Plus de données pour l'analyse
-
-        // Analyser les tendances par segment
-        $tendances = [
-            'recettes_globales' => $this->analyserTendance($donnees['recettes']),
-            'recettes_par_filiere' => $this->analyserTendancesParFiliere($donnees['recettes']),
-            'depenses_par_categorie' => $this->analyserTendancesParCategorie($donnees['depenses']),
-            'taux_recouvrement' => $this->analyserTendanceTauxRecouvrement($donnees),
-            'cycle_saisonnier' => $this->analyserCycleSaisonnier($donnees)
-        ];
-
-        // Générer les prédictions
-        $predictions = $this->genererPredictionsTendances($tendances, $periode);
-
-        return [
-            'tendances' => $tendances,
-            'predictions' => $predictions,
-            'insights' => $this->genererInsightsTendances($tendances),
-            'alertes' => $this->identifierAlertesTondances($tendances),
-            'opportunites_amelioration' => $this->identifierOpportunitesAmelioration($tendances)
-        ];
-    }
 
 
-    /**
-     * Prédictions avec IA avancée
-     */
-    private function previsionIA($periode, $parametres = [])
-    {
-        // Algorithme simplifié de ML pour les prédictions
-        $donnees = $this->getDonneesML($periode * 2);
-
-        $modeles = [
-            'regression_lineaire' => $this->modelRegressionLineaire($donnees),
-            'moyennes_mobiles' => $this->modelMoyennesMobiles($donnees),
-            'decomposition_saisonniere' => $this->modelDecompositionSaisonniere($donnees),
-            'reseaux_neurones' => $this->modelReseauxNeurones($donnees) // Simplifié
-        ];
-
-        // Ensemble learning (combinaison des modèles)
-        $predictionsCombinees = $this->combinerPredictions($modeles, $periode);
-
-        return [
-            'predictions' => $predictionsCombinees,
-            'confiance_modeles' => $this->evaluerConfianceModeles($modeles),
-            'facteurs_influence' => $this->identifierFacteursInfluence($donnees),
-            'scenarios' => [
-                'optimiste' => $this->genererScenario($predictionsCombinees, 'optimiste'),
-                'realiste' => $this->genererScenario($predictionsCombinees, 'realiste'),
-                'pessimiste' => $this->genererScenario($predictionsCombinees, 'pessimiste')
-            ],
-            'recommandations_strategiques' => $this->genererRecommandationsStrategiques($predictionsCombinees)
-        ];
-    }
 
 
     // === MÉTHODES UTILITAIRES ===
@@ -560,15 +332,6 @@ class ESBTPComptabiliteAnalyticsController extends Controller
     }
 
 
-    private function genererAnalyticsPredictives($parametres)
-    {
-        // Génération simplifiée d'analytics prédictives
-        return [
-            'cash_flow_projection' => $this->projectionCashFlowDetailed(6),
-            'anomalies_detected' => $this->detectionAnomaliesDetailed(),
-            'trends_analysis' => $this->analyseTendancesDetailed(6)
-        ];
-    }
 
 
     // Méthodes simplifiées pour les calculs ML (à implémenter selon les besoins)

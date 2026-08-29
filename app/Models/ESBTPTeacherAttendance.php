@@ -215,30 +215,6 @@ class ESBTPTeacherAttendance extends Model
         $this->save();
     }
 
-    public static function getAttendanceStatistics(ESBTPEnseignant $enseignant, $startDate = null, $endDate = null): array
-    {
-        $query = self::where('teacher_id', $enseignant->id)
-            ->where('validation_status', 'validated');
-
-        if ($startDate) {
-            $query->where('date', '>=', $startDate);
-        }
-
-        if ($endDate) {
-            $query->where('date', '<=', $endDate);
-        }
-
-        $attendances = $query->get();
-
-        return [
-            'total' => $attendances->count(),
-            'present' => $attendances->where('status', 'present')->count(),
-            'late' => $attendances->where('status', 'late')->count(),
-            'presence_rate' => $attendances->count() > 0
-                ? round(($attendances->count() / $enseignant->emploisDuTemps()->count()) * 100, 2)
-                : 0
-        ];
-    }
 
     public function hasValidDeviceInfo(): bool
     {

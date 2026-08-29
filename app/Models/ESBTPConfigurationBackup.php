@@ -24,36 +24,10 @@ class ESBTPConfigurationBackup extends Model
         'backup_date' => 'datetime'
     ];
 
-    /**
-     * Relations
-     */
-    public function configuration()
-    {
-        return $this->belongsTo(ESBTPConfiguration::class, 'configuration_id');
-    }
 
     public function creator()
     {
         return $this->belongsTo(User::class, 'created_by');
     }
 
-    /**
-     * Clean old backups (keep only last 10 per configuration)
-     */
-    public static function cleanOldBackups()
-    {
-        $configurations = ESBTPConfiguration::all();
-
-        foreach ($configurations as $config) {
-            $backups = self::where('configuration_id', $config->id)
-                          ->orderBy('backup_date', 'desc')
-                          ->skip(10)
-                          ->take(PHP_INT_MAX)
-                          ->get();
-
-            foreach ($backups as $backup) {
-                $backup->delete();
-            }
-        }
-    }
 }

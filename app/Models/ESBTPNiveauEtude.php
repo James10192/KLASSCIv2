@@ -119,16 +119,6 @@ class ESBTPNiveauEtude extends Model
         return $this->type . ' - ' . $this->name;
     }
 
-    /**
-     * Relation avec les formations associées à ce niveau d'études.
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsToMany
-     */
-    public function formations()
-    {
-        return $this->belongsToMany(ESBTPFormation::class, 'esbtp_formation_niveau', 'niveau_id', 'formation_id')
-                    ->withTimestamps();
-    }
 
     /**
      * Relation avec les matières associées à ce niveau d'études.

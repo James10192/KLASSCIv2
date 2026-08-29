@@ -3,12 +3,10 @@
 namespace App\Services;
 
 use App\Models\ESBTPPaiement;
-use App\Models\ESBTPDepense;
 use App\Models\ESBTPSalaire;
 use App\Models\ESBTPFraisScolarite;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPInscription;
-use App\Models\ESBTPCategorieDepense;
 use App\Models\ESBTPKPI;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -49,9 +47,8 @@ class ComptabiliteService
 
             return [
                 'recettes' => $this->calculerStatsRecettes($annee),
-                'depenses' => $this->calculerStatsDepenses($annee),
                 'paiements' => $this->calculerStatsPaiements($annee),
-                'performance' => $this->calculerIndicateursPerformance($annee),
+                'performance' => ['croissance_mensuelle' => $this->calculerCroissanceMensuelle($annee)],
                 'previsions' => $this->calculerPrevisions($annee),
                 'alertes' => $this->detecterAlertes($annee),
                 'cache_generated_at' => now()->toISOString()
@@ -76,15 +73,10 @@ class ComptabiliteService
 
         return Cache::store('dashboard_queries')->remember($cacheKey, self::CACHE_TTL_KPI, function () use ($annee) {
             $recettes = $this->calculerStatsRecettes($annee);
-            $depenses = $this->calculerStatsDepenses($annee);
-            $performance = $this->calculerIndicateursPerformance($annee);
 
             return [
                 'total_recettes' => $recettes['total'],
-                'total_depenses' => $depenses['total'],
-                'resultat_net' => $performance['resultat_net'],
                 'taux_recouvrement' => $recettes['taux_recouvrement'],
-                'marge_nette' => $performance['marge_nette'],
                 'objectif_atteint' => $recettes['objectif_atteint'],
                 'last_updated' => now()->toISOString()
             ];
@@ -128,44 +120,6 @@ class ComptabiliteService
     }
 
     /**
-     * Calcule les statistiques des dépenses
-     */
-    private function calculerStatsDepenses($annee)
-    {
-        $cacheKey = "stats_depenses_{$annee->id}_" . Carbon::now()->format('Y-m-d');
-
-        return Cache::store('comptabilite_kpis')->remember($cacheKey, self::CACHE_TTL_STATS, function () use ($annee) {
-            $dateDebut = Carbon::parse($annee->date_debut);
-            $dateFin = Carbon::parse($annee->date_fin);
-
-            // Optimisation: index composites sur date_depense + statut
-            $totalDepenses = ESBTPDepense::whereBetween('date_depense', [$dateDebut, $dateFin])
-                ->whereIn('statut', ['validée', 'approuve'])
-                ->sum('montant');
-
-            $depensesMensuelles = ESBTPDepense::whereMonth('date_depense', Carbon::now()->month)
-                ->whereYear('date_depense', Carbon::now()->year)
-                ->whereIn('statut', ['validée', 'approuve'])
-                ->sum('montant');
-
-            // Dépenses par catégorie avec eager loading
-            $depensesParCategorie = ESBTPDepense::with('categorie')
-                ->whereBetween('date_depense', [$dateDebut, $dateFin])
-                ->whereIn('statut', ['validée', 'approuve'])
-                ->get()
-                ->groupBy('categorie.nom')
-                ->map(function ($group) {
-                    return $group->sum('montant');
-                });
-
-            return [
-                'total' => $totalDepenses,
-                'mensuel' => $depensesMensuelles,
-                'par_categorie' => $depensesParCategorie,
-                'budget_restant' => $this->calculerBudgetRestant($annee, $totalDepenses)
-            ];
-        });
-    }
 
     /**
      * Calcule les statistiques des paiements avec cache optimisé
@@ -217,25 +171,6 @@ class ComptabiliteService
         });
     }
 
-    /**
-     * Calcule les indicateurs de performance
-     */
-    private function calculerIndicateursPerformance($annee)
-    {
-        $recettes = $this->calculerStatsRecettes($annee);
-        $depenses = $this->calculerStatsDepenses($annee);
-
-        $resultatNet = $recettes['total'] - $depenses['total'];
-        $margeNette = $recettes['total'] > 0 ?
-            round(($resultatNet / $recettes['total']) * 100, 2) : 0;
-
-        return [
-            'resultat_net' => $resultatNet,
-            'marge_nette' => $margeNette,
-            'rentabilite' => $resultatNet > 0 ? 'positive' : 'negative',
-            'croissance_mensuelle' => $this->calculerCroissanceMensuelle($annee)
-        ];
-    }
 
     /**
      * Génère les prévisions financières avec cache
@@ -252,18 +187,12 @@ class ComptabiliteService
                 ->selectRaw('AVG(montant) as moyenne')
                 ->value('moyenne') ?? 0;
 
-            $moyenneDepenses = ESBTPDepense::where('date_depense', '>=', Carbon::now()->subMonths(6))
-                ->whereIn('statut', ['validée', 'approuve'])
-                ->selectRaw('AVG(montant) as moyenne')
-                ->value('moyenne') ?? 0;
 
             $previsions = [];
             for ($i = 1; $i <= $nombreMois; $i++) {
                 $moisFutur = Carbon::now()->addMonths($i);
                 $previsions[$moisFutur->format('Y-m')] = [
                     'recettes_prevues' => $moyenneRecettes * 1.05, // Légère croissance
-                    'depenses_prevues' => $moyenneDepenses * 1.02, // Légère inflation
-                    'resultat_prevu' => ($moyenneRecettes * 1.05) - ($moyenneDepenses * 1.02)
                 ];
             }
 
@@ -345,19 +274,11 @@ class ComptabiliteService
     {
         return [
             'recettes' => ['total' => 0, 'mensuel' => 0, 'taux_recouvrement' => 0],
-            'depenses' => ['total' => 0, 'mensuel' => 0],
             'paiements' => ['total' => 0, 'complets' => 0, 'impayés' => 0],
-            'performance' => ['resultat_net' => 0, 'marge_nette' => 0],
             'alertes' => []
         ];
     }
 
-    private function calculerBudgetRestant($annee, $totalDepenses)
-    {
-        // Logique pour calculer le budget restant
-        // Peut être configuré via la table de configuration
-        return 0;
-    }
 
     private function calculerCroissanceMensuelle($annee)
     {
@@ -415,7 +336,6 @@ class ComptabiliteService
                     "kpis_avances_{$anneeId}_*",
                     "dashboard_kpis_{$anneeId}",
                     "stats_recettes_{$anneeId}_*",
-                    "stats_depenses_{$anneeId}_*",
                     "stats_paiements_{$anneeId}_*"
                 ];
 

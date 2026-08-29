@@ -1750,10 +1750,6 @@ Route::middleware(['auth', 'role:enseignant'])->group(function () {
 //         Route::get('/mes-notes', [App\Http\Controllers\ESBTPNoteController::class, 'studentGrades'])
 //             ->name('mes-notes.index');
 //
-//         // Mes examens
-//         Route::get('/mes-examens', [App\Http\Controllers\ESBTPExamenController::class, 'studentExams'])
-//             ->name('mes-examens.index');
-//
 //         // Mon bulletin
 //         Route::get('/mon-bulletin', [App\Http\Controllers\ESBTPStudentBulletinController::class, 'studentBulletins'])
 //             ->name('mon-bulletin.index');
@@ -2251,18 +2247,6 @@ Route::prefix('esbtp/admin/attendance')->name('esbtp.admin.attendance.')->middle
         ->name('forgotten-codes');
     Route::post('/generate-manual-code', [App\Http\Controllers\ESBTP\Admin\ESBTPForgottenCodeController::class, 'generateManualCode'])
         ->name('generate-manual-code');
-    Route::post('/mark-manual', [App\Http\Controllers\ESBTP\Admin\ESBTPForgottenCodeController::class, 'markManualAttendance'])
-        ->name('mark-manual');
-});
-
-// Manual Attendance Routes
-Route::prefix('esbtp/admin/attendance/manual')->name('esbtp.admin.attendance.manual.')->middleware(['auth', 'permission:admin.access|identity.direct_studies|identity.registrar|identity.registrar_clerk'])->group(function () {
-    Route::get('/', [App\Http\Controllers\ESBTP\Admin\ESBTPManualAttendanceController::class, 'index'])
-        ->name('index');
-    Route::post('/store', [App\Http\Controllers\ESBTP\Admin\ESBTPManualAttendanceController::class, 'store'])
-        ->name('store');
-    Route::post('/bulk', [App\Http\Controllers\ESBTP\Admin\ESBTPManualAttendanceController::class, 'bulkStore'])
-        ->name('bulk');
 });
 
 // Routes pour les paramÃ¨tres systÃ¨me ESBTP (manage_system)

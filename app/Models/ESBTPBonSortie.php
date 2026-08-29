@@ -49,19 +49,5 @@ class ESBTPBonSortie extends Model
         return $this->hasMany(ESBTPBonSortieNotification::class, 'bon_sortie_id');
     }
 
-    /**
-     * Get the depense associated with the bon de sortie.
-     */
-    public function depense()
-    {
-        return $this->hasOne(ESBTPDepense::class, 'bon_sortie_id');
-    }
 
-    /**
-     * Get the depenses associated with the bon de sortie.
-     */
-    public function depenses()
-    {
-        return $this->hasMany(ESBTPDepense::class, 'bon_sortie_id');
-    }
 } 

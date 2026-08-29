@@ -75,13 +75,6 @@ class Department extends Model
         return $this->hasMany(Teacher::class);
     }
 
-    /**
-     * Relation avec les formations proposées par ce département.
-     */
-    public function formations()
-    {
-        return $this->hasMany(Formation::class);
-    }
 
     /**
      * Relation avec les parcours proposés par ce département.

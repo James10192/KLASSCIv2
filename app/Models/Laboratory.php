@@ -83,29 +83,8 @@ class Laboratory extends Model
         return $this->hasMany(Teacher::class);
     }
 
-    /**
-     * Relation avec les projets de recherche menés par ce laboratoire.
-     */
-    public function researchProjects()
-    {
-        return $this->hasMany(ResearchProject::class);
-    }
 
-    /**
-     * Relation avec les publications scientifiques issues de ce laboratoire.
-     */
-    public function publications()
-    {
-        return $this->hasMany(Publication::class);
-    }
 
-    /**
-     * Relation avec les thèses encadrées par ce laboratoire.
-     */
-    public function theses()
-    {
-        return $this->hasMany(Thesis::class);
-    }
 
     /**
      * Relation avec l'utilisateur qui a créé ce laboratoire.

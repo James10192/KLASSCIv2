@@ -83,11 +83,4 @@ class ESBTPAttendanceCode extends Model
         ]);
     }
 
-    /**
-     * Relation avec l'enseignant qui a utilisé le code
-     */
-    public function usedByTeacher()
-    {
-        return $this->belongsTo(ESBTPEnseignant::class, 'used_by');
-    }
 }

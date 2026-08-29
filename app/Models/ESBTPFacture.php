@@ -126,13 +126,6 @@ class ESBTPFacture extends Model implements Auditable
         // 'numero', // Numéro de facture sensible
     ];
 
-    /**
-     * Relation avec le fournisseur.
-     */
-    public function fournisseur()
-    {
-        return $this->belongsTo(ESBTPFournisseur::class, 'fournisseur_id');
-    }
 
     /**
      * Relation avec l'utilisateur qui a créé la facture.

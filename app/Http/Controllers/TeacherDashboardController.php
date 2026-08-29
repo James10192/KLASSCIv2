@@ -3,9 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\ESBTPAnneeUniversitaire;
+use Illuminate\Http\JsonResponse;
 use App\Models\ESBTPAttendance;
 use App\Models\ESBTPDailyCode;
 use App\Models\ESBTPEvaluation;
+use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPNote;
 use App\Models\ESBTPSeanceCours;
 use App\Models\ESBTPTeacher;

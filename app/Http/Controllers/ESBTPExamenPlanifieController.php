@@ -6,6 +6,7 @@ use App\Enums\ExamenStatus;
 use App\Enums\TypeExamen;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPClasse;
+use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPExamenPlanifie;
 use App\Models\ESBTPLMDParcours;
 use App\Models\ESBTPLMDSession;

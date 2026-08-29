@@ -38,13 +38,4 @@ class SchoolClass extends Model
         return $this->hasMany(Student::class, 'class_id');
     }
 
-    /**
-     * Get the courses for this class.
-     */
-    public function courses()
-    {
-        return $this->belongsToMany(Course::class, 'class_courses')
-            ->withPivot('semester')
-            ->withTimestamps();
-    }
 }

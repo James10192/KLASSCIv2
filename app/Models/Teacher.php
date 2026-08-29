@@ -213,13 +213,6 @@ class Teacher extends Model
         return $this->hasMany(UFR::class, 'director_id', 'user_id');
     }
 
-    /**
-     * Relation avec les formations coordonnées par l'enseignant.
-     */
-    public function coordinatedFormations()
-    {
-        return $this->hasMany(Formation::class, 'coordinator_id', 'user_id');
-    }
 
     /**
      * Relation avec les parcours dont l'enseignant est responsable.

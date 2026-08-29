@@ -62,15 +62,6 @@ class UFR extends Model
         return $this->hasMany(Department::class);
     }
 
-    /**
-     * Obtenir les formations associées à cette UFR.
-     * 
-     * @return \Illuminate\Database\Eloquent\Relations\HasMany
-     */
-    public function formations()
-    {
-        return $this->hasMany(Formation::class);
-    }
 
     /**
      * Obtenir l'utilisateur qui a créé l'UFR.

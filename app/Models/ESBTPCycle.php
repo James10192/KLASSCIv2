@@ -83,13 +83,6 @@ class ESBTPCycle extends Model
         return $this->hasManyThrough(ESBTPEtudiant::class, ESBTPSpecialty::class);
     }
 
-    /**
-     * Get the classes associated with the cycle.
-     */
-    public function classes()
-    {
-        return $this->hasManyThrough(ESBTPClass::class, ESBTPSpecialty::class);
-    }
 
     /**
      * Get the teachers associated with the cycle.

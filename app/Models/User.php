@@ -193,10 +193,6 @@ class User extends Authenticatable implements Auditable
         return $this->hasOne(SuperAdmin::class);
     }
 
-    public function secretaire()
-    {
-        return $this->hasOne(Secretaire::class);
-    }
 
     public function etudiant()
     {
@@ -214,7 +210,7 @@ class User extends Authenticatable implements Auditable
         return $this->teacherProfile();
     }
 
-    /** Alias rétrocompat : $user->enseignant → ESBTPTeacher (utilisé par TeacherGradeController, TeacherAttendanceController). */
+    /** Alias rétrocompat : $user->enseignant → ESBTPTeacher. */
     public function enseignant()
     {
         return $this->teacherProfile();
@@ -225,17 +221,7 @@ class User extends Authenticatable implements Auditable
         return $this->hasOne(ESBTPParent::class);
     }
 
-    public function announcements()
-    {
-        return $this->hasMany(Announcement::class, 'created_by');
-    }
 
-    public function receivedAnnouncements()
-    {
-        return $this->belongsToMany(Announcement::class, 'announcement_user')
-                    ->withPivot('read_at', 'is_read')
-                    ->withTimestamps();
-    }
 
     public function createdBy()
     {
@@ -252,10 +238,6 @@ class User extends Authenticatable implements Auditable
         return $this->hasMany(UFR::class, 'director_id');
     }
 
-    public function coordinatedFormations()
-    {
-        return $this->hasMany(Formation::class, 'coordinator_id');
-    }
 
     public function responsibleParcours()
     {

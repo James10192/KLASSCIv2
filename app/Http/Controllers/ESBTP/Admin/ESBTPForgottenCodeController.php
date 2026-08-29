@@ -5,7 +5,7 @@ namespace App\Http\Controllers\ESBTP\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\ESBTPTeacherAttendance;
 use App\Models\ESBTPDailyCode;
-use App\Models\ESBTPEnseignant;
+use App\Models\ESBTPTeacher;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
@@ -19,7 +19,7 @@ class ESBTPForgottenCodeController extends Controller
 
     public function index()
     {
-        $teachers = ESBTPEnseignant::with('user')->get();
+        $teachers = ESBTPTeacher::with('user')->get();
         $recentCodes = ESBTPDailyCode::with('generator')
             ->whereDate('created_at', Carbon::today())
             ->orderBy('created_at', 'desc')
@@ -32,7 +32,7 @@ class ESBTPForgottenCodeController extends Controller
     public function generateManualCode(Request $request)
     {
         $request->validate([
-            'teacher_id' => 'required|exists:esbtp_enseignants,id',
+            'teacher_id' => 'required|exists:users,id',
             'reason' => 'required|string|max:255'
         ]);
 
@@ -79,52 +79,6 @@ class ESBTPForgottenCodeController extends Controller
         }
     }
 
-    public function markManualAttendance(Request $request)
-    {
-        $request->validate([
-            'teacher_id' => 'required|exists:esbtp_enseignants,id',
-            'date' => 'required|date',
-            'status' => 'required|in:present,late,absent',
-            'reason' => 'required|string|max:255'
-        ]);
-
-        try {
-            $attendance = ESBTPTeacherAttendance::create([
-                'teacher_id' => $request->teacher_id,
-                'date' => $request->date,
-                'status' => $request->status,
-                'is_manual' => true,
-                'manual_reason' => $request->reason,
-                'marked_by' => auth()->id()
-            ]);
-
-            // Log the manual attendance marking
-            Log::info('Manual attendance marked', [
-                'attendance_id' => $attendance->id,
-                'teacher_id' => $request->teacher_id,
-                'status' => $request->status,
-                'reason' => $request->reason,
-                'marked_by' => auth()->id()
-            ]);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Présence marquée manuellement avec succès',
-                'attendance' => $attendance
-            ]);
-
-        } catch (\Exception $e) {
-            Log::error('Error marking manual attendance', [
-                'error' => $e->getMessage(),
-                'teacher_id' => $request->teacher_id
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur lors du marquage manuel: ' . $e->getMessage()
-            ], 500);
-        }
-    }
 
     private function generateUniqueCode()
     {

@@ -65,15 +65,6 @@ class CourseClass extends Model
             ->withTimestamps();
     }
 
-    /**
-     * Obtenir l'année académique associée à cette classe.
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
-     */
-    public function academicYear()
-    {
-        return $this->belongsTo(AcademicYear::class);
-    }
 
     /**
      * Obtenir le département associé à cette classe.
@@ -85,15 +76,6 @@ class CourseClass extends Model
         return $this->belongsTo(Department::class);
     }
 
-    /**
-     * Obtenir le niveau associé à cette classe.
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
-     */
-    public function level()
-    {
-        return $this->belongsTo(Level::class);
-    }
 
     /**
      * Obtenir l'utilisateur qui a créé cette classe.

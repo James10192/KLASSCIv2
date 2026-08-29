@@ -4,20 +4,11 @@ namespace App\Http\Controllers\ESBTP;
 
 use App\Domain\Students\StudentCountService;
 use App\Http\Controllers\Controller;
-use App\Models\Attendance;
-use App\Models\Certificate;
-use App\Models\Grade;
-use App\Models\Message;
-use App\Models\Notification;
-use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPAnneeUniversitaire;
-use App\Models\User;
-use App\Models\Filiere;
-use App\Models\NiveauEtude;
-use App\Models\Formation;
-use App\Models\Classe;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
+use App\Models\ESBTPTeacher;
+use App\Models\ESBTPFiliere;
+use App\Models\ESBTPClasse;
+use App\Models\ESBTPMatiere;
 
 class SuperAdminController extends Controller
 {
@@ -42,31 +33,10 @@ class SuperAdminController extends Controller
         $totalStudents = $counts['inscrits_annee_courante'];
         $totalStudentsBase = $counts['total_base'];
         $anneeLabel = $counts['annee_courante_label'];
-        $totalSecretaires = User::role('secretaire')->count();
-        $totalFilieres = Filiere::count();
-        $totalFormations = Formation::count();
-        $totalNiveaux = NiveauEtude::count();
-        $totalClasses = Classe::count();
+        $totalFilieres = ESBTPFiliere::count();
+        $totalClasses = ESBTPClasse::count();
         $totalMatieres = ESBTPMatiere::count();
-        $totalExamens = ESBTPEvaluation::count();
-        
-        // Examens à venir
-        $upcomingExamens = ESBTPEvaluation::with(['classe', 'matiere'])
-            ->where('date', '>=', now())
-            ->orderBy('date', 'asc')
-            ->take(5)
-            ->get();
-        
-        // Messages récents
-        $recentMessages = Message::with('sender')
-            ->orderBy('created_at', 'desc')
-            ->take(5)
-            ->get();
-        
-        // Notifications récentes
-        $recentNotifications = Notification::orderBy('created_at', 'desc')
-            ->take(5)
-            ->get();
+        $totalTeachers = ESBTPTeacher::count();
 
         $anneeEnCours = ESBTPAnneeUniversitaire::where('is_current', true)->first();
         
@@ -75,16 +45,10 @@ class SuperAdminController extends Controller
             'totalStudents',
             'totalStudentsBase',
             'anneeLabel',
-            'totalSecretaires',
             'totalFilieres',
-            'totalFormations',
-            'totalNiveaux',
             'totalClasses',
             'totalMatieres',
-            'totalExamens',
-            'upcomingExamens',
-            'recentMessages',
-            'recentNotifications',
+            'totalTeachers',
             'anneeEnCours'
         ));
     }

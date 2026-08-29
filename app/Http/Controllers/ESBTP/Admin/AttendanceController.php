@@ -8,7 +8,6 @@ use App\Models\ESBTPTeacherAttendance;
 use App\Models\ESBTPAttendanceSettings;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
-use App\Models\ESBTPEnseignant;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPMatiere;
 use Illuminate\Support\Str;

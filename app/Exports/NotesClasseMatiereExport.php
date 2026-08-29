@@ -241,7 +241,7 @@ class NotesClasseMatiereExport implements
         return $widths;
     }
 
-    public function columnFormatting(): array
+    public function columnFormats(): array
     {
         // Matricule en text pour préserver leading zeros
         return [

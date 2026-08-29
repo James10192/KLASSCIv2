@@ -11,7 +11,6 @@ use App\Models\ESBTPOptionAssignment;
 use App\Models\ESBTPFiliere;
 use App\Models\ESBTPNiveauEtude;
 use App\Models\ESBTPAnneeUniversitaire;
-use App\Services\FraisCalculationService;
 use App\Services\FraisCacheService;
 use App\Services\ApplicableFraisResolver;
 use App\Services\BulkLevelFraisApplicator;
@@ -27,7 +26,6 @@ use Illuminate\Support\Facades\Validator;
 
 class ESBTPFraisController extends Controller
 {
-    protected $fraisCalculationService;
     protected $fraisCacheService;
     protected $fraisManagementService;
     protected $fraisScopeResolver;
@@ -38,7 +36,6 @@ class ESBTPFraisController extends Controller
     protected $levelFeeTargetResolver;
 
     public function __construct(
-        FraisCalculationService $fraisCalculationService,
         FraisCacheService $fraisCacheService,
         FraisManagementService $fraisManagementService,
         FraisScopeResolver $fraisScopeResolver,
@@ -55,7 +52,6 @@ class ESBTPFraisController extends Controller
         $this->middleware('permission:frais.delete', ['only' => ['destroy', 'resetDefaults']]);
         $this->middleware('permission:frais.configure', ['only' => ['configure', 'updateConfiguration', 'previewLevelTargets', 'applyLevelConfiguration']]);
         
-        $this->fraisCalculationService = $fraisCalculationService;
         $this->fraisCacheService = $fraisCacheService;
         $this->fraisManagementService = $fraisManagementService;
         $this->fraisScopeResolver = $fraisScopeResolver;
@@ -1441,27 +1437,6 @@ class ESBTPFraisController extends Controller
                 'error' => 'Erreur interne du serveur',
                 'message' => $e->getMessage()
             ], 500);
-        }
-    }
-
-    /**
-     * Calculer le montant d'une catégorie pour une inscription spécifique
-     * Utilise le nouveau service de calcul
-     */
-    private function calculateAmountForInscription($category, $inscription, $options = [])
-    {
-        try {
-            $result = $this->fraisCalculationService->calculateFeeForInscription(
-                $inscription, 
-                $category, 
-                null, 
-                $options
-            );
-            
-            return $result['final_amount'] ?? $category->default_amount;
-        } catch (\Exception $e) {
-            Log::warning('Erreur lors du calcul des frais, utilisation du montant par défaut: ' . $e->getMessage());
-            return $category->default_amount ?? 0;
         }
     }
 

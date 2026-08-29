@@ -151,7 +151,7 @@
                                         </div>
                                         <div class="card-body">
                                             <div class="row">
-                                                <div class="col-md-3">
+                                                <div class="col-md-4">
                                                     <div class="small-box bg-info">
                                                         <div class="inner">
                                                             <h3>{{ $cycle->specialties->count() }}</h3>
@@ -162,7 +162,7 @@
                                                         </div>
                                                     </div>
                                                 </div>
-                                                <div class="col-md-3">
+                                                <div class="col-md-4">
                                                     <div class="small-box bg-success">
                                                         <div class="inner">
                                                             <h3>{{ $cycle->students->count() }}</h3>
@@ -173,18 +173,7 @@
                                                         </div>
                                                     </div>
                                                 </div>
-                                                <div class="col-md-3">
-                                                    <div class="small-box bg-warning">
-                                                        <div class="inner">
-                                                            <h3>{{ $cycle->classes->count() }}</h3>
-                                                            <p>Classes</p>
-                                                        </div>
-                                                        <div class="icon">
-                                                            <i class="fas fa-chalkboard"></i>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div class="col-md-3">
+                                                <div class="col-md-4">
                                                     <div class="small-box bg-danger">
                                                         <div class="inner">
                                                             <h3>{{ $cycle->teachers->count() }}</h3>

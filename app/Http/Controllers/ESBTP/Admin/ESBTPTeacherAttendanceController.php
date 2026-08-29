@@ -4,7 +4,6 @@ namespace App\Http\Controllers\ESBTP\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\ESBTPTeacherAttendance;
-use App\Models\ESBTPEnseignant;
 use App\Models\ESBTPMatiere;
 use App\Models\ESBTPDailyCode;
 use App\Models\ESBTPAttendanceSettings;

@@ -48,10 +48,6 @@ class ESBTPContinuingEducation extends Model
         return $this->belongsTo(ESBTPCycle::class, 'cycle_id');
     }
 
-    public function enrollments()
-    {
-        return $this->hasMany(ESBTPContinuingEducationEnrollment::class, 'program_id');
-    }
 
     public function getDurationTextAttribute()
     {

@@ -9,7 +9,6 @@ use Illuminate\Support\Facades\Event;
 
 // Import all the events
 use App\Events\PaiementRecu;
-use App\Events\DepenseApprouvee;
 use App\Events\BonApprouve;
 use App\Events\SeuilAtteint;
 use App\Events\RelanceEnvoyee;
@@ -51,10 +50,6 @@ class EventServiceProvider extends ServiceProvider
         PaiementRecu::class => [
             EnvoyerNotificationPaiement::class,
             MettreAJourKPIs::class,
-        ],
-
-        DepenseApprouvee::class => [
-            // Listeners pour les dépenses approuvées peuvent être ajoutés ici
         ],
 
         BonApprouve::class => [

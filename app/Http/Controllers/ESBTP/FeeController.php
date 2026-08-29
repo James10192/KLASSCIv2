@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\ESBTP\Fee;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPAnneeUniversitaire;
-use App\Models\ESBTP\FeeCategory;
+use App\Models\ESBTPFraisCategory;
 use App\Models\ESBTPFiliere;
 use App\Models\ESBTPNiveauEtude;
 use App\Models\ESBTPInscription;
@@ -22,7 +22,7 @@ class FeeController extends Controller
 
     public function create()
     {
-        $categories = FeeCategory::where('is_active', true)->orderBy('name')->get();
+        $categories = ESBTPFraisCategory::where('is_active', true)->orderBy('name')->get();
         $classes = ESBTPClasse::with(['filiere', 'niveau', 'annee'])->orderBy('name')->get();
         $inscriptions = ESBTPInscription::with(['etudiant', 'classe'])->orderByDesc('id')->get();
         $annees = ESBTPAnneeUniversitaire::orderBy('name')->get();
@@ -61,7 +61,7 @@ class FeeController extends Controller
 
     public function edit(Fee $fee)
     {
-        $categories = FeeCategory::where('is_active', true)->orderBy('name')->get();
+        $categories = ESBTPFraisCategory::where('is_active', true)->orderBy('name')->get();
         $classes = ESBTPClasse::with(['filiere', 'niveau', 'annee'])->orderBy('name')->get();
         $inscriptions = ESBTPInscription::with(['etudiant', 'classe'])->orderByDesc('id')->get();
         $annees = ESBTPAnneeUniversitaire::orderBy('name')->get();

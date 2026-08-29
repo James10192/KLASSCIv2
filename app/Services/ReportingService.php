@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Models\ESBTPPaiement;
-use App\Models\ESBTPDepense;
 use App\Models\ESBTPSalaire;
 use App\Models\ESBTPFacture;
 use App\Models\ESBTPEtudiant;
@@ -26,9 +25,6 @@ class ReportingService
         switch ($typeRapport) {
             case 'paiements':
                 return $this->rapportPaiements($dateDebut, $dateFin, $parametres);
-            
-            case 'depenses':
-                return $this->rapportDepenses($dateDebut, $dateFin, $parametres);
             
             case 'performance':
                 return $this->rapportPerformance($dateDebut, $dateFin, $parametres);
@@ -85,40 +81,6 @@ class ReportingService
     }
 
     /**
-     * Rapport des dépenses
-     */
-    private function rapportDepenses($dateDebut, $dateFin, $parametres)
-    {
-        $query = ESBTPDepense::with(['categorie', 'createur'])
-            ->whereBetween('date_depense', [$dateDebut, $dateFin])
-            ->whereIn('statut', ['validée', 'approuve']);
-
-        if (isset($parametres['categorie_id'])) {
-            $query->where('categorie_id', $parametres['categorie_id']);
-        }
-
-        $depenses = $query->get();
-
-        return [
-            'titre' => 'Rapport des Dépenses',
-            'periode' => $dateDebut->format('d/m/Y') . ' - ' . $dateFin->format('d/m/Y'),
-            'donnees' => [
-                'depenses' => $depenses,
-                'total_montant' => $depenses->sum('montant'),
-                'nombre_depenses' => $depenses->count(),
-                'moyenne_depense' => $depenses->avg('montant'),
-                'repartition_categories' => $this->repartitionParCategories($depenses),
-                'evolution_mensuelle' => $this->evolutionMensuelle($depenses, 'montant'),
-                'top_categories' => $this->getTopCategories($depenses, 5)
-            ],
-            'graphiques' => [
-                'evolution' => $this->preparerDonneesGraphique($depenses, 'date_depense', 'montant'),
-                'categories' => $this->preparerDonneesRepartition($depenses, 'categorie.nom')
-            ]
-        ];
-    }
-
-    /**
      * Rapport de performance financière
      */
     private function rapportPerformance($dateDebut, $dateFin, $parametres)
@@ -126,13 +88,6 @@ class ReportingService
         $recettes = ESBTPPaiement::whereBetween('date_paiement', [$dateDebut, $dateFin])
             ->where('statut', 'completé')
             ->sum('montant');
-
-        $depenses = ESBTPDepense::whereBetween('date_depense', [$dateDebut, $dateFin])
-            ->whereIn('statut', ['validée', 'approuve'])
-            ->sum('montant');
-
-        $resultatNet = $recettes - $depenses;
-        $margeNette = $recettes > 0 ? ($resultatNet / $recettes) * 100 : 0;
 
         // Comparaison avec période précédente
         $periodePrecedente = $this->calculerPeriodePrecedente($dateDebut, $dateFin);
@@ -146,16 +101,17 @@ class ReportingService
         return [
             'titre' => 'Rapport de Performance',
             'periode' => $dateDebut->format('d/m/Y') . ' - ' . $dateFin->format('d/m/Y'),
+            // Le suivi des depenses a ete retire du produit (commit 4997f872,
+            // « suppression fonctionnalites obsoletes module comptabilite ») :
+            // ni modele, ni table exploitee, ni saisie. Resultat net, marge,
+            // rentabilite, ratio de depenses et point d'equilibre en
+            // decoulaient tous. Les recalculer sans les depenses reviendrait a
+            // annoncer a un comptable une ecole sans charges, ce qui est faux
+            // et se lit comme un resultat. On ne les publie donc plus.
             'donnees' => [
                 'recettes' => $recettes,
-                'depenses' => $depenses,
-                'resultat_net' => $resultatNet,
-                'marge_nette' => round($margeNette, 2),
                 'croissance' => round($croissance, 2),
-                'rentabilite' => $resultatNet > 0 ? 'Positive' : 'Négative',
                 'indicateurs' => [
-                    'ratio_depenses' => $recettes > 0 ? round(($depenses / $recettes) * 100, 2) : 0,
-                    'point_equilibre' => $this->calculerPointEquilibre($recettes, $depenses),
                     'tresorerie' => $this->calculerTresorerie($dateDebut, $dateFin)
                 ]
             ]
@@ -209,16 +165,10 @@ class ReportingService
             $recettes = ESBTPPaiement::whereBetween('date_paiement', [$periode['debut'], $periode['fin']])
                 ->where('statut', 'completé')
                 ->sum('montant');
-                
-            $depenses = ESBTPDepense::whereBetween('date_depense', [$periode['debut'], $periode['fin']])
-                ->whereIn('statut', ['validée', 'approuve'])
-                ->sum('montant');
 
             $donnees[] = [
                 'periode' => $periode['label'],
                 'recettes' => $recettes,
-                'depenses' => $depenses,
-                'resultat' => $recettes - $depenses
             ];
         }
 
@@ -241,7 +191,6 @@ class ReportingService
             'sections' => [
                 'resume' => $this->resumeExecutif($dateDebut, $dateFin),
                 'paiements' => $this->rapportPaiements($dateDebut, $dateFin, $parametres)['donnees'],
-                'depenses' => $this->rapportDepenses($dateDebut, $dateFin, $parametres)['donnees'],
                 'performance' => $this->rapportPerformance($dateDebut, $dateFin, $parametres)['donnees'],
                 'recommandations' => $this->genererRecommandations($dateDebut, $dateFin)
             ]
@@ -281,21 +230,11 @@ class ReportingService
             });
     }
 
-    private function repartitionParCategories($depenses)
-    {
-        return $depenses->groupBy('categorie.nom')
-            ->map(function ($group) {
-                return [
-                    'nombre' => $group->count(),
-                    'montant' => $group->sum('montant')
-                ];
-            });
-    }
 
     private function evolutionMensuelle($collection, $champ)
     {
         return $collection->groupBy(function ($item) {
-            return Carbon::parse($item->date_paiement ?? $item->date_depense)->format('Y-m');
+            return Carbon::parse($item->date_paiement)->format('Y-m');
         })->map(function ($group) use ($champ) {
             return $group->sum($champ);
         });
@@ -316,20 +255,6 @@ class ReportingService
             ->values();
     }
 
-    private function getTopCategories($depenses, $limite)
-    {
-        return $depenses->groupBy('categorie_id')
-            ->map(function ($group) {
-                return [
-                    'categorie' => $group->first()->categorie,
-                    'total' => $group->sum('montant'),
-                    'nombre_depenses' => $group->count()
-                ];
-            })
-            ->sortByDesc('total')
-            ->take($limite)
-            ->values();
-    }
 
     private function preparerDonneesGraphique($collection, $champDate, $champValeur)
     {
@@ -367,10 +292,6 @@ class ReportingService
         ];
     }
 
-    private function calculerPointEquilibre($recettes, $depenses)
-    {
-        return $recettes >= $depenses ? 'Atteint' : 'Non atteint';
-    }
 
     private function calculerTresorerie($dateDebut, $dateFin)
     {
@@ -456,8 +377,6 @@ class ReportingService
         // Analyse des tendances sur les données
         return [
             'recettes' => 'stable',
-            'depenses' => 'croissance',
-            'resultat' => 'stable'
         ];
     }
 
@@ -467,17 +386,10 @@ class ReportingService
             ->where('statut', 'completé')
             ->sum('montant');
 
-        $depenses = ESBTPDepense::whereBetween('date_depense', [$dateDebut, $dateFin])
-            ->whereIn('statut', ['validée', 'approuve'])
-            ->sum('montant');
-
         return [
             'recettes_totales' => $recettes,
-            'depenses_totales' => $depenses,
-            'resultat_net' => $recettes - $depenses,
             'points_cles' => [
                 'Principal mode de paiement : Mobile Money',
-                'Catégorie de dépense principale : Fournitures',
                 'Taux de recouvrement : 78%'
             ]
         ];
