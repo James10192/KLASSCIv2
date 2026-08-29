@@ -29,6 +29,25 @@
     .cd-kpi-value { font-size: 1.35rem; font-weight: 700; color: #fff; }
     .cd-kpi-label { font-size: .72rem; color: rgba(255,255,255,.65); margin-top: .15rem; }
 
+    /* La ligne entiere est un declencheur : elle doit le dire. Pas de
+       transform au survol, un dropdown ou un modal ouvert par-dessus s'en
+       trouverait mal place (piege maison des contextes d'empilement). */
+    .cd-ligne { cursor: pointer; }
+    .cd-ligne:hover td { background: #f8fafc; }
+
+    .cd-dossier-grille { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem 1.5rem; }
+    @@media (max-width: 640px) { .cd-dossier-grille { grid-template-columns: 1fr; } }
+    .cd-bloc-titre {
+        font-size: .68rem; text-transform: uppercase; letter-spacing: .6px;
+        color: #64748b; font-weight: 700; margin-bottom: .35rem;
+    }
+    .cd-champ { display: flex; justify-content: space-between; gap: 1rem; padding: .3rem 0; border-bottom: 1px solid #f1f5f9; }
+    .cd-champ:last-child { border-bottom: 0; }
+    .cd-champ-nom { color: #64748b; font-size: .8rem; }
+    .cd-champ-valeur { color: #1e293b; font-size: .85rem; font-weight: 600; text-align: right; }
+    .cd-bloc { grid-column: span 2; }
+    @@media (max-width: 640px) { .cd-bloc { grid-column: span 1; } }
+
     .cd-card {
         background: #fff; border: 1px solid #e2e8f0; border-radius: 14px;
         box-shadow: 0 1px 3px rgba(15,23,42,.04), 0 1px 2px rgba(15,23,42,.06);
@@ -67,6 +86,10 @@
 
 @section('content')
 <div class="dashboard-acasi">
+    {{-- .dashboard-acasi est la coquille flex du gabarit (barre laterale + contenu).
+         Sans .main-content, le hero et le tableau en devenaient deux COLONNES :
+         le titre se retrouvait a gauche, la liste a cote. --}}
+    <div class="main-content">
     <div class="cd-hero">
         <div class="cd-hero-top">
             <div class="cd-hero-left">
@@ -130,7 +153,43 @@
                     </thead>
                     <tbody>
                         @foreach($candidatures as $c)
-                            <tr>
+                            @php
+                                // Tout ce que le candidat a declare, rassemble pour le modal.
+                                $_dossier = [
+                                    'nom' => $c->nomComplet(),
+                                    'naissance' => trim(($c->date_naissance?->format('d/m/Y') ?: '')
+                                        .($c->lieu_naissance ? ' à '.$c->lieu_naissance : '')),
+                                    'sexe' => $c->sexe ? ($c->sexe === 'F' ? 'Féminin' : 'Masculin') : '',
+                                    'nationalite' => (string) $c->nationalite,
+                                    'telephone' => \App\Domain\Notifications\PhoneFormatter::toReadable($c->telephone) ?: (string) $c->telephone,
+                                    'email' => (string) $c->email,
+                                    'residence' => collect([$c->commune, $c->ville])->filter()->join(', '),
+                                    'voeu' => $c->voeu() !== '' ? $c->voeu() : '',
+                                    'annee' => (string) $c->anneeUniversitaire?->name,
+                                    'serie_bac' => (string) $c->serie_bac,
+                                    'etablissement_origine' => (string) $c->etablissement_origine,
+                                    'annee_bac' => (string) $c->annee_bac,
+                                    'affectation' => $c->affectation_status
+                                        ? (\App\Models\ESBTPCandidature::affectationsDeclarables()[$c->affectation_status] ?? $c->affectation_status)
+                                        : '',
+                                    'tuteur_nom' => (string) $c->tuteur_nom,
+                                    'tuteur_lien' => (string) $c->tuteur_lien,
+                                    'tuteur_telephone' => \App\Domain\Notifications\PhoneFormatter::toReadable($c->tuteur_telephone) ?: (string) $c->tuteur_telephone,
+                                    'tuteur_profession' => (string) $c->tuteur_profession,
+                                    'message' => (string) $c->message,
+                                    'recue_le' => (string) $c->created_at?->format('d/m/Y à H:i'),
+                                    'statut' => (string) $c->statut,
+                                    'motif_rejet' => (string) $c->motif_rejet,
+                                    'traitable' => $c->estTraitable(),
+                                    'url_accepter' => route('esbtp.candidatures.accepter', $c),
+                                    'id' => $c->id,
+                                ];
+                            @endphp
+                            {{-- La ligne entiere ouvre le dossier : c'est le geste le plus
+                                 rapide, et decider sur une ligne de tableau demandait sinon de
+                                 deviner ce que le candidat avait declare. Le bouton « Voir »
+                                 reste, pour qui cherche une cible explicite. --}}
+                            <tr class="cd-ligne" data-dossier='@json($_dossier)'>
                                 <td>
                                     <strong>{{ $c->nomComplet() }}</strong>
                                     <div class="cd-contact">
@@ -196,6 +255,9 @@
                                     @can('inscriptions.candidatures.process')
                                         @if($c->estTraitable())
                                             <div class="cd-actions">
+                                                <button type="button" class="btn-acasi secondary btn-sm cd-voir">
+                                                    <i class="fas fa-eye"></i> Voir
+                                                </button>
                                                 <form method="POST" action="{{ route('esbtp.candidatures.accepter', $c) }}">
                                                     @csrf
                                                     <button type="submit" class="btn-acasi primary btn-sm">
@@ -210,6 +272,9 @@
                                             </div>
                                         @else
                                             <div class="cd-actions">
+                                                <button type="button" class="btn-acasi secondary btn-sm cd-voir">
+                                                    <i class="fas fa-eye"></i> Voir
+                                                </button>
                                                 {{-- La suite du parcours. Sans ce lien, la scolarité
                                                      retaperait à la main ce que le candidat a déjà
                                                      saisi. Ne pas compter les champs ici : le compte
@@ -240,6 +305,43 @@
     </div>
 
     <div style="margin-top:1rem;">{{ $candidatures->links() }}</div>
+    </div>
+</div>
+
+{{-- Le dossier complet, avant de decider.
+     Une ligne de tableau ne tient pas ce que le candidat a declare : la serie du
+     bac, l'etablissement d'origine, le tuteur et son lien, le message libre.
+     Decider sans les avoir lus, c'est decider a l'aveugle — et une acceptation
+     ne se reprend pas depuis cet ecran. --}}
+<div class="modal fade" id="cdDossierModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div>
+                    <h5 class="modal-title" id="cdDossierNom"></h5>
+                    <div class="cd-contact" id="cdDossierRecue"></div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="cd-dossier-grille" id="cdDossierCorps"></div>
+            </div>
+            <div class="modal-footer" id="cdDossierPied">
+                <button type="button" class="btn-acasi secondary" data-bs-dismiss="modal">Fermer</button>
+                @can('inscriptions.candidatures.process')
+                    <form method="POST" id="cdDossierAccepter" style="display:none;">
+                        @csrf
+                        <button type="submit" class="btn-acasi primary">
+                            <i class="fas fa-check"></i> Accepter
+                        </button>
+                    </form>
+                    <button type="button" class="btn-acasi warning" id="cdDossierRejeter" style="display:none;">
+                        <i class="fas fa-times"></i> Rejeter
+                    </button>
+                @endcan
+            </div>
+        </div>
+    </div>
 </div>
 
 @can('inscriptions.candidatures.process')
@@ -270,7 +372,115 @@
 
 @push('scripts')
 <script>
+// Le dossier complet, ouvert par la ligne entiere ou par le bouton « Voir ».
 document.addEventListener('DOMContentLoaded', function () {
+    var dossierEl = document.getElementById('cdDossierModal');
+
+    if (dossierEl) {
+        var corps = document.getElementById('cdDossierCorps');
+        var titre = document.getElementById('cdDossierNom');
+        var recue = document.getElementById('cdDossierRecue');
+        var formAccepter = document.getElementById('cdDossierAccepter');
+        var boutonRejeter = document.getElementById('cdDossierRejeter');
+
+        // L'ordre de lecture d'un dossier : qui, comment le joindre, ce qu'il
+        // demande, d'ou il vient, qui repond de lui, ce qu'il a ecrit.
+        var BLOCS = [
+            ['Identite', [['naissance', 'Naissance'], ['sexe', 'Sexe'], ['nationalite', 'Nationalite']]],
+            ['Contact', [['telephone', 'Telephone'], ['email', 'E-mail'], ['residence', 'Residence']]],
+            ['Voeu', [['voeu', 'Formation'], ['annee', 'Annee visee']]],
+            ['Scolarite anterieure', [['serie_bac', 'Serie du bac'], ['annee_bac', 'Annee du bac'], ['etablissement_origine', 'Etablissement'], ['affectation', 'Affectation declaree']]],
+            ['Tuteur', [['tuteur_nom', 'Nom'], ['tuteur_lien', 'Lien'], ['tuteur_telephone', 'Telephone'], ['tuteur_profession', 'Profession']]],
+        ];
+
+        var ouvrir = function (dossier) {
+            titre.textContent = dossier.nom;
+            recue.textContent = dossier.recue_le ? 'Recue le ' + dossier.recue_le : '';
+            corps.innerHTML = '';
+
+            BLOCS.forEach(function (bloc) {
+                // Un bloc dont aucun champ n'est renseigne ne s'affiche pas :
+                // une colonne de tirets ne dit rien que l'absence ne dise deja.
+                var champs = bloc[1].filter(function (c) { return (dossier[c[0]] || '').trim() !== ''; });
+
+                if (champs.length === 0) return;
+
+                var div = document.createElement('div');
+                var html = '<div class="cd-bloc-titre">' + bloc[0] + '</div>';
+
+                champs.forEach(function (c) {
+                    var valeur = document.createElement('span');
+                    valeur.textContent = dossier[c[0]];
+                    html += '<div class="cd-champ"><span class="cd-champ-nom">' + c[1]
+                        + '</span><span class="cd-champ-valeur">' + valeur.innerHTML + '</span></div>';
+                });
+
+                div.innerHTML = html;
+                corps.appendChild(div);
+            });
+
+            // Le message libre et le motif de rejet prennent toute la largeur :
+            // ce sont des phrases, pas des valeurs.
+            [['message', 'Message du candidat'], ['motif_rejet', 'Motif du rejet']].forEach(function (c) {
+                if (!(dossier[c[0]] || '').trim()) return;
+
+                var div = document.createElement('div');
+                div.className = 'cd-bloc';
+                var p = document.createElement('p');
+                p.className = 'cd-champ-valeur';
+                p.style.textAlign = 'left';
+                p.style.fontWeight = '500';
+                p.textContent = dossier[c[0]];
+                div.innerHTML = '<div class="cd-bloc-titre">' + c[1] + '</div>';
+                div.appendChild(p);
+                corps.appendChild(div);
+            });
+
+            // Les decisions ne s'affichent que sur un dossier qui en attend une.
+            if (formAccepter) {
+                formAccepter.style.display = dossier.traitable ? '' : 'none';
+                formAccepter.action = dossier.url_accepter;
+            }
+
+            if (boutonRejeter) {
+                boutonRejeter.style.display = dossier.traitable ? '' : 'none';
+                boutonRejeter.dataset.rejetId = dossier.id;
+                boutonRejeter.dataset.rejetNom = dossier.nom;
+            }
+
+            new bootstrap.Modal(dossierEl).show();
+        };
+
+        var lire = function (element) {
+            try {
+                return JSON.parse(element.dataset.dossier);
+            } catch (e) {
+                return null;
+            }
+        };
+
+        document.querySelectorAll('tr.cd-ligne').forEach(function (ligne) {
+            ligne.addEventListener('click', function (ev) {
+                // Un clic sur une action reste un clic sur cette action : sans
+                // cette garde, accepter ouvrirait aussi le dossier par-dessus.
+                if (ev.target.closest('a, button:not(.cd-voir), form, input, select, textarea')) return;
+
+                var dossier = lire(ligne);
+                if (dossier) ouvrir(dossier);
+            });
+        });
+
+        document.querySelectorAll('.cd-voir').forEach(function (bouton) {
+            bouton.addEventListener('click', function (ev) {
+                ev.stopPropagation();
+
+                var ligne = bouton.closest('tr.cd-ligne');
+                var dossier = ligne ? lire(ligne) : null;
+                if (dossier) ouvrir(dossier);
+            });
+        });
+    }
+
     var modalEl = document.getElementById('cdRejetModal');
     if (!modalEl) return;
 
@@ -284,6 +494,23 @@ document.addEventListener('DOMContentLoaded', function () {
         bouton.addEventListener('click', function () {
             form.action = gabarit.replace('__ID__', bouton.dataset.rejetId);
             nom.textContent = bouton.dataset.rejetNom;
+
+            // Fermer le dossier d'abord : deux modals Bootstrap superposes
+            // laissent derriere eux un voile que rien ne retire, et la page
+            // reste inutilisable jusqu'au rechargement.
+            var dossierOuvert = document.getElementById('cdDossierModal');
+            var instance = dossierOuvert ? bootstrap.Modal.getInstance(dossierOuvert) : null;
+
+            if (instance) {
+                dossierOuvert.addEventListener('hidden.bs.modal', function ouvrirMotif() {
+                    dossierOuvert.removeEventListener('hidden.bs.modal', ouvrirMotif);
+                    new bootstrap.Modal(modalEl).show();
+                });
+                instance.hide();
+
+                return;
+            }
+
             new bootstrap.Modal(modalEl).show();
         });
     });
