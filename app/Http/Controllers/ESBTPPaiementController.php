@@ -430,6 +430,8 @@ class ESBTPPaiementController extends Controller
             // Créer le paiement
             $paiement = new ESBTPPaiement($validated);
             $paiement->annee_universitaire_id = $inscription->annee_universitaire_id;
+            $categoryName = mb_strtolower($fraisCategory->name ?? '');
+            $paiement->type_paiement = str_contains($categoryName, 'inscription') ? 'inscription' : 'scolarite';
             $paiement->numero_recu = $numeroRecu;
             $paiement->status = 'en_attente';
             $paiement->motif = $fraisCategory ? $fraisCategory->name : 'Paiement de frais';
