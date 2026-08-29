@@ -1222,32 +1222,14 @@ $(function() {
         $('#submit-section').hide();
     }
 
-    // ========================================
-    // PROTECTION CONTRE LES DOUBLE-CLICS
-    // ========================================
     let isSubmitting = false;
-    let originalButtonText = '';
 
-    // Handler sur le BOUTON SUBMIT - se déclenche IMMÉDIATEMENT au clic
-    $('#payment-form').off('click', 'button[type="submit"]').on('click', 'button[type="submit"]', function(e) {
-        const $submitBtn = $(this);
-
-        // Si déjà en cours de soumission, bloquer immédiatement
-        if (isSubmitting) {
-            e.preventDefault();
-            e.stopImmediatePropagation();
-            debugWarn('⚠️ Clic bloqué, soumission déjà en cours');
-            return false;
-        }
-
-        // QW3 : Garde-fou montant inhabituel — bloquer si > seuil sans confirmation cochée
+    $('#payment-form').on('submit', function(e) {
         const montantVal = parseInt($('#montant').val() || 0);
         const threshold = parseInt(@json((int) ($unusualAmountThreshold ?? 500000)));
         const $confirmCheckbox = $('input[name="confirmed_unusual_amount"]');
         if (montantVal > threshold && $confirmCheckbox.length > 0 && !$confirmCheckbox.is(':checked')) {
             e.preventDefault();
-            e.stopImmediatePropagation();
-            // Scroll smooth vers le warning + focus checkbox pour faciliter
             const $alert = $('.qw3-unusual-alert');
             if ($alert.length) {
                 $alert[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -1256,30 +1238,16 @@ $(function() {
             return false;
         }
 
-        // Marquer comme en cours de soumission IMMÉDIATEMENT
+        if (isSubmitting) {
+            e.preventDefault();
+            return false;
+        }
+
         isSubmitting = true;
-        debugLog('🔒 Bouton cliqué, verrouillage immédiat');
-
-        // Sauvegarder le texte original
-        originalButtonText = $submitBtn.html();
-
-        // Désactiver le bouton IMMÉDIATEMENT (avant même le submit)
+        const $submitBtn = $(this).find('button[type="submit"]');
         $submitBtn.prop('disabled', true);
         $submitBtn.html('<i class="fas fa-spinner fa-spin me-2"></i>Enregistrement en cours...');
         $submitBtn.addClass('disabled');
-    });
-
-    // Handler de soumission (sécurité supplémentaire)
-    $('#payment-form').on('submit', function(e) {
-        // Si déjà en cours de soumission, bloquer (ne devrait jamais arriver grâce au click handler)
-        if (isSubmitting) {
-            const $submitBtn = $(this).find('button[type="submit"]');
-            if (!$submitBtn.prop('disabled')) {
-                $submitBtn.prop('disabled', true);
-            }
-        }
-
-        // Laisser le formulaire se soumettre normalement
         return true;
     });
 });
