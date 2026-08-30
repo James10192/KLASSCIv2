@@ -53,19 +53,6 @@ class ESBTPCycle extends Model
     }
 
     /**
-     * Obtenir le nombre total d'étudiants dans ce cycle.
-     *
-     * @return int
-     */
-    public function getTotalStudentsAttribute()
-    {
-        return $this->specialties()
-            ->withCount('students')
-            ->get()
-            ->sum('students_count');
-    }
-
-    /**
      * Vérifie si le cycle peut être supprimé.
      *
      * @return bool

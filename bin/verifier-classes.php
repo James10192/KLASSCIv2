@@ -72,8 +72,10 @@
  * alias de facade n'etaient pas resolus, et un `strrpos` sans antislash
  * mangeait la premiere lettre des imports racine.
  *
- * La mesure se refait a tout moment, et c'est ce qui la rend utile :
- *   git show HEAD~1:bin/verifier-classes.php > bin/_a.php
+ * La mesure se refait a tout moment, et c'est ce qui la rend utile. La revision
+ * a citer est celle d'AVANT la reparation — cc27dc91, et non HEAD~1, qui la
+ * contient deja et rend donc zero :
+ *   git show cc27dc91:bin/verifier-classes.php > bin/_a.php
  *   php bin/_a.php app database routes config ; rm bin/_a.php
  * L'ancienne version crie 35 fois sur un arbre ou la nouvelle ne dit rien —
  * 22 `Auditable`, 9 `PDF`, 3 `DB`, 1 `ZipArchive`, tous demontrables comme

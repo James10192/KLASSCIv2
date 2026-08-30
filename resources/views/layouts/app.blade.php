@@ -2226,12 +2226,12 @@
                         @endcan
 
                         <div class="menu-accordion">
-                            <button class="menu-accordion-btn {{ Request::routeIs('esbtp.comptabilite.*') || Request::routeIs('esbtp.frais.*') || Request::routeIs('esbtp.fee-categories.*') || Request::routeIs('esbtp.payment-categories.*') || Request::routeIs('esbtp.fees.*') || Request::routeIs('esbtp.payments.*') ? 'active' : '' }}">
+                            <button class="menu-accordion-btn {{ Request::routeIs('esbtp.comptabilite.*') || Request::routeIs('esbtp.frais.*') || Request::routeIs('esbtp.fee-categories.*') || Request::routeIs('esbtp.payment-categories.*') || Request::routeIs('esbtp.payments.*') ? 'active' : '' }}">
                                 <div class="menu-icon"><i class="fas fa-coins"></i></div>
                                 <div class="menu-text">Comptabilité</div>
                                 <div class="menu-arrow"><i class="fas fa-chevron-down"></i></div>
                             </button>
-                            <div class="menu-accordion-content {{ Request::routeIs('esbtp.comptabilite.*') || Request::routeIs('esbtp.frais.*') || Request::routeIs('esbtp.fee-categories.*') || Request::routeIs('esbtp.payment-categories.*') || Request::routeIs('esbtp.fees.*') || Request::routeIs('esbtp.payments.*') ? 'show' : '' }}">
+                            <div class="menu-accordion-content {{ Request::routeIs('esbtp.comptabilite.*') || Request::routeIs('esbtp.frais.*') || Request::routeIs('esbtp.fee-categories.*') || Request::routeIs('esbtp.payment-categories.*') || Request::routeIs('esbtp.payments.*') ? 'show' : '' }}">
                                 <a href="{{ route('esbtp.frais.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.frais.index') ? 'active' : '' }}">
                                     <span class="menu-dot"></span>
                                     <span>Gestion des Frais</span>
