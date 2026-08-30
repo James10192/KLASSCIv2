@@ -526,6 +526,7 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
         // Niveaux d'etudes — pendant des filieres pour l'ouverture d'un tenant.
         Route::get('/niveaux', [App\Http\Controllers\API\CLI\CLINiveauEtudeController::class, 'index'])->name('niveaux.index');
         Route::post('/niveaux', [App\Http\Controllers\API\CLI\CLINiveauEtudeController::class, 'store'])->name('niveaux.store');
+        Route::post('/classes', [App\Http\Controllers\API\CLI\CLIClasseController::class, 'store'])->name('classes.store');
 
         // Diagnostic en lecture seule : evaluations dont la nature de la
         // matiere ne suit pas le systeme academique de la classe.

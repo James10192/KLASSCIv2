@@ -1,0 +1,71 @@
+{
+  "domaine": {"name": "Sciences et Technologies", "code": "ST"},
+  "mention": {"name": "Génie Civil", "code": "GC"},
+  "parcours": {"name": "Bâtiment", "code": "BAT", "credits_licence": 180, "credits_master": 120},
+  "filiere": {"name": "Génie Civil - Bâtiment", "code": "BAT"},
+  "niveaux": [
+    {"name": "Licence 1", "year": 1, "type": "Licence"},
+    {"name": "Licence 2", "year": 2, "type": "Licence"},
+    {"name": "Licence 3", "year": 3, "type": "Licence"}
+  ],
+  "ues": [
+    {"code":"MAT2101","name":"Mathématiques 1","type_ue":"fondamentale","credit":4,"niveau_year":1,"semestre":1,"ordre":1,"ecues":[
+      {"code":"MAT21011","name":"Algèbre 1","credit_ecue":2,"cm":30,"td":15,"tp":0,"projet":0,"tpe":35},
+      {"code":"MAT21012","name":"Analyse 1","credit_ecue":2,"cm":30,"td":15,"tp":0,"projet":0,"tpe":30}
+    ]},
+    {"code":"PHY2101","name":"Physique 1","type_ue":"fondamentale","credit":3,"niveau_year":1,"semestre":1,"ordre":2,"ecues":[
+      {"code":"PHY21011","name":"Physique générale","credit_ecue":1,"cm":30,"td":10,"tp":0,"projet":0,"tpe":20},
+      {"code":"PHY21012","name":"Mécanique 1","credit_ecue":2,"cm":25,"td":10,"tp":0,"projet":0,"tpe":15}
+    ]},
+    {"code":"CHI2101","name":"Chimie","type_ue":"fondamentale","credit":3,"niveau_year":1,"semestre":1,"ordre":3,"ecues":[
+      {"code":"CHI21011","name":"Chimie générale","credit_ecue":3,"cm":30,"td":10,"tp":0,"projet":0,"tpe":10}
+    ]},
+    {"code":"LAN2101","name":"Langue","type_ue":"transversale","credit":4,"niveau_year":1,"semestre":1,"ordre":4,"ecues":[
+      {"code":"LAN21011","name":"Technique d'expression écrite et orale","credit_ecue":2,"cm":20,"td":10,"tp":0,"projet":0,"tpe":10},
+      {"code":"LAN21012","name":"Anglais Général","credit_ecue":2,"cm":20,"td":10,"tp":0,"projet":0,"tpe":10}
+    ]},
+    {"code":"CDE2101","name":"Culture d'entreprise","type_ue":"transversale","credit":4,"niveau_year":1,"semestre":1,"ordre":5,"ecues":[
+      {"code":"CDE21011","name":"Entreprenariat","credit_ecue":2,"cm":20,"td":10,"tp":0,"projet":0,"tpe":10},
+      {"code":"CDE21012","name":"Economie","credit_ecue":2,"cm":20,"td":10,"tp":0,"projet":0,"tpe":10}
+    ]},
+    {"code":"IGC2101","name":"Initiation au Génie Civil","type_ue":"specialite","credit":6,"niveau_year":1,"semestre":1,"ordre":6,"ecues":[
+      {"code":"IGC21011","name":"Dessin industriel","credit_ecue":2,"cm":30,"td":10,"tp":0,"projet":0,"tpe":15},
+      {"code":"IGC21012","name":"Découverte du BTP","credit_ecue":2,"cm":30,"td":10,"tp":0,"projet":0,"tpe":15},
+      {"code":"IGC21013","name":"Technologie des engins de TP","credit_ecue":2,"cm":30,"td":10,"tp":0,"projet":0,"tpe":15}
+    ]},
+    {"code":"IGE2101","name":"Initiation au Génie de l'Eau","type_ue":"specialite","credit":6,"niveau_year":1,"semestre":1,"ordre":7,"ecues":[
+      {"code":"IGE21011","name":"Hydraulique générale","credit_ecue":3,"cm":30,"td":10,"tp":0,"projet":0,"tpe":20},
+      {"code":"IGE21012","name":"Hydraulique humaine","credit_ecue":3,"cm":30,"td":10,"tp":0,"projet":0,"tpe":20}
+    ]},
+    {"code":"MAT2102","name":"Mathématiques 2","type_ue":"fondamentale","credit":4,"niveau_year":1,"semestre":2,"ordre":1,"ecues":[
+      {"code":"MAT21021","name":"Algèbre 2","credit_ecue":2,"cm":20,"td":10,"tp":0,"projet":0,"tpe":10},
+      {"code":"MAT21022","name":"Analyse 2","credit_ecue":2,"cm":20,"td":10,"tp":0,"projet":0,"tpe":10}
+    ]},
+    {"code":"PHY2102","name":"Physique 2","type_ue":"fondamentale","credit":5,"niveau_year":1,"semestre":2,"ordre":2,"ecues":[
+      {"code":"PHY21021","name":"Mécanique 2","credit_ecue":2,"cm":20,"td":10,"tp":0,"projet":0,"tpe":15},
+      {"code":"PHY21022","name":"Physique du bâtiment","credit_ecue":3,"cm":25,"td":15,"tp":0,"projet":0,"tpe":15}
+    ]},
+    {"code":"LAN2102","name":"Langue S2","type_ue":"transversale","credit":3,"niveau_year":1,"semestre":2,"ordre":3,"ecues":[
+      {"code":"LAN21021","name":"Communication","credit_ecue":1,"cm":15,"td":10,"tp":0,"projet":0,"tpe":15},
+      {"code":"LAN21022","name":"Anglais industriel 1","credit_ecue":2,"cm":20,"td":10,"tp":0,"projet":0,"tpe":20}
+    ]},
+    {"code":"GES2102","name":"Gestion 1","type_ue":"transversale","credit":3,"niveau_year":1,"semestre":2,"ordre":4,"ecues":[
+      {"code":"GES21021","name":"Comptabilité générale","credit_ecue":1,"cm":15,"td":10,"tp":0,"projet":0,"tpe":10},
+      {"code":"GES21022","name":"Comptabilité analytique","credit_ecue":2,"cm":15,"td":10,"tp":0,"projet":0,"tpe":10}
+    ]},
+    {"code":"JUR2102","name":"Relations juridiques","type_ue":"transversale","credit":3,"niveau_year":1,"semestre":2,"ordre":5,"ecues":[
+      {"code":"JUR21021","name":"Droit Civil","credit_ecue":1,"cm":20,"td":10,"tp":0,"projet":0,"tpe":10},
+      {"code":"JUR21022","name":"Droit de la construction","credit_ecue":2,"cm":15,"td":10,"tp":0,"projet":0,"tpe":10}
+    ]},
+    {"code":"MEC2102","name":"Mécanique","type_ue":"specialite","credit":6,"niveau_year":1,"semestre":2,"ordre":6,"ecues":[
+      {"code":"MEC21021","name":"Dessin industriel","credit_ecue":2,"cm":25,"td":10,"tp":0,"projet":0,"tpe":15},
+      {"code":"MEC21022","name":"Mécanique des fluides","credit_ecue":2,"cm":25,"td":15,"tp":0,"projet":0,"tpe":10},
+      {"code":"MEC21023","name":"Résistance Des Matériaux (RDM) 1","credit_ecue":2,"cm":30,"td":20,"tp":0,"projet":0,"tpe":20}
+    ]},
+    {"code":"MTR2102","name":"Matériaux 1","type_ue":"specialite","credit":6,"niveau_year":1,"semestre":2,"ordre":7,"ecues":[
+      {"code":"MTR21021","name":"Découverte des matériaux de construction","credit_ecue":1,"cm":20,"td":10,"tp":0,"projet":0,"tpe":10},
+      {"code":"MTR21022","name":"Géologie des matériaux 1","credit_ecue":2,"cm":30,"td":10,"tp":0,"projet":0,"tpe":20},
+      {"code":"MTR21023","name":"Géotechnique 1","credit_ecue":3,"cm":30,"td":15,"tp":0,"projet":0,"tpe":20}
+    ]}
+  ]
+}

@@ -1,0 +1,124 @@
+{
+  "domaine": {"name": "Sciences Juridiques et Politiques", "code": "SJP"},
+  "mention": {"name": "Droit", "code": "DROIT"},
+  "parcours": {"name": "Droit (tronc commun)", "code": "DROIT-TC", "credits_licence": 180, "credits_master": 120},
+  "filiere": {"name": "Droit", "code": "DROIT"},
+  "niveaux": [
+    {"name": "Licence 1", "year": 1, "type": "Licence"},
+    {"name": "Licence 2", "year": 2, "type": "Licence"},
+    {"name": "Licence 3", "year": 3, "type": "Licence"}
+  ],
+  "ues": [
+    {"code":"IGD3111","name":"Introduction générale au droit","type_ue":"fondamentale","credit":4,"niveau_year":1,"semestre":1,"ordre":1,"ecues":[
+      {"code":"IGD31111","name":"La notion du droit","credit_ecue":2,"cm":14,"td":10,"tp":0,"projet":0,"tpe":26},
+      {"code":"IGD31112","name":"La réalisation du droit","credit_ecue":2,"cm":14,"td":10,"tp":0,"projet":0,"tpe":26}
+    ]},
+    {"code":"TGC3111","name":"Théorie générale du droit constitutionnel","type_ue":"fondamentale","credit":6,"niveau_year":1,"semestre":1,"ordre":2,"ecues":[
+      {"code":"TGC31111","name":"Théorie générale de l'Etat","credit_ecue":3,"cm":24,"td":12,"tp":0,"projet":0,"tpe":39},
+      {"code":"TGC31112","name":"Théorie générale de la Constitution","credit_ecue":3,"cm":24,"td":12,"tp":0,"projet":0,"tpe":39}
+    ]},
+    {"code":"DCP3111","name":"Droit civil","type_ue":"fondamentale","credit":6,"niveau_year":1,"semestre":1,"ordre":3,"ecues":[
+      {"code":"DCP31111","name":"L'état des personnes","credit_ecue":3,"cm":24,"td":12,"tp":0,"projet":0,"tpe":39},
+      {"code":"DCP31112","name":"Les incapacités","credit_ecue":3,"cm":24,"td":12,"tp":0,"projet":0,"tpe":39}
+    ]},
+    {"code":"IHD3111","name":"Introduction historique au droit africain","type_ue":"fondamentale","credit":6,"niveau_year":1,"semestre":1,"ordre":4,"ecues":[
+      {"code":"IHD31111","name":"Institutions de l'Egypte pharaonique","credit_ecue":3,"cm":24,"td":12,"tp":0,"projet":0,"tpe":39},
+      {"code":"IHD31112","name":"Institutions et droits traditionnels africains","credit_ecue":3,"cm":24,"td":12,"tp":0,"projet":0,"tpe":39}
+    ]},
+    {"code":"REI3111","name":"Relations internationales","type_ue":"fondamentale","credit":2,"niveau_year":1,"semestre":1,"ordre":5,"ecues":[
+      {"code":"REI31111","name":"Les acteurs des relations internationales","credit_ecue":1,"cm":14,"td":0,"tp":0,"projet":0,"tpe":13},
+      {"code":"REI31112","name":"Les normes des relations internationales","credit_ecue":1,"cm":14,"td":0,"tp":0,"projet":0,"tpe":13}
+    ]},
+    {"code":"IMJ3111","name":"Initiation à la méthodologie juridique","type_ue":"methodologique","credit":2,"niveau_year":1,"semestre":1,"ordre":6,"ecues":[
+      {"code":"IMJ31111","name":"Méthodologie de la dissertation et du commentaire","credit_ecue":1,"cm":0,"td":16,"tp":0,"projet":0,"tpe":13},
+      {"code":"IMJ31112","name":"Méthodologie du cas pratique et de la consultation juridique","credit_ecue":1,"cm":0,"td":16,"tp":0,"projet":0,"tpe":13}
+    ]},
+    {"code":"COG3111","name":"Connaissances générales","type_ue":"culture_generale","credit":4,"niveau_year":1,"semestre":1,"ordre":7,"ecues":[
+      {"code":"COG31111","name":"Anglais juridique","credit_ecue":1,"cm":12,"td":0,"tp":0,"projet":0,"tpe":13},
+      {"code":"COG31112","name":"Initiation à l'informatique","credit_ecue":1,"cm":12,"td":0,"tp":0,"projet":0,"tpe":13},
+      {"code":"COG31113","name":"Civisme et citoyenneté","credit_ecue":2,"cm":12,"td":0,"tp":0,"projet":0,"tpe":13}
+    ]},
+    {"code":"REP3112","name":"Régimes politiques","type_ue":"specialite","credit":6,"niveau_year":1,"semestre":2,"ordre":1,"ecues":[
+      {"code":"REP31121","name":"Régimes politiques étrangers","credit_ecue":3,"cm":24,"td":12,"tp":0,"projet":0,"tpe":39},
+      {"code":"REP31122","name":"Régime politique ivoirien","credit_ecue":3,"cm":24,"td":12,"tp":0,"projet":0,"tpe":39}
+    ]},
+    {"code":"DCF3112","name":"Droit civil - La famille","type_ue":"specialite","credit":6,"niveau_year":1,"semestre":2,"ordre":2,"ecues":[
+      {"code":"DCF31121","name":"Les différentes formes d'unions","credit_ecue":3,"cm":24,"td":12,"tp":0,"projet":0,"tpe":39},
+      {"code":"DCF31122","name":"La filiation","credit_ecue":3,"cm":24,"td":12,"tp":0,"projet":0,"tpe":39}
+    ]},
+    {"code":"HMF3112","name":"Histoire des institutions méditerranéennes et du droit foncier","type_ue":"specialite","credit":6,"niveau_year":1,"semestre":2,"ordre":3,"ecues":[
+      {"code":"HMF31121","name":"Institutions méditerranéennes","credit_ecue":3,"cm":24,"td":12,"tp":0,"projet":0,"tpe":39},
+      {"code":"HMF31122","name":"Histoire du droit foncier","credit_ecue":3,"cm":24,"td":12,"tp":0,"projet":0,"tpe":39}
+    ]},
+    {"code":"TEJ3112","name":"Techniques juridiques","type_ue":"methodologique","credit":2,"niveau_year":1,"semestre":2,"ordre":4,"ecues":[
+      {"code":"TEJ31111","name":"Techniques d'expression juridique","credit_ecue":1,"cm":12,"td":0,"tp":0,"projet":0,"tpe":26},
+      {"code":"TEJ31112","name":"Initiation au raisonnement juridique","credit_ecue":1,"cm":12,"td":0,"tp":0,"projet":0,"tpe":26}
+    ]},
+    {"code":"SPO3112","name":"Sciences politiques","type_ue":"culture_generale","credit":4,"niveau_year":1,"semestre":2,"ordre":5,"ecues":[
+      {"code":"SPO31121","name":"Introduction à la science politique","credit_ecue":2,"cm":24,"td":0,"tp":0,"projet":0,"tpe":26},
+      {"code":"SPO31122","name":"Introduction à la sociologie politique","credit_ecue":2,"cm":24,"td":0,"tp":0,"projet":0,"tpe":26}
+    ]},
+    {"code":"DCO3112","name":"Droit communautaire","type_ue":"culture_generale","credit":4,"niveau_year":1,"semestre":2,"ordre":6,"ecues":[
+      {"code":"DCO31121","name":"Droit communautaire européen","credit_ecue":2,"cm":24,"td":0,"tp":0,"projet":0,"tpe":26},
+      {"code":"DCO31122","name":"Droit communautaire africain","credit_ecue":2,"cm":24,"td":0,"tp":0,"projet":0,"tpe":26}
+    ]},
+    {"code":"ECP3112","name":"Economie politique","type_ue":"culture_generale","credit":2,"niveau_year":1,"semestre":2,"ordre":7,"ecues":[
+      {"code":"ECP31121","name":"Microéconomie","credit_ecue":1,"cm":12,"td":0,"tp":0,"projet":0,"tpe":13},
+      {"code":"ECP31122","name":"Macroéconomie","credit_ecue":1,"cm":12,"td":0,"tp":0,"projet":0,"tpe":13}
+    ]},
+    {"code":"CON3123","name":"Contrat","type_ue":"fondamentale","credit":6,"niveau_year":2,"semestre":3,"ordre":1,"ecues":[
+      {"code":"CON31231","name":"Formation du contrat","credit_ecue":3,"cm":24,"td":12,"tp":0,"projet":0,"tpe":39},
+      {"code":"CON31232","name":"Exécution du contrat","credit_ecue":3,"cm":24,"td":12,"tp":0,"projet":0,"tpe":39}
+    ]},
+    {"code":"OAA3123","name":"Organisation et action administratives","type_ue":"fondamentale","credit":6,"niveau_year":2,"semestre":3,"ordre":2,"ecues":[
+      {"code":"OAA31231","name":"Organisation administrative","credit_ecue":3,"cm":24,"td":12,"tp":0,"projet":0,"tpe":39},
+      {"code":"OAA31232","name":"Action administrative","credit_ecue":3,"cm":24,"td":12,"tp":0,"projet":0,"tpe":39}
+    ]},
+    {"code":"HID3123","name":"Histoire du droit des obligations et de la justice","type_ue":"fondamentale","credit":6,"niveau_year":2,"semestre":3,"ordre":3,"ecues":[
+      {"code":"HID31231","name":"Histoire du droit des obligations","credit_ecue":3,"cm":24,"td":12,"tp":0,"projet":0,"tpe":39},
+      {"code":"HID31232","name":"Histoire de la justice","credit_ecue":3,"cm":24,"td":12,"tp":0,"projet":0,"tpe":39}
+    ]},
+    {"code":"DPG3123","name":"Droit pénal général","type_ue":"fondamentale","credit":6,"niveau_year":2,"semestre":3,"ordre":4,"ecues":[
+      {"code":"DPG31231","name":"Infraction","credit_ecue":3,"cm":24,"td":12,"tp":0,"projet":0,"tpe":39},
+      {"code":"DPG31232","name":"Répression","credit_ecue":3,"cm":24,"td":12,"tp":0,"projet":0,"tpe":39}
+    ]},
+    {"code":"MEA3123","name":"Méthodologie appliquée","type_ue":"methodologique","credit":1,"niveau_year":2,"semestre":3,"ordre":5,"ecues":[
+      {"code":"MEA31231","name":"Initiation à la rédaction de la demande d'emploi et du CV","credit_ecue":1,"cm":0,"td":12,"tp":0,"projet":0,"tpe":13}
+    ]},
+    {"code":"DRH3123","name":"Droits de l'homme","type_ue":"culture_generale","credit":3,"niveau_year":2,"semestre":3,"ordre":6,"ecues":[
+      {"code":"DRH31231","name":"Notion de droits de l'homme","credit_ecue":1,"cm":12,"td":0,"tp":0,"projet":0,"tpe":13},
+      {"code":"DRH31232","name":"Protection des droits de l'homme","credit_ecue":2,"cm":12,"td":0,"tp":0,"projet":0,"tpe":26}
+    ]},
+    {"code":"ACN3123","name":"Anglais et culture numérique","type_ue":"culture_generale","credit":2,"niveau_year":2,"semestre":3,"ordre":7,"ecues":[
+      {"code":"ACN31231","name":"Connaissance de l'environnement numérique","credit_ecue":1,"cm":18,"td":0,"tp":0,"projet":0,"tpe":13},
+      {"code":"ACN31232","name":"Anglais : Introduction to the Common law","credit_ecue":1,"cm":18,"td":0,"tp":0,"projet":0,"tpe":13}
+    ]},
+    {"code":"FAJ3124","name":"Faits juridiques","type_ue":"fondamentale","credit":6,"niveau_year":2,"semestre":4,"ordre":1,"ecues":[
+      {"code":"FAJ31241","name":"Responsabilité civile","credit_ecue":3,"cm":24,"td":12,"tp":0,"projet":0,"tpe":39},
+      {"code":"FAJ31242","name":"Quasi-contrats","credit_ecue":3,"cm":24,"td":12,"tp":0,"projet":0,"tpe":39}
+    ]},
+    {"code":"FIP3124","name":"Finances publiques","type_ue":"fondamentale","credit":6,"niveau_year":2,"semestre":4,"ordre":2,"ecues":[
+      {"code":"FIP31241","name":"Droit budgétaire","credit_ecue":3,"cm":24,"td":12,"tp":0,"projet":0,"tpe":39},
+      {"code":"FIP31242","name":"Droit de la comptabilité publique","credit_ecue":3,"cm":24,"td":12,"tp":0,"projet":0,"tpe":39}
+    ]},
+    {"code":"CAA3124","name":"Contrôle de l'action administrative","type_ue":"fondamentale","credit":6,"niveau_year":2,"semestre":4,"ordre":3,"ecues":[
+      {"code":"CAA31241","name":"Responsabilité administrative","credit_ecue":3,"cm":24,"td":12,"tp":0,"projet":0,"tpe":39},
+      {"code":"CAA31242","name":"Recours pour excès de pouvoir","credit_ecue":3,"cm":24,"td":12,"tp":0,"projet":0,"tpe":39}
+    ]},
+    {"code":"DRC3124","name":"Droit colonial","type_ue":"fondamentale","credit":6,"niveau_year":2,"semestre":4,"ordre":4,"ecues":[
+      {"code":"DRC31241","name":"Droit public colonial","credit_ecue":3,"cm":24,"td":12,"tp":0,"projet":0,"tpe":39},
+      {"code":"DRC31242","name":"Droit privé colonial","credit_ecue":3,"cm":24,"td":12,"tp":0,"projet":0,"tpe":39}
+    ]},
+    {"code":"OJI3124","name":"Organisation juridictionnelle ivoirienne","type_ue":"fondamentale","credit":2,"niveau_year":2,"semestre":4,"ordre":5,"ecues":[
+      {"code":"OJI31241","name":"Juridictions judiciaires","credit_ecue":1,"cm":12,"td":0,"tp":0,"projet":0,"tpe":13},
+      {"code":"OJI31242","name":"Juridictions administratives","credit_ecue":1,"cm":12,"td":0,"tp":0,"projet":0,"tpe":13}
+    ]},
+    {"code":"DAE3124","name":"Droits de l'agriculture et de l'environnement","type_ue":"specialite","credit":3,"niveau_year":2,"semestre":4,"ordre":6,"ecues":[
+      {"code":"DAE31241","name":"Droit de l'agriculture","credit_ecue":1,"cm":12,"td":0,"tp":0,"projet":0,"tpe":13},
+      {"code":"DAE31242","name":"Droit de l'environnement","credit_ecue":2,"cm":24,"td":0,"tp":0,"projet":0,"tpe":26}
+    ]},
+    {"code":"ENT3124","name":"Entreprenariat","type_ue":"culture_generale","credit":1,"niveau_year":2,"semestre":4,"ordre":7,"ecues":[
+      {"code":"ENT31241","name":"Entreprenariat agricole","credit_ecue":1,"cm":12,"td":0,"tp":0,"projet":0,"tpe":13}
+    ]}
+  ]
+}

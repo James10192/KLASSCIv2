@@ -1,0 +1,65 @@
+{
+  "domaine": {"name": "Sciences Économiques et de Gestion", "code": "SEG"},
+  "mention": {"name": "Économie", "code": "ECO"},
+  "parcours": {"name": "Économie", "code": "ECO", "credits_licence": 180, "credits_master": 120},
+  "filiere": {"name": "Économie", "code": "ECO"},
+  "niveaux": [
+    {"name": "Licence 1", "year": 1, "type": "Licence"},
+    {"name": "Licence 2", "year": 2, "type": "Licence"},
+    {"name": "Licence 3", "year": 3, "type": "Licence"}
+  ],
+  "ues": [
+    {"code":"IMQ4111","name":"Initiation aux Méthodes Quantitatives","type_ue":"fondamentale","credit":6,"niveau_year":1,"semestre":1,"ordre":1,"ecues":[
+      {"code":"IMQ41111","name":"Mathématique : Algèbre","credit_ecue":3,"cm":24,"td":12,"tp":0,"projet":0,"tpe":39},
+      {"code":"IMQ41112","name":"Statistique descriptive à 1 variable","credit_ecue":3,"cm":24,"td":12,"tp":0,"projet":0,"tpe":39}
+    ]},
+    {"code":"INC4111","name":"Initiation à la Comptabilité","type_ue":"fondamentale","credit":6,"niveau_year":1,"semestre":1,"ordre":2,"ecues":[
+      {"code":"INC41111","name":"Initiation à la comptabilité Générale","credit_ecue":3,"cm":24,"td":12,"tp":0,"projet":0,"tpe":39},
+      {"code":"INC41112","name":"Initiation à la comptabilité nationale","credit_ecue":3,"cm":24,"td":12,"tp":0,"projet":0,"tpe":39}
+    ]},
+    {"code":"ING4111","name":"Initiation à la Gestion 1","type_ue":"fondamentale","credit":6,"niveau_year":1,"semestre":1,"ordre":3,"ecues":[
+      {"code":"ING41111","name":"Fondement du management-1","credit_ecue":3,"cm":24,"td":12,"tp":0,"projet":0,"tpe":39},
+      {"code":"ING41112","name":"Fondements du marketing-1","credit_ecue":3,"cm":24,"td":12,"tp":0,"projet":0,"tpe":39}
+    ]},
+    {"code":"LAI4111","name":"Langue et informatique","type_ue":"methodologique","credit":2,"niveau_year":1,"semestre":1,"ordre":4,"ecues":[
+      {"code":"LAI41111","name":"Anglais général","credit_ecue":1,"cm":12,"td":0,"tp":0,"projet":0,"tpe":13},
+      {"code":"LAI41112","name":"Informatique","credit_ecue":1,"cm":12,"td":0,"tp":0,"projet":0,"tpe":13}
+    ]},
+    {"code":"HPE4111","name":"Histoire des faits et de la pensée économiques","type_ue":"culture_generale","credit":4,"niveau_year":1,"semestre":1,"ordre":5,"ecues":[
+      {"code":"HPE41111","name":"Histoire des faits économiques","credit_ecue":2,"cm":24,"td":0,"tp":0,"projet":0,"tpe":26},
+      {"code":"HPE41112","name":"Introduction à l'Histoire de la Pensée Economique","credit_ecue":2,"cm":24,"td":0,"tp":0,"projet":0,"tpe":26}
+    ]},
+    {"code":"CUT4111","name":"Culture numériques et Techniques d'Expression Française","type_ue":"culture_generale","credit":3,"niveau_year":1,"semestre":1,"ordre":6,"ecues":[
+      {"code":"CUT41111","name":"Economie numérique","credit_ecue":2,"cm":24,"td":0,"tp":0,"projet":0,"tpe":26},
+      {"code":"CUT41112","name":"Techniques d'Expression écrite et orale","credit_ecue":1,"cm":0,"td":12,"tp":0,"projet":0,"tpe":13}
+    ]},
+    {"code":"DRS4111","name":"Droit et Sociologie","type_ue":"culture_generale","credit":3,"niveau_year":1,"semestre":1,"ordre":7,"ecues":[
+      {"code":"DRS41111","name":"Introduction à l'étude de Droit","credit_ecue":2,"cm":24,"td":0,"tp":0,"projet":0,"tpe":26},
+      {"code":"DRS41112","name":"Socio-économie","credit_ecue":1,"cm":12,"td":0,"tp":0,"projet":0,"tpe":13}
+    ]},
+    {"code":"AEI4112","name":"Analyse Economique intermédiaire","type_ue":"fondamentale","credit":6,"niveau_year":1,"semestre":2,"ordre":1,"ecues":[
+      {"code":"AEI41121","name":"Macroéconomie","credit_ecue":3,"cm":24,"td":12,"tp":0,"projet":0,"tpe":39},
+      {"code":"AEI41122","name":"Microéconomie","credit_ecue":3,"cm":24,"td":12,"tp":0,"projet":0,"tpe":39}
+    ]},
+    {"code":"MEQ4112","name":"Méthodes quantitatives","type_ue":"fondamentale","credit":6,"niveau_year":1,"semestre":2,"ordre":2,"ecues":[
+      {"code":"MEQ41121","name":"Mathématique : Analyse","credit_ecue":3,"cm":24,"td":12,"tp":0,"projet":0,"tpe":39},
+      {"code":"MEQ41122","name":"Statistique descriptive à 2 variables","credit_ecue":3,"cm":24,"td":12,"tp":0,"projet":0,"tpe":39}
+    ]},
+    {"code":"ING4112","name":"Initiation à la Gestion 2","type_ue":"fondamentale","credit":6,"niveau_year":1,"semestre":2,"ordre":3,"ecues":[
+      {"code":"ING41121","name":"Fondement du management-2","credit_ecue":3,"cm":24,"td":12,"tp":0,"projet":0,"tpe":39},
+      {"code":"ING41122","name":"Fondements du marketing-2","credit_ecue":3,"cm":24,"td":12,"tp":0,"projet":0,"tpe":39}
+    ]},
+    {"code":"MED4112","name":"Méthodologie de la lecture de documents scientifiques","type_ue":"methodologique","credit":4,"niveau_year":1,"semestre":2,"ordre":4,"ecues":[
+      {"code":"MED41111","name":"Lecture de documents de base en sciences économiques","credit_ecue":2,"cm":12,"td":12,"tp":0,"projet":0,"tpe":26},
+      {"code":"MED41112","name":"Lecture de documents de base en sciences de gestion","credit_ecue":2,"cm":12,"td":12,"tp":0,"projet":0,"tpe":26}
+    ]},
+    {"code":"ECP4112","name":"Economie et Population","type_ue":"culture_generale","credit":4,"niveau_year":1,"semestre":2,"ordre":5,"ecues":[
+      {"code":"ECP41121","name":"Démographie","credit_ecue":2,"cm":24,"td":0,"tp":0,"projet":0,"tpe":26},
+      {"code":"ECP41122","name":"Introduction à l'Economie des Ressources Humaines","credit_ecue":2,"cm":24,"td":0,"tp":0,"projet":0,"tpe":26}
+    ]},
+    {"code":"CNS4112","name":"Culture numérique et Système et Structure de l'économie","type_ue":"culture_generale","credit":4,"niveau_year":1,"semestre":2,"ordre":6,"ecues":[
+      {"code":"CNS41121","name":"Culture numérique","credit_ecue":2,"cm":0,"td":24,"tp":0,"projet":0,"tpe":26},
+      {"code":"CNS41122","name":"Système et structure de l'économie","credit_ecue":2,"cm":24,"td":0,"tp":0,"projet":0,"tpe":26}
+    ]}
+  ]
+}
