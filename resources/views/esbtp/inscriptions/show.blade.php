@@ -1690,6 +1690,7 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                                 $obligatoiresConfigures = collect($feeCategoriesWithRules)->where('is_mandatory', true)->where('is_configured', true)->count();
                                 $obligatoiresTotal = collect($feeCategoriesWithRules)->where('is_mandatory', true)->count();
                                 $progressPct = $totalAttendu > 0 ? min(100, round(($totalPaye / $totalAttendu) * 100)) : 0;
+                                $nbFournituresDeposees = collect($feeCategoriesWithRules)->where('satisfied_in_kind', true)->count();
                             @endphp
                             <div class="is-finance-summary {{ $soldeGlobal <= 0 ? 'paid' : '' }}">
                                 <div class="is-finance-grid">
@@ -1720,7 +1721,7 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                                 <div style="margin-top:14px;">
                                     <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;">
                                         <span style="font-size:0.75rem;font-weight:700;color:#0453cb;">{{ $progressPct }}% payé</span>
-                                        <span style="font-size:0.72rem;font-weight:600;color:#94a3b8;">{{ $obligatoiresConfigures }}/{{ $obligatoiresTotal }} frais obligatoires configurés</span>
+                                        <span style="font-size:0.72rem;font-weight:600;color:#94a3b8;">{{ $obligatoiresConfigures }}/{{ $obligatoiresTotal }} frais obligatoires configurés{{ !empty($nbFournituresDeposees) ? ' · '.$nbFournituresDeposees.' fourniture(s) déposée(s), hors dû' : '' }}</span>
                                     </div>
                                     <div class="is-progress-wrap" style="margin-bottom:0;height:10px;border-radius:8px;">
                                         <div class="is-progress-bar" style="width:{{ $progressPct }}%;border-radius:8px;{{ $soldeGlobal <= 0 ? 'background:linear-gradient(90deg,#10b981,#059669);' : '' }}"></div>

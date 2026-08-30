@@ -326,6 +326,12 @@
                                 <td class="kv-value">{{ $categoryName }}</td>
                             </tr>
                             @endif
+                            @if($paiement->fraisCategory?->accepts_in_kind)
+                            <tr>
+                                <td class="kv-label">Règlement</td>
+                                <td class="kv-value">Équivalent en frais (fourniture non déposée)</td>
+                            </tr>
+                            @endif
                             @if($paiement->tranche)
                             <tr>
                                 <td class="kv-label">Tranche</td>

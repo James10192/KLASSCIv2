@@ -856,11 +856,14 @@ class ESBTPInscriptionPaiementController extends Controller
             "logo" => Setting::get("school_logo", ""),
         ];
 
+        $fournituresDeposees = $this->depositedSuppliesFor($inscription);
+
         return view(
             "esbtp.inscriptions.situation-financiere-preview",
             compact(
                 "inscription",
                 "fraisSouscrits",
+                "fournituresDeposees",
                 "reliquatsEntrants",
                 "statistiques",
                 "etablissement",
@@ -982,11 +985,14 @@ class ESBTPInscriptionPaiementController extends Controller
         ini_set("memory_limit", "512M");
 
         // Générer le PDF
+        $fournituresDeposees = $this->depositedSuppliesFor($inscription);
+
         $pdf = Pdf::loadView(
             "esbtp.inscriptions.situation-financiere-pdf",
             compact(
                 "inscription",
                 "fraisSouscrits",
+                "fournituresDeposees",
                 "reliquatsEntrants",
                 "statistiques",
                 "etablissement",
@@ -1098,6 +1104,15 @@ class ESBTPInscriptionPaiementController extends Controller
         ]);
     }
 
+
+    private function depositedSuppliesFor(ESBTPInscription $inscription)
+    {
+        return ESBTPFraisSubscription::where('inscription_id', $inscription->id)
+            ->where('is_active', true)
+            ->where('satisfied_in_kind', true)
+            ->with(['fraisCategory'])
+            ->get();
+    }
 
     /**
      * Lister les catégories de frais d'une inscription avec montants restants.

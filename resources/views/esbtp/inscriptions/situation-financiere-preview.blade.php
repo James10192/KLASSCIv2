@@ -446,7 +446,9 @@
                     <tr>
                         <td><strong>{{ $frais->fraisCategory->name ?? '—' }}</strong></td>
                         <td class="text-center">
-                            @if($frais->fraisCategory->is_mandatory)
+                            @if($frais->fraisCategory->accepts_in_kind)
+                                <span class="sf-badge b-info"><i class="fas fa-box"></i>Fourniture</span>
+                            @elseif($frais->fraisCategory->is_mandatory)
                                 <span class="sf-badge b-danger"><i class="fas fa-exclamation-circle"></i>Obligatoire</span>
                             @else
                                 <span class="sf-badge b-info"><i class="fas fa-star"></i>Optionnel</span>
@@ -502,6 +504,41 @@
         @endif
     </div>
 </div>
+
+@if(!empty($fournituresDeposees) && $fournituresDeposees->isNotEmpty())
+<div class="sf-card">
+    <div class="sf-card-head">
+        <div class="sf-card-title"><i class="fas fa-box"></i>Fournitures déposées</div>
+        <span class="sf-card-sub">Hors total attendu — pas de reçu, pas d'encaissement</span>
+    </div>
+    <div class="sf-card-body">
+        <div class="table-responsive">
+            <table class="sf-table">
+                <thead>
+                    <tr>
+                        <th>Article</th>
+                        <th class="text-center" width="120">Type</th>
+                        <th class="text-end" width="140">Tarif (trace)</th>
+                        <th class="text-center" width="140">Déposé le</th>
+                        <th class="text-center" width="90">Statut</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($fournituresDeposees as $depot)
+                    <tr>
+                        <td><strong>{{ $depot->fraisCategory->name ?? 'Fourniture' }}</strong></td>
+                        <td class="text-center"><span class="sf-badge b-info"><i class="fas fa-box"></i>Fourniture</span></td>
+                        <td class="text-end" style="color:var(--k-muted,#64748b);">{{ number_format($depot->amount, 0, ',', ' ') }}</td>
+                        <td class="text-center">{{ optional($depot->deposited_at)->format('d/m/Y') ?? '—' }}</td>
+                        <td class="text-center"><span class="sf-badge b-success">Déposé</span></td>
+                    </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+@endif
 
 {{-- ── Payment History (card rows like etudiants.show) ── --}}
 <div class="sf-card">

@@ -445,7 +445,9 @@
                                 <tr>
                                     <td style="font-weight:600;">{{ $frais->fraisCategory->name ?? '—' }}</td>
                                     <td class="text-center">
-                                        @if($frais->fraisCategory->is_mandatory)
+                                        @if($frais->fraisCategory->accepts_in_kind)
+                                            <span class="badge badge-info">Fourniture</span>
+                                        @elseif($frais->fraisCategory->is_mandatory)
                                             <span class="badge badge-danger">Obligatoire</span>
                                         @else
                                             <span class="badge badge-info">Optionnel</span>
@@ -508,6 +510,44 @@
                 </tr>
             </table>
         </div>
+
+        @if(!empty($fournituresDeposees) && $fournituresDeposees->isNotEmpty())
+        <div class="card-section">
+            <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                <tr>
+                    <td style="background-color: {{ $primary }}; color: {{ $barText }}; padding: 8px 14px; font-size: 14px; font-weight: 700; letter-spacing: 0.3px;">
+                        FOURNITURES DÉPOSÉES — hors dû, sans encaissement
+                    </td>
+                </tr>
+                <tr>
+                    <td style="padding: 0;">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th style="text-align:left;">Article</th>
+                                    <th>Type</th>
+                                    <th style="text-align:right;">Tarif (trace)</th>
+                                    <th>Déposé le</th>
+                                    <th>Statut</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($fournituresDeposees as $depot)
+                                <tr>
+                                    <td style="font-weight:600;">{{ $depot->fraisCategory->name ?? 'Fourniture' }}</td>
+                                    <td class="text-center"><span class="badge badge-info">Fourniture</span></td>
+                                    <td class="text-right" style="color:#64748b;">{{ number_format($depot->amount, 0, ',', ' ') }}</td>
+                                    <td class="text-center">{{ optional($depot->deposited_at)->format('d/m/Y') ?? '—' }}</td>
+                                    <td class="text-center"><span class="badge badge-success">Déposé</span></td>
+                                </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </td>
+                </tr>
+            </table>
+        </div>
+        @endif
 
         <!-- ═══ PAYMENT HISTORY CARD ═══ -->
         <div class="card-section">
