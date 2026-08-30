@@ -1,50 +1,77 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="utf-8">
-    <title>Fiche d'inscription</title>
-    @include('pdf.partials.theme')
-    <style>
-        @page { margin: 10mm 12mm; }
-        body { font-family: DejaVu Sans, sans-serif; font-size: 10px; color: #1e293b; }
-        .copy { height: 128mm; padding: 4mm 0 2mm; }
-        .copy + .copy { border-top: 1px dashed #64748b; padding-top: 6mm; }
-        .cut { text-align: center; font-size: 8px; color: #64748b; letter-spacing: 0.12em; text-transform: uppercase; margin: 2mm 0; }
-        .hdr { width: 100%; margin-bottom: 4mm; }
-        .hdr td { vertical-align: middle; }
-        .school { font-size: 13px; font-weight: bold; color: #0453cb; }
-        .doc-title { font-size: 12px; font-weight: bold; text-align: center; margin: 3mm 0; text-transform: uppercase; }
-        .meta { width: 100%; border-collapse: collapse; }
-        .meta td { border: 0.4pt solid #cbd5e1; padding: 2.5mm 3mm; width: 50%; }
-        .lbl { font-size: 7px; color: #64748b; text-transform: uppercase; letter-spacing: 0.04em; }
-        .val { font-size: 10px; font-weight: bold; }
-        .rights { margin-top: 4mm; border: 0.4pt solid #0453cb; padding: 3mm; }
-        .signs { width: 100%; margin-top: 6mm; }
-        .signs td { width: 50%; text-align: center; height: 18mm; vertical-align: bottom; font-size: 9px; }
-        .sign-line { border-top: 0.4pt solid #1e293b; width: 70%; margin: 0 auto; padding-top: 1mm; }
-        .copy-tag { font-size: 8px; color: #0453cb; font-weight: bold; }
-    </style>
-</head>
-<body>
 @php
+    $school = $school ?? \App\Helpers\SettingsHelper::getSchoolInfo();
+    $pdfSettings = \App\Helpers\SettingsHelper::getPdfSettings();
+    $logo = \App\Helpers\SettingsHelper::resolveLogoBase64();
+    $hdrBg = $pdfSettings['header_bg_color'] ?? $pdfSettings['primary_color'] ?? '#0453cb';
+    $hdrText = $pdfSettings['header_text_on_bg'] ?? $pdfSettings['header_text_color'] ?? '#ffffff';
     $e = $inscription->etudiant;
     $copies = [
         'Exemplaire étudiant — à conserver',
         'Exemplaire administration — à archiver',
     ];
+    $annee = $inscription->anneeUniversitaire->name
+        ?? $inscription->anneeUniversitaire->display_name
+        ?? '';
 @endphp
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Fiche d'inscription</title>
+    @include('pdf.partials.theme')
+    <style>
+        @page { margin: 8mm 10mm; }
+        body { font-family: DejaVu Sans, sans-serif; font-size: 9.5px; color: #1e293b; margin: 0; }
+        .copy { height: 132mm; page-break-inside: avoid; }
+        .cut { text-align: center; font-size: 7.5px; color: #64748b; letter-spacing: 0.14em; text-transform: uppercase; margin: 1.5mm 0; border-top: 0.6pt dashed #94a3b8; padding-top: 1.5mm; }
+        .pdf-banner { width: 100%; border-collapse: collapse; table-layout: fixed; -webkit-print-color-adjust: exact; }
+        .pdf-banner-logo-cell { width: 16%; background-color: {{ $hdrBg }}; padding: 8px 6px; text-align: center; vertical-align: middle; border-right: 2px solid rgba(255,255,255,0.25); }
+        .pdf-banner-logo-frame { display: inline-block; background: #fff; border-radius: 5px; padding: 4px; }
+        .pdf-banner-logo { max-height: 36px; max-width: 72px; display: block; }
+        .pdf-banner-info-cell { width: 84%; background-color: {{ $hdrBg }}; padding: 8px 12px; vertical-align: middle; }
+        .pdf-school-name { font-size: 12px; font-weight: 700; color: {{ $hdrText }}; margin: 0 0 2px; }
+        .pdf-school-meta { font-size: 7.5px; color: {{ $hdrText }}; opacity: 0.88; margin: 0 0 5px; line-height: 1.4; }
+        .pdf-banner-divider { border-top: 1px solid rgba(255,255,255,0.35); padding-top: 4px; }
+        .pdf-banner-title { font-size: 11px; font-weight: 700; color: {{ $hdrText }}; letter-spacing: 0.4px; margin: 0; }
+        .pdf-banner-subtitle { font-size: 8px; color: {{ $hdrText }}; opacity: 0.88; margin: 2px 0 0; }
+        .meta { width: 100%; border-collapse: collapse; margin-top: 3mm; }
+        .meta td { border: 0.4pt solid #cbd5e1; padding: 2mm 2.5mm; width: 50%; vertical-align: top; }
+        .lbl { font-size: 6.5px; color: #64748b; text-transform: uppercase; letter-spacing: 0.04em; }
+        .val { font-size: 9.5px; font-weight: bold; margin-top: 1px; }
+        .rights { margin-top: 3mm; border: 0.5pt solid {{ $hdrBg }}; padding: 2.5mm; }
+        .signs { width: 100%; margin-top: 5mm; }
+        .signs td { width: 50%; text-align: center; height: 14mm; vertical-align: bottom; font-size: 8px; }
+        .sign-line { border-top: 0.4pt solid #1e293b; width: 72%; margin: 0 auto; padding-top: 1mm; }
+    </style>
+</head>
+<body>
 @foreach ($copies as $tag)
 <div class="copy">
-    <table class="hdr">
+    <table class="pdf-banner">
         <tr>
-            <td style="width:70%">
-                <div class="school">{{ $school['name'] ?? $school['nom'] ?? config('app.name') }}</div>
-                <div class="lbl">{{ $school['city'] ?? $school['ville'] ?? '' }} · {{ $inscription->anneeUniversitaire->name ?? '' }}</div>
+            <td class="pdf-banner-logo-cell">
+                @if($logo)
+                    <span class="pdf-banner-logo-frame">
+                        <img src="{{ $logo['data_uri'] }}" alt="logo" class="pdf-banner-logo">
+                    </span>
+                @endif
             </td>
-            <td style="width:30%; text-align:right" class="copy-tag">{{ $tag }}</td>
+            <td class="pdf-banner-info-cell">
+                <div class="pdf-school-name">{{ $school['name'] ?? config('app.name') }}</div>
+                <div class="pdf-school-meta">
+                    @if(!empty($school['address'])){{ $school['address'] }}@endif
+                    @if(!empty($school['city'])) · {{ $school['city'] }}@endif
+                    @if(!empty($school['phone'])) · Tél : {{ $school['phone'] }}@endif
+                    @if(!empty($school['email'])) · {{ $school['email'] }}@endif
+                </div>
+                <div class="pdf-banner-divider">
+                    <div class="pdf-banner-title">FICHE D'INSCRIPTION</div>
+                    <div class="pdf-banner-subtitle">{{ $tag }}@if($annee) · {{ $annee }}@endif</div>
+                </div>
+            </td>
         </tr>
     </table>
-    <div class="doc-title">Fiche d'inscription</div>
+
     <table class="meta">
         <tr>
             <td><div class="lbl">Nom</div><div class="val">{{ $e->nom }}</div></td>
@@ -65,8 +92,8 @@
     </table>
     <div class="rights">
         <div class="lbl">Droits à l'image</div>
-        <p style="margin:2mm 0 0">J'autorise l'établissement à utiliser mon image (photo, vidéo) dans le cadre de la communication interne et institutionnelle, sauf opposition écrite.</p>
-        <p style="margin:2mm 0 0">☐ J'accepte &nbsp;&nbsp;&nbsp; ☐ Je refuse</p>
+        <p style="margin:1.5mm 0 0">J'autorise l'établissement à utiliser mon image (photo, vidéo) dans le cadre de la communication interne et institutionnelle, sauf opposition écrite.</p>
+        <p style="margin:1.5mm 0 0">☐ J'accepte &nbsp;&nbsp;&nbsp; ☐ Je refuse</p>
     </div>
     <table class="signs">
         <tr>
