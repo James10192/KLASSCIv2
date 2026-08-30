@@ -10,443 +10,264 @@
         $hdrBg   = $pdfCfg['header_bg_color'] ?? $primary;
         $hdrText = $pdfCfg['header_text_on_bg'] ?? $pdfCfg['header_text_color'] ?? '#ffffff';
         $barText = $pdfCfg['header_text_on_primary'] ?? $hdrText;
+        $categoryName = null;
+        if ($paiement->fraisCategory) {
+            $categoryName = $paiement->fraisCategory->name;
+        } elseif ($paiement->categorie) {
+            $categoryName = $paiement->categorie->nom ?? null;
+        }
+        $copies = [
+            'EXEMPLAIRE ÉLÈVE / PARENT — à conserver',
+            'EXEMPLAIRE CAISSE — à archiver',
+        ];
     @endphp
     <style>
         body {
             font-family: DejaVu Sans, Arial, sans-serif;
-            font-size: 14px;
+            font-size: 10px;
             margin: 0;
-            padding: 6px;
+            padding: 0;
             color: #1e293b;
-            line-height: 1.3;
+            line-height: 1.25;
             background: white;
         }
 
         @page {
-            margin: 0.7cm;
+            margin: 6mm 8mm;
             size: A4 portrait;
         }
 
-        .container {
-            max-width: 100%;
-            background: white;
-            padding: 8px;
-            position: relative;
-        }
-
-        /* ── Watermark ── */
         .document-watermark {
             position: fixed;
             top: 30%;
             left: 15%;
             width: 70%;
-            opacity: 0.10;
+            opacity: 0.08;
             z-index: 0;
             text-align: center;
         }
         .document-watermark img { max-width: 100%; }
-        .document-content { position: relative; z-index: 1; }
 
-        /* ── Header Banner ── */
-        .header-section {
-            border-radius: 6px;
-            overflow: hidden;
-            margin-bottom: 10px;
+        .sheet { width: 100%; border-collapse: collapse; }
+        .copy-cell {
+            height: 128mm;
+            vertical-align: top;
+            padding: 0;
         }
-
-        /* ── Receipt Number ── */
-        .receipt-number-section {
+        .cut-cell {
+            height: 7mm;
             text-align: center;
-            margin-bottom: 12px;
-        }
-
-        /* ── Card Style ── */
-        .card-section {
-            border: 1px solid #e2e8f0;
-            border-radius: 6px;
-            overflow: hidden;
-            margin-bottom: 12px;
-        }
-
-        /* ── Key-Value Table ── */
-        .kv-table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        .kv-table td {
-            padding: 8px 14px;
-            font-size: 15px;
-            border-bottom: 1px solid #f1f5f9;
+            font-size: 8px;
+            color: #64748b;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            border-top: 1px dashed #94a3b8;
+            border-bottom: 1px dashed #94a3b8;
             vertical-align: middle;
         }
 
-        .kv-table tr:last-child td {
-            border-bottom: none;
+        .header-section {
+            border-radius: 6px;
+            overflow: hidden;
+            margin-bottom: 2mm;
+        }
+        .header-section img {
+            max-height: 48px !important;
+            max-width: 90px !important;
         }
 
-        .kv-label {
-            width: 38%;
+        .copy-bar { margin-bottom: 2.5mm; }
+        .copy-tag {
+            font-size: 9px;
+            font-weight: 700;
+            color: {{ $primary }};
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            vertical-align: middle;
+        }
+        .copy-num {
+            text-align: right;
+            font-size: 9px;
             font-weight: bold;
             color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            vertical-align: middle;
+        }
+        .copy-num-val {
+            font-size: 13px;
+            font-weight: 900;
+            color: {{ $primary }};
             background-color: #f8fafc;
-            border-right: 1px solid #f1f5f9;
+            padding: 2px 10px;
+            border: 1.5px solid {{ $primary }};
+            border-radius: 4px;
+            letter-spacing: 0.5px;
         }
 
-        .kv-value {
-            font-weight: 500;
-            color: #1e293b;
+        .meta { border-collapse: collapse; margin-bottom: 2.5mm; }
+        .meta td {
+            width: 25%;
+            border: 0.4pt solid #cbd5e1;
+            padding: 2mm 2.5mm;
+            vertical-align: top;
         }
+        .lbl {
+            font-size: 7px;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            margin-bottom: 1px;
+        }
+        .val { font-size: 10px; font-weight: 700; color: #1e293b; }
+        .mono { font-family: 'Courier New', monospace; }
 
-        /* ── Badge ── */
         .badge {
             display: inline-block;
-            padding: 2px 8px;
-            border-radius: 10px;
-            font-size: 9px;
+            padding: 1px 6px;
+            border-radius: 8px;
+            font-size: 8px;
             font-weight: bold;
             text-transform: uppercase;
             letter-spacing: 0.3px;
         }
+        .badge-success { background-color: #dcfce7; color: #166534; border: 1px solid #86efac; }
+        .badge-warning { background-color: #fef3c7; color: #92400e; border: 1px solid #fcd34d; }
+        .badge-danger { background-color: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
 
-        .badge-success {
-            background-color: #dcfce7;
-            color: #166534;
-            border: 1px solid #86efac;
+        .amount-section { border-collapse: collapse; margin-bottom: 2mm; }
+        .amount-label {
+            width: 22%;
+            background-color: #059669;
+            color: white;
+            font-size: 8px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            padding: 3mm 3mm;
+            vertical-align: middle;
+        }
+        .amount-value {
+            width: 28%;
+            background-color: #ecfdf5;
+            font-size: 18px;
+            font-weight: 900;
+            color: #059669;
+            padding: 2.5mm 3mm;
+            vertical-align: middle;
+        }
+        .amount-value span { font-size: 10px; font-weight: 600; opacity: 0.75; }
+        .amount-words {
+            background-color: #ecfdf5;
+            font-size: 9px;
+            font-style: italic;
+            color: #64748b;
+            padding: 2.5mm 3mm;
+            vertical-align: middle;
         }
 
-        .badge-warning {
-            background-color: #fef3c7;
-            color: #92400e;
-            border: 1px solid #fcd34d;
+        .encaissed { margin-bottom: 2mm; border-collapse: collapse; }
+        .encaissed-lbl {
+            width: 22%;
+            font-size: 8px;
+            font-weight: 700;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            background-color: #f8fafc;
+            border-left: 3px solid {{ $primary }};
+            padding: 2mm 3mm;
+        }
+        .encaissed-val {
+            font-size: 11px;
+            font-weight: 700;
+            color: {{ $primary }};
+            background-color: #f8fafc;
+            padding: 2mm 3mm;
         }
 
-        .badge-danger {
-            background-color: #fee2e2;
-            color: #991b1b;
-            border: 1px solid #fca5a5;
+        .signs { margin-top: 2mm; }
+        .signs td { width: 50%; text-align: center; vertical-align: top; padding: 0 8mm; }
+        .sign-title {
+            font-size: 9px;
+            font-weight: 700;
+            color: {{ $primary }};
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            margin-bottom: 6mm;
+        }
+        .sign-line {
+            border-top: 1.5px solid {{ $primary }};
+            padding-top: 2mm;
+            font-size: 10px;
+            font-weight: 600;
         }
 
-        .badge-info {
-            background-color: #dbeafe;
-            color: #1e40af;
-            border: 1px solid #93c5fd;
-        }
-
-        /* ── Amount Section ── */
-        .amount-section {
-            border: 2px solid #059669;
-            border-radius: 8px;
-            overflow: hidden;
-            margin-bottom: 12px;
-        }
-
-        /* ── Footer ── */
         .footer-section {
-            margin-top: 10px;
-            padding-top: 8px;
-            border-top: 2px solid {{ $primary }};
+            margin-top: 3mm;
+            padding-top: 2mm;
+            border-top: 1.5px solid {{ $primary }};
         }
-
         .footer-warning {
             text-align: center;
-            font-size: 13px;
+            font-size: 8px;
             font-weight: bold;
             color: #dc2626;
-            margin-bottom: 4px;
+            margin-bottom: 1mm;
         }
-
         .footer-contact {
             text-align: center;
-            font-size: 12px;
+            font-size: 8px;
             color: #64748b;
-            line-height: 1.4;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-
-        @php
-            $logoPath   = \App\Helpers\SettingsHelper::get('school_logo');
-            $logoBase64Wm = null;
-            if ($logoPath) {
-                foreach ([
-                    storage_path('app/public/' . $logoPath),
-                    public_path($logoPath),
-                ] as $wmPath) {
-                    if (file_exists($wmPath)) {
-                        $wmExt       = pathinfo($wmPath, PATHINFO_EXTENSION);
-                        $logoBase64Wm = 'data:image/' . $wmExt . ';base64,' . base64_encode(file_get_contents($wmPath));
-                        break;
-                    }
+    @php
+        $logoPath   = \App\Helpers\SettingsHelper::get('school_logo');
+        $logoBase64Wm = null;
+        if ($logoPath) {
+            foreach ([
+                storage_path('app/public/' . $logoPath),
+                public_path($logoPath),
+            ] as $wmPath) {
+                if (file_exists($wmPath)) {
+                    $wmExt       = pathinfo($wmPath, PATHINFO_EXTENSION);
+                    $logoBase64Wm = 'data:image/' . $wmExt . ';base64,' . base64_encode(file_get_contents($wmPath));
+                    break;
                 }
             }
-        @endphp
+        }
+    @endphp
 
-        @if($logoBase64Wm)
-            <div class="document-watermark">
-                <img src="{{ $logoBase64Wm }}" alt="">
-            </div>
-        @endif
-
-        <div class="document-content">
-
-        <!-- ═══ HEADER BANNER ═══ -->
-        <div class="header-section">
-            <table width="100%" border="0" cellspacing="0" cellpadding="0">
-                <tr>
-                    <!-- Logo Column -->
-                    <td width="16%" style="background-color: {{ $hdrBg }}; padding: 12px 10px; text-align: center; vertical-align: middle; border-right: 2px solid rgba(255,255,255,0.2);">
-                        @if(isset($settings['show_logo']) && $settings['show_logo'] && isset($settings['logo_base64']))
-                            <img src="{{ $settings['logo_base64'] }}"
-                                 style="max-height: 70px; max-width: 120px;"
-                                 alt="Logo">
-                        @else
-                            <div style="font-size: 36px; font-weight: 900; color: {{ $hdrText }}; opacity: 0.4;">K</div>
-                        @endif
-                    </td>
-                    <!-- Info Column -->
-                    <td width="84%" style="background-color: {{ $hdrBg }}; padding: 10px 16px; vertical-align: middle;">
-                        <!-- School Name -->
-                        <div style="font-size: 19px; font-weight: 700; color: {{ $hdrText }}; margin-bottom: 2px;">
-                            {{ $settings['school_name'] ?? 'KLASSCI' }}
-                        </div>
-                        <!-- Contact -->
-                        <div style="font-size: 12px; color: {{ $hdrText }}; opacity: 0.8; margin-bottom: 6px;">
-                            @if($settings['school_address'] ?? false){{ $settings['school_address'] }}@endif
-                            @if($settings['school_phone'] ?? false) &nbsp;|&nbsp; Tél: {{ $settings['school_phone'] }}@endif
-                            @if($settings['school_email'] ?? false) &nbsp;|&nbsp; Email: {{ $settings['school_email'] }}@endif
-                        </div>
-                        <!-- Divider + Title -->
-                        <div style="border-top: 1px solid rgba(255,255,255,0.3); padding-top: 6px;">
-                            <table width="100%" border="0" cellspacing="0" cellpadding="0">
-                                <tr>
-                                    <td width="60%" style="font-size: 18px; font-weight: 700; color: {{ $hdrText }}; letter-spacing: 0.5px;">
-                                        REÇU DE PAIEMENT
-                                    </td>
-                                    <td width="40%" style="font-size: 13px; color: {{ $hdrText }}; opacity: 0.75; text-align: right;">
-                                        {{ $paiement->inscription->anneeUniversitaire->name ?? '' }}
-                                    </td>
-                                </tr>
-                            </table>
-                        </div>
-                    </td>
-                </tr>
-            </table>
+    @if($logoBase64Wm)
+        <div class="document-watermark">
+            <img src="{{ $logoBase64Wm }}" alt="">
         </div>
+    @endif
 
-        <!-- ═══ RECEIPT NUMBER ═══ -->
-        <div class="receipt-number-section">
-            <table width="100%" border="0" cellspacing="0" cellpadding="0">
-                <tr>
-                    <td style="text-align: center; padding: 10px 0;">
-                        <table border="0" cellspacing="0" cellpadding="0" style="margin: 0 auto;">
-                            <tr>
-                                <td style="font-size: 14px; font-weight: bold; color: #64748b; text-transform: uppercase; letter-spacing: 1px; padding-right: 12px; vertical-align: middle;">
-                                    Reçu N°
-                                </td>
-                                <td style="font-size: 22px; font-weight: 900; color: {{ $primary }}; background-color: #f8fafc; padding: 5px 20px; border: 2px solid {{ $primary }}; border-radius: 6px; letter-spacing: 1px;">
-                                    {{ $paiement->numero_recu }}
-                                </td>
-                            </tr>
-                        </table>
-                    </td>
-                </tr>
-            </table>
-        </div>
-
-        <!-- ═══ STUDENT INFO CARD ═══ -->
-        <div class="card-section">
-            <table width="100%" border="0" cellspacing="0" cellpadding="0">
-                <tr>
-                    <td style="background-color: {{ $primary }}; color: {{ $barText }}; padding: 8px 14px; font-size: 15px; font-weight: 700; letter-spacing: 0.3px;">
-                        INFORMATIONS DE L'ÉTUDIANT
-                    </td>
-                </tr>
-                <tr>
-                    <td style="padding: 0;">
-                        <table class="kv-table">
-                            <tr>
-                                <td class="kv-label">Matricule</td>
-                                <td class="kv-value" style="font-family: 'Courier New', monospace; font-weight: 700;">{{ $paiement->etudiant->matricule }}</td>
-                            </tr>
-                            <tr>
-                                <td class="kv-label">Nom et Prénoms</td>
-                                <td class="kv-value" style="font-weight: 700;">{{ $paiement->etudiant->user->name ?? $paiement->etudiant->nom_complet ?? 'N/A' }}</td>
-                            </tr>
-                            <tr>
-                                <td class="kv-label">Filière</td>
-                                <td class="kv-value">{{ $paiement->inscription->filiere->name ?? 'N/A' }}</td>
-                            </tr>
-                            <tr>
-                                <td class="kv-label">Niveau</td>
-                                <td class="kv-value">{{ $paiement->inscription->niveauEtude->name ?? 'N/A' }}</td>
-                            </tr>
-                            <tr>
-                                <td class="kv-label">Année Universitaire</td>
-                                <td class="kv-value">{{ $paiement->inscription->anneeUniversitaire->name ?? 'N/A' }}</td>
-                            </tr>
-                        </table>
-                    </td>
-                </tr>
-            </table>
-        </div>
-
-        <!-- ═══ PAYMENT DETAILS CARD ═══ -->
-        <div class="card-section">
-            <table width="100%" border="0" cellspacing="0" cellpadding="0">
-                <tr>
-                    <td style="background-color: {{ $primary }}; color: {{ $barText }}; padding: 8px 14px; font-size: 15px; font-weight: 700; letter-spacing: 0.3px;">
-                        DÉTAILS DU PAIEMENT
-                    </td>
-                </tr>
-                <tr>
-                    <td style="padding: 0;">
-                        <table class="kv-table">
-                            <tr>
-                                <td class="kv-label">Date de paiement</td>
-                                <td class="kv-value">{{ $paiement->date_paiement->format('d/m/Y') }}</td>
-                            </tr>
-                            <tr>
-                                <td class="kv-label">Motif</td>
-                                <td class="kv-value">{{ $paiement->motif }}</td>
-                            </tr>
-                            @php
-                                $categoryName = null;
-                                if ($paiement->fraisCategory) {
-                                    $categoryName = $paiement->fraisCategory->name;
-                                } elseif ($paiement->categorie) {
-                                    $categoryName = $paiement->categorie->nom ?? null;
-                                }
-                            @endphp
-                            @if($categoryName)
-                            <tr>
-                                <td class="kv-label">Catégorie de frais</td>
-                                <td class="kv-value">{{ $categoryName }}</td>
-                            </tr>
-                            @endif
-                            @if($paiement->fraisCategory?->accepts_in_kind)
-                            <tr>
-                                <td class="kv-label">Règlement</td>
-                                <td class="kv-value">Équivalent en frais (fourniture non déposée)</td>
-                            </tr>
-                            @endif
-                            @if($paiement->tranche)
-                            <tr>
-                                <td class="kv-label">Tranche</td>
-                                <td class="kv-value">{{ $paiement->tranche }}</td>
-                            </tr>
-                            @endif
-                            <tr>
-                                <td class="kv-label">Mode de paiement</td>
-                                <td class="kv-value">{{ $paiement->mode_paiement }}</td>
-                            </tr>
-                            @if($paiement->reference_paiement)
-                            <tr>
-                                <td class="kv-label">Référence</td>
-                                <td class="kv-value" style="font-family: 'Courier New', monospace;">{{ $paiement->reference_paiement }}</td>
-                            </tr>
-                            @endif
-                            <tr>
-                                <td class="kv-label">Statut</td>
-                                <td class="kv-value">
-                                    <span class="badge badge-{{ $paiement->status === 'validé' ? 'success' : ($paiement->status === 'en_attente' ? 'warning' : 'danger') }}">
-                                        {{ $paiement->status_formatte }}
-                                    </span>
-                                </td>
-                            </tr>
-                        </table>
-                    </td>
-                </tr>
-            </table>
-        </div>
-
-        <!-- ═══ AMOUNT SECTION ═══ -->
-        <div class="amount-section">
-            <table width="100%" border="0" cellspacing="0" cellpadding="0">
-                <tr>
-                    <td style="background-color: #059669; color: white; padding: 6px 14px; font-size: 15px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; text-align: center;">
-                        Montant du Paiement
-                    </td>
-                </tr>
-                <tr>
-                    <td style="padding: 12px 14px; text-align: center; background-color: #ecfdf5;">
-                        <div style="font-size: 36px; font-weight: 900; color: #059669; line-height: 1; margin-bottom: 2px;">
-                            {{ number_format($paiement->montant, 0, ',', ' ') }}
-                        </div>
-                        <div style="font-size: 18px; font-weight: 600; color: #059669; opacity: 0.7;">
-                            FCFA
-                        </div>
-                        <div style="margin-top: 6px; padding-top: 6px; border-top: 1px dashed rgba(5,150,105,0.25); font-size: 14px; font-style: italic; color: #64748b;">
-                            {{ ucfirst(\App\Services\NumberToWords::convert($paiement->montant)) }} Francs CFA
-                        </div>
-                    </td>
-                </tr>
-            </table>
-        </div>
-
-        <!-- ═══ ENCAISSÉ PAR (Lot 13 — créateur du paiement) ═══ -->
-        @if($paiement->creator)
-        <div style="margin-top: 12px; margin-bottom: 8px;">
-            <table width="100%" border="0" cellspacing="0" cellpadding="0" style="border: 1px solid {{ $primary }}; border-radius: 6px; overflow: hidden;">
-                <tr>
-                    <td style="padding: 10px 16px; background-color: #f8fafc; border-left: 4px solid {{ $primary }};">
-                        <table width="100%" border="0" cellspacing="0" cellpadding="0">
-                            <tr>
-                                <td width="38%" style="font-size: 13px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; vertical-align: middle;">
-                                    Encaissé par
-                                </td>
-                                <td style="font-size: 16px; font-weight: 700; color: {{ $primary }}; vertical-align: middle;">
-                                    {{ $paiement->creator->name }}
-                                </td>
-                            </tr>
-                        </table>
-                    </td>
-                </tr>
-            </table>
-        </div>
-        @endif
-
-        <!-- ═══ SIGNATURES ═══ -->
-        <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 10px; margin-top: 28px;">
+    <table class="sheet" width="100%" border="0" cellspacing="0" cellpadding="0">
+        @foreach ($copies as $copyTag)
             <tr>
-                <td width="45%" style="text-align: center; vertical-align: top; padding-right: 20px;">
-                    <div style="font-size: 14px; font-weight: 700; color: {{ $primary }}; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 36px;">
-                        Date d'émission
-                    </div>
-                    <div style="border-top: 2px solid {{ $primary }}; padding-top: 8px;">
-                        <div style="font-size: 14px; font-weight: 600; color: #1e293b;">
-                            {{ $paiement->date_validation ? $paiement->date_validation->format('d/m/Y') : date('d/m/Y') }}
-                        </div>
-                    </div>
-                </td>
-                <td width="10%"></td>
-                <td width="45%" style="text-align: center; vertical-align: top; padding-left: 20px;">
-                    <div style="font-size: 14px; font-weight: 700; color: {{ $primary }}; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 36px;">
-                        Signature et Cachet
-                    </div>
-                    <div style="border-top: 2px solid {{ $primary }}; padding-top: 8px;">
-                        <div style="font-size: 14px; font-weight: 600; color: #1e293b;">
-                            {{ $paiement->validatedBy ? $paiement->validatedBy->name : 'Le Comptable' }}
-                        </div>
-                    </div>
+                <td class="copy-cell">
+                    @include('esbtp.paiements.partials.recu-exemplaire', [
+                        'copyTag' => $copyTag,
+                        'paiement' => $paiement,
+                        'settings' => $settings,
+                        'primary' => $primary,
+                        'hdrBg' => $hdrBg,
+                        'hdrText' => $hdrText,
+                        'barText' => $barText,
+                        'categoryName' => $categoryName,
+                    ])
                 </td>
             </tr>
-        </table>
-
-        <!-- ═══ FOOTER ═══ -->
-        <div class="footer-section" style="margin-top: 16px;">
-            <div class="footer-warning">
-                Ce reçu est un document officiel. Toute falsification constitue un délit passible de poursuites judiciaires.
-            </div>
-            <div class="footer-contact">
-                {{ $settings['school_name'] ?? 'KLASSCI' }} — {{ $settings['school_address'] ?? '' }}<br>
-                Email: {{ $settings['school_email'] ?? '' }} — Tél: {{ $settings['school_phone'] ?? '' }}
-            </div>
-        </div>
-
-        </div>{{-- /document-content --}}
-    </div>
+            @if (! $loop->last)
+            <tr>
+                <td class="cut-cell">✂ Couper ici — exemplaire élève (haut) · exemplaire caisse (bas)</td>
+            </tr>
+            @endif
+        @endforeach
+    </table>
 </body>
 </html>

@@ -619,25 +619,16 @@ class ESBTPPaiementController extends Controller
 
 
     /**
-     * Prévisualise un reçu de paiement en HTML avant génération PDF.
+     * Prévisualise un reçu de paiement en PDF inline (même gabarit que le téléchargement).
      *
      * @param  int  $id
      * @return \Illuminate\Http\Response
      */
-    public function previewRecu($id)
+    public function previewRecu($id, Request $request)
     {
-        $paiement = ESBTPPaiement::with([
-            'etudiant.user',
-            'inscription.anneeUniversitaire',
-            'inscription.filiere',
-            'inscription.niveauEtude',
-            'fraisCategory',
-            'validatedBy',
-            'creator:id,name'
-        ])->findOrFail($id);
+        $request->merge(['inline' => true]);
 
-        // Retourner la vue HTML pour prévisualisation
-        return view('esbtp.paiements.preview', compact('paiement'));
+        return $this->genererRecu($id, $request);
     }
 
     /**

@@ -1077,6 +1077,9 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 Route::get('/paiements/{paiement}', [App\Http\Controllers\ESBTPPaiementController::class, 'show'])
                     ->whereNumber('paiement')
                     ->name('paiements.show');
+                Route::get('/paiements/{paiement}/preview-pdf', [App\Http\Controllers\ESBTPPaiementController::class, 'previewRecu'])
+                    ->whereNumber('paiement')
+                    ->name('paiements.preview-pdf');
                 Route::get('/paiements/{paiement}/preview', [App\Http\Controllers\ESBTPPaiementController::class, 'previewRecu'])
                     ->whereNumber('paiement')
                     ->name('paiements.preview');

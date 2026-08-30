@@ -336,7 +336,7 @@
                         <i class="fas fa-file-pdf"></i> Reçu PDF
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end">
-                        <li><a class="dropdown-item" href="{{ route('esbtp.paiements.preview', $paiement->id) }}"><i class="fas fa-eye"></i>Prévisualiser</a></li>
+                        <li><a class="dropdown-item" href="{{ route('esbtp.paiements.preview-pdf', $paiement->id) }}" target="_blank" rel="noopener"><i class="fas fa-eye"></i>Prévisualiser</a></li>
                         <li><a class="dropdown-item" href="{{ route('esbtp.paiements.recu', $paiement->id) }}"><i class="fas fa-download"></i>Télécharger</a></li>
                     </ul>
                 </div>

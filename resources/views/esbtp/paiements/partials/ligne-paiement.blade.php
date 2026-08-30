@@ -158,7 +158,7 @@
                         </button>
                         <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="pdfDropdown{{ $paiement->id }}">
                             <li>
-                                <a class="dropdown-item" href="{{ route('esbtp.paiements.preview', $paiement->id) }}">
+                                <a class="dropdown-item" href="{{ route('esbtp.paiements.preview-pdf', $paiement->id) }}" target="_blank" rel="noopener">
                                     <i class="fas fa-eye me-1"></i>Prévisualiser
                                 </a>
                             </li>
