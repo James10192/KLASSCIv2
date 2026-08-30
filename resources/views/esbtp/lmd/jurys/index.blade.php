@@ -73,14 +73,13 @@
     </div>
 </div>
 
-<form method="GET" class="juy-filters">
-    <div class="juy-filter">
-        <label>Année</label>
-        <select name="annee_universitaire_id" onchange="this.form.submit()">
-            @foreach($annees as $a)<option value="{{ $a->id }}" @selected($a->id == $annee->id)>{{ $a->libelle }}</option>@endforeach
-        </select>
-    </div>
-</form>
+@include('esbtp.lmd.partials.premium-filters', [
+    'action' => route('esbtp.lmd.jurys.index'),
+    'annees' => $annees,
+    'annee' => $annee,
+    'classes' => $classes,
+    'parcours' => $parcours,
+])
 
 <div class="juy-card">
     @if($jurys->isEmpty())

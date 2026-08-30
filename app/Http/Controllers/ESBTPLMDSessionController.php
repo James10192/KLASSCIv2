@@ -28,6 +28,8 @@ class ESBTPLMDSessionController extends Controller
         $sessions = ESBTPLMDSession::query()
             ->with(['anneeUniversitaire', 'parcours', 'parentSession'])
             ->where('annee_universitaire_id', $annee->id)
+            ->when((int) $request->input('parcours_id'), fn ($q, $id) => $q->where('parcours_id', $id))
+            ->when((int) $request->input('semestre'), fn ($q, $s) => $q->where('semestre', $s))
             ->orderByDesc('date_debut')
             ->paginate(20)
             ->withQueryString();

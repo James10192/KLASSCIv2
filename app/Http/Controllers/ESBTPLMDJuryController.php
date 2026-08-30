@@ -43,6 +43,9 @@ class ESBTPLMDJuryController extends Controller
         $jurys = ESBTPLMDJury::query()
             ->with(['parcours', 'classe', 'membres'])
             ->where('annee_universitaire_id', $annee->id)
+            ->when((int) $request->input('classe_id'), fn ($q, $id) => $q->where('classe_id', $id))
+            ->when((int) $request->input('parcours_id'), fn ($q, $id) => $q->where('parcours_id', $id))
+            ->when((int) $request->input('semestre'), fn ($q, $s) => $q->where('semestre', $s))
             ->orderByDesc('date_jury')
             ->paginate(20)
             ->withQueryString();

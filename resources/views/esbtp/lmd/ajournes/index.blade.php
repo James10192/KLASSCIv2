@@ -22,10 +22,6 @@
 .juy-table tbody tr:hover{background:#f8fafc;}
 .juy-empty{padding:3rem 1.5rem;text-align:center;color:#64748b;}
 .juy-empty i{font-size:2.5rem;color:#cbd5e1;margin-bottom:1rem;display:block;}
-.juy-filters{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:.85rem 1.25rem;display:flex;gap:.6rem;flex-wrap:wrap;align-items:center;margin-bottom:1.25rem;}
-.juy-filter{display:flex;align-items:center;gap:.4rem;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:.4rem .65rem;font-size:.82rem;}
-.juy-filter label{color:#64748b;font-size:.7rem;text-transform:uppercase;letter-spacing:.5px;}
-.juy-filter select{border:none;background:transparent;outline:none;}
 .juy-chip{display:inline-flex;padding:.15rem .5rem;border-radius:5px;font-size:.68rem;font-weight:700;background:rgba(220,38,38,.10);color:#b91c1c;margin:.1rem .15rem .1rem 0;}
 .juy-muted{color:#64748b;font-size:.78rem;}
 </style>
@@ -59,18 +55,14 @@
     </div>
 </div>
 
-@if($annees->isNotEmpty())
-<form method="GET" class="juy-filters">
-    <div class="juy-filter">
-        <label>Année</label>
-        <select name="annee_universitaire_id" onchange="this.form.submit()">
-            @foreach($annees as $a)
-                <option value="{{ $a->id }}" @selected($annee && $a->id == $annee->id)>{{ $a->name ?? $a->display_name }}</option>
-            @endforeach
-        </select>
-    </div>
-</form>
-@endif
+@include('esbtp.lmd.partials.premium-filters', [
+    'action' => route('esbtp.lmd.ajournes.index'),
+    'annees' => $annees,
+    'annee' => $annee,
+    'classes' => $classes,
+    'parcours' => $parcours,
+    'showSearch' => true,
+])
 
 <div class="juy-card">
     @if($lignes->isEmpty())

@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\ESBTPAnneeUniversitaire;
+use App\Models\ESBTPClasse;
 use App\Models\ESBTPLMDJuryDecision;
+use App\Models\ESBTPLMDParcours;
 use App\Models\ESBTPLMDResultatUE;
 use Illuminate\Http\Request;
 
@@ -15,10 +17,25 @@ class ESBTPLMDAjournesController extends Controller
         $anneeId = (int) $request->input('annee_universitaire_id');
         $annee = $annees->firstWhere('id', $anneeId) ?? ESBTPAnneeUniversitaire::anneeCourante() ?? $annees->first();
 
+        $classeId = (int) $request->input('classe_id');
+        $parcoursId = (int) $request->input('parcours_id');
+        $semestre = (int) $request->input('semestre');
+        $q = trim((string) $request->input('q'));
+
         $decisions = ESBTPLMDJuryDecision::query()
             ->with(['jury.classe', 'jury.parcours', 'etudiant'])
             ->where('decision', 'ajourne')
-            ->when($annee, fn ($q) => $q->whereHas('jury', fn ($j) => $j->where('annee_universitaire_id', $annee->id)))
+            ->when($annee, fn ($qry) => $qry->whereHas('jury', fn ($j) => $j->where('annee_universitaire_id', $annee->id)))
+            ->when($classeId, fn ($qry) => $qry->whereHas('jury', fn ($j) => $j->where('classe_id', $classeId)))
+            ->when($parcoursId, fn ($qry) => $qry->whereHas('jury', fn ($j) => $j->where('parcours_id', $parcoursId)))
+            ->when($semestre, fn ($qry) => $qry->whereHas('jury', fn ($j) => $j->where('semestre', $semestre)))
+            ->when($q !== '', function ($qry) use ($q) {
+                $qry->whereHas('etudiant', function ($e) use ($q) {
+                    $e->where('nom', 'like', '%'.$q.'%')
+                        ->orWhere('prenoms', 'like', '%'.$q.'%')
+                        ->orWhere('matricule', 'like', '%'.$q.'%');
+                });
+            })
             ->orderByDesc('id')
             ->get();
 
@@ -61,6 +78,9 @@ class ESBTPLMDAjournesController extends Controller
             'parcours' => $lignes->map(fn ($l) => $l['jury']?->parcours_id)->filter()->unique()->count(),
         ];
 
-        return view('esbtp.lmd.ajournes.index', compact('lignes', 'annee', 'annees', 'kpis'));
+        $classes = ESBTPClasse::query()->orderBy('name')->get(['id', 'name']);
+        $parcours = ESBTPLMDParcours::query()->orderBy('name')->get(['id', 'name']);
+
+        return view('esbtp.lmd.ajournes.index', compact('lignes', 'annee', 'annees', 'kpis', 'classes', 'parcours'));
     }
 }

@@ -77,14 +77,14 @@
     </div>
 </div>
 
-<form method="GET" class="rtp-filters">
-    <div class="rtp-filter">
-        <label>Année</label>
-        <select name="annee_universitaire_id" onchange="this.form.submit()">
-            @foreach($annees as $a)<option value="{{ $a->id }}" @selected($a->id == $annee->id)>{{ $a->libelle }}</option>@endforeach
-        </select>
-    </div>
-</form>
+@include('esbtp.lmd.partials.premium-filters', [
+    'action' => route('esbtp.lmd.rattrapage.index'),
+    'annees' => $annees,
+    'annee' => $annee,
+    'parcours' => $parcours,
+    'classes' => collect(),
+    'showClasse' => false,
+])
 
 <div class="rtp-card">
     @if($sessions->isEmpty())
