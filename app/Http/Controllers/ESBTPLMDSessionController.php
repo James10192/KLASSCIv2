@@ -42,7 +42,7 @@ class ESBTPLMDSessionController extends Controller
         ];
 
         $parcours = ESBTPLMDParcours::orderBy('name')->get(['id', 'name']);
-        $annees = ESBTPAnneeUniversitaire::orderByDesc('id')->get(['id', 'libelle', 'is_current']);
+        $annees = ESBTPAnneeUniversitaire::orderByDesc('id')->get(['id', 'name', 'libelle', 'is_current', 'start_date', 'end_date']);
 
         return view('esbtp.lmd.rattrapage.index', compact(
             'sessions', 'kpis', 'parcours', 'annee', 'annees'

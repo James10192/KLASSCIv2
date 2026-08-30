@@ -60,7 +60,7 @@ class ESBTPLMDJuryController extends Controller
         $parcours = ESBTPLMDParcours::orderBy('name')->get(['id', 'name']);
         $classes = ESBTPClasse::orderBy('name')->get(['id', 'name']);
         $sessions = ESBTPLMDSession::orderByDesc('date_debut')->get(['id', 'libelle']);
-        $annees = ESBTPAnneeUniversitaire::orderByDesc('id')->get(['id', 'libelle', 'is_current']);
+        $annees = ESBTPAnneeUniversitaire::orderByDesc('id')->get(['id', 'name', 'libelle', 'is_current', 'start_date', 'end_date']);
 
         return view('esbtp.lmd.jurys.index', compact(
             'jurys', 'kpis', 'parcours', 'classes', 'sessions', 'annee', 'annees'
