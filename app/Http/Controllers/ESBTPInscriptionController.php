@@ -813,14 +813,6 @@ class ESBTPInscriptionController extends Controller
             "payments",
         ]);
 
-        // Frais/échéances liés à l'inscription
-        $fees = \App\Models\ESBTP\Fee::where("inscription_id", $inscription->id)
-            ->orderBy("due_date")
-            ->get();
-        // Paiements validés liés à l'inscription
-        $soldeRestant = $fees->sum(function ($fee) {
-            return $fee->amount - $fee->totalPaidAmount();
-        });
 
         // Récupérer les catégories de frais avec règles pour cette inscription
         $mandatoryCategories = \App\Models\ESBTPFraisCategory::where(
@@ -1103,8 +1095,6 @@ class ESBTPInscriptionController extends Controller
             "esbtp.inscriptions.show",
             compact(
                 "inscription",
-                "fees",
-                "soldeRestant",
                 "feeCategoriesWithRules",
                 "categoriesfrais",
                 "mandatoryFeeCategoriesWithRules",

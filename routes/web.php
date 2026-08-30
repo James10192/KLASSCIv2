@@ -366,11 +366,6 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
 
         // Routes protÃ©gÃ©es pour les super-administrateurs, secrÃ©taires, coordinateurs et enseignants
         Route::middleware(['auth', 'permission:admin.access', 'paywall'])->group(function () {
-            // Routes pour les paiements
-            Route::resource('payments', \App\Http\Controllers\ESBTP\PaymentController::class);
-            Route::get('payments/{payment}/receipt', [\App\Http\Controllers\ESBTP\PaymentController::class, 'generateReceipt'])
-                ->name('payments.receipt');
-
             // Nouveau systÃ¨me de catÃ©gories de frais ESBTP
             Route::get('frais', [\App\Http\Controllers\ESBTPFraisController::class, 'index'])->name('frais.index');
             Route::get('frais/configure', [\App\Http\Controllers\ESBTPFraisController::class, 'configure'])->name('frais.configure');
