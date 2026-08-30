@@ -1968,6 +1968,12 @@
                                     <span>Jurys de délibération</span>
                                 </a>
                                 @endcan
+                                @can('lmd.ajournes.view')
+                                <a href="{{ route('esbtp.lmd.ajournes.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.lmd.ajournes.*') ? 'active' : '' }}">
+                                    <span class="menu-dot"></span>
+                                    <span>Ajournés (UE / IE)</span>
+                                </a>
+                                @endcan
                                 @can('lmd.reconciliation.manage')
                                 <a href="{{ route('esbtp.lmd.reconciliation.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.lmd.reconciliation.*') ? 'active' : '' }}">
                                     <span class="menu-dot"></span>

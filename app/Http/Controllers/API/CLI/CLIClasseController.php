@@ -34,9 +34,18 @@ class CLIClasseController extends BaseApiController
         }
 
         $anneeId = ESBTPAnneeUniversitaire::where('is_current', true)->value('id');
-        $dryRun = (bool) ($validated['dry_run'] ?? false);
-        $existants = ESBTPClasse::whereIn('code', $codes)->pluck('name', 'code');
+        $needsCurrentYear = collect($validated['classes'])->contains(
+            static fn (array $c): bool => empty($c['annee_universitaire_id'])
+        );
+        if ($needsCurrentYear && ! $anneeId) {
+            return $this->errorResponse(
+                'Aucune annee universitaire courante. Creez-en une ou passez annee_universitaire_id.',
+                ['code' => 'NO_ACADEMIC_YEAR'],
+                422
+            );
+        }
 
+        $existants = ESBTPClasse::whereIn('code', $codes)->pluck('name', 'code');
         $plan = [];
         foreach ($validated['classes'] as $c) {
             $code = strtoupper(trim($c['code']));
@@ -47,7 +56,7 @@ class CLIClasseController extends BaseApiController
             ];
         }
 
-        if ($dryRun) {
+        if ($validated['dry_run'] ?? false) {
             return $this->successResponse(['dry_run' => true, 'plan' => $plan]);
         }
 
@@ -57,23 +66,18 @@ class CLIClasseController extends BaseApiController
         DB::transaction(function () use ($validated, $anneeId, &$crees, &$misAJour) {
             foreach ($validated['classes'] as $c) {
                 $code = strtoupper(trim($c['code']));
-                $donnees = [
-                    'name' => trim($c['name']),
-                    'code' => $code,
-                    'filiere_id' => (int) $c['filiere_id'],
-                    'niveau_etude_id' => (int) $c['niveau_etude_id'],
-                    'annee_universitaire_id' => $c['annee_universitaire_id'] ?? $anneeId,
-                    'places_totales' => $c['places_totales'] ?? 30,
-                    'is_active' => true,
-                ];
-                $classe = ESBTPClasse::where('code', $code)->first();
-                if ($classe) {
-                    $classe->update($donnees);
-                    $misAJour++;
-                } else {
-                    ESBTPClasse::create($donnees);
-                    $crees++;
-                }
+                $classe = ESBTPClasse::updateOrCreate(
+                    ['code' => $code],
+                    [
+                        'name' => trim($c['name']),
+                        'filiere_id' => (int) $c['filiere_id'],
+                        'niveau_etude_id' => (int) $c['niveau_etude_id'],
+                        'annee_universitaire_id' => $c['annee_universitaire_id'] ?? $anneeId,
+                        'places_totales' => $c['places_totales'] ?? 30,
+                        'is_active' => true,
+                    ]
+                );
+                $classe->wasRecentlyCreated ? $crees++ : $misAJour++;
             }
         });
 

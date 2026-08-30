@@ -1308,6 +1308,9 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 Route::get('/inscriptions/{inscription}/situation-financiere/pdf/preview', [ESBTPInscriptionPaiementController::class, 'previewSituationFinancierePdf'])
                     ->name('inscriptions.situation-financiere.pdf-preview')
                     ->middleware('throttle:60,1');
+                Route::get('/inscriptions/{inscription}/fiche/preview-pdf', [\App\Http\Controllers\ESBTPInscriptionFicheController::class, 'preview'])
+                    ->name('inscriptions.fiche.preview-pdf')
+                    ->middleware(['permission:inscriptions.fiche.print', 'throttle:60,1']);
                 Route::get('/inscriptions/{inscription}/data', [ESBTPInscriptionApiController::class, 'getInscriptionData'])->name('inscriptions.data');
                 Route::get('/inscriptions/{inscription}/paiement-en-attente', [ESBTPInscriptionApiController::class, 'getPaiementEnAttente'])->name('inscriptions.paiement-en-attente');
                 Route::get('/inscriptions/{inscription}/classes-alternatives', [ESBTPInscriptionApiController::class, 'getClassesAlternatives'])->name('inscriptions.classes-alternatives');
@@ -2895,6 +2898,10 @@ Route::prefix('esbtp/lmd')->name('esbtp.lmd.')->middleware(['auth', 'permission:
         ->name('ues.update-responsable');
 });
 
+Route::get('/esbtp/lmd/ajournes', [\App\Http\Controllers\ESBTPLMDAjournesController::class, 'index'])
+    ->middleware(['auth', 'permission:module.lmd.access', 'permission:lmd.ajournes.view', 'paywall'])
+    ->name('esbtp.lmd.ajournes.index');
+
 // ============================================================
 // Routes Jury de dÃ©libÃ©ration LMD (PR12 â€” UI premium juy-*)
 // ============================================================
@@ -2946,6 +2953,12 @@ Route::prefix('esbtp/lmd/jurys')->name('esbtp.lmd.jurys.')
         Route::get('/{jury}/pv/download', [\App\Http\Controllers\ESBTPLMDJuryController::class, 'pvDownload'])
             ->middleware(['permission:lmd.jury.view', 'throttle:30,1'])
             ->name('pv-download');
+        Route::get('/{jury}/pv-annuel/excel', [\App\Http\Controllers\ESBTPLMDPvExportController::class, 'excel'])
+            ->middleware(['permission:lmd.pv.export', 'throttle:10,1'])
+            ->name('pv-annuel.excel');
+        Route::get('/{jury}/pv-annuel/pdf', [\App\Http\Controllers\ESBTPLMDPvExportController::class, 'pdf'])
+            ->middleware(['permission:lmd.pv.export', 'throttle:60,1'])
+            ->name('pv-annuel.pdf');
         Route::post('/{jury}/pv/reconcilier', [\App\Http\Controllers\ESBTPLMDJuryController::class, 'reconcileLegacyPv'])
             ->middleware(['permission:lmd.jury.documents.reconcile', 'throttle:5,1'])
             ->name('pv-reconcile');

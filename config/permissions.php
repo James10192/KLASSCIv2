@@ -1494,6 +1494,21 @@ return [
             'group' => 'LMD',
             'icon' => 'fa-file-shield',
         ],
+        'lmd.pv.export' => [
+            'label' => 'Exporter le PV annuel (Excel et PDF)',
+            'group' => 'LMD',
+            'icon' => 'fa-file-excel',
+        ],
+        'lmd.ajournes.view' => [
+            'label' => 'Voir la liste des étudiants ajournés et les UE/IE non validées',
+            'group' => 'LMD',
+            'icon' => 'fa-user-times',
+        ],
+        'inscriptions.fiche.print' => [
+            'label' => 'Imprimer la fiche d\'inscription (double exemplaire)',
+            'group' => 'Inscriptions',
+            'icon' => 'fa-print',
+        ],
 
         // ===== Réconciliation des doublons UE/ECUE LMD =====
         'lmd.reconciliation.manage' => [
@@ -1935,6 +1950,7 @@ return [
             'students.view', 'students.create', 'students.edit', 'students.delete',
             'students.accessibility.view', 'students.accessibility.edit', 'students.accessibility.export',
             'inscriptions.view', 'inscriptions.create', 'inscriptions.edit', 'inscriptions.validate',
+            'inscriptions.fiche.print',
             'reinscriptions.demandes.view', 'reinscriptions.demandes.process',
             'inscriptions.candidatures.view', 'inscriptions.candidatures.process',
             'inscriptions.cancel', 'inscriptions.manage', 'inscriptions.specialisation.manage',
@@ -2068,6 +2084,7 @@ return [
             'lmd.credit_wallet.view',
             'lmd.jury.view', 'lmd.jury.preside', 'lmd.jury.deliberate', 'lmd.jury.publish',
             'lmd.jury.documents.reconcile',
+            'lmd.pv.export', 'lmd.ajournes.view',
             'timetables.view', 'timetables.view_all', 'timetables.create', 'timetables.edit', 'timetables.delete',
             'schedules.view', 'schedules.create', 'schedules.edit',
             'personnel.view', 'personnel.manage',
@@ -2122,6 +2139,7 @@ return [
             'lmd.rattrapage.view',
             'lmd.credit_wallet.view',
             'lmd.jury.view',
+            'lmd.pv.export', 'lmd.ajournes.view',
             'timetables.view', 'timetables.view_all', 'timetables.create', 'timetables.edit', 'timetables.delete',
             'schedules.view', 'schedules.create', 'schedules.edit',
             'personnel.view',
@@ -2154,6 +2172,7 @@ return [
             'students.view', 'students.create', 'students.edit',
             'students.accessibility.view', 'students.accessibility.edit', 'students.accessibility.export',
             'inscriptions.view', 'inscriptions.create', 'inscriptions.edit', 'inscriptions.validate',
+            'inscriptions.fiche.print',
             'reinscriptions.demandes.view', 'reinscriptions.demandes.process',
             'inscriptions.candidatures.view', 'inscriptions.candidatures.process',
             'inscriptions.cancel', 'inscriptions.manage', 'inscriptions.specialisation.manage',
@@ -2227,6 +2246,7 @@ return [
             'dashboard.view',
             'students.view', 'students.create', 'students.edit',
             'inscriptions.view', 'inscriptions.create', 'inscriptions.edit', 'inscriptions.validate',
+            'inscriptions.fiche.print',
             'reinscriptions.demandes.view', 'reinscriptions.demandes.process',
             'inscriptions.candidatures.view', 'inscriptions.candidatures.process',
             'classes.view',

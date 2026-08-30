@@ -27,6 +27,18 @@
     @endif
     @endcan
 
+    @can('lmd.pv.export')
+    <a href="{{ route('esbtp.lmd.jurys.pv-annuel.pdf', $jury) }}?inline=1" target="_blank" rel="noopener" class="juy-btn juy-btn--secondary h-11">
+        <i class="fas fa-eye"></i> Aperçu PV annuel
+    </a>
+    <a href="{{ route('esbtp.lmd.jurys.pv-annuel.pdf', $jury) }}" class="juy-btn juy-btn--secondary h-11">
+        <i class="fas fa-file-pdf"></i> PV annuel PDF
+    </a>
+    <a href="{{ route('esbtp.lmd.jurys.pv-annuel.excel', $jury) }}" class="juy-btn juy-btn--secondary h-11">
+        <i class="fas fa-file-excel"></i> PV annuel Excel
+    </a>
+    @endcan
+
     @if($jury->pv_numero)
     <span class="pv-numero"><i class="fas fa-stamp"></i> {{ $jury->pv_numero }}</span>
     @endif
