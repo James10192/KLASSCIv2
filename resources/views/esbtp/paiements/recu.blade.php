@@ -186,7 +186,38 @@
             padding: 2mm 3mm;
         }
 
-        .signs { margin-top: 2mm; }
+        .fees { width: 100%; border-collapse: collapse; margin: 1.5mm 0; }
+        .fees td {
+            width: 33.33%;
+            border: 0.4pt solid #cbd5e1;
+            padding: 1.2mm 2mm;
+            font-size: 8px;
+            vertical-align: middle;
+        }
+        .fees .chk { font-size: 11px; font-weight: 700; color: {{ $primary }}; padding-right: 1mm; }
+        .fees .chk-off { color: #94a3b8; }
+        .fees .fee-now { font-weight: 700; }
+        .fees .fee-note { color: #64748b; font-size: 7px; }
+        .reste { width: 100%; border-collapse: collapse; margin-bottom: 1.5mm; }
+        .reste-lbl {
+            width: 40%;
+            background-color: {{ $primary }};
+            color: {{ $barText }};
+            font-size: 8px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            padding: 2mm 3mm;
+        }
+        .reste-val {
+            background-color: #eff6ff;
+            font-size: 13px;
+            font-weight: 900;
+            color: {{ $primary }};
+            padding: 2mm 3mm;
+        }
+
+        .signs { margin-top: 3mm; }
         .signs td { width: 50%; text-align: center; vertical-align: top; padding: 0 8mm; }
         .sign-title {
             font-size: 9px;
@@ -194,7 +225,7 @@
             color: {{ $primary }};
             text-transform: uppercase;
             letter-spacing: 0.4px;
-            margin-bottom: 6mm;
+            margin-bottom: 14mm;
         }
         .sign-line {
             border-top: 1.5px solid {{ $primary }};
@@ -250,16 +281,18 @@
         @foreach ($copies as $copyTag)
             <tr>
                 <td class="copy-cell">
-                    @include('esbtp.paiements.partials.recu-exemplaire', [
-                        'copyTag' => $copyTag,
-                        'paiement' => $paiement,
-                        'settings' => $settings,
-                        'primary' => $primary,
-                        'hdrBg' => $hdrBg,
-                        'hdrText' => $hdrText,
-                        'barText' => $barText,
-                        'categoryName' => $categoryName,
-                    ])
+            @include('esbtp.paiements.partials.recu-exemplaire', [
+                'copyTag' => $copyTag,
+                'paiement' => $paiement,
+                'settings' => $settings,
+                'primary' => $primary,
+                'hdrBg' => $hdrBg,
+                'hdrText' => $hdrText,
+                'barText' => $barText,
+                'categoryName' => $categoryName,
+                'fraisLignes' => $fraisLignes ?? collect(),
+                'resteAPayer' => $resteAPayer ?? 0,
+            ])
                 </td>
             </tr>
             @if (! $loop->last)

@@ -649,11 +649,12 @@ class ESBTPPaiementController extends Controller
             'creator:id,name'
         ])->findOrFail($id);
 
-        // Récupérer les paramètres depuis les settings comme pour les bulletins
         $settings = $this->getReceiptSettings();
+        $fraisEtat = $this->receiptFraisEtat($paiement);
+        $fraisLignes = $fraisEtat['lignes'];
+        $resteAPayer = $fraisEtat['reste'];
 
-        // Générer le PDF avec les settings
-        $pdf = PDF::loadView('esbtp.paiements.recu', compact('paiement', 'settings'))
+        $pdf = PDF::loadView('esbtp.paiements.recu', compact('paiement', 'settings', 'fraisLignes', 'resteAPayer'))
             ->setPaper('a4', 'portrait')
             ->setOptions([
                 'dpi' => 150,
@@ -690,6 +691,46 @@ class ESBTPPaiementController extends Controller
         }
 
         return $settings;
+    }
+
+    private function receiptFraisEtat(ESBTPPaiement $paiement): array
+    {
+        $inscriptionId = $paiement->inscription_id;
+
+        $subscriptions = \App\Models\ESBTPFraisSubscription::where('inscription_id', $inscriptionId)
+            ->where('is_active', true)
+            ->with('fraisCategory')
+            ->get();
+
+        $payeParCategorie = ESBTPPaiement::where('inscription_id', $inscriptionId)
+            ->where('status', 'validé')
+            ->whereNull('deleted_at')
+            ->groupBy('frais_category_id')
+            ->selectRaw('frais_category_id, SUM(montant) as total_paye')
+            ->pluck('total_paye', 'frais_category_id');
+
+        $lignes = $subscriptions->map(function ($sub) use ($payeParCategorie, $paiement) {
+            $due = $sub->chargedAmount();
+            $paye = (float) ($payeParCategorie[$sub->frais_category_id] ?? 0);
+            $restant = max(0.0, $due - $paye);
+            $inKind = (bool) $sub->satisfied_in_kind;
+
+            return [
+                'name' => $sub->fraisCategory->name ?? 'N/A',
+                'restant' => $restant,
+                'in_kind' => $inKind,
+                'checked' => $inKind || $restant <= 0,
+                'current' => (int) $paiement->frais_category_id === (int) $sub->frais_category_id,
+            ];
+        })->values();
+
+        $reste = (float) $lignes->sum('restant');
+        $reliquats = (float) \App\Models\ESBTPReliquatDetail::where('inscription_destination_id', $inscriptionId)
+            ->actifs()
+            ->sum('solde_restant');
+        $reste += $reliquats;
+
+        return ['lignes' => $lignes, 'reste' => $reste];
     }
 
     /**

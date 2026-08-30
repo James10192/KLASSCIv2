@@ -133,6 +133,39 @@
     </tr>
 </table>
 
+@php
+    $fraisLignes = collect($fraisLignes ?? []);
+    $resteAPayer = (float) ($resteAPayer ?? 0);
+@endphp
+@if($fraisLignes->isNotEmpty())
+<table class="fees" width="100%" border="0" cellspacing="0" cellpadding="0">
+    @foreach ($fraisLignes->chunk(3) as $row)
+    <tr>
+        @foreach ($row as $ligne)
+        <td>
+            <span class="chk {{ $ligne['checked'] ? '' : 'chk-off' }}">{{ $ligne['checked'] ? '☑' : '☐' }}</span>
+            <span class="{{ !empty($ligne['current']) ? 'fee-now' : '' }}">{{ $ligne['name'] }}</span>
+            @if(!empty($ligne['in_kind']))
+                <span class="fee-note">déposé</span>
+            @elseif(($ligne['restant'] ?? 0) > 0)
+                <span class="fee-note">{{ number_format($ligne['restant'], 0, ',', ' ') }}</span>
+            @endif
+        </td>
+        @endforeach
+        @for ($i = $row->count(); $i < 3; $i++)
+        <td></td>
+        @endfor
+    </tr>
+    @endforeach
+</table>
+<table class="reste" width="100%" border="0" cellspacing="0" cellpadding="0">
+    <tr>
+        <td class="reste-lbl">Reste à payer</td>
+        <td class="reste-val">{{ number_format($resteAPayer, 0, ',', ' ') }} FCFA</td>
+    </tr>
+</table>
+@endif
+
 @if($paiement->creator)
 <table class="encaissed" width="100%" border="0" cellspacing="0" cellpadding="0">
     <tr>
