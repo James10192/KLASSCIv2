@@ -725,10 +725,10 @@ class ESBTPPaiementController extends Controller
         })->values();
 
         $reste = (float) $lignes->sum('restant');
-        $reliquats = (float) \App\Models\ESBTPReliquatDetail::where('inscription_destination_id', $inscriptionId)
+        $reste += (float) \App\Models\ESBTPReliquatDetail::where('inscription_destination_id', $inscriptionId)
             ->actifs()
-            ->sum('solde_restant');
-        $reste += $reliquats;
+            ->get()
+            ->sum(fn ($r) => $r->solde_restant);
 
         return ['lignes' => $lignes, 'reste' => $reste];
     }
