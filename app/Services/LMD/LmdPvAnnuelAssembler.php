@@ -66,12 +66,17 @@ class LmdPvAnnuelAssembler
             ];
         }
 
+        $logo = SettingsHelper::resolveLogoBase64();
+        $pdfSettings = SettingsHelper::getPdfSettings();
+
         return [
             'ecole' => SettingsHelper::getSchoolInfo(),
-            'annee' => $jury->anneeUniversitaire?->name,
+            'annee' => $jury->anneeUniversitaire?->name ?? $jury->anneeUniversitaire?->display_name,
             'parcours' => $jury->parcours?->name ?? $jury->classe?->filiere?->name,
             'niveau' => $jury->classe?->niveau?->name,
             'classe' => $jury->classe?->name,
+            'primary' => $pdfSettings['primary_color'] ?? '#0453cb',
+            'logo_binary' => $logo ? base64_decode($logo['b64'], true) : null,
             'ues_header' => $ues->map(fn ($r) => [
                 'code' => $r->uniteEnseignement?->code,
                 'name' => $r->uniteEnseignement?->name,

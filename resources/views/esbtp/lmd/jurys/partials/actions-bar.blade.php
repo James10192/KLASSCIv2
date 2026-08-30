@@ -13,11 +13,11 @@
         <i class="fas fa-file-signature"></i> <span x-text="busy ? 'Génération…' : 'Générer PV'"></span>
     </button>
     @elseif($officialDocument)
-    <a href="{{ route('esbtp.lmd.jurys.pv-preview', $jury) }}" target="_blank" class="juy-btn juy-btn--secondary h-11">
-        <i class="fas fa-file-pdf"></i> Aperçu PV
+    <a href="{{ route('esbtp.lmd.jurys.pv-preview', $jury) }}" target="_blank" rel="noopener" class="juy-btn juy-btn--secondary h-11">
+        <i class="fas fa-eye"></i> Aperçu PDF du PV officiel
     </a>
     <a href="{{ route('esbtp.lmd.jurys.pv-download', $jury) }}" class="juy-btn juy-btn--secondary h-11">
-        <i class="fas fa-download"></i> Télécharger PV
+        <i class="fas fa-download"></i> Télécharger le PV officiel (PDF)
     </a>
     @if($jury->status !== 'publie')
     <button type="button" class="juy-btn juy-btn--success h-11" @click="requestPublication()" :disabled="busy || !readiness.ok">
@@ -29,13 +29,13 @@
 
     @can('lmd.pv.export')
     <a href="{{ route('esbtp.lmd.jurys.pv-annuel.pdf', $jury) }}?inline=1" target="_blank" rel="noopener" class="juy-btn juy-btn--secondary h-11">
-        <i class="fas fa-eye"></i> Aperçu PV annuel
+        <i class="fas fa-eye"></i> Aperçu PDF du PV annuel
     </a>
     <a href="{{ route('esbtp.lmd.jurys.pv-annuel.pdf', $jury) }}" class="juy-btn juy-btn--secondary h-11">
-        <i class="fas fa-file-pdf"></i> PV annuel PDF
+        <i class="fas fa-download"></i> Télécharger le PV annuel (PDF)
     </a>
     <a href="{{ route('esbtp.lmd.jurys.pv-annuel.excel', $jury) }}" class="juy-btn juy-btn--secondary h-11">
-        <i class="fas fa-file-excel"></i> PV annuel Excel
+        <i class="fas fa-file-excel"></i> Télécharger le PV annuel (Excel)
     </a>
     @endcan
 

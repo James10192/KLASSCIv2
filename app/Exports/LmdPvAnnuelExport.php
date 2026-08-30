@@ -2,6 +2,9 @@
 
 namespace App\Exports;
 
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Worksheet\MemoryDrawing;
 use Maatwebsite\Excel\Concerns\FromArray;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithEvents;
@@ -19,10 +22,9 @@ class LmdPvAnnuelExport implements FromArray, WithTitle, ShouldAutoSize, WithEve
 
     public function array(): array
     {
-        $ecole = $this->payload['ecole']['name'] ?? 'Établissement';
         $rows = [
-            [$ecole],
-            ['ANNEE UNIVERSITAIRE', $this->payload['annee'] ?? ''],
+            [$this->payload['ecole']['name'] ?? 'Établissement'],
+            ['ANNÉE UNIVERSITAIRE', $this->payload['annee'] ?? ''],
             ['PARCOURS', $this->payload['parcours'] ?? ''],
             ['NIVEAU', $this->payload['niveau'] ?? ''],
             [],
@@ -67,7 +69,7 @@ class LmdPvAnnuelExport implements FromArray, WithTitle, ShouldAutoSize, WithEve
             'Moyenne annuelle', 'Total crédits', 'Décision de fin d\'année',
         ];
         foreach ($this->payload['ues_header'] as $ue) {
-            $base[] = ($ue['code'] ?? '').' '.($ue['name'] ?? '');
+            $base[] = trim(($ue['code'] ?? '').' '.($ue['name'] ?? ''));
             $base[] = 'Moyenne';
             $base[] = 'Statut';
             $base[] = 'Crédits';
@@ -78,11 +80,52 @@ class LmdPvAnnuelExport implements FromArray, WithTitle, ShouldAutoSize, WithEve
 
     public function registerEvents(): array
     {
+        $rgb = $this->hexToRgb($this->payload['primary'] ?? '#0453cb');
+
         return [
-            AfterSheet::class => function (AfterSheet $event) {
-                $event->sheet->getDelegate()->getStyle('A1:A4')->getFont()->setBold(true);
-                $event->sheet->getDelegate()->getStyle('A6:Z6')->getFont()->setBold(true);
+            AfterSheet::class => function (AfterSheet $event) use ($rgb) {
+                $sheet = $event->sheet->getDelegate();
+                $lastCol = $sheet->getHighestColumn();
+                $sheet->mergeCells('B1:'.$lastCol.'1');
+                $sheet->getRowDimension(1)->setRowHeight(36);
+                $sheet->getStyle('A1:'.$lastCol.'1')->applyFromArray([
+                    'font' => ['bold' => true, 'size' => 14, 'color' => ['rgb' => 'FFFFFF']],
+                    'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => $rgb]],
+                    'alignment' => ['vertical' => Alignment::VERTICAL_CENTER],
+                ]);
+                $sheet->getStyle('A2:A4')->getFont()->setBold(true);
+                $sheet->getStyle('A6:'.$lastCol.'6')->applyFromArray([
+                    'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
+                    'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => $rgb]],
+                ]);
+
+                $binary = $this->payload['logo_binary'] ?? null;
+                if (is_string($binary) && $binary !== '') {
+                    $gd = @imagecreatefromstring($binary);
+                    if ($gd !== false) {
+                        $drawing = new MemoryDrawing();
+                        $drawing->setName('Logo');
+                        $drawing->setImageResource($gd);
+                        $drawing->setRenderingFunction(MemoryDrawing::RENDERING_PNG);
+                        $drawing->setMimeType(MemoryDrawing::MIMETYPE_PNG);
+                        $drawing->setHeight(40);
+                        $drawing->setCoordinates('A1');
+                        $drawing->setOffsetX(6);
+                        $drawing->setOffsetY(4);
+                        $drawing->setWorksheet($sheet);
+                    }
+                }
             },
         ];
+    }
+
+    private function hexToRgb(string $hex): string
+    {
+        $hex = ltrim($hex, '#');
+        if (strlen($hex) === 3) {
+            $hex = $hex[0].$hex[0].$hex[1].$hex[1].$hex[2].$hex[2];
+        }
+
+        return strlen($hex) === 6 ? strtoupper($hex) : '0453CB';
     }
 }

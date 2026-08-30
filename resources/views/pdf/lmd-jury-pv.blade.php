@@ -31,18 +31,11 @@
     @include('pdf.partials.theme')
 </head>
 <body>
-<table class="header">
-    <tr>
-        <td>
-            <div class="title">Procès-verbal de délibération</div>
-            <div class="muted">{{ $snapshot['institution']['name'] ?? config('app.name', 'KLASSCI') }} · Système LMD</div>
-        </td>
-        <td style="text-align:right;">
-            <strong>{{ $snapshot['jury']['year']['label'] ?? '' }}</strong><br>
-            <span class="muted">Semestre {{ $snapshot['jury']['semester'] ?? '' }}</span>
-        </td>
-    </tr>
-</table>
+@include('pdf.partials.banner', [
+    'title' => 'Procès-verbal de délibération',
+    'subtitle' => ($snapshot['jury']['year']['label'] ?? '').' · Semestre '.($snapshot['jury']['semester'] ?? '—'),
+])
+<div style="height:8px;"></div>
 
 <table class="id-table">
     <tr>
@@ -73,9 +66,17 @@
                 <td>
                     <strong>{{ $member['name'] }}</strong><br>
                     <span class="muted">{{ ucfirst($member['role']) }} · {{ $member['present'] ? 'Présent' : 'Absent' }}</span><br>
-                    @if($member['signature_data'])
-                        <img src="{{ $member['signature_data'] }}" alt="Signature"><br>
-                        <span class="muted">Signé le {{ \Carbon\Carbon::parse($member['signed_at'])->format('d/m/Y à H:i') }}</span>
+                    @php
+                        $sig = $member['signature_data'] ?? '';
+                        $sigOk = is_string($sig) && str_starts_with($sig, 'data:image/');
+                    @endphp
+                    @if($sigOk)
+                        <img src="{{ $sig }}" alt="Signature"><br>
+                        @if(!empty($member['signed_at']))
+                            <span class="muted">Signé le {{ \Carbon\Carbon::parse($member['signed_at'])->format('d/m/Y à H:i') }}</span>
+                        @endif
+                    @elseif(!empty($member['signed_at']))
+                        <span class="muted">Présence signée le {{ \Carbon\Carbon::parse($member['signed_at'])->format('d/m/Y à H:i') }}</span>
                     @else
                         <span class="muted">Signature non requise</span>
                     @endif
