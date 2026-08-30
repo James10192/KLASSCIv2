@@ -143,7 +143,7 @@
     <tr>
         @foreach ($row as $ligne)
         <td>
-            <span class="chk {{ $ligne['checked'] ? '' : 'chk-off' }}">{{ $ligne['checked'] ? '☑' : '☐' }}</span>
+            <span class="chk {{ $ligne['checked'] ? '' : 'chk-off' }}">{{ $ligne['checked'] ? '[X]' : '[ ]' }}</span>
             <span class="{{ !empty($ligne['current']) ? 'fee-now' : '' }}">{{ $ligne['name'] }}</span>
             @if(!empty($ligne['in_kind']))
                 <span class="fee-note">déposé</span>
