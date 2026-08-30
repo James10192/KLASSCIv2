@@ -21,8 +21,4 @@ class PaymentCategory extends Model
         'is_active' => 'boolean',
     ];
 
-    public function payments()
-    {
-        return $this->hasMany(Payment::class, 'category_id');
-    }
 }

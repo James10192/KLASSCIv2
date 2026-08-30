@@ -800,7 +800,7 @@ class ESBTPInscriptionController extends Controller
     {
         $this->authorize('view', $inscription);
 
-        // Charger toutes les relations nécessaires, y compris payments.
+        // Charger toutes les relations nécessaires.
         // classe.parcours.mention.domaine pour le tree LMD premium dans la zone
         // "Informations académiques" (cf inscriptions/show.blade.php).
         $inscription->load([
@@ -810,7 +810,6 @@ class ESBTPInscriptionController extends Controller
             "classe.parcours.mention.domaine",
             "anneeUniversitaire",
             "paiements",
-            "payments",
         ]);
 
 

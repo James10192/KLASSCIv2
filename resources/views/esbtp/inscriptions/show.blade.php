@@ -2691,9 +2691,6 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                                 if($inscription->paiements && $inscription->paiements->count()) {
                                     $allPayments = $allPayments->merge($inscription->paiements);
                                 }
-                                if($inscription->payments && $inscription->payments->count()) {
-                                    $allPayments = $allPayments->merge($inscription->payments);
-                                }
 
                                 // Séparer les paiements par statut
                                 $validatedPayments = $allPayments->filter(function($payment) {

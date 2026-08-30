@@ -247,16 +247,6 @@ class ESBTPInscription extends Model implements Auditable
     }
 
     /**
-     * Relation avec les paiements centralisés (nouveau système).
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\HasMany
-     */
-    public function payments()
-    {
-        return $this->hasMany(\App\Models\ESBTP\Payment::class, 'inscription_id');
-    }
-
-    /**
      * Frais souscriptions liées à cette inscription.
      *
      * @return \Illuminate\Database\Eloquent\Relations\HasMany
