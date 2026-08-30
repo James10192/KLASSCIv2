@@ -176,11 +176,7 @@ class ESBTPReinscriptionController extends Controller
     {
         // Basé UNIQUEMENT sur les frais souscriptions actives.
         // Pas de souscriptions → rien à payer → 0.
-        $subscriptions = \App\Models\ESBTPFraisSubscription::where('inscription_id', $inscription->id)
-            ->where('is_active', true)
-            ->get();
-
-        return $subscriptions->sum('amount');
+        return \App\Models\ESBTPFraisSubscription::dueAmountForInscription($inscription->id);
     }
     
     /**
@@ -527,7 +523,7 @@ class ESBTPReinscriptionController extends Controller
     {
         // Récupérer toutes les souscriptions de frais de cette inscription
         $subscriptions = \App\Models\ESBTPFraisSubscription::where('inscription_id', $inscription->id)
-            ->where('is_active', true)
+            ->charged()
             ->with(['fraisCategory'])
             ->get();
 
@@ -535,7 +531,7 @@ class ESBTPReinscriptionController extends Controller
         $totalPaye = $this->calculerTotalPaye($inscription);
 
         foreach ($subscriptions as $subscription) {
-            $montantAttendu = $subscription->amount;
+            $montantAttendu = $subscription->chargedAmount();
 
             // Pour simplifier, on considère que les paiements sont répartis proportionnellement
             // Une logique plus complexe pourrait être implémentée selon les besoins

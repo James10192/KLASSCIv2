@@ -264,6 +264,24 @@
                             <div style="color: var(--text-muted); font-size: var(--text-small); margin-top: var(--space-xs);">Les frais obligatoires doivent être configurés pour toutes les classes</div>
                         </div>
 
+                        <div class="form-group-moderne">
+                            <div class="form-check-moderne">
+                                <input class="form-check-input-moderne @error('accepts_in_kind') is-invalid @enderror"
+                                       type="checkbox"
+                                       id="accepts_in_kind"
+                                       name="accepts_in_kind"
+                                       value="1"
+                                       {{ old('accepts_in_kind', $fraisCategory->accepts_in_kind) ? 'checked' : '' }}>
+                                <label class="form-check-label-moderne" for="accepts_in_kind">
+                                    <strong>Accepte un dépôt en nature</strong>
+                                </label>
+                                @error('accepts_in_kind')
+                                    <div style="color: var(--danger); font-size: var(--text-small); margin-top: var(--space-xs);">{{ $message }}</div>
+                                @enderror
+                            </div>
+                            <div style="color: var(--text-muted); font-size: var(--text-small); margin-top: var(--space-xs);">Ramette, chemise cartonnée, etc. L'article reste obligatoire : déposé = pas dû, non déposé = montant encaissable.</div>
+                        </div>
+
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-top: var(--space-xl); padding-top: var(--space-lg); border-top: 1px solid rgba(0,0,0,0.1);">
                             <div style="display: flex; gap: var(--space-md);">
                                 <button type="submit" class="btn-acasi primary">

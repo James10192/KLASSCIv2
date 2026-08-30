@@ -2715,7 +2715,7 @@
         // Total attendu via fraisSubscriptions (même logique que tab Finance L.3365)
         $kpiTotalAttendu = 0;
         if ($kpiInscActive) {
-            try { $kpiTotalAttendu = $kpiInscActive->fraisSubscriptions->sum('amount'); } catch(\Exception $e) {}
+            try { $kpiTotalAttendu = $kpiInscActive->fraisSubscriptions->sum(fn ($s) => $s->chargedAmount()); } catch(\Exception $e) {}
         }
         $kpiPaiDu = max(0, $kpiTotalAttendu - ($kpiPaiTotal ?? 0));
 
@@ -5116,7 +5116,7 @@
 
         $finTotalAttendu = 0;
         if($finInscRef) {
-            try { $finTotalAttendu = $finInscRef->fraisSubscriptions->sum('amount'); } catch(\Exception $e) {}
+            try { $finTotalAttendu = $finInscRef->fraisSubscriptions->sum(fn ($s) => $s->chargedAmount()); } catch(\Exception $e) {}
         }
 
         // Reliquats entrants pour l'inscription de référence
@@ -5357,14 +5357,15 @@
                             ($p->frais_category_id ?? null) == ($sub->frais_category_id ?? null) &&
                             str_contains(strtolower($p->status ?? $p->statut ?? ''), 'valid')
                         )->sum('montant');
-                        $subSolde = $sub->amount - $subPaye;
-                        $subTaux  = $sub->amount > 0 ? min(100, round($subPaye / $sub->amount * 100)) : 0;
+                        $subDue = $sub->chargedAmount();
+                        $subSolde = $subDue - $subPaye;
+                        $subTaux  = $subDue > 0 ? min(100, round($subPaye / $subDue * 100)) : 0;
                     @endphp
                     <tr>
                         <td>
                             <span class="fin-cat-name">{{ $sub->fraisCategory->name ?? '—' }}</span>
                         </td>
-                        <td style="text-align:right; font-weight:600; color:var(--k-text);">{{ number_format($sub->amount, 0, ',', ' ') }}</td>
+                        <td style="text-align:right; font-weight:600; color:var(--k-text);">{{ number_format($subDue, 0, ',', ' ') }}</td>
                         <td style="text-align:right; font-weight:700; color:#10b981;">{{ number_format($subPaye, 0, ',', ' ') }}</td>
                         <td style="text-align:right; font-weight:700; color:{{ $subSolde > 0 ? '#f59e0b' : '#10b981' }};">
                             {{ $subSolde > 0 ? number_format($subSolde, 0, ',', ' ') : '✓' }}
@@ -5544,7 +5545,7 @@
         $autrePaye    = $autrePaiements->filter(fn($p) => str_contains(strtolower($p->status ?? $p->statut ?? ''), 'valid'))->sum('montant');
         $autreAttente = $autrePaiements->filter(fn($p) => str_contains(strtolower($p->status ?? $p->statut ?? ''), 'attente'))->sum('montant');
         $autreAttendu = 0;
-        try { $autreAttendu = $autreInsc->fraisSubscriptions->sum('amount'); } catch(\Exception $e) {}
+        try { $autreAttendu = $autreInsc->fraisSubscriptions->sum(fn ($s) => $s->chargedAmount()); } catch(\Exception $e) {}
         $autreSolde   = $autreAttendu - $autrePaye;
         $autreTaux    = $autreAttendu > 0 ? min(100, round($autrePaye / $autreAttendu * 100)) : 0;
         $autreAccordionId = 'fin-arch-' . $autreInsc->id;
@@ -5615,12 +5616,13 @@
                                     ($p->frais_category_id ?? null) == ($sub->frais_category_id ?? null) &&
                                     str_contains(strtolower($p->status ?? $p->statut ?? ''), 'valid')
                                 )->sum('montant');
-                                $aSubSolde = $sub->amount - $aSubPaye;
-                                $aSubTaux  = $sub->amount > 0 ? min(100, round($aSubPaye / $sub->amount * 100)) : 0;
+                                $aSubDue = $sub->chargedAmount();
+                                $aSubSolde = $aSubDue - $aSubPaye;
+                                $aSubTaux  = $aSubDue > 0 ? min(100, round($aSubPaye / $aSubDue * 100)) : 0;
                             @endphp
                             <tr>
                                 <td><span class="fin-cat-name">{{ $sub->fraisCategory->name ?? '—' }}</span></td>
-                                <td style="text-align:right; color:var(--k-text);">{{ number_format($sub->amount, 0, ',', ' ') }}</td>
+                                <td style="text-align:right; color:var(--k-text);">{{ number_format($aSubDue, 0, ',', ' ') }}</td>
                                 <td style="text-align:right; color:#10b981; font-weight:700;">{{ number_format($aSubPaye, 0, ',', ' ') }}</td>
                                 <td style="text-align:right; color:{{ $aSubSolde > 0 ? '#f59e0b' : '#10b981' }}; font-weight:700;">
                                     {{ $aSubSolde > 0 ? number_format($aSubSolde, 0, ',', ' ') : '✓' }}

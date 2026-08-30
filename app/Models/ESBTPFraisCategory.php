@@ -25,6 +25,7 @@ class ESBTPFraisCategory extends Model implements Auditable
         'code',
         'description',
         'is_mandatory',
+        'accepts_in_kind',
         'is_active',
         'category_type',
         'sort_order',
@@ -51,6 +52,7 @@ class ESBTPFraisCategory extends Model implements Auditable
         'code',
         'description',
         'is_mandatory',
+        'accepts_in_kind',
         'is_active',
         'category_type',
         'sort_order',
@@ -62,6 +64,7 @@ class ESBTPFraisCategory extends Model implements Auditable
 
     protected $casts = [
         'is_mandatory' => 'boolean',
+        'accepts_in_kind' => 'boolean',
         'is_active' => 'boolean',
         'default_amount' => 'decimal:2',
         'payment_deadline_days' => 'integer',
@@ -150,6 +153,11 @@ class ESBTPFraisCategory extends Model implements Auditable
     public function scopeMandatory($query)
     {
         return $query->where('is_mandatory', true);
+    }
+
+    public function scopeAcceptsInKind($query)
+    {
+        return $query->where('accepts_in_kind', true);
     }
 
     /**

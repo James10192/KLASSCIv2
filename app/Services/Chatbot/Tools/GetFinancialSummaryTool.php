@@ -63,7 +63,7 @@ class GetFinancialSummaryTool extends ChatbotTool
 
         $subscriptions = ESBTPFraisSubscription::query()
             ->whereIn('inscription_id', $inscriptionIds)
-            ->where('is_active', true)
+            ->charged()
             ->selectRaw('inscription_id, SUM(amount) as total_du')
             ->groupBy('inscription_id')
             ->pluck('total_du', 'inscription_id');

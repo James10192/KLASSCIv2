@@ -63,7 +63,7 @@ class GenerateMissingReliquats extends Command
                 if ($inscriptionSource) {
                     // Vérifier s'il y a des frais impayés sur l'inscription source
                     $fraisSouscrits = ESBTPFraisSubscription::where('inscription_id', $inscriptionSource->id)
-                        ->where('is_active', true)
+                        ->charged()
                         ->get();
 
                     $hasUnpaidFees = false;
@@ -73,7 +73,7 @@ class GenerateMissingReliquats extends Command
                             ->whereIn('status', ['validé', 'validated', 'valide', 'confirmé', 'confirmed'])
                             ->sum('montant');
 
-                        if ($frais->amount > $montantPaye) {
+                        if ($frais->chargedAmount() > $montantPaye) {
                             $hasUnpaidFees = true;
                             break;
                         }
@@ -182,12 +182,12 @@ class GenerateMissingReliquats extends Command
 
         // Récupérer tous les frais souscrits pour l'inscription source
         $fraisSouscrits = ESBTPFraisSubscription::where('inscription_id', $inscriptionSource->id)
-            ->where('is_active', true)
+            ->charged()
             ->get();
 
         foreach ($fraisSouscrits as $fraisSubscription) {
             // Calculer le montant attendu pour ce frais
-            $montantAttendu = $fraisSubscription->amount;
+            $montantAttendu = $fraisSubscription->chargedAmount();
 
             // Calculer le montant payé pour ce frais spécifique
             $montantPaye = ESBTPPaiement::where('inscription_id', $inscriptionSource->id)

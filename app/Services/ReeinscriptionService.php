@@ -713,7 +713,7 @@ class ReeinscriptionService
     public function calculerSoldeInscription($inscription): float
     {
         $subscriptions = ESBTPFraisSubscription::where('inscription_id', $inscription->id)
-            ->where('is_active', true)
+            ->charged()
             ->get();
 
         if ($subscriptions->isEmpty()) {
@@ -752,7 +752,7 @@ class ReeinscriptionService
 
         foreach ($fraisSouscrits as $fraisSubscription) {
             // Calculer le montant attendu pour ce frais
-            $montantAttendu = $fraisSubscription->amount;
+            $montantAttendu = $fraisSubscription->chargedAmount();
 
             // Calculer le montant payé pour ce frais spécifique
             // Chercher les paiements avec plusieurs variantes de statut possibles
@@ -883,6 +883,7 @@ class ReeinscriptionService
 
         // Récupérer les frais de l'inscription
         $fraisSubscriptions = \App\Models\ESBTPFraisSubscription::where('inscription_id', $inscription->id)
+            ->charged()
             ->with('fraisConfiguration')
             ->get();
 

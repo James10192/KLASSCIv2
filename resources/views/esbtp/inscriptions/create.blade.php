@@ -1740,12 +1740,18 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>`;
         }
 
-        const fraisObligatoires = fraisData.filter(f => f.is_mandatory);
+        const fraisInKind = fraisData.filter(f => f.is_mandatory && (f.accepts_in_kind || (f.category && f.category.accepts_in_kind)));
+        const fraisObligatoires = fraisData.filter(f => f.is_mandatory && !(f.accepts_in_kind || (f.category && f.category.accepts_in_kind)));
         const fraisOptionnels   = fraisData.filter(f => !f.is_mandatory);
 
         if (fraisObligatoires.length > 0) {
             html += `<p class="fw-bold text-primary mb-3" style="font-size:13px;"><i class="fas fa-star me-2"></i>Frais obligatoires</p>`;
             fraisObligatoires.forEach(frais => { html += generateFraisHTML(frais); });
+        }
+        if (fraisInKind.length > 0) {
+            html += `<p class="fw-bold mt-4 mb-3" style="font-size:13px;"><i class="fas fa-box me-2"></i>Fournitures à déposer</p>`;
+            html += `<p class="text-muted mb-3" style="font-size:12px;">Cochez uniquement les articles déjà déposés. Les autres seront dus au montant configuré.</p>`;
+            fraisInKind.forEach(frais => { html += generateInKindHTML(frais); });
         }
         if (fraisOptionnels.length > 0) {
             html += `<p class="fw-bold mt-4 mb-3" style="font-size:13px;color:var(--kl-info);"><i class="fas fa-plus-circle me-2"></i>Frais optionnels</p>`;
@@ -1766,6 +1772,25 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         fraisContainer.innerHTML = html;
+    }
+
+    function generateInKindHTML(frais) {
+        const category = frais.category;
+        const amount = parseFloat(frais.default_amount) || 0;
+        const amountHtml = window.hideEnrollmentAmounts ? '' : `<strong>${amount.toLocaleString('fr-FR')} FCFA</strong>`;
+        return `
+            <div class="frais-card" data-category-id="${category.id}">
+                <input type="hidden" name="in_kind_deposits[${category.id}]" value="0">
+                <label class="d-flex align-items-start gap-3" style="cursor:pointer;margin:0;">
+                    <input class="form-check-input mt-1" type="checkbox"
+                           name="in_kind_deposits[${category.id}]" value="1">
+                    <div>
+                        <div class="fw-bold">${category.name}</div>
+                        ${category.description ? `<div class="text-muted" style="font-size:12px;">${category.description}</div>` : ''}
+                        <div style="font-size:12px;margin-top:4px;">${amountHtml} — cocher si déposé, sinon le montant sera dû.</div>
+                    </div>
+                </label>
+            </div>`;
     }
 
     function generateFraisHTML(frais) {

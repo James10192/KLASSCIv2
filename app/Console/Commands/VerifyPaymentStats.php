@@ -90,8 +90,8 @@ class VerifyPaymentStats extends Command
             } else {
                 foreach ($subscriptions as $subscription) {
                     $categoryName = $subscription->fraisCategory->name ?? 'Catégorie inconnue';
-                    $this->info("  - {$categoryName}: " . number_format($subscription->amount, 0, ',', ' ') . " FCFA");
-                    $montantAttenduEtudiant += $subscription->amount;
+                    $this->info("  - {$categoryName}: " . number_format($subscription->chargedAmount(), 0, ',', ' ') . " FCFA");
+                    $montantAttenduEtudiant += $subscription->chargedAmount();
 
                     // Calculer les paiements pour cette catégorie (exclure les reliquats)
                     $paiements = ESBTPPaiement::where('inscription_id', $inscription->id)

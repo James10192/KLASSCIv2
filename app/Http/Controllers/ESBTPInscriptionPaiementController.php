@@ -126,7 +126,7 @@ class ESBTPInscriptionPaiementController extends Controller
             ->whereNull("deleted_at")
             ->sum("montant");
 
-        $montantRestant = $subscription->amount - $totalPaye;
+        $montantRestant = $subscription->chargedAmount() - $totalPaye;
 
         // Vérifier que le montant ne dépasse pas le montant restant
         if ($request->montant > $montantRestant) {
@@ -138,7 +138,7 @@ class ESBTPInscriptionPaiementController extends Controller
                 number_format($request->montant, 0, ",", " "),
                 $fraisCategory->name ?? "ce frais",
                 number_format($montantRestant, 0, ",", " "),
-                number_format($subscription->amount, 0, ",", " "),
+                number_format($subscription->chargedAmount(), 0, ",", " "),
                 number_format($totalPaye, 0, ",", " "),
             );
 
@@ -804,7 +804,7 @@ class ESBTPInscriptionPaiementController extends Controller
             "inscription_id",
             $inscription->id,
         )
-            ->where("is_active", true)
+            ->charged()
             ->with(["fraisCategory"])
             ->get();
 
@@ -824,7 +824,7 @@ class ESBTPInscriptionPaiementController extends Controller
         $totalReliquats = $reliquatsEntrants->sum("solde_restant");
 
         // Calculer les totaux
-        $totalFraisAnnee = $fraisSouscrits->sum("amount"); // Frais année courante seulement
+        $totalFraisAnnee = ESBTPFraisSubscription::dueAmountForInscription($inscription->id);
         $totalAttendu = $totalFraisAnnee + $totalReliquats; // Total = Année courante + Reliquats
 
         // Inclure TOUS les paiements validés (y compris reliquats)
@@ -902,7 +902,7 @@ class ESBTPInscriptionPaiementController extends Controller
             "inscription_id",
             $inscription->id,
         )
-            ->where("is_active", true)
+            ->charged()
             ->with(["fraisCategory"])
             ->get();
 
@@ -922,7 +922,7 @@ class ESBTPInscriptionPaiementController extends Controller
         $totalReliquats = $reliquatsEntrants->sum("solde_restant");
 
         // Utiliser la même logique que la page show: PRIORITÉ à la souscription
-        $totalFraisAnnee = $fraisSouscrits->sum("amount"); // Frais année courante seulement
+        $totalFraisAnnee = ESBTPFraisSubscription::dueAmountForInscription($inscription->id);
         $totalAttendu = $totalFraisAnnee + $totalReliquats; // Total = Année courante + Reliquats
 
         // Inclure TOUS les paiements validés (y compris reliquats)
@@ -1074,14 +1074,14 @@ class ESBTPInscriptionPaiementController extends Controller
             ->sum("montant");
 
         // Calculer le montant restant
-        $montantRestant = $subscription->amount - $totalPaye;
+        $montantRestant = $subscription->chargedAmount() - $totalPaye;
 
         // Sécurité : si le montant restant est négatif (corruption de données), le forcer à 0
         if ($montantRestant < 0) {
             \Log::warning("Montant restant négatif détecté", [
                 "inscription_id" => $inscription->id,
                 "category_id" => $category,
-                "subscription_amount" => $subscription->amount,
+                "subscription_amount" => $subscription->chargedAmount(),
                 "total_paye" => $totalPaye,
                 "montant_restant_calcule" => $montantRestant,
             ]);
@@ -1091,7 +1091,7 @@ class ESBTPInscriptionPaiementController extends Controller
         return response()->json([
             "success" => true,
             "is_subscribed" => true,
-            "montant_total" => $subscription->amount,
+            "montant_total" => $subscription->chargedAmount(),
             "montant_paye" => $totalPaye,
             "montant_restant" => $montantRestant,
             "nom_categorie" => $fraisCategory->name,
@@ -1116,14 +1116,16 @@ class ESBTPInscriptionPaiementController extends Controller
             ->selectRaw('frais_category_id, SUM(montant) as total_paye')
             ->pluck('total_paye', 'frais_category_id');
 
-        $categories = $inscription->fraisSubscriptions->map(function ($sub) use ($paiementsParCategorie) {
+        $categories = $inscription->fraisSubscriptions
+            ->filter(fn ($sub) => $sub->chargedAmount() > 0)
+            ->map(function ($sub) use ($paiementsParCategorie) {
             $totalPaye = $paiementsParCategorie[$sub->frais_category_id] ?? 0;
-            $restant = max(0, $sub->amount - $totalPaye);
+            $restant = max(0, $sub->chargedAmount() - $totalPaye);
 
             return [
                 'category_id' => $sub->frais_category_id,
                 'name' => $sub->fraisCategory->name ?? 'Catégorie #' . $sub->frais_category_id,
-                'montant_total' => $sub->amount,
+                'montant_total' => $sub->chargedAmount(),
                 'montant_paye' => $totalPaye,
                 'montant_restant' => $restant,
             ];

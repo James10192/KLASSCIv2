@@ -382,6 +382,7 @@ class ESBTPInscriptionApiController extends Controller
                     "variants" => $options, // Compatibilité avec interface existante
                     "options" => $options,
                     "is_mandatory" => $category->is_mandatory,
+                    "accepts_in_kind" => (bool) $category->accepts_in_kind,
                     "is_configured" => $isConfigured,
                     "configuration_type" => $configurationType,
                     "category_default_amount" => $category->default_amount,

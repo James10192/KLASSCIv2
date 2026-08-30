@@ -2520,7 +2520,7 @@ class NotificationService
             // Calculer situation financière (comme dans previewSituationFinanciere)
             // 1. Frais souscrits pour l'année courante
             $fraisSouscrits = \App\Models\ESBTPFraisSubscription::where('inscription_id', $inscription->id)
-                ->where('is_active', true)
+                ->charged()
                 ->get();
             $totalFraisAnnee = $fraisSouscrits->sum('amount');
 
@@ -2617,7 +2617,7 @@ class NotificationService
 
             // Calculer situation financière (comme dans previewSituationFinanciere)
             $fraisSouscrits = \App\Models\ESBTPFraisSubscription::where('inscription_id', $inscription->id)
-                ->where('is_active', true)
+                ->charged()
                 ->get();
             $totalFraisAnnee = $fraisSouscrits->sum('amount');
 

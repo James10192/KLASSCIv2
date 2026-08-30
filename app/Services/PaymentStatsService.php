@@ -28,30 +28,8 @@ class PaymentStatsService
             $montantEtudiantPaye = 0;
 
             foreach ($categories as $category) {
-                // Vérifier si l'étudiant est concerné par ce frais
-                $estConcerne = false;
-                $montantAttendu = 0;
-
-                if ($category->is_mandatory) {
-                    // Frais obligatoire : tous les étudiants sont concernés
-                    $estConcerne = true;
-                    $rule = \App\Models\ESBTPFraisConfiguration::where('frais_category_id', $category->id)
-                        ->where('filiere_id', $inscription->filiere_id)
-                        ->where('niveau_id', $inscription->niveau_id)
-                        ->first();
-                    $montantAttendu = $rule ? $rule->getMontantByStatus($inscription->affectation_status ?? ESBTPInscription::DEFAULT_AFFECTATION_STATUS) : $category->default_amount;
-                } else {
-                    // Service optionnel : vérifier s'il y a une souscription active
-                    $subscription = \App\Models\ESBTPFraisSubscription::where('inscription_id', $inscription->id)
-                        ->where('frais_category_id', $category->id)
-                        ->where('is_active', true)
-                        ->first();
-
-                    if ($subscription) {
-                        $estConcerne = true;
-                        $montantAttendu = $subscription->amount;
-                    }
-                }
+                $montantAttendu = FeeCalculationService::getMontantAttendu($category, $inscription);
+                $estConcerne = $montantAttendu > 0;
 
                 // Traiter seulement si l'étudiant est concerné
                 if ($estConcerne) {
@@ -121,36 +99,7 @@ class PaymentStatsService
             $montantEtudiantPaye = 0;
 
             foreach ($categories as $category) {
-                // Vérifier si l'étudiant est concerné par ce frais
-                $estConcerne = false;
-                $montantAttendu = 0;
-
-                if ($category->is_mandatory) {
-                    // Frais obligatoire : tous les étudiants sont concernés
-                    $estConcerne = true;
-
-                    // Prioriser la souscription individuelle
-                    $inscriptionSubscriptions = $subscriptions->get($inscription->id, collect());
-                    $subscription = $inscriptionSubscriptions->where('frais_category_id', $category->id)->first();
-
-                    if ($subscription) {
-                        $montantAttendu = $subscription->amount;
-                    } else {
-                        // Fallback sur la configuration générale si pas de souscription
-                        $configKey = $category->id . '_' . $inscription->filiere_id . '_' . $inscription->niveau_id;
-                        $configuration = $configurations->get($configKey, collect())->first();
-                        $montantAttendu = $configuration ? $configuration->getMontantByStatus($inscription->affectation_status ?? ESBTPInscription::DEFAULT_AFFECTATION_STATUS) : $category->default_amount;
-                    }
-                } else {
-                    // Service optionnel : vérifier s'il y a une souscription active
-                    $inscriptionSubscriptions = $subscriptions->get($inscription->id, collect());
-                    $subscription = $inscriptionSubscriptions->where('frais_category_id', $category->id)->first();
-
-                    if ($subscription) {
-                        $estConcerne = true;
-                        $montantAttendu = $subscription->amount;
-                    }
-                }
+                [$estConcerne, $montantAttendu] = $this->resolvePreloadedCharge($inscription, $category, $subscriptions, $configurations);
 
                 if ($estConcerne) {
                     $montantEtudiantAttendu += $montantAttendu;
@@ -224,36 +173,7 @@ class PaymentStatsService
         ];
 
         foreach ($inscriptions as $inscription) {
-            // Vérifier si l'étudiant est concerné par ce frais
-            $estConcerne = false;
-            $montantAttendu = 0;
-
-            if ($category->is_mandatory) {
-                // Frais obligatoire : tous les étudiants sont concernés
-                $estConcerne = true;
-
-                // Prioriser la souscription individuelle
-                $inscriptionSubscriptions = $subscriptions->get($inscription->id, collect());
-                $subscription = $inscriptionSubscriptions->where('frais_category_id', $category->id)->first();
-
-                if ($subscription) {
-                    $montantAttendu = $subscription->amount;
-                } else {
-                    // Fallback sur la configuration générale si pas de souscription
-                    $configKey = $category->id . '_' . $inscription->filiere_id . '_' . $inscription->niveau_id;
-                    $configuration = $configurations->get($configKey, collect())->first();
-                    $montantAttendu = $configuration ? $configuration->getMontantByStatus($inscription->affectation_status ?? ESBTPInscription::DEFAULT_AFFECTATION_STATUS) : $category->default_amount;
-                }
-            } else {
-                // Service optionnel : vérifier s'il y a une souscription active
-                $inscriptionSubscriptions = $subscriptions->get($inscription->id, collect());
-                $subscription = $inscriptionSubscriptions->where('frais_category_id', $category->id)->first();
-
-                if ($subscription) {
-                    $estConcerne = true;
-                    $montantAttendu = $subscription->amount;
-                }
-            }
+            [$estConcerne, $montantAttendu] = $this->resolvePreloadedCharge($inscription, $category, $subscriptions, $configurations);
 
             // Traiter seulement les étudiants concernés ET qui ont des frais > 0
             if ($estConcerne && $montantAttendu > 0) {
@@ -309,36 +229,7 @@ class PaymentStatsService
             ];
 
             foreach ($inscriptions as $inscription) {
-                // Vérifier si l'étudiant est concerné par ce frais
-                $estConcerne = false;
-                $montantAttendu = 0;
-
-                if ($category->is_mandatory) {
-                    // Frais obligatoire : tous les étudiants sont concernés
-                    $estConcerne = true;
-
-                    // Prioriser la souscription individuelle
-                    $inscriptionSubscriptions = $subscriptions->get($inscription->id, collect());
-                    $subscription = $inscriptionSubscriptions->where('frais_category_id', $category->id)->first();
-
-                    if ($subscription) {
-                        $montantAttendu = $subscription->amount;
-                    } else {
-                        // Fallback sur la configuration générale si pas de souscription
-                        $configKey = $category->id . '_' . $inscription->filiere_id . '_' . $inscription->niveau_id;
-                        $configuration = $configurations->get($configKey, collect())->first();
-                        $montantAttendu = $configuration ? $configuration->getMontantByStatus($inscription->affectation_status ?? ESBTPInscription::DEFAULT_AFFECTATION_STATUS) : $category->default_amount;
-                    }
-                } else {
-                    // Service optionnel : vérifier s'il y a une souscription active
-                    $inscriptionSubscriptions = $subscriptions->get($inscription->id, collect());
-                    $subscription = $inscriptionSubscriptions->where('frais_category_id', $category->id)->first();
-
-                    if ($subscription) {
-                        $estConcerne = true;
-                        $montantAttendu = $subscription->amount;
-                    }
-                }
+                [$estConcerne, $montantAttendu] = $this->resolvePreloadedCharge($inscription, $category, $subscriptions, $configurations);
 
                 // Traiter seulement les étudiants concernés ET qui ont des frais > 0
                 if ($estConcerne && $montantAttendu > 0) {
@@ -392,34 +283,8 @@ class PaymentStatsService
 
         foreach ($categories as $category) {
             $categoryType = $category->category_type ?? 'academic';
-            $expectedAmount = 0;
+            $expectedAmount = FeeCalculationService::getMontantAttendu($category, $inscription);
 
-            // Prioriser toujours la souscription individuelle (obligatoire ou optionnel)
-            $subscription = \App\Models\ESBTPFraisSubscription::where('inscription_id', $inscription->id)
-                ->where('frais_category_id', $category->id)
-                ->where('is_active', true)
-                ->first();
-
-            if ($subscription) {
-                $expectedAmount = $subscription->amount;
-            } elseif ($category->is_mandatory) {
-                // Frais obligatoire : fallback sur la configuration si pas de souscription
-                $configuration = \App\Models\ESBTPFraisConfiguration::where('frais_category_id', $category->id)
-                    ->where('filiere_id', $inscription->filiere_id)
-                    ->where('niveau_id', $inscription->niveau_id)
-                    ->where('is_active', true)
-                    ->where('is_valid', true)
-                    ->first();
-
-                if ($configuration) {
-                    $expectedAmount = $configuration->getMontantByStatus($inscription->affectation_status ?? ESBTPInscription::DEFAULT_AFFECTATION_STATUS);
-                } else {
-                    // Utiliser le montant par défaut si pas de configuration spécifique
-                    $expectedAmount = $category->default_amount ?? 0;
-                }
-            }
-
-            // Si un montant est attendu, l'ajouter aux stats
             if ($expectedAmount > 0) {
                 $fraisStats[$categoryType]['expected'] += $expectedAmount;
 
@@ -478,5 +343,17 @@ class PaymentStatsService
         }
 
         return $reliquatsStats;
+    }
+
+    private function resolvePreloadedCharge($inscription, $category, $subscriptions, $configurations): array
+    {
+        $amount = (float) FeeCalculationService::getMontantAttendu(
+            $category,
+            $inscription,
+            $configurations,
+            $subscriptions,
+        );
+
+        return [$amount > 0, $amount];
     }
 }

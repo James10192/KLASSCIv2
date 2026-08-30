@@ -74,26 +74,28 @@ class ReliquatPaymentDispatchService
             // Étape 2 : Appliquer le reste aux frais courants de l'inscription
             if ($montantRestant > 0) {
                 $fraisCourants = ESBTPFraisSubscription::where('inscription_id', $inscription->id)
-                    ->where('is_active', true)
+                    ->charged()
                     ->whereRaw('amount > montant_paye')
-                    ->orderBy('is_mandatory', 'desc') // Prioriser les frais obligatoires
+                    ->orderBy('is_mandatory', 'desc')
                     ->orderBy('created_at', 'asc')
                     ->get();
 
                 foreach ($fraisCourants as $frais) {
                     if ($montantRestant <= 0) break;
 
-                    $soldeRestantFrais = $frais->amount - $frais->montant_paye;
+                    $soldeRestantFrais = $frais->chargedAmount() - $frais->montant_paye;
+                    if ($soldeRestantFrais <= 0) {
+                        continue;
+                    }
                     $montantApplicable = min($montantRestant, $soldeRestantFrais);
 
-                    // Mettre à jour les frais courants
                     $frais->montant_paye += $montantApplicable;
                     $frais->save();
 
                     $repartition['frais_courants_payes'][] = [
                         'frais_id' => $frais->id,
                         'montant_paye' => $montantApplicable,
-                        'reste_a_payer' => $frais->amount - $frais->montant_paye,
+                        'reste_a_payer' => $frais->chargedAmount() - $frais->montant_paye,
                         'frais_category' => $frais->fraisCategory->name ?? 'N/A'
                     ];
 
@@ -103,7 +105,7 @@ class ReliquatPaymentDispatchService
                     Log::info("Paiement frais courant", [
                         'frais_id' => $frais->id,
                         'montant' => $montantApplicable,
-                        'reste_frais' => $frais->amount - $frais->montant_paye
+                        'reste_frais' => $frais->chargedAmount() - $frais->montant_paye
                     ]);
                 }
             }
@@ -141,9 +143,7 @@ class ReliquatPaymentDispatchService
     private function mettreAJourTotauxInscription(ESBTPInscription $inscription)
     {
         // Total des frais courants
-        $totalFraisCourants = ESBTPFraisSubscription::where('inscription_id', $inscription->id)
-            ->where('is_active', true)
-            ->sum('amount');
+        $totalFraisCourants = ESBTPFraisSubscription::dueAmountForInscription($inscription->id);
 
         $totalPayeFraisCourants = ESBTPFraisSubscription::where('inscription_id', $inscription->id)
             ->where('is_active', true)
@@ -188,7 +188,7 @@ class ReliquatPaymentDispatchService
                 $fraisSource = ESBTPFraisSubscription::find($reliquat->frais_subscription_id);
 
                 if ($fraisSource) {
-                    $nouveauSoldeSource = $fraisSource->amount - $fraisSource->montant_paye;
+                    $nouveauSoldeSource = $fraisSource->chargedAmount() - $fraisSource->montant_paye;
 
                     if ($nouveauSoldeSource <= 0 && $reliquat->montant_restant > 0) {
                         // Le frais source est maintenant soldé, mettre à jour le reliquat

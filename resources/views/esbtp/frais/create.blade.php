@@ -407,6 +407,21 @@
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
+                    <div class="checkbox-modern mt-3">
+                        <input class="@error('accepts_in_kind') is-invalid @enderror"
+                               type="checkbox"
+                               id="accepts_in_kind"
+                               name="accepts_in_kind"
+                               value="1"
+                               {{ old('accepts_in_kind') ? 'checked' : '' }}>
+                        <div>
+                            <label for="accepts_in_kind">Accepte un dépôt en nature</label>
+                            <div class="checkbox-description">Ramette, chemise cartonnée, etc. L'article reste obligatoire : déposé = pas dû, non déposé = montant encaissable. Cocher aussi « Frais obligatoire ».</div>
+                        </div>
+                        @error('accepts_in_kind')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
                 </div>
             </div>
             

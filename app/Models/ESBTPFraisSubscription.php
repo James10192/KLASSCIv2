@@ -20,6 +20,9 @@ class ESBTPFraisSubscription extends Model implements Auditable
         'selected_option_id',
         'amount',
         'is_active',
+        'satisfied_in_kind',
+        'deposited_at',
+        'deposited_by',
         'subscribed_at',
         'created_by',
         'notes',
@@ -28,6 +31,8 @@ class ESBTPFraisSubscription extends Model implements Auditable
     protected $casts = [
         'amount' => 'decimal:2',
         'is_active' => 'boolean',
+        'satisfied_in_kind' => 'boolean',
+        'deposited_at' => 'datetime',
         'subscribed_at' => 'datetime',
     ];
 
@@ -37,6 +42,9 @@ class ESBTPFraisSubscription extends Model implements Auditable
         'selected_option_id',
         'amount',
         'is_active',
+        'satisfied_in_kind',
+        'deposited_at',
+        'deposited_by',
         'subscribed_at',
         'notes',
     ];
@@ -97,9 +105,19 @@ class ESBTPFraisSubscription extends Model implements Auditable
         return $this->belongsTo(User::class, 'created_by');
     }
 
+    public function depositedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'deposited_by');
+    }
+
     public function scopeActive($query)
     {
         return $query->where('is_active', true);
+    }
+
+    public function scopeCharged($query)
+    {
+        return $query->where('is_active', true)->where('satisfied_in_kind', false);
     }
 
     public function scopeInactive($query)
@@ -172,11 +190,16 @@ class ESBTPFraisSubscription extends Model implements Auditable
             ->values();
     }
 
-    public static function getTotalSubscribedAmount($inscriptionId)
+    public static function dueAmountForInscription($inscriptionId): float
     {
-        return self::where('inscription_id', $inscriptionId)
-            ->where('is_active', true)
+        return (float) self::where('inscription_id', $inscriptionId)
+            ->charged()
             ->sum('amount');
+    }
+
+    public function chargedAmount(): float
+    {
+        return $this->satisfied_in_kind ? 0.0 : (float) $this->amount;
     }
 
     public static function getCategoryStats($fraisCategoryId)
@@ -186,10 +209,10 @@ class ESBTPFraisSubscription extends Model implements Auditable
                 ->where('is_active', true)
                 ->count(),
             'total_amount' => self::where('frais_category_id', $fraisCategoryId)
-                ->where('is_active', true)
+                ->charged()
                 ->sum('amount'),
             'average_amount' => self::where('frais_category_id', $fraisCategoryId)
-                ->where('is_active', true)
+                ->charged()
                 ->avg('amount'),
         ];
     }

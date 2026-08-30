@@ -27,6 +27,7 @@ use Spatie\Permission\Models\Role;
 use App\Models\ESBTPClasse;
 use Illuminate\Support\Str;
 use App\Support\MatriculeGenerator;
+use App\Services\InKindDepositService;
 
 class ESBTPInscriptionService
 {
@@ -52,9 +53,10 @@ class ESBTPInscriptionService
      * @param int $userId ID de l'utilisateur qui crée l'inscription
      * @param array $selectedOptionals Additional options for FeeAssignmentService
      * @param string $affectationStatus Statut d'affectation pour le calcul des frais
+     * @param array $inKindDeposits Dépôts en nature [category_id => 0|1]
      * @return ESBTPInscription
      */
-    public function createInscription(array $etudiantData, array $inscriptionData, array $parentsData = [], ?array $paiementData = null, int $userId = null, array $selectedOptionals = [], string $affectationStatus = ESBTPInscription::DEFAULT_AFFECTATION_STATUS)
+    public function createInscription(array $etudiantData, array $inscriptionData, array $parentsData = [], ?array $paiementData = null, int $userId = null, array $selectedOptionals = [], string $affectationStatus = ESBTPInscription::DEFAULT_AFFECTATION_STATUS, array $inKindDeposits = [])
     {
         try {
             DB::beginTransaction();
@@ -139,6 +141,12 @@ class ESBTPInscriptionService
 
             // 6bis-2. Sauvegarder les frais générés comme ESBTPFraisSubscription
             $this->saveGeneratedFeesAsSubscriptions($inscription, $generatedFees);
+            app(InKindDepositService::class)->applyDeposits($inscription, $inKindDeposits, $userId);
+
+            $chargedSubscriptions = ESBTPFraisSubscription::with(['fraisCategory', 'selectedOption'])
+                ->where('inscription_id', $inscription->id)
+                ->charged()
+                ->get();
 
             // 6ter. Générer automatiquement la facture liée à l'inscription
             $facture = new \App\Models\ESBTPFacture();
@@ -148,7 +156,7 @@ class ESBTPInscriptionService
             $facture->annee_universitaire_id = $inscription->annee_universitaire_id;
             $facture->date_emission = now();
             $facture->date_echeance = now()->addDays(15); // Par défaut 15 jours après inscription
-            $facture->montant_ht = collect($generatedFees)->sum('amount');
+            $facture->montant_ht = $chargedSubscriptions->sum('amount');
             $facture->taux_taxe = 0; // À adapter si TVA
             $facture->montant_taxe = 0; // À adapter si TVA
             $facture->montant_ttc = $facture->montant_ht + $facture->montant_taxe;
@@ -158,16 +166,19 @@ class ESBTPInscriptionService
             $facture->notes = 'Facture générée automatiquement à l\'inscription';
             $facture->createur_id = $userId;
             $facture->save();
-            // Générer les détails de la facture à partir des frais
-            foreach ($generatedFees as $fee) {
+            foreach ($chargedSubscriptions as $subscription) {
+                $designation = $subscription->fraisCategory->name ?? 'Frais';
+                if ($subscription->selectedOption) {
+                    $designation .= ' - ' . $subscription->selectedOption->name;
+                }
                 \App\Models\ESBTPFactureDetail::create([
                     'facture_id' => $facture->id,
-                    'designation' => $fee['description'],
+                    'designation' => $designation,
                     'description' => null,
                     'quantite' => 1,
-                    'montant' => $fee['amount'],
-                    'total_ligne' => $fee['amount'],
-                    'prix_unitaire' => $fee['amount'] ?? 0,
+                    'montant' => $subscription->amount,
+                    'total_ligne' => $subscription->amount,
+                    'prix_unitaire' => $subscription->amount ?? 0,
                 ]);
             }
 
@@ -794,8 +805,7 @@ class ESBTPInscriptionService
                         }
                     }
 
-                    // CORRECTION : Utiliser updateOrCreate pour garantir la création (évite la duplication)
-                    \App\Models\ESBTPFraisSubscription::updateOrCreate(
+                    ESBTPFraisSubscription::updateOrCreate(
                         [
                             'inscription_id' => $inscription->id,
                             'frais_category_id' => $fee['category_id'],

@@ -29,6 +29,15 @@
             </div>
         </div>
         <div class="mb-3">
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="accepts_in_kind" name="accepts_in_kind" value="1" {{ old('accepts_in_kind') ? 'checked' : '' }}>
+                <label class="form-check-label" for="accepts_in_kind">
+                    Accepte un dépôt en nature
+                </label>
+                <div class="form-text">Ramette / chemise cartonnée. Cocher aussi « Obligatoire » : l'article est exigé, seul le mode de règlement change.</div>
+            </div>
+        </div>
+        <div class="mb-3">
             <label for="default_amount" class="form-label">Prix par défaut (optionnel)</label>
             <input type="number" step="0.01" name="default_amount" id="default_amount" class="form-control" value="{{ old('default_amount') }}">
         </div>

@@ -41,6 +41,9 @@ class EcheancierComputationService
             }
 
             $subscription = $subscriptions->firstWhere('frais_category_id', $category->id);
+            if ($subscription && $subscription->satisfied_in_kind) {
+                continue;
+            }
             $configuration = $this->resolveConfiguration($configurations, $category->id, $inscription->filiere_id, $inscription->niveau_id);
 
             if ($subscription) {
@@ -99,7 +102,7 @@ class EcheancierComputationService
 
         $optionalSubscriptions = $subscriptions->filter(function ($subscription) use ($categoriesById) {
             $category = $categoriesById->get($subscription->frais_category_id);
-            return $category && !(bool) $category->is_mandatory && (bool) $subscription->is_active;
+            return $category && !(bool) $category->is_mandatory && (bool) $subscription->is_active && ! $subscription->satisfied_in_kind;
         })->values();
 
         foreach ($optionalSubscriptions as $subscription) {

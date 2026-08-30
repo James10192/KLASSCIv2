@@ -157,7 +157,7 @@ class ManageFraisSubscriptions extends Command
         foreach ($inscriptions as $insc) {
             $subs = $insc->fraisSubscriptions;
             $activeCount = $subs->where('is_active', true)->count();
-            $subTotal = $subs->where('is_active', true)->sum('amount');
+            $subTotal = $subs->where('is_active', true)->sum(fn ($s) => $s->chargedAmount());
             $totalSubscriptions += $activeCount;
             $totalAmount += $subTotal;
 
@@ -410,7 +410,7 @@ class ManageFraisSubscriptions extends Command
                     $inscription->id,
                     $inscription->etudiant ? ($inscription->etudiant->nom . ' ' . substr($inscription->etudiant->prenoms ?? '', 0, 15)) : 'N/A',
                     $activeSubs->count() . ' actives, ' . ($allSubs->count() - $activeSubs->count()) . ' inactives',
-                    number_format($activeSubs->sum('amount'), 0, ',', ' ') . ' FCFA',
+                    number_format($activeSubs->sum(fn ($s) => $s->chargedAmount()), 0, ',', ' ') . ' FCFA',
                 ];
                 continue;
             }

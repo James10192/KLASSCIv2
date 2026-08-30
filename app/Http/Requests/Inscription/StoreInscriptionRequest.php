@@ -28,6 +28,8 @@ class StoreInscriptionRequest extends FormRequest
             'ville' => 'nullable|string|max:100',
             'commune' => 'nullable|string|max:100',
             'photo' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'in_kind_deposits' => 'nullable|array',
+            'in_kind_deposits.*' => 'nullable|in:0,1',
         ];
 
         // Matricule dynamique : requis seulement si fourni (non vide)

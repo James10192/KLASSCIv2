@@ -290,32 +290,9 @@ class ESBTPPaiementSuiviController extends Controller
             ];
 
             foreach ($inscriptions as $inscription) {
-                // Vérifier si l'étudiant est concerné par ce frais
-                $estConcerne = false;
-                $montantAttendu = 0;
+                $montantAttendu = \App\Services\FeeCalculationService::getMontantAttendu($category, $inscription);
+                $estConcerne = $montantAttendu > 0;
 
-                if ($category->is_mandatory) {
-                    // Frais obligatoire : tous les étudiants sont concernés
-                    $estConcerne = true;
-                    $rule = \App\Models\ESBTPFraisConfiguration::where('frais_category_id', $category->id)
-                        ->where('filiere_id', $inscription->filiere_id)
-                        ->where('niveau_id', $inscription->niveau_id)
-                        ->first();
-                    $montantAttendu = $rule ? $rule->getMontantByStatus($inscription->affectation_status ?? ESBTPInscription::DEFAULT_AFFECTATION_STATUS) : $category->default_amount;
-                } else {
-                    // Service optionnel : vérifier s'il y a une souscription active
-                    $subscription = \App\Models\ESBTPFraisSubscription::where('inscription_id', $inscription->id)
-                        ->where('frais_category_id', $category->id)
-                        ->where('is_active', true)
-                        ->first();
-                    
-                    if ($subscription) {
-                        $estConcerne = true;
-                        $montantAttendu = $subscription->amount;
-                    }
-                }
-
-                // Traiter seulement les étudiants concernés
                 if ($estConcerne) {
                     $stats['etudiants_concernes']++;
                     $stats['montant_total_attendu'] += $montantAttendu;

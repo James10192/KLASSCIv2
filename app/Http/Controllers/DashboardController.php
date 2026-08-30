@@ -747,7 +747,7 @@ class DashboardController extends Controller
             $data['paiementsEnAttenteCount'] = (clone $paiementsQuery)->where('status', 'en_attente')->count();
 
             // Total frais dus (souscriptions actives de l'année courante)
-            $subscriptionsQuery = \App\Models\ESBTPFraisSubscription::query()->where('is_active', true);
+            $subscriptionsQuery = \App\Models\ESBTPFraisSubscription::query()->charged();
             if ($anneeEnCours) {
                 $subscriptionsQuery->whereHas('inscription', function ($q) use ($anneeEnCours) {
                     $q->where('annee_universitaire_id', $anneeEnCours->id);

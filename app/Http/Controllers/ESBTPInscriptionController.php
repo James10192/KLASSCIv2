@@ -25,6 +25,7 @@ use App\Services\ESBTPInscriptionService;
 use App\Services\InscriptionWorkflowService;
 use App\Services\StudentDuplicateDetector;
 use App\Services\EnrollmentAmountVisibility;
+use App\Services\InKindDepositService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\QueryException;
 use App\Http\Requests\Inscription\AnnulerInscriptionRequest;
@@ -611,6 +612,7 @@ class ESBTPInscriptionController extends Controller
                         auth()->id(),
                         $selectedOptionals,
                         $affectationStatus,
+                        $request->input('in_kind_deposits', []),
                     );
 
                     DB::commit();
@@ -839,6 +841,7 @@ class ESBTPInscriptionController extends Controller
             ->toArray();
 
         $feeCategoriesWithRules = [];
+        $inKind = app(InKindDepositService::class);
 
         // Récupérer le statut d'affectation de l'inscription
         $affectationStatus = $inscription->affectation_status ?? ESBTPInscription::DEFAULT_AFFECTATION_STATUS;
@@ -870,9 +873,8 @@ class ESBTPInscriptionController extends Controller
 
             $totalPaye = $paiements->sum("montant");
 
-            // Priorité: souscription > règle > défaut catégorie
             if ($subscription) {
-                $montantAttendu = $subscription->amount;
+                $montantAttendu = $subscription->chargedAmount();
                 $isConfigured = true;
             } elseif ($rule) {
                 $montantAttendu = $rule->getMontantByStatus($affectationStatus);
@@ -882,7 +884,7 @@ class ESBTPInscriptionController extends Controller
                 $isConfigured = false;
             }
             $isSubscribed = $subscription !== null;
-
+            $satisfiedInKind = (bool) $subscription?->satisfied_in_kind;
             $solde = $montantAttendu - $totalPaye;
 
             $feeCategoriesWithRules[] = [
@@ -896,12 +898,17 @@ class ESBTPInscriptionController extends Controller
                 "is_mandatory" => true,
                 "is_subscribed" => $isSubscribed,
                 "subscription" => $subscription,
-                "status" =>
-                    $solde <= 0
+                "satisfied_in_kind" => (bool) $satisfiedInKind,
+                "can_mark_in_kind" => $subscription
+                    ? $inKind->canMarkDeposited($subscription)
+                    : false,
+                "status" => $satisfiedInKind
+                    ? "deposited"
+                    : ($solde <= 0
                         ? "paid"
                         : ($totalPaye > 0
                             ? "partial"
-                            : "unpaid"),
+                            : "unpaid")),
             ];
         }
 
@@ -931,8 +938,9 @@ class ESBTPInscriptionController extends Controller
                     ->get();
 
                 $totalPaye = $paiements->sum("montant");
-                $montantAttendu = $subscription->amount; // Utiliser le montant de la souscription
+                $montantAttendu = $subscription->chargedAmount();
                 $solde = $montantAttendu - $totalPaye;
+                $satisfiedInKind = (bool) $subscription->satisfied_in_kind;
 
                 $feeCategoriesWithRules[] = [
                     "category" => $category,
@@ -941,16 +949,19 @@ class ESBTPInscriptionController extends Controller
                     "total_paye" => $totalPaye,
                     "solde" => $solde,
                     "paiements" => $paiements,
-                    "is_configured" => true, // Pour les frais optionnels souscrits, considérer comme configuré
+                    "is_configured" => true,
                     "is_mandatory" => false,
                     "is_subscribed" => true,
                     "subscription" => $subscription,
-                    "status" =>
-                        $solde <= 0
+                    "satisfied_in_kind" => $satisfiedInKind,
+                    "can_mark_in_kind" => $inKind->canMarkDeposited($subscription),
+                    "status" => $satisfiedInKind
+                        ? "deposited"
+                        : ($solde <= 0
                             ? "paid"
                             : ($totalPaye > 0
                                 ? "partial"
-                                : "unpaid"),
+                                : "unpaid")),
                 ];
             }
         }
@@ -2294,8 +2305,7 @@ class ESBTPInscriptionController extends Controller
             }
 
             // Calcul du solde (relicat)
-            $totalAttendu = \App\Models\ESBTPFraisSubscription::where('inscription_id', $inscriptionActive->id)
-                ->where('is_active', true)->sum('amount');
+            $totalAttendu = \App\Models\ESBTPFraisSubscription::dueAmountForInscription($inscriptionActive->id);
             $totalPaye = $inscriptionActive->paiements()->where('status', 'validé')->sum('montant');
             $soldeRestant = max(0, $totalAttendu - $totalPaye);
 

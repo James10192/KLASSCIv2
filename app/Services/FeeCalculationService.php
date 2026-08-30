@@ -44,7 +44,7 @@ class FeeCalculationService
         }
 
         if ($sub) {
-            return (float) $sub->amount;
+            return $sub->chargedAmount();
         }
 
         // Pas de subscription → fallback selon le type

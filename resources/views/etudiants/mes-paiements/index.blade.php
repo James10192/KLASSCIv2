@@ -495,6 +495,18 @@
             </div>
         </div>
 
+        @if(!empty($inKindDeposited) && $inKindDeposited->isNotEmpty())
+            <div class="card-moderne" style="margin-bottom: var(--space-lg);">
+                <div class="section-card-body" style="padding: var(--space-md) var(--space-lg);">
+                    @foreach($inKindDeposited as $depot)
+                        <div style="font-size:13px;color:var(--text-secondary);">
+                            {{ $depot->fraisCategory->name ?? 'Fourniture' }} : déposée le {{ optional($depot->deposited_at)->format('d/m/Y') ?? '—' }}
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+        @endif
+
         <!-- Main Content Card -->
         <div class="card-moderne">
             <div class="section-card-header">

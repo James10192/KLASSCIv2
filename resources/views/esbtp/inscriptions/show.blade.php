@@ -2072,7 +2072,11 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                                                     </div>
                                                 </td>
                                                 <td>
-                                                    @if($item['is_mandatory'])
+                                                    @if(!empty($item['satisfied_in_kind']) || !empty($item['category']->accepts_in_kind))
+                                                        <span class="badge bg-secondary">
+                                                            <i class="fas fa-box me-1"></i>Fourniture
+                                                        </span>
+                                                    @elseif($item['is_mandatory'])
                                                         <span class="badge bg-danger">
                                                             <i class="fas fa-exclamation-circle me-1"></i>Obligatoire
                                                         </span>
@@ -2125,7 +2129,9 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                                                     @endif
                                                 </td>
                                                 <td>
-                                                    @if($item['solde'] > 0)
+                                                    @if(!empty($item['satisfied_in_kind']))
+                                                        <span class="status-badge-success">Déposé</span>
+                                                    @elseif($item['solde'] > 0)
                                                         <strong class="text-danger">{{ number_format($item['solde'], 0, ',', ' ') }} FCFA</strong>
                                                     @elseif($item['solde'] < 0)
                                                         <strong class="text-success">{{ number_format(abs($item['solde']), 0, ',', ' ') }} FCFA</strong>
@@ -2147,6 +2153,9 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                                                 </td>
                                                 <td>
                                                     @switch($item['status'])
+                                                        @case('deposited')
+                                                            <span class="status-badge-success">Déposé</span>
+                                                            @break
                                                         @case('paid')
                                                             <span class="badge bg-success">
                                                                 <i class="fas fa-check me-1"></i>Payé
@@ -2168,7 +2177,17 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                                                 </td>
                                                 <td>
                                                     <div class="btn-group">
-                                                        @if(auth()->user()->can('paiements.create') && $item['is_configured'] && $item['solde'] > 0)
+                                                        @if(!empty($item['can_mark_in_kind']))
+                                                            @can('inscriptions.edit')
+                                                                <form method="POST" action="{{ route('esbtp.inscriptions.in-kind-deposits.store', [$inscription, $item['category']]) }}" class="d-inline">
+                                                                    @csrf
+                                                                    <button type="submit" class="btn-acasi primary btn-sm" title="Marquer déposé">
+                                                                        Marquer déposé
+                                                                    </button>
+                                                                </form>
+                                                            @endcan
+                                                        @endif
+                                                        @if(auth()->user()->can('paiements.create') && $item['is_configured'] && $item['solde'] > 0 && empty($item['satisfied_in_kind']))
                                                             <button class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#paymentModal" onclick="preparePaymentModalForCategory({{ $inscription->id }}, {{ $item['category']->id }})" title="Effectuer un paiement">
                                                                 <i class="fas fa-credit-card"></i>
                                                             </button>

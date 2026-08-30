@@ -74,8 +74,10 @@ class MesPaiementsController extends Controller
             // Frais souscrits année courante
             $fraisSouscrits = ESBTPFraisSubscription::where('inscription_id', $inscription->id)
                 ->where('is_active', true)
+                ->with('fraisCategory')
                 ->get();
-            $totalFraisAnnee = $fraisSouscrits->sum('amount');
+            $inKindDeposited = $fraisSouscrits->where('satisfied_in_kind', true);
+            $totalFraisAnnee = ESBTPFraisSubscription::dueAmountForInscription($inscription->id);
 
             // Reliquats entrants années précédentes
             $reliquatsEntrants = ESBTPReliquatDetail::where('inscription_destination_id', $inscription->id)
@@ -122,7 +124,8 @@ class MesPaiementsController extends Controller
                 'paiements',
                 'kpiStats',
                 'inscription',
-                'anneeCourante'
+                'anneeCourante',
+                'inKindDeposited'
             ));
 
         } catch (\Exception $e) {
