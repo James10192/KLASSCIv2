@@ -223,10 +223,16 @@ class ESBTPFraisSubscription extends Model implements Auditable
      */
     public function estSolde(float $montantPaye): bool
     {
-        if ($this->satisfied_in_kind) {
-            return true;
-        }
-
+        // Un depot en nature n'est PAS un paiement.
+        //
+        // La coche du recu dit une seule chose : ce frais est solde, l'argent est
+        // entre. Cocher un article apporte reviendrait a certifier un paiement qui
+        // n'a pas eu lieu — sur un document qui porte lui-meme la mention « toute
+        // falsification constitue un delit ».
+        //
+        // L'article recu se dit autrement, et le recu l'ecrit : la ligne reste
+        // decochee et porte « recu en nature ». L'ecole sait alors que l'etudiant
+        // s'est acquitte, sans que le papier pretende qu'il a paye.
         $du = $this->chargedAmount();
 
         return $du > 0 && $montantPaye >= $du;

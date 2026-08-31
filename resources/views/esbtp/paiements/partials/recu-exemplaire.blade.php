@@ -146,7 +146,9 @@
             <span class="chk {{ $ligne['checked'] ? '' : 'chk-off' }}">{{ $ligne['checked'] ? '[X]' : '[ ]' }}</span>
             <span class="{{ !empty($ligne['current']) ? 'fee-now' : '' }}">{{ $ligne['name'] }}</span>
             @if(!empty($ligne['in_kind']))
-                <span class="fee-note">déposé</span>
+                {{-- La ligne reste DECOCHEE : l'article a ete recu, il n'a pas ete
+                     paye. La coche certifie un encaissement, pas un depot. --}}
+                <span class="fee-note">reçu en nature</span>
             @elseif(($ligne['restant'] ?? 0) > 0)
                 <span class="fee-note">{{ number_format($ligne['restant'], 0, ',', ' ') }}</span>
             @elseif(!empty($ligne['non_configure']))
