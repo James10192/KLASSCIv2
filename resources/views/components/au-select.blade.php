@@ -214,14 +214,20 @@ if (typeof window.auSelect !== 'function') {
             menuStyle: '',
             _optionsObserver: null,
             _repositionMenu: null,
+            _remeasureMenu: null,
+            _menuWidth: null,
+            _menuMaxHeight: null,
             init() {
                 this._value = this.$refs.native.value;
 
                 this.observeNativeOptions();
-                this._repositionMenu = () => this.open && this.positionMenu();
-                window.addEventListener('resize', this._repositionMenu, { passive: true });
+                // Le scroll DEPLACE le menu, il ne le redimensionne pas. Un
+                // redimensionnement de fenetre, lui, doit tout remesurer.
+                this._repositionMenu = () => this.open && this.positionMenu(false);
+                this._remeasureMenu = () => this.open && this.positionMenu(true);
+                window.addEventListener('resize', this._remeasureMenu, { passive: true });
                 window.addEventListener('scroll', this._repositionMenu, { passive: true, capture: true });
-                window.visualViewport?.addEventListener('resize', this._repositionMenu, { passive: true });
+                window.visualViewport?.addEventListener('resize', this._remeasureMenu, { passive: true });
                 window.visualViewport?.addEventListener('scroll', this._repositionMenu, { passive: true });
 
                 this.$refs.native.addEventListener('change', () => {
@@ -243,9 +249,9 @@ if (typeof window.auSelect !== 'function') {
             },
             destroy() {
                 this._optionsObserver?.disconnect();
-                window.removeEventListener('resize', this._repositionMenu);
+                window.removeEventListener('resize', this._remeasureMenu);
                 window.removeEventListener('scroll', this._repositionMenu, { capture: true });
-                window.visualViewport?.removeEventListener('resize', this._repositionMenu);
+                window.visualViewport?.removeEventListener('resize', this._remeasureMenu);
                 window.visualViewport?.removeEventListener('scroll', this._repositionMenu);
             },
             observeNativeOptions() {
@@ -283,13 +289,18 @@ if (typeof window.auSelect !== 'function') {
                     return;
                 }
                 this.open = !this.open;
+                if (!this.open) {
+                    // La prochaine ouverture remesure : le contenu a pu changer.
+                    this._menuWidth = null;
+                    this._menuMaxHeight = null;
+                }
                 if (this.open) {
                     this.focusInitialOption();
                     // Position before Alpine reveals the menu, then refine with its rendered size.
-                    this.positionMenu();
+                    this.positionMenu(true);
                     this.$nextTick(() => {
                         window.requestAnimationFrame(() => {
-                            this.positionMenu();
+                            this.positionMenu(true);
                             this.$refs.searchInput?.focus();
                         });
                     });
@@ -312,7 +323,26 @@ if (typeof window.auSelect !== 'function') {
                 }
                 this.focusPreviousOption();
             },
-            positionMenu() {
+            /**
+             * Place le menu. `remeasure` distingue deux gestes tres differents.
+             *
+             * A l'ouverture et au redimensionnement, on MESURE : largeur naturelle
+             * du menu, hauteur disponible. Au scroll, on ne fait que DEPLACER, en
+             * reutilisant ces mesures.
+             *
+             * Les melanger produisait deux bugs visibles :
+             *
+             * - la largeur se relisait elle-meme. `menu.offsetWidth` rend la
+             *   largeur posee au tour precedent ; chaque scroll repartait donc de
+             *   sa propre sortie, et le menu se decalait a mesure qu'on scrollait.
+             *
+             * - la hauteur suivait la place restante sous le champ, qui change a
+             *   chaque pixel scrolle. La liste interne changeait donc de taille en
+             *   continu, faisant apparaitre et disparaitre ses barres de defilement.
+             *
+             * Une taille se decide une fois, quand le menu s'ouvre.
+             */
+            positionMenu(remeasure = false) {
                 const trigger = this.$el.querySelector('.au-select-trigger');
                 const menu = this.$el.querySelector('.au-select-menu');
                 if (!trigger || !menu) return;
@@ -323,15 +353,37 @@ if (typeof window.auSelect !== 'function') {
                 const visibleWidth = window.visualViewport?.width || window.innerWidth;
                 const visibleHeight = window.visualViewport?.height || window.innerHeight;
                 const viewportWidth = visibleWidth - (margin * 2);
-                const cssWidth = Number.parseFloat(window.getComputedStyle(menu).width);
-                const preferredWidth = menu.offsetWidth || (Number.isFinite(cssWidth) ? cssWidth : triggerRect.width);
-                const menuWidth = Math.min(preferredWidth, viewportWidth);
+
+                if (remeasure || this._menuWidth === null) {
+                    // Effacer la largeur posee avant de mesurer, sinon on relit
+                    // notre propre valeur au lieu de la largeur du contenu.
+                    const largeurPosee = menu.style.width;
+                    const maxPosee = menu.style.maxWidth;
+                    menu.style.width = 'auto';
+                    menu.style.maxWidth = 'none';
+                    const naturelle = menu.offsetWidth || triggerRect.width;
+                    menu.style.width = largeurPosee;
+                    menu.style.maxWidth = maxPosee;
+
+                    this._menuWidth = Math.min(naturelle, viewportWidth);
+                    this._menuMaxHeight = Math.max(0, Math.min(
+                        380,
+                        Math.max(
+                            visibleHeight - triggerRect.bottom - margin - gap,
+                            triggerRect.top - margin - gap
+                        )
+                    ));
+                }
+
+                const menuWidth = Math.min(this._menuWidth, viewportWidth);
+                const availableHeight = this._menuMaxHeight;
                 const minimumWidth = Math.min(triggerRect.width, viewportWidth);
                 const left = Math.max(margin, Math.min(triggerRect.left, visibleWidth - menuWidth - margin));
                 const spaceBelow = visibleHeight - triggerRect.bottom - margin - gap;
                 const spaceAbove = triggerRect.top - margin - gap;
-                const openUp = spaceBelow < 180 && spaceAbove > spaceBelow;
-                const availableHeight = Math.max(0, Math.min(380, openUp ? spaceAbove : spaceBelow));
+                // On bascule vers le haut quand la hauteur DEJA choisie ne tient
+                // plus dessous — pas selon un seuil qui redimensionnerait le menu.
+                const openUp = spaceBelow < availableHeight && spaceAbove > spaceBelow;
 
                 this.menuStyle = openUp
                     ? `position:fixed;left:${left}px;right:auto;top:auto;bottom:${visibleHeight - triggerRect.top + gap}px;width:${menuWidth}px;min-width:${minimumWidth}px;max-width:${viewportWidth}px;max-height:${availableHeight}px;transform-origin:bottom center;`
