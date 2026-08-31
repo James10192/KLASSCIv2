@@ -44,6 +44,10 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ### Corrections
 
+- **Écrans qui renvoyaient une erreur 500 sur un nom de route disparu** — un nom de route est une chaîne résolue à l'exécution : ni le lint ni la compilation des vues ne peuvent dire qu'elle est fausse, et la page ne casse que le jour où quelqu'un l'ouvre. Trois écrans vivants étaient dans ce cas et sont réparés : le bouton « Recalculer le bulletin » de `/esbtp/bulletins/{id}/edit` pointe désormais sur la régénération officielle du bulletin ; le tableau de bord Présences de l'enseignant (`/dashboard/teacher/attendance`), qui échouait avant même d'afficher la liste, ouvre le rapport de présence existant et la feuille de la séance ; et l'écran affiché à un étudiant dont le compte n'est pas encore rattaché à un dossier ne propose plus un formulaire d'auto-inscription sans destinataire — il indique quoi transmettre à la scolarité, le dossier étudiant étant créé par l'établissement.
+
+- **Boutons qui ne menaient nulle part** — sur la fiche d'un partenariat archivé, « Restaurer » et « Supprimer définitivement » n'avaient ni route ni traitement ; l'onglet « Départements » de cette même fiche s'appuyait de plus sur des données que la page ne recevait jamais. Même chose pour « Supprimer définitivement » sur les spécialités archivées. Ces actions sont retirées au profit de l'état réel, plutôt que d'échouer au clic.
+
 - **Répartition d'un versement sur plusieurs frais — quatre défauts sur l'argent** (`RepartitionTropPercu`, `ESBTPPaiement::netPaidByCategory`) :
   - **Un avoir annulait sur le mauvais frais.** L'avoir n'ayant jamais d'allocation, il était imputé en entier à sa seule catégorie ; le `max(0, dû − payé)` écrêtait l'excédent au lieu de le reporter. Un remboursement intégral de 250 000 F réparti 150 000 / 100 000 laissait donc survivre 100 000 F de paiement fantôme sur le second frais. L'avoir reflète désormais la répartition du versement annulé, au prorata pour un remboursement partiel, dans les deux ordres d'opération (avoir avant ou après la répartition).
   - **Un versement « reliquat » consommait du dû sans jamais apparaître.** Le lecteur les exclut (ils éteignent une dette d'une année antérieure), l'écriture ne le faisait pas : le reliquat recevait une allocation invisible et privait le versement réel du frais qu'il devait couvrir. La condition, recopiée à sept endroits, vit désormais dans un seul scope `ESBTPPaiement::horsReliquat()`.
@@ -69,6 +73,10 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 - **Export Excel de la liste d'une classe** — la colonne Prénoms est de nouveau renseignée et les colonnes parent/tuteur (nom, prénoms, téléphone, email, profession) affichent les informations réelles au lieu de « N/A », de même que l'email de l'étudiant.
 - **Détail par semestre sur l'onglet annuel des résultats** — pour un étudiant passé du tronc commun à une spécialité, l'onglet Annuel affiche désormais un tableau par semestre (le semestre 1 avec sa classe de tronc commun, le semestre 2 avec sa classe de spécialité), chacun avec ses matières, son total de coefficients et sa moyenne. Chaque tableau se réconcilie ainsi avec ses propres lignes, alors que l'écran affichait auparavant la moyenne annuelle en haut et la moyenne d'un seul semestre juste en dessous, sans préciser sa portée. La mention ADMIS ou AJOURNÉ reste réservée à la décision annuelle, un tableau semestriel indiquant simplement si la moyenne du semestre est au-dessus ou en dessous de 10.
 - **Pages d'aperçu PDF de l'analyse comptable et du bulletin** — correction d'une erreur d'affichage qui pouvait empêcher ces deux pages de s'ouvrir.
+
+### Suppressions
+
+- **Écrans morts retirés** — salles, catégories de frais (ancienne version), présences enseignant côté administration, profil administrateur ESBTP, paiements de frais (ancienne version), tableau de bord des résultats, et bons de sortie : ces pages n'avaient plus aucune adresse ni aucun traitement qui leur réponde. Elles n'étaient atteignables depuis aucun menu et n'auraient produit qu'une erreur. Aucune donnée n'est touchée.
 
 ---
 

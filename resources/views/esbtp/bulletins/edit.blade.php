@@ -275,9 +275,12 @@
                                     <h6 class="mb-0">Recalcul automatique</h6>
                                 </div>
                                 <div class="card-body">
-                                    <form action="{{ route('esbtp.bulletins.recalculer', $bulletin) }}" method="POST">
+                                    <form action="{{ route('esbtp.bulletins.regenerate') }}" method="POST">
                                         @csrf
-                                        @method('PUT')
+                                        <input type="hidden" name="etudiant_id" value="{{ $bulletin->etudiant_id }}">
+                                        <input type="hidden" name="classe_id" value="{{ $bulletin->classe_id }}">
+                                        <input type="hidden" name="annee_universitaire_id" value="{{ $bulletin->annee_universitaire_id }}">
+                                        <input type="hidden" name="periode" value="{{ $bulletin->periode }}">
                                         <p>Vous pouvez recalculer automatiquement les moyennes et le classement de ce bulletin à partir des notes existantes.</p>
                                         <div class="d-grid">
                                             <button type="submit" class="btn btn-warning">

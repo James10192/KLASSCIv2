@@ -44,67 +44,17 @@ class RouteNamesExistTest extends TestCase
     ];
 
     /**
-     * L'arriere deja present le jour ou ce test a ete ecrit.
+     * L'arriere tolere. Vide, et il doit le rester.
      *
-     * Quarante-quatre noms, tous en esbtp.*, et par familles entieres :
-     * fee-categories, salles, partnerships, bons_sortie. Ce sont des ecrans dont
-     * les routes ont ete retirees sans que les vues suivent — du code mort qui
-     * rendrait un 500 si quelqu'un y arrivait encore.
+     * Les quarante-quatre noms inscrits ici a la naissance du test ont tous ete
+     * traites : les fautes de prefixe corrigees vers la route reelle, les ecrans
+     * dont plus aucune route ni aucun controleur ne repondait supprimes.
      *
-     * On les inscrit ici plutot que de faire echouer le test des sa naissance :
-     * un test rouge en permanence ne protege plus rien, on apprend a l'ignorer.
-     * Cette liste rend la dette VISIBLE et empeche qu'elle grossisse — toute
-     * NOUVELLE reference cassee fait echouer le test.
-     *
-     * Elle doit retrecir, jamais grandir. Retirer une entree ici quand on
-     * nettoie l'ecran correspondant fait partie du travail.
+     * Une entree ajoutee ici est une dette assumee, pas un contournement : elle
+     * exige un motif ecrit disant pourquoi la reference reste cassee et ce qui
+     * la reparera. Sans ce motif, on corrige l'appel plutot que de l'inscrire.
      */
-    private const DETTE_CONNUE = [
-        'esbtp.admin.presence.store',
-        'esbtp.admin.presence.update',
-        'esbtp.admin.update-password',
-        'esbtp.admin.update-profile',
-        'esbtp.attendances.edit-seance',
-        'esbtp.attendances.report',
-        'esbtp.attendances.show-seance',
-        'esbtp.bons_sortie.index',
-        'esbtp.bons_sortie.show',
-        'esbtp.bulletins.recalculer',
-        'esbtp.comptabilite.bons-sortie.show',
-        'esbtp.etudiant.bulletins',
-        'esbtp.etudiant.dashboard',
-        'esbtp.fee-categories.create',
-        'esbtp.fee-categories.destroy',
-        'esbtp.fee-categories.edit',
-        'esbtp.fee-categories.index',
-        'esbtp.fee-categories.rules.destroy',
-        'esbtp.fee-categories.rules.edit',
-        'esbtp.fee-categories.rules.installments.destroy',
-        'esbtp.fee-categories.rules.installments.edit',
-        'esbtp.fee-categories.rules.installments.store',
-        'esbtp.fee-categories.rules.store',
-        'esbtp.fee-categories.rules.update',
-        'esbtp.fee-categories.show',
-        'esbtp.fee-categories.store',
-        'esbtp.fee-categories.update',
-        'esbtp.frais.payments',
-        'esbtp.partnerships.attach-department',
-        'esbtp.partnerships.detach-department',
-        'esbtp.partnerships.force-delete',
-        'esbtp.partnerships.restore',
-        'esbtp.planning-general.configure-avance',
-        'esbtp.resultats.dashboard',
-        'esbtp.salles.create',
-        'esbtp.salles.destroy',
-        'esbtp.salles.edit',
-        'esbtp.salles.index',
-        'esbtp.salles.show',
-        'esbtp.salles.store',
-        'esbtp.salles.update',
-        'esbtp.specialties.force-delete',
-        'esbtp.student.profile.store',
-        'esbtp.teachers.index',
-    ];
+    private const DETTE_CONNUE = [];
 
     public function test_tous_les_noms_de_route_ecrits_en_dur_existent(): void
     {
@@ -114,7 +64,11 @@ class RouteNamesExistTest extends TestCase
             ->flip();
 
         $familles = implode('|', self::FAMILLES);
-        $motif = "/route\(\s*'(({$familles})\.[A-Za-z0-9_.\-]+)'/";
+
+        // Les deux styles de guillemets comptent. La moitie du code ecrit
+        // route("esbtp.classes.show"), et ne chercher que l'apostrophe laissait
+        // cette moitie entierement hors du filet.
+        $motif = "/route\(\s*(['\"])(({$familles})\.[A-Za-z0-9_.\-]+)\\1/";
 
         $cassees = [];
 
@@ -125,7 +79,8 @@ class RouteNamesExistTest extends TestCase
                 continue;
             }
 
-            foreach (array_unique($trouvailles[1]) as $nom) {
+            // 1 = le guillemet capture pour la backreference, 2 = le nom lui-meme.
+            foreach (array_unique($trouvailles[2]) as $nom) {
                 if (! $connues->has($nom) && ! in_array($nom, self::DETTE_CONNUE, true)) {
                     $cassees[] = $nom.'  ('.$this->cheminRelatif($fichier).')';
                 }

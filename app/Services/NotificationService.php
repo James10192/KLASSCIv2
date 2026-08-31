@@ -12,7 +12,6 @@ use App\Models\ESBTPAnnonce;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPPaiement;
 use App\Models\ESBTPFacture;
-use App\Models\ESBTPBonSortie;
 use App\Models\ParentNotificationLog;
 use App\Services\MailPulse\MailPulseWorkflowIntent;
 use App\Services\MailPulse\MailPulseWorkflowQueue;
@@ -1580,48 +1579,6 @@ class NotificationService
                 'Tester de nouvelles approches',
                 'Étendre aux étudiants de niveau inférieur'
             ];
-        }
-    }
-
-    /**
-     * Notify the approver of a new bon de sortie approval request.
-     *
-     * @param int $bonId
-     * @param int $approbateurId
-     * @return void
-     */
-    public function notifyBonApproval($bonId, $approbateurId)
-    {
-        try {
-            $bon = ESBTPBonSortie::findOrFail($bonId);
-            $approbateur = User::findOrFail($approbateurId);
-
-            // Create in-app notification
-            $this->createNotification(
-                $approbateur,
-                'Nouvelle demande d\'approbation de bon de sortie',
-                'Une nouvelle demande de bon de sortie (' . $bon->reference . ') vous a été assignée pour approbation.',
-                'approval_request',
-                route('esbtp.bons_sortie.show', $bon->id)
-            );
-
-            // Send email notification
-            // Mail::to($approbateur->email)->send(new BonSortieApprovalRequestMail($bon));
-
-            // Log the notification
-            DB::table('esbtp_bon_sortie_notifications')->insert([
-                'bon_sortie_id' => $bon->id,
-                'user_id' => $approbateur->id,
-                'type' => 'app',
-                'sent_at' => now(),
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-
-            $bon->update(['notification_sent_at' => now()]);
-
-        } catch (\Exception $e) {
-            Log::error('Erreur lors de la notification d\'approbation de bon de sortie: ' . $e->getMessage());
         }
     }
 
