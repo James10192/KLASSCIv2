@@ -1630,7 +1630,7 @@ return [
             'icon' => 'fa-door-open',
         ],
         'reports.academic.trimestre' => [
-            'label' => 'Voir le rapport de fin de trimestre',
+            'label' => 'Voir le rapport de fin de semestre',
             'group' => 'Rapports',
             'icon' => 'fa-calendar-check',
         ],

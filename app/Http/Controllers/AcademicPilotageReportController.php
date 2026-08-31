@@ -22,7 +22,7 @@ class AcademicPilotageReportController extends Controller
 
     public function trimestre(): View
     {
-        return $this->show('trimestre', 'Rapport de fin de trimestre');
+        return $this->show('trimestre', 'Rapport de fin de semestre');
     }
 
     public function annuel(): View
@@ -37,7 +37,7 @@ class AcademicPilotageReportController extends Controller
 
     public function trimestrePdf(): Response
     {
-        return $this->pdf('trimestre', 'Rapport de fin de trimestre');
+        return $this->pdf('trimestre', 'Rapport de fin de semestre');
     }
 
     public function annuelPdf(): Response
@@ -63,7 +63,7 @@ class AcademicPilotageReportController extends Controller
 
     public function trimestrePdfPreview(): Response
     {
-        return $this->pdf('trimestre', 'Rapport de fin de trimestre', inline: true);
+        return $this->pdf('trimestre', 'Rapport de fin de semestre', inline: true);
     }
 
     public function annuelPdfPreview(): Response

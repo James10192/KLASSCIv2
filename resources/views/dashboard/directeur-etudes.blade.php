@@ -281,7 +281,7 @@
                 <a class="de-link" href="{{ route('esbtp.rapports.trimestre') }}">
                     <span class="de-link-icon"><i class="fas fa-calendar-week"></i></span>
                     <span class="de-link-body">
-                        <span class="de-link-title">Rapport de fin de trimestre</span>
+                        <span class="de-link-title">Rapport de fin de semestre</span>
                         <span class="de-link-hint">Notes manquantes et assiduité</span>
                     </span>
                     <i class="fas fa-chevron-right de-link-go"></i>

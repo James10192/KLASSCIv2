@@ -602,34 +602,35 @@
             <div class="lb-filters">
                 <div class="lb-filter-group">
                     <label class="lb-filter-label">Classe</label>
-                    <select class="lb-filter-select" name="classe_id" onchange="document.getElementById('lb-filter-form').submit()">
-                        <option value="">Toutes les classes</option>
-                        @foreach($classes as $c)
-                            <option value="{{ $c->id }}" {{ request('classe_id') == $c->id ? 'selected' : '' }}>
-                                {{ $c->name }}
-                            </option>
-                        @endforeach
-                    </select>
+                    <x-au-select
+                        name="classe_id"
+                        :value="request('classe_id')"
+                        placeholder="Toutes les classes"
+                        icon="fa-chalkboard"
+                        :searchable="$classes->count() > 8"
+                        :options="$classes->pluck('name', 'id')"
+                        onchange="document.getElementById('lb-filter-form').submit()" />
                 </div>
                 <div class="lb-filter-group">
                     <label class="lb-filter-label">Année</label>
-                    <select class="lb-filter-select" name="annee_universitaire_id" onchange="document.getElementById('lb-filter-form').submit()">
-                        <option value="">Toutes</option>
-                        @foreach($annees as $annee)
-                            <option value="{{ $annee->id }}" {{ request('annee_universitaire_id') == $annee->id ? 'selected' : '' }}>
-                                {{ $annee->name ?? $annee->libelle ?? $annee->id }}
-                            </option>
-                        @endforeach
-                    </select>
+                    <x-au-select
+                        name="annee_universitaire_id"
+                        :value="request('annee_universitaire_id')"
+                        placeholder="Toutes les années"
+                        icon="fa-calendar-alt"
+                        :searchable="$annees->count() > 8"
+                        :options="$annees->mapWithKeys(fn ($a) => [$a->id => ($a->name ?? $a->libelle ?? $a->display_name)])"
+                        onchange="document.getElementById('lb-filter-form').submit()" />
                 </div>
-                <div class="lb-filter-group" style="max-width:130px;">
+                <div class="lb-filter-group" style="max-width:180px;">
                     <label class="lb-filter-label">Semestre</label>
-                    <select class="lb-filter-select" name="semestre" onchange="document.getElementById('lb-filter-form').submit()">
-                        <option value="">Tous</option>
-                        @for($s = 1; $s <= 10; $s++)
-                            <option value="{{ $s }}" {{ request('semestre') == $s ? 'selected' : '' }}>S{{ $s }}</option>
-                        @endfor
-                    </select>
+                    <x-au-select
+                        name="semestre"
+                        :value="request('semestre')"
+                        placeholder="Tous"
+                        icon="fa-layer-group"
+                        :options="collect(range(1, 10))->mapWithKeys(fn ($s) => [$s => 'S'.$s])"
+                        onchange="document.getElementById('lb-filter-form').submit()" />
                 </div>
                 <div class="lb-filter-group">
                     <label class="lb-filter-label">Recherche</label>

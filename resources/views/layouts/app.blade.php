@@ -1861,7 +1861,7 @@
                         <div class="menu-item">
                             <a href="{{ route('esbtp.rapports.trimestre') }}" class="menu-link {{ Request::routeIs('esbtp.rapports.trimestre') ? 'active' : '' }}">
                                 <div class="menu-icon"><i class="fas fa-calendar-check"></i></div>
-                                <div class="menu-text">Rapport de fin de trimestre</div>
+                                <div class="menu-text">Rapport de fin de semestre</div>
                             </a>
                         </div>
                         @endcan
