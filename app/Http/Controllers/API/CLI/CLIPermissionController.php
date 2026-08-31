@@ -139,16 +139,61 @@ class CLIPermissionController extends BaseApiController
         ], 'Roles list');
     }
 
-    /**
-     * GET /api/cli/roles/{role}
-     *
-     * Show all permissions assigned to a specific role + diff vs canonical defaults.
-     */
-    /**
-     * POST /api/cli/roles/{role}/grant
-     * Body: {permissions: ['perm1', 'perm2', ...]}
-     * Attribue les permissions au rôle (sans toucher aux existantes).
-     */
+    public function roleStore(Request $request): JsonResponse
+    {
+        if (! $request->user()->tokenCan('cli:admin')) {
+            return $this->errorResponse('Token missing cli:admin ability', [], 403);
+        }
+
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:64', 'regex:/^[a-z][a-z0-9_]*$/'],
+            'label_fr' => ['required', 'string', 'max:255'],
+            'description' => ['nullable', 'string', 'max:1000'],
+            'permissions' => ['nullable', 'array'],
+            'permissions.*' => ['string'],
+        ]);
+
+        $reserved = array_keys(config('permissions.roles', []));
+        if (in_array($validated['name'], $reserved, true)) {
+            return $this->errorResponse('Ce nom est réservé à un rôle système.', [], 422);
+        }
+
+        if (Role::where('name', $validated['name'])->exists()) {
+            return $this->errorResponse("Role '{$validated['name']}' already exists", [], 422);
+        }
+
+        $role = new Role();
+        $role->name = $validated['name'];
+        $role->guard_name = config('auth.defaults.guard', 'web');
+        $role->label_fr = $validated['label_fr'];
+        $role->description = $validated['description'] ?? null;
+        $role->is_custom = true;
+        $role->created_by_user_id = $request->user()->id;
+        $role->save();
+
+        $granted = [];
+        $missing = [];
+        foreach ($validated['permissions'] ?? [] as $perm) {
+            $permModel = Permission::where('name', $perm)->first();
+            if (! $permModel) {
+                $missing[] = $perm;
+                continue;
+            }
+            $role->givePermissionTo($permModel);
+            $granted[] = $perm;
+        }
+
+        app()['cache']->forget(config('permission.cache.key', 'spatie.permission.cache'));
+
+        return $this->successResponse([
+            'role' => $role->name,
+            'label_fr' => $role->label_fr,
+            'is_custom' => true,
+            'granted' => $granted,
+            'missing_in_db' => $missing,
+        ], "Rôle custom '{$role->name}' créé");
+    }
+
     public function roleGrant(Request $request, string $role): JsonResponse
     {
         if (!$request->user()->tokenCan('cli:admin')) {

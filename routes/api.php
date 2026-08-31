@@ -435,6 +435,7 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
     Route::get('/permissions', [App\Http\Controllers\API\CLI\CLIPermissionController::class, 'permissions'])->name('permissions.list');
     Route::get('/permissions/audit', [App\Http\Controllers\API\CLI\CLIPermissionController::class, 'audit'])->name('permissions.audit');
     Route::get('/roles', [App\Http\Controllers\API\CLI\CLIPermissionController::class, 'roles'])->name('roles.list');
+    Route::post('/roles', [App\Http\Controllers\API\CLI\CLIPermissionController::class, 'roleStore'])->name('roles.store');
     Route::get('/roles/{role}', [App\Http\Controllers\API\CLI\CLIPermissionController::class, 'roleShow'])->name('roles.show');
     Route::post('/roles/{role}/grant', [App\Http\Controllers\API\CLI\CLIPermissionController::class, 'roleGrant'])->name('roles.grant');
 

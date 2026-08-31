@@ -14,6 +14,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use Spatie\Permission\Models\Role;
 
 class CLIUserController extends BaseApiController
 {
@@ -100,12 +101,8 @@ class CLIUserController extends BaseApiController
             'must_change_password' => 'nullable|boolean',
         ]);
 
-        if (! in_array($validated['role'], self::VALID_ROLES, true)) {
-            return $this->errorResponse(
-                "Invalid role '{$validated['role']}'. Valid: ".implode(', ', self::VALID_ROLES),
-                [],
-                422
-            );
+        if ($roleError = $this->assertRoleAssignable($validated['role'])) {
+            return $roleError;
         }
 
         try {
@@ -353,12 +350,8 @@ class CLIUserController extends BaseApiController
         $mode = $validated['mode'] ?? 'replace';
         $role = $validated['role'];
 
-        if (! in_array($role, self::VALID_ROLES, true)) {
-            return $this->errorResponse(
-                "Invalid role '{$role}'. Valid: ".implode(', ', self::VALID_ROLES),
-                [],
-                422
-            );
+        if ($roleError = $this->assertRoleAssignable($role)) {
+            return $roleError;
         }
 
         // Memes gardes que reset-password (audit securite 2026-05-21), dans les
@@ -430,5 +423,25 @@ class CLIUserController extends BaseApiController
             'roles_before' => $avant,
             'roles_after' => $apres,
         ], "Roles updated for '{$user->name}': ".implode(', ', $apres));
+    }
+
+    private function assertRoleAssignable(string $role): ?JsonResponse
+    {
+        $exists = Role::where('name', $role)->where('guard_name', 'web')->exists();
+        if ($exists) {
+            return null;
+        }
+
+        if (in_array($role, self::VALID_ROLES, true)) {
+            Role::findOrCreate($role, 'web');
+
+            return null;
+        }
+
+        return $this->errorResponse(
+            "Role '{$role}' not found. Create it as a custom role first.",
+            [],
+            422
+        );
     }
 }
