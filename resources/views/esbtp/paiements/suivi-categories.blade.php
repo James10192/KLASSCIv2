@@ -1325,7 +1325,7 @@ window.scClearAllFilters = function() {
             })
             .then(response => {
                 if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
+                    return window.klassciErreurReponse(response);
                 }
                 return response.json();
             })

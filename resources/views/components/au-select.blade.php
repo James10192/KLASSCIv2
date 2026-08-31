@@ -412,7 +412,23 @@ if (typeof window.auSelect !== 'function') {
                 const first = this.filteredOptions.find(o => !o.placeholder);
                 if (first) this.select(first);
             },
-            setOptions(items, selectedValue = '') {
+            /**
+             * Remplace la liste des options.
+             *
+             * `conserverRecherche` existe pour une raison precise : une
+             * recherche DISTANTE appelle cette methode avec ce que le serveur a
+             * renvoye, pendant que l'utilisateur a encore les doigts sur le
+             * clavier. Effacer `search` a ce moment vide le champ SOUS SA
+             * FRAPPE — et comme la recherche n'part qu'a partir de trois
+             * caracteres, plus rien ne se declenche ensuite. La liste se
+             * remplissait correctement, mais le champ se vidait : de
+             * l'exterieur, cela s'appelle « la recherche ne marche pas ».
+             *
+             * Le defaut reste l'effacement, qui est juste pour l'autre usage —
+             * une liste en cascade (filiere -> classe) ou l'ancienne saisie ne
+             * s'applique plus a rien.
+             */
+            setOptions(items, selectedValue = '', conserverRecherche = false) {
                 const native = this.$refs.native;
                 if (!native) {
                     return;
@@ -436,7 +452,11 @@ if (typeof window.auSelect !== 'function') {
                 this._value = exists ? nextValue : (native.value || '');
                 native.value = this._value;
                 this.optionsVersion++;
-                this.search = '';
+
+                if (! conserverRecherche) {
+                    this.search = '';
+                }
+
                 this.focusedIndex = -1;
             },
         };

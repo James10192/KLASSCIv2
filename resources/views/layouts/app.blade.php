@@ -3253,6 +3253,44 @@
     <!-- jQuery -->
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 
+    {{-- ═══ Règle universelle KLASSCI : une réponse en erreur dit POURQUOI ═══
+
+         Le motif fautif, repété sept fois dans les vues :
+
+             if (!response.ok) { throw new Error('HTTP error! status: ' + status); }
+
+         Un 422 de validation est `!response.ok`. On jetait donc l'exception
+         AVANT de lire le corps — et le corps est précisément l'endroit où le
+         serveur explique ce qui ne va pas. Le caissier qui rejetait un paiement
+         avec un motif trop court lisait « Erreur lors du rejet », jamais « le
+         motif doit faire au moins 10 caractères ». Il réessayait à l'identique.
+
+         Ce helper lit le corps, en tire le message du serveur ou la première
+         erreur de validation, et ne retombe sur le code HTTP que si la réponse
+         ne dit rien d'exploitable. --}}
+    <script>
+    window.klassciErreurReponse = function (reponse) {
+        return reponse.json().catch(function () { return {}; }).then(function (corps) {
+            var message = corps && corps.message ? corps.message : null;
+
+            if (! message && corps && corps.errors) {
+                var premieres = Object.keys(corps.errors)
+                    .map(function (cle) {
+                        var v = corps.errors[cle];
+                        return Array.isArray(v) ? v[0] : v;
+                    })
+                    .filter(Boolean);
+
+                if (premieres.length) {
+                    message = premieres[0];
+                }
+            }
+
+            throw new Error(message || ('Erreur ' + reponse.status + '.'));
+        });
+    };
+    </script>
+
     {{-- ═══ Règle universelle KLASSCI : la molette ne modifie jamais un montant ═══
 
          Un <input type="number"> focalisé s'incrémente et se décrémente quand on
