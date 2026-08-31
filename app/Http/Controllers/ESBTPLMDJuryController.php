@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Domain\OfficialDocuments\Services\OfficialDocumentDownloadService;
 use App\Domain\OfficialDocuments\Services\LegacyJuryPvReconciliationService;
+use App\Domain\OfficialDocuments\Services\JuryPvRenderer;
 use App\Domain\OfficialDocuments\Services\OfficialDocumentService;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPClasse;
@@ -18,6 +19,7 @@ use App\Services\Security\SeparationOfDutiesService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Support\Facades\Log;
 use Illuminate\View\View;
 
@@ -28,6 +30,7 @@ class ESBTPLMDJuryController extends Controller
         private readonly OfficialDocumentService $officialDocuments,
         private readonly OfficialDocumentDownloadService $officialDownloads,
         private readonly LegacyJuryPvReconciliationService $legacyReconciliation,
+        private readonly JuryPvRenderer $pvRenderer,
         private readonly SeparationOfDutiesService $sod,
     )
     {
@@ -387,12 +390,17 @@ class ESBTPLMDJuryController extends Controller
         return redirect()->away($this->officialDownloads->signedUrl($document));
     }
 
-    public function pvPreview(ESBTPLMDJury $jury): RedirectResponse
+    public function pvPreview(ESBTPLMDJury $jury): Response
     {
         abort_unless(auth()->user()?->can('lmd.jury.view'), 403);
         $document = $this->officialDocuments->existingJuryPv($jury);
-        abort_unless($document, 404, 'Aucun document officiel disponible.');
-        return redirect()->away($this->officialDownloads->signedUrl($document, true));
+        abort_unless($document && is_array($document->snapshot), 404, 'Aucun document officiel disponible.');
+        $pdf = $this->pvRenderer->render($document->snapshot, (string) $document->reference);
+
+        return new Response($pdf, 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="'.($document->original_name ?? 'pv.pdf').'"',
+        ]);
     }
 
     public function reconcileLegacyPv(Request $request, ESBTPLMDJury $jury): JsonResponse|RedirectResponse
