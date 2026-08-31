@@ -202,6 +202,49 @@ class ESBTPFraisSubscription extends Model implements Auditable
         return $this->satisfied_in_kind ? 0.0 : (float) $this->amount;
     }
 
+    /**
+     * Ce frais est-il REGLE, au vu de ce qui a ete paye dessus ?
+     *
+     * La question vivait dans une methode privee de ESBTPPaiementController, ou
+     * elle s'ecrivait `$restant <= 0` avec `$restant = max(0, $du - $paye)`.
+     * Cette forme confond deux situations que rien ne rapproche : « le du est
+     * couvert » et « on ignore le du ». Quand la categorie n'a pas de montant
+     * configure, $du et $paye valent zero, le reste tombe a zero — et le recu
+     * cochait la ligne.
+     *
+     * Un montant nul veut dire INCONNU. Il ne prouve rien, et surtout pas un
+     * paiement. Seuls un depot en nature, ou un montant reel integralement
+     * couvert, valent quittance.
+     *
+     * Ici plutot que dans le controleur parce que c'est la souscription qui
+     * sait ce qu'elle reclame ; et parce que la regle se teste alors sans base
+     * de donnees, ce qui n'etait pas le cas d'une methode privee derriere une
+     * requete Eloquent.
+     */
+    public function estSolde(float $montantPaye): bool
+    {
+        if ($this->satisfied_in_kind) {
+            return true;
+        }
+
+        $du = $this->chargedAmount();
+
+        return $du > 0 && $montantPaye >= $du;
+    }
+
+    /**
+     * L'etablissement n'a pas encore dit ce que ce frais coute.
+     *
+     * A distinguer d'un frais a zero franc : ici il n'y a pas de montant du
+     * tout. Le recu l'affiche en toutes lettres, sans quoi la ligne sort vide —
+     * sans coche et sans chiffre — et le caissier ne peut pas trancher entre
+     * « rien a payer » et « montant pas encore defini ».
+     */
+    public function montantNonDefini(): bool
+    {
+        return ! $this->satisfied_in_kind && $this->chargedAmount() <= 0;
+    }
+
     public static function getCategoryStats($fraisCategoryId)
     {
         return [

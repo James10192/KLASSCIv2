@@ -710,30 +710,14 @@ class ESBTPPaiementController extends Controller
             $restant = max(0.0, $due - $paye);
             $inKind = (bool) $sub->satisfied_in_kind;
 
-            // Un montant nul veut dire INCONNU, pas « regle ».
-            //
-            // La condition etait `$restant <= 0`, et `$restant` vaut
-            // `max(0, $due - $paye)`. Quand la categorie n'a pas de montant
-            // configure, $due et $paye valent tous deux zero : le reste tombe a
-            // zero et la ligne se cochait. Le recu — un document officiel, qui
-            // porte la mention « toute falsification constitue un delit » —
-            // certifiait donc comme soldes des frais que personne n'avait
-            // payes. C'est le cas de tout un etablissement des que ses
-            // categories restent sur leur montant par defaut.
-            //
-            // Une ligne n'est desormais cochee que si elle est deposee en
-            // nature, ou si un montant REEL a ete integralement couvert.
-            $nonConfigure = $due <= 0 && ! $inKind;
-
             return [
                 'name' => $sub->fraisCategory->name ?? 'N/A',
                 'restant' => $restant,
                 'in_kind' => $inKind,
-                // Signale au caissier POURQUOI la ligne ne porte ni montant ni
-                // coche : sans cela il lit une case vide sans figure et ne peut
-                // pas distinguer « rien a payer » de « montant non defini ».
-                'non_configure' => $nonConfigure,
-                'checked' => $inKind || ($due > 0 && $paye >= $due),
+                // La regle de quittance vit sur la souscription : c'est elle qui
+                // sait ce qu'elle reclame, et elle s'y teste sans base.
+                'non_configure' => $sub->montantNonDefini(),
+                'checked' => $sub->estSolde($paye),
                 'current' => (int) $paiement->frais_category_id === (int) $sub->frais_category_id,
             ];
         })->values();
