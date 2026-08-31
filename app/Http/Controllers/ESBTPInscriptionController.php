@@ -843,6 +843,18 @@ class ESBTPInscriptionController extends Controller
         $feeCategoriesWithRules = [];
         $inKind = app(InKindDepositService::class);
 
+        // Ce que chaque frais a REELLEMENT encaisse.
+        //
+        // Un versement peut couvrir plusieurs frais d'un seul geste ; ses
+        // allocations disent alors ou l'argent est alle. Compter par
+        // `frais_category_id` seul, comme on le faisait ici, attribuait la
+        // totalite du versement au frais que le caissier avait designe — d'ou
+        // les 255 000 F affiches sur des frais d'inscription de 150 000, et les
+        // 105 000 F d'excedent qui n'apparaissaient nulle part ailleurs.
+        //
+        // Un seul appel remplace une requete par categorie.
+        $payeParCategorie = \App\Models\ESBTPPaiement::netPaidByCategory($inscription->id);
+
         // Récupérer le statut d'affectation de l'inscription
         $affectationStatus = $inscription->affectation_status ?? ESBTPInscription::DEFAULT_AFFECTATION_STATUS;
 
@@ -871,7 +883,7 @@ class ESBTPInscriptionController extends Controller
                 })
                 ->get();
 
-            $totalPaye = \App\Models\ESBTPPaiement::netStudentPaidFrom($paiements);
+            $totalPaye = (float) ($payeParCategorie[$category->id] ?? 0);
 
             if ($subscription) {
                 $montantAttendu = $subscription->chargedAmount();
@@ -937,7 +949,7 @@ class ESBTPInscriptionController extends Controller
                     })
                     ->get();
 
-                $totalPaye = \App\Models\ESBTPPaiement::netStudentPaidFrom($paiements);
+                $totalPaye = (float) ($payeParCategorie[$category->id] ?? 0);
                 $montantAttendu = $subscription->chargedAmount();
                 $solde = $montantAttendu - $totalPaye;
                 $satisfiedInKind = (bool) $subscription->satisfied_in_kind;

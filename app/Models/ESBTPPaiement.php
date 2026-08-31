@@ -500,10 +500,16 @@ class ESBTPPaiement extends Model implements Auditable
      */
     private static function totauxParCategorie(int $inscriptionId, string $nature): \Illuminate\Support\Collection
     {
+        // Un versement « reliquat » solde une dette d'une annee ANTERIEURE : il ne
+        // paie pas le frais courant et n'a rien a faire dans son total. L'ecran
+        // de situation financiere l'excluait deja ; ce helper ne le faisait pas,
+        // et surestimait donc ce qui restait du sur les reçus.
         $base = fn () => self::query()
             ->where('inscription_id', $inscriptionId)
             ->valides()
-            ->{$nature}();
+            ->{$nature}()
+            ->where(fn ($q) => $q->where('type_paiement', '!=', 'reliquat')
+                ->orWhereNull('type_paiement'));
 
         $parAllocation = \App\Models\ESBTPPaiementAllocation::query()
             ->whereIn('paiement_id', $base()->select('id'))
