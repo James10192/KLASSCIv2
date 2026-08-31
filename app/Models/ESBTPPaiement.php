@@ -500,10 +500,18 @@ class ESBTPPaiement extends Model implements Auditable
      */
     private static function totauxParCategorie(int $inscriptionId, string $nature): \Illuminate\Support\Collection
     {
-        // Un versement « reliquat » solde une dette d'une annee ANTERIEURE : il ne
-        // paie pas le frais courant et n'a rien a faire dans son total. L'ecran
-        // de situation financiere l'excluait deja ; ce helper ne le faisait pas,
-        // et surestimait donc ce qui restait du sur les reçus.
+        // Un versement « reliquat » est exclu pour ne pas compter DEUX FOIS.
+        //
+        // Le reliquat est une dette d'une annee anterieure qui vient s'ajouter a
+        // l'annee en cours : le versement porte donc bien l'inscription courante,
+        // et le frais_category_id de la dette d'origine. Mais il decremente
+        // `esbtp_reliquat_details.montant_restant`, qui est le solde qu'il eteint
+        // reellement. L'imputer EN PLUS au frais courant de meme categorie le
+        // ferait compter deux fois, et donnerait un frais de l'annee pour solde
+        // alors que c'est l'arriere qui a ete regle.
+        //
+        // Six autres endroits du code appliquent deja cette exclusion ; ce helper
+        // ne le faisait pas, et surestimait donc ce qui avait ete paye.
         $base = fn () => self::query()
             ->where('inscription_id', $inscriptionId)
             ->valides()
