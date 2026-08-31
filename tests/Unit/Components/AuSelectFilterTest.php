@@ -3,6 +3,7 @@
 namespace Tests\Unit\Components;
 
 use PHPUnit\Framework\TestCase;
+use Tests\Unit\Components\Concerns\EvalueLeScriptAuSelect;
 
 /**
  * Verifie le filtrage local du composant <x-au-select>.
@@ -18,10 +19,7 @@ use PHPUnit\Framework\TestCase;
  */
 class AuSelectFilterTest extends TestCase
 {
-    private const COMPOSANT = __DIR__ . '/../../../resources/views/components/au-select.blade.php';
-
-    /** @var string|null */
-    private static $scriptCache;
+    use EvalueLeScriptAuSelect;
 
     protected function setUp(): void
     {
@@ -96,73 +94,24 @@ class AuSelectFilterTest extends TestCase
      */
     private function correspond(string $libelle, string $saisie): bool
     {
-        $programme = $this->scriptDuComposant() . "\n"
-            . 'process.stdout.write(window.auSelectMatchesQuery('
+        $this->assertStringContainsString(
+            'auSelectMatchesQuery',
+            $this->scriptDuComposant(),
+            'Le comparateur a disparu du composant : le filtrage local n\'est plus teste.'
+        );
+
+        $sortie = $this->evalueAvecLeComposant(
+            'process.stdout.write(window.auSelectMatchesQuery('
             . json_encode($libelle, JSON_UNESCAPED_UNICODE) . ', '
-            . json_encode($saisie, JSON_UNESCAPED_UNICODE) . ') ? "1" : "0");';
-
-        $fichier = tempnam(sys_get_temp_dir(), 'au-select-') . '.js';
-        file_put_contents($fichier, $programme);
-
-        try {
-            $sortie = shell_exec(escapeshellarg($this->cheminNode()) . ' ' . escapeshellarg($fichier) . ' 2>&1');
-        } finally {
-            @unlink($fichier);
-        }
+            . json_encode($saisie, JSON_UNESCAPED_UNICODE) . ') ? "1" : "0");'
+        );
 
         $this->assertContains(
-            trim((string) $sortie),
+            $sortie,
             ['0', '1'],
             'Le comparateur du composant n\'a pas pu etre evalue. Sortie Node : ' . $sortie
         );
 
-        return trim((string) $sortie) === '1';
-    }
-
-    /**
-     * Extrait le <script> pousse par le composant, et le prepare pour Node :
-     * le composant ecrit sur `window`, qui n'existe pas hors navigateur.
-     */
-    private function scriptDuComposant(): string
-    {
-        if (self::$scriptCache !== null) {
-            return self::$scriptCache;
-        }
-
-        $source = file_get_contents(self::COMPOSANT);
-        $this->assertNotFalse($source, 'Composant au-select introuvable.');
-
-        $debut = strpos($source, "@push('scripts')");
-        $this->assertNotFalse($debut, 'Le composant ne pousse plus de script — le test doit etre revu.');
-
-        $ouverture = strpos($source, '<script>', $debut);
-        $fermeture = strpos($source, '</script>', (int) $ouverture);
-        $this->assertNotFalse($ouverture, 'Balise <script> introuvable dans le composant.');
-        $this->assertNotFalse($fermeture, 'Balise de fermeture introuvable dans le composant.');
-
-        $js = substr($source, (int) $ouverture + 8, (int) $fermeture - (int) $ouverture - 8);
-
-        $this->assertStringContainsString(
-            'auSelectMatchesQuery',
-            $js,
-            'Le comparateur a disparu du composant : le filtrage local n\'est plus teste.'
-        );
-
-        return self::$scriptCache = "var window = globalThis;\n" . $js;
-    }
-
-    private function cheminNode(): ?string
-    {
-        static $chemin = false;
-
-        if ($chemin !== false) {
-            return $chemin;
-        }
-
-        $sonde = shell_exec('node --version 2>&1');
-
-        return $chemin = (is_string($sonde) && preg_match('/^v\d+\./', trim($sonde)) === 1)
-            ? 'node'
-            : null;
+        return $sortie === '1';
     }
 }

@@ -26,7 +26,14 @@
     $componentId = 'au-select-' . substr(md5(uniqid('', true)), 0, 8);
 @endphp
 
-<div class="{{ $wrapperClass }}" x-data="auSelect()" x-id="['{{ $componentId }}']" @click.outside="open = false" @keydown.escape="open = false">
+{{-- Le modificateur « outside » d'Alpine compare la cible du clic au SEUL
+     element racine. Or le menu peut etre deplace en fin de document (cf.
+     verifierAncrage dans le script) : il cesse alors d'etre un descendant de
+     cette racine, et un clic dans son champ de recherche ou sur sa croix
+     d'effacement passerait pour un clic dehors — le menu se refermerait sous
+     les doigts. On delegue donc la decision au composant, seul a connaitre la
+     position reelle de son menu. --}}
+<div class="{{ $wrapperClass }}" x-data="auSelect()" x-id="['{{ $componentId }}']" @click.outside="fermerSiExterieur($event)" @keydown.escape="fermer()">
     <button type="button"
             class="au-select-trigger"
             :class="{ 'au-select-trigger--open': open, 'au-select-trigger--has-value': currentValue !== '', 'au-select-trigger--disabled': isDisabled }"
@@ -49,6 +56,7 @@
     </button>
 
     <div class="au-select-menu"
+         x-ref="menu"
          :id="$id('{{ $componentId }}')"
          x-show="open"
          :style="menuStyle"
@@ -65,7 +73,7 @@
                    x-model="search"
                    x-ref="searchInput"
                    @click.stop
-                   @keydown.escape.stop="open = false"
+                   @keydown.escape.stop="fermer()"
                    @keydown.arrow-down.prevent="focusNextOption()"
                    @keydown.arrow-up.prevent="focusPreviousOption()"
                    @keydown.enter.prevent="selectFocused()"
@@ -237,6 +245,108 @@ if (typeof window.auSelectMatchesQuery !== 'function') {
     };
 }
 
+/**
+ * Un element devient BLOC CONTENEUR de ses descendants `position: fixed` des
+ * qu'il porte l'une de ces proprietes : transform, filter, backdrop-filter,
+ * perspective, contain (layout|paint|strict|content), ou will-change citant
+ * l'une d'elles. Les transformations individuelles rotate/scale/translate
+ * comptent au meme titre.
+ *
+ * Ce composant pose son menu en `fixed` avec des coordonnees lues sur le
+ * VIEWPORT. Sous un tel ancetre, le navigateur les interprete par rapport a
+ * CET ancetre : le menu part de plusieurs centaines de pixels, souvent hors
+ * ecran. C'est ce qu'a produit `.card-moderne:hover { transform: ... }` sur
+ * /esbtp/paiements/create — le selecteur d'etudiant disparaissait des qu'on
+ * survolait la carte qui le contient.
+ *
+ * Corriger regle par regle est sans fin : la feuille globale en compte des
+ * dizaines et il s'en ajoute a chaque page. Cette fonction sert donc a rendre
+ * le composant INSENSIBLE au probleme, en detectant la situation pour aller
+ * poser le menu ailleurs.
+ *
+ * Elle recoit un objet de style deja lu (pas un element) pour rester
+ * verifiable hors navigateur.
+ */
+if (typeof window.auSelectStyleCreeBlocConteneur !== 'function') {
+    window.auSelectStyleCreeBlocConteneur = function (style) {
+        if (! style) {
+            return false;
+        }
+
+        // Une valeur CSS calculee est TOUJOURS une chaine. Tout le reste est
+        // du bruit — a commencer par `style.filter`, qui vaut la methode
+        // `filter` heritee si on tend un tableau au lieu d'un style.
+        var lire = function (nom, variante) {
+            var valeur = style[nom];
+            if (typeof valeur !== 'string' && variante) {
+                valeur = style[variante];
+            }
+            return typeof valeur === 'string' ? valeur.trim().toLowerCase() : '';
+        };
+
+        // `none` et `auto` sont les valeurs calculees d'une propriete absente.
+        var posee = function (valeur) {
+            return valeur !== '' && valeur !== 'none' && valeur !== 'auto';
+        };
+
+        if (posee(lire('transform'))) return true;
+        if (posee(lire('filter'))) return true;
+        if (posee(lire('backdropFilter', 'backdrop-filter'))) return true;
+        if (posee(lire('perspective'))) return true;
+
+        // rotate / scale / translate ecrivent leur valeur neutre differemment
+        // selon le navigateur : `none`, mais aussi `0deg`, `1` ou `0px`. Seul
+        // un deplacement reel cree un bloc conteneur.
+        var rotation = lire('rotate');
+        if (posee(rotation) && ! /^0(deg|rad|grad|turn)?$/.test(rotation)) return true;
+
+        var echelle = lire('scale');
+        if (posee(echelle) && ! /^1(\s+1){0,2}$/.test(echelle)) return true;
+
+        var deplacement = lire('translate');
+        if (posee(deplacement) && ! /^0(px)?(\s+0(px)?){0,2}$/.test(deplacement)) return true;
+
+        if (/\b(layout|paint|strict|content)\b/.test(lire('contain'))) return true;
+
+        if (/\b(transform|filter|backdrop-filter|perspective|rotate|scale|translate|contain)\b/
+            .test(lire('willChange', 'will-change'))) return true;
+
+        return false;
+    };
+}
+
+/**
+ * Remonte la chaine des ancetres — l'element lui-meme compris, car il englobe
+ * deja le menu — et rend le premier qui rendrait le menu mal place, ou null.
+ *
+ * `lireStyle` est injectable pour que la remontee soit verifiable sans
+ * navigateur ; en production elle lit le style calcule.
+ */
+if (typeof window.auSelectAncetreBloquant !== 'function') {
+    window.auSelectAncetreBloquant = function (element, lireStyle) {
+        if (! element) {
+            return null;
+        }
+
+        var lire = typeof lireStyle === 'function'
+            ? lireStyle
+            : function (noeud) { return window.getComputedStyle(noeud); };
+
+        var noeud = element;
+        // Garde-fou : une chaine circulaire ne doit pas figer la page.
+        var restant = 200;
+
+        while (noeud && restant-- > 0) {
+            if (window.auSelectStyleCreeBlocConteneur(lire(noeud))) {
+                return noeud;
+            }
+            noeud = noeud.parentElement || null;
+        }
+
+        return null;
+    };
+}
+
 if (typeof window.auSelect !== 'function') {
     window.auSelect = function () {
         return {
@@ -253,8 +363,16 @@ if (typeof window.auSelect !== 'function') {
             _menuMaxHeight: null,
             _menuOpenUp: null,
             _repositionFrame: null,
+            _menu: null,
+            _menuDeplace: false,
+            _marqueur: null,
+            _veilleAncrage: null,
             init() {
                 this._value = this.$refs.native.value;
+                // Reference gardee une fois pour toutes : le menu peut quitter
+                // cette racine (cf. verifierAncrage), un querySelector sur
+                // $el ne le retrouverait alors plus.
+                this._menu = this.$refs.menu || this.$el.querySelector('.au-select-menu');
 
                 this.observeNativeOptions();
                 // Le scroll DEPLACE le menu, il ne le redimensionne pas. Un
@@ -286,6 +404,10 @@ if (typeof window.auSelect !== 'function') {
             destroy() {
                 this._optionsObserver?.disconnect();
                 this.cancelReposition();
+                this.cesserSurveillanceAncrage();
+                // Le composant disparait (modal remplacee en AJAX, ligne
+                // retiree) : son menu ne doit pas rester seul sous <body>.
+                this.rapatrierLeMenu();
                 window.removeEventListener('resize', this._remeasureMenu);
                 window.removeEventListener('scroll', this._repositionMenu, { capture: true });
                 window.visualViewport?.removeEventListener('resize', this._remeasureMenu);
@@ -325,28 +447,149 @@ if (typeof window.auSelect !== 'function') {
                 if (this.isDisabled) {
                     return;
                 }
-                this.open = !this.open;
-                if (!this.open) {
-                    // La prochaine ouverture remesure : le contenu a pu changer.
-                    this._menuWidth = null;
-                    this._menuMaxHeight = null;
-                    this._menuOpenUp = null;
-                    this.cancelReposition();
-                }
                 if (this.open) {
-                    this.focusInitialOption();
-                    // Position before Alpine reveals the menu, then refine with its rendered size.
-                    this.positionMenu(true);
-                    this.$nextTick(() => {
-                        window.requestAnimationFrame(() => {
-                            this.positionMenu(true);
-                            this.$refs.searchInput?.focus();
-                        });
-                    });
+                    this.fermer();
                 } else {
-                    this.menuStyle = '';
-                    this.focusedIndex = -1;
+                    this.ouvrir();
                 }
+            },
+            ouvrir() {
+                if (this.isDisabled) {
+                    return;
+                }
+                this.open = true;
+                this.focusInitialOption();
+                // L'ancrage se decide AVANT la mesure : deplacer le menu change
+                // la reference de ses coordonnees.
+                this.verifierAncrage();
+                // Position before Alpine reveals the menu, then refine with its rendered size.
+                this.positionMenu(true);
+                this.$nextTick(() => {
+                    window.requestAnimationFrame(() => {
+                        this.verifierAncrage();
+                        this.positionMenu(true);
+                        this.$refs.searchInput?.focus();
+                    });
+                });
+                this.surveillerAncrage();
+            },
+            /**
+             * Unique chemin de fermeture — clic dehors, echappement, choix
+             * d'une option, second clic sur le declencheur. Tout ce qui a ete
+             * pose a l'ouverture est defait ici, sinon un menu reste deplace
+             * sous <body> ou garde une position perimee.
+             */
+            fermer() {
+                if (! this.open) {
+                    // Appel defensif — echappement sur un menu deja ferme. On
+                    // nettoie, mais on NE retouche PAS `menuStyle` : le liant
+                    // `:style` reecrit l'attribut style entier, et effacerait
+                    // le `display:none` pose par x-show alors que rien ne le
+                    // reposerait (x-show ne reagit qu'a un changement d'etat).
+                    this.cesserSurveillanceAncrage();
+                    this.rapatrierLeMenu();
+                    return;
+                }
+                this.open = false;
+                this.menuStyle = '';
+                this.focusedIndex = -1;
+                // La prochaine ouverture remesure : le contenu a pu changer.
+                this._menuWidth = null;
+                this._menuMaxHeight = null;
+                this._menuOpenUp = null;
+                this.cancelReposition();
+                this.cesserSurveillanceAncrage();
+                this.rapatrierLeMenu();
+            },
+            /**
+             * `@click.outside` ne connait que la racine du composant. Quand le
+             * menu a ete deplace sous <body>, un clic dans son champ de
+             * recherche est « dehors » au sens d'Alpine alors qu'il est
+             * evidemment dedans pour l'utilisateur.
+             */
+            fermerSiExterieur(evenement) {
+                if (! this.open) {
+                    return;
+                }
+                if (this._menu && evenement && this._menu.contains(evenement.target)) {
+                    return;
+                }
+                this.fermer();
+            },
+            /**
+             * Deplace le menu sous <body> si — et seulement si — un ancetre en
+             * fausserait le placement (cf. auSelectAncetreBloquant).
+             *
+             * Le deplacement est conditionnel a dessein : sous <body>, les
+             * regles CSS ecrites en descendance d'un parent (`.cpa-filters
+             * .au-select-menu { ... }`) cessent de s'appliquer. Tant que rien
+             * ne casse, on laisse le menu ou il est.
+             *
+             * Rend true si le menu vient d'etre deplace.
+             */
+            verifierAncrage() {
+                if (this._menuDeplace || ! this._menu || ! this._menu.parentNode) {
+                    return false;
+                }
+                if (typeof window.auSelectAncetreBloquant !== 'function') {
+                    return false;
+                }
+                if (! window.auSelectAncetreBloquant(this.$el)) {
+                    return false;
+                }
+
+                // Le marqueur retient la place exacte du menu dans la racine.
+                this._marqueur = document.createComment('au-select-menu');
+                this._menu.parentNode.insertBefore(this._marqueur, this._menu);
+                document.body.appendChild(this._menu);
+                this._menuDeplace = true;
+
+                return true;
+            },
+            rapatrierLeMenu() {
+                if (! this._menuDeplace) {
+                    return;
+                }
+                if (this._marqueur && this._marqueur.parentNode) {
+                    this._marqueur.parentNode.insertBefore(this._menu, this._marqueur);
+                    this._marqueur.remove();
+                } else if (this._menu && this._menu.parentNode) {
+                    // La place d'origine a disparu du document : plutot que de
+                    // laisser un menu orphelin sous <body>, on le retire.
+                    this._menu.remove();
+                }
+                this._marqueur = null;
+                this._menuDeplace = false;
+            },
+            /**
+             * Un `transform` de survol ne s'applique qu'une fois la souris sur
+             * la carte. Ouvert au clavier, le menu peut donc etre correctement
+             * ancre a l'ouverture puis se decrocher au premier mouvement de
+             * souris. On surveille jusqu'au deplacement, puis on arrete : il
+             * n'y a plus rien a decider.
+             */
+            surveillerAncrage() {
+                if (this._veilleAncrage) {
+                    return;
+                }
+                this._veilleAncrage = () => {
+                    if (! this.open || this._menuDeplace) {
+                        this.cesserSurveillanceAncrage();
+                        return;
+                    }
+                    if (this.verifierAncrage()) {
+                        this.positionMenu(true);
+                        this.cesserSurveillanceAncrage();
+                    }
+                };
+                document.addEventListener('pointerover', this._veilleAncrage, { passive: true, capture: true });
+            },
+            cesserSurveillanceAncrage() {
+                if (! this._veilleAncrage) {
+                    return;
+                }
+                document.removeEventListener('pointerover', this._veilleAncrage, { capture: true });
+                this._veilleAncrage = null;
             },
             openAndFocusNext() {
                 if (!this.open) {
@@ -411,7 +654,7 @@ if (typeof window.auSelect !== 'function') {
              */
             positionMenu(remeasure = false) {
                 const trigger = this.$el.querySelector('.au-select-trigger');
-                const menu = this.$el.querySelector('.au-select-menu');
+                const menu = this._menu;
                 if (!trigger || !menu) return;
 
                 const margin = 12;
@@ -457,9 +700,15 @@ if (typeof window.auSelect !== 'function') {
                 const minimumWidth = Math.min(triggerRect.width, viewportWidth);
                 const left = Math.max(margin, Math.min(triggerRect.left, visibleWidth - menuWidth - margin));
 
+                // Sous <body>, le menu perd les regles CSS ecrites en
+                // descendance de son parent d'origine — dont, sur certaines
+                // pages, un z-index releve. On le repose ici, au meme niveau
+                // que les menus Bootstrap deplaces (cf. universal-dropdowns).
+                const plan = this._menuDeplace ? 'z-index:99999;' : '';
+
                 this.menuStyle = this._menuOpenUp
-                    ? `position:fixed;left:${left}px;right:auto;top:auto;bottom:${visibleHeight - triggerRect.top + gap}px;width:${menuWidth}px;min-width:${minimumWidth}px;max-width:${viewportWidth}px;max-height:${availableHeight}px;transform-origin:bottom center;`
-                    : `position:fixed;left:${left}px;right:auto;top:${triggerRect.bottom + gap}px;bottom:auto;width:${menuWidth}px;min-width:${minimumWidth}px;max-width:${viewportWidth}px;max-height:${availableHeight}px;transform-origin:top center;`;
+                    ? `${plan}position:fixed;left:${left}px;right:auto;top:auto;bottom:${visibleHeight - triggerRect.top + gap}px;width:${menuWidth}px;min-width:${minimumWidth}px;max-width:${viewportWidth}px;max-height:${availableHeight}px;transform-origin:bottom center;`
+                    : `${plan}position:fixed;left:${left}px;right:auto;top:${triggerRect.bottom + gap}px;bottom:auto;width:${menuWidth}px;min-width:${minimumWidth}px;max-width:${viewportWidth}px;max-height:${availableHeight}px;transform-origin:top center;`;
             },
             get currentValue() { return this._value; },
             get isDisabled() { return !!this.$refs.native?.disabled; },
@@ -526,9 +775,8 @@ if (typeof window.auSelect !== 'function') {
                     return;
                 }
                 this._value = opt.value;
-                this.open = false;
+                this.fermer();
                 this.search = '';
-                this.focusedIndex = -1;
             },
             selectFocused() {
                 const opt = this.filteredOptions[this.focusedIndex];
