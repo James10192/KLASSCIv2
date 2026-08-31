@@ -31,6 +31,7 @@ class AvoirService
                 'annee_universitaire_id' => $parent->annee_universitaire_id,
                 'frais_category_id' => $parent->frais_category_id,
                 'categorie_id' => $parent->categorie_id,
+                'type_paiement' => $parent->type_paiement ?: 'avoir',
                 'montant' => $montant,
                 'mode_paiement' => $kind === self::KIND_REFUND ? ($parent->mode_paiement ?: 'espèces') : 'avoir',
                 'date_paiement' => now()->toDateString(),
