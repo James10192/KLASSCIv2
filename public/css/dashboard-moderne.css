@@ -729,9 +729,19 @@ body {
     transition: all 0.2s ease;
 }
 
+/* Meme raison que `.card-moderne` plus haut : pas de `transform` au survol.
+   `.main-card` enveloppe des formulaires qui contiennent des selecteurs
+   premium — /esbtp/emploi-temps/add-session, /esbtp/paiements/edit,
+   /esbtp/niveaux-etudes. Un `transform` sur un ancetre en fait le bloc
+   conteneur de ses descendants `position: fixed` : le menu du selecteur, pose
+   en coordonnees viewport, se reancrait sur la carte et partait hors champ.
+
+   L'ombre porte seule le retour visuel, comme sur `.card-moderne` : elle
+   passe de 1px/3px a 4px/12px et de 10 % a 15 % d'opacite, ce qui se voit
+   nettement plus que le pixel de deplacement perdu.
+   Voir .claude/rules/universal-dropdowns.md, « Piege critique #2 ». */
 .main-card:hover {
     box-shadow: var(--shadow-hover);
-    transform: translateY(-1px);
 }
 
 .main-card.urgent {

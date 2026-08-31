@@ -956,8 +956,26 @@ body {
     );
 }
 
+/* Le survol se signale par l'ombre et la bordure, JAMAIS par un `transform`.
+   `.card` est la classe la plus repandue du produit, et elle enveloppe la
+   plupart des tableaux : sur /attendances, /grades, /certificates, le menu
+   d'actions de chaque ligne vit a l'interieur d'une `.card`. Un `transform`
+   sur un ancetre en fait le bloc conteneur de ses descendants `position:
+   fixed` — or ces menus sont poses en `fixed` avec des coordonnees calculees
+   par rapport au VIEWPORT. Des que la carte se transforme, le menu se reancre
+   sur elle et part hors champ, precisement quand la souris est dessus, donc a
+   chaque ouverture.
+
+   Le survol reste tres lisible : l'ombre passe de `0 1px 3px` a
+   `--shadow-2xl` (25px de flou, 50px d'etalement) — et c'est la seule chose
+   qui etait animee, `transition` ne couvrant que `box-shadow`. Le
+   soulevement, lui, sautait d'un coup ; on ne perd donc aucune animation.
+   On ne le remplace pas par des marges opposees : les
+   cartes portent presque toutes une utilitaire Bootstrap `mb-*` en
+   `!important`, qui gagnerait sur la marge basse et laisserait la marge haute
+   seule — la carte monterait en tirant tout ce qui la suit avec elle.
+   Voir .claude/rules/universal-dropdowns.md, « Piege critique #2 ». */
 .card:hover {
-    transform: translateY(-5px);
     box-shadow: var(--shadow-2xl);
     border-color: rgba(255, 255, 255, 0.4);
     z-index: 10;
