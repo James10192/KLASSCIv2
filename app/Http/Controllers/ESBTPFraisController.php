@@ -1387,20 +1387,26 @@ class ESBTPFraisController extends Controller
                     // Chercher une configuration pour cette catégorie et cette inscription
                     $configuration = ESBTPFraisConfiguration::getApplicableForCategoryAndInscription($category->id, $inscription);
 
-                    // Calcul robuste sans dépendance legacy (ESBTPFraisRule supprimé).
+                    // Le montant vient de la configuration si elle existe, du
+                    // defaut de la categorie sinon. Et rien d'autre.
+                    //
+                    // La branche `elseif ($configuration)` etait morte :
+                    // method_exists() est toujours vrai, getMontantByStatus etant
+                    // definie sur le modele. Elle retombe d'ailleurs sur
+                    // `$this->amount` dans chacun de ses cas, donc elle couvre
+                    // deja l'absence de variante par statut.
+                    //
+                    // Le repli « de securite » qui suivait est retire. Il ne
+                    // pouvait se declencher QUE si une configuration existait et
+                    // valait zero — sans configuration, le montant vaut deja le
+                    // defaut. Or un tarif configure a zero est une DECISION, pas
+                    // une absence : c'est l'etudiant exempte. Le repli lui faisait
+                    // payer le montant par defaut, et l'ecran l'annoncait comme
+                    // configure. On encaissait ce qui n'etait pas du.
                     $affectationStatus = $inscription->affectation_status ?? \App\Models\ESBTPInscription::DEFAULT_AFFECTATION_STATUS;
-                    if ($configuration && method_exists($configuration, 'getMontantByStatus')) {
-                        $montant = (float) $configuration->getMontantByStatus($affectationStatus);
-                    } elseif ($configuration) {
-                        $montant = (float) ($configuration->amount ?? 0);
-                    } else {
-                        $montant = (float) ($category->default_amount ?? 0);
-                    }
-
-                    // Fallback de sécurité si configuration incomplète.
-                    if ($montant <= 0) {
-                        $montant = (float) ($category->default_amount ?? 0);
-                    }
+                    $montant = $configuration
+                        ? (float) $configuration->getMontantByStatus($affectationStatus)
+                        : (float) ($category->default_amount ?? 0);
 
                     return [
                         'id' => $category->id,
