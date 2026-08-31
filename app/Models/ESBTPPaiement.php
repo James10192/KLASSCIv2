@@ -539,8 +539,14 @@ class ESBTPPaiement extends Model implements Auditable
      *
      * Deux sources, jamais comptees deux fois : les paiements QUI PORTENT des
      * allocations sont lus par leurs allocations, ceux qui n'en portent pas par
-     * leur categorie propre. Un paiement partiellement alloue n'existe pas — la
-     * repartition couvre toujours la totalite du versement.
+     * leur categorie propre.
+     *
+     * Cette methode ne peut ignorer la categorie propre d'un versement alloue
+     * que si ses allocations couvrent la TOTALITE du montant : sinon la
+     * difference sort des totaux sans erreur ni trace. Cet invariant n'etait
+     * qu'affirme ici ; il est desormais verifie a l'ecriture
+     * (RepartitionTropPercu leve AllocationIncoherenteException) et
+     * controlable a tout moment par `php artisan frais:verifier-allocations`.
      */
     private static function totauxParCategorie(
         int $inscriptionId,

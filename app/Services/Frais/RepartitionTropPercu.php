@@ -2,6 +2,7 @@
 
 namespace App\Services\Frais;
 
+use App\Exceptions\AllocationIncoherenteException;
 use App\Models\ESBTPFraisSubscription;
 use App\Models\ESBTPInscription;
 use App\Models\ESBTPPaiement;
@@ -366,6 +367,8 @@ class RepartitionTropPercu
             return [];
         }
 
+        $allocations = $this->boucler($paiement, $allocations);
+
         $sortie = [];
 
         foreach ($allocations as $categoryId => $montant) {
@@ -377,5 +380,52 @@ class RepartitionTropPercu
         }
 
         return $sortie;
+    }
+
+    /**
+     * Verifie que la repartition couvre la TOTALITE du versement.
+     *
+     * C'est l'invariant sur lequel repose tout le calcul par categorie : un
+     * versement qui porte des allocations est lu par elles, et plus du tout par
+     * sa propre categorie. Une repartition partielle ferait donc disparaitre la
+     * difference des totaux — sans erreur, sans trace.
+     *
+     * Rien ne l'imposait : il n'etait qu'affirme dans un commentaire. Deux
+     * chemins le rompaient (un reliquat candidat, un versement sans categorie),
+     * et un troisieme demeure ici : la boucle de repartition abandonne tout
+     * reliquat inferieur au centime sans le reaffecter. On le rend a la derniere
+     * categorie servie plutot que de le laisser filer.
+     *
+     * Au-dela du centime, ce n'est plus un arrondi mais une erreur de calcul :
+     * on refuse d'ecrire. Un lot qui echoue bruyamment se repare ; de l'argent
+     * qui s'evapore en silence, non.
+     *
+     * @param  array<int, float>  $allocations
+     * @return array<int, float>
+     */
+    private function boucler(ESBTPPaiement $paiement, array $allocations): array
+    {
+        $montant = round((float) $paiement->montant, 2);
+        $ecart = round($montant - array_sum($allocations), 2);
+
+        if ($ecart !== 0.0 && abs($ecart) < 0.01) {
+            $derniere = array_key_last($allocations);
+            $allocations[$derniere] = round($allocations[$derniere] + $ecart, 2);
+            $ecart = round($montant - array_sum($allocations), 2);
+        }
+
+        if (abs($ecart) >= 0.005) {
+            throw new AllocationIncoherenteException(sprintf(
+                'Versement #%d (%s) : la repartition totalise %s pour un montant de %s, '
+                .'soit %s non impute. Ecrire cela ferait disparaitre cette somme des totaux par frais.',
+                $paiement->id,
+                $paiement->numero_recu ?: 'sans numero',
+                number_format(array_sum($allocations), 2, ',', ' '),
+                number_format($montant, 2, ',', ' '),
+                number_format($ecart, 2, ',', ' ')
+            ));
+        }
+
+        return $allocations;
     }
 }

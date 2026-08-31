@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\API\CLI;
 
+use App\Exceptions\AllocationIncoherenteException;
 use App\Http\Controllers\API\BaseApiController;
 use App\Services\Frais\CorrectionMontantSouscriptions;
 use App\Services\Frais\OrdreDesCategoriesFrais;
@@ -140,12 +141,19 @@ class CLIFraisController extends BaseApiController
         $reinitialiser = (bool) ($valide['reset'] ?? false);
         $appliquer = (bool) ($valide['apply'] ?? false);
 
-        $resultat = $repartition->executer(
-            $appliquer,
-            $valide['inscription_id'] ?? null,
-            $valide['annee_id'] ?? null,
-            $reinitialiser,
-        );
+        try {
+            $resultat = $repartition->executer(
+                $appliquer,
+                $valide['inscription_id'] ?? null,
+                $valide['annee_id'] ?? null,
+                $reinitialiser,
+            );
+        } catch (AllocationIncoherenteException $e) {
+            // Une repartition qui ne boucle pas ferait disparaitre la difference
+            // des totaux par frais. On refuse d'ecrire et on dit lequel :
+            // renvoyer un 500 opaque laisserait chercher.
+            return $this->errorResponse($e->getMessage(), [], 422);
+        }
 
         return $this->successResponse(
             $resultat,
