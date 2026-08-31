@@ -106,6 +106,24 @@ class PortailCandidatureService
             'ip_hash' => $empreinteAdresse,
         ];
 
+        // Le bloc transfert, DERIVE de sa definition plutot que reecrit.
+        //
+        // C'est la troisieme liste de ces champs — les regles, l'effaceur, et
+        // celle-ci — et la seule qui les ECRIT. C'est donc la seule dont
+        // l'oubli ne produit aucune erreur : la candidature s'enregistre, la
+        // reponse dit « transmise », et ce que le candidat a declare de son
+        // transfert disparait en silence. Seul un depot de bout en bout le
+        // revele, ce qui est arrive.
+        //
+        // `false` et non `null` pour le drapeau : la colonne est NOT NULL, et
+        // « on ne m'a rien dit » vaut « pas un transfert » — c'est aussi ce que
+        // portent les candidatures deposees avant que la question n'existe.
+        $valeurs['est_transfert'] = $champs['est_transfert'] ?? false;
+
+        foreach (ESBTPCandidature::CHAMPS_TRANSFERT as $champTransfert) {
+            $valeurs[$champTransfert] = $champs[$champTransfert] ?? null;
+        }
+
         $existante = ESBTPCandidature::where($cles)->first();
 
         if ($existante !== null) {
