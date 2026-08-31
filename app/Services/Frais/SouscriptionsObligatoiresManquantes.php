@@ -43,8 +43,19 @@ class SouscriptionsObligatoiresManquantes
             return ['total' => 0, 'inscriptions' => 0, 'lignes' => [], 'applique' => false];
         }
 
+        // Les inscriptions VIVANTES, pas seulement les validees.
+        //
+        // Le filtre ne retenait que « active », et sautait donc les inscriptions
+        // en attente. Or une inscription a qui il manque des frais les manquera
+        // TOUJOURS apres validation : le trou vient du formulaire, pas du
+        // workflow. Sur ISLG, cinq inscriptions en attente sur sept etaient dans
+        // ce cas — il leur manquait le paquet de ramettes et la chemise
+        // cartonnee, exactement les deux frais payables en nature.
+        //
+        // Les inscriptions annulees ou terminees restent dehors : on ne reclame
+        // rien a quelqu'un qui est parti.
         $inscriptions = ESBTPInscription::query()
-            ->where('status', 'active')
+            ->whereIn('status', ['active', 'en_attente'])
             ->when($anneeId, fn ($q) => $q->where('annee_universitaire_id', $anneeId))
             ->with(['etudiant', 'classe'])
             ->get();
