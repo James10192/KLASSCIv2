@@ -457,6 +457,11 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
         Route::get('/env', [App\Http\Controllers\API\CLI\CLIEnvController::class, 'index'])->name('env.index');
         Route::post('/env', [App\Http\Controllers\API\CLI\CLIEnvController::class, 'store'])->name('env.store');
         Route::post('/permissions/sync', [App\Http\Controllers\API\CLI\CLIPermissionController::class, 'sync'])->name('permissions.sync');
+
+        // Correction en masse d'un montant de souscription saisi par erreur.
+        // Ne touche a rien sans `apply` : on ne corrige pas des montants sans
+        // avoir regarde quels etudiants sont concernes.
+        Route::post('/frais/corriger-souscriptions', [App\Http\Controllers\API\CLI\CLIFraisController::class, 'corrigerSouscriptions'])->name('frais.corriger-souscriptions');
         Route::post('/db/fix-duplicates', [App\Http\Controllers\API\CLI\CLIMaintenanceController::class, 'fixDuplicates'])->name('db.fix-duplicates');
         Route::post('/migrate', [App\Http\Controllers\API\CLI\CLIMaintenanceController::class, 'migrate'])->name('migrate');
         Route::post('/composer/install', [App\Http\Controllers\API\CLI\CLIMaintenanceController::class, 'composerInstall'])->name('composer.install');

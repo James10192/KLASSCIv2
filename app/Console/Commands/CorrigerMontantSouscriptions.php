@@ -2,11 +2,8 @@
 
 namespace App\Console\Commands;
 
-use App\Models\ESBTPFraisSubscription;
-use App\Models\ESBTPPaiement;
+use App\Services\Frais\CorrectionMontantSouscriptions;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 
 /**
  * Corrige en masse un montant de souscription saisi par erreur.
@@ -54,26 +51,19 @@ class CorrigerMontantSouscriptions extends Command
             return self::FAILURE;
         }
 
-        // Egalite EXACTE sur l'ancien montant, et sur lui seul.
-        //
-        // Une correction en masse qui ratisse large abime plus qu'elle ne repare :
-        // on ne touche que les lignes qui portent trait pour trait la valeur
-        // erronee, jamais une valeur voisine qu'une ecole aurait choisie.
-        $requete = ESBTPFraisSubscription::query()
-            ->where('amount', $depuis)
-            ->with(['inscription.etudiant', 'fraisCategory']);
+        // La regle vit dans le service : la console et l'API CLI l'appellent
+        // toutes deux, et deux copies d'une regle qui touche a des montants
+        // finiraient par diverger — sans que rien ne le dise, sinon l'argent de
+        // quelqu'un.
+        $resultat = app(CorrectionMontantSouscriptions::class)->executer(
+            $depuis,
+            $vers,
+            (bool) $this->option('apply'),
+            $this->option('categorie') ? (int) $this->option('categorie') : null,
+            $this->option('annee') ? (int) $this->option('annee') : null,
+        );
 
-        if ($this->option('categorie')) {
-            $requete->where('frais_category_id', (int) $this->option('categorie'));
-        }
-
-        if ($this->option('annee')) {
-            $requete->whereHas('inscription', fn ($q) => $q->where('annee_universitaire_id', (int) $this->option('annee')));
-        }
-
-        $souscriptions = $requete->get();
-
-        if ($souscriptions->isEmpty()) {
+        if ($resultat['total'] === 0) {
             $this->info(sprintf('Aucune souscription a %s. Rien a faire.', $this->somme($depuis)));
 
             return self::SUCCESS;
@@ -82,83 +72,43 @@ class CorrigerMontantSouscriptions extends Command
         $this->line('');
         $this->info(sprintf(
             '%d souscription(s) a %s -> %s',
-            $souscriptions->count(),
+            $resultat['total'],
             $this->somme($depuis),
             $this->somme($vers)
         ));
         $this->line('');
 
-        $creeraientUneDette = [];
-        $lignes = [];
+        $this->table(
+            ['id', 'Matricule', 'Etudiant', 'Categorie', 'Deja paye', 'Restera du'],
+            array_map(fn (array $l) => [
+                $l['souscription_id'],
+                $l['matricule'] ?? '—',
+                $l['etudiant'] ?? '(introuvable)',
+                $l['categorie'] ?? '(introuvable)',
+                $this->somme((float) $l['deja_paye']),
+                $l['restera_du'] > 0.009 ? $this->somme((float) $l['restera_du']) : 'solde',
+            ], $resultat['lignes'])
+        );
 
-        foreach ($souscriptions as $sub) {
-            $paye = (float) (ESBTPPaiement::netPaidByCategory((int) $sub->inscription_id)[$sub->frais_category_id] ?? 0);
-
-            // Relever ceux qui avaient deja solde l'ancien montant : les faire
-            // monter leur cree une dette qu'ils n'ont pas contractee. On ne
-            // decide pas a leur place, on le signale.
-            $soldeAvant = $depuis - $paye;
-            $soldeApres = $vers - $paye;
-
-            if ($soldeAvant <= 0.009 && $soldeApres > 0.009) {
-                $creeraientUneDette[] = $sub;
-            }
-
-            $etudiant = $sub->inscription?->etudiant;
-
-            $lignes[] = [
-                $sub->id,
-                $etudiant ? trim(($etudiant->nom ?? '').' '.($etudiant->prenoms ?? '')) : '(etudiant introuvable)',
-                $sub->fraisCategory->name ?? '(categorie introuvable)',
-                $this->somme($paye),
-                $soldeApres > 0.009 ? $this->somme($soldeApres) : 'solde',
-            ];
-        }
-
-        $this->table(['id', 'Etudiant', 'Categorie', 'Deja paye', 'Restera du'], $lignes);
-
-        if ($creeraientUneDette !== []) {
+        if ($resultat['dettes_creees'] > 0) {
             $this->line('');
             $this->warn(sprintf(
-                '%d etudiant(s) avaient solde l\'ancien montant. La correction leur cree une dette de %s.',
-                count($creeraientUneDette),
+                "%d etudiant(s) avaient solde l'ancien montant. La correction leur cree une dette de %s.",
+                $resultat['dettes_creees'],
                 $this->somme($vers - $depuis)
             ));
-            $this->warn('Verifiez que c\'est bien ce que l\'ecole veut avant d\'appliquer.');
+            $this->warn("Verifiez que c'est bien ce que l'ecole veut avant d'appliquer.");
         }
 
-        if (! $this->option('apply')) {
+        if (! $resultat['applique']) {
             $this->line('');
-            $this->info('Rien n\'a ete ecrit. Relancez avec --apply pour appliquer.');
+            $this->info("Rien n'a ete ecrit. Relancez avec --apply pour appliquer.");
 
             return self::SUCCESS;
         }
 
-        $corrigees = DB::transaction(function () use ($souscriptions, $vers): int {
-            $n = 0;
-
-            foreach ($souscriptions as $sub) {
-                // Par le MODELE, pas en requete de masse : le modele est audite,
-                // et une correction de montant doit laisser une trace de qui l'a
-                // faite et quand.
-                $sub->update(['amount' => $vers]);
-                $n++;
-            }
-
-            return $n;
-        });
-
-        Log::warning('[frais] correction en masse de montants de souscription', [
-            'de' => $depuis,
-            'vers' => $vers,
-            'lignes' => $corrigees,
-            'categorie' => $this->option('categorie'),
-            'annee' => $this->option('annee'),
-            'par' => 'console',
-        ]);
-
         $this->line('');
-        $this->info(sprintf('%d souscription(s) corrigee(s).', $corrigees));
+        $this->info(sprintf('%d souscription(s) corrigee(s).', $resultat['total']));
 
         return self::SUCCESS;
     }
