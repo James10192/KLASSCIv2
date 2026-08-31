@@ -684,7 +684,7 @@
                                 <div class="rc-signature-line" style="border-color: {{ $primary }};">
                                     <div class="rc-signature-name">
                                         {{-- Meme signataire que sur le recu imprime : celui qui l'a genere. --}}
-                                        {{ $paiement->creator->name ?? ($paiement->validatedBy->name ?? 'Le Comptable') }}
+                                        {{ $paiement->signataire }}
                                     </div>
                                 </div>
                             </div>

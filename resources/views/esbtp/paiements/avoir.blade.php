@@ -105,7 +105,7 @@
                     <td>
                         <div class="sign-title">Signature et Cachet</div>
                         {{-- Emetteur d'abord, comme sur le recu : c'est lui qui signe. --}}
-                        <div class="sign-line">{{ $paiement->creator->name ?? ($paiement->validatedBy->name ?? 'Le Comptable') }}</div>
+                        <div class="sign-line">{{ $paiement->signataire }}</div>
                     </td>
                 </tr>
             </table>

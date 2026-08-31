@@ -194,7 +194,7 @@
                  le papier, pas celle qui a coche la validation ensuite — souvent
                  un autre poste, parfois un autre jour. C'est aussi le nom deja
                  imprime sur « Encaisse par ». --}}
-            <div class="sign-line">{{ $paiement->creator->name ?? ($paiement->validatedBy->name ?? 'Le Comptable') }}</div>
+            <div class="sign-line">{{ $paiement->signataire }}</div>
         </td>
     </tr>
 </table>
