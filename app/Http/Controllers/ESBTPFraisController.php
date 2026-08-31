@@ -1451,6 +1451,21 @@ class ESBTPFraisController extends Controller
                         'max_installments' => $configuration ? $configuration->max_installments : 1,
                         'payment_deadline_days' => $configuration ? $configuration->payment_deadline_days : $category->payment_deadline_days,
                         'configured' => ($souscription || $configuration) ? true : false,
+
+                        // Le depot en nature, que cet ecran ignorait completement.
+                        //
+                        // Deux categories d'ISLG l'acceptent — le paquet de ramettes
+                        // et la chemise cartonnee : l'etudiant apporte l'objet, ou
+                        // il en paie l'equivalent. Le caissier n'avait aucun moyen
+                        // de le savoir, puisque rien ne le lui disait, et aucun
+                        // moyen de l'enregistrer depuis sa caisse.
+                        //
+                        // C'est aussi ce qui laissait ces lignes non cochees sur le
+                        // recu : une ligne ne porte « depose » que si
+                        // satisfied_in_kind est pose, et personne ne pouvait le
+                        // poser depuis l'encaissement.
+                        'accepts_in_kind' => (bool) $category->accepts_in_kind,
+                        'satisfied_in_kind' => (bool) ($souscription?->satisfied_in_kind),
                         'options' => $configuration ? $configuration->options()->active()->get()->map(function($option) {
                             return [
                                 'id' => $option->id,

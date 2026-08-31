@@ -931,13 +931,25 @@ $(function() {
             var configuredBadge = category.configured ? 
                 '<span class="badge bg-success text-white small ms-2"><i class="fas fa-check"></i> Configuré</span>' : 
                 '<span class="badge bg-secondary text-white small ms-2"><i class="fas fa-cog"></i> Défaut</span>';
+
+            // Le depot en nature. Deux etats bien distincts, et il faut les
+            // distinguer : « peut se regler en apportant l'objet » n'est pas
+            // « a deja ete apporte ». Le premier laisse le caissier encaisser
+            // l'equivalent en especes, le second lui dit qu'il n'y a plus rien
+            // a reclamer — et c'est ce second etat qui coche la ligne sur le recu.
+            var inKindBadge = '';
+            if (category.satisfied_in_kind) {
+                inKindBadge = '<span class="badge bg-success text-white small ms-2" title="L'etudiant a apporte l'article : rien a encaisser"><i class="fas fa-box-open"></i> Déposé en nature</span>';
+            } else if (category.accepts_in_kind) {
+                inKindBadge = '<span class="badge bg-info text-white small ms-2" title="L'etudiant peut apporter l'article au lieu de payer. Le marquer se fait depuis la fiche d'inscription."><i class="fas fa-box"></i> Payable en nature</span>';
+            }
             
             html += `
                 <div class="category-option" data-category-id="${category.id}" data-category="${JSON.stringify(category).replace(/"/g, '&quot;')}">
                     <div class="category-icon bg-primary text-white">
                         <i class="${icon}"></i>
                     </div>
-                    <h6 class="mb-1">${category.name}${configuredBadge}</h6>
+                    <h6 class="mb-1">${category.name}${configuredBadge}${inKindBadge}</h6>
                     <p class="text-muted small mb-2">${category.description || 'Frais scolaires'}</p>
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="badge bg-light text-dark">${formatAmount(category.montant)} FCFA</span>
