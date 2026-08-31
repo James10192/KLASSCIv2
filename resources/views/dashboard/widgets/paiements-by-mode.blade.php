@@ -18,7 +18,7 @@
               ->orWhere('date_validation', '>=', $startMonth)
               ->orWhere('created_at', '>=', $startMonth);
         })
-        ->selectRaw('mode_paiement, COUNT(*) as count, SUM(montant) as total')
+        ->selectRaw('mode_paiement, COUNT(*) as count, SUM('.\App\Models\ESBTPPaiement::sqlCashCase().') as total')
         ->groupBy('mode_paiement')
         ->orderByDesc('count')
         ->get();

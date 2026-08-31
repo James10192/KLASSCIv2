@@ -9,6 +9,9 @@
     </td>
     <td>
         <strong class="color-primary">{{ $paiement->numero_recu }}</strong>
+        @if($paiement->isAvoir())
+            <div class="small" style="color:#0453cb;font-weight:700;">{{ $paiement->avoir_kind === 'refund' ? 'Remboursement' : 'Avoir crédit' }}</div>
+        @endif
     </td>
     <td>
         <div class="d-flex align-items-center">
@@ -84,7 +87,11 @@
     </td>
     <td>{{ $paiement->date_paiement->format('d/m/Y') }}</td>
     <td>
-        <strong class="color-success">{{ number_format($paiement->montant, 0, ',', ' ') }} FCFA</strong>
+        @if($paiement->isAvoir())
+            <strong style="color:#0453cb;">− {{ number_format($paiement->montant, 0, ',', ' ') }} FCFA</strong>
+        @else
+            <strong class="color-success">{{ number_format($paiement->montant, 0, ',', ' ') }} FCFA</strong>
+        @endif
     </td>
     <td class="d-none d-md-table-cell">
         <span class="badge bg-info">{{ $paiement->mode_paiement }}</span>
@@ -157,6 +164,18 @@
                             <i class="fas fa-file-pdf"></i>
                         </button>
                         <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="pdfDropdown{{ $paiement->id }}">
+                            @if($paiement->isAvoir())
+                            <li>
+                                <a class="dropdown-item" href="{{ route('esbtp.paiements.avoir.pdf', [$paiement->id, 'inline' => 1]) }}" target="_blank" rel="noopener">
+                                    <i class="fas fa-eye me-1"></i>Prévisualiser l'avoir
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="{{ route('esbtp.paiements.avoir.pdf', $paiement->id) }}">
+                                    <i class="fas fa-download me-1"></i>Télécharger l'avoir
+                                </a>
+                            </li>
+                            @else
                             <li>
                                 <a class="dropdown-item" href="{{ route('esbtp.paiements.preview-pdf', $paiement->id) }}" target="_blank" rel="noopener">
                                     <i class="fas fa-eye me-1"></i>Prévisualiser
@@ -167,9 +186,28 @@
                                     <i class="fas fa-download me-1"></i>Télécharger
                                 </a>
                             </li>
+                            @endif
                         </ul>
                     </div>
+                    @can('paiements.avoir')
+                        @if(! $paiement->isAvoir() && $paiement->avoir_disponible > 0)
+                        <button type="button" class="btn btn-outline-primary" title="Émettre un avoir"
+                                data-bs-toggle="modal" data-bs-target="#avoirModal{{ $paiement->id }}">
+                            <i class="fas fa-file-invoice"></i>
+                        </button>
+                        @endif
+                    @endcan
                 @endif
+
+                @can('cancelOwnRecent', $paiement)
+                <form action="{{ route('esbtp.paiements.cancel-own', $paiement->id) }}" method="POST" class="d-inline">
+                    @csrf
+                    <button type="submit" class="btn btn-outline-warning" title="Annuler ma saisie"
+                            onclick="return confirm('Annuler ce versement ?')">
+                        <i class="fas fa-undo"></i>
+                    </button>
+                </form>
+                @endcan
 
                 @can('paiements.edit')
                     <a href="{{ route('esbtp.paiements.edit', $paiement->id) }}"
@@ -232,3 +270,5 @@
     </div>
 </div>
 @endif
+
+@include('esbtp.paiements.partials.avoir-modal', ['paiement' => $paiement, 'modalId' => 'avoirModal'.$paiement->id])

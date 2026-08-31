@@ -721,9 +721,7 @@ class ReeinscriptionService
         }
 
         $totalAttendu = $subscriptions->sum('amount');
-        $totalPaye = $inscription->paiements()
-            ->where('status', 'validé')
-            ->sum('montant');
+        $totalPaye = \App\Models\ESBTPPaiement::netPaidForInscription((int) $inscription->id);
 
         return $totalAttendu - $totalPaye;
     }
@@ -756,10 +754,10 @@ class ReeinscriptionService
 
             // Calculer le montant payé pour ce frais spécifique
             // Chercher les paiements avec plusieurs variantes de statut possibles
-            $montantPaye = \App\Models\ESBTPPaiement::where('inscription_id', $inscriptionSource->id)
-                ->where('frais_category_id', $fraisSubscription->frais_category_id)
-                ->whereIn('status', ['validé', 'validated', 'valide', 'confirmé', 'confirmed'])
-                ->sum('montant');
+            $montantPaye = \App\Models\ESBTPPaiement::netPaidForInscription(
+                (int) $inscriptionSource->id,
+                (int) $fraisSubscription->frais_category_id,
+            );
 
             // Calculer le reliquat
             $montantReliquat = $montantAttendu - $montantPaye;
@@ -904,9 +902,7 @@ class ReeinscriptionService
      */
     private function calculerMontantPaye($inscription)
     {
-        return \App\Models\ESBTPPaiement::where('inscription_id', $inscription->id)
-            ->where('status', 'validé')
-            ->sum('montant');
+        return \App\Models\ESBTPPaiement::netPaidForInscription((int) $inscription->id);
     }
 
 }

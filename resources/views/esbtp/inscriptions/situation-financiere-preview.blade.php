@@ -434,11 +434,11 @@
                 <tbody>
                     @foreach($fraisSouscrits as $frais)
                     @php
-                        $mp = $inscription->paiements
-                            ->where('frais_category_id', $frais->frais_category_id)
-                            ->where('status', 'validé')
-                            ->filter(fn($p) => $p->type_paiement != 'reliquat' || is_null($p->type_paiement))
-                            ->sum('montant');
+                        $mp = \App\Models\ESBTPPaiement::netStudentPaidFrom(
+                            $inscription->paiements
+                                ->where('frais_category_id', $frais->frais_category_id)
+                                ->filter(fn($p) => $p->type_paiement != 'reliquat' || is_null($p->type_paiement))
+                        );
                         $sl = $frais->amount - $mp;
                         $totalAttenduFrais += $frais->amount;
                         $totalPayeFrais    += $mp;

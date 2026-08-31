@@ -262,7 +262,7 @@ $gradientColor = adjustBrightness(ltrim($baseColor, '#'), -20);
                         </div>
                         <div class="col-md-4">
                             <div class="stat-card">
-                                <div class="stat-value">{{ number_format($paiements->sum('montant'), 0, ',', ' ') }}</div>
+                                <div class="stat-value">{{ number_format(\App\Models\ESBTPPaiement::netCashFrom($paiements), 0, ',', ' ') }}</div>
                                 <div class="stat-label">Total FCFA</div>
                             </div>
                         </div>

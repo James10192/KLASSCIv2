@@ -184,9 +184,7 @@ class ESBTPReinscriptionController extends Controller
      */
     private function calculerTotalPaye($inscription)
     {
-        return $inscription->paiements()
-            ->where('status', 'validé')
-            ->sum('montant');
+        return \App\Models\ESBTPPaiement::netPaidForInscription((int) $inscription->id);
     }
 
     /**

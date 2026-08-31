@@ -45,7 +45,7 @@ class GetDashboardKpisTool extends ChatbotTool
 
         if ($focus === 'general' || $focus === 'finance') {
             $kpis['total_paiements'] = number_format(
-                (float) DB::table('esbtp_paiements')->where('status', 'validated')->sum('montant'),
+                (float) DB::table('esbtp_paiements')->where('status', 'validé')->whereNull('deleted_at')->sum(DB::raw(\App\Models\ESBTPPaiement::sqlCashCase())),
                 0, ',', ' '
             ) . ' FCFA';
             $kpis['paiements_en_attente'] = DB::table('esbtp_paiements')

@@ -702,12 +702,7 @@ class ESBTPPaiementController extends Controller
             ->with('fraisCategory')
             ->get();
 
-        $payeParCategorie = ESBTPPaiement::where('inscription_id', $inscriptionId)
-            ->where('status', 'validé')
-            ->whereNull('deleted_at')
-            ->groupBy('frais_category_id')
-            ->selectRaw('frais_category_id, SUM(montant) as total_paye')
-            ->pluck('total_paye', 'frais_category_id');
+        $payeParCategorie = ESBTPPaiement::netPaidByCategory($inscriptionId);
 
         $lignes = $subscriptions->map(function ($sub) use ($payeParCategorie, $paiement) {
             $due = $sub->chargedAmount();
@@ -776,7 +771,7 @@ class ESBTPPaiementController extends Controller
             ->get();
 
         // Calculer le total des paiements validés
-        $totalValide = $paiements->where('status', 'validé')->sum('montant');
+        $totalValide = ESBTPPaiement::netStudentPaidFrom($paiements);
 
         return view('esbtp.paiements.etudiant', compact('etudiant', 'paiements', 'totalValide'));
     }
@@ -2275,10 +2270,10 @@ class ESBTPPaiementController extends Controller
             'valides' => (clone $query)->where('status', 'validé')->count(),
             'en_attente' => (clone $query)->where('status', 'en_attente')->count(),
             'rejetes' => (clone $query)->where('status', 'rejeté')->count(),
-            'montant_total' => (clone $query)->sum('montant') ?? 0,
-            'montant_valide' => (clone $query)->where('status', 'validé')->sum('montant') ?? 0,
-            'montant_en_attente' => (clone $query)->where('status', 'en_attente')->sum('montant') ?? 0,
+            'montant_valide' => ESBTPPaiement::netCashSum((clone $query)->where('status', 'validé')),
+            'montant_en_attente' => (clone $query)->where('status', 'en_attente')->encaissements()->sum('montant') ?? 0,
         ];
+        $stats['montant_total'] = $stats['montant_valide'] + $stats['montant_en_attente'];
 
         // Récupérer un échantillon
         $paiements = $query->with(['etudiant', 'inscription'])->limit(5)->get();

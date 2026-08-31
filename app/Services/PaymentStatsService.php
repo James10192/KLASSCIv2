@@ -37,10 +37,7 @@ class PaymentStatsService
                     $montantTotalAttendu += $montantAttendu;
 
                     // Paiements de l'étudiant
-                    $montantPaye = ESBTPPaiement::where('inscription_id', $inscription->id)
-                        ->where('frais_category_id', $category->id)
-                        ->where('status', 'validé')
-                        ->sum('montant');
+                    $montantPaye = ESBTPPaiement::netPaidForInscription((int) $inscription->id, (int) $category->id);
 
                     $montantEtudiantPaye += $montantPaye;
                     $montantTotalRecu += $montantPaye;
@@ -107,7 +104,7 @@ class PaymentStatsService
                     // Paiements de l'étudiant pour cette catégorie
                     $paiementKey = $inscription->id . '_' . $category->id;
                     $paiementsEtudiant = $paiements->get($paiementKey, collect());
-                    $montantPaye = $paiementsEtudiant->sum('montant');
+                    $montantPaye = ESBTPPaiement::netStudentPaidFrom($paiementsEtudiant);
                     $montantEtudiantPaye += $montantPaye;
 
                     if ($montantPaye > 0) {
@@ -182,7 +179,7 @@ class PaymentStatsService
                 // Vérifier les paiements de l'étudiant pour cette catégorie
                 $paiementKey = $inscription->id . '_' . $category->id;
                 $paiementsEtudiant = $paiements->get($paiementKey, collect());
-                $montantPaye = $paiementsEtudiant->sum('montant');
+                $montantPaye = ESBTPPaiement::netStudentPaidFrom($paiementsEtudiant);
                 $details['montant_total_recu'] += $montantPaye;
 
                 $statutEtudiant = [
@@ -239,7 +236,7 @@ class PaymentStatsService
                     // Paiements de l'étudiant pour cette catégorie
                     $paiementKey = $inscription->id . '_' . $category->id;
                     $paiementsEtudiant = $paiements->get($paiementKey, collect());
-                    $montantPaye = $paiementsEtudiant->sum('montant');
+                    $montantPaye = ESBTPPaiement::netStudentPaidFrom($paiementsEtudiant);
                     $stats['montant_total_recu'] += $montantPaye;
 
                     // Catégorisation
@@ -289,14 +286,7 @@ class PaymentStatsService
                 $fraisStats[$categoryType]['expected'] += $expectedAmount;
 
                 // Calculer le montant payé pour cette catégorie (exclure les reliquats)
-                $paidAmount = ESBTPPaiement::where('inscription_id', $inscription->id)
-                    ->where('frais_category_id', $category->id)
-                    ->where('status', 'validé')
-                    ->where(function($query) {
-                        $query->where('type_paiement', '!=', 'reliquat')
-                              ->orWhereNull('type_paiement');
-                    })
-                    ->sum('montant');
+                $paidAmount = ESBTPPaiement::netPaidForInscription((int) $inscription->id, (int) $category->id);
 
                 $fraisStats[$categoryType]['paid'] += $paidAmount;
             }

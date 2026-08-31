@@ -59,7 +59,7 @@ class BuildDashboardDataAction
         $statusAgg = $this->paiementsQuery($filters)
             ->selectRaw(
                 'COUNT(*) as total_count,
-                SUM(CASE WHEN status = ? THEN montant ELSE 0 END) as total_paid,
+                SUM(CASE WHEN status = ? THEN ('.ESBTPPaiement::sqlCashCase().') ELSE 0 END) as total_paid,
                 SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as count_paid,
                 SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as count_pending',
                 [
@@ -83,7 +83,7 @@ class BuildDashboardDataAction
         $todayValidated = $this->paiementsQuery($filters)
             ->where('status', self::PAYMENT_STATUS_VALIDATED)
             ->whereDate('date_validation', Carbon::today())
-            ->selectRaw('COUNT(*) as cnt, COALESCE(SUM(montant), 0) as total')
+            ->selectRaw('COUNT(*) as cnt, COALESCE(SUM('.ESBTPPaiement::sqlCashCase().'), 0) as total')
             ->first();
         $countValidatedToday = (int) ($todayValidated->cnt ?? 0);
         $totalValidatedToday = (float) ($todayValidated->total ?? 0);
@@ -139,7 +139,7 @@ class BuildDashboardDataAction
         $monthlyTotals = $this->paiementsQuery($filters)
             ->where('status', self::PAYMENT_STATUS_VALIDATED)
             ->whereBetween('date_paiement', [$debut, $fin])
-            ->selectRaw('YEAR(date_paiement) as y, MONTH(date_paiement) as m, SUM(montant) as total')
+            ->selectRaw('YEAR(date_paiement) as y, MONTH(date_paiement) as m, SUM('.ESBTPPaiement::sqlCashCase().') as total')
             ->groupBy('y', 'm')
             ->get()
             ->keyBy(fn ($row) => $row->y . '-' . str_pad((string) $row->m, 2, '0', STR_PAD_LEFT));

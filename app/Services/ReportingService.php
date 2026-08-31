@@ -66,7 +66,7 @@ class ReportingService
             'periode' => $dateDebut->format('d/m/Y') . ' - ' . $dateFin->format('d/m/Y'),
             'donnees' => [
                 'paiements' => $paiements,
-                'total_montant' => $paiements->sum('montant'),
+                'total_montant' => ESBTPPaiement::netCashFrom($paiements),
                 'nombre_paiements' => $paiements->count(),
                 'moyenne_paiement' => $paiements->avg('montant'),
                 'repartition_modes' => $this->repartitionParModesPaiement($paiements),
@@ -85,15 +85,15 @@ class ReportingService
      */
     private function rapportPerformance($dateDebut, $dateFin, $parametres)
     {
-        $recettes = ESBTPPaiement::whereBetween('date_paiement', [$dateDebut, $dateFin])
-            ->where('statut', 'completé')
-            ->sum('montant');
+        $recettes = ESBTPPaiement::netCashSum(
+            ESBTPPaiement::whereBetween('date_paiement', [$dateDebut, $dateFin])->where('statut', 'completé')
+        );
 
         // Comparaison avec période précédente
         $periodePrecedente = $this->calculerPeriodePrecedente($dateDebut, $dateFin);
-        $recettesPrecedentes = ESBTPPaiement::whereBetween('date_paiement', $periodePrecedente)
-            ->where('statut', 'completé')
-            ->sum('montant');
+        $recettesPrecedentes = ESBTPPaiement::netCashSum(
+            ESBTPPaiement::whereBetween('date_paiement', $periodePrecedente)->where('statut', 'completé')
+        );
         
         $croissance = $recettesPrecedentes > 0 ? 
             (($recettes - $recettesPrecedentes) / $recettesPrecedentes) * 100 : 0;
@@ -162,9 +162,9 @@ class ReportingService
         $donnees = [];
 
         foreach ($periodes as $periode) {
-            $recettes = ESBTPPaiement::whereBetween('date_paiement', [$periode['debut'], $periode['fin']])
-                ->where('statut', 'completé')
-                ->sum('montant');
+            $recettes = ESBTPPaiement::netCashSum(
+                ESBTPPaiement::whereBetween('date_paiement', [$periode['debut'], $periode['fin']])->where('statut', 'completé')
+            );
 
             $donnees[] = [
                 'periode' => $periode['label'],
@@ -225,7 +225,7 @@ class ReportingService
             ->map(function ($group) {
                 return [
                     'nombre' => $group->count(),
-                    'montant' => $group->sum('montant')
+                    'montant' => ESBTPPaiement::netCashFrom($group)
                 ];
             });
     }
@@ -236,7 +236,7 @@ class ReportingService
         return $collection->groupBy(function ($item) {
             return Carbon::parse($item->date_paiement)->format('Y-m');
         })->map(function ($group) use ($champ) {
-            return $group->sum($champ);
+            return $champ === 'montant' ? ESBTPPaiement::netCashFrom($group) : $group->sum($champ);
         });
     }
 
@@ -246,7 +246,7 @@ class ReportingService
             ->map(function ($group) {
                 return [
                     'etudiant' => $group->first()->etudiant,
-                    'total' => $group->sum('montant'),
+                    'total' => ESBTPPaiement::netCashFrom($group),
                     'nombre_paiements' => $group->count()
                 ];
             })
@@ -261,7 +261,7 @@ class ReportingService
         $donnees = $collection->groupBy(function ($item) use ($champDate) {
             return Carbon::parse($item->$champDate)->format('Y-m-d');
         })->map(function ($group) use ($champValeur) {
-            return $group->sum($champValeur);
+            return $champValeur === 'montant' ? ESBTPPaiement::netCashFrom($group) : $group->sum($champValeur);
         });
 
         return [
@@ -274,7 +274,7 @@ class ReportingService
     {
         $donnees = $collection->groupBy($champ)
             ->map(function ($group) {
-                return $group->sum('montant');
+                return ESBTPPaiement::netCashFrom($group);
             });
 
         return [
@@ -335,9 +335,9 @@ class ReportingService
 
     private function getMontantRecouvre($anneeId)
     {
-        return ESBTPPaiement::where('annee_universitaire_id', $anneeId)
-            ->where('statut', 'completé')
-            ->sum('montant');
+        return ESBTPPaiement::netCashSum(
+            ESBTPPaiement::where('annee_universitaire_id', $anneeId)->where('statut', 'completé')
+        );
     }
 
     private function getMontantRestant($anneeId)
@@ -382,9 +382,9 @@ class ReportingService
 
     private function resumeExecutif($dateDebut, $dateFin)
     {
-        $recettes = ESBTPPaiement::whereBetween('date_paiement', [$dateDebut, $dateFin])
-            ->where('statut', 'completé')
-            ->sum('montant');
+        $recettes = ESBTPPaiement::netCashSum(
+            ESBTPPaiement::whereBetween('date_paiement', [$dateDebut, $dateFin])->where('statut', 'completé')
+        );
 
         return [
             'recettes_totales' => $recettes,

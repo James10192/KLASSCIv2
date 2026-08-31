@@ -470,9 +470,9 @@ class ESBTPEtudiantController extends Controller
 
         // Calculer quelques statistiques utiles
         $statistiques = [
-            'total_paiements' => $etudiant->paiements->sum('montant'),
-            'paiements_valides' => $etudiant->paiements->where('status', 'validé')->sum('montant'),
-            'paiements_en_attente' => $etudiant->paiements->where('status', 'en_attente')->sum('montant'),
+            'total_paiements' => \App\Models\ESBTPPaiement::netStudentPaidFrom($etudiant->paiements) + \App\Models\ESBTPPaiement::pendingEncaissementsFrom($etudiant->paiements),
+            'paiements_valides' => \App\Models\ESBTPPaiement::netStudentPaidFrom($etudiant->paiements),
+            'paiements_en_attente' => \App\Models\ESBTPPaiement::pendingEncaissementsFrom($etudiant->paiements),
             'nombre_paiements' => $etudiant->paiements->count(),
             'inscription_active' => $etudiant->inscriptions->where('status', 'active')->first(),
             'derniere_inscription' => $etudiant->inscriptions->first(),

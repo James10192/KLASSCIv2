@@ -58,9 +58,9 @@ class CLIDataController extends BaseApiController
             })
             ->count();
 
-        $totalRevenue = ESBTPPaiement::where('annee_universitaire_id', $annee->id)
-            ->where('status', 'validé')
-            ->sum('montant');
+        $totalRevenue = ESBTPPaiement::netCashSum(
+            ESBTPPaiement::where('annee_universitaire_id', $annee->id)->where('status', 'validé')
+        );
 
         $totalPayments = ESBTPPaiement::where('annee_universitaire_id', $annee->id)->count();
         $validatedPayments = ESBTPPaiement::where('annee_universitaire_id', $annee->id)
@@ -300,6 +300,7 @@ class CLIDataController extends BaseApiController
             ->where('annee_universitaire_id', $annee->id)
             ->where('status', 'en_attente')
             ->whereNull('deleted_at')
+            ->encaissements()
             ->sum('montant');
 
         $recentRelances = ESBTPRelance::query()
@@ -445,7 +446,7 @@ class CLIDataController extends BaseApiController
             ]);
 
         $totalsByMode = (clone $query)
-            ->selectRaw('mode_paiement, COUNT(*) as nb, COALESCE(SUM(montant), 0) as total')
+            ->selectRaw('mode_paiement, COUNT(*) as nb, COALESCE(SUM('.ESBTPPaiement::sqlCashCase().'), 0) as total')
             ->groupBy('mode_paiement')
             ->get()
             ->map(fn ($row) => [
@@ -466,7 +467,7 @@ class CLIDataController extends BaseApiController
             ],
             'totals' => [
                 'count' => (clone $query)->count(),
-                'total' => (float) (clone $query)->sum('montant'),
+                'total' => ESBTPPaiement::netCashSum($query),
                 'currency' => 'FCFA',
                 'by_mode' => $totalsByMode,
             ],

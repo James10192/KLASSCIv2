@@ -298,10 +298,7 @@ class ESBTPPaiementSuiviController extends Controller
                     $stats['montant_total_attendu'] += $montantAttendu;
 
                     // Paiements de l'étudiant pour cette catégorie
-                    $montantPaye = ESBTPPaiement::where('inscription_id', $inscription->id)
-                        ->where('frais_category_id', $category->id)
-                        ->where('status', 'validé')
-                        ->sum('montant');
+                    $montantPaye = ESBTPPaiement::netPaidForInscription((int) $inscription->id, (int) $category->id);
 
                     $stats['montant_total_recu'] += $montantPaye;
 
@@ -357,7 +354,7 @@ class ESBTPPaiementSuiviController extends Controller
                     $stats['montant_total_attendu'] += $montantAttendu;
 
                     $paiementKey = $inscription->id . '_' . $category->id;
-                    $montantPaye = $paiements->get($paiementKey, collect())->sum('montant');
+                    $montantPaye = ESBTPPaiement::netStudentPaidFrom($paiements->get($paiementKey, collect()));
                     $stats['montant_total_recu'] += $montantPaye;
 
                     if ($montantPaye >= $montantAttendu) {
@@ -401,7 +398,7 @@ class ESBTPPaiementSuiviController extends Controller
                 if ($montantAttendu > 0) {
                     $totalDu += $montantAttendu;
                     $paiementKey = $inscription->id . '_' . $category->id;
-                    $totalPaye += $paiements->get($paiementKey, collect())->sum('montant');
+                    $totalPaye += ESBTPPaiement::netStudentPaidFrom($paiements->get($paiementKey, collect()));
                 }
             }
 
@@ -446,7 +443,7 @@ class ESBTPPaiementSuiviController extends Controller
             if ($montantAttendu <= 0) continue;
 
             $paiementKey = $inscription->id . '_' . $category->id;
-            $montantPaye = $paiements->get($paiementKey, collect())->sum('montant');
+            $montantPaye = ESBTPPaiement::netStudentPaidFrom($paiements->get($paiementKey, collect()));
             $montantTotalAttendu += $montantAttendu;
             $montantTotalRecu += $montantPaye;
 

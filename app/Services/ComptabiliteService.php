@@ -92,15 +92,16 @@ class ComptabiliteService
 
         return Cache::store('comptabilite_kpis')->remember($cacheKey, self::CACHE_TTL_STATS, function () use ($annee) {
             // Optimisation avec eager loading - Correction status/statut
-            $totalPaiements = ESBTPPaiement::where('annee_universitaire_id', $annee->id)
-                ->where('status', 'validé')
-                ->sum('montant');
+            $totalPaiements = ESBTPPaiement::netCashSum(
+                ESBTPPaiement::where('annee_universitaire_id', $annee->id)->where('status', 'validé')
+            );
 
-            $paiementsMensuels = ESBTPPaiement::where('annee_universitaire_id', $annee->id)
-                ->where('status', 'validé')
-                ->whereMonth('date_paiement', Carbon::now()->month)
-                ->whereYear('date_paiement', Carbon::now()->year)
-                ->sum('montant');
+            $paiementsMensuels = ESBTPPaiement::netCashSum(
+                ESBTPPaiement::where('annee_universitaire_id', $annee->id)
+                    ->where('status', 'validé')
+                    ->whereMonth('date_paiement', Carbon::now()->month)
+                    ->whereYear('date_paiement', Carbon::now()->year)
+            );
 
             $totalPrevisionnel = ESBTPFraisScolarite::where('annee_universitaire_id', $annee->id)
                 ->where('est_actif', true)

@@ -202,7 +202,7 @@ class ManageFraisSubscriptions extends Command
             $paiementsQuery = ESBTPPaiement::whereIn('inscription_id', $inscriptionIds)
                 ->whereNotNull('frais_category_id');
             $paiementsCount = (clone $paiementsQuery)->count();
-            $paiementsTotal = (clone $paiementsQuery)->sum('montant');
+            $paiementsTotal = ESBTPPaiement::netCashSum($paiementsQuery);
 
             $hasPaiements = $paiementsCount > 0;
             $deletePaiements = false;

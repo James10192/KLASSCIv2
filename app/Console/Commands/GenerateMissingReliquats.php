@@ -68,10 +68,10 @@ class GenerateMissingReliquats extends Command
 
                     $hasUnpaidFees = false;
                     foreach ($fraisSouscrits as $frais) {
-                        $montantPaye = ESBTPPaiement::where('inscription_id', $inscriptionSource->id)
-                            ->where('frais_category_id', $frais->frais_category_id)
-                            ->whereIn('status', ['validé', 'validated', 'valide', 'confirmé', 'confirmed'])
-                            ->sum('montant');
+                        $montantPaye = ESBTPPaiement::netPaidForInscription(
+                            (int) $inscriptionSource->id,
+                            (int) $frais->frais_category_id,
+                        );
 
                         if ($frais->chargedAmount() > $montantPaye) {
                             $hasUnpaidFees = true;
@@ -190,10 +190,10 @@ class GenerateMissingReliquats extends Command
             $montantAttendu = $fraisSubscription->chargedAmount();
 
             // Calculer le montant payé pour ce frais spécifique
-            $montantPaye = ESBTPPaiement::where('inscription_id', $inscriptionSource->id)
-                ->where('frais_category_id', $fraisSubscription->frais_category_id)
-                ->whereIn('status', ['validé', 'validated', 'valide', 'confirmé', 'confirmed'])
-                ->sum('montant');
+            $montantPaye = ESBTPPaiement::netPaidForInscription(
+                (int) $inscriptionSource->id,
+                (int) $fraisSubscription->frais_category_id,
+            );
 
             // Calculer le reliquat
             $montantReliquat = $montantAttendu - $montantPaye;

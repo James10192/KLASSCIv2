@@ -234,7 +234,7 @@ class SearchPaymentsTool extends ChatbotTool
                 ];
             })->toArray();
 
-            $totalMontant = $paiements->sum('montant');
+            $totalMontant = \App\Models\ESBTPPaiement::netCashFrom($paiements);
 
             $groups[] = [
                 'inscription' => $inscriptionInfo,

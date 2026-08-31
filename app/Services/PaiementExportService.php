@@ -157,7 +157,7 @@ class PaiementExportService
     {
         $paiements = $this->buildQuery($filters, $user)->get();
         $count = $paiements->count();
-        $totalMontant = (float) $paiements->sum('montant');
+        $totalMontant = \App\Models\ESBTPPaiement::netCashFrom($paiements);
         $showCreator = $this->shouldShowCreatorColumn($user);
         $context = $this->buildContext($filters, $user, $showCreator);
         $orientation = $showCreator ? 'landscape' : 'portrait';
@@ -191,7 +191,7 @@ class PaiementExportService
         $paiements = $this->buildQuery($filters, $user)->get();
         $count = $paiements->count();
         $showCreator = $this->shouldShowCreatorColumn($user);
-        $totalMontant = (float) $paiements->sum('montant');
+        $totalMontant = \App\Models\ESBTPPaiement::netCashFrom($paiements);
         $filtersSummary = $this->buildFiltersSummary($filters, $user);
         $context = $this->buildContext($filters, $user, $showCreator);
 

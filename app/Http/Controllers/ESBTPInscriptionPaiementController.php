@@ -117,14 +117,11 @@ class ESBTPInscriptionPaiementController extends Controller
         }
 
         // Calculer le total déjà payé (validé + en_attente)
-        $totalPaye = \App\Models\ESBTPPaiement::where(
-            "inscription_id",
-            $inscription->id,
-        )
-            ->where("frais_category_id", $request->fee_category_id)
-            ->whereIn("status", ["validé", "en_attente"])
-            ->whereNull("deleted_at")
-            ->sum("montant");
+        $totalPaye = \App\Models\ESBTPPaiement::netPaidForInscription(
+            (int) $inscription->id,
+            (int) $request->fee_category_id,
+            true,
+        );
 
         $montantRestant = $subscription->chargedAmount() - $totalPaye;
 
@@ -828,9 +825,7 @@ class ESBTPInscriptionPaiementController extends Controller
         $totalAttendu = $totalFraisAnnee + $totalReliquats; // Total = Année courante + Reliquats
 
         // Inclure TOUS les paiements validés (y compris reliquats)
-        $totalPaye = $inscription->paiements
-            ->where("status", "validé")
-            ->sum("montant");
+        $totalPaye = \App\Models\ESBTPPaiement::netPaidForInscription((int) $inscription->id);
 
         $soldeRestant = $totalAttendu - $totalPaye;
 
@@ -929,9 +924,7 @@ class ESBTPInscriptionPaiementController extends Controller
         $totalAttendu = $totalFraisAnnee + $totalReliquats; // Total = Année courante + Reliquats
 
         // Inclure TOUS les paiements validés (y compris reliquats)
-        $totalPaye = $inscription->paiements
-            ->where("status", "validé")
-            ->sum("montant");
+        $totalPaye = \App\Models\ESBTPPaiement::netPaidForInscription((int) $inscription->id);
 
         $soldeRestant = $totalAttendu - $totalPaye;
 
@@ -1070,14 +1063,11 @@ class ESBTPInscriptionPaiementController extends Controller
 
         // Calculer le total déjà payé (validé + en_attente)
         // Exclure les paiements rejetés et soft deleted
-        $totalPaye = \App\Models\ESBTPPaiement::where(
-            "inscription_id",
-            $inscription->id,
-        )
-            ->where("frais_category_id", $category)
-            ->whereIn("status", ["validé", "en_attente"])
-            ->whereNull("deleted_at")
-            ->sum("montant");
+        $totalPaye = \App\Models\ESBTPPaiement::netPaidForInscription(
+            (int) $inscription->id,
+            (int) $category,
+            true,
+        );
 
         // Calculer le montant restant
         $montantRestant = $subscription->chargedAmount() - $totalPaye;
@@ -1124,12 +1114,16 @@ class ESBTPInscriptionPaiementController extends Controller
         $inscription->load(['fraisSubscriptions.fraisCategory', 'classe', 'anneeUniversitaire']);
 
         // Single grouped query instead of N individual SUM queries
-        $paiementsParCategorie = \App\Models\ESBTPPaiement::where('inscription_id', $inscription->id)
-            ->whereIn('status', ['validé', 'en_attente'])
-            ->whereNull('deleted_at')
+        $paiementsParCategorie = \App\Models\ESBTPPaiement::netPaidByCategory($inscription->id);
+        $enAttente = \App\Models\ESBTPPaiement::where('inscription_id', $inscription->id)
+            ->enAttente()
+            ->encaissements()
             ->groupBy('frais_category_id')
             ->selectRaw('frais_category_id, SUM(montant) as total_paye')
             ->pluck('total_paye', 'frais_category_id');
+        foreach ($enAttente as $categoryId => $total) {
+            $paiementsParCategorie[$categoryId] = (float) ($paiementsParCategorie[$categoryId] ?? 0) + (float) $total;
+        }
 
         $categories = $inscription->fraisSubscriptions
             ->filter(fn ($sub) => $sub->chargedAmount() > 0)
@@ -1176,10 +1170,10 @@ class ESBTPInscriptionPaiementController extends Controller
             : $category->default_amount;
 
         // Calculer le total payé pour cette catégorie
-        $totalPaye = ESBTPPaiement::where("inscription_id", $inscription->id)
-            ->where("frais_category_id", $category->id)
-            ->where("status", "validé")
-            ->sum("montant");
+        $totalPaye = ESBTPPaiement::netPaidForInscription(
+            (int) $inscription->id,
+            (int) $category->id,
+        );
 
         $solde = $montantAttendu - $totalPaye;
 

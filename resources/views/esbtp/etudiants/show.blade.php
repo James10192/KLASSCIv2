@@ -2466,7 +2466,7 @@
     @php
         // KPI Hero : uniquement l'année courante — si pas inscrit, tout à zéro/nul
         $totalPaiements  = $inscCourante
-            ? $inscCourante->paiements->where('status','validé')->sum('montant')
+            ? \App\Models\ESBTPPaiement::netStudentPaidFrom($inscCourante->paiements)
             : null; // null = non inscrit cette année
         $totalAbsences   = null; // calculé après $tauxPresence (dépend de $inscCourante)
         $nbInscriptions  = $etudiant->inscriptions->count();
@@ -2710,7 +2710,7 @@
         $kpiInscActive = $inscCourante ?? ($inscFutureSousReserve ?? null);
 
         $kpiPaiTotal = $kpiInscActive
-            ? $kpiInscActive->paiements->where('status', 'validé')->sum('montant')
+            ? \App\Models\ESBTPPaiement::netStudentPaidFrom($kpiInscActive->paiements)
             : null; // null = pas inscrit cette année
         // Total attendu via fraisSubscriptions (même logique que tab Finance L.3365)
         $kpiTotalAttendu = 0;
@@ -5109,8 +5109,8 @@
         $finPaiementsActive = $finPaiementsActive->sortByDesc('date_paiement');
 
         /* ── Calculs pour inscription de référence ── */
-        $finTotalPaye    = $finPaiementsActive->filter(fn($p) => str_contains(strtolower($p->status ?? $p->statut ?? ''), 'valid'))->sum('montant');
-        $finEnAttente    = $finPaiementsActive->filter(fn($p) => str_contains(strtolower($p->status ?? $p->statut ?? ''), 'attente'))->sum('montant');
+        $finTotalPaye    = \App\Models\ESBTPPaiement::netStudentPaidFrom($finPaiementsActive);
+        $finEnAttente    = \App\Models\ESBTPPaiement::pendingEncaissementsFrom($finPaiementsActive);
         $finNbPaiements  = $finPaiementsActive->count();
         $finReliquats    = $statistiques['total_reliquats_entrants'] ?? 0;
 
@@ -5304,7 +5304,7 @@
                 {{ $finPaiementsEnAttente->count() }} paiement(s) en attente de validation
             </div>
             <div style="font-size:.82rem; color:#a16207; margin-top:2px;">
-                Total : {{ number_format($finPaiementsEnAttente->sum('montant'), 0, ',', ' ') }} FCFA
+                Total : {{ number_format(\App\Models\ESBTPPaiement::pendingEncaissementsFrom($finPaiementsEnAttente), 0, ',', ' ') }} FCFA
             </div>
         </div>
         <div style="display:flex; gap:8px; flex-wrap:wrap;">
@@ -5353,10 +5353,11 @@
                 <tbody>
                 @foreach($finInscActive->fraisSubscriptions as $sub)
                     @php
-                        $subPaye  = $finPaiementsActive->filter(fn($p) =>
-                            ($p->frais_category_id ?? null) == ($sub->frais_category_id ?? null) &&
-                            str_contains(strtolower($p->status ?? $p->statut ?? ''), 'valid')
-                        )->sum('montant');
+                        $subPaye  = \App\Models\ESBTPPaiement::netStudentPaidFrom(
+                            $finPaiementsActive->filter(fn($p) =>
+                                ($p->frais_category_id ?? null) == ($sub->frais_category_id ?? null)
+                            )
+                        );
                         $subDue = $sub->chargedAmount();
                         $subSolde = $subDue - $subPaye;
                         $subTaux  = $subDue > 0 ? min(100, round($subPaye / $subDue * 100)) : 0;
@@ -5542,8 +5543,8 @@
         /* calculs pour cette inscription archivée */
         $autrePaiements = collect();
         foreach($autreInsc->paiements ?? [] as $p) { $autrePaiements->push($p); }
-        $autrePaye    = $autrePaiements->filter(fn($p) => str_contains(strtolower($p->status ?? $p->statut ?? ''), 'valid'))->sum('montant');
-        $autreAttente = $autrePaiements->filter(fn($p) => str_contains(strtolower($p->status ?? $p->statut ?? ''), 'attente'))->sum('montant');
+        $autrePaye    = \App\Models\ESBTPPaiement::netStudentPaidFrom($autrePaiements);
+        $autreAttente = \App\Models\ESBTPPaiement::pendingEncaissementsFrom($autrePaiements);
         $autreAttendu = 0;
         try { $autreAttendu = $autreInsc->fraisSubscriptions->sum(fn ($s) => $s->chargedAmount()); } catch(\Exception $e) {}
         $autreSolde   = $autreAttendu - $autrePaye;
@@ -5612,10 +5613,11 @@
                         <tbody>
                         @foreach($autreInsc->fraisSubscriptions as $sub)
                             @php
-                                $aSubPaye  = $autrePaiements->filter(fn($p) =>
-                                    ($p->frais_category_id ?? null) == ($sub->frais_category_id ?? null) &&
-                                    str_contains(strtolower($p->status ?? $p->statut ?? ''), 'valid')
-                                )->sum('montant');
+                                $aSubPaye  = \App\Models\ESBTPPaiement::netStudentPaidFrom(
+                                    $autrePaiements->filter(fn($p) =>
+                                        ($p->frais_category_id ?? null) == ($sub->frais_category_id ?? null)
+                                    )
+                                );
                                 $aSubDue = $sub->chargedAmount();
                                 $aSubSolde = $aSubDue - $aSubPaye;
                                 $aSubTaux  = $aSubDue > 0 ? min(100, round($aSubPaye / $aSubDue * 100)) : 0;

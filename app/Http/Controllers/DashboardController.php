@@ -742,8 +742,8 @@ class DashboardController extends Controller
             }
 
             // Montants par statut
-            $data['totalEncaisse'] = (clone $paiementsQuery)->where('status', 'validé')->sum('montant');
-            $data['totalEnAttente'] = (clone $paiementsQuery)->where('status', 'en_attente')->sum('montant');
+            $data['totalEncaisse'] = \App\Models\ESBTPPaiement::netCashSum((clone $paiementsQuery)->where('status', 'validé'));
+            $data['totalEnAttente'] = (clone $paiementsQuery)->where('status', 'en_attente')->encaissements()->sum('montant');
             $data['paiementsEnAttenteCount'] = (clone $paiementsQuery)->where('status', 'en_attente')->count();
 
             // Total frais dus (souscriptions actives de l'année courante)
@@ -763,11 +763,12 @@ class DashboardController extends Controller
             $data['montantRestant'] = max(0, $data['totalFraisDus'] - $data['totalEncaisse']);
 
             // Paiements du mois en cours
-            $data['encaisseMois'] = (clone $paiementsQuery)
-                ->where('status', 'validé')
-                ->whereMonth('date_paiement', now()->month)
-                ->whereYear('date_paiement', now()->year)
-                ->sum('montant');
+            $data['encaisseMois'] = \App\Models\ESBTPPaiement::netCashSum(
+                (clone $paiementsQuery)
+                    ->where('status', 'validé')
+                    ->whereMonth('date_paiement', now()->month)
+                    ->whereYear('date_paiement', now()->year)
+            );
 
         } catch (\Exception $e) {
             $data['totalEncaisse'] = 0;
@@ -798,7 +799,7 @@ class DashboardController extends Controller
                 $data['topImpayes'] = DB::table('esbtp_frais_subscriptions as fs')
                     ->join('esbtp_inscriptions as i', 'fs.inscription_id', '=', 'i.id')
                     ->join('esbtp_etudiants as e', 'i.etudiant_id', '=', 'e.id')
-                    ->leftJoin(DB::raw('(SELECT inscription_id, frais_category_id, SUM(montant) as total_paye FROM esbtp_paiements WHERE status = \'validé\' AND deleted_at IS NULL GROUP BY inscription_id, frais_category_id) as p'), function ($join) {
+                    ->leftJoin(DB::raw('(SELECT inscription_id, frais_category_id, SUM('.\App\Models\ESBTPPaiement::sqlStudentPaidCase().') as total_paye FROM esbtp_paiements WHERE status = \'validé\' AND deleted_at IS NULL GROUP BY inscription_id, frais_category_id) as p'), function ($join) {
                         $join->on('p.inscription_id', '=', 'i.id')
                              ->on('p.frais_category_id', '=', 'fs.frais_category_id');
                     })
@@ -837,7 +838,7 @@ class DashboardController extends Controller
                 $modesQuery->where('annee_universitaire_id', $anneeEnCours->id);
             }
             $data['paiementsParMode'] = $modesQuery
-                ->select('mode_paiement', DB::raw('COUNT(*) as count'), DB::raw('SUM(montant) as total'))
+                ->select('mode_paiement', DB::raw('COUNT(*) as count'), DB::raw('SUM('.\App\Models\ESBTPPaiement::sqlCashCase().') as total'))
                 ->groupBy('mode_paiement')
                 ->get();
         } catch (\Exception $e) {
@@ -862,10 +863,11 @@ class DashboardController extends Controller
                 ->where('created_by', $user->id)
                 ->count();
 
-            $montantEncaisseAujourdhui = \App\Models\ESBTPPaiement::whereDate('created_at', $today)
-                ->where('created_by', $user->id)
-                ->where('status', 'validé')
-                ->sum('montant');
+            $montantEncaisseAujourdhui = \App\Models\ESBTPPaiement::netCashSum(
+                \App\Models\ESBTPPaiement::whereDate('created_at', $today)
+                    ->where('created_by', $user->id)
+                    ->where('status', 'validé')
+            );
 
             $preInscriptionsAujourdhui = \App\Models\ESBTPInscription::whereDate('created_at', $today)
                 ->where('workflow_step', 'prospect')

@@ -59,7 +59,8 @@ class InKindDepositService
         return ESBTPPaiement::query()
             ->where('inscription_id', $inscriptionId)
             ->where('frais_category_id', $categoryId)
-            ->where('status', 'validé')
+            ->valides()
+            ->encaissements()
             ->exists();
     }
 

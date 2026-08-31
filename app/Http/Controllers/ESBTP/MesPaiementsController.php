@@ -89,9 +89,7 @@ class MesPaiementsController extends Controller
             $totalAttendu = $totalFraisAnnee + $totalReliquats;
 
             // Total payé (tous les paiements validés)
-            $totalPaye = ESBTPPaiement::where('inscription_id', $inscription->id)
-                ->where('status', 'validé')
-                ->sum('montant');
+            $totalPaye = ESBTPPaiement::netPaidForInscription((int) $inscription->id);
 
             // Solde restant
             $soldeRestant = max(0, $totalAttendu - $totalPaye);

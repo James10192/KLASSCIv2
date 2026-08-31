@@ -833,6 +833,18 @@
                             </li>
                         </ul>
                     </div>
+                    @can('comptabilite.journal.view')
+                    <a href="{{ route('esbtp.comptabilite.journal-caisse.index') }}" class="pi-btn pi-btn--glass">
+                        <i class="fas fa-book"></i>
+                        <span>Point du jour</span>
+                    </a>
+                    @endcan
+                    @can('comptabilite.reconciliation.open')
+                    <a href="{{ route('esbtp.comptabilite.reconciliation.create') }}" class="pi-btn pi-btn--glass">
+                        <i class="fas fa-lock"></i>
+                        <span>Clôturer</span>
+                    </a>
+                    @endcan
                     <a href="{{ route('esbtp.paiements.suivi-categories') }}" class="pi-btn pi-btn--glass">
                         <i class="fas fa-chart-bar"></i>
                         <span>Suivi par Catégorie</span>

@@ -164,7 +164,7 @@ class TroncCommunService
         ESBTPInscription $specialisation
     ): void {
         $paiementsValides = $origine->paiements()->where('status', 'validé')->get();
-        $totalPaye = $paiementsValides->sum('montant');
+        $totalPaye = \App\Models\ESBTPPaiement::netStudentPaidFrom($paiementsValides);
 
         // Copier les souscriptions de frais actives vers la nouvelle inscription
         $fraisOrigine = $origine->fraisSubscriptions()->where('is_active', true)->get();

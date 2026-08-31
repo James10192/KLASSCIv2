@@ -140,7 +140,7 @@ class RelanceCalculationService
 
         $totalDu            = (float) ($state['total_due'] ?? 0);
         $totalPaye          = (float) ($state['total_paid_validated'] ?? 0);
-        $totalPayeEnAttente = $inscription->paiements->where('status', 'en_attente')->sum('montant');
+        $totalPayeEnAttente = \App\Models\ESBTPPaiement::pendingEncaissementsFrom($inscription->paiements);
         $remainingTotal     = (float) ($state['remaining_total'] ?? max(0, $totalDu - $totalPaye));
         $overdueAmount      = (float) ($state['overdue_amount'] ?? 0);
         $pourcentage        = $totalDu > 0 ? min(100, round($totalPaye / $totalDu * 100)) : 100;
@@ -216,7 +216,7 @@ class RelanceCalculationService
         $totalDette = 0;
         foreach ($inscriptions as $inscription) {
             $totalDu   = $this->calculerTotalDu($inscription);
-            $totalPaye = $inscription->paiements->sum('montant');
+            $totalPaye = \App\Models\ESBTPPaiement::netStudentPaidFrom($inscription->paiements);
             $totalDette += max(0, $totalDu - $totalPaye);
         }
 

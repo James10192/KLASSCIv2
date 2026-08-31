@@ -214,7 +214,7 @@ class PaiementsSaariExport implements FromCollection, WithMapping, WithTitle, Wi
         if (!empty($this->filters['periode_label'])) {
             $subtitle .= ' (' . $this->filters['periode_label'] . ')';
         }
-        $subtitle .= ' — Total : ' . number_format((float) $this->paiements->sum('montant'), 0, ',', ' ') . ' FCFA';
+        $subtitle .= ' — Total : ' . number_format(\App\Models\ESBTPPaiement::netCashFrom($this->paiements), 0, ',', ' ') . ' FCFA';
         $sheet->setCellValue('A3', $subtitle);
         $sheet->getStyle('A3')->applyFromArray([
             'font' => [

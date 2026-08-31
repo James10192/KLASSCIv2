@@ -404,6 +404,19 @@
                     </button>
                 </form>
                 @endcan
+
+                @can('paiements.avoir')
+                @if($paiement->status === 'validé' && ! $paiement->isAvoir() && $paiement->avoir_disponible > 0)
+                <button type="button" class="ps-btn ghost" data-bs-toggle="modal" data-bs-target="#modalAvoir">
+                    <i class="fas fa-file-invoice"></i> Avoir
+                </button>
+                @endif
+                @endcan
+                @if($paiement->isAvoir())
+                <a class="ps-btn ghost" href="{{ route('esbtp.paiements.avoir.pdf', [$paiement->id, 'inline' => 1]) }}" target="_blank" rel="noopener">
+                    <i class="fas fa-file-pdf"></i> PDF avoir
+                </a>
+                @endif
             </div>
         </div>
     </div>
@@ -686,6 +699,8 @@
     </div>
 </div>
 @endif
+
+@include('esbtp.paiements.partials.avoir-modal', ['paiement' => $paiement, 'modalId' => 'modalAvoir'])
 
 {{-- Historique d'audit (production audit log) --}}
 <div class="ps-content" style="margin-top: 1.5rem;">

@@ -217,7 +217,7 @@ class PaiementsExport implements FromCollection, WithHeadings, WithMapping, With
         $sheet->getRowDimension(3)->setRowHeight(22);
 
         $totalPaiements = $this->stats['total'] ?? $this->paiements->count();
-        $montantTotal = $this->stats['montant_total'] ?? $this->paiements->sum('montant');
+        $montantTotal = $this->stats['montant_total'] ?? \App\Models\ESBTPPaiement::netCashFrom($this->paiements);
         $exportDate = now()->format('d/m/Y H:i');
 
         $sheet->mergeCells('A4:F4');
@@ -402,7 +402,7 @@ class PaiementsExport implements FromCollection, WithHeadings, WithMapping, With
             ],
             [
                 'label' => 'Montant total encaissé',
-                'value' => $this->formatMontant($this->stats['montant_total'] ?? $this->paiements->sum('montant')),
+                'value' => $this->formatMontant($this->stats['montant_total'] ?? \App\Models\ESBTPPaiement::netCashFrom($this->paiements)),
             ],
             [
                 'label' => 'Paiements validés',

@@ -57,7 +57,7 @@ class ESBTPSpecialisationController extends Controller
         }
 
         $specialisations = $this->targetFilieres($sourceClasse, $sourceFiliere);
-        $totalPaye = $inscription->paiements()->where('status', 'validé')->sum('montant');
+        $totalPaye = \App\Models\ESBTPPaiement::netPaidForInscription((int) $inscription->id);
         $isCorrection = $currentSpecialisation !== null;
 
         return view('esbtp.inscriptions.specialisation', compact(

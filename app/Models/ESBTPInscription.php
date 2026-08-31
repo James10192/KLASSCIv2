@@ -311,7 +311,7 @@ class ESBTPInscription extends Model implements Auditable
      */
     public function getMontantPayeAttribute()
     {
-        return $this->paiements()->where('status', 'validé')->sum('montant');
+        return ESBTPPaiement::netPaidForInscription((int) $this->id);
     }
 
     /**

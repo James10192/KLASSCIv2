@@ -2106,7 +2106,7 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                                                                       ->orWhereNull('type_paiement');
                                                             })
                                                             ->get();
-                                                        $montantEnAttente = $paiementsEnAttente->sum('montant');
+                                                        $montantEnAttente = \App\Models\ESBTPPaiement::pendingEncaissementsFrom($paiementsEnAttente);
                                                     @endphp
 
                                                     @if($item['total_paye'] > 0)
@@ -2252,6 +2252,7 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                                                                 $paiementsReliquatEnAttente = \App\Models\ESBTPPaiement::where('type_paiement', 'reliquat')
                                                                     ->where('reliquat_detail_id', $reliquat->id)
                                                                     ->where('status', 'en_attente')
+                                                                    ->encaissements()
                                                                     ->sum('montant');
                                                             @endphp
 
@@ -2339,7 +2340,7 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                                                               ->orWhereNull('type_paiement');
                                                     })
                                                     ->get();
-                                                $montantEnAttente = $paiementsEnAttente->sum('montant');
+                                                $montantEnAttente = \App\Models\ESBTPPaiement::pendingEncaissementsFrom($paiementsEnAttente);
                                             @endphp
 
                                             <!-- Montant Attendu -->
@@ -2515,6 +2516,7 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                                                             $paiementsReliquatEnAttente = \App\Models\ESBTPPaiement::where('type_paiement', 'reliquat')
                                                                 ->where('reliquat_detail_id', $reliquat->id)
                                                                 ->where('status', 'en_attente')
+                                                                ->encaissements()
                                                                 ->sum('montant');
                                                         @endphp
 

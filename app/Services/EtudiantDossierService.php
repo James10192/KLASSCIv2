@@ -8,6 +8,7 @@ use App\Models\ESBTPResultat;
 use App\Models\ESBTPNote;
 use App\Models\ESBTPAttendance;
 use App\Models\ESBTPReliquatDetail;
+use App\Models\ESBTPPaiement;
 use Illuminate\Support\Collection;
 
 class EtudiantDossierService
@@ -259,9 +260,9 @@ class EtudiantDossierService
             ->get();
 
         return [
-            'total_paiements'           => $paiements->sum('montant'),
-            'paiements_valides'         => $paiements->where('status', 'validé')->sum('montant'),
-            'paiements_en_attente'      => $paiements->where('status', 'en_attente')->sum('montant'),
+            'total_paiements'           => ESBTPPaiement::netStudentPaidFrom($paiements) + ESBTPPaiement::pendingEncaissementsFrom($paiements),
+            'paiements_valides'         => ESBTPPaiement::netStudentPaidFrom($paiements),
+            'paiements_en_attente'      => ESBTPPaiement::pendingEncaissementsFrom($paiements),
             'nombre_paiements'          => $paiements->count(),
             'inscription_active'        => $etudiant->inscriptions->where('status', 'active')->first(),
             'derniere_inscription'      => $etudiant->inscriptions->first(),

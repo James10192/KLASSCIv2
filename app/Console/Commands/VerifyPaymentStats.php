@@ -103,7 +103,7 @@ class VerifyPaymentStats extends Command
                         })
                         ->get();
 
-                    $montantPayeCategorie = $paiements->sum('montant');
+                    $montantPayeCategorie = ESBTPPaiement::netStudentPaidFrom($paiements) + ESBTPPaiement::pendingEncaissementsFrom($paiements);
 
                     if ($montantPayeCategorie > 0) {
                         $this->line("    → Payé: " . number_format($montantPayeCategorie, 0, ',', ' ') . " FCFA");

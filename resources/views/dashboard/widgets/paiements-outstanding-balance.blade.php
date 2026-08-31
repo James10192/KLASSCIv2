@@ -9,9 +9,11 @@
         $payeQuery->where('annee_universitaire_id', $anneeEnCours->id);
     }
     $totalDu = (float) $duQuery->sum(\DB::raw('COALESCE(montant_scolarite, 0) + COALESCE(frais_inscription, 0)'));
-    $totalPaye = (float) $payeQuery->where(function ($q) {
-        $q->whereIn('status', ['validé', 'valide']);
-    })->sum('montant');
+    $totalPaye = \App\Models\ESBTPPaiement::netStudentPaidSum(
+        $payeQuery->where(function ($q) {
+            $q->whereIn('status', ['validé', 'valide']);
+        })
+    );
 
     $balance = max(0.0, $totalDu - $totalPaye);
 @endphp

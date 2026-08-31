@@ -35,7 +35,7 @@ class PaymentDrillDownService
             ->where('status', 'validé')
             ->where('mode_paiement', $modePaiement)
             ->whereBetween('date_paiement', [$session->period_start, $session->period_end])
-            ->selectRaw('COUNT(*) as nb, COALESCE(SUM(montant), 0) as total')
+            ->selectRaw('COUNT(*) as nb, COALESCE(SUM('.ESBTPPaiement::sqlCashCase().'), 0) as total')
             ->first();
 
         return [

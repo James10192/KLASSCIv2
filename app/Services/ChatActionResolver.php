@@ -29,7 +29,7 @@ class ChatActionResolver
 
         $relance = app(RelanceCalculationService::class)->preloadForSingle($inscription);
         $attendu = (float) $relance->calculerTotalDu($inscription);
-        $paye = (float) $inscription->paiements()->valides()->sum('montant');
+        $paye = ESBTPPaiement::netPaidForInscription((int) $inscription->id);
 
         $etudiantName = trim(($inscription->etudiant?->nom ?? '') . ' ' . ($inscription->etudiant?->prenoms ?? ''));
 

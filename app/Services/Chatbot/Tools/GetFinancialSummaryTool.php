@@ -72,7 +72,7 @@ class GetFinancialSummaryTool extends ChatbotTool
         $paiements = ESBTPPaiement::query()
             ->whereIn('inscription_id', $inscriptionIds)
             ->where('status', 'validé')
-            ->selectRaw('inscription_id, SUM(montant) as total_paye')
+            ->selectRaw('inscription_id, SUM('.ESBTPPaiement::sqlStudentPaidCase().') as total_paye')
             ->groupBy('inscription_id')
             ->pluck('total_paye', 'inscription_id');
 
@@ -103,6 +103,7 @@ class GetFinancialSummaryTool extends ChatbotTool
             ->whereIn('inscription_id', $inscriptionIds)
             ->where('status', 'en_attente')
             ->selectRaw('COUNT(*) as cnt, COALESCE(SUM(montant), 0) as total')
+            ->encaissements()
             ->first();
         $enAttente = (int) $pending->cnt;
         $montantEnAttente = (float) $pending->total;

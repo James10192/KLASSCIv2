@@ -107,7 +107,7 @@ class CLIComptabiliteController extends BaseApiController
             ->whereDate('date_paiement', '>=', $dateDebut)
             ->whereDate('date_paiement', '<=', $dateFin)
             ->where('status', $status)
-            ->selectRaw('mode_paiement, COUNT(*) as nb, COALESCE(SUM(montant), 0) as total')
+            ->selectRaw('mode_paiement, COUNT(*) as nb, COALESCE(SUM('.ESBTPPaiement::sqlCashCase().'), 0) as total')
             ->groupBy('mode_paiement')
             ->orderByDesc('total')
             ->get()
@@ -149,7 +149,7 @@ class CLIComptabiliteController extends BaseApiController
                 'annee_universitaire_id,
                  status,
                  COUNT(*) as nb,
-                 COALESCE(SUM(montant), 0) as total'
+                 COALESCE(SUM('.ESBTPPaiement::sqlCashCase().'), 0) as total'
             )
             ->groupBy('annee_universitaire_id', 'status')
             ->orderBy('annee_universitaire_id', 'desc')

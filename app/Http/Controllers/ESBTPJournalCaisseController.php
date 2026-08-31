@@ -178,7 +178,8 @@ class ESBTPJournalCaisseController extends Controller
             ])
             ->whereNull('deleted_at')
             ->whereDate('date_paiement', '>=', $filters['date_debut'])
-            ->whereDate('date_paiement', '<=', $filters['date_fin']);
+            ->whereDate('date_paiement', '<=', $filters['date_fin'])
+            ->cashMovements();
 
         if (!empty($filters['statut'])) {
             $query->where('status', $filters['statut']);
@@ -201,19 +202,42 @@ class ESBTPJournalCaisseController extends Controller
     {
         $base = $this->buildQuery($filters);
 
-        $statsByMode = (clone $base)
+        $encaissements = (clone $base)->encaissements();
+        $refunds = (clone $base)->avoires()->where('avoir_kind', 'refund');
+
+        $statsByMode = (clone $encaissements)
             ->selectRaw('mode_paiement, COUNT(*) as nb, COALESCE(SUM(montant), 0) as total')
             ->groupBy('mode_paiement')
             ->get()
             ->keyBy('mode_paiement');
 
+        $refundsByMode = (clone $refunds)
+            ->selectRaw('mode_paiement, COUNT(*) as nb, COALESCE(SUM(montant), 0) as total')
+            ->groupBy('mode_paiement')
+            ->get()
+            ->keyBy('mode_paiement');
+
+        $byMode = [];
+        foreach ($statsByMode as $mode => $row) {
+            $refund = $refundsByMode[$mode] ?? null;
+            $byMode[$mode] = [
+                'count' => (int) $row->nb + (int) ($refund->nb ?? 0),
+                'total' => (float) $row->total - (float) ($refund->total ?? 0),
+            ];
+        }
+        foreach ($refundsByMode as $mode => $row) {
+            if (! isset($byMode[$mode])) {
+                $byMode[$mode] = [
+                    'count' => (int) $row->nb,
+                    'total' => 0 - (float) $row->total,
+                ];
+            }
+        }
+
         return [
-            'count' => (clone $base)->count(),
-            'total' => (float) (clone $base)->sum('montant'),
-            'by_mode' => $statsByMode->map(fn ($row) => [
-                'count' => (int) $row->nb,
-                'total' => (float) $row->total,
-            ])->all(),
+            'count' => (clone $encaissements)->count() + (clone $refunds)->count(),
+            'total' => ESBTPPaiement::netCashSum($base),
+            'by_mode' => $byMode,
         ];
     }
 

@@ -55,7 +55,7 @@
                 @foreach($inscriptions as $inscription)
                     @php
                         $paiementValide = $inscription->paiements->firstWhere('status', 'validé');
-                        $totalPaye = $inscription->paiements->where('status', 'validé')->sum('montant');
+                        $totalPaye = \App\Models\ESBTPPaiement::netStudentPaidFrom($inscription->paiements);
                         $fullName = trim(($inscription->etudiant->nom ?? '') . ' ' . ($inscription->etudiant->prenoms ?? ''));
                         $initials = strtoupper(substr($inscription->etudiant->nom ?? '?', 0, 1));
                         $hue = crc32($fullName) % 360;

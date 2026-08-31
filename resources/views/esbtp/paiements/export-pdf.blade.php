@@ -186,7 +186,7 @@
     };
 
     $totalPaiements = $stats['total'] ?? $paiements->count();
-    $montantTotal = $stats['montant_total'] ?? $paiements->sum('montant');
+    $montantTotal = $stats['montant_total'] ?? \App\Models\ESBTPPaiement::netCashFrom($paiements);
     $valides = $stats['valides'] ?? 0;
     $montantValide = $stats['montant_valide'] ?? 0;
     $enAttente = $stats['en_attente'] ?? 0;

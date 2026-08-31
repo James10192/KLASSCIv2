@@ -2129,10 +2129,10 @@ class NotificationService
                 $paiementsValides = $paiements->where('status', 'validé');
 
                 if ($paiementsEnAttente->count() > 0) {
-                    $montantTotal = number_format($paiementsEnAttente->sum('montant'), 0, ',', ' ');
+                    $montantTotal = number_format(\App\Models\ESBTPPaiement::pendingEncaissementsFrom($paiementsEnAttente), 0, ',', ' ');
                     $paiementInfo = "{$paiementsEnAttente->count()} paiement(s) en attente ({$montantTotal} FCFA)";
                 } elseif ($paiementsValides->count() > 0) {
-                    $montantTotal = number_format($paiementsValides->sum('montant'), 0, ',', ' ');
+                    $montantTotal = number_format(\App\Models\ESBTPPaiement::netStudentPaidFrom($paiementsValides), 0, ',', ' ');
                     $paiementInfo = "Paiement validé ({$montantTotal} FCFA). L'inscription peut maintenant être validée.";
                 }
             }
@@ -2534,9 +2534,7 @@ class NotificationService
             $totalAttendu = $totalFraisAnnee + $totalReliquats;
 
             // 4. Total payé (tous les paiements validés)
-            $totalPaye = \App\Models\ESBTPPaiement::where('inscription_id', $inscription->id)
-                ->where('status', 'validé')
-                ->sum('montant');
+            $totalPaye = \App\Models\ESBTPPaiement::netPaidForInscription((int) $inscription->id);
 
             // 5. Solde restant
             $soldeRestant = $totalAttendu - $totalPaye;
@@ -2628,9 +2626,7 @@ class NotificationService
 
             $totalAttendu = $totalFraisAnnee + $totalReliquats;
 
-            $totalPaye = \App\Models\ESBTPPaiement::where('inscription_id', $inscription->id)
-                ->where('status', 'validé')
-                ->sum('montant');
+            $totalPaye = \App\Models\ESBTPPaiement::netPaidForInscription((int) $inscription->id);
 
             $soldeRestant = $totalAttendu - $totalPaye;
 

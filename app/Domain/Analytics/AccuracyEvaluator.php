@@ -133,6 +133,6 @@ class AccuracyEvaluator
             $query->whereHas('inscription', fn ($q) => $q->where('classe_id', $context['classeId']));
         }
 
-        return (float) $query->sum('montant');
+        return ESBTPPaiement::netCashSum($query);
     }
 }

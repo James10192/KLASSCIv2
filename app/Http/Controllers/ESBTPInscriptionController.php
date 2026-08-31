@@ -871,7 +871,7 @@ class ESBTPInscriptionController extends Controller
                 })
                 ->get();
 
-            $totalPaye = $paiements->sum("montant");
+            $totalPaye = \App\Models\ESBTPPaiement::netStudentPaidFrom($paiements);
 
             if ($subscription) {
                 $montantAttendu = $subscription->chargedAmount();
@@ -937,7 +937,7 @@ class ESBTPInscriptionController extends Controller
                     })
                     ->get();
 
-                $totalPaye = $paiements->sum("montant");
+                $totalPaye = \App\Models\ESBTPPaiement::netStudentPaidFrom($paiements);
                 $montantAttendu = $subscription->chargedAmount();
                 $solde = $montantAttendu - $totalPaye;
                 $satisfiedInKind = (bool) $subscription->satisfied_in_kind;
@@ -2306,7 +2306,7 @@ class ESBTPInscriptionController extends Controller
 
             // Calcul du solde (relicat)
             $totalAttendu = \App\Models\ESBTPFraisSubscription::dueAmountForInscription($inscriptionActive->id);
-            $totalPaye = $inscriptionActive->paiements()->where('status', 'validé')->sum('montant');
+            $totalPaye = \App\Models\ESBTPPaiement::netPaidForInscription((int) $inscriptionActive->id);
             $soldeRestant = max(0, $totalAttendu - $totalPaye);
 
             // Classes proposées

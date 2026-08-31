@@ -74,12 +74,13 @@ class ReconciliationSessionService
      */
     public function computeMontantSysteme(ReconciliationSession $session, string $modePaiement): float
     {
-        return (float) ESBTPPaiement::query()
-            ->whereNull('deleted_at')
-            ->where('status', 'validé')
-            ->where('mode_paiement', $modePaiement)
-            ->whereBetween('date_paiement', [$session->period_start, $session->period_end])
-            ->sum('montant');
+        return ESBTPPaiement::netCashSum(
+            ESBTPPaiement::query()
+                ->whereNull('deleted_at')
+                ->where('status', 'validé')
+                ->where('mode_paiement', $modePaiement)
+                ->whereBetween('date_paiement', [$session->period_start, $session->period_end])
+        );
     }
 
     /**

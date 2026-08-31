@@ -25,7 +25,7 @@ class AnalyticsRepository
             ->when($context->anneeId, fn ($q) => $q->whereHas('inscription', fn ($q2) => $q2->where('annee_universitaire_id', $context->anneeId)))
             ->when($context->filiereId, fn ($q) => $q->whereHas('inscription.classe', fn ($q2) => $q2->where('filiere_id', $context->filiereId)))
             ->when($context->classeId, fn ($q) => $q->whereHas('inscription', fn ($q2) => $q2->where('classe_id', $context->classeId)))
-            ->selectRaw('YEAR(date_paiement) as year, MONTH(date_paiement) as month, SUM(montant) as value')
+            ->selectRaw('YEAR(date_paiement) as year, MONTH(date_paiement) as month, SUM('.ESBTPPaiement::sqlCashCase().') as value')
             ->groupBy('year', 'month')
             ->orderBy('year')
             ->orderBy('month')

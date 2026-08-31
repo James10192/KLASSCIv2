@@ -242,8 +242,8 @@ class StudentInscriptionRepairService
                     'count' => $paiements->count(),
                     'valid_count' => $valides->count(),
                     'pending_count' => $attente->count(),
-                    'total' => (float) $paiements->sum('montant'),
-                    'valid_total' => (float) $valides->sum('montant'),
+                    'total' => \App\Models\ESBTPPaiement::netStudentPaidFrom($paiements) + \App\Models\ESBTPPaiement::pendingEncaissementsFrom($paiements),
+                    'valid_total' => \App\Models\ESBTPPaiement::netStudentPaidFrom($valides),
                     'last_payment_at' => $lastPaymentAt,
                 ],
                 'score' => $this->scoreInscription($inscription, $paiements, $valides),
@@ -300,8 +300,8 @@ class StudentInscriptionRepairService
     private function scoreInscription(ESBTPInscription $inscription, $paiements, $valides): array
     {
         return [
-            'valid_total' => (float) $valides->sum('montant'),
-            'total' => (float) $paiements->sum('montant'),
+            'valid_total' => \App\Models\ESBTPPaiement::netStudentPaidFrom($valides),
+            'total' => \App\Models\ESBTPPaiement::netStudentPaidFrom($paiements) + \App\Models\ESBTPPaiement::pendingEncaissementsFrom($paiements),
             'valid_count' => $valides->count(),
             'count' => $paiements->count(),
             'status_priority' => match ($inscription->status) {

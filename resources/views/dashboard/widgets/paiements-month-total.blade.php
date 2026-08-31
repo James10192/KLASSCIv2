@@ -10,7 +10,8 @@
               ->orWhere('date_validation', '>=', $startMonth)
               ->orWhere('created_at', '>=', $startMonth);
         })
-        ->sum('montant');
+        ->selectRaw('SUM('.\App\Models\ESBTPPaiement::sqlCashCase().') as total')
+        ->value('total');
 @endphp
 
 <x-dw-widget

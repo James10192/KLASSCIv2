@@ -230,10 +230,10 @@ class PaymentFilterService
         ];
 
         // Calculer les montants sur les paiements filtrés
-        $montantTotal = (clone $statsQueryBase)->sum('montant') ?? 0;
-        $montantValide = (clone $statsQueryBase)->where('status', 'validé')->sum('montant') ?? 0;
-        $montantEnAttente = (clone $statsQueryBase)->where('status', 'en_attente')->sum('montant') ?? 0;
-        $montantRejete = (clone $statsQueryBase)->where('status', 'rejeté')->sum('montant') ?? 0;
+        $montantValide = \App\Models\ESBTPPaiement::netCashSum((clone $statsQueryBase)->where('status', 'validé'));
+        $montantEnAttente = (clone $statsQueryBase)->where('status', 'en_attente')->encaissements()->sum('montant') ?? 0;
+        $montantRejete = (clone $statsQueryBase)->where('status', 'rejeté')->encaissements()->sum('montant') ?? 0;
+        $montantTotal = $montantValide + $montantEnAttente + $montantRejete;
 
         $stats['montant_total'] = $montantTotal;
         $stats['montant_valide'] = $montantValide;
@@ -304,7 +304,7 @@ class PaymentFilterService
 
         // Calculer les montants par catégorie sur les paiements filtrés
         $paiementsParCategorie = (clone $filteredQuery)
-            ->selectRaw('frais_category_id, status, SUM(montant) as total_montant')
+            ->selectRaw('frais_category_id, status, SUM('.ESBTPPaiement::sqlCashCase().') as total_montant')
             ->whereNotNull('frais_category_id')
             ->groupBy('frais_category_id', 'status')
             ->get();

@@ -56,7 +56,7 @@ class ESBTPComptabiliteRelanceController extends Controller
         $calcService = app(RelanceCalculationService::class)->preloadForSingle($inscription);
 
         $totalDu         = $calcService->calculerTotalDu($inscription);
-        $totalPaye       = $inscription->paiements->sum('montant');
+        $totalPaye       = \App\Models\ESBTPPaiement::netStudentPaidFrom($inscription->paiements);
         $soldeRestant    = max(0, $totalDu - $totalPaye);
         $pourcentagePaye = $totalDu > 0 ? min(100, round($totalPaye / $totalDu * 100)) : 0;
         $fraisImpayés    = $calcService->calculerFraisDetail($inscription);
@@ -1035,9 +1035,9 @@ class ESBTPComptabiliteRelanceController extends Controller
     private function calculerROIRelances()
     {
         // Calcul simple du ROI basé sur les montants récupérés vs coût estimé des relances
-        $montantRecupere = \App\Models\ESBTPPaiement::whereHas('relance')
-            ->whereMonth('created_at', now()->month)
-            ->sum('montant');
+        $montantRecupere = \App\Models\ESBTPPaiement::netCashSum(
+            \App\Models\ESBTPPaiement::whereHas('relance')->whereMonth('created_at', now()->month)
+        );
 
         $coutEstimeRelances = \App\Models\ESBTPRelance::whereMonth('created_at', now()->month)
             ->count() * 100; // 100 FCFA par relance (coût estimé)

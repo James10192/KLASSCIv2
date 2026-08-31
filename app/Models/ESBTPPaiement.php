@@ -20,6 +20,10 @@ class ESBTPPaiement extends Model implements Auditable
      */
     protected $table = 'esbtp_paiements';
 
+    protected $attributes = [
+        'nature' => 'encaissement',
+    ];
+
     /**
      * Configuration de l'audit pour la sécurité financière
      *
@@ -41,6 +45,10 @@ class ESBTPPaiement extends Model implements Auditable
         // PR2 réconciliation
         'reconciliation_locked_at',
         'last_reconciliation_session_id',
+        'nature',
+        'avoir_kind',
+        'parent_paiement_id',
+        'numero_avoir',
     ];
 
     /**
@@ -108,6 +116,10 @@ class ESBTPPaiement extends Model implements Auditable
         'relance_id',
         'reliquat_detail_id',
         'target_due_line_key',
+        'nature',
+        'avoir_kind',
+        'parent_paiement_id',
+        'numero_avoir',
     ];
 
     /**
@@ -277,6 +289,149 @@ class ESBTPPaiement extends Model implements Auditable
     public function scopeValides($query)
     {
         return $query->where('status', 'validé');
+    }
+
+    public function scopeEncaissements($query)
+    {
+        return $query->where(function ($q) {
+            $q->whereNull('nature')->orWhere('nature', 'encaissement');
+        });
+    }
+
+    public function scopeAvoires($query)
+    {
+        return $query->where('nature', 'avoir');
+    }
+
+    public function isAvoir(): bool
+    {
+        return $this->nature === 'avoir';
+    }
+
+    public function getAvoirDisponibleAttribute(): float
+    {
+        if ($this->isAvoir() || $this->status !== 'validé') {
+            return 0.0;
+        }
+
+        $used = $this->relationLoaded('childAvoirs')
+            ? (float) $this->childAvoirs->where('status', 'validé')->sum('montant')
+            : (float) $this->childAvoirs()->valides()->sum('montant');
+
+        return max(0.0, (float) $this->montant - $used);
+    }
+
+    public function parentPaiement()
+    {
+        return $this->belongsTo(self::class, 'parent_paiement_id');
+    }
+
+    public function childAvoirs()
+    {
+        return $this->hasMany(self::class, 'parent_paiement_id');
+    }
+
+    public function scopeCashMovements($query)
+    {
+        return $query->where(function ($q) {
+            $q->where(function ($inner) {
+                $inner->whereNull('nature')->orWhere('nature', 'encaissement');
+            })->orWhere(function ($inner) {
+                $inner->where('nature', 'avoir')->where('avoir_kind', 'refund');
+            });
+        });
+    }
+
+    public static function netPaidForInscription(int $inscriptionId, ?int $categoryId = null, bool $includePending = false): float
+    {
+        $query = self::query()->where('inscription_id', $inscriptionId);
+        if ($categoryId) {
+            $query->where('frais_category_id', $categoryId);
+        }
+        if ($includePending) {
+            $query->whereIn('status', ['validé', 'en_attente']);
+        } else {
+            $query->valides();
+        }
+
+        $encaisse = (float) (clone $query)->encaissements()->sum('montant');
+        $avoirs = (float) (clone $query)->avoires()->valides()->sum('montant');
+
+        return max(0.0, $encaisse - $avoirs);
+    }
+
+    public static function netCashSum($query): float
+    {
+        $encaisse = (float) (clone $query)->encaissements()->sum('montant');
+        $refunds = (float) (clone $query)->avoires()->where('avoir_kind', 'refund')->sum('montant');
+
+        return $encaisse - $refunds;
+    }
+
+    public static function netStudentPaidSum($query): float
+    {
+        $encaisse = (float) (clone $query)->encaissements()->sum('montant');
+        $avoirs = (float) (clone $query)->avoires()->sum('montant');
+
+        return max(0.0, $encaisse - $avoirs);
+    }
+
+    public static function netCashFrom($paiements): float
+    {
+        $items = collect($paiements);
+        $encaisse = (float) $items->filter(fn ($p) => ! $p->isAvoir())->sum('montant');
+        $refunds = (float) $items->filter(fn ($p) => $p->isAvoir() && ($p->avoir_kind ?? '') === 'refund')->sum('montant');
+
+        return $encaisse - $refunds;
+    }
+
+    public static function netStudentPaidFrom($paiements): float
+    {
+        $items = collect($paiements);
+        $encaisse = (float) $items->filter(fn ($p) => ($p->status ?? '') === 'validé' && ! $p->isAvoir())->sum('montant');
+        $avoirs = (float) $items->filter(fn ($p) => ($p->status ?? '') === 'validé' && $p->isAvoir())->sum('montant');
+
+        return max(0.0, $encaisse - $avoirs);
+    }
+
+    public static function pendingEncaissementsFrom($paiements): float
+    {
+        return (float) collect($paiements)
+            ->filter(fn ($p) => ($p->status ?? '') === 'en_attente' && ! $p->isAvoir())
+            ->sum('montant');
+    }
+
+    public static function sqlStudentPaidCase(): string
+    {
+        return "CASE WHEN COALESCE(nature, 'encaissement') = 'avoir' THEN -montant ELSE montant END";
+    }
+
+    public static function sqlCashCase(): string
+    {
+        return "CASE WHEN COALESCE(nature, 'encaissement') <> 'avoir' THEN montant WHEN avoir_kind = 'refund' THEN -montant ELSE 0 END";
+    }
+
+    public static function netPaidByCategory(int $inscriptionId): \Illuminate\Support\Collection
+    {
+        $encaisse = self::query()
+            ->where('inscription_id', $inscriptionId)
+            ->valides()
+            ->encaissements()
+            ->groupBy('frais_category_id')
+            ->selectRaw('frais_category_id, SUM(montant) as total_paye')
+            ->pluck('total_paye', 'frais_category_id');
+
+        $avoirs = self::query()
+            ->where('inscription_id', $inscriptionId)
+            ->valides()
+            ->avoires()
+            ->groupBy('frais_category_id')
+            ->selectRaw('frais_category_id, SUM(montant) as total_avoir')
+            ->pluck('total_avoir', 'frais_category_id');
+
+        return $encaisse->map(function ($total, $categoryId) use ($avoirs) {
+            return max(0.0, (float) $total - (float) ($avoirs[$categoryId] ?? 0));
+        });
     }
 
     /**

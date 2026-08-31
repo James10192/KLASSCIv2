@@ -110,9 +110,9 @@ class CalculerKPIsJob implements ShouldQueue
         $dateCalcul = Carbon::parse($this->dateCalcul);
 
         // Exemple: Encaissements du jour
-        $encaissementsJour = \App\Models\ESBTPPaiement::whereDate('date_paiement', $dateCalcul)
-            ->where('statut', 'completé')
-            ->sum('montant');
+        $encaissementsJour = \App\Models\ESBTPPaiement::netCashSum(
+            \App\Models\ESBTPPaiement::whereDate('date_paiement', $dateCalcul)->where('statut', 'completé')
+        );
 
         \App\Models\ESBTPKPI::updateOrCreate(
             [
@@ -135,9 +135,9 @@ class CalculerKPIsJob implements ShouldQueue
         $finSemaine = $dateCalcul->copy()->endOfWeek();
 
         // Encaissements de la semaine
-        $encaissementsSemaine = \App\Models\ESBTPPaiement::whereBetween('date_paiement', [$debutSemaine, $finSemaine])
-            ->where('statut', 'completé')
-            ->sum('montant');
+        $encaissementsSemaine = \App\Models\ESBTPPaiement::netCashSum(
+            \App\Models\ESBTPPaiement::whereBetween('date_paiement', [$debutSemaine, $finSemaine])->where('statut', 'completé')
+        );
 
         \App\Models\ESBTPKPI::updateOrCreate(
             [
@@ -193,9 +193,9 @@ class CalculerKPIsJob implements ShouldQueue
         $finTrimestre = $dateCalcul->copy()->endOfQuarter();
 
         // Résultat net trimestriel
-        $recettes = \App\Models\ESBTPPaiement::whereBetween('date_paiement', [$debutTrimestre, $finTrimestre])
-            ->where('statut', 'completé')
-            ->sum('montant');
+        $recettes = \App\Models\ESBTPPaiement::netCashSum(
+            \App\Models\ESBTPPaiement::whereBetween('date_paiement', [$debutTrimestre, $finTrimestre])->where('statut', 'completé')
+        );
 
         $depenses = \App\Models\ESBTPDepense::whereBetween('date_depense', [$debutTrimestre, $finTrimestre])
             ->whereIn('statut', ['validée', 'approuve'])
@@ -224,16 +224,16 @@ class CalculerKPIsJob implements ShouldQueue
         $finAnnee = $dateCalcul->copy()->endOfYear();
 
         // Croissance annuelle
-        $recettesAnneeActuelle = \App\Models\ESBTPPaiement::whereBetween('date_paiement', [$debutAnnee, $finAnnee])
-            ->where('statut', 'completé')
-            ->sum('montant');
+        $recettesAnneeActuelle = \App\Models\ESBTPPaiement::netCashSum(
+            \App\Models\ESBTPPaiement::whereBetween('date_paiement', [$debutAnnee, $finAnnee])->where('statut', 'completé')
+        );
 
-        $recettesAnneePrecedente = \App\Models\ESBTPPaiement::whereBetween('date_paiement', [
-            $debutAnnee->copy()->subYear(),
-            $finAnnee->copy()->subYear()
-        ])
-        ->where('statut', 'completé')
-        ->sum('montant');
+        $recettesAnneePrecedente = \App\Models\ESBTPPaiement::netCashSum(
+            \App\Models\ESBTPPaiement::whereBetween('date_paiement', [
+                $debutAnnee->copy()->subYear(),
+                $finAnnee->copy()->subYear()
+            ])->where('statut', 'completé')
+        );
 
         $croissance = $recettesAnneePrecedente > 0 ?
             round((($recettesAnneeActuelle - $recettesAnneePrecedente) / $recettesAnneePrecedente) * 100, 2) : 0;

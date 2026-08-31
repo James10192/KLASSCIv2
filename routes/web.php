@@ -1141,9 +1141,17 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
 
             // â”€â”€ CANCEL OWN RECENT (S1.5 â€” fenÃªtre 5min anti-erreur caissier)
             Route::post('/paiements/{paiement}/cancel-own', [App\Http\Controllers\ESBTPPaiementController::class, 'cancelOwn'])
-                ->whereNumber('paiement')
-                ->name('paiements.cancel-own')
-                ->middleware('throttle:30,1');
+                    ->whereNumber('paiement')
+                    ->name('paiements.cancel-own')
+                    ->middleware('throttle:30,1');
+                Route::post('/paiements/{paiement}/avoir', [App\Http\Controllers\ESBTP\AvoirPaiementController::class, 'store'])
+                    ->whereNumber('paiement')
+                    ->name('paiements.avoir.store')
+                    ->middleware(['permission:paiements.avoir', 'throttle:30,1']);
+                Route::get('/paiements/{paiement}/avoir-pdf', [App\Http\Controllers\ESBTP\AvoirPaiementController::class, 'pdf'])
+                    ->whereNumber('paiement')
+                    ->name('paiements.avoir.pdf')
+                    ->middleware(['permission:paiements.view|paiements.view_own|paiements.avoir', 'throttle:30,1']);
 
             // â”€â”€ JOURNAL DE CAISSE OHADA (S1.3)
             Route::prefix('comptabilite/journal-caisse')->name('comptabilite.journal-caisse.')->group(function () {
