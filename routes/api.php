@@ -465,6 +465,9 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
         Route::post('/frais/souscriptions-manquantes', [App\Http\Controllers\API\CLI\CLIFraisController::class, 'souscriptionsManquantes'])->name('frais.souscriptions-manquantes');
         Route::post('/frais/corriger-souscriptions', [App\Http\Controllers\API\CLI\CLIFraisController::class, 'corrigerSouscriptions'])->name('frais.corriger-souscriptions');
         Route::post('/frais/repartir-trop-percu', [App\Http\Controllers\API\CLI\CLIFraisController::class, 'repartirTropPercu'])->name('frais.repartir-trop-percu');
+        // L'ordre des categories est l'ordre dans lequel un versement solde les
+        // frais. Le changer est une decision de l'ecole, pas du code.
+        Route::post('/frais/ordonner-categories', [App\Http\Controllers\API\CLI\CLIFraisController::class, 'ordonnerCategories'])->name('frais.ordonner-categories');
         Route::post('/db/fix-duplicates', [App\Http\Controllers\API\CLI\CLIMaintenanceController::class, 'fixDuplicates'])->name('db.fix-duplicates');
         Route::post('/migrate', [App\Http\Controllers\API\CLI\CLIMaintenanceController::class, 'migrate'])->name('migrate');
         Route::post('/composer/install', [App\Http\Controllers\API\CLI\CLIMaintenanceController::class, 'composerInstall'])->name('composer.install');

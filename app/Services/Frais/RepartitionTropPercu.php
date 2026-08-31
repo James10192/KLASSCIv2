@@ -30,10 +30,19 @@ use Illuminate\Support\Facades\Log;
 class RepartitionTropPercu
 {
     /**
-     * @return array{inscriptions: int, paiements: int, allocations: int, lignes: array, applique: bool}
+     * @param  bool  $reinitialiser  Repart de zero : oublie les allocations deja
+     *                               ecrites sur le perimetre et recalcule tout.
+     *                               A utiliser quand l'ordre de service a change
+     *                               — sans lui, les versements deja repartis sont
+     *                               ignores et la nouvelle priorite reste lettre morte.
+     * @return array{inscriptions: int, paiements: int, allocations: int, effacees: int, lignes: array, applique: bool, reinitialise: bool}
      */
-    public function executer(bool $appliquer = false, ?int $inscriptionId = null, ?int $anneeId = null): array
-    {
+    public function executer(
+        bool $appliquer = false,
+        ?int $inscriptionId = null,
+        ?int $anneeId = null,
+        bool $reinitialiser = false
+    ): array {
         $inscriptions = ESBTPInscription::query()
             ->when($inscriptionId, fn ($q) => $q->where('id', $inscriptionId))
             ->when($anneeId, fn ($q) => $q->where('annee_universitaire_id', $anneeId))
@@ -49,7 +58,7 @@ class RepartitionTropPercu
         $aEcrire = [];
 
         foreach ($inscriptions as $inscription) {
-            foreach ($this->planifier($inscription) as $entree) {
+            foreach ($this->planifier($inscription, $reinitialiser) as $entree) {
                 $lignes[] = $entree['ligne'];
 
                 foreach ($entree['allocations'] as $allocation) {
@@ -58,11 +67,25 @@ class RepartitionTropPercu
             }
         }
 
-        if (! $appliquer || $aEcrire === []) {
-            return $this->resultat($lignes, count($aEcrire), false);
+        $aEffacer = $reinitialiser
+            ? $this->allocationsDuPerimetre($inscriptions->pluck('id')->all())->count()
+            : 0;
+
+        // Sans reinitialisation, il n'y a rien a faire quand rien n'est a ecrire.
+        // AVEC, il reste peut-etre des allocations a effacer : une repartition qui
+        // ne dit plus rien de plus que le paiement doit rendre celui-ci a sa
+        // categorie d'origine, donc effacer ce qui avait ete ecrit.
+        if (! $appliquer || ($aEcrire === [] && $aEffacer === 0)) {
+            return $this->resultat($lignes, count($aEcrire), false, $aEffacer, $reinitialiser);
         }
 
-        DB::transaction(function () use ($aEcrire): void {
+        $idsInscriptions = $inscriptions->pluck('id')->all();
+
+        DB::transaction(function () use ($aEcrire, $reinitialiser, $idsInscriptions): void {
+            if ($reinitialiser) {
+                $this->allocationsDuPerimetre($idsInscriptions)->delete();
+            }
+
             foreach ($aEcrire as $a) {
                 ESBTPPaiementAllocation::updateOrCreate(
                     ['paiement_id' => $a['paiement_id'], 'frais_category_id' => $a['frais_category_id']],
@@ -73,24 +96,53 @@ class RepartitionTropPercu
 
         Log::warning('[frais] repartition de versements sur plusieurs frais', [
             'allocations' => count($aEcrire),
+            'effacees' => $aEffacer,
+            'reinitialise' => $reinitialiser,
             'inscription_id' => $inscriptionId,
             'annee_id' => $anneeId,
         ]);
 
-        return $this->resultat($lignes, count($aEcrire), true);
+        return $this->resultat($lignes, count($aEcrire), true, $aEffacer, $reinitialiser);
+    }
+
+    /**
+     * Les allocations posees sur le perimetre traite.
+     *
+     * Exactement l'ensemble que ce service sait produire — les versements
+     * VALIDES et ENCAISSES des inscriptions retenues. On n'efface jamais une
+     * allocation portee par un avoir ou un paiement rejete : ce service ne les
+     * a pas ecrites, il ne saurait pas les reecrire.
+     *
+     * @param  array<int, int>  $inscriptionIds
+     */
+    private function allocationsDuPerimetre(array $inscriptionIds): \Illuminate\Database\Eloquent\Builder
+    {
+        return ESBTPPaiementAllocation::query()
+            ->whereIn('paiement_id', ESBTPPaiement::query()
+                ->whereIn('inscription_id', $inscriptionIds)
+                ->valides()
+                ->encaissements()
+                ->select('id'));
     }
 
     /**
      * @param  array<int, array>  $lignes
      */
-    private function resultat(array $lignes, int $allocations, bool $applique): array
-    {
+    private function resultat(
+        array $lignes,
+        int $allocations,
+        bool $applique,
+        int $effacees = 0,
+        bool $reinitialise = false
+    ): array {
         return [
             'inscriptions' => count(array_unique(array_column($lignes, 'inscription_id'))),
             'paiements' => count($lignes),
             'allocations' => $allocations,
+            'effacees' => $effacees,
             'lignes' => $lignes,
             'applique' => $applique,
+            'reinitialise' => $reinitialise,
         ];
     }
 
@@ -99,13 +151,15 @@ class RepartitionTropPercu
      *
      * @return array<int, array{ligne: array, allocations: array}>
      */
-    private function planifier(ESBTPInscription $inscription): array
+    private function planifier(ESBTPInscription $inscription, bool $reinitialiser = false): array
     {
         $paiements = ESBTPPaiement::query()
             ->where('inscription_id', $inscription->id)
             ->valides()
             ->encaissements()
-            ->whereDoesntHave('allocations')
+            // On repart de zero : les versements deja repartis redeviennent des
+            // candidats, sinon changer l'ordre de service ne changerait rien.
+            ->when(! $reinitialiser, fn ($q) => $q->whereDoesntHave('allocations'))
             ->orderBy('date_paiement')
             ->orderBy('id')
             ->get();
@@ -114,7 +168,7 @@ class RepartitionTropPercu
             return [];
         }
 
-        $reste = $this->resteParCategorie($inscription);
+        $reste = $this->resteParCategorie($inscription, $reinitialiser);
 
         if ($reste === []) {
             return [];
@@ -155,27 +209,31 @@ class RepartitionTropPercu
      *
      * @return array<int, float>
      */
-    private function resteParCategorie(ESBTPInscription $inscription): array
+    private function resteParCategorie(ESBTPInscription $inscription, bool $reinitialiser = false): array
     {
-        $dejaAlloue = ESBTPPaiementAllocation::query()
-            ->whereIn('paiement_id', ESBTPPaiement::query()
-                ->where('inscription_id', $inscription->id)
-                ->valides()
-                ->encaissements()
-                ->select('id'))
-            ->groupBy('frais_category_id')
-            ->selectRaw('frais_category_id, SUM(montant) as total')
-            ->pluck('total', 'frais_category_id');
+        // En reinitialisation, ces allocations vont etre effacees : les deduire
+        // reviendrait a compter deux fois l'argent qu'on est en train de reimputer.
+        $dejaAlloue = $reinitialiser
+            ? collect()
+            : ESBTPPaiementAllocation::query()
+                ->whereIn('paiement_id', ESBTPPaiement::query()
+                    ->where('inscription_id', $inscription->id)
+                    ->valides()
+                    ->encaissements()
+                    ->select('id'))
+                ->groupBy('frais_category_id')
+                ->selectRaw('frais_category_id, SUM(montant) as total')
+                ->pluck('total', 'frais_category_id');
 
         // L'ordre de service est celui que L'ECOLE a choisi.
         //
         // `sort_order` est la colonne par laquelle elle range ses categories de
         // frais, et c'est deja l'ordre dans lequel l'ecran d'encaissement les
-        // presente. Sur ISLG il donne : inscription, scolarite, tenue, ramette,
-        // chemise — soit exactement l'ordre de priorite voulu.
+        // presente.
         //
-        // On ne code donc aucune priorite ici. Une autre ecole qui voudrait
-        // solder la tenue avant la scolarite n'a qu'a reordonner ses categories ;
+        // On ne code donc aucune priorite ici. Une ecole qui veut solder la
+        // tenue avant la scolarite n'a qu'a reordonner ses categories (endpoint
+        // `frais/ordonner-categories`) puis rejouer la repartition avec `reset` ;
         // ecrire « inscription puis tenue » en dur imposerait la reponse d'un
         // etablissement a tous les autres.
         //
