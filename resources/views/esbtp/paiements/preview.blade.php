@@ -683,7 +683,8 @@
                                 <div class="rc-signature-label" style="color: {{ $primary }};">Signature et Cachet</div>
                                 <div class="rc-signature-line" style="border-color: {{ $primary }};">
                                     <div class="rc-signature-name">
-                                        {{ $paiement->validatedBy ? $paiement->validatedBy->name : 'Le Comptable' }}
+                                        {{-- Meme signataire que sur le recu imprime : celui qui l'a genere. --}}
+                                        {{ $paiement->creator->name ?? ($paiement->validatedBy->name ?? 'Le Comptable') }}
                                     </div>
                                 </div>
                             </div>
