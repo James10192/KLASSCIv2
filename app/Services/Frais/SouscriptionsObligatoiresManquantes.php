@@ -105,13 +105,20 @@ class SouscriptionsObligatoiresManquantes
             ];
         }
 
-        $crees = DB::transaction(function () use ($aCreer): int {
+        // `created_by` est NOT NULL sans defaut sur cette table. Appelee depuis
+        // l'API CLI la commande a un utilisateur authentifie ; lancee en console
+        // elle n'en a pas, et l'insertion echouerait sur un 1364 — le meme defaut
+        // que esbtp_paiements.type_paiement corrige plus tot aujourd'hui.
+        $auteur = auth()->id() ?? \App\Models\User::query()->min('id');
+
+        $crees = DB::transaction(function () use ($aCreer, $auteur): int {
             $n = 0;
 
             foreach ($aCreer as $ligne) {
                 ESBTPFraisSubscription::create($ligne + [
                     'is_active' => true,
                     'subscribed_at' => now(),
+                    'created_by' => $auteur,
                     'notes' => 'Souscription obligatoire manquante, creee par rattrapage',
                 ]);
                 $n++;
