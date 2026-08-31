@@ -287,14 +287,30 @@ class RepartitionTropPercu
     private function repartirUnVersement(ESBTPPaiement $paiement, array &$reste): array
     {
         $aRepartir = (float) $paiement->montant;
-        $categorieDuPaiement = (int) $paiement->frais_category_id;
+
+        // `frais_category_id` est NULLABLE sur esbtp_paiements, et sa cle
+        // etrangere est en `set null` : un versement peut parfaitement n'en
+        // porter aucune. `(int) null` vaut ZERO, pas « rien » — et zero n'est
+        // l'identifiant d'aucune categorie. La branche du surplus ecrivait donc
+        // une allocation sur `frais_category_id = 0`, la cle etrangere la
+        // refusait (1452), et TOUTE la transaction `--apply` etait annulee. Un
+        // seul versement sans categorie suffisait a faire echouer le lot entier
+        // — et le versement sans categorie est precisement le cas de
+        // trop-percu pour lequel ce service existe.
+        //
+        // Absent veut dire absent : on le garde a null et on ne fabrique pas de
+        // categorie d'origine la ou l'ecole n'en a designe aucune.
+        $categorieDuPaiement = $paiement->frais_category_id !== null
+            ? (int) $paiement->frais_category_id
+            : null;
+
         $allocations = [];
 
         // Le frais que le caissier a designe passe en premier : c'est
         // l'intention explicite du versement, elle prime sur l'ordre d'echeance.
         $ordre = array_keys($reste);
 
-        if (isset($reste[$categorieDuPaiement])) {
+        if ($categorieDuPaiement !== null && isset($reste[$categorieDuPaiement])) {
             $ordre = array_merge(
                 [$categorieDuPaiement],
                 array_values(array_diff($ordre, [$categorieDuPaiement]))
@@ -319,12 +335,32 @@ class RepartitionTropPercu
 
         // Tous les frais soldes et il reste de l'argent : c'est une avance. Elle
         // demeure sur la categorie d'origine, ou elle se trouve deja.
+        //
+        // Quand le versement n'en porte pas, l'avance echoit au dernier frais
+        // servi : c'est celui vers lequel l'argent allait encore. Faute de
+        // dernier frais servi — rien n'etait du — il n'existe aucune categorie
+        // ou poser cette avance, et en inventer une reviendrait a decider a la
+        // place de l'ecole. On rend alors un tableau vide : le versement garde
+        // son comportement d'avant, il reste compte dans le total de
+        // l'inscription et sans imputation par frais, exactement comme
+        // aujourd'hui.
         if ($aRepartir > 0.009) {
-            $allocations[$categorieDuPaiement] = round(($allocations[$categorieDuPaiement] ?? 0) + $aRepartir, 2);
+            $cible = $categorieDuPaiement ?? array_key_last($allocations);
+
+            if ($cible === null) {
+                return [];
+            }
+
+            $allocations[$cible] = round(($allocations[$cible] ?? 0) + $aRepartir, 2);
         }
 
         // La repartition ne dit rien de plus que le paiement : on n'ecrit pas.
-        if (count($allocations) === 1
+        //
+        // Un versement SANS categorie, lui, dit toujours quelque chose de plus :
+        // sans allocation il n'est impute a aucun frais, donc meme une
+        // allocation unique le rend visible la ou il ne l'etait pas.
+        if ($categorieDuPaiement !== null
+            && count($allocations) === 1
             && array_key_first($allocations) === $categorieDuPaiement
             && abs($allocations[$categorieDuPaiement] - (float) $paiement->montant) < 0.01) {
             return [];
