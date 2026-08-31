@@ -202,7 +202,7 @@
                     </div>
                     <div class="bulk-actions">
                         <span class="status">Évaluation passée</span>
-                        <a href="{{ route('notes.saisie-rapide', $evaluation) }}" class="btn btn-primary">
+                        <a href="{{ route('esbtp.notes.saisie-rapide', $evaluation) }}" class="btn btn-primary">
                             <i class="fas fa-users me-1"></i>Saisie groupée
                         </a>
                     </div>

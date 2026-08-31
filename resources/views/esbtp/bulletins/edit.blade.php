@@ -78,7 +78,7 @@
                                     <h6 class="mb-0">Informations générales du bulletin</h6>
                                 </div>
                                 <div class="card-body">
-                                    <form action="{{ route('bulletins.update', $bulletin) }}" method="POST">
+                                    <form action="{{ route('esbtp.bulletins.update', $bulletin) }}" method="POST">
                                         @csrf
                                         @method('PUT')
 
@@ -138,7 +138,7 @@
                             <h6 class="mb-0">Assiduité et appréciation générale</h6>
                         </div>
                         <div class="card-body">
-                            <form action="{{ route('bulletins.update', $bulletin) }}" method="POST">
+                            <form action="{{ route('esbtp.bulletins.update', $bulletin) }}" method="POST">
                                 @csrf
                                 @method('PUT')
 
@@ -202,7 +202,7 @@
                             <h6 class="mb-0">Résultats par matière</h6>
                         </div>
                         <div class="card-body">
-                            <form action="{{ route('bulletins.update', $bulletin) }}" method="POST">
+                            <form action="{{ route('esbtp.bulletins.update', $bulletin) }}" method="POST">
                                 @csrf
                                 @method('PUT')
 

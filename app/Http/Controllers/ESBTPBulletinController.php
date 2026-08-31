@@ -340,7 +340,7 @@ class ESBTPBulletinController extends Controller
 
             DB::commit();
 
-            return redirect()->route('bulletins.show', $bulletin)
+            return redirect()->route('esbtp.bulletins.show', $bulletin)
                 ->with('success', 'Le bulletin a été créé avec succès');
         } catch (\Exception $e) {
             DB::rollBack();
@@ -439,7 +439,7 @@ class ESBTPBulletinController extends Controller
 
             DB::commit();
 
-            return redirect()->route('bulletins.show', $bulletin)
+            return redirect()->route('esbtp.bulletins.show', $bulletin)
                 ->with('success', 'Le bulletin a été mis à jour avec succès');
         } catch (\Exception $e) {
             DB::rollBack();
@@ -2403,7 +2403,7 @@ class ESBTPBulletinController extends Controller
         if ($classeId) {
             $context['classe_matieres_url'] = $context['classe_matieres_url']
                 ?? (Route::has('classes.matieres')
-                    ? route('classes.matieres', ['classe' => $classeId])
+                    ? route('esbtp.classes.matieres', ['classe' => $classeId])
                     : route('esbtp.evaluations.index', ['open_coefficients' => 1]));
         }
 

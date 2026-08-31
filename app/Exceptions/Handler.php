@@ -91,7 +91,7 @@ class Handler extends ExceptionHandler
             $context['config_url'] = route('esbtp.evaluations.index', ['open_coefficients' => 1]);
             if ($classeId) {
                 $context['classe_matieres_url'] = \Illuminate\Support\Facades\Route::has('classes.matieres')
-                    ? route('classes.matieres', ['classe' => $classeId])
+                    ? route('esbtp.classes.matieres', ['classe' => $classeId])
                     : route('esbtp.evaluations.index', ['open_coefficients' => 1]);
             }
             if ($classeId || $matiereId) {

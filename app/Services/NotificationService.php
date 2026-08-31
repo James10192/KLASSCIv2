@@ -2016,7 +2016,14 @@ class NotificationService
             $message .= "<i class='fas fa-calendar'></i> Date: " . $paiement->date_paiement->format('d/m/Y') . "\n";
             $message .= "<i class='fas fa-exclamation-triangle'></i> Ce paiement nécessite votre validation.";
 
-            $link = route('paiements.show', $paiement->id);
+            // « esbtp.paiements.show » : le groupe de routes est prefixe, et
+            // « paiements.show » n'existe pas. route() levait donc une
+            // RouteNotFoundException, attrapee par le catch de la methode, qui
+            // journalisait « Erreur notification nouveau paiement » et
+            // n'envoyait RIEN. Les responsables n'etaient pas prevenus des
+            // paiements a valider, et seul le journal le disait — trois fois
+            // pour la seule journee du 31/08 sur ISLG.
+            $link = route('esbtp.paiements.show', $paiement->id);
 
             foreach ($superAdmins as $admin) {
                 if (!$createdBy || $admin->id !== $createdBy->id) {
@@ -2177,7 +2184,14 @@ class NotificationService
             $message .= "<i class='fas fa-calendar'></i> Date soumission: " . $paiement->created_at->format('d/m/Y') . "\n";
             $message .= "<i class='fas fa-hand-point-right'></i> Action requise: Valider ou rejeter ce paiement.";
 
-            $link = route('paiements.show', $paiement->id);
+            // « esbtp.paiements.show » : le groupe de routes est prefixe, et
+            // « paiements.show » n'existe pas. route() levait donc une
+            // RouteNotFoundException, attrapee par le catch de la methode, qui
+            // journalisait « Erreur notification nouveau paiement » et
+            // n'envoyait RIEN. Les responsables n'etaient pas prevenus des
+            // paiements a valider, et seul le journal le disait — trois fois
+            // pour la seule journee du 31/08 sur ISLG.
+            $link = route('esbtp.paiements.show', $paiement->id);
 
             foreach ($superAdmins as $admin) {
                 $this->createNotification($admin, $title, $message, 'warning', $link, null);
