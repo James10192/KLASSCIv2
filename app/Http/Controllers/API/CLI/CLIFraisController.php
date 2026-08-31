@@ -4,6 +4,7 @@ namespace App\Http\Controllers\API\CLI;
 
 use App\Http\Controllers\API\BaseApiController;
 use App\Services\Frais\CorrectionMontantSouscriptions;
+use App\Services\Frais\RepartitionTropPercu;
 use App\Services\Frais\SouscriptionsObligatoiresManquantes;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -107,6 +108,47 @@ class CLIFraisController extends BaseApiController
             $resultat['applique']
                 ? sprintf('%d souscription(s) corrigee(s).', $resultat['total'])
                 : sprintf('%d souscription(s) concernee(s). Rien n\'a ete ecrit.', $resultat['total'])
+        );
+    }
+
+    /**
+     * Repartit les versements deja encaisses sur les frais qu'ils couvrent.
+     *
+     * Ne cree AUCUN paiement : dit seulement ou l'argent est alle. Un versement
+     * qui depassait le frais designe voyait son excedent ecrete par le calcul du
+     * restant — ni impute, ni signale. Cet endpoint le rend visible.
+     *
+     * Montre par defaut, n'ecrit que sur `apply`.
+     */
+    public function repartirTropPercu(Request $request, RepartitionTropPercu $repartition): JsonResponse
+    {
+        if (! $request->user()->tokenCan('cli:admin')) {
+            return $this->errorResponse('Token missing cli:admin ability', [], 403);
+        }
+
+        $valide = $request->validate([
+            'inscription_id' => ['nullable', 'integer'],
+            'annee_id' => ['nullable', 'integer'],
+            'apply' => ['nullable', 'boolean'],
+        ]);
+
+        $resultat = $repartition->executer(
+            (bool) ($valide['apply'] ?? false),
+            $valide['inscription_id'] ?? null,
+            $valide['annee_id'] ?? null,
+        );
+
+        return $this->successResponse(
+            $resultat,
+            $resultat['applique']
+                ? sprintf(
+                    '%d allocation(s) ecrite(s) sur %d versement(s), %d inscription(s).',
+                    $resultat['allocations'], $resultat['paiements'], $resultat['inscriptions']
+                )
+                : sprintf(
+                    "%d versement(s) a repartir sur %d inscription(s) — %d allocation(s). Rien n'a ete ecrit.",
+                    $resultat['paiements'], $resultat['inscriptions'], $resultat['allocations']
+                )
         );
     }
 }
