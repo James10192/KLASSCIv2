@@ -189,14 +189,32 @@ class ESBTPFraisConfiguration extends Model
         return $query;
     }
 
-    public static function getApplicableConfiguration($categoryId, $filiereId, $niveauId, $anneeId = null)
+    /**
+     * La configuration qui s'applique a CETTE inscription.
+     *
+     * Elle remplace getApplicableConfiguration(), qui forcait
+     * `'systeme' => SYSTEME_BTS` et ne recevait jamais de parcours_id. Le modele
+     * sait pourtant distinguer les deux systemes — a l'enregistrement il ecrit
+     * `systeme_academique = parcours_id ? LMD : BTS`, quelques lignes plus haut.
+     * La recherche, elle, ne demandait que du BTS.
+     *
+     * Une inscription LMD ne trouvait donc JAMAIS sa configuration. Elle
+     * retombait sur `default_amount`, et le caissier encaissait un montant que
+     * personne n'avait configure pour cet etudiant — sans une seule ligne
+     * d'erreur, sur un tenant qui avait pourtant fait le travail de
+     * configuration.
+     *
+     * On delegue desormais a FraisScopeResolver, qui derive le systeme de la
+     * classe de l'inscription et emporte le parcours quand il y en a un. Ce
+     * resolveur existait deja et faisait le travail correctement : c'est cette
+     * methode qui le contournait.
+     */
+    public static function getApplicableForCategoryAndInscription($categoryId, ESBTPInscription $inscription): ?self
     {
-        return static::getApplicableForScope($categoryId, [
-            'systeme' => FraisScopeResolver::SYSTEME_BTS,
-            'filiere_id' => $filiereId,
-            'niveau_id' => $niveauId,
-            'annee_universitaire_id' => $anneeId,
-        ]);
+        return static::getApplicableForScope(
+            $categoryId,
+            app(FraisScopeResolver::class)->resolveForInscription($inscription)
+        );
     }
 
     public static function getApplicableForClass(ESBTPClasse $classe)

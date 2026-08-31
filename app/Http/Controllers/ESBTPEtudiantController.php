@@ -2199,12 +2199,7 @@ class ESBTPEtudiantController extends Controller
             $affectationStatus = $inscriptionActive->affectation_status ?? \App\Models\ESBTPInscription::DEFAULT_AFFECTATION_STATUS;
 
             foreach ($allCategories as $category) {
-                $configuration = \App\Models\ESBTPFraisConfiguration::getApplicableConfiguration(
-                    $category->id,
-                    $inscriptionActive->filiere_id,
-                    $inscriptionActive->niveau_id,
-                    $inscriptionActive->annee_universitaire_id
-                );
+                $configuration = \App\Models\ESBTPFraisConfiguration::getApplicableForCategoryAndInscription($category->id, $inscriptionActive);
 
                 if ($configuration && method_exists($configuration, 'getMontantByStatus')) {
                     $montant = (float) $configuration->getMontantByStatus($affectationStatus);
