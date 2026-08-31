@@ -2057,11 +2057,34 @@ class ESBTPEtudiantController extends Controller
             ]);
         }
 
+        // On cherche MOT A MOT, pas sur une chaine contigue.
+        //
+        // « YAO PARFAIT » ne rendait rien pour YAO FRANCK PARFAIT KONE : le LIKE
+        // exigeait les deux mots colles, et « FRANCK » se trouve entre les deux.
+        // Or la caissiere tape ce dont elle se souvient, pas l'etat civil dans
+        // l'ordre. Chaque mot doit donc matcher QUELQUE PART, et tous doivent
+        // matcher — ce qui reste selectif tout en acceptant n'importe quel ordre.
+        //
+        // On interroge aussi `nom` et `prenoms` de l'etudiant, et plus seulement
+        // `users.name` : un etudiant sans compte utilisateur etait introuvable.
+        //
+        // Le tout dans une SEULE closure : le `orWhere` a plat qui se trouvait
+        // ici s'echappait du groupe et neutralisait les conditions posees avant,
+        // dont le filtre de suppression douce — un etudiant supprime pouvait
+        // ressortir par son matricule.
+        $termes = preg_split('/\s+/', trim($query), -1, PREG_SPLIT_NO_EMPTY);
+
         $etudiants = ESBTPEtudiant::with('user')
-            ->whereHas('user', function($q) use ($query) {
-                $q->where('name', 'like', "%{$query}%");
+            ->where(function ($groupe) use ($termes) {
+                foreach ($termes as $terme) {
+                    $groupe->where(function ($champ) use ($terme) {
+                        $champ->where('nom', 'like', "%{$terme}%")
+                            ->orWhere('prenoms', 'like', "%{$terme}%")
+                            ->orWhere('matricule', 'like', "%{$terme}%")
+                            ->orWhereHas('user', fn ($u) => $u->where('name', 'like', "%{$terme}%"));
+                    });
+                }
             })
-            ->orWhere('matricule', 'like', "%{$query}%")
             ->orderBy('matricule')
             ->skip(($page - 1) * $perPage)
             ->take($perPage + 1) // +1 pour savoir s'il y a plus de résultats
@@ -2075,7 +2098,9 @@ class ESBTPEtudiantController extends Controller
         $results = $etudiants->map(function($etudiant) {
             return [
                 'id' => $etudiant->id,
-                'text' => "{$etudiant->matricule} - {$etudiant->user->name}"
+                // `user` peut etre absent — un etudiant existe sans compte.
+                'text' => trim($etudiant->matricule.' - '.($etudiant->user->name
+                    ?? trim(($etudiant->prenoms ?? '').' '.($etudiant->nom ?? '')))),
             ];
         });
 
