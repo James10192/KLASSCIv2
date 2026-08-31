@@ -385,7 +385,11 @@ class LMSDataController extends BaseApiController
                 ] : null,
                 'lms_profile' => [
                     'photo_url' => $etudiant->user->profile_photo_url ?? null,
-                    'last_login' => $etudiant->user->last_login_at,
+                    // Les deux lignes voisines portent un `?? null` ; celle-ci ne
+                    // l'avait pas. Un etudiant sans compte utilisateur — il en
+                    // existe, l'inscription precede la creation du compte — faisait
+                    // donc planter tout l'endpoint, pas seulement sa propre ligne.
+                    'last_login' => $etudiant->user?->last_login_at,
                     'is_active' => $etudiant->user->is_active ?? false
                 ]
             ];

@@ -176,7 +176,7 @@ class ESBTPMatiere extends Model implements Auditable
      */
     public function getCoefficientForClasse($classeId)
     {
-        $pivot = $this->classes()->where('esbtp_classe.id', $classeId)->first()->pivot ?? null;
+        $pivot = $this->classes()->where('esbtp_classes.id', $classeId)->first()->pivot ?? null;
         return $pivot ? $pivot->coefficient : $this->coefficient;
     }
 
@@ -188,7 +188,7 @@ class ESBTPMatiere extends Model implements Auditable
      */
     public function getTotalHeuresForClasse($classeId)
     {
-        $pivot = $this->classes()->where('esbtp_classe.id', $classeId)->first()->pivot ?? null;
+        $pivot = $this->classes()->where('esbtp_classes.id', $classeId)->first()->pivot ?? null;
         return $pivot ? $pivot->total_heures : $this->heures_cm + $this->heures_td + $this->heures_tp + $this->heures_stage + $this->heures_perso;
     }
 
