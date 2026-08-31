@@ -1808,20 +1808,35 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                                 /* Deux bascules, deux exigences de place — elles ne peuvent pas
                                  * partager le meme seuil.
                                  *
-                                 * Le chrome autour du contenu est constant sur desktop :
-                                 *   sidebar 280px + marges de page 2x32px + marges de carte 2x24px
-                                 *   = 392px que la fenetre perd avant d'arriver au tableau.
-                                 * (`.nextadmin-sidebar` est toujours a 280px : la classe `collapsed`
-                                 *  existe dans nextadmin.css mais rien dans le code ne la pose.)
+                                 * La fenetre n'est pas la contrainte. Le tableau financier vit
+                                 * dans une carte qui est elle-meme dans une colonne `col-lg-8` :
+                                 * fenetre moins la sidebar (280px), les marges de page, celles de
+                                 * `.p-lg`, les gouttieres, puis 8/12 du reste, puis les marges de
+                                 * carte. Mesure sur presentation (place reelle offerte au tableau,
+                                 * `.is-card-body` hors padding) :
                                  *
-                                 * - Empiler les colonnes : deux panneaux cote a cote tiennent des
-                                 *   1200px de carte, soit ~1600px de fenetre. Le seuil historique
-                                 *   est donc juste, on le garde.
+                                 *   fenetre : 1500   1599 | 1601    1700   1920   2100   2331   2560
+                                 *   place   : 1002   1101 |  711     777    923   1043   1197   1350
+                                 *
+                                 * Le decrochage entre 1599 et 1601 n'est pas une erreur de mesure :
+                                 * c'est la bascule d'empilement ci-dessous. Sous 1600 la colonne
+                                 * occupe 100% de la ligne ; au-dela elle retombe a 8/12 et perd
+                                 * 390px d'un coup. L'ancien seuil unique montrait donc le tableau
+                                 * PILE au moment ou la place se reduisait — d'ou la derniere
+                                 * colonne coupee entre 1600 et ~1900.
+                                 *
+                                 * - Empiler les colonnes : reste a 1600px. Deux panneaux cote a
+                                 *   cote tiennent a cette largeur, le seuil etait juste pour CETTE
+                                 *   bascule.
                                  * - Tableau financier -> cartes : ses sept colonnes (libelle +
                                  *   description, trois montants, deux badges, groupe de boutons)
-                                 *   demandent ~1500px de carte, soit ~1900px de fenetre. A 1601px
-                                 *   la carte ne fait que 1209px : le tableau s'affichait alors
-                                 *   qu'il ne tenait pas, et la derniere colonne se faisait couper.
+                                 *   demandent ~1200px. D'apres la mesure, c'est atteint a 2331px
+                                 *   de fenetre. Sur un ecran courant (1366, 1920) le tableau ne
+                                 *   tient donc jamais : on sert les cartes, qui portent la meme
+                                 *   information et deux actions de plus (Transferer, Valider).
+                                 *
+                                 * Si la colonne repasse un jour en pleine largeur, remesurer la
+                                 * ligne ci-dessus et redescendre le seuil — ne pas le redeviner.
                                  */
                                 @media (max-width: 1600px) {
                                     /* FORCER TOUTES les colonnes à être empilées (1 colonne pleine largeur) */
@@ -1943,12 +1958,14 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                                     background-color: #f8fafc;
                                 }
 
-                                /* Tableau financier : cartes en dessous, tableau au-dessus. */
-                                @media (max-width: 1900px) {
+                                /* Tableau financier : cartes en dessous, tableau au-dessus.
+                                 * 2330px = la largeur mesuree a laquelle la carte offre enfin les
+                                 * ~1200px que reclament les sept colonnes (cf. tableau ci-dessus). */
+                                @media (max-width: 2330px) {
                                     .financial-table-desktop { display: none !important; }
                                     .financial-cards-responsive { display: block !important; }
                                 }
-                                @media (min-width: 1901px) {
+                                @media (min-width: 2331px) {
                                     .financial-table-desktop { display: block !important; }
                                     .financial-cards-responsive { display: none !important; }
                                 }
