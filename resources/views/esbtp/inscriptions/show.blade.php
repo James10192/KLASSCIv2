@@ -1805,22 +1805,30 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                             </div>
 
                             <style>
-                                /* Breakpoint personnalisé à 1600px pour TOUT le responsive */
+                                /* Deux bascules, deux exigences de place — elles ne peuvent pas
+                                 * partager le meme seuil.
+                                 *
+                                 * Le chrome autour du contenu est constant sur desktop :
+                                 *   sidebar 280px + marges de page 2x32px + marges de carte 2x24px
+                                 *   = 392px que la fenetre perd avant d'arriver au tableau.
+                                 * (`.nextadmin-sidebar` est toujours a 280px : la classe `collapsed`
+                                 *  existe dans nextadmin.css mais rien dans le code ne la pose.)
+                                 *
+                                 * - Empiler les colonnes : deux panneaux cote a cote tiennent des
+                                 *   1200px de carte, soit ~1600px de fenetre. Le seuil historique
+                                 *   est donc juste, on le garde.
+                                 * - Tableau financier -> cartes : ses sept colonnes (libelle +
+                                 *   description, trois montants, deux badges, groupe de boutons)
+                                 *   demandent ~1500px de carte, soit ~1900px de fenetre. A 1601px
+                                 *   la carte ne fait que 1209px : le tableau s'affichait alors
+                                 *   qu'il ne tenait pas, et la derniere colonne se faisait couper.
+                                 */
                                 @media (max-width: 1600px) {
-                                    /* Cards financières */
-                                    .financial-table-desktop { display: none !important; }
-                                    .financial-cards-responsive { display: block !important; }
-
-                                    /* Tables → Listes */
-                                    .table-desktop-1600 { display: none !important; }
-                                    .list-mobile-1600 { display: block !important; }
-
                                     /* FORCER TOUTES les colonnes à être empilées (1 colonne pleine largeur) */
                                     .row > div[class*="col-"],
                                     .row > .col-md-6,
                                     .row > .col-lg-6,
                                     .row > .col-xl-6,
-                                    .row > .col-1600-6,
                                     div[class*="col-md-6"],
                                     div[class*="col-lg-6"],
                                     div[class*="col-xl-6"] {
@@ -1897,24 +1905,32 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                                         margin-bottom: 24px !important;
                                     }
                                 }
-                                /* La colonne Actions reste atteignable, quelle que soit la place.
+                                /* Aucun tableau de cette page ne pousse la page elle-meme : il
+                                 * defile dans son propre conteneur. `min-width` empeche les six
+                                 * colonnes des tableaux de paiements et de reliquats d'etre
+                                 * comprimees jusqu'a l'illisible — sous ce seuil on prefere un
+                                 * defilement horizontal local a un empilement de mots coupes.
                                  *
-                                 * La bascule en cartes se declenche sur la largeur de FENETRE
-                                 * (1600px). Or ce qui contraint ce tableau, c'est la largeur de
-                                 * la CARTE : fenetre moins la sidebar. Sur un ecran large, la
-                                 * fenetre depasse 1600 — le tableau est donc affiche — mais la
-                                 * carte, elle, est trop etroite et coupe la derniere colonne.
-                                 *
-                                 * On ne mesure pas la carte en CSS sans `container-type`, qui
-                                 * impliquerait `contain: layout` et creerait un bloc conteneur
-                                 * pour les `position: fixed` — cassant les dropdowns d'action de
-                                 * cette carte meme (cf. rule universal-dropdowns, piege #2).
-                                 *
-                                 * On laisse donc le tableau defiler et on epingle sa derniere
-                                 * colonne au bord droit : les actions restent visibles et
-                                 * cliquables sans jamais etre coupees.
+                                 * On ne mesure pas la carte en CSS : `container-type` impliquerait
+                                 * `contain: layout`, qui creerait un bloc conteneur pour les
+                                 * `position: fixed` et casserait les dropdowns de la page
+                                 * (cf. rule universal-dropdowns, piege critique #2).
                                  */
-                                .financial-table-desktop { overflow-x: auto; }
+                                .is-card .table-responsive {
+                                    overflow-x: auto;
+                                    max-width: 100%;
+                                }
+                                .is-card .table-responsive > table {
+                                    min-width: 760px;
+                                }
+
+                                /* Filet de securite sur la derniere colonne du tableau financier.
+                                 * Le seuil ci-dessus est calcule sur une estimation de largeur ;
+                                 * un libelle de frais inhabituellement long chez un tenant peut
+                                 * encore deborder. La colonne Actions reste alors epinglee au bord
+                                 * droit : les boutons restent visibles et cliquables, le reste du
+                                 * tableau defile dessous. */
+                                .is-card .table-responsive.financial-table-desktop > table { min-width: 1100px; }
                                 .financial-table-desktop > table > thead > tr > th:last-child,
                                 .financial-table-desktop > table > tbody > tr > td:last-child {
                                     position: sticky;
@@ -1927,21 +1943,17 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                                     background-color: #f8fafc;
                                 }
 
-                                @media (min-width: 1601px) {
-                                    /* Tables financières */
+                                /* Tableau financier : cartes en dessous, tableau au-dessus. */
+                                @media (max-width: 1900px) {
+                                    .financial-table-desktop { display: none !important; }
+                                    .financial-cards-responsive { display: block !important; }
+                                }
+                                @media (min-width: 1901px) {
                                     .financial-table-desktop { display: block !important; }
                                     .financial-cards-responsive { display: none !important; }
+                                }
 
-                                    /* Tables autres sections */
-                                    .table-desktop-1600 { display: table !important; }
-                                    .list-mobile-1600 { display: none !important; }
-
-                                    /* 2 colonnes côte à côte (50% de largeur chacune) */
-                                    .col-1600-6 {
-                                        flex: 0 0 50% !important;
-                                        max-width: 50% !important;
-                                    }
-
+                                @media (min-width: 1601px) {
                                     /* Workflow étapes : mode horizontal (desktop) */
                                     .workflow-steps {
                                         display: block !important;
