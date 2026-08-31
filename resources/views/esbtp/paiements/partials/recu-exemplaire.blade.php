@@ -149,6 +149,11 @@
                 <span class="fee-note">déposé</span>
             @elseif(($ligne['restant'] ?? 0) > 0)
                 <span class="fee-note">{{ number_format($ligne['restant'], 0, ',', ' ') }}</span>
+            @elseif(!empty($ligne['non_configure']))
+                {{-- Ni coche ni montant : sans ce mot, le caissier lit une ligne
+                     vide et ne peut pas distinguer « rien a payer » de « montant
+                     pas encore defini par l'etablissement ». --}}
+                <span class="fee-note">à définir</span>
             @endif
         </td>
         @endforeach
@@ -183,7 +188,13 @@
         </td>
         <td>
             <div class="sign-title">Signature et Cachet</div>
-            <div class="sign-line">{{ $paiement->validatedBy ? $paiement->validatedBy->name : 'Le Comptable' }}</div>
+            {{-- Signataire = celui qui a GENERE le recu, donc celui qui a encaisse.
+                 Le validateur signait auparavant un document qu'il n'avait pas
+                 emis : le cachet engage la personne qui a recu l'argent et remis
+                 le papier, pas celle qui a coche la validation ensuite — souvent
+                 un autre poste, parfois un autre jour. C'est aussi le nom deja
+                 imprime sur « Encaisse par ». --}}
+            <div class="sign-line">{{ $paiement->creator->name ?? ($paiement->validatedBy->name ?? 'Le Comptable') }}</div>
         </td>
     </tr>
 </table>

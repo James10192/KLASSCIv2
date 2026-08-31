@@ -714,7 +714,10 @@ class ESBTPPaiementController extends Controller
                 'name' => $sub->fraisCategory->name ?? 'N/A',
                 'restant' => $restant,
                 'in_kind' => $inKind,
-                'checked' => $inKind || $restant <= 0,
+                // La regle de quittance vit sur la souscription : c'est elle qui
+                // sait ce qu'elle reclame, et elle s'y teste sans base.
+                'non_configure' => $sub->montantNonDefini(),
+                'checked' => $sub->estSolde($paye),
                 'current' => (int) $paiement->frais_category_id === (int) $sub->frais_category_id,
             ];
         })->values();

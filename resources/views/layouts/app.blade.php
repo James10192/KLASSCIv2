@@ -3253,6 +3253,44 @@
     <!-- jQuery -->
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 
+    {{-- ═══ Règle universelle KLASSCI : la molette ne modifie jamais un montant ═══
+
+         Un <input type="number"> focalisé s'incrémente et se décrémente quand on
+         fait défiler la page au-dessus de lui. C'est un comportement natif du
+         navigateur, silencieux, et sans annulation : le champ affiche une valeur
+         que personne n'a tapée, et rien ne la distingue d'une saisie.
+
+         Sur une application de scolarité, ce champ porte des montants. Un frais
+         saisi à 3 000 F et neuf crans de molette plus tard enregistré à 2 991 F
+         ne se voit qu'au moment où une caissière encaisse — et à ce moment-là,
+         c'est l'école qui perd la différence sur chaque élève.
+
+         On rend la main au navigateur en retirant le focus plutôt qu'en bloquant
+         l'événement : la page continue de défiler normalement, seule la valeur
+         cesse de bouger. Un preventDefault() exigerait un écouteur non passif et
+         saccaderait le défilement de toutes les pages du produit.
+
+         Posé sur le document en capture pour couvrir aussi les champs injectés
+         après coup — modals AJAX, lignes de tranches ajoutées à la volée. --}}
+    <script>
+    (function () {
+        document.addEventListener('wheel', function (ev) {
+            var actif = document.activeElement;
+
+            if (!actif || actif.type !== 'number') {
+                return;
+            }
+
+            // Uniquement si la molette tourne AU-DESSUS du champ focalise :
+            // defiler ailleurs dans la page ne doit pas lui retirer le focus,
+            // sinon on interrompt quelqu'un en pleine saisie.
+            if (actif === ev.target || actif.contains(ev.target)) {
+                actif.blur();
+            }
+        }, { passive: true, capture: true });
+    })();
+    </script>
+
     {{-- ═══ Règle universelle KLASSCI : auto-attach Popper config sur tous les dropdowns
          AVANT le chargement de Bootstrap pour que la conf soit lue à l'instanciation.
          - data-bs-strategy="fixed" → Popper position:fixed → ignore overflow:hidden parents
