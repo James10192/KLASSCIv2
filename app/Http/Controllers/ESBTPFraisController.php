@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\ESBTPFraisCategory;
 // use App\Models\ESBTPFraisRule; // Supprimé - remplacé par ESBTPFraisConfiguration
 use App\Models\ESBTPFraisConfiguration;
+use App\Models\ESBTPFraisSubscription;
 use App\Models\ESBTPFraisOption;
 // use App\Models\ESBTPFraisVariant; // Supprimé - remplacé par ESBTPFraisOption
 use App\Models\ESBTPOptionAssignment;
@@ -1381,9 +1382,29 @@ class ESBTPFraisController extends Controller
                 return response()->json(['error' => 'Inscription non trouvée'], 404);
             }
 
+            // Les souscriptions de CETTE inscription : la source de verite du
+            // montant du.
+            //
+            // C'est ce que fait deja inscriptions.show, et c'est ce que cet
+            // ecran ne faisait pas. Repartir de la CONFIGURATION oblige a
+            // redecouvrir le perimetre de l'etudiant — systeme academique,
+            // filiere ou parcours, annee — et chaque approximation dans cette
+            // recherche produit un montant faux : un M1 s'est vu proposer
+            // 525 000 F au lieu de 1 400 000 parce que sa classe est marquee LMD
+            // sans porter de parcours.
+            //
+            // La souscription, elle, porte le montant reellement assigne a cet
+            // etudiant au moment de son inscription — variante choisie comprise,
+            // et depot en nature compris via chargedAmount(). Il n'y a rien a
+            // redecouvrir.
+            $souscriptions = ESBTPFraisSubscription::where('inscription_id', $inscription->id)
+                ->where('is_active', true)
+                ->get()
+                ->keyBy('frais_category_id');
+
             // Utiliser le cache pour les catégories
             $categories = $this->fraisCacheService->getCategories()
-                ->map(function ($category) use ($inscription) {
+                ->map(function ($category) use ($inscription, $souscriptions) {
                     // Chercher une configuration pour cette catégorie et cette inscription
                     $configuration = ESBTPFraisConfiguration::getApplicableConfiguration(
                         $category->id,
@@ -1392,18 +1413,27 @@ class ESBTPFraisController extends Controller
                         $inscription->annee_universitaire_id
                     );
 
-                    // Calcul robuste sans dépendance legacy (ESBTPFraisRule supprimé).
+                    // Souscription d'abord, configuration ensuite, defaut en
+                    // dernier — le meme ordre que inscriptions.show.
                     $affectationStatus = $inscription->affectation_status ?? \App\Models\ESBTPInscription::DEFAULT_AFFECTATION_STATUS;
-                    if ($configuration && method_exists($configuration, 'getMontantByStatus')) {
-                        $montant = (float) $configuration->getMontantByStatus($affectationStatus);
+                    $souscription = $souscriptions->get($category->id);
+
+                    if ($souscription) {
+                        $montant = (float) $souscription->chargedAmount();
                     } elseif ($configuration) {
-                        $montant = (float) ($configuration->amount ?? 0);
+                        // getMontantByStatus retombe deja sur $this->amount dans
+                        // chacun de ses cas : elle couvre l'absence de variante
+                        // par statut, inutile de la doubler.
+                        $montant = (float) $configuration->getMontantByStatus($affectationStatus);
                     } else {
                         $montant = (float) ($category->default_amount ?? 0);
                     }
 
-                    // Fallback de sécurité si configuration incomplète.
-                    if ($montant <= 0) {
+                    // Repli conserve tant que la distinction « exempte » / « pas
+                    // encore configure » n'existe pas en base : aujourd'hui les
+                    // deux s'ecrivent zero, et le retirer a rendu la scolarite
+                    // gratuite pour un tiers des etudiants d'Abidjan.
+                    if ($montant <= 0 && ! $souscription) {
                         $montant = (float) ($category->default_amount ?? 0);
                     }
 
@@ -1420,7 +1450,7 @@ class ESBTPFraisController extends Controller
                         'installments_allowed' => $configuration ? $configuration->allowsInstallments() : false,
                         'max_installments' => $configuration ? $configuration->max_installments : 1,
                         'payment_deadline_days' => $configuration ? $configuration->payment_deadline_days : $category->payment_deadline_days,
-                        'configured' => $configuration ? true : false,
+                        'configured' => ($souscription || $configuration) ? true : false,
                         'options' => $configuration ? $configuration->options()->active()->get()->map(function($option) {
                             return [
                                 'id' => $option->id,
