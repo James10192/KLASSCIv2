@@ -10,6 +10,7 @@ use OwenIt\Auditing\Contracts\Auditable;
 
 class ESBTPFraisSubscription extends Model implements Auditable
 {
+    use \Illuminate\Database\Eloquent\Factories\HasFactory;
     use \OwenIt\Auditing\Auditable;
 
     protected $table = 'esbtp_frais_subscriptions';

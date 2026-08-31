@@ -93,6 +93,8 @@ class RepartitionTropPercu
                     ['montant' => $a['montant']]
                 );
             }
+
+            $this->remettreLesAvoirsEnPhase($idsInscriptions);
         });
 
         Log::warning('[frais] repartition de versements sur plusieurs frais', [
@@ -107,12 +109,40 @@ class RepartitionTropPercu
     }
 
     /**
+     * Recalque la repartition des versements sur les avoirs qui les annulent.
+     *
+     * Un avoir annule un versement LA OU CE VERSEMENT EST ALLE. Comme la
+     * repartition vient de deplacer cet argent, les avoirs deja emis
+     * annuleraient sinon sur la mauvaise categorie — et le `max(0, du - paye)`
+     * du calcul par frais avalerait l'excedent au lieu de le reporter.
+     *
+     * On passe sur TOUS les versements du perimetre, pas seulement ceux qu'on
+     * vient d'ecrire : en reinitialisation, certains perdent leurs allocations
+     * sans en recevoir de nouvelles, et leurs avoirs doivent redevenir nus.
+     * L'ecriture etant entierement derivee du parent, la repasse est sans effet
+     * la ou rien n'a bouge.
+     *
+     * @param  array<int, int>  $inscriptionIds
+     */
+    private function remettreLesAvoirsEnPhase(array $inscriptionIds): void
+    {
+        $reflet = app(RefletAllocationsSurAvoirs::class);
+
+        ESBTPPaiement::query()
+            ->whereIn('inscription_id', $inscriptionIds)
+            ->encaissements()
+            ->whereHas('childAvoirs')
+            ->each(fn (ESBTPPaiement $parent) => $reflet->refleterSurLesAvoirsDe($parent));
+    }
+
+    /**
      * Les allocations posees sur le perimetre traite.
      *
-     * Exactement l'ensemble que ce service sait produire — les versements
-     * VALIDES et ENCAISSES des inscriptions retenues. On n'efface jamais une
-     * allocation portee par un avoir ou un paiement rejete : ce service ne les
-     * a pas ecrites, il ne saurait pas les reecrire.
+     * Exactement l'ensemble que ce service calcule — les versements VALIDES et
+     * ENCAISSES des inscriptions retenues, hors reliquat. Les allocations d'un
+     * avoir n'en font pas partie : elles ne se calculent pas, elles se derivent
+     * du versement annule, et remettreLesAvoirsEnPhase() s'en charge une fois
+     * la repartition ecrite.
      *
      * @param  array<int, int>  $inscriptionIds
      */
