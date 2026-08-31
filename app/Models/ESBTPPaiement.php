@@ -254,6 +254,29 @@ class ESBTPPaiement extends Model implements Auditable
     }
 
     /**
+     * Qui signe le recu.
+     *
+     * Celui qui l'a EMIS, donc celui qui a encaisse. Le cachet engage la
+     * personne qui a recu l'argent et remis le papier, pas celle qui a coche la
+     * validation ensuite — souvent un autre poste, parfois un autre jour. C'est
+     * le meme nom que « Encaisse par », et c'est voulu.
+     *
+     * Ici plutot que dans les gabarits : la meme expression y etait copiee
+     * trois fois — recu, apercu, avoir. Trois copies d'une regle qui doit rester
+     * identique, dont la divergence ne se verrait sur aucun test, et seulement
+     * sur un papier imprime.
+     *
+     * Le repli suit l'ordre de ce qu'on sait : l'emetteur, sinon le validateur
+     * pour les recus anciens qui n'ont pas de createur, sinon la fonction.
+     */
+    public function getSignataireAttribute(): string
+    {
+        return $this->creator->name
+            ?? $this->validatedBy->name
+            ?? 'Le Comptable';
+    }
+
+    /**
      * Utilisateur qui a mis à jour l'entrée.
      *
      * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
