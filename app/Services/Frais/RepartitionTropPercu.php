@@ -27,11 +27,26 @@ use Illuminate\Support\Facades\Log;
  * Quand tous les frais sont soldes et qu'il reste de l'argent, le surplus
  * demeure sur la categorie d'origine : c'est une avance, elle appartient a
  * l'etudiant et n'a pas a etre repartie sur des dettes qui n'existent pas.
+ *
+ * OUTIL DE REPRISE, PLUS LE MECANISME COURANT.
+ *
+ * Depuis que {@see RepartitionDuVersement} ecrit les allocations AU MOMENT DE
+ * L'ENCAISSEMENT, ce service ne sert plus qu'a rattraper l'historique : les
+ * versements enregistres avant, qui n'en portent pas. Un versement encaisse
+ * aujourd'hui arrive ici deja reparti, et le filtre `whereDoesntHave`
+ * l'ignore.
+ *
+ * Le garder est deliberé : la reprise reste a faire sur chaque tenant, et une
+ * ecole qui reordonne ses categories de frais peut vouloir rejouer l'imputation
+ * du passe (`reset`). Il se lance a la main, ponctuellement — il n'a jamais eu
+ * de declencheur, et n'en a plus besoin.
  */
 class RepartitionTropPercu
 {
-    public function __construct(private readonly RefletAllocationsSurAvoirs $reflet)
-    {
+    public function __construct(
+        private readonly RefletAllocationsSurAvoirs $reflet,
+        private readonly ServirLesFrais $service
+    ) {
     }
 
     /**
@@ -337,34 +352,16 @@ class RepartitionTropPercu
             ? (int) $paiement->frais_category_id
             : null;
 
-        $allocations = [];
+        // La regle de service — frais designe d'abord, puis l'ordre de l'ecole,
+        // jamais au-dela de ce qu'un frais reclame — vit dans ServirLesFrais.
+        // Elle est la MEME que celle appliquee a l'encaissement
+        // (RepartitionDuVersement) : deux exemplaires finiraient par diverger, et
+        // la meme saisie produirait deux ecritures selon la porte d'entree.
+        $servi = $this->service->servir($aRepartir, $reste, $categorieDuPaiement);
 
-        // Le frais que le caissier a designe passe en premier : c'est
-        // l'intention explicite du versement, elle prime sur l'ordre d'echeance.
-        $ordre = array_keys($reste);
-
-        if ($categorieDuPaiement !== null && isset($reste[$categorieDuPaiement])) {
-            $ordre = array_merge(
-                [$categorieDuPaiement],
-                array_values(array_diff($ordre, [$categorieDuPaiement]))
-            );
-        }
-
-        foreach ($ordre as $categoryId) {
-            if ($aRepartir <= 0.009) {
-                break;
-            }
-
-            $part = min($aRepartir, $reste[$categoryId]);
-
-            if ($part <= 0.009) {
-                continue;
-            }
-
-            $allocations[$categoryId] = round(($allocations[$categoryId] ?? 0) + $part, 2);
-            $reste[$categoryId] = round($reste[$categoryId] - $part, 2);
-            $aRepartir = round($aRepartir - $part, 2);
-        }
+        $allocations = $servi['allocations'];
+        $reste = $servi['reste'];
+        $aRepartir = $servi['reliquat'];
 
         // Tous les frais soldes et il reste de l'argent : c'est une avance. Elle
         // demeure sur la categorie d'origine, ou elle se trouve deja.

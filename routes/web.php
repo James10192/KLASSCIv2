@@ -1120,6 +1120,13 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             Route::middleware('permission:paiements.create|paiements.create.mobile_money')->group(function () {
                 Route::get('/paiements/create', [App\Http\Controllers\ESBTPPaiementController::class, 'create'])->name('paiements.create');
                 Route::post('/paiements', [App\Http\Controllers\ESBTPPaiementController::class, 'store'])->name('paiements.store');
+                // L'ecran de caisse interroge la regle de repartition au lieu de
+                // la reimplementer : il montre ou l'argent ira avant d'encaisser.
+                // Lecture seule, mais frappee a chaque frappe du montant — d'ou
+                // un throttle genereux.
+                Route::post('/paiements/repartition/apercu', [App\Http\Controllers\ESBTPPaiementController::class, 'apercuRepartition'])
+                    ->middleware('throttle:120,1')
+                    ->name('paiements.repartition.apercu');
                 Route::post('/reliquats/pay', [App\Http\Controllers\ESBTPPaiementController::class, 'payReliquat'])->name('reliquats.pay');
             });
 

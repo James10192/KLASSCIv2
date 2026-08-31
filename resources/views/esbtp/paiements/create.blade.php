@@ -260,6 +260,101 @@
         flex-wrap: wrap;
     }
 
+    /* Repartition du versement — pc-rep-* */
+    .pc-rep {
+        margin-top: 1.25rem;
+        padding: 1rem 1.15rem 1.1rem;
+        border: 1px solid #e2e8f0;
+        border-radius: 14px;
+        background: #f8fafc;
+    }
+
+    .pc-rep-head {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 1rem;
+        flex-wrap: wrap;
+        margin-bottom: 0.75rem;
+    }
+
+    .pc-rep-title {
+        font-size: 0.92rem;
+        font-weight: 700;
+        color: #1e293b;
+    }
+
+    .pc-rep-sub {
+        font-size: 0.78rem;
+        color: #64748b;
+        margin-top: 0.15rem;
+    }
+
+    .pc-rep-toggle {
+        border: 1px solid #c7d4e5;
+        background: #fff;
+        color: #0453cb;
+        border-radius: 10px;
+        padding: 0.42rem 0.8rem;
+        font-size: 0.78rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.2s ease, border-color 0.2s ease;
+    }
+
+    .pc-rep-toggle:hover { background: rgba(4, 83, 203, 0.06); border-color: #0453cb; }
+
+    .pc-rep-ligne {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        padding: 0.55rem 0.7rem;
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+    }
+
+    .pc-rep-ligne + .pc-rep-ligne { margin-top: 0.4rem; }
+
+    .pc-rep-nom { font-size: 0.85rem; font-weight: 600; color: #1e293b; }
+
+    .pc-rep-reste { font-size: 0.72rem; color: #64748b; margin-top: 0.1rem; }
+
+    .pc-rep-montant { font-size: 0.88rem; font-weight: 700; color: #0453cb; white-space: nowrap; }
+
+    .pc-rep-input {
+        width: 150px;
+        text-align: right;
+        border: 1px solid #d9e2ef;
+        border-radius: 8px;
+        padding: 0.35rem 0.55rem;
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #1e293b;
+    }
+
+    .pc-rep-total {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.8rem;
+        font-weight: 700;
+        color: #334155;
+        margin-top: 0.6rem;
+        padding: 0 0.7rem;
+    }
+
+    .pc-rep-alert {
+        margin-top: 0.7rem;
+        padding: 0.65rem 0.8rem;
+        border-radius: 10px;
+        background: #fffbeb;
+        border: 1px solid #f59e0b;
+        color: #92400e;
+        font-size: 0.8rem;
+        line-height: 1.5;
+    }
+
     .amount-suggestion {
         padding: 0.38rem 0.68rem;
         background: #f1f5f9;
@@ -577,6 +672,26 @@
                                 </div>
                             </div>
                         </div>
+
+                        {{-- Ou cet argent va atterrir. Le serveur repond, cet ecran
+                             se contente de montrer : la regle de repartition n'existe
+                             qu'en un exemplaire, et une seconde ecriture ici finirait
+                             par imputer autrement que l'enregistrement lui-meme. --}}
+                        <div class="pc-rep" id="repartition-section" style="display:none;">
+                            <div class="pc-rep-head">
+                                <div>
+                                    <div class="pc-rep-title"><i class="fas fa-code-branch me-2"></i>Répartition du versement</div>
+                                    <div class="pc-rep-sub" id="repartition-sub">Sur quels frais cet argent sera imputé.</div>
+                                </div>
+                                <button type="button" class="pc-rep-toggle" id="repartition-toggle">
+                                    <i class="fas fa-sliders-h me-1"></i><span id="repartition-toggle-label">Répartir moi-même</span>
+                                </button>
+                            </div>
+
+                            <div id="repartition-lignes"></div>
+
+                            <div class="pc-rep-alert" id="repartition-erreur" style="display:none;"></div>
+                        </div>
                         
                         <div class="row">
                             <div class="col-md-6">
@@ -650,6 +765,14 @@ $(function() {
     let studentBalance = null;
     let categories = [];
     let selectedCategory = null;
+
+    // Repartition du versement : declare ici, avec les autres etats de l'ecran,
+    // pour qu'aucune fonction appelee tot ne tombe sur une variable pas encore
+    // initialisee.
+    const apercuUrl = @json(route('esbtp.paiements.repartition.apercu'));
+    let repartitionManuelle = false;
+    let repartitionTimer = null;
+    let repartitionRequete = null;
     
     const studentSearchUrl = @json(route('esbtp.api.etudiants.search'));
     let studentSearchTimer = null;
@@ -1006,7 +1129,170 @@ $(function() {
         // Calculer les suggestions de montant
         var suggestions = calculateAmountSuggestions(category);
         displayAmountSuggestions(suggestions);
+        rafraichirRepartition();
     }
+
+    // ------------------------------------------------------------------
+    // Répartition du versement
+    //
+    // Cet écran ne calcule RIEN : il demande au serveur où l'argent ira, et
+    // affiche la réponse. La règle de répartition n'existe qu'en un seul
+    // exemplaire côté serveur ; une seconde écriture ici finirait par diverger
+    // (le frais servi en premier, le porteur de l'avance), et la même saisie
+    // produirait deux écritures comptables selon la porte d'entrée.
+    //
+    // Le garde-fou visible ici est donc le VRAI garde-fou, rendu tôt. Il ne
+    // remplace pas celui de l'enregistrement, qui reste seul à faire foi.
+    // ------------------------------------------------------------------
+    function montantSaisi() {
+        const valeur = parseFloat($('#montant').val());
+        return Number.isFinite(valeur) ? valeur : 0;
+    }
+
+    function partsSaisies() {
+        const parts = {};
+        $('.pc-rep-input').each(function() {
+            const id = $(this).data('category-id');
+            const valeur = parseFloat($(this).val());
+            parts[id] = Number.isFinite(valeur) ? valeur : 0;
+        });
+        return parts;
+    }
+
+    function rafraichirRepartition() {
+        clearTimeout(repartitionTimer);
+        repartitionTimer = setTimeout(demanderRepartition, 350);
+    }
+
+    function demanderRepartition() {
+        // Trois provenances pour l'inscription. Le dernier repli vise le champ
+        // CACHE rendu quand on arrive depuis la fiche d'un etudiant : il porte
+        // un `name` mais PAS d'attribut `id`, donc `$('#inscription_id')` ne le
+        // trouve pas. Ce chemin passe aujourd'hui par `currentInscription`, mais
+        // le repli evite que l'apercu devienne muet si cette variable change.
+        const inscriptionId = currentInscription
+            || $('#inscription_id').val()
+            || $('[name="inscription_id"]').val();
+        const categorieId = $('#selected_category_id').val();
+        const montant = montantSaisi();
+
+        if (!inscriptionId || !categorieId || montant <= 0) {
+            $('#repartition-section').hide();
+            bloquerEnvoi(false);
+            return;
+        }
+
+        const charge = {
+            _token: $('meta[name="csrf-token"]').attr('content') || $('input[name="_token"]').val(),
+            inscription_id: inscriptionId,
+            frais_category_id: categorieId,
+            montant: montant
+        };
+
+        if (repartitionManuelle) {
+            charge.repartition = partsSaisies();
+        }
+
+        if (repartitionRequete) {
+            repartitionRequete.abort();
+        }
+
+        repartitionRequete = $.ajax({
+            url: apercuUrl,
+            method: 'POST',
+            data: charge,
+            dataType: 'json'
+        }).done(function(data) {
+            $('#repartition-section').show();
+            $('#repartition-erreur').hide().text('');
+            afficherRepartition(data.allocations || [], data.reste || {});
+            bloquerEnvoi(false);
+        }).fail(function(xhr) {
+            if (xhr.statusText === 'abort') {
+                return;
+            }
+            const reponse = xhr.responseJSON || {};
+            $('#repartition-section').show();
+            $('#repartition-erreur')
+                .text(reponse.message || "Impossible de vérifier la répartition de ce versement.")
+                .show();
+            // On empêche l'envoi tant que la caisse n'a pas corrigé, mais c'est
+            // l'enregistrement qui refuse pour de bon.
+            bloquerEnvoi(xhr.status === 422);
+        });
+    }
+
+    function afficherRepartition(allocations, reste) {
+        if (!repartitionManuelle) {
+            $('#repartition-sub').text("Sur quels frais cet argent sera imputé.");
+            let html = '';
+            allocations.forEach(function(ligne) {
+                const restant = reste[ligne.frais_category_id];
+                const detail = (restant === undefined)
+                    ? "montant du frais non configuré"
+                    : formatAmount(restant) + ' FCFA restaient dus';
+                html += '<div class="pc-rep-ligne">'
+                    + '<div><div class="pc-rep-nom">' + ligne.name + '</div>'
+                    + '<div class="pc-rep-reste">' + detail + '</div></div>'
+                    + '<div class="pc-rep-montant">' + formatAmount(ligne.montant) + ' FCFA</div>'
+                    + '</div>';
+            });
+            $('#repartition-lignes').html(html);
+            return;
+        }
+
+        $('#repartition-sub').text("Indiquez le montant imputé à chaque frais. Le total doit valoir le versement.");
+
+        // En saisie manuelle, on ne réécrit les champs QUE la première fois :
+        // les remplacer à chaque frappe ferait sauter le curseur du caissier.
+        if ($('.pc-rep-input').length === 0) {
+            let html = '';
+            categories.forEach(function(categorie) {
+                const propose = allocations.find(function(l) { return l.frais_category_id === categorie.id; });
+                const restant = reste[categorie.id];
+                const detail = (restant === undefined)
+                    ? "montant du frais non configuré"
+                    : formatAmount(restant) + ' FCFA restent dus';
+                html += '<div class="pc-rep-ligne">'
+                    + '<div><div class="pc-rep-nom">' + categorie.name + '</div>'
+                    + '<div class="pc-rep-reste">' + detail + '</div></div>'
+                    + '<input type="number" min="0" step="1" class="pc-rep-input" '
+                    + 'name="repartition[' + categorie.id + ']" data-category-id="' + categorie.id + '" '
+                    + 'value="' + (propose ? propose.montant : 0) + '">'
+                    + '</div>';
+            });
+            html += '<div class="pc-rep-total"><span>Total réparti</span><span id="repartition-total">—</span></div>';
+            $('#repartition-lignes').html(html);
+            $('.pc-rep-input').on('input', function() {
+                majTotalReparti();
+                rafraichirRepartition();
+            });
+        }
+
+        majTotalReparti();
+    }
+
+    function majTotalReparti() {
+        const parts = partsSaisies();
+        let total = 0;
+        Object.keys(parts).forEach(function(id) { total += parts[id]; });
+        $('#repartition-total').text(formatAmount(total) + ' FCFA');
+    }
+
+    function bloquerEnvoi(bloque) {
+        $('#payment-form').find('button[type="submit"]').prop('disabled', bloque);
+    }
+
+    $('#repartition-toggle').on('click', function() {
+        repartitionManuelle = !repartitionManuelle;
+        $('#repartition-toggle-label').text(repartitionManuelle ? 'Répartition automatique' : 'Répartir moi-même');
+        // Repartir des champs à neuf : passer d'un mode à l'autre change la
+        // nature de ce qui est affiché.
+        $('#repartition-lignes').html('');
+        demanderRepartition();
+    });
+
+    $('#montant').on('input', rafraichirRepartition);
 
     function getPaidAmountForCategory(categoryId) {
         if (!studentBalance || !studentBalance.categories) {
@@ -1235,6 +1521,16 @@ $(function() {
         selectedCategory = null;
         $('#payment-details-section').hide();
         $('#submit-section').hide();
+
+        // Les champs de repartition portent `name="repartition[...]"` : les
+        // laisser en place les enverrait avec le versement suivant, sur un
+        // etudiant qui n'a rien a voir.
+        $('#repartition-lignes').html('');
+        $('#repartition-erreur').hide().text('');
+        $('#repartition-section').hide();
+        repartitionManuelle = false;
+        $('#repartition-toggle-label').text('Répartir moi-même');
+        bloquerEnvoi(false);
     }
 
     let isSubmitting = false;
