@@ -402,10 +402,23 @@ class ESBTPPaiement extends Model implements Auditable
 
     public static function netPaidForInscription(int $inscriptionId, ?int $categoryId = null, bool $includePending = false): float
     {
-        $query = self::query()->where('inscription_id', $inscriptionId);
+        // Sur UN frais precis, c'est netPaidByCategory() qui sait repondre.
+        //
+        // Filtrer sur `frais_category_id` ignore les allocations : un versement
+        // reparti sur plusieurs frais porte toujours la categorie que le caissier
+        // avait designee, et les autres frais semblent alors n'avoir rien reçu.
+        //
+        // Ce n'est pas qu'un defaut d'affichage. Cette methode arme le garde-fou
+        // d'encaissement (ESBTPInscriptionPaiementController) : un frais deja
+        // solde par repartition ressortait a zero paye, donc entierement du, et
+        // la caisse invitait a l'encaisser une SECONDE FOIS. Elle alimente aussi
+        // l'ecriture des reliquats de reinscription, qui reportait sur l'annee
+        // suivante une dette deja eteinte.
         if ($categoryId) {
-            $query->where('frais_category_id', $categoryId);
+            return (float) (self::netPaidByCategory($inscriptionId, $includePending)[$categoryId] ?? 0);
         }
+
+        $query = self::query()->where('inscription_id', $inscriptionId);
         if ($includePending) {
             $query->whereIn('status', ['validé', 'en_attente']);
         } else {
@@ -480,9 +493,11 @@ class ESBTPPaiement extends Model implements Auditable
      * categorie unique fait foi et le versement entier lui revient. C'est ce qui
      * permet d'introduire la repartition sans rien deplacer de l'existant.
      */
-    public static function netPaidByCategory(int $inscriptionId): \Illuminate\Support\Collection
+    public static function netPaidByCategory(int $inscriptionId, bool $includePending = false): \Illuminate\Support\Collection
     {
-        $encaisse = self::totauxParCategorie($inscriptionId, 'encaissements');
+        $encaisse = self::totauxParCategorie($inscriptionId, 'encaissements', $includePending);
+        // Un avoir ne compte que valide, meme quand on inclut les encaissements
+        // en attente : un remboursement pas encore valide n'a pas quitte la caisse.
         $avoirs = self::totauxParCategorie($inscriptionId, 'avoires');
 
         return $encaisse->map(function ($total, $categoryId) use ($avoirs) {
@@ -498,8 +513,11 @@ class ESBTPPaiement extends Model implements Auditable
      * leur categorie propre. Un paiement partiellement alloue n'existe pas — la
      * repartition couvre toujours la totalite du versement.
      */
-    private static function totauxParCategorie(int $inscriptionId, string $nature): \Illuminate\Support\Collection
-    {
+    private static function totauxParCategorie(
+        int $inscriptionId,
+        string $nature,
+        bool $includePending = false
+    ): \Illuminate\Support\Collection {
         // Un versement « reliquat » est exclu pour ne pas compter DEUX FOIS.
         //
         // Le reliquat est une dette d'une annee anterieure qui vient s'ajouter a
@@ -514,7 +532,11 @@ class ESBTPPaiement extends Model implements Auditable
         // ne le faisait pas, et surestimait donc ce qui avait ete paye.
         $base = fn () => self::query()
             ->where('inscription_id', $inscriptionId)
-            ->valides()
+            ->when(
+                $includePending,
+                fn ($q) => $q->whereIn('status', ['validé', 'en_attente']),
+                fn ($q) => $q->valides()
+            )
             ->{$nature}()
             ->where(fn ($q) => $q->where('type_paiement', '!=', 'reliquat')
                 ->orWhereNull('type_paiement'));
