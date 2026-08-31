@@ -22,6 +22,52 @@ use Illuminate\Support\Facades\Log;
 class CorrectionMontantSouscriptions
 {
     /**
+     * Les montants distincts portes par les souscriptions, et lesquels detonnent.
+     *
+     * On ne peut corriger que ce qu'on a d'abord vu. Chercher une valeur precise
+     * suppose de la connaitre ; ce releve, lui, montre TOUT ce qui existe et
+     * signale ce qui ne ressemble pas a un tarif.
+     *
+     * Le critere de suspicion est celui que l'ecole a donne : un tarif se pose en
+     * chiffres ronds. 149 999 et 2 991 ne sont pas des prix, ce sont des prix
+     * abimes — par la molette de la souris, en l'occurrence. On signale donc ce
+     * qui n'est pas un multiple de 500, seuil au-dessous duquel aucun frais de
+     * scolarite ne se negocie, tout en laissant passer les petits montants ronds
+     * comme 500 ou 100.
+     *
+     * @return array{montants: array, suspects: array}
+     */
+    public function releverLesMontants(): array
+    {
+        $lignes = ESBTPFraisSubscription::query()
+            ->selectRaw('amount, COUNT(*) as total')
+            ->whereNotNull('amount')
+            ->where('amount', '>', 0)
+            ->groupBy('amount')
+            ->orderByDesc('amount')
+            ->get();
+
+        $montants = [];
+        $suspects = [];
+
+        foreach ($lignes as $ligne) {
+            $montant = (float) $ligne->amount;
+            $entree = ['montant' => $montant, 'souscriptions' => (int) $ligne->total];
+            $montants[] = $entree;
+
+            // Multiple de 500, ou petit montant rond : plausible.
+            $rond = fmod($montant, 500.0) === 0.0 || ($montant < 1000 && fmod($montant, 100.0) === 0.0);
+
+            if (! $rond) {
+                $entree['proche'] = round($montant / 500.0) * 500.0;
+                $suspects[] = $entree;
+            }
+        }
+
+        return ['montants' => $montants, 'suspects' => $suspects];
+    }
+
+    /**
      * Ce que la correction ferait, ou ce qu'elle a fait.
      *
      * @return array{montants: array, total: int, dettes_creees: int, lignes: array, applique: bool}

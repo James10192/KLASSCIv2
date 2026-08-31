@@ -16,6 +16,29 @@ use Illuminate\Http\Request;
  */
 class CLIFraisController extends BaseApiController
 {
+    /**
+     * Montre tous les montants de souscription, et lesquels detonnent.
+     *
+     * Lecture seule : on ne corrige que ce qu'on a d'abord vu.
+     */
+    public function releverMontants(Request $request, CorrectionMontantSouscriptions $correction): JsonResponse
+    {
+        if (! $request->user()->tokenCan('cli:read')) {
+            return $this->errorResponse('Token missing cli:read ability', [], 403);
+        }
+
+        $releve = $correction->releverLesMontants();
+
+        return $this->successResponse(
+            $releve,
+            sprintf(
+                '%d montant(s) distinct(s), dont %d suspect(s).',
+                count($releve['montants']),
+                count($releve['suspects'])
+            )
+        );
+    }
+
     public function corrigerSouscriptions(
         Request $request,
         CorrectionMontantSouscriptions $correction
