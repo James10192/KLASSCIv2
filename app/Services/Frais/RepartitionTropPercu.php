@@ -163,11 +163,28 @@ class RepartitionTropPercu
             ->selectRaw('frais_category_id, SUM(montant) as total')
             ->pluck('total', 'frais_category_id');
 
+        // L'ordre de service est celui que L'ECOLE a choisi.
+        //
+        // `sort_order` est la colonne par laquelle elle range ses categories de
+        // frais, et c'est deja l'ordre dans lequel l'ecran d'encaissement les
+        // presente. Sur ISLG il donne : inscription, scolarite, tenue, ramette,
+        // chemise — soit exactement l'ordre de priorite voulu.
+        //
+        // On ne code donc aucune priorite ici. Une autre ecole qui voudrait
+        // solder la tenue avant la scolarite n'a qu'a reordonner ses categories ;
+        // ecrire « inscription puis tenue » en dur imposerait la reponse d'un
+        // etablissement a tous les autres.
+        //
+        // Les frais deposes en nature sortent d'eux-memes : chargedAmount() rend
+        // zero pour eux, et le filtre plus bas les ecarte. C'est la verification
+        // « l'etudiant a-t-il deja depose ? » — elle se fait par la donnee, pas
+        // par un cas particulier.
         $souscriptions = ESBTPFraisSubscription::query()
             ->where('inscription_id', $inscription->id)
             ->where('is_active', true)
+            ->with('fraisCategory')
             ->get()
-            ->sortBy(fn ($s) => $s->subscribed_at ?? $s->created_at)
+            ->sortBy(fn ($s) => [$s->fraisCategory->sort_order ?? 9999, $s->fraisCategory->id ?? 0])
             ->values();
 
         $reste = [];
