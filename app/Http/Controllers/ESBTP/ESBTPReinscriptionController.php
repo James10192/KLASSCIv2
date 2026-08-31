@@ -14,6 +14,7 @@ use App\Models\ESBTPFiliere;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
+use App\Services\Inscriptions\NormalisationTypeInscription;
 
 class ESBTPReinscriptionController extends Controller
 {
@@ -308,7 +309,7 @@ class ESBTPReinscriptionController extends Controller
                     ])
                     ->where('etudiant_id', $etudiantId)
                     ->where('annee_universitaire_id', $anneeCouranteModel->id)
-                    ->where('type_inscription', 'reinscription')
+                    ->where('type_inscription', NormalisationTypeInscription::REINSCRIPTION)
                     ->latest()
                     ->first();
 
@@ -755,7 +756,7 @@ class ESBTPReinscriptionController extends Controller
     {
         // CORRECTION: Chercher les inscriptions de type 'réinscription' et status 'active'
         // au lieu de 'reinscription_status' = 'validated' qui n'est pas utilisé
-        return \App\Models\ESBTPInscription::where('type_inscription', 'reinscription')
+        return \App\Models\ESBTPInscription::where('type_inscription', NormalisationTypeInscription::REINSCRIPTION)
             ->where('status', 'active')
             ->when($anneeUniversitaire, function($query) use ($anneeUniversitaire) {
                 return $query->where('annee_universitaire_id', $anneeUniversitaire->id);
