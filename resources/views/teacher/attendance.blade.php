@@ -109,7 +109,7 @@
                         <a href="{{ route('esbtp.attendances.create') }}" class="btn btn-primary">
                             <i class="fas fa-clipboard-check me-1"></i> Saisir des présences
                         </a>
-                        <a href="{{ route('esbtp.attendances.report') }}" class="btn btn-outline-secondary">
+                        <a href="{{ route('esbtp.attendances.rapport-form') }}" class="btn btn-outline-secondary">
                             <i class="fas fa-file-alt me-1"></i> Générer un rapport
                         </a>
                     </div>
@@ -168,14 +168,14 @@
                                                 </div>
                                             </td>
                                             <td>
-                                                <div class="btn-group" role="group">
-                                                    <a href="{{ route('esbtp.attendances.edit-seance', $seance->id) }}" class="btn btn-sm btn-primary" title="Modifier">
-                                                        <i class="fas fa-edit"></i>
-                                                    </a>
-                                                    <a href="{{ route('esbtp.attendances.show-seance', $seance->id) }}" class="btn btn-sm btn-info" title="Détails">
-                                                        <i class="fas fa-eye"></i>
-                                                    </a>
-                                                </div>
+                                                {{-- La feuille de présence d'une séance s'ouvre par la saisie,
+                                                     qui pré-charge les présences déjà enregistrées. --}}
+                                                <a href="{{ route('esbtp.attendances.create', [
+                                                        'classe_id' => $seance->emploiTemps->classe_id ?? null,
+                                                        'seance_id' => $seance->id,
+                                                    ]) }}" class="btn btn-sm btn-primary" title="Voir et modifier la feuille">
+                                                    <i class="fas fa-edit"></i>
+                                                </a>
                                             </td>
                                         </tr>
                                     @endforeach

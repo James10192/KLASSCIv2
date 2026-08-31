@@ -9,7 +9,6 @@ use Illuminate\Support\Facades\Event;
 
 // Import all the events
 use App\Events\PaiementRecu;
-use App\Events\BonApprouve;
 use App\Events\SeuilAtteint;
 use App\Events\RelanceEnvoyee;
 use App\Events\KPIsCalcules;
@@ -20,7 +19,6 @@ use App\Events\WorkflowStepCompleted;
 use App\Listeners\EnvoyerNotificationPaiement;
 use App\Listeners\NotifyWorkflowNextStepActors;
 use App\Listeners\MettreAJourKPIs;
-use App\Listeners\NotifierBonApprouve;
 use App\Listeners\GererSeuilAtteint;
 use App\Listeners\TraiterRelanceEnvoyee;
 use App\Listeners\MettreAJourDashboard;
@@ -50,10 +48,6 @@ class EventServiceProvider extends ServiceProvider
         PaiementRecu::class => [
             EnvoyerNotificationPaiement::class,
             MettreAJourKPIs::class,
-        ],
-
-        BonApprouve::class => [
-            NotifierBonApprouve::class,
         ],
 
         SeuilAtteint::class => [

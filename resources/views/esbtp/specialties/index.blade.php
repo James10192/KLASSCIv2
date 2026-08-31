@@ -162,11 +162,6 @@
                                                         @method('PUT')
                                                         <button type="submit" class="btn btn-glass-success btn-sm"><i class="fas fa-trash-restore"></i></button>
                                                     </form>
-                                                    <form action="{{ route('esbtp.specialties.force-delete', $specialty->id) }}" method="POST" style="display: inline;" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer définitivement cette spécialité? Cette action est irréversible.');">
-                                                        @csrf
-                                                        @method('DELETE')
-                                                        <button type="submit" class="btn btn-glass-danger btn-sm"><i class="fas fa-times-circle"></i></button>
-                                                    </form>
                                                 </div>
                                             </td>
                                         </tr>

@@ -66,20 +66,11 @@
                                 </button>
                             </form>
                         @else
-                            <form action="{{ route('esbtp.partnerships.restore', $partnership->id) }}" method="POST" style="display: inline;">
-                                @csrf
-                                @method('PUT')
-                                <button type="submit" class="btn btn-success">
-                                    <i class="fas fa-trash-restore"></i> Restaurer
-                                </button>
-                            </form>
-                            <form action="{{ route('esbtp.partnerships.force-delete', $partnership->id) }}" method="POST" style="display: inline;" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer définitivement ce partenariat? Cette action est irréversible.');">
-                                @csrf
-                                @method('DELETE')
-                                <button type="submit" class="btn btn-danger">
-                                    <i class="fas fa-times-circle"></i> Supprimer
-                                </button>
-                            </form>
+                            {{-- Restauration et suppression definitive ne sont pas implementees
+                                 cote controleur : on affiche l'etat plutot que des boutons morts. --}}
+                            <span class="text-muted">
+                                <i class="fas fa-archive"></i> Partenariat archive.
+                            </span>
                         @endif
                     </div>
                 </div>
@@ -113,141 +104,9 @@
                         
                         <!-- Onglet Départements -->
                         <div class="tab-pane" id="departments">
-                            @if(session('success'))
-                                <div class="alert alert-success alert-dismissible">
-                                    <button type="button" class="close" data-dismiss="alert" aria-hidden="true">×</button>
-                                    {{ session('success') }}
-                                </div>
-                            @endif
-                            
-                            @if(session('error'))
-                                <div class="alert alert-danger alert-dismissible">
-                                    <button type="button" class="close" data-dismiss="alert" aria-hidden="true">×</button>
-                                    {{ session('error') }}
-                                </div>
-                            @endif
-                            
-                            <!-- Formulaire d'ajout de département -->
-                            <div class="card card-primary collapsed-card">
-                                <div class="card-header">
-                                    <h3 class="card-title">Ajouter un département</h3>
-                                    <div class="card-tools">
-                                        <button type="button" class="btn btn-tool" data-card-widget="collapse">
-                                            <i class="fas fa-plus"></i>
-                                        </button>
-                                    </div>
-                                </div>
-                                <div class="card-body" style="display: none;">
-                                    <form action="{{ route('esbtp.partnerships.attach-department', $partnership->id) }}" method="POST">
-                                        @csrf
-                                        <div class="form-group">
-                                            <label for="department_id">Département</label>
-                                            <select class="form-control select2 @error('department_id') is-invalid @enderror" id="department_id" name="department_id" required>
-                                                <option value="">Sélectionnez un département</option>
-                                                @foreach($departments as $department)
-                                                    @if(!$partnershipDepartments->contains($department->id))
-                                                        <option value="{{ $department->id }}">{{ $department->name }} ({{ $department->code }})</option>
-                                                    @endif
-                                                @endforeach
-                                            </select>
-                                            @error('department_id')
-                                                <span class="invalid-feedback" role="alert">
-                                                    <strong>{{ $message }}</strong>
-                                                </span>
-                                            @enderror
-                                        </div>
-                                        
-                                        <div class="form-group">
-                                            <label for="specific_details">Détails spécifiques</label>
-                                            <textarea class="form-control @error('specific_details') is-invalid @enderror" id="specific_details" name="specific_details" rows="3" placeholder="Détails spécifiques à cette relation">{{ old('specific_details') }}</textarea>
-                                            @error('specific_details')
-                                                <span class="invalid-feedback" role="alert">
-                                                    <strong>{{ $message }}</strong>
-                                                </span>
-                                            @enderror
-                                        </div>
-                                        
-                                        <div class="row">
-                                            <div class="col-md-6">
-                                                <div class="form-group">
-                                                    <label for="start_date">Date de début</label>
-                                                    <input type="date" class="form-control @error('start_date') is-invalid @enderror" id="start_date" name="start_date" value="{{ old('start_date') }}">
-                                                    @error('start_date')
-                                                        <span class="invalid-feedback" role="alert">
-                                                            <strong>{{ $message }}</strong>
-                                                        </span>
-                                                    @enderror
-                                                </div>
-                                            </div>
-                                            <div class="col-md-6">
-                                                <div class="form-group">
-                                                    <label for="end_date">Date de fin</label>
-                                                    <input type="date" class="form-control @error('end_date') is-invalid @enderror" id="end_date" name="end_date" value="{{ old('end_date') }}">
-                                                    @error('end_date')
-                                                        <span class="invalid-feedback" role="alert">
-                                                            <strong>{{ $message }}</strong>
-                                                        </span>
-                                                    @enderror
-                                                </div>
-                                            </div>
-                                        </div>
-                                        
-                                        <button type="submit" class="btn btn-primary">Ajouter</button>
-                                    </form>
-                                </div>
+                            <div class="alert alert-info">
+                                Fonctionnalite a venir : rattachement des departements au partenariat.
                             </div>
-                            
-                            <!-- Liste des départements -->
-                            @if($partnershipDepartments->count() > 0)
-                                <div class="table-responsive">
-                                    <table class="table table-bordered table-striped">
-                                        <thead>
-                                            <tr>
-                                                <th>Nom</th>
-                                                <th>Code</th>
-                                                <th>Détails spécifiques</th>
-                                                <th>Période</th>
-                                                <th>Actions</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            @foreach($partnershipDepartments as $department)
-                                                <tr>
-                                                    <td>{{ $department->name }}</td>
-                                                    <td>{{ $department->code }}</td>
-                                                    <td>{{ $department->pivot->specific_details ?? 'Non spécifié' }}</td>
-                                                    <td>
-                                                        @if($department->pivot->start_date && $department->pivot->end_date)
-                                                            Du {{ $department->pivot->start_date->format('d/m/Y') }} au {{ $department->pivot->end_date->format('d/m/Y') }}
-                                                        @elseif($department->pivot->start_date)
-                                                            Depuis le {{ $department->pivot->start_date->format('d/m/Y') }}
-                                                        @elseif($department->pivot->end_date)
-                                                            Jusqu'au {{ $department->pivot->end_date->format('d/m/Y') }}
-                                                        @else
-                                                            Non spécifié
-                                                        @endif
-                                                    </td>
-                                                    <td>
-                                                        <div class="btn-group">
-                                                            <form action="{{ route('esbtp.partnerships.detach-department', [$partnership->id, $department->id]) }}" method="POST" style="display: inline;" onsubmit="return confirm('Êtes-vous sûr de vouloir retirer ce département?');">
-                                                                @csrf
-                                                                @method('DELETE')
-                                                                <button type="submit" class="btn btn-danger btn-sm">
-                                                                    <i class="fas fa-unlink"></i> Retirer
-                                                                </button>
-                                                            </form>
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            @endforeach
-                                        </tbody>
-                                    </table>
-                                </div>
-                            @else
-                                <div class="alert alert-info">
-                                    Aucun département associé à ce partenariat.
-                                </div>
-                            @endif
                         </div>
                         
                         <!-- Onglet Activités -->
