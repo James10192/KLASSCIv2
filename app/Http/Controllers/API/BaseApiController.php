@@ -329,7 +329,7 @@ class BaseApiController extends Controller
             case 'matieres':
                 // Seulement les matières de sa classe
                 return $query->whereHas('classes', function ($q) use ($inscription) {
-                    $q->where('esbtp_classe.id', $inscription->classe_id);
+                    $q->where('esbtp_classes.id', $inscription->classe_id);
                 });
 
             case 'evaluations':
