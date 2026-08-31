@@ -314,7 +314,22 @@ Le layout global :
 
 **Pourquoi pas `:has()` pour neutraliser après-coup** : `[class$="-card"]:has(.dropdown-menu.show) { transform: none !important; }` semble logique mais Popper a DÉJÀ calculé `top/left` en supposant que le containing block était l'ancestor transformé. Réinitialiser à `transform: none` après-coup décale le menu sans le repositionner.
 
-**Si tu as ABSOLUMENT besoin d'un effet "lift" sur hover** : utilise `margin-top: -2px` + `margin-bottom: 2px` (déplace sans transformer) ou `box-shadow` plus prononcé.
+**Si tu as ABSOLUMENT besoin d'un effet "lift" sur hover** : `box-shadow` plus prononcé. Les marges opposées (`margin-top: -2px` + `margin-bottom: 2px`) déplacent sans transformer, mais échouent dès que l'élément porte une utilitaire Bootstrap `mb-*` / `mt-*` : celle-ci est en `!important`, elle gagne sur une des deux marges et laisse l'autre seule — la carte monte en tirant tout ce qui la suit. Sur `.card`, c'est le cas quasi général.
+
+### Le composant premium `<x-au-select>`, lui, s'en défend seul
+
+Corriger règle par règle est sans fin : les feuilles globales comptent des dizaines de survols porteurs de `transform`, et il s'en ajoute à chaque page. Depuis juin 2026, `resources/views/components/au-select.blade.php` **détecte** l'ancêtre fautif à l'ouverture (`window.auSelectAncetreBloquant`, qui remonte l'arbre en lisant le style calculé) et, le cas échéant seulement, **déplace son menu sous `<body>`** avec un marqueur pour le remettre à la fermeture.
+
+Le déplacement est conditionnel à dessein : sous `<body>`, les règles CSS écrites en descendance du parent (`.cpa-filters .au-select-menu { … }`) cessent de s'appliquer. Tant que rien ne casse, le menu reste où il est.
+
+Effets de bord traités dans le composant — à reproduire si tu clones ce pattern :
+- `@click.outside` ne connaît que la racine ; une fois le menu déplacé, un clic dans son champ de recherche est « dehors » au sens d'Alpine. Le composant délègue donc à `fermerSiExterieur($event)`, qui interroge aussi le menu.
+- `positionMenu()` ne peut plus retrouver le menu par `$el.querySelector` — la référence est gardée à l'`init`.
+- Le z-index posé par une règle scopée au parent est perdu : le composant le repose en ligne (99999) quand le menu est déplacé.
+- `destroy()` rapatrie ou retire le menu, sinon une modale remplacée en AJAX laisserait un menu orphelin sous `<body>`.
+- Un `transform` de survol ne s'applique qu'une fois la souris sur la carte : ouvert au clavier, le menu serait bien ancré puis se décrocherait au premier mouvement. Le composant surveille donc `pointerover` jusqu'au déplacement, puis arrête.
+
+Vérifié par `tests/Unit/Components/AuSelectBlocConteneurTest.php`, qui exécute le script réellement livré.
 
 ## Anti-patterns à BLOQUER en review
 
