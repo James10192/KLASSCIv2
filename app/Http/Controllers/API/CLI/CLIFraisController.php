@@ -4,6 +4,7 @@ namespace App\Http\Controllers\API\CLI;
 
 use App\Http\Controllers\API\BaseApiController;
 use App\Services\Frais\CorrectionMontantSouscriptions;
+use App\Services\Frais\OrdreDesCategoriesFrais;
 use App\Services\Frais\RepartitionTropPercu;
 use App\Services\Frais\SouscriptionsObligatoiresManquantes;
 use Illuminate\Http\JsonResponse;
@@ -130,25 +131,75 @@ class CLIFraisController extends BaseApiController
             'inscription_id' => ['nullable', 'integer'],
             'annee_id' => ['nullable', 'integer'],
             'apply' => ['nullable', 'boolean'],
+            // Repart de zero. Necessaire apres un changement d'ordre de service :
+            // sans lui, les versements deja repartis sont ignores et la nouvelle
+            // priorite ne s'appliquerait qu'aux paiements futurs.
+            'reset' => ['nullable', 'boolean'],
         ]);
 
+        $reinitialiser = (bool) ($valide['reset'] ?? false);
+        $appliquer = (bool) ($valide['apply'] ?? false);
+
         $resultat = $repartition->executer(
-            (bool) ($valide['apply'] ?? false),
+            $appliquer,
             $valide['inscription_id'] ?? null,
             $valide['annee_id'] ?? null,
+            $reinitialiser,
         );
 
         return $this->successResponse(
             $resultat,
             $resultat['applique']
                 ? sprintf(
-                    '%d allocation(s) ecrite(s) sur %d versement(s), %d inscription(s).',
-                    $resultat['allocations'], $resultat['paiements'], $resultat['inscriptions']
+                    '%d allocation(s) ecrite(s) sur %d versement(s), %d inscription(s)%s.',
+                    $resultat['allocations'], $resultat['paiements'], $resultat['inscriptions'],
+                    $reinitialiser ? sprintf(' — %d ancienne(s) allocation(s) effacee(s)', $resultat['effacees']) : ''
                 )
                 : sprintf(
-                    "%d versement(s) a repartir sur %d inscription(s) — %d allocation(s). Rien n'a ete ecrit.",
-                    $resultat['paiements'], $resultat['inscriptions'], $resultat['allocations']
+                    "%d versement(s) a repartir sur %d inscription(s) — %d allocation(s)%s. Rien n'a ete ecrit.",
+                    $resultat['paiements'], $resultat['inscriptions'], $resultat['allocations'],
+                    $reinitialiser ? sprintf(', %d a effacer', $resultat['effacees']) : ''
                 )
+        );
+    }
+
+    /**
+     * Range les categories de frais dans l'ordre voulu par l'ecole.
+     *
+     * Cet ordre n'est pas cosmetique : c'est celui dans lequel un versement
+     * solde les frais. Une ecole qui veut que la tenue passe avant la scolarite
+     * le dit ici — le code, lui, ne connait aucune priorite.
+     *
+     * Montre par defaut, n'ecrit que sur `apply`. Apres avoir applique, rejouer
+     * `repartir-trop-percu` avec `reset` pour que les versements deja encaisses
+     * suivent le nouvel ordre.
+     */
+    public function ordonnerCategories(Request $request, OrdreDesCategoriesFrais $ordre): JsonResponse
+    {
+        if (! $request->user()->tokenCan('cli:admin')) {
+            return $this->errorResponse('Token missing cli:admin ability', [], 403);
+        }
+
+        $valide = $request->validate([
+            'categories' => ['required', 'array', 'min:1'],
+            'categories.*' => ['required', 'integer'],
+            'apply' => ['nullable', 'boolean'],
+        ]);
+
+        try {
+            $resultat = $ordre->executer(
+                array_map('intval', $valide['categories']),
+                (bool) ($valide['apply'] ?? false),
+            );
+        } catch (\InvalidArgumentException $e) {
+            return $this->errorResponse($e->getMessage(), [], 422);
+        }
+
+        return $this->successResponse(
+            $resultat,
+            $resultat['applique']
+                ? sprintf('%d categorie(s) reordonnee(s).', $resultat['modifiees'])
+                : sprintf("%d categorie(s) changeraient de rang. Rien n'a ete ecrit.", $resultat['modifiees'])
         );
     }
 }
