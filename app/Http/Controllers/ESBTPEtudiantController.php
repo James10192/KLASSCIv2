@@ -2201,13 +2201,13 @@ class ESBTPEtudiantController extends Controller
             foreach ($allCategories as $category) {
                 $configuration = \App\Models\ESBTPFraisConfiguration::getApplicableForCategoryAndInscription($category->id, $inscriptionActive);
 
-                if ($configuration && method_exists($configuration, 'getMontantByStatus')) {
-                    $montant = (float) $configuration->getMontantByStatus($affectationStatus);
-                } elseif ($configuration) {
-                    $montant = (float) ($configuration->amount ?? 0);
-                } else {
-                    $montant = (float) ($category->default_amount ?? 0);
-                }
+                // La branche `elseif ($configuration)` etait morte :
+                // method_exists() est toujours vrai, getMontantByStatus etant
+                // definie sur le modele — et elle retombe deja sur `$this->amount`
+                // dans chacun de ses cas.
+                $montant = $configuration
+                    ? (float) $configuration->getMontantByStatus($affectationStatus)
+                    : (float) ($category->default_amount ?? 0);
 
                 if ($montant <= 0) {
                     continue;
