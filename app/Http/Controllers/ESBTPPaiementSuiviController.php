@@ -108,10 +108,7 @@ class ESBTPPaiementSuiviController extends Controller
         if (!empty($inscriptionIds)) {
             $paiements = ESBTPPaiement::where('status', 'validé')
                 ->whereIn('inscription_id', $inscriptionIds)
-                ->where(function($query) {
-                    $query->where('type_paiement', '!=', 'reliquat')
-                          ->orWhereNull('type_paiement');
-                })
+                ->horsReliquat()
                 ->get()
                 ->groupBy(function($paiement) {
                     return $paiement->inscription_id . '_' . $paiement->frais_category_id;
@@ -226,10 +223,7 @@ class ESBTPPaiementSuiviController extends Controller
         if (!empty($inscriptionIds)) {
             $paiements = ESBTPPaiement::where('status', 'validé')
                 ->whereIn('inscription_id', $inscriptionIds)
-                ->where(function($query) {
-                    $query->where('type_paiement', '!=', 'reliquat')
-                          ->orWhereNull('type_paiement');
-                })
+                ->horsReliquat()
                 ->get()
                 ->groupBy(function($paiement) {
                     return $paiement->inscription_id . '_' . $paiement->frais_category_id;

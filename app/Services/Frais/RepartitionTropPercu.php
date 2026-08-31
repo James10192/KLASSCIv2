@@ -122,6 +122,7 @@ class RepartitionTropPercu
                 ->whereIn('inscription_id', $inscriptionIds)
                 ->valides()
                 ->encaissements()
+                ->horsReliquat()
                 ->select('id'));
     }
 
@@ -157,6 +158,16 @@ class RepartitionTropPercu
             ->where('inscription_id', $inscription->id)
             ->valides()
             ->encaissements()
+            // Le meme perimetre que le lecteur : un reliquat eteint une dette
+            // d'une annee anterieure, pas un frais de l'annee en cours.
+            //
+            // Sans ce filtre, un reliquat devenait candidat : il consommait du
+            // reste en memoire et recevait une allocation que netPaidByCategory()
+            // jetait ensuite — son `paiement_id` n'entre pas dans son perimetre.
+            // Le frais qu'il avait « couvert » etait donc rendu indisponible au
+            // versement reel qui suivait, lequel partait sur un autre frais.
+            // Ecrire et lire doivent voir exactement les memes versements.
+            ->horsReliquat()
             // On repart de zero : les versements deja repartis redeviennent des
             // candidats, sinon changer l'ordre de service ne changerait rien.
             ->when(! $reinitialiser, fn ($q) => $q->whereDoesntHave('allocations'))
@@ -220,6 +231,7 @@ class RepartitionTropPercu
                     ->where('inscription_id', $inscription->id)
                     ->valides()
                     ->encaissements()
+                    ->horsReliquat()
                     ->select('id'))
                 ->groupBy('frais_category_id')
                 ->selectRaw('frais_category_id, SUM(montant) as total')
