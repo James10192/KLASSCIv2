@@ -954,6 +954,12 @@ return [
             'group' => 'Paiements',
             'icon' => 'fa-tasks',
         ],
+        'paiements.avoir' => [
+            'label' => 'Émettre un avoir (crédit ou remboursement)',
+            'description' => 'Pièce inverse liée à un paiement validé. Crédit = réduit le dû sans sortir de caisse. Remboursement = sortie de caisse au journal du jour.',
+            'group' => 'Paiements',
+            'icon' => 'fa-file-invoice',
+        ],
 
         // ===== Frais =====
         'frais.view' => [
@@ -2027,6 +2033,7 @@ return [
             'comptabilite.salaires.pay', 'comptabilite.salaires.configure',
             'comptabilite.salaires.export', 'comptabilite.salaires.set_rate',
             'paiements.view', 'paiements.create.mobile_money', 'paiements.edit', 'paiements.validate',
+            'paiements.avoir',
             'paiements.export',  // Lot 15
             'frais.view', 'frais.create', 'frais.edit', 'frais.configure',
             'students.view', 'inscriptions.view',
