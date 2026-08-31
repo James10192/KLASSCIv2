@@ -1897,6 +1897,36 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                                         margin-bottom: 24px !important;
                                     }
                                 }
+                                /* La colonne Actions reste atteignable, quelle que soit la place.
+                                 *
+                                 * La bascule en cartes se declenche sur la largeur de FENETRE
+                                 * (1600px). Or ce qui contraint ce tableau, c'est la largeur de
+                                 * la CARTE : fenetre moins la sidebar. Sur un ecran large, la
+                                 * fenetre depasse 1600 — le tableau est donc affiche — mais la
+                                 * carte, elle, est trop etroite et coupe la derniere colonne.
+                                 *
+                                 * On ne mesure pas la carte en CSS sans `container-type`, qui
+                                 * impliquerait `contain: layout` et creerait un bloc conteneur
+                                 * pour les `position: fixed` — cassant les dropdowns d'action de
+                                 * cette carte meme (cf. rule universal-dropdowns, piege #2).
+                                 *
+                                 * On laisse donc le tableau defiler et on epingle sa derniere
+                                 * colonne au bord droit : les actions restent visibles et
+                                 * cliquables sans jamais etre coupees.
+                                 */
+                                .financial-table-desktop { overflow-x: auto; }
+                                .financial-table-desktop > table > thead > tr > th:last-child,
+                                .financial-table-desktop > table > tbody > tr > td:last-child {
+                                    position: sticky;
+                                    right: 0;
+                                    z-index: 2;
+                                    background-color: #fff;
+                                    box-shadow: -8px 0 10px -8px rgba(15, 23, 42, .22);
+                                }
+                                .financial-table-desktop > table > thead > tr > th:last-child {
+                                    background-color: #f8fafc;
+                                }
+
                                 @media (min-width: 1601px) {
                                     /* Tables financières */
                                     .financial-table-desktop { display: block !important; }
