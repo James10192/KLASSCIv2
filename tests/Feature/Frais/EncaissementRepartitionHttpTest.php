@@ -138,6 +138,31 @@ class EncaissementRepartitionHttpTest extends TestCase
         );
     }
 
+    public function test_l_ecran_de_caisse_rend_le_panneau_de_repartition(): void
+    {
+        // Le panneau et l'URL d'apercu doivent arriver dans la page. Sans cette
+        // verification, une vue qui compile mais ne rend pas — une condition
+        // Blade mal placee, une variable manquante — passerait inapercue : les
+        // autres tests parlent a la route d'enregistrement, jamais a l'ecran.
+        $reponse = $this->get(route('esbtp.paiements.create', [
+            'etudiant_id' => $this->inscription->etudiant_id,
+            'inscription_id' => $this->inscription->id,
+        ]));
+
+        $reponse->assertOk()
+            ->assertSee('id="repartition-section"', false)
+            ->assertSee('Répartition du versement', false)
+            ->assertSee('Répartir moi-même', false);
+
+        // L'URL d'apercu arrive dans la page via `@json(...)`, qui echappe les
+        // slashes (`\/`). Chercher l'URL telle que `route()` la rend ne
+        // matcherait donc jamais — on compare a la forme reellement emise.
+        $reponse->assertSee(
+            str_replace('/', '\/', route('esbtp.paiements.repartition.apercu')),
+            false
+        );
+    }
+
     public function test_l_apercu_annonce_la_repartition_sans_encaisser(): void
     {
         $reponse = $this->postJson(route('esbtp.paiements.repartition.apercu'), [
