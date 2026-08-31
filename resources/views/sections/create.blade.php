@@ -120,7 +120,7 @@
                         
                         <!-- Boutons -->
                         <div class="d-flex justify-content-between mt-4">
-                            <a href="{{ isset($class) ? route('classes.edit', $class->id) : route('sections.index') }}" class="btn btn-secondary">
+                            <a href="{{ isset($class) ? route('esbtp.classes.edit', $class->id) : route('sections.index') }}" class="btn btn-secondary">
                                 <i class="fas fa-arrow-left me-1"></i>Retour
                             </a>
                             <button type="submit" class="btn btn-success">

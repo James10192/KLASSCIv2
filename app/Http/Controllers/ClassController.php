@@ -55,7 +55,7 @@ class ClassController extends Controller
 
         ClassModel::create($validated);
 
-        return redirect()->route('classes.index')
+        return redirect()->route('esbtp.classes.index')
             ->with('success', 'Classe créée avec succès.');
     }
 
@@ -92,7 +92,7 @@ class ClassController extends Controller
 
         $class->update($validated);
 
-        return redirect()->route('classes.index')
+        return redirect()->route('esbtp.classes.index')
             ->with('success', 'Classe mise à jour avec succès.');
     }
 
@@ -103,13 +103,13 @@ class ClassController extends Controller
     {
         // Vérifier si la classe a des étudiants ou des sections
         if ($class->students()->count() > 0 || $class->sections()->count() > 0) {
-            return redirect()->route('classes.index')
+            return redirect()->route('esbtp.classes.index')
                 ->with('error', 'Impossible de supprimer cette classe car elle contient des étudiants ou des sections.');
         }
 
         $class->delete();
 
-        return redirect()->route('classes.index')
+        return redirect()->route('esbtp.classes.index')
             ->with('success', 'Classe supprimée avec succès.');
     }
 
@@ -129,14 +129,14 @@ class ClassController extends Controller
                         ->exists();
 
         if ($exists) {
-            return redirect()->route('classes.show', $class)
+            return redirect()->route('esbtp.classes.show', $class)
                 ->with('error', 'Cet enseignant est déjà assigné à cette classe pour cette matière.');
         }
 
         // Assigner l'enseignant
         $class->subjects()->attach($request->subject_id, ['teacher_id' => $request->teacher_id]);
 
-        return redirect()->route('classes.show', $class)
+        return redirect()->route('esbtp.classes.show', $class)
             ->with('success', 'Enseignant assigné avec succès.');
     }
 
@@ -155,7 +155,7 @@ class ClassController extends Controller
                         ->wherePivot('subject_id', $request->subject_id)
                         ->detach();
 
-        return redirect()->route('classes.show', $class)
+        return redirect()->route('esbtp.classes.show', $class)
             ->with('success', 'Enseignant retiré avec succès.');
     }
 }
