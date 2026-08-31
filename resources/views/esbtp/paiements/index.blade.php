@@ -1387,7 +1387,7 @@ function showYearChangeInfo() {
         })
         .then(response => {
             if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+                return window.klassciErreurReponse(response);
             }
             return response.json();
         })
@@ -1605,7 +1605,7 @@ function showYearChangeInfo() {
         })
         .then(response => {
             if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+                return window.klassciErreurReponse(response);
             }
             return response.json();
         })
@@ -2157,7 +2157,7 @@ async function bulkValider() {
     })
     .then(response => {
         if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+            return window.klassciErreurReponse(response);
         }
         return response.json();
     })
@@ -2184,7 +2184,7 @@ async function bulkValider() {
     .catch(error => {
         debugError('❌ Erreur bulk validation:', error);
         toggleRowsLoadingState(selectedIds, false);
-        window.showToast('Erreur lors de la validation. Veuillez réessayer.', 'error');
+        window.showToast(error && error.message ? error.message : 'Erreur lors de la validation. Veuillez réessayer.', 'error');
     });
 }
 
@@ -2274,7 +2274,7 @@ $(document).ready(function() {
         })
         .then(response => {
             if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+                return window.klassciErreurReponse(response);
             }
             return response.json();
         })
@@ -2304,7 +2304,10 @@ $(document).ready(function() {
         .catch(error => {
             debugError('❌ Erreur bulk rejet:', error);
             toggleRowsLoadingState(selectedIds, false);
-            window.showToast('Erreur lors du rejet. Veuillez réessayer.', 'error');
+            // error.message porte desormais ce que le serveur a dit — par
+            // exemple la longueur minimale du motif. Le repli generique ne sert
+            // plus qu'aux pannes reseau, ou il n'y a effectivement rien a dire.
+            window.showToast(error && error.message ? error.message : 'Erreur lors du rejet. Veuillez réessayer.', 'error');
         });
     });
 
@@ -2368,7 +2371,7 @@ $(document).ready(function() {
         })
         .then(response => {
             if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+                return window.klassciErreurReponse(response);
             }
             return response.json();
         })
@@ -2403,7 +2406,10 @@ $(document).ready(function() {
                 window.setPaiementRowLoadingState(paiementId, false);
             }
             button.prop('disabled', false);
-            window.showToast('Erreur lors du rejet. Veuillez réessayer.', 'error');
+            // error.message porte desormais ce que le serveur a dit — par
+            // exemple la longueur minimale du motif. Le repli generique ne sert
+            // plus qu'aux pannes reseau, ou il n'y a effectivement rien a dire.
+            window.showToast(error && error.message ? error.message : 'Erreur lors du rejet. Veuillez réessayer.', 'error');
         });
     });
 });

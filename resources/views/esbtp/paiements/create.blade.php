@@ -678,7 +678,10 @@ $(function() {
                     const options = (payload.results || []).map(function (item) {
                         return { value: String(item.id), label: item.text };
                     });
-                    studentSelect.setOptions(options, studentSelect.currentValue || '');
+                    // On conserve la saisie : le serveur repond pendant que la
+                    // caissiere tape encore, et vider le champ a cet instant lui
+                    // retire le texte des doigts.
+                    studentSelect.setOptions(options, studentSelect.currentValue || '', true);
                 } catch (error) {
                     debugWarn('Recherche etudiant indisponible', error);
                 }
