@@ -356,6 +356,35 @@ class ESBTPPaiement extends Model implements Auditable
         });
     }
 
+    /**
+     * Ecarte les versements « reliquat », qui eteignent une dette d'une annee
+     * anterieure et non un frais de l'annee en cours.
+     *
+     * Un reliquat porte l'inscription COURANTE et la `frais_category_id` de la
+     * dette d'origine, mais ce qu'il solde vit dans
+     * `esbtp_reliquat_details.montant_restant`. L'imputer EN PLUS au frais
+     * courant de meme categorie le compterait deux fois, et donnerait pour
+     * solde un frais de l'annee alors que c'est l'arriere qui a ete regle.
+     *
+     * Cette condition existait recopiee a huit endroits. La huitieme — celle du
+     * service qui ECRIT la repartition — l'avait oubliee : un reliquat devenait
+     * candidat, consommait du reste et recevait une allocation que le lecteur
+     * jetait ensuite. Le versement reel qui aurait du couvrir ce frais etait
+     * alors impute ailleurs. Une condition recopiee est une condition qu'on
+     * finit par oublier quelque part : elle vit desormais ici, une seule fois.
+     *
+     * `type_paiement` est nullable : un versement sans type n'est pas un
+     * reliquat, il doit rester dans le perimetre.
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder  $query
+     * @return \Illuminate\Database\Eloquent\Builder
+     */
+    public function scopeHorsReliquat($query)
+    {
+        return $query->where(fn ($q) => $q->where('type_paiement', '!=', 'reliquat')
+            ->orWhereNull('type_paiement'));
+    }
+
     public function scopeAvoires($query)
     {
         return $query->where('nature', 'avoir');
@@ -510,26 +539,25 @@ class ESBTPPaiement extends Model implements Auditable
      *
      * Deux sources, jamais comptees deux fois : les paiements QUI PORTENT des
      * allocations sont lus par leurs allocations, ceux qui n'en portent pas par
-     * leur categorie propre. Un paiement partiellement alloue n'existe pas — la
-     * repartition couvre toujours la totalite du versement.
+     * leur categorie propre.
+     *
+     * Cette methode ne peut ignorer la categorie propre d'un versement alloue
+     * que si ses allocations couvrent la TOTALITE du montant : sinon la
+     * difference sort des totaux sans erreur ni trace. Cet invariant n'etait
+     * qu'affirme ici ; il est desormais verifie a l'ecriture
+     * (RepartitionTropPercu leve AllocationIncoherenteException) et
+     * controlable a tout moment par `php artisan frais:verifier-allocations`.
      */
     private static function totauxParCategorie(
         int $inscriptionId,
         string $nature,
         bool $includePending = false
     ): \Illuminate\Support\Collection {
-        // Un versement « reliquat » est exclu pour ne pas compter DEUX FOIS.
-        //
-        // Le reliquat est une dette d'une annee anterieure qui vient s'ajouter a
-        // l'annee en cours : le versement porte donc bien l'inscription courante,
-        // et le frais_category_id de la dette d'origine. Mais il decremente
-        // `esbtp_reliquat_details.montant_restant`, qui est le solde qu'il eteint
-        // reellement. L'imputer EN PLUS au frais courant de meme categorie le
-        // ferait compter deux fois, et donnerait un frais de l'annee pour solde
-        // alors que c'est l'arriere qui a ete regle.
-        //
-        // Six autres endroits du code appliquent deja cette exclusion ; ce helper
-        // ne le faisait pas, et surestimait donc ce qui avait ete paye.
+        // Le perimetre lu ici doit etre EXACTEMENT celui que la repartition
+        // ecrit (RepartitionTropPercu) : meme statut, meme nature, meme
+        // exclusion des reliquats. Un versement candidat cote ecriture mais hors
+        // perimetre cote lecture recevrait une allocation invisible, et priverait
+        // au passage un versement reel du frais qu'il aurait du couvrir.
         $base = fn () => self::query()
             ->where('inscription_id', $inscriptionId)
             ->when(
@@ -538,8 +566,7 @@ class ESBTPPaiement extends Model implements Auditable
                 fn ($q) => $q->valides()
             )
             ->{$nature}()
-            ->where(fn ($q) => $q->where('type_paiement', '!=', 'reliquat')
-                ->orWhereNull('type_paiement'));
+            ->horsReliquat();
 
         $parAllocation = \App\Models\ESBTPPaiementAllocation::query()
             ->whereIn('paiement_id', $base()->select('id'))

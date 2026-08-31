@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Exceptions\AvoirForbiddenException;
 use App\Helpers\SettingsHelper;
 use App\Models\ESBTPPaiement;
+use App\Services\Frais\RefletAllocationsSurAvoirs;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -12,6 +13,10 @@ class AvoirService
 {
     public const KIND_CREDIT = 'credit';
     public const KIND_REFUND = 'refund';
+
+    public function __construct(private readonly RefletAllocationsSurAvoirs $reflet)
+    {
+    }
 
     public function availableAmount(ESBTPPaiement $parent): float
     {
@@ -25,7 +30,7 @@ class AvoirService
         return DB::transaction(function () use ($parent, $montant, $kind, $motif, $userId) {
             $numero = ESBTPPaiement::genererNumeroRecu('AV');
 
-            return ESBTPPaiement::create([
+            $avoir = ESBTPPaiement::create([
                 'inscription_id' => $parent->inscription_id,
                 'etudiant_id' => $parent->etudiant_id,
                 'annee_universitaire_id' => $parent->annee_universitaire_id,
@@ -46,6 +51,17 @@ class AvoirService
                 'validateur_id' => $userId,
                 'date_validation' => now(),
             ]);
+
+            // Un avoir annule le versement LA OU CE VERSEMENT EST ALLE.
+            //
+            // Le versement d'origine a pu etre reparti sur plusieurs frais ; sans
+            // ce reflet, l'avoir serait impute en entier a sa seule categorie, et
+            // le `max(0, du - paye)` du calcul par frais avalerait l'excedent au
+            // lieu de le reporter. Un remboursement integral laisserait alors
+            // survivre du paiement fantome sur les autres frais.
+            $this->reflet->refleter($avoir, $parent);
+
+            return $avoir;
         });
     }
 

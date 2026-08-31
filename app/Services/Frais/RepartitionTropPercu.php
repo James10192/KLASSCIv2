@@ -2,6 +2,7 @@
 
 namespace App\Services\Frais;
 
+use App\Exceptions\AllocationIncoherenteException;
 use App\Models\ESBTPFraisSubscription;
 use App\Models\ESBTPInscription;
 use App\Models\ESBTPPaiement;
@@ -29,6 +30,10 @@ use Illuminate\Support\Facades\Log;
  */
 class RepartitionTropPercu
 {
+    public function __construct(private readonly RefletAllocationsSurAvoirs $reflet)
+    {
+    }
+
     /**
      * @param  bool  $reinitialiser  Repart de zero : oublie les allocations deja
      *                               ecrites sur le perimetre et recalcule tout.
@@ -92,6 +97,8 @@ class RepartitionTropPercu
                     ['montant' => $a['montant']]
                 );
             }
+
+            $this->remettreLesAvoirsEnPhase($idsInscriptions);
         });
 
         Log::warning('[frais] repartition de versements sur plusieurs frais', [
@@ -106,12 +113,38 @@ class RepartitionTropPercu
     }
 
     /**
+     * Recalque la repartition des versements sur les avoirs qui les annulent.
+     *
+     * Un avoir annule un versement LA OU CE VERSEMENT EST ALLE. Comme la
+     * repartition vient de deplacer cet argent, les avoirs deja emis
+     * annuleraient sinon sur la mauvaise categorie — et le `max(0, du - paye)`
+     * du calcul par frais avalerait l'excedent au lieu de le reporter.
+     *
+     * On passe sur TOUS les versements du perimetre, pas seulement ceux qu'on
+     * vient d'ecrire : en reinitialisation, certains perdent leurs allocations
+     * sans en recevoir de nouvelles, et leurs avoirs doivent redevenir nus.
+     * L'ecriture etant entierement derivee du parent, la repasse est sans effet
+     * la ou rien n'a bouge.
+     *
+     * @param  array<int, int>  $inscriptionIds
+     */
+    private function remettreLesAvoirsEnPhase(array $inscriptionIds): void
+    {
+        ESBTPPaiement::query()
+            ->whereIn('inscription_id', $inscriptionIds)
+            ->encaissements()
+            ->whereHas('childAvoirs')
+            ->each(fn (ESBTPPaiement $parent) => $this->reflet->refleterSurLesAvoirsDe($parent));
+    }
+
+    /**
      * Les allocations posees sur le perimetre traite.
      *
-     * Exactement l'ensemble que ce service sait produire — les versements
-     * VALIDES et ENCAISSES des inscriptions retenues. On n'efface jamais une
-     * allocation portee par un avoir ou un paiement rejete : ce service ne les
-     * a pas ecrites, il ne saurait pas les reecrire.
+     * Exactement l'ensemble que ce service calcule — les versements VALIDES et
+     * ENCAISSES des inscriptions retenues, hors reliquat. Les allocations d'un
+     * avoir n'en font pas partie : elles ne se calculent pas, elles se derivent
+     * du versement annule, et remettreLesAvoirsEnPhase() s'en charge une fois
+     * la repartition ecrite.
      *
      * @param  array<int, int>  $inscriptionIds
      */
@@ -122,6 +155,7 @@ class RepartitionTropPercu
                 ->whereIn('inscription_id', $inscriptionIds)
                 ->valides()
                 ->encaissements()
+                ->horsReliquat()
                 ->select('id'));
     }
 
@@ -157,6 +191,16 @@ class RepartitionTropPercu
             ->where('inscription_id', $inscription->id)
             ->valides()
             ->encaissements()
+            // Le meme perimetre que le lecteur : un reliquat eteint une dette
+            // d'une annee anterieure, pas un frais de l'annee en cours.
+            //
+            // Sans ce filtre, un reliquat devenait candidat : il consommait du
+            // reste en memoire et recevait une allocation que netPaidByCategory()
+            // jetait ensuite — son `paiement_id` n'entre pas dans son perimetre.
+            // Le frais qu'il avait « couvert » etait donc rendu indisponible au
+            // versement reel qui suivait, lequel partait sur un autre frais.
+            // Ecrire et lire doivent voir exactement les memes versements.
+            ->horsReliquat()
             // On repart de zero : les versements deja repartis redeviennent des
             // candidats, sinon changer l'ordre de service ne changerait rien.
             ->when(! $reinitialiser, fn ($q) => $q->whereDoesntHave('allocations'))
@@ -220,6 +264,7 @@ class RepartitionTropPercu
                     ->where('inscription_id', $inscription->id)
                     ->valides()
                     ->encaissements()
+                    ->horsReliquat()
                     ->select('id'))
                 ->groupBy('frais_category_id')
                 ->selectRaw('frais_category_id, SUM(montant) as total')
@@ -275,14 +320,30 @@ class RepartitionTropPercu
     private function repartirUnVersement(ESBTPPaiement $paiement, array &$reste): array
     {
         $aRepartir = (float) $paiement->montant;
-        $categorieDuPaiement = (int) $paiement->frais_category_id;
+
+        // `frais_category_id` est NULLABLE sur esbtp_paiements, et sa cle
+        // etrangere est en `set null` : un versement peut parfaitement n'en
+        // porter aucune. `(int) null` vaut ZERO, pas « rien » — et zero n'est
+        // l'identifiant d'aucune categorie. La branche du surplus ecrivait donc
+        // une allocation sur `frais_category_id = 0`, la cle etrangere la
+        // refusait (1452), et TOUTE la transaction `--apply` etait annulee. Un
+        // seul versement sans categorie suffisait a faire echouer le lot entier
+        // — et le versement sans categorie est precisement le cas de
+        // trop-percu pour lequel ce service existe.
+        //
+        // Absent veut dire absent : on le garde a null et on ne fabrique pas de
+        // categorie d'origine la ou l'ecole n'en a designe aucune.
+        $categorieDuPaiement = $paiement->frais_category_id !== null
+            ? (int) $paiement->frais_category_id
+            : null;
+
         $allocations = [];
 
         // Le frais que le caissier a designe passe en premier : c'est
         // l'intention explicite du versement, elle prime sur l'ordre d'echeance.
         $ordre = array_keys($reste);
 
-        if (isset($reste[$categorieDuPaiement])) {
+        if ($categorieDuPaiement !== null && isset($reste[$categorieDuPaiement])) {
             $ordre = array_merge(
                 [$categorieDuPaiement],
                 array_values(array_diff($ordre, [$categorieDuPaiement]))
@@ -307,16 +368,38 @@ class RepartitionTropPercu
 
         // Tous les frais soldes et il reste de l'argent : c'est une avance. Elle
         // demeure sur la categorie d'origine, ou elle se trouve deja.
+        //
+        // Quand le versement n'en porte pas, l'avance echoit au dernier frais
+        // servi : c'est celui vers lequel l'argent allait encore. Faute de
+        // dernier frais servi — rien n'etait du — il n'existe aucune categorie
+        // ou poser cette avance, et en inventer une reviendrait a decider a la
+        // place de l'ecole. On rend alors un tableau vide : le versement garde
+        // son comportement d'avant, il reste compte dans le total de
+        // l'inscription et sans imputation par frais, exactement comme
+        // aujourd'hui.
         if ($aRepartir > 0.009) {
-            $allocations[$categorieDuPaiement] = round(($allocations[$categorieDuPaiement] ?? 0) + $aRepartir, 2);
+            $cible = $categorieDuPaiement ?? array_key_last($allocations);
+
+            if ($cible === null) {
+                return [];
+            }
+
+            $allocations[$cible] = round(($allocations[$cible] ?? 0) + $aRepartir, 2);
         }
 
         // La repartition ne dit rien de plus que le paiement : on n'ecrit pas.
-        if (count($allocations) === 1
+        //
+        // Un versement SANS categorie, lui, dit toujours quelque chose de plus :
+        // sans allocation il n'est impute a aucun frais, donc meme une
+        // allocation unique le rend visible la ou il ne l'etait pas.
+        if ($categorieDuPaiement !== null
+            && count($allocations) === 1
             && array_key_first($allocations) === $categorieDuPaiement
             && abs($allocations[$categorieDuPaiement] - (float) $paiement->montant) < 0.01) {
             return [];
         }
+
+        $allocations = $this->boucler($paiement, $allocations);
 
         $sortie = [];
 
@@ -329,5 +412,52 @@ class RepartitionTropPercu
         }
 
         return $sortie;
+    }
+
+    /**
+     * Verifie que la repartition couvre la TOTALITE du versement.
+     *
+     * C'est l'invariant sur lequel repose tout le calcul par categorie : un
+     * versement qui porte des allocations est lu par elles, et plus du tout par
+     * sa propre categorie. Une repartition partielle ferait donc disparaitre la
+     * difference des totaux — sans erreur, sans trace.
+     *
+     * Rien ne l'imposait : il n'etait qu'affirme dans un commentaire. Deux
+     * chemins le rompaient (un reliquat candidat, un versement sans categorie),
+     * et un troisieme demeure ici : la boucle de repartition abandonne tout
+     * reliquat inferieur au centime sans le reaffecter. On le rend a la derniere
+     * categorie servie plutot que de le laisser filer.
+     *
+     * Au-dela du centime, ce n'est plus un arrondi mais une erreur de calcul :
+     * on refuse d'ecrire. Un lot qui echoue bruyamment se repare ; de l'argent
+     * qui s'evapore en silence, non.
+     *
+     * @param  array<int, float>  $allocations
+     * @return array<int, float>
+     */
+    private function boucler(ESBTPPaiement $paiement, array $allocations): array
+    {
+        $montant = round((float) $paiement->montant, 2);
+        $ecart = round($montant - array_sum($allocations), 2);
+
+        if ($ecart !== 0.0 && abs($ecart) < 0.01) {
+            $derniere = array_key_last($allocations);
+            $allocations[$derniere] = round($allocations[$derniere] + $ecart, 2);
+            $ecart = round($montant - array_sum($allocations), 2);
+        }
+
+        if (abs($ecart) >= 0.005) {
+            throw new AllocationIncoherenteException(sprintf(
+                'Versement #%d (%s) : la repartition totalise %s pour un montant de %s, '
+                .'soit %s non impute. Ecrire cela ferait disparaitre cette somme des totaux par frais.',
+                $paiement->id,
+                $paiement->numero_recu ?: 'sans numero',
+                number_format(array_sum($allocations), 2, ',', ' '),
+                number_format($montant, 2, ',', ' '),
+                number_format($ecart, 2, ',', ' ')
+            ));
+        }
+
+        return $allocations;
     }
 }

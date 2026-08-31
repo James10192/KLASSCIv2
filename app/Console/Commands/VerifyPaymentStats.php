@@ -97,10 +97,7 @@ class VerifyPaymentStats extends Command
                     $paiements = ESBTPPaiement::where('inscription_id', $inscription->id)
                         ->where('frais_category_id', $subscription->frais_category_id)
                         ->whereIn('status', ['validé', 'en_attente'])
-                        ->where(function($query) {
-                            $query->where('type_paiement', '!=', 'reliquat')
-                                  ->orWhereNull('type_paiement');
-                        })
+                        ->horsReliquat()
                         ->get();
 
                     $montantPayeCategorie = ESBTPPaiement::netStudentPaidFrom($paiements) + ESBTPPaiement::pendingEncaissementsFrom($paiements);
@@ -122,10 +119,7 @@ class VerifyPaymentStats extends Command
             $paiementsSansSubscription = ESBTPPaiement::where('inscription_id', $inscription->id)
                 ->whereIn('status', ['validé', 'en_attente'])
                 ->whereNotIn('frais_category_id', $subscriptions->pluck('frais_category_id'))
-                ->where(function($query) {
-                    $query->where('type_paiement', '!=', 'reliquat')
-                          ->orWhereNull('type_paiement');
-                })
+                ->horsReliquat()
                 ->with('fraisCategory')
                 ->get();
 
