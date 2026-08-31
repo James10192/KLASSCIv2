@@ -27,6 +27,16 @@ class StorePaiementRequest extends FormRequest
             'commentaire' => 'nullable|string',
             'confirmed_unusual_amount' => 'nullable|in:0,1',
             'confirmed_zero_amount' => 'nullable|in:0,1',
+
+            // La repartition explicite du versement : frais => montant.
+            //
+            // Absente, le serveur applique la regle de l'ecole depuis le frais
+            // designe (RepartitionDuVersement). Presente, elle doit totaliser le
+            // versement au franc pres — c'est le service qui le verifie, parce
+            // que la meme regle doit valoir pour tous les appelants et pas
+            // seulement pour ce formulaire.
+            'repartition' => 'nullable|array',
+            'repartition.*' => 'numeric|min:0',
         ];
     }
 

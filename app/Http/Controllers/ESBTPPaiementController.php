@@ -6,8 +6,10 @@ use App\Models\ESBTPPaiement;
 use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPInscription;
 use App\Models\ESBTPAnneeUniversitaire;
+use App\Exceptions\RepartitionRefuseeException;
 use App\Http\Requests\Paiement\StorePaiementRequest;
 use App\Http\Requests\Paiement\UpdatePaiementRequest;
+use App\Services\Frais\RepartitionDuVersement;
 use App\Services\PaymentFilterService;
 use App\Services\MobileMoneyPaymentGuard;
 use App\Services\PaymentStatsService;
@@ -39,7 +41,7 @@ class ESBTPPaiementController extends Controller
         $this->middleware('auth');
         // Accepter soit `paiements.view` (voit tous), soit `paiements.view_own` (voit ses encaissements)
         $this->middleware('permission:paiements.view|paiements.view_own', ['only' => ['index', 'show', 'paiementsEtudiant']]);
-        $this->middleware('permission:paiements.create|paiements.create.mobile_money', ['only' => ['create', 'store']]);
+        $this->middleware('permission:paiements.create|paiements.create.mobile_money', ['only' => ['create', 'store', 'apercuRepartition']]);
         $this->middleware('permission:paiements.edit', ['only' => ['edit', 'update']]);
         $this->middleware('permission:paiements.delete', ['only' => ['destroy']]);
         $this->middleware('permission:paiements.validate', ['only' => ['valider', 'rejeter', 'genererRecu']]);
@@ -337,7 +339,7 @@ class ESBTPPaiementController extends Controller
      * @param  \App\Http\Requests\Paiement\StorePaiementRequest  $request
      * @return \Illuminate\Http\Response
      */
-    public function store(StorePaiementRequest $request)
+    public function store(StorePaiementRequest $request, RepartitionDuVersement $repartition)
     {
         abort_unless(
             app(MobileMoneyPaymentGuard::class)->allowsMode($request->user(), $request->input('mode_paiement')),
@@ -418,6 +420,31 @@ class ESBTPPaiementController extends Controller
             'frais_category_id' => $validated['frais_category_id'],
         ]);
 
+        // Ou va cet argent, decide MAINTENANT — et AVANT que le versement existe.
+        //
+        // L'ordre compte : le garde-fou compte les versements EN ATTENTE dans le
+        // deja-paye, et celui-ci naitra en attente. Le calculer apres la creation
+        // reviendrait a lui opposer son propre montant, et tout encaissement
+        // couvrant exactement le reste du serait refuse.
+        try {
+            $allocations = $repartition->calculer(
+                (int) $validated['inscription_id'],
+                (float) $validated['montant'],
+                (int) $validated['frais_category_id'],
+                $validated['repartition'] ?? null
+            );
+        } catch (RepartitionRefuseeException $e) {
+            // Refus METIER : la caisse a une saisie a corriger, pas une panne a
+            // signaler. Rien n'a ete ecrit, il n'y a rien a annuler — et rien a
+            // journaliser non plus : le caissier lit le motif a l'ecran, et un
+            // `Log::info` est de toute facon filtre en production.
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
+            }
+
+            return redirect()->back()->withErrors(['montant' => $e->getMessage()])->withInput();
+        }
+
         try {
             DB::beginTransaction();
 
@@ -437,6 +464,11 @@ class ESBTPPaiementController extends Controller
             $paiement->motif = $fraisCategory ? $fraisCategory->name : 'Paiement de frais';
             $paiement->created_by = Auth::id();
             $paiement->save();
+
+            // Le versement dit lui-meme ou il est alle. Sans cette ecriture, le
+            // calcul par frais l'impute EN ENTIER a la categorie designee, et un
+            // encaissement couvrant plusieurs frais laisse les autres intacts.
+            $repartition->ecrire($paiement, $allocations);
 
             DB::commit();
 
@@ -478,6 +510,64 @@ class ESBTPPaiementController extends Controller
                 ->withErrors(['error' => 'Une erreur est survenue lors de l\'enregistrement du paiement.'])
                 ->withInput();
         }
+    }
+
+    /**
+     * Ce que deviendrait ce versement, sans l'encaisser.
+     *
+     * L'ecran de caisse doit pouvoir montrer au caissier ou son argent va
+     * atterrir AVANT qu'il valide, et lui dire tout de suite quand il encaisse
+     * plus que l'etudiant ne doit.
+     *
+     * Il le demande au serveur plutot que de le calculer lui-meme. La regle de
+     * repartition n'existe qu'en un exemplaire (RepartitionDuVersement) : une
+     * seconde ecriture en JavaScript finirait par diverger — sur le frais servi
+     * en premier, ou sur le porteur de l'avance — et la meme saisie produirait
+     * deux ecritures comptables selon la porte d'entree. Le navigateur PROPOSE,
+     * le serveur DECIDE, et c'est la meme decision aux deux endroits.
+     */
+    public function apercuRepartition(Request $request, RepartitionDuVersement $repartition)
+    {
+        $donnees = $request->validate([
+            'inscription_id' => 'required|exists:esbtp_inscriptions,id',
+            'frais_category_id' => 'nullable|exists:esbtp_frais_categories,id',
+            'montant' => 'required|numeric|min:0',
+            'repartition' => 'nullable|array',
+            'repartition.*' => 'numeric|min:0',
+        ]);
+
+        $reste = $repartition->resteConnuParFrais((int) $donnees['inscription_id']);
+
+        try {
+            $allocations = $repartition->calculer(
+                (int) $donnees['inscription_id'],
+                (float) $donnees['montant'],
+                isset($donnees['frais_category_id']) ? (int) $donnees['frais_category_id'] : null,
+                $donnees['repartition'] ?? null
+            );
+        } catch (RepartitionRefuseeException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+                'reste' => $reste,
+            ], 422);
+        }
+
+        $noms = \App\Models\ESBTPFraisCategory::query()
+            ->whereIn('id', array_keys($allocations))
+            ->pluck('name', 'id');
+
+        return response()->json([
+            'success' => true,
+            'reste' => $reste,
+            'allocations' => collect($allocations)
+                ->map(fn ($montant, $categoryId) => [
+                    'frais_category_id' => (int) $categoryId,
+                    'name' => (string) ($noms[$categoryId] ?? ('Frais #'.$categoryId)),
+                    'montant' => (float) $montant,
+                ])
+                ->values(),
+        ]);
     }
 
     /**
