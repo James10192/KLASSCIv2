@@ -11,6 +11,7 @@ use App\Models\ESBTPFraisSubscription;
 use App\Models\ESBTPInscription;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use App\Services\Inscriptions\NormalisationTypeInscription;
 
 class ReeinscriptionService
 {
@@ -253,7 +254,7 @@ class ReeinscriptionService
 
             if ($anneeUniversitaireCourante) {
                 // Compter les réinscriptions validées dans l'année courante
-                $statistiques['valides'] = \App\Models\ESBTPInscription::where('type_inscription', 'reinscription')
+                $statistiques['valides'] = \App\Models\ESBTPInscription::where('type_inscription', NormalisationTypeInscription::REINSCRIPTION)
                     ->where('annee_universitaire_id', $anneeUniversitaireCourante->id)
                     ->where('status', 'active')
                     ->count();
@@ -433,7 +434,7 @@ class ReeinscriptionService
                 'affectation_status' => $affectationStatus,
                 'montant_scolarite' => 0, // À définir plus tard comme les autres inscriptions
                 'frais_inscription' => 0, // À définir plus tard
-                'type_inscription' => 'reinscription',
+                'type_inscription' => NormalisationTypeInscription::REINSCRIPTION,
                 'is_redoublant' => $estRedoublement,
                 'date_inscription' => now(),
                 'status' => 'active',
