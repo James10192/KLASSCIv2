@@ -939,9 +939,9 @@ $(function() {
             // a reclamer — et c'est ce second etat qui coche la ligne sur le recu.
             var inKindBadge = '';
             if (category.satisfied_in_kind) {
-                inKindBadge = '<span class="badge bg-success text-white small ms-2" title="L'etudiant a apporte l'article : rien a encaisser"><i class="fas fa-box-open"></i> Déposé en nature</span>';
+                inKindBadge = '<span class="badge bg-success text-white small ms-2" title="L&#39;etudiant a apporte l&#39;article : rien a encaisser"><i class="fas fa-box-open"></i> Déposé en nature</span>';
             } else if (category.accepts_in_kind) {
-                inKindBadge = '<span class="badge bg-info text-white small ms-2" title="L'etudiant peut apporter l'article au lieu de payer. Le marquer se fait depuis la fiche d'inscription."><i class="fas fa-box"></i> Payable en nature</span>';
+                inKindBadge = '<span class="badge bg-info text-white small ms-2" title="L&#39;etudiant peut apporter l&#39;article au lieu de payer. Le marquer se fait depuis la fiche d&#39;inscription."><i class="fas fa-box"></i> Payable en nature</span>';
             }
             
             html += `
