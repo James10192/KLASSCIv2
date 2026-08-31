@@ -4,6 +4,7 @@ namespace App\Http\Controllers\API\CLI;
 
 use App\Http\Controllers\API\BaseApiController;
 use App\Services\Frais\CorrectionMontantSouscriptions;
+use App\Services\Frais\SouscriptionsObligatoiresManquantes;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -36,6 +37,38 @@ class CLIFraisController extends BaseApiController
                 count($releve['montants']),
                 count($releve['suspects'])
             )
+        );
+    }
+
+    /**
+     * Cree les souscriptions obligatoires qui n'ont jamais ete posees.
+     *
+     * Ne touche a rien sans `apply`, et ne cree QUE ce qui manque : une
+     * souscription existante porte une decision, on ne la revient pas.
+     */
+    public function souscriptionsManquantes(
+        Request $request,
+        SouscriptionsObligatoiresManquantes $rattrapage
+    ): JsonResponse {
+        if (! $request->user()->tokenCan('cli:admin')) {
+            return $this->errorResponse('Token missing cli:admin ability', [], 403);
+        }
+
+        $valide = $request->validate([
+            'annee_id' => ['nullable', 'integer'],
+            'apply' => ['nullable', 'boolean'],
+        ]);
+
+        $resultat = $rattrapage->executer(
+            (bool) ($valide['apply'] ?? false),
+            $valide['annee_id'] ?? null,
+        );
+
+        return $this->successResponse(
+            $resultat,
+            $resultat['applique']
+                ? sprintf('%d souscription(s) creee(s) sur %d inscription(s).', $resultat['total'], $resultat['inscriptions'])
+                : sprintf("%d souscription(s) manquante(s) sur %d inscription(s). Rien n'a ete ecrit.", $resultat['total'], $resultat['inscriptions'])
         );
     }
 

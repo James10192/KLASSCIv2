@@ -462,6 +462,7 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
         // Ne touche a rien sans `apply` : on ne corrige pas des montants sans
         // avoir regarde quels etudiants sont concernes.
         Route::get('/frais/montants-souscriptions', [App\Http\Controllers\API\CLI\CLIFraisController::class, 'releverMontants'])->name('frais.montants-souscriptions');
+        Route::post('/frais/souscriptions-manquantes', [App\Http\Controllers\API\CLI\CLIFraisController::class, 'souscriptionsManquantes'])->name('frais.souscriptions-manquantes');
         Route::post('/frais/corriger-souscriptions', [App\Http\Controllers\API\CLI\CLIFraisController::class, 'corrigerSouscriptions'])->name('frais.corriger-souscriptions');
         Route::post('/db/fix-duplicates', [App\Http\Controllers\API\CLI\CLIMaintenanceController::class, 'fixDuplicates'])->name('db.fix-duplicates');
         Route::post('/migrate', [App\Http\Controllers\API\CLI\CLIMaintenanceController::class, 'migrate'])->name('migrate');
