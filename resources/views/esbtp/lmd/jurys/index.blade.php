@@ -135,31 +135,19 @@
                 </div>
                 <div>
                     <label style="font-size:.72rem;color:#475569;font-weight:600;text-transform:uppercase;">Parcours</label>
-                    <select name="parcours_id" style="width:100%;padding:.5rem;border:1px solid #e2e8f0;border-radius:8px;">
-                        <option value="">— Tous —</option>
-                        @foreach($parcours as $p)<option value="{{ $p->id }}">{{ $p->name }}</option>@endforeach
-                    </select>
+                    <x-au-select name="parcours_id" placeholder="Tous les parcours" icon="fa-route" :searchable="$parcours->count() > 8" :options="$parcours->pluck('name', 'id')" />
                 </div>
                 <div>
                     <label style="font-size:.72rem;color:#475569;font-weight:600;text-transform:uppercase;">Classe</label>
-                    <select name="classe_id" style="width:100%;padding:.5rem;border:1px solid #e2e8f0;border-radius:8px;">
-                        <option value="">— Toutes —</option>
-                        @foreach($classes as $c)<option value="{{ $c->id }}">{{ $c->name }}</option>@endforeach
-                    </select>
+                    <x-au-select name="classe_id" placeholder="Toutes les classes" icon="fa-chalkboard" :searchable="$classes->count() > 8" :options="$classes->pluck('name', 'id')" />
                 </div>
                 <div>
                     <label style="font-size:.72rem;color:#475569;font-weight:600;text-transform:uppercase;">Session liée</label>
-                    <select name="session_id" style="width:100%;padding:.5rem;border:1px solid #e2e8f0;border-radius:8px;">
-                        <option value="">— Aucune —</option>
-                        @foreach($sessions as $s)<option value="{{ $s->id }}">{{ $s->libelle }}</option>@endforeach
-                    </select>
+                    <x-au-select name="session_id" placeholder="Aucune session" icon="fa-clock" :searchable="$sessions->count() > 8" :options="$sessions->pluck('libelle', 'id')" />
                 </div>
                 <div>
                     <label style="font-size:.72rem;color:#475569;font-weight:600;text-transform:uppercase;">Semestre</label>
-                    <select name="semestre" style="width:100%;padding:.5rem;border:1px solid #e2e8f0;border-radius:8px;">
-                        <option value="">—</option>
-                        @foreach([1,2,3,4,5,6,7,8] as $sm)<option value="{{ $sm }}">S{{ $sm }}</option>@endforeach
-                    </select>
+                    <x-au-select name="semestre" placeholder="Semestre" icon="fa-layer-group" :options="collect(range(1,8))->mapWithKeys(fn ($s) => [$s => 'S'.$s])" />
                 </div>
                 <div style="grid-column:1/-1;">
                     <label style="font-size:.72rem;color:#475569;font-weight:600;text-transform:uppercase;">Date du jury</label>

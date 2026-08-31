@@ -45,24 +45,23 @@
 
             @can('lmd.jury.preside')
             @if(!$jury->isLocked())
-            <div style="margin-top:1rem;padding-top:1rem;border-top:1px solid #f1f5f9;display:grid;grid-template-columns:2fr 1fr auto;gap:.5rem;align-items:end;">
+            <div class="juy-add-membre">
                 <div>
-                    <label style="font-size:.7rem;color:#475569;font-weight:600;text-transform:uppercase;">Utilisateur</label>
-                    <select x-model="newMembreUserId" style="width:100%;padding:.4rem;border:1px solid #e2e8f0;border-radius:7px;font-size:.85rem;">
-                        <option value="">— Sélectionner —</option>
-                        @foreach($enseignants as $e)
-                        <option value="{{ $e->id }}">{{ $e->name }}</option>
-                        @endforeach
-                    </select>
+                    <label class="juy-field-label">Utilisateur</label>
+                    <x-au-user-picker
+                        name="new_membre_user_id"
+                        :users="$enseignants"
+                        placeholder="Sélectionner un membre"
+                        x-on:change="newMembreUserId = $event.target.value" />
                 </div>
                 <div>
-                    <label style="font-size:.7rem;color:#475569;font-weight:600;text-transform:uppercase;">Rôle</label>
-                    <select x-model="newMembreRole" style="width:100%;padding:.4rem;border:1px solid #e2e8f0;border-radius:7px;font-size:.85rem;">
-                        <option value="president">Président</option>
-                        <option value="assesseur">Assesseur</option>
-                        <option value="secretaire">Secrétaire</option>
-                        <option value="consultatif">Consultatif</option>
-                    </select>
+                    <label class="juy-field-label">Rôle</label>
+                    <x-au-select
+                        name="new_membre_role"
+                        placeholder="Rôle"
+                        icon="fa-user-tie"
+                        :options="['president' => 'Président', 'assesseur' => 'Assesseur', 'secretaire' => 'Secrétaire', 'consultatif' => 'Consultatif']"
+                        x-model="newMembreRole" />
                 </div>
                 <button type="button" class="juy-btn juy-btn--primary h-11" @click="addMembre()" :disabled="!newMembreUserId || busy">
                     <i class="fas fa-plus"></i> Ajouter

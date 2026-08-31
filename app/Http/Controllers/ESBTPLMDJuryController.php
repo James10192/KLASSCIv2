@@ -80,7 +80,11 @@ class ESBTPLMDJuryController extends Controller
         $readiness = $this->delib->verifierReadiness($jury);
         $stats = $this->delib->buildStatistiques($jury);
 
-        $enseignants = User::orderBy('name')->get(['id', 'name', 'email']);
+        $enseignants = User::query()
+            ->select('id', 'name', 'email', 'username')
+            ->with('roles:id,name')
+            ->orderBy('name')
+            ->get();
         $officialDocument = $this->officialDocuments->existingJuryPv($jury);
 
         return view('esbtp.lmd.jurys.show', compact('jury', 'quorum', 'readiness', 'stats', 'enseignants', 'officialDocument'));
