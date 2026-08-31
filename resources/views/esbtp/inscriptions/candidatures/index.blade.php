@@ -80,6 +80,10 @@
     .cd-affect { display: inline-block; margin-top: .2rem; padding: .1rem .45rem;
                  border-radius: 5px; background: #f1f5f9; color: #475569; font-size: .72rem; }
     .cd-affect em { font-style: normal; color: #94a3b8; }
+    .cd-transfert { display: inline-flex; align-items: center; gap: .3rem; margin-top: .2rem;
+        padding: .1rem .45rem; border-radius: 5px; font-size: .7rem; font-weight: 700;
+        background: rgba(4,83,203,.08); color: #0453cb; border: 1px solid rgba(4,83,203,.25); }
+    .cd-transfert-de { font-size: .72rem; color: #475569; margin-top: .15rem; }
     .cd-actions { display: flex; gap: .4rem; justify-content: flex-end; }
 </style>
 @endpush
@@ -172,6 +176,11 @@
                                     'affectation' => $c->affectation_status
                                         ? (\App\Models\ESBTPCandidature::affectationsDeclarables()[$c->affectation_status] ?? $c->affectation_status)
                                         : '',
+                                    'etablissement_sup_origine' => (string) $c->etablissement_sup_origine,
+                                    'formation_origine' => (string) $c->formation_origine,
+                                    'niveau_atteint_origine' => (string) $c->niveau_atteint_origine,
+                                    'annee_derniere_inscription' => (string) $c->annee_derniere_inscription,
+                                    'motif_transfert' => (string) $c->motif_transfert,
                                     'tuteur_nom' => (string) $c->tuteur_nom,
                                     'tuteur_lien' => (string) $c->tuteur_lien,
                                     'tuteur_telephone' => \App\Domain\Notifications\PhoneFormatter::toReadable($c->tuteur_telephone) ?: (string) $c->tuteur_telephone,
@@ -233,7 +242,16 @@
      que la scolarité compare. --}}
 {{ \App\Models\ESBTPCandidature::affectationsDeclarables()[$c->affectation_status] ?? $c->affectation_status }} <em>(déclaré)</em></span>
                                     @endif
-                                    @if(! $c->serie_bac && ! $c->etablissement_origine && ! $c->annee_bac && ! $c->affectation_status) — @endif
+                                    {{-- Le transfert se voit AVANT d'ouvrir le dossier : c'est ce qui
+                                         change l'instruction du dossier, et l'agent trie sur cette
+                                         colonne. Le detail complet reste dans la fiche. --}}
+                                    @if($c->est_transfert)
+                                        <span class="cd-transfert"><i class="fas fa-right-left"></i> Transfert</span>
+                                        @if($c->etablissement_sup_origine)
+                                            <div class="cd-transfert-de">{{ $c->etablissement_sup_origine }}</div>
+                                        @endif
+                                    @endif
+                                    @if($c->parcoursEstVide()) — @endif
                                 </td>
                                 <td class="cd-contact">{{ $c->created_at?->format('d/m/Y H:i') }}</td>
                                 <td>
@@ -390,6 +408,12 @@ document.addEventListener('DOMContentLoaded', function () {
             ['Contact', [['telephone', 'Téléphone'], ['email', 'E-mail'], ['residence', 'Résidence']]],
             ['Vœu', [['voeu', 'Formation'], ['annee', 'Année visée']]],
             ['Scolarité antérieure', [['serie_bac', 'Série du bac'], ['annee_bac', 'Année du bac'], ['etablissement_origine', 'Établissement'], ['affectation', 'Affectation déclarée']]],
+            // Bloc distinct de la scolarite anterieure, et non fondu dedans : le
+            // bac dit ce que le candidat a OBTENU, ce bloc dit d'ou il ARRIVE.
+            // Les melanger ferait lire un lycee et une universite sur la meme
+            // liste, sans que rien ne dise laquelle il quitte. Les champs vides
+            // ne sont pas rendus, donc le bloc disparait pour un bachelier.
+            ['Transfert', [['etablissement_sup_origine', 'Établissement quitté'], ['formation_origine', 'Formation suivie'], ['niveau_atteint_origine', 'Dernier niveau validé'], ['annee_derniere_inscription', 'Dernière inscription'], ['motif_transfert', 'Motif']]],
             ['Tuteur', [['tuteur_nom', 'Nom'], ['tuteur_lien', 'Lien'], ['tuteur_telephone', 'Téléphone'], ['tuteur_profession', 'Profession']]],
         ];
 

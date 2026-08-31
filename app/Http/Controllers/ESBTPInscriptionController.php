@@ -1232,8 +1232,10 @@ class ESBTPInscriptionController extends Controller
             "niveau_id" => "required|exists:esbtp_niveau_etudes,id",
             "classe_id" => "nullable|exists:esbtp_classes,id",
             "date_inscription" => "required|date",
+            // « transfert » n'est plus accepte : c'est une provenance, portee
+            // par `est_transfert` ci-dessous, pas un type d'inscription.
             "type_inscription" =>
-                "required|in:première_inscription,réinscription,transfert",
+                "required|in:première_inscription,réinscription",
             "montant_scolarite" => app(EnrollmentAmountVisibility::class)->hideAmounts(auth()->user())
                 ? "nullable|numeric|min:0"
                 : "required|numeric|min:0",

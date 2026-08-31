@@ -102,6 +102,30 @@ class PortailCandidatureRequest extends FormRequest
             'etablissement_origine' => ['nullable', 'string', 'max:150'],
             'annee_bac' => ['nullable', 'integer', 'min:1980', 'max:'.(date('Y') + 1)],
 
+            // Le candidat qui vient d'un autre etablissement SUPERIEUR.
+            //
+            // C'est lui qui le declare, et c'est la difference avec le
+            // formulaire de l'ecole : la-bas, la question ne se pose qu'au
+            // moment de choisir une classe, et l'agent la deduit du niveau
+            // vise. Ici le candidat ne choisit pas de classe — il n'exprime
+            // qu'un voeu — donc la deduction n'est pas possible et la
+            // declaration directe est la seule source. Elle est aussi la
+            // meilleure : personne ne connait mieux son parcours que lui.
+            'est_transfert' => ['nullable', 'boolean'],
+
+            // Seul obligatoire du bloc : une declaration de transfert sans
+            // l'etablissement quitte n'apprend rien a l'ecole, et lui coute
+            // l'appel telephonique que ce formulaire existe pour eviter.
+            'etablissement_sup_origine' => [
+                'nullable', 'required_if:est_transfert,true', 'string', 'max:150',
+            ],
+            'formation_origine' => ['nullable', 'string', 'max:150'],
+            'niveau_atteint_origine' => ['nullable', 'string', 'max:60'],
+            'annee_derniere_inscription' => [
+                'nullable', 'integer', 'min:1980', 'max:'.(date('Y') + 1),
+            ],
+            'motif_transfert' => ['nullable', 'string', 'max:1000'],
+
             // Declare par le candidat, verifie par l'ecole : en Cote d'Ivoire
             // un bachelier est affecte par l'Etat ou ne l'est pas, et cela
             // change ce qu'il paie. Nullable, parce que beaucoup ne le savent
@@ -152,6 +176,7 @@ class PortailCandidatureRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         $this->canoniserLeTelephone();
+        $this->rangerLeBlocTransfert();
 
         $brut = $this->input('affectation_status');
 
@@ -164,6 +189,46 @@ class PortailCandidatureRequest extends FormRequest
         if ($normalise !== ESBTPEcheancierRule::STATUS_ALL) {
             $this->merge(['affectation_status' => $normalise]);
         }
+    }
+
+    /**
+     * Le drapeau decide, et ce qui ne le suit pas est jete.
+     *
+     * Deux raisons de nettoyer ici plutot que de faire confiance au formulaire.
+     *
+     * La premiere est que ce point d'entree est PUBLIC : rien n'oblige un
+     * appelant a passer par le formulaire, et une charge qui porte
+     * `est_transfert: false` avec un motif de transfert rempli ferait
+     * apparaitre ce motif sur la fiche, sous un candidat marque « sort du
+     * lycee ». L'agent lirait une contradiction sans pouvoir la trancher.
+     *
+     * La seconde tient au formulaire lui-meme : un candidat qui coche
+     * « transfert », remplit, puis se ravise et recoche « je sors du lycee »
+     * laisse derriere lui ce qu'il avait tape. Effacer au depot evite d'avoir
+     * a y penser dans l'interface, ou l'oubli serait silencieux.
+     *
+     * Le drapeau est normalise en booleen VRAI avant tout : `required_if`
+     * compare a `true`, et une chaine « 1 » venue d'un envoi en formulaire
+     * classique ne lui correspondrait pas — l'etablissement d'origine
+     * deviendrait alors facultatif pour un transfert.
+     */
+    private function rangerLeBlocTransfert(): void
+    {
+        $estTransfert = filter_var(
+            $this->input('est_transfert'),
+            FILTER_VALIDATE_BOOLEAN,
+            FILTER_NULL_ON_FAILURE
+        ) === true;
+
+        $this->merge(['est_transfert' => $estTransfert]);
+
+        if ($estTransfert) {
+            return;
+        }
+
+        // Derive du modele, jamais reecrit ici : une seconde liste se serait
+        // desynchronisee au premier champ ajoute, et en silence.
+        $this->merge(array_fill_keys(ESBTPCandidature::CHAMPS_TRANSFERT, null));
     }
 
     /**
