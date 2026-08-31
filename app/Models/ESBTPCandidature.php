@@ -142,6 +142,11 @@ class ESBTPCandidature extends Model implements Auditable
         'filiere_id', 'niveau_id', 'voeu_libre',
         'annee_universitaire_id',
         'serie_bac', 'etablissement_origine', 'annee_bac', 'affectation_status',
+        // Le bac reste au-dessus : il est demande dans les deux cas. Ce bloc
+        // ne s'y substitue pas, il decrit d'ou vient celui qui n'arrive pas
+        // du lycee.
+        'est_transfert', 'etablissement_sup_origine', 'formation_origine',
+        'niveau_atteint_origine', 'annee_derniere_inscription', 'motif_transfert',
         'tuteur_nom', 'tuteur_telephone', 'tuteur_lien', 'tuteur_profession',
         'message', 'statut', 'consentement_at', 'ip_hash',
         'motif_rejet', 'traite_par', 'traite_at',
@@ -153,6 +158,8 @@ class ESBTPCandidature extends Model implements Auditable
         'consentement_at' => 'datetime',
         'traite_at' => 'datetime',
         'annee_bac' => 'integer',
+        'est_transfert' => 'boolean',
+        'annee_derniere_inscription' => 'integer',
     ];
 
     /**

@@ -105,6 +105,95 @@ class PortailCandidatureRulesTest extends TestCase
         $this->assertSame([], $this->echecs($this->candidature()));
     }
 
+    /**
+     * Le cas courant reste le bachelier : ne rien declarer doit passer, et
+     * doit valoir « pas un transfert ». Les candidatures deposees avant que
+     * la question n'existe sont exactement dans ce cas.
+     */
+    public function test_sans_declaration_le_candidat_n_est_pas_un_transfert(): void
+    {
+        $prepare = $this->prepare($this->candidature());
+
+        $this->assertFalse($prepare['est_transfert']);
+        $this->assertSame([], $this->echecs($this->candidature()));
+    }
+
+    public function test_un_transfert_complet_passe(): void
+    {
+        $echecs = $this->echecs($this->candidature([
+            'est_transfert' => true,
+            'etablissement_sup_origine' => 'Université Félix Houphouët-Boigny',
+            'formation_origine' => 'Licence Génie Civil',
+            'niveau_atteint_origine' => 'Licence 1 validée',
+            'annee_derniere_inscription' => 2025,
+            'motif_transfert' => 'Déménagement familial vers Abidjan.',
+        ]));
+
+        $this->assertSame([], $echecs);
+    }
+
+    /**
+     * Une declaration de transfert sans l'etablissement quitte n'apprend rien
+     * a l'ecole, et lui coute l'appel telephonique que ce formulaire existe
+     * pour eviter.
+     */
+    public function test_un_transfert_sans_etablissement_est_refuse(): void
+    {
+        $echecs = $this->echecs($this->candidature(['est_transfert' => true]));
+
+        $this->assertArrayHasKey('etablissement_sup_origine', $echecs);
+    }
+
+    /**
+     * Le drapeau peut arriver en chaine — un envoi de formulaire classique ne
+     * transporte pas de booleen JSON. S'il n'etait pas canonise, `required_if`
+     * ne reconnaitrait pas « 1 » et l'etablissement redeviendrait facultatif
+     * pour un transfert : la seule regle du bloc s'effacerait en silence.
+     */
+    public function test_le_drapeau_en_chaine_declenche_quand_meme_l_obligation(): void
+    {
+        $echecs = $this->echecs($this->candidature(['est_transfert' => '1']));
+
+        $this->assertArrayHasKey('etablissement_sup_origine', $echecs);
+        $this->assertTrue($this->prepare($this->candidature(['est_transfert' => '1']))['est_transfert']);
+    }
+
+    /**
+     * Ce point d'entree est PUBLIC : rien n'oblige un appelant a passer par le
+     * formulaire. Une charge qui dit « pas un transfert » tout en portant un
+     * motif de transfert ferait lire a l'agent une contradiction qu'il ne
+     * pourrait pas trancher. Le drapeau decide, le reste est jete.
+     */
+    public function test_le_bloc_est_efface_quand_le_drapeau_est_baisse(): void
+    {
+        $prepare = $this->prepare($this->candidature([
+            'est_transfert' => false,
+            'etablissement_sup_origine' => 'Université fantôme',
+            'formation_origine' => 'Licence inventée',
+            'niveau_atteint_origine' => 'Master 2',
+            'annee_derniere_inscription' => 2024,
+            'motif_transfert' => 'Motif qui ne devrait pas survivre.',
+        ]));
+
+        $this->assertFalse($prepare['est_transfert']);
+        $this->assertNull($prepare['etablissement_sup_origine']);
+        $this->assertNull($prepare['formation_origine']);
+        $this->assertNull($prepare['niveau_atteint_origine']);
+        $this->assertNull($prepare['annee_derniere_inscription']);
+        $this->assertNull($prepare['motif_transfert']);
+    }
+
+    public function test_une_annee_de_derniere_inscription_absurde_est_refusee(): void
+    {
+        $echecs = $this->echecs($this->candidature([
+            'est_transfert' => true,
+            'etablissement_sup_origine' => 'Université de Bouaké',
+            'annee_derniere_inscription' => 1850,
+        ]));
+
+        $this->assertArrayHasKey('annee_derniere_inscription', $echecs);
+    }
+
     public function test_un_statut_d_affectation_invente_est_refuse(): void
     {
         $echecs = $this->echecs($this->candidature(['affectation_status' => 'boursier']));

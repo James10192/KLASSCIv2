@@ -110,6 +110,23 @@ final class PreRemplissageCandidature
             'ville' => $candidature->ville,
             'commune' => $candidature->commune,
             'affectation_status' => $candidature->affectation_status,
+
+            // Le transfert traverse, le lycee non.
+            //
+            // `etablissement_origine` existe des DEUX cotes avec deux sens :
+            // le lycee du bac sur la candidature, l'etablissement quitte sur
+            // l'inscription. Recopier l'un dans l'autre ferait lire « Lycee
+            // Technique d'Abidjan » a un agent qui attend une universite. On
+            // envoie donc `etablissement_sup_origine`, qui est bien ce que le
+            // champ de l'ecole nomme ; le lycee reste sur la fiche
+            // candidature, ou il garde son sens.
+            //
+            // `'1'` et non `true` : ces valeurs alimentent `old()`, que Blade
+            // rend dans des attributs HTML. `true` s'y ecrit « 1 » et `false`
+            // s'y ecrit chaine vide — que le `array_filter` ci-dessous
+            // retirerait de toute facon. Autant l'ecrire une fois, ici.
+            'est_transfert' => $candidature->est_transfert ? '1' : null,
+            'etablissement_origine' => $candidature->etablissement_sup_origine,
         ];
 
         return array_filter($valeurs, static fn ($v) => $v !== null && $v !== '');

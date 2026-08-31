@@ -112,7 +112,12 @@
                             <select class="form-control @error('type_inscription') is-invalid @enderror" id="type_inscription" name="type_inscription" required>
                                 <option value="première_inscription" {{ old('type_inscription', $inscription->type_inscription) == 'première_inscription' ? 'selected' : '' }}>Première inscription</option>
                                 <option value="réinscription" {{ old('type_inscription', $inscription->type_inscription) == 'réinscription' ? 'selected' : '' }}>Réinscription</option>
-                                <option value="transfert" {{ old('type_inscription', $inscription->type_inscription) == 'transfert' ? 'selected' : '' }}>Transfert</option>
+                                {{-- Pas d'option « Transfert » : ce n'est pas un TYPE d'inscription
+                                     mais une PROVENANCE, portee par la case « est_transfert » du bloc
+                                     ci-dessous. L'option a existe, et elle se contredisait : ce bloc ne
+                                     s'affiche que pour « premiere inscription », et le controleur remet
+                                     est_transfert a false pour tout autre type — la choisir EFFACAIT
+                                     donc le transfert qu'elle pretendait declarer. --}}
                             </select>
                             @error('type_inscription')
                                 <div class="invalid-feedback">{{ $message }}</div>
