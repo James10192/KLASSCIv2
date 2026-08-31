@@ -1780,6 +1780,16 @@ document.addEventListener('DOMContentLoaded', function() {
         const amountHtml = window.hideEnrollmentAmounts ? '' : `<strong>${amount.toLocaleString('fr-FR')} FCFA</strong>`;
         return `
             <div class="frais-card" data-category-id="${category.id}">
+                <!-- Le MONTANT, sans lequel rien n'existe.
+                     Ce bloc n'envoyait que la case du depot. Or le controleur
+                     passe son chemin des que le montant est nul : aucune
+                     souscription n'etait creee, ni pour l'etudiant qui depose ni
+                     pour celui qui ne depose pas. Le frais disparaissait — absent
+                     du recu, absent de la caisse — alors que la ligne ci-dessous
+                     promet « sinon le montant sera due ».
+                     Avec le montant, la souscription existe dans les deux cas :
+                     marquee deposee si la case est cochee, a payer sinon. -->
+                <input type="hidden" name="frais[${category.id}][amount]" value="${amount}">
                 <input type="hidden" name="in_kind_deposits[${category.id}]" value="0">
                 <label class="d-flex align-items-start gap-3" style="cursor:pointer;margin:0;">
                     <input class="form-check-input mt-1" type="checkbox"
