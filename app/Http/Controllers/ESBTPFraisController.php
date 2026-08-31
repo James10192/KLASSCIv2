@@ -1385,7 +1385,12 @@ class ESBTPFraisController extends Controller
             $categories = $this->fraisCacheService->getCategories()
                 ->map(function ($category) use ($inscription) {
                     // Chercher une configuration pour cette catégorie et cette inscription
-                    $configuration = ESBTPFraisConfiguration::getApplicableForCategoryAndInscription($category->id, $inscription);
+                    $configuration = ESBTPFraisConfiguration::getApplicableConfiguration(
+                        $category->id,
+                        $inscription->filiere_id,
+                        $inscription->niveau_id,
+                        $inscription->annee_universitaire_id
+                    );
 
                     // Calcul robuste sans dépendance legacy (ESBTPFraisRule supprimé).
                     $affectationStatus = $inscription->affectation_status ?? \App\Models\ESBTPInscription::DEFAULT_AFFECTATION_STATUS;
