@@ -30,6 +30,10 @@ use Illuminate\Support\Facades\Log;
  */
 class RepartitionTropPercu
 {
+    public function __construct(private readonly RefletAllocationsSurAvoirs $reflet)
+    {
+    }
+
     /**
      * @param  bool  $reinitialiser  Repart de zero : oublie les allocations deja
      *                               ecrites sur le perimetre et recalcule tout.
@@ -126,13 +130,11 @@ class RepartitionTropPercu
      */
     private function remettreLesAvoirsEnPhase(array $inscriptionIds): void
     {
-        $reflet = app(RefletAllocationsSurAvoirs::class);
-
         ESBTPPaiement::query()
             ->whereIn('inscription_id', $inscriptionIds)
             ->encaissements()
             ->whereHas('childAvoirs')
-            ->each(fn (ESBTPPaiement $parent) => $reflet->refleterSurLesAvoirsDe($parent));
+            ->each(fn (ESBTPPaiement $parent) => $this->reflet->refleterSurLesAvoirsDe($parent));
     }
 
     /**
