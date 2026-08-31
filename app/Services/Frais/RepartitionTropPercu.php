@@ -37,7 +37,11 @@ class RepartitionTropPercu
         $inscriptions = ESBTPInscription::query()
             ->when($inscriptionId, fn ($q) => $q->where('id', $inscriptionId))
             ->when($anneeId, fn ($q) => $q->where('annee_universitaire_id', $anneeId))
-            ->when(! $inscriptionId, fn ($q) => $q->where('status', 'active'))
+            // Les inscriptions VIVANTES, pas seulement les validees.
+            // Le filtre ne retenait que « active » et sautait les inscriptions en
+            // attente. Sur ISLG, c'est 7 inscriptions sur 8 : l'argent y est deja
+            // encaisse et mal impute, la validation n'y change rien.
+            ->when(! $inscriptionId, fn ($q) => $q->whereIn('status', ['active', 'en_attente']))
             ->with('etudiant')
             ->get();
 
