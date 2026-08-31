@@ -158,23 +158,34 @@ class CLIPermissionController extends BaseApiController
             return $this->errorResponse('Ce nom est réservé à un rôle système.', [], 422);
         }
 
-        if (Role::where('name', $validated['name'])->exists()) {
-            return $this->errorResponse("Role '{$validated['name']}' already exists", [], 422);
+        $existing = Role::where('name', $validated['name'])->first();
+        if ($existing) {
+            $emptyWrongGuard = $existing->guard_name !== 'web'
+                && $existing->permissions()->count() === 0;
+            if (! $emptyWrongGuard) {
+                return $this->errorResponse("Role '{$validated['name']}' already exists", [], 422);
+            }
+            $existing->guard_name = 'web';
+            $existing->label_fr = $validated['label_fr'];
+            $existing->description = $validated['description'] ?? $existing->description;
+            $existing->is_custom = true;
+            $existing->save();
+            $role = $existing;
+        } else {
+            $role = new Role();
+            $role->name = $validated['name'];
+            $role->guard_name = 'web';
+            $role->label_fr = $validated['label_fr'];
+            $role->description = $validated['description'] ?? null;
+            $role->is_custom = true;
+            $role->created_by_user_id = $request->user()->id;
+            $role->save();
         }
-
-        $role = new Role();
-        $role->name = $validated['name'];
-        $role->guard_name = config('auth.defaults.guard', 'web');
-        $role->label_fr = $validated['label_fr'];
-        $role->description = $validated['description'] ?? null;
-        $role->is_custom = true;
-        $role->created_by_user_id = $request->user()->id;
-        $role->save();
 
         $granted = [];
         $missing = [];
         foreach ($validated['permissions'] ?? [] as $perm) {
-            $permModel = Permission::where('name', $perm)->first();
+            $permModel = Permission::where('name', $perm)->where('guard_name', 'web')->first();
             if (! $permModel) {
                 $missing[] = $perm;
                 continue;
@@ -205,7 +216,7 @@ class CLIPermissionController extends BaseApiController
             return $this->errorResponse('permissions[] requis', [], 422);
         }
 
-        $roleModel = \Spatie\Permission\Models\Role::where('name', $role)->first();
+        $roleModel = Role::where('name', $role)->where('guard_name', 'web')->first();
         if (!$roleModel) {
             return $this->errorResponse("Role '{$role}' not found", [], 404);
         }
@@ -213,7 +224,7 @@ class CLIPermissionController extends BaseApiController
         $granted = [];
         $missing = [];
         foreach ($perms as $perm) {
-            $permModel = \Spatie\Permission\Models\Permission::where('name', $perm)->first();
+            $permModel = Permission::where('name', $perm)->where('guard_name', 'web')->first();
             if (!$permModel) { $missing[] = $perm; continue; }
             if (!$roleModel->hasPermissionTo($perm)) {
                 $roleModel->givePermissionTo($permModel);
