@@ -203,6 +203,40 @@
 
 @push('scripts')
 <script>
+/**
+ * Un libelle correspond a une saisie quand CHACUN de ses mots s'y retrouve,
+ * dans n'importe quel ordre.
+ *
+ * L'ancien test etait `label.includes(saisie)` : une sous-chaine CONTIGUE. Or
+ * un etudiant s'affiche « 14196637U - YAO FRANCK PARFAIT KONE » et la
+ * caissiere tape « KONE YAO PARFAIT » — ce dont elle se souvient, pas l'etat
+ * civil dans l'ordre. Aucun de ces trois mots n'est contigu aux autres : la
+ * liste se vidait alors meme que le serveur venait de renvoyer le bon
+ * etudiant. C'est le meme defaut que celui corrige cote serveur
+ * (ESBTPEtudiantController::searchForApi), simplement rejoue cote client.
+ *
+ * La regle est volontairement PLUS PERMISSIVE que l'ancienne, jamais moins :
+ * une saisie d'un seul mot se comporte exactement comme avant, et toute
+ * correspondance qui passait continue de passer. Les listes statiques
+ * (filtres, formulaires) ne perdent donc aucun resultat.
+ */
+if (typeof window.auSelectMatchesQuery !== 'function') {
+    window.auSelectMatchesQuery = function (label, query) {
+        var termes = String(query == null ? '' : query)
+            .toLowerCase()
+            .split(/\s+/)
+            .filter(function (terme) { return terme.length > 0; });
+
+        if (termes.length === 0) {
+            return true;
+        }
+
+        var cible = String(label == null ? '' : label).toLowerCase();
+
+        return termes.every(function (terme) { return cible.indexOf(terme) !== -1; });
+    };
+}
+
 if (typeof window.auSelect !== 'function') {
     window.auSelect = function () {
         return {
@@ -402,9 +436,13 @@ if (typeof window.auSelect !== 'function') {
                 }));
             },
             get filteredOptions() {
-                const s = this.search.trim().toLowerCase();
+                const s = this.search.trim();
                 if (!s) return this.rawOptions;
-                return this.rawOptions.filter(o => o.placeholder || o.label.toLowerCase().includes(s));
+                // Repli sur la liste entiere si le comparateur manque : mieux
+                // vaut trop montrer que masquer une reponse juste.
+                const correspond = window.auSelectMatchesQuery;
+                if (typeof correspond !== 'function') return this.rawOptions;
+                return this.rawOptions.filter(o => o.placeholder || correspond(o.label, s));
             },
             get selectedLabel() {
                 const opt = this.rawOptions.find(o => o.value === this._value);
