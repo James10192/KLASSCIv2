@@ -526,16 +526,41 @@ class ESBTPReinscriptionController extends Controller
             ->get();
 
         $fraisNonSoldes = [];
-        $totalPaye = $this->calculerTotalPaye($inscription);
+
+        // Ce que chaque frais a REELLEMENT recu, et non une repartition inventee.
+        //
+        // La boucle repartissait le total paye au prorata du montant attendu,
+        // en assumant l'approximation (« pour simplifier »). Elle avait deux
+        // defauts, et le premier est fatal :
+        //
+        // 1. Elle divisait par le total attendu, que `dueAmountForInscription()`
+        //    calcule en sommant `amount` sur le scope `charged()` — lequel ne
+        //    filtre QUE `is_active` et `satisfied_in_kind`, jamais le montant.
+        //    Des souscriptions sans montant donnent donc un total nul, la boucle
+        //    s'execute quand meme, et PHP 8 leve une DivisionByZeroError
+        //    FATALE. C'est l'etat d'un etablissement qui n'a pas encore
+        //    configure ses categories.
+        //
+        // 2. Elle produisait des reliquats faux. Un etudiant qui a paye toute sa
+        //    scolarite et rien de sa tenue se voyait reporter une dette
+        //    proportionnelle sur les deux, alors que la premiere etait soldee.
+        //
+        // `netPaidByCategory()` existe deja et repond exactement a la question :
+        // encaissements valides moins avoirs, par categorie. Le reliquat devient
+        // vrai, et la division disparait — donc le crash aussi, par
+        // construction plutot que par une garde qu'on pourrait oublier.
+        $payeParCategorie = \App\Models\ESBTPPaiement::netPaidByCategory((int) $inscription->id);
 
         foreach ($subscriptions as $subscription) {
             $montantAttendu = $subscription->chargedAmount();
-
-            // Pour simplifier, on considère que les paiements sont répartis proportionnellement
-            // Une logique plus complexe pourrait être implémentée selon les besoins
-            $paiementPourCeFrais = ($montantAttendu / $this->calculerTotalAttendu($inscription)) * $totalPaye;
+            $paiementPourCeFrais = (float) ($payeParCategorie[$subscription->frais_category_id] ?? 0);
             $soldeRestant = $montantAttendu - $paiementPourCeFrais;
 
+            // Un frais sans montant attendu donne un solde nul ou negatif : il
+            // ne passe donc pas ce seuil. C'est voulu — on ignore ce qu'il
+            // reclame, donc on ne peut reporter aucune somme. Le solde GLOBAL,
+            // lui, reste calcule sur les totaux reels en amont, et c'est lui qui
+            // decide de l'eligibilite a la reinscription.
             if ($soldeRestant > 0.01) { // Éviter les erreurs d'arrondi
                 $fraisNonSoldes[] = [
                     'subscription' => $subscription,

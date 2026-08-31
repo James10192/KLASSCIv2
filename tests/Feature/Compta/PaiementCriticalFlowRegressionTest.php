@@ -34,13 +34,54 @@ class PaiementCriticalFlowRegressionTest extends TestCase
             $this->assertNotNull($route, "Route {$routeName} should be registered");
 
             foreach ($middlewares as $middleware) {
-                $this->assertContains(
-                    $middleware,
-                    $route->gatherMiddleware(),
+                $this->assertTrue(
+                    $this->routePorteLaGarde($route->gatherMiddleware(), $middleware),
                     "Route {$routeName} should have middleware {$middleware}"
                 );
             }
         }
+    }
+
+    /**
+     * La route porte-t-elle bien cette garde ?
+     *
+     * L'egalite stricte sur la chaine de middleware etait trop rigide. Le jour
+     * ou une route accepte une permission ALTERNATIVE — c'est arrive avec
+     * `permission:paiements.create|paiements.create.mobile_money`, ajoutee pour
+     * l'encaissement mobile money — le test tombait alors que la route etait
+     * toujours protegee, et il annoncait une faille de securite la ou il n'y
+     * avait qu'un elargissement legitime.
+     *
+     * On verifie donc ce qui compte : qu'une garde `permission:` couvre bien la
+     * permission attendue, seule ou parmi des alternatives. Un middleware qui
+     * DISPARAIT fait toujours echouer le test, ce qui reste tout son objet.
+     *
+     * Les gardes qui ne sont pas des permissions (`throttle:60,1`) gardent la
+     * comparaison exacte : la valeur y fait partie de la garantie.
+     *
+     * @param  array<int, string>  $middlewaresDeLaRoute
+     */
+    private function routePorteLaGarde(array $middlewaresDeLaRoute, string $attendu): bool
+    {
+        if (! str_starts_with($attendu, 'permission:')) {
+            return in_array($attendu, $middlewaresDeLaRoute, true);
+        }
+
+        $permissionsAttendues = explode('|', substr($attendu, strlen('permission:')));
+
+        foreach ($middlewaresDeLaRoute as $present) {
+            if (! str_starts_with($present, 'permission:')) {
+                continue;
+            }
+
+            $permissionsPresentes = explode('|', substr($present, strlen('permission:')));
+
+            if (array_diff($permissionsAttendues, $permissionsPresentes) === []) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public function test_reject_request_requires_explicit_reason_with_minimum_length(): void
