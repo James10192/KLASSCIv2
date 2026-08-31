@@ -203,6 +203,40 @@
 
 @push('scripts')
 <script>
+/**
+ * Un libelle correspond a une saisie quand CHACUN de ses mots s'y retrouve,
+ * dans n'importe quel ordre.
+ *
+ * L'ancien test etait `label.includes(saisie)` : une sous-chaine CONTIGUE. Or
+ * un etudiant s'affiche « 14196637U - YAO FRANCK PARFAIT KONE » et la
+ * caissiere tape « KONE YAO PARFAIT » — ce dont elle se souvient, pas l'etat
+ * civil dans l'ordre. Aucun de ces trois mots n'est contigu aux autres : la
+ * liste se vidait alors meme que le serveur venait de renvoyer le bon
+ * etudiant. C'est le meme defaut que celui corrige cote serveur
+ * (ESBTPEtudiantController::searchForApi), simplement rejoue cote client.
+ *
+ * La regle est volontairement PLUS PERMISSIVE que l'ancienne, jamais moins :
+ * une saisie d'un seul mot se comporte exactement comme avant, et toute
+ * correspondance qui passait continue de passer. Les listes statiques
+ * (filtres, formulaires) ne perdent donc aucun resultat.
+ */
+if (typeof window.auSelectMatchesQuery !== 'function') {
+    window.auSelectMatchesQuery = function (label, query) {
+        var termes = String(query == null ? '' : query)
+            .toLowerCase()
+            .split(/\s+/)
+            .filter(function (terme) { return terme.length > 0; });
+
+        if (termes.length === 0) {
+            return true;
+        }
+
+        var cible = String(label == null ? '' : label).toLowerCase();
+
+        return termes.every(function (terme) { return cible.indexOf(terme) !== -1; });
+    };
+}
+
 if (typeof window.auSelect !== 'function') {
     window.auSelect = function () {
         return {
@@ -217,13 +251,15 @@ if (typeof window.auSelect !== 'function') {
             _remeasureMenu: null,
             _menuWidth: null,
             _menuMaxHeight: null,
+            _menuOpenUp: null,
+            _repositionFrame: null,
             init() {
                 this._value = this.$refs.native.value;
 
                 this.observeNativeOptions();
                 // Le scroll DEPLACE le menu, il ne le redimensionne pas. Un
                 // redimensionnement de fenetre, lui, doit tout remesurer.
-                this._repositionMenu = () => this.open && this.positionMenu(false);
+                this._repositionMenu = () => this.scheduleReposition();
                 this._remeasureMenu = () => this.open && this.positionMenu(true);
                 window.addEventListener('resize', this._remeasureMenu, { passive: true });
                 window.addEventListener('scroll', this._repositionMenu, { passive: true, capture: true });
@@ -249,6 +285,7 @@ if (typeof window.auSelect !== 'function') {
             },
             destroy() {
                 this._optionsObserver?.disconnect();
+                this.cancelReposition();
                 window.removeEventListener('resize', this._remeasureMenu);
                 window.removeEventListener('scroll', this._repositionMenu, { capture: true });
                 window.visualViewport?.removeEventListener('resize', this._remeasureMenu);
@@ -293,6 +330,8 @@ if (typeof window.auSelect !== 'function') {
                     // La prochaine ouverture remesure : le contenu a pu changer.
                     this._menuWidth = null;
                     this._menuMaxHeight = null;
+                    this._menuOpenUp = null;
+                    this.cancelReposition();
                 }
                 if (this.open) {
                     this.focusInitialOption();
@@ -322,6 +361,34 @@ if (typeof window.auSelect !== 'function') {
                     return;
                 }
                 this.focusPreviousOption();
+            },
+            /**
+             * Le scroll est bruyant : l'ecouteur est pose sur `window` en phase
+             * de capture, donc il se declenche pour TOUT conteneur defilant de
+             * la page — y compris la liste d'options du menu lui-meme. Sans
+             * regroupement, plusieurs repositionnements tombaient dans la meme
+             * image, chacun forcant une relecture de mise en page, et l'ecriture
+             * finale pouvait arriver apres que le navigateur ait deja peint la
+             * position du declencheur : le menu s'ecartait d'une image puis
+             * revenait. On ne garde donc qu'un repositionnement par image,
+             * cale sur le rendu.
+             */
+            scheduleReposition() {
+                if (!this.open || this._repositionFrame !== null) {
+                    return;
+                }
+                this._repositionFrame = window.requestAnimationFrame(() => {
+                    this._repositionFrame = null;
+                    if (this.open) {
+                        this.positionMenu(false);
+                    }
+                });
+            },
+            cancelReposition() {
+                if (this._repositionFrame !== null) {
+                    window.cancelAnimationFrame(this._repositionFrame);
+                    this._repositionFrame = null;
+                }
             },
             /**
              * Place le menu. `remeasure` distingue deux gestes tres differents.
@@ -354,6 +421,9 @@ if (typeof window.auSelect !== 'function') {
                 const visibleHeight = window.visualViewport?.height || window.innerHeight;
                 const viewportWidth = visibleWidth - (margin * 2);
 
+                const spaceBelowNow = visibleHeight - triggerRect.bottom - margin - gap;
+                const spaceAboveNow = triggerRect.top - margin - gap;
+
                 if (remeasure || this._menuWidth === null) {
                     // Effacer la largeur posee avant de mesurer, sinon on relit
                     // notre propre valeur au lieu de la largeur du contenu.
@@ -368,24 +438,26 @@ if (typeof window.auSelect !== 'function') {
                     this._menuWidth = Math.min(naturelle, viewportWidth);
                     this._menuMaxHeight = Math.max(0, Math.min(
                         380,
-                        Math.max(
-                            visibleHeight - triggerRect.bottom - margin - gap,
-                            triggerRect.top - margin - gap
-                        )
+                        Math.max(spaceBelowNow, spaceAboveNow)
                     ));
+                    // Le SENS d'ouverture se decide en meme temps que la taille,
+                    // et pour la meme raison. `spaceBelow`/`spaceAbove` changent
+                    // a chaque pixel defile : recalculer ce test au scroll faisait
+                    // basculer le menu au-dessus puis a nouveau au-dessous des que
+                    // le declencheur passait pres du seuil — un saut de toute la
+                    // hauteur du menu, aller et retour. Une orientation se choisit
+                    // une fois, a l'ouverture ; ensuite le scroll ne fait que
+                    // deplacer.
+                    this._menuOpenUp = spaceBelowNow < this._menuMaxHeight
+                        && spaceAboveNow > spaceBelowNow;
                 }
 
                 const menuWidth = Math.min(this._menuWidth, viewportWidth);
                 const availableHeight = this._menuMaxHeight;
                 const minimumWidth = Math.min(triggerRect.width, viewportWidth);
                 const left = Math.max(margin, Math.min(triggerRect.left, visibleWidth - menuWidth - margin));
-                const spaceBelow = visibleHeight - triggerRect.bottom - margin - gap;
-                const spaceAbove = triggerRect.top - margin - gap;
-                // On bascule vers le haut quand la hauteur DEJA choisie ne tient
-                // plus dessous — pas selon un seuil qui redimensionnerait le menu.
-                const openUp = spaceBelow < availableHeight && spaceAbove > spaceBelow;
 
-                this.menuStyle = openUp
+                this.menuStyle = this._menuOpenUp
                     ? `position:fixed;left:${left}px;right:auto;top:auto;bottom:${visibleHeight - triggerRect.top + gap}px;width:${menuWidth}px;min-width:${minimumWidth}px;max-width:${viewportWidth}px;max-height:${availableHeight}px;transform-origin:bottom center;`
                     : `position:fixed;left:${left}px;right:auto;top:${triggerRect.bottom + gap}px;bottom:auto;width:${menuWidth}px;min-width:${minimumWidth}px;max-width:${viewportWidth}px;max-height:${availableHeight}px;transform-origin:top center;`;
             },
@@ -402,9 +474,13 @@ if (typeof window.auSelect !== 'function') {
                 }));
             },
             get filteredOptions() {
-                const s = this.search.trim().toLowerCase();
+                const s = this.search.trim();
                 if (!s) return this.rawOptions;
-                return this.rawOptions.filter(o => o.placeholder || o.label.toLowerCase().includes(s));
+                // Repli sur la liste entiere si le comparateur manque : mieux
+                // vaut trop montrer que masquer une reponse juste.
+                const correspond = window.auSelectMatchesQuery;
+                if (typeof correspond !== 'function') return this.rawOptions;
+                return this.rawOptions.filter(o => o.placeholder || correspond(o.label, s));
             },
             get selectedLabel() {
                 const opt = this.rawOptions.find(o => o.value === this._value);

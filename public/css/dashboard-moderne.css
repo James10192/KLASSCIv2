@@ -186,9 +186,19 @@ body {
     transition: all 0.2s ease;
 }
 
+/* Le survol se signale par l'ombre et la bordure, JAMAIS par un `transform`.
+   Un ancetre porteur de `transform` (ou `filter`, `backdrop-filter`,
+   `perspective`, `contain: layout|paint`, `will-change` sur l'une d'elles)
+   devient le bloc conteneur de ses descendants `position: fixed`. Or les menus
+   premium (`.au-select-menu`, `.dropdown-menu`) sont poses en `fixed` avec des
+   coordonnees calculees par rapport au VIEWPORT. Des que la carte se
+   transformait, le menu se reancrait sur elle et partait hors ecran : de
+   l'exterieur, cela s'appelle « le select disparait quand je survole le
+   champ ».
+   Voir .claude/rules/universal-dropdowns.md, « Piege critique #2 ». */
 .card-moderne:hover {
     box-shadow: var(--shadow-hover);
-    transform: translateY(-1px);
+    border-color: #c7d4e5;
 }
 
 /* === SOLDES PRINCIPAUX === */
