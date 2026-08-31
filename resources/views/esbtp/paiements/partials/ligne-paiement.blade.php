@@ -42,7 +42,19 @@
                 'administrative' => 'fas fa-file-alt'
             ];
 
-            if ($paiement->fraisCategory) {
+            // Un versement reparti sur plusieurs frais ne peut pas s'afficher
+            // sous le nom d'un seul : cela laisserait croire que tout l'argent y
+            // est alle, alors que c'est precisement ce malentendu que la
+            // repartition existe pour lever. Le detail est sur la fiche.
+            $nbAllocations = $paiement->allocations()->count();
+
+            if ($nbAllocations > 1) {
+                $categoryInfo = [
+                    'name' => $nbAllocations.' frais',
+                    'type' => 'academic',
+                    'source' => 'Réparti sur plusieurs frais'
+                ];
+            } elseif ($paiement->fraisCategory) {
                 $categoryInfo = [
                     'name' => $paiement->fraisCategory->name,
                     'type' => $paiement->fraisCategory->category_type ?? 'academic',

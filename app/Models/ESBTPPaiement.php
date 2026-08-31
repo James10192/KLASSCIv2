@@ -254,6 +254,41 @@ class ESBTPPaiement extends Model implements Auditable
     }
 
     /**
+     * Comment nommer ce versement quand on l'affiche en une ligne.
+     *
+     * Un paiement peut couvrir plusieurs frais. Afficher la seule categorie
+     * portee par la colonne `frais_category_id` laisserait croire que tout
+     * l'argent y est alle, alors qu'il a ete reparti — c'est precisement le
+     * malentendu que la repartition existe pour lever.
+     *
+     * Un versement non reparti garde donc le nom de sa categorie ; un versement
+     * reparti annonce combien de frais il couvre, et la fiche du paiement en
+     * donne le detail.
+     */
+    public function getLibelleCategorieAttribute(): string
+    {
+        $nombre = $this->relationLoaded('allocations')
+            ? $this->allocations->count()
+            : $this->allocations()->count();
+
+        if ($nombre > 1) {
+            return $nombre.' frais';
+        }
+
+        return $this->fraisCategory->name ?? ($this->motif ?: 'Paiement');
+    }
+
+    /**
+     * La repartition de ce versement sur les differents frais.
+     *
+     * Vide pour un paiement historique : sa categorie unique fait alors foi.
+     */
+    public function allocations()
+    {
+        return $this->hasMany(ESBTPPaiementAllocation::class, 'paiement_id');
+    }
+
+    /**
      * Qui signe le recu.
      *
      * Celui qui l'a EMIS, donc celui qui a encaisse. Le cachet engage la
@@ -434,27 +469,65 @@ class ESBTPPaiement extends Model implements Auditable
         return "CASE WHEN COALESCE(nature, 'encaissement') <> 'avoir' THEN montant WHEN avoir_kind = 'refund' THEN -montant ELSE 0 END";
     }
 
+    /**
+     * Ce que chaque frais a reellement encaisse.
+     *
+     * Un versement peut se repartir sur plusieurs frais — c'est le cas des qu'un
+     * etudiant paie une somme couvrant son inscription, sa scolarite et sa
+     * ramette d'un seul geste. Les allocations disent alors ou l'argent est alle.
+     *
+     * Un paiement sans allocation garde son comportement historique : sa
+     * categorie unique fait foi et le versement entier lui revient. C'est ce qui
+     * permet d'introduire la repartition sans rien deplacer de l'existant.
+     */
     public static function netPaidByCategory(int $inscriptionId): \Illuminate\Support\Collection
     {
-        $encaisse = self::query()
-            ->where('inscription_id', $inscriptionId)
-            ->valides()
-            ->encaissements()
-            ->groupBy('frais_category_id')
-            ->selectRaw('frais_category_id, SUM(montant) as total_paye')
-            ->pluck('total_paye', 'frais_category_id');
-
-        $avoirs = self::query()
-            ->where('inscription_id', $inscriptionId)
-            ->valides()
-            ->avoires()
-            ->groupBy('frais_category_id')
-            ->selectRaw('frais_category_id, SUM(montant) as total_avoir')
-            ->pluck('total_avoir', 'frais_category_id');
+        $encaisse = self::totauxParCategorie($inscriptionId, 'encaissements');
+        $avoirs = self::totauxParCategorie($inscriptionId, 'avoires');
 
         return $encaisse->map(function ($total, $categoryId) use ($avoirs) {
             return max(0.0, (float) $total - (float) ($avoirs[$categoryId] ?? 0));
         });
+    }
+
+    /**
+     * Additionne par categorie, en prenant les allocations quand il y en a.
+     *
+     * Deux sources, jamais comptees deux fois : les paiements QUI PORTENT des
+     * allocations sont lus par leurs allocations, ceux qui n'en portent pas par
+     * leur categorie propre. Un paiement partiellement alloue n'existe pas — la
+     * repartition couvre toujours la totalite du versement.
+     */
+    private static function totauxParCategorie(int $inscriptionId, string $nature): \Illuminate\Support\Collection
+    {
+        $base = fn () => self::query()
+            ->where('inscription_id', $inscriptionId)
+            ->valides()
+            ->{$nature}();
+
+        $parAllocation = \App\Models\ESBTPPaiementAllocation::query()
+            ->whereIn('paiement_id', $base()->select('id'))
+            ->groupBy('frais_category_id')
+            ->selectRaw('frais_category_id, SUM(montant) as total')
+            ->pluck('total', 'frais_category_id');
+
+        $sansAllocation = $base()
+            ->whereNotExists(function ($q) {
+                $q->select(\Illuminate\Support\Facades\DB::raw(1))
+                    ->from('esbtp_paiement_allocations')
+                    ->whereColumn('esbtp_paiement_allocations.paiement_id', 'esbtp_paiements.id');
+            })
+            ->groupBy('frais_category_id')
+            ->selectRaw('frais_category_id, SUM(montant) as total')
+            ->pluck('total', 'frais_category_id');
+
+        $totaux = $parAllocation->toBase();
+
+        foreach ($sansAllocation as $categoryId => $total) {
+            $totaux[$categoryId] = (float) ($totaux[$categoryId] ?? 0) + (float) $total;
+        }
+
+        return $totaux;
     }
 
     /**
