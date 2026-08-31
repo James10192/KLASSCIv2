@@ -22,23 +22,28 @@ use Illuminate\Support\Facades\Schema;
  * l'etablissement d'origine. L'option la plus explicite produisait le contraire
  * de ce qu'elle annoncait.
  *
- * Cette migration remet les lignes concernees dans le modele juste, puis
- * retire la valeur de l'enum pour que personne ne la reintroduise.
+ * Cette migration remet les lignes concernees dans le modele juste. Elle ne
+ * touche PAS a l'enum, et c'est deliberé : le retrecir demanderait un ALTER
+ * TABLE sur esbtp_inscriptions — plusieurs milliers de lignes sur les deux
+ * instances Elite — pour n'interdire qu'une ecriture SQL directe. Le
+ * formulaire n'offre plus l'option et ESBTPInscriptionController ne l'accepte
+ * plus : la valeur est deja hors d'atteinte par tous les chemins reels. Un
+ * verrou de table sur la production, plus un schema qui diverge d'un tenant a
+ * l'autre selon ce que l'ALTER aurait accepte, coutent plus que ce qu'ils
+ * achetent.
  */
 return new class extends Migration
 {
-    private const CIBLES = ['première_inscription', 'réinscription'];
-
     public function up(): void
     {
         if (! Schema::hasTable('esbtp_inscriptions')) {
             return;
         }
 
-        // 1. Les lignes « transfert » deviennent ce qu'elles ont toujours ete :
-        //    une premiere inscription, faite par quelqu'un qui vient d'ailleurs.
-        //    Le drapeau qu'on leur pose n'invente rien — il rend enfin lisible
-        //    l'information que le type portait a sa place.
+        // Les lignes « transfert » deviennent ce qu'elles ont toujours ete :
+        // une premiere inscription, faite par quelqu'un qui vient d'ailleurs.
+        // Le drapeau qu'on leur pose n'invente rien — il rend enfin lisible
+        // l'information que le type portait a sa place.
         $converties = DB::table('esbtp_inscriptions')
             ->where('type_inscription', 'transfert')
             ->update([
@@ -51,60 +56,20 @@ return new class extends Migration
                 'lignes' => $converties,
             ]);
         }
-
-        // 2. Retrecir l'enum, mais SEULEMENT si plus rien ne depasse.
-        //
-        //    Le code lit partout `reinscription` ET `réinscription` : quelqu'un
-        //    a deja vu passer la forme sans accent. Retrecir sans regarder
-        //    transformerait ces lignes en chaine vide sur un MySQL permissif,
-        //    ou ferait echouer le deploiement sur un MySQL strict — pour une
-        //    valeur qui n'a rien a voir avec « transfert ». Ce n'est pas le
-        //    sujet de cette migration, donc on ne le tranche pas ici : on
-        //    signale et on laisse l'enum large. La correction du modele (etape 1)
-        //    est acquise dans tous les cas.
-        if (DB::connection()->getDriverName() !== 'mysql') {
-            return;
-        }
-
-        $intruses = DB::table('esbtp_inscriptions')
-            ->whereNotIn('type_inscription', self::CIBLES)
-            ->count();
-
-        if ($intruses > 0) {
-            Log::warning('[migration] enum type_inscription laisse large : valeurs hors modele presentes', [
-                'lignes_hors_modele' => $intruses,
-                'valeurs_attendues' => self::CIBLES,
-            ]);
-
-            return;
-        }
-
-        DB::statement(
-            "ALTER TABLE `esbtp_inscriptions`
-             MODIFY `type_inscription` ENUM('première_inscription', 'réinscription')
-             NOT NULL DEFAULT 'première_inscription'"
-        );
     }
 
     /**
-     * On rouvre l'enum, on ne defait pas la conversion.
+     * Rien a defaire.
      *
      * Remettre « transfert » sur les lignes qui portent `est_transfert` serait
      * faux : la plupart d'entre elles ont toujours ete des premieres
      * inscriptions correctement saisies, et rien ne distingue apres coup celles
-     * qui venaient de l'ancienne valeur. Rendre la valeur de nouveau
-     * choisissable suffit a annuler ce que cette migration empeche.
+     * qui venaient de l'ancienne valeur. L'enum n'ayant pas ete touche, la
+     * valeur reste techniquement ecrivable : annuler cette migration n'a donc
+     * rien a restaurer.
      */
     public function down(): void
     {
-        if (! Schema::hasTable('esbtp_inscriptions') || DB::connection()->getDriverName() !== 'mysql') {
-            return;
-        }
-
-        DB::statement(
-            "ALTER TABLE `esbtp_inscriptions`
-             MODIFY `type_inscription` ENUM('première_inscription', 'réinscription', 'transfert')
-             NOT NULL DEFAULT 'première_inscription'"
-        );
+        //
     }
 };

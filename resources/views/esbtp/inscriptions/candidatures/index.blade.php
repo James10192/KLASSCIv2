@@ -251,7 +251,7 @@
                                             <div class="cd-transfert-de">{{ $c->etablissement_sup_origine }}</div>
                                         @endif
                                     @endif
-                                    @if(! $c->serie_bac && ! $c->etablissement_origine && ! $c->annee_bac && ! $c->affectation_status && ! $c->est_transfert) — @endif
+                                    @if($c->parcoursEstVide()) — @endif
                                 </td>
                                 <td class="cd-contact">{{ $c->created_at?->format('d/m/Y H:i') }}</td>
                                 <td>

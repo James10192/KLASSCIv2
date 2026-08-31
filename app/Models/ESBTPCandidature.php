@@ -24,6 +24,27 @@ class ESBTPCandidature extends Model implements Auditable
 
     protected $table = 'esbtp_candidatures';
 
+    /**
+     * Les champs qui n'existent que si `est_transfert` est leve.
+     *
+     * Declares ici, et pas dans la requete qui les efface : cette liste est la
+     * DEFINITION du bloc, pas un detail de validation. Une seconde liste dans
+     * PortailCandidatureRequest se serait desynchronisee au premier champ
+     * ajoute — et la desynchronisation aurait ete SILENCIEUSE, puisque le
+     * symptome est une valeur qui survit a un drapeau baisse, visible
+     * seulement sur la fiche d'un agent qui n'a aucun moyen de la trancher.
+     *
+     * `est_transfert` n'en fait pas partie : il commande le bloc, il n'en est
+     * pas membre.
+     */
+    public const CHAMPS_TRANSFERT = [
+        'etablissement_sup_origine',
+        'formation_origine',
+        'niveau_atteint_origine',
+        'annee_derniere_inscription',
+        'motif_transfert',
+    ];
+
     public const STATUT_EN_ATTENTE = 'en_attente';
 
     public const STATUT_ACCEPTEE = 'acceptee';
@@ -134,6 +155,23 @@ class ESBTPCandidature extends Model implements Auditable
         }
 
         return 'Autre';
+    }
+
+    /**
+     * Le candidat n'a rien declare de son parcours.
+     *
+     * La vue posait la question en enumerant cinq colonnes. Elle devenait donc
+     * fausse a chaque colonne ajoutee — et c'est deja arrive une fois, avec le
+     * transfert. Le modele sait ce que « parcours » recouvre ; la vue n'a qu'a
+     * demander.
+     */
+    public function parcoursEstVide(): bool
+    {
+        return ! $this->serie_bac
+            && ! $this->etablissement_origine
+            && ! $this->annee_bac
+            && ! $this->affectation_status
+            && ! $this->est_transfert;
     }
 
     protected $fillable = [

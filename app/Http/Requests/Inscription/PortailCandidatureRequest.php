@@ -226,13 +226,9 @@ class PortailCandidatureRequest extends FormRequest
             return;
         }
 
-        $this->merge([
-            'etablissement_sup_origine' => null,
-            'formation_origine' => null,
-            'niveau_atteint_origine' => null,
-            'annee_derniere_inscription' => null,
-            'motif_transfert' => null,
-        ]);
+        // Derive du modele, jamais reecrit ici : une seconde liste se serait
+        // desynchronisee au premier champ ajoute, et en silence.
+        $this->merge(array_fill_keys(ESBTPCandidature::CHAMPS_TRANSFERT, null));
     }
 
     /**
