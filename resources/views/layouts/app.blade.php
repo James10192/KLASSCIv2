@@ -2147,6 +2147,15 @@
                         @endcan
                         @endif
 
+                        @canany(['cash_session.manage', 'module.caisse.access'])
+                        <div class="menu-item">
+                            <a href="{{ route('esbtp.caisse.ma-caisse') }}" class="menu-link {{ Request::routeIs('esbtp.caisse.*') ? 'active' : '' }}">
+                                <div class="menu-icon"><i class="fas fa-cash-register"></i></div>
+                                <div class="menu-text">Ma caisse</div>
+                            </a>
+                        </div>
+                        @endcanany
+
                         @canany(['paiements.create', 'paiements.create.mobile_money'])
                         <div class="menu-item">
                             <a href="{{ route('esbtp.paiements.create') }}" class="menu-link {{ Request::routeIs('esbtp.paiements.create') ? 'active' : '' }}">

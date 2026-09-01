@@ -1129,6 +1129,12 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                     ->name('paiements.suivi-categories.export.pdf');
             });
 
+            Route::middleware('permission:cash_session.manage|module.caisse.access')->group(function () {
+                Route::get('/caisse', [\App\Http\Controllers\ESBTPCashSessionController::class, 'show'])->name('caisse.ma-caisse');
+                Route::post('/caisse/cloturer', [\App\Http\Controllers\ESBTPCashSessionController::class, 'close'])->name('caisse.cloturer');
+                Route::get('/caisse/bordereau', [\App\Http\Controllers\ESBTPCashSessionController::class, 'bordereau'])->name('caisse.bordereau');
+            });
+
             // â”€â”€ CREATE (encaissement)
             Route::middleware('permission:paiements.create|paiements.create.mobile_money')->group(function () {
                 Route::get('/paiements/create', [App\Http\Controllers\ESBTPPaiementController::class, 'create'])->name('paiements.create');

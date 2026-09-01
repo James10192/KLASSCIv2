@@ -182,6 +182,7 @@ class PermissionSyncService
             'identity.communicate',
             'mailpulse.view',
             'mailpulse.send',
+            'cash_session.manage',
             'documents.view',
             'documents.approve',
             'documents.print',

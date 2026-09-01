@@ -574,6 +574,11 @@
                 </div>
             </div>
             <div class="header-actions">
+                @canany(['cash_session.manage', 'module.caisse.access'])
+                <a href="{{ route('esbtp.caisse.ma-caisse') }}" class="btn-acasi secondary">
+                    <i class="fas fa-cash-register"></i>Ma caisse
+                </a>
+                @endcanany
                 <a href="{{ route('esbtp.paiements.index') }}" class="btn-acasi secondary">
                     <i class="fas fa-arrow-left"></i>Retour à la liste
                 </a>

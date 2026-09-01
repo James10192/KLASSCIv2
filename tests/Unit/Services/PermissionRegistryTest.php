@@ -148,5 +148,7 @@ class PermissionRegistryTest extends TestCase
     {
         $caissierDefaults = $this->registry->defaultPermissionsFor('caissier');
         $this->assertContains('module.caisse.access', $caissierDefaults);
+        $this->assertContains('cash_session.manage', $caissierDefaults);
+        $this->assertTrue($this->registry->isCanonical('cash_session.manage'));
     }
 }
