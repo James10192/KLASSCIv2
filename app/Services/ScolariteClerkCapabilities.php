@@ -39,7 +39,7 @@ class ScolariteClerkCapabilities
      */
     public function abilitiesFor(User $user): array
     {
-        if (! $user->can('identity.registrar_clerk')) {
+        if (! $user->hasPermissionTo('identity.registrar_clerk')) {
             return [];
         }
 
