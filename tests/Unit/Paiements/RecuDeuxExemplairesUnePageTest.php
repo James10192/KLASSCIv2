@@ -57,6 +57,8 @@ class RecuDeuxExemplairesUnePageTest extends TestCase
         );
         $this->assertStringContainsString('EXEMPLAIRE ÉLÈVE / PARENT', $html);
         $this->assertStringContainsString('EXEMPLAIRE CAISSE', $html);
+        $this->assertStringContainsString('exempté', $html);
+        $this->assertStringNotContainsString('à définir', $html);
     }
 
     public function test_le_gabarit_interdit_un_saut_de_page_entre_exemplaires(): void
@@ -121,7 +123,7 @@ class RecuDeuxExemplairesUnePageTest extends TestCase
             ['name' => 'SCOLARITE', 'checked' => false, 'in_kind' => false, 'restant' => 350000, 'current' => false, 'non_configure' => false],
             ['name' => 'PAQUET DE RAM', 'checked' => false, 'in_kind' => true, 'restant' => 0, 'current' => false, 'non_configure' => false],
             ['name' => 'CHEMISE CARTONNEE', 'checked' => false, 'in_kind' => true, 'restant' => 0, 'current' => false, 'non_configure' => false],
-            ['name' => 'ASSURANCE', 'checked' => false, 'in_kind' => false, 'restant' => 15000, 'current' => false, 'non_configure' => false],
+            ['name' => 'ASSURANCE', 'checked' => false, 'in_kind' => false, 'restant' => 0, 'current' => false, 'non_configure' => true],
         ]);
 
         return [
