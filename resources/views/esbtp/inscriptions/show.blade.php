@@ -1959,13 +1959,24 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                                 }
 
                                 /* Tableau financier : cartes en dessous, tableau au-dessus.
-                                 * 2330px = la largeur mesuree a laquelle la carte offre enfin les
-                                 * ~1200px que reclament les sept colonnes (cf. tableau ci-dessus). */
-                                @media (max-width: 2330px) {
+                                 *
+                                 * Le seuil a ete porte a 2330px pour que le tableau ne s'affiche
+                                 * qu'une fois ses sept colonnes au large. L'intention etait juste,
+                                 * l'effet ne l'etait pas : PLUS AUCUN ecran d'ecole n'atteint 2330px,
+                                 * donc tout le monde recevait les cartes — et les cartes ignoraient
+                                 * le depot en nature. Un frais deja depose s'affichait « a payer »,
+                                 * bouton actif. Pire, « Marquer depose » n'existe QUE dans ce tableau :
+                                 * le seul point d'entree du depot devenait invisible partout.
+                                 *
+                                 * Retour a 1600px. Entre 1600 et ~1900 le tableau reste a l'etroit,
+                                 * mais sa derniere colonne est epinglee juste au-dessus et il defile :
+                                 * les actions restent atteignables. Un tableau serre vaut mieux qu'un
+                                 * frais encaisse deux fois. */
+                                @media (max-width: 1600px) {
                                     .financial-table-desktop { display: none !important; }
                                     .financial-cards-responsive { display: block !important; }
                                 }
-                                @media (min-width: 2331px) {
+                                @media (min-width: 1601px) {
                                     .financial-table-desktop { display: block !important; }
                                     .financial-cards-responsive { display: none !important; }
                                 }
@@ -2509,7 +2520,8 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
 
                                         <!-- Actions -->
                                         <div class="financial-actions">
-                                                @if(auth()->user()->can('paiements.create') && $item['is_configured'] && $item['solde'] > 0)
+                                                {{-- Meme garde que le tableau : un frais depose en nature est solde. --}}
+                                                @if(auth()->user()->can('paiements.create') && $item['is_configured'] && $item['solde'] > 0 && empty($item['satisfied_in_kind']))
                                                     <button class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#paymentModal" onclick="preparePaymentModalForCategory({{ $inscription->id }}, {{ $item['category']->id }})" title="Effectuer un paiement">
                                                         <i class="fas fa-credit-card me-1"></i>Payer
                                                     </button>
