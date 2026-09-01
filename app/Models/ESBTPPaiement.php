@@ -49,6 +49,9 @@ class ESBTPPaiement extends Model implements Auditable
         'avoir_kind',
         'parent_paiement_id',
         'numero_avoir',
+        // Correction d'imputation : la date vit sur le versement pour que le
+        // recu puisse se declarer rectifie sans interroger le journal d'audit.
+        'ventilation_rectifiee_le',
     ];
 
     /**
@@ -133,6 +136,7 @@ class ESBTPPaiement extends Model implements Auditable
         'date_echeance' => 'date',
         'date_validation' => 'datetime',
         'metadata' => 'json', // Ajouté pour la nouvelle colonne JSON
+        'ventilation_rectifiee_le' => 'datetime',
     ];
 
     /**
@@ -521,13 +525,27 @@ class ESBTPPaiement extends Model implements Auditable
      * Un paiement sans allocation garde son comportement historique : sa
      * categorie unique fait foi et le versement entier lui revient. C'est ce qui
      * permet d'introduire la repartition sans rien deplacer de l'existant.
+     *
+     * `$saufPaiementId` retire UN versement du compte. Il sert a rejouer une
+     * imputation deja ecrite : reventiler un versement demande ce que les frais
+     * reclament SANS lui, sinon il se compare a lui-meme et se refuse sa propre
+     * part — un versement de 150 000 F qui solde la scolarite verrait la
+     * scolarite a zero de reste, et ne pourrait plus y etre impute.
      */
-    public static function netPaidByCategory(int $inscriptionId, bool $includePending = false): \Illuminate\Support\Collection
-    {
-        $encaisse = self::totauxParCategorie($inscriptionId, 'encaissements', $includePending);
+    public static function netPaidByCategory(
+        int $inscriptionId,
+        bool $includePending = false,
+        ?int $saufPaiementId = null
+    ): \Illuminate\Support\Collection {
+        $encaisse = self::totauxParCategorie($inscriptionId, 'encaissements', $includePending, $saufPaiementId);
         // Un avoir ne compte que valide, meme quand on inclut les encaissements
         // en attente : un remboursement pas encore valide n'a pas quitte la caisse.
-        $avoirs = self::totauxParCategorie($inscriptionId, 'avoires');
+        //
+        // L'exclusion vaut ici aussi : l'identifiant est unique toutes natures
+        // confondues, donc exclure un encaissement ne retire aucun avoir. La
+        // passer quand meme evite qu'un futur appel sur un avoir oublie la
+        // moitie du filtre.
+        $avoirs = self::totauxParCategorie($inscriptionId, 'avoires', false, $saufPaiementId);
 
         return $encaisse->map(function ($total, $categoryId) use ($avoirs) {
             return max(0.0, (float) $total - (float) ($avoirs[$categoryId] ?? 0));
@@ -551,7 +569,8 @@ class ESBTPPaiement extends Model implements Auditable
     private static function totauxParCategorie(
         int $inscriptionId,
         string $nature,
-        bool $includePending = false
+        bool $includePending = false,
+        ?int $saufPaiementId = null
     ): \Illuminate\Support\Collection {
         // Le perimetre lu ici doit etre EXACTEMENT celui que la repartition
         // ecrit (RepartitionTropPercu) : meme statut, meme nature, meme
@@ -566,7 +585,10 @@ class ESBTPPaiement extends Model implements Auditable
                 fn ($q) => $q->valides()
             )
             ->{$nature}()
-            ->horsReliquat();
+            ->horsReliquat()
+            // Le versement qu'on est en train de reventiler ne compte pas dans
+            // ce qu'il doit encore couvrir.
+            ->when($saufPaiementId !== null, fn ($q) => $q->where('id', '!=', $saufPaiementId));
 
         $parAllocation = \App\Models\ESBTPPaiementAllocation::query()
             ->whereIn('paiement_id', $base()->select('id'))

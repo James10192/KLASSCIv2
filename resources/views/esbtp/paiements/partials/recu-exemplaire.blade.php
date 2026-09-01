@@ -7,6 +7,20 @@
             $categoryName = $paiement->categorie->nom ?? null;
         }
     }
+
+    // Un versement peut couvrir PLUSIEURS frais. N'imprimer que la categorie
+    // designee au guichet fait mentir le recu des que la somme a ete repartie :
+    // l'etudiant lit « Scolarite » sur un papier qui a aussi paye sa ramette.
+    $recuVentilation = $paiement->relationLoaded('allocations')
+        ? $paiement->allocations
+        : $paiement->allocations()->with('fraisCategory:id,name')->get();
+
+    if ($recuVentilation->count() > 1) {
+        $categoryName = $recuVentilation
+            ->map(fn ($part) => ($part->fraisCategory->name ?? ('Frais #'.$part->frais_category_id))
+                .' : '.number_format((float) $part->montant, 0, ',', ' '))
+            ->implode(' · ');
+    }
 @endphp
 
 <div class="header-section">
@@ -108,6 +122,17 @@
         <td>
             <div class="lbl">Catégorie de frais</div>
             <div class="val">{{ $categoryName ?? '—' }}</div>
+            @if($paiement->ventilation_rectifiee_le)
+                {{-- On ne REECRIT pas un recu deja remis : deux exemplaires du
+                     meme numero diraient des choses differentes sans qu'aucun ne
+                     dise lequel fait foi. On le rend AUTO-DECLARANT — celui qui
+                     compare les deux voit immediatement lequel est le rectifie,
+                     et de quand. --}}
+                <div style="font-size: 7.5px; color: #92400e; margin-top: 2px;">
+                    Ventilation rectifiée le {{ $paiement->ventilation_rectifiee_le->format('d/m/Y') }}
+                    — montant et numéro de reçu inchangés.
+                </div>
+            @endif
         </td>
         <td>
             <div class="lbl">Règlement</div>

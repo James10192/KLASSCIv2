@@ -66,11 +66,17 @@ class RepartitionDuVersement
      * reconciliation de caisse existe precisement pour rattraper. On prefere une
      * caisse qui encaisse a une caisse qui se bloque.
      *
+     * `$saufPaiementId` retire UN versement du deja-paye. Il n'a qu'un usage :
+     * reventiler un versement deja enregistre. Sans lui, ce versement se
+     * compare a lui-meme — la scolarite qu'il vient de solder ressort a zero de
+     * reste, et il ne peut plus y etre impute. Le mecanisme se refuserait sa
+     * propre ecriture.
+     *
      * @return array<int, float> frais_category_id => reste du (>= 0)
      */
-    public function resteConnuParFrais(int $inscriptionId): array
+    public function resteConnuParFrais(int $inscriptionId, ?int $saufPaiementId = null): array
     {
-        $paye = ESBTPPaiement::netPaidByCategory($inscriptionId, true);
+        $paye = ESBTPPaiement::netPaidByCategory($inscriptionId, true, $saufPaiementId);
 
         $souscriptions = ESBTPFraisSubscription::query()
             ->where('inscription_id', $inscriptionId)
@@ -109,6 +115,9 @@ class RepartitionDuVersement
      *                                                 le service applique la regle
      *                                                 de l'ecole depuis le frais
      *                                                 designe.
+     * @param  int|null  $saufPaiementId  Le versement a ne pas compter dans le
+     *                                     deja-paye. Renseigne uniquement par
+     *                                     {@see self::reventiler()}.
      * @return array<int, float> frais_category_id => montant
      *
      * @throws RepartitionRefuseeException
@@ -117,7 +126,8 @@ class RepartitionDuVersement
         int $inscriptionId,
         float $montant,
         ?int $fraisDesigne,
-        ?array $saisie = null
+        ?array $saisie = null,
+        ?int $saufPaiementId = null
     ): array {
         $montant = round($montant, 2);
 
@@ -127,7 +137,7 @@ class RepartitionDuVersement
             return [];
         }
 
-        $reste = $this->resteConnuParFrais($inscriptionId);
+        $reste = $this->resteConnuParFrais($inscriptionId, $saufPaiementId);
 
         if ($saisie !== null && $saisie !== []) {
             return $this->verifierLaSaisie($saisie, $montant, $reste, $fraisDesigne);
@@ -180,19 +190,99 @@ class RepartitionDuVersement
     }
 
     /**
-     * Ecrit les lignes, apres avoir verifie qu'elles totalisent le versement.
-     *
-     * L'invariant est verifie ICI et pas seulement chez l'appelant : un versement
-     * qui porte des allocations est lu PAR ELLES et plus du tout par sa propre
-     * categorie. Une repartition partielle ferait donc disparaitre la difference
-     * des totaux par frais — sans erreur, sans trace.
+     * Ecrit les lignes d'un versement qui vient d'etre encaisse.
      */
     public function ecrire(ESBTPPaiement $paiement, array $allocations): void
     {
+        // Seule difference de fond avec {@see self::remplacer()} : ici, ne rien
+        // imputer est LEGITIME. Un versement nul n'a rien a repartir, et des
+        // lignes a zero ne diraient rien de plus que le versement lui-meme.
+        // Corriger une ventilation vers rien du tout, en revanche, est un refus.
         if ($allocations === []) {
             return;
         }
 
+        $this->remplacer($paiement, $allocations);
+    }
+
+    /**
+     * Ou irait ce versement DEJA ENREGISTRE si on le reventilait ainsi.
+     *
+     * Seule porte d'entree de la correction d'imputation, et c'est voulu : elle
+     * garantit l'exclusion du versement lui-meme. Un appelant qui passerait par
+     * {@see self::calculer()} en oubliant `$saufPaiementId` obtiendrait un
+     * calcul ou le versement se compare a lui-meme, et refuserait toute
+     * correction sur un frais qu'il a deja soldé.
+     *
+     * Le frais designe reste celui que porte le versement : c'est lui qui a le
+     * droit de recevoir plus qu'il ne reclame, exactement comme a
+     * l'encaissement. Le changer ici ferait qu'une avance encaissee sur A
+     * deviendrait irrecevable des qu'on ouvre l'ecran de correction.
+     *
+     * @param  array<int|string, mixed>|null  $saisie
+     * @return array<int, float>
+     *
+     * @throws RepartitionRefuseeException
+     */
+    public function reventiler(ESBTPPaiement $paiement, ?array $saisie = null): array
+    {
+        return $this->calculer(
+            (int) $paiement->inscription_id,
+            (float) $paiement->montant,
+            $paiement->frais_category_id !== null ? (int) $paiement->frais_category_id : null,
+            $saisie,
+            (int) $paiement->id
+        );
+    }
+
+    /**
+     * Pose l'imputation d'un versement, en remplacement de toute precedente.
+     *
+     * La SUPPRESSION des frais absents de la nouvelle ventilation est le point
+     * qui compte : corriger « tout sur la scolarite » en « tout sur la ramette »
+     * en se contentant d'ecrire la nouvelle ligne laisserait celle de scolarite
+     * en place, et le versement compterait double dans les totaux par frais —
+     * l'invariant verifie une ligne plus haut serait faux immediatement apres.
+     *
+     * A la creation, il n'y a rien a supprimer et la requete ne touche aucune
+     * ligne : {@see self::ecrire()} passe donc par ici sans precaution
+     * particuliere.
+     *
+     * @param  array<int, float>  $allocations
+     */
+    public function remplacer(ESBTPPaiement $paiement, array $allocations): void
+    {
+        $this->verifierInvariant($paiement, $allocations);
+
+        ESBTPPaiementAllocation::query()
+            ->where('paiement_id', $paiement->id)
+            ->whereNotIn('frais_category_id', array_map('intval', array_keys($allocations)))
+            // Un par un plutot qu'en masse : la suppression doit passer par le
+            // modele pour laisser une trace d'audit. Une ventilation compte
+            // quelques lignes, jamais des milliers.
+            ->get()
+            ->each->delete();
+
+        foreach ($allocations as $categoryId => $part) {
+            ESBTPPaiementAllocation::updateOrCreate(
+                ['paiement_id' => $paiement->id, 'frais_category_id' => (int) $categoryId],
+                ['montant' => round((float) $part, 2)]
+            );
+        }
+    }
+
+    /**
+     * La somme des parts vaut EXACTEMENT le versement.
+     *
+     * Verifie ici et pas seulement chez l'appelant : un versement qui porte des
+     * allocations est lu PAR ELLES et plus du tout par sa propre categorie. Une
+     * repartition partielle ferait donc disparaitre la difference des totaux par
+     * frais — sans erreur, sans trace.
+     *
+     * @param  array<int, float>  $allocations
+     */
+    private function verifierInvariant(ESBTPPaiement $paiement, array $allocations): void
+    {
         $montant = round((float) $paiement->montant, 2);
         $ecart = round($montant - array_sum($allocations), 2);
 
@@ -206,13 +296,6 @@ class RepartitionDuVersement
                 $this->fcfa($montant),
                 $this->fcfa($ecart)
             ));
-        }
-
-        foreach ($allocations as $categoryId => $part) {
-            ESBTPPaiementAllocation::updateOrCreate(
-                ['paiement_id' => $paiement->id, 'frais_category_id' => (int) $categoryId],
-                ['montant' => round((float) $part, 2)]
-            );
         }
     }
 
