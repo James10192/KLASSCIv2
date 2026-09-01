@@ -467,7 +467,7 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
         // Reprise de l'annee ecoulee d'une ecole qui arrive avec un arriere.
         // La donnee source voyage dans le corps de la requete : c'est un etat de
         // compte d'eleves reels, il n'a rien a faire dans le depot.
-        Route::post('/reprise/eleves-insolvables', [App\Http\Controllers\API\CLI\CLIRepriseController::class, 'elevesInsolvables'])->name('reprise.eleves-insolvables');
+        Route::post('/reprise/inscriptions-annee-ecoulee', [App\Http\Controllers\API\CLI\CLIRepriseController::class, 'inscriptionsAnneeEcoulee'])->name('reprise.inscriptions-annee-ecoulee');
         Route::post('/frais/corriger-souscriptions', [App\Http\Controllers\API\CLI\CLIFraisController::class, 'corrigerSouscriptions'])->name('frais.corriger-souscriptions');
         Route::post('/frais/repartir-trop-percu', [App\Http\Controllers\API\CLI\CLIFraisController::class, 'repartirTropPercu'])->name('frais.repartir-trop-percu');
         Route::get('/inscriptions/types', [App\Http\Controllers\API\CLI\CLIInscriptionTypeController::class, 'recenser'])->name('inscriptions.types');

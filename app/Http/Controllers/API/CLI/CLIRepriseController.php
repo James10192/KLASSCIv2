@@ -3,24 +3,28 @@
 namespace App\Http\Controllers\API\CLI;
 
 use App\Http\Controllers\API\BaseApiController;
-use App\Services\Reprise\RepriseElevesInsolvables;
+use App\Services\Reprise\InscriptionsAnneeEcoulee;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 /**
- * Reprise d'historique d'une ecole qui arrive sur KLASSCI avec un arriere.
+ * Reprise de l'historique d'une ecole arrivee en cours de route.
  *
- * Pilotable a distance, parce que la donnee source est un etat de compte tenu
- * ailleurs : elle se transmet en corps de requete, elle ne vit pas dans le depot.
- * Un fichier d'eleves reels committe serait une fuite, et il perimerait.
+ * Pilotable a distance, parce que la donnee source est un etat tenu ailleurs :
+ * elle voyage dans le corps de la requete. Un fichier d'eleves reels committe
+ * serait une fuite, et il perimerait.
  *
  * Montre par defaut, n'ecrit que sur `apply`.
  */
 class CLIRepriseController extends BaseApiController
 {
-    public function elevesInsolvables(
+    /**
+     * Premiere marche : les eleves et leurs inscriptions sur l'annee ecoulee.
+     * Ni frais, ni versement, ni reliquat.
+     */
+    public function inscriptionsAnneeEcoulee(
         Request $request,
-        RepriseElevesInsolvables $reprise
+        InscriptionsAnneeEcoulee $reprise
     ): JsonResponse {
         if (! $request->user()->tokenCan('cli:admin')) {
             return $this->errorResponse('Token missing cli:admin ability', [], 403);
@@ -35,11 +39,11 @@ class CLIRepriseController extends BaseApiController
             'lignes.*.prenoms' => ['nullable', 'string', 'max:255'],
             'lignes.*.telephone' => ['nullable', 'string', 'max:30'],
             'lignes.*.classe_id' => ['required', 'integer'],
-            'lignes.*.total_frais' => ['required', 'numeric', 'min:0'],
-            'lignes.*.reduction' => ['nullable', 'numeric', 'min:0'],
-            'lignes.*.montant_reclame' => ['required', 'numeric', 'min:0'],
-            'lignes.*.paye' => ['required', 'numeric', 'min:0'],
-            'lignes.*.reste_du' => ['required', 'numeric', 'min:0'],
+            // Le libelle d'origine ne sert qu'a rendre les ecarts lisibles :
+            // sans lui, la colonne « classe » du rapport affiche un tiret et
+            // l'ecart devient inexploitable pour celui qui doit le corriger.
+            'lignes.*.classe_pdf' => ['nullable', 'string', 'max:100'],
+            'lignes.*.telephone_anomalie' => ['nullable', 'string', 'max:255'],
         ]);
 
         $resultat = $reprise->executer(
@@ -52,13 +56,15 @@ class CLIRepriseController extends BaseApiController
             $resultat,
             $resultat['applique']
                 ? sprintf(
-                    '%d eleve(s) repris, %d ecarte(s). Les reliquats se poseront a la reinscription.',
-                    $resultat['retenus'],
+                    '%d eleve(s) et %d inscription(s) crees, %d ligne(s) ecartee(s).',
+                    $resultat['ecrit']['etudiants'],
+                    $resultat['ecrit']['inscriptions'],
                     $resultat['ecartes']
                 )
                 : sprintf(
-                    "%d eleve(s) reconstituable(s), %d ecarte(s). Rien n'a ete ecrit.",
-                    $resultat['retenus'],
+                    "%d eleve(s) et %d inscription(s) a creer, %d ligne(s) ecartee(s). Rien n'a ete ecrit.",
+                    $resultat['a_creer']['etudiants'],
+                    $resultat['a_creer']['inscriptions'],
                     $resultat['ecartes']
                 )
         );
