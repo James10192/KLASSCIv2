@@ -4,6 +4,9 @@ namespace App\Http\Controllers\API\CLI;
 
 use App\Exceptions\AllocationIncoherenteException;
 use App\Http\Controllers\API\BaseApiController;
+use App\Models\ESBTPFraisCategory;
+use App\Models\ESBTPFraisConfiguration;
+use App\Models\ESBTPFraisSubscription;
 use App\Services\Frais\CorrectionMontantSouscriptions;
 use App\Services\Frais\OrdreDesCategoriesFrais;
 use App\Services\Frais\RepartitionTropPercu;
@@ -20,6 +23,69 @@ use Illuminate\Http\Request;
  */
 class CLIFraisController extends BaseApiController
 {
+    public function bareme(Request $request): JsonResponse
+    {
+        if (! $request->user()->tokenCan('cli:read')) {
+            return $this->errorResponse('Token missing cli:read ability', [], 403);
+        }
+
+        $categories = ESBTPFraisCategory::query()
+            ->orderBy('sort_order')
+            ->get(['id', 'name', 'code', 'is_mandatory', 'default_amount', 'is_active', 'accepts_in_kind']);
+
+        $configurations = ESBTPFraisConfiguration::query()
+            ->with(['fraisCategory:id,name,code', 'filiere:id,name', 'niveau:id,name'])
+            ->where('is_active', true)
+            ->get()
+            ->map(fn (ESBTPFraisConfiguration $c) => [
+                'configuration_id' => $c->id,
+                'categorie_id' => $c->frais_category_id,
+                'categorie' => $c->fraisCategory->name ?? null,
+                'filiere_id' => $c->filiere_id,
+                'filiere' => $c->filiere->name ?? null,
+                'niveau_id' => $c->niveau_id,
+                'niveau' => $c->niveau->name ?? null,
+                'amount' => (float) $c->amount,
+                'amount_affecte' => $c->amount_affecte !== null ? (float) $c->amount_affecte : null,
+            ]);
+
+        $souscriptions = ESBTPFraisSubscription::query()
+            ->selectRaw('frais_category_id, amount, COUNT(*) as total')
+            ->whereNotNull('amount')
+            ->where('amount', '>', 0)
+            ->groupBy('frais_category_id', 'amount')
+            ->orderBy('frais_category_id')
+            ->orderByDesc('amount')
+            ->get()
+            ->map(function ($ligne) use ($categories) {
+                $cat = $categories->firstWhere('id', (int) $ligne->frais_category_id);
+
+                return [
+                    'categorie_id' => (int) $ligne->frais_category_id,
+                    'categorie' => $cat->name ?? null,
+                    'amount' => (float) $ligne->amount,
+                    'souscriptions' => (int) $ligne->total,
+                ];
+            });
+
+        $focus = $configurations
+            ->filter(fn (array $l) => in_array($l['amount'], [40000.0, 60000.0], true))
+            ->values();
+
+        if ($focus->isEmpty()) {
+            $focus = $souscriptions
+                ->filter(fn (array $l) => in_array($l['amount'], [40000.0, 60000.0], true))
+                ->values();
+        }
+
+        return $this->successResponse([
+            'categories' => $categories,
+            'configurations' => $configurations,
+            'souscriptions' => $souscriptions,
+            'montants_40k_60k' => $focus,
+        ], 'Barème frais');
+    }
+
     /**
      * Montre tous les montants de souscription, et lesquels detonnent.
      *
