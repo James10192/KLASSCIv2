@@ -812,6 +812,7 @@ class ESBTPPaiementController extends Controller
         $fraisEtat = app(EtatRecuPaiement::class)->construire($paiement);
         $fraisLignes = $fraisEtat['lignes'];
         $resteAPayer = $fraisEtat['reste'];
+        $totalVerse = $fraisEtat['totalVerse'];
         $versementsAvant = $fraisEtat['versementsAvant'];
         $versementsApres = $fraisEtat['versementsApres'];
         $affectationLabel = $fraisEtat['affectationLabel'];
@@ -821,6 +822,7 @@ class ESBTPPaiementController extends Controller
             'settings',
             'fraisLignes',
             'resteAPayer',
+            'totalVerse',
             'versementsAvant',
             'versementsApres',
             'affectationLabel'

@@ -40,6 +40,13 @@ class EtatRecuPaiementTest extends TestCase
         $this->assertTrue($classes['apres']->isEmpty());
     }
 
+    public function test_le_reste_global_deduit_tous_les_versements(): void
+    {
+        $this->assertSame(400000.0, EtatRecuPaiement::soldeGlobal(500000, 100000));
+        $this->assertSame(0.0, EtatRecuPaiement::soldeGlobal(60000, 100000));
+        $this->assertSame(15000.0, EtatRecuPaiement::soldeGlobal(100000, 100000, 15000));
+    }
+
     public function test_le_gabarit_du_recu_porte_affectation_nature_et_historique(): void
     {
         $source = file_get_contents(resource_path('views/esbtp/paiements/partials/recu-exemplaire.blade.php'));
@@ -48,6 +55,7 @@ class EtatRecuPaiementTest extends TestCase
         $this->assertStringContainsString('reçu en nature', $source);
         $this->assertStringContainsString('Versements antérieurs', $source);
         $this->assertStringContainsString('Versements postérieurs', $source);
+        $this->assertStringContainsString('Déjà versé', $source);
         $this->assertStringNotContainsString('La ligne reste DECOCHEE', $source);
     }
 

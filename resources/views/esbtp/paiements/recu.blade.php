@@ -309,6 +309,7 @@
                 'categoryName' => $categoryName,
                 'fraisLignes' => $fraisLignes ?? collect(),
                 'resteAPayer' => $resteAPayer ?? 0,
+                'totalVerse' => $totalVerse ?? 0,
                 'versementsAvant' => $versementsAvant ?? collect(),
                 'versementsApres' => $versementsApres ?? collect(),
                 'affectationLabel' => $affectationLabel ?? '—',

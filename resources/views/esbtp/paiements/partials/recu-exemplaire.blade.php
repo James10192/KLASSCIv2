@@ -190,6 +190,10 @@
 </table>
 <table class="reste" width="100%" border="0" cellspacing="0" cellpadding="0">
     <tr>
+        <td class="reste-lbl">Déjà versé</td>
+        <td class="reste-val">{{ number_format((float) ($totalVerse ?? 0), 0, ',', ' ') }} FCFA</td>
+    </tr>
+    <tr>
         <td class="reste-lbl">Reste à payer</td>
         <td class="reste-val">{{ number_format($resteAPayer, 0, ',', ' ') }} FCFA</td>
     </tr>

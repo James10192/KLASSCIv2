@@ -13,6 +13,8 @@ class EtatRecuPaiement
      * @return array{
      *     lignes: Collection,
      *     reste: float,
+     *     totalDu: float,
+     *     totalVerse: float,
      *     versementsAvant: Collection,
      *     versementsApres: Collection,
      *     affectationLabel: string
@@ -27,7 +29,9 @@ class EtatRecuPaiement
             ->with('fraisCategory')
             ->get();
 
-        $payeParCategorie = ESBTPPaiement::netPaidByCategory($inscriptionId);
+        // Le recu doit voir l'argent DEJA ENTRE, y compris un versement encore
+        // en attente : le caissier imprime souvent avant la validation.
+        $payeParCategorie = ESBTPPaiement::netPaidByCategory($inscriptionId, true);
 
         $categoriesDeCeVersement = $paiement->relationLoaded('allocations')
             ? $paiement->allocations->pluck('frais_category_id')
@@ -55,11 +59,33 @@ class EtatRecuPaiement
             ];
         })->values();
 
-        $reste = (float) $lignes->sum('restant');
-        $reste += (float) ESBTPReliquatDetail::where('inscription_destination_id', $inscriptionId)
+        // Le reste du recu est le SOLDE GLOBAL : ce que les frais reclament,
+        // moins TOUT ce qui a ete encaisse sur l'inscription.
+        //
+        // Sommer les restes par frais (`max(0, du - paye)` categorie par
+        // categorie) avalait l'argent qui n'avait pas atterri sur une
+        // souscription — categorie absente, montant encore a definir, ou
+        // ventilation qui n'a pas suivi le versement. Deux paiements de
+        // 40 000 et 60 000 pouvaient ainsi laisser le « reste a payer »
+        // identique sur les deux recus, comme s'ils n'avaient pas eu lieu.
+        $totalDu = (float) $subscriptions->sum(fn ($sub) => $sub->chargedAmount());
+        $totalVerse = (float) ESBTPPaiement::query()
+            ->where('inscription_id', $inscriptionId)
+            ->whereIn('status', ['validé', 'en_attente'])
+            ->encaissements()
+            ->horsReliquat()
+            ->sum('montant');
+        $avoirs = (float) ESBTPPaiement::query()
+            ->where('inscription_id', $inscriptionId)
+            ->valides()
+            ->avoires()
+            ->sum('montant');
+        $reliquats = (float) ESBTPReliquatDetail::where('inscription_destination_id', $inscriptionId)
             ->actifs()
             ->get()
             ->sum(fn ($r) => $r->solde_restant);
+        $netVerse = max(0.0, $totalVerse - $avoirs);
+        $reste = self::soldeGlobal($totalDu, $netVerse, $reliquats);
 
         $autres = ESBTPPaiement::encaissements()
             ->where('inscription_id', $inscriptionId)
@@ -74,10 +100,17 @@ class EtatRecuPaiement
         return [
             'lignes' => $lignes,
             'reste' => $reste,
+            'totalDu' => $totalDu,
+            'totalVerse' => $netVerse,
             'versementsAvant' => $classes['avant'],
             'versementsApres' => $classes['apres'],
             'affectationLabel' => $paiement->inscription?->affectationStatusLabel() ?? '—',
         ];
+    }
+
+    public static function soldeGlobal(float $du, float $verse, float $reliquats = 0.0): float
+    {
+        return max(0.0, $du - $verse) + $reliquats;
     }
 
     /**
