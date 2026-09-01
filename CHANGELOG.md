@@ -10,6 +10,12 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ---
 
+## Septembre 2026
+
+### Corrections
+
+- **Les chiffres des exports PDF restent lisibles quelle que soit la couleur choisie par l'école** — le fond des bandeaux d'indicateurs vient des paramètres d'établissement, mais la couleur du texte était écrite en dur. Sur l'export des paiements, les chiffres étaient même invisibles avec la couleur par défaut : une règle du thème partagé les peignait avec la couleur principale, sur un fond peint avec cette même couleur. La couleur du texte se déduit désormais du fond, selon le calcul de contraste WCAG : elle reste blanche sur un fond sombre, devient sombre sur un fond clair, et ne descend jamais sous le rapport de 4,5:1 exigé pour du texte de taille normale. Appliqué en priorité aux PDF, où le défaut est irrattrapable — sur un écran on peut sélectionner le texte pour le lire, sur une feuille imprimée non. Concerne l'export des paiements, le recouvrement quotidien, les analytics financiers, ainsi que les en-têtes de tableau et pastilles de statut communs à tous les documents.
+
 ## Août 2026
 
 ### Ajouts

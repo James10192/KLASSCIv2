@@ -17,6 +17,13 @@
         $hdrBg           = $pdfCfg['header_bg_color']  ?? $pdfCfg['primary_color'] ?? '#0453cb';
         $hdrText         = $pdfCfg['header_text_color'] ?? '#ffffff';
         $primary         = $pdfCfg['primary_color']     ?? '#0453cb';
+        // Texte pose sur la primaire (titres de section, en-tetes, KPI). Deduit du
+        // fond : une primaire claire rendrait du blanc invisible a l'impression.
+        // La couleur choisie par l'ecole reste prioritaire tant qu'elle est lisible.
+        $onPrimary       = \App\Helpers\SettingsHelper::contrastingText(
+            $primary,
+            $pdfCfg['header_text_color_raw'] ?? '#ffffff'
+        );
         $secondary       = $pdfCfg['secondary_color']   ?? '#64748b';
         $textColor       = $pdfCfg['text_color']        ?? '#1f2937';
         $showGenerator   = $pdfCfg['show_generator_name'] ?? true;
@@ -73,7 +80,7 @@
         .section-title {
             font-size: 11px;
             font-weight: 700;
-            color: #fff;
+            color: {{ $onPrimary }};
             background: {{ $primary }};
             padding: 7px 12px;
             margin: 0 0 10px;
@@ -125,7 +132,7 @@
         }
         .data-table thead th {
             background: {{ $primary }};
-            color: #fff;
+            color: {{ $onPrimary }};
             font-weight: 600;
             padding: 6px 5px;
             text-transform: uppercase;
@@ -163,7 +170,7 @@
         }
         .anom-group-header {
             background: {{ $primary }};
-            color: #fff;
+            color: {{ $onPrimary }};
             padding: 4px 8px;
             font-size: 9px;
             font-weight: 700;
@@ -417,8 +424,8 @@
                         </td>
                         <td width="2%"></td>
                         <td width="22%" style="padding: 6px 8px; background: {{ $primary }}; border-radius: 4px; vertical-align: top;">
-                            <div style="font-size: 7.5px; color: #ffffff; opacity: .8; text-transform: uppercase; letter-spacing: .03em;">Taux recouvrement</div>
-                            <div style="font-size: 11px; font-weight: 700; color: #ffffff;">{{ number_format($globalRate, 1, ',', ' ') }} %</div>
+                            <div style="font-size: 7.5px; color: {{ $onPrimary }}; opacity: .8; text-transform: uppercase; letter-spacing: .03em;">Taux recouvrement</div>
+                            <div style="font-size: 11px; font-weight: 700; color: {{ $onPrimary }};">{{ number_format($globalRate, 1, ',', ' ') }} %</div>
                         </td>
                     </tr>
                 </table>
@@ -426,11 +433,11 @@
                 <table width="100%" cellspacing="0" cellpadding="0" style="border-collapse: collapse; margin-top: 4px;">
                     <thead>
                         <tr style="background: {{ $primary }};">
-                            <th style="padding: 5px 8px; color: #fff; font-size: 8.5px; text-align: left;">Mois</th>
-                            <th style="padding: 5px 8px; color: #fff; font-size: 8.5px; text-align: right;">Attendu</th>
-                            <th style="padding: 5px 8px; color: #fff; font-size: 8.5px; text-align: right;">Encaissé</th>
-                            <th style="padding: 5px 8px; color: #fff; font-size: 8.5px; text-align: right;">Écart</th>
-                            <th style="padding: 5px 8px; color: #fff; font-size: 8.5px; text-align: center;">Taux</th>
+                            <th style="padding: 5px 8px; color: {{ $onPrimary }}; font-size: 8.5px; text-align: left;">Mois</th>
+                            <th style="padding: 5px 8px; color: {{ $onPrimary }}; font-size: 8.5px; text-align: right;">Attendu</th>
+                            <th style="padding: 5px 8px; color: {{ $onPrimary }}; font-size: 8.5px; text-align: right;">Encaissé</th>
+                            <th style="padding: 5px 8px; color: {{ $onPrimary }}; font-size: 8.5px; text-align: right;">Écart</th>
+                            <th style="padding: 5px 8px; color: {{ $onPrimary }}; font-size: 8.5px; text-align: center;">Taux</th>
                             <th style="padding: 5px 8px; color: #fff; font-size: 8.5px; text-align: center;">Statut</th>
                         </tr>
                     </thead>
@@ -471,20 +478,20 @@
                 <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 10px; border-collapse: collapse;">
                     <tr>
                         <td width="25%" style="background-color: {{ $primary }}; padding: 10px 8px; text-align: center; vertical-align: middle; border-right: 1px solid rgba(255,255,255,0.25);">
-                            <div style="font-size: 7.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: #fff; opacity: 0.85; margin-bottom: 4px;">Haut risque</div>
-                            <div style="font-size: 18px; font-weight: 700; color: #fff; line-height: 1.1;">{{ $buckets['haut'] ?? 0 }}</div>
+                            <div style="font-size: 7.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: {{ $onPrimary }}; opacity: 0.85; margin-bottom: 4px;">Haut risque</div>
+                            <div style="font-size: 18px; font-weight: 700; color: {{ $onPrimary }}; line-height: 1.1;">{{ $buckets['haut'] ?? 0 }}</div>
                         </td>
                         <td width="25%" style="background-color: {{ $primary }}; padding: 10px 8px; text-align: center; vertical-align: middle; border-right: 1px solid rgba(255,255,255,0.25);">
-                            <div style="font-size: 7.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: #fff; opacity: 0.85; margin-bottom: 4px;">Surveillance</div>
-                            <div style="font-size: 18px; font-weight: 700; color: #fff; line-height: 1.1;">{{ $buckets['moyen'] ?? 0 }}</div>
+                            <div style="font-size: 7.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: {{ $onPrimary }}; opacity: 0.85; margin-bottom: 4px;">Surveillance</div>
+                            <div style="font-size: 18px; font-weight: 700; color: {{ $onPrimary }}; line-height: 1.1;">{{ $buckets['moyen'] ?? 0 }}</div>
                         </td>
                         <td width="25%" style="background-color: {{ $primary }}; padding: 10px 8px; text-align: center; vertical-align: middle; border-right: 1px solid rgba(255,255,255,0.25);">
-                            <div style="font-size: 7.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: #fff; opacity: 0.85; margin-bottom: 4px;">Étudiants actifs</div>
-                            <div style="font-size: 18px; font-weight: 700; color: #fff; line-height: 1.1;">{{ $defaultRisk->metadata['total_actifs'] ?? 0 }}</div>
+                            <div style="font-size: 7.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: {{ $onPrimary }}; opacity: 0.85; margin-bottom: 4px;">Étudiants actifs</div>
+                            <div style="font-size: 18px; font-weight: 700; color: {{ $onPrimary }}; line-height: 1.1;">{{ $defaultRisk->metadata['total_actifs'] ?? 0 }}</div>
                         </td>
                         <td width="25%" style="background-color: {{ $primary }}; padding: 10px 8px; text-align: center; vertical-align: middle;">
-                            <div style="font-size: 7.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: #fff; opacity: 0.85; margin-bottom: 4px;">FCFA non recouvrés</div>
-                            <div style="font-size: 13px; font-weight: 700; color: #fff; line-height: 1.2;">{{ number_format($defaultRisk->metadata['total_solde_haut_risque'] ?? 0, 0, ',', ' ') }}</div>
+                            <div style="font-size: 7.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: {{ $onPrimary }}; opacity: 0.85; margin-bottom: 4px;">FCFA non recouvrés</div>
+                            <div style="font-size: 13px; font-weight: 700; color: {{ $onPrimary }}; line-height: 1.2;">{{ number_format($defaultRisk->metadata['total_solde_haut_risque'] ?? 0, 0, ',', ' ') }}</div>
                         </td>
                     </tr>
                 </table>

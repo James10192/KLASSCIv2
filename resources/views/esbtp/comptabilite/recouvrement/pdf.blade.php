@@ -17,6 +17,13 @@
         $hdrBg           = $pdfCfg['header_bg_color']  ?? $pdfCfg['primary_color'] ?? '#0453cb';
         $hdrText         = $pdfCfg['header_text_color'] ?? '#ffffff';
         $primary         = $pdfCfg['primary_color']     ?? '#0453cb';
+        // Texte pose sur la primaire (en-tetes de tableau, bande de KPI). Deduit du
+        // fond : une primaire claire rendrait du blanc invisible a l'impression.
+        // La couleur choisie par l'ecole reste prioritaire tant qu'elle est lisible.
+        $onPrimary       = \App\Helpers\SettingsHelper::contrastingText(
+            $primary,
+            $pdfCfg['header_text_color_raw'] ?? '#ffffff'
+        );
         $secondary       = $pdfCfg['secondary_color']   ?? '#64748b';
         $textColor       = $pdfCfg['text_color']        ?? '#1f2937';
         $showGenerator   = $pdfCfg['show_generator_name'] ?? true;
@@ -81,7 +88,7 @@
         }
         .report-table thead th {
             background: {{ $primary }};
-            color: #fff;
+            color: {{ $onPrimary }};
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.3px;
@@ -302,24 +309,24 @@
         <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 12px; border-collapse: collapse;">
             <tr>
                 <td width="25%" style="background-color: {{ $primary }}; padding: 10px 8px; text-align: center; vertical-align: middle; border-right: 1px solid rgba(255,255,255,0.25);">
-                    <div style="font-size: 7.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: #fff; opacity: 0.85; margin-bottom: 4px;">Haut risque</div>
-                    <div style="font-size: 18px; font-weight: 700; color: #fff; line-height: 1.1; margin-bottom: 3px;">{{ $kpis['buckets']['haut'] ?? 0 }}</div>
-                    <div style="font-size: 7px; color: #fff; opacity: 0.65;">Étudiants critiques</div>
+                    <div style="font-size: 7.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: {{ $onPrimary }}; opacity: 0.85; margin-bottom: 4px;">Haut risque</div>
+                    <div style="font-size: 18px; font-weight: 700; color: {{ $onPrimary }}; line-height: 1.1; margin-bottom: 3px;">{{ $kpis['buckets']['haut'] ?? 0 }}</div>
+                    <div style="font-size: 7px; color: {{ $onPrimary }}; opacity: 0.65;">Étudiants critiques</div>
                 </td>
                 <td width="25%" style="background-color: {{ $primary }}; padding: 10px 8px; text-align: center; vertical-align: middle; border-right: 1px solid rgba(255,255,255,0.25);">
-                    <div style="font-size: 7.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: #fff; opacity: 0.85; margin-bottom: 4px;">Solde haut risque</div>
-                    <div style="font-size: 14px; font-weight: 700; color: #fff; line-height: 1.2; margin-bottom: 3px;">{{ number_format($kpis['total_solde_haut_risque'] ?? 0, 0, ',', ' ') }}</div>
-                    <div style="font-size: 7px; color: #fff; opacity: 0.65;">FCFA non recouvrés</div>
+                    <div style="font-size: 7.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: {{ $onPrimary }}; opacity: 0.85; margin-bottom: 4px;">Solde haut risque</div>
+                    <div style="font-size: 14px; font-weight: 700; color: {{ $onPrimary }}; line-height: 1.2; margin-bottom: 3px;">{{ number_format($kpis['total_solde_haut_risque'] ?? 0, 0, ',', ' ') }}</div>
+                    <div style="font-size: 7px; color: {{ $onPrimary }}; opacity: 0.65;">FCFA non recouvrés</div>
                 </td>
                 <td width="25%" style="background-color: {{ $primary }}; padding: 10px 8px; text-align: center; vertical-align: middle; border-right: 1px solid rgba(255,255,255,0.25);">
-                    <div style="font-size: 7.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: #fff; opacity: 0.85; margin-bottom: 4px;">Surveillance</div>
-                    <div style="font-size: 18px; font-weight: 700; color: #fff; line-height: 1.1; margin-bottom: 3px;">{{ $kpis['buckets']['moyen'] ?? 0 }}</div>
-                    <div style="font-size: 7px; color: #fff; opacity: 0.65;">Sous surveillance</div>
+                    <div style="font-size: 7.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: {{ $onPrimary }}; opacity: 0.85; margin-bottom: 4px;">Surveillance</div>
+                    <div style="font-size: 18px; font-weight: 700; color: {{ $onPrimary }}; line-height: 1.1; margin-bottom: 3px;">{{ $kpis['buckets']['moyen'] ?? 0 }}</div>
+                    <div style="font-size: 7px; color: {{ $onPrimary }}; opacity: 0.65;">Sous surveillance</div>
                 </td>
                 <td width="25%" style="background-color: {{ $primary }}; padding: 10px 8px; text-align: center; vertical-align: middle;">
-                    <div style="font-size: 7.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: #fff; opacity: 0.85; margin-bottom: 4px;">Total actifs</div>
-                    <div style="font-size: 18px; font-weight: 700; color: #fff; line-height: 1.1; margin-bottom: 3px;">{{ $kpis['total_actifs'] ?? $countRows }}</div>
-                    <div style="font-size: 7px; color: #fff; opacity: 0.65;">Étudiants suivis</div>
+                    <div style="font-size: 7.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: {{ $onPrimary }}; opacity: 0.85; margin-bottom: 4px;">Total actifs</div>
+                    <div style="font-size: 18px; font-weight: 700; color: {{ $onPrimary }}; line-height: 1.1; margin-bottom: 3px;">{{ $kpis['total_actifs'] ?? $countRows }}</div>
+                    <div style="font-size: 7px; color: {{ $onPrimary }}; opacity: 0.65;">Étudiants suivis</div>
                 </td>
             </tr>
         </table>
