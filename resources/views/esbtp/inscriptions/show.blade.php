@@ -3176,7 +3176,7 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form id="paymentForm" method="POST">
+            <form id="paymentForm" method="POST" action="{{ route('esbtp.inscriptions.valider-avec-paiement', $inscription) }}">
                 @csrf
                 <input type="hidden" name="_action" value="valider-avec-paiement">
                 <div class="modal-body" style="padding: 2rem;">
@@ -3366,7 +3366,7 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form id="validationForm" method="POST">
+            <form id="validationForm" method="POST" action="{{ route('esbtp.inscriptions.valider-definitivement', $inscription) }}">
                 @csrf
                 <input type="hidden" name="_action" value="valider-definitivement">
                 <div class="modal-body" style="padding: 2rem;">
@@ -4203,11 +4203,8 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
         debugLog('🎯 preparePaymentModal appelé avec ID:', inscriptionId);
         
         const form = document.getElementById('paymentForm');
-        const correctAction = `/esbtp/inscriptions/${inscriptionId}/valider-avec-paiement`;
-        form.action = correctAction;
-        
-        // Reset le formulaire
         form.reset();
+        form.action = @json(route('esbtp.inscriptions.valider-avec-paiement', $inscription));
         
         // Remettre la date du jour
         const dateInput = document.getElementById('date_paiement');
@@ -4222,9 +4219,8 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
         debugLog('🎯 openValidationModal appelé avec ID:', inscriptionId);
 
         const form = document.getElementById('validationForm');
-        const correctAction = `/esbtp/inscriptions/${inscriptionId}/valider-definitivement`;
-        form.action = correctAction;
         form.reset();
+        form.action = @json(route('esbtp.inscriptions.valider-definitivement', $inscription));
 
         debugLog('✅ Formulaire de validation préparé, action:', form.action);
     }
