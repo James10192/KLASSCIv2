@@ -116,10 +116,16 @@
                         </div>
                         <div class="main-card-body pe-card-body">
                             <div class="pe-grid pe-grid--two">
+                                {{-- `saisi` distingue « zero » de « vide ».
+                                     Sans lui, effacer le champ donne
+                                     `parseInt('' || 0)` = 0, et l'ecran reclame
+                                     une confirmation d'exoneration sur un champ
+                                     que le comptable est en train de retaper. --}}
                                 <div class="pe-field" x-data="{
                                         montant: {{ (int) old('montant', $paiement->montant) }},
+                                        saisi: true,
                                         confirmedZero: false,
-                                        get isZero() { return this.montant === 0; },
+                                        get isZero() { return this.saisi && this.montant === 0; },
                                     }">
                                     <label for="montant" class="pe-label">Montant <span class="text-danger">*</span></label>
                                     <div class="pe-input-group">
@@ -131,7 +137,7 @@
                                             step="1"
                                             class="pe-input @error('montant') pe-input--error @enderror"
                                             value="{{ old('montant', $paiement->montant) }}"
-                                            x-on:input="montant = parseInt($event.target.value || 0); confirmedZero = false"
+                                            x-on:input="montant = parseInt($event.target.value || 0); saisi = $event.target.value !== ''; confirmedZero = false"
                                             required>
                                         <span class="pe-input-suffix">FCFA</span>
                                     </div>

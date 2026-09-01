@@ -945,7 +945,21 @@ $(function() {
         if (!studentSelect || !studentSelect.$refs || !studentSelect.$refs.searchInput) {
             return;
         }
-        studentSelect.$refs.searchInput.addEventListener('input', function () {
+
+        // Cette fonction est rappelee a CHAQUE ouverture du menu. Sans marque,
+        // dix ouvertures posent dix ecouteurs sur le meme champ, et chaque
+        // frappe part dix fois. Aujourd'hui le minuteur partage les ramene a une
+        // seule requete — mais c'est un accident heureux, pas une intention :
+        // le jour ou chaque appel prendra son propre minuteur, dix reponses
+        // courront vers le meme `setOptions`, et la derniere arrivee gagnera,
+        // qu'elle corresponde ou non a ce qui est affiche.
+        const champ = studentSelect.$refs.searchInput;
+        if (champ.dataset.rechercheBranchee === '1') {
+            return;
+        }
+        champ.dataset.rechercheBranchee = '1';
+
+        champ.addEventListener('input', function () {
             const query = this.value.trim();
             clearTimeout(studentSearchTimer);
             if (query.length < 3) {
