@@ -65,15 +65,11 @@ class AuthServiceProvider extends ServiceProvider
         });
 
         Gate::after(function ($user, $ability, $result) {
-            if ($result === true || $ability !== 'module.lmd.access' || ! $user) {
+            if ($result === true || ! $user) {
                 return $result === true ? true : null;
             }
 
-            if (! app(\App\Services\TenantScolariteSettings::class)->clerkLmdAccess()) {
-                return null;
-            }
-
-            return $user->can('identity.registrar_clerk') ? true : null;
+            return app(\App\Services\ScolariteClerkCapabilities::class)->grants($user, $ability) ?: null;
         });
 
         // Peut-on EMMENER cet utilisateur au formulaire d'inscription, ou lui

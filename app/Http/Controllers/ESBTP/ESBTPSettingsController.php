@@ -319,11 +319,26 @@ class ESBTPSettingsController extends Controller
                     'type' => 'boolean',
                     'group' => 'scolarite',
                     'category' => 'scolarite',
-                    'description' => 'Le service scolarite accede au module LMD (notes, resultats, bulletins). A activer sur les etablissements universitaires.',
+                    'description' => 'Le service scolarite accede au module LMD (notes, resultats, bulletins, domaines, UE). A activer sur les etablissements universitaires.',
                     'is_required' => false,
                     'default_value' => '0',
                     'validation_rules' => null,
                     'sort_order' => 155,
+                ]
+            );
+
+            Setting::firstOrCreate(
+                ['key' => TenantScolariteSettings::CLERK_PEDAGOGIE],
+                [
+                    'value' => '0',
+                    'type' => 'boolean',
+                    'group' => 'scolarite',
+                    'category' => 'scolarite',
+                    'description' => 'Le service scolarite cree et valide inscriptions et etudiants, et pilote domaines/UE/parcours. Sans planning ni personnel enseignant.',
+                    'is_required' => false,
+                    'default_value' => '0',
+                    'validation_rules' => null,
+                    'sort_order' => 156,
                 ]
             );
 
@@ -452,6 +467,7 @@ class ESBTPSettingsController extends Controller
                 TenantScolariteSettings::REINSCRIPTION_EN_LIGNE,
                 TenantScolariteSettings::CONFIRMER_STATUT_ETABLISSEMENT,
                 TenantScolariteSettings::CLERK_LMD_ACCESS,
+                TenantScolariteSettings::CLERK_PEDAGOGIE,
                 PortailCandidaturePublication::REGLAGE_ACTIF,
             ], array_keys($troncCommunDefaults));
 
