@@ -574,6 +574,58 @@
         </div>
     </div>
 
+    {{-- ═══ Répartition sur les frais ═══
+         Un versement peut couvrir plusieurs frais. N'afficher que la catégorie
+         portée par le paiement laisserait croire que tout l'argent y est allé. --}}
+    @php
+        $psAllocations = $paiement->allocations ?? collect();
+        $psPeutReventiler = ! $paiement->isAvoir() && auth()->user()?->can('paiements.reventiler');
+    @endphp
+    @if($psAllocations->isNotEmpty() || $psPeutReventiler)
+    <div class="ps-card" style="margin-top:20px;">
+        <div class="ps-card-header" style="justify-content:space-between;">
+            <div style="display:flex; align-items:center; gap:12px;">
+                <div class="ps-card-icon"><i class="fas fa-code-branch"></i></div>
+                <div class="ps-card-title">Répartition sur les frais</div>
+            </div>
+            @if($psPeutReventiler)
+                <a href="{{ route('esbtp.paiements.ventilation.edit', $paiement->id) }}"
+                   class="ps-btn ghost"
+                   title="Corriger l'imputation sans changer le montant ni le numéro de reçu">
+                    <i class="fas fa-sliders-h"></i> Corriger
+                </a>
+            @endif
+        </div>
+        <div class="ps-card-body">
+            @if($paiement->ventilation_rectifiee_le)
+                <div class="ps-info" style="border-bottom:none; padding-top:0;">
+                    <span class="ps-info-lbl">
+                        <i class="fas fa-clock-rotate-left me-1"></i> Ventilation rectifiée
+                    </span>
+                    <span class="ps-info-val">
+                        le {{ $paiement->ventilation_rectifiee_le->format('d/m/Y à H:i') }}
+                        — montant et numéro de reçu inchangés
+                    </span>
+                </div>
+            @endif
+
+            @forelse($psAllocations as $psAllocation)
+                <div class="ps-info">
+                    <span class="ps-info-lbl">{{ $psAllocation->fraisCategory->name ?? ('Frais #' . $psAllocation->frais_category_id) }}</span>
+                    <span class="ps-info-val">{{ number_format((float) $psAllocation->montant, 0, ',', ' ') }} FCFA</span>
+                </div>
+            @empty
+                <div class="ps-info" style="border-bottom:none;">
+                    <span class="ps-info-lbl">Imputation</span>
+                    <span class="ps-info-val">
+                        Entièrement sur « {{ $paiement->fraisCategory->name ?? 'catégorie non définie' }} »
+                    </span>
+                </div>
+            @endforelse
+        </div>
+    </div>
+    @endif
+
     {{-- ═══ Commentaires & Historique ═══ --}}
     <div class="ps-card" style="margin-top:20px;">
         <div class="ps-card-header">

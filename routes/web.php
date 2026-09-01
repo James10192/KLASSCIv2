@@ -1140,6 +1140,22 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                     ->name('paiements.update');
             });
 
+            // Correction de l'imputation d'un versement deja encaisse.
+            //
+            // Permission DISTINCTE de `paiements.edit` : celle-ci modifie les
+            // caracteristiques du versement, celle-la reecrit ou l'argent est
+            // alle sans y toucher. Une ecole peut vouloir confier la seconde a
+            // un comptable sans lui donner la premiere — c'est a elle de le
+            // decider (cf. `.claude/rules/customizable-roles.md`), donc la
+            // permission n'est pre-attribuee a aucun role.
+            Route::get('/paiements/{paiement}/ventilation', [App\Http\Controllers\Comptabilite\VentilationPaiementController::class, 'edit'])
+                ->whereNumber('paiement')
+                ->name('paiements.ventilation.edit');
+            Route::put('/paiements/{paiement}/ventilation', [App\Http\Controllers\Comptabilite\VentilationPaiementController::class, 'update'])
+                ->whereNumber('paiement')
+                ->middleware('throttle:20,1')
+                ->name('paiements.ventilation.update');
+
             // â”€â”€ DELETE
             Route::delete('/paiements/{paiement}', [App\Http\Controllers\ESBTPPaiementController::class, 'destroy'])
                 ->whereNumber('paiement')

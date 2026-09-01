@@ -949,6 +949,12 @@ return [
             'group' => 'Paiements',
             'icon' => 'fa-shield-virus',
         ],
+        'paiements.reventiler' => [
+            'label' => 'Corriger la ventilation d\'un paiement (sur quels frais il est imputé)',
+            'description' => 'Réécrit la répartition d\'un versement déjà encaissé entre les frais, sans en changer le montant ni le numéro de reçu. Sert quand un versement a été imputé au mauvais frais, ou quand le bon frais n\'existait pas encore. Écriture sur de l\'argent déjà reçu : motif obligatoire, ancienne et nouvelle ventilation conservées à l\'audit.',
+            'group' => 'Paiements',
+            'icon' => 'fa-code-branch',
+        ],
         'paiements.manage' => [
             'label' => 'Gérer tous les paiements (action globale)',
             'group' => 'Paiements',
