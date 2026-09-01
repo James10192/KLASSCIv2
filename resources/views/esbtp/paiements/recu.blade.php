@@ -48,10 +48,10 @@
         }
         .document-watermark img { max-width: 100%; }
 
-        .sheet { width: 100%; border-collapse: collapse; page-break-inside: avoid; }
+        .sheet { width: 100%; border-collapse: collapse; }
         .copy-cell {
             vertical-align: top;
-            padding: 0 0 2mm 0;
+            padding: 0;
             page-break-inside: avoid;
         }
         .cut-cell {
@@ -69,7 +69,7 @@
         .header-section {
             border-radius: 4px;
             overflow: hidden;
-            margin-bottom: 2.5mm;
+            margin-bottom: 1.5mm;
         }
         .header-section img {
             max-height: 52px !important;
@@ -235,7 +235,7 @@
             padding: 2.2mm 2.5mm;
         }
 
-        .signs { margin-top: 3mm; }
+        .signs { margin-top: 2.5mm; }
         .signs td { width: 50%; text-align: center; vertical-align: top; padding: 0 6mm; }
         .sign-title {
             font-size: 11px;
@@ -243,7 +243,7 @@
             color: {{ $primary }};
             text-transform: uppercase;
             letter-spacing: 0.4px;
-            margin-bottom: 7mm;
+            margin-bottom: 5mm;
         }
         .sign-line {
             border-top: 1.5px solid {{ $primary }};
