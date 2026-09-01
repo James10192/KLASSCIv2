@@ -56,9 +56,10 @@ class DocumentPrintGatesTest extends TestCase
         $guard = $this->guardOn();
         $etudiantId = (int) $this->inscription->etudiant_id;
 
-        $this->assertSame(DocumentPrintGuard::DENY_SOLDE, $guard->denyReason($this->user, 'certificat', $etudiantId));
-        $this->assertFalse($guard->canPrint($this->user, 'certificat', $etudiantId));
-        $this->assertStringContainsString('solde impayé', $guard->message(DocumentPrintGuard::DENY_SOLDE, $etudiantId));
+        $decision = $guard->decide($this->user, 'certificat', $etudiantId);
+        $this->assertSame(\App\Services\PrintDecision::SOLDE, $decision->reason);
+        $this->assertFalse($decision->allowed);
+        $this->assertStringContainsString('solde impayé', $decision->message());
     }
 
     public function test_paid_student_still_needs_approval(): void
@@ -69,8 +70,9 @@ class DocumentPrintGatesTest extends TestCase
         $guard = $this->guardOn();
         $etudiantId = (int) $this->inscription->etudiant_id;
 
-        $this->assertSame(0.0, $guard->soldeImpaye($etudiantId));
-        $this->assertSame(DocumentPrintGuard::DENY_APPROVAL, $guard->denyReason($this->user, 'certificat', $etudiantId));
+        $decision = $guard->decide($this->user, 'certificat', $etudiantId);
+        $this->assertSame(0.0, $decision->solde);
+        $this->assertSame(\App\Services\PrintDecision::APPROVAL, $decision->reason);
     }
 
     public function test_paid_and_approved_can_print(): void
@@ -90,7 +92,7 @@ class DocumentPrintGatesTest extends TestCase
 
         $guard = $this->guardOn();
 
-        $this->assertTrue($guard->canPrint($this->user, 'certificat', $etudiantId));
+        $this->assertTrue($guard->decide($this->user, 'certificat', $etudiantId)->allowed);
     }
 
     public function test_approval_request_is_rejected_when_unpaid(): void
@@ -120,7 +122,7 @@ class DocumentPrintGatesTest extends TestCase
         $settings = Mockery::mock(TenantScolariteSettings::class);
         $settings->shouldReceive('printRequiresApproval')->andReturn(true);
 
-        return new DocumentPrintGuard($settings);
+        return new DocumentPrintGuard($settings, new \App\Services\SoldeEtudiant());
     }
 
     private function souscrire(int $montant): void

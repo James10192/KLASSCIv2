@@ -1597,13 +1597,7 @@ class ESBTPEtudiantController extends Controller
      */
     private function respondWithCertificatPdf($id, string $disposition)
     {
-        $guard = app(DocumentPrintGuard::class);
-        $reason = $guard->denyReason(auth()->user(), 'certificat', (int) $id);
-        if ($reason) {
-            return redirect()
-                ->route('esbtp.etudiants.certificat.preview', $id)
-                ->with('error', $guard->message($reason, (int) $id));
-        }
+        app(DocumentPrintGuard::class)->assertPrintable(auth()->user(), 'certificat', (int) $id);
 
         try {
             // Récupérer l'étudiant avec toutes ses inscriptions
@@ -2405,13 +2399,7 @@ class ESBTPEtudiantController extends Controller
      */
     private function respondWithAttestationPdf($id, string $disposition)
     {
-        $guard = app(DocumentPrintGuard::class);
-        $reason = $guard->denyReason(auth()->user(), 'attestation', (int) $id);
-        if ($reason) {
-            return redirect()
-                ->route('esbtp.etudiants.attestation-frequentation.preview', $id)
-                ->with('error', $guard->message($reason, (int) $id));
-        }
+        app(DocumentPrintGuard::class)->assertPrintable(auth()->user(), 'attestation', (int) $id);
 
         try {
             // Récupérer l'étudiant avec ses inscriptions

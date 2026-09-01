@@ -2,9 +2,11 @@
 
 namespace Tests\Unit\Services;
 
-use App\Models\ESBTPDocumentApproval;
+use App\Exceptions\ImpressionBloquee;
 use App\Models\User;
 use App\Services\DocumentPrintGuard;
+use App\Services\PrintDecision;
+use App\Services\SoldeEtudiant;
 use App\Services\TenantScolariteSettings;
 use Mockery;
 use Tests\TestCase;
@@ -19,51 +21,50 @@ class DocumentPrintGuardTest extends TestCase
 
     public function test_solde_blocks_before_approval(): void
     {
-        $guard = $this->guard(solde: 25000, approved: false);
-        $user = $this->printer();
+        $decision = $this->guard(solde: 25000)->decide($this->printer(), 'certificat', 1);
 
-        $this->assertSame(DocumentPrintGuard::DENY_SOLDE, $guard->denyReason($user, 'certificat', 1));
-        $this->assertFalse($guard->canPrint($user, 'certificat', 1));
-    }
-
-    public function test_paid_without_approval_is_blocked(): void
-    {
-        $guard = $this->guard(solde: 0, approved: false);
-        $user = $this->printer();
-
-        $this->assertSame(DocumentPrintGuard::DENY_APPROVAL, $guard->denyReason($user, 'bulletin', 1, 9));
-    }
-
-    public function test_paid_and_approved_can_print(): void
-    {
-        $guard = $this->guard(solde: 0, approved: true);
-        $user = $this->printer();
-
-        $this->assertTrue($guard->canPrint($user, 'bulletin', 1, 9));
+        $this->assertSame(PrintDecision::SOLDE, $decision->reason);
+        $this->assertFalse($decision->allowed);
     }
 
     public function test_setting_off_skips_both_gates(): void
     {
-        $guard = $this->guard(solde: 40000, approved: false, settingOn: false);
-        $user = $this->printer();
+        $decision = $this->guard(solde: 40000, settingOn: false)->decide($this->printer(), 'certificat', 1);
 
-        $this->assertTrue($guard->canPrint($user, 'certificat', 1));
+        $this->assertTrue($decision->allowed);
+        $this->assertFalse($decision->gated);
     }
 
-    public function test_export_keeps_printable_and_counts_blocks(): void
+    public function test_assert_printable_throws_impression_bloquee(): void
     {
-        $guard = $this->guard(solde: 0, approved: false);
-        $user = $this->printer();
-        $docs = [
-            (object) ['id' => 1, 'etudiant_id' => 10],
-            (object) ['id' => 2, 'etudiant_id' => 11],
-        ];
+        $this->expectException(ImpressionBloquee::class);
 
-        $filtre = $guard->filtrerExport($user, 'bulletin', $docs);
+        $this->guard(solde: 1000)->assertPrintable($this->printer(), 'certificat', 1);
+    }
+
+    public function test_export_passes_through_when_setting_off(): void
+    {
+        $filtre = $this->guard(solde: 40000, settingOn: false)->filtrerExport($this->printer(), 'bulletin', [
+            (object) ['id' => 1, 'etudiant_id' => 10],
+        ]);
+
+        $this->assertSame([1], $filtre['allowed_ids']);
+        $this->assertSame(0, $filtre['bloques_solde']);
+        $this->assertSame(0, $filtre['bloques_approbation']);
+    }
+
+    public function test_export_does_not_count_permission_as_approval(): void
+    {
+        $user = Mockery::mock(User::class);
+        $user->shouldReceive('can')->andReturn(false);
+
+        $filtre = $this->guard(solde: 0)->filtrerExport($user, 'bulletin', [
+            (object) ['id' => 1, 'etudiant_id' => 10],
+        ]);
 
         $this->assertSame([], $filtre['allowed_ids']);
         $this->assertSame(0, $filtre['bloques_solde']);
-        $this->assertSame(2, $filtre['bloques_approbation']);
+        $this->assertSame(0, $filtre['bloques_approbation']);
     }
 
     private function printer(): User
@@ -74,36 +75,22 @@ class DocumentPrintGuardTest extends TestCase
         return $user;
     }
 
-    private function guard(float $solde, bool $approved, bool $settingOn = true): DocumentPrintGuard
+    private function settings(bool $on): TenantScolariteSettings
     {
         $settings = Mockery::mock(TenantScolariteSettings::class);
-        $settings->shouldReceive('printRequiresApproval')->andReturn($settingOn);
+        $settings->shouldReceive('printRequiresApproval')->andReturn($on);
 
-        return new class($settings, $solde, $approved) extends DocumentPrintGuard {
-            public function __construct(
-                TenantScolariteSettings $settings,
-                private readonly float $soldeFixe,
-                private readonly bool $estApprouve,
-            ) {
-                parent::__construct($settings);
-            }
+        return $settings;
+    }
 
-            public function soldeImpaye(int $etudiantId): float
-            {
-                return $this->soldeFixe;
-            }
+    private function guard(float $solde, bool $settingOn = true): DocumentPrintGuard
+    {
+        $soldes = Mockery::mock(SoldeEtudiant::class);
+        $soldes->shouldReceive('impaye')->andReturn($solde);
+        $soldes->shouldReceive('impayes')->andReturnUsing(
+            fn (array $ids) => array_fill_keys($ids, $solde)
+        );
 
-            public function latestApproved(string $documentType, int $etudiantId, ?int $documentId = null): ?ESBTPDocumentApproval
-            {
-                if (! $this->estApprouve) {
-                    return null;
-                }
-
-                $row = new ESBTPDocumentApproval();
-                $row->status = ESBTPDocumentApproval::STATUS_APPROVED;
-
-                return $row;
-            }
-        };
+        return new DocumentPrintGuard($this->settings($settingOn), $soldes);
     }
 }

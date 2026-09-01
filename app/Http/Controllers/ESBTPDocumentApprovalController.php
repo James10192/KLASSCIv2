@@ -25,10 +25,15 @@ class ESBTPDocumentApprovalController extends Controller
         ]);
 
         $etudiantId = (int) $validated['etudiant_id'];
-        $guard = app(DocumentPrintGuard::class);
+        $decision = app(DocumentPrintGuard::class)->decide(
+            $request->user(),
+            $validated['document_type'],
+            $etudiantId,
+            isset($validated['document_id']) ? (int) $validated['document_id'] : null
+        );
 
-        if ($guard->requiresApproval() && $guard->soldeImpaye($etudiantId) > 0) {
-            return back()->with('error', $guard->message(DocumentPrintGuard::DENY_SOLDE, $etudiantId));
+        if ($decision->isUnpaid()) {
+            return back()->with('error', $decision->message());
         }
 
         ESBTPDocumentApproval::create([

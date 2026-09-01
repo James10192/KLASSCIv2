@@ -601,18 +601,12 @@ class ESBTPBulletinController extends Controller
     {
         $this->authorize('download', $bulletin);
 
-        $guard = app(DocumentPrintGuard::class);
-        $reason = $guard->denyReason(
+        app(DocumentPrintGuard::class)->assertPrintable(
             auth()->user(),
             'bulletin',
             (int) $bulletin->etudiant_id,
             (int) $bulletin->id
         );
-        if ($reason) {
-            return redirect()
-                ->route('esbtp.bulletins.show', $bulletin)
-                ->with('error', $guard->message($reason, (int) $bulletin->etudiant_id));
-        }
 
         try {
             $pdf = $this->buildBulletinPdf($bulletin);

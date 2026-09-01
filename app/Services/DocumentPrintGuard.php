@@ -2,22 +2,16 @@
 
 namespace App\Services;
 
+use App\Exceptions\ImpressionBloquee;
 use App\Models\ESBTPDocumentApproval;
-use App\Models\ESBTPEtudiant;
-use App\Models\ESBTPFraisSubscription;
-use App\Models\ESBTPPaiement;
 use App\Models\User;
 
 class DocumentPrintGuard
 {
-    public const DENY_PERMISSION = 'permission';
-
-    public const DENY_SOLDE = 'solde';
-
-    public const DENY_APPROVAL = 'approval';
-
-    public function __construct(private readonly TenantScolariteSettings $settings)
-    {
+    public function __construct(
+        private readonly TenantScolariteSettings $settings,
+        private readonly SoldeEtudiant $soldes,
+    ) {
     }
 
     public function requiresApproval(): bool
@@ -25,67 +19,37 @@ class DocumentPrintGuard
         return $this->settings->printRequiresApproval();
     }
 
-    public function canPreview(User $user): bool
-    {
-        return $user->can('documents.view')
-            || $user->can('documents.print')
-            || $user->can('documents.approve')
-            || $user->can('students.view')
-            || $user->can('bulletins.view');
-    }
-
-    public function canPrint(User $user, string $documentType, int $etudiantId, ?int $documentId = null): bool
-    {
-        return $this->denyReason($user, $documentType, $etudiantId, $documentId) === null;
-    }
-
-    public function denyReason(User $user, string $documentType, int $etudiantId, ?int $documentId = null): ?string
+    public function decide(User $user, string $documentType, int $etudiantId, ?int $documentId = null): PrintDecision
     {
         if (! $user->can('documents.print') && ! $user->can('students.view') && ! $user->can('bulletins.view')) {
-            return self::DENY_PERMISSION;
+            return PrintDecision::denied(PrintDecision::PERMISSION, 0.0, false);
         }
 
         if (! $this->requiresApproval()) {
-            return null;
+            return PrintDecision::open();
         }
 
-        if ($this->soldeImpaye($etudiantId) > 0) {
-            return self::DENY_SOLDE;
+        $solde = $this->soldes->impaye($etudiantId);
+        if ($solde > 0) {
+            return PrintDecision::denied(PrintDecision::SOLDE, $solde);
         }
 
-        if ($this->latestApproved($documentType, $etudiantId, $documentId) === null) {
-            return self::DENY_APPROVAL;
+        $approval = $this->latestApproved($documentType, $etudiantId, $documentId);
+        if ($approval === null) {
+            return PrintDecision::denied(PrintDecision::APPROVAL, $solde);
         }
 
-        return null;
+        return PrintDecision::approved($approval, $solde);
     }
 
-    public function soldeImpaye(int $etudiantId): float
+    public function assertPrintable(User $user, string $documentType, int $etudiantId, ?int $documentId = null): PrintDecision
     {
-        $etudiant = ESBTPEtudiant::query()->find($etudiantId);
-        $inscription = $etudiant?->inscription_active;
-
-        if (! $inscription) {
-            return 0.0;
+        $decision = $this->decide($user, $documentType, $etudiantId, $documentId);
+        if (! $decision->allowed) {
+            throw new ImpressionBloquee($decision);
         }
 
-        $du = ESBTPFraisSubscription::dueAmountForInscription($inscription->id);
-        $paye = ESBTPPaiement::netPaidForInscription((int) $inscription->id);
-
-        return round(max(0, $du - $paye), 2);
-    }
-
-    public function message(string $reason, int $etudiantId = 0): string
-    {
-        return match ($reason) {
-            self::DENY_SOLDE => sprintf(
-                'Impression bloquée : solde impayé de %s F. L\'étudiant doit régulariser en caisse.',
-                number_format($this->soldeImpaye($etudiantId), 0, ',', ' ')
-            ),
-            self::DENY_APPROVAL => 'Impression bloquée : l\'accord de la responsable scolarité est requis.',
-            self::DENY_PERMISSION => 'Vous n\'avez pas le droit d\'imprimer ce document.',
-            default => 'Impression bloquée.',
-        };
+        return $decision;
     }
 
     /**
@@ -94,29 +58,40 @@ class DocumentPrintGuard
      */
     public function filtrerExport(User $user, string $documentType, iterable $documents): array
     {
+        $docs = collect($documents);
+        $ids = $docs->map(fn ($d) => (int) $d->id)->all();
+
+        if ($docs->isEmpty() || ! $this->requiresApproval()) {
+            return ['allowed_ids' => $ids, 'bloques_solde' => 0, 'bloques_approbation' => 0];
+        }
+
+        if (! $user->can('documents.print') && ! $user->can('students.view') && ! $user->can('bulletins.view')) {
+            return ['allowed_ids' => [], 'bloques_solde' => 0, 'bloques_approbation' => 0];
+        }
+
+        $etudiantIds = $docs->map(fn ($d) => (int) $d->etudiant_id)->unique()->values()->all();
+        $soldes = $this->soldes->impayes($etudiantIds);
+        $approvals = $this->approvalsIndex($documentType, $etudiantIds, $ids);
+
         $allowed = [];
         $solde = 0;
         $approbation = 0;
 
-        foreach ($documents as $document) {
-            $reason = $this->denyReason(
-                $user,
-                $documentType,
-                (int) $document->etudiant_id,
-                (int) $document->id
-            );
+        foreach ($docs as $document) {
+            $etudiantId = (int) $document->etudiant_id;
+            $documentId = (int) $document->id;
 
-            if ($reason === self::DENY_SOLDE) {
+            if (($soldes[$etudiantId] ?? 0) > 0) {
                 $solde++;
                 continue;
             }
 
-            if ($reason === self::DENY_APPROVAL || $reason === self::DENY_PERMISSION) {
+            if (! isset($approvals[$etudiantId][$documentId]) && ! isset($approvals[$etudiantId][0])) {
                 $approbation++;
                 continue;
             }
 
-            $allowed[] = (int) $document->id;
+            $allowed[] = $documentId;
         }
 
         return [
@@ -140,5 +115,34 @@ class DocumentPrintGuard
         }
 
         return $query->latest('approved_at')->first();
+    }
+
+    /**
+     * @param  array<int, int>  $etudiantIds
+     * @param  array<int, int>  $documentIds
+     * @return array<int, array<int, true>>
+     */
+    private function approvalsIndex(string $documentType, array $etudiantIds, array $documentIds): array
+    {
+        if ($etudiantIds === []) {
+            return [];
+        }
+
+        $rows = ESBTPDocumentApproval::query()
+            ->where('document_type', $documentType)
+            ->whereIn('etudiant_id', $etudiantIds)
+            ->where('status', ESBTPDocumentApproval::STATUS_APPROVED)
+            ->where(function ($q) use ($documentIds) {
+                $q->whereIn('document_id', $documentIds)->orWhereNull('document_id');
+            })
+            ->get(['etudiant_id', 'document_id']);
+
+        $index = [];
+        foreach ($rows as $row) {
+            $key = $row->document_id === null ? 0 : (int) $row->document_id;
+            $index[(int) $row->etudiant_id][$key] = true;
+        }
+
+        return $index;
     }
 }
