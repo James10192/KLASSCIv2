@@ -89,7 +89,7 @@
         @endif
 
         <ul class="au-select-options">
-            <template x-for="(opt, idx) in filteredOptions" :key="opt.value + ':' + idx">
+            <template x-for="(opt, idx) in filteredOptions" :key="opt.placeholder ? '__placeholder__' : (opt.value + '|' + opt.label)">
                 <li class="au-select-option"
                     :class="{ 'au-select-option--active': opt.value === currentValue, 'au-select-option--focused': idx === focusedIndex, 'au-select-option--placeholder': opt.placeholder }"
                     @mouseenter="focusedIndex = idx"
@@ -660,25 +660,21 @@ if (typeof window.auSelect !== 'function') {
                 const margin = 12;
                 const gap = 6;
                 const triggerRect = trigger.getBoundingClientRect();
-                const visibleWidth = window.visualViewport?.width || window.innerWidth;
-                const visibleHeight = window.visualViewport?.height || window.innerHeight;
-                const viewportWidth = visibleWidth - (margin * 2);
+                // position:fixed et getBoundingClientRect parlent le viewport
+                // de MISE EN PAGE. visualViewport (le zoom) n'y entre pas :
+                // le mixer plaquait le menu a gauche des 200 %.
+                const layoutWidth = document.documentElement.clientWidth || window.innerWidth;
+                const layoutHeight = document.documentElement.clientHeight || window.innerHeight;
+                const viewportWidth = layoutWidth - (margin * 2);
 
-                const spaceBelowNow = visibleHeight - triggerRect.bottom - margin - gap;
+                const spaceBelowNow = layoutHeight - triggerRect.bottom - margin - gap;
                 const spaceAboveNow = triggerRect.top - margin - gap;
 
                 if (remeasure || this._menuWidth === null) {
-                    // Effacer la largeur posee avant de mesurer, sinon on relit
-                    // notre propre valeur au lieu de la largeur du contenu.
-                    const largeurPosee = menu.style.width;
-                    const maxPosee = menu.style.maxWidth;
-                    menu.style.width = 'auto';
-                    menu.style.maxWidth = 'none';
-                    const naturelle = menu.offsetWidth || triggerRect.width;
-                    menu.style.width = largeurPosee;
-                    menu.style.maxWidth = maxPosee;
-
-                    this._menuWidth = Math.min(naturelle, viewportWidth);
+                    // La largeur du menu EST celle du champ. Mesurer le contenu
+                    // etirait le dropdown a toute la page des qu'un libelle
+                    // d'etudiant etait long.
+                    this._menuWidth = Math.min(triggerRect.width, viewportWidth);
                     this._menuMaxHeight = Math.max(0, Math.min(
                         380,
                         Math.max(spaceBelowNow, spaceAboveNow)
@@ -698,7 +694,7 @@ if (typeof window.auSelect !== 'function') {
                 const menuWidth = Math.min(this._menuWidth, viewportWidth);
                 const availableHeight = this._menuMaxHeight;
                 const minimumWidth = Math.min(triggerRect.width, viewportWidth);
-                const left = Math.max(margin, Math.min(triggerRect.left, visibleWidth - menuWidth - margin));
+                const left = Math.max(margin, Math.min(triggerRect.left, layoutWidth - menuWidth - margin));
 
                 // Sous <body>, le menu perd les regles CSS ecrites en
                 // descendance de son parent d'origine — dont, sur certaines
@@ -707,8 +703,8 @@ if (typeof window.auSelect !== 'function') {
                 const plan = this._menuDeplace ? 'z-index:99999;' : '';
 
                 this.menuStyle = this._menuOpenUp
-                    ? `${plan}position:fixed;left:${left}px;right:auto;top:auto;bottom:${visibleHeight - triggerRect.top + gap}px;width:${menuWidth}px;min-width:${minimumWidth}px;max-width:${viewportWidth}px;max-height:${availableHeight}px;transform-origin:bottom center;`
-                    : `${plan}position:fixed;left:${left}px;right:auto;top:${triggerRect.bottom + gap}px;bottom:auto;width:${menuWidth}px;min-width:${minimumWidth}px;max-width:${viewportWidth}px;max-height:${availableHeight}px;transform-origin:top center;`;
+                    ? `${plan}position:fixed;left:${left}px;right:auto;top:auto;bottom:${layoutHeight - triggerRect.top + gap}px;width:${menuWidth}px;min-width:${minimumWidth}px;max-width:${menuWidth}px;max-height:${availableHeight}px;transform-origin:bottom center;`
+                    : `${plan}position:fixed;left:${left}px;right:auto;top:${triggerRect.bottom + gap}px;bottom:auto;width:${menuWidth}px;min-width:${minimumWidth}px;max-width:${menuWidth}px;max-height:${availableHeight}px;transform-origin:top center;`;
             },
             get currentValue() { return this._value; },
             get isDisabled() { return !!this.$refs.native?.disabled; },

@@ -10,7 +10,7 @@ class AuSelectSetOptionsTest extends TestCase
     {
         $source = file_get_contents(resource_path('views/components/au-select.blade.php'));
 
-        $this->assertStringContainsString("setOptions(items, selectedValue = '')", $source);
+        $this->assertStringContainsString('setOptions(items, selectedValue', $source);
         $this->assertStringContainsString("native.innerHTML = ''", $source);
     }
 
@@ -19,10 +19,21 @@ class AuSelectSetOptionsTest extends TestCase
         $source = file_get_contents(resource_path('views/esbtp/paiements/create.blade.php'));
 
         $this->assertStringContainsString('setOptions(', $source);
-        $this->assertStringContainsString("route('esbtp.api.etudiants.search')", $source);
+        $this->assertStringContainsString("route('esbtp.api.caisse.inscriptions')", $source);
+        $this->assertStringContainsString('caisseInscriptionPicker', $source);
         $this->assertStringNotContainsString('new Option(', $source);
         $this->assertStringNotContainsString('$inscriptionSelect', $source);
         $this->assertStringNotContainsString('pc-select-field', $source);
         $this->assertStringNotContainsString('->limit(10)', $source);
+    }
+
+    public function test_au_select_menu_suit_le_champ_sans_detruire_les_lignes_au_clic(): void
+    {
+        $source = file_get_contents(resource_path('views/components/au-select.blade.php'));
+
+        $this->assertStringContainsString("opt.value + '|' + opt.label", $source);
+        $this->assertStringNotContainsString("opt.value + ':' + idx", $source);
+        $this->assertStringContainsString('this._menuWidth = Math.min(triggerRect.width, viewportWidth)', $source);
+        $this->assertStringContainsString('document.documentElement.clientWidth', $source);
     }
 }

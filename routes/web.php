@@ -1805,6 +1805,7 @@ Route::prefix('api/esbtp')->name('api.esbtp.')->middleware(['auth'])->group(func
 Route::prefix('esbtp/api')->name('esbtp.api.')->middleware(['auth', 'permission:admin.access|identity.direct_studies|identity.registrar|identity.registrar_clerk|identity.enrollment_officer|paiements.create|paiements.create.mobile_money'])->group(function () {
     Route::get('etudiants/search', [ESBTPEtudiantController::class, 'searchForApi'])->name('etudiants.search');
     Route::get('etudiants/inscriptions', [ESBTPEtudiantController::class, 'getInscriptionsForApi'])->name('etudiants.inscriptions');
+    Route::get('caisse/inscriptions', [App\Http\Controllers\ESBTPPaiementController::class, 'searchInscriptionsForCaisse'])->name('caisse.inscriptions');
 });
 
 Route::prefix('esbtp/api')->name('esbtp.api.')->middleware(['auth', 'permission:admin.access|identity.direct_studies|identity.registrar|identity.registrar_clerk|identity.enrollment_officer'])->group(function () {
