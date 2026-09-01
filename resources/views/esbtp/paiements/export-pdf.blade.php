@@ -1,3 +1,19 @@
+@php
+    // Couleurs resolues AVANT la feuille de style : les libelles de KPI en ont besoin.
+    // Le fond des cellules vient d'un parametre d'etablissement ; la couleur du texte
+    // s'en deduit (contraste WCAG) au lieu d'etre decretee blanche.
+    $pdfCfgLocal = $pdfCfg ?? \App\Helpers\SettingsHelper::getPdfSettings();
+    $hdrBg = $pdfCfgLocal['header_bg_color'] ?? $pdfCfgLocal['primary_color'] ?? '#0453cb';
+    $primary = $pdfCfgLocal['primary_color'] ?? '#0453cb';
+    // La couleur de texte choisie par l'ecole reste prioritaire tant qu'elle est
+    // lisible ; on ne la remplace que si elle ne l'est pas. On derive du fond
+    // REELLEMENT utilise ici plutot que de lire une valeur pre-calculee : l'ecran
+    // d'apercu des parametres injecte un $pdfCfg dont la primaire est modifiee
+    // mais dont les valeurs derivees sont, elles, restees celles de la base.
+    $souhaitee = $pdfCfgLocal['header_text_color_raw'] ?? '#ffffff';
+    $hdrText = \App\Helpers\SettingsHelper::contrastingText($hdrBg, $souhaitee);
+    $onPrimary = \App\Helpers\SettingsHelper::contrastingText($primary, $souhaitee);
+@endphp
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -30,25 +46,34 @@
         /* ── KPI row ──
            Pas de text-transform:uppercase — DomPDF mangles les accents (rule
            exports-pdf-excel.md anti-pattern #9). Les libellés sont déjà
-           pré-uppercase dans le HTML ("TOTAL", "VALIDÉS"…). */
-        .kpi-label {
+           pré-uppercase dans le HTML ("TOTAL", "VALIDÉS"…).
+
+           Namespace pay-* volontaire : le theme partagé impose
+           `.kpi-value { color: <primaire> !important }`, pensé pour un KPI sur
+           fond blanc. Ici les cellules sont peintes AVEC la primaire — on aurait
+           donc du texte primaire sur fond primaire, invisible quelle que soit la
+           couleur choisie. Un nom distinct supprime la collision plutôt que de
+           parier sur l'ordre des feuilles de style.
+
+           La couleur vient de $onPrimary, déduite du fond réellement utilisé. */
+        .pay-kpi-label {
             font-size: 7.5px;
             font-weight: 600;
             letter-spacing: 0.5px;
-            color: white;
+            color: {{ $onPrimary }};
             opacity: 0.8;
             margin-bottom: 3px;
         }
-        .kpi-value {
+        .pay-kpi-value {
             font-size: 16px;
             font-weight: 700;
-            color: white;
+            color: {{ $onPrimary }};
             line-height: 1.1;
             margin-bottom: 2px;
         }
-        .kpi-sub {
+        .pay-kpi-sub {
             font-size: 7px;
-            color: white;
+            color: {{ $onPrimary }};
             opacity: 0.65;
         }
 
@@ -162,11 +187,9 @@
 </head>
 <body>
 @php
-    $pdfCfgLocal = $pdfCfg ?? \App\Helpers\SettingsHelper::getPdfSettings();
-    $hdrBg   = $pdfCfgLocal['header_bg_color'] ?? $pdfCfgLocal['primary_color'] ?? '#0453cb';
-    $hdrText = $pdfCfgLocal['header_text_color'] ?? '#ffffff';
-    $primary = $pdfCfgLocal['primary_color'] ?? '#0453cb';
-    $etab    = $etablissement ?? [];
+    // $pdfCfgLocal, $hdrBg, $primary, $hdrText et $onPrimary sont resolus en tete
+    // de fichier (la feuille de style en a besoin) — ne pas les redefinir ici.
+    $etab = $etablissement ?? [];
 
     $formatMontant = function ($montant) {
         return number_format((float) $montant, 0, ',', ' ') . ' FCFA';
@@ -273,30 +296,30 @@
     <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 10px;">
         <tr>
             <td width="20%" style="background-color: {{ $primary }}; padding: 8px 6px; text-align: center; vertical-align: middle; border-right: 1px solid rgba(255,255,255,0.25);">
-                <div class="kpi-label">TOTAL</div>
-                <div class="kpi-value">{{ $totalPaiements }}</div>
-                <div class="kpi-sub">Paiements</div>
+                <div class="pay-kpi-label">TOTAL</div>
+                <div class="pay-kpi-value">{{ $totalPaiements }}</div>
+                <div class="pay-kpi-sub">Paiements</div>
             </td>
             <td width="25%" style="background-color: {{ $primary }}; padding: 8px 6px; text-align: center; vertical-align: middle; border-right: 1px solid rgba(255,255,255,0.25);">
-                <div class="kpi-label">MONTANT CUMULÉ</div>
-                <div class="kpi-value" style="font-size:13px;">{{ $formatMontant($montantTotal) }}</div>
-                <div class="kpi-sub">Tous paiements</div>
+                <div class="pay-kpi-label">MONTANT CUMULÉ</div>
+                <div class="pay-kpi-value" style="font-size:13px;">{{ $formatMontant($montantTotal) }}</div>
+                <div class="pay-kpi-sub">Tous paiements</div>
             </td>
             <td width="20%" style="background-color: {{ $primary }}; padding: 8px 6px; text-align: center; vertical-align: middle; border-right: 1px solid rgba(255,255,255,0.25);">
-                <div class="kpi-label">VALIDÉS</div>
-                <div class="kpi-value">{{ $valides }}</div>
-                <div class="kpi-sub">{{ $formatMontant($montantValide) }}</div>
+                <div class="pay-kpi-label">VALIDÉS</div>
+                <div class="pay-kpi-value">{{ $valides }}</div>
+                <div class="pay-kpi-sub">{{ $formatMontant($montantValide) }}</div>
             </td>
             <td width="20%" style="background-color: {{ $primary }}; padding: 8px 6px; text-align: center; vertical-align: middle; {{ !is_null($recoveryRate) ? 'border-right: 1px solid rgba(255,255,255,0.25);' : '' }}">
-                <div class="kpi-label">EN ATTENTE</div>
-                <div class="kpi-value">{{ $enAttente }}</div>
-                <div class="kpi-sub">{{ $formatMontant($montantEnAttente) }}</div>
+                <div class="pay-kpi-label">EN ATTENTE</div>
+                <div class="pay-kpi-value">{{ $enAttente }}</div>
+                <div class="pay-kpi-sub">{{ $formatMontant($montantEnAttente) }}</div>
             </td>
             @if(!is_null($recoveryRate))
             <td width="15%" style="background-color: {{ $primary }}; padding: 8px 6px; text-align: center; vertical-align: middle;">
-                <div class="kpi-label">RECOUVREMENT</div>
-                <div class="kpi-value">{{ $recoveryRate }}%</div>
-                <div class="kpi-sub">Taux</div>
+                <div class="pay-kpi-label">RECOUVREMENT</div>
+                <div class="pay-kpi-value">{{ $recoveryRate }}%</div>
+                <div class="pay-kpi-sub">Taux</div>
             </td>
             @endif
         </tr>

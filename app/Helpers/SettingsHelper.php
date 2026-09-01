@@ -213,7 +213,7 @@ class SettingsHelper
             'margin_right' => (int) self::get('pdf_margin_right', '15'),
             'primary_color' => self::get('pdf_primary_color', '#0453cb'),
             'secondary_color' => self::get('pdf_secondary_color', '#64748b'),
-            'accent_color' => self::get('pdf_accent_color', '#f59e0b'),
+            'accent_color' => $accent = self::get('pdf_accent_color', '#f59e0b'),
             'text_color' => self::get('pdf_text_color', '#1f2937'),
             'header_bg_color' => $headerBg = self::get('pdf_header_bg_color', '#0453cb'),
             'header_text_color_raw' => $headerText = self::get('pdf_header_text_color', '#ffffff'),
@@ -223,31 +223,141 @@ class SettingsHelper
                 self::get('pdf_primary_color', '#0453cb'),
                 $headerText
             ),
+            // Les pastilles de statut sont posees sur la couleur d'accent, qui est
+            // souvent claire (ambre par defaut) : le blanc n'y tient pas.
+            'text_on_accent' => self::contrastingText($accent, $headerText),
         ];
     }
 
-    public static function contrastingText(string $background, string $preferred = '#ffffff', string $dark = '#111827'): string
-    {
+    /**
+     * Luminance relative du blanc — borne haute de l'echelle WCAG.
+     */
+    private const LUMINANCE_BLANC = 1.0;
+
+    /**
+     * Luminance relative du noir — borne basse de l'echelle WCAG.
+     */
+    private const LUMINANCE_NOIR = 0.0;
+
+    /**
+     * Contraste minimum exige par WCAG 2.1 (critere 1.4.3, niveau AA) pour du
+     * texte de taille normale. Le seuil assoupli de 3:1 ne vaut que pour du
+     * "grand texte" (>= 18.66px gras ou >= 24px) : les libelles de KPI d'un PDF
+     * font 7 a 8px, ils relevent donc bien de l'exigence stricte.
+     */
+    public const CONTRASTE_MINIMUM = 4.5;
+
+    /**
+     * Couleur de texte lisible sur un fond donne.
+     *
+     * Le fond etant choisi par l'etablissement (parametres PDF), la couleur du
+     * texte ne peut pas etre decretee : elle se deduit du fond.
+     *
+     * Methode — WCAG 2.1, "relative luminance" et "contrast ratio" :
+     *   1. chaque canal RVB est normalise dans [0,1] puis linearise :
+     *      c <= 0.03928  ->  c / 12.92
+     *      sinon         ->  ((c + 0.055) / 1.055) ^ 2.4
+     *   2. L = 0.2126*R + 0.7152*V + 0.0722*B
+     *   3. contraste = (L_clair + 0.05) / (L_sombre + 0.05), borne entre 1:1 et 21:1
+     *
+     * Ordre de decision :
+     *   1. la couleur souhaitee, si elle atteint deja le seuil ;
+     *   2. sinon le sombre de la charte, s'il l'atteint ;
+     *   3. sinon le blanc, s'il l'atteint ;
+     *   4. sinon — fonds de demi-teinte, ou aucun des deux ne passe — celui du
+     *      sombre, du blanc ou du noir pur qui se detache le mieux.
+     *
+     * L'etape 4 est un aveu d'impossibilite, pas un choix : entre L≈0.175 et
+     * L≈0.183, aucune couleur n'atteint 4.5:1 sur ce fond. On rend alors le
+     * maximum atteignable plutot qu'une valeur arbitraire. Le noir pur n'est
+     * convoque qu'a ce stade, pour ne pas remplacer partout le sombre de la
+     * charte par du #000000 sur simple avantage decimal.
+     *
+     * Fond illisible (null, vide, hexadecimal invalide) : on ne devine pas. DomPDF
+     * ignore purement et simplement une `background-color` invalide, la zone reste
+     * donc blanche comme le papier — on rend du texte sombre, jamais du blanc.
+     *
+     * @param  string|null  $background  Couleur de fond, hexadecimal court (#abc) ou long (#aabbcc)
+     * @param  string  $preferred  Couleur souhaitee si elle est suffisamment lisible
+     * @param  string  $dark  Repli sombre utilise quand le blanc ne passe pas
+     * @param  float  $minRatio  Contraste minimum exige (defaut : WCAG AA texte normal)
+     */
+    public static function contrastingText(
+        ?string $background,
+        string $preferred = '#ffffff',
+        string $dark = '#111827',
+        float $minRatio = self::CONTRASTE_MINIMUM
+    ): string {
         $bgLum = self::relativeLuminance($background);
-        $fgLum = self::relativeLuminance($preferred);
-        $lighter = max($bgLum, $fgLum);
-        $darker = min($bgLum, $fgLum);
-        $ratio = ($lighter + 0.05) / ($darker + 0.05);
-        if ($ratio >= 3.0) {
+
+        if ($bgLum === null) {
+            return $dark;
+        }
+
+        $ratioAvec = static fn (?float $lum): float => $lum === null
+            ? 0.0
+            : self::contrastRatio($bgLum, $lum);
+
+        $preferredRatio = $ratioAvec(self::relativeLuminance($preferred));
+        if ($preferredRatio >= $minRatio) {
             return $preferred;
         }
 
-        return $bgLum > 0.55 ? $dark : '#ffffff';
+        $darkRatio = $ratioAvec(self::relativeLuminance($dark));
+        if ($darkRatio >= $minRatio) {
+            return $dark;
+        }
+
+        $blancRatio = self::contrastRatio($bgLum, self::LUMINANCE_BLANC);
+        if ($blancRatio >= $minRatio) {
+            return '#ffffff';
+        }
+
+        // Aucun candidat n'atteint le seuil : on rend le moins mauvais.
+        $noirRatio = self::contrastRatio($bgLum, self::LUMINANCE_NOIR);
+        $meilleur = max($darkRatio, $blancRatio, $noirRatio);
+
+        if ($meilleur === $darkRatio) {
+            return $dark;
+        }
+
+        return $meilleur === $noirRatio ? '#000000' : '#ffffff';
     }
 
-    public static function relativeLuminance(string $hex): float
+    /**
+     * Rapport de contraste WCAG entre deux luminances relatives : de 1:1 (identiques)
+     * a 21:1 (noir sur blanc).
+     */
+    public static function contrastRatio(float $lumA, float $lumB): float
     {
+        $lighter = max($lumA, $lumB);
+        $darker = min($lumA, $lumB);
+
+        return ($lighter + 0.05) / ($darker + 0.05);
+    }
+
+    /**
+     * Luminance relative WCAG d'une couleur hexadecimale, ou null si la valeur
+     * n'est pas exploitable (null, vide, format inconnu). Le null est significatif :
+     * il distingue "fond noir" (0.0) de "fond indeterminable".
+     *
+     * Limite assumee : seul l'hexadecimal est reconnu. Une couleur nommee ou une
+     * notation rgb() renvoie null — l'ecran de parametres n'expose qu'un selecteur
+     * hexadecimal, et rendre du texte sombre sur une couleur inconnue reste le
+     * choix sur sur un papier blanc.
+     */
+    public static function relativeLuminance(?string $hex): ?float
+    {
+        if ($hex === null) {
+            return null;
+        }
+
         $hex = ltrim(trim($hex), '#');
         if (strlen($hex) === 3) {
             $hex = $hex[0].$hex[0].$hex[1].$hex[1].$hex[2].$hex[2];
         }
         if (strlen($hex) !== 6 || ! ctype_xdigit($hex)) {
-            return 0.0;
+            return null;
         }
         $channel = static function (string $part): float {
             $value = hexdec($part) / 255;

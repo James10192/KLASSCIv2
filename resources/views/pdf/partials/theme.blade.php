@@ -7,6 +7,10 @@
     $pdfHeaderBg = $pdfSettings['header_bg_color'] ?? $pdfPrimary;
     $pdfHeaderText = $pdfSettings['header_text_on_bg'] ?? $pdfSettings['header_text_color'] ?? '#ffffff';
     $pdfOnPrimary = $pdfSettings['header_text_on_primary'] ?? $pdfHeaderText;
+    // Texte pose sur la couleur d'accent (pastilles de statut). L'accent par defaut
+    // est ambre : du blanc dessus ne passe pas le contraste. Resolu par
+    // getPdfSettings(), comme les autres couleurs derivees.
+    $pdfOnAccent = $pdfSettings['text_on_accent'];
 @endphp
 <style>
     body {
@@ -30,7 +34,7 @@
     .badge,
     .status-badge {
         background: {{ $pdfAccent }};
-        color: #ffffff;
+        color: {{ $pdfOnAccent }};
     }
 
     table thead th,
@@ -52,7 +56,7 @@
     .student-number,
     .header-badge {
         background: {{ $pdfPrimary }} !important;
-        color: {{ $pdfHeaderText }} !important;
+        color: {{ $pdfOnPrimary }} !important;
     }
 
     .kpi-value {
@@ -60,17 +64,19 @@
         color: {{ $pdfPrimary }} !important;
     }
 
+    /* Ces zones sont posees sur la couleur PRIMAIRE, pas sur le fond d'en-tete :
+       leur texte se deduit donc de la primaire. */
     .pdf-kpi-cell,
     .pdf-detail-table th {
         background: {{ $pdfPrimary }} !important;
-        color: {{ $pdfHeaderText }} !important;
+        color: {{ $pdfOnPrimary }} !important;
     }
 
     .pdf-kpi-label,
     .pdf-kpi-value,
     .pdf-kpi-sub,
     .pdf-detail-table th {
-        color: {{ $pdfHeaderText }} !important;
+        color: {{ $pdfOnPrimary }} !important;
     }
 
     .kpi-title,
@@ -89,7 +95,7 @@
     [style*="background-color: #0453cb"],
     [style*="background-color:#0453cb"] {
         background: {{ $pdfPrimary }} !important;
-        color: {{ $pdfHeaderText }} !important;
+        color: {{ $pdfOnPrimary }} !important;
     }
 
     [style*="color: #007bff"],
