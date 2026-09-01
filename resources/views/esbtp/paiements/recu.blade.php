@@ -24,16 +24,16 @@
     <style>
         body {
             font-family: DejaVu Sans, Arial, sans-serif;
-            font-size: 10px;
+            font-size: 8.5px;
             margin: 0;
             padding: 0;
             color: #1e293b;
-            line-height: 1.25;
+            line-height: 1.2;
             background: white;
         }
 
         @page {
-            margin: 6mm 8mm;
+            margin: 4mm 6mm;
             size: A4 portrait;
         }
 
@@ -48,16 +48,16 @@
         }
         .document-watermark img { max-width: 100%; }
 
-        .sheet { width: 100%; border-collapse: collapse; }
+        .sheet { width: 100%; border-collapse: collapse; page-break-inside: avoid; }
         .copy-cell {
-            height: 128mm;
             vertical-align: top;
             padding: 0;
+            page-break-inside: avoid;
         }
         .cut-cell {
-            height: 7mm;
+            height: 5mm;
             text-align: center;
-            font-size: 8px;
+            font-size: 7px;
             color: #64748b;
             letter-spacing: 0.12em;
             text-transform: uppercase;
@@ -67,18 +67,18 @@
         }
 
         .header-section {
-            border-radius: 6px;
+            border-radius: 4px;
             overflow: hidden;
-            margin-bottom: 2mm;
+            margin-bottom: 1.2mm;
         }
         .header-section img {
-            max-height: 48px !important;
-            max-width: 90px !important;
+            max-height: 32px !important;
+            max-width: 70px !important;
         }
 
-        .copy-bar { margin-bottom: 2.5mm; }
+        .copy-bar { margin-bottom: 1.2mm; }
         .copy-tag {
-            font-size: 9px;
+            font-size: 8px;
             font-weight: 700;
             color: {{ $primary }};
             letter-spacing: 0.04em;
@@ -87,7 +87,7 @@
         }
         .copy-num {
             text-align: right;
-            font-size: 9px;
+            font-size: 8px;
             font-weight: bold;
             color: #64748b;
             text-transform: uppercase;
@@ -95,31 +95,31 @@
             vertical-align: middle;
         }
         .copy-num-val {
-            font-size: 13px;
+            font-size: 11px;
             font-weight: 900;
             color: {{ $primary }};
             background-color: #f8fafc;
-            padding: 2px 10px;
+            padding: 1px 7px;
             border: 1.5px solid {{ $primary }};
-            border-radius: 4px;
-            letter-spacing: 0.5px;
+            border-radius: 3px;
+            letter-spacing: 0.4px;
         }
 
-        .meta { border-collapse: collapse; margin-bottom: 2.5mm; }
+        .meta { border-collapse: collapse; margin-bottom: 1.2mm; }
         .meta td {
             width: 25%;
             border: 0.4pt solid #cbd5e1;
-            padding: 2mm 2.5mm;
+            padding: 1mm 1.5mm;
             vertical-align: top;
         }
         .lbl {
-            font-size: 7px;
+            font-size: 6.5px;
             color: #64748b;
             text-transform: uppercase;
             letter-spacing: 0.04em;
-            margin-bottom: 1px;
+            margin-bottom: 0;
         }
-        .val { font-size: 10px; font-weight: 700; color: #1e293b; }
+        .val { font-size: 8.5px; font-weight: 700; color: #1e293b; }
         .mono { font-family: 'Courier New', monospace; }
 
         .badge {
@@ -135,125 +135,126 @@
         .badge-warning { background-color: #fef3c7; color: #92400e; border: 1px solid #fcd34d; }
         .badge-danger { background-color: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
 
-        .amount-section { border-collapse: collapse; margin-bottom: 2mm; }
+        .amount-section { border-collapse: collapse; margin-bottom: 1.2mm; }
         .amount-label {
             width: 22%;
             background-color: #059669;
             color: white;
-            font-size: 8px;
+            font-size: 7px;
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 0.4px;
-            padding: 3mm 3mm;
+            padding: 1.5mm 2mm;
             vertical-align: middle;
         }
         .amount-value {
             width: 28%;
             background-color: #ecfdf5;
-            font-size: 18px;
+            font-size: 13px;
             font-weight: 900;
             color: #059669;
-            padding: 2.5mm 3mm;
+            padding: 1.5mm 2mm;
             vertical-align: middle;
         }
-        .amount-value span { font-size: 10px; font-weight: 600; opacity: 0.75; }
+        .amount-value span { font-size: 8px; font-weight: 600; opacity: 0.75; }
         .amount-words {
             background-color: #ecfdf5;
-            font-size: 9px;
+            font-size: 8px;
             font-style: italic;
             color: #64748b;
-            padding: 2.5mm 3mm;
+            padding: 1.5mm 2mm;
             vertical-align: middle;
         }
 
-        .encaissed { margin-bottom: 2mm; border-collapse: collapse; }
+        .encaissed { margin-bottom: 1.2mm; border-collapse: collapse; }
         .encaissed-lbl {
             width: 22%;
-            font-size: 8px;
+            font-size: 7px;
             font-weight: 700;
             color: #64748b;
             text-transform: uppercase;
             letter-spacing: 0.4px;
             background-color: #f8fafc;
             border-left: 3px solid {{ $primary }};
-            padding: 2mm 3mm;
+            padding: 1mm 2mm;
         }
         .encaissed-val {
-            font-size: 11px;
-            font-weight: 700;
-            color: {{ $primary }};
-            background-color: #f8fafc;
-            padding: 2mm 3mm;
-        }
-
-        .fees { width: 100%; border-collapse: collapse; margin: 1.5mm 0; }
-        .fees td {
-            width: 33.33%;
-            border: 0.4pt solid #cbd5e1;
-            padding: 1.2mm 2mm;
-            font-size: 8px;
-            vertical-align: middle;
-        }
-        .fees .chk { font-size: 11px; font-weight: 700; color: {{ $primary }}; padding-right: 1mm; }
-        .fees .chk-off { color: #94a3b8; }
-        .fees .fee-now { font-weight: 700; }
-        .fees .fee-note { color: #64748b; font-size: 7px; }
-        .vers { width: 100%; border-collapse: collapse; margin: 1.5mm 0; }
-        .vers td {
-            width: 50%;
-            border: 0.4pt solid #cbd5e1;
-            padding: 1.2mm 2mm;
-            font-size: 7.5px;
-            vertical-align: top;
-        }
-        .vers-lbl {
-            font-size: 7px;
-            color: #64748b;
-            text-transform: uppercase;
-            letter-spacing: 0.04em;
-            margin-bottom: 1px;
-            font-weight: 700;
-        }
-        .vers-ligne { color: #1e293b; font-size: 8px; line-height: 1.35; }
-        .reste { width: 100%; border-collapse: collapse; margin-bottom: 1.5mm; }
-        .reste-lbl {
-            width: 40%;
-            background-color: {{ $primary }};
-            color: {{ $barText }};
-            font-size: 8px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.4px;
-            padding: 2mm 3mm;
-        }
-        .reste-val {
-            background-color: #eff6ff;
-            font-size: 13px;
-            font-weight: 900;
-            color: {{ $primary }};
-            padding: 2mm 3mm;
-        }
-
-        .signs { margin-top: 3mm; }
-        .signs td { width: 50%; text-align: center; vertical-align: top; padding: 0 8mm; }
-        .sign-title {
             font-size: 9px;
             font-weight: 700;
             color: {{ $primary }};
+            background-color: #f8fafc;
+            padding: 1mm 2mm;
+        }
+
+        .fees { width: 100%; border-collapse: collapse; margin: 1mm 0; }
+        .fees td {
+            width: 33.33%;
+            border: 0.4pt solid #cbd5e1;
+            padding: 0.8mm 1.5mm;
+            font-size: 7.5px;
+            vertical-align: middle;
+        }
+        .fees .chk { font-size: 9px; font-weight: 700; color: {{ $primary }}; padding-right: 1mm; }
+        .fees .chk-off { color: #94a3b8; }
+        .fees .fee-now { font-weight: 700; }
+        .fees .fee-note { color: #64748b; font-size: 6.5px; }
+        .vers { width: 100%; border-collapse: collapse; margin: 1mm 0; }
+        .vers td {
+            width: 50%;
+            border: 0.4pt solid #cbd5e1;
+            padding: 0.8mm 1.5mm;
+            font-size: 7px;
+            vertical-align: top;
+        }
+        .vers-lbl {
+            font-size: 6.5px;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            margin-bottom: 0;
+            font-weight: 700;
+        }
+        .vers-ligne { color: #1e293b; font-size: 7px; line-height: 1.25; }
+        .reste { width: 100%; border-collapse: collapse; margin-bottom: 1mm; }
+        .reste-lbl {
+            width: 18%;
+            background-color: {{ $primary }};
+            color: {{ $barText }};
+            font-size: 7px;
+            font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 0.4px;
-            margin-bottom: 14mm;
+            padding: 1.2mm 2mm;
+        }
+        .reste-val {
+            width: 32%;
+            background-color: #eff6ff;
+            font-size: 11px;
+            font-weight: 900;
+            color: {{ $primary }};
+            padding: 1.2mm 2mm;
+        }
+
+        .signs { margin-top: 1.5mm; }
+        .signs td { width: 50%; text-align: center; vertical-align: top; padding: 0 6mm; }
+        .sign-title {
+            font-size: 8px;
+            font-weight: 700;
+            color: {{ $primary }};
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            margin-bottom: 6mm;
         }
         .sign-line {
             border-top: 1.5px solid {{ $primary }};
-            padding-top: 2mm;
-            font-size: 10px;
+            padding-top: 1mm;
+            font-size: 8.5px;
             font-weight: 600;
         }
 
         .footer-section {
-            margin-top: 3mm;
-            padding-top: 2mm;
+            margin-top: 1.5mm;
+            padding-top: 1mm;
             border-top: 1.5px solid {{ $primary }};
         }
         .footer-warning {

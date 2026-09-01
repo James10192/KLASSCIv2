@@ -27,35 +27,35 @@
     <table width="100%" border="0" cellspacing="0" cellpadding="0">
         <tr>
             <!-- Logo Column -->
-            <td width="16%" style="background-color: {{ $hdrBg }}; padding: 12px 10px; text-align: center; vertical-align: middle; border-right: 2px solid rgba(255,255,255,0.2);">
+            <td width="16%" style="background-color: {{ $hdrBg }}; padding: 5px 6px; text-align: center; vertical-align: middle; border-right: 2px solid rgba(255,255,255,0.2);">
                 @if(isset($settings['show_logo']) && $settings['show_logo'] && isset($settings['logo_base64']))
                     <img src="{{ $settings['logo_base64'] }}"
-                         style="max-height: 70px; max-width: 120px;"
+                         style="max-height: 32px; max-width: 70px;"
                          alt="Logo">
                 @else
-                    <div style="font-size: 36px; font-weight: 900; color: {{ $hdrText }}; opacity: 0.4;">K</div>
+                    <div style="font-size: 22px; font-weight: 900; color: {{ $hdrText }}; opacity: 0.4;">K</div>
                 @endif
             </td>
             <!-- Info Column -->
-            <td width="84%" style="background-color: {{ $hdrBg }}; padding: 10px 16px; vertical-align: middle;">
+            <td width="84%" style="background-color: {{ $hdrBg }}; padding: 5px 10px; vertical-align: middle;">
                 <!-- School Name -->
-                <div style="font-size: 19px; font-weight: 700; color: {{ $hdrText }}; margin-bottom: 2px;">
+                <div style="font-size: 13px; font-weight: 700; color: {{ $hdrText }}; margin-bottom: 1px;">
                     {{ $settings['school_name'] ?? 'KLASSCI' }}
                 </div>
                 <!-- Contact -->
-                <div style="font-size: 12px; color: {{ $hdrText }}; opacity: 0.8; margin-bottom: 6px;">
+                <div style="font-size: 8px; color: {{ $hdrText }}; opacity: 0.8; margin-bottom: 3px;">
                     @if($settings['school_address'] ?? false){{ $settings['school_address'] }}@endif
                     @if($settings['school_phone'] ?? false) &nbsp;|&nbsp; Tél: {{ $settings['school_phone'] }}@endif
                     @if($settings['school_email'] ?? false) &nbsp;|&nbsp; Email: {{ $settings['school_email'] }}@endif
                 </div>
                 <!-- Divider + Title -->
-                <div style="border-top: 1px solid rgba(255,255,255,0.3); padding-top: 6px;">
+                <div style="border-top: 1px solid rgba(255,255,255,0.3); padding-top: 3px;">
                     <table width="100%" border="0" cellspacing="0" cellpadding="0">
                         <tr>
-                            <td width="60%" style="font-size: 18px; font-weight: 700; color: {{ $hdrText }}; letter-spacing: 0.5px;">
+                            <td width="60%" style="font-size: 12px; font-weight: 700; color: {{ $hdrText }}; letter-spacing: 0.4px;">
                                 REÇU DE PAIEMENT
                             </td>
-                            <td width="40%" style="font-size: 13px; color: {{ $hdrText }}; opacity: 0.75; text-align: right;">
+                            <td width="40%" style="font-size: 9px; color: {{ $hdrText }}; opacity: 0.75; text-align: right;">
                                 {{ $paiement->inscription->anneeUniversitaire->name ?? '' }}
                             </td>
                         </tr>
@@ -192,8 +192,6 @@
     <tr>
         <td class="reste-lbl">Déjà versé</td>
         <td class="reste-val">{{ number_format((float) ($totalVerse ?? 0), 0, ',', ' ') }} FCFA</td>
-    </tr>
-    <tr>
         <td class="reste-lbl">Reste à payer</td>
         <td class="reste-val">{{ number_format($resteAPayer, 0, ',', ' ') }} FCFA</td>
     </tr>
@@ -201,8 +199,8 @@
     @endif
 
     @php
-        $versementsAvant = collect($versementsAvant ?? []);
-        $versementsApres = collect($versementsApres ?? []);
+        $versementsAvant = collect($versementsAvant ?? [])->take(-2)->values();
+        $versementsApres = collect($versementsApres ?? [])->take(2)->values();
     @endphp
     @if($versementsAvant->isNotEmpty() || $versementsApres->isNotEmpty())
     <table class="vers" width="100%" border="0" cellspacing="0" cellpadding="0">
