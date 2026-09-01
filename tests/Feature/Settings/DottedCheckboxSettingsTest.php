@@ -25,6 +25,7 @@ class DottedCheckboxSettingsTest extends TestCase
         'documents.print_requires_approval',
         'caisse.pre_inscription.enabled',
         'inscriptions.split_role',
+        'inscriptions.confirmer_statut_etablissement',
     ];
 
     private function superAdmin(): User

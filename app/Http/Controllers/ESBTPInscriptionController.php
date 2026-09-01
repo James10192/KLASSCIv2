@@ -446,6 +446,7 @@ class ESBTPInscriptionController extends Controller
                 "annees",
             ) + [
                 "hideAmounts" => app(EnrollmentAmountVisibility::class)->hideAmounts(auth()->user()),
+                "confirmerStatutEtablissement" => app(\App\Services\TenantScolariteSettings::class)->confirmerStatutEtablissement(),
                 "preRemplissage" => $preRemplissage,
                 "candidatureSource" => $candidatureSource,
             ],
@@ -1209,7 +1210,10 @@ class ESBTPInscriptionController extends Controller
 
         return view(
             "esbtp.inscriptions.edit",
-            compact("inscription", "filieres", "niveaux", "classes", "annees", "mentions", "parcours") + ["hideAmounts" => app(EnrollmentAmountVisibility::class)->hideAmounts(auth()->user())],
+            compact("inscription", "filieres", "niveaux", "classes", "annees", "mentions", "parcours") + [
+                "hideAmounts" => app(EnrollmentAmountVisibility::class)->hideAmounts(auth()->user()),
+                "confirmerStatutEtablissement" => app(\App\Services\TenantScolariteSettings::class)->confirmerStatutEtablissement(),
+            ],
         );
     }
 
@@ -1257,6 +1261,9 @@ class ESBTPInscriptionController extends Controller
             "affectation_status" => "nullable|in:affecté,réaffecté,non_affecté",
             "est_transfert" => "nullable|boolean",
             "etablissement_origine" => "nullable|string|max:255",
+            "statut_etablissement" => app(\App\Services\TenantScolariteSettings::class)->confirmerStatutEtablissement()
+                ? "required|in:nouveau,ancien"
+                : "nullable|in:nouveau,ancien",
             "correction_saisie" => "nullable|boolean",
             "correction_motif" => "nullable|string|max:500",
         ]);
@@ -1301,7 +1308,7 @@ class ESBTPInscriptionController extends Controller
                 'filiere_id', 'niveau_id', 'classe_id', 'date_inscription',
                 'type_inscription', 'montant_scolarite', 'frais_inscription',
                 'observations', 'status', 'affectation_status',
-                'est_transfert', 'etablissement_origine',
+                'est_transfert', 'etablissement_origine', 'statut_etablissement',
             ]);
             if (app(EnrollmentAmountVisibility::class)->hideAmounts(auth()->user())) {
                 unset($data['montant_scolarite'], $data['frais_inscription']);
@@ -1312,6 +1319,7 @@ class ESBTPInscriptionController extends Controller
             $ancienNiveau = $inscription->niveau_id;
             $ancienneClasse = $inscription->classe_id;
             $ancienAffectationStatus = $inscription->affectation_status;
+            $ancienStatutEtablissement = $inscription->statut_etablissement;
 
             if (
                 $inscription->status === "active" &&
@@ -1346,6 +1354,8 @@ class ESBTPInscriptionController extends Controller
             $inscription->observations = $data["observations"];
             $inscription->affectation_status =
                 $data["affectation_status"] ?? null;
+            $inscription->statut_etablissement =
+                $data["statut_etablissement"] ?? $inscription->statut_etablissement;
 
             // Mettre à jour les champs de transfert (seulement si type_inscription = 'première_inscription')
             if ($inscription->type_inscription === "première_inscription") {
@@ -1413,6 +1423,15 @@ class ESBTPInscriptionController extends Controller
                 $ancienAffectationStatus != $inscription->affectation_status
             ) {
                 $this->regenererFraisInscription($inscription);
+            }
+
+            $syncFrais = app(\App\Services\Frais\StatutEtablissementFeeSync::class)
+                ->sync($inscription, $ancienStatutEtablissement);
+            if (($syncFrais['kept_paid'] ?? 0) > 0) {
+                session()->flash(
+                    'warning',
+                    'Des frais « nouveaux de l\'établissement » ont un paiement : ils n\'ont pas été retirés.',
+                );
             }
 
             // ─── BTS Tronc Commun — Bug #2 fix : synchroniser les phases ───

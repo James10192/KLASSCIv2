@@ -2362,6 +2362,20 @@
                         </div>
                     </div>
                     <div class="bc-card">
+                        <div class="bc-icon"><i class="fas fa-user-check"></i></div>
+                        <div class="bc-body">
+                            <div class="bc-label">Confirmer nouveau / ancien de l'établissement</div>
+                            <div class="bc-desc">À l'inscription, l'agent doit dire si l'étudiant était déjà scolarisé ici. Sert aux frais réservés aux nouveaux (tenue 2e année) quand KLASSCI n'a pas l'historique.</div>
+                        </div>
+                        <div class="bc-toggle">
+                            <label class="form-switch-modern">
+                                <input type="checkbox" name="inscriptions.confirmer_statut_etablissement" value="1"
+                                       {{ \App\Helpers\SettingsHelper::get('inscriptions.confirmer_statut_etablissement', '0') == '1' ? 'checked' : '' }}>
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="bc-card">
                         <div class="bc-icon"><i class="fas fa-cash-register"></i></div>
                         <div class="bc-body">
                             <div class="bc-label">Pre-inscription par la caisse</div>

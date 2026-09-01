@@ -286,7 +286,14 @@ class ESBTPInscriptionApiController extends Controller
             $fraisData = [];
             $hasUnconfiguredFees = false;
 
+            $statutEtablissement = $request->get("statut_etablissement");
+            $fraisAudience = app(\App\Services\ApplicableFraisResolver::class);
+
             foreach ($allCategories as $category) {
+                if (! $fraisAudience->categoryAppliesToStudent($category, $statutEtablissement)) {
+                    continue;
+                }
+
                 \Log::info("Traitement catégorie", [
                     "category_id" => $category->id,
                     "category_name" => $category->name,

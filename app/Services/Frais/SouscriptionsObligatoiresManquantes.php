@@ -77,6 +77,13 @@ class SouscriptionsObligatoiresManquantes
                     continue;
                 }
 
+                if (! app(\App\Services\ApplicableFraisResolver::class)->categoryAppliesToStudent(
+                    $categorie,
+                    $inscription->statut_etablissement,
+                )) {
+                    continue;
+                }
+
                 $montant = $this->montantPour($categorie, $inscription);
 
                 // Un frais obligatoire sans montant resolvable ne se cree pas :

@@ -408,6 +408,22 @@
                         @enderror
                     </div>
                     <div class="checkbox-modern mt-3">
+                        <input type="hidden" name="audience" value="tous">
+                        <input class="@error('audience') is-invalid @enderror"
+                               type="checkbox"
+                               id="audience_nouveaux"
+                               name="audience"
+                               value="nouveaux_etablissement"
+                               {{ old('audience') === 'nouveaux_etablissement' ? 'checked' : '' }}>
+                        <div>
+                            <label for="audience_nouveaux">Uniquement les nouveaux de l'établissement</label>
+                            <div class="checkbox-description">Attaché seulement si l'agent confirme que l'étudiant n'était pas déjà scolarisé ici. Ex. tenue pour une arrivée directe en 2e année.</div>
+                        </div>
+                        @error('audience')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+                    <div class="checkbox-modern mt-3">
                         <input class="@error('accepts_in_kind') is-invalid @enderror"
                                type="checkbox"
                                id="accepts_in_kind"
