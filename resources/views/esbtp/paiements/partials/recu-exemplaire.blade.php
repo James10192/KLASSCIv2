@@ -101,8 +101,8 @@
             <div class="val">{{ $paiement->date_paiement->format('d/m/Y') }}</div>
         </td>
         <td>
-            <div class="lbl">Motif</div>
-            <div class="val">{{ $paiement->motif }}</div>
+            <div class="lbl">Statut d'affectation</div>
+            <div class="val">{{ $affectationLabel ?? $paiement->inscription?->affectationStatusLabel() ?? '—' }}</div>
         </td>
         <td>
             <div class="lbl">Mode de paiement</div>
@@ -171,8 +171,6 @@
             <span class="chk {{ $ligne['checked'] ? '' : 'chk-off' }}">{{ $ligne['checked'] ? '[X]' : '[ ]' }}</span>
             <span class="{{ !empty($ligne['current']) ? 'fee-now' : '' }}">{{ $ligne['name'] }}</span>
             @if(!empty($ligne['in_kind']))
-                {{-- La ligne reste DECOCHEE : l'article a ete recu, il n'a pas ete
-                     paye. La coche certifie un encaissement, pas un depot. --}}
                 <span class="fee-note">reçu en nature</span>
             @elseif(($ligne['restant'] ?? 0) > 0)
                 <span class="fee-note">{{ number_format($ligne['restant'], 0, ',', ' ') }}</span>
@@ -195,10 +193,37 @@
         <td class="reste-lbl">Reste à payer</td>
         <td class="reste-val">{{ number_format($resteAPayer, 0, ',', ' ') }} FCFA</td>
     </tr>
-</table>
-@endif
+    </table>
+    @endif
 
-@if($paiement->creator)
+    @php
+        $versementsAvant = collect($versementsAvant ?? []);
+        $versementsApres = collect($versementsApres ?? []);
+    @endphp
+    @if($versementsAvant->isNotEmpty() || $versementsApres->isNotEmpty())
+    <table class="vers" width="100%" border="0" cellspacing="0" cellpadding="0">
+        <tr>
+            <td>
+                <div class="vers-lbl">Versements antérieurs</div>
+                @forelse ($versementsAvant as $v)
+                    <div class="vers-ligne">{{ optional($v->date_paiement)->format('d/m/Y') }} · {{ number_format((float) $v->montant, 0, ',', ' ') }} FCFA · {{ $v->numero_recu }}</div>
+                @empty
+                    <div class="vers-ligne">—</div>
+                @endforelse
+            </td>
+            <td>
+                <div class="vers-lbl">Versements postérieurs</div>
+                @forelse ($versementsApres as $v)
+                    <div class="vers-ligne">{{ optional($v->date_paiement)->format('d/m/Y') }} · {{ number_format((float) $v->montant, 0, ',', ' ') }} FCFA · {{ $v->numero_recu }}</div>
+                @empty
+                    <div class="vers-ligne">—</div>
+                @endforelse
+            </td>
+        </tr>
+    </table>
+    @endif
+
+    @if($paiement->creator)
 <table class="encaissed" width="100%" border="0" cellspacing="0" cellpadding="0">
     <tr>
         <td class="encaissed-lbl">Encaissé par</td>

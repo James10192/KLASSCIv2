@@ -10,6 +10,7 @@ use App\Exceptions\RepartitionRefuseeException;
 use App\Http\Requests\Paiement\StorePaiementRequest;
 use App\Http\Requests\Paiement\UpdatePaiementRequest;
 use App\Services\Frais\RepartitionDuVersement;
+use App\Services\Paiements\EtatRecuPaiement;
 use App\Services\PaymentFilterService;
 use App\Services\MobileMoneyPaymentGuard;
 use App\Services\PaymentStatsService;
@@ -44,11 +45,11 @@ class ESBTPPaiementController extends Controller
 
         $this->middleware('auth');
         // Accepter soit `paiements.view` (voit tous), soit `paiements.view_own` (voit ses encaissements)
-        $this->middleware('permission:paiements.view|paiements.view_own', ['only' => ['index', 'show', 'paiementsEtudiant']]);
+        $this->middleware('permission:paiements.view|paiements.view_own', ['only' => ['index', 'show', 'paiementsEtudiant', 'genererRecu', 'previewRecu']]);
         $this->middleware('permission:paiements.create|paiements.create.mobile_money', ['only' => ['create', 'store', 'apercuRepartition']]);
         $this->middleware('permission:paiements.edit', ['only' => ['edit', 'update']]);
         $this->middleware('permission:paiements.delete', ['only' => ['destroy']]);
-        $this->middleware('permission:paiements.validate', ['only' => ['valider', 'rejeter', 'genererRecu']]);
+        $this->middleware('permission:paiements.validate', ['only' => ['valider', 'rejeter']]);
     }
 
     /**
@@ -805,12 +806,25 @@ class ESBTPPaiementController extends Controller
             'allocations.fraisCategory:id,name',
         ])->findOrFail($id);
 
+        $this->authorize('view', $paiement);
+
         $settings = $this->getReceiptSettings();
-        $fraisEtat = $this->receiptFraisEtat($paiement);
+        $fraisEtat = app(EtatRecuPaiement::class)->construire($paiement);
         $fraisLignes = $fraisEtat['lignes'];
         $resteAPayer = $fraisEtat['reste'];
+        $versementsAvant = $fraisEtat['versementsAvant'];
+        $versementsApres = $fraisEtat['versementsApres'];
+        $affectationLabel = $fraisEtat['affectationLabel'];
 
-        $pdf = PDF::loadView('esbtp.paiements.recu', compact('paiement', 'settings', 'fraisLignes', 'resteAPayer'))
+        $pdf = PDF::loadView('esbtp.paiements.recu', compact(
+            'paiement',
+            'settings',
+            'fraisLignes',
+            'resteAPayer',
+            'versementsAvant',
+            'versementsApres',
+            'affectationLabel'
+        ))
             ->setPaper('a4', 'portrait')
             ->setOptions([
                 'dpi' => 150,
@@ -847,44 +861,6 @@ class ESBTPPaiementController extends Controller
         }
 
         return $settings;
-    }
-
-    private function receiptFraisEtat(ESBTPPaiement $paiement): array
-    {
-        $inscriptionId = $paiement->inscription_id;
-
-        $subscriptions = \App\Models\ESBTPFraisSubscription::where('inscription_id', $inscriptionId)
-            ->where('is_active', true)
-            ->with('fraisCategory')
-            ->get();
-
-        $payeParCategorie = ESBTPPaiement::netPaidByCategory($inscriptionId);
-
-        $lignes = $subscriptions->map(function ($sub) use ($payeParCategorie, $paiement) {
-            $due = $sub->chargedAmount();
-            $paye = (float) ($payeParCategorie[$sub->frais_category_id] ?? 0);
-            $restant = max(0.0, $due - $paye);
-            $inKind = (bool) $sub->satisfied_in_kind;
-
-            return [
-                'name' => $sub->fraisCategory->name ?? 'N/A',
-                'restant' => $restant,
-                'in_kind' => $inKind,
-                // La regle de quittance vit sur la souscription : c'est elle qui
-                // sait ce qu'elle reclame, et elle s'y teste sans base.
-                'non_configure' => $sub->montantNonDefini(),
-                'checked' => $sub->estSolde($paye),
-                'current' => (int) $paiement->frais_category_id === (int) $sub->frais_category_id,
-            ];
-        })->values();
-
-        $reste = (float) $lignes->sum('restant');
-        $reste += (float) \App\Models\ESBTPReliquatDetail::where('inscription_destination_id', $inscriptionId)
-            ->actifs()
-            ->get()
-            ->sum(fn ($r) => $r->solde_restant);
-
-        return ['lignes' => $lignes, 'reste' => $reste];
     }
 
     /**

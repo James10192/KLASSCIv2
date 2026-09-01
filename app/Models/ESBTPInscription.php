@@ -170,6 +170,19 @@ class ESBTPInscription extends Model implements Auditable
     // Constants for affectation status
     const DEFAULT_AFFECTATION_STATUS = 'affecté';
 
+    public function affectationStatusLabel(): string
+    {
+        $status = $this->affectation_status ?: self::DEFAULT_AFFECTATION_STATUS;
+        $normalized = ESBTPEcheancierRule::normalizeStatus($status);
+
+        return match ($normalized) {
+            ESBTPEcheancierRule::STATUS_AFFECTE => 'Affecté',
+            ESBTPEcheancierRule::STATUS_REAFFECTE => 'Réaffecté',
+            ESBTPEcheancierRule::STATUS_NON_AFFECTE => 'Non affecté',
+            default => $status,
+        };
+    }
+
     /**
      * Relation avec l'étudiant.
      *

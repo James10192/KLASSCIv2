@@ -214,8 +214,9 @@ class ESBTPFraisSubscription extends Model implements Auditable
      * cochait la ligne.
      *
      * Un montant nul veut dire INCONNU. Il ne prouve rien, et surtout pas un
-     * paiement. Seuls un depot en nature, ou un montant reel integralement
-     * couvert, valent quittance.
+     * paiement. Un depot en nature, ou un montant reel integralement couvert,
+     * valent quittance : la coche dit que l'etudiant s'est acquitte. Le recu
+     * precise ensuite COMMENT (argent ou nature).
      *
      * Ici plutot que dans le controleur parce que c'est la souscription qui
      * sait ce qu'elle reclame ; et parce que la regle se teste alors sans base
@@ -224,16 +225,10 @@ class ESBTPFraisSubscription extends Model implements Auditable
      */
     public function estSolde(float $montantPaye): bool
     {
-        // Un depot en nature n'est PAS un paiement.
-        //
-        // La coche du recu dit une seule chose : ce frais est solde, l'argent est
-        // entre. Cocher un article apporte reviendrait a certifier un paiement qui
-        // n'a pas eu lieu — sur un document qui porte lui-meme la mention « toute
-        // falsification constitue un delit ».
-        //
-        // L'article recu se dit autrement, et le recu l'ecrit : la ligne reste
-        // decochee et porte « recu en nature ». L'ecole sait alors que l'etudiant
-        // s'est acquitte, sans que le papier pretende qu'il a paye.
+        if ($this->satisfied_in_kind) {
+            return true;
+        }
+
         $du = $this->chargedAmount();
 
         return $du > 0 && $montantPaye >= $du;
