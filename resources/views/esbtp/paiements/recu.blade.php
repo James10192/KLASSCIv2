@@ -198,6 +198,23 @@
         .fees .chk-off { color: #94a3b8; }
         .fees .fee-now { font-weight: 700; }
         .fees .fee-note { color: #64748b; font-size: 7px; }
+        .vers { width: 100%; border-collapse: collapse; margin: 1.5mm 0; }
+        .vers td {
+            width: 50%;
+            border: 0.4pt solid #cbd5e1;
+            padding: 1.2mm 2mm;
+            font-size: 7.5px;
+            vertical-align: top;
+        }
+        .vers-lbl {
+            font-size: 7px;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            margin-bottom: 1px;
+            font-weight: 700;
+        }
+        .vers-ligne { color: #1e293b; font-size: 8px; line-height: 1.35; }
         .reste { width: 100%; border-collapse: collapse; margin-bottom: 1.5mm; }
         .reste-lbl {
             width: 40%;
@@ -292,6 +309,9 @@
                 'categoryName' => $categoryName,
                 'fraisLignes' => $fraisLignes ?? collect(),
                 'resteAPayer' => $resteAPayer ?? 0,
+                'versementsAvant' => $versementsAvant ?? collect(),
+                'versementsApres' => $versementsApres ?? collect(),
+                'affectationLabel' => $affectationLabel ?? '—',
             ])
                 </td>
             </tr>

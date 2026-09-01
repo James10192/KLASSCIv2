@@ -68,27 +68,20 @@ class QuittanceFraisTest extends TestCase
     }
 
     /**
-     * Un depot en nature n'est PAS un paiement.
+     * Un depot en nature SOLDE le frais : l'etudiant s'est acquitte.
      *
-     * La coche du recu dit une seule chose : l'argent est entre. Cocher un
-     * article apporte certifierait un encaissement qui n'a pas eu lieu, sur un
-     * document qui porte la mention « toute falsification constitue un delit ».
-     * L'article recu se dit autrement — le recu ecrit « recu en nature » sur une
-     * ligne qui reste decochee.
+     * La coche dit qu'il n'y a plus rien a reclamer. Le recu precise ensuite
+     * COMMENT — « recu en nature » — pour ne pas pretendre qu'un encaissement
+     * a eu lieu. Sans la coche, le papier faisait croire que le frais restait du.
      */
-    public function test_un_depot_en_nature_ne_coche_pas_la_ligne(): void
+    public function test_un_depot_en_nature_coche_la_ligne(): void
     {
-        $this->assertFalse($this->souscription(3000.0, enNature: true)->estSolde(0.0));
+        $this->assertTrue($this->souscription(3000.0, enNature: true)->estSolde(0.0));
     }
 
-    /**
-     * Et il ne la coche pas davantage si de l'argent est entre par ailleurs :
-     * chargedAmount() ramene le du a zero pour un depot en nature, et un du nul
-     * ne prouve aucun encaissement.
-     */
-    public function test_un_depot_en_nature_ne_coche_pas_meme_avec_un_versement(): void
+    public function test_un_depot_en_nature_reste_coche_meme_avec_un_versement(): void
     {
-        $this->assertFalse($this->souscription(3000.0, enNature: true)->estSolde(3000.0));
+        $this->assertTrue($this->souscription(3000.0, enNature: true)->estSolde(3000.0));
     }
 
     public function test_le_montant_non_defini_se_signale(): void
