@@ -204,6 +204,7 @@ class PermissionSyncService
             'agents_inscription.create',
             'agents_inscription.edit',
             'agents_inscription.delete',
+            'module.lmd.access',
         ];
     }
 
