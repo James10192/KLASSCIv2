@@ -40,7 +40,7 @@ final class PrintDecision
     {
         return match ($this->reason) {
             self::SOLDE => sprintf(
-                'Impression bloquée : solde impayé de %s F. L\'étudiant doit régulariser en caisse.',
+                'Impression bloquée : échéance(s) en retard de %s F. L\'étudiant doit régulariser en caisse.',
                 number_format($this->solde, 0, ',', ' ')
             ),
             self::APPROVAL => 'Impression bloquée : l\'accord de la responsable scolarité est requis.',

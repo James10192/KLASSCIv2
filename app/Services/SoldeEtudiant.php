@@ -2,18 +2,25 @@
 
 namespace App\Services;
 
-use App\Models\ESBTPFraisSubscription;
 use App\Models\ESBTPInscription;
-use App\Models\ESBTPPaiement;
 
 class SoldeEtudiant
 {
+    public function __construct(private readonly RelanceCalculationService $relances)
+    {
+    }
+
     public function impaye(int $etudiantId): float
     {
         return $this->impayes([$etudiantId])[$etudiantId] ?? 0.0;
     }
 
     /**
+     * Dette ECHUE, pas le restant total.
+     *
+     * Une tranche de décembre non encore due ne bloque pas un document en novembre
+     * si les échéances permises à ce jour sont payées.
+     *
      * @param  array<int, int>  $etudiantIds
      * @return array<int, float>
      */
@@ -27,44 +34,25 @@ class SoldeEtudiant
         }
 
         $inscriptions = ESBTPInscription::query()
+            ->with([
+                'fraisSubscriptions.selectedOption.assignments',
+                'paiements' => fn ($q) => $q->where('status', 'validé')->whereNull('deleted_at'),
+            ])
             ->whereIn('etudiant_id', $etudiantIds)
             ->where('status', 'active')
             ->whereHas('anneeUniversitaire', fn ($q) => $q->where('is_current', true))
-            ->get(['id', 'etudiant_id']);
+            ->get();
 
         if ($inscriptions->isEmpty()) {
             return $soldes;
         }
 
-        $inscriptionIds = $inscriptions->pluck('id')->all();
-
-        $dus = ESBTPFraisSubscription::query()
-            ->whereIn('inscription_id', $inscriptionIds)
-            ->charged()
-            ->selectRaw('inscription_id, SUM(amount) as total')
-            ->groupBy('inscription_id')
-            ->pluck('total', 'inscription_id');
-
-        $encaisses = ESBTPPaiement::query()
-            ->whereIn('inscription_id', $inscriptionIds)
-            ->valides()
-            ->encaissements()
-            ->selectRaw('inscription_id, SUM(montant) as total')
-            ->groupBy('inscription_id')
-            ->pluck('total', 'inscription_id');
-
-        $avoirs = ESBTPPaiement::query()
-            ->whereIn('inscription_id', $inscriptionIds)
-            ->valides()
-            ->avoires()
-            ->selectRaw('inscription_id, SUM(montant) as total')
-            ->groupBy('inscription_id')
-            ->pluck('total', 'inscription_id');
+        $this->relances->preloadForInscriptions($inscriptions);
 
         foreach ($inscriptions as $inscription) {
-            $du = (float) ($dus[$inscription->id] ?? 0);
-            $paye = max(0.0, (float) ($encaisses[$inscription->id] ?? 0) - (float) ($avoirs[$inscription->id] ?? 0));
-            $soldes[(int) $inscription->etudiant_id] = round(max(0, $du - $paye), 2);
+            $state = $this->relances->getFinancialState($inscription);
+            $eid = (int) $inscription->etudiant_id;
+            $soldes[$eid] = round(($soldes[$eid] ?? 0) + (float) ($state['overdue_amount'] ?? 0), 2);
         }
 
         return $soldes;

@@ -110,6 +110,7 @@ class ScolariteOrgChartPermissionsTest extends TestCase
         $this->assertContains('notes.create', $defaults);
         $this->assertContains('notes.edit', $defaults);
         $this->assertContains('bulletins.view', $defaults);
+        $this->assertContains('module.lmd.access', $defaults);
 
         $this->assertNotContains('inscriptions.create', $defaults);
         $this->assertNotContains('inscriptions.validate', $defaults);
