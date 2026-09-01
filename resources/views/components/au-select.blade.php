@@ -347,6 +347,82 @@ if (typeof window.auSelectAncetreBloquant !== 'function') {
     };
 }
 
+/**
+ * Ou poser le menu, et quelle taille lui donner.
+ *
+ * Fonction PURE, extraite pour une raison precise : ce calcul melangeait deux
+ * systemes de coordonnees, et rien ne pouvait le montrer sans navigateur.
+ *
+ * `getBoundingClientRect()` rend des coordonnees du viewport de MISE EN PAGE,
+ * et c'est aussi le repere de `position: fixed`. `visualViewport.width/height`
+ * decrivent le viewport VISUEL — ce qui reste visible apres un zoom. Sans zoom
+ * les deux coincident, et tout semble marcher. A 200 % sur un ecran de 1366 px,
+ * `visualViewport.width` vaut ~683 pendant que `triggerRect.left` reste exprime
+ * sur 1366 : la borne `min(gauche_du_champ, largeur - menu - marge)` plaquait
+ * alors le menu a gauche quelle que soit la position reelle du champ, et la
+ * hauteur disponible — donc le sens d'ouverture — etait fausse de moitie.
+ *
+ * La fonction ne recoit plus qu'UNE vue. Elle ne peut donc plus melanger les
+ * deux : c'est a l'appelant de fournir le bon repere, et il n'y en a qu'un
+ * seul de juste ici (`document.documentElement`).
+ *
+ * @param declencheur {top, bottom, left, width} en coordonnees de mise en page
+ * @param vue         {largeur, hauteur} du viewport de mise en page
+ * @param mesures     {largeur, hauteurMax, versLeHaut} figees a l'ouverture,
+ *                    ou null pour les recalculer
+ * @param largeurNaturelle largeur du contenu, lue par l'appelant
+ * @param deplace     le menu a-t-il ete sorti sous <body>
+ * @return {mesures, style}
+ */
+if (typeof window.auSelectGeometrieMenu !== 'function') {
+    window.auSelectGeometrieMenu = function (declencheur, vue, mesures, largeurNaturelle, deplace) {
+        var marge = 12;
+        var ecart = 6;
+
+        var largeurUtile = vue.largeur - (marge * 2);
+        var placeDessous = vue.hauteur - declencheur.bottom - marge - ecart;
+        var placeDessus = declencheur.top - marge - ecart;
+
+        if (! mesures) {
+            var hauteurMax = Math.max(0, Math.min(380, Math.max(placeDessous, placeDessus)));
+
+            mesures = {
+                largeur: Math.min(largeurNaturelle || declencheur.width, largeurUtile),
+                hauteurMax: hauteurMax,
+                // Le SENS d'ouverture se fige avec la taille, et pour la meme
+                // raison : recalcule au defilement, il basculait le menu d'un
+                // cote puis de l'autre des que le declencheur passait pres du
+                // seuil — un saut de toute la hauteur du menu, aller et retour.
+                versLeHaut: placeDessous < hauteurMax && placeDessus > placeDessous,
+            };
+        }
+
+        var largeurMenu = Math.min(mesures.largeur, largeurUtile);
+        var largeurMini = Math.min(declencheur.width, largeurUtile);
+        var gauche = Math.max(marge, Math.min(declencheur.left, vue.largeur - largeurMenu - marge));
+
+        // Sous <body>, le menu perd les regles CSS ecrites en descendance de
+        // son parent d'origine — dont, sur certaines pages, un z-index releve.
+        // On le repose ici, au meme niveau que les menus Bootstrap deplaces
+        // (cf. universal-dropdowns).
+        var plan = deplace ? 'z-index:99999;' : '';
+
+        var commun = 'left:' + gauche + 'px;right:auto;'
+            + 'width:' + largeurMenu + 'px;min-width:' + largeurMini + 'px;'
+            + 'max-width:' + largeurUtile + 'px;max-height:' + mesures.hauteurMax + 'px;';
+
+        var style = mesures.versLeHaut
+            ? plan + 'position:fixed;' + commun
+                + 'top:auto;bottom:' + (vue.hauteur - declencheur.top + ecart) + 'px;'
+                + 'transform-origin:bottom center;'
+            : plan + 'position:fixed;' + commun
+                + 'top:' + (declencheur.bottom + ecart) + 'px;bottom:auto;'
+                + 'transform-origin:top center;';
+
+        return { mesures: mesures, style: style };
+    };
+}
+
 if (typeof window.auSelect !== 'function') {
     window.auSelect = function () {
         return {
@@ -359,9 +435,10 @@ if (typeof window.auSelect !== 'function') {
             _optionsObserver: null,
             _repositionMenu: null,
             _remeasureMenu: null,
-            _menuWidth: null,
-            _menuMaxHeight: null,
-            _menuOpenUp: null,
+            // Largeur, hauteur maximale et sens d'ouverture, figes a
+            // l'ouverture : recalcules au defilement, ils faisaient respirer le
+            // menu et le faisaient basculer d'un cote a l'autre.
+            _mesures: null,
             _repositionFrame: null,
             _menu: null,
             _menuDeplace: false,
@@ -494,9 +571,7 @@ if (typeof window.auSelect !== 'function') {
                 this.menuStyle = '';
                 this.focusedIndex = -1;
                 // La prochaine ouverture remesure : le contenu a pu changer.
-                this._menuWidth = null;
-                this._menuMaxHeight = null;
-                this._menuOpenUp = null;
+                this._mesures = null;
                 this.cancelReposition();
                 this.cesserSurveillanceAncrage();
                 this.rapatrierLeMenu();
@@ -656,59 +731,48 @@ if (typeof window.auSelect !== 'function') {
                 const trigger = this.$el.querySelector('.au-select-trigger');
                 const menu = this._menu;
                 if (!trigger || !menu) return;
+                if (typeof window.auSelectGeometrieMenu !== 'function') return;
 
-                const margin = 12;
-                const gap = 6;
-                const triggerRect = trigger.getBoundingClientRect();
-                const visibleWidth = window.visualViewport?.width || window.innerWidth;
-                const visibleHeight = window.visualViewport?.height || window.innerHeight;
-                const viewportWidth = visibleWidth - (margin * 2);
+                // Le repere du viewport de MISE EN PAGE, celui de
+                // `getBoundingClientRect()` et de `position: fixed`. Surtout pas
+                // `visualViewport`, qui decrit ce qui reste visible apres un
+                // zoom : les deux divergent des qu'on zoome, et melanger les
+                // deux plaquait le menu a gauche de l'ecran.
+                //
+                // `clientWidth` exclut par ailleurs la barre de defilement
+                // classique, que `innerWidth` compte — sans quoi le menu se
+                // croit une quinzaine de pixels de plus qu'il n'en a.
+                const racine = document.documentElement;
+                const vue = {
+                    largeur: racine.clientWidth || window.innerWidth,
+                    hauteur: racine.clientHeight || window.innerHeight,
+                };
 
-                const spaceBelowNow = visibleHeight - triggerRect.bottom - margin - gap;
-                const spaceAboveNow = triggerRect.top - margin - gap;
-
-                if (remeasure || this._menuWidth === null) {
+                let largeurNaturelle = null;
+                if (remeasure || this._mesures === null) {
                     // Effacer la largeur posee avant de mesurer, sinon on relit
                     // notre propre valeur au lieu de la largeur du contenu.
                     const largeurPosee = menu.style.width;
                     const maxPosee = menu.style.maxWidth;
                     menu.style.width = 'auto';
                     menu.style.maxWidth = 'none';
-                    const naturelle = menu.offsetWidth || triggerRect.width;
+                    largeurNaturelle = menu.offsetWidth;
                     menu.style.width = largeurPosee;
                     menu.style.maxWidth = maxPosee;
 
-                    this._menuWidth = Math.min(naturelle, viewportWidth);
-                    this._menuMaxHeight = Math.max(0, Math.min(
-                        380,
-                        Math.max(spaceBelowNow, spaceAboveNow)
-                    ));
-                    // Le SENS d'ouverture se decide en meme temps que la taille,
-                    // et pour la meme raison. `spaceBelow`/`spaceAbove` changent
-                    // a chaque pixel defile : recalculer ce test au scroll faisait
-                    // basculer le menu au-dessus puis a nouveau au-dessous des que
-                    // le declencheur passait pres du seuil — un saut de toute la
-                    // hauteur du menu, aller et retour. Une orientation se choisit
-                    // une fois, a l'ouverture ; ensuite le scroll ne fait que
-                    // deplacer.
-                    this._menuOpenUp = spaceBelowNow < this._menuMaxHeight
-                        && spaceAboveNow > spaceBelowNow;
+                    this._mesures = null;
                 }
 
-                const menuWidth = Math.min(this._menuWidth, viewportWidth);
-                const availableHeight = this._menuMaxHeight;
-                const minimumWidth = Math.min(triggerRect.width, viewportWidth);
-                const left = Math.max(margin, Math.min(triggerRect.left, visibleWidth - menuWidth - margin));
+                const rendu = window.auSelectGeometrieMenu(
+                    trigger.getBoundingClientRect(),
+                    vue,
+                    this._mesures,
+                    largeurNaturelle,
+                    this._menuDeplace
+                );
 
-                // Sous <body>, le menu perd les regles CSS ecrites en
-                // descendance de son parent d'origine — dont, sur certaines
-                // pages, un z-index releve. On le repose ici, au meme niveau
-                // que les menus Bootstrap deplaces (cf. universal-dropdowns).
-                const plan = this._menuDeplace ? 'z-index:99999;' : '';
-
-                this.menuStyle = this._menuOpenUp
-                    ? `${plan}position:fixed;left:${left}px;right:auto;top:auto;bottom:${visibleHeight - triggerRect.top + gap}px;width:${menuWidth}px;min-width:${minimumWidth}px;max-width:${viewportWidth}px;max-height:${availableHeight}px;transform-origin:bottom center;`
-                    : `${plan}position:fixed;left:${left}px;right:auto;top:${triggerRect.bottom + gap}px;bottom:auto;width:${menuWidth}px;min-width:${minimumWidth}px;max-width:${viewportWidth}px;max-height:${availableHeight}px;transform-origin:top center;`;
+                this._mesures = rendu.mesures;
+                this.menuStyle = rendu.style;
             },
             get currentValue() { return this._value; },
             get isDisabled() { return !!this.$refs.native?.disabled; },

@@ -10,7 +10,13 @@ class AuSelectSetOptionsTest extends TestCase
     {
         $source = file_get_contents(resource_path('views/components/au-select.blade.php'));
 
-        $this->assertStringContainsString("setOptions(items, selectedValue = '')", $source);
+        // La signature exacte etait figee ici, et l'assertion est restee en
+        // arriere le jour ou `conserverRecherche` a ete ajoute : le test
+        // echouait sans que personne ne le regarde. On verifie donc ce qui
+        // compte — la methode existe, et elle sait garder la saisie en cours —
+        // pas la ponctuation de sa declaration.
+        $this->assertStringContainsString('setOptions(items, selectedValue', $source);
+        $this->assertStringContainsString('conserverRecherche', $source);
         $this->assertStringContainsString("native.innerHTML = ''", $source);
     }
 

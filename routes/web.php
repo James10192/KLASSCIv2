@@ -1124,8 +1124,33 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 // la reimplementer : il montre ou l'argent ira avant d'encaisser.
                 // Lecture seule, mais frappee a chaque frappe du montant — d'ou
                 // un throttle genereux.
+                //
+                // La permission SUPPLEMENTAIRE n'est pas un doublon du groupe.
+                // Cette reponse enumere, frais par frais, ce que l'etudiant doit
+                // ENCORE : c'est sa situation financiere, exactement ce que
+                // servent `esbtp.api.etudiants.soldes` et `esbtp.api.frais.categories`.
+                // Ces deux-la l'ont toujours reservee aux porteurs de
+                // `paiements.view` / `comptabilite.access` / `module.caisse.access` ;
+                // celle-ci s'ouvrait sur le seul droit d'encaisser, si bien qu'un
+                // role taille pour saisir des versements sans consulter les
+                // comptes pouvait reconstituer les finances de l'ecole entiere en
+                // bouclant sur les identifiants d'inscription.
+                //
+                // `admin.access` est volontairement ABSENT de cette liste, alors
+                // qu'il figure dans celle de `soldes`. Ce dernier n'a pas de
+                // groupe au-dessus de lui ; ici le groupe englobant l'exige deja,
+                // et le remettre rendrait la garde inoperante — tout porteur du
+                // droit d'entrer dans l'espace de gestion passerait. C'est
+                // exactement ce qu'un test a revele.
+                //
+                // Les roles reels ne perdent rien : caissier et comptable par
+                // `comptabilite.access`, secretaire par `paiements.view`,
+                // superAdmin par `Gate::before`.
                 Route::post('/paiements/repartition/apercu', [App\Http\Controllers\ESBTPPaiementController::class, 'apercuRepartition'])
-                    ->middleware('throttle:120,1')
+                    ->middleware([
+                        'throttle:120,1',
+                        'permission:paiements.view|comptabilite.access|module.caisse.access',
+                    ])
                     ->name('paiements.repartition.apercu');
                 Route::post('/reliquats/pay', [App\Http\Controllers\ESBTPPaiementController::class, 'payReliquat'])->name('reliquats.pay');
             });

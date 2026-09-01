@@ -116,7 +116,17 @@
                         </div>
                         <div class="main-card-body pe-card-body">
                             <div class="pe-grid pe-grid--two">
-                                <div class="pe-field">
+                                {{-- `saisi` distingue « zero » de « vide ».
+                                     Sans lui, effacer le champ donne
+                                     `parseInt('' || 0)` = 0, et l'ecran reclame
+                                     une confirmation d'exoneration sur un champ
+                                     que le comptable est en train de retaper. --}}
+                                <div class="pe-field" x-data="{
+                                        montant: {{ (int) old('montant', $paiement->montant) }},
+                                        saisi: true,
+                                        confirmedZero: false,
+                                        get isZero() { return this.saisi && this.montant === 0; },
+                                    }">
                                     <label for="montant" class="pe-label">Montant <span class="text-danger">*</span></label>
                                     <div class="pe-input-group">
                                         <input
@@ -127,12 +137,33 @@
                                             step="1"
                                             class="pe-input @error('montant') pe-input--error @enderror"
                                             value="{{ old('montant', $paiement->montant) }}"
+                                            x-on:input="montant = parseInt($event.target.value || 0); saisi = $event.target.value !== ''; confirmedZero = false"
                                             required>
                                         <span class="pe-input-suffix">FCFA</span>
                                     </div>
                                     @error('montant')
                                         <div class="pe-error">{{ $message }}</div>
                                     @enderror
+
+                                    {{-- Garde-fou montant nul.
+                                         `UpdatePaiementRequest` refuse un versement ramene a zero
+                                         sans confirmation explicite. Sans cette case, la regle est
+                                         insatisfiable : le comptable recoit un message d'erreur
+                                         qu'aucune action de l'ecran ne permet de lever. La meme
+                                         case existe a l'encaissement — une garde posee sur un seul
+                                         des deux chemins n'en est pas une. --}}
+                                    <div x-show="isZero" x-cloak x-transition.opacity class="pe-guard-zero">
+                                        <div class="pe-guard-zero-title">
+                                            <i class="fas fa-circle-exclamation"></i>Montant à 0 FCFA
+                                        </div>
+                                        <p class="pe-guard-zero-text">
+                                            Aucun argent ne reste rattaché à ce versement. Ce n'est légitime que pour une exonération.
+                                        </p>
+                                        <label class="pe-guard-zero-check">
+                                            <input type="checkbox" name="confirmed_zero_amount" value="1" x-model="confirmedZero">
+                                            <span>Je confirme qu'il s'agit d'une exonération</span>
+                                        </label>
+                                    </div>
                                 </div>
 
                                 <div class="pe-field">
@@ -317,6 +348,46 @@
 
 .pe-page .header-left h1 {
     color: var(--pe-primary);
+}
+
+/* Sans cette regle, le bloc marque `x-cloak` clignote a chaque chargement
+   avant qu'Alpine ne prenne la main. `layouts.app` ne la porte pas. */
+.pe-page [x-cloak] { display: none !important; }
+
+/* Garde-fou montant nul — alerte, donc couleur sémantique assumée. */
+.pe-guard-zero {
+    margin-top: 0.6rem;
+    padding: 0.7rem 0.85rem;
+    background: #fffbeb;
+    border: 1.5px solid var(--pe-warning);
+    border-radius: 10px;
+}
+
+.pe-guard-zero-title {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.86rem;
+    font-weight: 700;
+    color: #92400e;
+}
+
+.pe-guard-zero-text {
+    margin: 0.3rem 0 0;
+    font-size: 0.8rem;
+    line-height: 1.5;
+    color: #7c2d12;
+}
+
+.pe-guard-zero-check {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #92400e;
+    cursor: pointer;
 }
 
 .pe-header-shell {

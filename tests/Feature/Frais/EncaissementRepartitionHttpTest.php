@@ -57,6 +57,15 @@ class EncaissementRepartitionHttpTest extends TestCase
         // droit d'encaisser.
         Permission::findOrCreate('admin.access', 'web');
         Permission::findOrCreate('paiements.create', 'web');
+        // L'apercu de repartition enumere ce que l'etudiant doit ENCORE, frais
+        // par frais : c'est sa situation financiere, et sa route exige donc le
+        // droit de la CONSULTER, pas seulement celui d'encaisser. Un caissier
+        // reel porte les deux.
+        Permission::findOrCreate('paiements.view', 'web');
+        // Corriger un versement deja enregistre : deux permissions distinctes,
+        // l'une pour la route, l'autre verifiee dans le controleur.
+        Permission::findOrCreate('paiements.edit', 'web');
+        Permission::findOrCreate('paiements.manage', 'web');
         // L'encaissement previent ensuite ceux qui valident. La permission doit
         // exister, sinon la notification jette et l'echec remonte comme une
         // erreur d'enregistrement — sans rapport avec ce qu'on teste ici.
@@ -64,7 +73,10 @@ class EncaissementRepartitionHttpTest extends TestCase
         Cache::flush();
 
         $this->caissier = User::factory()->create();
-        $this->caissier->givePermissionTo(['admin.access', 'paiements.create']);
+        $this->caissier->givePermissionTo([
+            'admin.access', 'paiements.create', 'paiements.view',
+            'paiements.edit', 'paiements.manage',
+        ]);
         $this->actingAs($this->caissier);
 
         $this->inscription = $this->creerInscription();
@@ -180,6 +192,158 @@ class EncaissementRepartitionHttpTest extends TestCase
 
         // Un apercu ne touche a rien.
         $this->assertSame(0, ESBTPPaiement::where('inscription_id', $this->inscription->id)->count());
+    }
+
+    public function test_un_frais_sans_tarif_configure_reste_encaissable(): void
+    {
+        // L'ecole n'a pas encore dit ce que ce frais coute. Un zero veut dire
+        // INCONNU : lui opposer un plafond de zero le rendrait inencaissable
+        // jusqu'a ce qu'un administrateur s'en apercoive.
+        $bibliotheque = ESBTPFraisCategory::factory()->ordre(3)->create(['name' => 'Bibliotheque']);
+        $this->doit($bibliotheque, 0);
+
+        $this->post(route('esbtp.paiements.store'), $this->versement(40000, $bibliotheque))
+            ->assertSessionHasNoErrors()
+            ->assertRedirect();
+
+        $paiement = ESBTPPaiement::where('inscription_id', $this->inscription->id)->firstOrFail();
+
+        $this->assertSame(
+            40000.0,
+            (float) ESBTPPaiementAllocation::where('paiement_id', $paiement->id)
+                ->where('frais_category_id', $bibliotheque->id)
+                ->sum('montant')
+        );
+    }
+
+    public function test_le_caissier_peut_repartir_lui_meme_le_versement(): void
+    {
+        // Le second mode de l'ecran : le caissier dit lui-meme ou va chaque
+        // franc, au lieu de laisser la regle de service decider.
+        $charge = $this->versement(120000, $this->scolarite);
+        $charge['repartition'] = [
+            $this->scolarite->id => 70000,
+            $this->tenue->id => 50000,
+        ];
+
+        $this->post(route('esbtp.paiements.store'), $charge)
+            ->assertSessionHasNoErrors()
+            ->assertRedirect();
+
+        $paiement = ESBTPPaiement::where('inscription_id', $this->inscription->id)->firstOrFail();
+        $allocations = ESBTPPaiementAllocation::where('paiement_id', $paiement->id)
+            ->pluck('montant', 'frais_category_id');
+
+        $this->assertSame(70000.0, (float) $allocations[$this->scolarite->id]);
+        $this->assertSame(50000.0, (float) $allocations[$this->tenue->id]);
+    }
+
+    public function test_une_repartition_manuelle_qui_depasse_un_frais_est_refusee(): void
+    {
+        // La tenue ne doit que 100 000 : lui en imputer 150 000 ferait entrer
+        // 50 000 F dans un frais qui ne les reclame pas.
+        $charge = $this->versement(250000, $this->scolarite);
+        $charge['repartition'] = [
+            $this->scolarite->id => 100000,
+            $this->tenue->id => 150000,
+        ];
+
+        $this->from(route('esbtp.paiements.create'))
+            ->post(route('esbtp.paiements.store'), $charge)
+            ->assertSessionHasErrors('montant');
+
+        $this->assertSame(0, ESBTPPaiement::where('inscription_id', $this->inscription->id)->count());
+    }
+
+    // ------------------------------------------------------------------
+    // Le depot en nature ferme les DEUX portes
+    // ------------------------------------------------------------------
+
+    public function test_un_frais_deja_depose_en_nature_ne_se_corrige_pas_non_plus(): void
+    {
+        // La garde vivait a l'encaissement seulement. Rediriger un versement en
+        // attente vers la ramette deja apportee par l'etudiant la lui faisait
+        // payer aussi surement qu'un encaissement direct : c'est le meme argent,
+        // par l'autre porte.
+        $ramette = ESBTPFraisCategory::factory()->ordre(4)->create(['name' => 'Ramette']);
+        ESBTPFraisSubscription::factory()->enNature()->create([
+            'inscription_id' => $this->inscription->id,
+            'frais_category_id' => $ramette->id,
+            'amount' => 5000,
+            'created_by' => $this->caissier->id,
+        ]);
+
+        $this->post(route('esbtp.paiements.store'), $this->versement(50000, $this->scolarite))
+            ->assertRedirect();
+
+        $paiement = ESBTPPaiement::where('inscription_id', $this->inscription->id)->firstOrFail();
+
+        $this->from(route('esbtp.paiements.edit', $paiement->id))
+            ->put(route('esbtp.paiements.update', $paiement->id), [
+                'montant' => 50000,
+                'date_paiement' => now()->toDateString(),
+                'mode_paiement' => 'espèces',
+                'frais_category_id' => $ramette->id,
+            ])
+            ->assertSessionHasErrors('frais_category_id');
+
+        $this->assertSame(
+            (int) $this->scolarite->id,
+            (int) $paiement->fresh()->frais_category_id,
+            'Le versement doit rester sur son frais d origine.'
+        );
+    }
+
+    // ------------------------------------------------------------------
+    // Corriger un versement : l'imputation suit, et un refus se dit
+    // ------------------------------------------------------------------
+
+    public function test_corriger_le_montant_reecrit_l_imputation(): void
+    {
+        // Un versement alloue est lu EXCLUSIVEMENT par ses allocations : sa
+        // propre categorie ne compte plus. Corriger le montant sans les
+        // reecrire laisserait la difference hors de tout total par frais.
+        $this->post(route('esbtp.paiements.store'), $this->versement(80000, $this->scolarite))
+            ->assertRedirect();
+
+        $paiement = ESBTPPaiement::where('inscription_id', $this->inscription->id)->firstOrFail();
+
+        $this->put(route('esbtp.paiements.update', $paiement->id), [
+            'montant' => 120000,
+            'date_paiement' => now()->toDateString(),
+            'mode_paiement' => 'espèces',
+            'frais_category_id' => $this->scolarite->id,
+        ])->assertSessionHasNoErrors();
+
+        $this->assertSame(
+            120000.0,
+            (float) ESBTPPaiementAllocation::where('paiement_id', $paiement->id)->sum('montant')
+        );
+    }
+
+    // ------------------------------------------------------------------
+    // La situation financiere n'est pas un sous-produit du droit d'encaisser
+    // ------------------------------------------------------------------
+
+    public function test_l_apercu_exige_le_droit_de_consulter_les_comptes(): void
+    {
+        // Cette reponse enumere, frais par frais, ce que l'etudiant doit ENCORE.
+        // Les endpoints qui servent la meme information (`etudiants/soldes`,
+        // `frais/categories`) l'ont toujours reservee ; celui-ci s'ouvrait sur le
+        // seul droit d'encaisser, si bien qu'un role taille pour saisir des
+        // versements sans consulter les comptes pouvait reconstituer les
+        // finances de l'ecole en bouclant sur les identifiants d'inscription.
+        $saisisseur = User::factory()->create();
+        $saisisseur->givePermissionTo(['admin.access', 'paiements.create']);
+        Cache::flush();
+
+        $this->actingAs($saisisseur)
+            ->postJson(route('esbtp.paiements.repartition.apercu'), [
+                'inscription_id' => $this->inscription->id,
+                'frais_category_id' => $this->scolarite->id,
+                'montant' => 50000,
+            ])
+            ->assertForbidden();
     }
 
     // ------------------------------------------------------------------
