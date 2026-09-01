@@ -2351,12 +2351,26 @@
                         <div class="bc-icon"><i class="fas fa-university"></i></div>
                         <div class="bc-body">
                             <div class="bc-label">LMD pour le service scolarité</div>
-                            <div class="bc-desc">Le service scolarité voit notes, résultats et bulletins LMD. À activer seulement si l'établissement est universitaire.</div>
+                            <div class="bc-desc">Le service scolarité voit notes, résultats, bulletins LMD, domaines, parcours, UE et ECUE. Sans planning ni volumes enseignants.</div>
                         </div>
                         <div class="bc-toggle">
                             <label class="form-switch-modern">
                                 <input type="checkbox" name="scolarite.clerk_lmd_access" value="1"
                                        {{ \App\Helpers\SettingsHelper::get('scolarite.clerk_lmd_access', '0') == '1' ? 'checked' : '' }}>
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="bc-card">
+                        <div class="bc-icon"><i class="fas fa-chalkboard"></i></div>
+                        <div class="bc-body">
+                            <div class="bc-label">Pédagogie pour le service scolarité</div>
+                            <div class="bc-desc">Créer / modifier / valider inscriptions et étudiants. Le planning, les volumes horaires et les enseignants restent au secrétariat général.</div>
+                        </div>
+                        <div class="bc-toggle">
+                            <label class="form-switch-modern">
+                                <input type="checkbox" name="scolarite.clerk_pedagogie" value="1"
+                                       {{ \App\Helpers\SettingsHelper::get('scolarite.clerk_pedagogie', '0') == '1' ? 'checked' : '' }}>
                                 <span class="slider"></span>
                             </label>
                         </div>

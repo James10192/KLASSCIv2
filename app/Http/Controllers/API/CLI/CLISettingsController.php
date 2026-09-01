@@ -102,6 +102,7 @@ class CLISettingsController extends BaseApiController
         if (! $reglage) {
             $creables = [
                 \App\Services\TenantScolariteSettings::CLERK_LMD_ACCESS,
+                \App\Services\TenantScolariteSettings::CLERK_PEDAGOGIE,
                 \App\Services\TenantScolariteSettings::PRINT_REQUIRES_APPROVAL,
             ];
             if (! in_array($valide['key'], $creables, true) || ! ($valide['apply'] ?? false)) {

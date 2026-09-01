@@ -9,6 +9,7 @@ class TenantScolariteSettings
     public const SPLIT_ROLES = 'scolarite.split_roles';
     public const PRINT_REQUIRES_APPROVAL = 'documents.print_requires_approval';
     public const CLERK_LMD_ACCESS = 'scolarite.clerk_lmd_access';
+    public const CLERK_PEDAGOGIE = 'scolarite.clerk_pedagogie';
     public const CASHIER_PRE_ENROLLMENT = 'caisse.pre_inscription.enabled';
     public const AGENT_INSCRIPTION_ROLE = 'inscriptions.split_role';
     public const REINSCRIPTION_EN_LIGNE = 'reinscriptions.en_ligne.enabled';
@@ -27,6 +28,11 @@ class TenantScolariteSettings
     public function clerkLmdAccess(): bool
     {
         return $this->flag(self::CLERK_LMD_ACCESS);
+    }
+
+    public function clerkPedagogieAccess(): bool
+    {
+        return $this->flag(self::CLERK_PEDAGOGIE);
     }
 
     public function cashierPreEnrollmentEnabled(): bool
