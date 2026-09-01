@@ -202,56 +202,107 @@
         max-width: 100%;
     }
 
-    .pc-insc-filters {
+    .pc-toolbar {
         display: grid;
-        grid-template-columns: 1.6fr 1fr 1fr;
-        gap: 0.6rem;
-        margin-bottom: 0.75rem;
+        grid-template-columns: minmax(0, 1.5fr) minmax(11rem, 1fr) minmax(11rem, 1fr);
+        gap: 0.7rem;
+        margin-bottom: 0.9rem;
     }
-    .pc-insc-filters input,
-    .pc-insc-filters select {
-        width: 100%;
-        min-height: 44px;
-        padding: 0.55rem 0.85rem;
-        border: 1px solid var(--pc-border);
-        border-radius: 10px;
-        font-size: 0.85rem;
-        color: var(--pc-text);
+    .pc-search,
+    .pc-filter {
+        position: relative;
+        display: flex;
+        align-items: center;
+        min-height: 48px;
         background: #fff;
-    }
-    .pc-insc-list {
         border: 1px solid var(--pc-border);
         border-radius: 12px;
+        padding: 0 0.85rem 0 2.6rem;
+        transition: border-color .15s ease, box-shadow .15s ease;
+    }
+    .pc-search:focus-within,
+    .pc-filter:focus-within {
+        border-color: var(--pc-primary);
+        box-shadow: 0 0 0 3px rgba(4, 83, 203, .12);
+    }
+    .pc-search i,
+    .pc-filter i {
+        position: absolute;
+        left: 0.9rem;
+        color: var(--pc-muted);
+        font-size: 0.82rem;
+        pointer-events: none;
+    }
+    .pc-search input,
+    .pc-filter select {
+        width: 100%;
+        border: 0;
+        background: transparent;
+        outline: none;
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: var(--pc-dark);
+        min-height: 46px;
+    }
+    .pc-search input::placeholder { color: #94a3b8; font-weight: 500; }
+    .pc-insc-list {
+        border: 1px solid var(--pc-border);
+        border-radius: 14px;
         overflow: auto;
-        max-height: 280px;
+        max-height: 320px;
         background: #fff;
     }
     .pc-insc-row {
         width: 100%;
         display: grid;
-        grid-template-columns: 7.5rem 1fr 1fr;
-        gap: 0.5rem;
+        grid-template-columns: 40px minmax(0, 1fr) auto;
+        gap: 0.75rem;
+        align-items: center;
         text-align: left;
-        padding: 0.7rem 0.85rem;
+        padding: 0.75rem 0.95rem;
         border: 0;
         border-bottom: 1px solid #eef2f7;
         background: #fff;
         cursor: pointer;
         color: var(--pc-text);
+        transition: background .15s ease;
     }
     .pc-insc-row:last-child { border-bottom: 0; }
     .pc-insc-row:hover { background: #f8fafc; }
     .pc-insc-row.is-on {
-        background: rgba(4, 83, 203, 0.08);
-        box-shadow: inset 3px 0 0 var(--pc-primary);
+        background: #eff6ff;
+        border-bottom-color: #dbeafe;
     }
-    .pc-insc-mat { font-weight: 700; font-size: 0.78rem; color: var(--pc-primary); }
-    .pc-insc-nom { font-weight: 700; font-size: 0.86rem; }
-    .pc-insc-meta { font-size: 0.75rem; color: var(--pc-muted); }
-    .pc-insc-empty { padding: 1.1rem; text-align: center; color: var(--pc-muted); font-size: 0.84rem; }
+    .pc-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 11px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, var(--pc-primary), var(--pc-secondary));
+        color: #fff;
+        font-size: 0.72rem;
+        font-weight: 800;
+        letter-spacing: 0.04em;
+        flex-shrink: 0;
+    }
+    .pc-insc-nom { font-weight: 700; font-size: 0.9rem; color: var(--pc-dark); }
+    .pc-insc-sub { font-size: 0.75rem; color: var(--pc-muted); margin-top: 0.12rem; }
+    .pc-insc-track {
+        font-size: 0.72rem;
+        font-weight: 700;
+        color: var(--pc-primary);
+        background: rgba(4, 83, 203, 0.08);
+        border-radius: 999px;
+        padding: 0.28rem 0.65rem;
+        white-space: nowrap;
+    }
+    .pc-insc-empty { padding: 1.4rem 1rem; text-align: center; color: var(--pc-muted); font-size: 0.86rem; }
     @media (max-width: 768px) {
-        .pc-insc-filters { grid-template-columns: 1fr; }
-        .pc-insc-row { grid-template-columns: 1fr; gap: 0.15rem; }
+        .pc-toolbar { grid-template-columns: 1fr; }
+        .pc-insc-row { grid-template-columns: 40px minmax(0, 1fr); }
+        .pc-insc-track { grid-column: 2; justify-self: start; }
     }
 
     .form-floating-modern input,
@@ -315,10 +366,10 @@
     /* Repartition du versement — pc-rep-* */
     .pc-rep {
         margin-top: 1.25rem;
-        padding: 1rem 1.15rem 1.1rem;
-        border: 1px solid #e2e8f0;
+        padding: 1.1rem 1.2rem 1.15rem;
+        border: 1px solid #dbe4f0;
         border-radius: 14px;
-        background: #f8fafc;
+        background: #fff;
     }
 
     .pc-rep-head {
@@ -564,33 +615,42 @@
                         </div>
                     @else
                         <div x-data="caisseInscriptionPicker()" x-init="charger()">
-                            <div class="pc-insc-filters">
-                                <input type="search" x-model="q" @input.debounce.250ms="charger()" placeholder="Nom, prénom ou matricule" autocomplete="off">
-                                <select x-model="filiereId" @change="charger()">
-                                    <option value="">Toutes les filières</option>
-                                    @foreach(($filieres ?? []) as $filiere)
-                                        <option value="{{ $filiere->id }}">{{ $filiere->name }}</option>
-                                    @endforeach
-                                </select>
-                                <select x-model="niveauId" @change="charger()">
-                                    <option value="">Tous les niveaux</option>
-                                    @foreach(($niveaux ?? []) as $niveau)
-                                        <option value="{{ $niveau->id }}">{{ $niveau->name }}</option>
-                                    @endforeach
-                                </select>
+                            <div class="pc-toolbar">
+                                <label class="pc-search">
+                                    <i class="fas fa-search"></i>
+                                    <input type="search" x-model="q" @input.debounce.250ms="charger()" placeholder="Rechercher un étudiant" autocomplete="off">
+                                </label>
+                                <label class="pc-filter">
+                                    <i class="fas fa-sitemap"></i>
+                                    <select x-model="filiereId" @change="charger()">
+                                        <option value="">Toutes les filières</option>
+                                        @foreach(($filieres ?? []) as $filiere)
+                                            <option value="{{ $filiere->id }}">{{ $filiere->name }}</option>
+                                        @endforeach
+                                    </select>
+                                </label>
+                                <label class="pc-filter">
+                                    <i class="fas fa-layer-group"></i>
+                                    <select x-model="niveauId" @change="charger()">
+                                        <option value="">Tous les niveaux</option>
+                                        @foreach(($niveaux ?? []) as $niveau)
+                                            <option value="{{ $niveau->id }}">{{ $niveau->name }}</option>
+                                        @endforeach
+                                    </select>
+                                </label>
                             </div>
                             <div class="pc-insc-list">
                                 <template x-for="row in rows" :key="row.id">
                                     <button type="button" class="pc-insc-row" :class="{ 'is-on': selectedId === row.id }" @click="choisir(row)">
-                                        <div class="pc-insc-mat" x-text="row.matricule"></div>
-                                        <div>
-                                            <div class="pc-insc-nom" x-text="row.nom"></div>
-                                            <div class="pc-insc-meta" x-text="row.classe"></div>
-                                        </div>
-                                        <div class="pc-insc-meta" x-text="row.filiere + ' · ' + row.niveau"></div>
+                                        <span class="pc-avatar" x-text="initiales(row.nom)"></span>
+                                        <span>
+                                            <span class="pc-insc-nom" x-text="row.nom"></span>
+                                            <span class="pc-insc-sub" x-text="row.matricule + ' · ' + row.classe"></span>
+                                        </span>
+                                        <span class="pc-insc-track" x-text="row.filiere + ' · ' + row.niveau"></span>
                                     </button>
                                 </template>
-                                <div class="pc-insc-empty" x-show="rows.length === 0" x-cloak>Aucune inscription trouvée.</div>
+                                <div class="pc-insc-empty" x-show="rows.length === 0" x-cloak>Aucun dossier pour ces filtres.</div>
                             </div>
                             <input type="hidden" name="etudiant_id" id="etudiant_id" x-model="etudiantId" required>
                         </div>
@@ -662,22 +722,8 @@
                 </div>
             </div>
             
-            <!-- Sélection de la catégorie de frais -->
             <div id="category-selection-section" style="display: none;">
-                <div class="card-moderne payment-form-card mb-lg">
-                    <div class="p-lg">
-                        <div class="section-title mb-md">
-                            <i class="fas fa-tags me-2"></i>
-                            Sélection de la Catégorie de Frais
-                        </div>
-                        
-                        <div class="category-selection" id="category-options">
-                            <!-- Les catégories seront chargées dynamiquement -->
-                        </div>
-                        
-                        <input type="hidden" name="frais_category_id" id="selected_category_id" value="{{ old('frais_category_id') }}">
-                    </div>
-                </div>
+                <input type="hidden" name="frais_category_id" id="selected_category_id" value="{{ old('frais_category_id') }}">
             </div>
             
             <!-- Informations du paiement -->
@@ -837,6 +883,15 @@ window.caisseInscriptionPicker = function () {
         rows: [],
         selectedId: null,
         etudiantId: '',
+        initiales(nom) {
+            return String(nom || '')
+                .split(/\s+/)
+                .filter(Boolean)
+                .slice(0, 2)
+                .map(function (mot) { return mot.charAt(0); })
+                .join('')
+                .toUpperCase();
+        },
         async charger() {
             const params = new URLSearchParams();
             if (this.q.trim()) params.set('q', this.q.trim());
@@ -1135,10 +1190,8 @@ $(function() {
                 debugLog('Catégories reçues:', data);
                 var categoriesData = Array.isArray(data) ? data : [];
                 categories = categoriesData;
-                displayCategories(categoriesData);
-
                 if (categoriesData.length > 0) {
-                    $('#category-selection-section').fadeIn();
+                    displayCategories(categoriesData);
                 } else {
                     resetCategorySelection();
                     $('#category-selection-section').hide();
@@ -1151,69 +1204,30 @@ $(function() {
     }
     
     // Afficher les catégories de frais
-    function displayCategories(categories) {
-        debugLog('=== Affichage des catégories:', categories);
-        
-        var html = '';
-        categories.forEach(function(category) {
-            var progress = calculateCategoryProgress(category);
-            var icon = getCategoryIcon(category.type);
-            
-            var configuredBadge = category.configured ? 
-                '<span class="badge bg-success text-white small ms-2"><i class="fas fa-check"></i> Configuré</span>' : 
-                '<span class="badge bg-secondary text-white small ms-2"><i class="fas fa-cog"></i> Défaut</span>';
+    function displayCategories(liste) {
+        debugLog('=== Affichage des catégories:', liste);
+        categories = Array.isArray(liste) ? liste : [];
 
-            // Le depot en nature. Deux etats bien distincts, et il faut les
-            // distinguer : « peut se regler en apportant l'objet » n'est pas
-            // « a deja ete apporte ». Le premier laisse le caissier encaisser
-            // l'equivalent en especes, le second lui dit qu'il n'y a plus rien
-            // a reclamer — et c'est ce second etat qui coche la ligne sur le recu.
-            var inKindBadge = '';
-            if (category.satisfied_in_kind) {
-                inKindBadge = '<span class="badge bg-success text-white small ms-2" title="L&#39;etudiant a apporte l&#39;article : rien a encaisser"><i class="fas fa-box-open"></i> Déposé en nature</span>';
-            } else if (category.accepts_in_kind) {
-                inKindBadge = '<span class="badge bg-info text-white small ms-2" title="L&#39;etudiant peut apporter l&#39;article au lieu de payer. Le marquer se fait depuis la fiche d&#39;inscription."><i class="fas fa-box"></i> Payable en nature</span>';
-            }
-            
-            html += `
-                <div class="category-option" data-category-id="${category.id}" data-category="${JSON.stringify(category).replace(/"/g, '&quot;')}">
-                    <div class="category-icon bg-primary text-white">
-                        <i class="${icon}"></i>
-                    </div>
-                    <h6 class="mb-1">${category.name}${configuredBadge}${inKindBadge}</h6>
-                    <p class="text-muted small mb-2">${category.description || 'Frais scolaires'}</p>
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="badge bg-light text-dark">${formatAmount(category.montant)} FCFA</span>
-                        <span class="text-primary small">${progress.percentage}% payé</span>
-                    </div>
-                    <div class="progress-bar-modern mt-2">
-                        <div class="progress-fill bg-primary" style="width: ${progress.percentage}%"></div>
-                    </div>
-                </div>
-            `;
-        });
-        
-        $('#category-options').html(html);
-        
-        // Ajouter les événements de clic
-        $('.category-option').on('click', function() {
-            selectCategory($(this));
-        });
+        var porteur = categories.find(function(categorie) {
+            return !categorie.satisfied_in_kind;
+        }) || categories[0];
 
-        // Pré-sélection intelligente pour accélérer le flux d'encaissement.
-        const $allOptions = $('#category-options .category-option');
-        if ($allOptions.length > 0) {
-            const previouslySelectedId = String($('#selected_category_id').val() || '');
-            let $target = previouslySelectedId
-                ? $allOptions.filter('[data-category-id="' + previouslySelectedId + '"]').first()
-                : $();
-
-            if ($target.length === 0) {
-                $target = $allOptions.first();
-            }
-
-            selectCategory($target);
+        if (porteur) {
+            selectedCategory = porteur;
+            $('#selected_category_id').val(porteur.id);
         }
+
+        $('#category-selection-section').hide();
+        $('#payment-details-section').show();
+        $('#submit-section').show();
+        $('#repartition-section').show();
+        $('#repartition-lignes').html('');
+        repartitionManuelle = false;
+        $('#repartition-toggle-label').text('Répartir moi-même');
+        if (porteur) {
+            loadPaymentDetails(porteur);
+        }
+        demanderRepartition();
     }
     
     // Sélectionner une catégorie
@@ -1284,8 +1298,15 @@ $(function() {
         const categorieId = $('#selected_category_id').val();
         const montant = montantSaisi();
 
-        if (!inscriptionId || !categorieId || montant <= 0) {
+        if (!inscriptionId) {
             $('#repartition-section').hide();
+            bloquerEnvoi(false);
+            return;
+        }
+
+        if (!categorieId || montant <= 0) {
+            $('#repartition-section').show();
+            afficherDispatchRepos();
             bloquerEnvoi(false);
             return;
         }
@@ -1328,6 +1349,26 @@ $(function() {
             // l'enregistrement qui refuse pour de bon.
             bloquerEnvoi(xhr.status === 422);
         });
+    }
+
+    function afficherDispatchRepos() {
+        $('#repartition-sub').text("Saisissez le montant : il se répartit tout seul sur les frais encore dus.");
+        let html = '';
+        categories.forEach(function(categorie) {
+            const restant = Math.max(0, Number(categorie.montant || 0) - getPaidAmountForCategory(categorie.id));
+            const note = categorie.satisfied_in_kind
+                ? 'déjà déposé en nature'
+                : (restant > 0 ? formatAmount(restant) + ' FCFA restent dus' : 'soldé');
+            html += '<div class="pc-rep-ligne">'
+                + '<div><div class="pc-rep-nom">' + categorie.name + '</div>'
+                + '<div class="pc-rep-reste">' + note + '</div></div>'
+                + '<div class="pc-rep-montant">0 FCFA</div>'
+                + '</div>';
+        });
+        if (!html) {
+            html = '<div class="pc-rep-reste">Aucun frais à imputer pour cette inscription.</div>';
+        }
+        $('#repartition-lignes').html(html);
     }
 
     function afficherRepartition(allocations, reste) {
