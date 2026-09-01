@@ -379,6 +379,37 @@ class ESBTPPaiementController extends Controller
             return redirect()->back()->withErrors(['etudiant_id' => 'L\'étudiant ne correspond pas à l\'inscription sélectionnée.'])->withInput();
         }
 
+        // Un frais deja depose en nature est SOLDE : on ne l'encaisse pas.
+        //
+        // L'etudiant a apporte sa ramette, sa chemise cartonnee. Le lui faire
+        // payer en especes, c'est le faire payer deux fois.
+        //
+        // Jusqu'ici la garde n'existait QUE dans le gabarit d'affichage : le
+        // tableau de la fiche d'inscription masquait le bouton « Payer ». La vue
+        // en cartes, servie sur les ecrans plus etroits, ne le faisait pas — et
+        // le serveur ne verifiait rien. Une garde qui ne vit que dans une vue
+        // n'est pas une garde : la vue suivante la contourne.
+        $categorieVisee = $validated['frais_category_id'] ?? null;
+
+        if ($categorieVisee) {
+            $souscriptionVisee = \App\Models\ESBTPFraisSubscription::where('inscription_id', $inscription->id)
+                ->where('frais_category_id', $categorieVisee)
+                ->where('is_active', true)
+                ->first();
+
+            if ($souscriptionVisee && $souscriptionVisee->satisfied_in_kind) {
+                \Log::warning('[caisse] encaissement refuse : frais deja depose en nature', [
+                    'inscription_id' => $inscription->id,
+                    'frais_category_id' => $categorieVisee,
+                ]);
+
+                return redirect()->back()->withErrors([
+                    'frais_category_id' => "Ce frais a deja ete depose en nature par l'etudiant : il est solde, il n'y a rien a encaisser.",
+                ])->withInput();
+            }
+        }
+
+
         // PROTECTION BACKEND: Détecter les doublons récents (dernières 10 secondes)
         $timeWindow = now()->subSeconds(10);
         $duplicateCheck = ESBTPPaiement::where('inscription_id', $validated['inscription_id'])
