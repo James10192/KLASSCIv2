@@ -89,6 +89,23 @@ class CLISettingsController extends BaseApiController
             'apply' => ['nullable', 'boolean'],
         ]);
 
+        if ($valide['key'] === 'mailpulse_api_key') {
+            if (! ($valide['apply'] ?? false)) {
+                return $this->errorResponse('mailpulse_api_key : passer apply=true pour ecrire. La valeur ne ressort jamais.', [], 422);
+            }
+            $cle = trim((string) ($valide['value'] ?? ''));
+            if (! preg_match('/^mp_(live|test)_[A-Za-z0-9_-]+$/', $cle)) {
+                return $this->errorResponse('Cle MailPulse invalide (mp_live_... ou mp_test_...).', [], 422);
+            }
+            \App\Helpers\SettingsHelper::setOrCreate('mailpulse_api_key', $cle, 'mailpulse', 'string');
+            \Log::warning('[reglages] mailpulse_api_key ecrite a distance', ['length' => strlen($cle)]);
+
+            return $this->successResponse(
+                ['key' => 'mailpulse_api_key', 'value' => '(masque)', 'applique' => true],
+                'Cle MailPulse enregistree.'
+            );
+        }
+
         if ($this->estSensible($valide['key'])) {
             return $this->errorResponse(
                 "Cette cle evoque un secret : elle se change depuis l'ecran de configuration.",
