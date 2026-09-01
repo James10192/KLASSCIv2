@@ -893,6 +893,21 @@ $(function() {
      */
     let soldes = null;
 
+    /**
+     * Les raisons, distinctes, pour lesquelles l'envoi est ferme.
+     *
+     * Un booleen unique ne suffisait pas : deux causes independantes ecrivent
+     * dessus, et la derniere gagnait. Concretement, la liste des frais echoue
+     * (blocage pose, message affiche), le caissier saisit un montant, l'apercu
+     * de repartition constate qu'aucun frais n'est designe — justement PARCE
+     * QUE la liste a echoue — et sa clause de garde levait le blocage. L'ecran
+     * affichait alors « aucun encaissement n'est possible » au-dessus d'un
+     * bouton actif.
+     *
+     * Chaque cause porte donc son nom, et ne leve que le sien.
+     */
+    const raisonsDeBloquer = new Set();
+
     function soldesConnus() {
         return soldes !== null && soldes !== 'chargement' && Boolean(soldes.categories);
     }
@@ -906,6 +921,10 @@ $(function() {
      */
     function oublierEtudiant() {
         soldes = null;
+        // L'echec de lecture appartenait a l'etudiant precedent : le garder
+        // laisserait le bouton ferme sur le suivant, sans plus rien pour
+        // l'expliquer a l'ecran.
+        bloquerEnvoi(false, 'frais-illisibles');
         resetCategorySelection();
     }
 
@@ -1202,6 +1221,8 @@ $(function() {
                 categories = categoriesData;
                 displayCategories(categoriesData);
 
+                bloquerEnvoi(false, 'frais-illisibles');
+
                 if (categoriesData.length > 0) {
                     $('#category-selection-section').fadeIn();
                 } else {
@@ -1224,7 +1245,7 @@ $(function() {
                     + 'le support si cela persiste.</div>'
                 );
                 $('#category-selection-section').show();
-                bloquerEnvoi(true);
+                bloquerEnvoi(true, 'frais-illisibles');
             }
         });
     }
@@ -1524,8 +1545,16 @@ $(function() {
         $('#repartition-total').text(formatAmount(total) + ' FCFA');
     }
 
-    function bloquerEnvoi(bloque) {
-        $('#payment-form').find('button[type="submit"]').prop('disabled', bloque);
+    function bloquerEnvoi(bloque, raison) {
+        raison = raison || 'repartition';
+
+        if (bloque) {
+            raisonsDeBloquer.add(raison);
+        } else {
+            raisonsDeBloquer.delete(raison);
+        }
+
+        $('#payment-form').find('button[type="submit"]').prop('disabled', raisonsDeBloquer.size > 0);
     }
 
     $('#repartition-toggle').on('click', function() {
