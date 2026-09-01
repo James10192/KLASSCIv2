@@ -144,12 +144,11 @@
                 @php
                     $confirmerStatutEtablissement = $confirmerStatutEtablissement ?? app(\App\Services\TenantScolariteSettings::class)->confirmerStatutEtablissement();
                 @endphp
-                @if($confirmerStatutEtablissement)
                 <div class="row mb-3">
                     <div class="col-md-6">
                         <div class="form-group">
-                            <label for="statut_etablissement">Déjà inscrit ici l'année dernière ? <span class="text-danger">*</span></label>
-                            <select class="form-control @error('statut_etablissement') is-invalid @enderror" id="statut_etablissement" name="statut_etablissement" required>
+                            <label for="statut_etablissement">Déjà inscrit ici l'année dernière ? @if($confirmerStatutEtablissement)<span class="text-danger">*</span>@endif</label>
+                            <select class="form-control @error('statut_etablissement') is-invalid @enderror" id="statut_etablissement" name="statut_etablissement" @if($confirmerStatutEtablissement) required @endif>
                                 <option value="">Sélectionnez</option>
                                 <option value="nouveau" {{ old('statut_etablissement', $inscription->statut_etablissement) === 'nouveau' ? 'selected' : '' }}>Non — nouvel arrivant</option>
                                 <option value="ancien" {{ old('statut_etablissement', $inscription->statut_etablissement) === 'ancien' ? 'selected' : '' }}>Oui — déjà passé par l'établissement</option>
@@ -157,10 +156,10 @@
                             @error('statut_etablissement')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
+                            <small class="form-text text-muted">Pour un élève déjà dans KLASSCI : Oui = pas de tenue, Non = tenue due.</small>
                         </div>
                     </div>
                 </div>
-                @endif
 
                 <!-- Section Transfert (visible seulement si type_inscription = 'première_inscription') -->
                 <div class="row mb-3" id="transfert-section" style="display: {{ old('type_inscription', $inscription->type_inscription) == 'première_inscription' ? 'flex' : 'none' }}">

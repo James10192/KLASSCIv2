@@ -52,13 +52,20 @@ class FraisAudienceTest extends TestCase
         ));
     }
 
-    public function test_nouveaux_applies_to_everyone_when_setting_off(): void
+    public function test_nouveaux_skipped_for_ancien_even_when_setting_off(): void
     {
         $category = new ESBTPFraisCategory(['audience' => ESBTPFraisCategory::AUDIENCE_NOUVEAUX]);
 
-        $this->assertTrue($this->resolver(false)->categoryAppliesToStudent(
+        $this->assertFalse($this->resolver(false)->categoryAppliesToStudent(
             $category,
             ESBTPInscription::STATUT_ETABLISSEMENT_ANCIEN,
         ));
+    }
+
+    public function test_nouveaux_applies_when_statut_unknown(): void
+    {
+        $category = new ESBTPFraisCategory(['audience' => ESBTPFraisCategory::AUDIENCE_NOUVEAUX]);
+
+        $this->assertTrue($this->resolver(false)->categoryAppliesToStudent($category, null));
     }
 }
