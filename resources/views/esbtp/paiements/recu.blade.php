@@ -24,16 +24,16 @@
     <style>
         body {
             font-family: DejaVu Sans, Arial, sans-serif;
-            font-size: 8.5px;
+            font-size: 10px;
             margin: 0;
             padding: 0;
             color: #1e293b;
-            line-height: 1.2;
+            line-height: 1.18;
             background: white;
         }
 
         @page {
-            margin: 4mm 6mm;
+            margin: 3.5mm 5mm;
             size: A4 portrait;
         }
 
@@ -55,9 +55,9 @@
             page-break-inside: avoid;
         }
         .cut-cell {
-            height: 5mm;
+            height: 4.5mm;
             text-align: center;
-            font-size: 7px;
+            font-size: 8px;
             color: #64748b;
             letter-spacing: 0.12em;
             text-transform: uppercase;
@@ -69,16 +69,16 @@
         .header-section {
             border-radius: 4px;
             overflow: hidden;
-            margin-bottom: 1.2mm;
+            margin-bottom: 1mm;
         }
         .header-section img {
-            max-height: 32px !important;
-            max-width: 70px !important;
+            max-height: 38px !important;
+            max-width: 82px !important;
         }
 
-        .copy-bar { margin-bottom: 1.2mm; }
+        .copy-bar { margin-bottom: 1mm; }
         .copy-tag {
-            font-size: 8px;
+            font-size: 9.5px;
             font-weight: 700;
             color: {{ $primary }};
             letter-spacing: 0.04em;
@@ -87,7 +87,7 @@
         }
         .copy-num {
             text-align: right;
-            font-size: 8px;
+            font-size: 9.5px;
             font-weight: bold;
             color: #64748b;
             text-transform: uppercase;
@@ -95,7 +95,7 @@
             vertical-align: middle;
         }
         .copy-num-val {
-            font-size: 11px;
+            font-size: 13px;
             font-weight: 900;
             color: {{ $primary }};
             background-color: #f8fafc;
@@ -105,28 +105,28 @@
             letter-spacing: 0.4px;
         }
 
-        .meta { border-collapse: collapse; margin-bottom: 1.2mm; }
+        .meta { border-collapse: collapse; margin-bottom: 1mm; }
         .meta td {
             width: 25%;
             border: 0.4pt solid #cbd5e1;
-            padding: 1mm 1.5mm;
+            padding: 0.85mm 1.4mm;
             vertical-align: top;
         }
         .lbl {
-            font-size: 6.5px;
+            font-size: 8px;
             color: #64748b;
             text-transform: uppercase;
             letter-spacing: 0.04em;
             margin-bottom: 0;
         }
-        .val { font-size: 8.5px; font-weight: 700; color: #1e293b; }
+        .val { font-size: 10px; font-weight: 700; color: #1e293b; }
         .mono { font-family: 'Courier New', monospace; }
 
         .badge {
             display: inline-block;
             padding: 1px 6px;
             border-radius: 8px;
-            font-size: 8px;
+            font-size: 9px;
             font-weight: bold;
             text-transform: uppercase;
             letter-spacing: 0.3px;
@@ -135,138 +135,138 @@
         .badge-warning { background-color: #fef3c7; color: #92400e; border: 1px solid #fcd34d; }
         .badge-danger { background-color: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
 
-        .amount-section { border-collapse: collapse; margin-bottom: 1.2mm; }
+        .amount-section { border-collapse: collapse; margin-bottom: 1mm; }
         .amount-label {
             width: 22%;
             background-color: #059669;
             color: white;
-            font-size: 7px;
+            font-size: 8.5px;
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 0.4px;
-            padding: 1.5mm 2mm;
+            padding: 1.3mm 2mm;
             vertical-align: middle;
         }
         .amount-value {
             width: 28%;
             background-color: #ecfdf5;
-            font-size: 13px;
+            font-size: 15.5px;
             font-weight: 900;
             color: #059669;
-            padding: 1.5mm 2mm;
+            padding: 1.3mm 2mm;
             vertical-align: middle;
         }
-        .amount-value span { font-size: 8px; font-weight: 600; opacity: 0.75; }
+        .amount-value span { font-size: 9.5px; font-weight: 600; opacity: 0.75; }
         .amount-words {
             background-color: #ecfdf5;
-            font-size: 8px;
+            font-size: 9.5px;
             font-style: italic;
             color: #64748b;
-            padding: 1.5mm 2mm;
+            padding: 1.3mm 2mm;
             vertical-align: middle;
         }
 
-        .encaissed { margin-bottom: 1.2mm; border-collapse: collapse; }
+        .encaissed { margin-bottom: 1mm; border-collapse: collapse; }
         .encaissed-lbl {
             width: 22%;
-            font-size: 7px;
+            font-size: 8.5px;
             font-weight: 700;
             color: #64748b;
             text-transform: uppercase;
             letter-spacing: 0.4px;
             background-color: #f8fafc;
             border-left: 3px solid {{ $primary }};
-            padding: 1mm 2mm;
+            padding: 0.9mm 2mm;
         }
         .encaissed-val {
-            font-size: 9px;
+            font-size: 11px;
             font-weight: 700;
             color: {{ $primary }};
             background-color: #f8fafc;
-            padding: 1mm 2mm;
+            padding: 0.9mm 2mm;
         }
 
-        .fees { width: 100%; border-collapse: collapse; margin: 1mm 0; }
+        .fees { width: 100%; border-collapse: collapse; margin: 0.8mm 0; }
         .fees td {
             width: 33.33%;
             border: 0.4pt solid #cbd5e1;
-            padding: 0.8mm 1.5mm;
-            font-size: 7.5px;
+            padding: 0.7mm 1.4mm;
+            font-size: 9px;
             vertical-align: middle;
         }
-        .fees .chk { font-size: 9px; font-weight: 700; color: {{ $primary }}; padding-right: 1mm; }
+        .fees .chk { font-size: 10.5px; font-weight: 700; color: {{ $primary }}; padding-right: 1mm; }
         .fees .chk-off { color: #94a3b8; }
         .fees .fee-now { font-weight: 700; }
-        .fees .fee-note { color: #64748b; font-size: 6.5px; }
-        .vers { width: 100%; border-collapse: collapse; margin: 1mm 0; }
+        .fees .fee-note { color: #64748b; font-size: 8px; }
+        .vers { width: 100%; border-collapse: collapse; margin: 0.8mm 0; }
         .vers td {
             width: 50%;
             border: 0.4pt solid #cbd5e1;
-            padding: 0.8mm 1.5mm;
-            font-size: 7px;
+            padding: 0.7mm 1.4mm;
+            font-size: 8.5px;
             vertical-align: top;
         }
         .vers-lbl {
-            font-size: 6.5px;
+            font-size: 8px;
             color: #64748b;
             text-transform: uppercase;
             letter-spacing: 0.04em;
             margin-bottom: 0;
             font-weight: 700;
         }
-        .vers-ligne { color: #1e293b; font-size: 7px; line-height: 1.25; }
-        .reste { width: 100%; border-collapse: collapse; margin-bottom: 1mm; }
+        .vers-ligne { color: #1e293b; font-size: 8.5px; line-height: 1.22; }
+        .reste { width: 100%; border-collapse: collapse; margin-bottom: 0.8mm; }
         .reste-lbl {
             width: 18%;
             background-color: {{ $primary }};
             color: {{ $barText }};
-            font-size: 7px;
+            font-size: 8.5px;
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 0.4px;
-            padding: 1.2mm 2mm;
+            padding: 1.1mm 2mm;
         }
         .reste-val {
             width: 32%;
             background-color: #eff6ff;
-            font-size: 11px;
+            font-size: 13px;
             font-weight: 900;
             color: {{ $primary }};
-            padding: 1.2mm 2mm;
+            padding: 1.1mm 2mm;
         }
 
-        .signs { margin-top: 1.5mm; }
+        .signs { margin-top: 1.2mm; }
         .signs td { width: 50%; text-align: center; vertical-align: top; padding: 0 6mm; }
         .sign-title {
-            font-size: 8px;
+            font-size: 9.5px;
             font-weight: 700;
             color: {{ $primary }};
             text-transform: uppercase;
             letter-spacing: 0.4px;
-            margin-bottom: 6mm;
+            margin-bottom: 4.5mm;
         }
         .sign-line {
             border-top: 1.5px solid {{ $primary }};
-            padding-top: 1mm;
-            font-size: 8.5px;
+            padding-top: 0.8mm;
+            font-size: 10px;
             font-weight: 600;
         }
 
         .footer-section {
-            margin-top: 1.5mm;
-            padding-top: 1mm;
+            margin-top: 1.2mm;
+            padding-top: 0.8mm;
             border-top: 1.5px solid {{ $primary }};
         }
         .footer-warning {
             text-align: center;
-            font-size: 8px;
+            font-size: 9.5px;
             font-weight: bold;
             color: #dc2626;
-            margin-bottom: 1mm;
+            margin-bottom: 0.8mm;
         }
         .footer-contact {
             text-align: center;
-            font-size: 8px;
+            font-size: 9.5px;
             color: #64748b;
         }
     </style>
