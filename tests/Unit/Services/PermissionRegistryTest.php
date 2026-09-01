@@ -27,6 +27,7 @@ class PermissionRegistryTest extends TestCase
         $this->assertContains('responsableScolarite', $roles);
         $this->assertContains('serviceScolarite', $roles);
         $this->assertContains('agentInscription', $roles);
+        $this->assertContains('chargeCommunication', $roles);
         $this->assertContains('enseignant', $roles);
         $this->assertContains('etudiant', $roles);
         $this->assertContains('serviceTechnique', $roles);

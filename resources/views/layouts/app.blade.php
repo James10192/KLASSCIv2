@@ -1690,7 +1690,7 @@
 
                     <!-- Students Section -->
                     @can('module.etudiants.access')
-                    @if(!auth()->user()->can('module.caisse.access') || auth()->user()->canAny(['module.comptabilite.access', 'identity.school_manager', 'identity.direct_studies', 'identity.registrar', 'identity.registrar_clerk', 'identity.enrollment_officer']) || auth()->user()->hasRole(['superAdmin', 'admin', 'serviceTechnique']))
+                    @if(!auth()->user()->can('module.caisse.access') || auth()->user()->canAny(['module.comptabilite.access', 'identity.school_manager', 'identity.direct_studies', 'identity.registrar', 'identity.registrar_clerk', 'identity.enrollment_officer', 'identity.communicate']) || auth()->user()->hasRole(['superAdmin', 'admin', 'serviceTechnique']))
                     {{-- `inscriptions.candidatures.view` fait partie de la liste : sans elle,
                          l'agent d'un role taille sur mesure — candidatures seules, ce que le
                          produit encourage — ne voyait pas la categorie qui contient sa seule
@@ -2326,6 +2326,14 @@
                             <a href="{{ route('esbtp.annonces.create') }}" class="menu-link {{ Request::routeIs('esbtp.annonces.create') ? 'active' : '' }}">
                                 <div class="menu-icon"><i class="fas fa-plus-circle"></i></div>
                                 <div class="menu-text">Créer une annonce</div>
+                            </a>
+                        </div>
+                        @endcan
+                        @can('mailpulse.view')
+                        <div class="menu-item">
+                            <a href="{{ route('esbtp.communication.mailpulse') }}" class="menu-link {{ Request::routeIs('esbtp.communication.mailpulse*') ? 'active' : '' }}">
+                                <div class="menu-icon"><i class="fas fa-envelope"></i></div>
+                                <div class="menu-text">MailPulse</div>
                             </a>
                         </div>
                         @endcan

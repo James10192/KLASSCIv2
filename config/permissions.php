@@ -66,6 +66,13 @@ return [
             'group' => 'Administration',
             'visible_in_ui' => true,
         ],
+        'chargeCommunication' => [
+            'label' => 'Chargé de communication',
+            'description' => 'Annonces, messages et envois MailPulse (email / WhatsApp). Voit les étudiants pour cibler. Sans finance, notes, planning ni configuration système.',
+            'icon' => 'fa-bullhorn',
+            'group' => 'Communication',
+            'visible_in_ui' => true,
+        ],
         'comptable' => [
             'label' => 'Comptable',
             'description' => 'Gestion financière complète : paiements, frais, relances, rapports',
@@ -1627,6 +1634,16 @@ return [
             'icon' => 'fa-edit',
             'aliases' => ['edit_annonces'],
         ],
+        'mailpulse.view' => [
+            'label' => 'Voir l\'état MailPulse',
+            'group' => 'Communication',
+            'icon' => 'fa-envelope',
+        ],
+        'mailpulse.send' => [
+            'label' => 'Envoyer un test ou un message MailPulse',
+            'group' => 'Communication',
+            'icon' => 'fa-paper-plane',
+        ],
 
         // ===== Rapports =====
         'reports.view' => [
@@ -1768,6 +1785,11 @@ return [
             'label' => 'Identité agent d\'inscription (routing UI)',
             'group' => 'Identité',
             'icon' => 'fa-user-plus',
+        ],
+        'identity.communicate' => [
+            'label' => 'Identité chargé de communication (routing UI)',
+            'group' => 'Identité',
+            'icon' => 'fa-bullhorn',
         ],
 
         // ===== Modules (toggles d'abonnement par tenant) =====
@@ -2261,6 +2283,18 @@ return [
             'module.communication.access',
         ],
 
+        'chargeCommunication' => [
+            'dashboard.view',
+            'students.view',
+            'students.accessibility.view',
+            'messages.send', 'messages.receive',
+            'annonces.view', 'annonces.create', 'annonces.edit',
+            'mailpulse.view', 'mailpulse.send',
+            'identity.communicate',
+            'module.etudiants.access',
+            'module.communication.access',
+        ],
+
         'agentInscription' => [
             'dashboard.view',
             'students.view', 'students.create', 'students.edit',
@@ -2327,12 +2361,13 @@ return [
     */
 
     'role_management' => [
-        'superAdmin'       => ['secretaire', 'responsableScolarite', 'serviceScolarite', 'agentInscription', 'comptable', 'caissier', 'coordinateur', 'directeurEtudes', 'enseignant', 'etudiant'],
-        'serviceTechnique' => ['superAdmin', 'secretaire', 'responsableScolarite', 'serviceScolarite', 'agentInscription', 'comptable', 'caissier', 'coordinateur', 'directeurEtudes', 'enseignant', 'etudiant'],
-        'secretaire'       => ['enseignant', 'etudiant', 'caissier'],
+        'superAdmin'       => ['secretaire', 'responsableScolarite', 'serviceScolarite', 'agentInscription', 'chargeCommunication', 'comptable', 'caissier', 'coordinateur', 'directeurEtudes', 'enseignant', 'etudiant'],
+        'serviceTechnique' => ['superAdmin', 'secretaire', 'responsableScolarite', 'serviceScolarite', 'agentInscription', 'chargeCommunication', 'comptable', 'caissier', 'coordinateur', 'directeurEtudes', 'enseignant', 'etudiant'],
+        'secretaire'       => ['enseignant', 'etudiant', 'caissier', 'chargeCommunication'],
         'responsableScolarite' => ['serviceScolarite', 'enseignant', 'etudiant'],
         'serviceScolarite' => [],
         'agentInscription' => [],
+        'chargeCommunication' => [],
         'coordinateur'     => ['enseignant', 'etudiant'],
         'directeurEtudes'  => ['coordinateur', 'enseignant', 'etudiant'],
         'comptable'        => [],

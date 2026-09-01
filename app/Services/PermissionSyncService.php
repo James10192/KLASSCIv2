@@ -179,6 +179,9 @@ class PermissionSyncService
             'identity.registrar',
             'identity.registrar_clerk',
             'identity.enrollment_officer',
+            'identity.communicate',
+            'mailpulse.view',
+            'mailpulse.send',
             'documents.view',
             'documents.approve',
             'documents.print',
@@ -218,7 +221,7 @@ class PermissionSyncService
      */
     private function revokeCanonicalDrift($role, string $roleName, array $existingNames, array $defaults): array
     {
-        if (! in_array($roleName, ['directeurEtudes', 'responsableScolarite', 'serviceScolarite', 'agentInscription'], true)) {
+        if (! in_array($roleName, ['directeurEtudes', 'responsableScolarite', 'serviceScolarite', 'agentInscription', 'chargeCommunication'], true)) {
             return [];
         }
 

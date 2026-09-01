@@ -95,6 +95,10 @@ class DashboardController extends Controller
             return redirect()->route('dashboard.agent-inscription');
         }
 
+        if ($user->can('identity.communicate')) {
+            return redirect()->route('dashboard.communication');
+        }
+
         // Secrétaire
         if ($user->can('identity.school_manager')) {
             return $this->secretaireDashboard();
