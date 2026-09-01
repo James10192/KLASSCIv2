@@ -79,7 +79,7 @@
                         <!-- Badge rôle -->
                         <div class="profile-role-badge">
                             <i class="fas fa-shield-alt me-1"></i>
-                            {{ $user->roles->first()->name ?? 'Utilisateur' }}
+                            {{ $roleLabel ?? ($user->roles->first()->name ?? 'Utilisateur') }}
                         </div>
 
                         <!-- Statut compte -->
@@ -139,17 +139,20 @@
 
                 <!-- Carte informations professionnelles -->
                 <div class="main-card">
-                    <div class="main-card-header">
+                    <div class="main-card-header" style="display:flex;justify-content:space-between;align-items:center;gap:12px;">
                         <div class="main-card-title">
                             <i class="fas fa-briefcase"></i>
                             Informations professionnelles
                         </div>
+                        <button type="button" class="btn-acasi secondary btn-sm" onclick="showProfessionalModal()">
+                            <i class="fas fa-edit"></i> Modifier
+                        </button>
                     </div>
                     <div class="main-card-body">
                         <div class="prof-grid-2">
                             <div class="prof-info-block">
                                 <div class="prof-info-label">Poste</div>
-                                <div class="prof-info-value">{{ $user->position ?? 'Directeur des Études' }}</div>
+                                <div class="prof-info-value">{{ $user->position ?: ($roleLabel ?? '—') }}</div>
                             </div>
                             <div class="prof-info-block">
                                 <div class="prof-info-label">Département</div>
@@ -319,6 +322,62 @@
                     </button>
                     <button type="submit" class="dept-btn-submit">
                         <i class="fas fa-save"></i> Enregistrer les modifications
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="professionalModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content" style="border-radius: 16px; border: none; box-shadow: 0 20px 60px rgba(4,83,203,0.15);">
+            <form action="{{ route('admin.profile.update.professional') }}" method="POST">
+                @csrf
+                @method('PUT')
+                <div class="modal-header" style="border-bottom: 1px solid #f1f5f9; padding: 20px 24px;">
+                    <h5 class="modal-title" style="font-weight: 700; color: #1e293b;">
+                        <i class="fas fa-briefcase me-2" style="color: #0453cb;"></i>Informations professionnelles
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" style="padding: 24px;">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label-moderne">Poste</label>
+                            <input type="text" class="form-input-moderne" name="position"
+                                   value="{{ old('position', $user->position ?? '') }}"
+                                   placeholder="{{ $roleLabel ?? '' }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label-moderne">Département</label>
+                            <input type="text" class="form-input-moderne" name="department"
+                                   value="{{ old('department', $user->department ?? '') }}"
+                                   placeholder="Administration">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label-moderne">ID Employé</label>
+                            <input type="text" class="form-input-moderne" name="employee_id"
+                                   value="{{ old('employee_id', $user->employee_id ?? '') }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label-moderne">Bureau</label>
+                            <input type="text" class="form-input-moderne" name="office_location"
+                                   value="{{ old('office_location', $user->office_location ?? '') }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label-moderne">Date de nomination</label>
+                            <input type="date" class="form-input-moderne" name="appointment_date"
+                                   value="{{ old('appointment_date', optional($user->appointment_date)->format('Y-m-d')) }}">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer" style="border-top: 1px solid #f1f5f9; padding: 16px 24px;">
+                    <button type="button" class="dept-btn-cancel" data-bs-dismiss="modal">
+                        <i class="fas fa-times"></i> Annuler
+                    </button>
+                    <button type="submit" class="dept-btn-submit">
+                        <i class="fas fa-save"></i> Enregistrer
                     </button>
                 </div>
             </form>
@@ -671,6 +730,9 @@
     }
     function showPasswordModal() {
         new bootstrap.Modal(document.getElementById('passwordModal')).show();
+    }
+    function showProfessionalModal() {
+        new bootstrap.Modal(document.getElementById('professionalModal')).show();
     }
 
     document.addEventListener('DOMContentLoaded', function() {

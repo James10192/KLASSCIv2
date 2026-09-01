@@ -33,8 +33,12 @@ class AdminProfileController extends Controller
     public function index()
     {
         $user = Auth::user();
+        $roleName = $user->roles->first()?->name;
+        $roleLabel = $roleName
+            ? (app(\App\Services\PermissionRegistry::class)->roleMeta($roleName)['label'] ?? $roleName)
+            : 'Utilisateur';
 
-        return view('admin.profile', compact('user'));
+        return view('admin.profile', compact('user', 'roleLabel'));
     }
 
     /**
