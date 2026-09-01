@@ -895,6 +895,7 @@ class ESBTPInscriptionService
             'affectation_status' => $requestData['affectation_status'] ?? ESBTPInscription::DEFAULT_AFFECTATION_STATUS,
             'est_transfert' => !empty($requestData['est_transfert']),
             'etablissement_origine' => $requestData['etablissement_origine'] ?? null,
+            'statut_etablissement' => $requestData['statut_etablissement'] ?? null,
         ];
     }
 

@@ -142,8 +142,9 @@ class ESBTPInscription extends Model implements Auditable
         'reinscription_validated_at',
         'reinscription_validated_by',
         'reinscription_observations',
-        'est_transfert', // Transfert d'un autre établissement
-        'etablissement_origine', // Nom de l'établissement d'origine
+        'est_transfert',
+        'etablissement_origine',
+        'statut_etablissement',
         'inscription_origine_id', // Lien vers inscription tronc commun
         'type_changement', // Type de changement (specialisation)
     ];
@@ -169,6 +170,10 @@ class ESBTPInscription extends Model implements Auditable
 
     // Constants for affectation status
     const DEFAULT_AFFECTATION_STATUS = 'affecté';
+
+    public const STATUT_ETABLISSEMENT_NOUVEAU = 'nouveau';
+
+    public const STATUT_ETABLISSEMENT_ANCIEN = 'ancien';
 
     public function affectationStatusLabel(): string
     {

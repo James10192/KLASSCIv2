@@ -13,6 +13,7 @@
 @section('content')
 @php
     $hideAmounts = $hideAmounts ?? app(\App\Services\EnrollmentAmountVisibility::class)->hideAmounts(auth()->user());
+    $confirmerStatutEtablissement = $confirmerStatutEtablissement ?? app(\App\Services\TenantScolariteSettings::class)->confirmerStatutEtablissement();
 @endphp
 <div class="dashboard-acasi">
     <div class="main-content">
@@ -601,6 +602,27 @@
                             Le statut influence les frais applicables selon la prise en charge étatique
                         </small>
                     </div>
+                    @if($confirmerStatutEtablissement)
+                    <div class="col-md-6">
+                        <label class="form-label">
+                            <i class="fas fa-school field-icon"></i> Déjà inscrit ici l'année dernière ? <span class="req">*</span>
+                        </label>
+                        <select class="form-select @error('statut_etablissement') is-invalid @enderror"
+                                name="statut_etablissement"
+                                id="statut_etablissement"
+                                required>
+                            <option value="">Sélectionnez</option>
+                            <option value="nouveau" {{ old('statut_etablissement') === 'nouveau' ? 'selected' : '' }}>Non — nouvel arrivant</option>
+                            <option value="ancien" {{ old('statut_etablissement') === 'ancien' ? 'selected' : '' }}>Oui — déjà passé par l'établissement</option>
+                        </select>
+                        @error('statut_etablissement')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                        <small class="text-muted mt-1 d-block">
+                            Distingue un élève déjà scolarisé ici d'un arrivant (ex. 2e année venu d'ailleurs).
+                        </small>
+                    </div>
+                    @endif
                     <div class="col-md-6">
                         <div class="affectation-info-card" id="affectation-info">
                             <span class="text-muted" style="font-size:13px;">
@@ -1655,9 +1677,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // CHARGEMENT FRAIS PAR CLASSE
     // =============================================
     document.addEventListener('change', function(e) {
-        if (e.target.id === 'classe_id') {
+        if (e.target.id === 'classe_id' || e.target.id === 'statut_etablissement') {
             if (isLoadingFrais) return;
-            const classeId = e.target.value;
+            const classeId = document.getElementById('classe_id')?.value;
             const fraisContainer = document.getElementById('fraisContainer');
             if (classeId && fraisContainer) {
                 isLoadingFrais = true;
@@ -1670,7 +1692,12 @@ document.addEventListener('DOMContentLoaded', function() {
                         <p class="mt-3 text-muted" style="font-size:14px;">Chargement des frais pour cette classe...</p>
                     </div>`;
                 const affectationStatus = document.getElementById('affectation_status')?.value || 'affecté';
-                fetch(`/esbtp/inscriptions/frais-by-classe/${classeId}?affectation_status=${encodeURIComponent(affectationStatus)}`, {
+                const statutEtablissement = document.getElementById('statut_etablissement')?.value || '';
+                const fraisQuery = new URLSearchParams({ affectation_status: affectationStatus });
+                if (statutEtablissement) {
+                    fraisQuery.set('statut_etablissement', statutEtablissement);
+                }
+                fetch(`/esbtp/inscriptions/frais-by-classe/${classeId}?${fraisQuery.toString()}`, {
                     method: 'GET',
                     headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
                 })

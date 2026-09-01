@@ -2,6 +2,8 @@
 
 namespace App\Http\Requests\Inscription;
 
+use App\Models\ESBTPInscription;
+use App\Services\TenantScolariteSettings;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreInscriptionRequest extends FormRequest
@@ -30,6 +32,9 @@ class StoreInscriptionRequest extends FormRequest
             'photo' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'in_kind_deposits' => 'nullable|array',
             'in_kind_deposits.*' => 'nullable|in:0,1',
+            'statut_etablissement' => app(TenantScolariteSettings::class)->confirmerStatutEtablissement()
+                ? 'required|in:'.ESBTPInscription::STATUT_ETABLISSEMENT_NOUVEAU.','.ESBTPInscription::STATUT_ETABLISSEMENT_ANCIEN
+                : 'nullable|in:'.ESBTPInscription::STATUT_ETABLISSEMENT_NOUVEAU.','.ESBTPInscription::STATUT_ETABLISSEMENT_ANCIEN,
         ];
 
         // Matricule dynamique : requis seulement si fourni (non vide)
@@ -80,6 +85,7 @@ class StoreInscriptionRequest extends FormRequest
             'photo.mimes' => 'La photo doit être au format JPEG, PNG, JPG ou GIF.',
             'photo.max' => 'La photo ne doit pas dépasser 2 Mo.',
             'photo.uploaded' => 'La photo n\'a pas pu être téléchargée. Vérifiez la taille du fichier.',
+            'statut_etablissement.required' => 'Indiquez si l\'étudiant était déjà inscrit dans cet établissement.',
         ];
 
         // Messages dynamiques pour les parents

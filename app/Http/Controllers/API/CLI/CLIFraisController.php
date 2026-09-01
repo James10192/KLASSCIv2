@@ -7,6 +7,8 @@ use App\Http\Controllers\API\BaseApiController;
 use App\Models\ESBTPFraisCategory;
 use App\Models\ESBTPFraisConfiguration;
 use App\Models\ESBTPFraisSubscription;
+use App\Models\Setting;
+use App\Services\TenantScolariteSettings;
 use App\Services\Frais\CorrectionMontantSouscriptions;
 use App\Services\Frais\OrdreDesCategoriesFrais;
 use App\Services\Frais\RepartitionTropPercu;
@@ -84,6 +86,109 @@ class CLIFraisController extends BaseApiController
             'souscriptions' => $souscriptions,
             'montants_40k_60k' => $focus,
         ], 'Barème frais');
+    }
+
+    public function appliquerTenueNouveaux(Request $request): JsonResponse
+    {
+        if (! $request->user()->tokenCan('cli:admin')) {
+            return $this->errorResponse('Token missing cli:admin ability', [], 403);
+        }
+
+        $valide = $request->validate([
+            'category_id' => ['required', 'integer'],
+            'niveau_source_id' => ['required', 'integer'],
+            'niveau_cible_id' => ['required', 'integer'],
+            'reduction' => ['nullable', 'numeric', 'min:0'],
+            'apply' => ['nullable', 'boolean'],
+        ]);
+
+        $categorie = ESBTPFraisCategory::query()->find($valide['category_id']);
+        if (! $categorie) {
+            return $this->errorResponse('Categorie introuvable.', [], 404);
+        }
+
+        $reduction = (float) ($valide['reduction'] ?? 10000);
+        $appliquer = (bool) ($valide['apply'] ?? false);
+        $sourceId = (int) $valide['niveau_source_id'];
+        $cibleId = (int) $valide['niveau_cible_id'];
+
+        $sources = ESBTPFraisConfiguration::query()
+            ->with('filiere:id,name')
+            ->where('frais_category_id', $categorie->id)
+            ->where('niveau_id', $sourceId)
+            ->where('is_active', true)
+            ->get();
+
+        $lignes = [];
+
+        foreach ($sources as $source) {
+            $plein = (float) $source->amount;
+            if ($plein <= 0) {
+                continue;
+            }
+
+            $cible = ESBTPFraisConfiguration::query()
+                ->where('frais_category_id', $categorie->id)
+                ->where('filiere_id', $source->filiere_id)
+                ->where('niveau_id', $cibleId)
+                ->where('is_active', true)
+                ->first();
+
+            if (! $cible) {
+                continue;
+            }
+
+            $nouveauMontant = max(0, $plein - $reduction);
+            $lignes[] = [
+                'filiere' => $source->filiere->name ?? null,
+                'filiere_id' => $source->filiere_id,
+                'configuration_id' => $cible->id,
+                'avant' => (float) $cible->amount,
+                'apres' => $nouveauMontant,
+                'plein_1a' => $plein,
+            ];
+
+            if ($appliquer) {
+                $cible->update([
+                    'amount' => $nouveauMontant,
+                    'amount_affecte' => $nouveauMontant,
+                ]);
+            }
+        }
+
+        $audienceAvant = $categorie->audience ?? ESBTPFraisCategory::AUDIENCE_TOUS;
+        if ($appliquer) {
+            $categorie->update(['audience' => ESBTPFraisCategory::AUDIENCE_NOUVEAUX]);
+            Setting::firstOrCreate(
+                ['key' => TenantScolariteSettings::CONFIRMER_STATUT_ETABLISSEMENT],
+                [
+                    'value' => '1',
+                    'type' => 'boolean',
+                    'group' => 'scolarite',
+                    'category' => 'scolarite',
+                    'description' => 'Demande a l agent de confirmer si l etudiant est nouveau ou deja passe par l etablissement.',
+                    'is_required' => false,
+                    'default_value' => '0',
+                ]
+            );
+            Setting::query()
+                ->where('key', TenantScolariteSettings::CONFIRMER_STATUT_ETABLISSEMENT)
+                ->update(['value' => '1']);
+            if (method_exists(Setting::class, 'clearCache')) {
+                Setting::clearCache();
+            }
+        }
+
+        return $this->successResponse([
+            'categorie' => $categorie->name,
+            'audience_avant' => $audienceAvant,
+            'audience_apres' => ESBTPFraisCategory::AUDIENCE_NOUVEAUX,
+            'reduction' => $reduction,
+            'lignes' => $lignes,
+            'applique' => $appliquer,
+        ], $appliquer
+            ? sprintf('%d barème(s) 2e année mis à jour. Audience = nouveaux.', count($lignes))
+            : sprintf('%d barème(s) 2e année changeraient. Rien n\'a été écrit.', count($lignes)));
     }
 
     /**

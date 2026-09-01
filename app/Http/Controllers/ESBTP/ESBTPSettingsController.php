@@ -343,6 +343,21 @@ class ESBTPSettingsController extends Controller
             );
 
             Setting::firstOrCreate(
+                ['key' => TenantScolariteSettings::CONFIRMER_STATUT_ETABLISSEMENT],
+                [
+                    'value' => '0',
+                    'type' => 'boolean',
+                    'group' => 'scolarite',
+                    'category' => 'scolarite',
+                    'description' => 'Demande a l agent de confirmer si l etudiant est nouveau ou deja passe par l etablissement. Necessaire la premiere annee KLASSCI, quand l historique n existe pas.',
+                    'is_required' => false,
+                    'default_value' => '0',
+                    'validation_rules' => null,
+                    'sort_order' => 157,
+                ]
+            );
+
+            Setting::firstOrCreate(
                 ['key' => 'inscriptions.split_role'],
                 [
                     'value' => '0',
@@ -420,6 +435,7 @@ class ESBTPSettingsController extends Controller
                 TenantScolariteSettings::CASHIER_PRE_ENROLLMENT,
                 TenantScolariteSettings::AGENT_INSCRIPTION_ROLE,
                 TenantScolariteSettings::REINSCRIPTION_EN_LIGNE,
+                TenantScolariteSettings::CONFIRMER_STATUT_ETABLISSEMENT,
                 PortailCandidaturePublication::REGLAGE_ACTIF,
             ], array_keys($troncCommunDefaults));
 

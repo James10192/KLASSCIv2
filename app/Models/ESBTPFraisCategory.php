@@ -25,6 +25,7 @@ class ESBTPFraisCategory extends Model implements Auditable
         'code',
         'description',
         'is_mandatory',
+        'audience',
         'accepts_in_kind',
         'is_active',
         'category_type',
@@ -47,11 +48,16 @@ class ESBTPFraisCategory extends Model implements Auditable
 
     protected $table = 'esbtp_frais_categories';
 
+    public const AUDIENCE_TOUS = 'tous';
+
+    public const AUDIENCE_NOUVEAUX = 'nouveaux_etablissement';
+
     protected $fillable = [
         'name',
         'code',
         'description',
         'is_mandatory',
+        'audience',
         'accepts_in_kind',
         'is_active',
         'category_type',

@@ -266,6 +266,25 @@
 
                         <div class="form-group-moderne">
                             <div class="form-check-moderne">
+                                <input type="hidden" name="audience" value="tous">
+                                <input class="form-check-input-moderne @error('audience') is-invalid @enderror"
+                                       type="checkbox"
+                                       id="audience_nouveaux"
+                                       name="audience"
+                                       value="nouveaux_etablissement"
+                                       {{ old('audience', $fraisCategory->audience) === 'nouveaux_etablissement' ? 'checked' : '' }}>
+                                <label class="form-check-label-moderne" for="audience_nouveaux">
+                                    <strong>Uniquement les nouveaux de l'établissement</strong>
+                                </label>
+                                @error('audience')
+                                    <div style="color: var(--danger); font-size: var(--text-small); margin-top: var(--space-xs);">{{ $message }}</div>
+                                @enderror
+                            </div>
+                            <div style="color: var(--text-muted); font-size: var(--text-small); margin-top: var(--space-xs);">Attaché seulement si l'étudiant n'était pas déjà scolarisé ici.</div>
+                        </div>
+
+                        <div class="form-group-moderne">
+                            <div class="form-check-moderne">
                                 <input class="form-check-input-moderne @error('accepts_in_kind') is-invalid @enderror"
                                        type="checkbox"
                                        id="accepts_in_kind"

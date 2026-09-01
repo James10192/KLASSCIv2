@@ -14,7 +14,21 @@ class ApplicableFraisResolver
 {
     public function __construct(
         private readonly FraisScopeResolver $scopeResolver,
+        private readonly TenantScolariteSettings $scolariteSettings,
     ) {
+    }
+
+    public function categoryAppliesToStudent(ESBTPFraisCategory $category, ?string $statutEtablissement): bool
+    {
+        if (($category->audience ?? ESBTPFraisCategory::AUDIENCE_TOUS) !== ESBTPFraisCategory::AUDIENCE_NOUVEAUX) {
+            return true;
+        }
+
+        if (! $this->scolariteSettings->confirmerStatutEtablissement()) {
+            return true;
+        }
+
+        return $statutEtablissement === ESBTPInscription::STATUT_ETABLISSEMENT_NOUVEAU;
     }
 
     public function resolveMandatoryFeesForInscription(ESBTPInscription $inscription, ?string $affectationStatus = null): Collection
@@ -26,6 +40,10 @@ class ApplicableFraisResolver
             ->mandatory()
             ->ordered()
             ->get()
+            ->filter(fn (ESBTPFraisCategory $category) => $this->categoryAppliesToStudent(
+                $category,
+                $inscription->statut_etablissement,
+            ))
             ->map(function (ESBTPFraisCategory $category) use ($scope, $status) {
                 $configuration = ESBTPFraisConfiguration::getApplicableForScope($category->id, $scope);
                 $amount = $configuration

@@ -11,6 +11,7 @@ class TenantScolariteSettings
     public const CASHIER_PRE_ENROLLMENT = 'caisse.pre_inscription.enabled';
     public const AGENT_INSCRIPTION_ROLE = 'inscriptions.split_role';
     public const REINSCRIPTION_EN_LIGNE = 'reinscriptions.en_ligne.enabled';
+    public const CONFIRMER_STATUT_ETABLISSEMENT = 'inscriptions.confirmer_statut_etablissement';
 
     public function splitRolesEnabled(): bool
     {
@@ -35,6 +36,11 @@ class TenantScolariteSettings
     public function reinscriptionEnLigneEnabled(): bool
     {
         return $this->flag(self::REINSCRIPTION_EN_LIGNE);
+    }
+
+    public function confirmerStatutEtablissement(): bool
+    {
+        return $this->flag(self::CONFIRMER_STATUT_ETABLISSEMENT);
     }
 
     private function flag(string $key, string $default = '0'): bool
