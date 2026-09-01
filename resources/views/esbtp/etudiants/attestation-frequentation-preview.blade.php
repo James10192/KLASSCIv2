@@ -166,20 +166,21 @@
         <a href="{{ route('esbtp.etudiants.certificat.preview', $etudiant->id) }}" class="btn-acasi info">
             <i class="fas fa-certificate me-1"></i>Certificat
         </a>
-        <a href="{{ route('esbtp.etudiants.attestation-frequentation.preview-pdf', $etudiant->id) }}" class="btn-acasi info" target="_blank" title="AperÃ§u PDF dans un nouvel onglet">
-            <i class="fas fa-eye me-1"></i>AperÃ§u PDF
-        </a>
-        <a href="{{ route('esbtp.etudiants.attestation-frequentation', $etudiant->id) }}" class="btn-acasi success">
-            <i class="fas fa-file-pdf me-1"></i>GÃ©nÃ©rer PDF
-        </a>
-        <a href="{{ route('esbtp.etudiants.attestation-frequentation.preview-pdf', $etudiant->id) }}" target="_blank" rel="noopener" class="btn-acasi info">
-            <i class="fas fa-print me-1"></i>Imprimer
-        </a>
-    
         @include('esbtp.documents._request-approval', [
             'documentType' => 'attestation',
             'etudiantId' => $etudiant->id,
         ])
+        @if($printAllowed)
+        <a href="{{ route('esbtp.etudiants.attestation-frequentation.preview-pdf', $etudiant->id) }}" class="btn-acasi info" target="_blank" title="Aperçu PDF dans un nouvel onglet">
+            <i class="fas fa-eye me-1"></i>Aperçu PDF
+        </a>
+        <a href="{{ route('esbtp.etudiants.attestation-frequentation', $etudiant->id) }}" class="btn-acasi success">
+            <i class="fas fa-file-pdf me-1"></i>Générer PDF
+        </a>
+        <a href="{{ route('esbtp.etudiants.attestation-frequentation.preview-pdf', $etudiant->id) }}" target="_blank" rel="noopener" class="btn-acasi info">
+            <i class="fas fa-print me-1"></i>Imprimer
+        </a>
+        @endif
     </div>
 </div>
 

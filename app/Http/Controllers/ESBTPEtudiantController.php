@@ -1597,12 +1597,12 @@ class ESBTPEtudiantController extends Controller
      */
     private function respondWithCertificatPdf($id, string $disposition)
     {
-        if ($disposition === 'attachment') {
-            abort_unless(
-                app(DocumentPrintGuard::class)->canPrint(auth()->user(), 'certificat', (int) $id),
-                403,
-                'Ce certificat doit etre approuve avant impression.'
-            );
+        $guard = app(DocumentPrintGuard::class);
+        $reason = $guard->denyReason(auth()->user(), 'certificat', (int) $id);
+        if ($reason) {
+            return redirect()
+                ->route('esbtp.etudiants.certificat.preview', $id)
+                ->with('error', $guard->message($reason, (int) $id));
         }
 
         try {
@@ -2405,12 +2405,12 @@ class ESBTPEtudiantController extends Controller
      */
     private function respondWithAttestationPdf($id, string $disposition)
     {
-        if ($disposition === 'attachment') {
-            abort_unless(
-                app(DocumentPrintGuard::class)->canPrint(auth()->user(), 'attestation', (int) $id),
-                403,
-                'Cette attestation doit etre approuvee avant impression.'
-            );
+        $guard = app(DocumentPrintGuard::class);
+        $reason = $guard->denyReason(auth()->user(), 'attestation', (int) $id);
+        if ($reason) {
+            return redirect()
+                ->route('esbtp.etudiants.attestation-frequentation.preview', $id)
+                ->with('error', $guard->message($reason, (int) $id));
         }
 
         try {

@@ -1,19 +1,27 @@
 @php
-    $printRequiresApproval = app(\App\Services\TenantScolariteSettings::class)->printRequiresApproval();
-    $latestApproval = $printRequiresApproval
-        ? app(\App\Services\DocumentPrintGuard::class)->latestApproved($documentType, (int) $etudiantId, $documentId ?? null)
+    $printGuard = app(\App\Services\DocumentPrintGuard::class);
+    $printRequiresApproval = $printGuard->requiresApproval();
+    $soldeImpaye = $printRequiresApproval ? $printGuard->soldeImpaye((int) $etudiantId) : 0;
+    $latestApproval = $printRequiresApproval && $soldeImpaye <= 0
+        ? $printGuard->latestApproved($documentType, (int) $etudiantId, $documentId ?? null)
         : null;
+    $printAllowed = ! $printRequiresApproval || ($soldeImpaye <= 0 && $latestApproval);
 @endphp
 @if($printRequiresApproval)
-    <div class="alert alert-warning py-2 px-3 mb-3">
-        @if($latestApproval)
+    @if($soldeImpaye > 0)
+        <div class="alert alert-danger py-2 px-3 mb-3">
+            Impression bloquée : solde impayé de {{ number_format($soldeImpaye, 0, ',', ' ') }} F.
+            L'étudiant doit régulariser en caisse avant toute demande.
+        </div>
+    @elseif($latestApproval)
+        <div class="alert alert-success py-2 px-3 mb-3">
             Document approuvé. L'impression est autorisée.
-        @else
-            L'impression officielle exige l'accord du responsable scolarité. L'aperçu reste libre.
-        @endif
-    </div>
-    @canany(['documents.view', 'documents.print', 'documents.approve'])
-        @unless($latestApproval)
+        </div>
+    @else
+        <div class="alert alert-warning py-2 px-3 mb-3">
+            L'impression officielle exige l'accord de la responsable scolarité.
+        </div>
+        @canany(['documents.view', 'documents.print', 'documents.approve'])
             <form method="POST" action="{{ route('esbtp.documents.approvals.store') }}" class="d-inline">
                 @csrf
                 <input type="hidden" name="document_type" value="{{ $documentType }}">
@@ -25,6 +33,6 @@
                     <i class="fas fa-stamp me-1"></i>Demander l'approbation
                 </button>
             </form>
-        @endunless
-    @endcanany
+        @endcanany
+    @endif
 @endif

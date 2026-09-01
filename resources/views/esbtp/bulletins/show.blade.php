@@ -214,11 +214,18 @@
                 </div>
             </div>
             <div class="bsh-hero-actions">
+                @include('esbtp.documents._request-approval', [
+                    'documentType' => 'bulletin',
+                    'etudiantId' => $bulletin->etudiant_id,
+                    'documentId' => $bulletin->id,
+                ])
+                @if($printAllowed)
                 <x-pdf-actions
                     :preview-url="route('esbtp.bulletins.pdf-params-preview', $bshPdfParams)"
                     :download-url="route('esbtp.bulletins.pdf-params', $bshPdfParams)"
                     label="Bulletin"
                     buttonClass="bsh-btn bsh-btn--glass" />
+                @endif
                 <a href="{{ route('esbtp.bulletins.index') }}" class="bsh-btn bsh-btn--white">
                     <i class="fas fa-arrow-left"></i> Liste
                 </a>
@@ -447,9 +454,11 @@
                             <i class="fas fa-edit"></i> Modifier
                         </a>
                     @endcan
+                    @if($printAllowed)
                     <a href="{{ route('esbtp.bulletins.download', $bulletin) }}" class="bsh-btn bsh-btn--ghost" target="_blank" rel="noopener">
                         <i class="fas fa-file-pdf"></i> Générer PDF
                     </a>
+                    @endif
                 </div>
                 <div class="bsh-actions-group">
                     @can('bulletins.delete')
