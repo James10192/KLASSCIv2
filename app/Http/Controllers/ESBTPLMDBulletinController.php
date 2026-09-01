@@ -422,9 +422,12 @@ class ESBTPLMDBulletinController extends Controller
      */
     public function pdf(ESBTPLMDBulletin $bulletin)
     {
-        if ($redirect = $this->redirectUnlessPrintable($bulletin)) {
-            return $redirect;
-        }
+        app(DocumentPrintGuard::class)->assertPrintable(
+            auth()->user(),
+            'bulletin',
+            (int) $bulletin->etudiant_id,
+            (int) $bulletin->id
+        );
 
         [$pdf, $filename] = $this->buildBulletinPdf($bulletin);
 
@@ -437,32 +440,16 @@ class ESBTPLMDBulletinController extends Controller
      */
     public function pdfPreview(ESBTPLMDBulletin $bulletin)
     {
-        if ($redirect = $this->redirectUnlessPrintable($bulletin)) {
-            return $redirect;
-        }
-
-        [$pdf, $filename] = $this->buildBulletinPdf($bulletin);
-
-        return $pdf->stream($filename);
-    }
-
-    private function redirectUnlessPrintable(ESBTPLMDBulletin $bulletin)
-    {
-        $guard = app(DocumentPrintGuard::class);
-        $reason = $guard->denyReason(
+        app(DocumentPrintGuard::class)->assertPrintable(
             auth()->user(),
             'bulletin',
             (int) $bulletin->etudiant_id,
             (int) $bulletin->id
         );
 
-        if (! $reason) {
-            return null;
-        }
+        [$pdf, $filename] = $this->buildBulletinPdf($bulletin);
 
-        return redirect()
-            ->route('esbtp.lmd.bulletins.show', $bulletin)
-            ->with('error', $guard->message($reason, (int) $bulletin->etudiant_id));
+        return $pdf->stream($filename);
     }
 
     /**

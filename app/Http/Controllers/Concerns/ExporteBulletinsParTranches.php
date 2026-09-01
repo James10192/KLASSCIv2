@@ -249,11 +249,14 @@ trait ExporteBulletinsParTranches
         $generes = (clone $filtre)->whereNotNull('esbtp_bulletins.moyenne_generale');
         $this->applyBulletinExportOrder($generes, $request);
         $ids = $generes->pluck('esbtp_bulletins.id')->map(fn ($id) => (int) $id)->all();
-        $filtreExport = $this->filtrerExportScolarite($request, $ids);
-
-        if ($filtreExport['bloques_solde'] + $filtreExport['bloques_approbation'] > 0) {
-            $ids = $filtreExport['allowed_ids'];
-        }
+        $filtreExport = $ids === []
+            ? ['allowed_ids' => [], 'bloques_solde' => 0, 'bloques_approbation' => 0]
+            : app(DocumentPrintGuard::class)->filtrerExport(
+                $request->user(),
+                'bulletin',
+                ESBTPBulletin::query()->whereIn('id', $ids)->get(['id', 'etudiant_id'])
+            );
+        $ids = $filtreExport['allowed_ids'];
 
         if ($ids === [] && ($filtreExport['bloques_solde'] + $filtreExport['bloques_approbation']) > 0) {
             throw new \RuntimeException(sprintf(
@@ -312,29 +315,6 @@ trait ExporteBulletinsParTranches
                 return trim(($e->nom ?? '').' '.($e->prenoms ?? '')).($e?->matricule ? ' · '.$e->matricule : '');
             })->filter()->values()->all(),
         ];
-    }
-
-    /**
-     * @return array{allowed_ids: array<int, int>, bloques_solde: int, bloques_approbation: int}
-     */
-    private function filtrerExportScolarite(Request $request, array $ids): array
-    {
-        $vide = ['allowed_ids' => $ids, 'bloques_solde' => 0, 'bloques_approbation' => 0];
-
-        if ($ids === []) {
-            return $vide;
-        }
-
-        $guard = app(DocumentPrintGuard::class);
-        if (! $guard->requiresApproval()) {
-            return $vide;
-        }
-
-        $documents = ESBTPBulletin::query()
-            ->whereIn('id', $ids)
-            ->get(['id', 'etudiant_id']);
-
-        return $guard->filtrerExport($request->user(), 'bulletin', $documents);
     }
 
     /**

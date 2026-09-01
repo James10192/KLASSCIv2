@@ -16,7 +16,7 @@ class Handler extends ExceptionHandler
      * @var array<int, class-string<Throwable>>
      */
     protected $dontReport = [
-        //
+        ImpressionBloquee::class,
     ];
 
     /**
@@ -81,6 +81,17 @@ class Handler extends ExceptionHandler
 
             // Authenticated but missing the required role/permission → 403 page.
             return response()->view('errors.403', ['exception' => $e], 403);
+        }
+
+        if ($e instanceof ImpressionBloquee) {
+            if ($isAjax) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $e->getMessage(),
+                ], 403);
+            }
+
+            return redirect()->back()->with('error', $e->getMessage());
         }
 
         if ($e instanceof CoefficientMissingException) {
