@@ -202,6 +202,58 @@
         max-width: 100%;
     }
 
+    .pc-insc-filters {
+        display: grid;
+        grid-template-columns: 1.6fr 1fr 1fr;
+        gap: 0.6rem;
+        margin-bottom: 0.75rem;
+    }
+    .pc-insc-filters input,
+    .pc-insc-filters select {
+        width: 100%;
+        min-height: 44px;
+        padding: 0.55rem 0.85rem;
+        border: 1px solid var(--pc-border);
+        border-radius: 10px;
+        font-size: 0.85rem;
+        color: var(--pc-text);
+        background: #fff;
+    }
+    .pc-insc-list {
+        border: 1px solid var(--pc-border);
+        border-radius: 12px;
+        overflow: auto;
+        max-height: 280px;
+        background: #fff;
+    }
+    .pc-insc-row {
+        width: 100%;
+        display: grid;
+        grid-template-columns: 7.5rem 1fr 1fr;
+        gap: 0.5rem;
+        text-align: left;
+        padding: 0.7rem 0.85rem;
+        border: 0;
+        border-bottom: 1px solid #eef2f7;
+        background: #fff;
+        cursor: pointer;
+        color: var(--pc-text);
+    }
+    .pc-insc-row:last-child { border-bottom: 0; }
+    .pc-insc-row:hover { background: #f8fafc; }
+    .pc-insc-row.is-on {
+        background: rgba(4, 83, 203, 0.08);
+        box-shadow: inset 3px 0 0 var(--pc-primary);
+    }
+    .pc-insc-mat { font-weight: 700; font-size: 0.78rem; color: var(--pc-primary); }
+    .pc-insc-nom { font-weight: 700; font-size: 0.86rem; }
+    .pc-insc-meta { font-size: 0.75rem; color: var(--pc-muted); }
+    .pc-insc-empty { padding: 1.1rem; text-align: center; color: var(--pc-muted); font-size: 0.84rem; }
+    @media (max-width: 768px) {
+        .pc-insc-filters { grid-template-columns: 1fr; }
+        .pc-insc-row { grid-template-columns: 1fr; gap: 0.15rem; }
+    }
+
     .form-floating-modern input,
     .form-floating-modern select,
     .form-floating-modern textarea {
@@ -511,17 +563,36 @@
                             <input type="hidden" name="etudiant_id" value="{{ $etudiant->id }}">
                         </div>
                     @else
-                        <div class="form-floating-modern pc-field">
-                            <label for="etudiant_id" class="pc-field-label">Étudiant <span class="text-danger">*</span></label>
-                            <x-au-select
-                                id="etudiant_id"
-                                name="etudiant_id"
-                                :value="(string) old('etudiant_id', request('etudiant_id', ''))"
-                                :options="$studentOptions"
-                                placeholder="Rechercher un etudiant (3 caracteres minimum)"
-                                icon="fa-user-graduate"
-                                required
-                                searchable />
+                        <div x-data="caisseInscriptionPicker()" x-init="charger()">
+                            <div class="pc-insc-filters">
+                                <input type="search" x-model="q" @input.debounce.250ms="charger()" placeholder="Nom, prénom ou matricule" autocomplete="off">
+                                <select x-model="filiereId" @change="charger()">
+                                    <option value="">Toutes les filières</option>
+                                    @foreach(($filieres ?? []) as $filiere)
+                                        <option value="{{ $filiere->id }}">{{ $filiere->name }}</option>
+                                    @endforeach
+                                </select>
+                                <select x-model="niveauId" @change="charger()">
+                                    <option value="">Tous les niveaux</option>
+                                    @foreach(($niveaux ?? []) as $niveau)
+                                        <option value="{{ $niveau->id }}">{{ $niveau->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="pc-insc-list">
+                                <template x-for="row in rows" :key="row.id">
+                                    <button type="button" class="pc-insc-row" :class="{ 'is-on': selectedId === row.id }" @click="choisir(row)">
+                                        <div class="pc-insc-mat" x-text="row.matricule"></div>
+                                        <div>
+                                            <div class="pc-insc-nom" x-text="row.nom"></div>
+                                            <div class="pc-insc-meta" x-text="row.classe"></div>
+                                        </div>
+                                        <div class="pc-insc-meta" x-text="row.filiere + ' · ' + row.niveau"></div>
+                                    </button>
+                                </template>
+                                <div class="pc-insc-empty" x-show="rows.length === 0" x-cloak>Aucune inscription trouvée.</div>
+                            </div>
+                            <input type="hidden" name="etudiant_id" id="etudiant_id" x-model="etudiantId" required>
                         </div>
                     @endif
                 </div>
@@ -757,6 +828,43 @@
 
 @push('scripts')
 <script>
+window.caisseInscriptionPicker = function () {
+    const url = @json(route('esbtp.api.caisse.inscriptions'));
+    return {
+        q: '',
+        filiereId: '',
+        niveauId: '',
+        rows: [],
+        selectedId: null,
+        etudiantId: '',
+        async charger() {
+            const params = new URLSearchParams();
+            if (this.q.trim()) params.set('q', this.q.trim());
+            if (this.filiereId) params.set('filiere_id', this.filiereId);
+            if (this.niveauId) params.set('niveau_id', this.niveauId);
+            try {
+                const response = await fetch(url + '?' + params.toString(), {
+                    headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                if (!response.ok) return;
+                const payload = await response.json();
+                this.rows = payload.results || [];
+            } catch (error) {
+                debugWarn('Liste inscriptions indisponible', error);
+            }
+        },
+        choisir(row) {
+            this.selectedId = row.id;
+            this.etudiantId = String(row.etudiant_id);
+            const input = document.getElementById('etudiant_id');
+            if (input) {
+                input.value = this.etudiantId;
+                $(input).trigger('change');
+            }
+        }
+    };
+};
+
 $(function() {
     debugLog('=== SCRIPT PRINCIPAL CHARGÉ ===');
     

@@ -335,7 +335,74 @@ class ESBTPPaiementController extends Controller
         $unusualAmountThreshold = (int) \App\Helpers\SettingsHelper::get('comptabilite.unusual_amount_threshold', 500000);
         $allowedPaymentModes = app(MobileMoneyPaymentGuard::class)->allowedModes(auth()->user());
 
-        return view('esbtp.paiements.create', compact('etudiant', 'inscription', 'anneeEnCours', 'unusualAmountThreshold', 'allowedPaymentModes'));
+        $filieres = \App\Models\ESBTPFiliere::query()
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get(['id', 'name']);
+        $niveaux = \App\Models\ESBTPNiveauEtude::query()
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        return view('esbtp.paiements.create', compact(
+            'etudiant',
+            'inscription',
+            'anneeEnCours',
+            'unusualAmountThreshold',
+            'allowedPaymentModes',
+            'filieres',
+            'niveaux'
+        ));
+    }
+
+    public function searchInscriptionsForCaisse(Request $request)
+    {
+        $q = trim((string) $request->get('q', ''));
+        $filiereId = $request->integer('filiere_id') ?: null;
+        $niveauId = $request->integer('niveau_id') ?: null;
+
+        $annee = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+
+        $query = ESBTPInscription::query()
+            ->with(['etudiant.user', 'filiere:id,name', 'niveauEtude:id,name', 'classe:id,name'])
+            ->whereIn('status', ['active', 'en_attente'])
+            ->when($annee, fn ($q) => $q->where('annee_universitaire_id', $annee->id))
+            ->when($filiereId, fn ($q) => $q->where('filiere_id', $filiereId))
+            ->when($niveauId, fn ($q) => $q->where('niveau_id', $niveauId));
+
+        if ($q !== '') {
+            $termes = preg_split('/\s+/', $q, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+            $query->whereHas('etudiant', function ($etudiant) use ($termes) {
+                foreach ($termes as $terme) {
+                    $etudiant->where(function ($champ) use ($terme) {
+                        $champ->where('nom', 'like', "%{$terme}%")
+                            ->orWhere('prenoms', 'like', "%{$terme}%")
+                            ->orWhere('matricule', 'like', "%{$terme}%");
+                    });
+                }
+            });
+        }
+
+        $results = $query->orderByDesc('id')
+            ->limit(40)
+            ->get()
+            ->map(function (ESBTPInscription $inscription) {
+                $etudiant = $inscription->etudiant;
+
+                return [
+                    'id' => $inscription->id,
+                    'etudiant_id' => $inscription->etudiant_id,
+                    'matricule' => $etudiant->matricule ?? '',
+                    'nom' => $etudiant->user->name
+                        ?? trim(($etudiant->prenoms ?? '').' '.($etudiant->nom ?? '')),
+                    'filiere' => $inscription->filiere->name ?? '—',
+                    'niveau' => $inscription->niveauEtude->name ?? '—',
+                    'classe' => $inscription->classe->name ?? '—',
+                ];
+            })
+            ->values();
+
+        return response()->json(['results' => $results]);
     }
 
     /**
