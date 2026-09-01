@@ -175,10 +175,7 @@
             @elseif(($ligne['restant'] ?? 0) > 0)
                 <span class="fee-note">{{ number_format($ligne['restant'], 0, ',', ' ') }}</span>
             @elseif(!empty($ligne['non_configure']))
-                {{-- Ni coche ni montant : sans ce mot, le caissier lit une ligne
-                     vide et ne peut pas distinguer « rien a payer » de « montant
-                     pas encore defini par l'etablissement ». --}}
-                <span class="fee-note">à définir</span>
+                <span class="fee-note">exempté</span>
             @endif
         </td>
         @endforeach
