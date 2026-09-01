@@ -31,7 +31,17 @@ class InKindDepositTest extends TestCase
     {
         parent::setUp();
 
+        // Sans superAdmin, EnsureInstalled considere l'application NON INSTALLEE
+        // et redirige toute requete HTTP vers /install. Les tests qui passaient
+        // par une route ne touchaient donc jamais leur controleur : ils
+        // echouaient sur un 302 ou un 404 qui n'avait aucun rapport avec ce
+        // qu'ils pretendaient verifier.
+        \Spatie\Permission\Models\Role::findOrCreate('superAdmin', 'web');
+
         $this->user = User::factory()->create();
+        $this->user->assignRole('superAdmin');
+        \Illuminate\Support\Facades\Cache::flush();
+
         $this->actingAs($this->user);
 
         $classe = ESBTPClasse::factory()->create();
@@ -201,6 +211,49 @@ class InKindDepositTest extends TestCase
         ], $request->rules());
 
         $this->assertFalse($validator->fails(), (string) $validator->errors()->first());
+    }
+
+    /**
+     * Le symetrique du test precedent, et le seul qui protege reellement.
+     *
+     * Le test « la caisse peut encaisser un frais en nature NON depose » ne
+     * verifie que les regles de validation du formulaire : il n'atteint jamais
+     * le controleur. Le cas inverse — la caisse doit etre REFUSEE sur un frais
+     * DEJA depose — n'existait nulle part, et c'est exactement par la que le
+     * defaut est passe : la garde ne vivait que dans un gabarit d'affichage,
+     * une vue l'a contournee, et un etudiant pouvait payer sa ramette deux fois.
+     *
+     * Celui-ci passe par la vraie route, pour que la protection soit celle du
+     * serveur et pas celle d'un template.
+     */
+    public function test_caisse_refuse_un_frais_deja_depose_en_nature(): void
+    {
+        $this->generateFees([$this->ramette->id => 1]);
+
+        $souscription = ESBTPFraisSubscription::where('inscription_id', $this->inscription->id)
+            ->where('frais_category_id', $this->ramette->id)
+            ->first();
+
+        $this->assertTrue((bool) $souscription->satisfied_in_kind, 'Le depot doit etre enregistre avant le test.');
+
+        $avant = ESBTPPaiement::where('inscription_id', $this->inscription->id)->count();
+
+        $reponse = $this->post(route('esbtp.paiements.store'), [
+            'inscription_id' => $this->inscription->id,
+            'etudiant_id' => $this->inscription->etudiant_id,
+            'frais_category_id' => $this->ramette->id,
+            'montant' => 5000,
+            'date_paiement' => now()->toDateString(),
+            'mode_paiement' => 'espèces',
+        ]);
+
+        $reponse->assertSessionHasErrors('frais_category_id');
+
+        $this->assertSame(
+            $avant,
+            ESBTPPaiement::where('inscription_id', $this->inscription->id)->count(),
+            'Aucun paiement ne doit etre enregistre sur un frais deja depose en nature.'
+        );
     }
 
     public function test_fee_regeneration_does_not_overwrite_satisfied_in_kind(): void
