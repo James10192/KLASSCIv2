@@ -43,8 +43,10 @@ use App\Models\ESBTPPaiementAllocation;
  */
 class RepartitionDuVersement
 {
-    public function __construct(private readonly ServirLesFrais $service)
-    {
+    public function __construct(
+        private readonly ServirLesFrais $service,
+        private readonly RefletAllocationsSurAvoirs $reflet,
+    ) {
     }
 
     /**
@@ -269,6 +271,20 @@ class RepartitionDuVersement
                 ['montant' => round((float) $part, 2)]
             );
         }
+
+        // Un avoir annule le versement LA OU CE VERSEMENT EST ALLE. Sa
+        // ventilation est donc un calque de celle de son parent, et le calque
+        // doit suivre quand l'original change.
+        //
+        // Le reflet vivait chez les APPELANTS : l'emission d'un avoir le
+        // rejouait, la reventilation manuelle non. Un versement reventile
+        // laissait donc ses avoirs sur l'ancienne imputation, et le remboursement
+        // creditait des frais que le versement ne couvrait plus.
+        //
+        // Il vit desormais ici, seul endroit ou une ventilation est reecrite :
+        // tous les chemins en beneficient, y compris ceux qui n'existent pas
+        // encore. L'operation est idempotente.
+        $this->reflet->refleterSurLesAvoirsDe($paiement);
     }
 
     /**

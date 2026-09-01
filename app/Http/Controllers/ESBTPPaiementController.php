@@ -726,10 +726,33 @@ class ESBTPPaiementController extends Controller
             $fraisCategory = \App\Models\ESBTPFraisCategory::find($validated['frais_category_id']);
 
             // Mettre à jour le paiement
+            $montantAvant = (float) $paiement->montant;
+            $categorieAvant = $paiement->frais_category_id;
+
             $paiement->fill($validated);
             $paiement->motif = $fraisCategory->name; // Synchroniser le motif avec la catégorie
             $paiement->updated_by = Auth::id();
             $paiement->save();
+
+            // L'imputation doit suivre le versement qu'elle decrit.
+            //
+            // Depuis que tout versement nait avec ses allocations, un versement
+            // alloue est lu EXCLUSIVEMENT par elles : sa propre categorie ne
+            // compte plus. Corriger un montant de 255 000 a 300 000 sans toucher
+            // aux allocations laissait donc les totaux par frais a 255 000 —
+            // 45 000 F encaisses qui ne comptaient nulle part. Et changer la
+            // categorie ne deplaçait rien du tout.
+            //
+            // On reventile a partir du versement corrige. remplacer() verifie
+            // que la somme vaut exactement le montant, et repercute sur les
+            // avoirs enfants.
+            $montantChange = abs((float) $paiement->montant - $montantAvant) > 0.009;
+            $categorieChangee = (int) $paiement->frais_category_id !== (int) $categorieAvant;
+
+            if (($montantChange || $categorieChangee) && $paiement->allocations()->exists()) {
+                $repartition = app(\App\Services\Frais\RepartitionDuVersement::class);
+                $repartition->remplacer($paiement, $repartition->reventiler($paiement));
+            }
 
             DB::commit();
 
