@@ -48,14 +48,13 @@
         }
         .document-watermark img { max-width: 100%; }
 
-        .sheet { width: 100%; border-collapse: collapse; }
-        .copy-cell {
-            vertical-align: top;
-            padding: 0;
+        .copy-wrap {
             page-break-inside: avoid;
+            margin: 0;
+            padding: 0;
         }
         .cut-cell {
-            height: 6mm;
+            height: 5mm;
             text-align: center;
             font-size: 10px;
             color: #64748b;
@@ -63,7 +62,7 @@
             text-transform: uppercase;
             border-top: 1px dashed #94a3b8;
             border-bottom: 1px dashed #94a3b8;
-            vertical-align: middle;
+            margin: 1mm 0;
         }
 
         .header-section {
@@ -295,10 +294,8 @@
         </div>
     @endif
 
-    <table class="sheet" width="100%" border="0" cellspacing="0" cellpadding="0">
-        @foreach ($copies as $copyTag)
-            <tr>
-                <td class="copy-cell">
+    @foreach ($copies as $copyTag)
+        <div class="copy-wrap">
             @include('esbtp.paiements.partials.recu-exemplaire', [
                 'copyTag' => $copyTag,
                 'paiement' => $paiement,
@@ -315,14 +312,10 @@
                 'versementsApres' => $versementsApres ?? collect(),
                 'affectationLabel' => $affectationLabel ?? '—',
             ])
-                </td>
-            </tr>
-            @if (! $loop->last)
-            <tr>
-                <td class="cut-cell">✂ Couper ici — exemplaire élève (haut) · exemplaire caisse (bas)</td>
-            </tr>
-            @endif
-        @endforeach
-    </table>
+        </div>
+        @if (! $loop->last)
+            <div class="cut-cell">✂ Couper ici — exemplaire élève (haut) · exemplaire caisse (bas)</div>
+        @endif
+    @endforeach
 </body>
 </html>
