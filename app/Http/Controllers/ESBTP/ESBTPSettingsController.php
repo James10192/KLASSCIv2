@@ -313,6 +313,21 @@ class ESBTPSettingsController extends Controller
             );
 
             Setting::firstOrCreate(
+                ['key' => 'scolarite.clerk_lmd_access'],
+                [
+                    'value' => '0',
+                    'type' => 'boolean',
+                    'group' => 'scolarite',
+                    'category' => 'scolarite',
+                    'description' => 'Le service scolarite accede au module LMD (notes, resultats, bulletins). A activer sur les etablissements universitaires.',
+                    'is_required' => false,
+                    'default_value' => '0',
+                    'validation_rules' => null,
+                    'sort_order' => 155,
+                ]
+            );
+
+            Setting::firstOrCreate(
                 ['key' => 'documents.print_requires_approval'],
                 [
                     'value' => '0',
@@ -436,6 +451,7 @@ class ESBTPSettingsController extends Controller
                 TenantScolariteSettings::AGENT_INSCRIPTION_ROLE,
                 TenantScolariteSettings::REINSCRIPTION_EN_LIGNE,
                 TenantScolariteSettings::CONFIRMER_STATUT_ETABLISSEMENT,
+                TenantScolariteSettings::CLERK_LMD_ACCESS,
                 PortailCandidaturePublication::REGLAGE_ACTIF,
             ], array_keys($troncCommunDefaults));
 
