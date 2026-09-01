@@ -67,7 +67,7 @@ class ScolariteClerkCapabilitiesTest extends TestCase
     private function clerk(): User
     {
         $user = Mockery::mock(User::class);
-        $user->shouldReceive('can')->with('identity.registrar_clerk')->andReturn(true);
+        $user->shouldReceive('hasPermissionTo')->with('identity.registrar_clerk')->andReturn(true);
 
         return $user;
     }
@@ -75,7 +75,7 @@ class ScolariteClerkCapabilitiesTest extends TestCase
     private function stranger(): User
     {
         $user = Mockery::mock(User::class);
-        $user->shouldReceive('can')->with('identity.registrar_clerk')->andReturn(false);
+        $user->shouldReceive('hasPermissionTo')->with('identity.registrar_clerk')->andReturn(false);
 
         return $user;
     }
