@@ -1795,6 +1795,8 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                         </div>
                     </div>
 
+                    @include('esbtp.inscriptions.partials.fournitures-in-kind')
+
                     @if($canViewFinancials ?? true)
                     <!-- Situation financière détaillée -->
                     <div class="is-card">
@@ -2248,16 +2250,6 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                                                 </td>
                                                 <td>
                                                     <div class="btn-group">
-                                                        @if(!empty($item['can_mark_in_kind']))
-                                                            @can('inscriptions.edit')
-                                                                <form method="POST" action="{{ route('esbtp.inscriptions.in-kind-deposits.store', [$inscription, $item['category']]) }}" class="d-inline">
-                                                                    @csrf
-                                                                    <button type="submit" class="btn-acasi primary btn-sm" title="Marquer déposé">
-                                                                        Marquer déposé
-                                                                    </button>
-                                                                </form>
-                                                            @endcan
-                                                        @endif
                                                         @if(auth()->user()->can('paiements.create') && $item['is_configured'] && $item['solde'] > 0 && empty($item['satisfied_in_kind']))
                                                             <button class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#paymentModal" onclick="preparePaymentModalForCategory({{ $inscription->id }}, {{ $item['category']->id }})" title="Effectuer un paiement">
                                                                 <i class="fas fa-credit-card"></i>

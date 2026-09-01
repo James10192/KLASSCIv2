@@ -58,6 +58,7 @@ class ScolariteOrgChartPermissionsTest extends TestCase
             'services_scolarite.edit',
             'services_scolarite.delete',
             'identity.enrollment_officer',
+            'inscriptions.in_kind.mark',
             'agents_inscription.view',
             'agents_inscription.create',
             'agents_inscription.edit',
@@ -182,6 +183,7 @@ class ScolariteOrgChartPermissionsTest extends TestCase
         $this->assertContains('inscriptions.create', $defaults);
         $this->assertContains('inscriptions.edit', $defaults);
         $this->assertContains('inscriptions.validate', $defaults);
+        $this->assertContains('inscriptions.in_kind.mark', $defaults);
         $this->assertContains('classes.view', $defaults);
         $this->assertContains('filieres.view', $defaults);
         $this->assertContains('niveaux.view', $defaults);

@@ -1369,9 +1369,11 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 Route::post('/inscriptions/{inscription}/lever-reserve', [ESBTPInscriptionController::class, 'leverReserve'])->name('inscriptions.lever-reserve');
                 Route::post('/inscriptions/{inscription}/marquer-sous-reserve', [ESBTPInscriptionController::class, 'marquerSousReserve'])->name('inscriptions.marquer-sous-reserve');
                 Route::post('/inscriptions/lever-reserves-bulk', [ESBTPInscriptionController::class, 'leverReservesBulk'])->name('inscriptions.lever-reserves-bulk');
-                Route::post('/inscriptions/{inscription}/in-kind-deposits/{category}', \App\Http\Controllers\ESBTP\MarkInKindDepositedController::class)
-                    ->name('inscriptions.in-kind-deposits.store');
             });
+
+            Route::post('/inscriptions/{inscription}/in-kind-deposits/{category}', \App\Http\Controllers\ESBTP\MarkInKindDepositedController::class)
+                ->middleware('can:markInKind,inscription')
+                ->name('inscriptions.in-kind-deposits.store');
 
             // â”€â”€ VALIDATE (workflow validation â€” la plus sensible)
             Route::middleware('permission:inscriptions.validate')->group(function () {

@@ -16,7 +16,7 @@ class MarkInKindDepositedController extends Controller
         ESBTPFraisCategory $category,
         InKindDepositService $deposits,
     ) {
-        $this->authorize('update', $inscription);
+        $this->authorize('markInKind', $inscription);
 
         $subscription = ESBTPFraisSubscription::where('inscription_id', $inscription->id)
             ->where('frais_category_id', $category->id)
