@@ -1843,6 +1843,11 @@ return [
             'group' => 'Modules',
             'icon' => 'fa-cash-register',
         ],
+        'cash_session.manage' => [
+            'label' => 'Gérer sa caisse du jour (clôture et bordereau)',
+            'group' => 'Caisse',
+            'icon' => 'fa-lock',
+        ],
         'module.communication.access' => [
             'label' => 'Module : Communication (annonces, messages)',
             'group' => 'Modules',
@@ -2090,6 +2095,7 @@ return [
             'messages.send', 'messages.receive', 'annonces.view',
             'performance.view',
             'module.caisse.access',
+            'cash_session.manage',
         ],
 
         'coordinateur' => [

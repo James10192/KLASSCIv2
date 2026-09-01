@@ -17,6 +17,7 @@ class Handler extends ExceptionHandler
      */
     protected $dontReport = [
         ImpressionBloquee::class,
+        CaisseCloturee::class,
     ];
 
     /**
@@ -81,6 +82,17 @@ class Handler extends ExceptionHandler
 
             // Authenticated but missing the required role/permission → 403 page.
             return response()->view('errors.403', ['exception' => $e], 403);
+        }
+
+        if ($e instanceof CaisseCloturee) {
+            if ($isAjax) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $e->getMessage(),
+                ], 409);
+            }
+
+            return redirect()->back()->with('error', $e->getMessage())->withInput();
         }
 
         if ($e instanceof ImpressionBloquee) {

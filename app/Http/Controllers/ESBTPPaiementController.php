@@ -419,6 +419,9 @@ class ESBTPPaiementController extends Controller
             'Ce mode de paiement n est pas autorise pour votre role.'
         );
 
+        app(\App\Services\Caisse\CashSessionService::class)
+            ->assertEspecesAutorisees($request->user(), $request->input('mode_paiement'));
+
         $validated = $request->validated();
 
         // LOG DÉTAILLÉ: Début de la requête de création de paiement
@@ -1444,6 +1447,9 @@ class ESBTPPaiementController extends Controller
             $montantPaye = $request->input('montant');
             $modePaiement = $request->input('mode_paiement');
             $notes = $request->input('notes');
+
+            app(\App\Services\Caisse\CashSessionService::class)
+                ->assertEspecesAutorisees($request->user(), $modePaiement);
 
             DB::beginTransaction();
 

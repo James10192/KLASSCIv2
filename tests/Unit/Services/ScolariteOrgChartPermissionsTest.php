@@ -168,6 +168,7 @@ class ScolariteOrgChartPermissionsTest extends TestCase
 
         $this->assertContains('paiements.create', $defaults);
         $this->assertContains('paiements.view_own', $defaults);
+        $this->assertContains('cash_session.manage', $defaults);
         $this->assertNotContains('paiements.create.mobile_money', $defaults);
     }
 

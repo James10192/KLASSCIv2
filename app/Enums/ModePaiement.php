@@ -38,6 +38,11 @@ enum ModePaiement: string
         };
     }
 
+    public function isDrawer(): bool
+    {
+        return $this === self::ESPECES;
+    }
+
     public function icon(): string
     {
         return match ($this) {

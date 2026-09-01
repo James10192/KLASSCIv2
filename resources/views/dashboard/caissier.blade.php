@@ -164,7 +164,11 @@
                     Nouvelle pré-inscription
                 </a>
                 @endif
-                <a href="{{ route('esbtp.paiements.create') }}" class="quick-action-btn {{ app(\App\Services\TenantScolariteSettings::class)->cashierPreEnrollmentEnabled() ? 'secondary' : 'primary' }}">
+                <a href="{{ route('esbtp.caisse.ma-caisse') }}" class="quick-action-btn primary">
+                    <i class="fas fa-cash-register"></i>
+                    Ma caisse
+                </a>
+                <a href="{{ route('esbtp.paiements.create') }}" class="quick-action-btn secondary">
                     <i class="fas fa-plus"></i>
                     Encaissement
                 </a>
