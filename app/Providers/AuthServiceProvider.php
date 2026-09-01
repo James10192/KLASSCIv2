@@ -64,6 +64,18 @@ class AuthServiceProvider extends ServiceProvider
             return $user && $user->hasRole('superAdmin') ? true : null;
         });
 
+        Gate::after(function ($user, $ability, $result) {
+            if ($result === true || $ability !== 'module.lmd.access' || ! $user) {
+                return $result === true ? true : null;
+            }
+
+            if (! app(\App\Services\TenantScolariteSettings::class)->clerkLmdAccess()) {
+                return null;
+            }
+
+            return $user->can('identity.registrar_clerk') ? true : null;
+        });
+
         // Peut-on EMMENER cet utilisateur au formulaire d'inscription, ou lui
         // en montrer le lien ?
         //

@@ -2258,7 +2258,6 @@ return [
             'identity.registrar_clerk',
             'module.etudiants.access',
             'module.notes_evaluations.access',
-            'module.lmd.access',
             'module.communication.access',
         ],
 

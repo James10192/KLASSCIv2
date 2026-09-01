@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 
 class AdminProfileController extends Controller
 {
@@ -70,7 +71,7 @@ class AdminProfileController extends Controller
                 // Validation complète pour la modification du profil
                 $request->validate([
                     'name' => 'required|string|max:255',
-                    'email' => 'required|string|email|max:255|unique:users,email,' . $user->id,
+                    'email' => 'nullable|string|email|max:255|unique:users,email,' . $user->id,
                     'first_name' => 'nullable|string|max:255',
                     'last_name' => 'nullable|string|max:255',
                     'phone' => 'nullable|string|max:20',
@@ -87,13 +88,18 @@ class AdminProfileController extends Controller
                 $user->name = $request->name;
             }
             if ($request->has('email')) {
-                $user->email = $request->email;
+                $email = $request->input('email');
+                $user->email = ($email === null || $email === '') ? null : $email;
             }
             if ($request->has('first_name')) {
                 $user->first_name = $request->first_name;
             }
             if ($request->has('last_name')) {
                 $user->last_name = $request->last_name;
+            }
+            $composed = trim(($user->first_name ?? '').' '.($user->last_name ?? ''));
+            if ($composed !== '' && $request->input('name') === $user->getOriginal('name')) {
+                $user->name = $composed;
             }
             if ($request->has('phone')) {
                 $user->phone = $request->phone;
@@ -147,6 +153,8 @@ class AdminProfileController extends Controller
             }
 
             return redirect()->back()->with('success', 'Profil mis à jour avec succès');
+        } catch (ValidationException $e) {
+            throw $e;
         } catch (\Exception $e) {
             // Trace seulement en local — éviter leak chemin/structure en prod.
             \Log::error('Erreur lors de la mise à jour du profil', [

@@ -2348,6 +2348,20 @@
                         </div>
                     </div>
                     <div class="bc-card">
+                        <div class="bc-icon"><i class="fas fa-university"></i></div>
+                        <div class="bc-body">
+                            <div class="bc-label">LMD pour le service scolarité</div>
+                            <div class="bc-desc">Le service scolarité voit notes, résultats et bulletins LMD. À activer seulement si l'établissement est universitaire.</div>
+                        </div>
+                        <div class="bc-toggle">
+                            <label class="form-switch-modern">
+                                <input type="checkbox" name="scolarite.clerk_lmd_access" value="1"
+                                       {{ \App\Helpers\SettingsHelper::get('scolarite.clerk_lmd_access', '0') == '1' ? 'checked' : '' }}>
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="bc-card">
                         <div class="bc-icon"><i class="fas fa-stamp"></i></div>
                         <div class="bc-body">
                             <div class="bc-label">Approbation avant impression</div>

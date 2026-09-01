@@ -100,7 +100,16 @@ class CLISettingsController extends BaseApiController
         $reglage = Setting::query()->where('key', $valide['key'])->first();
 
         if (! $reglage) {
-            return $this->errorResponse(sprintf("Reglage « %s » introuvable.", $valide['key']), [], 404);
+            $creables = [
+                \App\Services\TenantScolariteSettings::CLERK_LMD_ACCESS,
+                \App\Services\TenantScolariteSettings::PRINT_REQUIRES_APPROVAL,
+            ];
+            if (! in_array($valide['key'], $creables, true) || ! ($valide['apply'] ?? false)) {
+                return $this->errorResponse(sprintf("Reglage « %s » introuvable.", $valide['key']), [], 404);
+            }
+
+            \App\Helpers\SettingsHelper::setOrCreate($valide['key'], $valide['value'] ?? '0', 'scolarite', 'boolean');
+            $reglage = Setting::query()->where('key', $valide['key'])->first();
         }
 
         $avant = $reglage->value;
