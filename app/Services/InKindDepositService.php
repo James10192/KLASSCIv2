@@ -54,6 +54,42 @@ class InKindDepositService
         return $subscription->fresh();
     }
 
+    /**
+     * L'etudiant a-t-il DEJA apporte l'article qui solde ce frais ?
+     *
+     * L'image inverse de {@see self::hasValidatedPayment()} : celle-la interdit
+     * de marquer un depot quand l'argent est deja entre, celle-ci interdit de
+     * faire entrer l'argent quand l'article est deja arrive. Le lui faire payer
+     * en especes apres qu'il a apporte sa ramette, c'est le faire payer deux
+     * fois.
+     *
+     * Elle vit ici parce qu'un frais depose en nature doit etre refuse a TOUS
+     * les chemins qui dirigent de l'argent vers lui — l'encaissement comme la
+     * correction d'un versement en attente. La regle vivait au depart dans un
+     * gabarit d'affichage : le tableau de la fiche d'inscription masquait le
+     * bouton « Payer », la vue en cartes servie sur les ecrans etroits ne le
+     * faisait pas, et le serveur ne verifiait rien. Une garde qui ne vit que
+     * dans une vue n'est pas une garde ; une garde recopiee dans un seul des
+     * deux chemins d'ecriture non plus.
+     *
+     * `satisfied_in_kind` ne compte que sur une souscription ACTIVE : un frais
+     * sans souscription, ou dont la souscription a ete desactivee, n'a rien
+     * depose et reste encaissable.
+     */
+    public function estDeposeEnNature(int $inscriptionId, ?int $categoryId): bool
+    {
+        if (! $categoryId) {
+            return false;
+        }
+
+        return ESBTPFraisSubscription::query()
+            ->forInscription($inscriptionId)
+            ->forCategory($categoryId)
+            ->active()
+            ->where('satisfied_in_kind', true)
+            ->exists();
+    }
+
     public function hasValidatedPayment(int $inscriptionId, int $categoryId): bool
     {
         return ESBTPPaiement::query()

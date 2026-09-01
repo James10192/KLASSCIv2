@@ -6,11 +6,13 @@ use App\Models\ESBTPPaiement;
 use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPInscription;
 use App\Models\ESBTPAnneeUniversitaire;
+use App\Exceptions\AllocationIncoherenteException;
 use App\Exceptions\RepartitionRefuseeException;
 use App\Http\Requests\Paiement\StorePaiementRequest;
 use App\Http\Requests\Paiement\UpdatePaiementRequest;
 use App\Services\Frais\RepartitionDuVersement;
 use App\Services\PaymentFilterService;
+use App\Services\InKindDepositService;
 use App\Services\MobileMoneyPaymentGuard;
 use App\Services\PaymentStatsService;
 use Illuminate\Http\Request;
@@ -380,33 +382,8 @@ class ESBTPPaiementController extends Controller
         }
 
         // Un frais deja depose en nature est SOLDE : on ne l'encaisse pas.
-        //
-        // L'etudiant a apporte sa ramette, sa chemise cartonnee. Le lui faire
-        // payer en especes, c'est le faire payer deux fois.
-        //
-        // Jusqu'ici la garde n'existait QUE dans le gabarit d'affichage : le
-        // tableau de la fiche d'inscription masquait le bouton « Payer ». La vue
-        // en cartes, servie sur les ecrans plus etroits, ne le faisait pas — et
-        // le serveur ne verifiait rien. Une garde qui ne vit que dans une vue
-        // n'est pas une garde : la vue suivante la contourne.
-        $categorieVisee = $validated['frais_category_id'] ?? null;
-
-        if ($categorieVisee) {
-            $souscriptionVisee = \App\Models\ESBTPFraisSubscription::where('inscription_id', $inscription->id)
-                ->where('frais_category_id', $categorieVisee)
-                ->where('is_active', true)
-                ->first();
-
-            if ($souscriptionVisee && $souscriptionVisee->satisfied_in_kind) {
-                \Log::warning('[caisse] encaissement refuse : frais deja depose en nature', [
-                    'inscription_id' => $inscription->id,
-                    'frais_category_id' => $categorieVisee,
-                ]);
-
-                return redirect()->back()->withErrors([
-                    'frais_category_id' => "Ce frais a deja ete depose en nature par l'etudiant : il est solde, il n'y a rien a encaisser.",
-                ])->withInput();
-            }
+        if ($refus = $this->refusDepotEnNature((int) $inscription->id, isset($validated['frais_category_id']) ? (int) $validated['frais_category_id'] : null, 'encaissement')) {
+            return redirect()->back()->withErrors(['frais_category_id' => $refus])->withInput();
         }
 
 
@@ -548,6 +525,31 @@ class ESBTPPaiementController extends Controller
     }
 
     /**
+     * Ce qui interdit de diriger de l'argent vers ce frais, s'il y a lieu.
+     *
+     * La regle elle-meme vit dans {@see InKindDepositService::estDeposeEnNature()},
+     * proprietaire du sujet. Ici on ne fait que la poser sur les DEUX chemins
+     * qui designent un frais — l'encaissement et la correction d'un versement
+     * en attente — et laisser une trace.
+     *
+     * @return string|null Le motif du refus, ou null si rien ne s'y oppose.
+     */
+    private function refusDepotEnNature(int $inscriptionId, ?int $fraisCategoryId, string $contexte): ?string
+    {
+        if (! app(InKindDepositService::class)->estDeposeEnNature($inscriptionId, $fraisCategoryId)) {
+            return null;
+        }
+
+        Log::warning('[caisse] '.$contexte.' refuse : frais deja depose en nature', [
+            'inscription_id' => $inscriptionId,
+            'frais_category_id' => $fraisCategoryId,
+            'user_id' => Auth::id(),
+        ]);
+
+        return "Ce frais a deja ete depose en nature par l'etudiant : il est solde, il n'y a rien a encaisser.";
+    }
+
+    /**
      * Ce que deviendrait ce versement, sans l'encaisser.
      *
      * L'ecran de caisse doit pouvoir montrer au caissier ou son argent va
@@ -560,6 +562,11 @@ class ESBTPPaiementController extends Controller
      * en premier, ou sur le porteur de l'avance — et la meme saisie produirait
      * deux ecritures comptables selon la porte d'entree. Le navigateur PROPOSE,
      * le serveur DECIDE, et c'est la meme decision aux deux endroits.
+     *
+     * ATTENTION en touchant a cette methode : la reponse enumere ce que
+     * l'etudiant doit ENCORE, frais par frais. C'est sa situation financiere.
+     * Sa route porte pour cela la meme permission que les autres endpoints qui
+     * la servent (cf. `routes/web.php`), et pas seulement le droit d'encaisser.
      */
     public function apercuRepartition(Request $request, RepartitionDuVersement $repartition)
     {
@@ -719,6 +726,14 @@ class ESBTPPaiementController extends Controller
 
         $validated = $request->validated();
 
+        // Le meme frais solde en nature ne s'encaisse pas davantage par une
+        // correction : rediriger un versement en attente vers la ramette deja
+        // apportee le ferait payer deux fois, exactement comme un encaissement
+        // direct l'aurait fait.
+        if ($refus = $this->refusDepotEnNature((int) $paiement->inscription_id, isset($validated['frais_category_id']) ? (int) $validated['frais_category_id'] : null, 'correction')) {
+            return redirect()->back()->withErrors(['frais_category_id' => $refus])->withInput();
+        }
+
         try {
             DB::beginTransaction();
 
@@ -759,6 +774,24 @@ class ESBTPPaiementController extends Controller
             return redirect()->route('esbtp.paiements.show', $paiement->id)
                 ->with('success', 'Paiement mis à jour avec succès.');
 
+        } catch (RepartitionRefuseeException|AllocationIncoherenteException $e) {
+            // Refus METIER, pas une panne : le nouveau montant ne trouve plus ou
+            // s'imputer, ou la ventilation reecrite ne ferait plus le compte.
+            // Le noyer dans « une erreur est survenue » laisserait le comptable
+            // sans rien a corriger — et la modification est annulee, donc c'est
+            // le message qui doit lui dire pourquoi.
+            //
+            // DEFENSIF, et assume comme tel : aucun scenario de cet ecran ne
+            // l'atteint aujourd'hui. `reventiler()` exclut le versement corrige
+            // du deja-paye, donc sa propre part revient toujours au reste du —
+            // il y a toujours ou s'imputer. Le seul cas ou tout tomberait a zero
+            // (tous les frais deposes en nature) est refuse plus haut, sur
+            // `frais_category_id`. Ce catch existe pour que la regle qui bougera
+            // un jour dans {@see RepartitionDuVersement} ressorte en message
+            // lisible plutot qu'en 500 sur un ecran qui touche a de l'argent.
+            DB::rollBack();
+
+            return redirect()->back()->withErrors(['montant' => $e->getMessage()])->withInput();
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Erreur lors de la mise à jour du paiement : ' . $e->getMessage());

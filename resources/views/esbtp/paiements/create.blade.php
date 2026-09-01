@@ -262,11 +262,64 @@
 
     /* Repartition du versement — pc-rep-* */
     .pc-rep {
-        margin-top: 1.25rem;
+        margin-top: 0;
+        margin-bottom: 1.25rem;
         padding: 1rem 1.15rem 1.1rem;
         border: 1px solid #e2e8f0;
         border-radius: 14px;
         background: #f8fafc;
+    }
+
+    /* Sans cette regle, les blocs marques `x-cloak` clignotent a chaque
+       chargement avant qu'Alpine ne prenne la main. `layouts.app` ne la porte pas. */
+    .pc-page [x-cloak] { display: none !important; }
+
+    .pc-section-hint {
+        margin: -0.35rem 0 1rem;
+        font-size: 0.8rem;
+        line-height: 1.5;
+        color: var(--pc-muted);
+    }
+
+    /* Ce que l'ecran ne sait PAS. Distingue d'un zero : une situation
+       financiere qu'on n'a pas pu lire ne se resume pas par « 0 % paye ». */
+    .pc-inconnu {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+        font-size: 0.72rem;
+        font-weight: 700;
+        color: #92400e;
+        background: rgba(245, 158, 11, 0.12);
+        border: 1px solid rgba(245, 158, 11, 0.3);
+        border-radius: 999px;
+        padding: 0.15rem 0.5rem;
+    }
+
+    .pc-note-soldes {
+        margin-bottom: 0.9rem;
+        padding: 0.6rem 0.8rem;
+        border-radius: 10px;
+        font-size: 0.8rem;
+        line-height: 1.5;
+        background: #fffbeb;
+        border: 1px solid #f59e0b;
+        color: #7c2d12;
+    }
+
+    /* Un frais deja apporte en nature : plus rien a encaisser dessus. Le
+       serveur le refuse (ESBTPPaiementController::refusDepotEnNature) ; la
+       carte le dit, elle ne le decide pas. */
+    .category-option.category-option--verrouillee {
+        opacity: 0.62;
+        cursor: not-allowed;
+        background: var(--pc-surface);
+    }
+
+    .category-option.category-option--verrouillee:hover {
+        border-color: var(--pc-border);
+        box-shadow: none;
+        transform: none;
     }
 
     .pc-rep-head {
@@ -353,6 +406,12 @@
         color: #92400e;
         font-size: 0.8rem;
         line-height: 1.5;
+    }
+
+    /* Le « Réessayer » qui accompagne une vérification impossible. */
+    .pc-rep-alert .pc-rep-toggle {
+        margin-left: 0.4rem;
+        vertical-align: baseline;
     }
 
     .amount-suggestion {
@@ -591,38 +650,27 @@
                 </div>
             </div>
             
-            <!-- Sélection de la catégorie de frais -->
-            <div id="category-selection-section" style="display: none;">
+            {{-- LE MONTANT D'ABORD.
+                 On saisit ce que l'etudiant tend, PUIS on dit ou cet argent va.
+                 L'ordre inverse — choisir un frais, puis constater qu'il ne
+                 reclame plus assez — obligeait le caissier a revenir en arriere
+                 alors que la somme, elle, ne change pas. --}}
+            <div id="amount-section" style="display: none;">
                 <div class="card-moderne payment-form-card mb-lg">
                     <div class="p-lg">
                         <div class="section-title mb-md">
-                            <i class="fas fa-tags me-2"></i>
-                            Sélection de la Catégorie de Frais
+                            <i class="fas fa-money-bill-wave me-2"></i>
+                            Montant encaissé
                         </div>
-                        
-                        <div class="category-selection" id="category-options">
-                            <!-- Les catégories seront chargées dynamiquement -->
-                        </div>
-                        
-                        <input type="hidden" name="frais_category_id" id="selected_category_id" value="{{ old('frais_category_id') }}">
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Informations du paiement -->
-            <div id="payment-details-section" style="display: none;">
-                <div class="card-moderne payment-form-card mb-lg">
-                    <div class="p-lg">
-                        <div class="section-title mb-md">
-                            <i class="fas fa-money-check-alt me-2"></i>
-                            Détails du Paiement
-                        </div>
-                        
+
                         <div class="row" x-data="{
                                 montant: {{ (int) old('montant', 0) }},
-                                threshold: {{ (int) ($unusualAmountThreshold ?? 500000) }},
+                                saisi: {{ (old('montant') !== null && old('montant') !== '') ? 'true' : 'false' }},
+                                threshold: {{ (int) $unusualAmountThreshold }},
                                 confirmed: false,
+                                confirmedZero: false,
                                 get isUnusual() { return this.montant > this.threshold; },
+                                get isZero() { return this.saisi && this.montant === 0; },
                                 get formattedThreshold() { return new Intl.NumberFormat('fr-FR').format(this.threshold); },
                                 get formattedMontant() { return new Intl.NumberFormat('fr-FR').format(this.montant); },
                             }">
@@ -631,7 +679,7 @@
                                     <div class="amount-input-group">
                                         <input type="number" name="montant" id="montant" class="form-control" min="0" step="1"
                                                value="{{ old('montant') }}" required
-                                               x-on:input="montant = parseInt($event.target.value || 0); confirmed = false"
+                                               x-on:input="montant = parseInt($event.target.value || 0); saisi = $event.target.value !== ''; confirmed = false; confirmedZero = false"
                                                :style="isUnusual ? 'border-color:#f59e0b;background:#fffbeb;' : ''">
                                         <span class="fcfa-suffix position-absolute end-0 top-50 translate-middle-y me-3 text-muted">FCFA</span>
                                     </div>
@@ -663,6 +711,34 @@
                                             </div>
                                         </div>
                                     </div>
+
+                                    {{-- Garde-fou montant nul.
+                                         Le serveur refuse deja un versement a zero franc sans
+                                         confirmation explicite (StorePaiementRequest), mais cet
+                                         ecran n'offrait AUCUNE case a cocher : la regle etait
+                                         donc insatisfiable, et une exoneration se soldait par un
+                                         message d'erreur sans issue. --}}
+                                    <div x-show="isZero" x-cloak x-transition.opacity
+                                         class="pc-guard-zero" style="margin-top:12px;padding:12px 14px;background:#fffbeb;border:1.5px solid #f59e0b;border-radius:10px;">
+                                        <div style="display:flex;gap:10px;align-items:flex-start;">
+                                            <i class="fas fa-circle-exclamation" style="color:#d97706;font-size:1.1rem;margin-top:2px;flex-shrink:0;"></i>
+                                            <div style="flex:1;min-width:0;">
+                                                <div style="font-weight:700;color:#92400e;font-size:.88rem;margin-bottom:4px;">
+                                                    Montant à 0 FCFA
+                                                </div>
+                                                <div style="font-size:.82rem;color:#7c2d12;line-height:1.5;">
+                                                    Aucun argent n'entre en caisse. Ce n'est légitime que pour une exonération : dans tous les autres cas, corrigez le montant.
+                                                </div>
+                                                <label class="form-check" style="margin-top:8px;display:flex;gap:8px;align-items:center;cursor:pointer;">
+                                                    <input type="checkbox" name="confirmed_zero_amount" value="1"
+                                                           x-model="confirmedZero" class="form-check-input" style="margin-top:0;">
+                                                    <span style="font-size:.84rem;color:#92400e;font-weight:600;">
+                                                        Je confirme qu'il s'agit d'une exonération
+                                                    </span>
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                             <div class="col-md-6">
@@ -672,27 +748,63 @@
                                 </div>
                             </div>
                         </div>
+                    </div>
+                </div>
+            </div>
 
-                        {{-- Ou cet argent va atterrir. Le serveur repond, cet ecran
-                             se contente de montrer : la regle de repartition n'existe
-                             qu'en un exemplaire, et une seconde ecriture ici finirait
-                             par imputer autrement que l'enregistrement lui-meme. --}}
-                        <div class="pc-rep" id="repartition-section" style="display:none;">
-                            <div class="pc-rep-head">
-                                <div>
-                                    <div class="pc-rep-title"><i class="fas fa-code-branch me-2"></i>Répartition du versement</div>
-                                    <div class="pc-rep-sub" id="repartition-sub">Sur quels frais cet argent sera imputé.</div>
-                                </div>
-                                <button type="button" class="pc-rep-toggle" id="repartition-toggle">
-                                    <i class="fas fa-sliders-h me-1"></i><span id="repartition-toggle-label">Répartir moi-même</span>
-                                </button>
-                            </div>
-
-                            <div id="repartition-lignes"></div>
-
-                            <div class="pc-rep-alert" id="repartition-erreur" style="display:none;"></div>
+            <!-- Sélection de la catégorie de frais -->
+            <div id="category-selection-section" style="display: none;">
+                <div class="card-moderne payment-form-card mb-lg">
+                    <div class="p-lg">
+                        <div class="section-title mb-md">
+                            <i class="fas fa-tags me-2"></i>
+                            Frais servi en priorité
                         </div>
-                        
+
+                        <p class="pc-section-hint">
+                            Le frais choisi ici est servi le premier. Si le versement dépasse ce qu'il
+                            réclame, le surplus va aux frais suivants ; s'il dépasse tout ce que
+                            l'étudiant doit, l'avance reste sur ce frais-là.
+                        </p>
+
+                        <div class="category-selection" id="category-options">
+                            <!-- Les catégories seront chargées dynamiquement -->
+                        </div>
+
+                        <input type="hidden" name="frais_category_id" id="selected_category_id" value="{{ old('frais_category_id') }}">
+                    </div>
+                </div>
+            </div>
+
+            {{-- Ou cet argent va atterrir. Le serveur repond, cet ecran
+                 se contente de montrer : la regle de repartition n'existe
+                 qu'en un exemplaire, et une seconde ecriture ici finirait
+                 par imputer autrement que l'enregistrement lui-meme. --}}
+            <div class="pc-rep" id="repartition-section" style="display:none;">
+                <div class="pc-rep-head">
+                    <div>
+                        <div class="pc-rep-title"><i class="fas fa-code-branch me-2"></i>Répartition du versement</div>
+                        <div class="pc-rep-sub" id="repartition-sub">Sur quels frais cet argent sera imputé.</div>
+                    </div>
+                    <button type="button" class="pc-rep-toggle" id="repartition-toggle">
+                        <i class="fas fa-sliders-h me-1"></i><span id="repartition-toggle-label">Répartir moi-même</span>
+                    </button>
+                </div>
+
+                <div id="repartition-lignes"></div>
+
+                <div class="pc-rep-alert" id="repartition-erreur" style="display:none;"></div>
+            </div>
+
+            <!-- Modalités du règlement -->
+            <div id="payment-details-section" style="display: none;">
+                <div class="card-moderne payment-form-card mb-lg">
+                    <div class="p-lg">
+                        <div class="section-title mb-md">
+                            <i class="fas fa-money-check-alt me-2"></i>
+                            Modalités du règlement
+                        </div>
+
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="form-floating-modern pc-field">
@@ -762,9 +874,40 @@ $(function() {
     
     let currentStudent = null;
     let currentInscription = null;
-    let studentBalance = null;
     let categories = [];
     let selectedCategory = null;
+
+    /**
+     * La situation financiere de l'etudiant, ou ce qu'on en sait.
+     *
+     *   null            — on ne sait pas (rien demande, ou la lecture a echoue)
+     *   'chargement'    — la reponse est en route
+     *   {categories:…} — la reponse, lue
+     *
+     * UNE seule variable, parce que deux (un etat + des donnees) se
+     * desynchronisent : le jour ou un chemin de reinitialisation en oublie une,
+     * l'ecran redit « 0 % payé » sur un frais peut-etre deja regle. C'est
+     * exactement le defaut corrige ici : les frais et les soldes se chargent par
+     * deux requetes independantes, et les cartes se rendaient avec celle qui
+     * repondait la premiere. Une donnee manquante se dit ; elle ne se devine pas.
+     */
+    let soldes = null;
+
+    function soldesConnus() {
+        return soldes !== null && soldes !== 'chargement' && Boolean(soldes.categories);
+    }
+
+    /**
+     * Tout ce qu'on savait de l'etudiant precedent.
+     *
+     * Rassemble ici pour que les cinq chemins qui changent d'etudiant ou
+     * d'inscription oublient la MEME chose. Eparpille, le prochain chemin ajoute
+     * en oubliera une part, et l'ecran affichera les frais de quelqu'un d'autre.
+     */
+    function oublierEtudiant() {
+        soldes = null;
+        resetCategorySelection();
+    }
 
     // Repartition du versement : declare ici, avec les autres etats de l'ecran,
     // pour qu'aucune fonction appelee tot ne tombe sur une variable pas encore
@@ -847,6 +990,7 @@ $(function() {
             currentInscription = '{{ $inscription->id }}';
             showInscriptionNotice('success', 'Inscription chargée automatiquement depuis le contexte courant.');
             $('#student-progress-section').show();
+            $('#amount-section').show();
             loadStudentBalance(currentStudent, currentInscription);
             loadCategories(currentInscription);
         @else
@@ -860,14 +1004,15 @@ $(function() {
         debugLog('=== loadStudentData appelée avec ID:', etudiantId);
 
         currentInscription = null;
-        studentBalance = null;
+        oublierEtudiant();
         hideInscriptionNotice();
         resetCategorySelection();
         $('#student-progress-section').hide();
+        $('#amount-section').hide();
         $('#category-selection-section').hide();
         $('#payment-details-section').hide();
         $('#submit-section').hide();
-        
+
         // Charger les inscriptions
         loadInscriptions(etudiantId);
     }
@@ -958,7 +1103,9 @@ $(function() {
                 if (selectedInscriptionId) {
                     $('#inscription_id').trigger('change');
                 } else {
+                    oublierEtudiant();
                     resetProgressDisplay();
+                    $('#amount-section').hide();
                     $('#category-selection-section').hide();
                     $('#payment-details-section').hide();
                     $('#submit-section').hide();
@@ -975,7 +1122,11 @@ $(function() {
     // Charger les soldes de l'étudiant
     function loadStudentBalance(etudiantId, inscriptionId = null) {
         debugLog('=== Chargement des soldes pour étudiant:', etudiantId, 'inscription:', inscriptionId);
-        
+
+        soldes = 'chargement';
+        resetProgressDisplay();
+        rendreLesCategories();
+
         $.ajax({
             url: "{{ route('esbtp.api.etudiants.soldes') }}",
             data: {
@@ -985,15 +1136,32 @@ $(function() {
             dataType: 'json',
             success: function(data) {
                 debugLog('Soldes reçus:', data);
-                studentBalance = data;
+                soldes = (data && data.categories) ? data : null;
                 updateProgressDisplay(data);
+                // Les cartes de frais portent la progression de chaque frais.
+                // Elles ont pu se rendre AVANT cette reponse : sans ce second
+                // rendu, elles resteraient sur ce qu'elles ne savaient pas.
+                rendreLesCategories();
             },
             error: function(xhr, status, error) {
-                studentBalance = null;
+                soldes = null;
                 resetProgressDisplay();
+                rendreLesCategories();
                 debugWarn('Impossible de charger les soldes:', {status, error});
             }
         });
+    }
+
+    /**
+     * Re-rend les cartes de frais avec ce qu'on sait A CET INSTANT.
+     *
+     * Appelable a tout moment : la selection courante est conservee par
+     * displayCategories(), qui relit le frais deja designe avant de choisir.
+     */
+    function rendreLesCategories() {
+        if (categories.length > 0) {
+            displayCategories(categories);
+        }
     }
     
     // Gestion du changement d'inscription
@@ -1006,11 +1174,16 @@ $(function() {
             resetCategorySelection();
             $('#category-selection-section').hide();
             $('#student-progress-section').fadeIn();
+            // Le montant se saisit des que l'inscription est connue : il ne
+            // depend d'aucun frais, c'est ce que l'etudiant tend.
+            $('#amount-section').fadeIn();
             loadStudentBalance(currentStudent, inscriptionId);
             loadCategories(inscriptionId);
         } else {
+            oublierEtudiant();
             resetProgressDisplay();
             $('#student-progress-section').hide();
+            $('#amount-section').hide();
             resetCategorySelection();
         }
     });
@@ -1038,6 +1211,20 @@ $(function() {
             },
             error: function(xhr, status, error) {
                 debugError('Erreur chargement catégories:', {status, error, response: xhr.responseText});
+
+                // La liste des frais n'a pas pu etre lue. Sans elle, aucun frais
+                // ne peut etre designe — donc rien n'est encaissable — et cacher
+                // la section laisserait le caissier devant un montant saisi sans
+                // savoir pourquoi il ne peut pas aller plus loin.
+                categories = [];
+                $('#category-options').html(
+                    '<div class="pc-note-soldes"><i class="fas fa-triangle-exclamation me-1"></i>'
+                    + 'La liste des frais de cet étudiant n\'a pas pu être lue. Aucun encaissement '
+                    + 'n\'est possible tant qu\'elle ne l\'est pas : rechargez la page, et prévenez '
+                    + 'le support si cela persiste.</div>'
+                );
+                $('#category-selection-section').show();
+                bloquerEnvoi(true);
             }
         });
     }
@@ -1067,8 +1254,27 @@ $(function() {
                 inKindBadge = '<span class="badge bg-info text-white small ms-2" title="L&#39;etudiant peut apporter l&#39;article au lieu de payer. Le marquer se fait depuis la fiche d&#39;inscription."><i class="fas fa-box"></i> Payable en nature</span>';
             }
             
+            // La progression n'est affichee que si elle est CONNUE. Un « 0 %
+            // payé » sur une situation qu'on n'a pas pu lire est un mensonge
+            // qui invite a encaisser une seconde fois.
+            var etatProgression = progress.connu
+                ? `<span class="text-primary small">${progress.percentage}% payé</span>`
+                : `<span class="pc-inconnu" title="La situation financière de cet étudiant n'a pas pu être lue."><i class="fas fa-question"></i> situation inconnue</span>`;
+
+            var barreProgression = progress.connu
+                ? `<div class="progress-bar-modern mt-2"><div class="progress-fill bg-primary" style="width: ${progress.percentage}%"></div></div>`
+                : '';
+
+            // Un frais deja apporte en nature est solde : le serveur refuse de
+            // l'encaisser, la carte le montre inerte plutot que de laisser le
+            // caissier saisir un versement qui sera rejete a l'envoi.
+            var verrouillee = Boolean(category.satisfied_in_kind);
+
             html += `
-                <div class="category-option" data-category-id="${category.id}" data-category="${JSON.stringify(category).replace(/"/g, '&quot;')}">
+                <div class="category-option${verrouillee ? ' category-option--verrouillee' : ''}"
+                     data-category-id="${category.id}"
+                     data-verrouillee="${verrouillee ? '1' : '0'}"
+                     data-category="${JSON.stringify(category).replace(/"/g, '&quot;')}">
                     <div class="category-icon bg-primary text-white">
                         <i class="${icon}"></i>
                     </div>
@@ -1076,24 +1282,24 @@ $(function() {
                     <p class="text-muted small mb-2">${category.description || 'Frais scolaires'}</p>
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="badge bg-light text-dark">${formatAmount(category.montant)} FCFA</span>
-                        <span class="text-primary small">${progress.percentage}% payé</span>
+                        ${etatProgression}
                     </div>
-                    <div class="progress-bar-modern mt-2">
-                        <div class="progress-fill bg-primary" style="width: ${progress.percentage}%"></div>
-                    </div>
+                    ${barreProgression}
                 </div>
             `;
         });
-        
+
         $('#category-options').html(html);
-        
+
         // Ajouter les événements de clic
         $('.category-option').on('click', function() {
             selectCategory($(this));
         });
 
         // Pré-sélection intelligente pour accélérer le flux d'encaissement.
-        const $allOptions = $('#category-options .category-option');
+        // Un frais deja depose en nature n'est jamais preselectionne : l'ecran
+        // s'ouvrirait sur un frais que l'enregistrement refusera.
+        const $allOptions = $('#category-options .category-option[data-verrouillee="0"]');
         if ($allOptions.length > 0) {
             const previouslySelectedId = String($('#selected_category_id').val() || '');
             let $target = previouslySelectedId
@@ -1107,17 +1313,23 @@ $(function() {
             selectCategory($target);
         }
     }
-    
+
     // Sélectionner une catégorie
     function selectCategory($element) {
+        if ($element.attr('data-verrouillee') === '1') {
+            // La vraie garde est au serveur (refusDepotEnNature) ; celle-ci
+            // evite seulement au caissier de saisir pour rien.
+            return;
+        }
+
         $('.category-option').removeClass('selected');
         $element.addClass('selected');
-        
+
         selectedCategory = JSON.parse($element.attr('data-category'));
         $('#selected_category_id').val(selectedCategory.id);
-        
+
         debugLog('Catégorie sélectionnée:', selectedCategory);
-        
+
         // Afficher la section de détails du paiement
         loadPaymentDetails(selectedCategory);
         $('#payment-details-section').fadeIn();
@@ -1212,15 +1424,45 @@ $(function() {
                 return;
             }
             const reponse = xhr.responseJSON || {};
+            const refusMetier = xhr.status === 422;
+
+            // Les lignes affichees decrivent une saisie qui n'est plus celle en
+            // cours : les laisser en place ferait lire une repartition qui
+            // n'aura pas lieu.
+            $('#repartition-lignes').html('');
             $('#repartition-section').show();
+
+            // `.text()` et pas `.html()` : le message vient du serveur, il n'a
+            // aucune raison de porter des balises.
             $('#repartition-erreur')
-                .text(reponse.message || "Impossible de vérifier la répartition de ce versement.")
+                .text(reponse.message
+                    || "La répartition de ce versement n'a pas pu être vérifiée. "
+                       + "Tant qu'elle ne l'est pas, l'enregistrement reste bloqué : "
+                       + "l'écran ne devine pas où cet argent irait.")
                 .show();
-            // On empêche l'envoi tant que la caisse n'a pas corrigé, mais c'est
-            // l'enregistrement qui refuse pour de bon.
-            bloquerEnvoi(xhr.status === 422);
+
+            if (!refusMetier) {
+                $('#repartition-erreur').append(
+                    $('<button>', { type: 'button', class: 'pc-rep-toggle', id: 'repartition-reessayer' })
+                        .append($('<i>', { class: 'fas fa-rotate-right me-1' }))
+                        .append('Réessayer')
+                );
+            }
+
+            // On bloque sur TOUTE panne, pas seulement sur un refus metier.
+            //
+            // L'ecran laissait passer les autres (reseau coupe, 500, session
+            // expiree) : il affichait une alerte et rendait quand meme le
+            // bouton actif, avec sous les yeux du caissier une repartition
+            // perimee. L'enregistrement refuse toujours pour de bon — mais un
+            // ecran qui n'a rien pu verifier ne doit pas laisser croire le
+            // contraire.
+            bloquerEnvoi(true);
+
+            $('#repartition-reessayer').off('click').on('click', demanderRepartition);
         });
     }
+
 
     function afficherRepartition(allocations, reste) {
         if (!repartitionManuelle) {
@@ -1247,7 +1489,10 @@ $(function() {
         // les remplacer à chaque frappe ferait sauter le curseur du caissier.
         if ($('.pc-rep-input').length === 0) {
             let html = '';
-            categories.forEach(function(categorie) {
+            // Un frais deja apporte en nature ne reclame plus rien : lui offrir
+            // une case de saisie invite a une repartition que le serveur
+            // refusera (son reste vaut zero).
+            categories.filter(function(c) { return !c.satisfied_in_kind; }).forEach(function(categorie) {
                 const propose = allocations.find(function(l) { return l.frais_category_id === categorie.id; });
                 const restant = reste[categorie.id];
                 const detail = (restant === undefined)
@@ -1294,13 +1539,20 @@ $(function() {
 
     $('#montant').on('input', rafraichirRepartition);
 
+    /**
+     * Ce qui a deja ete paye sur ce frais, ou `null` si on ne le sait pas.
+     *
+     * Le `null` est le point entier de cette fonction : elle renvoyait zero
+     * dans tous les cas d'ignorance, et tout ce qui l'appelle en concluait que
+     * rien n'avait ete paye.
+     */
     function getPaidAmountForCategory(categoryId) {
-        if (!studentBalance || !studentBalance.categories) {
-            return 0;
+        if (!soldesConnus()) {
+            return null;
         }
 
         var key = String(categoryId);
-        var categoryBalance = studentBalance.categories[key] || studentBalance.categories[categoryId] || null;
+        var categoryBalance = soldes.categories[key] || soldes.categories[categoryId] || null;
 
         if (typeof categoryBalance === 'number') {
             return Number.isFinite(categoryBalance) ? categoryBalance : 0;
@@ -1311,16 +1563,26 @@ $(function() {
             return Number.isFinite(paid) ? paid : 0;
         }
 
+        // Le frais n'est pas dans les soldes : il n'a rien recu. On le sait,
+        // cette fois — la reponse a bien ete lue.
         return 0;
     }
-    
+
     // Calculer les suggestions de montant
     function calculateAmountSuggestions(category) {
         var suggestions = [];
         var total = Number(category.montant || 0);
         var paid = getPaidAmountForCategory(category.id);
+
+        // Sans le deja-paye, « solde restant » vaudrait le tarif entier et
+        // proposerait d'encaisser une seconde fois un frais peut-etre solde.
+        // On prefere ne rien proposer.
+        if (paid === null) {
+            return [];
+        }
+
         var remaining = Math.max(0, total - paid);
-        
+
         // Suggestions intelligentes
         if (remaining > 0) {
             suggestions.push({
@@ -1360,23 +1622,39 @@ $(function() {
                 </button>
             `;
         });
-        
+
         $('#amount-suggestions').html(html);
-        
-        // Ajouter les événements de clic
+
+        // Un evenement NATIF, pas `$.trigger('input')`.
+        //
+        // jQuery ne notifie que ses propres abonnes : ni la garde « montant
+        // inhabituel » (Alpine, `x-on:input`) ni l'apercu de repartition ne
+        // voyaient un montant pose par une suggestion. Le caissier cliquait
+        // « Solde restant », et l'ecran ne lui montrait plus ou l'argent allait.
         $('.amount-suggestion').on('click', function() {
-            var amount = $(this).attr('data-amount');
-            $('#montant').val(amount).focus();
+            var champ = document.getElementById('montant');
+            if (!champ) {
+                return;
+            }
+            champ.value = $(this).attr('data-amount');
+            champ.dispatchEvent(new Event('input', { bubbles: true }));
+            champ.focus();
         });
     }
-    
+
     // Calculer le progrès d'une catégorie
     function calculateCategoryProgress(category) {
         var paid = getPaidAmountForCategory(category.id);
         var total = Number(category.montant || 0);
+
+        if (paid === null) {
+            return { connu: false, paid: null, total: total, remaining: null, percentage: 0 };
+        }
+
         var percentage = total > 0 ? Math.round((paid / total) * 100) : 0;
-        
+
         return {
+            connu: true,
             paid: paid,
             total: total,
             remaining: Math.max(0, total - paid),
@@ -1391,7 +1669,8 @@ $(function() {
             resetProgressDisplay();
             return;
         }
-        
+
+
         var totalPaid = 0;
         var totalDue = 0;
         var html = '';
@@ -1432,9 +1711,37 @@ $(function() {
         $('#total-progress').text(totalPercentage + '% payé');
     }
 
+    /**
+     * Ce que l'ecran montre quand il ne sait pas.
+     *
+     * « 0 % payé » etait la reponse par defaut, y compris pendant le
+     * chargement et apres un echec : le caissier lisait une dette entiere sur
+     * un etudiant peut-etre a jour. On dit desormais ce qu'il en est.
+     */
     function resetProgressDisplay() {
-        $('#categories-progress').html('');
-        $('#total-progress').text('0% payé');
+        if (soldes === 'chargement') {
+            $('#categories-progress').html(
+                '<div class="pc-note-soldes"><i class="fas fa-spinner fa-spin me-1"></i>Lecture de la situation financière…</div>'
+            );
+            $('#total-progress').text('…');
+            return;
+        }
+
+        // Pas d'inscription choisie : il n'y a rien a lire, donc rien a
+        // signaler. Une alerte ici ne dirait qu'une chose — que l'ecran attend.
+        if (!currentInscription) {
+            $('#categories-progress').html('');
+            $('#total-progress').text('—');
+            return;
+        }
+
+        $('#categories-progress').html(
+            '<div class="pc-note-soldes"><i class="fas fa-triangle-exclamation me-1"></i>'
+            + 'La situation financière de cet étudiant n\'a pas pu être lue. Les montants déjà '
+            + 'payés ne sont donc pas affichés, et aucun montant n\'est suggéré. La répartition '
+            + 'ci-dessous, elle, est calculée par le serveur et fait foi.</div>'
+        );
+        $('#total-progress').text('situation inconnue');
     }
     
     // Obtenir l'icône pour un type de catégorie
@@ -1502,11 +1809,12 @@ $(function() {
     // Réinitialiser le formulaire
     function resetForm() {
         currentInscription = null;
-        studentBalance = null;
+        oublierEtudiant();
         hideInscriptionNotice();
         resetProgressDisplay();
         $('#inscription_id').val('').trigger('input');
         $('#student-progress-section').hide();
+        $('#amount-section').hide();
         $('#category-selection-section').hide();
         $('#payment-details-section').hide();
         $('#submit-section').hide();
@@ -1519,6 +1827,9 @@ $(function() {
         $('#selected_category_id').val('');
         $('#amount-suggestions').html('');
         selectedCategory = null;
+        // Sans cela, un re-rendu declenche par l'arrivee des soldes
+        // reafficherait les frais de l'etudiant PRECEDENT.
+        categories = [];
         $('#payment-details-section').hide();
         $('#submit-section').hide();
 
@@ -1535,17 +1846,36 @@ $(function() {
 
     let isSubmitting = false;
 
+    /**
+     * Amene une garde a l'ecran et met le curseur sur sa case a cocher.
+     */
+    function exigerConfirmation($alerte, $case) {
+        if ($alerte.length) {
+            $alerte[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        setTimeout(function () { $case.trigger('focus'); }, 400);
+    }
+
     $('#payment-form').on('submit', function(e) {
         const montantVal = parseInt($('#montant').val() || 0);
-        const threshold = parseInt(@json((int) ($unusualAmountThreshold ?? 500000)));
+        // Le seuil vient du serveur, qui le lit dans les reglages de l'ecole.
+        // Le recopier ici avec une valeur de repli en ferait une seconde source
+        // de verite, muette le jour ou l'ecole change la sienne.
+        const threshold = {{ (int) $unusualAmountThreshold }};
+
         const $confirmCheckbox = $('input[name="confirmed_unusual_amount"]');
         if (montantVal > threshold && $confirmCheckbox.length > 0 && !$confirmCheckbox.is(':checked')) {
             e.preventDefault();
-            const $alert = $('.qw3-unusual-alert');
-            if ($alert.length) {
-                $alert[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
-                setTimeout(() => $confirmCheckbox.trigger('focus'), 400);
-            }
+            exigerConfirmation($('.qw3-unusual-alert'), $confirmCheckbox);
+            return false;
+        }
+
+        // Meme garde pour le versement nul, que le serveur refuse aussi sans
+        // confirmation explicite (StorePaiementRequest).
+        const $zeroCheckbox = $('input[name="confirmed_zero_amount"]');
+        if (montantVal === 0 && $zeroCheckbox.length > 0 && !$zeroCheckbox.is(':checked')) {
+            e.preventDefault();
+            exigerConfirmation($('.pc-guard-zero'), $zeroCheckbox);
             return false;
         }
 
