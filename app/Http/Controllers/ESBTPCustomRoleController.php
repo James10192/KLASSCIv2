@@ -44,6 +44,7 @@ class ESBTPCustomRoleController extends Controller
         'responsableScolarite',
         'serviceScolarite',
         'agentInscription',
+        'chargeCommunication',
         'comptable',
         'caissier',
         'coordinateur',

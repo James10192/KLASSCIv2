@@ -219,6 +219,19 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             ->name('dashboard.agent-inscription');
     });
 
+    Route::middleware(['permission:identity.communicate'])->group(function () {
+        Route::get('/dashboard/communication', [\App\Http\Controllers\CommunicationDashboardController::class, 'index'])
+            ->name('dashboard.communication');
+    });
+
+    Route::middleware(['permission:mailpulse.view'])->prefix('esbtp/communication')->name('esbtp.communication.')->group(function () {
+        Route::get('mailpulse', [\App\Http\Controllers\CommunicationMailPulseController::class, 'index'])
+            ->name('mailpulse');
+        Route::post('mailpulse/test', [\App\Http\Controllers\CommunicationMailPulseController::class, 'test'])
+            ->middleware(['permission:mailpulse.send', 'throttle:10,1'])
+            ->name('mailpulse.test');
+    });
+
     Route::middleware(['permission:notes.window.manage'])->group(function () {
         Route::post('/esbtp/notes-windows', [\App\Http\Controllers\ESBTPNotesWindowController::class, 'store'])
             ->name('esbtp.notes-windows.store');
@@ -649,7 +662,7 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
         });
 
         // Routes accessibles aux superAdmin, secrÃ©taires, coordinateurs et enseignants
-        Route::middleware(['auth', 'permission:admin.access|identity.direct_studies|identity.registrar|identity.registrar_clerk|identity.enrollment_officer', 'paywall'])->group(function () {
+        Route::middleware(['auth', 'permission:admin.access|identity.direct_studies|identity.registrar|identity.registrar_clerk|identity.enrollment_officer|identity.communicate', 'paywall'])->group(function () {
             // Routes pour les classes ESBTP - index et show avec permission view_classes
             Route::get('classes', [ESBTPClasseController::class, 'index'])
                 ->name('classes.index')
@@ -2318,7 +2331,7 @@ Route::middleware(['auth', 'permission:system.manage'])->group(function () {
 });
 
 // Routes pour la gestion des Ã©tudiants
-Route::middleware(['auth', 'permission:admin.access|identity.direct_studies|identity.registrar|identity.registrar_clerk|identity.enrollment_officer', 'paywall'])->group(function () {
+Route::middleware(['auth', 'permission:admin.access|identity.direct_studies|identity.registrar|identity.registrar_clerk|identity.enrollment_officer|identity.communicate', 'paywall'])->group(function () {
     // AJAX pour charger toutes les inscriptions d'un Ã©tudiant
     Route::get('esbtp/etudiants/{etudiant}/all-inscriptions', [ESBTPStudentController::class, 'getAllInscriptions'])
         ->name('esbtp.etudiants.all-inscriptions')

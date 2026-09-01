@@ -25,7 +25,7 @@ class CLIUserController extends BaseApiController
      */
     private const VALID_ROLES = [
         'superAdmin', 'admin', 'secretaire', 'responsableScolarite', 'serviceScolarite',
-        'agentInscription', 'coordinateur', 'directeurEtudes', 'enseignant',
+        'agentInscription', 'chargeCommunication', 'coordinateur', 'directeurEtudes', 'enseignant',
         'etudiant', 'parent', 'comptable', 'caissier', 'teacher',
     ];
 

@@ -23,7 +23,7 @@ class AdminProfileController extends Controller
         // pouvoir consulter sa fiche sans qu'on rouvre ce constructeur.
         // Cf. .claude/rules/customizable-roles.md
         $this->middleware('permission:admin.access|identity.direct_studies|identity.registrar'
-            . '|identity.registrar_clerk|identity.enrollment_officer|identity.coordinate|identity.teach');
+            . '|identity.registrar_clerk|identity.enrollment_officer|identity.communicate|identity.coordinate|identity.teach');
     }
 
     /**
