@@ -27,23 +27,23 @@
     <table width="100%" border="0" cellspacing="0" cellpadding="0">
         <tr>
             <!-- Logo Column -->
-            <td width="16%" style="background-color: {{ $hdrBg }}; padding: 4px 6px; text-align: center; vertical-align: middle; border-right: 2px solid rgba(255,255,255,0.2);">
+            <td width="16%" style="background-color: {{ $hdrBg }}; padding: 6px 8px; text-align: center; vertical-align: middle; border-right: 2px solid rgba(255,255,255,0.2);">
                 @if(isset($settings['show_logo']) && $settings['show_logo'] && isset($settings['logo_base64']))
                     <img src="{{ $settings['logo_base64'] }}"
-                         style="max-height: 38px; max-width: 82px;"
+                         style="max-height: 52px; max-width: 110px;"
                          alt="Logo">
                 @else
-                    <div style="font-size: 26px; font-weight: 900; color: {{ $hdrText }}; opacity: 0.4;">K</div>
+                    <div style="font-size: 32px; font-weight: 900; color: {{ $hdrText }}; opacity: 0.4;">K</div>
                 @endif
             </td>
             <!-- Info Column -->
-            <td width="84%" style="background-color: {{ $hdrBg }}; padding: 4px 10px; vertical-align: middle;">
+            <td width="84%" style="background-color: {{ $hdrBg }}; padding: 6px 12px; vertical-align: middle;">
                 <!-- School Name -->
-                <div style="font-size: 15px; font-weight: 700; color: {{ $hdrText }}; margin-bottom: 1px;">
+                <div style="font-size: 17px; font-weight: 700; color: {{ $hdrText }}; margin-bottom: 1px;">
                     {{ $settings['school_name'] ?? 'KLASSCI' }}
                 </div>
                 <!-- Contact -->
-                <div style="font-size: 9.5px; color: {{ $hdrText }}; opacity: 0.8; margin-bottom: 2px;">
+                <div style="font-size: 11px; color: {{ $hdrText }}; opacity: 0.8; margin-bottom: 2px;">
                     @if($settings['school_address'] ?? false){{ $settings['school_address'] }}@endif
                     @if($settings['school_phone'] ?? false) &nbsp;|&nbsp; Tél: {{ $settings['school_phone'] }}@endif
                     @if($settings['school_email'] ?? false) &nbsp;|&nbsp; Email: {{ $settings['school_email'] }}@endif
@@ -52,10 +52,10 @@
                 <div style="border-top: 1px solid rgba(255,255,255,0.3); padding-top: 2px;">
                     <table width="100%" border="0" cellspacing="0" cellpadding="0">
                         <tr>
-                            <td width="60%" style="font-size: 14px; font-weight: 700; color: {{ $hdrText }}; letter-spacing: 0.4px;">
+                            <td width="60%" style="font-size: 16px; font-weight: 700; color: {{ $hdrText }}; letter-spacing: 0.4px;">
                                 REÇU DE PAIEMENT
                             </td>
-                            <td width="40%" style="font-size: 10.5px; color: {{ $hdrText }}; opacity: 0.75; text-align: right;">
+                            <td width="40%" style="font-size: 12px; color: {{ $hdrText }}; opacity: 0.75; text-align: right;">
                                 {{ $paiement->inscription->anneeUniversitaire->name ?? '' }}
                             </td>
                         </tr>
