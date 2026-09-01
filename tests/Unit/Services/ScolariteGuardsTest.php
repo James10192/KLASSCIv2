@@ -51,6 +51,21 @@ class ScolariteGuardsTest extends TestCase
         $this->assertTrue($guard->canPrint($user, 'certificat', 12));
     }
 
+    public function test_print_denial_messages_are_explicit(): void
+    {
+        $settings = Mockery::mock(TenantScolariteSettings::class);
+        $guard = new DocumentPrintGuard($settings);
+
+        $this->assertSame(
+            'Impression bloquée : l\'accord de la responsable scolarité est requis.',
+            $guard->message(DocumentPrintGuard::DENY_APPROVAL)
+        );
+        $this->assertSame(
+            'Vous n\'avez pas le droit d\'imprimer ce document.',
+            $guard->message(DocumentPrintGuard::DENY_PERMISSION)
+        );
+    }
+
     public function test_cashier_pre_enrollment_defaults_on(): void
     {
         $settings = new TenantScolariteSettings();

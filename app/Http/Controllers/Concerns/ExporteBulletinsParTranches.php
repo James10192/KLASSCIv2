@@ -6,6 +6,7 @@ use App\Domain\BtsTroncCommun\BtsClassCohortCounter;
 use App\Domain\Bulletins\FiltresBulletins;
 use App\Models\ESBTPBulletin;
 use App\Services\BulletinBulkPdfExporter;
+use App\Services\DocumentPrintGuard;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -75,6 +76,8 @@ trait ExporteBulletinsParTranches
                 'total' => count($contexte['bulletin_ids']),
                 'absents' => count($contexte['ungenerated_ids']),
                 'absents_noms' => $contexte['ungenerated_noms'] ?? [],
+                'bloques_solde' => $contexte['bloques_solde'] ?? 0,
+                'bloques_approbation' => $contexte['bloques_approbation'] ?? 0,
                 'taille_tranche' => $this->tailleTrancheExport(),
             ],
         ]);
@@ -246,6 +249,19 @@ trait ExporteBulletinsParTranches
         $generes = (clone $filtre)->whereNotNull('esbtp_bulletins.moyenne_generale');
         $this->applyBulletinExportOrder($generes, $request);
         $ids = $generes->pluck('esbtp_bulletins.id')->map(fn ($id) => (int) $id)->all();
+        $filtreExport = $this->filtrerExportScolarite($request, $ids);
+
+        if ($filtreExport['bloques_solde'] + $filtreExport['bloques_approbation'] > 0) {
+            $ids = $filtreExport['allowed_ids'];
+        }
+
+        if ($ids === [] && ($filtreExport['bloques_solde'] + $filtreExport['bloques_approbation']) > 0) {
+            throw new \RuntimeException(sprintf(
+                'Export bloqué : %d bulletin(s) avec solde impayé, %d sans accord de la responsable.',
+                $filtreExport['bloques_solde'],
+                $filtreExport['bloques_approbation']
+            ));
+        }
 
         if (count($ids) > self::PLAFOND_EXPORT) {
             throw new \RuntimeException(sprintf(
@@ -287,6 +303,8 @@ trait ExporteBulletinsParTranches
                 'periode' => $filtres->periode === null ? null : (FiltresBulletins::PERIODES[$filtres->periode] ?? null),
             ],
             'bulletin_ids' => $ids,
+            'bloques_solde' => $filtreExport['bloques_solde'],
+            'bloques_approbation' => $filtreExport['bloques_approbation'],
             'ungenerated_ids' => $brouillons->pluck('id')->map(fn ($id) => (int) $id)->all(),
             'ungenerated_noms' => $brouillons->map(function (ESBTPBulletin $b) {
                 $e = $b->etudiant;
@@ -294,6 +312,29 @@ trait ExporteBulletinsParTranches
                 return trim(($e->nom ?? '').' '.($e->prenoms ?? '')).($e?->matricule ? ' · '.$e->matricule : '');
             })->filter()->values()->all(),
         ];
+    }
+
+    /**
+     * @return array{allowed_ids: array<int, int>, bloques_solde: int, bloques_approbation: int}
+     */
+    private function filtrerExportScolarite(Request $request, array $ids): array
+    {
+        $vide = ['allowed_ids' => $ids, 'bloques_solde' => 0, 'bloques_approbation' => 0];
+
+        if ($ids === []) {
+            return $vide;
+        }
+
+        $guard = app(DocumentPrintGuard::class);
+        if (! $guard->requiresApproval()) {
+            return $vide;
+        }
+
+        $documents = ESBTPBulletin::query()
+            ->whereIn('id', $ids)
+            ->get(['id', 'etudiant_id']);
+
+        return $guard->filtrerExport($request->user(), 'bulletin', $documents);
     }
 
     /**

@@ -127,12 +127,19 @@
                     <a href="{{ route('esbtp.lmd.bulletins.index') }}" class="sr-hero-btn">
                         <i class="fas fa-arrow-left"></i>Retour
                     </a>
+                    @include('esbtp.documents._request-approval', [
+                        'documentType' => 'bulletin',
+                        'etudiantId' => $bulletin->etudiant_id,
+                        'documentId' => $bulletin->id,
+                    ])
+                    @if($printAllowed)
                     <a href="{{ route('esbtp.lmd.bulletins.pdf-preview', $bulletin) }}" class="sr-hero-btn" target="_blank" title="Aperçu PDF dans un nouvel onglet">
                         <i class="fas fa-eye"></i>Aperçu PDF
                     </a>
                     <a href="{{ route('esbtp.lmd.bulletins.pdf', $bulletin) }}" class="sr-hero-btn--solid sr-hero-btn">
                         <i class="fas fa-file-pdf"></i>PDF
                     </a>
+                    @endif
                     <form action="{{ route('esbtp.lmd.bulletins.toggle-publication', $bulletin) }}" method="POST" style="display:inline;">
                         @csrf @method('PUT')
                         <button type="submit" class="sr-hero-btn">

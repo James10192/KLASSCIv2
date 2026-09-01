@@ -319,7 +319,7 @@ class ESBTPSettingsController extends Controller
                     'type' => 'boolean',
                     'group' => 'scolarite',
                     'category' => 'scolarite',
-                    'description' => 'Exige une approbation du responsable avant impression des certificats, attestations et bulletins',
+                    'description' => 'Solde impaye puis accord du responsable avant tout PDF certificat, attestation ou bulletin',
                     'is_required' => false,
                     'default_value' => '0',
                     'validation_rules' => null,

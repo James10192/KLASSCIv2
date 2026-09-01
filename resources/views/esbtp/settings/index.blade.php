@@ -2351,7 +2351,7 @@
                         <div class="bc-icon"><i class="fas fa-stamp"></i></div>
                         <div class="bc-body">
                             <div class="bc-label">Approbation avant impression</div>
-                            <div class="bc-desc">Le responsable valide certificat, attestation et bulletin. Le service imprime ensuite. L apercu reste libre.</div>
+                            <div class="bc-desc">Le responsable valide certificat, attestation et bulletin. Solde impayé d'abord, puis accord. Sans les deux, aucun PDF.</div>
                         </div>
                         <div class="bc-toggle">
                             <label class="form-switch-modern">

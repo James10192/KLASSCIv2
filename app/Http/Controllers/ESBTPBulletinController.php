@@ -601,17 +601,17 @@ class ESBTPBulletinController extends Controller
     {
         $this->authorize('download', $bulletin);
 
-        if (! $inline) {
-            abort_unless(
-                app(DocumentPrintGuard::class)->canPrint(
-                    auth()->user(),
-                    'bulletin',
-                    (int) $bulletin->etudiant_id,
-                    (int) $bulletin->id
-                ),
-                403,
-                'Ce bulletin doit etre approuve avant impression.'
-            );
+        $guard = app(DocumentPrintGuard::class);
+        $reason = $guard->denyReason(
+            auth()->user(),
+            'bulletin',
+            (int) $bulletin->etudiant_id,
+            (int) $bulletin->id
+        );
+        if ($reason) {
+            return redirect()
+                ->route('esbtp.bulletins.show', $bulletin)
+                ->with('error', $guard->message($reason, (int) $bulletin->etudiant_id));
         }
 
         try {

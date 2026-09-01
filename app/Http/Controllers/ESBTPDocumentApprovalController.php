@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\ESBTPDocumentApproval;
+use App\Services\DocumentPrintGuard;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
@@ -23,9 +24,16 @@ class ESBTPDocumentApprovalController extends Controller
             'document_id' => 'nullable|integer',
         ]);
 
+        $etudiantId = (int) $validated['etudiant_id'];
+        $guard = app(DocumentPrintGuard::class);
+
+        if ($guard->requiresApproval() && $guard->soldeImpaye($etudiantId) > 0) {
+            return back()->with('error', $guard->message(DocumentPrintGuard::DENY_SOLDE, $etudiantId));
+        }
+
         ESBTPDocumentApproval::create([
             'document_type' => $validated['document_type'],
-            'etudiant_id' => $validated['etudiant_id'],
+            'etudiant_id' => $etudiantId,
             'document_id' => $validated['document_id'] ?? null,
             'status' => ESBTPDocumentApproval::STATUS_PENDING,
             'requested_by' => $request->user()->id,
