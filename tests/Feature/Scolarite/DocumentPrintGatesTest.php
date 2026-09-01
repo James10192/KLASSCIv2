@@ -40,6 +40,7 @@ class DocumentPrintGatesTest extends TestCase
             'annee_universitaire_id' => $annee->id,
             'status' => 'active',
             'created_by' => $this->user->id,
+            'date_inscription' => now()->subMonths(6),
         ]);
     }
 
@@ -59,7 +60,7 @@ class DocumentPrintGatesTest extends TestCase
         $decision = $guard->decide($this->user, 'certificat', $etudiantId);
         $this->assertSame(\App\Services\PrintDecision::SOLDE, $decision->reason);
         $this->assertFalse($decision->allowed);
-        $this->assertStringContainsString('solde impayé', $decision->message());
+        $this->assertStringContainsString('échéance', $decision->message());
     }
 
     public function test_paid_student_still_needs_approval(): void

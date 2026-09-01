@@ -25,6 +25,7 @@ class PrintDecisionTest extends TestCase
 
         $this->assertTrue($decision->isUnpaid());
         $this->assertStringContainsString('25 000', $decision->message());
+        $this->assertStringContainsString('échéance', $decision->message());
     }
 
     public function test_approval_and_permission_messages_are_explicit(): void
