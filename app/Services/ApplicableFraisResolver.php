@@ -24,11 +24,7 @@ class ApplicableFraisResolver
             return true;
         }
 
-        if (! $this->scolariteSettings->confirmerStatutEtablissement()) {
-            return true;
-        }
-
-        return $statutEtablissement === ESBTPInscription::STATUT_ETABLISSEMENT_NOUVEAU;
+        return $statutEtablissement !== ESBTPInscription::STATUT_ETABLISSEMENT_ANCIEN;
     }
 
     public function resolveMandatoryFeesForInscription(ESBTPInscription $inscription, ?string $affectationStatus = null): Collection
