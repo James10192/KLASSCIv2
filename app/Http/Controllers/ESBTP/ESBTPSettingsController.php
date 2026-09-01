@@ -811,6 +811,47 @@ class ESBTPSettingsController extends Controller
             PortailCandidaturePublication::REGLAGE_PHYSIQUES,
         ];
 
+        // Un texte de la couleur de son fond est invisible.
+        //
+        // Sur esbtp-abidjan, pdf_header_bg_color et pdf_header_text_color
+        // valaient tous les deux #ffffff : le bandeau des exports — nom de
+        // l'ecole, titre du document, chiffres — etait imprime en blanc sur
+        // blanc. Personne ne l'avait vu a la saisie, parce que rien ne l'avait
+        // dit : l'ecran acceptait la paire sans broncher.
+        //
+        // On refuse la stricte egalite, pas la ressemblance : juger de la
+        // lisibilite d'un gris sur un autre gris demande un calcul de contraste,
+        // qui a sa place dans le rendu, pas dans un formulaire. Ici on ferme
+        // simplement la porte au cas ou l'invisibilite est certaine.
+        $pairesDeCouleurs = [
+            ['pdf_header_bg_color', 'pdf_header_text_color', "l'en-tete des documents PDF"],
+        ];
+
+        foreach ($pairesDeCouleurs as [$cleFond, $cleTexte, $ou]) {
+            if (! $this->estSoumis($rawInput, $cleFond) && ! $this->estSoumis($rawInput, $cleTexte)) {
+                continue;
+            }
+
+            $fond = $this->estSoumis($rawInput, $cleFond)
+                ? $this->valeurSoumise($rawInput, $cleFond)
+                : Setting::get($cleFond);
+            $texte = $this->estSoumis($rawInput, $cleTexte)
+                ? $this->valeurSoumise($rawInput, $cleTexte)
+                : Setting::get($cleTexte);
+
+            $fond = mb_strtolower(trim((string) $fond));
+            $texte = mb_strtolower(trim((string) $texte));
+
+            if ($fond === '' || $texte === '' || $fond !== $texte) {
+                continue;
+            }
+
+            return $this->refus(
+                $request,
+                "Le texte et le fond de {$ou} ont la meme couleur ({$fond}) : le texte serait invisible a l'impression. Choisissez une couleur de texte contrastee."
+            );
+        }
+
         foreach ($reglagesDate as $cle) {
             if (! $this->estSoumis($rawInput, $cle)) {
                 continue;

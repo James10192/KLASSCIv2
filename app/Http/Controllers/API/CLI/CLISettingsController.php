@@ -67,6 +67,72 @@ class CLISettingsController extends BaseApiController
         );
     }
 
+    /**
+     * Corrige la valeur d'un reglage.
+     *
+     * Montre par defaut. N'ecrit que sur `apply`, et jamais sur une cle qui
+     * evoque un secret : celles-la se changent depuis l'ecran de configuration,
+     * ou l'ecole voit ce qu'elle fait.
+     *
+     * L'ancienne valeur est rendue dans la reponse ET journalisee : une couleur
+     * remise a la main doit pouvoir etre remise en arriere sans deviner.
+     */
+    public function update(Request $request): JsonResponse
+    {
+        if (! $request->user()->tokenCan('cli:admin')) {
+            return $this->errorResponse('Token missing cli:admin ability', [], 403);
+        }
+
+        $valide = $request->validate([
+            'key' => ['required', 'string', 'max:190'],
+            'value' => ['present', 'nullable', 'string', 'max:5000'],
+            'apply' => ['nullable', 'boolean'],
+        ]);
+
+        if ($this->estSensible($valide['key'])) {
+            return $this->errorResponse(
+                "Cette cle evoque un secret : elle se change depuis l'ecran de configuration.",
+                [],
+                422
+            );
+        }
+
+        $reglage = Setting::query()->where('key', $valide['key'])->first();
+
+        if (! $reglage) {
+            return $this->errorResponse(sprintf("Reglage « %s » introuvable.", $valide['key']), [], 404);
+        }
+
+        $avant = $reglage->value;
+        $apres = $valide['value'];
+        $applique = (bool) ($valide['apply'] ?? false);
+
+        if ((string) $avant === (string) $apres) {
+            return $this->successResponse(
+                ['key' => $reglage->key, 'avant' => $avant, 'apres' => $apres, 'applique' => false],
+                "La valeur est deja celle-la. Rien a faire."
+            );
+        }
+
+        if ($applique) {
+            $reglage->value = $apres;
+            $reglage->save();
+
+            \Log::warning('[reglages] valeur modifiee a distance', [
+                'key' => $reglage->key,
+                'avant' => $avant,
+                'apres' => $apres,
+            ]);
+        }
+
+        return $this->successResponse(
+            ['key' => $reglage->key, 'avant' => $avant, 'apres' => $apres, 'applique' => $applique],
+            $applique
+                ? sprintf("« %s » : %s -> %s", $reglage->key, $avant, $apres)
+                : sprintf("« %s » passerait de %s a %s. Rien n'a ete ecrit.", $reglage->key, $avant, $apres)
+        );
+    }
+
     private function estSensible(string $cle): bool
     {
         $cle = mb_strtolower($cle);
