@@ -67,6 +67,11 @@ class ESBTPInscriptionPolicy
         return $user->can('inscriptions.edit');
     }
 
+    public function markInKind(User $user, ESBTPInscription $inscription)
+    {
+        return $user->can('inscriptions.in_kind.mark');
+    }
+
     public function delete(User $user, ESBTPInscription $inscription)
     {
         return $user->can('inscriptions.delete');

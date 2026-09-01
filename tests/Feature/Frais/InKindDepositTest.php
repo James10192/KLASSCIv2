@@ -15,6 +15,7 @@ use App\Services\PaymentStatsService;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Validator;
+use Spatie\Permission\Models\Permission;
 use Tests\TestCase;
 
 class InKindDepositTest extends TestCase
@@ -268,6 +269,77 @@ class InKindDepositTest extends TestCase
 
         $this->assertTrue((bool) $sub->satisfied_in_kind);
         $this->assertNotNull($sub->deposited_at);
+    }
+
+    public function test_enrollment_officer_without_finance_can_mark_in_kind(): void
+    {
+        $this->generateFees([$this->ramette->id => 0]);
+        $this->actingAsEnrollmentOfficer();
+
+        $this->post(route('esbtp.inscriptions.in-kind-deposits.store', [
+            $this->inscription,
+            $this->ramette,
+        ]))->assertRedirect(route('esbtp.inscriptions.show', $this->inscription));
+
+        $this->assertTrue(
+            (bool) ESBTPFraisSubscription::where('inscription_id', $this->inscription->id)
+                ->where('frais_category_id', $this->ramette->id)
+                ->first()
+                ->satisfied_in_kind
+        );
+    }
+
+    public function test_user_without_in_kind_permission_cannot_mark(): void
+    {
+        $this->generateFees([$this->ramette->id => 0]);
+
+        Permission::findOrCreate('identity.enrollment_officer', 'web');
+        $denied = User::factory()->create();
+        $denied->givePermissionTo('identity.enrollment_officer');
+        $this->actingAs($denied);
+
+        $this->post(route('esbtp.inscriptions.in-kind-deposits.store', [
+            $this->inscription,
+            $this->ramette,
+        ]))->assertForbidden();
+
+        $this->assertFalse(
+            (bool) ESBTPFraisSubscription::where('inscription_id', $this->inscription->id)
+                ->where('frais_category_id', $this->ramette->id)
+                ->first()
+                ->satisfied_in_kind
+        );
+    }
+
+    public function test_show_lists_in_kind_without_finance_for_enrollment_officer(): void
+    {
+        $this->generateFees([$this->ramette->id => 0]);
+        $this->actingAsEnrollmentOfficer();
+
+        $response = $this->get(route('esbtp.inscriptions.show', $this->inscription));
+
+        $response->assertOk();
+        $response->assertSee('Fournitures à déposer', false);
+        $response->assertSee('Marquer déposé', false);
+        $response->assertDontSee('Situation Financière Détaillée', false);
+        $response->assertDontSee('Total attendu', false);
+    }
+
+    private function actingAsEnrollmentOfficer(): User
+    {
+        foreach (['identity.enrollment_officer', 'inscriptions.view', 'inscriptions.in_kind.mark'] as $name) {
+            Permission::findOrCreate($name, 'web');
+        }
+
+        $agent = User::factory()->create();
+        $agent->givePermissionTo([
+            'identity.enrollment_officer',
+            'inscriptions.view',
+            'inscriptions.in_kind.mark',
+        ]);
+        $this->actingAs($agent);
+
+        return $agent;
     }
 
     private function dueFor(array $categoryIds): float
