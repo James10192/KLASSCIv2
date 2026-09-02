@@ -81,6 +81,27 @@ Route::prefix('public/inscription')
             ->name('api.public.inscription.submit');
     });
 
+/*
+ * Identite publique de l'etablissement, lue par le site klassci.com.
+ *
+ * Le site affiche les logos des ecoles qu'il sert, et habille le formulaire
+ * d'inscription aux couleurs de celle qu'on a choisie. Les deux viennent des
+ * reglages que l'ecole a deja remplis pour ses documents PDF : elle ne
+ * configure son identite qu'une fois, et elle vaut partout.
+ *
+ * Pas de signature, contrairement aux deux autres surfaces publiques : celles-
+ * la parlent d'un etudiant, celle-ci ne parle que de l'etablissement, et ne
+ * sert rien qu'il n'imprime deja en tete de chaque bulletin. `throttle:api` du
+ * groupe suffit : il ne protege ici aucun secret, il empeche seulement qu'on
+ * se serve du point d'entree comme hebergeur d'images.
+ */
+Route::prefix('public/etablissement')->group(function () {
+    Route::get('/', [\App\Http\Controllers\API\Public\EtablissementPublicController::class, 'show'])
+        ->name('api.public.etablissement');
+    Route::get('/logo', [\App\Http\Controllers\API\Public\EtablissementPublicController::class, 'logo'])
+        ->name('api.public.etablissement.logo');
+});
+
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
