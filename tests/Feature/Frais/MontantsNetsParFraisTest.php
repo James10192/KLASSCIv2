@@ -29,6 +29,8 @@ class MontantsNetsParFraisTest extends TestCase
 
     private int $inscriptionId = 4242;
 
+    private int $etudiantId = 4242;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -56,6 +58,10 @@ class MontantsNetsParFraisTest extends TestCase
     {
         return DB::table('esbtp_paiements')->insertGetId([
             'inscription_id' => $this->inscriptionId,
+            // Colonne obligatoire sans valeur par defaut. Peu importe laquelle
+            // ici : ce test lit des montants par inscription et par frais,
+            // l'etudiant n'entre pas dans le calcul.
+            'etudiant_id' => $this->etudiantId,
             'montant' => $montant,
             'status' => $statut,
             'nature' => $nature,
