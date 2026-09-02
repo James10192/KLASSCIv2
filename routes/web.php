@@ -2721,18 +2721,30 @@ Route::middleware(['auth', 'permission:admin.access|identity.direct_studies|iden
         ->parameters(['directeurs-etudes' => 'directeurEtude']);
     Route::patch('directeurs-etudes/{directeurEtude}/toggle-status', [\App\Http\Controllers\ESBTPDirecteurEtudesController::class, 'toggleStatus'])
         ->name('directeurs-etudes.toggle-status');
+    Route::post('directeurs-etudes/{directeurEtude}/reset-password', [\App\Http\Controllers\ESBTPDirecteurEtudesController::class, 'resetPassword'])
+        ->middleware('throttle:5,1')
+        ->name('directeurs-etudes.reset-password');
     Route::resource('responsables-scolarite', \App\Http\Controllers\ESBTPResponsableScolariteController::class)
         ->parameters(['responsables-scolarite' => 'responsableScolarite']);
     Route::patch('responsables-scolarite/{responsableScolarite}/toggle-status', [\App\Http\Controllers\ESBTPResponsableScolariteController::class, 'toggleStatus'])
         ->name('responsables-scolarite.toggle-status');
+    Route::post('responsables-scolarite/{responsableScolarite}/reset-password', [\App\Http\Controllers\ESBTPResponsableScolariteController::class, 'resetPassword'])
+        ->middleware('throttle:5,1')
+        ->name('responsables-scolarite.reset-password');
     Route::resource('services-scolarite', \App\Http\Controllers\ESBTPServiceScolariteController::class)
         ->parameters(['services-scolarite' => 'serviceScolarite']);
     Route::patch('services-scolarite/{serviceScolarite}/toggle-status', [\App\Http\Controllers\ESBTPServiceScolariteController::class, 'toggleStatus'])
         ->name('services-scolarite.toggle-status');
+    Route::post('services-scolarite/{serviceScolarite}/reset-password', [\App\Http\Controllers\ESBTPServiceScolariteController::class, 'resetPassword'])
+        ->middleware('throttle:5,1')
+        ->name('services-scolarite.reset-password');
     Route::resource('agents-inscription', \App\Http\Controllers\ESBTPAgentInscriptionController::class)
         ->parameters(['agents-inscription' => 'agentInscription']);
     Route::patch('agents-inscription/{agentInscription}/toggle-status', [\App\Http\Controllers\ESBTPAgentInscriptionController::class, 'toggleStatus'])
         ->name('agents-inscription.toggle-status');
+    Route::post('agents-inscription/{agentInscription}/reset-password', [\App\Http\Controllers\ESBTPAgentInscriptionController::class, 'resetPassword'])
+        ->middleware('throttle:5,1')
+        ->name('agents-inscription.reset-password');
 });
 
 // Routes pour les coordinateurs et rÃ´les admin avec permissions spÃ©cifiques

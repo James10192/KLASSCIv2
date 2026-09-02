@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Services\Scoring\PersonnelScoringService;
+use App\Http\Controllers\Concerns\ResetsStaffPassword;
 use App\Services\UserLifecycle\SuperAdminLifecycleGuard;
 use App\Services\UserService;
 use Illuminate\Http\Request;
@@ -13,6 +14,8 @@ use Illuminate\Support\Facades\Hash;
 
 class ESBTPResponsableScolariteController extends Controller
 {
+    use ResetsStaffPassword;
+
     public function __construct(protected UserService $userService)
     {
     }
@@ -164,6 +167,13 @@ class ESBTPResponsableScolariteController extends Controller
         } catch (\Exception $e) {
             return back()->with('error', 'Erreur lors de la suppression : '.$e->getMessage());
         }
+    }
+
+    public function resetPassword(User $responsableScolarite)
+    {
+        $this->assertResponsableScolarite($responsableScolarite);
+
+        return $this->resetDefaultStaffPassword($responsableScolarite, 'responsableScolarite', 'Le responsable scolarité');
     }
 
     public function toggleStatus(User $responsableScolarite, SuperAdminLifecycleGuard $lifecycle)
