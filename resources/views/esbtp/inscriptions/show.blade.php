@@ -1805,11 +1805,14 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                                 <div class="is-section-icon"><i class="fas fa-chart-line"></i></div>
                                 <div class="is-section-title">Situation Financière Détaillée</div>
                                 @can('inscriptions.edit')
-                                <form method="POST" action="{{ route('esbtp.inscriptions.frais-manquants.preview') }}" id="is-frais-manquants-preview" class="ms-auto">
+                                <form method="POST" class="ms-auto">
                                     @csrf
                                     <input type="hidden" name="inscription_ids[]" value="{{ $inscription->id }}">
-                                    <button type="button" class="btn-acasi secondary btn-sm" id="is-btn-frais-manquants">
-                                        <i class="fas fa-rotate"></i> Compléter les frais manquants
+                                    <button type="button"
+                                            class="btn-acasi secondary btn-sm js-regenerer-frais"
+                                            data-preview="{{ route('esbtp.inscriptions.frais-manquants.preview') }}"
+                                            data-apply="{{ route('esbtp.inscriptions.frais-manquants.apply') }}">
+                                        <i class="fas fa-rotate"></i> Régénérer les frais
                                     </button>
                                 </form>
                                 @endcan
@@ -5556,39 +5559,9 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
         }
     };
 </script>
-<script>
-(function () {
-    var btn = document.getElementById('is-btn-frais-manquants');
-    if (!btn) return;
-    btn.addEventListener('click', function () {
-        var form = document.getElementById('is-frais-manquants-preview');
-        var data = new FormData(form);
-        fetch('{{ route('esbtp.inscriptions.frais-manquants.preview') }}', {
-            method: 'POST',
-            body: data,
-            headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
-        }).then(function (r) { return r.json(); }).then(function (res) {
-            if (!res.total) {
-                alert('Aucun frais obligatoire manquant pour cette inscription.');
-                return;
-            }
-            var lignes = (res.lignes || []).map(function (l) {
-                return (l.categorie || '') + ' — ' + Number(l.montant || 0).toLocaleString('fr-FR') + ' F';
-            }).join('\n');
-            if (!confirm(res.total + ' frais manquant(s) :\n' + lignes + '\n\nAjouter maintenant ?')) return;
-            fetch('{{ route('esbtp.inscriptions.frais-manquants.apply') }}', {
-                method: 'POST',
-                body: data,
-                headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
-            }).then(function (r) { return r.json(); }).then(function (applied) {
-                alert(applied.message || 'Frais complétés.');
-                window.location.reload();
-            });
-        }).catch(function () { alert('Impossible de prévisualiser les frais manquants.'); });
-    });
-})();
-</script>
+<script src="{{ asset('js/frais/regenerer-modal.js') }}"></script>
 @endpush
+@include('esbtp.partials.modal-regenerer-frais')
 
 <!-- Les styles z-index pour les modals sont gérés par modal-force-fix.css -->
 

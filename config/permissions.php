@@ -2265,6 +2265,7 @@ return [
             'students.view',
             'students.accessibility.view',
             'inscriptions.view',
+            'inscriptions.in_kind.mark',
             // Lecture seule sur la file du portail, coherent avec
             // inscriptions.view : ce role constate, il ne convertit pas. La
             // conversion cree une inscription et genere des frais, elle

@@ -1257,10 +1257,6 @@ class ESBTPInscriptionController extends Controller
             // par `est_transfert` ci-dessous, pas un type d'inscription.
             "type_inscription" =>
                 "required|in:première_inscription,réinscription",
-            "montant_scolarite" => app(EnrollmentAmountVisibility::class)->hideAmounts(auth()->user())
-                ? "nullable|numeric|min:0"
-                : "required|numeric|min:0",
-            "frais_inscription" => "nullable|numeric|min:0",
             "observations" => "nullable|string",
             "status" => "required|in:en_attente,active,annulée,terminée",
             "affectation_status" => "nullable|in:affecté,réaffecté,non_affecté",
@@ -1311,13 +1307,10 @@ class ESBTPInscriptionController extends Controller
 
             $data = $request->only([
                 'filiere_id', 'niveau_id', 'classe_id', 'date_inscription',
-                'type_inscription', 'montant_scolarite', 'frais_inscription',
+                'type_inscription',
                 'observations', 'status', 'affectation_status',
                 'est_transfert', 'etablissement_origine', 'statut_etablissement',
             ]);
-            if (app(EnrollmentAmountVisibility::class)->hideAmounts(auth()->user())) {
-                unset($data['montant_scolarite'], $data['frais_inscription']);
-            }
 
             // Stocker les anciennes valeurs pour détecter les changements
             $ancienneFiliere = $inscription->filiere_id;
@@ -1352,10 +1345,6 @@ class ESBTPInscriptionController extends Controller
                 $data["classe_id"] ?? $inscription->classe_id;
             $inscription->date_inscription = $data["date_inscription"];
             $inscription->type_inscription = $data["type_inscription"];
-            $inscription->montant_scolarite = $data["montant_scolarite"];
-            $inscription->frais_inscription =
-                $data["frais_inscription"] ??
-                ($inscription->frais_inscription ?? 0);
             $inscription->observations = $data["observations"];
             $inscription->affectation_status =
                 $data["affectation_status"] ?? null;

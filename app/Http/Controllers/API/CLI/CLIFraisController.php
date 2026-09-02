@@ -315,8 +315,8 @@ class CLIFraisController extends BaseApiController
         return $this->successResponse(
             $resultat,
             $resultat['applique']
-                ? sprintf('%d souscription(s) creee(s) sur %d inscription(s).', $resultat['total'], $resultat['inscriptions'])
-                : sprintf("%d souscription(s) manquante(s) sur %d inscription(s). Rien n'a ete ecrit.", $resultat['total'], $resultat['inscriptions'])
+                ? sprintf('%d ajoutée(s), %d retirée(s) sur %d inscription(s).', $resultat['total_ajouter'], $resultat['total_retirer'], $resultat['inscriptions'])
+                : sprintf("%d à ajouter, %d à retirer sur %d inscription(s). Rien n'a ete ecrit.", $resultat['total_ajouter'], $resultat['total_retirer'], $resultat['inscriptions'])
         );
     }
 

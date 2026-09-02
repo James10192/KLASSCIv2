@@ -4,7 +4,6 @@ namespace App\Services;
 
 use App\Exceptions\InKindDepositForbiddenException;
 use App\Models\ESBTPFraisCategory;
-use App\Models\ESBTPFraisConfiguration;
 use App\Models\ESBTPFraisSubscription;
 use App\Models\ESBTPInscription;
 use App\Models\ESBTPPaiement;
@@ -58,7 +57,7 @@ class InKindDepositService
             $subscription = ESBTPFraisSubscription::create([
                 'inscription_id' => $inscription->id,
                 'frais_category_id' => $category->id,
-                'amount' => $this->montantPour($category, $inscription),
+                'amount' => $this->montantAttendu($inscription, $category),
                 'is_active' => true,
                 'subscribed_at' => now(),
                 'created_by' => $userId,
@@ -144,22 +143,13 @@ class InKindDepositService
         return $value === 1 || $value === '1' || $value === true;
     }
 
-    private function montantPour(ESBTPFraisCategory $categorie, ESBTPInscription $inscription): float
+    private function montantAttendu(ESBTPInscription $inscription, ESBTPFraisCategory $category): float
     {
-        $configuration = ESBTPFraisConfiguration::getApplicableConfiguration(
-            $categorie->id,
-            $inscription->filiere_id,
-            $inscription->niveau_id,
-            $inscription->annee_universitaire_id
-        );
+        $fee = app(ApplicableFraisResolver::class)
+            ->resolveMandatoryFeesForInscription($inscription)
+            ->first(fn (array $row) => (int) $row['category']->id === (int) $category->id);
 
-        if ($configuration) {
-            $statut = $inscription->affectation_status ?? ESBTPInscription::DEFAULT_AFFECTATION_STATUS;
-
-            return (float) $configuration->getMontantByStatus($statut);
-        }
-
-        return (float) ($categorie->default_amount ?? 0);
+        return $fee ? (float) $fee['amount'] : (float) ($category->default_amount ?? 0);
     }
 
     private function stampDeposited(ESBTPFraisSubscription $subscription, int $userId): void
