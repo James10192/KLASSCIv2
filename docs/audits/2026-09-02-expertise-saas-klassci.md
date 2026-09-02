@@ -1,7 +1,8 @@
 ---
-titre: Expertise SaaS KLASSCI — septembre 2026 (rapport final, revue thermo-nucléaire, applications voisines)
+titre: Expertise SaaS KLASSCI — septembre 2026 (rapport final)
 artifact: https://claude.ai/code/artifact/5d5f075b-7759-4e31-bd6d-79b3c07f0a21
 epic: https://github.com/James10192/KLASSCIv2/issues/738
+adminklassci: https://github.com/James10192/adminKlassci/issues/59
 ---
 
 _Revue d'expertise produit & ingénierie_
@@ -776,9 +777,9 @@ Une épic et 77 issues enfants, chacune avec preuve, reproduction, comportement 
 | G · Fondations et exploitation | #778 observabilité · #779 infrastructure · #780 analyse statique · #785 fondations données · #781 sécurité |
 | H · Conformité et offre | #782 données et IA · #783 FNE/RNE · #784 site klassci.com · #787 notifications |
 | I · Fondations (revue thermo-nucléaire) | #788 action ValiderPaiement · #790 objet Solde · #789 moteur d'allocation · #791 enum de statut et factory de paiement · #792 code mort finance · #793 1 191 lignes mortes étudiants · #794 InscriptionFactory · #795 machine à états et matricule · #796 ViewModels · #797 objet Période · #798 profil de règles versionné · #799 moteur de résultat unique · #800 RecordGradeAction · #801 registre de widgets · #802 abilities API CLI · #803 registre de navigation · #804 abstractions dormantes · #805 gates 4 → 2 · #806 route:cache et mojibake |
-| J · Applications voisines | #807 API LMS (failles, cette semaine) · #808 décision LMS · #809 décision MailPulse · #810 à #815 adminKlassci (sécurité, provisioning, déploiement, console de support, facturation, groupes) |
+| J · Applications voisines | #807 API LMS (failles, cette semaine) · #808 décision LMS · #809 décision MailPulse · #813 agent de contrôle côté tenant · dépôt adminKlassci : #59 sécurité · #60 provisioning · #61 déploiement · #62 console de support · #63 facturation et cycle de vie · #64 groupes et contrat |
 
-Les issues adminKlassci sont créées dans le dépôt KLASSCIv2 avec un préfixe, parce que l'application GitHub de Claude n'est pas installée sur le dépôt adminKlassci. Sept commentaires corrigent des issues antérieures (#409, #767, #407, #773, #775, #764, #637) sur des chiffres périmés ou un ordre d'exécution à respecter.
+Les six issues adminKlassci ont été créées dans leur propre dépôt (James10192/adminKlassci #59 à #64) ; les miroirs provisoires côté KLASSCIv2 sont fermés avec renvoi. Sept commentaires corrigent des issues antérieures (#409, #767, #407, #773, #775, #764, #637) sur des chiffres périmés ou un ordre d'exécution à respecter.
 
 ### Contre-vérification des issues (second workflow, 44 agents)
 
