@@ -30,9 +30,10 @@ use Illuminate\Support\Facades\Log;
 class SouscriptionsObligatoiresManquantes
 {
     /**
+     * @param  array<int, int>|null  $inscriptionIds
      * @return array{total: int, inscriptions: int, lignes: array, applique: bool}
      */
-    public function executer(bool $appliquer = false, ?int $anneeId = null): array
+    public function executer(bool $appliquer = false, ?int $anneeId = null, ?array $inscriptionIds = null): array
     {
         $categories = ESBTPFraisCategory::query()
             ->where('is_active', true)
@@ -57,6 +58,7 @@ class SouscriptionsObligatoiresManquantes
         $inscriptions = ESBTPInscription::query()
             ->whereIn('status', ['active', 'en_attente'])
             ->when($anneeId, fn ($q) => $q->where('annee_universitaire_id', $anneeId))
+            ->when($inscriptionIds, fn ($q) => $q->whereIn('id', $inscriptionIds))
             ->with(['etudiant', 'classe'])
             ->get();
 

@@ -31,7 +31,11 @@ class FraisConfigurationWriter
             }
 
             $payload = $this->buildPayload($categoryData, $userId);
+            $audienceChanged = $this->syncAudience($category, $categoryData);
             if ($payload === null) {
+                if ($audienceChanged) {
+                    $summary['updated']++;
+                }
                 continue;
             }
 
@@ -85,28 +89,39 @@ class FraisConfigurationWriter
             $existing->is_active = true;
             $existing->save();
 
-            if (array_key_exists('audience', $categoryData)) {
-                $rawAudience = $categoryData['audience'];
-                if (is_array($rawAudience)) {
-                    $rawAudience = in_array(ESBTPFraisCategory::AUDIENCE_NOUVEAUX, $rawAudience, true)
-                        ? ESBTPFraisCategory::AUDIENCE_NOUVEAUX
-                        : ESBTPFraisCategory::AUDIENCE_TOUS;
-                }
-                $audience = $rawAudience === ESBTPFraisCategory::AUDIENCE_NOUVEAUX
-                    ? ESBTPFraisCategory::AUDIENCE_NOUVEAUX
-                    : ESBTPFraisCategory::AUDIENCE_TOUS;
-                if (($category->audience ?? ESBTPFraisCategory::AUDIENCE_TOUS) !== $audience) {
-                    $category->audience = $audience;
-                    $category->save();
-                }
-            }
-
             $summary['affected_configuration_ids'][] = $existing->id;
         }
 
         $summary['affected_configuration_ids'] = array_values(array_unique(array_filter($summary['affected_configuration_ids'])));
 
         return $summary;
+    }
+
+    private function syncAudience(ESBTPFraisCategory $category, array $categoryData): bool
+    {
+        if (! array_key_exists('audience', $categoryData)) {
+            return false;
+        }
+
+        $rawAudience = $categoryData['audience'];
+        if (is_array($rawAudience)) {
+            $rawAudience = in_array(ESBTPFraisCategory::AUDIENCE_NOUVEAUX, $rawAudience, true)
+                ? ESBTPFraisCategory::AUDIENCE_NOUVEAUX
+                : ESBTPFraisCategory::AUDIENCE_TOUS;
+        }
+
+        $audience = $rawAudience === ESBTPFraisCategory::AUDIENCE_NOUVEAUX
+            ? ESBTPFraisCategory::AUDIENCE_NOUVEAUX
+            : ESBTPFraisCategory::AUDIENCE_TOUS;
+
+        if (($category->audience ?? ESBTPFraisCategory::AUDIENCE_TOUS) === $audience) {
+            return false;
+        }
+
+        $category->audience = $audience;
+        $category->save();
+
+        return true;
     }
 
     private function buildPayload(array $categoryData, ?int $userId): ?array

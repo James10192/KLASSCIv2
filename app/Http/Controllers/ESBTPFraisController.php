@@ -1403,13 +1403,20 @@ class ESBTPFraisController extends Controller
             // redecouvrir.
             $souscriptions = ESBTPFraisSubscription::where('inscription_id', $inscription->id)
                 ->where('is_active', true)
-                ->get()
-                ->keyBy('frais_category_id');
+                ->with('fraisCategory')
+                ->get();
 
-            // Utiliser le cache pour les catégories
-            $categories = $this->fraisCacheService->getCategories()
-                ->map(function ($category) use ($inscription, $souscriptions) {
-                    // Chercher une configuration pour cette catégorie et cette inscription
+            $paye = \App\Models\ESBTPPaiement::netPaidByCategory($inscription->id, true);
+
+            $categories = $souscriptions
+                ->filter(fn ($souscription) => $souscription->fraisCategory)
+                ->sortBy(fn ($souscription) => [
+                    $souscription->fraisCategory->sort_order ?? 9999,
+                    $souscription->fraisCategory->id ?? 0,
+                ])
+                ->values()
+                ->map(function ($souscription) use ($inscription, $paye) {
+                    $category = $souscription->fraisCategory;
                     $configuration = ESBTPFraisConfiguration::getApplicableConfiguration(
                         $category->id,
                         $inscription->filiere_id,
@@ -1417,29 +1424,8 @@ class ESBTPFraisController extends Controller
                         $inscription->annee_universitaire_id
                     );
 
-                    // Souscription d'abord, configuration ensuite, defaut en
-                    // dernier — le meme ordre que inscriptions.show.
-                    $affectationStatus = $inscription->affectation_status ?? \App\Models\ESBTPInscription::DEFAULT_AFFECTATION_STATUS;
-                    $souscription = $souscriptions->get($category->id);
-
-                    if ($souscription) {
-                        $montant = (float) $souscription->chargedAmount();
-                    } elseif ($configuration) {
-                        // getMontantByStatus retombe deja sur $this->amount dans
-                        // chacun de ses cas : elle couvre l'absence de variante
-                        // par statut, inutile de la doubler.
-                        $montant = (float) $configuration->getMontantByStatus($affectationStatus);
-                    } else {
-                        $montant = (float) ($category->default_amount ?? 0);
-                    }
-
-                    // Repli conserve tant que la distinction « exempte » / « pas
-                    // encore configure » n'existe pas en base : aujourd'hui les
-                    // deux s'ecrivent zero, et le retirer a rendu la scolarite
-                    // gratuite pour un tiers des etudiants d'Abidjan.
-                    if ($montant <= 0 && ! $souscription) {
-                        $montant = (float) ($category->default_amount ?? 0);
-                    }
+                    $montant = (float) $souscription->chargedAmount();
+                    $dejaPaye = (float) ($paye[$category->id] ?? 0);
 
                     return [
                         'id' => $category->id,
@@ -1449,27 +1435,16 @@ class ESBTPFraisController extends Controller
                         'montant' => $montant,
                         'base_amount' => $montant,
                         'final_amount' => $montant,
+                        'paid' => $dejaPaye,
+                        'remaining' => max(0.0, round($montant - $dejaPaye, 2)),
                         'discounts' => [],
                         'is_mandatory' => $category->is_mandatory ?? true,
                         'installments_allowed' => $configuration ? $configuration->allowsInstallments() : false,
                         'max_installments' => $configuration ? $configuration->max_installments : 1,
                         'payment_deadline_days' => $configuration ? $configuration->payment_deadline_days : $category->payment_deadline_days,
-                        'configured' => ($souscription || $configuration) ? true : false,
-
-                        // Le depot en nature, que cet ecran ignorait completement.
-                        //
-                        // Deux categories d'ISLG l'acceptent — le paquet de ramettes
-                        // et la chemise cartonnee : l'etudiant apporte l'objet, ou
-                        // il en paie l'equivalent. Le caissier n'avait aucun moyen
-                        // de le savoir, puisque rien ne le lui disait, et aucun
-                        // moyen de l'enregistrer depuis sa caisse.
-                        //
-                        // C'est aussi ce qui laissait ces lignes non cochees sur le
-                        // recu : une ligne ne porte « depose » que si
-                        // satisfied_in_kind est pose, et personne ne pouvait le
-                        // poser depuis l'encaissement.
+                        'configured' => true,
                         'accepts_in_kind' => (bool) $category->accepts_in_kind,
-                        'satisfied_in_kind' => (bool) ($souscription?->satisfied_in_kind),
+                        'satisfied_in_kind' => (bool) $souscription->satisfied_in_kind,
                         'options' => $configuration ? $configuration->options()->active()->get()->map(function($option) {
                             return [
                                 'id' => $option->id,

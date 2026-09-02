@@ -3,9 +3,12 @@
 namespace App\Services;
 
 use App\Exceptions\InKindDepositForbiddenException;
+use App\Models\ESBTPFraisCategory;
+use App\Models\ESBTPFraisConfiguration;
 use App\Models\ESBTPFraisSubscription;
 use App\Models\ESBTPInscription;
 use App\Models\ESBTPPaiement;
+use App\Services\ApplicableFraisResolver;
 
 class InKindDepositService
 {
@@ -31,6 +34,64 @@ class InKindDepositService
 
             $this->stampDeposited($subscription, (int) $userId);
         }
+    }
+
+    public function markDepositedFor(ESBTPInscription $inscription, ESBTPFraisCategory $category, int $userId): ESBTPFraisSubscription
+    {
+        if (! $category->accepts_in_kind) {
+            throw new InKindDepositForbiddenException('Cette catégorie n\'accepte pas de dépôt en nature.');
+        }
+
+        if (! app(ApplicableFraisResolver::class)->categoryAppliesToStudent(
+            $category,
+            $inscription->statut_etablissement,
+        )) {
+            throw new InKindDepositForbiddenException('Ce frais ne s\'applique pas à cet étudiant.');
+        }
+
+        $subscription = ESBTPFraisSubscription::query()
+            ->where('inscription_id', $inscription->id)
+            ->where('frais_category_id', $category->id)
+            ->first();
+
+        if (! $subscription) {
+            $subscription = ESBTPFraisSubscription::create([
+                'inscription_id' => $inscription->id,
+                'frais_category_id' => $category->id,
+                'amount' => $this->montantPour($category, $inscription),
+                'is_active' => true,
+                'subscribed_at' => now(),
+                'created_by' => $userId,
+                'notes' => 'Souscription créée au dépôt en nature',
+            ]);
+        } elseif (! $subscription->is_active) {
+            $subscription->update(['is_active' => true]);
+        }
+
+        return $this->markDeposited($subscription, $userId);
+    }
+
+    public function canMarkCategory(
+        ESBTPInscription $inscription,
+        ESBTPFraisCategory $category,
+        ?ESBTPFraisSubscription $subscription
+    ): bool {
+        if (! $category->accepts_in_kind) {
+            return false;
+        }
+
+        if ($subscription) {
+            return $this->canMarkDeposited($subscription);
+        }
+
+        if ($this->hasValidatedPayment((int) $inscription->id, (int) $category->id)) {
+            return false;
+        }
+
+        return app(ApplicableFraisResolver::class)->categoryAppliesToStudent(
+            $category,
+            $inscription->statut_etablissement,
+        );
     }
 
     public function markDeposited(ESBTPFraisSubscription $subscription, int $userId): ESBTPFraisSubscription
@@ -81,6 +142,24 @@ class InKindDepositService
         $value = $inKindDeposits[$categoryId] ?? $inKindDeposits[(string) $categoryId] ?? 0;
 
         return $value === 1 || $value === '1' || $value === true;
+    }
+
+    private function montantPour(ESBTPFraisCategory $categorie, ESBTPInscription $inscription): float
+    {
+        $configuration = ESBTPFraisConfiguration::getApplicableConfiguration(
+            $categorie->id,
+            $inscription->filiere_id,
+            $inscription->niveau_id,
+            $inscription->annee_universitaire_id
+        );
+
+        if ($configuration) {
+            $statut = $inscription->affectation_status ?? ESBTPInscription::DEFAULT_AFFECTATION_STATUS;
+
+            return (float) $configuration->getMontantByStatus($statut);
+        }
+
+        return (float) ($categorie->default_amount ?? 0);
     }
 
     private function stampDeposited(ESBTPFraisSubscription $subscription, int $userId): void

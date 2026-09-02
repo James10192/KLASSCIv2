@@ -1012,6 +1012,7 @@
 
 <script>
     window.hideEnrollmentAmounts = @json($hideAmounts ?? false);
+    window.canMarkInKind = @json(auth()->user()?->can('inscriptions.in_kind.mark') ?? false);
 document.addEventListener('DOMContentLoaded', function() {
     let parentIndex = 1;
     let isLoadingFrais = false;
@@ -1777,7 +1778,9 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         if (fraisInKind.length > 0) {
             html += `<p class="fw-bold mt-4 mb-3" style="font-size:13px;"><i class="fas fa-box me-2"></i>Fournitures à déposer</p>`;
-            html += `<p class="text-muted mb-3" style="font-size:12px;">Cochez uniquement les articles déjà déposés. Les autres seront dus au montant configuré.</p>`;
+            html += window.canMarkInKind
+                ? `<p class="text-muted mb-3" style="font-size:12px;">Cochez uniquement les articles déjà déposés. Les autres seront dus au montant configuré.</p>`
+                : `<p class="text-muted mb-3" style="font-size:12px;">Ces fournitures seront dues au montant configuré.</p>`;
             fraisInKind.forEach(frais => { html += generateInKindHTML(frais); });
         }
         if (fraisOptionnels.length > 0) {
@@ -1818,13 +1821,12 @@ document.addEventListener('DOMContentLoaded', function() {
                      marquee deposee si la case est cochee, a payer sinon. -->
                 <input type="hidden" name="frais[${category.id}][amount]" value="${amount}">
                 <input type="hidden" name="in_kind_deposits[${category.id}]" value="0">
-                <label class="d-flex align-items-start gap-3" style="cursor:pointer;margin:0;">
-                    <input class="form-check-input mt-1" type="checkbox"
-                           name="in_kind_deposits[${category.id}]" value="1">
+                <label class="d-flex align-items-start gap-3" style="cursor:${window.canMarkInKind ? 'pointer' : 'default'};margin:0;">
+                    ${window.canMarkInKind ? `<input class="form-check-input mt-1" type="checkbox" name="in_kind_deposits[${category.id}]" value="1">` : ''}
                     <div>
                         <div class="fw-bold">${category.name}</div>
                         ${category.description ? `<div class="text-muted" style="font-size:12px;">${category.description}</div>` : ''}
-                        <div style="font-size:12px;margin-top:4px;">${amountHtml} — cocher si déposé, sinon le montant sera dû.</div>
+                        <div style="font-size:12px;margin-top:4px;">${amountHtml}${window.canMarkInKind ? ' — cocher si déposé, sinon le montant sera dû.' : ''}</div>
                     </div>
                 </label>
             </div>`;

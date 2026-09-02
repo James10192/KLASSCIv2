@@ -863,6 +863,11 @@ tr[data-inscription-id] > td { transition: background .15s ease; }
                     <i class="fas fa-download"></i>Exporter
                 </button>
             @endcan
+            @can('inscriptions.edit')
+                <button type="button" class="ii-bulk-btn" onclick="iiBulkFraisManquants()">
+                    <i class="fas fa-rotate"></i>Compléter les frais
+                </button>
+            @endcan
         </div>
         <button type="button" class="ii-bulk-close" onclick="iiClearSelection()" aria-label="Fermer la sélection">
             <i class="fas fa-times"></i>
@@ -1183,6 +1188,8 @@ tr[data-inscription-id] > td { transition: background .15s ease; }
         validerAvecPaiement: "/esbtp/inscriptions/:id/valider-avec-paiement",
         changerClasseRapide: "/esbtp/inscriptions/:id/changer-classe-rapide",
         validerPaiementRapide: "/esbtp/paiements/:id/valider-rapide",
+        fraisManquantsPreview: "{{ route('esbtp.inscriptions.frais-manquants.preview') }}",
+        fraisManquantsApply: "{{ route('esbtp.inscriptions.frais-manquants.apply') }}",
     };
     window.KLASSCI_CSRF_TOKEN = "{{ csrf_token() }}";
 </script>

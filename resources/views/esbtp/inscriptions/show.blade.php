@@ -1804,6 +1804,15 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                             <div class="is-section-header">
                                 <div class="is-section-icon"><i class="fas fa-chart-line"></i></div>
                                 <div class="is-section-title">Situation Financière Détaillée</div>
+                                @can('inscriptions.edit')
+                                <form method="POST" action="{{ route('esbtp.inscriptions.frais-manquants.preview') }}" id="is-frais-manquants-preview" class="ms-auto">
+                                    @csrf
+                                    <input type="hidden" name="inscription_ids[]" value="{{ $inscription->id }}">
+                                    <button type="button" class="btn-acasi secondary btn-sm" id="is-btn-frais-manquants">
+                                        <i class="fas fa-rotate"></i> Compléter les frais manquants
+                                    </button>
+                                </form>
+                                @endcan
                             </div>
 
                             <style>
@@ -5546,6 +5555,38 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                 </div>`;
         }
     };
+</script>
+<script>
+(function () {
+    var btn = document.getElementById('is-btn-frais-manquants');
+    if (!btn) return;
+    btn.addEventListener('click', function () {
+        var form = document.getElementById('is-frais-manquants-preview');
+        var data = new FormData(form);
+        fetch('{{ route('esbtp.inscriptions.frais-manquants.preview') }}', {
+            method: 'POST',
+            body: data,
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+        }).then(function (r) { return r.json(); }).then(function (res) {
+            if (!res.total) {
+                alert('Aucun frais obligatoire manquant pour cette inscription.');
+                return;
+            }
+            var lignes = (res.lignes || []).map(function (l) {
+                return (l.categorie || '') + ' — ' + Number(l.montant || 0).toLocaleString('fr-FR') + ' F';
+            }).join('\n');
+            if (!confirm(res.total + ' frais manquant(s) :\n' + lignes + '\n\nAjouter maintenant ?')) return;
+            fetch('{{ route('esbtp.inscriptions.frais-manquants.apply') }}', {
+                method: 'POST',
+                body: data,
+                headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+            }).then(function (r) { return r.json(); }).then(function (applied) {
+                alert(applied.message || 'Frais complétés.');
+                window.location.reload();
+            });
+        }).catch(function () { alert('Impossible de prévisualiser les frais manquants.'); });
+    });
+})();
 </script>
 @endpush
 
