@@ -1071,20 +1071,12 @@ class ESBTPPaiementController extends Controller
                 ->groupBy('inscription_id');
         }
 
-        $paiements = collect();
-        if (!empty($inscriptionIds)) {
-            $paiements = ESBTPPaiement::where('status', 'validé')
-                ->whereIn('inscription_id', $inscriptionIds)
-                ->where('frais_category_id', $categoryId)
-                ->horsReliquat()
-                ->get()
-                ->groupBy(function($paiement) {
-                    return $paiement->inscription_id . '_' . $paiement->frais_category_id;
-                });
-        }
+        // Allocation-aware : un versement reparti compte pour chacun des frais
+        // qu'il a couverts, et seulement a hauteur de sa part.
+        ['paye' => $payeParFrais, 'versements' => $paiements] = $this->statsService->preparerPaiements($inscriptionIds);
 
         // Analyser les détails avec données pré-chargées
-        $details = $this->statsService->analyserCategorieDetailleOptimisee($category, $inscriptions, $configurations, $subscriptions, $paiements);
+        $details = $this->statsService->analyserCategorieDetailleOptimisee($category, $inscriptions, $configurations, $subscriptions, $paiements, $payeParFrais);
 
         // Filtrer par statut demandé
         $etudiants = collect();
@@ -1207,14 +1199,9 @@ class ESBTPPaiementController extends Controller
             ->where('frais_category_id', $categoryId)->get()
             ->groupBy('inscription_id');
 
-        $paiements = ESBTPPaiement::where('status', 'validé')
-            ->whereIn('inscription_id', $inscriptionIds)
-            ->where('frais_category_id', $categoryId)
-            ->horsReliquat()
-            ->get()
-            ->groupBy(fn($p) => $p->inscription_id . '_' . $p->frais_category_id);
+        ['paye' => $payeParFrais, 'versements' => $paiements] = $this->statsService->preparerPaiements($inscriptionIds);
 
-        $details = $this->statsService->analyserCategorieDetailleOptimisee($category, $inscriptions, $configurations, $subscriptions, $paiements);
+        $details = $this->statsService->analyserCategorieDetailleOptimisee($category, $inscriptions, $configurations, $subscriptions, $paiements, $payeParFrais);
 
         $etudiants = match($statut) {
             'non_payes' => $details['etudiants_non_payes'],
@@ -1316,14 +1303,9 @@ class ESBTPPaiementController extends Controller
             ->where('frais_category_id', $categoryId)->get()
             ->groupBy('inscription_id');
 
-        $paiements = ESBTPPaiement::where('status', 'validé')
-            ->whereIn('inscription_id', $inscriptionIds)
-            ->where('frais_category_id', $categoryId)
-            ->horsReliquat()
-            ->get()
-            ->groupBy(fn($p) => $p->inscription_id . '_' . $p->frais_category_id);
+        ['paye' => $payeParFrais, 'versements' => $paiements] = $this->statsService->preparerPaiements($inscriptionIds);
 
-        $details = $this->statsService->analyserCategorieDetailleOptimisee($category, $inscriptions, $configurations, $subscriptions, $paiements);
+        $details = $this->statsService->analyserCategorieDetailleOptimisee($category, $inscriptions, $configurations, $subscriptions, $paiements, $payeParFrais);
 
         $etudiants = match($statut) {
             'non_payes' => $details['etudiants_non_payes'],

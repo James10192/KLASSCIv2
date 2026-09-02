@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\ESBTPInscription;
 use App\Models\ESBTPPaiement;
+use App\Services\Frais\MontantsParFrais;
 
 class PaymentStatsService
 {
@@ -80,7 +81,7 @@ class PaymentStatsService
     /**
      * Version optimisée de calculerVueEnsemble - évite les requêtes N+1
      */
-    public function calculerVueEnsembleOptimisee($inscriptions, $categories, $configurations, $subscriptions, $paiements)
+    public function calculerVueEnsembleOptimisee($inscriptions, $categories, $configurations, $subscriptions, $paiements, array $payeParFrais = [])
     {
         $totalEtudiants = $inscriptions->count();
         $etudiantsEnRegle = 0;
@@ -101,10 +102,7 @@ class PaymentStatsService
                 if ($estConcerne) {
                     $montantEtudiantAttendu += $montantAttendu;
 
-                    // Paiements de l'étudiant pour cette catégorie
-                    $paiementKey = $inscription->id . '_' . $category->id;
-                    $paiementsEtudiant = $paiements->get($paiementKey, collect());
-                    $montantPaye = ESBTPPaiement::netStudentPaidFrom($paiementsEtudiant);
+                    $montantPaye = (float) ($payeParFrais[$inscription->id][$category->id] ?? 0);
                     $montantEtudiantPaye += $montantPaye;
 
                     if ($montantPaye > 0) {
@@ -158,7 +156,61 @@ class PaymentStatsService
     /**
      * Version optimisée de analyserCategorieDetaille - évite les requêtes N+1
      */
-    public function analyserCategorieDetailleOptimisee($category, $inscriptions, $configurations, $subscriptions, $paiements)
+    /**
+     * Ce que chaque frais a recu, et les versements a montrer, pour un lot
+     * d'inscriptions.
+     *
+     * Ces analyses lisaient jusqu'ici les versements filtres sur
+     * `frais_category_id`, donc en IGNORANT les allocations : un versement
+     * reparti ne comptait que pour le frais designe au guichet, et tous les
+     * autres paraissaient impayes. Un etudiant a jour ressortait « en retard »,
+     * et le taux de recouvrement d'une categorie etait faux.
+     *
+     * Les montants viennent desormais de {@see MontantsParFrais}, seule
+     * detentrice de la regle. Les versements, eux, ne servent plus qu'a
+     * afficher les derniers reglements : un versement reparti apparait sous
+     * CHACUN des frais qu'il a couverts.
+     *
+     * @param  array<int, int>  $inscriptionIds
+     * @return array{paye: array<int, array<int, float>>, versements: Collection}
+     */
+    public function preparerPaiements(array $inscriptionIds): array
+    {
+        if ($inscriptionIds === []) {
+            return ['paye' => [], 'versements' => collect()];
+        }
+
+        $verses = ESBTPPaiement::query()
+            ->whereIn('inscription_id', $inscriptionIds)
+            ->where('status', 'validé')
+            ->horsReliquat()
+            ->with('allocations.fraisCategory:id,name,category_type')
+            ->get();
+
+        $parFrais = collect();
+        foreach ($verses as $versement) {
+            foreach ($versement->ventilation() as $part) {
+                if ($part['frais_id'] === null) {
+                    continue;
+                }
+                $cle = $versement->inscription_id.'_'.$part['frais_id'];
+                $parFrais[$cle] = ($parFrais[$cle] ?? collect())->push($versement);
+            }
+        }
+
+        return [
+            'paye' => app(MontantsParFrais::class)->parInscriptionEtFrais(
+                ESBTPPaiement::query()
+                    ->whereIn('inscription_id', $inscriptionIds)
+                    ->where('status', 'validé')
+                    ->encaissements()
+                    ->horsReliquat()
+            ),
+            'versements' => $parFrais,
+        ];
+    }
+
+    public function analyserCategorieDetailleOptimisee($category, $inscriptions, $configurations, $subscriptions, $paiements, array $payeParFrais = [])
     {
         $details = [
             'category' => $category,
@@ -179,7 +231,10 @@ class PaymentStatsService
                 // Vérifier les paiements de l'étudiant pour cette catégorie
                 $paiementKey = $inscription->id . '_' . $category->id;
                 $paiementsEtudiant = $paiements->get($paiementKey, collect());
-                $montantPaye = ESBTPPaiement::netStudentPaidFrom($paiementsEtudiant);
+                // Le montant vient de la regle unique, pas d'une somme des
+                // versements affiches : un versement reparti n'a laisse sur ce
+                // frais que sa part.
+                $montantPaye = (float) ($payeParFrais[$inscription->id][$category->id] ?? 0);
                 $details['montant_total_recu'] += $montantPaye;
 
                 $statutEtudiant = [
@@ -208,7 +263,7 @@ class PaymentStatsService
     /**
      * Version optimisée de calculerStatistiquesCategories - évite les requêtes N+1
      */
-    public function calculerStatistiquesCategoriesOptimisees($inscriptions, $categories, $configurations, $subscriptions, $paiements)
+    public function calculerStatistiquesCategoriesOptimisees($inscriptions, $categories, $configurations, $subscriptions, $paiements, array $payeParFrais = [])
     {
         $statistiques = [];
 
@@ -234,9 +289,8 @@ class PaymentStatsService
                     $stats['montant_total_attendu'] += $montantAttendu;
 
                     // Paiements de l'étudiant pour cette catégorie
-                    $paiementKey = $inscription->id . '_' . $category->id;
-                    $paiementsEtudiant = $paiements->get($paiementKey, collect());
-                    $montantPaye = ESBTPPaiement::netStudentPaidFrom($paiementsEtudiant);
+                    // Le montant vient de la regle unique (MontantsParFrais).
+                    $montantPaye = (float) ($payeParFrais[$inscription->id][$category->id] ?? 0);
                     $stats['montant_total_recu'] += $montantPaye;
 
                     // Catégorisation
