@@ -1,4 +1,4 @@
-@can('markInKind', $inscription)
+@can('inscriptions.in_kind.mark')
     @php
         $fournitures = collect($feeCategoriesWithRules ?? [])
             ->filter(fn ($item) => !empty($item['category']->accepts_in_kind) || !empty($item['satisfied_in_kind']));

@@ -39,6 +39,9 @@
                     <span class="fc-cat-pill" style="background:rgba(15,23,42,.06);color:#334155;border-color:rgba(15,23,42,.08);">
                         {{ $sourceLabel }}
                     </span>
+                    @if(($category->audience ?? 'tous') === 'nouveaux_etablissement')
+                        <span class="fc-cat-pill" style="background:rgba(4,83,203,.08);color:#0453cb;">Nouveaux de l'établissement</span>
+                    @endif
                 </div>
                 @if($category->description)
                     <div class="fc-cat-desc">{{ $category->description }}</div>
@@ -126,6 +129,21 @@
                     <i class="fas fa-copy"></i>Copier Non Aff.
                 </button>
             </div>
+        </div>
+
+        <div class="fc-cat-section">
+            <label class="fc-cat-section-label">
+                <i class="fas fa-user-plus"></i>
+                Audience
+            </label>
+            <label style="display:flex;align-items:center;gap:.5rem;font-size:.82rem;color:#334155;margin:0;">
+                <input type="hidden" name="categories[{{ $category->id }}][audience]" value="tous">
+                <input type="checkbox"
+                       name="categories[{{ $category->id }}][audience]"
+                       value="nouveaux_etablissement"
+                       {{ ($category->audience ?? 'tous') === 'nouveaux_etablissement' ? 'checked' : '' }}>
+                Uniquement les nouveaux de l'établissement (ce niveau et les autres où ce frais est configuré)
+            </label>
         </div>
 
         <div class="fc-cat-section">
