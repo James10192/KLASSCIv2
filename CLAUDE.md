@@ -24,6 +24,7 @@
 - `esbtp-yakro` — offre **Élite**, > 2000 inscriptions
 - `ephrata` — offre **Partenaire**
 - `hetec`, `rostan` — phase test (visent l'offre Élite)
+- `usat` — université LMD (Licence 1 à 3), ouverture 2026-2027
 - `presentation` — instance démo (Free, test)
 
 Chaque instance a sa propre branche Git du même nom (snapshot de `presentation` synchronisé périodiquement). Voir [.claude/rules/tenant-branches.md](.claude/rules/tenant-branches.md).
