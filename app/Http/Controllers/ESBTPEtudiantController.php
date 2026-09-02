@@ -28,6 +28,7 @@ use App\Services\ClasseManagementService;
 use App\Services\FuzzyNameMatcher;
 use App\Services\DocumentPrintGuard;
 use App\Services\LMD\LmdCreditWalletService;
+use App\Services\Frais\SoldesParSouscription;
 
 class ESBTPEtudiantController extends Controller
 {
@@ -2199,115 +2200,19 @@ class ESBTPEtudiantController extends Controller
             $inscriptionActive = (clone $inscriptionsQuery)->first();
         }
 
-        $soldes = [
-            'academic' => ['total' => 0, 'paid' => 0, 'remaining' => 0, 'categories' => []],
-            'service' => ['total' => 0, 'paid' => 0, 'remaining' => 0, 'categories' => []],
-            'administrative' => ['total' => 0, 'paid' => 0, 'remaining' => 0, 'categories' => []],
-        ];
-
-        $categoriesById = [];
-        $totalDue = 0.0;
-        $totalPaid = 0.0;
-
-        if ($inscriptionActive) {
-            $allCategories = \App\Models\ESBTPFraisCategory::query()
-                ->where('is_active', true)
-                ->ordered()
-                ->get();
-
-            $affectationStatus = $inscriptionActive->affectation_status ?? \App\Models\ESBTPInscription::DEFAULT_AFFECTATION_STATUS;
-
-            foreach ($allCategories as $category) {
-                $configuration = \App\Models\ESBTPFraisConfiguration::getApplicableConfiguration(
-                    $category->id,
-                    $inscriptionActive->filiere_id,
-                    $inscriptionActive->niveau_id,
-                    $inscriptionActive->annee_universitaire_id
-                );
-
-                if ($configuration && method_exists($configuration, 'getMontantByStatus')) {
-                    $montant = (float) $configuration->getMontantByStatus($affectationStatus);
-                } elseif ($configuration) {
-                    $montant = (float) ($configuration->amount ?? 0);
-                } else {
-                    $montant = (float) ($category->default_amount ?? 0);
-                }
-
-                if ($montant <= 0) {
-                    continue;
-                }
-
-                $categoryType = $category->category_type ?? 'academic';
-
-                $categoriesById[(string) $category->id] = [
-                    'id' => $category->id,
-                    'name' => $category->name,
-                    'type' => $categoryType,
-                    'total' => $montant,
-                    'paid' => 0.0,
-                    'remaining' => $montant,
-                    'percentage' => 0,
-                    'is_mandatory' => (bool) $category->is_mandatory,
-                ];
-
-                $totalDue += $montant;
-
-                if (isset($soldes[$categoryType])) {
-                    $soldes[$categoryType]['total'] += $montant;
-                    $soldes[$categoryType]['categories'][] = [
-                        'id' => $category->id,
-                        'name' => $category->name,
-                        'amount' => $montant,
-                        'is_mandatory' => (bool) $category->is_mandatory,
-                    ];
-                }
-            }
-
-            // Paiements validés de l'inscription active uniquement
-            $paiementsValides = $etudiant->paiements()
-                ->where('status', 'validé')
-                ->where('inscription_id', $inscriptionActive->id)
-                ->whereNull('deleted_at')
-                ->get(['frais_category_id', 'montant']);
-
-            foreach ($paiementsValides as $paiement) {
-                $montantPaye = (float) $paiement->montant;
-                $totalPaid += $montantPaye;
-
-                $type = 'academic';
-                if ($paiement->frais_category_id) {
-                    $categoryKey = (string) $paiement->frais_category_id;
-                    if (isset($categoriesById[$categoryKey])) {
-                        $categoriesById[$categoryKey]['paid'] += $montantPaye;
-                        $type = $categoriesById[$categoryKey]['type'] ?? 'academic';
-                    }
-                }
-
-                if (isset($soldes[$type])) {
-                    $soldes[$type]['paid'] += $montantPaye;
-                }
-            }
-
-            foreach ($categoriesById as $key => $row) {
-                $remaining = max(0.0, (float) $row['total'] - (float) $row['paid']);
-                $categoriesById[$key]['remaining'] = $remaining;
-                $categoriesById[$key]['percentage'] = (float) $row['total'] > 0
-                    ? round(((float) $row['paid'] / (float) $row['total']) * 100, 1)
-                    : 0;
-            }
-        }
-
-        // Calculer les montants restants par type
-        foreach ($soldes as $type => &$solde) {
-            $solde['remaining'] = max(0, (float) $solde['total'] - (float) $solde['paid']);
-            $solde['percentage'] = (float) $solde['total'] > 0 ? round(((float) $solde['paid'] / (float) $solde['total']) * 100, 1) : 0;
-        }
+        $soldes = $inscriptionActive
+            ? app(SoldesParSouscription::class)->pourInscription($inscriptionActive)
+            : [
+                'academic' => ['total' => 0, 'paid' => 0, 'remaining' => 0, 'percentage' => 0, 'categories' => []],
+                'service' => ['total' => 0, 'paid' => 0, 'remaining' => 0, 'percentage' => 0, 'categories' => []],
+                'administrative' => ['total' => 0, 'paid' => 0, 'remaining' => 0, 'percentage' => 0, 'categories' => []],
+                'categories' => [],
+                'total_paid' => 0.0,
+                'total_due' => 0.0,
+                'total_remaining' => 0.0,
+            ];
 
         return response()->json(array_merge($soldes, [
-            'categories' => $categoriesById,
-            'total_paid' => $totalPaid,
-            'total_due' => $totalDue,
-            'total_remaining' => max(0.0, $totalDue - $totalPaid),
             'selected_inscription_id' => $inscriptionActive?->id,
             'selected_inscription_is_current_year' => (bool) ($inscriptionActive?->anneeUniversitaire?->is_current ?? false),
         ]));

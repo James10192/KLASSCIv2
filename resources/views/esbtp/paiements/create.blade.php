@@ -1532,8 +1532,12 @@ $(function() {
     function calculateAmountSuggestions(category) {
         var suggestions = [];
         var total = Number(category.montant || 0);
-        var paid = getPaidAmountForCategory(category.id);
-        var remaining = Math.max(0, total - paid);
+        var paid = Number.isFinite(Number(category.paid))
+            ? Number(category.paid)
+            : getPaidAmountForCategory(category.id);
+        var remaining = Number.isFinite(Number(category.remaining))
+            ? Math.max(0, Number(category.remaining))
+            : Math.max(0, total - paid);
         
         // Suggestions intelligentes
         if (remaining > 0) {

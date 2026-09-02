@@ -313,6 +313,7 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
     Route::get('/audit-comptable', [App\Http\Controllers\API\CLI\CLIDataController::class, 'auditComptable'])->name('audit-comptable');
     Route::get('/settings', [App\Http\Controllers\API\CLI\CLIDataController::class, 'settings'])->name('settings');
     Route::get('/frais/bareme', [App\Http\Controllers\API\CLI\CLIFraisController::class, 'bareme'])->name('frais.bareme');
+    Route::get('/frais/soldes-inscription', [App\Http\Controllers\API\CLI\CLIFraisController::class, 'soldesInscription'])->name('frais.soldes-inscription');
     Route::get('/personnel-scores', [App\Http\Controllers\API\CLI\CLIDataController::class, 'personnelScores'])->name('personnel-scores');
     Route::get('/academic-pilotage/diagnose', [App\Http\Controllers\API\CLI\CLIAcademicPilotageController::class, 'diagnose'])
         ->name('academic-pilotage.diagnose');

@@ -7,11 +7,13 @@ use App\Http\Controllers\API\BaseApiController;
 use App\Models\ESBTPFraisCategory;
 use App\Models\ESBTPFraisConfiguration;
 use App\Models\ESBTPFraisSubscription;
+use App\Models\ESBTPInscription;
 use App\Models\Setting;
 use App\Services\TenantScolariteSettings;
 use App\Services\Frais\CorrectionMontantSouscriptions;
 use App\Services\Frais\OrdreDesCategoriesFrais;
 use App\Services\Frais\RepartitionTropPercu;
+use App\Services\Frais\SoldesParSouscription;
 use App\Services\Frais\SouscriptionsObligatoiresManquantes;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -86,6 +88,78 @@ class CLIFraisController extends BaseApiController
             'souscriptions' => $souscriptions,
             'montants_40k_60k' => $focus,
         ], 'Barème frais');
+    }
+
+    public function soldesInscription(Request $request, SoldesParSouscription $soldes): JsonResponse
+    {
+        if (! $request->user()->tokenCan('cli:read')) {
+            return $this->errorResponse('Token missing cli:read ability', [], 403);
+        }
+
+        $valide = $request->validate([
+            'inscription_id' => ['nullable', 'integer', 'exists:esbtp_inscriptions,id'],
+        ]);
+
+        $inscription = isset($valide['inscription_id'])
+            ? ESBTPInscription::with(['etudiant', 'classe'])->find($valide['inscription_id'])
+            : $this->echantillonSoldes();
+
+        if (! $inscription) {
+            return $this->errorResponse('Aucune inscription avec souscription active.', [], 404);
+        }
+
+        $souscriptions = ESBTPFraisSubscription::query()
+            ->where('inscription_id', $inscription->id)
+            ->where('is_active', true)
+            ->with('fraisCategory')
+            ->get()
+            ->map(function (ESBTPFraisSubscription $sub) {
+                $cat = $sub->fraisCategory;
+                $catalogue = (float) ($cat->default_amount ?? 0);
+
+                return [
+                    'categorie_id' => (int) $sub->frais_category_id,
+                    'categorie' => $cat->name ?? null,
+                    'audience' => $cat->audience ?? ESBTPFraisCategory::AUDIENCE_TOUS,
+                    'accepts_in_kind' => (bool) ($cat->accepts_in_kind ?? false),
+                    'amount' => (float) $sub->amount,
+                    'charged' => (float) $sub->chargedAmount(),
+                    'satisfied_in_kind' => (bool) $sub->satisfied_in_kind,
+                    'catalogue' => $catalogue,
+                    'ecart_catalogue' => round((float) $sub->chargedAmount() - $catalogue, 2),
+                ];
+            });
+
+        $computed = $soldes->pourInscription($inscription);
+
+        return $this->successResponse([
+            'inscription_id' => $inscription->id,
+            'etudiant' => trim(($inscription->etudiant->nom ?? '').' '.($inscription->etudiant->prenoms ?? '')),
+            'matricule' => $inscription->etudiant->matricule ?? null,
+            'classe' => $inscription->classe->name ?? null,
+            'statut_etablissement' => $inscription->statut_etablissement,
+            'confirmer_statut' => app(TenantScolariteSettings::class)->confirmerStatutEtablissement(),
+            'souscriptions' => $souscriptions,
+            'soldes' => [
+                'total_due' => $computed['total_due'],
+                'total_paid' => $computed['total_paid'],
+                'total_remaining' => $computed['total_remaining'],
+                'categories' => array_values($computed['categories']),
+            ],
+        ], 'Soldes par souscription');
+    }
+
+    private function echantillonSoldes(): ?ESBTPInscription
+    {
+        $sub = ESBTPFraisSubscription::query()
+            ->where('is_active', true)
+            ->where('amount', '>', 0)
+            ->latest('id')
+            ->first();
+
+        return $sub
+            ? ESBTPInscription::with(['etudiant', 'classe'])->find($sub->inscription_id)
+            : null;
     }
 
     public function appliquerTenueNouveaux(Request $request): JsonResponse

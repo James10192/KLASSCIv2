@@ -108,6 +108,31 @@ class InKindDepositTest extends TestCase
         $this->assertEquals(2000.0, $this->dueFor([$this->ramette->id, $this->chemise->id]));
     }
 
+    public function test_late_deposit_without_subscription_creates_it_then_marks_deposited(): void
+    {
+        $this->assertNull(
+            ESBTPFraisSubscription::where('inscription_id', $this->inscription->id)
+                ->where('frais_category_id', $this->ramette->id)
+                ->first()
+        );
+
+        Gate::before(fn () => true);
+        $this->withoutMiddleware();
+
+        $this->post(route('esbtp.inscriptions.in-kind-deposits.store', [
+            $this->inscription,
+            $this->ramette,
+        ]))->assertRedirect();
+
+        $sub = ESBTPFraisSubscription::where('inscription_id', $this->inscription->id)
+            ->where('frais_category_id', $this->ramette->id)
+            ->first();
+
+        $this->assertNotNull($sub);
+        $this->assertTrue((bool) $sub->satisfied_in_kind);
+        $this->assertSame(0.0, $this->dueFor([$this->ramette->id]));
+    }
+
     public function test_late_deposit_without_payment_flips_satisfied_in_kind_and_lowers_reste_du(): void
     {
         $this->generateFees([

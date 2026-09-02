@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Helpers\SettingsHelper;
+use App\Models\ESBTPFraisCategory;
 
 class TenantScolariteSettings
 {
@@ -58,7 +59,14 @@ class TenantScolariteSettings
 
     public function confirmerStatutEtablissement(): bool
     {
-        return $this->flag(self::CONFIRMER_STATUT_ETABLISSEMENT);
+        if ($this->flag(self::CONFIRMER_STATUT_ETABLISSEMENT)) {
+            return true;
+        }
+
+        return ESBTPFraisCategory::query()
+            ->where('is_active', true)
+            ->where('audience', ESBTPFraisCategory::AUDIENCE_NOUVEAUX)
+            ->exists();
     }
 
     private function flag(string $key, string $default = '0'): bool

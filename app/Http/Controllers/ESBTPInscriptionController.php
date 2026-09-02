@@ -843,6 +843,7 @@ class ESBTPInscriptionController extends Controller
 
         $feeCategoriesWithRules = [];
         $inKind = app(InKindDepositService::class);
+        $fraisResolver = app(\App\Services\ApplicableFraisResolver::class);
 
         // Ce que chaque frais a REELLEMENT encaisse.
         //
@@ -867,10 +868,16 @@ class ESBTPInscriptionController extends Controller
                 $inscription->annee_universitaire_id,
             );
 
-            // Récupérer la souscription pour ce frais obligatoire
             $subscription = $subscriptions
                 ->where("frais_category_id", $category->id)
                 ->first();
+
+            if (! $subscription && ! $fraisResolver->categoryAppliesToStudent(
+                $category,
+                $inscription->statut_etablissement,
+            )) {
+                continue;
+            }
 
             // Calculer les paiements pour cette catégorie (exclure les paiements de reliquats)
             $paiements = $inscription
@@ -912,9 +919,7 @@ class ESBTPInscriptionController extends Controller
                 "is_subscribed" => $isSubscribed,
                 "subscription" => $subscription,
                 "satisfied_in_kind" => (bool) $satisfiedInKind,
-                "can_mark_in_kind" => $subscription
-                    ? $inKind->canMarkDeposited($subscription)
-                    : false,
+                "can_mark_in_kind" => $inKind->canMarkCategory($inscription, $category, $subscription),
                 "status" => $satisfiedInKind
                     ? "deposited"
                     : ($solde <= 0
@@ -967,7 +972,7 @@ class ESBTPInscriptionController extends Controller
                     "is_subscribed" => true,
                     "subscription" => $subscription,
                     "satisfied_in_kind" => $satisfiedInKind,
-                    "can_mark_in_kind" => $inKind->canMarkDeposited($subscription),
+                    "can_mark_in_kind" => $inKind->canMarkCategory($inscription, $category, $subscription),
                     "status" => $satisfiedInKind
                         ? "deposited"
                         : ($solde <= 0
