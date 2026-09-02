@@ -2371,7 +2371,7 @@ return [
         'serviceTechnique' => ['superAdmin', 'secretaire', 'responsableScolarite', 'serviceScolarite', 'agentInscription', 'chargeCommunication', 'comptable', 'caissier', 'coordinateur', 'directeurEtudes', 'enseignant', 'etudiant'],
         'secretaire'       => ['enseignant', 'etudiant', 'caissier', 'chargeCommunication'],
         'responsableScolarite' => ['serviceScolarite', 'enseignant', 'etudiant'],
-        'serviceScolarite' => [],
+        'serviceScolarite' => ['enseignant'],
         'agentInscription' => [],
         'chargeCommunication' => [],
         'coordinateur'     => ['enseignant', 'etudiant'],

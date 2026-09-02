@@ -67,52 +67,109 @@
     }
 
     .student-progress-card {
-        background: linear-gradient(135deg, #0a3d8f 0%, #0453cb 45%, #3b7ddb 100%);
-        color: #fff;
-        border-radius: 14px;
-        padding: 1.15rem;
+        background: #fff;
+        color: var(--pc-text);
+        border-radius: 12px;
+        padding: 1.1rem 1.15rem 0.85rem;
         margin-bottom: 1rem;
-        border: 1px solid rgba(255, 255, 255, 0.15);
-        box-shadow: 0 8px 30px rgba(4, 83, 203, 0.18), 0 2px 8px rgba(15, 23, 42, 0.08);
+        border: 1px solid var(--pc-border);
+        box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
     }
 
-    .student-progress-card h5,
-    .student-progress-card small,
-    .student-progress-card .text-muted {
-        color: #fff !important;
+    .pc-ledger-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        gap: 1rem;
+        padding-bottom: 0.85rem;
+        margin-bottom: 0.35rem;
+        border-bottom: 1px solid #eef2f7;
     }
 
-    .student-progress-card #total-progress {
-        background: rgba(255, 255, 255, 0.16) !important;
-        color: #fff !important;
-        border: 1px solid rgba(255, 255, 255, 0.2);
+    .pc-ledger-label {
+        margin: 0;
+        color: var(--pc-muted);
+        font-size: 0.82rem;
+        font-weight: 600;
+    }
+
+    .pc-ledger-amount {
+        margin: 0.15rem 0 0;
+        font-size: 1.75rem;
+        font-weight: 800;
+        letter-spacing: -0.03em;
+        color: var(--pc-dark);
+        font-variant-numeric: tabular-nums;
+        line-height: 1.15;
+    }
+
+    .pc-ledger-meta {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 0.2rem;
+        color: var(--pc-muted);
+        font-size: 0.8rem;
+        font-variant-numeric: tabular-nums;
+        font-weight: 600;
     }
 
     .category-progress {
-        background: rgba(255, 255, 255, 0.1);
-        border-radius: 10px;
-        padding: 0.8rem;
-        margin-bottom: 0.6rem;
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        backdrop-filter: blur(8px);
-        transition: all 0.2s ease;
+        padding: 0.7rem 0;
+        border-bottom: 1px solid #eef2f7;
     }
 
-    .category-progress:hover {
-        background: rgba(255, 255, 255, 0.16);
+    .category-progress:last-child {
+        border-bottom: 0;
+    }
+
+    .pc-fee-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        gap: 0.75rem;
+        margin-bottom: 0.4rem;
+    }
+
+    .pc-fee-name {
+        font-weight: 700;
+        font-size: 0.88rem;
+        color: var(--pc-dark);
+    }
+
+    .pc-fee-rest {
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+        color: var(--pc-dark);
+        font-size: 0.88rem;
+    }
+
+    .pc-fee-sub {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 0.35rem;
+        color: var(--pc-muted);
+        font-size: 0.75rem;
+        font-variant-numeric: tabular-nums;
     }
 
     .progress-bar-modern {
-        height: 8px;
+        height: 6px;
         border-radius: 999px;
-        background: rgba(255, 255, 255, 0.18);
+        background: #e8eef6;
         overflow: hidden;
     }
 
     .progress-fill {
         height: 100%;
         border-radius: inherit;
-        transition: width 0.25s ease;
+        background: #0453cb;
+        transition: width 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .progress-fill { transition: none; }
     }
 
     .payment-form-card {
@@ -667,14 +724,17 @@
             <div id="student-progress-section" style="display: none;">
                 <!-- Barre de progression des frais -->
                 <div class="student-progress-card">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h5 class="mb-0"><i class="fas fa-chart-line me-2"></i>Progression des Paiements</h5>
-                        <span class="badge bg-white text-dark" id="total-progress">0% payé</span>
+                    <div class="pc-ledger-head">
+                        <div>
+                            <p class="pc-ledger-label">Reste à encaisser</p>
+                            <p class="pc-ledger-amount" id="total-remaining">0 F</p>
+                        </div>
+                        <div class="pc-ledger-meta">
+                            <span id="total-progress">0 % payé</span>
+                            <span id="total-paid">0 F payé</span>
+                        </div>
                     </div>
-                    
-                    <div id="categories-progress">
-                        <!-- Les catégories seront chargées dynamiquement -->
-                    </div>
+                    <div id="categories-progress"></div>
                 </div>
                 
                 <!-- Informations de l'inscription -->
@@ -1564,31 +1624,35 @@ $(function() {
             
             html += `
                 <div class="category-progress">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <h6 class="mb-0">${categoryBalance.name || 'Catégorie ' + categoryId}</h6>
-                        <span class="badge bg-white bg-opacity-20">${percentage}%</span>
+                    <div class="pc-fee-top">
+                        <span class="pc-fee-name">${categoryBalance.name || 'Catégorie ' + categoryId}</span>
+                        <span class="pc-fee-rest">${formatAmount(remaining)} F</span>
                     </div>
                     <div class="progress-bar-modern">
                         <div class="progress-fill" style="width: ${percentage}%; background: ${getProgressColor(percentage)}"></div>
                     </div>
-                    <div class="d-flex justify-content-between mt-1">
-                        <small>${formatAmount(paid)} FCFA payé</small>
-                        <small>${formatAmount(remaining)} FCFA restant</small>
+                    <div class="pc-fee-sub">
+                        <span>${formatAmount(paid)} F payé</span>
+                        <span>${formatAmount(total)} F dû</span>
                     </div>
                 </div>
             `;
         });
-        
+
         $('#categories-progress').html(html);
-        
-        // Mettre à jour le progrès total
+
+        var totalRemaining = Math.max(0, totalDue - totalPaid);
         var totalPercentage = totalDue > 0 ? Math.round((totalPaid / totalDue) * 100) : 0;
-        $('#total-progress').text(totalPercentage + '% payé');
+        $('#total-remaining').text(formatAmount(totalRemaining) + ' F');
+        $('#total-progress').text(totalPercentage + ' % payé');
+        $('#total-paid').text(formatAmount(totalPaid) + ' F payé');
     }
 
     function resetProgressDisplay() {
         $('#categories-progress').html('');
-        $('#total-progress').text('0% payé');
+        $('#total-remaining').text('0 F');
+        $('#total-progress').text('0 % payé');
+        $('#total-paid').text('0 F payé');
     }
     
     // Obtenir l'icône pour un type de catégorie
@@ -1605,9 +1669,7 @@ $(function() {
     
     // Obtenir la couleur de progression
     function getProgressColor(percentage) {
-        if (percentage >= 80) return 'linear-gradient(90deg, #10b981, #059669)';
-        if (percentage >= 50) return 'linear-gradient(90deg, #f59e0b, #d97706)';
-        return 'linear-gradient(90deg, #ef4444, #dc2626)';
+        return percentage >= 100 ? '#10b981' : '#0453cb';
     }
 
     function showInscriptionNotice(type, message) {

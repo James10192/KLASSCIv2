@@ -2666,9 +2666,8 @@ Route::middleware(['auth', 'permission:system.manage', 'paywall'])->prefix('esbt
     Route::post('/caissiers/{caissier}/reset-password', [\App\Http\Controllers\ESBTPCaissierController::class, 'resetPassword'])->name('caissiers.reset-password');
 });
 
-// Page unifiee personnel : entree avec personnel.view, tabs/actions filtres par permission metier.
-Route::middleware(['auth', 'permission:personnel.view', 'paywall'])->prefix('esbtp')->name('esbtp.')->group(function () {
-    Route::middleware('permission:performance.view_all')->prefix('personnel/performance')->name('personnel.performance.')->group(function () {
+Route::middleware(['auth', 'permission:performance.view_all', 'paywall'])->prefix('esbtp')->name('esbtp.')->group(function () {
+    Route::prefix('personnel/performance')->name('personnel.performance.')->group(function () {
         Route::get('/', [\App\Http\Controllers\ESBTPPersonnelPerformanceController::class, 'index'])->name('index');
         Route::get('/data', [\App\Http\Controllers\ESBTPPersonnelPerformanceController::class, 'data'])->name('data');
         Route::post('/recalculate', [\App\Http\Controllers\ESBTPPersonnelPerformanceController::class, 'recalculate'])
@@ -2676,7 +2675,9 @@ Route::middleware(['auth', 'permission:personnel.view', 'paywall'])->prefix('esb
             ->name('recalculate');
         Route::get('/{user}', [\App\Http\Controllers\ESBTPPersonnelPerformanceController::class, 'show'])->name('show');
     });
+});
 
+Route::middleware(['auth', 'permission:personnel.manage', 'paywall'])->prefix('esbtp')->name('esbtp.')->group(function () {
     Route::get('/personnel/unified', [\App\Http\Controllers\ESBTPPersonnelUnifiedController::class, 'index'])->name('personnel.unified.index');
     Route::get('/personnel/unified/data', [\App\Http\Controllers\ESBTPPersonnelUnifiedController::class, 'getData'])->name('personnel.unified.data');
     Route::get('/personnel/unified/stats', [\App\Http\Controllers\ESBTPPersonnelUnifiedController::class, 'getStats'])->name('personnel.unified.stats');
