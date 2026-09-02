@@ -22,6 +22,14 @@
         background: linear-gradient(135deg, rgba(4, 83, 203, 0.05), rgba(94, 145, 222, 0.05));
         gap: 1rem;
         flex-wrap: wrap;
+        align-items: center;
+    }
+    .mc-page .header-actions {
+        display: flex;
+        flex-direction: row;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.5rem;
     }
     .mc-page .header-left h1 { color: var(--mc-primary); }
     .mc-head {
@@ -249,11 +257,6 @@
                 <a class="btn-acasi secondary" href="{{ route('esbtp.caisse.bordereau', ['preview' => 1]) }}" target="_blank">
                     <i class="fas fa-file-pdf"></i>Bordereau
                 </a>
-                @unless($locked)
-                <button type="button" class="btn-acasi primary" onclick="document.getElementById('mc-close').showModal()">
-                    <i class="fas fa-lock"></i>Clôturer
-                </button>
-                @endunless
             </div>
         </div>
 
