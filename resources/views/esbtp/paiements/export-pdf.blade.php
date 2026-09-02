@@ -225,6 +225,7 @@
             . mb_substr($filters['status'], 1, null, 'UTF-8');
         $filterItems[] = ['label' => 'Statut', 'value' => $statusMap[$filters['status']] ?? $statusFallback];
     }
+    if (!empty($filters['frais_category'])) $filterItems[] = ['label' => 'Frais', 'value' => $filters['frais_category']];
     if (!empty($filters['date_debut'])) $filterItems[] = ['label' => 'Date début', 'value' => $formatDate($filters['date_debut'])];
     if (!empty($filters['date_fin'])) $filterItems[] = ['label' => 'Date fin', 'value' => $formatDate($filters['date_fin'])];
     if (empty($filterItems)) $filterItems[] = ['label' => 'Filtres', 'value' => 'Aucun filtre appliqué'];
@@ -293,6 +294,7 @@
     </div>
 
     {{-- ═══ KPIs ═══ --}}
+    @if($isFirstChunk)
     <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 10px;">
         <tr>
             <td width="20%" style="background-color: {{ $primary }}; padding: 8px 6px; text-align: center; vertical-align: middle; border-right: 1px solid rgba(255,255,255,0.25);">
@@ -324,6 +326,7 @@
             @endif
         </tr>
     </table>
+    @endif
 
     {{-- ═══ TABLE PAIEMENTS ═══ --}}
     @php
@@ -332,7 +335,20 @@
             ? ['nom'=>14,'classe'=>11,'cat'=>12,'mont'=>9,'mode'=>7,'stat'=>7,'recu'=>9,'creator'=>9]
             : ['nom'=>16,'classe'=>12,'cat'=>14,'mont'=>10,'mode'=>8,'stat'=>8,'recu'=>10];
     @endphp
-    @if($paiements->count() > 0)
+    @php
+    // Pose une seule fois : la part imputee se calcule ligne par ligne, mais le
+    // frais filtre, lui, ne change pas d'une ligne a l'autre.
+    $categorieFiltree = !empty($filters['frais_category_id']) ? (int) $filters['frais_category_id'] : null;
+
+    // Rendu par lots : au-dela de quelques centaines de lignes, DomPDF ne tient
+    // pas la charge, donc le document est rendu en morceaux puis fusionne. Les
+    // indicateurs n'ont de sens qu'en tete, le rappel des filtres qu'en fin.
+    // Hors decoupage, ces trois valeurs valent leur defaut et rien ne change.
+    $isFirstChunk = $isFirstChunk ?? true;
+    $isLastChunk = $isLastChunk ?? true;
+    $rowOffset = $rowOffset ?? 0;
+@endphp
+@if($paiements->count() > 0)
         <table class="payments-table">
             <thead>
                 <tr>
@@ -365,13 +381,40 @@
                         }
                     @endphp
                     <tr>
-                        <td style="text-align:center;"><span class="num-col">{{ $index + 1 }}</span></td>
+                        <td style="text-align:center;"><span class="num-col">{{ $rowOffset + $index + 1 }}</span></td>
                         <td style="text-align:center; font-size:9px;">{{ $formatDate($paiement->date_paiement ?? null) }}</td>
                         <td style="text-align:center;"><span class="matricule-col">{{ $paiement->etudiant->matricule ?? 'N/A' }}</span></td>
                         <td><span class="student-name">{{ trim(($paiement->etudiant->nom ?? '') . ' ' . ($paiement->etudiant->prenoms ?? '')) ?: 'N/A' }}</span></td>
                         <td style="font-size:9px;">{{ optional(optional($paiement->inscription)->classe)->name ?? 'N/A' }}</td>
-                        <td style="font-size:9px;">{{ $paiement->fraisCategory->name ?? ($paiement->categorie->nom ?? ($paiement->motif ?? 'N/A')) }}</td>
-                        <td class="montant-col">{{ $formatMontant($paiement->montant ?? 0) }}</td>
+                        @php
+                            // Un versement reparti couvre plusieurs frais.
+                            // N'imprimer que `fraisCategory` — la categorie
+                            // choisie au guichet — affirmait que tout l'argent
+                            // y etait alle. Sur un document comptable, c'est
+                            // une affirmation fausse, pas une approximation.
+                            $ventilation = $paiement->relationLoaded('allocations')
+                                ? $paiement->allocations
+                                : $paiement->allocations()->with('fraisCategory:id,name')->get();
+
+                            if ($ventilation->count() > 1) {
+                                $libelleFrais = $ventilation
+                                    ->map(fn ($ligne) => ($ligne->fraisCategory->name ?? 'Frais supprime')
+                                        . ' (' . $formatMontant($ligne->montant) . ')')
+                                    ->implode(', ');
+                            } else {
+                                $libelleFrais = $paiement->fraisCategory->name
+                                    ?? ($paiement->categorie->nom ?? ($paiement->motif ?? 'N/A'));
+                            }
+
+                            // Filtre par frais actif : la colonne Montant porte
+                            // la part allee sur ce frais, sinon le total du bas
+                            // additionnerait des versements entiers.
+                            $montantLigne = $categorieFiltree
+                                ? $paiement->partPourCategorie($categorieFiltree)
+                                : ($paiement->montant ?? 0);
+                        @endphp
+                        <td style="font-size:9px;">{{ $libelleFrais }}</td>
+                        <td class="montant-col">{{ $formatMontant($montantLigne) }}</td>
                         <td style="text-align:center; font-size:9px;">{{ $paiement->mode_paiement ?? 'N/A' }}</td>
                         <td style="text-align:center;"><span class="status-badge {{ $statusClass }}">{{ $statusLabel }}</span></td>
                         <td style="text-align:center; font-family:'Courier New',monospace; font-size:8.5px;">{{ $paiement->numero_recu ?? '-' }}</td>
@@ -389,7 +432,7 @@
     @endif
 
     {{-- ═══ FILTRES APPLIQUÉS ═══ --}}
-    @if(count($filterItems) > 0)
+    @if($isLastChunk && count($filterItems) > 0)
     <div class="section-title">Filtres appliqués</div>
     <table width="100%" border="0" cellspacing="0" cellpadding="0" style="border:1px solid #e5e7eb; border-radius:4px;">
         @foreach($filterItems as $filter)

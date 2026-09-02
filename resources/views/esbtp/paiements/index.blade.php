@@ -753,7 +753,7 @@
 @section('content')
 @php
     $anneeNom = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->value('name') ?? (date('Y').'-'.(date('Y')+1));
-    $activeFilters = collect(['search', 'status', 'date_debut', 'date_fin'])
+    $activeFilters = collect(['search', 'status', 'frais_category_id', 'date_debut', 'date_fin'])
         ->filter(fn($k) => filled(request($k)))
         ->count();
 @endphp
@@ -810,6 +810,19 @@
                                     <small class="text-muted d-block ms-4" style="font-size:.7rem;">Voir avant téléchargement</small>
                                 </a>
                             </li>
+                            @can('paiements.view')
+                            <li>
+                                <a class="dropdown-item" href="#" onclick="exportPaiements('etat-financier-preview'); return false;">
+                                    <i class="fas fa-file-invoice-dollar text-primary me-2"></i>Aperçu état financier
+                                    <small class="text-muted d-block ms-4" style="font-size:.7rem;">Qui a soldé quel frais</small>
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="#" onclick="exportPaiements('etat-financier'); return false;">
+                                    <i class="fas fa-file-pdf text-danger me-2"></i>Télécharger l'état financier
+                                </a>
+                            </li>
+                            @endcan
                             <li><hr class="dropdown-divider"></li>
                             <li>
                                 <a class="dropdown-item" href="#" onclick="exportPaiements('excel'); return false;">
@@ -923,6 +936,16 @@
                                 'validé' => 'Validé',
                                 'rejeté' => 'Rejeté',
                             ]" />
+                    </div>
+                    <div class="pi-field">
+                        <label for="frais_category_id">Frais</label>
+                        <x-au-select
+                            name="frais_category_id"
+                            :value="request('frais_category_id')"
+                            placeholder="Tous les frais"
+                            icon="fa-tags"
+                            :searchable="($fraisCategories ?? collect())->count() > 8"
+                            :options="$fraisCategories ?? []" />
                     </div>
                     <div class="pi-field">
                         <label for="date_debut">Date début</label>
@@ -1777,6 +1800,14 @@ function showYearChangeInfo() {
                 exportUrl = '{{ route('esbtp.paiements.export.pdf-preview') }}';
                 openInNewTab = true;
                 break;
+            case 'etat-financier':
+                exportUrl = '{{ route('esbtp.paiements.export.etat-financier') }}';
+                break;
+            case 'etat-financier-preview':
+                exportUrl = '{{ route('esbtp.paiements.export.etat-financier') }}';
+                params.set('inline', '1');
+                openInNewTab = true;
+                break;
             default:
                 debugError('❌ Format d\'export inconnu:', format);
                 return;
@@ -1802,7 +1833,7 @@ function showYearChangeInfo() {
         if (openInNewTab) {
             const onglet = window.open(exportUrl, '_blank');
             if (!onglet) {
-                debugLog('⚠️ Ouverture d'onglet refusee, bascule sur l'onglet courant');
+                debugLog("Ouverture d'onglet refusée : bascule sur l'onglet courant");
                 window.location.href = exportUrl;
             }
         } else {
@@ -2011,8 +2042,8 @@ function showYearChangeInfo() {
         updateBulkActionsBar();
 
         // Auto-submit quand on change un select ou une date
-        $('#paiements-filter-form').off('change', 'select[name="status"], input[name="date_debut"], input[name="date_fin"]')
-            .on('change', 'select[name="status"], input[name="date_debut"], input[name="date_fin"]', function() {
+        $('#paiements-filter-form').off('change', 'select[name="status"], select[name="frais_category_id"], input[name="date_debut"], input[name="date_fin"]')
+            .on('change', 'select[name="status"], select[name="frais_category_id"], input[name="date_debut"], input[name="date_fin"]', function() {
                 debugLog('📝 Changement détecté, soumission automatique du formulaire');
                 $('#paiements-filter-form').submit();
             });

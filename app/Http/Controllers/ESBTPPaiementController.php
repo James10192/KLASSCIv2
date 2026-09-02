@@ -8,9 +8,11 @@ use App\Models\ESBTPInscription;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Exceptions\RepartitionRefuseeException;
 use App\Exceptions\ExportPdfTropVolumineuxException;
+use App\Services\Exports\PdfParLots;
 use App\Services\PaiementExportService;
 use App\Http\Requests\Paiement\StorePaiementRequest;
 use App\Http\Requests\Paiement\UpdatePaiementRequest;
+use App\Services\Frais\EtatFinancierParFrais;
 use App\Services\Frais\RepartitionDuVersement;
 use App\Services\Paiements\EtatRecuPaiement;
 use App\Services\PaymentFilterService;
@@ -33,6 +35,15 @@ class ESBTPPaiementController extends Controller
     // privees. Un second ecran ecrit desormais sur de l'argent encaisse (la
     // correction d'imputation) : ils sont partages plutot que recopies.
     use \App\Http\Controllers\Concerns\VerrouilleLesPeriodesComptables;
+
+    /**
+     * Plafond du PDF de la liste des paiements.
+     *
+     * Ce n'est plus une limite de memoire — le rendu par lots l'a levee — mais
+     * de temps : au-dela, l'attente devient plus penible que le filtre qu'on
+     * demande a l'utilisateur de poser.
+     */
+    private const PDF_PAIEMENTS_MAX_LIGNES = 10000;
 
     protected PaymentFilterService $filterService;
     protected PaymentStatsService $statsService;
@@ -127,6 +138,11 @@ class ESBTPPaiementController extends Controller
             'paiements' => $data['paiements'],
             'stats' => $data['stats'],
             'lastUpdatedAt' => $data['last_updated_at'],
+            // Le filtre par frais. Seule la vue complete en a besoin : les
+            // reponses AJAX ne re-rendent que le tableau et les indicateurs.
+            'fraisCategories' => \App\Models\ESBTPFraisCategory::active()
+                ->ordered()
+                ->pluck('name', 'id'),
         ]);
     }
 
@@ -2354,9 +2370,18 @@ class ESBTPPaiementController extends Controller
      */
     public function testFilters(Request $request)
     {
+        $categorieFiltree = $request->input('frais_category_id');
+
         $filters = [
             'search' => $request->input('search'),
             'status' => $request->input('status'),
+            // L'identifiant sert au calcul de la part imputee, le nom au
+            // bandeau de rappel : un document doit dire sur quoi il a ete
+            // filtre, sinon deux exports differents se ressemblent.
+            'frais_category_id' => $categorieFiltree,
+            'frais_category' => $categorieFiltree
+                ? \App\Models\ESBTPFraisCategory::whereKey($categorieFiltree)->value('name')
+                : null,
             'date_debut' => $request->input('date_debut'),
             'date_fin' => $request->input('date_fin'),
         ];
@@ -2443,6 +2468,7 @@ class ESBTPPaiementController extends Controller
             $filters = [
                 'search' => $request->input('search'),
                 'status' => $request->input('status'),
+                'frais_category_id' => $request->input('frais_category_id'),
                 'date_debut' => $request->input('date_debut'),
                 'date_fin' => $request->input('date_fin'),
             ];
@@ -2543,6 +2569,7 @@ class ESBTPPaiementController extends Controller
             $filters = [
                 'search' => $request->input('search'),
                 'status' => $request->input('status'),
+                'frais_category_id' => $request->input('frais_category_id'),
                 'date_debut' => $request->input('date_debut'),
                 'date_fin' => $request->input('date_fin'),
             ];
@@ -2578,8 +2605,12 @@ class ESBTPPaiementController extends Controller
     public function exportPdf(Request $request, FuzzyNameMatcher $matcher)
     {
         try {
-            [$pdf, $filename] = $this->buildExportPdf($request, $matcher);
-            return $pdf->download($filename);
+            [$paiements, $donnees, $filename] = $this->buildExportPdf($request, $matcher);
+            [$rendu, $filename, $estUnChemin] = $this->rendreExportPdf($paiements, $donnees, $filename);
+
+            return $estUnChemin
+                ? response()->download($rendu, $filename)->deleteFileAfterSend(true)
+                : $rendu->download($filename);
         } catch (ExportPdfTropVolumineuxException $e) {
             // Pas une panne : la selection est trop large. Le message dit
             // quoi faire, il ne doit pas etre noye dans un 'Erreur lors de'.
@@ -2601,9 +2632,21 @@ class ESBTPPaiementController extends Controller
     public function exportPdfPreview(Request $request, FuzzyNameMatcher $matcher)
     {
         try {
-            [$pdf, $filename] = $this->buildExportPdf($request, $matcher);
+            [$paiements, $donnees, $filename] = $this->buildExportPdf($request, $matcher);
+            [$rendu, $filename, $estUnChemin] = $this->rendreExportPdf($paiements, $donnees, $filename);
+
+            // Un gros export passe par un fichier temporaire : le lire d'un
+            // bloc annulerait le benefice du decoupage, on le diffuse.
+            if ($estUnChemin) {
+                return response()->file($rendu, [
+                    'Content-Type' => 'application/pdf',
+                    'Content-Disposition' => 'inline; filename="' . $filename . '"',
+                    'X-Robots-Tag' => 'noindex, nofollow',
+                ])->deleteFileAfterSend(true);
+            }
+
             return new \Illuminate\Http\Response(
-                $pdf->output(),
+                $rendu->output(),
                 200,
                 [
                     'Content-Type' => 'application/pdf',
@@ -2636,19 +2679,21 @@ class ESBTPPaiementController extends Controller
         $data = $this->filterService->preparePaiementListing($request, $matcher, [], microtime(true), 'ESBTPPaiementController@buildExportPdf');
         $paiements = $this->filterService->getAllFilteredPaiements($request, $matcher);
 
-        // Compter AVANT de rendre. DomPDF garde tout le document en memoire :
-        // au-dela du plafond il epuise la limite PHP, et cette mort-la n'est pas
-        // rattrapable — aucun catch ne s'execute, aucun Log::error non plus.
-        // L'utilisateur ne recoit qu'une page blanche 500 et le journal du
-        // serveur reste vide : il n'a meme pas de quoi comprendre. Le plafond
-        // est celui deja retenu par l'export detaille ; seul cet ecran ne
-        // l'appliquait pas.
+        // Compter AVANT de rendre. DomPDF garde tout le document en memoire
+        // et meurt d'epuisement au-dela de quelques centaines de lignes — une
+        // mort qu'aucun catch ne rattrape et qu'aucun journal n'enregistre.
+        //
+        // Refuser des 500 lignes rendait pourtant l'export inutilisable : la
+        // vue par defaut, c'est toute l'annee, soit plus de 5 000 versements
+        // sur une grosse instance. On rend donc par lots au-dela du seuil,
+        // comme le suivi par categorie le fait deja. Le plafond qui subsiste
+        // ne protege plus la memoire mais le temps de reponse.
         $total = $paiements->count();
-        if ($total > PaiementExportService::PDF_MAX_ROWS) {
+        if ($total > self::PDF_PAIEMENTS_MAX_LIGNES) {
             throw new ExportPdfTropVolumineuxException(sprintf(
-                'Trop de paiements pour un PDF (%d, maximum %d). Affinez les filtres (statut, dates, recherche), ou exportez en Excel qui n\'a pas cette limite.',
+                'Trop de paiements pour un PDF (%d, maximum %d). Affinez les filtres (frais, statut, dates, recherche), ou exportez en Excel qui n\'a pas cette limite.',
                 $total,
-                PaiementExportService::PDF_MAX_ROWS
+                self::PDF_PAIEMENTS_MAX_LIGNES
             ));
         }
 
@@ -2707,8 +2752,7 @@ class ESBTPPaiementController extends Controller
             'creator_header' => $creatorHeader,
         ]);
 
-        $pdf = PDF::loadView('esbtp.paiements.export-pdf', [
-            'paiements' => $paiements,
+        $donnees = [
             'stats' => $data['stats'],
             'filters' => $filters,
             'settings' => $settings,
@@ -2717,10 +2761,135 @@ class ESBTPPaiementController extends Controller
             'dateExport' => now(),
             'showCreatorColumn' => $showCreatorColumn,
             'creatorHeader' => $creatorHeader,
-        ]);
+        ];
 
         $filename = 'paiements_' . now()->format('Y-m-d_His') . '.pdf';
 
-        return [$pdf, $filename];
+        return [$paiements, $donnees, $filename];
+    }
+
+    /**
+     * Rend l'export, d'un bloc ou par lots selon le volume.
+     *
+     * @return array{0: mixed, 1: string, 2: bool} [rendu, nom de fichier, est-ce un chemin]
+     */
+    private function rendreExportPdf($paiements, array $donnees, string $filename): array
+    {
+        if ($paiements->count() <= PdfParLots::SEUIL_DECOUPAGE) {
+            return [
+                PDF::loadView('esbtp.paiements.export-pdf', $donnees + ['paiements' => $paiements]),
+                $filename,
+                false,
+            ];
+        }
+
+        // Le decoupage echange de la memoire contre du temps : sans ces deux
+        // relevements, on troquerait un mode de panne contre un autre.
+        ini_set('memory_limit', '512M');
+        set_time_limit(300);
+
+        $chemin = app(PdfParLots::class)->rendre(
+            'esbtp.paiements.export-pdf',
+            $paiements,
+            $donnees,
+            'paiements',
+            'landscape'
+        );
+
+        return [$chemin, $filename, true];
+    }
+
+    /**
+     * Etat financier : qui a solde quel frais, et qui doit encore.
+     *
+     * Repond a une question CUMULEE, pas a une question de periode. Les filtres
+     * de date et de statut de versement de la liste ne s'y appliquent donc pas
+     * — les appliquer transformerait « a solde » en « a solde pendant cette
+     * semaine », ce qui ne veut rien dire. Le document le dit en toutes lettres.
+     * Le frais et la recherche, eux, sont repris tels quels.
+     */
+    public function exportEtatFinancier(Request $request, EtatFinancierParFrais $service)
+    {
+        // Ce document expose la dette de TOUS les etudiants du perimetre. Le
+        // droit d'exporter ses propres encaissements ne vaut pas droit de la
+        // lire : sans `paiements.view`, un caissier y verrait l'ecole entiere.
+        abort_unless(
+            $request->user()?->can('paiements.view'),
+            403,
+            "L'etat financier couvre tous les etudiants : il demande le droit de voir l'ensemble des paiements."
+        );
+
+        $valide = $request->validate([
+            'frais_category_id' => ['nullable', 'integer', 'exists:esbtp_frais_categories,id'],
+            'search' => ['nullable', 'string', 'max:120'],
+            'solde' => ['nullable', 'in:soldes,partiels,impayes'],
+        ]);
+
+        $categorieId = isset($valide['frais_category_id']) ? (int) $valide['frais_category_id'] : null;
+        $recherche = trim((string) ($valide['search'] ?? ''));
+
+        $annee = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+
+        $inscriptions = \App\Models\ESBTPInscription::query()
+            ->whereIn('status', ['active', 'en_attente'])
+            ->when($annee, fn ($q) => $q->where('annee_universitaire_id', $annee->id))
+            ->when($recherche !== '', function ($q) use ($recherche) {
+                $comme = '%'.str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $recherche).'%';
+                $q->whereHas('etudiant', fn ($e) => $e->where('matricule', 'like', $comme)
+                    ->orWhere('nom', 'like', $comme)
+                    ->orWhere('prenoms', 'like', $comme)
+                    ->orWhereRaw("CONCAT_WS(' ', nom, prenoms) LIKE ?", [$comme]));
+            })
+            ->with(['etudiant:id,nom,prenoms,matricule', 'classe:id,name'])
+            ->get();
+
+        $lignes = $service->construire($inscriptions, $categorieId);
+
+        $lignes = match ($valide['solde'] ?? null) {
+            'soldes' => $lignes->where('statut', 'Soldé')->values(),
+            'partiels' => $lignes->where('statut', 'Partiel')->values(),
+            'impayes' => $lignes->where('statut', 'Aucun paiement')->values(),
+            default => $lignes,
+        };
+
+        if ($lignes->count() > PaiementExportService::PDF_MAX_ROWS) {
+            return redirect()->back()->with('error', sprintf(
+                'Trop de lignes pour un PDF (%d, maximum %d). Restreignez a un frais, a un statut de solde, ou a une recherche.',
+                $lignes->count(),
+                PaiementExportService::PDF_MAX_ROWS
+            ));
+        }
+
+        $nomFrais = $categorieId
+            ? \App\Models\ESBTPFraisCategory::whereKey($categorieId)->value('name')
+            : null;
+
+        $libelleSolde = match ($valide['solde'] ?? null) {
+            'soldes' => 'Soldés uniquement',
+            'partiels' => 'Paiements partiels',
+            'impayes' => 'Aucun paiement',
+            default => null,
+        };
+
+        $pdf = PDF::loadView('esbtp.paiements.etat-financier-pdf', [
+            'lignes' => $lignes,
+            'totaux' => [
+                'lignes' => $lignes->count(),
+                'soldees' => $lignes->where('statut', 'Soldé')->count(),
+                'partielles' => $lignes->where('statut', 'Partiel')->count(),
+                'sans_paiement' => $lignes->where('statut', 'Aucun paiement')->count(),
+                'du' => $lignes->sum('du'),
+                'paye' => $lignes->sum('paye'),
+                'reste' => $lignes->sum('reste'),
+            ],
+            'filtersRecap' => array_filter([
+                'Frais' => $nomFrais,
+                'Recherche' => $recherche !== '' ? $recherche : null,
+                'Solde' => $libelleSolde,
+                'Année' => $annee->name ?? null,
+            ]),
+        ])->setPaper('a4', 'landscape');
+
+        return $this->respondWithPdf($pdf, 'etat-financier_'.now()->format('Y-m-d_His').'.pdf', $request);
     }
 }

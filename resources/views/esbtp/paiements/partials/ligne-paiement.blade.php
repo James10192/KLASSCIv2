@@ -42,17 +42,28 @@
                 'administrative' => 'fas fa-file-alt'
             ];
 
-            // Un versement reparti sur plusieurs frais ne peut pas s'afficher
-            // sous le nom d'un seul : cela laisserait croire que tout l'argent y
-            // est alle, alors que c'est precisement ce malentendu que la
-            // repartition existe pour lever. Le detail est sur la fiche.
-            $nbAllocations = $paiement->allocations()->count();
+            // Un versement reparti dit SUR QUELS frais il est parti. Se
+            // contenter du nombre ("3 frais") oblige a ouvrir la fiche pour
+            // savoir lesquels — et afficher la seule categorie portee par la
+            // colonne laisserait croire que tout l'argent y est alle.
+            $lignesVentilation = $paiement->relationLoaded('allocations')
+                ? $paiement->allocations
+                : $paiement->allocations()->with('fraisCategory:id,name,category_type')->get();
 
-            if ($nbAllocations > 1) {
+            if ($lignesVentilation->count() > 1) {
+                $nomsFrais = $lignesVentilation
+                    ->map(fn ($ligne) => $ligne->fraisCategory->name ?? 'Frais supprimé')
+                    ->values();
+
                 $categoryInfo = [
-                    'name' => $nbAllocations.' frais',
-                    'type' => 'academic',
-                    'source' => 'Réparti sur plusieurs frais'
+                    'name' => $nomsFrais->take(2)->implode(', ')
+                        . ($nomsFrais->count() > 2 ? ' +' . ($nomsFrais->count() - 2) : ''),
+                    'type' => $lignesVentilation->first()->fraisCategory->category_type ?? 'academic',
+                    'source' => 'Réparti sur plusieurs frais',
+                    'detail' => $lignesVentilation
+                        ->map(fn ($ligne) => ($ligne->fraisCategory->name ?? 'Frais supprimé')
+                            . ' : ' . number_format((float) $ligne->montant, 0, ',', ' ') . ' FCFA')
+                        ->implode('  ·  '),
                 ];
             } elseif ($paiement->fraisCategory) {
                 $categoryInfo = [
@@ -86,7 +97,8 @@
         @endphp
 
         @if($categoryInfo)
-            <div class="badge bg-{{ $color }} d-flex align-items-center" style="max-width: 150px;">
+            <div class="badge bg-{{ $color }} d-flex align-items-center" style="max-width: 150px;"
+                 @if(!empty($categoryInfo['detail'])) title="{{ $categoryInfo['detail'] }}" @endif>
                 <i class="{{ $icon }} me-1"></i>
                 <span class="text-truncate">{{ $categoryInfo['name'] }}</span>
             </div>
@@ -99,10 +111,27 @@
     </td>
     <td>{{ $paiement->date_paiement->format('d/m/Y') }}</td>
     <td>
+        @php
+            // Filtre par frais actif : la ligne doit dire ce que CE frais a
+            // recu, pas le versement entier. Sur un versement de 255 000 F
+            // dont 60 000 sont alles a la tenue, afficher 255 000 sur une
+            // liste filtree "Tenue" ferait croire que la tenue a encaisse
+            // 255 000 — et le total du bas annoncerait de l'argent que
+            // l'ecole n'a jamais recu sur ce frais.
+            $fraisFiltre = request('frais_category_id');
+            $partFrais = $fraisFiltre ? $paiement->partPourCategorie((int) $fraisFiltre) : null;
+            $montantAffiche = $partFrais ?? $paiement->montant;
+        @endphp
         @if($paiement->isAvoir())
-            <strong style="color:#0453cb;">− {{ number_format($paiement->montant, 0, ',', ' ') }} FCFA</strong>
+            <strong style="color:#0453cb;">− {{ number_format($montantAffiche, 0, ',', ' ') }} FCFA</strong>
         @else
-            <strong class="color-success">{{ number_format($paiement->montant, 0, ',', ' ') }} FCFA</strong>
+            <strong class="color-success">{{ number_format($montantAffiche, 0, ',', ' ') }} FCFA</strong>
+        @endif
+        @if($partFrais !== null && (float) $partFrais !== (float) $paiement->montant)
+            <small class="text-muted d-block" style="font-size:.7rem;"
+                   title="Part imputée à ce frais ; le versement complet vaut {{ number_format($paiement->montant, 0, ',', ' ') }} FCFA">
+                sur {{ number_format($paiement->montant, 0, ',', ' ') }} FCFA
+            </small>
         @endif
     </td>
     <td class="d-none d-md-table-cell">

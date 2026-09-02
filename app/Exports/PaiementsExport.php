@@ -79,6 +79,25 @@ class PaiementsExport implements FromCollection, WithHeadings, WithMapping, With
         $fraisCategory = $paiement->fraisCategory;
         $categorie = $paiement->categorie; // Ancien système (fallback)
 
+        // Un versement reparti couvre plusieurs frais : n'en nommer qu'un
+        // seul affirmerait que tout l'argent y est alle.
+        $ventilation = $paiement->relationLoaded('allocations')
+            ? $paiement->allocations
+            : $paiement->allocations()->with('fraisCategory:id,name')->get();
+
+        $libelleFrais = $ventilation->count() > 1
+            ? $ventilation->map(fn ($ligne) => $ligne->fraisCategory->name ?? 'Frais supprimé')->implode(' + ')
+            : ($fraisCategory ? $fraisCategory->name : ($categorie ? $categorie->nom : $paiement->motif ?? 'N/A'));
+
+        // Filtre par frais actif : la colonne Montant porte la part allee sur
+        // ce frais. Les totaux de l'en-tete viennent des statistiques, qui
+        // comptent deja par part ; des lignes portant le versement entier ne
+        // s'additionneraient pas a ce que le document annonce lui-meme.
+        $categorieFiltree = $this->filters['frais_category_id'] ?? null;
+        $montantLigne = $categorieFiltree
+            ? $paiement->partPourCategorie((int) $categorieFiltree)
+            : ($paiement->montant ?? 0);
+
         return [
             $this->rowCounter,
             $paiement->date_paiement ? $paiement->date_paiement->format('d/m/Y') : 'N/A',
@@ -88,8 +107,8 @@ class PaiementsExport implements FromCollection, WithHeadings, WithMapping, With
             $inscription && $inscription->classe ? $inscription->classe->name : 'N/A',
             $inscription && $inscription->filiere ? $inscription->filiere->name : 'N/A',
             $inscription && $inscription->niveauEtude ? $inscription->niveauEtude->name : 'N/A',
-            $fraisCategory ? $fraisCategory->name : ($categorie ? $categorie->nom : $paiement->motif ?? 'N/A'),
-            $paiement->montant ?? 0,
+            $libelleFrais,
+            $montantLigne,
             $paiement->mode_paiement ?? 'N/A',
             $this->getStatutLabel($paiement->status),
             $paiement->numero_recu ?? 'N/A',

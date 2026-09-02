@@ -1121,6 +1121,11 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 Route::get('/paiements/export/pdf-preview', [App\Http\Controllers\ESBTPPaiementController::class, 'exportPdfPreview'])
                     ->middleware('throttle:60,1')
                     ->name('paiements.export.pdf-preview');
+                // Etat financier : qui a solde quel frais. `?inline=1` pour
+                // l'apercu, d'ou le throttle large de la lecture.
+                Route::get('/paiements/export/etat-financier', [App\Http\Controllers\ESBTPPaiementController::class, 'exportEtatFinancier'])
+                    ->middleware('throttle:60,1')
+                    ->name('paiements.export.etat-financier');
                 Route::get('/paiements/suivi-categories/export/{statut}/excel', [App\Http\Controllers\ESBTPPaiementController::class, 'exportStudentsExcel'])
                     ->middleware('throttle:10,1')
                     ->name('paiements.suivi-categories.export.excel');

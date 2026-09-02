@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\ESBTPPaiement;
+use App\Models\ESBTPPaiementAllocation;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Services\FuzzyNameMatcher;
 use Carbon\Carbon;
@@ -14,6 +15,100 @@ use Illuminate\Support\Facades\Log;
 class PaymentFilterService
 {
     /**
+     * Ce que CE frais a recu, sur un ensemble de versements deja filtre.
+     *
+     * Meme regle que {@see \App\Models\ESBTPPaiement::totauxParCategorie()} :
+     * les versements qui portent des allocations sont lus par elles, ceux qui
+     * n'en portent pas par leur categorie propre. Les deux ensembles sont
+     * disjoints, donc rien n'est compte deux fois.
+     */
+    private function sommePourCategorie($query, int $categoryId): float
+    {
+        $parAllocation = (float) ESBTPPaiementAllocation::query()
+            ->whereIn('paiement_id', (clone $query)->select('esbtp_paiements.id'))
+            ->where('frais_category_id', $categoryId)
+            ->sum('montant');
+
+        $sansAllocation = (float) (clone $query)
+            ->where('frais_category_id', $categoryId)
+            ->whereDoesntHave('allocations')
+            ->sum('montant');
+
+        return $parAllocation + $sansAllocation;
+    }
+
+    /**
+     * Le socle commun a la liste et a ses exports.
+     *
+     * Ces filtres etaient ecrits DEUX fois — une fois pour l'ecran, une fois
+     * pour l'export — et rien ne garantissait qu'ils restent identiques. Un
+     * filtre ajoute d'un cote seulement produit un document qui ne montre pas
+     * ce que l'utilisateur avait sous les yeux, ce qui est pire qu'un document
+     * absent : il a l'air juste. Une seule definition, donc.
+     *
+     * La recherche reste en dehors : l'ecran la traite en approche floue et
+     * l'export en LIKE simple, et c'est voulu.
+     */
+    public function baseFilteredQuery(Request $request)
+    {
+        $query = ESBTPPaiement::with([
+            'etudiant.user',
+            'inscription.classe',
+            'inscription.anneeUniversitaire',
+            'inscription.filiere',
+            'inscription.niveauEtude',
+            'validatedBy',
+            'creator:id,name',
+            'fraisCategory',
+            // La ligne annonce sur quels frais le versement s'est reparti : sans
+            // ce chargement, chaque ligne repartait interroger la base.
+            'allocations.fraisCategory:id,name,category_type',
+            'categorie',
+        ])->orderByDesc('created_at');
+
+        // Lot 13 — Ownership : si l'utilisateur n'a PAS `paiements.view` mais a
+        // `paiements.view_own`, il ne voit que ce qu'il a encaisse. Applique en
+        // PREMIER : aucun filtre ajoute ensuite ne doit pouvoir elargir ca.
+        $authUser = $request->user();
+        if ($authUser
+            && ! $authUser->can('paiements.view')
+            && $authUser->can('paiements.view_own')
+        ) {
+            $query->ownedBy($authUser);
+        }
+
+        if ($status = $request->input('status')) {
+            $query->where('status', $status);
+        }
+
+        if ($dateDebut = $request->input('date_debut')) {
+            $query->whereDate('date_paiement', '>=', $dateDebut);
+        }
+
+        if ($dateFin = $request->input('date_fin')) {
+            $query->whereDate('date_paiement', '<=', $dateFin);
+        }
+
+        // Un versement reparti concerne plusieurs frais : le scope lit les
+        // allocations quand il y en a, la categorie propre sinon.
+        if ($categoryId = $request->input('frais_category_id')) {
+            $query->pourCategorie((int) $categoryId);
+        }
+
+        $anneeEnCours = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+        if ($anneeEnCours) {
+            $query->whereHas(
+                'inscription',
+                fn ($q) => $q->where('annee_universitaire_id', $anneeEnCours->id)
+            );
+        } else {
+            $query->anneeEnCours();
+        }
+
+        return $query;
+    }
+
+    /**
      * Prépare les données de listing des paiements (liste, statistiques, timestamp).
      */
     public function preparePaiementListing(Request $request, FuzzyNameMatcher $matcher, array $baseLogContext, float $startMicrotime, string $logPrefix): array
@@ -23,49 +118,7 @@ class PaymentFilterService
         $dateDebut = $request->input('date_debut');
         $dateFin = $request->input('date_fin');
 
-        $anneeEnCours = ESBTPAnneeUniversitaire::where('is_current', true)->first();
-        $anneeId = $anneeEnCours?->id;
-
-        $baseQuery = ESBTPPaiement::with([
-            'etudiant.user',
-            'inscription.anneeUniversitaire',
-            'inscription.filiere',
-            'inscription.niveauEtude',
-            'validatedBy',
-            'creator:id,name',
-            'fraisCategory',
-            'categorie',
-        ])->orderByDesc('created_at');
-
-        // Lot 13 — Ownership filter : si user n'a PAS `paiements.view` mais a `paiements.view_own`,
-        // restreindre aux paiements qu'il a encaissés (created_by = user.id).
-        $authUser = $request->user();
-        if ($authUser
-            && ! $authUser->can('paiements.view')
-            && $authUser->can('paiements.view_own')
-        ) {
-            $baseQuery->ownedBy($authUser);
-        }
-
-        if ($status) {
-            $baseQuery->where('status', $status);
-        }
-
-        if ($dateDebut) {
-            $baseQuery->whereDate('date_paiement', '>=', $dateDebut);
-        }
-
-        if ($dateFin) {
-            $baseQuery->whereDate('date_paiement', '<=', $dateFin);
-        }
-
-        if ($anneeId) {
-            $baseQuery->whereHas('inscription', function ($q) use ($anneeId) {
-                $q->where('annee_universitaire_id', $anneeId);
-            });
-        } else {
-            $baseQuery->anneeEnCours();
-        }
+        $baseQuery = $this->baseFilteredQuery($request);
 
         $perPage = 15;
         $currentPage = LengthAwarePaginator::resolveCurrentPage();
@@ -84,6 +137,7 @@ class PaymentFilterService
                 'status' => $status,
                 'date_debut' => $dateDebut,
                 'date_fin' => $dateFin,
+                'frais_category_id' => $request->input('frais_category_id'),
             ],
         ]));
 
@@ -230,9 +284,36 @@ class PaymentFilterService
         ];
 
         // Calculer les montants sur les paiements filtrés
-        $montantValide = \App\Models\ESBTPPaiement::netCashSum((clone $statsQueryBase)->where('status', 'validé'));
-        $montantEnAttente = (clone $statsQueryBase)->where('status', 'en_attente')->encaissements()->sum('montant') ?? 0;
-        $montantRejete = (clone $statsQueryBase)->where('status', 'rejeté')->encaissements()->sum('montant') ?? 0;
+        //
+        // Filtre par frais actif : on somme la PART allee sur ce frais, pas le
+        // versement entier. Sans ca, un versement de 255 000 F reparti sur
+        // trois frais gonflerait de 255 000 le total de chacun des trois.
+        $fraisFiltre = $request->input('frais_category_id');
+
+        if ($fraisFiltre) {
+            $categorieId = (int) $fraisFiltre;
+            $encaisseValide = $this->sommePourCategorie(
+                (clone $statsQueryBase)->where('status', 'validé')->encaissements(),
+                $categorieId
+            );
+            $rembourseValide = $this->sommePourCategorie(
+                (clone $statsQueryBase)->where('status', 'validé')->avoires()->where('avoir_kind', 'refund'),
+                $categorieId
+            );
+            $montantValide = max(0.0, $encaisseValide - $rembourseValide);
+            $montantEnAttente = $this->sommePourCategorie(
+                (clone $statsQueryBase)->where('status', 'en_attente')->encaissements(),
+                $categorieId
+            );
+            $montantRejete = $this->sommePourCategorie(
+                (clone $statsQueryBase)->where('status', 'rejeté')->encaissements(),
+                $categorieId
+            );
+        } else {
+            $montantValide = ESBTPPaiement::netCashSum((clone $statsQueryBase)->where('status', 'validé'));
+            $montantEnAttente = (clone $statsQueryBase)->where('status', 'en_attente')->encaissements()->sum('montant') ?? 0;
+            $montantRejete = (clone $statsQueryBase)->where('status', 'rejeté')->encaissements()->sum('montant') ?? 0;
+        }
         $montantTotal = $montantValide + $montantEnAttente + $montantRejete;
 
         $stats['montant_total'] = $montantTotal;
@@ -419,55 +500,11 @@ class PaymentFilterService
     public function getAllFilteredPaiements(Request $request, FuzzyNameMatcher $matcher)
     {
         $search = trim((string) $request->input('search'));
-        $status = $request->input('status');
-        $dateDebut = $request->input('date_debut');
-        $dateFin = $request->input('date_fin');
 
-        $anneeEnCours = ESBTPAnneeUniversitaire::where('is_current', true)->first();
-        $anneeId = $anneeEnCours?->id;
-
-        // Construire la requête de base avec les mêmes filtres que preparePaiementListing
-        $query = ESBTPPaiement::with([
-            'etudiant.user',
-            'inscription.classe',
-            'inscription.anneeUniversitaire',
-            'inscription.filiere',
-            'inscription.niveauEtude',
-            'validatedBy',
-            'creator:id,name',
-            'fraisCategory',
-            'categorie',
-        ])->orderByDesc('created_at');
-
-        // Lot 13 — Ownership filter pour l'export aussi (cohérence avec preparePaiementListing)
-        $authUser = $request->user();
-        if ($authUser
-            && ! $authUser->can('paiements.view')
-            && $authUser->can('paiements.view_own')
-        ) {
-            $query->ownedBy($authUser);
-        }
-
-        // Appliquer les filtres
-        if ($status) {
-            $query->where('status', $status);
-        }
-
-        if ($dateDebut) {
-            $query->whereDate('date_paiement', '>=', $dateDebut);
-        }
-
-        if ($dateFin) {
-            $query->whereDate('date_paiement', '<=', $dateFin);
-        }
-
-        if ($anneeId) {
-            $query->whereHas('inscription', function ($q) use ($anneeId) {
-                $q->where('annee_universitaire_id', $anneeId);
-            });
-        } else {
-            $query->anneeEnCours();
-        }
+        // Exactement les memes filtres que l'ecran : c'est la raison d'etre du
+        // socle. Un export qui ne montre pas ce que l'utilisateur avait sous
+        // les yeux est un document faux.
+        $query = $this->baseFilteredQuery($request);
 
         // Appliquer le filtre de recherche si présent
         if ($search !== '') {

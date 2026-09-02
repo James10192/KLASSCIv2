@@ -616,6 +616,63 @@ class ESBTPPaiement extends Model implements Auditable
     }
 
     /**
+     * Les versements qui concernent CE frais.
+     *
+     * Meme regle que {@see self::totauxParCategorie()}, et il faut qu'elle le
+     * reste : un versement porte des allocations, et ce sont elles qui disent
+     * ou l'argent est alle ; s'il n'en porte pas, sa propre categorie fait foi.
+     *
+     * Filtrer naivement sur `frais_category_id` reviendrait a ne montrer, pour
+     * un frais donne, que les versements que le caissier avait etiquetes ainsi
+     * — et a cacher tous ceux qui l'ont pourtant paye en passant. C'est le meme
+     * malentendu que celui decrit sur {@see self::netPaidForInscription()},
+     * transpose a l'affichage.
+     *
+     * Les deux branches sont exclusives : un versement alloue n'entre jamais
+     * par la seconde, donc aucune ligne ne peut sortir en double.
+     */
+    public function scopePourCategorie($query, $categoryId)
+    {
+        $categoryId = (int) $categoryId;
+
+        return $query->where(function ($q) use ($categoryId) {
+            $q->whereHas(
+                'allocations',
+                fn ($allocation) => $allocation->where('frais_category_id', $categoryId)
+            )->orWhere(
+                fn ($sansAllocation) => $sansAllocation
+                    ->where('frais_category_id', $categoryId)
+                    ->whereDoesntHave('allocations')
+            );
+        });
+    }
+
+    /**
+     * Ce qu'un versement a reellement porte sur CE frais.
+     *
+     * Le montant du versement n'est PAS ce que le frais a recu des lors qu'il a
+     * ete reparti : afficher 255 000 F sur une ligne filtree "Tenue" ferait
+     * croire que la tenue a encaisse 255 000 F, et un total de bas de page
+     * additionnant ces lignes annoncerait de l'argent que l'ecole n'a pas recu.
+     */
+    public function partPourCategorie(int $categoryId): float
+    {
+        $allocations = $this->relationLoaded('allocations')
+            ? $this->allocations
+            : $this->allocations()->get();
+
+        if ($allocations->isNotEmpty()) {
+            return (float) $allocations
+                ->where('frais_category_id', $categoryId)
+                ->sum('montant');
+        }
+
+        return (int) $this->frais_category_id === $categoryId
+            ? (float) $this->montant
+            : 0.0;
+    }
+
+    /**
      * Scope pour filtrer les paiements en attente.
      *
      * @param \Illuminate\Database\Eloquent\Builder $query
