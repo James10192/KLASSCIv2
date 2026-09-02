@@ -2852,11 +2852,13 @@ class ESBTPPaiementController extends Controller
             default => $lignes,
         };
 
-        if ($lignes->count() > PaiementExportService::PDF_MAX_ROWS) {
+        // Meme plafond que la liste, et pour la meme raison : le rendu par lots
+        // a leve la contrainte de memoire, il ne reste que celle du temps.
+        if ($lignes->count() > self::PDF_PAIEMENTS_MAX_LIGNES) {
             return redirect()->back()->with('error', sprintf(
                 'Trop de lignes pour un PDF (%d, maximum %d). Restreignez a un frais, a un statut de solde, ou a une recherche.',
                 $lignes->count(),
-                PaiementExportService::PDF_MAX_ROWS
+                self::PDF_PAIEMENTS_MAX_LIGNES
             ));
         }
 
@@ -2871,8 +2873,7 @@ class ESBTPPaiementController extends Controller
             default => null,
         };
 
-        $pdf = PDF::loadView('esbtp.paiements.etat-financier-pdf', [
-            'lignes' => $lignes,
+        $donnees = [
             'totaux' => [
                 'lignes' => $lignes->count(),
                 'soldees' => $lignes->where('statut', 'Soldé')->count(),
@@ -2888,8 +2889,37 @@ class ESBTPPaiementController extends Controller
                 'Solde' => $libelleSolde,
                 'Année' => $annee->name ?? null,
             ]),
-        ])->setPaper('a4', 'landscape');
+        ];
 
-        return $this->respondWithPdf($pdf, 'etat-financier_'.now()->format('Y-m-d_His').'.pdf', $request);
+        $filename = 'etat-financier_'.now()->format('Y-m-d_His').'.pdf';
+
+        if ($lignes->count() <= PdfParLots::SEUIL_DECOUPAGE) {
+            $pdf = PDF::loadView(
+                'esbtp.paiements.etat-financier-pdf',
+                $donnees + ['lignes' => $lignes]
+            )->setPaper('a4', 'landscape');
+
+            return $this->respondWithPdf($pdf, $filename, $request);
+        }
+
+        ini_set('memory_limit', '512M');
+        set_time_limit(300);
+
+        $chemin = app(PdfParLots::class)->rendre(
+            'esbtp.paiements.etat-financier-pdf',
+            $lignes,
+            $donnees,
+            'lignes',
+            'landscape'
+        );
+
+        if ($request->boolean('inline')) {
+            return response()->file($chemin, [
+                'Content-Type' => 'application/pdf',
+                'Content-Disposition' => 'inline; filename="'.$filename.'"',
+            ])->deleteFileAfterSend(true);
+        }
+
+        return response()->download($chemin, $filename)->deleteFileAfterSend(true);
     }
 }
