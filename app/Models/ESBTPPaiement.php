@@ -271,15 +271,7 @@ class ESBTPPaiement extends Model implements Auditable
      */
     public function getLibelleCategorieAttribute(): string
     {
-        $nombre = $this->relationLoaded('allocations')
-            ? $this->allocations->count()
-            : $this->allocations()->count();
-
-        if ($nombre > 1) {
-            return $nombre.' frais';
-        }
-
-        return $this->fraisCategory->name ?? ($this->motif ?: 'Paiement');
+        return $this->ventilation()->pluck('nom')->implode(' + ');
     }
 
     /**
@@ -537,7 +529,14 @@ class ESBTPPaiement extends Model implements Auditable
         bool $includePending = false,
         ?int $saufPaiementId = null
     ): \Illuminate\Support\Collection {
-        $encaisse = self::totauxParCategorie($inscriptionId, 'encaissements', $includePending, $saufPaiementId);
+        $montants = app(\App\Services\Frais\MontantsParFrais::class);
+
+        $encaisse = $montants->parFrais(self::versementsDe(
+            $inscriptionId,
+            'encaissements',
+            $includePending ? ['validé', 'en_attente'] : ['validé'],
+            $saufPaiementId
+        ));
         // Un avoir ne compte que valide, meme quand on inclut les encaissements
         // en attente : un remboursement pas encore valide n'a pas quitte la caisse.
         //
@@ -545,7 +544,12 @@ class ESBTPPaiement extends Model implements Auditable
         // confondues, donc exclure un encaissement ne retire aucun avoir. La
         // passer quand meme evite qu'un futur appel sur un avoir oublie la
         // moitie du filtre.
-        $avoirs = self::totauxParCategorie($inscriptionId, 'avoires', false, $saufPaiementId);
+        $avoirs = $montants->parFrais(self::versementsDe(
+            $inscriptionId,
+            'avoires',
+            ['validé'],
+            $saufPaiementId
+        ));
 
         return $encaisse->map(function ($total, $categoryId) use ($avoirs) {
             return max(0.0, (float) $total - (float) ($avoirs[$categoryId] ?? 0));
@@ -566,110 +570,63 @@ class ESBTPPaiement extends Model implements Auditable
      * (RepartitionTropPercu leve AllocationIncoherenteException) et
      * controlable a tout moment par `php artisan frais:verifier-allocations`.
      */
-    private static function totauxParCategorie(
+    /**
+     * Les versements d'une inscription, dans le perimetre que la repartition
+     * ecrit elle-meme : meme statut, meme nature, meme exclusion des reliquats.
+     *
+     * Un versement candidat cote ecriture mais hors perimetre cote lecture
+     * recevrait une allocation invisible, et priverait au passage un versement
+     * reel du frais qu'il aurait du couvrir.
+     */
+    private static function versementsDe(
         int $inscriptionId,
         string $nature,
-        bool $includePending = false,
+        array $statuts,
         ?int $saufPaiementId = null
-    ): \Illuminate\Support\Collection {
-        // Le perimetre lu ici doit etre EXACTEMENT celui que la repartition
-        // ecrit (RepartitionTropPercu) : meme statut, meme nature, meme
-        // exclusion des reliquats. Un versement candidat cote ecriture mais hors
-        // perimetre cote lecture recevrait une allocation invisible, et priverait
-        // au passage un versement reel du frais qu'il aurait du couvrir.
-        $base = fn () => self::query()
+    ): \Illuminate\Database\Eloquent\Builder {
+        return self::query()
             ->where('inscription_id', $inscriptionId)
-            ->when(
-                $includePending,
-                fn ($q) => $q->whereIn('status', ['validé', 'en_attente']),
-                fn ($q) => $q->valides()
-            )
+            ->whereIn('status', $statuts)
             ->{$nature}()
             ->horsReliquat()
             // Le versement qu'on est en train de reventiler ne compte pas dans
             // ce qu'il doit encore couvrir.
             ->when($saufPaiementId !== null, fn ($q) => $q->where('id', '!=', $saufPaiementId));
-
-        $parAllocation = \App\Models\ESBTPPaiementAllocation::query()
-            ->whereIn('paiement_id', $base()->select('id'))
-            ->groupBy('frais_category_id')
-            ->selectRaw('frais_category_id, SUM(montant) as total')
-            ->pluck('total', 'frais_category_id');
-
-        $sansAllocation = $base()
-            ->whereNotExists(function ($q) {
-                $q->select(\Illuminate\Support\Facades\DB::raw(1))
-                    ->from('esbtp_paiement_allocations')
-                    ->whereColumn('esbtp_paiement_allocations.paiement_id', 'esbtp_paiements.id');
-            })
-            ->groupBy('frais_category_id')
-            ->selectRaw('frais_category_id, SUM(montant) as total')
-            ->pluck('total', 'frais_category_id');
-
-        $totaux = $parAllocation->toBase();
-
-        foreach ($sansAllocation as $categoryId => $total) {
-            $totaux[$categoryId] = (float) ($totaux[$categoryId] ?? 0) + (float) $total;
-        }
-
-        return $totaux;
     }
 
     /**
      * Les versements qui concernent CE frais.
      *
-     * Meme regle que {@see self::totauxParCategorie()}, et il faut qu'elle le
-     * reste : un versement porte des allocations, et ce sont elles qui disent
-     * ou l'argent est alle ; s'il n'en porte pas, sa propre categorie fait foi.
-     *
-     * Filtrer naivement sur `frais_category_id` reviendrait a ne montrer, pour
-     * un frais donne, que les versements que le caissier avait etiquetes ainsi
-     * — et a cacher tous ceux qui l'ont pourtant paye en passant. C'est le meme
-     * malentendu que celui decrit sur {@see self::netPaidForInscription()},
-     * transpose a l'affichage.
-     *
-     * Les deux branches sont exclusives : un versement alloue n'entre jamais
-     * par la seconde, donc aucune ligne ne peut sortir en double.
+     * Porte d'entree Eloquent vers la regle unique
+     * ({@see \App\Services\Frais\MontantsParFrais}) : un scope se chaine
+     * naturellement dans une requete, un service non.
      */
     public function scopePourCategorie($query, $categoryId)
     {
-        $categoryId = (int) $categoryId;
-
-        return $query->where(function ($q) use ($categoryId) {
-            $q->whereHas(
-                'allocations',
-                fn ($allocation) => $allocation->where('frais_category_id', $categoryId)
-            )->orWhere(
-                fn ($sansAllocation) => $sansAllocation
-                    ->where('frais_category_id', $categoryId)
-                    ->whereDoesntHave('allocations')
-            );
-        });
+        return app(\App\Services\Frais\MontantsParFrais::class)->filtrer($query, (int) $categoryId);
     }
 
     /**
-     * Ce qu'un versement a reellement porte sur CE frais.
-     *
-     * Le montant du versement n'est PAS ce que le frais a recu des lors qu'il a
-     * ete reparti : afficher 255 000 F sur une ligne filtree "Tenue" ferait
-     * croire que la tenue a encaisse 255 000 F, et un total de bas de page
-     * additionnant ces lignes annoncerait de l'argent que l'ecole n'a pas recu.
+     * Ce que CE versement a porte sur CE frais.
      */
     public function partPourCategorie(int $categoryId): float
     {
-        $allocations = $this->relationLoaded('allocations')
-            ? $this->allocations
-            : $this->allocations()->get();
+        return app(\App\Services\Frais\MontantsParFrais::class)->part($this, $categoryId);
+    }
 
-        if ($allocations->isNotEmpty()) {
-            return (float) $allocations
-                ->where('frais_category_id', $categoryId)
-                ->sum('montant');
-        }
-
-        return (int) $this->frais_category_id === $categoryId
-            ? (float) $this->montant
-            : 0.0;
+    /**
+     * La ventilation de ce versement, sous forme affichable.
+     *
+     * Rend toujours au moins une ligne — un versement non reparti vaut sa
+     * propre categorie. Les quatre surfaces qui l'affichent (ligne de liste,
+     * PDF, Excel, recu) partagent ainsi la meme lecture, au lieu de redecouvrir
+     * chacune le repli vers la categorie du guichet.
+     *
+     * @return \Illuminate\Support\Collection<int, array{frais_id: int|null, nom: string, montant: float, type: string}>
+     */
+    public function ventilation(): \Illuminate\Support\Collection
+    {
+        return app(\App\Services\Frais\MontantsParFrais::class)->ventilation($this);
     }
 
     /**

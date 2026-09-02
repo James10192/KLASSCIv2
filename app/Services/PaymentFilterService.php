@@ -3,8 +3,8 @@
 namespace App\Services;
 
 use App\Models\ESBTPPaiement;
-use App\Models\ESBTPPaiementAllocation;
 use App\Models\ESBTPAnneeUniversitaire;
+use App\Services\Frais\MontantsParFrais;
 use App\Services\FuzzyNameMatcher;
 use Carbon\Carbon;
 use Illuminate\Database\QueryException;
@@ -14,29 +14,6 @@ use Illuminate\Support\Facades\Log;
 
 class PaymentFilterService
 {
-    /**
-     * Ce que CE frais a recu, sur un ensemble de versements deja filtre.
-     *
-     * Meme regle que {@see \App\Models\ESBTPPaiement::totauxParCategorie()} :
-     * les versements qui portent des allocations sont lus par elles, ceux qui
-     * n'en portent pas par leur categorie propre. Les deux ensembles sont
-     * disjoints, donc rien n'est compte deux fois.
-     */
-    private function sommePourCategorie($query, int $categoryId): float
-    {
-        $parAllocation = (float) ESBTPPaiementAllocation::query()
-            ->whereIn('paiement_id', (clone $query)->select('esbtp_paiements.id'))
-            ->where('frais_category_id', $categoryId)
-            ->sum('montant');
-
-        $sansAllocation = (float) (clone $query)
-            ->where('frais_category_id', $categoryId)
-            ->whereDoesntHave('allocations')
-            ->sum('montant');
-
-        return $parAllocation + $sansAllocation;
-    }
-
     /**
      * Le socle commun a la liste et a ses exports.
      *
@@ -292,23 +269,15 @@ class PaymentFilterService
 
         if ($fraisFiltre) {
             $categorieId = (int) $fraisFiltre;
-            $encaisseValide = $this->sommePourCategorie(
-                (clone $statsQueryBase)->where('status', 'validé')->encaissements(),
-                $categorieId
+            $montants = app(MontantsParFrais::class);
+            $surCeFrais = fn ($query) => (float) ($montants->parFrais($query)[$categorieId] ?? 0);
+
+            $montantValide = max(0.0,
+                $surCeFrais((clone $statsQueryBase)->where('status', 'validé')->encaissements())
+                - $surCeFrais((clone $statsQueryBase)->where('status', 'validé')->avoires()->where('avoir_kind', 'refund'))
             );
-            $rembourseValide = $this->sommePourCategorie(
-                (clone $statsQueryBase)->where('status', 'validé')->avoires()->where('avoir_kind', 'refund'),
-                $categorieId
-            );
-            $montantValide = max(0.0, $encaisseValide - $rembourseValide);
-            $montantEnAttente = $this->sommePourCategorie(
-                (clone $statsQueryBase)->where('status', 'en_attente')->encaissements(),
-                $categorieId
-            );
-            $montantRejete = $this->sommePourCategorie(
-                (clone $statsQueryBase)->where('status', 'rejeté')->encaissements(),
-                $categorieId
-            );
+            $montantEnAttente = $surCeFrais((clone $statsQueryBase)->where('status', 'en_attente')->encaissements());
+            $montantRejete = $surCeFrais((clone $statsQueryBase)->where('status', 'rejeté')->encaissements());
         } else {
             $montantValide = ESBTPPaiement::netCashSum((clone $statsQueryBase)->where('status', 'validé'));
             $montantEnAttente = (clone $statsQueryBase)->where('status', 'en_attente')->encaissements()->sum('montant') ?? 0;

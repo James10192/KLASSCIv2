@@ -11,14 +11,11 @@
     // Un versement peut couvrir PLUSIEURS frais. N'imprimer que la categorie
     // designee au guichet fait mentir le recu des que la somme a ete repartie :
     // l'etudiant lit « Scolarite » sur un papier qui a aussi paye sa ramette.
-    $recuVentilation = $paiement->relationLoaded('allocations')
-        ? $paiement->allocations
-        : $paiement->allocations()->with('fraisCategory:id,name')->get();
+    $recuVentilation = $paiement->ventilation();
 
     if ($recuVentilation->count() > 1) {
         $categoryName = $recuVentilation
-            ->map(fn ($part) => ($part->fraisCategory->name ?? ('Frais #'.$part->frais_category_id))
-                .' : '.number_format((float) $part->montant, 0, ',', ' '))
+            ->map(fn ($part) => $part['nom'].' : '.number_format($part['montant'], 0, ',', ' '))
             ->implode(' · ');
     }
 @endphp

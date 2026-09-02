@@ -33,10 +33,8 @@
         ];
         $money = fn ($v) => number_format((float) $v, 0, ',', ' ');
 
-        // Rendu par lots : la synthese et la note n'ont de sens qu'en tete du
-        // document. Hors decoupage, ces valeurs valent leur defaut.
-        $isFirstChunk = $isFirstChunk ?? true;
-        $rowOffset = $rowOffset ?? 0;
+        // isFirstChunk est toujours fourni par PdfParLots, meme en rendu
+        // direct : la synthese et la note ne paraissent qu'en tete du document.
     @endphp
 
     @if($isFirstChunk)
