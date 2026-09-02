@@ -68,4 +68,19 @@ class FraisAudienceTest extends TestCase
 
         $this->assertTrue($this->resolver(false)->categoryAppliesToStudent($category, null));
     }
+
+    public function test_anciens_applies_only_to_ancien(): void
+    {
+        $category = new ESBTPFraisCategory(['audience' => ESBTPFraisCategory::AUDIENCE_ANCIENS]);
+
+        $this->assertTrue($this->resolver(true)->categoryAppliesToStudent(
+            $category,
+            ESBTPInscription::STATUT_ETABLISSEMENT_ANCIEN,
+        ));
+        $this->assertFalse($this->resolver(true)->categoryAppliesToStudent(
+            $category,
+            ESBTPInscription::STATUT_ETABLISSEMENT_NOUVEAU,
+        ));
+        $this->assertFalse($this->resolver(true)->categoryAppliesToStudent($category, null));
+    }
 }

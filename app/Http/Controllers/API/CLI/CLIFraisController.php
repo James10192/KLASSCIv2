@@ -6,9 +6,11 @@ use App\Exceptions\AllocationIncoherenteException;
 use App\Http\Controllers\API\BaseApiController;
 use App\Models\ESBTPFraisCategory;
 use App\Models\ESBTPFraisConfiguration;
+use App\Models\ESBTPFraisOption;
 use App\Models\ESBTPFraisSubscription;
 use App\Models\ESBTPInscription;
 use App\Models\Setting;
+use App\Services\FraisConfigurationWriter;
 use App\Services\TenantScolariteSettings;
 use App\Services\Frais\CorrectionMontantSouscriptions;
 use App\Services\Frais\OrdreDesCategoriesFrais;
@@ -454,5 +456,159 @@ class CLIFraisController extends BaseApiController
                 ? sprintf('%d categorie(s) reordonnee(s).', $resultat['modifiees'])
                 : sprintf("%d categorie(s) changeraient de rang. Rien n'a ete ecrit.", $resultat['modifiees'])
         );
+    }
+
+    public function poserBareme(Request $request, FraisConfigurationWriter $writer): JsonResponse
+    {
+        if (! $request->user()->tokenCan('cli:admin')) {
+            return $this->errorResponse('Token missing cli:admin ability', [], 403);
+        }
+
+        $valide = $request->validate([
+            'apply' => ['nullable', 'boolean'],
+            'confirmer_statut' => ['nullable', 'boolean'],
+            'categories' => ['required', 'array', 'min:1'],
+            'categories.*.code' => ['required', 'string', 'max:50'],
+            'categories.*.name' => ['required', 'string', 'max:255'],
+            'categories.*.is_mandatory' => ['nullable', 'boolean'],
+            'categories.*.audience' => ['nullable', 'in:tous,nouveaux_etablissement,anciens_etablissement'],
+            'categories.*.category_type' => ['nullable', 'in:academic,service,administrative'],
+            'categories.*.default_amount' => ['nullable', 'numeric', 'min:0'],
+            'configurations' => ['required', 'array', 'min:1'],
+            'configurations.*.category_code' => ['required', 'string'],
+            'configurations.*.systeme' => ['required', 'in:LMD,BTS'],
+            'configurations.*.parcours_id' => ['nullable', 'integer'],
+            'configurations.*.filiere_id' => ['nullable', 'integer'],
+            'configurations.*.niveau_id' => ['required', 'integer'],
+            'configurations.*.amount' => ['required', 'numeric', 'min:0'],
+            'configurations.*.amount_affecte' => ['nullable', 'numeric', 'min:0'],
+            'configurations.*.amount_reaffecte' => ['nullable', 'numeric', 'min:0'],
+            'configurations.*.amount_non_affecte' => ['nullable', 'numeric', 'min:0'],
+        ]);
+
+        $appliquer = (bool) ($valide['apply'] ?? false);
+        $codes = collect($valide['categories'])->keyBy(fn ($c) => strtoupper($c['code']));
+
+        foreach ($valide['configurations'] as $ligne) {
+            if (! $codes->has(strtoupper($ligne['category_code']))) {
+                return $this->errorResponse('Categorie inconnue dans configurations: '.$ligne['category_code'], [], 422);
+            }
+        }
+
+        if (! $appliquer) {
+            return $this->successResponse([
+                'categories' => count($valide['categories']),
+                'configurations' => count($valide['configurations']),
+                'applique' => false,
+            ], sprintf(
+                '%d categorie(s), %d configuration(s). Rien n\'a ete ecrit.',
+                count($valide['categories']),
+                count($valide['configurations'])
+            ));
+        }
+
+        $auteur = (int) $request->user()->id;
+        $parCode = [];
+
+        foreach ($valide['categories'] as $i => $cat) {
+            $code = strtoupper($cat['code']);
+            $modele = ESBTPFraisCategory::query()->where('code', $code)->first();
+            if (! $modele) {
+                $modele = ESBTPFraisCategory::create([
+                    'name' => $cat['name'],
+                    'code' => $code,
+                    'is_mandatory' => (bool) ($cat['is_mandatory'] ?? true),
+                    'audience' => $cat['audience'] ?? ESBTPFraisCategory::AUDIENCE_TOUS,
+                    'category_type' => $cat['category_type'] ?? 'academic',
+                    'default_amount' => (float) ($cat['default_amount'] ?? 0),
+                    'payment_deadline_days' => 30,
+                    'is_active' => true,
+                    'sort_order' => $i + 1,
+                    'accepts_in_kind' => false,
+                ]);
+                ESBTPFraisOption::create([
+                    'configuration_id' => null,
+                    'name' => 'Standard',
+                    'description' => 'Option standard pour '.$modele->name,
+                    'additional_amount' => 0,
+                    'is_default' => true,
+                    'is_active' => true,
+                    'available_from' => now(),
+                    'sort_order' => 1,
+                ]);
+            } else {
+                $modele->fill([
+                    'name' => $cat['name'],
+                    'is_mandatory' => (bool) ($cat['is_mandatory'] ?? $modele->is_mandatory),
+                    'audience' => $cat['audience'] ?? $modele->audience,
+                    'category_type' => $cat['category_type'] ?? $modele->category_type,
+                    'default_amount' => $cat['default_amount'] ?? $modele->default_amount,
+                    'is_active' => true,
+                ])->save();
+            }
+            $parCode[$code] = $modele;
+        }
+
+        $parPortee = [];
+        foreach ($valide['configurations'] as $ligne) {
+            $systeme = strtoupper($ligne['systeme']);
+            $cle = implode('|', [
+                $systeme,
+                $ligne['parcours_id'] ?? '',
+                $ligne['filiere_id'] ?? '',
+                $ligne['niveau_id'],
+            ]);
+            $parPortee[$cle]['scope'] = [
+                'systeme' => $systeme,
+                'parcours_id' => $ligne['parcours_id'] ?? null,
+                'filiere_id' => $ligne['filiere_id'] ?? null,
+                'niveau_id' => $ligne['niveau_id'],
+            ];
+            $cat = $parCode[strtoupper($ligne['category_code'])];
+            $parPortee[$cle]['categories'][$cat->id] = [
+                'amount' => $ligne['amount'],
+                'amount_affecte' => $ligne['amount_affecte'] ?? $ligne['amount'],
+                'amount_reaffecte' => $ligne['amount_reaffecte'] ?? $ligne['amount'],
+                'amount_non_affecte' => $ligne['amount_non_affecte'] ?? $ligne['amount'],
+                'deadline_days' => 30,
+            ];
+        }
+
+        $created = 0;
+        $updated = 0;
+        foreach ($parPortee as $bloc) {
+            $resultat = $writer->persistCategories(
+                $bloc['scope'],
+                $bloc['categories'],
+                'global',
+                null,
+                $auteur,
+                'overwrite_all',
+            );
+            $created += $resultat['created'];
+            $updated += $resultat['updated'];
+        }
+
+        if ($valide['confirmer_statut'] ?? false) {
+            Setting::updateOrCreate(
+                ['key' => TenantScolariteSettings::CONFIRMER_STATUT_ETABLISSEMENT],
+                [
+                    'value' => '1',
+                    'type' => 'boolean',
+                    'group' => 'scolarite',
+                    'is_required' => false,
+                ]
+            );
+            if (method_exists(Setting::class, 'clearCache')) {
+                Setting::clearCache();
+            }
+        }
+
+        return $this->successResponse([
+            'categories' => count($parCode),
+            'configurations_creees' => $created,
+            'configurations_maj' => $updated,
+            'applique' => true,
+        ], sprintf('%d categorie(s), %d config(s) creees, %d maj.', count($parCode), $created, $updated));
     }
 }

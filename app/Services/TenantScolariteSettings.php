@@ -65,7 +65,10 @@ class TenantScolariteSettings
 
         return ESBTPFraisCategory::query()
             ->where('is_active', true)
-            ->where('audience', ESBTPFraisCategory::AUDIENCE_NOUVEAUX)
+            ->whereIn('audience', [
+                ESBTPFraisCategory::AUDIENCE_NOUVEAUX,
+                ESBTPFraisCategory::AUDIENCE_ANCIENS,
+            ])
             ->exists();
     }
 
