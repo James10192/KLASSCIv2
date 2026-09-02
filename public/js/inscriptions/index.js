@@ -995,5 +995,59 @@
         }, 150);
     });
 
+    window.iiBulkFraisManquants = async function () {
+        const ids = Array.from(document.querySelectorAll('.inscription-checkbox:checked')).map((cb) => cb.value);
+        if (!ids.length) {
+            showToast('Veuillez sélectionner au moins une inscription.', 'warning');
+            return;
+        }
+        const formData = new FormData();
+        formData.append('_token', CSRF_TOKEN);
+        ids.forEach((id) => formData.append('inscription_ids[]', id));
+
+        const preview = await fetch(ROUTES.fraisManquantsPreview, {
+            method: 'POST',
+            body: formData,
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+        }).then((r) => r.json()).catch(() => null);
+
+        if (!preview) {
+            showToast('Impossible de prévisualiser les frais manquants.', 'error');
+            return;
+        }
+        if (!preview.total) {
+            showToast('Aucun frais obligatoire manquant pour cette sélection.', 'success');
+            return;
+        }
+
+        const lignes = (preview.lignes || []).slice(0, 12).map((l) =>
+            `<li>${l.etudiant || '—'} · ${l.categorie} · ${Number(l.montant || 0).toLocaleString('fr-FR')} F</li>`
+        ).join('');
+        const extra = preview.lignes && preview.lignes.length > 12
+            ? `<li>… et ${preview.lignes.length - 12} autre(s)</li>`
+            : '';
+        const ok = await iiConfirm({
+            title: 'Compléter les frais manquants',
+            message: `<p><strong>${preview.total}</strong> frais à ajouter sur <strong>${preview.inscriptions}</strong> inscription(s).</p><ul class="mb-0" style="padding-left:1.1rem;font-size:.85rem;line-height:1.5;">${lignes}${extra}</ul>`,
+            okLabel: 'Ajouter',
+            okClass: 'btn-primary',
+            icon: 'fa-rotate',
+        });
+        if (!ok) return;
+
+        fetch(ROUTES.fraisManquantsApply, {
+            method: 'POST',
+            body: formData,
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+        })
+            .then((r) => r.json())
+            .then((data) => {
+                showToast(data.message || 'Frais complétés.', 'success');
+                ids.forEach((id) => refreshLigne(id, 'validate'));
+                clearSelection();
+            })
+            .catch(() => showToast('Erreur lors de l’ajout des frais.', 'error'));
+    };
+
     debugLog('[inscriptions] index.js initialized');
 })();
