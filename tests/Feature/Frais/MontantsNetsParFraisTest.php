@@ -31,6 +31,8 @@ class MontantsNetsParFraisTest extends TestCase
 
     private int $etudiantId = 4242;
 
+    private int $recu = 1;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -58,10 +60,13 @@ class MontantsNetsParFraisTest extends TestCase
     {
         return DB::table('esbtp_paiements')->insertGetId([
             'inscription_id' => $this->inscriptionId,
-            // Colonne obligatoire sans valeur par defaut. Peu importe laquelle
-            // ici : ce test lit des montants par inscription et par frais,
-            // l'etudiant n'entre pas dans le calcul.
+            // Colonnes obligatoires sans valeur par defaut. Leur contenu
+            // n'entre pas dans le calcul teste ici — qui lit des montants par
+            // inscription et par frais — mais la table les exige.
             'etudiant_id' => $this->etudiantId,
+            'annee_universitaire_id' => 1,
+            'mode_paiement' => 'especes',
+            'numero_recu' => 'TEST-'.$this->recu++,
             'montant' => $montant,
             'status' => $statut,
             'nature' => $nature,
