@@ -112,7 +112,7 @@ jobs:
 
       - uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.2'
+          php-version: '8.3'
 
       # Avertit, ne bloque pas : rafraîchir le modal est une décision de
       # communication. Le bloquer serait vite contourné, et le contournement
@@ -128,7 +128,7 @@ jobs:
 
       - uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.2'
+          php-version: '8.3'
           extensions: mbstring, xml, ctype, iconv, intl, dom, filter, json, tokenizer
 
       - run: composer install --no-interaction --prefer-dist --no-progress
@@ -157,7 +157,7 @@ jobs:
 
       - uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.2'
+          php-version: '8.3'
           extensions: mbstring, xml, ctype, iconv, intl, pdo_mysql, dom, filter, gd, json, tokenizer
 
       - run: composer install --no-interaction --prefer-dist --no-progress
