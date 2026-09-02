@@ -522,6 +522,12 @@ tr[data-inscription-id] > td { transition: background .15s ease; }
     to { bottom: 24px; opacity: 1; }
 }
 
+.ii-page {
+    max-width: 100%;
+    min-width: 0;
+    overflow-x: clip;
+}
+
 /* ========== RESPONSIVE ========== */
 @media (max-width: 992px) {
     .ii-hero { padding: 1.5rem 1.5rem 1.25rem; }
@@ -548,8 +554,7 @@ tr[data-inscription-id] > td { transition: background .15s ease; }
 @php
     $hideAmounts = $hideAmounts ?? app(\App\Services\EnrollmentAmountVisibility::class)->hideAmounts(auth()->user());
 @endphp
-<div class="dashboard-acasi">
-    <div class="main-content">
+<div class="ii-page">
 
         {{-- HERO + KPIs --}}
         <div class="ii-hero">
@@ -832,7 +837,6 @@ tr[data-inscription-id] > td { transition: background .15s ease; }
                 ])
             </div>
         </div>
-    </div>
 </div>
 
 {{-- BULK ACTIONS BAR — visible si l'utilisateur a au moins une action de masse possible --}}
