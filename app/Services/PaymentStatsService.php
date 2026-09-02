@@ -180,33 +180,32 @@ class PaymentStatsService
             return ['paye' => [], 'versements' => collect()];
         }
 
-        $verses = ESBTPPaiement::query()
+        $versements = ESBTPPaiement::query()
             ->whereIn('inscription_id', $inscriptionIds)
             ->where('status', 'validé')
             ->horsReliquat()
             ->with('allocations.fraisCategory:id,name,category_type')
             ->get();
 
-        $parFrais = collect();
-        foreach ($verses as $versement) {
+        // Un versement reparti se montre sous CHACUN des frais qu'il a
+        // couverts : sinon la colonne « derniers paiements » d'un frais reste
+        // vide alors qu'il a bien ete regle.
+        $parFrais = [];
+        foreach ($versements as $versement) {
             foreach ($versement->ventilation() as $part) {
                 if ($part['frais_id'] === null) {
                     continue;
                 }
-                $cle = $versement->inscription_id.'_'.$part['frais_id'];
-                $parFrais[$cle] = ($parFrais[$cle] ?? collect())->push($versement);
+                $parFrais[$versement->inscription_id.'_'.$part['frais_id']][] = $versement;
             }
         }
 
         return [
-            'paye' => app(MontantsParFrais::class)->parInscriptionEtFrais(
-                ESBTPPaiement::query()
-                    ->whereIn('inscription_id', $inscriptionIds)
-                    ->where('status', 'validé')
-                    ->encaissements()
-                    ->horsReliquat()
-            ),
-            'versements' => $parFrais,
+            // NET des avoirs. Les compter comme des encaissements ferait
+            // apparaitre un etudiant rembourse comme ayant paye plus qu'il n'a
+            // verse, et le ferait basculer de « en retard » a « a jour ».
+            'paye' => app(MontantsParFrais::class)->netParInscriptionEtFrais($inscriptionIds),
+            'versements' => collect($parFrais)->map(fn (array $lot) => collect($lot)),
         ];
     }
 
