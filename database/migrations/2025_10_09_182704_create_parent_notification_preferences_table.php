@@ -24,7 +24,17 @@ return new class extends Migration
             $table->boolean('notify_annonces')->default(true)->comment('Recevoir annonces générales');
 
             // Canaux préférés (JSON array: ['email', 'whatsapp', 'sms', 'app'])
-            $table->json('preferred_channels')->default('["app", "email"]')->comment('Canaux de notification préférés');
+            //
+            // Sans valeur par défaut : MySQL 8 refuse une colonne JSON qui en
+            // porte une (erreur 1101), et le schéma entier devenait alors
+            // impossible à créer — donc un tenant neuf impossible à
+            // provisionner sur MySQL 8. MariaDB l'acceptait, ce qui a masqué
+            // le problème aussi longtemps que personne n'a monté d'instance
+            // depuis zéro.
+            //
+            // La valeur vit désormais sur le modèle ($attributes), là où elle
+            // s'applique quel que soit le moteur.
+            $table->json('preferred_channels')->comment('Canaux de notification préférés');
 
             // Seuils personnalisés pour alertes
             $table->integer('absence_threshold')->default(3)->comment('Seuil d\'alerte absences (nombre)');

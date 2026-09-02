@@ -143,19 +143,18 @@ jobs:
     name: Tests d'intégration (frais)
     runs-on: ubuntu-latest
     services:
-      # MariaDB, pas MySQL 8 : une migration du depot cree une colonne `json`
-      # avec valeur par defaut, ce que MySQL 8 refuse et que MariaDB accepte
-      # (son JSON est un LONGTEXT). Sur MySQL 8, le schema ne se cree pas du
-      # tout. C'est un defaut reel a corriger, mais il precede ce travail et
-      # se corrige dans la migration, pas ici.
-      mariadb:
-        image: mariadb:10.11
+      # MySQL 8 deliberement, et pas MariaDB : c'est le moteur le plus strict
+      # des deux, et le seul qui aurait revele la colonne JSON a valeur par
+      # defaut qui rendait le schema increable. Faire tourner la CI sur le
+      # moteur permissif revient a ne pas tester le cas qui casse.
+      mysql:
+        image: mysql:8.0
         env:
-          MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: 'yes'
-          MARIADB_DATABASE: klassci_testing
+          MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+          MYSQL_DATABASE: klassci_testing
         ports: ['3306:3306']
         options: >-
-          --health-cmd="healthcheck.sh --connect --innodb_initialized" --health-interval=10s
+          --health-cmd="mysqladmin ping" --health-interval=10s
           --health-timeout=5s --health-retries=5
     steps:
       - uses: actions/checkout@v4
@@ -177,6 +176,19 @@ jobs:
       # aujourd'hui, pour des raisons d'environnement anterieures a ce
       # travail. Un job rouge en permanence ne se lit plus, et il faudrait
       # alors le contourner — ce qui vide de son sens le fait de l'avoir pose.
+      # Ce que ce pas verifie : le schema se CREE, du premier au dernier
+      # fichier. Les tests qui suivent ne s'executeraient pas sans lui, mais
+      # ils echoueraient pour une raison qu'on lirait mal.
+      - name: Le schema se cree entierement
+        env:
+          DB_CONNECTION: mysql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_DATABASE: klassci_testing
+          DB_USERNAME: root
+          DB_PASSWORD: ''
+        run: php artisan migrate:fresh --force
+
       - name: Montants nets par frais
         env:
           DB_CONNECTION: mysql
