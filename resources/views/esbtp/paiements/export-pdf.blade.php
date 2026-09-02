@@ -1,4 +1,15 @@
 @php
+    // Rendu par lots : au-dela de quelques centaines de lignes, DomPDF ne tient
+    // pas la charge, donc le document est rendu en morceaux puis recolle. Les
+    // indicateurs n'ont de sens qu'en tete, le rappel des filtres qu'en fin.
+    //
+    // Ces defauts doivent etre poses ICI, avant la moindre utilisation : places
+    // plus bas, ils laissaient le rendu direct — celui des petits volumes —
+    // tomber sur une variable indefinie, la ou le rendu par lots, qui les
+    // fournit lui-meme, ne montrait rien.
+    $isFirstChunk = $isFirstChunk ?? true;
+    $isLastChunk = $isLastChunk ?? true;
+    $rowOffset = $rowOffset ?? 0;
     // Couleurs resolues AVANT la feuille de style : les libelles de KPI en ont besoin.
     // Le fond des cellules vient d'un parametre d'etablissement ; la couleur du texte
     // s'en deduit (contraste WCAG) au lieu d'etre decretee blanche.
@@ -340,13 +351,6 @@
     // frais filtre, lui, ne change pas d'une ligne a l'autre.
     $categorieFiltree = !empty($filters['frais_category_id']) ? (int) $filters['frais_category_id'] : null;
 
-    // Rendu par lots : au-dela de quelques centaines de lignes, DomPDF ne tient
-    // pas la charge, donc le document est rendu en morceaux puis fusionne. Les
-    // indicateurs n'ont de sens qu'en tete, le rappel des filtres qu'en fin.
-    // Hors decoupage, ces trois valeurs valent leur defaut et rien ne change.
-    $isFirstChunk = $isFirstChunk ?? true;
-    $isLastChunk = $isLastChunk ?? true;
-    $rowOffset = $rowOffset ?? 0;
 @endphp
 @if($paiements->count() > 0)
         <table class="payments-table">
