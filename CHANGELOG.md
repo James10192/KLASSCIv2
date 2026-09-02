@@ -12,7 +12,15 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ## Septembre 2026
 
+### Ajouts
+
+- **Un frais peut être réservé aux étudiants déjà passés par l'établissement** — la configuration des frais savait dire « tout le monde » ou « nouveaux dans l'établissement » ; elle reconnaît maintenant aussi « anciens de l'établissement ». C'est ce qu'il fallait pour la tenue : obligatoire en première année, obligatoire aussi pour celui qui arrive en deuxième ou troisième année sans en avoir, mais simplement proposée à celui qui a déjà la sienne. Le réglage qui demande à l'agent, au moment de l'inscription, si l'étudiant est nouveau ou ancien s'active de lui-même dès qu'un frais utilise l'une de ces deux audiences — sans la réponse, le montant facturé serait un pari.
+
+- **Poser un barème de frais complet d'un seul geste** (`POST /api/cli/frais/poser-bareme`) — ouvrir un établissement demandait de saisir à la main une configuration par filière et par niveau : pour cinq parcours sur trois années, quarante-cinq écrans. L'opération se fait désormais en un appel, catégories comprises, et **ne montre que ce qu'elle ferait tant qu'on ne demande pas explicitement d'écrire**. Portées LMD (parcours + niveau) et BTS (filière + niveau).
+
 ### Corrections
+
+- **Un barème LMD est de nouveau vérifiable à distance** (`GET /api/cli/frais/bareme`) — la lecture renvoyait chaque configuration avec une filière vide dès que l'établissement est en LMD, où la portée est le parcours et non la filière : toutes les lignes se ressemblaient. Un frais de scolarité à 0 pour l'affecté et 290 000 pour le non-affecté s'affichait par ailleurs comme un frais à 0, les montants par statut d'affectation n'étant pas renvoyés. La lecture donne maintenant la portée complète, les trois montants, et sur chaque catégorie qui la paie et dans quel ordre un versement la solde.
 
 - **Les chiffres des exports PDF restent lisibles quelle que soit la couleur choisie par l'école** — le fond des bandeaux d'indicateurs vient des paramètres d'établissement, mais la couleur du texte était écrite en dur. Sur l'export des paiements, les chiffres étaient même invisibles avec la couleur par défaut : une règle du thème partagé les peignait avec la couleur principale, sur un fond peint avec cette même couleur. La couleur du texte se déduit désormais du fond, selon le calcul de contraste WCAG : elle reste blanche sur un fond sombre, devient sombre sur un fond clair, et ne descend jamais sous le rapport de 4,5:1 exigé pour du texte de taille normale. Appliqué en priorité aux PDF, où le défaut est irrattrapable — sur un écran on peut sélectionner le texte pour le lire, sur une feuille imprimée non. Concerne l'export des paiements, le recouvrement quotidien, les analytics financiers, ainsi que les en-têtes de tableau et pastilles de statut communs à tous les documents.
 
