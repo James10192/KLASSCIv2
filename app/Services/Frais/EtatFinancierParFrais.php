@@ -57,16 +57,7 @@ class EtatFinancierParFrais
                 $montantPaye = (float) ($paye[$souscription->inscription_id][$souscription->frais_category_id] ?? 0);
                 $du = (float) $souscription->chargedAmount();
 
-                // Un montant nul veut dire INCONNU, pas « rien a payer ». Le
-                // dire, plutot que d'annoncer solde un frais que personne n'a
-                // jamais configure.
-                $statut = match (true) {
-                    (bool) $souscription->satisfied_in_kind => 'Déposé en nature',
-                    $souscription->montantNonDefini() => 'Montant non défini',
-                    $souscription->estSolde($montantPaye) => 'Soldé',
-                    $montantPaye > 0 => 'Partiel',
-                    default => 'Aucun paiement',
-                };
+                $statut = $this->statut($souscription, $montantPaye);
 
                 $etudiant = $inscription->etudiant;
 
@@ -90,6 +81,25 @@ class EtatFinancierParFrais
                 ['ordre_frais', 'asc'],
             ])
             ->values();
+    }
+
+    /**
+     * Ou en est CE frais pour CET etudiant.
+     *
+     * A part, et sans base de donnees, parce que c'est la phrase que
+     * l'etablissement lira : un montant nul veut dire INCONNU, pas « rien a
+     * payer ». Annoncer solde un frais que personne n'a jamais configure
+     * ferait croire une dette eteinte.
+     */
+    public function statut(ESBTPFraisSubscription $souscription, float $montantPaye): string
+    {
+        return match (true) {
+            (bool) $souscription->satisfied_in_kind => 'Déposé en nature',
+            $souscription->montantNonDefini() => 'Montant non défini',
+            $souscription->estSolde($montantPaye) => 'Soldé',
+            $montantPaye > 0 => 'Partiel',
+            default => 'Aucun paiement',
+        };
     }
 
     /**

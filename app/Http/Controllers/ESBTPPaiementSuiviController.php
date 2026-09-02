@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Log;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use App\Services\FeeCalculationService;
+use App\Services\PaymentStatsService;
 use App\Services\FuzzyNameMatcher;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Database\QueryException;
@@ -22,7 +23,7 @@ class ESBTPPaiementSuiviController extends Controller
     /**
      * Constructeur du contrôleur.
      */
-    public function __construct()
+    public function __construct(private readonly PaymentStatsService $statsService)
     {
         $this->middleware('auth');
         $this->middleware('permission:paiements.view', ['only' => ['index', 'show', 'paiementsEtudiant']]);
@@ -104,33 +105,26 @@ class ESBTPPaiementSuiviController extends Controller
         }
 
         // Pré-charger tous les paiements validés
-        $paiements = collect();
-        if (!empty($inscriptionIds)) {
-            $paiements = ESBTPPaiement::where('status', 'validé')
-                ->whereIn('inscription_id', $inscriptionIds)
-                ->horsReliquat()
-                ->get()
-                ->groupBy(function($paiement) {
-                    return $paiement->inscription_id . '_' . $paiement->frais_category_id;
-                });
-        }
+        // Allocation-aware : un versement reparti compte pour chacun des frais
+        // qu'il a couverts, et seulement a hauteur de sa part.
+        ['paye' => $payeParFrais, 'versements' => $paiements] = $this->statsService->preparerPaiements($inscriptionIds);
 
         // Si une catégorie spécifique est sélectionnée, analyser en détail
         $detailsCategorie = null;
         if ($categoryId) {
             $category = \App\Models\ESBTPFraisCategory::find($categoryId);
             if ($category) {
-                $detailsCategorie = $this->analyserCategorieDetailleOptimisee($category, $inscriptions, $configurations, $subscriptions, $paiements);
+                $detailsCategorie = $this->analyserCategorieDetailleOptimisee($category, $inscriptions, $configurations, $subscriptions, $paiements, $payeParFrais);
             }
         }
 
         // Statistiques globales par catégorie - version optimisée
-        $statistiquesCategories = $this->calculerStatistiquesCategoriesOptimisees($inscriptions, $categories, $configurations, $subscriptions, $paiements);
+        $statistiquesCategories = $this->calculerStatistiquesCategoriesOptimisees($inscriptions, $categories, $configurations, $subscriptions, $paiements, $payeParFrais);
 
         // Vue d'ensemble des étudiants par statut de paiement - version optimisée
         // Si un filtre par catégorie est appliqué, les KPIs doivent refléter seulement cette catégorie
         $categoriesForKPI = $categoryId ? $categories->where('id', $categoryId) : $categories;
-        $vueEnsemble = $this->calculerVueEnsembleOptimisee($inscriptions, $categoriesForKPI, $configurations, $subscriptions, $paiements);
+        $vueEnsemble = $this->calculerVueEnsembleOptimisee($inscriptions, $categoriesForKPI, $configurations, $subscriptions, $paiements, $payeParFrais);
 
         return view('esbtp.paiements.suivi-categories', compact(
             'inscriptions',
@@ -219,33 +213,26 @@ class ESBTPPaiementSuiviController extends Controller
         }
 
         // Pré-charger tous les paiements validés
-        $paiements = collect();
-        if (!empty($inscriptionIds)) {
-            $paiements = ESBTPPaiement::where('status', 'validé')
-                ->whereIn('inscription_id', $inscriptionIds)
-                ->horsReliquat()
-                ->get()
-                ->groupBy(function($paiement) {
-                    return $paiement->inscription_id . '_' . $paiement->frais_category_id;
-                });
-        }
+        // Allocation-aware : un versement reparti compte pour chacun des frais
+        // qu'il a couverts, et seulement a hauteur de sa part.
+        ['paye' => $payeParFrais, 'versements' => $paiements] = $this->statsService->preparerPaiements($inscriptionIds);
 
         // Si une catégorie spécifique est sélectionnée, analyser en détail
         $detailsCategorie = null;
         if ($categoryId) {
             $category = $categories->firstWhere('id', $categoryId);
             if ($category) {
-                $detailsCategorie = $this->analyserCategorieDetailleOptimisee($category, $inscriptions, $configurations, $subscriptions, $paiements);
+                $detailsCategorie = $this->analyserCategorieDetailleOptimisee($category, $inscriptions, $configurations, $subscriptions, $paiements, $payeParFrais);
             }
         }
 
         // Statistiques globales par catégorie - version optimisée
-        $statistiquesCategories = $this->calculerStatistiquesCategoriesOptimisees($inscriptions, $categories, $configurations, $subscriptions, $paiements);
+        $statistiquesCategories = $this->calculerStatistiquesCategoriesOptimisees($inscriptions, $categories, $configurations, $subscriptions, $paiements, $payeParFrais);
 
         // Vue d'ensemble des étudiants par statut de paiement - version optimisée
         // Si un filtre par catégorie est appliqué, les KPIs doivent refléter seulement cette catégorie
         $categoriesForKPI = $categoryId ? $categories->where('id', $categoryId) : $categories;
-        $vueEnsemble = $this->calculerVueEnsembleOptimisee($inscriptions, $categoriesForKPI, $configurations, $subscriptions, $paiements);
+        $vueEnsemble = $this->calculerVueEnsembleOptimisee($inscriptions, $categoriesForKPI, $configurations, $subscriptions, $paiements, $payeParFrais);
 
         // Retourner JSON avec les partiels rendus
         return response()->json([
@@ -323,7 +310,7 @@ class ESBTPPaiementSuiviController extends Controller
     /**
      * Version optimisée : utilise les données pré-chargées au lieu de requêtes N+1
      */
-    private function calculerStatistiquesCategoriesOptimisees($inscriptions, $categories, $configurations, $subscriptions, $paiements)
+    private function calculerStatistiquesCategoriesOptimisees($inscriptions, $categories, $configurations, $subscriptions, $paiements, array $payeParFrais = [])
     {
         $statistiques = [];
 
@@ -348,7 +335,10 @@ class ESBTPPaiementSuiviController extends Controller
                     $stats['montant_total_attendu'] += $montantAttendu;
 
                     $paiementKey = $inscription->id . '_' . $category->id;
-                    $montantPaye = ESBTPPaiement::netStudentPaidFrom($paiements->get($paiementKey, collect()));
+                    // Le montant vient de la regle unique (MontantsParFrais), pas d'une
+            // somme des versements affiches : un versement reparti n'a laisse
+            // sur ce frais que sa part.
+            $montantPaye = (float) ($payeParFrais[$inscription->id][$category->id] ?? 0);
                     $stats['montant_total_recu'] += $montantPaye;
 
                     if ($montantPaye >= $montantAttendu) {
@@ -374,7 +364,7 @@ class ESBTPPaiementSuiviController extends Controller
     /**
      * Vue d'ensemble optimisée : KPIs globaux depuis données pré-chargées
      */
-    private function calculerVueEnsembleOptimisee($inscriptions, $categories, $configurations, $subscriptions, $paiements)
+    private function calculerVueEnsembleOptimisee($inscriptions, $categories, $configurations, $subscriptions, $paiements, array $payeParFrais = [])
     {
         $enRegle = 0;
         $enRetard = 0;
@@ -391,8 +381,7 @@ class ESBTPPaiementSuiviController extends Controller
 
                 if ($montantAttendu > 0) {
                     $totalDu += $montantAttendu;
-                    $paiementKey = $inscription->id . '_' . $category->id;
-                    $totalPaye += ESBTPPaiement::netStudentPaidFrom($paiements->get($paiementKey, collect()));
+                    $totalPaye += (float) ($payeParFrais[$inscription->id][$category->id] ?? 0);
                 }
             }
 
@@ -423,7 +412,7 @@ class ESBTPPaiementSuiviController extends Controller
     /**
      * Analyse détaillée d'une catégorie optimisée : listes d'étudiants par statut
      */
-    private function analyserCategorieDetailleOptimisee($category, $inscriptions, $configurations, $subscriptions, $paiements)
+    private function analyserCategorieDetailleOptimisee($category, $inscriptions, $configurations, $subscriptions, $paiements, array $payeParFrais = [])
     {
         $aJour = collect();
         $enRetard = collect();
@@ -437,7 +426,10 @@ class ESBTPPaiementSuiviController extends Controller
             if ($montantAttendu <= 0) continue;
 
             $paiementKey = $inscription->id . '_' . $category->id;
-            $montantPaye = ESBTPPaiement::netStudentPaidFrom($paiements->get($paiementKey, collect()));
+            // Le montant vient de la regle unique (MontantsParFrais), pas d'une
+            // somme des versements affiches : un versement reparti n'a laisse
+            // sur ce frais que sa part.
+            $montantPaye = (float) ($payeParFrais[$inscription->id][$category->id] ?? 0);
             $montantTotalAttendu += $montantAttendu;
             $montantTotalRecu += $montantPaye;
 
