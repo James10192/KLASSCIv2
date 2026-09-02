@@ -1,6 +1,7 @@
 ---
-titre: Expertise SaaS KLASSCI — septembre 2026 (spectre élargi)
+titre: Expertise SaaS KLASSCI — septembre 2026 (rapport final)
 artifact: https://claude.ai/code/artifact/5d5f075b-7759-4e31-bd6d-79b3c07f0a21
+epic: https://github.com/James10192/KLASSCIv2/issues/738
 ---
 
 _Revue d'expertise produit & ingénierie_
@@ -11,7 +12,7 @@ Lecture complète du dépôt KLASSCIv2 sur cinq chaînes métier, quatorze pages
 
   **Branche** presentation (HEAD 49b96f3)
   **Date** 2 septembre 2026
-  **Périmètre** inscription · caisse · pédagogie · rôles · UX · offre · marché · architecture · données · exploitation · sécurité · frontend · IA · modules · scénarios
+  **Périmètre** inscription · caisse · pédagogie · rôles · UX · offre · marché · architecture · données · exploitation · sécurité · frontend · IA · modules · scénarios · E2E réel · 49 issues
 
   
 ## Verdict en une page
@@ -354,7 +355,7 @@ Le site klassci.com se décrit comme « le SaaS éducatif africain tout-en-un, n
 | Ce que promet le site | Ce que fait le produit | Décalage |
 |---|---|---|
 | « Un compte, une école. Hébergé, sauvegardé, sécurisé. » | Hébergement mutualisé cPanel partagé entre les six écoles, sauvegarde sur le même disque, aucun monitoring | **[critique]** |
-| Collège et lycée : trimestres, bulletins DREN | Le code ne connaît que des semestres (273 occurrences, aucun « trimestre »), aucun bulletin DREN, aucun modèle secondaire | **[critique]** |
+| Collège et lycée : trimestres, bulletins DREN | Produit séparé (KLASSCI Collège, autre dépôt) : hors périmètre de cette revue. À noter tout de même que ce dépôt ne connaît que des semestres, ce qui compte pour le supérieur en trimestres | **[hors périmètre]** |
 | Classe virtuelle : cours, devoirs, évaluations | Une API « LMS » documentée, mais aucun module de cours en ligne dans l'application | **[majeur]** |
 | Sélecteur de langue EN visible | Non fonctionnel ; 1,1 % des vues traduites | **[majeur]** |
 | Quickstart 60 minutes | Aucun assistant dans l'application ; la checklist n'existe que dans le chatbot | **[majeur]** |
@@ -362,7 +363,7 @@ Le site klassci.com se décrit comme « le SaaS éducatif africain tout-en-un, n
 
 **Ce qui manque au site pour convaincre un directeur exigeant ou une école hors Côte d'Ivoire :** aucun tarif, aucun plan nommé (les plans Free, Essentiel, Professionnel, Élite, Partenaire n'existent que dans votre base master), aucun témoignage ni chiffre client, aucunes mentions légales, politique de confidentialité ni conditions générales, aucun engagement de disponibilité, aucune page sécurité ou conformité, aucune démo publique. Pour un SaaS qui traite des paiements et des données de mineurs, l'absence de politique de confidentialité est aussi un risque légal.
 
-Règle simple : ne vendez sur le site que ce qui existe dans le code aujourd'hui. « Collège et lycée » et « Classe virtuelle » doivent devenir des pages « bientôt » ou disparaître jusqu'à ce que le modèle de données les porte.
+Règle simple : ne vendez sur le site que ce qui existe dans l'un des deux produits aujourd'hui. « Classe virtuelle » doit devenir une page « bientôt » ou disparaître jusqu'à ce qu'un module la porte.
 
 ## Marché, concurrence, réglementation
 
@@ -591,7 +592,7 @@ Un logiciel de gestion d'établissement se juge sur les cas rares qui, chaque an
 
     - Bascule d'année : aucune commande ni assistant de clôture N et ouverture N+1 ; les réinscriptions existent, le report des frais, planifications et rôles non.
 
-    - Trimestres : inexistants ; le code est semestriel en dur. Un lycée ne peut pas être servi.
+    - Trimestres : inexistants ; le code est semestriel en dur. Une école supérieure en trimestres ou en sessions ne peut pas être servie (le collège est un produit séparé).
 
     - Multi-campus : une seule colonne `etablissement_id` sur six tables, pas de notion de site.
 
@@ -717,6 +718,63 @@ Vous sentez qu'il manque quelque chose de sérieux. Voici, à mon avis, les quat
   - **Choisir un premier pays d'expansion et une seule verticale** (le supérieur privé LMD, où vous êtes réellement différenciés) plutôt que d'annoncer collège, lycée et classe virtuelle.
 
   - **Mesurer sur le terrain** : temps par encaissement, par inscription, par saisie de notes, dans deux écoles, avant et après chaque amélioration. C'est la seule preuve du « 98 % automatisé ».
+
+## Test en environnement réel (presentation.klassci.com, 2 septembre 2026)
+
+Parcours authentifié en lecture seule avec le compte superadmin fourni : connexion, collecte de tous les liens de la barre latérale, visite de 124 pages, relevé du code HTTP, du temps de réponse, du poids, des marqueurs d'erreur, des selects natifs et des champs sans libellé. Aucune action de modification n'a été déclenchée. Limite : la protection anti-DDoS de l'hébergeur rejette Chromium au niveau TLS, le parcours a donc été fait avec curl ; les erreurs JavaScript et les captures d'écran n'ont pas pu être relevées.
+
+  - **124** pages visitées, 111 en 200
+
+  - **4** erreurs 500 réelles en production démo
+
+  - **1,4 s** temps médian, 253 Ko médian
+
+  - **12,8 s** page la plus lente (analytics compta)
+
+  - **1 146 Ko** page la plus lourde (emploi du temps)
+
+### Les quatre pages en erreur
+
+| Page | Erreur | Issue |
+|---|---|---|
+| /dashboard/superadmin | Variable $pendingInscriptionsCount non définie dans la vue | #739 |
+| /dashboard/teacher | Directive Blade mal compilée ($startSection) : probablement tous les enseignants de la démo | #740 |
+| /esbtp/logs | Vue esbtp.logs.index absente, route active | #741 |
+| /esbtp/frais/category-variants/1 | Relation variants() supprimée mais appelée, prédit par la lecture du code et confirmé | #742 |
+
+### Ce que le parcours a aussi montré
+
+  - Deux liens `${action.url}` et `${result.url}` rendus tels quels dans le HTML de chaque page (#743).
+
+  - Selects natifs visibles malgré la règle « jamais de select natif » : 28 sur l'emploi du temps, 24 sur les étudiants, 17 sur les paiements et les réglages, 14 sur l'inscription.
+
+  - Champs sans libellé lié : 127 sur les réglages, 45 sur les paiements, 39 sur l'inscription.
+
+  - 12 appels `alert()` hérités du layout sur chaque page ; « FCFA » sur 97 pages.
+
+  - Pages lentes : analytics 12,8 s, dashboard comptable 9,2 s, relances 4,8 s, fiche étudiant 4,6 s, paiements 3,9 s.
+
+  - Pages lourdes : emploi du temps 1 146 Ko, parcours LMD 1 091 Ko, dashboard enseignant 878 Ko, étudiants 854 Ko (dont 151 Ko de CSS et 148 Ko de JS inline).
+
+  - Endpoints JSON : places disponibles répond ; l'API des logs refuse sans jeton (bon signe).
+
+Ce qui n'a pas pu être testé et reste à faire avec un navigateur autorisé par l'hébergeur : les comptes des autres rôles (seul superadmin a été fourni), les actions de mutation (encaissement, inscription, saisie de notes), les erreurs JavaScript, le rendu mobile.
+
+## Issues GitHub créées
+
+Une épic et 49 issues enfants, chacune avec preuve, reproduction, comportement attendu, correctif, tests et critères d'acceptation. Les constats déjà couverts par l'audit d'août 2026 (épic #564 : CI, secrets, CSRF, Laravel 10, routes cassées, code mort) et par l'épic comptabilité #347 (clôture de caisse, mobile money) ne sont pas dupliqués, seulement référencés.
+
+| Lot | Issues |
+|---|---|
+| Épic | #738 |
+| A · Production démo cassée | #739 dashboard superadmin · #740 dashboard enseignant · #741 logs · #742 variantes de frais · #743 liens de la barre latérale |
+| B · Argent | #744 numéros de reçu · #745 cascade paiements · #746 verrou de période · #747 modes de paiement · #748 double validation · #749 journée de caisse · #750 places disponibles · #751 aperçu des frais · #752 réinscription · #753 PV de réconciliation · #754 dépenses |
+| C · Inscription et démarrage | #755 champs perdus · #756 assistant de démarrage · #757 import Excel · #758 inscription en série · #786 flux de vie étudiant |
+| D · LMD et pédagogie | #759 seuil ignoré · #760 pondération CC/Examen · #761 enseignants exclus · #762 fenêtre de saisie et propriété · #763 bulletins immuables · #770 conflits d'emploi du temps |
+| E · Rôles et configurabilité | #764 permissions mortes · #765 périmètres et durées · #766 rôles personnalisés · #767 registre de réglages · #768 devise, pays, langue · #769 modèle d'établissement · #771 gabarits de documents |
+| F · Ergonomie et KPI | #772 guichet caisse · #773 KPI actionnables · #774 dashboard comptable · #775 fabrique de pages · #776 accessibilité · #777 performance terrain |
+| G · Fondations et exploitation | #778 observabilité · #779 infrastructure · #780 analyse statique · #785 fondations données · #781 sécurité |
+| H · Conformité et offre | #782 données et IA · #783 FNE/RNE · #784 site klassci.com · #787 notifications |
 
 ## Déployer hors Côte d'Ivoire sans être sur place
 
@@ -844,6 +902,6 @@ Trois horizons. Le premier ne contient presque aucune nouvelle fonctionnalité :
 
 ## Méthode et limites de cette revue
 
-Cinq lectures parallèles du code (64 agents au total pour la partie UX, 12 millions de tokens lus), puis un élargissement mené directement sur douze axes avec mesures dans le dépôt et recherches web (klassci.com, concurrents, DGI, ARTCI, Wave) (inscription, caisse, pédagogie, rôles, qualité), puis un workflow de quatorze audits de pages et cinq audits transversaux avec une rubrique commune, dont chaque constat critique ou majeur a été soumis à un contradicteur chargé de le réfuter en vérifiant le code. J'ai ensuite revérifié moi-même chaque risque bloquant listé plus haut. Cette revue lit le code, pas les données ni les usages réels : elle ne mesure pas les temps de tâche des utilisateurs en établissement, ce qui reste la prochaine étape indispensable.
+Cinq lectures parallèles du code (64 agents au total pour la partie UX, 12 millions de tokens lus), puis un élargissement mené directement sur douze axes avec mesures dans le dépôt et recherches web (klassci.com, concurrents, DGI, ARTCI, Wave), un parcours E2E authentifié de 124 pages sur presentation.klassci.com, et la création de 49 issues GitHub sous l'épic #738, contre-vérifiées par un second workflow (inscription, caisse, pédagogie, rôles, qualité), puis un workflow de quatorze audits de pages et cinq audits transversaux avec une rubrique commune, dont chaque constat critique ou majeur a été soumis à un contradicteur chargé de le réfuter en vérifiant le code. J'ai ensuite revérifié moi-même chaque risque bloquant listé plus haut. Cette revue lit le code, pas les données ni les usages réels : elle ne mesure pas les temps de tâche des utilisateurs en établissement, ce qui reste la prochaine étape indispensable.
 
 Rapport établi le 2 septembre 2026 sur la branche `presentation`, commit 49b96f3. Les numéros de ligne renvoient à cet état du dépôt.
