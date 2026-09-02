@@ -810,7 +810,11 @@
                                     <small class="text-muted d-block ms-4" style="font-size:.7rem;">Voir avant téléchargement</small>
                                 </a>
                             </li>
-                            @can('paiements.view')
+                            {{-- Le document suit le perimetre de l'utilisateur : tout
+                                 l'etablissement, ou les seuls etudiants qu'il a
+                                 encaisses. Le reserver a paiements.view privait le
+                                 caissier d'un suivi qui ne porte que sur les siens. --}}
+                            @if(auth()->user()?->can('paiements.view') || auth()->user()?->can('paiements.view_own'))
                             <li>
                                 <a class="dropdown-item" href="#" onclick="exportPaiements('etat-financier-preview'); return false;">
                                     <i class="fas fa-file-invoice-dollar text-primary me-2"></i>Aperçu état financier
@@ -822,7 +826,7 @@
                                     <i class="fas fa-file-pdf text-danger me-2"></i>Télécharger l'état financier
                                 </a>
                             </li>
-                            @endcan
+                            @endif
                             <li><hr class="dropdown-divider"></li>
                             <li>
                                 <a class="dropdown-item" href="#" onclick="exportPaiements('excel'); return false;">

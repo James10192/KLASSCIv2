@@ -2810,13 +2810,25 @@ class ESBTPPaiementController extends Controller
      */
     public function exportEtatFinancier(Request $request, EtatFinancierParFrais $service)
     {
-        // Ce document expose la dette de TOUS les etudiants du perimetre. Le
-        // droit d'exporter ses propres encaissements ne vaut pas droit de la
-        // lire : sans `paiements.view`, un caissier y verrait l'ecole entiere.
+        // Ce document expose la dette d'etudiants : son perimetre suit celui
+        // que l'utilisateur a deja le droit de voir sur les paiements.
+        //
+        // `paiements.view` -> tout l'etablissement.
+        // `paiements.view_own` -> les seuls etudiants pour lesquels il a
+        //   encaisse au moins un versement. Un caissier voit deja le solde de
+        //   ces etudiants-la au guichet quand il encaisse ; lui refuser le
+        //   document ne protegeait rien et le privait de son propre suivi.
+        //   Les montants restent les vrais montants de l'etudiant : un solde
+        //   recalcule sur les seuls versements d'un caissier ne voudrait rien
+        //   dire, et ferait croire a une dette qui n'existe pas.
+        $utilisateur = $request->user();
+        $voitTout = (bool) $utilisateur?->can('paiements.view');
+        $voitLesSiens = (bool) $utilisateur?->can('paiements.view_own');
+
         abort_unless(
-            $request->user()?->can('paiements.view'),
+            $voitTout || $voitLesSiens,
             403,
-            "L'etat financier couvre tous les etudiants : il demande le droit de voir l'ensemble des paiements."
+            "L'etat financier demande le droit de voir les paiements."
         );
 
         $valide = $request->validate([
@@ -2840,6 +2852,10 @@ class ESBTPPaiementController extends Controller
                     ->orWhere('prenoms', 'like', $comme)
                     ->orWhereRaw("CONCAT_WS(' ', nom, prenoms) LIKE ?", [$comme]));
             })
+            ->when(! $voitTout, fn ($q) => $q->whereHas(
+                'paiements',
+                fn ($p) => $p->ownedBy($utilisateur)
+            ))
             ->with(['etudiant:id,nom,prenoms,matricule', 'classe:id,name'])
             ->get();
 
@@ -2888,6 +2904,11 @@ class ESBTPPaiementController extends Controller
                 'Recherche' => $recherche !== '' ? $recherche : null,
                 'Solde' => $libelleSolde,
                 'Année' => $annee->name ?? null,
+                // Dire le perimetre sur le document lui-meme : un etat
+                // partiel qui ne s'annonce pas se lit comme un etat complet.
+                'Périmètre' => $voitTout
+                    ? null
+                    : 'Étudiants encaissés par '.($utilisateur->name ?? 'cet utilisateur'),
             ]),
         ];
 
