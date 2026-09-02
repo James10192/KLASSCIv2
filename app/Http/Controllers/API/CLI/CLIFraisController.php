@@ -35,24 +35,37 @@ class CLIFraisController extends BaseApiController
             return $this->errorResponse('Token missing cli:read ability', [], 403);
         }
 
+        // `audience` et `sort_order` decident QUI paie et dans quel ordre un
+        // versement solde les frais. Les omettre ici rendait un bareme
+        // inauditable a distance.
         $categories = ESBTPFraisCategory::query()
             ->orderBy('sort_order')
-            ->get(['id', 'name', 'code', 'is_mandatory', 'default_amount', 'is_active', 'accepts_in_kind']);
+            ->get(['id', 'name', 'code', 'is_mandatory', 'audience', 'sort_order', 'default_amount', 'is_active', 'accepts_in_kind']);
 
+        // En LMD la portee est le parcours, pas la filiere : sans
+        // `parcours_id`, toutes les lignes d'un tenant LMD se ressemblaient
+        // (filiere nulle) et rien n'etait verifiable. Les montants par statut
+        // d'affectation manquaient pour la meme raison.
         $configurations = ESBTPFraisConfiguration::query()
-            ->with(['fraisCategory:id,name,code', 'filiere:id,name', 'niveau:id,name'])
+            ->with(['fraisCategory:id,name,code', 'filiere:id,name', 'niveau:id,name', 'parcours:id,name,code'])
             ->where('is_active', true)
             ->get()
             ->map(fn (ESBTPFraisConfiguration $c) => [
                 'configuration_id' => $c->id,
                 'categorie_id' => $c->frais_category_id,
                 'categorie' => $c->fraisCategory->name ?? null,
+                'systeme' => $c->systeme_academique,
                 'filiere_id' => $c->filiere_id,
                 'filiere' => $c->filiere->name ?? null,
+                'parcours_id' => $c->parcours_id,
+                'parcours' => $c->parcours->name ?? null,
                 'niveau_id' => $c->niveau_id,
                 'niveau' => $c->niveau->name ?? null,
+                'annee_universitaire_id' => $c->annee_universitaire_id,
                 'amount' => (float) $c->amount,
                 'amount_affecte' => $c->amount_affecte !== null ? (float) $c->amount_affecte : null,
+                'amount_reaffecte' => $c->amount_reaffecte !== null ? (float) $c->amount_reaffecte : null,
+                'amount_non_affecte' => $c->amount_non_affecte !== null ? (float) $c->amount_non_affecte : null,
             ]);
 
         $souscriptions = ESBTPFraisSubscription::query()
