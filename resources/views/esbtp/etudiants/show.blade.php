@@ -5337,6 +5337,20 @@
                 <div class="s-card-title-icon"><i class="fas fa-table"></i></div>
                 Détail par frais
             </div>
+            @can('inscriptions.edit')
+            @if($finInscActive)
+            <form method="POST" class="ms-auto">
+                @csrf
+                <input type="hidden" name="inscription_ids[]" value="{{ $finInscActive->id }}">
+                <button type="button"
+                        class="btn-acasi secondary btn-sm js-regenerer-frais"
+                        data-preview="{{ route('esbtp.inscriptions.frais-manquants.preview') }}"
+                        data-apply="{{ route('esbtp.inscriptions.frais-manquants.apply') }}">
+                    <i class="fas fa-rotate"></i> Régénérer les frais
+                </button>
+            </form>
+            @endif
+            @endcan
         </div>
         <div style="overflow-x:auto;">
             <table class="fin-table">
@@ -5351,16 +5365,20 @@
                     </tr>
                 </thead>
                 <tbody>
+                @php
+                    $finPayeParCategorie = $finInscActive
+                        ? \App\Models\ESBTPPaiement::netPaidByCategory($finInscActive->id)
+                        : collect();
+                    $finInKind = app(\App\Services\InKindDepositService::class);
+                @endphp
                 @foreach($finInscActive->fraisSubscriptions as $sub)
                     @php
-                        $subPaye  = \App\Models\ESBTPPaiement::netStudentPaidFrom(
-                            $finPaiementsActive->filter(fn($p) =>
-                                ($p->frais_category_id ?? null) == ($sub->frais_category_id ?? null)
-                            )
-                        );
+                        $subPaye  = (float) ($finPayeParCategorie[$sub->frais_category_id] ?? 0);
                         $subDue = $sub->chargedAmount();
                         $subSolde = $subDue - $subPaye;
                         $subTaux  = $subDue > 0 ? min(100, round($subPaye / $subDue * 100)) : 0;
+                        $subCat = $sub->fraisCategory;
+                        $subCanMark = $subCat && $finInKind->canMarkDeposited($sub);
                     @endphp
                     <tr>
                         <td>
@@ -5378,7 +5396,18 @@
                             <span style="font-size:.72rem; color:var(--k-muted);">{{ $subTaux }}%</span>
                         </td>
                         <td style="text-align:center;">
-                            @if($subSolde > 0)
+                            @if(!empty($sub->satisfied_in_kind))
+                            <span style="font-size:.75rem; color:#10b981; font-weight:600;"><i class="fas fa-box"></i> Déposé</span>
+                            @elseif($subCanMark)
+                            @can('inscriptions.in_kind.mark')
+                            <form method="POST" action="{{ route('esbtp.inscriptions.in-kind-deposits.store', [$finInscActive, $subCat]) }}" class="d-inline">
+                                @csrf
+                                <button type="submit" class="pmt-act-btn view" style="background:rgba(4,83,203,.08); color:var(--k-blue); border:none; border-radius:6px; padding:5px 10px; cursor:pointer; font-size:.78rem; font-weight:600;">
+                                    <i class="fas fa-box"></i> Marquer déposé
+                                </button>
+                            </form>
+                            @endcan
+                            @elseif($subSolde > 0)
                             @can('paiements.create')
                             <button class="pmt-act-btn view" style="background:rgba(4,83,203,.08); color:var(--k-blue); border:none; border-radius:6px; padding:5px 10px; cursor:pointer; font-size:.78rem; font-weight:600;"
                                     data-bs-toggle="modal" data-bs-target="#etudiantPaymentModal"
@@ -5611,13 +5640,12 @@
                             </tr>
                         </thead>
                         <tbody>
+                        @php
+                            $autrePayeParCategorie = \App\Models\ESBTPPaiement::netPaidByCategory($autreInsc->id);
+                        @endphp
                         @foreach($autreInsc->fraisSubscriptions as $sub)
                             @php
-                                $aSubPaye  = \App\Models\ESBTPPaiement::netStudentPaidFrom(
-                                    $autrePaiements->filter(fn($p) =>
-                                        ($p->frais_category_id ?? null) == ($sub->frais_category_id ?? null)
-                                    )
-                                );
+                                $aSubPaye  = (float) ($autrePayeParCategorie[$sub->frais_category_id] ?? 0);
                                 $aSubDue = $sub->chargedAmount();
                                 $aSubSolde = $aSubDue - $aSubPaye;
                                 $aSubTaux  = $aSubDue > 0 ? min(100, round($aSubPaye / $aSubDue * 100)) : 0;
@@ -6262,9 +6290,11 @@
 })();
 </script>
 
+@include('esbtp.partials.modal-regenerer-frais')
 @endsection
 
 @push('scripts')
+<script src="{{ asset('js/frais/regenerer-modal.js') }}"></script>
 <script src="{{ asset('js/inscriptions/common.js') }}"></script>
 <script src="{{ asset('js/student-inscription-repair.js') }}"></script>
 <script>

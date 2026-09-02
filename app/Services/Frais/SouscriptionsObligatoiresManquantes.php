@@ -2,59 +2,33 @@
 
 namespace App\Services\Frais;
 
-use App\Models\ESBTPFraisCategory;
-use App\Models\ESBTPFraisConfiguration;
 use App\Models\ESBTPFraisSubscription;
 use App\Models\ESBTPInscription;
+use App\Models\ESBTPPaiement;
+use App\Services\ApplicableFraisResolver;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
-/**
- * Cree les souscriptions obligatoires qui n'ont jamais ete posees.
- *
- * Le formulaire d'inscription n'envoyait aucun montant pour les frais acceptant
- * un depot en nature : il ne transmettait que la case « depose ». Or le
- * controleur passe son chemin des que le montant est nul. Aucune souscription
- * n'etait donc creee — ni pour celui qui depose, ni pour celui qui ne depose pas.
- *
- * Le frais disparaissait purement et simplement : absent du recu, absent de la
- * caisse, alors que le formulaire promettait « sinon le montant sera du ».
- *
- * Sur ISLG, deux categories obligatoires sont dans ce cas — le paquet de
- * ramettes et la chemise cartonnee. Le formulaire est corrige, mais les
- * etudiants deja inscrits gardent leur trou.
- *
- * Cette classe ne cree QUE ce qui manque, et ne touche jamais a une souscription
- * existante : un montant deja pose est une decision, on ne la revient pas.
- */
 class SouscriptionsObligatoiresManquantes
 {
+    public function __construct(private readonly ApplicableFraisResolver $resolver)
+    {
+    }
+
     /**
      * @param  array<int, int>|null  $inscriptionIds
-     * @return array{total: int, inscriptions: int, lignes: array, applique: bool}
+     * @return array{
+     *     total: int,
+     *     inscriptions: int,
+     *     lignes: array,
+     *     lignes_retrait: array,
+     *     total_ajouter: int,
+     *     total_retirer: int,
+     *     applique: bool
+     * }
      */
     public function executer(bool $appliquer = false, ?int $anneeId = null, ?array $inscriptionIds = null): array
     {
-        $categories = ESBTPFraisCategory::query()
-            ->where('is_active', true)
-            ->where('is_mandatory', true)
-            ->get();
-
-        if ($categories->isEmpty()) {
-            return ['total' => 0, 'inscriptions' => 0, 'lignes' => [], 'applique' => false];
-        }
-
-        // Les inscriptions VIVANTES, pas seulement les validees.
-        //
-        // Le filtre ne retenait que « active », et sautait donc les inscriptions
-        // en attente. Or une inscription a qui il manque des frais les manquera
-        // TOUJOURS apres validation : le trou vient du formulaire, pas du
-        // workflow. Sur ISLG, cinq inscriptions en attente sur sept etaient dans
-        // ce cas — il leur manquait le paquet de ramettes et la chemise
-        // cartonnee, exactement les deux frais payables en nature.
-        //
-        // Les inscriptions annulees ou terminees restent dehors : on ne reclame
-        // rien a quelqu'un qui est parti.
         $inscriptions = ESBTPInscription::query()
             ->whereIn('status', ['active', 'en_attente'])
             ->when($anneeId, fn ($q) => $q->where('annee_universitaire_id', $anneeId))
@@ -62,125 +36,139 @@ class SouscriptionsObligatoiresManquantes
             ->with(['etudiant', 'classe'])
             ->get();
 
+        if ($inscriptions->isEmpty()) {
+            return [
+                'total' => 0,
+                'total_ajouter' => 0,
+                'total_retirer' => 0,
+                'inscriptions' => 0,
+                'lignes' => [],
+                'lignes_retrait' => [],
+                'applique' => false,
+            ];
+        }
+
         $dejaSouscrit = ESBTPFraisSubscription::query()
             ->whereIn('inscription_id', $inscriptions->pluck('id'))
+            ->with('fraisCategory')
             ->get()
-            ->groupBy('inscription_id')
-            ->map(fn ($g) => $g->pluck('frais_category_id')->all());
+            ->groupBy('inscription_id');
 
         $lignes = [];
+        $lignesRetrait = [];
         $aCreer = [];
+        $aRetirer = [];
 
         foreach ($inscriptions as $inscription) {
-            $possedees = $dejaSouscrit->get($inscription->id, []);
+            $subs = $dejaSouscrit->get($inscription->id, collect());
+            $possedees = $subs->pluck('frais_category_id')->all();
+            $voulues = $this->resolver->resolveMandatoryFeesForInscription($inscription)
+                ->keyBy(fn (array $fee) => $fee['category']->id);
+            $etudiant = $inscription->etudiant;
+            $nom = $etudiant ? trim(($etudiant->nom ?? '').' '.($etudiant->prenoms ?? '')) : null;
 
-            foreach ($categories as $categorie) {
-                if (in_array($categorie->id, $possedees, true)) {
+            foreach ($voulues as $categoryId => $fee) {
+                if (in_array($categoryId, $possedees, true)) {
                     continue;
                 }
-
-                if (! app(\App\Services\ApplicableFraisResolver::class)->categoryAppliesToStudent(
-                    $categorie,
-                    $inscription->statut_etablissement,
-                )) {
-                    continue;
-                }
-
-                $montant = $this->montantPour($categorie, $inscription);
-
-                // Un frais obligatoire sans montant resolvable ne se cree pas :
-                // on ne reclamerait rien de chiffrable, et une souscription a
-                // zero se confondrait avec une exemption.
+                $montant = (float) $fee['amount'];
                 if ($montant <= 0) {
                     continue;
                 }
-
-                $etudiant = $inscription->etudiant;
-
+                $categorie = $fee['category'];
                 $lignes[] = [
                     'inscription_id' => $inscription->id,
-                    'etudiant' => $etudiant ? trim(($etudiant->nom ?? '').' '.($etudiant->prenoms ?? '')) : null,
+                    'etudiant' => $nom,
                     'matricule' => $etudiant->matricule ?? null,
                     'classe' => $inscription->classe->name ?? null,
                     'categorie' => $categorie->name,
                     'categorie_id' => $categorie->id,
                     'montant' => $montant,
                     'accepte_en_nature' => (bool) $categorie->accepts_in_kind,
+                    'action' => 'ajouter',
                 ];
-
                 $aCreer[] = [
                     'inscription_id' => $inscription->id,
                     'frais_category_id' => $categorie->id,
                     'amount' => $montant,
                 ];
             }
+
+            $paye = ESBTPPaiement::netPaidByCategory($inscription->id);
+
+            foreach ($subs as $sub) {
+                $categorie = $sub->fraisCategory;
+                if (! $categorie || ! $categorie->is_mandatory) {
+                    continue;
+                }
+                if ($voulues->has($categorie->id)) {
+                    continue;
+                }
+                if ($sub->satisfied_in_kind) {
+                    continue;
+                }
+                if ((float) ($paye[$categorie->id] ?? 0) > 0) {
+                    continue;
+                }
+                $lignesRetrait[] = [
+                    'inscription_id' => $inscription->id,
+                    'etudiant' => $nom,
+                    'matricule' => $etudiant->matricule ?? null,
+                    'classe' => $inscription->classe->name ?? null,
+                    'categorie' => $categorie->name,
+                    'categorie_id' => $categorie->id,
+                    'montant' => (float) $sub->amount,
+                    'accepte_en_nature' => (bool) $categorie->accepts_in_kind,
+                    'action' => 'retirer',
+                    'motif' => ($categorie->audience ?? '') === 'nouveaux_etablissement'
+                        ? 'Réservé aux nouveaux'
+                        : 'Ne s\'applique plus',
+                ];
+                $aRetirer[] = $sub->id;
+            }
         }
 
-        if (! $appliquer || $aCreer === []) {
-            return [
-                'total' => count($aCreer),
-                'inscriptions' => count(array_unique(array_column($aCreer, 'inscription_id'))),
-                'lignes' => $lignes,
-                'applique' => false,
-            ];
+        $vide = [
+            'total' => count($aCreer),
+            'total_ajouter' => count($aCreer),
+            'total_retirer' => count($aRetirer),
+            'inscriptions' => count(array_unique(array_merge(
+                array_column($aCreer, 'inscription_id'),
+                array_column($lignesRetrait, 'inscription_id'),
+            ))),
+            'lignes' => $lignes,
+            'lignes_retrait' => $lignesRetrait,
+            'applique' => false,
+        ];
+
+        if (! $appliquer || ($aCreer === [] && $aRetirer === [])) {
+            return $vide;
         }
 
-        // `created_by` est NOT NULL sans defaut sur cette table. Appelee depuis
-        // l'API CLI la commande a un utilisateur authentifie ; lancee en console
-        // elle n'en a pas, et l'insertion echouerait sur un 1364 — le meme defaut
-        // que esbtp_paiements.type_paiement corrige plus tot aujourd'hui.
         $auteur = auth()->id() ?? \App\Models\User::query()->min('id');
 
-        $crees = DB::transaction(function () use ($aCreer, $auteur): int {
-            $n = 0;
-
+        DB::transaction(function () use ($aCreer, $aRetirer, $auteur): void {
             foreach ($aCreer as $ligne) {
                 ESBTPFraisSubscription::create($ligne + [
                     'is_active' => true,
                     'subscribed_at' => now(),
                     'created_by' => $auteur,
-                    'notes' => 'Souscription obligatoire manquante, creee par rattrapage',
+                    'notes' => 'Régénération des frais obligatoires',
                 ]);
-                $n++;
             }
-
-            return $n;
+            if ($aRetirer !== []) {
+                ESBTPFraisSubscription::query()->whereIn('id', $aRetirer)->delete();
+            }
         });
 
-        Log::warning('[frais] rattrapage des souscriptions obligatoires manquantes', [
-            'lignes' => $crees,
+        Log::warning('[frais] regeneration des souscriptions obligatoires', [
+            'ajoutes' => count($aCreer),
+            'retires' => count($aRetirer),
             'annee_id' => $anneeId,
         ]);
 
-        return [
-            'total' => $crees,
-            'inscriptions' => count(array_unique(array_column($aCreer, 'inscription_id'))),
-            'lignes' => $lignes,
-            'applique' => true,
-        ];
-    }
+        $vide['applique'] = true;
 
-    /**
-     * Le montant a reclamer : la configuration si elle existe, le defaut sinon.
-     *
-     * Le meme ordre que partout ailleurs, moins la souscription — puisque c'est
-     * precisement celle qui manque.
-     */
-    private function montantPour(ESBTPFraisCategory $categorie, ESBTPInscription $inscription): float
-    {
-        $configuration = ESBTPFraisConfiguration::getApplicableConfiguration(
-            $categorie->id,
-            $inscription->filiere_id,
-            $inscription->niveau_id,
-            $inscription->annee_universitaire_id
-        );
-
-        if ($configuration) {
-            $statut = $inscription->affectation_status ?? ESBTPInscription::DEFAULT_AFFECTATION_STATUS;
-
-            return (float) $configuration->getMontantByStatus($statut);
-        }
-
-        return (float) ($categorie->default_amount ?? 0);
+        return $vide;
     }
 }

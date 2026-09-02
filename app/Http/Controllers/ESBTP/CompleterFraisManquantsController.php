@@ -23,9 +23,12 @@ class CompleterFraisManquantsController extends Controller
 
         return response()->json([
             'success' => true,
-            'total' => $resultat['total'],
+            'total' => $resultat['total_ajouter'] + $resultat['total_retirer'],
+            'total_ajouter' => $resultat['total_ajouter'],
+            'total_retirer' => $resultat['total_retirer'],
             'inscriptions' => $resultat['inscriptions'],
             'lignes' => $resultat['lignes'],
+            'lignes_retrait' => $resultat['lignes_retrait'],
         ]);
     }
 
@@ -34,17 +37,18 @@ class CompleterFraisManquantsController extends Controller
         $ids = $this->ids($request);
         $resultat = $rattrapage->executer(true, null, $ids);
 
-        $message = $resultat['total'] > 0
-            ? sprintf('%d frais obligatoire(s) ajouté(s) sur %d inscription(s).', $resultat['total'], $resultat['inscriptions'])
-            : 'Aucun frais manquant à ajouter.';
+        $message = $this->message($resultat);
 
         if ($request->wantsJson() || $request->ajax()) {
             return response()->json([
                 'success' => true,
                 'message' => $message,
-                'total' => $resultat['total'],
+                'total' => $resultat['total_ajouter'] + $resultat['total_retirer'],
+                'total_ajouter' => $resultat['total_ajouter'],
+                'total_retirer' => $resultat['total_retirer'],
                 'inscriptions' => $resultat['inscriptions'],
                 'lignes' => $resultat['lignes'],
+                'lignes_retrait' => $resultat['lignes_retrait'],
             ]);
         }
 
@@ -62,5 +66,23 @@ class CompleterFraisManquantsController extends Controller
         ]);
 
         return array_map('intval', $validated['inscription_ids']);
+    }
+
+    private function message(array $resultat): string
+    {
+        $ajoutes = (int) $resultat['total_ajouter'];
+        $retires = (int) $resultat['total_retirer'];
+        if ($ajoutes === 0 && $retires === 0) {
+            return 'Aucun écart : les frais sont à jour.';
+        }
+        $parts = [];
+        if ($ajoutes > 0) {
+            $parts[] = sprintf('%d ajouté(s)', $ajoutes);
+        }
+        if ($retires > 0) {
+            $parts[] = sprintf('%d retiré(s)', $retires);
+        }
+
+        return sprintf('%s sur %d inscription(s).', implode(', ', $parts), $resultat['inscriptions']);
     }
 }

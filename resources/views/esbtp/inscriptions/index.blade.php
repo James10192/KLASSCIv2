@@ -11,6 +11,7 @@
    Variables sur :root pour etre accessibles aussi bien dans
    .dashboard-acasi que dans les modals et la bulk-bar (hors wrapper).
    ===================================================================== */
+[x-cloak] { display: none !important; }
 :root {
     --ii-primary: #0453cb;
     --ii-primary-dark: #033a8e;
@@ -865,7 +866,7 @@ tr[data-inscription-id] > td { transition: background .15s ease; }
             @endcan
             @can('inscriptions.edit')
                 <button type="button" class="ii-bulk-btn" onclick="iiBulkFraisManquants()">
-                    <i class="fas fa-rotate"></i>Compléter les frais
+                    <i class="fas fa-rotate"></i>Régénérer les frais
                 </button>
             @endcan
         </div>
@@ -875,6 +876,8 @@ tr[data-inscription-id] > td { transition: background .15s ease; }
     </div>
 </div>
 @endif
+
+@include('esbtp.partials.modal-regenerer-frais')
 
 {{-- MODALS GLOBAUX (data-id dynamique) --}}
 
@@ -1193,5 +1196,6 @@ tr[data-inscription-id] > td { transition: background .15s ease; }
     };
     window.KLASSCI_CSRF_TOKEN = "{{ csrf_token() }}";
 </script>
+<script src="{{ asset('js/frais/regenerer-modal.js') }}" defer></script>
 <script src="{{ asset('js/inscriptions/index.js') }}" defer></script>
 @endpush
