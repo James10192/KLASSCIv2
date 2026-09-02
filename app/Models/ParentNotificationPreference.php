@@ -25,6 +25,19 @@ class ParentNotificationPreference extends Model
         'notifications_sent_count',
     ];
 
+    /**
+     * La colonne `preferred_channels` n'a plus de valeur par defaut en base :
+     * MySQL 8 refuse un defaut sur une colonne JSON, et le schema ne se
+     * creait plus du tout. Elle vit donc ici, ou elle s'applique quel que
+     * soit le moteur — y compris a un `new` qui n'aurait pas renseigne le
+     * champ.
+     *
+     * @var array<string, mixed>
+     */
+    protected $attributes = [
+        'preferred_channels' => '["app", "email"]',
+    ];
+
     protected $casts = [
         'notify_inscriptions' => 'boolean',
         'notify_paiements' => 'boolean',

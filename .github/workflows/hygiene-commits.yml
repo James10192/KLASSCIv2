@@ -143,11 +143,17 @@ jobs:
     name: Tests d'intégration (frais)
     runs-on: ubuntu-latest
     services:
-      # MariaDB, pas MySQL 8 : une migration du depot cree une colonne `json`
-      # avec valeur par defaut, ce que MySQL 8 refuse et que MariaDB accepte
-      # (son JSON est un LONGTEXT). Sur MySQL 8, le schema ne se cree pas du
-      # tout. C'est un defaut reel a corriger, mais il precede ce travail et
-      # se corrige dans la migration, pas ici.
+      # MariaDB : c'est ce que fait tourner la flotte, et le schema ne se
+      # cree pas encore entierement sur MySQL 8.
+      #
+      # Un premier blocage a ete leve (colonne JSON a valeur par defaut). Il
+      # en reste au moins un : une colonne generee STORED assise sur une
+      # colonne qui porte une cle etrangere ON DELETE CASCADE
+      # (esbtp_attendance_manual_hours.matiere_key). MySQL 8 le refuse,
+      # MariaDB l'accepte. Le lever demande de choisir ce que devient une
+      # saisie d'heures quand la matiere disparait — aujourd'hui elle est
+      # supprimee en cascade — donc une decision d'integrite, pas un
+      # ajustement de CI.
       mariadb:
         image: mariadb:10.11
         env:
@@ -177,6 +183,21 @@ jobs:
       # aujourd'hui, pour des raisons d'environnement anterieures a ce
       # travail. Un job rouge en permanence ne se lit plus, et il faudrait
       # alors le contourner — ce qui vide de son sens le fait de l'avoir pose.
+      # Ce que ce pas verifie : le schema se CREE, du premier au dernier
+      # fichier. Il n'existait pas, et c'est pour ca qu'un schema increable a
+      # pu survivre sans que rien ne le signale. Les tests qui suivent ne
+      # s'executeraient pas sans lui, mais ils echoueraient pour une raison
+      # qu'on lirait mal.
+      - name: Le schema se cree entierement
+        env:
+          DB_CONNECTION: mysql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_DATABASE: klassci_testing
+          DB_USERNAME: root
+          DB_PASSWORD: ''
+        run: php artisan migrate:fresh --force
+
       - name: Montants nets par frais
         env:
           DB_CONNECTION: mysql
