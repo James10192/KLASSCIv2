@@ -1075,3 +1075,8 @@ Trois horizons. Le premier ne contient presque aucune nouvelle fonctionnalité :
 Cinq lectures parallèles du code (64 agents au total pour la partie UX, 12 millions de tokens lus), puis un élargissement mené directement sur douze axes avec mesures dans le dépôt et recherches web (klassci.com, concurrents, DGI, ARTCI, Wave), un parcours E2E authentifié de 124 pages sur presentation.klassci.com, et la création de 49 issues GitHub sous l'épic #738, contre-vérifiées par un second workflow de 44 agents (26 confirmées, 15 partielles corrigées, 3 réfutées sur un point) (inscription, caisse, pédagogie, rôles, qualité), puis un workflow de quatorze audits de pages et cinq audits transversaux avec une rubrique commune, dont chaque constat critique ou majeur a été soumis à un contradicteur chargé de le réfuter en vérifiant le code. J'ai ensuite revérifié moi-même chaque risque bloquant listé plus haut. Cette revue lit le code, pas les données ni les usages réels : elle ne mesure pas les temps de tâche des utilisateurs en établissement, ce qui reste la prochaine étape indispensable.
 
 Rapport établi le 2 septembre 2026 sur la branche `presentation`, commit 49b96f3. Les numéros de ligne renvoient à cet état du dépôt.
+
+
+---
+
+Voir aussi : [Expertise des applications voisines adminKlassci et MailPulse](2026-09-02-expertise-adminklassci-mailpulse.md) (même jour, même dispositif).
