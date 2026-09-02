@@ -1,5 +1,5 @@
 ---
-titre: Expertise SaaS KLASSCI — septembre 2026 (rapport final)
+titre: Expertise SaaS KLASSCI — septembre 2026 (rapport final contre-vérifié)
 artifact: https://claude.ai/code/artifact/5d5f075b-7759-4e31-bd6d-79b3c07f0a21
 epic: https://github.com/James10192/KLASSCIv2/issues/738
 ---
@@ -776,6 +776,18 @@ Une épic et 49 issues enfants, chacune avec preuve, reproduction, comportement 
 | G · Fondations et exploitation | #778 observabilité · #779 infrastructure · #780 analyse statique · #785 fondations données · #781 sécurité |
 | H · Conformité et offre | #782 données et IA · #783 FNE/RNE · #784 site klassci.com · #787 notifications |
 
+### Contre-vérification des issues (second workflow, 44 agents)
+
+Chaque issue a été relue par un contradicteur chargé de vérifier fichier, ligne et comportement. Résultat : 26 confirmées, 15 partiellement confirmées (décalages de lignes ou chiffres à corriger), 3 réfutées sur un point. Les corrections ont été postées en commentaire sur chaque issue concernée. Les trois réfutations à retenir :
+
+  - **#761** : les enseignants ne sont pas exclus de la saisie LMD, car le rôle enseignant possède `admin.access` par défaut. L'issue devient une demande de saisie par type de note et par rôle, avec la fragilité d'un accès qui dépend d'une permission administrative.
+
+  - **#754** : la table des dépenses n'est pas orpheline, elle est pire : le modèle `ESBTPDepense` n'existe pas sur le disque mais six fichiers l'utilisent, dont un job de calcul de KPI qui plantera à l'exécution.
+
+  - **#772** : le reçu est bien accessible avant validation ; le reste du constat (bouton Modifier affiché puis refusé, montant zéro) tient.
+
+Corrections chiffrées : 22 permissions mortes et non 77 (#764), 1 389 `!important` et non 1 870 (#775), 12 selects natifs et non 14 sur l'inscription (#758), la duplication d'emploi du temps affiche bien un message sur les séances omises (#770), la cause exacte du 500 enseignant est un `@section` dans un commentaire JavaScript ligne 998 (#740).
+
 ## Déployer hors Côte d'Ivoire sans être sur place
 
 Trois conditions préalables, dans cet ordre : voir la production (monitoring, sauvegardes hors site, santé), la protéger (tests en CI, framework supporté), puis la rendre configurable (devise, pays, téléphone, langue, identité d'établissement, gabarits de documents). Aujourd'hui l'outillage de déploiement est Windows-only et le `.env.example` ne contient aucune variable Laravel : une équipe distante ne peut pas provisionner une instance sans vous.
@@ -902,6 +914,6 @@ Trois horizons. Le premier ne contient presque aucune nouvelle fonctionnalité :
 
 ## Méthode et limites de cette revue
 
-Cinq lectures parallèles du code (64 agents au total pour la partie UX, 12 millions de tokens lus), puis un élargissement mené directement sur douze axes avec mesures dans le dépôt et recherches web (klassci.com, concurrents, DGI, ARTCI, Wave), un parcours E2E authentifié de 124 pages sur presentation.klassci.com, et la création de 49 issues GitHub sous l'épic #738, contre-vérifiées par un second workflow (inscription, caisse, pédagogie, rôles, qualité), puis un workflow de quatorze audits de pages et cinq audits transversaux avec une rubrique commune, dont chaque constat critique ou majeur a été soumis à un contradicteur chargé de le réfuter en vérifiant le code. J'ai ensuite revérifié moi-même chaque risque bloquant listé plus haut. Cette revue lit le code, pas les données ni les usages réels : elle ne mesure pas les temps de tâche des utilisateurs en établissement, ce qui reste la prochaine étape indispensable.
+Cinq lectures parallèles du code (64 agents au total pour la partie UX, 12 millions de tokens lus), puis un élargissement mené directement sur douze axes avec mesures dans le dépôt et recherches web (klassci.com, concurrents, DGI, ARTCI, Wave), un parcours E2E authentifié de 124 pages sur presentation.klassci.com, et la création de 49 issues GitHub sous l'épic #738, contre-vérifiées par un second workflow de 44 agents (26 confirmées, 15 partielles corrigées, 3 réfutées sur un point) (inscription, caisse, pédagogie, rôles, qualité), puis un workflow de quatorze audits de pages et cinq audits transversaux avec une rubrique commune, dont chaque constat critique ou majeur a été soumis à un contradicteur chargé de le réfuter en vérifiant le code. J'ai ensuite revérifié moi-même chaque risque bloquant listé plus haut. Cette revue lit le code, pas les données ni les usages réels : elle ne mesure pas les temps de tâche des utilisateurs en établissement, ce qui reste la prochaine étape indispensable.
 
 Rapport établi le 2 septembre 2026 sur la branche `presentation`, commit 49b96f3. Les numéros de ligne renvoient à cet état du dépôt.
