@@ -1947,7 +1947,7 @@
                                 @can('lmd.planning.view')
                                 <a href="{{ route('esbtp.lmd.planning.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.lmd.planning.*') ? 'active' : '' }}">
                                     <span class="menu-dot"></span>
-                                    <span>Planning LMD</span>
+                                    <span>Maquettes</span>
                                 </a>
                                 @endcan
                                 @can('lmd.examens.view')
