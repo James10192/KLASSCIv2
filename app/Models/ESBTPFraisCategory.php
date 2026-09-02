@@ -52,6 +52,8 @@ class ESBTPFraisCategory extends Model implements Auditable
 
     public const AUDIENCE_NOUVEAUX = 'nouveaux_etablissement';
 
+    public const AUDIENCE_ANCIENS = 'anciens_etablissement';
+
     protected $fillable = [
         'name',
         'code',

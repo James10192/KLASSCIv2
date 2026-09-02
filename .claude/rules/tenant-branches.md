@@ -27,6 +27,7 @@ Chaque instance a sa **propre branche** dans ce repo, du même nom que le code t
 | `ephrata` | `ephrata` | **Partenaire** | en cours |
 | `hetec` | `hetec` | Test (vise Élite) | en cours |
 | `rostan` | `rostan` | Test (vise Élite) | en cours |
+| `usat` | `usat` | Université LMD | ouverture 2026-2027 |
 
 **`presentation` est la branche de développement canonique** — c'est là qu'on push toutes les nouvelles features, fixes, refactors.
 
@@ -79,7 +80,7 @@ git push origin presentation:rostan
 
 Ou en boucle pour tous d'un coup :
 ```bash
-for tenant in esbtp-abidjan esbtp-yakro ephrata hetec rostan; do
+for tenant in esbtp-abidjan esbtp-yakro ephrata hetec rostan usat; do
     echo "=== $tenant ==="
     git push origin presentation:$tenant
 done
@@ -132,7 +133,7 @@ klassci pull {tenant}
 klassci cache:clear {tenant}
 ```
 
-À ce jour configurés dans le CLI : `presentation`, `esbtp-abidjan`, `rostan`, `local`, `local-test`. Les autres (`esbtp-yakro`, `ephrata`, `hetec`) demandent une action manuelle SSH/cPanel ou doivent être ajoutés au CLI via `klassci config:set-token {tenant} {url} {token}`.
+À ce jour configurés dans le CLI : `presentation`, `esbtp-abidjan`, `esbtp-yakro`, `ephrata`, `rostan`, `usat`, `local`, `local-test`. Les autres (`hetec`) demandent une action manuelle SSH/cPanel ou doivent être ajoutés au CLI via `klassci config:set-token {tenant} {url} {token}`.
 
 ## Naming convention
 

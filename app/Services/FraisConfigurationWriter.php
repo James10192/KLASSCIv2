@@ -105,14 +105,18 @@ class FraisConfigurationWriter
 
         $rawAudience = $categoryData['audience'];
         if (is_array($rawAudience)) {
-            $rawAudience = in_array(ESBTPFraisCategory::AUDIENCE_NOUVEAUX, $rawAudience, true)
-                ? ESBTPFraisCategory::AUDIENCE_NOUVEAUX
-                : ESBTPFraisCategory::AUDIENCE_TOUS;
+            $rawAudience = match (true) {
+                in_array(ESBTPFraisCategory::AUDIENCE_ANCIENS, $rawAudience, true) => ESBTPFraisCategory::AUDIENCE_ANCIENS,
+                in_array(ESBTPFraisCategory::AUDIENCE_NOUVEAUX, $rawAudience, true) => ESBTPFraisCategory::AUDIENCE_NOUVEAUX,
+                default => ESBTPFraisCategory::AUDIENCE_TOUS,
+            };
         }
 
-        $audience = $rawAudience === ESBTPFraisCategory::AUDIENCE_NOUVEAUX
-            ? ESBTPFraisCategory::AUDIENCE_NOUVEAUX
-            : ESBTPFraisCategory::AUDIENCE_TOUS;
+        $audience = match ($rawAudience) {
+            ESBTPFraisCategory::AUDIENCE_NOUVEAUX => ESBTPFraisCategory::AUDIENCE_NOUVEAUX,
+            ESBTPFraisCategory::AUDIENCE_ANCIENS => ESBTPFraisCategory::AUDIENCE_ANCIENS,
+            default => ESBTPFraisCategory::AUDIENCE_TOUS,
+        };
 
         if (($category->audience ?? ESBTPFraisCategory::AUDIENCE_TOUS) === $audience) {
             return false;

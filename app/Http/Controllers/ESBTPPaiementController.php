@@ -7,6 +7,8 @@ use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPInscription;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Exceptions\RepartitionRefuseeException;
+use App\Exceptions\ExportPdfTropVolumineuxException;
+use App\Services\PaiementExportService;
 use App\Http\Requests\Paiement\StorePaiementRequest;
 use App\Http\Requests\Paiement\UpdatePaiementRequest;
 use App\Services\Frais\RepartitionDuVersement;
@@ -2578,7 +2580,13 @@ class ESBTPPaiementController extends Controller
         try {
             [$pdf, $filename] = $this->buildExportPdf($request, $matcher);
             return $pdf->download($filename);
-        } catch (\Exception $e) {
+        } catch (ExportPdfTropVolumineuxException $e) {
+            // Pas une panne : la selection est trop large. Le message dit
+            // quoi faire, il ne doit pas etre noye dans un 'Erreur lors de'.
+            return redirect()->back()->with('error', $e->getMessage());
+        } catch (\Throwable $e) {
+            // \Exception laissait passer les \Error (TypeError, appel sur null) :
+            // ils remontaient en page blanche 500, sans message ni journal.
             Log::error('Erreur export PDF paiements: ' . $e->getMessage(), [
                 'trace' => config('app.debug') ? $e->getTraceAsString() : null
             ]);
@@ -2603,7 +2611,13 @@ class ESBTPPaiementController extends Controller
                     'X-Robots-Tag' => 'noindex, nofollow',
                 ]
             );
-        } catch (\Exception $e) {
+        } catch (ExportPdfTropVolumineuxException $e) {
+            // Pas une panne : la selection est trop large. Le message dit
+            // quoi faire, il ne doit pas etre noye dans un 'Erreur lors de'.
+            return redirect()->back()->with('error', $e->getMessage());
+        } catch (\Throwable $e) {
+            // \Exception laissait passer les \Error (TypeError, appel sur null) :
+            // ils remontaient en page blanche 500, sans message ni journal.
             Log::error('Erreur aperçu PDF paiements: ' . $e->getMessage(), [
                 'trace' => config('app.debug') ? $e->getTraceAsString() : null
             ]);
@@ -2621,6 +2635,22 @@ class ESBTPPaiementController extends Controller
     {
         $data = $this->filterService->preparePaiementListing($request, $matcher, [], microtime(true), 'ESBTPPaiementController@buildExportPdf');
         $paiements = $this->filterService->getAllFilteredPaiements($request, $matcher);
+
+        // Compter AVANT de rendre. DomPDF garde tout le document en memoire :
+        // au-dela du plafond il epuise la limite PHP, et cette mort-la n'est pas
+        // rattrapable — aucun catch ne s'execute, aucun Log::error non plus.
+        // L'utilisateur ne recoit qu'une page blanche 500 et le journal du
+        // serveur reste vide : il n'a meme pas de quoi comprendre. Le plafond
+        // est celui deja retenu par l'export detaille ; seul cet ecran ne
+        // l'appliquait pas.
+        $total = $paiements->count();
+        if ($total > PaiementExportService::PDF_MAX_ROWS) {
+            throw new ExportPdfTropVolumineuxException(sprintf(
+                'Trop de paiements pour un PDF (%d, maximum %d). Affinez les filtres (statut, dates, recherche), ou exportez en Excel qui n\'a pas cette limite.',
+                $total,
+                PaiementExportService::PDF_MAX_ROWS
+            ));
+        }
 
         // Eager load createdBy si on va afficher la colonne (évite N+1)
         $paiements->loadMissing('createdBy:id,name');

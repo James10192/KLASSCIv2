@@ -797,6 +797,7 @@
                         <i class="fas fa-sync-alt"></i>
                         <span>Rafraîchir</span>
                     </button>
+                    @can('paiements.export')
                     <div class="dropdown">
                         <button type="button" class="pi-btn pi-btn--glass dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
                             <i class="fas fa-download"></i>
@@ -833,6 +834,7 @@
                             </li>
                         </ul>
                     </div>
+                    @endcan
                     @can('comptabilite.journal.view')
                     <a href="{{ route('esbtp.comptabilite.journal-caisse.index') }}" class="pi-btn pi-btn--glass">
                         <i class="fas fa-book"></i>
@@ -1787,9 +1789,22 @@ function showYearChangeInfo() {
 
         debugLog('🔗 URL d\'export:', exportUrl);
 
-        // Preview = nouvelle tab inline ; téléchargement = même tab
+        // Preview = nouvel onglet inline ; telechargement = meme onglet.
+        //
+        // Le 3e argument de window.open est windowFeatures : des qu'on en passe
+        // un, le navigateur ouvre une POPUP et non un onglet, et les bloqueurs
+        // de popup s'y appliquent. Un blocage est silencieux — window.open rend
+        // null, aucune requete ne part, rien n'apparait, et le journal du
+        // serveur reste vide. C'est ce qui faisait echouer l'apercu alors que le
+        // telechargement, simple navigation, passait. Tout le reste de KLASSCI
+        // ouvre ses apercus avec le seul '_blank' : on fait pareil, et on
+        // retombe sur l'onglet courant si l'ouverture est refusee quand meme.
         if (openInNewTab) {
-            window.open(exportUrl, '_blank', 'noopener,noreferrer');
+            const onglet = window.open(exportUrl, '_blank');
+            if (!onglet) {
+                debugLog('⚠️ Ouverture d'onglet refusee, bascule sur l'onglet courant');
+                window.location.href = exportUrl;
+            }
         } else {
             window.location.href = exportUrl;
         }
