@@ -3153,12 +3153,12 @@
                         </div>
                     @endif
 
-                    <div class="modal fade" id="whatsNewModal" tabindex="-1" aria-labelledby="whatsNewModalLabel" aria-hidden="true" data-bs-backdrop="static" data-pref-key="whatsNew.v2026_05_04.user.{{ auth()->id() }}">
+                    <div class="modal fade" id="whatsNewModal" tabindex="-1" aria-labelledby="whatsNewModalLabel" aria-hidden="true" data-bs-backdrop="static" data-pref-key="whatsNew.v2026_09_02.user.{{ auth()->id() }}">
                         <div class="modal-dialog modal-dialog-centered modal-lg">
                             <div class="modal-content" style="border:none;border-radius:16px;overflow:hidden;box-shadow:0 18px 48px rgba(15,23,42,.2);">
                                 <div class="modal-header" style="background:linear-gradient(135deg,#0453cb,#5e91de);color:#fff;border-bottom:none;">
                                     <h5 class="modal-title" id="whatsNewModalLabel" style="font-weight:700;">
-                                        <i class="fas fa-sparkles me-2"></i>What's New - Mai 2026
+                                        <i class="fas fa-sparkles me-2"></i>Nouveautés — Septembre 2026
                                     </h5>
                                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fermer" id="whatsNewCloseBtn"></button>
                                 </div>
@@ -3166,27 +3166,35 @@
                                     <div style="display:flex;align-items:flex-start;gap:.8rem;margin-bottom:.9rem;padding:.7rem .8rem;border-radius:10px;background:rgba(4,83,203,.06);border:1px solid rgba(4,83,203,.15);">
                                         <i class="fas fa-info-circle" style="margin-top:2px;color:#0453cb;"></i>
                                         <div style="font-size:.86rem;color:#334155;line-height:1.45;">
-                                            Voici les nouveautés livrées depuis le <strong>30 avril 2026</strong> pour la comptabilité et le suivi des paiements.
+                                            Ce qui change ce mois-ci autour des <strong>paiements</strong>, maintenant qu&rsquo;un versement peut couvrir plusieurs frais d&rsquo;un seul geste.
                                         </div>
                                     </div>
 
                                     <div style="display:grid;gap:.55rem;">
                                         <div style="padding:.6rem .75rem;border:1px solid #e2e8f0;border-radius:10px;background:#fff;">
-                                            <div style="font-size:.8rem;font-weight:700;color:#0453cb;margin-bottom:.2rem;">Flux de paiement fiabilisé</div>
-                                            <div style="font-size:.78rem;color:#475569;">Auto-sélection de l'inscription de l'année courante, correction des NaN d'affichage, saisie montant FCFA plus stable.</div>
+                                            <div style="font-size:.8rem;font-weight:700;color:#0453cb;margin-bottom:.2rem;">Filtrer la liste des paiements par frais</div>
+                                            <div style="font-size:.78rem;color:#475569;">Un versement qui a payé la tenue en même temps que la scolarité apparaît sous les deux, et non sous la seule case cochée au guichet. Le montant affiché est alors la part réellement allée sur ce frais.</div>
                                         </div>
                                         <div style="padding:.6rem .75rem;border:1px solid #e2e8f0;border-radius:10px;background:#fff;">
-                                            <div style="font-size:.8rem;font-weight:700;color:#0453cb;margin-bottom:.2rem;">Nouveau moteur retard basé échéancier</div>
-                                            <div style="font-size:.78rem;color:#475569;">Le retard est calculé sur les échéances attendues à date, pas sur le solde annuel brut.</div>
+                                            <div style="font-size:.8rem;font-weight:700;color:#0453cb;margin-bottom:.2rem;">Chaque ligne nomme les frais couverts</div>
+                                            <div style="font-size:.78rem;color:#475569;">Fini le « 3 frais » muet : la liste, le PDF, l&rsquo;Excel et le reçu disent lesquels, et pour quel montant chacun.</div>
                                         </div>
                                         <div style="padding:.6rem .75rem;border:1px solid #e2e8f0;border-radius:10px;background:#fff;">
-                                            <div style="font-size:.8rem;font-weight:700;color:#0453cb;margin-bottom:.2rem;">Configuration des tranches centralisée</div>
-                                            <div style="font-size:.78rem;color:#475569;">Nouvelle page dédiée des échéanciers accessible depuis les écrans Frais et Frais optionnels.</div>
+                                            <div style="font-size:.8rem;font-weight:700;color:#0453cb;margin-bottom:.2rem;">Nouvel état financier par frais</div>
+                                            <div style="font-size:.78rem;color:#475569;">Dans le menu « Exporter » : une ligne par étudiant et par frais, avec le dû, le payé, le reste et le statut. De quoi savoir qui a soldé quoi, et qui doit encore.</div>
                                         </div>
                                         <div style="padding:.6rem .75rem;border:1px solid #e2e8f0;border-radius:10px;background:#fff;">
-                                            <div style="font-size:.8rem;font-weight:700;color:#0453cb;margin-bottom:.2rem;">KPIs, relances et analytics alignés</div>
-                                            <div style="font-size:.78rem;color:#475569;">Les indicateurs de retard et d'ancienneté s'appuient désormais sur l'échéancier réel.</div>
+                                            <div style="font-size:.8rem;font-weight:700;color:#0453cb;margin-bottom:.2rem;">Les exports PDF ne bloquent plus sur les gros volumes</div>
+                                            <div style="font-size:.78rem;color:#475569;">Le document est composé par tranches puis recollé : un export de plusieurs milliers de versements sort désormais en entier.</div>
                                         </div>
+                                        <div style="padding:.6rem .75rem;border:1px solid #e2e8f0;border-radius:10px;background:#fff;">
+                                            <div style="font-size:.8rem;font-weight:700;color:#0453cb;margin-bottom:.2rem;">Suivi par catégorie remis d&rsquo;aplomb</div>
+                                            <div style="font-size:.78rem;color:#475569;">Il ignorait la répartition des versements : un étudiant à jour pouvait ressortir « en retard ». Les remboursements sont de nouveau déduits.</div>
+                                        </div>
+                                    </div>
+
+                                    <div style="margin-top:.9rem;font-size:.75rem;color:#64748b;text-align:center;">
+                                        Le détail complet est dans le journal des versions, sur klassci.com.
                                     </div>
                                 </div>
                                 <div class="modal-footer" style="border-top:1px solid #e2e8f0;display:flex;justify-content:space-between;gap:.5rem;padding:.9rem 1rem;">
@@ -3396,7 +3404,7 @@
 
                 const whatsNewModalElement = document.getElementById('whatsNewModal');
                 if (whatsNewModalElement && typeof bootstrap !== 'undefined') {
-                    const prefKey = whatsNewModalElement.dataset.prefKey || 'whatsNew.v2026_05_04';
+                    const prefKey = whatsNewModalElement.dataset.prefKey || 'whatsNew.v2026_09_02';
                     const now = Date.now();
                     const remindDelayMs = 2 * 24 * 60 * 60 * 1000;
 

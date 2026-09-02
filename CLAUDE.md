@@ -12,6 +12,27 @@
 
 ---
 
+## Hooks et versionnage — À FAIRE EN PREMIER
+
+```sh
+sh .githooks/install.sh
+```
+
+Sans ça, aucun garde-fou : git ne versionne pas `.git/hooks`, et un poste neuf commit sans filet.
+
+**Ce qui est refusé, localement et sur la PR :** toute signature d'outil (`Co-Authored-By:`,
+`Generated with`, emoji robot, `Claude-Session:`), tout message non conventionnel, et tout `feat` ou
+`fix` touchant `app/` `resources/` `routes/` `database/` sans entrée dans `CHANGELOG.md`
+(échappatoire assumée : `[sans-changelog]` dans le corps).
+
+Les hooks se contournent avec `--no-verify` ; le contrôle serveur
+(`.github/workflows/hygiene-commits.yml`) rejoue les mêmes règles et ne se contourne pas.
+
+Les notes de version pour klassci-landing se produisent, elles ne se recopient pas :
+`php artisan release:notes --sortie=release.json`. Voir [docs/VERSIONING.md](docs/VERSIONING.md).
+
+---
+
 ## Architecture
 
 **Type** : SaaS Multi-Instance Laravel 12.x

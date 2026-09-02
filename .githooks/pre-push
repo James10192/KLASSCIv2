@@ -1,0 +1,50 @@
+#!/bin/sh
+#
+# Dernier filet avant que l'historique ne devienne public.
+#
+# Le hook commit-msg se contourne avec `--no-verify`. Celui-ci relit les
+# commits REELLEMENT sur le point de partir : un message passe en force ici
+# se voit encore. Ce qui part sur origin, en revanche, ne se rattrape qu'en
+# reecrivant l'historique.
+
+distant="$1"
+echec=0
+
+while read -r _ sha_local ref_distante sha_distant; do
+    # Suppression de branche : rien a relire.
+    [ "$sha_local" = "0000000000000000000000000000000000000000" ] && continue
+
+    if [ "$sha_distant" = "0000000000000000000000000000000000000000" ]; then
+        # Branche neuve : on se limite a ce qui n'est pas deja sur presentation,
+        # sinon on relit tout l'historique du depot.
+        plage="origin/presentation..$sha_local"
+    else
+        plage="$sha_distant..$sha_local"
+    fi
+
+    commits=$(git rev-list "$plage" 2>/dev/null) || continue
+
+    for sha in $commits; do
+        message=$(git log -1 --format='%B' "$sha")
+        court=$(git log -1 --format='%h %s' "$sha")
+
+        if printf '%s\n' "$message" | grep -qiE '^[[:space:]]*Co-Authored-By:|Generated with|🤖|noreply@anthropic\.com|Claude-Session:'; then
+            echo ""
+            echo "  PUSH REFUSE — signature d outil dans $court"
+            echo ""
+            echo "    Ce commit porte une mention d attribution ou de generation."
+            echo "    Corrige avant de pousser :"
+            echo "      git rebase -i $sha~1     (reword)"
+            echo ""
+            echec=1
+        fi
+    done
+done
+
+if [ "$echec" -ne 0 ]; then
+    echo "  (Le controle serveur rejouera la meme regle sur la PR.)"
+    echo ""
+    exit 1
+fi
+
+exit 0

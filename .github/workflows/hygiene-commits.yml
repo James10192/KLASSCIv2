@@ -1,0 +1,180 @@
+name: Hygiène des commits
+
+# La barrière qui ne se contourne pas.
+#
+# Les hooks locaux (.githooks/) donnent un retour immédiat, mais `git commit
+# --no-verify` les saute — et un agent pressé le fera. Ce contrôle-ci rejoue
+# exactement les mêmes règles sur la pull request, là où personne ne peut
+# passer outre.
+#
+# Il ne lit que les messages : il est donc rapide et ne dépend d'aucune
+# installation.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+
+jobs:
+  messages:
+    name: Messages de commit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Relire chaque commit de la branche
+        run: |
+          base="origin/${{ github.base_ref }}"
+          echec=0
+
+          for sha in $(git rev-list "$base..HEAD"); do
+            message=$(git log -1 --format='%B' "$sha")
+            sujet=$(git log -1 --format='%s' "$sha")
+            court=$(git log -1 --format='%h' "$sha")
+
+            # Un commit de fusion porte un sujet impose par GitHub.
+            if [ "$(git rev-list --parents -n 1 "$sha" | wc -w)" -gt 2 ]; then
+              continue
+            fi
+
+            if printf '%s\n' "$message" | grep -qiE '^[[:space:]]*Co-Authored-By:'; then
+              echo "::error::$court — signature Co-Authored-By. L'auteur d'un commit est la personne qui en répond."
+              echec=1
+            fi
+
+            if printf '%s\n' "$message" | grep -qiE 'Generated with|🤖|noreply@anthropic\.com|Claude-Session:'; then
+              echo "::error::$court — mention d'outil de génération dans le message."
+              echec=1
+            fi
+
+            if ! printf '%s\n' "$sujet" | grep -qE '^(feat|fix|refactor|perf|docs|test|chore|build|ci|style|revert)(\([a-z0-9._/-]+\))?!?: .+'; then
+              echo "::error::$court — message non conventionnel : $sujet"
+              echec=1
+            fi
+          done
+
+          exit $echec
+
+      - name: Relire le corps de la pull request
+        env:
+          CORPS: ${{ github.event.pull_request.body }}
+        run: |
+          if printf '%s\n' "$CORPS" | grep -qiE 'Generated with \[Claude Code\]|🤖 Generated|Co-Authored-By:'; then
+            echo "::error::Le corps de la PR porte une mention d'outil de génération."
+            exit 1
+          fi
+          exit 0
+
+  changelog:
+    name: Trace d'un changement visible
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Un feat ou un fix visible doit laisser une trace
+        run: |
+          base="origin/${{ github.base_ref }}"
+          fichiers=$(git diff --name-only "$base...HEAD")
+
+          touche_appli=$(printf '%s\n' "$fichiers" | grep -cE '^(app|resources|routes|database)/' || true)
+          changelog=$(printf '%s\n' "$fichiers" | grep -cE '^CHANGELOG\.md$' || true)
+
+          # Le type se lit sur les commits de la branche, pas sur le titre de la
+          # PR : le titre se corrige d'un clic, les commits font foi.
+          visible=0
+          for sha in $(git rev-list "$base..HEAD"); do
+            sujet=$(git log -1 --format='%s' "$sha")
+            case "$sujet" in
+              feat*|fix*) visible=1 ;;
+            esac
+          done
+
+          if [ "$visible" -eq 1 ] && [ "$touche_appli" -gt 0 ] && [ "$changelog" -eq 0 ]; then
+            if git log "$base..HEAD" --format='%B' | grep -q '\[sans-changelog\]'; then
+              echo "::notice::Changement visible sans CHANGELOG, mais [sans-changelog] est déclaré."
+              exit 0
+            fi
+            echo "::error::Cette branche change ce que voit une école mais ne touche pas CHANGELOG.md."
+            echo "::error::Ajoutez une entrée sous le mois courant, ou déclarez [sans-changelog] dans un message de commit."
+            exit 1
+          fi
+
+          exit 0
+
+  nouveautes:
+    name: Fraîcheur du modal Nouveautés
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+
+      # Avertit, ne bloque pas : rafraîchir le modal est une décision de
+      # communication. Le bloquer serait vite contourné, et le contournement
+      # deviendrait la règle.
+      - name: Le modal a-t-il pris du retard sur le CHANGELOG ?
+        run: php bin/verifier-fraicheur-nouveautes.php
+
+  tests-unitaires:
+    name: Tests unitaires (sans base)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, xml, ctype, iconv, intl, dom, filter, json, tokenizer
+
+      - run: composer install --no-interaction --prefer-dist --no-progress
+
+      # Ces tests ne touchent pas la base : ils tournent en quelques secondes,
+      # donc rien ne justifie de ne pas les lancer a chaque PR. Ils couvrent la
+      # regle qui dit ou va l'argent d'un versement.
+      - name: Regles de frais et de paiement
+        run: php vendor/bin/phpunit tests/Unit/Services/Frais tests/Unit/Paiements tests/Unit/Services/FraisAudienceTest.php --no-coverage
+
+  tests-integration-frais:
+    name: Tests d'intégration (frais)
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+          MYSQL_DATABASE: klassci_testing
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping" --health-interval=10s
+          --health-timeout=5s --health-retries=5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, xml, ctype, iconv, intl, pdo_mysql, dom, filter, gd, json, tokenizer
+
+      - run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Préparer l'environnement de test
+        run: |
+          cp .env.example .env 2>/dev/null || true
+          php artisan key:generate --force
+
+      # Restreint aux frais : le reste de la suite n'est pas encore vert en
+      # integration continue, et un job rouge en permanence ne se lit plus.
+      - name: Montants nets par frais
+        env:
+          DB_CONNECTION: mysql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_DATABASE: klassci_testing
+          DB_USERNAME: root
+          DB_PASSWORD: ''
+        run: php vendor/bin/phpunit tests/Feature/Frais --no-coverage

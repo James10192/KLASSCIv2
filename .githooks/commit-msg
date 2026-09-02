@@ -1,0 +1,102 @@
+#!/bin/sh
+#
+# Ce que ce hook empeche d'oublier, et pourquoi.
+#
+# Il tourne a chaque commit, y compris ceux d'un agent IA. Un agent respecte
+# les regles qu'on lui donne tant qu'il y pense ; ce fichier, lui, n'oublie
+# jamais. C'est la difference entre une convention et une garantie.
+#
+# Il se contourne avec `git commit --no-verify`. C'est assume : la barriere
+# qui ne se contourne pas est le controle serveur (.github/workflows/
+# hygiene-commits.yml), qui rejoue exactement les memes regles sur la PR.
+# Ici on veut un retour immediat, pas une police.
+
+msg_file="$1"
+msg=$(cat "$msg_file")
+# La partie redigee : sans les commentaires que git ajoute sous le message.
+corps=$(printf '%s\n' "$msg" | sed '/^#/d')
+sujet=$(printf '%s\n' "$corps" | sed '/^[[:space:]]*$/d' | head -1)
+
+echec=0
+refuser() {
+    echo ""
+    echo "  COMMIT REFUSE — $1"
+    echo ""
+    shift
+    for ligne in "$@"; do echo "    $ligne"; done
+    echo ""
+    echec=1
+}
+
+# ── 1. Aucune signature d'outil dans l'historique ────────────────────────────
+#
+# Le depot en a decide ainsi : l'auteur d'un commit est la personne qui en
+# repond. Une co-signature d'outil brouille cette responsabilite, et elle
+# pollue durablement l'historique — la retirer apres coup demande de reecrire
+# les commits.
+if printf '%s\n' "$corps" | grep -qiE '^[[:space:]]*Co-Authored-By:'; then
+    refuser "signature Co-Authored-By" \
+        "Retire la ligne Co-Authored-By du message." \
+        "L auteur du commit est la personne qui en repond."
+fi
+
+# Ancre en DEBUT DE LIGNE : c'est la que ces mentions apparaissent
+# reellement, en pied de message. Sans l'ancre, un message qui se contente
+# de PARLER de la regle — une documentation, un correctif sur ce hook — se
+# faisait refuser, et la seule issue etait --no-verify. Un garde-fou qu'on
+# apprend a contourner ne garde plus rien.
+if printf '%s
+' "$corps" | grep -qiE '^[[:space:]]*(Generated with|🤖|Co-authored-by:|Claude-Session:|Signed-off-by: Claude)'; then
+    refuser "mention d outil de generation" \
+        "Retire la mention (Generated with, emoji robot, lien de session...)." \
+        "Le message decrit le changement, pas l outil qui l a tape."
+fi
+
+# ── 2. Message conventionnel ─────────────────────────────────────────────────
+#
+# Pas par gout de la norme : c'est ce qui rend l'historique lisible par une
+# machine, donc ce qui permet de generer les notes de version sans les
+# reecrire a la main (bin/release/notes.php).
+if ! printf '%s\n' "$sujet" | grep -qE '^(feat|fix|refactor|perf|docs|test|chore|build|ci|style|revert)(\([a-z0-9._/-]+\))?!?: .+'; then
+    refuser "message non conventionnel" \
+        "Attendu : type(portee): description" \
+        "Types : feat fix refactor perf docs test chore build ci style revert" \
+        "Recu    : $sujet"
+fi
+
+if [ ${#sujet} -gt 100 ]; then
+    refuser "sujet trop long (${#sujet} caracteres, maximum 100)" \
+        "Mets le detail dans le corps du message, pas dans le sujet."
+fi
+
+# ── 3. Un changement visible se raconte quelque part ─────────────────────────
+#
+# Un `feat` ou un `fix` qui touche l'application change ce que voit une ecole.
+# S'il ne laisse aucune trace dans le CHANGELOG, personne ne saura le dire
+# trois mois plus tard — ni l'equipe, ni l'agent qui alimente le site.
+#
+# Echappatoire assumee : `[sans-changelog]` dans le corps, pour un correctif
+# strictement interne. Elle est ecrite dans le message, donc elle se relit.
+type_commit=$(printf '%s\n' "$sujet" | sed -E 's/^([a-z]+).*/\1/')
+if [ "$type_commit" = "feat" ] || [ "$type_commit" = "fix" ]; then
+    touche_appli=$(git diff --cached --name-only | grep -cE '^(app|resources|routes|database)/' || true)
+    changelog_present=$(git diff --cached --name-only | grep -cE '^CHANGELOG\.md$' || true)
+    if [ "$touche_appli" -gt 0 ] && [ "$changelog_present" -eq 0 ]; then
+        if ! printf '%s\n' "$corps" | grep -q '\[sans-changelog\]'; then
+            refuser "changement visible sans entree de CHANGELOG" \
+                "Ajoute une entree dans CHANGELOG.md sous le mois courant," \
+                "puis : git add CHANGELOG.md" \
+                "" \
+                "Si le changement est strictement interne, ecris [sans-changelog]" \
+                "dans le corps du message — la raison restera lisible."
+        fi
+    fi
+fi
+
+if [ "$echec" -ne 0 ]; then
+    echo "  (Ces regles sont rejouees sur la PR : les contourner ici ne les evite pas.)"
+    echo ""
+    exit 1
+fi
+
+exit 0
