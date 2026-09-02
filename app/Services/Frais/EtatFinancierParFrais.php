@@ -118,26 +118,9 @@ class EtatFinancierParFrais
      */
     private function payeParInscriptionEtFrais(array $inscriptionIds): array
     {
-        $montants = app(MontantsParFrais::class);
-        $versements = fn (string $nature, array $statuts) => ESBTPPaiement::query()
-            ->whereIn('inscription_id', $inscriptionIds)
-            ->whereIn('status', $statuts)
-            ->{$nature}()
-            ->horsReliquat();
-
-        $encaisse = $montants->parInscriptionEtFrais($versements('encaissements', ['validé', 'en_attente']));
-        // Un remboursement pas encore valide n'a pas quitte la caisse.
-        $rembourse = $montants->parInscriptionEtFrais($versements('avoires', ['validé']));
-
-        foreach ($rembourse as $inscriptionId => $parFrais) {
-            foreach ($parFrais as $fraisId => $montant) {
-                $encaisse[$inscriptionId][$fraisId] = max(
-                    0.0,
-                    (float) ($encaisse[$inscriptionId][$fraisId] ?? 0) - (float) $montant
-                );
-            }
-        }
-
-        return $encaisse;
+        // Les versements en attente de validation sont comptes, comme sur la
+        // situation financiere de l'etudiant : sans quoi le document repondrait
+        // autre chose que ce que l'etudiant lit sur sa propre fiche.
+        return app(MontantsParFrais::class)->netParInscriptionEtFrais($inscriptionIds, inclurePending: true);
     }
 }

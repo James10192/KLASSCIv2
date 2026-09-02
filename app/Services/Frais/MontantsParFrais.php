@@ -70,6 +70,53 @@ class MontantsParFrais
     }
 
     /**
+     * Ce que chaque frais a NET encaisse, pour un lot d'inscriptions.
+     *
+     * Net veut dire : les encaissements moins les avoirs. Un remboursement a
+     * quitte la caisse ; l'oublier fait apparaitre un etudiant rembourse comme
+     * ayant paye plus qu'il n'a verse, le fait basculer de « en retard » a
+     * « a jour », et surevalue le taux de recouvrement.
+     *
+     * Cette regle-la vivait dehors, recopiee par chaque appelant — et elle a
+     * aussitot diverge : une copie soustrayait les avoirs, l'autre non. Elle
+     * est ici, avec la regle des allocations dont elle depend.
+     *
+     * Un avoir ne compte que valide, meme quand on inclut les encaissements en
+     * attente : un remboursement pas encore valide n'a pas quitte la caisse.
+     *
+     * @param  array<int, int>  $inscriptionIds
+     * @return array<int, array<int, float>> [inscription_id][frais_id] => montant net
+     */
+    public function netParInscriptionEtFrais(array $inscriptionIds, bool $inclurePending = false): array
+    {
+        if ($inscriptionIds === []) {
+            return [];
+        }
+
+        $perimetre = fn (string $nature, array $statuts) => ESBTPPaiement::query()
+            ->whereIn('inscription_id', $inscriptionIds)
+            ->whereIn('status', $statuts)
+            ->{$nature}()
+            ->horsReliquat();
+
+        $net = $this->parInscriptionEtFrais($perimetre(
+            'encaissements',
+            $inclurePending ? ['validé', 'en_attente'] : ['validé']
+        ));
+
+        foreach ($this->parInscriptionEtFrais($perimetre('avoires', ['validé'])) as $inscription => $parFrais) {
+            foreach ($parFrais as $frais => $montant) {
+                $net[$inscription][$frais] = max(
+                    0.0,
+                    (float) ($net[$inscription][$frais] ?? 0) - (float) $montant
+                );
+            }
+        }
+
+        return $net;
+    }
+
+    /**
      * Ce qu'UN versement a porte sur CE frais.
      *
      * Le montant du versement n'est pas ce que le frais a recu des lors qu'il a
