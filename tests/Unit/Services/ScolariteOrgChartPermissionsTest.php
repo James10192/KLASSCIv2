@@ -213,7 +213,7 @@ class ScolariteOrgChartPermissionsTest extends TestCase
         $this->assertContains('responsableScolarite', $this->registry->manageableRoles('serviceTechnique'));
         $this->assertContains('agentInscription', $this->registry->manageableRoles('serviceTechnique'));
         $this->assertSame(['serviceScolarite', 'enseignant', 'etudiant'], $this->registry->manageableRoles('responsableScolarite'));
-        $this->assertSame([], $this->registry->manageableRoles('serviceScolarite'));
+        $this->assertSame(['enseignant'], $this->registry->manageableRoles('serviceScolarite'));
         $this->assertSame([], $this->registry->manageableRoles('agentInscription'));
     }
 }

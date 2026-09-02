@@ -25,6 +25,16 @@ class ScolariteClerkCapabilities
         'reinscriptions.demandes.process',
     ];
 
+    /**
+     * @var array<int, string>
+     */
+    public const TEACHERS = [
+        'teachers.view',
+        'teachers.create',
+        'teachers.edit',
+        'module.enseignants.access',
+    ];
+
     public function __construct(private readonly TenantScolariteSettings $settings)
     {
     }
@@ -39,18 +49,21 @@ class ScolariteClerkCapabilities
      */
     public function abilitiesFor(User $user): array
     {
-        if (! $user->hasPermissionTo('identity.registrar_clerk')) {
-            return [];
-        }
+        $isClerk = $user->hasPermissionTo('identity.registrar_clerk');
+        $isRegistrar = $user->hasPermissionTo('identity.registrar');
 
         $abilities = [];
 
-        if ($this->settings->clerkLmdAccess()) {
+        if ($isClerk && $this->settings->clerkLmdAccess()) {
             $abilities[] = 'module.lmd.access';
         }
 
-        if ($this->settings->clerkPedagogieAccess()) {
+        if ($isClerk && $this->settings->clerkPedagogieAccess()) {
             $abilities = array_merge($abilities, self::PEDAGOGIE);
+        }
+
+        if (($isClerk || $isRegistrar) && $this->settings->manageTeachers()) {
+            $abilities = array_merge($abilities, self::TEACHERS);
         }
 
         return $abilities;

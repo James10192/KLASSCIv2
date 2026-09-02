@@ -343,6 +343,21 @@ class ESBTPSettingsController extends Controller
             );
 
             Setting::firstOrCreate(
+                ['key' => TenantScolariteSettings::MANAGE_TEACHERS],
+                [
+                    'value' => '0',
+                    'type' => 'boolean',
+                    'group' => 'scolarite',
+                    'category' => 'scolarite',
+                    'description' => 'Le responsable et le service scolarite creent et modifient les enseignants (fiches professeurs). Pas le personnel unifie.',
+                    'is_required' => false,
+                    'default_value' => '0',
+                    'validation_rules' => null,
+                    'sort_order' => 157,
+                ]
+            );
+
+            Setting::firstOrCreate(
                 ['key' => 'documents.print_requires_approval'],
                 [
                     'value' => '0',
@@ -468,6 +483,7 @@ class ESBTPSettingsController extends Controller
                 TenantScolariteSettings::CONFIRMER_STATUT_ETABLISSEMENT,
                 TenantScolariteSettings::CLERK_LMD_ACCESS,
                 TenantScolariteSettings::CLERK_PEDAGOGIE,
+                TenantScolariteSettings::MANAGE_TEACHERS,
                 PortailCandidaturePublication::REGLAGE_ACTIF,
             ], array_keys($troncCommunDefaults));
 

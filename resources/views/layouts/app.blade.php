@@ -1785,7 +1785,7 @@
                     @endcan
 
                     <!-- Personnel (non-superAdmin — superAdmin has accordion in Administration) -->
-                    @can('personnel.view')
+                    @can('personnel.manage')
                         @if(!auth()->user()->can('admin.access'))
                         <div class="menu-category">Personnel</div>
                         <div class="menu-item">
@@ -2010,7 +2010,7 @@
                     @endcan
 
                     <!-- Administration Section -->
-                    @can('personnel.view')
+                    @can('personnel.manage')
                         <div class="menu-category">Administration</div>
 
                         <!-- Staff Management -->

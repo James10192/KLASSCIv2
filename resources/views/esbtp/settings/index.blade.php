@@ -2376,6 +2376,20 @@
                         </div>
                     </div>
                     <div class="bc-card">
+                        <div class="bc-icon"><i class="fas fa-chalkboard-teacher"></i></div>
+                        <div class="bc-body">
+                            <div class="bc-label">Enseignants pour la scolarité</div>
+                            <div class="bc-desc">Le responsable et le service scolarité créent et modifient les professeurs (fiches enseignants). Pas la page personnel unifié.</div>
+                        </div>
+                        <div class="bc-toggle">
+                            <label class="form-switch-modern">
+                                <input type="checkbox" name="scolarite.manage_teachers" value="1"
+                                       {{ \App\Helpers\SettingsHelper::get('scolarite.manage_teachers', '0') == '1' ? 'checked' : '' }}>
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="bc-card">
                         <div class="bc-icon"><i class="fas fa-stamp"></i></div>
                         <div class="bc-body">
                             <div class="bc-label">Approbation avant impression</div>

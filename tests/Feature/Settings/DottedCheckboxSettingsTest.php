@@ -28,6 +28,7 @@ class DottedCheckboxSettingsTest extends TestCase
         'inscriptions.confirmer_statut_etablissement',
         'scolarite.clerk_lmd_access',
         'scolarite.clerk_pedagogie',
+        'scolarite.manage_teachers',
     ];
 
     private function superAdmin(): User
