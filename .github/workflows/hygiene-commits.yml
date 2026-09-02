@@ -143,18 +143,25 @@ jobs:
     name: Tests d'intégration (frais)
     runs-on: ubuntu-latest
     services:
-      # MySQL 8 deliberement, et pas MariaDB : c'est le moteur le plus strict
-      # des deux, et le seul qui aurait revele la colonne JSON a valeur par
-      # defaut qui rendait le schema increable. Faire tourner la CI sur le
-      # moteur permissif revient a ne pas tester le cas qui casse.
-      mysql:
-        image: mysql:8.0
+      # MariaDB : c'est ce que fait tourner la flotte, et le schema ne se
+      # cree pas encore entierement sur MySQL 8.
+      #
+      # Un premier blocage a ete leve (colonne JSON a valeur par defaut). Il
+      # en reste au moins un : une colonne generee STORED assise sur une
+      # colonne qui porte une cle etrangere ON DELETE CASCADE
+      # (esbtp_attendance_manual_hours.matiere_key). MySQL 8 le refuse,
+      # MariaDB l'accepte. Le lever demande de choisir ce que devient une
+      # saisie d'heures quand la matiere disparait — aujourd'hui elle est
+      # supprimee en cascade — donc une decision d'integrite, pas un
+      # ajustement de CI.
+      mariadb:
+        image: mariadb:10.11
         env:
-          MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
-          MYSQL_DATABASE: klassci_testing
+          MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: 'yes'
+          MARIADB_DATABASE: klassci_testing
         ports: ['3306:3306']
         options: >-
-          --health-cmd="mysqladmin ping" --health-interval=10s
+          --health-cmd="healthcheck.sh --connect --innodb_initialized" --health-interval=10s
           --health-timeout=5s --health-retries=5
     steps:
       - uses: actions/checkout@v4
@@ -177,8 +184,10 @@ jobs:
       # travail. Un job rouge en permanence ne se lit plus, et il faudrait
       # alors le contourner — ce qui vide de son sens le fait de l'avoir pose.
       # Ce que ce pas verifie : le schema se CREE, du premier au dernier
-      # fichier. Les tests qui suivent ne s'executeraient pas sans lui, mais
-      # ils echoueraient pour une raison qu'on lirait mal.
+      # fichier. Il n'existait pas, et c'est pour ca qu'un schema increable a
+      # pu survivre sans que rien ne le signale. Les tests qui suivent ne
+      # s'executeraient pas sans lui, mais ils echoueraient pour une raison
+      # qu'on lirait mal.
       - name: Le schema se cree entierement
         env:
           DB_CONNECTION: mysql
