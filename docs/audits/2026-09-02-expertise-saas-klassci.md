@@ -1,5 +1,5 @@
 ---
-titre: Expertise SaaS KLASSCI — septembre 2026
+titre: Expertise SaaS KLASSCI — septembre 2026 (spectre élargi)
 artifact: https://claude.ai/code/artifact/5d5f075b-7759-4e31-bd6d-79b3c07f0a21
 ---
 
@@ -7,11 +7,11 @@ _Revue d'expertise produit & ingénierie_
 
 # KLASSCI, de deux écoles à un empire : ce qui tient, ce qui casse, ce qu'il faut bâtir
 
-Lecture complète du dépôt KLASSCIv2 sur cinq chaînes métier et quatorze pages clés, avec contre-vérification de chaque constat grave. L'objectif : dire sans détour ce qui empêche aujourd'hui une école, ivoirienne ou non, de démarrer et de tourner seule sur KLASSCI, et fixer les attentes d'un éditeur qui vise le marché africain.
+Lecture complète du dépôt KLASSCIv2 sur cinq chaînes métier, quatorze pages clés et douze axes élargis (offre publique, marché, réglementation, architecture, données, exploitation, sécurité, frontend, IA, modules, scénarios de vie d'une école), avec contre-vérification de chaque constat grave. L'objectif : dire sans détour ce qui empêche aujourd'hui une école, ivoirienne ou non, de démarrer et de tourner seule sur KLASSCI, et fixer les attentes d'un éditeur qui vise le marché africain.
 
   **Branche** presentation (HEAD 49b96f3)
   **Date** 2 septembre 2026
-  **Périmètre** inscription · caisse · pédagogie · rôles · UX · international
+  **Périmètre** inscription · caisse · pédagogie · rôles · UX · offre · marché · architecture · données · exploitation · sécurité · frontend · IA · modules · scénarios
 
   
 ## Verdict en une page
@@ -347,6 +347,377 @@ _Preuve : `auth/login.blade.php:325` · `esbtp/paiements/create.blade.php:241,32
 
 Règle à adopter : un KPI qui ne mène pas à une liste filtrée ou à une action n'a pas sa place sur un écran. Chaque tuile doit répondre à « et donc je fais quoi ? ».
 
+## Votre offre telle qu'elle se présente, et le décalage
+
+Le site klassci.com se décrit comme « le SaaS éducatif africain tout-en-un, né en Côte d'Ivoire », avec trois univers : enseignement supérieur (LMD, semestres, crédits, comptabilité, gouvernance), collège et lycée (trimestres, bulletins DREN, caisse, présences, parents), et classe virtuelle. La documentation publique est une vraie force : un « Quickstart 60 minutes » en huit étapes, des guides par rôle, une référence API, un changelog tenu.
+
+| Ce que promet le site | Ce que fait le produit | Décalage |
+|---|---|---|
+| « Un compte, une école. Hébergé, sauvegardé, sécurisé. » | Hébergement mutualisé cPanel partagé entre les six écoles, sauvegarde sur le même disque, aucun monitoring | **[critique]** |
+| Collège et lycée : trimestres, bulletins DREN | Le code ne connaît que des semestres (273 occurrences, aucun « trimestre »), aucun bulletin DREN, aucun modèle secondaire | **[critique]** |
+| Classe virtuelle : cours, devoirs, évaluations | Une API « LMS » documentée, mais aucun module de cours en ligne dans l'application | **[majeur]** |
+| Sélecteur de langue EN visible | Non fonctionnel ; 1,1 % des vues traduites | **[majeur]** |
+| Quickstart 60 minutes | Aucun assistant dans l'application ; la checklist n'existe que dans le chatbot | **[majeur]** |
+| Changelog public | Dernière date visible : avril 2026, alors que le dépôt livre des fonctions en août | **[mineur]** |
+
+**Ce qui manque au site pour convaincre un directeur exigeant ou une école hors Côte d'Ivoire :** aucun tarif, aucun plan nommé (les plans Free, Essentiel, Professionnel, Élite, Partenaire n'existent que dans votre base master), aucun témoignage ni chiffre client, aucunes mentions légales, politique de confidentialité ni conditions générales, aucun engagement de disponibilité, aucune page sécurité ou conformité, aucune démo publique. Pour un SaaS qui traite des paiements et des données de mineurs, l'absence de politique de confidentialité est aussi un risque légal.
+
+Règle simple : ne vendez sur le site que ce qui existe dans le code aujourd'hui. « Collège et lycée » et « Classe virtuelle » doivent devenir des pages « bientôt » ou disparaître jusqu'à ce que le modèle de données les porte.
+
+## Marché, concurrence, réglementation
+
+### Concurrence directe en Afrique de l'Ouest
+
+  - **KiboERP** (Abidjan, Dakar, Bamako, Ouagadougou) : inscriptions, scolarités, export SYSCOHADA, plan Starter gratuit à vie. C'est votre concurrent le plus proche en positionnement prix.
+
+  - **School'Gest / Sup'Gest** (Sénégal) : version dédiée au supérieur.
+
+  - **EduSahel** (Sénégal, Côte d'Ivoire, Burkina) : SaaS régional.
+
+  - **Edves** (Nigeria, Ghana, 2 300 écoles, 625 000 élèves) : la référence anglophone. Paiement des frais par les parents depuis l'application, SMS et WhatsApp en langues locales, internat, transport, inventaire. C'est le niveau à viser pour l'expansion anglophone.
+
+  - **SAFSMS** (Nigeria), **EdwebApps** et **Eduware** (Ghana) : acteurs établis avec application mobile parents.
+
+Ce que ces acteurs font mieux que KLASSCI aujourd'hui : paiement des frais par mobile money directement par le parent, application mobile, notifications multilingues, modules de vie scolaire (internat, transport, cantine), et un prix public. Ce que KLASSCI fait mieux : la profondeur LMD (jury, PV, crédits, rattrapage), la réconciliation de caisse OHADA, l'export Sage, le registre de permissions, et une documentation publique rare sur ce marché.
+
+### Réglementation qui vous concerne dès maintenant
+
+  - **Loi ivoirienne 2013-450 sur les données personnelles** : déclaration obligatoire des traitements à l'ARTCI, droits d'accès et d'effacement, encadrement des transferts hors du pays. KLASSCI envoie des données au chatbot via des fournisseurs d'IA situés hors d'Afrique (Gemini, Groq, Anthropic sont tous configurés) : ce transfert doit être déclaré et encadré. Le code ne contient aucun mécanisme de consentement ni de registre des traitements.
+
+  - **Facture Normalisée Électronique (FNE) et Reçu Normalisé Électronique (RNE)**, obligatoires en Côte d'Ivoire pour tous les contribuables depuis le 1er décembre 2025, sans exception de régime fiscal. Les reçus de scolarité de vos écoles clientes sont potentiellement concernés par le RNE. C'est à vérifier avec un fiscaliste, mais si c'est le cas, c'est une fonctionnalité obligatoire, et une opportunité : être le premier SIS ivoirien qui émet des reçus normalisés DGI.
+
+  - **OHADA / SYSCOHADA** : conservation 10 ans, pièces justificatives numérotées, séparation des devoirs. Déjà partiellement traité par la réconciliation, contredit par les cascades de suppression et les reçus non uniques.
+
+  - **UEMOA et CAMES** : 30 crédits par semestre, 75 à 85 % de crédits fondamentaux et transversaux, mentions, compensation. Le calcul LMD doit appliquer les règles qu'il imprime.
+
+  - **Pays cibles** : Sénégal (CDP), Bénin (APDP), Ghana (Data Protection Act 2012), Nigeria (NDPA 2023). Chacun exige une déclaration ou un enregistrement et, souvent, une localisation des données. L'hébergement unique en France chez LWS ne tiendra pas partout.
+
+### Paiements
+
+Wave expose une API métier avec sandbox, webhooks et frais d'environ 1 %, une entité et une clé par pays. Les agrégateurs (CinetPay, PayDunya, Paystack, Flutterwave) couvrent Wave, Orange Money, MTN et Moov en une intégration. Les parents ivoiriens paient déjà les frais d'inscription du secondaire dans l'application Wave. KLASSCI n'a aujourd'hui qu'une grille de permissions « mobile money » et aucune intégration : c'est l'écart concurrentiel le plus visible pour un parent.
+
+## Architecture du code, des dossiers et des fichiers
+
+Ce n'est pas un code « sale ». C'est un monolithe par couches devenu trop gros pour sa structure, avec une seconde architecture par domaines qui a commencé à pousser à côté sans que la première ne recule.
+
+| Zone | Fichiers | Lignes | Lecture |
+|---|---|---|---|
+| Contrôleurs HTTP | 211 | 97 620 | Le centre de gravité du métier : plus de lignes que les services et le domaine réunis |
+| Services | 223 | 57 909 | Couche « fourre-tout » : Chatbot, Frais, MailPulse, Scoring, LMD, Reinscription… |
+| Domain (Comptabilité, AcademicPilotage, Analytics, OfficialDocuments, BtsTroncCommun…) | 170 | 16 703 | La bonne direction, mais 15 % du code seulement, et en concurrence avec app/Services |
+| Modèles | 169 | 25 198 | Modèles lourds, préfixe ESBTP sur 101 d'entre eux |
+| Vues Blade | 708 | 284 950 | Trois fois le volume PHP applicatif ; 25 vues font des requêtes Eloquent directes |
+| Routes | 2 | 4 010 | 153 closures dans les routes, routes de debug et de test laissées en place |
+
+### Quinze faiblesses de fondation
+
+  - **Deux architectures en concurrence.** app/Services (223 fichiers) et app/Domain (170) se partagent le métier sans règle : la comptabilité a un domaine, les frais ont des services, l'inscription a les deux.
+
+  - **Contrôleurs porteurs du métier.** Dix contrôleurs dépassent 1 900 lignes. Le plus gros (résultats) fait 3 343 lignes.
+
+  - **Doublons conceptuels nommés en deux langues.** ESBTPEtudiantController, ESBTPStudentController, StudentController ; TeacherController, ESBTPEnseignantController ; sept contrôleurs de dashboard ; quatre contrôleurs « paiement ». La règle interne le documente comme piège (« 3 heures perdues ») au lieu de le corriger.
+
+  - **485 blocs `catch (\Exception)` dans les contrôleurs**, la plupart transformant une erreur en redirection silencieuse. C'est la cause première des « ça a marché » qui n'ont rien fait.
+
+  - **582 `Log::info` de diagnostic** dispersés, sans convention ni niveau, sur un hébergement où seul `error` passe.
+
+  - **Le préfixe ESBTP partout** : modèles, tables, vues, routes, CSS. Le produit s'appelle KLASSCI mais tout le code porte le nom du premier client. Ne pas renommer (trop coûteux), mais ne plus jamais l'exposer et ne plus créer de nouveaux fichiers avec ce préfixe.
+
+  - **29 appels `env()` hors des fichiers de configuration** : ils retournent null dès que la config est mise en cache en production.
+
+  - **Aucune règle d'architecture exécutable** (deptrac, phpat, tests d'architecture) : les 45 règles écrites dans .claude/rules sont une documentation, pas une contrainte. Elles sont appliquées par discipline humaine et par IA, donc de façon intermittente.
+
+  - **Trois moteurs PDF** (dompdf, mpdf, browsershot avec Chromium) pour un seul besoin.
+
+  - **Trois fournisseurs d'IA** configurés (Gemini, Groq, Anthropic) sans abstraction unique ni politique de données.
+
+  - **Aucune analyse statique** : ni PHPStan ni Psalm, Pint installé mais jamais exécuté en CI. Le vérificateur maison de noms de classes admet « une soixantaine de noms irrésolus antérieurs ».
+
+  - **Un dépôt qui mélange produit et atelier** : 19 fichiers Markdown et 9 captures d'écran à la racine, deux dumps de texte nommés d'après un chemin Windows, `composer.phar` versionné, 532 fichiers dans dev-scripts, 16 fichiers Playwright versionnés, 63 documents dans docs dont beaucoup décrivent des correctifs passés.
+
+  - **Un `.env.example` qui n'est pas celui de Laravel** : il contient une configuration Taskmaster, Perplexity et Anthropic, aucune variable de base de données ni d'application.
+
+  - **Le layout principal fait 4 418 lignes** dont 1 499 lignes de CSS et 1 128 de JavaScript inline, chargé sur chaque page.
+
+  - **Le frontend n'a pas de build** : package.json ne contient que puppeteer-core, aucun script, aucun bundler actif ; jQuery, Bootstrap et Alpine viennent de CDN sans intégrité vérifiée.
+
+### Architecture cible et chemin de migration
+
+Un monolithe modulaire par domaines métier, sans réécriture : **Plateforme** (tenant, réglages, identités, permissions, documents officiels, notifications), **Admissions et Inscriptions**, **Scolarité** (étudiants, classes, documents), **Finance** (frais, caisse, réconciliation, clôture, dépenses), **Pédagogie** (maquettes, planning, emploi du temps, évaluations, notes, jury, bulletins), **Ressources humaines** (personnel, contrats, présences, paie), **Communication** (annonces, messages, chatbot, canaux). Règle unique : un module ne dépend que de Plateforme et d'interfaces publiques des autres.
+
+  - Poser deptrac avec les six modules et une règle : tout nouveau fichier doit vivre dans un module. L'existant est toléré (baseline), pas étendu.
+
+  - Activer PHPStan niveau 1 avec baseline, puis monter d'un niveau par trimestre.
+
+  - Fusionner les doublons de contrôleurs un couple à la fois, en commençant par étudiants, avec tests de routes.
+
+  - Extraire du contrôleur vers le module tout ce qui touche à l'argent d'abord (paiement, inscription), en strangler : la nouvelle méthode appelle le service, l'ancienne disparaît quand ses tests passent.
+
+  - Choisir un seul moteur PDF et un seul fournisseur d'IA derrière une interface.
+
+  - Nettoyer le dépôt : racine, docs obsolètes archivées, dev-scripts hors du dépôt.
+
+  - Remplacer les 485 catch silencieux par une gestion centralisée des exceptions avec message utilisateur et trace serveur.
+
+  - Découper routes/web.php par module, supprimer closures et routes de debug.
+
+## Schéma de données
+
+| Mesure | Valeur | Ce que ça signifie |
+|---|---|---|
+| Tables créées par les migrations | 206 | Dont 68 sans préfixe esbtp_ : deux conventions coexistent |
+| Tables sans modèle déclarant explicitement leur nom | 91 | Beaucoup s'appuient sur la convention Laravel, mais des tables mortes s'y cachent (dépenses) |
+| Colonnes status ou statut | 60 | 28 en enum SQL, 32 en chaîne libre : deux philosophies, et des valeurs sales (« valide » et « validé » coexistent sur les paiements) |
+| Colonnes JSON | 105 | Beaucoup portent des règles métier (config de bulletin, snapshots) : non requêtables, non validées par le schéma |
+| Colonnes *_id déclarées sans contrainte de clé étrangère | 107 | Contre 588 avec contrainte : un cinquième des liens n'est pas garanti par la base |
+| Migrations protégées par Schema::hasColumn ou hasTable | 104 | Signe clair d'une dérive de schéma entre les six bases de tenants : les migrations ne savent plus ce qu'elles trouveront |
+| Migrations qui insèrent ou modifient des données | 25 | Réglages et permissions seedés par migration, avec le piège created_by = 1 documenté dans vos règles |
+| Tables porteuses de annee_universitaire_id | 44 | Dont les classes, que votre propre règle déclare universelles : le modèle et la règle se contredisent |
+| Montants en decimal | 48 | Bon point ; deux colonnes en float à corriger |
+| Colonnes chiffrées au repos | 0 | Aucune PII chiffrée : photos, téléphones, adresses, données de mineurs en clair |
+| Tables de journal qui grossissent sans purge | 25 | Audits, événements, notifications, prédictions, logs chatbot : cinq commandes de purge seulement |
+
+**Fondations données cibles.** Un outil de vérification de dérive de schéma exécuté sur les six tenants avant chaque déploiement (il n'en existe aucun). Des enums PHP adossés à des enums SQL pour tous les statuts, avec migration de nettoyage des valeurs sales. Des contraintes de clé étrangère partout, en `restrict` sur tout ce qui est financier ou académique. Une politique de rétention par table (purge après N mois, archivage à froid après 10 ans). Le chiffrement au repos des colonnes de PII sensibles. Et une décision à prendre à 30 écoles : rester en base par tenant (isolation forte, mais 30 migrations, 30 sauvegardes, 30 monitorings) ou passer à une base partagée avec identifiant de tenant. La base par tenant reste défendable pour des écoles qui exigent l'isolation ; elle impose un outillage d'orchestration que vous n'avez pas encore.
+
+## Exploitation, infrastructure, cycle de vie tenant
+
+Le modèle actuel : six écoles, six branches Git, six dossiers sur un seul compte d'hébergement mutualisé cPanel chez LWS, une application maître qui orchestre. Un workflow GitHub déploie par FTP. Le scheduler tourne par crontab, le worker de file d'attente n'est documenté que dans un guide de bonnes pratiques.
+
+  - **Isolation entre écoles : nulle.** Même utilisateur Unix, même compte, même disque. Une école compromise expose les cinq autres. Les données de mineurs de six établissements partagent un mot de passe cPanel.
+
+  - **Déploiement par FTP et git pull**, sans étape de test, sans rollback outillé, avec migrations exécutées en production sans vérification de dérive.
+
+  - **Jobs lourds sur mutualisé** : PDF en masse, analytics, notifications. CloudLinux limite le CPU et les processus ; LiteSpeed coupe les requêtes longues. C'est la source probable des timeouts de 30 secondes que vos règles internes mentionnent.
+
+  - **Facturation des écoles** : rien dans le code tenant, et le paywall interroge le maître. Comment ADC facture, relance et suspend une école n'est pas outillé côté produit.
+
+  - **Fin de contrat** : aucune procédure d'export complet et de restitution des données à une école qui part, aucune purge à J+N. C'est une obligation légale et un argument commercial (« vos données restent les vôtres »).
+
+  - **Environnements** : pas de staging, pas de Docker, pas de README de mise en route, outillage Windows uniquement, seeders ignorés par Git. Un développeur distant ne peut pas démarrer seul.
+
+| Palier | Infra | Ordre de grandeur mensuel |
+|---|---|---|
+| Maintenant (6 écoles) | Un VPS ou deux (Hetzner, OVH, ou un fournisseur africain pour la résidence des données), Laravel Forge ou Ploi, Supervisor pour les workers, sauvegardes hors site chiffrées, Sentry, Uptime | 60 à 150 € |
+| 30 écoles | Une seule codebase déployée une fois, résolution du tenant par sous-domaine, base par tenant orchestrée, staging, déploiement sans interruption, stockage objet (S3 compatible) pour fichiers et sauvegardes | 300 à 800 € |
+| 200 écoles, plusieurs pays | Conteneurs, régions par pays pour la résidence des données, files distribuées, observabilité centralisée, astreinte, statut public | 2 000 à 5 000 € |
+
+Le modèle « une branche Git par école » est le premier obstacle à l'échelle. Il n'existe aucune divergence de code entre tenants selon vos propres règles : les branches ne servent qu'au déploiement. Une seule version déployée partout, avec des fonctions activées par réglage, remplace six branches.
+
+## Sécurité, second passage
+
+  - **Comptes enseignants créés avec le mot de passe « password »** dans le contrôleur super-administrateur, à deux endroits. Avec 2 000 étudiants et des dizaines d'enseignants, c'est une porte ouverte prévisible.
+
+  - **CORS ouvert à toutes les origines** sur l'API, sans restriction.
+
+  - **Routes de debug et de test laissées dans le routeur** (debug-annees-simple, test-emploi-temps-show, test-debug-mode, planning-general/test).
+
+  - **17 requêtes SQL brutes avec variables interpolées** à auditer une par une.
+
+  - **58 sorties HTML non échappées** dont le contenu d'un message de relance : si un utilisateur peut y écrire, c'est une injection de script.
+
+  - **30 usages de `Storage::url`** : à vérifier que les photos, pièces et PDF ne sont pas servis sans authentification par URL devinable.
+
+  - **Secrets** : des motifs de clés apparaissent dans `.env.example`, dans `.windsurfrules` et dans des tests. J'ai vérifié la nature sans copier les valeurs : à faire tourner immédiatement dans un scanner de secrets sur tout l'historique Git, et à révoquer ce qui est réel.
+
+  - **Aucune fonction d'impersonation tracée**, aucune journalisation d'accès aux dossiers étudiants : impossible de répondre à « qui a consulté ce dossier ? ».
+
+  - **Pas de verrou de ligne à l'encaissement** : deux caissiers sur le même étudiant peuvent dépasser le dû.
+
+  - **Bon point** : un middleware d'en-têtes de sécurité existe, 36 vérifications HMAC sur les webhooks, 131 vérifications d'abilities sur l'API CLI, un test de non-régression sécurité.
+
+Avant un audit externe ou une certification : rotation de tous les secrets, scanner de secrets en CI, PHPStan, Sentry, 2FA pour les rôles financiers, journal d'accès aux données personnelles, registre des traitements, politique de confidentialité publiée, procédure de notification de violation.
+
+## Frontend et performance terrain
+
+  - **Pas de chaîne de build** : jQuery 3.7, Bootstrap 5.3, Alpine 3 et FontAwesome viennent de trois CDN différents ; 12 feuilles de style et 6 scripts externes par page, plus 2 600 lignes inline dans le layout. Sur une 3G à Bouaké, chaque page recharge tout.
+
+  - **Des images de 14 Mo et 19 Mo dans public/images** (fond de connexion 4,9 Mo). La page de connexion est probablement la plus lourde de l'application.
+
+  - **1 870 `!important`** dans le CSS : le design system se corrige par surenchère de spécificité. Neuf fichiers CSS s'appellent « fix » de quelque chose.
+
+  - **96 vues réimplémentent l'appel fetch avec jeton CSRF** ; 65 vues utilisent encore jQuery à côté d'Alpine.
+
+  - **Un service worker existe** (bon point, cache-busting par version), mais sans stratégie hors ligne pour la caisse ou la saisie de notes.
+
+  - **Aucun test JavaScript, aucun lint.**
+
+**Trajectoire réaliste** : Vite avec un bundle unique versionné, jQuery retiré page par page, un fichier klassci.js (fetch, CSRF, erreurs, toast), images optimisées et servies en WebP, puis composants Blade de page. Pas de migration vers Livewire ou Inertia avant que les composants existent : ce serait une réécriture.
+
+## IA, chatbot, communication
+
+  - **Trois fournisseurs d'IA** configurés (Gemini, Groq, Anthropic) avec des services agents distincts. Aucune abstraction commune, aucune politique écrite sur les données envoyées. Le chatbot administrateur explore la base (service « Explorer », outils) : des données d'étudiants et de paiements partent chez un fournisseur étranger sans consentement documenté. Le premier chantier IA n'est pas une fonction, c'est une politique.
+
+  - **Chatbot parents WhatsApp** via l'API Meta Cloud, avec files entrantes, bail de traitement, boîte d'envoi durable, lots d'onboarding : c'est l'une des architectures les plus soignées du dépôt. Il manque l'opt-out explicite, la mesure du coût par message et une FAQ multilingue.
+
+  - **SMS** : Orange SMS CI, SMS.to et Beem Africa configurés. Aucune fenêtre horaire d'envoi : un rappel de paiement peut partir à 3 heures du matin.
+
+  - **MailPulse** : un service maison d'orchestration de notifications de workflow. Bien structuré, mais c'est une brique de plus à maintenir seul.
+
+  - **Trois modèles d'e-mail seulement**, non éditables par l'école. Les textes de SMS et de WhatsApp sont dans le code.
+
+  - **Analytics prédictifs** : régression logistique de risque d'impayé et prévision de trésorerie. Vos propres règles documentent dix pièges (saturation à 100 % à risque, mode dégradé invisible). Utile pour le comptable seulement si calibré et expliqué ; à présenter comme « indicatif » tant qu'il n'y a pas d'évaluation sur données réelles.
+
+**Opportunités IA à forte valeur et faible risque** : lecture de relevés de notes papier par photo pour saisie assistée, détection d'anomalies de caisse (montants inhabituels, séquences de reçus), rédaction de courriers et attestations, résumé de dossier étudiant pour la scolarité, génération d'emploi du temps sous contraintes, FAQ parents multilingue. Toutes peuvent tourner sur des données pseudonymisées.
+
+## Inventaire et maturité des modules
+
+Le menu compte 19 sections et 25 vues de dashboard distinctes. Les routes révèlent une soixantaine de modules. Voici l'essentiel de leur état, au-delà du cœur déjà audité.
+
+| Module | État | Observation |
+|---|---|---|
+| Inscriptions, réinscriptions, caisse, paiements, frais, échéanciers | **[prod]** | Cœur du produit, testé, mais dettes listées plus haut |
+| Notes BTS, bulletins BTS, feuilles de notes à états | **[prod]** | Le module le mieux testé (15 fichiers) |
+| LMD complet : domaines, mentions, parcours, UE, ECUE, jury, PV, rattrapage, crédits | **[prod fragile]** | Enseignants exclus de la saisie, pondération non appliquée |
+| Réconciliation de caisse | **[prod fragile]** | 80 % ; PV non archivé, un seul test de routes |
+| Emploi du temps, planning général, séances | **[prod fragile]** | Méthodes vides, conflits silencieux |
+| Présences étudiants, codes journaliers, appel | **[prod fragile]** | 3 tests, aucun sur les règles d'assiduité |
+| Personnel, contrats, présences enseignants, taux horaires, salaires | **[bêta]** | Modèles de paie présents, 13 routes, peu de tests ; un vrai module RH est à portée |
+| TPE, bourses, bons de sortie, candidatures, portail public, annonces, messages | **[bêta]** | Fonctionnels mais isolés, sans tests dédiés |
+| Pilotage académique (alertes, métriques, feuilles) | **[bêta]** | 81 fichiers de domaine, 2 tests : ambitieux, peu vérifié |
+| Chatbot admin, chatbot parents, MailPulse, webpush | **[bêta]** | Architecture soignée, politique de données absente |
+| Analytics prédictifs, scoring du personnel | **[prototype]** | À présenter comme indicatif |
+| API CLI (30 contrôleurs), API LMS | **[outil interne]** | Puissant pour vous, dangereux si un token fuit ; à documenter et cloisonner |
+| Dépenses | **[mort]** | Migrations sans modèle, contrôleur ni route |
+| Formation continue, partenariats, événements académiques, spécialités, cycles | **[à qualifier]** | Routes présentes, usage réel inconnu |
+
+**Dix décisions de portefeuille** : finir la réconciliation (PV, verrou) ; ressusciter ou supprimer les dépenses ; fusionner les trois contrôleurs étudiants ; unifier les sept dashboards sur le système de widgets ; sortir l'API CLI en produit d'administration séparé avec jetons à durée limitée ; transformer personnel et paie en module RH testé ; geler analytics et scoring en « indicatif » ; choisir un fournisseur d'IA ; supprimer les modules à usage inconnu après vérification des logs d'accès ; ne lancer aucun nouveau module avant que les fondations du premier horizon soient posées.
+
+## Scénarios de vie d'une école que le produit ne couvre pas
+
+Un logiciel de gestion d'établissement se juge sur les cas rares qui, chaque année, coûtent des journées à une administration. Voici ceux que le code ne traite pas, ou traite à moitié.
+
+  
+### Année et structure
+
+    - Bascule d'année : aucune commande ni assistant de clôture N et ouverture N+1 ; les réinscriptions existent, le report des frais, planifications et rôles non.
+
+    - Trimestres : inexistants ; le code est semestriel en dur. Un lycée ne peut pas être servi.
+
+    - Multi-campus : une seule colonne `etablissement_id` sur six tables, pas de notion de site.
+
+    - Jours fériés et calendrier scolaire : absents.
+
+  
+  
+### Étudiant
+
+    - Transfert entrant avec équivalences de crédits : suivi de candidature seulement.
+
+    - Abandon, exclusion, décès : un champ « abandon » existe, aucun flux de clôture de dossier avec solde, remboursement et documents.
+
+    - Fusion de doublons : un détecteur existe, pas d'action de fusion.
+
+    - Changement d'état civil ou de matricule : aucun flux tracé.
+
+    - Étudiant mineur et tuteur légal : pas de modèle de responsable légal distinct.
+
+  
+  
+### Finance
+
+    - Remboursement : avoirs seulement, pas de sortie de caisse (module dépenses mort).
+
+    - Pénalités de retard, remises commerciales tracées, chèque impayé : absents.
+
+    - Paiement à distance par un parent : impossible sans intégration mobile money.
+
+    - Duplicata de reçu : possible, mais sans mention « duplicata » ni compteur.
+
+    - Tarif par nationalité ou par statut : non prévu dans le résolveur de frais.
+
+  
+  
+### Pédagogie et personnel
+
+    - Réclamation d'un étudiant sur une note : aucun flux.
+
+    - Fraude à l'examen et sanction disciplinaire : aucun module discipline.
+
+    - Stages, alternance, mémoires, soutenances : absents (une soutenance n'existe que comme type de séance).
+
+    - Départ d'un employé : désactivation manuelle, pas de transfert des dossiers ni de révocation des jetons.
+
+    - Heures des vacataires vers la paie : présences enseignants et taux existent, la chaîne jusqu'au bulletin de paie est à vérifier.
+
+  
+  
+### Conformité et plateforme
+
+    - Statistiques annuelles MESRS/DESP et listes d'examens nationaux : aucun export au format attendu.
+
+    - Demande d'accès ou d'effacement de données : aucun flux.
+
+    - École qui quitte KLASSCI : aucun export complet.
+
+    - Saisie hors ligne pendant une coupure : aucune.
+
+    - Migration depuis Excel : aucun import.
+
+    - Support : aucun canal intégré, aucun ticket, aucune base de connaissances dans l'application.
+
+  
+
+## Ce qui manque de sérieux, et les idées qui feraient la différence
+
+Vous sentez qu'il manque quelque chose de sérieux. Voici, à mon avis, les quatre manques structurants, puis les idées.
+
+  - **Un modèle de « structure d'établissement » configurable.** Aujourd'hui, la structure (année, semestres, niveaux BTS/LMD, filières) est celle d'ESBTP. Un produit pour toute l'Afrique a besoin d'un modèle générique : périodes (semestre, trimestre, session), niveaux et cursus déclarés en données, systèmes académiques (BTS, LMD, HND, secondaire) comme configurations, pas comme branches de code. C'est le chantier qui rend tout le reste possible.
+
+  - **Un moteur de règles pour les calculs qui font foi.** Moyennes, mentions, crédits, compensation, frais, pénalités : ils sont aujourd'hui dispersés dans des contrôleurs et services, parfois en double. Un endroit unique, versionné, testé, dont chaque document officiel enregistre la version, est ce qui permet d'affirmer « ce bulletin a été calculé avec la règle v3 ».
+
+  - **La plateforme comme produit.** Réglages typés, fonctions activables, périmètres de rôle, gabarits de documents, import et export : tout ce qui permet à un technicien de configurer sans coder. C'est votre demande initiale, et c'est le cœur de l'autonomie.
+
+  - **L'exploitation comme discipline.** Monitoring, sauvegardes testées, déploiement d'une seule version, staging, tests en CI. Sans cela, chaque nouvelle école augmente le risque au lieu du revenu.
+
+  
+### Idées à fort effet commercial
+
+    - **Paiement des frais par les parents depuis WhatsApp ou un lien** (Wave, Orange, MTN via agrégateur) avec rapprochement automatique et reçu instantané. C'est ce qu'Edves vend, et ce que les parents ivoiriens font déjà avec Wave.
+
+    - **Reçu et facture normalisés DGI** si l'obligation s'applique : différenciateur unique en Côte d'Ivoire.
+
+    - **Documents vérifiables par QR code** (attestations, bulletins, diplômes) : vous avez déjà la brique pour les PV.
+
+    - **Application mobile parents et étudiants** (ou PWA aboutie) : notes, absences, solde, paiement, messages.
+
+    - **Portail d'admission en ligne complet** avec paiement des frais de dossier.
+
+    - **Export ministère en un clic** (statistiques MESRS, listes d'examens).
+
+  
+  
+### Idées à fort effet opérationnel
+
+    - **Mode caisse hors ligne** : encaissements en file locale, synchronisation à la reconnexion, avec numérotation réservée.
+
+    - **Assistant de rentrée** qui copie l'année précédente et guide étape par étape.
+
+    - **Import Excel intelligent** avec détection de doublons et rapport.
+
+    - **Journée de caisse et clôture mensuelle** avec PV automatiques.
+
+    - **Module RH complet** : contrats, heures des vacataires, paie, congés, avec export vers la CNPS.
+
+    - **Benchmarks anonymisés entre écoles** (taux de recouvrement, réussite) : un avantage réseau que seul un SaaS multi-écoles peut offrir.
+
+    - **Marketplace de gabarits** (bulletins, attestations, règlements) partagés entre écoles d'un même pays.
+
+  
+
+## Organisation, business et façon de construire
+
+  - **Le dépôt raconte une équipe qui livre vite avec l'IA** : 45 règles internes, des skills, des workflows, 733 PR. C'est un atout, à condition que les garde-fous soient dans les outils (CI, analyse statique, tests) et non dans des documents que chaque session doit relire. Aujourd'hui, la qualité dépend de la discipline de lecture des règles.
+
+  - **Une seule version pour tous** : abandonner les branches par tenant, déployer une version, activer les fonctions par réglage. Cela supprime la question « quelle école a quel code ».
+
+  - **Publier les prix et les plans.** Un SaaS sans prix public paraît artisanal. Les plans existent dans votre base master : mettez-les sur le site avec leurs limites.
+
+  - **Écrire les engagements** : disponibilité, sauvegardes, support, restitution des données, confidentialité. Puis les tenir avec l'infra du premier palier.
+
+  - **Choisir un premier pays d'expansion et une seule verticale** (le supérieur privé LMD, où vous êtes réellement différenciés) plutôt que d'annoncer collège, lycée et classe virtuelle.
+
+  - **Mesurer sur le terrain** : temps par encaissement, par inscription, par saisie de notes, dans deux écoles, avant et après chaque amélioration. C'est la seule preuve du « 98 % automatisé ».
+
 ## Déployer hors Côte d'Ivoire sans être sur place
 
 Trois conditions préalables, dans cet ordre : voir la production (monitoring, sauvegardes hors site, santé), la protéger (tests en CI, framework supporté), puis la rendre configurable (devise, pays, téléphone, langue, identité d'établissement, gabarits de documents). Aujourd'hui l'outillage de déploiement est Windows-only et le `.env.example` ne contient aucune variable Laravel : une équipe distante ne peut pas provisionner une instance sans vous.
@@ -411,6 +782,12 @@ Trois horizons. Le premier ne contient presque aucune nouvelle fonctionnalité :
 
   - Dashboard comptable : chiffres justes (année, export, invalidation du cache) ; réparer les dashboards secrétaire et étudiant. _(effort S)_
 
+  - Sécurité immédiate : scanner de secrets sur l'historique Git et rotation, mot de passe « password » supprimé, CORS restreint, routes de debug retirées, images de connexion optimisées. _(effort S)_
+
+  - Site : retirer ou marquer « bientôt » collège/lycée et classe virtuelle, publier politique de confidentialité et mentions légales, mettre le changelog à jour. _(effort S)_
+
+  - Vérifier avec un fiscaliste l'obligation FNE/RNE pour les reçus de scolarité ; déclarer les traitements à l'ARTCI. _(effort S)_
+
 ### 90 jours  · Rendre une école autonome
 
   - Assistant « Démarrer mon année » avec état des prérequis, blocage des inscriptions tant qu'ils manquent, copie depuis l'année précédente. _(effort M)_
@@ -435,6 +812,14 @@ Trois horizons. Le premier ne contient presque aucune nouvelle fonctionnalité :
 
   - Socle JavaScript commun (fetch, CSRF, erreurs 419/422, toast) et premiers composants de page : en-tête, grille KPI, barre de filtres, champ de formulaire accessible. _(effort L)_
 
+  - Sortir de l'hébergement mutualisé : VPS avec Forge ou Ploi, workers supervisés, staging, une seule version déployée pour toutes les écoles. _(effort M)_
+
+  - PHPStan avec baseline, deptrac avec six modules, Pint en CI, nettoyage du dépôt et vrai README de mise en route. _(effort M)_
+
+  - Paiement des frais par les parents via un agrégateur mobile money, avec rapprochement automatique et reçu instantané. _(effort L)_
+
+  - Politique de données IA : un seul fournisseur, pseudonymisation, consentement, registre des traitements. _(effort S)_
+
 ### 6 mois  · Devenir une plateforme
 
   - Périmètres par affectation de rôle (filière, classe, site), plafonds, dates de fin, séparation des devoirs déclarative ; supprimer les 36 `hasRole()` en dur ; retirer ou câbler les 77 permissions mortes. _(effort L)_
@@ -449,8 +834,16 @@ Trois horizons. Le premier ne contient presque aucune nouvelle fonctionnalité :
 
   - Internationalisation par étapes : caisse, inscription, portail étudiant d'abord ; anglais comme seconde langue. _(effort L)_
 
+  - Modèle de structure d'établissement configurable (périodes, cursus, systèmes académiques en données) et moteur de règles versionné pour les calculs qui font foi. _(effort L)_
+
+  - Reçus normalisés DGI si applicable, documents vérifiables par QR, export ministère, export complet de restitution des données. _(effort M)_
+
+  - Mode caisse hors ligne, module RH avec paie, application mobile parents. _(effort L)_
+
+  - Vérificateur de dérive de schéma multi-tenant, enums SQL pour les statuts, politique de rétention par table, chiffrement des PII. _(effort M)_
+
 ## Méthode et limites de cette revue
 
-Cinq lectures parallèles du code (64 agents au total pour la partie UX, 12 millions de tokens lus) (inscription, caisse, pédagogie, rôles, qualité), puis un workflow de quatorze audits de pages et cinq audits transversaux avec une rubrique commune, dont chaque constat critique ou majeur a été soumis à un contradicteur chargé de le réfuter en vérifiant le code. J'ai ensuite revérifié moi-même chaque risque bloquant listé plus haut. Cette revue lit le code, pas les données ni les usages réels : elle ne mesure pas les temps de tâche des utilisateurs en établissement, ce qui reste la prochaine étape indispensable.
+Cinq lectures parallèles du code (64 agents au total pour la partie UX, 12 millions de tokens lus), puis un élargissement mené directement sur douze axes avec mesures dans le dépôt et recherches web (klassci.com, concurrents, DGI, ARTCI, Wave) (inscription, caisse, pédagogie, rôles, qualité), puis un workflow de quatorze audits de pages et cinq audits transversaux avec une rubrique commune, dont chaque constat critique ou majeur a été soumis à un contradicteur chargé de le réfuter en vérifiant le code. J'ai ensuite revérifié moi-même chaque risque bloquant listé plus haut. Cette revue lit le code, pas les données ni les usages réels : elle ne mesure pas les temps de tâche des utilisateurs en établissement, ce qui reste la prochaine étape indispensable.
 
 Rapport établi le 2 septembre 2026 sur la branche `presentation`, commit 49b96f3. Les numéros de ligne renvoient à cet état du dépôt.
