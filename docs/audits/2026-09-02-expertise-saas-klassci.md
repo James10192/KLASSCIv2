@@ -1079,4 +1079,4 @@ Rapport établi le 2 septembre 2026 sur la branche `presentation`, commit 49b96f
 
 ---
 
-Voir aussi : [Expertise des applications voisines adminKlassci et MailPulse](2026-09-02-expertise-adminklassci-mailpulse.md) (même jour, même dispositif).
+Voir aussi : [Expertise des applications voisines adminKlassci et MailPulse](2026-09-02-expertise-adminklassci-mailpulse.md) et [Maintenabilité et reproductibilité des quatre dépôts](2026-09-02-maintenabilite-reproductibilite.md) (même jour, même dispositif).
