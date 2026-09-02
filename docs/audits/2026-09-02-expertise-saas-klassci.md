@@ -1,5 +1,5 @@
 ---
-titre: Expertise SaaS KLASSCI — septembre 2026 (rapport final contre-vérifié)
+titre: Expertise SaaS KLASSCI — septembre 2026 (rapport final, revue thermo-nucléaire, applications voisines)
 artifact: https://claude.ai/code/artifact/5d5f075b-7759-4e31-bd6d-79b3c07f0a21
 epic: https://github.com/James10192/KLASSCIv2/issues/738
 ---
@@ -12,7 +12,7 @@ Lecture complète du dépôt KLASSCIv2 sur cinq chaînes métier, quatorze pages
 
   **Branche** presentation (HEAD 49b96f3)
   **Date** 2 septembre 2026
-  **Périmètre** inscription · caisse · pédagogie · rôles · UX · offre · marché · architecture · données · exploitation · sécurité · frontend · IA · modules · scénarios · E2E réel · 49 issues
+  **Périmètre** inscription · caisse · pédagogie · rôles · UX · offre · marché · architecture · données · exploitation · sécurité · frontend · IA · modules · scénarios · E2E réel · revue thermo-nucléaire · adminKlassci · LMS · MailPulse · plan de contrôle · issues
 
   
 ## Verdict en une page
@@ -24,7 +24,7 @@ Lecture complète du dépôt KLASSCIv2 sur cinq chaînes métier, quatorze pages
   
     - **1 092** fichiers PHP · 211 contrôleurs · 708 vues
 
-    - **1 516** tests écrits, 0 exécuté en CI
+    - **77** issues GitHub sous l'épic #738
 
     - **317** permissions, dont 77 jamais vérifiées
 
@@ -762,7 +762,7 @@ Ce qui n'a pas pu être testé et reste à faire avec un navigateur autorisé pa
 
 ## Issues GitHub créées
 
-Une épic et 49 issues enfants, chacune avec preuve, reproduction, comportement attendu, correctif, tests et critères d'acceptation. Les constats déjà couverts par l'audit d'août 2026 (épic #564 : CI, secrets, CSRF, Laravel 10, routes cassées, code mort) et par l'épic comptabilité #347 (clôture de caisse, mobile money) ne sont pas dupliqués, seulement référencés.
+Une épic et 77 issues enfants, chacune avec preuve, reproduction, comportement attendu, correctif, tests et critères d'acceptation. Les constats déjà couverts par l'audit d'août 2026 (épic #564 : CI, secrets, CSRF, Laravel 10, routes cassées, code mort) et par l'épic comptabilité #347 (clôture de caisse, mobile money) ne sont pas dupliqués, seulement référencés.
 
 | Lot | Issues |
 |---|---|
@@ -775,6 +775,10 @@ Une épic et 49 issues enfants, chacune avec preuve, reproduction, comportement 
 | F · Ergonomie et KPI | #772 guichet caisse · #773 KPI actionnables · #774 dashboard comptable · #775 fabrique de pages · #776 accessibilité · #777 performance terrain |
 | G · Fondations et exploitation | #778 observabilité · #779 infrastructure · #780 analyse statique · #785 fondations données · #781 sécurité |
 | H · Conformité et offre | #782 données et IA · #783 FNE/RNE · #784 site klassci.com · #787 notifications |
+| I · Fondations (revue thermo-nucléaire) | #788 action ValiderPaiement · #790 objet Solde · #789 moteur d'allocation · #791 enum de statut et factory de paiement · #792 code mort finance · #793 1 191 lignes mortes étudiants · #794 InscriptionFactory · #795 machine à états et matricule · #796 ViewModels · #797 objet Période · #798 profil de règles versionné · #799 moteur de résultat unique · #800 RecordGradeAction · #801 registre de widgets · #802 abilities API CLI · #803 registre de navigation · #804 abstractions dormantes · #805 gates 4 → 2 · #806 route:cache et mojibake |
+| J · Applications voisines | #807 API LMS (failles, cette semaine) · #808 décision LMS · #809 décision MailPulse · #810 à #815 adminKlassci (sécurité, provisioning, déploiement, console de support, facturation, groupes) |
+
+Les issues adminKlassci sont créées dans le dépôt KLASSCIv2 avec un préfixe, parce que l'application GitHub de Claude n'est pas installée sur le dépôt adminKlassci. Sept commentaires corrigent des issues antérieures (#409, #767, #407, #773, #775, #764, #637) sur des chiffres périmés ou un ordre d'exécution à respecter.
 
 ### Contre-vérification des issues (second workflow, 44 agents)
 
@@ -787,6 +791,159 @@ Chaque issue a été relue par un contradicteur chargé de vérifier fichier, li
   - **#772** : le reçu est bien accessible avant validation ; le reste du constat (bouton Modifier affiché puis refusé, montant zéro) tient.
 
 Corrections chiffrées : 22 permissions mortes et non 77 (#764), 1 389 `!important` et non 1 870 (#775), 12 selects natifs et non 14 sur l'inscription (#758), la duplication d'emploi du temps affiche bien un message sur les séances omises (#770), la cause exacte du 500 enseignant est un `@section` dans un commentaire JavaScript ligne 998 (#740).
+
+## Revue thermo-nucléaire des fondations
+
+Le skill `thermo-nuclear-code-quality-review` de Cursor, exigé par votre règle de pré-merge mais absent du dépôt, a été installé dans `.claude/skills/` et appliqué à l'existant par quatre relecteurs, un par chaîne. Sa question n'est pas « est-ce que ça marche » mais « quelle restructuration supprime des catégories entières de complexité sans changer le comportement ». Les quatre verdicts sont un refus, pour la même raison : dans chaque chaîne, l'abstraction cible existe déjà dans le dépôt, mais le cœur ne l'utilise pas, et des copies parallèles ont poussé à côté.
+
+  - **4 / 4** chaînes refusées à la barre du skill
+
+  - **≈ 25 000** lignes supprimables sans changement de comportement
+
+  - **4** moteurs d'allocation financière concurrents
+
+  - **4** moteurs de calcul de moyenne (BTS et LMD, officiel et live)
+
+  - **0** appel à la machine à états d'inscription qui existe
+
+### Finance : quatre vérités pour « combien a payé cet étudiant »
+
+  - **Quatre moteurs d'allocation** (répartition du versement, reventilation du trop-perçu, allocation FIFO sur échéancier, dispatch des reliquats) ne donnent pas le même « payé ». L'allocation sur échéancier ignore les avoirs alors que la ligne suivante du même service les déduit : le même écran affiche deux vérités.
+
+  - **La transition « valider un paiement » existe en trois copies** (simple, rapide, en lot) et la copie en lot oublie les notifications, le rappel et l'événement de workflow. Un paiement validé en lot ne prévient personne.
+
+  - **Le solde est recalculé une quinzaine de fois** dans les contrôleurs, services et vues, chacun refaisant le pourcentage et l'agrégation par catégorie. Aucun objet Solde.
+
+  - **Douze chemins créent un paiement**, et seuls deux écrivent les allocations. **Cinq orthographes** du statut validé coexistent. **130 lignes de code mort** après un `return` dans la configuration des frais égarent tout diagnostic.
+
+  - Le contrôleur des paiements compte 26 méthodes de plus de 40 lignes ; sa vue de liste fait 2 517 lignes dont 91 % de CSS et de JavaScript.
+
+Cible : un objet Solde, un moteur d'allocation, une enum de statut avec transitions, des actions uniques (enregistrer, valider, rejeter, annuler, émettre un avoir), et des contrôleurs de moins de 300 lignes. Ordre : supprimer le code mort, extraire le Solde, puis les actions, puis le moteur d'allocation sous tests de propriété.
+
+### Étudiants et inscriptions : la couche canonique n'existe pas
+
+  - **1 191 lignes mortes supprimables aujourd'hui** : un contrôleur entier sans route et douze méthodes publiques jamais appelées dans le contrôleur étudiant historique, dont un `index` qui a divergé en silence de la version vivante.
+
+  - **Cinq chemins créent une inscription** (guichet, caisse, réinscription, tronc commun, résolveur de frais) ; la pré-inscription caisse réécrit à la main la création d'étudiant, d'inscription, de souscriptions et de paiements. Un commentaire du code avoue que le redoublement se calculait différemment selon le guichet.
+
+  - **La machine à états existe et n'est jamais appelée** : 33 écritures directes de l'étape de workflow, 104 occurrences du littéral de l'étape initiale, aucun historique fiable.
+
+  - **L'état d'une inscription est éparpillé sur sept colonnes** ; le prédicat « inscription vivante » est réécrit dix-sept fois dans douze fichiers, y compris en Blade, alors qu'une méthode le fait.
+
+  - **Huit implémentations du solde**, dont le service canonique, utilisé par un seul appelant. **Quatre générateurs de matricule** en PHP et deux en JavaScript.
+
+  - La fiche étudiant fait 7 004 lignes avec 32 requêtes Eloquent dans la vue ; la fiche inscription 5 535 lignes et 48 modales.
+
+Cible : une fabrique d'inscription pilotée par un brouillon typé qui porte le canal, une enum d'état, un service de solde unique, un générateur de matricule unique, des vues composées par onglet sans requête. Filet obligatoire avant : une suite de caractérisation par canal de création, car seize fichiers de test couvrent tout le périmètre.
+
+### Pédagogie : les décisions de jury sont rétroactivement mutables
+
+  - **Quatre moteurs de moyenne** (BTS officiel, BTS live, LMD officiel, LMD live) : le même algorithme copié, seule change la forme des données. Un service de 211 lignes existe uniquement pour comparer officiel et live, c'est un test de non-régression déguisé en fonctionnalité.
+
+  - **Cinq moteurs de décision avec cinq vocabulaires**, seuils en dur ou lus dans les réglages au moment du rendu : changer un seuil réécrit les décisions des bulletins archivés. C'est le risque le plus grave du périmètre et il n'était tracé nulle part.
+
+  - **489 occurrences du littéral de semestre dans 99 fichiers**, sept normaliseurs concurrents, alors qu'un normaliseur correct existe dans le pilotage académique et n'est utilisé que là. Le schéma a cinq colonnes « période » de trois types différents.
+
+  - **Quatorze points d'écriture de notes dans huit classes, un seul garde** ; aucun observateur sur les résultats alors que sept sites les écrivent directement, dont des moyennes manuelles hors moteur.
+
+  - Le service des bulletins expose 55 méthodes publiques dont sept façons de calculer une moyenne étudiant ; le contrôleur des résultats concentre 1 774 lignes dans cinq méthodes. **Neuf tests lisent le texte des fichiers source** au lieu de les exécuter : ils bloqueront le refactoring sans protéger le calcul.
+
+  - Correction à mon premier rapport : le pilotage académique n'est pas sous-testé (143 tests). Son problème est d'être une cinquième lecture du même calcul, parallèle au cœur.
+
+Cible en cinq phases : golden master des quatre moteurs sur un tenant réel ; objet Période avec migration de normalisation ; profil de règles versionné et enregistré sur chaque bulletin ; moteur de résultat unique par système ; action unique d'enregistrement de note ; découpe. Environ 32 jours, 2 500 à 3 000 lignes supprimées.
+
+### Plateforme : les abstractions dorment
+
+  - **Le registre de widgets de dashboard existe**, typé, avec ses partials, et ne sert que les rôles personnalisés. En face, huit contrôleurs et 23 vues, soit 13 394 lignes, servent les onze rôles système. Brancher le registre supprime tout cela. C'est le risque de séquencement le plus coûteux de mes issues précédentes : industrialiser des dashboards voués à disparaître.
+
+  - **131 gardes d'abilities réécrites à la main** dans les trente contrôleurs de l'API CLI alors que le middleware existe dans le noyau. Deux contrôleurs de référentiels sont identiques au libellé près.
+
+  - **La barre latérale est écrite à la main sur 943 lignes** avec 92 gardes et 138 routes ; c'est la même donnée qu'un registre de navigation.
+
+  - **La sauvegarde des réglages re-seed la table entière à chaque enregistrement** : une méthode de 736 lignes avec 21 créations de définitions dans la transaction d'écriture.
+
+  - **Trois fournisseurs d'IA sans interface** ; deux middlewares lisent la même API maître avec deux modèles de statut ; le service de notification de 3 025 lignes ignore la couche de canaux qui existe.
+
+  - **Quatre familles de gates réduites à deux** : l'activation de module est un réglage tenant évalué au routage, pas une permission d'utilisateur ; les identités sont des défauts de rôle.
+
+  - **`route:cache` est impossible** sur les six tenants à cause de huit closures dont cinq routes de debug, alors que dix documents de déploiement l'ordonnent. 219 lignes du fichier de routes sont en UTF-8 doublement encodé. Correction à mon issue #409 : il reste 8 closures, pas 153.
+
+## Les applications voisines
+
+### adminKlassci, le plan de contrôle
+
+Dernier commit en avril 2026. Le portail des groupes d'établissements pour les fondateurs (tableau de bord consolidé, financier, benchmarking, alertes, SSO signé) est la partie la mieux faite et la seule testée : 49 fichiers de test, tous sur le portail groupe, zéro sur le provisioning, le déploiement, la santé, les sauvegardes et l'API des quotas.
+
+| Capacité | État réel |
+|---|---|
+| Provisioning en 17 étapes | **[prototype]** URL de dépôt en placeholder, sous-domaine et SSL simulés, un utilisateur MySQL partagé dont le mot de passe est réécrit à chaque provisioning (casse les tenants existants), fichier d'environnement sans code tenant ni jetons ni secret SSO, aucun rollback |
+| Déploiement en 9 étapes | **[prod, la brique la plus mûre]** mais chemin déduit du code tenant (cassé pour rostan), aucun rollback, aucune détection de dérive, exécution synchrone depuis l'interface |
+| Portail groupe DG/DGA | **[bêta avancée]** pas de droits délégués par établissement (tout membre voit tout), consolidation en SQL direct sur les tables du tenant, acquittement d'alertes en session |
+| Plans et facturation | **[absent]** grille de plans à jour mais jamais propagée aux quotas, grille en dur dans le provisioning, modèle Facture sans écran ni génération, aucune suspension automatique |
+| Support à distance | **[absent]** aucune restauration de sauvegarde, aucun visualiseur de logs, aucune impersonation, aucun doctor distant, aucun reset du mot de passe admin école, table des fonctionnalités jamais écrite ni exposée |
+| Sécurité | **[critique]** le middleware ne vérifie pas que le jeton appartient au tenant de l'URL (un tenant lit les quotas d'un autre), jetons stockés en clair et acceptés en query string, identifiants de base non chiffrés, mots de passe MySQL dans les logs et dans la ligne de commande de sauvegarde, aucune Policy (un admin support peut déployer ou supprimer un tenant), un seul secret SSO pour tout le parc |
+| Contrat maître ↔ tenant | **[non versionné]** le maître écrit directement dans les bases des tenants ; une clé de configuration lue côté tenant n'existe pas sous ce nom ; le cache de permissions vidé via la table alors que le driver est fichier |
+
+Règle d'or à établir : le maître décide, le tenant exécute, par un agent HTTP signé et versionné. Aujourd'hui le maître connaît le schéma `esbtp_*` et y écrit : c'est la dette structurelle numéro un du plan de contrôle.
+
+### KLASSCI LMS, la classe virtuelle
+
+Un seul commit, en septembre 2025. Un frontend Angular de 7 618 lignes, zéro test, build cassé, jamais déployé (URL de production en placeholder), mono-tenant. Douze écrans sur dix-sept sont des espaces réservés affichant « fonctionnalités prévues » ; messagerie et forum sont des données factices ; aucune ligne de code de visioconférence. L'API côté tenant est riche en lecture (3 017 lignes) mais son écriture est cassée : la route de saisie de notes n'a ni contrôle de rôle ni de propriété (tout porteur de jeton, étudiant compris, peut écraser les notes d'une évaluation), deux endpoints testent une colonne supprimée, la connexion n'a pas de limite de tentatives, et les abilities du jeton ne sont appliquées nulle part. La documentation de 176 Ko décrit une architecture Java et Kubernetes qui n'existe pas.
+
+**Recommandation tranchée :** corriger cette semaine les failles de l'API (elles sont en production, indépendamment du LMS) ; archiver le frontend Angular ; livrer un espace étudiant et parent en PWA légère servie par le tenant (emploi du temps, notes, absences, annonces, solde) ; ne vendre « classe virtuelle » qu'après avoir livré devoirs et quiz. Sur le marché visé (Android d'entrée de gamme, 3G, données prépayées), le canal réel est WhatsApp, que vous possédez déjà.
+
+### MailPulse, la messagerie
+
+Ce n'est pas un relais d'e-mails mais une plateforme marketing multicanal complète et indépendante (46 500 lignes TypeScript, Next.js, Prisma, Convex, campagnes, automations, facturation Paystack), dont KLASSCI est un client parmi d'autres. Côté tenant, l'intégration est sérieuse : boîte d'envoi chiffrée, reprises, dédoublonnage, repli e-mail → WhatsApp → SMS, et rien ne casse une validation de paiement si le service tombe. Trois problèmes : les données d'élèves mineurs ivoiriens (noms, téléphones, notes, montants) sont hébergées chez Neon aux États-Unis et Vercel ; un seul paquet de tests tourne en CI ; et les workflows réels sont désactivés par défaut. 80 % de la plateforme est inutile à KLASSCI.
+
+**Recommandation :** scinder. MailPulse vit sa vie de produit ; KLASSCI ne dépend que d'une interface de messagerie minimale. Conditions pour garder la dépendance : résidence des données hors États-Unis, tests de délivrance en CI, contrat d'API figé et versionné. Sinon, remplacement partiel en trois semaines en gardant l'outbox et la politique existantes, et en ne laissant à MailPulse que le rail WhatsApp conversationnel, la seule brique qu'il ne faut pas réécrire.
+
+## Un SaaS qu'on n'a pas besoin de coder
+
+Treize opérations courantes se font aujourd'hui en code ou en ligne de commande, d'après vos propres règles et scripts. Les plus coûteuses : livrer une version aux six écoles (deux à cinq fois par semaine, 15 à 40 minutes, six pushs de branche puis quatre commandes par tenant) ; ajouter un réglage (une migration qui seed la table, puis redéploiement, avec le piège `created_by = 1` qui casse la suite de tests) ; diagnostiquer un 500 chez une école (une à trois heures, sans impersonation ni trace) ; restaurer une sauvegarde (aucune commande n'existe).
+
+| Capacité d'un plan de contrôle mature | État KLASSCI |
+|---|---|
+| Onboarding tenant depuis une interface | Partiel : commande CLI en 17 étapes, aucune page qui la déclenche |
+| Catalogue de fonctionnalités par plan et par tenant | Absent en pratique : la table existe, aucun consommateur côté tenant |
+| Réglages : défauts distribués, surcharge par tenant | Fragile : 45 clés initialisées sur 206 lues, trois chemins d'écriture concurrents |
+| Permissions versionnées et poussées | Partiel : registre unique et service de synchronisation, mais publication = redéploiement |
+| Groupes d'établissements, droits délégués | Présent, sans droits par établissement |
+| Support : impersonation, diagnostics, logs, santé | Partiel : santé oui, le reste absent ; le doctor est figé sur un chantier passé |
+| Version unique, canary, rollback | Absent : six branches = six versions, aucun rollback |
+| Migrations orchestrées avec contrôle de dérive | Partiel : migrate forcé, aucune vue par tenant |
+| Facturation et quotas | Partiel : quotas oui, facturation non |
+| Sauvegardes, restauration, restitution | Partiel : sauvegarde oui, restauration et export non |
+| Observabilité et alerting | Partiel : sondes et alertes groupe, aucune trace applicative |
+| Cycle de vie : essai, suspension, résiliation, purge | Absent |
+
+### Sept cas concrets, aujourd'hui et cible
+
+  - **Une école signe lundi, inscrit vendredi.** Aujourd'hui : treize chemins, deux personnes, un à deux jours. Cible : un formulaire maître, un job suivi à l'écran, un gabarit d'école appliqué, un lien admin envoyé, moins de 30 minutes sans SSH.
+
+  - **Un rôle « Directeur financier » avec plafond.** Déjà possible sans code si la permission et le seuil existent ; sinon migration et déploiement. Cible : le seuil est une clé du catalogue.
+
+  - **Une page en 500 à 500 km.** Aujourd'hui : reproduction à l'aveugle, une à trois heures. Cible : impersonation tracée en lecture seule, trace de la requête, doctor du tenant, vidage de cache en un clic.
+
+  - **Un fondateur veut le recouvrement de ses quatre écoles.** Déjà là. Ajouter export et alerte de seuil.
+
+  - **Un tenant dépasse son quota.** Aujourd'hui : blocage brutal. Cible : avertissement à 80 %, lecture seule à 100 %, extension en un clic.
+
+  - **Changer un libellé de document pour une école.** Aujourd'hui : migration, six pushs, vidage de cache. Cible : une clé de catalogue éditable avec aperçu.
+
+  - **Une école part.** Aujourd'hui : un statut à la main. Cible : export complet, remise, suspension, purge datée, facture de clôture.
+
+### Livraison en cinq étapes, chacune utile seule
+
+  - **Registre de fonctionnalités vivant** (2 à 3 semaines) : activer ou désactiver un module sans déployer.
+
+  - **Catalogue de réglages** (3 semaines) : les 206 clés déclarées, synchronisation idempotente, interdiction de seeder des réglages en migration.
+
+  - **Console support** (3 semaines) : impersonation tracée, logs, doctor générique, réparations en essai à blanc. Le cas du 500 passe de trois heures à dix minutes.
+
+  - **Onboarding et cycle de vie** (4 semaines) : provisioning depuis l'interface avec reprise, gabarits d'école, essai, suspension, résiliation, purge, restauration.
+
+  - **Version unique et campagnes** (4 à 6 semaines) : un tag par livraison, une version cible par tenant pilotée par le maître, déploiement par vagues, rollback, tableau de dérive. Les six branches deviennent six curseurs de version.
 
 ## Déployer hors Côte d'Ivoire sans être sur place
 
