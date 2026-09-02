@@ -1,15 +1,7 @@
 @php
-    // Rendu par lots : au-dela de quelques centaines de lignes, DomPDF ne tient
-    // pas la charge, donc le document est rendu en morceaux puis recolle. Les
-    // indicateurs n'ont de sens qu'en tete, le rappel des filtres qu'en fin.
-    //
-    // Ces defauts doivent etre poses ICI, avant la moindre utilisation : places
-    // plus bas, ils laissaient le rendu direct — celui des petits volumes —
-    // tomber sur une variable indefinie, la ou le rendu par lots, qui les
-    // fournit lui-meme, ne montrait rien.
-    $isFirstChunk = $isFirstChunk ?? true;
-    $isLastChunk = $isLastChunk ?? true;
-    $rowOffset = $rowOffset ?? 0;
+    // isFirstChunk / isLastChunk / rowOffset sont TOUJOURS fournis par
+    // PdfParLots, y compris en rendu direct : cette vue n'a donc aucun defaut a
+    // se donner. Les lui faire declarer, c'etait deja les declarer trop tard.
     // Couleurs resolues AVANT la feuille de style : les libelles de KPI en ont besoin.
     // Le fond des cellules vient d'un parametre d'etablissement ; la couleur du texte
     // s'en deduit (contraste WCAG) au lieu d'etre decretee blanche.
@@ -391,24 +383,13 @@
                         <td><span class="student-name">{{ trim(($paiement->etudiant->nom ?? '') . ' ' . ($paiement->etudiant->prenoms ?? '')) ?: 'N/A' }}</span></td>
                         <td style="font-size:9px;">{{ optional(optional($paiement->inscription)->classe)->name ?? 'N/A' }}</td>
                         @php
-                            // Un versement reparti couvre plusieurs frais.
-                            // N'imprimer que `fraisCategory` — la categorie
-                            // choisie au guichet — affirmait que tout l'argent
-                            // y etait alle. Sur un document comptable, c'est
-                            // une affirmation fausse, pas une approximation.
-                            $ventilation = $paiement->relationLoaded('allocations')
-                                ? $paiement->allocations
-                                : $paiement->allocations()->with('fraisCategory:id,name')->get();
-
-                            if ($ventilation->count() > 1) {
-                                $libelleFrais = $ventilation
-                                    ->map(fn ($ligne) => ($ligne->fraisCategory->name ?? 'Frais supprime')
-                                        . ' (' . $formatMontant($ligne->montant) . ')')
-                                    ->implode(', ');
-                            } else {
-                                $libelleFrais = $paiement->fraisCategory->name
-                                    ?? ($paiement->categorie->nom ?? ($paiement->motif ?? 'N/A'));
-                            }
+                            // Meme lecture qu'a l'ecran, dans l'Excel et sur
+                            // le recu. N'imprimer que la categorie choisie au
+                            // guichet affirmerait que tout l'argent y est alle.
+                            $ventilation = $paiement->ventilation();
+                            $libelleFrais = $ventilation->count() > 1
+                                ? $ventilation->map(fn ($l) => $l['nom'].' ('.$formatMontant($l['montant']).')')->implode(', ')
+                                : ($ventilation->first()['nom'] ?? 'N/A');
 
                             // Filtre par frais actif : la colonne Montant porte
                             // la part allee sur ce frais, sinon le total du bas

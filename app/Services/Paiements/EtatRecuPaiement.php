@@ -33,11 +33,11 @@ class EtatRecuPaiement
         // en attente : le caissier imprime souvent avant la validation.
         $payeParCategorie = ESBTPPaiement::netPaidByCategory($inscriptionId, true);
 
-        $categoriesDeCeVersement = $paiement->relationLoaded('allocations')
-            ? $paiement->allocations->pluck('frais_category_id')
-            : $paiement->allocations()->pluck('frais_category_id');
-
-        $categoriesDeCeVersement = $categoriesDeCeVersement
+        // La categorie propre est ajoutee en plus de la ventilation : le recu
+        // met en avant tout ce que ce versement touche, y compris le frais que
+        // le caissier avait designe s'il ne figure dans aucune allocation.
+        $categoriesDeCeVersement = $paiement->ventilation()
+            ->pluck('frais_id')
             ->push($paiement->frais_category_id)
             ->filter()
             ->map(fn ($id) => (int) $id)

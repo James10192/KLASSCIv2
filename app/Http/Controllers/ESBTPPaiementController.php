@@ -9,10 +9,8 @@ use App\Models\ESBTPAnneeUniversitaire;
 use App\Exceptions\RepartitionRefuseeException;
 use App\Exceptions\ExportPdfTropVolumineuxException;
 use App\Services\Exports\PdfParLots;
-use App\Services\PaiementExportService;
 use App\Http\Requests\Paiement\StorePaiementRequest;
 use App\Http\Requests\Paiement\UpdatePaiementRequest;
-use App\Services\Frais\EtatFinancierParFrais;
 use App\Services\Frais\RepartitionDuVersement;
 use App\Services\Paiements\EtatRecuPaiement;
 use App\Services\PaymentFilterService;
@@ -2606,11 +2604,11 @@ class ESBTPPaiementController extends Controller
     {
         try {
             [$paiements, $donnees, $filename] = $this->buildExportPdf($request, $matcher);
-            [$rendu, $filename, $estUnChemin] = $this->rendreExportPdf($paiements, $donnees, $filename);
 
-            return $estUnChemin
-                ? response()->download($rendu, $filename)->deleteFileAfterSend(true)
-                : $rendu->download($filename);
+            return app(PdfParLots::class)->reponse(
+                'esbtp.paiements.export-pdf', $paiements, $donnees, 'paiements', $filename,
+                inline: false, orientation: 'landscape'
+            );
         } catch (ExportPdfTropVolumineuxException $e) {
             // Pas une panne : la selection est trop large. Le message dit
             // quoi faire, il ne doit pas etre noye dans un 'Erreur lors de'.
@@ -2633,26 +2631,10 @@ class ESBTPPaiementController extends Controller
     {
         try {
             [$paiements, $donnees, $filename] = $this->buildExportPdf($request, $matcher);
-            [$rendu, $filename, $estUnChemin] = $this->rendreExportPdf($paiements, $donnees, $filename);
 
-            // Un gros export passe par un fichier temporaire : le lire d'un
-            // bloc annulerait le benefice du decoupage, on le diffuse.
-            if ($estUnChemin) {
-                return response()->file($rendu, [
-                    'Content-Type' => 'application/pdf',
-                    'Content-Disposition' => 'inline; filename="' . $filename . '"',
-                    'X-Robots-Tag' => 'noindex, nofollow',
-                ])->deleteFileAfterSend(true);
-            }
-
-            return new \Illuminate\Http\Response(
-                $rendu->output(),
-                200,
-                [
-                    'Content-Type' => 'application/pdf',
-                    'Content-Disposition' => 'inline; filename="' . $filename . '"',
-                    'X-Robots-Tag' => 'noindex, nofollow',
-                ]
+            return app(PdfParLots::class)->reponse(
+                'esbtp.paiements.export-pdf', $paiements, $donnees, 'paiements', $filename,
+                inline: true, orientation: 'landscape'
             );
         } catch (ExportPdfTropVolumineuxException $e) {
             // Pas une panne : la selection est trop large. Le message dit
@@ -2768,179 +2750,5 @@ class ESBTPPaiementController extends Controller
         return [$paiements, $donnees, $filename];
     }
 
-    /**
-     * Rend l'export, d'un bloc ou par lots selon le volume.
-     *
-     * @return array{0: mixed, 1: string, 2: bool} [rendu, nom de fichier, est-ce un chemin]
-     */
-    private function rendreExportPdf($paiements, array $donnees, string $filename): array
-    {
-        if ($paiements->count() <= PdfParLots::SEUIL_DECOUPAGE) {
-            return [
-                PDF::loadView('esbtp.paiements.export-pdf', $donnees + ['paiements' => $paiements]),
-                $filename,
-                false,
-            ];
-        }
 
-        // Le decoupage echange de la memoire contre du temps : sans ces deux
-        // relevements, on troquerait un mode de panne contre un autre.
-        ini_set('memory_limit', '512M');
-        set_time_limit(300);
-
-        $chemin = app(PdfParLots::class)->rendre(
-            'esbtp.paiements.export-pdf',
-            $paiements,
-            $donnees,
-            'paiements',
-            'landscape'
-        );
-
-        return [$chemin, $filename, true];
-    }
-
-    /**
-     * Etat financier : qui a solde quel frais, et qui doit encore.
-     *
-     * Repond a une question CUMULEE, pas a une question de periode. Les filtres
-     * de date et de statut de versement de la liste ne s'y appliquent donc pas
-     * — les appliquer transformerait « a solde » en « a solde pendant cette
-     * semaine », ce qui ne veut rien dire. Le document le dit en toutes lettres.
-     * Le frais et la recherche, eux, sont repris tels quels.
-     */
-    public function exportEtatFinancier(Request $request, EtatFinancierParFrais $service)
-    {
-        // Ce document expose la dette d'etudiants : son perimetre suit celui
-        // que l'utilisateur a deja le droit de voir sur les paiements.
-        //
-        // `paiements.view` -> tout l'etablissement.
-        // `paiements.view_own` -> les seuls etudiants pour lesquels il a
-        //   encaisse au moins un versement. Un caissier voit deja le solde de
-        //   ces etudiants-la au guichet quand il encaisse ; lui refuser le
-        //   document ne protegeait rien et le privait de son propre suivi.
-        //   Les montants restent les vrais montants de l'etudiant : un solde
-        //   recalcule sur les seuls versements d'un caissier ne voudrait rien
-        //   dire, et ferait croire a une dette qui n'existe pas.
-        $utilisateur = $request->user();
-        $voitTout = (bool) $utilisateur?->can('paiements.view');
-        $voitLesSiens = (bool) $utilisateur?->can('paiements.view_own');
-
-        abort_unless(
-            $voitTout || $voitLesSiens,
-            403,
-            "L'etat financier demande le droit de voir les paiements."
-        );
-
-        $valide = $request->validate([
-            'frais_category_id' => ['nullable', 'integer', 'exists:esbtp_frais_categories,id'],
-            'search' => ['nullable', 'string', 'max:120'],
-            'solde' => ['nullable', 'in:soldes,partiels,impayes'],
-        ]);
-
-        $categorieId = isset($valide['frais_category_id']) ? (int) $valide['frais_category_id'] : null;
-        $recherche = trim((string) ($valide['search'] ?? ''));
-
-        $annee = ESBTPAnneeUniversitaire::where('is_current', true)->first();
-
-        $inscriptions = \App\Models\ESBTPInscription::query()
-            ->whereIn('status', ['active', 'en_attente'])
-            ->when($annee, fn ($q) => $q->where('annee_universitaire_id', $annee->id))
-            ->when($recherche !== '', function ($q) use ($recherche) {
-                $comme = '%'.str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $recherche).'%';
-                $q->whereHas('etudiant', fn ($e) => $e->where('matricule', 'like', $comme)
-                    ->orWhere('nom', 'like', $comme)
-                    ->orWhere('prenoms', 'like', $comme)
-                    ->orWhereRaw("CONCAT_WS(' ', nom, prenoms) LIKE ?", [$comme]));
-            })
-            ->when(! $voitTout, fn ($q) => $q->whereHas(
-                'paiements',
-                fn ($p) => $p->ownedBy($utilisateur)
-            ))
-            ->with(['etudiant:id,nom,prenoms,matricule', 'classe:id,name'])
-            ->get();
-
-        $lignes = $service->construire($inscriptions, $categorieId);
-
-        $lignes = match ($valide['solde'] ?? null) {
-            'soldes' => $lignes->where('statut', 'Soldé')->values(),
-            'partiels' => $lignes->where('statut', 'Partiel')->values(),
-            'impayes' => $lignes->where('statut', 'Aucun paiement')->values(),
-            default => $lignes,
-        };
-
-        // Meme plafond que la liste, et pour la meme raison : le rendu par lots
-        // a leve la contrainte de memoire, il ne reste que celle du temps.
-        if ($lignes->count() > self::PDF_PAIEMENTS_MAX_LIGNES) {
-            return redirect()->back()->with('error', sprintf(
-                'Trop de lignes pour un PDF (%d, maximum %d). Restreignez a un frais, a un statut de solde, ou a une recherche.',
-                $lignes->count(),
-                self::PDF_PAIEMENTS_MAX_LIGNES
-            ));
-        }
-
-        $nomFrais = $categorieId
-            ? \App\Models\ESBTPFraisCategory::whereKey($categorieId)->value('name')
-            : null;
-
-        $libelleSolde = match ($valide['solde'] ?? null) {
-            'soldes' => 'Soldés uniquement',
-            'partiels' => 'Paiements partiels',
-            'impayes' => 'Aucun paiement',
-            default => null,
-        };
-
-        $donnees = [
-            'totaux' => [
-                'lignes' => $lignes->count(),
-                'soldees' => $lignes->where('statut', 'Soldé')->count(),
-                'partielles' => $lignes->where('statut', 'Partiel')->count(),
-                'sans_paiement' => $lignes->where('statut', 'Aucun paiement')->count(),
-                'du' => $lignes->sum('du'),
-                'paye' => $lignes->sum('paye'),
-                'reste' => $lignes->sum('reste'),
-            ],
-            'filtersRecap' => array_filter([
-                'Frais' => $nomFrais,
-                'Recherche' => $recherche !== '' ? $recherche : null,
-                'Solde' => $libelleSolde,
-                'Année' => $annee->name ?? null,
-                // Dire le perimetre sur le document lui-meme : un etat
-                // partiel qui ne s'annonce pas se lit comme un etat complet.
-                'Périmètre' => $voitTout
-                    ? null
-                    : 'Étudiants encaissés par '.($utilisateur->name ?? 'cet utilisateur'),
-            ]),
-        ];
-
-        $filename = 'etat-financier_'.now()->format('Y-m-d_His').'.pdf';
-
-        if ($lignes->count() <= PdfParLots::SEUIL_DECOUPAGE) {
-            $pdf = PDF::loadView(
-                'esbtp.paiements.etat-financier-pdf',
-                $donnees + ['lignes' => $lignes]
-            )->setPaper('a4', 'landscape');
-
-            return $this->respondWithPdf($pdf, $filename, $request);
-        }
-
-        ini_set('memory_limit', '512M');
-        set_time_limit(300);
-
-        $chemin = app(PdfParLots::class)->rendre(
-            'esbtp.paiements.etat-financier-pdf',
-            $lignes,
-            $donnees,
-            'lignes',
-            'landscape'
-        );
-
-        if ($request->boolean('inline')) {
-            return response()->file($chemin, [
-                'Content-Type' => 'application/pdf',
-                'Content-Disposition' => 'inline; filename="'.$filename.'"',
-            ])->deleteFileAfterSend(true);
-        }
-
-        return response()->download($chemin, $filename)->deleteFileAfterSend(true);
-    }
 }

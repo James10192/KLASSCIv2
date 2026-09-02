@@ -30,67 +30,33 @@
     </td>
     <td class="d-none d-md-table-cell">
         @php
-            $categoryInfo = null;
-            $categoryColors = [
-                'academic' => 'success',
-                'service' => 'warning',
-                'administrative' => 'info'
-            ];
-            $categoryIcons = [
-                'academic' => 'fas fa-graduation-cap',
-                'service' => 'fas fa-cogs',
-                'administrative' => 'fas fa-file-alt'
-            ];
+            // Une seule lecture de la ventilation, partagee avec le PDF,
+            // l'Excel et le recu : le repli vers la categorie du guichet vit
+            // dans le modele, plus dans chaque surface qui l'affiche.
+            $ventilation = $paiement->ventilation();
+            $noms = $ventilation->pluck('nom');
 
-            // Un versement reparti dit SUR QUELS frais il est parti. Se
-            // contenter du nombre ("3 frais") oblige a ouvrir la fiche pour
-            // savoir lesquels — et afficher la seule categorie portee par la
-            // colonne laisserait croire que tout l'argent y est alle.
-            $lignesVentilation = $paiement->relationLoaded('allocations')
-                ? $paiement->allocations
-                : $paiement->allocations()->with('fraisCategory:id,name,category_type')->get();
-
-            if ($lignesVentilation->count() > 1) {
-                $nomsFrais = $lignesVentilation
-                    ->map(fn ($ligne) => $ligne->fraisCategory->name ?? 'Frais supprimé')
-                    ->values();
-
-                $categoryInfo = [
-                    'name' => $nomsFrais->take(2)->implode(', ')
-                        . ($nomsFrais->count() > 2 ? ' +' . ($nomsFrais->count() - 2) : ''),
-                    'type' => $lignesVentilation->first()->fraisCategory->category_type ?? 'academic',
-                    'source' => 'Réparti sur plusieurs frais',
-                    'detail' => $lignesVentilation
-                        ->map(fn ($ligne) => ($ligne->fraisCategory->name ?? 'Frais supprimé')
-                            . ' : ' . number_format((float) $ligne->montant, 0, ',', ' ') . ' FCFA')
-                        ->implode('  ·  '),
-                ];
-            } elseif ($paiement->fraisCategory) {
-                $categoryInfo = [
-                    'name' => $paiement->fraisCategory->name,
-                    'type' => $paiement->fraisCategory->category_type ?? 'academic',
-                    'source' => 'Nouveau système'
-                ];
-            } elseif ($paiement->categorie) {
-                $categoryInfo = [
-                    'name' => $paiement->categorie->nom ?? 'Catégorie ancienne',
-                    'type' => $paiement->categorie->nom && str_contains(strtolower($paiement->categorie->nom), 'cantine') ? 'service' : 'academic',
-                    'source' => 'Ancien système'
-                ];
-            } elseif ($paiement->motif || $paiement->type_paiement) {
-                $motifLower = strtolower($paiement->motif ?? $paiement->type_paiement ?? '');
-                $type = 'academic';
+            $type = $ventilation->first()['type'] ?? 'academic';
+            // Versement historique sans categorie : le type se devine au motif,
+            // faute de mieux. Conserve pour ne pas repeindre l'existant.
+            if (($ventilation->first()['frais_id'] ?? null) === null) {
+                $motifLower = mb_strtolower($paiement->motif ?? $paiement->type_paiement ?? '', 'UTF-8');
                 if (str_contains($motifLower, 'cantine') || str_contains($motifLower, 'transport')) {
                     $type = 'service';
                 } elseif (str_contains($motifLower, 'documentation') || str_contains($motifLower, 'examen')) {
                     $type = 'administrative';
                 }
-                $categoryInfo = [
-                    'name' => ucfirst($paiement->motif ?? $paiement->type_paiement ?? 'Paiement'),
-                    'type' => $type,
-                    'source' => 'Inféré du motif'
-                ];
             }
+
+            $categoryInfo = [
+                'name' => $noms->count() > 1
+                    ? $noms->take(2)->implode(', ').($noms->count() > 2 ? ' +'.($noms->count() - 2) : '')
+                    : $noms->first(),
+                'type' => $type,
+                'detail' => $ventilation->count() > 1
+                    ? $ventilation->map(fn ($l) => $l['nom'].' : '.number_format($l['montant'], 0, ',', ' ').' FCFA')->implode('  ·  ')
+                    : null,
+            ];
 
             $color = $categoryColors[$categoryInfo['type'] ?? 'academic'] ?? 'secondary';
             $icon = $categoryIcons[$categoryInfo['type'] ?? 'academic'] ?? 'fas fa-money-bill';

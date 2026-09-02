@@ -79,15 +79,8 @@ class PaiementsExport implements FromCollection, WithHeadings, WithMapping, With
         $fraisCategory = $paiement->fraisCategory;
         $categorie = $paiement->categorie; // Ancien système (fallback)
 
-        // Un versement reparti couvre plusieurs frais : n'en nommer qu'un
-        // seul affirmerait que tout l'argent y est alle.
-        $ventilation = $paiement->relationLoaded('allocations')
-            ? $paiement->allocations
-            : $paiement->allocations()->with('fraisCategory:id,name')->get();
-
-        $libelleFrais = $ventilation->count() > 1
-            ? $ventilation->map(fn ($ligne) => $ligne->fraisCategory->name ?? 'Frais supprimé')->implode(' + ')
-            : ($fraisCategory ? $fraisCategory->name : ($categorie ? $categorie->nom : $paiement->motif ?? 'N/A'));
+        // Meme lecture qu'a l'ecran, dans le PDF et sur le recu.
+        $libelleFrais = $paiement->ventilation()->pluck('nom')->implode(' + ');
 
         // Filtre par frais actif : la colonne Montant porte la part allee sur
         // ce frais. Les totaux de l'en-tete viennent des statistiques, qui

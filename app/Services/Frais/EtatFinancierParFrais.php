@@ -4,9 +4,7 @@ namespace App\Services\Frais;
 
 use App\Models\ESBTPFraisSubscription;
 use App\Models\ESBTPPaiement;
-use App\Models\ESBTPPaiementAllocation;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
 
 /**
  * Qui a solde quel frais, et qui doit encore.
@@ -110,9 +108,16 @@ class EtatFinancierParFrais
      */
     private function payeParInscriptionEtFrais(array $inscriptionIds): array
     {
-        $encaisse = $this->totauxParNature($inscriptionIds, 'encaissements', ['validé', 'en_attente']);
+        $montants = app(MontantsParFrais::class);
+        $versements = fn (string $nature, array $statuts) => ESBTPPaiement::query()
+            ->whereIn('inscription_id', $inscriptionIds)
+            ->whereIn('status', $statuts)
+            ->{$nature}()
+            ->horsReliquat();
+
+        $encaisse = $montants->parInscriptionEtFrais($versements('encaissements', ['validé', 'en_attente']));
         // Un remboursement pas encore valide n'a pas quitte la caisse.
-        $rembourse = $this->totauxParNature($inscriptionIds, 'avoires', ['validé']);
+        $rembourse = $montants->parInscriptionEtFrais($versements('avoires', ['validé']));
 
         foreach ($rembourse as $inscriptionId => $parFrais) {
             foreach ($parFrais as $fraisId => $montant) {
@@ -124,56 +129,5 @@ class EtatFinancierParFrais
         }
 
         return $encaisse;
-    }
-
-    /**
-     * @param  array<int, int>  $inscriptionIds
-     * @param  array<int, string>  $statuts
-     * @return array<int, array<int, float>>
-     */
-    private function totauxParNature(array $inscriptionIds, string $nature, array $statuts): array
-    {
-        $base = fn () => ESBTPPaiement::query()
-            ->whereIn('inscription_id', $inscriptionIds)
-            ->whereIn('status', $statuts)
-            ->{$nature}()
-            ->horsReliquat();
-
-        $totaux = [];
-
-        // 1. Les versements repartis : ce sont leurs allocations qui disent ou
-        //    l'argent est alle.
-        $parAllocation = ESBTPPaiementAllocation::query()
-            ->join('esbtp_paiements', 'esbtp_paiements.id', '=', 'esbtp_paiement_allocations.paiement_id')
-            ->whereIn('esbtp_paiement_allocations.paiement_id', $base()->select('esbtp_paiements.id'))
-            ->groupBy('esbtp_paiements.inscription_id', 'esbtp_paiement_allocations.frais_category_id')
-            ->selectRaw('esbtp_paiements.inscription_id as inscription_id, esbtp_paiement_allocations.frais_category_id as frais_category_id, SUM(esbtp_paiement_allocations.montant) as total')
-            ->get();
-
-        foreach ($parAllocation as $ligne) {
-            $totaux[(int) $ligne->inscription_id][(int) $ligne->frais_category_id] = (float) $ligne->total;
-        }
-
-        // 2. Les versements non repartis : leur propre categorie fait foi. Les
-        //    deux ensembles sont disjoints, donc rien n'est compte deux fois.
-        $sansAllocation = $base()
-            ->whereNotExists(function ($q) {
-                $q->select(DB::raw(1))
-                    ->from('esbtp_paiement_allocations')
-                    ->whereColumn('esbtp_paiement_allocations.paiement_id', 'esbtp_paiements.id');
-            })
-            ->whereNotNull('frais_category_id')
-            ->groupBy('inscription_id', 'frais_category_id')
-            ->selectRaw('inscription_id, frais_category_id, SUM(montant) as total')
-            ->get();
-
-        foreach ($sansAllocation as $ligne) {
-            $inscriptionId = (int) $ligne->inscription_id;
-            $fraisId = (int) $ligne->frais_category_id;
-            $totaux[$inscriptionId][$fraisId] = (float) ($totaux[$inscriptionId][$fraisId] ?? 0)
-                + (float) $ligne->total;
-        }
-
-        return $totaux;
     }
 }
