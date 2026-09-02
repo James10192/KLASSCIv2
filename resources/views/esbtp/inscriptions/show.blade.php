@@ -2250,6 +2250,16 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                                                 </td>
                                                 <td>
                                                     <div class="btn-group">
+                                                        @if(!empty($item['can_mark_in_kind']))
+                                                            @can('inscriptions.in_kind.mark')
+                                                                <form method="POST" action="{{ route('esbtp.inscriptions.in-kind-deposits.store', [$inscription, $item['category']]) }}" class="d-inline">
+                                                                    @csrf
+                                                                    <button type="submit" class="btn btn-sm btn-primary" title="Marquer déposé en nature">
+                                                                        <i class="fas fa-box"></i>
+                                                                    </button>
+                                                                </form>
+                                                            @endcan
+                                                        @endif
                                                         @if(auth()->user()->can('paiements.create') && $item['is_configured'] && $item['solde'] > 0 && empty($item['satisfied_in_kind']))
                                                             <button class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#paymentModal" onclick="preparePaymentModalForCategory({{ $inscription->id }}, {{ $item['category']->id }})" title="Effectuer un paiement">
                                                                 <i class="fas fa-credit-card"></i>
@@ -2512,7 +2522,16 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
 
                                         <!-- Actions -->
                                         <div class="financial-actions">
-                                                {{-- Meme garde que le tableau : un frais depose en nature est solde. --}}
+                                                @if(!empty($item['can_mark_in_kind']))
+                                                    @can('inscriptions.in_kind.mark')
+                                                        <form method="POST" action="{{ route('esbtp.inscriptions.in-kind-deposits.store', [$inscription, $item['category']]) }}" class="d-inline">
+                                                            @csrf
+                                                            <button type="submit" class="btn btn-sm btn-primary">
+                                                                <i class="fas fa-box me-1"></i>Marquer déposé
+                                                            </button>
+                                                        </form>
+                                                    @endcan
+                                                @endif
                                                 @if(auth()->user()->can('paiements.create') && $item['is_configured'] && $item['solde'] > 0 && empty($item['satisfied_in_kind']))
                                                     <button class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#paymentModal" onclick="preparePaymentModalForCategory({{ $inscription->id }}, {{ $item['category']->id }})" title="Effectuer un paiement">
                                                         <i class="fas fa-credit-card me-1"></i>Payer

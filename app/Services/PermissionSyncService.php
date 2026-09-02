@@ -183,6 +183,7 @@ class PermissionSyncService
             'mailpulse.view',
             'mailpulse.send',
             'cash_session.manage',
+            'inscriptions.in_kind.mark',
             'documents.view',
             'documents.approve',
             'documents.print',

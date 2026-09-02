@@ -85,6 +85,22 @@ class FraisConfigurationWriter
             $existing->is_active = true;
             $existing->save();
 
+            if (array_key_exists('audience', $categoryData)) {
+                $rawAudience = $categoryData['audience'];
+                if (is_array($rawAudience)) {
+                    $rawAudience = in_array(ESBTPFraisCategory::AUDIENCE_NOUVEAUX, $rawAudience, true)
+                        ? ESBTPFraisCategory::AUDIENCE_NOUVEAUX
+                        : ESBTPFraisCategory::AUDIENCE_TOUS;
+                }
+                $audience = $rawAudience === ESBTPFraisCategory::AUDIENCE_NOUVEAUX
+                    ? ESBTPFraisCategory::AUDIENCE_NOUVEAUX
+                    : ESBTPFraisCategory::AUDIENCE_TOUS;
+                if (($category->audience ?? ESBTPFraisCategory::AUDIENCE_TOUS) !== $audience) {
+                    $category->audience = $audience;
+                    $category->save();
+                }
+            }
+
             $summary['affected_configuration_ids'][] = $existing->id;
         }
 
