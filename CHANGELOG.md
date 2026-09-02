@@ -14,6 +14,9 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ### Ajouts
 
+- **Le suivi par catégorie compte enfin les versements répartis** (`/esbtp/paiements/suivi-categories`) — la page calculait ce qui avait été payé sur un frais en ne regardant que la case cochée au guichet. Un versement qui couvrait plusieurs frais ne comptait que pour un seul, et tous les autres paraissaient impayés : un étudiant à jour pouvait y figurer « en retard », et le taux de recouvrement de chaque catégorie était faux. Les remboursements sont par ailleurs de nouveau déduits.
+
+
 - **Filtrer les paiements par frais, et voir lesquels chaque versement a couverts** (`/esbtp/paiements`) — la liste se filtre désormais sur un frais précis. Le filtre tient compte de la ventilation : un versement qui a payé la tenue en même temps que la scolarité apparaît sous les deux, et non sous la seule case cochée au guichet. Quand le filtre est actif, le montant affiché est **la part réellement allée sur ce frais** — sans quoi un versement de 255 000 F réparti sur trois frais aurait gonflé de 255 000 le total de chacun des trois. Chaque ligne nomme maintenant les frais couverts au lieu d'annoncer un « 3 frais » muet, à l'écran comme dans le PDF et l'Excel.
 
 - **État financier par frais** — nouveau document, dans le menu « Exporter » : une ligne par étudiant et par frais, avec le dû, le payé, le reste et le statut (soldé, partiel, aucun paiement, déposé en nature, montant non défini). Il répond à une question cumulée — qui doit encore quoi — et non à une question de période : les filtres de date et de statut de versement ne s'y appliquent donc pas, et le document le dit en toutes lettres. Réservé aux personnes qui peuvent voir l'ensemble des paiements, puisqu'il expose la dette de tous les étudiants.

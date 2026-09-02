@@ -29,10 +29,30 @@ class MontantsNetsParFraisTest extends TestCase
 
     private int $inscriptionId = 4242;
 
+    private int $etudiantId = 4242;
+
+    private int $recu = 1;
+
     protected function setUp(): void
     {
         parent::setUp();
         $this->regle = app(MontantsParFrais::class);
+
+        // Ce qui est teste ici est une agregation SQL sur les versements et
+        // leurs allocations. Fabriquer autour un etudiant, une inscription,
+        // une classe, une filiere et une annee — chacun avec ses propres
+        // colonnes obligatoires — testerait la fixture, pas la regle, et
+        // rendrait le test illisible pour qui vient verifier un calcul.
+        //
+        // Les contraintes sont donc levees le temps du test. Le perimetre
+        // reste honnete : aucune de ces relations n'entre dans le calcul.
+        DB::statement('SET FOREIGN_KEY_CHECKS=0');
+    }
+
+    protected function tearDown(): void
+    {
+        DB::statement('SET FOREIGN_KEY_CHECKS=1');
+        parent::tearDown();
     }
 
     private function frais(string $nom): ESBTPFraisCategory
@@ -56,6 +76,13 @@ class MontantsNetsParFraisTest extends TestCase
     {
         return DB::table('esbtp_paiements')->insertGetId([
             'inscription_id' => $this->inscriptionId,
+            // Colonnes obligatoires sans valeur par defaut. Leur contenu
+            // n'entre pas dans le calcul teste ici — qui lit des montants par
+            // inscription et par frais — mais la table les exige.
+            'etudiant_id' => $this->etudiantId,
+            'annee_universitaire_id' => 1,
+            'mode_paiement' => 'especes',
+            'numero_recu' => 'TEST-'.$this->recu++,
             'montant' => $montant,
             'status' => $statut,
             'nature' => $nature,
