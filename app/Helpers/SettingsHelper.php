@@ -113,10 +113,103 @@ class SettingsHelper
     }
 
     /**
+     * Chemin du fichier logo configuré par l'établissement, ou null.
+     *
+     * Ne retombe JAMAIS sur la marque KLASSCI : cette méthode répond à la
+     * question « cette école a-t-elle un logo à elle ? », et le site vitrine en
+     * dépend pour n'afficher que de vrais logos d'établissement. Le repli
+     * générique appartient à resolveLogoBase64(), qui doit toujours rendre une
+     * image parce qu'un bulletin sans en-tête n'est pas présentable.
+     *
+     * Plusieurs candidats sont tentés : les tenants historiques stockent le
+     * chemin tantôt avec le préfixe `storage/`, tantôt sans, tantôt réduit au
+     * seul nom de fichier.
+     *
+     * Mémoïsé par valeur du réglage, et non par un simple drapeau : ainsi un
+     * changement de logo en cours de processus (assistant de configuration,
+     * suite de tests) n'est pas masqué par un cache resté sur l'ancien fichier.
+     */
+    public static function resolveLogoPath(): ?string
+    {
+        static $memo = [];
+
+        $logoPath = (string) self::get('school_logo', '');
+
+        if (array_key_exists($logoPath, $memo)) {
+            return $memo[$logoPath];
+        }
+
+        return $memo[$logoPath] = self::premierFichierLisible(self::candidatsLogo($logoPath));
+    }
+
+    /**
+     * Les emplacements où un logo d'établissement a pu être écrit, du plus
+     * probable au plus ancien.
+     *
+     * @return list<string>
+     */
+    private static function candidatsLogo(string $logoPath): array
+    {
+        if ($logoPath === '') {
+            return [];
+        }
+
+        $normalized = str_replace('\\', '/', ltrim($logoPath, '/'));
+        $relative = preg_replace('#^storage/#', '', $normalized);
+        $basename = basename($relative);
+
+        return [
+            storage_path('app/public/' . $normalized),
+            storage_path('app/public/' . $relative),
+            storage_path('app/public/logos/' . $basename),
+            public_path('storage/' . $normalized),
+            public_path('storage/' . $relative),
+            public_path('storage/logos/' . $basename),
+            public_path($normalized),
+        ];
+    }
+
+    /**
+     * Le premier candidat qui est un fichier réellement lisible.
+     *
+     * `is_file` et pas seulement `file_exists` : les candidats « .../logos/ »
+     * construits à partir d'un chemin sans nom de fichier désignent un dossier,
+     * qui existe mais ne s'affiche pas.
+     *
+     * @param  list<string>  $candidats
+     */
+    private static function premierFichierLisible(array $candidats): ?string
+    {
+        foreach ($candidats as $candidat) {
+            if ($candidat !== '' && is_file($candidat) && is_readable($candidat)) {
+                return $candidat;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Le type MIME d'une image, déduit de son extension.
+     *
+     * Déduit et non sniffé : le fichier a été déposé par un formulaire de
+     * réglages qui valide déjà le type, et `mime_content_type` n'est pas
+     * garanti présent sur les hébergements mutualisés que KLASSCI vise.
+     */
+    public static function mimeImage(string $chemin): string
+    {
+        return match (strtolower(pathinfo($chemin, PATHINFO_EXTENSION) ?: 'png')) {
+            'jpg', 'jpeg' => 'image/jpeg',
+            'svg' => 'image/svg+xml',
+            'webp' => 'image/webp',
+            'gif' => 'image/gif',
+            default => 'image/png',
+        };
+    }
+
+    /**
      * Résout le logo de l'école en base64 pour inlining (DomPDF + previews web).
      *
-     * Tente plusieurs candidats (storage public, public/storage, fallbacks pré-bundlés)
-     * pour absorber les divergences de chemin entre tenants legacy et nouveau format.
      * Mémoïsé par requête : le base64 d'un logo (~50KB) appelé sur 8+ pages d'un même
      * export évite les file_get_contents répétés.
      *
@@ -129,58 +222,36 @@ class SettingsHelper
             return $cache === false ? null : $cache;
         }
 
-        $logoPath = self::get('school_logo', '');
-        $normalized = str_replace('\\', '/', ltrim((string) $logoPath, '/'));
-        $relative = preg_replace('#^storage/#', '', $normalized);
-        $basename = basename($relative);
-
-        $candidates = [];
-        if ($logoPath) {
-            $candidates = [
-                storage_path('app/public/' . $normalized),
-                storage_path('app/public/' . $relative),
-                storage_path('app/public/logos/' . $basename),
-                public_path('storage/' . $normalized),
-                public_path('storage/' . $relative),
-                public_path('storage/logos/' . $basename),
-                public_path($normalized),
-            ];
-        }
         // Repli generique : la marque KLASSCI, jamais le logo d'un
         // etablissement. esbtp_logo.png figurait ici en premier : toute ecole
         // sans logo configure affichait donc celui de l'ESBTP, sur ses
         // bulletins, ses attestations et son apercu de partage.
-        $candidates[] = public_path('images/LOGO-KLASSCI-PNG.png');
+        $chemin = self::resolveLogoPath()
+            ?? self::premierFichierLisible([public_path('images/LOGO-KLASSCI-PNG.png')]);
 
-        foreach ($candidates as $candidate) {
-            // is_file : les candidats « .../logos/ » sans nom de fichier sont
-            // des dossiers, illisibles comme image.
-            if (!is_string($candidate) || $candidate === '' || !is_file($candidate)) {
-                continue;
-            }
-            $contents = @file_get_contents($candidate);
-            if ($contents === false) {
-                continue;
-            }
-            $ext = strtolower(pathinfo($candidate, PATHINFO_EXTENSION) ?: 'png');
-            $mime = match ($ext) {
-                'jpg', 'jpeg' => 'image/jpeg',
-                'svg' => 'image/svg+xml',
-                'webp' => 'image/webp',
-                'gif' => 'image/gif',
-                default => 'image/png',
-            };
-            $b64 = base64_encode($contents);
-            return $cache = [
-                'mime' => $mime,
-                'ext' => $ext,
-                'b64' => $b64,
-                'data_uri' => 'data:' . $mime . ';base64,' . $b64,
-            ];
+        if ($chemin === null) {
+            $cache = false;
+
+            return null;
         }
 
-        $cache = false;
-        return null;
+        $contents = @file_get_contents($chemin);
+
+        if ($contents === false) {
+            $cache = false;
+
+            return null;
+        }
+
+        $mime = self::mimeImage($chemin);
+        $b64 = base64_encode($contents);
+
+        return $cache = [
+            'mime' => $mime,
+            'ext' => strtolower(pathinfo($chemin, PATHINFO_EXTENSION) ?: 'png'),
+            'b64' => $b64,
+            'data_uri' => 'data:' . $mime . ';base64,' . $b64,
+        ];
     }
 
     /**
