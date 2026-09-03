@@ -214,10 +214,12 @@
                 </div>
             </div>
             <div class="bsh-hero-actions">
+                @php $printDecision = app(\App\Services\DocumentPrintGuard::class)->decide(auth()->user(), 'bulletin', (int) $bulletin->etudiant_id, (int) $bulletin->id); $printAllowed = $printDecision->allowed; @endphp
                 @include('esbtp.documents._request-approval', [
                     'documentType' => 'bulletin',
                     'etudiantId' => $bulletin->etudiant_id,
                     'documentId' => $bulletin->id,
+                    'printDecision' => $printDecision,
                 ])
                 @if($printAllowed)
                 <x-pdf-actions
