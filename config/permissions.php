@@ -2234,7 +2234,7 @@ return [
             'planning.view', 'planning.edit', 'planning.manage',
             'lmd.planning.view', 'lmd.planning.edit',
             'lmd.examens.view', 'lmd.examens.manage', 'lmd.examens.notes_lock',
-            'lmd.rattrapage.view', 'lmd.rattrapage.manage', 'lmd.rattrapage.notes.saisir',
+            'lmd.rattrapage.view', 'lmd.rattrapage.manage',
             'lmd.credit_wallet.view',
             'lmd.jury.view', 'lmd.jury.preside', 'lmd.jury.deliberate', 'lmd.jury.publish',
             'lmd.jury.documents.reconcile', 'lmd.jury.sign',
