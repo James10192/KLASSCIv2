@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Helpers\SettingsHelper;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPLMDParcours;
 use App\Models\ESBTPLMDSession;
@@ -56,6 +57,115 @@ class ESBTPLMDSessionController extends Controller
         $session->load(['anneeUniversitaire', 'parcours', 'parentSession', 'childrenSessions', 'examens']);
 
         return view('esbtp.lmd.rattrapage.show', compact('session'));
+    }
+
+    /**
+     * Ecran de saisie des notes de seconde session.
+     */
+    public function notesRattrapage(ESBTPLMDSession $session): View
+    {
+        abort_unless(auth()->user()?->can('lmd.rattrapage.view'), 403);
+        abort_unless($session->type === 'rattrapage', 404);
+
+        $session->load(['anneeUniversitaire', 'parcours', 'parentSession']);
+
+        try {
+            $lignes = $this->rattrapage->lignesSaisieRattrapage($session);
+        } catch (\DomainException $e) {
+            return view('esbtp.lmd.rattrapage.notes', [
+                'session' => $session,
+                'groupes' => collect(),
+                'remplace' => $this->remplaceNoteSessionNormale(),
+                'messageBloquant' => $e->getMessage(),
+                'peutSaisir' => false,
+            ]);
+        }
+
+        return view('esbtp.lmd.rattrapage.notes', [
+            'session' => $session,
+            'groupes' => $lignes->groupBy('etudiant_id'),
+            'remplace' => $this->remplaceNoteSessionNormale(),
+            'messageBloquant' => null,
+            'peutSaisir' => $this->peutSaisirNotes(),
+        ]);
+    }
+
+    /**
+     * Enregistre les notes de seconde session (AJAX, sans rechargement).
+     */
+    public function enregistrerNotesRattrapage(Request $request, ESBTPLMDSession $session): JsonResponse
+    {
+        abort_unless($this->peutSaisirNotes(), 403);
+
+        $data = $request->validate([
+            'notes' => ['required', 'array', 'min:1'],
+            'notes.*.resultat_id' => ['required', 'integer'],
+            'notes.*.note' => ['nullable', 'numeric', 'min:0'],
+        ]);
+
+        try {
+            $bilan = $this->rattrapage->saisirNotesRattrapage($session, $data['notes']);
+        } catch (\DomainException|\LogicException $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => $this->messageBilan($bilan),
+            'bilan' => $bilan,
+            'lignes' => $this->etatLignes($session),
+        ]);
+    }
+
+    /**
+     * Etat courant des lignes, pour rafraichir l'ecran sans le recharger.
+     *
+     * @return array<int, array{resultat_id: int, note_rattrapage: float|null, note_finale: float|null}>
+     */
+    private function etatLignes(ESBTPLMDSession $session): array
+    {
+        return $this->rattrapage->lignesSaisieRattrapage($session)
+            ->map(fn ($ligne): array => [
+                'resultat_id' => (int) $ligne->id,
+                'note_rattrapage' => $ligne->note_rattrapage === null ? null : (float) $ligne->note_rattrapage,
+                'note_finale' => $ligne->note_finale === null ? null : (float) $ligne->note_finale,
+            ])
+            ->values()
+            ->all();
+    }
+
+    private function messageBilan(array $bilan): string
+    {
+        $parties = [];
+        if ($bilan['saisies'] > 0) {
+            $parties[] = $bilan['saisies'] . ' note' . ($bilan['saisies'] > 1 ? 's' : '') . ' enregistree' . ($bilan['saisies'] > 1 ? 's' : '');
+        }
+        if ($bilan['effacees'] > 0) {
+            $parties[] = $bilan['effacees'] . ' effacee' . ($bilan['effacees'] > 1 ? 's' : '');
+        }
+        if ($parties === []) {
+            return 'Aucune modification.';
+        }
+
+        return implode(', ', $parties) . '. ' . $bilan['recalculees'] . ' note' . ($bilan['recalculees'] > 1 ? 's finales recalculees' : ' finale recalculee') . '.';
+    }
+
+    /**
+     * La saisie exige la permission dediee, ou a defaut celle qui pilote deja le rattrapage.
+     */
+    private function peutSaisirNotes(): bool
+    {
+        $user = auth()->user();
+
+        return (bool) ($user?->can('lmd.rattrapage.notes.saisir') || $user?->can('lmd.rattrapage.manage'));
+    }
+
+    /**
+     * Regle d'instance : la note de seconde session remplace-t-elle celle de la premiere ?
+     */
+    private function remplaceNoteSessionNormale(): bool
+    {
+        return (bool) SettingsHelper::get('lmd_rattrapage_replace', false);
     }
 
     public function store(Request $request): RedirectResponse
@@ -137,14 +247,15 @@ class ESBTPLMDSessionController extends Controller
         $etudiantIds = $data['etudiant_ids'] ?? [];
 
         if (empty($etudiantIds)) {
-            // Tous les éligibles
-            $bulletinIds = $session->parentSession?->parcours?->bulletins?->pluck('id') ?? collect();
-            if ($bulletinIds->isNotEmpty()) {
-                $etudiantIds = \App\Models\ESBTPLMDResultatECUE::whereIn('bulletin_id', $bulletinIds)
-                    ->where('rattrapage_eligible', true)
+            // Tous les inscrits au rattrapage, sur le perimetre exact de la session.
+            try {
+                $etudiantIds = $this->rattrapage->lignesSaisieRattrapage($session)
                     ->pluck('etudiant_id')
                     ->unique()
+                    ->values()
                     ->all();
+            } catch (\DomainException $e) {
+                return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
             }
         }
 

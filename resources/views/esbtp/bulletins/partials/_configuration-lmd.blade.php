@@ -153,7 +153,7 @@
                     <div class="row g-3">
                         <div class="col-12">
                             <label class="bcfg-label">Notice importante</label>
-                            <textarea class="bcfg-textarea" name="lmd_bulletin_notice_text" rows="2">{{ $settings['lmd_bulletin_notice_text'] ?? 'Pour les UE non acquises il vous sera délivré une attestation de réussite après validation de celles-ci. Un ECUE n\'est ni transférable ni capitalisable.' }}</textarea>
+                            <textarea class="bcfg-textarea" name="lmd_bulletin_notice_text" rows="2">{{ $settings['lmd_bulletin_notice_text'] ?? \App\Services\LMDBulletinService::NOTICE_DEFAUT }}</textarea>
                         </div>
                         <div class="col-12">
                             <label class="bcfg-label">Texte de pied de page</label>

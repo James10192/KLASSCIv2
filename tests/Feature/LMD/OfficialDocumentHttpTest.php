@@ -247,17 +247,23 @@ class OfficialDocumentHttpTest extends OfficialDocumentDatabaseTestCase
         $this->assertSame(OfficialDocument::STATUS_VALID, $second->fresh()->status);
     }
 
+    /**
+     * Garde d'entree du groupe /esbtp/lmd : une liste OR, depuis que les profils
+     * de scolarite et de direction des etudes y accedent sans porter admin.access.
+     */
+    private const GARDE_ENTREE_LMD = 'admin.access|identity.direct_studies|identity.registrar|identity.registrar_clerk';
+
     public function test_registered_routes_keep_canonical_permissions(): void
     {
         $reconcile = Route::getRoutes()->getByName('esbtp.lmd.jurys.pv-reconcile');
         $rectify = Route::getRoutes()->getByName('esbtp.lmd.jurys.pv-rectify');
         $stream = Route::getRoutes()->getByName('esbtp.lmd.jurys.official-documents.stream');
-        $this->assertContains('permission:admin.access', $reconcile->gatherMiddleware());
+        $this->assertContains('permission:'.self::GARDE_ENTREE_LMD, $reconcile->gatherMiddleware());
         $this->assertContains('permission:lmd.jury.documents.reconcile', $reconcile->gatherMiddleware());
         $this->assertContains('permission:lmd.jury.publish', $rectify->gatherMiddleware());
         $this->assertContains('throttle:5,1', $rectify->gatherMiddleware());
         $this->assertContains('auth', $stream->gatherMiddleware());
-        $this->assertContains('permission:admin.access', $stream->gatherMiddleware());
+        $this->assertContains('permission:'.self::GARDE_ENTREE_LMD, $stream->gatherMiddleware());
         $this->assertContains('permission:module.lmd.access', $stream->gatherMiddleware());
         $this->assertContains('paywall', $stream->gatherMiddleware());
         $this->assertContains('permission:lmd.jury.view', $stream->gatherMiddleware());
@@ -273,6 +279,12 @@ class OfficialDocumentHttpTest extends OfficialDocumentDatabaseTestCase
     private function authorizedUser(int $id = 1, bool $withSodBypass = true): \App\Models\User
     {
         $user = \App\Models\User::query()->findOrFail($id);
+        // La garde d'entree du groupe LMD est une liste OR : Spatie leve
+        // PermissionDoesNotExist si l'un des noms cites n'existe pas en base. On
+        // les cree donc sans les accorder — l'utilisateur passe par admin.access.
+        foreach (['identity.direct_studies', 'identity.registrar', 'identity.registrar_clerk'] as $name) {
+            Permission::findOrCreate($name, 'web');
+        }
         foreach (['admin.access', 'module.lmd.access', 'lmd.jury.view', 'lmd.jury.publish', 'lmd.jury.deliberate', 'lmd.jury.documents.reconcile'] as $name) {
             $permission = Permission::findOrCreate($name, 'web');
             $user->givePermissionTo($permission);

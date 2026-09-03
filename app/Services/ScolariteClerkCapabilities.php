@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\User;
+use Spatie\Permission\Exceptions\PermissionDoesNotExist;
 
 class ScolariteClerkCapabilities
 {
@@ -49,8 +50,8 @@ class ScolariteClerkCapabilities
      */
     public function abilitiesFor(User $user): array
     {
-        $isClerk = $user->hasPermissionTo('identity.registrar_clerk');
-        $isRegistrar = $user->hasPermissionTo('identity.registrar');
+        $isClerk = $this->detient($user, 'identity.registrar_clerk');
+        $isRegistrar = $this->detient($user, 'identity.registrar');
 
         $abilities = [];
 
@@ -67,5 +68,24 @@ class ScolariteClerkCapabilities
         }
 
         return $abilities;
+    }
+
+    /**
+     * Detention d'une permission, sans exiger qu'elle existe deja en base.
+     *
+     * Ce service est appele depuis un Gate::after, donc a CHAQUE `can()` de
+     * l'application. Or `hasPermissionTo()` leve PermissionDoesNotExist quand la
+     * permission n'a pas encore ete creee : sur une instance mise a jour avant
+     * que `bin/deploy/fix_permissions.php` n'ait tourne, la moindre verification
+     * d'acces renvoyait une erreur 500 au lieu d'un refus. Une permission absente
+     * signifie simplement que personne ne la detient.
+     */
+    private function detient(User $user, string $permission): bool
+    {
+        try {
+            return $user->hasPermissionTo($permission);
+        } catch (PermissionDoesNotExist) {
+            return false;
+        }
     }
 }

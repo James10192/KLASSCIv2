@@ -1068,7 +1068,7 @@
                     <button type="button" class="exp-btn exp-btn--secondary" @click="closeModal()" :disabled="saving">
                         <i class="fas fa-xmark"></i> Annuler
                     </button>
-                    <button type="submit" class="exp-btn exp-btn--primary" :disabled="saving || loadingOptions">
+                    <button type="submit" class="exp-btn exp-btn--primary" :disabled="saving || loadingUes || loadingClasses">
                         <i class="fas" :class="saving ? 'fa-spinner fa-spin' : 'fa-check'"></i>
                         <span x-text="saving ? 'Création…' : 'Créer l\'examen'"></span>
                     </button>

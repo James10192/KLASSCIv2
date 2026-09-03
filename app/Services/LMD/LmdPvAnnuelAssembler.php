@@ -32,6 +32,8 @@ class LmdPvAnnuelAssembler
             ->unique('unite_enseignement_id')
             ->values();
 
+        [$premierSemestre, $secondSemestre] = $this->semestresDeLAnnee($jury, $bulletins);
+
         $rows = [];
         $ordre = 1;
         foreach ($bulletins as $etudiantId => $byEtudiant) {
@@ -39,8 +41,8 @@ class LmdPvAnnuelAssembler
             if (! $etudiant) {
                 continue;
             }
-            $s1 = $byEtudiant->first(fn ($b) => (int) $b->semestre === 1);
-            $s2 = $byEtudiant->first(fn ($b) => (int) $b->semestre === 2);
+            $s1 = $byEtudiant->first(fn ($b) => (int) $b->semestre === $premierSemestre);
+            $s2 = $byEtudiant->first(fn ($b) => (int) $b->semestre === $secondSemestre);
             $moyAnnuelle = ($s1 && $s2)
                 ? round(((float) $s1->moyenne_generale + (float) $s2->moyenne_generale) / 2, 2)
                 : ($s2?->moyenne_generale ?? $s1?->moyenne_generale);
@@ -75,6 +77,7 @@ class LmdPvAnnuelAssembler
             'parcours' => $jury->parcours?->name ?? $jury->classe?->filiere?->name,
             'niveau' => $jury->classe?->niveau?->name,
             'classe' => $jury->classe?->name,
+            'semestres' => ['premier' => $premierSemestre, 'second' => $secondSemestre],
             'primary' => $pdfSettings['primary_color'] ?? '#0453cb',
             'logo_binary' => $logo ? base64_decode($logo['b64'], true) : null,
             'ues_header' => $ues->map(fn ($r) => [
@@ -84,6 +87,53 @@ class LmdPvAnnuelAssembler
             ])->all(),
             'rows' => $rows,
         ];
+    }
+
+    /**
+     * Les deux semestres que couvre le PV annuel.
+     *
+     * Les semestres LMD sont numerotes en continu sur le cursus : une Licence 2
+     * porte les semestres 3 et 4, une Licence 3 les semestres 5 et 6. Chercher
+     * les bulletins « du semestre 1 et du semestre 2 » ne trouvait donc rien
+     * des la deuxieme annee, et le PV annuel sortait vide pour deux niveaux
+     * sur trois.
+     *
+     * @param  Collection<int, Collection<int, ESBTPLMDBulletin>>  $bulletins
+     * @return array{0:int, 1:int}
+     */
+    private function semestresDeLAnnee(ESBTPLMDJury $jury, Collection $bulletins): array
+    {
+        $annee = $jury->classe?->niveau?->year;
+        if ($annee !== null && (int) $annee > 0) {
+            return $jury->classe->getSemestresLMD();
+        }
+
+        // Jury sans classe (jury de parcours) : le semestre porte par le jury
+        // suffit a situer l'annee, un semestre impair ouvrant toujours l'annee.
+        $semestreJury = (int) ($jury->semestre ?? 0);
+        if ($semestreJury > 0) {
+            $premier = $semestreJury % 2 === 1 ? $semestreJury : $semestreJury - 1;
+
+            return [$premier, $premier + 1];
+        }
+
+        // Dernier recours : les semestres reellement presents dans les bulletins.
+        $presents = $bulletins->flatten()
+            ->pluck('semestre')
+            ->map(fn ($semestre): int => (int) $semestre)
+            ->filter(fn (int $semestre): bool => $semestre > 0)
+            ->unique()
+            ->sort()
+            ->values();
+
+        if ($presents->isNotEmpty()) {
+            $premier = (int) $presents->first();
+            $premier = $premier % 2 === 1 ? $premier : $premier - 1;
+
+            return [$premier, $premier + 1];
+        }
+
+        return [1, 2];
     }
 
     private function mapUes(Collection $bulletins): array

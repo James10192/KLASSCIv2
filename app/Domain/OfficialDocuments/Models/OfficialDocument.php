@@ -12,6 +12,18 @@ class OfficialDocument extends Model
 {
     public const TYPE_LMD_JURY_PV = 'lmd_jury_pv';
 
+    /**
+     * Releve de notes LMD.
+     *
+     * La colonne `document_type` est une chaine libre (string 64), donc l'ajout
+     * d'un type n'appelle aucune migration.
+     *
+     * Portee d'une serie : un etudiant, une annee universitaire. Le releve couvre
+     * tous les semestres de l'annee, conformement a la directive 03/2007/CM/UEMOA
+     * qui fait de la transferabilite des credits un principe fondateur.
+     */
+    public const TYPE_LMD_TRANSCRIPT = 'lmd_releve_notes';
+
     public const STATUS_VALID = 'valid';
     public const STATUS_REVOKED = 'revoked';
     public const STATUS_SUPERSEDED = 'superseded';

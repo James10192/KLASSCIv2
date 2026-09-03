@@ -2,7 +2,9 @@
 
 namespace App\Domain\OfficialDocuments\Services;
 
+use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPLMDJury;
+use App\Support\CodeInstance;
 use Illuminate\Support\Facades\DB;
 
 class PvNumberSequenceService
@@ -45,14 +47,46 @@ class PvNumberSequenceService
             ->max() ?? 0;
     }
 
+    /**
+     * Code de l'etablissement, via la source unique App\Support\CodeInstance.
+     *
+     * Il entre dans le numero legal du proces-verbal ET dans la cle de la table
+     * de sequence : une valeur devine casserait l'unicite de la suite. On refuse
+     * donc d'emettre tant que l'instance n'est pas configuree.
+     */
     private function tenantCode(): string
     {
-        return strtoupper((string) (config('app.tenant_code') ?? env('TENANT_CODE', 'PRES')));
+        return CodeInstance::exigerPourPieceOfficielle('un procès-verbal de jury');
     }
 
+    /**
+     * Libelle de l'annee tel qu'il doit apparaitre sur un document legal.
+     *
+     * On passe par l'accesseur du modele (`display_name`) et non par une lecture
+     * directe de `libelle` : cette colonne n'est renseignee par aucune ecriture
+     * applicative (elle est absente du `$fillable`), donc la lecture directe
+     * retombait sur l'identifiant technique et produisait « PV-7-YAKRO-0001 ».
+     * L'accesseur, lui, essaie `name`, puis `libelle`, puis reconstruit
+     * « 2025-2026 » a partir des dates.
+     *
+     * Le nettoyage d'origine est conserve tel quel : les separateurs sont
+     * retires, « 2025-2026 » devient « 20252026 ». Deux tests figent cette
+     * forme (OfficialDocumentServiceTest, ExamenSchedulingNumeroConvocationTest)
+     * alors que .claude/rules/jury-deliberation-uemoa.md documente la forme
+     * avec tirets — cet ecart est anterieur et se tranche a part, changer la
+     * forme d'un numero legal n'est pas la meme decision que corriger sa source.
+     */
     private function yearLabel(int $yearId): string
     {
-        $label = DB::table('esbtp_annee_universitaires')->where('id', $yearId)->value('libelle') ?? (string) $yearId;
-        return preg_replace('/[^A-Za-z0-9]/', '', $label);
+        $annee = ESBTPAnneeUniversitaire::query()->withTrashed()->find($yearId);
+        $label = trim((string) ($annee?->display_name ?? ''));
+
+        if ($label === '') {
+            $label = (string) $yearId;
+        }
+
+        $label = preg_replace('/[^A-Za-z0-9]/', '', $label);
+
+        return $label !== '' ? $label : (string) $yearId;
     }
 }

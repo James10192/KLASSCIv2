@@ -12,6 +12,7 @@ use App\Models\ESBTPLMDParcours;
 use App\Models\ESBTPMatiere;
 use App\Models\ESBTPPlanificationAcademique;
 use App\Models\User;
+use App\Support\CodeInstance;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -194,7 +195,7 @@ class ExamenSchedulingService
      */
     public function genererNumeroConvocation(ESBTPExamenPlanifie $examen): string
     {
-        $tenant = strtoupper((string) (config('app.tenant_code') ?? env('TENANT_CODE', 'PRES')));
+        $tenant = CodeInstance::exigerPourPieceOfficielle('une convocation d\'examen');
         $annee = $examen->relationLoaded('anneeUniversitaire')
             ? $examen->anneeUniversitaire
             : $examen->anneeUniversitaire()->first();

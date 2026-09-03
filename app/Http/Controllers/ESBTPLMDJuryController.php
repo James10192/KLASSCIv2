@@ -236,7 +236,13 @@ class ESBTPLMDJuryController extends Controller
 
     public function signerMembre(Request $request, ESBTPLMDJury $jury, ESBTPLMDJuryMembre $membre): JsonResponse
     {
-        abort_unless(auth()->user()?->can('lmd.jury.deliberate'), 403);
+        // Signer n'est pas deliberer. Un enseignant membre du jury doit pouvoir
+        // apposer sa signature sans detenir le droit de modifier une decision ;
+        // enregistrerSignature() verifie ensuite, sous verrou, qu'il est bien le
+        // membre vise (canBeSignedBy). Les detenteurs de lmd.jury.deliberate
+        // conservent l'acces : la garde est elargie, jamais restreinte.
+        $user = auth()->user();
+        abort_unless($user?->can('lmd.jury.sign') || $user?->can('lmd.jury.deliberate'), 403);
         abort_if($membre->jury_id !== $jury->id, 404);
         $data = $request->validate([
             'signature_data' => ['required', 'string', 'max:200000'],
