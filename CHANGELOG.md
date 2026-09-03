@@ -12,6 +12,16 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ## Septembre 2026
 
+### Sécurité
+
+- **Annuler son propre encaissement demande désormais un droit explicite** — un agent de caisse pouvait effacer le versement qu'il venait de saisir, tant qu'il était encore en attente et vieux de moins de cinq minutes. Cette possibilité ne découlait d'aucune décision : elle venait simplement du droit d'encaisser, si bien qu'une école qui n'en voulait pas n'avait pour seul recours que de retirer à ses guichets le droit de saisir un paiement. C'est maintenant une permission à part entière, **accordée à personne par défaut** : l'établissement la donne s'il la juge utile, et le bouton n'apparaît qu'à ceux qui l'ont. Le geste reste ce qu'il était là où on l'accorde, une correction à chaud sur un versement non validé, jamais sur celui d'un autre agent.
+
+### Améliorations
+
+- **Le tableau de bord de la caisse a été refait, et il suit désormais les permissions** — il annonçait quatre chiffres et une liste, dans les styles génériques du thème. Ses accès rapides étaient surtout écrits en dur : « Encaissement », « Liste de paiements » et « Ma caisse » s'affichaient à tout le monde, y compris à qui n'a pas le droit de les ouvrir, et le clic finissait sur un refus, ce qui se lit comme une panne plutôt que comme une limite de droits. Chaque accès dépend maintenant de sa permission, et la grille se remplit d'elle-même à mesure que l'établissement en accorde (journal de caisse, réconciliation) sans qu'une ligne de code change. Un guichet qui ne voit que ses propres versements lit « Ceux que j'ai saisis » là où un comptable lit « Tous les versements ». Les compteurs de pré-inscription ne paraissent que si le réglage ouvre la pré-inscription à la caisse. Et quand il n'y a rien à montrer, l'écran dit ce qui apparaîtra là et propose d'encaisser, plutôt qu'un « aucun paiement » sec. Dans la barre latérale, « Liste des Paiements » et « Suivi par Catégorie » suivent maintenant eux aussi la permission de lecture.
+
+- **L'annulation d'un versement se relit avant d'être enregistrée** — la fenêtre d'émission d'un avoir demandait un montant, un type et un motif sur un formulaire nu. Elle explique maintenant en toutes lettres ce que chaque choix entraîne (le crédit reste à l'école et rend le frais de nouveau dû, le remboursement sort de la caisse et apparaît au journal du jour), puis affiche un récapitulatif à confirmer avant l'enregistrement : le montant, l'étudiant, le reçu, le motif saisi, et le rappel que l'opération est inscrite au journal d'audit et ne s'efface pas. Le motif passe de cinq à dix caractères, et le bouton reste inactif tant que la saisie est incomplète.
+
 ### Ajouts
 
 - **Retirer une permission à un rôle depuis l'outil en ligne de commande** — on savait étendre un rôle sur une instance, pas revenir en arrière : un profil posé trop large y restait. Le retrait existe désormais, et il met à jour la liste des extensions voulues, sinon ce qui vient d'être retiré resterait protégé et le ménage suivant le remettrait indéfiniment. Les rôles `superAdmin` et `serviceTechnique` en sont exclus : ce sont eux qui permettent de réparer une instance, et se couper cette branche à distance laisserait l'école sans recours.
