@@ -28,6 +28,14 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 - **L'identité de l'établissement alimente klassci.com** — deux points d'entrée publics (`GET /api/public/etablissement` et `/logo`) exposent le nom, le sigle, la ville, le logo et l'identité visuelle réglée pour les documents PDF. Le site vitrine s'en sert pour faire défiler les logos des écoles sur sa page d'accueil, pour illustrer la liste « Choisissez votre établissement », et pour habiller le formulaire d'inscription en ligne aux couleurs de l'école choisie. L'école ne configure donc son identité qu'une seule fois : elle vaut pour ses bulletins comme pour sa page publique. Aucune donnée nominative, financière ou contractuelle ne transite, les couleurs sont assainies avant d'être servies, et une école sans logo rend 404 plutôt que la marque KLASSCI. Voir `docs/api/PUBLIC_ETABLISSEMENT.md`.
 
+- **Relevé de notes officiel pour le cursus universitaire** — les étudiants en licence disposent désormais d'un relevé de notes en bonne et due forme : semestre par semestre puis le cumul de l'année, avec les crédits capitalisés, la moyenne, la mention, et pour chaque unité d'enseignement si elle est acquise ou non. Il se consulte en aperçu, se télécharge, et porte un code d'authenticité qui permet à un tiers — un employeur, une autre école — de vérifier qu'il sort bien de l'établissement et n'a pas été retouché.
+
+- **La seconde session peut enfin être conclue** — les notes de rattrapage se saisissent directement depuis la session de seconde chance, sans détour par un autre écran. La note retenue pour chaque enseignement est recalculée dans la foulée, selon la règle que l'établissement a choisie : la seconde session remplace la première, ou c'est la meilleure des deux qui compte.
+
+### Améliorations
+
+- **Le calcul des résultats universitaires est verrouillé par des contrôles automatiques** — moyennes, compensation entre unités d'enseignement et attribution des crédits sont désormais vérifiés à chaque évolution du logiciel. Une erreur introduite par mégarde dans ce calcul ne peut plus passer inaperçue jusqu'aux bulletins des étudiants.
+
 ### Corrections
 
 - **Une instance neuve peut de nouveau être créée sur MySQL 8** — la création du schéma s'arrêtait net sur une colonne à laquelle MySQL 8 interdit une valeur par défaut. Aucune base existante n'était touchée, mais ouvrir un nouvel établissement sur ce moteur était impossible, et rien ne le signalait tant qu'on ne partait pas de zéro. La valeur par défaut a été déplacée là où elle s'applique quel que soit le moteur.
@@ -41,6 +49,24 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 - **Un barème LMD est de nouveau vérifiable à distance** (`GET /api/cli/frais/bareme`) — la lecture renvoyait chaque configuration avec une filière vide dès que l'établissement est en LMD, où la portée est le parcours et non la filière : toutes les lignes se ressemblaient. Un frais de scolarité à 0 pour l'affecté et 290 000 pour le non-affecté s'affichait par ailleurs comme un frais à 0, les montants par statut d'affectation n'étant pas renvoyés. La lecture donne maintenant la portée complète, les trois montants, et sur chaque catégorie qui la paie et dans quel ordre un versement la solde.
 
 - **Les chiffres des exports PDF restent lisibles quelle que soit la couleur choisie par l'école** — le fond des bandeaux d'indicateurs vient des paramètres d'établissement, mais la couleur du texte était écrite en dur. Sur l'export des paiements, les chiffres étaient même invisibles avec la couleur par défaut : une règle du thème partagé les peignait avec la couleur principale, sur un fond peint avec cette même couleur. La couleur du texte se déduit désormais du fond, selon le calcul de contraste WCAG : elle reste blanche sur un fond sombre, devient sombre sur un fond clair, et ne descend jamais sous le rapport de 4,5:1 exigé pour du texte de taille normale. Appliqué en priorité aux PDF, où le défaut est irrattrapable — sur un écran on peut sélectionner le texte pour le lire, sur une feuille imprimée non. Concerne l'export des paiements, le recouvrement quotidien, les analytics financiers, ainsi que les en-têtes de tableau et pastilles de statut communs à tous les documents.
+
+- **L'étudiant du cursus universitaire voit enfin son bulletin** — un étudiant inscrit dans une classe en licence n'avait aucun accès à ses bulletins semestriels, même une fois publiés : l'écran restait vide pour lui seul. Il les consulte désormais comme les autres — moyenne, crédits capitalisés, rang, mention, détail unité par unité et décision du conseil.
+
+- **La maquette pédagogique se saisit de nouveau depuis l'écran** — créer ou modifier une unité d'enseignement perdait en silence une partie de ce qui venait d'être tapé : le parcours, le semestre, la filière, le niveau et les enseignements qui la composent. Il fallait tout ressaisir sans comprendre pourquoi. Ces informations sont conservées, et la fiche détaillée d'une unité s'ouvre à nouveau au lieu d'afficher une erreur.
+
+- **Les réglages du cursus universitaire pilotent enfin ce qu'ils annoncent** — le seuil de validation saisi à l'écran n'était pas celui qu'appliquaient le jury et le rattrapage, et les crédits attendus par semestre comme le total exigé pour le diplôme n'étaient lus nulle part. L'école réglait des valeurs qui ne changeaient rien à ses résultats. Elles sont désormais appliquées, et les réglages qui ne pilotaient rien ont été retirés plutôt que laissés en place à donner le change.
+
+- **Les procès-verbaux de délibération redeviennent conformes** — le numéro d'un procès-verbal portait un identifiant interne à la place de l'année universitaire, si bien que deux délibérations d'années différentes pouvaient se confondre. Le procès-verbal annuel, lui, sortait vide dès la deuxième année. Les deux sont corrigés, et une vérification permet désormais de lister les procès-verbaux qui ont dépassé la durée de conservation légale.
+
+- **L'historique d'émargement des enseignants est de nouveau consultable** — la page ne montrait plus rien. Elle affiche à nouveau chaque séance pointée — matière, classe, arrivée ou départ, statut — ainsi que les compteurs du mois.
+
+- **Le portefeuille de crédits d'un étudiant sans historique ne provoque plus d'erreur** — l'écran refusait de s'ouvrir tant qu'aucun crédit n'avait été enregistré, c'est-à-dire précisément pour un étudiant qui vient d'arriver, à la rentrée. Il s'affiche maintenant vide, ce qu'il aurait toujours dû faire.
+
+- **Le bouton de création d'un examen répond de nouveau** — il restait inerte au clic, sans message ni explication ; programmer un examen depuis cette page était impossible.
+
+### Sécurité
+
+- **Chaque écran du cursus universitaire exige désormais un droit qui lui est propre** — supprimer une maquette pédagogique, publier un bulletin ou émettre un relevé de notes sont réservés aux profils qui pilotent la scolarité, le secrétariat gardant la consultation. À l'inverse, l'enseignant accède enfin à la saisie de ses propres notes et à la signature du procès-verbal du jury dont il est membre, et l'étudiant à son bulletin semestriel.
 
 ## Août 2026
 
