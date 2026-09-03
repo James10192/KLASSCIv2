@@ -920,6 +920,7 @@ class ESBTPInscriptionController extends Controller
                 "subscription" => $subscription,
                 "satisfied_in_kind" => (bool) $satisfiedInKind,
                 "can_mark_in_kind" => $inKind->canMarkCategory($inscription, $category, $subscription),
+                "can_unmark_in_kind" => $subscription && $inKind->canUnmarkDeposited($subscription),
                 "status" => $satisfiedInKind
                     ? "deposited"
                     : ($solde <= 0
@@ -973,6 +974,7 @@ class ESBTPInscriptionController extends Controller
                     "subscription" => $subscription,
                     "satisfied_in_kind" => $satisfiedInKind,
                     "can_mark_in_kind" => $inKind->canMarkCategory($inscription, $category, $subscription),
+                "can_unmark_in_kind" => $subscription && $inKind->canUnmarkDeposited($subscription),
                     "status" => $satisfiedInKind
                         ? "deposited"
                         : ($solde <= 0

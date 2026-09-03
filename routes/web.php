@@ -1399,6 +1399,12 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 ->middleware('can:markInKind,inscription')
                 ->name('inscriptions.in-kind-deposits.store');
 
+            // Le retour en arriere. Meme autorisation qu'a l'aller : qui peut
+            // marquer peut defaire, tant qu'aucun paiement n'est encaisse.
+            Route::delete('/inscriptions/{inscription}/in-kind-deposits/{category}', \App\Http\Controllers\ESBTP\UnmarkInKindDepositedController::class)
+                ->middleware('can:markInKind,inscription')
+                ->name('inscriptions.in-kind-deposits.destroy');
+
             Route::middleware(['permission:inscriptions.edit', 'throttle:20,1'])->group(function () {
                 Route::post('/inscriptions/frais-manquants/preview', [\App\Http\Controllers\ESBTP\CompleterFraisManquantsController::class, 'preview'])
                     ->name('inscriptions.frais-manquants.preview');

@@ -494,6 +494,7 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
         Route::post('/reprise/inscriptions-annee-ecoulee', [App\Http\Controllers\API\CLI\CLIRepriseController::class, 'inscriptionsAnneeEcoulee'])->name('reprise.inscriptions-annee-ecoulee');
         Route::post('/frais/corriger-souscriptions', [App\Http\Controllers\API\CLI\CLIFraisController::class, 'corrigerSouscriptions'])->name('frais.corriger-souscriptions');
         Route::post('/frais/repartir-trop-percu', [App\Http\Controllers\API\CLI\CLIFraisController::class, 'repartirTropPercu'])->name('frais.repartir-trop-percu');
+        Route::post('/frais/depot-nature/annuler', [App\Http\Controllers\API\CLI\CLIFraisController::class, 'annulerDepotNature'])->name('frais.depot-nature.annuler');
         Route::get('/inscriptions/types', [App\Http\Controllers\API\CLI\CLIInscriptionTypeController::class, 'recenser'])->name('inscriptions.types');
         Route::get('/settings', [App\Http\Controllers\API\CLI\CLISettingsController::class, 'index'])->name('settings.index');
         Route::post('/settings', [App\Http\Controllers\API\CLI\CLISettingsController::class, 'update'])->name('settings.update');
