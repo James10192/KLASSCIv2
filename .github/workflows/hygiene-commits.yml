@@ -139,6 +139,13 @@ jobs:
       # instance se declare correctement, et celle qui dit ce qu'un jeton CLI a
       # le droit d'ecrire dans un .env.
       #
+      # tests/Feature/Exploitation y figure malgre son nom : ces tests montent
+      # leur propre base sqlite en memoire, sans service MySQL, et executent le
+      # SQL des commandes d'exploitation. C'est la que se voient les colonnes
+      # qu'on croit exister — une clause `deleted_at` sur une table qui n'en a
+      # pas passe toutes les relectures et tombe au premier lancement chez le
+      # client.
+      #
       # La liste est explicite parce que tests/Unit n'est pas entierement vert
       # aujourd'hui. Elle a le defaut de sa vertu : un repertoire ajoute demain
       # n'y sera pas, et ne tournera donc nulle part. A remplacer par
@@ -156,6 +163,7 @@ jobs:
             tests/Unit/Services/FraisAudienceTest.php \
             tests/Unit/Services/ExtensionsDeRoleTest.php \
             tests/Unit/Exploitation \
+            tests/Feature/Exploitation \
             tests/Unit/Deployment
           do
             echo "::group::$chemin"
