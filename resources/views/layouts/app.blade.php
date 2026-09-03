@@ -2263,6 +2263,11 @@
                                     <span class="menu-dot"></span>
                                     <span>Configuration Frais</span>
                                 </a>
+                                {{-- Ces deux entrées suivent la permission de lecture, comme les
+                                     autres du bloc : sans elle, le lien menait à un refus après
+                                     le clic, ce qui se lit comme une panne plutôt que comme une
+                                     limite de droits. --}}
+                                @canany(['paiements.view', 'paiements.view_own'])
                                 <a href="{{ route('esbtp.paiements.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.paiements.index') ? 'active' : '' }}">
                                     <span class="menu-dot"></span>
                                     <span>Liste des Paiements</span>
@@ -2271,6 +2276,7 @@
                                     <span class="menu-dot"></span>
                                     <span>Suivi par Catégorie</span>
                                 </a>
+                                @endcanany
                                 {{-- Lot 15 — Export détaillé --}}
                                 @can('paiements.export')
                                 <a href="{{ route('esbtp.paiements.export-detaille.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.paiements.export-detaille.*') ? 'active' : '' }}">
