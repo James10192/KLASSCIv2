@@ -204,6 +204,23 @@
         font-weight: 500;
     }
 
+    /* N'apparait que si un avoir « credit sur compte » existe dans le
+       perimetre affiche — donc rarement, et seulement quand il explique un
+       ecart que l'utilisateur a sous les yeux. */
+    .pi-hero-kpi-note {
+        margin-top: .3rem;
+        padding-top: .3rem;
+        border-top: 1px solid rgba(255,255,255,.15);
+        font-size: .68rem;
+        line-height: 1.3;
+        color: rgba(255,255,255,.78);
+        font-weight: 500;
+    }
+    .pi-hero-kpi-note i {
+        margin-right: .25rem;
+        opacity: .75;
+    }
+
     /* ═══════ Alert session ═══════ */
     .pi-alert--success {
         background: #ecfdf5;

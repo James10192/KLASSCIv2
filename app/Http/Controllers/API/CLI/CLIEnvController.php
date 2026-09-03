@@ -49,13 +49,23 @@ class CLIEnvController extends BaseApiController
                 return $this->errorResponse($e->getMessage(), [], 500);
             }
 
-            $cles[] = [
+            $entree = [
                 'cle' => $cle,
                 'definie' => $empreinte !== null,
                 'empreinte' => $empreinte,
                 'longueur_min' => CleEnvAutorisee::longueurMinimale($cle),
                 'description' => CleEnvAutorisee::description($cle),
             ];
+
+            // Une empreinte ne sert a rien pour un identifiant : ce qu'on veut
+            // savoir, c'est sous quel code l'instance se declare. La valeur
+            // n'est publiee que pour les cles explicitement non secretes.
+            if (! CleEnvAutorisee::estSecrete($cle)) {
+                $entree['valeur'] = $ecrivain->valeur($cle);
+                $entree['format_attendu'] = CleEnvAutorisee::formatLisible($cle);
+            }
+
+            $cles[] = $entree;
         }
 
         return $this->successResponse(['cles' => $cles]);
@@ -97,6 +107,19 @@ class CLIEnvController extends BaseApiController
 
         if (strlen($valide['valeur']) < $minimum) {
             return $this->errorResponse("La valeur de {$cle} doit faire au moins {$minimum} caracteres.", [], 422);
+        }
+
+        // Un identifiant se controle par sa forme, pas par sa longueur :
+        // « esbtp-abidjan » pose sur une instance qui n'est pas Abidjan fait
+        // exactement la bonne longueur. Le format ne dit pas que le code est le
+        // BON — cela, seul « tenant:verifier-identite » le confronte a l'hote et
+        // a la base — mais il ecarte ce qui ne peut etre un code du tout.
+        if (! CleEnvAutorisee::respecteFormat($cle, $valide['valeur'])) {
+            return $this->errorResponse(
+                sprintf('La valeur de %s ne respecte pas le format attendu : %s.', $cle, CleEnvAutorisee::formatLisible($cle)),
+                [],
+                422
+            );
         }
 
         try {

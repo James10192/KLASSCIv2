@@ -24,16 +24,36 @@ return new class extends Migration
             return;
         }
 
-        // MySQL refuse de dropper l'index si des FK l'utilisent pour la validation
-        // (matiere_id, filiere_id, niveau_etude_id, annee_universitaire_id sont tous FK).
-        // On désactive temporairement les FK checks pour cette opération.
-        DB::statement('SET FOREIGN_KEY_CHECKS=0');
-        try {
-            DB::statement('ALTER TABLE esbtp_matiere_coefficients DROP INDEX matiere_coeff_unique');
-        } catch (\Throwable $e) {
-            // déjà droppée ou nom différent — ignore
+        // MySQL refuse de supprimer un index qui soutient une clé étrangère, et
+        // SET FOREIGN_KEY_CHECKS=0 ne lève PAS cette règle : il ne désactive que
+        // la validation des lignes. MariaDB, lui, l'accepte — d'où une migration
+        // qui passe sur toute la flotte et échoue sur MySQL 8.
+        //
+        // Elle échouait de la pire façon : le `catch` vide avalait le refus, et
+        // la panne ressortait quarante lignes plus bas sous « Duplicate key name »,
+        // qui ne dit rien de la cause. Le remède est de donner à chaque clé
+        // étrangère son propre index AVANT de retirer l'unique composite — seul
+        // `matiere_id` s'appuyait sur lui, étant en tête du composite, mais les
+        // quatre sont posés pour que la migration ne dépende pas de cet ordre.
+        //
+        // Même remède que pour esbtp_attendance_manual_hours (2026_04_23).
+        foreach ([
+            'matiere_coeff_matiere_idx' => 'matiere_id',
+            'matiere_coeff_filiere_idx' => 'filiere_id',
+            'matiere_coeff_niveau_idx' => 'niveau_etude_id',
+            'matiere_coeff_annee_idx' => 'annee_universitaire_id',
+        ] as $nom => $colonne) {
+            if (! $this->indexExiste($nom)) {
+                DB::statement("ALTER TABLE esbtp_matiere_coefficients ADD INDEX {$nom} ({$colonne})");
+            }
         }
-        DB::statement('SET FOREIGN_KEY_CHECKS=1');
+
+        // Plus de try/catch : si la suppression échoue maintenant, c'est une
+        // cause qu'on ne connaît pas, et elle doit se voir ici plutôt que de
+        // ressortir déguisée à la fin.
+        if ($this->indexExiste('matiere_coeff_unique')) {
+            DB::statement('ALTER TABLE esbtp_matiere_coefficients DROP INDEX matiere_coeff_unique');
+        }
 
         Schema::table('esbtp_matiere_coefficients', function (Blueprint $table) {
             if (!Schema::hasColumn('esbtp_matiere_coefficients', 'periode')) {
@@ -74,12 +94,25 @@ return new class extends Migration
             DB::table('esbtp_matiere_coefficients')->insert($batchS2);
         }
 
-        Schema::table('esbtp_matiere_coefficients', function (Blueprint $table) {
-            $table->unique(
-                ['matiere_id', 'filiere_id', 'niveau_etude_id', 'annee_universitaire_id', 'periode'],
-                'matiere_coeff_unique'
-            );
-        });
+        if (! $this->indexExiste('matiere_coeff_unique')) {
+            Schema::table('esbtp_matiere_coefficients', function (Blueprint $table) {
+                $table->unique(
+                    ['matiere_id', 'filiere_id', 'niveau_etude_id', 'annee_universitaire_id', 'periode'],
+                    'matiere_coeff_unique'
+                );
+            });
+        }
+    }
+
+    private function indexExiste(string $nom): bool
+    {
+        $ligne = DB::selectOne(
+            'SELECT COUNT(*) AS c FROM INFORMATION_SCHEMA.STATISTICS '
+            .'WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND INDEX_NAME = ?',
+            ['esbtp_matiere_coefficients', $nom]
+        );
+
+        return ((int) $ligne->c) > 0;
     }
 
     public function down()
@@ -88,11 +121,12 @@ return new class extends Migration
             return;
         }
 
-        DB::statement('SET FOREIGN_KEY_CHECKS=0');
-        try {
+        // Les index dédiés posés par up() soutiennent les clés étrangères, donc
+        // la suppression de l'unique composite passe ici sans désactiver quoi
+        // que ce soit — et sans avaler son propre échec.
+        if ($this->indexExiste('matiere_coeff_unique')) {
             DB::statement('ALTER TABLE esbtp_matiere_coefficients DROP INDEX matiere_coeff_unique');
-        } catch (\Throwable $e) {}
-        DB::statement('SET FOREIGN_KEY_CHECKS=1');
+        }
 
         DB::table('esbtp_matiere_coefficients')->where('periode', 'semestre2')->delete();
 
