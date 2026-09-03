@@ -74,10 +74,11 @@ class ESBTPLMDSessionController extends Controller
             "La saisie des notes de seconde session ne vous est pas ouverte. Demandez le droit de saisie au responsable de la session."
         );
 
+        abort_unless($session->type === 'rattrapage', 404);
+
         // Sans titre de supervision, l'ecran se borne aux elements constitutifs
         // confies a l'enseignant.
         $limiterAEnseignantId = $this->limiteEnseignantRattrapage();
-        abort_unless($session->type === 'rattrapage', 404);
 
         $session->load(['anneeUniversitaire', 'parcours', 'parentSession']);
 

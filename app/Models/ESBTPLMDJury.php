@@ -124,7 +124,13 @@ class ESBTPLMDJury extends Model implements Auditable
      */
     public function assertConsultablePar(?\App\Models\User $user): void
     {
-        abort_unless((bool) $user?->can('lmd.jury.view'), 403);
+        // Exporter suppose de pouvoir consulter : le droit d'export choisit un
+        // format, il n'ouvre pas une deliberation.
+        abort_unless(
+            (bool) $user?->can('lmd.jury.view'),
+            403,
+            "La consultation des délibérations ne vous est pas ouverte. Demandez ce droit au responsable de la scolarité."
+        );
 
         if (self::utilisateurVoitTousLesJurys($user)) {
             return;
