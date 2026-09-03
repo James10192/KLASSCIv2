@@ -203,7 +203,8 @@ jobs:
             tests/Unit/Exploitation \
             tests/Feature/Exploitation \
             tests/Unit/Deployment \
-            tests/Unit/Routes
+            tests/Unit/Routes \
+            tests/Unit/Comptabilite
           do
             echo "::group::$chemin"
             php vendor/bin/phpunit "$chemin" --no-coverage || echec=1

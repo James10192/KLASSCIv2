@@ -29,22 +29,29 @@ class ModeReglementController extends Controller
     use VerrouilleLesPeriodesComptables;
 
     /**
-     * Les modes acceptes.
+     * Les modes acceptes, ecrits EXACTEMENT comme l'ecran de saisie les
+     * enregistre.
      *
-     * Liste fermee plutot que champ libre : « Espece », « especes » et
-     * « ESPECES » sont trois modes differents pour le journal de caisse, qui
-     * regroupe par cette colonne. Une saisie libre fabrique des lignes
-     * fantomes que personne ne rapproche ensuite.
+     * La colonne stocke le libelle, pas un code : le formulaire d'encaissement
+     * pose `Especes`, `Cheque`, `Mobile Money`… La correction doit donc ecrire
+     * la meme chaine, au caractere pres. « especes » en minuscules serait une
+     * TROISIEME valeur pour le journal de caisse, qui regroupe par ce champ :
+     * la ligne corrigee disparaitrait de la colonne Especes pour en fonder une
+     * autre, que personne ne rapproche ensuite.
+     *
+     * Liste fermee, donc, et alignee sur `$allModeOptions` de la vue
+     * `esbtp/paiements/create.blade.php`. Un test la fige.
      */
     public const MODES = [
-        'espèces' => 'Espèces',
-        'chèque' => 'Chèque',
-        'virement' => 'Virement bancaire',
-        'mobile_money' => 'Mobile money',
-        'wave' => 'Wave',
-        'orange_money' => 'Orange Money',
-        'mtn_money' => 'MTN Money',
-        'moov_money' => 'Moov Money',
+        'Espèces' => 'Espèces',
+        'Chèque' => 'Chèque',
+        'Virement' => 'Virement',
+        'Mobile Money' => 'Mobile Money',
+        'Orange Money' => 'Orange Money',
+        'MTN Money' => 'MTN Money',
+        'Moov Money' => 'Moov Money',
+        'Wave' => 'Wave',
+        'Carte bancaire' => 'Carte bancaire',
     ];
 
     public function __invoke(Request $request, ESBTPPaiement $paiement)
