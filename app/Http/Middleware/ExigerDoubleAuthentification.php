@@ -24,15 +24,35 @@ class ExigerDoubleAuthentification
 {
     public const CLE_SESSION = 'double_auth_presente';
 
-    public function __construct(private DoubleAuthentification $doubleAuth)
-    {
-    }
-
     public function handle(Request $request, Closure $next): Response
     {
         $utilisateur = $request->user();
 
-        if ($utilisateur === null || ! $this->doubleAuth->estExigee($utilisateur)) {
+        if ($utilisateur === null) {
+            return $next($request);
+        }
+
+        // La dependance du second facteur se resout ICI, et non dans le
+        // constructeur.
+        //
+        // Injectee au constructeur, elle etait construite a CHAQUE requete web,
+        // ce filtre appartenant au groupe « web ». Une instance dont le vendor
+        // n'avait pas ete mis a jour apres la livraison ne pouvait donc plus
+        // servir une seule page : le conteneur echouait avant meme d'atteindre
+        // l'ecran de connexion, et l'application entiere repondait 500 pour une
+        // fonctionnalite qui n'etait activee nulle part.
+        //
+        // Une garde de securite qui ferme l'etablissement au lieu de le
+        // proteger n'est pas une garde. Sans le paquet, on laisse passer :
+        // c'est exactement l'etat d'avant la livraison, et le reglage reste
+        // sans effet tant que personne n'a confirme de second facteur.
+        if (! class_exists(\PragmaRX\Google2FA\Google2FA::class)) {
+            return $next($request);
+        }
+
+        $doubleAuth = app(DoubleAuthentification::class);
+
+        if (! $doubleAuth->estExigee($utilisateur)) {
             return $next($request);
         }
 
