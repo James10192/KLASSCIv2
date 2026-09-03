@@ -30,7 +30,7 @@
             <tr>
                 <th>N°</th><th>IP</th><th>Nom</th><th>Prénoms</th>
                 <th>Né(e) le</th><th>Lieu</th><th>Sexe</th>
-                <th>Moy S1</th><th>Moy S2</th><th>Moy. ann.</th><th>Crédits</th><th>Décision</th>
+                <th>Moy S{{ $payload['semestres']['premier'] ?? 1 }}</th><th>Moy S{{ $payload['semestres']['second'] ?? 2 }}</th><th>Moy. ann.</th><th>Crédits</th><th>Décision</th>
             </tr>
         </thead>
         <tbody>

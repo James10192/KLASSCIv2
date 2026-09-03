@@ -63,9 +63,16 @@ class LmdPvAnnuelExport implements FromArray, WithTitle, ShouldAutoSize, WithEve
 
     private function headings(): array
     {
+        // Les deux semestres de l'annee ne sont pas toujours 1 et 2 : une Licence 2
+        // porte les semestres 3 et 4, une Licence 3 les semestres 5 et 6.
+        $premier = (int) ($this->payload['semestres']['premier'] ?? 1);
+        $second = (int) ($this->payload['semestres']['second'] ?? 2);
+
         $base = [
             "N° d'ordre", 'IP', 'Nom', 'Prénoms', 'Date de naissance', 'Lieu de naissance',
-            'Sexe', 'Nationalité', 'Moy S1', 'Crédits S1', 'Moy S2', 'Crédits S2',
+            'Sexe', 'Nationalité',
+            'Moy S'.$premier, 'Crédits S'.$premier,
+            'Moy S'.$second, 'Crédits S'.$second,
             'Moyenne annuelle', 'Total crédits', 'Décision de fin d\'année',
         ];
         foreach ($this->payload['ues_header'] as $ue) {
