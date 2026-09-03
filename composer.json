@@ -11,6 +11,7 @@
     "license": "MIT",
     "require": {
         "php": "^8.3",
+        "bacon/bacon-qr-code": "^3.1",
         "barryvdh/laravel-dompdf": "^2.0",
         "doctrine/dbal": "^3.0",
         "fruitcake/laravel-cors": "^3.0",
@@ -25,6 +26,7 @@
         "maatwebsite/excel": "^3.1",
         "mpdf/mpdf": "^8.2",
         "owen-it/laravel-auditing": "^13.0",
+        "pragmarx/google2fa": "^9.1",
         "setasign/fpdf": "^1.8",
         "setasign/fpdi": "^2.6",
         "spatie/browsershot": "^5.0",

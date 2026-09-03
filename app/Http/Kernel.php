@@ -49,6 +49,10 @@ class Kernel extends HttpKernel
             \App\Http\Middleware\UpdateLastLogin::class,
             \App\Http\Middleware\RouteDebugMiddleware::class,
             \App\Http\Middleware\ContractExpiryMiddleware::class,
+            // Retient une session tant que le second facteur n'a pas ete
+            // presente. Ne concerne QUE les comptes qui en ont deja confirme
+            // un : activer le reglage n'enferme personne dehors.
+            \App\Http\Middleware\ExigerDoubleAuthentification::class,
         ],
 
         'api' => [
