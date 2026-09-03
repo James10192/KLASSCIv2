@@ -485,7 +485,7 @@ class ESBTPLMDBulletinController extends Controller
             'code_etablissement' => SettingsHelper::get('lmd_bulletin_code_etablissement', ''),
             'statut' => SettingsHelper::get('lmd_bulletin_statut', 'Privé'),
             'direction' => SettingsHelper::get('lmd_bulletin_direction', ''),
-            'notice_text' => SettingsHelper::get('lmd_bulletin_notice_text', 'Pour les UE non acquises il vous sera délivré une attestation de réussite après validation de celles-ci. Un ECUE n\'est ni transférable ni capitalisable.'),
+            'notice_text' => SettingsHelper::get('lmd_bulletin_notice_text', LMDBulletinService::NOTICE_DEFAUT),
             'bottom_text' => SettingsHelper::get('lmd_bulletin_bottom_text', 'Conservez soigneusement ce bulletin de notes. Aucun duplicata ne sera délivré.'),
         ];
 

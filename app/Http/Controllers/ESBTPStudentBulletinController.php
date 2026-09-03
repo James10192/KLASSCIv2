@@ -12,6 +12,7 @@ use App\Models\ESBTPBulletinDetail;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPConfigMatiere;
 use App\Models\ESBTPFiliere;
+use App\Models\ESBTPLMDBulletin;
 use App\Models\ESBTPNiveauEtude;
 use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPEvaluation;
@@ -20,6 +21,7 @@ use App\Models\ESBTPMatiereCoefficient;
 use App\Models\ESBTPNote;
 use App\Models\ESBTPResultat;
 use App\Services\ESBTP\ESBTPAbsenceService;
+use App\Services\LMDBulletinService;
 use Carbon\Carbon;
 use App\Http\Requests\Bulletin\BulkUpdateMoyennesRequest;
 use App\Http\Requests\Bulletin\GenerateClasseBulletinsRequest;
@@ -216,6 +218,12 @@ class ESBTPStudentBulletinController extends Controller
             ])->with('warning', 'Vous n\'avez pas d\'inscription active pour l\'année en cours. Veuillez contacter l\'administration.');
         }
 
+        // Aiguillage BTS / LMD : les deux systemes ont leurs propres tables,
+        // leurs propres services et leurs propres vues. On ne les melange jamais.
+        if (optional($inscription->classe)->isLMD()) {
+            return $this->studentLmdBulletins($etudiant, $anneeCourante, $inscription);
+        }
+
         // 3. Récupérer les bulletins de l'année courante uniquement
         $bulletins = ESBTPBulletin::where('etudiant_id', $etudiant->id)
             ->where('annee_universitaire_id', $anneeCourante->id)
@@ -270,7 +278,7 @@ class ESBTPStudentBulletinController extends Controller
             ->first();
 
         if (! $bulletin) {
-            return redirect()->route('mon-bulletin.index')->with('error', 'Bulletin non trouvé ou non autorisé.');
+            return redirect()->route('esbtp.mon-bulletin.index')->with('error', 'Bulletin non trouvé ou non autorisé.');
         }
 
         try {
@@ -292,12 +300,65 @@ class ESBTPStudentBulletinController extends Controller
         } catch (\Exception $e) {
             // Gestion des erreurs de configuration
             if (str_contains($e->getMessage(), 'Configuration bulletin manquante')) {
-                return redirect()->route('mon-bulletin.index')
+                return redirect()->route('esbtp.mon-bulletin.index')
                     ->with('error', 'Ce bulletin n\'est pas encore configuré ou disponible.');
             }
 
-            return redirect()->route('mon-bulletin.index')
+            return redirect()->route('esbtp.mon-bulletin.index')
                 ->with('error', 'Erreur lors de l\'affichage du bulletin : '.$e->getMessage());
         }
+    }
+
+    /**
+     * Liste des bulletins LMD publies de l'etudiant connecte.
+     *
+     * Chemin strictement LMD : table esbtp_lmd_bulletins, vue dediee. Aucune
+     * donnee ne transite par le chemin BTS.
+     */
+    private function studentLmdBulletins(
+        ESBTPEtudiant $etudiant,
+        ESBTPAnneeUniversitaire $anneeCourante,
+        $inscription
+    ) {
+        $bulletins = ESBTPLMDBulletin::where('etudiant_id', $etudiant->id)
+            ->where('annee_universitaire_id', $anneeCourante->id)
+            ->where('is_published', true)
+            ->with(['classe', 'anneeUniversitaire', 'parcours'])
+            ->orderBy('semestre')
+            ->get();
+
+        return view('esbtp.lmd.bulletins.mon-bulletin', compact(
+            'bulletins',
+            'etudiant',
+            'anneeCourante',
+            'inscription'
+        ));
+    }
+
+    /**
+     * Affiche un bulletin LMD publie appartenant a l'etudiant connecte.
+     */
+    public function showStudentLmdBulletin(ESBTPLMDBulletin $bulletin)
+    {
+        $user = Auth::user();
+        $etudiant = ESBTPEtudiant::where('user_id', $user->id)->first();
+
+        if (! $etudiant) {
+            return redirect()->route('dashboard')->with('error', 'Profil étudiant non trouvé.');
+        }
+
+        if ((int) $bulletin->etudiant_id !== (int) $etudiant->id) {
+            return redirect()->route('esbtp.mon-bulletin.index')
+                ->with('error', 'Bulletin non trouvé ou non autorisé.');
+        }
+
+        if (! $bulletin->is_published) {
+            return redirect()->route('esbtp.mon-bulletin.index')
+                ->with('warning', "Ce bulletin n'est pas encore publié par l'administration.");
+        }
+
+        $data = app(LMDBulletinService::class)->preparerDonneesBulletin($bulletin);
+
+        return view('esbtp.lmd.bulletins.mon-bulletin-detail', $data);
     }
 }

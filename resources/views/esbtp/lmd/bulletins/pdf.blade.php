@@ -359,7 +359,7 @@
      IMPORTANT NOTICE
      ═══════════════════════════════════════════════════════ --}}
 <div class="notice">
-    <strong>Très important:</strong> {{ $bCfg['notice_text'] ?? 'Pour les UE non acquises il vous sera délivré une attestation de réussite après validation de celles-ci. Un ECUE n\'est ni transférable ni capitalisable.' }}
+    <strong>Très important:</strong> {{ $bCfg['notice_text'] ?? \App\Services\LMDBulletinService::NOTICE_DEFAUT }}
 </div>
 
 {{-- ═══════════════════════════════════════════════════════
