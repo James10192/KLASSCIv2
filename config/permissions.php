@@ -974,9 +974,29 @@ return [
         ],
         'paiements.avoir' => [
             'label' => 'Émettre un avoir (crédit ou remboursement)',
-            'description' => 'Pièce inverse liée à un paiement validé. Crédit = réduit le dû sans sortir de caisse. Remboursement = sortie de caisse au journal du jour.',
+            'description' => 'Pièce inverse liée à un paiement validé. Crédit = réduit le dû sans sortir de caisse. Remboursement = sortie de caisse au journal du jour. Porte sur N\'IMPORTE QUEL versement, y compris ceux d\'un autre agent.',
             'group' => 'Paiements',
             'icon' => 'fa-file-invoice',
+        ],
+
+        // Cette permission n'est accordée à personne par défaut, et c'est
+        // volontaire.
+        //
+        // La fenêtre anti-erreur existait sans droit propre : elle découlait de
+        // « paiements.create », donc tout agent de caisse pouvait effacer son
+        // encaissement des cinq dernières minutes. Une école qui ne veut pas
+        // qu'un guichet défasse ses propres écritures n'avait aucun moyen de le
+        // dire, sinon retirer le droit d'encaisser.
+        //
+        // Le geste reste utile là où on le veut : une somme mal saisie se
+        // corrige mieux à chaud que par un avoir. Mais c'est désormais une
+        // décision d'établissement, prise dans la configuration des rôles, pas
+        // un effet de bord du droit d'encaisser.
+        'paiements.cancel_own' => [
+            'label' => 'Annuler son propre versement récent (fenêtre anti-erreur)',
+            'description' => 'Permet à l\'agent qui vient de saisir un versement encore EN ATTENTE de l\'annuler lui-même, dans la fenêtre définie par le réglage « comptabilite.cancel_own_window_minutes » (5 minutes par défaut). Ne porte jamais sur un versement validé, ni sur celui d\'un autre agent. Non accordée par défaut.',
+            'group' => 'Paiements',
+            'icon' => 'fa-rotate-left',
         ],
 
         // ===== Frais =====

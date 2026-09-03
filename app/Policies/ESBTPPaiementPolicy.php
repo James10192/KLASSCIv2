@@ -72,14 +72,23 @@ class ESBTPPaiementPolicy
      *   - Le paiement est encore en_attente (pas encore validé/rejeté)
      *   - Saisi il y a moins de N minutes (configurable via setting tenant, default 5)
      *
-     * C'est ANTI-ERREUR (typo cash, mauvais étudiant), pas anti-fraude — donc
-     * pas besoin de permission supplémentaire. Le caissier annule SA SAISIE.
+     * C'est ANTI-ERREUR (typo cash, mauvais étudiant), pas anti-fraude.
+     *
+     * Le geste demande néanmoins son propre droit, et non plus simplement
+     * « paiements.create ». Découler du droit d'encaisser signifiait que TOUT
+     * agent de caisse pouvait effacer sa propre écriture, et qu'une école qui
+     * ne le voulait pas n'avait pour seul recours que de lui retirer le droit
+     * d'encaisser. Le besoin reste réel là où on l'accorde : une somme mal
+     * saisie se corrige mieux à chaud que par un avoir. Mais c'est une décision
+     * d'établissement, pas un effet de bord.
+     *
+     * La permission n'est accordée à aucun rôle par défaut.
      *
      * Au-delà de N min, il faut passer par paiements.delete (rare, comptable only).
      */
     public function cancelOwnRecent(User $user, ESBTPPaiement $paiement): bool
     {
-        if (! $user->can('paiements.create')) {
+        if (! $user->can('paiements.cancel_own')) {
             return false;
         }
 
