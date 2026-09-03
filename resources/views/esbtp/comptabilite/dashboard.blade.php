@@ -1319,7 +1319,8 @@ body, .filters-bar, .kpi-label, .filter-label, .filter-select {
                         <i class="fas fa-bolt me-2" style="color:#0453cb;"></i>Accès rapides
                     </h6>
                     <div class="qa-grid">
-                        <a href="{{ route('esbtp.frais.index') }}" class="qa-tile">
+                        @can('frais.view')
+<a href="{{ route('esbtp.frais.index') }}" class="qa-tile">
                             <div class="qa-icon" style="background:rgba(4,83,203,.1);">
                                 <i class="fas fa-tags" style="color:#0453cb;"></i>
                             </div>
@@ -1329,7 +1330,9 @@ body, .filters-bar, .kpi-label, .filter-label, .filter-select {
                             </div>
                             <i class="fas fa-chevron-right qa-arrow"></i>
                         </a>
-                        <a href="{{ route('esbtp.paiements.index') }}" class="qa-tile">
+                        @endcan
+                        @canany(['paiements.view', 'paiements.view_own'])
+<a href="{{ route('esbtp.paiements.index') }}" class="qa-tile">
                             <div class="qa-icon" style="background:rgba(16,185,129,.1);">
                                 <i class="fas fa-money-bill-wave" style="color:#10b981;"></i>
                             </div>
@@ -1339,7 +1342,9 @@ body, .filters-bar, .kpi-label, .filter-label, .filter-select {
                             </div>
                             <i class="fas fa-chevron-right qa-arrow"></i>
                         </a>
-                        <a href="{{ route('esbtp.comptabilite.relances.index') }}" class="qa-tile">
+                        @endcanany
+                        @can('comptabilite.relances.send')
+<a href="{{ route('esbtp.comptabilite.relances.index') }}" class="qa-tile">
                             <div class="qa-icon" style="background:rgba(94,145,222,.1);">
                                 <i class="fas fa-paper-plane" style="color:#5e91de;"></i>
                             </div>
@@ -1349,6 +1354,7 @@ body, .filters-bar, .kpi-label, .filter-label, .filter-select {
                             </div>
                             <i class="fas fa-chevron-right qa-arrow"></i>
                         </a>
+                        @endcan
                         @can('frais.configure')
                         <a href="{{ route('esbtp.frais.configure') }}" class="qa-tile">
                             <div class="qa-icon" style="background:rgba(30,41,59,.07);">
@@ -1361,7 +1367,8 @@ body, .filters-bar, .kpi-label, .filter-label, .filter-select {
                             <i class="fas fa-chevron-right qa-arrow"></i>
                         </a>
                         @endcan
-                        <a href="{{ route('esbtp.paiements.suivi-categories') }}" class="qa-tile">
+                        @canany(['paiements.view', 'paiements.view_own'])
+<a href="{{ route('esbtp.paiements.suivi-categories') }}" class="qa-tile">
                             <div class="qa-icon" style="background:rgba(4,83,203,.1);">
                                 <i class="fas fa-chart-pie" style="color:#0453cb;"></i>
                             </div>
@@ -1371,6 +1378,7 @@ body, .filters-bar, .kpi-label, .filter-label, .filter-select {
                             </div>
                             <i class="fas fa-chevron-right qa-arrow"></i>
                         </a>
+                        @endcanany
                         @can('comptabilite.reports.export')
                         <a href="{{ route('esbtp.paiements.index', ['format' => 'export-excel']) }}" class="qa-tile">
                             <div class="qa-icon" style="background:rgba(16,185,129,.1);">
