@@ -3,7 +3,9 @@
 namespace App\Http\Requests\LMD;
 
 use App\Enums\TypeUE;
+use App\Models\ESBTPMatiere;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 
@@ -58,7 +60,11 @@ class UniteEnseignementRequest extends FormRequest
 
             'ecues' => ['nullable', 'array'],
             'ecues.*.name' => ['required', 'string', 'max:255'],
-            'ecues.*.code' => ['nullable', 'string', 'max:50', 'distinct:ignore_case'],
+            // Obligatoire : `esbtp_matieres.code` est NOT NULL et porte un index
+            // unique. Un ECUE sans code faisait echouer l'enregistrement au niveau SQL,
+            // et comme store()/update() ecrivent dans une transaction, le rollback
+            // annulait aussi l'UE : l'utilisateur perdait toute sa saisie sans message.
+            'ecues.*.code' => ['required', 'string', 'max:50', 'distinct:ignore_case'],
             'ecues.*.coefficient_ecue' => ['nullable', 'numeric', 'min:0'],
             'ecues.*.credit_ecue' => ['nullable', 'integer', 'min:0'],
             'ecues.*.ordre_bulletin' => ['nullable', 'integer', 'min:0'],
@@ -86,6 +92,7 @@ class UniteEnseignementRequest extends FormRequest
             'code.unique' => 'Ce code est déjà utilisé par une autre unité d\'enseignement.',
             'semestre.required_with' => 'Choisissez un semestre : c\'est lui qui rattache l\'unité d\'enseignement au parcours.',
             'ecues.*.name.required' => 'Chaque élément constitutif doit avoir un intitulé.',
+            'ecues.*.code.required' => 'Chaque élément constitutif doit avoir un code : il l\'identifie de façon unique dans l\'établissement.',
             'ecues.*.code.distinct' => 'Deux éléments constitutifs ne peuvent pas porter le même code.',
         ];
     }
@@ -115,5 +122,79 @@ class UniteEnseignementRequest extends FormRequest
                 );
             }
         });
+
+        $validator->after(fn (Validator $validator) => $this->refuserCodesDeMatieresBts($validator));
+    }
+
+    /**
+     * Refuse un code d'element constitutif deja porte par une matiere du BTS.
+     *
+     * `esbtp_matieres` est partagee par les deux cursus et son `code` porte un
+     * index unique global. La reutilisation par code, cote controleur, ecrirait
+     * `unite_enseignement_id` sur la matiere trouvee : une matiere BTS
+     * deviendrait un ECUE et disparaitrait de tous les selecteurs BTS, qui
+     * filtrent precisement sur `unite_enseignement_id IS NULL` — ses evaluations
+     * et ses notes resteraient en base mais deviendraient inatteignables.
+     *
+     * On nomme donc le code en conflit et on refuse la saisie, plutot que
+     * d'absorber la matiere en silence. Une matiere deja rattachee a une UE
+     * (colonne ou pivot `esbtp_ue_matiere`, le partage d'un ECUE entre deux UE
+     * ne renseignant que le pivot) reste reutilisable : c'est le cas nominal.
+     */
+    private function refuserCodesDeMatieresBts(Validator $validator): void
+    {
+        $codes = [];
+        foreach ((array) $this->input('ecues', []) as $index => $ecue) {
+            $code = trim((string) ($ecue['code'] ?? ''));
+            if ($code !== '') {
+                $codes[$index] = $code;
+            }
+        }
+
+        if ($codes === []) {
+            return;
+        }
+
+        $matieres = ESBTPMatiere::withTrashed()
+            ->whereIn('code', array_values($codes))
+            ->get(['id', 'code', 'name', 'unite_enseignement_id'])
+            // Cle insensible a la casse : la collation MySQL l'est aussi, « abc »
+            // saisi retrouve donc bien la matiere enregistree « ABC ».
+            ->keyBy(fn (ESBTPMatiere $matiere): string => mb_strtoupper((string) $matiere->code));
+
+        if ($matieres->isEmpty()) {
+            return;
+        }
+
+        // Le partage d'un ECUE entre deux UE ne renseigne que le pivot : une
+        // matiere dont la colonne est nulle peut donc etre un ECUE malgre tout.
+        $idsRattachesParPivot = DB::table('esbtp_ue_matiere')
+            ->whereIn('matiere_id', $matieres->pluck('id')->all())
+            ->pluck('matiere_id')
+            ->map(fn ($id): int => (int) $id)
+            ->all();
+
+        foreach ($codes as $index => $code) {
+            $matiere = $matieres->get(mb_strtoupper($code));
+            if (! $matiere) {
+                continue;
+            }
+
+            $estDejaEcue = $matiere->unite_enseignement_id !== null
+                || in_array((int) $matiere->id, $idsRattachesParPivot, true);
+
+            if ($estDejaEcue) {
+                continue;
+            }
+
+            $validator->errors()->add(
+                "ecues.{$index}.code",
+                sprintf(
+                    'Le code « %s » est déjà celui d\'une matière du cursus BTS (« %s »). Choisissez un autre code : réutiliser celui-ci retirerait cette matière des écrans BTS.',
+                    $code,
+                    $matiere->name
+                )
+            );
+        }
     }
 }

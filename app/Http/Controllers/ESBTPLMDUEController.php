@@ -13,6 +13,7 @@ use App\Models\ESBTPPlanificationAcademique;
 use App\Services\LMD\ParcoursUeSyncService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class ESBTPLMDUEController extends Controller
 {
@@ -317,6 +318,7 @@ class ESBTPLMDUEController extends Controller
             // archivée occupe donc toujours son code. Sans cela, ressaisir ce code
             // ferait échouer l'enregistrement sur une violation d'unicité.
             $matiere = $code ? ESBTPMatiere::withTrashed()->where('code', $code)->first() : null;
+            $this->refuserAbsorptionMatiereBts($matiere);
             $existait = $matiere !== null;
             if ($matiere && $matiere->trashed()) {
                 $matiere->restore();
@@ -371,6 +373,39 @@ class ESBTPLMDUEController extends Controller
         ESBTPMatiere::whereIn('id', $aDetacher->all())
             ->where('unite_enseignement_id', $ue->id)
             ->update(['unite_enseignement_id' => null, 'updated_by' => auth()->id()]);
+    }
+
+    /**
+     * Garde-fou : ne jamais transformer une matière du BTS en ECUE.
+     *
+     * La réutilisation par code ci-dessus écrit `unite_enseignement_id` sur la
+     * matière trouvée. `esbtp_matieres` étant partagée par les deux cursus avec
+     * un `code` unique global, une collision ferait basculer une matière BTS
+     * côté LMD : elle disparaîtrait de tous les sélecteurs BTS, qui filtrent sur
+     * `unite_enseignement_id IS NULL`, en emportant ses évaluations et ses notes.
+     *
+     * Le formulaire est déjà arrêté en amont par UniteEnseignementRequest, qui
+     * nomme le code en conflit. Cette seconde barrière protège les appels qui ne
+     * passeraient pas par ce FormRequest.
+     */
+    private function refuserAbsorptionMatiereBts(?ESBTPMatiere $matiere): void
+    {
+        if (! $matiere || $matiere->unite_enseignement_id !== null) {
+            return;
+        }
+
+        // Un ECUE partagé entre deux UE n'est rattaché que par le pivot.
+        if (DB::table('esbtp_ue_matiere')->where('matiere_id', $matiere->id)->exists()) {
+            return;
+        }
+
+        throw ValidationException::withMessages([
+            'ecues' => sprintf(
+                'Le code « %s » est déjà celui d\'une matière du cursus BTS (« %s »). Choisissez un autre code.',
+                (string) $matiere->code,
+                (string) $matiere->name
+            ),
+        ]);
     }
 
     /**

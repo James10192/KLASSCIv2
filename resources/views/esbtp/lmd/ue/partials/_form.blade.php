@@ -264,8 +264,8 @@
                         <thead>
                             <tr>
                                 <th style="width: 5%;">#</th>
-                                <th style="width: 27%;">Nom</th>
-                                <th style="width: 17%;">Code</th>
+                                <th style="width: 27%;">Nom *</th>
+                                <th style="width: 17%;">Code *</th>
                                 <th style="width: 13%;">Coefficient</th>
                                 <th style="width: 13%;">Credits</th>
                                 <th style="width: 10%;">Ordre</th>
@@ -287,7 +287,8 @@
                                         <input type="text"
                                                :name="'ecues[' + index + '][code]'"
                                                x-model="ecue.code"
-                                               placeholder="Code ECUE">
+                                               placeholder="Code ECUE"
+                                               required>
                                     </td>
                                     <td>
                                         <input type="number"

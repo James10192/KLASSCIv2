@@ -6,6 +6,7 @@ use App\Domain\OfficialDocuments\Models\OfficialDocument;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPEtudiant;
 use App\Models\User;
+use App\Support\CodeInstance;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Throwable;
@@ -134,9 +135,17 @@ class LmdTranscriptService
         return $label !== '' ? $label : (string) $year->id;
     }
 
+    /**
+     * Code de l'etablissement, via la source unique App\Support\CodeInstance.
+     *
+     * Le repli en dur precedent (« PRES », le code de l'instance de demonstration)
+     * faisait porter a un releve — piece officielle immuable dont le numero est
+     * fige a l'emission — l'identite d'une autre instance des que la configuration
+     * etait incomplete. On refuse desormais d'emettre plutot que de deviner.
+     */
     private function tenantCode(): string
     {
-        return strtoupper((string) (config('app.tenant_code') ?? env('TENANT_CODE', 'PRES')));
+        return CodeInstance::exigerPourPieceOfficielle('un relevé de notes');
     }
 
     private function newIdentity(string $number, int $version): array

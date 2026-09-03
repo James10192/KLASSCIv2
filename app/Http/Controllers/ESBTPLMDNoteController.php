@@ -140,6 +140,8 @@ class ESBTPLMDNoteController extends Controller
      */
     public function saisieRapide(ESBTPEvaluation $evaluation)
     {
+        $this->assertEvaluationConfieeAEnseignant($evaluation);
+
         $evaluation->load([
             'classe.inscriptions' => fn ($q) => $q->where('status', 'active')->where('workflow_step', 'etudiant_cree'),
             'classe.inscriptions.etudiant',
@@ -178,6 +180,7 @@ class ESBTPLMDNoteController extends Controller
         $evaluation = ESBTPEvaluation::findOrFail($request->evaluation_id);
         $evaluation->loadMissing('classe');
         abort_unless($evaluation->classe?->systeme_academique === 'LMD', 422, 'La saisie groupée est réservée aux classes LMD.');
+        $this->assertEvaluationConfieeAEnseignant($evaluation);
 
         $studentIds = DB::transaction(function () use ($request, $evaluation): array {
             $notes = collect($request->notes)
@@ -254,6 +257,43 @@ class ESBTPLMDNoteController extends Controller
 
         return redirect()->route('esbtp.lmd.notes.index')
             ->with('success', 'Notes enregistrées avec succès pour '.count($request->notes).' étudiants.');
+    }
+
+    /**
+     * Un enseignant ne saisit que les notes des évaluations qui lui sont confiées.
+     *
+     * `lmd.notes.manage` ouvre la saisie groupée, mais ne dit rien de la classe ni
+     * de la matière : sans ce contrôle, tout titulaire de la permission pourrait
+     * noter n'importe quelle évaluation LMD de l'établissement. Les gardes déjà
+     * présentes plus bas (`notes.create` / `notes.edit`) ne le disent pas non plus,
+     * puisque tous les enseignants les détiennent.
+     *
+     * La restriction ne vise que le profil « enseignant » : quiconque coordonne
+     * (coordinateur, directeur des études, administration) garde une vue d'ensemble.
+     * Les deux rattachements reconnus sont ceux qui font foi ailleurs dans
+     * l'application (API LMS) : l'enseignant nommé sur l'évaluation, ou son
+     * affectation active à la matière pour l'année de l'évaluation.
+     */
+    private function assertEvaluationConfieeAEnseignant(ESBTPEvaluation $evaluation): void
+    {
+        $user = auth()->user();
+
+        if (! $user || ! $user->can('identity.teach') || $user->can('identity.coordinate')) {
+            return;
+        }
+
+        if ((int) $evaluation->enseignant_id === (int) $user->id) {
+            return;
+        }
+
+        $affecte = $evaluation->matiere_id !== null && DB::table('esbtp_enseignant_matiere')
+            ->where('matiere_id', $evaluation->matiere_id)
+            ->where('enseignant_id', $user->id)
+            ->where('annee_universitaire_id', $evaluation->annee_universitaire_id)
+            ->where('is_active', true)
+            ->exists();
+
+        abort_unless($affecte, 403, "Cette évaluation ne vous est pas confiée : vous ne pouvez pas en saisir les notes.");
     }
 
     private function bulkNoteInvalidationContexts(array $baseContext, array $studentIds): array

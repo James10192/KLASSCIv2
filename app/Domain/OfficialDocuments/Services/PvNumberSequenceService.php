@@ -4,6 +4,7 @@ namespace App\Domain\OfficialDocuments\Services;
 
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPLMDJury;
+use App\Support\CodeInstance;
 use Illuminate\Support\Facades\DB;
 
 class PvNumberSequenceService
@@ -46,9 +47,16 @@ class PvNumberSequenceService
             ->max() ?? 0;
     }
 
+    /**
+     * Code de l'etablissement, via la source unique App\Support\CodeInstance.
+     *
+     * Il entre dans le numero legal du proces-verbal ET dans la cle de la table
+     * de sequence : une valeur devine casserait l'unicite de la suite. On refuse
+     * donc d'emettre tant que l'instance n'est pas configuree.
+     */
     private function tenantCode(): string
     {
-        return strtoupper((string) (config('app.tenant_code') ?? env('TENANT_CODE', 'PRES')));
+        return CodeInstance::exigerPourPieceOfficielle('un procès-verbal de jury');
     }
 
     /**

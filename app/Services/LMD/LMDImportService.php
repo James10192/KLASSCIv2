@@ -179,7 +179,7 @@ class LMDImportService
             'name' => $data['name'],
             'code' => $code,
             'credit' => (int) ($data['credit'] ?? 0),
-            'type_ue' => TypeUE::tryFrom($data['type_ue'] ?? '') ?? TypeUE::FONDAMENTALE,
+            'type_ue' => TypeUE::tryFrom($data['type_ue'] ?? '') ?? TypeUE::Fondamentale,
             'semestre' => (int) ($data['semestre'] ?? 1),
             'parcours_id' => $parcours->id,
             'filiere_id' => $filiere?->id,
