@@ -114,6 +114,53 @@ class InKindDepositService
         return $subscription->fresh();
     }
 
+    /**
+     * Defait un depot en nature.
+     *
+     * Le marquage etait a sens unique : une case cochee par erreur — ou par
+     * quelqu'un qui s'est trompe d'etudiant — ne se decochait plus, et le frais
+     * restait a zero pour toujours. Il fallait alors reprendre la souscription
+     * a la main en base.
+     *
+     * La condition est la meme qu'a l'aller, et pour la meme raison : tant
+     * qu'aucun versement n'a ete encaisse sur ce frais, rien n'est fige. Des
+     * qu'un paiement valide existe, la situation comptable est etablie et ne se
+     * reecrit pas depuis cet ecran.
+     *
+     * `deposited_at` et `deposited_by` sont effaces : les laisser sur une ligne
+     * qui n'est plus deposee ferait mentir la fiche. Qui a depose, quand, et qui
+     * a defait, reste inscrit dans le journal d'audit — c'est la sa place.
+     */
+    public function unmarkDeposited(ESBTPFraisSubscription $subscription, int $userId): ESBTPFraisSubscription
+    {
+        if (! $subscription->satisfied_in_kind) {
+            return $subscription;
+        }
+
+        if ($this->hasValidatedPayment((int) $subscription->inscription_id, (int) $subscription->frais_category_id)) {
+            throw new InKindDepositForbiddenException(
+                'Impossible d\'annuler ce dépôt : un paiement validé existe déjà pour cette catégorie.'
+            );
+        }
+
+        $subscription->update([
+            'satisfied_in_kind' => false,
+            'deposited_at' => null,
+            'deposited_by' => null,
+        ]);
+
+        return $subscription->fresh();
+    }
+
+    public function canUnmarkDeposited(ESBTPFraisSubscription $subscription): bool
+    {
+        return (bool) $subscription->satisfied_in_kind
+            && ! $this->hasValidatedPayment(
+                (int) $subscription->inscription_id,
+                (int) $subscription->frais_category_id,
+            );
+    }
+
     public function hasValidatedPayment(int $inscriptionId, int $categoryId): bool
     {
         return ESBTPPaiement::query()

@@ -11,6 +11,7 @@ use App\Models\ESBTPFraisSubscription;
 use App\Models\ESBTPInscription;
 use App\Models\Setting;
 use App\Services\FraisConfigurationWriter;
+use App\Services\InKindDepositService;
 use App\Services\TenantScolariteSettings;
 use App\Services\Frais\CorrectionMontantSouscriptions;
 use App\Services\Frais\OrdreDesCategoriesFrais;
@@ -382,6 +383,66 @@ class CLIFraisController extends BaseApiController
      *
      * Montre par defaut, n'ecrit que sur `apply`.
      */
+    /**
+     * Annule un depot en nature marque par erreur.
+     *
+     * Le marquage etait a sens unique cote application : une case cochee — par
+     * inadvertance, ou sur le mauvais etudiant — ne se decochait plus, et le
+     * frais restait a zero. Il fallait reprendre la ligne a la main en base.
+     *
+     * Meme garde-fou qu'a l'aller : refuse des qu'un paiement valide existe sur
+     * ce frais. Montre par defaut, n'ecrit que sur `apply`.
+     */
+    public function annulerDepotNature(Request $request, InKindDepositService $depots): JsonResponse
+    {
+        if (! $request->user()->tokenCan('cli:admin')) {
+            return $this->errorResponse('Token missing cli:admin ability', [], 403);
+        }
+
+        $valide = $request->validate([
+            'inscription_id' => ['required', 'integer'],
+            'categorie_id' => ['nullable', 'integer'],
+            'apply' => ['nullable', 'boolean'],
+        ]);
+
+        $souscriptions = ESBTPFraisSubscription::query()
+            ->where('inscription_id', $valide['inscription_id'])
+            ->where('satisfied_in_kind', true)
+            ->when($valide['categorie_id'] ?? null, fn ($q, $id) => $q->where('frais_category_id', $id))
+            ->with('fraisCategory:id,name')
+            ->get();
+
+        $applique = (bool) ($valide['apply'] ?? false);
+        $lignes = [];
+
+        foreach ($souscriptions as $souscription) {
+            $bloquee = $depots->hasValidatedPayment(
+                (int) $souscription->inscription_id,
+                (int) $souscription->frais_category_id
+            );
+
+            if ($applique && ! $bloquee) {
+                $depots->unmarkDeposited($souscription, (int) $request->user()->id);
+            }
+
+            $lignes[] = [
+                'souscription_id' => $souscription->id,
+                'categorie_id' => $souscription->frais_category_id,
+                'categorie' => $souscription->fraisCategory?->name,
+                'montant' => (float) $souscription->amount,
+                'annulee' => $applique && ! $bloquee,
+                'refus' => $bloquee ? 'Un paiement validé existe sur ce frais.' : null,
+            ];
+        }
+
+        return $this->successResponse(
+            ['inscription_id' => (int) $valide['inscription_id'], 'applique' => $applique, 'lignes' => $lignes],
+            $applique
+                ? sprintf('%d dépôt(s) annulé(s).', count(array_filter($lignes, fn ($l) => $l['annulee'])))
+                : sprintf('%d dépôt(s) concerné(s). Rien n\'a été écrit.', count($lignes))
+        );
+    }
+
     public function repartirTropPercu(Request $request, RepartitionTropPercu $repartition): JsonResponse
     {
         if (! $request->user()->tokenCan('cli:admin')) {
