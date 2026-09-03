@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Models\ESBTPBulletin;
-use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPMatiere;
 use App\Models\ESBTPResultatMatiere;
@@ -48,28 +47,6 @@ class ESBTPPDFService
         ];
 
         $pdf = PDF::loadView('pdf.bulletin', $data);
-        $pdf->setPaper('A4');
-
-        return $pdf;
-    }
-
-    /**
-     * Générer le relevé de notes en PDF
-     */
-    public function genererRelevePDF(ESBTPEtudiant $etudiant, $anneeUniversitaireId)
-    {
-        $bulletins = $etudiant->bulletins()
-            ->where('annee_universitaire_id', $anneeUniversitaireId)
-            ->orderBy('periode')
-            ->get();
-
-        $data = [
-            'etudiant' => $etudiant,
-            'bulletins' => $bulletins,
-            'date_edition' => Carbon::now()->locale('fr')->isoFormat('LL')
-        ];
-
-        $pdf = PDF::loadView('pdf.releve', $data);
         $pdf->setPaper('A4');
 
         return $pdf;

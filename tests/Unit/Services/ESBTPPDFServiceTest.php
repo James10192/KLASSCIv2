@@ -72,32 +72,6 @@ class ESBTPPDFServiceTest extends TestCase
         $this->assertInstanceOf(PDF::class, $pdf);
     }
 
-    public function test_generer_releve_pdf()
-    {
-        // Création des données de test
-        $etudiant = ESBTPEtudiant::factory()->create();
-        $classe = ESBTPClasse::factory()->create();
-
-        $bulletin1 = ESBTPBulletin::factory()->create([
-            'etudiant_id' => $etudiant->id,
-            'classe_id' => $classe->id,
-            'periode' => 'semestre1',
-            'annee_universitaire_id' => 1
-        ]);
-
-        $bulletin2 = ESBTPBulletin::factory()->create([
-            'etudiant_id' => $etudiant->id,
-            'classe_id' => $classe->id,
-            'periode' => 'semestre2',
-            'annee_universitaire_id' => 1
-        ]);
-
-        // Test de la génération du PDF
-        $pdf = $this->pdfService->genererRelevePDF($etudiant, 1);
-
-        $this->assertInstanceOf(PDF::class, $pdf);
-    }
-
     public function test_generer_pv_deliberation_pdf()
     {
         // Création des données de test
