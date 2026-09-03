@@ -86,6 +86,7 @@
         },
         "audit": {
             "ignore": {
+                "PKSA-3r5d-mb8f-1qw9": "Injection CRLF dans la règle email par défaut. Corrigée en 12.60+ uniquement, alors que ce projet est contraint à ^9.0|^10.0 : aucune version corrigée n'existe sous cette contrainte. Ce n'est donc pas une montée de dépendance qui la lève, mais la montée du framework lui-même — Laravel 9 est en fin de support depuis février 2024. Déclarée ici pour que l'audit reste vert sur ce qui est corrigeable, sans cesser de l'afficher comme risque accepté.",
                 "PKSA-2cx9-ynrq-qdk3": "Dépendance indirecte via laravel/framework. league/commonmark non utilisé pour parser du contenu utilisateur. DoS non applicable.",
                 "PKSA-4s4z-t146-6123": "psy/psysh est une dépendance de laravel/tinker, non utilisé en production. Vecteur local non applicable."
             }
