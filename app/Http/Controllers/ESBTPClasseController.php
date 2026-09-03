@@ -771,12 +771,17 @@ class ESBTPClasseController extends Controller
         // englober l'update lui-meme, sinon un echec d'ecriture laisse le reflet
         // que l'ancrage vient de creer sans classe — donc supprimable, donc le
         // cul-de-sac que ce lot ferme.
-        DB::transaction(function () use (&$validatedData, $classe) {
-            $validatedData = $this->ancrerSurUneFiliereReelle($validatedData);
-            $validatedData["updated_by"] = Auth::id();
+        // Pas de reference sur $validatedData : DB::transaction() rejoue sa
+        // closure en cas d'interblocage, et la seconde tentative recevrait alors
+        // une valeur deja transformee — `filiere_id` y vaudrait un id de reflet,
+        // que l'ancrage relirait comme un id de mention. C'est la coincidence
+        // d'identifiants que ce lot supprime, rentree par la porte du reessai.
+        DB::transaction(function () use ($validatedData, $classe) {
+            $donnees = $this->ancrerSurUneFiliereReelle($validatedData);
+            $donnees["updated_by"] = Auth::id();
 
             // systeme_academique est auto-determine par le model event saving
-            $classe->update($validatedData);
+            $classe->update($donnees);
         });
 
         // Si le niveau a changé, mettre à jour les matières
