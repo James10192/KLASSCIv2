@@ -304,10 +304,12 @@ class LMDBulletinService
                 $bulletin, $resultatUE, $ecue, $etudiantId, $classeId, $semestre, $anneeUniversitaireId
             );
 
-            if ($resultatECUE->moyenne !== null) {
+            $noteEffective = $this->noteEffectiveECUE($resultatECUE);
+
+            if ($noteEffective !== null) {
                 // Priorité: pivot coefficient > matière coefficient_ecue > matière coefficient > 1
                 $coeff = $ecue->pivot?->coefficient_ecue ?? $ecue->coefficient_ecue ?? $ecue->coefficient ?? 1;
-                $totalPoints += (float) $resultatECUE->moyenne * (float) $coeff;
+                $totalPoints += $noteEffective * (float) $coeff;
                 $totalCoefficients += (float) $coeff;
             }
         }
@@ -356,20 +358,91 @@ class LMDBulletinService
         // Trouver l'enseignant principal (use preloaded map if available)
         $enseignantId = $this->getEnseignantForECUE($ecue->id, $classeId, $anneeUniversitaireId, $this->preloadedEnseignants);
 
+        $attributs = [
+            'resultat_ue_id' => $resultatUE->id,
+            'etudiant_id' => $etudiantId,
+            'moyenne' => $moyenneECUE,
+            'credit' => $ecue->pivot?->credit_ecue ?? $ecue->credit_ecue ?? 0,
+            'enseignant_id' => $enseignantId,
+            'updated_by' => auth()->id(),
+        ];
+
+        $existant = ESBTPLMDResultatECUE::query()
+            ->where('bulletin_id', $bulletin->id)
+            ->where('matiere_id', $ecue->id)
+            ->first();
+
+        // Une seconde session a eu lieu : « note_finale » doit être rejouée sur la
+        // moyenne de premiere session COURANTE. Sans cela, elle reste figee sur la
+        // valeur calculee le jour du rattrapage : corriger apres coup une note de
+        // premiere session (un 8 rectifie en 15) ne servirait plus a rien, la
+        // regeneration du bulletin continuerait de retenir l'ancien max, et
+        // l'etudiant perdrait des points sans message ni trace.
+        if ($existant && $existant->note_rattrapage !== null) {
+            $attributs['note_session_normale'] = $moyenneECUE;
+            $attributs['note_finale'] = $this->noteFinaleApresRattrapage(
+                $moyenneECUE === null ? null : (float) $moyenneECUE,
+                (float) $existant->note_rattrapage
+            );
+        }
+
         return ESBTPLMDResultatECUE::updateOrCreate(
             [
                 'bulletin_id' => $bulletin->id,
                 'matiere_id' => $ecue->id,
             ],
-            [
-                'resultat_ue_id' => $resultatUE->id,
-                'etudiant_id' => $etudiantId,
-                'moyenne' => $moyenneECUE,
-                'credit' => $ecue->pivot?->credit_ecue ?? $ecue->credit_ecue ?? 0,
-                'enseignant_id' => $enseignantId,
-                'updated_by' => auth()->id(),
-            ]
+            $attributs
         );
+    }
+
+    /**
+     * Note retenue apres seconde session, selon le reglage d'instance
+     * `lmd_rattrapage_replace` : la meilleure des deux notes (defaut), ou celle
+     * du rattrapage. Source unique de la regle, partagee avec la planification
+     * des sessions de rattrapage.
+     *
+     * Un zero est une note : seul `null` signifie « pas de note ».
+     */
+    public function noteFinaleApresRattrapage(?float $noteSessionNormale, ?float $noteRattrapage): ?float
+    {
+        if ($noteRattrapage === null) {
+            return null;
+        }
+
+        if ((bool) $this->getSetting('lmd_rattrapage_replace', false)) {
+            return $noteRattrapage;
+        }
+
+        return $noteSessionNormale === null
+            ? $noteRattrapage
+            : max($noteSessionNormale, $noteRattrapage);
+    }
+
+    /**
+     * Note retenue pour un ECUE dans les agregats du bulletin.
+     *
+     * Quand une seconde session a eu lieu, « note_finale » porte le resultat que l'ecole
+     * a decide de retenir (la meilleure des deux notes, ou celle du rattrapage, selon le
+     * reglage « lmd_rattrapage_replace »). Elle prime alors sur la moyenne de premiere
+     * session : c'est par ce seul point que le rattrapage se propage a la moyenne de
+     * l'unite, a son statut acquis/non acquis, aux credits capitalises, a la moyenne
+     * generale, au rang, au releve et a la deliberation.
+     *
+     * Seul « null » signifie « pas de seconde session ». Une note finale de zero est une
+     * note comme une autre et doit remplacer la moyenne de premiere session : on ne teste
+     * donc jamais cette valeur par sa verite.
+     */
+    public function noteEffectiveECUE(object $resultatECUE): ?float
+    {
+        $noteFinale = $resultatECUE->note_finale ?? null;
+
+        if ($noteFinale !== null) {
+            return (float) $noteFinale;
+        }
+
+        $moyenne = $resultatECUE->moyenne ?? null;
+
+        return $moyenne === null ? null : (float) $moyenne;
     }
 
     /**

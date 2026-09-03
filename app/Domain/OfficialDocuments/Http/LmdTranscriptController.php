@@ -23,6 +23,16 @@ use Symfony\Component\HttpFoundation\Response;
  */
 class LmdTranscriptController
 {
+    /**
+     * Longueur minimale du motif de remplacement.
+     *
+     * Source unique : le formulaire lit cette valeur, l'affiche dans sa consigne
+     * et la fait valider par son bouton. Ecrite deux fois, elle derive, et c'est
+     * l'utilisateur qui decouvre l'ecart entre ce que la page promet et ce que le
+     * serveur accepte.
+     */
+    public const MOTIF_LONGUEUR_MIN = 10;
+
     /** Nom de la route de diffusion propre aux releves. */
     public const STREAM_ROUTE = 'esbtp.lmd.releves.official-documents.stream';
 
@@ -38,7 +48,7 @@ class LmdTranscriptController
         abort_unless($request->user()?->can('lmd.releve.issue'), 403);
 
         $validated = $request->validate([
-            'motif' => ['nullable', 'string', 'min:10', 'max:1000'],
+            'motif' => ['nullable', 'string', 'min:'.self::MOTIF_LONGUEUR_MIN, 'max:1000'],
         ]);
 
         try {
@@ -61,11 +71,11 @@ class LmdTranscriptController
                 'exception' => $exception,
             ]);
 
-            return $this->failure($request, 'Le releve de notes n a pas pu etre emis.', 422);
+            return $this->failure($request, "Le relevé n'a pas pu être émis. Réessayez ; si l'erreur persiste, signalez la référence de l'étudiant au support.", 422);
         }
 
         if (! $request->expectsJson()) {
-            return back()->with('success', 'Le releve de notes est emis sous la reference '.$document->reference.'.');
+            return back()->with('success', 'Le relevé de notes est émis sous la référence '.$document->reference.'.');
         }
 
         return response()->json([
@@ -94,7 +104,7 @@ class LmdTranscriptController
         abort_unless($request->user()?->can('lmd.releve.view'), 403);
 
         $document = $transcripts->existing($etudiant, $annee);
-        abort_unless($document && is_array($document->snapshot), 404, 'Aucun releve de notes disponible.');
+        abort_unless($document && is_array($document->snapshot), 404, "Aucun relevé de notes n'a encore été émis pour cette année : émettez-le depuis la fiche de l'étudiant.");
 
         $pdf = $renderer->render($document->snapshot, (string) $document->reference);
 
@@ -117,7 +127,7 @@ class LmdTranscriptController
         abort_unless($request->user()?->can('lmd.releve.view'), 403);
 
         $document = $transcripts->existing($etudiant, $annee);
-        abort_unless($document, 404, 'Aucun releve de notes disponible.');
+        abort_unless($document, 404, "Aucun relevé de notes n'a encore été émis pour cette année : émettez-le depuis la fiche de l'étudiant.");
 
         return redirect()->away($downloads->signedUrl($document, false, self::STREAM_ROUTE));
     }

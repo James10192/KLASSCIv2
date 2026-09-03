@@ -43,9 +43,16 @@ class ESBTPLMDJuryController extends Controller
 
         $annee = $this->resolveAnnee($request);
 
+        // Une deliberation est confidentielle : celui qui ne fait que consulter ne
+        // voit que les jurys dont il est membre. Ceux qui president, deliberent ou
+        // publient gardent la vue d'ensemble dont leur fonction a besoin.
+        $limiteAuxSiens = $this->limiteAuxJurysDuMembre();
+        $membreDe = fn ($q) => $q->whereHas('membres', fn ($m) => $m->where('user_id', auth()->id()));
+
         $jurys = ESBTPLMDJury::query()
             ->with(['parcours', 'classe', 'membres'])
             ->where('annee_universitaire_id', $annee->id)
+            ->when($limiteAuxSiens, $membreDe)
             ->when((int) $request->input('classe_id'), fn ($q, $id) => $q->where('classe_id', $id))
             ->when((int) $request->input('parcours_id'), fn ($q, $id) => $q->where('parcours_id', $id))
             ->when((int) $request->input('semestre'), fn ($q, $s) => $q->where('semestre', $s))
@@ -53,11 +60,19 @@ class ESBTPLMDJuryController extends Controller
             ->paginate(20)
             ->withQueryString();
 
+        // Les compteurs suivent le meme perimetre que la liste, sinon la page
+        // annoncerait des jurys qu'elle n'affiche pas.
+        $compteur = fn (?string $status = null) => ESBTPLMDJury::query()
+            ->where('annee_universitaire_id', $annee->id)
+            ->when($limiteAuxSiens, $membreDe)
+            ->when($status !== null, fn ($q) => $q->where('status', $status))
+            ->count();
+
         $kpis = [
-            'total' => ESBTPLMDJury::where('annee_universitaire_id', $annee->id)->count(),
-            'preparation' => ESBTPLMDJury::where('annee_universitaire_id', $annee->id)->where('status', 'preparation')->count(),
-            'en_cours' => ESBTPLMDJury::where('annee_universitaire_id', $annee->id)->where('status', 'en_cours')->count(),
-            'publies' => ESBTPLMDJury::where('annee_universitaire_id', $annee->id)->where('status', 'publie')->count(),
+            'total' => $compteur(),
+            'preparation' => $compteur('preparation'),
+            'en_cours' => $compteur('en_cours'),
+            'publies' => $compteur('publie'),
         ];
 
         $parcours = ESBTPLMDParcours::orderBy('name')->get(['id', 'name']);
@@ -65,14 +80,38 @@ class ESBTPLMDJuryController extends Controller
         $sessions = ESBTPLMDSession::orderByDesc('date_debut')->get(['id', 'libelle']);
         $annees = ESBTPAnneeUniversitaire::orderByDesc('id')->get(['id', 'name', 'libelle', 'is_current', 'start_date', 'end_date']);
 
+        // La vue doit savoir si la liste est bornee aux jurys de l'utilisateur :
+        // sinon un enseignant sans jury lit « Aucun jury », ce qui est faux de son
+        // point de vue, et se voit proposer d'en creer un — la seule action qui
+        // lui soit fermee.
         return view('esbtp.lmd.jurys.index', compact(
-            'jurys', 'kpis', 'parcours', 'classes', 'sessions', 'annee', 'annees'
+            'jurys', 'kpis', 'parcours', 'classes', 'sessions', 'annee', 'annees', 'limiteAuxSiens'
         ));
+    }
+
+    /**
+     * Le simple consultant est-il borne aux jurys dont il est membre ?
+     *
+     * La regle vit sur le modele : la meme deliberation s'ouvre aussi depuis
+     * l'export du proces-verbal annuel, et une garde posee d'un seul cote
+     * laisserait l'autre porte ouverte.
+     */
+    private function limiteAuxJurysDuMembre(): bool
+    {
+        return ! ESBTPLMDJury::utilisateurVoitTousLesJurys(auth()->user());
+    }
+
+    /**
+     * Refuse l'ouverture d'un jury dont le simple consultant n'est pas membre.
+     */
+    private function assertPeutConsulterJury(ESBTPLMDJury $jury): void
+    {
+        $jury->assertConsultablePar(auth()->user());
     }
 
     public function show(ESBTPLMDJury $jury): View
     {
-        abort_unless(auth()->user()?->can('lmd.jury.view'), 403);
+        $this->assertPeutConsulterJury($jury);
 
         $jury->load([
             'anneeUniversitaire', 'parcours', 'classe', 'session',
@@ -274,7 +313,7 @@ class ESBTPLMDJuryController extends Controller
 
     public function kpis(ESBTPLMDJury $jury): JsonResponse
     {
-        abort_unless(auth()->user()?->can('lmd.jury.view'), 403);
+        $this->assertPeutConsulterJury($jury);
 
         return response()->json([
             'stats' => $this->delib->buildStatistiques($jury->fresh('decisions')),
@@ -390,7 +429,7 @@ class ESBTPLMDJuryController extends Controller
     }
     public function pvDownload(ESBTPLMDJury $jury): RedirectResponse
     {
-        abort_unless(auth()->user()?->can('lmd.jury.view'), 403);
+        $this->assertPeutConsulterJury($jury);
         $document = $this->officialDocuments->existingJuryPv($jury);
         abort_unless($document, 404, 'Aucun document officiel disponible.');
         return redirect()->away($this->officialDownloads->signedUrl($document));
@@ -398,7 +437,7 @@ class ESBTPLMDJuryController extends Controller
 
     public function pvPreview(ESBTPLMDJury $jury): Response
     {
-        abort_unless(auth()->user()?->can('lmd.jury.view'), 403);
+        $this->assertPeutConsulterJury($jury);
         $document = $this->officialDocuments->existingJuryPv($jury);
         abort_unless($document && is_array($document->snapshot), 404, 'Aucun document officiel disponible.');
         $pdf = $this->pvRenderer->render($document->snapshot, (string) $document->reference);

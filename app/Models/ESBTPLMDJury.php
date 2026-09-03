@@ -97,4 +97,49 @@ class ESBTPLMDJury extends Model implements Auditable
     {
         return $this->status === 'publie';
     }
+
+    /**
+     * Cet utilisateur voit-il l'ensemble des jurys, ou seulement les siens ?
+     *
+     * Presider, deliberer ou publier suppose la vue d'ensemble. La direction des
+     * etudes aussi : c'est un poste de supervision pedagogique, et les proces-verbaux
+     * sont des pieces legales conservees dix ans que l'etablissement doit pouvoir
+     * produire — y compris pour les deliberations qu'elle n'a pas presidees.
+     * Consulter sans aucun de ces titres, en revanche, se borne a ses propres jurys.
+     */
+    public static function utilisateurVoitTousLesJurys(?\App\Models\User $user): bool
+    {
+        return (bool) ($user?->can('lmd.jury.preside')
+            || $user?->can('lmd.jury.deliberate')
+            || $user?->can('lmd.jury.publish')
+            || $user?->can('identity.direct_studies'));
+    }
+
+    /**
+     * Refuse l'ouverture d'une deliberation dont le simple consultant n'est pas membre.
+     *
+     * Porte par le modele plutot que par un controleur : la meme deliberation
+     * s'ouvre depuis l'ecran du jury ET depuis l'export du proces-verbal annuel.
+     * Une garde posee d'un seul cote laisserait l'autre porte ouverte.
+     */
+    public function assertConsultablePar(?\App\Models\User $user): void
+    {
+        // Exporter suppose de pouvoir consulter : le droit d'export choisit un
+        // format, il n'ouvre pas une deliberation.
+        abort_unless(
+            (bool) $user?->can('lmd.jury.view'),
+            403,
+            "La consultation des délibérations ne vous est pas ouverte. Demandez ce droit au responsable de la scolarité."
+        );
+
+        if (self::utilisateurVoitTousLesJurys($user)) {
+            return;
+        }
+
+        abort_unless(
+            $this->membres()->where('user_id', $user?->getAuthIdentifier())->exists(),
+            403,
+            "Vous n'êtes pas membre de ce jury : ses délibérations ne vous sont pas accessibles. Demandez au président du jury de vous ajouter à sa composition."
+        );
+    }
 }

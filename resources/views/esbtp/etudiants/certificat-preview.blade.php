@@ -147,9 +147,11 @@
         <a href="{{ route('esbtp.etudiants.attestation-frequentation.preview', $etudiant->id) }}" class="btn-acasi info">
             <i class="fas fa-file-contract me-1"></i>Attestation
         </a>
+        @php $printDecision = app(\App\Services\DocumentPrintGuard::class)->decide(auth()->user(), 'certificat', (int) $etudiant->id); $printAllowed = $printDecision->allowed; @endphp
         @include('esbtp.documents._request-approval', [
             'documentType' => 'certificat',
             'etudiantId' => $etudiant->id,
+            'printDecision' => $printDecision,
         ])
         @if($printAllowed)
         <a href="{{ route('esbtp.etudiants.certificat.preview-pdf', $etudiant->id) }}" class="btn-acasi info" target="_blank" title="Aperçu PDF dans un nouvel onglet">

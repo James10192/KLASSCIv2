@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Helpers\SettingsHelper;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPExamenPlanifie;
@@ -39,11 +38,22 @@ class RattrapageSchedulingService
 
     private readonly LmdAcademicRuleProfile $rules;
 
+    /** Injecte par le conteneur ; le repli par `app()` ne sert qu'aux tests qui construisent le service a la main. */
+    private ?LMDBulletinService $bulletinService;
+
     public function __construct(
         private readonly ExamenSchedulingService $examenScheduler,
         ?LmdAcademicRuleProfile $rules = null,
+        ?LMDBulletinService $bulletinService = null,
     ) {
         $this->rules = $rules ?? new LmdAcademicRuleProfile();
+        $this->bulletinService = $bulletinService;
+    }
+
+    /** @return LMDBulletinService le service d'agregation, resolu au premier besoin */
+    private function resolveBulletinService(): LMDBulletinService
+    {
+        return $this->bulletinService ??= app(LMDBulletinService::class);
     }
 
     /**
@@ -253,7 +263,6 @@ class RattrapageSchedulingService
         int $etudiantId,
         ESBTPLMDSession $sessionRattrapage
     ): int {
-        $replace = (bool) SettingsHelper::get('lmd_rattrapage_replace', false);
         $parent = $sessionRattrapage->parentSession;
         if (! $parent) {
             return 0;
@@ -279,14 +288,14 @@ class RattrapageSchedulingService
             if ($r->note_rattrapage === null) {
                 continue;
             }
+            // Regle du max / remplacement : une seule definition, portee par le
+            // service d'agregation, pour que la generation du bulletin la rejoue
+            // a l'identique sur une moyenne de premiere session corrigee.
             $normale = $r->note_session_normale;
-            $finale = $replace
-                ? (float) $r->note_rattrapage
-                : ($normale === null
-                    ? (float) $r->note_rattrapage
-                    : max((float) $normale, (float) $r->note_rattrapage));
-
-            $r->note_finale = $finale;
+            $r->note_finale = $this->resolveBulletinService()->noteFinaleApresRattrapage(
+                $normale === null ? null : (float) $normale,
+                (float) $r->note_rattrapage
+            );
             $r->save();
             $updated++;
         }
@@ -332,8 +341,18 @@ class RattrapageSchedulingService
      *
      * @return Collection<int, ESBTPLMDResultatECUE>
      */
-    public function lignesSaisieRattrapage(ESBTPLMDSession $sessionRattrapage): Collection
-    {
+    /**
+     * @param int|null $limiterAEnseignantId borne la liste aux elements constitutifs
+     *        confies a cet enseignant. A passer des que l'appelant n'a pas de titre
+     *        de supervision : `lmd.rattrapage.notes.saisir` autorise la saisie, pas
+     *        la lecture des notes de seconde session de toute la promotion — le
+     *        registre promet le contraire pour les notes LMD (« refuse toute
+     *        evaluation qui n'est pas confiee a l'enseignant »).
+     */
+    public function lignesSaisieRattrapage(
+        ESBTPLMDSession $sessionRattrapage,
+        ?int $limiterAEnseignantId = null
+    ): Collection {
         if ($sessionRattrapage->type !== 'rattrapage') {
             throw new \DomainException('La saisie de notes est reservee aux sessions de rattrapage.');
         }
@@ -353,6 +372,10 @@ class RattrapageSchedulingService
             ->whereIn('bulletin_id', $bulletinIds)
             ->where('rattrapage_eligible', true)
             ->where('rattrapage_inscrit', true)
+            ->when(
+                $limiterAEnseignantId !== null,
+                fn ($q) => $q->where('enseignant_id', $limiterAEnseignantId)
+            )
             ->get()
             ->sortBy([
                 fn (ESBTPLMDResultatECUE $r): string => (string) optional($r->etudiant)->nom,
@@ -373,10 +396,20 @@ class RattrapageSchedulingService
      * le couple (classe, ECUE) ; a defaut, le bareme par defaut du projet.
      *
      * @param  array<int, array{resultat_id: int|string, note: float|int|string|null}>  $notes
-     * @return array{saisies: int, effacees: int, recalculees: int, ignorees: int}
+     * @return array{saisies: int, effacees: int, recalculees: int, ignorees: int, bulletins_recalcules: int}
      */
-    public function saisirNotesRattrapage(ESBTPLMDSession $sessionRattrapage, array $notes): array
-    {
+    /**
+     * @param int|null $limiterAEnseignantId n'accepte que les elements constitutifs
+     *        confies a cet enseignant. Les autres lignes sont comptees « ignorees »,
+     *        comme une ligne non eligible. A passer chaque fois que l'ecran de saisie
+     *        l'a ete : l'identifiant de resultat arrive du formulaire, une liste bornee
+     *        a l'affichage ne protege rien si l'enregistrement, lui, accepte tout.
+     */
+    public function saisirNotesRattrapage(
+        ESBTPLMDSession $sessionRattrapage,
+        array $notes,
+        ?int $limiterAEnseignantId = null
+    ): array {
         if ($sessionRattrapage->type !== 'rattrapage') {
             throw new \DomainException('La saisie de notes est reservee aux sessions de rattrapage.');
         }
@@ -399,7 +432,7 @@ class RattrapageSchedulingService
         $ignorees = 0;
         $etudiantsTouches = collect();
 
-        DB::transaction(function () use ($notes, $bulletinIds, $bulletins, &$saisies, &$effacees, &$ignorees, &$etudiantsTouches): void {
+        DB::transaction(function () use ($notes, $bulletinIds, $bulletins, $limiterAEnseignantId, &$saisies, &$effacees, &$ignorees, &$etudiantsTouches): void {
             $demandes = collect($notes)
                 ->filter(fn ($ligne): bool => is_array($ligne) && isset($ligne['resultat_id']))
                 ->keyBy(fn ($ligne): int => (int) $ligne['resultat_id']);
@@ -413,6 +446,10 @@ class RattrapageSchedulingService
                 ->whereIn('id', $demandes->keys())
                 ->where('rattrapage_eligible', true)
                 ->where('rattrapage_inscrit', true)
+                ->when(
+                    $limiterAEnseignantId !== null,
+                    fn ($q) => $q->where('enseignant_id', $limiterAEnseignantId)
+                )
                 ->lockForUpdate()
                 ->get();
 
@@ -462,12 +499,18 @@ class RattrapageSchedulingService
             $recalculees += $this->recalculerMoyennesAvecRattrapage((int) $etudiantId, $sessionRattrapage);
         }
 
+        // Sans cette reagregation, la note finale resterait sans effet : la moyenne de
+        // l'unite, son statut, les credits, la moyenne generale et le rang continueraient
+        // de porter sur la seule premiere session.
+        $bulletinsRecalcules = $this->reagregerBulletins($bulletins, $etudiantsTouches);
+
         Log::info('[RattrapageSchedulingService] notes de seconde session enregistrees', [
             'session_id' => $sessionRattrapage->id,
             'saisies' => $saisies,
             'effacees' => $effacees,
             'ignorees' => $ignorees,
             'recalculees' => $recalculees,
+            'bulletins_recalcules' => $bulletinsRecalcules,
             'etudiants' => $etudiantsTouches->all(),
             'user_id' => optional(auth()->user())->id,
         ]);
@@ -477,7 +520,64 @@ class RattrapageSchedulingService
             'effacees' => $effacees,
             'recalculees' => $recalculees,
             'ignorees' => $ignorees,
+            'bulletins_recalcules' => $bulletinsRecalcules,
         ];
+    }
+
+    /**
+     * Rejoue le calcul du bulletin des etudiants dont la note de seconde session a bouge.
+     *
+     * L'agregation part des notes finales : le bulletin regenere porte donc la moyenne
+     * d'unite, le statut, les credits et la moyenne generale de seconde session. Un seul
+     * recalcul par bulletin, quel que soit le nombre de notes saisies dessus, puis un seul
+     * calcul de rang et de statistiques par classe.
+     *
+     * @param  Collection<int, ESBTPLMDBulletin>  $bulletins  bulletins du perimetre de la session
+     * @param  Collection<int, int>  $etudiantIds  etudiants dont une note vient de changer
+     * @return int  nombre de bulletins reagreges
+     */
+    private function reagregerBulletins(Collection $bulletins, Collection $etudiantIds): int
+    {
+        if ($etudiantIds->isEmpty()) {
+            return 0;
+        }
+
+        $concernes = $bulletins
+            ->whereIn('etudiant_id', $etudiantIds->all())
+            ->filter(fn (ESBTPLMDBulletin $bulletin): bool => $bulletin->classe_id !== null)
+            ->values();
+
+        if ($concernes->isEmpty()) {
+            return 0;
+        }
+
+        $service = $this->resolveBulletinService();
+
+        foreach ($concernes as $bulletin) {
+            $service->genererBulletinLMD(
+                (int) $bulletin->etudiant_id,
+                (int) $bulletin->classe_id,
+                (int) $bulletin->annee_universitaire_id,
+                (int) $bulletin->semestre,
+                true, // rang et statistiques recalcules une seule fois par classe, ci-dessous
+            );
+        }
+
+        foreach ($concernes->groupBy('classe_id') as $classeId => $groupe) {
+            $reference = $groupe->first();
+            $service->calculerRangsClasse(
+                (int) $classeId,
+                (int) $reference->annee_universitaire_id,
+                (int) $reference->semestre,
+            );
+            $service->calculerStatsPromo(
+                (int) $classeId,
+                (int) $reference->annee_universitaire_id,
+                (int) $reference->semestre,
+            );
+        }
+
+        return $concernes->count();
     }
 
     /**

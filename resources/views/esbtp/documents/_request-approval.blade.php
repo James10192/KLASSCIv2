@@ -1,11 +1,17 @@
 @php
-    $printDecision = app(\App\Services\DocumentPrintGuard::class)->decide(
+    /*
+     * La decision d'impression est calculee par la vue parente : elle en a besoin
+     * pour ses propres boutons (Apercu PDF, Generer PDF...). Une variable definie
+     * ici ne remonterait PAS a la vue parente : une partial incluse est rendue dans
+     * une portee separee. La parente transmet donc $printDecision ; on ne recalcule que
+     * si un appelant ne l'a pas fait.
+     */
+    $printDecision = $printDecision ?? app(\App\Services\DocumentPrintGuard::class)->decide(
         auth()->user(),
         $documentType,
         (int) $etudiantId,
         isset($documentId) ? (int) $documentId : null
     );
-    $printAllowed = $printDecision->allowed;
 @endphp
 @if($printDecision->isUnpaid())
     <div class="alert alert-danger py-2 px-3 mb-3">

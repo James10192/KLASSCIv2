@@ -10,6 +10,15 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Maatwebsite\Excel\Facades\Excel;
 
+/**
+ * Export du proces-verbal annuel d'un jury (tableur et PDF).
+ *
+ * `lmd.pv.export` autorise le format, pas le contenu : c'est l'appartenance au
+ * jury qui ouvre la deliberation, exactement comme sur l'ecran du jury. Sans ce
+ * rappel, un role cumulant `lmd.jury.view` et `lmd.pv.export` — la direction des
+ * etudes le fait par defaut — recuperait par l'export les deliberations que la
+ * garde d'ecran lui refuse.
+ */
 class ESBTPLMDPvExportController extends Controller
 {
     use Concerns\RespondsWithInlinePdf;
@@ -18,6 +27,8 @@ class ESBTPLMDPvExportController extends Controller
 
     public function excel(ESBTPLMDJury $jury)
     {
+        $jury->assertConsultablePar(auth()->user());
+
         $payload = $this->assembler->forJury($jury);
 
         return Excel::download(new LmdPvAnnuelExport($payload), $this->basename($jury).'.xlsx');
@@ -25,6 +36,8 @@ class ESBTPLMDPvExportController extends Controller
 
     public function pdf(Request $request, ESBTPLMDJury $jury)
     {
+        $jury->assertConsultablePar(auth()->user());
+
         $payload = $this->assembler->forJury($jury);
         $school = SettingsHelper::getSchoolInfo();
         $pdf = Pdf::loadView('esbtp.lmd.jurys.pdf.pv-annuel', compact('payload', 'school'))

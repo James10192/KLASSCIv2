@@ -6,6 +6,7 @@ use App\Helpers\SettingsHelper;
 use App\Models\ESBTPLMDResultatUE;
 use App\Models\User;
 use App\Services\LMD\LmdAcademicRuleProfile;
+use App\Services\LMDBulletinService;
 use Carbon\CarbonInterface;
 
 /**
@@ -27,7 +28,10 @@ class LmdTranscriptSnapshotBuilder
      */
     public const RULES_VERSION = 'lmd-transcript-profile-v1';
 
-    public function __construct(private readonly LmdAcademicRuleProfile $profile) {}
+    public function __construct(
+        private readonly LmdAcademicRuleProfile $profile,
+        private readonly LMDBulletinService $bulletins,
+    ) {}
 
     /**
      * @param array{student: mixed, year: mixed, bulletins: \Illuminate\Support\Collection} $state
@@ -126,12 +130,19 @@ class LmdTranscriptSnapshotBuilder
 
     private function unitData(ESBTPLMDResultatUE $resultat): array
     {
+        // La note portee par l'element constitutif doit etre celle que l'unite a
+        // agregee : la note effective, c'est-a-dire le resultat de seconde session
+        // quand il y en a eu un. Lire `moyenne` ici afficherait un element a 07,00
+        // dans une unite a 11,50 declaree acquise — un document officiel fige a
+        // l'emission, conserve, et incoherent avec lui-meme pour toujours.
         $elements = $resultat->resultatsECUEs
             ->map(fn ($ecue) => [
                 'code' => $ecue->matiere?->code,
                 'name' => $ecue->matiere?->name,
                 'credits' => (int) $ecue->credit,
-                'average' => $this->decimal($ecue->moyenne),
+                'average' => $this->decimal($this->bulletins->noteEffectiveECUE($ecue)),
+                // Dire laquelle des deux notes le releve imprime.
+                'session' => $ecue->note_finale !== null ? 'rattrapage' : 'normale',
             ])
             ->sortBy('code')
             ->values()

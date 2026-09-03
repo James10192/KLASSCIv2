@@ -69,10 +69,10 @@
     <div class="lmd-hero">
         <div class="lmd-hero-title">
             <i class="fas fa-{{ $enModification ? 'edit' : 'plus-circle' }} me-2"></i>
-            {{ $enModification ? "Modifier l'Unite d'Enseignement" : "Nouvelle Unite d'Enseignement" }}
+            {{ $enModification ? "Modifier l'Unité d'Enseignement" : "Nouvelle Unité d'Enseignement" }}
         </div>
         <div class="lmd-hero-subtitle">
-            {{ $enModification ? "Mettez a jour les informations de l'UE et ses ECUEs" : "Definissez l'UE et ajoutez ses ECUEs (matieres)" }}
+            {{ $enModification ? "Mettez à jour les informations de l'UE et ses ECUEs" : "Définissez l'UE et ajoutez ses ECUEs (matières)" }}
         </div>
     </div>
 
@@ -126,8 +126,11 @@
                                class="form-control @error('code') is-invalid @enderror"
                                value="{{ old('code', $ue->code ?? '') }}"
                                placeholder="MAG2001"
-                               x-model="ueCode">
-                        <span class="lmd-auto-hint">auto</span>
+                               x-model="ueCode"
+                               @input="codeSaisiManuellement()">
+                        @if(! $enModification)
+                            <span class="lmd-auto-hint" x-show="codeAuto">auto</span>
+                        @endif
                     </div>
                     @error('code')
                         <div class="invalid-feedback">{{ $message }}</div>
@@ -332,7 +335,7 @@
                 <i class="fas fa-arrow-left me-1"></i> Annuler
             </a>
             <button type="submit" class="btn btn-acasi primary">
-                <i class="fas fa-save me-1"></i> {{ $enModification ? 'Mettre a jour' : 'Enregistrer' }}
+                <i class="fas fa-save me-1"></i> {{ $enModification ? 'Mettre à jour' : 'Enregistrer' }}
             </button>
         </div>
 
@@ -347,7 +350,22 @@
             ueCode: @json(old('code', $ue->code ?? '')),
             ecues: @json($ecuesInitiaux),
 
+            // La generation automatique du code depuis l'intitule est un confort
+            // de saisie : elle n'a de sens qu'a la creation. En modification, elle
+            // ecraserait a chaque frappe le code deja porte par l'unite (celui de
+            // la maquette importee), et l'import suivant ne la retrouverait plus
+            // par son code : il en creerait une seconde.
+            codeAuto: @json(! $enModification),
+
+            // L'utilisateur saisit son propre code : on lui laisse la main.
+            codeSaisiManuellement() {
+                this.codeAuto = false;
+            },
+
             autoCode() {
+                if (!this.codeAuto) {
+                    return;
+                }
                 if (!this.ueName) {
                     this.ueCode = '';
                     return;

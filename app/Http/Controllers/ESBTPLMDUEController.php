@@ -293,9 +293,17 @@ class ESBTPLMDUEController extends Controller
      * Crée ou met à jour les ECUEs saisis dans le formulaire.
      *
      * Deux liens sont écrits, comme le fait l'ajout d'un ECUE isolé :
-     *  - la clé étrangère esbtp_matieres.unite_enseignement_id (rétro-compat) ;
+     *  - la clé étrangère esbtp_matieres.unite_enseignement_id (rétro-compat),
+     *    uniquement si elle est libre ou déjà la nôtre : reprendre le code d'un
+     *    élément constitutif appartenant à une autre UE le partage, ne le déplace
+     *    pas ;
      *  - le pivot esbtp_ue_matiere, qui porte coefficient / crédit / ordre
      *    propres à CETTE UE et permet le partage d'un ECUE entre deux UE.
+     *
+     * Le refus d'absorber une matière du cursus BTS est porté d'abord par
+     * UniteEnseignementRequest, puis rejoué ici par refuserAbsorptionMatiereBts()
+     * : storeECUE() valide en ligne, sans ce FormRequest, et doit donc appeler
+     * la même garde.
      *
      * $detacherAbsents n'est vrai que si le formulaire a explicitement envoyé la
      * liste complète (champ caché `sync_ecues`) : un appel partiel ne doit jamais
@@ -318,21 +326,45 @@ class ESBTPLMDUEController extends Controller
             // archivée occupe donc toujours son code. Sans cela, ressaisir ce code
             // ferait échouer l'enregistrement sur une violation d'unicité.
             $matiere = $code ? ESBTPMatiere::withTrashed()->where('code', $code)->first() : null;
-            $this->refuserAbsorptionMatiereBts($matiere);
             $existait = $matiere !== null;
             if ($matiere && $matiere->trashed()) {
                 $matiere->restore();
             }
+
+            // Reprendre le code d'un element deja rattache a une AUTRE unite ne
+            // doit pas le lui retirer. Sans ligne de pivot, cette unite-la lit
+            // ses elements par la cle etrangere (getEcuesEffectifs retombe sur
+            // le hasMany) : lui reecrire la cle la depouillerait de l'element et
+            // de ses credits, sans message ni trace. On partage par le pivot.
+            // Defense en profondeur : le FormRequest a deja refuse un code du
+            // cursus BTS, mais la garde est rejouee ici pour que tout appelant
+            // futur de cette methode soit couvert.
+            $this->refuserAbsorptionMatiereBts($matiere);
+
+            $proprietaireId = $matiere?->unite_enseignement_id;
+            $appartientAUneAutreUe = $proprietaireId !== null
+                && (int) $proprietaireId !== (int) $ue->id;
+
+            // Avant d'ecrire quoi que ce soit, on affranchit l'unite proprietaire
+            // du repli par cle etrangere : sinon la ligne de pivot que nous
+            // ecrivons plus bas resterait sa seule protection, et les valeurs que
+            // nous posons sur la matiere deviendraient les siennes.
+            if ($appartientAUneAutreUe) {
+                $this->materialiserPivotDepuisCleEtrangere((int) $proprietaireId);
+            }
+
             $matiere = $matiere ?: new ESBTPMatiere();
 
             $matiere->fill([
                 'name' => $ligne['name'],
                 'code' => $code,
-                'unite_enseignement_id' => $ue->id,
                 'credit_ecue' => $credit,
                 'coefficient_ecue' => $coefficient,
                 'ordre_bulletin' => $ordre,
             ]);
+            if (! $appartientAUneAutreUe) {
+                $matiere->unite_enseignement_id = $ue->id;
+            }
             if (!$existait) {
                 $matiere->is_active = true;
                 $matiere->created_by = auth()->id();
@@ -376,17 +408,17 @@ class ESBTPLMDUEController extends Controller
     }
 
     /**
-     * Garde-fou : ne jamais transformer une matière du BTS en ECUE.
+     * Refuse d'absorber dans le LMD une matière du cursus BTS.
      *
-     * La réutilisation par code ci-dessus écrit `unite_enseignement_id` sur la
-     * matière trouvée. `esbtp_matieres` étant partagée par les deux cursus avec
-     * un `code` unique global, une collision ferait basculer une matière BTS
-     * côté LMD : elle disparaîtrait de tous les sélecteurs BTS, qui filtrent sur
-     * `unite_enseignement_id IS NULL`, en emportant ses évaluations et ses notes.
+     * Réutiliser le code d'une matière BTS écrirait `unite_enseignement_id` sur
+     * elle : elle deviendrait un ECUE et disparaîtrait de tous les sélecteurs
+     * BTS, qui filtrent précisément sur `unite_enseignement_id IS NULL` — en
+     * emportant ses évaluations et ses notes. `esbtp_matieres` étant partagée
+     * par les deux cursus, l'effet porte sur les instances BTS en service.
      *
-     * Le formulaire est déjà arrêté en amont par UniteEnseignementRequest, qui
-     * nomme le code en conflit. Cette seconde barrière protège les appels qui ne
-     * passeraient pas par ce FormRequest.
+     * Une matière déjà rattachée à une UE — par la colonne ou par le pivot
+     * `esbtp_ue_matiere`, le partage d'un ECUE entre deux UE étant légitime —
+     * n'est pas une matière BTS : elle passe.
      */
     private function refuserAbsorptionMatiereBts(?ESBTPMatiere $matiere): void
     {
@@ -394,18 +426,55 @@ class ESBTPLMDUEController extends Controller
             return;
         }
 
-        // Un ECUE partagé entre deux UE n'est rattaché que par le pivot.
         if (DB::table('esbtp_ue_matiere')->where('matiere_id', $matiere->id)->exists()) {
             return;
         }
 
         throw ValidationException::withMessages([
             'ecues' => sprintf(
-                'Le code « %s » est déjà celui d\'une matière du cursus BTS (« %s »). Choisissez un autre code.',
+                'Le code « %s » est déjà celui d\'une matière du cursus BTS (« %s »). Choisissez un autre code : réutiliser celui-ci retirerait cette matière des écrans BTS.',
                 (string) $matiere->code,
                 (string) $matiere->name
             ),
         ]);
+    }
+
+    /**
+     * Matérialise dans le pivot les éléments constitutifs qu'une UE ne tient que
+     * par la clé étrangère `esbtp_matieres.unite_enseignement_id`.
+     *
+     * C'est l'état des maquettes importées : l'import ne renseigne que la clé
+     * étrangère. Avant de partager un de ces éléments avec une autre UE, on fige
+     * pour l'unité propriétaire le coefficient, le crédit et l'ordre que la
+     * matière portait — sans quoi les valeurs que la seconde UE écrira sur la
+     * matière deviendraient aussi les siennes. On recopie exactement ce que la
+     * lecture affichait déjà : l'écran ne change pas.
+     *
+     * (`getEcuesEffectifs()` retourne désormais l'union du pivot et de la clé
+     * étrangère : cette matérialisation ne masque plus rien.)
+     */
+    private function materialiserPivotDepuisCleEtrangere(int $uniteEnseignementId): void
+    {
+        $unite = ESBTPUniteEnseignement::find($uniteEnseignementId);
+
+        // Pivot déjà renseigné : c'est lui qui fait foi, rien à reprendre.
+        if (! $unite || $unite->ecues()->exists()) {
+            return;
+        }
+
+        $liens = [];
+        // Même périmètre que le repli de getEcuesEffectifs() : les actives.
+        foreach ($unite->matieres()->where('is_active', true)->get() as $ecue) {
+            $liens[$ecue->id] = [
+                'coefficient_ecue' => $ecue->coefficient_ecue,
+                'credit_ecue' => $ecue->credit_ecue,
+                'ordre_bulletin' => (int) ($ecue->ordre_bulletin ?? 0),
+            ];
+        }
+
+        if ($liens !== []) {
+            $unite->ecues()->syncWithoutDetaching($liens);
+        }
     }
 
     /**
@@ -515,6 +584,12 @@ class ESBTPLMDUEController extends Controller
 
         if (!empty($validated['matiere_id'])) {
             $matiere = ESBTPMatiere::findOrFail($validated['matiere_id']);
+
+            // Cette route valide en ligne, elle ne passe pas par
+            // UniteEnseignementRequest : la garde anti-absorption BTS doit être
+            // rejouée ici, sinon un clic dans « Lier une matière existante »
+            // sortirait une matière BTS de tous les sélecteurs BTS.
+            $this->refuserAbsorptionMatiereBts($matiere);
         } else {
             // Créer une nouvelle matière
             $matiere = ESBTPMatiere::create([
@@ -530,8 +605,17 @@ class ESBTPLMDUEController extends Controller
             ]);
         }
 
-        // Toujours garder le FK direct (rétro-compat)
-        if ($matiere->unite_enseignement_id !== $ue->id) {
+        // Clé étrangère (rétro-compat) : on ne l'écrit que si elle est libre ou
+        // déjà la nôtre. La reprendre à l'unité voisine qui ne tient ses
+        // éléments que par elle la dépouillerait, en silence — même règle que
+        // synchroniserEcues(). Le partage passe par le pivot, écrit juste après.
+        $proprietaireId = $matiere->unite_enseignement_id;
+        $appartientAUneAutreUe = $proprietaireId !== null
+            && (int) $proprietaireId !== (int) $ue->id;
+
+        if ($appartientAUneAutreUe) {
+            $this->materialiserPivotDepuisCleEtrangere((int) $proprietaireId);
+        } elseif ($proprietaireId === null) {
             $matiere->update(['unite_enseignement_id' => $ue->id, 'updated_by' => auth()->id()]);
         }
 
@@ -622,7 +706,17 @@ class ESBTPLMDUEController extends Controller
      */
     public function matieresDisponibles(ESBTPUniteEnseignement $ue)
     {
+        // Ne proposer que des éléments constitutifs déjà LMD — par la colonne ou
+        // par le pivot. Sans ce filtre, la liste offre l'intégralité du catalogue
+        // BTS de l'établissement, et un seul clic sortirait une matière BTS de
+        // tous les écrans BTS (ils filtrent sur `unite_enseignement_id IS NULL`).
         $matieres = ESBTPMatiere::where('is_active', true)
+            ->where(function ($q) {
+                $q->whereNotNull('unite_enseignement_id')
+                    ->orWhereExists(fn ($sub) => $sub->selectRaw('1')
+                        ->from('esbtp_ue_matiere')
+                        ->whereColumn('esbtp_ue_matiere.matiere_id', 'esbtp_matieres.id'));
+            })
             ->whereDoesntHave('unitesEnseignementMultiple', fn($q) => $q->where('esbtp_ue_matiere.unite_enseignement_id', $ue->id))
             ->orderBy('name')
             ->get(['id', 'name', 'code', 'coefficient_ecue', 'credit_ecue']);
