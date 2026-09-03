@@ -163,6 +163,60 @@ class RattrapageSchedulingServiceScopeTest extends TestCase
         $this->service->identifierEtudiantsEligibles($session);
     }
 
+    public function test_saisie_screen_is_limited_to_the_teacher_own_ecues(): void
+    {
+        $parent = $this->normalSession();
+        $rattrapage = $this->rattrapageSession($parent);
+        $bulletin = $this->bulletin(101, 10, 20, 30, 1);
+        $this->activeEnrollment(101, 10, 20);
+
+        $sienne = $this->resultat($bulletin, 101, 501, 8.0, [
+            'enseignant_id' => 900,
+            'rattrapage_eligible' => true,
+            'rattrapage_inscrit' => true,
+        ]);
+        $this->resultat($bulletin, 101, 502, 7.0, [
+            'enseignant_id' => 901,
+            'rattrapage_eligible' => true,
+            'rattrapage_inscrit' => true,
+        ]);
+
+        $toutes = $this->service->lignesSaisieRattrapage($rattrapage);
+        $bornees = $this->service->lignesSaisieRattrapage($rattrapage, 900);
+
+        $this->assertCount(2, $toutes, 'Un superviseur voit la session entiere.');
+        $this->assertSame(
+            [$sienne->id],
+            $bornees->pluck('id')->all(),
+            "Le droit de saisie n'ouvre que les elements constitutifs confies a l'enseignant."
+        );
+    }
+
+    public function test_saving_refuses_a_line_belonging_to_another_teacher(): void
+    {
+        $parent = $this->normalSession();
+        $rattrapage = $this->rattrapageSession($parent);
+        $bulletin = $this->bulletin(101, 10, 20, 30, 1);
+        $this->activeEnrollment(101, 10, 20);
+
+        $autre = $this->resultat($bulletin, 101, 502, 7.0, [
+            'enseignant_id' => 901,
+            'rattrapage_eligible' => true,
+            'rattrapage_inscrit' => true,
+        ]);
+
+        // L'identifiant de resultat arrive du formulaire : borner l'affichage ne
+        // protege rien si l'enregistrement, lui, accepte n'importe quelle ligne.
+        $bilan = $this->service->saisirNotesRattrapage(
+            $rattrapage,
+            [['resultat_id' => $autre->id, 'note' => 15.0]],
+            900
+        );
+
+        $this->assertSame(0, $bilan['saisies']);
+        $this->assertNull($autre->fresh()->note_rattrapage);
+    }
+
     private function createSchema(): void
     {
         Schema::create('settings', function (Blueprint $table): void {
@@ -222,6 +276,7 @@ class RattrapageSchedulingServiceScopeTest extends TestCase
             $table->decimal('note_session_normale', 5, 2)->nullable();
             $table->decimal('note_rattrapage', 5, 2)->nullable();
             $table->decimal('note_finale', 5, 2)->nullable();
+            $table->unsignedBigInteger('enseignant_id')->nullable();
             $table->boolean('rattrapage_eligible')->default(false);
             $table->boolean('rattrapage_inscrit')->default(false);
             $table->unsignedBigInteger('created_by')->nullable();
@@ -269,6 +324,27 @@ class RattrapageSchedulingServiceScopeTest extends TestCase
             $table->id();
             $table->string('name');
             $table->timestamps();
+            $table->softDeletes();
+        });
+
+        // Tables lues par les chargements anticipes de lignesSaisieRattrapage().
+        Schema::create('esbtp_etudiants', function (Blueprint $table): void {
+            $table->id();
+            $table->string('nom')->nullable();
+            $table->string('prenoms')->nullable();
+            $table->string('matricule')->nullable();
+            $table->softDeletes();
+        });
+
+        Schema::create('esbtp_classes', function (Blueprint $table): void {
+            $table->id();
+            $table->string('name')->nullable();
+            $table->softDeletes();
+        });
+
+        Schema::create('users', function (Blueprint $table): void {
+            $table->id();
+            $table->string('name')->nullable();
             $table->softDeletes();
         });
 

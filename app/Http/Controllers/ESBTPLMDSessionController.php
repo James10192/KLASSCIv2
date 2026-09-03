@@ -64,13 +64,25 @@ class ESBTPLMDSessionController extends Controller
      */
     public function notesRattrapage(ESBTPLMDSession $session): View
     {
-        abort_unless(auth()->user()?->can('lmd.rattrapage.view'), 403);
+        // L'ecran de saisie s'ouvre aussi au seul detenteur de la saisie : sans cela,
+        // lmd.rattrapage.notes.saisir ne servirait a rien seul, l'enseignant butant
+        // sur un refus avant meme d'atteindre l'ecran qui produit l'envoi autorise.
+        $user = auth()->user();
+        abort_unless(
+            $user?->can('lmd.rattrapage.view') || $user?->can('lmd.rattrapage.notes.saisir'),
+            403,
+            "La saisie des notes de seconde session ne vous est pas ouverte. Demandez le droit de saisie au responsable de la session."
+        );
+
+        // Sans titre de supervision, l'ecran se borne aux elements constitutifs
+        // confies a l'enseignant.
+        $limiterAEnseignantId = $this->limiteEnseignantRattrapage();
         abort_unless($session->type === 'rattrapage', 404);
 
         $session->load(['anneeUniversitaire', 'parcours', 'parentSession']);
 
         try {
-            $lignes = $this->rattrapage->lignesSaisieRattrapage($session);
+            $lignes = $this->rattrapage->lignesSaisieRattrapage($session, $limiterAEnseignantId);
         } catch (\DomainException $e) {
             return view('esbtp.lmd.rattrapage.notes', [
                 'session' => $session,
@@ -95,7 +107,16 @@ class ESBTPLMDSessionController extends Controller
      */
     public function enregistrerNotesRattrapage(Request $request, ESBTPLMDSession $session): JsonResponse
     {
-        abort_unless($this->peutSaisirNotes(), 403);
+        abort_unless(
+            $this->peutSaisirNotes(),
+            403,
+            "La saisie des notes de seconde session ne vous est pas ouverte. Demandez le droit de saisie au responsable de la session."
+        );
+
+        // Meme perimetre qu'a l'affichage : l'identifiant de resultat arrive du
+        // formulaire, une liste bornee a l'ecran ne protegerait rien si
+        // l'enregistrement acceptait n'importe quelle ligne de la session.
+        $limiterAEnseignantId = $this->limiteEnseignantRattrapage();
 
         $data = $request->validate([
             'notes' => ['required', 'array', 'min:1'],
@@ -104,7 +125,7 @@ class ESBTPLMDSessionController extends Controller
         ]);
 
         try {
-            $bilan = $this->rattrapage->saisirNotesRattrapage($session, $data['notes']);
+            $bilan = $this->rattrapage->saisirNotesRattrapage($session, $data['notes'], $limiterAEnseignantId);
         } catch (\DomainException|\LogicException $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
         }
@@ -113,7 +134,7 @@ class ESBTPLMDSessionController extends Controller
             'success' => true,
             'message' => $this->messageBilan($bilan),
             'bilan' => $bilan,
-            'lignes' => $this->etatLignes($session),
+            'lignes' => $this->etatLignes($session, $limiterAEnseignantId),
         ]);
     }
 
@@ -122,9 +143,9 @@ class ESBTPLMDSessionController extends Controller
      *
      * @return array<int, array{resultat_id: int, note_rattrapage: float|null, note_finale: float|null}>
      */
-    private function etatLignes(ESBTPLMDSession $session): array
+    private function etatLignes(ESBTPLMDSession $session, ?int $limiterAEnseignantId = null): array
     {
-        return $this->rattrapage->lignesSaisieRattrapage($session)
+        return $this->rattrapage->lignesSaisieRattrapage($session, $limiterAEnseignantId)
             ->map(fn ($ligne): array => [
                 'resultat_id' => (int) $ligne->id,
                 'note_rattrapage' => $ligne->note_rattrapage === null ? null : (float) $ligne->note_rattrapage,
@@ -153,6 +174,24 @@ class ESBTPLMDSessionController extends Controller
     /**
      * La saisie exige la permission dediee, ou a defaut celle qui pilote deja le rattrapage.
      */
+    /**
+     * A quel enseignant l'ecran de seconde session est-il borne ?
+     *
+     * `null` pour qui supervise le rattrapage — il voit la session entiere. Sinon
+     * l'identifiant de l'utilisateur : le droit de saisie ouvre la saisie de SES
+     * elements constitutifs, pas la lecture des notes de toute la promotion.
+     */
+    private function limiteEnseignantRattrapage(): ?int
+    {
+        $user = auth()->user();
+
+        if ($user?->can('lmd.rattrapage.view') || $user?->can('lmd.rattrapage.manage')) {
+            return null;
+        }
+
+        return $user?->id;
+    }
+
     private function peutSaisirNotes(): bool
     {
         $user = auth()->user();

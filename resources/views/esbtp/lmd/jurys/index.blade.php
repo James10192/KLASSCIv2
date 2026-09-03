@@ -85,8 +85,17 @@
     @if($jurys->isEmpty())
     <div class="juy-empty">
         <i class="fas fa-gavel"></i>
-        <h3 style="margin:.25rem 0;color:#1e293b;">Aucun jury</h3>
-        <p style="margin:0;">Créez un jury de délibération pour démarrer le workflow.</p>
+        @if($limiteAuxSiens ?? false)
+            <h3 style="margin:.25rem 0;color:#1e293b;">Aucun jury dont vous êtes membre</h3>
+            <p style="margin:0;">Une délibération n'est consultable que par les membres du jury qui l'a prononcée. Demandez au président du jury de vous ajouter à sa composition.</p>
+        @else
+            <h3 style="margin:.25rem 0;color:#1e293b;">Aucun jury</h3>
+            @can('lmd.jury.preside')
+                <p style="margin:0;">Créez un jury de délibération pour démarrer le workflow.</p>
+            @else
+                <p style="margin:0;">Aucun jury n'a encore été créé pour cette année universitaire.</p>
+            @endcan
+        @endif
     </div>
     @else
     <table class="juy-table">
