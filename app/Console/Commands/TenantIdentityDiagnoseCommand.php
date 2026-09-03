@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Domain\Exploitation\CoherenceIdentiteInstance;
 use App\Helpers\SettingsHelper;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
@@ -46,18 +47,6 @@ class TenantIdentityDiagnoseCommand extends Command
 
     protected $description = "Vérifie que TENANT_CODE concorde avec l'hôte, la base et le nom de l'établissement";
 
-    /**
-     * Les instances dont l'hôte ne porte légitimement pas le code du tenant.
-     *
-     * `rostan` est servi par `islg.klassci.com` : l'établissement a changé de
-     * nom commercial après sa mise en service. C'est la seule divergence
-     * connue, et elle est déclarée ici plutôt que devinée — une exception
-     * écrite se relit, une heuristique se contourne toute seule.
-     */
-    private const HOTES_ATTENDUS = [
-        'rostan' => 'islg',
-    ];
-
     public function handle(): int
     {
         $rapport = $this->construireRapport();
@@ -80,38 +69,7 @@ class TenantIdentityDiagnoseCommand extends Command
         $base = (string) DB::connection()->getDatabaseName();
         $nomEcole = (string) SettingsHelper::get('school_name', '');
 
-        $anomalies = [];
-
-        if ($code === '' || $code === 'default') {
-            $anomalies[] = [
-                'clef' => 'code_absent',
-                'message' => "TENANT_CODE n'est pas défini : l'instance se présentera partout sous « default ».",
-            ];
-        }
-
-        // L'hôte doit contenir le code, ou celui qui est déclaré pour lui.
-        $attendu = self::HOTES_ATTENDUS[$code] ?? $code;
-
-        if ($code !== '' && $hoteApp !== '' && ! str_contains($hoteApp, $attendu)) {
-            $anomalies[] = [
-                'clef' => 'hote_divergent',
-                'message' => "TENANT_CODE vaut « {$code} » mais APP_URL sert « {$hoteApp} ». "
-                    . "Si l'instance a été mise en service en recopiant le .env d'un autre établissement, "
-                    . "c'est TENANT_CODE qui est resté celui de l'autre.",
-            ];
-        }
-
-        // La base porte presque toujours le code, avec des tirets bas.
-        $codeBase = str_replace('-', '_', $code);
-
-        if ($code !== '' && $base !== '' && ! str_contains($base, $codeBase)) {
-            $anomalies[] = [
-                'clef' => 'base_divergente',
-                'message' => "TENANT_CODE vaut « {$code} » mais la base connectée est « {$base} ». "
-                    . 'À vérifier : une instance branchée sur la base d\'un autre établissement '
-                    . 'sert les données de celui-là.',
-            ];
-        }
+        $anomalies = CoherenceIdentiteInstance::anomalies($code, $hoteApp, $base);
 
         return [
             'tenant_code' => $code,
