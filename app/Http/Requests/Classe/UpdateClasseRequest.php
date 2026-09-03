@@ -2,9 +2,12 @@
 
 namespace App\Http\Requests\Classe;
 
+use App\Models\ESBTPFiliere;
+use App\Models\ESBTPLMDMention;
 use App\Models\ESBTPLMDParcours;
 use App\Models\ESBTPNiveauEtude;
 use App\Services\ClasseManagementService;
+use Closure;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\Exceptions\HttpResponseException;
@@ -27,9 +30,7 @@ class UpdateClasseRequest extends FormRequest
         return [
             'name' => 'required|string|max:255',
             'code' => 'required|string|max:50|unique:esbtp_classes,code,' . $classeId,
-            'filiere_id' => ($isLmd && $hasParcours)
-                ? 'nullable|exists:esbtp_filieres,id'
-                : 'required|exists:esbtp_filieres,id',
+            'filiere_id' => $this->regleFiliere($isLmd, $hasParcours),
             'niveau_etude_id' => 'required|exists:esbtp_niveau_etudes,id',
             'annee_universitaire_id' => 'required|exists:esbtp_annee_universitaires,id',
             'places_totales' => 'required|integer|min:1',
@@ -112,5 +113,39 @@ class UpdateClasseRequest extends FormRequest
         }
 
         parent::failedValidation($validator);
+    }
+
+    /**
+     * La regle du champ `filiere_id`, qui ne designe pas la meme chose selon
+     * le systeme academique.
+     *
+     * En BTS, c'est une filiere. En LMD, le selecteur de mention est pose sur
+     * ce champ faute de colonne dediee sur `esbtp_classes` : il porte alors un
+     * id de MENTION. Le controleur convertit ensuite en filiere d'ancrage.
+     *
+     * En LMD on accepte les deux tables : une classe creee avant cette regle
+     * porte une vraie filiere, et rouvrir sa fiche pour corriger un nom ne doit
+     * pas exiger de rechoisir sa mention.
+     */
+    private function regleFiliere(bool $isLmd, bool $hasParcours): array
+    {
+        $presence = ($isLmd && $hasParcours) ? 'nullable' : 'required';
+
+        if (! $isLmd) {
+            return [$presence, 'exists:esbtp_filieres,id'];
+        }
+
+        return [$presence, function (string $attribut, $valeur, Closure $echoue) {
+            if (blank($valeur)) {
+                return;
+            }
+
+            $connue = ESBTPLMDMention::whereKey($valeur)->exists()
+                || ESBTPFiliere::whereKey($valeur)->exists();
+
+            if (! $connue) {
+                $echoue('La mention sélectionnée est invalide.');
+            }
+        }];
     }
 }

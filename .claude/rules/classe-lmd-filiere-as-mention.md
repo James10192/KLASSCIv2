@@ -1,4 +1,4 @@
-# Rule: Classe LMD — Convention `filiere_id` sert sémantiquement de Mention
+# Rule: Classe LMD — `filiere_id` désigne une filière d'ancrage, jamais une mention
 
 ## Quand s'active
 
@@ -23,38 +23,75 @@ L'arrivée du système LMD (UEMOA) a ajouté trois nouvelles tables :
   (appartient à une mention, a un `filiere_id` qui pointe sur une filière BTS
   équivalente pour rétro-compat des planifications académiques)
 
-Plutôt que d'ajouter une colonne `mention_id` à `esbtp_classes` (qui nécessitait
-une migration multi-instance + backfill + gestion de nullability croisée), la
-décision validée par Marcel (Option A, 14 mai 2026) est :
+Plutôt que d'ajouter une colonne `mention_id` à `esbtp_classes`, la décision de
+mai 2026 (« Option A ») fut d'écrire l'id de la mention **dans** `filiere_id`.
 
-**En mode LMD, `esbtp_classes.filiere_id` sert sémantiquement de `mention_id`.**
+**Cette convention a été retirée en septembre 2026 : elle ne tenait que par un
+hasard de numérotation.** Écrire un id de mention dans une colonne qui porte une
+clé étrangère vers `esbtp_filieres` ne fonctionne que tant que les deux suites
+d'identifiants coïncident. USAT compte huit mentions pour cinq filières : ses
+trois mentions d'agronomie n'avaient aucune classe possible — erreur serveur avec
+parcours (le parcours n'ayant pas de filière, la valeur dérivée était nulle sur
+une colonne NOT NULL), refus de validation sans parcours.
 
-Quand un Parcours est aussi sélectionné, le controller dérive automatiquement la
-"vraie" `filiere_id` (filière BTS équivalente) depuis `parcours.filiere_id` :
+## La règle actuelle
 
-```php
-// ESBTPClasseController::store() L325-329
-if (!empty($validatedData['parcours_id'])) {
-    $parcours = ESBTPLMDParcours::findOrFail($validatedData['parcours_id']);
-    $validatedData['filiere_id'] = $parcours->filiere_id;
-}
-```
+**`esbtp_classes.filiere_id` désigne TOUJOURS une filière qui existe.**
 
-→ Coté lecture (planifications, bulletins, notes), `filiere_id` reste cohérent
-avec la jointure canonique `esbtp_planifications_academiques (filiere_id +
-niveau_etude_id + semestre)` documentée dans la rule globale `klassci-classe-matieres.md`.
+Le formulaire, lui, envoie bien un id de mention dans ce champ (le sélecteur de
+mention y est posé faute de colonne dédiée). C'est le contrôleur qui convertit,
+par `ESBTPClasseController::ancrerSurUneFiliereReelle()`, lequel s'appuie sur
+`App\Services\LMD\FiliereMiroirLmd` :
+
+- parcours fourni → `pourParcours()` : sa filière si elle existe, sinon un reflet
+  créé à son nom et à son code, et le parcours y est rattaché ;
+- mention seule (tronc commun) → `pourMention()` : le reflet de la mention.
+
+Un **reflet** est une filière marquée par `lmd_mention_id` ou `lmd_parcours_id`.
+Ces colonnes sont la seule façon de le reconnaître : sur une instance mixte, un
+parcours LMD pointe **légitimement** vers une vraie filière BTS équivalente (la
+rétro-compat des planifications), donc « un parcours pointe vers moi » ne veut pas
+dire « je suis un reflet ». Le scope `ESBTPFiliere::horsMiroirLmd()` les écarte
+des écrans où une personne choisit une filière BTS.
+
+→ Côté lecture (planifications, bulletins, notes), rien ne change : `filiere_id`
+reste cohérent avec la jointure canonique `esbtp_planifications_academiques
+(filiere_id + niveau_etude_id + semestre)` documentée dans `klassci-classe-matieres.md`.
+
+## Pourquoi pas simplement rendre `filiere_id` nullable
+
+C'est la première idée, et elle est mauvaise pour deux raisons — dont aucune
+n'est « ça planterait partout ». Relevé sur la branche : la très grande majorité
+des lectures de `filiere_id` tolèrent déjà le nul (`??`, `optional()`, `?->`, ou
+un `if` englobant), et plusieurs sites ont même été écrits en l'anticipant
+(`ESBTPClasseController:1134` et `:1161`, `ClassPlanningService:54`,
+`BtsBulletinSubjectResolver:38`). Les vraies casses se comptent sur une main.
+
+1. **Ça ne résout rien.** Sans colonne `mention_id` sur `esbtp_classes`, le
+   rattachement à la mention n'a toujours nulle part où vivre. C'est plus de
+   travail que le reflet, pas moins.
+2. **Le coût n'est pas le plantage, c'est la perte silencieuse.** Une quarantaine
+   de filtres de la forme `where('filiere_id', $classe->filiere_id)` deviendraient
+   `= NULL` : zéro ligne, aucune erreur (`BulletinService`, `ESBTPInscriptionService`,
+   `ExamenSchedulingService`, `EcheancierAdminService`, le listing `/esbtp/classes`…).
+   Et `ESBTPFiliereController:380`, le garde qui refuse de supprimer une filière
+   portant encore des classes, deviendrait faux.
+
+Un bulletin vide ne se remarque pas comme un écran d'erreur.
 
 ## Cas de figure
 
-| Cas | systeme_academique | filiere_id stocké | parcours_id stocké | Interprétation |
+| Cas | systeme_academique | `filiere_id` stocké | `parcours_id` | Interprétation |
 |---|---|---|---|---|
-| BTS classique | BTS | filière BTS (ex: Génie Civil) | NULL | Pattern legacy, inchangé |
-| LMD tronc commun (mention) | LMD | **mention_id** (ex: Sciences de la Vie) | NULL | Classe ouverte L1 commune à toute la mention |
-| LMD avec parcours | LMD | filière BTS dérivée (ex: Biologie) | parcours (ex: Bio Moléculaire) | Classe spécialisée |
+| BTS classique | BTS | filière BTS | NULL | Inchangé |
+| LMD tronc commun | LMD | reflet de la **mention** | NULL | Classe ouverte à toute la mention |
+| LMD avec parcours | LMD | filière du parcours, ou son reflet | parcours | Classe spécialisée |
+| LMD **avant sept. 2026** | LMD | peut porter un id de mention | NULL | Donnée héritée, tolérée en lecture |
 
-Note : dans le 3ᵉ cas, `filiere_id` final est la filière dérivée du parcours,
-PAS l'ID de la mention. Le formulaire envoie `filiere_id = mention_id` mais le
-controller le remplace par `parcours.filiere_id` avant le save.
+La dernière ligne explique les replis présents dans le code : le formulaire
+d'édition retente l'ancienne interprétation quand la filière n'est pas un reflet,
+et la validation LMD accepte l'une ou l'autre table. Ne les retirez pas sans avoir
+relevé les données réelles de chaque instance.
 
 ## Validation côté FormRequest
 
@@ -85,15 +122,22 @@ les inputs descendants du form data).
 
 ## Anti-patterns à BLOQUER en review
 
-1. ❌ Ajouter un champ `mention_id` direct à `esbtp_classes` sans plan migration
-   multi-instance — la convention `filiere_id == mention_id en LMD` doit rester
-2. ❌ Filtrer les classes par `filiere_id` en supposant uniquement filière BTS —
-   en LMD, ça peut être une mention. Toujours `where systeme_academique` en plus
-3. ❌ Hardcoder `LMD_TYPES = ['Licence', 'Master']` — utiliser
+1. ❌ Écrire dans `esbtp_classes.filiere_id` un id qui n'est pas celui d'une
+   filière (id de mention, id de parcours). Passer par
+   `ESBTPClasseController::ancrerSurUneFiliereReelle()` ou `FiliereMiroirLmd`.
+2. ❌ Dériver `filiere_id` de `parcours->filiere_id` sans vérifier qu'elle existe :
+   cette colonne est **nullable**, et trois parcours d'USAT l'avaient nulle. C'est
+   exactement ce qui rendait la création de classe impossible.
+3. ❌ Reconnaître un reflet à « un parcours pointe vers cette filière ». Sur les
+   instances mixtes c'est vrai de vraies filières BTS. Seules les colonnes
+   `lmd_mention_id` / `lmd_parcours_id` le disent — ou `estMiroirLmd()`.
+4. ❌ Filtrer les classes par `filiere_id` en supposant uniquement filière BTS —
+   en LMD c'est un reflet. Toujours `where systeme_academique` en plus.
+5. ❌ Hardcoder `LMD_TYPES = ['Licence', 'Master']` — utiliser
    `ClasseManagementService::LMD_TYPES` (source de vérité)
-4. ❌ Submit le form avec 2 inputs `name="filiere_id"` actifs simultanément
+6. ❌ Submit le form avec 2 inputs `name="filiere_id"` actifs simultanément
    (un BTS + un LMD picker) — utiliser le pattern `<fieldset :disabled>`
-5. ❌ Tester un fix LMD uniquement sur le modal AJAX sans tester `/esbtp/classes/create`
+7. ❌ Tester un fix LMD uniquement sur le modal AJAX sans tester `/esbtp/classes/create`
    page entière (et inversement)
 
 ## Voir aussi
