@@ -69,13 +69,22 @@ class TenantIdentityDiagnoseCommand extends Command
         $base = (string) DB::connection()->getDatabaseName();
         $nomEcole = (string) SettingsHelper::get('school_name', '');
 
-        $anomalies = CoherenceIdentiteInstance::anomalies($code, $hoteApp, $base);
+        $sigle = (string) SettingsHelper::get('school_acronym', '');
+
+        $anomalies = CoherenceIdentiteInstance::anomalies(
+            $code,
+            $hoteApp,
+            $base,
+            $nomEcole,
+            $sigle,
+        );
 
         return [
             'tenant_code' => $code,
             'hote_app_url' => $hoteApp,
             'base_de_donnees' => $base,
             'nom_etablissement' => $nomEcole,
+            'sigle' => $sigle,
             'sequence_pv' => $code === ''
                 ? null
                 : sprintf('PV-{ANNÉE}-%s-{NNNN}', $code),
@@ -105,6 +114,7 @@ class TenantIdentityDiagnoseCommand extends Command
         $this->line('    APP_URL sert       : ' . ($rapport['hote_app_url'] ?: '(vide)'));
         $this->line('    Base de données    : ' . ($rapport['base_de_donnees'] ?: '(vide)'));
         $this->line('    Établissement      : ' . ($rapport['nom_etablissement'] ?: '(non réglé)'));
+        $this->line('    Sigle              : ' . ($rapport['sigle'] ?: '(non réglé)'));
         $this->newLine();
         $this->line('    Les PV seront numérotés   ' . ($rapport['sequence_pv'] ?? '—'));
         $this->line('    Les quotas sont lus sur   ' . ($rapport['quotas_interroges'] ?? '—'));
