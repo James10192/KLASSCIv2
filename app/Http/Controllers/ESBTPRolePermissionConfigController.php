@@ -164,6 +164,16 @@ class ESBTPRolePermissionConfigController extends Controller
             $role->syncPermissions($permissionNames);
             $this->debugLog('syncPermissions() exécuté');
 
+            // Ce qui sort des defauts a ete voulu par l'etablissement : on
+            // l'inscrit, sinon la synchronisation des permissions le prendrait
+            // pour de la derive et l'effacerait au prochain deploiement.
+            app(\App\Services\ExtensionsDeRole::class)->enregistrer(
+                $role->name,
+                $permissionNames,
+                'Accordé depuis la configuration des rôles.',
+                auth()->id()
+            );
+
             \DB::commit();
             $this->debugLog('DB COMMIT effectué');
 
