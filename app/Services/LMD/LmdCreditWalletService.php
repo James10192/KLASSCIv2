@@ -31,7 +31,10 @@ final class LmdCreditWalletService
         $classNames = DB::table('esbtp_classes')
             ->whereIn('id', $bulletins->pluck('classe_id')->filter()->unique()->values())
             ->pluck('name', 'id');
-        $entries = $ledger->isNotEmpty() ? $this->ledgerEntries($ledger) : $this->entries($published, $classNames);
+        $parcoursNames = $this->parcoursNames($bulletins->pluck('parcours_id')->filter()->unique()->values());
+        $entries = $ledger->isNotEmpty()
+            ? $this->ledgerEntries($ledger)
+            : $this->entries($published, $classNames, $parcoursNames);
 
         return [
             'capitalises' => $capitalises,
@@ -173,6 +176,19 @@ final class LmdCreditWalletService
 
         return DB::table('esbtp_lmd_parcours')->where('id', $parcoursId)->value('name');
     }
+
+    /**
+     * Noms des parcours indexes par identifiant, charges en une seule requete.
+     */
+    private function parcoursNames(Collection $parcoursIds): Collection
+    {
+        if ($parcoursIds->isEmpty() || ! Schema::hasTable('esbtp_lmd_parcours')) {
+            return collect();
+        }
+
+        return DB::table('esbtp_lmd_parcours')->whereIn('id', $parcoursIds)->pluck('name', 'id');
+    }
+
     private function fingerprint(array $payload): string
     {
         return hash('sha256', json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
@@ -230,7 +246,7 @@ final class LmdCreditWalletService
                 'bulletin_id' => $bulletin->id,
                 'annee' => $bulletin->anneeUniversitaire?->display_name ?? $bulletin->anneeUniversitaire?->name ?? 'Annee non renseignee',
                 'classe' => $classNames->get($bulletin->classe_id),
-                'parcours' => $this->parcoursName($bulletin->parcours_id),
+                'parcours' => $parcoursNames->get($bulletin->parcours_id),
                 'semestre' => $bulletin->semestre,
                 'credits' => $bulletin->credits_capitalises,
                 'credits_attendus' => $bulletin->credits_totaux,

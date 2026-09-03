@@ -11,30 +11,42 @@ class TeacherAttendanceHistoryController extends Controller
 {
     public function index(Request $request)
     {
-        $teacher = auth()->user();
-        $query = ESBTPTeacherAttendance::where('teacher_id', $teacher->id);
+        $user = auth()->user();
 
-        // Apply date range filter if provided
-        if ($request->has('start_date') && $request->has('end_date')) {
-            $startDate = Carbon::parse($request->start_date)->startOfDay();
-            $endDate = Carbon::parse($request->end_date)->endOfDay();
-            $query->whereBetween('marked_at', [$startDate, $endDate]);
-        }
+        // Paramètres de filtrage (bornés pour éviter toute valeur aberrante)
+        $month = (int) $request->get('month', Carbon::now()->month);
+        $year = (int) $request->get('year', Carbon::now()->year);
+        $month = max(1, min(12, $month));
+        $year = max(2000, min((int) Carbon::now()->year + 1, $year));
 
-        // Apply status filter if provided
-        if ($request->has('status')) {
-            $query->where('validation_status', $request->status);
-        }
+        // esbtp_teacher_attendances.teacher_id référence users.id.
+        // Le filtre porte sur `date` (toujours renseignée) et non sur `validated_at`
+        // qui reste nulle pour les séances marquées non émargées automatiquement.
+        $baseQuery = ESBTPTeacherAttendance::query()
+            ->where('teacher_id', $user->id)
+            ->whereYear('date', $year)
+            ->whereMonth('date', $month);
 
-        // Get paginated results
-        $attendances = $query->orderBy('marked_at', 'desc')
-            ->paginate(10);
+        $attendances = (clone $baseQuery)
+            ->with(['course.matiere', 'course.classe', 'dailyCode'])
+            ->orderBy('date', 'desc')
+            ->orderBy('validated_at', 'desc')
+            ->paginate(15)
+            ->withQueryString();
 
-        return view('esbtp.teacher.attendance.history', [
-            'attendances' => $attendances,
-            'startDate' => $request->start_date ?? null,
-            'endDate' => $request->end_date ?? null,
-            'status' => $request->status ?? null
-        ]);
+        // Les compteurs portent sur l'ensemble de la période, pas sur la page courante.
+        $countsByStatus = (clone $baseQuery)
+            ->selectRaw('status, COUNT(*) as total')
+            ->groupBy('status')
+            ->pluck('total', 'status');
+
+        $stats = [
+            'total' => (int) $countsByStatus->sum(),
+            'present' => (int) ($countsByStatus['present'] ?? 0),
+            'late' => (int) ($countsByStatus['late'] ?? 0),
+            'not_signed' => (int) ($countsByStatus['not_signed'] ?? 0) + (int) ($countsByStatus['absent'] ?? 0),
+        ];
+
+        return view('esbtp.teacher.attendance.history', compact('attendances', 'stats', 'month', 'year'));
     }
 }
