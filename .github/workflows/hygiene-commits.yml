@@ -156,7 +156,7 @@ jobs:
             tests/Unit/Services/FraisAudienceTest.php \
             tests/Unit/Services/ExtensionsDeRoleTest.php \
             tests/Unit/Exploitation \
-            tests/Unit/Deployment
+            tests/Unit/Deployment \n            tests/Unit/Routes
           do
             echo "::group::$chemin"
             php vendor/bin/phpunit "$chemin" --no-coverage || echec=1
