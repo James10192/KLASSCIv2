@@ -72,8 +72,13 @@ class MontantsNetsParFraisTest extends TestCase
      * Ecrit un versement sans passer par le service d'encaissement : ce test
      * porte sur la LECTURE des montants, pas sur le circuit d'ecriture.
      */
-    private function versement(float $montant, ?int $fraisId, string $nature = 'encaissement', string $statut = 'validé'): int
-    {
+    private function versement(
+        float $montant,
+        ?int $fraisId,
+        string $nature = 'encaissement',
+        string $statut = 'validé',
+        string $kindAvoir = 'refund'
+    ): int {
         return DB::table('esbtp_paiements')->insertGetId([
             'inscription_id' => $this->inscriptionId,
             // Colonnes obligatoires sans valeur par defaut. Leur contenu
@@ -86,7 +91,7 @@ class MontantsNetsParFraisTest extends TestCase
             'montant' => $montant,
             'status' => $statut,
             'nature' => $nature,
-            'avoir_kind' => $nature === 'avoir' ? 'refund' : null,
+            'avoir_kind' => $nature === 'avoir' ? $kindAvoir : null,
             'frais_category_id' => $fraisId,
             'date_paiement' => now()->toDateString(),
             'created_at' => now(),
@@ -182,6 +187,54 @@ class MontantsNetsParFraisTest extends TestCase
         // sur sa propre fiche.
         $avecAttente = $this->regle->netParInscriptionEtFrais([$this->inscriptionId], inclurePending: true);
         $this->assertSame(190000.0, (float) $avecAttente[$this->inscriptionId][$scolarite->id]);
+    }
+
+    /**
+     * La divergence assumee entre la liste des paiements et l'etat financier.
+     *
+     * Un avoir « credit sur compte » ne sort pas de la caisse : l'argent reste
+     * a l'ecole sous forme de solde reutilisable. Le total de caisse ne bouge
+     * donc pas. Mais le frais, lui, n'a plus rien recu — la dette renait.
+     *
+     * Les deux calculs different volontairement, chacun repondant a une
+     * question differente. Ce test fixe cette difference, pour que personne ne
+     * l'« aligne » un jour en croyant corriger un ecart.
+     */
+    public function test_un_avoir_credit_eteint_le_frais_sans_bouger_la_caisse(): void
+    {
+        $ramette = $this->frais('Ramette');
+        $this->versement(5000, $ramette->id);
+        $this->versement(1000, $ramette->id, nature: 'avoir', kindAvoir: 'credit');
+
+        // Cote frais : les 1 000 sont deduits, l'etudiant les redoit.
+        $this->assertSame(4000.0, $this->netSur($ramette));
+
+        // Cote caisse : rien n'est sorti, le total reste entier.
+        $this->assertSame(5000.0, $this->caisseNette());
+    }
+
+    /**
+     * Le remboursement, lui, baisse les deux : l'argent quitte la caisse ET le
+     * frais cesse d'etre couvert. C'est le contre-exemple qui montre que le
+     * test precedent tient au TYPE d'avoir, pas a un hasard de calcul.
+     */
+    public function test_un_remboursement_baisse_la_caisse_comme_le_frais(): void
+    {
+        $ramette = $this->frais('Ramette');
+        $this->versement(5000, $ramette->id);
+        $this->versement(1000, $ramette->id, nature: 'avoir', kindAvoir: 'refund');
+
+        $this->assertSame(4000.0, $this->netSur($ramette));
+        $this->assertSame(4000.0, $this->caisseNette());
+    }
+
+    private function caisseNette(): float
+    {
+        return ESBTPPaiement::netCashSum(
+            ESBTPPaiement::query()
+                ->where('inscription_id', $this->inscriptionId)
+                ->where('status', 'validé')
+        );
     }
 
     public function test_un_lot_vide_ne_declenche_aucune_requete(): void
