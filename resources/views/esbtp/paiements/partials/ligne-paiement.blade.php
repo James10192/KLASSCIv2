@@ -196,6 +196,17 @@
                             @endif
                         </ul>
                     </div>
+                    {{-- Corriger un mode mal saisi. Ne parait que sur un versement
+                         valide non rapproche : ailleurs, la correction passe par
+                         l'ecran de modification ou par la reconciliation. --}}
+                    @can('paiements.correct_mode')
+                        @if($paiement->status === 'validé' && ! $paiement->isAvoir() && ! $paiement->reconciliation_locked_at)
+                        <button type="button" class="btn btn-outline-secondary" title="Corriger le mode de règlement"
+                                data-bs-toggle="modal" data-bs-target="#modeReglementModal{{ $paiement->id }}">
+                            <i class="fas fa-right-left"></i>
+                        </button>
+                        @endif
+                    @endcan
                     @can('paiements.avoir')
                         @if(! $paiement->isAvoir() && $paiement->avoir_disponible > 0)
                         <button type="button" class="btn btn-outline-primary" title="Émettre un avoir"
@@ -279,3 +290,4 @@
 @endif
 
 @include('esbtp.paiements.partials.avoir-modal', ['paiement' => $paiement, 'modalId' => 'avoirModal'.$paiement->id])
+@include('esbtp.paiements.partials.mode-reglement-modal', ['paiement' => $paiement])

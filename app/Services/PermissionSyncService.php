@@ -175,6 +175,9 @@ class PermissionSyncService
     private function newFeaturePermissions(): array
     {
         return [
+            // Nouvelle : la correction d une erreur de mode au guichet, qui
+            // n avait pour seule issue qu une session de reconciliation.
+            'paiements.correct_mode',
             'identity.direct_studies',
             'identity.registrar',
             'identity.registrar_clerk',
