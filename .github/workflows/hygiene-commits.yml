@@ -152,17 +152,9 @@ jobs:
       DB_USERNAME: root
       DB_PASSWORD: ''
     services:
-      # MariaDB : c'est ce que fait tourner la flotte, et le schema ne se
-      # cree pas encore entierement sur MySQL 8.
-      #
-      # Un premier blocage a ete leve (colonne JSON a valeur par defaut). Il
-      # en reste au moins un : une colonne generee STORED assise sur une
-      # colonne qui porte une cle etrangere ON DELETE CASCADE
-      # (esbtp_attendance_manual_hours.matiere_key). MySQL 8 le refuse,
-      # MariaDB l'accepte. Le lever demande de choisir ce que devient une
-      # saisie d'heures quand la matiere disparait — aujourd'hui elle est
-      # supprimee en cascade — donc une decision d'integrite, pas un
-      # ajustement de CI.
+      # MariaDB : c'est ce que fait tourner la flotte, donc c'est sur ce
+      # moteur que les tests doivent dire la verite. La portabilite MySQL 8
+      # se verifie ailleurs, dans le job « schema ».
       mariadb:
         image: mariadb:10.11
         env:
@@ -199,7 +191,7 @@ jobs:
         run: php vendor/bin/phpunit tests/Feature/Frais/MontantsNetsParFraisTest.php --no-coverage
 
   schema:
-    name: Le schéma se crée entièrement
+    name: Le schéma se crée entièrement (${{ matrix.moteur.nom }})
     runs-on: ubuntu-latest
     # Son propre job, et pas un pas devant les tests : « le schéma ne se crée
     # pas » et « les montants sont faux » ne se lisent pas pareil et ne se
@@ -208,6 +200,18 @@ jobs:
     #
     # Ce contrôle n'existait pas, et c'est pour ça qu'une migration incréable
     # a pu survivre sans que rien ne le signale : personne ne part de zéro.
+    #
+    # Les deux moteurs, parce qu'ils ne refusent pas les mêmes choses.
+    # MariaDB fait tourner la flotte, mais c'est MySQL 8 qui a révélé deux
+    # migrations incréables — une valeur par défaut sur colonne JSON, puis une
+    # clé étrangère ON DELETE CASCADE sous une colonne générée STORED. Sur le
+    # seul MariaDB, les deux seraient encore là.
+    strategy:
+      fail-fast: false
+      matrix:
+        moteur:
+          - { nom: 'MariaDB 10.11', image: 'mariadb:10.11' }
+          - { nom: 'MySQL 8.0', image: 'mysql:8.0' }
     env:
       DB_CONNECTION: mysql
       DB_HOST: 127.0.0.1
@@ -216,15 +220,17 @@ jobs:
       DB_USERNAME: root
       DB_PASSWORD: ''
     services:
-      mariadb:
-        image: mariadb:10.11
+      base:
+        image: ${{ matrix.moteur.image }}
+        # Les deux familles de variables sont fournies ensemble : chaque image
+        # lit les siennes et ignore les autres. Une seule déclaration vaut
+        # mieux qu'un aiguillage de plus dans la matrice.
         env:
           MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: 'yes'
           MARIADB_DATABASE: klassci_testing
+          MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+          MYSQL_DATABASE: klassci_testing
         ports: ['3306:3306']
-        options: >-
-          --health-cmd="healthcheck.sh --connect --innodb_initialized" --health-interval=10s
-          --health-timeout=5s --health-retries=5
     steps:
       - uses: actions/checkout@v4
 
@@ -239,6 +245,21 @@ jobs:
         run: |
           cp .env.example .env
           php artisan key:generate --force
+
+      # Attente côté PHP plutôt que par --health-cmd : la sonde n'a pas le même
+      # nom d'un moteur à l'autre, et « la base répond en PDO » est exactement
+      # ce dont le pas suivant a besoin.
+      - name: Attendre que la base réponde
+        run: |
+          for i in $(seq 1 60); do
+            if php -r 'new PDO("mysql:host=127.0.0.1;port=3306", "root", "");' 2>/dev/null; then
+              echo "Base prête après $i tentative(s)."
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "::error::La base n'a pas répondu en 120 s."
+          exit 1
 
       - name: Créer le schéma du premier au dernier fichier
         run: php artisan migrate:fresh --force
