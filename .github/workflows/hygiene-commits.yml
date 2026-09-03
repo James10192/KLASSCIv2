@@ -135,9 +135,33 @@ jobs:
 
       # Ces tests ne touchent pas la base : ils tournent en quelques secondes,
       # donc rien ne justifie de ne pas les lancer a chaque PR. Ils couvrent la
-      # regle qui dit ou va l'argent d'un versement.
-      - name: Regles de frais et de paiement
-        run: php vendor/bin/phpunit tests/Unit/Services/Frais tests/Unit/Paiements tests/Unit/Services/FraisAudienceTest.php --no-coverage
+      # regle qui dit ou va l'argent d'un versement, celle qui dit si une
+      # instance se declare correctement, et celle qui dit ce qu'un jeton CLI a
+      # le droit d'ecrire dans un .env.
+      #
+      # La liste est explicite parce que tests/Unit n'est pas entierement vert
+      # aujourd'hui. Elle a le defaut de sa vertu : un repertoire ajoute demain
+      # n'y sera pas, et ne tournera donc nulle part. A remplacer par
+      # « tests/Unit » des que l'ensemble passe.
+      - name: Regles de frais, d'identite et de deploiement
+        run: |
+          # Une boucle, et non une suite de chemins sur une meme ligne :
+          # PHPUnit 9 n'honore que le PREMIER chemin positionnel et ignore les
+          # suivants sans rien dire. La version precedente ne lancait donc que
+          # son premier repertoire, en affichant un vert complet.
+          echec=0
+          for chemin in \
+            tests/Unit/Services/Frais \
+            tests/Unit/Paiements \
+            tests/Unit/Services/FraisAudienceTest.php \
+            tests/Unit/Exploitation \
+            tests/Unit/Deployment
+          do
+            echo "::group::$chemin"
+            php vendor/bin/phpunit "$chemin" --no-coverage || echec=1
+            echo "::endgroup::"
+          done
+          exit $echec
 
   tests-integration-frais:
     name: Tests d'intégration (frais)

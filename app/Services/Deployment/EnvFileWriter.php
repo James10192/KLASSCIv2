@@ -126,15 +126,34 @@ class EnvFileWriter
      */
     public function empreinte(string $cle): ?string
     {
+        $valeur = $this->valeur($cle);
+
+        return $valeur === null ? null : substr(hash('sha256', $valeur), 0, 12);
+    }
+
+    /**
+     * La valeur telle qu'elle figure dans le fichier.
+     *
+     * On lit le fichier plutot que `env()` : dans une application dont la
+     * configuration est mise en cache, `env()` ne rend plus rien hors des
+     * fichiers de config. On repondrait « vide » sur une cle pourtant posee.
+     *
+     * A n'exposer que pour les cles declarees non secretes.
+     */
+    public function valeur(string $cle): ?string
+    {
         if (preg_match('/^\s*'.preg_quote($cle, '/').'\s*=(.*)$/m', $this->lire(), $trouve) !== 1) {
             return null;
         }
 
         // Une valeur posee par ce service ne porte ni guillemet ni retour a la
         // ligne (voir la garde d'ecrire), donc la ligne physique EST la valeur.
+        // Une valeur ecrite a la main, elle, peut etre entre guillemets : on
+        // les retire, sans quoi « "usat" » ne vaudrait pas « usat ».
         $valeur = trim($trouve[1]);
+        $valeur = trim($valeur, "\"'");
 
-        return $valeur === '' ? null : substr(hash('sha256', $valeur), 0, 12);
+        return $valeur === '' ? null : $valeur;
     }
 
     private function lire(): string
