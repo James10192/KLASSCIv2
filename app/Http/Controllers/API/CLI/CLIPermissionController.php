@@ -205,6 +205,66 @@ class CLIPermissionController extends BaseApiController
         ], "Rôle custom '{$role->name}' créé");
     }
 
+    /**
+     * Retire des permissions a un role, sur CETTE instance seulement.
+     *
+     * Le pendant de roleGrant, qui n'existait pas : on savait etendre un role,
+     * pas revenir en arriere. Un profil pose trop large restait trop large.
+     *
+     * Les extensions locales sont reinscrites apres l'operation : ce qui a ete
+     * retire cesse d'etre protege de la synchronisation, sinon le nettoyage le
+     * remettrait indefiniment au rang de « decision voulue ».
+     */
+    public function roleRevoke(Request $request, string $role): JsonResponse
+    {
+        if (!$request->user()->tokenCan('cli:admin')) {
+            return $this->errorResponse('Token missing cli:admin ability', [], 403);
+        }
+
+        $perms = $request->input('permissions', []);
+        if (!is_array($perms) || empty($perms)) {
+            return $this->errorResponse('permissions[] requis', [], 422);
+        }
+
+        $roleModel = Role::where('name', $role)->where('guard_name', 'web')->first();
+        if (!$roleModel) {
+            return $this->errorResponse("Role '{$role}' not found", [], 404);
+        }
+
+        // On ne retire jamais a superAdmin ni a serviceTechnique : ce sont les
+        // roles qui permettent de reparer une instance. Se couper cette branche
+        // a distance laisserait l'ecole sans recours.
+        if (in_array($role, ['superAdmin', 'serviceTechnique'], true)) {
+            return $this->errorResponse("Le role '{$role}' ne se retire pas depuis le CLI.", [], 422);
+        }
+
+        $revoquees = [];
+        foreach ($perms as $perm) {
+            if ($roleModel->hasPermissionTo($perm)) {
+                $roleModel->revokePermissionTo($perm);
+                $revoquees[] = $perm;
+            }
+        }
+
+        $extensions = app(\App\Services\ExtensionsDeRole::class);
+        $extensions->enregistrer(
+            $role,
+            $roleModel->fresh()->permissions()->pluck('name')->all(),
+            $request->input('motif'),
+            $request->user()->id
+        );
+
+        app()['cache']->forget(config('permission.cache.key', 'spatie.permission.cache'));
+
+        return $this->successResponse([
+            'role' => $role,
+            'revoquees' => $revoquees,
+            'absentes' => array_values(array_diff($perms, $revoquees)),
+            'restantes' => $roleModel->fresh()->permissions()->count(),
+            'extensions_locales' => $extensions->pour($role),
+        ], "Permissions retirees du role '{$role}'");
+    }
+
     public function roleGrant(Request $request, string $role): JsonResponse
     {
         if (!$request->user()->tokenCan('cli:admin')) {

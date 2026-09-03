@@ -461,6 +461,7 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
     Route::post('/roles', [App\Http\Controllers\API\CLI\CLIPermissionController::class, 'roleStore'])->name('roles.store');
     Route::get('/roles/{role}', [App\Http\Controllers\API\CLI\CLIPermissionController::class, 'roleShow'])->name('roles.show');
     Route::post('/roles/{role}/grant', [App\Http\Controllers\API\CLI\CLIPermissionController::class, 'roleGrant'])->name('roles.grant');
+    Route::post('/roles/{role}/revoke', [App\Http\Controllers\API\CLI\CLIPermissionController::class, 'roleRevoke'])->name('roles.revoke');
 
     // LMD hierarchy (read)
     Route::get('/lmd/tree', [App\Http\Controllers\API\CLI\CLILMDSetupController::class, 'tree'])->name('lmd.tree');
