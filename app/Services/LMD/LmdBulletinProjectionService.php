@@ -152,6 +152,13 @@ class LmdBulletinProjectionService
         $missingEcues = 0;
         $totalEcues = 0;
 
+        // Notes retenues apres seconde session, lues sur le bulletin persiste.
+        // Sans elles, cet ecran recalculerait tout depuis les seules notes de
+        // premiere session et afficherait, pour la meme unite, un verdict
+        // contraire a celui du bulletin — acquise d'un cote, non acquise de
+        // l'autre — sans que personne puisse savoir lequel fait foi.
+        $notesFinales = $this->notesFinalesParMatiere($bulletin);
+
         foreach ($ues as $ue) {
             $resultatUE = $this->calculerProjectionUE(
                 $ue,
@@ -160,7 +167,8 @@ class LmdBulletinProjectionService
                 $semestre,
                 $anneeUniversitaireId,
                 $allNotes,
-                $enseignantMap
+                $enseignantMap,
+                $notesFinales
             );
 
             $resultatsUEs[] = $resultatUE;
@@ -213,7 +221,8 @@ class LmdBulletinProjectionService
         int $semestre,
         int $anneeUniversitaireId,
         Collection $allNotes,
-        Collection $enseignantMap
+        Collection $enseignantMap,
+        Collection $notesFinales
     ): array {
         $ecues = $ue->getEcuesEffectifs();
         $totalPoints = 0;
@@ -230,6 +239,12 @@ class LmdBulletinProjectionService
                 $anneeUniversitaireId,
                 $allNotes->get($ecue->id, collect())
             );
+
+            // La seconde session prime : c'est la note que le bulletin a retenue.
+            if ($notesFinales->has($ecue->id)) {
+                $moyenneECUE = (float) $notesFinales->get($ecue->id);
+            }
+
             $coefficient = $ecue->pivot?->coefficient_ecue ?? $ecue->coefficient_ecue ?? $ecue->coefficient ?? 1;
 
             if ($moyenneECUE !== null) {
@@ -266,6 +281,25 @@ class LmdBulletinProjectionService
             'missing_ecues' => $missingEcues,
             'total_ecues' => $ecues->count(),
         ];
+    }
+
+    /**
+     * Notes de seconde session portees par le bulletin persiste, indexees par
+     * matiere. Un `note_finale` nul n'est pas une absence : seul l'absence de
+     * la ligne, ou un `note_finale` a null, signifie « pas de seconde session ».
+     *
+     * @return Collection<int, float>
+     */
+    private function notesFinalesParMatiere(?ESBTPLMDBulletin $bulletin): Collection
+    {
+        if (! $bulletin) {
+            return collect();
+        }
+
+        return $bulletin->resultatsUEs
+            ->flatMap(fn ($resultatUE) => $resultatUE->resultatsECUEs)
+            ->filter(fn ($ecue) => $ecue->note_finale !== null)
+            ->mapWithKeys(fn ($ecue) => [(int) $ecue->matiere_id => (float) $ecue->note_finale]);
     }
 
     private function calculerMoyenneGeneraleLive(array $resultatsUEs): ?float

@@ -17,6 +17,7 @@ use App\Models\ESBTPLMDResultatECUE;
 use App\Models\User;
 use App\Services\LMD\LmdAcademicRuleProfile;
 use App\Services\LMD\LmdDecisionProjectionService;
+use App\Services\LMDBulletinService;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -41,8 +42,18 @@ class JuryDeliberationService
         private readonly PvNumberSequenceService $pvSequences,
         private readonly LmdDecisionProjectionService $projection,
         ?LmdAcademicRuleProfile $rules = null,
+        ?LMDBulletinService $bulletins = null,
     ) {
         $this->rules = $rules ?? new LmdAcademicRuleProfile();
+        $this->bulletins = $bulletins;
+    }
+
+    /** @var LMDBulletinService|null resolu au premier besoin */
+    private ?LMDBulletinService $bulletins = null;
+
+    private function bulletins(): LMDBulletinService
+    {
+        return $this->bulletins ??= app(LMDBulletinService::class);
     }
 
     /**
@@ -76,9 +87,15 @@ class JuryDeliberationService
         if ($bulletin && $noteEliminatoire > 0) {
             $resultats = ESBTPLMDResultatECUE::where('bulletin_id', $bulletin->id)->get();
             foreach ($resultats as $r) {
-                if ($r->moyenne !== null && (float) $r->moyenne < $noteEliminatoire) {
+                // La note retenue, pas celle de premiere session : un etudiant
+                // passe de 7 a 14 en seconde session verrait sinon sa moyenne
+                // generale monter tout en restant marque eliminatoire, et la
+                // branche eliminatoire, evaluee AVANT le test de la moyenne, le
+                // laisserait ajourne. Le rattrapage n'aurait servi a rien.
+                $note = $this->bulletins()->noteEffectiveECUE($r);
+                if ($note !== null && $note < $noteEliminatoire) {
                     $hasEliminatoire = true;
-                    $raisons[] = sprintf('ECUE %d note %s < eliminatoire %s', $r->matiere_id, $r->moyenne, $noteEliminatoire);
+                    $raisons[] = sprintf('ECUE %d note %s < eliminatoire %s', $r->matiere_id, $note, $noteEliminatoire);
                     break;
                 }
             }
