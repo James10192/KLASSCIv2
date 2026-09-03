@@ -8,10 +8,12 @@ use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPExamenPlanifie;
 use App\Models\ESBTPInscription;
 use App\Models\ESBTPLMDResultatECUE;
+use App\Models\ESBTPLMDResultatUE;
 use App\Models\ESBTPLMDSession;
 use App\Models\ESBTPLMDBulletin;
 use App\Models\ESBTPLMDJury;
 use App\Models\ESBTPMatiere;
+use App\Services\LMD\LmdAcademicRuleProfile;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -27,9 +29,22 @@ use Illuminate\Support\Facades\Log;
  */
 class RattrapageSchedulingService
 {
+    /**
+     * Bareme de dernier recours, aligne sur la convention du projet (note sur 20).
+     *
+     * Il ne sert que si l'examen de rattrapage planifie ne porte pas de bareme : la
+     * borne haute reelle d'une note se lit toujours d'abord sur l'examen concerne.
+     */
+    public const BAREME_PAR_DEFAUT = 20.0;
+
+    private readonly LmdAcademicRuleProfile $rules;
+
     public function __construct(
-        private readonly ExamenSchedulingService $examenScheduler
-    ) {}
+        private readonly ExamenSchedulingService $examenScheduler,
+        ?LmdAcademicRuleProfile $rules = null,
+    ) {
+        $this->rules = $rules ?? new LmdAcademicRuleProfile();
+    }
 
     /**
      * Crée la session rattrapage enfant d'une session normale.
@@ -72,17 +87,25 @@ class RattrapageSchedulingService
 
     /**
      * Snapshot notes session normale + identification éligibles.
-     * Conditions UEMOA : ECUE < seuil_validation_ecue (setting `lmd_seuil_validation_ecue`, default 10).
+     *
+     * Deux portées possibles, pilotées par le réglage `lmd_rattrapage_scope` :
+     * - `ecue` (défaut) : seuls les ECUE sous le seuil de validation sont à repasser ;
+     * - `ue` : tous les ECUE d'une UE non acquise sont à repasser, et un ECUE faible
+     *   d'une UE acquise (y compris par compensation) ne l'est pas.
+     *
+     * Le seuil est lu via LmdAcademicRuleProfile (clé d'écran `lmd_validation_threshold`,
+     * repli sur l'ancienne clé `lmd_seuil_validation_ecue`).
      *
      * @return Collection<int, ESBTPLMDResultatECUE>
      */
     public function identifierEtudiantsEligibles(ESBTPLMDSession $sessionNormale): Collection
     {
-        $seuil = (float) SettingsHelper::get('lmd_seuil_validation_ecue', 10);
+        $seuil = $this->rules->validationThreshold();
+        $portee = $this->rules->rattrapageScope();
 
         $eligibles = collect();
 
-        DB::transaction(function () use ($sessionNormale, $seuil, &$eligibles) {
+        DB::transaction(function () use ($sessionNormale, $seuil, $portee, &$eligibles) {
             $bulletins = $this->bulletinsForSession($sessionNormale);
             $this->assertResultsMutable($sessionNormale, $sessionNormale, $bulletins);
             $bulletinIds = $bulletins->pluck('id');
@@ -91,11 +114,23 @@ class RattrapageSchedulingService
                 ? collect()
                 : ESBTPLMDResultatECUE::query()->whereIn('bulletin_id', $bulletinIds)->get();
 
+            $uesNonAcquises = $portee === LmdAcademicRuleProfile::RATTRAPAGE_SCOPE_UE
+                ? $this->uesNonAcquises($bulletinIds)
+                : collect();
+
             foreach ($resultats as $r) {
                 if ($r->note_session_normale === null && $r->moyenne !== null) {
                     $r->note_session_normale = $r->moyenne;
                 }
-                $r->rattrapage_eligible = ($r->moyenne !== null && (float) $r->moyenne < $seuil);
+
+                if ($portee === LmdAcademicRuleProfile::RATTRAPAGE_SCOPE_UE && $r->resultat_ue_id !== null) {
+                    // Toute l'UE non acquise se repasse ; une UE acquise ne se repasse pas.
+                    $r->rattrapage_eligible = $uesNonAcquises->contains((int) $r->resultat_ue_id);
+                } else {
+                    // Portée ECUE, ou ECUE sans UE rattachée : on retombe sur le seuil.
+                    $r->rattrapage_eligible = ($r->moyenne !== null && (float) $r->moyenne < $seuil);
+                }
+
                 $r->save();
 
                 if ($r->rattrapage_eligible) {
@@ -105,6 +140,25 @@ class RattrapageSchedulingService
         });
 
         return $eligibles;
+    }
+
+    /**
+     * Identifiants des résultats d'UE non acquis pour les bulletins donnés.
+     *
+     * @param  Collection<int, int>  $bulletinIds
+     * @return Collection<int, int>
+     */
+    private function uesNonAcquises(Collection $bulletinIds): Collection
+    {
+        if ($bulletinIds->isEmpty()) {
+            return collect();
+        }
+
+        return ESBTPLMDResultatUE::query()
+            ->whereIn('bulletin_id', $bulletinIds)
+            ->where('statut', ESBTPLMDResultatUE::STATUT_NAQ)
+            ->pluck('id')
+            ->map(static fn ($id): int => (int) $id);
     }
 
     /**
@@ -174,7 +228,7 @@ class RattrapageSchedulingService
                         'date_fin' => $debut->copy()->setTime(11, 0),
                         'duree_minutes' => 120,
                         'coefficient' => 1,
-                        'bareme' => 20,
+                        'bareme' => self::BAREME_PAR_DEFAUT,
                         'status' => 'planned',
                         'created_by' => optional(auth()->user())->id,
                     ]);
@@ -268,6 +322,197 @@ class RattrapageSchedulingService
         }
 
         return $query->update(['rattrapage_inscrit' => true]);
+    }
+
+    /**
+     * Lignes de saisie de seconde session : un ECUE eligible ET inscrit par etudiant.
+     *
+     * Seules les lignes reellement inscrites au rattrapage sont saisissables, car ce sont
+     * les seules que le recalcul de la note finale prend en compte.
+     *
+     * @return Collection<int, ESBTPLMDResultatECUE>
+     */
+    public function lignesSaisieRattrapage(ESBTPLMDSession $sessionRattrapage): Collection
+    {
+        if ($sessionRattrapage->type !== 'rattrapage') {
+            throw new \DomainException('La saisie de notes est reservee aux sessions de rattrapage.');
+        }
+
+        $parent = $sessionRattrapage->parentSession;
+        if (! $parent) {
+            throw new \DomainException('Session de rattrapage sans session parent : impossible de retrouver les resultats.');
+        }
+
+        $bulletinIds = $this->bulletinsForSession($parent)->pluck('id');
+        if ($bulletinIds->isEmpty()) {
+            return collect();
+        }
+
+        return ESBTPLMDResultatECUE::query()
+            ->with(['etudiant:id,nom,prenoms,matricule', 'matiere:id,name,code', 'bulletin:id,classe_id,etudiant_id', 'bulletin.classe:id,name', 'updatedBy:id,name'])
+            ->whereIn('bulletin_id', $bulletinIds)
+            ->where('rattrapage_eligible', true)
+            ->where('rattrapage_inscrit', true)
+            ->get()
+            ->sortBy([
+                fn (ESBTPLMDResultatECUE $r): string => (string) optional($r->etudiant)->nom,
+                fn (ESBTPLMDResultatECUE $r): string => (string) optional($r->etudiant)->prenoms,
+                fn (ESBTPLMDResultatECUE $r): string => (string) optional($r->matiere)->name,
+            ])
+            ->values();
+    }
+
+    /**
+     * Enregistre les notes de seconde session puis recalcule les notes finales.
+     *
+     * Chaque entree est un couple {resultat_id, note}. Une note nulle efface la note de
+     * seconde session et la note finale correspondante (retour au seul resultat de la
+     * premiere session).
+     *
+     * La borne haute de chaque note est le bareme de l'examen de rattrapage planifie pour
+     * le couple (classe, ECUE) ; a defaut, le bareme par defaut du projet.
+     *
+     * @param  array<int, array{resultat_id: int|string, note: float|int|string|null}>  $notes
+     * @return array{saisies: int, effacees: int, recalculees: int, ignorees: int}
+     */
+    public function saisirNotesRattrapage(ESBTPLMDSession $sessionRattrapage, array $notes): array
+    {
+        if ($sessionRattrapage->type !== 'rattrapage') {
+            throw new \DomainException('La saisie de notes est reservee aux sessions de rattrapage.');
+        }
+
+        $parent = $sessionRattrapage->parentSession;
+        if (! $parent) {
+            throw new \DomainException('Session de rattrapage sans session parent : impossible de retrouver les resultats.');
+        }
+
+        $bulletins = $this->bulletinsForSession($parent);
+        $this->assertResultsMutable($sessionRattrapage, $parent, $bulletins);
+
+        $bulletinIds = $bulletins->pluck('id');
+        if ($bulletinIds->isEmpty()) {
+            throw new \DomainException('Aucun bulletin actif sur le perimetre de cette session.');
+        }
+
+        $saisies = 0;
+        $effacees = 0;
+        $ignorees = 0;
+        $etudiantsTouches = collect();
+
+        DB::transaction(function () use ($notes, $bulletinIds, $bulletins, &$saisies, &$effacees, &$ignorees, &$etudiantsTouches): void {
+            $demandes = collect($notes)
+                ->filter(fn ($ligne): bool => is_array($ligne) && isset($ligne['resultat_id']))
+                ->keyBy(fn ($ligne): int => (int) $ligne['resultat_id']);
+
+            if ($demandes->isEmpty()) {
+                return;
+            }
+
+            $resultats = ESBTPLMDResultatECUE::query()
+                ->whereIn('bulletin_id', $bulletinIds)
+                ->whereIn('id', $demandes->keys())
+                ->where('rattrapage_eligible', true)
+                ->where('rattrapage_inscrit', true)
+                ->lockForUpdate()
+                ->get();
+
+            $ignorees = $demandes->count() - $resultats->count();
+            $baremes = $this->baremesRattrapage($resultats, $bulletins);
+
+            foreach ($resultats as $resultat) {
+                $brut = $demandes->get($resultat->id)['note'] ?? null;
+
+                if ($brut === null || $brut === '') {
+                    // Effacement : sans note de seconde session, il n'y a plus de note finale.
+                    $resultat->note_rattrapage = null;
+                    $resultat->note_finale = null;
+                    $resultat->save();
+                    $effacees++;
+                    $etudiantsTouches->push((int) $resultat->etudiant_id);
+
+                    continue;
+                }
+
+                if (! is_numeric($brut)) {
+                    throw new \DomainException('Chaque note de seconde session doit etre un nombre.');
+                }
+
+                $note = (float) $brut;
+                $bareme = (float) ($baremes[$resultat->id] ?? self::BAREME_PAR_DEFAUT);
+
+                if ($note < 0 || $note > $bareme) {
+                    throw new \DomainException(sprintf(
+                        'La note de %s doit etre comprise entre 0 et %s.',
+                        optional($resultat->matiere)->name ?? 'cet enseignement',
+                        rtrim(rtrim(number_format($bareme, 2, ',', ' '), '0'), ',')
+                    ));
+                }
+
+                $resultat->note_rattrapage = $note;
+                $resultat->save();
+                $saisies++;
+                $etudiantsTouches->push((int) $resultat->etudiant_id);
+            }
+        });
+
+        $etudiantsTouches = $etudiantsTouches->unique()->values();
+
+        $recalculees = 0;
+        foreach ($etudiantsTouches as $etudiantId) {
+            $recalculees += $this->recalculerMoyennesAvecRattrapage((int) $etudiantId, $sessionRattrapage);
+        }
+
+        Log::info('[RattrapageSchedulingService] notes de seconde session enregistrees', [
+            'session_id' => $sessionRattrapage->id,
+            'saisies' => $saisies,
+            'effacees' => $effacees,
+            'ignorees' => $ignorees,
+            'recalculees' => $recalculees,
+            'etudiants' => $etudiantsTouches->all(),
+            'user_id' => optional(auth()->user())->id,
+        ]);
+
+        return [
+            'saisies' => $saisies,
+            'effacees' => $effacees,
+            'recalculees' => $recalculees,
+            'ignorees' => $ignorees,
+        ];
+    }
+
+    /**
+     * Bareme applicable a chaque ligne, lu sur l'examen de rattrapage planifie.
+     *
+     * @param  Collection<int, ESBTPLMDResultatECUE>  $resultats
+     * @param  Collection<int, ESBTPLMDBulletin>  $bulletins
+     * @return array<int, float>
+     */
+    private function baremesRattrapage(Collection $resultats, Collection $bulletins): array
+    {
+        if ($resultats->isEmpty()) {
+            return [];
+        }
+
+        $classeParBulletin = $bulletins->pluck('classe_id', 'id');
+
+        $examens = ESBTPExamenPlanifie::query()
+            ->where('type_examen', 'RATTRAPAGE')
+            ->whereIn('classe_id', $classeParBulletin->unique()->filter()->values())
+            ->whereIn('matiere_id', $resultats->pluck('matiere_id')->unique()->values())
+            ->get(['classe_id', 'matiere_id', 'bareme'])
+            ->keyBy(fn (ESBTPExamenPlanifie $examen): string => sprintf('%d::%d', $examen->classe_id, $examen->matiere_id));
+
+        $baremes = [];
+        foreach ($resultats as $resultat) {
+            $classeId = $classeParBulletin->get($resultat->bulletin_id);
+            $examen = $classeId ? $examens->get(sprintf('%d::%d', $classeId, $resultat->matiere_id)) : null;
+            $bareme = $examen && (float) $examen->bareme > 0
+                ? (float) $examen->bareme
+                : self::BAREME_PAR_DEFAUT;
+            $baremes[$resultat->id] = $bareme;
+        }
+
+        return $baremes;
     }
 
     private function bulletinsForSession(ESBTPLMDSession $session): Collection

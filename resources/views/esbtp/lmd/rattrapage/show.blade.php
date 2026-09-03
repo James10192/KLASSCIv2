@@ -118,6 +118,11 @@
             @endif
 
             @if($session->type === 'rattrapage')
+            @if(\Illuminate\Support\Facades\Route::has('esbtp.lmd.rattrapage.notes'))
+            <a href="{{ route('esbtp.lmd.rattrapage.notes', $session) }}" class="rtp-btn rtp-btn--primary">
+                <i class="fas fa-pen-to-square"></i> Saisir les notes
+            </a>
+            @endif
             <button type="button" class="rtp-btn rtp-btn--primary" @click="recalculer()" :disabled="busy">
                 <i class="fas fa-calculator"></i> <span x-text="busy ? 'Recalcul…' : 'Recalculer notes'"></span>
             </button>
