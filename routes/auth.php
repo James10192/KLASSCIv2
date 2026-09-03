@@ -17,6 +17,7 @@
 
 use App\Http\Controllers\Auth\ForgotPasswordController;
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\Securite\DoubleAuthentificationController;
 use App\Http\Controllers\Auth\PasswordChangeController;
 use App\Http\Controllers\Auth\ResetPasswordController;
 use Illuminate\Support\Facades\Route;
@@ -55,4 +56,33 @@ Route::post('/password/reset', [ResetPasswordController::class, 'reset'])
 Route::middleware(['auth'])->group(function () {
     Route::get('/password/change', [PasswordChangeController::class, 'showChangeForm'])->name('password.change.form');
     Route::post('/password/change', [PasswordChangeController::class, 'updatePassword'])->name('password.change.update');
+});
+
+/*
+|--------------------------------------------------------------------------
+| Double authentification
+|--------------------------------------------------------------------------
+|
+| Deux parcours, tenus séparés : on s'inscrit depuis son profil, à tête
+| reposée ; on présente son code au moment de se connecter, souvent pressé.
+|
+| La limitation de débit sur la vérification n'est pas décorative. Six
+| chiffres, c'est un million de possibilités, et un créneau dure trente
+| secondes : sans limite, un script en essaie assez pour en trouver une.
+| Cinq essais par minute laissent largement de quoi se tromper en recopiant,
+| et ne laissent pas de quoi chercher.
+*/
+Route::middleware(['auth'])->prefix('securite/double-authentification')->name('securite.double-auth.')->group(function () {
+    Route::get('/', [DoubleAuthentificationController::class, 'reglages'])->name('reglages');
+    Route::post('/confirmer', [DoubleAuthentificationController::class, 'confirmer'])
+        ->middleware('throttle:10,1')
+        ->name('confirmer');
+    Route::post('/desactiver', [DoubleAuthentificationController::class, 'desactiver'])
+        ->middleware('throttle:5,1')
+        ->name('desactiver');
+
+    Route::get('/verification', [DoubleAuthentificationController::class, 'demande'])->name('demande');
+    Route::post('/verification', [DoubleAuthentificationController::class, 'verifier'])
+        ->middleware('throttle:5,1')
+        ->name('verifier');
 });

@@ -100,9 +100,20 @@ class User extends Authenticatable implements Auditable
     protected $hidden = [
         'password',
         'remember_token',
+        // Le secret du second facteur et les codes de secours valent le mot de
+        // passe : ils ne doivent jamais partir dans une réponse JSON ni dans
+        // un export.
+        'double_auth_secret',
+        'double_auth_codes_secours',
     ];
 
     protected $casts = [
+        // Chiffrés en base : une base lue par un tiers ne doit pas suffire à
+        // contourner le second facteur, sinon il ne protège de rien de plus
+        // que le mot de passe.
+        'double_auth_secret' => 'encrypted',
+        'double_auth_codes_secours' => 'encrypted:array',
+        'double_auth_confirme_le' => 'datetime',
         'email_verified_at' => 'datetime',
         'birth_date' => 'date',
         'last_login_at' => 'datetime',

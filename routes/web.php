@@ -549,17 +549,12 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
 
 
             // Routes de modification des classes â€” gates per-mÃ©thode (avant: middleware OR'd)
-            Route::middleware('permission:classes.create')->group(function () {
-                Route::get('classes/create', [ESBTPClasseController::class, 'create'])->name('classes.create');
-                Route::post('classes', [ESBTPClasseController::class, 'store'])->name('classes.store');
-            });
-            Route::middleware('permission:classes.edit')->group(function () {
-                Route::get('classes/{classe}/edit', [ESBTPClasseController::class, 'edit'])->name('classes.edit');
-                Route::match(['put', 'patch'], 'classes/{classe}', [ESBTPClasseController::class, 'update'])->name('classes.update');
-            });
-            Route::delete('classes/{classe}', [ESBTPClasseController::class, 'destroy'])
-                ->name('classes.destroy')
-                ->middleware('permission:classes.delete');
+            // Les routes d'ecriture des classes (create/store/edit/update/destroy) ont ete
+            // deplacees dans le groupe qui porte deja les routes de lecture des classes.
+            // Elles restaient ici derriere le portail grossier `admin.access`, que les roles
+            // de scolarite (serviceScolarite, responsableScolarite) n'ont pas : le bouton
+            // "Nouvelle classe" s'affichait via `classes.create` mais le formulaire AJAX
+            // repondait 403. L'autorisation reelle reste `classes.create|edit|delete`.
 
             // AJAX â€” Sorties spÃ©cialitÃ©s CRUD depuis la page show d'une classe TC
             // Permission contrÃ´lÃ©e dans le controller (bts_tronc_commun.manage_targets)
@@ -667,6 +662,21 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             Route::get('classes', [ESBTPClasseController::class, 'index'])
                 ->name('classes.index')
                 ->middleware(['permission:classes.view']);
+
+            // Ecriture des classes : meme audience que la lecture, l'autorisation reelle
+            // etant portee par les permissions fines ci-dessous. Aucun role code en dur.
+            // `classes/create` est declaree avant `classes/{classe}` (qui est whereNumber).
+            Route::middleware('permission:classes.create')->group(function () {
+                Route::get('classes/create', [ESBTPClasseController::class, 'create'])->name('classes.create');
+                Route::post('classes', [ESBTPClasseController::class, 'store'])->name('classes.store');
+            });
+            Route::middleware('permission:classes.edit')->group(function () {
+                Route::get('classes/{classe}/edit', [ESBTPClasseController::class, 'edit'])->name('classes.edit');
+                Route::match(['put', 'patch'], 'classes/{classe}', [ESBTPClasseController::class, 'update'])->name('classes.update');
+            });
+            Route::delete('classes/{classe}', [ESBTPClasseController::class, 'destroy'])
+                ->name('classes.destroy')
+                ->middleware('permission:classes.delete');
 
             Route::get('classes/{classe}', [ESBTPClasseController::class, 'show'])
                 ->name('classes.show')

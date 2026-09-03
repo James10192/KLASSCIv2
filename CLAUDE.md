@@ -35,7 +35,7 @@ Les notes de version pour klassci-landing se produisent, elles ne se recopient p
 
 ## Architecture
 
-**Type** : SaaS Multi-Instance Laravel 12.x
+**Type** : SaaS Multi-Instance Laravel 9.x (`^9.0|^10.0` — Laravel 9 est hors support depuis février 2024)
 **Apps** :
 - `adminKlassci` : Admin SaaS central (Filament v3, DB `klassci_master`)
 - `KLASSCI` : App métier par établissement (repo `KLASSCIv2`, DB isolée par instance)
@@ -50,7 +50,7 @@ Les notes de version pour klassci-landing se produisent, elles ne se recopient p
 
 Chaque instance a sa propre branche Git du même nom (snapshot de `presentation` synchronisé périodiquement). Voir [.claude/rules/tenant-branches.md](.claude/rules/tenant-branches.md).
 
-**Stack** : Laravel 12.x · MySQL 8.x · Blade + Alpine.js + Chart.js + DataTables · DomPDF · Sanctum · Gemini 2.0 Flash
+**Stack** : Laravel 9.52 · MySQL 8.x · Blade + Alpine.js + Chart.js + DataTables · DomPDF · Sanctum · Gemini 2.0 Flash
 
 ---
 

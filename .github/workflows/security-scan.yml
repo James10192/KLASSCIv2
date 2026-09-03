@@ -27,11 +27,67 @@ jobs:
           php-version: '8.3'
           tools: composer
 
-      - name: Install dependencies
-        run: composer install --no-interaction --prefer-dist
+      # Pas de `composer install` ici : l'audit lit `composer.lock`, pas
+      # `vendor/`. Installer deux cents paquets pour relire un fichier
+      # verrouille coutait deux minutes et ajoutait un mode de panne — un
+      # paquet momentanement indisponible faisait echouer l'etape avant
+      # qu'elle ait audite quoi que ce soit.
+      - name: Audit des dépendances
+        run: |
+          set -uo pipefail
 
-      - name: Composer Audit
-        run: composer audit --format=json || true
+          gravite='((.severity // "") | ascii_downcase) as $s | $s == "high" or $s == "critical"'
+          ignores_jq='(.["ignored-advisories"] // {})'
+
+          # Deux passes, deux roles. Le rapport informe, dependances de
+          # developpement incluses. La decision ne porte que sur ce qui est
+          # DEPLOYE : un avis sur un outil de test ne doit pas empecher un
+          # correctif urgent de partir en production.
+          composer audit --locked --abandoned=report --format=json > tout.json 2> err_tout.txt || true
+          composer audit --locked --no-dev --abandoned=ignore --format=json > prod.json 2> err_prod.txt || true
+
+          # Un audit qui n'a pas pu joindre l'API ne doit JAMAIS s'annoncer
+          # vert : un controle non concluant presente comme reussi vaut moins
+          # que pas de controle du tout. Il sort en avertissement, et le
+          # proprietaire du depot voit passer l'execution planifiee.
+          for f in tout.json prod.json; do
+            if ! jq -e . "$f" > /dev/null 2>&1; then
+              echo "::warning::Audit non concluant : l'API des avis de sécurité n'a pas répondu en JSON exploitable."
+              sed -n '1,20p' err_tout.txt err_prod.txt || true
+              exit 0
+            fi
+          done
+
+          bloquants=$(jq "[.advisories[][]? | select($gravite)] | length" prod.json)
+          total=$(jq '[.advisories[][]?] | length' tout.json)
+          acceptes=$(jq "[${ignores_jq}[][]?] | length" tout.json)
+
+          # `tee` et pas seulement le resume : le resume se lit dans un
+          # navigateur, le journal se lit par l'API. Sans les deux, on sait
+          # qu'il y a des avis sans savoir lesquels.
+          {
+            echo "### Avis de sécurité des dépendances"
+            echo
+            echo "- **$bloquants** de gravité haute ou critique sur des dépendances **déployées** (critère de blocage)"
+            echo "- $total au total, dépendances de développement incluses"
+            echo "- $acceptes déclaré(s) en risque accepté dans \`composer.json\` (\`config.audit.ignore\`)"
+            echo
+            if [ "$acceptes" -gt 0 ]; then
+              echo "#### Risques acceptés, motivés dans composer.json"
+              jq -r "${ignores_jq} | to_entries[] | .value[] | \"- \\(.packageName) — \\(.advisoryId) — \\(.title)\"" tout.json
+              echo
+            fi
+            if [ "$bloquants" -gt 0 ]; then
+              echo "#### Bloquants"
+              jq -r "[.advisories[][]? | select($gravite)][] | \"- \\(.packageName) \\(.affectedVersions) — \\(.title) — \\(.link)\"" prod.json
+            fi
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+
+          if [ "$bloquants" -gt 0 ]; then
+            echo "::error::$bloquants avis de gravité haute ou critique sur des dépendances déployées."
+            exit 1
+          fi
+          echo "Aucun avis bloquant sur les dépendances déployées."
 
   # Audit des dépendances npm
   npm-audit:

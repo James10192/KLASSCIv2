@@ -2807,6 +2807,12 @@
                                             </a>
                                         @endrole
                             </li>
+                            <li>
+                                {{-- Une securite qu'on ne trouve pas n'est activee par personne. --}}
+                                <a class="dropdown-item" href="{{ route('securite.double-auth.reglages') }}">
+                                    <i class="fas fa-shield-halved me-2"></i> Double authentification
+                                </a>
+                            </li>
                             @role('etudiant')
                             <li>
                                     <a class="dropdown-item" href="{{ \Illuminate\Support\Facades\Route::has('esbtp.preferences.index') ? route('esbtp.preferences.index') : url('/esbtp/preferences') }}">
