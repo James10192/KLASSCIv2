@@ -1,8 +1,19 @@
 name: Security & Quality Scan
 
 on:
+  # Les branches tenant sont celles que les six etablissements deploient : une
+  # dependance vulnerable poussee sur l'une d'elles n'etait auditee par rien.
+  # (`main` n'existe pas dans ce depot ; laisse en place sans effet.)
   push:
-    branches: [presentation, main]
+    branches:
+      - presentation
+      - main
+      - esbtp-abidjan
+      - esbtp-yakro
+      - ephrata
+      - hetec
+      - rostan
+      - usat
   pull_request:
     branches: [presentation, main]
   schedule:
@@ -36,7 +47,14 @@ jobs:
         run: |
           set -uo pipefail
 
-          gravite='((.severity // "") | ascii_downcase) as $s | $s == "high" or $s == "critical"'
+          # Bloque sur haute, critique — ET sur les avis SANS gravite renseignee.
+          # Un avis non evalue n'est pas un avis benin : c'est un avis qu'on n'a
+          # pas encore lu. Traiter l'absence de gravite comme une gravite faible,
+          # c'est exactement ce qui a laisse passer l'avis Ed25519 de
+          # paragonie/sodium_compat — corrigeable, sur une dependance deployee,
+          # et invisible parce que la base d'avis ne lui donnait pas de note.
+          # L'echappatoire reste `config.audit.ignore`, qui est visible et motivee.
+          gravite='((.severity // "") | ascii_downcase) as $s | $s == "high" or $s == "critical" or $s == ""'
           ignores_jq='(.["ignored-advisories"] // {})'
 
           # Deux passes, deux roles. Le rapport informe, dependances de
@@ -68,7 +86,7 @@ jobs:
           {
             echo "### Avis de sécurité des dépendances"
             echo
-            echo "- **$bloquants** de gravité haute ou critique sur des dépendances **déployées** (critère de blocage)"
+            echo "- **$bloquants** de gravité haute ou critique — ou sans gravité renseignée — sur des dépendances **déployées** (critère de blocage)"
             echo "- $total au total, dépendances de développement incluses"
             echo "- $acceptes déclaré(s) en risque accepté dans \`composer.json\` (\`config.audit.ignore\`)"
             echo
@@ -79,12 +97,12 @@ jobs:
             fi
             if [ "$bloquants" -gt 0 ]; then
               echo "#### Bloquants"
-              jq -r "[.advisories[][]? | select($gravite)][] | \"- \\(.packageName) \\(.affectedVersions) — \\(.title) — \\(.link)\"" prod.json
+              jq -r "[.advisories[][]? | select($gravite)][] | \"- \\(.packageName) \\(.affectedVersions) — [\\(.severity // \"gravité non renseignée\")] \\(.title) — \\(.link)\"" prod.json
             fi
           } | tee -a "$GITHUB_STEP_SUMMARY"
 
           if [ "$bloquants" -gt 0 ]; then
-            echo "::error::$bloquants avis de gravité haute ou critique sur des dépendances déployées."
+            echo "::error::$bloquants avis bloquant(s) sur des dépendances déployées (gravité haute, critique, ou non renseignée)."
             exit 1
           fi
           echo "Aucun avis bloquant sur les dépendances déployées."
