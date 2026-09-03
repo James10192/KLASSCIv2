@@ -767,18 +767,17 @@ class ESBTPClasseController extends Controller
         // Validation centralisee dans UpdateClasseRequest (LMD-aware).
         $validatedData = $request->validated();
 
-        // Voir store() : ancrage et ecriture dans la meme transaction.
-        $validatedData = DB::transaction(function () use ($validatedData) {
-            $donnees = $this->ancrerSurUneFiliereReelle($validatedData);
-            $donnees["updated_by"] = Auth::id();
+        // Voir store() : ancrage et ecriture dans la meme transaction. Elle doit
+        // englober l'update lui-meme, sinon un echec d'ecriture laisse le reflet
+        // que l'ancrage vient de creer sans classe — donc supprimable, donc le
+        // cul-de-sac que ce lot ferme.
+        DB::transaction(function () use (&$validatedData, $classe) {
+            $validatedData = $this->ancrerSurUneFiliereReelle($validatedData);
+            $validatedData["updated_by"] = Auth::id();
 
-            return $donnees;
+            // systeme_academique est auto-determine par le model event saving
+            $classe->update($validatedData);
         });
-
-        // systeme_academique est auto-determine par le model event saving
-
-        // Mettre à jour la classe
-        $classe->update($validatedData);
 
         // Si le niveau a changé, mettre à jour les matières
         if ($classe->isDirty("niveau_etude_id")) {

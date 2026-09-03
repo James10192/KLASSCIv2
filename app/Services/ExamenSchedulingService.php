@@ -351,8 +351,15 @@ class ExamenSchedulingService
                 $mentionIds = ESBTPLMDMention::where('domaine_id', $scopeId)
                     ->pluck('id')->all();
                 if (empty($mentionIds)) return collect();
-                $query->whereIn('filiere_id', $mentionIds)
-                    ->where('systeme_academique', 'LMD');
+                // Meme lecture que le scope mention ci-dessus : le reflet
+                // d'abord, la valeur heritee ensuite. Comme avant ce lot, seules
+                // les classes de tronc commun sont couvertes — celles qui ont un
+                // parcours ne l'etaient pas davantage auparavant.
+                $query->where('systeme_academique', 'LMD')
+                    ->where(function ($q) use ($mentionIds) {
+                        $q->whereHas('filiere', fn ($f) => $f->whereIn('lmd_mention_id', $mentionIds))
+                          ->orWhereIn('filiere_id', $mentionIds);
+                    });
                 break;
 
             default:
