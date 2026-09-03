@@ -39,6 +39,16 @@ class Kernel extends ConsoleKernel
         // assemblés jamais récupérés). Sans ça, rien ne les reprenait.
         $schedule->command('bulletins:purger-exports')->hourly();
 
+        // Retention legale des proces-verbaux de deliberation. Le reglage
+        // lmd_pv_retention_years annoncait une duree que rien ne mesurait : ce
+        // recensement la mesure. Il ne PURGE PAS — pas de --purger ici : il liste,
+        // et l'archivage reste une decision humaine.
+        $schedule->command('lmd:pv-retention')
+            ->weeklyOn(1, '05:00')
+            ->name('recensement-retention-pv-deliberation')
+            ->withoutOverlapping()
+            ->runInBackground();
+
         // Marquage automatique des absences enseignants (toutes les 15 minutes)
         $schedule->command('teacher:mark-absences')
             ->everyFifteenMinutes()

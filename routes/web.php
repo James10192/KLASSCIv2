@@ -1556,6 +1556,13 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 ->name('mon-bulletin.show')
                 ->middleware(['permission:bulletins.view_own|bulletins.view']);
 
+            // Bulletin semestriel du cursus universitaire. La methode verifie elle
+            // meme que le bulletin appartient a l'etudiant connecte et qu'il est
+            // publie : aucune permission propre au module n'est requise ici.
+            Route::get('/mon-bulletin-lmd/{bulletin}', [ESBTPStudentBulletinController::class, 'showStudentLmdBulletin'])
+                ->name('mon-bulletin-lmd.show')
+                ->middleware(['permission:bulletins.view_own|bulletins.view']);
+
             // Route pour accÃ©der Ã  la page des absences
             // NB: le path est relatif au groupe Route::prefix('esbtp') => URL finale /esbtp/mes-absences.
             // (Avant: '/esbtp/mes-absences' produisait le double prÃ©fixe /esbtp/esbtp/mes-absences.)
@@ -2890,66 +2897,131 @@ Route::middleware(['auth', 'throttle:60,1'])->prefix('chatbot')->name('chatbot.'
 // ============================================================
 Route::prefix('esbtp/lmd')->name('esbtp.lmd.')->middleware(['auth', 'permission:admin.access|identity.direct_studies|identity.registrar|identity.registrar_clerk', 'permission:module.lmd.access', 'paywall'])->group(function () {
 
-    // --- Domaines / Mentions / Parcours ---
-    Route::get('parcours-domain', [\App\Http\Controllers\ESBTPLMDParcoursDomainController::class, 'index'])->name('parcours-domain.index');
-    Route::post('domaines', [\App\Http\Controllers\ESBTPLMDParcoursDomainController::class, 'storeDomaine'])->name('domaines.store');
-    Route::put('domaines/{domaine}', [\App\Http\Controllers\ESBTPLMDParcoursDomainController::class, 'updateDomaine'])->name('domaines.update');
-    Route::delete('domaines/{domaine}', [\App\Http\Controllers\ESBTPLMDParcoursDomainController::class, 'destroyDomaine'])->name('domaines.destroy');
-    Route::post('mentions', [\App\Http\Controllers\ESBTPLMDParcoursDomainController::class, 'storeMention'])->name('mentions.store');
-    Route::put('mentions/{mention}', [\App\Http\Controllers\ESBTPLMDParcoursDomainController::class, 'updateMention'])->name('mentions.update');
-    Route::delete('mentions/{mention}', [\App\Http\Controllers\ESBTPLMDParcoursDomainController::class, 'destroyMention'])->name('mentions.destroy');
-    Route::post('parcours', [\App\Http\Controllers\ESBTPLMDParcoursDomainController::class, 'storeParcours'])->name('parcours.store');
-    Route::put('parcours/{parcours}', [\App\Http\Controllers\ESBTPLMDParcoursDomainController::class, 'updateParcours'])->name('parcours.update');
-    Route::delete('parcours/{parcours}', [\App\Http\Controllers\ESBTPLMDParcoursDomainController::class, 'destroyParcours'])->name('parcours.destroy');
+    // Lot 9 — chaque route porte desormais sa permission. Auparavant la garde de
+    // groupe etait le seul filtre : tout role la franchissant pouvait supprimer un
+    // domaine et sa descendance, ou publier un bulletin, sans detenir un seul droit
+    // metier. La garde de groupe reste, elle ne suffit plus.
 
-    // --- Classes liÃ©es au parcours ---
-    Route::get('parcours/{parcours}/classes-disponibles', [\App\Http\Controllers\ESBTPLMDParcoursDomainController::class, 'getClassesDisponibles'])->name('parcours.classes-disponibles');
-    Route::post('parcours/{parcours}/sync-classes', [\App\Http\Controllers\ESBTPLMDParcoursDomainController::class, 'syncClasses'])->name('parcours.sync-classes');
-    Route::post('parcours/{parcours}/classe-rapide', [\App\Http\Controllers\ESBTPLMDParcoursDomainController::class, 'storeClasseRapide'])->name('parcours.classe-rapide');
-    Route::get('parcours/{parcours}/ues-disponibles', [\App\Http\Controllers\ESBTPLMDParcoursDomainController::class, 'getUesDisponibles'])->name('parcours.ues-disponibles');
-    Route::post('parcours/{parcours}/sync-ues', [\App\Http\Controllers\ESBTPLMDParcoursDomainController::class, 'syncUes'])->middleware('throttle:10,1')->name('parcours.sync-ues');
+    // --- Domaines / Mentions / Parcours ---
+    Route::get('parcours-domain', [\App\Http\Controllers\ESBTPLMDParcoursDomainController::class, 'index'])
+        ->middleware('permission:lmd.structure.view')->name('parcours-domain.index');
+    Route::post('domaines', [\App\Http\Controllers\ESBTPLMDParcoursDomainController::class, 'storeDomaine'])
+        ->middleware('permission:lmd.structure.manage')->name('domaines.store');
+    Route::put('domaines/{domaine}', [\App\Http\Controllers\ESBTPLMDParcoursDomainController::class, 'updateDomaine'])
+        ->middleware('permission:lmd.structure.manage')->name('domaines.update');
+    Route::delete('domaines/{domaine}', [\App\Http\Controllers\ESBTPLMDParcoursDomainController::class, 'destroyDomaine'])
+        ->middleware('permission:lmd.structure.delete')->name('domaines.destroy');
+    Route::post('mentions', [\App\Http\Controllers\ESBTPLMDParcoursDomainController::class, 'storeMention'])
+        ->middleware('permission:lmd.structure.manage')->name('mentions.store');
+    Route::put('mentions/{mention}', [\App\Http\Controllers\ESBTPLMDParcoursDomainController::class, 'updateMention'])
+        ->middleware('permission:lmd.structure.manage')->name('mentions.update');
+    Route::delete('mentions/{mention}', [\App\Http\Controllers\ESBTPLMDParcoursDomainController::class, 'destroyMention'])
+        ->middleware('permission:lmd.structure.delete')->name('mentions.destroy');
+    Route::post('parcours', [\App\Http\Controllers\ESBTPLMDParcoursDomainController::class, 'storeParcours'])
+        ->middleware('permission:lmd.structure.manage')->name('parcours.store');
+    Route::put('parcours/{parcours}', [\App\Http\Controllers\ESBTPLMDParcoursDomainController::class, 'updateParcours'])
+        ->middleware('permission:lmd.structure.manage')->name('parcours.update');
+    Route::delete('parcours/{parcours}', [\App\Http\Controllers\ESBTPLMDParcoursDomainController::class, 'destroyParcours'])
+        ->middleware('permission:lmd.structure.delete')->name('parcours.destroy');
+
+    // --- Classes liees au parcours ---
+    Route::get('parcours/{parcours}/classes-disponibles', [\App\Http\Controllers\ESBTPLMDParcoursDomainController::class, 'getClassesDisponibles'])
+        ->middleware('permission:lmd.structure.manage')->name('parcours.classes-disponibles');
+    Route::post('parcours/{parcours}/sync-classes', [\App\Http\Controllers\ESBTPLMDParcoursDomainController::class, 'syncClasses'])
+        ->middleware('permission:lmd.structure.manage')->name('parcours.sync-classes');
+    Route::post('parcours/{parcours}/classe-rapide', [\App\Http\Controllers\ESBTPLMDParcoursDomainController::class, 'storeClasseRapide'])
+        ->middleware('permission:lmd.structure.manage')->name('parcours.classe-rapide');
+    Route::get('parcours/{parcours}/ues-disponibles', [\App\Http\Controllers\ESBTPLMDParcoursDomainController::class, 'getUesDisponibles'])
+        ->middleware('permission:lmd.structure.manage')->name('parcours.ues-disponibles');
+    Route::post('parcours/{parcours}/sync-ues', [\App\Http\Controllers\ESBTPLMDParcoursDomainController::class, 'syncUes'])
+        ->middleware(['permission:lmd.structure.manage', 'throttle:10,1'])->name('parcours.sync-ues');
 
     // --- Unites d'Enseignement ---
-    Route::resource('ue', \App\Http\Controllers\ESBTPLMDUEController::class)->parameters(['ue' => 'ue']);
-    Route::get('ue/{ue}/json', [\App\Http\Controllers\ESBTPLMDUEController::class, 'getJson'])->name('ue.json');
-    Route::post('ue/{ue}/ecue', [\App\Http\Controllers\ESBTPLMDUEController::class, 'storeECUE'])->name('ue.ecue.store');
-    Route::put('ue/{ue}/ecue/{ecue}', [\App\Http\Controllers\ESBTPLMDUEController::class, 'updateECUE'])->name('ue.ecue.update');
-    Route::delete('ue/{ue}/ecue/{ecue}', [\App\Http\Controllers\ESBTPLMDUEController::class, 'destroyECUE'])->name('ue.ecue.destroy');
-    Route::get('ue/{ue}/matieres-disponibles', [\App\Http\Controllers\ESBTPLMDUEController::class, 'matieresDisponibles'])->name('ue.matieres-disponibles');
-    Route::get('ue/{ue}/parcours-disponibles', [\App\Http\Controllers\ESBTPLMDUEController::class, 'parcoursDisponibles'])->name('ue.parcours-disponibles');
-    Route::post('ue/{ue}/sync-parcours', [\App\Http\Controllers\ESBTPLMDUEController::class, 'syncParcours'])->name('ue.sync-parcours');
+    // La ressource est scindee en trois pour porter trois droits distincts. L'ordre
+    // compte : `create` doit etre declare avant `show`, sinon GET ue/create serait
+    // capte par ue/{ue}. Les noms de route restent ceux de Route::resource.
+    Route::resource('ue', \App\Http\Controllers\ESBTPLMDUEController::class)
+        ->parameters(['ue' => 'ue'])
+        ->only(['create', 'store', 'edit', 'update'])
+        ->middleware('permission:lmd.structure.manage');
+    Route::resource('ue', \App\Http\Controllers\ESBTPLMDUEController::class)
+        ->parameters(['ue' => 'ue'])
+        ->only(['index', 'show'])
+        ->middleware('permission:lmd.structure.view');
+    Route::resource('ue', \App\Http\Controllers\ESBTPLMDUEController::class)
+        ->parameters(['ue' => 'ue'])
+        ->only(['destroy'])
+        ->middleware('permission:lmd.structure.delete');
+    Route::get('ue/{ue}/json', [\App\Http\Controllers\ESBTPLMDUEController::class, 'getJson'])
+        ->middleware('permission:lmd.structure.view')->name('ue.json');
+    Route::post('ue/{ue}/ecue', [\App\Http\Controllers\ESBTPLMDUEController::class, 'storeECUE'])
+        ->middleware('permission:lmd.structure.manage')->name('ue.ecue.store');
+    Route::put('ue/{ue}/ecue/{ecue}', [\App\Http\Controllers\ESBTPLMDUEController::class, 'updateECUE'])
+        ->middleware('permission:lmd.structure.manage')->name('ue.ecue.update');
+    Route::delete('ue/{ue}/ecue/{ecue}', [\App\Http\Controllers\ESBTPLMDUEController::class, 'destroyECUE'])
+        ->middleware('permission:lmd.structure.delete')->name('ue.ecue.destroy');
+    Route::get('ue/{ue}/matieres-disponibles', [\App\Http\Controllers\ESBTPLMDUEController::class, 'matieresDisponibles'])
+        ->middleware('permission:lmd.structure.manage')->name('ue.matieres-disponibles');
+    Route::get('ue/{ue}/parcours-disponibles', [\App\Http\Controllers\ESBTPLMDUEController::class, 'parcoursDisponibles'])
+        ->middleware('permission:lmd.structure.manage')->name('ue.parcours-disponibles');
+    Route::post('ue/{ue}/sync-parcours', [\App\Http\Controllers\ESBTPLMDUEController::class, 'syncParcours'])
+        ->middleware('permission:lmd.structure.manage')->name('ue.sync-parcours');
 
-    // --- RÃ©conciliation des doublons UE/ECUE ---
-    Route::get('reconciliation', [\App\Http\Controllers\ESBTPLMDReconciliationController::class, 'index'])->name('reconciliation.index');
+    // --- Reconciliation des doublons UE/ECUE ---
+    // Le controleur appelle deja authorize('lmd.reconciliation.manage') dans ses trois
+    // methodes ; la permission est ici reportee sur la route, pour que le refus tombe
+    // avant d'atteindre le controleur et pour que la garde soit lisible ici.
+    Route::get('reconciliation', [\App\Http\Controllers\ESBTPLMDReconciliationController::class, 'index'])
+        ->middleware('permission:lmd.reconciliation.manage')->name('reconciliation.index');
     Route::get('reconciliation/detect', [\App\Http\Controllers\ESBTPLMDReconciliationController::class, 'detect'])
-        ->middleware('throttle:30,1')->name('reconciliation.detect');
+        ->middleware(['permission:lmd.reconciliation.manage', 'throttle:30,1'])->name('reconciliation.detect');
     Route::post('reconciliation/merge', [\App\Http\Controllers\ESBTPLMDReconciliationController::class, 'merge'])
-        ->middleware('throttle:20,1')->name('reconciliation.merge');
+        ->middleware(['permission:lmd.reconciliation.manage', 'throttle:20,1'])->name('reconciliation.merge');
 
-    // --- Notes LMD ---
-    Route::get('notes', [\App\Http\Controllers\ESBTPLMDNoteController::class, 'index'])->name('notes.index');
-    Route::get('notes/saisie/{evaluation}', [\App\Http\Controllers\ESBTPLMDNoteController::class, 'saisieRapide'])->name('notes.saisie');
-    Route::post('notes/save-bulk', [\App\Http\Controllers\ESBTPLMDNoteController::class, 'saveBulk'])->name('notes.save-bulk');
-    Route::get('notes/classe/{classe}/data', [\App\Http\Controllers\ESBTPLMDNoteController::class, 'classeData'])->name('notes.classe-data');
+    // --- Notes ---
+    // lmd.notes.manage ouvre la saisie ; le controleur restreint ensuite un
+    // enseignant aux evaluations qui lui sont confiees (evaluation nommant
+    // l'enseignant, ou affectation active a la matiere pour l'annee), puis
+    // filtre creation et modification par notes.create / notes.edit.
+    Route::get('notes', [\App\Http\Controllers\ESBTPLMDNoteController::class, 'index'])
+        ->middleware('permission:lmd.notes.view')->name('notes.index');
+    Route::get('notes/saisie/{evaluation}', [\App\Http\Controllers\ESBTPLMDNoteController::class, 'saisieRapide'])
+        ->middleware('permission:lmd.notes.manage')->name('notes.saisie');
+    Route::post('notes/save-bulk', [\App\Http\Controllers\ESBTPLMDNoteController::class, 'saveBulk'])
+        ->middleware('permission:lmd.notes.manage')->name('notes.save-bulk');
+    Route::get('notes/classe/{classe}/data', [\App\Http\Controllers\ESBTPLMDNoteController::class, 'classeData'])
+        ->middleware('permission:lmd.notes.view')->name('notes.classe-data');
 
-    // --- Resultats LMD ---
-    Route::get('resultats', [\App\Http\Controllers\ESBTPLMDResultatController::class, 'index'])->name('resultats.index');
-    Route::get('resultats/classe/{classe}', [\App\Http\Controllers\ESBTPLMDResultatController::class, 'classe'])->name('resultats.classe');
-    Route::get('resultats/etudiant/{etudiant}', [\App\Http\Controllers\ESBTPLMDResultatController::class, 'etudiant'])->name('resultats.etudiant');
+    // --- Resultats ---
+    Route::get('resultats', [\App\Http\Controllers\ESBTPLMDResultatController::class, 'index'])
+        ->middleware('permission:lmd.resultats.view')->name('resultats.index');
+    Route::get('resultats/classe/{classe}', [\App\Http\Controllers\ESBTPLMDResultatController::class, 'classe'])
+        ->middleware('permission:lmd.resultats.view')->name('resultats.classe');
+    Route::get('resultats/etudiant/{etudiant}', [\App\Http\Controllers\ESBTPLMDResultatController::class, 'etudiant'])
+        ->middleware('permission:lmd.resultats.view')->name('resultats.etudiant');
 
-    // --- Bulletins LMD ---
-    Route::get('bulletins', [\App\Http\Controllers\ESBTPLMDBulletinController::class, 'index'])->name('bulletins.index');
-    Route::get('bulletins/select', [\App\Http\Controllers\ESBTPLMDBulletinController::class, 'select'])->name('bulletins.select');
-    Route::post('bulletins/preflight', [\App\Http\Controllers\ESBTPLMDBulletinController::class, 'preflight'])->name('bulletins.preflight');
-    Route::post('bulletins/generer', [\App\Http\Controllers\ESBTPLMDBulletinController::class, 'generer'])->name('bulletins.generer');
-    Route::post('bulletins/generer-classe', [\App\Http\Controllers\ESBTPLMDBulletinController::class, 'genererClasse'])->name('bulletins.generer-classe');
-    Route::get('bulletins/{bulletin}', [\App\Http\Controllers\ESBTPLMDBulletinController::class, 'show'])->name('bulletins.show');
-    Route::get('bulletins/{bulletin}/pdf', [\App\Http\Controllers\ESBTPLMDBulletinController::class, 'pdf'])->name('bulletins.pdf');
+    // --- Bulletins ---
+    Route::get('bulletins', [\App\Http\Controllers\ESBTPLMDBulletinController::class, 'index'])
+        ->middleware('permission:lmd.bulletins.view')->name('bulletins.index');
+    Route::get('bulletins/select', [\App\Http\Controllers\ESBTPLMDBulletinController::class, 'select'])
+        ->middleware('permission:lmd.bulletins.generate')->name('bulletins.select');
+    Route::post('bulletins/preflight', [\App\Http\Controllers\ESBTPLMDBulletinController::class, 'preflight'])
+        ->middleware('permission:lmd.bulletins.generate')->name('bulletins.preflight');
+    Route::post('bulletins/generer', [\App\Http\Controllers\ESBTPLMDBulletinController::class, 'generer'])
+        ->middleware('permission:lmd.bulletins.generate')->name('bulletins.generer');
+    Route::post('bulletins/generer-classe', [\App\Http\Controllers\ESBTPLMDBulletinController::class, 'genererClasse'])
+        ->middleware('permission:lmd.bulletins.generate')->name('bulletins.generer-classe');
+    Route::get('bulletins/{bulletin}', [\App\Http\Controllers\ESBTPLMDBulletinController::class, 'show'])
+        ->middleware('permission:lmd.bulletins.view')->name('bulletins.show');
+    Route::get('bulletins/{bulletin}/pdf', [\App\Http\Controllers\ESBTPLMDBulletinController::class, 'pdf'])
+        ->middleware('permission:lmd.bulletins.view')->name('bulletins.pdf');
     Route::get('bulletins/{bulletin}/pdf/preview', [\App\Http\Controllers\ESBTPLMDBulletinController::class, 'pdfPreview'])
         ->name('bulletins.pdf-preview')
-        ->middleware('throttle:60,1');
-    Route::put('bulletins/{bulletin}/toggle-publication', [\App\Http\Controllers\ESBTPLMDBulletinController::class, 'togglePublication'])->name('bulletins.toggle-publication');
-    Route::delete('bulletins/{bulletin}', [\App\Http\Controllers\ESBTPLMDBulletinController::class, 'destroy'])->name('bulletins.destroy');
+        ->middleware(['permission:lmd.bulletins.view', 'throttle:60,1']);
+    Route::put('bulletins/{bulletin}/toggle-publication', [\App\Http\Controllers\ESBTPLMDBulletinController::class, 'togglePublication'])
+        ->middleware('permission:lmd.bulletins.publish')->name('bulletins.toggle-publication');
+    Route::delete('bulletins/{bulletin}', [\App\Http\Controllers\ESBTPLMDBulletinController::class, 'destroy'])
+        ->middleware('permission:lmd.bulletins.delete')->name('bulletins.destroy');
 
     // --- Planning LMD (UEMOA) ---
     Route::get('planning', [\App\Http\Controllers\ESBTPLMDPlanningController::class, 'index'])
@@ -3009,8 +3081,11 @@ Route::prefix('esbtp/lmd/jurys')->name('esbtp.lmd.jurys.')
         Route::delete('/{jury}/membres/{membre}', [\App\Http\Controllers\ESBTPLMDJuryController::class, 'removeMembre'])
             ->middleware('permission:lmd.jury.preside')
             ->name('membres.destroy');
+        // Signer n'est pas deliberer : un enseignant membre du jury doit pouvoir
+        // apposer sa signature sans detenir le droit de modifier une decision. Le
+        // service verifie par ailleurs que le signataire est bien le membre vise.
         Route::post('/{jury}/membres/{membre}/signer', [\App\Http\Controllers\ESBTPLMDJuryController::class, 'signerMembre'])
-            ->middleware(['permission:lmd.jury.deliberate', 'throttle:30,1'])
+            ->middleware(['permission:lmd.jury.sign|lmd.jury.deliberate', 'throttle:30,1'])
             ->name('membres.signer');
 
         // DÃ©libÃ©ration
@@ -3063,6 +3138,38 @@ Route::get('/esbtp/lmd/jurys/official-documents/{document}/stream', [\App\Domain
     ])
     ->name('esbtp.lmd.jurys.official-documents.stream');
 
+// ============================================================
+// Releve de notes (document officiel)
+// ============================================================
+// La garde de groupe du module est reprise a l'identique sur chaque route, puis
+// completee par le droit metier. `issue` cree une piece officielle immuable : elle
+// est separee de la simple consultation.
+Route::middleware([
+    'auth',
+    'permission:admin.access|identity.direct_studies|identity.registrar|identity.registrar_clerk',
+    'permission:module.lmd.access',
+    'paywall',
+])->group(function () {
+    Route::post('/esbtp/lmd/releves/{etudiant}/{annee}', [\App\Domain\OfficialDocuments\Http\LmdTranscriptController::class, 'issue'])
+        ->middleware(['permission:lmd.releve.issue', 'throttle:10,1'])
+        ->name('esbtp.lmd.releves.issue');
+    Route::get('/esbtp/lmd/releves/{etudiant}/{annee}/etat', [\App\Domain\OfficialDocuments\Http\LmdTranscriptController::class, 'status'])
+        ->middleware(['permission:lmd.releve.view', 'throttle:120,1'])
+        ->name('esbtp.lmd.releves.status');
+    Route::get('/esbtp/lmd/releves/{etudiant}/{annee}/apercu', [\App\Domain\OfficialDocuments\Http\LmdTranscriptController::class, 'preview'])
+        ->middleware(['permission:lmd.releve.view', 'throttle:60,1'])
+        ->name('esbtp.lmd.releves.preview');
+    Route::get('/esbtp/lmd/releves/{etudiant}/{annee}/telecharger', [\App\Domain\OfficialDocuments\Http\LmdTranscriptController::class, 'download'])
+        ->middleware(['permission:lmd.releve.view', 'throttle:30,1'])
+        ->name('esbtp.lmd.releves.download');
+
+    // Ce nom est fige dans LmdTranscriptController::STREAM_ROUTE : le renommer
+    // casserait la resolution de l'URL signee de telechargement.
+    Route::get('/esbtp/lmd/releves/official-documents/{document}/stream', [\App\Domain\OfficialDocuments\Http\OfficialDocumentController::class, 'stream'])
+        ->middleware(['permission:lmd.releve.view', 'signed', 'throttle:30,1'])
+        ->name('esbtp.lmd.releves.official-documents.stream');
+});
+
 Route::get('/verifier-document-officiel', [\App\Domain\OfficialDocuments\Http\OfficialDocumentController::class, 'showVerifyForm'])
     ->middleware('throttle:30,1')
     ->name('official-documents.verify.form');
@@ -3098,6 +3205,17 @@ Route::prefix('esbtp/lmd/rattrapage')->name('esbtp.lmd.rattrapage.')
         Route::post('/sessions/{session}/publier', [\App\Http\Controllers\ESBTPLMDSessionController::class, 'publier'])
             ->middleware(['permission:lmd.rattrapage.manage', 'throttle:30,1'])
             ->name('publier');
+
+        // Saisie des notes de seconde session. Le controleur accepte
+        // lmd.rattrapage.notes.saisir OU lmd.rattrapage.manage : la garde de route
+        // reprend la meme alternative, pour qu'une ecole puisse ouvrir la seule
+        // saisie a un enseignant sans lui confier le pilotage de la session.
+        Route::get('/sessions/{session}/notes', [\App\Http\Controllers\ESBTPLMDSessionController::class, 'notesRattrapage'])
+            ->middleware(['permission:lmd.rattrapage.view', 'throttle:120,1'])
+            ->name('notes');
+        Route::post('/sessions/{session}/notes', [\App\Http\Controllers\ESBTPLMDSessionController::class, 'enregistrerNotesRattrapage'])
+            ->middleware(['permission:lmd.rattrapage.notes.saisir|lmd.rattrapage.manage', 'throttle:60,1'])
+            ->name('notes.enregistrer');
     });
 
 // ============================================================

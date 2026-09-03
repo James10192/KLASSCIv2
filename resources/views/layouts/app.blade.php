@@ -1924,6 +1924,7 @@
                                 <div class="menu-arrow"><i class="fas fa-chevron-down"></i></div>
                             </button>
                             <div class="menu-accordion-content {{ Request::routeIs('esbtp.lmd.*') ? 'show' : '' }}">
+                                @can('lmd.structure.view')
                                 <a href="{{ route('esbtp.lmd.parcours-domain.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.lmd.parcours-domain.*') ? 'active' : '' }}">
                                     <span class="menu-dot"></span>
                                     <span>Domaines & Parcours</span>
@@ -1932,18 +1933,25 @@
                                     <span class="menu-dot"></span>
                                     <span>Unités d'Enseignement</span>
                                 </a>
+                                @endcan
+                                @can('lmd.notes.view')
                                 <a href="{{ route('esbtp.lmd.notes.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.lmd.notes.*') ? 'active' : '' }}">
                                     <span class="menu-dot"></span>
                                     <span>Notes LMD</span>
                                 </a>
+                                @endcan
+                                @can('lmd.resultats.view')
                                 <a href="{{ route('esbtp.lmd.resultats.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.lmd.resultats.*') ? 'active' : '' }}">
                                     <span class="menu-dot"></span>
                                     <span>Résultats LMD</span>
                                 </a>
+                                @endcan
+                                @can('lmd.bulletins.view')
                                 <a href="{{ route('esbtp.lmd.bulletins.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.lmd.bulletins.*') ? 'active' : '' }}">
                                     <span class="menu-dot"></span>
                                     <span>Bulletins LMD</span>
                                 </a>
+                                @endcan
                                 @can('lmd.planning.view')
                                 <a href="{{ route('esbtp.lmd.planning.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.lmd.planning.*') ? 'active' : '' }}">
                                     <span class="menu-dot"></span>

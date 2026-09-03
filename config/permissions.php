@@ -1542,6 +1542,99 @@ return [
             'icon' => 'fa-object-group',
         ],
 
+        // ===== Structure pedagogique LMD (domaines, mentions, parcours, UE, ECUE) =====
+        // Ces permissions manquaient : la garde de groupe etait le seul filtre, donc
+        // tout role franchissant `module.lmd.access` pouvait supprimer un domaine
+        // entier et sa descendance. La lecture, l'ecriture et la suppression sont
+        // desormais trois droits distincts.
+        'lmd.structure.view' => [
+            'label' => 'Consulter la structure pédagogique (domaines, mentions, parcours, unités)',
+            'group' => 'LMD',
+            'icon' => 'fa-sitemap',
+        ],
+        'lmd.structure.manage' => [
+            'label' => 'Créer et modifier la structure pédagogique (domaines, mentions, parcours, unités)',
+            'description' => 'Couvre la création et la modification des domaines, mentions, parcours, unités d\'enseignement et éléments constitutifs, ainsi que leurs rattachements aux classes.',
+            'group' => 'LMD',
+            'icon' => 'fa-pen-to-square',
+        ],
+        'lmd.structure.delete' => [
+            'label' => 'Supprimer un domaine, une mention, un parcours, une unité ou un élément constitutif',
+            'description' => 'Opération destructive : la suppression d\'un domaine entraîne celle de sa descendance. À réserver aux profils qui pilotent la maquette pédagogique.',
+            'group' => 'LMD',
+            'icon' => 'fa-trash',
+        ],
+
+        // ===== Notes et résultats LMD =====
+        'lmd.notes.view' => [
+            'label' => 'Consulter les notes des éléments constitutifs',
+            'group' => 'LMD',
+            'icon' => 'fa-list-ol',
+        ],
+        'lmd.notes.manage' => [
+            'label' => 'Saisir et modifier les notes des éléments constitutifs',
+            'description' => 'Ouvre l\'écran de saisie groupée. Le détail (créer une note ou en corriger une existante) reste filtré par notes.create et notes.edit.',
+            'group' => 'LMD',
+            'icon' => 'fa-pen-to-square',
+        ],
+        'lmd.resultats.view' => [
+            'label' => 'Consulter les résultats par unité et par élément constitutif',
+            'group' => 'LMD',
+            'icon' => 'fa-chart-column',
+        ],
+
+        // ===== Bulletins LMD =====
+        'lmd.bulletins.view' => [
+            'label' => 'Consulter les bulletins semestriels',
+            'group' => 'LMD',
+            'icon' => 'fa-file-lines',
+        ],
+        'lmd.bulletins.generate' => [
+            'label' => 'Générer les bulletins semestriels (individuel ou classe entière)',
+            'group' => 'LMD',
+            'icon' => 'fa-gears',
+        ],
+        'lmd.bulletins.publish' => [
+            'label' => 'Publier ou dépublier un bulletin semestriel',
+            'description' => 'La publication rend le bulletin visible de l\'étudiant. À réserver au profil qui arrête les résultats.',
+            'group' => 'LMD',
+            'icon' => 'fa-bullhorn',
+        ],
+        'lmd.bulletins.delete' => [
+            'label' => 'Supprimer un bulletin semestriel',
+            'group' => 'LMD',
+            'icon' => 'fa-trash',
+        ],
+
+        // ===== Relevé de notes (document officiel) =====
+        'lmd.releve.view' => [
+            'label' => 'Consulter et télécharger un relevé de notes',
+            'group' => 'LMD',
+            'icon' => 'fa-file-lines',
+        ],
+        'lmd.releve.issue' => [
+            'label' => 'Émettre un relevé de notes officiel',
+            'description' => 'L\'émission crée une pièce officielle immuable et versionnée. À réserver au profil qui publie déjà les délibérations.',
+            'group' => 'LMD',
+            'icon' => 'fa-file-circle-check',
+        ],
+
+        // ===== Seconde session : saisie des notes =====
+        'lmd.rattrapage.notes.saisir' => [
+            'label' => 'Saisir les notes de seconde session',
+            'description' => 'Additive : ouvre la seule saisie des notes de rattrapage, sans le pilotage de la session (lancement, publication) que porte lmd.rattrapage.manage. Non attribuée par défaut : chaque école la coche sur le rôle de son choix.',
+            'group' => 'LMD — Rattrapage',
+            'icon' => 'fa-pen-to-square',
+        ],
+
+        // ===== Signature d'un procès-verbal de délibération =====
+        'lmd.jury.sign' => [
+            'label' => 'Signer un procès-verbal de délibération dont on est membre',
+            'description' => 'Permet la seule apposition de signature. Le service vérifie que le signataire est bien le membre concerné : ce droit n\'ouvre ni la délibération ni la modification d\'une décision.',
+            'group' => 'LMD',
+            'icon' => 'fa-signature',
+        ],
+
         'timetables.view' => [
             'label' => 'Voir les emplois du temps',
             'group' => 'Planning',
@@ -2047,6 +2140,20 @@ return [
             'module.academique.access', 'module.etudiants.access', 'module.enseignants.access',
             'module.notes_evaluations.access', 'module.emploi_temps.access', 'module.presences.access',
             'module.lmd.access', 'module.comptabilite.access', 'module.communication.access',
+            // Lot 9, perimetre arrete au Lot 10 — avant le decoupage fin, les routes
+            // /esbtp/lmd n'etaient gardees que par module.lmd.access : ce role pouvait
+            // donc editer la maquette ET produire les bulletins LMD. Le perimetre est
+            // desormais aligne sur ce qu'il fait deja en BTS :
+            //  - il GENERE les bulletins (il detient bulletins.generate en BTS) ;
+            //  - il n'edite PAS la maquette (il n'a ni matieres.create ni filieres.create) ;
+            //  - il ne PUBLIE pas : en LMD ce sont les resultats du jury qui sont
+            //    arretes en deliberation, pas un acte de scolarite (voir la description
+            //    de lmd.bulletins.publish).
+            'lmd.structure.view',
+            'lmd.notes.view',
+            'lmd.resultats.view',
+            'lmd.bulletins.view', 'lmd.bulletins.generate',
+            'lmd.releve.view',
             // TPE — admin observe toutes les déclarations (dormant tant que module désactivé)
             'tpe.view_all',
         ],
@@ -2127,11 +2234,19 @@ return [
             'planning.view', 'planning.edit', 'planning.manage',
             'lmd.planning.view', 'lmd.planning.edit',
             'lmd.examens.view', 'lmd.examens.manage', 'lmd.examens.notes_lock',
-            'lmd.rattrapage.view', 'lmd.rattrapage.manage',
+            'lmd.rattrapage.view', 'lmd.rattrapage.manage', 'lmd.rattrapage.notes.saisir',
             'lmd.credit_wallet.view',
             'lmd.jury.view', 'lmd.jury.preside', 'lmd.jury.deliberate', 'lmd.jury.publish',
-            'lmd.jury.documents.reconcile',
+            'lmd.jury.documents.reconcile', 'lmd.jury.sign',
             'lmd.pv.export', 'lmd.ajournes.view',
+            // Socle pose au Lot 9 : les routes du module portent desormais une
+            // permission chacune, au lieu de s'en remettre a la seule garde de groupe.
+            'lmd.structure.view', 'lmd.structure.manage', 'lmd.structure.delete',
+            'lmd.notes.view', 'lmd.notes.manage',
+            'lmd.resultats.view',
+            'lmd.bulletins.view', 'lmd.bulletins.generate',
+            'lmd.bulletins.publish', 'lmd.bulletins.delete',
+            'lmd.releve.view', 'lmd.releve.issue',
             'timetables.view', 'timetables.view_all', 'timetables.create', 'timetables.edit', 'timetables.delete',
             'schedules.view', 'schedules.create', 'schedules.edit',
             'personnel.view', 'personnel.manage',
@@ -2185,8 +2300,15 @@ return [
             'lmd.examens.view',
             'lmd.rattrapage.view',
             'lmd.credit_wallet.view',
-            'lmd.jury.view',
+            'lmd.jury.view', 'lmd.jury.sign',
             'lmd.pv.export', 'lmd.ajournes.view',
+            // Socle Lot 9 : consultation large et generation, mais ni suppression
+            // de maquette ni publication de bulletin (cf. separation des devoirs).
+            'lmd.structure.view', 'lmd.structure.manage',
+            'lmd.notes.view',
+            'lmd.resultats.view',
+            'lmd.bulletins.view', 'lmd.bulletins.generate',
+            'lmd.releve.view',
             'timetables.view', 'timetables.view_all', 'timetables.create', 'timetables.edit', 'timetables.delete',
             'schedules.view', 'schedules.create', 'schedules.edit',
             'personnel.view',
@@ -2258,6 +2380,15 @@ return [
             'module.academique.access', 'module.etudiants.access', 'module.enseignants.access',
             'module.notes_evaluations.access', 'module.emploi_temps.access', 'module.presences.access',
             'module.lmd.access', 'module.communication.access',
+            // Lot 9, perimetre arrete au Lot 10 — meme raisonnement que pour
+            // 'secretaire', dont ce role est l'un des deux eclats : il genere les
+            // bulletins LMD comme il genere deja ceux du BTS, mais il n'edite pas la
+            // maquette et ne publie pas (la publication suit la deliberation du jury).
+            'lmd.structure.view',
+            'lmd.notes.view',
+            'lmd.resultats.view',
+            'lmd.bulletins.view', 'lmd.bulletins.generate',
+            'lmd.releve.view',
         ],
 
         'serviceScolarite' => [
@@ -2335,6 +2466,20 @@ return [
             'academic_sheets.submit', 'academic_sheets.enter',
             'academic_alerts.view_own', 'academic_health.view_own',
             'lmd.credit_wallet.view',
+            // Lot 9 : le toggle du module lui manquait — il portait admin.access mais
+            // echouait au second etage de la garde. Les droits restent etroits, et
+            // ce sont les controleurs qui les bornent, pas la seule permission :
+            //  - lmd.notes.manage ouvre la saisie, mais ESBTPLMDNoteController
+            //    refuse toute evaluation qui n'est pas confiee a l'enseignant
+            //    (evaluation le nommant, ou affectation active a la matiere) ;
+            //  - lmd.jury.sign ne vaut que pour le PV du jury dont il est membre,
+            //    le service verifiant l'appartenance.
+            // Le reste est en lecture seule. Rien de destructeur.
+            'module.lmd.access',
+            'lmd.structure.view',
+            'lmd.notes.view', 'lmd.notes.manage',
+            'lmd.resultats.view',
+            'lmd.jury.view', 'lmd.jury.sign',
             'module.notes_evaluations.access', 'module.presences.access', 'module.communication.access',
             // TPE — workflow validation (dormant tant que tpe.validation.enabled = false)
             'tpe.validate',
