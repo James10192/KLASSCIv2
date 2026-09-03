@@ -14,6 +14,10 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ### Sécurité
 
+- **La saisie des notes de seconde session se limite aux matières de l'enseignant** — l'écran de rattrapage s'ouvre à qui détient le droit de saisie, et il montrait alors les notes de seconde session de toute la promotion, quel que soit l'enseignant en charge. L'enregistrement était plus ouvert encore : la ligne à modifier étant désignée par le formulaire, rien n'empêchait d'inscrire une note sur la matière d'un collègue. Lecture et enregistrement sont désormais bornés aux matières confiées à l'enseignant. Qui supervise le rattrapage continue de voir la session entière — c'est ce qui distingue les deux droits.
+
+- **Le procès-verbal annuel demande d'être membre du jury, comme l'écran qui le produit** — la consultation d'une délibération est réservée à ses membres, mais l'export du PV en tableur ou en PDF ne vérifiait que le droit d'exporter : la même délibération sortait par la porte de côté. La direction des études cumule ces deux droits par défaut, la situation n'était donc pas théorique. La règle vit maintenant en un seul endroit, partagé par l'écran et par l'export.
+
 - **Annuler son propre encaissement demande désormais un droit explicite** — un agent de caisse pouvait effacer le versement qu'il venait de saisir, tant qu'il était encore en attente et vieux de moins de cinq minutes. Cette possibilité ne découlait d'aucune décision : elle venait simplement du droit d'encaisser, si bien qu'une école qui n'en voulait pas n'avait pour seul recours que de retirer à ses guichets le droit de saisir un paiement. C'est maintenant une permission à part entière, **accordée à personne par défaut** : l'établissement la donne s'il la juge utile, et le bouton n'apparaît qu'à ceux qui l'ont. Le geste reste ce qu'il était là où on l'accorde, une correction à chaud sur un versement non validé, jamais sur celui d'un autre agent.
 
 ### Améliorations
@@ -23,6 +27,8 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 - **L'annulation d'un versement se relit avant d'être enregistrée** — la fenêtre d'émission d'un avoir demandait un montant, un type et un motif sur un formulaire nu. Elle explique maintenant en toutes lettres ce que chaque choix entraîne (le crédit reste à l'école et rend le frais de nouveau dû, le remboursement sort de la caisse et apparaît au journal du jour), puis affiche un récapitulatif à confirmer avant l'enregistrement : le montant, l'étudiant, le reçu, le motif saisi, et le rappel que l'opération est inscrite au journal d'audit et ne s'efface pas. Le motif passe de cinq à dix caractères, et le bouton reste inactif tant que la saisie est incomplète.
 
 ### Ajouts
+
+- **Le relevé annuel de notes s'atteint depuis le bulletin universitaire** — les pages qui l'émettent, l'affichent et le téléchargent existaient sans qu'aucun écran n'y conduise : il fallait connaître l'adresse. Une carte sur l'aperçu du bulletin annonce désormais l'état du relevé, dit ce qui manque quand les conditions ne sont pas réunies, et permet de l'émettre, de le consulter et de le télécharger sans quitter la page. Remplacer un relevé déjà émis demande un motif, et l'ancien reste conservé.
 
 - **Retirer une permission à un rôle depuis l'outil en ligne de commande** — on savait étendre un rôle sur une instance, pas revenir en arrière : un profil posé trop large y restait. Le retrait existe désormais, et il met à jour la liste des extensions voulues, sinon ce qui vient d'être retiré resterait protégé et le ménage suivant le remettrait indéfiniment. Les rôles `superAdmin` et `serviceTechnique` en sont exclus : ce sont eux qui permettent de réparer une instance, et se couper cette branche à distance laisserait l'école sans recours.
 
@@ -61,6 +67,24 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 - **Le calcul des résultats universitaires est verrouillé par des contrôles automatiques** — moyennes, compensation entre unités d'enseignement et attribution des crédits sont désormais vérifiés à chaque évolution du logiciel. Une erreur introduite par mégarde dans ce calcul ne peut plus passer inaperçue jusqu'aux bulletins des étudiants.
 
 ### Corrections
+
+- **Les droits du module universitaire n'arrivaient jamais sur les établissements déjà en service** — le découpage du module LMD en droits par écran a refermé les accès au déploiement, mais la synchronisation qui devait distribuer les nouveaux droits passe son tour dès qu'un rôle a déjà des permissions, ce qui est le cas de tous les rôles de toutes les écoles. Résultat : des refus d'accès sur la structure, les notes, les résultats, les bulletins et les relevés, sans message expliquant pourquoi. Les quatorze droits nés de ce découpage sont désormais rattrapés. Ceux qui existaient avant en restent délibérément exclus : les remettre reviendrait à ré-accorder à chaque déploiement ce qu'une école a choisi de retirer.
+
+- **La note de seconde session compte désormais partout où elle doit compter** — elle remontait bien dans la moyenne de l'unité, mais le relevé officiel, la note éliminatoire du jury et l'écran « Résultats » continuaient de lire la note de première session. Un étudiant passé de 7 à 14 au rattrapage pouvait ainsi voir son unité déclarée acquise sur son bulletin et non acquise sur l'écran des résultats, et rester ajourné en délibération sur une note qu'il avait rattrapée. Le relevé, lui, imprimait un élément à 07,00 dans une unité à 11,50 — une pièce officielle incohérente avec elle-même, et conservée telle quelle.
+
+- **Corriger une note de première session après le rattrapage sert de nouveau à quelque chose** — la note retenue était figée le jour du rattrapage. Rectifier ensuite un 8 en 15 ne changeait plus rien : la régénération du bulletin continuait de retenir l'ancienne valeur, et l'étudiant perdait ces points sans message ni trace. Elle est maintenant rejouée à chaque génération, à partir de la note de première session courante.
+
+- **Une matière du cursus BTS ne peut plus être absorbée par une unité d'enseignement** — le sélecteur « Lier une matière existante » proposait l'intégralité du catalogue de l'établissement. Un clic suffisait à faire sortir une matière BTS de tous les écrans BTS, avec ses évaluations et ses notes, sans avertissement ni retour en arrière évident. Le sélecteur ne propose plus que des éléments déjà universitaires, et le rattachement refuse une matière du cursus BTS.
+
+- **Les éléments constitutifs importés après coup réapparaissent** — dès qu'une unité recevait sa première ligne de partage, elle cessait définitivement de voir les éléments rattachés par l'import de maquettes : ils existaient en base sans figurer au bulletin, au relevé, ni au calcul des crédits. Et le déclenchement était indirect — il suffisait de saisir, dans une autre unité, un code appartenant à celle-ci. Les deux voies de rattachement sont maintenant réunies plutôt que mises en concurrence.
+
+- **Quatre pages d'aperçu de document renvoyaient une erreur** — bulletin BTS, bulletin universitaire, certificat de scolarité et attestation de fréquentation : la décision d'autoriser l'impression était calculée dans un encart inclus, et la page qui l'utilisait ensuite ne la recevait jamais. L'aperçu s'interrompait avant de s'afficher.
+
+- **La direction des études retrouve la vue d'ensemble des jurys** — la restriction qui borne un consultant aux jurys dont il est membre s'appliquait aussi à elle, alors qu'elle ne peut pas s'ajouter elle-même à une composition. Elle perdait la liste, les compteurs et l'accès aux procès-verbaux des délibérations qu'elle n'avait pas présidées — des pièces légales que l'établissement doit pouvoir produire.
+
+- **Le code d'une unité d'enseignement n'est plus réécrit à la modification**, et rattacher un élément constitutif ne le retire plus en silence à l'unité qui le détenait.
+
+- **La liste des jurys ne dit plus « Aucun jury » à qui n'en voit aucun** — un enseignant sans jury lisait qu'il n'en existait pas, puis se voyait proposer d'en créer un : la seule action qui lui soit fermée. L'écran distingue maintenant « aucun jury n'existe » de « vous n'êtes membre d'aucun jury », et indique dans le second cas à qui s'adresser.
 
 - **Une instance neuve peut de nouveau être créée sur MySQL 8** — la création du schéma s'arrêtait net sur une colonne à laquelle MySQL 8 interdit une valeur par défaut. Aucune base existante n'était touchée, mais ouvrir un nouvel établissement sur ce moteur était impossible, et rien ne le signalait tant qu'on ne partait pas de zéro. La valeur par défaut a été déplacée là où elle s'applique quel que soit le moteur.
 

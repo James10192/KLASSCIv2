@@ -209,6 +209,44 @@ class PermissionSyncService
             'agents_inscription.create',
             'agents_inscription.edit',
             'agents_inscription.delete',
+
+            // Module universitaire : ces droits sont nés avec le découpage du
+            // tout-ou-rien `module.lmd.access` en droits métier par route. Les
+            // gardes de route voyagent avec le code et se sont donc refermées au
+            // déploiement ; sans cette liste, la synchronisation saute tout rôle
+            // déjà peuplé — c'est-à-dire tous les rôles de toutes les instances
+            // en service — et les attributions n'arrivent jamais. Résultat
+            // silencieux : 403 sur la structure, les notes, les résultats, les
+            // bulletins et les relevés pour qui doit y accéder.
+            'lmd.structure.view',
+            'lmd.structure.manage',
+            'lmd.structure.delete',
+            'lmd.notes.view',
+            'lmd.notes.manage',
+            'lmd.resultats.view',
+            'lmd.bulletins.view',
+            'lmd.bulletins.generate',
+            'lmd.bulletins.publish',
+            'lmd.bulletins.delete',
+            'lmd.releve.view',
+            'lmd.releve.issue',
+            // Ne figure aujourd'hui dans les defauts d'aucun role : le rattrapage
+            // n'accorde que l'intersection defauts ∩ liste, donc cette entree ne
+            // distribue rien pour l'instant. Elle est la pour le jour ou une ecole
+            // — ou une version — l'inscrira dans un role : le rattrapage suivra
+            // sans qu'on ait a y repenser.
+            'lmd.rattrapage.notes.saisir',
+            'lmd.jury.sign',
+            // `module.lmd.access` et `lmd.jury.view` n'ont PAS leur place ici :
+            // ils existaient avant ce découpage et figuraient déjà dans les
+            // défauts des mêmes rôles. Les remettre dans le rattrapage ne les
+            // « ouvre » à personne — cela ne fait que ré-accorder, à chaque
+            // déploiement et en silence, ce qu'une école a délibérément retiré
+            // depuis /esbtp/roles-permissions. Sur une instance BTS qui a fermé
+            // le module universitaire, la section réapparaîtrait à chaque
+            // synchronisation. Ce rattrapage ne porte que sur des droits NÉS du
+            // découpage, qu'aucune école n'a pu révoquer puisqu'ils n'existaient
+            // pas encore.
         ];
     }
 
