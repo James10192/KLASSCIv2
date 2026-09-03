@@ -14,9 +14,39 @@ on:
   pull_request:
     types: [opened, synchronize, reopened, edited]
 
+  # Les tests vivaient ici, et ce workflow ne se declenchait que sur pull
+  # request : une poussee DIRECTE sur `presentation` n'etait donc testee par
+  # rien. `laravel-ci.yml` ne joue que du lint, et lui aussi seulement sur
+  # pull request. Le filet existait, mais pas sur le chemin par lequel le
+  # code arrive vraiment en production.
+  #
+  # Les branches tenant sont incluses parce que ce sont elles que les six
+  # etablissements deploient. En regime normal elles ne recoivent que des
+  # avances rapides de `presentation`, deja testees — l'execution est alors
+  # redondante. Elle ne l'est plus le jour d'un correctif pousse en urgence
+  # directement sur une branche tenant, et c'est precisement ce jour-la que
+  # personne n'a le temps de lancer les tests a la main.
+  push:
+    branches:
+      - presentation
+      - esbtp-abidjan
+      - esbtp-yakro
+      - ephrata
+      - hetec
+      - rostan
+      - usat
+    # Un fichier de documentation ne peut pas casser un test. Sans ce filtre,
+    # une simple entree de journal declenchait la matrice MySQL + MariaDB.
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
+      - '.claude/**'
+
 jobs:
   messages:
     name: Messages de commit
+    # `github.base_ref` n'existe que sur une pull request.
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -68,6 +98,8 @@ jobs:
 
   changelog:
     name: Trace d'un changement visible
+    # `github.base_ref` n'existe que sur une pull request.
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -106,6 +138,8 @@ jobs:
 
   nouveautes:
     name: Fraîcheur du modal Nouveautés
+    # `github.base_ref` n'existe que sur une pull request.
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

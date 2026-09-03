@@ -1,8 +1,19 @@
 name: Security & Quality Scan
 
 on:
+  # Les branches tenant sont celles que les six etablissements deploient : une
+  # dependance vulnerable poussee sur l'une d'elles n'etait auditee par rien.
+  # (`main` n'existe pas dans ce depot ; laisse en place sans effet.)
   push:
-    branches: [presentation, main]
+    branches:
+      - presentation
+      - main
+      - esbtp-abidjan
+      - esbtp-yakro
+      - ephrata
+      - hetec
+      - rostan
+      - usat
   pull_request:
     branches: [presentation, main]
   schedule:
