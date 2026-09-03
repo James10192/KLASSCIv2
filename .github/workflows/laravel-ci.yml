@@ -4,6 +4,24 @@ on:
   pull_request:
     branches: [presentation, main]
 
+  # Sur une poussee directe, huit des neuf controles de ce job gardent tout
+  # leur sens : syntaxe PHP, syntaxe Blade, validation de composer.json. Seul
+  # le verificateur de noms de classe compare la branche a sa cible et n'a
+  # donc rien a comparer ici — il est saute explicitement plus bas.
+  push:
+    branches:
+      - presentation
+      - esbtp-abidjan
+      - esbtp-yakro
+      - ephrata
+      - hetec
+      - rostan
+      - usat
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
+      - '.claude/**'
+
 jobs:
   laravel-checks:
     name: "Laravel Lint & Validation"
@@ -52,6 +70,9 @@ jobs:
       # naitre ou la relation mourir. Les traiter est un chantier ; les laisser
       # bloquer chaque PR en serait un autre.
       - name: Check unresolved class names (changed files)
+        # Compare la branche a sa cible : sans pull request, il n'y a pas de
+        # cible a comparer.
+        if: github.event_name == 'pull_request'
         # Pas de `|| true` sur le `git diff` : une base introuvable, une
         # recuperation partielle ou une branche renommee rendraient une liste
         # vide, et l'etape afficherait « aucun fichier PHP modifie » — une
