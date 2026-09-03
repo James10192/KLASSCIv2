@@ -1201,6 +1201,13 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                     ->whereNumber('paiement')
                     ->name('paiements.cancel-own')
                     ->middleware('throttle:30,1');
+                // Corriger le mode de reglement d'un versement valide. Les autres
+                // champs restent hors de portee : eux changent ce que l'etudiant
+                // a paye, et relevent de la reconciliation.
+                Route::patch('/paiements/{paiement}/mode-reglement', \App\Http\Controllers\Comptabilite\ModeReglementController::class)
+                    ->whereNumber('paiement')
+                    ->name('paiements.mode-reglement.update')
+                    ->middleware(['permission:paiements.correct_mode', 'throttle:20,1']);
                 Route::post('/paiements/{paiement}/avoir', [App\Http\Controllers\ESBTP\AvoirPaiementController::class, 'store'])
                     ->whereNumber('paiement')
                     ->name('paiements.avoir.store')

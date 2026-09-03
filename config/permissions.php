@@ -972,6 +972,24 @@ return [
             'group' => 'Paiements',
             'icon' => 'fa-tasks',
         ],
+        // Un versement valide ne se reecrit plus depuis l'ecran de saisie, et
+        // c'est la bonne regle : une ecriture comptable ne se retouche pas.
+        //
+        // Mais le mode de reglement n'est pas une ecriture, c'est une
+        // etiquette : elle ne change ni le montant, ni le frais, ni l'etudiant,
+        // ni ce que doit l'ecole. Une erreur de saisie au guichet — cheque coche
+        // a la place d'especes — n'avait pourtant aucune issue autre qu'une
+        // session de reconciliation entiere, disproportionnee pour un champ.
+        //
+        // Le montant, lui, reste hors de portee : le corriger changerait ce que
+        // l'etudiant a paye, et cela releve bien de la reconciliation.
+        'paiements.correct_mode' => [
+            'label' => 'Corriger le mode de règlement d\'un versement validé',
+            'description' => 'Permet de rectifier une erreur de saisie sur le mode (espèces, chèque, mobile money…) d\'un versement déjà validé, sans toucher au montant, au frais ni à la date. Motif obligatoire, et la correction est inscrite au journal d\'audit avec l\'ancienne et la nouvelle valeur. Reste bloquée sur une période comptable clôturée et sur un versement déjà réconcilié.',
+            'group' => 'Paiements',
+            'icon' => 'fa-right-left',
+        ],
+
         'paiements.avoir' => [
             'label' => 'Émettre un avoir (crédit ou remboursement)',
             'description' => 'Pièce inverse liée à un paiement validé. Crédit = réduit le dû sans sortir de caisse. Remboursement = sortie de caisse au journal du jour. Porte sur N\'IMPORTE QUEL versement, y compris ceux d\'un autre agent.',
@@ -2199,6 +2217,7 @@ return [
             'comptabilite.salaires.export', 'comptabilite.salaires.set_rate',
             'paiements.view', 'paiements.create.mobile_money', 'paiements.edit', 'paiements.validate',
             'paiements.avoir',
+            'paiements.correct_mode',
             'paiements.export',  // Lot 15
             'frais.view', 'frais.create', 'frais.edit', 'frais.configure',
             'students.view', 'inscriptions.view',
@@ -2215,6 +2234,9 @@ return [
             'inscriptions.create',  // pré-inscription
             // Lot 13 : caissier voit UNIQUEMENT ses propres encaissements (pas paiements.view)
             'paiements.view_own', 'paiements.create', 'paiements.edit', 'paiements.validate',
+            // Corriger un mode mal saisi au guichet : c'est la ou l'erreur se
+            // produit, donc c'est la qu'il faut pouvoir la reprendre.
+            'paiements.correct_mode',
             'comptabilite.access', 'comptabilite.dashboard.view',
             'comptabilite.relances.send',
             'comptabilite.paiements.view', 'comptabilite.paiements.validate',
