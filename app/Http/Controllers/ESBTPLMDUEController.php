@@ -2,18 +2,22 @@
 
 namespace App\Http\Controllers;
 
-use App\Enums\TypeUE;
+use App\Http\Requests\LMD\UniteEnseignementRequest;
+use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPUniteEnseignement;
 use App\Models\ESBTPMatiere;
 use App\Models\ESBTPLMDParcours;
 use App\Models\ESBTPFiliere;
 use App\Models\ESBTPNiveauEtude;
+use App\Models\ESBTPPlanificationAcademique;
+use App\Services\LMD\ParcoursUeSyncService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\Rule;
 
 class ESBTPLMDUEController extends Controller
 {
+    public function __construct(private ParcoursUeSyncService $parcoursUeSync) {}
+
     /**
      * Afficher la liste des Unités d'Enseignement avec filtres.
      */
@@ -136,29 +140,31 @@ class ESBTPLMDUEController extends Controller
     }
 
     /**
-     * Enregistrer une nouvelle UE.
+     * Enregistrer une nouvelle UE, son rattachement au parcours et ses ECUEs.
      */
-    public function store(Request $request)
+    public function store(UniteEnseignementRequest $request)
     {
-        $validated = $request->validate([
-            'name'        => 'required|string|max:255',
-            'code'        => 'nullable|string|max:50|unique:esbtp_unites_enseignement,code',
-            'description' => 'nullable|string',
-            'credit'      => 'nullable|integer|min:1',
-            'type_ue'     => ['required', Rule::in(TypeUE::values())],
-        ]);
+        $donnees = $request->validated();
 
-        $validated['created_by'] = auth()->id();
-        $validated['updated_by'] = auth()->id();
-        $validated['is_active'] = true;
+        $ue = DB::transaction(function () use ($donnees, $request) {
+            $ue = new ESBTPUniteEnseignement();
+            $ue->fill($this->attributsUe($donnees));
+            $ue->created_by = auth()->id();
+            $ue->updated_by = auth()->id();
+            $ue->is_active = true;
+            $ue->save();
 
-        $ue = ESBTPUniteEnseignement::create($validated);
+            $this->rattacherAuParcours($ue, $donnees);
+            $this->synchroniserEcues($ue, $donnees['ecues'] ?? [], $request->boolean('sync_ecues'));
+
+            return $ue;
+        });
 
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json(['success' => true, 'message' => 'UE créée avec succès.', 'ue' => $ue]);
         }
 
-        return redirect()->route('esbtp.lmd.ue.index')
+        return redirect()->route('esbtp.lmd.ue.show', $ue)
             ->with('success', 'Unité d\'Enseignement créée avec succès.');
     }
 
@@ -167,9 +173,26 @@ class ESBTPLMDUEController extends Controller
      */
     public function show(ESBTPUniteEnseignement $ue)
     {
-        $ue->load(['matieres', 'filiere', 'niveau', 'parcours', 'createdBy', 'updatedBy']);
+        $ue->load([
+            'matieres', 'ecues', 'filiere', 'niveau', 'parcours',
+            'parcoursMultiple', 'responsableUe', 'createdBy', 'updatedBy',
+        ]);
 
-        return view('esbtp.lmd.ue.show', compact('ue'));
+        // Tri sur une clé composite (ordre bulletin, puis intitulé) : une seule
+        // fermeture, compatible avec toutes les versions de Collection::sortBy.
+        $ecues = $ue->getEcuesEffectifs()
+            ->sortBy(fn ($m) => sprintf(
+                '%06d|%s',
+                (int) ($m->pivot?->ordre_bulletin ?? $m->ordre_bulletin ?? 0),
+                mb_strtolower((string) $m->name)
+            ))
+            ->values();
+
+        return view('esbtp.lmd.ue.show', [
+            'ue' => $ue,
+            'ecues' => $ecues,
+            'volumesHoraires' => $this->volumesHorairesParEcue($ue, $ecues),
+        ]);
     }
 
     /**
@@ -177,6 +200,8 @@ class ESBTPLMDUEController extends Controller
      */
     public function edit(ESBTPUniteEnseignement $ue)
     {
+        $ue->load(['matieres', 'ecues', 'parcoursMultiple']);
+
         $parcours = ESBTPLMDParcours::orderBy('name')->get();
         $filieres = ESBTPFiliere::orderBy('name')->get();
         $niveaux = ESBTPNiveauEtude::orderBy('name')->get();
@@ -185,28 +210,216 @@ class ESBTPLMDUEController extends Controller
     }
 
     /**
-     * Mettre à jour une UE existante.
+     * Mettre à jour une UE existante, son rattachement et ses ECUEs.
      */
-    public function update(Request $request, ESBTPUniteEnseignement $ue)
+    public function update(UniteEnseignementRequest $request, ESBTPUniteEnseignement $ue)
     {
-        $validated = $request->validate([
-            'name'        => 'required|string|max:255',
-            'code'        => 'nullable|string|max:50|unique:esbtp_unites_enseignement,code,' . $ue->id,
-            'description' => 'nullable|string',
-            'credit'      => 'nullable|integer|min:1',
-            'type_ue'     => ['required', Rule::in(TypeUE::values())],
-        ]);
+        $donnees = $request->validated();
 
-        $validated['updated_by'] = auth()->id();
+        DB::transaction(function () use ($donnees, $request, $ue) {
+            $ue->fill($this->attributsUe($donnees));
+            $ue->updated_by = auth()->id();
+            $ue->save();
 
-        $ue->update($validated);
+            $this->rattacherAuParcours($ue, $donnees);
+            $this->synchroniserEcues($ue, $donnees['ecues'] ?? [], $request->boolean('sync_ecues'));
+        });
 
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json(['success' => true, 'message' => 'UE mise à jour avec succès.', 'ue' => $ue]);
         }
 
-        return redirect()->route('esbtp.lmd.ue.index')
+        return redirect()->route('esbtp.lmd.ue.show', $ue)
             ->with('success', 'Unité d\'Enseignement mise à jour avec succès.');
+    }
+
+    /**
+     * Colonnes de l'UE alimentées par le formulaire.
+     *
+     * `semestre`, `filiere_id`, `niveau_id` et `parcours_id` étaient auparavant
+     * absents de la validation : ils étaient postés par le formulaire puis jetés,
+     * et l'UE se retrouvait orpheline (invisible des calculs et du bulletin).
+     */
+    private function attributsUe(array $donnees): array
+    {
+        return [
+            'name' => $donnees['name'],
+            'code' => $donnees['code'] ?? null,
+            'description' => $donnees['description'] ?? null,
+            'credit' => $donnees['credit'] ?? null,
+            'type_ue' => $donnees['type_ue'],
+            'semestre' => $donnees['semestre'] ?? null,
+            'filiere_id' => $donnees['filiere_id'] ?? null,
+            'niveau_id' => $donnees['niveau_id'] ?? null,
+            'parcours_id' => $donnees['parcours_id'] ?? null,
+        ];
+    }
+
+    /**
+     * Rattache l'UE au parcours choisi, via le pivot esbtp_lmd_parcours_ue.
+     *
+     * Une UE est partageable entre plusieurs parcours et plusieurs semestres :
+     * on ajoute donc le lien sans jamais détacher les autres (detachMissing:
+     * false, comme l'import en ligne de commande). Retirer un rattachement reste
+     * le rôle de l'écran dédié (`syncParcours`), seul à connaître la liste
+     * complète voulue par l'utilisateur.
+     */
+    private function rattacherAuParcours(ESBTPUniteEnseignement $ue, array $donnees): void
+    {
+        $parcoursId = $donnees['parcours_id'] ?? null;
+        $semestre = $donnees['semestre'] ?? null;
+
+        // Le pivot exige un semestre (colonne NOT NULL) ; la validation impose
+        // déjà « semestre requis avec parcours », ce test est une sécurité.
+        if (!$parcoursId || !$semestre) {
+            return;
+        }
+
+        $parcours = ESBTPLMDParcours::find($parcoursId);
+        if (!$parcours) {
+            return;
+        }
+
+        $this->parcoursUeSync->sync($parcours, [[
+            'id' => $ue->id,
+            'semestres' => [(int) $semestre],
+            'is_optional' => false,
+            'ordre' => (int) ($donnees['ordre'] ?? 0),
+        ]], detachMissing: false);
+    }
+
+    /**
+     * Crée ou met à jour les ECUEs saisis dans le formulaire.
+     *
+     * Deux liens sont écrits, comme le fait l'ajout d'un ECUE isolé :
+     *  - la clé étrangère esbtp_matieres.unite_enseignement_id (rétro-compat) ;
+     *  - le pivot esbtp_ue_matiere, qui porte coefficient / crédit / ordre
+     *    propres à CETTE UE et permet le partage d'un ECUE entre deux UE.
+     *
+     * $detacherAbsents n'est vrai que si le formulaire a explicitement envoyé la
+     * liste complète (champ caché `sync_ecues`) : un appel partiel ne doit jamais
+     * détacher en silence des ECUEs qu'il ne connaissait pas.
+     */
+    private function synchroniserEcues(ESBTPUniteEnseignement $ue, array $ecues, bool $detacherAbsents): void
+    {
+        $idsConserves = [];
+
+        foreach ($ecues as $ligne) {
+            $code = isset($ligne['code']) && $ligne['code'] !== '' ? $ligne['code'] : null;
+            $credit = isset($ligne['credit_ecue']) && $ligne['credit_ecue'] !== '' ? (int) $ligne['credit_ecue'] : null;
+            $coefficient = isset($ligne['coefficient_ecue']) && $ligne['coefficient_ecue'] !== '' ? (float) $ligne['coefficient_ecue'] : null;
+            $ordre = (int) ($ligne['ordre_bulletin'] ?? 0);
+
+            // Réutilisation par code, comme l'import : les codes ECUE sont uniques
+            // au niveau de l'établissement, deux saisies du même code désignent
+            // la même matière.
+            // withTrashed : la colonne `code` porte un index unique, une matière
+            // archivée occupe donc toujours son code. Sans cela, ressaisir ce code
+            // ferait échouer l'enregistrement sur une violation d'unicité.
+            $matiere = $code ? ESBTPMatiere::withTrashed()->where('code', $code)->first() : null;
+            $existait = $matiere !== null;
+            if ($matiere && $matiere->trashed()) {
+                $matiere->restore();
+            }
+            $matiere = $matiere ?: new ESBTPMatiere();
+
+            $matiere->fill([
+                'name' => $ligne['name'],
+                'code' => $code,
+                'unite_enseignement_id' => $ue->id,
+                'credit_ecue' => $credit,
+                'coefficient_ecue' => $coefficient,
+                'ordre_bulletin' => $ordre,
+            ]);
+            if (!$existait) {
+                $matiere->is_active = true;
+                $matiere->created_by = auth()->id();
+                if ($ue->niveau_id) {
+                    $matiere->niveau_etude_id = $ue->niveau_id;
+                }
+            }
+            $matiere->updated_by = auth()->id();
+            $matiere->save();
+
+            $ue->ecues()->syncWithoutDetaching([
+                $matiere->id => [
+                    'coefficient_ecue' => $coefficient,
+                    'credit_ecue' => $credit,
+                    'ordre_bulletin' => $ordre,
+                ],
+            ]);
+
+            $idsConserves[] = $matiere->id;
+        }
+
+        if (!$detacherAbsents) {
+            return;
+        }
+
+        $idsActuels = $ue->ecues()->pluck('esbtp_matieres.id')
+            ->merge($ue->matieres()->pluck('esbtp_matieres.id'))
+            ->unique();
+        $aDetacher = $idsActuels->diff($idsConserves)->values();
+
+        if ($aDetacher->isEmpty()) {
+            return;
+        }
+
+        // Détacher, jamais supprimer : la matière peut porter des évaluations
+        // et des notes. Même comportement que le retrait d'un ECUE isolé.
+        $ue->ecues()->detach($aDetacher->all());
+        ESBTPMatiere::whereIn('id', $aDetacher->all())
+            ->where('unite_enseignement_id', $ue->id)
+            ->update(['unite_enseignement_id' => null, 'updated_by' => auth()->id()]);
+    }
+
+    /**
+     * Volumes horaires de chaque ECUE, lus sur la planification académique
+     * (source canonique) et complétés par les heures portées par la matière.
+     *
+     * @return array<int, array{cm:int, td:int, tp:int, total:int, source:string}>
+     */
+    private function volumesHorairesParEcue(ESBTPUniteEnseignement $ue, $ecues): array
+    {
+        $volumes = [];
+        foreach ($ecues as $ecue) {
+            $volumes[$ecue->id] = [
+                'cm' => (int) ($ecue->heures_cm ?? 0),
+                'td' => (int) ($ecue->heures_td ?? 0),
+                'tp' => (int) ($ecue->heures_tp ?? 0),
+                'total' => (int) ($ecue->heures_cm ?? 0) + (int) ($ecue->heures_td ?? 0) + (int) ($ecue->heures_tp ?? 0),
+                'source' => 'matiere',
+            ];
+        }
+
+        if (!$ue->filiere_id || !$ue->niveau_id || !$ue->semestre || empty($volumes)) {
+            return $volumes;
+        }
+
+        $annee = ESBTPAnneeUniversitaire::where('is_current', true)->first()
+            ?? ESBTPAnneeUniversitaire::where('is_active', true)->orderByDesc('start_date')->first();
+        if (!$annee) {
+            return $volumes;
+        }
+
+        $planifications = ESBTPPlanificationAcademique::where('annee_universitaire_id', $annee->id)
+            ->where('filiere_id', $ue->filiere_id)
+            ->where('niveau_etude_id', $ue->niveau_id)
+            ->where('semestre', $ue->semestre)
+            ->whereIn('matiere_id', array_keys($volumes))
+            ->get();
+
+        foreach ($planifications as $planification) {
+            $volumes[$planification->matiere_id] = [
+                'cm' => (int) $planification->volume_horaire_cm,
+                'td' => (int) $planification->volume_horaire_td,
+                'tp' => (int) $planification->volume_horaire_tp,
+                'total' => (int) $planification->volume_horaire_total,
+                'source' => 'planification',
+            ];
+        }
+
+        return $volumes;
     }
 
     /**
