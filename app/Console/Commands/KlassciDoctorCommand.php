@@ -136,7 +136,7 @@ class KlassciDoctorCommand extends Command
             'lmd_mention_b_threshold' => 14,
             'lmd_mention_tb_threshold' => 16,
             'lmd_compensation_enabled' => true,
-            'lmd_intra_ue_compensation' => true,
+            'lmd_compensation_intra_ue' => true,
         ];
 
         $details = [];

@@ -12,6 +12,7 @@ use App\Console\Commands\LMDImportEnseignantsCommand;
 use App\Services\LMD\LMDCleanupService;
 use App\Services\LMD\LMDClassLinkService;
 use App\Services\LMD\LMDEnseignantsImporter;
+use App\Services\LMD\LmdAcademicRuleProfile;
 use App\Services\LMD\LMDImportService;
 use App\Services\LMD\ParcoursUeSyncService;
 use Illuminate\Http\JsonResponse;
@@ -500,13 +501,16 @@ class CLILMDSetupController extends BaseApiController
     private function upsertParcours(array $data, int $mentionId, ?int $filiereId, ?int $userId): ESBTPLMDParcours
     {
         $code = $data['code'] ?? Str::upper(Str::slug($data['name'], ''));
+        $rules = app(LmdAcademicRuleProfile::class);
+
         return ESBTPLMDParcours::updateOrCreate(
             ['code' => $code, 'mention_id' => $mentionId],
             [
                 'name' => $data['name'],
                 'filiere_id' => $filiereId,
-                'credits_licence' => $data['credits_licence'] ?? 180,
-                'credits_master' => $data['credits_master'] ?? 120,
+                // Totaux par defaut lus dans les reglages de l'ecole, pas ecrits en dur.
+                'credits_licence' => $data['credits_licence'] ?? $rules->diplomaCreditTotal('licence'),
+                'credits_master' => $data['credits_master'] ?? $rules->diplomaCreditTotal('master'),
                 'is_active' => true,
                 'created_by' => $userId,
                 'updated_by' => $userId,

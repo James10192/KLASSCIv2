@@ -9,6 +9,15 @@ use Carbon\CarbonInterface;
 
 class JuryPvSnapshotBuilder
 {
+    /**
+     * Version du jeu de regles academiques grave dans le proces-verbal.
+     *
+     * v2 : les ponderations controle continu / examen terminal ne sont plus affirmees,
+     * car elles n'entrent dans aucun calcul de note. Un PV conserve cinq ans ne doit
+     * enoncer que des regles reellement appliquees.
+     */
+    public const RULES_VERSION = 'lmd-academic-profile-v2';
+
     public function __construct(private readonly LmdAcademicRuleProfile $profile) {}
 
     public function build(array $state, array $identity, User $actor, CarbonInterface $issuedAt): array
@@ -53,7 +62,16 @@ class JuryPvSnapshotBuilder
 
     private function rules(): array
     {
-        return ['profile_version' => 'lmd-academic-profile-v1', 'validation_threshold' => $this->profile->validationThreshold(), 'eliminatory_grade' => $this->profile->eliminatoryGrade(), 'inter_ue_compensation' => $this->profile->interUeCompensationEnabled(), 'intra_ue_compensation' => filter_var(SettingsHelper::get('lmd_intra_ue_compensation', true), FILTER_VALIDATE_BOOL), 'cc_weight' => (float) SettingsHelper::get('lmd_cc_weight', 40), 'exam_weight' => (float) SettingsHelper::get('lmd_exam_weight', 60), 'mention_thresholds' => $this->profile->mentionThresholds(), 'expected_credits' => $this->profile->expectedCreditsPerSemester()];
+        // N'inscrire ici que les regles qui pilotent reellement une decision de jury.
+        return [
+            'profile_version' => self::RULES_VERSION,
+            'validation_threshold' => $this->profile->validationThreshold(),
+            'eliminatory_grade' => $this->profile->eliminatoryGrade(),
+            'inter_ue_compensation' => $this->profile->interUeCompensationEnabled(),
+            'intra_ue_compensation' => $this->profile->intraUeCompensationEnabled(),
+            'mention_thresholds' => $this->profile->mentionThresholds(),
+            'expected_credits' => $this->profile->expectedCreditsPerSemester(),
+        ];
     }
 
     private function statistics($decisions): array

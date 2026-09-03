@@ -11,6 +11,7 @@ use App\Models\ESBTPLMDParcours;
 use App\Models\ESBTPNiveauEtude;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\User;
+use App\Services\LMD\LmdAcademicRuleProfile;
 use App\Services\LMD\ParcoursUeSyncService;
 use Illuminate\Http\Request;
 
@@ -232,6 +233,8 @@ class ESBTPLMDParcoursDomainController extends Controller
         ]);
 
         try {
+            $rules = app(LmdAcademicRuleProfile::class);
+
             ESBTPLMDParcours::create([
                 'name'            => $validated['name'],
                 'code'            => $validated['code'],
@@ -239,8 +242,9 @@ class ESBTPLMDParcoursDomainController extends Controller
                 'filiere_id'      => $validated['filiere_id'] ?? null,
                 'description'     => $validated['description'] ?? null,
                 'responsable_id'  => $validated['responsable_id'] ?? null,
-                'credits_licence' => $validated['credits_licence'] ?? 180,
-                'credits_master'  => $validated['credits_master'] ?? 120,
+                // Totaux par defaut lus dans les reglages de l'ecole, pas ecrits en dur.
+                'credits_licence' => $validated['credits_licence'] ?? $rules->diplomaCreditTotal('licence'),
+                'credits_master'  => $validated['credits_master'] ?? $rules->diplomaCreditTotal('master'),
                 'is_active'       => $validated['is_active'] ?? true,
             ]);
 
@@ -271,6 +275,8 @@ class ESBTPLMDParcoursDomainController extends Controller
         ]);
 
         try {
+            $rules = app(LmdAcademicRuleProfile::class);
+
             $parcours->update([
                 'name'            => $validated['name'],
                 'code'            => $validated['code'],
@@ -278,8 +284,8 @@ class ESBTPLMDParcoursDomainController extends Controller
                 'filiere_id'      => $validated['filiere_id'] ?? null,
                 'description'     => $validated['description'] ?? null,
                 'responsable_id'  => $validated['responsable_id'] ?? null,
-                'credits_licence' => $validated['credits_licence'] ?? $parcours->credits_licence ?? 180,
-                'credits_master'  => $validated['credits_master'] ?? $parcours->credits_master ?? 120,
+                'credits_licence' => $validated['credits_licence'] ?? $parcours->credits_licence ?? $rules->diplomaCreditTotal('licence'),
+                'credits_master'  => $validated['credits_master'] ?? $parcours->credits_master ?? $rules->diplomaCreditTotal('master'),
                 'is_active'       => $validated['is_active'] ?? $parcours->is_active,
             ]);
 

@@ -15,6 +15,7 @@ use App\Models\ESBTPLMDJuryDecision;
 use App\Models\ESBTPLMDJuryMembre;
 use App\Models\ESBTPLMDResultatECUE;
 use App\Models\User;
+use App\Services\LMD\LmdAcademicRuleProfile;
 use App\Services\LMD\LmdDecisionProjectionService;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -31,13 +32,18 @@ use Illuminate\Support\Facades\Log;
  */
 class JuryDeliberationService
 {
+    private readonly LmdAcademicRuleProfile $rules;
+
     public function __construct(
         private readonly OfficialDocumentService $officialDocuments,
         private readonly OfficialDocumentIntegrityService $integrity,
         private readonly JuryPvIssuanceGuard $issuanceGuard,
         private readonly PvNumberSequenceService $pvSequences,
         private readonly LmdDecisionProjectionService $projection,
-    ) {}
+        ?LmdAcademicRuleProfile $rules = null,
+    ) {
+        $this->rules = $rules ?? new LmdAcademicRuleProfile();
+    }
 
     /**
      * Calcule la decision automatique pour un etudiant donnee.
@@ -47,8 +53,10 @@ class JuryDeliberationService
     public function calculerDecisionAuto(ESBTPEtudiant $etudiant, ESBTPLMDJury $jury): array
     {
         $bulletin = $this->resolveBulletin($etudiant, $jury);
-        $seuilValidation = (float) SettingsHelper::get('lmd_seuil_validation_ecue', 10);
-        $noteEliminatoire = (float) SettingsHelper::get('lmd_note_eliminatoire', 0);
+        // Passer par le profil : il lit la cle de l'ecran de reglages
+        // (`lmd_validation_threshold`) puis retombe sur l'ancienne (`lmd_seuil_validation_ecue`).
+        $seuilValidation = $this->rules->validationThreshold();
+        $noteEliminatoire = $this->rules->eliminatoryGrade();
 
         $moyenne = $bulletin?->moyenne_generale !== null
             ? (float) $bulletin->moyenne_generale

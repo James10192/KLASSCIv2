@@ -20,6 +20,17 @@ use Illuminate\Support\Facades\Log;
 
 class LMDBulletinService
 {
+    /**
+     * Texte par defaut de la notice imprimee en bas du bulletin LMD.
+     *
+     * Volontairement neutre : il rappelle la regle UEMOA sans engager
+     * l'etablissement a delivrer un document que l'application ne sait pas
+     * produire. Une ecole qui delivre reellement une attestation ecrit sa
+     * propre phrase dans le reglage « lmd_bulletin_notice_text »
+     * (Configuration des bulletins > Textes du bulletin).
+     */
+    public const NOTICE_DEFAUT = "Un ECUE n'est ni transférable ni capitalisable. Les crédits d'une UE non acquise ne sont capitalisés qu'après validation de celle-ci.";
+
     public function __construct(private readonly LmdAcademicRuleProfile $rules) {}
 
     /** Cache des settings LMD pour eviter des requetes repetees. */
@@ -81,9 +92,14 @@ class LMDBulletinService
             $parcours = $classe->parcours;
 
             // 1. Creer ou mettre a jour le bulletin
-            // Label parcours bulletin : "LICENCE 3 GCV BATIMENT & URBANISME"
+            // Label parcours bulletin. Composition automatique Niveau + Filiere
+            // ("LICENCE 3 GCV BATIMENT & URBANISME") pilotee par le reglage
+            // `lmd_bulletin_parcours_auto` ; desactivee, on imprime le nom du parcours tel quel.
+            $parcoursAuto = $this->getSetting('lmd_bulletin_parcours_auto', '1') == '1';
             $parcoursLabel = $parcours
-                ? $parcours->genererLabelBulletin($classe->niveau)
+                ? ($parcoursAuto
+                    ? $parcours->genererLabelBulletin($classe->niveau)
+                    : (string) $parcours->name)
                 : ($classe->niveau?->name ?? '');
 
             $bulletin = ESBTPLMDBulletin::updateOrCreate(

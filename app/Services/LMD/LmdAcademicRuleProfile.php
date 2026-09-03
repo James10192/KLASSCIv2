@@ -10,6 +10,10 @@ use Closure;
 
 final class LmdAcademicRuleProfile
 {
+    public const RATTRAPAGE_SCOPE_ECUE = 'ecue';
+
+    public const RATTRAPAGE_SCOPE_UE = 'ue';
+
     private Closure $resolver;
 
     /** @param null|Closure(string, mixed): mixed $resolver */
@@ -31,6 +35,51 @@ final class LmdAcademicRuleProfile
     public function interUeCompensationEnabled(): bool
     {
         return $this->toBool($this->first(['lmd_compensation_inter_ue', 'lmd_compensation_enabled'], true));
+    }
+
+    /**
+     * Compensation entre ECUE d'une meme UE.
+     *
+     * Lecture en cascade : la cle canonique est `lmd_compensation_intra_ue` (celle que
+     * l'ecran de reglages ecrit). `lmd_intra_ue_compensation` est l'ancienne cle, encore
+     * lue pour les etablissements qui l'ont deja renseignee en base.
+     */
+    public function intraUeCompensationEnabled(): bool
+    {
+        return $this->toBool($this->first(['lmd_compensation_intra_ue', 'lmd_intra_ue_compensation'], true));
+    }
+
+    /**
+     * Ponderation du controle continu, en pourcentage.
+     *
+     * ATTENTION : ce reglage n'entre encore dans aucun calcul de moyenne. Il est expose
+     * ici pour un branchement futur, et volontairement absent du proces-verbal de jury
+     * tant qu'il ne pilote rien (un document legal ne doit pas affirmer une regle inappliquee).
+     */
+    public function continuousAssessmentWeight(): float
+    {
+        return (float) $this->first(['lmd_cc_weight'], 40);
+    }
+
+    /**
+     * Ponderation de l'examen terminal, en pourcentage. Meme reserve que
+     * continuousAssessmentWeight() : expose, pas encore applique au calcul des notes.
+     */
+    public function finalExamWeight(): float
+    {
+        return (float) $this->first(['lmd_exam_weight'], 60);
+    }
+
+    /**
+     * Portee du rattrapage : `ecue` (seuls les ECUE rates) ou `ue` (toute UE non acquise).
+     */
+    public function rattrapageScope(): string
+    {
+        $scope = mb_strtolower(trim((string) $this->first(['lmd_rattrapage_scope'], self::RATTRAPAGE_SCOPE_ECUE)));
+
+        return in_array($scope, [self::RATTRAPAGE_SCOPE_ECUE, self::RATTRAPAGE_SCOPE_UE], true)
+            ? $scope
+            : self::RATTRAPAGE_SCOPE_ECUE;
     }
 
     /** @return array{passable: float, assez_bien: float, bien: float, tres_bien: float, excellent: float} */
@@ -63,9 +112,33 @@ final class LmdAcademicRuleProfile
         };
     }
 
+    /**
+     * Credits attendus par semestre.
+     *
+     * Le reglage d'instance prime : chaque etablissement fixe son propre volume.
+     * Le fichier de configuration versionne ne sert que de dernier recours.
+     */
     public function expectedCreditsPerSemester(): int
     {
+        $configured = $this->first(['lmd_credits_per_semester'], null);
+
+        if (is_numeric($configured) && (int) $configured > 0) {
+            return (int) $configured;
+        }
+
         return (int) config('academic_pilotage.lmd.expected_credits_per_semester', 30);
+    }
+
+    /**
+     * Total de credits attendu pour un cycle diplomant (norme UEMOA : 180 / 120).
+     */
+    public function diplomaCreditTotal(string $cycle): int
+    {
+        return match (mb_strtolower(trim($cycle))) {
+            'licence' => (int) $this->first(['lmd_credits_licence_total'], 180),
+            'master' => (int) $this->first(['lmd_credits_master_total'], 120),
+            default => 0,
+        };
     }
 
     private function first(array $keys, mixed $default): mixed

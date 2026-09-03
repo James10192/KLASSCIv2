@@ -26,7 +26,14 @@ use Illuminate\Support\Str;
  */
 class LMDImportService
 {
-    public function __construct(private ParcoursUeSyncService $parcoursUeSync) {}
+    private readonly LmdAcademicRuleProfile $rules;
+
+    public function __construct(
+        private ParcoursUeSyncService $parcoursUeSync,
+        ?LmdAcademicRuleProfile $rules = null,
+    ) {
+        $this->rules = $rules ?? new LmdAcademicRuleProfile();
+    }
 
     /**
      * @param  array  $spec  See JSON schema in resources/docs or LmdImportCommand help
@@ -118,8 +125,9 @@ class LMDImportService
                 'name' => $data['name'],
                 'mention_id' => $mention->id,
                 'filiere_id' => $filiere?->id,
-                'credits_licence' => (int) ($data['credits_licence'] ?? 180),
-                'credits_master' => (int) ($data['credits_master'] ?? 120),
+                // Totaux par defaut lus dans les reglages de l'ecole, pas ecrits en dur.
+                'credits_licence' => (int) ($data['credits_licence'] ?? $this->rules->diplomaCreditTotal('licence')),
+                'credits_master' => (int) ($data['credits_master'] ?? $this->rules->diplomaCreditTotal('master')),
                 'created_by' => $userId,
                 'is_active' => true,
             ]

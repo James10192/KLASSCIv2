@@ -3339,7 +3339,7 @@
                             Configuration des crédits selon la norme UEMOA. Ces valeurs s'appliquent à tous les étudiants LMD.
                         </div>
                         <div class="row g-3">
-                            <div class="col-md-3">
+                            <div class="col-md-4">
                                 <div class="ls-field">
                                     <div class="ls-label">Crédits par semestre</div>
                                     <input type="number" class="ls-input" name="setting_lmd_credits_per_semester"
@@ -3347,7 +3347,7 @@
                                     <div class="ls-hint">Standard UEMOA : 30</div>
                                 </div>
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-md-4">
                                 <div class="ls-field">
                                     <div class="ls-label">Total Licence</div>
                                     <input type="number" class="ls-input" name="setting_lmd_credits_licence_total"
@@ -3355,20 +3355,12 @@
                                     <div class="ls-hint">6 semestres x 30 = 180</div>
                                 </div>
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-md-4">
                                 <div class="ls-field">
                                     <div class="ls-label">Total Master</div>
                                     <input type="number" class="ls-input" name="setting_lmd_credits_master_total"
                                            value="{{ $lmdVal('lmd_credits_master_total', 120) }}" min="1">
                                     <div class="ls-hint">4 semestres x 30 = 120</div>
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="ls-field">
-                                    <div class="ls-label">Total Doctorat</div>
-                                    <input type="number" class="ls-input" name="setting_lmd_credits_doctorat_total"
-                                           value="{{ $lmdVal('lmd_credits_doctorat_total', 180) }}" min="1">
-                                    <div class="ls-hint">6 semestres x 30 = 180</div>
                                 </div>
                             </div>
                         </div>
@@ -3470,7 +3462,11 @@
                         </div>
                         <div class="ls-alert">
                             <i class="fas fa-info-circle"></i>
-                            <span><strong>Note :</strong> CC + Examen doivent totaliser 100%. Si vous modifiez l'un, ajustez l'autre.</span>
+                            <span>
+                                <strong>Note :</strong> CC + Examen doivent totaliser 100%. Si vous modifiez l'un, ajustez l'autre.
+                                Ces deux pondérations ne sont pas encore appliquées au calcul des moyennes : elles sont
+                                enregistrées pour l'établissement, mais la moyenne d'une matière reste calculée comme aujourd'hui.
+                            </span>
                         </div>
                     </div>
 
@@ -3522,26 +3518,6 @@
                         'title' => 'Barème des appréciations LMD',
                         'description' => 'Libellés complets utilisés dans les notes LMD, résultats LMD, bulletins LMD et dossier étudiant.',
                     ])
-
-                    <div class="ls-section ls-section--deliberation">
-                        <div class="ls-head">
-                            <div class="ls-icon ls-icon--deliberation"><i class="fas fa-gavel"></i></div>
-                            <div class="ls-title">Décisions de Délibération</div>
-                        </div>
-                        <div class="ls-desc">
-                            Liste des décisions possibles lors du conseil de délibération. Séparez chaque décision par une virgule.
-                        </div>
-                        @php
-                            $decisions = json_decode($lmdVal('lmd_deliberation_decisions', '[]'), true) ?? [];
-                            $decisionsText = implode(', ', $decisions);
-                        @endphp
-                        <textarea class="ls-input" name="setting_lmd_deliberation_decisions" rows="3"
-                                  placeholder="Félicitations du jury, Tableau d'honneur, Encouragement, Passage, Ajourné(e), Exclusion"
-                                  style="resize:vertical;">{{ $decisionsText }}</textarea>
-                        <div class="ls-hint">
-                            Séparez par des virgules. Ces décisions apparaîtront dans le menu déroulant lors de la génération des bulletins.
-                        </div>
-                    </div>
 
                     {{-- Section 6: Champs Bulletin LMD --}}
                     <div class="ls-section ls-section--bulletin-fields">
