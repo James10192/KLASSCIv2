@@ -62,7 +62,10 @@
     <div class="ef-note">
         Situation cumulée à la date d'édition. Les versements en attente de validation sont comptés,
         comme sur la situation financière de l'étudiant. Un versement réparti sur plusieurs frais est
-        imputé à chacun d'eux selon sa ventilation.
+        imputé à chacun d'eux selon sa ventilation. Tout avoir validé est déduit du frais qu'il
+        annule, qu'il ait été remboursé en caisse ou conservé en crédit sur le compte de l'étudiant —
+        ce second cas explique qu'un frais paraisse ici moins couvert que sur la liste des paiements,
+        qui totalise les mouvements de caisse.
     </div>
     @endif
 

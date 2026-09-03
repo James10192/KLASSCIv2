@@ -267,6 +267,14 @@ class PaymentFilterService
         // trois frais gonflerait de 255 000 le total de chacun des trois.
         $fraisFiltre = $request->input('frais_category_id');
 
+        // Un avoir « credit sur compte » creuse un ecart assume entre cet ecran
+        // et l'etat financier : l'argent reste a l'ecole, donc il ne bouge pas ce
+        // total de caisse, mais il annule bien le versement sur le frais, donc
+        // l'etat financier le deduit. On l'expose pour que la difference se lise
+        // sous le KPI au lieu de se deviner d'un ecran a l'autre.
+        $avoirsCredit = fn () => (clone $statsQueryBase)
+            ->where('status', 'validé')->avoires()->where('avoir_kind', 'credit');
+
         if ($fraisFiltre) {
             $categorieId = (int) $fraisFiltre;
             $montants = app(MontantsParFrais::class);
@@ -278,10 +286,12 @@ class PaymentFilterService
             );
             $montantEnAttente = $surCeFrais((clone $statsQueryBase)->where('status', 'en_attente')->encaissements());
             $montantRejete = $surCeFrais((clone $statsQueryBase)->where('status', 'rejeté')->encaissements());
+            $creditsSurCompte = $surCeFrais($avoirsCredit());
         } else {
             $montantValide = ESBTPPaiement::netCashSum((clone $statsQueryBase)->where('status', 'validé'));
             $montantEnAttente = (clone $statsQueryBase)->where('status', 'en_attente')->encaissements()->sum('montant') ?? 0;
             $montantRejete = (clone $statsQueryBase)->where('status', 'rejeté')->encaissements()->sum('montant') ?? 0;
+            $creditsSurCompte = (float) ($avoirsCredit()->sum('montant') ?? 0);
         }
         $montantTotal = $montantValide + $montantEnAttente + $montantRejete;
 
@@ -289,6 +299,7 @@ class PaymentFilterService
         $stats['montant_valide'] = $montantValide;
         $stats['montant_en_attente'] = $montantEnAttente;
         $stats['montant_rejete'] = $montantRejete;
+        $stats['montant_credit_avoir'] = $creditsSurCompte;
 
         // Calculer le taux de recouvrement sur les paiements filtrés
         $stats['recovery_rate'] = $montantTotal > 0
