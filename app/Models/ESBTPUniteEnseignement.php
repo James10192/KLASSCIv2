@@ -94,15 +94,34 @@ class ESBTPUniteEnseignement extends Model implements Auditable
     }
 
     /**
-     * Retourne les ECUEs : pivot si disponible, sinon fallback HasMany.
+     * Retourne les ECUEs de l'UE : l'UNION du pivot et de la clé étrangère.
+     *
+     * La priorité exclusive d'autrefois — « pivot s'il existe, sinon clé
+     * étrangère » — rendait une UE définitivement aveugle dès sa première ligne
+     * de pivot : l'import de maquettes n'écrit QUE `unite_enseignement_id`, donc
+     * tout élément importé ensuite existait en base sans jamais apparaître au
+     * bulletin, au relevé, ni au calcul des crédits. Même effet pour un élément
+     * réactivé après coup. L'union supprime la bascule : chaque lien compte.
+     *
+     * Le pivot reste prioritaire là où il parle — il porte le coefficient, le
+     * crédit et l'ordre propres à CETTE UE — et un élément présent des deux
+     * côtés n'est retourné qu'une fois, dans sa version pivot.
+     *
+     * `is_active` n'est filtré que sur la voie clé étrangère, comme avant : le
+     * pivot ne l'a jamais filtré, et le poser ici retirerait d'un bulletin déjà
+     * délivré tout élément désactivé depuis. Le retrait passe par destroyECUE(),
+     * qui détache le pivot ET libère la clé — c'est le geste qui fait foi.
      */
     public function getEcuesEffectifs(): \Illuminate\Support\Collection
     {
         $pivotEcues = $this->ecues;
-        if ($pivotEcues->isNotEmpty()) {
-            return $pivotEcues;
-        }
-        return $this->matieres->where('is_active', true);
+        $idsPivot = $pivotEcues->pluck('id')->all();
+
+        $parCleEtrangere = $this->matieres
+            ->where('is_active', true)
+            ->reject(fn ($matiere) => in_array($matiere->id, $idsPivot, true));
+
+        return $pivotEcues->concat($parCleEtrangere->values())->values();
     }
 
     /**
