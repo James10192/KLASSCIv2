@@ -1953,6 +1953,10 @@ document.addEventListener('DOMContentLoaded', function() {
             `;
             modalCreateSubmitBtn.disabled = true;
 
+            // Ouvrir la fenetre AVANT le chargement : si la requete echoue (403, 500,
+            // reseau), l'utilisateur voit le message d'erreur au lieu de « rien ».
+            createClasseModal.show();
+
             fetch('{{ route("esbtp.classes.create") }}?ajax=1', {
                 method: 'GET',
                 headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'text/html' }
@@ -1965,13 +1969,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 injectHtmlWithScripts(modalCreateBody, html);
                 initClasseFormScripts('modal-create-classe-form');
                 modalCreateSubmitBtn.disabled = false;
-                createClasseModal.show();
             })
             .catch(error => {
                 console.error('Erreur chargement formulaire création:', error);
                 modalCreateBody.innerHTML = `
                     <div class="ci-alert ci-alert--danger">
-                        <i class="fas fa-exclamation-triangle"></i>Erreur lors du chargement du formulaire. Veuillez réessayer.
+                        <i class="fas fa-exclamation-triangle"></i>Impossible de charger le formulaire (${error.message}). Veuillez réessayer ou signaler ce message.
                     </div>
                 `;
             });
@@ -2054,6 +2057,10 @@ document.addEventListener('DOMContentLoaded', function() {
         modalEditSubmitBtn.disabled = true;
         modalEditSubmitBtn.setAttribute('data-classe-id', classeId);
 
+        // Meme raison que pour la creation : la fenetre s'ouvre d'abord, sinon un echec
+        // de chargement reste totalement invisible pour l'utilisateur.
+        editClasseModal.show();
+
         fetch(`/esbtp/classes/${classeId}/edit?ajax=1`, {
             method: 'GET',
             headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'text/html' }
@@ -2066,13 +2073,12 @@ document.addEventListener('DOMContentLoaded', function() {
             injectHtmlWithScripts(modalEditBody, html);
             initClasseFormScripts('modal-edit-classe-form');
             modalEditSubmitBtn.disabled = false;
-            editClasseModal.show();
         })
         .catch(error => {
             console.error('Erreur chargement formulaire édition:', error);
             modalEditBody.innerHTML = `
                 <div class="ci-alert ci-alert--danger">
-                    <i class="fas fa-exclamation-triangle"></i>Erreur lors du chargement du formulaire.
+                    <i class="fas fa-exclamation-triangle"></i>Impossible de charger le formulaire (${error.message}). Veuillez réessayer ou signaler ce message.
                 </div>
             `;
         });
