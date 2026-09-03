@@ -123,7 +123,7 @@ class ESBTPStudentController extends Controller
         }
 
         // Filtres LMD additionnels (cf rule classe-lmd-filiere-as-mention) :
-        //  - mention : couvre tronc commun (classe.filiere_id = mention_id Option A)
+        //  - mention : couvre tronc commun (classe.filiere_id designe le reflet de la mention)
         //              + parcours rattaché (parcours.mention_id = X)
         //  - parcours : exact match classe.parcours_id
         if ($systemeFilter === 'LMD' && $mentionFilter) {
@@ -131,7 +131,10 @@ class ESBTPStudentController extends Controller
                 $q->whereHas('classe', function ($c) use ($mentionFilter) {
                     $c->where('systeme_academique', 'LMD')
                       ->where(function ($cc) use ($mentionFilter) {
-                          $cc->where('filiere_id', $mentionFilter)
+                          $cc->whereHas('filiere', fn($f) => $f->where('lmd_mention_id', $mentionFilter))
+                             // Classes creees avant les filieres reflets : la colonne portait
+                             // alors l'id de la mention lui-meme.
+                             ->orWhere('filiere_id', $mentionFilter)
                              ->orWhereHas('parcours', fn($p) => $p->where('mention_id', $mentionFilter));
                       });
                 });

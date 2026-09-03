@@ -297,7 +297,7 @@ class ExamenSchedulingService
        non null) et cible TOUTES les classes du scope :
          - classe   : 1 classe précise (mode legacy / TP individuel)
          - parcours : toutes les classes du parcours (+ extras inter-parcours)
-         - mention  : toutes les classes LMD de la mention (filiere_id en LMD)
+         - mention  : toutes les classes LMD de la mention (via le reflet de filiere)
          - domaine  : toutes les classes des mentions du domaine
        ═════════════════════════════════════════════════════════════════════ */
 
@@ -334,11 +334,16 @@ class ExamenSchedulingService
                 break;
 
             case 'mention':
-                // En LMD, filiere_id sert sémantiquement de mention_id
+                // La classe s'ancre sur la filiere qui reflete la mention.
+                // Le orWhere couvre les classes creees avant les reflets, dont
+                // la colonne portait l'id de la mention lui-meme.
                 // (voir rule classe-lmd-filiere-as-mention.md)
                 if (! $scopeId) return collect();
-                $query->where('filiere_id', $scopeId)
-                    ->where('systeme_academique', 'LMD');
+                $query->where('systeme_academique', 'LMD')
+                    ->where(function ($q) use ($scopeId) {
+                        $q->whereHas('filiere', fn ($f) => $f->where('lmd_mention_id', $scopeId))
+                          ->orWhere('filiere_id', $scopeId);
+                    });
                 break;
 
             case 'domaine':
@@ -382,8 +387,10 @@ class ExamenSchedulingService
         $ordre = $niveau?->ordre ?? null;
 
         if ($ordre === 1) {
-            // L1 → mention (filiere_id en LMD)
-            return ['scope_type' => 'mention', 'scope_id' => $classe->filiere_id];
+            // L1 → mention. `filiere_id` designe le REFLET de la mention : il
+            // faut remonter a la mention elle-meme, sans quoi on inscrirait un
+            // id de filiere dans un champ declare « mention ».
+            return ['scope_type' => 'mention', 'scope_id' => $this->mentionDe($classe)];
         }
 
         // L2+ / M1 / M2 → parcours (si présent)
@@ -392,7 +399,20 @@ class ExamenSchedulingService
         }
 
         // Pas de parcours assigné → fallback mention
-        return ['scope_type' => 'mention', 'scope_id' => $classe->filiere_id];
+        return ['scope_type' => 'mention', 'scope_id' => $this->mentionDe($classe)];
+    }
+
+    /**
+     * L'id de la mention d'une classe de tronc commun.
+     *
+     * Le repli sur `filiere_id` couvre les classes creees avant les filieres
+     * reflets, dont la colonne portait l'id de la mention lui-meme.
+     */
+    private function mentionDe(ESBTPClasse $classe): ?int
+    {
+        $mentionId = $classe->filiere?->lmd_mention_id;
+
+        return $mentionId !== null ? (int) $mentionId : $classe->filiere_id;
     }
 
     /**

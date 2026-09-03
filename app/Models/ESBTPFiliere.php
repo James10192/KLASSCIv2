@@ -31,6 +31,8 @@ class ESBTPFiliere extends Model
         'option_filiere',
         'is_tronc_commun',
         'semestres_tronc_commun',
+        'lmd_mention_id',
+        'lmd_parcours_id',
     ];
 
     /**
@@ -246,5 +248,47 @@ class ESBTPFiliere extends Model
         }
 
         return false;
+    }
+
+    /**
+     * La mention LMD dont cette filiere est le reflet, s'il y en a une.
+     */
+    public function lmdMention()
+    {
+        return $this->belongsTo(ESBTPLMDMention::class, 'lmd_mention_id');
+    }
+
+    /**
+     * Le parcours LMD dont cette filiere est le reflet, s'il y en a un.
+     */
+    public function lmdParcours()
+    {
+        return $this->belongsTo(ESBTPLMDParcours::class, 'lmd_parcours_id');
+    }
+
+    /**
+     * Cette filiere n'existe que pour donner un ancrage a une entite LMD.
+     *
+     * Attention : ce n'est PAS « un parcours pointe vers moi ». Sur les
+     * instances mixtes, un parcours LMD pointe legitimement vers une VRAIE
+     * filiere BTS equivalente, pour la retro-compat des planifications. La
+     * presence d'un parcours ne distingue donc pas le reflet du jumeau ; seule
+     * la marque posee a la creation le fait.
+     */
+    public function estMiroirLmd(): bool
+    {
+        return $this->lmd_mention_id !== null || $this->lmd_parcours_id !== null;
+    }
+
+    /**
+     * Ecarte les filieres qui ne sont que le reflet d'une entite LMD.
+     *
+     * A utiliser la ou une personne choisit une filiere BTS. Les ecrans LMD,
+     * eux, n'ont pas a filtrer : le reflet EST la filiere que l'ecole
+     * reconnait.
+     */
+    public function scopeHorsMiroirLmd($query)
+    {
+        return $query->whereNull('lmd_mention_id')->whereNull('lmd_parcours_id');
     }
 }

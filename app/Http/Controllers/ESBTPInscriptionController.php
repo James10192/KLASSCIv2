@@ -116,7 +116,7 @@ class ESBTPInscriptionController extends Controller
         }
         // Filtres LMD additionnels (utilisés uniquement quand systeme=LMD).
         // mention_id : peut désigner soit une mention LMD pure (classe en tronc commun
-        // → classe.filiere_id = mention_id par convention Option A) soit une mention
+        // → classe.filiere_id designe le reflet de la mention (ou, pour les lignes anciennes, la mention elle-meme)) soit une mention
         // dont la classe a un parcours rattaché (parcours.mention_id = mention_id).
         $mentionFilter = $request->input("mention");
         $parcoursFilter = $request->input("parcours");
@@ -174,7 +174,10 @@ class ESBTPInscriptionController extends Controller
             $baseQuery->whereHas('classe', function ($q) use ($mentionFilter) {
                 $q->where('systeme_academique', 'LMD')
                   ->where(function ($qq) use ($mentionFilter) {
-                      $qq->where('filiere_id', $mentionFilter)
+                      $qq->whereHas('filiere', fn($f) => $f->where('lmd_mention_id', $mentionFilter))
+                         // Classes creees avant les filieres reflets : la colonne portait
+                         // alors l'id de la mention lui-meme.
+                         ->orWhere('filiere_id', $mentionFilter)
                          ->orWhereHas('parcours', fn($p) => $p->where('mention_id', $mentionFilter));
                   });
             });
@@ -280,7 +283,10 @@ class ESBTPInscriptionController extends Controller
             $statsQuery->whereHas('classe', function ($q) use ($mentionFilter) {
                 $q->where('systeme_academique', 'LMD')
                   ->where(function ($qq) use ($mentionFilter) {
-                      $qq->where('filiere_id', $mentionFilter)
+                      $qq->whereHas('filiere', fn($f) => $f->where('lmd_mention_id', $mentionFilter))
+                         // Classes creees avant les filieres reflets : la colonne portait
+                         // alors l'id de la mention lui-meme.
+                         ->orWhere('filiere_id', $mentionFilter)
                          ->orWhereHas('parcours', fn($p) => $p->where('mention_id', $mentionFilter));
                   });
             });

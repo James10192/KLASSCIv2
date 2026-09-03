@@ -263,6 +263,13 @@ jobs:
       - name: Montants nets par frais
         run: php vendor/bin/phpunit tests/Feature/Frais/MontantsNetsParFraisTest.php --no-coverage
 
+      # Une classe LMD ne peut exister que si son parcours ou sa mention a une
+      # filiere sur laquelle s'ancrer. Ce controle a une raison d'etre precise :
+      # l'ancrage tenait par une coincidence d'identifiants, et USAT ne pouvait
+      # creer aucune classe pour trois de ses mentions.
+      - name: Ancrage des classes LMD sur une filiere reelle
+        run: php vendor/bin/phpunit tests/Feature/Classes/AncrageFiliereLmdTest.php --no-coverage
+
   schema:
     name: Le schéma se crée entièrement (${{ matrix.moteur.nom }})
     runs-on: ubuntu-latest

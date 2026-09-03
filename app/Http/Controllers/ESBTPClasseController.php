@@ -21,8 +21,10 @@ use App\Models\ESBTPPlanificationAcademique;
 use App\Models\ESBTPSeanceCours;
 use App\Models\ESBTPTeacher;
 use App\Models\Setting;
+use App\Services\ClasseManagementService;
 use App\Services\ClassPlanningService;
 use App\Services\ClassStudentService;
+use App\Services\LMD\FiliereMiroirLmd;
 use App\Services\Notes\NoteStudentCohortService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -160,7 +162,12 @@ class ESBTPClasseController extends Controller
         $totalCount = $allClasses->count();
 
         // Données pour les filtres
-        $filieres = ESBTPFiliere::where("is_active", true)->get();
+        // horsMiroirLmd : cette liste est le selecteur de filiere du mode BTS.
+        // Les reflets y feraient doublon avec les vraies filieres de meme nom.
+        // Ils restent ACTIFS ailleurs : les desactiver les exclurait de la
+        // configuration des frais « tous niveaux x toutes filieres actives »
+        // (ESBTPFraisController), et USAT perdrait le bareme de son agronomie.
+        $filieres = ESBTPFiliere::where("is_active", true)->horsMiroirLmd()->get();
         $niveaux = ESBTPNiveauEtude::where("is_active", true)->get();
 
         // Calculer les KPI globaux sur TOUTES les classes actives (pas seulement celles filtrées)
@@ -310,7 +317,12 @@ class ESBTPClasseController extends Controller
             $request->session()->flashInput($prefill);
         }
 
-        $filieres = ESBTPFiliere::where("is_active", true)->get();
+        // horsMiroirLmd : cette liste est le selecteur de filiere du mode BTS.
+        // Les reflets y feraient doublon avec les vraies filieres de meme nom.
+        // Ils restent ACTIFS ailleurs : les desactiver les exclurait de la
+        // configuration des frais « tous niveaux x toutes filieres actives »
+        // (ESBTPFraisController), et USAT perdrait le bareme de son agronomie.
+        $filieres = ESBTPFiliere::where("is_active", true)->horsMiroirLmd()->get();
         $niveaux = ESBTPNiveauEtude::where("is_active", true)->get();
         $annees = ESBTPAnneeUniversitaire::where("is_active", true)->get();
         $mentions = ESBTPLMDMention::with('domaine')
@@ -351,20 +363,21 @@ class ESBTPClasseController extends Controller
     {
         $validatedData = $request->validated();
 
-        // Mode LMD : dériver filiere_id depuis le parcours sélectionné
-        if (!empty($validatedData['parcours_id'])) {
-            $parcours = ESBTPLMDParcours::findOrFail($validatedData['parcours_id']);
-            $validatedData['filiere_id'] = $parcours->filiere_id;
-        }
+        // Une seule transaction pour l'ancrage ET la classe : l'ancrage peut
+        // creer une filiere reflet, et si la creation de la classe echoue
+        // ensuite, ce reflet reste seul. Une filiere sans classe n'est plus
+        // protegee contre la suppression — une ecole l'efface, la prenant pour
+        // un doublon, et la mention redevient incapable de porter une classe.
+        $classe = DB::transaction(function () use ($validatedData) {
+            $donnees = $this->ancrerSurUneFiliereReelle($validatedData);
 
-        // Ajouter les champs de traçabilité
-        $validatedData["created_by"] = Auth::id();
-        $validatedData["updated_by"] = Auth::id();
+            // Champs de traçabilité
+            $donnees["created_by"] = Auth::id();
+            $donnees["updated_by"] = Auth::id();
 
-        // systeme_academique est auto-determine par le model event saving
-
-        // Créer la nouvelle classe
-        $classe = ESBTPClasse::create($validatedData);
+            // systeme_academique est auto-determine par le model event saving
+            return ESBTPClasse::create($donnees);
+        });
 
         // Récupérer les matières associées aux niveaux sélectionnés
         $matieres = ESBTPMatiere::whereHas("niveaux", function ($query) use (
@@ -706,7 +719,12 @@ class ESBTPClasseController extends Controller
      */
     public function edit(Request $request, ESBTPClasse $classe)
     {
-        $filieres = ESBTPFiliere::where("is_active", true)->get();
+        // horsMiroirLmd : cette liste est le selecteur de filiere du mode BTS.
+        // Les reflets y feraient doublon avec les vraies filieres de meme nom.
+        // Ils restent ACTIFS ailleurs : les desactiver les exclurait de la
+        // configuration des frais « tous niveaux x toutes filieres actives »
+        // (ESBTPFraisController), et USAT perdrait le bareme de son agronomie.
+        $filieres = ESBTPFiliere::where("is_active", true)->horsMiroirLmd()->get();
         $niveaux = ESBTPNiveauEtude::where("is_active", true)->get();
         $annees = ESBTPAnneeUniversitaire::where("is_active", true)->get();
         $mentions = ESBTPLMDMention::with('domaine')
@@ -749,14 +767,13 @@ class ESBTPClasseController extends Controller
         // Validation centralisee dans UpdateClasseRequest (LMD-aware).
         $validatedData = $request->validated();
 
-        // Mode LMD : dériver filiere_id depuis le parcours sélectionné
-        if (!empty($validatedData['parcours_id'])) {
-            $parcoursModel = ESBTPLMDParcours::findOrFail($validatedData['parcours_id']);
-            $validatedData['filiere_id'] = $parcoursModel->filiere_id;
-        }
+        // Voir store() : ancrage et ecriture dans la meme transaction.
+        $validatedData = DB::transaction(function () use ($validatedData) {
+            $donnees = $this->ancrerSurUneFiliereReelle($validatedData);
+            $donnees["updated_by"] = Auth::id();
 
-        // Mettre à jour les champs de traçabilité
-        $validatedData["updated_by"] = Auth::id();
+            return $donnees;
+        });
 
         // systeme_academique est auto-determine par le model event saving
 
@@ -2525,5 +2542,52 @@ class ESBTPClasseController extends Controller
         $target->delete();
 
         return response()->json(['success' => true]);
+    }
+
+    /**
+     * Garantit que `filiere_id` designe une filiere qui existe vraiment.
+     *
+     * En BTS, le formulaire envoie deja une filiere : on ne touche a rien.
+     *
+     * En LMD, il envoie l'id d'un PARCOURS (champ dedie) ou celui d'une
+     * MENTION (le selecteur de mention est pose sur le champ `filiere_id`,
+     * faute de colonne dediee sur `esbtp_classes`). Ni l'un ni l'autre n'est un
+     * id de filiere. Jusqu'ici on ecrivait quand meme cette valeur dans la
+     * colonne, et cela ne tenait que tant que les deux suites d'identifiants
+     * coincidaient : USAT, qui a huit mentions pour cinq filieres, ne pouvait
+     * creer aucune classe pour ses trois mentions d'agronomie.
+     *
+     * On demande donc a l'entite LMD sa filiere d'ancrage, creee au besoin.
+     */
+    private function ancrerSurUneFiliereReelle(array $donnees): array
+    {
+        $niveau = ESBTPNiveauEtude::find($donnees['niveau_etude_id'] ?? null);
+
+        if ($niveau === null
+            || ! in_array($niveau->type, ClasseManagementService::LMD_TYPES, true)) {
+            return $donnees;
+        }
+
+        $miroirs = app(FiliereMiroirLmd::class);
+
+        if (! empty($donnees['parcours_id'])) {
+            $parcours = ESBTPLMDParcours::findOrFail($donnees['parcours_id']);
+            $donnees['filiere_id'] = $miroirs->pourParcours($parcours)->id;
+
+            return $donnees;
+        }
+
+        // Tronc commun : la classe est ouverte a toute la mention.
+        if (! empty($donnees['filiere_id'])) {
+            $mention = ESBTPLMDMention::find($donnees['filiere_id']);
+
+            if ($mention !== null) {
+                $donnees['filiere_id'] = $miroirs->pourMention($mention)->id;
+            }
+            // Sinon la valeur designe deja une filiere : cas d'une classe
+            // ancienne rouverte en edition, creee avant cette regle. On laisse.
+        }
+
+        return $donnees;
     }
 }
