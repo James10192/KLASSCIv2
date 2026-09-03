@@ -127,10 +127,12 @@
                     <a href="{{ route('esbtp.lmd.bulletins.index') }}" class="sr-hero-btn">
                         <i class="fas fa-arrow-left"></i>Retour
                     </a>
+                    @php $printDecision = app(\App\Services\DocumentPrintGuard::class)->decide(auth()->user(), 'bulletin', (int) $bulletin->etudiant_id, (int) $bulletin->id); $printAllowed = $printDecision->allowed; @endphp
                     @include('esbtp.documents._request-approval', [
                         'documentType' => 'bulletin',
                         'etudiantId' => $bulletin->etudiant_id,
                         'documentId' => $bulletin->id,
+                        'printDecision' => $printDecision,
                     ])
                     @if($printAllowed)
                     <a href="{{ route('esbtp.lmd.bulletins.pdf-preview', $bulletin) }}" class="sr-hero-btn" target="_blank" title="Aperçu PDF dans un nouvel onglet">
@@ -308,6 +310,9 @@
                 </div>
             </div>
         </div>
+
+        {{-- Releve annuel de notes : etat, emission, apercu, telechargement --}}
+        @include('esbtp.lmd.bulletins.partials.releve-annuel')
 
     </div>
 </div>

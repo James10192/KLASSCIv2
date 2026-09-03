@@ -82,13 +82,13 @@ class LmdTranscriptIssuanceGuard
     private function reasons(Collection $bulletins): array
     {
         if ($bulletins->isEmpty()) {
-            return ['Aucun bulletin LMD n existe pour cet etudiant sur cette annee universitaire.'];
+            return ["Aucun bulletin n'existe encore pour cet étudiant sur cette année universitaire."];
         }
 
         $reasons = [];
 
         if ($bulletins->contains(fn ($bulletin) => ! $bulletin->is_published)) {
-            $reasons[] = 'Tous les bulletins de l annee doivent etre publies avant l emission du releve.';
+            $reasons[] = "Tous les bulletins de l'année doivent être publiés avant l'émission du relevé.";
         }
 
         // Comptage direct plutot que `withCount` : le nom de colonne genere par
@@ -100,7 +100,7 @@ class LmdTranscriptIssuanceGuard
             ->count();
 
         if ($resultCount === 0) {
-            $reasons[] = 'Aucun resultat d unite d enseignement n est rattache a ces bulletins.';
+            $reasons[] = "Aucun résultat d'unité d'enseignement n'est rattaché à ces bulletins : générez les bulletins de l'année avant d'émettre le relevé.";
         }
 
         return $reasons;

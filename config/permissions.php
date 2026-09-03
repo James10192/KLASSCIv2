@@ -2493,7 +2493,10 @@ return [
             //    refuse toute evaluation qui n'est pas confiee a l'enseignant
             //    (evaluation le nommant, ou affectation active a la matiere) ;
             //  - lmd.jury.sign ne vaut que pour le PV du jury dont il est membre,
-            //    le service verifiant l'appartenance.
+            //    le service verifiant l'appartenance ;
+            //  - lmd.jury.view, sans preside ni deliberate ni publish, ne montre
+            //    que les jurys dont il est membre : une deliberation ne se lit pas
+            //    en dehors du jury qui l'a prononcee (ESBTPLMDJuryController).
             // Le reste est en lecture seule. Rien de destructeur.
             'module.lmd.access',
             'lmd.structure.view',

@@ -3217,7 +3217,7 @@ Route::prefix('esbtp/lmd/rattrapage')->name('esbtp.lmd.rattrapage.')
         // reprend la meme alternative, pour qu'une ecole puisse ouvrir la seule
         // saisie a un enseignant sans lui confier le pilotage de la session.
         Route::get('/sessions/{session}/notes', [\App\Http\Controllers\ESBTPLMDSessionController::class, 'notesRattrapage'])
-            ->middleware(['permission:lmd.rattrapage.view', 'throttle:120,1'])
+            ->middleware(['permission:lmd.rattrapage.view|lmd.rattrapage.notes.saisir', 'throttle:120,1'])
             ->name('notes');
         Route::post('/sessions/{session}/notes', [\App\Http\Controllers\ESBTPLMDSessionController::class, 'enregistrerNotesRattrapage'])
             ->middleware(['permission:lmd.rattrapage.notes.saisir|lmd.rattrapage.manage', 'throttle:60,1'])
