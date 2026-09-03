@@ -227,7 +227,15 @@ class PermissionSyncService
             return [];
         }
 
-        $allowed = array_flip($defaults);
+        // Ce que l'etablissement a deliberement ajoute n'est pas de la derive.
+        //
+        // Sans cette ligne, le nettoyage traite pareil une permission restee la
+        // par accident et une decision d'organisation — « chez nous, la
+        // scolarite valide les inscriptions » — et efface la seconde a chaque
+        // deploiement, sans rien dire. L'ecole voyait son role revenir a l'etat
+        // d'usine sans comprendre pourquoi.
+        $allowed = array_flip(array_merge($defaults, app(ExtensionsDeRole::class)->pour($roleName)));
+
         $revoked = [];
         foreach ($existingNames as $name) {
             $canonical = $this->registry->canonicalize($name);

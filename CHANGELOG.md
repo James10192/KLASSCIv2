@@ -14,6 +14,8 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ### Ajouts
 
+- **Un établissement peut étendre un rôle sans se le voir effacer au déploiement suivant** (`/esbtp/roles-permissions`) — la synchronisation des permissions nettoie cinq rôles d'organigramme (responsable et service scolarité, agent d'inscription, directeur des études, chargé de communication) en retirant tout ce qui ne figure pas dans les droits livrés par défaut. Ce ménage est utile : sans lui, ces rôles accumulent au fil des versions des droits que plus personne n'a décidés. Mais il ne distinguait pas une permission restée là par accident d'une décision d'organisation — « chez nous, la scolarité valide les inscriptions ». Il effaçait donc la seconde à chaque livraison, sans message, et l'école devait la remettre à la main sans comprendre pourquoi elle disparaissait. Ce qu'un établissement accorde explicitement est désormais inscrit comme voulu, et le ménage le respecte. Cette liste vit dans la base de l'établissement : ce qu'une école décide de son organigramme ne traverse jamais vers les autres.
+
 - **Le suivi par catégorie compte enfin les versements répartis** (`/esbtp/paiements/suivi-categories`) — la page calculait ce qui avait été payé sur un frais en ne regardant que la case cochée au guichet. Un versement qui couvrait plusieurs frais ne comptait que pour un seul, et tous les autres paraissaient impayés : un étudiant à jour pouvait y figurer « en retard », et le taux de recouvrement de chaque catégorie était faux. Les remboursements sont par ailleurs de nouveau déduits.
 
 

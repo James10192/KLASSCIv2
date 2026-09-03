@@ -231,6 +231,18 @@ class CLIPermissionController extends BaseApiController
                 $granted[] = $perm;
             }
         }
+        // Ce qui sort des defauts du role a ete voulu : on l'inscrit, sinon la
+        // synchronisation des permissions le prendrait pour de la derive et
+        // l'effacerait au prochain deploiement — precisement sur les roles
+        // d'organigramme qu'une ecole a le plus de raisons d'etendre.
+        $extensions = app(\App\Services\ExtensionsDeRole::class);
+        $extensions->enregistrer(
+            $role,
+            $roleModel->permissions()->pluck('name')->all(),
+            $request->input('motif'),
+            $request->user()->id
+        );
+
         app()['cache']->forget(config('permission.cache.key', 'spatie.permission.cache'));
 
         return $this->successResponse([
@@ -238,6 +250,9 @@ class CLIPermissionController extends BaseApiController
             'granted' => $granted,
             'already_had' => array_values(array_diff($perms, $granted, $missing)),
             'missing_in_db' => $missing,
+            // Ce qui, sur ce role, ne viendra jamais des defauts partages et ne
+            // survivra que parce qu'il est inscrit ici.
+            'extensions_locales' => $extensions->pour($role),
         ], "Permissions accordées au rôle '{$role}'");
     }
 
