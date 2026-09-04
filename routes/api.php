@@ -478,6 +478,11 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
         // Secrets d'integration. Liste blanche stricte cote controleur : ce
         // n'est PAS un ecrivain de .env generique, qui equivaudrait a une prise
         // de controle de l'instance par jeton. La valeur ne revient jamais.
+        // Le moteur de base : version, jeu de caracteres, reglages qui decident
+        // si une migration passe. Sans SSH, rien n exposait cette information, et
+        // elle a bloque une decision de schema.
+        Route::get('/moteur', [App\Http\Controllers\API\CLI\CLIMoteurController::class, 'index'])->name('moteur.index');
+
         Route::get('/env', [App\Http\Controllers\API\CLI\CLIEnvController::class, 'index'])->name('env.index');
         Route::post('/env', [App\Http\Controllers\API\CLI\CLIEnvController::class, 'store'])->name('env.store');
         Route::post('/permissions/sync', [App\Http\Controllers\API\CLI\CLIPermissionController::class, 'sync'])->name('permissions.sync');
