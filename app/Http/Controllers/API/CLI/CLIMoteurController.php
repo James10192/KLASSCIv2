@@ -108,13 +108,21 @@ class CLIMoteurController extends BaseApiController
         $lues = [];
 
         foreach ($voulues as $nom) {
+            // `SHOW VARIABLES LIKE ?` ne peut PAS recevoir de parametre lie : MySQL et
+            // MariaDB refusent un marqueur a cet endroit d une requete preparee. La
+            // premiere version le faisait, le catch avalait l echec, et l endpoint
+            // rendait sept variables a null en annoncant un succes — precisement le
+            // genre de panne muette qu il existe pour eviter.
+            //
+            // L interpolation est sans risque ici : la liste est fermee et ecrite dans
+            // ce fichier, ce n est jamais une entree d utilisateur.
             try {
-                $ligne = DB::selectOne('SHOW VARIABLES LIKE ?', [$nom]);
+                $ligne = DB::selectOne("SHOW VARIABLES WHERE Variable_name = '".$nom."'");
                 $lues[$nom] = $ligne->Value ?? null;
-            } catch (Throwable) {
-                // Une variable absente n'est pas une erreur : les moteurs ne
-                // portent pas tous les mêmes. On le dit plutôt que d'échouer.
-                $lues[$nom] = null;
+            } catch (Throwable $e) {
+                // On DIT que la lecture a echoue, au lieu de rendre un null muet qui
+                // se lit comme « cette variable n existe pas ».
+                $lues[$nom] = 'illisible : '.$e->getMessage();
             }
         }
 
