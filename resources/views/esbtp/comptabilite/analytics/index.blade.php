@@ -270,7 +270,15 @@
             <div class="an-section-icon"><i class="fas fa-balance-scale"></i></div>
             <div>
                 <h2 class="an-section-title">Recouvrement mois par mois — attendu vs encaissé</h2>
-                <p class="an-section-sub">Sur les 6 derniers mois clos, ce que les échéanciers prévoyaient comparé à ce qui est effectivement rentré.</p>
+                <p class="an-section-sub">
+                    Sur les 6 derniers mois clos, ce que les échéanciers prévoyaient comparé à ce qui est effectivement rentré.
+                    @isset($recouvrementGapsComputedAt)
+                        <span class="an-gap-freshness" title="{{ $recouvrementGapsComputedAt->locale('fr')->isoFormat('D MMMM YYYY [à] HH:mm') }}">
+                            <i class="fas fa-clock"></i>
+                            Chiffres calculés {{ $recouvrementGapsComputedAt->locale('fr')->diffForHumans() }}.
+                        </span>
+                    @endisset
+                </p>
             </div>
         </div>
 
@@ -917,6 +925,8 @@ body:has(.export-menu:not([style*="display: none"])) .an-kpi:hover { transform: 
 }
 .an-section-title { font-size: 1.1rem; font-weight: 700; color: var(--an-dark); margin: 0; }
 .an-section-sub { font-size: .82rem; color: var(--an-muted); margin: .15rem 0 0; }
+/* Fraîcheur du balayage mémorisé : ces montants ne sont pas forcément du temps réel. */
+.an-gap-freshness { display: inline-flex; align-items: center; gap: .3rem; margin-left: .35rem; padding: .1rem .45rem; border-radius: 5px; background: rgba(4,83,203,.07); color: #0453cb; font-size: .74rem; font-weight: 600; white-space: nowrap; }
 
 .an-subtitle {
     font-size: .95rem; font-weight: 600; color: var(--an-text);
