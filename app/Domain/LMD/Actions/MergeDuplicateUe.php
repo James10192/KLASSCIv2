@@ -153,10 +153,19 @@ class MergeDuplicateUe
             ->get();
 
         foreach ($rows as $row) {
-            $exists = DB::table('esbtp_ue_matiere')
+            $requete = DB::table('esbtp_ue_matiere')
                 ->where('unite_enseignement_id', $canonicalId)
-                ->where('matiere_id', $row->matiere_id)
-                ->exists();
+                ->where('matiere_id', $row->matiere_id);
+
+            // La maquette fait partie de la clé : deux lignes du même couple sur
+            // des maquettes différentes ne sont PAS un doublon. Sans ce critère,
+            // la ligne réservée à une maquette serait supprimée au motif qu'une
+            // autre maquette possède déjà l'élément.
+            if (property_exists($row, 'parcours_id')) {
+                $requete->where('parcours_id', $row->parcours_id);
+            }
+
+            $exists = $requete->exists();
 
             if ($exists) {
                 DB::table('esbtp_ue_matiere')->where('id', $row->id)->delete();

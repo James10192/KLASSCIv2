@@ -91,10 +91,21 @@ class ESBTPUniteEnseignement extends Model implements Auditable
      * ECUEs via pivot (many-to-many) — avec coefficient/credit contextuels.
      * Prioritaire pour le bulletin quand le pivot existe.
      */
+    /**
+     * `parcours_id` fait partie du pivot : sans lui dans `withPivot`, la lecture
+     * de `$ecue->pivot->parcours_id` rend null SANS lever d'erreur, et tout
+     * element reserve a une maquette se lirait comme commun — il fuirait dans
+     * toutes les autres. C'est une omission qui ne se voit qu'a l'usage.
+     *
+     * Cette relation ne sert QU'A LIRE : elle ne connait que le couple
+     * (unite, matiere), donc `attach`/`detach`/`syncWithoutDetaching` y visent la
+     * mauvaise ligne des que la maquette entre dans la cle. Les ecritures passent
+     * par App\Services\LMD\CompositionUeService.
+     */
     public function ecues()
     {
         return $this->belongsToMany(ESBTPMatiere::class, 'esbtp_ue_matiere', 'unite_enseignement_id', 'matiere_id')
-            ->withPivot('coefficient_ecue', 'credit_ecue', 'ordre_bulletin')
+            ->withPivot('coefficient_ecue', 'credit_ecue', 'ordre_bulletin', 'parcours_id')
             ->withTimestamps();
     }
 
@@ -125,17 +136,44 @@ class ESBTPUniteEnseignement extends Model implements Auditable
      * pivot ne l'a jamais filtré, et le poser ici retirerait d'un bulletin déjà
      * délivré tout élément désactivé depuis. Le retrait passe par destroyECUE(),
      * qui détache le pivot ET libère la clé — c'est le geste qui fait foi.
+     *
+     * $parcoursId est la maquette depuis laquelle on lit : elle ne voit que le
+     * commun et ce qui lui est réservé. Null — la valeur par défaut — rend la
+     * composition entière, c'est-à-dire exactement ce que cette méthode rendait
+     * avant que la maquette entre dans le pivot : aucun appelant existant ne
+     * change de comportement tant qu'il ne transmet pas de maquette.
      */
-    public function getEcuesEffectifs(): \Illuminate\Support\Collection
+    public function getEcuesEffectifs(?int $parcoursId = null): \Illuminate\Support\Collection
     {
-        $pivotEcues = $this->ecues;
-        $idsPivot = $pivotEcues->pluck('id')->all();
+        $pivotEcues = $this->ecues->values();
+
+        // Une même matière peut désormais apparaître plusieurs fois dans le
+        // pivot — une ligne commune et une ligne réservée. Sans cette résolution
+        // elle serait comptée deux fois dans la moyenne de l'UE et deux fois
+        // dans ses crédits, sans qu'aucune erreur ne soit levée.
+        $lignes = [];
+        foreach ($pivotEcues as $rang => $ecue) {
+            $lignes[] = [
+                'matiere_id' => (int) $ecue->id,
+                'parcours_id' => (int) ($ecue->pivot->parcours_id ?? \App\Services\LMD\CompositionUeService::TOUTES_MAQUETTES),
+                'rang' => $rang,
+            ];
+        }
+
+        $retenues = \App\Services\LMD\CompositionUeService::resoudre($lignes, $parcoursId);
+        $ecuesRetenus = collect($retenues)->map(fn ($ligne) => $pivotEcues[$ligne['rang']]);
+
+        // Le repli par clé étrangère se tait dès que le pivot parle de cette
+        // matière dans cette unité — y compris quand la maquette lue ne la voit
+        // pas. Sans cela, un élément réservé à Bâtiment reviendrait dans Travaux
+        // Publics par la clé étrangère, qui n'a aucune notion de maquette.
+        $idsPivot = $pivotEcues->pluck('id')->map(fn ($id) => (int) $id)->all();
 
         $parCleEtrangere = $this->matieres
             ->where('is_active', true)
-            ->reject(fn ($matiere) => in_array($matiere->id, $idsPivot, true));
+            ->reject(fn ($matiere) => in_array((int) $matiere->id, $idsPivot, true));
 
-        return $pivotEcues->concat($parCleEtrangere->values())->values();
+        return $ecuesRetenus->concat($parCleEtrangere->values())->values();
     }
 
     /**

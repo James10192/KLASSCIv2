@@ -5,6 +5,7 @@ namespace App\Services\LMD;
 use App\Models\ESBTPLMDParcours;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * Idempotent sync between an LMD Parcours and its UEs (pivot esbtp_lmd_parcours_ue).
@@ -21,7 +22,7 @@ use Illuminate\Support\Facades\DB;
 class ParcoursUeSyncService
 {
     /**
-     * @param  array<int, array{id:int, semestres:array<int>, is_optional?:bool, ordre?:int}>  $links
+     * @param  array<int, array{id:int, semestres:array<int>, is_optional?:bool, ordre?:int, credit?:int|null}>  $links
      * @return array{attached:int, updated:int, detached:int, unchanged:int}
      */
     public function sync(ESBTPLMDParcours $parcours, array $links, bool $detachMissing = true): array
@@ -36,22 +37,35 @@ class ParcoursUeSyncService
             $diff = $this->computeDiff($current, $desired, $detachMissing);
 
             foreach ($diff['attach'] as $row) {
-                $parcours->unitesEnseignement()->attach($row['ue_id'], [
+                $colonnes = [
                     'semestre' => $row['semestre'],
                     'is_optional' => $row['is_optional'],
                     'ordre' => $row['ordre'],
-                ]);
+                ];
+                if (array_key_exists('credit', $row) && $this->colonneCreditDisponible()) {
+                    $colonnes['credit'] = $row['credit'];
+                }
+                $parcours->unitesEnseignement()->attach($row['ue_id'], $colonnes);
             }
             foreach ($diff['update'] as $row) {
+                $colonnes = [
+                    'is_optional' => $row['is_optional'],
+                    'ordre' => $row['ordre'],
+                    'updated_at' => now(),
+                ];
+                // « Absent » n'est pas « nul » : un appel qui ne parle pas du
+                // credit ne doit pas l'effacer. Le modal « Lier a des parcours »
+                // n'envoie que le semestre et l'ordre ; sans cette distinction, il
+                // remettrait a zero le credit propre a la maquette a chaque
+                // enregistrement, sans que personne ne le demande.
+                if (array_key_exists('credit', $row) && $this->colonneCreditDisponible()) {
+                    $colonnes['credit'] = $row['credit'];
+                }
                 DB::table('esbtp_lmd_parcours_ue')
                     ->where('parcours_id', $parcours->id)
                     ->where('unite_enseignement_id', $row['ue_id'])
                     ->where('semestre', $row['semestre'])
-                    ->update([
-                        'is_optional' => $row['is_optional'],
-                        'ordre' => $row['ordre'],
-                        'updated_at' => now(),
-                    ]);
+                    ->update($colonnes);
             }
             foreach ($diff['detach'] as $row) {
                 DB::table('esbtp_lmd_parcours_ue')
@@ -73,8 +87,8 @@ class ParcoursUeSyncService
     /**
      * Pure diff function — no DB, no Eloquent. Fully unit-testable.
      *
-     * @param  array<string, array{ue_id:int, semestre:int, is_optional:bool, ordre:int}>  $current  keyed by "{ue_id}_{semestre}"
-     * @param  array<string, array{ue_id:int, semestre:int, is_optional:bool, ordre:int}>  $desired  keyed by "{ue_id}_{semestre}"
+     * @param  array<string, array{ue_id:int, semestre:int, is_optional:bool, ordre:int, credit?:int|null}>  $current  keyed by "{ue_id}_{semestre}"
+     * @param  array<string, array{ue_id:int, semestre:int, is_optional:bool, ordre:int, credit?:int|null}>  $desired  keyed by "{ue_id}_{semestre}"
      * @return array{attach:array, update:array, detach:array, unchanged:array}
      */
     public function computeDiff(array $current, array $desired, bool $detachMissing): array
@@ -88,6 +102,14 @@ class ParcoursUeSyncService
             }
             $changed = $current[$key]['is_optional'] !== $row['is_optional']
                 || $current[$key]['ordre'] !== $row['ordre'];
+
+            // Le credit n'entre dans la comparaison que si l'appelant en a parle.
+            // Une cle absente veut dire « je ne me prononce pas » : la valeur en
+            // base est conservee telle quelle. Une cle presente a null veut dire
+            // « pas de credit propre a cette maquette », et s'ecrit.
+            if (array_key_exists('credit', $row)) {
+                $changed = $changed || ($current[$key]['credit'] ?? null) !== $row['credit'];
+            }
             if ($changed) {
                 $update[] = $row;
             } else {
@@ -107,7 +129,7 @@ class ParcoursUeSyncService
     }
 
     /**
-     * @return array<string, array{ue_id:int, semestre:int, is_optional:bool, ordre:int}>
+     * @return array<string, array{ue_id:int, semestre:int, is_optional:bool, ordre:int, credit?:int|null}>
      */
     private function loadCurrentPivot(ESBTPLMDParcours $parcours, bool $lockForUpdate = false): array
     {
@@ -115,7 +137,7 @@ class ParcoursUeSyncService
         if ($lockForUpdate) {
             $query->lockForUpdate();
         }
-        $rows = $query->get(['unite_enseignement_id', 'semestre', 'is_optional', 'ordre']);
+        $rows = $query->get();
 
         $map = [];
         foreach ($rows as $row) {
@@ -125,14 +147,31 @@ class ParcoursUeSyncService
                 'semestre' => (int) $row->semestre,
                 'is_optional' => (bool) $row->is_optional,
                 'ordre' => (int) $row->ordre,
+                'credit' => isset($row->credit) && $row->credit !== null ? (int) $row->credit : null,
             ];
         }
         return $map;
     }
 
     /**
-     * @param  array<int, array{id:int, semestres:array<int>, is_optional?:bool, ordre?:int}>  $links
-     * @return array<string, array{ue_id:int, semestre:int, is_optional:bool, ordre:int}>
+     * Le credit propre a une maquette est une colonne recente : les instances qui
+     * n'ont pas encore joue la migration ne l'ont pas. On verifie une fois par
+     * processus plutot que de faire echouer un enregistrement.
+     */
+    private function colonneCreditDisponible(): bool
+    {
+        static $disponible = null;
+
+        if ($disponible === null) {
+            $disponible = Schema::hasColumn('esbtp_lmd_parcours_ue', 'credit');
+        }
+
+        return $disponible;
+    }
+
+    /**
+     * @param  array<int, array{id:int, semestres:array<int>, is_optional?:bool, ordre?:int, credit?:int|null}>  $links
+     * @return array<string, array{ue_id:int, semestre:int, is_optional:bool, ordre:int, credit?:int|null}>
      */
     private function normalizeDesired(array $links): array
     {
@@ -150,6 +189,14 @@ class ParcoursUeSyncService
                     'is_optional' => $isOptional,
                     'ordre' => $ordre,
                 ];
+                // La cle n'est reportee que si l'appelant l'a fournie : c'est elle
+                // qui distingue « pas de credit propre a cette maquette » (null
+                // explicite) de « je ne parle pas du credit » (cle absente).
+                if (array_key_exists('credit', $link)) {
+                    $map[$key]['credit'] = $link['credit'] === null || $link['credit'] === ''
+                        ? null
+                        : (int) $link['credit'];
+                }
             }
         }
         return $map;

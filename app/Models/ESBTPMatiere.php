@@ -235,8 +235,11 @@ class ESBTPMatiere extends Model implements Auditable
      */
     public function unitesEnseignementMultiple()
     {
+        // `parcours_id` doit figurer ici : sans lui, `$ue->pivot->parcours_id`
+        // rend null sans erreur et une ligne réservée à une maquette se lit
+        // comme commune à toutes.
         return $this->belongsToMany(ESBTPUniteEnseignement::class, 'esbtp_ue_matiere', 'matiere_id', 'unite_enseignement_id')
-            ->withPivot('coefficient_ecue', 'credit_ecue', 'ordre_bulletin')
+            ->withPivot('coefficient_ecue', 'credit_ecue', 'ordre_bulletin', 'parcours_id')
             ->withTimestamps();
     }
 

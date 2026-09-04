@@ -113,7 +113,7 @@ class MergeDuplicateEcue
 
     /**
      * Repointe le pivot esbtp_ue_matiere des ECUE absorbés vers la canonique,
-     * sans créer de doublon sur la contrainte unique (ue_id, matiere_id).
+     * sans créer de doublon sur la contrainte unique (ue_id, matiere_id, parcours_id).
      */
     private function repointUeMatierePivot(int $canonicalId, array $absorbedIds): void
     {
@@ -122,10 +122,19 @@ class MergeDuplicateEcue
             ->get();
 
         foreach ($rows as $row) {
-            $existsForCanonical = DB::table('esbtp_ue_matiere')
+            $requete = DB::table('esbtp_ue_matiere')
                 ->where('unite_enseignement_id', $row->unite_enseignement_id)
-                ->where('matiere_id', $canonicalId)
-                ->exists();
+                ->where('matiere_id', $canonicalId);
+
+            // La maquette fait partie de la clé : deux lignes du même couple sur
+            // des maquettes différentes ne sont PAS un doublon. Sans ce critère,
+            // fusionner supprimerait la ligne de Bâtiment parce que Travaux
+            // Publics en a une — l'élément disparaîtrait d'une maquette.
+            if (property_exists($row, 'parcours_id')) {
+                $requete->where('parcours_id', $row->parcours_id);
+            }
+
+            $existsForCanonical = $requete->exists();
 
             if ($existsForCanonical) {
                 // La canonique est déjà liée à cette UE → on supprime simplement le doublon.

@@ -117,4 +117,53 @@ class ParcoursUeSyncServiceTest extends TestCase
         $this->assertSame(2, $diff['update'][0]['ue_id']);
         $this->assertEmpty($diff['detach']);
     }
+
+    /**
+     * « Absent » n'est pas « nul ».
+     *
+     * Le modal « Lier à des parcours » n'envoie que le semestre et l'ordre. S'il
+     * comptait comme une demande d'effacer le crédit propre à la maquette, ce
+     * crédit disparaîtrait à chaque enregistrement, sans que personne ne l'ait
+     * demandé — et sans un message.
+     */
+    public function test_un_appel_qui_ne_parle_pas_du_credit_ne_l_efface_pas(): void
+    {
+        $current = [
+            '1_1' => ['ue_id' => 1, 'semestre' => 1, 'is_optional' => false, 'ordre' => 0, 'credit' => 6],
+        ];
+        $desired = [
+            '1_1' => ['ue_id' => 1, 'semestre' => 1, 'is_optional' => false, 'ordre' => 0],
+        ];
+
+        $diff = $this->service->computeDiff($current, $desired, true);
+
+        $this->assertEmpty($diff['update'], 'aucune écriture : le crédit en base reste tel quel');
+        $this->assertCount(1, $diff['unchanged']);
+    }
+
+    public function test_un_credit_nul_explicite_est_ecrit(): void
+    {
+        $current = [
+            '1_1' => ['ue_id' => 1, 'semestre' => 1, 'is_optional' => false, 'ordre' => 0, 'credit' => 6],
+        ];
+        $desired = [
+            '1_1' => ['ue_id' => 1, 'semestre' => 1, 'is_optional' => false, 'ordre' => 0, 'credit' => null],
+        ];
+
+        $diff = $this->service->computeDiff($current, $desired, true);
+
+        $this->assertCount(1, $diff['update'], 'null explicite = « pas de crédit propre à cette maquette »');
+        $this->assertArrayHasKey('credit', $diff['update'][0]);
+        $this->assertNull($diff['update'][0]['credit']);
+    }
+
+    public function test_un_credit_identique_ne_declenche_aucune_ecriture(): void
+    {
+        $ligne = ['ue_id' => 1, 'semestre' => 1, 'is_optional' => false, 'ordre' => 0, 'credit' => 6];
+
+        $diff = $this->service->computeDiff(['1_1' => $ligne], ['1_1' => $ligne], true);
+
+        $this->assertEmpty($diff['update']);
+        $this->assertCount(1, $diff['unchanged']);
+    }
 }
