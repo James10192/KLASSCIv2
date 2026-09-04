@@ -16,6 +16,7 @@ use App\Models\ESBTPEvaluation;
 use App\Models\ESBTPInscription;
 use App\Models\ESBTPLMDBulletin;
 use App\Models\ESBTPNote;
+use App\Models\ESBTPPaiement;
 use App\Models\ESBTPPlanificationAcademique;
 use App\Models\ESBTPReinscriptionDemande;
 use App\Observers\ESBTPAttendanceAcademicPilotageObserver;
@@ -24,7 +25,10 @@ use App\Observers\ESBTPInscriptionAcademicPilotageObserver;
 use App\Observers\ESBTPLMDBulletinAcademicPilotageObserver;
 use App\Observers\ESBTPNoteAcademicPilotageObserver;
 use App\Observers\ESBTPNoteObserver;
+use App\Observers\ESBTPPaiementAnalyticsScanObserver;
 use App\Observers\ESBTPPlanificationAcademicPilotageObserver;
+use App\Services\Analytics\AnalyticsScanCache;
+use App\Services\Analytics\CashFlowProjectionService;
 use App\Services\Analytics\RecouvrementGapService;
 use App\Services\LMD\Tpe\AutoValidateStrategy;
 use App\Services\LMD\Tpe\TeacherValidateStrategy;
@@ -62,6 +66,10 @@ class AppServiceProvider extends ServiceProvider
         // Une seule instance par requête pour qu'AnomalyDetector et le contrôleur
         // analytics partagent le même cache de buckets attendu/encaissé.
         $this->app->scoped(RecouvrementGapService::class);
+        // Même raison pour la projection d'encaissement : le prédicteur et
+        // l'export la demandent tous les deux dans la même requête.
+        $this->app->scoped(CashFlowProjectionService::class);
+        $this->app->scoped(AnalyticsScanCache::class);
         $this->app->scoped(OpenAlertMetricService::class);
 
         // Resolveurs du parcours BTS : une seule instance par requete, sinon
@@ -107,6 +115,9 @@ class AppServiceProvider extends ServiceProvider
 
         // Observers
         ESBTPNote::observe(ESBTPNoteObserver::class);
+        // Un encaissement validé se réimpute sur des mois déjà clos (allocation
+        // FIFO) : les balayages analytiques mémorisés doivent être déréférencés.
+        ESBTPPaiement::observe(ESBTPPaiementAnalyticsScanObserver::class);
         $academicPilotageObserversEnabled = (bool) config('academic_pilotage.observers_enabled', true);
         if (! $academicPilotageObserversEnabled && app()->environment('production')) {
             Log::critical('Academic pilotage observers cannot be disabled in production.');

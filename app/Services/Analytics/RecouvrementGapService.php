@@ -6,6 +6,7 @@ use App\Domain\Analytics\DTOs\AnalyticsContext;
 use App\Models\ESBTPInscription;
 use App\Services\RelanceCalculationService;
 use Carbon\Carbon;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 
 /**
@@ -16,11 +17,18 @@ use Illuminate\Support\Collection;
  */
 class RecouvrementGapService
 {
-    /** @var array<string, array<string, array{expected: float, paid: float, gap: float, gap_ratio: float}>> */
+    /** @var array<string, array{data: array<string, array{expected: float, paid: float, gap: float, gap_ratio: float}>, computed_at: CarbonImmutable}> */
     private array $cache = [];
+
+    /**
+     * Fraîcheur du dernier résultat servi. Une valeur mémorisée doit pouvoir
+     * dire de quand elle date, sinon le lecteur croit lire du temps réel.
+     */
+    private ?CarbonImmutable $lastComputedAt = null;
 
     public function __construct(
         private readonly RelanceCalculationService $relanceCalculationService,
+        private readonly AnalyticsScanCache $scanCache,
     ) {}
 
     /**
@@ -32,17 +40,55 @@ class RecouvrementGapService
     public function monthlyGaps(AnalyticsContext $context, int $pastMonths = 3): array
     {
         $pastMonths = max(1, $pastMonths);
-        $cacheKey = $context->hash() . ':' . $pastMonths;
-        if (isset($this->cache[$cacheKey])) {
-            return $this->cache[$cacheKey];
-        }
         $startMonth = now()->subMonthsNoOverflow($pastMonths)->startOfMonth();
         $endMonth = now()->startOfMonth()->subDay();
 
+        // La fenêtre entre dans la clé : au passage d'un mois, « les 6 derniers
+        // mois clos » ne désignent plus la même période, l'entrée mémorisée doit
+        // donc cesser d'être servie sans attendre l'expiration.
+        $cacheKey = $context->hash() . ':' . $pastMonths . ':' . $endMonth->format('Y-m');
+
+        if (isset($this->cache[$cacheKey])) {
+            $this->lastComputedAt = $this->cache[$cacheKey]['computed_at'];
+
+            return $this->cache[$cacheKey]['data'];
+        }
+
         if ($endMonth->lt($startMonth)) {
+            $this->lastComputedAt = CarbonImmutable::now();
+
             return [];
         }
 
+        $scan = $this->scanCache->remember(
+            'recouvrement_gap',
+            $cacheKey,
+            fn () => $this->computeMonthlyGaps($context, $startMonth, $endMonth),
+        );
+
+        $this->cache[$cacheKey] = ['data' => $scan['data'], 'computed_at' => $scan['computed_at']];
+        $this->lastComputedAt = $scan['computed_at'];
+
+        return $scan['data'];
+    }
+
+    /**
+     * Date de calcul du dernier résultat servi par monthlyGaps(), à afficher à
+     * côté des montants. Null tant qu'aucun calcul n'a été demandé.
+     */
+    public function lastComputedAt(): ?CarbonImmutable
+    {
+        return $this->lastComputedAt;
+    }
+
+    /**
+     * Balayage intégral des inscriptions de la portée. Coûteux : c'est
+     * exactement ce que la mémorisation ci-dessus cherche à espacer.
+     *
+     * @return array<string, array{expected: float, paid: float, gap: float, gap_ratio: float}>
+     */
+    private function computeMonthlyGaps(AnalyticsContext $context, Carbon $startMonth, Carbon $endMonth): array
+    {
         $buckets = [];
 
         $this->baseInscriptionQuery($context)
@@ -58,10 +104,7 @@ class RecouvrementGapService
 
         ksort($buckets);
 
-        $result = array_map(fn (array $bucket) => $this->summarize($bucket), $buckets);
-        $this->cache[$cacheKey] = $result;
-
-        return $result;
+        return array_map(fn (array $bucket) => $this->summarize($bucket), $buckets);
     }
 
     /**

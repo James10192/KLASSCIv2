@@ -557,6 +557,13 @@ class SettingsHelper
                 'recouvrement_gap_min_expected'   => (float) self::get('analytics.anomaly.recouvrement_gap_min_expected', 100000.0),
                 'notifications_enabled'           => (string) self::get('analytics.anomaly.notifications_enabled', '1') === '1',
             ],
+            // Mémorisation des balayages lourds (écart de recouvrement,
+            // projection d'encaissement). Voir App\Services\Analytics\AnalyticsScanCache :
+            // mettre `enabled` à 0 rétablit le recalcul intégral à chaque affichage.
+            'scan_cache' => [
+                'enabled'     => (string) self::get('analytics.scan_cache.enabled', '1') === '1',
+                'ttl_seconds' => (int)    self::get('analytics.scan_cache.ttl_seconds', \App\Services\Analytics\AnalyticsScanCache::DEFAULT_TTL_SECONDS),
+            ],
             'recouvrement' => [
                 'whatsapp_template' => (string) self::get(
                     'analytics.recouvrement.whatsapp_template',
