@@ -257,7 +257,15 @@ class CLILMDSetupController extends BaseApiController
             'ues.*.ecues.*.tpe' => 'sometimes|integer|min:0|max:1000',
         ]);
 
-        $result = $importer->import($validated, $request->user()->id);
+        try {
+            $result = $importer->import($validated, $request->user()->id);
+        } catch (\App\Services\LMD\ConflitDeMaquette $e) {
+            // 422 et non 500 : l import n a pas echoue, il a REFUSE. La difference
+            // compte pour qui lit la reponse — un 500 invite a reessayer, un 422 dit
+            // qu il faut corriger la maquette. Rien n a ete ecrit : la transaction
+            // de l import a tout annule.
+            return $this->errorResponse($e->getMessage(), ['conflits' => $e->conflits()], 422);
+        }
 
         return $this->successResponse($result, sprintf(
             'Maquette importée : %d UE (+%d/~%d), %d ECUE (+%d/~%d), %d planif (+%d/~%d)',

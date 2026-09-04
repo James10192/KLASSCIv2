@@ -12,6 +12,7 @@ use App\Models\ESBTPMatiere;
 use App\Models\ESBTPNiveauEtude;
 use App\Models\ESBTPPlanificationAcademique;
 use App\Models\ESBTPUniteEnseignement;
+use App\Services\LMD\ConflitDeMaquette;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -39,6 +40,9 @@ class LMDImportService
      * @param  array  $spec  See JSON schema in resources/docs or LmdImportCommand help
      * @return array{domaine:array, mention:array, parcours:array, filiere:?array, niveaux:array, stats:array}
      */
+    /** @var list<array{type: string, code: string, detail: string}> */
+    private array $conflits = [];
+
     public function import(array $spec, ?int $userId = null): array
     {
         return DB::transaction(function () use ($spec, $userId) {
@@ -89,6 +93,13 @@ class LMDImportService
 
             $linkStats = $this->parcoursUeSync->sync($parcours, $linksByParcours, detachMissing: false);
             $stats['ues_linked_to_parcours'] = $linkStats['attached'] + $linkStats['updated'] + $linkStats['unchanged'];
+
+            // Une seule levee, apres avoir tout parcouru : l utilisateur voit TOUS
+            // les conflits d un coup, au lieu d en corriger un par tentative. La
+            // transaction annule l import entier.
+            if ($this->conflits !== []) {
+                throw new ConflitDeMaquette($this->conflits);
+            }
 
             return [
                 'domaine' => $this->summarize($domaine, ['name', 'code']),
@@ -175,6 +186,31 @@ class LMDImportService
         $existing = $code ? ESBTPUniteEnseignement::where('code', $code)->first() : null;
         $created = $existing === null;
 
+        // Refuser plutot que d ecraser.
+        //
+        // Le code d une UE est unique dans toute la base : on la retrouvait donc par
+        // son code, puis on reecrivait parcours_id, semestre, credit et niveau_id.
+        // Importer la maquette d un second parcours REECRIVAIT celle du premier, en
+        // silence — le parcours importe en premier heritait du semestre et du credit
+        // de l autre.
+        //
+        // Le partage reel (code unique, UE partagee) demande des colonnes qui
+        // n existent pas encore. En attendant, on refuse. Voir issue #942.
+        if ($existing !== null
+            && $existing->parcours_id !== null
+            && (int) $existing->parcours_id !== (int) $parcours->id) {
+            $this->conflits[] = [
+                'type' => 'UE',
+                'code' => (string) $code,
+                'detail' => sprintf(
+                    "L'UE « %s » appartient déjà au parcours « %s ». L'importer pour « %s » écraserait sa maquette.",
+                    $existing->name,
+                    optional($existing->parcours)->name ?? ('#'.$existing->parcours_id),
+                    $parcours->name
+                ),
+            ];
+        }
+
         $payload = [
             'name' => $data['name'],
             'code' => $code,
@@ -201,6 +237,25 @@ class LMDImportService
         $code = $data['code'] ?? null;
         $existing = $code ? ESBTPMatiere::where('code', $code)->first() : null;
         $created = $existing === null;
+
+        // Meme raison : reparenter un ECUE vers une autre UE le faisait DISPARAITRE
+        // de la premiere, puisque la lecture retombe sur la cle etrangere quand le
+        // pivot est vide. C est ce qui a oblige a renommer cinq ECUE a la main lors
+        // de l import du Genie Civil sur abidjan.
+        if ($existing !== null
+            && $existing->unite_enseignement_id !== null
+            && (int) $existing->unite_enseignement_id !== (int) $ue->id) {
+            $this->conflits[] = [
+                'type' => 'ECUE',
+                'code' => (string) $code,
+                'detail' => sprintf(
+                    "L'ECUE « %s » appartient déjà à l'UE « %s ». Le rattacher à « %s » le retirerait de la première.",
+                    $existing->name,
+                    optional($existing->uniteEnseignement)->name ?? ('#'.$existing->unite_enseignement_id),
+                    $ue->name
+                ),
+            ];
+        }
 
         // Note: filiere_id was dropped from esbtp_matieres in 2025-04 cleanup migration —
         // the relationship lives in pivot esbtp_matiere_filiere now (see linkMatiereFiliere).
