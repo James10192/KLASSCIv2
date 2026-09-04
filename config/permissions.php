@@ -1825,6 +1825,12 @@ return [
             'group' => 'Documents',
             'icon' => 'fa-list-check',
         ],
+        'pieces_dossier.suivre' => [
+            'label' => 'Suivre les pieces du dossier d un etudiant',
+            'description' => 'Le geste de guichet : cocher ce qu un etudiant a remis, ecarter une piece qui ne le concerne pas cette annee, refuser une piece avec son motif. Ne donne aucun droit sur le catalogue lui-meme.',
+            'group' => 'Documents',
+            'icon' => 'fa-square-check',
+        ],
         'pieces_dossier.configure' => [
             'label' => 'Configurer le catalogue des pieces a fournir',
             'description' => 'Ajouter, modifier, reordonner ou retirer une piece du catalogue. Ce reglage vaut pour toute l ecole : a reserver au responsable de la scolarite.',
@@ -2155,7 +2161,7 @@ return [
             'documents.view', 'documents.approve', 'documents.print',
             // Catalogue des pieces a fournir : c'est la scolarite qui arrete la
             // liste que le guichet reclamera ensuite a chaque inscription.
-            'pieces_dossier.view', 'pieces_dossier.configure',
+            'pieces_dossier.view', 'pieces_dossier.suivre', 'pieces_dossier.configure',
             'bulletins.publish.bulk', 'bulletins.regenerate.bulk', 'bulletins.export.bulk',
             'attendances.view', 'attendances.create', 'attendances.edit', 'attendances.delete',
             'attendances.generate_codes', 'attendances.justify_process',
@@ -2414,7 +2420,7 @@ return [
             'documents.view', 'documents.approve', 'documents.print',
             // Catalogue des pieces a fournir : c'est la scolarite qui arrete la
             // liste que le guichet reclamera ensuite a chaque inscription.
-            'pieces_dossier.view', 'pieces_dossier.configure',
+            'pieces_dossier.view', 'pieces_dossier.suivre', 'pieces_dossier.configure',
             'attendances.view', 'attendances.create', 'attendances.edit',
             'session_reports.view',
             'teachers.view',
@@ -2471,7 +2477,7 @@ return [
             'documents.view', 'documents.print',
             // Lecture seule : au guichet on applique le catalogue, on ne
             // l'arrete pas pour toute l'ecole.
-            'pieces_dossier.view',
+            'pieces_dossier.view', 'pieces_dossier.suivre',
             'attendances.view',
             'timetables.view',
             'schedules.view',
@@ -2507,7 +2513,7 @@ return [
             'filieres.view', 'niveaux.view',
             // Lecture seule : au guichet on applique le catalogue, on ne
             // l'arrete pas pour toute l'ecole.
-            'pieces_dossier.view',
+            'pieces_dossier.view', 'pieces_dossier.suivre',
             'identity.enrollment_officer',
             'module.etudiants.access',
             'module.academique.access',

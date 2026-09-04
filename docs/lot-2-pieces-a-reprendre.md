@@ -92,16 +92,37 @@ une inscription supprimée laisse une consommation orpheline rattachée à
 l'étudiant, que le réglage retient ou ignore. La suppression de l'étudiant, elle,
 emporte tout, correctement.
 
-## 3. Le piège d'unicité, que ce lot connaît déjà
+## 3. Le piège d'unicité — et pourquoi la parade prévue a été abandonnée
 
-`unique(etudiant_id, piece_dossier_id, inscription_id)` **ne protège rien** : sur
-MySQL, un index unique portant une colonne nulle laisse passer les doublons sans
-rien dire. C'est exactement ce que la migration du catalogue explique à propos du
-`code`, et c'est la raison pour laquelle il est unique globalement.
+**Ce que ce document prescrivait** : `unique(etudiant_id, piece_dossier_id,
+inscription_id)` posé sur une colonne générée `COALESCE(inscription_id, 0)`, au
+motif qu'un index unique portant une colonne nulle laisse passer les doublons.
 
-Le remède est la sentinelle zéro, déjà employée dans ce dépôt par
-`esbtp_ue_matiere` pour cette raison précise : une colonne générée sur
-`COALESCE(inscription_id, 0)`, et l'unicité posée dessus.
+**Ce qui a été livré** : ni colonne générée, ni sentinelle. Deux raisons, et la
+seconde est la vraie.
+
+1. MySQL 8 **refuse** une clé étrangère `SET NULL` sur la colonne de base d'une
+   colonne générée STORED. Le schéma ne se serait pas créé. Le dépôt connaît déjà
+   ce mur, et le dit : `2026_04_23_205439_allow_global_manual_attendance_hours`.
+
+2. Surtout : **ici, la tolérance des NULL est exactement ce qu'il faut.** Une
+   inscription supprimée laisse une consommation orpheline qui doit SURVIVRE,
+   sans quoi le stock se rendrait tout seul quel que soit le réglage de l'école.
+   Deux inscriptions supprimées laissent DEUX orphelines pour le même couple
+   (étudiant, pièce), et les deux doivent tenir. Sous une sentinelle zéro, la
+   seconde serait entrée en collision et perdue : le calcul du stock serait
+   devenu faux, en silence — précisément le genre de faute que ce document
+   cherchait à éviter.
+
+L'unicité utile est donc celle que le moteur donne pour rien :
+`unique(inscription_id, piece_dossier_id)` sur `esbtp_inscription_pieces`. Une
+ligne par (inscription vivante, pièce) ; les orphelines libres de s'empiler.
+
+Et sur `esbtp_pieces_deposees`, **aucune unicité du tout**, ce que le plan
+n'avait pas vu : une ligne y vaut UN DÉPÔT. Deux dépôts du même extrait de
+naissance, l'un délivré en 2019 et l'autre en 2026, sont deux lignes — leur
+validité ne court pas depuis la même date, donc les fondre en une ligne à
+quantité cumulée rendrait la péremption incalculable.
 
 ## 4. Le disponible se CALCULE, il ne se décrémente pas
 

@@ -1057,10 +1057,25 @@ class ESBTPInscriptionController extends Controller
         $inscription->loadMissing(['phases.classe.filiere', 'classe.orientationTargets.targetClasse']);
         $btsJourney = $this->btsUiPresenter->forInscription($inscription);
 
+        // Le dossier de pieces. Une ecole qui n'a rien configure ne doit voir
+        // AUCUN changement : le catalogue vide rend une collection vide, et le
+        // bloc ne s'affiche pas du tout.
+        $dossierPieces = app(\App\Services\DossierPiecesEtudiant::class);
+        $pieces = $dossierPieces->estConfigure()
+            ? $dossierPieces->pourInscription($inscription)
+            : collect();
+        $piecesSynthese = $dossierPieces->synthese($pieces);
+        $piecesRelecture = $dossierPieces->exigeUneRelecture();
+        $piecesEpuisement = $dossierPieces->epuisement();
+
         return view(
             "esbtp.inscriptions.show",
             compact(
                 "inscription",
+                "pieces",
+                "piecesSynthese",
+                "piecesRelecture",
+                "piecesEpuisement",
                 "feeCategoriesWithRules",
                 "categoriesfrais",
                 "mandatoryFeeCategoriesWithRules",

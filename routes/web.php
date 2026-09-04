@@ -24,6 +24,7 @@ use App\Http\Controllers\ESBTPComptabiliteAnalyticsController;
 use App\Http\Controllers\ESBTPComptabiliteController;
 use App\Http\Controllers\ESBTPComptabiliteFraisController;
 use App\Http\Controllers\ESBTPComptabiliteReportController;
+use App\Http\Controllers\ESBTPDossierPieceController;
 use App\Http\Controllers\ESBTPPieceDossierController;
 use App\Http\Controllers\ESBTPComptabiliteRelanceController;
 use App\Http\Controllers\ESBTPEcheancierController;
@@ -1784,6 +1785,23 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 Route::post('/pieces-dossier/reorder', [ESBTPPieceDossierController::class, 'reorder'])->name('reorder');
                 Route::post('/pieces-dossier/jeu-propose', [ESBTPPieceDossierController::class, 'installerJeuPropose'])->name('jeu-propose');
             });
+        });
+
+    // Le suivi piece par piece d'un dossier : le geste de guichet, distinct de la
+    // configuration du catalogue. Une secretaire coche ce qu'un etudiant remet
+    // sans avoir le droit de changer ce que l'ecole reclame.
+    //
+    // Tout repond en JSON : cocher huit pieces ne doit pas recharger la page huit
+    // fois. Le debit est genereux pour la meme raison.
+    Route::prefix('esbtp')->name('esbtp.dossier-pieces.')
+        ->middleware(['auth', 'paywall', 'permission:pieces_dossier.suivre', 'throttle:120,1'])
+        ->group(function () {
+            Route::get('/inscriptions/{inscription}/pieces', [ESBTPDossierPieceController::class, 'index'])->name('index');
+            Route::post('/inscriptions/{inscription}/pieces/{piece}', [ESBTPDossierPieceController::class, 'cocher'])->name('cocher');
+            Route::delete('/inscriptions/{inscription}/pieces/{piece}', [ESBTPDossierPieceController::class, 'decocher'])->name('decocher');
+            Route::post('/inscriptions/{inscription}/pieces/{piece}/ecarter', [ESBTPDossierPieceController::class, 'ecarter'])->name('ecarter');
+            Route::delete('/inscriptions/{inscription}/pieces/{piece}/ecarter', [ESBTPDossierPieceController::class, 'reintegrer'])->name('reintegrer');
+            Route::post('/pieces-deposees/{depot}/decision', [ESBTPDossierPieceController::class, 'decider'])->name('decider');
         });
 
     // Configuration des matricules - accÃ¨s direct sans sidebar

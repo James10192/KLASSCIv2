@@ -53,6 +53,15 @@ class CataloguePiecesDossier
     public const REGLAGE_RESTITUTION_ANNULATION = 'pieces_dossier.restitution_annulation';
 
     /**
+     * Cocher une pièce au guichet, est-ce déjà la valider ?
+     *
+     * Non par défaut, et c'est une question d'organigramme, pas de sévérité :
+     * là où la personne qui reçoit la pièce est celle qui la juge, exiger deux
+     * gestes d'une seule personne ne rend rien plus sûr, seulement plus lent.
+     */
+    public const REGLAGE_RELECTURE = 'pieces_dossier.relecture';
+
+    /**
      * Une école qui n'a rien configuré ne doit voir aucun changement dans les
      * écrans existants. Tout affichage de dossier se garde derrière ce test :
      * catalogue vide, aucun signal, aucun compteur, aucun contrôle.

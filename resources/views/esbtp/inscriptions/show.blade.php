@@ -1813,6 +1813,8 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
 
                     @include('esbtp.inscriptions.partials.fournitures-in-kind')
 
+                    @include('esbtp.inscriptions.partials.pieces-dossier')
+
                     @if($canViewFinancials ?? true)
                     <!-- Situation financière détaillée -->
                     <div class="is-card">

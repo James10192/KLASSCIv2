@@ -40,6 +40,15 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ### Ajouts
 
+- **Suivi des pièces du dossier, étudiant par étudiant** — la fiche d'inscription porte désormais un bloc « Pièces du dossier » où l'on coche ce que l'étudiant a remis. Une case suffit : ni téléversement obligatoire, ni formulaire. Le compteur en tête dit s'il manque quelque chose, et quoi.
+
+  Une pièce appartient d'abord à l'étudiant, pas à l'année : six photos déposées en première année en couvrent trois, et l'écran affiche ce qu'il en reste. L'école décide, pièce par pièce, ce qui dure et ce qui se redonne chaque rentrée. Une pièce qui ne concerne pas un étudiant cette année s'écarte avec son motif — ce motif est ce qui, six mois plus tard, distinguera une dispense décidée d'un dossier qu'on a renoncé à réclamer.
+
+  Deux réglages d'établissement commandent le reste : ce qu'on fait d'un dossier incomplet (bloquer, signaler, se taire), et si cocher au guichet vaut déjà validation. La seconde question n'a pas la même réponse partout : là où la personne qui reçoit la pièce est celle qui la juge, exiger deux gestes d'une seule personne ne rend rien plus sûr, seulement plus lent. Le défaut est donc « un geste suffit ».
+
+  Le téléversement reste proposé à côté, et reste un surplus : l'original déposé est ce qui fait foi, le fichier n'est qu'une copie de consultation qui évite le trajet jusqu'au classeur.
+
+
 - **Une unité d'enseignement partagée peut désormais recevoir des éléments propres à chaque maquette** (`/esbtp/lmd/ue`, import de maquettes) — la lecture savait déjà distinguer les compositions ; il manquait de quoi les créer. Ajouter, modifier ou retirer un élément se fait maintenant pour une maquette désignée : soit la composition commune, valable pour tous les parcours qui utilisent l'unité, soit celle d'un parcours en particulier, qui surcharge la commune sans y toucher. Retirer un élément de la maquette Bâtiment ne le retire plus de Travaux Publics, et poser un élément commun n'écrase plus ce qu'un parcours avait réservé. L'import suit la même règle : importer la même unité pour un second parcours avec d'autres éléments n'efface plus ceux du premier — c'est ce qui avait obligé à renommer cinq éléments à la main lors de l'import du Génie Civil.
 
 - **Le rattachement d'une unité à ses parcours ne réinitialise plus ce qu'on y avait réglé** — l'écran « Lier à des parcours » effaçait tous les liens de l'unité avant de les recréer. Le crédit propre à une maquette, le caractère optionnel et l'ordre repartaient donc à leur valeur par défaut à chaque enregistrement, sans que rien ne le signale. Seul ce qui change réellement est désormais touché.
