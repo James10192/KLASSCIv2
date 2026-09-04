@@ -101,6 +101,10 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 - **Le calcul des résultats universitaires est verrouillé par des contrôles automatiques** — moyennes, compensation entre unités d'enseignement et attribution des crédits sont désormais vérifiés à chaque évolution du logiciel. Une erreur introduite par mégarde dans ce calcul ne peut plus passer inaperçue jusqu'aux bulletins des étudiants.
 
+### Améliorations
+
+- **La fiche d'inscription porte la photo de l'étudiant, et se télécharge** (`/esbtp/inscriptions`) — le document part au guichet pour être signé en double exemplaire : sans portrait, rien n'y rattachait le papier à la personne qui le signe. La photo du dossier y figure désormais ; quand il n'y en a pas, un cadre est imprimé pour en agrafer une. Le document ne s'ouvrait par ailleurs qu'en aperçu : on imprime au guichet, mais on archive après, et le téléchargement manquait. Les deux gestes sont maintenant offerts, sur la fiche de l'inscription et dans le menu de chaque ligne de la liste.
+
 ### Corrections
 
 - **Une unité d'enseignement partagée peut porter une composition différente selon la maquette** (`/esbtp/lmd/ue`, bulletins, plannings) — le code d'une unité est unique dans l'école : « Résistance des matériaux » est une seule et même unité pour Bâtiment et pour Travaux Publics. Les deux parcours devaient donc jusqu'ici s'accorder sur les mêmes éléments constitutifs, les mêmes coefficients et les mêmes crédits. Chaque maquette peut maintenant réserver ses propres éléments, ou surcharger un élément commun, sans toucher à celle du voisin. Partout où un parcours est connu — bulletin, projection, planning, arbre des matières, écran des unités filtré — la composition affichée et calculée est celle de cette maquette-là. Un élément réservé à un parcours n'entre plus dans la moyenne d'un autre, et un élément surchargé n'y entre plus deux fois. Le plafond de crédits d'une unité se compte lui aussi par maquette, faute de quoi deux compositions cumulées l'auraient dépassé mécaniquement et plus aucun élément n'aurait pu être ajouté nulle part.
