@@ -3,6 +3,7 @@
 namespace App\Services\LMD;
 
 use App\Models\ESBTPLMDParcours;
+use App\Models\ESBTPUniteEnseignement;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 
@@ -66,6 +67,112 @@ class ParcoursUeSyncService
                 'updated' => count($diff['update']),
                 'detached' => count($diff['detach']),
                 'unchanged' => count($diff['unchanged']),
+            ];
+        });
+    }
+
+    /**
+     * Meme synchronisation, vue depuis l'UNITE : quelles maquettes l'utilisent,
+     * et a quels semestres.
+     *
+     * L'ecran « Lier a des parcours » travaille dans ce sens-la. Il faisait un
+     * `detach()` SANS argument, qui effaçait tous les liens de l'unite avant de
+     * les recreer : le credit propre a une maquette, le caractere optionnel et
+     * l'ordre repartaient a leur valeur par defaut a chaque enregistrement, donc
+     * etaient perdus. Rien ne le signalait.
+     *
+     * On ne detache ici que les liens de CETTE unite, et le diff ne touche que ce
+     * qui differe reellement.
+     *
+     * @param  array<int, array{parcours_id:int, semestre:int, is_optional?:bool, ordre?:int}>  $liens
+     * @return array{attached:int, updated:int, detached:int, unchanged:int}
+     */
+    public function syncPourUnite(ESBTPUniteEnseignement $ue, array $liens): array
+    {
+        $voulus = [];
+        foreach ($liens as $lien) {
+            $cle = ((int) $lien['parcours_id']) . '_' . ((int) $lien['semestre']);
+            $voulus[$cle] = [
+                'parcours_id' => (int) $lien['parcours_id'],
+                'semestre' => (int) $lien['semestre'],
+                'is_optional' => (bool) ($lien['is_optional'] ?? false),
+                'ordre' => (int) ($lien['ordre'] ?? 0),
+            ];
+        }
+
+        return DB::transaction(function () use ($ue, $voulus) {
+            $actuels = [];
+            $lignes = DB::table('esbtp_lmd_parcours_ue')
+                ->where('unite_enseignement_id', $ue->id)
+                ->lockForUpdate()
+                ->get(['parcours_id', 'semestre', 'is_optional', 'ordre']);
+
+            foreach ($lignes as $ligne) {
+                $actuels[((int) $ligne->parcours_id) . '_' . ((int) $ligne->semestre)] = [
+                    'parcours_id' => (int) $ligne->parcours_id,
+                    'semestre' => (int) $ligne->semestre,
+                    'is_optional' => (bool) $ligne->is_optional,
+                    'ordre' => (int) $ligne->ordre,
+                ];
+            }
+
+            $ajoutes = $modifies = $retires = $inchanges = 0;
+
+            foreach ($voulus as $cle => $row) {
+                if (! isset($actuels[$cle])) {
+                    // `credit` n'est PAS ecrit : il reste nul, ce qui veut dire
+                    // « pas de credit propre, prendre celui de l'unite ». Le poser
+                    // a zero dirait autre chose.
+                    DB::table('esbtp_lmd_parcours_ue')->insert([
+                        'unite_enseignement_id' => $ue->id,
+                        'parcours_id' => $row['parcours_id'],
+                        'semestre' => $row['semestre'],
+                        'is_optional' => $row['is_optional'],
+                        'ordre' => $row['ordre'],
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                    $ajoutes++;
+                    continue;
+                }
+
+                $avant = $actuels[$cle];
+                if ($avant['is_optional'] === $row['is_optional'] && $avant['ordre'] === $row['ordre']) {
+                    $inchanges++;
+                    continue;
+                }
+
+                // `credit` reste hors du SET : c'est une decision de l'ecole, pas
+                // une consequence d'un enregistrement de cet ecran-la.
+                DB::table('esbtp_lmd_parcours_ue')
+                    ->where('unite_enseignement_id', $ue->id)
+                    ->where('parcours_id', $row['parcours_id'])
+                    ->where('semestre', $row['semestre'])
+                    ->update([
+                        'is_optional' => $row['is_optional'],
+                        'ordre' => $row['ordre'],
+                        'updated_at' => now(),
+                    ]);
+                $modifies++;
+            }
+
+            foreach ($actuels as $cle => $row) {
+                if (isset($voulus[$cle])) {
+                    continue;
+                }
+                DB::table('esbtp_lmd_parcours_ue')
+                    ->where('unite_enseignement_id', $ue->id)
+                    ->where('parcours_id', $row['parcours_id'])
+                    ->where('semestre', $row['semestre'])
+                    ->delete();
+                $retires++;
+            }
+
+            return [
+                'attached' => $ajoutes,
+                'updated' => $modifies,
+                'detached' => $retires,
+                'unchanged' => $inchanges,
             ];
         });
     }

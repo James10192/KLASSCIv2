@@ -31,6 +31,7 @@ class LMDImportService
 
     public function __construct(
         private ParcoursUeSyncService $parcoursUeSync,
+        private CompositionUe $composition,
         ?LmdAcademicRuleProfile $rules = null,
     ) {
         $this->rules = $rules ?? new LmdAcademicRuleProfile();
@@ -83,7 +84,10 @@ class LMDImportService
                 ];
 
                 foreach ($ueSpec['ecues'] ?? [] as $ecueSpec) {
-                    [$ecue, $ecueCreated] = $this->upsertECUE($ecueSpec, $ue, $filiere, $niveau, $userId);
+                    // La maquette qu'on importe. Le code d'une unite est unique
+                    // dans l'ecole : la meme unite sert plusieurs parcours, et
+                    // chacun peut lui donner des elements differents.
+                    [$ecue, $ecueCreated] = $this->upsertECUE($ecueSpec, $ue, $filiere, $niveau, $userId, (int) $parcours->id);
                     $stats[$ecueCreated ? 'ecues_attached' : 'ecues_updated']++;
 
                     [, $planifCreated] = $this->upsertPlanification($ecueSpec, $ecue, $filiere, $niveau, (int) $ueSpec['semestre'], $annee);
@@ -232,8 +236,14 @@ class LMDImportService
     }
 
     /** @return array{0: ESBTPMatiere, 1: bool} */
-    private function upsertECUE(array $data, ESBTPUniteEnseignement $ue, ?ESBTPFiliere $filiere, ESBTPNiveauEtude $niveau, ?int $userId): array
-    {
+    private function upsertECUE(
+        array $data,
+        ESBTPUniteEnseignement $ue,
+        ?ESBTPFiliere $filiere,
+        ESBTPNiveauEtude $niveau,
+        ?int $userId,
+        int $parcoursId = CompositionUe::COMMUN
+    ): array {
         $code = $data['code'] ?? null;
         $existing = $code ? ESBTPMatiere::where('code', $code)->first() : null;
         $created = $existing === null;
@@ -242,9 +252,16 @@ class LMDImportService
         // de la premiere, puisque la lecture retombe sur la cle etrangere quand le
         // pivot est vide. C est ce qui a oblige a renommer cinq ECUE a la main lors
         // de l import du Genie Civil sur abidjan.
-        if ($existing !== null
+        // La cle etrangere ne peut designer qu'UNE unite : c'est elle qui rendait
+        // le partage impossible. Elle n'est plus la source de verite, le pivot
+        // l'est — on ne la reecrit donc que si elle est libre ou deja la notre, et
+        // le conflit ne se leve que pour un rattachement a une AUTRE unite, ce que
+        // le pivot ne sait pas exprimer.
+        $appartientAilleurs = $existing !== null
             && $existing->unite_enseignement_id !== null
-            && (int) $existing->unite_enseignement_id !== (int) $ue->id) {
+            && (int) $existing->unite_enseignement_id !== (int) $ue->id;
+
+        if ($appartientAilleurs) {
             $this->conflits[] = [
                 'type' => 'ECUE',
                 'code' => (string) $code,
@@ -262,7 +279,11 @@ class LMDImportService
         $payload = [
             'name' => $data['name'],
             'code' => $code,
-            'unite_enseignement_id' => $ue->id,
+            // Ne pas la reprendre a l'unite voisine : sans ligne de pivot, c'est
+            // par elle qu'elle lit ses elements, et la lui voler la depouillerait.
+            'unite_enseignement_id' => $appartientAilleurs
+                ? $existing->unite_enseignement_id
+                : $ue->id,
             'niveau_etude_id' => $niveau->id,
             'coefficient' => (int) ($data['credit_ecue'] ?? 1),
             'type_formation' => 'generale',
@@ -281,6 +302,18 @@ class LMDImportService
         if ($filiere) {
             $this->linkMatiereFiliere($matiere->id, $filiere->id);
         }
+
+        // Le pivot, et lui seul, sait dire « cet element appartient a cette unite
+        // POUR CETTE MAQUETTE ». Sans cette ecriture, importer la meme unite pour
+        // un second parcours avec d'autres elements reecrivait la cle etrangere
+        // des premiers et les faisait disparaitre de la maquette d'origine —
+        // c'est ce qui a oblige a renommer cinq elements a la main lors de
+        // l'import du Genie Civil sur abidjan.
+        $this->composition->poser($ue, (int) $matiere->id, [
+            'coefficient_ecue' => (float) ($data['credit_ecue'] ?? 1),
+            'credit_ecue' => (int) ($data['credit_ecue'] ?? 1),
+            'ordre_bulletin' => (int) ($data['ordre'] ?? 0),
+        ], $parcoursId);
 
         return [$matiere, $created];
     }

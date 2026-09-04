@@ -10,6 +10,7 @@ use App\Models\ESBTPLMDParcours;
 use App\Models\ESBTPFiliere;
 use App\Models\ESBTPNiveauEtude;
 use App\Models\ESBTPPlanificationAcademique;
+use App\Services\LMD\CompositionUe;
 use App\Services\LMD\ParcoursUeSyncService;
 use App\Services\LMD\SuppressionUeService;
 use Illuminate\Http\Request;
@@ -21,6 +22,7 @@ class ESBTPLMDUEController extends Controller
     public function __construct(
         private ParcoursUeSyncService $parcoursUeSync,
         private SuppressionUeService $suppressionUe,
+        private CompositionUe $composition,
     ) {}
 
     /**
@@ -318,8 +320,12 @@ class ESBTPLMDUEController extends Controller
      * liste complète (champ caché `sync_ecues`) : un appel partiel ne doit jamais
      * détacher en silence des ECUEs qu'il ne connaissait pas.
      */
-    private function synchroniserEcues(ESBTPUniteEnseignement $ue, array $ecues, bool $detacherAbsents): void
-    {
+    private function synchroniserEcues(
+        ESBTPUniteEnseignement $ue,
+        array $ecues,
+        bool $detacherAbsents,
+        int $parcoursId = CompositionUe::COMMUN
+    ): void {
         $idsConserves = [];
 
         foreach ($ecues as $ligne) {
@@ -384,25 +390,37 @@ class ESBTPLMDUEController extends Controller
             $matiere->updated_by = auth()->id();
             $matiere->save();
 
-            $ue->ecues()->syncWithoutDetaching([
-                $matiere->id => [
-                    'coefficient_ecue' => $coefficient,
-                    'credit_ecue' => $credit,
-                    'ordre_bulletin' => $ordre,
-                ],
-            ]);
+            // Par le service, jamais par `syncWithoutDetaching` : celui-ci retrouve
+            // la ligne par le seul `matiere_id` et reecrirait une composition
+            // reservee a une autre maquette.
+            $this->composition->poser($ue, (int) $matiere->id, [
+                'coefficient_ecue' => $coefficient,
+                'credit_ecue' => $credit,
+                'ordre_bulletin' => $ordre,
+            ], $parcoursId);
 
-            $idsConserves[] = $matiere->id;
+            $idsConserves[] = (int) $matiere->id;
         }
 
         if (!$detacherAbsents) {
             return;
         }
 
-        $idsActuels = $ue->ecues()->pluck('esbtp_matieres.id')
-            ->merge($ue->matieres()->pluck('esbtp_matieres.id'))
-            ->unique();
-        $aDetacher = $idsActuels->diff($idsConserves)->values();
+        // On ne compare qu'a CETTE maquette : sans ce scope, enregistrer la
+        // composition commune detacherait tout ce qu'un parcours a reserve, et
+        // enregistrer celle d'un parcours effacerait la commune.
+        $idsActuels = $this->composition->idsDe(
+            $ue,
+            $parcoursId === CompositionUe::COMMUN ? null : $parcoursId
+        );
+
+        if ($parcoursId === CompositionUe::COMMUN) {
+            // La cle etrangere ne connait pas les maquettes : ce qu'elle porte
+            // appartient a la composition commune.
+            $idsActuels = $idsActuels->merge($ue->matieres()->pluck('esbtp_matieres.id'))->unique();
+        }
+
+        $aDetacher = $idsActuels->map(fn ($id) => (int) $id)->diff($idsConserves)->values();
 
         if ($aDetacher->isEmpty()) {
             return;
@@ -410,10 +428,8 @@ class ESBTPLMDUEController extends Controller
 
         // Détacher, jamais supprimer : la matière peut porter des évaluations
         // et des notes. Même comportement que le retrait d'un ECUE isolé.
-        $ue->ecues()->detach($aDetacher->all());
-        ESBTPMatiere::whereIn('id', $aDetacher->all())
-            ->where('unite_enseignement_id', $ue->id)
-            ->update(['unite_enseignement_id' => null, 'updated_by' => auth()->id()]);
+        $this->composition->retirer($ue, $aDetacher->all(), $parcoursId);
+        $this->composition->libererCleEtrangere($ue, $aDetacher->all());
     }
 
     /**
@@ -464,26 +480,11 @@ class ESBTPLMDUEController extends Controller
      */
     private function materialiserPivotDepuisCleEtrangere(int $uniteEnseignementId): void
     {
-        $unite = ESBTPUniteEnseignement::find($uniteEnseignementId);
-
-        // Pivot déjà renseigné : c'est lui qui fait foi, rien à reprendre.
-        if (! $unite || $unite->ecues()->exists()) {
-            return;
-        }
-
-        $liens = [];
-        // Même périmètre que le repli de getEcuesEffectifs() : les actives.
-        foreach ($unite->matieres()->where('is_active', true)->get() as $ecue) {
-            $liens[$ecue->id] = [
-                'coefficient_ecue' => $ecue->coefficient_ecue,
-                'credit_ecue' => $ecue->credit_ecue,
-                'ordre_bulletin' => (int) ($ecue->ordre_bulletin ?? 0),
-            ];
-        }
-
-        if ($liens !== []) {
-            $unite->ecues()->syncWithoutDetaching($liens);
-        }
+        // Le service porte la garde : elle doit tester la composition COMMUNE et
+        // non l'existence de n'importe quelle ligne, sinon un seul élément
+        // réservé rendrait cette matérialisation impossible — et laisserait
+        // l'unité exposée au dépouillement qu'elle prévient.
+        $this->composition->materialiserDepuisCleEtrangere($uniteEnseignementId);
     }
 
     /**
@@ -599,14 +600,23 @@ class ESBTPLMDUEController extends Controller
             'credit_ecue'     => 'nullable|integer|min:1',
             'coefficient_ecue' => 'nullable|numeric|min:0',
             'ordre_bulletin'  => 'nullable|integer|min:0',
+            // Absent ou zéro : la composition commune, valable pour toutes les
+            // maquettes. Un parcours : cet élément n'appartient qu'à la sienne.
+            'parcours_id'     => 'nullable|integer',
         ]);
 
         $coeffEcue = $validated['coefficient_ecue'] ?? null;
         $creditEcue = $validated['credit_ecue'] ?? null;
         $ordreBulletin = $validated['ordre_bulletin'] ?? 0;
+        // Un parcours qui n'utilise pas cette unité retombe sur « commun » :
+        // sinon on créerait une composition rattachée à une maquette qui ignore
+        // l'unité, invisible partout et impossible à corriger.
+        $portee = $this->composition->porteeValide($ue, $validated['parcours_id'] ?? null);
 
-        // Vérifier que la somme des crédits ECUE ne dépasse pas le crédit de l'UE
-        if ($error = $this->checkCreditOverflow($ue, $creditEcue, null, $request)) {
+        // Vérifier que la somme des crédits ECUE ne dépasse pas le crédit de l'UE.
+        // Le plafond se compte PAR MAQUETTE : additionner deux compositions le
+        // ferait dépasser mécaniquement, et plus rien ne pourrait être ajouté.
+        if ($error = $this->checkCreditOverflow($ue, $creditEcue, null, $request, $portee)) {
             return $error;
         }
 
@@ -647,14 +657,14 @@ class ESBTPLMDUEController extends Controller
             $matiere->update(['unite_enseignement_id' => $ue->id, 'updated_by' => auth()->id()]);
         }
 
-        // Écrire dans le pivot (many-to-many) avec coeff/credit contextuels
-        $ue->ecues()->syncWithoutDetaching([
-            $matiere->id => [
-                'coefficient_ecue' => $coeffEcue,
-                'credit_ecue' => $creditEcue,
-                'ordre_bulletin' => $ordreBulletin,
-            ],
-        ]);
+        // Écrire dans le pivot, pour LA maquette visée. `syncWithoutDetaching`
+        // se cale sur le seul `matiere_id` : poser un élément commun sur une
+        // unité qui en a déjà une version réservée réécrirait cette réservation.
+        $this->composition->poser($ue, (int) $matiere->id, [
+            'coefficient_ecue' => $coeffEcue,
+            'credit_ecue' => $creditEcue,
+            'ordre_bulletin' => $ordreBulletin,
+        ], $portee);
 
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json(['success' => true, 'message' => 'ECUE ajouté avec succès.']);
@@ -675,10 +685,14 @@ class ESBTPLMDUEController extends Controller
             'credit_ecue'     => 'nullable|integer|min:1',
             'coefficient_ecue' => 'nullable|numeric|min:0',
             'ordre_bulletin'  => 'nullable|integer|min:0',
+            'parcours_id'     => 'nullable|integer',
         ]);
 
-        // Vérifier que la somme des crédits ECUE ne dépasse pas le crédit de l'UE
-        if ($error = $this->checkCreditOverflow($ue, $validated['credit_ecue'] ?? null, $ecue->id, $request)) {
+        $portee = $this->composition->porteeValide($ue, $validated['parcours_id'] ?? null);
+
+        // Vérifier que la somme des crédits ECUE ne dépasse pas le crédit de l'UE,
+        // dans CETTE maquette.
+        if ($error = $this->checkCreditOverflow($ue, $validated['credit_ecue'] ?? null, $ecue->id, $request, $portee)) {
             return $error;
         }
 
@@ -692,14 +706,14 @@ class ESBTPLMDUEController extends Controller
             'updated_by' => auth()->id(),
         ]);
 
-        // Mettre à jour le pivot avec les valeurs contextuelles à cette UE
-        $ue->ecues()->syncWithoutDetaching([
-            $ecue->id => [
-                'coefficient_ecue' => $validated['coefficient_ecue'] ?? null,
-                'credit_ecue' => $validated['credit_ecue'] ?? null,
-                'ordre_bulletin' => $validated['ordre_bulletin'] ?? 0,
-            ],
-        ]);
+        // Mettre à jour le pivot de CETTE maquette. Sans la portée, modifier le
+        // coefficient commun réécrivait la ligne qu'un parcours avait surchargée,
+        // et sa maquette changeait sans que personne l'ait demandé.
+        $this->composition->poser($ue, (int) $ecue->id, [
+            'coefficient_ecue' => $validated['coefficient_ecue'] ?? null,
+            'credit_ecue' => $validated['credit_ecue'] ?? null,
+            'ordre_bulletin' => $validated['ordre_bulletin'] ?? 0,
+        ], $portee);
 
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json(['success' => true, 'message' => 'ECUE mis à jour.']);
@@ -714,13 +728,16 @@ class ESBTPLMDUEController extends Controller
      */
     public function destroyECUE(Request $request, ESBTPUniteEnseignement $ue, ESBTPMatiere $ecue)
     {
-        // Détacher du pivot many-to-many
-        $ue->ecues()->detach($ecue->id);
+        $portee = $this->composition->porteeValide($ue, $request->input('parcours_id'));
 
-        // Aussi nettoyer le FK direct si c'est cette UE
-        if ($ecue->unite_enseignement_id === $ue->id) {
-            $ecue->update(['unite_enseignement_id' => null, 'updated_by' => auth()->id()]);
-        }
+        // Retirer de CETTE maquette, et d'elle seule. `detach($id)` supprimait
+        // toutes les lignes de cet élément, toutes maquettes confondues : retirer
+        // un élément de Bâtiment le retirait aussi de Travaux Publics.
+        $this->composition->retirer($ue, [(int) $ecue->id], $portee);
+
+        // La clé étrangère est globale : on ne la libère que si l'élément ne
+        // figure plus dans AUCUNE maquette de cette unité.
+        $this->composition->libererCleEtrangere($ue, [(int) $ecue->id]);
 
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json(['success' => true, 'message' => 'ECUE détaché avec succès.']);
@@ -732,8 +749,12 @@ class ESBTPLMDUEController extends Controller
     /**
      * Liste des matières disponibles pour rattachement à une UE (non déjà liées).
      */
-    public function matieresDisponibles(ESBTPUniteEnseignement $ue)
+    public function matieresDisponibles(Request $request, ESBTPUniteEnseignement $ue)
     {
+        // La maquette visée. Sans elle, un élément déjà posé en commun sortait de
+        // la liste, et il devenait impossible d'en réserver une version propre à
+        // un parcours : la fonctionnalité était inatteignable depuis l'écran.
+        $portee = $this->composition->porteeValide($ue, $request->input('parcours_id'));
         // Ne proposer que des éléments constitutifs déjà LMD — par la colonne ou
         // par le pivot. Sans ce filtre, la liste offre l'intégralité du catalogue
         // BTS de l'établissement, et un seul clic sortirait une matière BTS de
@@ -745,7 +766,9 @@ class ESBTPLMDUEController extends Controller
                         ->from('esbtp_ue_matiere')
                         ->whereColumn('esbtp_ue_matiere.matiere_id', 'esbtp_matieres.id'));
             })
-            ->whereDoesntHave('unitesEnseignementMultiple', fn($q) => $q->where('esbtp_ue_matiere.unite_enseignement_id', $ue->id))
+            ->whereDoesntHave('unitesEnseignementMultiple', fn ($q) => $q
+                ->where('esbtp_ue_matiere.unite_enseignement_id', $ue->id)
+                ->where('esbtp_ue_matiere.parcours_id', $portee))
             ->orderBy('name')
             ->get(['id', 'name', 'code', 'coefficient_ecue', 'credit_ecue']);
 
@@ -802,16 +825,22 @@ class ESBTPLMDUEController extends Controller
             'parcours.*.semestres.*' => 'integer|between:1,10',
         ]);
 
+        // `detach()` sans argument effaçait TOUS les liens de l'unité avant de
+        // les recréer. Trois conséquences, aucune signalée : le crédit propre à
+        // une maquette, le caractère optionnel et l'ordre étaient reposés à leur
+        // valeur par défaut à chaque enregistrement — donc perdus. Le service de
+        // synchronisation ne touche que ce qui change réellement.
         $count = DB::transaction(function () use ($request, $ue) {
-            $ue->parcoursMultiple()->detach();
-            $count = 0;
+            $liens = [];
             foreach ($request->input('parcours', []) as $item) {
                 foreach ($item['semestres'] as $sem) {
-                    $ue->parcoursMultiple()->attach($item['id'], ['semestre' => $sem]);
-                    $count++;
+                    $liens[] = ['parcours_id' => (int) $item['id'], 'semestre' => (int) $sem];
                 }
             }
-            return $count;
+
+            $this->parcoursUeSync->syncPourUnite($ue, $liens);
+
+            return count($liens);
         });
 
         return response()->json(['success' => true, 'message' => $count . ' lien(s) parcours-semestre créé(s).']);
