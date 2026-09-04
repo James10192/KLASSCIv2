@@ -247,6 +247,13 @@ class PermissionSyncService
             // c'est-à-dire la comptabilité de chaque instance en service — et le
             // bouton disparaîtrait pour tout le monde, superAdmin excepté.
             'frais.regenerate',
+
+            // Nee du decoupage du formulaire etudiant : sept champs testaient
+            // `admin.access` — la cle de la porte d'entree — pour decider qui
+            // modifie un etat civil. Le matricule sort avec son propre droit.
+            // Sans cette ligne, les roles qui pouvaient deja le modifier le
+            // perdraient au deploiement, sur toutes les instances en service.
+            'students.edit_matricule',
             // `module.lmd.access` et `lmd.jury.view` n'ont PAS leur place ici :
             // ils existaient avant ce découpage et figuraient déjà dans les
             // défauts des mêmes rôles. Les remettre dans le rattrapage ne les

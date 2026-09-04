@@ -224,6 +224,17 @@ return [
             'icon' => 'fa-user-edit',
             'aliases' => ['edit_students'],
         ],
+        // Le matricule n'est pas un champ d'etat civil parmi d'autres : c'est
+        // l'identifiant qui voyage sur les bulletins, les recus et les certificats.
+        // Le reecrire ne corrige pas une faute de frappe, ca renomme un eleve dans
+        // des documents deja remis. D'ou un droit distinct de `students.edit`, que
+        // l'ecole accorde a qui elle juge.
+        'students.edit_matricule' => [
+            'label' => 'Modifier le matricule d\'un étudiant',
+            'description' => 'Permet de corriger le matricule, y compris en saisie manuelle. Distinct de « Modifier un étudiant » : le matricule identifie l\'élève sur les bulletins, reçus et certificats déjà délivrés. Sans ce droit le champ reste en lecture seule, et une valeur modifiée est refusée par le serveur.',
+            'group' => 'Étudiants',
+            'icon' => 'fa-id-card',
+        ],
         'students.delete' => [
             'label' => 'Supprimer un étudiant',
             'group' => 'Étudiants',
@@ -2134,6 +2145,7 @@ return [
         'secretaire' => [
             'dashboard.view', 'admin.access', 'parent_chatbot.manage',
             'students.view', 'students.create', 'students.edit', 'students.delete',
+            'students.edit_matricule',
             'students.accessibility.view', 'students.accessibility.edit', 'students.accessibility.export',
             'inscriptions.view', 'inscriptions.create', 'inscriptions.edit', 'inscriptions.validate',
             'inscriptions.fiche.print', 'inscriptions.in_kind.mark',
@@ -2263,6 +2275,7 @@ return [
             'admin.access', 'dashboard.view',
             'students.view', 'students.view_own',
             'students.create', 'students.edit', 'students.delete',
+            'students.edit_matricule',
             'students.accessibility.view', 'students.accessibility.view_full',
             'students.accessibility.edit', 'students.accessibility.export',
             'inscriptions.view', 'inscriptions.create', 'inscriptions.edit',

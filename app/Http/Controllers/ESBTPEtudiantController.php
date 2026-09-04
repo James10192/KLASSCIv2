@@ -777,6 +777,21 @@ class ESBTPEtudiantController extends Controller
                 'nationalite', 'adresse', 'telephone', 'email_personnel', 'statut'
             ]);
 
+            // Le champ matricule est rendu en lecture seule sans le droit dedie
+            // — mais un champ `readonly` EST soumis, et rien n'empeche de le
+            // reecrire avant l'envoi. La garde qui compte est ici.
+            //
+            // On ne refuse que la valeur CHANGEE : le formulaire renvoie le
+            // matricule inchange a chaque enregistrement, y compris pour qui n'a
+            // pas le droit de le toucher. Refuser sur simple presence
+            // interdirait a la scolarite de corriger une adresse.
+            if (array_key_exists('matricule', $etudiantData)
+                && (string) $etudiantData['matricule'] !== (string) $etudiant->matricule
+                && ! $request->user()?->can('students.edit_matricule')
+            ) {
+                abort(403, "Le matricule identifie l'élève sur les documents déjà délivrés : le modifier demande le droit « Modifier le matricule d'un étudiant ».");
+            }
+
             \Log::info('Données à mettre à jour', [
                 'etudiantData' => $etudiantData,
                 'ville' => $etudiant->ville,

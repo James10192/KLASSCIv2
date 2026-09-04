@@ -491,7 +491,7 @@
         });
 
         function updateMatriculeUI() {
-            if (!authUserIsSuperAdmin) {
+            if (!peutModifierLeMatricule) {
                 // Pour les non superAdmin, toujours en mode lecture seule
                 if (matriculeContainer) {
                     matriculeContainer.style.display = 'block';
@@ -528,10 +528,12 @@
             }
         }
 
-        // Vérification d'accès superAdmin
-        const authUserIsSuperAdmin = @json(auth()->user()->can('admin.access'));
+        // Le nom precedent — `peutModifierLeMatricule` — mentait deux fois : il ne
+        // testait pas superAdmin mais `admin.access`, la cle de la porte
+        // d'entree, qui n'a rien a voir avec la reecriture d'un identifiant.
+        const peutModifierLeMatricule = @json(auth()->user()->can('students.edit_matricule'));
 
-        if (authUserIsSuperAdmin && generateBtn) {
+        if (peutModifierLeMatricule && generateBtn) {
             generateBtn.addEventListener('click', function() {
                 const genre = genreSelect ? genreSelect.value : null;
 
@@ -581,7 +583,7 @@
             });
         }
 
-        if (authUserIsSuperAdmin && checkBtn) {
+        if (peutModifierLeMatricule && checkBtn) {
             checkBtn.addEventListener('click', checkMatriculeManuel);
 
             // Vérification en temps réel pour le mode manuel
@@ -658,7 +660,7 @@
             // Si l'étudiant a déjà un matricule, pas besoin de warning
             const hasExistingMatricule = matriculeInput && matriculeInput.value && matriculeInput.value.trim() !== '';
 
-            if (!niveauConfig && currentMatriculeMode === 'automatique' && authUserIsSuperAdmin) {
+            if (!niveauConfig && currentMatriculeMode === 'automatique' && peutModifierLeMatricule) {
                 if (hasExistingMatricule) {
                     // L'étudiant a déjà un matricule, on peut le régénérer manuellement si besoin
                     showMatriculeStatus('ℹ️ Matricule existant. Cliquez sur "Générer" pour en créer un nouveau.', 'info');
@@ -669,7 +671,7 @@
                 if (generateBtn) generateBtn.disabled = !hasExistingMatricule; // Permettre si matricule existe
             } else if (niveauConfig) {
                 showMatriculeStatus('', '');
-                if (generateBtn && authUserIsSuperAdmin) generateBtn.disabled = false;
+                if (generateBtn && peutModifierLeMatricule) generateBtn.disabled = false;
             }
         }
 
@@ -677,7 +679,7 @@
         // Note: On appelle cette fonction après avoir récupéré le mode matricule
 
         function maybeAutoRegenerateMatricule(force) {
-            if (!authUserIsSuperAdmin) {
+            if (!peutModifierLeMatricule) {
                 return;
             }
 
@@ -702,7 +704,7 @@
 
         // Écouter les changements de genre pour le mode auto
         // (pas besoin d'écouter la classe car on utilise les infos de l'inscription récente)
-        if (genreSelect && authUserIsSuperAdmin) {
+        if (genreSelect && peutModifierLeMatricule) {
             genreSelect.addEventListener('change', function() {
                 // Vérifier si le genre a changé et régénérer si nécessaire
                 if (genreSelect.value !== initialGenre) {
@@ -761,7 +763,7 @@
         // Si mode auto et genre déjà sélectionné, générer le matricule au chargement
         // Note: niveauConfig est déjà initialisé depuis les données Blade de l'inscription récente
         $(document).ready(function() {
-            if (currentMatriculeMode === 'automatique' && authUserIsSuperAdmin) {
+            if (currentMatriculeMode === 'automatique' && peutModifierLeMatricule) {
                 // Vérifier le statut du niveau config
                 checkNiveauConfigStatus();
 
