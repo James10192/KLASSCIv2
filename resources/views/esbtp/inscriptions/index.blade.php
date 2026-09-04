@@ -60,6 +60,12 @@
     font-size: .78rem; font-weight: 500;
 }
 .ii-hero-actions { display: flex; gap: .5rem; flex-wrap: wrap; }
+/* .ii-hero-top et .ii-kpis sont deux contextes d'empilement de meme rang. Les
+   indicateurs viennent apres dans le document, donc ils gagnent : un menu
+   ouvert dans les actions du bandeau passait DERRIERE les compteurs, meme force
+   en position: fixed — un menu fixe reste dans le contexte d'empilement de son
+   ancetre. On releve l'etage tant qu'un menu est ouvert, et lui seul. */
+.ii-hero-top:has(.dropdown-menu.show) { z-index: 3; }
 .ii-btn--glass, .ii-btn--white {
     display: inline-flex; align-items: center; gap: .4rem;
     padding: .55rem 1.1rem; border-radius: 10px;
@@ -660,21 +666,44 @@ tr[data-inscription-id] > td { transition: background .15s ease; }
                         </button>
                     @endcan
                     @can('inscriptions.edit')
-                        {{-- Rejoue le bareme sur TOUTE l'annee affichee. Une souscription
-                             fige le tarif du jour de l'inscription : sans ce bouton, corriger
-                             le prix d'un frais dans le parametrage ne rattrape aucun etudiant
-                             deja inscrit, et il faudrait les cocher page par page. --}}
-                        <button type="button"
-                                class="ii-btn--glass js-regenerer-frais"
-                                data-preview="{{ route('esbtp.inscriptions.frais-manquants.preview') }}"
-                                data-apply="{{ route('esbtp.inscriptions.frais-manquants.apply') }}"
-                                data-scope="annee"
-                                @if(request('annee') || ($anneeEnCours?->id))
-                                    data-annee-id="{{ request('annee') ?: $anneeEnCours?->id }}"
-                                @endif
-                                title="Compare toutes les inscriptions de l'année au barème en vigueur : frais manquants, frais qui ne s'appliquent plus, et montants changés depuis l'inscription.">
-                            <i class="fas fa-rotate"></i>Régénérer les frais
-                        </button>
+                        {{-- Rejoue le bareme. Une souscription fige le tarif du jour de
+                             l'inscription : sans ca, corriger le prix d'un frais dans le
+                             parametrage ne rattrape aucun etudiant deja inscrit.
+                             Deux portees, parce qu'elles ne servent pas au meme moment :
+                             la liste affichee quand on corrige un cas precis, l'annee
+                             entiere quand on vient de changer un tarif pour tout le monde. --}}
+                        <div class="dropdown">
+                            <button type="button"
+                                    class="ii-btn--glass dropdown-toggle"
+                                    data-bs-toggle="dropdown"
+                                    aria-expanded="false"
+                                    title="Compare les souscriptions au barème en vigueur : frais manquants, frais qui ne s'appliquent plus, et montants changés depuis l'inscription.">
+                                <i class="fas fa-rotate"></i>Régénérer les frais
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end ii-dropdown">
+                                <li>
+                                    <button type="button"
+                                            class="dropdown-item js-regenerer-frais"
+                                            data-preview="{{ route('esbtp.inscriptions.frais-manquants.preview') }}"
+                                            data-apply="{{ route('esbtp.inscriptions.frais-manquants.apply') }}"
+                                            data-scope="filtre">
+                                        <i class="fas fa-filter"></i>Sur la liste affichée
+                                    </button>
+                                </li>
+                                <li>
+                                    <button type="button"
+                                            class="dropdown-item js-regenerer-frais"
+                                            data-preview="{{ route('esbtp.inscriptions.frais-manquants.preview') }}"
+                                            data-apply="{{ route('esbtp.inscriptions.frais-manquants.apply') }}"
+                                            data-scope="annee"
+                                            @if(request('annee') || ($anneeEnCours?->id))
+                                                data-annee-id="{{ request('annee') ?: $anneeEnCours?->id }}"
+                                            @endif>
+                                        <i class="fas fa-calendar-alt"></i>Sur toute l'année
+                                    </button>
+                                </li>
+                            </ul>
+                        </div>
                     @endcan
                     @can('inscriptions.validate')
                         <a href="{{ route('esbtp.inscriptions.administration') }}" class="ii-btn--glass">

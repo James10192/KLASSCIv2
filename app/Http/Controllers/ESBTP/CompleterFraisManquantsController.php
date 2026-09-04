@@ -4,6 +4,8 @@ namespace App\Http\Controllers\ESBTP;
 
 use App\Http\Controllers\Controller;
 use App\Models\ESBTPAnneeUniversitaire;
+use App\Models\ESBTPInscription;
+use App\Services\Inscriptions\FiltresListeInscriptions;
 use App\Services\Frais\SouscriptionsObligatoiresManquantes;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -12,11 +14,17 @@ use Illuminate\Http\Request;
 /**
  * « Régénérer les frais » : remet les souscriptions d'accord avec le barème.
  *
- * Deux portées, une seule mécanique :
- *  - une liste d'inscriptions (sélection dans la liste, ou une fiche) ;
- *  - `scope=annee` : toutes les inscriptions actives d'une année, ce qu'il faut
- *    après avoir corrigé un tarif dans le paramétrage des frais — sans quoi il
- *    faudrait cocher les étudiants page par page.
+ * Trois portées, une seule mécanique :
+ *  - `scope=selection` : les inscriptions cochées, ou une fiche ;
+ *  - `scope=filtre`    : exactement ce que la liste affiche (période, classe,
+ *    filière, niveau, statut…), via les mêmes filtres que l'écran ;
+ *  - `scope=annee`     : toutes les inscriptions actives d'une année, ce qu'il
+ *    faut après avoir corrigé un tarif — sans quoi il faudrait cocher les
+ *    étudiants page par page.
+ *
+ * Dans tous les cas l'aperçu précède l'écriture, et `lignes[]` permet de
+ * n'appliquer qu'une partie des écarts : un montant déjà retouché à la main
+ * porte une décision, et la décision de l'écraser appartient à l'école.
  */
 class CompleterFraisManquantsController extends Controller
 {
@@ -34,18 +42,18 @@ class CompleterFraisManquantsController extends Controller
 
     public function preview(Request $request, SouscriptionsObligatoiresManquantes $rattrapage): JsonResponse
     {
-        [$ids, $anneeId] = $this->portee($request);
-        $this->laisserLeTempsDeBalayer($anneeId);
-        $resultat = $rattrapage->executer(false, $anneeId, $ids, true);
+        [$ids, $anneeId, $portee] = $this->portee($request);
+        $this->laisserLeTempsDeBalayer($anneeId, $portee);
+        $resultat = $rattrapage->executer(false, $anneeId, $ids, true, $portee);
 
         return response()->json($this->charge($resultat));
     }
 
     public function apply(Request $request, SouscriptionsObligatoiresManquantes $rattrapage): JsonResponse|RedirectResponse
     {
-        [$ids, $anneeId] = $this->portee($request);
-        $this->laisserLeTempsDeBalayer($anneeId);
-        $resultat = $rattrapage->executer(true, $anneeId, $ids, true);
+        [$ids, $anneeId, $portee] = $this->portee($request);
+        $this->laisserLeTempsDeBalayer($anneeId, $portee);
+        $resultat = $rattrapage->executer(true, $anneeId, $ids, true, $portee, $this->lignesRetenues($request));
 
         $message = $this->message($resultat);
 
@@ -62,11 +70,32 @@ class CompleterFraisManquantsController extends Controller
      * plein milieu — et une régénération interrompue laisse la caisse à
      * moitié réalignée.
      */
-    private function laisserLeTempsDeBalayer(?int $anneeId): void
+    private function laisserLeTempsDeBalayer(?int $anneeId, $portee): void
     {
-        if ($anneeId !== null) {
+        if ($anneeId !== null || $portee !== null) {
             @set_time_limit(300);
         }
+    }
+
+    /**
+     * Les lignes que l'utilisateur a laissées cochées dans l'aperçu.
+     *
+     * Absent = tout appliquer : c'est le cas des appelants qui n'offrent pas de
+     * sélection. Un tableau VIDE, lui, veut dire « rien » et doit le rester —
+     * d'où la distinction entre `null` et `[]`.
+     *
+     * @return array<int, string>|null
+     */
+    private function lignesRetenues(Request $request): ?array
+    {
+        if (! $request->has('lignes')) {
+            return null;
+        }
+
+        return array_values(array_filter(
+            array_map('strval', (array) $request->input('lignes', [])),
+            static fn (string $cle) => $cle !== '',
+        ));
     }
 
     /**
@@ -77,13 +106,17 @@ class CompleterFraisManquantsController extends Controller
     private function portee(Request $request): array
     {
         $validated = $request->validate([
-            'scope' => 'nullable|in:selection,annee',
+            'scope' => 'nullable|in:selection,annee,filtre',
             'annee_id' => 'nullable|integer|exists:esbtp_annee_universitaires,id',
-            'inscription_ids' => 'required_unless:scope,annee|array|min:1',
+            'inscription_ids' => 'required_if:scope,selection|required_without:scope|array|min:1',
             'inscription_ids.*' => 'integer|exists:esbtp_inscriptions,id',
+            'lignes' => 'nullable|array',
+            'lignes.*' => 'string|max:64',
         ]);
 
-        if (($validated['scope'] ?? 'selection') === 'annee') {
+        $scope = $validated['scope'] ?? 'selection';
+
+        if ($scope === 'annee') {
             $anneeId = $validated['annee_id']
                 ?? ESBTPAnneeUniversitaire::anneeCourante()?->id;
 
@@ -92,10 +125,26 @@ class CompleterFraisManquantsController extends Controller
             // de deviner.
             abort_if(! $anneeId, 422, "Aucune année universitaire courante : précisez l'année à régénérer.");
 
-            return [null, (int) $anneeId];
+            return [null, (int) $anneeId, null];
         }
 
-        return [array_map('intval', $validated['inscription_ids']), null];
+        if ($scope === 'filtre') {
+            // La recherche libre passe par un score de ressemblance plafonné :
+            // elle retrouve une personne, elle ne définit pas un ensemble. En
+            // faire une portée d'écriture donnerait un résultat qui dépend d'un
+            // seuil, que personne ne peut vérifier avant de confirmer.
+            abort_if(
+                filled($request->input('search')),
+                422,
+                "Une recherche libre ne définit pas une portée : videz la recherche, ou cochez les lignes à régénérer.",
+            );
+
+            $filtres = app(FiltresListeInscriptions::class);
+
+            return [null, null, $filtres->appliquer(ESBTPInscription::query(), $request)];
+        }
+
+        return [array_map('intval', $validated['inscription_ids']), null, null];
     }
 
     /**
@@ -114,6 +163,10 @@ class CompleterFraisManquantsController extends Controller
             'lignes' => array_slice($resultat['lignes'], 0, self::MAX_LIGNES_RENDUES),
             'lignes_retrait' => array_slice($resultat['lignes_retrait'], 0, self::MAX_LIGNES_RENDUES),
             'lignes_ajustement' => array_slice($resultat['lignes_ajustement'], 0, self::MAX_LIGNES_RENDUES),
+            'retouches' => count(array_filter(
+                $resultat['lignes_ajustement'],
+                static fn (array $ligne) => ! empty($ligne['montant_deja_retouche']),
+            )),
             'tronque' => max(
                 count($resultat['lignes']),
                 count($resultat['lignes_retrait']),

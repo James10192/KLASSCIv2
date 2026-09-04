@@ -6,6 +6,7 @@ use App\Models\ESBTPFraisSubscription;
 use App\Models\ESBTPInscription;
 use App\Models\ESBTPPaiement;
 use App\Services\ApplicableFraisResolver;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -56,6 +57,10 @@ class SouscriptionsObligatoiresManquantes
 
     /**
      * @param  array<int, int>|null  $inscriptionIds
+     * @param  Builder|null  $portee  Requete d'inscriptions deja filtree (la liste
+     *                                a l'ecran), au lieu d'une annee ou d'une liste d'ids.
+     * @param  array<int, string>|null  $clesRetenues  N'appliquer que ces lignes
+     *                                (cf. `cle` de chaque ligne). null = tout.
      * @return array{
      *     total: int,
      *     inscriptions: int,
@@ -72,11 +77,14 @@ class SouscriptionsObligatoiresManquantes
         bool $appliquer = false,
         ?int $anneeId = null,
         ?array $inscriptionIds = null,
-        bool $ajusterMontants = false
+        bool $ajusterMontants = false,
+        ?Builder $portee = null,
+        ?array $clesRetenues = null
     ): array {
         $this->baremeParScope = [];
+        $retenues = $clesRetenues === null ? null : array_flip($clesRetenues);
 
-        $requete = ESBTPInscription::query()
+        $requete = ($portee ? clone $portee : ESBTPInscription::query())
             ->whereIn('status', ['active', 'en_attente'])
             ->when($anneeId, fn ($q) => $q->where('annee_universitaire_id', $anneeId))
             ->when($inscriptionIds, fn ($q) => $q->whereIn('id', $inscriptionIds))
@@ -88,6 +96,7 @@ class SouscriptionsObligatoiresManquantes
         $aCreer = [];
         $aRetirer = [];
         $aAjuster = [];
+        $inscriptionsTouchees = [];
 
         $requete->chunkById(self::TAILLE_LOT, function (Collection $inscriptions) use (
             &$lignes,
@@ -96,13 +105,20 @@ class SouscriptionsObligatoiresManquantes
             &$aCreer,
             &$aRetirer,
             &$aAjuster,
-            $ajusterMontants
+            &$inscriptionsTouchees,
+            $ajusterMontants,
+            $retenues
         ): void {
             $dejaSouscrit = ESBTPFraisSubscription::query()
                 ->whereIn('inscription_id', $inscriptions->pluck('id'))
                 ->with('fraisCategory')
                 ->get()
                 ->groupBy('inscription_id');
+
+            // Les ajustements attendent la fin du lot : leur alerte « montant
+            // deja retouche » se lit dans le journal d'audit, et une requete par
+            // souscription serait ruineuse sur une annee entiere.
+            $brouillonAjustements = [];
 
             foreach ($inscriptions as $inscription) {
                 $subs = $dejaSouscrit->get($inscription->id, collect());
@@ -127,18 +143,23 @@ class SouscriptionsObligatoiresManquantes
                         continue;
                     }
                     $categorie = $fee['category'];
+                    $cle = 'add:'.$inscription->id.':'.$categorie->id;
                     $lignes[] = $identite + [
+                        'cle' => $cle,
                         'categorie' => $categorie->name,
                         'categorie_id' => $categorie->id,
                         'montant' => $montant,
                         'accepte_en_nature' => (bool) $categorie->accepts_in_kind,
                         'action' => 'ajouter',
                     ];
-                    $aCreer[] = [
-                        'inscription_id' => $inscription->id,
-                        'frais_category_id' => $categorie->id,
-                        'amount' => $montant,
-                    ];
+                    if ($this->retenue($retenues, $cle)) {
+                        $aCreer[] = [
+                            'inscription_id' => $inscription->id,
+                            'frais_category_id' => $categorie->id,
+                            'amount' => $montant,
+                        ];
+                        $inscriptionsTouchees[$inscription->id] = true;
+                    }
                 }
 
                 // Deux requetes par inscription : on ne les paie que si des
@@ -159,8 +180,7 @@ class SouscriptionsObligatoiresManquantes
                             : null;
 
                         if ($ecart !== null) {
-                            $lignesAjustement[] = $identite + $ecart['ligne'];
-                            $aAjuster[] = $ecart['mutation'];
+                            $brouillonAjustements[] = $identite + $ecart;
                         }
 
                         continue;
@@ -172,7 +192,9 @@ class SouscriptionsObligatoiresManquantes
                     if ((float) ($paye[$categorie->id] ?? 0) > 0) {
                         continue;
                     }
+                    $cle = 'del:'.$sub->id;
                     $lignesRetrait[] = $identite + [
+                        'cle' => $cle,
                         'categorie' => $categorie->name,
                         'categorie_id' => $categorie->id,
                         'montant' => (float) $sub->amount,
@@ -182,7 +204,36 @@ class SouscriptionsObligatoiresManquantes
                             ? 'Réservé aux nouveaux'
                             : 'Ne s\'applique plus',
                     ];
-                    $aRetirer[] = $sub->id;
+                    if ($this->retenue($retenues, $cle)) {
+                        $aRetirer[] = $sub->id;
+                        $inscriptionsTouchees[$inscription->id] = true;
+                    }
+                }
+            }
+
+            $retouches = $this->montantsDejaRetouches(
+                array_column(array_column($brouillonAjustements, 'mutation'), 'souscription_id')
+            );
+
+            foreach ($brouillonAjustements as $candidat) {
+                $mutation = $candidat['mutation'];
+                $ligne = $candidat['ligne'];
+                unset($candidat['mutation'], $candidat['ligne']);
+
+                $retouche = $retouches[$mutation['souscription_id']] ?? null;
+                $lignesAjustement[] = $candidat + $ligne + [
+                    // Quelqu'un a deja pose une decision sur ce montant : une
+                    // remise, une bourse, un arrangement. La regeneration ne
+                    // l'ecrase pas d'elle-meme, elle le signale et laisse
+                    // decoche.
+                    'montant_deja_retouche' => $retouche !== null,
+                    'retouche_le' => $retouche['le'] ?? null,
+                    'retouche_par' => $retouche['par'] ?? null,
+                ];
+
+                if ($this->retenue($retenues, $ligne['cle'])) {
+                    $aAjuster[] = $mutation;
+                    $inscriptionsTouchees[$mutation['inscription_id']] = true;
                 }
             }
         });
@@ -195,11 +246,10 @@ class SouscriptionsObligatoiresManquantes
             'total_ajouter' => count($aCreer),
             'total_retirer' => count($aRetirer),
             'total_ajuster' => count($aAjuster),
-            'inscriptions' => count(array_unique(array_merge(
-                array_column($aCreer, 'inscription_id'),
-                array_column($lignesRetrait, 'inscription_id'),
-                array_column($lignesAjustement, 'inscription_id'),
-            ))),
+            // Les inscriptions REELLEMENT touchees : avec une selection
+            // partielle, compter toutes les lignes detectees annoncerait plus
+            // d'etudiants que le bouton n'en modifie.
+            'inscriptions' => count($inscriptionsTouchees),
             'lignes' => $lignes,
             'lignes_retrait' => $lignesRetrait,
             'lignes_ajustement' => $lignesAjustement,
@@ -227,10 +277,18 @@ class SouscriptionsObligatoiresManquantes
             foreach ($aAjuster as $mutation) {
                 // Par le modele et un par un : la table est auditee, et un
                 // changement de montant doit laisser trace de qui l'a fait.
-                ESBTPFraisSubscription::query()
+                $souscription = ESBTPFraisSubscription::query()
                     ->whereKey($mutation['souscription_id'])
-                    ->first()
-                    ?->update(['amount' => $mutation['amount']]);
+                    ->first();
+
+                if (! $souscription) {
+                    continue;
+                }
+
+                // Marque l'ecriture comme automatique : au passage suivant, elle
+                // ne devra pas revenir signalee « retouchee a la main ».
+                $souscription->realignementSurBareme = true;
+                $souscription->update(['amount' => $mutation['amount']]);
             }
         });
 
@@ -244,6 +302,76 @@ class SouscriptionsObligatoiresManquantes
         $resultat['applique'] = true;
 
         return $resultat;
+    }
+
+    /**
+     * Cette ligne fait-elle partie de ce qu'on a demande d'appliquer ?
+     *
+     * `null` veut dire « tout », pour les appelants qui ne proposent aucune
+     * selection (depot en nature, endpoint CLI).
+     *
+     * @param  array<string, int>|null  $retenues
+     */
+    private function retenue(?array $retenues, string $cle): bool
+    {
+        return $retenues === null || isset($retenues[$cle]);
+    }
+
+    /**
+     * Les souscriptions dont le montant a deja ete change par quelqu'un.
+     *
+     * Un montant retouche porte une decision — une remise, une bourse, un
+     * arrangement de rentree. La regeneration ne doit pas l'effacer d'un clic
+     * sans que personne ne l'ait vu passer : elle le signale, et l'ecran laisse
+     * la ligne decochee.
+     *
+     * Ses propres realignements sont exclus par leur marqueur d'audit : sans
+     * cela, tout montant corrige une fois reviendrait signale au passage
+     * suivant, et l'alerte se serait diluee jusqu'a ne plus rien vouloir dire.
+     *
+     * @param  array<int, int>  $souscriptionIds
+     * @return array<int, array{le: string|null, par: int|null}>
+     */
+    private function montantsDejaRetouches(array $souscriptionIds): array
+    {
+        $souscriptionIds = array_values(array_unique(array_filter($souscriptionIds)));
+
+        if ($souscriptionIds === []) {
+            return [];
+        }
+
+        $audits = \OwenIt\Auditing\Models\Audit::query()
+            ->where('auditable_type', ESBTPFraisSubscription::class)
+            ->whereIn('auditable_id', $souscriptionIds)
+            ->where('event', 'updated')
+            ->orderByDesc('created_at')
+            ->get(['auditable_id', 'new_values', 'tags', 'user_id', 'created_at']);
+
+        $parSouscription = [];
+
+        foreach ($audits as $audit) {
+            $id = (int) $audit->auditable_id;
+
+            if (isset($parSouscription[$id])) {
+                continue; // le plus recent suffit a alerter
+            }
+
+            $valeurs = $audit->new_values;
+            if (! is_array($valeurs) || ! array_key_exists('amount', $valeurs)) {
+                continue;
+            }
+
+            if (str_contains((string) $audit->tags, ESBTPFraisSubscription::TAG_REALIGNEMENT)) {
+                continue;
+            }
+
+            $parSouscription[$id] = [
+                'le' => optional($audit->created_at)->format('d/m/Y'),
+                'par' => $audit->user_id ? (int) $audit->user_id : null,
+            ];
+        }
+
+        return $parSouscription;
     }
 
     /**
@@ -317,6 +445,7 @@ class SouscriptionsObligatoiresManquantes
 
         return [
             'ligne' => [
+                'cle' => 'adj:'.$sub->id,
                 'categorie' => $categorie->name,
                 'categorie_id' => $categorie->id,
                 'montant' => $nouveau,
@@ -335,6 +464,7 @@ class SouscriptionsObligatoiresManquantes
             ],
             'mutation' => [
                 'souscription_id' => $sub->id,
+                'inscription_id' => (int) $sub->inscription_id,
                 'amount' => $nouveau,
             ],
         ];

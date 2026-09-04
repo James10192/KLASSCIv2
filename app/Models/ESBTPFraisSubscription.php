@@ -57,6 +57,29 @@ class ESBTPFraisSubscription extends Model implements Auditable
         'restored',
     ];
 
+    /**
+     * Marque l'ecriture en cours comme un realignement automatique sur le bareme.
+     *
+     * Sans ce marqueur, la regeneration ne pourrait pas distinguer ses propres
+     * ecritures d'une decision humaine : au deuxieme passage, chaque montant
+     * qu'elle a elle-meme corrige lui reviendrait signale « retouche a la main »,
+     * et l'alerte censee proteger les arrangements negocies se serait diluee
+     * dans le bruit jusqu'a ne plus rien vouloir dire.
+     *
+     * Transitoire : ne vit que le temps de l'appel a save().
+     */
+    public bool $realignementSurBareme = false;
+
+    public const TAG_REALIGNEMENT = 'frais:realignement-bareme';
+
+    /**
+     * @return array<int, string>
+     */
+    public function generateTags(): array
+    {
+        return $this->realignementSurBareme ? [self::TAG_REALIGNEMENT] : [];
+    }
+
     public function inscription(): BelongsTo
     {
         return $this->belongsTo(ESBTPInscription::class, 'inscription_id');

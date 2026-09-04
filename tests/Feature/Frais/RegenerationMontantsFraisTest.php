@@ -207,4 +207,115 @@ class RegenerationMontantsFraisTest extends TestCase
         $reponse->assertOk();
         $this->assertNotNull($this->ligneDe($reponse->json('lignes_ajustement'), $categorie->id));
     }
+
+    public function test_on_peut_n_appliquer_qu_une_partie_des_ecarts(): void
+    {
+        [$categorieA, $souscriptionA] = $this->fraisSouscrit(15000, 10000);
+        [$categorieB, $souscriptionB] = $this->fraisSouscrit(9000, 6000);
+
+        $apercu = $this->service()->executer(false, null, [$this->inscription->id], true);
+        $ligneA = $this->ligneDe($apercu['lignes_ajustement'], $categorieA->id);
+        $this->assertNotNull($ligneA);
+        $this->assertNotNull($this->ligneDe($apercu['lignes_ajustement'], $categorieB->id));
+
+        // On ne retient que la premiere ligne.
+        $resultat = $this->service()->executer(
+            true, null, [$this->inscription->id], true, null, [$ligneA['cle']]
+        );
+
+        $this->assertSame(1, $resultat['total_ajuster']);
+        $this->assertSame(15000.0, (float) $souscriptionA->fresh()->amount);
+        $this->assertSame(6000.0, (float) $souscriptionB->fresh()->amount, 'La ligne non retenue ne doit pas bouger.');
+    }
+
+    public function test_une_selection_vide_n_ecrit_rien(): void
+    {
+        [, $souscription] = $this->fraisSouscrit(15000, 10000);
+
+        $resultat = $this->service()->executer(true, null, [$this->inscription->id], true, null, []);
+
+        $this->assertSame(0, $resultat['total_ajuster']);
+        $this->assertSame(10000.0, (float) $souscription->fresh()->amount);
+    }
+
+    public function test_un_montant_retouche_a_la_main_est_signale(): void
+    {
+        [$categorie, $souscription] = $this->fraisSouscrit(15000, 12000);
+
+        // Une remise accordee a la main : c'est une decision, pas une erreur.
+        $souscription->update(['amount' => 10000]);
+
+        $apercu = $this->service()->executer(false, null, [$this->inscription->id], true);
+        $ligne = $this->ligneDe($apercu['lignes_ajustement'], $categorie->id);
+
+        $this->assertNotNull($ligne);
+        $this->assertTrue($ligne['montant_deja_retouche'], 'Le montant retouche doit etre signale.');
+        $this->assertNotNull($ligne['retouche_le']);
+    }
+
+    public function test_un_montant_jamais_touche_n_est_pas_signale(): void
+    {
+        [$categorie] = $this->fraisSouscrit(15000, 10000);
+
+        $apercu = $this->service()->executer(false, null, [$this->inscription->id], true);
+        $ligne = $this->ligneDe($apercu['lignes_ajustement'], $categorie->id);
+
+        $this->assertNotNull($ligne);
+        $this->assertFalse($ligne['montant_deja_retouche']);
+    }
+
+    public function test_la_regeneration_ne_prend_pas_ses_propres_ecritures_pour_des_retouches(): void
+    {
+        [$categorie, $souscription] = $this->fraisSouscrit(15000, 10000);
+
+        // Premier passage : la regeneration ecrit 15 000.
+        $this->service()->executer(true, null, [$this->inscription->id], true);
+        $this->assertSame(15000.0, (float) $souscription->fresh()->amount);
+
+        // L'ecole change encore le tarif : nouvel ecart, mais la seule ecriture
+        // passee est la notre. Sans son marqueur, la ligne reviendrait signalee
+        // « retouchee a la main » et l'alerte se serait diluee.
+        $categorie->update(['default_amount' => 18000]);
+
+        $apercu = $this->service()->executer(false, null, [$this->inscription->id], true);
+        $ligne = $this->ligneDe($apercu['lignes_ajustement'], $categorie->id);
+
+        $this->assertNotNull($ligne);
+        $this->assertFalse($ligne['montant_deja_retouche']);
+    }
+
+    public function test_la_portee_filtre_suit_les_filtres_de_la_liste(): void
+    {
+        [$categorie] = $this->fraisSouscrit(15000, 10000);
+        $this->inscription->update(['date_inscription' => '2026-09-10']);
+
+        $dansLaPeriode = $this->postJson(route('esbtp.inscriptions.frais-manquants.preview'), [
+            'scope' => 'filtre',
+            'annee' => $this->inscription->annee_universitaire_id,
+            'status' => 'all',
+            'date_debut' => '2026-09-01',
+            'date_fin' => '2026-09-30',
+        ]);
+        $dansLaPeriode->assertOk();
+        $this->assertNotNull($this->ligneDe($dansLaPeriode->json('lignes_ajustement'), $categorie->id));
+
+        $horsPeriode = $this->postJson(route('esbtp.inscriptions.frais-manquants.preview'), [
+            'scope' => 'filtre',
+            'annee' => $this->inscription->annee_universitaire_id,
+            'status' => 'all',
+            'date_debut' => '2026-10-01',
+            'date_fin' => '2026-10-31',
+        ]);
+        $horsPeriode->assertOk()->assertJsonPath('total_ajuster', 0);
+    }
+
+    public function test_une_recherche_libre_ne_definit_pas_une_portee(): void
+    {
+        $this->fraisSouscrit(15000, 10000);
+
+        $this->postJson(route('esbtp.inscriptions.frais-manquants.preview'), [
+            'scope' => 'filtre',
+            'search' => 'kouame',
+        ])->assertStatus(422);
+    }
 }
