@@ -515,6 +515,10 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
         Route::post('/pull', [App\Http\Controllers\API\CLI\CLIMaintenanceController::class, 'pull'])->name('pull');
         Route::post('/seed-demo', [App\Http\Controllers\API\CLI\CLIMaintenanceController::class, 'seedDemo'])->name('seed-demo');
         Route::post('/evaluations/sync-notes', [App\Http\Controllers\API\CLI\CLIMaintenanceController::class, 'evaluationsSyncNotes'])->name('evaluations.sync-notes');
+        // Deplacement de semestre decide par l'ecole, pas devine par le code :
+        // la liste d'evaluations voyage dans la requete. Simulation par defaut.
+        Route::post('/evaluations/deplacer-periode', [App\Http\Controllers\API\CLI\CLIEvaluationDeplacementController::class, 'deplacer'])
+            ->name('evaluations.deplacer-periode');
         Route::post('/academic-pilotage/backfill', [App\Http\Controllers\API\CLI\CLIAcademicPilotageController::class, 'backfill'])
             ->name('academic-pilotage.backfill');
         Route::post('/academic-pilotage/refresh', [App\Http\Controllers\API\CLI\CLIAcademicPilotageController::class, 'refresh'])
