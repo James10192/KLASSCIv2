@@ -185,9 +185,14 @@
                 : preview.total_ajuster;
             const vide = !preview.total_ajouter && !preview.total_retirer && !detectes;
 
-            $('rf-modal-sub').textContent = vide
-                ? 'Rien à appliquer'
-                : ((preview.inscriptions || 1) + ' inscription(s) concernée(s)');
+            // Sous-titre pose ici pour l'etat vide seulement : quand il y a des
+            // lignes, c'est rafraichir() qui l'ecrit, a chaque coche. Annoncer le
+            // total detecte juste au-dessus du bouton de confirmation laissait
+            // croire qu'on allait tout appliquer, alors que les lignes protegees
+            // arrivent decochees et ne partiront pas.
+            if (vide) {
+                $('rf-modal-sub').textContent = 'Rien à appliquer';
+            }
 
             if (preview.retouches) {
                 alerte.hidden = false;
@@ -207,6 +212,14 @@
                 compteur.textContent = coches + ' sélectionnée(s) sur ' + cases.length;
                 toggleAll.checked = coches === cases.length && cases.length > 0;
                 toggleAll.indeterminate = coches > 0 && coches < cases.length;
+
+                // Ce que le bouton va REELLEMENT ecrire, et rien d'autre.
+                const dossiers = new Set(cases.filter((c) => c.checked)
+                    .map((c) => String(c.value).split(':')[1] || c.value));
+                $('rf-modal-sub').textContent = coches === 0
+                    ? 'Aucune ligne cochée — rien ne sera écrit'
+                    : (coches + ' ligne(s) sur ' + dossiers.size + ' dossier(s)');
+
                 rafraichirBouton();
             }
 

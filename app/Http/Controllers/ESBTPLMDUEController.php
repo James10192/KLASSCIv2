@@ -856,9 +856,10 @@ class ESBTPLMDUEController extends Controller
      * le plafond mécaniquement, et plus aucun élément ne pourrait être ajouté
      * nulle part. Le refus serait permanent et sans explication utile.
      *
-     * `$parcoursId` reste nul tant que les écrans n'écrivent que la composition
-     * commune : on compte alors les seules lignes communes, ce qui est
-     * exactement le budget de cette composition-là.
+     * Le compte porte sur l'UNION DEDUPLIQUEE de la composition commune et de
+     * celle du parcours, un élément une seule fois, la réservée primant. Ne
+     * compter que les réservées laisserait réserver à l'infini sur une unité
+     * déjà pourvue en commun : le plafond ne mordrait jamais.
      */
     private function checkCreditOverflow(
         ESBTPUniteEnseignement $ue,
@@ -871,13 +872,11 @@ class ESBTPLMDUEController extends Controller
             return null;
         }
 
-        $query = DB::table('esbtp_ue_matiere')
-            ->where('unite_enseignement_id', $ue->id)
-            ->where('parcours_id', $parcoursId ?? 0);
-        if ($excludeMatiereId) {
-            $query->where('matiere_id', '!=', $excludeMatiereId);
-        }
-        $creditsAutres = (int) $query->sum('credit_ecue');
+        $creditsAutres = $this->composition->creditsDe(
+            $ue,
+            $parcoursId ?? CompositionUe::COMMUN,
+            $excludeMatiereId ? [(int) $excludeMatiereId] : []
+        );
 
         if ($creditsAutres + (int) $creditEcue <= (int) $ue->credit) {
             return null;

@@ -45,11 +45,17 @@
            la fiche part au guichet pour etre signee, et la photo s'y agrafe. */
         .photo-vide { border: 0.5pt dashed #94a3b8; height: 29mm; }
         .photo-vide-txt { font-size: 6.5px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.06em; padding-top: 12mm; }
+        /* Le code QR se loge dans la troisieme cellule du bloc signature : il
+           accompagne le geste — la fiche revient signee, on la scanne pour
+           retrouver le dossier. */
+        .signs .qr-cell { width: 26mm; text-align: center; vertical-align: bottom; }
+        .qr-img { width: 20mm; height: 20mm; }
+        .qr-txt { font-size: 5.5px; color: #94a3b8; letter-spacing: 0.04em; margin-top: 0.8mm; }
         .lbl { font-size: 6.5px; color: #64748b; text-transform: uppercase; letter-spacing: 0.04em; }
         .val { font-size: 9.5px; font-weight: bold; margin-top: 1px; }
         .rights { margin-top: 3mm; border: 0.5pt solid {{ $hdrBg }}; padding: 2.5mm; }
         .signs { width: 100%; margin-top: 5mm; }
-        .signs td { width: 50%; text-align: center; height: 14mm; vertical-align: bottom; font-size: 8px; }
+        .signs td { text-align: center; height: 14mm; vertical-align: bottom; font-size: 8px; }
         .sign-line { border-top: 0.4pt solid #1e293b; width: 72%; margin: 0 auto; padding-top: 1mm; }
     </style>
 </head>
@@ -115,6 +121,12 @@
         <tr>
             <td><div class="sign-line">Signature de l'étudiant</div></td>
             <td><div class="sign-line">Cachet et signature de l'administration</div></td>
+            @if(!empty($qr))
+                <td class="qr-cell">
+                    <img src="{{ $qr }}" alt="" class="qr-img">
+                    <div class="qr-txt">Scanner pour ouvrir le dossier</div>
+                </td>
+            @endif
         </tr>
     </table>
 </div>

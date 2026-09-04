@@ -230,6 +230,16 @@
             })
             .then((data) => {
                 resultsContainer.innerHTML = data.html;
+                // Le serveur remet deux dates a l'envers a l'endroit avant de
+                // filtrer. Sans ce report, les champs et les pastilles gardaient
+                // l'ordre saisi au-dessus d'une liste juste : l'ecran affirmait
+                // « a partir du 22/09 » en montrant des dossiers du 02/09.
+                if (data.periode) {
+                    ['date_debut', 'date_fin'].forEach(function (cle) {
+                        const champ = form && form.querySelector('#' + cle);
+                        if (champ) champ.value = data.periode[cle] || '';
+                    });
+                }
                 if (options.pushState !== false) {
                     window.history.pushState({ url: data.url }, '', data.url);
                 }
@@ -300,6 +310,16 @@
             resetBtn.addEventListener('click', () => {
                 form.querySelectorAll('input[type="text"], input[type="search"], input[type="date"]').forEach((i) => (i.value = ''));
                 form.querySelectorAll('select').forEach((s) => (s.value = s.querySelector('option').value));
+
+                // Le statut est le seul filtre dont le defaut N'EST PAS la
+                // premiere option. La liste s'ouvre sur « Validees », mais la
+                // premiere entree du menu est « Tous statuts » : remettre le
+                // select a sa premiere option envoyait donc status=all, et
+                // « reinitialiser » ne rendait pas la vue de depart mais une
+                // TROISIEME vue, plus large que celle qu'on avait en arrivant.
+                const statut = form.querySelector('select[name="status"]');
+                if (statut) statut.value = 'active';
+
                 document.getElementById('sort-input').value = 'created_at';
                 document.getElementById('dir-input').value = 'desc';
                 submitFilterForm();

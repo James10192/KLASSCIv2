@@ -134,9 +134,21 @@ class ESBTPUniteEnseignement extends Model implements Auditable
      */
     public function getEcuesEffectifs(?int $parcoursId = null): \Illuminate\Support\Collection
     {
-        $pivotEcues = $this->decouperParParcours($this->ecues, $parcoursId);
-        $idsPivot = $pivotEcues->pluck('id')->all();
+        // Les identifiants connus du pivot se relevent AVANT tout filtrage.
+        //
+        // Les calculer sur la collection filtree defaisait la regle trois lignes
+        // plus bas : un element reserve au parcours B porte une ligne de pivot ET
+        // la cle etrangere (l'import ecrit les deux). Lu pour le parcours A, il
+        // etait bien ecarte du pivot, donc absent de cette liste, donc REPRIS par
+        // le repli — et il entrait au bulletin des etudiants de A, sans son
+        // pivot, donc avec le coefficient et le credit de la matiere au lieu de
+        // ceux de la maquette. La contamination changeait de sens, elle ne
+        // disparaissait pas.
+        $idsPivot = $this->ecues->pluck('id')->all();
 
+        $pivotEcues = $this->decouperParParcours($this->ecues, $parcoursId);
+
+        // Le repli ne vaut que pour ce que le pivot ignore VRAIMENT.
         $parCleEtrangere = $this->matieres
             ->where('is_active', true)
             ->reject(fn ($matiere) => in_array($matiere->id, $idsPivot, true));
@@ -185,6 +197,20 @@ class ESBTPUniteEnseignement extends Model implements Auditable
             });
         }
 
+        if ($parcoursId === null) {
+            // L'ecran de l'unite montre sa composition ENTIERE. Dedupliquer ici
+            // ferait disparaitre la version du parcours 5 des que celle du 9
+            // existe aussi — silencieusement, et sur le seul ecran dont c'est le
+            // role de les montrer toutes.
+            return $ecues->values();
+        }
+
+        // Une seule ligne par element : la reservee prime sur la commune. Sans
+        // cette reduction les deux remonteraient et l'element serait compte DEUX
+        // fois au bulletin — note doublee au numerateur, coefficient au
+        // denominateur, credit doublee. La moyenne resterait juste par
+        // compensation, les credits non, et deux coefficients differents la
+        // fausseraient elle aussi. Aucune erreur ne serait levee.
         return $ecues
             ->groupBy('id')
             ->map(fn ($lignes) => $lignes->sortByDesc(

@@ -1066,6 +1066,16 @@ class ESBTPStudentController extends Controller
             if ($request->filled('status')) {
                 $filterLabels[] = 'Statut : ' . ucfirst($request->input('status'));
             }
+            // Le genre etait applique a l'export sans jamais y etre annonce : le
+            // document disait « Filtres appliques : Statut : Actif » au-dessus
+            // d'une population d'hommes seulement. Un recapitulatif incomplet est
+            // pire qu'absent — il donne a croire qu'on a tout vu.
+            if ($request->filled('sexe')) {
+                $sexe = strtoupper(substr(trim((string) $request->input('sexe')), 0, 1));
+                if (in_array($sexe, ['M', 'F'], true)) {
+                    $filterLabels[] = 'Genre : ' . ($sexe === 'M' ? 'Masculin' : 'Féminin');
+                }
+            }
 
             // Group data if requested
             if ($groupBy) {

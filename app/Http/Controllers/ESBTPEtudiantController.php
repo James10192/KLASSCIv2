@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Domain\BtsTroncCommun\BtsUiPresenter;
 use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPEtudiantDocument;
+use App\Services\Documents\StockageDocumentEtudiant;
 use App\Models\ESBTPFiliere;
 use App\Models\ESBTPNiveauEtude;
 use App\Models\ESBTPAnneeUniversitaire;
@@ -2457,8 +2458,11 @@ class ESBTPEtudiantController extends Controller
         ]);
 
         $file = $request->file('fichier');
-        $filename = 'etudiant_' . $etudiant->id . '_' . time() . '_' . \Str::slug(pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME)) . '.' . $file->getClientOriginalExtension();
-        $path = $file->storeAs('etudiants/' . $etudiant->id . '/documents', $filename, 'public');
+        // Disque PRIVE. Ces fichiers partaient sur le disque `public`, que le
+        // serveur web sert directement : un extrait de naissance etait lisible
+        // par qui devinait l'adresse, sans authentification ni trace. Les routes
+        // etaient pourtant gardees — le trou etait a cote d'elles.
+        $path = app(StockageDocumentEtudiant::class)->enregistrer($file, (int) $etudiant->id);
 
         $document = ESBTPEtudiantDocument::create([
             'etudiant_id' => $etudiant->id,
@@ -2484,13 +2488,19 @@ class ESBTPEtudiantController extends Controller
     public function downloadDocument(ESBTPEtudiant $etudiant, ESBTPEtudiantDocument $document, Request $request)
     {
         abort_if($document->etudiant_id !== $etudiant->id, 403);
-        abort_unless(Storage::disk('public')->exists($document->file_path), 404);
+
+        // Le disque se resout : les depots d'avant la mise a l'abri dorment
+        // encore sur le disque expose, et doivent continuer de s'ouvrir tant que
+        // la commande de reprise n'est pas passee sur l'instance.
+        $stockage = app(StockageDocumentEtudiant::class);
+        $disque = $stockage->disqueDe($document->file_path);
+        abort_unless($disque !== null, 404);
 
         if ($request->boolean('force')) {
-            return Storage::disk('public')->download($document->file_path, $document->file_name);
+            return Storage::disk($disque)->download($document->file_path, $document->file_name);
         }
 
-        return Storage::disk('public')->response($document->file_path, $document->file_name);
+        return Storage::disk($disque)->response($document->file_path, $document->file_name);
     }
 
     public function destroyDocument(ESBTPEtudiant $etudiant, ESBTPEtudiantDocument $document)

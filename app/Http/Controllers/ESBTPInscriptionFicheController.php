@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Helpers\SettingsHelper;
 use App\Models\ESBTPInscription;
+use App\Services\Documents\CodeQrDocument;
 use App\Services\Photos\StockagePhoto;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
@@ -25,13 +26,26 @@ class ESBTPInscriptionFicheController extends Controller
      */
     private const PHOTO_OCTETS_MAX = 1_500_000;
 
-    public function preview(Request $request, ESBTPInscription $inscription, StockagePhoto $photos)
-    {
+    public function preview(
+        Request $request,
+        ESBTPInscription $inscription,
+        StockagePhoto $photos,
+        CodeQrDocument $codesQr
+    ) {
         $inscription->load(['etudiant', 'classe.filiere', 'classe.niveau', 'filiere', 'niveau', 'anneeUniversitaire']);
         $school = SettingsHelper::getSchoolInfo();
         $photo = $this->photoEmbarquee($inscription, $photos);
 
-        $pdf = Pdf::loadView('esbtp.inscriptions.pdf.fiche-double', compact('inscription', 'school', 'photo'))
+        // Le code QR ramene le papier au dossier : la fiche part au guichet,
+        // revient signee, et il faut alors retrouver l'eleve. Il ouvre sa fiche
+        // directement. Il n'expose rien — l'adresse mene a l'application, qui
+        // demande de s'identifier ; qui scanne sans compte voit un ecran de
+        // connexion.
+        $qr = $inscription->etudiant
+            ? $codesQr->pour(route('esbtp.etudiants.show', $inscription->etudiant))
+            : null;
+
+        $pdf = Pdf::loadView('esbtp.inscriptions.pdf.fiche-double', compact('inscription', 'school', 'photo', 'qr'))
             ->setPaper('a4', 'portrait')
             ->setOptions([
                 'dpi' => 150,

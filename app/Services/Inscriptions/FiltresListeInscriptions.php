@@ -82,20 +82,26 @@ class FiltresListeInscriptions
             $query->whereHas('classe', fn ($q) => $q->where('parcours_id', $parcours));
         }
 
+        // Colonnes QUALIFIEES : le tri par nom d'etudiant ajoute un `leftJoin` sur
+        // `esbtp_etudiants`, qui porte AUSSI une colonne `annee_universitaire_id`.
+        // Sans le prefixe, MySQL refusait la requete — « Column
+        // 'annee_universitaire_id' in WHERE is ambiguous », erreur 1052 — et
+        // trier par etudiant rendait un 500. Meme raison pour `date_inscription`,
+        // presente des deux cotes.
         if ($annee) {
-            $query->where('annee_universitaire_id', $annee);
+            $query->where('esbtp_inscriptions.annee_universitaire_id', $annee);
         } elseif ($avecDefautAnnee && ($courante = ESBTPAnneeUniversitaire::where('is_current', true)->first())) {
-            $query->where('annee_universitaire_id', $courante->id);
+            $query->where('esbtp_inscriptions.annee_universitaire_id', $courante->id);
         }
 
         [$debut, $fin] = $this->periode($request);
 
         if ($debut) {
-            $query->whereDate('date_inscription', '>=', $debut);
+            $query->whereDate('esbtp_inscriptions.date_inscription', '>=', $debut);
         }
 
         if ($fin) {
-            $query->whereDate('date_inscription', '<=', $fin);
+            $query->whereDate('esbtp_inscriptions.date_inscription', '<=', $fin);
         }
 
         if ($avecStatut && $status && $status !== 'all') {
@@ -114,6 +120,20 @@ class FiltresListeInscriptions
      */
     private function appliquerStatut(Builder $query, string $status): void
     {
+        // « Validee » est la contrepartie exacte de « non validee » ci-dessous :
+        // active ET le parcours de validation alle a son terme. L'indicateur du
+        // bandeau comptait deja ainsi ; le clic, lui, ne filtrait que sur le
+        // statut. Sur une annee ou deux inscriptions sont actives avec un
+        // parcours inacheve, l'indicateur annoncait 0 et le clic rendait 2 —
+        // deux nombres contradictoires cote a cote, et personne pour savoir
+        // lequel dit vrai. Ces deux-la appartiennent a « non validees », qui les
+        // compte deja.
+        if ($status === 'active') {
+            $query->where('status', 'active')->where('workflow_step', 'etudiant_cree');
+
+            return;
+        }
+
         if ($status !== 'non_validee') {
             $query->where('status', $status);
 

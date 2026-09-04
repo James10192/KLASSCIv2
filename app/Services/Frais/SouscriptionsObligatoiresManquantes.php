@@ -7,6 +7,7 @@ use App\Models\ESBTPInscription;
 use App\Models\ESBTPPaiement;
 use App\Services\ApplicableFraisResolver;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -294,30 +295,52 @@ class SouscriptionsObligatoiresManquantes
 
         $auteur = auth()->id() ?? \App\Models\User::query()->min('id');
 
-        DB::transaction(function () use ($aCreer, $aRetirer, $aAjuster, $auteur): void {
+        $doublons = 0;
+
+        DB::transaction(function () use ($aCreer, $aRetirer, $aAjuster, $auteur, &$doublons): void {
             foreach ($aCreer as $ligne) {
-                // `firstOrCreate` et non `create` : une caisse ouverte peut
-                // souscrire ce frais entre l'apercu et la confirmation, et
-                // l'unicite (inscription, categorie) leverait alors une exception
-                // NON RATTRAPEE, au milieu de la transaction. Toute la
-                // regeneration partirait au rollback — sur une annee entiere,
-                // les ajouts, retraits et ajustements des deux mille autres
-                // inscriptions avec elle. La regeneration deviendrait
-                // impraticable tant qu'un guichet travaille.
+                // Une caisse ouverte, ou une seconde regeneration, peut souscrire
+                // ce frais pendant que nous ecrivons. L'unicite
+                // (inscription, categorie) leve alors une 1062 qui, non
+                // rattrapee, avorte TOUTE la transaction : sur une portee
+                // « annee entiere », les ajouts, retraits et ajustements des
+                // deux mille autres inscriptions partent avec elle.
                 //
-                // Le frais existe deja : c'est precisement le resultat voulu.
-                ESBTPFraisSubscription::firstOrCreate(
-                    [
-                        'inscription_id' => $ligne['inscription_id'],
-                        'frais_category_id' => $ligne['frais_category_id'],
-                    ],
-                    $ligne + [
-                        'is_active' => true,
-                        'subscribed_at' => now(),
-                        'created_by' => $auteur,
-                        'notes' => 'Régénération des frais obligatoires',
-                    ]
-                );
+                // `firstOrCreate` NE SUFFIT PAS, et l'avoir cru etait une erreur.
+                // En Laravel 9 il fait un SELECT puis un `save()` : il relit
+                // avant d'ecrire, mais ne rattrape rien de ce qui s'insere APRES
+                // sa lecture. Contre une vraie course, il est aussi nu que
+                // `create`. Il ferme la fenetre large — celle qui separe l'apercu
+                // de la confirmation, des secondes ou des minutes — et laisse
+                // ouverte la fenetre etroite, a l'interieur de la transaction.
+                //
+                // C'est donc le rattrapage de la violation qui fait foi. Sur
+                // MySQL et MariaDB une insertion en echec n'annule pas la
+                // transaction en cours : on peut la voir passer et continuer.
+                // Le frais existe deja — c'est precisement le resultat voulu.
+                try {
+                    ESBTPFraisSubscription::firstOrCreate(
+                        [
+                            'inscription_id' => $ligne['inscription_id'],
+                            'frais_category_id' => $ligne['frais_category_id'],
+                        ],
+                        $ligne + [
+                            'is_active' => true,
+                            'subscribed_at' => now(),
+                            'created_by' => $auteur,
+                            'notes' => 'Régénération des frais obligatoires',
+                        ]
+                    );
+                } catch (QueryException $e) {
+                    if (! $this->estUnDoublon($e)) {
+                        throw $e;
+                    }
+
+                    // Quelqu'un nous a devances. On le note, sans bruit : ce
+                    // n'est pas une anomalie, c'est le fonctionnement normal de
+                    // deux guichets ouverts en meme temps.
+                    $doublons++;
+                }
             }
             if ($aRetirer !== []) {
                 // Une par une, par le modele. Une suppression de masse par le
@@ -348,6 +371,15 @@ class SouscriptionsObligatoiresManquantes
                 $souscription->update(['amount' => $mutation['amount']]);
             }
         });
+
+        if ($doublons > 0) {
+            // Sans cette trace, un ecart entre « n ajoutes » annonce et ce qui
+            // existe en base resterait inexplicable.
+            Log::info('[frais] souscriptions deja creees par un autre guichet pendant la regeneration', [
+                'doublons_absorbes' => $doublons,
+                'annee_id' => $anneeId,
+            ]);
+        }
 
         Log::warning('[frais] regeneration des souscriptions obligatoires', [
             'ajoutes' => count($aCreer),
@@ -450,6 +482,26 @@ class SouscriptionsObligatoiresManquantes
         }
 
         return $parSouscription;
+    }
+
+    /**
+     * Cette erreur est-elle une violation d'unicite, et non autre chose ?
+     *
+     * On ne rattrape QUE le doublon. Une contrainte de cle etrangere, une colonne
+     * inconnue ou une base injoignable doivent continuer de remonter : les
+     * avaler ferait passer une regeneration cassee pour une regeneration reussie.
+     *
+     * SQLSTATE 23000 couvre les violations d'integrite ; le code pilote 1062 sur
+     * MySQL et MariaDB designe precisement l'entree dupliquee.
+     */
+    private function estUnDoublon(QueryException $e): bool
+    {
+        if (($e->errorInfo[1] ?? null) === 1062) {
+            return true;
+        }
+
+        return $e->getCode() === '23000'
+            && str_contains(mb_strtolower($e->getMessage()), 'duplicate entry');
     }
 
     /**
