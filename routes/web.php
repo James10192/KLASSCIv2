@@ -1422,7 +1422,7 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 ->middleware('can:markInKind,inscription')
                 ->name('inscriptions.in-kind-deposits.destroy');
 
-            Route::middleware(['permission:inscriptions.edit', 'throttle:20,1'])->group(function () {
+            Route::middleware(['permission:frais.regenerate', 'throttle:20,1'])->group(function () {
                 Route::post('/inscriptions/frais-manquants/preview', [\App\Http\Controllers\ESBTP\CompleterFraisManquantsController::class, 'preview'])
                     ->name('inscriptions.frais-manquants.preview');
                 Route::post('/inscriptions/frais-manquants', [\App\Http\Controllers\ESBTP\CompleterFraisManquantsController::class, 'apply'])

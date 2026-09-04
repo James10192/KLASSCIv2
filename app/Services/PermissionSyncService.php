@@ -240,6 +240,13 @@ class PermissionSyncService
             // sans qu'on ait a y repenser.
             'lmd.rattrapage.notes.saisir',
             'lmd.jury.sign',
+            // Née du découpage de « Régénérer les frais » : l'action vivait sous
+            // `inscriptions.edit`, elle a maintenant son droit. La garde de route
+            // voyage avec le code et s'est donc refermée au déploiement ; sans
+            // cette ligne, la synchronisation saute tout rôle déjà peuplé —
+            // c'est-à-dire la comptabilité de chaque instance en service — et le
+            // bouton disparaîtrait pour tout le monde, superAdmin excepté.
+            'frais.regenerate',
             // `module.lmd.access` et `lmd.jury.view` n'ont PAS leur place ici :
             // ils existaient avant ce découpage et figuraient déjà dans les
             // défauts des mêmes rôles. Les remettre dans le rattrapage ne les

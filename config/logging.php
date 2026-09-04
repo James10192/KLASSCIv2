@@ -69,6 +69,7 @@ return [
             'path' => storage_path('logs/laravel.log'),
             'level' => env('LOG_LEVEL', 'debug'),
             'permission' => 0664,
+            'tap' => [\App\Logging\CaviarderLeContexte::class],
             'formatter' => \Monolog\Formatter\LineFormatter::class,
             'formatter_with' => [
                 'format' => "[%datetime%] %channel%.%level_name%: %message% %context% %extra%\n",
@@ -84,6 +85,7 @@ return [
             'level' => env('LOG_LEVEL', 'debug'),
             'days' => 14,
             'permission' => 0664,
+            'tap' => [\App\Logging\CaviarderLeContexte::class],
             'formatter' => \Monolog\Formatter\LineFormatter::class,
             'formatter_with' => [
                 'format' => "[%datetime%] %channel%.%level_name%: %message% %context% %extra%\n",
@@ -99,6 +101,7 @@ return [
             'level' => 'debug',
             'days' => 7,
             'permission' => 0664,
+            'tap' => [\App\Logging\CaviarderLeContexte::class],
             'formatter' => \Monolog\Formatter\LineFormatter::class,
             'formatter_with' => [
                 'format' => "[%datetime%] %channel%.%level_name%: %message% %context% %extra%\n",
@@ -114,6 +117,7 @@ return [
             'level' => 'debug',
             'days' => 7,
             'permission' => 0664,
+            'tap' => [\App\Logging\CaviarderLeContexte::class],
             'formatter' => \Monolog\Formatter\LineFormatter::class,
             'formatter_with' => [
                 'format' => "[%datetime%] %channel%.%level_name%: %message% %context% %extra%\n",
@@ -129,6 +133,7 @@ return [
             'level' => 'debug',
             'days' => 7,
             'permission' => 0664,
+            'tap' => [\App\Logging\CaviarderLeContexte::class],
             'formatter' => \Monolog\Formatter\LineFormatter::class,
             'formatter_with' => [
                 'format' => "[%datetime%] %channel%.%level_name%: %message% %context% %extra%\n",

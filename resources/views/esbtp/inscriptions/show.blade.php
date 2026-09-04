@@ -1820,7 +1820,7 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                             <div class="is-section-header">
                                 <div class="is-section-icon"><i class="fas fa-chart-line"></i></div>
                                 <div class="is-section-title">Situation Financière Détaillée</div>
-                                @can('inscriptions.edit')
+                                @can('frais.regenerate')
                                 <form method="POST" class="ms-auto">
                                     @csrf
                                     <input type="hidden" name="inscription_ids[]" value="{{ $inscription->id }}">

@@ -50,7 +50,11 @@ class ESBTPAnalyticsController extends Controller
     ): View {
         $context = AnalyticsContext::fromRequest($request);
 
-        $cashFlowResult = $this->safePredict(new CachedPredictor($cashFlow), $context);
+        // La reference est gardee : le decorateur porte l'heure du calcul, et
+        // sans elle une prevision d'il y a une heure s'affiche comme une
+        // prevision de l'instant.
+        $cashFlowCache = new CachedPredictor($cashFlow);
+        $cashFlowResult = $this->safePredict($cashFlowCache, $context);
         $defaultRiskResult = $this->safePredict(new CachedPredictor($defaultRisk), $context);
         $anomalies = $this->safeDetect($anomalyDetector, $context);
         $cashFlowAccuracy = $this->safeAccuracy($accuracy, 'cash_flow');
@@ -71,7 +75,10 @@ class ESBTPAnalyticsController extends Controller
             'annees'           => ESBTPAnneeUniversitaire::orderBy('name', 'desc')->get(),
             'filieres'         => ESBTPFiliere::orderBy('name')->get(),
             'classes'          => ESBTPClasse::orderBy('name')->get(),
+            // Le traitement planifie (table AnalyticsPrediction) — a ne pas
+            // confondre avec la fraicheur du chiffre affiche juste au-dessus.
             'lastComputedAt'   => $this->lastComputedAt(),
+            'cashFlowComputedAt' => $cashFlowCache->lastComputedAt(),
         ]);
     }
 

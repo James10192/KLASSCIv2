@@ -665,7 +665,7 @@ tr[data-inscription-id] > td { transition: background .15s ease; }
                             <span x-text="bulkSyncing ? 'Synchronisation…' : 'Actualiser parcours BTS'"></span>
                         </button>
                     @endcan
-                    @can('inscriptions.edit')
+                    @can('frais.regenerate')
                         {{-- Rejoue le bareme. Une souscription fige le tarif du jour de
                              l'inscription : sans ca, corriger le prix d'un frais dans le
                              parametrage ne rattrape aucun etudiant deja inscrit.
@@ -970,7 +970,7 @@ tr[data-inscription-id] > td { transition: background .15s ease; }
                     <i class="fas fa-download"></i>Exporter
                 </button>
             @endcan
-            @can('inscriptions.edit')
+            @can('frais.regenerate')
                 <button type="button" class="ii-bulk-btn" onclick="iiBulkFraisManquants()">
                     <i class="fas fa-rotate"></i>Régénérer les frais
                 </button>

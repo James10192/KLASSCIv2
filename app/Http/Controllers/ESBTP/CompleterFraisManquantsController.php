@@ -37,7 +37,11 @@ class CompleterFraisManquantsController extends Controller
     public function __construct()
     {
         $this->middleware('auth');
-        $this->middleware('permission:inscriptions.edit');
+        // `frais.regenerate` et non `inscriptions.edit` : reecrire les montants
+        // dus change ce que l'ecole reclame aux familles, parfois sur une annee
+        // entiere. Corriger un dossier et retarifer une promotion ne se
+        // decident pas au meme endroit.
+        $this->middleware('permission:frais.regenerate');
     }
 
     public function preview(Request $request, SouscriptionsObligatoiresManquantes $rattrapage): JsonResponse

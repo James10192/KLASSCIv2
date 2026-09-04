@@ -1043,6 +1043,17 @@ return [
             'group' => 'Frais',
             'icon' => 'fa-cog',
         ],
+        // Rejouer le bareme sur des inscriptions deja saisies. Une souscription
+        // fige le tarif du jour de l'inscription : reecrire ces montants change
+        // ce que l'etablissement reclame a des familles, parfois par annee
+        // entiere. C'est une decision de tarification, pas une correction de
+        // dossier — d'ou un droit distinct de `inscriptions.edit`.
+        'frais.regenerate' => [
+            'label' => 'Régénérer les frais (réaligner les montants dus sur le barème)',
+            'description' => 'Compare les souscriptions au barème en vigueur et permet d\'ajouter les frais manquants, retirer ceux qui ne s\'appliquent plus et réaligner les montants changés depuis l\'inscription. Porte sur une fiche, sur la liste affichée ou sur une année entière. Accordée par défaut à la comptabilité uniquement.',
+            'group' => 'Frais',
+            'icon' => 'fa-rotate',
+        ],
 
         // ===== Comptabilité =====
         'comptabilite.access' => [
@@ -2220,6 +2231,7 @@ return [
             'paiements.correct_mode',
             'paiements.export',  // Lot 15
             'frais.view', 'frais.create', 'frais.edit', 'frais.configure',
+            'frais.regenerate',
             'students.view', 'inscriptions.view',
             'reports.view', 'reports.generate',
             'performance.view',

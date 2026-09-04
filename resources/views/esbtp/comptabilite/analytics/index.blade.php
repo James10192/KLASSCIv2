@@ -94,7 +94,7 @@
                             Jamais
                         @endif
                     </div>
-                    <div class="an-kpi-label">Dernier calcul automatique</div>
+                    <div class="an-kpi-label">Dernier traitement planifié</div>
                 </div>
             </div>
         </div>
@@ -226,6 +226,14 @@
                             Cible : {{ ucfirst(\Carbon\Carbon::parse($cashFlow->targetDate)->locale('fr')->translatedFormat('F Y')) }}
                         </div>
                     @endif
+                    @isset($cashFlowComputedAt)
+                        <div class="an-cf-target">
+                            <span class="an-gap-freshness" title="{{ $cashFlowComputedAt->locale('fr')->isoFormat('D MMMM YYYY [à] HH:mm') }}">
+                                <i class="fas fa-clock"></i>
+                                Prévision calculée {{ $cashFlowComputedAt->locale('fr')->diffForHumans() }}.
+                            </span>
+                        </div>
+                    @endisset
                     <div class="an-cf-confidence">
                         <span class="an-conf an-conf--{{ $cashFlow->confidenceLabel }}">
                             <i class="fas fa-shield-alt"></i>
