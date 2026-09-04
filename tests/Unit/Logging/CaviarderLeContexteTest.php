@@ -115,7 +115,7 @@ class CaviarderLeContexteTest extends TestCase
         $this->assertSame('[caviardé]', $sortie['tenant']['api_token']);
     }
 
-    public function test_une_structure_trop_profonde_est_coupee_sans_boucler(): void
+    public function test_une_structure_trop_profonde_est_coupee(): void
     {
         $profond = 'fond';
         for ($i = 0; $i < 12; $i++) {
@@ -126,5 +126,21 @@ class CaviarderLeContexteTest extends TestCase
 
         $this->assertIsArray($sortie);
         $this->assertStringContainsString('profondeur', json_encode($sortie, JSON_UNESCAPED_UNICODE));
+    }
+
+    public function test_une_structure_cyclique_ne_fait_pas_boucler_le_filtre(): void
+    {
+        // Empiler douze niveaux n'est PAS un cycle : le test precedent promettait
+        // « sans boucler » sans jamais le montrer. Un vrai cycle se construit par
+        // reference — et c'est ce qu'un journal recoit quand on lui passe une
+        // structure qui se contient elle-meme.
+        $cyclique = ['nom' => 'racine'];
+        $cyclique['moi_meme'] = &$cyclique;
+
+        $sortie = $this->traiter(['contexte' => $cyclique]);
+
+        // Le seul fait d'arriver ici prouve l'absence de boucle infinie.
+        $this->assertIsArray($sortie);
+        $this->assertStringContainsString('profondeur', json_encode($sortie, JSON_UNESCAPED_UNICODE | JSON_PARTIAL_OUTPUT_ON_ERROR));
     }
 }

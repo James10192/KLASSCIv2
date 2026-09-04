@@ -48,6 +48,12 @@ return [
     |
     */
 
+    // Le caviardage (`tap` => CaviarderLeContexte) est pose sur les canaux qui
+    // ECRIVENT DANS UN FICHIER : c'est le fichier qui se lit sans authentification,
+    // se copie dans une sauvegarde et se joint a un ticket. `slack`, `syslog`,
+    // `stderr`, `errorlog` et le logger `emergency` (que Laravel construit sans
+    // taps) n'en portent pas. Une instance qui bascule LOG_CHANNEL sur l'un d'eux
+    // perd donc le filtre — sciemment, pas par oubli.
     'channels' => [
         // Un seul canal, qui tourne. L'empilement precedent ecrivait chaque
         // ligne trois fois : dans « single » (laravel.log, sans aucune

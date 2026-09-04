@@ -475,6 +475,12 @@ class RegenerationMontantsFraisTest extends TestCase
             (float) $souscription->fresh()->amount,
             'Le serveur doit refuser d ecraser une remise que personne n a designee.'
         );
+
+        // Sans cette assertion, le test passerait aussi bien avec le journal
+        // d'audit eteint — cas ou TOUT est protege — et resterait vert meme si
+        // la detection de la retouche cassait. On epingle la bonne raison.
+        $reponse->assertJsonPath('lignes_ajustement.0.motif_protection', 'retouche');
+        $reponse->assertJsonPath('lignes_ajustement.0.montant_deja_retouche', true);
     }
 
     public function test_la_route_refuse_qui_n_a_pas_le_droit_de_retarifer(): void

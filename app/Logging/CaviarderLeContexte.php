@@ -51,10 +51,19 @@ class CaviarderLeContexte
      * Cles dont la valeur est un vidage brut de requete. On n'en garde que les
      * noms de champs : assez pour savoir ce qui a ete soumis, rien pour
      * reconstituer un dossier.
+     *
+     * Une liste fermee ne rattrape pas la cle qu'on oubliera d'y mettre : c'est
+     * ainsi que `data` a d'abord manque, alors que l'echec d'enregistrement d'un
+     * reglage y versait `$request->all()` — donc la valeur d'un reglage nomme
+     * `whatsapp_token`, en clair. `VidagesDeRequeteCouvertsTest` balaye les
+     * controleurs et fait echouer la suite des qu'un vidage apparait sous une
+     * cle absente d'ici. La liste reste fermee ; elle n'est plus silencieuse.
      */
     private const VIDAGES = [
-        'request', 'request_data', 'request_all', 'request_headers',
+        'request', 'request_data', 'request_all', 'request_headers', 'request_body',
         'headers', 'server', 'cookies', 'payload', 'input', 'post', 'query_params',
+        'data', 'all_data', 'all_request_data', 'body', 'attributes', 'filters',
+        'donnees', 'parametres', 'champs_recus',
     ];
 
     public function __invoke(Logger $logger): void

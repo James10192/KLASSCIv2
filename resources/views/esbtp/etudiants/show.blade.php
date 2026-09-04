@@ -5337,7 +5337,7 @@
                 <div class="s-card-title-icon"><i class="fas fa-table"></i></div>
                 Détail par frais
             </div>
-            @can('inscriptions.edit')
+            @can('frais.regenerate')
             @if($finInscActive)
             <form method="POST" class="ms-auto">
                 @csrf

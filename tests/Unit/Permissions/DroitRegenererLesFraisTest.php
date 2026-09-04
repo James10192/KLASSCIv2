@@ -70,40 +70,78 @@ class DroitRegenererLesFraisTest extends TestCase
         $this->assertContains(self::DROIT, $methode->invoke($service));
     }
 
-    public function test_les_quatre_gardes_designent_le_meme_droit(): void
+    public function test_la_route_et_le_controleur_exigent_le_droit(): void
     {
-        $gardes = [
-            'routes/web.php' => "'permission:frais.regenerate'",
-            'app/Http/Controllers/ESBTP/CompleterFraisManquantsController.php' => "middleware('permission:frais.regenerate')",
-            'resources/views/esbtp/inscriptions/show.blade.php' => "@can('frais.regenerate')",
-        ];
+        $this->assertStringContainsString(
+            "'permission:frais.regenerate'",
+            $this->lire('routes/web.php'),
+            'Le groupe de routes frais-manquants doit porter frais.regenerate.'
+        );
 
-        foreach ($gardes as $chemin => $attendu) {
-            $this->assertStringContainsString(
-                $attendu,
-                $this->lire($chemin),
-                "La garde de {$chemin} n'a pas suivi le déplacement du droit."
-            );
-        }
+        $this->assertStringContainsString(
+            "middleware('permission:frais.regenerate')",
+            $this->lire('app/Http/Controllers/ESBTP/CompleterFraisManquantsController.php')
+        );
 
-        // La liste porte deux entrées : le menu du hero et la barre de sélection.
-        $this->assertSame(
-            2,
-            substr_count($this->lire('resources/views/esbtp/inscriptions/index.blade.php'), "@can('frais.regenerate')"),
-            "Les deux points d'entrée de la liste doivent porter la même garde."
+        $this->assertStringNotContainsString(
+            "Route::middleware(['permission:inscriptions.edit', 'throttle:20,1'])",
+            $this->lire('routes/web.php'),
+            'Une garde de regeneration est restee sur l ancien droit.'
         );
     }
 
-    public function test_aucune_garde_ne_reste_sur_l_ancien_droit(): void
+    public function test_tout_ecran_portant_le_bouton_exige_le_droit(): void
     {
-        // `inscriptions.edit` reste légitime ailleurs dans ces fichiers ; ce
-        // qu'on vérifie, c'est qu'aucune route ni aucun bouton de régénération
-        // ne s'y rattache encore.
-        $routes = $this->lire('routes/web.php');
-        $this->assertStringNotContainsString(
-            "Route::middleware(['permission:inscriptions.edit', 'throttle:20,1'])",
-            $routes,
-            'Le groupe de routes frais-manquants doit porter frais.regenerate.'
+        // La version precedente de ce test enumerait trois fichiers en dur. Elle
+        // etait verte alors qu'un QUATRIEME ecran — la fiche etudiant — etait
+        // reste sur `inscriptions.edit` : les quatre roles de scolarite y
+        // voyaient le bouton et recoltaient un 403 en anglais, tandis que la
+        // comptabilite, seule titulaire du nouveau droit, ne le voyait pas.
+        //
+        // Une liste en dur ne rattrape pas le fichier qu'on a oublie d'y mettre.
+        // On part donc du bouton lui-meme : la classe `js-regenerer-frais` est ce
+        // qui declenche la modale, et elle seule.
+        $porteurs = $this->vuesContenant('js-regenerer-frais');
+
+        $this->assertGreaterThanOrEqual(
+            3,
+            count($porteurs),
+            'Le balayage ne trouve plus les ecrans connus : le test ne prouverait plus rien.'
         );
+
+        foreach ($porteurs as $chemin => $contenu) {
+            $this->assertStringContainsString(
+                "@can('frais.regenerate')",
+                $contenu,
+                "{$chemin} montre le bouton sans exiger frais.regenerate."
+            );
+        }
+    }
+
+    /**
+     * @return array<string, string> chemin relatif => contenu
+     */
+    private function vuesContenant(string $aiguille): array
+    {
+        $racine = __DIR__ . '/../../../resources/views';
+        $trouves = [];
+
+        $fichiers = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($racine, \FilesystemIterator::SKIP_DOTS)
+        );
+
+        foreach ($fichiers as $fichier) {
+            if (! $fichier->isFile() || ! str_ends_with($fichier->getFilename(), '.blade.php')) {
+                continue;
+            }
+
+            $contenu = file_get_contents($fichier->getPathname());
+
+            if (str_contains($contenu, $aiguille)) {
+                $trouves[str_replace($racine . '/', '', $fichier->getPathname())] = $contenu;
+            }
+        }
+
+        return $trouves;
     }
 }
