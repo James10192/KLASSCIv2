@@ -367,8 +367,8 @@ if (typeof window.dossierPieces !== 'function') {
 
             demanderEcart(ligne) {
                 this.ouvrirMotif({
-                    titre: 'Cette pièce ne s'applique pas',
-                    aide: 'Dites pourquoi elle ne concerne pas cet étudiant cette année. Six mois plus tard, ce motif est la seule chose qui distinguera une dispense décidée d'un dossier qu'on a renoncé à réclamer.',
+                    titre: 'Cette pièce ne s’applique pas',
+                    aide: 'Dites pourquoi elle ne concerne pas cet étudiant cette année. Six mois plus tard, ce motif est la seule chose qui distinguera une dispense décidée d’un dossier qu’on a renoncé à réclamer.',
                     ligne: ligne,
                     depot: null,
                 });
@@ -381,7 +381,7 @@ if (typeof window.dossierPieces !== 'function') {
             demanderRefus(ligne, depot) {
                 this.ouvrirMotif({
                     titre: 'Refuser cette pièce',
-                    aide: 'Dites pourquoi. L'étudiant devra la redéposer, et il a le droit de savoir ce qui n'allait pas.',
+                    aide: 'Dites pourquoi. L’étudiant devra la redéposer, et il a le droit de savoir ce qui n’allait pas.',
                     ligne: ligne,
                     depot: depot,
                 });
