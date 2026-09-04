@@ -20,6 +20,7 @@ use App\Http\Controllers\ESBTPResultatController;
 use App\Http\Controllers\ESBTPStudentBulletinController;
 use App\Http\Controllers\ESBTPCategoriePaiementController;
 use App\Http\Controllers\ESBTPClasseController;
+use App\Http\Controllers\ESBTPDocumentRequisController;
 use App\Http\Controllers\ESBTPComptabiliteAnalyticsController;
 use App\Http\Controllers\ESBTPComptabiliteController;
 use App\Http\Controllers\ESBTPComptabiliteFraisController;
@@ -1733,6 +1734,25 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
         Route::match(['POST', 'PUT'], '/settings/pdf-preview', [App\Http\Controllers\ESBTP\ESBTPSettingsController::class, 'pdfPreview'])
             ->middleware(['permission:settings.pdf.manage', 'throttle:30,1'])
             ->name('esbtp.settings.pdf-preview');
+
+        // Catalogue des pieces a fournir a l'inscription (lot 1).
+        // La consultation et la configuration sont deux permissions distinctes :
+        // un agent de guichet doit pouvoir lire la liste sans pouvoir la changer
+        // pour toute l'ecole.
+        Route::prefix('/documents-requis')->name('esbtp.documents-requis.')->group(function () {
+            Route::get('/', [ESBTPDocumentRequisController::class, 'index'])
+                ->middleware('permission:documents_requis.view')
+                ->name('index');
+
+            Route::middleware(['permission:documents_requis.configure', 'throttle:60,1'])->group(function () {
+                Route::post('/', [ESBTPDocumentRequisController::class, 'store'])->name('store');
+                Route::put('/{piece}', [ESBTPDocumentRequisController::class, 'update'])->name('update');
+                Route::delete('/{piece}', [ESBTPDocumentRequisController::class, 'destroy'])->name('destroy');
+                Route::post('/{piece}/toggle', [ESBTPDocumentRequisController::class, 'toggle'])->name('toggle');
+                Route::post('/reorder', [ESBTPDocumentRequisController::class, 'reorder'])->name('reorder');
+                Route::post('/jeu-par-defaut', [ESBTPDocumentRequisController::class, 'installerJeuParDefaut'])->name('jeu-par-defaut');
+            });
+        });
 
         // ESBTP Parents Search (pour modal de sÃ©lection dans edit Ã©tudiant)
         Route::get('/parents/search', [ESBTPEtudiantController::class, 'searchParents'])->name('esbtp.parents.search');

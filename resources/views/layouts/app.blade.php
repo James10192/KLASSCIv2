@@ -1705,7 +1705,7 @@
                                 <div class="menu-text">Étudiants</div>
                                 <div class="menu-arrow"><i class="fas fa-chevron-down"></i></div>
                             </button>
-                            <div class="menu-accordion-content {{ Request::routeIs('esbtp.etudiants.*') || Request::routeIs('esbtp.inscriptions.*') || Request::routeIs('esbtp.reinscription.*') || Request::routeIs('esbtp.reinscription-demandes.*') || Request::routeIs('esbtp.candidatures.*') ? 'show' : '' }}">
+                            <div class="menu-accordion-content {{ Request::routeIs('esbtp.etudiants.*') || Request::routeIs('esbtp.inscriptions.*') || Request::routeIs('esbtp.reinscription.*') || Request::routeIs('esbtp.reinscription-demandes.*') || Request::routeIs('esbtp.candidatures.*') || Request::routeIs('esbtp.documents-requis.*') ? 'show' : '' }}">
                                 @can('students.view')
                                 <a href="{{ route('esbtp.etudiants.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.etudiants.*') ? 'active' : '' }}">
                                     <div class="menu-icon"><i class="fas fa-list"></i></div>
@@ -1732,6 +1732,15 @@
                                 <a href="{{ route('esbtp.inscriptions.sous-reserve') }}" class="menu-sublink {{ Request::routeIs('esbtp.inscriptions.sous-reserve') ? 'active' : '' }}">
                                     <div class="menu-icon"><i class="fas fa-clipboard-check"></i></div>
                                     <div class="menu-text">Sous réserve</div>
+                                </a>
+                                @endcan
+                                {{-- Voisin de « Sous réserve » sans s'y confondre : une réserve porte
+                                     sur un document pas encore délivré, une pièce à fournir sur un
+                                     document qui existe et qu'on attend. --}}
+                                @can('documents_requis.view')
+                                <a href="{{ route('esbtp.documents-requis.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.documents-requis.*') ? 'active' : '' }}">
+                                    <div class="menu-icon"><i class="fas fa-list-check"></i></div>
+                                    <div class="menu-text">Pièces à fournir</div>
                                 </a>
                                 @endcan
                                 {{-- Hors du bloc `inscriptions.view`, et `reinscriptions.demandes.view`

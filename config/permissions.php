@@ -1819,6 +1819,18 @@ return [
             'group' => 'Documents',
             'icon' => 'fa-print',
         ],
+        'documents_requis.view' => [
+            'label' => 'Voir le catalogue des pieces a fournir a l inscription',
+            'description' => 'Lecture seule du catalogue : quelles pieces l ecole reclame, a quelles filieres et a quels niveaux.',
+            'group' => 'Documents',
+            'icon' => 'fa-list-check',
+        ],
+        'documents_requis.configure' => [
+            'label' => 'Configurer le catalogue des pieces a fournir',
+            'description' => 'Ajouter, modifier, reordonner ou retirer une piece du catalogue. Ce reglage vaut pour toute l ecole : a reserver au responsable de la scolarite.',
+            'group' => 'Documents',
+            'icon' => 'fa-sliders',
+        ],
         'notes.window.manage' => [
             'label' => 'Ouvrir ou fermer une fenetre de saisie des notes',
             'group' => 'Notes',
@@ -2141,6 +2153,9 @@ return [
             'evaluations.view', 'evaluations.create', 'evaluations.edit', 'exams.view',
             'bulletins.view', 'bulletins.generate', 'bulletins.edit', 'bulletins.delete', 'bulletins.configure',
             'documents.view', 'documents.approve', 'documents.print',
+            // Catalogue des pieces a fournir : c'est la scolarite qui arrete la
+            // liste que le guichet reclamera ensuite a chaque inscription.
+            'documents_requis.view', 'documents_requis.configure',
             'bulletins.publish.bulk', 'bulletins.regenerate.bulk', 'bulletins.export.bulk',
             'attendances.view', 'attendances.create', 'attendances.edit', 'attendances.delete',
             'attendances.generate_codes', 'attendances.justify_process',
@@ -2397,6 +2412,7 @@ return [
             'bulletins.view', 'bulletins.generate', 'bulletins.edit',
             'bulletins.publish.bulk', 'bulletins.export.bulk',
             'documents.view', 'documents.approve', 'documents.print',
+            'documents_requis.view', 'documents_requis.configure',
             'attendances.view', 'attendances.create', 'attendances.edit',
             'session_reports.view',
             'teachers.view',
@@ -2451,6 +2467,9 @@ return [
             'evaluations.view',
             'bulletins.view',
             'documents.view', 'documents.print',
+            // Lecture seule : l'agent de scolarite applique le catalogue, il ne
+            // l'arrete pas.
+            'documents_requis.view',
             'attendances.view',
             'timetables.view',
             'schedules.view',
