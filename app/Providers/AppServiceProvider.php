@@ -49,7 +49,10 @@ class AppServiceProvider extends ServiceProvider
         // volee, le conteneur en reconstruisait une instance neuve a chaque acces
         // a photo_url — donc un memo toujours vide, et une liste de cinquante
         // etudiants payait cinq sondages disque par ligne, deux fois.
-        $this->app->singleton(\App\Services\Photos\StockagePhoto::class);
+        // scoped() et non singleton() : un worker de file d attente vit des heures et
+        // traite des milliers de fiches. forgetScopedInstances() est appele entre deux
+        // taches, ce qui borne le memo. Un singleton le laisserait grossir sans fin.
+        $this->app->scoped(\App\Services\Photos\StockagePhoto::class);
 
         // Charger explicitement le fichier d'aide helpers.php
         if (file_exists(app_path('Helpers/helpers.php'))) {

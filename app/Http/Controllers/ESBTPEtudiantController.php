@@ -1020,9 +1020,11 @@ class ESBTPEtudiantController extends Controller
             }
 
             // Supprimer la photo
-            if ($etudiant->photo && Storage::exists(str_replace('/storage', 'public', $etudiant->photo))) {
-                Storage::delete(str_replace('/storage', 'public', $etudiant->photo));
-            }
+            // Derniere lecture manuelle : elle ne connaissait que l ancienne forme
+            // « URL ». Pour les trois autres, le fichier restait sur le disque apres
+            // suppression de l etudiant — des orphelins qui s accumulent en silence
+            // sur un quota mutualise.
+            app(\App\Services\Photos\StockagePhoto::class)->supprimer($etudiant->photo);
 
             // Supprimer l'étudiant
             $etudiant->delete();

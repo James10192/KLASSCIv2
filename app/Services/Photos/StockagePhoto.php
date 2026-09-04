@@ -85,6 +85,10 @@ class StockagePhoto
         if ($chemin !== null && Storage::disk('public')->exists($chemin)) {
             Storage::disk('public')->delete($chemin);
         }
+
+        // Oublier la resolution : sans cela, une photo remplacee dans la meme
+        // requete rendrait encore l ancien chemin, desormais efface.
+        unset($this->resolus[trim((string) $valeur)]);
     }
 
     /**
@@ -138,9 +142,10 @@ class StockagePhoto
 
         $base = basename($nu);
 
-        // Un chemin sans nom de fichier ne designe aucune photo : sans ce garde-fou,
-        // les candidats se reduiraient a des dossiers.
-        if ($base === '' || ! str_contains($base, '.')) {
+        // Storage::path() concatene sans normaliser : une valeur contenant « .. »
+        // sortirait du disque public. La colonne est alimentee par des ecrans, donc
+        // par l exterieur — on ne lui fait pas confiance.
+        if ($base === '' || str_contains($nu, '..')) {
             return [];
         }
 
