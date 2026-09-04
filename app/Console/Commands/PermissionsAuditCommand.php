@@ -159,10 +159,16 @@ class PermissionsAuditCommand extends Command
      * pas ecraser la configuration de l'ecole. Le rattrapage qui suit n'accorde
      * que l'intersection avec `newFeaturePermissions()`.
      *
-     * Consequence : un droit ajoute aux defauts APRES la mise en service, et
-     * absent de cette liste, n'arrive jamais. Le registre le montre accorde,
-     * l'instance ne l'a pas, et seul le superAdmin — couvert par `Gate::before`
-     * — peut encore agir. C'est ce qu'on observe sur `students.edit`.
+     * Un SECOND mecanisme rattrape pourtant beaucoup de cas, et il faut le
+     * connaitre pour lire cette liste : la guerison par alias. Pour tout nom
+     * herite present en base (`edit_students`), la synchronisation rajoute son
+     * canonique (`students.edit`). Verifie sur une base reelle : retirer le seul
+     * canonique ne tient pas, il revient au deploiement suivant.
+     *
+     * Ce qui reste ici est donc le cas ou les DEUX noms ont disparu — ce qui
+     * n'arrive pas par oubli de deploiement, mais par un retrait explicite
+     * depuis l'interface. Le registre montre le droit accorde, l'instance ne
+     * l'a pas, et seul le superAdmin — couvert par `Gate::before` — passe encore.
      *
      * On REGARDE, on n'accorde rien : re-accorder a chaque deploiement ce qu'une
      * ecole a delibérement retire serait exactement l'inverse de la regle des
@@ -217,8 +223,11 @@ class PermissionsAuditCommand extends Command
         }
 
         $this->warn('⚠️  Rôles privés d\'un droit que le registre leur accorde par défaut');
-        $this->line('   La synchronisation ne les rattrapera pas : elle préserve tout rôle');
-        $this->line('   déjà peuplé. À trancher depuis /esbtp/roles-permissions.');
+        $this->line('   La synchronisation les a laissés tels quels : elle préserve tout rôle');
+        $this->line('   déjà peuplé, et sa guérison par alias n\'a rien pu rendre ici — le nom');
+        $this->line('   hérité est absent lui aussi. Ces droits ont donc été retirés, pas oubliés.');
+        $this->line('   Si c\'était une décision de l\'école, il n\'y a rien à faire ; sinon, les');
+        $this->line('   rendre depuis /esbtp/roles-permissions.');
         $this->newLine();
 
         foreach ($derive as $roleName => $absents) {
