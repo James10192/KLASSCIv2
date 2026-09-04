@@ -70,6 +70,7 @@ class SouscriptionsObligatoiresManquantes
      *     total_ajouter: int,
      *     total_retirer: int,
      *     total_ajuster: int,
+     *     total_ajuster_detecte: int,
      *     applique: bool
      * }
      */
@@ -263,7 +264,20 @@ class SouscriptionsObligatoiresManquantes
             'total' => count($aCreer),
             'total_ajouter' => count($aCreer),
             'total_retirer' => count($aRetirer),
+            // DEUX comptes, et ils ne disent pas la meme chose.
+            //
+            // `total_ajuster` est ce qui sera ECRIT. `total_ajuster_detecte` est
+            // ce qui a ete TROUVE. Ils different des qu'un montant est protege :
+            // une remise negociee ne s'ecrase que si sa ligne a ete cochee, donc
+            // elle est detectee sans etre applicable.
+            //
+            // N'en tenir qu'un faisait dire a l'ecran « aucun ecart, les frais
+            // sont a jour » a l'ecole qui en a le plus : celle qui negocie. Pire,
+            // une instance dont le journal d'audit est eteint protege TOUT, et
+            // repondait donc eternellement « a jour » — la reponse exacte que
+            // cette fonctionnalite existe pour corriger.
             'total_ajuster' => count($aAjuster),
+            'total_ajuster_detecte' => count($lignesAjustement),
             // Les inscriptions REELLEMENT touchees : avec une selection
             // partielle, compter toutes les lignes detectees annoncerait plus
             // d'etudiants que le bouton n'en modifie.
@@ -282,12 +296,28 @@ class SouscriptionsObligatoiresManquantes
 
         DB::transaction(function () use ($aCreer, $aRetirer, $aAjuster, $auteur): void {
             foreach ($aCreer as $ligne) {
-                ESBTPFraisSubscription::create($ligne + [
-                    'is_active' => true,
-                    'subscribed_at' => now(),
-                    'created_by' => $auteur,
-                    'notes' => 'Régénération des frais obligatoires',
-                ]);
+                // `firstOrCreate` et non `create` : une caisse ouverte peut
+                // souscrire ce frais entre l'apercu et la confirmation, et
+                // l'unicite (inscription, categorie) leverait alors une exception
+                // NON RATTRAPEE, au milieu de la transaction. Toute la
+                // regeneration partirait au rollback — sur une annee entiere,
+                // les ajouts, retraits et ajustements des deux mille autres
+                // inscriptions avec elle. La regeneration deviendrait
+                // impraticable tant qu'un guichet travaille.
+                //
+                // Le frais existe deja : c'est precisement le resultat voulu.
+                ESBTPFraisSubscription::firstOrCreate(
+                    [
+                        'inscription_id' => $ligne['inscription_id'],
+                        'frais_category_id' => $ligne['frais_category_id'],
+                    ],
+                    $ligne + [
+                        'is_active' => true,
+                        'subscribed_at' => now(),
+                        'created_by' => $auteur,
+                        'notes' => 'Régénération des frais obligatoires',
+                    ]
+                );
             }
             if ($aRetirer !== []) {
                 // Une par une, par le modele. Une suppression de masse par le
