@@ -35,7 +35,16 @@
         .pdf-banner-title { font-size: 11px; font-weight: 700; color: {{ $hdrText }}; letter-spacing: 0.4px; margin: 0; }
         .pdf-banner-subtitle { font-size: 8px; color: {{ $hdrText }}; opacity: 0.88; margin: 2px 0 0; }
         .meta { width: 100%; border-collapse: collapse; margin-top: 3mm; }
-        .meta td { border: 0.4pt solid #cbd5e1; padding: 2mm 2.5mm; width: 50%; vertical-align: top; }
+        .meta td { border: 0.4pt solid #cbd5e1; padding: 2mm 2.5mm; vertical-align: top; }
+        /* La cellule photo traverse les quatre rangees : elle tient la hauteur du
+           bloc d'identite, ce qui donne un portrait a peu pres 25 x 32 mm, le
+           format d'identite habituel. */
+        .photo-cell { width: 26mm; text-align: center; vertical-align: middle; padding: 1.5mm; }
+        .photo-img { max-width: 23mm; max-height: 30mm; }
+        /* Sans photo au dossier, on imprime un cadre a coller plutot que du vide :
+           la fiche part au guichet pour etre signee, et la photo s'y agrafe. */
+        .photo-vide { border: 0.5pt dashed #94a3b8; height: 29mm; }
+        .photo-vide-txt { font-size: 6.5px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.06em; padding-top: 12mm; }
         .lbl { font-size: 6.5px; color: #64748b; text-transform: uppercase; letter-spacing: 0.04em; }
         .val { font-size: 9.5px; font-weight: bold; margin-top: 1px; }
         .rights { margin-top: 3mm; border: 0.5pt solid {{ $hdrBg }}; padding: 2.5mm; }
@@ -76,6 +85,13 @@
         <tr>
             <td><div class="lbl">Nom</div><div class="val">{{ $e->nom }}</div></td>
             <td><div class="lbl">Prénoms</div><div class="val">{{ $e->prenoms }}</div></td>
+            <td class="photo-cell" rowspan="4">
+                @if(!empty($photo))
+                    <img src="{{ $photo }}" alt="" class="photo-img">
+                @else
+                    <div class="photo-vide"><div class="photo-vide-txt">Photo</div></div>
+                @endif
+            </td>
         </tr>
         <tr>
             <td><div class="lbl">Matricule</div><div class="val">{{ $e->matricule ?? '—' }}</div></td>

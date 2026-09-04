@@ -730,11 +730,17 @@ class ESBTPLMDPlanningController extends Controller
             return collect();
         }
 
-        $matiereIds = $ues->flatMap->getEcuesEffectifs()->pluck('id')->unique();
+        // La composition depend de la maquette : une unite partagee peut porter des
+        // elements propres a un autre parcours, qui n'ont rien a faire dans ce
+        // planning, et des elements surcharges qui y figureraient deux fois.
+        $parcoursId = (int) $parcours->id;
+
+        $matiereIds = $ues->flatMap(fn (ESBTPUniteEnseignement $ue) => $ue->getEcuesEffectifs($parcoursId))
+            ->pluck('id')->unique();
         $planifs = $this->loadPlanifications($matiereIds, $parcours, $filters);
 
-        return $ues->map(function (ESBTPUniteEnseignement $ue) use ($planifs) {
-            $ecues = $ue->getEcuesEffectifs()->map(fn ($ecue) => [
+        return $ues->map(function (ESBTPUniteEnseignement $ue) use ($planifs, $parcoursId) {
+            $ecues = $ue->getEcuesEffectifs($parcoursId)->map(fn ($ecue) => [
                 'ecue' => $ecue,
                 'planif' => $planifs->get($ecue->id),
             ])->values();
@@ -749,8 +755,15 @@ class ESBTPLMDPlanningController extends Controller
 
     private function loadUesForParcours(ESBTPLMDParcours $parcours, ?int $semestre, ?int $niveauId = null): Collection
     {
+        $parcoursId = (int) $parcours->id;
+
         $query = $parcours->unitesEnseignement()
-            ->with(['ecues', 'matieres', 'responsableUe:id,name'])
+            ->with([
+                // Composition commune, plus celle propre a ce parcours.
+                'ecues' => fn ($q) => $q->whereIn('esbtp_ue_matiere.parcours_id', [0, $parcoursId]),
+                'matieres',
+                'responsableUe:id,name',
+            ])
             ->where('esbtp_unites_enseignement.is_active', true);
 
         if ($semestre) {

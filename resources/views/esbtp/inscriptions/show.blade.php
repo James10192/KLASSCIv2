@@ -1220,13 +1220,17 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                         {{-- Double exemplaire (etudiant + administration) a faire signer.
                              Ouvert dans un onglet : l'impression se declenche depuis le
                              lecteur PDF du navigateur, pas depuis un telechargement. --}}
-                        <a href="{{ route('esbtp.inscriptions.fiche.preview-pdf', ['inscription' => $inscription, 'inline' => 1]) }}"
-                           target="_blank" rel="noopener"
-                           class="is-hero-btn"
-                           title="Fiche d'inscription en double exemplaire (à signer)">
-                            <i class="fas fa-print"></i>
-                            <span class="d-none d-md-inline">Fiche d'inscription</span>
-                        </a>
+                        {{-- La meme route rend l'un ou l'autre : `inline=1` affiche dans
+                             l'onglet (c'est de la que part l'impression), sans le parametre
+                             elle telecharge. Les deux gestes existent parce qu'ils ne servent
+                             pas au meme moment : on imprime au guichet, on archive apres. --}}
+                        <x-pdf-actions
+                            :preview-url="route('esbtp.inscriptions.fiche.preview-pdf', ['inscription' => $inscription, 'inline' => 1])"
+                            :download-url="route('esbtp.inscriptions.fiche.preview-pdf', ['inscription' => $inscription])"
+                            label="fiche d'inscription"
+                            button-class="is-hero-btn"
+                            preview-label="Fiche d'inscription"
+                            download-label="Télécharger" />
                     @endcan
                     <a href="{{ route('esbtp.etudiants.show', $inscription->etudiant) }}" class="is-hero-btn primary">
                         <i class="fas fa-user"></i>

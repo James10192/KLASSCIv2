@@ -52,8 +52,16 @@
         const totalAdd = res.total_ajouter != null ? res.total_ajouter : add.length;
         const totalDel = res.total_retirer != null ? res.total_retirer : del.length;
         const totalAdj = res.total_ajuster != null ? res.total_ajuster : adj.length;
+        // Ce qui a ete TROUVE, distinct de ce qui est applicable sans cocher.
+        // Un montant retouche a la main est detecte mais protege : le compter
+        // dans l'etat vide faisait repondre « les frais sont a jour » a une ecole
+        // qui avait justement des corrections devant elle, et la ligne n'etait
+        // alors jamais rendue, donc jamais cochable.
+        const totalAdjVus = res.total_ajuster_detecte != null
+            ? res.total_ajuster_detecte
+            : Math.max(totalAdj, adj.length);
 
-        if (!totalAdd && !totalDel && !totalAdj) {
+        if (!totalAdd && !totalDel && !totalAdjVus) {
             return texte('<span class="rf-line-muted">$ aucun écart — les frais sont à jour</span>');
         }
 
@@ -168,7 +176,14 @@
             term.innerHTML = renderPreview(preview);
 
             const cases = Array.from(term.querySelectorAll('.rf-row input[type="checkbox"]'));
-            const vide = !preview.total_ajouter && !preview.total_retirer && !preview.total_ajuster;
+            // Meme mesure que l'etat vide de renderPreview : ce qui a ete
+            // DETECTE, pas seulement ce qui s'applique sans cocher. Sinon le
+            // sous-titre annonce « Rien a appliquer » au-dessus d'une liste de
+            // lignes protegees que l'utilisateur peut justement cocher.
+            const detectes = preview.total_ajuster_detecte != null
+                ? preview.total_ajuster_detecte
+                : preview.total_ajuster;
+            const vide = !preview.total_ajouter && !preview.total_retirer && !detectes;
 
             $('rf-modal-sub').textContent = vide
                 ? 'Rien à appliquer'

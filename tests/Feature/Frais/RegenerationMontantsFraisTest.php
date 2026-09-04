@@ -337,6 +337,74 @@ class RegenerationMontantsFraisTest extends TestCase
         $this->assertTrue($ligne['montant_deja_retouche']);
     }
 
+    public function test_un_ecart_protege_reste_compte_comme_detecte(): void
+    {
+        // La regression : `total_ajuster` ne comptait QUE l'applicable. Quand tous
+        // les ecarts d'un dossier etaient proteges, il valait zero, et l'ecran
+        // repondait « aucun ecart, les frais sont a jour » — a l'ecole qui en
+        // avait justement le plus, celle qui negocie des remises. La ligne
+        // n'etait alors jamais rendue, donc jamais cochable : la protection
+        // devenait un mur, sans aucun chemin pour appliquer l'ajustement.
+        [$categorie, $souscription] = $this->fraisSouscrit(15000, 12000);
+        $souscription->update(['amount' => 10000]);
+
+        $apercu = $this->service()->executer(false, null, [$this->inscription->id], true);
+
+        $this->assertSame(0, $apercu['total_ajuster'], "Rien ne s'applique sans cocher.");
+        $this->assertSame(1, $apercu['total_ajuster_detecte'], "L'ecart doit rester compte comme detecte.");
+        $this->assertNotNull($this->ligneDe($apercu['lignes_ajustement'], $categorie->id));
+    }
+
+    public function test_l_apercu_ne_dit_pas_a_jour_quand_tout_est_protege(): void
+    {
+        // Le meme defaut, vu du controleur : c'est ce message-la que l'utilisateur
+        // lit, et il disait le contraire de ce que l'apercu avait trouve.
+        [$categorie, $souscription] = $this->fraisSouscrit(15000, 12000);
+        $souscription->update(['amount' => 10000]);
+
+        $reponse = $this->postJson(route('esbtp.inscriptions.frais-manquants.preview'), [
+            'inscription_ids' => [$this->inscription->id],
+        ]);
+
+        $reponse->assertOk()
+            ->assertJsonPath('total_ajuster', 0)
+            ->assertJsonPath('total_ajuster_detecte', 1);
+    }
+
+    public function test_un_frais_souscrit_entre_l_apercu_et_l_ecriture_ne_fait_pas_echouer_le_lot(): void
+    {
+        // Une caisse ouverte peut souscrire le frais pendant que l'apercu est a
+        // l'ecran. `create()` levait alors une exception sur l'unicite
+        // (inscription, categorie), AU MILIEU de la transaction : tout le lot
+        // partait au rollback, y compris les corrections des autres dossiers.
+        $categorie = ESBTPFraisCategory::factory()->create([
+            'name' => 'Logistique',
+            'default_amount' => 20000,
+        ]);
+
+        $avant = $this->service()->executer(false, null, [$this->inscription->id], false);
+        $this->assertSame(1, $avant['total_ajouter'], "Le frais doit d'abord manquer.");
+
+        // Le guichet passe devant nous.
+        ESBTPFraisSubscription::factory()->create([
+            'inscription_id' => $this->inscription->id,
+            'frais_category_id' => $categorie->id,
+            'amount' => 20000,
+            'created_by' => $this->user->id,
+        ]);
+
+        $resultat = $this->service()->executer(true, null, [$this->inscription->id], false);
+
+        $this->assertTrue($resultat['applique']);
+        $this->assertSame(
+            1,
+            ESBTPFraisSubscription::where('inscription_id', $this->inscription->id)
+                ->where('frais_category_id', $categorie->id)
+                ->count(),
+            'Le frais ne doit exister qu une seule fois.'
+        );
+    }
+
     public function test_un_montant_retouche_s_applique_s_il_est_coche_nommement(): void
     {
         [$categorie, $souscription] = $this->fraisSouscrit(15000, 12000);

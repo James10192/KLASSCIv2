@@ -64,10 +64,19 @@ class MatiereTreeBuilder
     private function loadFromParcours(ESBTPClasse $classe, ?int $semestre = null): Collection
     {
         $parcours = $classe->parcours;
+        $parcoursId = (int) $parcours->id;
 
         // 1. Charger les UEs du parcours (via pivot esbtp_lmd_parcours_unites_enseignement)
+        //
+        // Une meme unite sert plusieurs maquettes : on ne charge que sa
+        // composition commune (`parcours_id` a zero) et celle propre a CE
+        // parcours. Le filtre est dans le chargement anticipe, pas en requete par
+        // unite : cet arbre est construit a chaque ouverture d'un emploi du temps.
         $ues = $parcours->unitesEnseignement()
-            ->with(['ecues', 'matieres'])
+            ->with([
+                'ecues' => fn ($q) => $q->whereIn('esbtp_ue_matiere.parcours_id', [0, $parcoursId]),
+                'matieres',
+            ])
             ->where('esbtp_unites_enseignement.is_active', true)
             ->get();
 
@@ -78,7 +87,11 @@ class MatiereTreeBuilder
         // 2. Recolter les ECUEs effectifs (priorite pivot esbtp_ue_matiere, fallback FK direct)
         $ecuesByMatiereId = collect();
         foreach ($ues as $ue) {
-            foreach ($ue->getEcuesEffectifs() as $ecue) {
+            // Le parcours tranche entre la ligne commune et la ligne qui la
+            // surcharge : sans lui, les deux remonteraient et le `has()` ci-dessous
+            // garderait la PREMIERE rencontree, donc la commune, ignorant en
+            // silence la surcharge que l'ecole a posee pour ce parcours.
+            foreach ($ue->getEcuesEffectifs($parcoursId) as $ecue) {
                 if ($ecue && ! $ecuesByMatiereId->has($ecue->id)) {
                     // Force l'association UE -> ECUE pour le grouping par UE
                     $ecue->setRelation('uniteEnseignement', $ue);

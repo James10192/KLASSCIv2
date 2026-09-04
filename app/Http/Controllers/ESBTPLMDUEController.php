@@ -11,13 +11,17 @@ use App\Models\ESBTPFiliere;
 use App\Models\ESBTPNiveauEtude;
 use App\Models\ESBTPPlanificationAcademique;
 use App\Services\LMD\ParcoursUeSyncService;
+use App\Services\LMD\SuppressionUeService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class ESBTPLMDUEController extends Controller
 {
-    public function __construct(private ParcoursUeSyncService $parcoursUeSync) {}
+    public function __construct(
+        private ParcoursUeSyncService $parcoursUeSync,
+        private SuppressionUeService $suppressionUe,
+    ) {}
 
     /**
      * Afficher la liste des Unités d'Enseignement avec filtres.
@@ -66,9 +70,14 @@ class ESBTPLMDUEController extends Controller
 
         // JSON response for AJAX
         if ($request->ajax() || $request->wantsJson() || $request->format === 'json') {
+            // Quand l'ecran est filtre sur une maquette, la composition affichee
+            // est celle de CETTE maquette : la commune, plus ce que le parcours
+            // surcharge. Sans filtre, on montre tout, un element une seule fois.
+            $parcoursFiltre = $request->filled('parcours_id') ? (int) $request->parcours_id : null;
+
             return response()->json([
-                'ues' => $ues->map(function ($ue) {
-                    $ecues = $ue->getEcuesEffectifs();
+                'ues' => $ues->map(function ($ue) use ($parcoursFiltre) {
+                    $ecues = $ue->getEcuesEffectifs($parcoursFiltre);
                     return [
                         'id' => $ue->id,
                         'code' => $ue->code,
@@ -527,28 +536,47 @@ class ESBTPLMDUEController extends Controller
     }
 
     /**
-     * Supprimer une UE (si aucun résultat attaché).
+     * Supprimer une UE (si aucun résultat attaché, et si elle n'appartient
+     * qu'à une seule maquette).
      */
     public function destroy(Request $request, ESBTPUniteEnseignement $ue)
     {
         // Vérifier qu'aucun résultat LMD n'est attaché
         if ($ue->resultatsLMD()->exists()) {
-            if ($request->ajax() || $request->wantsJson()) {
-                return response()->json(['success' => false, 'message' => 'Impossible de supprimer cette UE : des résultats y sont rattachés.'], 422);
-            }
-            return redirect()->route('esbtp.lmd.ue.index')
-                ->with('error', 'Impossible de supprimer cette UE : des résultats y sont rattachés.');
+            return $this->refuserSuppressionUe(
+                $request,
+                'Impossible de supprimer cette UE : des résultats y sont rattachés.'
+            );
         }
 
-        // Détacher les ECUEs (matières) avant suppression
-        $ue->matieres()->update(['unite_enseignement_id' => null]);
-        $ue->delete();
+        // Le code d'une UE étant unique dans l'école, la même unité sert
+        // plusieurs parcours. Ce geste-ci la retirait de TOUS d'un coup, sans
+        // que rien ne le dise : la garde ci-dessus ne couvrait que le cas où
+        // des résultats existaient déjà, donc pas une maquette saisie et pas
+        // encore notée — l'état exact d'une maquette en cours de saisie.
+        if ($refus = $this->suppressionUe->refusSiPartagee($ue)) {
+            return $this->refuserSuppressionUe($request, $refus);
+        }
+
+        $this->suppressionUe->supprimer($ue);
 
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json(['success' => true, 'message' => 'UE supprimée avec succès.']);
         }
         return redirect()->route('esbtp.lmd.ue.index')
             ->with('success', 'Unité d\'Enseignement supprimée avec succès.');
+    }
+
+    /**
+     * Même refus pour l'appel AJAX de la liste et pour la navigation classique.
+     */
+    private function refuserSuppressionUe(Request $request, string $message)
+    {
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json(['success' => false, 'message' => $message], 422);
+        }
+
+        return redirect()->route('esbtp.lmd.ue.index')->with('error', $message);
     }
 
     // -------------------------------------------------------------------------
@@ -792,14 +820,31 @@ class ESBTPLMDUEController extends Controller
     /**
      * Vérifier que l'ajout/modification d'un crédit ECUE ne dépasse pas le crédit de l'UE.
      * Retourne une response d'erreur si dépassement, null sinon.
+     *
+     * Le budget se compte PAR MAQUETTE, pas sur l'unité entière. Une unité
+     * partagée peut porter, pour un même total de crédits, une composition en
+     * Bâtiment et une autre en Travaux Publics : les additionner ferait dépasser
+     * le plafond mécaniquement, et plus aucun élément ne pourrait être ajouté
+     * nulle part. Le refus serait permanent et sans explication utile.
+     *
+     * `$parcoursId` reste nul tant que les écrans n'écrivent que la composition
+     * commune : on compte alors les seules lignes communes, ce qui est
+     * exactement le budget de cette composition-là.
      */
-    private function checkCreditOverflow(ESBTPUniteEnseignement $ue, $creditEcue, ?int $excludeMatiereId, Request $request)
-    {
+    private function checkCreditOverflow(
+        ESBTPUniteEnseignement $ue,
+        $creditEcue,
+        ?int $excludeMatiereId,
+        Request $request,
+        ?int $parcoursId = null
+    ) {
         if (!$ue->credit || !$creditEcue) {
             return null;
         }
 
-        $query = DB::table('esbtp_ue_matiere')->where('unite_enseignement_id', $ue->id);
+        $query = DB::table('esbtp_ue_matiere')
+            ->where('unite_enseignement_id', $ue->id)
+            ->where('parcours_id', $parcoursId ?? 0);
         if ($excludeMatiereId) {
             $query->where('matiere_id', '!=', $excludeMatiereId);
         }

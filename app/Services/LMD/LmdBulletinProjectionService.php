@@ -168,7 +168,8 @@ class LmdBulletinProjectionService
                 $anneeUniversitaireId,
                 $allNotes,
                 $enseignantMap,
-                $notesFinales
+                $notesFinales,
+                $classe->parcours_id ? (int) $classe->parcours_id : null
             );
 
             $resultatsUEs[] = $resultatUE;
@@ -222,9 +223,13 @@ class LmdBulletinProjectionService
         int $anneeUniversitaireId,
         Collection $allNotes,
         Collection $enseignantMap,
-        Collection $notesFinales
+        Collection $notesFinales,
+        ?int $parcoursId = null
     ): array {
-        $ecues = $ue->getEcuesEffectifs();
+        // Meme decoupage que le bulletin definitif : sans lui, cet ecran
+        // projetterait une moyenne calculee sur une autre composition que celle
+        // qui sera delivree, et l'etudiant verrait deux verdicts contraires.
+        $ecues = $ue->getEcuesEffectifs($parcoursId);
         $totalPoints = 0;
         $totalCoefficients = 0;
         $missingEcues = 0;

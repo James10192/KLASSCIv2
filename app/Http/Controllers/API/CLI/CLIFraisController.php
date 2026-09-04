@@ -336,11 +336,23 @@ class CLIFraisController extends BaseApiController
             (bool) ($valide['ajuster'] ?? false),
         );
 
+        // Un montant retouche a la main ne s'applique que si sa ligne est cochee,
+        // ce que le CLI ne sait pas faire : il DETECTE ces ecarts sans pouvoir
+        // les ecrire. Ne rapporter que l'applicable ferait dire au dry-run
+        // « 0 a realigner » alors qu'il en a trouve, et l'operateur conclurait a
+        // tort que le tarif est deja a jour partout.
+        $detectes = (int) ($resultat['total_ajuster_detecte'] ?? $resultat['total_ajuster']);
+        $proteges = max(0, $detectes - (int) $resultat['total_ajuster']);
+        $reserve = $proteges > 0
+            ? sprintf(" %d montant(s) protege(s) (retouche a la main) : a appliquer depuis l'ecran, ligne par ligne.", $proteges)
+            : '';
+
         return $this->successResponse(
             $resultat,
-            $resultat['applique']
+            ($resultat['applique']
                 ? sprintf('%d ajoutée(s), %d retirée(s), %d montant(s) realigne(s) sur %d inscription(s).', $resultat['total_ajouter'], $resultat['total_retirer'], $resultat['total_ajuster'], $resultat['inscriptions'])
                 : sprintf("%d à ajouter, %d à retirer, %d montant(s) a realigner sur %d inscription(s). Rien n'a ete ecrit.", $resultat['total_ajouter'], $resultat['total_retirer'], $resultat['total_ajuster'], $resultat['inscriptions'])
+            ) . $reserve
         );
     }
 

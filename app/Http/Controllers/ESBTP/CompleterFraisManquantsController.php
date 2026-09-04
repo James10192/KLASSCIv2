@@ -164,6 +164,12 @@ class CompleterFraisManquantsController extends Controller
             'total_ajouter' => $resultat['total_ajouter'],
             'total_retirer' => $resultat['total_retirer'],
             'total_ajuster' => $resultat['total_ajuster'],
+            // Ce qui a ete TROUVE, distinct de ce qui sera ECRIT : un montant
+            // negocie est detecte sans etre applicable tant que sa ligne n'a pas
+            // ete cochee. C'est ce compte-la qui decide de l'etat « aucun ecart »,
+            // sinon l'ecran repond « les frais sont a jour » a l'ecole qui a le
+            // plus de corrections en attente.
+            'total_ajuster_detecte' => $resultat['total_ajuster_detecte'] ?? $resultat['total_ajuster'],
             'inscriptions' => $resultat['inscriptions'],
             'lignes' => array_slice($resultat['lignes'], 0, self::MAX_LIGNES_RENDUES),
             'lignes_retrait' => array_slice($resultat['lignes_retrait'], 0, self::MAX_LIGNES_RENDUES),
@@ -185,9 +191,22 @@ class CompleterFraisManquantsController extends Controller
         $ajoutes = (int) $resultat['total_ajouter'];
         $retires = (int) $resultat['total_retirer'];
         $ajustes = (int) $resultat['total_ajuster'];
+        $detectes = (int) ($resultat['total_ajuster_detecte'] ?? $ajustes);
+        $proteges = max(0, $detectes - $ajustes);
 
-        if ($ajoutes === 0 && $retires === 0 && $ajustes === 0) {
+        if ($ajoutes === 0 && $retires === 0 && $detectes === 0) {
             return 'Aucun écart : les frais sont à jour.';
+        }
+
+        // Des ecarts existent, mais aucun n'est applicable en l'etat : le dire,
+        // plutot que de repondre « a jour » a quelqu'un qui a des corrections
+        // devant lui.
+        if ($ajoutes === 0 && $retires === 0 && $ajustes === 0) {
+            return sprintf(
+                '%d montant(s) à mettre à jour, tous protégés car retouchés à la main. '
+                . 'Cochez les lignes concernées pour les appliquer.',
+                $proteges
+            );
         }
 
         $parts = [];
@@ -201,6 +220,15 @@ class CompleterFraisManquantsController extends Controller
             $parts[] = sprintf('%d montant(s) mis à jour', $ajustes);
         }
 
-        return sprintf('%s sur %d inscription(s).', implode(', ', $parts), $resultat['inscriptions']);
+        $phrase = sprintf('%s sur %d inscription(s).', implode(', ', $parts), $resultat['inscriptions']);
+
+        if ($proteges > 0) {
+            $phrase .= sprintf(
+                ' %d montant(s) protégé(s) laissé(s) de côté : cochez-les pour les appliquer.',
+                $proteges
+            );
+        }
+
+        return $phrase;
     }
 }

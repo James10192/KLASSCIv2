@@ -264,6 +264,13 @@
                                     <i class="fas fa-print"></i>Fiche d'inscription
                                 </a>
                             </li>
+                            <li>
+                                {{-- Meme route sans `inline` : elle telecharge au lieu d'afficher. --}}
+                                <a class="dropdown-item"
+                                   href="{{ route('esbtp.inscriptions.fiche.preview-pdf', ['inscription' => $inscription->id]) }}">
+                                    <i class="fas fa-download"></i>Télécharger la fiche
+                                </a>
+                            </li>
                         @endcan
                         @if($inscription->status === 'pending' || $inscription->status === 'en_attente')
                             @can('inscriptions.cancel')
