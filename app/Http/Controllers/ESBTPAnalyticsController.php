@@ -14,6 +14,7 @@ use App\Domain\Exports\Reports\AnalyticsReport;
 use App\Helpers\SettingsHelper;
 use App\Jobs\ComputeAnalyticsPredictionsJob;
 use App\Jobs\DetectAnalyticsAnomaliesJob;
+use App\Services\Analytics\AnalyticsScanCache;
 use App\Services\Analytics\RecouvrementGapService;
 use App\Services\EcheancierReadinessService;
 use App\Services\ExportRenderer;
@@ -61,6 +62,9 @@ class ESBTPAnalyticsController extends Controller
             'anomalies'        => $anomalies,
             'cashFlowAccuracy' => $cashFlowAccuracy,
             'recouvrementGaps' => $recouvrementGaps,
+            // Ces montants peuvent venir d'un balayage mémorisé : sans cette
+            // date, le lecteur croirait lire du temps réel.
+            'recouvrementGapsComputedAt' => $recouvrementGap->lastComputedAt(),
             'echeancierMode'   => $echeancierReadiness->mode(),
             'echeancierNote'   => $echeancierReadiness->noteForMode(),
             'context'          => $context,
@@ -95,8 +99,13 @@ class ESBTPAnalyticsController extends Controller
         CashFlowPredictor $cashFlow,
         DefaultRiskPredictor $defaultRisk,
         AnomalyDetector $anomalyDetector,
+        AnalyticsScanCache $scanCache,
     ): JsonResponse {
         $context = AnalyticsContext::fromRequest($request);
+
+        // Demander explicitement une actualisation doit rebalayer : sinon le
+        // bouton renverrait les mêmes montants que ceux déjà à l'écran.
+        $scanCache->invalidate();
 
         $cachedCashFlow = new CachedPredictor($cashFlow);
         $cachedRisk = new CachedPredictor($defaultRisk);
@@ -116,9 +125,13 @@ class ESBTPAnalyticsController extends Controller
      * Déclenche le job daily + job anomalies. Retourne JSON pour AJAX
      * (no full page reload — voir rule laravel-ajax-blade-alpine.md).
      */
-    public function runNow(Request $request): JsonResponse
+    public function runNow(Request $request, AnalyticsScanCache $scanCache): JsonResponse
     {
         try {
+            // Même raison que dans refresh() : un recalcul demandé à la main ne
+            // doit pas repartir des balayages mémorisés.
+            $scanCache->invalidate();
+
             ComputeAnalyticsPredictionsJob::dispatch();
             DetectAnalyticsAnomaliesJob::dispatch();
 
@@ -200,6 +213,20 @@ class ESBTPAnalyticsController extends Controller
             'Filière' => $context->filiereId ? optional(ESBTPFiliere::find($context->filiereId))->name : null,
             'Classe' => $context->classeId ? optional(ESBTPClasse::find($context->classeId))->name : null,
         ]);
+
+        // La fraicheur voyage avec l export, comme a l ecran.
+        //
+        // L ecart de recouvrement peut venir de la memoire, et l ecran l annonce.
+        // Un PDF ou un tableur, eux, se transmettent et se relisent des semaines plus
+        // tard : sans cette ligne, un comptable lirait des chiffres memorises en les
+        // croyant calcules a l instant. On passe par le bandeau des filtres appliques,
+        // que les deux formats affichent deja.
+        $calculeA = $recouvrementGap->lastComputedAt();
+
+        if ($calculeA !== null) {
+            $appliedFilters['Écart de recouvrement calculé le'] =
+                $calculeA->locale('fr')->isoFormat('D MMMM YYYY [à] HH:mm');
+        }
 
         return new AnalyticsReport(
             $cashFlowResult,
