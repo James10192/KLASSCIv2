@@ -357,11 +357,24 @@ class ESBTPEtudiantController extends Controller
             // Appeler le service pour créer l'inscription
             $parentData = !empty($parentsData) ? $parentsData[0] : null;
 
-            // Ajout de logs pour déboguer
-            \Illuminate\Support\Facades\Log::info('Appel au service d\'inscription', [
-                'etudiantData' => $etudiantData,
-                'inscriptionData' => $inscriptionData,
-                'parentData' => $parentData
+            // Ce journal contenait `etudiantData` et `parentData` EN ENTIER : nom,
+            // prenoms, date de naissance, telephone, courriel personnel, adresse —
+            // l etat civil complet d un eleve souvent mineur, et les coordonnees de
+            // ses parents. Ecrit a chaque creation, conserve quatorze jours, lisible
+            // par le support, repris dans les sauvegardes, sur six ecoles.
+            //
+            // C est exactement ce que LogRequests masque deja pour le portail public
+            // de candidature. Le contournement etait ici, en dur dans le controleur,
+            // hors de portee de cette liste de champs.
+            //
+            // On garde ce qui sert a deboguer — vers quelle classe, avec ou sans
+            // parent, par qui — et rien de ce qui identifie une personne.
+            \Illuminate\Support\Facades\Log::info("Appel au service d'inscription", [
+                'classe_id' => $inscriptionData['classe_id'] ?? null,
+                'annee_universitaire_id' => $inscriptionData['annee_universitaire_id'] ?? null,
+                'champs_etudiant' => count($etudiantData),
+                'avec_parent' => $parentData !== null,
+                'par' => Auth::id(),
             ]);
 
             $result = $this->inscriptionService->createInscription(
