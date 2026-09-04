@@ -275,7 +275,7 @@ jobs:
       # Le code d une UE etant unique en base, importer le second parcours
       # reecrivait le premier, en silence.
       - name: L import LMD refuse d ecraser une maquette
-        run: php vendor/bin/phpunit tests/Feature/Lmd/ImportRefuseEcrasementTest.php --no-coverage
+        run: php vendor/bin/phpunit tests/Feature/LMD/ImportRefuseEcrasementTest.php --no-coverage
 
   schema:
     name: Le schéma se crée entièrement (${{ matrix.moteur.nom }})
