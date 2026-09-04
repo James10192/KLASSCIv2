@@ -766,13 +766,13 @@ class ESBTPEtudiantController extends Controller
                     'mime_type' => $request->file('photo')->getMimeType()
                 ]);
 
-                // Supprimer l'ancienne photo si elle existe
-                if ($etudiant->photo && Storage::exists(str_replace('/storage', 'public', $etudiant->photo))) {
-                    Storage::delete(str_replace('/storage', 'public', $etudiant->photo));
-                }
-
-                $photoPath = $request->file('photo')->store('public/etudiants/photos');
-                $etudiantData['photo'] = Storage::url($photoPath);
+                // Le service ecrit un chemin relatif, la meme forme que partout
+                // ailleurs. Cet ecran stockait une URL `/storage/…`, que le
+                // lecteur re-prefixait : la photo ressortait cassee sur les
+                // tableaux de bord, les bulletins et la messagerie.
+                $photos = app(\App\Services\Photos\StockagePhoto::class);
+                $photos->supprimer($etudiant->photo);
+                $etudiantData['photo'] = $photos->enregistrer($request->file('photo'), 'etudiant-'.$etudiant->id);
             }
 
             // Mettre à jour l'étudiant
@@ -1020,9 +1020,11 @@ class ESBTPEtudiantController extends Controller
             }
 
             // Supprimer la photo
-            if ($etudiant->photo && Storage::exists(str_replace('/storage', 'public', $etudiant->photo))) {
-                Storage::delete(str_replace('/storage', 'public', $etudiant->photo));
-            }
+            // Derniere lecture manuelle : elle ne connaissait que l ancienne forme
+            // « URL ». Pour les trois autres, le fichier restait sur le disque apres
+            // suppression de l etudiant — des orphelins qui s accumulent en silence
+            // sur un quota mutualise.
+            app(\App\Services\Photos\StockagePhoto::class)->supprimer($etudiant->photo);
 
             // Supprimer l'étudiant
             $etudiant->delete();
@@ -2384,17 +2386,15 @@ class ESBTPEtudiantController extends Controller
         try {
             DB::beginTransaction();
 
-            // Supprimer l'ancienne photo si elle existe
-            if ($etudiant->photo && Storage::disk('public')->exists($etudiant->photo)) {
-                Storage::disk('public')->delete($etudiant->photo);
-            }
+            $photos = app(\App\Services\Photos\StockagePhoto::class);
 
-            // Stocker la nouvelle photo
-            $photo = $request->file('photo');
-            $filename = 'etudiant_' . $etudiant->id . '_' . time() . '.' . $photo->getClientOriginalExtension();
-            $path = $photo->storeAs('photos', $filename, 'public');
+            // Passe par le service : il sait retrouver le fichier quelle que soit
+            // la forme historique stockee. Le test direct sur $etudiant->photo
+            // laissait derriere lui les photos ecrites sous les anciens dossiers.
+            $photos->supprimer($etudiant->photo);
 
-            // Mettre à jour le chemin de la photo dans la base de données
+            $path = $photos->enregistrer($request->file('photo'), 'etudiant-'.$etudiant->id);
+
             $etudiant->update(['photo' => $path]);
 
             DB::commit();
@@ -2402,7 +2402,7 @@ class ESBTPEtudiantController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Photo mise à jour avec succès',
-                'photo_url' => asset('storage/' . $path)
+                'photo_url' => $photos->url($path),
             ]);
 
         } catch (\Exception $e) {

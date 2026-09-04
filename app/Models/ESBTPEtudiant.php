@@ -421,28 +421,21 @@ class ESBTPEtudiant extends Model implements Auditable
      *
      * @return string|null
      */
-    public function getPhotoUrlAttribute()
+    /**
+     * L'adresse publique de la photo, ou null s'il n'y en a pas.
+     *
+     * La resolution vit dans StockagePhoto, qui connait les quatre formes
+     * historiques de cette colonne. Cette methode en essayait deux et rendait,
+     * en dernier recours, une URL fabriquee meme quand aucun fichier n'existait :
+     * une photo posee depuis l'ecran d'edition ressortait alors en
+     * `storage/photos/etudiants//storage/etudiants/photos/x.jpg`, cassee.
+     *
+     * On rend desormais null quand le fichier est introuvable — l'appelant
+     * affiche son image par defaut plutot qu'une vignette brisee.
+     */
+    public function getPhotoUrlAttribute(): ?string
     {
-        if (!$this->photo) {
-            return null;
-        }
-        
-        // Chemins possibles pour la photo (pour compatibilité)
-        $paths = [
-            'photos/etudiants/' . $this->photo,  // Nouveau chemin
-            $this->photo,                        // Ancien chemin direct
-        ];
-        
-        // Vérifier quel chemin existe
-        foreach ($paths as $path) {
-            $fullPath = storage_path('app/public/' . $path);
-            if (file_exists($fullPath)) {
-                return asset('storage/' . $path);
-            }
-        }
-        
-        // Par défaut, retourner le nouveau chemin
-        return asset('storage/photos/etudiants/' . $this->photo);
+        return app(\App\Services\Photos\StockagePhoto::class)->url($this->photo);
     }
 
     /**

@@ -37,7 +37,11 @@ class Kernel extends HttpKernel
      */
     protected $middlewareGroups = [
         'web' => [
-            \App\Http\Middleware\LogRequestMiddleware::class,
+            // LogRequestMiddleware retire : il ecrivait le MEME Log::info que
+            // LogRequests, deja pose sur la pile globale ligne 29. Deux ecritures
+            // disque synchrones pour une seule information, a chaque page, sur un
+            // hebergement mutualise. On garde LogRequests, le seul des deux a
+            // masquer les champs sensibles.
             \App\Http\Middleware\EncryptCookies::class,
             \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
             \Illuminate\Session\Middleware\StartSession::class,
@@ -47,7 +51,10 @@ class Kernel extends HttpKernel
             \App\Http\Middleware\VerifyCsrfToken::class,
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
             \App\Http\Middleware\UpdateLastLogin::class,
-            \App\Http\Middleware\RouteDebugMiddleware::class,
+            // RouteDebugMiddleware retire du groupe web : troisieme journalisation
+            // de la meme requete, avec parametres, IP et agent utilisateur. Outil de
+            // mise au point, pas de production. Il reste enregistre et se remet en
+            // une ligne si besoin.
             \App\Http\Middleware\ContractExpiryMiddleware::class,
             // Retient une session tant que le second facteur n'a pas ete
             // presente. Ne concerne QUE les comptes qui en ont deja confirme

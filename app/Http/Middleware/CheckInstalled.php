@@ -37,10 +37,15 @@ class CheckInstalled
             $installed = true;
         }
 
-        // Journaliser l'état de l'installation pour le débogage
-        \Log::debug("Middleware CheckInstalled - Installation status: " . ($installed ? 'Installed' : 'Not installed') .
-                  ", Match: {$matchPercentage}%, Admin user: " . ($hasAdminUser ? 'Yes' : 'No') .
-                  ", Route: " . $request->path());
+        // Cette trace s'ecrivait a CHAQUE page. Le niveau de journalisation etant
+        // regle sur debug en production, elle atterrissait reellement sur le disque,
+        // partage entre tous les sites de l'hebergement. Elle sert a mettre au point
+        // l'installation : elle ne s'ecrit donc plus que quand le debogage est actif.
+        if (config('app.debug')) {
+            \Log::debug("Middleware CheckInstalled - Installation status: " . ($installed ? 'Installed' : 'Not installed') .
+                      ", Match: {$matchPercentage}%, Admin user: " . ($hasAdminUser ? 'Yes' : 'No') .
+                      ", Route: " . $request->path());
+        }
 
         // Si nous sommes sur les routes d'installation, toujours permettre l'accès
         if ($request->is('install') || $request->is('install/*')) {
@@ -76,7 +81,14 @@ class CheckInstalled
         if ($matchPercentage < 100 && !$request->is('/')) {
             // Afficher un message d'avertissement mais permettre l'accès à l'application
             // au lieu de rediriger en boucle
-            \Log::warning("Application installed but migrations don't match 100% ({$matchPercentage}%)");
+            // Une fois par heure, pas a chaque page. Le message est utile — il dit
+            // qu une instance a des migrations en retard, et abidjan est a 97 % —
+            // mais le repeter a chaque requete ne le rend pas plus vrai : cela ecrit
+            // sur un disque partage et noie le journal sous une information constante.
+            $cle = "avertissement-migrations-".$matchPercentage;
+            if (\Illuminate\Support\Facades\Cache::add($cle, true, 3600)) {
+                \Log::warning("Application installed but migrations don't match 100% ({$matchPercentage}%)");
+            }
             // On pourrait ajouter un flash message ici pour informer l'administrateur
 
             // Continuer la requête sans redirection
