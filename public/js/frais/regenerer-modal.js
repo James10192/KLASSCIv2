@@ -18,20 +18,60 @@
         return Number(n || 0).toLocaleString('fr-FR');
     }
 
+    function esc(v) {
+        return String(v == null ? '' : v).replace(/[&<>"']/g, (c) => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+        }[c]));
+    }
+
+    // Quand la regeneration porte sur plusieurs inscriptions, le nom de
+    // l'etudiant est la seule chose qui distingue deux lignes identiques.
+    function qui(l) {
+        return l.etudiant ? '  ' + esc(l.etudiant) : '';
+    }
+
     function renderPreview(res) {
         const add = res.lignes || [];
         const del = res.lignes_retrait || [];
-        if (!add.length && !del.length) {
+        const adj = res.lignes_ajustement || [];
+        const totalAdd = res.total_ajouter != null ? res.total_ajouter : add.length;
+        const totalDel = res.total_retirer != null ? res.total_retirer : del.length;
+        const totalAdj = res.total_ajuster != null ? res.total_ajuster : adj.length;
+
+        if (!totalAdd && !totalDel && !totalAdj) {
             return '<span class="rf-line-muted">$ aucun écart — les frais sont à jour</span>';
         }
+
         const lines = ['<span class="rf-line-muted">$ dry-run</span>'];
         add.forEach((l) => {
-            lines.push('<span class="rf-line-add">+ ' + (l.categorie || '—') + '   ' + fmt(l.montant) + ' F</span>');
+            lines.push('<span class="rf-line-add">+ ' + esc(l.categorie || '—') + '   ' + fmt(l.montant) + ' F' + qui(l) + '</span>');
+        });
+        adj.forEach((l) => {
+            // Le tarif a bouge depuis l'inscription : on montre l'ancien ET le
+            // nouveau, sinon « ajuste » ne veut rien dire pour la caisse.
+            let note = '';
+            if (l.cree_une_dette) {
+                note = '  <span class="rf-line-warn">! avait soldé — recrée une dette de ' + fmt(l.restera_du) + ' F</span>';
+            } else if (l.trop_percu) {
+                note = '  <span class="rf-line-warn">! déjà payé ' + fmt(l.deja_paye) + ' F — trop-perçu</span>';
+            }
+            lines.push('<span class="rf-line-adj">≠ ' + esc(l.categorie || '—') + '   '
+                + fmt(l.montant_actuel) + ' F → ' + fmt(l.montant) + ' F' + qui(l) + '</span>' + note);
         });
         del.forEach((l) => {
-            lines.push('<span class="rf-line-del">− ' + (l.categorie || '—') + '   ' + fmt(l.montant) + ' F  #' + (l.motif || 'retrait') + '</span>');
+            lines.push('<span class="rf-line-del">− ' + esc(l.categorie || '—') + '   ' + fmt(l.montant) + ' F  #' + esc(l.motif || 'retrait') + qui(l) + '</span>');
         });
-        lines.push('<span class="rf-line-muted">$ ' + add.length + ' ajout(s), ' + del.length + ' retrait(s)</span>');
+
+        if (res.tronque) {
+            lines.push('<span class="rf-line-muted">… liste tronquée, les totaux ci-dessous restent exacts</span>');
+        }
+
+        const resume = [];
+        if (totalAdd) resume.push(totalAdd + ' ajout(s)');
+        if (totalAdj) resume.push(totalAdj + ' montant(s) mis à jour');
+        if (totalDel) resume.push(totalDel + ' retrait(s)');
+        lines.push('<span class="rf-line-muted">$ ' + resume.join(', ') + ' sur ' + (res.inscriptions || 0) + ' inscription(s)</span>');
+
         return lines.join('\n');
     }
 
@@ -67,7 +107,7 @@
             }
 
             writeTerm(renderPreview(preview));
-            const empty = !preview.total_ajouter && !preview.total_retirer && !preview.total;
+            const empty = !preview.total_ajouter && !preview.total_retirer && !preview.total_ajuster && !preview.total;
             document.getElementById('rf-confirm').disabled = !!empty;
             document.getElementById('rf-modal-sub').textContent = empty
                 ? 'Rien à appliquer'
@@ -103,6 +143,12 @@
         const formData = form ? new FormData(form) : new FormData();
         if (btn.dataset.inscriptionId && !formData.has('inscription_ids[]')) {
             formData.append('inscription_ids[]', btn.dataset.inscriptionId);
+        }
+        if (btn.dataset.scope) {
+            formData.set('scope', btn.dataset.scope);
+        }
+        if (btn.dataset.anneeId) {
+            formData.set('annee_id', btn.dataset.anneeId);
         }
         window.KlassciRegenererFrais.open({
             previewUrl: btn.dataset.preview,

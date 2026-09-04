@@ -309,6 +309,11 @@ class CLIFraisController extends BaseApiController
      *
      * Ne touche a rien sans `apply`, et ne cree QUE ce qui manque : une
      * souscription existante porte une decision, on ne la revient pas.
+     *
+     * `ajuster` leve cette derniere reserve pour les seuls montants : la
+     * souscription reste, mais son tarif est realigne sur le bareme en vigueur.
+     * C'est ce qu'il faut apres avoir corrige le prix d'une categorie, et c'est
+     * pour cela que ca se demande explicitement.
      */
     public function souscriptionsManquantes(
         Request $request,
@@ -321,18 +326,21 @@ class CLIFraisController extends BaseApiController
         $valide = $request->validate([
             'annee_id' => ['nullable', 'integer'],
             'apply' => ['nullable', 'boolean'],
+            'ajuster' => ['nullable', 'boolean'],
         ]);
 
         $resultat = $rattrapage->executer(
             (bool) ($valide['apply'] ?? false),
             $valide['annee_id'] ?? null,
+            null,
+            (bool) ($valide['ajuster'] ?? false),
         );
 
         return $this->successResponse(
             $resultat,
             $resultat['applique']
-                ? sprintf('%d ajoutée(s), %d retirée(s) sur %d inscription(s).', $resultat['total_ajouter'], $resultat['total_retirer'], $resultat['inscriptions'])
-                : sprintf("%d à ajouter, %d à retirer sur %d inscription(s). Rien n'a ete ecrit.", $resultat['total_ajouter'], $resultat['total_retirer'], $resultat['inscriptions'])
+                ? sprintf('%d ajoutée(s), %d retirée(s), %d montant(s) realigne(s) sur %d inscription(s).', $resultat['total_ajouter'], $resultat['total_retirer'], $resultat['total_ajuster'], $resultat['inscriptions'])
+                : sprintf("%d à ajouter, %d à retirer, %d montant(s) a realigner sur %d inscription(s). Rien n'a ete ecrit.", $resultat['total_ajouter'], $resultat['total_retirer'], $resultat['total_ajuster'], $resultat['inscriptions'])
         );
     }
 

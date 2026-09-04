@@ -523,11 +523,25 @@ tr[data-inscription-id] > td { transition: background .15s ease; }
     to { bottom: 24px; opacity: 1; }
 }
 
+/* La page vit dans le wrapper standard des ecrans KLASSCI (.dashboard-acasi >
+   .main-content) : c'est lui qui pose le fond, l'espacement et le contexte
+   d'empilement attendus par le reste du design. Le retirer avait bien supprime
+   le debordement sous la sidebar, mais au prix du gabarit : la liste
+   s'affichait hors mise en page. On garde donc le wrapper, et on contient le
+   debordement la ou il nait — la largeur — comme le fait deja /esbtp/paiements. */
+.dashboard-acasi { min-width: 0; overflow-x: clip; }
+.dashboard-acasi .main-content { min-width: 0; max-width: 100%; }
 .ii-page {
     max-width: 100%;
     min-width: 0;
     overflow-x: clip;
+    /* Au-dessus du voile en degrade de .nextadmin-content::before, qui est
+       positionne et peindrait donc par-dessus un contenu qui ne l'est pas.
+       Sans z-index : en poser un ferait de .ii-page un contexte d'empilement,
+       et les menus deroulants forces en position: fixed y seraient enfermes. */
+    position: relative;
 }
+.ii-hero, .ii-toolbar, .ii-results-card { max-width: 100%; min-width: 0; }
 
 /* ========== RESPONSIVE ========== */
 @media (max-width: 992px) {
@@ -555,6 +569,8 @@ tr[data-inscription-id] > td { transition: background .15s ease; }
 @php
     $hideAmounts = $hideAmounts ?? app(\App\Services\EnrollmentAmountVisibility::class)->hideAmounts(auth()->user());
 @endphp
+<div class="dashboard-acasi">
+    <div class="main-content">
 <div class="ii-page">
 
         {{-- HERO + KPIs --}}
@@ -616,6 +632,23 @@ tr[data-inscription-id] > td { transition: background .15s ease; }
                                 title="Resynchronise les phases TC/Spé de toutes les inscriptions BTS (corrige les désynchronisations historiques)">
                             <i class="fas" :class="bulkSyncing ? 'fa-spinner fa-spin' : 'fa-arrows-rotate'"></i>
                             <span x-text="bulkSyncing ? 'Synchronisation…' : 'Actualiser parcours BTS'"></span>
+                        </button>
+                    @endcan
+                    @can('inscriptions.edit')
+                        {{-- Rejoue le bareme sur TOUTE l'annee affichee. Une souscription
+                             fige le tarif du jour de l'inscription : sans ce bouton, corriger
+                             le prix d'un frais dans le parametrage ne rattrape aucun etudiant
+                             deja inscrit, et il faudrait les cocher page par page. --}}
+                        <button type="button"
+                                class="ii-btn--glass js-regenerer-frais"
+                                data-preview="{{ route('esbtp.inscriptions.frais-manquants.preview') }}"
+                                data-apply="{{ route('esbtp.inscriptions.frais-manquants.apply') }}"
+                                data-scope="annee"
+                                @if(request('annee') || ($anneeEnCours?->id))
+                                    data-annee-id="{{ request('annee') ?: $anneeEnCours?->id }}"
+                                @endif
+                                title="Compare toutes les inscriptions de l'année au barème en vigueur : frais manquants, frais qui ne s'appliquent plus, et montants changés depuis l'inscription.">
+                            <i class="fas fa-rotate"></i>Régénérer les frais
                         </button>
                     @endcan
                     @can('inscriptions.validate')
@@ -838,6 +871,8 @@ tr[data-inscription-id] > td { transition: background .15s ease; }
                 ])
             </div>
         </div>
+</div>
+    </div>
 </div>
 
 {{-- BULK ACTIONS BAR — visible si l'utilisateur a au moins une action de masse possible --}}

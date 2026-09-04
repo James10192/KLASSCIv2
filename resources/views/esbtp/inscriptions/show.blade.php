@@ -1216,6 +1216,18 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                             <span class="d-none d-sm-inline">Modifier</span>
                         </a>
                     @endcan
+                    @can('inscriptions.fiche.print')
+                        {{-- Double exemplaire (etudiant + administration) a faire signer.
+                             Ouvert dans un onglet : l'impression se declenche depuis le
+                             lecteur PDF du navigateur, pas depuis un telechargement. --}}
+                        <a href="{{ route('esbtp.inscriptions.fiche.preview-pdf', ['inscription' => $inscription, 'inline' => 1]) }}"
+                           target="_blank" rel="noopener"
+                           class="is-hero-btn"
+                           title="Fiche d'inscription en double exemplaire (à signer)">
+                            <i class="fas fa-print"></i>
+                            <span class="d-none d-md-inline">Fiche d'inscription</span>
+                        </a>
+                    @endcan
                     <a href="{{ route('esbtp.etudiants.show', $inscription->etudiant) }}" class="is-hero-btn primary">
                         <i class="fas fa-user"></i>
                         <span class="d-none d-md-inline">Fiche étudiant</span>

@@ -1,5 +1,5 @@
 <div class="modal fade" id="rf-modal" tabindex="-1" aria-labelledby="rf-modal-title" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered" style="max-width:520px;">
+    <div class="modal-dialog modal-dialog-centered" style="max-width:640px;">
         <div class="modal-content" style="border:none;border-radius:16px;overflow:hidden;box-shadow:0 18px 40px rgba(15,23,42,.18);">
             <div class="rf-head">
                 <div class="rf-head-icon"><i class="fas fa-rotate"></i></div>
@@ -27,6 +27,8 @@
 .rf-term{margin:0;padding:14px 16px;min-height:140px;max-height:280px;overflow:auto;background:#07111f;color:#dbeafe;font-family:SFMono-Regular,Consolas,"Liberation Mono",monospace;font-size:.8rem;line-height:1.65;white-space:pre-wrap;}
 .rf-line-add{color:#6ee7b7;}
 .rf-line-del{color:#93c5fd;}
+.rf-line-adj{color:#fcd34d;}
+.rf-line-warn{color:#fca5a5;}
 .rf-line-muted{color:#64748b;}
 .rf-foot{display:flex;justify-content:flex-end;gap:8px;padding:12px 16px;background:#f8fafc;border-top:1px solid #e2e8f0;}
 </style>
