@@ -242,6 +242,25 @@ class ESBTPInscriptionController extends Controller
         ];
 
         if ($request->ajax()) {
+            // Les bornes EFFECTIVES, pas celles saisies. Deux dates a l'envers
+            // sont remises a l'endroit avant de filtrer : le rendu page complete
+            // renvoyait donc des champs corriges, mais le rafraichissement AJAX
+            // ne remplace que la liste. Les champs et les pastilles restaient
+            // inverses au-dessus d'une liste juste — l'ecran affirmait « a partir
+            // du 22/09 » en montrant des dossiers du 02/09.
+            //
+            // L'URL poussee dans l'historique doit dire la meme chose, sans quoi
+            // la meme adresse rend deux etats d'interface selon qu'on y arrive
+            // par un clic ou par un rechargement.
+            $parametres = $request->query();
+            foreach (["date_debut" => $dateDebut, "date_fin" => $dateFin] as $cle => $valeur) {
+                if ($valeur === null || $valeur === "") {
+                    unset($parametres[$cle]);
+                } else {
+                    $parametres[$cle] = $valeur;
+                }
+            }
+
             return response()->json([
                 "html" => view("esbtp.inscriptions.partials.results", [
                     "inscriptions" => $inscriptions,
@@ -249,7 +268,8 @@ class ESBTPInscriptionController extends Controller
                     "dir" => $dir,
                     "perPage" => $perPage,
                 ])->render(),
-                "url" => $request->fullUrl(),
+                "url" => $request->url() . ($parametres ? "?" . http_build_query($parametres) : ""),
+                "periode" => ["date_debut" => $dateDebut, "date_fin" => $dateFin],
                 "stats" => $stats,
                 "total" => $inscriptions->total(),
             ]);

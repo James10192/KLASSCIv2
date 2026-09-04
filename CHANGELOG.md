@@ -40,6 +40,16 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ### Corrections
 
+- **Trier la liste des inscriptions par étudiant ne renvoie plus une page d'erreur** (`/esbtp/inscriptions`) — cliquer l'en-tête « Étudiant » produisait une erreur serveur. Le tri joint la table des étudiants, qui porte elle aussi une colonne d'année universitaire, et le filtre d'année ne disait pas de laquelle il parlait. Les trois autres colonnes triables n'étaient pas touchées.
+
+- **La colonne « Inscription » affiche enfin la date du dossier** — elle montrait la date de saisie. Sous un filtre de période, l'écran annonçait donc « du 1er au 3 septembre » au-dessus de lignes toutes datées d'un autre jour : le filtre était juste, mais rien ne permettait de le vérifier. Le tri de cette colonne suit la même date.
+
+- **L'indicateur « Validées » et le filtre qu'il déclenche comptent la même chose** — l'indicateur ne comptait que les inscriptions dont le parcours de validation était allé à son terme ; le clic, lui, prenait toutes les inscriptions actives. Sur une année où deux inscriptions sont actives sans être achevées, l'indicateur affichait zéro et le clic en montrait deux, sans moyen de savoir lequel disait vrai. Ces deux-là relèvent de « Non validées », qui les compte déjà.
+
+- **Deux dates saisies à l'envers sont remises à l'endroit à l'écran aussi** — elles l'étaient déjà pour filtrer, mais les champs et les pastilles gardaient l'ordre saisi : l'écran affirmait « à partir du 22 septembre » en montrant des dossiers du 2. L'adresse de la page conservait elle aussi l'inversion, si bien que la même adresse donnait deux affichages selon qu'on y arrivait par un clic ou par un rechargement.
+
+- **L'export PDF des étudiants annonce le filtre Genre qu'il applique** — le document disait « Filtres appliqués : Statut : Actif » au-dessus d'une population d'hommes seulement. Un récapitulatif incomplet est pire qu'absent : il donne à croire qu'on a tout vu.
+
 - **Un élément réservé à une maquette n'apparaît plus dans celle du parcours voisin** — le découpage de la composition d'une unité par parcours, annoncé plus haut, comportait un défaut qui l'annulait : un élément écarté d'une maquette était repris par le mécanisme de secours qui sert aux unités sans composition enregistrée. Il entrait donc au bulletin des étudiants de l'autre parcours, et avec le coefficient et le crédit portés par la matière au lieu de ceux de la maquette. Rien ne le signalait. Le mécanisme de secours ne s'applique désormais qu'aux éléments qu'aucune maquette ne réclame.
 
 - **Retirer un élément d'une unité héritée ne le verse plus dans le catalogue BTS** — sur une unité dont la composition n'avait jamais été enregistrée, ce qui est le cas de tout ce que les imports antérieurs ont produit, le retrait d'un élément d'une seule maquette coupait son rattachement à l'unité entière. L'élément quittait tous les parcours d'un coup et réapparaissait dans les écrans du cursus BTS. La composition est maintenant enregistrée avant tout retrait.

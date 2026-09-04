@@ -77,6 +77,48 @@ class FiltrePeriodeInscriptionTest extends TestCase
             ]));
     }
 
+    public function test_l_ajax_renvoie_les_bornes_effectives_et_non_celles_saisies(): void
+    {
+        // Le serveur remet deux dates a l'envers a l'endroit avant de filtrer,
+        // mais le rafraichissement AJAX ne remplace que la liste : les champs et
+        // les pastilles gardaient l'ordre saisi AU-DESSUS d'une liste juste.
+        // L'ecran affirmait « a partir du 22/09 » en montrant des dossiers du
+        // 02/09, et l'URL poussee dans l'historique conservait l'inversion.
+        $this->inscriptionDu('2025-09-10');
+
+        $reponse = $this->lister(['date_debut' => '2025-09-20', 'date_fin' => '2025-09-01']);
+
+        $reponse->assertOk()
+            ->assertJsonPath('periode.date_debut', '2025-09-01')
+            ->assertJsonPath('periode.date_fin', '2025-09-20');
+
+        $url = $reponse->json('url');
+        $this->assertStringContainsString('date_debut=2025-09-01', $url);
+        $this->assertStringContainsString('date_fin=2025-09-20', $url);
+    }
+
+    public function test_le_filtre_valide_compte_comme_l_indicateur_du_bandeau(): void
+    {
+        // L'indicateur « Validees » comptait active ET parcours de validation
+        // acheve ; le clic ne filtrait que sur le statut. Sur une annee ou une
+        // inscription est active avec un parcours inacheve, l'indicateur
+        // annoncait 0 et le clic rendait 1 : deux nombres contradictoires cote a
+        // cote, sans moyen de savoir lequel dit vrai.
+        $this->inscriptionDu('2025-09-10');
+
+        $inachevee = $this->inscriptionDu('2025-09-11');
+        $inachevee->update(['workflow_step' => 'en_validation']);
+
+        $validees = $this->lister(['status' => 'active']);
+        $validees->assertOk();
+
+        $this->assertSame(1, $validees->json('total'), 'Le clic doit rendre ce que compte l indicateur.');
+        $this->assertSame(1, $validees->json('stats.actives'), "L'indicateur et la liste doivent s'accorder.");
+
+        // Et l'inachevee reste comptee la ou elle doit l'etre.
+        $this->assertSame(1, $validees->json('stats.non_validees'));
+    }
+
     public function test_la_periode_ne_garde_que_les_inscriptions_comprises_entre_les_bornes(): void
     {
         $this->inscriptionDu('2026-08-20');

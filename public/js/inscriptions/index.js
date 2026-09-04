@@ -230,6 +230,16 @@
             })
             .then((data) => {
                 resultsContainer.innerHTML = data.html;
+                // Le serveur remet deux dates a l'envers a l'endroit avant de
+                // filtrer. Sans ce report, les champs et les pastilles gardaient
+                // l'ordre saisi au-dessus d'une liste juste : l'ecran affirmait
+                // « a partir du 22/09 » en montrant des dossiers du 02/09.
+                if (data.periode) {
+                    ['date_debut', 'date_fin'].forEach(function (cle) {
+                        const champ = form && form.querySelector('#' + cle);
+                        if (champ) champ.value = data.periode[cle] || '';
+                    });
+                }
                 if (options.pushState !== false) {
                     window.history.pushState({ url: data.url }, '', data.url);
                 }
