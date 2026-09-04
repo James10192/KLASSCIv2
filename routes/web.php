@@ -24,6 +24,7 @@ use App\Http\Controllers\ESBTPComptabiliteAnalyticsController;
 use App\Http\Controllers\ESBTPComptabiliteController;
 use App\Http\Controllers\ESBTPComptabiliteFraisController;
 use App\Http\Controllers\ESBTPComptabiliteReportController;
+use App\Http\Controllers\ESBTPPieceDossierController;
 use App\Http\Controllers\ESBTPComptabiliteRelanceController;
 use App\Http\Controllers\ESBTPEcheancierController;
 use App\Http\Controllers\ESBTPContinuingEducationController;
@@ -1755,6 +1756,34 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             Route::post('/parents/{parent}/parent-chatbot-link-code', [App\Http\Controllers\ESBTP\ParentChatbotLinkCodeController::class, 'store'])
                 ->middleware('throttle:5,1')
                 ->name('esbtp.parents.parent-chatbot-link-code');
+        });
+
+    // Catalogue des pieces a fournir a l'inscription.
+    //
+    // Groupe autonome, et non greffe sur celui des parametres d'etablissement :
+    // ce dernier exige d'abord `admin.access|identity.*`, si bien qu'un role sur
+    // mesure ne portant que `pieces_dossier.view` y prendrait un 403 muet. La
+    // permission suffit seule a ouvrir cet ecran, ce qui est exactement la
+    // promesse faite a une ecole qui compose ses propres roles.
+    //
+    // Consultation et configuration sont deux permissions distinctes : un agent
+    // de guichet doit pouvoir lire la liste sans pouvoir la changer pour toute
+    // l'ecole.
+    Route::prefix('esbtp')->name('esbtp.pieces-dossier.')
+        ->middleware(['auth', 'paywall'])
+        ->group(function () {
+            Route::get('/pieces-dossier', [ESBTPPieceDossierController::class, 'index'])
+                ->middleware(['permission:pieces_dossier.view', 'throttle:60,1'])
+                ->name('index');
+
+            Route::middleware(['permission:pieces_dossier.configure', 'throttle:60,1'])->group(function () {
+                Route::post('/pieces-dossier', [ESBTPPieceDossierController::class, 'store'])->name('store');
+                Route::put('/pieces-dossier/{piece}', [ESBTPPieceDossierController::class, 'update'])->name('update');
+                Route::delete('/pieces-dossier/{piece}', [ESBTPPieceDossierController::class, 'destroy'])->name('destroy');
+                Route::post('/pieces-dossier/{piece}/bascule', [ESBTPPieceDossierController::class, 'toggle'])->name('bascule');
+                Route::post('/pieces-dossier/reorder', [ESBTPPieceDossierController::class, 'reorder'])->name('reorder');
+                Route::post('/pieces-dossier/jeu-propose', [ESBTPPieceDossierController::class, 'installerJeuPropose'])->name('jeu-propose');
+            });
         });
 
     // Configuration des matricules - accÃ¨s direct sans sidebar
