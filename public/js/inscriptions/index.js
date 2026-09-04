@@ -310,6 +310,16 @@
             resetBtn.addEventListener('click', () => {
                 form.querySelectorAll('input[type="text"], input[type="search"], input[type="date"]').forEach((i) => (i.value = ''));
                 form.querySelectorAll('select').forEach((s) => (s.value = s.querySelector('option').value));
+
+                // Le statut est le seul filtre dont le defaut N'EST PAS la
+                // premiere option. La liste s'ouvre sur « Validees », mais la
+                // premiere entree du menu est « Tous statuts » : remettre le
+                // select a sa premiere option envoyait donc status=all, et
+                // « reinitialiser » ne rendait pas la vue de depart mais une
+                // TROISIEME vue, plus large que celle qu'on avait en arrivant.
+                const statut = form.querySelector('select[name="status"]');
+                if (statut) statut.value = 'active';
+
                 document.getElementById('sort-input').value = 'created_at';
                 document.getElementById('dir-input').value = 'desc';
                 submitFilterForm();

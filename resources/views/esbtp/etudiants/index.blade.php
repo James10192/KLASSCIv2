@@ -4382,20 +4382,48 @@
             }
         }
 
+        // Vider un formulaire, VRAIMENT.
+        //
+        // `form.reset()` ne vide pas : il restaure l'etat INITIAL du HTML rendu.
+        // Or cette page est rendue AVEC les filtres appliques — les `selected` et
+        // les `value` sont ceux du filtre. Reinitialiser ramenait donc les selects
+        // a la valeur qu'on venait de retirer : la liste se rechargeait sans
+        // filtre, mais l'ecran continuait d'afficher l'ancien choix. Deux etats
+        // contradictoires, et aucun moyen de savoir lequel fait foi.
+        function viderLesChamps(formulaire) {
+            if (!formulaire) return;
+
+            formulaire.querySelectorAll('select').forEach(function (select) {
+                select.selectedIndex = 0;
+                select.value = '';
+                // Les composants qui se synchronisent sur le select natif — les
+                // pickers premium — n'ecoutent que l'evenement.
+                select.dispatchEvent(new Event('change', { bubbles: true }));
+            });
+
+            formulaire.querySelectorAll('input').forEach(function (champ) {
+                if (champ.type === 'checkbox' || champ.type === 'radio') {
+                    champ.checked = false;
+                } else if (champ.type !== 'hidden' && champ.type !== 'submit' && champ.type !== 'button') {
+                    champ.value = '';
+                }
+            });
+        }
+
         // Fonction pour reset TOUS les selects
         function resetAllSelects() {
             debugLog('🔄 Reset ALL selects');
 
             // Reset formulaire desktop
             if (form) {
-                form.reset();
+                viderLesChamps(form);
                 debugLog('  ✅ Desktop form reset');
             }
 
             // Reset formulaire mobile
             const mobileForm = document.getElementById('mobile-search-form');
             if (mobileForm) {
-                mobileForm.reset();
+                viderLesChamps(mobileForm);
                 debugLog('  ✅ Mobile form reset');
             }
 

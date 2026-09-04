@@ -42,6 +42,10 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ### Corrections
 
+- **Le bouton Réinitialiser vide vraiment les filtres** (`/esbtp/etudiants`, `/esbtp/inscriptions`) — il restaurait l'état initial de la page, qui était déjà la page filtrée : la liste se rechargeait bien sans filtre, mais les menus continuaient d'afficher le choix qu'on venait de retirer. Deux affirmations contradictoires à l'écran, sans moyen de savoir laquelle faisait foi. Sur les inscriptions, il ouvrait en plus une troisième vue, plus large que celle d'arrivée, parce qu'il remettait le statut sur la première entrée du menu au lieu de son état par défaut.
+
+- **L'aperçu de régénération des frais annonce ce qu'il va écrire, pas ce qu'il a trouvé** — la ligne posée juste au-dessus du bouton de confirmation comptait tous les écarts détectés, alors que les montants négociés arrivent décochés et ne partent pas. Elle compte désormais les lignes réellement cochées et les dossiers qu'elles concernent. Le bouton de confirmation, lui, se voit maintenant désactivé quand rien n'est coché : sans marque visible, on cliquait, rien ne se passait, et rien ne disait pourquoi.
+
 - **Deux régénérations de frais lancées en même temps ne se font plus échouer l'une l'autre** — si une caisse encaissait, ou si un second écran régénérait, pendant qu'une régénération d'année entière écrivait, l'opération s'arrêtait sur une erreur technique et **toutes** ses corrections étaient annulées, y compris celles des dossiers que rien ne concernait. Le frais déjà créé par l'autre poste est désormais reconnu comme tel et le travail se poursuit, ce qui est précisément le résultat recherché.
 
 - **Trier la liste des inscriptions par étudiant ne renvoie plus une page d'erreur** (`/esbtp/inscriptions`) — cliquer l'en-tête « Étudiant » produisait une erreur serveur. Le tri joint la table des étudiants, qui porte elle aussi une colonne d'année universitaire, et le filtre d'année ne disait pas de laquelle il parlait. Les trois autres colonnes triables n'étaient pas touchées.

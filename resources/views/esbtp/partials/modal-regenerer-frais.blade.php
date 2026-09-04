@@ -50,6 +50,10 @@
 
 /* Une ligne cochable garde l'allure du terminal : c'est le meme journal, on
    peut juste en retirer des lignes avant de le jouer. */
+/* Un bouton desactive doit SE VOIR desactive : sans marque, l'utilisateur clique,
+   rien ne se passe, et il ne sait pas si l'application est cassee ou si c'est lui
+   qui a oublie quelque chose. */
+#rf-confirm:disabled{opacity:.45;cursor:not-allowed;filter:grayscale(.6);}
 .rf-row{display:flex;align-items:flex-start;gap:9px;padding:3px 8px;border-radius:6px;cursor:pointer;margin:0;}
 .rf-row:hover{background:rgba(255,255,255,.05);}
 .rf-row input{margin-top:3px;width:14px;height:14px;flex-shrink:0;cursor:pointer;accent-color:#38bdf8;}
