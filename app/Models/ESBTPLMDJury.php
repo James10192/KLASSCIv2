@@ -16,6 +16,21 @@ class ESBTPLMDJury extends Model implements Auditable
 
     protected $table = 'esbtp_lmd_jurys';
 
+    /**
+     * Les evenements reellement audites : les MUTATIONS, pas les lectures.
+     *
+     * `config/audit.php` active aussi `retrieved`, ce qui fait ecrire une ligne
+     * dans `audits` a chaque fois qu'un modele est LU. Vingt et un modeles s'en
+     * protegent deja par cette meme propriete ; ceux-ci ne le faisaient pas.
+     *
+     * Le cout n'etait pas theorique : ce modele est charge en eager-load avec la
+     * liste des etudiants et cinq fois dans les classes. Afficher une classe de
+     * quarante etudiants ecrivait quarante lignes en base, a chaque affichage.
+     *
+     * Ce qui reste trace : creation, modification, suppression, restauration.
+     * La conservation OHADA porte sur les mutations, pas sur les consultations.
+     */
+    protected $auditEvents = ['created', 'updated', 'deleted', 'restored'];
     protected $fillable = [
         'annee_universitaire_id', 'session_id', 'parcours_id', 'classe_id', 'semestre',
         'libelle', 'date_jury',
