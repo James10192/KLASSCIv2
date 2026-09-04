@@ -42,6 +42,8 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ### Corrections
 
+- **Deux régénérations de frais lancées en même temps ne se font plus échouer l'une l'autre** — si une caisse encaissait, ou si un second écran régénérait, pendant qu'une régénération d'année entière écrivait, l'opération s'arrêtait sur une erreur technique et **toutes** ses corrections étaient annulées, y compris celles des dossiers que rien ne concernait. Le frais déjà créé par l'autre poste est désormais reconnu comme tel et le travail se poursuit, ce qui est précisément le résultat recherché.
+
 - **Trier la liste des inscriptions par étudiant ne renvoie plus une page d'erreur** (`/esbtp/inscriptions`) — cliquer l'en-tête « Étudiant » produisait une erreur serveur. Le tri joint la table des étudiants, qui porte elle aussi une colonne d'année universitaire, et le filtre d'année ne disait pas de laquelle il parlait. Les trois autres colonnes triables n'étaient pas touchées.
 
 - **La colonne « Inscription » affiche enfin la date du dossier** — elle montrait la date de saisie. Sous un filtre de période, l'écran annonçait donc « du 1er au 3 septembre » au-dessus de lignes toutes datées d'un autre jour : le filtre était juste, mais rien ne permettait de le vérifier. Le tri de cette colonne suit la même date.
