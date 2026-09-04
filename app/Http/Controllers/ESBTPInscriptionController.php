@@ -1875,15 +1875,11 @@ class ESBTPInscriptionController extends Controller
      */
     private function handlePhotoUpload($photo)
     {
-        $filename =
-            time() .
-            "_" .
-            Str::random(10) .
-            "." .
-            $photo->getClientOriginalExtension();
-        $photo->storeAs("public/photos/etudiants", $filename);
-
-        return $filename;
+        // Une seule facon d'ecrire une photo : voir StockagePhoto. Cette methode
+        // rendait un NOM DE FICHIER nu la ou deux autres ecrans rendaient une URL
+        // et un chemin relatif, et composait l'extension avec celle envoyee par le
+        // navigateur — sur un disque public.
+        return app(\App\Services\Photos\StockagePhoto::class)->enregistrer($photo, 'etudiant');
     }
 
     /**

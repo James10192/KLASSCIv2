@@ -81,7 +81,7 @@
                                     @foreach($students as $student)
                                         <tr>
                                             <td class="text-center">
-                                                <img src="{{ $student->photo ? asset('storage/' . $student->photo) : asset('images/default-profile.png') }}" 
+                                                <img src="{{ $student->photo_url ?? asset('images/default-profile.png') }}" 
                                                      alt="Photo de {{ $student->user->name }}" 
                                                      class="rounded-circle" 
                                                      width="40" height="40">
