@@ -214,6 +214,20 @@ class ESBTPAnalyticsController extends Controller
             'Classe' => $context->classeId ? optional(ESBTPClasse::find($context->classeId))->name : null,
         ]);
 
+        // La fraicheur voyage avec l export, comme a l ecran.
+        //
+        // L ecart de recouvrement peut venir de la memoire, et l ecran l annonce.
+        // Un PDF ou un tableur, eux, se transmettent et se relisent des semaines plus
+        // tard : sans cette ligne, un comptable lirait des chiffres memorises en les
+        // croyant calcules a l instant. On passe par le bandeau des filtres appliques,
+        // que les deux formats affichent deja.
+        $calculeA = $recouvrementGap->lastComputedAt();
+
+        if ($calculeA !== null) {
+            $appliedFilters['Écart de recouvrement calculé le'] =
+                $calculeA->locale('fr')->isoFormat('D MMMM YYYY [à] HH:mm');
+        }
+
         return new AnalyticsReport(
             $cashFlowResult,
             $defaultRiskResult,

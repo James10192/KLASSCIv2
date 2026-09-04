@@ -41,12 +41,14 @@ class AnalyticsScanCache
     /**
      * La mémorisation est-elle active sur cette instance ?
      *
-     * Mettre `analytics.scan_cache.enabled` à 0 restaure exactement le
-     * comportement d'avant : chaque affichage rebalaye toutes les inscriptions.
+     * DESACTIVE par defaut : une livraison ne doit rien changer au comportement
+     * de six ecoles sans qu on l ait demande. Mettre
+     * `analytics.scan_cache.enabled` a 1 l allume, ecole par ecole, en
+     * connaissance de cause.
      */
     public function enabled(): bool
     {
-        return (string) SettingsHelper::get('analytics.scan_cache.enabled', '1') === '1'
+        return (string) SettingsHelper::get('analytics.scan_cache.enabled', '0') === '1'
             && $this->ttlSeconds() > 0;
     }
 
