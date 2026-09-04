@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\PiecesDossier;
 
+use App\Enums\AppartenancePieceDossier;
 use App\Enums\EcheancePieceDossier;
 use App\Enums\FormePieceDossier;
 use App\Services\CataloguePiecesDossier;
@@ -28,8 +29,15 @@ class UpsertPieceDossierRequest extends FormRequest
             'description' => ['nullable', 'string', 'max:2000'],
             'is_obligatoire' => ['required', 'boolean'],
             'forme_attendue' => ['required', Rule::in(FormePieceDossier::values())],
-            'nombre_exemplaires' => ['required', 'integer', 'min:1', 'max:' . $exemplairesMax],
+            'exemplaires_par_inscription' => ['required', 'integer', 'min:1', 'max:' . $exemplairesMax],
             'echeance' => ['required', Rule::in(EcheancePieceDossier::values())],
+            'appartenance' => ['required', Rule::in(AppartenancePieceDossier::values())],
+
+            // `min:1`, et surtout PAS de zéro toléré : « 0 mois de validité »
+            // se lit « périmé à l'instant du dépôt », l'exact contraire de
+            // l'intention de qui l'aurait saisi pour dire « jamais ». « Jamais »
+            // s'écrit en laissant le champ vide, donc NULL.
+            'duree_validite_mois' => ['nullable', 'integer', 'min:1', 'max:600'],
 
             // Portée vide = toutes les filières, tous les niveaux. Le tableau
             // vide est donc accepté tel quel, jamais remplacé par une valeur
@@ -47,8 +55,10 @@ class UpsertPieceDossierRequest extends FormRequest
     {
         return [
             'libelle.required' => 'Le libellé de la pièce est obligatoire.',
-            'nombre_exemplaires.min' => 'Une pièce est attendue en au moins un exemplaire.',
-            'nombre_exemplaires.max' => 'Au-delà de :max exemplaires, vérifiez la saisie. Ce plafond se règle dans les paramètres de scolarité.',
+            'exemplaires_par_inscription.min' => 'Une pièce est attendue en au moins un exemplaire.',
+            'exemplaires_par_inscription.max' => 'Au-delà de :max exemplaires, vérifiez la saisie. Ce plafond se règle dans les paramètres de scolarité.',
+            'appartenance.in' => "Dites si la pièce appartient à l'étudiant (elle dure) ou à l'inscription (elle est redonnée chaque année).",
+            'duree_validite_mois.min' => "Une durée de validité se compte en mois pleins. Pour une pièce qui ne périme jamais, laissez le champ vide.",
             'forme_attendue.in' => "La forme attendue doit être l'original, une copie, ou indifférente.",
             'echeance.in' => "L'échéance doit être « à l'inscription » ou « avant la fin de l'année ».",
             'filiere_ids.*.exists' => "Une des filières sélectionnées n'existe plus.",

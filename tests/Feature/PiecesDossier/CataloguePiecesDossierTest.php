@@ -2,16 +2,15 @@
 
 namespace Tests\Feature\PiecesDossier;
 
-use App\Enums\EtatPieceDossier;
 use App\Models\ESBTPFiliere;
-use App\Models\ESBTPInscriptionPiece;
+use App\Models\ESBTPLMDDomaine;
+use App\Models\ESBTPLMDMention;
 use App\Models\ESBTPNiveauEtude;
 use App\Models\ESBTPPieceDossier;
 use App\Models\Setting;
 use App\Models\User;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Cache;
-use RuntimeException;
 use Spatie\Permission\Models\Permission;
 use Tests\TestCase;
 
@@ -50,6 +49,36 @@ class CataloguePiecesDossierTest extends TestCase
         return $user;
     }
 
+    /** Corps minimal accepté par la validation, à compléter au cas par cas. */
+    private function corpsValide(array $surcharges = []): array
+    {
+        return array_merge([
+            'libelle' => 'Extrait de naissance',
+            'is_obligatoire' => true,
+            'forme_attendue' => 'copie',
+            'exemplaires_par_inscription' => 1,
+            'echeance' => 'inscription',
+            'appartenance' => 'etudiant',
+            'is_active' => true,
+        ], $surcharges);
+    }
+
+    /** Pièce créée directement en base, sans passer par l'écran. */
+    private function piece(array $surcharges = []): ESBTPPieceDossier
+    {
+        return ESBTPPieceDossier::create(array_merge([
+            'code' => 'extrait_naissance',
+            'libelle' => 'Extrait de naissance',
+            'is_obligatoire' => true,
+            'forme_attendue' => 'copie',
+            'exemplaires_par_inscription' => 1,
+            'echeance' => 'inscription',
+            'appartenance' => 'etudiant',
+            'is_active' => true,
+            'ordre' => 10,
+        ], $surcharges));
+    }
+
     /**
      * La régression que ce lot corrige.
      *
@@ -81,14 +110,7 @@ class CataloguePiecesDossierTest extends TestCase
     public function test_lire_ne_donne_pas_le_droit_de_configurer(): void
     {
         $this->actingAs($this->utilisateur(['pieces_dossier.view']))
-            ->postJson(route('esbtp.pieces-dossier.store'), [
-                'libelle' => 'Extrait de naissance',
-                'is_obligatoire' => true,
-                'forme_attendue' => 'copie',
-                'nombre_exemplaires' => 1,
-                'echeance' => 'inscription',
-                'is_active' => true,
-            ])
+            ->postJson(route('esbtp.pieces-dossier.store'), $this->corpsValide())
             ->assertForbidden();
     }
 
@@ -98,24 +120,24 @@ class CataloguePiecesDossierTest extends TestCase
         $niveau = ESBTPNiveauEtude::factory()->create();
 
         $reponse = $this->actingAs($this->utilisateur(['pieces_dossier.view', 'pieces_dossier.configure']))
-            ->postJson(route('esbtp.pieces-dossier.store'), [
+            ->postJson(route('esbtp.pieces-dossier.store'), $this->corpsValide([
                 'libelle' => "Photo d'identité",
                 'description' => 'Fond uni.',
-                'is_obligatoire' => true,
                 'forme_attendue' => 'original',
-                'nombre_exemplaires' => 2,
-                'echeance' => 'inscription',
+                'exemplaires_par_inscription' => 2,
                 'filiere_ids' => [$filiere->id],
                 'niveau_ids' => [$niveau->id],
-                'is_active' => true,
-            ])
+            ]))
             ->assertCreated();
 
         $piece = ESBTPPieceDossier::findOrFail($reponse->json('piece.id'));
 
-        // Le code n'est pas saisi au guichet : il est dérivé du libellé.
-        $this->assertSame('photo_d_identite', $piece->code);
-        $this->assertSame(2, $piece->nombre_exemplaires);
+        // Le code n'est pas saisi au guichet : il est dérivé du libellé. Str::slug
+        // SUPPRIME l'apostrophe au lieu de la remplacer par le séparateur — d'où
+        // « photo_didentite » et non « photo_d_identite ». Cette attente-là avait
+        // été écrite de mémoire, et elle était fausse.
+        $this->assertSame('photo_didentite', $piece->code);
+        $this->assertSame(2, $piece->exemplaires_par_inscription);
         $this->assertSame([$filiere->id], $piece->filieres()->pluck('esbtp_filieres.id')->all());
         $this->assertSame([$niveau->id], $piece->niveaux()->pluck('esbtp_niveau_etudes.id')->all());
     }
@@ -127,14 +149,7 @@ class CataloguePiecesDossierTest extends TestCase
     public function test_une_piece_sans_portee_vaut_pour_tout_le_monde(): void
     {
         $reponse = $this->actingAs($this->utilisateur(['pieces_dossier.view', 'pieces_dossier.configure']))
-            ->postJson(route('esbtp.pieces-dossier.store'), [
-                'libelle' => 'Extrait de naissance',
-                'is_obligatoire' => true,
-                'forme_attendue' => 'copie',
-                'nombre_exemplaires' => 1,
-                'echeance' => 'inscription',
-                'is_active' => true,
-            ])
+            ->postJson(route('esbtp.pieces-dossier.store'), $this->corpsValide())
             ->assertCreated();
 
         $piece = ESBTPPieceDossier::with(['filieres', 'niveaux'])->findOrFail($reponse->json('piece.id'));
@@ -145,31 +160,102 @@ class CataloguePiecesDossierTest extends TestCase
     }
 
     /**
+     * L'école dit, pièce par pièce, si le dépôt dure ou se redonne chaque
+     * année. C'est la question qui décide de ce qu'un étudiant réapporte à
+     * chaque rentrée, et elle ne peut donc pas être laissée au logiciel.
+     */
+    public function test_l_appartenance_est_enregistree_telle_que_l_ecole_la_choisit(): void
+    {
+        $utilisateur = $this->utilisateur(['pieces_dossier.view', 'pieces_dossier.configure']);
+
+        $dure = $this->actingAs($utilisateur)
+            ->postJson(route('esbtp.pieces-dossier.store'), $this->corpsValide([
+                'libelle' => 'Extrait de naissance',
+                'appartenance' => 'etudiant',
+            ]))
+            ->assertCreated();
+
+        $annuelle = $this->actingAs($utilisateur)
+            ->postJson(route('esbtp.pieces-dossier.store'), $this->corpsValide([
+                'libelle' => 'Certificat medical',
+                'appartenance' => 'inscription',
+            ]))
+            ->assertCreated();
+
+        $this->assertSame('etudiant', $dure->json('piece.appartenance'));
+        $this->assertSame('inscription', $annuelle->json('piece.appartenance'));
+
+        $this->assertTrue(
+            ESBTPPieceDossier::findOrFail($dure->json('piece.id'))->appartenance->seReporte()
+        );
+        $this->assertFalse(
+            ESBTPPieceDossier::findOrFail($annuelle->json('piece.id'))->appartenance->seReporte()
+        );
+    }
+
+    public function test_une_appartenance_inconnue_est_refusee(): void
+    {
+        $this->actingAs($this->utilisateur(['pieces_dossier.view', 'pieces_dossier.configure']))
+            ->postJson(route('esbtp.pieces-dossier.store'), $this->corpsValide(['appartenance' => 'annuelle']))
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('appartenance');
+    }
+
+    /**
+     * Le piège du zéro, celui-là même que `rien-en-dur.md` documente.
+     *
+     * « Ne périme jamais » s'écrit en laissant le champ VIDE. Un zéro se lit
+     * « valide zéro mois », donc périmée à l'instant du dépôt : l'exact
+     * contraire de ce que voulait dire qui l'aurait saisi. La validation le
+     * refuse plutôt que de deviner.
+     */
+    public function test_une_duree_de_validite_nulle_veut_dire_jamais_et_zero_est_refuse(): void
+    {
+        $utilisateur = $this->utilisateur(['pieces_dossier.view', 'pieces_dossier.configure']);
+
+        $jamais = $this->actingAs($utilisateur)
+            ->postJson(route('esbtp.pieces-dossier.store'), $this->corpsValide([
+                'duree_validite_mois' => null,
+            ]))
+            ->assertCreated();
+
+        $this->assertNull($jamais->json('piece.duree_validite_mois'));
+        $this->assertNull(ESBTPPieceDossier::findOrFail($jamais->json('piece.id'))->duree_validite_mois);
+
+        $this->actingAs($utilisateur)
+            ->postJson(route('esbtp.pieces-dossier.store'), $this->corpsValide([
+                'libelle' => 'Certificat medical',
+                'duree_validite_mois' => 0,
+            ]))
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('duree_validite_mois');
+
+        $trois = $this->actingAs($utilisateur)
+            ->postJson(route('esbtp.pieces-dossier.store'), $this->corpsValide([
+                'libelle' => 'Certificat medical',
+                'duree_validite_mois' => 3,
+            ]))
+            ->assertCreated();
+
+        $this->assertSame(3, $trois->json('piece.duree_validite_mois'));
+    }
+
+    /**
      * Renommer une pièce ne doit pas rompre l'historique : le code est le point
-     * d'ancrage des états de dossier déjà saisis.
+     * d'ancrage des dépôts déjà saisis.
      */
     public function test_modifier_une_piece_ne_change_jamais_son_code(): void
     {
-        $piece = ESBTPPieceDossier::create([
-            'code' => 'extrait_naissance',
-            'libelle' => 'Extrait de naissance',
-            'is_obligatoire' => true,
-            'forme_attendue' => 'copie',
-            'nombre_exemplaires' => 1,
-            'echeance' => 'inscription',
-            'is_active' => true,
-            'ordre' => 10,
-        ]);
+        $piece = $this->piece();
 
         $this->actingAs($this->utilisateur(['pieces_dossier.view', 'pieces_dossier.configure']))
-            ->putJson(route('esbtp.pieces-dossier.update', $piece), [
+            ->putJson(route('esbtp.pieces-dossier.update', $piece), $this->corpsValide([
                 'libelle' => "Extrait d'acte de naissance",
                 'is_obligatoire' => false,
                 'forme_attendue' => 'indifferent',
-                'nombre_exemplaires' => 3,
+                'exemplaires_par_inscription' => 3,
                 'echeance' => 'avant_fin_annee',
-                'is_active' => true,
-            ])
+            ]))
             ->assertOk();
 
         $piece->refresh();
@@ -185,15 +271,10 @@ class CataloguePiecesDossierTest extends TestCase
      */
     public function test_retirer_une_piece_l_archive_sans_la_detruire(): void
     {
-        $piece = ESBTPPieceDossier::create([
+        $piece = $this->piece([
             'code' => 'certificat_scolarite',
-            'libelle' => 'Certificat de scolarité',
+            'libelle' => 'Certificat de scolarite',
             'is_obligatoire' => false,
-            'forme_attendue' => 'copie',
-            'nombre_exemplaires' => 1,
-            'echeance' => 'inscription',
-            'is_active' => true,
-            'ordre' => 10,
         ]);
 
         $this->actingAs($this->utilisateur(['pieces_dossier.view', 'pieces_dossier.configure']))
@@ -226,18 +307,71 @@ class CataloguePiecesDossierTest extends TestCase
         $this->assertSame($attendues, ESBTPPieceDossier::count());
     }
 
+    /**
+     * L'impasse que ce correctif ferme.
+     *
+     * On installe le jeu, on retire tout, l'écran vide revient avec son bouton,
+     * on reclique — et l'école repartait avec un 200, un message annonçant que
+     * « le catalogue contient déjà toutes les pièces proposées », et un écran
+     * toujours vide. Aucune erreur, aucune trace, aucun moyen de s'en sortir.
+     */
+    public function test_apres_avoir_tout_retire_le_bouton_rend_le_jeu_propose(): void
+    {
+        $utilisateur = $this->utilisateur(['pieces_dossier.view', 'pieces_dossier.configure']);
+        $attendues = count(config('pieces_dossier.jeu_propose'));
+
+        $this->actingAs($utilisateur)->postJson(route('esbtp.pieces-dossier.jeu-propose'))->assertOk();
+
+        foreach (ESBTPPieceDossier::all() as $piece) {
+            $this->actingAs($utilisateur)
+                ->deleteJson(route('esbtp.pieces-dossier.destroy', $piece))
+                ->assertOk();
+        }
+
+        $this->assertSame(0, ESBTPPieceDossier::count());
+
+        $this->actingAs($utilisateur)
+            ->postJson(route('esbtp.pieces-dossier.jeu-propose'))
+            ->assertOk()
+            ->assertJsonCount($attendues, 'pieces');
+
+        $this->assertSame($attendues, ESBTPPieceDossier::count());
+        // Restaurées, et non dupliquées : l'index unique du code voit les pièces
+        // archivées, et une seconde création se serait brisée dessus.
+        $this->assertSame($attendues, ESBTPPieceDossier::withTrashed()->count());
+    }
+
+    /**
+     * Une pièce retirée puis rendue revient telle que l'école l'avait laissée.
+     * Le libellé qu'elle avait corrigé n'est pas remplacé par celui du jeu.
+     */
+    public function test_une_piece_rendue_garde_le_libelle_corrige_par_l_ecole(): void
+    {
+        $premier = config('pieces_dossier.jeu_propose.0');
+
+        $piece = $this->piece([
+            'code' => $premier['code'],
+            'libelle' => 'Libelle maison',
+        ]);
+        $piece->delete();
+
+        $this->actingAs($this->utilisateur(['pieces_dossier.view', 'pieces_dossier.configure']))
+            ->postJson(route('esbtp.pieces-dossier.jeu-propose'))
+            ->assertOk();
+
+        $piece->refresh();
+
+        $this->assertNull($piece->deleted_at);
+        $this->assertTrue($piece->is_active);
+        $this->assertSame('Libelle maison', $piece->libelle);
+    }
+
     public function test_le_reordonnancement_reecrit_l_ordre_complet(): void
     {
         $utilisateur = $this->utilisateur(['pieces_dossier.view', 'pieces_dossier.configure']);
 
-        $premiere = ESBTPPieceDossier::create([
-            'code' => 'a', 'libelle' => 'A', 'is_obligatoire' => true, 'forme_attendue' => 'copie',
-            'nombre_exemplaires' => 1, 'echeance' => 'inscription', 'is_active' => true, 'ordre' => 10,
-        ]);
-        $seconde = ESBTPPieceDossier::create([
-            'code' => 'b', 'libelle' => 'B', 'is_obligatoire' => true, 'forme_attendue' => 'copie',
-            'nombre_exemplaires' => 1, 'echeance' => 'inscription', 'is_active' => true, 'ordre' => 20,
-        ]);
+        $premiere = $this->piece(['code' => 'a', 'libelle' => 'A', 'ordre' => 10]);
+        $seconde = $this->piece(['code' => 'b', 'libelle' => 'B', 'ordre' => 20]);
 
         $this->actingAs($utilisateur)
             ->postJson(route('esbtp.pieces-dossier.reorder'), ['ids' => [$seconde->id, $premiere->id]])
@@ -261,77 +395,70 @@ class CataloguePiecesDossierTest extends TestCase
 
         $utilisateur = $this->utilisateur(['pieces_dossier.view', 'pieces_dossier.configure']);
 
-        $corps = [
-            'libelle' => "Photo d'identité",
-            'is_obligatoire' => true,
-            'forme_attendue' => 'original',
-            'echeance' => 'inscription',
-            'is_active' => true,
-        ];
-
         $this->actingAs($utilisateur)
-            ->postJson(route('esbtp.pieces-dossier.store'), $corps + ['nombre_exemplaires' => 4])
+            ->postJson(route('esbtp.pieces-dossier.store'), $this->corpsValide([
+                'libelle' => 'Photo identite',
+                'exemplaires_par_inscription' => 4,
+            ]))
             ->assertStatus(422)
-            ->assertJsonValidationErrors('nombre_exemplaires');
+            ->assertJsonValidationErrors('exemplaires_par_inscription');
 
         $this->actingAs($utilisateur)
-            ->postJson(route('esbtp.pieces-dossier.store'), $corps + ['nombre_exemplaires' => 3])
+            ->postJson(route('esbtp.pieces-dossier.store'), $this->corpsValide([
+                'libelle' => 'Photo identite',
+                'exemplaires_par_inscription' => 3,
+            ]))
             ->assertCreated();
     }
 
     /**
-     * Le geste normal est la coche : une pièce se déclare reçue sans qu'aucun
-     * fichier ne soit joint, aujourd'hui comme plus tard.
+     * Le défaut le plus grave du lot, et le seul qui fût déjà en service.
+     *
+     * Une filière-reflet LMD porte le nom de son parcours et côtoie souvent une
+     * vraie filière BTS homonyme. L'écran les offrait toutes deux sous le même
+     * nom : une portée posée sur la mauvaise n'est satisfaite par AUCUNE
+     * inscription — zéro pièce réclamée, aucune erreur, aucune trace. Sur une
+     * instance tout-LMD comme USAT, toutes les classes s'ancrent sur des
+     * reflets, et le choix se jouait à pile ou face.
+     *
+     * Les masquer serait pire encore : USAT ne pourrait plus rien restreindre.
+     * Elles sont donc offertes, mais nommées, et rangées après les vraies.
      */
-    public function test_une_piece_se_declare_deposee_sans_aucun_fichier(): void
+    public function test_l_ecran_offre_les_filieres_reflets_lmd_en_disant_ce_qu_elles_sont(): void
     {
-        $ligne = $this->ligneDEtat(EtatPieceDossier::DEPOSEE, ['exemplaires_recus' => 1]);
-
-        $this->assertNull($ligne->fichier_chemin);
-        $this->assertSame(1, $ligne->exemplaires_recus);
-    }
-
-    /**
-     * Un refus sans motif écrit produit un dossier que personne ne peut
-     * débloquer. La règle est tenue par le modèle, donc par toutes les
-     * écritures, et pas seulement par l'écran qui les déclenche.
-     */
-    public function test_un_refus_sans_motif_est_refuse(): void
-    {
-        $this->expectException(RuntimeException::class);
-
-        $this->ligneDEtat(EtatPieceDossier::REFUSEE);
-    }
-
-    public function test_un_refus_motive_est_accepte(): void
-    {
-        $ligne = $this->ligneDEtat(EtatPieceDossier::REFUSEE, [
-            'motif' => 'Copie illisible, à refaire.',
-        ]);
-
-        $this->assertSame(EtatPieceDossier::REFUSEE, $ligne->etat);
-        $this->assertFalse($ligne->estSoldee());
-    }
-
-    private function ligneDEtat(EtatPieceDossier $etat, array $attributs = []): ESBTPInscriptionPiece
-    {
-        $inscription = \App\Models\ESBTPInscription::factory()->create();
-
-        $piece = ESBTPPieceDossier::create([
-            'code' => 'photo_identite_' . uniqid(),
-            'libelle' => "Photo d'identité",
-            'is_obligatoire' => true,
-            'forme_attendue' => 'original',
-            'nombre_exemplaires' => 2,
-            'echeance' => 'inscription',
+        $domaine = ESBTPLMDDomaine::create(['name' => 'Sciences', 'code' => 'SC-' . uniqid(), 'is_active' => true]);
+        $mention = ESBTPLMDMention::create([
+            'name' => 'Agronomie',
+            'code' => 'AGRO-' . uniqid(),
+            'domaine_id' => $domaine->id,
             'is_active' => true,
-            'ordre' => 10,
         ]);
 
-        return ESBTPInscriptionPiece::create(array_merge([
-            'inscription_id' => $inscription->id,
-            'piece_dossier_id' => $piece->id,
-            'etat' => $etat->value,
-        ], $attributs));
+        $reelle = ESBTPFiliere::factory()->create(['name' => 'Agronomie', 'is_active' => true]);
+        $reflet = ESBTPFiliere::factory()->create(['name' => 'Agronomie', 'is_active' => true]);
+        // Le reflet se marque après coup : le factory des filières ne connaît
+        // pas ces deux colonnes, et elles portent chacune une clé étrangère.
+        $reflet->forceFill(['lmd_mention_id' => $mention->id])->save();
+
+        $reponse = $this->actingAs($this->utilisateur(['pieces_dossier.view']))
+            ->get(route('esbtp.pieces-dossier.index'))
+            ->assertOk();
+
+        $filieres = $reponse->viewData('filieres');
+        $ids = $filieres->pluck('id')->all();
+
+        // Aucune n'est masquée.
+        $this->assertContains($reelle->id, $ids);
+        $this->assertContains($reflet->id, $ids);
+
+        // Le reflet dit sa nature, la vraie filière n'a rien à préciser.
+        $this->assertSame('Mention', $filieres->firstWhere('id', $reflet->id)->natureLmd());
+        $this->assertNull($filieres->firstWhere('id', $reelle->id)->natureLmd());
+
+        // Et il vient après elle, à nom égal.
+        $this->assertLessThan(
+            array_search($reflet->id, $ids, true),
+            array_search($reelle->id, $ids, true)
+        );
     }
 }

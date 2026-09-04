@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\AppartenancePieceDossier;
 use App\Enums\EcheancePieceDossier;
 use App\Enums\FormePieceDossier;
 use App\Helpers\SettingsHelper;
@@ -28,6 +29,28 @@ class CataloguePiecesDossier
      * dans `settings`, où l'école peut la changer.
      */
     private const EXEMPLAIRES_MAX_REPLI = 20;
+
+    /**
+     * Les clés des trois réglages, en constantes plutôt qu'en chaînes.
+     *
+     * Le formulaire des réglages, la page de configuration et ce service les
+     * nomment tous les trois. Écrites à la main de part et d'autre, une faute
+     * de frappe d'un seul côté enregistrerait dans le vide sans rien signaler
+     * — c'est l'incident de la PR #591, qu'on ne rejoue pas.
+     */
+    public const REGLAGE_EXEMPLAIRES_MAX = 'pieces_dossier.exemplaires_max';
+    public const REGLAGE_FORME_DEFAUT = 'pieces_dossier.forme_defaut';
+    public const REGLAGE_ECHEANCE_DEFAUT = 'pieces_dossier.echeance_defaut';
+
+    /**
+     * Les deux réglages du suivi pièce par pièce, qui vient au lot suivant.
+     *
+     * Ils sont posés dès maintenant parce que ce sont des décisions d'école, et
+     * qu'une décision d'école ne se découvre pas le jour du déploiement.
+     * L'écran de réglages les montre et dit qu'ils attendent cette suite.
+     */
+    public const REGLAGE_EPUISEMENT = 'pieces_dossier.epuisement';
+    public const REGLAGE_RESTITUTION_ANNULATION = 'pieces_dossier.restitution_annulation';
 
     /**
      * Une école qui n'a rien configuré ne doit voir aucun changement dans les
@@ -68,9 +91,17 @@ class CataloguePiecesDossier
     /**
      * Pièces réclamées pour une inscription donnée.
      *
-     * On lit d'abord la filière et le niveau de la CLASSE : c'est elle qui
-     * porte la vérité après une orientation ou un changement de classe en cours
-     * d'année, l'inscription pouvant garder le vœu initial.
+     * On lit la filière et le niveau de la CLASSE, et l'on ne retombe sur ceux
+     * de l'inscription que si elle n'a pas de classe. Ce n'est PAS que
+     * l'inscription garderait un vœu différent : dans ce dépôt, ses colonnes
+     * `filiere_id` et `niveau_id` sont dérivées de la classe à la création et
+     * réécrites au changement de classe. Le repli couvre le seul cas réel — une
+     * inscription sans classe — et rien d'autre.
+     *
+     * Attention en LMD : la classe s'ancre sur une filière-reflet, jamais sur la
+     * filière BTS homonyme. C'est ce reflet qu'une portée doit désigner, sans
+     * quoi elle n'est satisfaite par aucune inscription. L'écran de
+     * configuration nomme les reflets pour cette raison.
      */
     public function pourInscription(ESBTPInscription $inscription): Collection
     {
@@ -92,26 +123,54 @@ class CataloguePiecesDossier
     }
 
     /**
-     * Installe le jeu proposé.
+     * Installe le jeu proposé, ou rend au catalogue les pièces archivées.
      *
-     * Idempotent par code : une pièce dont le code existe déjà — même archivée —
-     * n'est ni recréée ni écrasée. Sans cette garde, un second clic rendrait au
-     * secrétariat une pièce qu'il venait de retirer, ou effacerait le libellé
-     * qu'il venait de corriger.
+     * Deux gardes, et non une seule :
      *
-     * @return int nombre de pièces réellement créées
+     *  - une pièce dont le code est déjà AU CATALOGUE n'est ni recréée ni
+     *    écrasée. Un second clic ne rend pas une pièce retirée entre-temps, et
+     *    n'efface pas le libellé que la scolarité venait de corriger ;
+     *  - une pièce dont le code n'existe plus qu'ARCHIVÉ est restaurée, telle
+     *    que l'école l'avait laissée.
+     *
+     * La distinction n'est pas cosmétique. Comparer aux codes archivés comme
+     * s'ils étaient vivants produisait une impasse reproductible : on installe
+     * le jeu, on retire les cinq pièces, l'écran vide revient avec son bouton,
+     * on reclique — et le serveur répond « le catalogue contient déjà toutes les
+     * pièces proposées » devant un écran resté vide. L'école n'avait plus aucun
+     * moyen de repartir. Mais ne comparer qu'aux codes vivants sans traiter les
+     * archives échouerait autrement : l'index unique du code voit les pièces
+     * archivées, et la création se briserait sur lui.
+     *
+     * @return int nombre de pièces rendues au catalogue, créées ou restaurées
      */
     public function installerJeuPropose(?int $userId = null): int
     {
-        $codesExistants = ESBTPPieceDossier::withTrashed()->pluck('code')->all();
+        $codesVivants = ESBTPPieceDossier::pluck('code')->all();
+        $archiveesParCode = ESBTPPieceDossier::onlyTrashed()->get()->keyBy('code');
         $ordre = (int) ESBTPPieceDossier::withTrashed()->max('ordre');
         $exemplairesMax = $this->exemplairesMax();
-        $creees = 0;
+        $rendues = 0;
 
         foreach ($this->jeuPropose() as $piece) {
             $code = (string) ($piece['code'] ?? '');
 
-            if ($code === '' || in_array($code, $codesExistants, true)) {
+            if ($code === '' || in_array($code, $codesVivants, true)) {
+                continue;
+            }
+
+            if ($archiveesParCode->has($code)) {
+                $archivee = $archiveesParCode->get($code);
+                $archivee->restore();
+                // Une pièce archivée pouvait avoir été désactivée avant de
+                // l'être : la restaurer sans la réactiver la rendrait au
+                // catalogue tout en la laissant sans effet sur les dossiers,
+                // ce qui se lit comme un bouton qui n'a rien fait.
+                $archivee->forceFill(['is_active' => true, 'updated_by' => $userId])->save();
+
+                $codesVivants[] = $code;
+                $rendues++;
+
                 continue;
             }
 
@@ -124,20 +183,48 @@ class CataloguePiecesDossier
                 'is_obligatoire' => (bool) ($piece['is_obligatoire'] ?? true),
                 'forme_attendue' => (FormePieceDossier::tryFromLibre($piece['forme_attendue'] ?? null)
                     ?? $this->formeParDefaut())->value,
-                'nombre_exemplaires' => max(1, min($exemplairesMax, (int) ($piece['nombre_exemplaires'] ?? 1))),
+                'exemplaires_par_inscription' => max(1, min(
+                    $exemplairesMax,
+                    (int) ($piece['exemplaires_par_inscription'] ?? 1)
+                )),
                 'echeance' => (EcheancePieceDossier::tryFromLibre($piece['echeance'] ?? null)
                     ?? $this->echeanceParDefaut())->value,
+                // Le repli est « à l'étudiant » parce que c'est le cas normal
+                // d'un dossier d'inscription : état civil, photos et diplômes
+                // se déposent une fois. Une pièce qui se redonne chaque année
+                // le dit explicitement dans le jeu proposé.
+                'appartenance' => (AppartenancePieceDossier::tryFromLibre($piece['appartenance'] ?? null)
+                    ?? AppartenancePieceDossier::ETUDIANT)->value,
+                'duree_validite_mois' => $this->dureeValiditeOuNul($piece['duree_validite_mois'] ?? null),
                 'is_active' => true,
                 'ordre' => $ordre,
                 'created_by' => $userId,
                 'updated_by' => $userId,
             ]);
 
-            $codesExistants[] = $code;
-            $creees++;
+            $codesVivants[] = $code;
+            $rendues++;
         }
 
-        return $creees;
+        return $rendues;
+    }
+
+    /**
+     * Une durée de validité en mois, ou null pour « ne périme jamais ».
+     *
+     * Zéro et les valeurs négatives sont ramenés au nul : « valide zéro mois »
+     * n'est jamais ce que quelqu'un a voulu écrire, et laisser passer un zéro
+     * rendrait la pièce périmée à l'instant même de son dépôt.
+     */
+    private function dureeValiditeOuNul($brut): ?int
+    {
+        if ($brut === null || $brut === '' || ! is_numeric($brut)) {
+            return null;
+        }
+
+        $mois = (int) $brut;
+
+        return $mois > 0 ? $mois : null;
     }
 
     /**
@@ -175,7 +262,7 @@ class CataloguePiecesDossier
      */
     public function exemplairesMax(): int
     {
-        $valeur = (int) SettingsHelper::get('pieces_dossier.exemplaires_max', self::EXEMPLAIRES_MAX_REPLI);
+        $valeur = (int) SettingsHelper::get(self::REGLAGE_EXEMPLAIRES_MAX, self::EXEMPLAIRES_MAX_REPLI);
 
         // Un réglage vide, nul ou négatif rendrait toute création impossible :
         // on ne laisse pas un champ mal saisi bloquer le guichet.
@@ -186,7 +273,7 @@ class CataloguePiecesDossier
     public function formeParDefaut(): FormePieceDossier
     {
         return FormePieceDossier::tryFromLibre(
-            SettingsHelper::get('pieces_dossier.forme_defaut')
+            SettingsHelper::get(self::REGLAGE_FORME_DEFAUT)
         ) ?? FormePieceDossier::COPIE;
     }
 
@@ -194,7 +281,7 @@ class CataloguePiecesDossier
     public function echeanceParDefaut(): EcheancePieceDossier
     {
         return EcheancePieceDossier::tryFromLibre(
-            SettingsHelper::get('pieces_dossier.echeance_defaut')
+            SettingsHelper::get(self::REGLAGE_ECHEANCE_DEFAUT)
         ) ?? EcheancePieceDossier::INSCRIPTION;
     }
 

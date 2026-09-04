@@ -4,12 +4,14 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Les trois réglages du catalogue des pièces à fournir.
+ * Les cinq réglages du catalogue des pièces à fournir.
  *
  * Un réglage que personne ne peut changer n'est pas un réglage : c'est une
- * constante avec une clé. Ces trois valeurs sont donc inscrites dans la table
- * `settings`, où la page de réglages les rend visibles et modifiables, plutôt
- * que laissées en dur dans la validation et le formulaire.
+ * constante avec une clé. Ces valeurs sont donc inscrites dans la table
+ * `settings`, ET la page de réglages (onglet Scolarité) porte le champ qui les
+ * modifie. Les deux vont ensemble : la première livraison de ce lot n'avait
+ * inscrit que les lignes, sans aucun champ nulle part, et une école qui voulait
+ * lever le plafond de vingt n'avait d'autre recours que du SQL.
  *
  * Ce que chacune décide :
  *
@@ -19,11 +21,20 @@ use Illuminate\Support\Facades\DB;
  *    une vérité de KLASSCI ;
  *  - la forme proposée par défaut au guichet (original, copie, ou indifférent) ;
  *  - l'échéance proposée par défaut (à l'inscription, ou avant la fin de
- *    l'année).
+ *    l'année) ;
+ *  - ce que l'école fait quand le dépôt d'un étudiant ne couvre plus ce qu'une
+ *    inscription consomme ;
+ *  - si une inscription annulée rend immédiatement ses exemplaires au dépôt.
  *
- * Les deux dernières ne contraignent rien : elles pré-remplissent le formulaire
- * de création d'une pièce. Une école qui tolère la plupart des pièces en cours
- * d'année ne veut pas décocher la même case cinquante fois de suite.
+ * Les deuxième et troisième ne contraignent rien : elles pré-remplissent le
+ * formulaire de création d'une pièce. Une école qui tolère la plupart des pièces
+ * en cours d'année ne veut pas décocher la même case cinquante fois de suite.
+ *
+ * Les deux dernières ne produiront d'effet qu'au lot suivant, celui qui livre le
+ * suivi pièce par pièce (docs/lot-2-pieces-a-reprendre.md). Elles sont écrites
+ * ici parce que ce sont des DÉCISIONS D'ÉCOLE, et qu'une décision d'école ne se
+ * découvre pas le jour du déploiement : l'écran les pose dès maintenant, et dit
+ * en toutes lettres qu'elles attendent cette suite.
  */
 return new class extends Migration
 {
@@ -51,6 +62,22 @@ return new class extends Migration
             'default_value' => 'inscription',
             'sort_order' => 172,
             'description' => "Echeance proposee par defaut a la creation d'une piece du catalogue. Valeurs acceptees : inscription, avant_fin_annee. Une valeur non reconnue est ramenee a « inscription ».",
+        ],
+        [
+            'key' => 'pieces_dossier.epuisement',
+            'value' => 'signaler',
+            'type' => 'string',
+            'default_value' => 'signaler',
+            'sort_order' => 173,
+            'description' => "Que faire quand le depot d'un etudiant ne couvre plus ce qu'une inscription consomme. bloquer : l'inscription ne se valide pas tant que la piece n'est pas redeposee. signaler : le dossier est marque incomplet, sans rien empecher. silence : ne rien signaler. Defaut : signaler.",
+        ],
+        [
+            'key' => 'pieces_dossier.restitution_annulation',
+            'value' => '1',
+            'type' => 'boolean',
+            'default_value' => '1',
+            'sort_order' => 174,
+            'description' => "Une inscription annulee rend-elle au depot les exemplaires qu'elle consommait ? Oui : ils redeviennent disponibles immediatement. Non : ils restent retenus jusqu'a la fin de l'annee. Defaut : oui.",
         ],
     ];
 

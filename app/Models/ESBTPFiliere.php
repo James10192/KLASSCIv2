@@ -281,6 +281,30 @@ class ESBTPFiliere extends Model
     }
 
     /**
+     * Sous quelle nature presenter cette filiere a qui la choisit.
+     *
+     * Un reflet porte le nom de son parcours ou de sa mention, et cotoie
+     * souvent une vraie filiere BTS homonyme. Offrir les deux sans les nommer,
+     * c'est laisser choisir l'homonyme mort : sur une instance tout-LMD, une
+     * portee ancree sur la filiere BTS n'est satisfaite par AUCUNE inscription,
+     * et ne produit ni erreur ni trace. Le nom seul ne suffit donc pas.
+     *
+     * Rend null pour une vraie filiere : il n'y a rien a preciser.
+     */
+    public function natureLmd(): ?string
+    {
+        if ($this->lmd_parcours_id !== null) {
+            return 'Parcours';
+        }
+
+        if ($this->lmd_mention_id !== null) {
+            return 'Mention';
+        }
+
+        return null;
+    }
+
+    /**
      * Ecarte les filieres qui ne sont que le reflet d'une entite LMD.
      *
      * A utiliser la ou une personne choisit une filiere BTS. Les ecrans LMD,

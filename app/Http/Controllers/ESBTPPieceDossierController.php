@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\AppartenancePieceDossier;
 use App\Enums\EcheancePieceDossier;
 use App\Enums\FormePieceDossier;
 use App\Http\Requests\PiecesDossier\UpsertPieceDossierRequest;
@@ -11,6 +12,7 @@ use App\Models\ESBTPPieceDossier;
 use App\Services\CataloguePiecesDossier;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -30,10 +32,11 @@ class ESBTPPieceDossierController extends Controller
     {
         return view('esbtp.pieces-dossier.index', [
             'pieces' => $this->catalogue->tout()->map(fn ($p) => $this->serialiser($p))->values(),
-            'filieres' => ESBTPFiliere::where('is_active', true)->orderBy('name')->get(['id', 'name']),
+            'filieres' => $this->filieresPourLaPortee(),
             'niveaux' => ESBTPNiveauEtude::where('is_active', true)->orderBy('name')->get(['id', 'name']),
             'formes' => FormePieceDossier::selectOptions(),
             'echeances' => EcheancePieceDossier::selectOptions(),
+            'appartenances' => AppartenancePieceDossier::selectOptions(),
             'nbProposees' => count($this->catalogue->jeuPropose()),
             'exemplairesMax' => $this->catalogue->exemplairesMax(),
             'formeDefaut' => $this->catalogue->formeParDefaut()->value,
@@ -150,6 +153,27 @@ class ESBTPPieceDossierController extends Controller
         ]);
     }
 
+    /**
+     * Les filières proposées comme portée, chacune sous sa nature.
+     *
+     * On n'écarte PAS les filières-reflets LMD. Sur une instance tout-LMD comme
+     * USAT, chaque classe s'ancre précisément sur un reflet : les masquer
+     * retirerait à l'école toute possibilité de restreindre une pièce. Mais les
+     * offrir sans dire ce qu'elles sont est pire encore — un reflet porte le nom
+     * de son parcours, une vraie filière BTS homonyme existe souvent à côté, et
+     * une portée posée sur la mauvaise n'est satisfaite par AUCUNE inscription :
+     * zéro pièce réclamée, aucune erreur, aucune trace. On les nomme donc
+     * (« Parcours : … », « Mention : … ») et on les range après les vraies
+     * filières, pour que le choix se fasse en connaissance de cause.
+     */
+    private function filieresPourLaPortee(): Collection
+    {
+        return ESBTPFiliere::where('is_active', true)
+            ->get(['id', 'name', 'lmd_mention_id', 'lmd_parcours_id'])
+            ->sortBy(fn (ESBTPFiliere $f) => [$f->estMiroirLmd() ? 1 : 0, mb_strtolower($f->name)])
+            ->values();
+    }
+
     /** Recharge la pièce ET sa portée : sans quoi la réponse renverrait l'ancienne. */
     private function recharger(ESBTPPieceDossier $piece): ESBTPPieceDossier
     {
@@ -166,9 +190,14 @@ class ESBTPPieceDossierController extends Controller
             'is_obligatoire' => (bool) $piece->is_obligatoire,
             'forme_attendue' => $piece->forme_attendue->value,
             'forme_label' => $piece->forme_attendue->label(),
-            'nombre_exemplaires' => (int) $piece->nombre_exemplaires,
+            'exemplaires_par_inscription' => (int) $piece->exemplaires_par_inscription,
             'echeance' => $piece->echeance->value,
             'echeance_label' => $piece->echeance->labelCourt(),
+            'appartenance' => $piece->appartenance->value,
+            'appartenance_label' => $piece->appartenance->labelCourt(),
+            // Volontairement pas de repli à zéro : le nul VEUT dire « ne périme
+            // jamais », et l'écran doit pouvoir le distinguer d'une durée.
+            'duree_validite_mois' => $piece->duree_validite_mois,
             'filiere_ids' => $piece->filiereIds(),
             'niveau_ids' => $piece->niveauIds(),
             'libelle_scope' => $piece->libelleScope(),

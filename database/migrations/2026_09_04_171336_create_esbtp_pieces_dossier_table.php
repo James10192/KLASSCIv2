@@ -9,10 +9,19 @@ use Illuminate\Support\Facades\Schema;
  * Catalogue des pièces qu'une école réclame au dossier d'inscription.
  *
  * Ce catalogue dit ce que l'école exige, et à qui. Il ne dit jamais où en est
- * un étudiant : l'état d'une pièce vit sur l'inscription (table
- * esbtp_inscription_pieces), parce que l'école reprend un exemplaire de chaque
- * pièce chaque année pour le ministère. Un étudiant en licence 3 a donc trois
- * lignes « extrait de naissance », une par année, et c'est voulu.
+ * un étudiant : cet état-là vivra dans les tables de dépôt et de consommation
+ * du lot suivant (voir docs/lot-2-pieces-a-reprendre.md).
+ *
+ * UNE PIÈCE APPARTIENT D'ABORD À L'ÉTUDIANT, PAS À L'ANNÉE. Un extrait de
+ * naissance, des photos d'identité, un diplôme sont déposés une fois et durent.
+ * Ce qui est propre à l'année, c'est ce qu'une inscription en CONSOMME : six
+ * photos déposées, deux consommées par la première année, deux par la deuxième,
+ * il en reste deux. C'est la colonne `appartenance` qui tranche, pièce par
+ * pièce, et c'est l'école qui la fixe.
+ *
+ * (Une version antérieure de ce commentaire affirmait l'inverse — « trois
+ * années d'études, trois lignes extrait de naissance, et c'est voulu ». C'était
+ * faux, et le dire ici pour que personne ne le rétablisse en croyant réparer.)
  *
  * Pièce à fournir n'est pas réserve. La réserve, portée par
  * esbtp_inscriptions.is_sous_reserve, vise un document qui N'EXISTE PAS ENCORE
@@ -57,15 +66,46 @@ return new class extends Migration
             // d'école (pieces_dossier.forme_defaut), pas une constante de base.
             $table->string('forme_attendue', 20);
 
-            // Combien d'exemplaires l'école réclame POUR CETTE INSCRIPTION :
-            // deux photos d'identité, trois copies du diplôme. C'est l'école qui
-            // le fixe, jamais le code. La quantité n'est pas un détail : au
-            // guichet, l'agent coche ce qu'il a reçu face à ce qui est attendu,
-            // et esbtp_inscription_pieces.exemplaires_recus lui répond.
+            // Ce qu'UNE INSCRIPTION consomme du dépôt de l'étudiant : deux
+            // photos d'identité, trois copies du diplôme. C'est l'école qui le
+            // fixe, jamais le code.
             //
-            // Pour l'inscription, et non pour le cycle : le cumul sur trois ans
-            // se lit en comptant les lignes d'inscription.
-            $table->unsignedTinyInteger('nombre_exemplaires')->default(1);
+            // Le nom dit « par inscription » et non « nombre d'exemplaires »,
+            // parce que la seconde formule ne dit pas si c'est par an ou en
+            // tout : une école qui réclame deux photos ne sait plus, en lisant
+            // « 2 », si elle en attend deux à chaque rentrée ou deux pour la
+            // scolarité entière. Selon l'appartenance ci-dessous, un étudiant
+            // dépose une fois de quoi couvrir plusieurs années, ou redonne
+            // chaque année.
+            $table->unsignedTinyInteger('exemplaires_par_inscription')->default(1);
+
+            // La pièce dure-t-elle, ou se redonne-t-elle chaque année ?
+            //
+            //  - `etudiant`    : le dépôt est un stock qui sert plusieurs
+            //                    inscriptions (extrait de naissance, photos) ;
+            //  - `inscription` : la pièce est redonnée à chaque rentrée (un
+            //                    certificat médical de l'année, un reçu).
+            //
+            // Aucune valeur par défaut au niveau du schéma n'aurait de sens
+            // universel : c'est une décision d'établissement, et elle est
+            // écrite pièce par pièce.
+            $table->string('appartenance', 20);
+
+            // Combien de temps une pièce déposée reste valable, en mois.
+            //
+            // NULLABLE, et NULL veut dire « ne périme jamais » : un extrait de
+            // naissance ne se périme pas, un certificat médical si. Surtout pas
+            // un zéro en guise de « jamais » — `0` se lit naturellement « valide
+            // zéro mois », donc périmé à l'instant du dépôt, l'exact contraire
+            // de l'intention ; et le code qui l'oublie ne plante pas, il
+            // redemande simplement toutes les pièces à tout le monde. Le nul
+            // force à traiter le cas.
+            //
+            // La validité court depuis la DÉLIVRANCE du document, pas depuis
+            // son dépôt : un extrait délivré en 2019 et déposé en 2026 est déjà
+            // périmé sous une validité de trois mois. La date de délivrance vit
+            // sur le dépôt, avec l'exemplaire qu'elle date.
+            $table->unsignedSmallInteger('duree_validite_mois')->nullable();
 
             // Une pièce attendue avant la fin de l'année n'est pas une pièce
             // manquante le jour de l'inscription. Sans cette nuance, le dossier
@@ -84,8 +124,8 @@ return new class extends Migration
             $table->timestamps();
 
             // Retirer une pièce du catalogue ne doit pas effacer l'historique
-            // des dossiers déjà constitués : les lignes d'état continuent de
-            // pointer vers une pièce archivée.
+            // des dossiers déjà constitués : les lignes de dépôt continueront
+            // de pointer vers une pièce archivée.
             $table->softDeletes();
 
             $table->index(['is_active', 'ordre'], 'esbtp_pieces_dossier_actif_ordre_idx');

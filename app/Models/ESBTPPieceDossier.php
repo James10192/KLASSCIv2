@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\AppartenancePieceDossier;
 use App\Enums\EcheancePieceDossier;
 use App\Enums\FormePieceDossier;
 use Illuminate\Database\Eloquent\Builder;
@@ -15,8 +16,12 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * Une pièce du catalogue de l'établissement.
  *
  * Le catalogue dit ce que l'école réclame, et à qui. Il ne dit jamais où en est
- * un étudiant : cet état-là vit sur l'inscription (ESBTPInscriptionPiece),
- * parce que l'école redemande les pièces chaque année pour le ministère.
+ * un étudiant : cet état-là vivra dans les tables de dépôt et de consommation
+ * du lot suivant (docs/lot-2-pieces-a-reprendre.md).
+ *
+ * Une pièce appartient d'abord à l'étudiant, pas à l'année : `appartenance` dit,
+ * pièce par pièce, si le dépôt dure et se consomme sur plusieurs inscriptions,
+ * ou s'il est redonné chaque rentrée.
  */
 class ESBTPPieceDossier extends Model
 {
@@ -31,7 +36,9 @@ class ESBTPPieceDossier extends Model
         'description',
         'is_obligatoire',
         'forme_attendue',
-        'nombre_exemplaires',
+        'exemplaires_par_inscription',
+        'appartenance',
+        'duree_validite_mois',
         'echeance',
         'is_active',
         'ordre',
@@ -42,10 +49,16 @@ class ESBTPPieceDossier extends Model
     protected $casts = [
         'is_obligatoire' => 'boolean',
         'is_active' => 'boolean',
-        'nombre_exemplaires' => 'integer',
+        'exemplaires_par_inscription' => 'integer',
         'ordre' => 'integer',
         'forme_attendue' => FormePieceDossier::class,
         'echeance' => EcheancePieceDossier::class,
+        'appartenance' => AppartenancePieceDossier::class,
+        // Le cast entier de Laravel laisse passer le nul tel quel, et c'est ce
+        // qu'on veut ici : NULL veut dire « ne périme jamais ». Le jour où
+        // quelqu'un le remplace par un `->default(0)` ou un `?? 0`, toute pièce
+        // sans durée devient périmée à l'instant du dépôt.
+        'duree_validite_mois' => 'integer',
     ];
 
     /**
@@ -72,11 +85,6 @@ class ESBTPPieceDossier extends Model
             'piece_dossier_id',
             'niveau_id'
         );
-    }
-
-    public function etatsInscription()
-    {
-        return $this->hasMany(ESBTPInscriptionPiece::class, 'piece_dossier_id');
     }
 
     public function createdBy(): BelongsTo

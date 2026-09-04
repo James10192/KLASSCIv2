@@ -159,6 +159,16 @@
 }
 .pce-chip:hover { border-color: #c7d4e5; }
 .pce-chip--on { background: rgba(4,83,203,.10); border-color: rgba(4,83,203,.35); color: #0453cb; font-weight: 600; }
+/* Nature d'une filiere-reflet LMD (« Parcours », « Mention »). Sans elle, un
+   reflet et la filiere BTS homonyme sont deux etiquettes identiques, et l'une
+   des deux ne concerne aucun dossier. */
+.pce-chip-nature {
+    font-size: .62rem; font-weight: 700; letter-spacing: .4px; text-transform: uppercase;
+    color: #5e91de; background: rgba(94,145,222,.12);
+    border: 1px solid rgba(94,145,222,.28);
+    padding: .05rem .3rem; border-radius: 4px;
+}
+.pce-chip--on .pce-chip-nature { color: #0453cb; border-color: rgba(4,83,203,.35); background: rgba(4,83,203,.12); }
 
 .pce-switch { display: inline-flex; align-items: center; gap: .5rem; cursor: pointer; font-size: .84rem; color: #1e293b; }
 .pce-switch input { width: 16px; height: 16px; accent-color: #0453cb; cursor: pointer; }
@@ -292,9 +302,12 @@
                                 <span class="pce-badge" :class="piece.is_obligatoire ? 'pce-badge--req' : 'pce-badge--muted'"
                                       x-text="piece.is_obligatoire ? 'Obligatoire' : 'Facultative'"></span>
                                 <span class="pce-badge pce-badge--accent" x-text="piece.forme_label"></span>
-                                <span class="pce-badge pce-badge--muted" x-show="piece.nombre_exemplaires > 1"
-                                      x-text="piece.nombre_exemplaires + ' exemplaires'"></span>
+                                <span class="pce-badge pce-badge--muted" x-show="piece.exemplaires_par_inscription > 1"
+                                      x-text="piece.exemplaires_par_inscription + ' par inscription'"></span>
                                 <span class="pce-badge pce-badge--primary" x-text="piece.echeance_label"></span>
+                                <span class="pce-badge pce-badge--accent" x-text="piece.appartenance_label"></span>
+                                <span class="pce-badge pce-badge--muted" x-show="piece.duree_validite_mois"
+                                      x-text="'Valable ' + piece.duree_validite_mois + ' mois'"></span>
                                 <span class="pce-badge pce-badge--muted" x-show="!piece.is_active">Désactivée</span>
                             </div>
 
@@ -354,12 +367,36 @@
                                          :options="$formes" placeholder="Choisir" :placeholder-is-first-option="false" />
                         </div>
                         <div class="pce-field">
-                            <span class="pce-label">Exemplaires attendus</span>
-                            <input type="number" class="pce-input" x-model.number="form.nombre_exemplaires"
+                            <span class="pce-label">Exemplaires par inscription</span>
+                            <input type="number" class="pce-input" x-model.number="form.exemplaires_par_inscription"
                                    min="1" :max="exemplairesMax" required>
                             <span class="pce-hint">
-                                Deux photos, trois copies du diplôme : ce que l'étudiant apporte au
-                                guichet pour cette inscription. L'agent cochera ce qu'il a reçu.
+                                Deux photos, trois copies du diplôme : ce qu'UNE inscription consomme.
+                                Sur une pièce qui dure, trois années de licence en consomment trois fois
+                                autant, prélevées sur ce que l'étudiant a déposé une seule fois.
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="pce-grid2">
+                        <div class="pce-field">
+                            <span class="pce-label">La pièce dure-t-elle ?</span>
+                            <x-au-select class="pce-au-full" x-model="form.appartenance"
+                                         :options="$appartenances" placeholder="Choisir" :placeholder-is-first-option="false" />
+                            <span class="pce-hint">
+                                Un extrait de naissance, des photos, un diplôme se déposent une fois et
+                                servent toute la scolarité. Un certificat de l'année, lui, se redonne à
+                                chaque rentrée. C'est cette réponse qui décide de ce que vous redemandez.
+                            </span>
+                        </div>
+                        <div class="pce-field">
+                            <span class="pce-label">Validité (mois)</span>
+                            <input type="number" class="pce-input" x-model="form.duree_validite_mois"
+                                   min="1" max="600" placeholder="Ne périme jamais">
+                            <span class="pce-hint">
+                                Laissez vide pour une pièce qui ne périme jamais — c'est le cas d'un
+                                extrait de naissance. Trois mois pour un certificat médical. La validité
+                                court depuis la délivrance du document, pas depuis son dépôt.
                             </span>
                         </div>
                     </div>
@@ -379,15 +416,22 @@
                         <span class="pce-label">Filières concernées</span>
                         <div class="pce-chips">
                             @foreach ($filieres as $filiere)
+                            @php $_natureLmd = $filiere->natureLmd(); @endphp
                             <label class="pce-chip" :class="form.filiere_ids.includes({{ $filiere->id }}) ? 'pce-chip--on' : ''">
                                 <input type="checkbox" hidden value="{{ $filiere->id }}"
                                        :checked="form.filiere_ids.includes({{ $filiere->id }})"
                                        @change="basculerScope('filiere_ids', {{ $filiere->id }})">
-                                {{ $filiere->name }}
+                                @if ($_natureLmd)<span class="pce-chip-nature">{{ $_natureLmd }}</span>@endif{{ $filiere->name }}
                             </label>
                             @endforeach
                         </div>
-                        <span class="pce-hint">Aucune sélection = toutes les filières, y compris celles créées plus tard.</span>
+                        <span class="pce-hint">
+                            Aucune sélection = toutes les filières, y compris celles créées plus tard.
+                            Les entrées marquées « Parcours » ou « Mention » sont les filières du système
+                            LMD : ce sont elles que portent les classes LMD. Quand une filière BTS existe
+                            sous le même nom, choisir la mauvaise donne une portée qu'aucun dossier ne
+                            satisfera, sans que rien ne le signale.
+                        </span>
                     </div>
 
                     <div class="pce-field">
@@ -522,8 +566,14 @@ function cataloguePiecesDossier() {
                 description: '',
                 is_obligatoire: true,
                 forme_attendue: payload.formeDefaut,
-                nombre_exemplaires: 1,
+                exemplaires_par_inscription: 1,
                 echeance: payload.echeanceDefaut,
+                // « À l'étudiant » d'emblée : c'est le cas normal d'un dossier
+                // d'inscription, et c'est celui qui évite de redemander chaque
+                // année une pièce déjà déposée.
+                appartenance: 'etudiant',
+                // Vide, et non zéro : vide veut dire « ne périme jamais ».
+                duree_validite_mois: '',
                 filiere_ids: [],
                 niveau_ids: [],
                 is_active: true,
@@ -584,8 +634,14 @@ function cataloguePiecesDossier() {
                     description: this.form.description,
                     is_obligatoire: this.form.is_obligatoire,
                     forme_attendue: this.form.forme_attendue,
-                    nombre_exemplaires: this.form.nombre_exemplaires,
+                    exemplaires_par_inscription: this.form.exemplaires_par_inscription,
                     echeance: this.form.echeance,
+                    appartenance: this.form.appartenance,
+                    // Le champ vide part en null, jamais en chaîne vide ni en
+                    // zéro : c'est ainsi que « ne périme jamais » se dit.
+                    duree_validite_mois: this.form.duree_validite_mois === '' || this.form.duree_validite_mois === null
+                        ? null
+                        : Number(this.form.duree_validite_mois),
                     filiere_ids: this.form.filiere_ids,
                     niveau_ids: this.form.niveau_ids,
                     is_active: this.form.is_active,

@@ -133,7 +133,13 @@ class ESBTPInscription extends Model implements Auditable
         'paiement_validation_id', // Nouveau: référence paiement validation
         'comptabilite_activee', // Nouveau: flag comptabilité
         'observations',
-        'documents_fournis', // JSON avec liste des documents
+        // COLONNE MORTE. Héritée, jamais lue, jamais écrite, absente de toutes
+        // les vues. Ne vous mettez pas à l'écrire « pour bien faire » : les
+        // pièces d'un dossier se décrivent dans esbtp_pieces_dossier, et leur
+        // suivi vivra dans les tables du lot suivant
+        // (docs/lot-2-pieces-a-reprendre.md). Elle n'est pas supprimée ici :
+        // cela demande sa propre migration et un relevé des six instances.
+        'documents_fournis',
         'date_validation',
         'validated_by',
         'created_by',

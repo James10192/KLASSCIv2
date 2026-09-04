@@ -2,55 +2,37 @@
 
 namespace Tests\Unit\Enums;
 
+use App\Enums\AppartenancePieceDossier;
 use App\Enums\EcheancePieceDossier;
-use App\Enums\EtatPieceDossier;
 use App\Enums\FormePieceDossier;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Les trois énumérations du suivi des pièces, sans base de données.
+ * Les trois énumérations du catalogue des pièces, sans base de données.
  *
  * Ce qui est vérifié ici n'est pas cosmétique : c'est le contrat que la
  * validation, l'écran et les lots suivants tiennent pour acquis.
  */
 class PieceDossierEnumsTest extends TestCase
 {
-    public function test_les_cinq_etats_existent_et_ne_bougent_pas(): void
-    {
-        // Cinq états, pas un booléen : voir le commentaire de l'énumération.
-        // Si cette liste change, tout ce qui lit `etat` en base doit être relu.
-        $this->assertSame(
-            ['attendue', 'deposee', 'validee', 'refusee', 'non_applicable'],
-            EtatPieceDossier::values()
-        );
-    }
-
-    public function test_seul_le_refus_exige_un_motif(): void
-    {
-        $this->assertTrue(EtatPieceDossier::REFUSEE->exigeUnMotif());
-
-        foreach ([
-            EtatPieceDossier::ATTENDUE,
-            EtatPieceDossier::DEPOSEE,
-            EtatPieceDossier::VALIDEE,
-            EtatPieceDossier::NON_APPLICABLE,
-        ] as $etat) {
-            $this->assertFalse($etat->exigeUnMotif(), $etat->value . ' ne doit pas exiger de motif.');
-        }
-    }
-
     /**
-     * Une pièce déposée n'est PAS soldée : quelqu'un a remis quelque chose,
-     * personne n'a encore dit que c'était la bonne pièce.
+     * La distinction qui décide de ce qu'une école redemande chaque rentrée.
+     *
+     * Elle n'est pas d'agrément : une pièce qui appartient à l'étudiant est
+     * déposée une fois et consommée année après année ; une pièce qui
+     * appartient à l'inscription est redonnée. Se tromper de camp, c'est soit
+     * réclamer trois fois un extrait de naissance, soit ne jamais redemander un
+     * certificat périmé.
      */
-    public function test_seules_validee_et_sans_objet_soldent_la_piece(): void
+    public function test_l_appartenance_a_deux_valeurs_et_ne_bouge_pas(): void
     {
-        $this->assertTrue(EtatPieceDossier::VALIDEE->estSoldee());
-        $this->assertTrue(EtatPieceDossier::NON_APPLICABLE->estSoldee());
+        $this->assertSame(['etudiant', 'inscription'], AppartenancePieceDossier::values());
+    }
 
-        $this->assertFalse(EtatPieceDossier::ATTENDUE->estSoldee());
-        $this->assertFalse(EtatPieceDossier::DEPOSEE->estSoldee());
-        $this->assertFalse(EtatPieceDossier::REFUSEE->estSoldee());
+    public function test_seule_la_piece_de_l_etudiant_se_reporte(): void
+    {
+        $this->assertTrue(AppartenancePieceDossier::ETUDIANT->seReporte());
+        $this->assertFalse(AppartenancePieceDossier::INSCRIPTION->seReporte());
     }
 
     public function test_les_formes_attendues_couvrent_original_copie_et_indifferent(): void

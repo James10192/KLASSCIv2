@@ -20,12 +20,23 @@
 | toute l'école. C'est à l'école de restreindre ensuite une pièce à une filière
 | ou à un niveau, depuis l'écran.
 |
-| 'forme_attendue' et 'echeance' s'écrivent en clair plutôt qu'en constantes
-| d'énumération : un fichier de configuration doit rester lisible sans le code.
-| Les valeurs valides sont celles de App\Enums\FormePieceDossier et
-| App\Enums\EcheancePieceDossier, et sont normalisées à l'installation. Omettre
-| l'une des deux clés fait retomber sur le réglage d'école correspondant
-| (pieces_dossier.forme_defaut, pieces_dossier.echeance_defaut).
+| 'forme_attendue', 'echeance' et 'appartenance' s'écrivent en clair plutôt
+| qu'en constantes d'énumération : un fichier de configuration doit rester
+| lisible sans le code. Les valeurs valides sont celles de
+| App\Enums\FormePieceDossier, App\Enums\EcheancePieceDossier et
+| App\Enums\AppartenancePieceDossier, et sont normalisées à l'installation.
+| Omettre 'forme_attendue' ou 'echeance' fait retomber sur le réglage d'école
+| correspondant (pieces_dossier.forme_defaut, pieces_dossier.echeance_defaut).
+|
+| 'appartenance' dit si la pièce est un dépôt qui DURE et que chaque inscription
+| consomme ('etudiant'), ou une formalité redonnée chaque rentrée
+| ('inscription'). 'exemplaires_par_inscription' se lit toujours à la lumière de
+| celle-ci : deux photos par inscription sur une pièce qui dure, c'est six
+| photos déposées une fois pour une licence de trois ans.
+|
+| 'duree_validite_mois' est FACULTATIVE, et son absence — comme la valeur null —
+| veut dire « ne périme jamais ». Ne l'écrivez jamais à zéro pour dire cela :
+| zéro se lit « valide zéro mois », donc périmée à l'instant du dépôt.
 */
 
 return [
@@ -34,11 +45,14 @@ return [
         [
             'code' => 'extrait_naissance',
             'libelle' => 'Extrait de naissance',
-            'description' => "Extrait d'acte de naissance. Un exemplaire est repris chaque année pour le ministère.",
+            'description' => "Extrait d'acte de naissance.",
             'is_obligatoire' => true,
             'forme_attendue' => 'copie',
-            'nombre_exemplaires' => 1,
+            'exemplaires_par_inscription' => 1,
             'echeance' => 'inscription',
+            // L'état civil ne change pas : un extrait déposé une fois sert
+            // toute la scolarité, et ne périme jamais.
+            'appartenance' => 'etudiant',
         ],
         [
             'code' => 'photo_identite',
@@ -46,8 +60,11 @@ return [
             'description' => 'Photo récente, fond uni.',
             'is_obligatoire' => true,
             'forme_attendue' => 'original',
-            'nombre_exemplaires' => 2,
+            'exemplaires_par_inscription' => 2,
             'echeance' => 'inscription',
+            // Deux par inscription, prélevées sur ce que l'étudiant a déposé :
+            // six photos couvrent une licence sans qu'on les redemande.
+            'appartenance' => 'etudiant',
         ],
         [
             'code' => 'piece_identite',
@@ -55,8 +72,9 @@ return [
             'description' => "Carte nationale d'identité, passeport ou attestation d'identité en cours de validité.",
             'is_obligatoire' => true,
             'forme_attendue' => 'copie',
-            'nombre_exemplaires' => 1,
+            'exemplaires_par_inscription' => 1,
             'echeance' => 'inscription',
+            'appartenance' => 'etudiant',
         ],
         [
             'code' => 'releve_notes',
@@ -64,8 +82,9 @@ return [
             'description' => 'Relevé de notes du dernier diplôme obtenu.',
             'is_obligatoire' => true,
             'forme_attendue' => 'copie',
-            'nombre_exemplaires' => 1,
+            'exemplaires_par_inscription' => 1,
             'echeance' => 'inscription',
+            'appartenance' => 'etudiant',
         ],
         [
             'code' => 'certificat_scolarite',
@@ -73,8 +92,11 @@ return [
             'description' => "Certificat de scolarité de l'établissement précédent.",
             'is_obligatoire' => false,
             'forme_attendue' => 'copie',
-            'nombre_exemplaires' => 1,
+            'exemplaires_par_inscription' => 1,
             'echeance' => 'inscription',
+            // Celle-ci se redonne : le certificat de l'année précédente n'est
+            // pas celui de l'année en cours.
+            'appartenance' => 'inscription',
         ],
     ],
 

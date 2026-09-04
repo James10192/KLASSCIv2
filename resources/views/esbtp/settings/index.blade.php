@@ -2541,6 +2541,7 @@
                             </label>
                         </div>
                     </div>
+                    @include('esbtp.settings.partials.pieces-dossier-reglages')
                 </div>
             </div>
 
