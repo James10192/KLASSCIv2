@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\LMD;
 
+use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPMatiere;
 use App\Models\ESBTPUniteEnseignement;
 use App\Services\LMD\ConflitDeMaquette;
@@ -33,6 +34,12 @@ class ImportRefuseEcrasementTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        // L'import exige une annee courante (LMDImportService:49). La fabrique la
+        // cree a is_current = false : sans ce reglage, les trois cas echouent avant
+        // d'atteindre ce qu'ils verifient.
+        ESBTPAnneeUniversitaire::factory()->create(['is_current' => true]);
+
         $this->import = app(LMDImportService::class);
     }
 
