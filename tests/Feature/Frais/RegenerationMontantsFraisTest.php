@@ -44,10 +44,13 @@ class RegenerationMontantsFraisTest extends TestCase
 
         Permission::findOrCreate('admin.access', 'web');
         Permission::findOrCreate('inscriptions.edit', 'web');
+        // Retarifer n'est plus un geste de scolarite : la route exige
+        // `frais.regenerate`, distinct de `inscriptions.edit`.
+        Permission::findOrCreate('frais.regenerate', 'web');
         Cache::flush();
 
         $this->user = User::factory()->create();
-        $this->user->givePermissionTo(['admin.access', 'inscriptions.edit']);
+        $this->user->givePermissionTo(['admin.access', 'inscriptions.edit', 'frais.regenerate']);
         $this->actingAs($this->user);
 
         $classe = ESBTPClasse::factory()->create();
@@ -450,5 +453,47 @@ class RegenerationMontantsFraisTest extends TestCase
 
         $reponse->assertOk()->assertJsonPath('total_ajuster', 0);
         $this->assertSame(10000.0, (float) $souscription->fresh()->amount);
+    }
+
+    public function test_une_requete_forgee_sans_selection_n_ecrase_pas_un_montant_negocie(): void
+    {
+        // Le cas que la protection cote navigateur ne couvrait pas : personne
+        // n'ouvre l'ecran, personne ne decoche. On appelle la route directement,
+        // exactement comme le ferait un onglet reste ouvert, un script, ou une
+        // ligne au-dela des 300 que l'apercu affiche.
+        [, $souscription] = $this->fraisSouscrit(15000, 10000);
+        $souscription->update(['amount' => 8000]);   // remise negociee
+
+        $reponse = $this->postJson(route('esbtp.inscriptions.frais-manquants.apply'), [
+            'inscription_ids' => [$this->inscription->id],
+            // ni `selection_active`, ni `lignes` : la requete ne designe rien.
+        ]);
+
+        $reponse->assertOk();
+        $this->assertSame(
+            8000.0,
+            (float) $souscription->fresh()->amount,
+            'Le serveur doit refuser d ecraser une remise que personne n a designee.'
+        );
+    }
+
+    public function test_la_route_refuse_qui_n_a_pas_le_droit_de_retarifer(): void
+    {
+        // `inscriptions.edit` suffisait autrefois : un poste de scolarite sans
+        // aucun droit financier pouvait donc retarifer une promotion entiere.
+        $scolarite = User::factory()->create();
+        $scolarite->givePermissionTo(['admin.access', 'inscriptions.edit']);
+
+        $this->actingAs($scolarite)
+            ->postJson(route('esbtp.inscriptions.frais-manquants.apply'), [
+                'inscription_ids' => [$this->inscription->id],
+            ])
+            ->assertForbidden();
+
+        $this->actingAs($scolarite)
+            ->postJson(route('esbtp.inscriptions.frais-manquants.preview'), [
+                'inscription_ids' => [$this->inscription->id],
+            ])
+            ->assertForbidden();
     }
 }
