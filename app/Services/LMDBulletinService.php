@@ -235,25 +235,22 @@ class LMDBulletinService
      */
     public function getUEsForSemestre(ESBTPClasse $classe, int $semestre): \Illuminate\Support\Collection
     {
-        // Une meme unite sert plusieurs maquettes : on ne charge que les elements
-        // qui valent pour CELLE-CI, la composition commune (`parcours_id` a zero)
-        // et celle propre au parcours de la classe. Le filtre est pose DANS le
-        // chargement anticipe : le sortir en requete par unite couterait, sur une
-        // classe a huit unites et deux mille inscrits, seize mille requetes de
-        // plus a la generation des bulletins. La deduplication commun contre
-        // reserve se fait ensuite en memoire, dans getEcuesEffectifs().
-        $parcoursId = $classe->parcours_id ? (int) $classe->parcours_id : null;
-
+        // On charge le pivot ENTIER, sans filtrer par maquette.
+        //
+        // Contraindre ici semblait economique, mais c'etait le contraire d'un
+        // gain : le repli sur la cle etrangere de getEcuesEffectifs() ne peut
+        // reconnaitre un element deja porte par le pivot que s'il le VOIT. Filtre
+        // en SQL, l'element reserve a un autre parcours disparaissait de la
+        // collection, le repli le prenait pour un element sans pivot, et le
+        // reintroduisait — dans la maquette d'a cote, et sans son pivot, donc
+        // avec les valeurs de la matiere au lieu de celles de la maquette.
+        //
+        // La maquette se tranche a un seul endroit, en memoire, dans
+        // getEcuesEffectifs(). Le cout reste celui d'un chargement anticipe par
+        // requete : les seize mille requetes redoutees viendraient d'une requete
+        // PAR UNITE ET PAR ETUDIANT, que personne ne fait ici.
         $eagerLoad = [
-            'ecues' => function ($q) use ($parcoursId) {
-                $q->where('esbtp_matieres.is_active', true);
-
-                if ($parcoursId !== null) {
-                    $q->whereIn('esbtp_ue_matiere.parcours_id', [0, $parcoursId]);
-                }
-
-                $q->orderBy('esbtp_ue_matiere.ordre_bulletin')->orderBy('esbtp_matieres.code');
-            },
+            'ecues' => fn($q) => $q->where('esbtp_matieres.is_active', true)->orderBy('esbtp_ue_matiere.ordre_bulletin')->orderBy('esbtp_matieres.code'),
             'matieres' => fn($q) => $q->where('is_active', true)->orderBy('ordre_bulletin')->orderBy('code'),
         ];
 

@@ -755,15 +755,11 @@ class ESBTPLMDPlanningController extends Controller
 
     private function loadUesForParcours(ESBTPLMDParcours $parcours, ?int $semestre, ?int $niveauId = null): Collection
     {
-        $parcoursId = (int) $parcours->id;
-
+        // Pivot entier : la maquette se tranche dans getEcuesEffectifs(), qui a
+        // besoin de voir toutes les lignes pour ne pas confondre « sans pivot »
+        // et « reserve a un autre parcours ».
         $query = $parcours->unitesEnseignement()
-            ->with([
-                // Composition commune, plus celle propre a ce parcours.
-                'ecues' => fn ($q) => $q->whereIn('esbtp_ue_matiere.parcours_id', [0, $parcoursId]),
-                'matieres',
-                'responsableUe:id,name',
-            ])
+            ->with(['ecues', 'matieres', 'responsableUe:id,name'])
             ->where('esbtp_unites_enseignement.is_active', true);
 
         if ($semestre) {

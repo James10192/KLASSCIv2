@@ -68,15 +68,11 @@ class MatiereTreeBuilder
 
         // 1. Charger les UEs du parcours (via pivot esbtp_lmd_parcours_unites_enseignement)
         //
-        // Une meme unite sert plusieurs maquettes : on ne charge que sa
-        // composition commune (`parcours_id` a zero) et celle propre a CE
-        // parcours. Le filtre est dans le chargement anticipe, pas en requete par
-        // unite : cet arbre est construit a chaque ouverture d'un emploi du temps.
+        // Pivot ENTIER, sans filtre de maquette : c'est getEcuesEffectifs() qui
+        // tranche, et il a besoin de voir toutes les lignes pour distinguer un
+        // element sans pivot d'un element reserve ailleurs.
         $ues = $parcours->unitesEnseignement()
-            ->with([
-                'ecues' => fn ($q) => $q->whereIn('esbtp_ue_matiere.parcours_id', [0, $parcoursId]),
-                'matieres',
-            ])
+            ->with(['ecues', 'matieres'])
             ->where('esbtp_unites_enseignement.is_active', true)
             ->get();
 

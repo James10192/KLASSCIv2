@@ -69,10 +69,23 @@ class CompositionUeParParcoursTest extends TestCase
             'updated_at' => now(),
         ]);
 
-        // L'import a deja pose la composition commune : on repart d'une table
-        // propre pour que chaque cas dise exactement ce qu'il pose.
-        DB::table('esbtp_ue_matiere')->where('unite_enseignement_id', $this->ue->id)->delete();
-        $this->ecue->update(['unite_enseignement_id' => null]);
+        // On NE nettoie PAS ce que l'import a ecrit.
+        //
+        // Une premiere version de ces tests vidait le pivot et remettait la cle
+        // etrangere a nul avant chaque cas. C'etait effacer precisement l'etat
+        // qui produit le defaut : en production l'import pose TOUJOURS les deux,
+        // et c'est cette coexistence qui faisait reapparaitre par le repli ce que
+        // le filtre venait d'ecarter. La suite passait donc en etant fausse.
+    }
+
+    /**
+     * Les elements que CETTE maquette voit, par leur code.
+     *
+     * @return array<int, string>
+     */
+    private function vusPar(ESBTPLMDParcours $parcours): array
+    {
+        return $this->ue->fresh()->getEcuesEffectifs($parcours->id)->pluck('code')->all();
     }
 
     /**
@@ -112,6 +125,57 @@ class CompositionUeParParcoursTest extends TestCase
         }
 
         return $requete->count();
+    }
+
+    public function test_deux_maquettes_importees_sur_la_meme_unite_restent_etanches(): void
+    {
+        // LE test du chantier, et celui qui manquait. Aucune cle etrangere n'est
+        // touchee : on lit l'etat exact que l'import produit.
+        //
+        // L'import de TIR pose son element sur l'unite partagee, en le reservant
+        // a TIR. Vu depuis Batiment, cet element ne doit pas exister.
+        app(LMDImportService::class)->import([
+            'domaine' => ['name' => 'Sciences et Technologies', 'code' => 'ST'],
+            'mention' => ['name' => 'Genie Civil', 'code' => 'GC'],
+            'parcours' => ['name' => 'Travaux Publics', 'code' => 'TIR', 'credits_licence' => 180],
+            'filiere' => ['name' => 'Travaux Publics', 'code' => 'FTIR'],
+            'niveaux' => [['name' => 'Licence 1', 'year' => 1]],
+            'ues' => [[
+                'code' => 'UE-PARTAGEE',
+                'name' => 'Unite UE-PARTAGEE',
+                'credit' => 12,
+                'niveau_year' => 1,
+                'semestre' => 1,
+                'ecues' => [['code' => 'ECUE-RESERVE-TIR', 'name' => 'Reserve TIR', 'credit_ecue' => 3]],
+            ]],
+        ]);
+
+        $vusParBatiment = $this->vusPar($this->batiment);
+
+        $this->assertContains('ECUE-BU', $vusParBatiment, 'Batiment doit garder son propre element.');
+        $this->assertNotContains(
+            'ECUE-RESERVE-TIR',
+            $vusParBatiment,
+            "L'element reserve a Travaux Publics ne doit pas entrer dans le bulletin des etudiants de Batiment."
+        );
+
+        $vusParTir = $this->vusPar($this->travauxPublics);
+        $this->assertContains('ECUE-RESERVE-TIR', $vusParTir, 'Travaux Publics doit voir le sien.');
+    }
+
+    public function test_un_element_n_est_jamais_rendu_deux_fois(): void
+    {
+        // Le repli sur la cle etrangere et le pivot decrivent le meme element :
+        // le compter deux fois doublerait sa note au numerateur, son coefficient
+        // au denominateur et son credit. La moyenne resterait juste par
+        // compensation, les credits non.
+        $codes = $this->vusPar($this->batiment);
+
+        $this->assertSame(
+            count($codes),
+            count(array_unique($codes)),
+            'Un element remonte deux fois : '.implode(', ', $codes)
+        );
     }
 
     public function test_une_reservation_et_la_composition_commune_coexistent(): void
@@ -201,6 +265,9 @@ class CompositionUeParParcoursTest extends TestCase
 
     public function test_la_lecture_d_un_parcours_ignore_ce_qui_est_reserve_a_un_autre(): void
     {
+        // Cet element-ci vient d'une AUTRE unite : sa cle ne designe pas la notre,
+        // le repli ne le reprendra donc pas. On la coupe pour que le cas ne teste
+        // que le pivot.
         $autre = ESBTPMatiere::where('code', 'ECUE-TIR')->firstOrFail();
         $autre->update(['unite_enseignement_id' => null]);
 
@@ -213,25 +280,55 @@ class CompositionUeParParcoursTest extends TestCase
         $this->assertNotContains($autre->id, $vus, "Ce que Travaux Publics reserve n'est pas a Batiment.");
     }
 
-    public function test_une_portee_qui_ne_concerne_pas_l_unite_retombe_sur_le_commun(): void
+    public function test_une_portee_qui_ne_concerne_pas_l_unite_est_refusee(): void
     {
-        // Accepter n'importe quel identifiant creerait une composition rattachee
-        // a une maquette qui n'utilise pas cette unite : invisible partout, et
-        // impossible a retrouver pour la corriger.
+        // Retomber silencieusement sur « commun » ferait ecrire dans la
+        // composition partagee par TOUTES les maquettes : le plus large rayon
+        // d'action atteint par la plus petite faute de frappe. On refuse, et on
+        // dit ou aller corriger.
         app(LMDImportService::class)->import($this->maquette('EXT', 'Exterieur', 'UE-EXT', 'ECUE-EXT'));
         $etranger = ESBTPLMDParcours::where('code', 'EXT')->firstOrFail();
 
-        $this->assertSame(
-            CompositionUe::COMMUN,
-            $this->composition->porteeValide($this->ue, $etranger->id)
-        );
+        $this->expectException(\Illuminate\Validation\ValidationException::class);
+        $this->composition->porteeValide($this->ue, $etranger->id);
+    }
+
+    public function test_une_portee_absente_vaut_la_composition_commune(): void
+    {
+        $this->assertSame(CompositionUe::COMMUN, $this->composition->porteeValide($this->ue, ''));
+        $this->assertSame(CompositionUe::COMMUN, $this->composition->porteeValide($this->ue, null));
+        $this->assertSame(CompositionUe::COMMUN, $this->composition->porteeValide($this->ue, 0));
         $this->assertSame(
             $this->batiment->id,
-            $this->composition->porteeValide($this->ue, $this->batiment->id)
+            $this->composition->porteeValide($this->ue, $this->batiment->id),
+            'Un parcours rattache a l unite est accepte tel quel.'
         );
+    }
+
+    public function test_le_plafond_de_credits_compte_l_union_dedupliquee(): void
+    {
+        // Ne compter que les reservees laissait reserver a l'infini sur une unite
+        // deja pourvue en commun : le plafond ne mordait jamais, et l'invariant
+        // UEMOA des trente credits par semestre devenait franchissable en silence.
+        $autre = ESBTPMatiere::where('code', 'ECUE-TIR')->firstOrFail();
+        $autre->update(['unite_enseignement_id' => null]);
+
+        $this->composition->poser($this->ue, $this->ecue->id, ['credit_ecue' => 8]);
+        $this->composition->poser($this->ue, $autre->id, ['credit_ecue' => 3], $this->batiment->id);
+
         $this->assertSame(
-            CompositionUe::COMMUN,
-            $this->composition->porteeValide($this->ue, '')
+            11,
+            $this->composition->creditsDe($this->ue, $this->batiment->id),
+            'Le commun ET le reserve comptent, chacun une fois.'
+        );
+
+        // La reservee ecrase la commune pour le meme element, elle ne s'y ajoute pas.
+        $this->composition->poser($this->ue, $this->ecue->id, ['credit_ecue' => 5], $this->batiment->id);
+
+        $this->assertSame(
+            8,
+            $this->composition->creditsDe($this->ue, $this->batiment->id),
+            'Le reserve remplace le commun : 5 + 3, et non 8 + 5 + 3.'
         );
     }
 
