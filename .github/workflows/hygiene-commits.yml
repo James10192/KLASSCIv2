@@ -271,6 +271,12 @@ jobs:
       - name: Ancrage des classes LMD sur une filiere reelle
         run: php vendor/bin/phpunit tests/Feature/Classes/AncrageFiliereLmdTest.php --no-coverage
 
+      # L import d une maquette ne doit pas detruire celle d un autre parcours.
+      # Le code d une UE etant unique en base, importer le second parcours
+      # reecrivait le premier, en silence.
+      - name: L import LMD refuse d ecraser une maquette
+        run: php vendor/bin/phpunit tests/Feature/LMD/ImportRefuseEcrasementTest.php --no-coverage
+
   schema:
     name: Le schéma se crée entièrement (${{ matrix.moteur.nom }})
     runs-on: ubuntu-latest
