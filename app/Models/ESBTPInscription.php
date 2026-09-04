@@ -2,9 +2,12 @@
 
 namespace App\Models;
 
+use App\Helpers\SettingsHelper;
+use App\Services\Dossier\MaterialisationPiecesService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Log;
 use OwenIt\Auditing\Contracts\Auditable;
 
 class ESBTPInscription extends Model implements Auditable
@@ -77,6 +80,13 @@ class ESBTPInscription extends Model implements Auditable
      * Les paiements DÉJÀ soft-deletés ou supprimés indépendamment ne sont PAS touchés
      * lors d'un restore (on ne ressuscite que ceux que NOTRE soft-delete a tués).
      */
+    /**
+     * Réglage d'instance : matérialiser le dossier à la création d'une
+     * inscription. Une école qui importe des milliers d'inscriptions d'un coup
+     * peut le couper le temps de l'import puis rattraper par la commande.
+     */
+    public const REGLAGE_MATERIALISATION_AUTO = 'dossier.materialisation_auto';
+
     protected static function booted(): void
     {
         static::deleting(function (self $inscription) {
@@ -103,6 +113,73 @@ class ESBTPInscription extends Model implements Auditable
                     'updated_at' => now(),
                 ]);
         });
+
+        static::created(function (self $inscription) {
+            $inscription->materialiserDossier();
+        });
+    }
+
+    /**
+     * Crée les lignes de dossier manquantes depuis le catalogue applicable.
+     *
+     * Silencieux par construction : tant qu'une école n'a rien mis dans son
+     * catalogue, rien n'est créé et aucun écran ne change. Le dossier ne doit
+     * jamais empêcher une inscription d'exister, donc un échec est journalisé
+     * (jamais avalé en silence) mais n'interrompt pas l'enregistrement.
+     */
+    public function materialiserDossier(?int $auteurId = null): int
+    {
+        // filter_var plutot qu'un simple test de verite : selon le `type` de la
+        // ligne de reglage, la valeur peut arriver en booleen, en "0" ou en
+        // "false" — et "false" est une chaine non vide, donc vraie.
+        $actif = filter_var(
+            SettingsHelper::get(self::REGLAGE_MATERIALISATION_AUTO, true),
+            FILTER_VALIDATE_BOOLEAN
+        );
+
+        if (! $actif) {
+            return 0;
+        }
+
+        try {
+            return app(MaterialisationPiecesService::class)
+                ->materialiser($this, $auteurId ?? auth()->id());
+        } catch (\Throwable $e) {
+            Log::error('Dossier : materialisation impossible pour l\'inscription '.$this->id, [
+                'inscription_id' => $this->id,
+                'message' => $e->getMessage(),
+            ]);
+
+            return 0;
+        }
+    }
+
+    /**
+     * Pièces du dossier constituées pour CETTE inscription.
+     *
+     * Une par année : un étudiant de troisième année a trois jeux de lignes,
+     * un par inscription, et c'est le besoin — l'école reprend un exemplaire
+     * de chaque pièce à chaque rentrée pour les ministères.
+     */
+    public function piecesDossier()
+    {
+        return $this->hasMany(ESBTPInscriptionPiece::class, 'inscription_id');
+    }
+
+    /**
+     * Nombre de pièces encore dues : ni fournies, ni écartées, et toujours
+     * exigées par le catalogue. C'est ce compteur que la fiche affiche —
+     * une pièce manquante signale, elle ne bloque pas la validation.
+     */
+    public function nombrePiecesDues(bool $obligatoiresSeulement = true): int
+    {
+        $query = $this->piecesDossier()->dues();
+
+        if ($obligatoiresSeulement) {
+            $query->obligatoires();
+        }
+
+        return $query->count();
     }
 
     /**
@@ -133,7 +210,8 @@ class ESBTPInscription extends Model implements Auditable
         'paiement_validation_id', // Nouveau: référence paiement validation
         'comptabilite_activee', // Nouveau: flag comptabilité
         'observations',
-        'documents_fournis', // JSON avec liste des documents
+        // 'documents_fournis' retiré : colonne morte, jamais lue ni écrite.
+        // L'état des pièces vit désormais dans esbtp_inscription_pieces.
         'date_validation',
         'validated_by',
         'created_by',
@@ -158,7 +236,6 @@ class ESBTPInscription extends Model implements Auditable
         'date_inscription' => 'date',
         'date_paiement' => 'date',
         'date_validation' => 'date',
-        'documents_fournis' => 'array',
         'montant_scolarite' => 'float',
         'frais_inscription' => 'float',
         'comptabilite_activee' => 'boolean',
