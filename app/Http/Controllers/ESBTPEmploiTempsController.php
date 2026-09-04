@@ -2051,7 +2051,7 @@ class ESBTPEmploiTempsController extends Controller
      */
     public function refresh(Request $request)
     {
-        \Log::info('🔄 Refresh emplois temps AJAX', $request->all());
+        \Log::info('Refresh emplois temps AJAX', ['champs' => array_keys($request->all())]);
 
         // Récupérer l'année universitaire courante
         $anneeUniversitaire = ESBTPAnneeUniversitaire::where('is_current', true)->first();

@@ -413,7 +413,7 @@ class ESBTPSeanceCoursController extends Controller
             }
 
             // Log des données reçues
-            \Log::info('Création séance - Données reçues', $request->all());
+            \Log::info('Création séance - Données reçues', ['champs' => array_keys($request->all())]);
 
             // ════════════════════════════════════════════════════════════════
             // LMD-aware : derive le `type` (creneau emploi-temps) depuis le

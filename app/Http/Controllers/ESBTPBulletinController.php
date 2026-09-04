@@ -2183,7 +2183,10 @@ class ESBTPBulletinController extends Controller
         $validator->validate();
 
         try {
-            \Log::info('Début de sauvegarde configuration', ['data' => $request->all()]);
+            // Les valeurs postees ne servaient pas au diagnostic : les CLES suffisent
+            // a savoir ce que l ecran a envoye, sans recopier son contenu dans un
+            // fichier conserve quatorze jours.
+            \Log::info('Début de sauvegarde configuration', ['champs' => array_keys($request->all())]);
 
             // Liste des paramètres checkbox (qui doivent être gérés différemment)
             $checkboxFields = [

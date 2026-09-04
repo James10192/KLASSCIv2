@@ -46,8 +46,18 @@ class CLIMoteurController extends BaseApiController
                 'variables' => $this->variables(),
             ], 'Moteur de base de données : '.$version);
         } catch (Throwable $e) {
+            // Le message PDO brut porte l utilisateur SQL et le nom de la base
+            // (« Access denied for user 'c2569688c_X'@'localhost' to database
+            // 'klassci_yakro' ») — exactement ce que le docblock de ce
+            // controleur promet de ne jamais rendre, dans une reponse qu il
+            // invite a coller dans un ticket. Le detail part au journal, ou il
+            // sert au diagnostic sans circuler.
+            \Illuminate\Support\Facades\Log::error('[cli/moteur] interrogation impossible', [
+                'exception' => $e->getMessage(),
+            ]);
+
             return $this->errorResponse(
-                "Impossible d'interroger le moteur : ".$e->getMessage(),
+                "Impossible d'interroger le moteur de base de donnees. Le detail est au journal de l'instance.",
                 [],
                 500
             );
@@ -121,8 +131,13 @@ class CLIMoteurController extends BaseApiController
                 $lues[$nom] = $ligne->Value ?? null;
             } catch (Throwable $e) {
                 // On DIT que la lecture a echoue, au lieu de rendre un null muet qui
-                // se lit comme « cette variable n existe pas ».
-                $lues[$nom] = 'illisible : '.$e->getMessage();
+                // se lit comme « cette variable n existe pas ». Sans le message brut,
+                // qui nomme l utilisateur SQL et la base.
+                \Illuminate\Support\Facades\Log::warning('[cli/moteur] variable illisible', [
+                    'variable' => $nom,
+                    'exception' => $e->getMessage(),
+                ]);
+                $lues[$nom] = 'illisible';
             }
         }
 

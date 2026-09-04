@@ -112,8 +112,8 @@
                     <h4 class="card-title">Informations sur l'étudiant</h4>
 
                     <div class="text-center mb-4">
-                        @if($attendance->etudiant->photo)
-                            <img src="{{ asset('storage/' . $attendance->etudiant->photo) }}" alt="Photo de l'étudiant" class="rounded-circle img-thumbnail" style="width: 150px; height: 150px; object-fit: cover;">
+                        @if($attendance->etudiant->photo_url)
+                            <img src="{{ $attendance->etudiant->photo_url }}" alt="Photo de l'étudiant" class="rounded-circle img-thumbnail" style="width: 150px; height: 150px; object-fit: cover;">
                         @else
                             <img src="{{ asset('assets/images/avatar.jpg') }}" alt="Photo par défaut" class="rounded-circle img-thumbnail" style="width: 150px; height: 150px; object-fit: cover;">
                         @endif
