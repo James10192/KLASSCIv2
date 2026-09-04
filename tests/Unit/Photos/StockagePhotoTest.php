@@ -97,6 +97,30 @@ class StockagePhotoTest extends TestCase
         $this->assertNull($this->stockage->url('   '));
     }
 
+    /**
+     * @dataProvider valeursSansNomDeFichier
+     */
+    public function test_un_dossier_n_est_jamais_pris_pour_une_photo(string $valeur): void
+    {
+        // Le dossier existe : c'est precisement le piege. Storage::exists() rend
+        // vrai pour un dossier sur Flysystem 3. Sans garde, url() rendait l'adresse
+        // d'un DOSSIER, et le `@if($x->photo_url)` des vues passait a vrai —
+        // supprimant le repli aux initiales au profit d'une vignette brisee.
+        Storage::disk('public')->put(StockagePhoto::DOSSIER.'/vraie.jpg', 'donnees');
+
+        $this->assertNull($this->stockage->url($valeur), 'La valeur « '.$valeur.' » ne designe aucune photo.');
+    }
+
+    public static function valeursSansNomDeFichier(): array
+    {
+        return [
+            'racine du disque' => ['/storage/'],
+            'dossier canonique' => [StockagePhoto::DOSSIER.'/'],
+            'ancien dossier' => ['etudiants/photos/'],
+            'segment sans extension' => ['photos/etudiants'],
+        ];
+    }
+
     public function test_la_suppression_retrouve_les_anciens_dossiers(): void
     {
         Storage::disk('public')->put('etudiants/photos/vieille.jpg', 'donnees');

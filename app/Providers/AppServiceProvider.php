@@ -45,6 +45,12 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        // Singleton : le service memorise ses resolutions de chemin. Resolu a la
+        // volee, le conteneur en reconstruisait une instance neuve a chaque acces
+        // a photo_url — donc un memo toujours vide, et une liste de cinquante
+        // etudiants payait cinq sondages disque par ligne, deux fois.
+        $this->app->singleton(\App\Services\Photos\StockagePhoto::class);
+
         // Charger explicitement le fichier d'aide helpers.php
         if (file_exists(app_path('Helpers/helpers.php'))) {
             require_once app_path('Helpers/helpers.php');

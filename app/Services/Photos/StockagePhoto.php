@@ -5,6 +5,7 @@ namespace App\Services\Photos;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use RuntimeException;
 
 /**
  * Le seul endroit ou une photo de personne s'ecrit, se lit et s'efface.
@@ -38,6 +39,9 @@ class StockagePhoto
      */
     public const DOSSIER = 'photos/etudiants';
 
+    /** @var array<string, string|null> resolutions deja faites dans cette requete */
+    private array $resolus = [];
+
     private const EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
 
     /**
@@ -47,7 +51,17 @@ class StockagePhoto
     {
         $nom = Str::slug($prefixe).'-'.Str::random(16).'.'.$this->extension($fichier);
 
-        return $fichier->storeAs(self::DOSSIER, $nom, 'public');
+        $chemin = $fichier->storeAs(self::DOSSIER, $nom, 'public');
+
+        // storeAs() rend false si l ecriture echoue — quota ou permissions sur un
+        // hebergement mutualise. Sans strict_types, false devient '' : l appelant
+        // enregistrait une photo vide en base APRES avoir efface l ancienne, et
+        // repondait « Photo mise a jour avec succes ». On refuse bruyamment.
+        if ($chemin === false || $chemin === '') {
+            throw new RuntimeException("La photo n'a pas pu être enregistrée sur le disque.");
+        }
+
+        return $chemin;
     }
 
     /**
@@ -87,13 +101,28 @@ class StockagePhoto
             return null;
         }
 
+        // Memorise par valeur brute. Les vues font systematiquement
+        // `@if($x->photo_url)` puis `src="{{ $x->photo_url }}"` : sans cela, une
+        // liste de cinquante etudiants resout cent fois, et le cas le plus
+        // frequent — la fiche sans photo — est celui qui parcourt TOUS les
+        // candidats. Meme geste que SettingsHelper::resolveLogoPath().
+        if (array_key_exists($valeur, $this->resolus)) {
+            return $this->resolus[$valeur];
+        }
+
         foreach ($this->candidats($valeur) as $candidat) {
-            if ($candidat !== '' && Storage::disk('public')->exists($candidat)) {
-                return $candidat;
+            // is_file, et non Storage::exists() : sur Flysystem 3, exists() rend
+            // vrai pour un DOSSIER. Une valeur comme '/storage/' normalise en
+            // chaine vide, les candidats deviennent 'photos/etudiants/' — un
+            // dossier, qui existe. On rendrait alors une URL de dossier, et pire :
+            // le `@if($x->photo_url)` des vues passerait a vrai, supprimant le
+            // repli aux initiales. Piege deja documente dans SettingsHelper.
+            if (is_file(Storage::disk('public')->path($candidat))) {
+                return $this->resolus[$valeur] = $candidat;
             }
         }
 
-        return null;
+        return $this->resolus[$valeur] = null;
     }
 
     /**
@@ -108,6 +137,12 @@ class StockagePhoto
         $nu = ltrim((string) $nu, '/');
 
         $base = basename($nu);
+
+        // Un chemin sans nom de fichier ne designe aucune photo : sans ce garde-fou,
+        // les candidats se reduiraient a des dossiers.
+        if ($base === '' || ! str_contains($base, '.')) {
+            return [];
+        }
 
         return array_values(array_unique([
             $nu,                              // chemin relatif deja canonique

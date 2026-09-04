@@ -41,9 +41,11 @@ class ChatActionResolver
                     'id' => $inscription->etudiant_id,
                     'name' => $etudiantName ?: '—',
                     'matricule' => $inscription->etudiant?->matricule,
-                    'photo_url' => $inscription->etudiant?->photo
-                        ? asset('storage/' . $inscription->etudiant->photo)
-                        : null,
+                    // Passe par StockagePhoto : la colonne porte encore trois formes
+                    // historiques, et concatener « storage/ » a une valeur deja prefixee
+                    // produisait « /storage//storage/... » — la vignette cassee que la
+                    // messagerie masquait derriere un gestionnaire d erreur.
+                    'photo_url' => app(\App\Services\Photos\StockagePhoto::class)->url($inscription->etudiant?->photo),
                 ],
                 'classe' => $inscription->classe?->name ?? '—',
                 'annee' => $inscription->anneeUniversitaire?->libelle
@@ -80,9 +82,11 @@ class ChatActionResolver
                     'id' => $paiement->etudiant_id,
                     'name' => $etudiantName ?: '—',
                     'matricule' => $paiement->etudiant?->matricule,
-                    'photo_url' => $paiement->etudiant?->photo
-                        ? asset('storage/' . $paiement->etudiant->photo)
-                        : null,
+                    // Passe par StockagePhoto : la colonne porte encore trois formes
+                    // historiques, et concatener « storage/ » a une valeur deja prefixee
+                    // produisait « /storage//storage/... » — la vignette cassee que la
+                    // messagerie masquait derriere un gestionnaire d erreur.
+                    'photo_url' => app(\App\Services\Photos\StockagePhoto::class)->url($paiement->etudiant?->photo),
                 ],
                 'classe' => $paiement->inscription?->classe?->name ?? '—',
                 'montant' => (float) $paiement->montant,

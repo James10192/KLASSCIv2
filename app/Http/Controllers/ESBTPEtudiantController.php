@@ -2400,7 +2400,7 @@ class ESBTPEtudiantController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Photo mise à jour avec succès',
-                'photo_url' => asset('storage/' . $path)
+                'photo_url' => $photos->url($path),
             ]);
 
         } catch (\Exception $e) {
