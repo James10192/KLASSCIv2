@@ -163,6 +163,10 @@
    reflet et la filiere BTS homonyme sont deux etiquettes identiques, et l'une
    des deux ne concerne aucun dossier. */
 .pce-chip-nature {
+    /* Le code n'apparait que sur les homonymes : c'est la seule colonne que
+       l'application impose unique, donc la seule qui les departage. Partout
+       ailleurs il serait du bruit. */
+    .pce-chip-code { margin-left: .35rem; padding: .05rem .3rem; border-radius: 4px; background: rgba(4,83,203,.10); color: #0453cb; font-size: .62rem; font-weight: 700; letter-spacing: .04em; font-family: 'Courier New', monospace; }
     font-size: .62rem; font-weight: 700; letter-spacing: .4px; text-transform: uppercase;
     color: #5e91de; background: rgba(94,145,222,.12);
     border: 1px solid rgba(94,145,222,.28);
@@ -421,7 +425,7 @@
                                 <input type="checkbox" hidden value="{{ $filiere->id }}"
                                        :checked="form.filiere_ids.includes({{ $filiere->id }})"
                                        @change="basculerScope('filiere_ids', {{ $filiere->id }})">
-                                @if ($_natureLmd)<span class="pce-chip-nature">{{ $_natureLmd }}</span>@endif{{ $filiere->name }}
+                                @if ($_natureLmd)<span class="pce-chip-nature">{{ $_natureLmd }}</span>@endif{{ $filiere->name }}@if (!empty($filiere->estHomonyme))<span class="pce-chip-code">{{ $filiere->code }}</span>@endif
                             </label>
                             @endforeach
                         </div>

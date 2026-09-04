@@ -168,16 +168,52 @@ class ESBTPPieceDossierController extends Controller
      */
     private function filieresPourLaPortee(): Collection
     {
-        return ESBTPFiliere::where('is_active', true)
-            ->get(['id', 'name', 'lmd_mention_id', 'lmd_parcours_id'])
-            ->sortBy(fn (ESBTPFiliere $f) => [$f->estMiroirLmd() ? 1 : 0, mb_strtolower($f->name)])
+        // `code` est charge parce qu'il est la SEULE colonne que l'application
+        // impose unique : deux filieres peuvent legitimement porter le meme nom
+        // — la validation de leur creation ne l'interdit pas — et l'ecran
+        // affichait alors deux etiquettes strictement identiques. Choisir la
+        // mauvaise donnait une portee mal ciblee, sans erreur ni trace.
+        $filieres = ESBTPFiliere::where('is_active', true)
+            ->get(['id', 'name', 'code', 'lmd_mention_id', 'lmd_parcours_id']);
+
+        // Les noms portes par plus d'une filiere : eux seuls ont besoin d'etre
+        // departages. Afficher le code partout ajouterait du bruit a vingt
+        // entrees sans ambiguite.
+        $homonymes = $filieres
+            ->groupBy(fn (ESBTPFiliere $f) => mb_strtolower(trim((string) $f->name)))
+            ->filter(fn ($groupe) => $groupe->count() > 1)
+            ->keys()
+            ->all();
+
+        foreach ($filieres as $filiere) {
+            $filiere->estHomonyme = in_array(
+                mb_strtolower(trim((string) $filiere->name)),
+                $homonymes,
+                true
+            );
+        }
+
+        // Le tri se departage jusqu'au bout. Sans troisieme cle, deux homonymes
+        // partagent la meme et leur ordre depend de celui que rend la base, qui
+        // n'est pas garanti : une personne qui aurait retenu « c'est le premier
+        // des deux » verrait sa portee changer de cible d'un deploiement a
+        // l'autre, sans que rien ne bouge a l'ecran.
+        return $filieres
+            ->sortBy(fn (ESBTPFiliere $f) => [
+                $f->estMiroirLmd() ? 1 : 0,
+                mb_strtolower((string) $f->name),
+                mb_strtolower((string) $f->code),
+                (int) $f->id,
+            ])
             ->values();
     }
 
     /** Recharge la pièce ET sa portée : sans quoi la réponse renverrait l'ancienne. */
     private function recharger(ESBTPPieceDossier $piece): ESBTPPieceDossier
     {
-        return $piece->refresh()->load(['filieres:id,name', 'niveaux:id,name']);
+        // `code` charge aussi : le resume de portee le nomme quand le nom seul
+        // ne suffit pas a designer la filiere.
+        return $piece->refresh()->load(['filieres:id,name,code', 'niveaux:id,name']);
     }
 
     private function serialiser(ESBTPPieceDossier $piece): array

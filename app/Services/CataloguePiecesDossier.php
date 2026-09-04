@@ -65,7 +65,7 @@ class CataloguePiecesDossier
     /** Catalogue complet, actif ou non, pour l'écran de configuration. */
     public function tout(): Collection
     {
-        return ESBTPPieceDossier::with(['filieres:id,name', 'niveaux:id,name'])
+        return ESBTPPieceDossier::with(['filieres:id,name,code', 'niveaux:id,name'])
             ->ordonne()
             ->get();
     }
@@ -80,7 +80,7 @@ class CataloguePiecesDossier
      */
     public function pourScope(?int $filiereId, ?int $niveauId): Collection
     {
-        return ESBTPPieceDossier::with(['filieres:id,name', 'niveaux:id,name'])
+        return ESBTPPieceDossier::with(['filieres:id,name,code', 'niveaux:id,name'])
             ->actives()
             ->ordonne()
             ->get()

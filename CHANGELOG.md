@@ -42,6 +42,8 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ### Corrections
 
+- **Deux filières qui portent le même nom se distinguent dans le choix de la portée d'une pièce** (`/esbtp/pieces-dossier`) — l'écran affichait deux étiquettes strictement identiques, et rien ne permettait de trancher : se tromper donnait une portée visant l'autre filière, sans erreur ni trace. Le code de la filière, seule mention que l'application impose unique, apparaît maintenant sur les entrées concernées, et sur celles-là seulement. Le résumé de portée le nomme lui aussi, puisqu'il relisait jusqu'ici une portée mal ciblée à l'identique d'une bonne. L'ordre des entrées est enfin stable : deux homonymes pouvaient permuter d'un déploiement à l'autre, sans que rien ne bouge à l'écran.
+
 - **Le plafond de crédits d'une unité s'applique enfin aux maquettes importées** (`/esbtp/lmd/ue`) — il ne comptait que les éléments enregistrés par l'écran, en ignorant ceux que l'import a posés, c'est-à-dire la quasi-totalité des catalogues en service. Sur ces unités-là il voyait zéro crédit : on pouvait porter une unité de deux crédits à quatre sans le moindre avertissement.
 
 - **Les unités partagées réapparaissent quand on filtre la liste par parcours** — une unité que deux maquettes se partagent disparaissait de celle des deux qui n'était pas inscrite dans sa fiche. Deux conditions se cumulaient là où une seule a du sens : le rattachement aux parcours, et un champ hérité qui ne peut en nommer qu'un.

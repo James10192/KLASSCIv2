@@ -17,12 +17,16 @@ use PHPUnit\Framework\TestCase;
  */
 class ESBTPPieceDossierScopeTest extends TestCase
 {
-    private function piece(array $filiereIds = [], array $niveauIds = []): ESBTPPieceDossier
+    private function piece(array $filiereIds = [], array $niveauIds = [], bool $avecCode = true): ESBTPPieceDossier
     {
         $piece = new ESBTPPieceDossier();
 
         $piece->setRelation('filieres', new Collection(array_map(
-            fn (int $id) => (new ESBTPFiliere())->forceFill(['id' => $id, 'name' => 'Filière ' . $id]),
+            fn (int $id) => (new ESBTPFiliere())->forceFill([
+                'id' => $id,
+                'name' => 'Filière ' . $id,
+                'code' => $avecCode ? 'F' . $id : null,
+            ]),
             $filiereIds
         )));
 
@@ -107,14 +111,27 @@ class ESBTPPieceDossierScopeTest extends TestCase
     {
         $this->assertSame('Toutes filières / Tous niveaux', $this->piece()->libelleScope());
 
+        // Le code accompagne le nom : deux filieres peuvent legitimement porter
+        // le meme, et ce resume relisait alors une portee mal ciblee a
+        // l'identique d'une bonne — aucune seconde chance de s'en apercevoir.
         $this->assertSame(
-            'Filière 3 / Niveau 7',
+            'Filière 3 (F3) / Niveau 7',
             $this->piece(filiereIds: [3], niveauIds: [7])->libelleScope()
         );
 
         $this->assertSame(
-            'Filière 3, Filière 4 / Tous niveaux',
+            'Filière 3 (F3), Filière 4 (F4) / Tous niveaux',
             $this->piece(filiereIds: [3, 4])->libelleScope()
+        );
+    }
+
+    public function test_une_filiere_sans_code_se_lit_quand_meme(): void
+    {
+        // Le code n'est pas garanti present sur une donnee ancienne : le resume
+        // doit rester lisible, pas afficher une parenthese vide.
+        $this->assertSame(
+            'Filière 3 / Tous niveaux',
+            $this->piece(filiereIds: [3], avecCode: false)->libelleScope()
         );
     }
 }

@@ -158,12 +158,28 @@ class ESBTPPieceDossier extends Model
         return true;
     }
 
-    /** Résumé de portée lisible au guichet : « Toutes filières / Licence 1 ». */
+    /**
+     * Résumé de portée lisible au guichet : « Toutes filières / Licence 1 ».
+     *
+     * La filière est nommée AVEC son code quand il est connu. Deux filières
+     * peuvent légitimement porter le même nom — la validation de leur création
+     * ne l'interdit pas — et ce résumé relisait alors une portée mal ciblée à
+     * l'identique d'une bonne : aucune seconde chance de s'apercevoir de
+     * l'erreur. Le code est la seule colonne que l'application impose unique.
+     *
+     * Contrairement au sélecteur, ce résumé ne voit que les filières de CETTE
+     * pièce : il ne peut pas savoir si le nom est ambigu ailleurs. Il le nomme
+     * donc toujours, ce qui reste court et lève le doute sans le poser.
+     */
     public function libelleScope(): string
     {
         $filieres = $this->concerneToutesFilieres()
             ? 'Toutes filières'
-            : $this->filieres->pluck('name')->implode(', ');
+            : $this->filieres
+                ->map(fn ($filiere) => trim((string) $filiere->code) !== ''
+                    ? sprintf('%s (%s)', $filiere->name, $filiere->code)
+                    : (string) $filiere->name)
+                ->implode(', ');
 
         $niveaux = $this->concerneTousNiveaux()
             ? 'Tous niveaux'
