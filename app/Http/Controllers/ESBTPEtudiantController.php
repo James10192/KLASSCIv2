@@ -294,9 +294,20 @@ class ESBTPEtudiantController extends Controller
                 'creer_compte_utilisateur' => $request->create_account ? true : false,
             ];
 
-            // Gérer la photo si présente
+            // La photo se range MAINTENANT, et sa valeur part dans `photo`, qui est
+            // assignable en masse.
+            //
+            // Cette ligne posait l objet televerse dans `photo_file`. Son unique
+            // lecteur a disparu le 3 mars 2025 : depuis, la cle etait silencieusement
+            // ecartee a l assignation de masse, et l ecran principal de creation
+            // d etudiant JETAIT les photos. Les sauvegardes le disent — une seule
+            // photo non nulle sur 1581 etudiants sur un export d abidjan, zero sur
+            // 2767 sur un autre. Le formulaire acceptait la photo, prevenait qu il
+            // faudrait la reselectionner apres un rechargement, et ne l enregistrait
+            // jamais.
             if ($request->hasFile('photo')) {
-                $etudiantData['photo_file'] = $request->file('photo');
+                $etudiantData['photo'] = app(\App\Services\Photos\StockagePhoto::class)
+                    ->enregistrer($request->file('photo'), 'etudiant');
             }
 
             // Préparer les données d'inscription
