@@ -23,7 +23,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
-use App\Models\User;
 use App\Notifications\AbsenceJustificationNotification;
 use App\Notifications\ESBTPNotification;
 use App\Enums\JustificationStatus;
@@ -70,11 +69,6 @@ class ESBTPAttendanceController extends Controller
 
         // Get all subjects for the filter dropdown
         $matieres = ESBTPMatiere::orderBy('name')->get();
-
-        // Récupérer les enseignants pour le filtre
-        $teachers = User::whereHas('roles', function($query) {
-            $query->where('name', 'enseignant');
-        })->get();
 
         // Build the base query with necessary relationships
         $query = ESBTPAttendance::with([
@@ -129,9 +123,6 @@ class ESBTPAttendanceController extends Controller
 
         // Get paginated results
         $attendances = $query->latest('date')->paginate(15);
-
-        // Calculate total statistics
-        $statsTotal = ESBTPAttendance::count();
 
         // Calculate statistics for each status using the unpaginated query ($statsQuery déjà cloné ligne 113)
         $stats = [
@@ -218,9 +209,6 @@ class ESBTPAttendanceController extends Controller
         $statsRetard = $stats['retard'];
         $statsExcuse = $stats['excuse'];
 
-        // Calculate statistics per student
-        $statsParEtudiant = [];
-
         // Get class filter
         $classeId = $request->filled('classe_id') ? $request->classe_id : null;
 
@@ -246,10 +234,12 @@ class ESBTPAttendanceController extends Controller
         }
 
         // Calculate statistics by class
+        // On réutilise $classes (mêmes classes actives, déjà chargées pour le filtre) :
+        // deux requêtes identiques n'apportaient rien, et l'ordre alphabétique rend
+        // l'affichage déterministe alors que l'ordre naturel de MySQL ne l'est pas.
         $classeStats = [];
-        $classesActive = ESBTPClasse::where('is_active', true)->get();
 
-        foreach ($classesActive as $classe) {
+        foreach ($classes as $classe) {
             // Compter les faits de présence de cette classe pour l'année courante.
             // IMPORTANT: Utiliser finalOnly() pour éviter les doublons (start + merged)
             $presentCount = ESBTPAttendance::finalOnly()
@@ -305,58 +295,6 @@ class ESBTPAttendanceController extends Controller
             }
         }
 
-        // Calculate statistics for each student
-        foreach ($etudiants as $etudiant) {
-            // Create a query specific to this student
-            $etudiantQuery = (clone $statsQuery)->where('etudiant_id', $etudiant->id);
-
-            // Count attendances by status
-            $present = (clone $etudiantQuery)->where('statut', 'present')->count();
-            $absent = (clone $etudiantQuery)->where('statut', 'absent')->count();
-            $retard = (clone $etudiantQuery)->whereIn('statut', ['retard', 'late'])->count();
-            $excuse = (clone $etudiantQuery)->where('statut', 'excuse')->count();
-            $total = $present + $absent + $retard + $excuse;
-
-            // Calculate percentages
-            $presentPercent = $total > 0 ? round(($present / $total) * 100) : 0;
-            $absentPercent = $total > 0 ? round(($absent / $total) * 100) : 0;
-            $retardPercent = $total > 0 ? round(($retard / $total) * 100) : 0;
-            $excusePercent = $total > 0 ? round(($excuse / $total) * 100) : 0;
-
-            // Store statistics for this student
-            $statsParEtudiant[$etudiant->id] = [
-                'etudiant' => $etudiant,
-                'present' => $present,
-                'absent' => $absent,
-                'retard' => $retard,
-                'excuse' => $excuse,
-                'total' => $total,
-                'present_percent' => $presentPercent,
-                'absent_percent' => $absentPercent,
-                'retard_percent' => $retardPercent,
-                'excuse_percent' => $excusePercent
-            ];
-        }
-
-        // Calculate additional statistics for the view
-        $totalAttendances = $statsTotal;
-
-        // Calculate attendances for this month
-        $currentMonth = Carbon::now()->startOfMonth();
-        $attendancesThisMonth = ESBTPAttendance::whereDate('date', '>=', $currentMonth)->count();
-
-        // Calculate average attendance rate
-        $totalRecords = ESBTPAttendance::count();
-        $totalPresent = ESBTPAttendance::where('statut', 'present')->count();
-        $averageAttendanceRate = $totalRecords > 0 ? round(($totalPresent / $totalRecords) * 100) : 0;
-
-        // Calculate number of classes with attendance records
-        $classesWithAttendance = DB::table('esbtp_attendances')
-            ->join('esbtp_seance_cours', 'esbtp_attendances.seance_cours_id', '=', 'esbtp_seance_cours.id')
-            ->join('esbtp_emploi_temps', 'esbtp_seance_cours.emploi_temps_id', '=', 'esbtp_emploi_temps.id')
-            ->distinct('esbtp_emploi_temps.classe_id')
-            ->count('esbtp_emploi_temps.classe_id');
-
         // Add coordinator-specific statistics if user has coordinator role
         $coordinatorStats = null;
         $unreadNotifications = 0;
@@ -377,7 +315,6 @@ class ESBTPAttendanceController extends Controller
             'classes',
             'matieres',
             'stats',
-            'statsTotal',
             'anneeLabel',
             'statsPresent',
             'statsPresentPercent',
@@ -390,13 +327,7 @@ class ESBTPAttendanceController extends Controller
             'statsParJour',
             'statsParStatus',
             'filteredTotal',
-            'statsParEtudiant',
             'etudiants',
-            'totalAttendances',
-            'attendancesThisMonth',
-            'averageAttendanceRate',
-            'classesWithAttendance',
-            'teachers',
             'classeStats',
             'coordinatorStats',
             'unreadNotifications'
