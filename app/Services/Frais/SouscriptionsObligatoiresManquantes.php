@@ -221,17 +221,35 @@ class SouscriptionsObligatoiresManquantes
                 unset($candidat['mutation'], $candidat['ligne']);
 
                 $retouche = $retouches[$mutation['souscription_id']] ?? null;
+
+                // Journal d'audit eteint : on ne peut plus distinguer un tarif
+                // negocie d'un tarif perime. Plutot que d'annoncer « rien de
+                // retouche » — ce qui aurait fait tout arriver coche et efface
+                // les remises au premier clic — on traite CHAQUE ajustement
+                // comme protege : il faudra le cocher nommement.
+                $protegee = $retouche !== null || ! $this->auditActif();
+
                 $lignesAjustement[] = $candidat + $ligne + [
                     // Quelqu'un a deja pose une decision sur ce montant : une
                     // remise, une bourse, un arrangement. La regeneration ne
                     // l'ecrase pas d'elle-meme, elle le signale et laisse
                     // decoche.
-                    'montant_deja_retouche' => $retouche !== null,
+                    'montant_deja_retouche' => $protegee,
                     'retouche_le' => $retouche['le'] ?? null,
                     'retouche_par' => $retouche['par'] ?? null,
+                    'motif_protection' => $retouche !== null ? 'retouche' : (! $this->auditActif() ? 'audit_eteint' : null),
                 ];
 
-                if ($this->retenue($retenues, $ligne['cle'])) {
+                // Un montant retouche a la main ne s'ecrase QUE si sa ligne a
+                // ete cochee nommement. Laisser cette garde au navigateur ne
+                // protegeait rien : un appel direct sans selection, ou un apercu
+                // tronque dont la ligne n'avait jamais ete affichee, effacait la
+                // remise sans que personne ne l'ait vue passer.
+                $applicable = $protegee
+                    ? ($retenues !== null && isset($retenues[$ligne['cle']]))
+                    : $this->retenue($retenues, $ligne['cle']);
+
+                if ($applicable) {
                     $aAjuster[] = $mutation;
                     $inscriptionsTouchees[$mutation['inscription_id']] = true;
                 }
@@ -272,7 +290,16 @@ class SouscriptionsObligatoiresManquantes
                 ]);
             }
             if ($aRetirer !== []) {
-                ESBTPFraisSubscription::query()->whereIn('id', $aRetirer)->delete();
+                // Une par une, par le modele. Une suppression de masse par le
+                // constructeur de requetes n'instancie rien, donc n'emet aucun
+                // evenement et n'ecrit aucune ligne d'audit : la question « qui
+                // a retire ce frais, et quand ? » restait sans reponse, sur une
+                // table sans suppression douce.
+                ESBTPFraisSubscription::query()
+                    ->whereIn('id', $aRetirer)
+                    ->get()
+                    ->each
+                    ->delete();
             }
             foreach ($aAjuster as $mutation) {
                 // Par le modele et un par un : la table est auditee, et un
@@ -297,12 +324,29 @@ class SouscriptionsObligatoiresManquantes
             'retires' => count($aRetirer),
             'ajustes' => count($aAjuster),
             'annee_id' => $anneeId,
+            // Sans l'auteur ni la portee, ce journal ne permettait pas de
+            // repondre a « qui a lance ca, et sur qui ? ».
+            'par_utilisateur' => $auteur,
+            'portee' => $portee !== null ? 'liste filtree' : ($inscriptionIds !== null ? 'selection' : 'annee'),
+            'inscriptions_touchees' => count($inscriptionsTouchees),
+            'selection_partielle' => $clesRetenues !== null,
         ]);
 
         $resultat['applique'] = true;
 
         return $resultat;
     }
+
+    /**
+     * Le journal d'audit ecrit-il ? Toute la detection des montants negocies en
+     * depend, et un tenant peut l'avoir eteint.
+     */
+    private function auditActif(): bool
+    {
+        return $this->auditActif ??= (bool) config('audit.enabled', true);
+    }
+
+    private ?bool $auditActif = null;
 
     /**
      * Cette ligne fait-elle partie de ce qu'on a demande d'appliquer ?
@@ -345,6 +389,10 @@ class SouscriptionsObligatoiresManquantes
             ->whereIn('auditable_id', $souscriptionIds)
             ->where('event', 'updated')
             ->orderByDesc('created_at')
+            // Departage : plusieurs audits dans la meme seconde est le cas
+            // NORMAL d'une regeneration de masse. Sans lui, l'alerte changeait
+            // d'un apercu a l'autre sur des donnees identiques.
+            ->orderByDesc('id')
             ->get(['auditable_id', 'new_values', 'tags', 'user_id', 'created_at']);
 
         $parSouscription = [];

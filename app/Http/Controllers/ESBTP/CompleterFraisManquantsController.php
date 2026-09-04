@@ -88,7 +88,11 @@ class CompleterFraisManquantsController extends Controller
      */
     private function lignesRetenues(Request $request): ?array
     {
-        if (! $request->has('lignes')) {
+        // `selection_active` dit qu'un aperçu a montré des cases et que la
+        // sélection fait foi. Sans lui, « aucune case cochée » arrivait comme
+        // « pas de sélection » — donc en « tout appliquer », l'inverse exact de
+        // ce que l'utilisateur venait de faire.
+        if (! $request->boolean('selection_active') && ! $request->has('lignes')) {
             return null;
         }
 
@@ -110,6 +114,7 @@ class CompleterFraisManquantsController extends Controller
             'annee_id' => 'nullable|integer|exists:esbtp_annee_universitaires,id',
             'inscription_ids' => 'required_if:scope,selection|required_without:scope|array|min:1',
             'inscription_ids.*' => 'integer|exists:esbtp_inscriptions,id',
+            'selection_active' => 'nullable|boolean',
             'lignes' => 'nullable|array',
             'lignes.*' => 'string|max:64',
         ]);
