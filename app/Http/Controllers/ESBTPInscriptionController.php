@@ -103,21 +103,19 @@ class ESBTPInscriptionController extends Controller
      */
     public function index(Request $request)
     {
-        // Récupérer les filtres de recherche
+        // Les filtres structures vivent dans FiltresListeInscriptions : « Regenerer
+        // les frais » doit pouvoir viser exactement ce que la liste affiche, et
+        // deux copies de ces regles finiraient par designer deux ensembles
+        // d'etudiants differents sans que ca se voie.
+        $filtres = app(\App\Services\Inscriptions\FiltresListeInscriptions::class);
+
         $search = $request->input("search");
         $filiere = $request->input("filiere");
         $niveau = $request->input("niveau");
         $annee = $request->input("annee");
         $status = $request->input("status", "active");
-        // Filtre Système : 'BTS' | 'LMD' | null (= Tous). Filtré côté inscription via classe.systeme_academique.
-        $systemeFilter = $request->input("systeme");
-        if (!in_array($systemeFilter, ['BTS', 'LMD'], true)) {
-            $systemeFilter = null;
-        }
-        // Filtres LMD additionnels (utilisés uniquement quand systeme=LMD).
-        // mention_id : peut désigner soit une mention LMD pure (classe en tronc commun
-        // → classe.filiere_id designe le reflet de la mention (ou, pour les lignes anciennes, la mention elle-meme)) soit une mention
-        // dont la classe a un parcours rattaché (parcours.mention_id = mention_id).
+        [$dateDebut, $dateFin] = $filtres->periode($request);
+        $systemeFilter = $filtres->systeme($request);
         $mentionFilter = $request->input("mention");
         $parcoursFilter = $request->input("parcours");
 
@@ -151,65 +149,7 @@ class ESBTPInscriptionController extends Controller
             "paiements",
         ]);
 
-        // Filtre Filière BTS : ne s'applique qu'en mode BTS (ou Tous systèmes en mode legacy).
-        // En LMD, le param `filiere` legacy est ignoré au profit de `mention` + `parcours`.
-        if ($filiere && $systemeFilter !== 'LMD') {
-            $baseQuery->where("filiere_id", $filiere);
-        }
-
-        if ($niveau) {
-            $baseQuery->where("niveau_id", $niveau);
-        }
-
-        if ($systemeFilter) {
-            // Filtrage par système académique de la classe rattachée à l'inscription.
-            // Si l'inscription n'a pas de classe (en attente d'affectation), elle est exclue.
-            $baseQuery->whereHas('classe', fn($q) => $q->where('systeme_academique', $systemeFilter));
-        }
-
-        // Filtres LMD : Mention + Parcours (cf rule classe-lmd-filiere-as-mention).
-        // En tronc commun mention, classe.filiere_id stocke en réalité mention_id (Option A).
-        // En LMD avec parcours, parcours.mention_id porte la mention.
-        if ($systemeFilter === 'LMD' && $mentionFilter) {
-            $baseQuery->whereHas('classe', function ($q) use ($mentionFilter) {
-                $q->where('systeme_academique', 'LMD')
-                  ->where(function ($qq) use ($mentionFilter) {
-                      $qq->whereHas('filiere', fn($f) => $f->where('lmd_mention_id', $mentionFilter))
-                         // Classes creees avant les filieres reflets : la colonne portait
-                         // alors l'id de la mention lui-meme.
-                         ->orWhere('filiere_id', $mentionFilter)
-                         ->orWhereHas('parcours', fn($p) => $p->where('mention_id', $mentionFilter));
-                  });
-            });
-        }
-        if ($systemeFilter === 'LMD' && $parcoursFilter) {
-            $baseQuery->whereHas('classe', fn($q) => $q->where('parcours_id', $parcoursFilter));
-        }
-
-        if ($annee) {
-            $baseQuery->where("annee_universitaire_id", $annee);
-        } else {
-            $anneeEnCours = ESBTPAnneeUniversitaire::where("is_current", true)->first();
-            if ($anneeEnCours) {
-                $baseQuery->where("annee_universitaire_id", $anneeEnCours->id);
-            }
-        }
-
-        if ($status && $status !== "all") {
-            if ($status === "non_validee") {
-                $baseQuery->where(function ($q) {
-                    $q->where("status", "en_attente")->orWhere(function ($subQ) {
-                        $subQ->where("status", "active")
-                            ->where(function ($wq) {
-                                $wq->whereIn("workflow_step", ["prospect", "documents_complets", "en_validation"])
-                                    ->orWhereNull("workflow_step");
-                            });
-                    });
-                });
-            } else {
-                $baseQuery->where("status", $status);
-            }
-        }
+        $filtres->appliquer($baseQuery, $request);
 
         // Appliquer le tri (sauf pour "nom" qui nécessite un join, et si recherche active)
         if (!$search) {
@@ -265,41 +205,9 @@ class ESBTPInscriptionController extends Controller
             ->get();
 
         // Calculer les statistiques
+        // Memes filtres que la liste, statut exclu : chaque compteur pose le sien.
         $statsQuery = ESBTPInscription::query();
-
-        if ($filiere && $systemeFilter !== 'LMD') {
-            $statsQuery->where("filiere_id", $filiere);
-        }
-
-        if ($niveau) {
-            $statsQuery->where("niveau_id", $niveau);
-        }
-
-        if ($systemeFilter) {
-            $statsQuery->whereHas('classe', fn($q) => $q->where('systeme_academique', $systemeFilter));
-        }
-
-        if ($systemeFilter === 'LMD' && $mentionFilter) {
-            $statsQuery->whereHas('classe', function ($q) use ($mentionFilter) {
-                $q->where('systeme_academique', 'LMD')
-                  ->where(function ($qq) use ($mentionFilter) {
-                      $qq->whereHas('filiere', fn($f) => $f->where('lmd_mention_id', $mentionFilter))
-                         // Classes creees avant les filieres reflets : la colonne portait
-                         // alors l'id de la mention lui-meme.
-                         ->orWhere('filiere_id', $mentionFilter)
-                         ->orWhereHas('parcours', fn($p) => $p->where('mention_id', $mentionFilter));
-                  });
-            });
-        }
-        if ($systemeFilter === 'LMD' && $parcoursFilter) {
-            $statsQuery->whereHas('classe', fn($q) => $q->where('parcours_id', $parcoursFilter));
-        }
-
-        if ($annee) {
-            $statsQuery->where("annee_universitaire_id", $annee);
-        } elseif ($anneeEnCours) {
-            $statsQuery->where("annee_universitaire_id", $anneeEnCours->id);
-        }
+        $filtres->appliquer($statsQuery, $request, avecStatut: false);
 
         $stats = [
             "total" => $statsQuery->count(),
@@ -363,6 +271,8 @@ class ESBTPInscriptionController extends Controller
                 "niveau",
                 "annee",
                 "status",
+                "dateDebut",
+                "dateFin",
                 "stats",
                 "anneeEnCours",
                 "sort",

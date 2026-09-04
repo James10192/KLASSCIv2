@@ -60,6 +60,12 @@
     font-size: .78rem; font-weight: 500;
 }
 .ii-hero-actions { display: flex; gap: .5rem; flex-wrap: wrap; }
+/* .ii-hero-top et .ii-kpis sont deux contextes d'empilement de meme rang. Les
+   indicateurs viennent apres dans le document, donc ils gagnent : un menu
+   ouvert dans les actions du bandeau passait DERRIERE les compteurs, meme force
+   en position: fixed — un menu fixe reste dans le contexte d'empilement de son
+   ancetre. On releve l'etage tant qu'un menu est ouvert, et lui seul. */
+.ii-hero-top:has(.dropdown-menu.show) { z-index: 3; }
 .ii-btn--glass, .ii-btn--white {
     display: inline-flex; align-items: center; gap: .4rem;
     padding: .55rem 1.1rem; border-radius: 10px;
@@ -179,6 +185,31 @@
     padding-right: 2rem;
 }
 .ii-filter-select:focus { outline: none; border-color: var(--ii-primary); box-shadow: 0 0 0 3px rgba(4,83,203,.1); }
+
+/* Periode d'inscription : deux bornes qui se lisent comme un seul filtre. */
+.ii-filter-periode {
+    display: inline-flex; align-items: center; gap: .4rem;
+    padding: .25rem .55rem .25rem .7rem;
+    border: 1px solid var(--ii-border); border-radius: 10px;
+    background: var(--ii-surface);
+    min-width: 0;
+}
+.ii-filter-periode:focus-within { border-color: var(--ii-primary); box-shadow: 0 0 0 3px rgba(4,83,203,.1); }
+.ii-filter-periode > i { color: var(--ii-muted); font-size: .82rem; }
+.ii-filter-periode label {
+    font-size: .72rem; color: var(--ii-muted); font-weight: 600;
+    margin: 0; text-transform: uppercase; letter-spacing: .04em;
+}
+.ii-filter-periode input[type="date"] {
+    border: none; background: transparent; outline: none;
+    font-size: .82rem; color: var(--ii-text);
+    font-family: inherit; padding: .35rem 0;
+    min-width: 118px; max-width: 140px;
+}
+@media (max-width: 768px) {
+    .ii-filter-periode { flex: 1 1 100%; justify-content: space-between; }
+    .ii-filter-periode input[type="date"] { max-width: none; flex: 1 1 0; }
+}
 .ii-btn--ghost {
     display: inline-flex; align-items: center; gap: .35rem;
     padding: .55rem .85rem;
@@ -523,11 +554,25 @@ tr[data-inscription-id] > td { transition: background .15s ease; }
     to { bottom: 24px; opacity: 1; }
 }
 
+/* La page vit dans le wrapper standard des ecrans KLASSCI (.dashboard-acasi >
+   .main-content) : c'est lui qui pose le fond, l'espacement et le contexte
+   d'empilement attendus par le reste du design. Le retirer avait bien supprime
+   le debordement sous la sidebar, mais au prix du gabarit : la liste
+   s'affichait hors mise en page. On garde donc le wrapper, et on contient le
+   debordement la ou il nait — la largeur — comme le fait deja /esbtp/paiements. */
+.dashboard-acasi { min-width: 0; overflow-x: clip; }
+.dashboard-acasi .main-content { min-width: 0; max-width: 100%; }
 .ii-page {
     max-width: 100%;
     min-width: 0;
     overflow-x: clip;
+    /* Au-dessus du voile en degrade de .nextadmin-content::before, qui est
+       positionne et peindrait donc par-dessus un contenu qui ne l'est pas.
+       Sans z-index : en poser un ferait de .ii-page un contexte d'empilement,
+       et les menus deroulants forces en position: fixed y seraient enfermes. */
+    position: relative;
 }
+.ii-hero, .ii-toolbar, .ii-results-card { max-width: 100%; min-width: 0; }
 
 /* ========== RESPONSIVE ========== */
 @media (max-width: 992px) {
@@ -555,6 +600,8 @@ tr[data-inscription-id] > td { transition: background .15s ease; }
 @php
     $hideAmounts = $hideAmounts ?? app(\App\Services\EnrollmentAmountVisibility::class)->hideAmounts(auth()->user());
 @endphp
+<div class="dashboard-acasi">
+    <div class="main-content">
 <div class="ii-page">
 
         {{-- HERO + KPIs --}}
@@ -617,6 +664,46 @@ tr[data-inscription-id] > td { transition: background .15s ease; }
                             <i class="fas" :class="bulkSyncing ? 'fa-spinner fa-spin' : 'fa-arrows-rotate'"></i>
                             <span x-text="bulkSyncing ? 'Synchronisation…' : 'Actualiser parcours BTS'"></span>
                         </button>
+                    @endcan
+                    @can('inscriptions.edit')
+                        {{-- Rejoue le bareme. Une souscription fige le tarif du jour de
+                             l'inscription : sans ca, corriger le prix d'un frais dans le
+                             parametrage ne rattrape aucun etudiant deja inscrit.
+                             Deux portees, parce qu'elles ne servent pas au meme moment :
+                             la liste affichee quand on corrige un cas precis, l'annee
+                             entiere quand on vient de changer un tarif pour tout le monde. --}}
+                        <div class="dropdown">
+                            <button type="button"
+                                    class="ii-btn--glass dropdown-toggle"
+                                    data-bs-toggle="dropdown"
+                                    aria-expanded="false"
+                                    title="Compare les souscriptions au barème en vigueur : frais manquants, frais qui ne s'appliquent plus, et montants changés depuis l'inscription.">
+                                <i class="fas fa-rotate"></i>Régénérer les frais
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end ii-dropdown">
+                                <li>
+                                    <button type="button"
+                                            class="dropdown-item js-regenerer-frais"
+                                            data-preview="{{ route('esbtp.inscriptions.frais-manquants.preview') }}"
+                                            data-apply="{{ route('esbtp.inscriptions.frais-manquants.apply') }}"
+                                            data-scope="filtre">
+                                        <i class="fas fa-filter"></i>Sur la liste affichée
+                                    </button>
+                                </li>
+                                <li>
+                                    <button type="button"
+                                            class="dropdown-item js-regenerer-frais"
+                                            data-preview="{{ route('esbtp.inscriptions.frais-manquants.preview') }}"
+                                            data-apply="{{ route('esbtp.inscriptions.frais-manquants.apply') }}"
+                                            data-scope="annee"
+                                            @if(request('annee') || ($anneeEnCours?->id))
+                                                data-annee-id="{{ request('annee') ?: $anneeEnCours?->id }}"
+                                            @endif>
+                                        <i class="fas fa-calendar-alt"></i>Sur toute l'année
+                                    </button>
+                                </li>
+                            </ul>
+                        </div>
                     @endcan
                     @can('inscriptions.validate')
                         <a href="{{ route('esbtp.inscriptions.administration') }}" class="ii-btn--glass">
@@ -781,6 +868,23 @@ tr[data-inscription-id] > td { transition: background .15s ease; }
                     <option value="terminée" @selected(request('status') == 'terminée')>Terminées</option>
                 </select>
 
+                {{-- Periode : bornes sur la date d'inscription, incluses toutes les deux. --}}
+                <div class="ii-filter-periode">
+                    <i class="fas fa-calendar-day" aria-hidden="true"></i>
+                    <label for="date_debut">Du</label>
+                    <input type="date"
+                           name="date_debut"
+                           id="date_debut"
+                           value="{{ $dateDebut ?? '' }}"
+                           aria-label="Inscriptions à partir du">
+                    <label for="date_fin">au</label>
+                    <input type="date"
+                           name="date_fin"
+                           id="date_fin"
+                           value="{{ $dateFin ?? '' }}"
+                           aria-label="Inscriptions jusqu'au">
+                </div>
+
                 {{-- Champs cachés pour sort + per_page (préservés dans AJAX) --}}
                 <input type="hidden" name="sort" id="sort-input" value="{{ $sort ?? 'created_at' }}">
                 <input type="hidden" name="dir" id="dir-input" value="{{ $dir ?? 'desc' }}">
@@ -838,6 +942,8 @@ tr[data-inscription-id] > td { transition: background .15s ease; }
                 ])
             </div>
         </div>
+</div>
+    </div>
 </div>
 
 {{-- BULK ACTIONS BAR — visible si l'utilisateur a au moins une action de masse possible --}}

@@ -281,6 +281,13 @@
             select.addEventListener('change', submitFilterForm);
         });
 
+        // Les bornes de periode sont des <input type="date"> : elles ne passent
+        // pas par le handler des <select>, et sans ca il fallait valider au
+        // clavier pour que la liste bouge.
+        form.querySelectorAll('input[type="date"]').forEach((input) => {
+            input.addEventListener('change', submitFilterForm);
+        });
+
         if (searchInput) {
             searchInput.addEventListener('input', () => {
                 clearTimeout(searchDebounce);
@@ -291,7 +298,7 @@
         const resetBtn = document.getElementById('reset-filters-btn');
         if (resetBtn) {
             resetBtn.addEventListener('click', () => {
-                form.querySelectorAll('input[type="text"], input[type="search"]').forEach((i) => (i.value = ''));
+                form.querySelectorAll('input[type="text"], input[type="search"], input[type="date"]').forEach((i) => (i.value = ''));
                 form.querySelectorAll('select').forEach((s) => (s.value = s.querySelector('option').value));
                 document.getElementById('sort-input').value = 'created_at';
                 document.getElementById('dir-input').value = 'desc';
@@ -328,6 +335,12 @@
     // Active filter chips
     // ====================================================================
 
+    // « 2026-09-04 » ne se lit pas dans une pastille : on rend le format du pays.
+    function formatDateFr(iso) {
+        const parts = String(iso || '').split('-');
+        return parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : iso;
+    }
+
     function updateActiveFilterChips() {
         const container = document.getElementById('ii-active-filters');
         if (!container || !form) return;
@@ -349,6 +362,13 @@
             if (key === 'annee' && !sel.value) return;
             const label = sel.options[sel.selectedIndex]?.text || sel.value;
             chips.push({ key, label: `${filterLabels[key]} : ${label}`, input: sel });
+        });
+
+        const dateLabels = { date_debut: 'À partir du', date_fin: "Jusqu'au" };
+        Object.keys(dateLabels).forEach((key) => {
+            const input = form.querySelector(`#${key}`);
+            if (!input || !input.value) return;
+            chips.push({ key, label: `${dateLabels[key]} ${formatDateFr(input.value)}`, input });
         });
 
         chips.forEach((chip) => {

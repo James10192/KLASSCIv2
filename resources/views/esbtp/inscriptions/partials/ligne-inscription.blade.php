@@ -256,6 +256,15 @@
                                 </li>
                             @endif
                         @endcan
+                        @can('inscriptions.fiche.print')
+                            <li>
+                                <a class="dropdown-item"
+                                   href="{{ route('esbtp.inscriptions.fiche.preview-pdf', ['inscription' => $inscription->id, 'inline' => 1]) }}"
+                                   target="_blank" rel="noopener">
+                                    <i class="fas fa-print"></i>Fiche d'inscription
+                                </a>
+                            </li>
+                        @endcan
                         @if($inscription->status === 'pending' || $inscription->status === 'en_attente')
                             @can('inscriptions.cancel')
                                 <li>
