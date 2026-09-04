@@ -21,9 +21,8 @@ class ESBTPLMDJuryMembre extends Model implements Auditable
      * dans `audits` a chaque fois qu'un modele est LU. Vingt et un modeles s'en
      * protegent deja par cette meme propriete ; ceux-ci ne le faisaient pas.
      *
-     * Le cout n'etait pas theorique : ce modele est charge en eager-load avec la
-     * liste des etudiants et cinq fois dans les classes. Afficher une classe de
-     * quarante etudiants ecrivait quarante lignes en base, a chaque affichage.
+     * Le cout n'etait pas theorique : c'est par ce canal que la table `audits` a
+     * enfle au point que la page qui la consulte ne repondait plus.
      *
      * Ce qui reste trace : creation, modification, suppression, restauration.
      * La conservation OHADA porte sur les mutations, pas sur les consultations.

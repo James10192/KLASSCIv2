@@ -38,7 +38,11 @@ class ESBTPTpeValidationController extends Controller
             ->enAttente()
             ->pourEnseignant($user)
             ->with([
-                'etudiant:id,nom,prenoms,user_id,photo_url',
+                // `photo` et non `photo_url` : photo_url est un ACCESSEUR, pas une
+                // colonne. La page ne tenait que parce qu'elle est vide — Laravel
+                // saute l'eager-load quand aucune ligne parente n'existe. A la
+                // premiere declaration, elle serait tombee sur Unknown column.
+                'etudiant:id,nom,prenoms,user_id,photo',
                 'matiere:id,name,unite_enseignement_id',
                 'matiere.uniteEnseignement:id,name',
             ])
