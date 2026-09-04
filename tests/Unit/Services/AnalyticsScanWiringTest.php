@@ -2,8 +2,6 @@
 
 namespace Tests\Unit\Services;
 
-use App\Models\ESBTPPaiement;
-use App\Observers\ESBTPPaiementAnalyticsScanObserver;
 use App\Services\Analytics\AnalyticsScanCache;
 use App\Services\Analytics\CashFlowProjectionService;
 use App\Services\Analytics\RecouvrementGapService;
@@ -31,22 +29,23 @@ class AnalyticsScanWiringTest extends TestCase
         $this->assertSame(app(CashFlowProjectionService::class), app(CashFlowProjectionService::class));
     }
 
-    public function test_l_observateur_d_invalidation_est_branche(): void
+    /**
+     * Le defaut ne doit rien changer au deploiement.
+     *
+     * Ce test remplace un precedent qui verifiait la presence d ecouteurs sur le
+     * modele Paiement : il en existait DEJA avant, donc il passait avant le commit
+     * et serait passe apres le retrait de ce qu il pretendait garder. Un filet qui
+     * ne peut pas tomber n est pas un filet.
+     *
+     * Ce qui compte reellement : sans reglage, la memorisation est ETEINTE et le
+     * calcul reste integral, exactement comme avant. Une ecole l allume quand elle
+     * le decide.
+     */
+    public function test_la_memorisation_est_eteinte_sans_reglage(): void
     {
-        $dispatcher = ESBTPPaiement::getEventDispatcher();
-
-        foreach (['created', 'updated', 'deleted'] as $evenement) {
-            $ecouteurs = $dispatcher->getListeners('eloquent.' . $evenement . ': ' . ESBTPPaiement::class);
-
-            $this->assertNotEmpty(
-                $ecouteurs,
-                "Aucun écouteur sur eloquent.{$evenement} : l'invalidation ne partirait jamais.",
-            );
-        }
-
-        $this->assertTrue(
-            class_exists(ESBTPPaiementAnalyticsScanObserver::class),
-            'Observateur introuvable.',
+        $this->assertFalse(
+            app(AnalyticsScanCache::class)->enabled(),
+            'La memorisation s activerait d elle-meme au deploiement, sur six ecoles.'
         );
     }
 }

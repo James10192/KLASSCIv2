@@ -561,7 +561,7 @@ class SettingsHelper
             // projection d'encaissement). Voir App\Services\Analytics\AnalyticsScanCache :
             // mettre `enabled` à 0 rétablit le recalcul intégral à chaque affichage.
             'scan_cache' => [
-                'enabled'     => (string) self::get('analytics.scan_cache.enabled', '1') === '1',
+                'enabled'     => (string) self::get('analytics.scan_cache.enabled', '0') === '1',
                 'ttl_seconds' => (int)    self::get('analytics.scan_cache.ttl_seconds', \App\Services\Analytics\AnalyticsScanCache::DEFAULT_TTL_SECONDS),
             ],
             'recouvrement' => [

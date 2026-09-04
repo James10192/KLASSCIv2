@@ -25,7 +25,6 @@ use App\Observers\ESBTPInscriptionAcademicPilotageObserver;
 use App\Observers\ESBTPLMDBulletinAcademicPilotageObserver;
 use App\Observers\ESBTPNoteAcademicPilotageObserver;
 use App\Observers\ESBTPNoteObserver;
-use App\Observers\ESBTPPaiementAnalyticsScanObserver;
 use App\Observers\ESBTPPlanificationAcademicPilotageObserver;
 use App\Services\Analytics\AnalyticsScanCache;
 use App\Services\Analytics\CashFlowProjectionService;
@@ -117,7 +116,16 @@ class AppServiceProvider extends ServiceProvider
         ESBTPNote::observe(ESBTPNoteObserver::class);
         // Un encaissement validé se réimpute sur des mois déjà clos (allocation
         // FIFO) : les balayages analytiques mémorisés doivent être déréférencés.
-        ESBTPPaiement::observe(ESBTPPaiementAnalyticsScanObserver::class);
+        // PAS d'invalidation a chaque paiement valide. Elle semblait prudente et
+        // elle vidait la fonction de son objet : sur une ecole guichet ouvert, la
+        // memoire aurait ete purgee en continu, et la page serait restee a 24 ou 34
+        // secondes PRECISEMENT pendant les heures d encaissement — c est-a-dire la
+        // fenetre ou ces 24 a 34 secondes ont ete mesurees.
+        //
+        // Ce n est pas grave, et c est la raison de fond : l ecart de recouvrement ne
+        // porte QUE sur des mois CLOS. Un encaissement du jour ne le deplace que par
+        // reallocation FIFO, lentement. La duree de memorisation, reglable par ecole,
+        // suffit — a condition d afficher la fraicheur, ce que l ecran fait.
         $academicPilotageObserversEnabled = (bool) config('academic_pilotage.observers_enabled', true);
         if (! $academicPilotageObserversEnabled && app()->environment('production')) {
             Log::critical('Academic pilotage observers cannot be disabled in production.');
