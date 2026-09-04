@@ -25,8 +25,13 @@
         <div class="cs-hero-inner">
             <div class="cs-hero-avatar">
                 <div class="cs-hero-avatar-circle">
-                    @if(!empty($model->photo))
-                        <img src="{{ asset('storage/'.$model->photo) }}" alt="">
+                    {{-- Ces modeles de personnel n ont pas l accesseur `photo_url` de
+                         l etudiant : on passe par le meme service de resolution, qui
+                         ramene toute forme historique au bon chemin et rend null si le
+                         fichier a disparu — auquel cas on retombe sur les initiales. --}}
+                    @php $photoPersonnel = app(\App\Services\Photos\StockagePhoto::class)->url($model->photo ?? null); @endphp
+                    @if($photoPersonnel)
+                        <img src="{{ $photoPersonnel }}" alt="">
                     @else
                         {{ $initiales ?: '—' }}
                     @endif

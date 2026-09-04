@@ -237,8 +237,17 @@ class ESBTPEtudiantController extends Controller
      */
     public function store(Request $request)
     {
-        // Ajout de logs pour déboguer
-        \Illuminate\Support\Facades\Log::info('Tentative de création d\'un étudiant', ['request' => $request->all()]);
+        // Ce journal ecrivait `$request->all()` : l etat civil complet d un eleve
+        // souvent mineur, et les coordonnees de ses parents — soit PLUS que ce
+        // que le correctif du 4 septembre a retire cent lignes plus bas, dans
+        // cette meme methode. Le contournement etait ici, en premiere
+        // instruction, avant meme la validation.
+        //
+        // On garde ce qui sert a deboguer : qui saisit, et depuis quel ecran.
+        \Illuminate\Support\Facades\Log::info('Tentative de creation d un etudiant', [
+            'par_utilisateur' => auth()->id(),
+            'avec_photo' => $request->hasFile('photo'),
+        ]);
 
         // Validation des données de base de l'étudiant
         $validator = Validator::make($request->all(), [
@@ -687,32 +696,25 @@ class ESBTPEtudiantController extends Controller
         // Stocker le token en session
         session(['form_submit_token' => $submittedToken]);
 
-        // Logging des données reçues pour debug
-        \Log::info('Début de la requête de mise à jour', [
-            'request_method' => $request->method(),
-            'request_url' => $request->url(),
-            'request_headers' => $request->headers->all(),
-            'session_id' => session()->getId(),
-            'input_size' => strlen(json_encode($request->all())),
-            'has_file' => $request->hasFile('photo'),
-            'file_size' => $request->hasFile('photo') ? $request->file('photo')->getSize() : 0
-        ]);
-
-        \Log::info('Données reçues pour mise à jour étudiant', [
-            'id' => $etudiant->id,
-            'requestData' => $request->all(),
-            'currentEmail' => $etudiant->email_personnel,
-            'currentSexe' => $etudiant->sexe,
-            'currentGenre' => $etudiant->genre,
-            'ville' => $request->input('ville'),
-            'commune' => $request->input('commune'),
-            'etudiantVille' => $etudiant->ville,
-            'etudiantCommune' => $etudiant->commune,
-        ]);
-
-        \Log::info('Payload update etudiant', [
+        // Ces trois journaux ecrivaient la meme chose trois fois, et le pire
+        // n etait pas la redondance :
+        //
+        //   - `request_headers` => $request->headers->all() embarque l en-tete
+        //     Cookie, donc le cookie de session ET le jeton « se souvenir de
+        //     moi » EN CLAIR. Qui lit storage/logs — le support, une sauvegarde,
+        //     un voisin d hebergement mutualise — pouvait rejouer la session
+        //     d une secretaire. C etait la fuite la plus grave du fichier.
+        //   - `requestData` et `input` vidaient la charge complete : etat civil
+        //     de l eleve, courriel, ville, commune, coordonnees des parents.
+        //
+        // Un journal de mise a jour doit dire QUI a modifie QUOI, pas reciter le
+        // formulaire. L audit du modele, lui, garde deja le detail des champs
+        // changes, et il est fait pour ca.
+        \Log::info('Mise a jour etudiant', [
             'etudiant_id' => $etudiant->id,
-            'input' => $request->all()
+            'par_utilisateur' => auth()->id(),
+            'champs_soumis' => count($request->all()),
+            'avec_photo' => $request->hasFile('photo'),
         ]);
 
         // Validation des données - Exclus les champs non modifiables
@@ -1221,7 +1223,9 @@ class ESBTPEtudiantController extends Controller
             'filiere_id' => $filiereId,
             'niveau_id' => $niveauId,
             'annee_id' => $anneeId,
-            'request' => $request->all()
+            // `$request->all()` ici n apportait rien que les trois identifiants
+            // au-dessus ne disent deja, et embarquait tout ce que l ecran
+            // appelant avait mis dans la requete.
         ]);
 
         $query = ESBTPClasse::select(

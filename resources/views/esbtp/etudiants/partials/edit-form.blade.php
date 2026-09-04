@@ -188,11 +188,16 @@
                     <small class="form-text text-muted">Laissez vide pour conserver la photo actuelle.</small>
                 </div>
                 <div class="col-md-2 mb-3">
-                    @if($etudiant->photo)
+                    {{-- `photo_url` et non `asset('storage/'.$etudiant->photo)` : la
+                         colonne porte des formes historiques (URL complete, nom de
+                         fichier nu), et concatener produisait /storage//storage/... —
+                         le double prefixe que la resolution unifiee corrige. Elle rend
+                         null quand le fichier a disparu, d ou le test sur elle. --}}
+                    @if($etudiant->photo_url)
                         <div class="mt-2">
                             <label class="form-label">Photo actuelle</label>
                             <div>
-                                <img src="{{ asset('storage/'.$etudiant->photo) }}" alt="Photo de profil" class="img-thumbnail" style="width: 100px; height: 100px; object-fit: cover; border-radius: 10px;">
+                                <img src="{{ $etudiant->photo_url }}" alt="Photo de profil" class="img-thumbnail" style="width: 100px; height: 100px; object-fit: cover; border-radius: 10px;">
                             </div>
                         </div>
                     @endif
