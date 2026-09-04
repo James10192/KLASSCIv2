@@ -1651,6 +1651,24 @@
                     </div>
                     <div class="form-group">
                         <label class="form-label-modern">
+                            <i class="fas fa-qrcode text-primary"></i>
+                            Imprimer un code QR sur la fiche d'inscription
+                        </label>
+                        <small class="d-block text-muted" style="margin:-.35rem 0 .5rem;font-size:.78rem;">
+                            Scanne, il ouvre le dossier de l'étudiant. Utile quand la fiche revient signée.
+                            Il n'affiche rien à qui n'est pas connecté.
+                        </small>
+                        <label class="form-switch-modern">
+                            {{-- Une case décochée n'est pas envoyée : sans ce champ caché,
+                                 le réglage ne pourrait jamais repasser à « non ». --}}
+                            <input type="hidden" name="setting_documents_code_qr_actif" value="0">
+                            <input type="checkbox" name="setting_documents_code_qr_actif" value="1"
+                                   {{ \App\Helpers\SettingsHelper::get('documents_code_qr_actif', '1') == '1' ? 'checked' : '' }}>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label-modern">
                             <i class="fas fa-user-tie text-primary"></i>
                             Afficher "Directeur : [Nom]"
                         </label>
