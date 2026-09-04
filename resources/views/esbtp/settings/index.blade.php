@@ -3419,6 +3419,24 @@
                                 </label>
                             </div>
                         </div>
+                        <div class="row g-3" style="margin-top:.25rem;">
+                            <div class="col-md-6">
+                                <label class="ls-toggle" for="lmd_suppression_ue_libere_ecues_vers_bts">
+                                    <div class="ls-toggle-text">
+                                        <div class="ls-toggle-label">Suppression d'une UE : rendre ses ECUE au BTS</div>
+                                        <div class="ls-toggle-hint">Décochez dans une école tout-LMD : sinon les ECUE réapparaissent dans les écrans BTS</div>
+                                    </div>
+                                    <div class="form-check form-switch" style="margin:0; padding-left:2.5em;">
+                                        {{-- Une case décochée n'est pas envoyée : sans ce champ caché, le
+                                             réglage ne pourrait jamais repasser à « non ». --}}
+                                        <input type="hidden" name="setting_lmd_suppression_ue_libere_ecues_vers_bts" value="0">
+                                        <input class="form-check-input" type="checkbox" id="lmd_suppression_ue_libere_ecues_vers_bts"
+                                               name="setting_lmd_suppression_ue_libere_ecues_vers_bts" value="1"
+                                               {{ $lmdVal('lmd_suppression_ue_libere_ecues_vers_bts', '1') == '1' ? 'checked' : '' }}>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
                     </div>
 
                     {{-- Section 3: Évaluations --}}
