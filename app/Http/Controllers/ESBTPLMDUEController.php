@@ -11,13 +11,17 @@ use App\Models\ESBTPFiliere;
 use App\Models\ESBTPNiveauEtude;
 use App\Models\ESBTPPlanificationAcademique;
 use App\Services\LMD\ParcoursUeSyncService;
+use App\Services\LMD\SuppressionUeService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class ESBTPLMDUEController extends Controller
 {
-    public function __construct(private ParcoursUeSyncService $parcoursUeSync) {}
+    public function __construct(
+        private ParcoursUeSyncService $parcoursUeSync,
+        private SuppressionUeService $suppressionUe,
+    ) {}
 
     /**
      * Afficher la liste des Unités d'Enseignement avec filtres.
@@ -527,28 +531,47 @@ class ESBTPLMDUEController extends Controller
     }
 
     /**
-     * Supprimer une UE (si aucun résultat attaché).
+     * Supprimer une UE (si aucun résultat attaché, et si elle n'appartient
+     * qu'à une seule maquette).
      */
     public function destroy(Request $request, ESBTPUniteEnseignement $ue)
     {
         // Vérifier qu'aucun résultat LMD n'est attaché
         if ($ue->resultatsLMD()->exists()) {
-            if ($request->ajax() || $request->wantsJson()) {
-                return response()->json(['success' => false, 'message' => 'Impossible de supprimer cette UE : des résultats y sont rattachés.'], 422);
-            }
-            return redirect()->route('esbtp.lmd.ue.index')
-                ->with('error', 'Impossible de supprimer cette UE : des résultats y sont rattachés.');
+            return $this->refuserSuppressionUe(
+                $request,
+                'Impossible de supprimer cette UE : des résultats y sont rattachés.'
+            );
         }
 
-        // Détacher les ECUEs (matières) avant suppression
-        $ue->matieres()->update(['unite_enseignement_id' => null]);
-        $ue->delete();
+        // Le code d'une UE étant unique dans l'école, la même unité sert
+        // plusieurs parcours. Ce geste-ci la retirait de TOUS d'un coup, sans
+        // que rien ne le dise : la garde ci-dessus ne couvrait que le cas où
+        // des résultats existaient déjà, donc pas une maquette saisie et pas
+        // encore notée — l'état exact d'une maquette en cours de saisie.
+        if ($refus = $this->suppressionUe->refusSiPartagee($ue)) {
+            return $this->refuserSuppressionUe($request, $refus);
+        }
+
+        $this->suppressionUe->supprimer($ue);
 
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json(['success' => true, 'message' => 'UE supprimée avec succès.']);
         }
         return redirect()->route('esbtp.lmd.ue.index')
             ->with('success', 'Unité d\'Enseignement supprimée avec succès.');
+    }
+
+    /**
+     * Même refus pour l'appel AJAX de la liste et pour la navigation classique.
+     */
+    private function refuserSuppressionUe(Request $request, string $message)
+    {
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json(['success' => false, 'message' => $message], 422);
+        }
+
+        return redirect()->route('esbtp.lmd.ue.index')->with('error', $message);
     }
 
     // -------------------------------------------------------------------------
