@@ -14,6 +14,8 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ### Sécurité
 
+- **L'état civil des élèves ne part plus dans les journaux techniques** — à chaque création d'étudiant, le nom, les prénoms, la date de naissance, le téléphone, le courriel personnel et l'adresse étaient écrits en clair dans le journal de l'application, avec les coordonnées des parents. Ces fichiers sont conservés quatorze jours, lisibles par le support et repris dans les sauvegardes. Le journal ne garde plus que ce qui sert au diagnostic : la classe visée, la présence d'un parent, et qui a fait la saisie. Même correction sur le formulaire de contact public.
+
 - **La saisie des notes de seconde session se limite aux matières de l'enseignant** — l'écran de rattrapage s'ouvre à qui détient le droit de saisie, et il montrait alors les notes de seconde session de toute la promotion, quel que soit l'enseignant en charge. L'enregistrement était plus ouvert encore : la ligne à modifier étant désignée par le formulaire, rien n'empêchait d'inscrire une note sur la matière d'un collègue. Lecture et enregistrement sont désormais bornés aux matières confiées à l'enseignant. Qui supervise le rattrapage continue de voir la session entière — c'est ce qui distingue les deux droits.
 
 - **Le procès-verbal annuel demande d'être membre du jury, comme l'écran qui le produit** — la consultation d'une délibération est réservée à ses membres, mais l'export du PV en tableur ou en PDF ne vérifiait que le droit d'exporter : la même délibération sortait par la porte de côté. La direction des études cumule ces deux droits par défaut, la situation n'était donc pas théorique. La règle vit maintenant en un seul endroit, partagé par l'écran et par l'export.
