@@ -4730,7 +4730,7 @@
                 var params = new URLSearchParams();
 
                 var urlParams = new URLSearchParams(window.location.search);
-                ['search', 'annee', 'status', 'affectation_status', 'inscrit_annee_courante', 'est_transfert'].forEach(function(key) {
+                ['search', 'annee', 'status', 'sexe', 'affectation_status', 'inscrit_annee_courante', 'est_transfert'].forEach(function(key) {
                     if (urlParams.has(key) && urlParams.get(key)) {
                         params.set(key, urlParams.get(key));
                     }
@@ -4739,7 +4739,7 @@
                 var form = document.getElementById('search-form');
                 if (form) {
                     var formData = new FormData(form);
-                    ['search', 'annee', 'status', 'affectation_status', 'inscrit_annee_courante', 'est_transfert'].forEach(function(key) {
+                    ['search', 'annee', 'status', 'sexe', 'affectation_status', 'inscrit_annee_courante', 'est_transfert'].forEach(function(key) {
                         var val = formData.get(key);
                         if (val && !params.has(key)) {
                             params.set(key, val);

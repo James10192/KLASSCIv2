@@ -7,6 +7,15 @@
 
     const $ = (id) => document.getElementById(id);
 
+    /** Remplace un noeud par son clone (donc sans ecouteurs) et rend le clone. */
+    function remplacer(id) {
+        const vieux = $(id);
+        if (!vieux) return null;
+        const neuf = vieux.cloneNode(true);
+        vieux.parentNode.replaceChild(neuf, vieux);
+        return neuf;
+    }
+
     function esc(v) {
         return String(v == null ? '' : v).replace(/[&<>"']/g, (c) => ({
             '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
@@ -93,7 +102,7 @@
         if (totalAdd) resume.push(totalAdd + ' ajout(s)');
         if (totalAdj) resume.push(totalAdj + ' montant(s) à mettre à jour');
         if (totalDel) resume.push(totalDel + ' retrait(s)');
-        out.push(texte('<span class="rf-line-muted">$ ' + resume.join(', ') + ' sur ' + (res.inscriptions || 0) + ' inscription(s)</span>'));
+        out.push(texte('<span class="rf-line-muted">$ ' + resume.join(', ') + ' sur ' + esc(res.inscriptions || 0) + ' inscription(s)</span>'));
 
         return out.join('');
     }
@@ -117,8 +126,15 @@
             const bar = $('rf-bar');
             const alerte = $('rf-alert');
             const compteur = $('rf-count');
-            const toggleAll = $('rf-toggle-all');
-            const ok = $('rf-confirm');
+
+            // Le bouton et la case « tout selectionner » sont remplaces par un
+            // clone AVANT toute capture : c'est ce qui jette les ecouteurs de
+            // l'ouverture precedente. Les capturer d'abord puis les cloner
+            // laissait `rafraichir()` piloter un noeud detache — le bouton
+            // visible ne se desactivait alors plus jamais, et decocher toutes
+            // les lignes appliquait tout.
+            const toggleAll = remplacer('rf-toggle-all');
+            const ok = remplacer('rf-confirm');
 
             const formData = opts.formData instanceof FormData ? opts.formData : new FormData();
             if (!formData.has('_token')) formData.append('_token', csrf());
@@ -161,9 +177,14 @@
             if (preview.retouches) {
                 alerte.hidden = false;
                 alerte.innerHTML = '<i class="fas fa-triangle-exclamation" style="margin-top:2px;"></i><span>'
-                    + '<strong>' + preview.retouches + ' montant(s) ont déjà été retouchés à la main</strong> — '
+                    + '<strong>' + esc(preview.retouches) + ' montant(s) ont déjà été retouchés à la main</strong> — '
                     + 'une remise, une bourse ou un arrangement. Ils sont laissés décochés : '
                     + 'cochez-les seulement si vous voulez revenir au barème.</span>';
+            }
+
+            function rafraichirBouton() {
+                const coches = cases.filter((c) => c.checked).length;
+                ok.disabled = vide || (cases.length > 0 && coches === 0);
             }
 
             function rafraichir() {
@@ -171,13 +192,12 @@
                 compteur.textContent = coches + ' sélectionnée(s) sur ' + cases.length;
                 toggleAll.checked = coches === cases.length && cases.length > 0;
                 toggleAll.indeterminate = coches > 0 && coches < cases.length;
-                ok.disabled = coches === 0;
+                rafraichirBouton();
             }
 
             if (cases.length) {
                 bar.hidden = false;
                 cases.forEach((c) => c.addEventListener('change', rafraichir));
-                toggleAll.onclick = null;
                 toggleAll.addEventListener('change', function () {
                     cases.forEach((c) => { c.checked = toggleAll.checked; });
                     rafraichir();
@@ -193,22 +213,44 @@
                 const corps = new FormData();
                 formData.forEach((v, k) => corps.append(k, v));
 
-                // Rien n'a ete decoche : on n'envoie aucune liste, et le serveur
-                // applique TOUT ce qu'il detecte — y compris au-dela de ce que
-                // l'apercu a pu afficher quand la liste est tronquee. Des qu'une
-                // ligne est decochee, on transmet la selection exacte.
-                const coches = cases.filter((c) => c.checked);
-                if (coches.length !== cases.length) {
-                    coches.forEach((c) => corps.append('lignes[]', c.value));
+                // Des qu'un apercu a montre des cases, la selection fait foi et
+                // rien d'autre. `selection_active` le dit au serveur, parce
+                // qu'un tableau vide ne se transmet pas en HTTP : sans ce
+                // drapeau, « aucune case cochee » arrivait indistinguable de
+                // « pas de selection », donc en « tout appliquer ».
+                //
+                // Consequence voulue : quand l'apercu est tronque, on n'applique
+                // que ce qui a ete montre. On ne fait pas confirmer a quelqu'un
+                // des lignes qu'il n'a pas vues.
+                if (cases.length) {
+                    corps.append('selection_active', '1');
+                    cases.filter((c) => c.checked)
+                        .forEach((c) => corps.append('lignes[]', c.value));
                 }
 
                 term.insertAdjacentHTML('beforeend', texte('<span class="rf-line-muted">$ apply…</span>'));
                 try {
                     const applied = await post(opts.applyUrl, corps);
+
+                    // Un 422 ou un 403 rend du JSON avec un `message` : sans ce
+                    // test il s'affichait en vert, la modale se fermait et la
+                    // page se rechargeait — l'utilisateur croyait la
+                    // regeneration faite alors que rien n'avait ete ecrit.
+                    if (!applied || applied.success !== true) {
+                        term.insertAdjacentHTML('beforeend', texte('<span class="rf-line-del">$ '
+                            + esc((applied && applied.message) || 'refusé') + '</span>'));
+                        ok.disabled = false;
+                        return;
+                    }
+
                     term.insertAdjacentHTML('beforeend', texte('<span class="rf-line-add">$ ' + esc(applied.message || 'ok') + '</span>'));
                     setTimeout(() => {
                         modal.hide();
                         if (typeof opts.onDone === 'function') opts.onDone(applied);
+                        // EXCEPTION ajax-no-reload-premium : une regeneration de
+                        // masse change les montants de chaque ligne ET les
+                        // compteurs du bandeau ; un rafraichissement partiel
+                        // laisserait l'ecran a moitie faux.
                         else window.location.reload();
                     }, 700);
                 } catch (e) {
@@ -217,13 +259,8 @@
                 }
             };
 
-            // Le bouton est remplace pour repartir sans les ecouteurs de
-            // l'ouverture precedente : sans ca, un deuxieme apercu appliquerait
-            // aussi le premier.
-            const neuf = ok.cloneNode(true);
-            ok.parentNode.replaceChild(neuf, ok);
-            neuf.disabled = cases.length === 0 || vide;
-            neuf.addEventListener('click', suivant);
+            ok.addEventListener('click', suivant);
+            rafraichirBouton();
         }
     };
 
@@ -239,8 +276,15 @@
         if (btn.dataset.scope) {
             formData.set('scope', btn.dataset.scope);
         }
-        if (btn.dataset.anneeId) {
-            formData.set('annee_id', btn.dataset.anneeId);
+        if (btn.dataset.scope === 'annee') {
+            // L'annee se lit dans l'URL, PAS dans l'attribut Blade : le filtre
+            // Annee change la liste en AJAX sans re-rendre le bandeau, donc
+            // `data-annee-id` reste figee sur celle du chargement de page. On
+            // aurait realigne les montants d'une promotion qui n'etait plus a
+            // l'ecran.
+            const anneeAffichee = new URLSearchParams(window.location.search).get('annee');
+            const annee = (anneeAffichee || '').trim() || btn.dataset.anneeId;
+            if (annee) formData.set('annee_id', annee);
         }
         // Portee « ce que la liste affiche » : on rejoue la query string de la
         // page, c'est elle qui porte les filtres.
@@ -250,7 +294,10 @@
             // retrouve une personne, elle ne definit pas un ensemble. Le serveur
             // le refuse aussi, mais le dire ici evite un aller-retour.
             if ((params.get('search') || '').trim() !== '') {
-                window.alert("Une recherche est en cours : elle ne définit pas une portée fiable.\n\nVidez la recherche, ou cochez les lignes à régénérer.");
+                const dire = "Une recherche est en cours : elle ne définit pas une portée fiable. "
+                    + "Videz la recherche, ou cochez les lignes à régénérer.";
+                if (typeof window.klassciToast === 'function') window.klassciToast('warning', dire, 7000);
+                else window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'warning', message: dire } }));
                 return;
             }
             params.forEach((v, k) => {

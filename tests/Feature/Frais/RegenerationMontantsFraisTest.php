@@ -318,4 +318,69 @@ class RegenerationMontantsFraisTest extends TestCase
             'search' => 'kouame',
         ])->assertStatus(422);
     }
+
+    public function test_un_montant_retouche_n_est_jamais_applique_sans_selection_explicite(): void
+    {
+        // La regression : la garde ne vivait que dans le navigateur (case
+        // decochee). Un appel sans selection — ou un apercu tronque dont la
+        // ligne n'avait jamais ete affichee — effacait la remise en silence.
+        [$categorie, $souscription] = $this->fraisSouscrit(15000, 12000);
+        $souscription->update(['amount' => 10000]);   // remise accordee a la main
+
+        $resultat = $this->service()->executer(true, null, [$this->inscription->id], true);
+
+        $this->assertSame(0, $resultat['total_ajuster']);
+        $this->assertSame(10000.0, (float) $souscription->fresh()->amount);
+
+        $ligne = $this->ligneDe($resultat['lignes_ajustement'], $categorie->id);
+        $this->assertNotNull($ligne, "L'ecart doit rester visible dans l'apercu.");
+        $this->assertTrue($ligne['montant_deja_retouche']);
+    }
+
+    public function test_un_montant_retouche_s_applique_s_il_est_coche_nommement(): void
+    {
+        [$categorie, $souscription] = $this->fraisSouscrit(15000, 12000);
+        $souscription->update(['amount' => 10000]);
+
+        $apercu = $this->service()->executer(false, null, [$this->inscription->id], true);
+        $cle = $this->ligneDe($apercu['lignes_ajustement'], $categorie->id)['cle'];
+
+        $resultat = $this->service()->executer(
+            true, null, [$this->inscription->id], true, null, [$cle]
+        );
+
+        $this->assertSame(1, $resultat['total_ajuster']);
+        $this->assertSame(15000.0, (float) $souscription->fresh()->amount);
+    }
+
+    public function test_journal_d_audit_eteint_protege_tous_les_ajustements(): void
+    {
+        // Sans journal, on ne distingue plus un tarif negocie d'un tarif perime.
+        // Annoncer « rien de retouche » ferait tout arriver coche.
+        config(['audit.enabled' => false]);
+
+        [$categorie, $souscription] = $this->fraisSouscrit(15000, 10000);
+
+        $resultat = $this->service()->executer(true, null, [$this->inscription->id], true);
+
+        $this->assertSame(0, $resultat['total_ajuster']);
+        $this->assertSame(10000.0, (float) $souscription->fresh()->amount);
+        $ligne = $this->ligneDe($resultat['lignes_ajustement'], $categorie->id);
+        $this->assertTrue($ligne['montant_deja_retouche']);
+        $this->assertSame('audit_eteint', $ligne['motif_protection']);
+    }
+
+    public function test_une_selection_vide_declaree_par_l_ecran_n_ecrit_rien(): void
+    {
+        [, $souscription] = $this->fraisSouscrit(15000, 10000);
+
+        $reponse = $this->postJson(route('esbtp.inscriptions.frais-manquants.apply'), [
+            'inscription_ids' => [$this->inscription->id],
+            'selection_active' => 1,     // l'apercu a montre des cases
+            // ... et aucune n'est cochee
+        ]);
+
+        $reponse->assertOk()->assertJsonPath('total_ajuster', 0);
+        $this->assertSame(10000.0, (float) $souscription->fresh()->amount);
+    }
 }

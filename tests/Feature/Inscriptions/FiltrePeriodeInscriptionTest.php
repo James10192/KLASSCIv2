@@ -126,13 +126,16 @@ class FiltrePeriodeInscriptionTest extends TestCase
         $this->inscriptionDu('2026-09-10');
         $this->inscriptionDu('2026-11-10');
 
+        // Remis a l'endroit, l'intervalle est [09-01, 09-30] : il contient
+        // l'inscription du 10 septembre, pas celle du 10 novembre.
         $this->lister(['date_debut' => '2026-09-30', 'date_fin' => '2026-09-01'])
             ->assertOk()
-            ->assertJsonPath('total', 0);
-
-        $this->lister(['date_debut' => '2026-09-30', 'date_fin' => '2026-09-05'])
-            ->assertOk()
             ->assertJsonPath('total', 1);
+
+        // Meme inversion sur un intervalle qui ne contient rien.
+        $this->lister(['date_debut' => '2026-09-05', 'date_fin' => '2026-09-01'])
+            ->assertOk()
+            ->assertJsonPath('total', 0);
     }
 
     public function test_une_date_illisible_est_ignoree_et_ne_casse_pas_la_liste(): void
