@@ -93,8 +93,14 @@ class ESBTPUniteEnseignement extends Model implements Auditable
      */
     public function ecues()
     {
+        // `parcours_id` est declare ici, alors que rien ne le lit encore, parce
+        // que son absence ne se voit pas : sans lui, `$ecue->pivot->parcours_id`
+        // rend `null` SANS ERREUR, et tout element reserve a une maquette se
+        // lirait comme commun — il fuiterait dans toutes les autres. Le declarer
+        // des maintenant est sans effet (une colonne de plus au SELECT du pivot)
+        // et supprime le piege pour de bon.
         return $this->belongsToMany(ESBTPMatiere::class, 'esbtp_ue_matiere', 'unite_enseignement_id', 'matiere_id')
-            ->withPivot('coefficient_ecue', 'credit_ecue', 'ordre_bulletin')
+            ->withPivot('coefficient_ecue', 'credit_ecue', 'ordre_bulletin', 'parcours_id')
             ->withTimestamps();
     }
 
@@ -187,7 +193,11 @@ class ESBTPUniteEnseignement extends Model implements Auditable
             'esbtp_lmd_parcours_ue',
             'unite_enseignement_id',
             'parcours_id'
-        )->withPivot('semestre', 'is_optional', 'ordre')->withTimestamps();
+        // `credit` : le poids en credits que CETTE maquette donne a l unite pour
+        // CE semestre. `null` = pas de credit propre, on prend celui de l unite.
+        // Meme raison de le declarer avant de le lire que pour `parcours_id`
+        // ci-dessus : un pivot non declare rend null sans rien signaler.
+        )->withPivot('semestre', 'is_optional', 'ordre', 'credit')->withTimestamps();
     }
 
     /**
