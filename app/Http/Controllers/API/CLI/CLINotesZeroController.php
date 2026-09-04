@@ -222,6 +222,10 @@ class CLINotesZeroController extends BaseApiController
             ->where('annee_universitaire_id', $anneeId)
             ->where('status', 'active')
             ->where('workflow_step', 'etudiant_cree')
+            // La table porte un deleted_at, mais le modele n'a pas le trait :
+            // rien ne filtre les inscriptions supprimees a notre place, et un
+            // dossier supprime recevrait donc une note.
+            ->whereNull('deleted_at')
             ->get(['classe_id', 'etudiant_id'])
             ->groupBy('classe_id')
             ->map(fn ($lignes) => $lignes->pluck('etudiant_id')->map('intval')->unique()->values());
