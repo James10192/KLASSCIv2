@@ -42,7 +42,47 @@ on:
       - 'docs/**'
       - '.claude/**'
 
+
+# Une execution annulee est une execution payee pour rien : quand une nouvelle
+# poussee arrive sur la meme reference, la precedente n'apprend plus rien.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
+  # Une branche d'etablissement ne recoit, en regime normal, qu'une avance rapide
+  # de `presentation` — un commit DEJA teste. Le rejouer six fois, une par ecole,
+  # n'apprend rien et consomme six fois les minutes. Ce garde-fou coute quelques
+  # secondes et supprime cette redondance, SANS retirer le filet : une poussee
+  # divergente sur une branche d'etablissement, elle, est bien testee.
+  garde:
+    name: Ce commit a-t-il deja ete teste ?
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      rejouer: ${{ steps.decide.outputs.rejouer }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - id: decide
+        run: |
+          # Toute pull request, et toute poussee sur `presentation`, se rejouent.
+          if [ "${{ github.event_name }}" != 'push' ] || [ "${{ github.ref_name }}" = 'presentation' ]; then
+            echo 'rejouer=oui' >> "$GITHUB_OUTPUT"
+            echo 'Poussee sur presentation ou pull request : on rejoue.'
+            exit 0
+          fi
+          git fetch --quiet origin presentation
+          if git merge-base --is-ancestor "${{ github.sha }}" origin/presentation; then
+            echo 'rejouer=non' >> "$GITHUB_OUTPUT"
+            echo 'Commit deja present sur presentation, donc deja teste : on saute.'
+          else
+            echo 'rejouer=oui' >> "$GITHUB_OUTPUT"
+            echo 'Commit absent de presentation : cette branche a diverge, on teste.'
+          fi
+
   messages:
     name: Messages de commit
     # `github.base_ref` n'existe que sur une pull request.
@@ -157,6 +197,9 @@ jobs:
   tests-unitaires:
     name: Tests unitaires (sans base)
     runs-on: ubuntu-latest
+    needs: garde
+    if: needs.garde.outputs.rejouer == 'oui'
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
 
@@ -168,6 +211,20 @@ jobs:
           # garantit pas ce que le build par defaut embarque. Absent, ils
           # tomberaient ici en annoncant un bug qui n'existe pas.
           extensions: mbstring, xml, ctype, iconv, intl, dom, filter, json, tokenizer, pdo_sqlite, sqlite3
+
+      - name: Répertoire de cache Composer
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
+
+      # Sans ce cache, chaque job retelecharge toutes les dependances. Ce
+       # workflow en compte cinq instances : c'est cinq fois le meme telechargement
+       # a chaque poussee.
+      - name: Cache Composer
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: ${{ runner.os }}-composer-
 
       - run: composer install --no-interaction --prefer-dist --no-progress
 
@@ -216,6 +273,9 @@ jobs:
   tests-integration-frais:
     name: Tests d'intégration (frais)
     runs-on: ubuntu-latest
+    needs: garde
+    if: needs.garde.outputs.rejouer == 'oui'
+    timeout-minutes: 20
     # Une seule declaration : recopiee d'un pas a l'autre, elle finit par
     # deriver — quelqu'un change le port d'un cote seulement.
     env:
@@ -245,6 +305,20 @@ jobs:
         with:
           php-version: '8.3'
           extensions: mbstring, xml, ctype, iconv, intl, pdo_mysql, dom, filter, gd, json, tokenizer
+
+      - name: Répertoire de cache Composer
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
+
+      # Sans ce cache, chaque job retelecharge toutes les dependances. Ce
+       # workflow en compte cinq instances : c'est cinq fois le meme telechargement
+       # a chaque poussee.
+      - name: Cache Composer
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: ${{ runner.os }}-composer-
 
       - run: composer install --no-interaction --prefer-dist --no-progress
 
@@ -280,6 +354,9 @@ jobs:
   schema:
     name: Le schéma se crée entièrement (${{ matrix.moteur.nom }})
     runs-on: ubuntu-latest
+    needs: garde
+    if: needs.garde.outputs.rejouer == 'oui'
+    timeout-minutes: 20
     # Son propre job, et pas un pas devant les tests : « le schéma ne se crée
     # pas » et « les montants sont faux » ne se lisent pas pareil et ne se
     # corrigent pas pareil. Confondus dans un seul voyant rouge, on perd
@@ -325,6 +402,20 @@ jobs:
         with:
           php-version: '8.3'
           extensions: mbstring, xml, ctype, iconv, intl, pdo_mysql, dom, filter, gd, json, tokenizer
+
+      - name: Répertoire de cache Composer
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
+
+      # Sans ce cache, chaque job retelecharge toutes les dependances. Ce
+       # workflow en compte cinq instances : c'est cinq fois le meme telechargement
+       # a chaque poussee.
+      - name: Cache Composer
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: ${{ runner.os }}-composer-
 
       - run: composer install --no-interaction --prefer-dist --no-progress
 
