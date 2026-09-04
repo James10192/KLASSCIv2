@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Services\PermissionRegistry;
 use Illuminate\Console\Command;
 use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
 use Symfony\Component\Finder\Finder;
 
 /**
@@ -123,6 +124,9 @@ class PermissionsAuditCommand extends Command
         ));
         $this->line('═══════════════════════════════════════════════════════');
 
+        $derive = $dbAvailable ? $this->deriveDesRoles($registry) : [];
+        $this->rapporterLaDerive($derive);
+
         if ($this->option('json')) {
             $path = storage_path('app/permissions-audit.json');
             file_put_contents($path, json_encode([
@@ -131,6 +135,7 @@ class PermissionsAuditCommand extends Command
                 'aliases_used' => $aliasesUsed,
                 'orphaned' => $orphaned,
                 'deprecated_in_db' => $deprecatedAssigned,
+                'role_drift' => $derive,
                 'summary' => [
                     'used_in_code' => count($this->usedInCode),
                     'in_registry' => count($registryNames),
@@ -141,6 +146,88 @@ class PermissionsAuditCommand extends Command
         }
 
         return empty($broken) ? self::SUCCESS : self::FAILURE;
+    }
+
+    /**
+     * Droits que le registre accorde par defaut a un role, et que ce role n'a
+     * PAS en base sur cette instance.
+     *
+     * Pourquoi ce controle manquait, et pourquoi il compte : la synchronisation
+     * (`PermissionSyncService::run`) ne pose les defauts que sur un role VIDE.
+     * Des qu'un role a la moindre permission — c'est le cas de tous les roles de
+     * toutes les instances en service — elle le preserve, deliberement, pour ne
+     * pas ecraser la configuration de l'ecole. Le rattrapage qui suit n'accorde
+     * que l'intersection avec `newFeaturePermissions()`.
+     *
+     * Consequence : un droit ajoute aux defauts APRES la mise en service, et
+     * absent de cette liste, n'arrive jamais. Le registre le montre accorde,
+     * l'instance ne l'a pas, et seul le superAdmin — couvert par `Gate::before`
+     * — peut encore agir. C'est ce qu'on observe sur `students.edit`.
+     *
+     * On REGARDE, on n'accorde rien : re-accorder a chaque deploiement ce qu'une
+     * ecole a delibérement retire serait exactement l'inverse de la regle des
+     * roles configurables. La liste ci-dessous est faite pour etre lue, puis
+     * tranchee depuis /esbtp/roles-permissions.
+     *
+     * @return array<string, array<int, string>> role => droits absents
+     */
+    private function deriveDesRoles(PermissionRegistry $registry): array
+    {
+        $derive = [];
+
+        foreach ($registry->roles()->keys() as $roleName) {
+            $defauts = $registry->defaultPermissionsFor($roleName);
+
+            // superAdmin et serviceTechnique portent '*' : Gate::before les
+            // couvre, comparer leurs defauts n'aurait aucun sens.
+            if (in_array('*', $defauts, true)) {
+                continue;
+            }
+
+            $role = Role::where('name', $roleName)->where('guard_name', 'web')->first();
+
+            // Un role absent de la base n'a pas derive : il n'existe pas encore.
+            // La synchronisation le creera et lui posera ses defauts.
+            if (! $role) {
+                continue;
+            }
+
+            $possedes = $role->permissions()->pluck('name')->all();
+            $absents = array_values(array_diff($defauts, $possedes));
+
+            if ($absents !== []) {
+                $derive[$roleName] = $absents;
+            }
+        }
+
+        return $derive;
+    }
+
+    /**
+     * @param array<string, array<int, string>> $derive
+     */
+    private function rapporterLaDerive(array $derive): void
+    {
+        $this->newLine();
+
+        if ($derive === []) {
+            $this->info('✅ Aucun rôle privé d\'un droit que le registre lui accorde.');
+
+            return;
+        }
+
+        $this->warn('⚠️  Rôles privés d\'un droit que le registre leur accorde par défaut');
+        $this->line('   La synchronisation ne les rattrapera pas : elle préserve tout rôle');
+        $this->line('   déjà peuplé. À trancher depuis /esbtp/roles-permissions.');
+        $this->newLine();
+
+        foreach ($derive as $roleName => $absents) {
+            $this->line("   <fg=yellow>{$roleName}</> — ".count($absents).' droit(s) absent(s)');
+
+            foreach ($absents as $droit) {
+                $this->line("      · {$droit}");
+            }
+        }
     }
 
     /**
