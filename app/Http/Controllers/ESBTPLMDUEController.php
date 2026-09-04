@@ -66,9 +66,14 @@ class ESBTPLMDUEController extends Controller
 
         // JSON response for AJAX
         if ($request->ajax() || $request->wantsJson() || $request->format === 'json') {
+            // Quand l'ecran est filtre sur une maquette, la composition affichee
+            // est celle de CETTE maquette : la commune, plus ce que le parcours
+            // surcharge. Sans filtre, on montre tout, un element une seule fois.
+            $parcoursFiltre = $request->filled('parcours_id') ? (int) $request->parcours_id : null;
+
             return response()->json([
-                'ues' => $ues->map(function ($ue) {
-                    $ecues = $ue->getEcuesEffectifs();
+                'ues' => $ues->map(function ($ue) use ($parcoursFiltre) {
+                    $ecues = $ue->getEcuesEffectifs($parcoursFiltre);
                     return [
                         'id' => $ue->id,
                         'code' => $ue->code,
@@ -792,14 +797,31 @@ class ESBTPLMDUEController extends Controller
     /**
      * Vérifier que l'ajout/modification d'un crédit ECUE ne dépasse pas le crédit de l'UE.
      * Retourne une response d'erreur si dépassement, null sinon.
+     *
+     * Le budget se compte PAR MAQUETTE, pas sur l'unité entière. Une unité
+     * partagée peut porter, pour un même total de crédits, une composition en
+     * Bâtiment et une autre en Travaux Publics : les additionner ferait dépasser
+     * le plafond mécaniquement, et plus aucun élément ne pourrait être ajouté
+     * nulle part. Le refus serait permanent et sans explication utile.
+     *
+     * `$parcoursId` reste nul tant que les écrans n'écrivent que la composition
+     * commune : on compte alors les seules lignes communes, ce qui est
+     * exactement le budget de cette composition-là.
      */
-    private function checkCreditOverflow(ESBTPUniteEnseignement $ue, $creditEcue, ?int $excludeMatiereId, Request $request)
-    {
+    private function checkCreditOverflow(
+        ESBTPUniteEnseignement $ue,
+        $creditEcue,
+        ?int $excludeMatiereId,
+        Request $request,
+        ?int $parcoursId = null
+    ) {
         if (!$ue->credit || !$creditEcue) {
             return null;
         }
 
-        $query = DB::table('esbtp_ue_matiere')->where('unite_enseignement_id', $ue->id);
+        $query = DB::table('esbtp_ue_matiere')
+            ->where('unite_enseignement_id', $ue->id)
+            ->where('parcours_id', $parcoursId ?? 0);
         if ($excludeMatiereId) {
             $query->where('matiere_id', '!=', $excludeMatiereId);
         }

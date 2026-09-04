@@ -132,9 +132,9 @@ class ESBTPUniteEnseignement extends Model implements Auditable
      * délivré tout élément désactivé depuis. Le retrait passe par destroyECUE(),
      * qui détache le pivot ET libère la clé — c'est le geste qui fait foi.
      */
-    public function getEcuesEffectifs(): \Illuminate\Support\Collection
+    public function getEcuesEffectifs(?int $parcoursId = null): \Illuminate\Support\Collection
     {
-        $pivotEcues = $this->ecues;
+        $pivotEcues = $this->decouperParParcours($this->ecues, $parcoursId);
         $idsPivot = $pivotEcues->pluck('id')->all();
 
         $parCleEtrangere = $this->matieres
@@ -142,6 +142,55 @@ class ESBTPUniteEnseignement extends Model implements Auditable
             ->reject(fn ($matiere) => in_array($matiere->id, $idsPivot, true));
 
         return $pivotEcues->concat($parCleEtrangere->values())->values();
+    }
+
+    /**
+     * Ne garder, pour chaque element, que la ligne qui vaut pour ce parcours.
+     *
+     * Une meme unite sert plusieurs maquettes : `parcours_id` a zero designe la
+     * composition commune, une valeur non nulle une composition propre a un
+     * parcours. Les deux ont le droit d'exister pour le meme element, et c'est
+     * meme tout l'interet : l'ecole pose un coefficient commun, puis un parcours
+     * le surcharge.
+     *
+     * Deux regles, dans cet ordre :
+     *
+     * 1. Les lignes reservees a un AUTRE parcours sont ecartees. Sans cela un
+     *    element propre au Genie Civil apparaitrait au bulletin des juristes.
+     * 2. Pour un element restant, la ligne reservee PRIME sur la commune. Sans
+     *    cette regle les deux remonteraient et l'element serait compte deux fois
+     *    dans `calculerResultatUE` : note doublee au numerateur, coefficient
+     *    doublee au denominateur, credit doublee. La moyenne resterait juste par
+     *    compensation, les credits non — et si les deux lignes portent des
+     *    coefficients differents, la moyenne devient fausse elle aussi. Aucune
+     *    erreur ne serait levee.
+     *
+     * Sans parcours (`null`), on garde tout : c'est l'ecran de l'unite, qui doit
+     * montrer sa composition entiere, toutes maquettes confondues. Seul le
+     * doublon exact y est reduit, le reserve d'abord.
+     *
+     * Le filtrage porte sur la collection DEJA chargee. Une requete par unite et
+     * par etudiant couterait, sur une classe a huit unites et deux mille
+     * inscrits, seize mille requetes ajoutees a la generation des bulletins.
+     */
+    private function decouperParParcours(
+        \Illuminate\Support\Collection $ecues,
+        ?int $parcoursId
+    ): \Illuminate\Support\Collection {
+        if ($parcoursId !== null) {
+            $ecues = $ecues->filter(function ($ecue) use ($parcoursId) {
+                $porte = (int) ($ecue->pivot->parcours_id ?? 0);
+
+                return $porte === 0 || $porte === $parcoursId;
+            });
+        }
+
+        return $ecues
+            ->groupBy('id')
+            ->map(fn ($lignes) => $lignes->sortByDesc(
+                fn ($ecue) => (int) ($ecue->pivot->parcours_id ?? 0)
+            )->first())
+            ->values();
     }
 
     /**

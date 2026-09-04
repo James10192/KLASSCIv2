@@ -146,6 +146,13 @@ class MergeDuplicateUe
         }
     }
 
+    /**
+     * L'unicite du pivot porte sur le TRIPLET (unite, matiere, parcours) : la
+     * composition d'une unite peut differer d'une maquette a l'autre. Tester
+     * l'existence sur le seul couple prenait pour un doublon une ligne reservee
+     * a un parcours, et la supprimait — la maquette de ce parcours perdait
+     * l'element, sans erreur ni mention au compte rendu de la fusion.
+     */
     private function repointUeMatierePivot(int $canonicalId, array $absorbedIds): void
     {
         $rows = DB::table('esbtp_ue_matiere')
@@ -153,9 +160,12 @@ class MergeDuplicateUe
             ->get();
 
         foreach ($rows as $row) {
+            $portee = (int) ($row->parcours_id ?? 0);
+
             $exists = DB::table('esbtp_ue_matiere')
                 ->where('unite_enseignement_id', $canonicalId)
                 ->where('matiere_id', $row->matiere_id)
+                ->where('parcours_id', $portee)
                 ->exists();
 
             if ($exists) {

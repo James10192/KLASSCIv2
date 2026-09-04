@@ -150,7 +150,7 @@ class LMDBulletinService
             $creditsTotaux = 0;
 
             foreach ($ues as $ue) {
-                $resultatUE = $this->calculerResultatUE($bulletin, $ue, $etudiantId, $classeId, $semestre, $anneeUniversitaireId);
+                $resultatUE = $this->calculerResultatUE($bulletin, $ue, $etudiantId, $classeId, $semestre, $anneeUniversitaireId, $classe->parcours_id ? (int) $classe->parcours_id : null);
                 $resultatsUEs[] = $resultatUE;
                 $creditsTotaux += $ue->credit;
             }
@@ -235,9 +235,25 @@ class LMDBulletinService
      */
     public function getUEsForSemestre(ESBTPClasse $classe, int $semestre): \Illuminate\Support\Collection
     {
-        // Eager-load ECUEs via pivot (prioritaire) ET matieres HasMany (fallback)
+        // Une meme unite sert plusieurs maquettes : on ne charge que les elements
+        // qui valent pour CELLE-CI, la composition commune (`parcours_id` a zero)
+        // et celle propre au parcours de la classe. Le filtre est pose DANS le
+        // chargement anticipe : le sortir en requete par unite couterait, sur une
+        // classe a huit unites et deux mille inscrits, seize mille requetes de
+        // plus a la generation des bulletins. La deduplication commun contre
+        // reserve se fait ensuite en memoire, dans getEcuesEffectifs().
+        $parcoursId = $classe->parcours_id ? (int) $classe->parcours_id : null;
+
         $eagerLoad = [
-            'ecues' => fn($q) => $q->where('esbtp_matieres.is_active', true)->orderBy('esbtp_ue_matiere.ordre_bulletin')->orderBy('esbtp_matieres.code'),
+            'ecues' => function ($q) use ($parcoursId) {
+                $q->where('esbtp_matieres.is_active', true);
+
+                if ($parcoursId !== null) {
+                    $q->whereIn('esbtp_ue_matiere.parcours_id', [0, $parcoursId]);
+                }
+
+                $q->orderBy('esbtp_ue_matiere.ordre_bulletin')->orderBy('esbtp_matieres.code');
+            },
             'matieres' => fn($q) => $q->where('is_active', true)->orderBy('ordre_bulletin')->orderBy('code'),
         ];
 
@@ -278,7 +294,8 @@ class LMDBulletinService
         int $etudiantId,
         int $classeId,
         int $semestre,
-        int $anneeUniversitaireId
+        int $anneeUniversitaireId,
+        ?int $parcoursId = null
     ): ESBTPLMDResultatUE {
 
         // Creer/mettre a jour le resultat UE
@@ -294,8 +311,11 @@ class LMDBulletinService
             ]
         );
 
-        // Calculer les resultats de chaque ECUE — pivot prioritaire, fallback HasMany
-        $ecues = $ue->getEcuesEffectifs();
+        // Calculer les resultats de chaque ECUE — pivot prioritaire, fallback HasMany.
+        // Le parcours decide de la composition : sans lui, un element propre a une
+        // autre maquette entrerait dans cette moyenne, et un element surcharge y
+        // entrerait DEUX fois, avec son coefficient compte deux fois.
+        $ecues = $ue->getEcuesEffectifs($parcoursId);
         $totalPoints = 0;
         $totalCoefficients = 0;
 
