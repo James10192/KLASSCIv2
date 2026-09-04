@@ -142,6 +142,16 @@ class CompositionUe
      * l'invariant UEMOA des trente credits par semestre devenait franchissable
      * en silence.
      *
+     * Le compte porte sur les DEUX voies, comme la lecture. Une unite dont le
+     * pivot est vide tient ses elements par la seule cle etrangere — c'est le cas
+     * de TOUT ce que l'import de maquettes a produit, donc de la quasi-totalite
+     * des catalogues en service. N'interroger que le pivot faisait voir zero
+     * credit a ces unites-la : le plafond etait inerte, et on pouvait porter une
+     * unite de deux credits a quatre sans un mot. C'est la meme erreur que celle
+     * deja corrigee dans `getEcuesEffectifs()`, au meme endroit du raisonnement.
+     *
+     * Rien n'est ecrit ici : un controle ne doit pas modifier ce qu'il controle.
+     *
      * @param  array<int, int>  $matieresExclues  ignorees du total (l'element en cours d'edition)
      */
     public function creditsDe(
@@ -149,13 +159,25 @@ class CompositionUe
         int $parcoursId = self::COMMUN,
         array $matieresExclues = []
     ): int {
+        $exclues = array_map('intval', $matieresExclues);
+
         $lignes = DB::table('esbtp_ue_matiere')
             ->where('unite_enseignement_id', $ue->id)
             ->whereIn('parcours_id', array_unique([self::COMMUN, $parcoursId]))
-            ->when($matieresExclues !== [], fn ($q) => $q->whereNotIn('matiere_id', $matieresExclues))
             ->get(['matiere_id', 'parcours_id', 'credit_ecue']);
 
+        // Les elements que le pivot connait, TOUTES portees confondues : le repli
+        // ci-dessous ne vaut que pour ceux qu'il ignore vraiment. Sans cela, un
+        // element reserve a un AUTRE parcours serait repris par la cle etrangere
+        // et compte dans une maquette qui ne le porte pas.
+        $connusDuPivot = DB::table('esbtp_ue_matiere')
+            ->where('unite_enseignement_id', $ue->id)
+            ->pluck('matiere_id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
         $retenus = [];
+
         foreach ($lignes as $ligne) {
             $matiere = (int) $ligne->matiere_id;
             $portee = (int) $ligne->parcours_id;
@@ -164,6 +186,22 @@ class CompositionUe
             if (! isset($retenus[$matiere]) || $portee !== self::COMMUN) {
                 $retenus[$matiere] = (int) $ligne->credit_ecue;
             }
+        }
+
+        // Le repli par cle etrangere, meme perimetre que `getEcuesEffectifs()` :
+        // les actives, et seulement celles qu'aucune ligne de pivot ne designe.
+        $parCleEtrangere = ESBTPMatiere::query()
+            ->where('unite_enseignement_id', $ue->id)
+            ->where('is_active', true)
+            ->when($connusDuPivot !== [], fn ($q) => $q->whereNotIn('id', $connusDuPivot))
+            ->get(['id', 'credit_ecue']);
+
+        foreach ($parCleEtrangere as $matiere) {
+            $retenus[(int) $matiere->id] = (int) $matiere->credit_ecue;
+        }
+
+        foreach ($exclues as $id) {
+            unset($retenus[$id]);
         }
 
         return array_sum($retenus);

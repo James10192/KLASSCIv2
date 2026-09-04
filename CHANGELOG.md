@@ -42,6 +42,14 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ### Corrections
 
+- **Le plafond de crédits d'une unité s'applique enfin aux maquettes importées** (`/esbtp/lmd/ue`) — il ne comptait que les éléments enregistrés par l'écran, en ignorant ceux que l'import a posés, c'est-à-dire la quasi-totalité des catalogues en service. Sur ces unités-là il voyait zéro crédit : on pouvait porter une unité de deux crédits à quatre sans le moindre avertissement.
+
+- **Les unités partagées réapparaissent quand on filtre la liste par parcours** — une unité que deux maquettes se partagent disparaissait de celle des deux qui n'était pas inscrite dans sa fiche. Deux conditions se cumulaient là où une seule a du sens : le rattachement aux parcours, et un champ hérité qui ne peut en nommer qu'un.
+
+- **Réinitialiser les filtres des étudiants efface aussi la recherche** — la liste revenait filtrée sur le texte cherché, avec sa pastille, sous des champs pourtant vides. Le formulaire se soumettait dès le premier menu vidé, avant que la recherche ne le soit.
+
+- **Une mise à l'abri des pièces interrompue se termine à la reprise** — si l'opération était coupée entre la copie et l'effacement, la relance considérait le fichier comme déjà protégé, laissait la copie exposée en place et cessait même de la compter. Elle annonçait donc zéro pièce exposée tout en en laissant derrière elle.
+
 - **Le bouton Réinitialiser vide vraiment les filtres** (`/esbtp/etudiants`, `/esbtp/inscriptions`) — il restaurait l'état initial de la page, qui était déjà la page filtrée : la liste se rechargeait bien sans filtre, mais les menus continuaient d'afficher le choix qu'on venait de retirer. Deux affirmations contradictoires à l'écran, sans moyen de savoir laquelle faisait foi. Sur les inscriptions, il ouvrait en plus une troisième vue, plus large que celle d'arrivée, parce qu'il remettait le statut sur la première entrée du menu au lieu de son état par défaut.
 
 - **L'aperçu de régénération des frais annonce ce qu'il va écrire, pas ce qu'il a trouvé** — la ligne posée juste au-dessus du bouton de confirmation comptait tous les écarts détectés, alors que les montants négociés arrivent décochés et ne partent pas. Elle compte désormais les lignes réellement cochées et les dossiers qu'elles concernent. Le bouton de confirmation, lui, se voit maintenant désactivé quand rien n'est coché : sans marque visible, on cliquait, rien ne se passait, et rien ne disait pourquoi.

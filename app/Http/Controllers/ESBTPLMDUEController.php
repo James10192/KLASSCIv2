@@ -35,9 +35,15 @@ class ESBTPLMDUEController extends Controller
             ->with(['filiere', 'niveau', 'parcours', 'parcoursMultiple', 'ecues', 'matieres']);
 
         // Filtres optionnels
-        if ($request->filled('parcours_id')) {
-            $query->where('parcours_id', $request->parcours_id);
-        }
+        //
+        // Le parcours se filtre PAR LE PIVOT, plus bas, et par lui seul. La
+        // colonne `parcours_id` de l'unite est heritee : elle ne peut designer
+        // qu'UNE maquette, alors qu'une unite en sert plusieurs. Cumuler les deux
+        // conditions revenait a exiger que l'unite soit liee au parcours ET que
+        // sa colonne le nomme — donc a faire disparaitre de la liste filtree
+        // exactement les unites PARTAGEES, chacune manquant au parcours qui n'est
+        // pas celui de sa colonne. Sur presentation, trois unites sur cent huit,
+        // et ce sont les seules qui comptent pour ce chantier.
 
         if ($request->filled('filiere_id')) {
             $query->where('filiere_id', $request->filiere_id);
@@ -57,10 +63,16 @@ class ESBTPLMDUEController extends Controller
             $query->where(fn($q) => $q->where('name', 'like', "%{$s}%")->orWhere('code', 'like', "%{$s}%"));
         }
 
-        // Also filter by parcours via pivot
+        // Le parcours, par le pivot : la seule voie qui sache dire qu'une unite
+        // sert plusieurs maquettes. La colonne heritee est reconnue en plus,
+        // sinon une unite importee dont le pivot n'a jamais ete ecrit
+        // disparaitrait de la liste de son propre parcours.
         if ($request->filled('parcours_id')) {
-            $pId = $request->parcours_id;
-            $query->whereHas('parcoursMultiple', fn($q) => $q->where('esbtp_lmd_parcours.id', $pId));
+            $pId = (int) $request->parcours_id;
+            $query->where(function ($q) use ($pId) {
+                $q->whereHas('parcoursMultiple', fn ($sub) => $sub->where('esbtp_lmd_parcours.id', $pId))
+                    ->orWhere('esbtp_unites_enseignement.parcours_id', $pId);
+            });
         }
 
         if ($request->filled('type_ue')) {

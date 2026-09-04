@@ -57,18 +57,27 @@ class DocumentsEtudiantsMettreALAbri extends Command
                 &$exposes, &$deplaces, &$echecs, &$introuvables, &$dejaSurs
             ) {
                 foreach ($documents as $document) {
-                    $disque = $stockage->disqueDe($document->file_path);
+                    // La question n'est PAS « ou est ce fichier », c'est « reste-t-il
+                    // une copie exposee ». Les deux ne se confondent pas.
+                    //
+                    // `disqueDe()` rend le PREMIER disque qui porte le fichier, et
+                    // interroge le prive d'abord. Une reprise coupee entre la copie
+                    // et l'effacement laisse le fichier sur les DEUX : la relance le
+                    // voyait alors sur le prive, le classait « deja a l'abri », et
+                    // passait au suivant. La copie exposee n'etait plus jamais
+                    // effacee NI meme comptee — la commande annonçait zero expose
+                    // en en laissant derriere elle. Une reprise doit finir le
+                    // travail, pas le declarer fait.
+                    if (! $stockage->estEncoreExpose($document->file_path)) {
+                        if ($stockage->existe($document->file_path)) {
+                            $dejaSurs++;
+                        } else {
+                            // Le chemin ne designe aucun fichier, sur aucun disque.
+                            // Ce n'est pas notre affaire ici : on le compte et on le
+                            // dit, sans rien supprimer en base.
+                            $introuvables++;
+                        }
 
-                    if ($disque === null) {
-                        // Le chemin ne designe aucun fichier, sur aucun disque.
-                        // Ce n'est pas notre affaire ici : on le compte et on le
-                        // dit, sans rien supprimer en base.
-                        $introuvables++;
-                        continue;
-                    }
-
-                    if ($disque !== StockageDocumentEtudiant::DISQUE_HERITE) {
-                        $dejaSurs++;
                         continue;
                     }
 
@@ -143,6 +152,10 @@ class DocumentsEtudiantsMettreALAbri extends Command
             // On ne supprime qu'apres avoir compare les empreintes. Une copie
             // tronquee laisse donc l'original en place, et la commande se
             // relance sans avoir rien perdu.
+            //
+            // Et si la copie etait DEJA la, complete, d'une reprise precedente
+            // interrompue : la comparaison passe, l'original s'efface, et la
+            // reprise finit ce que l'autre avait commence.
             $destination = $prive->path($chemin);
 
             if (! is_file($destination) || md5_file($destination) !== md5_file($source)) {

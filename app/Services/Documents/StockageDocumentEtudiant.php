@@ -117,12 +117,26 @@ class StockageDocumentEtudiant
     }
 
     /**
-     * Ce chemin dort-il encore sur le disque expose ?
+     * Reste-t-il une copie de ce fichier sur le disque expose ?
      *
-     * Sert a la commande de reprise, et a dire ou en est une instance.
+     * La question n'est PAS « ou vit ce fichier » : c'est « reste-t-il quelque
+     * chose a retirer ». Les deux se separent des qu'une reprise est coupee
+     * entre la copie et l'effacement, cas ou le fichier est sur les DEUX disques.
+     *
+     * Le formuler par `disqueDe() === DISQUE_HERITE` rendait alors faux — cette
+     * methode-la interroge le prive en premier et s'arrete au premier disque
+     * trouve. La reprise concluait « deja a l'abri », n'effaçait pas la copie
+     * exposee et cessait meme de la compter : la commande annonçait zero expose
+     * en en laissant derriere elle.
      */
     public function estEncoreExpose(?string $chemin): bool
     {
-        return $this->disqueDe($chemin) === self::DISQUE_HERITE;
+        $chemin = trim((string) $chemin);
+
+        if ($chemin === '' || str_contains($chemin, '..')) {
+            return false;
+        }
+
+        return is_file(Storage::disk(self::DISQUE_HERITE)->path($chemin));
     }
 }

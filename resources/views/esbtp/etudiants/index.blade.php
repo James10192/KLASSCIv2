@@ -4393,20 +4393,29 @@
         function viderLesChamps(formulaire) {
             if (!formulaire) return;
 
-            formulaire.querySelectorAll('select').forEach(function (select) {
-                select.selectedIndex = 0;
-                select.value = '';
-                // Les composants qui se synchronisent sur le select natif — les
-                // pickers premium — n'ecoutent que l'evenement.
-                select.dispatchEvent(new Event('change', { bubbles: true }));
-            });
-
+            // Les CHAMPS D'ABORD, les menus ensuite, et AUCUN evenement emis ici.
+            //
+            // Une premiere version vidait les menus en emettant un `change` sur
+            // chacun, pour prevenir les composants qui s'y synchronisent. Mais ce
+            // `change` declenche la soumission automatique du formulaire : la
+            // page se resoumettait des le PREMIER menu vide, alors que le champ
+            // de recherche n'avait pas encore ete touche. La liste revenait donc
+            // filtree sur la recherche, avec sa pastille, sous des champs vides —
+            // pire que le defaut qu'on corrigeait.
+            //
+            // Les composants premium sont prevenus une seule fois, par
+            // l'evenement global emis a la fin de resetAllSelects().
             formulaire.querySelectorAll('input').forEach(function (champ) {
                 if (champ.type === 'checkbox' || champ.type === 'radio') {
                     champ.checked = false;
                 } else if (champ.type !== 'hidden' && champ.type !== 'submit' && champ.type !== 'button') {
                     champ.value = '';
                 }
+            });
+
+            formulaire.querySelectorAll('select').forEach(function (select) {
+                select.selectedIndex = 0;
+                select.value = '';
             });
         }
 
