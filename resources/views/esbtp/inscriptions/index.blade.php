@@ -179,6 +179,31 @@
     padding-right: 2rem;
 }
 .ii-filter-select:focus { outline: none; border-color: var(--ii-primary); box-shadow: 0 0 0 3px rgba(4,83,203,.1); }
+
+/* Periode d'inscription : deux bornes qui se lisent comme un seul filtre. */
+.ii-filter-periode {
+    display: inline-flex; align-items: center; gap: .4rem;
+    padding: .25rem .55rem .25rem .7rem;
+    border: 1px solid var(--ii-border); border-radius: 10px;
+    background: var(--ii-surface);
+    min-width: 0;
+}
+.ii-filter-periode:focus-within { border-color: var(--ii-primary); box-shadow: 0 0 0 3px rgba(4,83,203,.1); }
+.ii-filter-periode > i { color: var(--ii-muted); font-size: .82rem; }
+.ii-filter-periode label {
+    font-size: .72rem; color: var(--ii-muted); font-weight: 600;
+    margin: 0; text-transform: uppercase; letter-spacing: .04em;
+}
+.ii-filter-periode input[type="date"] {
+    border: none; background: transparent; outline: none;
+    font-size: .82rem; color: var(--ii-text);
+    font-family: inherit; padding: .35rem 0;
+    min-width: 118px; max-width: 140px;
+}
+@media (max-width: 768px) {
+    .ii-filter-periode { flex: 1 1 100%; justify-content: space-between; }
+    .ii-filter-periode input[type="date"] { max-width: none; flex: 1 1 0; }
+}
 .ii-btn--ghost {
     display: inline-flex; align-items: center; gap: .35rem;
     padding: .55rem .85rem;
@@ -813,6 +838,23 @@ tr[data-inscription-id] > td { transition: background .15s ease; }
                     <option value="annulée" @selected(request('status') == 'annulée')>Annulées</option>
                     <option value="terminée" @selected(request('status') == 'terminée')>Terminées</option>
                 </select>
+
+                {{-- Periode : bornes sur la date d'inscription, incluses toutes les deux. --}}
+                <div class="ii-filter-periode">
+                    <i class="fas fa-calendar-day" aria-hidden="true"></i>
+                    <label for="date_debut">Du</label>
+                    <input type="date"
+                           name="date_debut"
+                           id="date_debut"
+                           value="{{ $dateDebut ?? '' }}"
+                           aria-label="Inscriptions à partir du">
+                    <label for="date_fin">au</label>
+                    <input type="date"
+                           name="date_fin"
+                           id="date_fin"
+                           value="{{ $dateFin ?? '' }}"
+                           aria-label="Inscriptions jusqu'au">
+                </div>
 
                 {{-- Champs cachés pour sort + per_page (préservés dans AJAX) --}}
                 <input type="hidden" name="sort" id="sort-input" value="{{ $sort ?? 'created_at' }}">

@@ -109,6 +109,9 @@ class ESBTPInscriptionController extends Controller
         $niveau = $request->input("niveau");
         $annee = $request->input("annee");
         $status = $request->input("status", "active");
+        // Periode sur la DATE D'INSCRIPTION (celle que porte le dossier), pas sur
+        // la date de saisie : c'est la date que le secretariat lit sur la fiche.
+        [$dateDebut, $dateFin] = $this->periodeDemandee($request);
         // Filtre Système : 'BTS' | 'LMD' | null (= Tous). Filtré côté inscription via classe.systeme_academique.
         $systemeFilter = $request->input("systeme");
         if (!in_array($systemeFilter, ['BTS', 'LMD'], true)) {
@@ -193,6 +196,14 @@ class ESBTPInscriptionController extends Controller
             if ($anneeEnCours) {
                 $baseQuery->where("annee_universitaire_id", $anneeEnCours->id);
             }
+        }
+
+        if ($dateDebut) {
+            $baseQuery->whereDate("date_inscription", ">=", $dateDebut);
+        }
+
+        if ($dateFin) {
+            $baseQuery->whereDate("date_inscription", "<=", $dateFin);
         }
 
         if ($status && $status !== "all") {
@@ -301,6 +312,17 @@ class ESBTPInscriptionController extends Controller
             $statsQuery->where("annee_universitaire_id", $anneeEnCours->id);
         }
 
+        // Les compteurs du bandeau doivent porter sur la meme periode que la
+        // liste : sinon on affiche « 12 resultats » sous un KPI qui en annonce
+        // 2000, et plus personne ne sait lequel dit vrai.
+        if ($dateDebut) {
+            $statsQuery->whereDate("date_inscription", ">=", $dateDebut);
+        }
+
+        if ($dateFin) {
+            $statsQuery->whereDate("date_inscription", "<=", $dateFin);
+        }
+
         $stats = [
             "total" => $statsQuery->count(),
             "actives" => (clone $statsQuery)
@@ -363,6 +385,8 @@ class ESBTPInscriptionController extends Controller
                 "niveau",
                 "annee",
                 "status",
+                "dateDebut",
+                "dateFin",
                 "stats",
                 "anneeEnCours",
                 "sort",
@@ -462,6 +486,42 @@ class ESBTPInscriptionController extends Controller
     /**
      * Valide les paramètres de recherche de doublons.
      */
+    /**
+     * Les deux bornes de la periode demandee, au format Y-m-d, ou null.
+     *
+     * Une date illisible est ignoree plutot que refusee : un parametre bricole
+     * dans l'URL ne doit pas remplacer la liste par une page d'erreur.
+     *
+     * Les bornes inversees sont remises a l'endroit. Quelqu'un qui saisit
+     * « du 30 septembre au 1er septembre » veut ce qui se trouve entre les deux,
+     * et lui rendre zero resultat sans rien dire ne l'aide pas.
+     *
+     * @return array{0: string|null, 1: string|null}
+     */
+    private function periodeDemandee(Request $request): array
+    {
+        $lire = static function ($valeur): ?string {
+            if (! is_string($valeur) || trim($valeur) === '') {
+                return null;
+            }
+
+            try {
+                return \Carbon\Carbon::parse(trim($valeur))->format('Y-m-d');
+            } catch (\Throwable) {
+                return null;
+            }
+        };
+
+        $debut = $lire($request->input('date_debut'));
+        $fin = $lire($request->input('date_fin'));
+
+        if ($debut && $fin && $debut > $fin) {
+            return [$fin, $debut];
+        }
+
+        return [$debut, $fin];
+    }
+
     private function validateDuplicateRequest(Request $request): array
     {
     }

@@ -3181,6 +3181,14 @@
                                         </select>
                                     </div>
                                     <div class="col-md-4 mb-3">
+                                        <label for="sexe" class="form-label">Genre</label>
+                                        <select class="form-select year-selector" id="sexe" name="sexe">
+                                            <option value="">Tous les genres</option>
+                                            <option value="M" {{ ($sexe ?? null) === 'M' ? 'selected' : '' }}>Masculin</option>
+                                            <option value="F" {{ ($sexe ?? null) === 'F' ? 'selected' : '' }}>Féminin</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4 mb-3">
                                         <label for="affectation_status" class="form-label">Statut d'affectation ({{ $anneeCourante?->name ?? 'N/A' }})</label>
                                         <select class="form-select year-selector" id="affectation_status" name="affectation_status">
                                             <option value="">Tous les statuts d'affectation</option>
@@ -3386,6 +3394,16 @@
                             <option value="">Tous les statuts</option>
                             <option value="actif" {{ isset($status) && $status == 'actif' ? 'selected' : '' }}>Actif</option>
                             <option value="inactif" {{ isset($status) && $status == 'inactif' ? 'selected' : '' }}>Inactif</option>
+                        </select>
+                    </div>
+
+                    <!-- Genre -->
+                    <div class="form-group">
+                        <label for="mobile-sexe" class="form-label">Genre</label>
+                        <select class="form-select" id="mobile-sexe" name="sexe">
+                            <option value="">Tous les genres</option>
+                            <option value="M" {{ ($sexe ?? null) === 'M' ? 'selected' : '' }}>Masculin</option>
+                            <option value="F" {{ ($sexe ?? null) === 'F' ? 'selected' : '' }}>Féminin</option>
                         </select>
                     </div>
 
@@ -4228,7 +4246,8 @@
                 'affectation_status': 'Statut affectation',
                 'inscrit_annee_courante': 'Inscription validée',
                 'est_transfert': 'Transfert',
-                'accessibility': 'Accessibilité'
+                'accessibility': 'Accessibilité',
+                'sexe': 'Genre'
             };
 
             // Récupérer les options de select pour avoir les labels
