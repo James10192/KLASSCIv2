@@ -1396,6 +1396,17 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 Route::post('/inscriptions/bulk-export', [ESBTPInscriptionController::class, 'bulkExport'])->name('inscriptions.bulk-export');
             });
 
+            // Pieces du dossier d'inscription. Le panneau se coche au guichet,
+            // plusieurs fois d'affilee : tout repond en JSON, jamais un rechargement.
+            Route::middleware('permission:inscriptions.pieces.view')->group(function () {
+                Route::get('/inscriptions/{inscription}/pieces', [\App\Http\Controllers\ESBTPInscriptionPieceController::class, 'index'])
+                    ->name('inscriptions.pieces.index')
+                    ->middleware('throttle:60,1');
+                Route::post('/inscriptions/{inscription}/pieces', [\App\Http\Controllers\ESBTPInscriptionPieceController::class, 'basculer'])
+                    ->name('inscriptions.pieces.basculer')
+                    ->middleware(['permission:inscriptions.pieces.manage', 'throttle:60,1']);
+            });
+
             // â”€â”€ CREATE (nouvelles inscriptions)
             Route::middleware('permission:inscriptions.create')->group(function () {
                 Route::get('/inscriptions/create', [ESBTPInscriptionController::class, 'create'])->name('inscriptions.create');

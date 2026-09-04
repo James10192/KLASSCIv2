@@ -1172,6 +1172,24 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                             <i class="fas fa-exclamation-triangle"></i> Sous réserve
                         </span>
                         @endif
+                        {{-- Signal « il manque une pièce obligatoire », visible sans ouvrir
+                             le panneau. Distinct de « Sous réserve » : ici le document
+                             existe et n'a pas été déposé. L'inscription reste validable. --}}
+                        @php
+                            $pdiHeroActif = is_array($piecesDossier ?? null)
+                                && ($piecesDossier['actif'] ?? false)
+                                && auth()->check()
+                                && auth()->user()->can('inscriptions.pieces.view');
+                            $pdiHeroManquantes = (int) ($piecesDossier['obligatoires_manquantes'] ?? 0);
+                        @endphp
+                        @if($pdiHeroActif)
+                        <span class="is-hero-pill warning" id="pdi-pastille-fiche"
+                              @if(! ($piecesDossier['signal'] ?? false)) style="display:none;" @endif
+                              title="Pièces obligatoires non déposées au secrétariat. La validation de l'inscription reste possible.">
+                            <i class="fas fa-folder-open"></i>
+                            <span id="pdi-pastille-texte">{{ $pdiHeroManquantes }} {{ $pdiHeroManquantes > 1 ? 'pièces manquantes' : 'pièce manquante' }}</span>
+                        </span>
+                        @endif
                     </div>
                 </div>
                 <div class="is-hero-actions">
@@ -1794,6 +1812,8 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                             @endif
                         </div>
                     </div>
+
+                    @include('esbtp.inscriptions.partials.pieces-dossier')
 
                     @include('esbtp.inscriptions.partials.fournitures-in-kind')
 

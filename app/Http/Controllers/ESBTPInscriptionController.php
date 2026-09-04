@@ -1127,6 +1127,12 @@ class ESBTPInscriptionController extends Controller
         $inscription->loadMissing(['phases.classe.filiere', 'classe.orientationTargets.targetClasse']);
         $btsJourney = $this->btsUiPresenter->forInscription($inscription);
 
+        // Pieces du dossier de CETTE inscription. Tant que l'ecole n'a pas
+        // configure son catalogue, l'etat revient inactif et le panneau ne
+        // s'affiche pas : la fiche reste identique a ce qu'elle etait.
+        $piecesDossier = app(\App\Domain\Inscriptions\Pieces\PiecesDossierService::class)
+            ->etat($inscription);
+
         return view(
             "esbtp.inscriptions.show",
             compact(
@@ -1144,6 +1150,7 @@ class ESBTPInscriptionController extends Controller
                 "anneeCourante",
                 "otherInscriptions",
                 "btsJourney",
+                "piecesDossier",
             ),
         );
     }

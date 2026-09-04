@@ -387,6 +387,18 @@ return [
             'group' => 'Inscriptions',
             'icon' => 'fa-tasks',
         ],
+        'inscriptions.pieces.view' => [
+            'label' => 'Voir les pièces du dossier d\'une inscription',
+            'description' => 'Affiche le panneau « Pièces du dossier » sur la fiche d\'inscription : liste des pièces attendues et compteur',
+            'group' => 'Inscriptions',
+            'icon' => 'fa-folder-open',
+        ],
+        'inscriptions.pieces.manage' => [
+            'label' => 'Marquer une pièce du dossier comme fournie',
+            'description' => 'Coche et décoche les pièces reçues au guichet. N\'autorise ni la validation de l\'inscription ni la configuration du catalogue',
+            'group' => 'Inscriptions',
+            'icon' => 'fa-clipboard-check',
+        ],
         'inscriptions.specialisation.manage' => [
             'label' => 'Orienter un étudiant en Tronc Commun vers une spécialité (BTS UEMOA)',
             'description' => 'Permet l\'accès à /specialisation (workflow officiel TC → spécialisation : choix filière + classe cible, transition tracée + audit)',
@@ -2129,6 +2141,7 @@ return [
             'reinscriptions.demandes.view', 'reinscriptions.demandes.process',
             'inscriptions.candidatures.view', 'inscriptions.candidatures.process',
             'inscriptions.cancel', 'inscriptions.manage', 'inscriptions.specialisation.manage',
+            'inscriptions.pieces.view', 'inscriptions.pieces.manage',
             // Sous-lot C+ : corbeille (restore tout, force_delete réservé superAdmin via Gate::before)
             'trash.view', 'students.restore', 'inscriptions.restore', 'paiements.restore',
             'cycles.view', 'cycles.create', 'cycles.edit', 'cycles.delete',
@@ -2258,6 +2271,7 @@ return [
             'inscriptions.in_kind.mark',
             'reinscriptions.demandes.view', 'reinscriptions.demandes.process',
             'inscriptions.candidatures.view', 'inscriptions.candidatures.process',
+            'inscriptions.pieces.view', 'inscriptions.pieces.manage',
             'paiements.view', 'frais.view',
             // PR1 réconciliation — view + approve (séparation OHADA : approve ≠ comptable qui a ouvert)
             'comptabilite.reconciliation.view', 'comptabilite.reconciliation.approve',
@@ -2387,6 +2401,7 @@ return [
             'reinscriptions.demandes.view', 'reinscriptions.demandes.process',
             'inscriptions.candidatures.view', 'inscriptions.candidatures.process',
             'inscriptions.cancel', 'inscriptions.manage', 'inscriptions.specialisation.manage',
+            'inscriptions.pieces.view', 'inscriptions.pieces.manage',
             'cycles.view',
             'classes.view',
             'filieres.view', 'niveaux.view',
@@ -2439,6 +2454,9 @@ return [
             'students.accessibility.view',
             'inscriptions.view',
             'inscriptions.in_kind.mark',
+            // Le guichet de scolarite est celui qui recoit les pieces : il les
+            // coche, sans pour autant valider l'inscription.
+            'inscriptions.pieces.view', 'inscriptions.pieces.manage',
             // Lecture seule sur la file du portail, coherent avec
             // inscriptions.view : ce role constate, il ne convertit pas. La
             // conversion cree une inscription et genere des frais, elle
@@ -2482,6 +2500,7 @@ return [
             'inscriptions.fiche.print', 'inscriptions.in_kind.mark',
             'reinscriptions.demandes.view', 'reinscriptions.demandes.process',
             'inscriptions.candidatures.view', 'inscriptions.candidatures.process',
+            'inscriptions.pieces.view', 'inscriptions.pieces.manage',
             'classes.view',
             'filieres.view', 'niveaux.view',
             'identity.enrollment_officer',
