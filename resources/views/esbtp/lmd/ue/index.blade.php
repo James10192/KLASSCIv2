@@ -136,7 +136,10 @@
     .lp-sem-chip:hover:not(.lp-sem-chip--on) { background: #eef2ff; border-color: #c7d2fe; color: #4338ca; }
 
     /* Toast notification */
-    .lu-toast { position: fixed; top: 1rem; right: 1rem; z-index: 9999; padding: .65rem 1.1rem; border-radius: 10px; font-size: .85rem; font-weight: 600; color: #fff; box-shadow: 0 4px 16px rgba(0,0,0,.15); transition: all .3s; }
+    /* Un refus explique OU aller corriger : il tient en plusieurs lignes, et il
+       lui faut la place et le temps d'etre lu. Sans largeur bornee, le message
+       s'etirait sur toute la fenetre. */
+    .lu-toast { position: fixed; top: 1rem; right: 1rem; z-index: 9999; padding: .65rem 1.1rem; border-radius: 10px; font-size: .85rem; font-weight: 600; color: #fff; box-shadow: 0 4px 16px rgba(0,0,0,.15); transition: all .3s; max-width: min(440px, calc(100vw - 2rem)); white-space: normal; line-height: 1.45; }
     .lu-toast--success { background: #059669; }
     .lu-toast--error { background: #dc2626; }
 
@@ -673,7 +676,9 @@ function ueManager() {
 
         showToast(msg, type = 'success') {
             this.toast = { show: true, message: msg, type };
-            setTimeout(() => this.toast.show = false, 3000);
+            // Trois secondes suffisent pour « UE supprimee ». Pas pour un refus
+            // qui nomme les maquettes ou l'unite figure encore.
+            setTimeout(() => this.toast.show = false, type === 'error' ? 10000 : 3000);
         },
 
         // ── Create UE ──
