@@ -2989,6 +2989,12 @@ Route::prefix('esbtp/lmd')->name('esbtp.lmd.')->middleware(['auth', 'permission:
         ->middleware('permission:lmd.structure.manage')->name('ue.parcours-disponibles');
     Route::post('ue/{ue}/sync-parcours', [\App\Http\Controllers\ESBTPLMDUEController::class, 'syncParcours'])
         ->middleware('permission:lmd.structure.manage')->name('ue.sync-parcours');
+    // Trace des gestes de maquette, et retour en arriere. Consulter releve du
+    // droit de lecture ; annuler modifie les pivots, donc du droit de gestion.
+    Route::get('ue/{ue}/journal', [\App\Http\Controllers\ESBTPLMDUEController::class, 'journal'])
+        ->middleware('permission:lmd.structure.view')->name('ue.journal');
+    Route::post('ue/{ue}/journal/{entree}/annuler', [\App\Http\Controllers\ESBTPLMDUEController::class, 'annulerJournal'])
+        ->middleware(['permission:lmd.structure.manage', 'throttle:30,1'])->name('ue.journal.annuler');
 
     // --- Reconciliation des doublons UE/ECUE ---
     // Le controleur appelle deja authorize('lmd.reconciliation.manage') dans ses trois

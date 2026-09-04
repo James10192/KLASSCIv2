@@ -2,22 +2,31 @@
 
 namespace App\Http\Controllers;
 
+use App\Helpers\SettingsHelper;
 use App\Http\Requests\LMD\UniteEnseignementRequest;
 use App\Models\ESBTPAnneeUniversitaire;
+use App\Models\ESBTPLMDJournalMaquette;
 use App\Models\ESBTPUniteEnseignement;
 use App\Models\ESBTPMatiere;
 use App\Models\ESBTPLMDParcours;
 use App\Models\ESBTPFiliere;
 use App\Models\ESBTPNiveauEtude;
 use App\Models\ESBTPPlanificationAcademique;
+use App\Services\LMD\JournalMaquette;
+use App\Services\LMD\LectureMaquettes;
 use App\Services\LMD\ParcoursUeSyncService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 
 class ESBTPLMDUEController extends Controller
 {
-    public function __construct(private ParcoursUeSyncService $parcoursUeSync) {}
+    public function __construct(
+        private ParcoursUeSyncService $parcoursUeSync,
+        private LectureMaquettes $lectureMaquettes,
+        private JournalMaquette $journal,
+    ) {}
 
     /**
      * Afficher la liste des Unités d'Enseignement avec filtres.
@@ -28,10 +37,11 @@ class ESBTPLMDUEController extends Controller
             ->withCount('matieres')
             ->with(['filiere', 'niveau', 'parcours', 'parcoursMultiple', 'ecues', 'matieres']);
 
-        // Filtres optionnels
-        if ($request->filled('parcours_id')) {
-            $query->where('parcours_id', $request->parcours_id);
-        }
+        // La maquette de travail se lit sur le pivot, jamais sur la colonne
+        // `esbtp_unites_enseignement.parcours_id` : une unite partagee entre
+        // deux parcours n'a qu'une seule valeur dans cette colonne, filtrer
+        // dessus ferait disparaitre l'unite de l'un des deux parcours. Le
+        // filtre par le pivot est applique plus bas.
 
         if ($request->filled('filiere_id')) {
             $query->where('filiere_id', $request->filiere_id);
@@ -51,10 +61,10 @@ class ESBTPLMDUEController extends Controller
             $query->where(fn($q) => $q->where('name', 'like', "%{$s}%")->orWhere('code', 'like', "%{$s}%"));
         }
 
-        // Also filter by parcours via pivot
-        if ($request->filled('parcours_id')) {
-            $pId = $request->parcours_id;
-            $query->whereHas('parcoursMultiple', fn($q) => $q->where('esbtp_lmd_parcours.id', $pId));
+        // Maquette de travail : ne montrer que les unites que ce parcours porte.
+        $parcoursTravailId = $request->filled('parcours_id') ? (int) $request->parcours_id : null;
+        if ($parcoursTravailId !== null) {
+            $query->whereHas('parcoursMultiple', fn($q) => $q->where('esbtp_lmd_parcours.id', $parcoursTravailId));
         }
 
         if ($request->filled('type_ue')) {
@@ -67,40 +77,14 @@ class ESBTPLMDUEController extends Controller
         // JSON response for AJAX
         if ($request->ajax() || $request->wantsJson() || $request->format === 'json') {
             return response()->json([
-                'ues' => $ues->map(function ($ue) {
-                    $ecues = $ue->getEcuesEffectifs();
-                    return [
-                        'id' => $ue->id,
-                        'code' => $ue->code,
-                        'name' => $ue->name,
-                        'type_ue' => $ue->type_ue,
-                        'credit' => $ue->credit,
-                        'description' => $ue->description,
-                        'filiere_id' => $ue->filiere_id,
-                        'niveau_id' => $ue->niveau_id,
-                        'matieres_count' => $ue->matieres_count,
-                        'parcours' => $ue->parcoursMultiple->groupBy('id')->map(fn($pivots) => [
-                            'id' => $pivots->first()->id,
-                            'code' => $pivots->first()->code,
-                            'name' => $pivots->first()->name,
-                            'semestres' => $pivots->pluck('pivot.semestre')->sort()->values(),
-                        ])->values(),
-                        'ecues' => $ecues->map(fn($e) => [
-                            'id' => $e->id,
-                            'code' => $e->code,
-                            'name' => $e->name,
-                            'coefficient' => $e->pivot->coefficient_ecue ?? $e->coefficient_ecue ?? null,
-                            'credit' => $e->pivot->credit_ecue ?? $e->credit_ecue ?? null,
-                            'ordre' => $e->pivot->ordre_bulletin ?? $e->ordre_bulletin ?? 0,
-                        ]),
-                    ];
-                }),
+                'ues' => $ues->map(fn ($ue) => $this->unitePourLaListe($ue, $parcoursTravailId)),
                 'pagination' => [
                     'current_page' => $ues->currentPage(),
                     'last_page' => $ues->lastPage(),
                     'per_page' => $ues->perPage(),
                     'total' => $ues->total(),
                 ],
+                'maquette_travail' => $parcoursTravailId,
             ]);
         }
 
@@ -109,7 +93,149 @@ class ESBTPLMDUEController extends Controller
         $filieres = ESBTPFiliere::orderBy('name')->get();
         $niveaux = ESBTPNiveauEtude::orderBy('name')->get();
 
-        return view('esbtp.lmd.ue.index', compact('ues', 'parcours', 'filieres', 'niveaux'));
+        return view('esbtp.lmd.ue.index', [
+            'ues' => $ues,
+            'parcours' => $parcours,
+            'filieres' => $filieres,
+            'niveaux' => $niveaux,
+            'reglagesMaquette' => $this->reglagesMaquette(),
+        ]);
+    }
+
+    /**
+     * Reglages d'instance qui pilotent l'ecran des maquettes.
+     *
+     * Chaque valeur par defaut reproduit ce que l'ecran fait aujourd'hui, sauf
+     * `reserver_par_defaut` : la directrice des etudes a tranche que la case
+     * « cette maquette uniquement » doit etre cochee d'avance, parce que les
+     * deux erreurs n'ont pas le meme cout. Reserver par erreur se voit — le
+     * parcours voisin le constate, la somme des credits le dit. Mettre par
+     * erreur dans les deux maquettes ne se voit pas. Une ecole qui prefere
+     * l'inverse pose le reglage a faux.
+     */
+    private function reglagesMaquette(): array
+    {
+        return [
+            'reserver_par_defaut' => (bool) SettingsHelper::get('lmd.maquette.reserver_par_defaut', true),
+            'masquer_jauge_sans_reference' => (bool) SettingsHelper::get('lmd.maquette.masquer_jauge_sans_reference', true),
+            'partage_disponible' => $this->lectureMaquettes->pivotPorteLeParcours(),
+        ];
+    }
+
+    /**
+     * Serialise une unite pour la liste, du point de vue de la maquette de
+     * travail choisie.
+     *
+     * Deux nombres comptent pour qui saisit : combien d'elements CETTE maquette
+     * voit, et combien d'entre eux lui sont propres. `matieres_count` compte
+     * toutes les matieres de l'unite, tous parcours confondus : il mentirait des
+     * qu'un element est reserve.
+     */
+    private function unitePourLaListe(ESBTPUniteEnseignement $ue, ?int $parcoursTravailId): array
+    {
+        $parcoursDeLUnite = $ue->parcoursMultiple->groupBy('id')->map(fn ($pivots) => [
+            'id' => (int) $pivots->first()->id,
+            'code' => $pivots->first()->code,
+            'name' => $pivots->first()->name,
+            'semestres' => $pivots->pluck('pivot.semestre')->unique()->sort()->values(),
+        ])->values();
+
+        $parcoursParEcue = $this->lectureMaquettes->parcoursParEcue($ue);
+        $tousLesEcues = $ue->getEcuesEffectifs();
+
+        $ecuesVisibles = $tousLesEcues->filter(fn ($e) => LectureMaquettes::visibleDepuis(
+            $parcoursParEcue[(int) $e->id] ?? [],
+            $parcoursTravailId
+        ))->values();
+
+        $compte = LectureMaquettes::compter(
+            $parcoursParEcue,
+            $tousLesEcues->pluck('id')->all(),
+            $parcoursTravailId
+        );
+
+        $reference = $this->creditDeReference($ue, $parcoursTravailId);
+
+        // Ce qui entrerait dans une maquette nouvellement cochee : un element
+        // sans ligne propre appartient a toutes les maquettes de son unite. Le
+        // modal de liaison en donne le nombre AVANT de faire le geste.
+        $partages = $tousLesEcues
+            ->filter(fn ($e) => ($parcoursParEcue[(int) $e->id] ?? []) === [])
+            ->map(fn ($e) => [
+                'id' => $e->id,
+                'code' => $e->code,
+                'name' => $e->name,
+                // Nullsafe : un élément tenu par la seule clé étrangère n'a pas
+                // de ligne de pivot, donc pas de `pivot`.
+                'credit' => (int) ($e->pivot?->credit_ecue ?? $e->credit_ecue ?? 0),
+            ])->values();
+
+        return [
+            'id' => $ue->id,
+            'code' => $ue->code,
+            'name' => $ue->name,
+            'type_ue' => $ue->type_ue,
+            'credit' => $ue->credit,
+            'description' => $ue->description,
+            'filiere_id' => $ue->filiere_id,
+            'niveau_id' => $ue->niveau_id,
+            'matieres_count' => $ue->matieres_count,
+            'elements_visibles' => $compte['visibles'],
+            'elements_reserves' => $compte['reserves'],
+            'credit_reference' => $reference['valeur'],
+            'credit_reference_source' => $reference['source'],
+            'elements_partages' => $partages,
+            'credits_partages' => $partages->sum('credit'),
+            'parcours' => $parcoursDeLUnite,
+            'ecues' => $ecuesVisibles->map(function ($e) use ($parcoursParEcue, $parcoursDeLUnite) {
+                $reserveA = $parcoursParEcue[(int) $e->id] ?? [];
+
+                return [
+                    'id' => $e->id,
+                    'code' => $e->code,
+                    'name' => $e->name,
+                    'coefficient' => $e->pivot?->coefficient_ecue ?? $e->coefficient_ecue ?? null,
+                    'credit' => $e->pivot?->credit_ecue ?? $e->credit_ecue ?? null,
+                    'ordre' => $e->pivot?->ordre_bulletin ?? $e->ordre_bulletin ?? 0,
+                    'reserve' => $reserveA !== [],
+                    // Les memes pastilles que la ligne d'unite : l'element dit
+                    // dans quelles maquettes il se trouve, pas une categorie.
+                    'maquettes' => $reserveA === []
+                        ? $parcoursDeLUnite
+                        : $parcoursDeLUnite->whereIn('id', $reserveA)->values(),
+                ];
+            })->values(),
+        ];
+    }
+
+    /**
+     * Credit qui sert de reference a la jauge du modal, et d'ou il vient.
+     *
+     * La jauge se calculait sur `esbtp_unites_enseignement.credit`. Le jour ou
+     * le credit devient propre au parcours, ce nombre est celui d'UNE AUTRE
+     * maquette et rien ne le signale. Une jauge fausse est pire que pas de
+     * jauge : quand la reference de la maquette de travail est introuvable, on
+     * renvoie null et l'ecran masque la jauge en le disant.
+     *
+     * @return array{valeur: ?int, source: string}
+     */
+    private function creditDeReference(ESBTPUniteEnseignement $ue, ?int $parcoursTravailId): array
+    {
+        $creditParMaquette = Schema::hasColumn('esbtp_lmd_parcours_ue', 'credit');
+
+        if ($parcoursTravailId === null || ! $creditParMaquette) {
+            return ['valeur' => $ue->credit !== null ? (int) $ue->credit : null, 'source' => 'unite'];
+        }
+
+        $valeur = DB::table('esbtp_lmd_parcours_ue')
+            ->where('unite_enseignement_id', $ue->id)
+            ->where('parcours_id', $parcoursTravailId)
+            ->value('credit');
+
+        return [
+            'valeur' => $valeur === null ? null : (int) $valeur,
+            'source' => 'maquette',
+        ];
     }
 
     /**
@@ -571,6 +697,9 @@ class ESBTPLMDUEController extends Controller
             'credit_ecue'     => 'nullable|integer|min:1',
             'coefficient_ecue' => 'nullable|numeric|min:0',
             'ordre_bulletin'  => 'nullable|integer|min:0',
+            // Maquette de travail : a quelle maquette l'element est destine.
+            'parcours_travail_id' => 'nullable|integer|exists:esbtp_lmd_parcours,id',
+            'reserve'          => 'nullable|boolean',
         ]);
 
         $coeffEcue = $validated['coefficient_ecue'] ?? null;
@@ -619,14 +748,20 @@ class ESBTPLMDUEController extends Controller
             $matiere->update(['unite_enseignement_id' => $ue->id, 'updated_by' => auth()->id()]);
         }
 
-        // Écrire dans le pivot (many-to-many) avec coeff/credit contextuels
-        $ue->ecues()->syncWithoutDetaching([
-            $matiere->id => [
-                'coefficient_ecue' => $coeffEcue,
-                'credit_ecue' => $creditEcue,
-                'ordre_bulletin' => $ordreBulletin,
-            ],
-        ]);
+        // Écrire dans le pivot (many-to-many) avec coeff/credit contextuels,
+        // dans la maquette voulue. Trace au journal : la question « pourquoi cet
+        // élément est-il là ? » se pose autant que l'inverse.
+        $maquetteCible = $this->maquetteCible(
+            $validated['parcours_travail_id'] ?? null,
+            $request->boolean('reserve')
+        );
+
+        $this->journal->enregistrer(
+            $ue,
+            'ajout_element',
+            sprintf('« %s » ajouté à « %s »%s.', $matiere->name, $ue->name, $this->suffixeMaquette($maquetteCible)),
+            fn () => $this->ecrirePivotEcue($ue, (int) $matiere->id, $maquetteCible, $coeffEcue, $creditEcue, $ordreBulletin)
+        );
 
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json(['success' => true, 'message' => 'ECUE ajouté avec succès.']);
@@ -664,14 +799,17 @@ class ESBTPLMDUEController extends Controller
             'updated_by' => auth()->id(),
         ]);
 
-        // Mettre à jour le pivot avec les valeurs contextuelles à cette UE
-        $ue->ecues()->syncWithoutDetaching([
-            $ecue->id => [
-                'coefficient_ecue' => $validated['coefficient_ecue'] ?? null,
-                'credit_ecue' => $validated['credit_ecue'] ?? null,
-                'ordre_bulletin' => $validated['ordre_bulletin'] ?? 0,
-            ],
-        ]);
+        // Mettre à jour le pivot avec les valeurs contextuelles à cette UE, sur
+        // la seule ligne visée : viser la matière seule réécrirait la ligne
+        // partagée quand on croit modifier une ligne réservée.
+        $this->ecrirePivotEcue(
+            $ue,
+            (int) $ecue->id,
+            $this->maquetteExistantePourEcriture($ue, (int) $ecue->id, $request->input('parcours_travail_id')),
+            $validated['coefficient_ecue'] ?? null,
+            $validated['credit_ecue'] ?? null,
+            $validated['ordre_bulletin'] ?? 0
+        );
 
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json(['success' => true, 'message' => 'ECUE mis à jour.']);
@@ -682,23 +820,211 @@ class ESBTPLMDUEController extends Controller
     }
 
     /**
+     * Maquette visee par une creation d'element.
+     *
+     * Sans maquette de travail choisie, ou tant que le pivot ne sait pas porter
+     * un parcours, l'element reste partage : c'est le comportement actuel.
+     */
+    private function maquetteCible(?int $parcoursTravailId, bool $reserve): int
+    {
+        if (! $reserve || $parcoursTravailId === null || ! $this->lectureMaquettes->pivotPorteLeParcours()) {
+            return LectureMaquettes::MAQUETTE_PARTAGEE;
+        }
+
+        return $parcoursTravailId;
+    }
+
+    /**
+     * Ligne de pivot a modifier pour un element deja present.
+     *
+     * On ne deplace jamais un element d'une maquette a l'autre au detour d'une
+     * modification de coefficient : si l'element a une ligne propre a la
+     * maquette de travail, c'est elle ; sinon c'est sa ligne partagee.
+     */
+    private function maquetteExistantePourEcriture(ESBTPUniteEnseignement $ue, int $matiereId, $parcoursTravailId): int
+    {
+        if (! $this->lectureMaquettes->pivotPorteLeParcours() || $parcoursTravailId === null) {
+            return LectureMaquettes::MAQUETTE_PARTAGEE;
+        }
+
+        $existe = DB::table('esbtp_ue_matiere')
+            ->where('unite_enseignement_id', $ue->id)
+            ->where('matiere_id', $matiereId)
+            ->where(LectureMaquettes::COLONNE_PARCOURS, (int) $parcoursTravailId)
+            ->exists();
+
+        return $existe ? (int) $parcoursTravailId : LectureMaquettes::MAQUETTE_PARTAGEE;
+    }
+
+    private function suffixeMaquette(int $maquetteId): string
+    {
+        if ($maquetteId === LectureMaquettes::MAQUETTE_PARTAGEE) {
+            return '';
+        }
+
+        $code = ESBTPLMDParcours::whereKey($maquetteId)->value('code');
+
+        return $code ? sprintf(' (maquette %s)', $code) : '';
+    }
+
+    /**
+     * Ecrit une ligne de pivot en visant explicitement (unite, matiere,
+     * maquette).
+     *
+     * La relation Eloquent se cale sur la seule matiere : avec une cle a trois
+     * colonnes, `syncWithoutDetaching` retrouverait une ligne d'une AUTRE
+     * maquette et la reecrirait au lieu d'ajouter la sienne. Tant que la colonne
+     * de parcours n'existe pas, on garde le chemin Eloquent d'origine.
+     */
+    private function ecrirePivotEcue(
+        ESBTPUniteEnseignement $ue,
+        int $matiereId,
+        int $maquetteId,
+        $coefficient,
+        $credit,
+        $ordre
+    ): void {
+        if (! $this->lectureMaquettes->pivotPorteLeParcours()) {
+            $ue->ecues()->syncWithoutDetaching([
+                $matiereId => [
+                    'coefficient_ecue' => $coefficient,
+                    'credit_ecue' => $credit,
+                    'ordre_bulletin' => $ordre,
+                ],
+            ]);
+
+            return;
+        }
+
+        $cle = [
+            'unite_enseignement_id' => $ue->id,
+            'matiere_id' => $matiereId,
+            LectureMaquettes::COLONNE_PARCOURS => $maquetteId,
+        ];
+
+        $valeurs = [
+            'coefficient_ecue' => $coefficient,
+            'credit_ecue' => $credit,
+            'ordre_bulletin' => $ordre,
+            'updated_at' => now(),
+        ];
+
+        $existante = DB::table('esbtp_ue_matiere')->where($cle)->first();
+
+        if ($existante) {
+            DB::table('esbtp_ue_matiere')->where('id', $existante->id)->update($valeurs);
+
+            return;
+        }
+
+        DB::table('esbtp_ue_matiere')->insert($cle + $valeurs + ['created_at' => now()]);
+    }
+
+    /**
      * Détacher un ECUE de l'UE (ne supprime pas la matière).
      */
     public function destroyECUE(Request $request, ESBTPUniteEnseignement $ue, ESBTPMatiere $ecue)
     {
-        // Détacher du pivot many-to-many
-        $ue->ecues()->detach($ecue->id);
+        $maquetteId = $request->filled('parcours_travail_id')
+            ? (int) $request->input('parcours_travail_id')
+            : null;
 
-        // Aussi nettoyer le FK direct si c'est cette UE
-        if ($ecue->unite_enseignement_id === $ue->id) {
-            $ecue->update(['unite_enseignement_id' => null, 'updated_by' => auth()->id()]);
-        }
+        $retraitCiblé = $maquetteId !== null && $this->lectureMaquettes->pivotPorteLeParcours();
+
+        $libelle = $retraitCiblé
+            ? sprintf(
+                '« %s » retiré de la maquette %s.',
+                $ecue->name,
+                (string) (ESBTPLMDParcours::whereKey($maquetteId)->value('code') ?? $maquetteId)
+            )
+            : sprintf('« %s » retiré de l\'unité « %s ».', $ecue->name, $ue->name);
+
+        $this->journal->enregistrer($ue, 'retrait_element', $libelle, function () use ($ue, $ecue, $maquetteId, $retraitCiblé) {
+            if ($retraitCiblé) {
+                $this->retirerDUneMaquette($ue, $ecue, $maquetteId);
+            } else {
+                $ue->ecues()->detach($ecue->id);
+            }
+
+            // La matiere n'est plus dans AUCUNE ligne de pivot de cette unite :
+            // la cle etrangere doit suivre, sinon l'union de getEcuesEffectifs()
+            // la reafficherait. Elle n'est pas supprimee de l'ecole pour autant.
+            $resteDansLUnite = DB::table('esbtp_ue_matiere')
+                ->where('unite_enseignement_id', $ue->id)
+                ->where('matiere_id', $ecue->id)
+                ->exists();
+
+            if (! $resteDansLUnite && (int) $ecue->unite_enseignement_id === (int) $ue->id) {
+                $ecue->update(['unite_enseignement_id' => null, 'updated_by' => auth()->id()]);
+            }
+        });
 
         if ($request->ajax() || $request->wantsJson()) {
-            return response()->json(['success' => true, 'message' => 'ECUE détaché avec succès.']);
+            return response()->json([
+                'success' => true,
+                'message' => $retraitCiblé
+                    ? 'Élément retiré de la maquette.'
+                    : 'Élément retiré de l\'unité.',
+                'journal_id' => $this->journal->derniereEntree?->id,
+            ]);
         }
         return redirect()->route('esbtp.lmd.ue.index')
-            ->with('success', 'ECUE détaché de l\'UE avec succès.');
+            ->with('success', 'Élément retiré de l\'unité avec succès.');
+    }
+
+    /**
+     * Retire un element d'UNE maquette sans le retirer des autres.
+     *
+     * Un element partage n'a qu'une ligne, sans parcours : la supprimer le
+     * retirerait de toutes les maquettes d'un coup. On la remplace donc par une
+     * ligne par maquette restante, en recopiant ses valeurs — les autres
+     * parcours ne voient aucune difference.
+     */
+    private function retirerDUneMaquette(ESBTPUniteEnseignement $ue, ESBTPMatiere $ecue, int $maquetteId): void
+    {
+        $this->materialiserPivotDepuisCleEtrangere($ue->id);
+
+        $colonne = LectureMaquettes::COLONNE_PARCOURS;
+
+        $partagee = DB::table('esbtp_ue_matiere')
+            ->where('unite_enseignement_id', $ue->id)
+            ->where('matiere_id', $ecue->id)
+            ->where($colonne, LectureMaquettes::MAQUETTE_PARTAGEE)
+            ->first();
+
+        if ($partagee) {
+            $restantes = $ue->parcoursMultiple()->pluck('esbtp_lmd_parcours.id')
+                ->unique()->map(fn ($id) => (int) $id)
+                ->reject(fn ($id) => $id === $maquetteId)
+                ->values();
+
+            DB::table('esbtp_ue_matiere')->where('id', $partagee->id)->delete();
+
+            foreach ($restantes as $parcoursId) {
+                DB::table('esbtp_ue_matiere')->updateOrInsert(
+                    [
+                        'unite_enseignement_id' => $ue->id,
+                        'matiere_id' => $ecue->id,
+                        $colonne => $parcoursId,
+                    ],
+                    [
+                        'coefficient_ecue' => $partagee->coefficient_ecue,
+                        'credit_ecue' => $partagee->credit_ecue,
+                        'ordre_bulletin' => $partagee->ordre_bulletin,
+                        'created_at' => $partagee->created_at ?? now(),
+                        'updated_at' => now(),
+                    ]
+                );
+            }
+
+            return;
+        }
+
+        DB::table('esbtp_ue_matiere')
+            ->where('unite_enseignement_id', $ue->id)
+            ->where('matiere_id', $ecue->id)
+            ->where($colonne, $maquetteId)
+            ->delete();
     }
 
     /**
@@ -764,6 +1090,11 @@ class ESBTPLMDUEController extends Controller
 
     /**
      * Synchroniser les parcours d'une UE (multi-semestres via pivot).
+     *
+     * C'est le geste le plus lourd de l'ecran : cocher un parcours fait entrer
+     * d'un coup tous les elements de l'unite dans une maquette et y deplace ses
+     * credits. Il demande donc QUELS elements entrent, il laisse une trace, et
+     * il s'annule.
      */
     public function syncParcours(Request $request, ESBTPUniteEnseignement $ue)
     {
@@ -772,9 +1103,30 @@ class ESBTPLMDUEController extends Controller
             'parcours.*.id' => 'required|exists:esbtp_lmd_parcours,id',
             'parcours.*.semestres' => 'required|array|min:1',
             'parcours.*.semestres.*' => 'integer|between:1,10',
+            'elements' => 'nullable|in:tous,aucun,choisis',
+            'element_ids' => 'nullable|array',
+            'element_ids.*' => 'integer',
         ]);
 
-        $count = DB::transaction(function () use ($request, $ue) {
+        $modeElements = $request->input('elements', 'tous');
+        $elementsEntrants = array_map('intval', $request->input('element_ids', []));
+
+        if ($modeElements !== 'tous' && ! $this->lectureMaquettes->pivotPorteLeParcours()) {
+            // Repondre « c'est fait » alors que les elements entrent quand meme
+            // serait le pire des deux mondes : la personne croirait avoir
+            // restreint la maquette.
+            return response()->json([
+                'success' => false,
+                'message' => "Sur cette instance, un élément appartient encore à toutes les maquettes de son unité : il n'est pas possible de n'en faire entrer qu'une partie. Liez le parcours, puis retirez ce qui ne doit pas y figurer.",
+            ], 422);
+        }
+
+        $libelle = $this->libelleLiaison($ue, $request->input('parcours', []));
+
+        $count = $this->journal->enregistrer($ue, 'liaison_parcours', $libelle, function () use ($request, $ue, $modeElements, $elementsEntrants) {
+            $avant = $ue->parcoursMultiple()->pluck('esbtp_lmd_parcours.id')
+                ->unique()->map(fn ($id) => (int) $id)->values()->all();
+
             $ue->parcoursMultiple()->detach();
             $count = 0;
             foreach ($request->input('parcours', []) as $item) {
@@ -783,10 +1135,135 @@ class ESBTPLMDUEController extends Controller
                     $count++;
                 }
             }
+
+            if ($modeElements !== 'tous') {
+                $this->reserverAuxMaquettesExistantes($ue, $avant, $elementsEntrants);
+            }
+
             return $count;
         });
 
-        return response()->json(['success' => true, 'message' => $count . ' lien(s) parcours-semestre créé(s).']);
+        return response()->json([
+            'success' => true,
+            'message' => $count . ' lien(s) parcours-semestre créé(s).',
+            'journal_id' => $this->journal->derniereEntree?->id,
+        ]);
+    }
+
+    /**
+     * Empeche les elements non choisis d'entrer dans les maquettes nouvellement
+     * liees, en les reservant explicitement a celles qui les voyaient deja.
+     *
+     * Un element sans ligne de pivot propre appartient a toutes les maquettes de
+     * son unite : le laisser tel quel le ferait entrer partout. On ecrit donc
+     * une ligne par maquette d'origine, en recopiant le coefficient, le credit
+     * et l'ordre qu'il portait — l'affichage ne bouge pas pour les parcours qui
+     * l'avaient deja.
+     *
+     * Les ecritures visent le triplet (unite, matiere, parcours) explicitement.
+     * Passer par la relation Eloquent viserait la seule matiere : creer une
+     * ligne reservee reecrirait la ligne partagee au lieu de s'ajouter.
+     *
+     * @param  int[]  $maquettesOrigine  parcours qui portaient l'unite avant le geste
+     * @param  int[]  $elementsEntrants  elements autorises a rejoindre les nouvelles maquettes
+     */
+    private function reserverAuxMaquettesExistantes(ESBTPUniteEnseignement $ue, array $maquettesOrigine, array $elementsEntrants): void
+    {
+        if ($maquettesOrigine === []) {
+            // Aucune maquette d'origine : reserver a rien reviendrait a rendre
+            // l'element invisible partout. On laisse le partage.
+            return;
+        }
+
+        $this->materialiserPivotDepuisCleEtrangere($ue->id);
+
+        $colonne = LectureMaquettes::COLONNE_PARCOURS;
+        $partagees = DB::table('esbtp_ue_matiere')
+            ->where('unite_enseignement_id', $ue->id)
+            ->where($colonne, LectureMaquettes::MAQUETTE_PARTAGEE)
+            ->get();
+
+        foreach ($partagees as $ligne) {
+            if (in_array((int) $ligne->matiere_id, $elementsEntrants, true)) {
+                continue;
+            }
+
+            DB::table('esbtp_ue_matiere')->where('id', $ligne->id)->delete();
+
+            foreach ($maquettesOrigine as $parcoursId) {
+                DB::table('esbtp_ue_matiere')->updateOrInsert(
+                    [
+                        'unite_enseignement_id' => $ue->id,
+                        'matiere_id' => $ligne->matiere_id,
+                        $colonne => $parcoursId,
+                    ],
+                    [
+                        'coefficient_ecue' => $ligne->coefficient_ecue,
+                        'credit_ecue' => $ligne->credit_ecue,
+                        'ordre_bulletin' => $ligne->ordre_bulletin,
+                        'updated_at' => now(),
+                        'created_at' => $ligne->created_at ?? now(),
+                    ]
+                );
+            }
+        }
+    }
+
+    /**
+     * Phrase du journal : ce que la personne lira trois mois plus tard.
+     */
+    private function libelleLiaison(ESBTPUniteEnseignement $ue, array $parcours): string
+    {
+        $ids = array_map(fn ($item) => (int) $item['id'], $parcours);
+        $codes = ESBTPLMDParcours::whereIn('id', $ids)->orderBy('code')->pluck('code')->all();
+
+        return $codes === []
+            ? sprintf('« %s » n\'est plus rattachée à aucune maquette.', $ue->name)
+            : sprintf('Maquettes de « %s » : %s.', $ue->name, implode(', ', $codes));
+    }
+
+    /**
+     * Journal des gestes de maquette d'une unite : qui, quand, quoi.
+     */
+    public function journal(ESBTPUniteEnseignement $ue)
+    {
+        $entrees = ESBTPLMDJournalMaquette::where('unite_enseignement_id', $ue->id)
+            ->with('auteur:id,name')
+            ->orderByDesc('created_at')
+            ->limit(50)
+            ->get();
+
+        return response()->json([
+            'entrees' => $entrees->map(fn ($e) => [
+                'id' => $e->id,
+                'action' => $e->action,
+                'libelle' => $e->libelle,
+                'auteur' => $e->auteur?->name ?? 'Utilisateur supprimé',
+                'date' => $e->created_at?->format('d/m/Y à H:i'),
+                'annulee' => $e->estAnnulee(),
+                'annulable' => ! $e->estAnnulee()
+                    && in_array($e->action, JournalMaquette::ACTIONS_ANNULABLES, true),
+            ]),
+        ]);
+    }
+
+    /**
+     * Annuler un geste : reposer l'etat d'avant, tel quel.
+     */
+    public function annulerJournal(ESBTPUniteEnseignement $ue, ESBTPLMDJournalMaquette $entree)
+    {
+        abort_unless((int) $entree->unite_enseignement_id === (int) $ue->id, 404);
+
+        try {
+            $this->journal->annuler($entree);
+        } catch (ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => collect($e->errors())->flatten()->first(),
+            ], 422);
+        }
+
+        return response()->json(['success' => true, 'message' => 'Geste annulé : l\'état précédent est rétabli.']);
     }
 
     /**
