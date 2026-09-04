@@ -13,6 +13,25 @@ class ESBTPUniteEnseignement extends Model implements Auditable
     use HasFactory, SoftDeletes, \OwenIt\Auditing\Auditable;
 
     /**
+     * Valeur de `esbtp_ue_matiere.parcours_id` qui signifie « commun ».
+     *
+     * Zero, et non NULL : voir la migration qui pose la colonne. Un element
+     * commun est suivi par TOUTES les maquettes qui portent cette unite.
+     */
+    public const PARCOURS_COMMUN = 0;
+
+    /**
+     * Credit de cette unite DANS LA MAQUETTE EN COURS DE LECTURE.
+     *
+     * Propriete PHP declaree, et non attribut Eloquent : elle ne correspond a
+     * aucune colonne de `esbtp_unites_enseignement` et ne doit jamais partir en
+     * base. Elle est renseignee par la lecture qui connait le parcours — au
+     * bulletin, `getUEsForSemestre()` la remplit depuis la ligne de pivot
+     * qu'elle vient deja de lire, donc sans une requete de plus.
+     */
+    public ?int $creditParcours = null;
+
+    /**
      * Whitelist des colonnes auditees (rule pre-merge-checklist + feedback Owen-IT).
      *
      * Sans cette whitelist, table audits exploserait avec metadata sur chaque
@@ -93,8 +112,13 @@ class ESBTPUniteEnseignement extends Model implements Auditable
      */
     public function ecues()
     {
+        // `parcours_id` DOIT figurer ici. Sans lui, Eloquent n'expose pas la
+        // colonne et `$ecue->pivot->parcours_id` rend null SANS LA MOINDRE
+        // ERREUR : tout element reserve a un parcours se relit alors comme
+        // commun et fuit dans les autres maquettes. La panne serait muette,
+        // et c'est un test d'ABSENCE qui l'attrape, pas un test de presence.
         return $this->belongsToMany(ESBTPMatiere::class, 'esbtp_ue_matiere', 'unite_enseignement_id', 'matiere_id')
-            ->withPivot('coefficient_ecue', 'credit_ecue', 'ordre_bulletin')
+            ->withPivot('coefficient_ecue', 'credit_ecue', 'ordre_bulletin', 'parcours_id')
             ->withTimestamps();
     }
 
@@ -126,9 +150,9 @@ class ESBTPUniteEnseignement extends Model implements Auditable
      * délivré tout élément désactivé depuis. Le retrait passe par destroyECUE(),
      * qui détache le pivot ET libère la clé — c'est le geste qui fait foi.
      */
-    public function getEcuesEffectifs(): \Illuminate\Support\Collection
+    public function getEcuesEffectifs(?int $parcoursId = null): \Illuminate\Support\Collection
     {
-        $pivotEcues = $this->ecues;
+        $pivotEcues = $this->dedupliquerLiensPivot($this->ecues, $parcoursId);
         $idsPivot = $pivotEcues->pluck('id')->all();
 
         $parCleEtrangere = $this->matieres
@@ -136,6 +160,83 @@ class ESBTPUniteEnseignement extends Model implements Auditable
             ->reject(fn ($matiere) => in_array($matiere->id, $idsPivot, true));
 
         return $pivotEcues->concat($parCleEtrangere->values())->values();
+    }
+
+    /**
+     * Retient une seule ligne de pivot par element constitutif, et ne garde que
+     * celles qui concernent le parcours demande.
+     *
+     * Deux protections en une, parce qu'elles portent sur la meme collection.
+     *
+     * 1. LE FILTRE. Une ligne commune vaut pour toutes les maquettes ; une ligne
+     *    reservee ne vaut que pour la sienne. Sans parcours demande, on ne
+     *    filtre rien : c'est le comportement d'avant, celui des appelants qui
+     *    ne savent pas encore dans quelle maquette ils lisent.
+     *
+     * 2. LA DEDUPLICATION. Rien n'interdit qu'un meme element porte a la fois
+     *    une ligne commune et une ligne reservee. Il reviendrait alors DEUX
+     *    FOIS : sa note serait comptee deux fois dans la moyenne de l'unite et
+     *    son credit deux fois dans le total. Aucune erreur, juste un bulletin
+     *    faux. La ligne la plus precise gagne — celle du parcours demande —
+     *    parce que c'est celle que quelqu'un a explicitement posee. Hors
+     *    contexte de parcours, on retient la commune : c'est le choix neutre,
+     *    et surtout il est stable d'une lecture a l'autre.
+     *
+     * On travaille ici sur la collection DEJA CHARGEE. Rien ne doit repartir en
+     * base : au bulletin, cette methode est appelee une fois par unite et par
+     * etudiant — sur deux mille inscrits, une requete de plus serait ruineuse.
+     */
+    private function dedupliquerLiensPivot(
+        \Illuminate\Support\Collection $liens,
+        ?int $parcoursId
+    ): \Illuminate\Support\Collection {
+        $retenus = [];
+
+        foreach ($liens as $ecue) {
+            $parcoursDuLien = (int) ($ecue->pivot->parcours_id ?? self::PARCOURS_COMMUN);
+
+            $concerne = $parcoursDuLien === self::PARCOURS_COMMUN
+                || $parcoursId === null
+                || $parcoursDuLien === $parcoursId;
+
+            if (! $concerne) {
+                continue;
+            }
+
+            $id = (int) $ecue->id;
+
+            if (! isset($retenus[$id])) {
+                $retenus[$id] = $ecue;
+                continue;
+            }
+
+            $dejaRetenu = (int) ($retenus[$id]->pivot->parcours_id ?? self::PARCOURS_COMMUN);
+
+            // Le lien reserve supplante le commun quand on lit une maquette
+            // precise ; sinon c'est l'inverse, pour rester deterministe.
+            $remplace = $parcoursId !== null
+                ? ($parcoursDuLien === $parcoursId && $dejaRetenu !== $parcoursId)
+                : ($parcoursDuLien === self::PARCOURS_COMMUN && $dejaRetenu !== self::PARCOURS_COMMUN);
+
+            if ($remplace) {
+                $retenus[$id] = $ecue;
+            }
+        }
+
+        return collect(array_values($retenus));
+    }
+
+    /**
+     * Credit a retenir pour cette unite, maquette comprise.
+     *
+     * La maquette prime quand elle s'est prononcee ; sinon c'est le credit de
+     * l'unite, comme avant. Tant que personne ne renseigne de credit par
+     * parcours, cette methode rend exactement `credit` : rien ne bouge dans
+     * les bulletins deja produits.
+     */
+    public function creditEffectif(): int
+    {
+        return (int) ($this->creditParcours ?? $this->credit ?? 0);
     }
 
     /**
@@ -187,7 +288,7 @@ class ESBTPUniteEnseignement extends Model implements Auditable
             'esbtp_lmd_parcours_ue',
             'unite_enseignement_id',
             'parcours_id'
-        )->withPivot('semestre', 'is_optional', 'ordre')->withTimestamps();
+        )->withPivot('semestre', 'is_optional', 'ordre', 'credit')->withTimestamps();
     }
 
     /**

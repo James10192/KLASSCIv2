@@ -46,9 +46,17 @@
     // Les éléments constitutifs sont lus par la même méthode que le reste de
     // l'application (pivot d'abord, clé étrangère en repli) : ce que l'écran
     // affiche est exactement ce que l'enregistrement va synchroniser.
+    //
+    // Sans maquette de travail, on montre l'unité entière — et c'est voulu :
+    // ce formulaire SYNCHRONISE ce qu'il affiche. Restreindre la lecture à une
+    // maquette pendant que l'enregistrement, lui, écrit encore sur l'unité
+    // entière ferait disparaître en silence les éléments de l'autre parcours.
+    // La lecture ne se scopera ici qu'une fois l'écriture scopée elle aussi.
+    $parcoursDeTravail = $parcoursTravail ?? null;
+
     $ecuesInitiaux = [];
     if ($enModification) {
-        foreach ($ue->getEcuesEffectifs() as $ecue) {
+        foreach ($ue->getEcuesEffectifs($parcoursDeTravail) as $ecue) {
             $ecuesInitiaux[] = [
                 'name' => $ecue->name,
                 'code' => $ecue->code ?? '',

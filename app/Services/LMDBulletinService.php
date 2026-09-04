@@ -149,10 +149,17 @@ class LMDBulletinService
             $resultatsUEs = [];
             $creditsTotaux = 0;
 
+            // La maquette de l'etudiant : elle designe les elements a retenir
+            // dans une unite partagee entre deux parcours.
+            $parcoursId = $parcours?->id !== null ? (int) $parcours->id : null;
+
             foreach ($ues as $ue) {
-                $resultatUE = $this->calculerResultatUE($bulletin, $ue, $etudiantId, $classeId, $semestre, $anneeUniversitaireId);
+                $resultatUE = $this->calculerResultatUE($bulletin, $ue, $etudiantId, $classeId, $semestre, $anneeUniversitaireId, $parcoursId);
                 $resultatsUEs[] = $resultatUE;
-                $creditsTotaux += $ue->credit;
+                // Le total suit le credit REELLEMENT inscrit sur le resultat :
+                // sur un bulletin deja delivre, le reglage ci-dessous peut avoir
+                // decide de conserver l'ancien.
+                $creditsTotaux += (int) $resultatUE->credit;
             }
 
             // 4. Calculer la moyenne generale ponderee par credits
@@ -256,7 +263,20 @@ class LMDBulletinService
                     ->get()
                     ->keyBy('id');
 
-                return $pivotData->map(fn($p) => $ues->get($p->unite_enseignement_id))->filter()->values();
+                // Le credit propre a la maquette voyage avec l'unite. Il est lu
+                // ici, sur la ligne de pivot DEJA chargee : une requete de plus
+                // par unite et par etudiant serait ruineuse sur deux mille
+                // inscrits.
+                return $pivotData->map(function ($p) use ($ues) {
+                    $ue = $ues->get($p->unite_enseignement_id);
+                    if ($ue !== null) {
+                        $ue->creditParcours = isset($p->credit) && $p->credit !== null
+                            ? (int) $p->credit
+                            : null;
+                    }
+
+                    return $ue;
+                })->filter()->values();
             }
         }
 
@@ -270,6 +290,89 @@ class LMDBulletinService
     }
 
     /**
+     * Ecarts de credits releves sur des bulletins deja delivres, pendant cette
+     * generation. Vide dans le cas normal.
+     *
+     * @return array<int, array{bulletin_id:int, unite_enseignement_id:int, ancien:int, nouveau:int}>
+     */
+    public function ecartsCreditsBulletinsPublies(): array
+    {
+        return $this->ecartsCreditsBulletinsPublies;
+    }
+
+    /** @var array<int, array{bulletin_id:int, unite_enseignement_id:int, ancien:int, nouveau:int}> */
+    protected array $ecartsCreditsBulletinsPublies = [];
+
+    /**
+     * Credit a inscrire sur le resultat d'une unite.
+     *
+     * Le credit d'une unite peut desormais dependre de la maquette. Regenerer un
+     * bulletin DEJA DELIVRE changerait donc son total de credits et, comme la
+     * moyenne generale est ponderee par ces credits, la moyenne imprimee sur un
+     * document que l'etablissement a signe. Selon l'ecole, c'est une correction
+     * attendue ou une falsification : cela ne se tranche pas dans le code.
+     *
+     * Reglage d'instance « lmd_bulletin_credits_regeneration » :
+     *  - `appliquer` (defaut) : on ecrit le nouveau credit — comportement actuel,
+     *    donc rien ne bouge au deploiement ;
+     *  - `avertir` : on conserve le credit du document delivre, on journalise et
+     *    on expose l'ecart pour que quelqu'un le regarde ;
+     *  - `refuser` : la regeneration s'arrete, avec un message explicite.
+     *
+     * Un bulletin non delivre n'est concerne par aucun de ces cas.
+     */
+    protected function creditRetenuPourResultat(
+        ESBTPLMDBulletin $bulletin,
+        ESBTPUniteEnseignement $ue,
+        ESBTPLMDResultatUE $resultatExistant
+    ): int {
+        $creditCalcule = $ue->creditEffectif();
+
+        if (! $bulletin->is_published || ! $resultatExistant->exists) {
+            return $creditCalcule;
+        }
+
+        $creditDelivre = (int) ($resultatExistant->credit ?? 0);
+
+        if ($creditDelivre === $creditCalcule) {
+            return $creditCalcule;
+        }
+
+        $conduite = (string) $this->getSetting('lmd_bulletin_credits_regeneration', 'appliquer');
+
+        if ($conduite === 'refuser') {
+            throw new \RuntimeException(sprintf(
+                "Regeneration refusee : le bulletin %d est deja delivre et le credit de l'unite %d passerait de %d a %d. "
+                . 'Reglage « lmd_bulletin_credits_regeneration ».',
+                $bulletin->id,
+                $ue->id,
+                $creditDelivre,
+                $creditCalcule
+            ));
+        }
+
+        if ($conduite === 'avertir') {
+            $this->ecartsCreditsBulletinsPublies[] = [
+                'bulletin_id' => (int) $bulletin->id,
+                'unite_enseignement_id' => (int) $ue->id,
+                'ancien' => $creditDelivre,
+                'nouveau' => $creditCalcule,
+            ];
+
+            Log::warning("Credit d'unite fige sur un bulletin deja delivre", [
+                'bulletin_id' => $bulletin->id,
+                'unite_enseignement_id' => $ue->id,
+                'credit_delivre' => $creditDelivre,
+                'credit_calcule' => $creditCalcule,
+            ]);
+
+            return $creditDelivre;
+        }
+
+        return $creditCalcule;
+    }
+
+    /**
      * Calculer le resultat d'une UE pour un etudiant.
      */
     protected function calculerResultatUE(
@@ -278,24 +381,26 @@ class LMDBulletinService
         int $etudiantId,
         int $classeId,
         int $semestre,
-        int $anneeUniversitaireId
+        int $anneeUniversitaireId,
+        ?int $parcoursId = null
     ): ESBTPLMDResultatUE {
 
-        // Creer/mettre a jour le resultat UE
-        $resultatUE = ESBTPLMDResultatUE::updateOrCreate(
-            [
-                'bulletin_id' => $bulletin->id,
-                'unite_enseignement_id' => $ue->id,
-            ],
-            [
-                'etudiant_id' => $etudiantId,
-                'credit' => $ue->credit,
-                'updated_by' => auth()->id(),
-            ]
-        );
+        // `firstOrNew` plutot que `updateOrCreate` : il faut connaitre le credit
+        // DEJA inscrit avant de decider s'il a le droit de changer. Le cout est
+        // le meme — `updateOrCreate` commence lui aussi par cette lecture.
+        $resultatUE = ESBTPLMDResultatUE::firstOrNew([
+            'bulletin_id' => $bulletin->id,
+            'unite_enseignement_id' => $ue->id,
+        ]);
+
+        $resultatUE->fill([
+            'etudiant_id' => $etudiantId,
+            'credit' => $this->creditRetenuPourResultat($bulletin, $ue, $resultatUE),
+            'updated_by' => auth()->id(),
+        ])->save();
 
         // Calculer les resultats de chaque ECUE — pivot prioritaire, fallback HasMany
-        $ecues = $ue->getEcuesEffectifs();
+        $ecues = $ue->getEcuesEffectifs($parcoursId);
         $totalPoints = 0;
         $totalCoefficients = 0;
 

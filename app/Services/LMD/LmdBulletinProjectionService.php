@@ -159,6 +159,12 @@ class LmdBulletinProjectionService
         // l'autre — sans que personne puisse savoir lequel fait foi.
         $notesFinales = $this->notesFinalesParMatiere($bulletin);
 
+        // La maquette de l'etudiant. Sans elle, cette projection compterait les
+        // elements reserves a l'autre parcours d'une unite partagee : la moyenne
+        // affichee ici contredirait alors le bulletin, sans qu'on sache lequel
+        // fait foi.
+        $parcoursId = $classe->parcours_id !== null ? (int) $classe->parcours_id : null;
+
         foreach ($ues as $ue) {
             $resultatUE = $this->calculerProjectionUE(
                 $ue,
@@ -168,7 +174,8 @@ class LmdBulletinProjectionService
                 $anneeUniversitaireId,
                 $allNotes,
                 $enseignantMap,
-                $notesFinales
+                $notesFinales,
+                $parcoursId
             );
 
             $resultatsUEs[] = $resultatUE;
@@ -222,9 +229,10 @@ class LmdBulletinProjectionService
         int $anneeUniversitaireId,
         Collection $allNotes,
         Collection $enseignantMap,
-        Collection $notesFinales
+        Collection $notesFinales,
+        ?int $parcoursId = null
     ): array {
-        $ecues = $ue->getEcuesEffectifs();
+        $ecues = $ue->getEcuesEffectifs($parcoursId);
         $totalPoints = 0;
         $totalCoefficients = 0;
         $missingEcues = 0;
@@ -275,7 +283,9 @@ class LmdBulletinProjectionService
                 ? ESBTPLMDResultatUE::STATUT_AQ
                 : ESBTPLMDResultatUE::STATUT_NAQ,
             'mention' => $this->bulletins->determinerMentionUE($moyenneUE),
-            'credit' => (int) $ue->credit,
+            // Le credit de l'unite DANS CETTE MAQUETTE : identique a `credit`
+            // tant qu'aucun credit par parcours n'est renseigne.
+            'credit' => $ue->creditEffectif(),
             'credits_capitalises' => 0,
             'resultats_ecues' => collect($resultatsECUEs),
             'missing_ecues' => $missingEcues,

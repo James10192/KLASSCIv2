@@ -76,9 +76,17 @@ class MatiereTreeBuilder
         }
 
         // 2. Recolter les ECUEs effectifs (priorite pivot esbtp_ue_matiere, fallback FK direct)
+        //    Le parcours est deja en main depuis le debut de cette methode :
+        //    c'est celui de la classe. Ne pas le transmettre revenait a servir
+        //    a Batiment les elements reserves a Travaux Publics — et comme
+        //    cette classe est la source canonique des matieres d'une classe,
+        //    l'erreur se propageait a l'emploi du temps, aux seances et aux
+        //    notes sans qu'aucun de ces ecrans ne puisse s'en apercevoir.
+        $parcoursId = (int) $parcours->id;
+
         $ecuesByMatiereId = collect();
         foreach ($ues as $ue) {
-            foreach ($ue->getEcuesEffectifs() as $ecue) {
+            foreach ($ue->getEcuesEffectifs($parcoursId) as $ecue) {
                 if ($ecue && ! $ecuesByMatiereId->has($ecue->id)) {
                     // Force l'association UE -> ECUE pour le grouping par UE
                     $ecue->setRelation('uniteEnseignement', $ue);

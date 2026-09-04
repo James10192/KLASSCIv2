@@ -12,6 +12,10 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ## Septembre 2026
 
+### Corrections
+
+- **Une unité d'enseignement partagée entre deux parcours n'impose plus ses matières à l'autre** — un même intitulé d'unité vaut pour toute l'école, et deux parcours qui la suivent n'y étudient pourtant pas forcément les mêmes matières. La plateforme ne savait pas faire cette différence : elle rendait un seul sac, commun aux deux. Le planning, le suivi des matières d'une classe, les bulletins et la projection de résultats lisent désormais la liste **du parcours concerné** ; les matières restent visibles de tous tant que personne n'en réserve à un parcours en particulier, donc rien ne change pour une école qui n'en a pas besoin. Deux effets s'arrêtent avec ça : une matière ne peut plus compter deux fois dans la moyenne d'une unité, et l'ajout d'une matière n'est plus refusé au motif que la somme des crédits dépasse — cette somme additionnait les matières des deux parcours contre le crédit d'un seul. Le crédit d'une unité peut par ailleurs différer d'un parcours à l'autre ; comme un bulletin déjà délivré pondère sa moyenne par ces crédits, un réglage d'établissement décide ce qui se passe si on le régénère : appliquer le nouveau crédit — ce que la plateforme faisait jusqu'ici, et qui reste le comportement par défaut —, conserver celui du document délivré en signalant l'écart, ou refuser la régénération.
+
 ### Sécurité
 
 - **La saisie des notes de seconde session se limite aux matières de l'enseignant** — l'écran de rattrapage s'ouvre à qui détient le droit de saisie, et il montrait alors les notes de seconde session de toute la promotion, quel que soit l'enseignant en charge. L'enregistrement était plus ouvert encore : la ligne à modifier étant désignée par le formulaire, rien n'empêchait d'inscrire une note sur la matière d'un collègue. Lecture et enregistrement sont désormais bornés aux matières confiées à l'enseignant. Qui supervise le rattrapage continue de voir la session entière — c'est ce qui distingue les deux droits.

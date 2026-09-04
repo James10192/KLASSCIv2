@@ -730,11 +730,19 @@ class ESBTPLMDPlanningController extends Controller
             return collect();
         }
 
-        $matiereIds = $ues->flatMap->getEcuesEffectifs()->pluck('id')->unique();
+        // Cet ecran est celui d'UNE maquette : le parcours est connu des le
+        // premier caractere de l'URL. On le passe, sinon la planification de
+        // Batiment afficherait les elements reserves a Travaux Publics.
+        $parcoursId = (int) $parcours->id;
+
+        $matiereIds = $ues->flatMap
+            ->getEcuesEffectifs($parcoursId)
+            ->pluck('id')
+            ->unique();
         $planifs = $this->loadPlanifications($matiereIds, $parcours, $filters);
 
-        return $ues->map(function (ESBTPUniteEnseignement $ue) use ($planifs) {
-            $ecues = $ue->getEcuesEffectifs()->map(fn ($ecue) => [
+        return $ues->map(function (ESBTPUniteEnseignement $ue) use ($planifs, $parcoursId) {
+            $ecues = $ue->getEcuesEffectifs($parcoursId)->map(fn ($ecue) => [
                 'ecue' => $ecue,
                 'planif' => $planifs->get($ecue->id),
             ])->values();

@@ -64,11 +64,17 @@ class ESBTPLMDUEController extends Controller
         $perPage = $request->integer('per_page', 20);
         $ues = $query->orderBy('code')->orderBy('name')->paginate($perPage)->withQueryString();
 
+        // La maquette de travail. C'est ce meme filtre qui restreint deja la
+        // liste des unites : le reutiliser pour les elements constitutifs evite
+        // d'en poser un second, et surtout evite qu'une liste filtree sur
+        // Batiment affiche les elements reserves a Travaux Publics.
+        $parcoursTravail = $this->parcoursDeTravail($request);
+
         // JSON response for AJAX
         if ($request->ajax() || $request->wantsJson() || $request->format === 'json') {
             return response()->json([
-                'ues' => $ues->map(function ($ue) {
-                    $ecues = $ue->getEcuesEffectifs();
+                'ues' => $ues->map(function ($ue) use ($parcoursTravail) {
+                    $ecues = $ue->getEcuesEffectifs($parcoursTravail);
                     return [
                         'id' => $ue->id,
                         'code' => $ue->code,
@@ -92,9 +98,19 @@ class ESBTPLMDUEController extends Controller
                             'coefficient' => $e->pivot->coefficient_ecue ?? $e->coefficient_ecue ?? null,
                             'credit' => $e->pivot->credit_ecue ?? $e->credit_ecue ?? null,
                             'ordre' => $e->pivot->ordre_bulletin ?? $e->ordre_bulletin ?? 0,
+                            // 0 = suivi par toutes les maquettes qui portent
+                            // cette unite. L'ecran a besoin de la valeur brute
+                            // pour NOMMER les maquettes concernees plutot que
+                            // d'afficher un mot — « commun » designe un
+                            // ensemble qui bouge des qu'on ajoute un parcours.
+                            'parcours_id' => (int) ($e->pivot->parcours_id
+                                ?? \App\Models\ESBTPUniteEnseignement::PARCOURS_COMMUN),
                         ]),
                     ];
                 }),
+                // Rappelee au client pour qu'un modal, qui recouvre la page,
+                // puisse afficher sur quelle maquette on est en train d'ecrire.
+                'parcours_travail' => $parcoursTravail,
                 'pagination' => [
                     'current_page' => $ues->currentPage(),
                     'last_page' => $ues->lastPage(),
@@ -109,7 +125,7 @@ class ESBTPLMDUEController extends Controller
         $filieres = ESBTPFiliere::orderBy('name')->get();
         $niveaux = ESBTPNiveauEtude::orderBy('name')->get();
 
-        return view('esbtp.lmd.ue.index', compact('ues', 'parcours', 'filieres', 'niveaux'));
+        return view('esbtp.lmd.ue.index', compact('ues', 'parcours', 'filieres', 'niveaux', 'parcoursTravail'));
     }
 
     /**
@@ -172,16 +188,21 @@ class ESBTPLMDUEController extends Controller
     /**
      * Afficher le détail d'une UE avec ses ECUEs (matières).
      */
-    public function show(ESBTPUniteEnseignement $ue)
+    public function show(Request $request, ESBTPUniteEnseignement $ue)
     {
         $ue->load([
             'matieres', 'ecues', 'filiere', 'niveau', 'parcours',
             'parcoursMultiple', 'responsableUe', 'createdBy', 'updatedBy',
         ]);
 
+        // La maquette de travail suit l'utilisateur depuis la liste. Absente,
+        // on montre l'unite entiere : c'est ce que faisait cet ecran avant, et
+        // c'est encore le seul moyen de voir d'un coup ce qu'elle porte.
+        $parcoursTravail = $this->parcoursDeTravail($request);
+
         // Tri sur une clé composite (ordre bulletin, puis intitulé) : une seule
         // fermeture, compatible avec toutes les versions de Collection::sortBy.
-        $ecues = $ue->getEcuesEffectifs()
+        $ecues = $ue->getEcuesEffectifs($parcoursTravail)
             ->sortBy(fn ($m) => sprintf(
                 '%06d|%s',
                 (int) ($m->pivot?->ordre_bulletin ?? $m->ordre_bulletin ?? 0),
@@ -192,6 +213,7 @@ class ESBTPLMDUEController extends Controller
         return view('esbtp.lmd.ue.show', [
             'ue' => $ue,
             'ecues' => $ecues,
+            'parcoursTravail' => $parcoursTravail,
             'volumesHoraires' => $this->volumesHorairesParEcue($ue, $ecues),
         ]);
     }
@@ -577,8 +599,10 @@ class ESBTPLMDUEController extends Controller
         $creditEcue = $validated['credit_ecue'] ?? null;
         $ordreBulletin = $validated['ordre_bulletin'] ?? 0;
 
-        // Vérifier que la somme des crédits ECUE ne dépasse pas le crédit de l'UE
-        if ($error = $this->checkCreditOverflow($ue, $creditEcue, null, $request)) {
+        // Vérifier que la somme des crédits ECUE ne dépasse pas le crédit de l'UE,
+        // dans la maquette ou l'on ecrit — pas sur l'unite entiere.
+        $parcoursTravail = $this->parcoursDeTravail($request);
+        if ($error = $this->checkCreditOverflow($ue, $creditEcue, null, $request, $parcoursTravail)) {
             return $error;
         }
 
@@ -649,8 +673,10 @@ class ESBTPLMDUEController extends Controller
             'ordre_bulletin'  => 'nullable|integer|min:0',
         ]);
 
-        // Vérifier que la somme des crédits ECUE ne dépasse pas le crédit de l'UE
-        if ($error = $this->checkCreditOverflow($ue, $validated['credit_ecue'] ?? null, $ecue->id, $request)) {
+        // Vérifier que la somme des crédits ECUE ne dépasse pas le crédit de l'UE,
+        // dans la maquette ou l'on ecrit — pas sur l'unite entiere.
+        $parcoursTravail = $this->parcoursDeTravail($request);
+        if ($error = $this->checkCreditOverflow($ue, $validated['credit_ecue'] ?? null, $ecue->id, $request, $parcoursTravail)) {
             return $error;
         }
 
@@ -793,29 +819,101 @@ class ESBTPLMDUEController extends Controller
      * Vérifier que l'ajout/modification d'un crédit ECUE ne dépasse pas le crédit de l'UE.
      * Retourne une response d'erreur si dépassement, null sinon.
      */
-    private function checkCreditOverflow(ESBTPUniteEnseignement $ue, $creditEcue, ?int $excludeMatiereId, Request $request)
-    {
-        if (!$ue->credit || !$creditEcue) {
+    private function checkCreditOverflow(
+        ESBTPUniteEnseignement $ue,
+        $creditEcue,
+        ?int $excludeMatiereId,
+        Request $request,
+        ?int $parcoursId = null
+    ) {
+        $creditReference = $this->creditUePourParcours($ue, $parcoursId);
+
+        // Sans credit de reference, ou sans credit saisi, il n'y a rien a
+        // comparer. C'est aussi ce qui rendait le defaut corrige ici si
+        // difficile a cerner : la garde ne se declenchait que lorsque les deux
+        // valeurs etaient renseignees, donc le refus a tort n'apparaissait que
+        // sur certaines unites, jamais sur les autres.
+        if (! $creditReference || ! $creditEcue) {
             return null;
         }
 
-        $query = DB::table('esbtp_ue_matiere')->where('unite_enseignement_id', $ue->id);
+        // On ne somme que les elements que CETTE maquette suit reellement.
+        // Auparavant la somme portait sur toute l'unite, tous parcours
+        // confondus : des qu'une unite partagee portait les elements de deux
+        // maquettes, le total depassait mecaniquement et l'ecran refusait en
+        // 422 une saisie parfaitement legitime.
+        //
+        // Hors maquette (aucun parcours de travail), on s'en tient aux liens
+        // communs : c'est exactement ce que comptait l'ancienne somme tant que
+        // rien n'etait reserve, et cela ne peut jamais refuser a tort.
+        $query = DB::table('esbtp_ue_matiere')
+            ->where('unite_enseignement_id', $ue->id)
+            ->where(function ($q) use ($parcoursId) {
+                $q->where('parcours_id', ESBTPUniteEnseignement::PARCOURS_COMMUN);
+                if ($parcoursId !== null) {
+                    $q->orWhere('parcours_id', $parcoursId);
+                }
+            });
+
         if ($excludeMatiereId) {
             $query->where('matiere_id', '!=', $excludeMatiereId);
         }
         $creditsAutres = (int) $query->sum('credit_ecue');
 
-        if ($creditsAutres + (int) $creditEcue <= (int) $ue->credit) {
+        if ($creditsAutres + (int) $creditEcue <= $creditReference) {
             return null;
         }
 
-        $restant = (int) $ue->credit - $creditsAutres;
+        $restant = $creditReference - $creditsAutres;
         $message = "La somme des crédits ECUE ({$creditsAutres} + {$creditEcue} = " . ($creditsAutres + (int) $creditEcue) . ") "
-            . "dépasse le crédit de l'UE ({$ue->credit}). Il reste {$restant} crédit(s) disponible(s).";
+            . "dépasse le crédit de l'UE ({$creditReference}). Il reste {$restant} crédit(s) disponible(s).";
 
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json(['success' => false, 'message' => $message], 422);
         }
         return redirect()->back()->with('error', $message);
+    }
+
+    /**
+     * Credit de reference de l'unite pour la maquette en cours.
+     *
+     * Une unite partagee peut ne pas peser le meme nombre de credits d'une
+     * maquette a l'autre. La maquette prime quand elle s'est prononcee, sinon
+     * on retient le credit de l'unite — c'est-a-dire le comportement d'avant,
+     * tant que personne n'a renseigne de credit par parcours.
+     *
+     * Une unite peut etre rattachee a plusieurs semestres pour un meme
+     * parcours ; on retient alors le premier credit renseigne, par semestre
+     * croissant. Le cas existe deja en base sur esbtp-abidjan (sept unites de
+     * Batiment sur deux semestres) et releve du nettoyage de donnees, pas de
+     * cette garde.
+     */
+    private function creditUePourParcours(ESBTPUniteEnseignement $ue, ?int $parcoursId): int
+    {
+        if ($parcoursId !== null) {
+            $creditMaquette = DB::table('esbtp_lmd_parcours_ue')
+                ->where('parcours_id', $parcoursId)
+                ->where('unite_enseignement_id', $ue->id)
+                ->whereNotNull('credit')
+                ->orderBy('semestre')
+                ->value('credit');
+
+            if ($creditMaquette !== null) {
+                return (int) $creditMaquette;
+            }
+        }
+
+        return (int) ($ue->credit ?? 0);
+    }
+
+    /**
+     * La maquette sur laquelle l'utilisateur travaille, telle que la liste la
+     * transporte. Absente, on ne restreint rien : c'est le comportement d'avant.
+     */
+    private function parcoursDeTravail(Request $request): ?int
+    {
+        return $request->filled('parcours_id')
+            ? (int) $request->input('parcours_id')
+            : null;
     }
 }
