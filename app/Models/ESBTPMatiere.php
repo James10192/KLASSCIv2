@@ -235,8 +235,12 @@ class ESBTPMatiere extends Model implements Auditable
      */
     public function unitesEnseignementMultiple()
     {
+        // `parcours_id` : la maquette a laquelle ce rattachement appartient, ou 0
+        // s il vaut pour toutes celles de l unite. Declare ici comme du cote UE,
+        // et pour la meme raison : un pivot non declare rend null sans erreur,
+        // donc un rattachement reserve se lirait comme commun.
         return $this->belongsToMany(ESBTPUniteEnseignement::class, 'esbtp_ue_matiere', 'matiere_id', 'unite_enseignement_id')
-            ->withPivot('coefficient_ecue', 'credit_ecue', 'ordre_bulletin')
+            ->withPivot('coefficient_ecue', 'credit_ecue', 'ordre_bulletin', 'parcours_id')
             ->withTimestamps();
     }
 
