@@ -39,6 +39,21 @@ class Kernel extends ConsoleKernel
         // assemblés jamais récupérés). Sans ça, rien ne les reprenait.
         $schedule->command('bulletins:purger-exports')->hourly();
 
+        // Statistiques de la page d'audit. Le calcul (sept COUNT sur `audits`)
+        // rendait la page inatteignable sur les grosses instances ; il vit
+        // desormais ici et la page ne fait plus qu'une lecture.
+        //
+        // On passe toutes les quinze minutes mais la commande se limite d'elle
+        // meme au reglage `audit.stats.frequence_minutes` (60 par defaut) : ce
+        // tic frequent ne sert qu'a permettre aux instances qui veulent des
+        // compteurs plus frais de le regler sans toucher au code.
+        $schedule->command('audit:rafraichir-statistiques')
+            ->everyFifteenMinutes()
+            ->name('statistiques-audit')
+            ->withoutOverlapping()
+            ->onOneServer()
+            ->runInBackground();
+
         // Retention legale des proces-verbaux de deliberation. Le reglage
         // lmd_pv_retention_years annoncait une duree que rien ne mesurait : ce
         // recensement la mesure. Il ne PURGE PAS — pas de --purger ici : il liste,

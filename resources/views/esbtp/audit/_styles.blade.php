@@ -78,6 +78,22 @@
 .au-kpi--alert { border-color: rgba(252,165,165,.4); background: rgba(220,38,38,.18); }
 .au-kpi--alert .au-kpi-icon { background: rgba(220,38,38,.3); }
 
+/* Fraicheur des compteurs : ils viennent d'un instantane calcule en tache de fond,
+   la personne qui lit doit savoir de quand il date. */
+.au-stats-age {
+    margin-top: .75rem; display: flex; align-items: center; gap: .4rem;
+    font-size: .72rem; color: rgba(255,255,255,.6);
+}
+.au-stats-age--perime { color: #fcd34d; }
+.au-stats-indispo {
+    margin-top: 1.5rem; display: flex; align-items: flex-start; gap: .75rem;
+    background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.15);
+    border-radius: 12px; padding: .9rem 1rem;
+}
+.au-stats-indispo i { color: rgba(255,255,255,.75); margin-top: .15rem; }
+.au-stats-indispo strong { display: block; color: #fff; font-size: .88rem; }
+.au-stats-indispo span { display: block; margin-top: .2rem; font-size: .78rem; color: rgba(255,255,255,.65); }
+
 /* ───── FILTRES ───── */
 .au-filters {
     background: #fff; border: 1px solid #e2e8f0; border-radius: 14px;
