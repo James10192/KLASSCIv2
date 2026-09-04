@@ -519,6 +519,10 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
         // la liste d'evaluations voyage dans la requete. Simulation par defaut.
         Route::post('/evaluations/deplacer-periode', [App\Http\Controllers\API\CLI\CLIEvaluationDeplacementController::class, 'deplacer'])
             ->name('evaluations.deplacer-periode');
+        // Poser la note manquante aux eleves qu'une evaluation deja notee a
+        // oublies, pour que la matiere cesse de disparaitre de leur bulletin.
+        Route::post('/evaluations/noter-les-non-notes', [App\Http\Controllers\API\CLI\CLINotesZeroController::class, 'noter'])
+            ->name('evaluations.noter-les-non-notes');
         Route::post('/academic-pilotage/backfill', [App\Http\Controllers\API\CLI\CLIAcademicPilotageController::class, 'backfill'])
             ->name('academic-pilotage.backfill');
         Route::post('/academic-pilotage/refresh', [App\Http\Controllers\API\CLI\CLIAcademicPilotageController::class, 'refresh'])
