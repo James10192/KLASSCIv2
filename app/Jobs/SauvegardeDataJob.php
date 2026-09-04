@@ -164,6 +164,20 @@ class SauvegardeDataJob implements ShouldQueue
     {
         $fichiersAsauvegarder = [
             'storage/app/public' => 'fichiers_uploads',
+            // Les pieces du dossier etudiant — extraits de naissance, pieces
+            // d'identite, diplomes.
+            //
+            // Elles vivaient sous `storage/app/public`, donc sauvegardees par la
+            // premiere ligne. Les avoir mises a l'abri du serveur web les a
+            // sorties de ce repertoire, et donc de la sauvegarde : le correctif
+            // de securite a ouvert un trou de conservation, sans que rien ne le
+            // dise. Tant que l'original papier existe, la perte reste
+            // rattrapable ; elle cesse de l'etre le jour ou une ecole consulte a
+            // l'ecran plutot que d'aller au classeur, ce qui est precisement le
+            // but de ces fichiers.
+            //
+            // Voir App\Services\Documents\StockageDocumentEtudiant::DOSSIER.
+            'storage/app/dossiers-etudiants' => 'pieces_dossier_etudiants',
             'storage/logs' => 'logs',
             '.env' => 'configuration/.env'
         ];

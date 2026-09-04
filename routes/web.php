@@ -2586,7 +2586,18 @@ Route::middleware(['auth', 'permission:bulletins.configure'])->group(function ()
 
 // Routes classes â€” PROTÃ‰GÃ‰ES
 Route::middleware(['auth'])->group(function () {
-    Route::post('/esbtp/classes/sync-systeme-academique', [ESBTPClasseController::class, 'syncSystemeAcademique'])->name('esbtp.classes.sync-systeme-academique');
+    // Ce groupe ne gardait que « etre connecte ». Cinq de ses routes ECRIVENT :
+    // elles changeaient les matieres d'une classe, y ajoutaient ou en retiraient
+    // des eleves, et rejouaient la synchronisation du systeme academique — sans
+    // qu'aucune permission ne soit exigee. N'importe quel compte authentifie,
+    // etudiant compris, pouvait les appeler. Les FormRequest correspondantes
+    // rendaient `authorize(): true`, donc rien ne rattrapait en aval.
+    //
+    // Les lectures restent ouvertes au groupe : elles alimentent des selecteurs
+    // et des tableaux deja gardes par les ecrans qui les appellent.
+    Route::post('/esbtp/classes/sync-systeme-academique', [ESBTPClasseController::class, 'syncSystemeAcademique'])
+        ->middleware('permission:classes.edit')
+        ->name('esbtp.classes.sync-systeme-academique');
     Route::get('/esbtp/classes/{classe}/etudiants', [ESBTPClasseController::class, 'getEtudiants'])->name('esbtp.classes.etudiants');
     Route::get('/esbtp/classes/{classe}/semestres-lmd', function (\App\Models\ESBTPClasse $classe) {
         return response()->json(['semestres' => $classe->getSemestresLMD()]);
@@ -2602,11 +2613,19 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/esbtp/classes-export/csv', [ESBTPClasseController::class, 'exportCsv'])->name('esbtp.classes.export.csv');
     Route::get('/esbtp/classes-export/pdf', [ESBTPClasseController::class, 'exportPdf'])->name('esbtp.classes.export.pdf');
     Route::get('/esbtp/classes/{classe}/refresh-ligne', [ESBTPClasseController::class, 'refreshLigne'])->name('esbtp.classes.refresh-ligne');
-    Route::post('/esbtp/classes/{classe}/update-matieres', [ESBTPClasseController::class, 'updateMatieres'])->name('esbtp.classes.update-matieres');
+    Route::post('/esbtp/classes/{classe}/update-matieres', [ESBTPClasseController::class, 'updateMatieres'])
+        ->middleware('permission:classes.edit')
+        ->name('esbtp.classes.update-matieres');
     Route::get('/esbtp/classes/{classe}/search-available-students', [ESBTPClasseController::class, 'searchAvailableStudents'])->name('esbtp.classes.search-available-students');
-    Route::post('/esbtp/classes/{classe}/add-students', [ESBTPClasseController::class, 'addStudents'])->name('esbtp.classes.add-students');
-    Route::post('/esbtp/classes/{classe}/remove-students', [ESBTPClasseController::class, 'removeStudents'])->name('esbtp.classes.remove-students');
-    Route::post('/esbtp/classes/{classe}/check-student-data', [ESBTPClasseController::class, 'checkStudentData'])->name('esbtp.classes.check-student-data');
+    Route::post('/esbtp/classes/{classe}/add-students', [ESBTPClasseController::class, 'addStudents'])
+        ->middleware('permission:classes.edit')
+        ->name('esbtp.classes.add-students');
+    Route::post('/esbtp/classes/{classe}/remove-students', [ESBTPClasseController::class, 'removeStudents'])
+        ->middleware('permission:classes.edit')
+        ->name('esbtp.classes.remove-students');
+    Route::post('/esbtp/classes/{classe}/check-student-data', [ESBTPClasseController::class, 'checkStudentData'])
+        ->middleware('permission:classes.view')
+        ->name('esbtp.classes.check-student-data');
     Route::get('/esbtp/classes/{classe}/student-table-html', [ESBTPClasseController::class, 'studentTableHtml'])->name('esbtp.classes.student-table-html');
 });
 

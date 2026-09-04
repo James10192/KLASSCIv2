@@ -10,7 +10,12 @@ class AddStudentsRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return true;
+        // Defense en profondeur. La route porte desormais la permission, mais ce
+        // `true` en etait la seule autre garde : tant qu'il etait la, deplacer la
+        // route ou en ajouter une voisine rouvrait le trou sans bruit. N'importe
+        // quel compte authentifie, etudiant compris, pouvait modifier la
+        // composition d'une classe.
+        return $this->user()?->can('classes.edit') ?? false;
     }
 
     public function rules(): array
