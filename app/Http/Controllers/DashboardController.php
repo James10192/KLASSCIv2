@@ -6,7 +6,6 @@ use App\Models\Attendance;
 use App\Models\Certificate;
 use App\Models\Grade;
 use App\Models\Message;
-use App\Models\Notification;
 use App\Models\Student;
 use App\Models\Timetable;
 use App\Models\User;
@@ -14,7 +13,6 @@ use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPParent;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPFiliere;
-use App\Models\ESBTPNiveauEtude;
 use App\Models\ESBTPMatiere;
 use App\Models\ESBTPEvaluation;
 use App\Models\ESBTPBulletin;
@@ -177,9 +175,11 @@ class DashboardController extends Controller
     private function superAdminDashboard()
     {
         $user = Auth::user();
+        // La vue superadmin ne lit que douze variables. Tout ce qui est calculé ici
+        // sans être affiché est payé à chaque ouverture du tableau de bord, sur des
+        // bases qui dépassent 2000 inscrits — d'où le tri strict de cette méthode.
         $data = [
             'user' => $user,
-            'totalUsers' => User::count()
         ];
 
         // Récupérer l'année universitaire en cours
@@ -201,25 +201,10 @@ class DashboardController extends Controller
         }
         $data['pendingInscriptionsCount'] = $pendingQuery->count();
 
-        $data['pendingCurrentYearInscriptionsCount'] = 0;
-        $data['pendingCurrentYearInscriptionsByStep'] = [];
-        if ($anneeEnCours) {
-            $pendingCurrentYearQuery = ESBTPInscription::where('annee_universitaire_id', $anneeEnCours->id)
-                ->where(function($query) {
-                    $query->whereIn('status', ['en_attente', 'pending'])
-                        ->orWhere(function($subQuery) {
-                            $subQuery->where('status', 'active')
-                                ->whereIn('workflow_step', ['prospect', 'documents_complets', 'en_validation']);
-                        });
-                });
-
-            $data['pendingCurrentYearInscriptionsCount'] = (clone $pendingCurrentYearQuery)->count();
-            $data['pendingCurrentYearInscriptionsByStep'] = [
-                'prospect' => (clone $pendingCurrentYearQuery)->where('workflow_step', 'prospect')->count(),
-                'documents_complets' => (clone $pendingCurrentYearQuery)->where('workflow_step', 'documents_complets')->count(),
-                'en_validation' => (clone $pendingCurrentYearQuery)->where('workflow_step', 'en_validation')->count(),
-            ];
-        }
+        // Le rappel « inscriptions en attente » est rendu par layouts/app.blade.php, dont
+        // le bloc @php réassigne lui-même pendingCurrentYearInscriptionsCount et
+        // ...ByStep avant de les afficher. Les quatre comptages posés ici étaient donc
+        // écrasés à chaque rendu : ils n'atteignaient jamais l'écran.
 
         // Étudiants — Service centralisé (distinct etudiant_id, inscriptions actives+validées année courante)
         $studentCounts = app(StudentCountService::class)->counts();
@@ -227,33 +212,11 @@ class DashboardController extends Controller
         $data['totalStudentsBase'] = $studentCounts['total_base'];
         $data['anneeLabel'] = $studentCounts['annee_courante_label'];
 
-        if ($anneeEnCours) {
-            $data['recentStudents'] = ESBTPInscription::with(['etudiant'])
-                ->where('annee_universitaire_id', $anneeEnCours->id)
-                ->orderBy('created_at', 'desc')
-                ->take(5)
-                ->get()
-                ->map(function($inscription) {
-                    return $inscription->etudiant;
-                });
-        } else {
-            $data['recentStudents'] = ESBTPEtudiant::orderBy('created_at', 'desc')->take(5)->get();
-        }
-
         // Filières
         try {
             $data['totalFilieres'] = ESBTPFiliere::count();
-            $data['recentFilieres'] = ESBTPFiliere::orderBy('created_at', 'desc')->take(5)->get();
         } catch (\Exception $e) {
             $data['totalFilieres'] = 0;
-            $data['recentFilieres'] = collect();
-        }
-
-        // Niveaux d'études
-        try {
-            $data['totalNiveaux'] = ESBTPNiveauEtude::count();
-        } catch (\Exception $e) {
-            $data['totalNiveaux'] = 0;
         }
 
         // Classes (pas de filtrage par année)
@@ -277,119 +240,10 @@ class DashboardController extends Controller
             $data['totalTeachers'] = 0;
         }
 
-        // Examens (filtré par année en cours)
-        try {
-            if ($anneeEnCours) {
-                $data['totalExamens'] = ESBTPEvaluation::whereHas('classe', function($q) use ($anneeEnCours) {
-                    $q->where('annee_universitaire_id', $anneeEnCours->id);
-                })->count();
-                $data['recentExamens'] = ESBTPEvaluation::with(['classe', 'matiere'])
-                    ->whereHas('classe', function($q) use ($anneeEnCours) {
-                        $q->where('annee_universitaire_id', $anneeEnCours->id);
-                    })
-                    ->orderBy('created_at', 'desc')
-                    ->take(5)
-                    ->get();
-            } else {
-                $data['totalExamens'] = ESBTPEvaluation::count();
-                $data['recentExamens'] = ESBTPEvaluation::with(['classe', 'matiere'])
-                    ->orderBy('created_at', 'desc')
-                    ->take(5)
-                    ->get();
-            }
-        } catch (\Exception $e) {
-            $data['totalExamens'] = 0;
-            $data['recentExamens'] = collect();
-        }
-
-        // Bulletins
-        try {
-            $data['totalBulletins'] = ESBTPBulletin::count();
-            $data['pendingBulletins'] = ESBTPBulletin::where('status', 'pending')->count();
-        } catch (\Exception $e) {
-            $data['totalBulletins'] = 0;
-            $data['pendingBulletins'] = 0;
-        }
-
-        // Notes
-        try {
-            $data['totalNotes'] = ESBTPNote::count();
-        } catch (\Exception $e) {
-            $data['totalNotes'] = 0;
-        }
-
-        // Présences (filtré par année en cours)
-        try {
-            if ($anneeEnCours) {
-                $data['totalPresences'] = ESBTPAttendance::whereHas('etudiant.inscriptions', function($q) use ($anneeEnCours) {
-                    $q->where('annee_universitaire_id', $anneeEnCours->id)
-                      ->where('status', 'active');
-                })->count();
-                $data['todayAttendances'] = ESBTPAttendance::whereHas('etudiant.inscriptions', function($q) use ($anneeEnCours) {
-                    $q->where('annee_universitaire_id', $anneeEnCours->id)
-                      ->where('status', 'active');
-                })->whereDate('date', today())->count();
-            } else {
-                $data['totalPresences'] = ESBTPAttendance::count();
-                $data['todayAttendances'] = ESBTPAttendance::whereDate('date', today())->count();
-            }
-        } catch (\Exception $e) {
-            $data['totalPresences'] = 0;
-            $data['todayAttendances'] = 0;
-        }
-
-        // Emplois du temps (filtré par année en cours)
-        try {
-            if ($anneeEnCours) {
-                $data['totalEmploiTemps'] = ESBTPEmploiTemps::where('annee_universitaire_id', $anneeEnCours->id)->count();
-                $data['activeEmploiTemps'] = ESBTPEmploiTemps::where('annee_universitaire_id', $anneeEnCours->id)
-                    ->where('is_active', true)->count();
-            } else {
-                $data['totalEmploiTemps'] = ESBTPEmploiTemps::count();
-                $data['activeEmploiTemps'] = ESBTPEmploiTemps::where('is_active', true)->count();
-            }
-        } catch (\Exception $e) {
-            $data['totalEmploiTemps'] = 0;
-            $data['activeEmploiTemps'] = 0;
-        }
-
-        // Séances de cours
-        try {
-            $data['totalSeances'] = ESBTPSeanceCours::count();
-            $today = Carbon::now()->format('Y-m-d');
-            $data['todayClasses'] = ESBTPSeanceCours::whereDate('date', $today)->count();
-        } catch (\Exception $e) {
-            $data['totalSeances'] = 0;
-            $data['todayClasses'] = 0;
-        }
-
-        // Messages
-        try {
-            $data['recentMessages'] = Message::where(function($query) {
-                    $query->where('recipient_type', 'admins')
-                        ->whereNull('recipient_group');
-                })
-                ->orWhere(function($query) {
-                    $query->where('recipient_type', 'all')
-                        ->whereNull('recipient_group');
-                })
-                ->orWhere('recipient_id', Auth::id())
-                ->whereNull('parent_id')
-                ->orderBy('created_at', 'desc')
-                ->take(5)
-                ->get();
-        } catch (\Exception $e) {
-            $data['recentMessages'] = collect();
-        }
-
-        // Notifications
-        try {
-            $data['recentNotifications'] = Notification::orderBy('created_at', 'desc')
-                ->take(5)
-                ->get();
-        } catch (\Exception $e) {
-            $data['recentNotifications'] = collect();
-        }
+        // Ici vivaient les compteurs d'examens, bulletins, notes, présences, emplois du
+        // temps, séances, ainsi que les messages et notifications récents. Aucun n'est lu
+        // par la vue superadmin ni par le gabarit : c'était du calcul jeté. Les présences
+        // coûtaient à elles seules deux sous-requêtes corrélées sur une relation imbriquée.
 
         // Inscriptions récentes (vraies données) (filtré par année en cours)
         try {
@@ -417,36 +271,8 @@ class DashboardController extends Controller
             $data['recentInscriptions'] = collect();
         }
 
-        // Examens à venir (vraies données) (filtré par année en cours)
-        try {
-            if ($anneeEnCours) {
-                $data['upcomingExams'] = ESBTPEvaluation::with(['matiere', 'classe'])
-                    ->whereHas('classe', function($q) use ($anneeEnCours) {
-                        $q->where('annee_universitaire_id', $anneeEnCours->id);
-                    })
-                    ->where('date_evaluation', '>=', now())
-                    ->orderBy('date_evaluation', 'asc')
-                    ->limit(5)
-                    ->get();
-            } else {
-                $data['upcomingExams'] = ESBTPEvaluation::with(['matiere', 'classe'])
-                    ->where('date_evaluation', '>=', now())
-                    ->orderBy('date_evaluation', 'asc')
-                    ->limit(5)
-                    ->get();
-            }
-        } catch (\Exception $e) {
-            $data['upcomingExams'] = collect();
-        }
-
-        // Annonces récentes
-        try {
-            $data['recentAnnouncements'] = ESBTPAnnonce::orderBy('created_at', 'desc')
-                ->limit(3)
-                ->get();
-        } catch (\Exception $e) {
-            $data['recentAnnouncements'] = collect();
-        }
+        // Les examens à venir et les annonces récentes étaient chargés ici sans qu'aucune
+        // section de la vue ne les rende.
 
         // Statistiques par filière avec couleurs pour le graphique (filtré par année en cours)
         if ($anneeEnCours) {
@@ -539,57 +365,9 @@ class DashboardController extends Controller
             ];
         }
 
-        // Inscriptions par mois pour le graphique (filtré par année en cours)
-        if ($anneeEnCours) {
-            $data['inscriptionsByMonth'] = ESBTPInscription::selectRaw('MONTH(created_at) as month, YEAR(created_at) as year, COUNT(*) as count')
-                ->where('annee_universitaire_id', $anneeEnCours->id)
-                ->where('created_at', '>=', now()->subMonths(12))
-                ->groupBy('year', 'month')
-                ->orderBy('year', 'asc')
-                ->orderBy('month', 'asc')
-                ->get();
-        } else {
-            $data['inscriptionsByMonth'] = ESBTPInscription::selectRaw('MONTH(created_at) as month, YEAR(created_at) as year, COUNT(*) as count')
-                ->where('created_at', '>=', now()->subMonths(12))
-                ->groupBy('year', 'month')
-                ->orderBy('year', 'asc')
-                ->orderBy('month', 'asc')
-                ->get();
-        }
-
-        // Statistiques de présence (filtré par année en cours)
-        try {
-            if ($anneeEnCours) {
-                $totalPresent = ESBTPAttendance::whereHas('etudiant.inscriptions', function($q) use ($anneeEnCours) {
-                    $q->where('annee_universitaire_id', $anneeEnCours->id)
-                      ->where('status', 'active');
-                })->where('status', 'present')->whereDate('date', today())->count();
-
-                $totalAbsent = ESBTPAttendance::whereHas('etudiant.inscriptions', function($q) use ($anneeEnCours) {
-                    $q->where('annee_universitaire_id', $anneeEnCours->id)
-                      ->where('status', 'active');
-                })->where('status', 'absent')->whereDate('date', today())->count();
-            } else {
-                $totalPresent = ESBTPAttendance::where('status', 'present')->whereDate('date', today())->count();
-                $totalAbsent = ESBTPAttendance::where('status', 'absent')->whereDate('date', today())->count();
-            }
-
-            $attendanceRate = $totalPresent + $totalAbsent > 0
-                ? round(($totalPresent / ($totalPresent + $totalAbsent)) * 100, 1)
-                : 0;
-
-            $data['attendanceStats'] = [
-                'total_present' => $totalPresent,
-                'total_absent' => $totalAbsent,
-                'attendance_rate' => $attendanceRate
-            ];
-        } catch (\Exception $e) {
-            $data['attendanceStats'] = [
-                'total_present' => 0,
-                'total_absent' => 0,
-                'attendance_rate' => 0
-            ];
-        }
+        // Le graphique de la vue est alimenté par monthlyStats seul. La série
+        // inscriptionsByMonth et les statistiques d'assiduité du jour, elles, ne sont
+        // rendues nulle part sur ce tableau de bord.
 
         return view('dashboard.superadmin', $data);
     }
