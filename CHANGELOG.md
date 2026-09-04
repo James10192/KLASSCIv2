@@ -12,6 +12,10 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ## Septembre 2026
 
+### Ajouts
+
+- **Suivi des pièces manquantes aux dossiers d'inscription** — un écran répond enfin à la question que pose le secrétariat au moment de constituer les dossiers pour les ministères : qui doit encore fournir quoi. Il se filtre par année, filière, niveau, classe ou pièce, affiche en tête le compte par pièce (« il manque 34 extraits de naissance »), s'exporte en PDF et en tableur, et permet de relancer par email les étudiants sélectionnés avec la liste de ce qui leur manque. L'état est tenu par inscription : un étudiant de troisième année a bien trois lignes « extrait de naissance », une par année, puisque chaque année constitue son propre dossier. À ne pas confondre avec une inscription sous réserve, qui porte sur un document n'existant pas encore. Tant que l'école n'a pas configuré son catalogue de pièces, l'écran reste vide et rien ne change ailleurs.
+
 ### Sécurité
 
 - **La saisie des notes de seconde session se limite aux matières de l'enseignant** — l'écran de rattrapage s'ouvre à qui détient le droit de saisie, et il montrait alors les notes de seconde session de toute la promotion, quel que soit l'enseignant en charge. L'enregistrement était plus ouvert encore : la ligne à modifier étant désignée par le formulaire, rien n'empêchait d'inscrire une note sur la matière d'un collègue. Lecture et enregistrement sont désormais bornés aux matières confiées à l'enseignant. Qui supervise le rattrapage continue de voir la session entière — c'est ce qui distingue les deux droits.

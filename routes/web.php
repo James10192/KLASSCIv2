@@ -1370,6 +1370,26 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
 
             // Routes pour les inscriptions ESBTP â€” gates par permission
             // â”€â”€ VIEW (lecture)
+            // Suivi des pieces manquantes aux dossiers. Declare AVANT le groupe
+            // inscriptions.view : sinon /inscriptions/{inscription} capture l'URL
+            // et le model binding echoue sur le segment litteral.
+            Route::middleware('permission:inscriptions.pieces.track')->group(function () {
+                Route::get('/inscriptions/pieces-manquantes', [\App\Http\Controllers\ESBTPSuiviPiecesController::class, 'index'])
+                    ->name('inscriptions.pieces.index');
+                Route::get('/inscriptions/pieces-manquantes/preview-pdf', [\App\Http\Controllers\ESBTPSuiviPiecesController::class, 'previewPdf'])
+                    ->name('inscriptions.pieces.preview-pdf')
+                    ->middleware('throttle:60,1');
+                Route::get('/inscriptions/pieces-manquantes/export-pdf', [\App\Http\Controllers\ESBTPSuiviPiecesController::class, 'exportPdf'])
+                    ->name('inscriptions.pieces.export-pdf')
+                    ->middleware('throttle:10,1');
+                Route::get('/inscriptions/pieces-manquantes/export-excel', [\App\Http\Controllers\ESBTPSuiviPiecesController::class, 'exportExcel'])
+                    ->name('inscriptions.pieces.export-excel')
+                    ->middleware('throttle:10,1');
+                Route::post('/inscriptions/pieces-manquantes/relancer', [\App\Http\Controllers\ESBTPSuiviPiecesController::class, 'relancer'])
+                    ->name('inscriptions.pieces.relancer')
+                    ->middleware(['permission:inscriptions.pieces.relancer', 'throttle:10,1']);
+            });
+
             Route::middleware('permission:inscriptions.view')->group(function () {
                 Route::get('/inscriptions', [ESBTPInscriptionController::class, 'index'])->name('inscriptions.index');
                 Route::get('/inscriptions/getClasses', [ESBTPInscriptionApiController::class, 'getClasses'])->name('inscriptions.getClasses');

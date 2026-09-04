@@ -387,6 +387,18 @@ return [
             'group' => 'Inscriptions',
             'icon' => 'fa-tasks',
         ],
+        'inscriptions.pieces.track' => [
+            'label' => 'Suivre les pièces manquantes aux dossiers d\'inscription',
+            'description' => 'Accès à la vue d\'ensemble « qui doit encore fournir quoi » (/esbtp/inscriptions/pieces-manquantes) et à ses exports PDF/Excel',
+            'group' => 'Inscriptions',
+            'icon' => 'fa-folder-open',
+        ],
+        'inscriptions.pieces.relancer' => [
+            'label' => 'Relancer les étudiants dont le dossier est incomplet',
+            'description' => 'Envoi d\'un rappel par email listant les pièces qui restent à déposer',
+            'group' => 'Inscriptions',
+            'icon' => 'fa-paper-plane',
+        ],
         'inscriptions.specialisation.manage' => [
             'label' => 'Orienter un étudiant en Tronc Commun vers une spécialité (BTS UEMOA)',
             'description' => 'Permet l\'accès à /specialisation (workflow officiel TC → spécialisation : choix filière + classe cible, transition tracée + audit)',
@@ -2129,6 +2141,7 @@ return [
             'reinscriptions.demandes.view', 'reinscriptions.demandes.process',
             'inscriptions.candidatures.view', 'inscriptions.candidatures.process',
             'inscriptions.cancel', 'inscriptions.manage', 'inscriptions.specialisation.manage',
+            'inscriptions.pieces.track', 'inscriptions.pieces.relancer',
             // Sous-lot C+ : corbeille (restore tout, force_delete réservé superAdmin via Gate::before)
             'trash.view', 'students.restore', 'inscriptions.restore', 'paiements.restore',
             'cycles.view', 'cycles.create', 'cycles.edit', 'cycles.delete',
@@ -2387,6 +2400,7 @@ return [
             'reinscriptions.demandes.view', 'reinscriptions.demandes.process',
             'inscriptions.candidatures.view', 'inscriptions.candidatures.process',
             'inscriptions.cancel', 'inscriptions.manage', 'inscriptions.specialisation.manage',
+            'inscriptions.pieces.track', 'inscriptions.pieces.relancer',
             'cycles.view',
             'classes.view',
             'filieres.view', 'niveaux.view',

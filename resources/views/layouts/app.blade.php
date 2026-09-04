@@ -1734,6 +1734,14 @@
                                     <div class="menu-text">Sous réserve</div>
                                 </a>
                                 @endcan
+                                {{-- Permission propre : le suivi des pieces sert au secretariat,
+                                     pas forcement a tout role qui consulte les inscriptions. --}}
+                                @can('inscriptions.pieces.track')
+                                <a href="{{ route('esbtp.inscriptions.pieces.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.inscriptions.pieces.*') ? 'active' : '' }}">
+                                    <div class="menu-icon"><i class="fas fa-folder-open"></i></div>
+                                    <div class="menu-text">Pièces manquantes</div>
+                                </a>
+                                @endcan
                                 {{-- Hors du bloc `inscriptions.view`, et `reinscriptions.demandes.view`
                                      ouvre aussi la section Etudiants plus haut, pour qu'un role
                                      d'accueil ne portant que cette permission voie le lien.
