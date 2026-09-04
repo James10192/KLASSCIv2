@@ -95,6 +95,19 @@ class LMDCleanupService
                         ->where('parcours_id', $parcours->id)
                         ->where('unite_enseignement_id', $ue->id)
                         ->delete();
+
+                    // Et la colonne héritée, sans quoi le nettoyage ne nettoie pas.
+                    //
+                    // Ce service reconnaît DEUX voies de rattachement : le pivot, et
+                    // `esbtp_unites_enseignement.parcours_id` — c'est même par cette
+                    // colonne qu'il sélectionne les unités à nettoyer. N'effacer que
+                    // le pivot laissait donc l'unité attachée au parcours qu'on venait
+                    // de dire avoir détaché : le compte rendu annonçait le contraire de
+                    // ce qui s'était produit, un second nettoyage la retrouvait
+                    // indéfiniment, et le ré-import qui suit retombait sur le refus.
+                    ESBTPUniteEnseignement::where('id', $ue->id)
+                        ->where('parcours_id', $parcours->id)
+                        ->update(['parcours_id' => null]);
                 }
 
                 $partagees[] = ['ue' => $ue->code, 'name' => $ue->name,
@@ -103,6 +116,23 @@ class LMDCleanupService
             }
 
             $ecueIds = ESBTPMatiere::where('unite_enseignement_id', $ue->id)->pluck('id')->all();
+
+            // La garde des évaluations se pose AVANT tout filtrage, sur la liste
+            // complète.
+            //
+            // Une première version comptait après avoir retiré les éléments
+            // partagés : un élément portant des notes ET rattaché à une autre
+            // unité ne protégeait alors plus la sienne. Le nettoyage supprimait
+            // l'unité, ses AUTRES éléments et leurs planifications, là où il
+            // devait refuser et ne rien toucher. Et le scénario est précisément
+            // celui de ce chantier : les cinq éléments renommés à la main lors de
+            // l'import du Génie Civil sont partagés.
+            $evalCount = $ecueIds ? ESBTPEvaluation::whereIn('matiere_id', $ecueIds)->count() : 0;
+
+            if ($evalCount > 0) {
+                $blocked[] = ['ue' => $ue->code, 'name' => $ue->name, 'evaluations' => $evalCount];
+                continue;
+            }
 
             // Un élément constitutif que le pivot rattache AUSSI à une autre
             // unité est partagé : le supprimer déshabillerait cette unité-là,
@@ -117,13 +147,10 @@ class LMDCleanupService
 
             if ($ecuesPartages !== []) {
                 $ecueIds = array_values(array_diff(array_map('intval', $ecueIds), $ecuesPartages));
+                // Incrémenté ICI et pas plus haut : le compte rendu annonçait des
+                // éléments « préservés » pour une unité où rien n'avait été touché,
+                // parce qu'on passait le `continue` du cas bloqué juste après.
                 $ecuesPreserves += count($ecuesPartages);
-            }
-
-            $evalCount = $ecueIds ? ESBTPEvaluation::whereIn('matiere_id', $ecueIds)->count() : 0;
-            if ($evalCount > 0) {
-                $blocked[] = ['ue' => $ue->code, 'name' => $ue->name, 'evaluations' => $evalCount];
-                continue;
             }
 
             $planifsDeleted += $ecueIds

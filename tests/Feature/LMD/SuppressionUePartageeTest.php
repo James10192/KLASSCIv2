@@ -5,6 +5,8 @@ namespace Tests\Feature\LMD;
 use App\Helpers\SettingsHelper;
 use App\Http\Controllers\ESBTPLMDUEController;
 use App\Models\ESBTPAnneeUniversitaire;
+use App\Models\ESBTPEvaluation;
+use App\Models\User;
 use App\Models\ESBTPLMDParcours;
 use App\Models\ESBTPMatiere;
 use App\Models\ESBTPUniteEnseignement;
@@ -141,6 +143,60 @@ class SuppressionUePartageeTest extends TestCase
         $this->assertSame(0, DB::table('esbtp_lmd_parcours_ue')
             ->where('parcours_id', $tir->id)->where('unite_enseignement_id', $ue->id)->count());
     }
+    public function test_un_element_partage_qui_porte_des_notes_protege_son_unite(): void
+    {
+        // La garde des evaluations se posait APRES le retrait des elements
+        // partages : un element portant des notes et rattache a une autre unite
+        // ne protegeait donc plus la sienne, et le nettoyage supprimait tout.
+        [$ue, , $tir] = $this->maquetteAvecUnitePartagee();
+        $ueTir = ESBTPUniteEnseignement::where('code', 'UE-TIR')->firstOrFail();
+        $ecueTir = ESBTPMatiere::where('unite_enseignement_id', $ueTir->id)->firstOrFail();
+
+        // Cet element appartient a UE-TIR par sa cle etrangere, ET au pivot d'une
+        // autre unite : c'est le cas des cinq elements renommes a la main a
+        // l'import du Genie Civil.
+        DB::table('esbtp_ue_matiere')->insert([
+            'unite_enseignement_id' => $ue->id,
+            'matiere_id' => $ecueTir->id,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        // La fabrique pose created_by et updated_by a 1 : sans utilisateur en base,
+        // la cle etrangere tombe. Piege connu de ce depot.
+        $auteur = User::factory()->create();
+        ESBTPEvaluation::factory()->create([
+            'matiere_id' => $ecueTir->id,
+            'created_by' => $auteur->id,
+            'updated_by' => $auteur->id,
+        ]);
+
+        $resultat = app(LMDCleanupService::class)->cleanupParcours([$tir->code], dryRun: false);
+
+        // L'unite est REFUSEE, et rien n'est touche.
+        $this->assertNotEmpty($resultat['blocked'] ?? [], "L'unite aurait du etre refusee : son element porte des notes.");
+        $this->assertNotNull(ESBTPUniteEnseignement::find($ueTir->id), "L'unite a ete supprimee malgre des notes.");
+        $this->assertNotNull(ESBTPMatiere::find($ecueTir->id), "L'element note a ete supprime.");
+    }
+
+    public function test_le_nettoyage_detache_aussi_la_colonne_heritee(): void
+    {
+        // Le service selectionne les unites a nettoyer PAR cette colonne. N'effacer
+        // que le pivot laissait l'unite attachee au parcours qu'on venait de dire
+        // avoir detache : un second nettoyage la retrouvait indefiniment.
+        [$ue, $bu, $tir] = $this->maquetteAvecUnitePartagee();
+
+        // L'unite partagee porte la colonne heritee vers BU. On nettoie BU.
+        $this->assertSame((int) $bu->id, (int) $ue->parcours_id, 'Fixture : la colonne doit pointer sur BU.');
+
+        app(LMDCleanupService::class)->cleanupParcours([$bu->code], dryRun: false);
+
+        $this->assertNull(
+            ESBTPUniteEnseignement::find($ue->id)->parcours_id,
+            "La colonne heritee designe toujours le parcours pretendument nettoye."
+        );
+    }
+
 
     /**
      * Une unite qu'un second parcours utilise aussi.
