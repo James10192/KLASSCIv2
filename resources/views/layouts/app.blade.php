@@ -2637,8 +2637,8 @@
                             </ul>
                         </div>
 
-                        <!-- Messages -->
-                        <div class="dropdown">
+                        <!-- Messages (sous 768px avec le shell mobile : dans la feuille m-navbar-plus) -->
+                        <div class="dropdown" data-mnb="desktop">
                             <button class="btn-acasi icon-only" type="button" id="messagesDropdown" data-bs-toggle="dropdown" aria-expanded="false">
                                 <i class="fas fa-envelope"></i>
                                 <span class="navbar-badge" id="messages-count" style="display: none;">0</span>
@@ -2678,8 +2678,8 @@
             </ul>
     </div>
 
-                    <!-- Quick Actions -->
-                    <div class="dropdown">
+                    <!-- Quick Actions (sous 768px avec le shell mobile : la grille est adoptée par la feuille m-navbar-plus) -->
+                    <div class="dropdown" data-mnb="desktop">
                             <button class="btn-acasi icon-only" type="button" id="quickActionsDropdown" data-bs-toggle="dropdown" aria-expanded="false">
                                 <i class="fas fa-th-large"></i>
                         </button>
@@ -2779,8 +2779,8 @@
                             </ul>
                 </div>
 
-                <!-- User Profile -->
-                <div class="dropdown ms-2">
+                <!-- User Profile (sous 768px avec le shell mobile : remplacé par le bouton .mnb-avatar qui ouvre la feuille m-navbar-plus) -->
+                <div class="dropdown ms-2" data-mnb="desktop">
                     <button class="btn-acasi profile-btn" id="profileDropdown" data-bs-toggle="dropdown" aria-expanded="false">
                         <div class="navbar-avatar">
                             @if(auth()->check() && auth()->user()->profile_photo_path)
@@ -2877,6 +2877,24 @@
                         @endif
                     </ul>
                 </div>
+
+                @if(($mobileShellEnabled ?? false) && ($mobileProfile ?? null) && auth()->check())
+                {{-- Shell mobile (< 768px) : l'avatar ouvre la feuille m-navbar-plus (recherche, actions
+                     rapides, messages, profil, déconnexion) ; masqué au-dessus par mobile-shell.css. --}}
+                <button type="button" class="mnb-avatar" id="mnb-avatar"
+                        aria-label="Compte et raccourcis"
+                        aria-haspopup="dialog"
+                        aria-controls="m-sheet-m-navbar-plus"
+                        onclick="window.dispatchEvent(new CustomEvent('m-sheet:open', { detail: { id: 'm-navbar-plus' } }))">
+                    <span class="navbar-avatar">
+                        @if(auth()->user()->profile_photo_path)
+                            <img src="{{ asset('storage/' . auth()->user()->profile_photo_path) }}" alt="">
+                        @else
+                            <span class="user-avatar"><i class="fas fa-user"></i></span>
+                        @endif
+                    </span>
+                </button>
+                @endif
             </div>
                 </div>
             </nav>
@@ -4515,6 +4533,95 @@
     {{-- Barre d'onglets du shell mobile : profil resolu par MobileShellComposer (caissier, comptable, enseignant, etudiant) --}}
     @if(($mobileShellEnabled ?? false) && ($mobileProfile ?? null))
         @include('layouts.partials.mobile.bottom-nav')
+
+        @auth
+        {{-- Feuille m-navbar-plus (< 768px) : ce que la navbar de bureau portait et que l'app bar
+             mobile ne garde pas — recherche, actions rapides, messages, profil, déconnexion.
+             Ouverte par le bouton .mnb-avatar de la navbar. --}}
+        @php
+            $mnbUser = auth()->user();
+            // Même destination que le menu profil de bureau, décidée par le profil mobile (pas de rôle en dur).
+            $mnbProfilRoute = match ($mobileProfile) {
+                'etudiant' => 'esbtp.mon-profil.index',
+                'enseignant' => 'teacher.profile',
+                default => 'admin.profile',
+            };
+            $mnbEstEtudiant = $mnbUser->can('identity.student');
+            $mnbMessagesRoute = $mnbEstEtudiant ? 'esbtp.mes-annonces.index' : 'esbtp.annonces.index';
+        @endphp
+        <x-m.sheet id="m-navbar-plus" :title="$mnbUser->name" :sub="$mnbUser->email">
+            @if(Route::has('search.results'))
+                <form class="m-search" method="GET" action="{{ route('search.results') }}" role="search">
+                    <x-m.icon name="search" />
+                    <input type="search" name="q" minlength="2" required placeholder="Rechercher dans l'application" autocomplete="off" aria-label="Rechercher dans l'application">
+                </form>
+            @endif
+            <div class="m-sec mnb-actions-title"><b>Actions rapides</b></div>
+            <div class="mnb-actions" id="m-navbar-plus-actions"></div>
+            <div class="m-menu">
+                @if(Route::has($mnbMessagesRoute))
+                    @canany(['annonces.view', 'annonces.create', 'annonces.edit'])
+                        <a href="{{ route($mnbMessagesRoute) }}">
+                            <x-m.icon name="msg" />{{ $mnbEstEtudiant ? 'Annonces' : 'Messages' }}
+                            <span class="ch"><span class="m-chip info" id="m-navbar-plus-messages-count" hidden>0</span></span>
+                        </a>
+                    @endcanany
+                @endif
+                @if(Route::has($mnbProfilRoute))
+                    <a href="{{ route($mnbProfilRoute) }}"><x-m.icon name="user" />Mon profil<span class="ch"><x-m.icon name="chr" /></span></a>
+                @endif
+                @if(Route::has('securite.double-auth.reglages'))
+                    <a href="{{ route('securite.double-auth.reglages') }}"><x-m.icon name="lock" />Double authentification<span class="ch"><x-m.icon name="chr" /></span></a>
+                @endif
+                @if($mobileProfile === 'etudiant')
+                    @if(Route::has('esbtp.preferences.index'))
+                        <a href="{{ route('esbtp.preferences.index') }}"><x-m.icon name="settings" />Préférences<span class="ch"><x-m.icon name="chr" /></span></a>
+                    @endif
+                @else
+                    @can('system.manage')
+                        @if(Route::has('settings.index'))
+                            <a href="{{ route('settings.index') }}"><x-m.icon name="settings" />Paramètres<span class="ch"><x-m.icon name="chr" /></span></a>
+                        @endif
+                    @endcan
+                @endif
+                @if(Route::has('logout'))
+                    <form method="POST" action="{{ route('logout') }}">
+                        @csrf
+                        <button type="submit"><x-m.icon name="logout" />Se déconnecter<span class="ch"><x-m.icon name="chr" /></span></button>
+                    </form>
+                @endif
+            </div>
+        </x-m.sheet>
+        <script>
+        (function () {
+            /* Feuille m-navbar-plus : à l'ouverture, adopte la grille des actions rapides du
+               menu de bureau (#quick-actions-list — mêmes gardes de permission, rien de dupliqué)
+               et recopie le compteur de messages ; une fois refermée, rend la grille au menu. */
+            var origin = null;
+            window.addEventListener('m-sheet:opened', function (ev) {
+                if (!ev.detail || ev.detail.id !== 'm-navbar-plus') { return; }
+                var slot = document.getElementById('m-navbar-plus-actions');
+                var grid = document.getElementById('quick-actions-list');
+                if (slot && grid && !slot.contains(grid)) {
+                    origin = origin || grid.parentNode;
+                    slot.appendChild(grid);
+                }
+                var src = document.getElementById('messages-count');
+                var dst = document.getElementById('m-navbar-plus-messages-count');
+                if (src && dst) {
+                    var n = src.style.display !== 'none' ? src.textContent.trim() : '';
+                    dst.textContent = n;
+                    dst.hidden = !n;
+                }
+            });
+            window.addEventListener('m-sheet:closed', function (ev) {
+                if (!ev.detail || ev.detail.id !== 'm-navbar-plus') { return; }
+                var grid = document.getElementById('quick-actions-list');
+                if (grid && origin && grid.parentNode !== origin) { origin.appendChild(grid); }
+            });
+        })();
+        </script>
+        @endauth
     @endif
 </body>
 </html>

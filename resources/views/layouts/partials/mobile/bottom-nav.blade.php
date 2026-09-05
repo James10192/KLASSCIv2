@@ -67,6 +67,10 @@
     }
 
     $mHasPlus = collect($mItems)->contains(fn ($it) => isset($it['sheet']));
+    // Pastille de l'onglet actif (une seule) : index posé en CSS pour que la première
+    // image de la page soit déjà juste, et que la transition de vue la morphe.
+    $mOnIndex = collect($mItems)->search(fn ($it) => (bool) $it['on']);
+    $mOnIndex = $mOnIndex === false ? -1 : (int) $mOnIndex;
     $mCanSwitch = $mUser && $mUser->hasRole('superAdmin') && Route::has('mobile.profil');
     // Libellés courts pour l'affichage (la liste canonique vient du resolver).
     $mProfilLabels = ['caissier' => 'Caisse', 'comptable' => 'Comptabilité', 'etudiant' => 'Étudiant', 'enseignant' => 'Enseignant'];
@@ -77,6 +81,7 @@
 @if($mUser && $mProfil && count($mItems))
     {{-- Onglets bas (mobile) --}}
     <nav class="m-bottomnav" aria-label="Navigation principale">
+        <span class="m-bottomnav-pill {{ $mOnIndex < 0 ? 'is-hidden' : '' }}" aria-hidden="true" style="--m-pill-i: {{ max($mOnIndex, 0) }}; --m-pill-n: {{ count($mItems) }};"></span>
         @foreach($mItems as $it)
             @if(isset($it['sheet']))
                 <button type="button"
@@ -84,7 +89,6 @@
                         aria-haspopup="dialog"
                         aria-controls="m-sheet-{{ $it['sheet'] }}"
                         onclick="window.dispatchEvent(new CustomEvent('m-sheet:open', { detail: { id: '{{ $it['sheet'] }}' } }))">
-                    <i aria-hidden="true"></i>
                     <x-m.icon :name="$it['icon']" />
                     {{ $it['label'] }}
                 </button>
@@ -93,7 +97,6 @@
                    class="{{ $it['on'] ? 'on' : '' }}"
                    aria-label="{{ $it['label'] }}"
                    @if($it['on']) aria-current="page" @endif>
-                    <i aria-hidden="true"></i>
                     <x-m.icon :name="$it['icon']" />
                     {{ $it['label'] }}
                 </a>
