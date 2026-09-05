@@ -2563,6 +2563,34 @@
                 </div>
             </div>
 
+            <!-- Section 6a: Interface mobile -->
+            <div class="settings-section">
+                <div class="section-header">
+                    <div class="section-icon"><i class="fas fa-mobile-screen-button"></i></div>
+                    <div>
+                        <h3 class="section-title">Interface mobile</h3>
+                        <p class="section-description">Sur telephone, une barre d'onglets adaptee au profil de la personne connectee (caisse, comptabilite, enseignant, etudiant) remplace le menu lateral.</p>
+                    </div>
+                </div>
+                <div class="bc-grid bc-grid-1">
+                    <div class="bc-card">
+                        <div class="bc-icon"><i class="fas fa-mobile-screen-button"></i></div>
+                        <div class="bc-body">
+                            <div class="bc-label">Barre d'onglets sur telephone</div>
+                            <div class="bc-desc">Desactivee, l'interface classique est servie sur tous les ecrans. Sans effet sur ordinateur.</div>
+                        </div>
+                        <div class="bc-toggle">
+                            <label class="form-switch-modern">
+                                @php $_cleShellMobile = \App\Services\Mobile\MobileProfileResolver::REGLAGE_ACTIF; @endphp
+                                <input type="checkbox" name="{{ $_cleShellMobile }}" value="1"
+                                       {{ \App\Helpers\SettingsHelper::get($_cleShellMobile, '1') == '1' ? 'checked' : '' }}>
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Section 6b: Assiduite / Saisie manuelle d'heures -->
             <div class="settings-section">
                 <div class="section-header">

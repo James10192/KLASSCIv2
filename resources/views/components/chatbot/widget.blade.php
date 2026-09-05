@@ -141,6 +141,15 @@
                 csrfToken: '{{ csrf_token() }}',
             });
         </script>
-        <script src="{{ asset('js/chatbot-widget.js') }}" defer></script>
+        <script>
+            // Sous 768px (shell mobile), l'assistant n'est ni affiche ni initialise :
+            // on evite aussi de telecharger ses ~108 Ko. Le script s'auto-initialise
+            // des qu'il s'execute (readyState verifie), l'injection tardive suffit.
+            if (window.matchMedia('(min-width: 768px)').matches) {
+                var chatbotScript = document.createElement('script');
+                chatbotScript.src = @json(asset('js/chatbot-widget.js'));
+                document.body.appendChild(chatbotScript);
+            }
+        </script>
     @endpush
 @endonce

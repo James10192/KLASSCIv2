@@ -141,13 +141,21 @@ class CoordinateurDashboardController extends Controller
             // Récupérer l'année universitaire en cours
             $anneeUniversitaire = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
 
+            if (! $anneeUniversitaire) {
+                // Sans année courante, `$anneeUniversitaire->id` levait un \Error
+                // (pas une \Exception) : le catch plus bas ne l'attrapait pas et
+                // la page répondait 500. On passe par le repli prévu.
+                throw new \RuntimeException('Aucune année universitaire courante : statistiques de présence indisponibles.');
+            }
+
             // 5. PRÉSENCES finales aujourd'hui (pas étudiants uniques, mais nombre de présences)
             // IMPORTANT: Utiliser finalOnly() pour ne compter que les statuts fusionnés
             // Filtré par année universitaire en cours et inscriptions active
+            // Un retard est une présence (statut « retard » ; la valeur anglaise « late » n'a jamais été écrite).
             $stats['presences_today'] = \App\Models\ESBTPAttendance::finalOnly()
                 ->whereDate('date', $date)
                 ->where('annee_universitaire_id', $anneeUniversitaire->id)
-                ->whereIn('statut', ['present', 'late', 'retard'])
+                ->whereIn('statut', ['present', 'retard'])
                 ->whereHas('etudiant.inscriptions', function($q) use ($anneeUniversitaire) {
                     $q->where('annee_universitaire_id', $anneeUniversitaire->id)
                       ->where('status', 'active');
@@ -169,7 +177,7 @@ class CoordinateurDashboardController extends Controller
             $stats['retards_today'] = \App\Models\ESBTPAttendance::finalOnly()
                 ->whereDate('date', $date)
                 ->where('annee_universitaire_id', $anneeUniversitaire->id)
-                ->whereIn('statut', ['late', 'retard'])
+                ->where('statut', 'retard')
                 ->whereHas('etudiant.inscriptions', function($q) use ($anneeUniversitaire) {
                     $q->where('annee_universitaire_id', $anneeUniversitaire->id)
                       ->where('status', 'active');

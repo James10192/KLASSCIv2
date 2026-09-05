@@ -3452,3 +3452,10 @@ require __DIR__.'/academic-pilotage.php';
 
 
 
+
+// Shell mobile
+// Bascule de profil mobile reservee au superAdmin (verifiee dans le controleur) :
+// il possede toutes les permissions et verrait toujours la meme barre d onglets.
+Route::post('/mobile/profil', [\App\Http\Controllers\PwaController::class, 'profil'])
+    ->middleware(['auth', 'throttle:10,1'])
+    ->name('mobile.profil');

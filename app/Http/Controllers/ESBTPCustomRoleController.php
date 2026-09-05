@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Services\Mobile\MobileProfileResolver;
 use App\Services\PermissionRegistry;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -102,6 +103,17 @@ class ESBTPCustomRoleController extends Controller
     }
 
     /**
+     * Profil mobile d'un rôle : l'une des valeurs connues, sinon null (pas de shell).
+     * Le formulaire envoie '' pour « Aucun » — c'est null en base.
+     */
+    private function normalizeMobileProfile(?string $profile): ?string
+    {
+        $profile = trim((string) $profile);
+
+        return MobileProfileResolver::estUnProfil($profile) ? $profile : null;
+    }
+
+    /**
      * Retourne la whitelist d'icônes (utilisable depuis les vues pour la cohérence).
      *
      * @return string[]
@@ -174,6 +186,7 @@ class ESBTPCustomRoleController extends Controller
             'label_fr' => ['required', 'string', 'max:255'],
             'icon' => ['nullable', 'string', 'max:64', Rule::in(self::ALLOWED_ICONS)],
             'description' => ['nullable', 'string', 'max:1000'],
+            'mobile_profile' => ['nullable', 'string', Rule::in(array_merge(MobileProfileResolver::PROFILS, ['']))],
             'permissions' => ['array'],
             'permissions.*' => ['string', 'exists:permissions,name'],
         ], [
@@ -181,6 +194,7 @@ class ESBTPCustomRoleController extends Controller
             'name.unique' => 'Un rôle avec ce nom existe déjà.',
             'label_fr.required' => 'Le label affiché à l\'utilisateur est obligatoire.',
             'icon.in' => 'Cette icône n\'est pas autorisée. Choisissez parmi les suggestions.',
+            'mobile_profile.in' => 'Ce profil mobile n\'existe pas.',
         ]);
 
         // Garde-fou : empêcher la création d'un rôle réservé
@@ -205,6 +219,7 @@ class ESBTPCustomRoleController extends Controller
             $role->label_fr = $validated['label_fr'];
             $role->icon = $this->normalizeIcon($validated['icon'] ?? null);
             $role->description = $validated['description'] ?? null;
+            $role->mobile_profile = $this->normalizeMobileProfile($validated['mobile_profile'] ?? null);
             $role->is_custom = true;
             $role->created_by_user_id = Auth::id();
             $role->save();
@@ -222,6 +237,7 @@ class ESBTPCustomRoleController extends Controller
                     'label' => $role->label_fr,
                     'icon' => $role->icon,
                     'description' => $role->description,
+                    'mobile_profile' => $role->mobile_profile,
                 ],
             ];
         });
@@ -266,11 +282,13 @@ class ESBTPCustomRoleController extends Controller
             'label_fr' => ['required', 'string', 'max:255'],
             'icon' => ['nullable', 'string', 'max:64', Rule::in(self::ALLOWED_ICONS)],
             'description' => ['nullable', 'string', 'max:1000'],
+            'mobile_profile' => ['nullable', 'string', Rule::in(array_merge(MobileProfileResolver::PROFILS, ['']))],
             'permissions' => ['array'],
             'permissions.*' => ['string', 'exists:permissions,name'],
         ], [
             'label_fr.required' => 'Le label affiché à l\'utilisateur est obligatoire.',
             'icon.in' => 'Cette icône n\'est pas autorisée. Choisissez parmi les suggestions.',
+            'mobile_profile.in' => 'Ce profil mobile n\'existe pas.',
         ]);
 
         $requestedPerms = $this->normalizePermissionsList($validated['permissions'] ?? []);
@@ -283,6 +301,7 @@ class ESBTPCustomRoleController extends Controller
             $roleModel->label_fr = $validated['label_fr'];
             $roleModel->icon = $this->normalizeIcon($validated['icon'] ?? null);
             $roleModel->description = $validated['description'] ?? null;
+            $roleModel->mobile_profile = $this->normalizeMobileProfile($validated['mobile_profile'] ?? null);
             $roleModel->save();
 
             $roleModel->syncPermissions($requestedPerms);

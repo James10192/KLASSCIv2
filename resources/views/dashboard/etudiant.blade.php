@@ -48,13 +48,19 @@
 
             <!-- Taux de Présence -->
             @if(isset($attendanceStats))
-            <div class="stat-card {{ $attendanceStats['rate'] >= 75 ? 'success' : ($attendanceStats['rate'] >= 50 ? 'warning' : 'danger') }}" style="padding: var(--space-xl); display: flex; align-items: center; justify-content: space-between;">
+            @php
+                // Aucun appel enregistre (ou calcul indisponible) : taux null,
+                // affiche « — » sans couleur d'alerte — jamais un faux 0 %.
+                $_tauxPresence = $attendanceStats['rate'] ?? null;
+                $_tonPresence = $_tauxPresence === null ? '' : ($_tauxPresence >= 75 ? 'success' : ($_tauxPresence >= 50 ? 'warning' : 'danger'));
+            @endphp
+            <div class="stat-card {{ $_tonPresence }}" style="padding: var(--space-xl); display: flex; align-items: center; justify-content: space-between;">
                 <div style="display: flex; align-items: center; gap: var(--space-lg); flex: 1;">
-                    <div class="stat-icon {{ $attendanceStats['rate'] >= 75 ? 'success' : ($attendanceStats['rate'] >= 50 ? 'warning' : 'danger') }}">
+                    <div class="stat-icon {{ $_tonPresence }}">
                         <i class="fas fa-clipboard-check"></i>
                     </div>
                     <div style="flex: 1;">
-                        <div class="stat-value" style="margin-bottom: var(--space-xs);">{{ $attendanceStats['rate'] }}%</div>
+                        <div class="stat-value" style="margin-bottom: var(--space-xs);">{{ $_tauxPresence === null ? '—' : $_tauxPresence . '%' }}</div>
                         <div class="stat-label" style="margin: 0;">Taux de Présence</div>
                     </div>
                 </div>
