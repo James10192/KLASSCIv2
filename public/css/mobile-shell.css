@@ -551,11 +551,16 @@ body.m-sheet-open { overflow: hidden; }
     /* Badge d'établissement centré : tuile 32px + nom court (la ville disparaît).
        Largeur bornée par le plus large des deux côtés (droite : 8 + 44 + 4 + 44). */
     body.has-m-shell .nextadmin-navbar .etb-badge { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); max-width: calc(100% - 208px); margin: 0; padding: 0; gap: 8px; background: transparent; border: 0; box-shadow: none; }
-    body.has-m-shell .nextadmin-navbar .etb-media { width: 32px; height: 32px; padding: 4px; border-radius: 9px; }
-    body.has-m-shell .nextadmin-navbar .etb-initiales { font-size: .78rem; }
-    body.has-m-shell .nextadmin-navbar .etb-texte { display: flex; }
+    /* La barre latérale étant un tiroir fermé sur mobile, la marque KLASSCI passe
+       en tête du badge : tuile logo + nom de l'application, l'établissement en
+       seconde ligne (le logo d'école .etb-media s'efface, il revient au tiroir). */
+    body.has-m-shell .nextadmin-navbar .etb-marque { display: grid; place-items: center; width: 32px; height: 32px; flex: 0 0 32px; border-radius: 9px; background: linear-gradient(135deg, #0453cb, #3b7ddb); box-shadow: 0 2px 8px rgba(4,83,203,.22); }
+    body.has-m-shell .nextadmin-navbar .etb-marque img { width: 22px; height: 22px; object-fit: contain; display: block; }
+    body.has-m-shell .nextadmin-navbar .etb-media { display: none; }
+    body.has-m-shell .nextadmin-navbar .etb-texte { display: flex; line-height: 1.15; }
+    body.has-m-shell .nextadmin-navbar .etb-app { display: block; font-size: 15px; font-weight: 800; letter-spacing: -.02em; color: #0f172a; white-space: nowrap; }
+    body.has-m-shell .nextadmin-navbar .etb-nom { font-size: 11px; font-weight: 600; color: #64748b; letter-spacing: 0; }
     body.has-m-shell .nextadmin-navbar .etb-ville { display: none; }
-    body.has-m-shell .nextadmin-navbar .etb-nom { font-size: 15px; font-weight: 700; letter-spacing: -.01em; color: #0f172a; }
 
     /* Droite : cloche (menu Bootstrap conservé) + avatar (ouvre la feuille) */
     body.has-m-shell .nextadmin-navbar .navbar-right { gap: 4px; margin-left: auto; }
