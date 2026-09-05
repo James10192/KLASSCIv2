@@ -27,7 +27,6 @@ class ESBTPAttendance extends Model implements Auditable
         'heure_debut',
         'heure_fin',
         'statut',
-        'status',
         'call_type',
         'is_justified',
         'commentaire',
@@ -74,7 +73,6 @@ class ESBTPAttendance extends Model implements Auditable
         'heure_debut',
         'heure_fin',
         'statut', // 'present', 'absent', 'retard', 'excuse'
-        'status', // Alias for statut (for backward compatibility)
         'call_type', // 'start', 'end', 'merged'
         'is_justified',
         'commentaire',

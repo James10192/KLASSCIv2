@@ -443,14 +443,16 @@ class DashboardController extends Controller
 
         // Présences - Les secrétaires peuvent gérer les présences
         try {
-            $data['todayAttendances'] = ESBTPAttendance::whereDate('date', today())->count();
-            $data['pendingJustifications'] = ESBTPAttendance::whereDate('date', '>=', now()->subDays(7))
-                ->where('status', 'absent')
-                ->where('justified', false)
+            $data['todayAttendances'] = ESBTPAttendance::finalOnly()->whereDate('date', today())->count();
+            // « Justifications en attente » = justificatifs déposés par les étudiants
+            // que personne n'a encore traités (cycle de vie : App\Enums\JustificationStatus).
+            $data['pendingJustifications'] = ESBTPAttendance::where('statut', 'absent')
+                ->where('justification_status', \App\Enums\JustificationStatus::PENDING->value)
                 ->count();
         } catch (\Exception $e) {
-            $data['todayAttendances'] = 0;
-            $data['pendingJustifications'] = 0;
+            \Log::warning('[dashboard secrétaire] présences indisponibles : ' . $e->getMessage());
+            $data['todayAttendances'] = null;
+            $data['pendingJustifications'] = null;
         }
 
         // Emplois du temps - Les secrétaires peuvent créer et consulter les emplois du temps
@@ -804,45 +806,14 @@ class DashboardController extends Controller
             $data['classesWithoutTimetable'] = 0;
         }
 
-        // Présences - Coordinateurs suivent les présences (filtré par année en cours)
+        // Présences - Coordinateurs suivent les présences du jour (filtré par année en cours)
         try {
-            if ($anneeEnCours) {
-                $data['todayAttendances'] = ESBTPAttendance::whereHas('etudiant.inscriptions', function($q) use ($anneeEnCours) {
-                    $q->where('annee_universitaire_id', $anneeEnCours->id)
-                      ->where('status', 'active');
-                })->whereDate('date', today())->count();
-
-                $totalPresent = ESBTPAttendance::whereHas('etudiant.inscriptions', function($q) use ($anneeEnCours) {
-                    $q->where('annee_universitaire_id', $anneeEnCours->id)
-                      ->where('status', 'active');
-                })->where('status', 'present')->whereDate('date', today())->count();
-
-                $totalAbsent = ESBTPAttendance::whereHas('etudiant.inscriptions', function($q) use ($anneeEnCours) {
-                    $q->where('annee_universitaire_id', $anneeEnCours->id)
-                      ->where('status', 'active');
-                })->where('status', 'absent')->whereDate('date', today())->count();
-            } else {
-                $data['todayAttendances'] = ESBTPAttendance::whereDate('date', today())->count();
-                $totalPresent = ESBTPAttendance::where('status', 'present')->whereDate('date', today())->count();
-                $totalAbsent = ESBTPAttendance::where('status', 'absent')->whereDate('date', today())->count();
-            }
-
-            $attendanceRate = $totalPresent + $totalAbsent > 0
-                ? round(($totalPresent / ($totalPresent + $totalAbsent)) * 100, 1)
-                : 0;
-
-            $data['attendanceStats'] = [
-                'total_present' => $totalPresent,
-                'total_absent' => $totalAbsent,
-                'attendance_rate' => $attendanceRate
-            ];
+            $data['attendanceStats'] = $this->presencesDuJour($anneeEnCours);
+            $data['todayAttendances'] = $data['attendanceStats']['total'];
         } catch (\Exception $e) {
-            $data['todayAttendances'] = 0;
-            $data['attendanceStats'] = [
-                'total_present' => 0,
-                'total_absent' => 0,
-                'attendance_rate' => 0
-            ];
+            \Log::warning('[dashboard coordinateur] présences du jour indisponibles : ' . $e->getMessage());
+            $data['todayAttendances'] = null;
+            $data['attendanceStats'] = $this->presencesIndisponibles();
         }
 
         // Messages pour coordinateurs (fix: wrapper parent pour les OR)
@@ -944,7 +915,7 @@ class DashboardController extends Controller
         $activeEmploiTemps = 0;
         $expiredEmploiTemps = 0;
         $classesWithoutTimetable = 0;
-        $attendanceStats = ['total_present' => 0, 'total_absent' => 0, 'attendance_rate' => 0];
+        $attendanceStats = $this->presencesIndisponibles();
 
         try {
             $totalClasses = ESBTPClasse::count();
@@ -983,18 +954,11 @@ class DashboardController extends Controller
                 $classesWithoutTimetable = ESBTPClasse::where('is_active', true)
                     ->whereNotIn('id', $classesAvecEdt)->count();
 
-                $totalPresent = ESBTPAttendance::whereHas('etudiant.inscriptions', fn($q) => $q->where('annee_universitaire_id', $anneeEnCours->id)->where('status', 'active'))
-                    ->where('status', 'present')->whereDate('date', today())->count();
-                $totalAbsent = ESBTPAttendance::whereHas('etudiant.inscriptions', fn($q) => $q->where('annee_universitaire_id', $anneeEnCours->id)->where('status', 'active'))
-                    ->where('status', 'absent')->whereDate('date', today())->count();
-                $attendanceStats = [
-                    'total_present' => $totalPresent,
-                    'total_absent' => $totalAbsent,
-                    'attendance_rate' => $totalPresent + $totalAbsent > 0 ? round(($totalPresent / ($totalPresent + $totalAbsent)) * 100, 1) : 0,
-                ];
+                $attendanceStats = $this->presencesDuJour($anneeEnCours);
             }
         } catch (\Exception $e) {
-            // Keep defaults
+            \Log::warning('[dashboard coordinateur/data] indicateurs indisponibles : ' . $e->getMessage());
+            $attendanceStats = $this->presencesIndisponibles();
         }
 
         return response()->json([
@@ -1085,27 +1049,37 @@ class DashboardController extends Controller
 
         // Récupérer les statistiques de présence de l'étudiant
         try {
-            $attendances = ESBTPAttendance::where('etudiant_id', $student->id)->get();
-            $totalAttendances = $attendances->count();
+            if (! $data['anneeEnCours']) {
+                // Sans année courante on ne sait pas quelle période afficher :
+                // mieux vaut « — » qu'un cumul de toutes les années.
+                throw new \RuntimeException('Aucune année universitaire courante.');
+            }
+
+            $comptes = $this->comptesParStatut(
+                ESBTPAttendance::query()
+                    ->where('etudiant_id', $student->id)
+                    ->where('annee_universitaire_id', $data['anneeEnCours']->id)
+            );
 
             $data['attendanceStats'] = [
-                'total' => $totalAttendances,
-                'present' => $attendances->where('status', 'present')->count(),
-                'absent' => $attendances->where('status', 'absent')->count(),
-                'late' => $attendances->where('status', 'late')->count(),
-                'excused' => $attendances->where('status', 'excused')->count(),
-                'rate' => $totalAttendances > 0
-                    ? round(($attendances->where('status', 'present')->count() + $attendances->where('status', 'late')->count()) / $totalAttendances * 100, 2)
-                    : 0
+                'total' => $comptes['total'],
+                'present' => $comptes['present'],
+                'retard' => $comptes['retard'],
+                'absent' => $comptes['absent'],
+                'excuse' => $comptes['excuse'],
+                'rate' => $comptes['taux'],
             ];
         } catch (\Exception $e) {
+            \Log::warning('[dashboard étudiant] assiduité indisponible : ' . $e->getMessage(), [
+                'etudiant_id' => $student->id,
+            ]);
             $data['attendanceStats'] = [
-                'total' => 0,
-                'present' => 0,
-                'absent' => 0,
-                'late' => 0,
-                'excused' => 0,
-                'rate' => 0
+                'total' => null,
+                'present' => null,
+                'retard' => null,
+                'absent' => null,
+                'excuse' => null,
+                'rate' => null,
             ];
         }
 
@@ -1540,5 +1514,87 @@ class DashboardController extends Controller
             '#f59e0b', '#ef4444', '#ec4899', '#84cc16'
         ];
         return $colors[array_rand($colors)];
+    }
+
+    /**
+     * Compte les présences FINALES d'une requête, ventilées par `statut`.
+     *
+     * Seule `esbtp_attendances.statut` fait foi (present / absent / retard / excuse).
+     * L'ancienne colonne `status` valait 'present' sur chaque ligne par défaut et
+     * n'était plus renseignée par personne : la lire donnait 100 % de présence.
+     *
+     * Règle de calcul du taux : un retard est une présence (l'étudiant était au
+     * cours), une absence excusée reste une absence (il n'y était pas, elle est
+     * seulement justifiée). Taux = (présents + retards) / total des appels.
+     *
+     * `finalOnly()` évite de compter trois fois la même séance (appel de début,
+     * appel de fin, fusion).
+     *
+     * @return array{present:int, retard:int, absent:int, excuse:int, total:int, taux:float|null}
+     */
+    private function comptesParStatut(\Illuminate\Database\Eloquent\Builder $query): array
+    {
+        $parStatut = $query->finalOnly()
+            ->selectRaw('statut, COUNT(*) AS total')
+            ->groupBy('statut')
+            ->pluck('total', 'statut');
+
+        $present = (int) ($parStatut['present'] ?? 0);
+        $retard = (int) ($parStatut['retard'] ?? 0);
+        $absent = (int) ($parStatut['absent'] ?? 0);
+        $excuse = (int) ($parStatut['excuse'] ?? 0);
+        $total = $present + $retard + $absent + $excuse;
+
+        return [
+            'present' => $present,
+            'retard' => $retard,
+            'absent' => $absent,
+            'excuse' => $excuse,
+            'total' => $total,
+            'taux' => $total > 0 ? round(($present + $retard) / $total * 100, 1) : null,
+        ];
+    }
+
+    /**
+     * Présences du jour pour les tableaux de bord de pilotage (coordinateur).
+     *
+     * Les clés `total_present` / `total_absent` / `attendance_rate` sont celles
+     * que lisent les vues ; `total_present` inclut les retards et `total_absent`
+     * les absences excusées (cf. comptesParStatut()).
+     */
+    private function presencesDuJour(?ESBTPAnneeUniversitaire $anneeEnCours): array
+    {
+        $query = ESBTPAttendance::query()->whereDate('date', today());
+        if ($anneeEnCours) {
+            $query->where('annee_universitaire_id', $anneeEnCours->id);
+        }
+
+        $comptes = $this->comptesParStatut($query);
+
+        return [
+            'total' => $comptes['total'],
+            'total_present' => $comptes['present'] + $comptes['retard'],
+            'total_retard' => $comptes['retard'],
+            'total_absent' => $comptes['absent'] + $comptes['excuse'],
+            'total_excuse' => $comptes['excuse'],
+            // Aucun appel fait aujourd'hui : pas de taux (« — »), pas un faux 0 %.
+            'attendance_rate' => $comptes['taux'],
+        ];
+    }
+
+    /**
+     * Valeurs nulles (affichées « — ») quand le calcul des présences a échoué :
+     * on ne montre jamais un 0 qui ressemblerait à une vraie mesure.
+     */
+    private function presencesIndisponibles(): array
+    {
+        return [
+            'total' => null,
+            'total_present' => null,
+            'total_retard' => null,
+            'total_absent' => null,
+            'total_excuse' => null,
+            'attendance_rate' => null,
+        ];
     }
 }
