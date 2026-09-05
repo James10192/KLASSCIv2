@@ -75,8 +75,10 @@ class TeacherDashboardController extends Controller
         $attendedSeances = ESBTPSeanceCours::where('esbtp_seance_cours.teacher_id', $teacherId)
             ->whereNotNull('esbtp_seance_cours.date_seance')
             ->where('esbtp_seance_cours.date_seance', '<=', Carbon::today())
-            ->join('esbtp_teacher_attendances', function ($join) {
+            ->join('esbtp_teacher_attendances', function ($join) use ($user) {
                 $join->on('esbtp_seance_cours.id', '=', 'esbtp_teacher_attendances.course_id')
+                    // esbtp_teacher_attendances.teacher_id référence users.id, pas esbtp_teachers.id
+                    ->where('esbtp_teacher_attendances.teacher_id', '=', $user->id)
                     ->where('esbtp_teacher_attendances.type', '=', 'start')
                     ->whereRaw('DATE(esbtp_teacher_attendances.date) = DATE(esbtp_seance_cours.date_seance)');
             })
@@ -96,7 +98,8 @@ class TeacherDashboardController extends Controller
             ->where('valid_until', '>', Carbon::now())
             ->first();
 
-        $todayAttendance = ESBTPTeacherAttendance::where('teacher_id', $teacherId)
+        // esbtp_teacher_attendances.teacher_id référence users.id, pas esbtp_teachers.id
+        $todayAttendance = ESBTPTeacherAttendance::where('teacher_id', $user->id)
             ->whereDate('validated_at', $today)
             ->latest()
             ->first();
@@ -907,8 +910,12 @@ class TeacherDashboardController extends Controller
             $seances = ESBTPSeanceCours::where('teacher_id', $teacherId)->get();
             $totalSeances = $seances->count();
 
-            // Compter les séances où l'enseignant a fait l'émargement
-            $presentSeances = ESBTPTeacherAttendance::where('teacher_id', $teacherId)->count();
+            // Compter les séances où l'enseignant a fait l'émargement.
+            // $teacherId est un esbtp_teachers.id ; l'émargement porte le users.id du compte.
+            $teacherUserId = ESBTPTeacher::whereKey($teacherId)->value('user_id');
+            $presentSeances = $teacherUserId
+                ? ESBTPTeacherAttendance::where('teacher_id', $teacherUserId)->count()
+                : 0;
 
             // Calculer le taux de présence
             $attendanceRate = $totalSeances > 0 ? ($presentSeances / $totalSeances) * 100 : 0;
