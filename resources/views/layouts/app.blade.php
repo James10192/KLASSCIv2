@@ -1753,9 +1753,16 @@
                                      sur un document pas encore délivré, une pièce à fournir sur un
                                      document qui existe et que l'école attend. --}}
                                 @can('pieces_dossier.view')
-                                <a href="{{ route('esbtp.pieces-dossier.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.pieces-dossier.*') ? 'active' : '' }}">
+                                <a href="{{ route('esbtp.pieces-dossier.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.pieces-dossier.index') ? 'active' : '' }}">
                                     <div class="menu-icon"><i class="fas fa-list-check"></i></div>
                                     <div class="menu-text">Pièces à fournir</div>
+                                </a>
+                                {{-- Le catalogue dit ce que l'ecole reclame ; le suivi dit qui
+                                     ne l'a pas encore rendu. Deux ecrans, parce que ce sont deux
+                                     moments : configurer une fois, rappeler tous les jours. --}}
+                                <a href="{{ route('esbtp.pieces-dossier.suivi') }}" class="menu-sublink {{ Request::routeIs('esbtp.pieces-dossier.suivi') ? 'active' : '' }}">
+                                    <div class="menu-icon"><i class="fas fa-clipboard-check"></i></div>
+                                    <div class="menu-text">Suivi des dossiers</div>
                                 </a>
                                 @endcan
                                 {{-- Hors du bloc `inscriptions.view`, et `reinscriptions.demandes.view`

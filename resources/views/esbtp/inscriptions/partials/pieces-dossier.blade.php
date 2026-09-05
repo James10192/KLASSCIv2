@@ -54,7 +54,7 @@
     ];
 @endphp
 
-<div class="is-card pdo" data-pdo='@json($_piecesCharge)' x-data="dossierPieces()" x-init="init()">
+<div id="dossier" class="is-card pdo" data-pdo='@json($_piecesCharge)' x-data="dossierPieces()" x-init="init()">
     <div class="is-card-body">
         <div class="is-section-header">
             <div class="is-section-icon"><i class="fas fa-folder-open"></i></div>

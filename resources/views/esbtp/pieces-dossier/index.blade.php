@@ -227,6 +227,9 @@
                 </div>
             </div>
             <div class="pce-hero-actions">
+                <a href="{{ route('esbtp.pieces-dossier.suivi') }}" class="pce-btn pce-btn--glass">
+                    <i class="fas fa-clipboard-check"></i>Suivi des dossiers
+                </a>
                 <button type="button" class="pce-btn pce-btn--glass" @click="aideOuverte = true">
                     <i class="fas fa-question-circle"></i>Aide
                 </button>

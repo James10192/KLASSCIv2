@@ -40,6 +40,11 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ### Ajouts
 
+- **Une page pour savoir qui rappeler** — « Suivi des dossiers » liste, pour une année et une classe, les étudiants dont le dossier est incomplet, avec le nom des pièces qui manquent. Cinq compteurs en tête : inscriptions examinées, dossiers complets, dossiers incomplets, pièces à réclamer, pièces à relire. Ils portent sur toute la sélection, pas sur la page affichée.
+
+  Chaque ligne mène directement au dossier de l'étudiant, à l'endroit exact où l'on coche. La page est en lecture seule et n'offre aucune action de masse : « cocher toutes les pièces de cette classe » n'aurait aucun sens, personne n'a vu ces papiers. Elle est accessible depuis le menu, depuis le catalogue des pièces et depuis la liste des inscriptions. Une inscription annulée n'y figure pas.
+
+
 - **La photo de l'étudiant se prend avec un téléphone** — un dialogue s'ouvre tout seul juste après la création d'une inscription, au moment précis où l'étudiant est devant le guichet. Trois chemins : téléverser un fichier, photographier avec la caméra du poste, ou afficher un code QR que l'on scanne avec un téléphone. La photo prise au téléphone arrive à l'écran ; le guichet la valide ou en redemande une autre — elle ne remplace la photo de l'étudiant qu'une fois acceptée.
 
   Le troisième chemin existe parce que le poste du guichet n'a souvent pas de caméra, ou en a une mauvaise, alors que le téléphone qui est dans la poche photographie très bien. La page ouverte par le code QR ne demande aucun compte et n'affiche qu'un nom : le lien expire en quelques minutes, ne vaut que pour un seul envoi, et ne dit rien du dossier.

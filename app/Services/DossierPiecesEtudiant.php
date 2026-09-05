@@ -188,6 +188,70 @@ class DossierPiecesEtudiant
     }
 
     /**
+     * L'état des dossiers de PLUSIEURS inscriptions, en quelques requêtes.
+     *
+     * La page de pilotage regarde une promotion entière. Appeler
+     * {@see pourInscription()} en boucle ferait quatre requêtes par étudiant :
+     * deux mille inscriptions, huit mille requêtes, et un écran qui n'aboutit
+     * pas. Ici, les dépôts et les consommations de toute la page sont chargés
+     * d'un coup, et le catalogue une fois par couple (filière, niveau) — ils se
+     * comptent sur les doigts, là où les étudiants se comptent par milliers.
+     *
+     * @param  Collection<int, ESBTPInscription>  $inscriptions
+     * @return array<int, array<string, mixed>> synthèses, indexées par inscription
+     */
+    public function syntheseParInscription(Collection $inscriptions): array
+    {
+        if ($inscriptions->isEmpty()) {
+            return [];
+        }
+
+        $etudiantIds = $inscriptions->pluck('etudiant_id')->filter()->unique()->all();
+
+        $depots = ESBTPPieceDeposee::query()
+            ->whereIn('etudiant_id', $etudiantIds)
+            ->get()
+            ->groupBy(fn (ESBTPPieceDeposee $d) => $d->etudiant_id.':'.$d->piece_dossier_id);
+
+        $consommations = ESBTPInscriptionPiece::query()
+            ->whereIn('etudiant_id', $etudiantIds)
+            ->retenues($this->restitueALAnnulation())
+            ->get()
+            ->groupBy(fn (ESBTPInscriptionPiece $c) => $c->etudiant_id.':'.$c->piece_dossier_id);
+
+        $lignesCourantes = ESBTPInscriptionPiece::query()
+            ->whereIn('inscription_id', $inscriptions->pluck('id')->all())
+            ->get()
+            ->keyBy(fn (ESBTPInscriptionPiece $c) => $c->inscription_id.':'.$c->piece_dossier_id);
+
+        $cataloguesParScope = [];
+        $resultat = [];
+
+        foreach ($inscriptions as $inscription) {
+            $filiereId = $inscription->classe?->filiere_id ?? $inscription->filiere_id;
+            $niveauId = $inscription->classe?->niveau_etude_id ?? $inscription->niveau_id;
+            $cle = ($filiereId ?: 0).':'.($niveauId ?: 0);
+
+            $cataloguesParScope[$cle] ??= $this->catalogue->pourScope(
+                $filiereId ? (int) $filiereId : null,
+                $niveauId ? (int) $niveauId : null
+            );
+
+            $lignes = $cataloguesParScope[$cle]->map(fn (ESBTPPieceDossier $piece) => $this->ligne(
+                $piece,
+                $inscription,
+                collect($depots->get($inscription->etudiant_id.':'.$piece->id, [])),
+                collect($consommations->get($inscription->etudiant_id.':'.$piece->id, [])),
+                $lignesCourantes->get($inscription->id.':'.$piece->id)
+            ));
+
+            $resultat[$inscription->id] = $this->synthese($lignes);
+        }
+
+        return $resultat;
+    }
+
+    /**
      * Le résumé d'un dossier, pour un bandeau ou un compteur.
      *
      * @param  Collection<int, array<string, mixed>>  $lignes

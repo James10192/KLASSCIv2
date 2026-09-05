@@ -619,6 +619,14 @@ tr[data-inscription-id] > td { transition: background .15s ease; }
                     </div>
                 </div>
                 <div class="ii-hero-actions">
+                    {{-- Un lien vers le pilotage des dossiers : on arrive souvent
+                         ici en cherchant qui rappeler, et la liste des
+                         inscriptions ne repond pas a cette question. --}}
+                    @can('pieces_dossier.view')
+                        <a href="{{ route('esbtp.pieces-dossier.suivi') }}" class="ii-btn--glass">
+                            <i class="fas fa-clipboard-check"></i> Suivi des dossiers
+                        </a>
+                    @endcan
                     @can('admin.access')
                         @include('partials._klassci_toast')
                         <button type="button" class="ii-btn--glass"

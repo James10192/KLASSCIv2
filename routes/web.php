@@ -1777,6 +1777,13 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 ->middleware(['permission:pieces_dossier.view', 'throttle:60,1'])
                 ->name('index');
 
+            // Le pilotage : qui n'a pas rendu ses pieces. Ecran de LECTURE, ouvert
+            // a qui peut consulter le catalogue — savoir qui rappeler ne demande
+            // pas le droit de modifier quoi que ce soit.
+            Route::get('/pieces-dossier/suivi', [\App\Http\Controllers\ESBTPSuiviPiecesController::class, 'index'])
+                ->middleware(['permission:pieces_dossier.view', 'throttle:60,1'])
+                ->name('suivi');
+
             Route::middleware(['permission:pieces_dossier.configure', 'throttle:60,1'])->group(function () {
                 Route::post('/pieces-dossier', [ESBTPPieceDossierController::class, 'store'])->name('store');
                 Route::put('/pieces-dossier/{piece}', [ESBTPPieceDossierController::class, 'update'])->name('update');
