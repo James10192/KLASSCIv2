@@ -32,6 +32,14 @@ use App\Models\ESBTPInscription;
 use App\Models\ESBTPTeacher;
 use App\Models\ESBTPSystemSetting;
 use App\Models\ESBTPEtablissement;
+use App\Models\ESBTPPaiement;
+use App\Models\ESBTPFraisSubscription;
+use App\Models\ESBTPReliquatDetail;
+use App\Models\ESBTPInscriptionEcheancierSnapshot;
+use App\Models\ESBTPLMDResultatUE;
+use App\Enums\JustificationStatus;
+use App\Helpers\SettingsHelper;
+use App\Services\ESBTP\BtsCurrentResultSnapshotService;
 use App\Domain\Students\StudentCountService;
 use App\Services\PermissionRegistry;
 use Illuminate\Http\Request;
@@ -1000,15 +1008,30 @@ class DashboardController extends Controller
 
         $data['anneeEnCours'] = ESBTPAnneeUniversitaire::where('is_current', true)->first();
 
+        // Inscription active de l'année courante : c'est elle qui porte la classe
+        // (l'étudiant peut avoir changé de classe d'une année à l'autre).
+        $inscription = null;
+        if ($data['anneeEnCours']) {
+            $inscription = ESBTPInscription::query()
+                ->where('etudiant_id', $student->id)
+                ->where('annee_universitaire_id', $data['anneeEnCours']->id)
+                ->where('status', 'active')
+                ->with(['classe.filiere', 'classe.niveau', 'classe.parcours'])
+                ->first();
+        }
+        $classeId = $inscription->classe_id ?? $student->classe_id;
+
         // Récupérer l'emploi du temps d'aujourd'hui pour l'étudiant
         try {
-            $today = strtolower(date('l'));
-            $data['todayTimetable'] = ESBTPSeanceCours::whereHas('emploiTemps', function($query) use ($student) {
-                    $query->where('classe_id', $student->classe_id);
+            // Les séances stockent le jour en français (« lundi », …) : le nom
+            // anglais de date('l') ne trouvait jamais rien.
+            $today = mb_strtolower(now()->locale('fr')->dayName, 'UTF-8');
+            $data['todayTimetable'] = ESBTPSeanceCours::whereHas('emploiTemps', function($query) use ($classeId) {
+                    $query->where('classe_id', $classeId)->where('is_active', true);
                 })
                 ->where('jour', $today)
                 ->orderBy('heure_debut')
-                ->with(['matiere', 'emploiTemps.classe', 'enseignant'])
+                ->with(['matiere', 'emploiTemps.classe', 'enseignant.user'])
                 ->get();
         } catch (\Exception $e) {
             $data['todayTimetable'] = collect();
@@ -1038,7 +1061,7 @@ class DashboardController extends Controller
 
         // Récupérer les notes récentes de l'étudiant
         try {
-            $data['recentGrades'] = ESBTPNote::with(['evaluation.matiere'])
+            $data['recentGrades'] = ESBTPNote::with(['evaluation.matiere', 'matiere'])
                 ->where('etudiant_id', $student->id)
                 ->orderBy('created_at', 'desc')
                 ->take(5)
@@ -1083,7 +1106,285 @@ class DashboardController extends Controller
             ];
         }
 
+        // Accueil mobile (shell mobile, profil « etudiant ») : tout ce que
+        // l'écran affiche en plus du bureau, calculé une seule fois ici.
+        $data['mobileAccueil'] = $this->accueilMobileEtudiant($student, $inscription, $data);
+
         return view('dashboard.etudiant', $data);
+    }
+
+    /**
+     * Données de l'accueil mobile de l'étudiant.
+     *
+     * Valeurs brutes (nombres, dates Carbon) : la vue met en forme. `null` veut
+     * dire « indisponible » et s'affiche « — », jamais un faux zéro.
+     */
+    private function accueilMobileEtudiant(ESBTPEtudiant $student, ?ESBTPInscription $inscription, array $data): array
+    {
+        $annee = $data['anneeEnCours'] ?? null;
+        $classe = $inscription?->classe;
+        $estLmd = $classe ? $classe->isLMD() : false;
+        $ecole = SettingsHelper::getSchoolInfo();
+
+        $accueil = [
+            'ecole' => (string) (($ecole['acronym'] ?? '') ?: ($ecole['name'] ?? config('app.name'))),
+            'aujourdhui' => now(),
+            'prenom' => trim((string) ($student->prenoms ?? '')) ?: (string) $student->nom,
+            'classe' => $classe?->name,
+            'est_lmd' => $estLmd,
+            'prochain_cours' => $this->prochainCoursDuJour($data['todayTimetable'] ?? collect()),
+            'moyenne' => null,
+            'credits' => null,
+            'assiduite' => $data['attendanceStats']['rate'] ?? null,
+            'absences' => $data['attendanceStats']['absent'] ?? null,
+            'a_justifier' => ['total' => 0, 'derniere' => null],
+            'finances' => null,
+            'notes' => $this->dernieresNotes($data['recentGrades'] ?? collect()),
+        ];
+
+        if (! $annee) {
+            return $accueil;
+        }
+
+        try {
+            $accueil['a_justifier'] = $this->absencesAJustifier($student->id, $annee->id);
+        } catch (\Throwable $e) {
+            \Log::warning('[accueil mobile étudiant] absences à justifier indisponibles : ' . $e->getMessage());
+        }
+
+        if ($inscription) {
+            try {
+                $accueil['finances'] = $this->financesInscription($inscription);
+            } catch (\Throwable $e) {
+                \Log::warning('[accueil mobile étudiant] situation financière indisponible : ' . $e->getMessage());
+            }
+
+            try {
+                if ($estLmd) {
+                    // LMD : les crédits acquis priment sur une moyenne ; on ne
+                    // passe jamais par le calcul de bulletin BTS.
+                    $accueil['credits'] = $this->creditsLmdAcquis($student->id, $annee->id);
+                }
+                if (! $accueil['credits']) {
+                    $accueil['moyenne'] = $this->moyenneCourante($student->id, $inscription->classe_id, $annee->id, $estLmd);
+                }
+            } catch (\Throwable $e) {
+                \Log::warning('[accueil mobile étudiant] résultats indisponibles : ' . $e->getMessage());
+            }
+        }
+
+        return $accueil;
+    }
+
+    /**
+     * Première séance du jour qui n'est pas encore terminée (celle en cours comprise).
+     */
+    private function prochainCoursDuJour($seances): ?array
+    {
+        $maintenant = now();
+
+        foreach (collect($seances) as $seance) {
+            $debut = $seance->heure_debut ? Carbon::parse($seance->heure_debut) : null;
+            $fin = $seance->heure_fin ? Carbon::parse($seance->heure_fin) : null;
+            if (! $debut || ! $fin) {
+                continue;
+            }
+            $finDuJour = $maintenant->copy()->setTimeFrom($fin);
+            if ($finDuJour->lte($maintenant)) {
+                continue;
+            }
+
+            return [
+                'heure' => $debut->format('H:i'),
+                'fin' => $fin->format('H:i'),
+                'en_cours' => $maintenant->copy()->setTimeFrom($debut)->lte($maintenant),
+                'matiere' => $seance->matiere->name ?? null,
+                'salle' => $seance->salle ?: null,
+                'enseignant' => $seance->enseignant?->full_name,
+            ];
+        }
+
+        return null;
+    }
+
+    /**
+     * Absences finales de l'année sans justification recevable (aucune, ou rejetée).
+     */
+    private function absencesAJustifier(int $etudiantId, int $anneeId): array
+    {
+        $query = ESBTPAttendance::query()
+            ->finalOnly()
+            ->where('etudiant_id', $etudiantId)
+            ->where('annee_universitaire_id', $anneeId)
+            ->where('statut', 'absent')
+            ->where(function ($q) {
+                $q->whereNull('justification_status')
+                    ->orWhere('justification_status', JustificationStatus::REJECTED->value);
+            });
+
+        $total = (clone $query)->count();
+        $derniere = null;
+
+        if ($total > 0) {
+            $absence = (clone $query)
+                ->with(['matiere', 'seanceCours.matiere'])
+                ->orderByDesc('date')
+                ->orderByDesc('heure_debut')
+                ->first();
+
+            if ($absence) {
+                $derniere = [
+                    'id' => $absence->id,
+                    'date' => $absence->date ? Carbon::parse($absence->date) : null,
+                    'matiere' => $absence->matiere->name ?? $absence->seanceCours?->matiere?->name,
+                    'heure_debut' => $absence->heure_debut ? substr((string) $absence->heure_debut, 0, 5) : null,
+                    'heure_fin' => $absence->heure_fin ? substr((string) $absence->heure_fin, 0, 5) : null,
+                ];
+            }
+        }
+
+        return ['total' => $total, 'derniere' => $derniere];
+    }
+
+    /**
+     * Reste dû de l'inscription et prochaine tranche à régler.
+     *
+     * Même arithmétique que « Mes paiements » (frais dus + reliquats entrants
+     * − net encaissé). La tranche vient de l'échéancier figé de l'inscription
+     * quand il existe ; on ne le recalcule pas depuis un tableau de bord.
+     */
+    private function financesInscription(ESBTPInscription $inscription): array
+    {
+        $totalFrais = ESBTPFraisSubscription::dueAmountForInscription($inscription->id);
+        $totalReliquats = (float) ESBTPReliquatDetail::where('inscription_destination_id', $inscription->id)
+            ->actifs()
+            ->sum('solde_restant');
+        $totalAttendu = $totalFrais + $totalReliquats;
+        $totalPaye = ESBTPPaiement::netPaidForInscription((int) $inscription->id);
+        $resteDu = max(0, $totalAttendu - $totalPaye);
+
+        $prochaine = null;
+        if ($resteDu > 0) {
+            $snapshot = ESBTPInscriptionEcheancierSnapshot::where('inscription_id', $inscription->id)->first();
+            $ligne = collect($snapshot->payload['due_lines'] ?? [])
+                ->filter(fn ($l) => (float) ($l['remaining_amount'] ?? 0) > 0 && ! empty($l['due_date']))
+                ->sortBy('due_date')
+                ->first();
+
+            if ($ligne) {
+                $echeance = Carbon::parse($ligne['due_date'])->addDays((int) ($ligne['grace_days'] ?? 0))->startOfDay();
+                $prochaine = [
+                    'label' => (string) ($ligne['label'] ?? 'Prochaine tranche'),
+                    'date' => $echeance,
+                    'montant' => (float) $ligne['remaining_amount'],
+                    'en_retard' => $echeance->lt(now()->startOfDay()),
+                ];
+            }
+        }
+
+        return [
+            'total_attendu' => round($totalAttendu, 2),
+            'total_paye' => round($totalPaye, 2),
+            'reste_du' => round($resteDu, 2),
+            'prochaine_echeance' => $prochaine,
+        ];
+    }
+
+    /**
+     * Crédits acquis / attendus sur les bulletins LMD publiés de l'année.
+     * `null` tant qu'aucun résultat d'UE n'a été délibéré.
+     */
+    private function creditsLmdAcquis(int $etudiantId, int $anneeId): ?array
+    {
+        $resultats = ESBTPLMDResultatUE::query()
+            ->where('etudiant_id', $etudiantId)
+            ->whereHas('bulletin', function ($q) use ($anneeId) {
+                $q->where('annee_universitaire_id', $anneeId)->where('is_published', true);
+            })
+            ->get(['id', 'statut', 'credit']);
+
+        if ($resultats->isEmpty()) {
+            return null;
+        }
+
+        $acquis = $resultats
+            ->whereIn('statut', [ESBTPLMDResultatUE::STATUT_AQ, ESBTPLMDResultatUE::STATUT_APC])
+            ->sum('credit');
+
+        return [
+            'acquis' => (int) $acquis,
+            'total' => (int) $resultats->sum('credit'),
+        ];
+    }
+
+    /**
+     * Moyenne courante sur 20.
+     *
+     * BTS : la projection annuelle officielle si elle est calculable, sinon la
+     * moyenne simple des notes de l'année. LMD : moyenne simple uniquement
+     * (les bulletins LMD ont leur propre service, jamais celui du BTS).
+     */
+    private function moyenneCourante(int $etudiantId, int $classeId, int $anneeId, bool $estLmd): ?float
+    {
+        if (! $estLmd) {
+            try {
+                $snapshot = app(BtsCurrentResultSnapshotService::class)->getAnnualSnapshot($etudiantId, $classeId, $anneeId);
+                if (isset($snapshot['effective_total']) && $snapshot['effective_total'] !== null) {
+                    return round((float) $snapshot['effective_total'], 2);
+                }
+            } catch (\Throwable $e) {
+                // Configuration de bulletin absente : on retombe sur les notes brutes.
+            }
+        }
+
+        $notes = ESBTPNote::query()
+            ->where('etudiant_id', $etudiantId)
+            ->where(function ($q) {
+                $q->whereNull('is_absent')->orWhere('is_absent', false);
+            })
+            ->whereHas('evaluation', function ($q) use ($anneeId) {
+                $q->where('annee_universitaire_id', $anneeId)
+                    ->where('status', '!=', ESBTPEvaluation::STATUS_CANCELLED);
+            })
+            ->with('evaluation:id,bareme')
+            ->get();
+
+        $sur20 = $notes
+            ->map(function ($note) {
+                $valeur = is_numeric($note->note) ? (float) $note->note : (is_numeric($note->valeur) ? (float) $note->valeur : null);
+                if ($valeur === null) {
+                    return null;
+                }
+                $bareme = (float) ($note->evaluation->bareme ?? 20);
+
+                return $bareme > 0 ? $valeur * 20 / $bareme : $valeur;
+            })
+            ->filter(fn ($v) => $v !== null);
+
+        return $sur20->isEmpty() ? null : round($sur20->avg(), 2);
+    }
+
+    /**
+     * Dernières notes, prêtes pour les cartes « m-grade » de l'accueil mobile.
+     */
+    private function dernieresNotes($recentGrades): array
+    {
+        return collect($recentGrades)->take(3)->map(function ($note) {
+            $evaluation = $note->evaluation;
+            $matiere = $note->matiere ?? $evaluation?->matiere;
+            $valeur = is_numeric($note->note) ? (float) $note->note : (is_numeric($note->valeur) ? (float) $note->valeur : null);
+
+            return [
+                'matiere' => $matiere->name ?? 'Matière',
+                'code' => $matiere->code ?? null,
+                'titre' => $evaluation?->titre ?: ($evaluation?->type ? ucfirst((string) $evaluation->type) : null),
+                'coefficient' => $evaluation?->coefficient,
+                'date' => $evaluation?->date_evaluation ? Carbon::parse($evaluation->date_evaluation) : ($note->created_at ? Carbon::parse($note->created_at) : null),
+                'note' => $valeur,
+                'bareme' => (float) ($evaluation->bareme ?? 20) ?: 20,
+                'absent' => (bool) ($note->is_absent ?? false),
+            ];
+        })->values()->all();
     }
 
     /**

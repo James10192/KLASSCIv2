@@ -18,28 +18,35 @@ use App\Models\User;
 class AbsenceJustificationPolicy
 {
     /**
-     * Étudiant : peut soumettre/re-soumettre sa propre absence si pas déjà APPROVED.
-     * Admin : peut aussi soumettre (ex: cas exceptionnel saisie par secrétaire).
+     * Soumettre ou re-soumettre une justification.
+     *
+     * Une absence se justifie quand aucune justification n'a encore été
+     * déposée (statut null) ou quand la précédente a été rejetée. Elle ne se
+     * re-soumet pas tant qu'elle est en attente : cela réinitialiserait la
+     * file de l'administration. Une justification approuvée est terminale,
+     * et une absence excusée à l'ancienne n'a rien à justifier.
+     *
+     * Étudiant : sa propre absence, avec la permission attendances.justify_own.
+     * Admin : toute absence, avec la permission attendances.justify_process
+     * (cas exceptionnel : saisie par le secrétariat).
      */
     public function submit(User $user, ESBTPAttendance $absence): bool
     {
-        // Admin avec perm process peut soumettre pour l'étudiant
-        if ($user->can('attendances.justify_process')) {
-            return $absence->justification_status !== JustificationStatus::APPROVED;
+        if (!$this->peutEtreSoumise($absence)) {
+            return false;
         }
 
-        // Étudiant propriétaire avec perm view_own (= sa fiche)
+        if ($user->can('attendances.justify_process')) {
+            return true;
+        }
+
         if (!$user->can('attendances.justify_own')) {
             return false;
         }
 
         $etudiant = $user->etudiant ?? null;
-        if (!$etudiant || (int) $etudiant->id !== (int) $absence->etudiant_id) {
-            return false;
-        }
 
-        // Pas re-soumissible si déjà approuvée
-        return $absence->justification_status !== JustificationStatus::APPROVED;
+        return $etudiant && (int) $etudiant->id === (int) $absence->etudiant_id;
     }
 
     /**
@@ -76,5 +83,19 @@ class AbsenceJustificationPolicy
 
         $etudiant = $user->etudiant ?? null;
         return $etudiant && (int) $etudiant->id === (int) $absence->etudiant_id;
+    }
+
+    /**
+     * L'état de l'absence permet-il un dépôt ? Indépendant de la personne.
+     */
+    private function peutEtreSoumise(ESBTPAttendance $absence): bool
+    {
+        if ($absence->statut === 'excuse') {
+            return false;
+        }
+
+        $status = $absence->justification_status;
+
+        return $status === null || $status->isEditableByStudent();
     }
 }

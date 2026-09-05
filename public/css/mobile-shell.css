@@ -13,13 +13,21 @@
    au sens (validé / en attente / rejeté).
 
    Découpage :
-     1. Socle global (toujours actif)          — color-scheme, x-cloak, dvh
+     1. Socle global (toujours actif)          — color-scheme, x-cloak, dvh,
+                                                  bascule m-only-mobile / m-only-desktop,
+                                                  transitions de vue entre pages
      2. Composants réutilisables (tous écrans) — m-sheet, m-scrim, m-toast,
                                                   m-chip, m-btn, m-field, m-in
      3. Shell mobile  @media (max-width: 991.98px)
-     4. Variante tablette @media (768px – 991.98px) — rail latéral
+     3b. Layout sous 768px (body.has-m-shell)  — gouttières, navbar → app bar 56px
+     4. Variante tablette @media (768px – 991.98px) — rail latéral, gouttière 24px
      5. Pile des flottants (fab / chatbot / toast) sous body.has-m-shell
      6. Alias hérités `.stu-*` (mobile-student.css)
+
+   Mouvement (comme sur iOS) : courbe --m-ease-ios pour tout ce qui glisse
+   (feuille, pastille des onglets), ressort --m-ease-spring pour les retours
+   après un geste ; uniquement transform/opacity sur les éléments du shell,
+   jamais sur les cartes de contenu (règle universal-dropdowns).
 
    Marqueurs attendus sur <body> (posés par le layout) :
      .has-m-shell            le shell est actif (padding bas, police, flottants)
@@ -36,6 +44,14 @@
     --m-acc: #0453cb;
     --m-nav-h: 78px;
     --m-safe-b: env(safe-area-inset-bottom, 0px);
+    /* gouttière latérale du layout dans le shell (16 téléphone, 12 < 360, 24 tablette) */
+    --m-gut: 16px;
+    /* courbes iOS : glissement (feuille, pastille) et ressort (retour après un geste) */
+    --m-ease-ios: cubic-bezier(0.32, 0.72, 0, 1);
+    --m-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+    --m-sheet-ms: 420ms;
+    --m-spring-ms: 500ms;
+    --m-pill-ms: 480ms;
     /* alias hérité (mobile-student.css) */
     --stu-bottomnav-h: 58px;
 }
@@ -50,10 +66,39 @@ html { color-scheme: light; }
 .m-rail { display: none; }
 
 /* 100vh → 100dvh avec repli (barre d'adresse mobile). */
-.m-screen,
 .m-vh {
     min-height: 100vh;
     min-height: 100dvh;
+}
+
+/* Bascule de DOM : une page garde son DOM de bureau dans .m-only-desktop et
+   ajoute son DOM mobile dans .m-only-mobile (souvent .m-screen). Un seul des
+   deux est visible ; la frontière est 767.98px (le rail tablette conserve le
+   DOM de bureau). Un conteneur d'écran mobile est une grille verticale sans
+   marge propre : la gouttière est portée par le layout (--m-gut). */
+.m-only-mobile { display: none; }
+.m-only-desktop { display: block; }
+@media (max-width: 767.98px) {
+    .m-only-mobile { display: block; }
+    .m-only-desktop { display: none; }
+}
+
+/* Transitions de vue entre deux pages (Chrome 126+, Safari 18.2+ ; ignoré
+   ailleurs, sans erreur) : l'app bar (view-transition-name: m-appbar) et la
+   pastille des onglets (m-tab-pill) sont morphées d'un écran à l'autre, le
+   reste fond brièvement. Un seul élément par nom dans une page : le layout
+   ne rend qu'une .nextadmin-navbar et qu'une .m-bottomnav. Sur bureau
+   (≥ 992px) et avec prefers-reduced-motion, tout est immédiat. */
+@view-transition { navigation: auto; }
+::view-transition-old(root),
+::view-transition-new(root) { animation-duration: 200ms; }
+::view-transition-group(m-appbar),
+::view-transition-group(m-bottomnav),
+::view-transition-group(m-tab-pill) { animation-duration: var(--m-pill-ms); animation-timing-function: var(--m-ease-ios); }
+@media (min-width: 992px), (prefers-reduced-motion: reduce) {
+    ::view-transition-group(*),
+    ::view-transition-old(*),
+    ::view-transition-new(*) { animation: none !important; }
 }
 
 /* ---------- 2. Composants réutilisables (fonctionnent aussi ≥ 1024px) ---------- */
@@ -64,12 +109,39 @@ html { color-scheme: light; }
 .m-chip.info { background: rgba(4,83,203,.1); color: #0453cb; }
 .m-chip.mute { background: #eef2f7; color: #475569; }
 
-.m-btn { height: 48px; border-radius: 14px; border: 0; font: inherit; font-family: var(--m-font); font-weight: 700; font-size: 15px; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; width: 100%; text-decoration: none; -webkit-tap-highlight-color: transparent; }
+.m-btn { height: 48px; border-radius: 14px; border: 0; font: inherit; font-family: var(--m-font); font-weight: 700; font-size: 15px; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; width: 100%; text-decoration: none; -webkit-tap-highlight-color: transparent; transition: transform 120ms ease; }
 .m-btn.p { background: #0453cb; color: #fff; box-shadow: 0 6px 18px rgba(4,83,203,.28); }
 .m-btn.g { background: #fff; color: #0453cb; border: 1.5px solid #c7d7f3; }
 .m-btn.d { background: #fdecea; color: #a12016; }
 .m-btn:disabled { opacity: .6; cursor: wait; }
+.m-btn:active:not(:disabled) { transform: scale(.97); }
 .m-btn svg { width: 20px; height: 20px; }
+
+/* Retour au toucher (comme sur iOS) : léger rétrécissement, 120ms, sans halo
+   navigateur. Réservé aux commandes du shell (boutons, lignes-liens, onglets,
+   entrées de menu) : jamais sur une carte de contenu qui pourrait contenir un
+   menu déroulant Bootstrap (un transform, même fugace, en fausserait le calcul). */
+.m-menu a,
+.m-menu button,
+.m-seg button,
+.m-seg a,
+.m-days button,
+.m-days a,
+.m-opt label,
+.m-pad button,
+.m-tri button,
+.m-install .b,
+.m-install .x { -webkit-tap-highlight-color: transparent; transition: transform 120ms ease, background 120ms ease; }
+.m-menu a:active,
+.m-menu button:active,
+.m-seg button:active,
+.m-seg a:active,
+.m-days button:active,
+.m-days a:active,
+.m-pad button:active,
+.m-tri button:active,
+.m-install .b:active,
+.m-install .x:active { transform: scale(.97); }
 
 .m-field { display: grid; gap: 6px; font-family: var(--m-font); }
 .m-field label { font-size: 12px; font-weight: 700; color: #475569; letter-spacing: .04em; text-transform: uppercase; }
@@ -91,28 +163,41 @@ html { color-scheme: light; }
 .m-menu form { display: contents; }
 
 /* Scrim + feuille montante : fixes au viewport, au-dessus du chatbot (1090)
-   et sous son toast (1300). Repliés en modale centrée dès 768px. */
+   et sous son toast (1300). Repliés en modale centrée dès 768px.
+
+   Mouvement piloté par mobile-shell.js (Alpine mSheet) :
+     - la racine reçoit .is-open : le voile fond, le panneau glisse
+       (transform en ligne posé par Alpine, courbe --m-ease-ios, 420ms) ;
+     - pendant le glissé (.is-dragging) : aucune transition, le panneau suit
+       le doigt 1:1 et l'opacité du voile suit la progression ;
+     - au relâché sans fermeture : .is-spring, retour par ressort (500ms).
+   Uniquement transform et opacity : rien qui relayoute. Le panneau n'a pas
+   de transform de centrage sur bureau (inset + margin auto) pour laisser le
+   transform en ligne libre. */
 .m-sheet-root { position: fixed; inset: 0; z-index: 1095; font-family: var(--m-font); }
-.m-scrim { position: fixed; inset: 0; background: rgba(15,23,42,.45); z-index: 1095; animation: m-fade .18s ease-out; }
-.m-sheet { position: fixed; left: 0; right: 0; bottom: 0; background: #fff; border-radius: 24px 24px 0 0; padding: 8px 16px calc(28px + var(--m-safe-b)); z-index: 1096; display: grid; gap: 12px; box-shadow: 0 -10px 40px rgba(15,23,42,.2); max-height: 92vh; max-height: 92dvh; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; animation: m-sheet-up .28s cubic-bezier(.22,1,.36,1); font-family: var(--m-font); will-change: transform; }
-.m-sheet.is-dragging { animation: none; transition: none; }
+.m-scrim { position: fixed; inset: 0; background: rgba(15,23,42,.45); z-index: 1095; opacity: 0; transition: opacity var(--m-sheet-ms) var(--m-ease-ios); will-change: opacity; }
+.m-sheet-root.is-open .m-scrim { opacity: 1; }
+.m-sheet-root.is-dragging .m-scrim { transition: none; }
+.m-sheet { position: fixed; left: 0; right: 0; bottom: 0; background: #fff; border-radius: 24px 24px 0 0; padding: 8px 16px calc(28px + var(--m-safe-b)); z-index: 1096; display: grid; gap: 12px; box-shadow: 0 -10px 40px rgba(15,23,42,.2); max-height: 92vh; max-height: 92dvh; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; font-family: var(--m-font); transform: translateY(100%); transition: transform var(--m-sheet-ms) var(--m-ease-ios); will-change: transform; }
+.m-sheet-root.is-open .m-sheet { transform: translateY(0); }
+.m-sheet.is-dragging { transition: none; }
+.m-sheet.is-spring { transition: transform var(--m-spring-ms) var(--m-ease-spring); }
 .m-sheet .handle { width: 40px; height: 5px; border-radius: 3px; background: #cbd5e1; margin: 2px auto 6px; }
 .m-sheet-drag { touch-action: none; cursor: grab; display: grid; gap: 12px; }
 .m-sheet h4 { margin: 0; font-size: 18px; font-weight: 800; letter-spacing: -.01em; color: #0f172a; }
 .m-sheet .sub { font-size: 13px; color: #64748b; margin-top: -8px; }
 .m-sheet-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 44px; }
 .m-sheet-head h4 { flex: 1; min-width: 0; }
-.m-sheet-close { width: 44px; height: 44px; flex: 0 0 44px; border: 0; background: transparent; border-radius: 12px; display: grid; place-items: center; color: #475569; cursor: pointer; margin-right: -8px; }
+.m-sheet-close { width: 44px; height: 44px; flex: 0 0 44px; border: 0; background: transparent; border-radius: 12px; display: grid; place-items: center; color: #475569; cursor: pointer; margin-right: -8px; -webkit-tap-highlight-color: transparent; transition: transform 120ms ease; }
+.m-sheet-close:active { transform: scale(.94); }
 .m-sheet-close svg { width: 20px; height: 20px; }
 .m-sheet .m-menu:last-child { margin-bottom: 4px; }
 .m-sheet:focus { outline: none; }
 body.m-sheet-open { overflow: hidden; }
 
-@keyframes m-sheet-up { from { transform: translateY(100%); } to { transform: translateY(0); } }
-@keyframes m-fade { from { opacity: 0; } to { opacity: 1; } }
-
 @media (min-width: 768px) {
-    .m-sheet { left: 50%; right: auto; bottom: auto; top: 50%; transform: translate(-50%, -50%); width: 480px; max-width: calc(100vw - 32px); border-radius: 20px; padding: 12px 22px 22px; animation: m-fade .18s ease-out; }
+    .m-sheet { left: 0; right: 0; top: 0; bottom: 0; margin: auto; width: 480px; max-width: calc(100vw - 32px); height: fit-content; border-radius: 20px; padding: 12px 22px 22px; transform: scale(.96); opacity: 0; transition: transform 260ms var(--m-ease-ios), opacity 260ms var(--m-ease-ios); }
+    .m-sheet-root.is-open .m-sheet { transform: none; opacity: 1; }
     .m-sheet .handle { display: none; }
     .m-sheet-drag { touch-action: auto; cursor: default; }
 }
@@ -157,30 +242,41 @@ body.m-sheet-open { overflow: hidden; }
         overflow-x: hidden;
     }
 
-    .m-screen { display: flex; flex-direction: column; background: #f4f6fb; }
-    .m-screen > .m-body { flex: 1; overflow: auto; -webkit-overflow-scrolling: touch; }
+    /* Conteneur d'un écran mobile : grille verticale sans marge propre (la
+       gouttière est celle du layout). Un .m-body dedans reste utilisable seul. */
+    .m-screen { display: grid; gap: 14px; padding: 0; min-width: 0; align-content: start; font-family: var(--m-font); }
     .m-main { flex: 1; display: flex; flex-direction: column; min-width: 0; position: relative; }
 
     .m-appbar { height: 56px; flex: 0 0 56px; display: flex; align-items: center; gap: 10px; padding: 0 8px 0 12px; padding-left: max(12px, env(safe-area-inset-left)); padding-right: max(8px, env(safe-area-inset-right)); background: #fff; border-bottom: 1px solid #e6eaf2; position: sticky; top: 0; z-index: 1020; font-family: var(--m-font); }
     .m-appbar .t { flex: 1; font-weight: 700; font-size: 17px; color: #0f172a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
     .m-appbar .t small { display: block; font-size: 11.5px; font-weight: 500; color: #64748b; }
-    .m-ib { width: 44px; height: 44px; border: 0; background: transparent; border-radius: 12px; display: grid; place-items: center; color: #0453cb; flex: 0 0 44px; text-decoration: none; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+    .m-ib { width: 44px; height: 44px; border: 0; background: transparent; border-radius: 12px; display: grid; place-items: center; color: #0453cb; flex: 0 0 44px; text-decoration: none; cursor: pointer; -webkit-tap-highlight-color: transparent; transition: transform 120ms ease, background 120ms ease; }
     .m-ib.ghost { color: #475569; }
     .m-ib svg { width: 22px; height: 22px; }
-    .m-ib:active { background: rgba(4,83,203,.08); }
+    .m-ib:active { background: rgba(4,83,203,.08); transform: scale(.94); }
 
-    .m-body { padding: 14px 16px 96px; display: grid; gap: 14px; align-content: start; font-family: var(--m-font); }
+    /* .m-body : position relative pour ancrer l'indicateur de rafraîchissement ;
+       padding propre hors layout (maquette) — remis à 0 dans .nextadmin-content. */
+    .m-body { position: relative; padding: 14px 16px 96px; display: grid; gap: 14px; align-content: start; font-family: var(--m-font); }
 
-    .m-bottomnav { position: fixed; left: 0; right: 0; bottom: 0; height: calc(var(--m-nav-h) + var(--m-safe-b)); padding: 6px 6px calc(18px + var(--m-safe-b)); background: rgba(255,255,255,.96); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); border-top: 1px solid #e6eaf2; display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; z-index: 1080; font-family: var(--m-font); }
+    /* Barre d'onglets « verre » : fond translucide flouté, filet supérieur d'un
+       demi-pixel, zone sûre. La pastille .m-bottomnav-pill est l'unique
+       indicateur d'onglet actif : posée par le Blade (--m-pill-i / --m-pill-n)
+       sous l'onglet .on, elle GLISSE vers l'onglet touché (transform, courbe
+       iOS) avant que la navigation parte, puis est morphée d'une page à l'autre
+       par la transition de vue (view-transition-name: m-tab-pill). */
+    .m-bottomnav { position: fixed; left: 0; right: 0; bottom: 0; height: calc(var(--m-nav-h) + var(--m-safe-b)); padding: 6px 6px calc(18px + var(--m-safe-b)); background: rgba(255,255,255,.72); -webkit-backdrop-filter: blur(20px) saturate(180%); backdrop-filter: blur(20px) saturate(180%); border-top: .5px solid rgba(15,23,42,.12); display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; z-index: 1080; font-family: var(--m-font); view-transition-name: m-bottomnav; }
+    .m-bottomnav-pill { position: absolute; top: 8px; left: calc(6px + (var(--m-pill-i, 0) + .5) * ((100% - 12px) / var(--m-pill-n, 5)) - 32px); width: 64px; height: 44px; border-radius: 22px; background: rgba(4,83,203,.12); pointer-events: none; z-index: 0; transition: transform var(--m-pill-ms) var(--m-ease-ios), opacity 160ms ease; will-change: transform; view-transition-name: m-tab-pill; }
+    .m-bottomnav-pill.is-hidden { opacity: 0; }
     .m-bottomnav a,
-    .m-bottomnav button { position: relative; display: grid; justify-items: center; gap: 3px; text-decoration: none; color: #64748b; font-size: 10.5px; font-weight: 600; padding-top: 8px; border-radius: 12px; min-height: 44px; background: transparent; border: 0; font-family: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; line-height: 1.1; }
+    .m-bottomnav button { position: relative; z-index: 1; display: grid; justify-items: center; gap: 3px; text-decoration: none; color: #64748b; font-size: 10.5px; font-weight: 600; padding-top: 8px; border-radius: 12px; min-height: 44px; background: transparent; border: 0; font-family: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; line-height: 1.1; transition: color 200ms ease; }
     .m-bottomnav a svg,
-    .m-bottomnav button svg { width: 24px; height: 24px; }
+    .m-bottomnav button svg { width: 24px; height: 24px; transition: transform 100ms ease; }
+    .m-bottomnav a:active svg,
+    .m-bottomnav button:active svg { transform: scale(.92); }
     .m-bottomnav a.on,
     .m-bottomnav button.on { color: #0453cb; }
     .m-bottomnav a.on svg { filter: drop-shadow(0 0 0 #0453cb); }
-    .m-bottomnav a.on i,
-    .m-bottomnav button.on i { position: absolute; top: 0; width: 32px; height: 3px; border-radius: 0 0 3px 3px; background: #0453cb; }
     .m-rail { display: none; }
 
     .m-hero { background: linear-gradient(135deg, #0a3d8f 0%, #0453cb 45%, #3b7ddb 100%); color: #fff; border-radius: 16px; padding: 14px 16px; display: grid; gap: 8px; }
@@ -206,8 +302,14 @@ body.m-sheet-open { overflow: hidden; }
     .m-sec a { font-size: 12.5px; color: #0453cb; font-weight: 600; text-decoration: none; }
 
     .m-list { display: grid; gap: 8px; }
-    .m-row { background: #fff; border: 1px solid #e6eaf2; border-radius: 14px; padding: 12px; display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center; min-height: 64px; text-decoration: none; color: inherit; }
+    .m-row { background: #fff; border: 1px solid #e6eaf2; border-radius: 14px; padding: 12px; display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center; min-height: 64px; text-decoration: none; color: inherit; -webkit-tap-highlight-color: transparent; }
     .m-row:active { background: #f8fafc; }
+    /* Rétrécissement au toucher seulement pour une ligne qui EST un lien ou un
+       bouton (elle ne peut pas contenir de menu déroulant). */
+    a.m-row,
+    button.m-row { transition: transform 120ms ease, background 120ms ease; }
+    a.m-row:active,
+    button.m-row:active { transform: scale(.97); }
     .m-row .av { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; font-weight: 700; font-size: 13px; background: rgba(4,83,203,.1); color: #0453cb; }
     .m-row .av.ic svg { width: 20px; height: 20px; }
     .m-row .tt { display: grid; gap: 2px; min-width: 0; }
@@ -233,7 +335,8 @@ body.m-sheet-open { overflow: hidden; }
     .m-search input { flex: 1; min-width: 0; border: 0; background: transparent; height: 100%; font: inherit; color: #0f172a; outline: none; }
     .m-search input::placeholder { color: #94a3b8; }
 
-    .m-fab { position: fixed; right: 16px; bottom: calc(96px + var(--m-safe-b)); width: 56px; height: 56px; border-radius: 18px; background: #0453cb; color: #fff; display: grid; place-items: center; box-shadow: 0 10px 26px rgba(4,83,203,.4); z-index: 1081; border: 0; text-decoration: none; cursor: pointer; }
+    .m-fab { position: fixed; right: 16px; bottom: calc(96px + var(--m-safe-b)); width: 56px; height: 56px; border-radius: 18px; background: #0453cb; color: #fff; display: grid; place-items: center; box-shadow: 0 10px 26px rgba(4,83,203,.4); z-index: 1081; border: 0; text-decoration: none; cursor: pointer; -webkit-tap-highlight-color: transparent; transition: transform 120ms ease, box-shadow 120ms ease; }
+    .m-fab:active { transform: scale(.94); box-shadow: 0 6px 16px rgba(4,83,203,.35); }
     .m-fab svg { width: 26px; height: 26px; }
     .m-fab.chat { bottom: calc(164px + var(--m-safe-b)); width: 44px; height: 44px; border-radius: 14px; background: #fff; color: #0453cb; box-shadow: 0 4px 14px rgba(15,23,42,.14); right: 22px; }
 
@@ -308,11 +411,26 @@ body.m-sheet-open { overflow: hidden; }
 
     .m-skel { display: grid; gap: 8px; }
     .m-skel i { display: block; height: 64px; border-radius: 14px; background: linear-gradient(90deg, #e9edf5 25%, #f4f6fb 50%, #e9edf5 75%); background-size: 200% 100%; animation: m-shimmer 1.2s infinite; }
-    .m-ptr { display: grid; justify-items: center; padding: 6px 0 2px; color: #64748b; font-size: 12px; font-weight: 600; gap: 2px; overflow: hidden; height: 0; opacity: 0; transition: height .15s ease, opacity .15s ease; }
-    .m-ptr.is-visible { height: auto; opacity: 1; }
-    .m-ptr svg { width: 18px; height: 18px; transition: transform .2s ease; }
-    .m-ptr.is-ready svg { transform: rotate(180deg); }
+    /* Tirer-pour-rafraîchir (mobile-shell.js) : le contenu suit le doigt avec
+       une résistance progressive — les enfants directs du .m-body sont
+       translatés (--m-ptr-y), sauf ceux qui sont fixés au viewport ; rien qui
+       relayoute. L'indicateur est hors flux (absolu, hauteur nulle : il ne
+       consomme pas d'interligne de la grille) et descend avec le contenu ;
+       sa flèche tourne avec la progression (--m-ptr-p) puis tourne en spinner. */
+    .m-ptr { position: absolute; top: 0; left: 0; right: 0; height: 0; margin: 0; overflow: visible; pointer-events: none; z-index: 1; }
+    .m-ptr .m-ptr-ind { position: absolute; left: 50%; top: -50px; transform: translateX(-50%); display: flex; align-items: center; gap: 6px; height: 40px; padding: 0 12px; border-radius: 20px; background: #fff; border: 1px solid #e6eaf2; box-shadow: 0 4px 14px rgba(15,23,42,.08); color: #64748b; font-size: 12px; font-weight: 600; white-space: nowrap; opacity: 0; transition: opacity 120ms ease; }
+    .m-ptr.is-visible .m-ptr-ind { opacity: 1; }
+    .m-ptr svg { width: 18px; height: 18px; color: #0453cb; transform: rotate(calc(var(--m-ptr-p, 0) * 180deg)); }
     .m-ptr.is-loading svg { animation: m-spin .8s linear infinite; }
+    .m-body.is-pulling > *,
+    .m-body.is-settling > * { transform: translateY(var(--m-ptr-y, 0px)); }
+    .m-body.is-settling > * { transition: transform 450ms var(--m-ease-spring); }
+    .m-body.is-pulling > .m-actionbar,
+    .m-body.is-settling > .m-actionbar,
+    .m-body.is-pulling > .m-fab,
+    .m-body.is-settling > .m-fab,
+    .m-body.is-pulling > .m-toast,
+    .m-body.is-settling > .m-toast { transform: none; transition: none; }
 
     .m-recu { background: #fff; border-radius: 16px; padding: 18px 16px; display: grid; gap: 10px; border: 1px solid #e6eaf2; }
     .m-recu .hd { text-align: center; display: grid; gap: 2px; }
@@ -384,13 +502,107 @@ body.m-sheet-open { overflow: hidden; }
 @keyframes m-shimmer { to { background-position: -200% 0; } }
 @keyframes m-spin { to { transform: rotate(360deg); } }
 
+/* ---------- 3b. Layout sous 768px, utilisateurs profilés (body.has-m-shell) ----------
+   Gouttières : la chaîne de bureau empile .nextadmin-content (16px) puis
+   .dashboard-acasi > .main-content (24px, dashboard-moderne.css:127) — 40px
+   par côté sur un 390px, le contenu n'occupait que 79 % de la largeur. Ici un
+   seul conteneur porte la gouttière (--m-gut : 16px, 12px sous 360px) et
+   aucun intermédiaire n'ajoute la sienne ; les cartes prennent toute la
+   largeur utile. Les pages sans profil (superAdmin sans profil forcé,
+   secrétaire) ne portent pas .has-m-shell : rien ne change pour elles.
+
+   Navbar : .nextadmin-navbar (70px, 5 boutons) devient une app bar de 56px —
+   menu à gauche (#sidebar-toggle, son JS d'ouverture du tiroir est conservé),
+   logo + nom court de l'école au centre, cloche + avatar à droite ; le reste
+   (recherche, messages, actions rapides, profil) passe dans la feuille
+   m-navbar-plus rendue par le layout. Fond opaque, sans backdrop-filter :
+   la cloche est un menu Bootstrap en stratégie fixed (universal-dropdowns).
+   Seuls le badge d'établissement (aucun menu dedans) et les boutons pressés
+   portent un transform. */
+@media (max-width: 767.98px) {
+    body.has-m-shell .nextadmin-content { padding: var(--m-gut); padding-left: max(var(--m-gut), env(safe-area-inset-left)); padding-right: max(var(--m-gut), env(safe-area-inset-right)); }
+    body.has-m-shell .nextadmin-content > .container-fluid,
+    body.has-m-shell .nextadmin-content > .container { padding-left: 0; padding-right: 0; max-width: none; width: auto; }
+    body.has-m-shell .nextadmin-content .dashboard-acasi { min-height: 0; }
+    body.has-m-shell .nextadmin-content .dashboard-acasi > .main-content { padding: 0; overflow: visible; }
+    body.has-m-shell .nextadmin-content .main-card,
+    body.has-m-shell .nextadmin-content .stat-card { margin-left: 0; margin-right: 0; max-width: 100%; }
+    body.has-m-shell .nextadmin-content .alert { margin-left: 0; margin-right: 0; }
+
+    /* Écran mobile dans le layout : le .m-body ne rajoute pas de marge, l'app
+       bar de page se colle sous la navbar (56px) en pleine largeur, le bandeau
+       .m-sticky se cale sous l'une ou l'autre. */
+    body.has-m-shell .nextadmin-content .m-body { padding: 0; }
+    body.has-m-shell .nextadmin-content .m-appbar { position: sticky; top: 56px; margin: calc(-1 * var(--m-gut)) calc(-1 * var(--m-gut)) 0; z-index: 1019; }
+    body.has-m-shell .nextadmin-content .m-sticky { top: 56px; margin: 0 calc(-1 * var(--m-gut)); padding: 8px var(--m-gut); }
+    body.has-m-shell:has(.nextadmin-content .m-appbar) .nextadmin-content .m-sticky { top: 112px; }
+    body.has-m-shell:has(.nextadmin-content .m-appbar) .nextadmin-navbar { border-bottom-color: transparent; }
+
+    /* Navbar → app bar 56px */
+    body.has-m-shell .nextadmin-navbar { height: 56px; min-height: 56px; padding: 0 8px 0 4px; padding-left: max(4px, env(safe-area-inset-left)); padding-right: max(8px, env(safe-area-inset-right)); background: #fff; border-bottom: .5px solid rgba(15,23,42,.12); box-shadow: none; z-index: 1020; font-family: var(--m-font); view-transition-name: m-appbar; }
+    body.has-m-shell .nextadmin-navbar .navbar-content { position: relative; height: 56px; display: flex; align-items: center; justify-content: space-between; gap: 0; }
+    body.has-m-shell .nextadmin-navbar .navbar-left { gap: 0; flex: 0 0 auto; }
+    body.has-m-shell .nextadmin-navbar #sidebar-toggle { width: 44px; height: 44px; padding: 0 !important; border-radius: 12px !important; color: #0f172a !important; font-size: 20px !important; display: grid; place-items: center; box-shadow: none !important; -webkit-tap-highlight-color: transparent; transition: transform 120ms ease, background 120ms ease !important; }
+    body.has-m-shell .nextadmin-navbar #sidebar-toggle:hover { transform: none; background: transparent !important; }
+    body.has-m-shell .nextadmin-navbar #sidebar-toggle:active { transform: scale(.94); background: rgba(4,83,203,.08) !important; }
+    body.has-m-shell .nextadmin-navbar #sidebar-toggle:focus { box-shadow: none !important; }
+    body.has-m-shell .nextadmin-navbar #sidebar-toggle:focus-visible { box-shadow: 0 0 0 3px rgba(4,83,203,.2) !important; }
+
+    /* Badge d'établissement centré : tuile 32px + nom court (la ville disparaît).
+       Largeur bornée par le plus large des deux côtés (droite : 8 + 44 + 4 + 44). */
+    body.has-m-shell .nextadmin-navbar .etb-badge { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); max-width: calc(100% - 208px); margin: 0; padding: 0; gap: 8px; background: transparent; border: 0; box-shadow: none; }
+    body.has-m-shell .nextadmin-navbar .etb-media { width: 32px; height: 32px; padding: 4px; border-radius: 9px; }
+    body.has-m-shell .nextadmin-navbar .etb-initiales { font-size: .78rem; }
+    body.has-m-shell .nextadmin-navbar .etb-texte { display: flex; }
+    body.has-m-shell .nextadmin-navbar .etb-ville { display: none; }
+    body.has-m-shell .nextadmin-navbar .etb-nom { font-size: 15px; font-weight: 700; letter-spacing: -.01em; color: #0f172a; }
+
+    /* Droite : cloche (menu Bootstrap conservé) + avatar (ouvre la feuille) */
+    body.has-m-shell .nextadmin-navbar .navbar-right { gap: 4px; margin-left: auto; }
+    body.has-m-shell .nextadmin-navbar .navbar-right [data-mnb="desktop"] { display: none; }
+    body.has-m-shell .nextadmin-navbar .navbar-right .btn-acasi.icon-only { width: 44px; height: 44px; padding: 0; border: 0; border-radius: 12px; background: transparent; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; color: #0f172a; font-size: 20px; -webkit-tap-highlight-color: transparent; transition: transform 120ms ease, background 120ms ease; }
+    body.has-m-shell .nextadmin-navbar .navbar-right .btn-acasi.icon-only:hover { transform: none; background: transparent; box-shadow: none; border-color: transparent; }
+    body.has-m-shell .nextadmin-navbar .navbar-right .btn-acasi.icon-only:active { transform: scale(.94); background: rgba(4,83,203,.08); }
+    body.has-m-shell .nextadmin-navbar .navbar-right .navbar-badge { top: 3px; right: 3px; min-width: 18px; height: 18px; line-height: 14px; font-size: 10px; animation: none; box-shadow: none; }
+    body.has-m-shell .mnb-avatar { display: grid; place-items: center; width: 44px; height: 44px; flex: 0 0 44px; padding: 0; border: 0; background: transparent; border-radius: 12px; cursor: pointer; -webkit-tap-highlight-color: transparent; transition: transform 120ms ease, background 120ms ease; }
+    body.has-m-shell .mnb-avatar:active { transform: scale(.94); background: rgba(4,83,203,.08); }
+    body.has-m-shell .mnb-avatar .navbar-avatar { width: 32px; height: 32px; border-width: 1.5px; }
+    body.has-m-shell .mnb-avatar .navbar-avatar .user-avatar { font-size: 13px; }
+
+    /* Feuille m-navbar-plus : recherche, actions rapides (grille du menu de
+       bureau adoptée à l'ouverture), messages, profil. */
+    .m-sheet .mnb-actions .quick-actions-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 0; margin: 0; min-width: 0; width: auto; }
+    .m-sheet .mnb-actions .quick-actions-grid .quick-action-item { display: flex !important; flex-direction: row !important; align-items: center !important; gap: 10px; padding: 10px 12px !important; min-height: 56px; border-radius: 14px !important; background: #fff !important; border: 1px solid #e6eaf2 !important; box-shadow: none !important; color: #0f172a !important; text-decoration: none !important; -webkit-tap-highlight-color: transparent; transition: transform 120ms ease !important; }
+    .m-sheet .mnb-actions .quick-actions-grid .quick-action-item:active { transform: scale(.97); }
+    .m-sheet .mnb-actions .quick-action-icon { width: 36px; height: 36px; margin: 0; border-radius: 10px; flex: 0 0 36px; }
+    .m-sheet .mnb-actions .quick-action-text { font-size: 13px; font-weight: 600; text-align: left; max-width: none; white-space: normal; line-height: 1.2; }
+    .m-sheet .mnb-actions .dropdown-empty { grid-column: 1 / -1; padding: 12px; font-size: 13px; }
+    .m-sheet .mnb-actions:empty,
+    .m-sheet .mnb-actions-title:has(+ .mnb-actions:empty) { display: none; }
+    .m-sheet .m-search { height: 48px; }
+}
+
+@media (max-width: 359.98px) {
+    body.has-m-shell { --m-gut: 12px; }
+    body.has-m-shell .nextadmin-navbar .etb-badge { max-width: calc(100% - 200px); }
+}
+
+.mnb-avatar { display: none; }
+
 /* ---------- 4. Variante tablette (768px – 991.98px) : rail latéral, nav bas masquée ---------- */
 @media (min-width: 768px) and (max-width: 991.98px) {
     body.has-m-shell { padding-bottom: 0; }
     body.has-m-shell:has(.m-rail) { padding-left: 92px; }
     body.has-m-shell:has(.m-actionbar) { padding-bottom: 110px; }
 
-    .m-screen { flex-direction: row; }
+    /* Gouttière tablette : 24px portés par .nextadmin-content, rien d'autre. */
+    body.has-m-shell { --m-gut: 24px; }
+    body.has-m-shell .nextadmin-content { padding: var(--m-gut); }
+    body.has-m-shell .nextadmin-content > .container-fluid,
+    body.has-m-shell .nextadmin-content > .container { padding-left: 0; padding-right: 0; max-width: none; width: auto; }
+    body.has-m-shell .nextadmin-content .dashboard-acasi { min-height: 0; }
+    body.has-m-shell .nextadmin-content .dashboard-acasi > .main-content { padding: 0; overflow: visible; }
+
     .m-rail { display: grid; grid-template-rows: auto 1fr; position: fixed; top: 0; bottom: 0; left: 0; width: 92px; background: #fff; border-right: 1px solid #e6eaf2; padding: 10px 8px; gap: 14px; align-content: start; z-index: 1080; font-family: var(--m-font); overflow-y: auto; }
     .m-rail .logo { width: 40px; height: 40px; border-radius: 12px; background: linear-gradient(135deg, #0a3d8f, #0453cb 55%, #3b7ddb); margin: 4px auto 2px; display: grid; place-items: center; color: #fff; font-weight: 800; font-size: 15px; }
     .m-rail .logo img { width: 100%; height: 100%; object-fit: contain; border-radius: 12px; }
@@ -407,6 +619,8 @@ body.m-sheet-open { overflow: hidden; }
     .m-appbar { height: 60px; flex-basis: 60px; padding: 0 16px 0 20px; }
     .m-appbar .t { font-size: 19px; }
     .m-body { padding: 20px 24px 110px; gap: 16px; }
+    body.has-m-shell .nextadmin-content .m-body { padding: 0; }
+    .m-screen { gap: 16px; }
     .m-kpi { grid-template-columns: repeat(4, 1fr); }
     .m-list { grid-template-columns: 1fr 1fr; }
     .m-list.one { grid-template-columns: 1fr; }
@@ -468,7 +682,9 @@ body.m-sheet-open { overflow: hidden; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .m-sheet, .m-scrim, .m-toast, .m-skel i, .m-ptr svg { animation: none !important; transition: none !important; }
+    :root { --m-sheet-ms: 0ms; --m-spring-ms: 0ms; --m-pill-ms: 0ms; }
+    .m-sheet, .m-scrim, .m-toast, .m-skel i, .m-ptr svg, .m-bottomnav-pill, .m-bottomnav a svg, .m-bottomnav button svg,
+    .m-body.is-settling > * { animation: none !important; transition: none !important; }
 }
 
 @media print {

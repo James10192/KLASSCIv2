@@ -32,6 +32,7 @@ use App\Services\AbsenceJustificationService;
 use App\Services\Attendance\AttendanceStudentCohortService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Validation\ValidationException;
 
 class ESBTPAttendanceController extends Controller
@@ -1222,7 +1223,9 @@ class ESBTPAttendanceController extends Controller
         // Build base query with eager-loading to avoid N+1
         $query = ESBTPAttendance::with([
                 'seanceCours.matiere:id,name',
+                'seanceCours.teacher.user:id,name',
                 'matiere:id,name',
+                'teacher.user:id,name',
                 'processedBy:id,name',
             ])
             ->where('etudiant_id', $etudiant->id);
@@ -1391,6 +1394,10 @@ class ESBTPAttendanceController extends Controller
     {
         $absence = $request->absenceModel();
 
+        // Lu AVANT l'enregistrement : le service rafraîchit le modèle, ce qui
+        // resynchronise l'original et fait perdre l'état d'où l'on vient.
+        $etaitRejetee = $absence->justification_status === JustificationStatus::REJECTED;
+
         $data = [
             'justification' => $request->validated('justification'),
         ];
@@ -1398,15 +1405,39 @@ class ESBTPAttendanceController extends Controller
             $data['document'] = $request->file('document');
         }
 
-        $this->justificationService->submitJustification(
+        $absence = $this->justificationService->submitJustification(
             $absence,
             $request->user(),
             $data
         );
 
-        $message = $absence->wasChanged('justification_status') && $absence->getOriginal('justification_status') === JustificationStatus::REJECTED->value
+        $message = $etaitRejetee
             ? 'Votre justification a été re-soumise avec succès et est en attente de validation par l\'administration.'
             : 'Votre justification a été soumise avec succès et est en attente de validation par l\'administration.';
+
+        // Feuille mobile (fetch multipart, Accept: application/json) : la ligne
+        // se met à jour sans rechargement. Le formulaire classique garde le redirect.
+        if ($request->expectsJson()) {
+            $documentUrl = $absence->document_path
+                ? URL::temporarySignedRoute(
+                    'esbtp.justifications.document',
+                    now()->addMinutes(5),
+                    ['absence' => $absence->id]
+                )
+                : null;
+
+            return response()->json([
+                'success' => true,
+                'message' => $message,
+                'absence' => [
+                    'id' => $absence->id,
+                    'justification_status' => $absence->justification_status?->value,
+                    'justified_at' => $absence->justified_at?->toIso8601String(),
+                    'document_url' => $documentUrl,
+                    'admin_comment' => $absence->admin_comment,
+                ],
+            ]);
+        }
 
         return redirect()->back()->with('success', $message);
     }

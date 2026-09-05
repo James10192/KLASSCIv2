@@ -7,6 +7,7 @@ use App\Http\Requests\Notes\ImportNotesRequest;
 use App\Http\Requests\Notes\StoreBulkNotesRequest;
 use App\Http\Requests\Notes\StoreNoteRequest;
 use App\Models\ESBTPAnneeUniversitaire;
+use App\Models\ESBTPBulletin;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPEvaluation;
@@ -16,6 +17,9 @@ use App\Models\ESBTPNiveauEtude;
 use App\Models\ESBTPNote;
 use App\Models\ESBTPSeanceCours;
 use App\Models\User;
+use App\Services\ESBTP\BtsCurrentResultSnapshotService;
+use App\Services\FraisScopeResolver;
+use App\Services\LMD\EtudiantNotesLmdPresenter;
 use App\Services\NoteCalculationService;
 use App\Services\Notes\NoteStudentCohortService;
 use App\Services\NotesImportService;
@@ -24,6 +28,7 @@ use App\Services\NotificationService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Maatwebsite\Excel\Facades\Excel;
@@ -41,7 +46,7 @@ class ESBTPNoteController extends Controller
     )
     {
         $this->middleware(['auth']);
-        $this->middleware('permission:module.notes_evaluations.access');
+        $this->middleware('permission:module.notes_evaluations.access')->except(['studentGrades']); // espace etudiant : la route porte deja notes.view_own|notes.view
         $this->notificationService = $notificationService;
         $this->noteStudentCohortService = $noteStudentCohortService;
         $this->notesWindowGuard = $notesWindowGuard;
@@ -1225,6 +1230,7 @@ class ESBTPNoteController extends Controller
                 'etudiant' => $etudiant,
                 'inscription' => null,
                 'anneeCourante' => $anneeCourante,
+                'ecran' => null,
             ])->with('warning', 'Vous n\'avez pas d\'inscription active pour l\'année en cours. Veuillez contacter l\'administration.');
         }
 
@@ -1237,7 +1243,97 @@ class ESBTPNoteController extends Controller
             ->orderBy('created_at', 'desc')
             ->get();
 
-        return view('esbtp.etudiants.notes', compact('notes', 'etudiant', 'inscription', 'anneeCourante'));
+        $ecran = $inscription->classe
+            ? $this->ecranMesNotes($etudiant, $inscription->classe, $anneeCourante, $notes)
+            : null;
+
+        return view('esbtp.etudiants.notes', compact('notes', 'etudiant', 'inscription', 'anneeCourante', 'ecran'));
+    }
+
+    /**
+     * Donnees de l'ecran « Mes notes » par semestre, selon le systeme de la classe.
+     *
+     * LMD : UE puis ECUE avec credits, moyennes et validation, par le presenter
+     * (qui lit la projection du bulletin, jamais un recalcul). BTS : matieres
+     * et evaluations, par le snapshot BTS courant, plus le rang du bulletin
+     * publie quand il existe.
+     *
+     * @return array{systeme: string, semestres: list<array<string, mixed>>}
+     */
+    private function ecranMesNotes(ESBTPEtudiant $etudiant, ESBTPClasse $classe, ESBTPAnneeUniversitaire $annee, Collection $notes): array
+    {
+        if ($classe->isLMD()) {
+            $lmd = app(EtudiantNotesLmdPresenter::class)
+                ->presenter($classe, (int) $etudiant->id, (int) $annee->id, $notes);
+
+            return ['systeme' => FraisScopeResolver::SYSTEME_LMD, 'semestres' => $lmd['semestres']];
+        }
+
+        return ['systeme' => FraisScopeResolver::SYSTEME_BTS, 'semestres' => $this->semestresBtsMesNotes($etudiant, $classe, $annee, $notes)];
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function semestresBtsMesNotes(ESBTPEtudiant $etudiant, ESBTPClasse $classe, ESBTPAnneeUniversitaire $annee, Collection $notes): array
+    {
+        $snapshot = app(BtsCurrentResultSnapshotService::class)
+            ->getAnnualSnapshot((int) $etudiant->id, (int) $classe->id, (int) $annee->id);
+
+        $notesParEvaluation = $notes->keyBy('evaluation_id');
+
+        // Seul un bulletin publie donne un rang a l'etudiant.
+        $bulletins = ESBTPBulletin::query()
+            ->where('etudiant_id', $etudiant->id)
+            ->where('annee_universitaire_id', $annee->id)
+            ->where('is_published', true)
+            ->get(['periode', 'rang', 'effectif_classe'])
+            ->keyBy('periode');
+
+        $periodes = ['semestre1' => 'Semestre 1', 'semestre2' => 'Semestre 2', 'annuel' => 'Année'];
+        $semestres = [];
+
+        foreach ($periodes as $periode => $label) {
+            $snap = $periode === 'annuel' ? $snapshot : ($snapshot['semester_snapshots'][$periode] ?? []);
+            $bulletin = $bulletins->get($periode);
+
+            $matieres = collect($snap['subjects'] ?? [])->map(function (array $subject) use ($notesParEvaluation) {
+                $evaluations = collect($subject['evaluations'] ?? [])->map(function (array $evaluation) use ($notesParEvaluation) {
+                    $note = $notesParEvaluation->get($evaluation['evaluation_id'] ?? null);
+                    $absent = (bool) ($note?->is_absent ?? false);
+
+                    return [
+                        'type' => $note?->evaluation?->type,
+                        'titre' => $note?->evaluation?->titre,
+                        'note' => $absent ? null : $evaluation['note'],
+                        'bareme' => (float) ($evaluation['bareme'] ?? 20),
+                        'absent' => $absent,
+                    ];
+                })->values()->all();
+
+                return [
+                    'id' => (int) $subject['matiere_id'],
+                    'name' => (string) $subject['matiere'],
+                    'coefficient' => $subject['coefficient'],
+                    'moyenne' => $subject['moyenne'] !== null ? (float) $subject['moyenne'] : null,
+                    'evaluations' => $evaluations,
+                ];
+            })->values()->all();
+
+            $semestres[] = [
+                'code' => $periode,
+                'label' => $label,
+                'moyenne' => isset($snap['effective_total']) ? (float) $snap['effective_total'] : null,
+                'rang' => $bulletin?->rang !== null ? (int) $bulletin->rang : null,
+                'effectif' => $bulletin?->effectif_classe !== null ? (int) $bulletin->effectif_classe : null,
+                'notes_count' => (int) ($snap['notes_count'] ?? 0),
+                'coefficients_manquants' => (bool) ($snap['coefficients_missing'] ?? false),
+                'statut' => (string) ($snap['state'] ?? 'no_data'),
+                'matieres' => $matieres,
+            ];
+        }
+
+        return $semestres;
     }
 
     /**

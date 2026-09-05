@@ -66,28 +66,28 @@ class ModeReglementController extends Controller
         ]);
 
         if ($paiement->isAvoir()) {
-            return back()->with('error', "Le mode d'un avoir suit celui du versement qu'il annule : il ne se corrige pas séparément.");
+            return $this->repondre($request, 'error', "Le mode d'un avoir suit celui du versement qu'il annule : il ne se corrige pas séparément.");
         }
 
         if ($paiement->status !== 'validé') {
-            return back()->with('error', "Ce versement n'est pas validé : corrigez-le depuis l'écran de modification habituel.");
+            return $this->repondre($request, 'error', "Ce versement n'est pas validé : corrigez-le depuis l'écran de modification habituel.");
         }
 
         // Une fois la caisse rapprochee, le mode a servi a construire le
         // comptage : le changer apres coup ferait mentir un rapprochement deja
         // signe. La reconciliation, elle, sait rouvrir sa session.
         if ($paiement->reconciliation_locked_at) {
-            return back()->with('error', 'Ce versement a été rapproché en caisse. Sa correction passe par une session de réconciliation.');
+            return $this->repondre($request, 'error', 'Ce versement a été rapproché en caisse. Sa correction passe par une session de réconciliation.');
         }
 
         if ($blocage = $this->assertPeriodNotLocked($paiement)) {
-            return back()->with('error', $blocage['message']);
+            return $this->repondre($request, 'error', $blocage['message']);
         }
 
         $ancien = (string) $paiement->mode_paiement;
 
         if ($ancien === $valide['mode_paiement']) {
-            return back()->with('info', 'Le mode de règlement est déjà celui-là : rien n\'a été modifié.');
+            return $this->repondre($request, 'info', 'Le mode de règlement est déjà celui-là : rien n\'a été modifié.', $ancien);
         }
 
         // `mode_paiement` figure dans $auditInclude du modele : l'ancienne et la
@@ -106,10 +106,29 @@ class ModeReglementController extends Controller
             'ip' => $request->ip(),
         ]);
 
-        return back()->with('success', sprintf(
+        return $this->repondre($request, 'success', sprintf(
             'Mode de règlement corrigé : « %s » devient « %s ». La correction est inscrite au journal d\'audit.',
             self::MODES[$ancien] ?? $ancien,
             self::MODES[$valide['mode_paiement']]
-        ));
+        ), $valide['mode_paiement']);
+    }
+
+    /**
+     * Le formulaire de bureau attend un retour a la page avec un message flash ;
+     * la fiche mobile corrige le mode en fetch JSON sans recharger. Meme
+     * verdict, deux enveloppes : un refus vaut 422 en JSON, jamais un 200 qui
+     * dirait « corrige » a un ecran qui ne relit pas le flash.
+     */
+    private function repondre(Request $request, string $niveau, string $message, ?string $mode = null)
+    {
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => $niveau !== 'error',
+                'message' => $message,
+                'mode_paiement' => $mode,
+            ], $niveau === 'error' ? 422 : 200);
+        }
+
+        return back()->with($niveau, $message);
     }
 }

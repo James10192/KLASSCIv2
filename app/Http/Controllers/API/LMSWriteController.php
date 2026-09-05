@@ -315,7 +315,7 @@ class LMSWriteController extends BaseApiController
                         'heure_debut' => $heureDebut,
                         'heure_fin' => $heureFin,
                         'statut' => $statut,
-                        'call_type' => 'lms_online',
+                        'call_type' => 'merged', // ENUM(start,end,merged) : une presence LMS est une version finale, comme la synchro visio (LMSDataController)
                         'commentaire' => 'Présence cours en ligne via LMS',
                         'created_by' => auth()->id()
                     ]);

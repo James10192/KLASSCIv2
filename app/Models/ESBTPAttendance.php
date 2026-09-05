@@ -72,7 +72,7 @@ class ESBTPAttendance extends Model implements Auditable
         'date',
         'heure_debut',
         'heure_fin',
-        'statut', // 'present', 'absent', 'retard', 'excuse'
+        'statut', // 'present', 'absent', 'late' (le controleur ecrit 'late' ; 'retard' subsiste en base sur d'anciennes lignes), 'excuse'
         'call_type', // 'start', 'end', 'merged'
         'is_justified',
         'commentaire',
