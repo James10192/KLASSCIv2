@@ -91,6 +91,14 @@ class ESBTPPaiementController extends Controller
             'duration_ms' => round((microtime(true) - $startMicrotime) * 1000, 2),
         ]);
 
+        // Liste mobile (shell m-*) : des donnees, pas du HTML. La vue mobile
+        // rend elle-meme ses cartes-lignes et charge la suite par pages.
+        if ($request->input('mode') === 'mobile') {
+            Log::info('ESBTPPaiementController@index returning mobile JSON', $completionContext);
+
+            return response()->json($this->listeMobile($data, $request));
+        }
+
         if ($request->ajax()) {
             Log::info('ESBTPPaiementController@index returning AJAX response', $completionContext);
 
@@ -141,7 +149,96 @@ class ESBTPPaiementController extends Controller
             'fraisCategories' => \App\Models\ESBTPFraisCategory::active()
                 ->ordered()
                 ->pluck('name', 'id'),
+            // Premiere page de la liste mobile, deja en donnees : l'ecran
+            // s'affiche sans second aller-retour.
+            'listeMobile' => $this->listeMobile($data, $request),
         ]);
+    }
+
+    /**
+     * La liste des paiements telle que la consomme le shell mobile.
+     *
+     * Le perimetre (tout / ses propres encaissements) et les filtres sont ceux
+     * de PaymentFilterService, exactement comme pour le tableau de bureau et
+     * les exports : cette methode ne fait que mettre en forme la page courante.
+     */
+    private function listeMobile(array $data, Request $request): array
+    {
+        /** @var \Illuminate\Pagination\LengthAwarePaginator $paiements */
+        $paiements = $data['paiements'];
+        // LMD : la classe s'ancre sur un parcours, affiche sous la classe.
+        $paiements->loadMissing('inscription.classe.parcours:id,name');
+
+        // Filtre par frais actif : la ligne dit ce que CE frais a recu, pas le
+        // versement entier (meme regle que la ligne du tableau).
+        $fraisFiltre = (int) $request->input('frais_category_id');
+
+        $initiales = static fn (string $nom): string => collect(preg_split('/\s+/u', trim($nom)) ?: [])
+            ->filter()
+            ->take(2)
+            ->map(fn ($mot) => mb_strtoupper(mb_substr($mot, 0, 1, 'UTF-8'), 'UTF-8'))
+            ->implode('');
+
+        $items = collect($paiements->items())->map(function (ESBTPPaiement $p) use ($fraisFiltre, $initiales) {
+            $etudiant = $p->etudiant;
+            $inscription = $p->inscription;
+            $classe = $inscription?->classe;
+            $estLmd = ($classe?->systeme_academique ?? null) === \App\Services\FraisScopeResolver::SYSTEME_LMD;
+            $classeLabel = $classe?->name
+                ?: trim(($inscription?->niveauEtude?->name ?? '') . ' ' . ($inscription?->filiere?->name ?? ''));
+            $nom = $etudiant?->user?->name ?? ($etudiant?->nom_complet ?? '—');
+            $date = $p->date_paiement;
+            $quand = match (true) {
+                $date === null => '—',
+                $date->isToday() => $p->created_at?->isToday() ? $p->created_at->format('H:i') : "aujourd'hui",
+                $date->isYesterday() => 'hier',
+                default => $date->format('d/m'),
+            };
+
+            return [
+                'id' => $p->id,
+                'url' => route('esbtp.paiements.show', $p->id),
+                'numero_recu' => (string) $p->numero_recu,
+                'nom' => $nom,
+                'initiales' => $initiales($nom),
+                'matricule' => $etudiant?->matricule,
+                'classe' => $classeLabel !== '' ? $classeLabel : null,
+                'parcours' => $estLmd ? ($classe?->parcours?->name ?? $inscription?->filiere?->name) : null,
+                'frais' => $p->ventilation()->pluck('nom')->filter()->implode(', '),
+                'mode' => (string) $p->mode_paiement,
+                'quand' => $quand,
+                'montant' => (float) ($fraisFiltre ? $p->partPourCategorie($fraisFiltre) : $p->montant),
+                'montant_total' => (float) $p->montant,
+                'avoir' => $p->isAvoir(),
+                'statut' => (string) $p->status,
+                'caissier' => $p->creator?->name,
+            ];
+        })->values();
+
+        $navUrl = route('esbtp.paiements.index');
+        $query = \Illuminate\Support\Arr::except($request->query(), ['mode', 'page']);
+        if ($query !== []) {
+            $navUrl .= '?' . http_build_query($query);
+        }
+
+        $stats = $data['stats'];
+
+        return [
+            'items' => $items,
+            'has_more' => $paiements->hasMorePages(),
+            'next_page' => $paiements->currentPage() + 1,
+            'summary' => $data['summary'],
+            'stats' => [
+                'total' => (int) ($stats['total'] ?? 0),
+                'valides' => (int) ($stats['valides'] ?? 0),
+                'en_attente' => (int) ($stats['en_attente'] ?? 0),
+                'rejetes' => (int) ($stats['rejetes'] ?? 0),
+                'montant_total' => (float) ($stats['montant_total'] ?? 0),
+                'montant_valide' => (float) ($stats['montant_valide'] ?? 0),
+            ],
+            'url' => $navUrl,
+            'last_updated_at' => optional($data['last_updated_at'])->toIso8601String(),
+        ];
     }
 
     public function refresh(Request $request, FuzzyNameMatcher $matcher)
@@ -165,6 +262,11 @@ class ESBTPPaiementController extends Controller
             'per_page' => $data['summary']['per_page'],
             'duration_ms' => round((microtime(true) - $startMicrotime) * 1000, 2),
         ]));
+
+        // Liste mobile (shell m-*) : memes donnees que sur la page, par pages.
+        if ($request->input('mode') === 'mobile') {
+            return response()->json($this->listeMobile($data, $request));
+        }
 
         // Construire l'URL pour la navigation (remplacer /refresh par /paiements)
         $navUrl = route('esbtp.paiements.index');

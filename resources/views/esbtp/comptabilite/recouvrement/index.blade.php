@@ -3,17 +3,55 @@
 @section('title', 'Recouvrement quotidien')
 
 @section('content')
-<div class="container-fluid re-page"
-     x-data="recouvrement(@js([
-        'rows' => $rows,
+@php
+    // Shell mobile : le DOM de bureau reste dans .m-only-desktop, l'écran mobile
+    // (maquette S['comptable:recouvrement']) vit à côté, sur le MÊME état Alpine.
+    $reShell = ($mobileShellEnabled ?? false) && ($mobileProfile ?? null);
+
+    // Contact prêt à l'emploi pour chaque ligne : numéro lisible (PhoneFormatter),
+    // identifiant wa.me et E.164 pour tel:. Rien n'est recalculé côté navigateur.
+    $reRows = collect($rows)->map(function (array $r) {
+        $nom = trim((string) ($r['etudiant_nom'] ?? ''));
+        $mots = preg_split('/\s+/u', $nom) ?: [];
+        $mots = array_values(array_filter($mots, fn ($m) => $m !== ''));
+        $initiales = '';
+        if (count($mots) > 0) {
+            $initiales = mb_substr($mots[0], 0, 1, 'UTF-8') . (count($mots) > 1 ? mb_substr($mots[count($mots) - 1], 0, 1, 'UTF-8') : '');
+        }
+        $tel = $r['phone'] ?? null;
+
+        return array_merge($r, [
+            'initiales' => $initiales !== '' ? mb_strtoupper($initiales, 'UTF-8') : '?',
+            'phone_lisible' => \App\Domain\Notifications\PhoneFormatter::toReadable($tel),
+            'wa_id' => \App\Domain\Notifications\PhoneNormalizer::toWhatsAppId($tel),
+            'tel_e164' => \App\Domain\Notifications\PhoneNormalizer::toE164($tel),
+        ]);
+    })->values()->all();
+
+    $reFileCount = count($reRows);
+    $reSoldeFile = array_sum(array_map(fn ($r) => (float) ($r['solde_restant'] ?? 0), $reRows));
+    $reRetards = array_map(fn ($r) => (int) ($r['jours_retard'] ?? 0), $reRows);
+    $reRetardMin = $reFileCount > 0 ? min($reRetards) : 0;
+    $reDejaRelances = count(array_filter($reRows, fn ($r) => (int) ($r['relances_today'] ?? 0) > 0));
+    $reDateJour = \Illuminate\Support\Str::ucfirst(now()->translatedFormat('l j F'));
+    $reEcole = \App\Helpers\SettingsHelper::getSchoolInfo();
+    $reEcoleNom = $reEcole['name'] ?: ($reEcole['acronym'] ?: config('app.name'));
+    $rePeutExporter = auth()->user()?->can('comptabilite.recouvrement.access') ?? false;
+
+    $reConfig = [
+        'rows' => $reRows,
         'whatsappTemplate' => $whatsappTemplate,
         'schoolName' => $schoolName,
         'logIntentUrl' => route('esbtp.comptabilite.recouvrement.log-intent'),
         'confirmSentUrl' => route('esbtp.comptabilite.recouvrement.confirm-sent'),
         'markDoneUrl' => route('esbtp.comptabilite.recouvrement.mark-done'),
         'csrf' => csrf_token(),
-     ]))">
+    ];
+@endphp
+<div class="container-fluid re-page"
+     x-data="recouvrement({{ \Illuminate\Support\Js::from($reConfig) }})">
 
+<div class="{{ $reShell ? 'm-only-desktop' : '' }}">
     {{-- ============================ HERO ============================ --}}
     <div class="re-hero">
         <div class="re-hero-top">
@@ -181,149 +219,172 @@
         </template>
     </div>
 
-    {{-- Toast feedback --}}
+    {{-- Toast feedback (bureau) --}}
     <div class="re-toast" x-show="toast" x-transition :class="'re-toast--' + (toastType || 'info')">
         <i class="fas" :class="toastType === 'error' ? 'fa-exclamation-circle' : 'fa-check-circle'"></i>
         <span x-text="toast"></span>
     </div>
 </div>
 
+@if($reShell)
+{{-- ============================ ÉCRAN MOBILE (shell m-*) ============================ --}}
+{{-- La barre d'onglets et la navbar mobile sont rendues par le layout. --}}
+<div class="m-only-mobile m-screen rcm-screen">
+    {{-- Le bouton d'export n'existe que si la personne peut exporter (même garde que les routes). --}}
+    <x-m.appbar title="Recouvrement"
+                :sub="$reDateJour"
+                :back="route('esbtp.comptabilite.dashboard')"
+                :action="$rePeutExporter ? 'dl' : null"
+                action-label="Exporter la file du jour"
+                x-on:click="mOuvrir('rcm-exports')" />
+
+    <div class="m-body" data-m-ptr="reload">
+        <section class="m-hero">
+            <span class="k" x-text="mLibelleFile()">File du jour{{ $reRetardMin > 0 ? ' · retards ≥ ' . $reRetardMin . ' j' : '' }}</span>
+            <span class="v"><span x-text="mFileTotale.length">{{ $reFileCount }}</span><small x-text="mLibelleSolde()">{{ $reFileCount > 1 ? 'étudiants' : 'étudiant' }} · {{ number_format($reSoldeFile, 0, ',', ' ') }} FCFA</small></span>
+            <div class="row">
+                <span class="pill" x-text="mDejaRelances + (mDejaRelances > 1 ? ' relancés aujourd\'hui' : ' relancé aujourd\'hui')">{{ $reDejaRelances }} {{ $reDejaRelances > 1 ? 'relancés' : 'relancé' }} aujourd'hui</span>
+                <span class="pill">{{ $buckets['haut'] ?? 0 }} à haut risque</span>
+            </div>
+        </section>
+
+        @if($reFileCount === 0)
+            <x-m.empty icon="check" title="Personne à relancer" text="Aucun étudiant à risque dans ce périmètre pour {{ $reEcoleNom }}. La file se remplit au fil des retards de paiement." />
+        @else
+            <div class="m-seg" role="tablist" aria-label="Filtrer la file">
+                <button type="button" role="tab"
+                        x-bind:aria-selected="mSeg === 'file' ? 'true' : 'false'"
+                        x-bind:class="mSeg === 'file' ? 'on' : ''"
+                        x-on:click="mSeg = 'file'"
+                        x-text="'À relancer · ' + mFileTotale.length">À relancer · {{ $reFileCount }}</button>
+                <button type="button" role="tab"
+                        x-bind:aria-selected="mSeg === 'relances' ? 'true' : 'false'"
+                        x-bind:class="mSeg === 'relances' ? 'on' : ''"
+                        x-on:click="mSeg = 'relances'"
+                        x-text="'Relancés · ' + mRelancesTotale.length">Relancés · 0</button>
+            </div>
+
+            <label class="m-search">
+                <x-m.icon name="search" />
+                <input type="search" placeholder="Rechercher un étudiant" x-model="search" autocomplete="off" aria-label="Rechercher un étudiant">
+            </label>
+
+            <div class="m-list one" x-show="mListe.length > 0">
+                <template x-for="row in mListe" :key="row.inscription_id">
+                    <div class="m-row rcm-row"
+                         x-bind:class="{ 'is-leaving': row.leaving, 'is-busy': row.busy, 'is-done': row.confirmed }"
+                         role="button" tabindex="0"
+                         x-on:click="mFiche(row)"
+                         x-on:keydown.enter.prevent="mFiche(row)">
+                        <div class="av" aria-hidden="true" x-text="row.initiales"></div>
+                        <div class="tt">
+                            <b x-text="row.etudiant_nom"></b>
+                            <span x-text="mSousTitre(row)"></span>
+                            <small class="rcm-line" x-show="row.phone_lisible" x-text="row.phone_lisible"></small>
+                            <small class="rcm-line warn" x-show="!row.has_valid_phone">Téléphone manquant ou invalide</small>
+                            <small class="rcm-line info" x-show="row.relances_today > 0" x-text="'Déjà relancé ' + row.relances_today + ' fois aujourd\'hui'"></small>
+                        </div>
+                        <div class="tr rcm-tr">
+                            <a class="m-chip ok rcm-wa"
+                               x-show="row.wa_id"
+                               x-bind:href="mWaUrl(row)"
+                               target="_blank" rel="noopener"
+                               x-on:click.stop="mIntent(row, 'whatsapp_deeplink')"
+                               aria-label="Envoyer un WhatsApp">
+                                <x-m.icon name="msg" /> WhatsApp
+                            </a>
+                            <span class="m-chip mute rcm-wa is-off" x-show="!row.wa_id">Sans numéro</span>
+                            <button type="button" class="rcm-fait"
+                                    x-show="!row.confirmed"
+                                    x-bind:disabled="row.busy"
+                                    x-on:click.stop="mFait(row)"
+                                    aria-label="Marquer comme relancé">
+                                <x-m.icon name="check" /> Fait
+                            </button>
+                            <span class="m-chip ok" x-show="row.confirmed">Relancé</span>
+                        </div>
+                    </div>
+                </template>
+            </div>
+
+            <div x-show="mListe.length === 0" x-cloak>
+                <x-m.empty icon="check" title="Rien dans cette liste">
+                    <span x-text="mVide()"></span>
+                </x-m.empty>
+            </div>
+        @endif
+    </div>
+
+    {{-- Feuille : fiche de l'étudiant + canaux --}}
+    <x-m.sheet id="rcm-fiche" title="Relancer">
+        <template x-if="mSel">
+            <div class="rcm-fiche">
+                <div class="m-note">
+                    <div class="av" x-text="mSel.initiales"></div>
+                    <div>
+                        <div class="nm" x-text="mSel.etudiant_nom"></div>
+                        <div class="rcm-sub" x-text="mSel.classe_nom"></div>
+                    </div>
+                    <span class="m-chip" x-bind:class="mNiveauChip(mSel.level)" x-text="capitalize(mSel.level)"></span>
+                </div>
+
+                <div class="rcm-cnt">
+                    <div><b x-text="formatMoney(mSel.solde_restant) + ' FCFA'"></b><span>Reste dû</span></div>
+                    <div><b x-text="mSel.jours_retard + ' j'"></b><span>Retard</span></div>
+                    <div><b x-text="mSel.relances_today"></b><span>Relances ce jour</span></div>
+                </div>
+
+                <div class="m-menu">
+                    <a x-show="mSel.wa_id" x-bind:href="mWaUrl(mSel)" target="_blank" rel="noopener"
+                       x-on:click="mIntent(mSel, 'whatsapp_deeplink')">
+                        <x-m.icon name="msg" /><span>WhatsApp · message pré-rempli</span><x-m.icon name="chr" class="ch" />
+                    </a>
+                    <a x-show="mSel.tel_e164" x-bind:href="'tel:' + mSel.tel_e164"
+                       x-on:click="mIntent(mSel, 'tel')">
+                        <x-m.icon name="phone" /><span x-text="'Appeler · ' + (mSel.phone_lisible || '')"></span><x-m.icon name="chr" class="ch" />
+                    </a>
+                    <a x-show="mSel.email" x-bind:href="mMailUrl(mSel)"
+                       x-on:click="mIntent(mSel, 'email')">
+                        <x-m.icon name="file" /><span>Envoyer un e-mail</span><x-m.icon name="chr" class="ch" />
+                    </a>
+                    <button type="button" x-show="!mSel.confirmed" x-bind:disabled="mSel.busy" x-on:click="mFait(mSel, true)">
+                        <x-m.icon name="check" /><span>Marquer « relancé »</span><x-m.icon name="chr" class="ch" />
+                    </button>
+                </div>
+
+                <p class="rcm-hint" x-show="!mSel.has_valid_phone">Aucun numéro valide : mettez à jour la fiche de l'étudiant pour relancer par WhatsApp ou par appel.</p>
+            </div>
+        </template>
+    </x-m.sheet>
+
+    @can('comptabilite.recouvrement.access')
+    {{-- Feuille : exports de la file (mêmes routes que le bureau, filtre recherche conservé) --}}
+    <x-m.sheet id="rcm-exports" title="Exporter la file" :sub="$reEcoleNom . ' · ' . $reDateJour">
+        <div class="m-menu">
+            <a x-bind:href="mExportUrl(@js(route('esbtp.comptabilite.recouvrement.preview-pdf')))" target="_blank" rel="noopener">
+                <x-m.icon name="file" /><span>Aperçu PDF</span><x-m.icon name="chr" class="ch" />
+            </a>
+            <a x-bind:href="mExportUrl(@js(route('esbtp.comptabilite.recouvrement.export-pdf')))">
+                <x-m.icon name="dl" /><span>Télécharger le PDF</span><x-m.icon name="chr" class="ch" />
+            </a>
+            <a x-bind:href="mExportUrl(@js(route('esbtp.comptabilite.recouvrement.export-excel')))">
+                <x-m.icon name="dl" /><span>Télécharger en Excel</span><x-m.icon name="chr" class="ch" />
+            </a>
+        </div>
+    </x-m.sheet>
+    @endcan
+</div>
+@endif
+
+</div>
+
 <x-fab-encaisser />
-
-<script>
-function recouvrement(config) {
-    const instance = {
-        rows: config.rows.map(r => ({ ...r, confirmed: false, lastRelanceId: null })),
-        search: '',
-        levelFilter: '',
-        retardFilter: '',
-        toast: null,
-        toastType: 'info',
-        config,
-        init() {
-            window.exportFilters = () => ({
-                search: this.search,
-                level: this.levelFilter,
-                retard_min: this.retardFilter,
-            });
-        },
-
-        get filteredRows() {
-            return this.rows.filter(row => {
-                if (this.levelFilter && row.level !== this.levelFilter) return false;
-                if (this.retardFilter && row.jours_retard < parseInt(this.retardFilter)) return false;
-                if (this.search && !row.etudiant_nom.toLowerCase().includes(this.search.toLowerCase())) return false;
-                return true;
-            });
-        },
-
-        formatMoney(value) {
-            return new Intl.NumberFormat('fr-FR').format(Math.round(value || 0));
-        },
-
-        capitalize(s) {
-            return s ? s.charAt(0).toUpperCase() + s.slice(1) : '';
-        },
-
-        buildMessage(row) {
-            const prenom = row.prenoms || row.etudiant_nom.split(' ')[0];
-            return this.config.whatsappTemplate
-                .replace(/\{prenom\}/g, prenom)
-                .replace(/\{nom\}/g, row.etudiant_nom)
-                .replace(/\{solde\}/g, this.formatMoney(row.solde_restant))
-                .replace(/\{retard\}/g, row.jours_retard)
-                .replace(/\{ecole\}/g, this.config.schoolName);
-        },
-
-        async dispatch(row, channel) {
-            const message = this.buildMessage(row);
-            try {
-                const response = await fetch(this.config.logIntentUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': this.config.csrf,
-                        'Accept': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        inscription_id: row.inscription_id,
-                        channel: channel,
-                        message: message,
-                    }),
-                });
-                const data = await response.json();
-
-                if (!data.success) {
-                    this.showToast(data.error_reason || data.error || 'Erreur', 'error');
-                    return;
-                }
-
-                row.lastRelanceId = data.relance_id;
-                if (data.deeplink_url && data.deeplink_url !== '#') {
-                    window.open(data.deeplink_url, '_blank', 'noopener');
-                }
-                this.showToast('Action enregistrée — pensez à confirmer après envoi', 'info');
-            } catch (e) {
-                this.showToast('Erreur réseau', 'error');
-            }
-        },
-
-        async markDone(row) {
-            try {
-                let url, body;
-                if (row.lastRelanceId) {
-                    url = this.config.confirmSentUrl;
-                    body = { relance_id: row.lastRelanceId };
-                } else {
-                    url = this.config.markDoneUrl;
-                    body = { inscription_id: row.inscription_id };
-                }
-
-                const response = await fetch(url, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': this.config.csrf,
-                        'Accept': 'application/json',
-                    },
-                    body: JSON.stringify(body),
-                });
-                const data = await response.json();
-
-                if (data.success) {
-                    row.confirmed = true;
-                    this.showToast('Relance confirmée', 'success');
-                } else {
-                    this.showToast(data.error || 'Erreur', 'error');
-                }
-            } catch (e) {
-                this.showToast('Erreur réseau', 'error');
-            }
-        },
-
-        showToast(message, type = 'info') {
-            this.toast = message;
-            this.toastType = type;
-            setTimeout(() => { this.toast = null; }, 3500);
-        },
-
-        formatPhone(raw) {
-            if (!raw) return '';
-            const digits = String(raw).replace(/\D+/g, '');
-            let national = digits;
-            if (digits.startsWith('00225')) national = digits.slice(5);
-            else if (digits.length === 13 && digits.startsWith('225')) national = digits.slice(3);
-            if (national.length !== 10) return raw;
-            return '+225 ' + national.match(/.{1,2}/g).join(' ');
-        },
-    };
-    return instance;
-}
-</script>
 @endsection
 
 @push('styles')
 <style>
+[x-cloak] { display: none !important; }
+
 :root {
     --re-primary: #0453cb;
     --re-primary-d: #033a8e;
@@ -523,10 +584,10 @@ function recouvrement(config) {
 .re-toast--info i { color: var(--re-primary); }
 
 /* Responsive */
-@media (max-width: 992px) {
+@@media (max-width: 992px) {
     .re-actions { flex-wrap: wrap; }
 }
-@media (max-width: 768px) {
+@@media (max-width: 768px) {
     .re-hero { padding: 1.5rem 1.25rem 1.25rem; }
     .re-hero h1 { font-size: 1.2rem; }
     .re-kpi { min-width: 140px; }
@@ -535,5 +596,308 @@ function recouvrement(config) {
     .re-action { width: 34px; height: 34px; font-size: .85rem; }
     .re-action--done { padding: 0 .65rem; }
 }
+
+/* ===================== ÉCRAN MOBILE — namespace rcm-* ===================== */
+.rcm-row { cursor: pointer; transition: transform 260ms cubic-bezier(.22,1,.36,1), opacity 260ms ease, background 120ms ease; }
+.rcm-row .tt { gap: 3px; }
+.rcm-row .tt span { white-space: normal; line-height: 1.3; }
+.rcm-row .rcm-line { display: block; font-size: 11.5px; color: #0453cb; font-variant-numeric: tabular-nums; }
+.rcm-row .rcm-line.warn { color: #8a5200; }
+.rcm-row .rcm-line.info { color: #64748b; }
+.rcm-row.is-leaving { transform: translateX(110%); opacity: 0; }
+.rcm-row.is-busy { opacity: .6; pointer-events: none; }
+.rcm-row.is-done { background: #f6fbf8; }
+.rcm-tr { gap: 6px; }
+.rcm-wa { min-height: 44px; padding: 0 12px; font-size: 12.5px; border-radius: 12px; text-decoration: none; -webkit-tap-highlight-color: transparent; }
+.rcm-wa svg { width: 16px; height: 16px; }
+.rcm-wa.is-off { min-height: 32px; }
+.rcm-wa:active { transform: scale(.96); }
+.rcm-fait {
+    min-height: 44px; min-width: 44px; padding: 0 12px; border-radius: 12px;
+    border: 1.5px solid #c7d7f3; background: #fff; color: #0453cb;
+    font: inherit; font-weight: 700; font-size: 12.5px;
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    cursor: pointer; -webkit-tap-highlight-color: transparent;
+}
+.rcm-fait svg { width: 16px; height: 16px; }
+.rcm-fait:active { background: rgba(4,83,203,.06); }
+.rcm-fait:disabled { opacity: .6; cursor: wait; }
+
+.rcm-fiche { display: grid; gap: 12px; }
+.rcm-fiche .m-note { grid-template-columns: 44px 1fr auto; }
+.rcm-sub { font-size: 12px; color: #64748b; }
+.rcm-cnt { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.rcm-cnt > div { background: #f4f6fb; border-radius: 12px; padding: 10px 6px; text-align: center; }
+.rcm-cnt b { display: block; font-size: 15px; font-weight: 800; color: #0f172a; font-variant-numeric: tabular-nums; }
+.rcm-cnt span { font-size: 10.5px; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+.rcm-hint { margin: 0; font-size: 12.5px; color: #8a5200; background: #fff3df; border-radius: 12px; padding: 10px 12px; }
 </style>
+@endpush
+
+@push('scripts')
+<script>
+if (typeof window.recouvrement !== 'function') {
+window.recouvrement = function (config) {
+    return {
+        rows: config.rows.map(r => ({ ...r, confirmed: false, lastRelanceId: null, busy: false, leaving: false })),
+        search: '',
+        levelFilter: '',
+        retardFilter: '',
+        toast: null,
+        toastType: 'info',
+        config,
+
+        /* ---------- écran mobile ---------- */
+        mSeg: 'file',
+        mSel: null,
+
+        init() {
+            window.exportFilters = () => ({
+                search: this.search,
+                level: this.levelFilter,
+                retard_min: this.retardFilter,
+            });
+        },
+
+        get filteredRows() {
+            return this.rows.filter(row => {
+                if (this.levelFilter && row.level !== this.levelFilter) return false;
+                if (this.retardFilter && row.jours_retard < parseInt(this.retardFilter)) return false;
+                if (this.search && !row.etudiant_nom.toLowerCase().includes(this.search.toLowerCase())) return false;
+                return true;
+            });
+        },
+
+        formatMoney(value) {
+            return new Intl.NumberFormat('fr-FR').format(Math.round(value || 0));
+        },
+
+        capitalize(s) {
+            return s ? s.charAt(0).toUpperCase() + s.slice(1) : '';
+        },
+
+        buildMessage(row) {
+            const prenom = row.prenoms || row.etudiant_nom.split(' ')[0];
+            return this.config.whatsappTemplate
+                .replace(/\{prenom\}/g, prenom)
+                .replace(/\{nom\}/g, row.etudiant_nom)
+                .replace(/\{solde\}/g, this.formatMoney(row.solde_restant))
+                .replace(/\{retard\}/g, row.jours_retard)
+                .replace(/\{ecole\}/g, this.config.schoolName);
+        },
+
+        /* Un seul aller-retour JSON pour toutes les mutations (bureau et mobile). */
+        async postJson(url, body) {
+            const response = await fetch(url, {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': this.config.csrf,
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json',
+                },
+                body: JSON.stringify(body),
+            });
+            if (response.status === 429) {
+                return { success: false, error: 'Trop d\'actions à la suite, patientez une minute.' };
+            }
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok && data.success === undefined) {
+                return { success: false, error: data.message || data.error || ('Erreur ' + response.status) };
+            }
+            return data;
+        },
+
+        async dispatch(row, channel) {
+            const message = this.buildMessage(row);
+            try {
+                const data = await this.postJson(this.config.logIntentUrl, {
+                    inscription_id: row.inscription_id,
+                    channel: channel,
+                    message: message,
+                });
+
+                if (!data.success) {
+                    this.showToast(data.error_reason || data.error || 'Erreur', 'error');
+                    return;
+                }
+
+                row.lastRelanceId = data.relance_id;
+                if (data.deeplink_url && data.deeplink_url !== '#') {
+                    window.open(data.deeplink_url, '_blank', 'noopener');
+                }
+                this.showToast('Action enregistrée — pensez à confirmer après envoi', 'info');
+            } catch (e) {
+                this.showToast('Erreur réseau', 'error');
+            }
+        },
+
+        /* Confirme la relance : confirme l'intention loggée s'il y en a une, sinon crée une relance manuelle. */
+        async envoyerFait(row) {
+            let url, body;
+            if (row.lastRelanceId) {
+                url = this.config.confirmSentUrl;
+                body = { relance_id: row.lastRelanceId };
+            } else {
+                url = this.config.markDoneUrl;
+                body = { inscription_id: row.inscription_id };
+            }
+            return this.postJson(url, body);
+        },
+
+        async markDone(row) {
+            try {
+                const data = await this.envoyerFait(row);
+                if (data.success) {
+                    row.confirmed = true;
+                    this.showToast('Relance confirmée', 'success');
+                } else {
+                    this.showToast(data.error || 'Erreur', 'error');
+                }
+            } catch (e) {
+                this.showToast('Erreur réseau', 'error');
+            }
+        },
+
+        /* Sous 992px avec le shell, le toast sombre du socle ; sinon le toast de bureau. */
+        showToast(message, type = 'info') {
+            const shell = document.body.classList.contains('has-m-shell')
+                && window.matchMedia && window.matchMedia('(max-width: 991.98px)').matches;
+            if (shell) {
+                window.dispatchEvent(new CustomEvent('toast', { detail: { type: type, message: message } }));
+                return;
+            }
+            this.toast = message;
+            this.toastType = type;
+            setTimeout(() => { this.toast = null; }, 3500);
+        },
+
+        formatPhone(raw) {
+            if (!raw) return '';
+            const digits = String(raw).replace(/\D+/g, '');
+            let national = digits;
+            if (digits.startsWith('00225')) national = digits.slice(5);
+            else if (digits.length === 13 && digits.startsWith('225')) national = digits.slice(3);
+            if (national.length !== 10) return raw;
+            return '+225 ' + national.match(/.{1,2}/g).join(' ');
+        },
+
+        /* ---------- écran mobile : file, segments, fiche ---------- */
+        mMatch(row) {
+            return !this.search || row.etudiant_nom.toLowerCase().includes(this.search.toLowerCase());
+        },
+        get mFileTotale() { return this.rows.filter(r => !r.confirmed); },
+        get mRelancesTotale() { return this.rows.filter(r => r.confirmed); },
+        get mListe() {
+            const base = this.mSeg === 'file' ? this.mFileTotale : this.mRelancesTotale;
+            return base.filter(r => this.mMatch(r));
+        },
+        get mSolde() {
+            return this.mFileTotale.reduce((s, r) => s + (Number(r.solde_restant) || 0), 0);
+        },
+        get mRetardMin() {
+            if (this.mFileTotale.length === 0) return null;
+            const min = Math.min(...this.mFileTotale.map(r => Number(r.jours_retard) || 0));
+            return min > 0 ? min : null;
+        },
+        get mDejaRelances() {
+            return this.rows.filter(r => r.confirmed || (Number(r.relances_today) || 0) > 0).length;
+        },
+        mLibelleFile() {
+            return this.mRetardMin !== null ? 'File du jour · retards ≥ ' + this.mRetardMin + ' j' : 'File du jour';
+        },
+        mLibelleSolde() {
+            const n = this.mFileTotale.length;
+            return (n > 1 ? 'étudiants' : 'étudiant') + ' · ' + this.formatMoney(this.mSolde) + ' FCFA';
+        },
+        mSousTitre(row) {
+            return [row.classe_nom, this.formatMoney(row.solde_restant) + ' FCFA', row.jours_retard + ' j de retard']
+                .filter(Boolean).join(' · ');
+        },
+        mNiveauChip(level) {
+            if (level === 'haut') return 'bad';
+            if (level === 'moyen') return 'warn';
+            return 'ok';
+        },
+        mVide() {
+            if (this.mSeg === 'file') {
+                return this.search ? 'Aucun étudiant ne correspond à cette recherche.' : 'Toute la file du jour a été relancée.';
+            }
+            return this.search ? 'Aucun étudiant ne correspond à cette recherche.' : 'Aucune relance confirmée pour l\'instant.';
+        },
+        mWaUrl(row) {
+            if (!row || !row.wa_id) return '#';
+            return 'https://wa.me/' + row.wa_id + '?text=' + encodeURIComponent(this.buildMessage(row));
+        },
+        mMailUrl(row) {
+            if (!row || !row.email) return '#';
+            return 'mailto:' + row.email + '?subject=' + encodeURIComponent('Solde de scolarité')
+                + '&body=' + encodeURIComponent(this.buildMessage(row));
+        },
+        mExportUrl(base) {
+            const q = (this.search || '').trim();
+            if (!q) return base;
+            return base + (base.includes('?') ? '&' : '?') + 'search=' + encodeURIComponent(q);
+        },
+        mOuvrir(id) {
+            window.dispatchEvent(new CustomEvent('m-sheet:open', { detail: { id: id } }));
+        },
+        mFermer(id) {
+            window.dispatchEvent(new CustomEvent('m-sheet:close', { detail: { id: id } }));
+        },
+        mFiche(row) {
+            this.mSel = row;
+            this.mOuvrir('rcm-fiche');
+        },
+
+        /* Le lien wa.me / tel: / mailto: s'ouvre dans le geste de l'utilisateur ;
+           l'intention est journalisée en arrière-plan, sans bloquer l'ouverture. */
+        async mIntent(row, channel) {
+            try {
+                const data = await this.postJson(this.config.logIntentUrl, {
+                    inscription_id: row.inscription_id,
+                    channel: channel,
+                    message: this.buildMessage(row),
+                });
+                if (data.success) {
+                    row.lastRelanceId = data.relance_id;
+                    row.relances_today = (Number(row.relances_today) || 0) + 1;
+                } else {
+                    this.showToast(data.error_reason || data.error || 'Relance non enregistrée', 'error');
+                }
+            } catch (e) {
+                this.showToast('Relance non enregistrée (réseau)', 'error');
+            }
+        },
+
+        /* « Fait » : la ligne glisse hors de la file, le suivant prend sa place. */
+        async mFait(row, depuisFiche = false) {
+            if (!row || row.busy || row.confirmed) return;
+            row.busy = true;
+            try {
+                const data = await this.envoyerFait(row);
+                if (!data.success) {
+                    this.showToast(data.error || 'Erreur', 'error');
+                    return;
+                }
+                if (depuisFiche) this.mFermer('rcm-fiche');
+                const index = this.mListe.indexOf(row);
+                const suivant = this.mSeg === 'file' ? (this.mListe[index + 1] || null) : null;
+                row.leaving = true;
+                await new Promise(resolve => setTimeout(resolve, 260));
+                row.confirmed = true;
+                row.leaving = false;
+                const nom = row.etudiant_nom;
+                this.showToast(nom + ' marqué « relancé »' + (suivant ? ' · suivant : ' + suivant.etudiant_nom : ''), 'success');
+            } catch (e) {
+                this.showToast('Erreur réseau', 'error');
+            } finally {
+                row.busy = false;
+            }
+        },
+    };
+};
+}
+</script>
 @endpush

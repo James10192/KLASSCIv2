@@ -36,7 +36,13 @@ class ESBTPTeacherAttendance extends Model
     ];
 
     /**
-     * Relation avec l'enseignant
+     * Relation avec l'enseignant.
+     *
+     * `teacher_id` référence `users.id` (FK de la migration 2024_06_10_000001,
+     * ON DELETE CASCADE sur le compte) — JAMAIS `esbtp_teachers.id`. Les deux
+     * suites d'identifiants ne coïncident pas : écrire l'id du profil ici viole
+     * la FK dès qu'il n'existe pas comme utilisateur, et pointe sur un compte
+     * arbitraire quand il existe. Pour partir d'un profil : `$teacher->user_id`.
      */
     public function teacher(): BelongsTo
     {
@@ -98,8 +104,14 @@ class ESBTPTeacherAttendance extends Model
 
         // Déclencher l'événement pour mettre à jour les heures de planification
         try {
-            // Chercher la séance de cours correspondante
-            $seance = \App\Models\ESBTPSeanceCours::where('teacher_id', $this->teacher_id)
+            // La séance est portée par course_id. À défaut, on remonte au profil
+            // enseignant par user_id : esbtp_seance_cours.teacher_id est un
+            // esbtp_teachers.id, pas un users.id — les comparer directement
+            // rattachait l'émargement à la séance d'un autre enseignant.
+            $seance = $this->course
+                ?: \App\Models\ESBTPSeanceCours::whereHas('teacher', function ($q) {
+                    $q->where('user_id', $this->teacher_id);
+                })
                 ->whereDate('date_seance', $this->date)
                 ->first();
 
@@ -197,7 +209,7 @@ class ESBTPTeacherAttendance extends Model
         return now()->gt($course->start_time) ? 'late' : 'present';
     }
 
-    public function validate(User $validator, string $notes = null): void
+    public function validate(User $validator, ?string $notes = null): void
     {
         $this->validation_status = 'validated';
         $this->validation_notes = $notes;

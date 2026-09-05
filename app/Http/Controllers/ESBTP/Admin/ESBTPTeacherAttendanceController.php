@@ -71,9 +71,10 @@ class ESBTPTeacherAttendanceController extends Controller
             })
             ->get();
 
-        // Load teacher attendance status for each course
-        $todayCourses->each(function($course) use ($teacherId, $today) {
-            $course->teacherAttendance = ESBTPTeacherAttendance::where('teacher_id', $teacherId)
+        // Load teacher attendance status for each course.
+        // esbtp_teacher_attendances.teacher_id référence users.id, pas esbtp_teachers.id.
+        $todayCourses->each(function($course) use ($teacherUserId, $today) {
+            $course->teacherAttendance = ESBTPTeacherAttendance::where('teacher_id', $teacherUserId)
                 ->where('course_id', $course->id)
                 ->whereDate('date', $today)
                 ->first();
@@ -166,13 +167,14 @@ class ESBTPTeacherAttendanceController extends Controller
         }
         
         // **VÉRIFICATION DES ÉMARGEMENTS EXISTANTS (DÉBUT ET FIN)**
-        $emargementDebut = ESBTPTeacherAttendance::where('teacher_id', $teacherModel->id)
+        // esbtp_teacher_attendances.teacher_id référence users.id (FK), pas esbtp_teachers.id.
+        $emargementDebut = ESBTPTeacherAttendance::where('teacher_id', $user->id)
             ->where('course_id', $seanceCours->id)
             ->whereDate('date', today())
             ->where('type', 'start')
             ->first();
 
-        $emargementFin = ESBTPTeacherAttendance::where('teacher_id', $teacherModel->id)
+        $emargementFin = ESBTPTeacherAttendance::where('teacher_id', $user->id)
             ->where('course_id', $seanceCours->id)
             ->whereDate('date', today())
             ->where('type', 'end')
@@ -250,7 +252,7 @@ class ESBTPTeacherAttendanceController extends Controller
             }
 
             $attendance = ESBTPTeacherAttendance::create([
-                'teacher_id' => $teacherModel->id,
+                'teacher_id' => $user->id, // users.id (FK), pas le profil esbtp_teachers
                 'course_id' => $seanceCours->id,
                 'daily_code_id' => $dailyCode->id,
                 'date' => now()->toDateString(),
@@ -553,16 +555,26 @@ class ESBTPTeacherAttendanceController extends Controller
             if (!$attendance) {
                 // 🆕 CRÉER un attendance d'aujourd'hui pour le marquage manuel
                 // IMPORTANT: Ceci est un marquage ADMINISTRATIF, pas un émargement enseignant
+                // La séance porte un esbtp_teachers.id ; l'émargement attend le users.id
+                // du compte (FK). Sans compte rattaché, la ligne ne peut pas exister.
+                $teacherUserId = $seanceCours->teacher?->user_id;
+                if (!$teacherUserId) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Aucun compte utilisateur rattaché à l\'enseignant de cette séance : impossible d\'enregistrer un émargement.',
+                    ], 422);
+                }
+
                 \Log::info('🆕 Création attendance manuel (statut: non émargé → ' . $request->status . ')', [
                     'seance_id' => $seanceId,
-                    'teacher_id' => $seanceCours->teacher_id,
+                    'teacher_id' => $teacherUserId,
                     'type' => $type,
                     'date' => today(),
                     'status' => $request->status
                 ]);
 
                 $attendance = ESBTPTeacherAttendance::create([
-                    'teacher_id' => $seanceCours->teacher_id,
+                    'teacher_id' => $teacherUserId,
                     'course_id' => $seanceId,
                     'date' => today(), // Date du marquage manuel, PAS la date de séance originale
                     'status' => $request->status,

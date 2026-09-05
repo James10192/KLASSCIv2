@@ -773,7 +773,11 @@
     $activeFilters = collect(['search', 'status', 'frais_category_id', 'date_debut', 'date_fin'])
         ->filter(fn($k) => filled(request($k)))
         ->count();
+    // Shell mobile actif : le DOM de bureau ci-dessous se cache sous 992px au
+    // profit du partial _index-mobile (m-*). Shell coupe : rien ne change.
+    $piShellMobile = ($mobileShellEnabled ?? false) && ($mobileProfile ?? null);
 @endphp
+<div class="{{ $piShellMobile ? 'm-only-desktop' : '' }}">
 <div class="dashboard-acasi">
     <div class="main-content">
         {{-- Hero premium pi-* --}}
@@ -1024,7 +1028,17 @@
 <button type="button" id="pi-scroll-top" class="pi-scroll-top" aria-label="Remonter en haut" title="Remonter en haut">
     <i class="fas fa-arrow-up"></i>
 </button>
+</div>
 
+@if($piShellMobile)
+    @include('esbtp.paiements.partials._index-mobile', [
+        'listeMobile' => $listeMobile ?? null,
+        'fraisCategories' => $fraisCategories ?? collect(),
+    ])
+@endif
+
+{{-- Un seul bouton flottant : sous le shell mobile, mobile-shell.css le
+     replace au-dessus des onglets (et efface tout .m-fab de page). --}}
 <x-fab-encaisser />
 @endsection
 

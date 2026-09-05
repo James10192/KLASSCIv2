@@ -364,10 +364,9 @@
                                 $courseStart = \Carbon\Carbon::parse($course->heure_debut);
                                 $courseEnd = \Carbon\Carbon::parse($course->heure_fin);
 
-                                // Récupérer l'ID enseignant (ESBTPTeacher, PAS User!)
+                                // esbtp_teacher_attendances.teacher_id référence users.id (pas esbtp_teachers.id)
                                 $user = Auth::user();
-                                $teacher = $user->teacherProfile;
-                                $teacherId = $teacher ? $teacher->id : null;
+                                $teacherId = $user?->id;
 
                                 $dailyCode = \App\Models\ESBTPDailyCode::where('status', 'active')
                                     ->where('is_active', true)

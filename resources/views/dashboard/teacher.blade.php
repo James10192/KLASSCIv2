@@ -457,9 +457,8 @@
                     $now = \Carbon\Carbon::now();
                     $hasCoursesToday = $todayClasses->count() > 0;
 
-                    // Récupérer le teacher_id correct
-                    $teacherModel = auth()->user()?->teacherProfile;
-                    $teacherId = $teacherModel ? $teacherModel->id : null;
+                    // esbtp_teacher_attendances.teacher_id référence users.id (pas esbtp_teachers.id)
+                    $teacherId = auth()->id();
 
                     // Compter les émargements DÉBUT et FIN séparément
                     $emargementDebutCount = 0;
@@ -728,9 +727,8 @@
                                             ->whereDate('created_at', now()->toDateString())
                                             ->first();
 
-                                        // Récupérer le teacher_id correct (ESBTPTeacher.id pas User.id)
-                                        $teacherModel = auth()->user()?->teacherProfile;
-                                        $teacherId = $teacherModel ? $teacherModel->id : null;
+                                        // esbtp_teacher_attendances.teacher_id référence users.id (pas esbtp_teachers.id)
+                                        $teacherId = auth()->id();
 
                                         // Vérifier émargements DÉBUT et FIN
                                         $emargementDebut = null;
