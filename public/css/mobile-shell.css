@@ -78,7 +78,7 @@ html { color-scheme: light; }
    marge propre : la gouttière est portée par le layout (--m-gut). */
 .m-only-mobile { display: none; }
 .m-only-desktop { display: block; }
-@media (max-width: 767.98px) {
+@media (max-width: 991.98px) {
     .m-only-mobile { display: block !important; }
     .m-only-desktop { display: none !important; }
 }
