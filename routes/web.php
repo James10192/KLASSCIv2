@@ -2450,6 +2450,18 @@ Route::middleware(['auth', 'permission:admin.access|identity.direct_studies|iden
     Route::post('esbtp/etudiants/{etudiant}/update-photo', [ESBTPEtudiantController::class, 'updatePhoto'])
         ->name('esbtp.etudiants.update-photo')
         ->middleware('permission:students.edit');
+
+    // La prise de vue au telephone, cote guichet. Meme permission que le
+    // televersement classique : c'est le meme geste par un autre chemin.
+    Route::prefix('esbtp')->name('esbtp.captures-photo.')
+        ->middleware(['permission:students.edit', 'throttle:120,1'])
+        ->group(function () {
+            Route::post('/etudiants/{etudiant}/capture-photo', [\App\Http\Controllers\ESBTPCapturePhotoController::class, 'ouvrir'])->name('ouvrir');
+            Route::get('/captures-photo/{capture}', [\App\Http\Controllers\ESBTPCapturePhotoController::class, 'etat'])->name('etat');
+            Route::get('/captures-photo/{capture}/apercu', [\App\Http\Controllers\ESBTPCapturePhotoController::class, 'apercu'])->name('apercu');
+            Route::post('/captures-photo/{capture}/accepter', [\App\Http\Controllers\ESBTPCapturePhotoController::class, 'accepter'])->name('accepter');
+            Route::post('/captures-photo/{capture}/refuser', [\App\Http\Controllers\ESBTPCapturePhotoController::class, 'refuser'])->name('refuser');
+        });
     Route::post('esbtp/etudiants/{etudiant}/documents', [ESBTPEtudiantController::class, 'storeDocument'])
         ->name('esbtp.etudiants.documents.store')
         ->middleware('permission:students.edit');
@@ -3266,6 +3278,26 @@ Route::get('/verifier-document-officiel', [\App\Domain\OfficialDocuments\Http\Of
 Route::post('/verifier-document-officiel', [\App\Domain\OfficialDocuments\Http\OfficialDocumentController::class, 'verify'])
     ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class])
     ->name('official-documents.verify');
+
+// ============================================================
+// Prise de vue au telephone — PAGE PUBLIQUE, sans compte
+// ============================================================
+// Celui qui photographie est souvent l'etudiant lui-meme : il n'a pas de compte,
+// et n'en aura pas au moment ou on le prend en photo. Le jeton de l'adresse est
+// la seule cle, et il est fait pour ne presque rien valoir — une page, un envoi,
+// quelques minutes, un nom, rien du dossier.
+//
+// Le debit est serre : ces adresses sont publiques, et un jeton se devine par
+// force brute si on laisse essayer. `throttle` porte sur l'IP.
+Route::get('/photo/{jeton}', [\App\Http\Controllers\PhotoCaptureController::class, 'montrer'])
+    ->where('jeton', '[A-Za-z0-9]{48}')
+    ->middleware('throttle:20,1')
+    ->name('photo-capture.montrer');
+
+Route::post('/photo/{jeton}', [\App\Http\Controllers\PhotoCaptureController::class, 'envoyer'])
+    ->where('jeton', '[A-Za-z0-9]{48}')
+    ->middleware('throttle:10,1')
+    ->name('photo-capture.envoyer');
 
 // ============================================================
 // Routes Rattrapage LMD (PR10 â€” sessions 2e session UEMOA)

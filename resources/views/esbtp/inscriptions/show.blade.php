@@ -551,6 +551,16 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
     flex-shrink: 0;
     box-shadow: 0 2px 10px rgba(0,0,0,0.15);
 }
+.is-hero-photo { position: relative; flex-shrink: 0; }
+.is-hero-photo-btn {
+    position: absolute; right: -4px; bottom: -4px;
+    width: 28px; height: 28px; border-radius: 50%;
+    background: #fff; color: #0453cb; border: 2px solid #0453cb;
+    display: flex; align-items: center; justify-content: center;
+    font-size: .7rem; cursor: pointer; padding: 0;
+    box-shadow: 0 2px 8px rgba(15,23,42,.18);
+}
+.is-hero-photo-btn:hover { background: #0453cb; color: #fff; }
 .is-hero-avatar-placeholder {
     width: 56px;
     height: 56px;
@@ -1146,13 +1156,25 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
         <!-- Hero Premium -->
         <div class="is-hero">
             <div class="is-hero-inner">
-                @if($inscription->etudiant->photo_url)
-                    <img src="{{ $inscription->etudiant->photo_url }}" alt="Photo" class="is-hero-avatar">
-                @else
-                    <div class="is-hero-avatar-placeholder">
-                        <i class="fas fa-user"></i>
-                    </div>
-                @endif
+                {{-- L'avatar sert aussi de bouton : c'est la ou l'on cherche
+                     naturellement a changer une photo. --}}
+                <div class="is-hero-photo" data-photo-etudiant-cadre>
+                    @if($inscription->etudiant->photo_url)
+                        <img src="{{ $inscription->etudiant->photo_url }}" alt="Photo"
+                             class="is-hero-avatar" data-photo-etudiant>
+                    @else
+                        <div class="is-hero-avatar-placeholder">
+                            <i class="fas fa-user"></i>
+                        </div>
+                    @endif
+                    @can('students.edit')
+                        <button type="button" class="is-hero-photo-btn"
+                                title="Photo de l'etudiant"
+                                onclick="window.dispatchEvent(new CustomEvent('photo-etudiant:ouvrir'))">
+                            <i class="fas fa-camera"></i>
+                        </button>
+                    @endcan
+                </div>
                 <div class="is-hero-text">
                     <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:rgba(255,255,255,0.6);margin-bottom:2px;"><i class="fas fa-file-alt me-1"></i>Fiche Inscription</div>
                     <div class="is-hero-name">{{ $inscription->etudiant->nom }} {{ $inscription->etudiant->prenoms }}</div>
@@ -1814,6 +1836,14 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                     @include('esbtp.inscriptions.partials.fournitures-in-kind')
 
                     @include('esbtp.inscriptions.partials.pieces-dossier')
+
+                    @can('students.edit')
+                        {{-- Le dialogue photo. Il s'ouvre tout seul juste apres
+                             la creation de l'inscription : c'est le seul moment
+                             ou l'etudiant est devant le guichet. --}}
+                        <x-photo-etudiant :etudiant="$inscription->etudiant"
+                                          :ouvrir-au-chargement="session('demander_photo', false)" />
+                    @endcan
 
                     @if($canViewFinancials ?? true)
                     <!-- Situation financière détaillée -->

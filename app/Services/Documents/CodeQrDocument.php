@@ -3,11 +3,7 @@
 namespace App\Services\Documents;
 
 use App\Helpers\SettingsHelper;
-use BaconQrCode\Renderer\Image\SvgImageBackEnd;
-use BaconQrCode\Renderer\ImageRenderer;
-use BaconQrCode\Renderer\RendererStyle\RendererStyle;
-use BaconQrCode\Writer;
-use Throwable;
+use App\Support\CodeQr;
 
 /**
  * Le code QR imprime sur un document, et ce qu'il ouvre.
@@ -55,24 +51,19 @@ class CodeQrDocument
      * Rend null plutot que d'echouer : un document sans code QR reste imprimable
      * et signable, un document qui ne sort pas ne l'est pas.
      */
+    public function __construct(private CodeQr $codes)
+    {
+    }
+
     public function pour(?string $adresse): ?string
     {
-        $adresse = trim((string) $adresse);
-
-        if ($adresse === '' || ! $this->actif()) {
+        if (! $this->actif()) {
             return null;
         }
 
-        try {
-            $rendu = new ImageRenderer(new RendererStyle(self::COTE, 1), new SvgImageBackEnd());
-            $svg = (new Writer($rendu))->writeString($adresse);
-        } catch (Throwable $e) {
-            // La bibliotheque peut manquer sur une instance dont les dependances
-            // n'ont pas ete reinstallees. Le document part sans son code.
-            return null;
-        }
-
-        return 'data:image/svg+xml;base64,'.base64_encode($svg);
+        // La fabrique rend null si la bibliotheque manque : le document part
+        // alors sans son code, ce qui reste imprimable et signable.
+        return $this->codes->svg($adresse, self::COTE);
     }
 
     public function actif(): bool

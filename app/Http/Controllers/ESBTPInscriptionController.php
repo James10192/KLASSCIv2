@@ -656,7 +656,12 @@ class ESBTPInscriptionController extends Controller
                 ->with(
                     "success",
                     'Inscription enregistrée avec succès. L\'administration pourra valider l\'inscription en associant un paiement.',
-                );
+                )
+                // La fiche demandera la photo des l'ouverture. C'est le seul
+                // moment ou l'etudiant est LA, devant le guichet : lui courir
+                // apres une semaine plus tard coute infiniment plus cher que de
+                // sortir un telephone maintenant.
+                ->with("demander_photo", true);
 
             // Les deux avertissements partagent la même clé de session, et le
             // gabarit n'en rend qu'un. Les concaténer plutôt que de laisser le
@@ -2549,7 +2554,8 @@ class ESBTPInscriptionController extends Controller
 
             return redirect()
                 ->route('esbtp.inscriptions.show', $inscription->id)
-                ->with('success', $message);
+                ->with('success', $message)
+                ->with('demander_photo', true);
 
         } catch (\Exception $e) {
             DB::rollBack();

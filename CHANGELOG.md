@@ -40,6 +40,15 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ### Ajouts
 
+- **La photo de l'étudiant se prend avec un téléphone** — un dialogue s'ouvre tout seul juste après la création d'une inscription, au moment précis où l'étudiant est devant le guichet. Trois chemins : téléverser un fichier, photographier avec la caméra du poste, ou afficher un code QR que l'on scanne avec un téléphone. La photo prise au téléphone arrive à l'écran ; le guichet la valide ou en redemande une autre — elle ne remplace la photo de l'étudiant qu'une fois acceptée.
+
+  Le troisième chemin existe parce que le poste du guichet n'a souvent pas de caméra, ou en a une mauvaise, alors que le téléphone qui est dans la poche photographie très bien. La page ouverte par le code QR ne demande aucun compte et n'affiche qu'un nom : le lien expire en quelques minutes, ne vaut que pour un seul envoi, et ne dit rien du dossier.
+
+  À la réinscription, si l'étudiant a déjà une photo, le dialogue commence par demander s'il faut la remplacer. Le même dialogue se rouvre depuis la fiche de l'étudiant et depuis la fiche d'inscription, par le bouton posé sur la photo.
+
+  Trois réglages d'établissement : proposer ou non la prise de vue par téléphone, la durée de validité du lien, et l'obligation de confirmer avant de remplacer une photo existante.
+
+
 - **Suivi des pièces du dossier, étudiant par étudiant** — la fiche d'inscription porte désormais un bloc « Pièces du dossier » où l'on coche ce que l'étudiant a remis. Une case suffit : ni téléversement obligatoire, ni formulaire. Le compteur en tête dit s'il manque quelque chose, et quoi.
 
   Une pièce appartient d'abord à l'étudiant, pas à l'année : six photos déposées en première année en couvrent trois, et l'écran affiche ce qu'il en reste. L'école décide, pièce par pièce, ce qui dure et ce qui se redonne chaque rentrée. Une pièce qui ne concerne pas un étudiant cette année s'écarte avec son motif — ce motif est ce qui, six mois plus tard, distinguera une dispense décidée d'un dossier qu'on a renoncé à réclamer.
