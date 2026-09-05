@@ -778,7 +778,7 @@ class LMSDataController extends BaseApiController
                 'teacher_id' => $teacher->id, // teacher_id (esbtp_teachers.id) pour séances
                 'nom' => $teacher->user ? $teacher->user->name : 'N/A',
                 'email' => $teacher->email ?: ($teacher->user ? $teacher->user->email : null),
-                'role' => $teacher->user ? $teacher->user->role : 'enseignant',
+                'role' => $teacher->user ? ($teacher->user->getRoleNames()->first() ?? 'enseignant') : 'enseignant', // role Spatie, pas la colonne legacy users.role (defaut 'etudiant')
                 'matricule' => $teacher->matricule,
                 'specialization' => $teacher->specialization,
                 'status' => $teacher->status
