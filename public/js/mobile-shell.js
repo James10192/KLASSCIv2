@@ -178,6 +178,10 @@
         };
     }
 
+    // Fabrique globale : x-data="mSheet('id')" se resout meme si Alpine a demarre
+    // avant l'enregistrement par Alpine.data (patron window.auMentionPicker du projet).
+    if (typeof window.mSheet !== 'function') { window.mSheet = mSheet; }
+
     function registerAlpine() {
         if (!window.Alpine || typeof window.Alpine.data !== 'function') { return; }
         if (window.__mShell.alpineRegistered) { return; }

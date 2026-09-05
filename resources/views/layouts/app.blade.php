@@ -3373,10 +3373,10 @@
     </script>
 
     <!-- Alpine.js (focus plugin must load BEFORE core for x-trap to register) -->
+    <script defer src="{{ asset('js/mobile-shell.js') }}"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/focus@3.x.x/dist/cdn.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     {{-- Shell mobile (feuilles, toasts, tirer-pour-rafraichir, invite d'installation) : attend alpine:init --}}
-    <script defer src="{{ asset('js/mobile-shell.js') }}"></script>
 
     <!-- Custom JavaScript -->
     <script src="{{ asset('js/navbar-diagnostics.js') }}"></script>
