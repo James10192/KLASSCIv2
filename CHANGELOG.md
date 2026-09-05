@@ -40,6 +40,15 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ### Ajouts
 
+- **La fiche d'inscription porte enfin tout le dossier** — état civil complet, coordonnées, scolarité avec le parcours LMD jusqu'au domaine, parents et tuteurs avec leur lien et leur profession, et la liste des pièces du dossier avec ce qui reste à apporter. Elle passe à une page pleine par exemplaire : l'ancienne en tenait deux sur une feuille, ce que le contenu complet ne permet plus. Une signature est ajoutée pour le parent ou le tuteur.
+
+  N'y figurent pas, délibérément : les identifiants et le mot de passe provisoire du compte, les motifs internes de refus d'une pièce, les commentaires de caisse et les noms des agents. Ce sont des notes de service, pas des informations destinées à la famille qui emporte le papier. La situation financière garde son propre document, déjà réservé aux personnes qui y ont droit.
+
+- **Une fiche vierge à faire remplir en salle d'attente** — le personnel l'imprime, l'élève la complète au stylo, la rapporte, et le secrétariat saisit. Ce n'est pas la fiche d'inscription sans ses valeurs : l'ordre des champs suit celui de l'écran de saisie pour que la ressaisie ne saute rien, les lignes sont hautes pour l'écriture à la main, et le sexe comme le statut d'affectation se cochent au lieu de s'écrire.
+
+  Elle ne demande ni classe, ni niveau, ni filière : les demander reviendrait à retenir l'élève pour lui demander où il veut aller, alors que le papier est fait pour être rempli sans personne en face. Elle liste les pièces à joindre, avec une case à cocher pour chacune. Accessible depuis la liste des inscriptions.
+
+
 - **Une page pour savoir qui rappeler** — « Suivi des dossiers » liste, pour une année et une classe, les étudiants dont le dossier est incomplet, avec le nom des pièces qui manquent. Cinq compteurs en tête : inscriptions examinées, dossiers complets, dossiers incomplets, pièces à réclamer, pièces à relire. Ils portent sur toute la sélection, pas sur la page affichée.
 
   Chaque ligne mène directement au dossier de l'étudiant, à l'endroit exact où l'on coche. La page est en lecture seule et n'offre aucune action de masse : « cocher toutes les pièces de cette classe » n'aurait aucun sens, personne n'a vu ces papiers. Elle est accessible depuis le menu, depuis le catalogue des pièces et depuis la liste des inscriptions. Une inscription annulée n'y figure pas.

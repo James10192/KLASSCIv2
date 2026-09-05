@@ -627,6 +627,14 @@ tr[data-inscription-id] > td { transition: background .15s ease; }
                             <i class="fas fa-clipboard-check"></i> Suivi des dossiers
                         </a>
                     @endcan
+                    {{-- La fiche a distribuer en salle d'attente. Elle vit ici parce
+                         que c'est l'ecran ou l'on se trouve le matin de la rentree,
+                         quand il faut en imprimer une pile. --}}
+                    @can('inscriptions.fiche.print')
+                        <a href="{{ route('esbtp.inscriptions.fiche.vierge') }}" target="_blank" class="ii-btn--glass">
+                            <i class="fas fa-file-lines"></i> Fiche vierge à remplir
+                        </a>
+                    @endcan
                     @can('admin.access')
                         @include('partials._klassci_toast')
                         <button type="button" class="ii-btn--glass"

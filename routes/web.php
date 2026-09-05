@@ -1388,6 +1388,15 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 Route::get('/inscriptions/{inscription}/fiche/preview-pdf', [\App\Http\Controllers\ESBTPInscriptionFicheController::class, 'preview'])
                     ->name('inscriptions.fiche.preview-pdf')
                     ->middleware(['permission:inscriptions.fiche.print', 'throttle:60,1']);
+
+                // La fiche VIERGE, a distribuer en salle d'attente. Aucun
+                // parametre : elle ne parle d'aucun eleve, et c'est tout son
+                // interet — on en imprime une pile le matin de la rentree. Le
+                // chemin est distinct de `/inscriptions/{inscription}` pour
+                // qu'aucune route a parametre ne puisse le capter.
+                Route::get('/inscriptions-fiche-vierge', [\App\Http\Controllers\ESBTPInscriptionFicheController::class, 'vierge'])
+                    ->name('inscriptions.fiche.vierge')
+                    ->middleware(['permission:inscriptions.fiche.print', 'throttle:60,1']);
                 Route::get('/inscriptions/{inscription}/data', [ESBTPInscriptionApiController::class, 'getInscriptionData'])->name('inscriptions.data');
                 Route::get('/inscriptions/{inscription}/paiement-en-attente', [ESBTPInscriptionApiController::class, 'getPaiementEnAttente'])->name('inscriptions.paiement-en-attente');
                 Route::get('/inscriptions/{inscription}/classes-alternatives', [ESBTPInscriptionApiController::class, 'getClassesAlternatives'])->name('inscriptions.classes-alternatives');
