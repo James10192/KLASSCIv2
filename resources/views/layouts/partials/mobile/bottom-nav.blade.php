@@ -106,7 +106,9 @@
 
     {{-- Rail latéral (tablette 768–1023px) --}}
     <aside class="m-rail" aria-label="Navigation principale">
-        <div class="logo" aria-hidden="true">{{ mb_strtoupper(mb_substr((string) \App\Helpers\SettingsHelper::get('school_name', config('app.name', 'K')), 0, 1, 'UTF-8'), 'UTF-8') }}</div>
+        {{-- La marque de l'application, pas l'initiale de l'école : sur tablette la barre
+             latérale est un tiroir fermé, ce rail est le seul endroit où KLASSCI se lit. --}}
+        <div class="logo" aria-hidden="true"><img src="{{ asset('images/LOGO-KLASSCI-PNG.png') }}" alt=""></div>
         <nav>
             @foreach($mItems as $it)
                 @if(isset($it['sheet']))
