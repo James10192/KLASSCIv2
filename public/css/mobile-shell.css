@@ -79,8 +79,8 @@ html { color-scheme: light; }
 .m-only-mobile { display: none; }
 .m-only-desktop { display: block; }
 @media (max-width: 767.98px) {
-    .m-only-mobile { display: block; }
-    .m-only-desktop { display: none; }
+    .m-only-mobile { display: block !important; }
+    .m-only-desktop { display: none !important; }
 }
 
 /* Transitions de vue entre deux pages (Chrome 126+, Safari 18.2+ ; ignoré
