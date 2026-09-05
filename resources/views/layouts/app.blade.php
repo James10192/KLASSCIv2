@@ -73,7 +73,7 @@
     {{-- Shell mobile generalise (PWA, prefixe m-) : barre d'onglets, feuilles, pile des flottants.
          Absorbe l'ancien mobile-student.css (alias .stu-* conserves). Charge APRES chatbot-widget.css
          et dashboard-moderne.css pour pouvoir surcharger leurs positions en mobile. --}}
-    <link href="{{ asset('css/mobile-shell.css') }}" rel="stylesheet">
+    <link href="{{ asset('css/mobile-shell.css') }}?v={{ @filemtime(public_path('css/mobile-shell.css')) ?: '1' }}" rel="stylesheet">
 
     <!-- Styles supplémentaires -->
     <style>
@@ -3398,7 +3398,7 @@
     </script>
 
     <!-- Alpine.js (focus plugin must load BEFORE core for x-trap to register) -->
-    <script defer src="{{ asset('js/mobile-shell.js') }}"></script>
+    <script defer src="{{ asset('js/mobile-shell.js') }}?v={{ @filemtime(public_path('js/mobile-shell.js')) ?: '1' }}"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/focus@3.x.x/dist/cdn.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     {{-- Shell mobile (feuilles, toasts, tirer-pour-rafraichir, invite d'installation) : attend alpine:init --}}
@@ -4511,7 +4511,7 @@
         });
 
         window.addEventListener('load', function () {
-            navigator.serviceWorker.register('/sw.js?v=klassci-v4', { updateViaCache: 'none' }).then(function (reg) {
+            navigator.serviceWorker.register('/sw.js?v=klassci-v5', { updateViaCache: 'none' }).then(function (reg) {
                 // SW déjà en attente au chargement (mise à jour prête)
                 if (reg.waiting && navigator.serviceWorker.controller) {
                     showUpdateToast(reg.waiting);
