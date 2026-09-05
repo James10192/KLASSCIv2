@@ -995,7 +995,7 @@ $(document).ready(function() {
     });
 
     // Pas de rechargement automatique. Ce bloc rechargeait la page toutes les
-    // deux minutes ; il n'avait jamais tourne (script perdu par @section) et
+    // deux minutes ; il n'avait jamais tourne (script perdu par @@section) et
     // son reveil aurait fait perdre position et lecture a tous les enseignants
     // sur leur page d'atterrissage. Un enseignant qui lit ou scrolle n'est ni
     // un modal ouvert ni un champ en focus : la garde ne protegeait rien.
