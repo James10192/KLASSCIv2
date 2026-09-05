@@ -568,7 +568,9 @@ body.m-sheet-open { overflow: hidden; }
     body.has-m-shell .nextadmin-navbar .navbar-right .btn-acasi.icon-only { width: 44px; height: 44px; padding: 0; border: 0; border-radius: 12px; background: transparent; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; color: #0f172a; font-size: 20px; -webkit-tap-highlight-color: transparent; transition: transform 120ms ease, background 120ms ease; }
     body.has-m-shell .nextadmin-navbar .navbar-right .btn-acasi.icon-only:hover { transform: none; background: transparent; box-shadow: none; border-color: transparent; }
     body.has-m-shell .nextadmin-navbar .navbar-right .btn-acasi.icon-only:active { transform: scale(.94); background: rgba(4,83,203,.08); }
-    body.has-m-shell .nextadmin-navbar .navbar-right .navbar-badge { top: 3px; right: 3px; min-width: 18px; height: 18px; line-height: 14px; font-size: 10px; animation: none; box-shadow: none; }
+    /* Le socle fixe une largeur de 20px : a deux chiffres, le compteur sortait
+       de son disque. Largeur libre, pastille allongee, comme sur iOS. */
+    body.has-m-shell .nextadmin-navbar .navbar-right .navbar-badge { top: 3px; right: 3px; width: auto; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; line-height: 14px; font-size: 10px; animation: none; box-shadow: none; }
     body.has-m-shell .mnb-avatar { display: grid; place-items: center; width: 44px; height: 44px; flex: 0 0 44px; padding: 0; border: 0; background: transparent; border-radius: 12px; cursor: pointer; -webkit-tap-highlight-color: transparent; transition: transform 120ms ease, background 120ms ease; }
     body.has-m-shell .mnb-avatar:active { transform: scale(.94); background: rgba(4,83,203,.08); }
     body.has-m-shell .mnb-avatar .navbar-avatar { width: 32px; height: 32px; border-width: 1.5px; }
