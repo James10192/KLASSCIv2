@@ -77,6 +77,21 @@
                                       placeholder="Ce rôle peut faire les inscriptions et consulter les fiches étudiants..."></textarea>
                         </div>
                     </div>
+
+                    {{-- Profil mobile : ne sert que si aucune des permissions de routage
+                         (caisse, comptabilité, enseignant, étudiant) n'est accordée au rôle. --}}
+                    <div class="cr-form-grid">
+                        <div class="cr-form-group">
+                            <label class="cr-form-label">Profil mobile</label>
+                            <x-au-select
+                                name="mobile_profile"
+                                :value="old('mobile_profile', '')"
+                                icon="fa-mobile-screen"
+                                placeholder="Aucun (pas de shell mobile)"
+                                :options="\App\Services\Mobile\MobileProfileResolver::libelles()" />
+                            <small class="cr-form-hint">Barre d'onglets affichée sur téléphone. Déduite automatiquement des permissions ; ce choix ne sert que si aucune ne s'applique.</small>
+                        </div>
+                    </div>
                 </section>
 
                 {{-- Section 2 : Permissions --}}

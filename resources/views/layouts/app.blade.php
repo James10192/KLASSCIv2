@@ -16,7 +16,7 @@
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="app-debug" content="{{ config('app.debug') ? '1' : '0' }}">
     <meta name="navbar-mark-all-read-url" content="{{ url('/navbar/notifications/mark-all-read') }}">
@@ -70,12 +70,24 @@
     <!-- Chatbot Widget -->
     <link href="{{ asset('css/chatbot-widget.css') }}" rel="stylesheet">
 
-    {{-- Shell mobile etudiant (PWA) : bottom-nav + grilles 2x2 + anti-overflow.
-         Charge APRES dashboard-moderne.css pour pouvoir override en mobile. --}}
-    <link href="{{ asset('css/mobile-student.css') }}" rel="stylesheet">
+    {{-- Shell mobile generalise (PWA, prefixe m-) : barre d'onglets, feuilles, pile des flottants.
+         Absorbe l'ancien mobile-student.css (alias .stu-* conserves). Charge APRES chatbot-widget.css
+         et dashboard-moderne.css pour pouvoir surcharger leurs positions en mobile. --}}
+    <link href="{{ asset('css/mobile-shell.css') }}" rel="stylesheet">
 
     <!-- Styles supplémentaires -->
     <style>
+        /* Shell mobile (< 768px) : l'assistant IA n'est pas charge (voir garde JS avant son include)
+           et le rappel NON bloquant de renouvellement (.m-ce-deferred) n'est pas affiche. */
+        @media (max-width: 767.98px) {
+            .m-chatbot-host,
+            .m-chatbot-host #chatbot-widget,
+            .m-chatbot-host #chatbot-backdrop,
+            .m-chatbot-host #chatbot-settings-modal { display: none !important; }
+            .m-ce-deferred #contractExpiryModal,
+            .m-ce-deferred #ce-strip { display: none !important; }
+        }
+
         /* Variables CSS ACASI pour cohérence */
         :root {
             --space-xs: 0.25rem;
@@ -219,6 +231,7 @@
             min-width: 360px !important;
             max-width: 380px !important;
             max-height: min(520px, calc(100vh - 100px)) !important;
+            max-height: min(520px, calc(100dvh - 100px)) !important;
             border: 1px solid rgba(99, 102, 241, 0.08) !important;
             box-shadow:
                 0 20px 25px -5px rgba(0, 0, 0, 0.1),
@@ -848,6 +861,7 @@
             overflow-y: auto;
             overflow-x: hidden;
             max-height: calc(100vh - 80px);
+            max-height: calc(100dvh - 80px);
             padding-right: 5px;
         }
 
@@ -883,6 +897,7 @@
                 left: -280px;
                 top: 0;
                 height: 100vh;
+                height: 100dvh;
                 z-index: 1050;
                 background: rgba(255, 255, 255, 0.95);
                 backdrop-filter: blur(20px);
@@ -1584,7 +1599,7 @@
     @yield('styles')
     @stack('styles')
 </head>
-<body class="{{ (auth()->check() && auth()->user()->hasRole('etudiant')) ? 'has-stu-bottomnav' : '' }}">
+<body class="{{ ($mobileShellEnabled ?? false) && ($mobileProfile ?? null) ? 'has-m-shell m-profile-'.$mobileProfile.' has-stu-bottomnav' : '' }}">
     <div class="nextadmin-wrapper">
         <!-- Sidebar -->
         <aside class="nextadmin-sidebar" id="sidebar">
@@ -2195,7 +2210,7 @@
 
                     {{-- Chat interactif (issue #298) — réservé staff (permission messages.send).
                          Les étudiants consultent leurs annonces via /esbtp/mes-annonces
-                         (section « Communication » plus bas, gated @can('identity.student')). --}}
+                         (section « Communication » plus bas, gardee par la permission identity.student). --}}
                     @can('messages.send')
                     <div class="menu-item">
                         <a href="{{ route('chat.index') }}" class="menu-link {{ Request::routeIs('chat.*') ? 'active' : '' }}">
@@ -3288,13 +3303,37 @@
                         </div>
                     </div>
                 </div>
-                <script>document.addEventListener('DOMContentLoaded', () => new bootstrap.Modal(document.getElementById('workflowNextStepModal')).show());</script>
+                <script>document.addEventListener('DOMContentLoaded', () => {
+                    // Shell mobile : pas d'ouverture automatique sous 768px (rappel non bloquant).
+                    if (window.matchMedia('(max-width:767.98px)').matches) return;
+                    new bootstrap.Modal(document.getElementById('workflowNextStepModal')).show();
+                });</script>
             @endif
         </div>
         </main>
     </div>
 
-    @include('components.chatbot.widget')
+    {{-- Assistant IA : desactive sous 768px (shell mobile). Le widget pousse lui-meme son script
+         (chatbot-widget.js, defer) dans la pile 'scripts' : on ne peut pas le rendre conditionnel d'ici
+         sans toucher le composant. On neutralise donc son initialisation : sous 768px, la configuration
+         globale qu'il ecrit (window.KLASSCI_CHATBOT_CONFIG) est absorbee par un accesseur qui ne retient
+         rien, et chatbot-widget.js, qui exige cette configuration, n'instancie jamais le widget.
+         Le HTML est masque par CSS (.m-chatbot-host, bloc de styles du head). --}}
+    <script>
+    (function () {
+        if (!window.matchMedia || !window.matchMedia('(max-width:767.98px)').matches) return;
+        try {
+            Object.defineProperty(window, 'KLASSCI_CHATBOT_CONFIG', {
+                configurable: true,
+                get: function () { return undefined; },
+                set: function () { /* ignore sous 768px : l'assistant n'est pas charge en mobile */ }
+            });
+        } catch (e) { /* silencieux */ }
+    })();
+    </script>
+    <div class="m-chatbot-host">
+        @include('components.chatbot.widget')
+    </div>
 
     <!-- Debug Helper - Doit être chargé en PREMIER -->
     <script>
@@ -3336,11 +3375,17 @@
     <!-- Alpine.js (focus plugin must load BEFORE core for x-trap to register) -->
     <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/focus@3.x.x/dist/cdn.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    {{-- Shell mobile (feuilles, toasts, tirer-pour-rafraichir, invite d'installation) : attend alpine:init --}}
+    <script defer src="{{ asset('js/mobile-shell.js') }}"></script>
 
     <!-- Custom JavaScript -->
     <script src="{{ asset('js/navbar-diagnostics.js') }}"></script>
     <script>
             document.addEventListener('DOMContentLoaded', function() {
+                // Shell mobile : sous 768px, les rappels non bloquants ne s'ouvrent pas seuls
+                // (chaque auto-open ci-dessous est garde par cette valeur).
+                const mAutoModalDeferred = window.matchMedia('(max-width:767.98px)').matches;
+
                 const anneeModal = document.getElementById('anneeCouranteExpiredModal');
                 if (anneeModal) {
                 const storageKey = 'annee-courante-expired-last-seen';
@@ -3348,7 +3393,7 @@
                 const now = Date.now();
                 const oneHourMs = 60 * 60 * 1000;
 
-                if (now - lastSeen >= oneHourMs) {
+                if (!mAutoModalDeferred && now - lastSeen >= oneHourMs) {
                     const modal = new bootstrap.Modal(anneeModal);
                     modal.show();
                     localStorage.setItem(storageKey, String(now));
@@ -3366,7 +3411,7 @@
                     const now = Date.now();
                     const oneHourMs = 60 * 60 * 1000;
 
-                    if (now - lastSeen >= oneHourMs) {
+                    if (!mAutoModalDeferred && now - lastSeen >= oneHourMs) {
                         const pendingModal = new bootstrap.Modal(pendingModalElement);
                         pendingModal.show();
                         localStorage.setItem(reminderKey, String(now));
@@ -3384,7 +3429,7 @@
                     const now = Date.now();
                     const oneHourMs = 60 * 60 * 1000;
 
-                    if (now - lastSeen >= oneHourMs) {
+                    if (!mAutoModalDeferred && now - lastSeen >= oneHourMs) {
                         const timetableModal = new bootstrap.Modal(timetableModalElement);
                         timetableModal.show();
                         localStorage.setItem(reminderKey, String(now));
@@ -3402,7 +3447,7 @@
                     const now = Date.now();
                     const oneHourMs = 60 * 60 * 1000;
 
-                    if (now - lastSeen >= oneHourMs) {
+                    if (!mAutoModalDeferred && now - lastSeen >= oneHourMs) {
                         const gradingModal = new bootstrap.Modal(gradingModalElement);
                         gradingModal.show();
                         localStorage.setItem(reminderKey, String(now));
@@ -3420,7 +3465,7 @@
                     const now = Date.now();
                     const oneHourMs = 60 * 60 * 1000;
 
-                    if (now - lastSeen >= oneHourMs) {
+                    if (!mAutoModalDeferred && now - lastSeen >= oneHourMs) {
                         const publishModal = new bootstrap.Modal(evaluationPublishModalElement);
                         publishModal.show();
                         localStorage.setItem(reminderKey, String(now));
@@ -3447,7 +3492,7 @@
                     const dismissed = !!state.dismissed;
                     const remindAt = Number(state.remindAt || 0);
 
-                    if (!dismissed && now >= remindAt) {
+                    if (!mAutoModalDeferred && !dismissed && now >= remindAt) {
                         const whatsNewModal = new bootstrap.Modal(whatsNewModalElement);
                         whatsNewModal.show();
                     }
@@ -4369,7 +4414,11 @@
 
     {{-- Compte à rebours expiration contrat (affiché max 1x/12h si ≤ 30 jours) --}}
     @if(auth()->check())
-        @include('components.contract-expiry-modal')
+        {{-- Sous 768px (shell mobile), seul le rappel NON bloquant est differe (masque par CSS,
+             classe .m-ce-deferred) ; un abonnement expire reste visible car il bloque l'acces. --}}
+        <div class="{{ session('contract_expiry.is_expired') ? '' : 'm-ce-deferred' }}">
+            @include('components.contract-expiry-modal')
+        </div>
     @endif
 
     {{-- PWA : enregistrement global du service worker (tous rôles) + invite de mise à jour --}}
@@ -4437,7 +4486,7 @@
         });
 
         window.addEventListener('load', function () {
-            navigator.serviceWorker.register('/sw.js?v=klassci-v3', { updateViaCache: 'none' }).then(function (reg) {
+            navigator.serviceWorker.register('/sw.js?v=klassci-v4', { updateViaCache: 'none' }).then(function (reg) {
                 // SW déjà en attente au chargement (mise à jour prête)
                 if (reg.waiting && navigator.serviceWorker.controller) {
                     showUpdateToast(reg.waiting);
@@ -4456,9 +4505,9 @@
     })();
     </script>
 
-    {{-- Bottom navigation mobile : strictement etudiant (cachee >=768px via CSS) --}}
-    @role('etudiant')
-        @include('layouts.partials.student-bottom-nav')
-    @endrole
+    {{-- Barre d'onglets du shell mobile : profil resolu par MobileShellComposer (caissier, comptable, enseignant, etudiant) --}}
+    @if(($mobileShellEnabled ?? false) && ($mobileProfile ?? null))
+        @include('layouts.partials.mobile.bottom-nav')
+    @endif
 </body>
 </html>

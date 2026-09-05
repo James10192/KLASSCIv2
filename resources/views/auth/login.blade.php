@@ -2,10 +2,22 @@
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
     <title>{{ \App\Helpers\SettingsHelper::get('school_name', 'KLASSCI') }} — Connexion</title>
+
+    {{-- PWA : installable des la page de connexion (manifest servi hors auth), couleur de barre = couleur primaire de l'ecole --}}
+    @php
+        $pwaPdf = \App\Helpers\SettingsHelper::getPdfSettings();
+        $pwaThemeColor = preg_match('/^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/', (string) ($pwaPdf['primary_color'] ?? ''))
+            ? $pwaPdf['primary_color'] : '#0453cb';
+    @endphp
+    <link rel="manifest" href="/manifest.webmanifest">
+    <meta name="theme-color" content="{{ $pwaThemeColor }}">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
 
     @include('partials.og-meta')
 
@@ -36,6 +48,7 @@
         body {
             font-family: 'IBM Plex Sans', system-ui, sans-serif;
             min-height: 100vh;
+            min-height: 100dvh;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -466,32 +479,117 @@
             margin-top: 0.3rem;
         }
 
-        /* ─── Responsive ─── */
-        @media (max-width: 768px) {
-            body { background-attachment: scroll; }
+        /* ─── Responsive : mobile (< 768px) ───
+           Une seule colonne, formulaire en premier, panneau marketing reduit
+           a un logo + une ligne. Champs et bouton de 48px, texte des champs a
+           16px (pas de zoom iOS), zones sures respectees (viewport-fit=cover). */
+        @media (max-width: 767.98px) {
+            body {
+                background-attachment: scroll;
+                align-items: stretch;
+                padding:
+                    max(0.75rem, env(safe-area-inset-top))
+                    max(0.75rem, env(safe-area-inset-right))
+                    max(0.75rem, env(safe-area-inset-bottom))
+                    max(0.75rem, env(safe-area-inset-left));
+            }
+
+            /* Decor anime inutile sur un petit ecran (et couteux) */
+            .floating-elements,
+            .geo-ring { display: none; }
 
             .login-card {
                 flex-direction: column;
-                margin: 1rem;
+                margin: 0 auto;
+                width: 100%;
+                max-width: 480px;
+                border-radius: 14px;
+                align-self: flex-start;
             }
 
-            .panel-left {
-                padding: 2rem 1.5rem;
+            /* Formulaire en premier, marque en pied de carte */
+            .panel-right { order: 1; padding: 1.5rem 1.25rem 1.25rem; }
+            .panel-left  { order: 2; padding: 1rem 1.25rem; }
+
+            .panel-left h2,
+            .panel-left .stats { display: none; }
+            .panel-left::after { display: none; }
+
+            .panel-left .logo-row { margin-bottom: 0.35rem; }
+            .panel-left .logo-row img { height: 26px; }
+            .panel-left .logo-row span { font-size: 1rem; }
+
+            .panel-left .tagline {
+                max-width: none;
+                margin: 0;
+                font-size: 0.82rem;
+                line-height: 1.45;
             }
 
-            .panel-left h2 { font-size: 1.5rem; }
+            .form-header { margin-bottom: 1.25rem; }
+            .form-header h1 { font-size: 1.5rem; }
 
-            .stats { gap: 1.5rem; }
-            .stat-value { font-size: 1.4rem; }
+            .field { margin-bottom: 1rem; }
+            .field label { font-size: 0.75rem; }
 
-            .panel-right {
-                padding: 2rem 1.5rem;
+            .field input {
+                min-height: 48px;
+                padding: 0.75rem 0.85rem 0.75rem 2.6rem;
+                font-size: 16px; /* >= 16px : iOS ne zoome pas au focus */
+                border-radius: 8px;
             }
+            .field input#password { padding-right: 3rem !important; }
+
+            .field .input-wrap i.icon { left: 0.95rem; font-size: 0.95rem; }
+
+            /* Cible tactile 44px pour l'oeil du mot de passe */
+            .password-toggle {
+                right: 0.15rem;
+                width: 44px;
+                height: 44px;
+                padding: 0;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 1rem;
+            }
+
+            .form-options {
+                flex-wrap: wrap;
+                gap: 0.5rem 1rem;
+                margin: 0.75rem 0 1.25rem;
+            }
+            .remember-row { min-height: 44px; }
+            .remember-row input[type="checkbox"] { width: 20px; height: 20px; }
+            .remember-row label,
+            .forgot-link {
+                display: inline-flex;
+                align-items: center;
+                min-height: 44px;
+                font-size: 0.9rem;
+            }
+
+            .btn-login {
+                min-height: 48px;
+                padding: 0.75rem 1rem;
+                font-size: 1rem;
+                border-radius: 8px;
+            }
+            .btn-login:hover { transform: none; }
+
+            .login-footer { margin-top: 1.25rem; padding-top: 1rem; }
         }
 
         @media (max-width: 480px) {
-            .login-card { margin: 0.5rem; border-radius: 6px; }
-            .stats { flex-wrap: wrap; gap: 1rem; }
+            .login-card { border-radius: 12px; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .login-card,
+            .stat-value,
+            .floating-icon,
+            .geo-ring,
+            .panel-left::after { animation: none; }
         }
     </style>
 </head>
@@ -583,6 +681,12 @@
                         value="{{ old('username') }}"
                         required
                         autofocus
+                        autocomplete="username"
+                        inputmode="text"
+                        autocapitalize="none"
+                        autocorrect="off"
+                        spellcheck="false"
+                        enterkeyhint="next"
                         placeholder="Votre identifiant"
                         class="@error('username') is-invalid @enderror"
                     >
@@ -602,12 +706,13 @@
                         name="password"
                         required
                         autocomplete="current-password"
+                        enterkeyhint="go"
                         placeholder="Votre mot de passe"
                         class="@error('password') is-invalid @enderror"
                         style="padding-right: 2.5rem;"
                     >
                     <i class="fas fa-lock icon"></i>
-                    <i class="fas fa-eye password-toggle" id="togglePassword" title="Afficher le mot de passe"></i>
+                    <i class="fas fa-eye password-toggle" id="togglePassword" role="button" tabindex="0" aria-label="Afficher le mot de passe" title="Afficher le mot de passe"></i>
                     @error('password')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
@@ -662,6 +767,11 @@
                 this.classList.toggle('fa-eye', !isPassword);
                 this.classList.toggle('fa-eye-slash', isPassword);
                 this.title = isPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe';
+                this.setAttribute('aria-label', this.title);
+            });
+            // Accessible au clavier (role=button)
+            toggle.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle.click(); }
             });
         }
     })();

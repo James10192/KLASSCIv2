@@ -2,10 +2,22 @@
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
     <title>@yield('title', 'KLASSCI')</title>
+
+    {{-- PWA : installable des la page de connexion (manifest servi hors auth), couleur de barre = couleur primaire de l'ecole --}}
+    @php
+        $pwaPdf = \App\Helpers\SettingsHelper::getPdfSettings();
+        $pwaThemeColor = preg_match('/^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/', (string) ($pwaPdf['primary_color'] ?? ''))
+            ? $pwaPdf['primary_color'] : '#0453cb';
+    @endphp
+    <link rel="manifest" href="/manifest.webmanifest">
+    <meta name="theme-color" content="{{ $pwaThemeColor }}">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">

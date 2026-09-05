@@ -33,6 +33,7 @@ use App\Services\LMD\Tpe\AutoValidateStrategy;
 use App\Services\LMD\Tpe\TeacherValidateStrategy;
 use App\Services\LMD\Tpe\TpeValidationStrategy;
 use App\Services\SsoSecretValidator;
+use App\View\Composers\MobileShellComposer;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
@@ -111,6 +112,11 @@ class AppServiceProvider extends ServiceProvider
         SsoSecretValidator::validate();
 
         $this->partagerCompteurDemandesReinscription();
+
+        // Shell mobile : $mobileShellEnabled et $mobileProfile dans toutes les
+        // vues. Sur '*' a dessein — le layout, ses partials et les feuilles
+        // mobiles en ont tous besoin, et le resolver est memoise par requete.
+        View::composer('*', MobileShellComposer::class);
 
         // Observers
         ESBTPNote::observe(ESBTPNoteObserver::class);

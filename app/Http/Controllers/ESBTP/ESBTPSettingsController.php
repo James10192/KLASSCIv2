@@ -14,6 +14,7 @@ use App\Services\BulletinMentionResolver;
 use App\Services\BtsBulletinPolicy;
 use App\Services\CataloguePiecesDossier;
 use App\Services\MailPulse\MailPulseTestNotificationService;
+use App\Services\Mobile\MobileProfileResolver;
 use App\Services\Inscription\PortailCandidaturePublication;
 use App\Services\Reinscription\PortailReinscriptionService;
 use App\Services\TenantScolariteSettings;
@@ -490,6 +491,10 @@ class ESBTPSettingsController extends Controller
                 // decochee n'est pas envoyee par le navigateur, et seule cette
                 // liste-ci sait lire son absence comme un « non ».
                 CataloguePiecesDossier::REGLAGE_RESTITUTION_ANNULATION,
+                // Shell mobile (barre d'onglets sur telephone) : seme par
+                // migration, lu par MobileProfileResolver, sans cette ligne
+                // la case de la page n'aurait jamais ete enregistree.
+                MobileProfileResolver::REGLAGE_ACTIF,
             ], array_keys($troncCommunDefaults));
 
             // Reglages a cle pointee qui ne sont PAS des cases a cocher. La
