@@ -16,8 +16,9 @@ class ESBTPNoteFactory extends Factory
         return [
             'evaluation_id' => ESBTPEvaluation::factory(),
             'etudiant_id' => ESBTPEtudiant::factory(),
-            'valeur' => $this->faker->randomFloat(2, 0, 20),
-            'observation' => $this->faker->optional()->sentence,
+            'note' => $note = $this->faker->randomFloat(2, 0, 20), // colonne lue par l'app
+            'valeur' => $note,
+            'commentaire' => $this->faker->optional()->sentence, // 'observation' n'est ni fillable ni une colonne
             'created_by' => 1,
             'updated_by' => 1,
             'created_at' => now(),

@@ -366,10 +366,75 @@
     .note-content.active {
         display: block;
     }
+
+    /* ---------- Bureau LMD : regroupement UE puis ECUE ---------- */
+    .mnt-sem { margin-bottom: var(--space-xl); }
+    .mnt-sem-head { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: var(--space-sm); margin-bottom: var(--space-md); }
+    .mnt-sem-head h5 { margin: 0; color: var(--primary); font-weight: 700; }
+    .mnt-sem-head span { color: var(--text-secondary); font-size: var(--text-sm); }
+    .mnt-ue { border: 1px solid var(--notes-border); border-radius: var(--radius-large); padding: var(--space-md); margin-bottom: var(--space-md); background: #f8fafc; }
+    .mnt-ue-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--space-sm); margin-bottom: var(--space-md); }
+    .mnt-ue-title { font-weight: 700; color: var(--text-primary); }
+    .mnt-ue-title small { display: block; font-weight: 500; color: var(--text-secondary); font-size: var(--text-xs); margin-top: 2px; }
+    .mnt-ue-right { display: flex; align-items: center; gap: var(--space-sm); }
+    .mnt-ue-moy { font-weight: 800; color: var(--primary); font-variant-numeric: tabular-nums; }
+    .mnt-ue-moy small { color: var(--text-secondary); font-weight: 600; font-size: var(--text-xs); }
+    .mnt-badge { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 999px; font-size: var(--text-xs); font-weight: 700; white-space: nowrap; }
+    .mnt-badge.validee { background: #e6f6ef; color: #0f6b4c; }
+    .mnt-badge.non_validee { background: #fdecea; color: #a12016; }
+    .mnt-badge.en_cours { background: #eef2f7; color: #475569; }
+    .mnt-sem-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: var(--space-md); margin-top: var(--space-md); }
+    .mnt-sem-kpi { background: rgba(255, 255, 255, 0.14); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: var(--radius-medium); padding: var(--space-sm) var(--space-md); }
+    .mnt-sem-kpi b { display: block; font-size: 1.35rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+    .mnt-sem-kpi span { font-size: var(--text-xs); opacity: .85; }
+
+    /* ---------- Mobile (shell m-*) ---------- */
+    .mnm .m-body { min-height: 60vh; }
+    .mnm-ue { flex-wrap: wrap; gap: 6px 10px; align-items: center; }
+    .mnm-ue b { flex: 1 1 60%; min-width: 0; }
+    .mnm-ue b small { display: block; font-weight: 500; color: #64748b; font-size: 11.5px; margin-top: 1px; }
+    .mnm .m-grade .n.mnm-none { color: #94a3b8; font-weight: 700; }
+    .mnm .m-grade .n small { margin-left: 1px; }
+    .mnm-hint { font-size: 12px; color: #64748b; margin: -6px 0 0; }
+    .mnm .m-seg button:focus-visible { outline: 2px solid #0453cb; outline-offset: -2px; }
+
+    @media (max-width: 991.98px) {
+        .mnm.m-screen { display: flex; flex-direction: column; }
+        .mnm-panel { display: grid; gap: 14px; align-content: start; }
+    }
 </style>
 @endpush
 
 @section('content')
+@php
+    // Aides d'affichage partagees bureau + mobile. Aucune regle metier ici :
+    // les moyennes, credits et validations arrivent calcules dans $ecran.
+    $fmt = fn ($valeur) => \App\Services\LMD\EtudiantNotesLmdPresenter::formatNote($valeur === null ? null : (float) $valeur);
+    $libelle = fn ($type) => \App\Services\LMD\EtudiantNotesLmdPresenter::libelleCourt($type);
+    $rangTexte = fn ($rang) => $rang === null ? null : ($rang === 1 ? '1er' : $rang.'e');
+    $resumeEvaluations = function (array $evaluations) use ($fmt, $libelle): string {
+        $parts = [];
+        foreach ($evaluations as $ev) {
+            $parts[] = ($ev['type_label'] ?? $libelle($ev['type'] ?? null)).' '.($ev['absent'] ? 'Abs.' : $fmt($ev['note']));
+        }
+        return implode(' · ', $parts);
+    };
+
+    $estLmd = ($ecran['systeme'] ?? null) === \App\Services\FraisScopeResolver::SYSTEME_LMD;
+    $semestresEcran = $ecran['semestres'] ?? [];
+
+    // Segment ouvert par defaut : le dernier semestre qui a des notes, sinon le premier.
+    $segDefaut = $semestresEcran[0]['code'] ?? null;
+    foreach ($semestresEcran as $sem) {
+        if (($sem['notes_count'] ?? 0) > 0 && ($sem['code'] ?? '') !== 'annuel') {
+            $segDefaut = $sem['code'];
+        }
+    }
+    $classeNom = $inscription?->classe?->name ?? null;
+    $anneeNom = $anneeCourante?->name ?? null;
+    $sousTitre = implode(' · ', array_filter([$classeNom, $anneeNom]));
+@endphp
+<div class="m-only-desktop">
 <div class="dashboard-acasi notes-container">
     <div class="main-content">
         <!-- Header Étudiant Moderne -->
@@ -405,6 +470,24 @@
             </div>
         @else
             <!-- Moyenne générale -->
+            @if($estLmd)
+                <div class="moyenne-section">
+                    <div class="moyenne-title">Résultats par semestre</div>
+                    <div class="mnt-sem-kpis">
+                        @foreach($semestresEcran as $sem)
+                            <div class="mnt-sem-kpi">
+                                <b>{{ $fmt($sem['moyenne']) }}<small style="font-size:.7em;opacity:.8;">/20</small></b>
+                                <span>{{ $sem['label'] }}@if($sem['mention']) · {{ $sem['mention'] }}@endif</span>
+                            </div>
+                            <div class="mnt-sem-kpi">
+                                <b>{{ $sem['credits_acquis'] }} / {{ $sem['credits_attendus'] }}</b>
+                                <span>Crédits acquis · {{ $sem['label'] }}</span>
+                            </div>
+                        @endforeach
+                    </div>
+                    <div class="moyenne-subtitle">{{ $notes->count() }} note(s) saisie(s) cette année</div>
+                </div>
+            @else
             <div class="moyenne-section">
                 <div class="moyenne-title">Moyenne Générale</div>
                 @php
@@ -421,6 +504,7 @@
                 <div class="moyenne-value">{{ number_format($moyenne, 2) }}/20</div>
                 <div class="moyenne-subtitle">{{ $notes->count() }} note(s) • {{ $totalCoeff }} coefficients</div>
             </div>
+            @endif
 
             <!-- Section Toggle -->
             <div class="toggle-section">
@@ -431,7 +515,7 @@
                     </button>
                     <button class="toggle-btn" data-target="par-matiere">
                         <i class="fas fa-layer-group me-2"></i>
-                        Par matière
+                        {{ $estLmd ? 'Par UE' : 'Par matière' }}
                     </button>
                     <button class="toggle-btn" data-target="recentes">
                         <i class="fas fa-clock me-2"></i>
@@ -533,20 +617,94 @@
                 </div>
             </div>
 
-            <!-- Notes par matière -->
+            <!-- Notes par matière / par UE -->
             <div class="note-content" id="par-matiere">
                 <div class="card-moderne mb-lg">
                     <div class="section-card-header">
                         <h6 class="section-card-title">
                             <i class="fas fa-layer-group"></i>
-                            Notes par matière
+                            {{ $estLmd ? 'Notes par unité d\'enseignement' : 'Notes par matière' }}
                         </h6>
                     </div>
                     <div class="section-card-body">
+                        @if($estLmd)
+                            @foreach($semestresEcran as $sem)
+                                <div class="mnt-sem">
+                                    <div class="mnt-sem-head">
+                                        <h5><i class="fas fa-calendar-alt me-2"></i>{{ $sem['label'] }}</h5>
+                                        <span>
+                                            Moyenne {{ $fmt($sem['moyenne']) }}/20 · Crédits {{ $sem['credits_acquis'] }} / {{ $sem['credits_attendus'] }}
+                                            @if($sem['rang'])· Rang {{ $rangTexte($sem['rang']) }}@if($sem['effectif']) sur {{ $sem['effectif'] }}@endif @endif
+                                        </span>
+                                    </div>
+
+                                    @if(empty($sem['ues']))
+                                        <div class="no-notes">
+                                            <div class="no-notes-title">Maquette non disponible</div>
+                                            <p class="no-notes-text">Aucune unité d'enseignement n'est configurée pour ce semestre. Rapprochez-vous de la scolarité.</p>
+                                        </div>
+                                    @endif
+
+                                    @foreach($sem['ues'] as $ue)
+                                        <div class="mnt-ue">
+                                            <div class="mnt-ue-head">
+                                                <div class="mnt-ue-title">
+                                                    UE {{ $ue['code'] }} · {{ $ue['name'] }}
+                                                    <small>{{ $ue['credit'] }} crédit(s)@if($ue['mention']) · {{ $ue['mention'] }}@endif</small>
+                                                </div>
+                                                <div class="mnt-ue-right">
+                                                    <span class="mnt-ue-moy">{{ $fmt($ue['moyenne']) }}<small>/20</small></span>
+                                                    <span class="mnt-badge {{ $ue['etat'] }}">{{ $ue['etat_label'] }}</span>
+                                                </div>
+                                            </div>
+                                            <div class="notes-grid">
+                                                @foreach($ue['ecues'] as $ecue)
+                                                    @php
+                                                        $ecueClass = '';
+                                                        if ($ecue['moyenne'] !== null) {
+                                                            $pct = ($ecue['moyenne'] / 20) * 100;
+                                                            $ecueClass = $pct >= 80 ? 'excellent' : ($pct >= 60 ? 'good' : 'poor');
+                                                        }
+                                                    @endphp
+                                                    <div class="note-card {{ $ecueClass }}">
+                                                        <div class="note-header">
+                                                            <div>
+                                                                <div class="note-matiere">{{ $ecue['name'] }}</div>
+                                                                <div class="note-type-badge">{{ $ecue['code'] }}</div>
+                                                            </div>
+                                                        </div>
+                                                        <div class="note-score-section">
+                                                            <div class="note-score">
+                                                                <span class="note-value">{{ $fmt($ecue['moyenne']) }}</span>
+                                                                <span class="note-bareme">/20</span>
+                                                            </div>
+                                                        </div>
+                                                        <div class="note-info">
+                                                            <div class="note-info-item">
+                                                                <div class="note-info-label">Coefficient</div>
+                                                                <div class="note-info-value"><i class="fas fa-weight-hanging"></i>{{ $fmt($ecue['coefficient']) }}</div>
+                                                            </div>
+                                                            <div class="note-info-item">
+                                                                <div class="note-info-label">Crédits</div>
+                                                                <div class="note-info-value"><i class="fas fa-award"></i>{{ $ecue['credit'] }}</div>
+                                                            </div>
+                                                            <div class="note-info-item" style="grid-column: 1 / -1;">
+                                                                <div class="note-info-label">Évaluations</div>
+                                                                <div class="note-info-value"><i class="fas fa-list-ol"></i>{{ $resumeEvaluations($ecue['evaluations']) ?: 'Aucune note saisie' }}</div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                @endforeach
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            @endforeach
+                        @else
                         @php
                             $notesParMatiere = $notes->groupBy('evaluation.matiere.name');
                         @endphp
-                        
+
                         @foreach($notesParMatiere as $matiere => $notesMatiere)
                             <div class="mb-lg">
                                 <h5 class="mb-md" style="color: var(--primary); font-weight: 700;">
@@ -619,6 +777,7 @@
                                 </div>
                             </div>
                         @endforeach
+                        @endif
                     </div>
                 </div>
             </div>
@@ -700,6 +859,151 @@
                     </div>
                 </div>
             </div>
+        @endif
+    </div>
+</div>
+</div>
+
+{{-- ================= Mobile (shell m-*) : appbar + segments semestres + notes ================= --}}
+<div class="m-only-mobile m-screen mnm" x-data="{ seg: @js($segDefaut) }">
+    <x-m.appbar title="Mes notes" :sub="$sousTitre !== '' ? $sousTitre : null">
+        @canany(['bulletins.view_own', 'bulletins.view'])
+            @if(Route::has('esbtp.mon-bulletin.index'))
+                <a href="{{ route('esbtp.mon-bulletin.index') }}" class="m-ib" aria-label="Mes relevés">
+                    <x-m.icon name="dl" />
+                </a>
+            @endif
+        @endcanany
+    </x-m.appbar>
+
+    <div class="m-body" data-m-ptr="reload">
+        @if(!$ecran || !$inscription)
+            <x-m.empty icon="lock" title="Aucune inscription active"
+                text="Vous n'avez pas d'inscription active pour l'année en cours. Rapprochez-vous de l'administration." />
+        @elseif(empty($semestresEcran))
+            <x-m.empty icon="book" title="Aucune note disponible"
+                text="Les notes apparaîtront ici dès qu'elles seront saisies par vos enseignants." />
+        @else
+            <div class="m-seg" role="tablist" aria-label="Période">
+                @foreach($semestresEcran as $sem)
+                    <button type="button" role="tab"
+                            x-bind:class="seg === @js($sem['code']) ? 'on' : ''"
+                            x-bind:aria-selected="seg === @js($sem['code']) ? 'true' : 'false'"
+                            x-on:click="seg = @js($sem['code'])">{{ $sem['label'] }}</button>
+                @endforeach
+            </div>
+
+            @foreach($semestresEcran as $sem)
+                @php
+                    $kpiItems = [];
+                    $kpiItems[] = [
+                        'value' => $fmt($sem['moyenne']),
+                        'label' => 'Moyenne',
+                        'delta' => $sem['mention'] ?? 'sur 20',
+                        'tone' => $sem['moyenne'] === null ? 'mute' : 'info',
+                    ];
+                    if ($estLmd) {
+                        $kpiItems[] = [
+                            'value' => $sem['credits_acquis'].' / '.$sem['credits_attendus'],
+                            'label' => 'Crédits acquis',
+                            'delta' => $sem['statut'] === 'complete' ? null : ($sem['statut'] === 'incomplete' ? 'en cours' : null),
+                            'tone' => 'mute',
+                        ];
+                    } elseif ($sem['rang'] !== null) {
+                        $kpiItems[] = [
+                            'value' => $rangTexte($sem['rang']),
+                            'label' => $sem['effectif'] ? 'Rang · '.$sem['effectif'] : 'Rang',
+                            'delta' => null,
+                            'tone' => 'info',
+                        ];
+                    } else {
+                        $kpiItems[] = [
+                            'value' => (string) $sem['notes_count'],
+                            'label' => 'Notes saisies',
+                            'delta' => $sem['moyenne'] === null ? null : 'rang après bulletin',
+                            'tone' => 'mute',
+                        ];
+                    }
+                    if ($estLmd && $sem['rang'] !== null) {
+                        $kpiItems[] = [
+                            'value' => $rangTexte($sem['rang']),
+                            'label' => $sem['effectif'] ? 'Rang · '.$sem['effectif'] : 'Rang',
+                            'delta' => null,
+                            'tone' => 'info',
+                        ];
+                    }
+                @endphp
+                <section x-show="seg === @js($sem['code'])" @if($sem['code'] !== $segDefaut) x-cloak @endif
+                         role="tabpanel" aria-label="{{ $sem['label'] }}" class="mnm-panel">
+                    <x-m.kpi :items="$kpiItems" />
+
+                    @if(($sem['coefficients_manquants'] ?? false))
+                        <p class="mnm-hint">Coefficients non configurés : la moyenne est une moyenne simple des matières.</p>
+                    @endif
+
+                    @if($estLmd)
+                        @if(empty($sem['ues']))
+                            <x-m.empty icon="book" title="Maquette non disponible"
+                                text="Aucune unité d'enseignement n'est configurée pour ce semestre. Rapprochez-vous de la scolarité." />
+                        @endif
+
+                        @foreach($sem['ues'] as $ue)
+                            @php
+                                $chipTone = $ue['etat'] === 'validee' ? 'ok' : ($ue['etat'] === 'non_validee' ? 'bad' : 'mute');
+                                $chipTexte = $ue['moyenne'] === null ? $ue['etat_label'] : $fmt($ue['moyenne']).' · '.$ue['etat_label'];
+                            @endphp
+                            <div class="m-sec mnm-ue">
+                                <b>UE {{ $ue['code'] }} · {{ $ue['name'] }} · {{ $ue['credit'] }} cr</b>
+                                <span class="m-chip {{ $chipTone }}">{{ $chipTexte }}</span>
+                            </div>
+                            <div class="m-list one">
+                                @forelse($ue['ecues'] as $ecue)
+                                    <div class="m-grade">
+                                        <div>
+                                            <b>{{ $ecue['name'] }}</b>
+                                            <span>{{ $ecue['code'] }}@if(!empty($ecue['evaluations'])) · {{ $resumeEvaluations($ecue['evaluations']) }}@else · Aucune note saisie @endif</span>
+                                        </div>
+                                        @if($ecue['moyenne'] === null)
+                                            <span class="n mnm-none">—</span>
+                                        @else
+                                            <span class="n">{{ $fmt($ecue['moyenne']) }}<small>/20</small></span>
+                                        @endif
+                                    </div>
+                                @empty
+                                    <div class="m-grade"><div><b>Aucune matière</b><span>Cette UE n'a pas encore d'ECUE rattachée.</span></div></div>
+                                @endforelse
+                            </div>
+                        @endforeach
+                    @else
+                        @if(empty($sem['matieres']))
+                            @if($sem['code'] === 'annuel' && $sem['moyenne'] !== null)
+                                <x-m.empty icon="check" title="Année complète"
+                                    text="Le détail des matières se lit semestre par semestre." />
+                            @else
+                                <x-m.empty icon="book" title="Aucune note pour cette période"
+                                    text="Les notes apparaîtront ici dès qu'elles seront saisies par vos enseignants." />
+                            @endif
+                        @else
+                            <div class="m-sec"><b>Matières</b><span class="m-chip mute">{{ count($sem['matieres']) }}</span></div>
+                            <div class="m-list one">
+                                @foreach($sem['matieres'] as $matiere)
+                                    <div class="m-grade">
+                                        <div>
+                                            <b>{{ $matiere['name'] }}</b>
+                                            <span>@if($matiere['coefficient'] !== null)Coef {{ $fmt($matiere['coefficient']) }} · @endif{{ $resumeEvaluations($matiere['evaluations']) ?: 'Aucune note saisie' }}</span>
+                                        </div>
+                                        @if($matiere['moyenne'] === null)
+                                            <span class="n mnm-none">—</span>
+                                        @else
+                                            <span class="n">{{ $fmt($matiere['moyenne']) }}<small>/20</small></span>
+                                        @endif
+                                    </div>
+                                @endforeach
+                            </div>
+                        @endif
+                    @endif
+                </section>
+            @endforeach
         @endif
     </div>
 </div>

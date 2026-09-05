@@ -319,7 +319,7 @@
 }
 .ja-btn--primary:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(4,83,203,.35); }
 
-/* Mobile */
+/* Mobile (mise en page de bureau réduite, hors shell) */
 @media (max-width: 768px) {
     .ja-hero { padding: 1.5rem 1.25rem 1.25rem; }
     .ja-hero h1 { font-size: 1.2rem; }
@@ -333,13 +333,115 @@
     .ja-kpi { min-width: 100%; }
     .ja-chip { font-size: .72rem; padding: .4rem .7rem; }
 }
+
+/* =========================================================
+   MES ABSENCES — écran mobile du shell (namespace mab-*)
+   Le socle m-* vit dans public/css/mobile-shell.css.
+   ========================================================= */
+.mab-card { background: #fff; border: 1px solid #e6eaf2; border-radius: 14px; overflow: hidden; }
+.mab-card > .m-row { border: 0; border-radius: 0; }
+.mab-foot { display: grid; padding: 0 12px; }
+.mab-foot > * { margin-bottom: 12px; }
+.mab-btn { height: 44px; font-size: 14px; border-radius: 12px; }
+.mab-motif { padding: 10px 12px; border-radius: 10px; background: #fdecea; border-left: 3px solid #a12016; color: #7f1d1d; font-size: 12.5px; line-height: 1.45; }
+.mab-motif b { display: block; color: #a12016; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; margin-bottom: 2px; }
+.mab-when { font-size: 12px; color: #64748b; }
+.mab-form { display: grid; gap: 14px; }
+.mab-ctx { font-size: 13px; color: #64748b; margin: -4px 0 0; }
+.mab-err { font-size: 12px; color: #a12016; font-weight: 600; }
+.mab-up { position: relative; cursor: pointer; min-height: 48px; }
+.mab-up.has-file { border-style: solid; background: #e6f6ef; color: #0f6b4c; border-color: #9ad5bd; }
+.mab-up small { color: #64748b; font-weight: 500; font-size: 12px; }
+.mab-up input[type=file] { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; clip: rect(0, 0, 0, 0); }
+.mab-up:focus-within { outline: none; box-shadow: 0 0 0 3px rgba(4,83,203,.12); }
 </style>
 @endpush
 
 @section('content')
+@php
+    $rows = $absences ?? collect();
+    $mShell = ($mobileShellEnabled ?? false) && ($mobileProfile ?? null);
+    $mabMaxKo = \App\Services\AbsenceJustificationService::MAX_DOCUMENT_SIZE_KB;
+    $mabMaxMo = fmod($mabMaxKo, 1024) == 0 ? (int) ($mabMaxKo / 1024) : round($mabMaxKo / 1024, 1);
+
+    // Sous-titre mobile : l'enseignant de la séance. Une seule requête pour la
+    // liste ; le contrôleur ne charge que la matière et le traitant.
+    if ($mShell && $rows->isNotEmpty() && method_exists($rows, 'loadMissing')) {
+        $rows->loadMissing(['teacher.user', 'seanceCours.teacher.user']);
+    }
+
+    // Puce par état, partagée par les deux rendus.
+    $mabLibelles = [
+        'to_justify' => ['bad', 'À justifier'],
+        'pending' => ['warn', \App\Enums\JustificationStatus::PENDING->label()],
+        'approved' => ['ok', 'Approuvée'],
+        'rejected' => ['bad', \App\Enums\JustificationStatus::REJECTED->label()],
+    ];
+
+    // Une ligne préparée par absence : état, libellés, droit de soumettre.
+    $mabItems = [];
+    $lignes = [];
+    foreach ($rows as $abs) {
+        $status = $abs->justification_status;
+        $statusVal = $status instanceof \App\Enums\JustificationStatus ? $status->value : null;
+        $flag = match ($statusVal) {
+            'approved' => 'approved',
+            'pending' => 'pending',
+            'rejected' => 'rejected',
+            default => ($abs->statut === 'excuse' ? 'approved' : 'to_justify'),
+        };
+        $matiereName = optional($abs->matiere)->name ?? optional($abs->seanceCours->matiere ?? null)->name ?? '—';
+        $heures = $abs->heure_debut
+            ? \Illuminate\Support\Str::limit((string) $abs->heure_debut, 5, '')
+                . ($abs->heure_fin ? '–' . \Illuminate\Support\Str::limit((string) $abs->heure_fin, 5, '') : '')
+            : '';
+        $enseignant = $abs->teacher ?? optional($abs->seanceCours)->teacher;
+        $enseignantNom = $enseignant ? trim((string) $enseignant->name) : '';
+        if ($enseignantNom === 'N/A') {
+            $enseignantNom = '';
+        }
+        $dateCourte = $abs->date ? \Illuminate\Support\Str::ucfirst($abs->date->translatedFormat('D j M')) : '';
+        $dateLongue = $abs->date ? $abs->date->translatedFormat('l j F') : '';
+        $docUrl = !empty($abs->document_path)
+            ? \Illuminate\Support\Facades\URL::temporarySignedRoute('esbtp.justifications.document', now()->addMinutes(5), ['absence' => $abs->id])
+            : null;
+        $justifieLe = $abs->justified_at ? $abs->justified_at->format('d/m/Y') : '';
+
+        $lignes[] = [
+            'abs' => $abs,
+            'flag' => $flag,
+            'statusVal' => $statusVal,
+            'matiere' => $matiereName,
+            'sub' => implode(' · ', array_filter([$dateCourte, $heures, $enseignantNom])),
+            'docUrl' => $docUrl,
+        ];
+        $mabItems[$abs->id] = [
+            'flag' => $flag,
+            'canSubmit' => \Illuminate\Support\Facades\Gate::allows('submit', $abs),
+            'adminComment' => $flag === 'rejected' ? (string) ($abs->admin_comment ?? '') : '',
+            'docUrl' => $docUrl,
+            'justifiedAt' => $justifieLe,
+            'isResubmit' => $flag === 'rejected',
+            'ancienMotif' => $flag === 'rejected' ? (string) ($abs->commentaire ?? '') : '',
+            'ctx' => implode(' · ', array_filter([$matiereName, $dateLongue, $heures])),
+        ];
+    }
+
+    $mabCompte = ['to_justify' => 0, 'pending' => 0, 'done' => 0];
+    foreach ($mabItems as $it) {
+        $mabCompte[$it['flag'] === 'to_justify' ? 'to_justify' : ($it['flag'] === 'pending' ? 'pending' : 'done')]++;
+    }
+    $mabSegInitial = $mabCompte['to_justify'] > 0 ? 'to_justify' : ($mabCompte['pending'] > 0 ? 'pending' : 'done');
+    $mabSub = implode(' · ', array_filter([
+        optional(optional($inscription ?? null)->classe)->name,
+        optional($anneeCourante ?? null)->display_name,
+    ]));
+    $mabAnneeLabel = optional($anneeCourante ?? null)->display_name;
+@endphp
 <div class="ja-page"
      x-data="mesAbsencesPage()"
      x-cloak>
+<div class="{{ $mShell ? 'm-only-desktop' : '' }}">
     {{-- HERO --}}
     <div class="ja-hero">
         <div class="ja-hero-top">
@@ -350,7 +452,7 @@
                     <p>
                         Consultez vos absences et justifiez-les en joignant un certificat médical ou tout autre document
                         @if(!empty($anneeCourante))
-                            — Année universitaire <strong>{{ $anneeCourante->libelle ?? ('en cours') }}</strong>
+                            — Année universitaire <strong>{{ $anneeCourante->display_name ?: 'en cours' }}</strong>
                         @endif
                     </p>
                 </div>
@@ -437,10 +539,6 @@
     </div>
 
     {{-- LIST --}}
-    @php
-        $rows = $absences ?? collect();
-    @endphp
-
     @if($rows->isEmpty())
         <div class="ja-empty">
             <div class="ja-empty-icon"><i class="fas fa-check-double"></i></div>
@@ -449,19 +547,12 @@
         </div>
     @else
         <div class="ja-list">
-            @foreach($rows as $abs)
+            @foreach($lignes as $ligne)
                 @php
-                    $status = $abs->justification_status;
-                    $statusVal = $status instanceof \App\Enums\JustificationStatus ? $status->value : null;
-                    $matiereName = optional($abs->matiere)->name ?? optional($abs->seanceCours->matiere ?? null)->name ?? '—';
-                    $rowFlag = match ($statusVal) {
-                        'approved' => 'approved',
-                        'pending'  => 'pending',
-                        'rejected' => 'rejected',
-                        default    => ($abs->statut === 'excuse' ? 'approved' : 'to_justify'),
-                    };
-                    $canSubmit = in_array($rowFlag, ['to_justify', 'rejected'], true);
-                    $hasDoc = !empty($abs->document_path);
+                    $abs = $ligne['abs'];
+                    $rowFlag = $ligne['flag'];
+                    $statusVal = $ligne['statusVal'];
+                    $matiereName = $ligne['matiere'];
                 @endphp
 
                 <div class="ja-card"
@@ -502,7 +593,7 @@
                             @endif
 
                             <div class="ja-card-actions">
-                                @if($canSubmit)
+                                @can('submit', $abs)
                                     <button type="button"
                                             class="ja-action-btn ja-action-btn--primary"
                                             @click="openModal(
@@ -515,10 +606,10 @@
                                         <i class="fas fa-file-medical"></i>
                                         {{ $rowFlag === 'rejected' ? 'Re-soumettre' : 'Justifier' }}
                                     </button>
-                                @endif
-                                @if($hasDoc)
+                                @endcan
+                                @if($ligne['docUrl'])
                                     <a class="ja-action-btn ja-action-btn--ghost"
-                                       href="{{ \Illuminate\Support\Facades\URL::temporarySignedRoute('esbtp.justifications.document', now()->addMinutes(5), ['absence' => $abs->id]) }}"
+                                       href="{{ $ligne['docUrl'] }}"
                                        target="_blank" rel="noopener">
                                         <i class="fas fa-eye"></i> Document
                                     </a>
@@ -541,7 +632,7 @@
         </div>
     @endif
 
-    {{-- MODAL JUSTIFICATION --}}
+    {{-- MODAL JUSTIFICATION (bureau) --}}
     <div class="ja-modal-backdrop"
          x-show="modalOpen"
          x-cloak
@@ -575,7 +666,7 @@
                         <label>Document justificatif (optionnel)</label>
                         <input type="file" name="document" accept=".pdf,.jpg,.jpeg,.png">
                         <div class="ja-hint">
-                            Formats acceptés : PDF, JPG, PNG — 5 Mo maximum.
+                            Formats acceptés : PDF, JPG, PNG — {{ $mabMaxMo }} Mo maximum.
                             Recommandé : certificat médical scanné.
                         </div>
                     </div>
@@ -592,6 +683,125 @@
             </form>
         </div>
     </div>
+</div>
+
+@if($mShell)
+    {{-- ÉCRAN MOBILE (shell m-*) : la barre d'onglets est rendue par le layout --}}
+    <div class="m-only-mobile m-screen mab-screen">
+        <x-m.appbar title="Mes absences" :sub="$mabSub !== '' ? $mabSub : null" :back="route('dashboard')" />
+
+        <div class="m-body" data-m-ptr="reload">
+            @if($rows->isEmpty())
+                <x-m.empty icon="check" title="Aucune absence" text="Rien à justifier pour le moment. Continuez comme ça !" />
+            @else
+                <div class="m-kpi">
+                    <div>
+                        <span class="v" x-text="mCounts.total">{{ count($mabItems) }}</span>
+                        <span class="l">Absences{{ $mabAnneeLabel ? ' · ' . $mabAnneeLabel : '' }}</span>
+                    </div>
+                    <div>
+                        <span class="v" x-text="mCounts.to_justify">{{ $mabCompte['to_justify'] }}</span>
+                        <span class="l">À justifier</span>
+                        <span class="d" x-bind:class="mCounts.to_justify > 0 ? 'bad' : 'ok'" x-text="mCounts.to_justify > 0 ? 'à traiter' : 'tout est en ordre'"></span>
+                    </div>
+                </div>
+
+                <div class="m-seg" role="tablist" aria-label="Filtrer les absences">
+                    <button type="button" role="tab"
+                            x-bind:aria-selected="mSeg === 'to_justify' ? 'true' : 'false'"
+                            x-bind:class="mSeg === 'to_justify' ? 'on' : ''"
+                            x-on:click="mSeg = 'to_justify'"
+                            x-text="'À justifier · ' + mCounts.to_justify">À justifier · {{ $mabCompte['to_justify'] }}</button>
+                    <button type="button" role="tab"
+                            x-bind:aria-selected="mSeg === 'pending' ? 'true' : 'false'"
+                            x-bind:class="mSeg === 'pending' ? 'on' : ''"
+                            x-on:click="mSeg = 'pending'"
+                            x-text="'En attente · ' + mCounts.pending">En attente · {{ $mabCompte['pending'] }}</button>
+                    <button type="button" role="tab"
+                            x-bind:aria-selected="mSeg === 'done' ? 'true' : 'false'"
+                            x-bind:class="mSeg === 'done' ? 'on' : ''"
+                            x-on:click="mSeg = 'done'"
+                            x-text="'Traitées · ' + mCounts.done">Traitées · {{ $mabCompte['done'] }}</button>
+                </div>
+
+                <div class="m-list one">
+                    @foreach($lignes as $ligne)
+                        @php
+                            $abs = $ligne['abs'];
+                            $mid = (int) $abs->id;
+                            $puce = $mabLibelles[$ligne['flag']] ?? ['mute', '—'];
+                        @endphp
+                        <div class="mab-card" x-show="mVoir({{ $mid }})">
+                            <x-m.row icon="clock" :title="$ligne['matiere']" :sub="$ligne['sub'] !== '' ? $ligne['sub'] : null">
+                                <span class="m-chip" x-bind:class="mChip({{ $mid }}).cls" x-text="mChip({{ $mid }}).txt">{{ $puce[1] }}</span>
+                            </x-m.row>
+                            <div class="mab-foot">
+                                <div class="mab-when" x-show="mItems[{{ $mid }}] && mItems[{{ $mid }}].flag === 'pending' && mItems[{{ $mid }}].justifiedAt">
+                                    Soumise le <span x-text="mItems[{{ $mid }}] ? mItems[{{ $mid }}].justifiedAt : ''"></span>, en cours d'examen par l'administration.
+                                </div>
+                                <div class="mab-motif" x-show="mItems[{{ $mid }}] && mItems[{{ $mid }}].flag === 'rejected' && mItems[{{ $mid }}].adminComment">
+                                    <b>Motif du rejet</b>
+                                    <span x-text="mItems[{{ $mid }}] ? mItems[{{ $mid }}].adminComment : ''"></span>
+                                </div>
+                                <a class="m-btn g mab-btn" target="_blank" rel="noopener"
+                                   x-show="mItems[{{ $mid }}] && mItems[{{ $mid }}].docUrl"
+                                   x-bind:href="mItems[{{ $mid }}] ? mItems[{{ $mid }}].docUrl : '#'">
+                                    <x-m.icon name="file" />Voir le document joint
+                                </a>
+                                @can('submit', $abs)
+                                    <button type="button" class="m-btn p mab-btn"
+                                            x-show="mItems[{{ $mid }}] && mItems[{{ $mid }}].canSubmit"
+                                            x-on:click="mOuvrir({{ $mid }})">
+                                        <x-m.icon name="pen" />
+                                        {{ $ligne['flag'] === 'rejected' ? 'Re-soumettre' : 'Justifier' }}
+                                    </button>
+                                @endcan
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+
+                <div x-show="mCounts[mSeg] === 0">
+                    <x-m.empty icon="check" title="Rien dans cette liste">
+                        <span x-text="mVide()"></span>
+                    </x-m.empty>
+                </div>
+            @endif
+        </div>
+
+        {{-- FEUILLE DE JUSTIFICATION (mobile) --}}
+        <x-m.sheet id="m-justifier" title="Justifier l'absence">
+            <p class="mab-ctx" x-text="sheet.ctx"></p>
+            <form class="mab-form" x-on:submit.prevent="mEnvoyer()" novalidate>
+                <div class="m-field">
+                    <label for="mab-motif">Motif</label>
+                    <textarea id="mab-motif" class="m-in ta" name="justification" rows="4"
+                              minlength="5" maxlength="1000"
+                              placeholder="Expliquez le motif de votre absence (maladie, événement familial…)"
+                              x-model="sheet.justification"
+                              x-bind:aria-invalid="sheet.errors.justification ? 'true' : 'false'"></textarea>
+                    <span class="mab-err" x-show="sheet.errors.justification" x-text="sheet.errors.justification"></span>
+                </div>
+                <div class="m-field">
+                    <label id="mab-piece-lbl">Pièce jointe · PDF, JPG ou PNG · {{ $mabMaxMo }} Mo max</label>
+                    <label class="m-up mab-up" x-bind:class="sheet.fileName ? 'has-file' : ''">
+                        <x-m.icon name="up" />
+                        <span x-text="sheet.fileName || 'Choisir un fichier'">Choisir un fichier</span>
+                        <small x-show="!sheet.fileName">Certificat médical, convocation, attestation…</small>
+                        <input type="file" name="document" accept=".pdf,.jpg,.jpeg,.png"
+                               aria-labelledby="mab-piece-lbl"
+                               x-on:change="mFichier($event)">
+                    </label>
+                    <span class="mab-err" x-show="sheet.errors.document" x-text="sheet.errors.document"></span>
+                </div>
+                <button type="submit" class="m-btn p" x-bind:disabled="sheet.sending">
+                    <span x-show="!sheet.sending" x-text="sheet.isResubmit ? 'Re-soumettre la justification' : 'Envoyer la justification'">Envoyer la justification</span>
+                    <span x-show="sheet.sending" x-cloak>Envoi…</span>
+                </button>
+            </form>
+        </x-m.sheet>
+    </div>
+@endif
 </div>
 @endsection
 
@@ -621,6 +831,150 @@ function mesAbsencesPage() {
         },
         modalAction() {
             return this.baseJustifyUrl + '/' + this.modalContext.id + '/justify';
+        },
+
+        /* ---------- écran mobile (shell m-*) ---------- */
+        mItems: @json((object) $mabItems),
+        mLib: @json($mabLibelles),
+        mSeg: @json($mabSegInitial),
+        mMaxKo: @json($mabMaxKo),
+        mMaxMo: @json($mabMaxMo),
+        sheet: { id: null, ctx: '', isResubmit: false, justification: '', file: null, fileName: '', errors: {}, sending: false },
+
+        get mCounts() {
+            const c = { total: 0, to_justify: 0, pending: 0, done: 0 };
+            Object.values(this.mItems || {}).forEach((it) => {
+                c.total++;
+                c[this.mSegDe(it.flag)]++;
+            });
+            return c;
+        },
+        mSegDe(flag) {
+            if (flag === 'to_justify') return 'to_justify';
+            if (flag === 'pending') return 'pending';
+            return 'done';
+        },
+        mVoir(id) {
+            const it = this.mItems[id];
+            return !!it && this.mSegDe(it.flag) === this.mSeg;
+        },
+        mChip(id) {
+            const it = this.mItems[id];
+            const lib = it ? this.mLib[it.flag] : null;
+            return lib ? { cls: lib[0], txt: lib[1] } : { cls: 'mute', txt: '—' };
+        },
+        mVide() {
+            if (this.mSeg === 'to_justify') return 'Toutes vos absences sont justifiées ou en cours de traitement.';
+            if (this.mSeg === 'pending') return 'Aucune justification n\'attend de réponse.';
+            return 'Aucune justification n\'a encore été traitée.';
+        },
+        mOuvrir(id) {
+            const it = this.mItems[id];
+            if (!it || !it.canSubmit) return;
+            this.sheet = {
+                id: id,
+                ctx: it.ctx || '',
+                isResubmit: !!it.isResubmit,
+                justification: it.isResubmit ? (it.ancienMotif || '') : '',
+                file: null,
+                fileName: '',
+                errors: {},
+                sending: false
+            };
+            window.dispatchEvent(new CustomEvent('m-sheet:open', { detail: { id: 'm-justifier' } }));
+        },
+        mFichier(ev) {
+            const f = ev.target.files && ev.target.files[0];
+            this.sheet.errors = Object.assign({}, this.sheet.errors, { document: '' });
+            if (!f) { this.sheet.file = null; this.sheet.fileName = ''; return; }
+            const ext = (f.name.split('.').pop() || '').toLowerCase();
+            if (!['pdf', 'jpg', 'jpeg', 'png'].includes(ext)) {
+                this.sheet.file = null; this.sheet.fileName = '';
+                this.sheet.errors.document = 'Le document doit être au format PDF, JPG ou PNG.';
+                ev.target.value = '';
+                return;
+            }
+            if (f.size > this.mMaxKo * 1024) {
+                this.sheet.file = null; this.sheet.fileName = '';
+                this.sheet.errors.document = 'Le document ne peut dépasser ' + this.mMaxMo + ' Mo.';
+                ev.target.value = '';
+                return;
+            }
+            this.sheet.file = f;
+            const ko = Math.max(1, Math.round(f.size / 1024));
+            this.sheet.fileName = f.name + ' · ' + (ko >= 1024 ? (ko / 1024).toFixed(1) + ' Mo' : ko + ' Ko') + ' ✓';
+        },
+        mToast(message, type) {
+            window.dispatchEvent(new CustomEvent('toast', { detail: { type: type || 'success', message: message } }));
+        },
+        async mEnvoyer() {
+            if (this.sheet.sending || !this.sheet.id) return;
+            const motif = (this.sheet.justification || '').trim();
+            const errors = {};
+            if (motif.length < 5) errors.justification = 'La justification doit contenir au moins 5 caractères.';
+            if (motif.length > 1000) errors.justification = 'La justification ne peut dépasser 1000 caractères.';
+            if (this.sheet.file && this.sheet.file.size > this.mMaxKo * 1024) errors.document = 'Le document ne peut dépasser ' + this.mMaxMo + ' Mo.';
+            this.sheet.errors = errors;
+            if (Object.keys(errors).length) return;
+
+            const fd = new FormData();
+            fd.append('justification', motif);
+            if (this.sheet.file) fd.append('document', this.sheet.file, this.sheet.file.name);
+
+            const csrf = document.querySelector('meta[name="csrf-token"]');
+            this.sheet.sending = true;
+            try {
+                const res = await fetch(this.baseJustifyUrl + '/' + this.sheet.id + '/justify', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: {
+                        'X-CSRF-TOKEN': csrf ? csrf.content : '',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
+                    },
+                    body: fd
+                });
+
+                if (res.status === 422) {
+                    const body = await res.json().catch(() => ({}));
+                    const e = body.errors || {};
+                    this.sheet.errors = {
+                        justification: (e.justification || [])[0] || '',
+                        document: (e.document || [])[0] || ''
+                    };
+                    if (!this.sheet.errors.justification && !this.sheet.errors.document) {
+                        this.mToast(body.message || 'Vérifiez le formulaire.', 'error');
+                    }
+                    return;
+                }
+                if (res.status === 429) {
+                    this.mToast('Trop de tentatives, réessayez dans une minute.', 'error');
+                    return;
+                }
+                if (!res.ok) {
+                    const body = await res.json().catch(() => ({}));
+                    throw new Error(body.message || ('Erreur ' + res.status));
+                }
+
+                const data = await res.json();
+                const a = data.absence || {};
+                const it = this.mItems[this.sheet.id];
+                if (it) {
+                    it.flag = a.justification_status || 'pending';
+                    it.canSubmit = false;
+                    it.isResubmit = false;
+                    it.adminComment = a.admin_comment || '';
+                    it.docUrl = a.document_url || null;
+                    it.justifiedAt = a.justified_at ? new Date(a.justified_at).toLocaleDateString('fr-FR') : '';
+                }
+                window.dispatchEvent(new CustomEvent('m-sheet:close', { detail: { id: 'm-justifier' } }));
+                this.mSeg = this.mSegDe(it ? it.flag : 'pending');
+                this.mToast(data.message || 'Justification envoyée.', 'success');
+            } catch (err) {
+                this.mToast(err.message || 'Envoi impossible. Vérifiez votre connexion.', 'error');
+            } finally {
+                this.sheet.sending = false;
+            }
         }
     };
 }
