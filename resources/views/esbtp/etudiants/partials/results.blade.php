@@ -226,7 +226,7 @@
                                 </small>
                             </div>
                         @else
-                            <span class="text-muted">Non inscrit</span>
+                            <span class="text-muted">{{ \App\Support\AccordGenre::accorderPhrase('Non inscrit', $etudiant->sexe) }}</span>
                         @endif
                     </td>
                     <td><span style="font-size:.74rem;color:#475569;">{{ $latestDate }}</span></td>
@@ -234,12 +234,25 @@
                         @php
                             $affectStatus = $inscriptionCourante?->affectation_status
                                 ?? ($etudiant->inscriptions->isNotEmpty() ? $etudiant->inscriptions->sortByDesc('created_at')->first()->affectation_status : null);
+                            // La valeur est normalisee avant d'etre lue. La colonne est une
+                            // chaine libre, et quatre orthographes y coexistent : la
+                            // reinscription groupee ecrit « non-affecte » avec un trait
+                            // d'union quand la constante dit « non_affecte » avec un
+                            // souligne. Sans normalisation, ces etudiants-la n'avaient
+                            // AUCUN badge — le listing les montrait comme si leur statut
+                            // n'etait pas renseigne.
+                            $affectNormalise = \App\Models\ESBTPEcheancierRule::normalizeStatus($affectStatus);
                             $affectMap = [
-                                'affecté'     => ['eu-status-badge--success', 'Affecté'],
-                                'réaffecté'   => ['eu-status-badge--info', 'Réaffecté'],
-                                'non_affecté' => ['eu-status-badge--danger', 'Non affecté'],
+                                \App\Models\ESBTPEcheancierRule::STATUS_AFFECTE => ['eu-status-badge--success', 'Affecté'],
+                                \App\Models\ESBTPEcheancierRule::STATUS_REAFFECTE => ['eu-status-badge--info', 'Réaffecté'],
+                                \App\Models\ESBTPEcheancierRule::STATUS_NON_AFFECTE => ['eu-status-badge--danger', 'Non affecté'],
                             ];
-                            $affectInfo = $affectMap[$affectStatus] ?? null;
+                            $affectInfo = $affectStatus ? ($affectMap[$affectNormalise] ?? null) : null;
+
+                            // Le badge qualifie CETTE etudiante-la : il s'accorde.
+                            if ($affectInfo) {
+                                $affectInfo[1] = \App\Support\AccordGenre::accorderPhrase($affectInfo[1], $etudiant->sexe);
+                            }
                         @endphp
                         @if($affectInfo)
                             <span class="eu-status-badge {{ $affectInfo[0] }}">{{ $affectInfo[1] }}</span>

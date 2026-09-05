@@ -101,7 +101,7 @@
         </tr>
         <tr>
             <td><div class="lbl">Matricule</div><div class="val">{{ $e->matricule ?? '—' }}</div></td>
-            <td><div class="lbl">Sexe / Nationalité</div><div class="val">{{ $e->sexe ?? '—' }} · {{ $e->nationalite ?? '—' }}</div></td>
+            <td><div class="lbl">Sexe / Nationalité</div><div class="val">{{ \App\Support\AccordGenre::libelle($e->sexe) ?? '—' }} · {{ $e->nationalite ?? '—' }}</div></td>
         </tr>
         <tr>
             <td><div class="lbl">Date et lieu de naissance</div><div class="val">{{ optional($e->date_naissance)->format('d/m/Y') ?? '—' }} · {{ $e->lieu_naissance ?? '—' }}</div></td>

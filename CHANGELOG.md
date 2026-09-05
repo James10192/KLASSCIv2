@@ -71,6 +71,13 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ### Corrections
 
+- **Les mots s'accordent au genre de l'étudiante** — « Affectée », « Réaffectée », « Non affectée », « Non inscrite » : une fille lisait jusqu'ici son nom suivi d'un participe au masculin sur son propre dossier et sur le reçu que sa famille emporte. L'accord se fait là où le mot qualifie une personne nommée ; les en-têtes de colonnes de tarifs, les boutons de filtre et les compteurs restent au masculin, qui est aussi la forme d'un groupe mixte. Le français n'ajoutant pas toujours un e, les formes viennent d'une table — nouvelle, ancienne, boursière, admise — et un mot inconnu reste inchangé plutôt que d'être inventé.
+
+- **Le sexe s'écrit en toutes lettres sur la fiche d'inscription** — elle imprimait « M » ou « F ».
+
+- **Le statut d'affectation s'affiche de nouveau pour les réinscriptions groupées** — la liste des étudiants et la fiche d'inscription comparaient la valeur brute, alors que quatre orthographes coexistent en base. Un étudiant réinscrit en masse comme non affecté n'avait aucun badge : il apparaissait comme si son statut n'était pas renseigné, alors que c'est lui qui décide du montant à payer.
+
+
 - **L'émargement des enseignants écrivait le mauvais identifiant** — la présence d'un enseignant était enregistrée avec le numéro de sa fiche pédagogique là où la base attend celui de son compte. Deux conséquences selon l'école : là où les deux numéros divergent, l'émargement échouait purement et simplement (« impossible d'enregistrer ») ; là où ils coïncident par hasard, la présence était rattachée à un autre compte — un étudiant, parfois — et suivait ce compte s'il était supprimé. Les dix-neuf endroits qui écrivent ou lisent cette information parlent désormais le même langage, et une migration réaligne les lignes existantes en journalisant celles qu'elle ne peut trancher sans risque. Au passage, la page « Mes émargements » d'un enseignant filtrait ses séances avec le mauvais numéro et n'en montrait aucun.
 
 - **Une inscription universitaire retrouve enfin son tarif** — un second endroit de la résolution des frais, distinct de celui corrigé fin août, cherchait encore une configuration « BTS » quelle que soit l'inscription : sur une université LMD, l'encaissement retombait sur le montant par défaut. Au passage : l'enregistrement des présences par l'API de cours en ligne écrivait une valeur que la base refuse (plus aucune présence n'y passait), la liste des enseignants de cette même API les étiquetait tous « étudiant », le bouton Supprimer d'un paiement s'affichait à qui n'avait pas le droit de s'en servir, et le relevé LMD d'un étudiant rangeait toutes ses matières dans « sans unité ».
