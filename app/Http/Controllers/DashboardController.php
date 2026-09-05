@@ -1265,8 +1265,12 @@ class DashboardController extends Controller
 
         $prochaine = null;
         if ($resteDu > 0) {
+            // Un instantane d'echeancier n'existe que si une regle couvre
+            // l'inscription : la plupart des dossiers n'en ont pas, et lire
+            // ->payload sur null faisait echouer tout le bloc financier — le
+            // reste du s'affichait « indisponible » alors qu'il est connu.
             $snapshot = ESBTPInscriptionEcheancierSnapshot::where('inscription_id', $inscription->id)->first();
-            $ligne = collect($snapshot->payload['due_lines'] ?? [])
+            $ligne = collect($snapshot?->payload['due_lines'] ?? [])
                 ->filter(fn ($l) => (float) ($l['remaining_amount'] ?? 0) > 0 && ! empty($l['due_date']))
                 ->sortBy('due_date')
                 ->first();
