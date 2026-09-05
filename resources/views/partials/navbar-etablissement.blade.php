@@ -1,8 +1,14 @@
 {{--
     Indicateur d'établissement, à la manière du sélecteur d'organisation des
-    applications SaaS. La marque KLASSCI reste dans la barre latérale : ce badge
-    répond à une autre question, « chez qui suis-je ? », qui compte dès qu'on
-    administre plusieurs écoles.
+    applications SaaS. Sur bureau la marque KLASSCI reste dans la barre latérale :
+    ce badge répond à une autre question, « chez qui suis-je ? », qui compte dès
+    qu'on administre plusieurs écoles.
+
+    Sous le shell mobile la barre latérale est un tiroir fermé : la marque n'a
+    plus d'autre endroit où vivre. Le badge porte alors KLASSCI en premier
+    (logo + nom de l'application) et l'établissement en seconde ligne. Les deux
+    éléments .etb-marque / .etb-app sont masqués sur bureau (nextadmin.css) et
+    révélés par mobile-shell.css.
 
     Statique et non cliquable : une instance ne dessert qu'un établissement, un
     menu déroulant n'aurait rien à proposer. La navbar porte par ailleurs un
@@ -40,7 +46,10 @@
 @endphp
 
 @if($etbCourt !== '')
-<div class="etb-badge" title="{{ $etbInfobulle }}">
+<div class="etb-badge" title="KLASSCI — {{ $etbInfobulle }}">
+    <span class="etb-marque" aria-hidden="true">
+        <img src="{{ asset('images/LOGO-KLASSCI-PNG.png') }}" alt="">
+    </span>
     <span class="etb-media">
         @if($etbLogoUrl)
             <img src="{{ $etbLogoUrl }}" alt="{{ $etbCourt }}" loading="lazy">
@@ -49,6 +58,7 @@
         @endif
     </span>
     <span class="etb-texte">
+        <span class="etb-app">KLASSCI</span>
         <span class="etb-nom">{{ $etbCourt }}</span>
         @if($etbVille !== '')
             <span class="etb-ville">{{ $etbVille }}</span>

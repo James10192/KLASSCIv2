@@ -551,11 +551,16 @@ body.m-sheet-open { overflow: hidden; }
     /* Badge d'établissement centré : tuile 32px + nom court (la ville disparaît).
        Largeur bornée par le plus large des deux côtés (droite : 8 + 44 + 4 + 44). */
     body.has-m-shell .nextadmin-navbar .etb-badge { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); max-width: calc(100% - 208px); margin: 0; padding: 0; gap: 8px; background: transparent; border: 0; box-shadow: none; }
-    body.has-m-shell .nextadmin-navbar .etb-media { width: 32px; height: 32px; padding: 4px; border-radius: 9px; }
-    body.has-m-shell .nextadmin-navbar .etb-initiales { font-size: .78rem; }
-    body.has-m-shell .nextadmin-navbar .etb-texte { display: flex; }
+    /* La barre latérale étant un tiroir fermé sur mobile, la marque KLASSCI passe
+       en tête du badge : tuile logo + nom de l'application, l'établissement en
+       seconde ligne (le logo d'école .etb-media s'efface, il revient au tiroir). */
+    body.has-m-shell .nextadmin-navbar .etb-marque { display: grid; place-items: center; width: 32px; height: 32px; flex: 0 0 32px; border-radius: 9px; background: linear-gradient(135deg, #0453cb, #3b7ddb); box-shadow: 0 2px 8px rgba(4,83,203,.22); }
+    body.has-m-shell .nextadmin-navbar .etb-marque img { width: 22px; height: 22px; object-fit: contain; display: block; }
+    body.has-m-shell .nextadmin-navbar .etb-media { display: none; }
+    body.has-m-shell .nextadmin-navbar .etb-texte { display: flex; line-height: 1.15; }
+    body.has-m-shell .nextadmin-navbar .etb-app { display: block; font-size: 15px; font-weight: 800; letter-spacing: -.02em; color: #0f172a; white-space: nowrap; }
+    body.has-m-shell .nextadmin-navbar .etb-nom { font-size: 11px; font-weight: 600; color: #64748b; letter-spacing: 0; }
     body.has-m-shell .nextadmin-navbar .etb-ville { display: none; }
-    body.has-m-shell .nextadmin-navbar .etb-nom { font-size: 15px; font-weight: 700; letter-spacing: -.01em; color: #0f172a; }
 
     /* Droite : cloche (menu Bootstrap conservé) + avatar (ouvre la feuille) */
     body.has-m-shell .nextadmin-navbar .navbar-right { gap: 4px; margin-left: auto; }
@@ -605,7 +610,18 @@ body.m-sheet-open { overflow: hidden; }
 
     .m-rail { display: grid; grid-template-rows: auto 1fr; position: fixed; top: 0; bottom: 0; left: 0; width: 92px; background: #fff; border-right: 1px solid #e6eaf2; padding: 10px 8px; gap: 14px; align-content: start; z-index: 1080; font-family: var(--m-font); overflow-y: auto; }
     .m-rail .logo { width: 40px; height: 40px; border-radius: 12px; background: linear-gradient(135deg, #0a3d8f, #0453cb 55%, #3b7ddb); margin: 4px auto 2px; display: grid; place-items: center; color: #fff; font-weight: 800; font-size: 15px; }
-    .m-rail .logo img { width: 100%; height: 100%; object-fit: contain; border-radius: 12px; }
+    .m-rail .logo img { width: 26px; height: 26px; object-fit: contain; display: block; }
+
+    /* Barre du haut tablette : même badge que sur téléphone, KLASSCI en tête et
+       l'école en seconde ligne (nextadmin.css masque le texte sous 992 px). */
+    body.has-m-shell .nextadmin-navbar .etb-badge { gap: 10px; }
+    body.has-m-shell .nextadmin-navbar .etb-marque { display: grid; place-items: center; width: 36px; height: 36px; flex: 0 0 36px; border-radius: 10px; background: linear-gradient(135deg, #0453cb, #3b7ddb); box-shadow: 0 2px 8px rgba(4,83,203,.22); }
+    body.has-m-shell .nextadmin-navbar .etb-marque img { width: 24px; height: 24px; object-fit: contain; display: block; }
+    body.has-m-shell .nextadmin-navbar .etb-media { display: none; }
+    body.has-m-shell .nextadmin-navbar .etb-texte { display: flex; line-height: 1.15; }
+    body.has-m-shell .nextadmin-navbar .etb-app { display: block; font-size: 16px; font-weight: 800; letter-spacing: -.02em; color: #0f172a; white-space: nowrap; }
+    body.has-m-shell .nextadmin-navbar .etb-nom { font-size: 11.5px; font-weight: 600; color: #64748b; }
+    body.has-m-shell .nextadmin-navbar .etb-ville { display: none; }
     .m-rail nav { display: grid; gap: 4px; align-content: start; }
     .m-rail a,
     .m-rail button { display: grid; justify-items: center; gap: 4px; padding: 10px 4px; border-radius: 12px; text-decoration: none; color: #64748b; font-size: 10.5px; font-weight: 600; min-height: 56px; background: transparent; border: 0; font-family: inherit; cursor: pointer; text-align: center; line-height: 1.1; }
