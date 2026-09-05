@@ -294,7 +294,15 @@
 @endsection
 
 @section('content')
-<div class="ps-page">
+@php
+    // Shell mobile actif : le DOM de bureau ci-dessous se cache sous 768px au
+    // profit du partial _show-mobile (m-*). Shell coupe : rien ne change.
+    $psShellMobile = ($mobileShellEnabled ?? false) && ($mobileProfile ?? null);
+@endphp
+@if($psShellMobile)
+    @include('esbtp.paiements.partials._show-mobile', ['paiement' => $paiement])
+@endif
+<div class="ps-page {{ $psShellMobile ? 'm-only-desktop' : '' }}">
 
 {{-- ═══ HERO ═══ --}}
 <div class="ps-hero">
@@ -348,6 +356,7 @@
                 </a>
                 @endcan
                 @can('paiements.delete')
+                @can('paiements.manage'){{-- destroy() refuse (403) sans paiements.manage --}}
                 <form id="ps-form-delete-{{ $paiement->id }}" action="{{ route('esbtp.paiements.destroy', $paiement->id) }}" method="POST" style="margin:0">
                     @csrf @method('DELETE')
                     <button type="button"
@@ -360,6 +369,7 @@
                         <i class="fas fa-trash"></i>
                     </button>
                 </form>
+                @endcan
                 @endcan
 
                 @if($paiement->status === 'en_attente')
@@ -755,7 +765,7 @@
 @include('esbtp.paiements.partials.avoir-modal', ['paiement' => $paiement, 'modalId' => 'modalAvoir'])
 
 {{-- Historique d'audit (production audit log) --}}
-<div class="ps-content" style="margin-top: 1.5rem;">
+<div class="ps-content {{ $psShellMobile ? 'm-only-desktop' : '' }}" style="margin-top: 1.5rem;">
     <x-entity-history :model="$paiement" :limit="10" />
 </div>
 @endsection

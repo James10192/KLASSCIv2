@@ -2,7 +2,7 @@
 
 @section('title', 'Nouveau Paiement - KLASSCI')
 
-@section('styles')
+@push('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
 <style>
     .pc-page {
@@ -572,7 +572,7 @@
         }
     }
 </style>
-@endsection
+@endpush
 
 @section('content')
 @php
@@ -613,7 +613,11 @@
         'Troisième tranche' => 'Troisième tranche',
         'Paiement intégral' => 'Paiement intégral',
     ];
+    // Shell mobile actif : le formulaire de bureau reste tel quel mais se cache
+    // sous 768px, remplace par le pas-a-pas plein ecran (partial mobile).
+    $mabShell = (bool) (($mobileShellEnabled ?? false) && ($mobileProfile ?? null));
 @endphp
+<div class="{{ $mabShell ? 'm-only-desktop' : '' }}">
 <div class="dashboard-acasi pc-page">
     <div class="main-content">
         <div class="dashboard-header">
@@ -935,6 +939,10 @@
         </form>
     </div>
 </div>
+</div>
+@if($mabShell)
+    @include('esbtp.paiements.partials._encaisser-mobile')
+@endif
 @endsection
 
 @push('scripts')

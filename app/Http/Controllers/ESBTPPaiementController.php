@@ -463,7 +463,12 @@ class ESBTPPaiementController extends Controller
                 'etudiant_id_inscription' => $inscription->etudiant_id,
                 'etudiant_id_fourni' => $validated['etudiant_id'],
             ]);
-            return redirect()->back()->withErrors(['etudiant_id' => 'L\'étudiant ne correspond pas à l\'inscription sélectionnée.'])->withInput();
+            $motif = 'L\'étudiant ne correspond pas à l\'inscription sélectionnée.';
+            if ($request->expectsJson()) {
+                return response()->json(['success' => false, 'message' => $motif, 'errors' => ['etudiant_id' => [$motif]]], 422);
+            }
+
+            return redirect()->back()->withErrors(['etudiant_id' => $motif])->withInput();
         }
 
         // Un frais deja depose en nature est SOLDE : on ne l'encaisse pas.
@@ -490,9 +495,12 @@ class ESBTPPaiementController extends Controller
                     'frais_category_id' => $categorieVisee,
                 ]);
 
-                return redirect()->back()->withErrors([
-                    'frais_category_id' => "Ce frais a deja ete depose en nature par l'etudiant : il est solde, il n'y a rien a encaisser.",
-                ])->withInput();
+                $motif = "Ce frais a deja ete depose en nature par l'etudiant : il est solde, il n'y a rien a encaisser.";
+                if ($request->expectsJson()) {
+                    return response()->json(['success' => false, 'message' => $motif, 'errors' => ['frais_category_id' => [$motif]]], 422);
+                }
+
+                return redirect()->back()->withErrors(['frais_category_id' => $motif])->withInput();
             }
         }
 
@@ -522,12 +530,13 @@ class ESBTPPaiementController extends Controller
             ]);
 
             // Retourner un message de succès (ne pas alarmer l'utilisateur)
-            if ($request->ajax() || $request->wantsJson()) {
+            if ($request->ajax() || $request->wantsJson() || $request->expectsJson()) {
                 return response()->json([
                     'success' => true,
                     'message' => 'Paiement enregistré avec succès. Numéro de reçu : ' . $duplicateCheck->numero_recu,
                     'duplicate_id' => $duplicateCheck->id,
                     'duplicate_numero_recu' => $duplicateCheck->numero_recu,
+                    'paiement' => $this->paiementPourJson($duplicateCheck),
                 ]);
             }
 
@@ -560,8 +569,12 @@ class ESBTPPaiementController extends Controller
             // signaler. Rien n'a ete ecrit, il n'y a rien a annuler — et rien a
             // journaliser non plus : le caissier lit le motif a l'ecran, et un
             // `Log::info` est de toute facon filtre en production.
-            if ($request->ajax() || $request->wantsJson()) {
-                return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
+            if ($request->ajax() || $request->wantsJson() || $request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $e->getMessage(),
+                    'errors' => ['montant' => [$e->getMessage()]],
+                ], 422);
             }
 
             return redirect()->back()->withErrors(['montant' => $e->getMessage()])->withInput();
@@ -621,17 +634,52 @@ class ESBTPPaiementController extends Controller
                 ['paiement' => $paiement->id, 'inscription_id' => $paiement->inscription_id],
             );
 
+            $message = 'Paiement enregistré avec succès. Numéro de reçu : ' . $numeroRecu;
+
+            // Ecran mobile (pas-a-pas plein ecran) : il enregistre en fetch JSON
+            // et se redirige lui-meme vers le recu. Le formulaire de bureau, lui,
+            // garde sa redirection classique.
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => $message,
+                    'paiement' => $this->paiementPourJson($paiement),
+                ]);
+            }
+
             return redirect()->route('esbtp.paiements.show', $paiement->id)
-                ->with('success', 'Paiement enregistré avec succès. Numéro de reçu : ' . $numeroRecu);
+                ->with('success', $message);
 
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Erreur lors de l\'enregistrement du paiement : ' . $e->getMessage());
 
+            $motif = 'Une erreur est survenue lors de l\'enregistrement du paiement.';
+            if ($request->expectsJson()) {
+                return response()->json(['success' => false, 'message' => $motif], 500);
+            }
+
             return redirect()->back()
-                ->withErrors(['error' => 'Une erreur est survenue lors de l\'enregistrement du paiement.'])
+                ->withErrors(['error' => $motif])
                 ->withInput();
         }
+    }
+
+    /**
+     * Le versement tel que l'ecran mobile en a besoin apres store() : de quoi
+     * afficher le recu et y aller, rien de plus.
+     *
+     * @return array{id:int, numero_recu:?string, montant:float, url_show:string, url_recu:string}
+     */
+    private function paiementPourJson(ESBTPPaiement $paiement): array
+    {
+        return [
+            'id' => (int) $paiement->id,
+            'numero_recu' => $paiement->numero_recu,
+            'montant' => (float) $paiement->montant,
+            'url_show' => route('esbtp.paiements.show', $paiement->id),
+            'url_recu' => route('esbtp.paiements.recu', $paiement->id),
+        ];
     }
 
     /**
@@ -1507,14 +1555,14 @@ class ESBTPPaiementController extends Controller
 
             // Vérifier si le paiement peut être validé
             if ($paiement->status === 'validé') {
-                if ($request->ajax()) {
+                if ($request->ajax() || $request->wantsJson()) {
                     return response()->json(['success' => false, 'message' => 'Ce paiement est déjà validé.'], 400);
                 }
                 return redirect()->back()->with('error', 'Ce paiement est déjà validé.');
             }
 
             if ($paiement->status === 'rejeté') {
-                if ($request->ajax()) {
+                if ($request->ajax() || $request->wantsJson()) {
                     return response()->json(['success' => false, 'message' => 'Ce paiement a été rejeté et ne peut pas être validé.'], 400);
                 }
                 return redirect()->back()->with('error', 'Ce paiement a été rejeté et ne peut pas être validé.');
@@ -1522,7 +1570,7 @@ class ESBTPPaiementController extends Controller
 
             // S1.1 — Garde anti-auto-validation (séparation des tâches anti-fraude)
             if ($block = $this->assertNotSelfValidation($paiement)) {
-                if ($request->ajax()) {
+                if ($request->ajax() || $request->wantsJson()) {
                     return response()->json(['success' => false, 'message' => $block['message']], 403);
                 }
                 return redirect()->back()->with('error', $block['message']);
@@ -1590,7 +1638,7 @@ class ESBTPPaiementController extends Controller
             );
 
             // Si requête AJAX, retourner JSON
-            if ($request->ajax()) {
+            if ($request->ajax() || $request->wantsJson()) {
                 return response()->json([
                     'success' => true,
                     'message' => 'Paiement validé avec succès.',
@@ -1608,7 +1656,7 @@ class ESBTPPaiementController extends Controller
                 'trace' => config('app.debug') ? $e->getTraceAsString() : null
             ]);
 
-            if ($request->ajax()) {
+            if ($request->ajax() || $request->wantsJson()) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Erreur lors de la validation: ' . $e->getMessage()
