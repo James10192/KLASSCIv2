@@ -1127,7 +1127,7 @@ class DashboardController extends Controller
         $ecole = SettingsHelper::getSchoolInfo();
 
         $accueil = [
-            'ecole' => (string) (($ecole['acronym'] ?? '') ?: ($ecole['name'] ?? config('app.name'))),
+            'ecole' => (string) (($ecole['name'] ?? '') ?: (($ecole['acronym'] ?? '') ?: config('app.name'))), // meme libelle que la navbar (partials.navbar-etablissement)
             'aujourdhui' => now(),
             'prenom' => trim((string) ($student->prenoms ?? '')) ?: (string) $student->nom,
             'classe' => $classe?->name,
