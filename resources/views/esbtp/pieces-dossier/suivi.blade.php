@@ -99,7 +99,7 @@
 @endpush
 
 @section('content')
-<div class="dashboard-acasi">
+<div class="main-content">
 
     <div class="sp-hero">
         <div class="sp-hero-top">
