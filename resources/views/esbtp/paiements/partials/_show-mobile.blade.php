@@ -125,7 +125,7 @@
     ];
 @endphp
 
-<div class="m-only-mobile m-screen psm-screen" x-data="psmRecu(@json($mConfig))">
+<div class="m-only-mobile m-screen psm-screen" x-data="psmRecu({{ \Illuminate\Support\Js::from($mConfig) }})">
 
     <x-m.appbar title="Reçu"
                 :sub="'N° ' . $mNumero"
