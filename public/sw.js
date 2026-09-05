@@ -3,7 +3,7 @@
  * SWR assets, cache images/fonts et notifications web push.
  */
 
-const VERSION = "klassci-v4";
+const VERSION = "klassci-v5";
 
 // Caches nommes versionnes pour invalidation propre a l'activation.
 const CACHE_NAMES = {
