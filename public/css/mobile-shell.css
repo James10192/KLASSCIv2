@@ -249,7 +249,7 @@ body.m-sheet-open { overflow: hidden; }
 
     .m-appbar { height: 56px; flex: 0 0 56px; display: flex; align-items: center; gap: 10px; padding: 0 8px 0 12px; padding-left: max(12px, env(safe-area-inset-left)); padding-right: max(8px, env(safe-area-inset-right)); background: #fff; border-bottom: 1px solid #e6eaf2; position: sticky; top: 0; z-index: 1020; font-family: var(--m-font); }
     .m-appbar .t { flex: 1; font-weight: 700; font-size: 17px; color: #0f172a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-    .m-appbar .t small { display: block; font-size: 11.5px; font-weight: 500; color: #64748b; }
+    .m-appbar .t small { display: block; font-size: 11.5px; font-weight: 500; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .m-ib { width: 44px; height: 44px; border: 0; background: transparent; border-radius: 12px; display: grid; place-items: center; color: #0453cb; flex: 0 0 44px; text-decoration: none; cursor: pointer; -webkit-tap-highlight-color: transparent; transition: transform 120ms ease, background 120ms ease; }
     .m-ib.ghost { color: #475569; }
     .m-ib svg { width: 22px; height: 22px; }
