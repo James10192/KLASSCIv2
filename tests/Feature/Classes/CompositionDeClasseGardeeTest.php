@@ -40,6 +40,7 @@ class CompositionDeClasseGardeeTest extends TestCase
 
         Permission::findOrCreate('classes.edit', 'web');
         Permission::findOrCreate('classes.view', 'web');
+        Permission::findOrCreate('students.edit', 'web');
         Role::findOrCreate('etudiant', 'web');
         Cache::flush();
 
@@ -56,10 +57,31 @@ class CompositionDeClasseGardeeTest extends TestCase
         return $user;
     }
 
-    private function avecDroit(): User
+    /**
+     * Le droit sur la STRUCTURE de la classe : ses matieres, sa synchronisation.
+     */
+    private function avecDroitStructure(): User
     {
         $user = User::factory()->create();
         $user->givePermissionTo('classes.edit');
+
+        return $user;
+    }
+
+    /**
+     * Le droit sur les ELEVES : les placer, les retirer.
+     *
+     * Deux droits distincts, et c'est le coeur de ce que ces cas defendent.
+     * Chez nous seule la secretaire a `classes.edit`, alors que le coordinateur
+     * — qui a `students.edit` — se sert tous les jours des boutons « Ajouter »
+     * et « Retirer » de la fiche de classe. Confondre les deux fermerait au
+     * coordinateur une fonction dont il a besoin, ou rouvrirait a l'enseignant
+     * une fonction qu'il ne doit pas avoir.
+     */
+    private function avecDroitEleves(): User
+    {
+        $user = User::factory()->create();
+        $user->givePermissionTo('students.edit');
 
         return $user;
     }
@@ -99,15 +121,34 @@ class CompositionDeClasseGardeeTest extends TestCase
             ->assertForbidden();
     }
 
-    public function test_le_droit_ouvre_bien_la_porte(): void
+    public function test_le_droit_sur_les_eleves_ouvre_la_composition(): void
     {
         // Sans ce cas, les quatre precedents passeraient tout aussi bien si la
         // route etait cassee pour tout le monde.
-        $reponse = $this->actingAs($this->avecDroit())
+        $reponse = $this->actingAs($this->avecDroitEleves())
             ->postJson(route('esbtp.classes.remove-students', $this->classe), [
                 'etudiant_ids' => [],
             ]);
 
-        $this->assertNotSame(403, $reponse->status(), 'Le droit classes.edit doit ouvrir la route.');
+        $this->assertNotSame(403, $reponse->status(), 'Le droit students.edit doit ouvrir la composition.');
+    }
+
+    public function test_le_droit_sur_la_structure_ouvre_la_synchronisation(): void
+    {
+        $reponse = $this->actingAs($this->avecDroitStructure())
+            ->postJson(route('esbtp.classes.sync-systeme-academique'));
+
+        $this->assertNotSame(403, $reponse->status(), 'Le droit classes.edit doit ouvrir la synchronisation.');
+    }
+
+    public function test_le_droit_sur_la_structure_n_ouvre_pas_la_composition(): void
+    {
+        // L'inverse compte autant : les deux droits ne se remplacent pas l'un
+        // l'autre, sinon la separation posee plus haut ne serait qu'un nom.
+        $this->actingAs($this->avecDroitStructure())
+            ->postJson(route('esbtp.classes.remove-students', $this->classe), [
+                'etudiant_ids' => [1],
+            ])
+            ->assertForbidden();
     }
 }

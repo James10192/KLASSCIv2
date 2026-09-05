@@ -2654,11 +2654,24 @@ Route::middleware(['auth'])->group(function () {
         ->middleware('permission:classes.edit')
         ->name('esbtp.classes.update-matieres');
     Route::get('/esbtp/classes/{classe}/search-available-students', [ESBTPClasseController::class, 'searchAvailableStudents'])->name('esbtp.classes.search-available-students');
+    // Placer ou retirer un eleve d'une classe est une operation sur l'ELEVE, pas
+    // sur la structure de la classe : `students.edit`, et non `classes.edit`.
+    //
+    // La nuance n'est pas cosmetique. La fiche de classe montre ces deux boutons
+    // au coordinateur, qui s'en sert, et qui n'a pas `classes.edit` — seule la
+    // secretaire l'a. Les garder sous `classes.edit` aurait ferme au
+    // coordinateur une fonction dont il se sert tous les jours, alors que le
+    // trou a boucher etait ailleurs : la route ne demandait AUCUNE permission,
+    // et un enseignant ou un caissier pouvait retirer une promotion entiere.
+    //
+    // Une ecole qui veut l'ouvrir a un autre role — un directeur des etudes, par
+    // exemple — lui accorde `students.edit` depuis l'ecran des roles. C'est sa
+    // decision, pas celle du code.
     Route::post('/esbtp/classes/{classe}/add-students', [ESBTPClasseController::class, 'addStudents'])
-        ->middleware('permission:classes.edit')
+        ->middleware('permission:students.edit')
         ->name('esbtp.classes.add-students');
     Route::post('/esbtp/classes/{classe}/remove-students', [ESBTPClasseController::class, 'removeStudents'])
-        ->middleware('permission:classes.edit')
+        ->middleware('permission:students.edit')
         ->name('esbtp.classes.remove-students');
     Route::post('/esbtp/classes/{classe}/check-student-data', [ESBTPClasseController::class, 'checkStudentData'])
         ->middleware('permission:classes.view')
