@@ -3330,7 +3330,7 @@
                 </div>
                 <script>document.addEventListener('DOMContentLoaded', () => {
                     // Shell mobile : pas d'ouverture automatique sous 768px (rappel non bloquant).
-                    if (window.matchMedia('(max-width:767.98px)').matches) return;
+                    if (window.matchMedia('(max-width:991.98px)').matches) return;
                     new bootstrap.Modal(document.getElementById('workflowNextStepModal')).show();
                 });</script>
             @endif
@@ -3409,7 +3409,7 @@
             document.addEventListener('DOMContentLoaded', function() {
                 // Shell mobile : sous 768px, les rappels non bloquants ne s'ouvrent pas seuls
                 // (chaque auto-open ci-dessous est garde par cette valeur).
-                const mAutoModalDeferred = window.matchMedia('(max-width:767.98px)').matches;
+                const mAutoModalDeferred = window.matchMedia('(max-width:991.98px)').matches;
 
                 const anneeModal = document.getElementById('anneeCouranteExpiredModal');
                 if (anneeModal) {
