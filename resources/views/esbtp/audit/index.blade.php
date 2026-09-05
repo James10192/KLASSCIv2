@@ -43,36 +43,57 @@
             </div>
         </div>
 
-        <div class="au-kpis">
-            <div class="au-kpi">
-                <div class="au-kpi-icon"><i class="fas fa-database"></i></div>
+        @if ($stats === null)
+            {{-- Aucun instantané encore produit. La page ne recalcule PAS à la volée :
+                 c'est ce calcul qui la rendait inatteignable. Elle le dit et attend le
+                 prochain passage de la tâche planifiée. --}}
+            <div class="au-stats-indispo">
+                <i class="fas fa-hourglass-half"></i>
                 <div>
-                    <div class="au-kpi-value">{{ number_format($stats['total_audits']) }}</div>
-                    <div class="au-kpi-label">Total audits</div>
+                    <strong>Statistiques indisponibles</strong>
+                    <span>Elles sont calculées en tâche de fond et n'ont pas encore été produites. Les journaux ci-dessous restent consultables.</span>
                 </div>
             </div>
-            <div class="au-kpi">
-                <div class="au-kpi-icon"><i class="fas fa-calendar-day"></i></div>
-                <div>
-                    <div class="au-kpi-value">{{ number_format($stats['today_audits']) }}</div>
-                    <div class="au-kpi-label">Aujourd'hui</div>
+        @else
+            <div class="au-kpis">
+                <div class="au-kpi">
+                    <div class="au-kpi-icon"><i class="fas fa-database"></i></div>
+                    <div>
+                        <div class="au-kpi-value">{{ number_format($stats['total_audits'] ?? 0) }}</div>
+                        <div class="au-kpi-label">Total audits</div>
+                    </div>
+                </div>
+                <div class="au-kpi">
+                    <div class="au-kpi-icon"><i class="fas fa-calendar-day"></i></div>
+                    <div>
+                        <div class="au-kpi-value">{{ number_format($stats['today_audits'] ?? 0) }}</div>
+                        <div class="au-kpi-label">Aujourd'hui</div>
+                    </div>
+                </div>
+                <div class="au-kpi">
+                    <div class="au-kpi-icon"><i class="fas fa-calendar-week"></i></div>
+                    <div>
+                        <div class="au-kpi-value">{{ number_format($stats['week_audits'] ?? 0) }}</div>
+                        <div class="au-kpi-label">Cette semaine</div>
+                    </div>
+                </div>
+                <div class="au-kpi au-kpi--alert">
+                    <div class="au-kpi-icon"><i class="fas fa-exclamation-triangle"></i></div>
+                    <div>
+                        <div class="au-kpi-value">{{ number_format($stats['critical_events'] ?? 0) }}</div>
+                        <div class="au-kpi-label">Événements critiques</div>
+                    </div>
                 </div>
             </div>
-            <div class="au-kpi">
-                <div class="au-kpi-icon"><i class="fas fa-calendar-week"></i></div>
-                <div>
-                    <div class="au-kpi-value">{{ number_format($stats['week_audits']) }}</div>
-                    <div class="au-kpi-label">Cette semaine</div>
-                </div>
+            <div class="au-stats-age {{ $statsPerimees ? 'au-stats-age--perime' : '' }}">
+                <i class="fas fa-{{ $statsPerimees ? 'triangle-exclamation' : 'clock' }}"></i>
+                @if ($statsPerimees)
+                    Statistiques périmées — dernier calcul {{ $statsCalculeLe->diffForHumans() }}.
+                @else
+                    Calculées {{ $statsCalculeLe->diffForHumans() }}.
+                @endif
             </div>
-            <div class="au-kpi au-kpi--alert">
-                <div class="au-kpi-icon"><i class="fas fa-exclamation-triangle"></i></div>
-                <div>
-                    <div class="au-kpi-value">{{ number_format($stats['critical_events']) }}</div>
-                    <div class="au-kpi-label">Événements critiques</div>
-                </div>
-            </div>
-        </div>
+        @endif
     </div>
 
     {{-- ═══════════════════════════════ FILTRES RAPIDES ═══════════════════════════════ --}}
@@ -119,7 +140,9 @@
         <div class="au-card-header">
             <div class="au-card-title">
                 <i class="fas fa-list-ul"></i> Logs d'audit
-                <span class="au-badge-count" x-show="audits.length > 0" x-cloak x-text="totalCount + ' résultats'"></span>
+                {{-- Plus de total : le comptage global sur `audits` a ete supprime (voir
+                     le controleur). On annonce donc ce qui est reellement affiche. --}}
+                <span class="au-badge-count" x-show="audits.length > 0" x-cloak x-text="audits.length + ' sur cette page'"></span>
             </div>
             <button type="button" class="au-icon-btn" @click="reload()" title="Actualiser">
                 <i class="fas fa-sync-alt" :class="{ 'fa-spin': loading }"></i>
@@ -190,14 +213,14 @@
         </div>
 
         {{-- Pagination --}}
-        <div class="au-pagination" x-show="!loading && lastPage > 1" x-cloak>
+        <div class="au-pagination" x-show="!loading && (hasMore || currentPage > 1)" x-cloak>
             <button class="au-page-btn" :disabled="currentPage <= 1" @click="changePage(currentPage - 1)">
                 <i class="fas fa-chevron-left"></i> Précédent
             </button>
             <div class="au-page-info">
-                Page <strong x-text="currentPage"></strong> sur <strong x-text="lastPage"></strong>
+                Page <strong x-text="currentPage"></strong>
             </div>
-            <button class="au-page-btn" :disabled="currentPage >= lastPage" @click="changePage(currentPage + 1)">
+            <button class="au-page-btn" :disabled="!hasMore" @click="changePage(currentPage + 1)">
                 Suivant <i class="fas fa-chevron-right"></i>
             </button>
         </div>
@@ -350,8 +373,9 @@ function auditPage() {
         loading: true,
         audits: [],
         currentPage: 1,
-        lastPage: 1,
-        totalCount: 0,
+        // Pagination sans comptage : on ne connait pas le nombre total de pages,
+        // seulement s'il reste quelque chose apres celle-ci.
+        hasMore: false,
         filters: {
             search: '',
             event: '',
@@ -377,7 +401,8 @@ function auditPage() {
         },
 
         changePage(page) {
-            if (page < 1 || page > this.lastPage) return;
+            if (page < 1) return;
+            if (page > this.currentPage && !this.hasMore) return;
             this.currentPage = page;
             this.fetchData();
         },
@@ -399,8 +424,7 @@ function auditPage() {
                     // reverse-map fragile depuis le label FR.
                     this.audits = data.data || [];
                     this.currentPage = data.current_page || 1;
-                    this.lastPage = data.last_page || 1;
-                    this.totalCount = data.total || 0;
+                    this.hasMore = !!data.next_page_url;
                     this.loading = false;
                 })
                 .catch(err => {

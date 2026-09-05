@@ -7,6 +7,7 @@ use App\Models\ESBTPLMDDomaine;
 use App\Models\ESBTPUniteEnseignement;
 use Illuminate\Support\Facades\DB;
 use App\Models\ESBTPLMDMention;
+use App\Services\LMD\FiliereMiroirLmd;
 use App\Models\ESBTPLMDParcours;
 use App\Models\ESBTPNiveauEtude;
 use App\Models\ESBTPAnneeUniversitaire;
@@ -397,7 +398,11 @@ class ESBTPLMDParcoursDomainController extends Controller
         ]);
 
         $validated['parcours_id'] = $parcours->id;
-        $validated['filiere_id'] = $parcours->filiere_id;
+        // Meme ancrage que le formulaire complet : `filiere_id` est NOT NULL,
+        // et trois parcours d'USAT n'ont aucune filiere. Recopier la valeur
+        // telle quelle ecrivait NULL et rendait 500 — sur le bouton meme que
+        // l'universite utilise pour ouvrir ses classes.
+        $validated['filiere_id'] = app(FiliereMiroirLmd::class)->pourParcours($parcours)->id;
         // systeme_academique sera auto-set par le model event booted()
         $validated['created_by'] = auth()->id();
         $validated['updated_by'] = auth()->id();

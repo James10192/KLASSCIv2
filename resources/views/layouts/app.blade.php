@@ -16,7 +16,7 @@
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="app-debug" content="{{ config('app.debug') ? '1' : '0' }}">
     <meta name="navbar-mark-all-read-url" content="{{ url('/navbar/notifications/mark-all-read') }}">
@@ -70,12 +70,24 @@
     <!-- Chatbot Widget -->
     <link href="{{ asset('css/chatbot-widget.css') }}" rel="stylesheet">
 
-    {{-- Shell mobile etudiant (PWA) : bottom-nav + grilles 2x2 + anti-overflow.
-         Charge APRES dashboard-moderne.css pour pouvoir override en mobile. --}}
-    <link href="{{ asset('css/mobile-student.css') }}" rel="stylesheet">
+    {{-- Shell mobile generalise (PWA, prefixe m-) : barre d'onglets, feuilles, pile des flottants.
+         Absorbe l'ancien mobile-student.css (alias .stu-* conserves). Charge APRES chatbot-widget.css
+         et dashboard-moderne.css pour pouvoir surcharger leurs positions en mobile. --}}
+    <link href="{{ asset('css/mobile-shell.css') }}?v={{ @filemtime(public_path('css/mobile-shell.css')) ?: '1' }}" rel="stylesheet">
 
     <!-- Styles supplémentaires -->
     <style>
+        /* Shell mobile (< 768px) : l'assistant IA n'est pas charge (voir garde JS avant son include)
+           et le rappel NON bloquant de renouvellement (.m-ce-deferred) n'est pas affiche. */
+        @media (max-width: 767.98px) {
+            .m-chatbot-host,
+            .m-chatbot-host #chatbot-widget,
+            .m-chatbot-host #chatbot-backdrop,
+            .m-chatbot-host #chatbot-settings-modal { display: none !important; }
+            .m-ce-deferred #contractExpiryModal,
+            .m-ce-deferred #ce-strip { display: none !important; }
+        }
+
         /* Variables CSS ACASI pour cohérence */
         :root {
             --space-xs: 0.25rem;
@@ -219,6 +231,7 @@
             min-width: 360px !important;
             max-width: 380px !important;
             max-height: min(520px, calc(100vh - 100px)) !important;
+            max-height: min(520px, calc(100dvh - 100px)) !important;
             border: 1px solid rgba(99, 102, 241, 0.08) !important;
             box-shadow:
                 0 20px 25px -5px rgba(0, 0, 0, 0.1),
@@ -848,6 +861,7 @@
             overflow-y: auto;
             overflow-x: hidden;
             max-height: calc(100vh - 80px);
+            max-height: calc(100dvh - 80px);
             padding-right: 5px;
         }
 
@@ -883,6 +897,7 @@
                 left: -280px;
                 top: 0;
                 height: 100vh;
+                height: 100dvh;
                 z-index: 1050;
                 background: rgba(255, 255, 255, 0.95);
                 backdrop-filter: blur(20px);
@@ -1584,7 +1599,7 @@
     @yield('styles')
     @stack('styles')
 </head>
-<body class="{{ (auth()->check() && auth()->user()->hasRole('etudiant')) ? 'has-stu-bottomnav' : '' }}">
+<body class="{{ ($mobileShellEnabled ?? false) && ($mobileProfile ?? null) ? 'has-m-shell m-profile-'.$mobileProfile.' has-stu-bottomnav' : '' }}">
     <div class="nextadmin-wrapper">
         <!-- Sidebar -->
         <aside class="nextadmin-sidebar" id="sidebar">
@@ -1700,12 +1715,12 @@
 
                         <!-- Student Management -->
                         <div class="menu-accordion">
-                            <button class="menu-accordion-btn {{ Request::routeIs('esbtp.etudiants.*') || Request::routeIs('esbtp.inscriptions.*') || Request::routeIs('esbtp.reinscription.*') || Request::routeIs('esbtp.reinscription-demandes.*') || Request::routeIs('esbtp.candidatures.*') ? 'active' : '' }}">
+                            <button class="menu-accordion-btn {{ Request::routeIs('esbtp.etudiants.*') || Request::routeIs('esbtp.inscriptions.*') || Request::routeIs('esbtp.reinscription.*') || Request::routeIs('esbtp.reinscription-demandes.*') || Request::routeIs('esbtp.candidatures.*') || Request::routeIs('esbtp.pieces-dossier.*') ? 'active' : '' }}">
                                 <div class="menu-icon"><i class="fas fa-user-graduate"></i></div>
                                 <div class="menu-text">Étudiants</div>
                                 <div class="menu-arrow"><i class="fas fa-chevron-down"></i></div>
                             </button>
-                            <div class="menu-accordion-content {{ Request::routeIs('esbtp.etudiants.*') || Request::routeIs('esbtp.inscriptions.*') || Request::routeIs('esbtp.reinscription.*') || Request::routeIs('esbtp.reinscription-demandes.*') || Request::routeIs('esbtp.candidatures.*') ? 'show' : '' }}">
+                            <div class="menu-accordion-content {{ Request::routeIs('esbtp.etudiants.*') || Request::routeIs('esbtp.inscriptions.*') || Request::routeIs('esbtp.reinscription.*') || Request::routeIs('esbtp.reinscription-demandes.*') || Request::routeIs('esbtp.candidatures.*') || Request::routeIs('esbtp.pieces-dossier.*') ? 'show' : '' }}">
                                 @can('students.view')
                                 <a href="{{ route('esbtp.etudiants.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.etudiants.*') ? 'active' : '' }}">
                                     <div class="menu-icon"><i class="fas fa-list"></i></div>
@@ -1732,6 +1747,22 @@
                                 <a href="{{ route('esbtp.inscriptions.sous-reserve') }}" class="menu-sublink {{ Request::routeIs('esbtp.inscriptions.sous-reserve') ? 'active' : '' }}">
                                     <div class="menu-icon"><i class="fas fa-clipboard-check"></i></div>
                                     <div class="menu-text">Sous réserve</div>
+                                </a>
+                                @endcan
+                                {{-- Voisin de « Sous réserve » sans s'y confondre : une réserve porte
+                                     sur un document pas encore délivré, une pièce à fournir sur un
+                                     document qui existe et que l'école attend. --}}
+                                @can('pieces_dossier.view')
+                                <a href="{{ route('esbtp.pieces-dossier.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.pieces-dossier.index') ? 'active' : '' }}">
+                                    <div class="menu-icon"><i class="fas fa-list-check"></i></div>
+                                    <div class="menu-text">Pièces à fournir</div>
+                                </a>
+                                {{-- Le catalogue dit ce que l'ecole reclame ; le suivi dit qui
+                                     ne l'a pas encore rendu. Deux ecrans, parce que ce sont deux
+                                     moments : configurer une fois, rappeler tous les jours. --}}
+                                <a href="{{ route('esbtp.pieces-dossier.suivi') }}" class="menu-sublink {{ Request::routeIs('esbtp.pieces-dossier.suivi') ? 'active' : '' }}">
+                                    <div class="menu-icon"><i class="fas fa-clipboard-check"></i></div>
+                                    <div class="menu-text">Suivi des dossiers</div>
                                 </a>
                                 @endcan
                                 {{-- Hors du bloc `inscriptions.view`, et `reinscriptions.demandes.view`
@@ -2186,7 +2217,7 @@
 
                     {{-- Chat interactif (issue #298) — réservé staff (permission messages.send).
                          Les étudiants consultent leurs annonces via /esbtp/mes-annonces
-                         (section « Communication » plus bas, gated @can('identity.student')). --}}
+                         (section « Communication » plus bas, gardee par la permission identity.student). --}}
                     @can('messages.send')
                     <div class="menu-item">
                         <a href="{{ route('chat.index') }}" class="menu-link {{ Request::routeIs('chat.*') ? 'active' : '' }}">
@@ -2606,8 +2637,8 @@
                             </ul>
                         </div>
 
-                        <!-- Messages -->
-                        <div class="dropdown">
+                        <!-- Messages (sous 768px avec le shell mobile : dans la feuille m-navbar-plus) -->
+                        <div class="dropdown" data-mnb="desktop">
                             <button class="btn-acasi icon-only" type="button" id="messagesDropdown" data-bs-toggle="dropdown" aria-expanded="false">
                                 <i class="fas fa-envelope"></i>
                                 <span class="navbar-badge" id="messages-count" style="display: none;">0</span>
@@ -2647,8 +2678,8 @@
             </ul>
     </div>
 
-                    <!-- Quick Actions -->
-                    <div class="dropdown">
+                    <!-- Quick Actions (sous 768px avec le shell mobile : la grille est adoptée par la feuille m-navbar-plus) -->
+                    <div class="dropdown" data-mnb="desktop">
                             <button class="btn-acasi icon-only" type="button" id="quickActionsDropdown" data-bs-toggle="dropdown" aria-expanded="false">
                                 <i class="fas fa-th-large"></i>
                         </button>
@@ -2748,8 +2779,8 @@
                             </ul>
                 </div>
 
-                <!-- User Profile -->
-                <div class="dropdown ms-2">
+                <!-- User Profile (sous 768px avec le shell mobile : remplacé par le bouton .mnb-avatar qui ouvre la feuille m-navbar-plus) -->
+                <div class="dropdown ms-2" data-mnb="desktop">
                     <button class="btn-acasi profile-btn" id="profileDropdown" data-bs-toggle="dropdown" aria-expanded="false">
                         <div class="navbar-avatar">
                             @if(auth()->check() && auth()->user()->profile_photo_path)
@@ -2846,6 +2877,24 @@
                         @endif
                     </ul>
                 </div>
+
+                @if(($mobileShellEnabled ?? false) && ($mobileProfile ?? null) && auth()->check())
+                {{-- Shell mobile (< 768px) : l'avatar ouvre la feuille m-navbar-plus (recherche, actions
+                     rapides, messages, profil, déconnexion) ; masqué au-dessus par mobile-shell.css. --}}
+                <button type="button" class="mnb-avatar" id="mnb-avatar"
+                        aria-label="Compte et raccourcis"
+                        aria-haspopup="dialog"
+                        aria-controls="m-sheet-m-navbar-plus"
+                        onclick="window.dispatchEvent(new CustomEvent('m-sheet:open', { detail: { id: 'm-navbar-plus' } }))">
+                    <span class="navbar-avatar">
+                        @if(auth()->user()->profile_photo_path)
+                            <img src="{{ asset('storage/' . auth()->user()->profile_photo_path) }}" alt="">
+                        @else
+                            <span class="user-avatar"><i class="fas fa-user"></i></span>
+                        @endif
+                    </span>
+                </button>
+                @endif
             </div>
                 </div>
             </nav>
@@ -3279,13 +3328,37 @@
                         </div>
                     </div>
                 </div>
-                <script>document.addEventListener('DOMContentLoaded', () => new bootstrap.Modal(document.getElementById('workflowNextStepModal')).show());</script>
+                <script>document.addEventListener('DOMContentLoaded', () => {
+                    // Shell mobile : pas d'ouverture automatique sous 768px (rappel non bloquant).
+                    if (window.matchMedia('(max-width:991.98px)').matches) return;
+                    new bootstrap.Modal(document.getElementById('workflowNextStepModal')).show();
+                });</script>
             @endif
         </div>
         </main>
     </div>
 
-    @include('components.chatbot.widget')
+    {{-- Assistant IA : desactive sous 768px (shell mobile). Le widget pousse lui-meme son script
+         (chatbot-widget.js, defer) dans la pile 'scripts' : on ne peut pas le rendre conditionnel d'ici
+         sans toucher le composant. On neutralise donc son initialisation : sous 768px, la configuration
+         globale qu'il ecrit (window.KLASSCI_CHATBOT_CONFIG) est absorbee par un accesseur qui ne retient
+         rien, et chatbot-widget.js, qui exige cette configuration, n'instancie jamais le widget.
+         Le HTML est masque par CSS (.m-chatbot-host, bloc de styles du head). --}}
+    <script>
+    (function () {
+        if (!window.matchMedia || !window.matchMedia('(max-width:767.98px)').matches) return;
+        try {
+            Object.defineProperty(window, 'KLASSCI_CHATBOT_CONFIG', {
+                configurable: true,
+                get: function () { return undefined; },
+                set: function () { /* ignore sous 768px : l'assistant n'est pas charge en mobile */ }
+            });
+        } catch (e) { /* silencieux */ }
+    })();
+    </script>
+    <div class="m-chatbot-host">
+        @include('components.chatbot.widget')
+    </div>
 
     <!-- Debug Helper - Doit être chargé en PREMIER -->
     <script>
@@ -3325,13 +3398,19 @@
     </script>
 
     <!-- Alpine.js (focus plugin must load BEFORE core for x-trap to register) -->
+    <script defer src="{{ asset('js/mobile-shell.js') }}?v={{ @filemtime(public_path('js/mobile-shell.js')) ?: '1' }}"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/focus@3.x.x/dist/cdn.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    {{-- Shell mobile (feuilles, toasts, tirer-pour-rafraichir, invite d'installation) : attend alpine:init --}}
 
     <!-- Custom JavaScript -->
     <script src="{{ asset('js/navbar-diagnostics.js') }}"></script>
     <script>
             document.addEventListener('DOMContentLoaded', function() {
+                // Shell mobile : sous 768px, les rappels non bloquants ne s'ouvrent pas seuls
+                // (chaque auto-open ci-dessous est garde par cette valeur).
+                const mAutoModalDeferred = window.matchMedia('(max-width:991.98px)').matches;
+
                 const anneeModal = document.getElementById('anneeCouranteExpiredModal');
                 if (anneeModal) {
                 const storageKey = 'annee-courante-expired-last-seen';
@@ -3339,7 +3418,7 @@
                 const now = Date.now();
                 const oneHourMs = 60 * 60 * 1000;
 
-                if (now - lastSeen >= oneHourMs) {
+                if (!mAutoModalDeferred && now - lastSeen >= oneHourMs) {
                     const modal = new bootstrap.Modal(anneeModal);
                     modal.show();
                     localStorage.setItem(storageKey, String(now));
@@ -3357,7 +3436,7 @@
                     const now = Date.now();
                     const oneHourMs = 60 * 60 * 1000;
 
-                    if (now - lastSeen >= oneHourMs) {
+                    if (!mAutoModalDeferred && now - lastSeen >= oneHourMs) {
                         const pendingModal = new bootstrap.Modal(pendingModalElement);
                         pendingModal.show();
                         localStorage.setItem(reminderKey, String(now));
@@ -3375,7 +3454,7 @@
                     const now = Date.now();
                     const oneHourMs = 60 * 60 * 1000;
 
-                    if (now - lastSeen >= oneHourMs) {
+                    if (!mAutoModalDeferred && now - lastSeen >= oneHourMs) {
                         const timetableModal = new bootstrap.Modal(timetableModalElement);
                         timetableModal.show();
                         localStorage.setItem(reminderKey, String(now));
@@ -3393,7 +3472,7 @@
                     const now = Date.now();
                     const oneHourMs = 60 * 60 * 1000;
 
-                    if (now - lastSeen >= oneHourMs) {
+                    if (!mAutoModalDeferred && now - lastSeen >= oneHourMs) {
                         const gradingModal = new bootstrap.Modal(gradingModalElement);
                         gradingModal.show();
                         localStorage.setItem(reminderKey, String(now));
@@ -3411,7 +3490,7 @@
                     const now = Date.now();
                     const oneHourMs = 60 * 60 * 1000;
 
-                    if (now - lastSeen >= oneHourMs) {
+                    if (!mAutoModalDeferred && now - lastSeen >= oneHourMs) {
                         const publishModal = new bootstrap.Modal(evaluationPublishModalElement);
                         publishModal.show();
                         localStorage.setItem(reminderKey, String(now));
@@ -3438,7 +3517,7 @@
                     const dismissed = !!state.dismissed;
                     const remindAt = Number(state.remindAt || 0);
 
-                    if (!dismissed && now >= remindAt) {
+                    if (!mAutoModalDeferred && !dismissed && now >= remindAt) {
                         const whatsNewModal = new bootstrap.Modal(whatsNewModalElement);
                         whatsNewModal.show();
                     }
@@ -4360,7 +4439,11 @@
 
     {{-- Compte à rebours expiration contrat (affiché max 1x/12h si ≤ 30 jours) --}}
     @if(auth()->check())
-        @include('components.contract-expiry-modal')
+        {{-- Sous 768px (shell mobile), seul le rappel NON bloquant est differe (masque par CSS,
+             classe .m-ce-deferred) ; un abonnement expire reste visible car il bloque l'acces. --}}
+        <div class="{{ session('contract_expiry.is_expired') ? '' : 'm-ce-deferred' }}">
+            @include('components.contract-expiry-modal')
+        </div>
     @endif
 
     {{-- PWA : enregistrement global du service worker (tous rôles) + invite de mise à jour --}}
@@ -4428,7 +4511,7 @@
         });
 
         window.addEventListener('load', function () {
-            navigator.serviceWorker.register('/sw.js?v=klassci-v3', { updateViaCache: 'none' }).then(function (reg) {
+            navigator.serviceWorker.register('/sw.js?v=klassci-v5', { updateViaCache: 'none' }).then(function (reg) {
                 // SW déjà en attente au chargement (mise à jour prête)
                 if (reg.waiting && navigator.serviceWorker.controller) {
                     showUpdateToast(reg.waiting);
@@ -4447,9 +4530,98 @@
     })();
     </script>
 
-    {{-- Bottom navigation mobile : strictement etudiant (cachee >=768px via CSS) --}}
-    @role('etudiant')
-        @include('layouts.partials.student-bottom-nav')
-    @endrole
+    {{-- Barre d'onglets du shell mobile : profil resolu par MobileShellComposer (caissier, comptable, enseignant, etudiant) --}}
+    @if(($mobileShellEnabled ?? false) && ($mobileProfile ?? null))
+        @include('layouts.partials.mobile.bottom-nav')
+
+        @auth
+        {{-- Feuille m-navbar-plus (< 768px) : ce que la navbar de bureau portait et que l'app bar
+             mobile ne garde pas — recherche, actions rapides, messages, profil, déconnexion.
+             Ouverte par le bouton .mnb-avatar de la navbar. --}}
+        @php
+            $mnbUser = auth()->user();
+            // Même destination que le menu profil de bureau, décidée par le profil mobile (pas de rôle en dur).
+            $mnbProfilRoute = match ($mobileProfile) {
+                'etudiant' => 'esbtp.mon-profil.index',
+                'enseignant' => 'teacher.profile',
+                default => 'admin.profile',
+            };
+            $mnbEstEtudiant = $mnbUser->can('identity.student');
+            $mnbMessagesRoute = $mnbEstEtudiant ? 'esbtp.mes-annonces.index' : 'esbtp.annonces.index';
+        @endphp
+        <x-m.sheet id="m-navbar-plus" :title="$mnbUser->name" :sub="$mnbUser->email">
+            @if(Route::has('search.results'))
+                <form class="m-search" method="GET" action="{{ route('search.results') }}" role="search">
+                    <x-m.icon name="search" />
+                    <input type="search" name="q" minlength="2" required placeholder="Rechercher dans l'application" autocomplete="off" aria-label="Rechercher dans l'application">
+                </form>
+            @endif
+            <div class="m-sec mnb-actions-title"><b>Actions rapides</b></div>
+            <div class="mnb-actions" id="m-navbar-plus-actions"></div>
+            <div class="m-menu">
+                @if(Route::has($mnbMessagesRoute))
+                    @canany(['annonces.view', 'annonces.create', 'annonces.edit'])
+                        <a href="{{ route($mnbMessagesRoute) }}">
+                            <x-m.icon name="msg" />{{ $mnbEstEtudiant ? 'Annonces' : 'Messages' }}
+                            <span class="ch"><span class="m-chip info" id="m-navbar-plus-messages-count" hidden>0</span></span>
+                        </a>
+                    @endcanany
+                @endif
+                @if(Route::has($mnbProfilRoute))
+                    <a href="{{ route($mnbProfilRoute) }}"><x-m.icon name="user" />Mon profil<span class="ch"><x-m.icon name="chr" /></span></a>
+                @endif
+                @if(Route::has('securite.double-auth.reglages'))
+                    <a href="{{ route('securite.double-auth.reglages') }}"><x-m.icon name="lock" />Double authentification<span class="ch"><x-m.icon name="chr" /></span></a>
+                @endif
+                @if($mobileProfile === 'etudiant')
+                    @if(Route::has('esbtp.preferences.index'))
+                        <a href="{{ route('esbtp.preferences.index') }}"><x-m.icon name="settings" />Préférences<span class="ch"><x-m.icon name="chr" /></span></a>
+                    @endif
+                @else
+                    @can('system.manage')
+                        @if(Route::has('settings.index'))
+                            <a href="{{ route('settings.index') }}"><x-m.icon name="settings" />Paramètres<span class="ch"><x-m.icon name="chr" /></span></a>
+                        @endif
+                    @endcan
+                @endif
+                @if(Route::has('logout'))
+                    <form method="POST" action="{{ route('logout') }}">
+                        @csrf
+                        <button type="submit"><x-m.icon name="logout" />Se déconnecter<span class="ch"><x-m.icon name="chr" /></span></button>
+                    </form>
+                @endif
+            </div>
+        </x-m.sheet>
+        <script>
+        (function () {
+            /* Feuille m-navbar-plus : à l'ouverture, adopte la grille des actions rapides du
+               menu de bureau (#quick-actions-list — mêmes gardes de permission, rien de dupliqué)
+               et recopie le compteur de messages ; une fois refermée, rend la grille au menu. */
+            var origin = null;
+            window.addEventListener('m-sheet:opened', function (ev) {
+                if (!ev.detail || ev.detail.id !== 'm-navbar-plus') { return; }
+                var slot = document.getElementById('m-navbar-plus-actions');
+                var grid = document.getElementById('quick-actions-list');
+                if (slot && grid && !slot.contains(grid)) {
+                    origin = origin || grid.parentNode;
+                    slot.appendChild(grid);
+                }
+                var src = document.getElementById('messages-count');
+                var dst = document.getElementById('m-navbar-plus-messages-count');
+                if (src && dst) {
+                    var n = src.style.display !== 'none' ? src.textContent.trim() : '';
+                    dst.textContent = n;
+                    dst.hidden = !n;
+                }
+            });
+            window.addEventListener('m-sheet:closed', function (ev) {
+                if (!ev.detail || ev.detail.id !== 'm-navbar-plus') { return; }
+                var grid = document.getElementById('quick-actions-list');
+                if (grid && origin && grid.parentNode !== origin) { origin.appendChild(grid); }
+            });
+        })();
+        </script>
+        @endauth
+    @endif
 </body>
 </html>

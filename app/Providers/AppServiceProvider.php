@@ -16,6 +16,7 @@ use App\Models\ESBTPEvaluation;
 use App\Models\ESBTPInscription;
 use App\Models\ESBTPLMDBulletin;
 use App\Models\ESBTPNote;
+use App\Models\ESBTPPaiement;
 use App\Models\ESBTPPlanificationAcademique;
 use App\Models\ESBTPReinscriptionDemande;
 use App\Observers\ESBTPAttendanceAcademicPilotageObserver;
@@ -25,11 +26,14 @@ use App\Observers\ESBTPLMDBulletinAcademicPilotageObserver;
 use App\Observers\ESBTPNoteAcademicPilotageObserver;
 use App\Observers\ESBTPNoteObserver;
 use App\Observers\ESBTPPlanificationAcademicPilotageObserver;
+use App\Services\Analytics\AnalyticsScanCache;
+use App\Services\Analytics\CashFlowProjectionService;
 use App\Services\Analytics\RecouvrementGapService;
 use App\Services\LMD\Tpe\AutoValidateStrategy;
 use App\Services\LMD\Tpe\TeacherValidateStrategy;
 use App\Services\LMD\Tpe\TpeValidationStrategy;
 use App\Services\SsoSecretValidator;
+use App\View\Composers\MobileShellComposer;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
@@ -45,6 +49,15 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        // Singleton : le service memorise ses resolutions de chemin. Resolu a la
+        // volee, le conteneur en reconstruisait une instance neuve a chaque acces
+        // a photo_url — donc un memo toujours vide, et une liste de cinquante
+        // etudiants payait cinq sondages disque par ligne, deux fois.
+        // scoped() et non singleton() : un worker de file d attente vit des heures et
+        // traite des milliers de fiches. forgetScopedInstances() est appele entre deux
+        // taches, ce qui borne le memo. Un singleton le laisserait grossir sans fin.
+        $this->app->scoped(\App\Services\Photos\StockagePhoto::class);
+
         // Charger explicitement le fichier d'aide helpers.php
         if (file_exists(app_path('Helpers/helpers.php'))) {
             require_once app_path('Helpers/helpers.php');
@@ -53,6 +66,10 @@ class AppServiceProvider extends ServiceProvider
         // Une seule instance par requête pour qu'AnomalyDetector et le contrôleur
         // analytics partagent le même cache de buckets attendu/encaissé.
         $this->app->scoped(RecouvrementGapService::class);
+        // Même raison pour la projection d'encaissement : le prédicteur et
+        // l'export la demandent tous les deux dans la même requête.
+        $this->app->scoped(CashFlowProjectionService::class);
+        $this->app->scoped(AnalyticsScanCache::class);
         $this->app->scoped(OpenAlertMetricService::class);
 
         // Resolveurs du parcours BTS : une seule instance par requete, sinon
@@ -96,8 +113,25 @@ class AppServiceProvider extends ServiceProvider
 
         $this->partagerCompteurDemandesReinscription();
 
+        // Shell mobile : $mobileShellEnabled et $mobileProfile dans toutes les
+        // vues. Sur '*' a dessein — le layout, ses partials et les feuilles
+        // mobiles en ont tous besoin, et le resolver est memoise par requete.
+        View::composer('*', MobileShellComposer::class);
+
         // Observers
         ESBTPNote::observe(ESBTPNoteObserver::class);
+        // Un encaissement validé se réimpute sur des mois déjà clos (allocation
+        // FIFO) : les balayages analytiques mémorisés doivent être déréférencés.
+        // PAS d'invalidation a chaque paiement valide. Elle semblait prudente et
+        // elle vidait la fonction de son objet : sur une ecole guichet ouvert, la
+        // memoire aurait ete purgee en continu, et la page serait restee a 24 ou 34
+        // secondes PRECISEMENT pendant les heures d encaissement — c est-a-dire la
+        // fenetre ou ces 24 a 34 secondes ont ete mesurees.
+        //
+        // Ce n est pas grave, et c est la raison de fond : l ecart de recouvrement ne
+        // porte QUE sur des mois CLOS. Un encaissement du jour ne le deplace que par
+        // reallocation FIFO, lentement. La duree de memorisation, reglable par ecole,
+        // suffit — a condition d afficher la fraicheur, ce que l ecran fait.
         $academicPilotageObserversEnabled = (bool) config('academic_pilotage.observers_enabled', true);
         if (! $academicPilotageObserversEnabled && app()->environment('production')) {
             Log::critical('Academic pilotage observers cannot be disabled in production.');

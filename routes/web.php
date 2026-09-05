@@ -24,6 +24,8 @@ use App\Http\Controllers\ESBTPComptabiliteAnalyticsController;
 use App\Http\Controllers\ESBTPComptabiliteController;
 use App\Http\Controllers\ESBTPComptabiliteFraisController;
 use App\Http\Controllers\ESBTPComptabiliteReportController;
+use App\Http\Controllers\ESBTPDossierPieceController;
+use App\Http\Controllers\ESBTPPieceDossierController;
 use App\Http\Controllers\ESBTPComptabiliteRelanceController;
 use App\Http\Controllers\ESBTPEcheancierController;
 use App\Http\Controllers\ESBTPContinuingEducationController;
@@ -1757,6 +1759,58 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 ->name('esbtp.parents.parent-chatbot-link-code');
         });
 
+    // Catalogue des pieces a fournir a l'inscription.
+    //
+    // Groupe autonome, et non greffe sur celui des parametres d'etablissement :
+    // ce dernier exige d'abord `admin.access|identity.*`, si bien qu'un role sur
+    // mesure ne portant que `pieces_dossier.view` y prendrait un 403 muet. La
+    // permission suffit seule a ouvrir cet ecran, ce qui est exactement la
+    // promesse faite a une ecole qui compose ses propres roles.
+    //
+    // Consultation et configuration sont deux permissions distinctes : un agent
+    // de guichet doit pouvoir lire la liste sans pouvoir la changer pour toute
+    // l'ecole.
+    Route::prefix('esbtp')->name('esbtp.pieces-dossier.')
+        ->middleware(['auth', 'paywall'])
+        ->group(function () {
+            Route::get('/pieces-dossier', [ESBTPPieceDossierController::class, 'index'])
+                ->middleware(['permission:pieces_dossier.view', 'throttle:60,1'])
+                ->name('index');
+
+            // Le pilotage : qui n'a pas rendu ses pieces. Ecran de LECTURE, ouvert
+            // a qui peut consulter le catalogue — savoir qui rappeler ne demande
+            // pas le droit de modifier quoi que ce soit.
+            Route::get('/pieces-dossier/suivi', [\App\Http\Controllers\ESBTPSuiviPiecesController::class, 'index'])
+                ->middleware(['permission:pieces_dossier.view', 'throttle:60,1'])
+                ->name('suivi');
+
+            Route::middleware(['permission:pieces_dossier.configure', 'throttle:60,1'])->group(function () {
+                Route::post('/pieces-dossier', [ESBTPPieceDossierController::class, 'store'])->name('store');
+                Route::put('/pieces-dossier/{piece}', [ESBTPPieceDossierController::class, 'update'])->name('update');
+                Route::delete('/pieces-dossier/{piece}', [ESBTPPieceDossierController::class, 'destroy'])->name('destroy');
+                Route::post('/pieces-dossier/{piece}/bascule', [ESBTPPieceDossierController::class, 'toggle'])->name('bascule');
+                Route::post('/pieces-dossier/reorder', [ESBTPPieceDossierController::class, 'reorder'])->name('reorder');
+                Route::post('/pieces-dossier/jeu-propose', [ESBTPPieceDossierController::class, 'installerJeuPropose'])->name('jeu-propose');
+            });
+        });
+
+    // Le suivi piece par piece d'un dossier : le geste de guichet, distinct de la
+    // configuration du catalogue. Une secretaire coche ce qu'un etudiant remet
+    // sans avoir le droit de changer ce que l'ecole reclame.
+    //
+    // Tout repond en JSON : cocher huit pieces ne doit pas recharger la page huit
+    // fois. Le debit est genereux pour la meme raison.
+    Route::prefix('esbtp')->name('esbtp.dossier-pieces.')
+        ->middleware(['auth', 'paywall', 'permission:pieces_dossier.suivre', 'throttle:120,1'])
+        ->group(function () {
+            Route::get('/inscriptions/{inscription}/pieces', [ESBTPDossierPieceController::class, 'index'])->name('index');
+            Route::post('/inscriptions/{inscription}/pieces/{piece}', [ESBTPDossierPieceController::class, 'cocher'])->name('cocher');
+            Route::delete('/inscriptions/{inscription}/pieces/{piece}', [ESBTPDossierPieceController::class, 'decocher'])->name('decocher');
+            Route::post('/inscriptions/{inscription}/pieces/{piece}/ecarter', [ESBTPDossierPieceController::class, 'ecarter'])->name('ecarter');
+            Route::delete('/inscriptions/{inscription}/pieces/{piece}/ecarter', [ESBTPDossierPieceController::class, 'reintegrer'])->name('reintegrer');
+            Route::post('/pieces-deposees/{depot}/decision', [ESBTPDossierPieceController::class, 'decider'])->name('decider');
+        });
+
     // Configuration des matricules - accÃ¨s direct sans sidebar
     Route::prefix('esbtp')->name('esbtp.')->middleware(['auth', 'role:serviceTechnique'])->group(function () {
         Route::get('/matricule-config', [ESBTPMatriculeConfigController::class, 'index'])->name('matricule-config.index');
@@ -2403,6 +2457,18 @@ Route::middleware(['auth', 'permission:admin.access|identity.direct_studies|iden
     Route::post('esbtp/etudiants/{etudiant}/update-photo', [ESBTPEtudiantController::class, 'updatePhoto'])
         ->name('esbtp.etudiants.update-photo')
         ->middleware('permission:students.edit');
+
+    // La prise de vue au telephone, cote guichet. Meme permission que le
+    // televersement classique : c'est le meme geste par un autre chemin.
+    Route::prefix('esbtp')->name('esbtp.captures-photo.')
+        ->middleware(['permission:students.edit', 'throttle:120,1'])
+        ->group(function () {
+            Route::post('/etudiants/{etudiant}/capture-photo', [\App\Http\Controllers\ESBTPCapturePhotoController::class, 'ouvrir'])->name('ouvrir');
+            Route::get('/captures-photo/{capture}', [\App\Http\Controllers\ESBTPCapturePhotoController::class, 'etat'])->name('etat');
+            Route::get('/captures-photo/{capture}/apercu', [\App\Http\Controllers\ESBTPCapturePhotoController::class, 'apercu'])->name('apercu');
+            Route::post('/captures-photo/{capture}/accepter', [\App\Http\Controllers\ESBTPCapturePhotoController::class, 'accepter'])->name('accepter');
+            Route::post('/captures-photo/{capture}/refuser', [\App\Http\Controllers\ESBTPCapturePhotoController::class, 'refuser'])->name('refuser');
+        });
     Route::post('esbtp/etudiants/{etudiant}/documents', [ESBTPEtudiantController::class, 'storeDocument'])
         ->name('esbtp.etudiants.documents.store')
         ->middleware('permission:students.edit');
@@ -2557,7 +2623,18 @@ Route::middleware(['auth', 'permission:bulletins.configure'])->group(function ()
 
 // Routes classes â€” PROTÃ‰GÃ‰ES
 Route::middleware(['auth'])->group(function () {
-    Route::post('/esbtp/classes/sync-systeme-academique', [ESBTPClasseController::class, 'syncSystemeAcademique'])->name('esbtp.classes.sync-systeme-academique');
+    // Ce groupe ne gardait que « etre connecte ». Cinq de ses routes ECRIVENT :
+    // elles changeaient les matieres d'une classe, y ajoutaient ou en retiraient
+    // des eleves, et rejouaient la synchronisation du systeme academique — sans
+    // qu'aucune permission ne soit exigee. N'importe quel compte authentifie,
+    // etudiant compris, pouvait les appeler. Les FormRequest correspondantes
+    // rendaient `authorize(): true`, donc rien ne rattrapait en aval.
+    //
+    // Les lectures restent ouvertes au groupe : elles alimentent des selecteurs
+    // et des tableaux deja gardes par les ecrans qui les appellent.
+    Route::post('/esbtp/classes/sync-systeme-academique', [ESBTPClasseController::class, 'syncSystemeAcademique'])
+        ->middleware('permission:classes.edit')
+        ->name('esbtp.classes.sync-systeme-academique');
     Route::get('/esbtp/classes/{classe}/etudiants', [ESBTPClasseController::class, 'getEtudiants'])->name('esbtp.classes.etudiants');
     Route::get('/esbtp/classes/{classe}/semestres-lmd', function (\App\Models\ESBTPClasse $classe) {
         return response()->json(['semestres' => $classe->getSemestresLMD()]);
@@ -2573,11 +2650,32 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/esbtp/classes-export/csv', [ESBTPClasseController::class, 'exportCsv'])->name('esbtp.classes.export.csv');
     Route::get('/esbtp/classes-export/pdf', [ESBTPClasseController::class, 'exportPdf'])->name('esbtp.classes.export.pdf');
     Route::get('/esbtp/classes/{classe}/refresh-ligne', [ESBTPClasseController::class, 'refreshLigne'])->name('esbtp.classes.refresh-ligne');
-    Route::post('/esbtp/classes/{classe}/update-matieres', [ESBTPClasseController::class, 'updateMatieres'])->name('esbtp.classes.update-matieres');
+    Route::post('/esbtp/classes/{classe}/update-matieres', [ESBTPClasseController::class, 'updateMatieres'])
+        ->middleware('permission:classes.edit')
+        ->name('esbtp.classes.update-matieres');
     Route::get('/esbtp/classes/{classe}/search-available-students', [ESBTPClasseController::class, 'searchAvailableStudents'])->name('esbtp.classes.search-available-students');
-    Route::post('/esbtp/classes/{classe}/add-students', [ESBTPClasseController::class, 'addStudents'])->name('esbtp.classes.add-students');
-    Route::post('/esbtp/classes/{classe}/remove-students', [ESBTPClasseController::class, 'removeStudents'])->name('esbtp.classes.remove-students');
-    Route::post('/esbtp/classes/{classe}/check-student-data', [ESBTPClasseController::class, 'checkStudentData'])->name('esbtp.classes.check-student-data');
+    // Placer ou retirer un eleve d'une classe est une operation sur l'ELEVE, pas
+    // sur la structure de la classe : `students.edit`, et non `classes.edit`.
+    //
+    // La nuance n'est pas cosmetique. La fiche de classe montre ces deux boutons
+    // au coordinateur, qui s'en sert, et qui n'a pas `classes.edit` — seule la
+    // secretaire l'a. Les garder sous `classes.edit` aurait ferme au
+    // coordinateur une fonction dont il se sert tous les jours, alors que le
+    // trou a boucher etait ailleurs : la route ne demandait AUCUNE permission,
+    // et un enseignant ou un caissier pouvait retirer une promotion entiere.
+    //
+    // Une ecole qui veut l'ouvrir a un autre role — un directeur des etudes, par
+    // exemple — lui accorde `students.edit` depuis l'ecran des roles. C'est sa
+    // decision, pas celle du code.
+    Route::post('/esbtp/classes/{classe}/add-students', [ESBTPClasseController::class, 'addStudents'])
+        ->middleware('permission:students.edit')
+        ->name('esbtp.classes.add-students');
+    Route::post('/esbtp/classes/{classe}/remove-students', [ESBTPClasseController::class, 'removeStudents'])
+        ->middleware('permission:students.edit')
+        ->name('esbtp.classes.remove-students');
+    Route::post('/esbtp/classes/{classe}/check-student-data', [ESBTPClasseController::class, 'checkStudentData'])
+        ->middleware('permission:classes.view')
+        ->name('esbtp.classes.check-student-data');
     Route::get('/esbtp/classes/{classe}/student-table-html', [ESBTPClasseController::class, 'studentTableHtml'])->name('esbtp.classes.student-table-html');
 });
 
@@ -3202,6 +3300,26 @@ Route::post('/verifier-document-officiel', [\App\Domain\OfficialDocuments\Http\O
     ->name('official-documents.verify');
 
 // ============================================================
+// Prise de vue au telephone — PAGE PUBLIQUE, sans compte
+// ============================================================
+// Celui qui photographie est souvent l'etudiant lui-meme : il n'a pas de compte,
+// et n'en aura pas au moment ou on le prend en photo. Le jeton de l'adresse est
+// la seule cle, et il est fait pour ne presque rien valoir — une page, un envoi,
+// quelques minutes, un nom, rien du dossier.
+//
+// Le debit est serre : ces adresses sont publiques, et un jeton se devine par
+// force brute si on laisse essayer. `throttle` porte sur l'IP.
+Route::get('/photo/{jeton}', [\App\Http\Controllers\PhotoCaptureController::class, 'montrer'])
+    ->where('jeton', '[A-Za-z0-9]{48}')
+    ->middleware('throttle:20,1')
+    ->name('photo-capture.montrer');
+
+Route::post('/photo/{jeton}', [\App\Http\Controllers\PhotoCaptureController::class, 'envoyer'])
+    ->where('jeton', '[A-Za-z0-9]{48}')
+    ->middleware('throttle:10,1')
+    ->name('photo-capture.envoyer');
+
+// ============================================================
 // Routes Rattrapage LMD (PR10 â€” sessions 2e session UEMOA)
 // ============================================================
 Route::prefix('esbtp/lmd/rattrapage')->name('esbtp.lmd.rattrapage.')
@@ -3386,3 +3504,10 @@ require __DIR__.'/academic-pilotage.php';
 
 
 
+
+// Shell mobile
+// Bascule de profil mobile reservee au superAdmin (verifiee dans le controleur) :
+// il possede toutes les permissions et verrait toujours la meme barre d onglets.
+Route::post('/mobile/profil', [\App\Http\Controllers\PwaController::class, 'profil'])
+    ->middleware(['auth', 'throttle:10,1'])
+    ->name('mobile.profil');

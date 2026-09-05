@@ -2274,9 +2274,10 @@
     <div class="hero-inner">
         {{-- Avatar avec badge statut --}}
         <div class="hero-avatar-wrap">
-            <div class="hero-avatar" id="heroAvatarDisplay">
+            <div class="hero-avatar" id="heroAvatarDisplay" data-photo-etudiant-cadre>
                 @if($etudiant->photo && $etudiant->photo_url)
                     <img src="{{ $etudiant->photo_url }}"
+                         data-photo-etudiant
                          alt="{{ $etudiant->nom_complet }}"
                          onerror="this.parentElement.innerHTML='<i class=\'fas fa-user-graduate\'></i>'">
                 @else
@@ -2287,14 +2288,18 @@
             <span class="hero-avatar-status {{ $estInscritCetteAnnee ? 'actif' : 'inactif' }}"
                   title="{{ $estInscritCetteAnnee ? 'Inscrit ' . ($anneeCourante->name ?? '') : ($inscFutureSousReserve ? 'Pré-inscrit ' . ($inscFutureSousReserve->anneeUniversitaire->name ?? '') . ' (sous réserve)' : 'Non inscrit pour l\'année en cours') }}"></span>
             {{-- Bouton upload photo (superAdmin / secretaire) --}}
-            @if(auth()->user()->hasAnyPermission(['admin.access', 'identity.school_manager']))
-                <label class="hero-avatar-upload" id="heroPhotoUploadBtn" title="Modifier la photo">
+            {{-- Le bouton ouvre desormais le dialogue complet : televerser,
+                 photographier avec la camera du poste, ou passer par un
+                 telephone. La garde suit celle des routes qu'il appelle
+                 (`students.edit`) : la precedente laissait voir le bouton a des
+                 comptes que le serveur aurait refuses. --}}
+            @can('students.edit')
+                <button type="button" class="hero-avatar-upload" id="heroPhotoUploadBtn"
+                        title="Photo de l'etudiant"
+                        onclick="window.dispatchEvent(new CustomEvent('photo-etudiant:ouvrir'))">
                     <i class="fas fa-camera"></i>
-                    <input type="file" accept="image/jpeg,image/png,image/jpg,image/gif"
-                           style="display:none;" id="heroPhotoInput"
-                           onchange="uploadEtudiantPhoto(this)">
-                </label>
-            @endif
+                </button>
+            @endcan
         </div>
 
         {{-- Text --}}
@@ -6291,6 +6296,13 @@
 </script>
 
 @include('esbtp.partials.modal-regenerer-frais')
+{{-- Le dialogue photo, hors du hero : il se pose en surimpression sur
+     toute la page, et le laisser dans un conteneur en flex y ajouterait un
+     element vide. --}}
+@can('students.edit')
+    <x-photo-etudiant :etudiant="$etudiant" />
+@endcan
+
 @endsection
 
 @push('scripts')
@@ -6318,56 +6330,6 @@ function switchLmdSem(sem) {
     }
 }
 
-// Upload photo étudiant via AJAX
-function uploadEtudiantPhoto(input) {
-    if (!input.files || !input.files[0]) return;
-
-    var file = input.files[0];
-    if (file.size > 5 * 1024 * 1024) {
-        alert('La photo ne doit pas dépasser 5 Mo.');
-        input.value = '';
-        return;
-    }
-
-    var btn = document.getElementById('heroPhotoUploadBtn');
-    var icon = btn.querySelector('i');
-    btn.classList.add('uploading');
-    icon.className = 'fas fa-spinner fa-spin';
-
-    var formData = new FormData();
-    formData.append('photo', file);
-    formData.append('_token', document.querySelector('meta[name="csrf-token"]').content);
-
-    fetch("{{ route('esbtp.etudiants.update-photo', $etudiant) }}", {
-        method: 'POST',
-        headers: { 'X-Requested-With': 'XMLHttpRequest' },
-        body: formData
-    })
-    .then(function(res) { return res.json(); })
-    .then(function(data) {
-        btn.classList.remove('uploading');
-        icon.className = 'fas fa-camera';
-
-        if (data.success && data.photo_url) {
-            var avatar = document.getElementById('heroAvatarDisplay');
-            var img = document.createElement('img');
-                    img.src = data.photo_url + '?' + Date.now();
-                    img.alt = 'Photo';
-                    img.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;';
-                    avatar.innerHTML = '';
-                    avatar.appendChild(img);
-        } else {
-            alert(data.message || 'Erreur lors de la mise à jour de la photo.');
-        }
-    })
-    .catch(function() {
-        btn.classList.remove('uploading');
-        icon.className = 'fas fa-camera';
-        alert('Erreur réseau lors de l\'upload.');
-    });
-
-    input.value = '';
-}
 </script>
 <script>
 (function () {

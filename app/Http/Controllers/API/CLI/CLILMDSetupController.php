@@ -257,7 +257,15 @@ class CLILMDSetupController extends BaseApiController
             'ues.*.ecues.*.tpe' => 'sometimes|integer|min:0|max:1000',
         ]);
 
-        $result = $importer->import($validated, $request->user()->id);
+        try {
+            $result = $importer->import($validated, $request->user()->id);
+        } catch (\App\Services\LMD\ConflitDeMaquette $e) {
+            // 422 et non 500 : l import n a pas echoue, il a REFUSE. La difference
+            // compte pour qui lit la reponse — un 500 invite a reessayer, un 422 dit
+            // qu il faut corriger la maquette. Rien n a ete ecrit : la transaction
+            // de l import a tout annule.
+            return $this->errorResponse($e->getMessage(), ['conflits' => $e->conflits()], 422);
+        }
 
         return $this->successResponse($result, sprintf(
             'Maquette importée : %d UE (+%d/~%d), %d ECUE (+%d/~%d), %d planif (+%d/~%d)',
@@ -301,14 +309,22 @@ class CLILMDSetupController extends BaseApiController
         $result = $service->cleanupParcours($validated['parcours'], $dryRun);
         $t = $result['totals'];
 
+        // Les unités partagées avec un autre parcours sont conservées : sans
+        // ce compte dans le message, leur préservation resterait invisible et
+        // l'opérateur croirait la maquette entièrement nettoyée.
+        $partage = sprintf(
+            '%d UE partagée(s) conservée(s), %d ECUE partagé(s) conservé(s)',
+            $t['ues_partagees'], $t['ecues_preserves']
+        );
+
         $message = $dryRun
             ? sprintf(
-                'Dry-run : %d UE / %d ECUE / %d planif supprimables, %d UE protégée(s) par des évaluations (aucun commit DB)',
-                $t['ues'], $t['ecues'], $t['planifs'], $t['ues_blocked']
+                'Dry-run : %d UE / %d ECUE / %d planif supprimables, %d UE protégée(s) par des évaluations ; %s (aucun commit DB)',
+                $t['ues'], $t['ecues'], $t['planifs'], $t['ues_blocked'], $partage
             )
             : sprintf(
-                'Nettoyage terminé : %d UE, %d ECUE, %d planif supprimés ; %d UE protégée(s)',
-                $t['ues'], $t['ecues'], $t['planifs'], $t['ues_blocked']
+                'Nettoyage terminé : %d UE, %d ECUE, %d planif supprimés ; %d UE protégée(s) ; %s',
+                $t['ues'], $t['ecues'], $t['planifs'], $t['ues_blocked'], $partage
             );
 
         return $this->successResponse($result, $message);

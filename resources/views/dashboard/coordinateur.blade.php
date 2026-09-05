@@ -666,11 +666,17 @@
                 </a>
             </div>
 
-            @php $rate = $attendanceStats['attendance_rate'] ?? 0; @endphp
-            <div class="cd-kpi {{ $rate >= 70 ? 'cd-kpi--success' : ($rate >= 50 ? 'cd-kpi--warning' : 'cd-kpi--danger') }} cd-animate">
+            @php
+                // Aucun appel aujourd'hui : taux null, affiche « — » en bleu neutre
+                // (jamais un faux 0 % en rouge).
+                $rate = $attendanceStats['attendance_rate'] ?? null;
+                $rateAffiche = $rate === null ? '—' : $rate . '%';
+                $rateTon = $rate === null ? 'cd-kpi--primary' : ($rate >= 70 ? 'cd-kpi--success' : ($rate >= 50 ? 'cd-kpi--warning' : 'cd-kpi--danger'));
+            @endphp
+            <div class="cd-kpi {{ $rateTon }} cd-animate">
                 <div class="cd-kpi-icon"><i class="fas fa-user-check"></i></div>
                 <div class="cd-kpi-label">Taux de presence</div>
-                <div class="cd-kpi-value" data-kpi="attendanceRate">{{ $rate }}%</div>
+                <div class="cd-kpi-value" data-kpi="attendanceRate">{{ $rateAffiche }}</div>
                 <a href="{{ route('esbtp.attendances.index') }}" class="cd-kpi-link">
                     Suivre <i class="fas fa-arrow-right"></i>
                 </a>
@@ -709,19 +715,19 @@
                         <div class="cd-card-title"><i class="fas fa-chart-pie"></i> Presence aujourd'hui</div>
                     </div>
                     <div class="cd-card-body">
-                        <div class="cd-presence-ring" style="--rate: {{ $rate }};">
+                        <div class="cd-presence-ring" style="--rate: {{ $rate ?? 0 }};">
                             <div class="cd-presence-inner">
-                                <div class="cd-presence-value">{{ $rate }}%</div>
+                                <div class="cd-presence-value">{{ $rateAffiche }}</div>
                                 <div class="cd-presence-label">presence</div>
                             </div>
                         </div>
                         <div class="cd-presence-details">
                             <div class="cd-presence-stat">
-                                <div class="cd-presence-stat-value" style="color: var(--success);">{{ $attendanceStats['total_present'] ?? 0 }}</div>
+                                <div class="cd-presence-stat-value" style="color: var(--success);">{{ $attendanceStats['total_present'] ?? '—' }}</div>
                                 <div class="cd-presence-stat-label">Presents</div>
                             </div>
                             <div class="cd-presence-stat">
-                                <div class="cd-presence-stat-value" style="color: #dc2626;">{{ $attendanceStats['total_absent'] ?? 0 }}</div>
+                                <div class="cd-presence-stat-value" style="color: #dc2626;">{{ $attendanceStats['total_absent'] ?? '—' }}</div>
                                 <div class="cd-presence-stat-label">Absents</div>
                             </div>
                         </div>
@@ -918,7 +924,9 @@ function cdRefreshData() {
             'totalTeachers': data.totalTeachers,
             'totalExamens': data.totalExamens,
             'totalEmploiTemps': data.totalEmploiTemps,
-            'attendanceRate': data.attendanceStats.attendance_rate + '%'
+            'attendanceRate': (data.attendanceStats && data.attendanceStats.attendance_rate !== null && data.attendanceStats.attendance_rate !== undefined)
+                ? data.attendanceStats.attendance_rate + '%'
+                : '\u2014'
         };
         for (var key in kpiMap) {
             var el = document.querySelector('[data-kpi="' + key + '"]');

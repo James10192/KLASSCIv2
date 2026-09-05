@@ -76,6 +76,41 @@ différente ici ? »**
 En cas de doute, c'est configurable : une valeur configurable qu'on ne change jamais ne coûte
 rien, une valeur en dur qu'il faut changer coûte un déploiement et une régression.
 
+## Une question ouverte se répond par un réglage, pas par une réunion
+
+Le test ci-dessus vaut pour une valeur. Il vaut tout autant pour une **conduite** :
+que fait le logiciel quand telle situation se présente ?
+
+Ces questions-là surgissent en pleine conception et donnent l'impression qu'il faut
+trancher avant d'écrire une ligne. C'est presque toujours faux. « Que se passe-t-il
+quand le stock s'épuise ? », « une annulation rend-elle ce qu'elle avait consommé ? »,
+« au bout de combien de temps une pièce est-elle périmée ? » : aucune n'a de réponse
+unique valable pour six écoles. Ce sont des **politiques d'établissement**, et
+l'écrire dans le code revient à imposer celle de la première école qui a posé la
+question.
+
+La réponse, à chaque fois : **on livre les conduites possibles, et l'école choisit.**
+Un défaut sensé, jamais bloquant, et l'école durcit si elle le veut.
+
+**Où poser le réglage — la distinction qui compte.** Une décision qui décrit une
+POLITIQUE va dans les réglages d'instance. Une décision qui décrit UN OBJET va sur
+l'objet, en colonne. La confondre produit des réglages globaux qui ne peuvent pas
+répondre juste :
+
+- « Au bout de combien de temps une pièce du dossier est-elle périmée ? » n'est pas
+  un réglage d'école. Un extrait de naissance ne périme jamais, un certificat médical
+  si. La durée appartient donc **à la pièce**, pas à l'établissement.
+- « Bloque-t-on une inscription dont le dossier est incomplet ? » est bien une
+  politique : elle vaut pour toutes les pièces, elle va dans les réglages.
+
+Demande-toi : est-ce que deux lignes de la même table peuvent légitimement vouloir
+des réponses différentes ? Si oui, c'est une colonne, pas un réglage.
+
+**Ce que cela n'autorise pas.** Rendre configurable ce qui relève d'un invariant
+comptable, légal ou d'intégrité. On ne règle pas si un paiement validé peut être
+réécrit, ni si un motif de refus est obligatoire : ce sont des règles du logiciel,
+et les livrer en option revient à livrer une porte.
+
 ## Le cas particulier du « zéro »
 
 Un `0` en dur mérite une attention propre, parce qu'il se confond avec l'absence. Trois fois

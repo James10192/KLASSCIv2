@@ -6,7 +6,6 @@ use App\Models\Attendance;
 use App\Models\Certificate;
 use App\Models\Grade;
 use App\Models\Message;
-use App\Models\Notification;
 use App\Models\Student;
 use App\Models\Timetable;
 use App\Models\User;
@@ -14,7 +13,6 @@ use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPParent;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPFiliere;
-use App\Models\ESBTPNiveauEtude;
 use App\Models\ESBTPMatiere;
 use App\Models\ESBTPEvaluation;
 use App\Models\ESBTPBulletin;
@@ -34,6 +32,14 @@ use App\Models\ESBTPInscription;
 use App\Models\ESBTPTeacher;
 use App\Models\ESBTPSystemSetting;
 use App\Models\ESBTPEtablissement;
+use App\Models\ESBTPPaiement;
+use App\Models\ESBTPFraisSubscription;
+use App\Models\ESBTPReliquatDetail;
+use App\Models\ESBTPInscriptionEcheancierSnapshot;
+use App\Models\ESBTPLMDResultatUE;
+use App\Enums\JustificationStatus;
+use App\Helpers\SettingsHelper;
+use App\Services\ESBTP\BtsCurrentResultSnapshotService;
 use App\Domain\Students\StudentCountService;
 use App\Services\PermissionRegistry;
 use Illuminate\Http\Request;
@@ -177,9 +183,11 @@ class DashboardController extends Controller
     private function superAdminDashboard()
     {
         $user = Auth::user();
+        // La vue superadmin ne lit que douze variables. Tout ce qui est calculé ici
+        // sans être affiché est payé à chaque ouverture du tableau de bord, sur des
+        // bases qui dépassent 2000 inscrits — d'où le tri strict de cette méthode.
         $data = [
             'user' => $user,
-            'totalUsers' => User::count()
         ];
 
         // Récupérer l'année universitaire en cours
@@ -201,25 +209,10 @@ class DashboardController extends Controller
         }
         $data['pendingInscriptionsCount'] = $pendingQuery->count();
 
-        $data['pendingCurrentYearInscriptionsCount'] = 0;
-        $data['pendingCurrentYearInscriptionsByStep'] = [];
-        if ($anneeEnCours) {
-            $pendingCurrentYearQuery = ESBTPInscription::where('annee_universitaire_id', $anneeEnCours->id)
-                ->where(function($query) {
-                    $query->whereIn('status', ['en_attente', 'pending'])
-                        ->orWhere(function($subQuery) {
-                            $subQuery->where('status', 'active')
-                                ->whereIn('workflow_step', ['prospect', 'documents_complets', 'en_validation']);
-                        });
-                });
-
-            $data['pendingCurrentYearInscriptionsCount'] = (clone $pendingCurrentYearQuery)->count();
-            $data['pendingCurrentYearInscriptionsByStep'] = [
-                'prospect' => (clone $pendingCurrentYearQuery)->where('workflow_step', 'prospect')->count(),
-                'documents_complets' => (clone $pendingCurrentYearQuery)->where('workflow_step', 'documents_complets')->count(),
-                'en_validation' => (clone $pendingCurrentYearQuery)->where('workflow_step', 'en_validation')->count(),
-            ];
-        }
+        // Le rappel « inscriptions en attente » est rendu par layouts/app.blade.php, dont
+        // le bloc @php réassigne lui-même pendingCurrentYearInscriptionsCount et
+        // ...ByStep avant de les afficher. Les quatre comptages posés ici étaient donc
+        // écrasés à chaque rendu : ils n'atteignaient jamais l'écran.
 
         // Étudiants — Service centralisé (distinct etudiant_id, inscriptions actives+validées année courante)
         $studentCounts = app(StudentCountService::class)->counts();
@@ -227,33 +220,11 @@ class DashboardController extends Controller
         $data['totalStudentsBase'] = $studentCounts['total_base'];
         $data['anneeLabel'] = $studentCounts['annee_courante_label'];
 
-        if ($anneeEnCours) {
-            $data['recentStudents'] = ESBTPInscription::with(['etudiant'])
-                ->where('annee_universitaire_id', $anneeEnCours->id)
-                ->orderBy('created_at', 'desc')
-                ->take(5)
-                ->get()
-                ->map(function($inscription) {
-                    return $inscription->etudiant;
-                });
-        } else {
-            $data['recentStudents'] = ESBTPEtudiant::orderBy('created_at', 'desc')->take(5)->get();
-        }
-
         // Filières
         try {
             $data['totalFilieres'] = ESBTPFiliere::count();
-            $data['recentFilieres'] = ESBTPFiliere::orderBy('created_at', 'desc')->take(5)->get();
         } catch (\Exception $e) {
             $data['totalFilieres'] = 0;
-            $data['recentFilieres'] = collect();
-        }
-
-        // Niveaux d'études
-        try {
-            $data['totalNiveaux'] = ESBTPNiveauEtude::count();
-        } catch (\Exception $e) {
-            $data['totalNiveaux'] = 0;
         }
 
         // Classes (pas de filtrage par année)
@@ -277,119 +248,10 @@ class DashboardController extends Controller
             $data['totalTeachers'] = 0;
         }
 
-        // Examens (filtré par année en cours)
-        try {
-            if ($anneeEnCours) {
-                $data['totalExamens'] = ESBTPEvaluation::whereHas('classe', function($q) use ($anneeEnCours) {
-                    $q->where('annee_universitaire_id', $anneeEnCours->id);
-                })->count();
-                $data['recentExamens'] = ESBTPEvaluation::with(['classe', 'matiere'])
-                    ->whereHas('classe', function($q) use ($anneeEnCours) {
-                        $q->where('annee_universitaire_id', $anneeEnCours->id);
-                    })
-                    ->orderBy('created_at', 'desc')
-                    ->take(5)
-                    ->get();
-            } else {
-                $data['totalExamens'] = ESBTPEvaluation::count();
-                $data['recentExamens'] = ESBTPEvaluation::with(['classe', 'matiere'])
-                    ->orderBy('created_at', 'desc')
-                    ->take(5)
-                    ->get();
-            }
-        } catch (\Exception $e) {
-            $data['totalExamens'] = 0;
-            $data['recentExamens'] = collect();
-        }
-
-        // Bulletins
-        try {
-            $data['totalBulletins'] = ESBTPBulletin::count();
-            $data['pendingBulletins'] = ESBTPBulletin::where('status', 'pending')->count();
-        } catch (\Exception $e) {
-            $data['totalBulletins'] = 0;
-            $data['pendingBulletins'] = 0;
-        }
-
-        // Notes
-        try {
-            $data['totalNotes'] = ESBTPNote::count();
-        } catch (\Exception $e) {
-            $data['totalNotes'] = 0;
-        }
-
-        // Présences (filtré par année en cours)
-        try {
-            if ($anneeEnCours) {
-                $data['totalPresences'] = ESBTPAttendance::whereHas('etudiant.inscriptions', function($q) use ($anneeEnCours) {
-                    $q->where('annee_universitaire_id', $anneeEnCours->id)
-                      ->where('status', 'active');
-                })->count();
-                $data['todayAttendances'] = ESBTPAttendance::whereHas('etudiant.inscriptions', function($q) use ($anneeEnCours) {
-                    $q->where('annee_universitaire_id', $anneeEnCours->id)
-                      ->where('status', 'active');
-                })->whereDate('date', today())->count();
-            } else {
-                $data['totalPresences'] = ESBTPAttendance::count();
-                $data['todayAttendances'] = ESBTPAttendance::whereDate('date', today())->count();
-            }
-        } catch (\Exception $e) {
-            $data['totalPresences'] = 0;
-            $data['todayAttendances'] = 0;
-        }
-
-        // Emplois du temps (filtré par année en cours)
-        try {
-            if ($anneeEnCours) {
-                $data['totalEmploiTemps'] = ESBTPEmploiTemps::where('annee_universitaire_id', $anneeEnCours->id)->count();
-                $data['activeEmploiTemps'] = ESBTPEmploiTemps::where('annee_universitaire_id', $anneeEnCours->id)
-                    ->where('is_active', true)->count();
-            } else {
-                $data['totalEmploiTemps'] = ESBTPEmploiTemps::count();
-                $data['activeEmploiTemps'] = ESBTPEmploiTemps::where('is_active', true)->count();
-            }
-        } catch (\Exception $e) {
-            $data['totalEmploiTemps'] = 0;
-            $data['activeEmploiTemps'] = 0;
-        }
-
-        // Séances de cours
-        try {
-            $data['totalSeances'] = ESBTPSeanceCours::count();
-            $today = Carbon::now()->format('Y-m-d');
-            $data['todayClasses'] = ESBTPSeanceCours::whereDate('date', $today)->count();
-        } catch (\Exception $e) {
-            $data['totalSeances'] = 0;
-            $data['todayClasses'] = 0;
-        }
-
-        // Messages
-        try {
-            $data['recentMessages'] = Message::where(function($query) {
-                    $query->where('recipient_type', 'admins')
-                        ->whereNull('recipient_group');
-                })
-                ->orWhere(function($query) {
-                    $query->where('recipient_type', 'all')
-                        ->whereNull('recipient_group');
-                })
-                ->orWhere('recipient_id', Auth::id())
-                ->whereNull('parent_id')
-                ->orderBy('created_at', 'desc')
-                ->take(5)
-                ->get();
-        } catch (\Exception $e) {
-            $data['recentMessages'] = collect();
-        }
-
-        // Notifications
-        try {
-            $data['recentNotifications'] = Notification::orderBy('created_at', 'desc')
-                ->take(5)
-                ->get();
-        } catch (\Exception $e) {
-            $data['recentNotifications'] = collect();
-        }
+        // Ici vivaient les compteurs d'examens, bulletins, notes, présences, emplois du
+        // temps, séances, ainsi que les messages et notifications récents. Aucun n'est lu
+        // par la vue superadmin ni par le gabarit : c'était du calcul jeté. Les présences
+        // coûtaient à elles seules deux sous-requêtes corrélées sur une relation imbriquée.
 
         // Inscriptions récentes (vraies données) (filtré par année en cours)
         try {
@@ -417,36 +279,8 @@ class DashboardController extends Controller
             $data['recentInscriptions'] = collect();
         }
 
-        // Examens à venir (vraies données) (filtré par année en cours)
-        try {
-            if ($anneeEnCours) {
-                $data['upcomingExams'] = ESBTPEvaluation::with(['matiere', 'classe'])
-                    ->whereHas('classe', function($q) use ($anneeEnCours) {
-                        $q->where('annee_universitaire_id', $anneeEnCours->id);
-                    })
-                    ->where('date_evaluation', '>=', now())
-                    ->orderBy('date_evaluation', 'asc')
-                    ->limit(5)
-                    ->get();
-            } else {
-                $data['upcomingExams'] = ESBTPEvaluation::with(['matiere', 'classe'])
-                    ->where('date_evaluation', '>=', now())
-                    ->orderBy('date_evaluation', 'asc')
-                    ->limit(5)
-                    ->get();
-            }
-        } catch (\Exception $e) {
-            $data['upcomingExams'] = collect();
-        }
-
-        // Annonces récentes
-        try {
-            $data['recentAnnouncements'] = ESBTPAnnonce::orderBy('created_at', 'desc')
-                ->limit(3)
-                ->get();
-        } catch (\Exception $e) {
-            $data['recentAnnouncements'] = collect();
-        }
+        // Les examens à venir et les annonces récentes étaient chargés ici sans qu'aucune
+        // section de la vue ne les rende.
 
         // Statistiques par filière avec couleurs pour le graphique (filtré par année en cours)
         if ($anneeEnCours) {
@@ -539,57 +373,9 @@ class DashboardController extends Controller
             ];
         }
 
-        // Inscriptions par mois pour le graphique (filtré par année en cours)
-        if ($anneeEnCours) {
-            $data['inscriptionsByMonth'] = ESBTPInscription::selectRaw('MONTH(created_at) as month, YEAR(created_at) as year, COUNT(*) as count')
-                ->where('annee_universitaire_id', $anneeEnCours->id)
-                ->where('created_at', '>=', now()->subMonths(12))
-                ->groupBy('year', 'month')
-                ->orderBy('year', 'asc')
-                ->orderBy('month', 'asc')
-                ->get();
-        } else {
-            $data['inscriptionsByMonth'] = ESBTPInscription::selectRaw('MONTH(created_at) as month, YEAR(created_at) as year, COUNT(*) as count')
-                ->where('created_at', '>=', now()->subMonths(12))
-                ->groupBy('year', 'month')
-                ->orderBy('year', 'asc')
-                ->orderBy('month', 'asc')
-                ->get();
-        }
-
-        // Statistiques de présence (filtré par année en cours)
-        try {
-            if ($anneeEnCours) {
-                $totalPresent = ESBTPAttendance::whereHas('etudiant.inscriptions', function($q) use ($anneeEnCours) {
-                    $q->where('annee_universitaire_id', $anneeEnCours->id)
-                      ->where('status', 'active');
-                })->where('status', 'present')->whereDate('date', today())->count();
-
-                $totalAbsent = ESBTPAttendance::whereHas('etudiant.inscriptions', function($q) use ($anneeEnCours) {
-                    $q->where('annee_universitaire_id', $anneeEnCours->id)
-                      ->where('status', 'active');
-                })->where('status', 'absent')->whereDate('date', today())->count();
-            } else {
-                $totalPresent = ESBTPAttendance::where('status', 'present')->whereDate('date', today())->count();
-                $totalAbsent = ESBTPAttendance::where('status', 'absent')->whereDate('date', today())->count();
-            }
-
-            $attendanceRate = $totalPresent + $totalAbsent > 0
-                ? round(($totalPresent / ($totalPresent + $totalAbsent)) * 100, 1)
-                : 0;
-
-            $data['attendanceStats'] = [
-                'total_present' => $totalPresent,
-                'total_absent' => $totalAbsent,
-                'attendance_rate' => $attendanceRate
-            ];
-        } catch (\Exception $e) {
-            $data['attendanceStats'] = [
-                'total_present' => 0,
-                'total_absent' => 0,
-                'attendance_rate' => 0
-            ];
-        }
+        // Le graphique de la vue est alimenté par monthlyStats seul. La série
+        // inscriptionsByMonth et les statistiques d'assiduité du jour, elles, ne sont
+        // rendues nulle part sur ce tableau de bord.
 
         return view('dashboard.superadmin', $data);
     }
@@ -665,14 +451,16 @@ class DashboardController extends Controller
 
         // Présences - Les secrétaires peuvent gérer les présences
         try {
-            $data['todayAttendances'] = ESBTPAttendance::whereDate('date', today())->count();
-            $data['pendingJustifications'] = ESBTPAttendance::whereDate('date', '>=', now()->subDays(7))
-                ->where('status', 'absent')
-                ->where('justified', false)
+            $data['todayAttendances'] = ESBTPAttendance::finalOnly()->whereDate('date', today())->count();
+            // « Justifications en attente » = justificatifs déposés par les étudiants
+            // que personne n'a encore traités (cycle de vie : App\Enums\JustificationStatus).
+            $data['pendingJustifications'] = ESBTPAttendance::where('statut', 'absent')
+                ->where('justification_status', \App\Enums\JustificationStatus::PENDING->value)
                 ->count();
         } catch (\Exception $e) {
-            $data['todayAttendances'] = 0;
-            $data['pendingJustifications'] = 0;
+            \Log::warning('[dashboard secrétaire] présences indisponibles : ' . $e->getMessage());
+            $data['todayAttendances'] = null;
+            $data['pendingJustifications'] = null;
         }
 
         // Emplois du temps - Les secrétaires peuvent créer et consulter les emplois du temps
@@ -1026,45 +814,14 @@ class DashboardController extends Controller
             $data['classesWithoutTimetable'] = 0;
         }
 
-        // Présences - Coordinateurs suivent les présences (filtré par année en cours)
+        // Présences - Coordinateurs suivent les présences du jour (filtré par année en cours)
         try {
-            if ($anneeEnCours) {
-                $data['todayAttendances'] = ESBTPAttendance::whereHas('etudiant.inscriptions', function($q) use ($anneeEnCours) {
-                    $q->where('annee_universitaire_id', $anneeEnCours->id)
-                      ->where('status', 'active');
-                })->whereDate('date', today())->count();
-
-                $totalPresent = ESBTPAttendance::whereHas('etudiant.inscriptions', function($q) use ($anneeEnCours) {
-                    $q->where('annee_universitaire_id', $anneeEnCours->id)
-                      ->where('status', 'active');
-                })->where('status', 'present')->whereDate('date', today())->count();
-
-                $totalAbsent = ESBTPAttendance::whereHas('etudiant.inscriptions', function($q) use ($anneeEnCours) {
-                    $q->where('annee_universitaire_id', $anneeEnCours->id)
-                      ->where('status', 'active');
-                })->where('status', 'absent')->whereDate('date', today())->count();
-            } else {
-                $data['todayAttendances'] = ESBTPAttendance::whereDate('date', today())->count();
-                $totalPresent = ESBTPAttendance::where('status', 'present')->whereDate('date', today())->count();
-                $totalAbsent = ESBTPAttendance::where('status', 'absent')->whereDate('date', today())->count();
-            }
-
-            $attendanceRate = $totalPresent + $totalAbsent > 0
-                ? round(($totalPresent / ($totalPresent + $totalAbsent)) * 100, 1)
-                : 0;
-
-            $data['attendanceStats'] = [
-                'total_present' => $totalPresent,
-                'total_absent' => $totalAbsent,
-                'attendance_rate' => $attendanceRate
-            ];
+            $data['attendanceStats'] = $this->presencesDuJour($anneeEnCours);
+            $data['todayAttendances'] = $data['attendanceStats']['total'];
         } catch (\Exception $e) {
-            $data['todayAttendances'] = 0;
-            $data['attendanceStats'] = [
-                'total_present' => 0,
-                'total_absent' => 0,
-                'attendance_rate' => 0
-            ];
+            \Log::warning('[dashboard coordinateur] présences du jour indisponibles : ' . $e->getMessage());
+            $data['todayAttendances'] = null;
+            $data['attendanceStats'] = $this->presencesIndisponibles();
         }
 
         // Messages pour coordinateurs (fix: wrapper parent pour les OR)
@@ -1166,7 +923,7 @@ class DashboardController extends Controller
         $activeEmploiTemps = 0;
         $expiredEmploiTemps = 0;
         $classesWithoutTimetable = 0;
-        $attendanceStats = ['total_present' => 0, 'total_absent' => 0, 'attendance_rate' => 0];
+        $attendanceStats = $this->presencesIndisponibles();
 
         try {
             $totalClasses = ESBTPClasse::count();
@@ -1205,18 +962,11 @@ class DashboardController extends Controller
                 $classesWithoutTimetable = ESBTPClasse::where('is_active', true)
                     ->whereNotIn('id', $classesAvecEdt)->count();
 
-                $totalPresent = ESBTPAttendance::whereHas('etudiant.inscriptions', fn($q) => $q->where('annee_universitaire_id', $anneeEnCours->id)->where('status', 'active'))
-                    ->where('status', 'present')->whereDate('date', today())->count();
-                $totalAbsent = ESBTPAttendance::whereHas('etudiant.inscriptions', fn($q) => $q->where('annee_universitaire_id', $anneeEnCours->id)->where('status', 'active'))
-                    ->where('status', 'absent')->whereDate('date', today())->count();
-                $attendanceStats = [
-                    'total_present' => $totalPresent,
-                    'total_absent' => $totalAbsent,
-                    'attendance_rate' => $totalPresent + $totalAbsent > 0 ? round(($totalPresent / ($totalPresent + $totalAbsent)) * 100, 1) : 0,
-                ];
+                $attendanceStats = $this->presencesDuJour($anneeEnCours);
             }
         } catch (\Exception $e) {
-            // Keep defaults
+            \Log::warning('[dashboard coordinateur/data] indicateurs indisponibles : ' . $e->getMessage());
+            $attendanceStats = $this->presencesIndisponibles();
         }
 
         return response()->json([
@@ -1258,15 +1008,30 @@ class DashboardController extends Controller
 
         $data['anneeEnCours'] = ESBTPAnneeUniversitaire::where('is_current', true)->first();
 
+        // Inscription active de l'année courante : c'est elle qui porte la classe
+        // (l'étudiant peut avoir changé de classe d'une année à l'autre).
+        $inscription = null;
+        if ($data['anneeEnCours']) {
+            $inscription = ESBTPInscription::query()
+                ->where('etudiant_id', $student->id)
+                ->where('annee_universitaire_id', $data['anneeEnCours']->id)
+                ->where('status', 'active')
+                ->with(['classe.filiere', 'classe.niveau', 'classe.parcours'])
+                ->first();
+        }
+        $classeId = $inscription->classe_id ?? $student->classe_id;
+
         // Récupérer l'emploi du temps d'aujourd'hui pour l'étudiant
         try {
-            $today = strtolower(date('l'));
-            $data['todayTimetable'] = ESBTPSeanceCours::whereHas('emploiTemps', function($query) use ($student) {
-                    $query->where('classe_id', $student->classe_id);
+            // Les séances stockent le jour en français (« lundi », …) : le nom
+            // anglais de date('l') ne trouvait jamais rien.
+            $today = mb_strtolower(now()->locale('fr')->dayName, 'UTF-8');
+            $data['todayTimetable'] = ESBTPSeanceCours::whereHas('emploiTemps', function($query) use ($classeId) {
+                    $query->where('classe_id', $classeId)->where('is_active', true);
                 })
                 ->where('jour', $today)
                 ->orderBy('heure_debut')
-                ->with(['matiere', 'emploiTemps.classe', 'enseignant'])
+                ->with(['matiere', 'emploiTemps.classe', 'enseignant.user'])
                 ->get();
         } catch (\Exception $e) {
             $data['todayTimetable'] = collect();
@@ -1296,7 +1061,7 @@ class DashboardController extends Controller
 
         // Récupérer les notes récentes de l'étudiant
         try {
-            $data['recentGrades'] = ESBTPNote::with(['evaluation.matiere'])
+            $data['recentGrades'] = ESBTPNote::with(['evaluation.matiere', 'matiere'])
                 ->where('etudiant_id', $student->id)
                 ->orderBy('created_at', 'desc')
                 ->take(5)
@@ -1307,31 +1072,319 @@ class DashboardController extends Controller
 
         // Récupérer les statistiques de présence de l'étudiant
         try {
-            $attendances = ESBTPAttendance::where('etudiant_id', $student->id)->get();
-            $totalAttendances = $attendances->count();
+            if (! $data['anneeEnCours']) {
+                // Sans année courante on ne sait pas quelle période afficher :
+                // mieux vaut « — » qu'un cumul de toutes les années.
+                throw new \RuntimeException('Aucune année universitaire courante.');
+            }
+
+            $comptes = $this->comptesParStatut(
+                ESBTPAttendance::query()
+                    ->where('etudiant_id', $student->id)
+                    ->where('annee_universitaire_id', $data['anneeEnCours']->id)
+            );
 
             $data['attendanceStats'] = [
-                'total' => $totalAttendances,
-                'present' => $attendances->where('status', 'present')->count(),
-                'absent' => $attendances->where('status', 'absent')->count(),
-                'late' => $attendances->where('status', 'late')->count(),
-                'excused' => $attendances->where('status', 'excused')->count(),
-                'rate' => $totalAttendances > 0
-                    ? round(($attendances->where('status', 'present')->count() + $attendances->where('status', 'late')->count()) / $totalAttendances * 100, 2)
-                    : 0
+                'total' => $comptes['total'],
+                'present' => $comptes['present'],
+                'retard' => $comptes['retard'],
+                'absent' => $comptes['absent'],
+                'excuse' => $comptes['excuse'],
+                'rate' => $comptes['taux'],
             ];
         } catch (\Exception $e) {
+            \Log::warning('[dashboard étudiant] assiduité indisponible : ' . $e->getMessage(), [
+                'etudiant_id' => $student->id,
+            ]);
             $data['attendanceStats'] = [
-                'total' => 0,
-                'present' => 0,
-                'absent' => 0,
-                'late' => 0,
-                'excused' => 0,
-                'rate' => 0
+                'total' => null,
+                'present' => null,
+                'retard' => null,
+                'absent' => null,
+                'excuse' => null,
+                'rate' => null,
             ];
         }
 
+        // Accueil mobile (shell mobile, profil « etudiant ») : tout ce que
+        // l'écran affiche en plus du bureau, calculé une seule fois ici.
+        $data['mobileAccueil'] = $this->accueilMobileEtudiant($student, $inscription, $data);
+
         return view('dashboard.etudiant', $data);
+    }
+
+    /**
+     * Données de l'accueil mobile de l'étudiant.
+     *
+     * Valeurs brutes (nombres, dates Carbon) : la vue met en forme. `null` veut
+     * dire « indisponible » et s'affiche « — », jamais un faux zéro.
+     */
+    private function accueilMobileEtudiant(ESBTPEtudiant $student, ?ESBTPInscription $inscription, array $data): array
+    {
+        $annee = $data['anneeEnCours'] ?? null;
+        $classe = $inscription?->classe;
+        $estLmd = $classe ? $classe->isLMD() : false;
+        $ecole = SettingsHelper::getSchoolInfo();
+
+        $accueil = [
+            'ecole' => (string) (($ecole['name'] ?? '') ?: (($ecole['acronym'] ?? '') ?: config('app.name'))), // meme libelle que la navbar (partials.navbar-etablissement)
+            'aujourdhui' => now(),
+            'prenom' => trim((string) ($student->prenoms ?? '')) ?: (string) $student->nom,
+            'classe' => $classe?->name,
+            'est_lmd' => $estLmd,
+            'prochain_cours' => $this->prochainCoursDuJour($data['todayTimetable'] ?? collect()),
+            'moyenne' => null,
+            'credits' => null,
+            'assiduite' => $data['attendanceStats']['rate'] ?? null,
+            'absences' => $data['attendanceStats']['absent'] ?? null,
+            'a_justifier' => ['total' => 0, 'derniere' => null],
+            'finances' => null,
+            'notes' => $this->dernieresNotes($data['recentGrades'] ?? collect()),
+        ];
+
+        if (! $annee) {
+            return $accueil;
+        }
+
+        try {
+            $accueil['a_justifier'] = $this->absencesAJustifier($student->id, $annee->id);
+        } catch (\Throwable $e) {
+            \Log::warning('[accueil mobile étudiant] absences à justifier indisponibles : ' . $e->getMessage());
+        }
+
+        if ($inscription) {
+            try {
+                $accueil['finances'] = $this->financesInscription($inscription);
+            } catch (\Throwable $e) {
+                \Log::warning('[accueil mobile étudiant] situation financière indisponible : ' . $e->getMessage());
+            }
+
+            try {
+                if ($estLmd) {
+                    // LMD : les crédits acquis priment sur une moyenne ; on ne
+                    // passe jamais par le calcul de bulletin BTS.
+                    $accueil['credits'] = $this->creditsLmdAcquis($student->id, $annee->id);
+                }
+                if (! $accueil['credits']) {
+                    $accueil['moyenne'] = $this->moyenneCourante($student->id, $inscription->classe_id, $annee->id, $estLmd);
+                }
+            } catch (\Throwable $e) {
+                \Log::warning('[accueil mobile étudiant] résultats indisponibles : ' . $e->getMessage());
+            }
+        }
+
+        return $accueil;
+    }
+
+    /**
+     * Première séance du jour qui n'est pas encore terminée (celle en cours comprise).
+     */
+    private function prochainCoursDuJour($seances): ?array
+    {
+        $maintenant = now();
+
+        foreach (collect($seances) as $seance) {
+            $debut = $seance->heure_debut ? Carbon::parse($seance->heure_debut) : null;
+            $fin = $seance->heure_fin ? Carbon::parse($seance->heure_fin) : null;
+            if (! $debut || ! $fin) {
+                continue;
+            }
+            $finDuJour = $maintenant->copy()->setTimeFrom($fin);
+            if ($finDuJour->lte($maintenant)) {
+                continue;
+            }
+
+            return [
+                'heure' => $debut->format('H:i'),
+                'fin' => $fin->format('H:i'),
+                'en_cours' => $maintenant->copy()->setTimeFrom($debut)->lte($maintenant),
+                'matiere' => $seance->matiere->name ?? null,
+                'salle' => $seance->salle ?: null,
+                'enseignant' => $seance->enseignant?->full_name,
+            ];
+        }
+
+        return null;
+    }
+
+    /**
+     * Absences finales de l'année sans justification recevable (aucune, ou rejetée).
+     */
+    private function absencesAJustifier(int $etudiantId, int $anneeId): array
+    {
+        $query = ESBTPAttendance::query()
+            ->finalOnly()
+            ->where('etudiant_id', $etudiantId)
+            ->where('annee_universitaire_id', $anneeId)
+            ->where('statut', 'absent')
+            ->where(function ($q) {
+                $q->whereNull('justification_status')
+                    ->orWhere('justification_status', JustificationStatus::REJECTED->value);
+            });
+
+        $total = (clone $query)->count();
+        $derniere = null;
+
+        if ($total > 0) {
+            $absence = (clone $query)
+                ->with(['matiere', 'seanceCours.matiere'])
+                ->orderByDesc('date')
+                ->orderByDesc('heure_debut')
+                ->first();
+
+            if ($absence) {
+                $derniere = [
+                    'id' => $absence->id,
+                    'date' => $absence->date ? Carbon::parse($absence->date) : null,
+                    'matiere' => $absence->matiere->name ?? $absence->seanceCours?->matiere?->name,
+                    'heure_debut' => $absence->heure_debut ? substr((string) $absence->heure_debut, 0, 5) : null,
+                    'heure_fin' => $absence->heure_fin ? substr((string) $absence->heure_fin, 0, 5) : null,
+                ];
+            }
+        }
+
+        return ['total' => $total, 'derniere' => $derniere];
+    }
+
+    /**
+     * Reste dû de l'inscription et prochaine tranche à régler.
+     *
+     * Même arithmétique que « Mes paiements » (frais dus + reliquats entrants
+     * − net encaissé). La tranche vient de l'échéancier figé de l'inscription
+     * quand il existe ; on ne le recalcule pas depuis un tableau de bord.
+     */
+    private function financesInscription(ESBTPInscription $inscription): array
+    {
+        $totalFrais = ESBTPFraisSubscription::dueAmountForInscription($inscription->id);
+        $totalReliquats = (float) ESBTPReliquatDetail::where('inscription_destination_id', $inscription->id)
+            ->actifs()
+            ->sum('solde_restant');
+        $totalAttendu = $totalFrais + $totalReliquats;
+        $totalPaye = ESBTPPaiement::netPaidForInscription((int) $inscription->id);
+        $resteDu = max(0, $totalAttendu - $totalPaye);
+
+        $prochaine = null;
+        if ($resteDu > 0) {
+            $snapshot = ESBTPInscriptionEcheancierSnapshot::where('inscription_id', $inscription->id)->first();
+            $ligne = collect($snapshot->payload['due_lines'] ?? [])
+                ->filter(fn ($l) => (float) ($l['remaining_amount'] ?? 0) > 0 && ! empty($l['due_date']))
+                ->sortBy('due_date')
+                ->first();
+
+            if ($ligne) {
+                $echeance = Carbon::parse($ligne['due_date'])->addDays((int) ($ligne['grace_days'] ?? 0))->startOfDay();
+                $prochaine = [
+                    'label' => (string) ($ligne['label'] ?? 'Prochaine tranche'),
+                    'date' => $echeance,
+                    'montant' => (float) $ligne['remaining_amount'],
+                    'en_retard' => $echeance->lt(now()->startOfDay()),
+                ];
+            }
+        }
+
+        return [
+            'total_attendu' => round($totalAttendu, 2),
+            'total_paye' => round($totalPaye, 2),
+            'reste_du' => round($resteDu, 2),
+            'prochaine_echeance' => $prochaine,
+        ];
+    }
+
+    /**
+     * Crédits acquis / attendus sur les bulletins LMD publiés de l'année.
+     * `null` tant qu'aucun résultat d'UE n'a été délibéré.
+     */
+    private function creditsLmdAcquis(int $etudiantId, int $anneeId): ?array
+    {
+        $resultats = ESBTPLMDResultatUE::query()
+            ->where('etudiant_id', $etudiantId)
+            ->whereHas('bulletin', function ($q) use ($anneeId) {
+                $q->where('annee_universitaire_id', $anneeId)->where('is_published', true);
+            })
+            ->get(['id', 'statut', 'credit']);
+
+        if ($resultats->isEmpty()) {
+            return null;
+        }
+
+        $acquis = $resultats
+            ->whereIn('statut', [ESBTPLMDResultatUE::STATUT_AQ, ESBTPLMDResultatUE::STATUT_APC])
+            ->sum('credit');
+
+        return [
+            'acquis' => (int) $acquis,
+            'total' => (int) $resultats->sum('credit'),
+        ];
+    }
+
+    /**
+     * Moyenne courante sur 20.
+     *
+     * BTS : la projection annuelle officielle si elle est calculable, sinon la
+     * moyenne simple des notes de l'année. LMD : moyenne simple uniquement
+     * (les bulletins LMD ont leur propre service, jamais celui du BTS).
+     */
+    private function moyenneCourante(int $etudiantId, int $classeId, int $anneeId, bool $estLmd): ?float
+    {
+        if (! $estLmd) {
+            try {
+                $snapshot = app(BtsCurrentResultSnapshotService::class)->getAnnualSnapshot($etudiantId, $classeId, $anneeId);
+                if (isset($snapshot['effective_total']) && $snapshot['effective_total'] !== null) {
+                    return round((float) $snapshot['effective_total'], 2);
+                }
+            } catch (\Throwable $e) {
+                // Configuration de bulletin absente : on retombe sur les notes brutes.
+            }
+        }
+
+        $notes = ESBTPNote::query()
+            ->where('etudiant_id', $etudiantId)
+            ->where(function ($q) {
+                $q->whereNull('is_absent')->orWhere('is_absent', false);
+            })
+            ->whereHas('evaluation', function ($q) use ($anneeId) {
+                $q->where('annee_universitaire_id', $anneeId)
+                    ->where('status', '!=', ESBTPEvaluation::STATUS_CANCELLED);
+            })
+            ->with('evaluation:id,bareme')
+            ->get();
+
+        $sur20 = $notes
+            ->map(function ($note) {
+                $valeur = is_numeric($note->note) ? (float) $note->note : (is_numeric($note->valeur) ? (float) $note->valeur : null);
+                if ($valeur === null) {
+                    return null;
+                }
+                $bareme = (float) ($note->evaluation->bareme ?? 20);
+
+                return $bareme > 0 ? $valeur * 20 / $bareme : $valeur;
+            })
+            ->filter(fn ($v) => $v !== null);
+
+        return $sur20->isEmpty() ? null : round($sur20->avg(), 2);
+    }
+
+    /**
+     * Dernières notes, prêtes pour les cartes « m-grade » de l'accueil mobile.
+     */
+    private function dernieresNotes($recentGrades): array
+    {
+        return collect($recentGrades)->take(3)->map(function ($note) {
+            $evaluation = $note->evaluation;
+            $matiere = $note->matiere ?? $evaluation?->matiere;
+            $valeur = is_numeric($note->note) ? (float) $note->note : (is_numeric($note->valeur) ? (float) $note->valeur : null);
+
+            return [
+                'matiere' => $matiere->name ?? 'Matière',
+                'code' => $matiere->code ?? null,
+                'titre' => $evaluation?->titre ?: ($evaluation?->type ? ucfirst((string) $evaluation->type) : null),
+                'coefficient' => $evaluation?->coefficient,
+                'date' => $evaluation?->date_evaluation ? Carbon::parse($evaluation->date_evaluation) : ($note->created_at ? Carbon::parse($note->created_at) : null),
+                'note' => $valeur,
+                'bareme' => (float) ($evaluation->bareme ?? 20) ?: 20,
+                'absent' => (bool) ($note->is_absent ?? false),
+            ];
+        })->values()->all();
     }
 
     /**
@@ -1762,5 +1815,87 @@ class DashboardController extends Controller
             '#f59e0b', '#ef4444', '#ec4899', '#84cc16'
         ];
         return $colors[array_rand($colors)];
+    }
+
+    /**
+     * Compte les présences FINALES d'une requête, ventilées par `statut`.
+     *
+     * Seule `esbtp_attendances.statut` fait foi (present / absent / retard / excuse).
+     * L'ancienne colonne `status` valait 'present' sur chaque ligne par défaut et
+     * n'était plus renseignée par personne : la lire donnait 100 % de présence.
+     *
+     * Règle de calcul du taux : un retard est une présence (l'étudiant était au
+     * cours), une absence excusée reste une absence (il n'y était pas, elle est
+     * seulement justifiée). Taux = (présents + retards) / total des appels.
+     *
+     * `finalOnly()` évite de compter trois fois la même séance (appel de début,
+     * appel de fin, fusion).
+     *
+     * @return array{present:int, retard:int, absent:int, excuse:int, total:int, taux:float|null}
+     */
+    private function comptesParStatut(\Illuminate\Database\Eloquent\Builder $query): array
+    {
+        $parStatut = $query->finalOnly()
+            ->selectRaw('statut, COUNT(*) AS total')
+            ->groupBy('statut')
+            ->pluck('total', 'statut');
+
+        $present = (int) ($parStatut['present'] ?? 0);
+        $retard = (int) ($parStatut['retard'] ?? 0);
+        $absent = (int) ($parStatut['absent'] ?? 0);
+        $excuse = (int) ($parStatut['excuse'] ?? 0);
+        $total = $present + $retard + $absent + $excuse;
+
+        return [
+            'present' => $present,
+            'retard' => $retard,
+            'absent' => $absent,
+            'excuse' => $excuse,
+            'total' => $total,
+            'taux' => $total > 0 ? round(($present + $retard) / $total * 100, 1) : null,
+        ];
+    }
+
+    /**
+     * Présences du jour pour les tableaux de bord de pilotage (coordinateur).
+     *
+     * Les clés `total_present` / `total_absent` / `attendance_rate` sont celles
+     * que lisent les vues ; `total_present` inclut les retards et `total_absent`
+     * les absences excusées (cf. comptesParStatut()).
+     */
+    private function presencesDuJour(?ESBTPAnneeUniversitaire $anneeEnCours): array
+    {
+        $query = ESBTPAttendance::query()->whereDate('date', today());
+        if ($anneeEnCours) {
+            $query->where('annee_universitaire_id', $anneeEnCours->id);
+        }
+
+        $comptes = $this->comptesParStatut($query);
+
+        return [
+            'total' => $comptes['total'],
+            'total_present' => $comptes['present'] + $comptes['retard'],
+            'total_retard' => $comptes['retard'],
+            'total_absent' => $comptes['absent'] + $comptes['excuse'],
+            'total_excuse' => $comptes['excuse'],
+            // Aucun appel fait aujourd'hui : pas de taux (« — »), pas un faux 0 %.
+            'attendance_rate' => $comptes['taux'],
+        ];
+    }
+
+    /**
+     * Valeurs nulles (affichées « — ») quand le calcul des présences a échoué :
+     * on ne montre jamais un 0 qui ressemblerait à une vraie mesure.
+     */
+    private function presencesIndisponibles(): array
+    {
+        return [
+            'total' => null,
+            'total_present' => null,
+            'total_retard' => null,
+            'total_absent' => null,
+            'total_excuse' => null,
+            'attendance_rate' => null,
+        ];
     }
 }

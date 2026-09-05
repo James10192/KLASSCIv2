@@ -478,6 +478,11 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
         // Secrets d'integration. Liste blanche stricte cote controleur : ce
         // n'est PAS un ecrivain de .env generique, qui equivaudrait a une prise
         // de controle de l'instance par jeton. La valeur ne revient jamais.
+        // Le moteur de base : version, jeu de caracteres, reglages qui decident
+        // si une migration passe. Sans SSH, rien n exposait cette information, et
+        // elle a bloque une decision de schema.
+        Route::get('/moteur', [App\Http\Controllers\API\CLI\CLIMoteurController::class, 'index'])->name('moteur.index');
+
         Route::get('/env', [App\Http\Controllers\API\CLI\CLIEnvController::class, 'index'])->name('env.index');
         Route::post('/env', [App\Http\Controllers\API\CLI\CLIEnvController::class, 'store'])->name('env.store');
         Route::post('/permissions/sync', [App\Http\Controllers\API\CLI\CLIPermissionController::class, 'sync'])->name('permissions.sync');
@@ -510,6 +515,14 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
         Route::post('/pull', [App\Http\Controllers\API\CLI\CLIMaintenanceController::class, 'pull'])->name('pull');
         Route::post('/seed-demo', [App\Http\Controllers\API\CLI\CLIMaintenanceController::class, 'seedDemo'])->name('seed-demo');
         Route::post('/evaluations/sync-notes', [App\Http\Controllers\API\CLI\CLIMaintenanceController::class, 'evaluationsSyncNotes'])->name('evaluations.sync-notes');
+        // Deplacement de semestre decide par l'ecole, pas devine par le code :
+        // la liste d'evaluations voyage dans la requete. Simulation par defaut.
+        Route::post('/evaluations/deplacer-periode', [App\Http\Controllers\API\CLI\CLIEvaluationDeplacementController::class, 'deplacer'])
+            ->name('evaluations.deplacer-periode');
+        // Poser la note manquante aux eleves qu'une evaluation deja notee a
+        // oublies, pour que la matiere cesse de disparaitre de leur bulletin.
+        Route::post('/evaluations/noter-les-non-notes', [App\Http\Controllers\API\CLI\CLINotesZeroController::class, 'noter'])
+            ->name('evaluations.noter-les-non-notes');
         Route::post('/academic-pilotage/backfill', [App\Http\Controllers\API\CLI\CLIAcademicPilotageController::class, 'backfill'])
             ->name('academic-pilotage.backfill');
         Route::post('/academic-pilotage/refresh', [App\Http\Controllers\API\CLI\CLIAcademicPilotageController::class, 'refresh'])

@@ -1,0 +1,861 @@
+/* =============================================================
+   KLASSCI — Shell mobile généralisé (PWA) — préfixe `m-`
+   -------------------------------------------------------------
+   Remplace : public/css/mobile-student.css (absorbé ; les classes
+   `.stu-*` restent ici en ALIAS pour ne rien casser des vues étudiant
+   existantes). Doit être chargé APRÈS chatbot-widget.css et après le
+   style poussé par le composant x-fab-encaisser : il SURCHARGE leurs positions
+   sans les modifier.
+
+   Source de vérité : maquettes validées par le fondateur (klassci-mobile.html),
+   valeurs reprises à l'identique. Palette monochrome #0453cb, gradient
+   #0a3d8f -> #0453cb -> #3b7ddb, police Inter. Vert/orange/rouge réservés
+   au sens (validé / en attente / rejeté).
+
+   Découpage :
+     1. Socle global (toujours actif)          — color-scheme, x-cloak, dvh,
+                                                  bascule m-only-mobile / m-only-desktop,
+                                                  transitions de vue entre pages
+     2. Composants réutilisables (tous écrans) — m-sheet, m-scrim, m-toast,
+                                                  m-chip, m-btn, m-field, m-in
+     3. Shell mobile  @media (max-width: 991.98px)
+     3b. Layout sous 768px (body.has-m-shell)  — gouttières, navbar → app bar 56px
+     4. Variante tablette @media (768px – 991.98px) — rail latéral, gouttière 24px
+     5. Pile des flottants (fab / chatbot / toast) sous body.has-m-shell
+     6. Alias hérités `.stu-*` (mobile-student.css)
+
+   Mouvement (comme sur iOS) : courbe --m-ease-ios pour tout ce qui glisse
+   (feuille, pastille des onglets), ressort --m-ease-spring pour les retours
+   après un geste ; uniquement transform/opacity sur les éléments du shell,
+   jamais sur les cartes de contenu (règle universal-dropdowns).
+
+   Marqueurs attendus sur <body> (posés par le layout) :
+     .has-m-shell            le shell est actif (padding bas, police, flottants)
+     .m-profile-{caissier|comptable|etudiant|enseignant}  profil courant
+   ============================================================= */
+
+/* ---------- 1. Socle global ---------- */
+:root {
+    --m-font: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    --m-bg: #f4f6fb;
+    --m-line: #e6eaf2;
+    --m-ink: #0f172a;
+    --m-muted: #64748b;
+    --m-acc: #0453cb;
+    --m-nav-h: 78px;
+    --m-safe-b: env(safe-area-inset-bottom, 0px);
+    /* gouttière latérale du layout dans le shell (16 téléphone, 12 < 360, 24 tablette) */
+    --m-gut: 16px;
+    /* courbes iOS : glissement (feuille, pastille) et ressort (retour après un geste) */
+    --m-ease-ios: cubic-bezier(0.32, 0.72, 0, 1);
+    --m-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+    --m-sheet-ms: 420ms;
+    --m-spring-ms: 500ms;
+    --m-pill-ms: 480ms;
+    /* alias hérité (mobile-student.css) */
+    --stu-bottomnav-h: 58px;
+}
+
+html { color-scheme: light; }
+
+[x-cloak] { display: none !important; }
+
+/* Chrome du shell (onglets bas, rail) : invisible hors mobile/tablette —
+   le bureau ≥ 1024px garde sa barre latérale classique. */
+.m-bottomnav,
+.m-rail { display: none; }
+
+/* 100vh → 100dvh avec repli (barre d'adresse mobile). */
+.m-vh {
+    min-height: 100vh;
+    min-height: 100dvh;
+}
+
+/* Bascule de DOM : une page garde son DOM de bureau dans .m-only-desktop et
+   ajoute son DOM mobile dans .m-only-mobile (souvent .m-screen). Un seul des
+   deux est visible ; la frontière est 767.98px (le rail tablette conserve le
+   DOM de bureau). Un conteneur d'écran mobile est une grille verticale sans
+   marge propre : la gouttière est portée par le layout (--m-gut). */
+.m-only-mobile { display: none; }
+.m-only-desktop { display: block; }
+@media (max-width: 991.98px) {
+    .m-only-mobile { display: block !important; }
+    .m-only-desktop { display: none !important; }
+}
+
+/* Transitions de vue entre deux pages (Chrome 126+, Safari 18.2+ ; ignoré
+   ailleurs, sans erreur) : l'app bar (view-transition-name: m-appbar) et la
+   pastille des onglets (m-tab-pill) sont morphées d'un écran à l'autre, le
+   reste fond brièvement. Un seul élément par nom dans une page : le layout
+   ne rend qu'une .nextadmin-navbar et qu'une .m-bottomnav. Sur bureau
+   (≥ 992px) et avec prefers-reduced-motion, tout est immédiat. */
+@view-transition { navigation: auto; }
+::view-transition-old(root),
+::view-transition-new(root) { animation-duration: 200ms; }
+::view-transition-group(m-appbar),
+::view-transition-group(m-bottomnav),
+::view-transition-group(m-tab-pill) { animation-duration: var(--m-pill-ms); animation-timing-function: var(--m-ease-ios); }
+@media (min-width: 992px), (prefers-reduced-motion: reduce) {
+    ::view-transition-group(*),
+    ::view-transition-old(*),
+    ::view-transition-new(*) { animation: none !important; }
+}
+
+/* ---------- 2. Composants réutilisables (fonctionnent aussi ≥ 1024px) ---------- */
+.m-chip { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 999px; font-size: 10.5px; font-weight: 700; letter-spacing: .02em; white-space: nowrap; font-family: var(--m-font); }
+.m-chip.ok { background: #e6f6ef; color: #0f6b4c; }
+.m-chip.warn { background: #fff3df; color: #8a5200; }
+.m-chip.bad { background: #fdecea; color: #a12016; }
+.m-chip.info { background: rgba(4,83,203,.1); color: #0453cb; }
+.m-chip.mute { background: #eef2f7; color: #475569; }
+
+.m-btn { height: 48px; border-radius: 14px; border: 0; font: inherit; font-family: var(--m-font); font-weight: 700; font-size: 15px; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; width: 100%; text-decoration: none; -webkit-tap-highlight-color: transparent; transition: transform 120ms ease; }
+.m-btn.p { background: #0453cb; color: #fff; box-shadow: 0 6px 18px rgba(4,83,203,.28); }
+.m-btn.g { background: #fff; color: #0453cb; border: 1.5px solid #c7d7f3; }
+.m-btn.d { background: #fdecea; color: #a12016; }
+.m-btn:disabled { opacity: .6; cursor: wait; }
+.m-btn:active:not(:disabled) { transform: scale(.97); }
+.m-btn svg { width: 20px; height: 20px; }
+
+/* Retour au toucher (comme sur iOS) : léger rétrécissement, 120ms, sans halo
+   navigateur. Réservé aux commandes du shell (boutons, lignes-liens, onglets,
+   entrées de menu) : jamais sur une carte de contenu qui pourrait contenir un
+   menu déroulant Bootstrap (un transform, même fugace, en fausserait le calcul). */
+.m-menu a,
+.m-menu button,
+.m-seg button,
+.m-seg a,
+.m-days button,
+.m-days a,
+.m-opt label,
+.m-pad button,
+.m-tri button,
+.m-install .b,
+.m-install .x { -webkit-tap-highlight-color: transparent; transition: transform 120ms ease, background 120ms ease; }
+.m-menu a:active,
+.m-menu button:active,
+.m-seg button:active,
+.m-seg a:active,
+.m-days button:active,
+.m-days a:active,
+.m-pad button:active,
+.m-tri button:active,
+.m-install .b:active,
+.m-install .x:active { transform: scale(.97); }
+
+.m-field { display: grid; gap: 6px; font-family: var(--m-font); }
+.m-field label { font-size: 12px; font-weight: 700; color: #475569; letter-spacing: .04em; text-transform: uppercase; }
+.m-in { height: 48px; border: 1.5px solid #cbd5e1; border-radius: 12px; padding: 0 14px; display: flex; align-items: center; font-size: 15px; color: #0f172a; background: #fff; width: 100%; font-family: var(--m-font); }
+.m-in.ta { height: auto; min-height: 88px; align-items: flex-start; padding: 12px 14px; color: #0f172a; resize: vertical; }
+.m-in.ph, .m-in::placeholder { color: #94a3b8; }
+.m-in:focus { outline: none; border-color: #0453cb; box-shadow: 0 0 0 3px rgba(4,83,203,.12); }
+
+.m-menu { display: grid; gap: 2px; background: #fff; border: 1px solid #e6eaf2; border-radius: 14px; overflow: hidden; font-family: var(--m-font); }
+.m-menu a,
+.m-menu button { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center; padding: 13px 14px; min-height: 52px; text-decoration: none; color: #0f172a; font-weight: 600; font-size: 14.5px; border-bottom: 1px solid #eef2f7; background: transparent; border-left: 0; border-right: 0; border-top: 0; width: 100%; text-align: left; font-family: inherit; cursor: pointer; }
+.m-menu a:last-child,
+.m-menu button:last-child { border-bottom: 0; }
+.m-menu a svg,
+.m-menu button svg { width: 20px; height: 20px; color: #0453cb; }
+.m-menu a .ch,
+.m-menu button .ch { color: #94a3b8; }
+.m-menu a.on { background: rgba(4,83,203,.05); color: #0453cb; }
+.m-menu form { display: contents; }
+
+/* Scrim + feuille montante : fixes au viewport, au-dessus du chatbot (1090)
+   et sous son toast (1300). Repliés en modale centrée dès 768px.
+
+   Mouvement piloté par mobile-shell.js (Alpine mSheet) :
+     - la racine reçoit .is-open : le voile fond, le panneau glisse
+       (transform en ligne posé par Alpine, courbe --m-ease-ios, 420ms) ;
+     - pendant le glissé (.is-dragging) : aucune transition, le panneau suit
+       le doigt 1:1 et l'opacité du voile suit la progression ;
+     - au relâché sans fermeture : .is-spring, retour par ressort (500ms).
+   Uniquement transform et opacity : rien qui relayoute. Le panneau n'a pas
+   de transform de centrage sur bureau (inset + margin auto) pour laisser le
+   transform en ligne libre. */
+.m-sheet-root { position: fixed; inset: 0; z-index: 1095; font-family: var(--m-font); }
+.m-scrim { position: fixed; inset: 0; background: rgba(15,23,42,.45); z-index: 1095; opacity: 0; transition: opacity var(--m-sheet-ms) var(--m-ease-ios); will-change: opacity; }
+.m-sheet-root.is-open .m-scrim { opacity: 1; }
+.m-sheet-root.is-dragging .m-scrim { transition: none; }
+.m-sheet { position: fixed; left: 0; right: 0; bottom: 0; background: #fff; border-radius: 24px 24px 0 0; padding: 8px 16px calc(28px + var(--m-safe-b)); z-index: 1096; display: grid; gap: 12px; box-shadow: 0 -10px 40px rgba(15,23,42,.2); max-height: 92vh; max-height: 92dvh; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; font-family: var(--m-font); transform: translateY(100%); transition: transform var(--m-sheet-ms) var(--m-ease-ios); will-change: transform; }
+.m-sheet-root.is-open .m-sheet { transform: translateY(0); }
+.m-sheet.is-dragging { transition: none; }
+.m-sheet.is-spring { transition: transform var(--m-spring-ms) var(--m-ease-spring); }
+.m-sheet .handle { width: 40px; height: 5px; border-radius: 3px; background: #cbd5e1; margin: 2px auto 6px; }
+.m-sheet-drag { touch-action: none; cursor: grab; display: grid; gap: 12px; }
+.m-sheet h4 { margin: 0; font-size: 18px; font-weight: 800; letter-spacing: -.01em; color: #0f172a; }
+.m-sheet .sub { font-size: 13px; color: #64748b; margin-top: -8px; }
+.m-sheet-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 44px; }
+.m-sheet-head h4 { flex: 1; min-width: 0; }
+.m-sheet-close { width: 44px; height: 44px; flex: 0 0 44px; border: 0; background: transparent; border-radius: 12px; display: grid; place-items: center; color: #475569; cursor: pointer; margin-right: -8px; -webkit-tap-highlight-color: transparent; transition: transform 120ms ease; }
+.m-sheet-close:active { transform: scale(.94); }
+.m-sheet-close svg { width: 20px; height: 20px; }
+.m-sheet .m-menu:last-child { margin-bottom: 4px; }
+.m-sheet:focus { outline: none; }
+body.m-sheet-open { overflow: hidden; }
+
+@media (min-width: 768px) {
+    .m-sheet { left: 0; right: 0; top: 0; bottom: 0; margin: auto; width: 480px; max-width: calc(100vw - 32px); height: fit-content; border-radius: 20px; padding: 12px 22px 22px; transform: scale(.96); opacity: 0; transition: transform 260ms var(--m-ease-ios), opacity 260ms var(--m-ease-ios); }
+    .m-sheet-root.is-open .m-sheet { transform: none; opacity: 1; }
+    .m-sheet .handle { display: none; }
+    .m-sheet-drag { touch-action: auto; cursor: default; }
+}
+
+/* Toast sombre : au-dessus des onglets, sous la feuille. */
+.m-toast { position: fixed; left: 16px; right: 16px; bottom: calc(100px + var(--m-safe-b)); background: #0f172a; color: #fff; border-radius: 14px; padding: 12px 14px; font-size: 13.5px; font-weight: 600; display: flex; gap: 10px; align-items: center; z-index: 1094; box-shadow: 0 10px 30px rgba(15,23,42,.3); font-family: var(--m-font); animation: m-toast-in .22s cubic-bezier(.22,1,.36,1); }
+.m-toast svg { width: 18px; height: 18px; color: #34d399; flex: 0 0 18px; }
+.m-toast.error svg { color: #ff8a7a; }
+.m-toast.warning svg { color: #fbbf24; }
+.m-toast.info svg { color: #8db8f4; }
+.m-toast.is-leaving { opacity: 0; transform: translateY(8px); transition: opacity .2s ease, transform .2s ease; }
+@keyframes m-toast-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@media (min-width: 768px) {
+    .m-toast { left: auto; right: 24px; bottom: 24px; width: 360px; }
+}
+
+/* Bandeau hors-ligne (injecté par mobile-shell.js sous l'app bar). */
+.m-off { background: #fff3df; color: #8a5200; font-size: 12.5px; font-weight: 600; padding: 8px 14px; display: flex; gap: 8px; align-items: center; border-bottom: 1px solid #f4d9a6; font-family: var(--m-font); }
+.m-off svg { width: 16px; height: 16px; flex: 0 0 16px; }
+
+/* Invitation à installer (masquée tant que le navigateur ne le propose pas). */
+.m-install { background: #fff; border: 1px solid #e6eaf2; border-radius: 16px; padding: 12px; display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center; font-family: var(--m-font); }
+.m-install[hidden] { display: none; }
+.m-install .ico { width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, #0a3d8f, #0453cb 55%, #3b7ddb); }
+.m-install b { font-size: 14px; font-weight: 700; color: #0f172a; display: block; }
+.m-install span { font-size: 12px; color: #64748b; }
+.m-install .b { background: #0453cb; color: #fff; font-weight: 700; font-size: 13px; padding: 10px 14px; border-radius: 10px; min-height: 40px; display: grid; place-items: center; border: 0; font-family: inherit; cursor: pointer; }
+.m-install .x { width: 44px; height: 44px; border: 0; background: transparent; color: #94a3b8; border-radius: 10px; display: grid; place-items: center; cursor: pointer; }
+.m-install .x svg { width: 18px; height: 18px; }
+.m-install .acts { display: flex; align-items: center; gap: 4px; }
+
+/* Icônes SVG inline (composant x-m.icon). */
+.m-ic { width: 20px; height: 20px; flex: 0 0 auto; }
+
+/* ---------- 3. Shell mobile (≤ 991.98px) ---------- */
+@media (max-width: 991.98px) {
+    body.has-m-shell {
+        font-family: var(--m-font);
+        background: var(--m-bg);
+        padding-bottom: calc(var(--m-nav-h) + var(--m-safe-b));
+        -webkit-font-smoothing: antialiased;
+        overflow-x: hidden;
+    }
+
+    /* Conteneur d'un écran mobile : grille verticale sans marge propre (la
+       gouttière est celle du layout). Un .m-body dedans reste utilisable seul. */
+    .m-screen { display: grid; gap: 14px; padding: 0; min-width: 0; align-content: start; font-family: var(--m-font); }
+    .m-main { flex: 1; display: flex; flex-direction: column; min-width: 0; position: relative; }
+
+    .m-appbar { height: 56px; flex: 0 0 56px; display: flex; align-items: center; gap: 10px; padding: 0 8px 0 12px; padding-left: max(12px, env(safe-area-inset-left)); padding-right: max(8px, env(safe-area-inset-right)); background: #fff; border-bottom: 1px solid #e6eaf2; position: sticky; top: 0; z-index: 1020; font-family: var(--m-font); }
+    .m-appbar .t { flex: 1; font-weight: 700; font-size: 17px; color: #0f172a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+    .m-appbar .t small { display: block; font-size: 11.5px; font-weight: 500; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .m-ib { width: 44px; height: 44px; border: 0; background: transparent; border-radius: 12px; display: grid; place-items: center; color: #0453cb; flex: 0 0 44px; text-decoration: none; cursor: pointer; -webkit-tap-highlight-color: transparent; transition: transform 120ms ease, background 120ms ease; }
+    .m-ib.ghost { color: #475569; }
+    .m-ib svg { width: 22px; height: 22px; }
+    .m-ib:active { background: rgba(4,83,203,.08); transform: scale(.94); }
+
+    /* .m-body : position relative pour ancrer l'indicateur de rafraîchissement ;
+       padding propre hors layout (maquette) — remis à 0 dans .nextadmin-content. */
+    .m-body { position: relative; padding: 14px 16px 96px; display: grid; gap: 14px; align-content: start; font-family: var(--m-font); }
+
+    /* Barre d'onglets « verre » : fond translucide flouté, filet supérieur d'un
+       demi-pixel, zone sûre. La pastille .m-bottomnav-pill est l'unique
+       indicateur d'onglet actif : posée par le Blade (--m-pill-i / --m-pill-n)
+       sous l'onglet .on, elle GLISSE vers l'onglet touché (transform, courbe
+       iOS) avant que la navigation parte, puis est morphée d'une page à l'autre
+       par la transition de vue (view-transition-name: m-tab-pill). */
+    .m-bottomnav { position: fixed; left: 0; right: 0; bottom: 0; height: calc(var(--m-nav-h) + var(--m-safe-b)); padding: 6px 6px calc(18px + var(--m-safe-b)); background: rgba(255,255,255,.72); -webkit-backdrop-filter: blur(20px) saturate(180%); backdrop-filter: blur(20px) saturate(180%); border-top: .5px solid rgba(15,23,42,.12); display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; z-index: 1080; font-family: var(--m-font); view-transition-name: m-bottomnav; }
+    .m-bottomnav-pill { position: absolute; top: 8px; left: calc(6px + (var(--m-pill-i, 0) + .5) * ((100% - 12px) / var(--m-pill-n, 5)) - 32px); width: 64px; height: 44px; border-radius: 22px; background: rgba(4,83,203,.12); pointer-events: none; z-index: 0; transition: transform var(--m-pill-ms) var(--m-ease-ios), opacity 160ms ease; will-change: transform; view-transition-name: m-tab-pill; }
+    .m-bottomnav-pill.is-hidden { opacity: 0; }
+    .m-bottomnav a,
+    .m-bottomnav button { position: relative; z-index: 1; display: grid; justify-items: center; gap: 3px; text-decoration: none; color: #64748b; font-size: 10.5px; font-weight: 600; padding-top: 8px; border-radius: 12px; min-height: 44px; background: transparent; border: 0; font-family: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; line-height: 1.1; transition: color 200ms ease; }
+    .m-bottomnav a svg,
+    .m-bottomnav button svg { width: 24px; height: 24px; transition: transform 100ms ease; }
+    .m-bottomnav a:active svg,
+    .m-bottomnav button:active svg { transform: scale(.92); }
+    .m-bottomnav a.on,
+    .m-bottomnav button.on { color: #0453cb; }
+    .m-bottomnav a.on svg { filter: drop-shadow(0 0 0 #0453cb); }
+    .m-rail { display: none; }
+
+    .m-hero { background: linear-gradient(135deg, #0a3d8f 0%, #0453cb 45%, #3b7ddb 100%); color: #fff; border-radius: 16px; padding: 14px 16px; display: grid; gap: 8px; }
+    .m-hero .k { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; opacity: .75; font-weight: 600; }
+    .m-hero .v { font-size: 26px; font-weight: 800; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+    .m-hero .v small { font-size: 13px; font-weight: 600; opacity: .8; margin-left: 4px; }
+    .m-hero .row { display: flex; gap: 8px; flex-wrap: wrap; }
+    .m-hero .pill { background: rgba(255,255,255,.16); border: 1px solid rgba(255,255,255,.22); padding: 4px 10px; border-radius: 999px; font-size: 11.5px; font-weight: 600; }
+
+    .m-kpi { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .m-kpi > div,
+    .m-kpi > .m-kpi-link { text-decoration: none; background: #fff; border: 1px solid #e6eaf2; border-radius: 14px; padding: 12px 12px 10px; display: grid; gap: 2px; }
+    .m-kpi .v { font-size: 19px; font-weight: 800; letter-spacing: -.02em; color: #0f172a; font-variant-numeric: tabular-nums; }
+    .m-kpi .l { font-size: 11.5px; color: #64748b; font-weight: 500; }
+    .m-kpi .d { font-size: 11px; font-weight: 600; color: #0f6b4c; }
+    .m-kpi .d.warn { color: #8a5200; }
+    .m-kpi .d.bad { color: #a12016; }
+    .m-kpi .d.info { color: #0453cb; }
+    .m-kpi .d.mute { color: #64748b; }
+
+    .m-sec { display: flex; align-items: baseline; justify-content: space-between; margin-top: 4px; }
+    .m-sec b { font-size: 13px; font-weight: 700; color: #0f172a; letter-spacing: .02em; }
+    .m-sec a { font-size: 12.5px; color: #0453cb; font-weight: 600; text-decoration: none; }
+
+    .m-list { display: grid; gap: 8px; }
+    .m-row { background: #fff; border: 1px solid #e6eaf2; border-radius: 14px; padding: 12px; display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center; min-height: 64px; text-decoration: none; color: inherit; -webkit-tap-highlight-color: transparent; }
+    .m-row:active { background: #f8fafc; }
+    /* Rétrécissement au toucher seulement pour une ligne qui EST un lien ou un
+       bouton (elle ne peut pas contenir de menu déroulant). */
+    a.m-row,
+    button.m-row { transition: transform 120ms ease, background 120ms ease; }
+    a.m-row:active,
+    button.m-row:active { transform: scale(.97); }
+    .m-row .av { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; font-weight: 700; font-size: 13px; background: rgba(4,83,203,.1); color: #0453cb; }
+    .m-row .av.ic svg { width: 20px; height: 20px; }
+    .m-row .tt { display: grid; gap: 2px; min-width: 0; }
+    .m-row .tt b { font-weight: 600; font-size: 14.5px; color: #0f172a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .m-row .tt span { font-size: 12px; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .m-row .tr { display: grid; justify-items: end; gap: 4px; }
+    .m-row .amt { font-weight: 800; font-size: 14.5px; color: #0f172a; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+    .m-row .amt.neg { color: #b42318; }
+    .m-row .tr .ch { color: #94a3b8; }
+
+    .m-actionbar { position: fixed; left: 0; right: 0; bottom: calc(var(--m-nav-h) + var(--m-safe-b)); padding: 10px 16px 12px; background: linear-gradient(to top, rgba(244,246,251,1) 70%, rgba(244,246,251,0)); display: grid; gap: 8px; z-index: 1079; }
+    .m-actionbar.row { grid-template-columns: 1fr 1fr; }
+    body.has-m-shell:has(.m-actionbar) { padding-bottom: calc(var(--m-nav-h) + 78px + var(--m-safe-b)); }
+
+    .m-seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; background: #e9edf5; border-radius: 12px; padding: 3px; gap: 2px; }
+    .m-seg span,
+    .m-seg button,
+    .m-seg a { text-align: center; font-size: 12.5px; font-weight: 600; color: #475569; padding: 8px 4px; border-radius: 9px; min-height: 36px; display: grid; place-items: center; border: 0; background: transparent; font-family: inherit; text-decoration: none; cursor: pointer; }
+    .m-seg .on { background: #fff; color: #0453cb; box-shadow: 0 1px 3px rgba(15,23,42,.12); }
+
+    .m-search { display: flex; align-items: center; gap: 10px; background: #fff; border: 1px solid #e6eaf2; border-radius: 14px; padding: 0 14px; height: 48px; color: #94a3b8; font-size: 14.5px; }
+    .m-search svg { width: 20px; height: 20px; color: #64748b; flex: 0 0 20px; }
+    .m-search input { flex: 1; min-width: 0; border: 0; background: transparent; height: 100%; font: inherit; color: #0f172a; outline: none; }
+    .m-search input::placeholder { color: #94a3b8; }
+
+    .m-fab { position: fixed; right: 16px; bottom: calc(96px + var(--m-safe-b)); width: 56px; height: 56px; border-radius: 18px; background: #0453cb; color: #fff; display: grid; place-items: center; box-shadow: 0 10px 26px rgba(4,83,203,.4); z-index: 1081; border: 0; text-decoration: none; cursor: pointer; -webkit-tap-highlight-color: transparent; transition: transform 120ms ease, box-shadow 120ms ease; }
+    .m-fab:active { transform: scale(.94); box-shadow: 0 6px 16px rgba(4,83,203,.35); }
+    .m-fab svg { width: 26px; height: 26px; }
+    .m-fab.chat { bottom: calc(164px + var(--m-safe-b)); width: 44px; height: 44px; border-radius: 14px; background: #fff; color: #0453cb; box-shadow: 0 4px 14px rgba(15,23,42,.14); right: 22px; }
+
+    .m-up { border: 1.5px dashed #9fb8e6; border-radius: 14px; padding: 16px; display: grid; justify-items: center; gap: 6px; color: #0453cb; font-weight: 600; font-size: 13.5px; background: rgba(4,83,203,.04); }
+    .m-up svg { width: 26px; height: 26px; }
+    .m-step { display: flex; gap: 6px; }
+    .m-step i { flex: 1; height: 4px; border-radius: 2px; background: #dbe3f0; }
+    .m-step i.on { background: #0453cb; }
+    .m-big { font-size: 38px; font-weight: 800; letter-spacing: -.03em; color: #0f172a; text-align: center; font-variant-numeric: tabular-nums; }
+    .m-big small { font-size: 15px; color: #64748b; font-weight: 600; margin-left: 6px; letter-spacing: 0; }
+    .m-pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .m-pad span,
+    .m-pad button { height: 54px; background: #fff; border: 1px solid #e6eaf2; border-radius: 12px; display: grid; place-items: center; font-size: 22px; font-weight: 600; color: #0f172a; font-family: inherit; cursor: pointer; }
+    .m-pad .k { background: #eef2f7; font-size: 14px; }
+
+    .m-opt { display: grid; gap: 8px; }
+    .m-opt label { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center; background: #fff; border: 1.5px solid #e6eaf2; border-radius: 14px; padding: 12px; min-height: 56px; cursor: pointer; }
+    .m-opt label.on,
+    .m-opt label:has(input:checked) { border-color: #0453cb; background: rgba(4,83,203,.04); }
+    .m-opt .rd { width: 22px; height: 22px; border-radius: 50%; border: 2px solid #cbd5e1; }
+    .m-opt label.on .rd,
+    .m-opt label:has(input:checked) .rd { border: 7px solid #0453cb; }
+    .m-opt input[type="radio"],
+    .m-opt input[type="checkbox"] { position: absolute; opacity: 0; width: 1px; height: 1px; pointer-events: none; }
+    .m-opt b { font-weight: 600; font-size: 14.5px; }
+    .m-opt span { font-size: 12px; color: #64748b; display: block; }
+
+    .m-tri { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+    .m-tri span,
+    .m-tri button { height: 40px; border-radius: 10px; display: grid; place-items: center; font-size: 12px; font-weight: 700; background: #eef2f7; color: #475569; border: 0; font-family: inherit; cursor: pointer; }
+    .m-tri .p { background: #e6f6ef; color: #0f6b4c; }
+    .m-tri .r { background: #fff3df; color: #8a5200; }
+    .m-tri .a { background: #fdecea; color: #a12016; }
+    .m-tri .off { opacity: .45; }
+
+    .m-sticky { position: sticky; top: 56px; z-index: 2; background: #f4f6fb; margin: -14px -16px 0; padding: 10px 16px 8px; }
+
+    .m-day { display: grid; grid-template-columns: 52px 1fr; gap: 10px; align-items: stretch; }
+    .m-day .h { font-size: 12px; font-weight: 700; color: #64748b; text-align: right; padding-top: 10px; font-variant-numeric: tabular-nums; }
+    .m-day .c { background: #fff; border: 1px solid #e6eaf2; border-left: 4px solid #0453cb; border-radius: 12px; padding: 10px 12px; display: grid; gap: 2px; }
+    .m-day .c b { font-size: 14px; font-weight: 700; color: #0f172a; }
+    .m-day .c span { font-size: 12px; color: #64748b; }
+    .m-days { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 6px; }
+    .m-days span,
+    .m-days button,
+    .m-days a { display: grid; justify-items: center; gap: 2px; padding: 8px 0; border-radius: 12px; font-size: 11px; font-weight: 600; color: #64748b; background: #fff; border: 1px solid #e6eaf2; font-family: inherit; text-decoration: none; cursor: pointer; min-height: 44px; }
+    .m-days b { font-size: 15px; color: #0f172a; }
+    .m-days .on { background: #0453cb; border-color: #0453cb; color: rgba(255,255,255,.75); }
+    .m-days .on b { color: #fff; }
+
+    .m-grade { display: grid; grid-template-columns: 1fr auto; gap: 10px; background: #fff; border: 1px solid #e6eaf2; border-radius: 14px; padding: 12px; }
+    .m-grade b { font-size: 14px; font-weight: 600; color: #0f172a; }
+    .m-grade span { font-size: 12px; color: #64748b; display: block; }
+    .m-grade .n { font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; color: #0453cb; align-self: center; }
+    .m-grade .n small { font-size: 12px; color: #64748b; font-weight: 600; }
+    .m-bar { height: 8px; background: #e9edf5; border-radius: 4px; overflow: hidden; }
+    .m-bar i { display: block; height: 100%; background: #0453cb; border-radius: 4px; }
+    .m-bar i.ok { background: #10b981; }
+    .m-bar i.warn { background: #f59e0b; }
+
+    .m-note { background: #fff; border: 1px solid #e6eaf2; border-radius: 14px; padding: 12px; display: grid; grid-template-columns: 44px 1fr auto; gap: 12px; align-items: center; }
+    .m-note .av { width: 44px; height: 44px; border-radius: 14px; background: rgba(4,83,203,.1); color: #0453cb; display: grid; place-items: center; font-weight: 700; }
+    .m-note .nm { font-weight: 600; font-size: 14.5px; color: #0f172a; }
+    .m-note .mt { font-size: 11.5px; color: #64748b; }
+    .m-note .in { width: 78px; height: 44px; border: 1.5px solid #0453cb; border-radius: 12px; display: grid; place-items: center; font-size: 18px; font-weight: 800; color: #0f172a; font-variant-numeric: tabular-nums; background: #fff; text-align: center; font-family: inherit; padding: 0; }
+    .m-note .in.ph,
+    .m-note .in:placeholder-shown { border-color: #cbd5e1; color: #94a3b8; font-weight: 600; }
+
+    .m-empty { display: grid; justify-items: center; gap: 8px; padding: 28px 16px; text-align: center; color: #64748b; font-size: 13.5px; }
+    .m-empty svg { width: 40px; height: 40px; color: #9fb8e6; }
+    .m-empty b { color: #0f172a; font-size: 15px; }
+
+    .m-skel { display: grid; gap: 8px; }
+    .m-skel i { display: block; height: 64px; border-radius: 14px; background: linear-gradient(90deg, #e9edf5 25%, #f4f6fb 50%, #e9edf5 75%); background-size: 200% 100%; animation: m-shimmer 1.2s infinite; }
+    /* Tirer-pour-rafraîchir (mobile-shell.js) : le contenu suit le doigt avec
+       une résistance progressive — les enfants directs du .m-body sont
+       translatés (--m-ptr-y), sauf ceux qui sont fixés au viewport ; rien qui
+       relayoute. L'indicateur est hors flux (absolu, hauteur nulle : il ne
+       consomme pas d'interligne de la grille) et descend avec le contenu ;
+       sa flèche tourne avec la progression (--m-ptr-p) puis tourne en spinner. */
+    .m-ptr { position: absolute; top: 0; left: 0; right: 0; height: 0; margin: 0; overflow: visible; pointer-events: none; z-index: 1; }
+    .m-ptr .m-ptr-ind { position: absolute; left: 50%; top: -50px; transform: translateX(-50%); display: flex; align-items: center; gap: 6px; height: 40px; padding: 0 12px; border-radius: 20px; background: #fff; border: 1px solid #e6eaf2; box-shadow: 0 4px 14px rgba(15,23,42,.08); color: #64748b; font-size: 12px; font-weight: 600; white-space: nowrap; opacity: 0; transition: opacity 120ms ease; }
+    .m-ptr.is-visible .m-ptr-ind { opacity: 1; }
+    .m-ptr svg { width: 18px; height: 18px; color: #0453cb; transform: rotate(calc(var(--m-ptr-p, 0) * 180deg)); }
+    .m-ptr.is-loading svg { animation: m-spin .8s linear infinite; }
+    .m-body.is-pulling > *,
+    .m-body.is-settling > * { transform: translateY(var(--m-ptr-y, 0px)); }
+    .m-body.is-settling > * { transition: transform 450ms var(--m-ease-spring); }
+    .m-body.is-pulling > .m-actionbar,
+    .m-body.is-settling > .m-actionbar,
+    .m-body.is-pulling > .m-fab,
+    .m-body.is-settling > .m-fab,
+    .m-body.is-pulling > .m-toast,
+    .m-body.is-settling > .m-toast { transform: none; transition: none; }
+
+    .m-recu { background: #fff; border-radius: 16px; padding: 18px 16px; display: grid; gap: 10px; border: 1px solid #e6eaf2; }
+    .m-recu .hd { text-align: center; display: grid; gap: 2px; }
+    .m-recu .hd b { font-size: 15px; font-weight: 800; color: #0f172a; }
+    .m-recu .hd span { font-size: 11.5px; color: #64748b; }
+    .m-recu dl { margin: 0; display: grid; grid-template-columns: 1fr auto; gap: 6px 12px; font-size: 13.5px; }
+    .m-recu dt { color: #64748b; }
+    .m-recu dd { margin: 0; font-weight: 600; text-align: right; color: #0f172a; font-variant-numeric: tabular-nums; }
+    .m-recu .tot { border-top: 1px dashed #cbd5e1; padding-top: 10px; display: flex; justify-content: space-between; font-weight: 800; font-size: 16px; }
+    .m-recu .qr { width: 84px; height: 84px; margin: 4px auto 0; border-radius: 6px; }
+    .m-recu .qr img,
+    .m-recu .qr svg { width: 100%; height: 100%; display: block; }
+
+    .m-chart { background: #fff; border: 1px solid #e6eaf2; border-radius: 14px; padding: 12px; display: grid; gap: 8px; }
+    .m-chart b { font-size: 13px; font-weight: 700; color: #0f172a; }
+    .m-chart svg,
+    .m-chart canvas { width: 100%; height: 110px; }
+
+    .m-code { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
+    .m-code span,
+    .m-code input { height: 56px; border: 1.5px solid #cbd5e1; border-radius: 12px; display: grid; place-items: center; font-size: 24px; font-weight: 800; color: #0f172a; background: #fff; font-variant-numeric: tabular-nums; text-align: center; padding: 0; width: 100%; font-family: inherit; }
+    .m-code .on,
+    .m-code input:focus { border-color: #0453cb; outline: none; }
+
+    .m-cnt { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+    .m-cnt > div { background: #fff; border: 1px solid #e6eaf2; border-radius: 12px; padding: 8px 6px; text-align: center; }
+    .m-cnt b { display: block; font-size: 18px; font-weight: 800; font-variant-numeric: tabular-nums; color: #0f172a; }
+    .m-cnt span { font-size: 10.5px; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+    .m-cnt .p b { color: #0f6b4c; }
+    .m-cnt .r b { color: #8a5200; }
+    .m-cnt .a b { color: #a12016; }
+
+    .m-sw { display: grid; grid-template-columns: 1fr 44px 1fr; gap: 6px; align-items: center; font-size: 12px; color: #64748b; }
+    .m-sw .lft { text-align: right; color: #0f6b4c; font-weight: 700; }
+    .m-sw .rgt { color: #a12016; font-weight: 700; }
+    .m-sw svg { width: 20px; height: 20px; justify-self: center; color: #94a3b8; }
+
+    .m-dl { display: grid; grid-template-columns: 1fr auto; gap: 8px 12px; font-size: 13.5px; background: #fff; border: 1px solid #e6eaf2; border-radius: 14px; padding: 12px; margin: 0; }
+    .m-dl dt { color: #64748b; }
+    .m-dl dd { margin: 0; font-weight: 600; text-align: right; color: #0f172a; font-variant-numeric: tabular-nums; }
+
+    .m-bill { display: grid; grid-template-columns: auto 1fr auto auto; gap: 10px; align-items: center; background: #fff; border: 1px solid #e6eaf2; border-radius: 12px; padding: 10px 12px; font-size: 13.5px; }
+    .m-bill b { font-weight: 700; font-variant-numeric: tabular-nums; }
+    .m-bill .cnt { width: 64px; height: 40px; border: 1.5px solid #cbd5e1; border-radius: 10px; display: grid; place-items: center; font-weight: 700; font-variant-numeric: tabular-nums; text-align: center; padding: 0; font-family: inherit; }
+    .m-bill .sum { color: #64748b; font-size: 12px; font-variant-numeric: tabular-nums; min-width: 74px; text-align: right; }
+
+    /* Grille 2 colonnes (nommée m-two : `.m-2` est une utilitaire de marge Bootstrap). */
+    .m-two { display: grid; gap: 14px; }
+
+    /* Cibles tactiles : jamais sous 44px dans le shell. */
+    body.has-m-shell .btn-acasi,
+    body.has-m-shell .quick-action-card,
+    body.has-m-shell .btn { min-height: 44px; }
+
+    /* Anti-overflow horizontal global. */
+    body.has-m-shell img,
+    body.has-m-shell video,
+    body.has-m-shell canvas,
+    body.has-m-shell svg { max-width: 100%; height: auto; }
+    body.has-m-shell pre,
+    body.has-m-shell code { max-width: 100%; white-space: pre-wrap; word-break: break-word; }
+    body.has-m-shell table { max-width: 100%; }
+    body.has-m-shell .table-responsive { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    body.has-m-shell .navbar,
+    body.has-m-shell .topbar,
+    body.has-m-shell header.app-header { padding-left: max(.75rem, env(safe-area-inset-left)); padding-right: max(.75rem, env(safe-area-inset-right)); }
+}
+
+@keyframes m-shimmer { to { background-position: -200% 0; } }
+@keyframes m-spin { to { transform: rotate(360deg); } }
+
+/* ---------- 3b. Layout sous 768px, utilisateurs profilés (body.has-m-shell) ----------
+   Gouttières : la chaîne de bureau empile .nextadmin-content (16px) puis
+   .dashboard-acasi > .main-content (24px, dashboard-moderne.css:127) — 40px
+   par côté sur un 390px, le contenu n'occupait que 79 % de la largeur. Ici un
+   seul conteneur porte la gouttière (--m-gut : 16px, 12px sous 360px) et
+   aucun intermédiaire n'ajoute la sienne ; les cartes prennent toute la
+   largeur utile. Les pages sans profil (superAdmin sans profil forcé,
+   secrétaire) ne portent pas .has-m-shell : rien ne change pour elles.
+
+   Navbar : .nextadmin-navbar (70px, 5 boutons) devient une app bar de 56px —
+   menu à gauche (#sidebar-toggle, son JS d'ouverture du tiroir est conservé),
+   logo + nom court de l'école au centre, cloche + avatar à droite ; le reste
+   (recherche, messages, actions rapides, profil) passe dans la feuille
+   m-navbar-plus rendue par le layout. Fond opaque, sans backdrop-filter :
+   la cloche est un menu Bootstrap en stratégie fixed (universal-dropdowns).
+   Seuls le badge d'établissement (aucun menu dedans) et les boutons pressés
+   portent un transform. */
+@media (max-width: 767.98px) {
+    body.has-m-shell .nextadmin-content { padding: var(--m-gut); padding-left: max(var(--m-gut), env(safe-area-inset-left)); padding-right: max(var(--m-gut), env(safe-area-inset-right)); }
+    body.has-m-shell .nextadmin-content > .container-fluid,
+    body.has-m-shell .nextadmin-content > .container { padding-left: 0; padding-right: 0; max-width: none; width: auto; }
+    body.has-m-shell .nextadmin-content .dashboard-acasi { min-height: 0; }
+    body.has-m-shell .nextadmin-content .dashboard-acasi > .main-content { padding: 0; overflow: visible; }
+    body.has-m-shell .nextadmin-content .main-card,
+    body.has-m-shell .nextadmin-content .stat-card { margin-left: 0; margin-right: 0; max-width: 100%; }
+    body.has-m-shell .nextadmin-content .alert { margin-left: 0; margin-right: 0; }
+
+    /* Écran mobile dans le layout : le .m-body ne rajoute pas de marge, l'app
+       bar de page se colle sous la navbar (56px) en pleine largeur, le bandeau
+       .m-sticky se cale sous l'une ou l'autre. */
+    body.has-m-shell .nextadmin-content .m-body { padding: 0; }
+    body.has-m-shell .nextadmin-content .m-appbar { position: sticky; top: 56px; margin: calc(-1 * var(--m-gut)) calc(-1 * var(--m-gut)) 0; z-index: 1019; }
+    body.has-m-shell .nextadmin-content .m-sticky { top: 56px; margin: 0 calc(-1 * var(--m-gut)); padding: 8px var(--m-gut); }
+    body.has-m-shell:has(.nextadmin-content .m-appbar) .nextadmin-content .m-sticky { top: 112px; }
+    body.has-m-shell:has(.nextadmin-content .m-appbar) .nextadmin-navbar { border-bottom-color: transparent; }
+
+    /* Navbar → app bar 56px */
+    body.has-m-shell .nextadmin-navbar { height: 56px; min-height: 56px; padding: 0 8px 0 4px; padding-left: max(4px, env(safe-area-inset-left)); padding-right: max(8px, env(safe-area-inset-right)); background: #fff; border-bottom: .5px solid rgba(15,23,42,.12); box-shadow: none; z-index: 1020; font-family: var(--m-font); view-transition-name: m-appbar; }
+    body.has-m-shell .nextadmin-navbar .navbar-content { position: relative; height: 56px; display: flex; align-items: center; justify-content: space-between; gap: 0; }
+    body.has-m-shell .nextadmin-navbar .navbar-left { gap: 0; flex: 0 0 auto; }
+    body.has-m-shell .nextadmin-navbar #sidebar-toggle { width: 44px; height: 44px; padding: 0 !important; border-radius: 12px !important; color: #0f172a !important; font-size: 20px !important; display: grid; place-items: center; box-shadow: none !important; -webkit-tap-highlight-color: transparent; transition: transform 120ms ease, background 120ms ease !important; }
+    body.has-m-shell .nextadmin-navbar #sidebar-toggle:hover { transform: none; background: transparent !important; }
+    body.has-m-shell .nextadmin-navbar #sidebar-toggle:active { transform: scale(.94); background: rgba(4,83,203,.08) !important; }
+    body.has-m-shell .nextadmin-navbar #sidebar-toggle:focus { box-shadow: none !important; }
+    body.has-m-shell .nextadmin-navbar #sidebar-toggle:focus-visible { box-shadow: 0 0 0 3px rgba(4,83,203,.2) !important; }
+
+    /* Badge d'établissement centré : tuile 32px + nom court (la ville disparaît).
+       Largeur bornée par le plus large des deux côtés (droite : 8 + 44 + 4 + 44). */
+    body.has-m-shell .nextadmin-navbar .etb-badge { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); max-width: calc(100% - 208px); margin: 0; padding: 0; gap: 8px; background: transparent; border: 0; box-shadow: none; }
+    /* La barre latérale étant un tiroir fermé sur mobile, la marque KLASSCI passe
+       en tête du badge : tuile logo + nom de l'application, l'établissement en
+       seconde ligne (le logo d'école .etb-media s'efface, il revient au tiroir). */
+    body.has-m-shell .nextadmin-navbar .etb-marque { display: grid; place-items: center; width: 32px; height: 32px; flex: 0 0 32px; border-radius: 9px; background: linear-gradient(135deg, #0453cb, #3b7ddb); box-shadow: 0 2px 8px rgba(4,83,203,.22); }
+    body.has-m-shell .nextadmin-navbar .etb-marque img { width: 22px; height: 22px; object-fit: contain; display: block; }
+    body.has-m-shell .nextadmin-navbar .etb-media { display: none; }
+    body.has-m-shell .nextadmin-navbar .etb-texte { display: flex; line-height: 1.15; }
+    body.has-m-shell .nextadmin-navbar .etb-app { display: block; font-size: 15px; font-weight: 800; letter-spacing: -.02em; color: #0f172a; white-space: nowrap; }
+    body.has-m-shell .nextadmin-navbar .etb-nom { font-size: 11px; font-weight: 600; color: #64748b; letter-spacing: 0; }
+    body.has-m-shell .nextadmin-navbar .etb-ville { display: none; }
+
+    /* Droite : cloche (menu Bootstrap conservé) + avatar (ouvre la feuille) */
+    body.has-m-shell .nextadmin-navbar .navbar-right { gap: 4px; margin-left: auto; }
+    body.has-m-shell .nextadmin-navbar .navbar-right [data-mnb="desktop"] { display: none; }
+    body.has-m-shell .nextadmin-navbar .navbar-right .btn-acasi.icon-only { width: 44px; height: 44px; padding: 0; border: 0; border-radius: 12px; background: transparent; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; color: #0f172a; font-size: 20px; -webkit-tap-highlight-color: transparent; transition: transform 120ms ease, background 120ms ease; }
+    body.has-m-shell .nextadmin-navbar .navbar-right .btn-acasi.icon-only:hover { transform: none; background: transparent; box-shadow: none; border-color: transparent; }
+    body.has-m-shell .nextadmin-navbar .navbar-right .btn-acasi.icon-only:active { transform: scale(.94); background: rgba(4,83,203,.08); }
+    body.has-m-shell .nextadmin-navbar .navbar-right .navbar-badge { top: 3px; right: 3px; min-width: 18px; height: 18px; line-height: 14px; font-size: 10px; animation: none; box-shadow: none; }
+    body.has-m-shell .mnb-avatar { display: grid; place-items: center; width: 44px; height: 44px; flex: 0 0 44px; padding: 0; border: 0; background: transparent; border-radius: 12px; cursor: pointer; -webkit-tap-highlight-color: transparent; transition: transform 120ms ease, background 120ms ease; }
+    body.has-m-shell .mnb-avatar:active { transform: scale(.94); background: rgba(4,83,203,.08); }
+    body.has-m-shell .mnb-avatar .navbar-avatar { width: 32px; height: 32px; border-width: 1.5px; }
+    body.has-m-shell .mnb-avatar .navbar-avatar .user-avatar { font-size: 13px; }
+
+    /* Feuille m-navbar-plus : recherche, actions rapides (grille du menu de
+       bureau adoptée à l'ouverture), messages, profil. */
+    .m-sheet .mnb-actions .quick-actions-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 0; margin: 0; min-width: 0; width: auto; }
+    .m-sheet .mnb-actions .quick-actions-grid .quick-action-item { display: flex !important; flex-direction: row !important; align-items: center !important; gap: 10px; padding: 10px 12px !important; min-height: 56px; border-radius: 14px !important; background: #fff !important; border: 1px solid #e6eaf2 !important; box-shadow: none !important; color: #0f172a !important; text-decoration: none !important; -webkit-tap-highlight-color: transparent; transition: transform 120ms ease !important; }
+    .m-sheet .mnb-actions .quick-actions-grid .quick-action-item:active { transform: scale(.97); }
+    .m-sheet .mnb-actions .quick-action-icon { width: 36px; height: 36px; margin: 0; border-radius: 10px; flex: 0 0 36px; }
+    .m-sheet .mnb-actions .quick-action-text { font-size: 13px; font-weight: 600; text-align: left; max-width: none; white-space: normal; line-height: 1.2; }
+    .m-sheet .mnb-actions .dropdown-empty { grid-column: 1 / -1; padding: 12px; font-size: 13px; }
+    .m-sheet .mnb-actions:empty,
+    .m-sheet .mnb-actions-title:has(+ .mnb-actions:empty) { display: none; }
+    .m-sheet .m-search { height: 48px; }
+}
+
+@media (max-width: 359.98px) {
+    body.has-m-shell { --m-gut: 12px; }
+    body.has-m-shell .nextadmin-navbar .etb-badge { max-width: calc(100% - 200px); }
+}
+
+.mnb-avatar { display: none; }
+
+/* ---------- 4. Variante tablette (768px – 991.98px) : rail latéral, nav bas masquée ---------- */
+@media (min-width: 768px) and (max-width: 991.98px) {
+    body.has-m-shell { padding-bottom: 0; }
+    body.has-m-shell:has(.m-rail) { padding-left: 92px; }
+    body.has-m-shell:has(.m-actionbar) { padding-bottom: 110px; }
+
+    /* Gouttière tablette : 24px portés par .nextadmin-content, rien d'autre. */
+    body.has-m-shell { --m-gut: 24px; }
+    body.has-m-shell .nextadmin-content { padding: var(--m-gut); }
+    body.has-m-shell .nextadmin-content > .container-fluid,
+    body.has-m-shell .nextadmin-content > .container { padding-left: 0; padding-right: 0; max-width: none; width: auto; }
+    body.has-m-shell .nextadmin-content .dashboard-acasi { min-height: 0; }
+    body.has-m-shell .nextadmin-content .dashboard-acasi > .main-content { padding: 0; overflow: visible; }
+
+    .m-rail { display: grid; grid-template-rows: auto 1fr; position: fixed; top: 0; bottom: 0; left: 0; width: 92px; background: #fff; border-right: 1px solid #e6eaf2; padding: 10px 8px; gap: 14px; align-content: start; z-index: 1080; font-family: var(--m-font); overflow-y: auto; }
+    .m-rail .logo { width: 40px; height: 40px; border-radius: 12px; background: linear-gradient(135deg, #0a3d8f, #0453cb 55%, #3b7ddb); margin: 4px auto 2px; display: grid; place-items: center; color: #fff; font-weight: 800; font-size: 15px; }
+    .m-rail .logo img { width: 26px; height: 26px; object-fit: contain; display: block; }
+
+    /* Barre du haut tablette : même badge que sur téléphone, KLASSCI en tête et
+       l'école en seconde ligne (nextadmin.css masque le texte sous 992 px). */
+    body.has-m-shell .nextadmin-navbar .etb-badge { gap: 10px; }
+    body.has-m-shell .nextadmin-navbar .etb-marque { display: grid; place-items: center; width: 36px; height: 36px; flex: 0 0 36px; border-radius: 10px; background: linear-gradient(135deg, #0453cb, #3b7ddb); box-shadow: 0 2px 8px rgba(4,83,203,.22); }
+    body.has-m-shell .nextadmin-navbar .etb-marque img { width: 24px; height: 24px; object-fit: contain; display: block; }
+    body.has-m-shell .nextadmin-navbar .etb-media { display: none; }
+    body.has-m-shell .nextadmin-navbar .etb-texte { display: flex; line-height: 1.15; }
+    body.has-m-shell .nextadmin-navbar .etb-app { display: block; font-size: 16px; font-weight: 800; letter-spacing: -.02em; color: #0f172a; white-space: nowrap; }
+    body.has-m-shell .nextadmin-navbar .etb-nom { font-size: 11.5px; font-weight: 600; color: #64748b; }
+    body.has-m-shell .nextadmin-navbar .etb-ville { display: none; }
+    .m-rail nav { display: grid; gap: 4px; align-content: start; }
+    .m-rail a,
+    .m-rail button { display: grid; justify-items: center; gap: 4px; padding: 10px 4px; border-radius: 12px; text-decoration: none; color: #64748b; font-size: 10.5px; font-weight: 600; min-height: 56px; background: transparent; border: 0; font-family: inherit; cursor: pointer; text-align: center; line-height: 1.1; }
+    .m-rail a svg,
+    .m-rail button svg { width: 22px; height: 22px; }
+    .m-rail a.on,
+    .m-rail button.on { background: rgba(4,83,203,.1); color: #0453cb; }
+    .m-rail a.on i { display: none; }
+    .m-main { flex: 1; display: flex; flex-direction: column; min-width: 0; position: relative; }
+    .m-bottomnav { display: none; }
+    .m-appbar { height: 60px; flex-basis: 60px; padding: 0 16px 0 20px; }
+    .m-appbar .t { font-size: 19px; }
+    .m-body { padding: 20px 24px 110px; gap: 16px; }
+    body.has-m-shell .nextadmin-content .m-body { padding: 0; }
+    .m-screen { gap: 16px; }
+    .m-kpi { grid-template-columns: repeat(4, 1fr); }
+    .m-list { grid-template-columns: 1fr 1fr; }
+    .m-list.one { grid-template-columns: 1fr; }
+    .m-hero { padding: 18px 22px; }
+    .m-hero .v { font-size: 32px; }
+    .m-actionbar { bottom: 0; padding: 14px 24px 20px; left: 92px; }
+    body.has-m-shell:not(:has(.m-rail)) .m-actionbar { left: 0; }
+    .m-fab { bottom: 24px; right: 24px; }
+    .m-fab.chat { bottom: 96px; right: 30px; }
+    .m-two { grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+    .m-pad { max-width: 360px; margin: 0 auto; }
+    .m-cnt { max-width: 520px; }
+    .m-recu { max-width: 440px; margin: 0 auto; }
+    .m-day { grid-template-columns: 64px 1fr; }
+    .m-sticky { top: 60px; }
+}
+
+/* ---------- 5. Pile des flottants sous body.has-m-shell ----------
+   Ordre du bas vers le haut (mobile) :
+     nav bas 78px  →  FAB principal (m-fab / #fab-encaisser) bas 96px
+                   →  chatbot (.chatbot-widget, 44px) bas 164px
+                   →  toast chatbot (.chatbot-toast) au-dessus de la nav.
+   Spécificité volontairement forte (html body.…) : le style poussé par
+   <x-fab-encaisser> et chatbot-widget.css utilisent !important. */
+@media (max-width: 991.98px) {
+    html body.has-m-shell .fab-encaisser,
+    html body.has-m-shell #fab-encaisser {
+        bottom: calc(96px + var(--m-safe-b)) !important;
+        right: 16px !important;
+        z-index: 1081 !important;
+        animation: none;
+    }
+    html body.has-m-shell .chatbot-widget {
+        bottom: calc(164px + var(--m-safe-b)) !important;
+        right: 22px !important;
+        z-index: 1090;
+    }
+    html body.has-m-shell .chatbot-widget .chatbot-toggle {
+        width: 44px !important;
+        height: 44px !important;
+        border-radius: 14px !important;
+        box-shadow: 0 4px 14px rgba(15,23,42,.14);
+    }
+    html body.has-m-shell .chatbot-toast {
+        bottom: calc(var(--m-nav-h) + 22px + var(--m-safe-b)) !important;
+        left: 16px;
+        right: 16px;
+        max-width: none;
+    }
+    /* Un seul FAB principal : si le composant x-fab-encaisser est présent, le m-fab de la page s'efface. */
+    html body.has-m-shell:has(#fab-encaisser) .m-fab:not(.chat) { display: none; }
+}
+
+@media (min-width: 768px) and (max-width: 991.98px) {
+    html body.has-m-shell .fab-encaisser,
+    html body.has-m-shell #fab-encaisser { bottom: 24px !important; right: 24px !important; }
+    html body.has-m-shell .chatbot-widget { bottom: 96px !important; right: 30px !important; }
+    html body.has-m-shell .chatbot-toast { bottom: 160px !important; left: auto; right: 24px; max-width: 340px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    :root { --m-sheet-ms: 0ms; --m-spring-ms: 0ms; --m-pill-ms: 0ms; }
+    .m-sheet, .m-scrim, .m-toast, .m-skel i, .m-ptr svg, .m-bottomnav-pill, .m-bottomnav a svg, .m-bottomnav button svg,
+    .m-body.is-settling > * { animation: none !important; transition: none !important; }
+}
+
+@media print {
+    .m-bottomnav, .m-rail, .m-fab, .m-actionbar, .m-toast, .m-sheet-root, .m-off, .m-install { display: none !important; }
+}
+
+/* ---------- 6. Alias hérités `.stu-*` (mobile-student.css, conservés tels quels) ----------
+   Les vues étudiant existantes (dashboard, EDT mobile, mes-paiements, paywall)
+   les utilisent encore. À migrer vers `m-*` page par page. */
+
+.stu-bottomnav { display: none; }
+
+@media (max-width: 767.98px) {
+    .stu-bottomnav {
+        display: flex;
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 1080;
+        align-items: stretch;
+        justify-content: space-around;
+        background: #ffffff;
+        border-top: 1px solid #e2e8f0;
+        box-shadow: 0 -4px 18px rgba(15, 23, 42, .08), 0 -1px 4px rgba(15, 23, 42, .04);
+        padding-bottom: env(safe-area-inset-bottom, 0px);
+        min-height: var(--stu-bottomnav-h);
+    }
+    .stu-bottomnav__item {
+        flex: 1 1 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 3px;
+        min-height: var(--stu-bottomnav-h);
+        padding: 6px 2px;
+        color: #64748b;
+        text-decoration: none;
+        font-size: .65rem;
+        font-weight: 600;
+        line-height: 1.1;
+        text-align: center;
+        background: none;
+        border: none;
+        transition: color .15s ease;
+        -webkit-tap-highlight-color: transparent;
+    }
+    .stu-bottomnav__item i { font-size: 1.18rem; line-height: 1; }
+    .stu-bottomnav__item:hover,
+    .stu-bottomnav__item:focus,
+    .stu-bottomnav__item.is-active { color: #0453cb; }
+    .stu-bottomnav__item.is-active i { transform: translateY(-1px); }
+
+    /* Réserve l'espace bas (ancien marqueur has-stu-bottomnav, gardé en alias). */
+    body.has-stu-bottomnav:not(.has-m-shell) .main-content,
+    body.has-stu-bottomnav:not(.has-m-shell) .dashboard-acasi,
+    body.has-stu-bottomnav:not(.has-m-shell) main,
+    body.has-stu-bottomnav:not(.has-m-shell) .content-wrapper {
+        padding-bottom: calc(var(--stu-bottomnav-h) + env(safe-area-inset-bottom, 0px) + 16px) !important;
+    }
+    body.has-stu-bottomnav:not(.has-m-shell) .chatbot-widget {
+        bottom: calc(var(--stu-bottomnav-h) + env(safe-area-inset-bottom, 0px) + 12px) !important;
+    }
+    body.has-stu-bottomnav:not(.has-m-shell):has(#fab-encaisser) .chatbot-widget {
+        bottom: calc(var(--stu-bottomnav-h) + env(safe-area-inset-bottom, 0px) + 96px) !important;
+    }
+}
+
+/* Utilitaires affichage mobile (hérités). */
+.show-mobile { display: none; }
+@media (max-width: 767.98px) {
+    .hide-mobile { display: none !important; }
+    .show-mobile { display: initial; }
+
+    img, video, canvas, svg { max-width: 100%; height: auto; }
+    pre, code { max-width: 100%; white-space: pre-wrap; word-break: break-word; }
+    table { max-width: 100%; }
+    .table-responsive { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .navbar, .topbar, header.app-header {
+        padding-left: max(.75rem, env(safe-area-inset-left));
+        padding-right: max(.75rem, env(safe-area-inset-right));
+    }
+    .btn-acasi, .quick-action-card, .stu-bottomnav__item { min-height: 44px; }
+}
+
+/* Dashboard étudiant — KPIs 2x2 (hérité). */
+@media (max-width: 767.98px) {
+    .dashboard-acasi .admin-stats { grid-template-columns: repeat(2, 1fr) !important; gap: .6rem !important; }
+    .dashboard-acasi .admin-stats .stat-card { flex-direction: column !important; align-items: stretch !important; gap: .55rem !important; padding: .85rem .8rem !important; }
+    .dashboard-acasi .admin-stats .stat-card > div { width: 100%; gap: .55rem !important; }
+    .dashboard-acasi .admin-stats .stat-card > div:last-child:not(:first-child) { justify-content: flex-start; }
+    .dashboard-acasi .admin-stats .stat-card > div:last-child:not(:first-child) .btn-acasi { width: 100%; justify-content: center; padding: .55rem .6rem !important; font-size: .72rem !important; }
+    .dashboard-acasi .admin-stats .stat-icon { width: 38px; height: 38px; font-size: 1rem; flex-shrink: 0; }
+    .dashboard-acasi .admin-stats .stat-value { font-size: 1.15rem !important; line-height: 1.15; word-break: break-word; }
+    .dashboard-acasi .admin-stats .stat-label { font-size: .68rem !important; }
+    .dashboard-acasi .dashboard-header h1 { font-size: 1.35rem; }
+    .dashboard-acasi .admin-stats .stat-card .btn-acasi { white-space: normal; word-break: break-word; }
+    .dashboard-acasi .quick-actions-grid { grid-template-columns: repeat(2, 1fr); gap: .6rem; }
+}
+
+/* EDT mobile étudiant — onglets par jour + liste verticale (hérité). */
+.stu-edt-mobile { display: none; }
+@media (max-width: 767.98px) {
+    .stu-edt-mobile { display: block; }
+    .stu-edt-days { display: flex; gap: .4rem; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; padding: .25rem .1rem .6rem; margin: 0 0 .25rem; }
+    .stu-edt-days::-webkit-scrollbar { display: none; }
+    .stu-edt-day { flex: 0 0 auto; min-height: 44px; padding: .5rem .95rem; border-radius: 11px; border: 1px solid #e2e8f0; background: #fff; color: #475569; font-size: .82rem; font-weight: 600; line-height: 1.1; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; cursor: pointer; transition: background .15s ease, color .15s ease, border-color .15s ease; -webkit-tap-highlight-color: transparent; white-space: nowrap; }
+    .stu-edt-day small { font-size: .62rem; font-weight: 600; opacity: .7; }
+    .stu-edt-day.is-active { background: linear-gradient(135deg, #0453cb, #5e91de); border-color: transparent; color: #fff; }
+    .stu-edt-day.is-active small { opacity: .85; }
+    .stu-edt-day .stu-edt-day-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #0453cb; margin-top: 2px; }
+    .stu-edt-day.is-active .stu-edt-day-dot { background: #fff; }
+    .stu-edt-day-dot--empty { visibility: hidden; }
+    .stu-edt-list { display: flex; flex-direction: column; gap: .6rem; }
+    .stu-edt-item { background: #fff; border: 1px solid #e2e8f0; border-left: 4px solid #0453cb; border-radius: 12px; padding: .8rem .9rem; box-shadow: 0 1px 3px rgba(15, 23, 42, .04), 0 1px 2px rgba(15, 23, 42, .06); }
+    .stu-edt-item--break { border-left-color: #f59e0b; }
+    .stu-edt-item--lunch { border-left-color: #dc2626; }
+    .stu-edt-item-head { display: flex; align-items: center; justify-content: space-between; gap: .5rem; margin-bottom: .35rem; }
+    .stu-edt-item-time { display: inline-flex; align-items: center; gap: .35rem; font-size: .78rem; font-weight: 700; color: #0453cb; background: rgba(4, 83, 203, .08); padding: .2rem .55rem; border-radius: 7px; white-space: nowrap; }
+    .stu-edt-item-type { font-size: .64rem; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; color: #64748b; display: inline-flex; align-items: center; gap: .3rem; }
+    .stu-edt-item-matiere { font-size: .95rem; font-weight: 700; color: #1e293b; line-height: 1.25; margin-bottom: .3rem; word-break: break-word; }
+    .stu-edt-item-meta { display: flex; flex-wrap: wrap; gap: .35rem .9rem; font-size: .76rem; color: #64748b; }
+    .stu-edt-item-meta span { display: inline-flex; align-items: center; gap: .35rem; }
+    .stu-edt-item-meta i { color: #94a3b8; width: 13px; text-align: center; }
+    .stu-edt-empty { text-align: center; padding: 2rem 1rem; color: #64748b; }
+    .stu-edt-empty i { font-size: 2rem; color: #cbd5e1; margin-bottom: .6rem; display: block; }
+    .stu-edt-empty p { margin: 0; font-size: .85rem; }
+}
+
+/* Mes paiements — tableau → cartes empilées (hérité). */
+.stu-pay-cards { display: none; }
+@media (max-width: 639.98px) {
+    .stu-pay-table-wrap { display: none !important; }
+    .stu-pay-cards { display: flex; flex-direction: column; gap: .7rem; }
+    .stu-pay-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 13px; padding: .85rem .9rem; box-shadow: 0 1px 3px rgba(15, 23, 42, .05); }
+    .stu-pay-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: .6rem; margin-bottom: .6rem; }
+    .stu-pay-card-montant { font-size: 1.2rem; font-weight: 800; color: #1e293b; line-height: 1.1; }
+    .stu-pay-card-date { font-size: .72rem; color: #64748b; margin-top: .15rem; }
+    .stu-pay-card-rows { display: flex; flex-direction: column; gap: .4rem; border-top: 1px dashed #e2e8f0; padding-top: .6rem; }
+    .stu-pay-card-row { display: flex; align-items: center; justify-content: space-between; gap: .6rem; font-size: .8rem; }
+    .stu-pay-card-label { color: #64748b; font-weight: 600; text-transform: uppercase; font-size: .64rem; letter-spacing: .4px; flex-shrink: 0; }
+    .stu-pay-card-value { color: #1e293b; font-weight: 600; text-align: right; word-break: break-word; }
+    .stu-pay-card-value--ref { font-family: 'Courier New', monospace; background: #f1f5f9; padding: .12rem .45rem; border-radius: 6px; font-size: .72rem; }
+    .stu-pay-card-actions { display: flex; gap: .5rem; margin-top: .7rem; }
+    .stu-pay-card-actions .action-btn { flex: 1 1 0; min-height: 44px; justify-content: center; }
+}
+
+/* Paywall (contract-expiry) : bottom-sheet sur mobile (hérité). */
+@media (max-width: 767.98px) {
+    .ce-overlay { align-items: flex-end !important; padding: 0 !important; }
+    .ce-overlay .ce-card { width: 100% !important; max-width: 100% !important; max-height: 85vh; max-height: 85dvh; margin: 0 !important; border-radius: 20px 20px 0 0 !important; overflow-y: auto; -webkit-overflow-scrolling: touch; padding-bottom: env(safe-area-inset-bottom, 0px); animation: stu-sheet-up .3s cubic-bezier(.22, 1, .36, 1) forwards; }
+    .ce-overlay .ce-card::before { content: ''; display: block; width: 42px; height: 4px; border-radius: 999px; background: rgba(148, 163, 184, .55); margin: 8px auto 2px; }
+    .ce-overlay .ce-header { padding-top: .5rem; }
+    .ce-overlay .ce-actions .ce-btn-primary,
+    .ce-overlay .ce-actions .ce-btn-secondary { min-height: 46px; }
+}
+@keyframes stu-sheet-up { from { transform: translateY(100%); } to { transform: translateY(0); } }

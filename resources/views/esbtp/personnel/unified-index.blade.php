@@ -2903,6 +2903,24 @@ function toggleCaissierStatus(caissierId) {
             .substring(0, 64);
     }
 
+    // Rule premium-selects : un fragment charge en AJAX contient les scripts
+    // inline des pickers premium (gardes idempotentes), qu'innerHTML n'execute
+    // jamais, et Alpine ne re-parcourt pas de lui-meme un sous-arbre injecte.
+    function injectHtmlWithScripts(target, html) {
+        target.innerHTML = html;
+        target.querySelectorAll('script').forEach(function(oldScript) {
+            const newScript = document.createElement('script');
+            Array.from(oldScript.attributes).forEach(function(attr) {
+                newScript.setAttribute(attr.name, attr.value);
+            });
+            newScript.textContent = oldScript.textContent;
+            oldScript.parentNode.replaceChild(newScript, oldScript);
+        });
+        if (window.Alpine && typeof window.Alpine.initTree === 'function') {
+            window.Alpine.initTree(target);
+        }
+    }
+
     async function loadModal(url) {
         try {
             const res = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'text/html' } });
@@ -2911,7 +2929,7 @@ function toggleCaissierStatus(caissierId) {
                 throw new Error(t || 'Erreur de chargement (' + res.status + ')');
             }
             const html = await res.text();
-            modalEl.innerHTML = html;
+            injectHtmlWithScripts(modalEl, html);
             getModal().show();
             wireModalForm();
             wireModalIcons();

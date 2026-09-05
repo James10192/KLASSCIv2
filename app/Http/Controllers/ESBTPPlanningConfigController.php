@@ -398,7 +398,7 @@ class ESBTPPlanningConfigController extends Controller
         \Log::info(
             "🚀 ========== DÉBUT SAUVEGARDE PLANNING GÉNÉRAL (BACKEND) ==========",
         );
-        \Log::info("📥 Données reçues:", $request->all());
+        \Log::info('Configuration planning : donnees recues', ['champs' => array_keys($request->all())]);
 
         $request->validate([
             "filiere_id" => "required|exists:esbtp_filieres,id",

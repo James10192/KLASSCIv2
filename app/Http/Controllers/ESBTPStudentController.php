@@ -67,6 +67,7 @@ class ESBTPStudentController extends Controller
         $affectationStatus = $request->input('affectation_status');
         $inscritAnneeCourante = $request->input('inscrit_annee_courante');
         $estTransfert = $request->input('est_transfert');
+        $sexe = $this->sexeDemande($request->input('sexe'));
         // Filtres BTS/LMD switch (cf rule classe-lmd-filiere-as-mention).
         $systemeFilter = $request->input('systeme');
         if (!in_array($systemeFilter, ['BTS', 'LMD'], true)) {
@@ -93,6 +94,10 @@ class ESBTPStudentController extends Controller
 
         if ($status) {
             $baseQuery->where('statut', $status);
+        }
+
+        if ($sexe !== null) {
+            $baseQuery->whereIn('sexe', self::VALEURS_SEXE[$sexe]);
         }
 
         // Filtre Filière BTS : ne s'applique qu'en mode BTS ou Tous systèmes.
@@ -123,7 +128,7 @@ class ESBTPStudentController extends Controller
         }
 
         // Filtres LMD additionnels (cf rule classe-lmd-filiere-as-mention) :
-        //  - mention : couvre tronc commun (classe.filiere_id = mention_id Option A)
+        //  - mention : couvre tronc commun (classe.filiere_id designe le reflet de la mention)
         //              + parcours rattaché (parcours.mention_id = X)
         //  - parcours : exact match classe.parcours_id
         if ($systemeFilter === 'LMD' && $mentionFilter) {
@@ -131,7 +136,10 @@ class ESBTPStudentController extends Controller
                 $q->whereHas('classe', function ($c) use ($mentionFilter) {
                     $c->where('systeme_academique', 'LMD')
                       ->where(function ($cc) use ($mentionFilter) {
-                          $cc->where('filiere_id', $mentionFilter)
+                          $cc->whereHas('filiere', fn($f) => $f->where('lmd_mention_id', $mentionFilter))
+                             // Classes creees avant les filieres reflets : la colonne portait
+                             // alors l'id de la mention lui-meme.
+                             ->orWhere('filiere_id', $mentionFilter)
                              ->orWhereHas('parcours', fn($p) => $p->where('mention_id', $mentionFilter));
                       });
                 });
@@ -204,6 +212,7 @@ class ESBTPStudentController extends Controller
                 'inscrit_annee_courante' => $inscritAnneeCourante,
                 'est_transfert' => $estTransfert,
                 'accessibility' => $accessibility,
+                'sexe' => $sexe,
             ],
             'page' => $currentPage,
             'per_page' => $perPage,
@@ -406,9 +415,40 @@ class ESBTPStudentController extends Controller
             'inscritAnneeCourante',
             'estTransfert',
             'accessibility',
+            'sexe',
             'mentions',
             'parcoursList'
         ));
+    }
+
+    /**
+     * Les ecritures acceptees pour un sexe, par valeur canonique.
+     *
+     * La colonne stocke « M » / « F » depuis les formulaires, mais les reprises
+     * de donnees d'anciennes bases ont laisse des libelles entiers. Les exports
+     * comptent deja les deux ecritures ; un filtre qui n'en verrait qu'une
+     * annoncerait des effectifs plus faibles que le total affiche juste a cote.
+     */
+    private const VALEURS_SEXE = [
+        'M' => ['M', 'Masculin', 'masculin', 'MASCULIN'],
+        'F' => ['F', 'Féminin', 'féminin', 'FEMININ', 'Feminin'],
+    ];
+
+    /**
+     * La valeur canonique demandee, ou null si le filtre n'est pas pose.
+     *
+     * Tout ce qui n'est pas reconnu est ignore plutot que rendu vide : un
+     * parametre bricole dans l'URL ne doit pas faire disparaitre la liste.
+     */
+    private function sexeDemande($valeur): ?string
+    {
+        if (! is_string($valeur) || $valeur === '') {
+            return null;
+        }
+
+        $valeur = strtoupper(substr(trim($valeur), 0, 1));
+
+        return array_key_exists($valeur, self::VALEURS_SEXE) ? $valeur : null;
     }
 
     /**
@@ -873,6 +913,12 @@ class ESBTPStudentController extends Controller
                             ->orWhere('prenoms', 'like', $search);
                     });
                 }
+                // Un export qui ignore un filtre de l'ecran ment sur ce qu'il
+                // exporte : la liste affichee et le fichier doivent dire pareil.
+                $sexe = $this->sexeDemande($request->input('sexe'));
+                if ($sexe !== null) {
+                    $q->whereIn('sexe', self::VALEURS_SEXE[$sexe]);
+                }
             });
 
         // classes[] is the primary filter from the export modal (single source of truth).
@@ -1019,6 +1065,16 @@ class ESBTPStudentController extends Controller
             }
             if ($request->filled('status')) {
                 $filterLabels[] = 'Statut : ' . ucfirst($request->input('status'));
+            }
+            // Le genre etait applique a l'export sans jamais y etre annonce : le
+            // document disait « Filtres appliques : Statut : Actif » au-dessus
+            // d'une population d'hommes seulement. Un recapitulatif incomplet est
+            // pire qu'absent — il donne a croire qu'on a tout vu.
+            if ($request->filled('sexe')) {
+                $sexe = strtoupper(substr(trim((string) $request->input('sexe')), 0, 1));
+                if (in_array($sexe, ['M', 'F'], true)) {
+                    $filterLabels[] = 'Genre : ' . ($sexe === 'M' ? 'Masculin' : 'Féminin');
+                }
             }
 
             // Group data if requested

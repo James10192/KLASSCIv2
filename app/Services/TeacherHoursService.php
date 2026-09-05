@@ -271,9 +271,10 @@ class TeacherHoursService
     /**
      * Émargements groupés par séance (course_id).
      *
-     * Les séances sont déjà scopées à l'enseignant (seance.teacher_id = teachers.id),
-     * donc un filtre sur course_id suffit — on évite l'ambiguïté
-     * teacher_id(users.id) vs teacher_id(teachers.id) des émargements.
+     * Les séances sont déjà scopées à l'enseignant (seance.teacher_id = esbtp_teachers.id),
+     * donc un filtre sur course_id suffit. Rappel : l'émargement, lui, porte le
+     * users.id du compte dans sa colonne teacher_id (FK) — ne jamais le comparer
+     * à seance.teacher_id.
      *
      * @param  array<int>  $seanceIds
      * @return \Illuminate\Support\Collection<int, \Illuminate\Support\Collection<int, ESBTPTeacherAttendance>>

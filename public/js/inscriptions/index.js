@@ -230,6 +230,16 @@
             })
             .then((data) => {
                 resultsContainer.innerHTML = data.html;
+                // Le serveur remet deux dates a l'envers a l'endroit avant de
+                // filtrer. Sans ce report, les champs et les pastilles gardaient
+                // l'ordre saisi au-dessus d'une liste juste : l'ecran affirmait
+                // « a partir du 22/09 » en montrant des dossiers du 02/09.
+                if (data.periode) {
+                    ['date_debut', 'date_fin'].forEach(function (cle) {
+                        const champ = form && form.querySelector('#' + cle);
+                        if (champ) champ.value = data.periode[cle] || '';
+                    });
+                }
                 if (options.pushState !== false) {
                     window.history.pushState({ url: data.url }, '', data.url);
                 }
@@ -281,6 +291,13 @@
             select.addEventListener('change', submitFilterForm);
         });
 
+        // Les bornes de periode sont des <input type="date"> : elles ne passent
+        // pas par le handler des <select>, et sans ca il fallait valider au
+        // clavier pour que la liste bouge.
+        form.querySelectorAll('input[type="date"]').forEach((input) => {
+            input.addEventListener('change', submitFilterForm);
+        });
+
         if (searchInput) {
             searchInput.addEventListener('input', () => {
                 clearTimeout(searchDebounce);
@@ -291,8 +308,18 @@
         const resetBtn = document.getElementById('reset-filters-btn');
         if (resetBtn) {
             resetBtn.addEventListener('click', () => {
-                form.querySelectorAll('input[type="text"], input[type="search"]').forEach((i) => (i.value = ''));
+                form.querySelectorAll('input[type="text"], input[type="search"], input[type="date"]').forEach((i) => (i.value = ''));
                 form.querySelectorAll('select').forEach((s) => (s.value = s.querySelector('option').value));
+
+                // Le statut est le seul filtre dont le defaut N'EST PAS la
+                // premiere option. La liste s'ouvre sur « Validees », mais la
+                // premiere entree du menu est « Tous statuts » : remettre le
+                // select a sa premiere option envoyait donc status=all, et
+                // « reinitialiser » ne rendait pas la vue de depart mais une
+                // TROISIEME vue, plus large que celle qu'on avait en arrivant.
+                const statut = form.querySelector('select[name="status"]');
+                if (statut) statut.value = 'active';
+
                 document.getElementById('sort-input').value = 'created_at';
                 document.getElementById('dir-input').value = 'desc';
                 submitFilterForm();
@@ -328,6 +355,12 @@
     // Active filter chips
     // ====================================================================
 
+    // « 2026-09-04 » ne se lit pas dans une pastille : on rend le format du pays.
+    function formatDateFr(iso) {
+        const parts = String(iso || '').split('-');
+        return parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : iso;
+    }
+
     function updateActiveFilterChips() {
         const container = document.getElementById('ii-active-filters');
         if (!container || !form) return;
@@ -349,6 +382,13 @@
             if (key === 'annee' && !sel.value) return;
             const label = sel.options[sel.selectedIndex]?.text || sel.value;
             chips.push({ key, label: `${filterLabels[key]} : ${label}`, input: sel });
+        });
+
+        const dateLabels = { date_debut: 'À partir du', date_fin: "Jusqu'au" };
+        Object.keys(dateLabels).forEach((key) => {
+            const input = form.querySelector(`#${key}`);
+            if (!input || !input.value) return;
+            chips.push({ key, label: `${dateLabels[key]} ${formatDateFr(input.value)}`, input });
         });
 
         chips.forEach((chip) => {

@@ -921,7 +921,11 @@ class ESBTPReinscriptionController extends Controller
             }
 
             return redirect()->route('esbtp.inscriptions.show', $nouvelleInscription->id)
-                ->with('success', 'Réinscription effectuée avec succès ! Nouvelle inscription créée pour l\'année universitaire en cours.');
+                ->with('success', 'Réinscription effectuée avec succès ! Nouvelle inscription créée pour l\'année universitaire en cours.')
+                // Meme signal qu'a la premiere inscription. La difference se
+                // joue dans le dialogue lui-meme : si l'etudiant a deja une
+                // photo, il commence par demander s'il faut la remplacer.
+                ->with('demander_photo', true);
         } catch (\Exception $e) {
             return back()->withErrors(['error' => 'Erreur lors de la réinscription: ' . $e->getMessage()]);
         }

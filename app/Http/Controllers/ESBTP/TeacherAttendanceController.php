@@ -37,8 +37,12 @@ class TeacherAttendanceController extends Controller
         // Convert to database format (1=Monday, 7=Sunday)
         $dayOfWeekDb = $dayOfWeek == 0 ? 7 : $dayOfWeek;
         
+        // esbtp_seance_cours.teacher_id est un esbtp_teachers.id (profil),
+        // esbtp_teacher_attendances.teacher_id un users.id (compte).
+        $teacherProfileId = $user->teacherProfile?->id;
+
         $todayCourses = ESBTPSeanceCours::with(['matiere', 'emploiTemps.classe'])
-            ->where('teacher_id', $user->id) // Direct teacher assignment on seance
+            ->where('teacher_id', $teacherProfileId)
             ->where('is_active', true)
             ->where('jour', $dayOfWeekDb)
             ->get();
@@ -147,14 +151,15 @@ class TeacherAttendanceController extends Controller
             }
 
             // **VÉRIFICATION DES ÉMARGEMENTS EXISTANTS (DÉBUT ET FIN)**
-            // Utiliser teacher_id (ESBTPTeacher.id) pas user_id et chercher par date pas par code
-            $emargementDebut = ESBTPTeacherAttendance::where('teacher_id', $teacher->id)
+            // esbtp_teacher_attendances.teacher_id référence users.id (FK), pas le
+            // profil esbtp_teachers : on cherche par date, avec l'id du compte.
+            $emargementDebut = ESBTPTeacherAttendance::where('teacher_id', $user->id)
                 ->where('course_id', $seanceCours->id)
                 ->whereDate('date', today())
                 ->where('type', 'start')
                 ->first();
 
-            $emargementFin = ESBTPTeacherAttendance::where('teacher_id', $teacher->id)
+            $emargementFin = ESBTPTeacherAttendance::where('teacher_id', $user->id)
                 ->where('course_id', $seanceCours->id)
                 ->whereDate('date', today())
                 ->where('type', 'end')
@@ -217,7 +222,7 @@ class TeacherAttendanceController extends Controller
                 if ($now > $limite45min) {
                     // Marquer enseignant ABSENT
                     ESBTPTeacherAttendance::create([
-                        'teacher_id' => $teacher->id,
+                        'teacher_id' => $user->id, // users.id (FK), pas le profil esbtp_teachers
                         'course_id' => $seanceCours->id,
                         'daily_code_id' => $dailyCode->id,
                         'date' => now()->toDateString(),
@@ -245,7 +250,7 @@ class TeacherAttendanceController extends Controller
 
                 // Créer l'émargement de DÉBUT
                 ESBTPTeacherAttendance::create([
-                    'teacher_id' => $teacher->id,
+                    'teacher_id' => $user->id, // users.id (FK), pas le profil esbtp_teachers
                     'course_id' => $seanceCours->id,
                     'daily_code_id' => $dailyCode->id,
                     'date' => now()->toDateString(),
@@ -295,7 +300,7 @@ class TeacherAttendanceController extends Controller
 
                 // Créer l'émargement de FIN
                 ESBTPTeacherAttendance::create([
-                    'teacher_id' => $teacher->id,
+                    'teacher_id' => $user->id, // users.id (FK), pas le profil esbtp_teachers
                     'course_id' => $seanceCours->id,
                     'daily_code_id' => $dailyCode->id,
                     'date' => now()->toDateString(),

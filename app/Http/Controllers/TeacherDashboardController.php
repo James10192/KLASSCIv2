@@ -75,8 +75,10 @@ class TeacherDashboardController extends Controller
         $attendedSeances = ESBTPSeanceCours::where('esbtp_seance_cours.teacher_id', $teacherId)
             ->whereNotNull('esbtp_seance_cours.date_seance')
             ->where('esbtp_seance_cours.date_seance', '<=', Carbon::today())
-            ->join('esbtp_teacher_attendances', function ($join) {
+            ->join('esbtp_teacher_attendances', function ($join) use ($user) {
                 $join->on('esbtp_seance_cours.id', '=', 'esbtp_teacher_attendances.course_id')
+                    // esbtp_teacher_attendances.teacher_id référence users.id, pas esbtp_teachers.id
+                    ->where('esbtp_teacher_attendances.teacher_id', '=', $user->id)
                     ->where('esbtp_teacher_attendances.type', '=', 'start')
                     ->whereRaw('DATE(esbtp_teacher_attendances.date) = DATE(esbtp_seance_cours.date_seance)');
             })
@@ -96,7 +98,8 @@ class TeacherDashboardController extends Controller
             ->where('valid_until', '>', Carbon::now())
             ->first();
 
-        $todayAttendance = ESBTPTeacherAttendance::where('teacher_id', $teacherId)
+        // esbtp_teacher_attendances.teacher_id référence users.id, pas esbtp_teachers.id
+        $todayAttendance = ESBTPTeacherAttendance::where('teacher_id', $user->id)
             ->whereDate('validated_at', $today)
             ->latest()
             ->first();
@@ -266,17 +269,40 @@ class TeacherDashboardController extends Controller
             'call_type' => 'required|in:start,end',
         ]);
 
+        // Une seule sortie pour les deux clients : le formulaire classique reçoit
+        // la redirection habituelle ; l'écran mobile (fetch, Accept: application/json)
+        // reçoit {success, message, counts, redirect} et navigue lui-même. Le message
+        // est aussi flashé pour que la page d'arrivée l'affiche dans les deux cas.
+        $repondre = function (bool $success, string $type, string $message, string $redirectUrl) use ($request) {
+            if ($request->expectsJson()) {
+                $attendances = collect((array) $request->input('attendances', []));
+                $request->session()->flash($type, $message);
+
+                return response()->json([
+                    'success' => $success,
+                    'message' => $message,
+                    'counts' => [
+                        'present' => $attendances->filter(fn ($s) => $s === 'present')->count(),
+                        'late' => $attendances->filter(fn ($s) => $s === 'late')->count(),
+                        'absent' => $attendances->filter(fn ($s) => $s === 'absent')->count(),
+                        'total' => $attendances->count(),
+                    ],
+                    'redirect' => $redirectUrl,
+                ], $success ? 200 : 422);
+            }
+
+            return redirect()->to($redirectUrl)->with($type, $message);
+        };
+
         // **WORKFLOW** : Vérifier que cette étape peut être exécutée
         $workflow = \App\Models\ESBTPSessionWorkflow::getOrCreateForSession($seanceId, $user->id);
 
         if ($callType === 'start' && ! $workflow->canExecuteStep('call_start')) {
-            return redirect()->route('teacher.select-call-type', $seanceId)
-                ->with('error', 'Vous ne pouvez pas effectuer l\'appel de début maintenant.');
+            return $repondre(false, 'error', 'Vous ne pouvez pas effectuer l\'appel de début maintenant.', route('teacher.select-call-type', $seanceId));
         }
 
         if ($callType === 'end' && ! $workflow->canExecuteStep('call_end')) {
-            return redirect()->route('teacher.select-call-type', $seanceId)
-                ->with('error', 'Vous ne pouvez pas effectuer l\'appel de fin maintenant.');
+            return $repondre(false, 'error', 'Vous ne pouvez pas effectuer l\'appel de fin maintenant.', route('teacher.select-call-type', $seanceId));
         }
 
         // Absences définitives (call_type=merged) à notifier aux parents après commit.
@@ -468,8 +494,7 @@ class TeacherDashboardController extends Controller
             // **REDIRECTION SELON LE TYPE D'APPEL**
             if ($callType === 'start') {
                 // Après appel DÉBUT → Dashboard avec message pour clôturer plus tard
-                return redirect()->route('teacher.dashboard')
-                    ->with('success', 'Appel de début enregistré avec succès. Vous pourrez clôturer le cours 20 minutes avant la fin.');
+                return $repondre(true, 'success', 'Appel de début enregistré avec succès. Vous pourrez clôturer le cours 20 minutes avant la fin.', route('teacher.dashboard'));
 
             } else {
                 // Après appel FIN → Vérifier si workflow incomplet ou normal
@@ -477,20 +502,17 @@ class TeacherDashboardController extends Controller
 
                 if (! $withinCloseWindow) {
                     // Fenêtre dépassée → Dashboard avec warning
-                    return redirect()->route('teacher.dashboard')
-                        ->with('warning', 'Appel de fin copié depuis l\'appel de début (délai dépassé). Workflow incomplet - séance marquée présent mais non clôturée.');
+                    return $repondre(true, 'warning', 'Appel de fin copié depuis l\'appel de début (délai dépassé). Workflow incomplet - séance marquée présent mais non clôturée.', route('teacher.dashboard'));
                 } else {
                     // Normal → Rediriger vers rapport (ou select-call-type si rapport pas implémenté)
-                    return redirect()->route('teacher.select-call-type', $seanceId)
-                        ->with('success', 'Appel de fin enregistré avec succès. Veuillez maintenant rédiger le rapport de cours.');
+                    return $repondre(true, 'success', 'Appel de fin enregistré avec succès. Veuillez maintenant rédiger le rapport de cours.', route('teacher.select-call-type', $seanceId));
                 }
             }
 
         } catch (\Exception $e) {
             DB::rollback();
 
-            return redirect()->back()
-                ->with('error', 'Erreur lors de l\'enregistrement de l\'appel : '.$e->getMessage());
+            return $repondre(false, 'error', 'Erreur lors de l\'enregistrement de l\'appel : '.$e->getMessage(), url()->previous());
         }
     }
 
@@ -888,8 +910,12 @@ class TeacherDashboardController extends Controller
             $seances = ESBTPSeanceCours::where('teacher_id', $teacherId)->get();
             $totalSeances = $seances->count();
 
-            // Compter les séances où l'enseignant a fait l'émargement
-            $presentSeances = ESBTPTeacherAttendance::where('teacher_id', $teacherId)->count();
+            // Compter les séances où l'enseignant a fait l'émargement.
+            // $teacherId est un esbtp_teachers.id ; l'émargement porte le users.id du compte.
+            $teacherUserId = ESBTPTeacher::whereKey($teacherId)->value('user_id');
+            $presentSeances = $teacherUserId
+                ? ESBTPTeacherAttendance::where('teacher_id', $teacherUserId)->count()
+                : 0;
 
             // Calculer le taux de présence
             $attendanceRate = $totalSeances > 0 ? ($presentSeances / $totalSeances) * 100 : 0;

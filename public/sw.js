@@ -3,18 +3,28 @@
  * SWR assets, cache images/fonts et notifications web push.
  */
 
-const VERSION = "klassci-v3";
+const VERSION = "klassci-v5";
 
 // Caches nommes versionnes pour invalidation propre a l'activation.
 const CACHE_NAMES = {
     precache: "klassci-precache-" + VERSION,
     assets: "klassci-assets-" + VERSION,
+    cdn: "klassci-cdn-" + VERSION,
     images: "klassci-images-" + VERSION,
     fonts: "klassci-fonts-" + VERSION,
 };
 
-// App-shell minimal a precacher.
-const PRECACHE_URLS = ["/offline.html", "/icons/icon-192.png"];
+// App-shell minimal a precacher (page hors ligne, icone, shell mobile).
+const PRECACHE_URLS = [
+    "/offline.html",
+    "/icons/icon-192.png",
+    "/css/mobile-shell.css",
+    "/js/mobile-shell.js",
+];
+
+// CDN de librairies (Bootstrap, Alpine, jQuery, Chart.js...) : StaleWhileRevalidate
+// dans un cache dedie avec expiration, pour que le shell s'ouvre sans reseau.
+const CDN_ORIGINS = ["https://cdn.jsdelivr.net", "https://code.jquery.com"];
 
 // Anciens caches a supprimer (dont le SW legacy attendance).
 const LEGACY_CACHES = ["esbtp-attendance-v1"];
@@ -48,6 +58,27 @@ if (self.workbox) {
     routing.registerRoute(
         ({ request }) => request.mode === "navigate",
         new strategies.NetworkOnly()
+    );
+
+    // ---------------------------------------------------------------------
+    // Librairies CDN (jsdelivr, jquery) : StaleWhileRevalidate + expiration.
+    // Declaree AVANT la route generique CSS/JS pour capter ces origines
+    // quelle que soit la destination (script, style, police embarquee...).
+    // ---------------------------------------------------------------------
+    routing.registerRoute(
+        ({ url }) => CDN_ORIGINS.includes(url.origin),
+        new strategies.StaleWhileRevalidate({
+            cacheName: CACHE_NAMES.cdn,
+            plugins: [
+                new cacheableResponse.CacheableResponsePlugin({
+                    statuses: [0, 200],
+                }),
+                new expiration.ExpirationPlugin({
+                    maxEntries: 60,
+                    maxAgeSeconds: 30 * 24 * 60 * 60, // 30 jours
+                }),
+            ],
+        })
     );
 
     // ---------------------------------------------------------------------

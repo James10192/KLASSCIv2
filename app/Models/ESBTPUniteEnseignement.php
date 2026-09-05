@@ -40,6 +40,20 @@ class ESBTPUniteEnseignement extends Model implements Auditable
      *
      * @var array
      */
+    /**
+     * Les evenements reellement audites : les MUTATIONS, pas les lectures.
+     *
+     * `config/audit.php` active aussi `retrieved`, ce qui fait ecrire une ligne
+     * dans `audits` a chaque fois qu'un modele est LU. Vingt et un modeles s'en
+     * protegent deja par cette meme propriete ; ceux-ci ne le faisaient pas.
+     *
+     * Le cout n'etait pas theorique : c'est par ce canal que la table `audits` a
+     * enfle au point que la page qui la consulte ne repondait plus.
+     *
+     * Ce qui reste trace : creation, modification, suppression, restauration.
+     * La conservation OHADA porte sur les mutations, pas sur les consultations.
+     */
+    protected $auditEvents = ['created', 'updated', 'deleted', 'restored'];
     protected $fillable = [
         'name',
         'code',
@@ -79,8 +93,14 @@ class ESBTPUniteEnseignement extends Model implements Auditable
      */
     public function ecues()
     {
+        // `parcours_id` est declare ici, alors que rien ne le lit encore, parce
+        // que son absence ne se voit pas : sans lui, `$ecue->pivot->parcours_id`
+        // rend `null` SANS ERREUR, et tout element reserve a une maquette se
+        // lirait comme commun — il fuiterait dans toutes les autres. Le declarer
+        // des maintenant est sans effet (une colonne de plus au SELECT du pivot)
+        // et supprime le piege pour de bon.
         return $this->belongsToMany(ESBTPMatiere::class, 'esbtp_ue_matiere', 'unite_enseignement_id', 'matiere_id')
-            ->withPivot('coefficient_ecue', 'credit_ecue', 'ordre_bulletin')
+            ->withPivot('coefficient_ecue', 'credit_ecue', 'ordre_bulletin', 'parcours_id')
             ->withTimestamps();
     }
 
@@ -112,16 +132,91 @@ class ESBTPUniteEnseignement extends Model implements Auditable
      * délivré tout élément désactivé depuis. Le retrait passe par destroyECUE(),
      * qui détache le pivot ET libère la clé — c'est le geste qui fait foi.
      */
-    public function getEcuesEffectifs(): \Illuminate\Support\Collection
+    public function getEcuesEffectifs(?int $parcoursId = null): \Illuminate\Support\Collection
     {
-        $pivotEcues = $this->ecues;
-        $idsPivot = $pivotEcues->pluck('id')->all();
+        // Les identifiants connus du pivot se relevent AVANT tout filtrage.
+        //
+        // Les calculer sur la collection filtree defaisait la regle trois lignes
+        // plus bas : un element reserve au parcours B porte une ligne de pivot ET
+        // la cle etrangere (l'import ecrit les deux). Lu pour le parcours A, il
+        // etait bien ecarte du pivot, donc absent de cette liste, donc REPRIS par
+        // le repli — et il entrait au bulletin des etudiants de A, sans son
+        // pivot, donc avec le coefficient et le credit de la matiere au lieu de
+        // ceux de la maquette. La contamination changeait de sens, elle ne
+        // disparaissait pas.
+        $idsPivot = $this->ecues->pluck('id')->all();
 
+        $pivotEcues = $this->decouperParParcours($this->ecues, $parcoursId);
+
+        // Le repli ne vaut que pour ce que le pivot ignore VRAIMENT.
         $parCleEtrangere = $this->matieres
             ->where('is_active', true)
             ->reject(fn ($matiere) => in_array($matiere->id, $idsPivot, true));
 
         return $pivotEcues->concat($parCleEtrangere->values())->values();
+    }
+
+    /**
+     * Ne garder, pour chaque element, que la ligne qui vaut pour ce parcours.
+     *
+     * Une meme unite sert plusieurs maquettes : `parcours_id` a zero designe la
+     * composition commune, une valeur non nulle une composition propre a un
+     * parcours. Les deux ont le droit d'exister pour le meme element, et c'est
+     * meme tout l'interet : l'ecole pose un coefficient commun, puis un parcours
+     * le surcharge.
+     *
+     * Deux regles, dans cet ordre :
+     *
+     * 1. Les lignes reservees a un AUTRE parcours sont ecartees. Sans cela un
+     *    element propre au Genie Civil apparaitrait au bulletin des juristes.
+     * 2. Pour un element restant, la ligne reservee PRIME sur la commune. Sans
+     *    cette regle les deux remonteraient et l'element serait compte deux fois
+     *    dans `calculerResultatUE` : note doublee au numerateur, coefficient
+     *    doublee au denominateur, credit doublee. La moyenne resterait juste par
+     *    compensation, les credits non — et si les deux lignes portent des
+     *    coefficients differents, la moyenne devient fausse elle aussi. Aucune
+     *    erreur ne serait levee.
+     *
+     * Sans parcours (`null`), on garde tout : c'est l'ecran de l'unite, qui doit
+     * montrer sa composition entiere, toutes maquettes confondues. Seul le
+     * doublon exact y est reduit, le reserve d'abord.
+     *
+     * Le filtrage porte sur la collection DEJA chargee. Une requete par unite et
+     * par etudiant couterait, sur une classe a huit unites et deux mille
+     * inscrits, seize mille requetes ajoutees a la generation des bulletins.
+     */
+    private function decouperParParcours(
+        \Illuminate\Support\Collection $ecues,
+        ?int $parcoursId
+    ): \Illuminate\Support\Collection {
+        if ($parcoursId !== null) {
+            $ecues = $ecues->filter(function ($ecue) use ($parcoursId) {
+                $porte = (int) ($ecue->pivot->parcours_id ?? 0);
+
+                return $porte === 0 || $porte === $parcoursId;
+            });
+        }
+
+        if ($parcoursId === null) {
+            // L'ecran de l'unite montre sa composition ENTIERE. Dedupliquer ici
+            // ferait disparaitre la version du parcours 5 des que celle du 9
+            // existe aussi — silencieusement, et sur le seul ecran dont c'est le
+            // role de les montrer toutes.
+            return $ecues->values();
+        }
+
+        // Une seule ligne par element : la reservee prime sur la commune. Sans
+        // cette reduction les deux remonteraient et l'element serait compte DEUX
+        // fois au bulletin — note doublee au numerateur, coefficient au
+        // denominateur, credit doublee. La moyenne resterait juste par
+        // compensation, les credits non, et deux coefficients differents la
+        // fausseraient elle aussi. Aucune erreur ne serait levee.
+        return $ecues
+            ->groupBy('id')
+            ->map(fn ($lignes) => $lignes->sortByDesc(
+                fn ($ecue) => (int) ($ecue->pivot->parcours_id ?? 0)
+            )->first())
+            ->values();
     }
 
     /**
@@ -173,7 +268,11 @@ class ESBTPUniteEnseignement extends Model implements Auditable
             'esbtp_lmd_parcours_ue',
             'unite_enseignement_id',
             'parcours_id'
-        )->withPivot('semestre', 'is_optional', 'ordre')->withTimestamps();
+        // `credit` : le poids en credits que CETTE maquette donne a l unite pour
+        // CE semestre. `null` = pas de credit propre, on prend celui de l unite.
+        // Meme raison de le declarer avant de le lire que pour `parcours_id`
+        // ci-dessus : un pivot non declare rend null sans rien signaler.
+        )->withPivot('semestre', 'is_optional', 'ordre', 'credit')->withTimestamps();
     }
 
     /**

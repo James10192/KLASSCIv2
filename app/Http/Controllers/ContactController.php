@@ -84,7 +84,10 @@ class ContactController extends Controller
         } catch (\Exception $e) {
             Log::error('Erreur lors de l\'envoi de la demande de démonstration', [
                 'error' => $e->getMessage(),
-                'request_data' => $request->all()
+                // Pas de $request->all() : ce formulaire est PUBLIC et porte un nom,
+                // un courriel et un message libre. Le journal n a pas a les conserver
+                // quatorze jours ni a les emporter dans les sauvegardes.
+                'champs_recus' => array_keys($request->all())
             ]);
 
             return response()->json([

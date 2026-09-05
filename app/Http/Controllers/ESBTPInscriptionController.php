@@ -103,21 +103,19 @@ class ESBTPInscriptionController extends Controller
      */
     public function index(Request $request)
     {
-        // Récupérer les filtres de recherche
+        // Les filtres structures vivent dans FiltresListeInscriptions : « Regenerer
+        // les frais » doit pouvoir viser exactement ce que la liste affiche, et
+        // deux copies de ces regles finiraient par designer deux ensembles
+        // d'etudiants differents sans que ca se voie.
+        $filtres = app(\App\Services\Inscriptions\FiltresListeInscriptions::class);
+
         $search = $request->input("search");
         $filiere = $request->input("filiere");
         $niveau = $request->input("niveau");
         $annee = $request->input("annee");
         $status = $request->input("status", "active");
-        // Filtre Système : 'BTS' | 'LMD' | null (= Tous). Filtré côté inscription via classe.systeme_academique.
-        $systemeFilter = $request->input("systeme");
-        if (!in_array($systemeFilter, ['BTS', 'LMD'], true)) {
-            $systemeFilter = null;
-        }
-        // Filtres LMD additionnels (utilisés uniquement quand systeme=LMD).
-        // mention_id : peut désigner soit une mention LMD pure (classe en tronc commun
-        // → classe.filiere_id = mention_id par convention Option A) soit une mention
-        // dont la classe a un parcours rattaché (parcours.mention_id = mention_id).
+        [$dateDebut, $dateFin] = $filtres->periode($request);
+        $systemeFilter = $filtres->systeme($request);
         $mentionFilter = $request->input("mention");
         $parcoursFilter = $request->input("parcours");
 
@@ -151,62 +149,7 @@ class ESBTPInscriptionController extends Controller
             "paiements",
         ]);
 
-        // Filtre Filière BTS : ne s'applique qu'en mode BTS (ou Tous systèmes en mode legacy).
-        // En LMD, le param `filiere` legacy est ignoré au profit de `mention` + `parcours`.
-        if ($filiere && $systemeFilter !== 'LMD') {
-            $baseQuery->where("filiere_id", $filiere);
-        }
-
-        if ($niveau) {
-            $baseQuery->where("niveau_id", $niveau);
-        }
-
-        if ($systemeFilter) {
-            // Filtrage par système académique de la classe rattachée à l'inscription.
-            // Si l'inscription n'a pas de classe (en attente d'affectation), elle est exclue.
-            $baseQuery->whereHas('classe', fn($q) => $q->where('systeme_academique', $systemeFilter));
-        }
-
-        // Filtres LMD : Mention + Parcours (cf rule classe-lmd-filiere-as-mention).
-        // En tronc commun mention, classe.filiere_id stocke en réalité mention_id (Option A).
-        // En LMD avec parcours, parcours.mention_id porte la mention.
-        if ($systemeFilter === 'LMD' && $mentionFilter) {
-            $baseQuery->whereHas('classe', function ($q) use ($mentionFilter) {
-                $q->where('systeme_academique', 'LMD')
-                  ->where(function ($qq) use ($mentionFilter) {
-                      $qq->where('filiere_id', $mentionFilter)
-                         ->orWhereHas('parcours', fn($p) => $p->where('mention_id', $mentionFilter));
-                  });
-            });
-        }
-        if ($systemeFilter === 'LMD' && $parcoursFilter) {
-            $baseQuery->whereHas('classe', fn($q) => $q->where('parcours_id', $parcoursFilter));
-        }
-
-        if ($annee) {
-            $baseQuery->where("annee_universitaire_id", $annee);
-        } else {
-            $anneeEnCours = ESBTPAnneeUniversitaire::where("is_current", true)->first();
-            if ($anneeEnCours) {
-                $baseQuery->where("annee_universitaire_id", $anneeEnCours->id);
-            }
-        }
-
-        if ($status && $status !== "all") {
-            if ($status === "non_validee") {
-                $baseQuery->where(function ($q) {
-                    $q->where("status", "en_attente")->orWhere(function ($subQ) {
-                        $subQ->where("status", "active")
-                            ->where(function ($wq) {
-                                $wq->whereIn("workflow_step", ["prospect", "documents_complets", "en_validation"])
-                                    ->orWhereNull("workflow_step");
-                            });
-                    });
-                });
-            } else {
-                $baseQuery->where("status", $status);
-            }
-        }
+        $filtres->appliquer($baseQuery, $request);
 
         // Appliquer le tri (sauf pour "nom" qui nécessite un join, et si recherche active)
         if (!$search) {
@@ -262,38 +205,9 @@ class ESBTPInscriptionController extends Controller
             ->get();
 
         // Calculer les statistiques
+        // Memes filtres que la liste, statut exclu : chaque compteur pose le sien.
         $statsQuery = ESBTPInscription::query();
-
-        if ($filiere && $systemeFilter !== 'LMD') {
-            $statsQuery->where("filiere_id", $filiere);
-        }
-
-        if ($niveau) {
-            $statsQuery->where("niveau_id", $niveau);
-        }
-
-        if ($systemeFilter) {
-            $statsQuery->whereHas('classe', fn($q) => $q->where('systeme_academique', $systemeFilter));
-        }
-
-        if ($systemeFilter === 'LMD' && $mentionFilter) {
-            $statsQuery->whereHas('classe', function ($q) use ($mentionFilter) {
-                $q->where('systeme_academique', 'LMD')
-                  ->where(function ($qq) use ($mentionFilter) {
-                      $qq->where('filiere_id', $mentionFilter)
-                         ->orWhereHas('parcours', fn($p) => $p->where('mention_id', $mentionFilter));
-                  });
-            });
-        }
-        if ($systemeFilter === 'LMD' && $parcoursFilter) {
-            $statsQuery->whereHas('classe', fn($q) => $q->where('parcours_id', $parcoursFilter));
-        }
-
-        if ($annee) {
-            $statsQuery->where("annee_universitaire_id", $annee);
-        } elseif ($anneeEnCours) {
-            $statsQuery->where("annee_universitaire_id", $anneeEnCours->id);
-        }
+        $filtres->appliquer($statsQuery, $request, avecStatut: false);
 
         $stats = [
             "total" => $statsQuery->count(),
@@ -328,6 +242,25 @@ class ESBTPInscriptionController extends Controller
         ];
 
         if ($request->ajax()) {
+            // Les bornes EFFECTIVES, pas celles saisies. Deux dates a l'envers
+            // sont remises a l'endroit avant de filtrer : le rendu page complete
+            // renvoyait donc des champs corriges, mais le rafraichissement AJAX
+            // ne remplace que la liste. Les champs et les pastilles restaient
+            // inverses au-dessus d'une liste juste — l'ecran affirmait « a partir
+            // du 22/09 » en montrant des dossiers du 02/09.
+            //
+            // L'URL poussee dans l'historique doit dire la meme chose, sans quoi
+            // la meme adresse rend deux etats d'interface selon qu'on y arrive
+            // par un clic ou par un rechargement.
+            $parametres = $request->query();
+            foreach (["date_debut" => $dateDebut, "date_fin" => $dateFin] as $cle => $valeur) {
+                if ($valeur === null || $valeur === "") {
+                    unset($parametres[$cle]);
+                } else {
+                    $parametres[$cle] = $valeur;
+                }
+            }
+
             return response()->json([
                 "html" => view("esbtp.inscriptions.partials.results", [
                     "inscriptions" => $inscriptions,
@@ -335,7 +268,8 @@ class ESBTPInscriptionController extends Controller
                     "dir" => $dir,
                     "perPage" => $perPage,
                 ])->render(),
-                "url" => $request->fullUrl(),
+                "url" => $request->url() . ($parametres ? "?" . http_build_query($parametres) : ""),
+                "periode" => ["date_debut" => $dateDebut, "date_fin" => $dateFin],
                 "stats" => $stats,
                 "total" => $inscriptions->total(),
             ]);
@@ -357,6 +291,8 @@ class ESBTPInscriptionController extends Controller
                 "niveau",
                 "annee",
                 "status",
+                "dateDebut",
+                "dateFin",
                 "stats",
                 "anneeEnCours",
                 "sort",
@@ -720,7 +656,12 @@ class ESBTPInscriptionController extends Controller
                 ->with(
                     "success",
                     'Inscription enregistrée avec succès. L\'administration pourra valider l\'inscription en associant un paiement.',
-                );
+                )
+                // La fiche demandera la photo des l'ouverture. C'est le seul
+                // moment ou l'etudiant est LA, devant le guichet : lui courir
+                // apres une semaine plus tard coute infiniment plus cher que de
+                // sortir un telephone maintenant.
+                ->with("demander_photo", true);
 
             // Les deux avertissements partagent la même clé de session, et le
             // gabarit n'en rend qu'un. Les concaténer plutôt que de laisser le
@@ -1121,10 +1062,25 @@ class ESBTPInscriptionController extends Controller
         $inscription->loadMissing(['phases.classe.filiere', 'classe.orientationTargets.targetClasse']);
         $btsJourney = $this->btsUiPresenter->forInscription($inscription);
 
+        // Le dossier de pieces. Une ecole qui n'a rien configure ne doit voir
+        // AUCUN changement : le catalogue vide rend une collection vide, et le
+        // bloc ne s'affiche pas du tout.
+        $dossierPieces = app(\App\Services\DossierPiecesEtudiant::class);
+        $pieces = $dossierPieces->estConfigure()
+            ? $dossierPieces->pourInscription($inscription)
+            : collect();
+        $piecesSynthese = $dossierPieces->synthese($pieces);
+        $piecesRelecture = $dossierPieces->exigeUneRelecture();
+        $piecesEpuisement = $dossierPieces->epuisement();
+
         return view(
             "esbtp.inscriptions.show",
             compact(
                 "inscription",
+                "pieces",
+                "piecesSynthese",
+                "piecesRelecture",
+                "piecesEpuisement",
                 "feeCategoriesWithRules",
                 "categoriesfrais",
                 "mandatoryFeeCategoriesWithRules",
@@ -1869,15 +1825,11 @@ class ESBTPInscriptionController extends Controller
      */
     private function handlePhotoUpload($photo)
     {
-        $filename =
-            time() .
-            "_" .
-            Str::random(10) .
-            "." .
-            $photo->getClientOriginalExtension();
-        $photo->storeAs("public/photos/etudiants", $filename);
-
-        return $filename;
+        // Une seule facon d'ecrire une photo : voir StockagePhoto. Cette methode
+        // rendait un NOM DE FICHIER nu la ou deux autres ecrans rendaient une URL
+        // et un chemin relatif, et composait l'extension avec celle envoyee par le
+        // navigateur — sur un disque public.
+        return app(\App\Services\Photos\StockagePhoto::class)->enregistrer($photo, 'etudiant');
     }
 
     /**
@@ -2602,7 +2554,8 @@ class ESBTPInscriptionController extends Controller
 
             return redirect()
                 ->route('esbtp.inscriptions.show', $inscription->id)
-                ->with('success', $message);
+                ->with('success', $message)
+                ->with('demander_photo', true);
 
         } catch (\Exception $e) {
             DB::rollBack();

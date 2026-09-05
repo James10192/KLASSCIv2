@@ -12,7 +12,9 @@ use App\Domain\Notifications\PhoneNormalizer;
 use App\Services\AppreciationScaleSettingsService;
 use App\Services\BulletinMentionResolver;
 use App\Services\BtsBulletinPolicy;
+use App\Services\CataloguePiecesDossier;
 use App\Services\MailPulse\MailPulseTestNotificationService;
+use App\Services\Mobile\MobileProfileResolver;
 use App\Services\Inscription\PortailCandidaturePublication;
 use App\Services\Reinscription\PortailReinscriptionService;
 use App\Services\TenantScolariteSettings;
@@ -485,6 +487,14 @@ class ESBTPSettingsController extends Controller
                 TenantScolariteSettings::CLERK_PEDAGOGIE,
                 TenantScolariteSettings::MANAGE_TEACHERS,
                 PortailCandidaturePublication::REGLAGE_ACTIF,
+                // Case a cocher, donc ici et non dans $reglagesTexte : une case
+                // decochee n'est pas envoyee par le navigateur, et seule cette
+                // liste-ci sait lire son absence comme un « non ».
+                CataloguePiecesDossier::REGLAGE_RESTITUTION_ANNULATION,
+                // Shell mobile (barre d'onglets sur telephone) : seme par
+                // migration, lu par MobileProfileResolver, sans cette ligne
+                // la case de la page n'aurait jamais ete enregistree.
+                MobileProfileResolver::REGLAGE_ACTIF,
             ], array_keys($troncCommunDefaults));
 
             // Reglages a cle pointee qui ne sont PAS des cases a cocher. La
@@ -496,6 +506,16 @@ class ESBTPSettingsController extends Controller
                 PortailReinscriptionService::REGLAGE_FERMETURE,
                 PortailReinscriptionService::REGLAGE_ANNEE_CIBLE,
                 PortailCandidaturePublication::REGLAGE_PHYSIQUES,
+                // Les reglages a champ texte du catalogue des pieces a fournir.
+                // Sans ces lignes, la page les afficherait sans jamais les
+                // enregistrer : une ecole qui reclame vingt-quatre photos
+                // resterait bloquee au plafond de vingt, sans autre recours
+                // que du SQL. Les cles viennent des constantes du service,
+                // jamais de chaines ecrites ici — lecon de la PR #591.
+                CataloguePiecesDossier::REGLAGE_EXEMPLAIRES_MAX,
+                CataloguePiecesDossier::REGLAGE_FORME_DEFAUT,
+                CataloguePiecesDossier::REGLAGE_ECHEANCE_DEFAUT,
+                CataloguePiecesDossier::REGLAGE_EPUISEMENT,
             ];
 
             $reglagesPointes = Setting::whereIn('key', array_merge($basculesGerees, $reglagesTexte))->get();

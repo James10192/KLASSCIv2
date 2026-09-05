@@ -157,8 +157,8 @@
                 </div>
                 <div class="main-card-body">
                     <div class="student-photo-section" style="text-align: center; margin-bottom: 1.5rem;">
-                        @if($attendance->etudiant->photo)
-                            <img src="{{ asset('storage/' . $attendance->etudiant->photo) }}"
+                        @if($attendance->etudiant->photo_url)
+                            <img src="{{ $attendance->etudiant->photo_url }}"
                                  alt="Photo de {{ $attendance->etudiant->nom_complet }}"
                                  class="student-photo"
                                  style="width: 150px; height: 150px; border-radius: 50%; object-fit: cover; border: 4px solid var(--primary); box-shadow: 0 4px 8px rgba(0,0,0,0.1);">

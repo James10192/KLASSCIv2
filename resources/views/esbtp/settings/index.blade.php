@@ -1651,6 +1651,24 @@
                     </div>
                     <div class="form-group">
                         <label class="form-label-modern">
+                            <i class="fas fa-qrcode text-primary"></i>
+                            Imprimer un code QR sur la fiche d'inscription
+                        </label>
+                        <small class="d-block text-muted" style="margin:-.35rem 0 .5rem;font-size:.78rem;">
+                            Scanne, il ouvre le dossier de l'étudiant. Utile quand la fiche revient signée.
+                            Il n'affiche rien à qui n'est pas connecté.
+                        </small>
+                        <label class="form-switch-modern">
+                            {{-- Une case décochée n'est pas envoyée : sans ce champ caché,
+                                 le réglage ne pourrait jamais repasser à « non ». --}}
+                            <input type="hidden" name="setting_documents_code_qr_actif" value="0">
+                            <input type="checkbox" name="setting_documents_code_qr_actif" value="1"
+                                   {{ \App\Helpers\SettingsHelper::get('documents_code_qr_actif', '1') == '1' ? 'checked' : '' }}>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label-modern">
                             <i class="fas fa-user-tie text-primary"></i>
                             Afficher "Directeur : [Nom]"
                         </label>
@@ -2541,6 +2559,35 @@
                             </label>
                         </div>
                     </div>
+                    @include('esbtp.settings.partials.pieces-dossier-reglages')
+                </div>
+            </div>
+
+            <!-- Section 6a: Interface mobile -->
+            <div class="settings-section">
+                <div class="section-header">
+                    <div class="section-icon"><i class="fas fa-mobile-screen-button"></i></div>
+                    <div>
+                        <h3 class="section-title">Interface mobile</h3>
+                        <p class="section-description">Sur telephone, une barre d'onglets adaptee au profil de la personne connectee (caisse, comptabilite, enseignant, etudiant) remplace le menu lateral.</p>
+                    </div>
+                </div>
+                <div class="bc-grid bc-grid-1">
+                    <div class="bc-card">
+                        <div class="bc-icon"><i class="fas fa-mobile-screen-button"></i></div>
+                        <div class="bc-body">
+                            <div class="bc-label">Barre d'onglets sur telephone</div>
+                            <div class="bc-desc">Desactivee, l'interface classique est servie sur tous les ecrans. Sans effet sur ordinateur.</div>
+                        </div>
+                        <div class="bc-toggle">
+                            <label class="form-switch-modern">
+                                @php $_cleShellMobile = \App\Services\Mobile\MobileProfileResolver::REGLAGE_ACTIF; @endphp
+                                <input type="checkbox" name="{{ $_cleShellMobile }}" value="1"
+                                       {{ \App\Helpers\SettingsHelper::get($_cleShellMobile, '1') == '1' ? 'checked' : '' }}>
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -3415,6 +3462,24 @@
                                         <input class="form-check-input" type="checkbox" id="lmd_compensation_intra_ue"
                                                name="setting_lmd_compensation_intra_ue" value="1"
                                                {{ $lmdVal('lmd_compensation_intra_ue', '1') == '1' ? 'checked' : '' }}>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="row g-3" style="margin-top:.25rem;">
+                            <div class="col-md-6">
+                                <label class="ls-toggle" for="lmd_suppression_ue_libere_ecues_vers_bts">
+                                    <div class="ls-toggle-text">
+                                        <div class="ls-toggle-label">Suppression d'une UE : rendre ses ECUE au BTS</div>
+                                        <div class="ls-toggle-hint">Décochez dans une école tout-LMD : sinon les ECUE réapparaissent dans les écrans BTS</div>
+                                    </div>
+                                    <div class="form-check form-switch" style="margin:0; padding-left:2.5em;">
+                                        {{-- Une case décochée n'est pas envoyée : sans ce champ caché, le
+                                             réglage ne pourrait jamais repasser à « non ». --}}
+                                        <input type="hidden" name="setting_lmd_suppression_ue_libere_ecues_vers_bts" value="0">
+                                        <input class="form-check-input" type="checkbox" id="lmd_suppression_ue_libere_ecues_vers_bts"
+                                               name="setting_lmd_suppression_ue_libere_ecues_vers_bts" value="1"
+                                               {{ $lmdVal('lmd_suppression_ue_libere_ecues_vers_bts', '1') == '1' ? 'checked' : '' }}>
                                     </div>
                                 </label>
                             </div>

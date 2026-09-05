@@ -113,7 +113,17 @@ class MergeDuplicateEcue
 
     /**
      * Repointe le pivot esbtp_ue_matiere des ECUE absorbés vers la canonique,
-     * sans créer de doublon sur la contrainte unique (ue_id, matiere_id).
+     * sans créer de doublon sur la contrainte unique.
+     *
+     * Cette contrainte porte sur le TRIPLET (unité, matière, parcours) depuis que
+     * la composition d'une unité peut varier d'une maquette à l'autre. Le test
+     * d'existence doit donc porter sur le même triplet : n'y mettre que le couple
+     * revenait à considérer comme un doublon deux lignes qui n'en sont pas.
+     *
+     * Concrètement, avec la canonique liée à l'unité en commun (parcours 0) et la
+     * ligne absorbée réservée au parcours 3, l'ancien test répondait « déjà liée »
+     * et supprimait la réservation. Le parcours 3 perdait son élément, le compte
+     * rendu de la fusion n'en disait rien, et aucune erreur n'était levée.
      */
     private function repointUeMatierePivot(int $canonicalId, array $absorbedIds): void
     {
@@ -122,13 +132,17 @@ class MergeDuplicateEcue
             ->get();
 
         foreach ($rows as $row) {
+            $portee = (int) ($row->parcours_id ?? 0);
+
             $existsForCanonical = DB::table('esbtp_ue_matiere')
                 ->where('unite_enseignement_id', $row->unite_enseignement_id)
                 ->where('matiere_id', $canonicalId)
+                ->where('parcours_id', $portee)
                 ->exists();
 
             if ($existsForCanonical) {
-                // La canonique est déjà liée à cette UE → on supprime simplement le doublon.
+                // La canonique occupe déjà cette place, pour CETTE maquette :
+                // la ligne absorbée fait bien doublon.
                 DB::table('esbtp_ue_matiere')->where('id', $row->id)->delete();
             } else {
                 DB::table('esbtp_ue_matiere')->where('id', $row->id)->update([

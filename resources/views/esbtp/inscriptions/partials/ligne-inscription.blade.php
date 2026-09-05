@@ -197,7 +197,12 @@
     </td>
 
     {{-- Date inscription --}}
-    <td class="ii-col-date">{{ $inscription->created_at->format('d/m/Y') }}</td>
+    {{-- La date du DOSSIER, celle que porte la fiche et sur laquelle filtre la
+         periode. `created_at` est la date de SAISIE : elle n'a de sens que pour
+         un informaticien, et affichee sous un filtre de periode elle contredisait
+         l'ecran — le bandeau annoncait « du 01/09 au 03/09 » au-dessus de lignes
+         datees du 06/05, sans que rien ne permette de verifier le filtre. --}}
+    <td class="ii-col-date">{{ optional($inscription->date_inscription)->format('d/m/Y') ?? $inscription->created_at->format('d/m/Y') }}</td>
 
     {{-- Actions : inline + kebab pour secondaires --}}
     <td class="ii-col-actions" data-no-row-click>
@@ -255,6 +260,22 @@
                                     </a>
                                 </li>
                             @endif
+                        @endcan
+                        @can('inscriptions.fiche.print')
+                            <li>
+                                <a class="dropdown-item"
+                                   href="{{ route('esbtp.inscriptions.fiche.preview-pdf', ['inscription' => $inscription->id, 'inline' => 1]) }}"
+                                   target="_blank" rel="noopener">
+                                    <i class="fas fa-print"></i>Fiche d'inscription
+                                </a>
+                            </li>
+                            <li>
+                                {{-- Meme route sans `inline` : elle telecharge au lieu d'afficher. --}}
+                                <a class="dropdown-item"
+                                   href="{{ route('esbtp.inscriptions.fiche.preview-pdf', ['inscription' => $inscription->id]) }}">
+                                    <i class="fas fa-download"></i>Télécharger la fiche
+                                </a>
+                            </li>
                         @endcan
                         @if($inscription->status === 'pending' || $inscription->status === 'en_attente')
                             @can('inscriptions.cancel')

@@ -150,7 +150,7 @@ class LMDBulletinService
             $creditsTotaux = 0;
 
             foreach ($ues as $ue) {
-                $resultatUE = $this->calculerResultatUE($bulletin, $ue, $etudiantId, $classeId, $semestre, $anneeUniversitaireId);
+                $resultatUE = $this->calculerResultatUE($bulletin, $ue, $etudiantId, $classeId, $semestre, $anneeUniversitaireId, $classe->parcours_id ? (int) $classe->parcours_id : null);
                 $resultatsUEs[] = $resultatUE;
                 $creditsTotaux += $ue->credit;
             }
@@ -235,7 +235,20 @@ class LMDBulletinService
      */
     public function getUEsForSemestre(ESBTPClasse $classe, int $semestre): \Illuminate\Support\Collection
     {
-        // Eager-load ECUEs via pivot (prioritaire) ET matieres HasMany (fallback)
+        // On charge le pivot ENTIER, sans filtrer par maquette.
+        //
+        // Contraindre ici semblait economique, mais c'etait le contraire d'un
+        // gain : le repli sur la cle etrangere de getEcuesEffectifs() ne peut
+        // reconnaitre un element deja porte par le pivot que s'il le VOIT. Filtre
+        // en SQL, l'element reserve a un autre parcours disparaissait de la
+        // collection, le repli le prenait pour un element sans pivot, et le
+        // reintroduisait — dans la maquette d'a cote, et sans son pivot, donc
+        // avec les valeurs de la matiere au lieu de celles de la maquette.
+        //
+        // La maquette se tranche a un seul endroit, en memoire, dans
+        // getEcuesEffectifs(). Le cout reste celui d'un chargement anticipe par
+        // requete : les seize mille requetes redoutees viendraient d'une requete
+        // PAR UNITE ET PAR ETUDIANT, que personne ne fait ici.
         $eagerLoad = [
             'ecues' => fn($q) => $q->where('esbtp_matieres.is_active', true)->orderBy('esbtp_ue_matiere.ordre_bulletin')->orderBy('esbtp_matieres.code'),
             'matieres' => fn($q) => $q->where('is_active', true)->orderBy('ordre_bulletin')->orderBy('code'),
@@ -278,7 +291,8 @@ class LMDBulletinService
         int $etudiantId,
         int $classeId,
         int $semestre,
-        int $anneeUniversitaireId
+        int $anneeUniversitaireId,
+        ?int $parcoursId = null
     ): ESBTPLMDResultatUE {
 
         // Creer/mettre a jour le resultat UE
@@ -294,8 +308,11 @@ class LMDBulletinService
             ]
         );
 
-        // Calculer les resultats de chaque ECUE — pivot prioritaire, fallback HasMany
-        $ecues = $ue->getEcuesEffectifs();
+        // Calculer les resultats de chaque ECUE — pivot prioritaire, fallback HasMany.
+        // Le parcours decide de la composition : sans lui, un element propre a une
+        // autre maquette entrerait dans cette moyenne, et un element surcharge y
+        // entrerait DEUX fois, avec son coefficient compte deux fois.
+        $ecues = $ue->getEcuesEffectifs($parcoursId);
         $totalPoints = 0;
         $totalCoefficients = 0;
 

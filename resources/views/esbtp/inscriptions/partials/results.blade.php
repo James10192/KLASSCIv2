@@ -67,9 +67,12 @@
                             Statut {!! $sortIndicator('status') !!}
                         </a>
                     </th>
-                    <th class="ii-col-date" aria-sort="{{ $ariaSort('created_at') }}">
-                        <a href="{{ $sortUrl('created_at') }}" class="ii-sort-link">
-                            Inscription {!! $sortIndicator('created_at') !!}
+                    {{-- Trier sur ce que la colonne MONTRE. Elle affichait la date de
+                         saisie et triait dessus, sous un intitule « Inscription » qui
+                         promet la date du dossier. --}}
+                    <th class="ii-col-date" aria-sort="{{ $ariaSort('date_inscription') }}">
+                        <a href="{{ $sortUrl('date_inscription') }}" class="ii-sort-link">
+                            Inscription {!! $sortIndicator('date_inscription') !!}
                         </a>
                     </th>
                     <th class="ii-col-actions" style="width:120px;">Actions</th>

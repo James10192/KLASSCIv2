@@ -4,7 +4,7 @@ namespace App\Models;
 
 use App\Concerns\HasFileUtils;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Storage;
+use App\Services\Documents\StockageDocumentEtudiant;
 
 class ESBTPEtudiantDocument extends Model
 {
@@ -63,7 +63,10 @@ class ESBTPEtudiantDocument extends Model
     protected static function booted(): void
     {
         static::deleting(function (ESBTPEtudiantDocument $doc) {
-            Storage::disk('public')->delete($doc->file_path);
+            // Les DEUX disques : un document depose avant la mise a l'abri vit
+            // encore sur le disque expose, et ne pas l'y effacer laisserait en
+            // place precisement ce qu'on veut retirer.
+            app(StockageDocumentEtudiant::class)->supprimer($doc->file_path);
         });
     }
 }

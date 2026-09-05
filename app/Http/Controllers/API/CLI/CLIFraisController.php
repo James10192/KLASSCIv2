@@ -309,6 +309,11 @@ class CLIFraisController extends BaseApiController
      *
      * Ne touche a rien sans `apply`, et ne cree QUE ce qui manque : une
      * souscription existante porte une decision, on ne la revient pas.
+     *
+     * `ajuster` leve cette derniere reserve pour les seuls montants : la
+     * souscription reste, mais son tarif est realigne sur le bareme en vigueur.
+     * C'est ce qu'il faut apres avoir corrige le prix d'une categorie, et c'est
+     * pour cela que ca se demande explicitement.
      */
     public function souscriptionsManquantes(
         Request $request,
@@ -321,18 +326,33 @@ class CLIFraisController extends BaseApiController
         $valide = $request->validate([
             'annee_id' => ['nullable', 'integer'],
             'apply' => ['nullable', 'boolean'],
+            'ajuster' => ['nullable', 'boolean'],
         ]);
 
         $resultat = $rattrapage->executer(
             (bool) ($valide['apply'] ?? false),
             $valide['annee_id'] ?? null,
+            null,
+            (bool) ($valide['ajuster'] ?? false),
         );
+
+        // Un montant retouche a la main ne s'applique que si sa ligne est cochee,
+        // ce que le CLI ne sait pas faire : il DETECTE ces ecarts sans pouvoir
+        // les ecrire. Ne rapporter que l'applicable ferait dire au dry-run
+        // « 0 a realigner » alors qu'il en a trouve, et l'operateur conclurait a
+        // tort que le tarif est deja a jour partout.
+        $detectes = (int) ($resultat['total_ajuster_detecte'] ?? $resultat['total_ajuster']);
+        $proteges = max(0, $detectes - (int) $resultat['total_ajuster']);
+        $reserve = $proteges > 0
+            ? sprintf(" %d montant(s) protege(s) (retouche a la main) : a appliquer depuis l'ecran, ligne par ligne.", $proteges)
+            : '';
 
         return $this->successResponse(
             $resultat,
-            $resultat['applique']
-                ? sprintf('%d ajoutée(s), %d retirée(s) sur %d inscription(s).', $resultat['total_ajouter'], $resultat['total_retirer'], $resultat['inscriptions'])
-                : sprintf("%d à ajouter, %d à retirer sur %d inscription(s). Rien n'a ete ecrit.", $resultat['total_ajouter'], $resultat['total_retirer'], $resultat['inscriptions'])
+            ($resultat['applique']
+                ? sprintf('%d ajoutée(s), %d retirée(s), %d montant(s) realigne(s) sur %d inscription(s).', $resultat['total_ajouter'], $resultat['total_retirer'], $resultat['total_ajuster'], $resultat['inscriptions'])
+                : sprintf("%d à ajouter, %d à retirer, %d montant(s) a realigner sur %d inscription(s). Rien n'a ete ecrit.", $resultat['total_ajouter'], $resultat['total_retirer'], $resultat['total_ajuster'], $resultat['inscriptions'])
+            ) . $reserve
         );
     }
 

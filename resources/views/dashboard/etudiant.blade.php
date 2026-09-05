@@ -4,10 +4,204 @@
 
 @push('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+<style>
+    /* Accueil étudiant mobile — namespace mab-* (le socle m-* vient de mobile-shell.css) */
+    .mab-screen .m-hero .v { font-size: 22px; line-height: 1.15; }
+    .mab-screen .m-hero.mab-hero-calme .v { font-size: 17px; font-weight: 700; opacity: .92; }
+    .mab-screen .m-hero .v small { display: inline-block; white-space: nowrap; }
+    .mab-screen .m-grade .n.mab-abs { color: #a12016; font-size: 15px; }
+    .mab-screen .m-empty.mab-empty-court { padding: 18px 14px; }
+</style>
 @endpush
 
 @section('content')
-<div class="dashboard-acasi">
+@php
+    // Accueil mobile : rendu seulement quand le shell est actif pour un étudiant.
+    $mab = $mobileAccueil ?? null;
+    $mabShell = ($mobileShellEnabled ?? false) && (($mobileProfile ?? null) === 'etudiant') && is_array($mab);
+@endphp
+@if($mabShell)
+@php
+    $mabUser = auth()->user();
+    $mabPeutNotes = $mabUser->canAny(['notes.view_own', 'notes.view']);
+    $mabPeutAbsences = $mabUser->canAny(['attendances.view_own', 'attendances.view']);
+    $mabPeutBulletins = $mabUser->canAny(['bulletins.view_own', 'bulletins.view']);
+    // Même garde que la route esbtp.mes-paiements.index.
+    $mabPeutPaiements = $mabUser->canAny(['profile.view_own', 'notes.view_own']);
+
+    $mabMontant = fn ($v) => number_format((float) $v, 0, ',', ' ');
+    // 13,40 → « 13,4 » ; 13,00 → « 13 » ; null → « — ».
+    $mabNombre = fn ($v) => $v === null ? '—' : rtrim(rtrim(number_format((float) $v, 2, ',', ''), '0'), ',');
+    $mabDate = fn ($d, $fmt = 'D MMMM') => $d ? mb_strtolower($d->copy()->locale('fr')->isoFormat($fmt), 'UTF-8') : '';
+
+    $mabAujourdhui = \Illuminate\Support\Str::ucfirst($mabDate($mab['aujourdhui'], 'dddd D MMMM'));
+    $mabPrenom = $mab['prenom'] ?: 'à vous';
+    $mabHeroLabel = 'Bonjour ' . $mabPrenom . ($mab['classe'] ? ' · ' . $mab['classe'] : '');
+
+    $mabCours = $mab['prochain_cours'];
+    if (! $mab['classe']) {
+        $mabHeroValeur = 'Aucune inscription active';
+        $mabHeroUnite = null;
+        $mabHeroCalme = true;
+    } elseif ($mabCours) {
+        $mabHeroValeur = ($mabCours['en_cours'] ? 'En cours depuis ' : 'Prochain cours ') . $mabCours['heure'];
+        $mabHeroUnite = $mabCours['salle'];
+        $mabHeroCalme = false;
+    } else {
+        $mabHeroValeur = 'Plus de cours aujourd\'hui';
+        $mabHeroUnite = null;
+        $mabHeroCalme = true;
+    }
+    $mabHeroPills = [];
+    if ($mabCours) {
+        $mabHeroPills[] = implode(' · ', array_filter([$mabCours['matiere'], $mabCours['enseignant']]));
+    }
+
+    // Quatre indicateurs : chacun renvoie vers son écran quand le droit existe.
+    $mabAssiduite = $mab['assiduite'];
+    $mabAbsences = (int) ($mab['absences'] ?? 0);
+    $mabAJustifier = (int) ($mab['a_justifier']['total'] ?? 0);
+    $mabResteDu = $mab['finances']['reste_du'] ?? null;
+    $mabEcheance = $mab['finances']['prochaine_echeance'] ?? null;
+
+    if ($mab['credits']) {
+        $mabKpiResultat = [
+            'value' => $mab['credits']['acquis'] . ' / ' . $mab['credits']['total'],
+            'label' => 'Crédits acquis',
+            'delta' => 'bulletins publiés',
+            'tone' => $mab['credits']['acquis'] >= $mab['credits']['total'] ? 'ok' : 'info',
+            'href' => $mabPeutBulletins ? route('esbtp.mon-bulletin.index') : null,
+        ];
+    } else {
+        $mabKpiResultat = [
+            'value' => $mabNombre($mab['moyenne']),
+            'label' => 'Moyenne',
+            'delta' => $mab['moyenne'] === null ? 'pas encore de note' : 'sur 20',
+            'tone' => $mab['moyenne'] === null ? 'mute' : ($mab['moyenne'] >= 10 ? 'ok' : 'bad'),
+            'href' => $mabPeutNotes ? route('esbtp.mes-notes.index') : null,
+        ];
+    }
+    $mabKpis = [
+        $mabKpiResultat,
+        [
+            'value' => $mabAssiduite === null ? '—' : $mabNombre($mabAssiduite) . ' %',
+            'label' => 'Assiduité',
+            'delta' => $mabAssiduite === null ? 'aucun appel' : ($mabAbsences . ' absence' . ($mabAbsences > 1 ? 's' : '')),
+            'tone' => $mabAssiduite === null ? 'mute' : ($mabAbsences > 0 ? 'warn' : 'ok'),
+            'href' => $mabPeutAbsences ? route('esbtp.mes-absences.index') : null,
+        ],
+        [
+            'value' => (string) $mabAJustifier,
+            'label' => $mabAJustifier > 1 ? 'Absences à justifier' : 'Absence à justifier',
+            'delta' => $mabAJustifier > 0 ? 'à traiter' : 'rien en attente',
+            'tone' => $mabAJustifier > 0 ? 'bad' : 'ok',
+            'href' => $mabPeutAbsences ? route('esbtp.mes-absences.index') : null,
+        ],
+        [
+            'value' => $mabResteDu === null ? '—' : $mabMontant($mabResteDu),
+            'label' => 'Reste dû · FCFA',
+            'delta' => $mabResteDu === null ? 'indisponible' : ($mabResteDu > 0 ? ($mabEcheance ? mb_strtolower($mabEcheance['label'], 'UTF-8') : 'à régler') : 'à jour'),
+            'tone' => $mabResteDu === null ? 'mute' : ($mabResteDu > 0 ? (($mabEcheance['en_retard'] ?? false) ? 'bad' : 'warn') : 'ok'),
+            'href' => $mabPeutPaiements ? route('esbtp.mes-paiements.index') : null,
+        ],
+    ];
+
+    // Lignes « À faire » : les droits sont revérifiés au rendu par les gardes de permission.
+    $mabAbs = $mab['a_justifier']['derniere'] ?? null;
+    $mabAFaireAbsence = $mabPeutAbsences && $mabAJustifier > 0;
+    $mabAFairePaiement = $mabPeutPaiements && $mabResteDu !== null && $mabResteDu > 0;
+
+    $mabAbsTitre = 'Justifier l\'absence' . ($mabAbs && $mabAbs['date'] ? ' du ' . $mabDate($mabAbs['date']) : '');
+    if ($mabAJustifier > 1) {
+        $mabAbsTitre .= ' (+' . ($mabAJustifier - 1) . ')';
+    }
+    $mabAbsSous = $mabAbs ? implode(' · ', array_filter([
+        $mabAbs['matiere'],
+        $mabAbs['heure_debut'] && $mabAbs['heure_fin'] ? $mabAbs['heure_debut'] . '–' . $mabAbs['heure_fin'] : null,
+    ])) : null;
+
+    if ($mabEcheance) {
+        $mabPayTitre = $mabEcheance['en_retard']
+            ? \Illuminate\Support\Str::ucfirst($mabEcheance['label']) . ' en retard depuis le ' . $mabDate($mabEcheance['date'])
+            : 'Payer ' . mb_strtolower($mabEcheance['label'], 'UTF-8') . ' avant le ' . $mabDate($mabEcheance['date']);
+        $mabJours = now()->startOfDay()->diffInDays($mabEcheance['date'], false);
+        if ($mabEcheance['en_retard']) {
+            [$mabPayChip, $mabPayTon] = ['En retard', 'bad'];
+        } elseif ($mabJours <= 15) {
+            [$mabPayChip, $mabPayTon] = ['Bientôt', 'warn'];
+        } else {
+            [$mabPayChip, $mabPayTon] = ['À venir', 'mute'];
+        }
+    } else {
+        $mabPayTitre = 'Régler le reste dû';
+        [$mabPayChip, $mabPayTon] = ['À régler', 'warn'];
+    }
+    $mabPaySous = $mabResteDu !== null ? $mabMontant($mabResteDu) . ' FCFA restants' : null;
+    $mabNotifUrl = Route::has('esbtp.mes-notifications.index') ? route('esbtp.mes-notifications.index') : null;
+@endphp
+<div class="m-only-mobile m-screen mab-screen">
+    <x-m.appbar :title="$mab['ecole']" :sub="$mabAujourdhui" :action="$mabNotifUrl ? 'bell' : null" :action-url="$mabNotifUrl" action-label="Notifications" />
+
+    <div class="m-body" data-m-ptr="reload">
+        <x-m.hero :label="$mabHeroLabel" :value="$mabHeroValeur" :unit="$mabHeroUnite" :pills="$mabHeroPills" :class="$mabHeroCalme ? 'mab-hero-calme' : ''" />
+
+        <x-m.kpi :items="$mabKpis" />
+
+        <div class="m-sec"><b>À faire</b></div>
+        @if($mabAFaireAbsence || $mabAFairePaiement)
+            <div class="m-list one">
+                @canany(['attendances.view_own', 'attendances.view'])
+                    @if($mabAFaireAbsence)
+                        <x-m.row :href="route('esbtp.mes-absences.index')" icon="clock" :title="$mabAbsTitre" :sub="$mabAbsSous" chip="À justifier" chip-type="bad" />
+                    @endif
+                @endcanany
+                @canany(['profile.view_own', 'notes.view_own'])
+                    @if($mabAFairePaiement)
+                        <x-m.row :href="route('esbtp.mes-paiements.index')" icon="cash" :title="$mabPayTitre" :sub="$mabPaySous" :chip="$mabPayChip" :chip-type="$mabPayTon" />
+                    @endif
+                @endcanany
+            </div>
+        @else
+            <x-m.empty class="mab-empty-court" icon="check" title="Rien à faire" text="Aucune absence à justifier, aucun paiement en attente." />
+        @endif
+
+        @canany(['notes.view_own', 'notes.view'])
+            <div class="m-sec"><b>Dernières notes</b><a href="{{ route('esbtp.mes-notes.index') }}">Tout voir</a></div>
+            @if(count($mab['notes']))
+                <div class="m-list one">
+                    @foreach($mab['notes'] as $mabNote)
+                        @php
+                            $mabNoteTitre = $mabNote['matiere'] . ($mabNote['titre'] ? ' · ' . $mabNote['titre'] : '');
+                            $mabNoteSous = implode(' · ', array_filter([
+                                $mabNote['code'] ? ($mab['est_lmd'] ? 'ECUE ' : '') . $mabNote['code'] : null,
+                                $mabNote['coefficient'] !== null ? 'coef ' . $mabNombre($mabNote['coefficient']) : null,
+                                $mabNote['date'] ? $mabDate($mabNote['date']) : null,
+                            ]));
+                        @endphp
+                        <div class="m-grade">
+                            <div>
+                                <b>{{ $mabNoteTitre }}</b>
+                                @if($mabNoteSous !== '')
+                                    <span>{{ $mabNoteSous }}</span>
+                                @endif
+                            </div>
+                            @if($mabNote['absent'])
+                                <span class="n mab-abs">Absent</span>
+                            @else
+                                <span class="n">{{ $mabNombre($mabNote['note']) }}<small>/{{ $mabNombre($mabNote['bareme']) }}</small></span>
+                            @endif
+                        </div>
+                    @endforeach
+                </div>
+            @else
+                <x-m.empty class="mab-empty-court" icon="pen" title="Pas encore de note" text="Les notes saisies par vos enseignants apparaîtront ici." />
+            @endif
+        @endcanany
+    </div>
+</div>
+@endif
+
+<div class="dashboard-acasi{{ $mabShell ? ' m-only-desktop' : '' }}">
     <div class="main-content">
         <!-- Header Étudiant - même style que superadmin -->
         <div class="dashboard-header">
@@ -48,13 +242,19 @@
 
             <!-- Taux de Présence -->
             @if(isset($attendanceStats))
-            <div class="stat-card {{ $attendanceStats['rate'] >= 75 ? 'success' : ($attendanceStats['rate'] >= 50 ? 'warning' : 'danger') }}" style="padding: var(--space-xl); display: flex; align-items: center; justify-content: space-between;">
+            @php
+                // Aucun appel enregistre (ou calcul indisponible) : taux null,
+                // affiche « — » sans couleur d'alerte — jamais un faux 0 %.
+                $_tauxPresence = $attendanceStats['rate'] ?? null;
+                $_tonPresence = $_tauxPresence === null ? '' : ($_tauxPresence >= 75 ? 'success' : ($_tauxPresence >= 50 ? 'warning' : 'danger'));
+            @endphp
+            <div class="stat-card {{ $_tonPresence }}" style="padding: var(--space-xl); display: flex; align-items: center; justify-content: space-between;">
                 <div style="display: flex; align-items: center; gap: var(--space-lg); flex: 1;">
-                    <div class="stat-icon {{ $attendanceStats['rate'] >= 75 ? 'success' : ($attendanceStats['rate'] >= 50 ? 'warning' : 'danger') }}">
+                    <div class="stat-icon {{ $_tonPresence }}">
                         <i class="fas fa-clipboard-check"></i>
                     </div>
                     <div style="flex: 1;">
-                        <div class="stat-value" style="margin-bottom: var(--space-xs);">{{ $attendanceStats['rate'] }}%</div>
+                        <div class="stat-value" style="margin-bottom: var(--space-xs);">{{ $_tauxPresence === null ? '—' : $_tauxPresence . '%' }}</div>
                         <div class="stat-label" style="margin: 0;">Taux de Présence</div>
                     </div>
                 </div>

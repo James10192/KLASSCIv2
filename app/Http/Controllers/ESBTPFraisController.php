@@ -1407,6 +1407,11 @@ class ESBTPFraisController extends Controller
                 ->get();
 
             $paye = \App\Models\ESBTPPaiement::netPaidByCategory($inscription->id, true);
+            // Scope BTS ou LMD derive de l'inscription (rule rien-en-dur) :
+            // getApplicableConfiguration() posait SYSTEME_BTS en dur et une
+            // inscription LMD ne trouvait jamais ses tranches ni ses options.
+            $scopeFrais = app(FraisScopeResolver::class)->resolveForInscription($inscription);
+            $scopeFrais['annee_universitaire_id'] = $inscription->annee_universitaire_id;
 
             $categories = $souscriptions
                 ->filter(fn ($souscription) => $souscription->fraisCategory)
@@ -1415,14 +1420,9 @@ class ESBTPFraisController extends Controller
                     $souscription->fraisCategory->id ?? 0,
                 ])
                 ->values()
-                ->map(function ($souscription) use ($inscription, $paye) {
+                ->map(function ($souscription) use ($inscription, $paye, $scopeFrais) {
                     $category = $souscription->fraisCategory;
-                    $configuration = ESBTPFraisConfiguration::getApplicableConfiguration(
-                        $category->id,
-                        $inscription->filiere_id,
-                        $inscription->niveau_id,
-                        $inscription->annee_universitaire_id
-                    );
+                    $configuration = ESBTPFraisConfiguration::getApplicableForScope($category->id, $scopeFrais);
 
                     $montant = (float) $souscription->chargedAmount();
                     $dejaPaye = (float) ($paye[$category->id] ?? 0);

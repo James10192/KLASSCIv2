@@ -9,6 +9,7 @@ use App\Models\ESBTPPaiement;
 use App\Models\ESBTPDepense;
 use App\Models\ESBTPFacture;
 use App\Services\Audit\AuditEntityResolver;
+use App\Services\Audit\AuditStatsSnapshot;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Response;
@@ -21,8 +22,10 @@ class ESBTPAuditController extends Controller
     /**
      * Constructeur avec middleware de permissions
      */
-    public function __construct(private readonly AuditEntityResolver $entityResolver = new AuditEntityResolver())
-    {
+    public function __construct(
+        private readonly AuditEntityResolver $entityResolver = new AuditEntityResolver(),
+        private readonly AuditStatsSnapshot $statsSnapshot = new AuditStatsSnapshot()
+    ) {
         $this->middleware('auth');
         $this->middleware('permission:security.audit.view')->only(['index', 'show', 'getAuditData', 'relatedLinks']);
         $this->middleware('permission:security.audit.export')->only(['export', 'exportPdf', 'exportExcel']);
@@ -35,8 +38,17 @@ class ESBTPAuditController extends Controller
      */
     public function index(Request $request)
     {
-        // Statistiques générales d'audit
-        $stats = $this->getAuditStats();
+        // Lecture seule de l'instantané déposé par `audit:rafraichir-statistiques`.
+        // Aucun recalcul synchrone ici : c'est précisément ce calcul (sept COUNT
+        // sur `audits`) qui rendait la page inatteignable. Si rien n'a encore été
+        // calculé, la page le dit — elle ne se sacrifie pas à le faire.
+        $instantane = $this->statsSnapshot->lire();
+        $stats = $instantane['statistiques'] ?? null;
+        $statsCalculeLe = $instantane['calcule_le'] ?? null;
+        $statsPerimees = $statsCalculeLe !== null && AuditStatsSnapshot::estPerime(
+            $statsCalculeLe,
+            AuditStatsSnapshot::peremptionMinutes()
+        );
 
         // Modèles auditables
         $auditableModels = $this->getAuditableModels();
@@ -44,7 +56,13 @@ class ESBTPAuditController extends Controller
         // Utilisateurs pour les filtres
         $users = User::select('id', 'name', 'email', 'username')->with('roles:id,name')->get();
 
-        return view('esbtp.audit.index', compact('stats', 'auditableModels', 'users'));
+        return view('esbtp.audit.index', compact(
+            'stats',
+            'statsCalculeLe',
+            'statsPerimees',
+            'auditableModels',
+            'users'
+        ));
     }
 
     /**
@@ -65,8 +83,12 @@ class ESBTPAuditController extends Controller
             });
         }
 
-        // Pagination
-        $audits = $query->paginate(50);
+        // Pagination sans comptage : `paginate()` lancait un COUNT(*) sur toute
+        // la table `audits` a chaque chargement, meme sans aucun filtre, pour ne
+        // servir qu'un total et un nombre de pages. `simplePaginate()` supprime
+        // ce comptage ; la vue affiche desormais la page courante et un bouton
+        // « Suivant » qui sait seulement s'il reste quelque chose apres.
+        $audits = $query->simplePaginate(50);
 
         // Formatage des données pour l'affichage. On envoie `event_raw` (slug
         // brut Eloquent : created/updated/...) en plus de `event` (label FR)
@@ -373,30 +395,6 @@ class ESBTPAuditController extends Controller
         $pdf = Pdf::loadView('esbtp.audit.export-pdf', compact('audits'));
 
         return $pdf->download('audit_trail_' . now()->format('Y-m-d_H-i-s') . '.pdf');
-    }
-
-    /**
-     * Obtenir les statistiques d'audit
-     */
-    private function getAuditStats()
-    {
-        $today = Carbon::today();
-        $thisWeek = Carbon::now()->startOfWeek();
-        $thisMonth = Carbon::now()->startOfMonth();
-
-        return [
-            'total_audits' => Audit::count(),
-            'today_audits' => Audit::whereDate('created_at', $today)->count(),
-            'week_audits' => Audit::where('created_at', '>=', $thisWeek)->count(),
-            'month_audits' => Audit::where('created_at', '>=', $thisMonth)->count(),
-            'financial_audits' => Audit::whereIn('auditable_type', [
-                'App\Models\ESBTPPaiement',
-                'App\Models\ESBTPDepense',
-                'App\Models\ESBTPFacture'
-            ])->count(),
-            'critical_events' => Audit::whereIn('event', ['deleted', 'restored'])->count(),
-            'unique_users' => Audit::distinct('user_id')->count('user_id'),
-        ];
     }
 
     /**

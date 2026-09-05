@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Domain\BtsTroncCommun\BtsUiPresenter;
 use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPEtudiantDocument;
+use App\Services\Documents\StockageDocumentEtudiant;
 use App\Models\ESBTPFiliere;
 use App\Models\ESBTPNiveauEtude;
 use App\Models\ESBTPAnneeUniversitaire;
@@ -237,8 +238,17 @@ class ESBTPEtudiantController extends Controller
      */
     public function store(Request $request)
     {
-        // Ajout de logs pour déboguer
-        \Illuminate\Support\Facades\Log::info('Tentative de création d\'un étudiant', ['request' => $request->all()]);
+        // Ce journal ecrivait `$request->all()` : l etat civil complet d un eleve
+        // souvent mineur, et les coordonnees de ses parents — soit PLUS que ce
+        // que le correctif du 4 septembre a retire cent lignes plus bas, dans
+        // cette meme methode. Le contournement etait ici, en premiere
+        // instruction, avant meme la validation.
+        //
+        // On garde ce qui sert a deboguer : qui saisit, et depuis quel ecran.
+        \Illuminate\Support\Facades\Log::info('Tentative de creation d un etudiant', [
+            'par_utilisateur' => auth()->id(),
+            'avec_photo' => $request->hasFile('photo'),
+        ]);
 
         // Validation des données de base de l'étudiant
         $validator = Validator::make($request->all(), [
@@ -294,9 +304,20 @@ class ESBTPEtudiantController extends Controller
                 'creer_compte_utilisateur' => $request->create_account ? true : false,
             ];
 
-            // Gérer la photo si présente
+            // La photo se range MAINTENANT, et sa valeur part dans `photo`, qui est
+            // assignable en masse.
+            //
+            // Cette ligne posait l objet televerse dans `photo_file`. Son unique
+            // lecteur a disparu le 3 mars 2025 : depuis, la cle etait silencieusement
+            // ecartee a l assignation de masse, et l ecran principal de creation
+            // d etudiant JETAIT les photos. Les sauvegardes le disent — une seule
+            // photo non nulle sur 1581 etudiants sur un export d abidjan, zero sur
+            // 2767 sur un autre. Le formulaire acceptait la photo, prevenait qu il
+            // faudrait la reselectionner apres un rechargement, et ne l enregistrait
+            // jamais.
             if ($request->hasFile('photo')) {
-                $etudiantData['photo_file'] = $request->file('photo');
+                $etudiantData['photo'] = app(\App\Services\Photos\StockagePhoto::class)
+                    ->enregistrer($request->file('photo'), 'etudiant');
             }
 
             // Préparer les données d'inscription
@@ -346,11 +367,24 @@ class ESBTPEtudiantController extends Controller
             // Appeler le service pour créer l'inscription
             $parentData = !empty($parentsData) ? $parentsData[0] : null;
 
-            // Ajout de logs pour déboguer
-            \Illuminate\Support\Facades\Log::info('Appel au service d\'inscription', [
-                'etudiantData' => $etudiantData,
-                'inscriptionData' => $inscriptionData,
-                'parentData' => $parentData
+            // Ce journal contenait `etudiantData` et `parentData` EN ENTIER : nom,
+            // prenoms, date de naissance, telephone, courriel personnel, adresse —
+            // l etat civil complet d un eleve souvent mineur, et les coordonnees de
+            // ses parents. Ecrit a chaque creation, conserve quatorze jours, lisible
+            // par le support, repris dans les sauvegardes, sur six ecoles.
+            //
+            // C est exactement ce que LogRequests masque deja pour le portail public
+            // de candidature. Le contournement etait ici, en dur dans le controleur,
+            // hors de portee de cette liste de champs.
+            //
+            // On garde ce qui sert a deboguer — vers quelle classe, avec ou sans
+            // parent, par qui — et rien de ce qui identifie une personne.
+            \Illuminate\Support\Facades\Log::info("Appel au service d'inscription", [
+                'classe_id' => $inscriptionData['classe_id'] ?? null,
+                'annee_universitaire_id' => $inscriptionData['annee_universitaire_id'] ?? null,
+                'champs_etudiant' => count($etudiantData),
+                'avec_parent' => $parentData !== null,
+                'par' => Auth::id(),
             ]);
 
             $result = $this->inscriptionService->createInscription(
@@ -663,32 +697,25 @@ class ESBTPEtudiantController extends Controller
         // Stocker le token en session
         session(['form_submit_token' => $submittedToken]);
 
-        // Logging des données reçues pour debug
-        \Log::info('Début de la requête de mise à jour', [
-            'request_method' => $request->method(),
-            'request_url' => $request->url(),
-            'request_headers' => $request->headers->all(),
-            'session_id' => session()->getId(),
-            'input_size' => strlen(json_encode($request->all())),
-            'has_file' => $request->hasFile('photo'),
-            'file_size' => $request->hasFile('photo') ? $request->file('photo')->getSize() : 0
-        ]);
-
-        \Log::info('Données reçues pour mise à jour étudiant', [
-            'id' => $etudiant->id,
-            'requestData' => $request->all(),
-            'currentEmail' => $etudiant->email_personnel,
-            'currentSexe' => $etudiant->sexe,
-            'currentGenre' => $etudiant->genre,
-            'ville' => $request->input('ville'),
-            'commune' => $request->input('commune'),
-            'etudiantVille' => $etudiant->ville,
-            'etudiantCommune' => $etudiant->commune,
-        ]);
-
-        \Log::info('Payload update etudiant', [
+        // Ces trois journaux ecrivaient la meme chose trois fois, et le pire
+        // n etait pas la redondance :
+        //
+        //   - `request_headers` => $request->headers->all() embarque l en-tete
+        //     Cookie, donc le cookie de session ET le jeton « se souvenir de
+        //     moi » EN CLAIR. Qui lit storage/logs — le support, une sauvegarde,
+        //     un voisin d hebergement mutualise — pouvait rejouer la session
+        //     d une secretaire. C etait la fuite la plus grave du fichier.
+        //   - `requestData` et `input` vidaient la charge complete : etat civil
+        //     de l eleve, courriel, ville, commune, coordonnees des parents.
+        //
+        // Un journal de mise a jour doit dire QUI a modifie QUOI, pas reciter le
+        // formulaire. L audit du modele, lui, garde deja le detail des champs
+        // changes, et il est fait pour ca.
+        \Log::info('Mise a jour etudiant', [
             'etudiant_id' => $etudiant->id,
-            'input' => $request->all()
+            'par_utilisateur' => auth()->id(),
+            'champs_soumis' => count($request->all()),
+            'avec_photo' => $request->hasFile('photo'),
         ]);
 
         // Validation des données - Exclus les champs non modifiables
@@ -766,13 +793,13 @@ class ESBTPEtudiantController extends Controller
                     'mime_type' => $request->file('photo')->getMimeType()
                 ]);
 
-                // Supprimer l'ancienne photo si elle existe
-                if ($etudiant->photo && Storage::exists(str_replace('/storage', 'public', $etudiant->photo))) {
-                    Storage::delete(str_replace('/storage', 'public', $etudiant->photo));
-                }
-
-                $photoPath = $request->file('photo')->store('public/etudiants/photos');
-                $etudiantData['photo'] = Storage::url($photoPath);
+                // Le service ecrit un chemin relatif, la meme forme que partout
+                // ailleurs. Cet ecran stockait une URL `/storage/…`, que le
+                // lecteur re-prefixait : la photo ressortait cassee sur les
+                // tableaux de bord, les bulletins et la messagerie.
+                $photos = app(\App\Services\Photos\StockagePhoto::class);
+                $photos->supprimer($etudiant->photo);
+                $etudiantData['photo'] = $photos->enregistrer($request->file('photo'), 'etudiant-'.$etudiant->id);
             }
 
             // Mettre à jour l'étudiant
@@ -1020,9 +1047,11 @@ class ESBTPEtudiantController extends Controller
             }
 
             // Supprimer la photo
-            if ($etudiant->photo && Storage::exists(str_replace('/storage', 'public', $etudiant->photo))) {
-                Storage::delete(str_replace('/storage', 'public', $etudiant->photo));
-            }
+            // Derniere lecture manuelle : elle ne connaissait que l ancienne forme
+            // « URL ». Pour les trois autres, le fichier restait sur le disque apres
+            // suppression de l etudiant — des orphelins qui s accumulent en silence
+            // sur un quota mutualise.
+            app(\App\Services\Photos\StockagePhoto::class)->supprimer($etudiant->photo);
 
             // Supprimer l'étudiant
             $etudiant->delete();
@@ -1195,7 +1224,9 @@ class ESBTPEtudiantController extends Controller
             'filiere_id' => $filiereId,
             'niveau_id' => $niveauId,
             'annee_id' => $anneeId,
-            'request' => $request->all()
+            // `$request->all()` ici n apportait rien que les trois identifiants
+            // au-dessus ne disent deja, et embarquait tout ce que l ecran
+            // appelant avait mis dans la requete.
         ]);
 
         $query = ESBTPClasse::select(
@@ -2384,17 +2415,15 @@ class ESBTPEtudiantController extends Controller
         try {
             DB::beginTransaction();
 
-            // Supprimer l'ancienne photo si elle existe
-            if ($etudiant->photo && Storage::disk('public')->exists($etudiant->photo)) {
-                Storage::disk('public')->delete($etudiant->photo);
-            }
+            $photos = app(\App\Services\Photos\StockagePhoto::class);
 
-            // Stocker la nouvelle photo
-            $photo = $request->file('photo');
-            $filename = 'etudiant_' . $etudiant->id . '_' . time() . '.' . $photo->getClientOriginalExtension();
-            $path = $photo->storeAs('photos', $filename, 'public');
+            // Passe par le service : il sait retrouver le fichier quelle que soit
+            // la forme historique stockee. Le test direct sur $etudiant->photo
+            // laissait derriere lui les photos ecrites sous les anciens dossiers.
+            $photos->supprimer($etudiant->photo);
 
-            // Mettre à jour le chemin de la photo dans la base de données
+            $path = $photos->enregistrer($request->file('photo'), 'etudiant-'.$etudiant->id);
+
             $etudiant->update(['photo' => $path]);
 
             DB::commit();
@@ -2402,7 +2431,7 @@ class ESBTPEtudiantController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Photo mise à jour avec succès',
-                'photo_url' => asset('storage/' . $path)
+                'photo_url' => $photos->url($path),
             ]);
 
         } catch (\Exception $e) {
@@ -2429,8 +2458,11 @@ class ESBTPEtudiantController extends Controller
         ]);
 
         $file = $request->file('fichier');
-        $filename = 'etudiant_' . $etudiant->id . '_' . time() . '_' . \Str::slug(pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME)) . '.' . $file->getClientOriginalExtension();
-        $path = $file->storeAs('etudiants/' . $etudiant->id . '/documents', $filename, 'public');
+        // Disque PRIVE. Ces fichiers partaient sur le disque `public`, que le
+        // serveur web sert directement : un extrait de naissance etait lisible
+        // par qui devinait l'adresse, sans authentification ni trace. Les routes
+        // etaient pourtant gardees — le trou etait a cote d'elles.
+        $path = app(StockageDocumentEtudiant::class)->enregistrer($file, (int) $etudiant->id);
 
         $document = ESBTPEtudiantDocument::create([
             'etudiant_id' => $etudiant->id,
@@ -2456,13 +2488,19 @@ class ESBTPEtudiantController extends Controller
     public function downloadDocument(ESBTPEtudiant $etudiant, ESBTPEtudiantDocument $document, Request $request)
     {
         abort_if($document->etudiant_id !== $etudiant->id, 403);
-        abort_unless(Storage::disk('public')->exists($document->file_path), 404);
+
+        // Le disque se resout : les depots d'avant la mise a l'abri dorment
+        // encore sur le disque expose, et doivent continuer de s'ouvrir tant que
+        // la commande de reprise n'est pas passee sur l'instance.
+        $stockage = app(StockageDocumentEtudiant::class);
+        $disque = $stockage->disqueDe($document->file_path);
+        abort_unless($disque !== null, 404);
 
         if ($request->boolean('force')) {
-            return Storage::disk('public')->download($document->file_path, $document->file_name);
+            return Storage::disk($disque)->download($document->file_path, $document->file_name);
         }
 
-        return Storage::disk('public')->response($document->file_path, $document->file_name);
+        return Storage::disk($disque)->response($document->file_path, $document->file_name);
     }
 
     public function destroyDocument(ESBTPEtudiant $etudiant, ESBTPEtudiantDocument $document)

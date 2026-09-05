@@ -132,17 +132,17 @@ class ESBTPStudentBulletinController extends Controller
 
         // Récupérer les détails du bulletin
         $detailsBulletin = ESBTPBulletinDetail::where('bulletin_id', $bulletin->id)
-            ->with(['matiere'])
+            ->with(['matiere.uniteEnseignement'])
             ->get();
 
         // Regrouper les détails par UE si nécessaire
         $detailsParUE = [];
 
         foreach ($detailsBulletin as $detail) {
-            $ueId = $detail->matiere->ue_id ?? 'sans_ue';
+            $ueId = $detail->matiere->unite_enseignement_id ?? 'sans_ue';
             if (! isset($detailsParUE[$ueId])) {
                 $detailsParUE[$ueId] = [
-                    'ue' => $detail->matiere->ue ?? null,
+                    'ue' => $detail->matiere->uniteEnseignement ?? null,
                     'details' => [],
                 ];
             }

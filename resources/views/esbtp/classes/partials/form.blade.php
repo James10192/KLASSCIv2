@@ -48,10 +48,16 @@
                 $initialDomaineName = optional(optional($p->mention)->domaine)->name ?? '';
             }
         } elseif ($initialMode === 'LMD' && $initialFiliereId) {
-            // Mention sans parcours : filiere_id est la mention (convention Option A)
-            // mais ici filiere_id en BTS != mention en LMD donc on cherche differemment.
-            // Convention Option A : filiere_id == mention_id semantiquement en LMD
-            $m = $mentionsCollection->firstWhere('id', $initialFiliereId);
+            // Tronc commun : la classe est ancree sur une filiere qui reflete
+            // la mention. On remonte a la mention par la marque du reflet.
+            $ancrage = \App\Models\ESBTPFiliere::find($initialFiliereId);
+            $mentionId = $ancrage?->lmd_mention_id;
+
+            // Classe creee avant l'existence des reflets : la colonne portait
+            // alors l'id de la mention elle-meme. On retente ainsi, sinon le
+            // selecteur s'ouvrirait vide sur des donnees pourtant valides.
+            $m = $mentionsCollection->firstWhere('id', $mentionId ?: $initialFiliereId);
+
             if ($m) {
                 $initialMentionId = $m->id;
                 $initialDomaineName = optional($m->domaine)->name ?? '';

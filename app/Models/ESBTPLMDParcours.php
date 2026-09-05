@@ -60,7 +60,10 @@ class ESBTPLMDParcours extends Model
             'esbtp_lmd_parcours_ue',
             'parcours_id',
             'unite_enseignement_id'
-        )->withPivot('semestre', 'is_optional', 'ordre')->withTimestamps();
+        // `credit` : le poids en credits que CETTE maquette donne a l unite pour
+        // CE semestre. `null` = pas de credit propre, on prend celui de l unite.
+        // Declare avant d etre lu, sinon il rendrait null sans rien signaler.
+        )->withPivot('semestre', 'is_optional', 'ordre', 'credit')->withTimestamps();
     }
 
     public function classes()
