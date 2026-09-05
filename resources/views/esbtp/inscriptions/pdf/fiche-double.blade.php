@@ -71,6 +71,10 @@
 
         .grille { width: 100%; border-collapse: collapse; }
         .grille td { border: 0.4pt solid #cbd5e1; padding: 1.4mm 2mm; vertical-align: top; }
+        /* Le theme raye une ligne sur deux de tout tableau. Sur une grille qu'on
+           remplit au stylo, ce gris rend l'ecriture moins lisible et fait croire
+           que la ligne grisee est « reservee ». On l'annule ici seulement. */
+        .grille tr:nth-child(even) { background-color: transparent !important; }
         .lbl { font-size: 6.2px; color: #64748b; text-transform: uppercase; letter-spacing: 0.04em; }
         .val { font-size: 9px; font-weight: bold; margin-top: 0.6mm; }
 
@@ -83,7 +87,7 @@
 
         .liste { width: 100%; border-collapse: collapse; }
         .liste th {
-            font-size: 6.2px; color: #64748b; text-transform: uppercase; letter-spacing: 0.04em;
+            font-size: 6.2px; text-transform: uppercase; letter-spacing: 0.04em;
             text-align: left; padding: 1mm 2mm; border-bottom: 0.5pt solid #cbd5e1;
         }
         .liste td { font-size: 8.5px; padding: 1.2mm 2mm; border-bottom: 0.3pt solid #e2e8f0; }

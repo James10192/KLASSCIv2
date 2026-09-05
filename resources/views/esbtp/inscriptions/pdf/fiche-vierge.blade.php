@@ -66,6 +66,10 @@
         /* 11 mm de haut : de quoi ecrire au stylo sans deborder. Une case de
            5 mm, suffisante pour du texte imprime, rend l'ecriture illisible. */
         .grille td { border: 0.4pt solid #94a3b8; padding: 1.2mm 2mm; vertical-align: top; height: 11mm; }
+        /* Le theme raye une ligne sur deux de tout tableau. Sur une grille qu'on
+           remplit au stylo, ce gris rend l'ecriture moins lisible et fait croire
+           que la ligne grisee est « reservee ». On l'annule ici seulement. */
+        .grille tr:nth-child(even) { background-color: transparent !important; }
         .lbl { font-size: 6.8px; color: #475569; text-transform: uppercase; letter-spacing: 0.05em; }
         .aide { font-size: 6px; color: #94a3b8; font-style: italic; }
 
@@ -74,7 +78,7 @@
 
         .liste { width: 100%; border-collapse: collapse; }
         .liste th {
-            font-size: 6.5px; color: #475569; text-transform: uppercase; letter-spacing: 0.04em;
+            font-size: 6.5px; text-transform: uppercase; letter-spacing: 0.04em;
             text-align: left; padding: 1mm 2mm; border-bottom: 0.5pt solid #94a3b8;
         }
         .liste td { font-size: 8.5px; padding: 1.6mm 2mm; border-bottom: 0.3pt solid #cbd5e1; }
@@ -123,7 +127,7 @@
 
     <div class="consigne">
         <strong>Écrivez en MAJUSCULES</strong>, une lettre par intervalle si possible, et au stylo bleu ou noir.
-        Ne remplissez pas les zones grisées : elles sont réservées au secrétariat.
+        Le cadre au bas de la page est réservé au secrétariat : n'y écrivez rien.
         <strong>Vous n'avez pas à indiquer votre classe</strong> — l'établissement vous y affectera après examen de votre dossier.
     </div>
 
