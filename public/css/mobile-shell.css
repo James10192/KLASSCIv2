@@ -265,8 +265,15 @@ body.m-sheet-open { overflow: hidden; }
        sous l'onglet .on, elle GLISSE vers l'onglet touché (transform, courbe
        iOS) avant que la navigation parte, puis est morphée d'une page à l'autre
        par la transition de vue (view-transition-name: m-tab-pill). */
-    .m-bottomnav { position: fixed; left: 0; right: 0; bottom: 0; height: calc(var(--m-nav-h) + var(--m-safe-b)); padding: 6px 6px calc(18px + var(--m-safe-b)); background: rgba(255,255,255,.72); -webkit-backdrop-filter: blur(20px) saturate(180%); backdrop-filter: blur(20px) saturate(180%); border-top: .5px solid rgba(15,23,42,.12); display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; z-index: 1080; font-family: var(--m-font); view-transition-name: m-bottomnav; }
-    .m-bottomnav-pill { --m-pill-w: min(68px, calc((100% - 12px) / var(--m-pill-n, 5) - 4px)); position: absolute; top: 3px; left: calc(6px + (var(--m-pill-i, 0) + .5) * ((100% - 12px) / var(--m-pill-n, 5)) - var(--m-pill-w) / 2); width: var(--m-pill-w); height: 54px; border-radius: 18px; background: rgba(4,83,203,.12); pointer-events: none; z-index: 0; transition: transform var(--m-pill-ms) var(--m-ease-ios), opacity 160ms ease; will-change: transform; view-transition-name: m-tab-pill; }
+    .m-bottomnav { position: fixed; left: 0; right: 0; bottom: 0; height: calc(var(--m-nav-h) + var(--m-safe-b)); padding: 6px 6px calc(18px + var(--m-safe-b)); background: rgba(255,255,255,.62); -webkit-backdrop-filter: blur(24px) saturate(180%) brightness(1.04); backdrop-filter: blur(24px) saturate(180%) brightness(1.04); border-top: .5px solid rgba(255,255,255,.55); box-shadow: inset 0 .5px 0 rgba(255,255,255,.75), 0 -1px 24px rgba(15,23,42,.05); display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; z-index: 1080; font-family: var(--m-font); view-transition-name: m-bottomnav; }
+        /* Verre liquide : la pastille est une lentille, pas un aplat. Elle eclaircit
+       et sature ce qui passe dessous (backdrop-filter), porte une arete speculaire
+       en haut, un fresnel plus dense en bas, et une ombre qui la decolle du verre.
+       Le deplacement passe par --m-pill-x pour que .is-gliding puisse ajouter
+       l'etirement du glisse sans ecraser la translation. */
+    .m-bottomnav-pill { --m-pill-w: min(68px, calc((100% - 12px) / var(--m-pill-n, 5) - 4px)); --m-pill-x: 0px; --m-pill-sx: 1;                        position: absolute; top: 3px;                        left: calc(6px + (var(--m-pill-i, 0) + .5) * ((100% - 12px) / var(--m-pill-n, 5)) - var(--m-pill-w) / 2);                        width: var(--m-pill-w); height: 54px; border-radius: 18px;                        background: linear-gradient(180deg, rgba(255,255,255,.58) 0%, rgba(255,255,255,.10) 42%, rgba(4,83,203,.13) 100%);                        -webkit-backdrop-filter: brightness(1.14) saturate(1.7);                        backdrop-filter: brightness(1.14) saturate(1.7);                        border: .5px solid rgba(255,255,255,.6);                        box-shadow: inset 0 1px 0 rgba(255,255,255,.95),                                    inset 0 -8px 14px -8px rgba(4,83,203,.22),                                    0 4px 14px rgba(4,83,203,.12),                                    0 1px 2px rgba(15,23,42,.05);                        pointer-events: none; z-index: 0;                        transform: translateX(var(--m-pill-x)) scaleX(var(--m-pill-sx));                        transition: transform var(--m-pill-ms) var(--m-ease-ios), opacity 160ms ease;                        will-change: transform; view-transition-name: m-tab-pill; }
+    /* L'etirement du glisse : la goutte s'allonge en partant, se retasse en arrivant. */
+    .m-bottomnav-pill.is-gliding { --m-pill-sx: 1.12; }
     .m-bottomnav-pill.is-hidden { opacity: 0; }
     .m-bottomnav a,
     .m-bottomnav button { position: relative; z-index: 1; display: grid; justify-items: center; gap: 2px; text-decoration: none; color: #64748b; font-size: 10px; font-weight: 600; letter-spacing: -.01em; padding: 7px 2px 0; border-radius: 12px; min-height: 44px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; background: transparent; border: 0; font-family: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; line-height: 1.1; transition: color 200ms ease; }
@@ -283,8 +290,14 @@ body.m-sheet-open { overflow: hidden; }
     .m-hero .k { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; opacity: .75; font-weight: 600; }
     .m-hero .v { font-size: 26px; font-weight: 800; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
     .m-hero .v small { font-size: 13px; font-weight: 600; opacity: .8; margin-left: 4px; }
-    .m-hero .row { display: flex; gap: 8px; flex-wrap: wrap; }
-    .m-hero .pill { background: rgba(255,255,255,.16); border: 1px solid rgba(255,255,255,.22); padding: 4px 10px; border-radius: 999px; font-size: 11.5px; font-weight: 600; }
+    /* .row est aussi la grille de Bootstrap, chargee sur toutes les pages : sa
+       regle `.row > *` impose width:100% a chaque enfant, et ses gouttieres
+       negatives collent le contenu aux bords. Les pastilles du hero s'etiraient
+       donc sur toute la largeur, l'une sous l'autre, comme des champs vides. On
+       rend leur largeur au contenu. */
+    .m-hero .row { display: flex; gap: 8px; flex-wrap: wrap; margin: 0; --bs-gutter-x: 0; }
+    .m-hero .row > * { flex: 0 0 auto; width: auto; max-width: none; padding-left: 0; padding-right: 0; margin: 0; }
+    .m-hero .pill { display: inline-flex; align-items: center; background: rgba(255,255,255,.16); border: 1px solid rgba(255,255,255,.22); padding: 4px 10px; border-radius: 999px; font-size: 11.5px; font-weight: 600; white-space: nowrap; }
 
     .m-kpi { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
     .m-kpi > div,
