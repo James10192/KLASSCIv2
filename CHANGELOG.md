@@ -158,6 +158,10 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ### Améliorations
 
+- **La feuille du bouton « Plus » ne s'ouvrait plus** — sur mobile, appuyer sur le dernier onglet ne faisait rien : la feuille se préparait bien, mais ne se révélait jamais. Le garde-fou qui annule une ouverture dépassée comparait un repère rangé dans l'état de la page, lequel en ressort enveloppé : la comparaison échouait à tous les coups et coupait chaque ouverture. Toutes les feuilles du téléphone étaient concernées.
+
+- **Le bandeau de la file de recouvrement** — ses deux étiquettes (« relancés aujourd'hui », « à haut risque ») s'étiraient chacune sur toute la largeur, l'une sous l'autre, et ressemblaient à des champs vides. Elles reprennent la largeur de leur texte.
+
 - **Accueil étudiant : le reste dû s'affichait « indisponible »** — l'écran cherchait la prochaine échéance dans l'instantané d'échéancier de l'inscription. La plupart des dossiers n'en ont aucun : la lecture échouait, et l'erreur emportait tout le bloc financier, y compris le montant restant, pourtant connu sans échéancier. L'étudiant voyait un tiret là où il attend une somme.
 
 - **KLASSCI en tête de l'app bar mobile** — sur téléphone et tablette la barre latérale est un tiroir fermé, et le nom de l'application n'apparaissait plus nulle part : la barre du haut ne portait que le logo et le nom de l'école. Le badge central met désormais KLASSCI en premier (tuile logo + nom de l'application), l'établissement en seconde ligne ; sur bureau rien ne change, la marque reste dans la barre latérale.

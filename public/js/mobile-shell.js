@@ -96,7 +96,7 @@
             _samples: [],
             _closeTimer: null,
             _springTimer: null,
-            _showToken: null,
+            _showSeq: 0,          // jeton d'ouverture : un ENTIER, jamais un objet (voir show())
             _prevFocus: null,
             _onOpen: null,
             _onClose: null,
@@ -150,7 +150,12 @@
                 this.dy = 0;
                 this.dragging = false;
                 this.open = true;
-                var token = this._showToken = {};
+                // Le jeton doit rester une valeur primitive. Alpine rend l'etat
+                // reactif : un objet qu'on y range est relu enveloppe dans un
+                // proxy, si bien que `relu !== ecrit` est TOUJOURS vrai — la
+                // garde ci-dessous coupait alors chaque revelation et la
+                // feuille ne s'ouvrait jamais. Un entier se compare par valeur.
+                var token = this._showSeq = this._showSeq + 1;
                 document.body.classList.add('m-sheet-open');
                 window.dispatchEvent(new CustomEvent('m-sheet:opened', { detail: { id: this.id } }));
                 this.$nextTick(function () {
@@ -159,7 +164,7 @@
                     if (root) { root.classList.remove('is-dragging'); }
                     if (panel) { panel.classList.remove('is-spring'); void panel.offsetWidth; } // style initial (hors écran) peint avant la transition
                     var reveal = function () {
-                        if (!self.open || self._showToken !== token) { return; }
+                        if (!self.open || self._showSeq !== token) { return; }
                         self.shown = true;
                         if (root) { root.classList.add('is-open'); }
                     };
@@ -178,7 +183,7 @@
                 var scrim = this._scrim();
                 var panel = this.$refs.panel;
                 this.shown = false;
-                this._showToken = null;
+                this._showSeq = this._showSeq + 1;   // invalide une revelation en vol
                 this.dragging = false;
                 this.dy = 0;
                 this._startY = null;
@@ -552,6 +557,7 @@
        l'ancienne pastille vers la nouvelle.
        ========================================================= */
     var PILL_LEAD_MS = 240;      // temps laissé à la pastille avant de naviguer
+    var PILL_MS = 480;           // durée du glissé, alignée sur --m-pill-ms
 
     function initTabs() {
         var nav = document.querySelector('.m-bottomnav');
@@ -574,7 +580,8 @@
         }
         function setStatic(index, count) {
             pill.style.transition = 'none';
-            pill.style.transform = '';
+            pill.classList.remove('is-gliding');
+            pill.style.setProperty('--m-pill-x', '0px');
             tx = 0;
             pill.style.setProperty('--m-pill-i', String(index));
             pill.style.setProperty('--m-pill-n', String(count));
@@ -590,7 +597,14 @@
             var pr = pill.getBoundingClientRect();
             var tr = tab.getBoundingClientRect();
             tx += (tr.left + tr.width / 2) - (pr.left + pr.width / 2);
-            pill.style.transform = 'translateX(' + tx + 'px)';
+            // La goutte s'allonge le temps du trajet puis se retasse : c'est ce
+            // etirement, et non la seule translation, qui donne le liquide.
+            pill.classList.add('is-gliding');
+            pill.style.setProperty('--m-pill-x', tx + 'px');
+            clearTimeout(pill._glideTimer);
+            pill._glideTimer = setTimeout(function () {
+                pill.classList.remove('is-gliding');
+            }, PILL_MS);
         }
         function markActive(tab) {
             tabs().forEach(function (t) { t.classList.toggle('on', t === tab); });
