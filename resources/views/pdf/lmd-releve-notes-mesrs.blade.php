@@ -186,7 +186,7 @@
                 @if($i === 0)
                     <td class="marge" rowspan="{{ $nb }}">
                         @foreach (str_split('SEMESTRE '.$sem['semester']) as $lettre)
-                            <span>{{ $lettre === ' ' ? '·' : $lettre }}</span>
+                            <span>{!! $lettre === ' ' ? '&nbsp;' : e($lettre) !!}</span>
                         @endforeach
                     </td>
                 @endif
@@ -204,7 +204,7 @@
             <tr>
                 <td class="marge">
                     @foreach (str_split('SEMESTRE '.$sem['semester']) as $lettre)
-                        <span>{{ $lettre === ' ' ? '·' : $lettre }}</span>
+                        <span>{!! $lettre === ' ' ? '&nbsp;' : e($lettre) !!}</span>
                     @endforeach
                 </td>
                 <td colspan="7" class="c" style="font-style:italic">Aucune unité d'enseignement délibérée pour ce semestre.</td>
@@ -227,7 +227,7 @@
     @if (count($semestres) > 1)
         <tr class="total-annee">
             <td colspan="5" class="c">
-                Moyenne {{ collect($semestres)->map(fn ($s) => 'Semestre '.$s['semester'])->implode(' &amp; ') }} :
+                Moyenne {{ collect($semestres)->map(fn ($s) => 'Semestre '.$s['semester'])->implode(' & ') }} :
                 {{ $note($totaux['average'] ?? null) }} / 20
             </td>
             <td colspan="3" class="c">
@@ -245,7 +245,7 @@
 
 @if($decisionAnnee)
     <div class="decision-annee">
-        Décision : {{ \App\Support\AccordGenre::accorderPhrase($decisionAnnee, $sexe) }}
+        Décision : {{ $decision(strtolower(trim($decisionAnnee)) === 'admis' ? 'admis' : 'ajourne') }}
     </div>
 @endif
 
