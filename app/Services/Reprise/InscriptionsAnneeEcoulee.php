@@ -168,12 +168,15 @@ class InscriptionsAnneeEcoulee
             ]);
         }
 
+        $etatCivil = $this->etatCivil($ligne);
+
         return [
             'plan' => [
                 'matricule' => $matricule,
                 'nom' => $nom,
                 'prenoms' => trim((string) ($ligne['prenoms'] ?? '')) ?: null,
                 'telephone' => $this->telephone($ligne),
+                'etat_civil' => $etatCivil,
                 'classe' => $classe,
                 'etudiant_id' => $etudiant?->id,
             ],
@@ -188,12 +191,105 @@ class InscriptionsAnneeEcoulee
                 'classe_id' => $classe->id,
                 'filiere_id' => $classe->filiere_id,
                 'niveau_id' => $classe->niveau_etude_id,
+                'sexe' => $etatCivil['sexe'],
+                'date_naissance' => $etatCivil['date_naissance'],
+                'lieu_naissance' => $etatCivil['lieu_naissance'],
+                'nationalite' => $etatCivil['nationalite'],
                 'etudiant_existe' => $etudiant !== null,
                 'etudiant_id' => $etudiant?->id,
                 'inscription_existe' => $inscription !== null,
                 'inscription_id' => $inscription?->id,
             ],
         ];
+    }
+
+    /**
+     * L'etat civil que la ligne apporte, normalise.
+     *
+     * Tout y est facultatif, et RIEN n'y est devine. Une date illisible — les
+     * listes de classe en portent quelques-unes, « 27/ -07-/ 2005 » ou
+     * « 30/05/20052 » — devient nulle plutot qu'inventee : une date de naissance
+     * fabriquee finirait sur un releve de notes officiel.
+     *
+     * @return array{sexe: string|null, date_naissance: string|null, lieu_naissance: string|null, nationalite: string|null}
+     */
+    private function etatCivil(array $ligne): array
+    {
+        $sexe = mb_strtoupper(trim((string) ($ligne['sexe'] ?? '')));
+
+        return [
+            'sexe' => in_array($sexe, ['M', 'F'], true) ? $sexe : null,
+            'date_naissance' => $this->date($ligne['date_naissance'] ?? null),
+            'lieu_naissance' => $this->texte($ligne['lieu_naissance'] ?? null, 255),
+            'nationalite' => $this->texte($ligne['nationalite'] ?? null, 100),
+        ];
+    }
+
+    /**
+     * Complete les champs d'etat civil VIDES d'un eleve deja en base.
+     *
+     * Jamais d'ecrasement : un guichet a pu corriger une date que la liste porte
+     * de travers, et une reprise rejouee ne doit pas defaire cette correction.
+     */
+    private function completer(ESBTPEtudiant $etudiant, array $etatCivil, ?int $auteur): bool
+    {
+        $aPoser = [];
+
+        foreach ($etatCivil as $champ => $valeur) {
+            if ($valeur !== null && trim((string) $etudiant->{$champ}) === '') {
+                $aPoser[$champ] = $valeur;
+            }
+        }
+
+        if ($aPoser === []) {
+            return false;
+        }
+
+        $etudiant->fill($aPoser + ['updated_by' => $auteur])->save();
+
+        return true;
+    }
+
+    /**
+     * Une date au format de la base, ou null si elle ne se lit pas.
+     *
+     * Le controle du retour a l'identique n'est pas une precaution de style :
+     * `createFromFormat` accepte « 30/05/20052 » et le replie sur une date
+     * absurde sans rien signaler. Une date qui ne se reecrit pas exactement
+     * comme elle est venue n'a pas ete comprise.
+     */
+    private function date($brut): ?string
+    {
+        if ($brut instanceof \DateTimeInterface) {
+            return Carbon::instance($brut)->toDateString();
+        }
+
+        $valeur = trim((string) $brut);
+
+        if ($valeur === '') {
+            return null;
+        }
+
+        foreach (['Y-m-d', 'd/m/Y', 'd-m-Y'] as $format) {
+            try {
+                $date = Carbon::createFromFormat($format, $valeur);
+            } catch (\Throwable $e) {
+                continue;
+            }
+
+            if ($date && $date->format($format) === $valeur) {
+                return $date->toDateString();
+            }
+        }
+
+        return null;
+    }
+
+    private function texte($brut, int $max): ?string
+    {
+        $valeur = trim((string) preg_replace('/\s+/u', ' ', (string) $brut));
+
+        return $valeur === '' ? null : mb_substr($valeur, 0, $max);
     }
 
     /**
@@ -223,7 +319,7 @@ class InscriptionsAnneeEcoulee
             : now()->toDateString();
 
         return DB::transaction(function () use ($plans, $annee, $auteur, $dateInscription): array {
-            $compte = ['etudiants' => 0, 'inscriptions' => 0];
+            $compte = ['etudiants' => 0, 'inscriptions' => 0, 'completes' => 0];
             $correspondance = [];
 
             foreach ($plans as $plan) {
@@ -239,9 +335,16 @@ class InscriptionsAnneeEcoulee
                         // doit retrouver dans ses listes de reinscription.
                         'statut' => 'actif',
                         'created_by' => $auteur,
-                    ]);
+                    ] + $plan['etat_civil']);
                     $etudiant->save();
                     $compte['etudiants']++;
+                } elseif ($this->completer($etudiant, $plan['etat_civil'], $auteur)) {
+                    // L'eleve etait deja la, mais sans etat civil : une reprise
+                    // qui apporte le sexe et la date de naissance les POSE, sans
+                    // jamais ecraser ce qui est deja renseigne. La liste de
+                    // classe n'a pas autorite sur une fiche qu'un guichet a
+                    // corrigee depuis.
+                    $compte['completes']++;
                 }
 
                 $inscription = ESBTPInscription::firstOrNew([

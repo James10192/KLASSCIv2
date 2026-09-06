@@ -38,6 +38,15 @@ class CLIRepriseController extends BaseApiController
             'lignes.*.nom' => ['required', 'string', 'max:255'],
             'lignes.*.prenoms' => ['nullable', 'string', 'max:255'],
             'lignes.*.telephone' => ['nullable', 'string', 'max:30'],
+            // L'etat civil, facultatif. Il n'etait pas repris jusqu'ici parce
+            // que la premiere reprise venait d'un etat de compte, qui ne le
+            // porte pas. Une liste de classe, elle, le porte — et un releve de
+            // notes officiel l'exige : « Genre », « Date de naissance »,
+            // « Lieu de naissance ».
+            'lignes.*.sexe' => ['nullable', 'string', 'max:10'],
+            'lignes.*.date_naissance' => ['nullable', 'string', 'max:30'],
+            'lignes.*.lieu_naissance' => ['nullable', 'string', 'max:255'],
+            'lignes.*.nationalite' => ['nullable', 'string', 'max:100'],
             'lignes.*.classe_id' => ['required', 'integer'],
             // Le libelle d'origine ne sert qu'a rendre les ecarts lisibles :
             // sans lui, la colonne « classe » du rapport affiche un tiret et
