@@ -8,11 +8,15 @@
     $_choix = collect($choix ?? []);
     $_niveaux = collect($niveaux ?? []);
 
-    // Au-dela, la page devient un mur de cases et on repasse a une ligne a
-    // ecrire. Les ecoles en comptent cinq a sept aujourd'hui ; le seuil n'est
-    // pas la pour brider, il est la pour que le formulaire reste lisible le jour
-    // ou une ecole en ouvre trente.
-    $_MAX_CASES = 14;
+    // Les cases sont disposees sur trois colonnes : vingt-quatre entrees tiennent
+    // alors en huit lignes. Au-dela, la page devient un mur et on repasse a une
+    // ligne a ecrire.
+    //
+    // Le seuil a d'abord ete fixe a quatorze, et c'etait trop serre : une ecole
+    // mixte comme la demo compte six filieres BTS et neuf parcours LMD, soit
+    // quinze choix — le formulaire retombait sur la ligne a ecrire alors que
+    // c'est precisement le cas ou les cases servent le plus.
+    $_MAX_CASES = 24;
     $_choixEnCases = $_choix->isNotEmpty() && $_choix->count() <= $_MAX_CASES;
     $_niveauxEnCases = $_niveaux->isNotEmpty() && $_niveaux->count() <= $_MAX_CASES;
 @endphp
@@ -65,7 +69,7 @@
         }
         .consigne strong { color: {{ $hdrBg }}; }
 
-        .sec { margin-top: 3mm; }
+        .sec { margin-top: 2.2mm; }
         .sec-titre {
             font-size: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.09em;
             color: {{ $hdrBg }}; border-bottom: 0.6pt solid {{ $hdrBg }};
@@ -75,7 +79,7 @@
         .grille { width: 100%; border-collapse: collapse; }
         /* 11 mm de haut : de quoi ecrire au stylo sans deborder. Une case de
            5 mm, suffisante pour du texte imprime, rend l'ecriture illisible. */
-        .grille td { border: 0.4pt solid #94a3b8; padding: 1.2mm 2mm; vertical-align: top; height: 11mm; }
+        .grille td { border: 0.4pt solid #94a3b8; padding: 1.1mm 2mm; vertical-align: top; height: 10mm; }
         /* Le theme raye une ligne sur deux de tout tableau. Sur une grille qu'on
            remplit au stylo, ce gris rend l'ecriture moins lisible et fait croire
            que la ligne grisee est « reservee ». On l'annule ici seulement. */
@@ -85,6 +89,8 @@
 
         .cases { font-size: 9px; margin-top: 1mm; }
         .cases span { margin-right: 5mm; white-space: nowrap; line-height: 2; }
+        .cases-grille { width: 100%; border-collapse: collapse; margin-top: 0.8mm; }
+        .cases-grille td { border: none; height: auto; padding: 0.6mm 2mm 0.6mm 0; font-size: 8.5px; width: 33%; }
 
         .liste { width: 100%; border-collapse: collapse; }
         .liste th {
@@ -232,11 +238,16 @@
                 <td>
                     <div class="lbl">Niveau demandé</div>
                     @if($_niveauxEnCases)
-                        <div class="cases">
-                            @foreach ($_niveaux as $niveau)
-                                <span>☐ {{ $niveau }}</span>
+                        <table class="cases-grille">
+                            @foreach ($_niveaux->chunk(3) as $rangee)
+                                <tr>
+                                    @foreach ($rangee as $niveau)
+                                        <td>☐ {{ $niveau }}</td>
+                                    @endforeach
+                                    @for ($i = $rangee->count(); $i < 3; $i++)<td></td>@endfor
+                                </tr>
                             @endforeach
-                        </div>
+                        </table>
                     @else
                         <div class="aide">écrivez le niveau souhaité</div>
                     @endif
@@ -246,12 +257,18 @@
                 <td>
                     <div class="lbl">Filière ou parcours demandé</div>
                     @if($_choixEnCases)
-                        <div class="cases">
-                            @foreach ($_choix as $libelle)
-                                <span>☐ {{ $libelle }}</span>
+                        <table class="cases-grille">
+                            {{-- `concat` et non `push` : `push` modifierait la collection elle-meme, et une
+                                 seconde lecture du gabarit ajouterait une deuxieme ligne « Autre ». --}}
+                            @foreach ($_choix->concat(['Autre : ..............................'])->chunk(3) as $rangee)
+                                <tr>
+                                    @foreach ($rangee as $libelle)
+                                        <td>☐ {{ $libelle }}</td>
+                                    @endforeach
+                                    @for ($i = $rangee->count(); $i < 3; $i++)<td></td>@endfor
+                                </tr>
                             @endforeach
-                            <span>☐ Autre : ...........................................</span>
-                        </div>
+                        </table>
                     @else
                         <div class="aide">écrivez la filière ou le parcours souhaité</div>
                     @endif
@@ -295,7 +312,6 @@
     <div class="reserve">
         <strong>Cadre réservé au secrétariat</strong> — ne rien écrire au-dessus de cette ligne.
         <div class="reserve-lignes">
-            <div class="reserve-ligne"></div>
             <div class="reserve-ligne"></div>
         </div>
     </div>
