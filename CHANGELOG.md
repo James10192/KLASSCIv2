@@ -90,6 +90,8 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ### Corrections
 
+- **L'emploi du temps et les prochaines séances de l'application mobile répondent de nouveau** — deux adresses de l'interface mobile réclamaient à la base de données une colonne qui n'existe pas sur les matières. La base refusait la requête entière, et les deux écrans renvoyaient une erreur à chaque appel, sans jamais rien afficher. La panne était complète et silencieuse côté serveur : elle ne se lisait que dans le journal technique, où elle s'était répétée vingt-neuf fois dans la journée. La colonne fantôme venait d'un copier-coller — les matières se nomment `name`, comme les filières et les niveaux, et non `nom` comme les élèves.
+
 - **Les mots s'accordent au genre de l'étudiante** — « Affectée », « Réaffectée », « Non affectée », « Non inscrite » : une fille lisait jusqu'ici son nom suivi d'un participe au masculin sur son propre dossier et sur le reçu que sa famille emporte. L'accord se fait là où le mot qualifie une personne nommée ; les en-têtes de colonnes de tarifs, les boutons de filtre et les compteurs restent au masculin, qui est aussi la forme d'un groupe mixte. Le français n'ajoutant pas toujours un e, les formes viennent d'une table — nouvelle, ancienne, boursière, admise — et un mot inconnu reste inchangé plutôt que d'être inventé.
 
 - **Le sexe s'écrit en toutes lettres sur la fiche d'inscription** — elle imprimait « M » ou « F ».
