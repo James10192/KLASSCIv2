@@ -8,7 +8,7 @@
     $_choix = collect($choix ?? []);
     $_niveaux = collect($niveaux ?? []);
 
-    // Les cases sont disposees sur trois colonnes : vingt-quatre entrees tiennent
+    // Les cases sont disposees sur quatre colonnes : trente-deux entrees tiennent
     // alors en huit lignes. Au-dela, la page devient un mur et on repasse a une
     // ligne a ecrire.
     //
@@ -16,7 +16,7 @@
     // mixte comme la demo compte six filieres BTS et neuf parcours LMD, soit
     // quinze choix — le formulaire retombait sur la ligne a ecrire alors que
     // c'est precisement le cas ou les cases servent le plus.
-    $_MAX_CASES = 24;
+    $_MAX_CASES = 32;
     $_choixEnCases = $_choix->isNotEmpty() && $_choix->count() <= $_MAX_CASES;
     $_niveauxEnCases = $_niveaux->isNotEmpty() && $_niveaux->count() <= $_MAX_CASES;
 @endphp
@@ -64,12 +64,12 @@
         .pdf-banner-subtitle { font-size: 8px; color: {{ $hdrText }}; opacity: 0.88; margin: 2px 0 0; }
 
         .consigne {
-            margin-top: 2.5mm; border: 0.5pt solid {{ $hdrBg }}; padding: 2mm 2.5mm;
-            font-size: 8px; line-height: 1.5;
+            margin-top: 2mm; border: 0.5pt solid {{ $hdrBg }}; padding: 1.5mm 2.5mm;
+            font-size: 7.8px; line-height: 1.45;
         }
         .consigne strong { color: {{ $hdrBg }}; }
 
-        .sec { margin-top: 2.2mm; }
+        .sec { margin-top: 1.8mm; }
         .sec-titre {
             font-size: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.09em;
             color: {{ $hdrBg }}; border-bottom: 0.6pt solid {{ $hdrBg }};
@@ -79,7 +79,7 @@
         .grille { width: 100%; border-collapse: collapse; }
         /* 11 mm de haut : de quoi ecrire au stylo sans deborder. Une case de
            5 mm, suffisante pour du texte imprime, rend l'ecriture illisible. */
-        .grille td { border: 0.4pt solid #94a3b8; padding: 1.1mm 2mm; vertical-align: top; height: 10mm; }
+        .grille td { border: 0.4pt solid #94a3b8; padding: 1mm 2mm; vertical-align: top; height: 8.5mm; }
         /* Le theme raye une ligne sur deux de tout tableau. Sur une grille qu'on
            remplit au stylo, ce gris rend l'ecriture moins lisible et fait croire
            que la ligne grisee est « reservee ». On l'annule ici seulement. */
@@ -90,14 +90,14 @@
         .cases { font-size: 9px; margin-top: 1mm; }
         .cases span { margin-right: 5mm; white-space: nowrap; line-height: 2; }
         .cases-grille { width: 100%; border-collapse: collapse; margin-top: 0.8mm; }
-        .cases-grille td { border: none; height: auto; padding: 0.6mm 2mm 0.6mm 0; font-size: 8.5px; width: 33%; }
+        .cases-grille td { border: none; height: auto; padding: 0.5mm 2mm 0.5mm 0; font-size: 8px; width: 25%; }
 
         .liste { width: 100%; border-collapse: collapse; }
         .liste th {
             font-size: 6.5px; text-transform: uppercase; letter-spacing: 0.04em;
             text-align: left; padding: 1mm 2mm; border-bottom: 0.5pt solid #94a3b8;
         }
-        .liste td { font-size: 8.5px; padding: 1.6mm 2mm; border-bottom: 0.3pt solid #cbd5e1; }
+        .liste td { font-size: 8.5px; padding: 1.1mm 2mm; border-bottom: 0.3pt solid #cbd5e1; }
         .case { font-size: 11px; }
 
         .reserve {
@@ -108,7 +108,7 @@
         .reserve-ligne { border-bottom: 0.4pt solid #cbd5e1; height: 7mm; }
 
         .signs { width: 100%; margin-top: 4mm; }
-        .signs td { text-align: center; height: 15mm; vertical-align: bottom; font-size: 8px; }
+        .signs td { text-align: center; height: 12mm; vertical-align: bottom; font-size: 8px; }
         .sign-line { border-top: 0.4pt solid #1e293b; width: 78%; margin: 0 auto; padding-top: 1mm; }
     </style>
 </head>
@@ -239,12 +239,12 @@
                     <div class="lbl">Niveau demandé</div>
                     @if($_niveauxEnCases)
                         <table class="cases-grille">
-                            @foreach ($_niveaux->chunk(3) as $rangee)
+                            @foreach ($_niveaux->chunk(4) as $rangee)
                                 <tr>
                                     @foreach ($rangee as $niveau)
                                         <td>☐ {{ $niveau }}</td>
                                     @endforeach
-                                    @for ($i = $rangee->count(); $i < 3; $i++)<td></td>@endfor
+                                    @for ($i = $rangee->count(); $i < 4; $i++)<td></td>@endfor
                                 </tr>
                             @endforeach
                         </table>
@@ -260,12 +260,12 @@
                         <table class="cases-grille">
                             {{-- `concat` et non `push` : `push` modifierait la collection elle-meme, et une
                                  seconde lecture du gabarit ajouterait une deuxieme ligne « Autre ». --}}
-                            @foreach ($_choix->concat(['Autre : ..............................'])->chunk(3) as $rangee)
+                            @foreach ($_choix->concat(['Autre : ..............................'])->chunk(4) as $rangee)
                                 <tr>
                                     @foreach ($rangee as $libelle)
                                         <td>☐ {{ $libelle }}</td>
                                     @endforeach
-                                    @for ($i = $rangee->count(); $i < 3; $i++)<td></td>@endfor
+                                    @for ($i = $rangee->count(); $i < 4; $i++)<td></td>@endfor
                                 </tr>
                             @endforeach
                         </table>
