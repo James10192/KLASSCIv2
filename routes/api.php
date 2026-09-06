@@ -118,8 +118,16 @@ Route::get('/v1/parent-chatbot/report-cards/{bulletin}', App\Http\Controllers\Pa
     ->name('parent-chatbot.report-card');
 
 // Routes API pour ESBTP
-Route::get('/classes/{classe}/matieres', [ESBTPClasseController::class, 'getMatieresForApi'])
-    ->name('api.classes.matieres');
+//
+// Ces trois adresses rendaient la structure academique complete de l ecole —
+// classes, capacites, effectifs, filieres, niveaux — a qui la demandait, sans
+// authentification, sur toutes les instances. Leurs seuls appelants etaient des
+// pages de test laissees dans public/, supprimees en meme temps ; l application,
+// elle, passe par les routes web equivalentes, qui sont protegees.
+Route::middleware(['auth:sanctum'])->group(function () {
+    Route::get('/classes/{classe}/matieres', [ESBTPClasseController::class, 'getMatieresForApi'])
+        ->name('api.classes.matieres');
+});
 
 // Routes pour le calcul des absences
 Route::middleware(['auth:sanctum'])->prefix('absences')->group(function () {
@@ -133,11 +141,11 @@ Route::middleware(['auth:sanctum'])->group(function () {
         ->name('api.attendance.sync');
 });
 
-Route::get('/classes/{id}/available-places', [ESBTPClasseController::class, 'getAvailablePlaces']);
+Route::middleware(['auth:sanctum'])->get('/classes/{id}/available-places', [ESBTPClasseController::class, 'getAvailablePlaces']);
 
 Route::middleware(['auth:sanctum'])->post('/inscriptions/validate', [ESBTPEtudiantController::class, 'validateInscription'])->name('api.inscriptions.validate');
 
-Route::get('/classes', [ESBTPClasseController::class, 'indexApi']);
+Route::middleware(['auth:sanctum'])->get('/classes', [ESBTPClasseController::class, 'indexApi']);
 
 /*
 |--------------------------------------------------------------------------
@@ -152,7 +160,12 @@ Route::get('/classes', [ESBTPClasseController::class, 'indexApi']);
 
 // Routes d'authentification LMS (sans middleware auth)
 Route::prefix('lms/auth')->group(function () {
+    // Meme limiteur que la connexion web : 5 essais par minute et par identifiant,
+    // 10 par minute et par IP. Sans lui, cette porte n heritait que du plafond
+    // general de 60 par minute — soit douze fois plus d essais de mot de passe
+    // que par le formulaire, sur les memes comptes.
     Route::post('/login', [App\Http\Controllers\API\AuthController::class, 'login'])
+        ->middleware('throttle:login')
         ->name('api.lms.auth.login');
     Route::get('/documentation', [App\Http\Controllers\API\AuthController::class, 'documentation'])
         ->name('api.lms.auth.docs');
