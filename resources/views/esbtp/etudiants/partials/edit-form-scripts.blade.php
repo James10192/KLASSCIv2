@@ -529,7 +529,7 @@
         }
 
         // Vérification d'accès superAdmin
-        const authUserIsSuperAdmin = @json(auth()->user()->can('admin.access'));
+        const authUserIsSuperAdmin = @json(auth()->user()->can('students.edit'));
 
         if (authUserIsSuperAdmin && generateBtn) {
             generateBtn.addEventListener('click', function() {

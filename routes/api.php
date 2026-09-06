@@ -474,6 +474,7 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
         Route::post('/cache/clear', [App\Http\Controllers\API\CLI\CLIMaintenanceController::class, 'cacheClear'])->name('cache.clear');
         Route::post('/logs/prune', [App\Http\Controllers\API\CLI\CLIMaintenanceController::class, 'logsPrune'])->name('logs.prune');
         Route::post('/permissions/fix', [App\Http\Controllers\API\CLI\CLIMaintenanceController::class, 'permissionsFix'])->name('permissions.fix');
+        Route::post('/maintenance/reparer-encodage', [App\Http\Controllers\API\CLI\CLIMaintenanceController::class, 'reparerEncodage'])->name('maintenance.reparer-encodage');
 
         // Secrets d'integration. Liste blanche stricte cote controleur : ce
         // n'est PAS un ecrivain de .env generique, qui equivaudrait a une prise
