@@ -5,6 +5,16 @@
     $hdrBg = $pdfSettings['header_bg_color'] ?? $pdfSettings['primary_color'] ?? '#0453cb';
     $hdrText = $pdfSettings['header_text_on_bg'] ?? $pdfSettings['header_text_color'] ?? '#ffffff';
     $_pieces = collect($pieces ?? []);
+    $_choix = collect($choix ?? []);
+    $_niveaux = collect($niveaux ?? []);
+
+    // Au-dela, la page devient un mur de cases et on repasse a une ligne a
+    // ecrire. Les ecoles en comptent cinq a sept aujourd'hui ; le seuil n'est
+    // pas la pour brider, il est la pour que le formulaire reste lisible le jour
+    // ou une ecole en ouvre trente.
+    $_MAX_CASES = 14;
+    $_choixEnCases = $_choix->isNotEmpty() && $_choix->count() <= $_MAX_CASES;
+    $_niveauxEnCases = $_niveaux->isNotEmpty() && $_niveaux->count() <= $_MAX_CASES;
 @endphp
 {{--
     La fiche à remplir à la main, en salle d'attente.
@@ -74,7 +84,7 @@
         .aide { font-size: 6px; color: #94a3b8; font-style: italic; }
 
         .cases { font-size: 9px; margin-top: 1mm; }
-        .cases span { margin-right: 5mm; }
+        .cases span { margin-right: 5mm; white-space: nowrap; line-height: 2; }
 
         .liste { width: 100%; border-collapse: collapse; }
         .liste th {
@@ -128,7 +138,7 @@
     <div class="consigne">
         <strong>Écrivez en MAJUSCULES</strong>, une lettre par intervalle si possible, et au stylo bleu ou noir.
         Le cadre au bas de la page est réservé au secrétariat : n'y écrivez rien.
-        <strong>Vous n'avez pas à indiquer votre classe</strong> — l'établissement vous y affectera après examen de votre dossier.
+        <strong>N'indiquez pas de classe</strong> : dites le niveau et la filière que vous demandez, l'établissement vous répartira ensuite dans une classe.
     </div>
 
     <div class="sec">
@@ -215,9 +225,47 @@
         </table>
     </div>
 
+    <div class="sec">
+        <div class="sec-titre">5 · Ce que vous demandez</div>
+        <table class="grille">
+            <tr>
+                <td>
+                    <div class="lbl">Niveau demandé</div>
+                    @if($_niveauxEnCases)
+                        <div class="cases">
+                            @foreach ($_niveaux as $niveau)
+                                <span>☐ {{ $niveau }}</span>
+                            @endforeach
+                        </div>
+                    @else
+                        <div class="aide">écrivez le niveau souhaité</div>
+                    @endif
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    <div class="lbl">Filière ou parcours demandé</div>
+                    @if($_choixEnCases)
+                        <div class="cases">
+                            @foreach ($_choix as $libelle)
+                                <span>☐ {{ $libelle }}</span>
+                            @endforeach
+                            <span>☐ Autre : ...........................................</span>
+                        </div>
+                    @else
+                        <div class="aide">écrivez la filière ou le parcours souhaité</div>
+                    @endif
+                </td>
+            </tr>
+        </table>
+        <div class="aide" style="margin-top:1mm">
+            La classe vous sera attribuée par l'établissement : ne l'indiquez pas.
+        </div>
+    </div>
+
     @if($_pieces->isNotEmpty())
     <div class="sec">
-        <div class="sec-titre">5 · Pièces à joindre</div>
+        <div class="sec-titre">6 · Pièces à joindre</div>
         <table class="liste">
             <thead>
                 <tr>

@@ -114,7 +114,41 @@ class ESBTPInscriptionFicheController extends Controller
 
         $annee = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->value('name');
 
-        $pdf = Pdf::loadView('esbtp.inscriptions.pdf.fiche-vierge', compact('school', 'pieces', 'annee'))
+        // LE NIVEAU ET LA FILIERE SONT DEMANDES, pas la classe.
+        //
+        // La distinction avait ete mal comprise a la premiere livraison, et elle
+        // est pourtant nette : la CLASSE est une decision de l'ecole — repartir
+        // les eleves entre B2 COM et B2 GC ne regarde pas l'eleve, et le lui
+        // demander en salle d'attente ne ferait que le retenir. Le NIVEAU et la
+        // FILIERE, eux, sont sa demande : sans eux, personne ne sait dans quelle
+        // classe le mettre.
+        //
+        // Ils sont proposes A COCHER plutot qu'a ecrire. Les ecoles en comptent
+        // cinq a sept de chaque : une case cochee se ressaisit sans hesitation,
+        // la se sont une ecriture d'adolescent qu'il faut dechiffrer, puis
+        // rapprocher d'un libelle exact.
+        $filieres = \App\Models\ESBTPFiliere::query()
+            ->where('is_active', true)
+            // Les filieres-reflets n'existent que pour ancrer une classe LMD :
+            // elles portent le nom d'un parcours et n'ont aucun sens pour une
+            // famille. Ce sont les parcours eux-memes qu'on propose plus bas.
+            ->horsMiroirLmd()
+            ->orderBy('name')
+            ->pluck('name');
+
+        $parcours = \App\Models\ESBTPLMDParcours::query()
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->pluck('name');
+
+        $choix = $filieres->concat($parcours)->unique()->values();
+
+        $niveaux = \App\Models\ESBTPNiveauEtude::query()
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->pluck('name');
+
+        $pdf = Pdf::loadView('esbtp.inscriptions.pdf.fiche-vierge', compact('school', 'pieces', 'annee', 'choix', 'niveaux'))
             ->setPaper('a4', 'portrait')
             ->setOptions([
                 'dpi' => 150,
