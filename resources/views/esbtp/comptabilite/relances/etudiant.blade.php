@@ -465,7 +465,250 @@
 @endsection
 
 @section('content')
-<div class="dashboard-acasi">
+@php
+    // Shell mobile actif : le DOM de bureau se cache sous 992px au profit du
+    // dossier m-* ci-dessous. Shell coupé : rien ne change.
+    $remShell = ($mobileShellEnabled ?? false) && ($mobileProfile ?? null);
+@endphp
+@if($remShell)
+@php
+    $remEcole = \App\Helpers\SettingsHelper::getSchoolInfo();
+    $remEcoleNom = $remEcole['name'] ?: ($remEcole['acronym'] ?: config('app.name'));
+    $remClasse = $inscription->classe;
+    $remAnnee = $inscription->anneeUniversitaire;
+    $remAnneeLabel = $remAnnee ? ($remAnnee->name ?? $remAnnee->libelle ?? '') : '';
+    // LMD : la classe s'ancre sur un parcours ; on l'affiche sous la classe.
+    $remEstLmd = ($remClasse?->systeme_academique ?? null) === \App\Services\FraisScopeResolver::SYSTEME_LMD;
+    $remParcours = $remEstLmd ? ($remClasse?->parcours?->name ?? null) : null;
+    $remSub = implode(' · ', array_filter([$remClasse?->name ?? $remClasse?->nom, $remParcours, $remAnneeLabel]));
+    $remInitiales = mb_strtoupper(mb_substr($etudiant->prenoms ?? 'E', 0, 1, 'UTF-8') . mb_substr($etudiant->nom ?? '', 0, 1, 'UTF-8'), 'UTF-8');
+
+    // Contacts joignables : étudiant puis tuteur (ou premier parent), e-mail.
+    $remParents = $etudiant->parents ?? collect();
+    $remTuteur = $remParents->first(fn ($p) => (bool) ($p->pivot->is_tuteur ?? false)) ?? $remParents->first();
+    $remWaEtudiant = \App\Domain\Notifications\PhoneNormalizer::toWhatsAppId($etudiant->telephone);
+    $remTelTuteur = $remTuteur?->telephone ?: $etudiant->urgence_contact_telephone;
+    $remWaTuteur = \App\Domain\Notifications\PhoneNormalizer::toWhatsAppId($remTelTuteur);
+    if ($remWaTuteur !== null && $remWaTuteur === $remWaEtudiant) {
+        $remWaTuteur = null;
+    }
+    $remTelE164 = \App\Domain\Notifications\PhoneNormalizer::toE164($etudiant->telephone) ?: \App\Domain\Notifications\PhoneNormalizer::toE164($remTelTuteur);
+    $remEmail = $etudiant->email_personnel ?: ($remTuteur?->email ?: null);
+
+    // Texte proposé : le modèle réglé par l'école ; à défaut une phrase neutre
+    // (même repli que la file de recouvrement).
+    $remModele = \App\Helpers\SettingsHelper::get('analytics.recouvrement.whatsapp_template');
+    if (! is_string($remModele) || trim($remModele) === '') {
+        $remModele = 'Bonjour {prenom}, votre solde de scolarité de {solde} FCFA est en retard de {retard} jours. Merci de régulariser dès que possible. — {ecole}';
+    }
+    $remMessage = str_replace(
+        ['{prenom}', '{nom}', '{solde}', '{retard}', '{ecole}'],
+        [$etudiant->prenoms ?: $etudiant->nom_complet, $etudiant->nom_complet, number_format($soldeRestant, 0, ',', ' '), (string) $joursRetard, $remEcoleNom],
+        $remModele
+    );
+
+    // Historique : les relances enregistrées ; à défaut les notifications que
+    // montre le bureau, dans la même forme.
+    $remCanalDe = function ($r): string {
+        $canal = (string) ($r->canal ?? '');
+        if ($canal === 'whatsapp_deeplink') return 'WhatsApp';
+        if ($canal === 'tel') return 'Appel';
+        if ($canal === 'email') return 'E-mail';
+        if ($canal === 'sms') return 'SMS';
+        if ($canal === 'manuel') return 'Manuel';
+        return $r->type_formatte;
+    };
+    $remStatuts = [
+        \App\Models\ESBTPRelance::STATUT_ENVOYEE   => ['Envoyée', 'ok', 'envoyée'],
+        \App\Models\ESBTPRelance::STATUT_PLANIFIEE => ['Planifiée', 'info', 'planifiée pour'],
+        \App\Models\ESBTPRelance::STATUT_ECHEC     => ['À renvoyer', 'bad', 'échec'],
+        \App\Models\ESBTPRelance::STATUT_INTENT    => ['Non confirmée', 'warn', 'ouverte'],
+    ];
+    $remHistorique = $relancesEnregistrees->map(function ($r) use ($remCanalDe, $remStatuts) {
+        [$puce, $ton, $verbe] = $remStatuts[$r->statut] ?? [$r->statut_formatte, 'mute', ''];
+        $date = $r->statut === \App\Models\ESBTPRelance::STATUT_ECHEC ? $r->updated_at : $r->date_envoi;
+        return [
+            'url'   => route('esbtp.comptabilite.relances.show', $r->id),
+            'titre' => ($r->type === 'recouvrement' ? 'Recouvrement' : $r->niveau_formatte) . ' · ' . $remCanalDe($r),
+            'sub'   => trim($verbe . ' ' . ($date ? $date->format('d/m/Y H:i') : '—')),
+            'puce'  => $puce,
+            'ton'   => $ton,
+        ];
+    });
+    if ($remHistorique->isEmpty()) {
+        $remLibellesNotif = ['email' => 'E-mail envoyé', 'sms' => 'SMS envoyé', 'appel' => 'Appel enregistré', 'mise_en_demeure' => 'Mise en demeure'];
+        $remHistorique = $historique->map(fn ($item) => [
+            'url'   => null,
+            'titre' => $remLibellesNotif[$item->type ?? ''] ?? ucfirst($item->type ?? 'Relance'),
+            'sub'   => \Carbon\Carbon::parse($item->created_at)->format('d/m/Y H:i') . (($item->message ?? null) ? ' · ' . \Illuminate\Support\Str::limit($item->message, 60) : ''),
+            'puce'  => null,
+            'ton'   => 'mute',
+        ]);
+    }
+
+    $remPeutRelancer = auth()->user()?->can('comptabilite.relances.send') ?? false;
+    $remPeutEncaisser = $soldeRestant > 0 && (auth()->user()?->can('paiements.create') ?? false);
+    $remPills = array_values(array_filter([
+        $pourcentagePaye . ' % payé',
+        $riskLabel,
+        $joursRetard > 0 ? $joursRetard . ' j de retard' : null,
+        $relancesEnregistrees->count() . ' relance' . ($relancesEnregistrees->count() > 1 ? 's' : ''),
+    ]));
+
+    $remConfig = [
+        'inscriptionId' => $inscription->id,
+        'message'       => $remMessage,
+        'logIntentUrl'  => route('esbtp.comptabilite.recouvrement.log-intent'),
+        'markDoneUrl'   => route('esbtp.comptabilite.recouvrement.mark-done'),
+    ];
+@endphp
+{{-- ============================ ÉCRAN MOBILE (shell m-*) ============================ --}}
+{{-- La barre d'onglets et la navbar mobile sont rendues par le layout. --}}
+<div class="m-only-mobile m-screen rem-screen" x-data="remEtudiant({{ \Illuminate\Support\Js::from($remConfig) }})">
+    <x-m.appbar :title="$etudiant->nom_complet"
+                :sub="$remSub !== '' ? $remSub : ($etudiant->matricule ?: null)"
+                :back="route('esbtp.comptabilite.relances.index')">
+        <a href="{{ route('esbtp.inscriptions.show', $inscription) }}" class="m-ib ghost" aria-label="Fiche inscription">
+            <x-m.icon name="file" />
+        </a>
+    </x-m.appbar>
+
+    <div class="m-body" data-m-ptr="reload">
+        <x-m.hero label="Reste dû" :value="number_format($soldeRestant, 0, ',', ' ')" unit="FCFA" :pills="$remPills" />
+
+        <div class="m-kpi">
+            <div>
+                <span class="v">{{ number_format($totalDu, 0, ',', ' ') }}</span>
+                <span class="l">Total dû · FCFA</span>
+            </div>
+            <div>
+                <span class="v">{{ number_format($totalPaye, 0, ',', ' ') }}</span>
+                <span class="l">Encaissé · FCFA</span>
+                <span class="d {{ $pourcentagePaye >= 100 ? 'ok' : ($totalPaye > 0 ? 'info' : 'bad') }}">{{ $pourcentagePaye }} % du dû</span>
+            </div>
+        </div>
+
+        <div class="m-sec"><b>Détail des impayés</b></div>
+        @if($fraisImpayés->isEmpty())
+            <x-m.empty icon="check" title="Tous les frais sont soldés" text="Aucun frais impayé pour cette inscription." />
+        @else
+            <div class="m-list one">
+                @foreach($fraisImpayés as $remFrais)
+                    @php
+                        $remRestant = max(0, $remFrais['amount'] - $remFrais['paye']);
+                        $remPct = $remFrais['amount'] > 0 ? round($remFrais['paye'] / $remFrais['amount'] * 100) : 0;
+                        [$remFraisPuce, $remFraisTon] = $remRestant <= 0 ? ['Soldé', 'ok'] : ($remFrais['paye'] > 0 ? [$remPct . ' % payé', 'warn'] : ['Impayé', 'bad']);
+                    @endphp
+                    <x-m.row icon="cash" :title="$remFrais['name']"
+                             :sub="number_format($remFrais['paye'], 0, ',', ' ') . ' encaissés sur ' . number_format($remFrais['amount'], 0, ',', ' ') . ' FCFA'"
+                             :amount="$remRestant > 0 ? number_format($remRestant, 0, ',', ' ') . ' FCFA' : null"
+                             :neg="$remRestant > 0"
+                             :chip="$remFraisPuce" :chip-type="$remFraisTon" />
+                @endforeach
+            </div>
+        @endif
+
+        <div class="m-sec"><b>Historique des relances</b></div>
+        <div class="m-list one" x-show="relanceFaite" x-cloak>
+            <x-m.row icon="check" title="Recouvrement · Manuel" sub="envoyée à l'instant" chip="Envoyée" chip-type="ok" />
+        </div>
+        @if($remHistorique->isEmpty())
+            <div x-show="!relanceFaite">
+                <x-m.empty icon="msg" title="Aucune relance enregistrée" text="Les relances envoyées ou planifiées pour cette inscription apparaîtront ici." />
+            </div>
+        @else
+            <div class="m-list one">
+                @foreach($remHistorique as $remH)
+                    <x-m.row :href="$remH['url']" icon="msg" :title="$remH['titre']" :sub="$remH['sub']"
+                             :chip="$remH['puce']" :chip-type="$remH['ton']" />
+                @endforeach
+            </div>
+        @endif
+
+        @if($autresInscriptions->isNotEmpty())
+            <div class="m-sec"><b>Autres années</b></div>
+            <div class="m-list one">
+                @foreach($autresInscriptions as $remAutre)
+                    @php
+                        $remAutreAnnee = $remAutre->anneeUniversitaire;
+                        $remAutreEnCours = $remAutreAnnee && $remAutreAnnee->is_current;
+                    @endphp
+                    <x-m.row :href="route('esbtp.comptabilite.relances.etudiant', $remAutre)" icon="cal"
+                             :title="$remAutreAnnee->name ?? $remAutreAnnee->libelle ?? 'Année inconnue'"
+                             :sub="$remAutre->classe->name ?? $remAutre->classe->nom ?? null"
+                             :chip="$remAutreEnCours ? 'En cours' : null" chip-type="ok" />
+                @endforeach
+            </div>
+        @endif
+    </div>
+
+    @if($remPeutRelancer || $remPeutEncaisser)
+        <x-m.actionbar :row="$remPeutRelancer && $remPeutEncaisser">
+            @can('comptabilite.relances.send')
+                <button type="button" class="m-btn {{ $remPeutEncaisser ? 'g' : 'p' }}" x-on:click="ouvrir('rem-relancer')">
+                    <x-m.icon name="msg" />Relancer
+                </button>
+            @endcan
+            @if($soldeRestant > 0)
+                @can('paiements.create')
+                    <a href="{{ route('esbtp.paiements.create', ['inscription_id' => $inscription->id, 'etudiant_id' => $etudiant->id]) }}" class="m-btn p">
+                        <x-m.icon name="cash" />Encaisser
+                    </a>
+                @endcan
+            @endif
+        </x-m.actionbar>
+    @endif
+
+    @can('comptabilite.relances.send')
+    {{-- Feuille : relancer par le canal disponible ; chaque geste est journalisé. --}}
+    <x-m.sheet id="rem-relancer" title="Relancer" :sub="$etudiant->nom_complet . ' · ' . number_format($soldeRestant, 0, ',', ' ') . ' FCFA restants'">
+        @if($remWaEtudiant || $remWaTuteur || $remTelE164 || $remEmail)
+            <div class="m-menu">
+                @if($remWaEtudiant)
+                    <a href="https://wa.me/{{ $remWaEtudiant }}?text={{ rawurlencode($remMessage) }}" target="_blank" rel="noopener" x-on:click="intent('whatsapp_deeplink')">
+                        <x-m.icon name="msg" />
+                        <span class="rem-menu-tt">WhatsApp de l'étudiant<small>{{ \App\Domain\Notifications\PhoneFormatter::toReadable($etudiant->telephone) ?? '—' }}</small></span>
+                        <span class="ch"><x-m.icon name="chr" /></span>
+                    </a>
+                @endif
+                @if($remWaTuteur)
+                    <a href="https://wa.me/{{ $remWaTuteur }}?text={{ rawurlencode($remMessage) }}" target="_blank" rel="noopener" x-on:click="intent('whatsapp_deeplink')">
+                        <x-m.icon name="users" />
+                        <span class="rem-menu-tt">WhatsApp du parent{{ $remTuteur?->nom ? ' · ' . trim(($remTuteur->prenoms ?? '') . ' ' . $remTuteur->nom) : '' }}<small>{{ \App\Domain\Notifications\PhoneFormatter::toReadable($remTelTuteur) ?? '—' }}</small></span>
+                        <span class="ch"><x-m.icon name="chr" /></span>
+                    </a>
+                @endif
+                @if($remTelE164)
+                    <a href="tel:{{ $remTelE164 }}" x-on:click="intent('tel')">
+                        <x-m.icon name="phone" />
+                        <span class="rem-menu-tt">Appeler<small>{{ \App\Domain\Notifications\PhoneFormatter::toReadable($remTelE164) ?? $remTelE164 }}</small></span>
+                        <span class="ch"><x-m.icon name="chr" /></span>
+                    </a>
+                @endif
+                @if($remEmail)
+                    <a href="mailto:{{ $remEmail }}?subject={{ rawurlencode('Solde de scolarité') }}&body={{ rawurlencode($remMessage) }}" x-on:click="intent('email')">
+                        <x-m.icon name="inbox" />
+                        <span class="rem-menu-tt">E-mail<small>{{ $remEmail }}</small></span>
+                        <span class="ch"><x-m.icon name="chr" /></span>
+                    </a>
+                @endif
+            </div>
+            <p class="rem-hint">Le message reprend le solde et le retard. Le geste est enregistré dans l'historique ; confirmez l'envoi ci-dessous si vous l'avez bien fait.</p>
+        @else
+            <x-m.empty icon="phone" title="Aucun contact enregistré" text="Ajoutez un téléphone ou une adresse e-mail sur la fiche de l'étudiant pour le joindre depuis ici." />
+        @endif
+        <button type="button" class="m-btn p" x-on:click="marquerFait()" x-bind:disabled="occupe || relanceFaite">
+            <x-m.icon name="check" />
+            <span x-show="!occupe && !relanceFaite">Marquer « relancé »</span>
+            <span x-show="relanceFaite" x-cloak>Relance enregistrée</span>
+            <span x-show="occupe" x-cloak>Enregistrement…</span>
+        </button>
+    </x-m.sheet>
+    @endcan
+</div>
+@endif
+
+<div class="dashboard-acasi {{ $remShell ? 'm-only-desktop' : '' }}">
     <div class="main-content">
 
         {{-- ── Breadcrumb / header row ───────────────────────────────── --}}
@@ -1105,3 +1348,83 @@
 </div>
 
 @endsection
+
+{{-- ── Écran mobile : styles propres (namespace rem-) ── --}}
+@push('styles')
+<style>
+[x-cloak] { display: none !important; }
+/* La feuille est téléportée sous body : sélecteurs non scopés à .rem-screen. */
+.rem-menu-tt { display: grid; gap: 1px; min-width: 0; }
+.rem-menu-tt small { font-size: 12px; color: #64748b; font-weight: 500; }
+.rem-hint { margin: 0; font-size: 12.5px; color: #64748b; line-height: 1.45; font-family: var(--m-font); }
+.rem-screen .m-actionbar .m-btn svg,
+.m-sheet .m-btn svg { width: 20px; height: 20px; }
+.m-menu button[disabled] { opacity: .6; cursor: wait; }
+</style>
+@endpush
+
+@push('scripts')
+<script>
+    if (typeof window.remEtudiant !== 'function') {
+        window.remEtudiant = function (cfg) {
+            return {
+                occupe: false,
+                relanceFaite: false,
+
+                ouvrir(id) { window.dispatchEvent(new CustomEvent('m-sheet:open', { detail: { id: id } })); },
+                fermer(id) { window.dispatchEvent(new CustomEvent('m-sheet:close', { detail: { id: id } })); },
+                toast(message, type) {
+                    window.dispatchEvent(new CustomEvent('toast', { detail: { type: type || 'success', message: message } }));
+                },
+                async poster(url, body) {
+                    var res = await fetch(url, {
+                        method: 'POST',
+                        credentials: 'same-origin',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        },
+                        body: JSON.stringify(body),
+                    });
+                    var data = await res.json().catch(function () { return {}; });
+                    if (res.status === 429) { throw new Error('Trop de demandes, réessayez dans une minute.'); }
+                    if (!res.ok || data.success === false) {
+                        throw new Error(data.error_reason || data.error || data.message || ('Erreur ' + res.status));
+                    }
+                    return data;
+                },
+
+                /* Le lien wa.me / tel: / mailto: s'ouvre dans le geste ; l'intention
+                   est journalisée en arrière-plan, sans bloquer l'ouverture. */
+                intent(channel) {
+                    var self = this;
+                    this.poster(cfg.logIntentUrl, {
+                        inscription_id: cfg.inscriptionId,
+                        channel: channel,
+                        message: cfg.message,
+                    }).catch(function (err) {
+                        self.toast(err.message || 'Relance non enregistrée.', 'error');
+                    });
+                },
+
+                async marquerFait() {
+                    if (this.occupe || this.relanceFaite) { return; }
+                    this.occupe = true;
+                    try {
+                        await this.poster(cfg.markDoneUrl, { inscription_id: cfg.inscriptionId });
+                        this.relanceFaite = true;
+                        this.fermer('rem-relancer');
+                        this.toast('Relance enregistrée dans l\'historique.', 'success');
+                    } catch (err) {
+                        this.toast(err.message || 'Enregistrement impossible. Vérifiez votre connexion.', 'error');
+                    } finally {
+                        this.occupe = false;
+                    }
+                },
+            };
+        };
+    }
+</script>
+@endpush

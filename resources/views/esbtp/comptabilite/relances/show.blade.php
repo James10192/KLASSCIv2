@@ -87,7 +87,126 @@
 @endpush
 
 @section('content')
-<div class="container-fluid">
+@php
+    // Shell mobile actif : le DOM de bureau se cache sous 992px au profit de la
+    // fiche m-* ci-dessous. Shell coupé : rien ne change.
+    $rsShell = ($mobileShellEnabled ?? false) && ($mobileProfile ?? null);
+@endphp
+@if($rsShell)
+@php
+    $rsmEtudiant = $relance->etudiant;
+    $rsmNom = $rsmEtudiant?->nom_complet ?? trim(($rsmEtudiant?->nom ?? '') . ' ' . ($rsmEtudiant?->prenoms ?? '')) ?: 'Étudiant inconnu';
+    $rsmInitiales = mb_strtoupper(mb_substr($rsmEtudiant?->prenoms ?? 'E', 0, 1, 'UTF-8') . mb_substr($rsmEtudiant?->nom ?? '', 0, 1, 'UTF-8'), 'UTF-8');
+
+    $rsmCanalBrut = (string) ($relance->canal ?? '');
+    $rsmCanal = match (true) {
+        $rsmCanalBrut === 'whatsapp_deeplink' => 'WhatsApp',
+        $rsmCanalBrut === 'tel' => 'Appel',
+        $rsmCanalBrut === 'email' => 'E-mail',
+        $rsmCanalBrut === 'sms' => 'SMS',
+        $rsmCanalBrut === 'manuel' => 'Manuel (hors application)',
+        default => $relance->type_formatte,
+    };
+    $rsmObjet = $relance->type === 'recouvrement' ? 'Recouvrement' : $relance->niveau_formatte;
+    // statut → [puce, ton, libellé de la date]
+    $rsmStatuts = [
+        \App\Models\ESBTPRelance::STATUT_ENVOYEE   => ['Envoyée', 'ok', 'Envoyée le'],
+        \App\Models\ESBTPRelance::STATUT_PLANIFIEE => ['Planifiée', 'info', 'Planifiée pour le'],
+        \App\Models\ESBTPRelance::STATUT_ECHEC     => ['À renvoyer', 'bad', 'Échec le'],
+        \App\Models\ESBTPRelance::STATUT_INTENT    => ['Non confirmée', 'warn', 'Ouverte le'],
+    ];
+    [$rsmPuce, $rsmTon, $rsmDateLabel] = $rsmStatuts[$relance->statut] ?? [$relance->statut_formatte, 'mute', 'Date'];
+    $rsmDate = $relance->statut === \App\Models\ESBTPRelance::STATUT_ECHEC ? $relance->updated_at : $relance->date_envoi;
+    $rsmErreur = is_array($relance->response_data) ? ($relance->response_data['error'] ?? $relance->response_data['error_reason'] ?? null) : null;
+
+    $rsmPeutRenvoyer = auth()->user()?->can('comptabilite.relances.send') && $relance->peutEtreRenvoyee();
+    $rsmConfig = [
+        'statut'       => $relance->statut,
+        'peutRenvoyer' => (bool) $rsmPeutRenvoyer,
+        'renvoyerUrl'  => route('esbtp.comptabilite.relances.renvoyer', $relance->id),
+    ];
+@endphp
+{{-- ============================ ÉCRAN MOBILE (shell m-*) ============================ --}}
+{{-- La barre d'onglets et la navbar mobile sont rendues par le layout. --}}
+<div class="m-only-mobile m-screen rsm-screen" x-data="rsmRelance({{ \Illuminate\Support\Js::from($rsmConfig) }})">
+    <x-m.appbar title="Relance"
+                :sub="'N° ' . $relance->id . ' · ' . $rsmObjet"
+                :back="route('esbtp.comptabilite.relances.index')" />
+
+    <div class="m-body" data-m-ptr="reload">
+        <div class="m-note">
+            <div class="av" aria-hidden="true">{{ $rsmInitiales }}</div>
+            <div>
+                <div class="nm">{{ $rsmNom }}</div>
+                <div class="mt">{{ $rsmEtudiant?->matricule ? $rsmEtudiant->matricule . ' · ' : '' }}{{ $rsmCanal }}</div>
+            </div>
+            <span class="m-chip" x-bind:class="ton()" x-text="puce()">{{ $rsmPuce }}</span>
+        </div>
+
+        @if($rsmErreur)
+            <div class="rsm-note bad" role="status">
+                <x-m.icon name="alert" />
+                <span>{{ $rsmErreur }}</span>
+            </div>
+        @endif
+
+        <dl class="m-dl">
+            <dt>Canal</dt>
+            <dd>{{ $rsmCanal }}</dd>
+            <dt>Objet</dt>
+            <dd>{{ $rsmObjet }}</dd>
+            <dt x-text="dateLabel()">{{ $rsmDateLabel }}</dt>
+            <dd>{{ $rsmDate ? $rsmDate->format('d/m/Y H:i') : '—' }}</dd>
+            @if($relance->confirmee_a)
+                <dt>Confirmée le</dt>
+                <dd>{{ $relance->confirmee_a->format('d/m/Y H:i') }}</dd>
+            @endif
+            @if($relance->template_utilise)
+                <dt>Modèle</dt>
+                <dd>{{ $relance->template_utilise }}</dd>
+            @endif
+            @if($relance->facture)
+                <dt>Facture</dt>
+                <dd>{{ $relance->facture->numero ?? '—' }} · {{ number_format((float) $relance->facture->montant_total, 0, ',', ' ') }} FCFA</dd>
+            @endif
+            <dt>Créée le</dt>
+            <dd>{{ $relance->created_at->format('d/m/Y H:i') }}</dd>
+        </dl>
+
+        @if($relance->contenu_message)
+            <div class="m-sec"><b>Message</b></div>
+            <div class="rsm-msg">{{ $relance->contenu_message }}</div>
+        @endif
+
+        <div class="m-sec"><b>Dossier</b></div>
+        <div class="m-list one">
+            @if($relance->inscription_id)
+                <x-m.row :href="route('esbtp.comptabilite.relances.etudiant', $relance->inscription_id)"
+                         icon="cash" title="Dossier de relance" sub="Impayés, historique et actions pour cette inscription" />
+            @endif
+            @if($rsmEtudiant)
+                <x-m.row :href="route('esbtp.etudiants.show', $rsmEtudiant->id)"
+                         :av="$rsmInitiales" :title="$rsmNom"
+                         :sub="'Profil étudiant' . ($rsmEtudiant->matricule ? ' · ' . $rsmEtudiant->matricule : '')" />
+            @endif
+        </div>
+    </div>
+
+    @if($rsmPeutRenvoyer)
+    @can('comptabilite.relances.send')
+        <x-m.actionbar x-show="peutRenvoyer">
+            <button type="button" class="m-btn p" x-on:click="renvoyer()" x-bind:disabled="occupe">
+                <x-m.icon name="refresh" />
+                <span x-show="!occupe">Renvoyer la relance</span>
+                <span x-show="occupe" x-cloak>Envoi…</span>
+            </button>
+        </x-m.actionbar>
+    @endcan
+    @endif
+</div>
+@endif
+
+<div class="container-fluid {{ $rsShell ? 'm-only-desktop' : '' }}">
     <!-- En-tête -->
     <div class="row mb-4">
         <div class="col-12">
@@ -320,10 +439,12 @@
                 <div class="card-body">
                     <div class="action-buttons d-grid gap-2">
                         @if($relance->statut === 'echec' || ($relance->statut === 'planifiee' && $relance->est_en_retard))
+                            @can('comptabilite.relances.send')
                             <button type="button" class="btn btn-success" onclick="renvoyerRelance({{ $relance->id }})">
                                 <i class="fas fa-redo me-1"></i>
                                 Renvoyer la Relance
                             </button>
+                            @endcan
                         @endif
 
                         @if($relance->type === 'email' && $relance->statut === 'envoyee')
@@ -352,7 +473,7 @@
                             Configuration Templates
                         </a>
 
-                        <a href="{{ route('esbtp.comptabilite.relances.index', ['etudiant' => $relance->etudiant_id]) }}" class="btn btn-outline-info">
+                        <a href="{{ $relance->inscription_id ? route('esbtp.comptabilite.relances.etudiant', $relance->inscription_id) : route('esbtp.comptabilite.relances.index') }}" class="btn btn-outline-info">
                             <i class="fas fa-history me-1"></i>
                             Autres Relances Étudiant
                         </a>
@@ -427,6 +548,9 @@ function renvoyerRelance(id) {
         .then(data => {
             showAlert(data.success ? 'success' : 'error', data.message);
             if (data.success) {
+                // EXCEPTION ajax-no-reload-premium : le renvoi change le statut, la date
+                // d'envoi et le bloc « Actions disponibles » rendus cote serveur. Le rendu
+                // mobile, lui, met l'etat a jour sans rechargement (fabrique rsmRelance).
                 setTimeout(() => location.reload(), 1000);
             }
         })
@@ -475,5 +599,75 @@ function showAlert(type, message) {
         alertDiv.remove();
     }, 5000);
 }
+</script>
+@endpush
+
+{{-- ── Écran mobile : styles propres (namespace rsm-) ── --}}
+@push('styles')
+<style>
+[x-cloak] { display: none !important; }
+.rsm-note { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: center; background: #fdecea; color: #a12016; border: 1px solid #f5c6c0; border-radius: 14px; padding: 12px 14px; font-size: 13px; font-weight: 600; font-family: var(--m-font); }
+.rsm-note svg { width: 20px; height: 20px; }
+.rsm-msg { background: #fff; border: 1px solid #e6eaf2; border-radius: 14px; padding: 12px 14px; font-size: 14px; line-height: 1.5; color: #0f172a; white-space: pre-wrap; word-break: break-word; font-family: var(--m-font); }
+.rsm-screen .m-actionbar .m-btn svg { width: 20px; height: 20px; }
+</style>
+@endpush
+
+@push('scripts')
+<script>
+    if (typeof window.rsmRelance !== 'function') {
+        window.rsmRelance = function (cfg) {
+            return {
+                statut: cfg.statut,
+                peutRenvoyer: !!cfg.peutRenvoyer,
+                occupe: false,
+
+                puce() {
+                    return { envoyee: 'Envoyée', planifiee: 'Planifiée', echec: 'À renvoyer', intent: 'Non confirmée', en_file: 'En file d\'envoi' }[this.statut] || this.statut || '—';
+                },
+                ton() {
+                    return { envoyee: 'ok', planifiee: 'info', echec: 'bad', intent: 'warn', en_file: 'info' }[this.statut] || 'mute';
+                },
+                dateLabel() {
+                    return { envoyee: 'Envoyée le', planifiee: 'Planifiée pour le', echec: 'Échec le', intent: 'Ouverte le', en_file: 'Dernière tentative le' }[this.statut] || 'Date';
+                },
+                toast(message, type) {
+                    window.dispatchEvent(new CustomEvent('toast', { detail: { type: type || 'success', message: message } }));
+                },
+
+                async renvoyer() {
+                    if (this.occupe || !this.peutRenvoyer) { return; }
+                    this.occupe = true;
+                    try {
+                        var res = await fetch(cfg.renvoyerUrl, {
+                            method: 'POST',
+                            credentials: 'same-origin',
+                            headers: {
+                                'Accept': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                            },
+                        });
+                        if (res.status === 429) {
+                            this.toast('Trop de demandes, réessayez dans une minute.', 'error');
+                            return;
+                        }
+                        var data = await res.json().catch(function () { return {}; });
+                        if (!res.ok || data.success === false) {
+                            throw new Error(data.message || ('Erreur ' + res.status));
+                        }
+                        // Le job d'envoi tourne en arrière-plan : la relance est en file, la puce le dit sans recharger.
+                        this.statut = 'en_file';
+                        this.peutRenvoyer = false;
+                        this.toast(data.message || 'Relance mise en file d\'attente pour renvoi.', 'success');
+                    } catch (err) {
+                        this.toast(err.message || 'Renvoi impossible. Vérifiez votre connexion.', 'error');
+                    } finally {
+                        this.occupe = false;
+                    }
+                },
+            };
+        };
+    }
 </script>
 @endpush

@@ -2187,13 +2187,22 @@ Route::middleware(['auth', 'comptabilite.access'])->prefix('esbtp/comptabilite')
         ->name('recouvrement.index');
     Route::post('/recouvrement/log-intent', [\App\Http\Controllers\ESBTPRecouvrementController::class, 'logIntent'])
         ->name('recouvrement.log-intent')
-        ->middleware('throttle:120,1');
+        // Journaliser une relance, c'est relancer : meme garde que les boutons
+        // de l'ecran (@can('comptabilite.relances.send')), sinon toute personne
+        // ayant comptabilite.access pouvait ecrire dans le journal des relances.
+        ->middleware(['permission:comptabilite.relances.send', 'throttle:120,1']);
     Route::post('/recouvrement/confirm-sent', [\App\Http\Controllers\ESBTPRecouvrementController::class, 'confirmSent'])
         ->name('recouvrement.confirm-sent')
-        ->middleware('throttle:120,1');
+        // Journaliser une relance, c'est relancer : meme garde que les boutons
+        // de l'ecran (@can('comptabilite.relances.send')), sinon toute personne
+        // ayant comptabilite.access pouvait ecrire dans le journal des relances.
+        ->middleware(['permission:comptabilite.relances.send', 'throttle:120,1']);
     Route::post('/recouvrement/mark-done', [\App\Http\Controllers\ESBTPRecouvrementController::class, 'markDone'])
         ->name('recouvrement.mark-done')
-        ->middleware('throttle:120,1');
+        // Journaliser une relance, c'est relancer : meme garde que les boutons
+        // de l'ecran (@can('comptabilite.relances.send')), sinon toute personne
+        // ayant comptabilite.access pouvait ecrire dans le journal des relances.
+        ->middleware(['permission:comptabilite.relances.send', 'throttle:120,1']);
     // Recouvrement â€” exports (PDF preview/download + Excel + email)
     Route::get('/recouvrement/preview-pdf', [\App\Http\Controllers\ESBTPRecouvrementController::class, 'previewPdf'])
         ->name('recouvrement.preview-pdf')
@@ -2277,6 +2286,8 @@ Route::middleware(['auth', 'comptabilite.access'])->prefix('esbtp/comptabilite')
     Route::prefix('relances')->name('relances.')->group(function () {
         Route::get('/', [ESBTPComptabiliteRelanceController::class, 'gestionRelances'])->name('index');
         Route::get('/config', [ESBTPComptabiliteRelanceController::class, 'configurationRelances'])->name('config');
+        Route::get('/planification-avancee', [ESBTPComptabiliteRelanceController::class, 'planificationAvancee'])->name('planification-avancee')
+            ->middleware(['permission:comptabilite.relances.send']);
         Route::get('/export-excel', [ESBTPComptabiliteRelanceController::class, 'exportRelancesExcel'])->name('export-excel')
             ->middleware(['permission:comptabilite.reports.export']);
         Route::get('/export-pdf', [ESBTPComptabiliteRelanceController::class, 'exportRelancesPdf'])->name('export-pdf')
@@ -2321,8 +2332,10 @@ Route::middleware(['auth', 'comptabilite.access'])->prefix('esbtp/comptabilite')
     });
 
     // Dashboard comptabilitÃ©
-    Route::get('/dashboard', [ESBTPComptabiliteController::class, 'dashboard'])->name('dashboard');
-    Route::get('/dashboard/data', [ESBTPComptabiliteController::class, 'dashboardData'])->name('dashboard.data');
+    Route::get('/dashboard', [ESBTPComptabiliteController::class, 'dashboard'])->name('dashboard')
+        ->middleware(['permission:comptabilite.dashboard.view']);
+    Route::get('/dashboard/data', [ESBTPComptabiliteController::class, 'dashboardData'])->name('dashboard.data')
+        ->middleware(['permission:comptabilite.dashboard.view']);
 });
 
 // Routes pour le systÃ¨me d'Ã©margement

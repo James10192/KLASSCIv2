@@ -3,8 +3,51 @@
 @section('title', 'Paramètres Analytics')
 
 @section('content')
-<div class="container-fluid as-page" x-data="settingsPage()">
+@php
+    // Shell mobile : le DOM de bureau reste dans .m-only-desktop, le formulaire
+    // mobile (m-field / m-opt) vit à côté, sur le MÊME état Alpine (une seule
+    // fabrique, deux rendus). Shell coupé : rien ne change au bureau.
+    $asShell = ($mobileShellEnabled ?? false) && ($mobileProfile ?? null);
 
+    // Champs du modèle de risque et de la détection d'anomalies : une seule
+    // table pour les deux rendus. [clé, libellé, aide, min, max, pas]
+    $riskFields = [
+        ['weight_solde', 'Poids — Solde restant', 'Importance du solde non payé', 0, 10, 0.1],
+        ['weight_retard', 'Poids — Jours de retard', 'Pondération du retard de paiement', 0, 10, 0.1],
+        ['weight_engagement', 'Poids — Engagement', 'Signal du nombre de paiements effectués', 0, 10, 0.1],
+        ['weight_montant', 'Poids — Montant attendu', 'Effet du montant total à recouvrer', 0, 10, 0.1],
+        ['bias', 'Biais (intercept)', 'Décalage de base du score', -10, 10, 0.1],
+    ];
+    $thresholdFields = [
+        ['threshold_high', 'Seuil — Haut risque', 'Score minimal pour classer "haut risque"', 0.5, 0.95, 0.01],
+        ['threshold_medium', 'Seuil — Risque moyen', 'Score minimal pour "surveillance"', 0.05, 0.5, 0.01],
+    ];
+    $anomalyFields = [
+        ['z_warning', 'Seuil Warning (Z-score)', 'Écart à la moyenne déclenchant un avertissement', 1, 5, 0.1],
+        ['z_critical', 'Seuil Critical (Z-score)', 'Écart déclenchant une alerte critique', 1.5, 6, 0.1],
+        ['payment_outlier_multiplier', 'Multiplicateur paiement aberrant', 'Un paiement > N × moyenne déclenche une alerte', 1.5, 10, 0.1],
+        ['recouvrement_gap_warning_pct', 'Écart recouvrement — seuil warning (%)', 'Mois clos où l\'encaissé est inférieur d\'au moins X % à ce qui était attendu via les échéanciers', 5, 80, 1],
+        ['recouvrement_gap_critical_pct', 'Écart recouvrement — seuil critique (%)', 'Au-delà de ce pourcentage, alerte critique + notification', 10, 95, 1],
+        ['recouvrement_gap_min_expected', 'Écart recouvrement — montant minimal attendu (FCFA)', 'On ignore les mois où le montant attendu est inférieur à ce seuil (évite le bruit sur petits volumes)', 0, 100000000, 50000],
+    ];
+
+    $asCfg = [
+        'defaults' => $defaults,
+        'settings' => [
+            'default_risk' => $settings['default_risk'],
+            'anomaly' => $settings['anomaly'],
+            'recouvrement' => $settings['recouvrement'],
+        ],
+        'flash' => session('success'),
+        'csrf' => csrf_token(),
+        'urls' => [
+            'update' => route('esbtp.comptabilite.analytics.settings.update'),
+        ],
+    ];
+@endphp
+<div class="container-fluid as-page" x-data="settingsPage({{ \Illuminate\Support\Js::from($asCfg) }})">
+
+<div class="{{ $asShell ? 'm-only-desktop' : '' }}">
     {{-- ============================ HERO PREMIUM ============================ --}}
     <div class="as-hero">
         <div class="as-hero-top">
@@ -77,16 +120,6 @@
             </div>
 
             <div class="as-form-grid">
-                @php
-                    $riskFields = [
-                        ['weight_solde', 'Poids — Solde restant', 'Importance du solde non payé', 0, 10, 0.1],
-                        ['weight_retard', 'Poids — Jours de retard', 'Pondération du retard de paiement', 0, 10, 0.1],
-                        ['weight_engagement', 'Poids — Engagement', 'Signal du nombre de paiements effectués', 0, 10, 0.1],
-                        ['weight_montant', 'Poids — Montant attendu', 'Effet du montant total à recouvrer', 0, 10, 0.1],
-                        ['bias', 'Biais (intercept)', 'Décalage de base du score', -10, 10, 0.1],
-                    ];
-                @endphp
-
                 @foreach($riskFields as [$key, $label, $help, $min, $max, $step])
                     <div class="as-field">
                         <label class="as-field-label">
@@ -123,12 +156,6 @@
                     </div>
                 </div>
 
-                @php
-                    $thresholdFields = [
-                        ['threshold_high', 'Seuil — Haut risque', 'Score minimal pour classer "haut risque"', 0.5, 0.95, 0.01],
-                        ['threshold_medium', 'Seuil — Risque moyen', 'Score minimal pour "surveillance"', 0.05, 0.5, 0.01],
-                    ];
-                @endphp
                 @foreach($thresholdFields as [$key, $label, $help, $min, $max, $step])
                     <div class="as-field">
                         <label class="as-field-label">
@@ -164,16 +191,6 @@
             </div>
 
             <div class="as-form-grid">
-                @php
-                    $anomalyFields = [
-                        ['z_warning', 'Seuil Warning (Z-score)', 'Écart à la moyenne déclenchant un avertissement', 1, 5, 0.1],
-                        ['z_critical', 'Seuil Critical (Z-score)', 'Écart déclenchant une alerte critique', 1.5, 6, 0.1],
-                        ['payment_outlier_multiplier', 'Multiplicateur paiement aberrant', 'Un paiement > N × moyenne déclenche une alerte', 1.5, 10, 0.1],
-                        ['recouvrement_gap_warning_pct', 'Écart recouvrement — seuil warning (%)', 'Mois clos où l\'encaissé est inférieur d\'au moins X % à ce qui était attendu via les échéanciers', 5, 80, 1],
-                        ['recouvrement_gap_critical_pct', 'Écart recouvrement — seuil critique (%)', 'Au-delà de ce pourcentage, alerte critique + notification', 10, 95, 1],
-                        ['recouvrement_gap_min_expected', 'Écart recouvrement — montant minimal attendu (FCFA)', 'On ignore les mois où le montant attendu est inférieur à ce seuil (évite le bruit sur petits volumes)', 0, 100000000, 50000],
-                    ];
-                @endphp
                 @foreach($anomalyFields as [$key, $label, $help, $min, $max, $step])
                     <div class="as-field">
                         <label class="as-field-label">
@@ -251,32 +268,121 @@
             </button>
         </div>
     </form>
-</div>
+</div>{{-- /.m-only-desktop --}}
 
-<script>
-function settingsPage() {
-    return {
-        defaults: @json($defaults),
-        form: {
-            default_risk: @json($settings['default_risk']),
-            anomaly: {
-                ...@json($settings['anomaly']),
-                notifications_enabled: {{ $settings['anomaly']['notifications_enabled'] ? 'true' : 'false' }},
-            },
-            recouvrement: @json($settings['recouvrement']),
-        },
-        resetSection(section) {
-            const def = this.defaults[section];
-            for (const k of Object.keys(def)) {
-                this.form[section][k] = def[k];
-            }
-        },
-        resetWhatsappTemplate() {
-            this.form.recouvrement.whatsapp_template = this.defaults.recouvrement.whatsapp_template;
-        },
-    };
-}
-</script>
+@if($asShell)
+@php
+    // ---- Formulaire mobile (shell m-*) — namespace CSS asm-* ----
+    $asmEcole = \App\Helpers\SettingsHelper::getSchoolInfo();
+    $asmEcoleNom = $asmEcole['name'] ?: ($asmEcole['acronym'] ?: config('app.name'));
+    $asmTopN = ['top_n', 'Top-N étudiants prioritaires', 'Nombre d\'étudiants affichés dans la liste Recouvrement', 10, 500, 10];
+@endphp
+{{-- ============================ ÉCRAN MOBILE (shell m-*) ============================ --}}
+{{-- La barre d'onglets et la navbar mobile sont rendues par le layout. --}}
+<div class="m-only-mobile m-screen asm-screen">
+    <x-m.appbar title="Paramètres" :sub="$asmEcoleNom" :back="route('esbtp.comptabilite.analytics.index')" back-label="Retour aux analytics" />
+
+    <div class="m-body">
+        <section class="m-hero">
+            <span class="k">Moteur de prédiction</span>
+            <span class="v"><span x-text="Math.round(Number(form.default_risk.threshold_high) * 100)"></span><small>% · seuil haut risque</small></span>
+            <div class="row">
+                <span class="pill" x-text="'Top ' + form.default_risk.top_n + ' étudiants'"></span>
+                <span class="pill" x-text="'Z critique ' + Number(form.anomaly.z_critical).toFixed(1) + ' σ'"></span>
+                <span class="pill" x-text="form.anomaly.notifications_enabled ? 'Notifications activées' : 'Notifications coupées'"></span>
+            </div>
+        </section>
+
+        <div class="m-seg" role="tablist" aria-label="Sections des paramètres">
+            <button type="button" role="tab" x-bind:aria-selected="mSeg === 'risque' ? 'true' : 'false'" x-bind:class="mSeg === 'risque' ? 'on' : ''" x-on:click="mSeg = 'risque'">Risque</button>
+            <button type="button" role="tab" x-bind:aria-selected="mSeg === 'anomalies' ? 'true' : 'false'" x-bind:class="mSeg === 'anomalies' ? 'on' : ''" x-on:click="mSeg = 'anomalies'">Anomalies</button>
+            <button type="button" role="tab" x-bind:aria-selected="mSeg === 'message' ? 'true' : 'false'" x-bind:class="mSeg === 'message' ? 'on' : ''" x-on:click="mSeg = 'message'">Message</button>
+        </div>
+
+        <form id="asm-form" class="asm-form" x-on:submit.prevent="mEnregistrer()" novalidate>
+
+            {{-- Segment 1 : modèle de risque --}}
+            <div class="asm-groupe" x-show="mSeg === 'risque'">
+                <div class="m-sec">
+                    <b>Modèle de risque d’impayé</b>
+                    <button type="button" class="asm-reset" x-on:click="resetSection('default_risk')">Valeurs recommandées</button>
+                </div>
+                @foreach(array_merge($riskFields, [$asmTopN], $thresholdFields) as [$key, $label, $help, $min, $max, $step])
+                    <div class="m-field asm-field">
+                        <label for="asm-dr-{{ $key }}">{{ $label }}</label>
+                        <input id="asm-dr-{{ $key }}" type="number" class="m-in"
+                               inputmode="decimal" step="{{ $step }}" min="{{ $min }}" max="{{ $max }}"
+                               x-model.number="form.default_risk.{{ $key }}"
+                               x-bind:aria-invalid="erreurs['default_risk.{{ $key }}'] ? 'true' : 'false'"
+                               required>
+                        <small class="asm-help">{{ $help }} · entre {{ $min }} et {{ $max }} · recommandé : {{ $defaults['default_risk'][$key] }}</small>
+                        <small class="asm-err" x-show="erreurs['default_risk.{{ $key }}']" x-text="erreurs['default_risk.{{ $key }}']"></small>
+                    </div>
+                @endforeach
+            </div>
+
+            {{-- Segment 2 : détection d'anomalies --}}
+            <div class="asm-groupe" x-show="mSeg === 'anomalies'" x-cloak>
+                <div class="m-sec">
+                    <b>Détection d’anomalies</b>
+                    <button type="button" class="asm-reset" x-on:click="resetSection('anomaly')">Valeurs recommandées</button>
+                </div>
+                @foreach($anomalyFields as [$key, $label, $help, $min, $max, $step])
+                    <div class="m-field asm-field">
+                        <label for="asm-an-{{ $key }}">{{ $label }}</label>
+                        <input id="asm-an-{{ $key }}" type="number" class="m-in"
+                               inputmode="decimal" step="{{ $step }}" min="{{ $min }}" max="{{ $max }}"
+                               x-model.number="form.anomaly.{{ $key }}"
+                               x-bind:aria-invalid="erreurs['anomaly.{{ $key }}'] ? 'true' : 'false'"
+                               required>
+                        <small class="asm-help">{{ $help }} · entre {{ $min }} et {{ $max }} · recommandé : {{ $defaults['anomaly'][$key] }}</small>
+                        <small class="asm-err" x-show="erreurs['anomaly.{{ $key }}']" x-text="erreurs['anomaly.{{ $key }}']"></small>
+                    </div>
+                @endforeach
+
+                <div class="m-opt">
+                    <label x-bind:class="form.anomaly.notifications_enabled ? 'on' : ''">
+                        <span class="rd" aria-hidden="true"></span>
+                        <div>
+                            <b>Notifications e-mail des alertes critiques</b>
+                            <span>Envoyées aux administrateurs et aux comptables, sans doublon sur 24 h.</span>
+                        </div>
+                        <input type="checkbox" x-model="form.anomaly.notifications_enabled">
+                        <span class="m-chip" x-bind:class="form.anomaly.notifications_enabled ? 'ok' : 'mute'" x-text="form.anomaly.notifications_enabled ? 'Activées' : 'Coupées'"></span>
+                    </label>
+                </div>
+            </div>
+
+            {{-- Segment 3 : modèle de message WhatsApp --}}
+            <div class="asm-groupe" x-show="mSeg === 'message'" x-cloak>
+                <div class="m-sec">
+                    <b>Message de relance</b>
+                    <button type="button" class="asm-reset" x-on:click="resetWhatsappTemplate()">Texte recommandé</button>
+                </div>
+                <div class="m-field asm-field">
+                    <label for="asm-wa">Message WhatsApp pré-rempli</label>
+                    <textarea id="asm-wa" class="m-in ta" rows="5" maxlength="1000"
+                              x-model="form.recouvrement.whatsapp_template"
+                              x-bind:aria-invalid="erreurs['recouvrement.whatsapp_template'] ? 'true' : 'false'"></textarea>
+                    <small class="asm-help">
+                        Variables : <code>{prenom}</code> <code>{nom}</code> <code>{solde}</code> <code>{retard}</code> <code>{ecole}</code>
+                        · <span x-text="(form.recouvrement.whatsapp_template || '').length"></span> / 1000
+                    </small>
+                    <small class="asm-err" x-show="erreurs['recouvrement.whatsapp_template']" x-text="erreurs['recouvrement.whatsapp_template']"></small>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <x-m.actionbar>
+        <button type="submit" form="asm-form" class="m-btn p" x-bind:disabled="mBusy">
+            <x-m.icon name="check" />
+            <span x-text="mBusy ? 'Enregistrement…' : 'Enregistrer les paramètres'"></span>
+        </button>
+    </x-m.actionbar>
+</div>
+@endif
+</div>{{-- /.as-page --}}
 @endsection
 
 @push('styles')
@@ -488,5 +594,135 @@ function settingsPage() {
     .as-card-reset { width: 100%; justify-content: center; margin-top: .5rem; }
     .as-recap { grid-template-columns: 1fr; }
 }
+/* ===================== ÉCRAN MOBILE — namespace asm-* ===================== */
+[x-cloak] { display: none !important; }
+.asm-form { display: contents; }
+.asm-groupe { display: grid; gap: 12px; }
+.asm-field label { text-transform: none; letter-spacing: 0; font-size: 13.5px; color: #0f172a; }
+.asm-field .m-in { font-variant-numeric: tabular-nums; }
+.asm-field .m-in[aria-invalid="true"] { border-color: #b42318; }
+.asm-help { font-size: 11.5px; color: #64748b; line-height: 1.35; }
+.asm-help code { background: #eef2f7; border-radius: 4px; padding: 1px 5px; font-size: 11px; color: #0453cb; }
+.asm-err { font-size: 12px; color: #b42318; font-weight: 600; }
+.asm-reset { min-height: 44px; padding: 0 4px; border: 0; background: transparent; color: #0453cb; font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.asm-screen .m-opt label { grid-template-columns: auto 1fr auto; }
+.asm-screen .m-opt label > div { display: grid; gap: 2px; }
 </style>
+@endpush
+
+@push('scripts')
+<script>
+/* Paramètres Analytics — une fabrique pour le formulaire de bureau et le
+   formulaire mobile (même état `form`). Exposée sous garde : la vue peut être
+   rendue plusieurs fois sans redéclarer la fabrique. */
+if (typeof window.settingsPage !== 'function') {
+window.settingsPage = function (cfg) {
+    var settings = cfg.settings || {};
+    return {
+        defaults: cfg.defaults || {},
+        form: {
+            default_risk: Object.assign({}, settings.default_risk || {}),
+            anomaly: Object.assign({}, settings.anomaly || {}, {
+                notifications_enabled: !!(settings.anomaly && settings.anomaly.notifications_enabled),
+            }),
+            recouvrement: Object.assign({}, settings.recouvrement || {}),
+        },
+
+        /* ---------- écran mobile ---------- */
+        mSeg: 'risque',
+        mBusy: false,
+        erreurs: {},
+
+        init() {
+            // Le bureau affiche déjà sa bannière ; en shell mobile, le message
+            // de la redirection classique devient un toast.
+            if (cfg.flash && this.mShellActif()) {
+                this.mToast(cfg.flash, 'success');
+            }
+        },
+
+        resetSection(section) {
+            const def = this.defaults[section] || {};
+            for (const k of Object.keys(def)) {
+                this.form[section][k] = def[k];
+            }
+        },
+        resetWhatsappTemplate() {
+            this.form.recouvrement.whatsapp_template = this.defaults.recouvrement.whatsapp_template;
+        },
+
+        mShellActif() {
+            return document.body.classList.contains('has-m-shell')
+                && window.matchMedia && window.matchMedia('(max-width: 991.98px)').matches;
+        },
+        mToast(message, type) {
+            window.dispatchEvent(new CustomEvent('toast', { detail: { type: type || 'info', message: message } }));
+        },
+        mSegmentDe(champ) {
+            if (champ.indexOf('anomaly.') === 0) { return 'anomalies'; }
+            if (champ.indexOf('recouvrement.') === 0) { return 'message'; }
+            return 'risque';
+        },
+
+        /* Enregistrement sans rechargement : mêmes règles de validation que le
+           formulaire de bureau (422 JSON → messages sous les champs). */
+        async mEnregistrer() {
+            if (this.mBusy) { return; }
+            this.mBusy = true;
+            this.erreurs = {};
+            try {
+                var response = await fetch(cfg.urls.update, {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': cfg.csrf,
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    body: JSON.stringify({
+                        default_risk: this.form.default_risk,
+                        anomaly: Object.assign({}, this.form.anomaly, {
+                            notifications_enabled: this.form.anomaly.notifications_enabled ? '1' : '0',
+                        }),
+                        recouvrement: this.form.recouvrement,
+                    }),
+                });
+                if (response.status === 429) {
+                    this.mToast('Trop d’enregistrements à la suite, patientez une minute.', 'warning');
+                    return;
+                }
+                var data = await response.json().catch(function () { return {}; });
+                if (response.status === 422 && data.errors) {
+                    var self = this, premier = null;
+                    Object.keys(data.errors).forEach(function (champ) {
+                        self.erreurs[champ] = Array.isArray(data.errors[champ]) ? data.errors[champ][0] : String(data.errors[champ]);
+                        if (premier === null) { premier = champ; }
+                    });
+                    if (premier !== null) { this.mSeg = this.mSegmentDe(premier); }
+                    this.mToast('Vérifiez les champs signalés.', 'error');
+                    return;
+                }
+                if (!response.ok || !data.success) {
+                    this.mToast(data.message || ('Enregistrement impossible (' + response.status + ')'), 'error');
+                    return;
+                }
+                if (data.settings) {
+                    this.form.default_risk = Object.assign({}, data.settings.default_risk || this.form.default_risk);
+                    this.form.anomaly = Object.assign({}, data.settings.anomaly || this.form.anomaly, {
+                        notifications_enabled: !!(data.settings.anomaly && data.settings.anomaly.notifications_enabled),
+                    });
+                    this.form.recouvrement = Object.assign({}, data.settings.recouvrement || this.form.recouvrement);
+                }
+                this.mToast(data.message || 'Paramètres enregistrés.', 'success');
+            } catch (e) {
+                this.mToast('Enregistrement impossible (réseau)', 'error');
+            } finally {
+                this.mBusy = false;
+            }
+        },
+    };
+};
+}
+</script>
 @endpush

@@ -12,6 +12,13 @@ use Illuminate\Support\Facades\Schema;
  */
 class EcheancierCoverageService
 {
+    /**
+     * Sous ce pourcentage d'inscriptions couvertes par un snapshot, les prédictions
+     * reposent surtout sur le repli « une tranche » : le diagnostic recommande une
+     * règle d'échéancier et l'écran Analytics affiche un bandeau. Source unique.
+     */
+    public const SEUIL_FAIBLE_PCT = 50.0;
+
     public function __construct(private readonly EcheancierReadinessService $readiness) {}
 
     /**

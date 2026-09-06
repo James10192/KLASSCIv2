@@ -117,6 +117,12 @@
         .cx-hero { padding: 1.5rem 1.25rem 1.25rem; }
         .cx-hero-meta { align-items: flex-start; }
     }
+
+    /* ═══════════ Accueil caisse — écran mobile du shell (namespace cxm-) ═══════════ */
+    .cxm-screen { font-family: var(--m-font); }
+    .cxm-hero-note { font-size: 12px; opacity: .85; margin: 0; }
+    .cxm-hero-note a { color: #fff; font-weight: 700; text-decoration: underline; }
+    .cxm-liens .m-row .av.ic { background: rgba(4,83,203,.08); color: #0453cb; }
 </style>
 @endpush
 
@@ -124,9 +130,14 @@
 @php
     $peutVoirPaiements = auth()->user()?->canany(['paiements.view', 'paiements.view_own']) ?? false;
     $preInscriptionOuverte = app(\App\Services\TenantScolariteSettings::class)->cashierPreEnrollmentEnabled();
+    // Shell mobile actif : le DOM de bureau reste rendu dans .m-only-desktop et
+    // l'ecran mobile (m-*) est ajoute a cote. Shell coupe : rien ne change.
+    $cxShellMobile = ($mobileShellEnabled ?? false) && ($mobileProfile ?? null);
+    // « Ma caisse » : la route exige cash_session.manage OU module.caisse.access.
+    $cxPeutMaCaisse = auth()->user()?->canany(['cash_session.manage', 'module.caisse.access']) ?? false;
 @endphp
 
-<div class="dashboard-acasi">
+<div class="dashboard-acasi {{ $cxShellMobile ? 'm-only-desktop' : '' }}">
     <div class="main-content" style="padding: 1.5rem; max-width: 100%; overflow-x: hidden;">
 
         <div class="cx-hero">
@@ -203,7 +214,7 @@
             @endcan
             @endif
 
-            @can('comptabilite.access')
+            @if($cxPeutMaCaisse)
             <a href="{{ route('esbtp.caisse.ma-caisse') }}" class="cx-act cx-act--soft">
                 <div class="cx-act-ic"><i class="fas fa-vault"></i></div>
                 <div>
@@ -211,7 +222,7 @@
                     <div class="cx-act-d">Point de ma journée</div>
                 </div>
             </a>
-            @endcan
+            @endif
 
             @if($peutVoirPaiements)
             <a href="{{ route('esbtp.paiements.index') }}" class="cx-act cx-act--soft">
@@ -223,6 +234,9 @@
             </a>
             @endif
 
+            {{-- Le journal exige les deux permissions (garde du contrôleur) :
+                 avec une seule, le lien menait à un 403. --}}
+            @can('comptabilite.access')
             @can('comptabilite.journal.view')
             <a href="{{ route('esbtp.comptabilite.journal-caisse.index') }}" class="cx-act cx-act--soft">
                 <div class="cx-act-ic"><i class="fas fa-book"></i></div>
@@ -231,6 +245,7 @@
                     <div class="cx-act-d">Point du jour détaillé</div>
                 </div>
             </a>
+            @endcan
             @endcan
 
             @can('comptabilite.reconciliation.open')
@@ -303,4 +318,164 @@
 
     </div>
 </div>
+
+@if($cxShellMobile)
+@php
+    // ---------- Écran mobile (maquette S['caissier:accueil']) ----------
+    $cxmEcole = \App\Helpers\SettingsHelper::getSchoolInfo();
+    $cxmNomEcole = trim((string) ($cxmEcole['name'] ?? '')) !== '' ? $cxmEcole['name'] : ($cxmEcole['acronym'] ?? config('app.name'));
+    $cxmSousTitre = ucfirst(\Carbon\Carbon::now()->isoFormat('dddd D MMMM')) . ' · ' . $user->name;
+
+    $cxm = $caisseMobile ?? [];
+    $cxmSession = $cxm['session'] ?? ['statut' => null, 'ouverte_a' => null, 'fermee_a' => null];
+    $cxmEtatSession = match ($cxmSession['statut'] ?? null) {
+        'open' => 'session ouverte' . ($cxmSession['ouverte_a'] ? ' ' . $cxmSession['ouverte_a'] : ''),
+        'closed', 'auto_closed' => 'caisse clôturée' . ($cxmSession['fermee_a'] ? ' ' . $cxmSession['fermee_a'] : ''),
+        default => 'caisse non ouverte',
+    };
+    $cxmEspeces = $cxm['especes'] ?? ['count' => 0, 'total' => 0.0];
+    $cxmMobile = $cxm['mobile'] ?? ['count' => 0, 'total' => 0.0];
+    $cxmAutres = $cxm['autres'] ?? ['count' => 0, 'total' => 0.0];
+    $cxmAValider = (int) ($cxm['a_valider'] ?? 0);
+    $cxmAnnulables = (int) ($cxm['annulables'] ?? 0);
+    $cxmFenetre = (int) ($cxm['fenetre_annulation_minutes'] ?? 0);
+    $cxmPeutAnnuler = (bool) ($cxm['peut_annuler'] ?? false);
+    $cxmFmt = fn ($n) => number_format((float) $n, 0, ',', ' ');
+
+    $cxmPills = [
+        $paiementsAujourdhuiCount . ' ' . ($paiementsAujourdhuiCount > 1 ? 'opérations' : 'opération'),
+        'Espèces ' . $cxmEspeces['count'] . ' · Mobile ' . $cxmMobile['count'],
+    ];
+    if ($cxmAutres['count'] > 0) {
+        $cxmPills[] = 'Autres modes ' . $cxmAutres['count'];
+    }
+    if ($preInscriptionOuverte && $preInscriptionsAujourdhui > 0) {
+        $cxmPills[] = $preInscriptionsAujourdhui . ' pré-inscription' . ($preInscriptionsAujourdhui > 1 ? 's' : '');
+    }
+
+    $cxmKpis = [
+        ['value' => (string) $cxmEspeces['count'], 'label' => 'Espèces', 'delta' => $cxmFmt($cxmEspeces['total']) . ' FCFA', 'tone' => 'ok'],
+        ['value' => (string) $cxmMobile['count'], 'label' => 'Mobile money', 'delta' => $cxmFmt($cxmMobile['total']) . ' FCFA', 'tone' => 'info'],
+        ['value' => (string) $cxmAValider, 'label' => 'À valider', 'delta' => $cxmAValider > 0 ? 'en attente' : 'tout est validé', 'tone' => $cxmAValider > 0 ? 'warn' : 'mute'],
+    ];
+    if ($cxmPeutAnnuler) {
+        $cxmKpis[] = ['value' => (string) $cxmAnnulables, 'label' => 'Annulables · ' . $cxmFenetre . ' min', 'delta' => $cxmAnnulables > 0 ? 'fenêtre ouverte' : 'aucune', 'tone' => $cxmAnnulables > 0 ? 'warn' : 'mute'];
+    } else {
+        $cxmKpis[] = ['value' => (string) $paiementsAujourdhuiCount, 'label' => 'Versements du jour', 'delta' => $anneeEnCours->name ?? null, 'tone' => 'mute'];
+    }
+
+    $cxmDernieres = $paiementsRecents->take(5);
+@endphp
+
+<div class="m-only-mobile m-screen cxm-screen">
+
+    <x-m.appbar :title="$cxmNomEcole . ' · Caisse'"
+                :sub="$cxmSousTitre"
+                :action="Route::has('notifications.index') ? 'bell' : null"
+                :action-url="Route::has('notifications.index') ? route('notifications.index') : null"
+                action-label="Notifications" />
+
+    <div class="m-body" data-m-ptr="reload">
+
+        <x-m.hero :label="'Encaissé aujourd\'hui · ' . $cxmEtatSession"
+                  :value="$cxmFmt($montantEncaisseAujourdhui)"
+                  unit="FCFA"
+                  :pills="$cxmPills">
+            @if(($cxmSession['statut'] ?? null) === null && $cxPeutMaCaisse)
+                <p class="cxm-hero-note">La caisse s'ouvre au premier encaissement en espèces, ou depuis <a href="{{ route('esbtp.caisse.ma-caisse') }}">Ma caisse</a>.</p>
+            @endif
+        </x-m.hero>
+
+        <x-m.kpi :items="$cxmKpis" />
+
+        <div class="m-sec">
+            <b>Dernières opérations</b>
+            @if($peutVoirPaiements)
+                <a href="{{ route('esbtp.paiements.index') }}">Tout voir</a>
+            @endif
+        </div>
+
+        @if($cxmDernieres->isEmpty())
+            <x-m.empty icon="inbox" title="Aucune opération pour l'instant" text="Le premier encaissement de la journée apparaîtra ici.">
+                @can('paiements.create')
+                    <a href="{{ route('esbtp.paiements.create') }}" class="m-btn g"><x-m.icon name="plus" />Encaisser</a>
+                @endcan
+            </x-m.empty>
+        @else
+            <div class="m-list">
+                @foreach($cxmDernieres as $cxmP)
+                    @php
+                        $cxmEtu = $cxmP->etudiant;
+                        $cxmNom = $cxmEtu ? trim(($cxmEtu->nom ?? '') . ' ' . ($cxmEtu->prenoms ?? '')) : 'Étudiant inconnu';
+                        $cxmInitiales = $cxmEtu
+                            ? mb_substr($cxmEtu->nom ?? '', 0, 1, 'UTF-8') . mb_substr($cxmEtu->prenoms ?? '', 0, 1, 'UTF-8')
+                            : '?';
+                        $cxmSousLigne = collect([
+                            $cxmP->inscription?->classe?->name,
+                            $cxmP->fraisCategory?->name,
+                            optional($cxmP->created_at)->format('H:i'),
+                        ])->filter(fn ($v) => $v !== null && $v !== '')->implode(' · ');
+                        $cxmCanon = \App\Enums\ModePaiement::fromLegacy((string) $cxmP->mode_paiement);
+                        $cxmEstAvoir = $cxmP->isAvoir();
+                        if ($cxmEstAvoir) {
+                            [$cxmChip, $cxmTone] = ['Avoir', 'info'];
+                        } elseif ($cxmP->status === 'validé') {
+                            [$cxmChip, $cxmTone] = ($cxmCanon && ! $cxmCanon->isDrawer())
+                                ? [$cxmCanon->label(), 'info']
+                                : ['Validé', 'ok'];
+                        } elseif ($cxmP->status === 'en_attente') {
+                            [$cxmChip, $cxmTone] = (auth()->user()?->can('cancelOwnRecent', $cxmP) ?? false)
+                                ? ['Annulable ' . $cxmFenetre . ' min', 'warn']
+                                : ['À valider', 'warn'];
+                        } elseif ($cxmP->status === 'rejeté') {
+                            [$cxmChip, $cxmTone] = ['Rejeté', 'bad'];
+                        } else {
+                            [$cxmChip, $cxmTone] = [ucfirst(str_replace('_', ' ', (string) $cxmP->status)), 'mute'];
+                        }
+                    @endphp
+                    <x-m.row :href="$peutVoirPaiements ? route('esbtp.paiements.show', $cxmP->id) : null"
+                             :av="$cxmInitiales"
+                             :title="$cxmNom"
+                             :sub="$cxmSousLigne !== '' ? $cxmSousLigne : null"
+                             :amount="($cxmEstAvoir ? '-' : '') . $cxmFmt($cxmP->montant)"
+                             :neg="$cxmEstAvoir || $cxmP->status === 'rejeté'"
+                             :chip="$cxmChip"
+                             :chip-type="$cxmTone" />
+                @endforeach
+            </div>
+        @endif
+
+        {{-- Accès rapides : chaque ligne sous la garde réelle de sa route. --}}
+        @php
+            $cxmPeutJournal = (auth()->user()?->can('comptabilite.access') ?? false) && (auth()->user()?->can('comptabilite.journal.view') ?? false);
+            $cxmPeutReconcilier = auth()->user()?->can('comptabilite.reconciliation.open') ?? false;
+            $cxmPeutPreInscrire = $preInscriptionOuverte && (auth()->user()?->can('inscriptions.create') ?? false);
+            $cxmADesLiens = $cxPeutMaCaisse || $cxmPeutJournal || $cxmPeutReconcilier || $cxmPeutPreInscrire;
+        @endphp
+        @if($cxmADesLiens)
+            <div class="m-sec"><b>Ma journée</b></div>
+            <div class="m-list one cxm-liens">
+                @if($cxPeutMaCaisse)
+                    <x-m.row :href="route('esbtp.caisse.ma-caisse')" icon="wallet" title="Ma caisse" sub="Point du jour et clôture" />
+                @endif
+                @if($cxmPeutPreInscrire)
+                    <x-m.row :href="route('esbtp.inscriptions.pre-inscription')" icon="user" title="Pré-inscrire" :sub="$preInscriptionsEnAttente > 0 ? $preInscriptionsEnAttente . ' en attente de validation' : 'Ouvrir un dossier étudiant'" />
+                @endif
+                @if($cxmPeutJournal)
+                    <x-m.row :href="route('esbtp.comptabilite.journal-caisse.index')" icon="book" title="Journal de caisse" sub="Point du jour détaillé" />
+                @endif
+                @if($cxmPeutReconcilier)
+                    <x-m.row :href="route('esbtp.comptabilite.reconciliation.create')" icon="scale" title="Réconcilier" sub="Comparer caisse et système" />
+                @endif
+            </div>
+        @endif
+    </div>
+
+    @can('paiements.create')
+        <a href="{{ route('esbtp.paiements.create') }}" class="m-fab" aria-label="Encaisser un paiement">
+            <x-m.icon name="plus" />
+        </a>
+    @endcan
+</div>
+@endif
 @endsection

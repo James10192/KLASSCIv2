@@ -175,7 +175,15 @@
 @endpush
 
 @section('content')
-<div class="pay-wrap" x-data="salairesPage()" data-url-data="{{ route('esbtp.comptabilite.salaires.data') }}"
+@php
+    // Shell mobile actif : le DOM de bureau ci-dessous se cache sous 992px au
+    // profit du partial _index-mobile (m-*). Shell coupé : rien ne change.
+    $payShellMobile = ($mobileShellEnabled ?? false) && ($mobileProfile ?? null);
+@endphp
+@if($payShellMobile)
+    @include('esbtp.comptabilite.salaires.partials._index-mobile')
+@endif
+<div class="pay-wrap {{ $payShellMobile ? 'm-only-desktop' : '' }}" x-data="salairesPage()" data-url-data="{{ route('esbtp.comptabilite.salaires.data') }}"
      data-url-prepare="{{ route('esbtp.comptabilite.salaires.prepare') }}"
      data-url-store="{{ route('esbtp.comptabilite.salaires.store') }}"
      data-url-config="{{ route('esbtp.comptabilite.salaires.config') }}">

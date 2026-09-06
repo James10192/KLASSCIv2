@@ -40,6 +40,11 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ### Ajouts
 
+- **Le comptable et le caissier ont leur application mobile** — onze écrans repris pour le téléphone et la tablette : tableau de bord des finances (encaissé du jour, reste impayé, à valider, courbe des trente derniers jours), liste et fiche des relances, configuration et planification des relances, journal de caisse, réconciliation de caisse (ouverture, comptage, écarts, PV), analytics de recouvrement et leurs réglages, paie des enseignants, accueil du caissier et « Ma caisse ». Chaque action reste soumise au droit correspondant : ce qu'un compte ne peut pas faire ne s'affiche pas, plutôt que de mener à un refus.
+
+- **Le tableau de bord comptable demande désormais son propre droit** — la page n'exigeait que l'accès au module comptabilité ; elle exige maintenant « Voir le tableau de bord comptable », qui existait sans être demandé nulle part. Les rôles livrés l'ont déjà, et les rôles sur mesure qui avaient l'accès au module le reçoivent automatiquement : personne ne perd l'écran, mais l'école peut désormais le retirer à qui elle veut.
+
+- **Les échéanciers se recalculent sur commande** — une commande de maintenance régénère les échéanciers de toute une année ou d'une classe, au lieu d'attendre qu'on ouvre la fiche de chaque étudiant. Les prévisions de trésorerie et le niveau de risque cessent de reposer sur une poignée de dossiers consultés par hasard.
 - **La fiche d'inscription porte enfin tout le dossier** — état civil complet, coordonnées, scolarité avec le parcours LMD jusqu'au domaine, parents et tuteurs avec leur lien et leur profession, et la liste des pièces du dossier avec ce qui reste à apporter. Elle passe à une page pleine par exemplaire : l'ancienne en tenait deux sur une feuille, ce que le contenu complet ne permet plus. Une signature est ajoutée pour le parent ou le tuteur.
 
   N'y figurent pas, délibérément : les identifiants et le mot de passe provisoire du compte, les motifs internes de refus d'une pièce, les commentaires de caisse et les noms des agents. Ce sont des notes de service, pas des informations destinées à la famille qui emporte le papier. La situation financière garde son propre document, déjà réservé aux personnes qui y ont droit.

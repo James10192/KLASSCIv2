@@ -76,15 +76,29 @@ class ESBTPSalaireController extends Controller
         $recap = $this->buildRecap($filtres);
         $kpis = $this->recapKpis($recap);
 
-        return response()->json([
+        $canCreate = auth()->user()->can('comptabilite.salaires.create');
+
+        $json = [
             'list_html' => view('esbtp.comptabilite.salaires.partials._recap', [
                 'recap'        => $recap,
                 'statutLabels' => $this->statutLabels(),
-                'canCreate'    => auth()->user()->can('comptabilite.salaires.create'),
+                'canCreate'    => $canCreate,
             ])->render(),
             'kpis_html' => view('esbtp.comptabilite.salaires.partials._kpis', ['kpis' => $kpis])->render(),
             'period_label' => $this->periodLabel($this->resolvePeriode($filtres)[2]),
-        ]);
+        ];
+
+        // Shell mobile : cartes-lignes (m-*) + KPIs bruts pour le héro et les segments.
+        if ($request->get('mode') === 'mobile') {
+            $json['mobile_html'] = view('esbtp.comptabilite.salaires.partials._recap-mobile', [
+                'recap'     => $recap,
+                'canCreate' => $canCreate,
+            ])->render();
+            $json['mobile_count'] = count($recap);
+            $json['kpis'] = $kpis;
+        }
+
+        return response()->json($json);
     }
 
     private function filtres(Request $request): array
@@ -286,8 +300,8 @@ class ESBTPSalaireController extends Controller
             return;
         }
         if (!isset($agg[$tid])) {
-            $agg[$tid] = ['teacher_id' => (int) $tid, 'name' => $name, 'heures' => 0.0, 'types' => [],
-                'base' => 0.0, 'retenues' => 0.0, 'net' => 0.0, 'months' => []];
+            $agg[$tid] = ['teacher_id' => (int) $tid, 'name' => $name, 'regime' => $teacher->regime,
+                'heures' => 0.0, 'types' => [], 'base' => 0.0, 'retenues' => 0.0, 'net' => 0.0, 'months' => []];
         }
         $monthNet = $bulletin ? (float) $bulletin->net_a_payer : round($base - $its - $cnps, 2);
         $monthRet = $bulletin ? (float) $bulletin->retenues : round($its + $cnps, 2);
@@ -359,6 +373,7 @@ class ESBTPSalaireController extends Controller
 
         return [
             'total_net'      => round(array_sum(array_column($recap, 'net')), 2),
+            'heures_total'   => round(array_sum(array_column($recap, 'heures')), 2),
             'nb_total'       => count($recap),
             'nb_mois'        => count(array_unique(array_map(fn ($c) => $c['annee'] . '-' . $c['mois'], $cells))),
             'nb_a_preparer'  => $count(fn ($c) => $c['statut'] === 'a_preparer'),
@@ -535,7 +550,11 @@ class ESBTPSalaireController extends Controller
             'moisLabel'     => self::MOIS_FR[$salaire->mois] ?? $salaire->mois,
             'modesPaiement' => $this->modesPaiementOptions(),
             'modeLabel'     => $this->modeLabel($salaire->mode_paiement),
-            'canValidate'   => $user->can('comptabilite.salaires.validate') || $user->can('comptabilite.salaires.validate_own'),
+            // Même règle que validate() : le préparateur n'a le bouton que s'il détient
+            // validate_own, les autres s'ils détiennent validate (séparation des devoirs).
+            'canValidate'   => in_array($user->id, [$salaire->prepared_by, $salaire->createur_id], true)
+                ? $user->can('comptabilite.salaires.validate_own')
+                : $user->can('comptabilite.salaires.validate'),
             'canPay'        => $user->can('comptabilite.salaires.pay'),
         ]);
     }
@@ -597,7 +616,7 @@ class ESBTPSalaireController extends Controller
      * Validation (2e niveau OHADA, séparation des devoirs sauf validate_own).
      * Nommée approve() : `validate` est réservé par Illuminate\Routing\Controller.
      */
-    public function approve(ESBTPSalaire $salaire)
+    public function approve(Request $request, ESBTPSalaire $salaire)
     {
         $user = auth()->user();
         abort_unless(
@@ -606,12 +625,12 @@ class ESBTPSalaireController extends Controller
         );
 
         if (!$salaire->isBrouillon()) {
-            return back()->with('error', 'Seul un bulletin en brouillon peut être validé.');
+            return $this->refusWorkflow($request, 'Seul un bulletin en brouillon peut être validé.');
         }
 
         $estPreparateur = in_array($user->id, [$salaire->prepared_by, $salaire->createur_id], true);
         if ($estPreparateur && !$user->can('comptabilite.salaires.validate_own')) {
-            return back()->with('error', 'Séparation des devoirs : la validation doit être faite par une autre personne.');
+            return $this->refusWorkflow($request, 'Séparation des devoirs : la validation doit être faite par une autre personne.');
         }
         if (!$estPreparateur && !$user->can('comptabilite.salaires.validate')) {
             abort(403);
@@ -623,6 +642,18 @@ class ESBTPSalaireController extends Controller
             'date_validation' => now(),
         ]);
 
+        // Shell mobile : la fiche se met à jour sans rechargement.
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success'         => true,
+                'message'         => 'Bulletin validé.',
+                'statut'          => ESBTPSalaire::ST_VALIDE,
+                'statut_label'    => $salaire->fresh()->statutLabel(),
+                'valide_par'      => $user->name,
+                'date_validation' => now()->format('d/m/Y H:i'),
+            ]);
+        }
+
         return back()->with('success', 'Bulletin validé.');
     }
 
@@ -632,7 +663,7 @@ class ESBTPSalaireController extends Controller
         abort_unless(auth()->user()->can('comptabilite.salaires.pay'), 403);
 
         if (!$salaire->isValide()) {
-            return back()->with('error', 'Seul un bulletin validé peut être marqué payé.');
+            return $this->refusWorkflow($request, 'Seul un bulletin validé peut être marqué payé.');
         }
 
         $data = $request->validate([
@@ -641,17 +672,43 @@ class ESBTPSalaireController extends Controller
             'date_paiement'      => 'nullable|date',
         ]);
 
+        $datePaiement = $data['date_paiement'] ?? now()->toDateString();
+
         $salaire->update([
             'workflow_status'    => ESBTPSalaire::ST_PAYE,
             'statut'             => 'payé',
             'mode_paiement'      => $data['mode_paiement'],
             'reference_paiement' => $data['reference_paiement'] ?? null,
-            'date_paiement'      => $data['date_paiement'] ?? now()->toDateString(),
+            'date_paiement'      => $datePaiement,
             'paid_by'            => auth()->id(),
             'paid_at'            => now(),
         ]);
 
+        // Shell mobile : la fiche se met à jour sans rechargement.
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success'       => true,
+                'message'       => 'Bulletin marqué comme payé.',
+                'statut'        => ESBTPSalaire::ST_PAYE,
+                'statut_label'  => $salaire->fresh()->statutLabel(),
+                'paye_par'      => auth()->user()->name,
+                'mode_label'    => $this->modeLabel($data['mode_paiement']),
+                'reference'     => $data['reference_paiement'] ?? null,
+                'date_paiement' => Carbon::parse($datePaiement)->format('d/m/Y'),
+            ]);
+        }
+
         return back()->with('success', 'Bulletin marqué comme payé.');
+    }
+
+    /** Refus métier d'une transition : 422 JSON pour le shell mobile, retour + flash sinon. */
+    private function refusWorkflow(Request $request, string $message)
+    {
+        if ($request->expectsJson()) {
+            return response()->json(['success' => false, 'message' => $message], 422);
+        }
+
+        return back()->with('error', $message);
     }
 
     /** Configuration fiscale (barème ITS + CNPS). */

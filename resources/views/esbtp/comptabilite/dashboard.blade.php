@@ -2,7 +2,7 @@
 
 @section('title', 'Dashboard Comptabilité')
 
-@section('styles')
+@push('styles')
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
@@ -855,15 +855,47 @@ body, .filters-bar, .kpi-label, .filter-label, .filter-select {
 .recovery-bar-wrap { height: 8px; background: #f1f5f9; border-radius: 4px; overflow: hidden; margin-top: 4px; }
 .recovery-bar { height: 100%; border-radius: 4px; background: linear-gradient(90deg, #10b981, #0453cb); transition: width .6s ease; }
 </style>
-@endsection
+@endpush
+
+@push('styles')
+<style>
+/* Écran mobile du tableau de bord comptable (shell m-*, préfixe dm-). Le socle
+   mobile-shell.css porte les classes m-* ; ici seulement ce qui est propre à l'écran. */
+.dm-contenu { display: grid; gap: 14px; }
+.dm-screen .m-kpi .d { min-height: 14px; }
+.dm-screen .m-row .tt b { white-space: normal; line-height: 1.25; }
+.dm-axe { display: flex; justify-content: space-between; font-size: 11px; color: #94a3b8; margin-top: -4px; }
+.dm-vide, .dm-total { margin: 0; font-size: 12.5px; color: #64748b; }
+.dm-total b { color: #0f172a; font-variant-numeric: tabular-nums; }
+.dm-lbl { display: block; font-size: 12px; font-weight: 600; color: #64748b; margin-bottom: 6px; }
+.dm-opt { max-height: 40vh; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.dm-opt label { position: relative; }
+.dm-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 4px; }
+</style>
+@endpush
 
 @section('content')
+@php
+    // Shell mobile (issue #963, maquette S['comptable:dash']) : le DOM de bureau
+    // reste dans .m-only-desktop, l'écran m-* vit à côté, sous 992px.
+    $dmShell = ($mobileShellEnabled ?? false) && ($mobileProfile ?? null);
+    $dmUser = auth()->user();
+
+    // Santé réconciliation : un seul snapshot, partagé entre le widget de bureau
+    // et la ligne « À faire » du mobile (le widget le recalcule s'il est absent).
+    $dmRecMetrics = ($dmUser && $dmUser->can('comptabilite.reconciliation.view'))
+        ? app(\App\Domain\Comptabilite\Reconciliation\Services\ReconciliationMetricsService::class)->snapshot()
+        : null;
+@endphp
 
 {{-- Loading overlay --}}
 <div id="dash-loading">
     <div class="spinner-ring"></div>
 </div>
 
+{{-- Enveloppe de bascule : .dashboard-acasi garde son display:flex, la bascule
+     mobile/bureau se joue sur ce bloc parent (mobile-shell.css charge après dashboard-moderne.css). --}}
+<div class="{{ $dmShell ? 'm-only-desktop' : '' }}" id="dm-bureau">
 <div class="dashboard-acasi">
     <div class="main-content">
 
@@ -915,7 +947,7 @@ body, .filters-bar, .kpi-label, .filter-label, .filter-select {
         </div>
 
         {{-- PR6 Widget santé Réconciliation Caisse --}}
-        @include('esbtp.comptabilite.partials._reconciliation_health_widget')
+        @include('esbtp.comptabilite.partials._reconciliation_health_widget', ['recMetrics' => $dmRecMetrics])
 
         {{-- ── FILTRES AJAX ── --}}
         <div class="filters-bar">
@@ -1398,6 +1430,298 @@ body, .filters-bar, .kpi-label, .filter-label, .filter-select {
 
     </div>
 </div>
+</div>
+
+@if($dmShell)
+@php
+    // ── Écran mobile (maquette S['comptable:dash']) ──────────────────────────
+    $dmEcole = \App\Helpers\SettingsHelper::getSchoolInfo();
+    $dmEcoleNom = $dmEcole['name'] ?: ($dmEcole['acronym'] ?: config('app.name'));
+    $dmAnneeLabel = $annee ? (string) ($annee->name ?? $annee->libelle ?? '') : '';
+    $dmAnneeEnCours = $annee && $anneeActive && (int) $annee->id === (int) $anneeActive->id;
+    $dmDateJour = now()->translatedFormat('j M');
+    $dmTaux = $totalDue > 0 ? min(100, round(($totalPaid / $totalDue) * 100, 1)) : null;
+    $dmAujourdhui = now()->format('Y-m-d');
+
+    // Montant compact lisible : « 207,4 M », « 112 M », « 850 k », « 9 500 ».
+    // Miroir exact côté navigateur : mCompact() dans la fabrique dashComptaMobile.
+    $dmCompact = function (float $n): string {
+        $abs = abs($n);
+        if ($abs >= 1_000_000_000) {
+            $s = number_format($n / 1_000_000_000, 1, ',', ' ') . ' Md';
+        } elseif ($abs >= 1_000_000) {
+            $s = number_format($n / 1_000_000, 1, ',', ' ') . ' M';
+        } elseif ($abs >= 10_000) {
+            $s = number_format($n / 1_000, 0, ',', ' ') . ' k';
+        } else {
+            return number_format($n, 0, ',', ' ');
+        }
+
+        return str_replace(',0 ', ' ', $s);
+    };
+
+    // Chaque KPI et chaque ligne « À faire » n'est un lien que si la personne a le
+    // droit d'arriver sur la page visée (mêmes gardes que les routes).
+    $dmPeutVoirPaiements = $dmUser->can('paiements.view') || $dmUser->can('paiements.view_own');
+    $dmPeutRelancer = $dmUser->can('comptabilite.relances.send');
+    $dmPeutRecouvrer = $dmUser->can('comptabilite.recouvrement.access');
+    $dmPeutValider = $dmUser->can('paiements.validate');
+
+    $dmHrefDu = $dmPeutVoirPaiements ? route('esbtp.paiements.suivi-categories') : null;
+    $dmHrefImpaye = $dmPeutRelancer
+        ? route('esbtp.comptabilite.relances.index')
+        : ($dmPeutRecouvrer ? route('esbtp.comptabilite.recouvrement.index') : null);
+    $dmHrefAValider = $dmPeutValider ? route('esbtp.paiements.index', ['status' => 'en_attente']) : null;
+    $dmHrefValides = $dmPeutVoirPaiements
+        ? route('esbtp.paiements.index', ['status' => 'validé', 'date_debut' => $dmAujourdhui, 'date_fin' => $dmAujourdhui])
+        : null;
+
+    // Ligne réconciliation : l'état et le seuil viennent du snapshot du service,
+    // jamais d'un nombre écrit ici. Absente sans la permission de voir la réconciliation.
+    $dmRec = null;
+    if ($dmRecMetrics !== null) {
+        $dmRecEnRetard = (int) ($dmRecMetrics['overdue_draft_count'] ?? 0);
+        $dmRecBrouillons = (int) ($dmRecMetrics['sessions_by_status']['draft'] ?? 0);
+        $dmRecEnRevue = (int) ($dmRecMetrics['sessions_by_status']['review'] ?? 0);
+        $dmRecDernier = $dmRecMetrics['days_since_last_close'] ?? null;
+        if ($dmRecEnRetard > 0) {
+            $dmRec = [
+                'title' => $dmRecEnRetard . ' réconciliation' . ($dmRecEnRetard > 1 ? 's' : '') . ' en retard',
+                'sub' => 'Ouverte' . ($dmRecEnRetard > 1 ? 's' : '') . ' depuis plus de ' . (int) ($dmRecMetrics['overdue_threshold_days'] ?? 0) . ' j sans clôture',
+                'chip' => 'En attente',
+                'tone' => 'warn',
+                'href' => route('esbtp.comptabilite.reconciliation.index', ['status' => 'draft']),
+            ];
+        } elseif ($dmRecBrouillons + $dmRecEnRevue > 0) {
+            $dmRecEnCours = $dmRecBrouillons + $dmRecEnRevue;
+            $dmRec = [
+                'title' => $dmRecEnCours . ' réconciliation' . ($dmRecEnCours > 1 ? 's' : '') . ' en cours',
+                'sub' => $dmRecBrouillons . ' brouillon' . ($dmRecBrouillons > 1 ? 's' : '') . ' · ' . $dmRecEnRevue . ' en revue',
+                'chip' => 'En cours',
+                'tone' => 'info',
+                'href' => route('esbtp.comptabilite.reconciliation.index'),
+            ];
+        } else {
+            $dmRec = [
+                'title' => 'Réconciliation caisse à jour',
+                'sub' => $dmRecDernier !== null
+                    ? 'Dernière clôture il y a ' . (int) $dmRecDernier . ' j' . (!empty($dmRecMetrics['last_close_code']) ? ' · ' . $dmRecMetrics['last_close_code'] : '')
+                    : 'Aucune clôture enregistrée pour le moment',
+                'chip' => 'OK',
+                'tone' => 'ok',
+                'href' => route('esbtp.comptabilite.reconciliation.index'),
+            ];
+        }
+    }
+    $dmRienAFaire = !$dmPeutRecouvrer && $dmRec === null && !$dmPeutValider;
+
+    $dmSerie = $serieRecente ?? ['labels' => [], 'data' => [], 'total' => 0.0, 'jours' => 0];
+    $dmConfig = [
+        'dataUrl' => route('esbtp.comptabilite.dashboard.data'),
+        'dateJour' => $dmDateJour,
+        'filtres' => [
+            'annee' => (string) request('annee', ''),
+            'filiere' => (string) request('filiere', ''),
+            'classe' => (string) request('classe', ''),
+        ],
+        'd' => [
+            'totalDue' => (float) $totalDue,
+            'totalPaid' => (float) $totalPaid,
+            'totalOverdue' => (float) $totalOverdue,
+            'countDue' => (int) $countDue,
+            'countOverdue' => (int) $countOverdue,
+            'countToValidate' => (int) ($countToValidate ?? 0),
+            'countOverdueTotal' => (int) ($countOverdueTotal ?? 0),
+            'countValidatedToday' => (int) ($countValidatedToday ?? 0),
+            'totalValidatedToday' => (float) ($totalValidatedToday ?? 0),
+            'anneeLabel' => $dmAnneeLabel,
+            'serieRecente' => $dmSerie,
+        ],
+    ];
+@endphp
+<div class="m-only-mobile m-screen dm-screen" x-data="dashComptaMobile({{ \Illuminate\Support\Js::from($dmConfig) }})">
+    <x-m.appbar :title="$dmEcoleNom . ' · Finances'"
+                :sub="$dmAnneeLabel !== '' ? 'Année ' . $dmAnneeLabel . ($dmAnneeEnCours ? ' · en cours' : '') : null"
+                action="grid"
+                action-label="Filtrer par année, filière ou classe"
+                x-on:click="mOuvrirFiltres()">
+        @if($dmPeutRelancer)
+            <a href="{{ route('esbtp.comptabilite.relances.index') }}" class="m-ib ghost" aria-label="Relances des impayés">
+                <x-m.icon name="bell" />
+            </a>
+        @endif
+    </x-m.appbar>
+
+    <div class="m-body" data-m-ptr="reload">
+        <section class="m-hero" aria-live="polite">
+            <span class="k" x-text="mHeroLabel()">Encaissé{{ $dmAnneeLabel !== '' ? ' · ' . $dmAnneeLabel : '' }} · au {{ $dmDateJour }}</span>
+            <span class="v"><span x-text="mFmt(d.totalPaid)">{{ number_format((float) $totalPaid, 0, ',', ' ') }}</span><small>FCFA</small></span>
+            <div class="row">
+                <span class="pill" x-text="mPillTaux()">{{ $dmTaux !== null ? str_replace('.', ',', (string) $dmTaux) . ' % recouvré' : 'Aucun frais dû' }}</span>
+                <span class="pill" x-text="mPluriel(d.countDue, 'souscription')">{{ $countDue }} souscription{{ $countDue > 1 ? 's' : '' }}</span>
+                <span class="pill" x-show="mFiltreActif()" x-cloak>Filtré</span>
+            </div>
+        </section>
+
+        {{-- Squelette pendant le rechargement des chiffres (filtres). --}}
+        <div class="m-skel" x-show="loading" x-cloak aria-hidden="true"><i></i><i></i><i></i></div>
+
+        <div class="dm-contenu" x-show="!loading">
+            <div class="m-kpi">
+                <a @if($dmHrefDu) href="{{ $dmHrefDu }}" @endif class="m-kpi-link">
+                    <span class="v" x-text="mCompact(d.totalDue)">{{ $dmCompact((float) $totalDue) }}</span>
+                    <span class="l">Total frais dus</span>
+                    <span class="d mute" x-text="'FCFA · ' + mPluriel(d.countDue, 'souscription')">FCFA · {{ $countDue }} souscription{{ $countDue > 1 ? 's' : '' }}</span>
+                </a>
+                <a @if($dmHrefImpaye) href="{{ $dmHrefImpaye }}" @endif class="m-kpi-link">
+                    <span class="v" x-text="mCompact(d.totalOverdue)">{{ $dmCompact((float) $totalOverdue) }}</span>
+                    <span class="l">Reste impayé</span>
+                    <span class="d {{ $countOverdue > 0 ? 'bad' : 'ok' }}"
+                          x-bind:class="d.countOverdue > 0 ? 'bad' : 'ok'"
+                          x-text="mPluriel(d.countOverdue, 'étudiant') + (d.countOverdue > 1 ? ' concernés' : ' concerné')">{{ $countOverdue }} étudiant{{ $countOverdue > 1 ? 's concernés' : ' concerné' }}</span>
+                </a>
+                <a @if($dmHrefAValider) href="{{ $dmHrefAValider }}" @endif class="m-kpi-link">
+                    <span class="v" x-text="mFmt(d.countToValidate)">{{ (int) ($countToValidate ?? 0) }}</span>
+                    <span class="l">À valider</span>
+                    <span class="d {{ ($countToValidate ?? 0) > 0 ? 'warn' : 'ok' }}"
+                          x-bind:class="d.countToValidate > 0 ? 'warn' : 'ok'"
+                          x-text="d.countToValidate > 0 ? 'En attente de validation' : 'Tout est validé'">{{ ($countToValidate ?? 0) > 0 ? 'En attente de validation' : 'Tout est validé' }}</span>
+                </a>
+                <a @if($dmHrefValides) href="{{ $dmHrefValides }}" @endif class="m-kpi-link">
+                    <span class="v" x-text="mFmt(d.countValidatedToday)">{{ (int) ($countValidatedToday ?? 0) }}</span>
+                    <span class="l">Validés aujourd'hui</span>
+                    <span class="d ok" x-text="mFmt(d.totalValidatedToday) + ' FCFA'">{{ number_format((float) ($totalValidatedToday ?? 0), 0, ',', ' ') }} FCFA</span>
+                </a>
+            </div>
+
+            <div class="m-sec"><b>À faire aujourd'hui</b></div>
+            @if($dmRienAFaire)
+                <x-m.empty icon="check" title="Rien à faire ici" text="Les actions du jour (relances, réconciliation, validation) s'affichent selon vos droits." />
+            @else
+                <div class="m-list">
+                    @if($dmPeutRecouvrer)
+                        <a href="{{ route('esbtp.comptabilite.recouvrement.index') }}" class="m-row">
+                            <div class="av ic" aria-hidden="true"><x-m.icon name="phone" /></div>
+                            <div class="tt">
+                                <b x-text="d.countOverdueTotal > 0 ? 'Relancer ' + mPluriel(d.countOverdueTotal, 'retard') + ' de paiement' : 'Aucun retard à relancer'">{{ ($countOverdueTotal ?? 0) > 0 ? 'Relancer ' . ($countOverdueTotal ?? 0) . ' retard' . (($countOverdueTotal ?? 0) > 1 ? 's' : '') . ' de paiement' : 'Aucun retard à relancer' }}</b>
+                                <span>File de recouvrement du jour · WhatsApp</span>
+                            </div>
+                            <div class="tr">
+                                <span class="m-chip {{ ($countOverdueTotal ?? 0) > 0 ? 'info' : 'ok' }}"
+                                      x-bind:class="d.countOverdueTotal > 0 ? 'info' : 'ok'"
+                                      x-text="d.countOverdueTotal > 0 ? 'Ouvrir' : 'À jour'">{{ ($countOverdueTotal ?? 0) > 0 ? 'Ouvrir' : 'À jour' }}</span>
+                            </div>
+                        </a>
+                    @endif
+                    @if($dmRec !== null)
+                        <x-m.row :href="$dmRec['href']" icon="scale" :title="$dmRec['title']" :sub="$dmRec['sub']" :chip="$dmRec['chip']" :chip-type="$dmRec['tone']" />
+                    @endif
+                    @if($dmPeutValider)
+                        <a href="{{ route('esbtp.paiements.index', ['status' => 'en_attente']) }}" class="m-row">
+                            <div class="av ic" aria-hidden="true"><x-m.icon name="check" /></div>
+                            <div class="tt">
+                                <b x-text="d.countToValidate > 0 ? 'Valider ' + mPluriel(d.countToValidate, 'paiement') + ' en attente' : 'Aucun paiement à valider'">{{ ($countToValidate ?? 0) > 0 ? 'Valider ' . ($countToValidate ?? 0) . ' paiement' . (($countToValidate ?? 0) > 1 ? 's' : '') . ' en attente' : 'Aucun paiement à valider' }}</b>
+                                <span>Passer en revue, puis valider ou rejeter</span>
+                            </div>
+                            <div class="tr">
+                                <span class="m-chip {{ ($countToValidate ?? 0) > 0 ? 'warn' : 'ok' }}"
+                                      x-bind:class="d.countToValidate > 0 ? 'warn' : 'ok'"
+                                      x-text="d.countToValidate > 0 ? 'À faire' : 'À jour'">{{ ($countToValidate ?? 0) > 0 ? 'À faire' : 'À jour' }}</span>
+                            </div>
+                        </a>
+                    @endif
+                </div>
+            @endif
+
+            {{-- Courbe légère en SVG : le tracé est calculé depuis les données, pas de Chart.js en mobile. --}}
+            <div class="m-chart">
+                <b x-text="'Encaissements · ' + d.serieRecente.jours + ' derniers jours'">Encaissements · {{ (int) ($dmSerie['jours'] ?? 0) }} derniers jours</b>
+                <svg viewBox="0 0 300 110" role="img" x-bind:aria-label="mChartLabel()">
+                    <defs>
+                        <linearGradient id="dm-grad" x1="0" x2="0" y1="0" y2="1">
+                            <stop offset="0" stop-color="#0453cb" stop-opacity=".28"/>
+                            <stop offset="1" stop-color="#0453cb" stop-opacity="0"/>
+                        </linearGradient>
+                    </defs>
+                    <g stroke="#e9edf5"><line x1="0" y1="30" x2="300" y2="30"/><line x1="0" y1="60" x2="300" y2="60"/><line x1="0" y1="90" x2="300" y2="90"/></g>
+                    <path x-bind:d="mAire()" fill="url(#dm-grad)"/>
+                    <path x-bind:d="mLigne()" fill="none" stroke="#0453cb" stroke-width="2.5" stroke-linejoin="round"/>
+                    <circle x-bind:cx="mDernierPoint().x" x-bind:cy="mDernierPoint().y" r="4" fill="#0453cb"/>
+                    <text x="4" y="26" font-size="9" fill="#64748b" x-text="mEtiquette(30)"></text>
+                    <text x="4" y="56" font-size="9" fill="#64748b" x-text="mEtiquette(60)"></text>
+                </svg>
+                <div class="dm-axe"><span x-text="mPremierJour()">{{ $dmSerie['labels'][0] ?? '' }}</span><span>Aujourd'hui</span></div>
+                <p class="dm-vide" x-show="!(d.serieRecente.total > 0)" x-cloak>Aucun encaissement validé sur la période.</p>
+                <p class="dm-total" x-show="d.serieRecente.total > 0">Total sur la période : <b x-text="mFmt(d.serieRecente.total) + ' FCFA'">{{ number_format((float) ($dmSerie['total'] ?? 0), 0, ',', ' ') }} FCFA</b></p>
+            </div>
+        </div>
+    </div>
+
+    {{-- Filtres en feuille : mêmes paramètres que le bureau (annee, filiere, classe), même endpoint JSON. --}}
+    <x-m.sheet id="dm-filtres" title="Filtrer le tableau de bord" sub="Année, filière, classe">
+        <div class="m-field">
+            <span class="dm-lbl" id="dm-f-annee-lbl">Année universitaire</span>
+            <div class="m-opt dm-opt" role="radiogroup" aria-labelledby="dm-f-annee-lbl">
+                <label>
+                    <input type="radio" name="dm_annee" value="" x-model="sheet.annee">
+                    <span class="rd" aria-hidden="true"></span>
+                    <b>{{ $anneeActive ? ($anneeActive->name ?? $anneeActive->libelle) : 'Année par défaut' }}</b>
+                    @if($anneeActive)<span>En cours · par défaut</span>@endif
+                </label>
+                @foreach($annees as $a)
+                    <label>
+                        <input type="radio" name="dm_annee" value="{{ $a->id }}" x-model="sheet.annee">
+                        <span class="rd" aria-hidden="true"></span>
+                        <b>{{ $a->name ?? $a->libelle }}</b>
+                        @if($a->is_current)<span>En cours</span>@endif
+                    </label>
+                @endforeach
+            </div>
+        </div>
+        <div class="m-field">
+            <span class="dm-lbl" id="dm-f-filiere-lbl">Filière</span>
+            <div class="m-opt dm-opt" role="radiogroup" aria-labelledby="dm-f-filiere-lbl">
+                <label>
+                    <input type="radio" name="dm_filiere" value="" x-model="sheet.filiere" x-on:change="sheet.classe = ''">
+                    <span class="rd" aria-hidden="true"></span>
+                    <b>Toutes les filières</b>
+                </label>
+                @foreach($filieres as $f)
+                    <label>
+                        <input type="radio" name="dm_filiere" value="{{ $f->id }}" x-model="sheet.filiere" x-on:change="sheet.classe = ''">
+                        <span class="rd" aria-hidden="true"></span>
+                        <b>{{ $f->name ?? $f->nom }}</b>
+                    </label>
+                @endforeach
+            </div>
+        </div>
+        <div class="m-field">
+            <span class="dm-lbl" id="dm-f-classe-lbl">Classe</span>
+            <div class="m-opt dm-opt" role="radiogroup" aria-labelledby="dm-f-classe-lbl">
+                <label>
+                    <input type="radio" name="dm_classe" value="" x-model="sheet.classe">
+                    <span class="rd" aria-hidden="true"></span>
+                    <b>Toutes les classes</b>
+                </label>
+                @foreach($classes as $c)
+                    <label x-show="sheet.filiere === '' || String(sheet.filiere) === '{{ (int) $c->filiere_id }}'">
+                        <input type="radio" name="dm_classe" value="{{ $c->id }}" x-model="sheet.classe">
+                        <span class="rd" aria-hidden="true"></span>
+                        <b>{{ $c->name ?? $c->nom }}</b>
+                    </label>
+                @endforeach
+            </div>
+        </div>
+        <div class="dm-actions">
+            <button type="button" class="m-btn g" x-on:click="mReinitialiser()" x-bind:disabled="loading">Réinitialiser</button>
+            <button type="button" class="m-btn p" x-bind:disabled="loading" x-on:click="mAppliquer().then(function (ok) { if (ok) { hide(); } })">
+                <span x-show="!loading">Appliquer</span>
+                <span x-show="loading" x-cloak>Chargement…</span>
+            </button>
+        </div>
+    </x-m.sheet>
+</div>
+@endif
 
 <x-fab-encaisser />
 @endsection
@@ -1701,5 +2025,141 @@ body, .filters-bar, .kpi-label, .filter-label, .filter-select {
         updateFilterBadge();
     });
 })();
+</script>
+@endpush
+
+@push('scripts')
+<script>
+/* Écran mobile du tableau de bord comptable : une fabrique Alpine exposée sous
+   garde (patron du projet), branchée sur le même endpoint JSON que les filtres
+   de bureau. La courbe est un SVG tracé depuis les données, pas Chart.js. */
+if (typeof window.dashComptaMobile !== 'function') {
+window.dashComptaMobile = function (config) {
+    return {
+        d: config.d,
+        filtres: Object.assign({}, config.filtres),
+        sheet: Object.assign({}, config.filtres),
+        loading: false,
+        dateJour: config.dateJour,
+
+        /* ---------- formats ---------- */
+        mFmt(n) {
+            return new Intl.NumberFormat('fr-FR').format(Math.round(Number(n) || 0));
+        },
+        // Miroir de $dmCompact côté Blade : « 207,4 M », « 112 M », « 850 k », « 9 500 ».
+        mCompact(n) {
+            n = Number(n) || 0;
+            const abs = Math.abs(n);
+            const avec = function (v, dec, suffixe) {
+                return new Intl.NumberFormat('fr-FR', { maximumFractionDigits: dec }).format(v) + suffixe;
+            };
+            if (abs >= 1e9) return avec(n / 1e9, 1, ' Md');
+            if (abs >= 1e6) return avec(n / 1e6, 1, ' M');
+            if (abs >= 1e4) return avec(n / 1e3, 0, ' k');
+            return this.mFmt(n);
+        },
+        mPluriel(n, mot) {
+            n = Number(n) || 0;
+            return this.mFmt(n) + ' ' + mot + (n > 1 ? 's' : '');
+        },
+
+        /* ---------- héro ---------- */
+        mHeroLabel() {
+            return 'Encaissé' + (this.d.anneeLabel ? ' · ' + this.d.anneeLabel : '') + ' · au ' + this.dateJour;
+        },
+        mPillTaux() {
+            if (!(Number(this.d.totalDue) > 0)) return 'Aucun frais dû';
+            const taux = Math.min(100, (Number(this.d.totalPaid) / Number(this.d.totalDue)) * 100);
+            return new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 1 }).format(taux) + ' % recouvré';
+        },
+        mFiltreActif() {
+            return !!(this.filtres.annee || this.filtres.filiere || this.filtres.classe);
+        },
+
+        /* ---------- courbe SVG (viewBox 300 × 110, tracé entre y = 8 et y = 100) ---------- */
+        mValeurs() {
+            const serie = this.d.serieRecente;
+            return (serie && Array.isArray(serie.data)) ? serie.data.map(Number) : [];
+        },
+        mMax() {
+            const v = this.mValeurs();
+            return v.length ? Math.max(0, Math.max.apply(null, v)) : 0;
+        },
+        mPoints() {
+            const v = this.mValeurs();
+            const n = v.length;
+            if (n === 0) return [];
+            const max = this.mMax();
+            const pas = n > 1 ? 300 / (n - 1) : 0;
+            return v.map(function (val, i) {
+                const y = max > 0 ? 100 - (val / max) * 92 : 100;
+                return { x: Math.round(i * pas * 10) / 10, y: Math.round(y * 10) / 10 };
+            });
+        },
+        mLigne() {
+            const p = this.mPoints();
+            if (!p.length) return '';
+            return 'M' + p.map(function (q) { return q.x + ' ' + q.y; }).join(' L');
+        },
+        mAire() {
+            const ligne = this.mLigne();
+            return ligne ? ligne + ' L300 110 L0 110Z' : '';
+        },
+        mDernierPoint() {
+            const p = this.mPoints();
+            return p.length ? p[p.length - 1] : { x: -10, y: -10 };
+        },
+        // Valeur représentée par une ligne de grille (y = 30, 60 ou 90).
+        mEtiquette(y) {
+            const max = this.mMax();
+            if (max <= 0) return '';
+            return this.mCompact(max * (100 - y) / 92);
+        },
+        mPremierJour() {
+            const l = this.d.serieRecente && this.d.serieRecente.labels;
+            return (l && l.length) ? l[0] : '';
+        },
+        mChartLabel() {
+            const s = this.d.serieRecente || {};
+            return 'Courbe des encaissements validés sur ' + (s.jours || 0) + ' jours, total ' + this.mFmt(s.total) + ' FCFA';
+        },
+
+        /* ---------- filtres (feuille) ---------- */
+        mOuvrirFiltres() {
+            this.sheet = Object.assign({}, this.filtres);
+            window.dispatchEvent(new CustomEvent('m-sheet:open', { detail: { id: 'dm-filtres' } }));
+        },
+        mReinitialiser() {
+            this.sheet = { annee: '', filiere: '', classe: '' };
+        },
+        // Renvoie true si les chiffres ont été rechargés (la feuille se ferme alors).
+        async mAppliquer() {
+            const params = new URLSearchParams();
+            ['annee', 'filiere', 'classe'].forEach((k) => { if (this.sheet[k]) params.set(k, this.sheet[k]); });
+            this.loading = true;
+            try {
+                const url = config.dataUrl + (params.toString() ? '?' + params.toString() : '');
+                const res = await fetch(url, {
+                    credentials: 'same-origin',
+                    headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                });
+                if (!res.ok) throw new Error('le serveur a répondu ' + res.status);
+                const data = await res.json();
+                this.d = Object.assign({}, this.d, data, {
+                    serieRecente: data.serieRecente || this.d.serieRecente,
+                });
+                this.filtres = Object.assign({}, this.sheet);
+                window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'success', message: 'Tableau de bord mis à jour.' } }));
+                return true;
+            } catch (e) {
+                window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'error', message: 'Impossible de charger les chiffres : ' + e.message + '.' } }));
+                return false;
+            } finally {
+                this.loading = false;
+            }
+        },
+    };
+};
+}
 </script>
 @endpush
