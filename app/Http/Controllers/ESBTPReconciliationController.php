@@ -34,7 +34,7 @@ class ESBTPReconciliationController extends Controller
         $this->authorize('comptabilite.reconciliation.view');
 
         $query = ReconciliationSession::query()
-            ->with(['opener:id,name', 'approver:id,name'])
+            ->with(['opener:id,name', 'approver:id,name', 'cashCounts'])
             ->withCount(['cashCounts', 'discrepancies'])
             ->orderByDesc('opened_at');
 
@@ -46,6 +46,12 @@ class ESBTPReconciliationController extends Controller
         }
 
         $sessions = $query->paginate(20);
+        // L'écart total n'est pas une colonne : on le calcule ici pour que la
+        // liste (bureau et mobile) l'affiche sans recharger chaque session.
+        $sessions->getCollection()->each(function (ReconciliationSession $s) {
+            $s->setAttribute('total_ecart', $s->totalEcart());
+            $s->unsetRelation('cashCounts');
+        });
         $kpis = $this->buildKpis();
 
         if ($request->wantsJson() || $request->ajax()) {
@@ -54,7 +60,8 @@ class ESBTPReconciliationController extends Controller
                 'kpis' => $kpis,
             ]);
         }
-        return view('esbtp.comptabilite.reconciliation.index', compact('sessions', 'kpis'));
+        $defaultFrequency = \App\Helpers\SettingsHelper::get('comptabilite.reconciliation.frequency', 'daily');
+        return view('esbtp.comptabilite.reconciliation.index', compact('sessions', 'kpis', 'defaultFrequency'));
     }
 
     public function create(Request $request)
@@ -75,6 +82,7 @@ class ESBTPReconciliationController extends Controller
             'closer:id,name',
             'cashCounts',
             'discrepancies',
+            'discrepancies.cashCount:id,mode_paiement',
         ]);
 
         $payload = [
@@ -125,13 +133,17 @@ class ESBTPReconciliationController extends Controller
         ReconciliationSession $session,
         RecordCashCount $action
     ): JsonResponse {
-        $count = $action->execute(
-            $session,
-            $request->user(),
-            $request->input('mode_paiement'),
-            (float) $request->input('montant_compte'),
-            $request->input('notes'),
-        );
+        try {
+            $count = $action->execute(
+                $session,
+                $request->user(),
+                $request->input('mode_paiement'),
+                (float) $request->input('montant_compte'),
+                $request->input('notes'),
+            );
+        } catch (\DomainException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
         return response()->json(['cash_count' => $count, 'ecart' => $count->ecart]);
     }
 
@@ -160,13 +172,17 @@ class ESBTPReconciliationController extends Controller
         ReconciliationDiscrepancy $discrepancy,
         ResolveDiscrepancy $action
     ): JsonResponse {
-        $resolved = $action->execute(
-            $discrepancy,
-            $request->user(),
-            $request->input('resolution_type'),
-            $request->input('motif'),
-            $request->input('payload', []),
-        );
+        try {
+            $resolved = $action->execute(
+                $discrepancy,
+                $request->user(),
+                $request->input('resolution_type'),
+                $request->input('motif'),
+                $request->input('payload', []),
+            );
+        } catch (\DomainException | \InvalidArgumentException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
         return response()->json(['discrepancy' => $resolved, 'message' => 'Écart résolu.']);
     }
 
@@ -176,7 +192,11 @@ class ESBTPReconciliationController extends Controller
         ReviewSession $action
     ): JsonResponse {
         $this->authorize('comptabilite.reconciliation.open');
-        $action->execute($session, $request->user());
+        try {
+            $action->execute($session, $request->user());
+        } catch (\DomainException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
         return response()->json(['session' => $session->refresh(), 'message' => 'Session en revue.']);
     }
 
@@ -200,7 +220,11 @@ class ESBTPReconciliationController extends Controller
         CloseSession $action
     ): JsonResponse {
         $this->authorize('comptabilite.reconciliation.approve');
-        $action->execute($session, $request->user());
+        try {
+            $action->execute($session, $request->user());
+        } catch (\DomainException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
         return response()->json(['session' => $session->refresh(), 'message' => 'Session clôturée.']);
     }
 
@@ -209,7 +233,11 @@ class ESBTPReconciliationController extends Controller
         ReconciliationSession $session,
         ReopenSession $action
     ): JsonResponse {
-        $action->execute($session, $request->user(), $request->input('reason'));
+        try {
+            $action->execute($session, $request->user(), $request->input('reason'));
+        } catch (\DomainException | \InvalidArgumentException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
         return response()->json(['session' => $session->refresh(), 'message' => 'Session rouverte (exception).']);
     }
 

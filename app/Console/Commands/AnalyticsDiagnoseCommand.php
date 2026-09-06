@@ -2,15 +2,16 @@
 
 namespace App\Console\Commands;
 
+use App\Domain\Analytics\Calibration\RiskSaturation;
 use App\Domain\Analytics\DTOs\AnalyticsContext;
 use App\Domain\Analytics\Predictors\DefaultRiskPredictor;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPEcheancierRule;
 use App\Models\ESBTPInscription;
+use App\Services\EcheancierCoverageService;
 use App\Services\EcheancierReadinessService;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\DB;
 
 /**
  * Diagnostic complet du sous-système Analytics : couverture des règles d'échéancier,
@@ -76,17 +77,34 @@ class AnalyticsDiagnoseCommand extends Command
         $rs  = $report['risk_saturation'] ?? [];
         $ech = $report['echeancier'] ?? [];
 
-        if (($cov['coverage_pct'] ?? 100) < 50) {
+        if (($cov['coverage_pct'] ?? 100) < EcheancierCoverageService::SEUIL_FAIBLE_PCT) {
             $r[] = sprintf('Configurer ou activer une règle d\'échéancier — couverture actuelle : %.1f %%', $cov['coverage_pct'] ?? 0);
         }
         if (!empty($rs['is_saturated'])) {
-            $r[] = 'Activer auto-calibration : settings(analytics.default_risk.auto_calibrate=true)';
+            $lecture = $rs['declencheur'] === RiskSaturation::DECLENCHEUR_TOTAL
+                ? sprintf('%.1f %% de la cohorte en risque haut + moyen', $rs['total_pct'] ?? 0)
+                : sprintf('%.1f %% de la cohorte en risque haut', $rs['haut_risque_pct'] ?? 0);
+
+            $r[] = !empty($rs['auto_calibrated'])
+                ? sprintf('Cohorte saturée (%s) : auto-calibration active, le classement reste indicatif', $lecture)
+                : sprintf('Cohorte saturée (%s) : activer auto-calibration — settings(analytics.default_risk.auto_calibrate=true)', $lecture);
+
+            if (($cov['coverage_pct'] ?? 100) < EcheancierCoverageService::SEUIL_FAIBLE_PCT) {
+                $r[] = 'La saturation est très probablement un artefact de la faible couverture : tout le parc est évalué en mode dégradé (échéance unique)';
+            }
         }
         if (($ech['mode'] ?? null) === EcheancierReadinessService::MODE_FALLBACK) {
             $r[] = 'Aucune règle active — système en mode dégradé (1 tranche par catégorie)';
         }
         if (($cov['without_snapshot'] ?? 0) > 0) {
-            $r[] = sprintf('Re-générer les snapshots : %d inscriptions à recalculer (php artisan echeanciers:recompute)', $cov['without_snapshot']);
+            $anneeId = $report['annee_universitaire']['id'] ?? null;
+            $r[] = sprintf(
+                'Re-générer les snapshots : %d inscriptions à recalculer — php artisan %s%s (ou POST /api/cli/echeanciers/recompute)',
+                $cov['without_snapshot'],
+                EcheanciersRecompute::NOM,
+                $anneeId ? ' --annee='.$anneeId : ''
+            );
+            $r[] = "Rappel : un snapshot n'est écrit qu'à l'ouverture de la fiche financière d'un étudiant — ni l'inscription, ni l'encaissement ne le produisent";
         }
         return $r ?: ['Tout est bon ✓'];
     }
@@ -125,18 +143,7 @@ class AnalyticsDiagnoseCommand extends Command
         $start = now()->subMonths($months)->startOfMonth();
         $end   = now()->addMonths(3)->endOfMonth();
 
-        $rows = DB::table('esbtp_inscription_echeancier_snapshots as s')
-            ->join('esbtp_inscriptions as i', 'i.id', '=', 's.inscription_id')
-            ->whereNull('i.deleted_at')
-            ->where('i.status', 'active')
-            ->where('i.workflow_step', 'etudiant_cree')
-            ->when($anneeId, fn ($q) => $q->where('i.annee_universitaire_id', $anneeId))
-            ->selectRaw("DATE_FORMAT(s.created_at, '%Y-%m') as mois, COUNT(*) as n_snapshots")
-            ->groupBy('mois')
-            ->orderBy('mois')
-            ->get();
-
-        // On préfère regarder les due_date dans le payload JSON — fait en post-process car JSON_EXTRACT pénible cross-DB
+        // On regarde les due_date dans le payload JSON — fait en post-process car JSON_EXTRACT pénible cross-DB
         $aggregated = [];
         ESBTPInscription::query()
             ->where('status', 'active')
@@ -196,16 +203,25 @@ class AnalyticsDiagnoseCommand extends Command
         }
 
         $buckets = $result->metadata['buckets'] ?? [];
-        $total   = $result->metadata['total_actifs'] ?? 0;
+        $total   = (int) ($result->metadata['total_actifs'] ?? 0);
         $tauxRisque = $result->metadata['taux_risque_pct'] ?? 0;
-        $hautPct = $total > 0 ? round(($buckets['haut'] ?? 0) / $total * 100, 1) : 0.0;
+
+        // La saturation se mesure sur les scores bruts, avant que l'auto-calibration
+        // ne remodèle les buckets. Le prédicteur l'expose ; à défaut (ancien payload),
+        // on l'évalue sur les buckets finaux avec la même règle.
+        $saturation = $result->metadata['saturation_at_default']
+            ?? RiskSaturation::depuisReglages()->evaluer($buckets, $total);
 
         return [
             'total_actifs'        => $total,
             'buckets'             => $buckets,
-            'haut_risque_pct'     => $hautPct,
+            'haut_risque_pct'     => $total > 0 ? round(($buckets['haut'] ?? 0) / $total * 100, 1) : 0.0,
             'taux_risque_total'   => $tauxRisque,
-            'is_saturated'        => $hautPct >= 70.0,
+            'is_saturated'        => (bool) $saturation['is_saturated'],
+            'declencheur'         => $saturation['declencheur'],
+            'total_pct'           => $saturation['total_pct'],
+            'seuils'              => $saturation['seuils'],
+            'auto_calibrated'     => (bool) ($result->metadata['auto_calibrated'] ?? false),
             'echeancier_mode'     => $result->metadata['echeancier_mode'] ?? null,
         ];
     }
@@ -268,7 +284,7 @@ class AnalyticsDiagnoseCommand extends Command
         $this->newLine();
         $this->info('▸ Couverture snapshots');
         $cov = $report['coverage'];
-        $color = $cov['coverage_pct'] >= 90 ? 'green' : ($cov['coverage_pct'] >= 50 ? 'yellow' : 'red');
+        $color = $cov['coverage_pct'] >= 90 ? 'green' : ($cov['coverage_pct'] >= EcheancierCoverageService::SEUIL_FAIBLE_PCT ? 'yellow' : 'red');
         $this->line(sprintf('  %d / %d inscriptions ont un snapshot (<fg=%s>%.1f%%</>)',
             $cov['with_snapshot'], $cov['total_actives'], $color, $cov['coverage_pct']
         ));
@@ -300,8 +316,14 @@ class AnalyticsDiagnoseCommand extends Command
             $this->line(sprintf('  Haut risque : <fg=%s>%.1f%%</> (%d / %d actifs)',
                 $color, $rs['haut_risque_pct'], $rs['buckets']['haut'] ?? 0, $rs['total_actifs']
             ));
+            $this->line(sprintf('  Haut + moyen : <fg=%s>%.1f%%</> (seuils : haut ≥ %.0f %%, total ≥ %.0f %%)',
+                $color, $rs['total_pct'], $rs['seuils']['haut_pct'], $rs['seuils']['total_pct']
+            ));
             if ($rs['is_saturated']) {
-                $this->warn('  ⚠ Saturation > 70 % — auto-calibration recommandée');
+                $this->warn(sprintf('  ⚠ Cohorte saturée (déclencheur : %s) — %s',
+                    $rs['declencheur'],
+                    $rs['auto_calibrated'] ? 'auto-calibration active' : 'auto-calibration recommandée'
+                ));
             }
         }
 

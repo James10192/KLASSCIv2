@@ -3,8 +3,15 @@
 @section('title', 'Analytics Prédictifs')
 
 @section('content')
+@php
+    // Shell mobile : le DOM de bureau reste dans .m-only-desktop, l'écran mobile
+    // (maquette S['comptable:analytics']) vit à côté, sur l'état préparé par le
+    // contrôleur ($mobileAnalytics). Shell coupé : rien ne change au bureau.
+    $anShell = ($mobileShellEnabled ?? false) && ($mobileProfile ?? null);
+@endphp
 <div class="container-fluid an-page" x-data="analyticsPage()">
 
+<div class="{{ $anShell ? 'm-only-desktop' : '' }}">
     {{-- ============================ HERO ============================ --}}
     <div class="an-hero">
         <div class="an-hero-top">
@@ -135,7 +142,10 @@
             $tot = $defaultRisk->metadata['total_actifs'] ?? 0;
             $riskHautPct = $tot > 0 ? round(($bk['haut'] ?? 0) / $tot * 100, 1) : 0;
         }
-        $riskSaturated = $riskHautPct >= 70.0;
+        // Saturation mesurée AVANT calibration par le prédicteur (règle RiskSaturation) ;
+        // repli sur le seuil « haut » seul si les métadonnées sont d'une version antérieure.
+        $riskSaturated = (bool) ($defaultRisk->metadata['saturation_at_default']['is_saturated']
+            ?? ($riskHautPct >= \App\Domain\Analytics\Predictors\DefaultRiskPredictor::SATURATION_TRIGGER_PCT));
         $autoCalibrated = (bool) ($defaultRisk->metadata['auto_calibrated'] ?? false);
         $neverComputed = !$lastComputedAt;
     @endphp
@@ -761,7 +771,298 @@
         <i class="fas" :class="toast.type === 'error' ? 'fa-exclamation-circle' : 'fa-check-circle'"></i>
         <span x-text="toast.message"></span>
     </div>
+</div>{{-- /.m-only-desktop --}}
+
+@if($anShell)
+@php
+    // ---- Écran mobile (shell m-*) — namespace CSS anm-* ----
+    $anmUser = auth()->user();
+    $anmEcole = \App\Helpers\SettingsHelper::getSchoolInfo();
+    $anmEcoleNom = $anmEcole['name'] ?: ($anmEcole['acronym'] ?: config('app.name'));
+    // Mêmes gardes que les routes d'export / de recalcul / de paramétrage.
+    $anmPeutExporter = $anmUser?->can('comptabilite.analytics.view') ?? false;
+    $anmPeutRecalculer = $anmUser?->can('comptabilite.analytics.run_now') ?? false;
+    $anmPeutConfigurer = $anmUser?->can('comptabilite.analytics.configure') ?? false;
+    $anmVoitEtudiant = $anmUser?->can('students.view') ?? false;
+    $anmVoitRecouvrement = $anmUser?->can('comptabilite.recouvrement.access') ?? false;
+    // Le périmètre (année / filière / classe) suit la page, comme au bureau.
+    $anmFiltres = request()->only(['annee', 'filiere', 'classe']);
+
+    $anmCfg = [
+        'etat' => $mobileAnalytics ?? [],
+        // Lignes « haut risque » montrées d'emblée ; le reste se déplie.
+        'pas' => 8,
+        'csrf' => csrf_token(),
+        'urls' => [
+            'refresh' => route('esbtp.comptabilite.analytics.refresh', $anmFiltres),
+            'runNow' => $anmPeutRecalculer ? route('esbtp.comptabilite.analytics.run-now') : null,
+            'etudiant' => $anmVoitEtudiant ? route('esbtp.etudiants.show', '__ID__') : null,
+        ],
+    ];
+@endphp
+{{-- ============================ ÉCRAN MOBILE (shell m-*) ============================ --}}
+{{-- La barre d'onglets et la navbar mobile sont rendues par le layout. --}}
+<div class="m-only-mobile m-screen anm-screen" x-data="anMobile({{ \Illuminate\Support\Js::from($anmCfg) }})">
+    <x-m.appbar title="Analytics"
+                :sub="$anmEcoleNom"
+                :back="route('esbtp.comptabilite.dashboard')"
+                :action="$anmPeutExporter ? 'dl' : null"
+                action-label="Exporter"
+                x-on:click="ouvrir('anm-exports')">
+        @can('comptabilite.analytics.run_now')
+            <button type="button" class="m-ib" aria-label="Recalculer les prédictions"
+                    x-on:click="recalculer()"
+                    x-bind:disabled="busy.recalcul"
+                    x-bind:class="busy.recalcul ? 'is-spin' : ''">
+                <x-m.icon name="refresh" />
+            </button>
+        @endcan
+    </x-m.appbar>
+
+    <div class="m-body" x-ref="corps">
+
+        {{-- Bandeaux : couverture des échéanciers, saturation du score, mode dégradé, jamais calculé --}}
+        <template x-if="etat.coverage && etat.coverage.is_low">
+            <div class="anm-warn" role="status">
+                <x-m.icon name="alert" />
+                <div>
+                    <b x-text="'Échéanciers : ' + etat.coverage.with + ' inscriptions sur ' + etat.coverage.total + ' couvertes (' + pct(etat.coverage.pct) + ' %)'"></b>
+                    <span x-text="'Sous ' + pct(etat.coverage.minimum_pct) + ' % de couverture, les prévisions reposent surtout sur l’échéance par défaut de chaque frais.'"></span>
+                    @can('comptabilite.frais.configure')
+                        <a href="{{ route('esbtp.comptabilite.echeanciers.index') }}">Configurer les règles d’échéancier</a>
+                    @endcan
+                </div>
+            </div>
+        </template>
+
+        <template x-if="etat.risk && etat.risk.available && etat.risk.is_saturated && !etat.risk.auto_calibrated">
+            <div class="anm-warn" role="status">
+                <x-m.icon name="alert" />
+                <div>
+                    <b x-text="'Score saturé : ' + pct(etat.risk.pct.haut) + ' % des étudiants à haut risque'"></b>
+                    <span>Quand presque toute la cohorte est « haut risque », le score ne distingue plus personne. L’auto-calibration ou des règles d’échéancier plus complètes rétablissent la lecture.</span>
+                    @can('comptabilite.analytics.configure')
+                        <a href="{{ route('esbtp.comptabilite.analytics.settings') }}">Ouvrir les paramètres</a>
+                    @endcan
+                </div>
+            </div>
+        </template>
+
+        <template x-if="etat.risk && etat.risk.available && etat.risk.auto_calibrated">
+            <div class="anm-warn info" role="status">
+                <x-m.icon name="settings" />
+                <div>
+                    <b>Auto-calibration appliquée</b>
+                    <span>Le seuil « haut risque » a été relevé automatiquement : la liste ci-dessous garde les étudiants les plus exposés.</span>
+                </div>
+            </div>
+        </template>
+
+        <template x-if="etat.echeancier && etat.echeancier.fallback && etat.echeancier.note">
+            <div class="anm-warn info" role="status">
+                <x-m.icon name="clock" />
+                <div>
+                    <b>Mode dégradé</b>
+                    <span x-text="etat.echeancier.note"></span>
+                </div>
+            </div>
+        </template>
+
+        <template x-if="etat.never_computed">
+            <div class="anm-warn info" role="status">
+                <x-m.icon name="clock" />
+                <div>
+                    <b>Calcul automatique jamais lancé</b>
+                    <span>Les prédictions n’ont pas encore d’historique de précision.</span>
+                    @can('comptabilite.analytics.run_now')
+                        <button type="button" x-on:click="recalculer()" x-bind:disabled="busy.recalcul">Lancer maintenant</button>
+                    @endcan
+                </div>
+            </div>
+        </template>
+
+        {{-- Héro : prévision d'encaissement du mois cible + confiance + pondération réelle --}}
+        <section class="m-hero">
+            <span class="k" x-text="'Prévision d’encaissement' + (etat.cash_flow.mois ? ' · ' + etat.cash_flow.mois : '')"></span>
+            <span class="v">
+                <span x-text="etat.cash_flow.available ? etat.cash_flow.compact : '—'"></span><small x-text="etat.cash_flow.available ? (etat.devise + ' · ' + etat.cash_flow.confidence_label.toLowerCase()) : 'indisponible'"></small>
+            </span>
+            <div class="row">
+                <span class="pill" x-show="etat.cash_flow.ponderation" x-text="etat.cash_flow.ponderation"></span>
+                <span class="pill" x-show="etat.cash_flow.precision_label" x-text="etat.cash_flow.precision_label"></span>
+                <span class="pill" x-show="etat.last_computed" x-text="'Calculé ' + etat.last_computed"></span>
+            </div>
+            <p class="anm-hero-exact" x-show="etat.cash_flow.available"
+               x-text="etat.cash_flow.value_fmt + ' ' + etat.devise + (etat.cash_flow.intervalle ? ' · fourchette de ' + etat.cash_flow.intervalle.lower_fmt + ' à ' + etat.cash_flow.intervalle.upper_fmt : '')"></p>
+            <p class="anm-hero-exact" x-show="!etat.cash_flow.available" x-text="etat.cash_flow.explanation[0] || 'Prévision indisponible.'"></p>
+        </section>
+
+        {{-- Squelette le temps du rafraîchissement --}}
+        <div class="m-skel" x-show="busy.refresh" x-cloak aria-hidden="true"><i></i><i></i><i></i></div>
+
+        <div class="anm-contenu" x-show="!busy.refresh">
+
+            {{-- Risque d'impayé : trois tranches, effectifs et parts venant de metadata.buckets --}}
+            <div class="m-chart">
+                <b>
+                    <span x-text="etat.risk.available ? 'Risque d’impayé · ' + etat.risk.total + (etat.risk.total > 1 ? ' étudiants' : ' étudiant') : 'Risque d’impayé'"></span>
+                    <span class="m-chip mute" x-show="etat.risk.available" x-text="etat.risk.confidence_label"></span>
+                </b>
+                <template x-if="etat.risk.available">
+                    <div class="anm-bars" role="img" x-bind:aria-label="'Faible ' + etat.risk.buckets.bas + ', moyen ' + etat.risk.buckets.moyen + ', haut ' + etat.risk.buckets.haut">
+                        <div>
+                            <div class="m-bar"><i class="ok" x-bind:style="{ width: etat.risk.pct.bas + '%' }"></i></div>
+                            <small x-text="'Faible · ' + etat.risk.buckets.bas"></small>
+                        </div>
+                        <div>
+                            <div class="m-bar"><i class="warn" x-bind:style="{ width: etat.risk.pct.moyen + '%' }"></i></div>
+                            <small x-text="'Moyen · ' + etat.risk.buckets.moyen"></small>
+                        </div>
+                        <div>
+                            <div class="m-bar"><i class="anm-bar-haut" x-bind:style="{ width: etat.risk.pct.haut + '%' }"></i></div>
+                            <small x-text="'Haut · ' + etat.risk.buckets.haut"></small>
+                        </div>
+                    </div>
+                </template>
+                <p class="anm-chart-note" x-show="etat.risk.available" x-text="'Exposition haut risque : ' + etat.risk.exposition_fmt + ' ' + etat.devise"></p>
+                <p class="anm-chart-note" x-show="!etat.risk.available" x-text="etat.risk.reason"></p>
+            </div>
+
+            {{-- Liste « haut risque » : nom, classe · score · jours · relances, reste dû --}}
+            <div class="m-sec">
+                <b x-text="'Haut risque · à traiter' + (etat.risk.top.length ? ' · ' + etat.risk.top.length : '')"></b>
+                @can('comptabilite.recouvrement.access')
+                    <a href="{{ route('esbtp.comptabilite.recouvrement.index') }}">Recouvrement</a>
+                @endcan
+            </div>
+
+            <template x-if="etat.risk.available && etat.risk.top.length === 0">
+                <x-m.empty icon="check" title="Aucun étudiant à haut risque" text="Personne ne dépasse le seuil « haut risque » dans ce périmètre." />
+            </template>
+            <template x-if="!etat.risk.available">
+                <x-m.empty icon="inbox" title="Liste indisponible">
+                    <span x-text="etat.risk.reason"></span>
+                </x-m.empty>
+            </template>
+
+            <div class="m-list one" x-show="visibles.length > 0">
+                <template x-for="row in visibles" :key="row.inscription_id">
+                    <button type="button" class="m-row anm-row" x-on:click="fiche(row)">
+                        <div class="av" aria-hidden="true" x-text="row.initiales"></div>
+                        <div class="tt">
+                            <b x-text="row.nom"></b>
+                            <span x-text="sousTitre(row)"></span>
+                        </div>
+                        <div class="tr">
+                            <span class="amt neg" x-text="row.solde_restant_fmt + ' ' + etat.devise"></span>
+                            <span class="m-chip bad">Haut</span>
+                        </div>
+                    </button>
+                </template>
+            </div>
+            <button type="button" class="m-btn g" x-show="reste > 0" x-on:click="limite += pas" x-text="'Afficher ' + reste + ' de plus'"></button>
+
+            {{-- Pourquoi : les raisons données par chaque prédicteur --}}
+            <div class="m-sec"><b>Pourquoi ces chiffres</b></div>
+            <div class="anm-why">
+                <div class="anm-why-h"><x-m.icon name="chart" /> Prévision d’encaissement</div>
+                <ul>
+                    <template x-for="(raison, i) in etat.cash_flow.explanation" :key="'cf' + i">
+                        <li x-text="raison"></li>
+                    </template>
+                </ul>
+                <div class="anm-why-h"><x-m.icon name="alert" /> Risque d’impayé</div>
+                <ul>
+                    <template x-for="(raison, i) in etat.risk.explanation" :key="'rk' + i">
+                        <li x-text="raison"></li>
+                    </template>
+                </ul>
+            </div>
+
+            <template x-if="etat.anomalies && (etat.anomalies.critical + etat.anomalies.warning) > 0">
+                <div class="m-row">
+                    <div class="av ic" aria-hidden="true"><x-m.icon name="alert" /></div>
+                    <div class="tt">
+                        <b>Anomalies financières</b>
+                        <span x-text="etat.anomalies.critical + (etat.anomalies.critical > 1 ? ' critiques' : ' critique') + ' · ' + etat.anomalies.warning + (etat.anomalies.warning > 1 ? ' avertissements' : ' avertissement') + ' · détail sur grand écran'"></span>
+                    </div>
+                    <div class="tr">
+                        <span class="m-chip" x-bind:class="etat.anomalies.critical > 0 ? 'bad' : 'warn'" x-text="etat.anomalies.critical + etat.anomalies.warning"></span>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </div>
+
+    {{-- Feuille : détail d'un étudiant à haut risque --}}
+    <x-m.sheet id="anm-fiche" title="Étudiant à haut risque">
+        <template x-if="sel">
+            <div class="anm-fiche">
+                <div class="m-note">
+                    <div class="av" x-text="sel.initiales"></div>
+                    <div>
+                        <div class="nm" x-text="sel.nom"></div>
+                        <div class="mt" x-text="sel.classe"></div>
+                    </div>
+                    <span class="m-chip bad">Haut</span>
+                </div>
+
+                <div class="m-cnt">
+                    <div class="a"><b x-text="sel.score"></b><span>Score</span></div>
+                    <div class="r"><b x-text="sel.jours_retard + ' j'"></b><span>Retard</span></div>
+                    <div><b x-text="sel.ratio_paye_pct + ' %'"></b><span>Payé</span></div>
+                    <div><b x-text="sel.relances"></b><span x-text="sel.relances > 1 ? 'Relances' : 'Relance'"></span></div>
+                </div>
+
+                <dl class="anm-dl">
+                    <dt>Reste dû</dt><dd class="neg" x-text="sel.solde_restant_fmt + ' ' + etat.devise"></dd>
+                    <dt>Échu non payé</dt><dd x-text="sel.montant_echu_fmt + ' ' + etat.devise"></dd>
+                    <dt>Attendu à ce jour</dt><dd x-text="sel.attendu_a_date_fmt + ' ' + etat.devise"></dd>
+                    <dt>Payé à ce jour</dt><dd x-text="sel.paye_a_date_fmt + ' ' + etat.devise"></dd>
+                </dl>
+
+                @if($anmVoitEtudiant || $anmVoitRecouvrement)
+                    <div class="m-menu">
+                        @can('students.view')
+                            <a x-bind:href="urlEtudiant(sel)">
+                                <x-m.icon name="user" /><span>Voir la fiche de l’étudiant</span><x-m.icon name="chr" class="ch" />
+                            </a>
+                        @endcan
+                        @can('comptabilite.recouvrement.access')
+                            <a href="{{ route('esbtp.comptabilite.recouvrement.index') }}">
+                                <x-m.icon name="phone" /><span>Relancer depuis le recouvrement</span><x-m.icon name="chr" class="ch" />
+                            </a>
+                        @endcan
+                    </div>
+                @endif
+            </div>
+        </template>
+    </x-m.sheet>
+
+    @can('comptabilite.analytics.view')
+    {{-- Feuille : exports (mêmes routes que le bureau, périmètre conservé) + paramètres --}}
+    <x-m.sheet id="anm-exports" title="Exporter" :sub="$anmEcoleNom">
+        <div class="m-menu">
+            <a href="{{ route('esbtp.comptabilite.analytics.preview-pdf', $anmFiltres) }}" target="_blank" rel="noopener">
+                <x-m.icon name="file" /><span>Aperçu PDF</span><x-m.icon name="chr" class="ch" />
+            </a>
+            <a href="{{ route('esbtp.comptabilite.analytics.export-pdf', $anmFiltres) }}">
+                <x-m.icon name="dl" /><span>Télécharger le PDF</span><x-m.icon name="chr" class="ch" />
+            </a>
+            <a href="{{ route('esbtp.comptabilite.analytics.export-excel', $anmFiltres) }}">
+                <x-m.icon name="dl" /><span>Télécharger en Excel</span><x-m.icon name="chr" class="ch" />
+            </a>
+            @can('comptabilite.analytics.configure')
+                <a href="{{ route('esbtp.comptabilite.analytics.settings') }}">
+                    <x-m.icon name="settings" /><span>Paramètres du moteur</span><x-m.icon name="chr" class="ch" />
+                </a>
+            @endcan
+        </div>
+    </x-m.sheet>
+    @endcan
 </div>
+@endif
+</div>{{-- /.an-page --}}
 
 <script>
 function analyticsPage() {
@@ -1548,5 +1849,163 @@ body:has(.export-menu:not([style*="display: none"])) .an-kpi:hover { transform: 
     .an-gap-row-amounts { font-size: .75rem; text-align: left; }
     .an-gap-legend { font-size: .72rem; gap: .65rem; }
 }
+/* ===================== ÉCRAN MOBILE — namespace anm-* ===================== */
+.anm-warn { display: grid; grid-template-columns: 22px 1fr; gap: 10px; align-items: start; background: #fff3df; border: 1px solid #f5d9a8; border-radius: 14px; padding: 12px; color: #8a5200; font-size: 13px; }
+.anm-warn > svg { width: 22px; height: 22px; margin-top: 1px; }
+.anm-warn b { display: block; color: #0f172a; font-size: 13.5px; }
+.anm-warn span { display: block; margin-top: 2px; line-height: 1.35; }
+.anm-warn a,
+.anm-warn button { display: inline-flex; align-items: center; min-height: 44px; margin-top: 4px; padding: 0 2px; color: #0453cb; font-weight: 700; font-size: 13px; text-decoration: none; background: transparent; border: 0; font-family: inherit; cursor: pointer; }
+.anm-warn button:disabled { opacity: .6; cursor: wait; }
+.anm-warn.info { background: rgba(4,83,203,.06); border-color: rgba(4,83,203,.18); color: #475569; }
+.anm-hero-exact { margin: 0; font-size: 12px; opacity: .82; line-height: 1.35; }
+.anm-contenu { display: grid; gap: 14px; }
+.anm-bars { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 4px; }
+.anm-bars small { display: block; margin-top: 6px; font-size: 11px; color: #64748b; font-variant-numeric: tabular-nums; }
+.m-bar i.anm-bar-haut { background: #dc2626; }
+.anm-chart-note { margin: 0; font-size: 12px; color: #64748b; }
+.m-chart b { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.anm-row { width: 100%; text-align: left; font: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.anm-row .tt span { white-space: normal; line-height: 1.3; }
+.anm-why { background: #fff; border: 1px solid #e6eaf2; border-radius: 14px; padding: 12px 14px; display: grid; gap: 8px; }
+.anm-why-h { display: flex; align-items: center; gap: 8px; font-size: 11.5px; font-weight: 700; color: #0453cb; text-transform: uppercase; letter-spacing: .04em; }
+.anm-why-h svg { width: 16px; height: 16px; }
+.anm-why ul { margin: 0; padding-left: 18px; font-size: 13px; color: #1e293b; display: grid; gap: 4px; line-height: 1.35; }
+.anm-fiche { display: grid; gap: 12px; }
+.anm-fiche .m-note { grid-template-columns: 44px 1fr auto; }
+.anm-dl { margin: 0; display: grid; grid-template-columns: 1fr auto; gap: 6px 12px; font-size: 13.5px; background: #f4f6fb; border-radius: 12px; padding: 12px; }
+.anm-dl dt { color: #64748b; }
+.anm-dl dd { margin: 0; font-weight: 700; text-align: right; color: #0f172a; font-variant-numeric: tabular-nums; }
+.anm-dl dd.neg { color: #b42318; }
+.m-ib.is-spin svg { animation: m-spin .8s linear infinite; }
 </style>
+@endpush
+
+@push('scripts')
+<script>
+/* Écran mobile Analytics (maquette S['comptable:analytics']). Exposé sous garde :
+   la vue peut être rendue plusieurs fois (AJAX) sans redéclarer la fabrique. */
+if (typeof window.anMobile !== 'function') {
+window.anMobile = function (cfg) {
+    return {
+        etat: cfg.etat || {},
+        urls: cfg.urls || {},
+        pas: Number(cfg.pas) || 8,
+        limite: Number(cfg.pas) || 8,
+        busy: { refresh: false, recalcul: false },
+        sel: null,
+        _onPtr: null,
+
+        init() {
+            var self = this;
+            if (this.$refs.corps) {
+                this._onPtr = function () { self.rafraichir(); };
+                this.$refs.corps.addEventListener('m-ptr:refresh', this._onPtr);
+            }
+        },
+        destroy() {
+            if (this._onPtr && this.$refs.corps) {
+                this.$refs.corps.removeEventListener('m-ptr:refresh', this._onPtr);
+                this._onPtr = null;
+            }
+        },
+
+        get visibles() {
+            var top = (this.etat.risk && this.etat.risk.top) || [];
+            return top.slice(0, this.limite);
+        },
+        get reste() {
+            var top = (this.etat.risk && this.etat.risk.top) || [];
+            return Math.max(0, top.length - this.limite);
+        },
+
+        pct(v) {
+            var n = Number(v);
+            if (!isFinite(n)) { return '0'; }
+            return (Math.round(n * 10) / 10).toLocaleString('fr-FR');
+        },
+        libelleRelances(n) {
+            n = Number(n) || 0;
+            if (n === 0) { return 'aucune relance'; }
+            return n + (n > 1 ? ' relances' : ' relance');
+        },
+        sousTitre(row) {
+            return [row.classe, 'score ' + row.score, row.jours_retard + ' j de retard', this.libelleRelances(row.relances)]
+                .filter(Boolean).join(' · ');
+        },
+        urlEtudiant(row) {
+            if (!this.urls.etudiant || !row || !row.etudiant_id) { return '#'; }
+            return this.urls.etudiant.replace('__ID__', String(row.etudiant_id));
+        },
+
+        ouvrir(id) {
+            window.dispatchEvent(new CustomEvent('m-sheet:open', { detail: { id: id } }));
+        },
+        fiche(row) {
+            this.sel = row;
+            this.ouvrir('anm-fiche');
+        },
+        toast(message, type) {
+            window.dispatchEvent(new CustomEvent('toast', { detail: { type: type || 'info', message: message } }));
+        },
+
+        /* Tirer-pour-rafraîchir : recalcul synchrone (même endpoint que le bureau), état remplacé sans rechargement. */
+        async rafraichir() {
+            if (this.busy.refresh || !this.urls.refresh) { return; }
+            this.busy.refresh = true;
+            try {
+                var response = await fetch(this.urls.refresh, {
+                    credentials: 'same-origin',
+                    headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                });
+                if (response.status === 429) {
+                    this.toast('Trop d’actualisations à la suite, patientez une minute.', 'warning');
+                    return;
+                }
+                var data = await response.json().catch(function () { return {}; });
+                if (!response.ok || !data.mobile) {
+                    this.toast(data.message || ('Actualisation impossible (' + response.status + ')'), 'error');
+                    return;
+                }
+                this.etat = data.mobile;
+                this.limite = this.pas;
+                this.toast('Prédictions actualisées', 'success');
+            } catch (e) {
+                this.toast('Actualisation impossible (réseau)', 'error');
+            } finally {
+                this.busy.refresh = false;
+            }
+        },
+
+        /* Bouton de l'app bar : lance les calculs en arrière-plan (jobs), sans rechargement. */
+        async recalculer() {
+            if (this.busy.recalcul || !this.urls.runNow) { return; }
+            this.busy.recalcul = true;
+            try {
+                var response = await fetch(this.urls.runNow, {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': cfg.csrf,
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                });
+                if (response.status === 429) {
+                    this.toast('Trop de recalculs à la suite, patientez une minute.', 'warning');
+                    return;
+                }
+                var data = await response.json().catch(function () { return {}; });
+                this.toast(data.message || (data.success ? 'Recalcul lancé' : 'Erreur'), data.success ? 'success' : 'error');
+            } catch (e) {
+                this.toast('Recalcul impossible (réseau)', 'error');
+            } finally {
+                this.busy.recalcul = false;
+            }
+        },
+    };
+};
+}
+</script>
 @endpush

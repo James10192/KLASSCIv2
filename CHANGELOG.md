@@ -40,6 +40,12 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ### Ajouts
 
+- **Le comptable et le caissier ont leur application mobile** — onze écrans repris pour le téléphone et la tablette : tableau de bord des finances (encaissé du jour, reste impayé, à valider, courbe des trente derniers jours), liste et fiche des relances, configuration et planification des relances, journal de caisse, réconciliation de caisse (ouverture, comptage, écarts, PV), analytics de recouvrement et leurs réglages, paie des enseignants, accueil du caissier et « Ma caisse ». Chaque action reste soumise au droit correspondant : ce qu'un compte ne peut pas faire ne s'affiche pas, plutôt que de mener à un refus.
+
+- **Le tableau de bord comptable demande désormais son propre droit** — la page n'exigeait que l'accès au module comptabilité ; elle exige maintenant « Voir le tableau de bord comptable », qui existait sans être demandé nulle part. Les rôles livrés l'ont déjà, et les rôles sur mesure qui avaient l'accès au module le reçoivent automatiquement : personne ne perd l'écran, mais l'école peut désormais le retirer à qui elle veut.
+
+- **Les échéanciers se recalculent sur commande** — une commande de maintenance régénère les échéanciers de toute une année ou d'une classe, au lieu d'attendre qu'on ouvre la fiche de chaque étudiant. Les prévisions de trésorerie et le niveau de risque cessent de reposer sur une poignée de dossiers consultés par hasard.
+
 - **Une page pour savoir qui rappeler** — « Suivi des dossiers » liste, pour une année et une classe, les étudiants dont le dossier est incomplet, avec le nom des pièces qui manquent. Cinq compteurs en tête : inscriptions examinées, dossiers complets, dossiers incomplets, pièces à réclamer, pièces à relire. Ils portent sur toute la sélection, pas sur la page affichée.
 
   Chaque ligne mène directement au dossier de l'étudiant, à l'endroit exact où l'on coche. La page est en lecture seule et n'offre aucune action de masse : « cocher toutes les pièces de cette classe » n'aurait aucun sens, personne n'a vu ces papiers. Elle est accessible depuis le menu, depuis le catalogue des pièces et depuis la liste des inscriptions. Une inscription annulée n'y figure pas.

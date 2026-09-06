@@ -1,7 +1,9 @@
-{{-- PR6 Widget santé Réconciliation — gated par permission view --}}
+{{-- PR6 Widget santé Réconciliation — gated par permission view.
+     Le parent peut passer un snapshot déjà calculé (['recMetrics' => ...]) pour ne pas
+     relancer les requêtes quand il l'affiche aussi ailleurs (écran mobile du dashboard). --}}
 @can('comptabilite.reconciliation.view')
 @php
-    $recMetrics = app(\App\Domain\Comptabilite\Reconciliation\Services\ReconciliationMetricsService::class)->snapshot();
+    $recMetrics = $recMetrics ?? app(\App\Domain\Comptabilite\Reconciliation\Services\ReconciliationMetricsService::class)->snapshot();
 @endphp
 
 @push('styles')
@@ -88,7 +90,7 @@
         <div class="rec-widget-banner">
             <i class="fas fa-exclamation-triangle"></i>
             <div class="rec-widget-banner-msg">
-                <strong>{{ $recMetrics['overdue_draft_count'] }} session(s) overdue</strong> — ouverte(s) depuis plus de {{ $recMetrics['overdue_threshold_days'] }} jour(s) sans clôture. À traiter pour respecter le cycle OHADA.
+                <strong>{{ $recMetrics['overdue_draft_count'] }} session(s) en retard</strong> — ouverte(s) depuis plus de {{ $recMetrics['overdue_threshold_days'] }} jour(s) sans clôture. À traiter pour respecter le cycle OHADA.
             </div>
             <a href="{{ route('esbtp.comptabilite.reconciliation.index', ['status' => 'draft']) }}" class="rec-widget-banner-action">
                 <i class="fas fa-arrow-right"></i> Traiter
@@ -113,7 +115,7 @@
 
     <div class="rec-widget-grid">
         <div class="rec-widget-tile {{ $recMetrics['overdue_draft_count'] > 0 ? 'alert' : '' }}">
-            <div class="rec-widget-tile-label">Sessions overdue</div>
+            <div class="rec-widget-tile-label">Sessions en retard</div>
             <div class="rec-widget-tile-value">{{ $recMetrics['overdue_draft_count'] }}</div>
             <div class="rec-widget-tile-sub">> {{ $recMetrics['overdue_threshold_days'] }} jour(s) sans clôture</div>
         </div>

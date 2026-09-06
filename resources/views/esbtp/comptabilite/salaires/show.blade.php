@@ -74,8 +74,14 @@
     ];
     $sc = $stCfg[$salaire->workflow_status] ?? $stCfg['brouillon'];
     $fmt = fn($v) => number_format($v, 0, ',', ' ');
+    // Shell mobile actif : le DOM de bureau ci-dessous se cache sous 992px au
+    // profit du partial _show-mobile (m-*). Shell coupé : rien ne change.
+    $pysShellMobile = ($mobileShellEnabled ?? false) && ($mobileProfile ?? null);
 @endphp
-<div class="pys-wrap" x-data="{ showPay: false }">
+@if($pysShellMobile)
+    @include('esbtp.comptabilite.salaires.partials._show-mobile')
+@endif
+<div class="pys-wrap {{ $pysShellMobile ? 'm-only-desktop' : '' }}" x-data="{ showPay: false }">
 
     {{-- Hero --}}
     <div class="pys-hero">

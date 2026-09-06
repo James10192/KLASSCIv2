@@ -25,6 +25,10 @@ class CashFlowPredictor implements PredictorInterface
     private const Z_SCORE_95 = 1.96;
     private const TENDANCE_THRESHOLD = 1000.0;
 
+    /** Pondération échéancier / historique quand les deux sources existent (exposée dans metadata['weights']). */
+    public const POIDS_ECHEANCIER = 0.8;
+    public const POIDS_HISTORIQUE = 0.2;
+
     public function __construct(
         private readonly AnalyticsRepository $repository,
         private readonly CashFlowProjectionService $projectionService,
@@ -65,9 +69,12 @@ class CashFlowPredictor implements PredictorInterface
             ? ExponentialSmoothing::forecastSeasonal($seasonalSeries, $targetMonth)
             : 0.0;
 
-        $forecast = $scheduledNextMonth > 0
-            ? ($historicalForecast > 0 ? round(($scheduledNextMonth * 0.8) + ($historicalForecast * 0.2), 2) : $scheduledNextMonth)
-            : $historicalForecast;
+        $poids = match (true) {
+            $scheduledNextMonth > 0 && $historicalForecast > 0 => ['echeancier' => self::POIDS_ECHEANCIER, 'historique' => self::POIDS_HISTORIQUE],
+            $scheduledNextMonth > 0 => ['echeancier' => 1.0, 'historique' => 0.0],
+            default => ['echeancier' => 0.0, 'historique' => 1.0],
+        };
+        $forecast = round(($scheduledNextMonth * $poids['echeancier']) + ($historicalForecast * $poids['historique']), 2);
 
         $tendance = count($values) >= 2 ? LinearRegression::fit($values)['slope'] : 0.0;
         $stdDev = count($values) >= 2 ? Statistics::standardDeviation($values) : 0.0;
@@ -91,6 +98,7 @@ class CashFlowPredictor implements PredictorInterface
             metadata: [
                 'scheduled_revenue_next_month' => $scheduledNextMonth,
                 'history_months' => count($history),
+                'weights' => $poids,
             ],
         );
     }

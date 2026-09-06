@@ -527,6 +527,10 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
             ->name('academic-pilotage.backfill');
         Route::post('/academic-pilotage/refresh', [App\Http\Controllers\API\CLI\CLIAcademicPilotageController::class, 'refresh'])
             ->name('academic-pilotage.refresh');
+        // Snapshots d'echeancier : regeneration par lots (couverture analytics).
+        // Meme moteur que `php artisan echeanciers:recompute`. dry_run=true par defaut.
+        Route::post('/echeanciers/recompute', [App\Http\Controllers\API\CLI\CLIEcheancierController::class, 'recompute'])
+            ->name('echeanciers.recompute');
         Route::get('/matieres/{matiere}/coefficient', [App\Http\Controllers\API\CLI\CLIMaintenanceController::class, 'matiereCoefficientLookup'])->name('matieres.coefficient');
         Route::get('/etudiants/{id}/inscriptions-diag', [App\Http\Controllers\API\CLI\CLIMaintenanceController::class, 'etudiantInscriptionsDiag'])->name('etudiants.inscriptions-diag');
         Route::get('/etudiants/{id}/inscriptions-repair-diagnostic', [App\Http\Controllers\API\CLI\CLIMaintenanceController::class, 'etudiantInscriptionRepairDiagnostic'])->name('etudiants.inscriptions-repair-diagnostic');

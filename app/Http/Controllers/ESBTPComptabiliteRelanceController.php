@@ -82,12 +82,22 @@ class ESBTPComptabiliteRelanceController extends Controller
             $historique = collect();
         }
 
+        // Écran mobile : les relances réellement enregistrées (esbtp_relances)
+        // pour cette inscription — et celles d'avant la colonne inscription_id.
+        $relancesEnregistrees = \App\Models\ESBTPRelance::where('etudiant_id', $etudiant->id)
+            ->where(fn ($q) => $q->where('inscription_id', $inscription->id)->orWhereNull('inscription_id'))
+            ->orderByDesc('date_envoi')
+            ->orderByDesc('id')
+            ->limit(30)
+            ->get();
+        $joursRetard = $calcService->getJoursRetard($inscription);
+
         return view('esbtp.comptabilite.relances.etudiant', compact(
             'inscription', 'etudiant',
             'totalDu', 'totalPaye', 'soldeRestant', 'pourcentagePaye',
             'fraisImpayés', 'historique',
             'riskLevel', 'riskLabel', 'riskColor',
-            'autresInscriptions'
+            'autresInscriptions', 'relancesEnregistrees', 'joursRetard'
         ));
     }
 
@@ -156,16 +166,23 @@ class ESBTPComptabiliteRelanceController extends Controller
         $annees   = \App\Models\ESBTPAnneeUniversitaire::orderByDesc('annee_debut')->get();
 
         // Vérifier si les délais sont configurés (requis pour signaler à l'utilisateur)
-        $delaisRows = \DB::table('settings')
+        $reglagesRelances = \DB::table('settings')
             ->where('group', 'relances')
-            ->whereIn('key', ['relances.delai_niveau_1', 'relances.delai_niveau_2', 'relances.delai_niveau_3'])
-            ->count();
-        $configManquante = $delaisRows < 3;
+            ->pluck('value', 'key');
+        $configManquante = collect(['relances.delai_niveau_1', 'relances.delai_niveau_2', 'relances.delai_niveau_3'])
+            ->contains(fn ($cle) => ! $reglagesRelances->has($cle));
+
+        // Écran mobile (shell m-*) : l'historique des relances enregistrées, pas
+        // seulement les soldes. Calculé uniquement quand le shell se rend.
+        $resolveurMobile = app(\App\Services\Mobile\MobileProfileResolver::class);
+        $mobileRelances = ($resolveurMobile->actif() && $resolveurMobile->resolve($request->user()))
+            ? $this->historiqueRelancesMobile($reglagesRelances)
+            : null;
 
         $viewData = compact(
             'paginated', 'kpis', 'filieres', 'classes', 'annees',
             'search', 'riskFilter', 'filiereId', 'classeId', 'anneeId', 'perPage', 'anneeActive',
-            'configManquante'
+            'configManquante', 'mobileRelances'
         );
 
         // AJAX request → return JSON avec table HTML + kpis mis à jour
@@ -177,6 +194,56 @@ class ESBTPComptabiliteRelanceController extends Controller
         }
 
         return view('esbtp.comptabilite.relances.index', $viewData);
+    }
+
+
+    /**
+     * Données de l'écran mobile « Relances » : repères du mois et campagnes.
+     *
+     * Une campagne regroupe les relances créées ensemble (même modèle, même
+     * canal, même minute d'envoi, même statut) : une planification en masse
+     * devient une ligne « N destinataires » au lieu de N lignes identiques.
+     *
+     * @param  \Illuminate\Support\Collection<string, string>  $reglages  settings du groupe « relances », indexés par clé
+     */
+    private function historiqueRelancesMobile(\Illuminate\Support\Collection $reglages): array
+    {
+        $debutMois = now()->startOfMonth();
+        $duMois = fn (string $statut) => \App\Models\ESBTPRelance::where('statut', $statut)
+            ->where('date_envoi', '>=', $debutMois)
+            ->count();
+
+        $envoyeesMois = $duMois(\App\Models\ESBTPRelance::STATUT_ENVOYEE);
+        $intentsMois  = $duMois(\App\Models\ESBTPRelance::STATUT_INTENT);
+        $relancesMois = $envoyeesMois + $intentsMois;
+
+        $relances = \App\Models\ESBTPRelance::with('etudiant:id,nom,prenoms,matricule')
+            ->orderByDesc('date_envoi')
+            ->orderByDesc('id')
+            ->limit(200)
+            ->get();
+
+        $campagnes = $relances
+            ->groupBy(fn ($r) => implode('|', [
+                $r->template_utilise, $r->type, $r->canal, $r->statut, $r->niveau,
+                $r->date_envoi ? $r->date_envoi->format('Y-m-d H:i') : '',
+            ]))
+            ->map(fn ($groupe) => ['premiere' => $groupe->first(), 'relances' => $groupe->values()])
+            ->values();
+
+        return [
+            'kpis' => [
+                'envoyees_mois'  => $envoyeesMois,
+                // Part des envois confirmés parmi les relances du mois ; null = rien à mesurer.
+                'taux_confirmes' => $relancesMois > 0 ? (int) round($envoyeesMois / $relancesMois * 100) : null,
+                'planifiees'     => \App\Models\ESBTPRelance::planifiee()->count(),
+                'echecs'         => \App\Models\ESBTPRelance::echec()->count(),
+            ],
+            'campagnes'       => $campagnes,
+            // Valeurs proposées dans la feuille « Planifier » : celles réglées par l'école, sinon rien.
+            'montant_minimum' => isset($reglages['relances.montant_minimum']) ? (int) $reglages['relances.montant_minimum'] : null,
+            'delai_niveau_1'  => isset($reglages['relances.delai_niveau_1']) ? (int) $reglages['relances.delai_niveau_1'] : null,
+        ];
     }
 
 
@@ -435,22 +502,37 @@ class ESBTPComptabiliteRelanceController extends Controller
 
 
     /**
+     * Planification avancée des relances (formulaire de bureau + pas-à-pas mobile).
+     * La vue se suffit à elle-même : segments et effectifs sont chargés en AJAX
+     * via preview-segmentation, l'exécution via planifier-avancees.
+     */
+    public function planificationAvancee()
+    {
+        return view('esbtp.comptabilite.relances.planification-avancee');
+    }
+
+    /**
      * Configuration des relances
      */
     public function configurationRelances()
     {
-        // Récupérer les templates existants depuis la configuration
-        $templates = [
-            'email'    => [],
-            'sms'      => [],
-            'courrier' => [],
-        ];
-
         // Lire les paramètres depuis la BDD (table settings, group=relances)
         // Aucune valeur hardcodée — si absent → null
         $rows = \DB::table('settings')
             ->where('group', 'relances')
             ->pluck('value', 'key');
+
+        // Modèles enregistrés par sauvegarderTemplates() : mêmes clés en lecture
+        // qu'en écriture (relances.template_{canal}_niveau_{n}), sujet e-mail à part.
+        $templates = ['email' => [], 'sms' => [], 'courrier' => []];
+        foreach (array_keys($templates) as $canal) {
+            for ($niveau = 1; $niveau <= 3; $niveau++) {
+                $templates[$canal][$niveau] = [
+                    'contenu' => $rows["relances.template_{$canal}_niveau_{$niveau}"] ?? '',
+                    'sujet'   => $canal === 'email' ? ($rows["relances.template_email_sujet_niveau_{$niveau}"] ?? '') : null,
+                ];
+            }
+        }
 
         $parametres = [
             'delai_niveau_1'        => isset($rows['relances.delai_niveau_1'])   ? (int) $rows['relances.delai_niveau_1']   : null,
@@ -670,6 +752,7 @@ class ESBTPComptabiliteRelanceController extends Controller
             'templates' => 'required|array',
             'templates.*.niveau' => 'required|integer|min:1|max:3',
             'templates.*.contenu' => 'required|string|max:5000',
+            'templates.*.sujet' => 'nullable|string|max:255',
         ]);
 
         try {
@@ -681,6 +764,14 @@ class ESBTPComptabiliteRelanceController extends Controller
                     ['key' => $key],
                     ['value' => $tpl['contenu'], 'group' => 'relances', 'updated_at' => now(), 'created_at' => now()]
                 );
+
+                // Le sujet n'a de sens que pour l'e-mail ; relu par configurationRelances().
+                if ($type === 'email' && array_key_exists('sujet', $tpl)) {
+                    \DB::table('settings')->updateOrInsert(
+                        ['key' => "relances.template_email_sujet_niveau_{$tpl['niveau']}"],
+                        ['value' => (string) $tpl['sujet'], 'group' => 'relances', 'updated_at' => now(), 'created_at' => now()]
+                    );
+                }
             }
 
             return response()->json([
@@ -726,6 +817,14 @@ class ESBTPComptabiliteRelanceController extends Controller
             );
         }
 
+        // Écran de configuration (bureau et mobile) : enregistrement en fetch JSON, sans rechargement.
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Paramètres de relances sauvegardés avec succès.',
+            ]);
+        }
+
         return redirect()->route('esbtp.comptabilite.relances.config')
             ->with('success', 'Paramètres de relances sauvegardés avec succès.');
     }
@@ -754,18 +853,22 @@ class ESBTPComptabiliteRelanceController extends Controller
             $contenu = $request->input('contenu');
             $type = $request->input('type');
 
-            // Remplacer les variables par les exemples
+            // Remplacer les variables par les exemples ; l'établissement vient des réglages, jamais du code.
+            $ecole = \App\Helpers\SettingsHelper::getSchoolInfo();
             $variables = [
                 '{nom}' => $etudiantExemple->nom,
                 '{prenom}' => $etudiantExemple->prenoms,
                 '{nom_complet}' => $etudiantExemple->nom . ' ' . $etudiantExemple->prenoms,
                 '{email}' => $etudiantExemple->email,
                 '{telephone}' => $etudiantExemple->telephone,
-                '{montant_dette}' => '150,000 FCFA',
+                '{montant_dette}' => '150 000 FCFA',
                 '{date_echeance}' => now()->subDays(45)->format('d/m/Y'),
                 '{jours_retard}' => '45',
                 '{niveau_relance}' => $request->input('niveau'),
-                '{nom_ecole}' => 'École Supérieure du Bâtiment et des Travaux Publics',
+                '{nom_ecole}' => $ecole['name'] ?: ($ecole['acronym'] ?: config('app.name')),
+                '{adresse_ecole}' => $ecole['address'] ?: '—',
+                '{telephone_ecole}' => $ecole['phone'] ?: ($ecole['mobile'] ?: '—'),
+                '{email_ecole}' => $ecole['email'] ?: '—',
                 '{date_aujourdhui}' => now()->format('d/m/Y')
             ];
 
@@ -864,10 +967,15 @@ class ESBTPComptabiliteRelanceController extends Controller
 
             // Si date future, programmer le job
             if ($request->filled('date_execution') && $request->input('date_execution') > now()->format('Y-m-d')) {
-                \App\Jobs\PlanifierRelancesJob::dispatch($parametres)
-                    ->delay(now()->parse($request->input('date_execution')));
+                // Heure d'envoi configurée par l'école (relances.heure_envoi) ; à défaut minuit.
+                $dateExecution = now()->parse($request->input('date_execution'));
+                $heureEnvoi = DB::table('settings')->where('key', 'relances.heure_envoi')->value('value');
+                if (is_string($heureEnvoi) && preg_match('/^\d{1,2}:\d{2}$/', $heureEnvoi)) {
+                    $dateExecution->setTimeFromTimeString($heureEnvoi);
+                }
+                \App\Jobs\PlanifierRelancesJob::dispatch($parametres)->delay($dateExecution);
 
-                $message = "Relances programmées pour le " . now()->parse($request->input('date_execution'))->format('d/m/Y');
+                $message = "Relances programmées pour le " . $dateExecution->format('d/m/Y à H:i');
             } else {
                 // Exécution immédiate
                 $resultat = $notificationService->planifierRelancesAvancees($parametres);

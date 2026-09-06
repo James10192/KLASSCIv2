@@ -3,6 +3,7 @@
 namespace App\Domain\Analytics\Predictors;
 
 use App\Domain\Analytics\Algorithms\LogisticScoring;
+use App\Domain\Analytics\Calibration\RiskSaturation;
 use App\Domain\Analytics\DTOs\AnalyticsContext;
 use App\Domain\Analytics\DTOs\PredictionResult;
 use App\Domain\Analytics\DTOs\StudentRiskFeatures;
@@ -32,8 +33,12 @@ class DefaultRiskPredictor implements PredictorInterface
     public const DEFAULT_THRESHOLD_MEDIUM = 0.33;
     public const DEFAULT_TOP_N = 50;
     public const DEFAULT_MIN_COHORT_SIZE = 10;       // En dessous, le score perd toute pertinence statistique
-    public const DEFAULT_AUTO_CALIBRATE = true;       // Élève dynamiquement threshold_high si > 70% saturent
-    public const SATURATION_TRIGGER_PCT = 70.0;       // % au-dessus duquel l'auto-calibration kick in
+    public const DEFAULT_AUTO_CALIBRATE = true;       // Élève dynamiquement threshold_high quand la cohorte sature
+    /**
+     * Conservé pour les lecteurs existants (ESBTPAnalyticsController). La règle
+     * de saturation complète — haut seul OU haut + moyen — vit dans RiskSaturation.
+     */
+    public const SATURATION_TRIGGER_PCT = RiskSaturation::DEFAULT_SEUIL_HAUT_PCT;
     public const AUTO_CALIBRATE_TARGET_TOP_PCT = 25.0; // En mode calibré, on garde le top 25% comme "haut"
 
     public const RETARD_NORMALIZATION_DAYS = 90;
@@ -143,11 +148,20 @@ class DefaultRiskPredictor implements PredictorInterface
         $autoCalibrated = false;
         $effectiveThresholdHigh = $thresholdHigh;
 
-        if ($this->autoCalibrateEnabled() && !empty($unpaidScored)) {
-            $hautAtDefault = count(array_filter($unpaidScored, fn ($s) => $s['score'] >= $thresholdHigh));
-            $hautPctAtDefault = $totalActifs > 0 ? ($hautAtDefault / $totalActifs * 100) : 0.0;
+        // Saturation mesurée AVANT calibration, aux seuils par défaut : c'est la seule
+        // lecture honnête de « le score discrimine-t-il encore ? ». Les buckets finaux,
+        // eux, sont déjà remodelés par la calibration.
+        $saturationAtDefault = $this->saturation()->evaluer(
+            [
+                'haut' => count(array_filter($unpaidScored, fn ($s) => $s['score'] >= $thresholdHigh)),
+                'moyen' => count(array_filter($unpaidScored, fn ($s) => $s['score'] >= $thresholdMedium && $s['score'] < $thresholdHigh)),
+                'bas' => $totalActifs - count(array_filter($unpaidScored, fn ($s) => $s['score'] >= $thresholdMedium)),
+            ],
+            $totalActifs,
+        );
 
-            if ($hautPctAtDefault >= self::SATURATION_TRIGGER_PCT) {
+        if ($this->autoCalibrateEnabled() && !empty($unpaidScored)) {
+            if ($saturationAtDefault['is_saturated']) {
                 // Garde uniquement le top N% comme "haut" pour préserver le pouvoir discriminant.
                 $sortedScores = collect($unpaidScored)->pluck('score')->sortDesc()->values();
                 $cutoffIndex = (int) round(count($sortedScores) * (self::AUTO_CALIBRATE_TARGET_TOP_PCT / 100));
@@ -197,6 +211,7 @@ class DefaultRiskPredictor implements PredictorInterface
                     'medium' => $thresholdMedium,
                 ],
                 'auto_calibrated' => $autoCalibrated,
+                'saturation_at_default' => $saturationAtDefault,
                 'echeancier_mode' => $echeancierMode,
                 'echeancier_mode_note' => $this->echeancierReadiness->noteForMode(),
             ],
@@ -306,6 +321,23 @@ class DefaultRiskPredictor implements PredictorInterface
     private function minCohortSize(): int
     {
         return (int) $this->configFloat('min_cohort_size', (float) self::DEFAULT_MIN_COHORT_SIZE);
+    }
+
+    /**
+     * Des surcharges presentes = configuration epinglee (tests, sans base) : les
+     * seuils de saturation absents prennent leur valeur par defaut au lieu
+     * d'aller lire les reglages.
+     */
+    private function saturation(): RiskSaturation
+    {
+        if ($this->configOverrides !== []) {
+            return new RiskSaturation(
+                seuilHautPct: (float) ($this->configOverrides[RiskSaturation::REGLAGE_SEUIL_HAUT] ?? RiskSaturation::DEFAULT_SEUIL_HAUT_PCT),
+                seuilTotalPct: (float) ($this->configOverrides[RiskSaturation::REGLAGE_SEUIL_TOTAL] ?? RiskSaturation::DEFAULT_SEUIL_TOTAL_PCT),
+            );
+        }
+
+        return RiskSaturation::depuisReglages();
     }
 
     private function autoCalibrateEnabled(): bool
