@@ -3,6 +3,7 @@
 namespace App\Domain\OfficialDocuments\Services;
 
 use App\Helpers\SettingsHelper;
+use App\Models\ESBTPInscription;
 use App\Models\ESBTPLMDResultatUE;
 use App\Models\User;
 use App\Services\LMD\LmdAcademicRuleProfile;
@@ -28,6 +29,22 @@ class LmdTranscriptSnapshotBuilder
      */
     public const RULES_VERSION = 'lmd-transcript-profile-v1';
 
+    /**
+     * Les deux mises en page du releve, et le reglage qui tranche.
+     *
+     * `klassci` est celle qui existait : bandeau de l'etablissement, couleurs de
+     * l'ecole, code de verification. `mesrs` reprend le modele officiel du
+     * Ministere de l'Enseignement Superieur — en-tete a deux colonnes, emblemes,
+     * mention et decision par UE, semestres en marge.
+     *
+     * Le choix est un REGLAGE, pas un remplacement : trois ecoles LMD impriment
+     * deja le premier, et changer leur papier sans qu'elles l'aient demande
+     * serait une regression.
+     */
+    public const MODELE_KLASSCI = 'lmd-releve-notes-v1';
+    public const MODELE_MESRS = 'lmd-releve-notes-mesrs-v1';
+    public const REGLAGE_MODELE = 'lmd_releve_modele';
+
     public function __construct(
         private readonly LmdAcademicRuleProfile $profile,
         private readonly LMDBulletinService $bulletins,
@@ -42,14 +59,14 @@ class LmdTranscriptSnapshotBuilder
         $semesters = $bulletins->map(fn ($bulletin) => $this->semesterData($bulletin))->values()->all();
 
         $snapshot = [
-            'schema' => 'lmd-transcript-snapshot-v1',
+            'schema' => 'lmd-transcript-snapshot-v2',
             'document' => [
                 'reference' => $identity['reference'],
                 'version' => $identity['version'],
                 'number' => $identity['number'],
             ],
             'institution' => SettingsHelper::getSchoolInfo(),
-            'student' => $this->studentData($state['student']),
+            'student' => $this->studentData($state['student'], $state['year']),
             'scope' => $this->scopeData($state['year'], $bulletins->first()),
             'semesters' => $semesters,
             'totals' => $this->totals($semesters),
@@ -58,7 +75,7 @@ class LmdTranscriptSnapshotBuilder
                 'actor_id' => $actor->id,
                 'actor_name' => $actor->name,
                 'issued_at' => $issuedAt->toIso8601String(),
-                'template_version' => 'lmd-releve-notes-v1',
+                'template_version' => $this->modele(),
                 'renderer_version' => 'dompdf-v2',
             ],
         ];
@@ -74,7 +91,7 @@ class LmdTranscriptSnapshotBuilder
         );
     }
 
-    private function studentData($student): array
+    private function studentData($student, $year = null): array
     {
         return [
             'id' => $student->id,
@@ -85,6 +102,17 @@ class LmdTranscriptSnapshotBuilder
                 ? \Carbon\Carbon::parse($student->date_naissance)->toDateString()
                 : null,
             'birth_place' => $student->lieu_naissance ?: $student->ville_naissance,
+            // Le sexe est GELE ici, comme le reste. Ce n'est pas une coquetterie :
+            // le modele officiel imprime « Genre » et accorde sa decision —
+            // « Admise » — et un releve reedite doit ressortir identique meme si
+            // la fiche a ete corrigee depuis.
+            'sexe' => $student->sexe,
+            'is_redoublant' => $year
+                ? (bool) ESBTPInscription::query()
+                    ->where('etudiant_id', $student->id)
+                    ->where('annee_universitaire_id', $year->id)
+                    ->value('is_redoublant')
+                : null,
         ];
     }
 
@@ -148,16 +176,57 @@ class LmdTranscriptSnapshotBuilder
             ->values()
             ->all();
 
+        $moyenne = $this->decimal($resultat->moyenne);
+        $acquise = $resultat->isValidee();
+
         return [
             'code' => $resultat->uniteEnseignement?->code,
             'name' => $resultat->uniteEnseignement?->name,
             'credits' => (int) $resultat->credit,
-            'average' => $this->decimal($resultat->moyenne),
+            'average' => $moyenne,
             'status' => $resultat->statut,
             'status_label' => $this->statusLabel($resultat->statut),
-            'acquired' => $resultat->isValidee(),
+            'acquired' => $acquise,
+            // La mention et la decision par UE sont GELEES, pas calculees au
+            // rendu. Les seuils de mention sont un reglage d'ecole : les lire au
+            // moment d'imprimer ferait changer un document deja signe le jour ou
+            // l'ecole les deplace.
+            'mention' => $this->mentionLabel($moyenne),
+            'decision' => $acquise ? 'admis' : 'ajourne',
             'elements' => $elements,
         ];
+    }
+
+    /**
+     * Le modele choisi par l'ecole, grave dans l'instantane.
+     *
+     * C'est l'instantane qui decide du rendu, pas le reglage du jour : une ecole
+     * qui bascule sur le modele officiel ne doit pas voir changer la mise en
+     * page des releves qu'elle a deja emis et signes.
+     */
+    private function modele(): string
+    {
+        $choix = strtolower(trim((string) SettingsHelper::get(self::REGLAGE_MODELE, '')));
+
+        return $choix === 'mesrs' ? self::MODELE_MESRS : self::MODELE_KLASSCI;
+    }
+
+    /**
+     * La mention en clair, telle que le modele officiel l'imprime.
+     *
+     * Le profil rend un identifiant — « assez_bien » — parce que c'est ce qui se
+     * compare. Le papier, lui, porte « Assez-bien ».
+     */
+    private function mentionLabel(?float $average): ?string
+    {
+        return match ($this->profile->mentionFor($average)) {
+            'excellent' => 'Excellent',
+            'tres_bien' => 'Très bien',
+            'bien' => 'Bien',
+            'assez_bien' => 'Assez-bien',
+            'passable' => 'Passable',
+            default => null,
+        };
     }
 
     /**

@@ -40,6 +40,11 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ### Ajouts
 
+- **Le relevé de notes LMD au modèle officiel du ministère** — en-tête à deux colonnes, cadres logo et emblème, mention et décision par unité d'enseignement, semestres en marge, moyennes par semestre puis pour l'année, rang, total des crédits cumulés, code QR de vérification. La décision s'accorde au genre : « Admise » pour une étudiante.
+
+  C'est un choix, pas un remplacement : un réglage d'établissement décide entre le modèle de l'application et celui du ministère, et le modèle retenu est gravé au moment de l'émission — une école qui bascule ne voit pas changer la mise en page des relevés qu'elle a déjà émis et signés.
+
+
 - **Le comptable et le caissier ont leur application mobile** — onze écrans repris pour le téléphone et la tablette : tableau de bord des finances (encaissé du jour, reste impayé, à valider, courbe des trente derniers jours), liste et fiche des relances, configuration et planification des relances, journal de caisse, réconciliation de caisse (ouverture, comptage, écarts, PV), analytics de recouvrement et leurs réglages, paie des enseignants, accueil du caissier et « Ma caisse ». Chaque action reste soumise au droit correspondant : ce qu'un compte ne peut pas faire ne s'affiche pas, plutôt que de mener à un refus.
 
 - **Le tableau de bord comptable demande désormais son propre droit** — la page n'exigeait que l'accès au module comptabilité ; elle exige maintenant « Voir le tableau de bord comptable », qui existait sans être demandé nulle part. Les rôles livrés l'ont déjà, et les rôles sur mesure qui avaient l'accès au module le reçoivent automatiquement : personne ne perd l'écran, mais l'école peut désormais le retirer à qui elle veut.
