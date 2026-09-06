@@ -69,10 +69,15 @@ class CLIClasseController extends BaseApiController
 
         $crees = 0;
         $misAJour = 0;
+        // Ce que l'appelant doit connaitre pour continuer : sans les
+        // identifiants, il faut aller les chercher a la main avant de pouvoir
+        // inscrire qui que ce soit — et la liste des classes, elle, ne rend que
+        // celles qui ont deja des inscrits.
+        $identifiants = [];
 
         $miroirs = app(FiliereMiroirLmd::class);
 
-        DB::transaction(function () use ($validated, $anneeId, $miroirs, &$crees, &$misAJour) {
+        DB::transaction(function () use ($validated, $anneeId, $miroirs, &$crees, &$misAJour, &$identifiants) {
             foreach ($validated['classes'] as $c) {
                 $code = strtoupper(trim($c['code']));
                 $parcours = empty($c['parcours_id'])
@@ -105,12 +110,14 @@ class CLIClasseController extends BaseApiController
                     ]
                 );
                 $classe->wasRecentlyCreated ? $crees++ : $misAJour++;
+                $identifiants[$code] = $classe->id;
             }
         });
 
         return $this->successResponse([
             'crees' => $crees,
             'mis_a_jour' => $misAJour,
+            'identifiants' => $identifiants,
             'plan' => $plan,
         ], 'Classes importees.');
     }
