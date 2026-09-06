@@ -206,6 +206,12 @@ class DossierPiecesEtudiant
             return [];
         }
 
+        // La classe porte la filiere et le niveau, donc la portee du catalogue.
+        // La charger ici plutot que de compter sur l'appelant : oublier
+        // l'eager-load ne se verrait pas a l'ecran, seulement dans le temps de
+        // reponse — une requete par inscription, sur une promotion entiere.
+        $inscriptions->loadMissing('classe:id,filiere_id,niveau_etude_id');
+
         $etudiantIds = $inscriptions->pluck('etudiant_id')->filter()->unique()->all();
 
         $depots = ESBTPPieceDeposee::query()

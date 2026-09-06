@@ -140,7 +140,9 @@
     $mabNotifUrl = Route::has('esbtp.mes-notifications.index') ? route('esbtp.mes-notifications.index') : null;
 @endphp
 <div class="m-only-mobile m-screen mab-screen">
-    <x-m.appbar :title="$mab['ecole']" :sub="$mabAujourdhui" :action="$mabNotifUrl ? 'bell' : null" :action-url="$mabNotifUrl" action-label="Notifications" />
+    {{-- La navbar porte deja KLASSCI et le nom de l'ecole : repeter l'ecole
+         ici ferait doublon a trois lignes d'intervalle. --}}
+    <x-m.appbar title="Accueil" :sub="$mabAujourdhui" :action="$mabNotifUrl ? 'bell' : null" :action-url="$mabNotifUrl" action-label="Notifications" />
 
     <div class="m-body" data-m-ptr="reload">
         <x-m.hero :label="$mabHeroLabel" :value="$mabHeroValeur" :unit="$mabHeroUnite" :pills="$mabHeroPills" :class="$mabHeroCalme ? 'mab-hero-calme' : ''" />

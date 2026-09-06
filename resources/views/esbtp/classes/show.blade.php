@@ -951,14 +951,20 @@
                         <strong id="studentCountSubtitle">{{ $nombreEtudiants }} étudiant(s)</strong> inscrit(s) dans cette classe pour l'année courante
                     </div>
                     <div class="cs-students-btns">
-                        @if(auth()->user()->hasAnyPermission(['admin.access', 'identity.school_manager', 'identity.coordinate']))
+                        {{-- La garde suit celle des routes que ces boutons appellent
+                             (`students.edit`). L'ancienne, plus large, les montrait au
+                             caissier, au comptable et a l'enseignant : tant que la route
+                             n'exigeait rien, ils pouvaient reellement retirer une
+                             promotion entiere ; maintenant qu'elle exige un droit, leur
+                             laisser le bouton ne produirait qu'un refus. --}}
+                        @can('students.edit')
                             <button type="button" class="cs-btn--primary" data-bs-toggle="modal" data-bs-target="#addStudentsModal">
                                 <i class="fas fa-user-plus"></i>Ajouter
                             </button>
                             <button type="button" class="cs-btn--ghost" data-bs-toggle="modal" data-bs-target="#removeStudentsModal">
                                 <i class="fas fa-exchange-alt"></i>Retirer / Transférer
                             </button>
-                        @endif
+                        @endcan
                         @if($nombreEtudiants > 0 && (auth()->user()->can('students.view') || auth()->user()->can('attendances.view')))
                             <div class="dropdown">
                                 <button type="button"

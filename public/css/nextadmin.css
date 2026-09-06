@@ -635,6 +635,14 @@ body {
     line-height: 1.2;
 }
 
+/* La marque KLASSCI (logo + nom de l'application) ne vit ici que sous le shell
+   mobile, ou la barre laterale est un tiroir ferme ; sur bureau elle est deja
+   dans .sidebar-header. Reveles par mobile-shell.css. */
+.etb-marque,
+.etb-app {
+    display: none;
+}
+
 .etb-nom {
     font-size: 0.84rem;
     font-weight: 700;

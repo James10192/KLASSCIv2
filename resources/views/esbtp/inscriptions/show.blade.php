@@ -1412,7 +1412,7 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                             <div class="is-info-grid">
                                 <div class="is-info-row">
                                     <span class="is-info-lbl">Genre</span>
-                                    <span class="is-info-val">{{ $inscription->etudiant->sexe == 'M' ? 'Masculin' : 'Féminin' }}</span>
+                                    <span class="is-info-val">{{ \App\Support\AccordGenre::libelle($inscription->etudiant->sexe) ?? 'Non renseigné' }}</span>
                                 </div>
                                 <div class="is-info-row">
                                     <span class="is-info-lbl">Date de naissance</span>
@@ -1648,19 +1648,23 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                                     <span class="is-info-lbl">Statut d'affectation</span>
                                     <span class="is-info-val" id="affectation-badge-desktop">
                                         @if($inscription->affectation_status)
-                                            @switch($inscription->affectation_status)
-                                                @case('affecté')
-                                                    <span class="is-badge success"><i class="fas fa-check-circle"></i> Affecté</span>
-                                                    @break
-                                                @case('réaffecté')
-                                                    <span class="is-badge warning"><i class="fas fa-exchange-alt"></i> Réaffecté</span>
-                                                    @break
-                                                @case('non_affecté')
-                                                    <span class="is-badge danger"><i class="fas fa-times-circle"></i> Non affecté</span>
-                                                    @break
-                                                @default
-                                                    <span class="is-badge secondary">{{ $inscription->affectation_status }}</span>
-                                            @endswitch
+                                            @php
+                                                // Le libelle vient du modele : il normalise les quatre
+                                                // orthographes qui coexistent en base ET s'accorde au genre
+                                                // de l'etudiante. Le `switch` d'avant comparait la valeur
+                                                // BRUTE : un « non-affecte » ecrit avec un trait d'union
+                                                // par la reinscription groupee tombait dans le cas par
+                                                // defaut et s'affichait tel quel, sans couleur ni icone.
+                                                $_affNorm = \App\Models\ESBTPEcheancierRule::normalizeStatus($inscription->affectation_status);
+                                                $_affStyle = [
+                                                    \App\Models\ESBTPEcheancierRule::STATUS_AFFECTE => ['success', 'fa-check-circle'],
+                                                    \App\Models\ESBTPEcheancierRule::STATUS_REAFFECTE => ['warning', 'fa-exchange-alt'],
+                                                    \App\Models\ESBTPEcheancierRule::STATUS_NON_AFFECTE => ['danger', 'fa-times-circle'],
+                                                ][$_affNorm] ?? ['secondary', 'fa-circle-question'];
+                                            @endphp
+                                            <span class="is-badge {{ $_affStyle[0] }}">
+                                                <i class="fas {{ $_affStyle[1] }}"></i> {{ $inscription->affectationStatusLabel() }}
+                                            </span>
                                         @else
                                             <span class="is-info-val muted">Non renseigné</span>
                                         @endif

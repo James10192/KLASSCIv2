@@ -15,7 +15,7 @@ class AddStudentsRequest extends FormRequest
         // route ou en ajouter une voisine rouvrait le trou sans bruit. N'importe
         // quel compte authentifie, etudiant compris, pouvait modifier la
         // composition d'une classe.
-        return $this->user()?->can('classes.edit') ?? false;
+        return $this->user()?->can('students.edit') ?? false;
     }
 
     public function rules(): array

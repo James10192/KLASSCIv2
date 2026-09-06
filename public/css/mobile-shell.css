@@ -249,7 +249,7 @@ body.m-sheet-open { overflow: hidden; }
 
     .m-appbar { height: 56px; flex: 0 0 56px; display: flex; align-items: center; gap: 10px; padding: 0 8px 0 12px; padding-left: max(12px, env(safe-area-inset-left)); padding-right: max(8px, env(safe-area-inset-right)); background: #fff; border-bottom: 1px solid #e6eaf2; position: sticky; top: 0; z-index: 1020; font-family: var(--m-font); }
     .m-appbar .t { flex: 1; font-weight: 700; font-size: 17px; color: #0f172a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-    .m-appbar .t small { display: block; font-size: 11.5px; font-weight: 500; color: #64748b; }
+    .m-appbar .t small { display: block; font-size: 11.5px; font-weight: 500; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .m-ib { width: 44px; height: 44px; border: 0; background: transparent; border-radius: 12px; display: grid; place-items: center; color: #0453cb; flex: 0 0 44px; text-decoration: none; cursor: pointer; -webkit-tap-highlight-color: transparent; transition: transform 120ms ease, background 120ms ease; }
     .m-ib.ghost { color: #475569; }
     .m-ib svg { width: 22px; height: 22px; }
@@ -266,12 +266,12 @@ body.m-sheet-open { overflow: hidden; }
        iOS) avant que la navigation parte, puis est morphée d'une page à l'autre
        par la transition de vue (view-transition-name: m-tab-pill). */
     .m-bottomnav { position: fixed; left: 0; right: 0; bottom: 0; height: calc(var(--m-nav-h) + var(--m-safe-b)); padding: 6px 6px calc(18px + var(--m-safe-b)); background: rgba(255,255,255,.72); -webkit-backdrop-filter: blur(20px) saturate(180%); backdrop-filter: blur(20px) saturate(180%); border-top: .5px solid rgba(15,23,42,.12); display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; z-index: 1080; font-family: var(--m-font); view-transition-name: m-bottomnav; }
-    .m-bottomnav-pill { position: absolute; top: 8px; left: calc(6px + (var(--m-pill-i, 0) + .5) * ((100% - 12px) / var(--m-pill-n, 5)) - 32px); width: 64px; height: 44px; border-radius: 22px; background: rgba(4,83,203,.12); pointer-events: none; z-index: 0; transition: transform var(--m-pill-ms) var(--m-ease-ios), opacity 160ms ease; will-change: transform; view-transition-name: m-tab-pill; }
+    .m-bottomnav-pill { --m-pill-w: min(68px, calc((100% - 12px) / var(--m-pill-n, 5) - 4px)); position: absolute; top: 3px; left: calc(6px + (var(--m-pill-i, 0) + .5) * ((100% - 12px) / var(--m-pill-n, 5)) - var(--m-pill-w) / 2); width: var(--m-pill-w); height: 54px; border-radius: 18px; background: rgba(4,83,203,.12); pointer-events: none; z-index: 0; transition: transform var(--m-pill-ms) var(--m-ease-ios), opacity 160ms ease; will-change: transform; view-transition-name: m-tab-pill; }
     .m-bottomnav-pill.is-hidden { opacity: 0; }
     .m-bottomnav a,
-    .m-bottomnav button { position: relative; z-index: 1; display: grid; justify-items: center; gap: 3px; text-decoration: none; color: #64748b; font-size: 10.5px; font-weight: 600; padding-top: 8px; border-radius: 12px; min-height: 44px; background: transparent; border: 0; font-family: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; line-height: 1.1; transition: color 200ms ease; }
+    .m-bottomnav button { position: relative; z-index: 1; display: grid; justify-items: center; gap: 2px; text-decoration: none; color: #64748b; font-size: 10px; font-weight: 600; letter-spacing: -.01em; padding: 7px 2px 0; border-radius: 12px; min-height: 44px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; background: transparent; border: 0; font-family: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; line-height: 1.1; transition: color 200ms ease; }
     .m-bottomnav a svg,
-    .m-bottomnav button svg { width: 24px; height: 24px; transition: transform 100ms ease; }
+    .m-bottomnav button svg { width: 23px; height: 23px; transition: transform 100ms ease; }
     .m-bottomnav a:active svg,
     .m-bottomnav button:active svg { transform: scale(.92); }
     .m-bottomnav a.on,
@@ -551,11 +551,16 @@ body.m-sheet-open { overflow: hidden; }
     /* Badge d'établissement centré : tuile 32px + nom court (la ville disparaît).
        Largeur bornée par le plus large des deux côtés (droite : 8 + 44 + 4 + 44). */
     body.has-m-shell .nextadmin-navbar .etb-badge { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); max-width: calc(100% - 208px); margin: 0; padding: 0; gap: 8px; background: transparent; border: 0; box-shadow: none; }
-    body.has-m-shell .nextadmin-navbar .etb-media { width: 32px; height: 32px; padding: 4px; border-radius: 9px; }
-    body.has-m-shell .nextadmin-navbar .etb-initiales { font-size: .78rem; }
-    body.has-m-shell .nextadmin-navbar .etb-texte { display: flex; }
+    /* La barre latérale étant un tiroir fermé sur mobile, la marque KLASSCI passe
+       en tête du badge : tuile logo + nom de l'application, l'établissement en
+       seconde ligne (le logo d'école .etb-media s'efface, il revient au tiroir). */
+    body.has-m-shell .nextadmin-navbar .etb-marque { display: grid; place-items: center; width: 32px; height: 32px; flex: 0 0 32px; border-radius: 9px; background: #fff; border: 1px solid rgba(4,83,203,.16); box-shadow: 0 1px 4px rgba(15,23,42,.06); }
+    body.has-m-shell .nextadmin-navbar .etb-marque img { width: 24px; height: 24px; object-fit: contain; display: block; }
+    body.has-m-shell .nextadmin-navbar .etb-media { display: none; }
+    body.has-m-shell .nextadmin-navbar .etb-texte { display: flex; line-height: 1.15; }
+    body.has-m-shell .nextadmin-navbar .etb-app { display: block; font-size: 15px; font-weight: 800; letter-spacing: -.02em; color: #0f172a; white-space: nowrap; }
+    body.has-m-shell .nextadmin-navbar .etb-nom { font-size: 11px; font-weight: 600; color: #64748b; letter-spacing: 0; }
     body.has-m-shell .nextadmin-navbar .etb-ville { display: none; }
-    body.has-m-shell .nextadmin-navbar .etb-nom { font-size: 15px; font-weight: 700; letter-spacing: -.01em; color: #0f172a; }
 
     /* Droite : cloche (menu Bootstrap conservé) + avatar (ouvre la feuille) */
     body.has-m-shell .nextadmin-navbar .navbar-right { gap: 4px; margin-left: auto; }
@@ -563,7 +568,9 @@ body.m-sheet-open { overflow: hidden; }
     body.has-m-shell .nextadmin-navbar .navbar-right .btn-acasi.icon-only { width: 44px; height: 44px; padding: 0; border: 0; border-radius: 12px; background: transparent; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; color: #0f172a; font-size: 20px; -webkit-tap-highlight-color: transparent; transition: transform 120ms ease, background 120ms ease; }
     body.has-m-shell .nextadmin-navbar .navbar-right .btn-acasi.icon-only:hover { transform: none; background: transparent; box-shadow: none; border-color: transparent; }
     body.has-m-shell .nextadmin-navbar .navbar-right .btn-acasi.icon-only:active { transform: scale(.94); background: rgba(4,83,203,.08); }
-    body.has-m-shell .nextadmin-navbar .navbar-right .navbar-badge { top: 3px; right: 3px; min-width: 18px; height: 18px; line-height: 14px; font-size: 10px; animation: none; box-shadow: none; }
+    /* Le socle fixe une largeur de 20px : a deux chiffres, le compteur sortait
+       de son disque. Largeur libre, pastille allongee, comme sur iOS. */
+    body.has-m-shell .nextadmin-navbar .navbar-right .navbar-badge { top: 3px; right: 3px; width: auto; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; line-height: 14px; font-size: 10px; animation: none; box-shadow: none; }
     body.has-m-shell .mnb-avatar { display: grid; place-items: center; width: 44px; height: 44px; flex: 0 0 44px; padding: 0; border: 0; background: transparent; border-radius: 12px; cursor: pointer; -webkit-tap-highlight-color: transparent; transition: transform 120ms ease, background 120ms ease; }
     body.has-m-shell .mnb-avatar:active { transform: scale(.94); background: rgba(4,83,203,.08); }
     body.has-m-shell .mnb-avatar .navbar-avatar { width: 32px; height: 32px; border-width: 1.5px; }
@@ -604,8 +611,19 @@ body.m-sheet-open { overflow: hidden; }
     body.has-m-shell .nextadmin-content .dashboard-acasi > .main-content { padding: 0; overflow: visible; }
 
     .m-rail { display: grid; grid-template-rows: auto 1fr; position: fixed; top: 0; bottom: 0; left: 0; width: 92px; background: #fff; border-right: 1px solid #e6eaf2; padding: 10px 8px; gap: 14px; align-content: start; z-index: 1080; font-family: var(--m-font); overflow-y: auto; }
-    .m-rail .logo { width: 40px; height: 40px; border-radius: 12px; background: linear-gradient(135deg, #0a3d8f, #0453cb 55%, #3b7ddb); margin: 4px auto 2px; display: grid; place-items: center; color: #fff; font-weight: 800; font-size: 15px; }
-    .m-rail .logo img { width: 100%; height: 100%; object-fit: contain; border-radius: 12px; }
+    .m-rail .logo { width: 40px; height: 40px; border-radius: 12px; background: #fff; border: 1px solid rgba(4,83,203,.16); box-shadow: 0 1px 4px rgba(15,23,42,.06); margin: 4px auto 2px; display: grid; place-items: center; color: #0453cb; font-weight: 800; font-size: 15px; }
+    .m-rail .logo img { width: 30px; height: 30px; object-fit: contain; display: block; }
+
+    /* Barre du haut tablette : même badge que sur téléphone, KLASSCI en tête et
+       l'école en seconde ligne (nextadmin.css masque le texte sous 992 px). */
+    body.has-m-shell .nextadmin-navbar .etb-badge { gap: 10px; }
+    body.has-m-shell .nextadmin-navbar .etb-marque { display: grid; place-items: center; width: 36px; height: 36px; flex: 0 0 36px; border-radius: 10px; background: #fff; border: 1px solid rgba(4,83,203,.16); box-shadow: 0 1px 4px rgba(15,23,42,.06); }
+    body.has-m-shell .nextadmin-navbar .etb-marque img { width: 27px; height: 27px; object-fit: contain; display: block; }
+    body.has-m-shell .nextadmin-navbar .etb-media { display: none; }
+    body.has-m-shell .nextadmin-navbar .etb-texte { display: flex; line-height: 1.15; }
+    body.has-m-shell .nextadmin-navbar .etb-app { display: block; font-size: 16px; font-weight: 800; letter-spacing: -.02em; color: #0f172a; white-space: nowrap; }
+    body.has-m-shell .nextadmin-navbar .etb-nom { font-size: 11.5px; font-weight: 600; color: #64748b; }
+    body.has-m-shell .nextadmin-navbar .etb-ville { display: none; }
     .m-rail nav { display: grid; gap: 4px; align-content: start; }
     .m-rail a,
     .m-rail button { display: grid; justify-items: center; gap: 4px; padding: 10px 4px; border-radius: 12px; text-decoration: none; color: #64748b; font-size: 10.5px; font-weight: 600; min-height: 56px; background: transparent; border: 0; font-family: inherit; cursor: pointer; text-align: center; line-height: 1.1; }

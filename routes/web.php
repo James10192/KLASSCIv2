@@ -1388,6 +1388,15 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 Route::get('/inscriptions/{inscription}/fiche/preview-pdf', [\App\Http\Controllers\ESBTPInscriptionFicheController::class, 'preview'])
                     ->name('inscriptions.fiche.preview-pdf')
                     ->middleware(['permission:inscriptions.fiche.print', 'throttle:60,1']);
+
+                // La fiche VIERGE, a distribuer en salle d'attente. Aucun
+                // parametre : elle ne parle d'aucun eleve, et c'est tout son
+                // interet — on en imprime une pile le matin de la rentree. Le
+                // chemin est distinct de `/inscriptions/{inscription}` pour
+                // qu'aucune route a parametre ne puisse le capter.
+                Route::get('/inscriptions-fiche-vierge', [\App\Http\Controllers\ESBTPInscriptionFicheController::class, 'vierge'])
+                    ->name('inscriptions.fiche.vierge')
+                    ->middleware(['permission:inscriptions.fiche.print', 'throttle:60,1']);
                 Route::get('/inscriptions/{inscription}/data', [ESBTPInscriptionApiController::class, 'getInscriptionData'])->name('inscriptions.data');
                 Route::get('/inscriptions/{inscription}/paiement-en-attente', [ESBTPInscriptionApiController::class, 'getPaiementEnAttente'])->name('inscriptions.paiement-en-attente');
                 Route::get('/inscriptions/{inscription}/classes-alternatives', [ESBTPInscriptionApiController::class, 'getClassesAlternatives'])->name('inscriptions.classes-alternatives');
@@ -2667,11 +2676,24 @@ Route::middleware(['auth'])->group(function () {
         ->middleware('permission:classes.edit')
         ->name('esbtp.classes.update-matieres');
     Route::get('/esbtp/classes/{classe}/search-available-students', [ESBTPClasseController::class, 'searchAvailableStudents'])->name('esbtp.classes.search-available-students');
+    // Placer ou retirer un eleve d'une classe est une operation sur l'ELEVE, pas
+    // sur la structure de la classe : `students.edit`, et non `classes.edit`.
+    //
+    // La nuance n'est pas cosmetique. La fiche de classe montre ces deux boutons
+    // au coordinateur, qui s'en sert, et qui n'a pas `classes.edit` — seule la
+    // secretaire l'a. Les garder sous `classes.edit` aurait ferme au
+    // coordinateur une fonction dont il se sert tous les jours, alors que le
+    // trou a boucher etait ailleurs : la route ne demandait AUCUNE permission,
+    // et un enseignant ou un caissier pouvait retirer une promotion entiere.
+    //
+    // Une ecole qui veut l'ouvrir a un autre role — un directeur des etudes, par
+    // exemple — lui accorde `students.edit` depuis l'ecran des roles. C'est sa
+    // decision, pas celle du code.
     Route::post('/esbtp/classes/{classe}/add-students', [ESBTPClasseController::class, 'addStudents'])
-        ->middleware('permission:classes.edit')
+        ->middleware('permission:students.edit')
         ->name('esbtp.classes.add-students');
     Route::post('/esbtp/classes/{classe}/remove-students', [ESBTPClasseController::class, 'removeStudents'])
-        ->middleware('permission:classes.edit')
+        ->middleware('permission:students.edit')
         ->name('esbtp.classes.remove-students');
     Route::post('/esbtp/classes/{classe}/check-student-data', [ESBTPClasseController::class, 'checkStudentData'])
         ->middleware('permission:classes.view')

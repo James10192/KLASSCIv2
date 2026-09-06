@@ -181,17 +181,36 @@ class ESBTPInscription extends Model implements Auditable
 
     public const STATUT_ETABLISSEMENT_ANCIEN = 'ancien';
 
+    /**
+     * Le statut d'affectation, ACCORDE au genre de l'etudiant.
+     *
+     * Ce libelle qualifie une personne : il apparait sur sa fiche et sur le recu
+     * que sa famille emporte. « Awa ... Affecte » se lit comme un dossier ; on
+     * ecrit « Affectee ».
+     *
+     * L'accord se fait ICI plutot que dans chaque gabarit : la methode a deux
+     * appelants aujourd'hui, et le prochain qui l'utilisera n'aura pas a y
+     * penser. Ce qui est stocke en base — 'affecte', 'non-affecte' — ne bouge
+     * pas : c'est une cle, pas une phrase, et les colonnes de tarifs
+     * (`amount_affecte`) comme les filtres d'URL s'y appuient.
+     *
+     * Cout : une lecture de la relation `etudiant` si elle n'est pas deja
+     * chargee. Les deux appelants actuels traitent UN document a la fois. Le
+     * jour ou un listing s'en sert, il devra charger `etudiant:id,sexe`.
+     */
     public function affectationStatusLabel(): string
     {
         $status = $this->affectation_status ?: self::DEFAULT_AFFECTATION_STATUS;
         $normalized = ESBTPEcheancierRule::normalizeStatus($status);
 
-        return match ($normalized) {
+        $libelle = match ($normalized) {
             ESBTPEcheancierRule::STATUS_AFFECTE => 'Affecté',
             ESBTPEcheancierRule::STATUS_REAFFECTE => 'Réaffecté',
             ESBTPEcheancierRule::STATUS_NON_AFFECTE => 'Non affecté',
             default => $status,
         };
+
+        return \App\Support\AccordGenre::accorderPhrase($libelle, $this->etudiant?->sexe);
     }
 
     /**
