@@ -57,12 +57,25 @@ class ReparateurEncodageTest extends TestCase
         }
     }
 
-    public function test_refuse_une_chaine_qui_ne_tient_pas_sur_un_octet(): void
+    public function test_repare_aussi_les_accents_majuscules(): void
     {
-        // Au-dela de 255, la conversion remplacerait le caractere par « ? » : elle
-        // detruirait le libelle au lieu de le reparer.
-        $this->assertNull($this->reparateur->reparer('Licence — Économie'));
+        // Le cas que la premiere version manquait, et qui a ete vu en production :
+        // « É » se corrompt en « Ã‰ », dont le second caractere « ‰ » a un point de
+        // code de 8240. Une garde « tout tient sur un octet » le rejetait, et les
+        // trois classes « L1 Ã‰conomie » d'usat restaient abimees apres passage.
+        $this->assertSame('L1 Économie', $this->reparateur->reparer('L1 Ã‰conomie'));
+        $this->assertNull($this->reparateur->reparer('L1 Économie'));
+    }
+
+    public function test_refuse_une_chaine_que_la_conversion_abimerait(): void
+    {
+        // Ces caracteres n'existent pas en Windows-1252 : les convertir les
+        // remplacerait par « ? ». L'aller-retour le detecte et on s'abstient.
         $this->assertNull($this->reparateur->reparer('Parcours ✓'));
+        $this->assertNull($this->reparateur->reparer('Licence 日本'));
+        // Un tiret cadratin, lui, EXISTE en Windows-1252 : la chaine survit a
+        // l'aller-retour, mais les octets obtenus ne forment pas de l'UTF-8 valide.
+        $this->assertNull($this->reparateur->reparer('Licence — Économie'));
     }
 
     public function test_refuse_quand_le_resultat_ne_porte_aucun_accent(): void

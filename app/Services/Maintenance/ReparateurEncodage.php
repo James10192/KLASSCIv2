@@ -134,18 +134,27 @@ class ReparateurEncodage
             return null;
         }
 
-        // Un point de code au-dela de 255 ne tient pas sur un octet : la conversion
-        // le remplacerait par « ? ». On ne touche pas a ces chaines.
-        $caracteres = preg_split('//u', $valeur, -1, PREG_SPLIT_NO_EMPTY) ?: [];
-        foreach ($caracteres as $caractere) {
-            if (mb_ord($caractere, 'UTF-8') > 255) {
-                return null;
-            }
+        // Windows-1252 et non ISO-8859-1 : c'est la table qu'appliquent les postes
+        // et les tableurs d'ou viennent ces libelles. La difference n'est pas
+        // theorique — elle porte justement sur les octets 0x80 a 0x9F, que le
+        // latin-1 laisse vides et que le CP1252 remplit de caracteres imprimables.
+        // « Écrit » se corrompt en « Ã‰crit » : le second octet de « É » est 0x89,
+        // qui devient « ‰ », de point de code 8240. Une garde « tout tient sur un
+        // octet » rejetait ces cas, et laissait donc passer les accents majuscules.
+        $octets = mb_convert_encoding($valeur, 'Windows-1252', 'UTF-8');
+
+        if (! is_string($octets) || $octets === $valeur) {
+            return null;
         }
 
-        $octets = mb_convert_encoding($valeur, 'ISO-8859-1', 'UTF-8');
+        // Aucun caractere ne doit avoir ete remplace par « ? » au passage : on le
+        // verifie en refaisant le chemin inverse. Si l'aller-retour ne rend pas la
+        // chaine de depart, la conversion a perdu de l'information et on s'abstient.
+        if (mb_convert_encoding($octets, 'UTF-8', 'Windows-1252') !== $valeur) {
+            return null;
+        }
 
-        if (! is_string($octets) || $octets === $valeur || ! mb_check_encoding($octets, 'UTF-8')) {
+        if (! mb_check_encoding($octets, 'UTF-8')) {
             return null;
         }
 
