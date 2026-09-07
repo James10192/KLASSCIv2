@@ -1843,8 +1843,8 @@
                                     <div class="pu-name">{{ $directeur->name }}</div>
                                     <div class="pu-meta">
                                         <span class="pu-meta-item"><i class="fas fa-envelope"></i>{{ $directeur->email }}</span>
-                                        @if($directeur->telephone)
-                                        <span class="pu-meta-item"><i class="fas fa-phone"></i>{{ $directeur->telephone }}</span>
+                                        @if($directeur->phone)
+                                        <span class="pu-meta-item"><i class="fas fa-phone"></i>{{ $directeur->phone }}</span>
                                         @endif
                                     </div>
                                 </div>
@@ -1919,8 +1919,8 @@
                                     <div class="pu-name">{{ $coordinateur->name }}</div>
                                     <div class="pu-meta">
                                         <span class="pu-meta-item"><i class="fas fa-envelope"></i>{{ $coordinateur->email }}</span>
-                                        @if($coordinateur->telephone)
-                                        <span class="pu-meta-item"><i class="fas fa-phone"></i>{{ $coordinateur->telephone }}</span>
+                                        @if($coordinateur->phone)
+                                        <span class="pu-meta-item"><i class="fas fa-phone"></i>{{ $coordinateur->phone }}</span>
                                         @endif
                                         @if($coordinateur->specialite)
                                         <span class="pu-meta-item"><i class="fas fa-graduation-cap"></i>{{ $coordinateur->specialite }}</span>
@@ -2029,8 +2029,8 @@
                                     </div>
                                     <div class="pu-meta">
                                         <span class="pu-meta-item"><i class="fas fa-envelope"></i>{{ $teacher->user->email }}</span>
-                                        @if($teacher->user->telephone)
-                                        <span class="pu-meta-item"><i class="fas fa-phone"></i>{{ $teacher->user->telephone }}</span>
+                                        @if($teacher->user->phone)
+                                        <span class="pu-meta-item"><i class="fas fa-phone"></i>{{ $teacher->user->phone }}</span>
                                         @endif
                                         @if($teacher->specialization)
                                         <span class="pu-meta-item"><i class="fas fa-graduation-cap"></i>{{ $teacher->specialization }}</span>
@@ -2117,8 +2117,8 @@
                                     <div class="pu-name">{{ $secretaire->name }}</div>
                                     <div class="pu-meta">
                                         <span class="pu-meta-item"><i class="fas fa-envelope"></i>{{ $secretaire->email }}</span>
-                                        @if($secretaire->telephone)
-                                        <span class="pu-meta-item"><i class="fas fa-phone"></i>{{ $secretaire->telephone }}</span>
+                                        @if($secretaire->phone)
+                                        <span class="pu-meta-item"><i class="fas fa-phone"></i>{{ $secretaire->phone }}</span>
                                         @endif
                                         @if($secretaire->service)
                                         <span class="pu-meta-item"><i class="fas fa-briefcase"></i>{{ $secretaire->service }}</span>
@@ -2191,8 +2191,8 @@
                                     <div class="pu-name">{{ $responsable->name }}</div>
                                     <div class="pu-meta">
                                         <span class="pu-meta-item"><i class="fas fa-envelope"></i>{{ $responsable->email }}</span>
-                                        @if($responsable->telephone)
-                                        <span class="pu-meta-item"><i class="fas fa-phone"></i>{{ $responsable->telephone }}</span>
+                                        @if($responsable->phone)
+                                        <span class="pu-meta-item"><i class="fas fa-phone"></i>{{ $responsable->phone }}</span>
                                         @endif
                                     </div>
                                 </div>
@@ -2252,8 +2252,8 @@
                                     <div class="pu-name">{{ $service->name }}</div>
                                     <div class="pu-meta">
                                         <span class="pu-meta-item"><i class="fas fa-envelope"></i>{{ $service->email }}</span>
-                                        @if($service->telephone)
-                                        <span class="pu-meta-item"><i class="fas fa-phone"></i>{{ $service->telephone }}</span>
+                                        @if($service->phone)
+                                        <span class="pu-meta-item"><i class="fas fa-phone"></i>{{ $service->phone }}</span>
                                         @endif
                                     </div>
                                 </div>
@@ -2313,8 +2313,8 @@
                                     <div class="pu-name">{{ $agent->name }}</div>
                                     <div class="pu-meta">
                                         <span class="pu-meta-item"><i class="fas fa-envelope"></i>{{ $agent->email }}</span>
-                                        @if($agent->telephone)
-                                        <span class="pu-meta-item"><i class="fas fa-phone"></i>{{ $agent->telephone }}</span>
+                                        @if($agent->phone)
+                                        <span class="pu-meta-item"><i class="fas fa-phone"></i>{{ $agent->phone }}</span>
                                         @endif
                                     </div>
                                 </div>
@@ -2389,8 +2389,8 @@
                                     <div class="pu-name">{{ $comptable->name }}</div>
                                     <div class="pu-meta">
                                         <span class="pu-meta-item"><i class="fas fa-envelope"></i>{{ $comptable->email }}</span>
-                                        @if($comptable->telephone)
-                                        <span class="pu-meta-item"><i class="fas fa-phone"></i>{{ $comptable->telephone }}</span>
+                                        @if($comptable->phone)
+                                        <span class="pu-meta-item"><i class="fas fa-phone"></i>{{ $comptable->phone }}</span>
                                         @endif
                                         @if($comptable->department)
                                         <span class="pu-meta-item"><i class="fas fa-building"></i>{{ $comptable->department }}</span>
@@ -2474,8 +2474,8 @@
                                     <div class="pu-name">{{ $caissier->name }}</div>
                                     <div class="pu-meta">
                                         <span class="pu-meta-item"><i class="fas fa-envelope"></i>{{ $caissier->email ?: 'Sans email' }}</span>
-                                        @if($caissier->telephone)
-                                        <span class="pu-meta-item"><i class="fas fa-phone"></i>{{ $caissier->telephone }}</span>
+                                        @if($caissier->phone)
+                                        <span class="pu-meta-item"><i class="fas fa-phone"></i>{{ $caissier->phone }}</span>
                                         @endif
                                         <span class="pu-meta-item"><i class="fas fa-calendar"></i>{{ $caissier->created_at->format('d/m/Y') }}</span>
                                     </div>
@@ -2558,8 +2558,8 @@
                                         <div class="pu-name">{{ $u->name }}</div>
                                         <div class="pu-meta">
                                             <span class="pu-meta-item"><i class="fas fa-envelope"></i>{{ $u->email ?: 'Sans email' }}</span>
-                                            @if($u->telephone)
-                                            <span class="pu-meta-item"><i class="fas fa-phone"></i>{{ $u->telephone }}</span>
+                                            @if($u->phone)
+                                            <span class="pu-meta-item"><i class="fas fa-phone"></i>{{ $u->phone }}</span>
                                             @endif
                                             <span class="pu-meta-item"><i class="fas fa-calendar"></i>{{ $u->created_at->format('d/m/Y') }}</span>
                                         </div>

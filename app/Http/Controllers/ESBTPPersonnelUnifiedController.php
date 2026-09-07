@@ -207,7 +207,7 @@ class ESBTPPersonnelUnifiedController extends Controller
                         ->where('is_active', true)
                         ->with(['roles:id,name'])
                         ->orderBy('name')
-                        ->get(['id', 'name', 'email', 'telephone', 'is_active', 'created_at'])
+                        ->get(['id', 'name', 'email', 'phone', 'is_active', 'created_at'])
                         ->groupBy(fn ($u) => $u->roles
                             ->whereIn('name', $customRoleNames)
                             ->first()?->name);
@@ -237,7 +237,20 @@ class ESBTPPersonnelUnifiedController extends Controller
                     ->values()
                     ->map(fn (Role $role) => $this->buildRoleCardData($role, $registry));
             } catch (\Throwable $e) {
-                // Migration pas encore lancée ou registry indispo — degrade silencieusement.
+                // La page continue de s'afficher sans les cartes de roles : elle sert
+                // d'abord a gerer le personnel, et la perdre entierement serait pire.
+                //
+                // Mais ce rattrapage ne doit plus etre MUET. Une seule colonne mal
+                // nommee dans la requete ci-dessus a fait disparaitre les trois
+                // cartes — dont celle des roles standards — sur les seules instances
+                // ayant des roles personnalises, sans message ni trace, pendant des
+                // semaines. Un incident invisible est un incident qu'on ne corrige
+                // jamais.
+                \Illuminate\Support\Facades\Log::error('[personnel-unified] Cartes de roles indisponibles', [
+                    'exception' => $e->getMessage(),
+                    'fichier' => $e->getFile().':'.$e->getLine(),
+                ]);
+
                 $customRoles = collect();
                 $standardRoles = collect();
                 $customRoleUsers = collect();
