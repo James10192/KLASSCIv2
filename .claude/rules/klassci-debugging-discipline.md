@@ -214,6 +214,25 @@ Si la colonne est un concept d'une autre entité (ex: rattrapage LMD vs note BTS
 
 **Variante `nom` vs `name` (récurrente dans `CLIStudentController`)** : `esbtp_etudiants` utilise bien `nom` (français, nom de famille), MAIS `esbtp_matieres` / `esbtp_filieres` / `esbtp_niveaux_etudes` utilisent `name`. Les eager-loads `->with('matiere:id,nom')` / `->with('filiere:id,nom')` lèvent `Unknown column 'nom'`. Toujours vérifier le `$fillable` de CHAQUE modèle ciblé : `grep "'nom'\|'name'" app/Models/ESBTPXxx.php`. Bugs corrigés en série (commit `6f18f30b` filiere/niveau, puis juin 2026 matiere) — vérifier les 3 d'un coup quand on touche un eager-load de ce controller.
 
+**Variante `phone` vs `telephone` (sept. 2026)** : `users` porte **`phone`**
+(migration `add_contact_info_to_users_table`, mars 2025). `telephone` n'existe ni
+en base ni sur le modele `User` — mais `esbtp_etudiants` et `esbtp_parents`, eux,
+portent bien `telephone`. D'ou la confusion. Deux degats distincts, et le second
+est le plus vicieux :
+
+- `->get([... 'telephone' ...])` sur `users` leve `Unknown column` ;
+- `$user->telephone` en lecture ne leve RIEN : Eloquent rend `null`. Vingt
+  lectures de ce genre dans `personnel/unified-index.blade.php` masquaient les
+  numeros de tout le personnel sur toutes les instances, sans erreur.
+
+**Ce cas illustre pourquoi un `catch` muet coute cher.** Le `SELECT` fautif ne
+s'executait que sur les instances ayant des roles personnalises, et l'exception
+tombait dans un `catch (\Throwable)` qui vidait silencieusement trois
+collections : les trois cartes de gestion des roles disparaissaient d'un coup,
+sans message a l'ecran ni ligne au journal. Le defaut a survecu jusqu'a ce qu'un
+utilisateur le signale. **Un rattrapage qui degrade l'affichage doit toujours
+journaliser ce qu'il a rattrape** — sinon on ne cherche meme pas.
+
 **Diagnostic** : un endpoint API qui 500 mais dont le code « semble bon » → reproduire avec le CLI (`klassci <cmd> <tenant>`) qui RENVOIE le message SQL exact, bien plus parlant que le 500 web générique. Le CLI est un excellent révélateur de schema/colonnes.
 
 ---
