@@ -183,6 +183,8 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ### Améliorations
 
+- **Un frais réservé à une catégorie d'étudiants n'est plus facturé quand on ignore dans laquelle il se trouve** — la règle était dissymétrique : un frais « réservé aux anciens » exigeait que le dossier porte bien la mention « ancien », mais un frais « réservé aux nouveaux » se contentait de l'absence de la mention « ancien ». Un dossier dont la case n'était pas remplie basculait donc du côté payant. Les deux sens demandent désormais une réponse explicite. Le choix assumé : mieux vaut oublier un frais que d'en encaisser un à tort, parce qu'un frais oublié se réclame encore, alors qu'un versement déjà reçu ne peut plus être retiré sans le laisser sans affectation.
+
 - **La feuille du bouton « Plus » ne s'ouvrait plus** — sur mobile, appuyer sur le dernier onglet ne faisait rien : la feuille se préparait bien, mais ne se révélait jamais. Le garde-fou qui annule une ouverture dépassée comparait un repère rangé dans l'état de la page, lequel en ressort enveloppé : la comparaison échouait à tous les coups et coupait chaque ouverture. Toutes les feuilles du téléphone étaient concernées.
 
 - **Le bandeau de la file de recouvrement** — ses deux étiquettes (« relancés aujourd'hui », « à haut risque ») s'étiraient chacune sur toute la largeur, l'une sous l'autre, et ressemblaient à des champs vides. Elles reprennent la largeur de leur texte.
