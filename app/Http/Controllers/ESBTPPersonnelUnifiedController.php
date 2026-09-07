@@ -16,6 +16,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Spatie\Permission\Models\Role;
 
@@ -183,6 +184,10 @@ class ESBTPPersonnelUnifiedController extends Controller
         $standardRoles = collect();
         // Lot 19 — users assignés à chaque rôle custom, indexé par roleName, pour générer un tab par rôle
         $customRoleUsers = collect();
+        // Renseigné quand la construction a ECHOUE, par opposition a « il n'y a
+        // rien a montrer ». La vue doit pouvoir dire laquelle des deux, sans
+        // quoi une panne se lit comme une absence — voir le catch plus bas.
+        $rolesIndisponibles = false;
 
         if (auth()->user()->can('personnel.manage')) {
             try {
@@ -237,10 +242,22 @@ class ESBTPPersonnelUnifiedController extends Controller
                     ->values()
                     ->map(fn (Role $role) => $this->buildRoleCardData($role, $registry));
             } catch (\Throwable $e) {
-                // Migration pas encore lancée ou registry indispo — degrade silencieusement.
+                // Migration pas encore lancee ou registry indisponible. On degrade,
+                // mais plus en silence : cette page est la SEULE porte vers les
+                // permissions des roles standards, et la faire disparaitre sans
+                // rien dire laisse un etablissement entier croire que la
+                // fonctionnalite n'existe pas chez lui. Le drapeau remonte a la
+                // vue, le detail va au journal.
+                Log::error('Personnel unifie : liste des roles indisponible', [
+                    'exception' => get_class($e),
+                    'message' => $e->getMessage(),
+                    'user_id' => auth()->id(),
+                ]);
+
                 $customRoles = collect();
                 $standardRoles = collect();
                 $customRoleUsers = collect();
+                $rolesIndisponibles = true;
             }
         }
 
@@ -268,6 +285,7 @@ class ESBTPPersonnelUnifiedController extends Controller
             'visiblePersonnelTabs',
             'customRoles',
             'standardRoles',
+            'rolesIndisponibles',
             'performanceSnapshots',
             'customRoleUsers'
         ));

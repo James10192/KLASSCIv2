@@ -1647,6 +1647,25 @@
 
         {{-- ═══ Lot 8 — Rôles personnalisés (collapsible) ═══ --}}
         @can('personnel.manage')
+            {{-- La liste des rôles n'a pas pu être construite. Sans ce bandeau, les
+                 deux sections ci-dessous annoncent « 0 rôle », et une panne se lit
+                 comme une absence de fonctionnalité. --}}
+            @if(!empty($rolesIndisponibles))
+                <div class="cr-info-note cr-info-note--warning pu-animate pu-delay-1" role="alert">
+                    <div class="cr-info-note-icon"><i class="fas fa-triangle-exclamation"></i></div>
+                    <div class="cr-info-note-body">
+                        <p class="cr-info-note-title">Les rôles n'ont pas pu être chargés</p>
+                        <p class="cr-info-note-text">
+                            Ce n'est pas qu'il n'y en a aucun : la liste n'a pas pu être construite sur cette
+                            instance. Le détail est dans le journal de l'application.
+                            La cause habituelle est une migration en attente&nbsp;: lancer
+                            <code>php artisan migrate</code> puis <code>php bin/deploy/fix_permissions.php</code>
+                            sur cet établissement rétablit la section.
+                        </p>
+                    </div>
+                </div>
+            @endif
+
             @php $crCount = isset($customRoles) ? $customRoles->count() : 0; @endphp
             <div class="cr-section-bar pu-animate pu-delay-1 {{ $crCount > 0 ? 'cr-open' : '' }}" data-cr-section>
                 <button type="button" class="cr-section-toggle" data-cr-section-toggle>
@@ -1691,54 +1710,84 @@
                 {{-- contenu chargé en AJAX --}}
             </div>
 
-            {{-- ═══ Lot 17c — Rôles standards éditables (collapsible) ═══ --}}
-            @if(isset($standardRoles) && $standardRoles->isNotEmpty())
-                @php $stdCount = $standardRoles->count(); @endphp
-                <div class="cr-section-bar pu-animate pu-delay-1" data-cr-section>
-                    <button type="button" class="cr-section-toggle" data-cr-section-toggle>
-                        <div class="cr-section-toggle-left">
-                            <div class="cr-section-toggle-icon"><i class="fas fa-shield-halved"></i></div>
-                            <div class="cr-section-toggle-text">
-                                <h3>Rôles standards</h3>
-                                <p>Modifiez le label, l'icône et les permissions des rôles système (sauf superAdmin / Service Technique)</p>
-                            </div>
-                        </div>
-                        <div class="cr-section-toggle-right">
-                            <span class="cr-section-toggle-badge">{{ $stdCount }} rôle{{ $stdCount > 1 ? 's' : '' }}</span>
-                            <i class="fas fa-chevron-down cr-section-toggle-chev"></i>
-                        </div>
-                    </button>
-                    <div class="cr-section-content">
-                        <div class="cr-roles-list">
-                            @foreach($standardRoles as $std)
-                                <article class="cr-role-card cr-role-card--standard">
-                                    <div class="cr-role-card-icon"><i class="fas {{ $std['icon'] }}"></i></div>
-                                    <div class="cr-role-card-body">
-                                        <div class="cr-role-card-head">
-                                            <h4 class="cr-role-card-label">{{ $std['label'] }}</h4>
-                                            <code class="cr-role-card-name">{{ $std['name'] }}</code>
-                                        </div>
-                                        @if(!empty($std['description']))
-                                            <p class="cr-role-card-desc">{{ $std['description'] }}</p>
-                                        @endif
-                                        <div class="cr-role-card-stats">
-                                            <span class="cr-role-card-stat"><i class="fas fa-users"></i> {{ $std['users_count'] }} user{{ $std['users_count'] > 1 ? 's' : '' }}</span>
-                                            <span class="cr-role-card-stat"><i class="fas fa-key"></i> {{ $std['permissions_count'] }} perm{{ $std['permissions_count'] > 1 ? 's' : '' }}</span>
-                                        </div>
-                                    </div>
-                                    <div class="cr-role-card-actions">
-                                        <button type="button" class="cr-role-action"
-                                                data-cr-edit-standard="{{ route('esbtp.custom-roles.standard.edit', $std['name']) }}"
-                                                title="Modifier label, icône, permissions">
-                                            <i class="fas fa-pen"></i>
-                                        </button>
-                                    </div>
-                                </article>
-                            @endforeach
+            {{-- ═══ Lot 17c — Rôles standards éditables (collapsible) ═══ ---
+                 La section est rendue MEME vide. Elle a longtemps disparu dans ce
+                 cas, ce qui revenait à masquer la seule porte vers les permissions
+                 des rôles standards au moment précis où quelque chose clochait :
+                 sur une instance saine cette liste n'est jamais vide, donc le garde
+                 ne cachait rien d'autre qu'un incident. --}}
+            @php $stdCount = isset($standardRoles) ? $standardRoles->count() : 0; @endphp
+            <div class="cr-section-bar pu-animate pu-delay-1" data-cr-section>
+                <button type="button" class="cr-section-toggle" data-cr-section-toggle>
+                    <div class="cr-section-toggle-left">
+                        <div class="cr-section-toggle-icon"><i class="fas fa-shield-halved"></i></div>
+                        <div class="cr-section-toggle-text">
+                            <h3>Rôles standards</h3>
+                            <p>Modifiez le label, l'icône et les permissions des rôles système (sauf superAdmin / Service Technique)</p>
                         </div>
                     </div>
+                    <div class="cr-section-toggle-right">
+                        {{-- « — » et non « 0 » quand le chargement a échoué : zéro est
+                             une affirmation, et elle serait fausse. --}}
+                        <span class="cr-section-toggle-badge">
+                            @if(!empty($rolesIndisponibles))
+                                —
+                            @else
+                                {{ $stdCount }} rôle{{ $stdCount > 1 ? 's' : '' }}
+                            @endif
+                        </span>
+                        <i class="fas fa-chevron-down cr-section-toggle-chev"></i>
+                    </div>
+                </button>
+                <div class="cr-section-content">
+                    @if(!empty($rolesIndisponibles))
+                        <p class="cr-info-note-text">
+                            Liste indisponible — voir le bandeau en haut de la page.
+                        </p>
+                    @elseif($stdCount === 0)
+                        <div class="cr-info-note cr-info-note--warning" role="note">
+                            <div class="cr-info-note-icon"><i class="fas fa-triangle-exclamation"></i></div>
+                            <div class="cr-info-note-body">
+                                <p class="cr-info-note-title">Aucun rôle standard trouvé sur cet établissement</p>
+                                <p class="cr-info-note-text">
+                                    Les rôles système (secrétaire, comptable, caissier, coordinateur, enseignant…)
+                                    sont normalement créés au déploiement. Qu'aucun ne réponde signale une instance
+                                    incomplète, pas un choix de configuration&nbsp;: lancer
+                                    <code>php bin/deploy/fix_permissions.php</code> sur cet établissement les
+                                    recrée à partir du registre.
+                                </p>
+                            </div>
+                        </div>
+                    @endif
+                    <div class="cr-roles-list">
+                        @foreach($standardRoles as $std)
+                            <article class="cr-role-card cr-role-card--standard">
+                                <div class="cr-role-card-icon"><i class="fas {{ $std['icon'] }}"></i></div>
+                                <div class="cr-role-card-body">
+                                    <div class="cr-role-card-head">
+                                        <h4 class="cr-role-card-label">{{ $std['label'] }}</h4>
+                                        <code class="cr-role-card-name">{{ $std['name'] }}</code>
+                                    </div>
+                                    @if(!empty($std['description']))
+                                        <p class="cr-role-card-desc">{{ $std['description'] }}</p>
+                                    @endif
+                                    <div class="cr-role-card-stats">
+                                        <span class="cr-role-card-stat"><i class="fas fa-users"></i> {{ $std['users_count'] }} user{{ $std['users_count'] > 1 ? 's' : '' }}</span>
+                                        <span class="cr-role-card-stat"><i class="fas fa-key"></i> {{ $std['permissions_count'] }} perm{{ $std['permissions_count'] > 1 ? 's' : '' }}</span>
+                                    </div>
+                                </div>
+                                <div class="cr-role-card-actions">
+                                    <button type="button" class="cr-role-action"
+                                            data-cr-edit-standard="{{ route('esbtp.custom-roles.standard.edit', $std['name']) }}"
+                                            title="Modifier label, icône, permissions">
+                                        <i class="fas fa-pen"></i>
+                                    </button>
+                                </div>
+                            </article>
+                        @endforeach
+                    </div>
                 </div>
-            @endif
+            </div>
         @endcan
 
         {{-- ═══ Tabs Card ═══ --}}
