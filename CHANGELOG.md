@@ -46,6 +46,8 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ### Ajouts
 
+- **Prise de rendez-vous pour les inscriptions sur place** — l'établissement règle ses jours, ses horaires, la durée d'un créneau et le nombre de familles reçues ; le planning se génère à partir de ces réglages, et un créneau déjà retenu n'est jamais détruit si l'on régénère. Le débit s'affiche en clair (durée × places × créneaux = personnes par jour). Désactivé par défaut, non obligatoire : une famille sans rendez-vous reste reçue. Sur klassci.com, la famille choisit un créneau avec une référence opaque (émise au dépôt), peut la retrouver, la déplacer ou l'annuler jusqu'au délai réglé. Un créneau plein renvoie la liste à jour, sans jamais afficher le nombre exact de places.
+
 - **Le relevé de notes LMD au modèle officiel du ministère** — en-tête à deux colonnes, cadres logo et emblème, mention et décision par unité d'enseignement, semestres en marge, moyennes par semestre puis pour l'année, rang, total des crédits cumulés, code QR de vérification. La décision s'accorde au genre : « Admise » pour une étudiante.
 
   C'est un choix, pas un remplacement : un réglage d'établissement décide entre le modèle de l'application et celui du ministère, et le modèle retenu est gravé au moment de l'émission — une école qui bascule ne voit pas changer la mise en page des relevés qu'elle a déjà émis et signés.

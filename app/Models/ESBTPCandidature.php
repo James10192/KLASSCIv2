@@ -203,6 +203,7 @@ class ESBTPCandidature extends Model implements Auditable
         'message', 'statut', 'consentement_at', 'ip_hash',
         'motif_rejet', 'traite_par', 'traite_at',
         'etudiant_id', 'inscription_id',
+        'reference_publique',
     ];
 
     protected $casts = [

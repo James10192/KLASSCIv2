@@ -68,6 +68,7 @@ class ESBTPReinscriptionDemande extends Model implements Auditable
         'traite_par',
         'traite_at',
         'inscription_id',
+        'reference_publique',
     ];
 
     protected $casts = [

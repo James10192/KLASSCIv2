@@ -379,6 +379,21 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 ->middleware('throttle:30,1')->name('rejeter');
         });
 
+        Route::prefix('inscriptions')->middleware(['auth', 'paywall'])->name('rendez-vous.')->group(function () {
+            Route::get('/rendez-vous', [\App\Http\Controllers\ESBTP\ESBTPRendezVousController::class, 'index'])
+                ->middleware('permission:inscriptions.rdv.view')
+                ->name('index');
+            Route::post('/rendez-vous/generer', [\App\Http\Controllers\ESBTP\ESBTPRendezVousController::class, 'generer'])
+                ->middleware(['permission:inscriptions.rdv.manage', 'throttle:10,1'])
+                ->name('generer');
+            Route::post('/rendez-vous/{creneau}/ouvrir', [\App\Http\Controllers\ESBTP\ESBTPRendezVousController::class, 'ouvrir'])
+                ->middleware(['permission:inscriptions.rdv.manage', 'throttle:60,1'])
+                ->name('ouvrir');
+            Route::post('/rendez-vous/{creneau}/fermer', [\App\Http\Controllers\ESBTP\ESBTPRendezVousController::class, 'fermer'])
+                ->middleware(['permission:inscriptions.rdv.manage', 'throttle:60,1'])
+                ->name('fermer');
+        });
+
         // Routes protÃ©gÃ©es pour les super-administrateurs, secrÃ©taires, coordinateurs et enseignants
         Route::middleware(['auth', 'permission:admin.access', 'paywall'])->group(function () {
             // Nouveau systÃ¨me de catÃ©gories de frais ESBTP

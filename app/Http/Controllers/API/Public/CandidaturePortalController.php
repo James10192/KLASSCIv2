@@ -8,6 +8,8 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Inscription\PortailCandidatureRequest;
 use App\Services\Inscription\PortailCandidaturePublication;
 use App\Services\Inscription\PortailCandidatureService;
+use App\Services\RendezVous\ReferencePublique;
+use App\Services\RendezVous\RendezVousReglages;
 use Illuminate\Http\JsonResponse;
 
 /**
@@ -71,7 +73,7 @@ class CandidaturePortalController extends Controller
         $donnees = $request->validated();
 
         try {
-            $this->candidatures->deposer(
+            $candidature = $this->candidatures->deposer(
                 $donnees,
                 $this->empreinte($donnees['ip_client'])
             );
@@ -111,6 +113,10 @@ class CandidaturePortalController extends Controller
             'enregistre' => true,
             'message' => 'Votre candidature a bien été transmise à l\'établissement.',
             'inscriptions_physiques' => $this->publication->inscriptionsPhysiques(),
+            'reference_publique' => app(ReferencePublique::class)->formater(
+                app(ReferencePublique::class)->assurerCandidature($candidature)
+            ),
+            'rdv_ouvert' => app(RendezVousReglages::class)->enabled(),
         ], 201);
     }
 

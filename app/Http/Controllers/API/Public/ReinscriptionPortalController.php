@@ -7,6 +7,8 @@ use App\Http\Requests\Reinscription\PortailRequest;
 use App\Http\Requests\Reinscription\PortailSubmitRequest;
 use App\Models\ESBTPEtudiant;
 use App\Services\Inscription\PortailCandidaturePublication;
+use App\Services\RendezVous\ReferencePublique;
+use App\Services\RendezVous\RendezVousReglages;
 use App\Services\Reinscription\PortailReinscriptionService;
 use App\Services\Reinscription\SituationReinscription;
 use Illuminate\Http\JsonResponse;
@@ -90,6 +92,10 @@ class ReinscriptionPortalController extends Controller
             'enregistre' => true,
             'message' => 'Votre demande a bien été transmise à votre établissement.',
             'inscriptions_physiques' => app(PortailCandidaturePublication::class)->inscriptionsPhysiques(),
+            'reference_publique' => app(ReferencePublique::class)->formater(
+                app(ReferencePublique::class)->assurerDemande($demande)
+            ),
+            'rdv_ouvert' => app(RendezVousReglages::class)->enabled(),
         ], 201);
     }
 

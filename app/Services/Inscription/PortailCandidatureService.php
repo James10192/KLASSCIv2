@@ -7,6 +7,7 @@ use App\Enums\RefusCandidature;
 use App\Exceptions\RefusCandidatureException;
 use App\Models\ESBTPCandidature;
 use App\Models\ESBTPInscription;
+use App\Services\RendezVous\InvalideurRdv;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -251,6 +252,8 @@ class PortailCandidatureService
             // jour passe par le MODELE, donc le journal d'audit garde la trace
             // du retour en arriere — et de l'identite, qui figure desormais
             // dans la liste blanche pour cette raison precise.
+            app(InvalideurRdv::class)->siIdentiteCandidatureChangee($candidature, $valeurs);
+
             $candidature->update($valeurs + [
                 'statut' => ESBTPCandidature::STATUT_EN_ATTENTE,
                 'motif_rejet' => null,

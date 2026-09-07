@@ -16,6 +16,7 @@ use App\Services\CataloguePiecesDossier;
 use App\Services\MailPulse\MailPulseTestNotificationService;
 use App\Services\Mobile\MobileProfileResolver;
 use App\Services\Inscription\PortailCandidaturePublication;
+use App\Services\RendezVous\RendezVousReglages;
 use App\Services\Reinscription\PortailReinscriptionService;
 use App\Services\TenantScolariteSettings;
 use Illuminate\Http\JsonResponse;
@@ -491,6 +492,7 @@ class ESBTPSettingsController extends Controller
                 // decochee n'est pas envoyee par le navigateur, et seule cette
                 // liste-ci sait lire son absence comme un « non ».
                 CataloguePiecesDossier::REGLAGE_RESTITUTION_ANNULATION,
+                ...RendezVousReglages::clesBascules(),
                 // Shell mobile (barre d'onglets sur telephone) : seme par
                 // migration, lu par MobileProfileResolver, sans cette ligne
                 // la case de la page n'aurait jamais ete enregistree.
@@ -516,6 +518,7 @@ class ESBTPSettingsController extends Controller
                 CataloguePiecesDossier::REGLAGE_FORME_DEFAUT,
                 CataloguePiecesDossier::REGLAGE_ECHEANCE_DEFAUT,
                 CataloguePiecesDossier::REGLAGE_EPUISEMENT,
+                ...RendezVousReglages::clesTexte(),
             ];
 
             $reglagesPointes = Setting::whereIn('key', array_merge($basculesGerees, $reglagesTexte))->get();
@@ -532,6 +535,17 @@ class ESBTPSettingsController extends Controller
                 $estBascule = ! in_array($setting->key, $reglagesTexte, true);
                 $estSoumis = $this->estSoumis($rawInput, $setting->key);
                 $soumis = $this->valeurSoumise($rawInput, $setting->key);
+
+                if ($setting->key === RendezVousReglages::JOURS) {
+                    $soumis = $rawInput['inscriptions_rdv_jours_ouverts'] ?? $soumis;
+                    if (is_array($soumis)) {
+                        $soumis = implode(',', array_map('strval', $soumis));
+                        $estSoumis = true;
+                    } elseif ($treatMissingCheckboxesAsOff) {
+                        $soumis = '';
+                        $estSoumis = true;
+                    }
+                }
 
                 // Une case decochee n'est pas envoyee par le navigateur : son
                 // absence VAUT « off », mais seulement quand le formulaire qui
@@ -893,6 +907,8 @@ class ESBTPSettingsController extends Controller
             // serait acceptee ici puis rejetee a la lecture : l'ecole croirait
             // avoir annonce une date, le portail n'en annoncerait aucune.
             PortailCandidaturePublication::REGLAGE_PHYSIQUES,
+            RendezVousReglages::OUVERTURE,
+            RendezVousReglages::FERMETURE,
         ];
 
         // Un texte de la couleur de son fond est invisible.

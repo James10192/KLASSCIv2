@@ -81,6 +81,29 @@ Route::prefix('public/inscription')
             ->name('api.public.inscription.submit');
     });
 
+Route::prefix('public/rendez-vous')
+    ->withoutMiddleware(['throttle:api'])
+    ->group(function () {
+        Route::post('/creneaux', [\App\Http\Controllers\API\Public\RendezVousPortalController::class, 'creneaux'])
+            ->middleware('portail.public:rendezvous,catalogue')
+            ->name('api.public.rendez-vous.creneaux');
+        Route::post('/reserver', [\App\Http\Controllers\API\Public\RendezVousPortalController::class, 'reserver'])
+            ->middleware('portail.public:rendezvous')
+            ->name('api.public.rendez-vous.reserver');
+        Route::post('/consulter', [\App\Http\Controllers\API\Public\RendezVousPortalController::class, 'consulter'])
+            ->middleware(['portail.public:rendezvous', 'reinscription.plancher'])
+            ->name('api.public.rendez-vous.consulter');
+        Route::post('/deplacer', [\App\Http\Controllers\API\Public\RendezVousPortalController::class, 'deplacer'])
+            ->middleware(['portail.public:rendezvous', 'reinscription.plancher'])
+            ->name('api.public.rendez-vous.deplacer');
+        Route::post('/annuler', [\App\Http\Controllers\API\Public\RendezVousPortalController::class, 'annuler'])
+            ->middleware(['portail.public:rendezvous', 'reinscription.plancher'])
+            ->name('api.public.rendez-vous.annuler');
+        Route::post('/retrouver', [\App\Http\Controllers\API\Public\RendezVousPortalController::class, 'retrouver'])
+            ->middleware(['portail.public:rendezvous', 'reinscription.plancher'])
+            ->name('api.public.rendez-vous.retrouver');
+    });
+
 /*
  * Identite publique de l'etablissement, lue par le site klassci.com.
  *
