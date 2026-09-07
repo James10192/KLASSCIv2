@@ -46,6 +46,10 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ### Ajouts
 
+- **La scolarité peut enfin savoir pourquoi le portail de réinscription refuse un dossier** — quand une famille appelle en disant que le site ne trouve pas son matricule, personne ne pouvait lui répondre : le portail public rend volontairement la même phrase pour cinq situations très différentes — matricule inconnu, date de naissance qui ne correspond pas, dossier supprimé, aucune année précédente, ou année de rentrée mal configurée — et cette uniformité est ce qui empêche un tiers de deviner les matricules de l'école. Le refus était donc muet pour tout le monde, y compris pour l'établissement.
+
+  Une commande de diagnostic répond désormais à la question, côté école uniquement : elle nomme le verrou qui a fermé, montre la date de naissance réellement enregistrée quand c'est elle qui diffère, propose les matricules qui ne se distinguent que par un tiret ou un zéro, et liste les inscriptions de l'élève en indiquant lesquelles comptent comme année précédente. Elle distingue surtout ce qui relève d'un seul dossier de ce qui bloque l'école entière — une année de rentrée sans date de début refuse *tous* les élèves, en silence. Elle ne corrige rien et ne dépose aucune demande.
+
 - **Le relevé de notes LMD au modèle officiel du ministère** — en-tête à deux colonnes, cadres logo et emblème, mention et décision par unité d'enseignement, semestres en marge, moyennes par semestre puis pour l'année, rang, total des crédits cumulés, code QR de vérification. La décision s'accorde au genre : « Admise » pour une étudiante.
 
   C'est un choix, pas un remplacement : un réglage d'établissement décide entre le modèle de l'application et celui du ministère, et le modèle retenu est gravé au moment de l'émission — une école qui bascule ne voit pas changer la mise en page des relevés qu'elle a déjà émis et signés.

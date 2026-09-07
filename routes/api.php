@@ -356,6 +356,12 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
     Route::get('/students', [App\Http\Controllers\API\CLI\CLIStudentController::class, 'students'])->name('students');
     Route::get('/students/{id}', [App\Http\Controllers\API\CLI\CLIStudentController::class, 'studentShow'])->name('students.show');
     Route::get('/inscriptions', [App\Http\Controllers\API\CLI\CLIStudentController::class, 'inscriptions'])->name('inscriptions');
+
+    // Pourquoi le portail public repond « aucun dossier » a une famille. Le
+    // portail refuse de le dire — sa reponse uniforme protege de l'enumeration
+    // — donc la reponse vit ici, derriere un jeton `cli:admin`.
+    Route::get('/reinscription/portail/diagnose', [App\Http\Controllers\API\CLI\CLIReinscriptionPortailController::class, 'diagnose'])
+        ->name('reinscription.portail.diagnose');
     Route::get('/resultats/etudiant/{id}/diagnose', [App\Http\Controllers\API\CLI\CLIResultatController::class, 'studentDiagnose'])
         ->name('resultats.student.diagnose');
     Route::get('/resultats/etudiant/{id}/bulletin-consistency-diagnose', [App\Http\Controllers\API\CLI\CLIResultatController::class, 'bulletinConsistencyDiagnose'])
