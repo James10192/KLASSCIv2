@@ -100,6 +100,8 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ### Corrections
 
+- **MailPulse affiche « Prêt » dès que le canal est allumé et la clé posée** — le bandeau des paramètres exigeait un email de test, donc restait à « À configurer » alors que l'envoi réel était déjà possible. La case qui active les messages aux vrais parents (et non seulement les tests) est désormais visible dans l'onglet.
+
 - **Un étudiant déjà passé par l'établissement ne se voit plus facturer les frais réservés aux nouveaux arrivants** — au guichet de caisse comme au service de réinscription, la case « ancien ou nouveau » n'était pas renseignée à la création du dossier. Or un statut vide est lu comme « nouvel arrivant » : les frais de tenue étaient donc proposés, puis encaissés, à des étudiants de deuxième année. Les deux écrans savaient pourtant à qui ils avaient affaire — l'un venait de choisir l'étudiant dans la liste des inscrits, l'autre traitait une réinscription. Cette information est désormais reportée sur le dossier.
 
 - **La caisse ne peut plus encaisser un frais qui ne concerne pas l'étudiant** — la liste des frais cochés au guichet était enregistrée telle quelle, sans vérifier à qui chaque frais s'adresse. Le serveur écarte maintenant ceux qui ne s'appliquent pas, et le dit au caissier au lieu de les retirer en silence. C'est ce contrôle qui manquait : une fois l'argent reçu, corriger le statut de l'étudiant ne suffit plus à retirer le frais, sous peine de laisser un versement sans affectation.

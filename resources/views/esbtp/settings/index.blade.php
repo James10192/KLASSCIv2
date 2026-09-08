@@ -963,7 +963,7 @@
                 ->where('value', '<>', '')
                 ->exists() || trim((string) config('services.mailpulse.api_key', '')) !== '';
             $mailpulseReady = $mailpulseApiKeyConfiguredForHero
-                && \App\Helpers\SettingsHelper::get('mailpulse_test_email', '') !== '';
+                && \App\Helpers\SettingsHelper::get('mailpulse_enabled', '0') == '1';
         @endphp
 
         <div class="settings-hero">
@@ -2890,6 +2890,7 @@
                 <div class="tab-pane fade mailpulse-panel" id="mailpulse" role="tabpanel">
                     @php
                         $mailpulseEnabled = \App\Helpers\SettingsHelper::get('mailpulse_enabled', '0');
+                        $mailpulseWorkflowsEnabled = \App\Helpers\SettingsHelper::get('mailpulse_real_workflows_enabled', '0');
                         $mailpulseApiKeyConfigured = \App\Models\Setting::where('key', 'mailpulse_api_key')
                             ->where('is_active', true)
                             ->whereNotNull('value')
@@ -2911,6 +2912,10 @@
                         <span class="mailpulse-status-badge {{ $mailpulseApiKeyConfigured ? 'configured' : '' }}">
                             <i class="fas {{ $mailpulseApiKeyConfigured ? 'fa-lock' : 'fa-key' }}"></i>
                             {{ $mailpulseApiKeyConfigured ? 'Clé API configurée' : 'Clé API à configurer' }}
+                        </span>
+                        <span class="mailpulse-status-badge {{ $mailpulseWorkflowsEnabled == '1' ? 'configured' : '' }}">
+                            <i class="fas {{ $mailpulseWorkflowsEnabled == '1' ? 'fa-bolt' : 'fa-pause' }}"></i>
+                            {{ $mailpulseWorkflowsEnabled == '1' ? 'Workflows parents actifs' : 'Workflows parents inactifs' }}
                         </span>
                     </div>
 
@@ -2936,7 +2941,21 @@
                                        {{ $mailpulseEnabled == '1' ? 'checked' : '' }}>
                                 <span class="slider"></span>
                             </label>
-                            <small class="text-muted d-block mt-2">Les tests réels restent limités aux destinataires de test configurés ci-dessous.</small>
+                            <small class="text-muted d-block mt-2">Les tests restent limités aux destinataires configurés ci-dessous.</small>
+                        </div>
+
+                        <input type="hidden" name="setting_mailpulse_real_workflows_enabled" value="0">
+                        <div class="mailpulse-field-card mb-3">
+                            <label class="form-label-modern">
+                                <i class="fas fa-sitemap text-primary"></i>
+                                Activer les workflows parents réels
+                            </label>
+                            <label class="form-switch-modern">
+                                <input type="checkbox" name="setting_mailpulse_real_workflows_enabled" value="1"
+                                       {{ $mailpulseWorkflowsEnabled == '1' ? 'checked' : '' }}>
+                                <span class="slider"></span>
+                            </label>
+                            <small class="text-muted d-block mt-2">Sans cette case, MailPulse envoie les tests mais pas les messages aux vrais parents (paiements, absences, notes, inscriptions).</small>
                         </div>
 
                         <div class="settings-grid">
