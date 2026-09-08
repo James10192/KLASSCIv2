@@ -1733,6 +1733,12 @@
                                     <div class="menu-text">Inscriptions</div>
                                 </a>
                                 @endcan
+                                @can('inscriptions.rdv.view')
+                                <a href="{{ route('esbtp.rendez-vous.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.rendez-vous.*') ? 'active' : '' }}">
+                                    <div class="menu-icon"><i class="fas fa-calendar-check"></i></div>
+                                    <div class="menu-text">Rendez-vous d'inscription</div>
+                                </a>
+                                @endcan
                                 @can('inscriptions.create')
                                 <a href="{{ route('esbtp.inscriptions.create') }}" class="menu-sublink {{ Request::routeIs('esbtp.inscriptions.create') ? 'active' : '' }}">
                                     <div class="menu-icon"><i class="fas fa-user-plus"></i></div>
@@ -1786,12 +1792,6 @@
                                 {{-- Candidatures des NOUVEAUX etudiants. Entree distincte des demandes
                                      de reinscription : ce ne sont pas les memes dossiers, et la
                                      scolarite ne les traite pas au meme moment de la rentree. --}}
-                                @can('inscriptions.rdv.view')
-                                <a href="{{ route('esbtp.rendez-vous.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.rendez-vous.*') ? 'active' : '' }}">
-                                    <div class="menu-icon"><i class="fas fa-calendar-check"></i></div>
-                                    <div class="menu-text">Rendez-vous d'inscription</div>
-                                </a>
-                                @endcan
                                 @can('inscriptions.candidatures.view')
                                 <a href="{{ route('esbtp.candidatures.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.candidatures.*') ? 'active' : '' }}">
                                     <div class="menu-icon"><i class="fas fa-address-card"></i></div>

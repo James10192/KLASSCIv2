@@ -5,6 +5,7 @@ namespace App\Http\Controllers\ESBTP;
 use App\Exceptions\ReglagesRdvIncomplets;
 use App\Http\Controllers\Controller;
 use App\Models\ESBTPRdvCreneau;
+use App\Models\Setting;
 use App\Services\RendezVous\GenerateurCreneaux;
 use App\Services\RendezVous\RendezVousReglages;
 use App\Services\Reinscription\PortailReinscriptionService;
@@ -57,6 +58,45 @@ class ESBTPRendezVousController extends Controller
             'peutGerer' => auth()->user()?->can('inscriptions.rdv.manage') ?? false,
             'peutConfigurer' => auth()->user()?->can('inscriptions.rdv.configure') ?? false,
         ]);
+    }
+
+    public function enregistrerReglages(Request $request): RedirectResponse
+    {
+        $brut = $request->all();
+        $auteur = auth()->id();
+
+        $jours = $brut['inscriptions_rdv_jours_ouverts'] ?? [];
+        Setting::set(
+            RendezVousReglages::JOURS,
+            is_array($jours) ? implode(',', array_map('strval', $jours)) : '',
+            $auteur
+        );
+
+        foreach (RendezVousReglages::clesTexte() as $cle) {
+            if ($cle === RendezVousReglages::JOURS) {
+                continue;
+            }
+
+            $cleFormulaire = str_replace('.', '_', $cle);
+            if (! array_key_exists($cle, $brut) && ! array_key_exists($cleFormulaire, $brut)) {
+                continue;
+            }
+
+            $soumis = $brut[$cle] ?? $brut[$cleFormulaire] ?? '';
+            Setting::set($cle, is_string($soumis) ? trim($soumis) : '', $auteur);
+        }
+
+        foreach (RendezVousReglages::clesBascules() as $cle) {
+            $cleFormulaire = str_replace('.', '_', $cle);
+            $allume = filter_var($brut[$cle] ?? $brut[$cleFormulaire] ?? false, FILTER_VALIDATE_BOOLEAN);
+            Setting::set($cle, $allume ? '1' : '0', $auteur);
+        }
+
+        Setting::clearCache();
+
+        return redirect()
+            ->route('esbtp.rendez-vous.index')
+            ->with('success', 'Réglages enregistrés. Vous pouvez générer les créneaux.');
     }
 
     public function generer(): RedirectResponse

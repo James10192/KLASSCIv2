@@ -383,6 +383,9 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             Route::get('/rendez-vous', [\App\Http\Controllers\ESBTP\ESBTPRendezVousController::class, 'index'])
                 ->middleware('permission:inscriptions.rdv.view')
                 ->name('index');
+            Route::post('/rendez-vous/reglages', [\App\Http\Controllers\ESBTP\ESBTPRendezVousController::class, 'enregistrerReglages'])
+                ->middleware(['permission:inscriptions.rdv.configure', 'throttle:20,1'])
+                ->name('reglages');
             Route::post('/rendez-vous/generer', [\App\Http\Controllers\ESBTP\ESBTPRendezVousController::class, 'generer'])
                 ->middleware(['permission:inscriptions.rdv.manage', 'throttle:10,1'])
                 ->name('generer');

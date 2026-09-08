@@ -5,7 +5,7 @@
     $_joursChoisis = array_filter(preg_split('/[,\s]+/', $_joursValeur));
 @endphp
 
-<div class="bc-card">
+<div class="bc-card" id="rendez-vous-reglages">
     <div class="bc-icon"><i class="fas fa-calendar-check"></i></div>
     <div class="bc-body">
         <div class="bc-label">Rendez-vous au guichet</div>
