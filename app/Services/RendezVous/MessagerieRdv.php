@@ -7,7 +7,9 @@ use App\Mail\RendezVous\InvitationRdvMail;
 use App\Models\ESBTPCandidature;
 use App\Models\ESBTPReinscriptionDemande;
 use App\Models\ESBTPRdvReservation;
+use App\Services\MailPulse\MailPulseClient;
 use App\Services\Vitrine\IdentitePublique;
+use Illuminate\Mail\Mailable;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
@@ -16,6 +18,7 @@ class MessagerieRdv
     public function __construct(
         private readonly ReferencePublique $references,
         private readonly IdentitePublique $identite,
+        private readonly MailPulseClient $mailpulse,
     ) {
     }
 
@@ -36,23 +39,18 @@ class MessagerieRdv
             default => 'Votre rendez-vous est confirmé.',
         };
 
-        try {
-            Mail::to($email)->send(new ConfirmationRdvMail([
-                'sujet' => $intro.' — '.$ecole,
-                'prenom' => $reservation->prenoms ?: $reservation->nom,
-                'intro' => $intro,
-                'ecole' => $ecole,
-                'date' => $creneau?->date?->translatedFormat('l j F Y') ?? '—',
-                'heure' => $creneau ? ($creneau->heureDebutHi().' – '.$creneau->heureFinHi()) : '—',
-                'reference' => $this->references->formater($reference),
-                'lien' => $this->lienReservation($reference),
-            ]));
-        } catch (\Throwable $e) {
-            Log::warning('Mail de rendez-vous non parti', [
-                'action' => $action,
-                'erreur' => $e->getMessage(),
-            ]);
-        }
+        $donnees = [
+            'sujet' => $intro.' — '.$ecole,
+            'prenom' => $reservation->prenoms ?: $reservation->nom,
+            'intro' => $intro,
+            'ecole' => $ecole,
+            'date' => $creneau?->date?->translatedFormat('l j F Y') ?? '—',
+            'heure' => $creneau ? ($creneau->heureDebutHi().' – '.$creneau->heureFinHi()) : '—',
+            'reference' => $this->references->formater($reference),
+            'lien' => $this->lienReservation($reference),
+        ];
+        $texte = $intro."\n\n".$donnees['date'].' '.$donnees['heure']."\nRéférence : ".$donnees['reference']."\n".$donnees['lien'];
+        $this->expedier($email, new ConfirmationRdvMail($donnees), $texte, $donnees['sujet']);
     }
 
     /**
@@ -127,22 +125,47 @@ class MessagerieRdv
             ? $this->references->assurerCandidature($porteur)
             : $this->references->assurerDemande($porteur);
 
-        try {
-            Mail::to($email)->send(new InvitationRdvMail([
-                'sujet' => 'Prenez rendez-vous — '.$ecole,
-                'prenom' => $prenom,
-                'ecole' => $ecole,
-                'reference' => $this->references->formater($reference),
-                'lien' => $this->lienReservation($reference),
-                'identifiantAide' => $identifiantAide,
-            ]));
+        $donnees = [
+            'sujet' => 'Prenez rendez-vous — '.$ecole,
+            'prenom' => $prenom,
+            'ecole' => $ecole,
+            'reference' => $this->references->formater($reference),
+            'lien' => $this->lienReservation($reference),
+            'identifiantAide' => $identifiantAide,
+        ];
+        $texte = "Bonjour {$prenom},\n\nPrenez rendez-vous au guichet de {$ecole}.\nRéférence : {$donnees['reference']}\n{$donnees['lien']}";
+        if ($this->expedier($email, new InvitationRdvMail($donnees), $texte, $donnees['sujet'])) {
             $porteur->forceFill(['rdv_invite_at' => now()])->save();
             $rapport['envoyes']++;
-        } catch (\Throwable $e) {
+        } else {
             $rapport['erreurs']++;
-            Log::warning('Invitation rendez-vous non partie', [
+        }
+    }
+
+    private function expedier(string $email, Mailable $mail, string $texte, string $sujet): bool
+    {
+        $pulse = $this->mailpulse->sendEmailMessage([
+            'channel' => 'email',
+            'recipient' => ['type' => 'email', 'value' => $email],
+            'content' => ['type' => 'text', 'text' => $sujet."\n\n".$texte],
+            'metadata' => ['source' => 'klassci', 'workflow_event' => 'rendez_vous'],
+        ]);
+
+        if ($pulse->ok) {
+            return true;
+        }
+
+        try {
+            Mail::to($email)->send($mail);
+
+            return true;
+        } catch (\Throwable $e) {
+            Log::warning('Mail de rendez-vous non parti', [
+                'mailpulse' => $pulse->status,
                 'erreur' => $e->getMessage(),
             ]);
+
+            return false;
         }
     }
 
