@@ -7,6 +7,7 @@ use App\Http\Requests\RendezVous\PortailRdvRequest;
 use App\Http\Requests\RendezVous\PortailRdvRetrouverRequest;
 use App\Models\ESBTPRdvReservation;
 use App\Services\RendezVous\CatalogueCreneaux;
+use App\Services\RendezVous\MessagerieRdv;
 use App\Services\RendezVous\ReferencePublique;
 use App\Services\RendezVous\ReservateurRdv;
 use Illuminate\Http\JsonResponse;
@@ -18,6 +19,7 @@ class RendezVousPortalController extends Controller
         private readonly CatalogueCreneaux $catalogue,
         private readonly ReservateurRdv $reservateur,
         private readonly ReferencePublique $references,
+        private readonly MessagerieRdv $mails,
     ) {
     }
 
@@ -52,6 +54,7 @@ class RendezVousPortalController extends Controller
         }
 
         RateLimiter::clear(ReservateurRdv::seauParReference($donnees['reference'])->cle);
+        $this->mails->confirmer($resultat['reservation'], 'confirme');
 
         return response()->json([
             'enregistre' => true,
@@ -102,6 +105,8 @@ class RendezVousPortalController extends Controller
             ], 409);
         }
 
+        $this->mails->confirmer($resultat['reservation'], 'deplace');
+
         return response()->json([
             'enregistre' => true,
             'reservation' => $this->presenter($resultat['reservation']),
@@ -119,6 +124,10 @@ class RendezVousPortalController extends Controller
             }
 
             return response()->json(['enregistre' => false, 'code' => $resultat['code']], 409);
+        }
+
+        if (isset($resultat['reservation'])) {
+            $this->mails->confirmer($resultat['reservation'], 'annule');
         }
 
         return response()->json(['enregistre' => true]);

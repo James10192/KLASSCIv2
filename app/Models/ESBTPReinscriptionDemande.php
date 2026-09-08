@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use OwenIt\Auditing\Contracts\Auditable;
 
 /**
@@ -69,11 +70,13 @@ class ESBTPReinscriptionDemande extends Model implements Auditable
         'traite_at',
         'inscription_id',
         'reference_publique',
+        'rdv_invite_at',
     ];
 
     protected $casts = [
         'consentement_at' => 'datetime',
         'traite_at' => 'datetime',
+        'rdv_invite_at' => 'datetime',
     ];
 
     /**
@@ -99,6 +102,11 @@ class ESBTPReinscriptionDemande extends Model implements Auditable
     public function etudiant(): BelongsTo
     {
         return $this->belongsTo(ESBTPEtudiant::class, 'etudiant_id');
+    }
+
+    public function reservations(): HasMany
+    {
+        return $this->hasMany(ESBTPRdvReservation::class, 'reinscription_demande_id');
     }
 
     public function anneeUniversitaire(): BelongsTo

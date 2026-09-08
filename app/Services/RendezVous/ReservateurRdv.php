@@ -145,7 +145,7 @@ class ReservateurRdv
 
         $actuelle->update(['statut' => StatutReservationRdv::Annulee]);
 
-        return ['ok' => true];
+        return ['ok' => true, 'reservation' => $actuelle->load('creneau')];
     }
 
     public function consulter(string $reference, string $dateNaissance): ?ESBTPRdvReservation
