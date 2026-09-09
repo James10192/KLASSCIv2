@@ -5,15 +5,12 @@ namespace App\Services\RendezVous;
 use App\Contracts\PorteurDeRendezVous;
 use App\Helpers\SettingsHelper;
 use App\Jobs\EnvoyerConvocationRdvJob;
-use App\Mail\Parents\ConvocationRdvMail;
 use App\Models\ESBTPCandidature;
 use App\Models\ESBTPReinscriptionDemande;
 use App\Models\ESBTPRdvReservation;
 use App\Services\MailPulse\MailPulseClient;
 use App\Services\Vitrine\IdentitePublique;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\View;
 
 class MessagerieRdv
 {
@@ -36,74 +33,72 @@ class MessagerieRdv
             return;
         }
 
-        $donnees = $this->donneesConvocation($reservation, $action);
-        $pdfBinaire = $action === 'annule' ? '' : $this->pdf->binaire($reservation);
-
-        try {
-            Mail::to($email)->send(new ConvocationRdvMail($donnees, $pdfBinaire));
-        } catch (\Throwable $e) {
-            $this->expedierViaMailPulse($email, $donnees, $pdfBinaire);
-            if (! str_contains($e->getMessage(), '550')) {
-                Log::warning('SMTP convocation rdv, repli MailPulse', ['erreur' => $e->getMessage()]);
-            }
-        }
+        $this->expedierViaMailPulse($email, $this->donneesConvocation($reservation, $action));
     }
 
     /**
      * @param  array<string, mixed>  $donnees
      */
-    private function expedierViaMailPulse(string $email, array $donnees, string $pdfBinaire): void
+    private function expedierViaMailPulse(string $email, array $donnees): void
     {
-        $html = View::make('esbtp.emails.parents.rendez-vous-convocation', $donnees + [
-            'message' => new class($donnees['schoolLogoPath'] ?? null)
-            {
-                public function __construct(private readonly ?string $logo)
-                {
-                }
-
-                public function embed(string $path): string
-                {
-                    $fichier = $this->logo && is_file($this->logo) ? $this->logo : $path;
-                    if (! is_file($fichier)) {
-                        return $path;
-                    }
-                    $mime = mime_content_type($fichier) ?: 'image/png';
-
-                    return 'data:'.$mime.';base64,'.base64_encode((string) file_get_contents($fichier));
-                }
-            },
-        ])->render();
-
-        $message = [
+        $texte = $donnees['sujet']."\n\n".$donnees['date'].' '.$donnees['heure']."\nRéférence : ".$donnees['reference'];
+        $html = $this->htmlMailPulse($donnees);
+        $resultat = $this->mailpulse->sendEmailMessage([
             'channel' => 'email',
             'recipient' => ['type' => 'email', 'value' => $email],
-            'subject' => $donnees['sujet'],
             'content' => [
-                'type' => 'html',
-                'html' => $html,
+                'type' => 'text',
+                'text' => $texte,
             ],
-            'metadata' => ['source' => 'klassci', 'workflow_event' => 'rendez_vous'],
-        ];
-        if ($pdfBinaire !== '') {
-            $message['attachments'] = [[
-                'filename' => 'convocation-rendez-vous.pdf',
-                'content' => base64_encode($pdfBinaire),
-            ]];
-        }
-
-        $resultat = $this->mailpulse->sendEmailMessage($message);
-        if ($resultat->ok) {
-            return;
-        }
-
-        unset($message['attachments']);
-        $resultat = $this->mailpulse->sendEmailMessage($message);
+            'metadata' => [
+                'source' => 'klassci',
+                'workflow_event' => 'rendez_vous',
+                'subject' => $donnees['sujet'],
+                'email_html' => $html,
+            ],
+        ]);
         if (! $resultat->ok) {
             Log::warning('MailPulse convocation rdv refusee', [
                 'status' => $resultat->status,
                 'message' => $resultat->message,
             ]);
         }
+    }
+
+    /**
+     * @param  array<string, mixed>  $donnees
+     */
+    private function htmlMailPulse(array $donnees): string
+    {
+        $fond = htmlspecialchars((string) $donnees['emailHeaderBgColor'], ENT_QUOTES, 'UTF-8');
+        $texteBandeau = htmlspecialchars((string) $donnees['emailHeaderTextColor'], ENT_QUOTES, 'UTF-8');
+        $primaire = htmlspecialchars((string) $donnees['emailPrimaryColor'], ENT_QUOTES, 'UTF-8');
+        $ecole = htmlspecialchars((string) $donnees['schoolName'], ENT_QUOTES, 'UTF-8');
+        $date = htmlspecialchars((string) $donnees['date'], ENT_QUOTES, 'UTF-8');
+        $heure = htmlspecialchars((string) $donnees['heure'], ENT_QUOTES, 'UTF-8');
+        $nom = htmlspecialchars((string) $donnees['nom'], ENT_QUOTES, 'UTF-8');
+        $reference = htmlspecialchars((string) $donnees['reference'], ENT_QUOTES, 'UTF-8');
+        $lien = htmlspecialchars((string) $donnees['lien'], ENT_QUOTES, 'UTF-8');
+        $logo = $this->identite->decrire()['logo']['url'] ?? null;
+        $logoImg = is_string($logo) && $logo !== ''
+            ? '<img src="'.htmlspecialchars($logo, ENT_QUOTES, 'UTF-8').'" alt="" width="72" height="72" style="display:block;margin:0 auto 8px;background:#fff;padding:4px;border-radius:6px;">'
+            : '';
+
+        return '<!DOCTYPE html><html><body style="margin:0;background:#f3f4f6;font-family:Arial,sans-serif;">'
+            .'<table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;margin:16px auto;background:#fff;">'
+            .'<tr><td style="background:'.$fond.';color:'.$texteBandeau.';padding:20px 16px;text-align:center;">'
+            .$logoImg
+            .'<div style="font-size:18px;font-weight:bold;">'.$ecole.'</div>'
+            .'<div style="font-size:13px;margin-top:8px;">Convocation au guichet</div>'
+            .'</td></tr>'
+            .'<tr><td style="padding:20px 16px;color:#1f2937;">'
+            .'<p>Bonjour '.$nom.',</p>'
+            .'<p>Votre rendez-vous est confirmé.</p>'
+            .'<p style="font-size:18px;font-weight:bold;color:'.$primaire.';">'.$date.'<br>'.$heure.'</p>'
+            .($reference !== '' ? '<p>Référence : <strong>'.$reference.'</strong></p>' : '')
+            .'<p>Présentez-vous avec vos pièces. Un PDF de convocation n\'est pas joint : conservez cet e-mail.</p>'
+            .($lien !== '' ? '<p><a href="'.$lien.'" style="color:'.$primaire.';">Voir ou modifier le rendez-vous</a></p>' : '')
+            .'</td></tr></table></body></html>';
     }
 
     /**
