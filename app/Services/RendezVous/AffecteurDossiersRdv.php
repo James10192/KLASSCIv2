@@ -3,142 +3,104 @@
 namespace App\Services\RendezVous;
 
 use App\Contracts\PorteurDeRendezVous;
-use App\Exceptions\ReglagesRdvIncomplets;
 use App\Models\ESBTPCandidature;
 use App\Models\ESBTPRdvReservation;
 use App\Models\ESBTPReinscriptionDemande;
-use App\Models\ESBTPRdvCreneau;
-use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class AffecteurDossiersRdv
 {
     public function __construct(
         private readonly RendezVousReglages $reglages,
+        private readonly CatalogueCreneaux $catalogue,
         private readonly ReservateurRdv $reservateur,
         private readonly MessagerieRdv $mails,
     ) {
     }
 
-    /**
-     * @return array{date: string, heure_debut: string, heure_fin: string}|null
-     */
-    public function placerUn(PorteurDeRendezVous $porteur): ?array
+    public function placerApresCommit(PorteurDeRendezVous $porteur): void
     {
-        $existante = ESBTPRdvReservation::query()
-            ->occupantes()
-            ->where($porteur->colonneReservationRdv(), $porteur->clesReservationRdv()[$porteur->colonneReservationRdv()])
-            ->with('creneau')
-            ->first();
+        DB::afterCommit(fn () => $this->placerUn($porteur));
+    }
+
+    public function placerUn(PorteurDeRendezVous $porteur): bool
+    {
+        if (! $this->reglages->enabled()) {
+            return false;
+        }
+
+        if (! $this->emailValide($porteur)) {
+            return false;
+        }
+
+        $existante = $this->reservateur->reservationActive($porteur);
         if ($existante !== null) {
-            return $this->presenter($existante);
+            if (! $porteur->dejaInviteRdv()) {
+                $this->convoquer($porteur, $existante);
+            }
+
+            return true;
         }
 
-        $email = trim((string) $porteur->emailRdv());
-        if ($email === '' || ! filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            return null;
-        }
-
-        $creneauId = $this->prochainCreneau($this->placesRestantes());
+        $creneauId = $this->prochainCreneau($this->catalogue->placesLibres());
         if ($creneauId === null) {
-            return null;
+            return false;
         }
 
         $resultat = $this->reservateur->placer($porteur, $creneauId);
         if (! $resultat['ok'] || ! isset($resultat['reservation'])) {
-            return null;
+            return false;
         }
 
-        $porteur->assurerReferencePublique();
-        $this->mails->confirmer($resultat['reservation'], 'confirme');
-        $porteur->marquerInviteRdv();
+        $this->convoquer($porteur, $resultat['reservation']);
 
-        return $this->presenter($resultat['reservation']);
-    }
-
-    /**
-     * @return array{date: string, heure_debut: string, heure_fin: string}
-     */
-    private function presenter(ESBTPRdvReservation $reservation): array
-    {
-        $creneau = $reservation->creneau;
-
-        return [
-            'date' => $creneau?->date?->toDateString() ?? '',
-            'heure_debut' => $creneau?->heureDebutHi() ?? '',
-            'heure_fin' => $creneau?->heureFinHi() ?? '',
-        ];
+        return true;
     }
 
     /**
      * @return array{places: int, sans_email: int, sans_creneau: int, deja: int}
      */
-    public function placer(bool $ecrire = false): array
+    public function placer(): array
     {
         $rapport = ['places' => 0, 'sans_email' => 0, 'sans_creneau' => 0, 'deja' => 0];
-        $restantes = $this->placesRestantes();
 
-        $this->chaquePorteur(function (PorteurDeRendezVous $porteur) use ($ecrire, &$rapport, &$restantes) {
-            $email = trim((string) $porteur->emailRdv());
-            if ($email === '' || ! filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $this->chaquePorteur(function (PorteurDeRendezVous $porteur) use (&$rapport) {
+            if (! $this->emailValide($porteur)) {
                 $rapport['sans_email']++;
 
                 return;
             }
 
-            $existante = ESBTPRdvReservation::query()
-                ->occupantes()
-                ->where($porteur->colonneReservationRdv(), $porteur->clesReservationRdv()[$porteur->colonneReservationRdv()])
-                ->with('creneau')
-                ->first();
-            if ($existante !== null) {
-                if ($porteur->dejaInviteRdv()) {
-                    $rapport['deja']++;
+            $existante = $this->reservateur->reservationActive($porteur);
+            if ($existante !== null && $porteur->dejaInviteRdv()) {
+                $rapport['deja']++;
 
-                    return;
-                }
-                if ($ecrire) {
-                    $this->mails->confirmer($existante, 'confirme');
-                    $porteur->marquerInviteRdv();
-                }
+                return;
+            }
+
+            if ($this->placerUn($porteur)) {
                 $rapport['places']++;
 
                 return;
             }
 
-            $creneauId = $this->prochainCreneau($restantes);
-            if ($creneauId === null) {
-                $rapport['sans_creneau']++;
-
-                return;
-            }
-
-            if (! $ecrire) {
-                $restantes[$creneauId]--;
-                $rapport['places']++;
-
-                return;
-            }
-
-            $resultat = $this->reservateur->placer($porteur, $creneauId);
-            if (! $resultat['ok']) {
-                if (($resultat['code'] ?? '') === 'deja_reserve') {
-                    $rapport['deja']++;
-
-                    return;
-                }
-                $rapport['sans_creneau']++;
-
-                return;
-            }
-
-            $restantes[$creneauId]--;
-            $porteur->assurerReferencePublique();
-            $this->mails->confirmer($resultat['reservation'], 'confirme');
-            $porteur->marquerInviteRdv();
-            $rapport['places']++;
+            $rapport['sans_creneau']++;
         });
 
         return $rapport;
+    }
+
+    private function convoquer(PorteurDeRendezVous $porteur, ESBTPRdvReservation $reservation): void
+    {
+        $porteur->assurerReferencePublique();
+        $this->mails->confirmer($reservation, 'confirme');
+    }
+
+    private function emailValide(PorteurDeRendezVous $porteur): bool
+    {
+        $email = trim((string) $porteur->emailRdv());
+
+        return $email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL);
     }
 
     /**
@@ -146,64 +108,31 @@ class AffecteurDossiersRdv
      */
     private function chaquePorteur(callable $suite): void
     {
+        $anneeId = $this->catalogue->anneeDesCreneaux()?->id;
+        if ($anneeId === null) {
+            return;
+        }
+
         ESBTPCandidature::query()
             ->where('statut', ESBTPCandidature::STATUT_EN_ATTENTE)
+            ->where('annee_universitaire_id', $anneeId)
             ->where(function ($q) {
                 $q->whereDoesntHave('reservations', fn ($r) => $r->occupantes())
                     ->orWhereNull('rdv_invite_at');
             })
             ->orderBy('id')
-            ->each(function (ESBTPCandidature $c) use ($suite) {
-                $suite($c);
-            });
+            ->each(fn (ESBTPCandidature $c) => $suite($c));
 
         ESBTPReinscriptionDemande::query()
             ->where('statut', ESBTPReinscriptionDemande::STATUT_EN_ATTENTE)
+            ->where('annee_universitaire_id', $anneeId)
             ->where(function ($q) {
                 $q->whereDoesntHave('reservations', fn ($r) => $r->occupantes())
                     ->orWhereNull('rdv_invite_at');
             })
             ->with('etudiant')
             ->orderBy('id')
-            ->each(function (ESBTPReinscriptionDemande $d) use ($suite) {
-                $suite($d);
-            });
-    }
-
-    /**
-     * @return array<int, int>
-     */
-    private function placesRestantes(): array
-    {
-        try {
-            $regle = $this->reglages->pourGeneration();
-        } catch (ReglagesRdvIncomplets) {
-            return [];
-        }
-
-        $debut = Carbon::today();
-        if ($regle->plancher->gt($debut)) {
-            $debut = $regle->plancher->copy();
-        }
-
-        $creneaux = ESBTPRdvCreneau::query()
-            ->where('ouvert', true)
-            ->whereDate('date', '>=', $debut->toDateString())
-            ->whereDate('date', '<=', $regle->fermeture->toDateString())
-            ->withCount(['reservations as prises' => fn ($q) => $q->occupantes()])
-            ->orderBy('date')
-            ->orderBy('heure_debut')
-            ->get();
-
-        $restantes = [];
-        foreach ($creneaux as $creneau) {
-            $libre = (int) $creneau->capacite - (int) ($creneau->prises ?? 0);
-            if ($libre > 0 && ! $this->dejaPasse($creneau)) {
-                $restantes[(int) $creneau->id] = $libre;
-            }
-        }
-
-        return $restantes;
+            ->each(fn (ESBTPReinscriptionDemande $d) => $suite($d));
     }
 
     /** @param  array<int, int>  $restantes */
@@ -216,10 +145,5 @@ class AffecteurDossiersRdv
         }
 
         return null;
-    }
-
-    private function dejaPasse(ESBTPRdvCreneau $creneau): bool
-    {
-        return Carbon::now()->gte(Carbon::parse($creneau->date->toDateString().' '.$creneau->heureDebutHi().':00'));
     }
 }

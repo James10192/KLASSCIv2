@@ -3,9 +3,11 @@
 namespace App\Services\RendezVous;
 
 use App\Exceptions\ReglagesRdvIncomplets;
+use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPRdvCreneau;
 use App\Services\Reinscription\PortailReinscriptionService;
 use Carbon\Carbon;
+use Illuminate\Support\Collection;
 
 class CatalogueCreneaux
 {
@@ -20,33 +22,7 @@ class CatalogueCreneaux
      */
     public function publier(): array
     {
-        try {
-            $regle = $this->reglages->pourGeneration();
-        } catch (ReglagesRdvIncomplets) {
-            return [];
-        }
-
-        $annee = $this->reinscriptions->anneeCible();
-        if ($annee === null) {
-            return [];
-        }
-
-        $debut = Carbon::today();
-        if ($regle->plancher->gt($debut)) {
-            $debut = $regle->plancher->copy();
-        }
-
-        $creneaux = ESBTPRdvCreneau::query()
-            ->where('annee_universitaire_id', $annee->id)
-            ->where('ouvert', true)
-            ->whereDate('date', '>=', $debut->toDateString())
-            ->whereDate('date', '<=', $regle->fermeture->toDateString())
-            ->withCount(['reservations as prises' => fn ($q) => $q->occupantes()])
-            ->orderBy('date')
-            ->orderBy('heure_debut')
-            ->get();
-
-        return $creneaux->map(function (ESBTPRdvCreneau $creneau) {
+        return $this->creneauxOuverts()->map(function (ESBTPRdvCreneau $creneau) {
             $prises = (int) ($creneau->prises ?? 0);
 
             return [
@@ -56,6 +32,60 @@ class CatalogueCreneaux
                 'heure_fin' => $creneau->heureFinHi(),
                 'etat' => $prises >= $creneau->capacite ? 'complet' : 'disponible',
             ];
-        })->all();
+        })->values()->all();
+    }
+
+    /**
+     * @return array<int, int>
+     */
+    public function placesLibres(): array
+    {
+        $restantes = [];
+        foreach ($this->creneauxOuverts() as $creneau) {
+            $libre = (int) $creneau->capacite - (int) ($creneau->prises ?? 0);
+            $debut = Carbon::parse($creneau->date->toDateString().' '.$creneau->heureDebutHi().':00');
+            if ($libre > 0 && Carbon::now()->lt($debut)) {
+                $restantes[(int) $creneau->id] = $libre;
+            }
+        }
+
+        return $restantes;
+    }
+
+    public function anneeDesCreneaux(): ?ESBTPAnneeUniversitaire
+    {
+        return $this->reinscriptions->anneeCible();
+    }
+
+    /**
+     * @return Collection<int, ESBTPRdvCreneau>
+     */
+    private function creneauxOuverts(): Collection
+    {
+        try {
+            $regle = $this->reglages->pourGeneration();
+        } catch (ReglagesRdvIncomplets) {
+            return collect();
+        }
+
+        $annee = $this->reinscriptions->anneeCible();
+        if ($annee === null) {
+            return collect();
+        }
+
+        $debut = Carbon::today();
+        if ($regle->plancher->gt($debut)) {
+            $debut = $regle->plancher->copy();
+        }
+
+        return ESBTPRdvCreneau::query()
+            ->where('annee_universitaire_id', $annee->id)
+            ->where('ouvert', true)
+            ->whereDate('date', '>=', $debut->toDateString())
+            ->whereDate('date', '<=', $regle->fermeture->toDateString())
+            ->withCount(['reservations as prises' => fn ($q) => $q->occupantes()])
+            ->orderBy('date')
+            ->orderBy('heure_debut')
+            ->get();
     }
 }

@@ -1,46 +1,35 @@
 @php
-    $emailTitle = 'Convocation au guichet';
-    $emailPrimaryColor = $emailPrimaryColor ?? \App\Helpers\SettingsHelper::get('pdf_primary_color', '#0453cb');
-    $emailHeaderBgColor = $emailHeaderBgColor ?? \App\Helpers\SettingsHelper::get('pdf_header_bg_color', $emailPrimaryColor);
-    $emailHeaderTextColor = $emailHeaderTextColor ?? \App\Helpers\SettingsHelper::getPdfSettings()['header_text_on_bg'];
+    $fond = $emailHeaderBgColor ?? '#0453cb';
+    $texteBandeau = $emailHeaderTextColor ?? '#ffffff';
+    $primaire = $emailPrimaryColor ?? '#0453cb';
 @endphp
-
-@extends('esbtp.emails.parents.layout')
-
-@section('content')
-    <div class="message-intro">
-        <p>Votre rendez-vous au guichet est confirmé. Le détail figure aussi dans le PDF joint.</p>
-    </div>
-
-    <table class="info-table">
-        <tr>
-            <th style="width: 40%;">Date</th>
-            <td><strong>{{ $date }}</strong></td>
-        </tr>
-        <tr>
-            <th>Heure</th>
-            <td><strong>{{ $heure }}</strong></td>
-        </tr>
-        <tr>
-            <th>Nom</th>
-            <td>{{ $nom }}</td>
-        </tr>
-        @if($reference)
-        <tr>
-            <th>Référence</th>
-            <td><span class="badge badge-info">{{ $reference }}</span></td>
-        </tr>
-        @endif
-    </table>
-
-    <div class="instruction-box">
-        <h3>Au guichet</h3>
-        <p>Présentez-vous à l'heure indiquée avec vos pièces. En cas d'empêchement, modifiez ou annulez le rendez-vous sur klassci.com avec votre référence.</p>
-    </div>
-
-    @if($lien)
-    <div class="button-container">
-        <a href="{{ $lien }}" class="button">Voir mon rendez-vous</a>
-    </div>
-    @endif
-@endsection
+<!DOCTYPE html>
+<html lang="fr">
+<body style="margin:0;background:#f3f4f6;font-family:Arial,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;margin:16px auto;background:#fff;">
+    <tr>
+        <td style="background:{{ $fond }};color:{{ $texteBandeau }};padding:20px 16px;text-align:center;">
+            @if(!empty($schoolLogoUrl))
+                <img src="{{ $schoolLogoUrl }}" alt="" width="72" height="72" style="display:block;margin:0 auto 8px;background:#fff;padding:4px;border-radius:6px;">
+            @endif
+            <div style="font-size:18px;font-weight:bold;">{{ $schoolName }}</div>
+            <div style="font-size:13px;margin-top:8px;">Convocation au guichet</div>
+        </td>
+    </tr>
+    <tr>
+        <td style="padding:20px 16px;color:#1f2937;">
+            <p>Bonjour {{ $nom }},</p>
+            <p>{{ $intro }}</p>
+            <p style="font-size:18px;font-weight:bold;color:{{ $primaire }};">{{ $date }}<br>{{ $heure }}</p>
+            @if($reference)
+                <p>Référence : <strong>{{ $reference }}</strong></p>
+            @endif
+            <p>Présentez-vous à l'heure indiquée avec vos pièces.</p>
+            @if($lien)
+                <p><a href="{{ $lien }}" style="color:{{ $primaire }};">Voir ou modifier le rendez-vous</a></p>
+            @endif
+        </td>
+    </tr>
+</table>
+</body>
+</html>

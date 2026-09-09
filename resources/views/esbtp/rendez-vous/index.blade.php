@@ -72,7 +72,7 @@
                     </button>
                 </form>
                 <form method="POST" action="{{ route('esbtp.rendez-vous.placer') }}"
-                      onsubmit="return confirm('Placer les candidatures et demandes en attente sur les créneaux libres, puis envoyer la convocation (mail + PDF) ?');">
+                      onsubmit="return confirm('Placer les candidatures et demandes en attente sur les créneaux libres, puis envoyer la convocation par e-mail ?');">
                     @csrf
                     <button type="submit" class="rdv-btn rdv-btn--white">
                         <i class="fas fa-envelope-open-text"></i> Placer et convoquer

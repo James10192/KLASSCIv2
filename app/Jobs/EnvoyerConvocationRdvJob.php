@@ -31,6 +31,8 @@ class EnvoyerConvocationRdvJob implements ShouldQueue
             return;
         }
 
-        $mails->expedierConvocation($reservation, $this->action);
+        if ($mails->expedierConvocation($reservation, $this->action)) {
+            $reservation->porteur()?->marquerInviteRdv();
+        }
     }
 }

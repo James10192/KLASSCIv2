@@ -6,8 +6,6 @@ interface PorteurDeRendezVous
 {
     public function verrouillerPourRdv(): ?static;
 
-    public function colonneReservationRdv(): string;
-
     /** @return array{candidature_id: int|null, reinscription_demande_id: int|null} */
     public function clesReservationRdv(): array;
 
@@ -15,8 +13,6 @@ interface PorteurDeRendezVous
     public function snapshotRdv(): array;
 
     public function emailRdv(): ?string;
-
-    public function prenomRdv(): string;
 
     public function referencePubliqueAffichee(): ?string;
 

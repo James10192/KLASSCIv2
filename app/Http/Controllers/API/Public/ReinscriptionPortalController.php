@@ -7,7 +7,6 @@ use App\Http\Requests\Reinscription\PortailRequest;
 use App\Http\Requests\Reinscription\PortailSubmitRequest;
 use App\Models\ESBTPEtudiant;
 use App\Services\Inscription\PortailCandidaturePublication;
-use App\Services\RendezVous\AffecteurDossiersRdv;
 use App\Services\Reinscription\PortailReinscriptionService;
 use App\Services\Reinscription\SituationReinscription;
 use Illuminate\Http\JsonResponse;
@@ -34,7 +33,6 @@ class ReinscriptionPortalController extends Controller
 {
     public function __construct(
         private readonly PortailReinscriptionService $portail,
-        private readonly AffecteurDossiersRdv $rdv,
     ) {}
 
     /** Retrouver sa situation. Ne cree rien. */
@@ -95,7 +93,6 @@ class ReinscriptionPortalController extends Controller
             'message' => 'Votre demande a bien été transmise à votre établissement.',
             'inscriptions_physiques' => app(PortailCandidaturePublication::class)->inscriptionsPhysiques(),
             'reference_publique' => $demande->referencePubliqueAffichee(),
-            'rendez_vous' => $this->rdv->placerUn($demande),
         ], 201);
     }
 

@@ -56,23 +56,7 @@ class ReservateurRdv
             return ['ok' => false, 'code' => 'introuvable'];
         }
 
-        return $this->sousVerrou($porteur, function (PorteurDeRendezVous $porteur) use ($creneauId) {
-            if ($this->reservationActiveDu($porteur, true) !== null) {
-                return ['ok' => false, 'code' => 'deja_reserve'];
-            }
-
-            $creneau = $this->prendreCreneau($creneauId);
-            if (! $creneau instanceof ESBTPRdvCreneau) {
-                return $creneau;
-            }
-
-            $reservation = ESBTPRdvReservation::create($porteur->snapshotRdv() + $porteur->clesReservationRdv() + [
-                'creneau_id' => $creneau->id,
-                'statut' => StatutReservationRdv::Confirmee->value,
-            ]);
-
-            return ['ok' => true, 'reservation' => $reservation->load('creneau')];
-        });
+        return $this->occuper($porteur, $creneauId, true);
     }
 
     /**
@@ -80,14 +64,25 @@ class ReservateurRdv
      */
     public function placer(PorteurDeRendezVous $porteur, int $creneauId): array
     {
-        return $this->sousVerrou($porteur, function (PorteurDeRendezVous $porteur) use ($creneauId) {
-            if ($this->reservationActiveDu($porteur, true) !== null) {
+        $resultat = $this->occuper($porteur, $creneauId, false);
+        unset($resultat['creneaux']);
+
+        return $resultat;
+    }
+
+    /**
+     * @return array{ok: true, reservation: ESBTPRdvReservation}|array{ok: false, code: string, creneaux?: list<array<string, mixed>>}
+     */
+    private function occuper(PorteurDeRendezVous $porteur, int $creneauId, bool $delaiPublic): array
+    {
+        return $this->sousVerrou($porteur, function (PorteurDeRendezVous $porteur) use ($creneauId, $delaiPublic) {
+            if ($this->reservationActive($porteur, true) !== null) {
                 return ['ok' => false, 'code' => 'deja_reserve'];
             }
 
-            $creneau = $this->prendreCreneau($creneauId, null, false);
+            $creneau = $this->verrouillerCreneau($creneauId, null, $delaiPublic);
             if (! $creneau instanceof ESBTPRdvCreneau) {
-                return ['ok' => false, 'code' => $creneau['code'] ?? 'ferme'];
+                return $creneau;
             }
 
             $reservation = ESBTPRdvReservation::create($porteur->snapshotRdv() + $porteur->clesReservationRdv() + [
@@ -110,7 +105,7 @@ class ReservateurRdv
         }
 
         return $this->sousVerrou($porteur, function (PorteurDeRendezVous $porteur) use ($creneauId) {
-            $actuelle = $this->reservationActiveDu($porteur, true);
+            $actuelle = $this->reservationActive($porteur, true);
             if ($actuelle === null) {
                 return ['ok' => false, 'code' => 'introuvable'];
             }
@@ -119,7 +114,7 @@ class ReservateurRdv
                 return ['ok' => false, 'code' => 'trop_tard'];
             }
 
-            $cible = $this->prendreCreneau($creneauId, (int) $actuelle->creneau_id);
+            $cible = $this->verrouillerCreneau($creneauId, (int) $actuelle->creneau_id, true);
             if (! $cible instanceof ESBTPRdvCreneau) {
                 return $cible;
             }
@@ -141,7 +136,7 @@ class ReservateurRdv
         }
 
         return $this->sousVerrou($porteur, function (PorteurDeRendezVous $porteur) {
-            $actuelle = $this->reservationActiveDu($porteur, true);
+            $actuelle = $this->reservationActive($porteur, true);
             if ($actuelle === null) {
                 return ['ok' => false, 'code' => 'introuvable'];
             }
@@ -156,11 +151,20 @@ class ReservateurRdv
         });
     }
 
-    public function consulter(string $reference, string $dateNaissance): ?ESBTPRdvReservation
+    /**
+     * @return array{trouve: false}|array{trouve: true, reservation: ?ESBTPRdvReservation}
+     */
+    public function consulter(string $reference, string $dateNaissance): array
     {
         $porteur = $this->porteurConcordant($reference, $dateNaissance);
+        if ($porteur === null) {
+            return ['trouve' => false];
+        }
 
-        return $porteur === null ? null : $this->reservationActiveDu($porteur)?->load('creneau');
+        return [
+            'trouve' => true,
+            'reservation' => $this->reservationActive($porteur)?->load('creneau'),
+        ];
     }
 
     public function retrouver(string $identifiant, string $dateNaissance): ?string
@@ -254,14 +258,14 @@ class ReservateurRdv
     /**
      * @return ESBTPRdvCreneau|array{ok: false, code: string, creneaux: list<array<string, mixed>>}
      */
-    private function prendreCreneau(int $creneauId, ?int $ignorerId = null, bool $respecterDelai = true): ESBTPRdvCreneau|array
+    private function verrouillerCreneau(int $creneauId, ?int $ignorerId, bool $delaiPublic): ESBTPRdvCreneau|array
     {
         $creneau = ESBTPRdvCreneau::query()->whereKey($creneauId)->lockForUpdate()->first();
         if ($creneau === null || ! $creneau->ouvert) {
             return ['ok' => false, 'code' => 'ferme', 'creneaux' => $this->catalogue->publier()];
         }
 
-        if ($this->dejaCommence($creneau) || ($respecterDelai && $this->tropTot($creneau))) {
+        if ($this->dejaCommence($creneau) || ($delaiPublic && $this->tropTot($creneau))) {
             return ['ok' => false, 'code' => 'trop_tot', 'creneaux' => $this->catalogue->publier()];
         }
 
@@ -273,11 +277,11 @@ class ReservateurRdv
         return $creneau;
     }
 
-    private function reservationActiveDu(PorteurDeRendezVous $porteur, bool $verrouiller = false): ?ESBTPRdvReservation
+    public function reservationActive(PorteurDeRendezVous $porteur, bool $verrouiller = false): ?ESBTPRdvReservation
     {
         $requete = ESBTPRdvReservation::query()
             ->occupantes()
-            ->where($porteur->colonneReservationRdv(), $porteur->clesReservationRdv()[$porteur->colonneReservationRdv()]);
+            ->where(array_filter($porteur->clesReservationRdv(), fn ($valeur) => $valeur !== null));
 
         if ($verrouiller) {
             $requete->lockForUpdate();

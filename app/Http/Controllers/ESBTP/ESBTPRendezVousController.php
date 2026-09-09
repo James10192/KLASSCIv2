@@ -130,7 +130,7 @@ class ESBTPRendezVousController extends Controller
 
     public function placer(): RedirectResponse
     {
-        $rapport = $this->affecteur->placer(true);
+        $rapport = $this->affecteur->placer();
 
         return redirect()
             ->route('esbtp.rendez-vous.index')

@@ -156,11 +156,6 @@ class ESBTPReinscriptionDemande extends Model implements Auditable, PorteurDeRen
         };
     }
 
-    public function colonneReservationRdv(): string
-    {
-        return 'reinscription_demande_id';
-    }
-
     public function clesReservationRdv(): array
     {
         return [
@@ -171,7 +166,7 @@ class ESBTPReinscriptionDemande extends Model implements Auditable, PorteurDeRen
 
     public function snapshotRdv(): array
     {
-        $etudiant = $this->etudiantRdv();
+        $etudiant = $this->etudiant;
 
         return [
             'nom' => (string) ($etudiant?->nom ?? ''),
@@ -184,18 +179,6 @@ class ESBTPReinscriptionDemande extends Model implements Auditable, PorteurDeRen
 
     public function emailRdv(): ?string
     {
-        return $this->etudiantRdv()?->email;
-    }
-
-    public function prenomRdv(): string
-    {
-        $etudiant = $this->etudiantRdv();
-
-        return (string) ($etudiant?->prenoms ?: $etudiant?->nom ?: 'bonjour');
-    }
-
-    private function etudiantRdv(): ?ESBTPEtudiant
-    {
-        return $this->etudiant ?? ESBTPEtudiant::query()->find($this->etudiant_id);
+        return $this->etudiant?->email;
     }
 }

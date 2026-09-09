@@ -55,18 +55,20 @@ class RendezVousPortalController extends Controller
         if (($refus = $this->seauPlein($donnees['reference'])) !== null) {
             return $refus;
         }
-        $reservation = $this->reservateur->consulter($donnees['reference'], $donnees['date_naissance']);
+        $lecture = $this->reservateur->consulter($donnees['reference'], $donnees['date_naissance']);
 
-        if ($reservation === null) {
+        if (! $lecture['trouve']) {
             return $this->introuvable($donnees['reference']);
         }
 
         RateLimiter::clear(ReservateurRdv::seauParReference($donnees['reference'])->cle);
 
+        $reservation = $lecture['reservation'];
+
         return response()->json([
             'trouve' => true,
-            'reservation' => $this->presenter($reservation),
-            'peut_modifier' => $this->reservateur->peutModifier($reservation),
+            'reservation' => $reservation === null ? null : $this->presenter($reservation),
+            'peut_modifier' => $reservation !== null && $this->reservateur->peutModifier($reservation),
         ]);
     }
 

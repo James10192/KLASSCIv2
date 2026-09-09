@@ -8,7 +8,6 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Inscription\PortailCandidatureRequest;
 use App\Services\Inscription\PortailCandidaturePublication;
 use App\Services\Inscription\PortailCandidatureService;
-use App\Services\RendezVous\AffecteurDossiersRdv;
 use Illuminate\Http\JsonResponse;
 
 /**
@@ -44,7 +43,6 @@ class CandidaturePortalController extends Controller
     public function __construct(
         private readonly PortailCandidaturePublication $publication,
         private readonly PortailCandidatureService $candidatures,
-        private readonly AffecteurDossiersRdv $rdv,
     ) {}
 
     /**
@@ -114,7 +112,6 @@ class CandidaturePortalController extends Controller
             'message' => 'Votre candidature a bien été transmise à l\'établissement.',
             'inscriptions_physiques' => $this->publication->inscriptionsPhysiques(),
             'reference_publique' => $candidature->referencePubliqueAffichee(),
-            'rendez_vous' => $this->rdv->placerUn($candidature),
         ], 201);
     }
 

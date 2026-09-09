@@ -293,11 +293,6 @@ class ESBTPCandidature extends Model implements Auditable, PorteurDeRendezVous
         return $depuisListe !== '' ? $depuisListe : (string) ($this->voeu_libre ?? '');
     }
 
-    public function colonneReservationRdv(): string
-    {
-        return 'candidature_id';
-    }
-
     public function clesReservationRdv(): array
     {
         return [
@@ -320,10 +315,5 @@ class ESBTPCandidature extends Model implements Auditable, PorteurDeRendezVous
     public function emailRdv(): ?string
     {
         return $this->email;
-    }
-
-    public function prenomRdv(): string
-    {
-        return (string) ($this->prenoms ?: $this->nom);
     }
 }
