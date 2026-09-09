@@ -9,14 +9,18 @@ use App\Mail\Parents\ConvocationRdvMail;
 use App\Models\ESBTPCandidature;
 use App\Models\ESBTPReinscriptionDemande;
 use App\Models\ESBTPRdvReservation;
+use App\Services\MailPulse\MailPulseClient;
 use App\Services\Vitrine\IdentitePublique;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\View;
 
 class MessagerieRdv
 {
     public function __construct(
         private readonly IdentitePublique $identite,
         private readonly ConvocationRdvPdf $pdf,
+        private readonly MailPulseClient $mailpulse,
     ) {
     }
 
@@ -32,12 +36,86 @@ class MessagerieRdv
             return;
         }
 
+        $donnees = $this->donneesConvocation($reservation, $action);
+        $pdfBinaire = $action === 'annule' ? '' : $this->pdf->binaire($reservation);
+
+        try {
+            Mail::to($email)->send(new ConvocationRdvMail($donnees, $pdfBinaire));
+        } catch (\Throwable $e) {
+            $this->expedierViaMailPulse($email, $donnees, $pdfBinaire);
+            if (! str_contains($e->getMessage(), '550')) {
+                Log::warning('SMTP convocation rdv, repli MailPulse', ['erreur' => $e->getMessage()]);
+            }
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $donnees
+     */
+    private function expedierViaMailPulse(string $email, array $donnees, string $pdfBinaire): void
+    {
+        $html = View::make('esbtp.emails.parents.rendez-vous-convocation', $donnees + [
+            'message' => new class($donnees['schoolLogoPath'] ?? null)
+            {
+                public function __construct(private readonly ?string $logo)
+                {
+                }
+
+                public function embed(string $path): string
+                {
+                    $fichier = $this->logo && is_file($this->logo) ? $this->logo : $path;
+                    if (! is_file($fichier)) {
+                        return $path;
+                    }
+                    $mime = mime_content_type($fichier) ?: 'image/png';
+
+                    return 'data:'.$mime.';base64,'.base64_encode((string) file_get_contents($fichier));
+                }
+            },
+        ])->render();
+
+        $message = [
+            'channel' => 'email',
+            'recipient' => ['type' => 'email', 'value' => $email],
+            'subject' => $donnees['sujet'],
+            'content' => [
+                'type' => 'html',
+                'html' => $html,
+            ],
+            'metadata' => ['source' => 'klassci', 'workflow_event' => 'rendez_vous'],
+        ];
+        if ($pdfBinaire !== '') {
+            $message['attachments'] = [[
+                'filename' => 'convocation-rendez-vous.pdf',
+                'content' => base64_encode($pdfBinaire),
+            ]];
+        }
+
+        $resultat = $this->mailpulse->sendEmailMessage($message);
+        if ($resultat->ok) {
+            return;
+        }
+
+        unset($message['attachments']);
+        $resultat = $this->mailpulse->sendEmailMessage($message);
+        if (! $resultat->ok) {
+            Log::warning('MailPulse convocation rdv refusee', [
+                'status' => $resultat->status,
+                'message' => $resultat->message,
+            ]);
+        }
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function donneesConvocation(ESBTPRdvReservation $reservation, string $action): array
+    {
         $creneau = $reservation->creneau;
         $ecole = SettingsHelper::getSchoolInfo();
         $pdf = SettingsHelper::getPdfSettings();
         $reference = $reservation->porteur()?->referencePubliqueAffichee() ?? '';
-        $date = $creneau?->date?->translatedFormat('l j F Y') ?? '—';
-        $heure = $creneau ? ($creneau->heureDebutHi().' – '.$creneau->heureFinHi()) : '—';
+        $nomEcole = trim((string) ($ecole['name'] ?? '')) ?: $this->nomEcole();
 
         $intro = match ($action) {
             'deplace' => 'Votre rendez-vous a été déplacé.',
@@ -45,15 +123,12 @@ class MessagerieRdv
             default => 'Votre rendez-vous est confirmé.',
         };
 
-        $nomEcole = trim((string) ($ecole['name'] ?? '')) ?: $this->nomEcole();
-        $pdfBinaire = $action === 'annule' ? '' : $this->pdf->binaire($reservation);
-
-        Mail::to($email)->send(new ConvocationRdvMail([
+        return [
             'sujet' => $intro.' — '.$nomEcole,
             'parentName' => $reservation->prenoms ?: $reservation->nom,
             'nom' => trim($reservation->nom.' '.$reservation->prenoms),
-            'date' => $date,
-            'heure' => $heure,
+            'date' => $creneau?->date?->translatedFormat('l j F Y') ?? '—',
+            'heure' => $creneau ? ($creneau->heureDebutHi().' – '.$creneau->heureFinHi()) : '—',
             'reference' => $reference,
             'lien' => $this->lienReservation($reference),
             'schoolName' => $nomEcole,
@@ -65,7 +140,7 @@ class MessagerieRdv
             'emailHeaderBgColor' => $pdf['header_bg_color'] ?? ($pdf['primary_color'] ?? '#0453cb'),
             'emailHeaderTextColor' => $pdf['header_text_on_bg'] ?? ($pdf['header_text_color'] ?? '#ffffff'),
             'emailSecondaryColor' => $pdf['secondary_color'] ?? '#64748b',
-        ], $pdfBinaire));
+        ];
     }
 
     /**
