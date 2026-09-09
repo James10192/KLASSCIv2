@@ -85,6 +85,26 @@ class AffecteurDossiersRdv
                 return;
             }
 
+            $existante = ESBTPRdvReservation::query()
+                ->occupantes()
+                ->where($porteur->colonneReservationRdv(), $porteur->clesReservationRdv()[$porteur->colonneReservationRdv()])
+                ->with('creneau')
+                ->first();
+            if ($existante !== null) {
+                if ($porteur->dejaInviteRdv()) {
+                    $rapport['deja']++;
+
+                    return;
+                }
+                if ($ecrire) {
+                    $this->mails->confirmer($existante, 'confirme');
+                    $porteur->marquerInviteRdv();
+                }
+                $rapport['places']++;
+
+                return;
+            }
+
             $creneauId = $this->prochainCreneau($restantes);
             if ($creneauId === null) {
                 $rapport['sans_creneau']++;
@@ -128,7 +148,10 @@ class AffecteurDossiersRdv
     {
         ESBTPCandidature::query()
             ->where('statut', ESBTPCandidature::STATUT_EN_ATTENTE)
-            ->whereDoesntHave('reservations', fn ($q) => $q->occupantes())
+            ->where(function ($q) {
+                $q->whereDoesntHave('reservations', fn ($r) => $r->occupantes())
+                    ->orWhereNull('rdv_invite_at');
+            })
             ->orderBy('id')
             ->each(function (ESBTPCandidature $c) use ($suite) {
                 $suite($c);
@@ -136,7 +159,10 @@ class AffecteurDossiersRdv
 
         ESBTPReinscriptionDemande::query()
             ->where('statut', ESBTPReinscriptionDemande::STATUT_EN_ATTENTE)
-            ->whereDoesntHave('reservations', fn ($q) => $q->occupantes())
+            ->where(function ($q) {
+                $q->whereDoesntHave('reservations', fn ($r) => $r->occupantes())
+                    ->orWhereNull('rdv_invite_at');
+            })
             ->with('etudiant')
             ->orderBy('id')
             ->each(function (ESBTPReinscriptionDemande $d) use ($suite) {
