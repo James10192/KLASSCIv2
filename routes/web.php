@@ -3548,6 +3548,11 @@ require __DIR__.'/academic-pilotage.php';
 
 
 
+Route::get('/convocation-rdv/{jeton}', [\App\Http\Controllers\API\Public\ConvocationRdvPdfController::class, '__invoke'])
+    ->middleware('throttle:30,1')
+    ->where('jeton', '[0-9]+\.[A-Fa-f0-9]+')
+    ->name('public.rdv.convocation');
+
 // Shell mobile
 // Bascule de profil mobile reservee au superAdmin (verifiee dans le controleur) :
 // il possede toutes les permissions et verrait toujours la meme barre d onglets.

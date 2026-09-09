@@ -15,6 +15,7 @@ class MessagerieRdv
     public function __construct(
         private readonly IdentitePublique $identite,
         private readonly MailPulseClient $mailpulse,
+        private readonly ConvocationRdvPdf $pdf,
     ) {
     }
 
@@ -44,7 +45,8 @@ class MessagerieRdv
         ]);
 
         $donnees = $this->donneesConvocation($reservation, $action);
-        $texte = $donnees['sujet']."\n\n".$donnees['date'].' '.$donnees['heure']."\nRéférence : ".$donnees['reference'];
+        $texte = $donnees['sujet']."\n\n".$donnees['date'].' '.$donnees['heure']."\nRéférence : ".$donnees['reference']
+            ."\nPDF : ".$donnees['lienPdf'];
         $html = View::make('esbtp.emails.parents.rendez-vous-convocation', $donnees)->render();
         $resultat = $this->mailpulse->sendEmailMessage([
             'channel' => 'email',
@@ -98,6 +100,7 @@ class MessagerieRdv
             'heure' => $creneau ? ($creneau->heureDebutHi().' – '.$creneau->heureFinHi()) : '—',
             'reference' => $reference,
             'lien' => $this->lienReservation($reference),
+            'lienPdf' => $action === 'annule' ? '' : $this->pdf->url($reservation),
             'schoolName' => $nomEcole,
             'schoolLogoUrl' => is_string($logo) ? $logo : null,
             'emailPrimaryColor' => $pdf['primary_color'] ?? '#0453cb',

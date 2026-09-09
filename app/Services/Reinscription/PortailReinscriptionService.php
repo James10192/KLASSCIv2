@@ -7,7 +7,6 @@ use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPInscription;
 use App\Models\ESBTPReinscriptionDemande;
-use App\Services\RendezVous\AffecteurDossiersRdv;
 use App\Services\TenantScolariteSettings;
 use App\Support\SeauDeDebit;
 use Illuminate\Database\QueryException;
@@ -205,7 +204,6 @@ class PortailReinscriptionService
             ]);
 
             $existante->assurerReferencePublique();
-            $this->attribuerCreneau($existante);
 
             return $existante;
         }
@@ -239,7 +237,6 @@ class PortailReinscriptionService
                 return null;
             }
             $rattrapee->assurerReferencePublique();
-            $this->attribuerCreneau($rattrapee);
 
             return $rattrapee;
         }
@@ -253,14 +250,8 @@ class PortailReinscriptionService
         }
 
         $demande->assurerReferencePublique();
-        $this->attribuerCreneau($demande);
 
         return $demande;
-    }
-
-    private function attribuerCreneau(ESBTPReinscriptionDemande $demande): void
-    {
-        app(AffecteurDossiersRdv::class)->placerApresCommit($demande);
     }
 
     /**

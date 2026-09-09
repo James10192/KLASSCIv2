@@ -32,7 +32,7 @@ Un créneau plein rend 409 `{ code: complet, creneaux }` : la liste rafraîchie,
 
 ## Dépôt
 
-Les 201 de candidature et de réinscription emportent `reference_publique` et `inscriptions_physiques`. Ils n'attribuent pas de créneau. Après commit du dépôt (création, réouverture, rattrapage 1062), `AffecteurDossiersRdv::placerApresCommit` place le dossier s'il reste de la place et envoie la convocation HTML via MailPulse. Le créneau se lit sur `POST /consulter` : identité reconnue sans réservation → `{ trouve: true, reservation: null }` (pas de seau) ; identité inconnue → `{ trouve: false, code: introuvable }` (seau).
+Les 201 de candidature et de réinscription emportent `reference_publique` et `inscriptions_physiques`. Ils n'attribuent pas de créneau : la famille le choisit sur `/rendez-vous`. Les dossiers déjà en attente se placent via `POST /api/cli/rendez-vous/placer`. La convocation MailPulse contient un lien vers `GET /convocation-rdv/{jeton}` (PDF, même en-tête que les documents de l'école). `POST /consulter` : identité reconnue sans réservation → `{ trouve: true, reservation: null }` (pas de seau) ; identité inconnue → `{ trouve: false, code: introuvable }` (seau).
 
 ## Historique
 

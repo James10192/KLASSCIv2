@@ -46,7 +46,7 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ### Ajouts
 
-- **Convocation automatique au guichet** — dès le dépôt d'une candidature ou d'une réinscription, un créneau est attribué s'il en reste. Un mail aux couleurs de l'établissement part (logo et bandeau PDF). Les dossiers déjà en attente se placent depuis la page Rendez-vous. Le contact MailPulse est réinscrit sur le canal email avant l'envoi, pour que la convocation parte même si un test précédent avait coupé le canal.
+- **Convocation au guichet** — le dépôt en ligne donne une référence pour choisir un créneau sur klassci.com. Les dossiers déjà en attente se placent depuis la page Rendez-vous. Le mail reprend les couleurs de l'établissement et un lien pour imprimer la convocation PDF (même en-tête que les autres documents).
 
 - **Mail de rendez-vous** — confirmation à la réservation et à l'attribution d'un créneau.
 

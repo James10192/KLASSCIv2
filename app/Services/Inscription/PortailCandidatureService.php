@@ -7,7 +7,6 @@ use App\Enums\RefusCandidature;
 use App\Exceptions\RefusCandidatureException;
 use App\Models\ESBTPCandidature;
 use App\Models\ESBTPInscription;
-use App\Services\RendezVous\AffecteurDossiersRdv;
 use App\Support\IdentitePersonne;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
@@ -132,7 +131,6 @@ class PortailCandidatureService
 
             if ($rouverte !== null) {
                 $rouverte->assurerReferencePublique();
-                $this->attribuerCreneau($rouverte);
 
                 return $rouverte;
             }
@@ -176,7 +174,6 @@ class PortailCandidatureService
             }
 
             $rattrapee->assurerReferencePublique();
-            $this->attribuerCreneau($rattrapee);
 
             return $rattrapee;
         }
@@ -187,14 +184,8 @@ class PortailCandidatureService
         ]);
 
         $candidature->assurerReferencePublique();
-        $this->attribuerCreneau($candidature);
 
         return $candidature;
-    }
-
-    private function attribuerCreneau(ESBTPCandidature $candidature): void
-    {
-        app(AffecteurDossiersRdv::class)->placerApresCommit($candidature);
     }
 
     /**

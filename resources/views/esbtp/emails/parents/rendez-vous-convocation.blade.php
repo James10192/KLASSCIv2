@@ -24,7 +24,14 @@
             @if($reference)
                 <p>Référence : <strong>{{ $reference }}</strong></p>
             @endif
-            <p>Présentez-vous à l'heure indiquée avec vos pièces.</p>
+            <p>Présentez-vous à l'heure indiquée avec vos pièces. Imprimez la convocation PDF et apportez-la au guichet.</p>
+            @if(!empty($lienPdf))
+                <p style="margin:20px 0;">
+                    <a href="{{ $lienPdf }}" style="display:inline-block;background:{{ $primaire }};color:#fff;padding:12px 18px;text-decoration:none;font-weight:bold;border-radius:6px;">
+                        Télécharger / imprimer la convocation PDF
+                    </a>
+                </p>
+            @endif
             @if($lien)
                 <p><a href="{{ $lien }}" style="color:{{ $primaire }};">Voir ou modifier le rendez-vous</a></p>
             @endif

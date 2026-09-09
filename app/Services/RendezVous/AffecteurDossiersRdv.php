@@ -6,7 +6,6 @@ use App\Contracts\PorteurDeRendezVous;
 use App\Models\ESBTPCandidature;
 use App\Models\ESBTPRdvReservation;
 use App\Models\ESBTPReinscriptionDemande;
-use Illuminate\Support\Facades\DB;
 
 class AffecteurDossiersRdv
 {
@@ -16,11 +15,6 @@ class AffecteurDossiersRdv
         private readonly ReservateurRdv $reservateur,
         private readonly MessagerieRdv $mails,
     ) {
-    }
-
-    public function placerApresCommit(PorteurDeRendezVous $porteur): void
-    {
-        DB::afterCommit(fn () => $this->placerUn($porteur));
     }
 
     public function placerUn(PorteurDeRendezVous $porteur): bool
