@@ -2,27 +2,30 @@
 
 namespace App\Services\RendezVous;
 
-use App\Mail\RendezVous\ConfirmationRdvMail;
-use App\Mail\RendezVous\InvitationRdvMail;
+use App\Contracts\PorteurDeRendezVous;
+use App\Helpers\SettingsHelper;
+use App\Jobs\EnvoyerConvocationRdvJob;
+use App\Jobs\EnvoyerMailRdvJob;
 use App\Models\ESBTPCandidature;
 use App\Models\ESBTPReinscriptionDemande;
 use App\Models\ESBTPRdvReservation;
-use App\Services\MailPulse\MailPulseClient;
 use App\Services\Vitrine\IdentitePublique;
-use Illuminate\Mail\Mailable;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\View;
 
 class MessagerieRdv
 {
     public function __construct(
-        private readonly ReferencePublique $references,
         private readonly IdentitePublique $identite,
-        private readonly MailPulseClient $mailpulse,
+        private readonly ConvocationRdvPdf $pdf,
     ) {
     }
 
     public function confirmer(ESBTPRdvReservation $reservation, string $action = 'confirme'): void
+    {
+        EnvoyerConvocationRdvJob::dispatch($reservation->id, $action);
+    }
+
+    public function expedierConvocation(ESBTPRdvReservation $reservation, string $action = 'confirme'): void
     {
         $email = trim((string) ($reservation->email ?? ''));
         if ($email === '' || ! filter_var($email, FILTER_VALIDATE_EMAIL)) {
@@ -31,7 +34,11 @@ class MessagerieRdv
 
         $creneau = $reservation->creneau;
         $ecole = $this->nomEcole();
-        $reference = $this->referencePourReservation($reservation);
+        $porteur = $reservation->porteur();
+        $reference = $porteur?->referencePubliqueAffichee() ?? '';
+        $date = $creneau?->date?->translatedFormat('l j F Y') ?? '—';
+        $heure = $creneau ? ($creneau->heureDebutHi().' – '.$creneau->heureFinHi()) : '—';
+        $lien = $this->lienReservation($reference);
 
         $intro = match ($action) {
             'deplace' => 'Votre rendez-vous a été déplacé.',
@@ -39,26 +46,19 @@ class MessagerieRdv
             default => 'Votre rendez-vous est confirmé.',
         };
 
-        $donnees = [
-            'sujet' => $intro.' — '.$ecole,
-            'prenom' => $reservation->prenoms ?: $reservation->nom,
-            'intro' => $intro,
-            'ecole' => $ecole,
-            'date' => $creneau?->date?->translatedFormat('l j F Y') ?? '—',
-            'heure' => $creneau ? ($creneau->heureDebutHi().' – '.$creneau->heureFinHi()) : '—',
-            'reference' => $this->references->formater($reference),
-            'lien' => $this->lienReservation($reference),
-        ];
-        $texte = $intro."\n\n".$donnees['date'].' '.$donnees['heure']."\nRéférence : ".$donnees['reference']."\n".$donnees['lien'];
-        $this->expedier($email, new ConfirmationRdvMail($donnees), $texte, $donnees['sujet']);
+        $texte = $intro."\n\n".$date.' '.$heure."\nRéférence : ".$reference."\n".$lien;
+        $html = $this->htmlConvocation($reservation, $date, $heure, $reference, $lien, $intro);
+        $pdf = $action === 'annule' ? null : base64_encode($this->pdf->binaire($reservation));
+
+        EnvoyerMailRdvJob::dispatch($email, $intro.' — '.$ecole, $texte, $html, $pdf);
     }
 
     /**
-     * @return array{envoyes: int, sans_email: int, deja: int, erreurs: int}
+     * @return array{envoyes: int, sans_email: int, deja: int}
      */
     public function inviterEnAttente(bool $ecrire = false): array
     {
-        $rapport = ['envoyes' => 0, 'sans_email' => 0, 'deja' => 0, 'erreurs' => 0];
+        $rapport = ['envoyes' => 0, 'sans_email' => 0, 'deja' => 0];
         $ecole = $this->nomEcole();
 
         ESBTPCandidature::query()
@@ -66,7 +66,7 @@ class MessagerieRdv
             ->whereDoesntHave('reservations', fn ($q) => $q->occupantes())
             ->orderBy('id')
             ->each(function (ESBTPCandidature $c) use ($ecrire, $ecole, &$rapport) {
-                $this->inviterPorteur($c, $c->email, $c->prenoms ?: $c->nom, '', $ecrire, $ecole, $rapport);
+                $this->inviterPorteur($c, $ecrire, $ecole, $rapport);
             });
 
         ESBTPReinscriptionDemande::query()
@@ -75,40 +75,24 @@ class MessagerieRdv
             ->with('etudiant')
             ->orderBy('id')
             ->each(function (ESBTPReinscriptionDemande $d) use ($ecrire, $ecole, &$rapport) {
-                $etudiant = $d->etudiant;
-                $this->inviterPorteur(
-                    $d,
-                    $etudiant->email ?? null,
-                    $etudiant->prenoms ?? $etudiant->nom ?? 'bonjour',
-                    ' ou de votre matricule',
-                    $ecrire,
-                    $ecole,
-                    $rapport
-                );
+                $this->inviterPorteur($d, $ecrire, $ecole, $rapport);
             });
 
         return $rapport;
     }
 
     /**
-     * @param  array{envoyes: int, sans_email: int, deja: int, erreurs: int}  $rapport
+     * @param  array{envoyes: int, sans_email: int, deja: int}  $rapport
      */
-    private function inviterPorteur(
-        ESBTPCandidature|ESBTPReinscriptionDemande $porteur,
-        ?string $email,
-        string $prenom,
-        string $identifiantAide,
-        bool $ecrire,
-        string $ecole,
-        array &$rapport
-    ): void {
-        if ($porteur->rdv_invite_at !== null) {
+    private function inviterPorteur(PorteurDeRendezVous $porteur, bool $ecrire, string $ecole, array &$rapport): void
+    {
+        if ($porteur->dejaInviteRdv()) {
             $rapport['deja']++;
 
             return;
         }
 
-        $email = trim((string) $email);
+        $email = trim((string) $porteur->emailRdv());
         if ($email === '' || ! filter_var($email, FILTER_VALIDATE_EMAIL)) {
             $rapport['sans_email']++;
 
@@ -121,52 +105,56 @@ class MessagerieRdv
             return;
         }
 
-        $reference = $porteur instanceof ESBTPCandidature
-            ? $this->references->assurerCandidature($porteur)
-            : $this->references->assurerDemande($porteur);
+        $prenom = $porteur->prenomRdv();
+        $reference = $porteur->referencePubliqueAffichee() ?? '';
+        $texte = "Bonjour {$prenom},\n\nPrenez rendez-vous au guichet de {$ecole}.\nRéférence : {$reference}\n".$this->lienReservation($reference);
 
-        $donnees = [
-            'sujet' => 'Prenez rendez-vous — '.$ecole,
-            'prenom' => $prenom,
-            'ecole' => $ecole,
-            'reference' => $this->references->formater($reference),
-            'lien' => $this->lienReservation($reference),
-            'identifiantAide' => $identifiantAide,
-        ];
-        $texte = "Bonjour {$prenom},\n\nPrenez rendez-vous au guichet de {$ecole}.\nRéférence : {$donnees['reference']}\n{$donnees['lien']}";
-        if ($this->expedier($email, new InvitationRdvMail($donnees), $texte, $donnees['sujet'])) {
-            $porteur->forceFill(['rdv_invite_at' => now()])->save();
-            $rapport['envoyes']++;
-        } else {
-            $rapport['erreurs']++;
-        }
+        $porteur->marquerInviteRdv();
+        EnvoyerMailRdvJob::dispatch($email, 'Prenez rendez-vous — '.$ecole, $texte);
+        $rapport['envoyes']++;
     }
 
-    private function expedier(string $email, Mailable $mail, string $texte, string $sujet): bool
-    {
-        $pulse = $this->mailpulse->sendEmailMessage([
-            'channel' => 'email',
-            'recipient' => ['type' => 'email', 'value' => $email],
-            'content' => ['type' => 'text', 'text' => $sujet."\n\n".$texte],
-            'metadata' => ['source' => 'klassci', 'workflow_event' => 'rendez_vous'],
-        ]);
+    private function htmlConvocation(
+        ESBTPRdvReservation $reservation,
+        string $date,
+        string $heure,
+        string $reference,
+        string $lien,
+        string $intro,
+    ): string {
+        $ecole = SettingsHelper::getSchoolInfo();
+        $pdf = SettingsHelper::getPdfSettings();
+        $logo = SettingsHelper::resolveLogoBase64();
 
-        if ($pulse->ok) {
-            return true;
-        }
+        return View::make('esbtp.emails.parents.rendez-vous-convocation', [
+            'parentName' => $reservation->prenoms ?: $reservation->nom,
+            'studentName' => trim($reservation->prenoms.' '.$reservation->nom),
+            'nom' => trim($reservation->nom.' '.$reservation->prenoms),
+            'date' => $date,
+            'heure' => $heure,
+            'reference' => $reference,
+            'lien' => $lien,
+            'intro' => $intro,
+            'schoolName' => $ecole['name'] ?? 'KLASSCI',
+            'schoolAddress' => $ecole['address'] ?? '',
+            'schoolPhone' => $ecole['phone'] ?? '',
+            'schoolEmail' => $ecole['email'] ?? '',
+            'schoolLogoPath' => $logo ? 'logo' : null,
+            'emailPrimaryColor' => $pdf['primary_color'] ?? '#0453cb',
+            'emailHeaderBgColor' => $pdf['header_bg_color'] ?? ($pdf['primary_color'] ?? '#0453cb'),
+            'emailHeaderTextColor' => $pdf['header_text_on_bg'] ?? ($pdf['header_text_color'] ?? '#ffffff'),
+            'emailSecondaryColor' => $pdf['secondary_color'] ?? '#64748b',
+            'message' => new class($logo) {
+                public function __construct(private readonly ?array $logo)
+                {
+                }
 
-        try {
-            Mail::to($email)->send($mail);
-
-            return true;
-        } catch (\Throwable $e) {
-            Log::warning('Mail de rendez-vous non parti', [
-                'mailpulse' => $pulse->status,
-                'erreur' => $e->getMessage(),
-            ]);
-
-            return false;
-        }
+                public function embed(string $path): string
+                {
+                    return $this->logo['data_uri'] ?? $path;
+                }
+            },
+        ])->render();
     }
 
     private function nomEcole(): string
@@ -176,24 +164,11 @@ class MessagerieRdv
         return $nom !== '' ? $nom : 'votre établissement';
     }
 
-    private function lienReservation(string $reference): string
+    private function lienReservation(string $referenceAffichee): string
     {
         $code = strtolower(trim((string) config('app.tenant_code', '')));
 
         return 'https://www.klassci.com/inscription/universite/'.$code.'/rendez-vous?ref='
-            .rawurlencode($this->references->formater($reference));
-    }
-
-    private function referencePourReservation(ESBTPRdvReservation $reservation): string
-    {
-        if ($reservation->candidature_id) {
-            $c = $reservation->candidature ?? ESBTPCandidature::query()->find($reservation->candidature_id);
-
-            return $c ? $this->references->assurerCandidature($c) : '';
-        }
-
-        $d = $reservation->demande ?? ESBTPReinscriptionDemande::query()->find($reservation->reinscription_demande_id);
-
-        return $d ? $this->references->assurerDemande($d) : '';
+            .rawurlencode($referenceAffichee);
     }
 }

@@ -32,8 +32,10 @@ Un créneau plein rend 409 `{ code: complet, creneaux }` : la liste rafraîchie,
 
 ## Dépôt
 
-Les 201 de candidature et de réinscription emportent `reference_publique` (groupée `XXXX-XXXX-XXXX`) et `rdv_ouvert`.
+Les 201 de candidature et de réinscription emportent `reference_publique` et, s'il reste de la place, `rendez_vous: { date, heure_debut, heure_fin }` : le créneau est attribué au dépôt et une convocation (mail HTML + PDF) part. `null` s'il n'y a plus de créneau.
 
 ## Historique
 
+- 2026-09-08 — le 201 attribue un créneau et envoie la convocation.
+- 2026-09-08 — `rdv_ouvert` retiré du 201 (le canal se lit ailleurs). Référence émise au dépôt.
 - 2026-09-07 — création (PR B, inscriptions physiques).

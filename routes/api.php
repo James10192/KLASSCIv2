@@ -543,6 +543,7 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
         Route::post('/settings', [App\Http\Controllers\API\CLI\CLISettingsController::class, 'update'])->name('settings.update');
         Route::post('/inscriptions/normaliser-type', [App\Http\Controllers\API\CLI\CLIInscriptionTypeController::class, 'normaliser'])->name('inscriptions.normaliser-type');
         Route::post('/rendez-vous/generer', [App\Http\Controllers\API\CLI\CLIRendezVousController::class, 'generer'])->name('rendez-vous.generer');
+        Route::post('/rendez-vous/placer', [App\Http\Controllers\API\CLI\CLIRendezVousController::class, 'placer'])->name('rendez-vous.placer');
         Route::post('/rendez-vous/relancer', [App\Http\Controllers\API\CLI\CLIRendezVousController::class, 'relancer'])->name('rendez-vous.relancer');
         // L'ordre des categories est l'ordre dans lequel un versement solde les
         // frais. Le changer est une decision de l'ecole, pas du code.

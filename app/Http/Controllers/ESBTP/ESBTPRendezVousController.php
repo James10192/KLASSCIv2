@@ -6,6 +6,7 @@ use App\Exceptions\ReglagesRdvIncomplets;
 use App\Http\Controllers\Controller;
 use App\Models\ESBTPRdvCreneau;
 use App\Models\Setting;
+use App\Services\RendezVous\AffecteurDossiersRdv;
 use App\Services\RendezVous\GenerateurCreneaux;
 use App\Services\RendezVous\RendezVousReglages;
 use App\Services\Reinscription\PortailReinscriptionService;
@@ -18,6 +19,7 @@ class ESBTPRendezVousController extends Controller
     public function __construct(
         private readonly RendezVousReglages $reglages,
         private readonly GenerateurCreneaux $generateur,
+        private readonly AffecteurDossiersRdv $affecteur,
     ) {
     }
 
@@ -57,6 +59,12 @@ class ESBTPRendezVousController extends Controller
             'debit' => $this->reglages->debitJournalier(),
             'peutGerer' => auth()->user()?->can('inscriptions.rdv.manage') ?? false,
             'peutConfigurer' => auth()->user()?->can('inscriptions.rdv.configure') ?? false,
+            'rdv' => $this->reglages,
+            'rdvJours' => [1 => 'Lun', 2 => 'Mar', 3 => 'Mer', 4 => 'Jeu', 5 => 'Ven', 6 => 'Sam', 7 => 'Dim'],
+            'rdvJoursChoisis' => array_map('strval', array_filter(preg_split(
+                '/[,\s]+/',
+                $this->reglages->valeur(RendezVousReglages::JOURS, '1,2,3,4,5')
+            ) ?: [])),
         ]);
     }
 
@@ -117,6 +125,21 @@ class ESBTPRendezVousController extends Controller
                 $rapport->misAJour,
                 $rapport->fermes,
                 $rapport->conservesOccupes
+            ));
+    }
+
+    public function placer(): RedirectResponse
+    {
+        $rapport = $this->affecteur->placer(true);
+
+        return redirect()
+            ->route('esbtp.rendez-vous.index')
+            ->with('success', sprintf(
+                '%d dossiers placés et convoqués par mail. %d sans email, %d sans créneau, %d déjà réservés.',
+                $rapport['places'],
+                $rapport['sans_email'],
+                $rapport['sans_creneau'],
+                $rapport['deja']
             ));
     }
 

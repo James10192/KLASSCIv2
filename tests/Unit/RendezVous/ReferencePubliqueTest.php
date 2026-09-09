@@ -4,7 +4,7 @@ namespace Tests\Unit\RendezVous;
 
 use App\Enums\CanalPortailPublic;
 use App\Enums\NaturePortailPublic;
-use App\Services\RendezVous\ReferencePublique;
+use App\Services\Portail\ReferencePublique;
 use Tests\TestCase;
 
 class ReferencePubliqueTest extends TestCase

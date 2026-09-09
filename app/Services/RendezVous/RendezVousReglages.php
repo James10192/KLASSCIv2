@@ -12,8 +12,6 @@ class RendezVousReglages
 {
     public const ENABLED = 'inscriptions.rdv.enabled';
 
-    public const OBLIGATOIRE = 'inscriptions.rdv.obligatoire';
-
     public const OUVERTURE = 'inscriptions.rdv.ouverture';
 
     public const FERMETURE = 'inscriptions.rdv.fermeture';
@@ -36,8 +34,6 @@ class RendezVousReglages
 
     public const DELAI_MODIF = 'inscriptions.rdv.delai_modif_heures';
 
-    public const GRACE = 'inscriptions.rdv.grace_no_show_minutes';
-
     /** @return list<string> */
     public static function clesTexte(): array
     {
@@ -53,24 +49,18 @@ class RendezVousReglages
             self::CAPACITE,
             self::DELAI_MIN,
             self::DELAI_MODIF,
-            self::GRACE,
         ];
     }
 
     /** @return list<string> */
     public static function clesBascules(): array
     {
-        return [self::ENABLED, self::OBLIGATOIRE];
+        return [self::ENABLED];
     }
 
     public function enabled(): bool
     {
         return $this->flag(self::ENABLED);
-    }
-
-    public function obligatoire(): bool
-    {
-        return $this->flag(self::OBLIGATOIRE);
     }
 
     public function pourGeneration(): CreneauRegle

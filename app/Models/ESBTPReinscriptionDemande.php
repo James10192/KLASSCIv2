@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Contracts\PorteurDeRendezVous;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -17,8 +18,10 @@ use OwenIt\Auditing\Contracts\Auditable;
  * conversion passe par ReeinscriptionService::effectuerReinscription — le flux
  * canonique. C'est cette separation qui rend le canal public acceptable.
  */
-class ESBTPReinscriptionDemande extends Model implements Auditable
+class ESBTPReinscriptionDemande extends Model implements Auditable, PorteurDeRendezVous
 {
+    use Concerns\EstPorteurDeRendezVous;
+    use Concerns\HasReferencePublique;
     use HasFactory;
     use \OwenIt\Auditing\Auditable;
 
@@ -151,5 +154,48 @@ class ESBTPReinscriptionDemande extends Model implements Auditable
             self::STATUT_CONVERTIE => 'Réinscrit',
             default => $this->statut,
         };
+    }
+
+    public function colonneReservationRdv(): string
+    {
+        return 'reinscription_demande_id';
+    }
+
+    public function clesReservationRdv(): array
+    {
+        return [
+            'candidature_id' => null,
+            'reinscription_demande_id' => (int) $this->id,
+        ];
+    }
+
+    public function snapshotRdv(): array
+    {
+        $etudiant = $this->etudiantRdv();
+
+        return [
+            'nom' => (string) ($etudiant?->nom ?? ''),
+            'prenoms' => (string) ($etudiant?->prenoms ?? ''),
+            'telephone' => (string) ($etudiant?->telephone ?? ''),
+            'date_naissance' => \App\Support\IdentitePersonne::jour($etudiant?->date_naissance),
+            'email' => $etudiant?->email,
+        ];
+    }
+
+    public function emailRdv(): ?string
+    {
+        return $this->etudiantRdv()?->email;
+    }
+
+    public function prenomRdv(): string
+    {
+        $etudiant = $this->etudiantRdv();
+
+        return (string) ($etudiant?->prenoms ?: $etudiant?->nom ?: 'bonjour');
+    }
+
+    private function etudiantRdv(): ?ESBTPEtudiant
+    {
+        return $this->etudiant ?? ESBTPEtudiant::query()->find($this->etudiant_id);
     }
 }

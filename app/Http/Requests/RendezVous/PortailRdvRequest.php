@@ -17,7 +17,6 @@ class PortailRdvRequest extends FormRequest
             'reference' => ['required', 'string', 'max:20'],
             'date_naissance' => ['required', 'date_format:Y-m-d'],
             'ip_client' => ['required', 'ip'],
-            'creneau_id' => ['sometimes', 'integer', 'min:1'],
         ];
     }
 }

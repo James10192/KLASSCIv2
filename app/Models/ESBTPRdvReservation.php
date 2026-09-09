@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Contracts\PorteurDeRendezVous;
 use App\Enums\StatutReservationRdv;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -43,6 +44,15 @@ class ESBTPRdvReservation extends Model
     public function demande(): BelongsTo
     {
         return $this->belongsTo(ESBTPReinscriptionDemande::class, 'reinscription_demande_id');
+    }
+
+    public function porteur(): ?PorteurDeRendezVous
+    {
+        $this->loadMissing(['candidature', 'demande']);
+
+        $porteur = $this->candidature ?? $this->demande;
+
+        return $porteur instanceof PorteurDeRendezVous ? $porteur : null;
     }
 
     public function scopeOccupantes(Builder $query): Builder

@@ -7,8 +7,7 @@ use App\Http\Requests\Reinscription\PortailRequest;
 use App\Http\Requests\Reinscription\PortailSubmitRequest;
 use App\Models\ESBTPEtudiant;
 use App\Services\Inscription\PortailCandidaturePublication;
-use App\Services\RendezVous\ReferencePublique;
-use App\Services\RendezVous\RendezVousReglages;
+use App\Services\RendezVous\AffecteurDossiersRdv;
 use App\Services\Reinscription\PortailReinscriptionService;
 use App\Services\Reinscription\SituationReinscription;
 use Illuminate\Http\JsonResponse;
@@ -33,7 +32,10 @@ use Illuminate\Support\Facades\RateLimiter;
  */
 class ReinscriptionPortalController extends Controller
 {
-    public function __construct(private readonly PortailReinscriptionService $portail) {}
+    public function __construct(
+        private readonly PortailReinscriptionService $portail,
+        private readonly AffecteurDossiersRdv $rdv,
+    ) {}
 
     /** Retrouver sa situation. Ne cree rien. */
     public function lookup(PortailRequest $request): JsonResponse
@@ -92,10 +94,8 @@ class ReinscriptionPortalController extends Controller
             'enregistre' => true,
             'message' => 'Votre demande a bien été transmise à votre établissement.',
             'inscriptions_physiques' => app(PortailCandidaturePublication::class)->inscriptionsPhysiques(),
-            'reference_publique' => app(ReferencePublique::class)->formater(
-                app(ReferencePublique::class)->assurerDemande($demande)
-            ),
-            'rdv_ouvert' => app(RendezVousReglages::class)->enabled(),
+            'reference_publique' => $demande->referencePubliqueAffichee(),
+            'rendez_vous' => $this->rdv->placerUn($demande),
         ], 201);
     }
 

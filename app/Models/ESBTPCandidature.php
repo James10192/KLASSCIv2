@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Contracts\PorteurDeRendezVous;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -18,8 +19,10 @@ use OwenIt\Auditing\Contracts\Auditable;
  * convertit en etudiant puis en inscription. Cette separation est ce qui rend
  * le canal public acceptable.
  */
-class ESBTPCandidature extends Model implements Auditable
+class ESBTPCandidature extends Model implements Auditable, PorteurDeRendezVous
 {
+    use Concerns\EstPorteurDeRendezVous;
+    use Concerns\HasReferencePublique;
     use HasFactory;
     use \OwenIt\Auditing\Auditable;
 
@@ -288,5 +291,39 @@ class ESBTPCandidature extends Model implements Auditable
         $depuisListe = trim(($this->filiere?->name ?? '').' '.($this->niveau?->name ?? ''));
 
         return $depuisListe !== '' ? $depuisListe : (string) ($this->voeu_libre ?? '');
+    }
+
+    public function colonneReservationRdv(): string
+    {
+        return 'candidature_id';
+    }
+
+    public function clesReservationRdv(): array
+    {
+        return [
+            'candidature_id' => (int) $this->id,
+            'reinscription_demande_id' => null,
+        ];
+    }
+
+    public function snapshotRdv(): array
+    {
+        return [
+            'nom' => (string) $this->nom,
+            'prenoms' => (string) $this->prenoms,
+            'telephone' => (string) $this->telephone,
+            'date_naissance' => \App\Support\IdentitePersonne::jour($this->date_naissance),
+            'email' => $this->email,
+        ];
+    }
+
+    public function emailRdv(): ?string
+    {
+        return $this->email;
+    }
+
+    public function prenomRdv(): string
+    {
+        return (string) ($this->prenoms ?: $this->nom);
     }
 }

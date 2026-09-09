@@ -9,8 +9,10 @@ use Carbon\Carbon;
 
 class CatalogueCreneaux
 {
-    public function __construct(private readonly RendezVousReglages $reglages)
-    {
+    public function __construct(
+        private readonly RendezVousReglages $reglages,
+        private readonly PortailReinscriptionService $reinscriptions,
+    ) {
     }
 
     /**
@@ -24,7 +26,7 @@ class CatalogueCreneaux
             return [];
         }
 
-        $annee = app(PortailReinscriptionService::class)->anneeCible();
+        $annee = $this->reinscriptions->anneeCible();
         if ($annee === null) {
             return [];
         }

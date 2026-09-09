@@ -17,11 +17,10 @@ class RelancerInvitationsRdv extends Command
         $rapport = $mails->inviterEnAttente($ecrire);
 
         $this->info(sprintf(
-            'Envoyés : %d · sans email : %d · déjà relancés : %d · erreurs : %d%s',
+            'Envoyés : %d · sans email : %d · déjà relancés : %d%s',
             $rapport['envoyes'],
             $rapport['sans_email'],
             $rapport['deja'],
-            $rapport['erreurs'],
             $ecrire ? '' : ' (simulation)'
         ));
 

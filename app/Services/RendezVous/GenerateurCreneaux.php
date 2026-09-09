@@ -35,13 +35,16 @@ class GenerateurCreneaux
         $conserves = 0;
 
         DB::transaction(function () use ($annee, $clesTheoriques, $regle, &$crees, &$misAJour, &$fermes, &$conserves) {
-            foreach ($clesTheoriques as $slot) {
-                $existant = ESBTPRdvCreneau::query()
-                    ->where('annee_universitaire_id', $annee->id)
-                    ->whereDate('date', $slot['date'])
-                    ->whereTime('heure_debut', $slot['heure_debut'])
-                    ->lockForUpdate()
-                    ->first();
+            $existants = ESBTPRdvCreneau::query()
+                ->where('annee_universitaire_id', $annee->id)
+                ->whereDate('date', '>=', $regle->plancher->toDateString())
+                ->whereDate('date', '<=', $regle->fermeture->toDateString())
+                ->lockForUpdate()
+                ->get()
+                ->keyBy(fn (ESBTPRdvCreneau $c) => $c->date->toDateString().'|'.$c->heureDebutHi());
+
+            foreach ($clesTheoriques as $cle => $slot) {
+                $existant = $existants->get($cle);
 
                 if ($existant === null) {
                     ESBTPRdvCreneau::create([
@@ -71,15 +74,7 @@ class GenerateurCreneaux
                 $misAJour++;
             }
 
-            $existants = ESBTPRdvCreneau::query()
-                ->where('annee_universitaire_id', $annee->id)
-                ->whereDate('date', '>=', $regle->plancher->toDateString())
-                ->whereDate('date', '<=', $regle->fermeture->toDateString())
-                ->lockForUpdate()
-                ->get();
-
-            foreach ($existants as $creneau) {
-                $cle = $creneau->date->toDateString().'|'.$creneau->heureDebutHi();
+            foreach ($existants as $cle => $creneau) {
                 if (isset($clesTheoriques[$cle])) {
                     continue;
                 }

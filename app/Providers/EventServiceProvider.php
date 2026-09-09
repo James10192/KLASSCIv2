@@ -26,8 +26,10 @@ use App\Listeners\UpdatePlanificationHours;
 use App\Listeners\AuditPermissionChange;
 
 // Audit infrastructure
+use App\Models\ESBTPCandidature;
 use App\Models\Setting;
 use App\Models\User;
+use App\Observers\InvalideurRdv;
 use App\Observers\SettingObserver;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
@@ -91,6 +93,7 @@ class EventServiceProvider extends ServiceProvider
         // Observer custom pour les Settings (KV pairs hétéroclites,
         // ne passe pas par le trait Auditable).
         Setting::observe(SettingObserver::class);
+        ESBTPCandidature::observe(InvalideurRdv::class);
 
         // Listener pour les changements rôles/permissions Spatie.
         // Spatie 5.x ne dispatche pas d'events natifs RoleAttached/Detached,

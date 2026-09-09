@@ -2,12 +2,14 @@
 
 namespace App\Services\RendezVous;
 
+use App\Contracts\PorteurDeRendezVous;
 use App\Enums\StatutReservationRdv;
 use App\Models\ESBTPCandidature;
-use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPReinscriptionDemande;
 use App\Models\ESBTPRdvCreneau;
 use App\Models\ESBTPRdvReservation;
+use App\Services\Portail\ReferencePublique;
+use App\Support\IdentitePersonne;
 use App\Support\SeauDeDebit;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -54,30 +56,42 @@ class ReservateurRdv
             return ['ok' => false, 'code' => 'introuvable'];
         }
 
-        return DB::transaction(function () use ($porteur, $creneauId) {
-            $creneau = ESBTPRdvCreneau::query()->whereKey($creneauId)->lockForUpdate()->first();
-            if ($creneau === null || ! $creneau->ouvert) {
-                return ['ok' => false, 'code' => 'ferme', 'creneaux' => $this->catalogue->publier()];
-            }
-
-            if ($this->tropTot($creneau) || $this->dejaCommence($creneau)) {
-                return ['ok' => false, 'code' => 'trop_tot', 'creneaux' => $this->catalogue->publier()];
-            }
-
-            $existante = $this->reservationActiveDu($porteur);
-            if ($existante !== null) {
+        return $this->sousVerrou($porteur, function (PorteurDeRendezVous $porteur) use ($creneauId) {
+            if ($this->reservationActiveDu($porteur, true) !== null) {
                 return ['ok' => false, 'code' => 'deja_reserve'];
             }
 
-            if ($creneau->placesPrises() >= $creneau->capacite) {
-                return ['ok' => false, 'code' => 'complet', 'creneaux' => $this->catalogue->publier()];
+            $creneau = $this->prendreCreneau($creneauId);
+            if (! $creneau instanceof ESBTPRdvCreneau) {
+                return $creneau;
             }
 
-            $snapshot = $this->snapshot($porteur);
-            $reservation = ESBTPRdvReservation::create($snapshot + [
+            $reservation = ESBTPRdvReservation::create($porteur->snapshotRdv() + $porteur->clesReservationRdv() + [
                 'creneau_id' => $creneau->id,
-                'candidature_id' => $porteur instanceof ESBTPCandidature ? $porteur->id : null,
-                'reinscription_demande_id' => $porteur instanceof ESBTPReinscriptionDemande ? $porteur->id : null,
+                'statut' => StatutReservationRdv::Confirmee->value,
+            ]);
+
+            return ['ok' => true, 'reservation' => $reservation->load('creneau')];
+        });
+    }
+
+    /**
+     * @return array{ok: true, reservation: ESBTPRdvReservation}|array{ok: false, code: string}
+     */
+    public function placer(PorteurDeRendezVous $porteur, int $creneauId): array
+    {
+        return $this->sousVerrou($porteur, function (PorteurDeRendezVous $porteur) use ($creneauId) {
+            if ($this->reservationActiveDu($porteur, true) !== null) {
+                return ['ok' => false, 'code' => 'deja_reserve'];
+            }
+
+            $creneau = $this->prendreCreneau($creneauId, null, false);
+            if (! $creneau instanceof ESBTPRdvCreneau) {
+                return ['ok' => false, 'code' => $creneau['code'] ?? 'ferme'];
+            }
+
+            $reservation = ESBTPRdvReservation::create($porteur->snapshotRdv() + $porteur->clesReservationRdv() + [
+                'creneau_id' => $creneau->id,
                 'statut' => StatutReservationRdv::Confirmee->value,
             ]);
 
@@ -95,8 +109,8 @@ class ReservateurRdv
             return ['ok' => false, 'code' => 'introuvable'];
         }
 
-        return DB::transaction(function () use ($porteur, $creneauId) {
-            $actuelle = $this->reservationActiveDu($porteur);
+        return $this->sousVerrou($porteur, function (PorteurDeRendezVous $porteur) use ($creneauId) {
+            $actuelle = $this->reservationActiveDu($porteur, true);
             if ($actuelle === null) {
                 return ['ok' => false, 'code' => 'introuvable'];
             }
@@ -105,17 +119,9 @@ class ReservateurRdv
                 return ['ok' => false, 'code' => 'trop_tard'];
             }
 
-            $cible = ESBTPRdvCreneau::query()->whereKey($creneauId)->lockForUpdate()->first();
-            if ($cible === null || ! $cible->ouvert) {
-                return ['ok' => false, 'code' => 'ferme', 'creneaux' => $this->catalogue->publier()];
-            }
-
-            if ($this->tropTot($cible) || $this->dejaCommence($cible)) {
-                return ['ok' => false, 'code' => 'trop_tot', 'creneaux' => $this->catalogue->publier()];
-            }
-
-            if ((int) $cible->id !== (int) $actuelle->creneau_id && $cible->placesPrises() >= $cible->capacite) {
-                return ['ok' => false, 'code' => 'complet', 'creneaux' => $this->catalogue->publier()];
+            $cible = $this->prendreCreneau($creneauId, (int) $actuelle->creneau_id);
+            if (! $cible instanceof ESBTPRdvCreneau) {
+                return $cible;
             }
 
             $actuelle->update(['creneau_id' => $cible->id]);
@@ -125,7 +131,7 @@ class ReservateurRdv
     }
 
     /**
-     * @return array{ok: true}|array{ok: false, code: string}
+     * @return array{ok: true, reservation?: ESBTPRdvReservation}|array{ok: false, code: string}
      */
     public function annuler(string $reference, string $dateNaissance): array
     {
@@ -134,28 +140,27 @@ class ReservateurRdv
             return ['ok' => false, 'code' => 'introuvable'];
         }
 
-        $actuelle = $this->reservationActiveDu($porteur);
-        if ($actuelle === null) {
-            return ['ok' => false, 'code' => 'introuvable'];
-        }
+        return $this->sousVerrou($porteur, function (PorteurDeRendezVous $porteur) {
+            $actuelle = $this->reservationActiveDu($porteur, true);
+            if ($actuelle === null) {
+                return ['ok' => false, 'code' => 'introuvable'];
+            }
 
-        if (! $this->peutModifier($actuelle)) {
-            return ['ok' => false, 'code' => 'trop_tard'];
-        }
+            if (! $this->peutModifier($actuelle)) {
+                return ['ok' => false, 'code' => 'trop_tard'];
+            }
 
-        $actuelle->update(['statut' => StatutReservationRdv::Annulee]);
+            $actuelle->update(['statut' => StatutReservationRdv::Annulee]);
 
-        return ['ok' => true, 'reservation' => $actuelle->load('creneau')];
+            return ['ok' => true, 'reservation' => $actuelle->load('creneau')];
+        });
     }
 
     public function consulter(string $reference, string $dateNaissance): ?ESBTPRdvReservation
     {
         $porteur = $this->porteurConcordant($reference, $dateNaissance);
-        if ($porteur === null) {
-            return null;
-        }
 
-        return $this->reservationActiveDu($porteur)?->load('creneau');
+        return $porteur === null ? null : $this->reservationActiveDu($porteur)?->load('creneau');
     }
 
     public function retrouver(string $identifiant, string $dateNaissance): ?string
@@ -172,7 +177,7 @@ class ReservateurRdv
             ->first();
 
         if ($candidature !== null) {
-            return $this->references->assurerCandidature($candidature);
+            return $candidature->assurerReferencePublique();
         }
 
         $demande = ESBTPReinscriptionDemande::query()
@@ -184,7 +189,7 @@ class ReservateurRdv
             })
             ->first();
 
-        return $demande === null ? null : $this->references->assurerDemande($demande);
+        return $demande?->assurerReferencePublique();
     }
 
     public function peutModifier(ESBTPRdvReservation $reservation): bool
@@ -200,7 +205,7 @@ class ReservateurRdv
         return Carbon::now()->addHours(max(0, $heures))->lt($debut);
     }
 
-    public function porteurConcordant(string $reference, string $dateNaissance): ESBTPCandidature|ESBTPReinscriptionDemande|null
+    public function porteurConcordant(string $reference, string $dateNaissance): ?PorteurDeRendezVous
     {
         $cle = $this->references->normaliser($reference);
         $naissance = $this->dateIso($dateNaissance);
@@ -210,10 +215,9 @@ class ReservateurRdv
 
         $candidature = ESBTPCandidature::query()->where('reference_publique', $cle)->first();
         if ($candidature !== null) {
-            $dob = $candidature->date_naissance;
-            $dob = $dob instanceof \DateTimeInterface ? $dob->format('Y-m-d') : (string) $dob;
-
-            return $dob === $naissance ? $candidature : null;
+            return IdentitePersonne::jour($candidature->date_naissance) === $naissance
+                ? $candidature
+                : null;
         }
 
         $demande = ESBTPReinscriptionDemande::query()
@@ -225,49 +229,61 @@ class ReservateurRdv
             return null;
         }
 
-        $dob = $demande->etudiant->date_naissance;
-        $dob = $dob instanceof \DateTimeInterface ? $dob->format('Y-m-d') : (string) $dob;
-
-        return $dob === $naissance ? $demande : null;
-    }
-
-    private function reservationActiveDu(ESBTPCandidature|ESBTPReinscriptionDemande $porteur): ?ESBTPRdvReservation
-    {
-        $colonne = $porteur instanceof ESBTPCandidature ? 'candidature_id' : 'reinscription_demande_id';
-
-        return ESBTPRdvReservation::query()
-            ->occupantes()
-            ->where($colonne, $porteur->id)
-            ->first();
+        return IdentitePersonne::jour($demande->etudiant->date_naissance) === $naissance
+            ? $demande
+            : null;
     }
 
     /**
-     * @return array{nom: string, prenoms: string, telephone: string, date_naissance: string, email: ?string}
+     * @template T
+     * @param  callable(PorteurDeRendezVous): T  $suite
+     * @return T|array{ok: false, code: string}
      */
-    private function snapshot(ESBTPCandidature|ESBTPReinscriptionDemande $porteur): array
+    private function sousVerrou(PorteurDeRendezVous $porteur, callable $suite): mixed
     {
-        if ($porteur instanceof ESBTPCandidature) {
-            $dob = $porteur->date_naissance;
+        return DB::transaction(function () use ($porteur, $suite) {
+            $verrouille = $porteur->verrouillerPourRdv();
+            if ($verrouille === null) {
+                return ['ok' => false, 'code' => 'introuvable'];
+            }
 
-            return [
-                'nom' => (string) $porteur->nom,
-                'prenoms' => (string) $porteur->prenoms,
-                'telephone' => (string) $porteur->telephone,
-                'date_naissance' => $dob instanceof \DateTimeInterface ? $dob->format('Y-m-d') : (string) $dob,
-                'email' => $porteur->email,
-            ];
+            return $suite($verrouille);
+        });
+    }
+
+    /**
+     * @return ESBTPRdvCreneau|array{ok: false, code: string, creneaux: list<array<string, mixed>>}
+     */
+    private function prendreCreneau(int $creneauId, ?int $ignorerId = null, bool $respecterDelai = true): ESBTPRdvCreneau|array
+    {
+        $creneau = ESBTPRdvCreneau::query()->whereKey($creneauId)->lockForUpdate()->first();
+        if ($creneau === null || ! $creneau->ouvert) {
+            return ['ok' => false, 'code' => 'ferme', 'creneaux' => $this->catalogue->publier()];
         }
 
-        $etudiant = $porteur->etudiant ?? ESBTPEtudiant::query()->find($porteur->etudiant_id);
-        $dob = $etudiant?->date_naissance;
+        if ($this->dejaCommence($creneau) || ($respecterDelai && $this->tropTot($creneau))) {
+            return ['ok' => false, 'code' => 'trop_tot', 'creneaux' => $this->catalogue->publier()];
+        }
 
-        return [
-            'nom' => (string) ($etudiant->nom ?? ''),
-            'prenoms' => (string) ($etudiant->prenoms ?? ''),
-            'telephone' => (string) ($etudiant->telephone ?? ''),
-            'date_naissance' => $dob instanceof \DateTimeInterface ? $dob->format('Y-m-d') : (string) $dob,
-            'email' => $etudiant->email ?? null,
-        ];
+        $meme = $ignorerId !== null && (int) $creneau->id === $ignorerId;
+        if (! $meme && $creneau->placesPrises() >= $creneau->capacite) {
+            return ['ok' => false, 'code' => 'complet', 'creneaux' => $this->catalogue->publier()];
+        }
+
+        return $creneau;
+    }
+
+    private function reservationActiveDu(PorteurDeRendezVous $porteur, bool $verrouiller = false): ?ESBTPRdvReservation
+    {
+        $requete = ESBTPRdvReservation::query()
+            ->occupantes()
+            ->where($porteur->colonneReservationRdv(), $porteur->clesReservationRdv()[$porteur->colonneReservationRdv()]);
+
+        if ($verrouiller) {
+            $requete->lockForUpdate();
+        }
+
+        return $requete->first();
     }
 
     private function tropTot(ESBTPRdvCreneau $creneau): bool
