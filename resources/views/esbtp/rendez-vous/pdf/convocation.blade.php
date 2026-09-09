@@ -1,7 +1,15 @@
+@php
+    $mm = function (string $cle, int $defaut) use ($settings): int {
+        $valeur = (int) ($settings[$cle] ?? 0);
+
+        return $valeur > 0 ? $valeur : $defaut;
+    };
+@endphp
 <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
     <title>Convocation au guichet</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -13,10 +21,10 @@
             background: #ffffff;
         }
         @page {
-            margin: {{ $settings['margin_top'] ?? 15 }}mm
-                    {{ $settings['margin_right'] ?? 10 }}mm
-                    {{ $settings['margin_bottom'] ?? 15 }}mm
-                    {{ $settings['margin_left'] ?? 10 }}mm;
+            margin: {{ $mm('margin_top', 16) }}mm
+                    {{ $mm('margin_right', 14) }}mm
+                    {{ $mm('margin_bottom', 16) }}mm
+                    {{ $mm('margin_left', 14) }}mm;
         }
         .bloc td { padding: 8px 12px; border-bottom: 1px solid #e5e7eb; }
         .lib { color: #6b7280; width: 38%; font-size: 11px; }
@@ -54,7 +62,7 @@
         'logo' => $logo,
     ])
 
-    <table width="100%" cellspacing="0" cellpadding="0" style="margin-top: 16px; border: 1px solid #d1d5db;">
+    <table width="100%" cellspacing="0" cellpadding="0" style="margin-top: 18px; border: 1px solid #d1d5db;">
         <tr>
             <td class="titre-cell">Votre rendez-vous</td>
         </tr>
