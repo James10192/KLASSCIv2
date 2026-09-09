@@ -1,10 +1,3 @@
-@php
-    $mm = function (string $cle, int $defaut) use ($settings): int {
-        $valeur = (int) ($settings[$cle] ?? 0);
-
-        return $valeur > 0 ? $valeur : $defaut;
-    };
-@endphp
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -12,20 +5,15 @@
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
     <title>Convocation au guichet</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: DejaVu Sans, Arial, sans-serif;
             font-size: 12px;
             color: {{ $settings['text_color'] ?? '#1f2937' }};
             line-height: 1.45;
             background: #ffffff;
+            margin: 0;
         }
-        @page {
-            margin: {{ $mm('margin_top', 16) }}mm
-                    {{ $mm('margin_right', 14) }}mm
-                    {{ $mm('margin_bottom', 16) }}mm
-                    {{ $mm('margin_left', 14) }}mm;
-        }
+        @page { margin: 0; }
         .bloc td { padding: 8px 12px; border-bottom: 1px solid #e5e7eb; }
         .lib { color: #6b7280; width: 38%; font-size: 11px; }
         .val { font-weight: bold; font-size: 12px; }
@@ -54,6 +42,9 @@
     @include('pdf.partials.theme')
 </head>
 <body>
+<table width="100%" cellspacing="0" cellpadding="0">
+<tr>
+<td style="padding: 16mm 14mm 18mm 14mm;">
     @include('pdf.partials.banner', [
         'title' => 'Convocation au guichet',
         'subtitle' => 'Inscriptions physiques — rendez-vous',
@@ -108,5 +99,8 @@
         {{ $settings['footer_text'] ?? ($ecole['name'] ?? 'KLASSCI') }}
         — Généré le {{ now()->format('d/m/Y à H:i') }}
     </div>
+</td>
+</tr>
+</table>
 </body>
 </html>

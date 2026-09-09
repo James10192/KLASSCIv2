@@ -16,6 +16,8 @@ class ConvocationRdvPdfController extends Controller
         return response($pdf->binaire($reservation), 200, [
             'Content-Type' => 'application/pdf',
             'Content-Disposition' => 'inline; filename="convocation-guichet.pdf"',
+            'Cache-Control' => 'no-store, no-cache, must-revalidate',
+            'Pragma' => 'no-cache',
         ]);
     }
 }
