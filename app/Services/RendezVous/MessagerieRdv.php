@@ -30,6 +30,19 @@ class MessagerieRdv
             return false;
         }
 
+        $this->mailpulse->createOrUpdateContact([
+            'email' => $email,
+            'first_name' => $reservation->prenoms ?: $reservation->nom,
+            'last_name' => $reservation->nom,
+            'language' => 'fr',
+            'preferred_channel' => 'email',
+            'subscribed' => true,
+            'metadata' => [
+                'source' => 'klassci-rdv',
+                'channel_opt_in' => ['email' => true],
+            ],
+        ]);
+
         $donnees = $this->donneesConvocation($reservation, $action);
         $texte = $donnees['sujet']."\n\n".$donnees['date'].' '.$donnees['heure']."\nRéférence : ".$donnees['reference'];
         $html = View::make('esbtp.emails.parents.rendez-vous-convocation', $donnees)->render();
