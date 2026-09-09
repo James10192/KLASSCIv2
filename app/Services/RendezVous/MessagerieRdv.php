@@ -20,7 +20,7 @@ class MessagerieRdv
 
     public function confirmer(ESBTPRdvReservation $reservation, string $action = 'confirme'): void
     {
-        EnvoyerConvocationRdvJob::dispatch($reservation->id, $action);
+        EnvoyerConvocationRdvJob::dispatch($reservation->id, $action)->afterResponse();
     }
 
     public function expedierConvocation(ESBTPRdvReservation $reservation, string $action = 'confirme'): bool
@@ -56,7 +56,7 @@ class MessagerieRdv
             return false;
         }
 
-        throw new RuntimeException('MailPulse rdv: '.$resultat->status);
+        throw new RuntimeException('MailPulse rdv: '.$resultat->status.' '.$resultat->message);
     }
 
     /**
