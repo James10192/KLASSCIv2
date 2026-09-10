@@ -116,9 +116,17 @@ class ESBTPDispense extends Model implements Auditable
         }
 
         if ($semestre === null) {
-            // Periode annuelle demandee, dispense d'un seul semestre : elle
-            // couvre une partie de l'annee, donc elle compte.
-            return true;
+            // L'ANNEE est demandee, et cette dispense ne porte que sur un
+            // semestre : elle ne suffit pas a retirer la matiere de l'annee.
+            //
+            // Croire l'inverse coutait cher. Un eleve dispense de
+            // mathematiques au premier semestre, puis note 8 au second, voyait
+            // la matiere disparaitre entierement de son bulletin annuel : sa
+            // moyenne et son rang montaient sur un travail qu'il avait
+            // reellement rendu. Deux dispenses de semestre qui couvrent les
+            // deux moities sont traitees par DispenseLookup, qui voit
+            // l'ensemble ; une seule ligne ne peut pas en decider.
+            return false;
         }
 
         return $this->periode === 'semestre'.$semestre;

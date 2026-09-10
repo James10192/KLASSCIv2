@@ -1338,10 +1338,18 @@ class BulletinService
                 continue;
             }
 
-            // Une dispense retire la matiere du dossier de l'etudiant : la
-            // ligne agregee doit partir, sinon le rang de ses camarades
-            // continuerait a le compter et les statistiques de classe aussi.
-            // Suppression douce : une revocation la fera revivre.
+            // Une dispense retire la matiere du dossier de l'etudiant : il n'a
+            // pas de resultat dans une matiere dont il est dispense, et la
+            // ligne agregee doit donc partir. Suppression douce : une
+            // revocation la fera revivre a la generation suivante.
+            //
+            // CE QUE CELA NE FAIT PAS, et il faut le savoir : le rang par
+            // matiere de ses camarades ne bouge pas. Il se calcule par
+            // preferRicherSubjectRank(), qui retient le MAXIMUM entre le rang
+            // stocke et un rang recalcule en direct sur `esbtp_notes` — ou les
+            // notes de l'etudiant dispense sont toujours la. Exclure vraiment
+            // un dispense du classement d'une matiere demanderait de filtrer
+            // aussi ce calcul en direct ; ce n'est pas fait.
             if (($resultat->statut ?? ESBTPResultatMatiere::STATUT_NOTE) === ESBTPResultatMatiere::STATUT_DISPENSE) {
                 ESBTPResultat::where('etudiant_id', $etudiantId)
                     ->where('classe_id', $classeId)
