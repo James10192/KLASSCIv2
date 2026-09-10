@@ -12,6 +12,16 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ## Septembre 2026
 
+### Améliorations
+
+- **Réserver un élément constitutif à un seul parcours se fait enfin depuis l'écran** (`/esbtp/lmd/ue`) — le socle qui distingue la composition commune d'une unité de celle propre à chaque parcours existait (bulletins, plannings, plafond de crédits, liste filtrée), mais aucun geste ne l'écrivait : le modal « Ajouter un ECUE » posait toujours l'élément en commun, pour tous les parcours. Il demande désormais la **maquette visée** — commune à tous les parcours, ou réservée à l'un de ceux que l'unité dessert — préremplie avec le filtre Parcours de la liste. Le choix vaut à la création, à la liaison d'une matière existante, à la modification (choisir un parcours sur un élément commun crée une surcharge propre à ce parcours) et au retrait. Chaque ligne d'élément porte maintenant un repère « Commun » ou le code du parcours auquel elle est réservée, et une même matière peut apparaître deux fois sous la vue « Tous » : sa version commune et sa version réservée.
+
+- **Importer la maquette d'un second parcours partage l'unité au lieu de refuser** (`POST /api/cli/lmd/import`) — le refus d'écrasement, posé quand les colonnes du partage n'existaient pas encore, bloquait précisément le cas pour lequel elles ont été créées : une unité au code unique enseignée dans deux parcours avec des éléments différents. L'import laisse maintenant la fiche de l'unité au premier parcours, rattache le second par le lien parcours-unité avec son propre semestre, y grave son crédit lorsqu'il diffère, et réserve ses éléments à sa maquette. Le refus ne subsiste que pour un élément déjà rattaché à une autre unité, que l'import déplacerait.
+
+### Corrections
+
+- **Retirer un élément qui n'est pas dans la maquette visée répondait « ECUE détaché » sans rien détacher** (`/esbtp/lmd/ue`) — le retrait ne visait que la composition commune ; sur un élément réservé à un parcours, rien n'était supprimé et l'écran l'annonçait pourtant retiré. Le retrait vise désormais la maquette de la ligne cliquée, et quand l'élément tient à l'unité par une autre maquette, le refus dit laquelle et comment y aller.
+
 ### Ajouts
 
 - **Le suivi des notes reçues s'affiche là où on peut agir** — il n'existait que sur la page de pilotage académique, que les personnes qui saisissent les notes n'ouvrent pas. Un bandeau le porte désormais sur huit écrans : la gestion des notes, la sélection et la liste des bulletins, la liste et les formulaires d'évaluation, les résultats d'une classe et ceux d'un étudiant. Il annonce en une phrase ce qui manque (« 14 note(s) manquante(s) sur 96 attendue(s) »), une barre d'avancement, et sur demande la liste des matières à relancer avec l'enseignant à contacter. Sur la page de génération, il se met à jour à chaque changement de classe ou de période ; dans la fenêtre de saisie, il se recalcule dès que des notes sont enregistrées, sans recharger la page. Le chiffre affiché est celui d'une seule source de calcul : les huit écrans et le pilotage ne peuvent pas se contredire. Rien ne s'affiche pour qui n'a pas le droit de consulter la santé académique.

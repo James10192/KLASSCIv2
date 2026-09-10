@@ -1,0 +1,256 @@
+<?php
+
+namespace Tests\Feature\LMD;
+
+use App\Http\Middleware\PaywallMiddleware;
+use App\Models\ESBTPAnneeUniversitaire;
+use App\Models\ESBTPLMDParcours;
+use App\Models\ESBTPMatiere;
+use App\Models\ESBTPUniteEnseignement;
+use App\Models\User;
+use App\Services\LMD\CompositionUe;
+use App\Services\LMD\LMDImportService;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
+use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
+use Tests\TestCase;
+
+/**
+ * L'ecran des unites d'enseignement sait designer la maquette qu'il edite.
+ *
+ * Le decoupage d'une composition par parcours existait dans le service et dans
+ * la lecture (bulletins, plannings, liste filtree), mais aucun ecran ne
+ * transmettait la maquette visee : le modal ECUE posait tout en commun, le
+ * retrait ne visait que le commun et repondait « detache » a vide, et la
+ * liste ne disait pas a qui appartenait une ligne. Ces tests tiennent le
+ * contrat entre l'ecran et le serveur : la portee circule dans les deux sens.
+ */
+class EcuePorteeDepuisEcranTest extends TestCase
+{
+    use RefreshDatabase;
+
+    private CompositionUe $composition;
+
+    private ESBTPUniteEnseignement $ue;
+
+    private ESBTPMatiere $ecueBu;
+
+    private ESBTPLMDParcours $batiment;
+
+    private ESBTPLMDParcours $travauxPublics;
+
+    private User $acteur;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // L'import exige une annee courante (LMDImportService:49).
+        ESBTPAnneeUniversitaire::factory()->create(['is_current' => true]);
+
+        $this->composition = app(CompositionUe::class);
+
+        // Meme montage que CompositionUeParParcoursTest : deux maquettes
+        // importees, puis l'unite de Batiment rattachee aussi a Travaux Publics
+        // par le geste du modal « Lier a des parcours ».
+        app(LMDImportService::class)->import($this->maquette('BU', 'Batiment', 'UE-PARTAGEE', 'ECUE-BU'));
+        app(LMDImportService::class)->import($this->maquette('TIR', 'Travaux Publics', 'UE-TIR', 'ECUE-TIR'));
+
+        $this->ue = ESBTPUniteEnseignement::where('code', 'UE-PARTAGEE')->firstOrFail();
+        $this->ecueBu = ESBTPMatiere::where('code', 'ECUE-BU')->firstOrFail();
+        $this->batiment = ESBTPLMDParcours::where('code', 'BU')->firstOrFail();
+        $this->travauxPublics = ESBTPLMDParcours::where('code', 'TIR')->firstOrFail();
+
+        DB::table('esbtp_lmd_parcours_ue')->insert([
+            'parcours_id' => $this->travauxPublics->id,
+            'unite_enseignement_id' => $this->ue->id,
+            'semestre' => 1,
+            'is_optional' => false,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        // Le groupe de routes LMD exige un niveau d'acces global, l'acces au
+        // module, puis un droit par geste.
+        foreach (['admin.access', 'module.lmd.access', 'lmd.structure.view', 'lmd.structure.manage', 'lmd.structure.delete'] as $permission) {
+            Permission::findOrCreate($permission, 'web');
+        }
+
+        // Sans un superAdmin en base, l'application se considere non installee
+        // et redirige tout vers /install.
+        $superAdmin = Role::findOrCreate('superAdmin', 'web');
+        User::factory()->create(['must_change_password' => false, 'password_changed_at' => now()])
+            ->assignRole($superAdmin);
+
+        $this->acteur = User::factory()->create(['must_change_password' => false, 'password_changed_at' => now()]);
+        $this->acteur->givePermissionTo(['admin.access', 'module.lmd.access', 'lmd.structure.view', 'lmd.structure.manage', 'lmd.structure.delete']);
+
+        // Le paywall interroge le maitre SaaS : hors sujet ici.
+        $this->withoutMiddleware(PaywallMiddleware::class);
+    }
+
+    public function test_la_liste_dit_a_quelle_maquette_appartient_chaque_ligne(): void
+    {
+        // Travaux Publics surcharge l'element commun avec son propre coefficient.
+        $this->composition->poser($this->ue, (int) $this->ecueBu->id, [
+            'coefficient_ecue' => 2,
+            'credit_ecue' => 3,
+            'ordre_bulletin' => 0,
+        ], (int) $this->travauxPublics->id);
+
+        // Vue « Tous » : les deux versions, chacune avec sa portee.
+        $tout = $this->actingAs($this->acteur)
+            ->getJson(route('esbtp.lmd.ue.index', ['format' => 'json', 'search' => 'UE-PARTAGEE']))
+            ->assertOk()
+            ->json('ues.0.ecues');
+
+        $lignes = collect($tout)->where('code', 'ECUE-BU');
+        $this->assertCount(2, $lignes, 'La vue « Tous » doit montrer la version commune ET la version reservee.');
+        $this->assertEqualsCanonicalizing([0, (int) $this->travauxPublics->id], $lignes->pluck('portee')->all());
+        $this->assertSame('TIR', $lignes->firstWhere('portee', (int) $this->travauxPublics->id)['portee_code']);
+        $this->assertNull($lignes->firstWhere('portee', 0)['portee_code']);
+
+        // Vue filtree sur Travaux Publics : une seule ligne, la reservee.
+        $tir = $this->actingAs($this->acteur)
+            ->getJson(route('esbtp.lmd.ue.index', ['format' => 'json', 'search' => 'UE-PARTAGEE', 'parcours_id' => $this->travauxPublics->id]))
+            ->assertOk()
+            ->json('ues.0.ecues');
+
+        $lignes = collect($tir)->where('code', 'ECUE-BU');
+        $this->assertCount(1, $lignes);
+        $this->assertSame((int) $this->travauxPublics->id, $lignes->first()['portee']);
+        $this->assertSame('Travaux Publics', $lignes->first()['portee_label']);
+        $this->assertEquals(2, (float) $lignes->first()['coefficient']);
+    }
+
+    public function test_le_modal_reserve_un_element_a_la_maquette_choisie(): void
+    {
+        $this->actingAs($this->acteur)
+            ->postJson(route('esbtp.lmd.ue.ecue.store', $this->ue), [
+                'name' => 'Topographie appliquee',
+                'code' => 'TOPO-TIR',
+                'credit_ecue' => 2,
+                'coefficient_ecue' => 1,
+                'parcours_id' => $this->travauxPublics->id,
+            ])
+            ->assertOk()
+            ->assertJson(['success' => true]);
+
+        $topo = ESBTPMatiere::where('code', 'TOPO-TIR')->firstOrFail();
+
+        $this->assertDatabaseHas('esbtp_ue_matiere', [
+            'unite_enseignement_id' => $this->ue->id,
+            'matiere_id' => $topo->id,
+            'parcours_id' => $this->travauxPublics->id,
+        ]);
+        $this->assertDatabaseMissing('esbtp_ue_matiere', [
+            'unite_enseignement_id' => $this->ue->id,
+            'matiere_id' => $topo->id,
+            'parcours_id' => CompositionUe::COMMUN,
+        ]);
+
+        $this->assertContains('TOPO-TIR', $this->vusPar($this->travauxPublics));
+        $this->assertNotContains('TOPO-TIR', $this->vusPar($this->batiment), 'Un element reserve a Travaux Publics ne doit pas entrer dans la maquette de Batiment.');
+    }
+
+    public function test_le_retrait_vise_la_maquette_de_la_ligne_cliquee(): void
+    {
+        $this->composition->poser($this->ue, (int) $this->ecueBu->id, [
+            'coefficient_ecue' => 2, 'credit_ecue' => 3, 'ordre_bulletin' => 0,
+        ], (int) $this->travauxPublics->id);
+
+        $this->actingAs($this->acteur)
+            ->deleteJson(route('esbtp.lmd.ue.ecue.destroy', [$this->ue, $this->ecueBu]), [
+                'parcours_id' => $this->travauxPublics->id,
+            ])
+            ->assertOk()
+            ->assertJson(['success' => true]);
+
+        $this->assertSame(0, $this->lignes((int) $this->travauxPublics->id), 'La version reservee devait disparaitre.');
+        $this->assertGreaterThan(0, $this->lignes((int) $this->batiment->id) + $this->lignes(CompositionUe::COMMUN), 'Les autres maquettes ne doivent pas etre touchees.');
+    }
+
+    public function test_retirer_depuis_la_vue_commune_un_element_reserve_est_refuse_en_nommant_la_maquette(): void
+    {
+        $this->actingAs($this->acteur)
+            ->postJson(route('esbtp.lmd.ue.ecue.store', $this->ue), [
+                'name' => 'Topographie appliquee', 'code' => 'TOPO-TIR', 'credit_ecue' => 2,
+                'parcours_id' => $this->travauxPublics->id,
+            ])->assertOk();
+        $topo = ESBTPMatiere::where('code', 'TOPO-TIR')->firstOrFail();
+
+        // Aucune maquette designee : c'est la composition commune qui est visee,
+        // et l'element n'y est pas.
+        $reponse = $this->actingAs($this->acteur)
+            ->deleteJson(route('esbtp.lmd.ue.ecue.destroy', [$this->ue, $topo]))
+            ->assertStatus(422)
+            ->assertJson(['success' => false]);
+
+        $this->assertStringContainsString('Travaux Publics', $reponse->json('message'));
+
+        $this->assertDatabaseHas('esbtp_ue_matiere', [
+            'unite_enseignement_id' => $this->ue->id,
+            'matiere_id' => $topo->id,
+            'parcours_id' => $this->travauxPublics->id,
+        ]);
+    }
+
+    public function test_retirer_un_element_commun_depuis_une_seule_maquette_est_refuse(): void
+    {
+        // L'element est pose en commun, sans version propre a Travaux Publics.
+        $this->composition->poser($this->ue, (int) $this->ecueBu->id, [
+            'coefficient_ecue' => 1, 'credit_ecue' => 3, 'ordre_bulletin' => 0,
+        ]);
+        $this->composition->retirer($this->ue, [(int) $this->ecueBu->id], (int) $this->batiment->id);
+        $avant = $this->lignes(CompositionUe::COMMUN);
+        $this->assertSame(1, $avant);
+
+        $reponse = $this->actingAs($this->acteur)
+            ->deleteJson(route('esbtp.lmd.ue.ecue.destroy', [$this->ue, $this->ecueBu]), [
+                'parcours_id' => $this->travauxPublics->id,
+            ])
+            ->assertStatus(422);
+
+        $this->assertStringContainsString('commun', $reponse->json('message'));
+        $this->assertSame($avant, $this->lignes(CompositionUe::COMMUN), 'La version commune ne doit pas bouger.');
+    }
+
+    /** @return array<int, string> */
+    private function vusPar(ESBTPLMDParcours $parcours): array
+    {
+        return $this->ue->fresh()->getEcuesEffectifs($parcours->id)->pluck('code')->all();
+    }
+
+    private function lignes(int $parcoursId): int
+    {
+        return DB::table('esbtp_ue_matiere')
+            ->where('unite_enseignement_id', $this->ue->id)
+            ->where('matiere_id', $this->ecueBu->id)
+            ->where('parcours_id', $parcoursId)
+            ->count();
+    }
+
+    private function maquette(string $codeParcours, string $nomParcours, string $codeUe, string $codeEcue): array
+    {
+        return [
+            'domaine' => ['name' => 'Sciences et Technologies', 'code' => 'ST'],
+            'mention' => ['name' => 'Genie Civil', 'code' => 'GC'],
+            'parcours' => ['name' => $nomParcours, 'code' => $codeParcours, 'credits_licence' => 180],
+            'filiere' => ['name' => $nomParcours, 'code' => 'F'.$codeParcours],
+            'niveaux' => [['name' => 'Licence 1', 'year' => 1]],
+            'ues' => [[
+                'code' => $codeUe,
+                'name' => 'Unite '.$codeUe,
+                'credit' => 12,
+                'niveau_year' => 1,
+                'semestre' => 1,
+                'ecues' => [[
+                    'code' => $codeEcue,
+                    'name' => 'Matiere '.$codeEcue,
+                    'credit_ecue' => 3,
+                ]],
+            ]],
+        ];
+    }
+}
