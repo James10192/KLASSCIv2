@@ -60,9 +60,11 @@
                         @endif
                     </div>
                 @endforeach
-                <p style="margin:10px 0 0;font-size:.78rem;color:#64748b;">
-                    Un frais encaissé ne peut pas être marqué déposé : le versement doit d'abord être supprimé, avec un motif.
-                </p>
+                @if($fournitures->contains(fn ($item) => !empty($item['paiement_bloquant']) && empty($item['satisfied_in_kind'])))
+                    <p style="margin:10px 0 0;font-size:.78rem;color:#64748b;">
+                        Un frais encaissé ne peut pas être marqué déposé : le versement doit d'abord être supprimé, avec un motif.
+                    </p>
+                @endif
             </div>
         </div>
     @endif
