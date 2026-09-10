@@ -38,11 +38,14 @@ class ESBTPBulletinConfigController extends Controller
     private $bulletinService;
     private BulletinInlineConfigurationService $inlineConfigurationService;
 
-    public function __construct(\App\Services\ESBTP\ESBTPAbsenceService $absenceService, \App\Services\BulletinService $bulletinService, BulletinInlineConfigurationService $inlineConfigurationService)
+    protected \App\Domain\BtsTroncCommun\BulletinSubjectOrder $subjectOrder;
+
+    public function __construct(\App\Services\ESBTP\ESBTPAbsenceService $absenceService, \App\Services\BulletinService $bulletinService, BulletinInlineConfigurationService $inlineConfigurationService, \App\Domain\BtsTroncCommun\BulletinSubjectOrder $subjectOrder)
     {
         $this->absenceService = $absenceService;
         $this->bulletinService = $bulletinService;
         $this->inlineConfigurationService = $inlineConfigurationService;
+        $this->subjectOrder = $subjectOrder;
     }
 
     /**
@@ -853,6 +856,14 @@ class ESBTPBulletinConfigController extends Controller
             'nombre_matieres' => count($matieres),
             'matieres' => $matieres,
         ]);
+
+        // Meme ordre que le bulletin : cet ecran sert a attribuer les
+        // professeurs matiere par matiere, il doit les presenter dans l'ordre
+        // ou le lecteur du bulletin les retrouvera. Sans rang defini, la liste
+        // reste telle quelle.
+        $matieres = $this->subjectOrder
+            ->sort(collect($matieres), $this->subjectOrder->rankMapForClasse($classe))
+            ->all();
 
         // Grouper les matières par type de formation
         $matieresGenerales = array_filter($matieres, function ($matiere) {

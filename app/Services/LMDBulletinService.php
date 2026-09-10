@@ -273,11 +273,16 @@ class LMDBulletinService
             }
         }
 
+        // Repli : classe sans parcours. Le pivot parcours -> UE, qui porte
+        // l'ordre du cas nominal, n'existe pas ici. On respecte l'ordre pose
+        // sur l'UE elle-meme quand il y en a un, et on retombe sur le code
+        // sinon — donc a l'identique tant qu'aucun ordre n'est renseigne.
         return ESBTPUniteEnseignement::active()
             ->with($eagerLoad)
             ->where('semestre', $semestre)
             ->where('filiere_id', $classe->filiere_id)
             ->where('niveau_id', $classe->niveau_etude_id)
+            ->orderByRaw('ordre IS NULL, ordre')
             ->orderBy('code')
             ->get();
     }

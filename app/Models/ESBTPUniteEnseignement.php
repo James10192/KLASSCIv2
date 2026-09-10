@@ -60,6 +60,7 @@ class ESBTPUniteEnseignement extends Model implements Auditable
         'description',
         'credit',
         'semestre',
+        'ordre',            // repli d'affichage quand la classe n'a pas de parcours
         'type_ue',          // App\Enums\TypeUE — 7 catégories UEMOA
         'filiere_id',
         'niveau_id',

@@ -2,6 +2,8 @@
 
 namespace Tests\Unit\Services;
 
+use App\Domain\BtsTroncCommun\BtsBulletinSubjectResolver;
+use App\Domain\BtsTroncCommun\BulletinSubjectOrder;
 use App\Domain\BtsTroncCommun\ClasseOuvertureResolver;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPBulletin;
@@ -27,7 +29,8 @@ class BulletinServiceAttendanceNoteTest extends TestCase
             new BtsAnnualClassMapResolver(new BtsPhaseResolver(), new ClasseOuvertureResolver()),
             new BtsBulletinCohortResolver(new BtsAnnualClassMapResolver(new BtsPhaseResolver(), new ClasseOuvertureResolver())),
             new \App\Domain\BtsTroncCommun\BtsClassCohortCounter(new BtsPhaseResolver()),
-            new ClasseOuvertureResolver()
+            new ClasseOuvertureResolver(),
+            new BulletinSubjectOrder(new BtsBulletinSubjectResolver())
         );
     }
 

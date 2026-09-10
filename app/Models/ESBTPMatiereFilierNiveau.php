@@ -16,6 +16,20 @@ class ESBTPMatiereFilierNiveau extends Model
         'filiere_id',
         'niveau_etude_id',
         'classification',
+        'ordre_bulletin',
+        'semestre',
+        'semestre_renseigne',
+    ];
+
+    /**
+     * `ordre_bulletin` et `semestre` sont nullables : le cast `integer` les
+     * laisse a null, il ne les ramene pas a 0. La distinction compte, un rang
+     * nul valant « non defini » et non « premier ».
+     */
+    protected $casts = [
+        'ordre_bulletin' => 'integer',
+        'semestre' => 'integer',
+        'semestre_renseigne' => 'boolean',
     ];
 
     public function filiere()

@@ -12,6 +12,14 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ## Septembre 2026
 
+### Ajouts
+
+- **L'ordre des matières sur le bulletin se règle une fois pour toutes** — le bulletin officiel les sortait dans l'ordre où les notes étaient arrivées, si bien que deux élèves d'une même classe pouvaient recevoir des bulletins ordonnés différemment, et que l'aperçu ne ressemblait pas au document imprimé. Depuis la page « Affectation Tronc Commun / Spécialité », chaque matière reçoit une place, au clavier ou avec deux flèches. Cette place vaut pour la filière et le niveau où elle est posée ; à défaut, la matière reprend l'ordre général, et un bouton permet de faire de l'ordre affiché cet ordre général. Le document imprimé, l'aperçu et l'écran de configuration suivent désormais le même ordre. Tant qu'aucune école n'a posé une seule place, **rien ne change** : les bulletins sortent exactement comme avant.
+
+- **Chaque matière sait à quel semestre elle est prévue** — jusqu'ici, seul le planning général portait cette information, et de façon inégale. La même page permet maintenant de dire, matière par matière, si elle est prévue au premier semestre, au second, ou aux deux. Un bouton « Valider les semestres » enregistre la réponse pour la filière et le niveau : « toutes les matières aux deux semestres » est une réponse en soi, et elle est reconnue comme telle. **C'est pour l'instant une saisie de référentiel** : renseigner les semestres ne modifie encore ni la composition du bulletin, ni le suivi des notes reçues. Ces deux usages arrivent ensuite, et s'appuieront sur ce qui est saisi ici.
+
+- **Les semestres peuvent être repris du planning général** — un bouton affiche ce que le planning de l'année dirait de ce couple filière-niveau : quelles matières passeraient au premier semestre, au second, aux deux, et lesquelles ne bougeraient pas. Rien n'est écrit tant que l'aperçu n'est pas appliqué. Si le planning ou la maquette a changé entre l'aperçu et l'application, l'application est refusée et l'aperçu est rechargé, plutôt que d'écraser en silence le travail de quelqu'un d'autre. Les matières que le planning connaît mais qui ne sont pas rattachées à la filière sont signalées sans être ajoutées.
+
 ### Sécurité
 
 - **Des outils de dépannage étaient exposés publiquement sur toutes les instances** — un dossier `/tools/` accessible sans aucune authentification servait un `phpinfo` complet (chemins du serveur, version exacte de PHP, extensions chargées, fichier de configuration) et deux scripts qui, sur simple envoi de formulaire, écrivaient un fichier dans l'application et lançaient quatre commandes de maintenance. Personne n'avait à s'identifier, et répéter l'appel suffisait à dégrader une instance en production. Cinq pages de test traînaient à côté. Tout a été supprimé.

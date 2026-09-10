@@ -738,6 +738,17 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 Route::post('/classification/save', [\App\Http\Controllers\ESBTPMatiereClassificationController::class, 'save'])
                     ->name('classification.save')
                     ->middleware(['permission:matieres.edit']);
+                // Maquette : import depuis le planning général, ordre général, retour à l'ordre général.
+                // Également déclarées avant les routes {matiere}.
+                Route::post('/classification/import-planning', [\App\Http\Controllers\ESBTPMatiereMaquetteController::class, 'importPlanning'])
+                    ->name('classification.import-planning')
+                    ->middleware(['permission:matieres.edit', 'throttle:30,1']);
+                Route::post('/classification/ordre-general', [\App\Http\Controllers\ESBTPMatiereMaquetteController::class, 'ordreGeneral'])
+                    ->name('classification.ordre-general')
+                    ->middleware(['permission:matieres.edit', 'throttle:30,1']);
+                Route::post('/classification/reset-ordre', [\App\Http\Controllers\ESBTPMatiereMaquetteController::class, 'resetOrdre'])
+                    ->name('classification.reset-ordre')
+                    ->middleware(['permission:matieres.edit', 'throttle:30,1']);
                 Route::get('/json', [ESBTPMatiereController::class, 'getMatieresJson'])
                     ->name('json')
                     ->middleware(['permission:matieres.view']);

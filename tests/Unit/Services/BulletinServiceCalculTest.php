@@ -2,6 +2,8 @@
 
 namespace Tests\Unit\Services;
 
+use App\Domain\BtsTroncCommun\BtsBulletinSubjectResolver;
+use App\Domain\BtsTroncCommun\BulletinSubjectOrder;
 use App\Domain\BtsTroncCommun\ClasseOuvertureResolver;
 use App\Domain\BtsTroncCommun\BtsAnnualClassMapResolver;
 use App\Domain\BtsTroncCommun\BtsBulletinCohortResolver;
@@ -37,7 +39,8 @@ class BulletinServiceCalculTest extends TestCase
             new BtsAnnualClassMapResolver(new BtsPhaseResolver(), new ClasseOuvertureResolver()),
             new BtsBulletinCohortResolver(new BtsAnnualClassMapResolver(new BtsPhaseResolver(), new ClasseOuvertureResolver())),
             new \App\Domain\BtsTroncCommun\BtsClassCohortCounter(new BtsPhaseResolver()),
-            new ClasseOuvertureResolver()
+            new ClasseOuvertureResolver(),
+            new BulletinSubjectOrder(new BtsBulletinSubjectResolver())
         );
     }
 
