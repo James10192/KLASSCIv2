@@ -52,6 +52,17 @@ Route::prefix('esbtp')->name('esbtp.')
                 'permission:academic_health.view',
             ])
             ->name('pilotage-academique.classes.show');
+        // La couverture des notes d'une classe, a la demande. Separee du
+        // tableau de bord, qui recalcule tout a chaque appel.
+        Route::get('/pilotage-academique/classes/{classe}/couverture', [\App\Http\Controllers\AcademicPilotage\AcademicCoverageController::class, 'show'])
+            ->whereNumber('classe')
+            ->middleware([
+                ForceJsonResponse::class,
+                'permission:module.academic_pilotage.access',
+                'permission:academic_health.view',
+                'throttle:60,1',
+            ])
+            ->name('pilotage-academique.classes.couverture');
         Route::get('/pilotage-academique/etudiants/{etudiant}', [AcademicPilotageController::class, 'studentHealth'])
             ->whereNumber('etudiant')
             ->middleware([

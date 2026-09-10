@@ -20,6 +20,26 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 - **Les semestres peuvent être repris du planning général** — un bouton affiche ce que le planning de l'année dirait de ce couple filière-niveau : quelles matières passeraient au premier semestre, au second, aux deux, et lesquelles ne bougeraient pas. Rien n'est écrit tant que l'aperçu n'est pas appliqué. Si le planning ou la maquette a changé entre l'aperçu et l'application, l'application est refusée et l'aperçu est rechargé, plutôt que d'écraser en silence le travail de quelqu'un d'autre. Les matières que le planning connaît mais qui ne sont pas rattachées à la filière sont signalées sans être ajoutées.
 
+### Corrections
+
+- **Le suivi des notes reçues comptait les mauvaises matières sur les classes de spécialité** — il n'interrogeait que le couple filière-niveau de la classe, sans l'union avec le tronc commun dont elle hérite. Une classe de spécialité ne voyait donc pas les matières sur lesquelles ses étudiants avaient été notés pendant la phase de tronc commun, et une matière rattachée par erreur au tronc commun mais marquée « spécialité » y était comptée à tort. Le suivi s'appuie désormais sur la même définition que le bulletin.
+
+- **Le suivi des notes reçues comptait les mauvais étudiants sur les classes de tronc commun** — il lisait la classe portée par l'inscription, alors qu'un étudiant inscrit en spécialité passe le premier semestre en tronc commun. Sur une classe de tronc commun au premier semestre, des étudiants réellement concernés n'apparaissaient jamais comme manquants : l'écran pouvait annoncer que toutes les notes étaient reçues sur une classe pleine. Il utilise maintenant la définition de cohorte qui sert déjà à générer les bulletins et à calculer les rangs.
+
+- **Une période non reconnue faisait tomber le tableau de bord** — saisir une période inconnue dans l'adresse provoquait une erreur serveur sur toute la page, au lieu d'un message. Elle est maintenant refusée proprement, avant toute lecture.
+
+- **Une classe sans étudiant était présentée comme entièrement notée** — zéro résultat manquant se lisait « tout est reçu ». Le suivi distingue désormais une cohorte vide, un référentiel absent, un semestre sans matière, une saisie qui n'a pas commencé, une saisie en cours et une saisie terminée.
+
+- **Les matières hors référentiel gonflaient le total attendu** — le nombre de matières prévues comptait le seul référentiel, mais les résultats attendus y ajoutaient les matières évaluées hors référentiel : le rapport « traité sur prévu » mélangeait deux périmètres et pouvait dépasser cent pour cent. Ces matières restent visibles, comptées à part.
+
+### Ajouts
+
+- **Le suivi des notes indique qui relancer** — pour chaque matière dont les notes manquent, l'enseignant responsable est repris du planning général, avec son numéro. Quand deux enseignants différents y figurent pour la même matière, le contact reste indéterminé plutôt que d'en désigner un au hasard : relancer la mauvaise personne coûte plus qu'un contact vide.
+
+- **Le suivi des notes d'une classe a sa propre adresse** — il se demande à la demande plutôt que d'être recalculé avec tout le tableau de bord, et son résultat est gardé dix minutes. Ce qui est gardé est oublié dès qu'une note ou une évaluation change, une fois l'enregistrement confirmé en base. Le périmètre de la personne qui demande est vérifié **avant** toute lecture.
+
+- **Le pré-contrôle de génération des bulletins dit ce qu'il manque** — il annonçait combien d'étudiants pouvaient être générés ; il indique maintenant, matière par matière, ce qu'il faudrait saisir pour que les autres le deviennent.
+
 ### Sécurité
 
 - **Des outils de dépannage étaient exposés publiquement sur toutes les instances** — un dossier `/tools/` accessible sans aucune authentification servait un `phpinfo` complet (chemins du serveur, version exacte de PHP, extensions chargées, fichier de configuration) et deux scripts qui, sur simple envoi de formulaire, écrivaient un fichier dans l'application et lançaient quatre commandes de maintenance. Personne n'avait à s'identifier, et répéter l'appel suffisait à dégrader une instance en production. Cinq pages de test traînaient à côté. Tout a été supprimé.
