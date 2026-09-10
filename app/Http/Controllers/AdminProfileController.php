@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Rules\MotDePasseNonGenerique;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -213,16 +214,14 @@ class AdminProfileController extends Controller
     public function updatePassword(Request $request)
     {
         $request->validate([
-            'current_password' => 'required|string',
-            'password' => 'required|string|min:8|confirmed',
+            'current_password' => ['required', 'string', 'current_password'],
+            'password' => ['required', 'string', 'min:8', 'confirmed', 'different:current_password', new MotDePasseNonGenerique],
+        ], [
+            'current_password.current_password' => 'Le mot de passe actuel est incorrect.',
+            'password.different' => 'Le nouveau mot de passe doit être différent de l\'actuel.',
         ]);
 
         $user = Auth::user();
-
-        // Vérifier si le mot de passe actuel est correct
-        if (!Hash::check($request->current_password, $user->password)) {
-            return back()->withErrors(['current_password' => 'Le mot de passe actuel est incorrect']);
-        }
 
         $user->password = Hash::make($request->password);
         $user->save();

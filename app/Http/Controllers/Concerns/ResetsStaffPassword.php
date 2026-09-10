@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Concerns;
 
 use App\Models\User;
+use App\Services\UserService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Hash;
@@ -18,7 +19,7 @@ trait ResetsStaffPassword
             abort(404);
         }
 
-        $password = 'Bonjour@2025';
+        $password = UserService::defaultPassword();
         $user->password = Hash::make($password);
         $user->must_change_password = true;
         $user->save();
@@ -38,7 +39,7 @@ trait ResetsStaffPassword
         }
 
         return back()
-            ->with('success', 'Mot de passe réinitialisé à Bonjour@2025. '.$label.' devra le changer à la prochaine connexion.')
+            ->with('success', 'Mot de passe réinitialisé à '.$password.'. '.$label.' devra le changer à la prochaine connexion.')
             ->with('new_password', $password);
     }
 }

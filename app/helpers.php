@@ -37,3 +37,15 @@ if (!function_exists('isAuthenticated')) {
         return auth()->check() && auth()->user();
     }
 }
+
+if (!function_exists('mot_de_passe_par_defaut')) {
+    /**
+     * Le mot de passe attribué à la création d'un compte et à chaque
+     * réinitialisation, tel que les fiches l'annoncent à l'écran.
+     * Source unique : App\Services\UserService::defaultPassword().
+     */
+    function mot_de_passe_par_defaut(): string
+    {
+        return \App\Services\UserService::defaultPassword();
+    }
+}

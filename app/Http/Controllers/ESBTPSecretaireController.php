@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\User;
+use App\Rules\MotDePasseChoisi;
 use App\Services\UserService;
 use App\Services\UserLifecycle\SuperAdminLifecycleGuard;
 use Illuminate\Support\Facades\Validator;
@@ -132,7 +133,7 @@ class ESBTPSecretaireController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'nullable|string|email|max:255|unique:users,email,' . $id,
             'username' => 'required|string|max:255|unique:users,username,' . $id,
-            'password' => 'nullable|string|min:8',
+            'password' => MotDePasseChoisi::facultatifNonConfirme(),
             'telephone' => 'nullable|string|max:20',
             'adresse' => 'nullable|string|max:255',
         ]);
@@ -232,7 +233,7 @@ class ESBTPSecretaireController extends Controller
         }
 
         try {
-            $defaultPassword = 'Bonjour@2025';
+            $defaultPassword = $this->userService->generateDefaultPassword();
 
             $secretaire->password = Hash::make($defaultPassword);
             $secretaire->must_change_password = true;
@@ -256,7 +257,7 @@ class ESBTPSecretaireController extends Controller
 
             return redirect()
                 ->back()
-                ->with('success', 'Mot de passe réinitialisé à Bonjour@2025 avec succès! Le secrétaire devra changer son mot de passe à la première connexion.')
+                ->with('success', 'Mot de passe réinitialisé à '.$defaultPassword.' avec succès! Le secrétaire devra changer son mot de passe à la première connexion.')
                 ->with('new_password', $defaultPassword);
         } catch (\Exception $e) {
             \Log::error('❌ Password reset failed for secretaire', [

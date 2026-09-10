@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Teacher;
 use App\Models\User;
+use App\Rules\MotDePasseNonGenerique;
 use App\Models\Department;
 use App\Models\Designation;
 use App\Models\Subject;
@@ -486,7 +487,9 @@ class TeacherController extends Controller
     {
         $request->validate([
             'current_password' => ['required', 'current_password'],
-            'password'         => ['required', 'min:8', 'confirmed'],
+            'password'         => ['required', 'min:8', 'confirmed', 'different:current_password', new MotDePasseNonGenerique],
+        ], [
+            'password.different' => 'Le nouveau mot de passe doit être différent de l\'actuel.',
         ]);
 
         Auth::user()->update(['password' => bcrypt($request->password)]);

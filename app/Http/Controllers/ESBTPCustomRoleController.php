@@ -124,10 +124,18 @@ class ESBTPCustomRoleController extends Controller
     }
 
     /**
-     * Liste des rôles custom (JSON pour AJAX, vue partial pour HTML).
+     * Liste des rôles custom, en JSON : la page Personnel la rafraîchit en AJAX.
+     * Toute autre demande est renvoyée vers cette page.
      */
     public function index(Request $request, PermissionRegistry $registry)
     {
+        // Cette adresse n'a qu'un consommateur : le rafraichissement AJAX de la
+        // page Personnel, qui demande du JSON. Un humain qui la tape recevait
+        // un fragment de cartes sans mise en page.
+        if (! $request->expectsJson()) {
+            return redirect()->route('esbtp.personnel.unified.index');
+        }
+
         $customRoles = $this->customRolesQuery()
             ->withCount('users')
             ->with('permissions:id,name')
@@ -146,15 +154,9 @@ class ESBTPCustomRoleController extends Controller
                 ];
             });
 
-        if ($request->expectsJson() || $request->wantsJson()) {
-            return response()->json([
-                'success' => true,
-                'roles' => $customRoles,
-            ]);
-        }
-
-        return view('esbtp.custom-roles._role-card', [
-            'customRoles' => $customRoles,
+        return response()->json([
+            'success' => true,
+            'roles' => $customRoles,
         ]);
     }
 

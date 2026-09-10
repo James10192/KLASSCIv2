@@ -125,7 +125,7 @@
             <div class="cs-grid-2">
                 <div class="cs-card">
                     <div class="cs-card-header"><div class="cs-card-title"><div class="cs-card-title-icon"><i class="fas fa-key"></i></div>Mot de passe</div></div>
-                    <p style="color:#64748b;font-size:.88rem;margin:0 0 1rem;">Réinitialise le mot de passe à <strong>Bonjour@2025</strong>. La personne devra le changer à la prochaine connexion.</p>
+                    <p style="color:#64748b;font-size:.88rem;margin:0 0 1rem;">Réinitialise le mot de passe à <strong>{{ mot_de_passe_par_defaut() }}</strong>. La personne devra le changer à la prochaine connexion.</p>
                     <button type="button" class="cs-action-btn" onclick="showResetPasswordModal()"><i class="fas fa-key"></i><span>Réinitialiser le mot de passe</span></button>
                 </div>
                 <div class="cs-card">
@@ -178,14 +178,14 @@
             <form id="resetPasswordForm" method="POST" action="{{ $resetRoute }}">
                 @csrf
                 <div class="modal-body">
-                    <p style="color:#475569;">Le mot de passe de <strong>{{ $model->name }}</strong> passera à <strong>Bonjour@2025</strong>. Changement obligatoire à la prochaine connexion.</p>
+                    <p style="color:#475569;">Le mot de passe de <strong>{{ $model->name }}</strong> passera à <strong>{{ mot_de_passe_par_defaut() }}</strong>. Changement obligatoire à la prochaine connexion.</p>
                     <div id="newPasswordDisplay" style="display:none;" class="mb-2">
                         <div id="newPasswordValue" style="background:#d1fae5;border:2px solid #10b981;border-radius:8px;padding:1rem;font-family:monospace;font-size:1.2rem;font-weight:700;text-align:center;color:#047857;"></div>
                     </div>
                 </div>
                 <div class="modal-footer" style="border:none;">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                    <button type="submit" class="btn" id="resetPasswordBtn" style="background:#0453cb;color:#fff;">Réinitialiser à Bonjour@2025</button>
+                    <button type="submit" class="btn" id="resetPasswordBtn" style="background:#0453cb;color:#fff;">Réinitialiser à {{ mot_de_passe_par_defaut() }}</button>
                     <button type="button" class="btn" id="copyPasswordBtn" style="display:none;background:#10b981;color:#fff;" onclick="copyPassword()">Copier</button>
                 </div>
             </form>

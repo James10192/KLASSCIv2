@@ -568,6 +568,7 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             // Routes pour les secrÃ©taires
             Route::resource('secretaires', ESBTPSecretaireController::class);
             Route::post('secretaires/{secretaire}/reset-password', [ESBTPSecretaireController::class, 'resetPassword'])
+                ->middleware('throttle:5,1')
                 ->name('secretaires.reset-password');
 
 
@@ -1372,9 +1373,9 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 ->name('etudiants.create-account')
                 ->middleware(['permission:students.edit']);
 
-            Route::get('/etudiants/{etudiant}/reset-password', [ESBTPEtudiantController::class, 'resetPassword'])
+            Route::post('/etudiants/{etudiant}/reset-password', [ESBTPEtudiantController::class, 'resetPassword'])
                 ->name('etudiants.reset-password')
-                ->middleware(['permission:students.edit']);
+                ->middleware(['permission:students.edit', 'throttle:5,1']);
 
             Route::get('/etudiants/{etudiant}/inscriptions/repair-diagnostic', [ESBTPStudentInscriptionRepairController::class, 'diagnose'])
                 ->name('etudiants.inscriptions.repair-diagnostic')
@@ -2833,7 +2834,7 @@ Route::middleware(['auth', 'permission:system.manage', 'paywall'])->prefix('esbt
     Route::post('/comptables/{user}/toggle-status', [\App\Http\Controllers\ESBTPComptableController::class, 'toggleStatus'])->name('comptables.toggle-status');
     Route::delete('/comptables/{user}', [\App\Http\Controllers\ESBTPComptableController::class, 'destroy'])->name('comptables.destroy');
     // Lot 18d â€” bouton reset-password universel sur fiche comptable
-    Route::post('/comptables/{user}/reset-password', [\App\Http\Controllers\ESBTPComptableController::class, 'resetPassword'])->name('comptables.reset-password');
+    Route::post('/comptables/{user}/reset-password', [\App\Http\Controllers\ESBTPComptableController::class, 'resetPassword'])->middleware('throttle:5,1')->name('comptables.reset-password');
 
     // Caissier (create/store mutualisÃ©s avec ESBTPComptableController, le reste sur ESBTPCaissierController)
     Route::get('/caissiers/create', [\App\Http\Controllers\ESBTPComptableController::class, 'createCaissier'])->name('caissiers.create');
@@ -2846,7 +2847,7 @@ Route::middleware(['auth', 'permission:system.manage', 'paywall'])->prefix('esbt
     Route::patch('/caissiers/{caissier}', [\App\Http\Controllers\ESBTPCaissierController::class, 'update']);
     Route::delete('/caissiers/{caissier}', [\App\Http\Controllers\ESBTPCaissierController::class, 'destroy'])->name('caissiers.destroy');
     Route::patch('/caissiers/{caissier}/toggle-status', [\App\Http\Controllers\ESBTPCaissierController::class, 'toggleStatus'])->name('caissiers.toggle-status');
-    Route::post('/caissiers/{caissier}/reset-password', [\App\Http\Controllers\ESBTPCaissierController::class, 'resetPassword'])->name('caissiers.reset-password');
+    Route::post('/caissiers/{caissier}/reset-password', [\App\Http\Controllers\ESBTPCaissierController::class, 'resetPassword'])->middleware('throttle:5,1')->name('caissiers.reset-password');
 });
 
 Route::middleware(['auth', 'permission:performance.view_all', 'paywall'])->prefix('esbtp')->name('esbtp.')->group(function () {
@@ -2899,7 +2900,7 @@ Route::middleware(['auth', 'permission:admin.access|identity.direct_studies|iden
     // Routes pour les coordinateurs (maintien de la compatibilitÃ©)
     Route::resource('coordinateurs', \App\Http\Controllers\ESBTPCoordinateurController::class);
     Route::patch('coordinateurs/{coordinateur}/toggle-status', [\App\Http\Controllers\ESBTPCoordinateurController::class, 'toggleStatus'])->name('coordinateurs.toggle-status');
-    Route::post('coordinateurs/{coordinateur}/reset-password', [\App\Http\Controllers\ESBTPCoordinateurController::class, 'resetPassword'])->name('coordinateurs.reset-password');
+    Route::post('coordinateurs/{coordinateur}/reset-password', [\App\Http\Controllers\ESBTPCoordinateurController::class, 'resetPassword'])->middleware('throttle:5,1')->name('coordinateurs.reset-password');
     Route::resource('directeurs-etudes', \App\Http\Controllers\ESBTPDirecteurEtudesController::class)
         ->parameters(['directeurs-etudes' => 'directeurEtude']);
     Route::patch('directeurs-etudes/{directeurEtude}/toggle-status', [\App\Http\Controllers\ESBTPDirecteurEtudesController::class, 'toggleStatus'])

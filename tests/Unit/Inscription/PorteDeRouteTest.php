@@ -21,17 +21,20 @@ use Tests\TestCase;
  * middleware illisible doit fermer la porte, jamais l'ouvrir au hasard.
  *
  * Sans base : on enregistre des routes jetables et on presente un utilisateur
- * factice qui ne sait qu'une chose, la liste de ses permissions.
+ * factice qui ne sait que deux choses, ses permissions et ses roles.
  */
 class PorteDeRouteTest extends TestCase
 {
-    /** Un porteur de permissions, sans base ni conteneur. */
-    private function utilisateur(string ...$permissions): Authorizable
+    /** Un porteur de permissions et de roles, sans base ni conteneur. */
+    private function porteur(array $permissions, array $roles = []): Authorizable
     {
-        return new class($permissions) implements Authorizable
+        return new class($permissions, $roles) implements Authorizable
         {
-            /** @param list<string> $permissions */
-            public function __construct(private array $permissions) {}
+            /**
+             * @param  list<string>  $permissions
+             * @param  list<string>  $roles
+             */
+            public function __construct(private array $permissions, private array $roles) {}
 
             public function can($abilities, $arguments = [])
             {
@@ -47,7 +50,17 @@ class PorteDeRouteTest extends TestCase
             {
                 return $this->cant($abilities, $arguments);
             }
+
+            public function hasRole($role): bool
+            {
+                return in_array($role, $this->roles, true);
+            }
         };
+    }
+
+    private function utilisateur(string ...$permissions): Authorizable
+    {
+        return $this->porteur($permissions);
     }
 
     private function porte(string $nom, array $middlewares): void
@@ -82,10 +95,10 @@ class PorteDeRouteTest extends TestCase
         $this->assertFalse(PorteDeRoute::ouverte('porte.double', $this->utilisateur('admin.access')));
     }
 
-    /** Les gardes qui ne dependent pas d'une permission ne comptent pas. */
+    /** Les gardes qui ne dependent pas d'une autorisation ne comptent pas. */
     public function test_auth_et_paywall_sont_ignores(): void
     {
-        $this->porte('porte.gardes', ['auth', 'paywall', 'permission:inscriptions.create']);
+        $this->porte('porte.gardes', ['auth', 'paywall', 'throttle:5,1', 'permission:inscriptions.create']);
 
         $this->assertTrue(PorteDeRoute::ouverte('porte.gardes', $this->utilisateur('inscriptions.create')));
     }
@@ -100,25 +113,67 @@ class PorteDeRouteTest extends TestCase
     }
 
     /**
+     * `role:` se lit aussi — y compris quand il vient du constructeur d'un
+     * controleur. Un coordinateur portait toutes les permissions du formulaire
+     * secretaire et recevait 403 : le controleur exigeait `role:superAdmin`, et
+     * la premiere lecture ne le voyait pas.
+     */
+    public function test_le_middleware_role_est_lu(): void
+    {
+        $this->porte('porte.role', ['permission:admin.access', 'role:superAdmin|serviceTechnique']);
+
+        $this->assertTrue(PorteDeRoute::ouverte('porte.role', $this->porteur(['admin.access'], ['superAdmin'])));
+        $this->assertTrue(PorteDeRoute::ouverte('porte.role', $this->porteur(['admin.access'], ['serviceTechnique'])));
+        $this->assertFalse(PorteDeRoute::ouverte('porte.role', $this->porteur(['admin.access'], ['coordinateur'])));
+        $this->assertFalse(PorteDeRoute::ouverte('porte.role', $this->porteur([], ['superAdmin'])));
+    }
+
+    /** `role_or_permission:` : l'un ou l'autre suffit. */
+    public function test_le_middleware_role_ou_permission_est_lu(): void
+    {
+        $this->porte('porte.mixte', ['role_or_permission:superAdmin|personnel.manage']);
+
+        $this->assertTrue(PorteDeRoute::ouverte('porte.mixte', $this->porteur([], ['superAdmin'])));
+        $this->assertTrue(PorteDeRoute::ouverte('porte.mixte', $this->porteur(['personnel.manage'], [])));
+        $this->assertFalse(PorteDeRoute::ouverte('porte.mixte', $this->porteur(['autre.chose'], ['coordinateur'])));
+    }
+
+    /**
      * Une porte illisible est fermee, jamais ouverte.
      *
-     * Trois formes qu'on ne sait pas evaluer : un `can:` avec modele, une route
-     * sans aucune exigence lisible — gardee par une policy ou par rien, les
-     * deux se ressemblent d'ici — et une route qui n'existe pas. Se tromper
-     * dans le sens permissif affiche un lien qui finit en 403 ; dans l'autre,
-     * on retombe sur le comportement d'avant, qui n'a jamais blesse personne.
+     * Quatre formes qu'on ne sait pas evaluer : un `can:` avec modele, un
+     * `role:` avec garde, une route sans aucune exigence lisible — gardee par
+     * une policy ou par rien, les deux se ressemblent d'ici — et une route qui
+     * n'existe pas. `ouverte()` repond « non » ; `verdict()` dit « je ne sais
+     * pas », pour que l'appelant distingue un refus d'une ignorance.
      */
     public function test_une_porte_illisible_reste_fermee(): void
     {
-        $tout = $this->utilisateur('admin.access', 'inscriptions.create', 'posts.update');
+        $tout = $this->porteur(['admin.access', 'inscriptions.create', 'posts.update'], ['superAdmin']);
 
         $this->porte('porte.modele', ['can:update,post']);
         $this->assertFalse(PorteDeRoute::ouverte('porte.modele', $tout));
+        $this->assertNull(PorteDeRoute::verdict('porte.modele', $tout));
+
+        $this->porte('porte.role.garde', ['role:superAdmin,web']);
+        $this->assertFalse(PorteDeRoute::ouverte('porte.role.garde', $tout));
+        $this->assertNull(PorteDeRoute::verdict('porte.role.garde', $tout));
 
         $this->porte('porte.nue', ['auth']);
         $this->assertFalse(PorteDeRoute::ouverte('porte.nue', $tout));
+        $this->assertNull(PorteDeRoute::verdict('porte.nue', $tout));
 
         $this->assertFalse(PorteDeRoute::ouverte('porte.qui.nexiste.pas', $tout));
+        $this->assertNull(PorteDeRoute::verdict('porte.qui.nexiste.pas', $tout));
+    }
+
+    /** Un refus lisible est un refus, pas une ignorance. */
+    public function test_le_verdict_distingue_le_refus_de_l_ignorance(): void
+    {
+        $this->porte('porte.refus', ['permission:inscriptions.create']);
+
+        $this->assertFalse(PorteDeRoute::verdict('porte.refus', $this->utilisateur('autre.chose')));
+        $this->assertTrue(PorteDeRoute::verdict('porte.refus', $this->utilisateur('inscriptions.create')));
     }
 
     /** Personne n'est personne : un visiteur anonyme ne franchit rien. */
@@ -127,5 +182,6 @@ class PorteDeRouteTest extends TestCase
         $this->porte('porte.anonyme', ['permission:inscriptions.create']);
 
         $this->assertFalse(PorteDeRoute::ouverte('porte.anonyme', null));
+        $this->assertFalse(PorteDeRoute::verdict('porte.anonyme', null));
     }
 }

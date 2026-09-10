@@ -1281,7 +1281,7 @@
                             <div style="flex-grow: 1;">
                                 <div style="color: var(--es-text); font-weight: 600; margin-bottom: 0.25rem;">Attention</div>
                                 <div style="color: var(--es-muted); font-size: 0.9rem;">
-                                    Cette action va reinitialiser le mot de passe a <strong>"Bonjour@2025"</strong> pour l'enseignant
+                                    Cette action va reinitialiser le mot de passe a <strong>"{{ mot_de_passe_par_defaut() }}"</strong> pour l'enseignant
                                     <strong>{{ $teacher->user->name ?? 'l\'enseignant' }}</strong>. L'enseignant devra changer son mot de passe a la premiere connexion.
                                 </div>
                             </div>
@@ -1340,7 +1340,7 @@
                         font-weight: 600;
                         box-shadow: 0 4px 12px rgba(4,83,203,.3);
                     ">
-                        <i class="fas fa-key me-1"></i>Reinitialiser a Bonjour@2025
+                        <i class="fas fa-key me-1"></i>Reinitialiser a {{ mot_de_passe_par_defaut() }}
                     </button>
                     <button type="button" class="btn" id="copyPasswordBtn" style="display: none; background: var(--es-success); color: white; border: none; padding: 0.65rem 1.5rem; border-radius: 8px; font-weight: 600;" onclick="copyPassword()">
                         <i class="fas fa-copy me-1"></i>Copier le mot de passe
@@ -1577,7 +1577,7 @@ document.getElementById('resetPasswordModal').addEventListener('hidden.bs.modal'
     var btn = document.getElementById('resetPasswordBtn');
     btn.style.display = 'inline-block';
     btn.disabled = false;
-    btn.innerHTML = '<i class="fas fa-key me-1"></i>Reinitialiser a Bonjour@2025';
+    btn.innerHTML = '<i class="fas fa-key me-1"></i>Reinitialiser a ' + {{ Js::from(mot_de_passe_par_defaut()) }};
     document.getElementById('copyPasswordBtn').style.display = 'none';
 });
 

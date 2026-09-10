@@ -172,7 +172,7 @@ class ESBTPCaissierController extends Controller
     }
 
     /**
-     * Réinitialise le mot de passe à Bonjour@2025 et force le changement
+     * Réinitialise le mot de passe à UserService::defaultPassword() et force le changement
      * à la première connexion. Logique partagée via ResetsPersonnelPassword.
      */
     public function resetPassword(User $caissier)

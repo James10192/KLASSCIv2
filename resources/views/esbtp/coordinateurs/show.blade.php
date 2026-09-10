@@ -840,7 +840,7 @@
                             <div style="flex-grow: 1;">
                                 <div style="color: var(--cs-text); font-weight: 600; margin-bottom: 0.25rem;">Attention</div>
                                 <div style="color: var(--cs-muted); font-size: 0.9rem;">
-                                    Cette action va reinitialiser le mot de passe a <strong>"Bonjour@2025"</strong> pour le coordinateur
+                                    Cette action va reinitialiser le mot de passe a <strong>"{{ mot_de_passe_par_defaut() }}"</strong> pour le coordinateur
                                     <strong>{{ $coordinateur->name }}</strong>. Le coordinateur devra changer son mot de passe a la premiere connexion.
                                 </div>
                             </div>
@@ -901,7 +901,7 @@
                         font-weight: 600;
                         box-shadow: 0 4px 12px rgba(4,83,203,.3);
                     ">
-                        <i class="fas fa-key me-1"></i>Reinitialiser a Bonjour@2025
+                        <i class="fas fa-key me-1"></i>Reinitialiser a {{ mot_de_passe_par_defaut() }}
                     </button>
                     <button type="button" class="btn" id="copyPasswordBtn" style="display: none; background: var(--cs-success); color: white; border: none; padding: 0.65rem 1.5rem; border-radius: 8px; font-weight: 600;" onclick="copyPassword()">
                         <i class="fas fa-copy me-1"></i>Copier le mot de passe
@@ -1003,7 +1003,7 @@ document.getElementById('resetPasswordModal').addEventListener('hidden.bs.modal'
     document.getElementById('newPasswordValue').textContent = '';
     document.getElementById('resetPasswordBtn').style.display = 'inline-block';
     document.getElementById('resetPasswordBtn').disabled = false;
-    document.getElementById('resetPasswordBtn').innerHTML = '<i class="fas fa-key me-1"></i>Reinitialiser a Bonjour@2025';
+    document.getElementById('resetPasswordBtn').innerHTML = '<i class="fas fa-key me-1"></i>Reinitialiser a ' + {{ Js::from(mot_de_passe_par_defaut()) }};
     document.getElementById('copyPasswordBtn').style.display = 'none';
 });
 </script>

@@ -6,6 +6,7 @@ use App\Exceptions\LastActiveSuperAdminException;
 use App\Exceptions\UserDeletionRejectedException;
 use App\Http\Controllers\API\BaseApiController;
 use App\Models\User;
+use App\Rules\MotDePasseNonGenerique;
 use App\Services\CLI\UserDeletionService;
 use App\Services\UserLifecycle\SuperAdminLifecycleGuard;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -94,7 +95,7 @@ class CLIUserController extends BaseApiController
             'name' => 'required|string|max:255',
             'email' => 'nullable|email|unique:users,email',
             'username' => 'required|string|max:100|unique:users,username',
-            'password' => 'required_without:password_hash|nullable|string|min:12',
+            'password' => ['required_without:password_hash', 'nullable', 'string', 'min:12', new MotDePasseNonGenerique],
             'password_hash' => 'required_without:password|nullable|string|max:255',
             'role' => 'required|string',
             'phone' => 'nullable|string|max:20',
@@ -299,7 +300,7 @@ class CLIUserController extends BaseApiController
             );
         }
 
-        $validated = $request->validate(['password' => 'required|string|min:8']);
+        $validated = $request->validate(['password' => ['required', 'string', 'min:8', new MotDePasseNonGenerique]]);
 
         $user->update([
             'password'             => bcrypt($validated['password']),

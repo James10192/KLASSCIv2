@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Rules\MotDePasseChoisi;
 use App\Services\Scoring\PersonnelScoringService;
 use App\Http\Controllers\Concerns\ResetsStaffPassword;
 use App\Services\UserLifecycle\SuperAdminLifecycleGuard;
@@ -108,7 +109,7 @@ class ESBTPDirecteurEtudesController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'nullable|string|email|max:255|unique:users,email,'.$directeurEtude->id,
-            'password' => 'nullable|string|min:8|confirmed',
+            'password' => MotDePasseChoisi::facultatif(),
             'telephone' => 'nullable|string|max:20',
             'specialite' => 'nullable|string|max:255',
             'is_active' => 'required|boolean',
