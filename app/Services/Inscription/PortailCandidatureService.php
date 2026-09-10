@@ -7,10 +7,10 @@ use App\Enums\RefusCandidature;
 use App\Exceptions\RefusCandidatureException;
 use App\Models\ESBTPCandidature;
 use App\Models\ESBTPInscription;
+use App\Support\IdentitePersonne;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 
 /**
  * Les candidatures des nouveaux etudiants, deposees depuis klassci.com.
@@ -130,6 +130,8 @@ class PortailCandidatureService
             $rouverte = $this->rouvrir($existante->id, $valeurs);
 
             if ($rouverte !== null) {
+                $rouverte->assurerReferencePublique();
+
                 return $rouverte;
             }
 
@@ -171,6 +173,8 @@ class PortailCandidatureService
                 throw $e;
             }
 
+            $rattrapee->assurerReferencePublique();
+
             return $rattrapee;
         }
 
@@ -178,6 +182,8 @@ class PortailCandidatureService
             'candidature_id' => $candidature->id,
             'annee_universitaire_id' => $cles['annee_universitaire_id'],
         ]);
+
+        $candidature->assurerReferencePublique();
 
         return $candidature;
     }
@@ -394,34 +400,13 @@ class PortailCandidatureService
      */
     private function memeIdentite(ESBTPCandidature $candidature, array $valeurs): bool
     {
-        // Str::ascii et non iconv : sur Windows, `ASCII//TRANSLIT` rend
-        // « Traor'e » pour « Traoré » — l'apostrophe s'invite et deux ecritures
-        // du meme nom cessent de concorder. Le helper de Laravel translittere
-        // vraiment, et c'est celui que le reste du projet utilise.
-        $normaliser = static fn ($valeur): string => preg_replace(
-            '/\s+/',
-            ' ',
-            mb_strtoupper(Str::ascii(trim((string) $valeur)), 'UTF-8')
+        return IdentitePersonne::concordent(
+            $candidature->nom,
+            $candidature->prenoms,
+            $candidature->date_naissance,
+            $valeurs['nom'] ?? '',
+            $valeurs['prenoms'] ?? '',
+            $valeurs['date_naissance'] ?? '',
         );
-
-        // Str::ascii vide une ecriture non latine : deux noms en caracteres
-        // chinois normaliseraient tous deux en chaine vide et se compareraient
-        // egaux. Improbable en Cote d'Ivoire, mais « egal parce que vide » est
-        // la mauvaise reponse a « est-ce la meme personne ».
-        //
-        // Contrepartie assumee : pour un tel nom, la comparaison ne peut JAMAIS
-        // reussir, donc la premiere issue du message public — « ressaisissez
-        // vos nom, prenoms et date de naissance exactement comme la premiere
-        // fois » — lui est fermee. Ce n'est pas une impasse : la seconde,
-        // « utilisez un autre numero », marche toujours. On prefere ce cout-la
-        // a un garde d'identite qui laisse passer deux inconnus.
-        $renseigne = static fn (string $a, string $b): bool => $a !== '' && $a === $b;
-
-        $memeDate = optional($candidature->date_naissance)->toDateString()
-            === (string) ($valeurs['date_naissance'] ?? '');
-
-        return $memeDate
-            && $renseigne($normaliser($candidature->nom), $normaliser($valeurs['nom'] ?? ''))
-            && $renseigne($normaliser($candidature->prenoms), $normaliser($valeurs['prenoms'] ?? ''));
     }
 }

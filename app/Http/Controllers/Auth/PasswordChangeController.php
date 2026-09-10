@@ -3,9 +3,9 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Rules\MotDePasseNonGenerique;
 use App\Services\UserService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules\Password;
 
 class PasswordChangeController extends Controller
@@ -34,22 +34,16 @@ class PasswordChangeController extends Controller
     {
         $user = auth()->user();
 
-        // Vérifier le mot de passe actuel EN PREMIER (avant la validation du nouveau)
-        if (!Hash::check($request->current_password, $user->password)) {
-            return back()->withErrors([
-                'current_password' => 'Le mot de passe actuel est incorrect. Vérifiez que vous avez bien saisi votre mot de passe actuel (celui utilisé pour vous connecter).'
-            ])->withInput($request->only('current_password'));
-        }
-
-        // Valider le nouveau mot de passe seulement après confirmation du mot de passe actuel
         $request->validate([
-            'current_password' => ['required'],
-            'password' => ['required', 'confirmed', Password::min(8)
+            'current_password' => ['required', 'current_password'],
+            'password' => ['required', 'confirmed', 'different:current_password', new MotDePasseNonGenerique, Password::min(8)
                 ->letters()
                 ->numbers()
             ],
         ], [
             'current_password.required' => 'Le mot de passe actuel est requis.',
+            'current_password.current_password' => 'Le mot de passe actuel est incorrect. Vérifiez que vous avez bien saisi votre mot de passe actuel (celui utilisé pour vous connecter).',
+            'password.different' => 'Le nouveau mot de passe doit être différent de l\'actuel.',
             'password.required' => 'Le nouveau mot de passe est requis.',
             'password.confirmed' => 'La confirmation du mot de passe ne correspond pas. Vérifiez que les deux champs "Nouveau mot de passe" sont identiques.',
             'password.min' => 'Le nouveau mot de passe doit contenir au moins 8 caractères.',

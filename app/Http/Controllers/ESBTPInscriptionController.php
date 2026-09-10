@@ -2467,6 +2467,15 @@ class ESBTPInscriptionController extends Controller
                 'status' => 'en_attente',
                 'workflow_step' => 'prospect',
                 'type_inscription' => $isReinscription ? 'réinscription' : 'première_inscription',
+                // Le guichet SAIT deja s'il a affaire a quelqu'un de la maison : il
+                // vient de le choisir dans la liste des etudiants existants, et cette
+                // meme information ecrit « reinscription » juste au-dessus. Ne pas la
+                // reporter ici laissait le statut vide, et la regle d'audience lit
+                // « nouveau = tout ce qui n'est pas ancien » : un ancien se voyait
+                // donc proposer, puis encaisser, les frais reserves aux entrants.
+                'statut_etablissement' => $isReinscription
+                    ? ESBTPInscription::STATUT_ETABLISSEMENT_ANCIEN
+                    : ESBTPInscription::STATUT_ETABLISSEMENT_NOUVEAU,
                 'is_redoublant' => $estRedoublement,
                 'affectation_status' => ESBTPInscription::DEFAULT_AFFECTATION_STATUS,
                 'montant_scolarite' => 0,
@@ -2475,11 +2484,33 @@ class ESBTPInscriptionController extends Controller
             ]);
 
             // 3. Créer les souscriptions de frais
+            //
+            // La liste vient du formulaire, donc du navigateur. Elle ne fait pas foi :
+            // un frais reserve aux entrants ne doit pas pouvoir etre souscrit pour un
+            // ancien parce qu'il figurait encore dans la page. C'est ce qui s'est
+            // produit — le guichet a encaisse une tenue a des etudiants de deuxieme
+            // annee, et l'argent une fois recu, la correction du statut ne pouvait
+            // plus retirer la souscription sans orpheliner le versement.
+            $resolveurAudience = app(\App\Services\ApplicableFraisResolver::class);
+            $categoriesConnues = ESBTPFraisCategory::whereIn('id', array_keys($request->input('frais', [])))
+                ->get()
+                ->keyBy('id');
+
             $fraisData = $request->input('frais', []);
             $totalSouscrit = 0;
+            $fraisEcartes = [];
             foreach ($fraisData as $categoryId => $fraisInfo) {
                 $amount = floatval($fraisInfo['amount'] ?? 0);
                 if ($amount <= 0) continue;
+
+                $categorie = $categoriesConnues->get((int) $categoryId);
+                if ($categorie && ! $resolveurAudience->categoryAppliesToStudent(
+                    $categorie,
+                    $inscription->statut_etablissement
+                )) {
+                    $fraisEcartes[] = $categorie->name;
+                    continue;
+                }
 
                 $variantId = ($fraisInfo['variant_id'] ?? null);
                 $selectedOptionId = ($variantId !== 'default' && $variantId !== null) ? $variantId : null;
@@ -2552,10 +2583,20 @@ class ESBTPInscriptionController extends Controller
                 $message .= " Paiement encaissé : " . number_format($totalPaye, 0, ',', ' ') . " FCFA.";
             }
 
-            return redirect()
+            $reponse = redirect()
                 ->route('esbtp.inscriptions.show', $inscription->id)
                 ->with('success', $message)
                 ->with('demander_photo', true);
+
+            // Un frais ecarte doit se voir. Le retirer en silence laisserait le
+            // guichet croire qu'il a encaisse ce qu'il avait coche.
+            if (! empty($fraisEcartes)) {
+                $reponse->with('warning', count($fraisEcartes) === 1
+                    ? "Le frais « ".$fraisEcartes[0]." » ne s'applique pas à un ancien de l'établissement : il n'a pas été souscrit."
+                    : "Ces frais ne s'appliquent pas à un ancien de l'établissement et n'ont pas été souscrits : ".implode(', ', $fraisEcartes).".");
+            }
+
+            return $reponse;
 
         } catch (\Exception $e) {
             DB::rollBack();

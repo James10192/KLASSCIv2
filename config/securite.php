@@ -20,4 +20,16 @@ return [
      */
     'double_auth_roles' => env('SECURITE_DOUBLE_AUTH_ROLES', ''),
 
+    /*
+     * Le mot de passe attribué à la création d'un compte et à chaque
+     * réinitialisation, avant que la personne n'en choisisse un.
+     *
+     * Vide, la plateforme pose « Bonjour@ » suivi de l'année en cours. Une
+     * école peut préférer le sien : il sera annoncé tel quel sur les fiches
+     * du personnel, et refusé comme mot de passe personnel.
+     *
+     *   SECURITE_MOT_DE_PASSE_DEFAUT=Akwaba#2026
+     */
+    'mot_de_passe_par_defaut' => env('SECURITE_MOT_DE_PASSE_DEFAUT'),
+
 ];

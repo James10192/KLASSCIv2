@@ -379,6 +379,27 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 ->middleware('throttle:30,1')->name('rejeter');
         });
 
+        Route::prefix('inscriptions')->middleware(['auth', 'paywall'])->name('rendez-vous.')->group(function () {
+            Route::get('/rendez-vous', [\App\Http\Controllers\ESBTP\ESBTPRendezVousController::class, 'index'])
+                ->middleware('permission:inscriptions.rdv.view')
+                ->name('index');
+            Route::post('/rendez-vous/reglages', [\App\Http\Controllers\ESBTP\ESBTPRendezVousController::class, 'enregistrerReglages'])
+                ->middleware(['permission:inscriptions.rdv.configure', 'throttle:20,1'])
+                ->name('reglages');
+            Route::post('/rendez-vous/generer', [\App\Http\Controllers\ESBTP\ESBTPRendezVousController::class, 'generer'])
+                ->middleware(['permission:inscriptions.rdv.manage', 'throttle:10,1'])
+                ->name('generer');
+            Route::post('/rendez-vous/placer', [\App\Http\Controllers\ESBTP\ESBTPRendezVousController::class, 'placer'])
+                ->middleware(['permission:inscriptions.rdv.manage', 'throttle:5,1'])
+                ->name('placer');
+            Route::post('/rendez-vous/{creneau}/ouvrir', [\App\Http\Controllers\ESBTP\ESBTPRendezVousController::class, 'ouvrir'])
+                ->middleware(['permission:inscriptions.rdv.manage', 'throttle:60,1'])
+                ->name('ouvrir');
+            Route::post('/rendez-vous/{creneau}/fermer', [\App\Http\Controllers\ESBTP\ESBTPRendezVousController::class, 'fermer'])
+                ->middleware(['permission:inscriptions.rdv.manage', 'throttle:60,1'])
+                ->name('fermer');
+        });
+
         // Routes protÃ©gÃ©es pour les super-administrateurs, secrÃ©taires, coordinateurs et enseignants
         Route::middleware(['auth', 'permission:admin.access', 'paywall'])->group(function () {
             // Nouveau systÃ¨me de catÃ©gories de frais ESBTP
@@ -547,6 +568,7 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             // Routes pour les secrÃ©taires
             Route::resource('secretaires', ESBTPSecretaireController::class);
             Route::post('secretaires/{secretaire}/reset-password', [ESBTPSecretaireController::class, 'resetPassword'])
+                ->middleware('throttle:5,1')
                 ->name('secretaires.reset-password');
 
 
@@ -1351,9 +1373,9 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 ->name('etudiants.create-account')
                 ->middleware(['permission:students.edit']);
 
-            Route::get('/etudiants/{etudiant}/reset-password', [ESBTPEtudiantController::class, 'resetPassword'])
+            Route::post('/etudiants/{etudiant}/reset-password', [ESBTPEtudiantController::class, 'resetPassword'])
                 ->name('etudiants.reset-password')
-                ->middleware(['permission:students.edit']);
+                ->middleware(['permission:students.edit', 'throttle:5,1']);
 
             Route::get('/etudiants/{etudiant}/inscriptions/repair-diagnostic', [ESBTPStudentInscriptionRepairController::class, 'diagnose'])
                 ->name('etudiants.inscriptions.repair-diagnostic')
@@ -1387,6 +1409,15 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                     ->middleware('throttle:60,1');
                 Route::get('/inscriptions/{inscription}/fiche/preview-pdf', [\App\Http\Controllers\ESBTPInscriptionFicheController::class, 'preview'])
                     ->name('inscriptions.fiche.preview-pdf')
+                    ->middleware(['permission:inscriptions.fiche.print', 'throttle:60,1']);
+
+                // La fiche VIERGE, a distribuer en salle d'attente. Aucun
+                // parametre : elle ne parle d'aucun eleve, et c'est tout son
+                // interet — on en imprime une pile le matin de la rentree. Le
+                // chemin est distinct de `/inscriptions/{inscription}` pour
+                // qu'aucune route a parametre ne puisse le capter.
+                Route::get('/inscriptions-fiche-vierge', [\App\Http\Controllers\ESBTPInscriptionFicheController::class, 'vierge'])
+                    ->name('inscriptions.fiche.vierge')
                     ->middleware(['permission:inscriptions.fiche.print', 'throttle:60,1']);
                 Route::get('/inscriptions/{inscription}/data', [ESBTPInscriptionApiController::class, 'getInscriptionData'])->name('inscriptions.data');
                 Route::get('/inscriptions/{inscription}/paiement-en-attente', [ESBTPInscriptionApiController::class, 'getPaiementEnAttente'])->name('inscriptions.paiement-en-attente');
@@ -2178,13 +2209,22 @@ Route::middleware(['auth', 'comptabilite.access'])->prefix('esbtp/comptabilite')
         ->name('recouvrement.index');
     Route::post('/recouvrement/log-intent', [\App\Http\Controllers\ESBTPRecouvrementController::class, 'logIntent'])
         ->name('recouvrement.log-intent')
-        ->middleware('throttle:120,1');
+        // Journaliser une relance, c'est relancer : meme garde que les boutons
+        // de l'ecran (@can('comptabilite.relances.send')), sinon toute personne
+        // ayant comptabilite.access pouvait ecrire dans le journal des relances.
+        ->middleware(['permission:comptabilite.relances.send', 'throttle:120,1']);
     Route::post('/recouvrement/confirm-sent', [\App\Http\Controllers\ESBTPRecouvrementController::class, 'confirmSent'])
         ->name('recouvrement.confirm-sent')
-        ->middleware('throttle:120,1');
+        // Journaliser une relance, c'est relancer : meme garde que les boutons
+        // de l'ecran (@can('comptabilite.relances.send')), sinon toute personne
+        // ayant comptabilite.access pouvait ecrire dans le journal des relances.
+        ->middleware(['permission:comptabilite.relances.send', 'throttle:120,1']);
     Route::post('/recouvrement/mark-done', [\App\Http\Controllers\ESBTPRecouvrementController::class, 'markDone'])
         ->name('recouvrement.mark-done')
-        ->middleware('throttle:120,1');
+        // Journaliser une relance, c'est relancer : meme garde que les boutons
+        // de l'ecran (@can('comptabilite.relances.send')), sinon toute personne
+        // ayant comptabilite.access pouvait ecrire dans le journal des relances.
+        ->middleware(['permission:comptabilite.relances.send', 'throttle:120,1']);
     // Recouvrement â€” exports (PDF preview/download + Excel + email)
     Route::get('/recouvrement/preview-pdf', [\App\Http\Controllers\ESBTPRecouvrementController::class, 'previewPdf'])
         ->name('recouvrement.preview-pdf')
@@ -2268,6 +2308,8 @@ Route::middleware(['auth', 'comptabilite.access'])->prefix('esbtp/comptabilite')
     Route::prefix('relances')->name('relances.')->group(function () {
         Route::get('/', [ESBTPComptabiliteRelanceController::class, 'gestionRelances'])->name('index');
         Route::get('/config', [ESBTPComptabiliteRelanceController::class, 'configurationRelances'])->name('config');
+        Route::get('/planification-avancee', [ESBTPComptabiliteRelanceController::class, 'planificationAvancee'])->name('planification-avancee')
+            ->middleware(['permission:comptabilite.relances.send']);
         Route::get('/export-excel', [ESBTPComptabiliteRelanceController::class, 'exportRelancesExcel'])->name('export-excel')
             ->middleware(['permission:comptabilite.reports.export']);
         Route::get('/export-pdf', [ESBTPComptabiliteRelanceController::class, 'exportRelancesPdf'])->name('export-pdf')
@@ -2312,8 +2354,10 @@ Route::middleware(['auth', 'comptabilite.access'])->prefix('esbtp/comptabilite')
     });
 
     // Dashboard comptabilitÃ©
-    Route::get('/dashboard', [ESBTPComptabiliteController::class, 'dashboard'])->name('dashboard');
-    Route::get('/dashboard/data', [ESBTPComptabiliteController::class, 'dashboardData'])->name('dashboard.data');
+    Route::get('/dashboard', [ESBTPComptabiliteController::class, 'dashboard'])->name('dashboard')
+        ->middleware(['permission:comptabilite.dashboard.view']);
+    Route::get('/dashboard/data', [ESBTPComptabiliteController::class, 'dashboardData'])->name('dashboard.data')
+        ->middleware(['permission:comptabilite.dashboard.view']);
 });
 
 // Routes pour le systÃ¨me d'Ã©margement
@@ -2790,7 +2834,7 @@ Route::middleware(['auth', 'permission:system.manage', 'paywall'])->prefix('esbt
     Route::post('/comptables/{user}/toggle-status', [\App\Http\Controllers\ESBTPComptableController::class, 'toggleStatus'])->name('comptables.toggle-status');
     Route::delete('/comptables/{user}', [\App\Http\Controllers\ESBTPComptableController::class, 'destroy'])->name('comptables.destroy');
     // Lot 18d â€” bouton reset-password universel sur fiche comptable
-    Route::post('/comptables/{user}/reset-password', [\App\Http\Controllers\ESBTPComptableController::class, 'resetPassword'])->name('comptables.reset-password');
+    Route::post('/comptables/{user}/reset-password', [\App\Http\Controllers\ESBTPComptableController::class, 'resetPassword'])->middleware('throttle:5,1')->name('comptables.reset-password');
 
     // Caissier (create/store mutualisÃ©s avec ESBTPComptableController, le reste sur ESBTPCaissierController)
     Route::get('/caissiers/create', [\App\Http\Controllers\ESBTPComptableController::class, 'createCaissier'])->name('caissiers.create');
@@ -2803,7 +2847,7 @@ Route::middleware(['auth', 'permission:system.manage', 'paywall'])->prefix('esbt
     Route::patch('/caissiers/{caissier}', [\App\Http\Controllers\ESBTPCaissierController::class, 'update']);
     Route::delete('/caissiers/{caissier}', [\App\Http\Controllers\ESBTPCaissierController::class, 'destroy'])->name('caissiers.destroy');
     Route::patch('/caissiers/{caissier}/toggle-status', [\App\Http\Controllers\ESBTPCaissierController::class, 'toggleStatus'])->name('caissiers.toggle-status');
-    Route::post('/caissiers/{caissier}/reset-password', [\App\Http\Controllers\ESBTPCaissierController::class, 'resetPassword'])->name('caissiers.reset-password');
+    Route::post('/caissiers/{caissier}/reset-password', [\App\Http\Controllers\ESBTPCaissierController::class, 'resetPassword'])->middleware('throttle:5,1')->name('caissiers.reset-password');
 });
 
 Route::middleware(['auth', 'permission:performance.view_all', 'paywall'])->prefix('esbtp')->name('esbtp.')->group(function () {
@@ -2856,7 +2900,7 @@ Route::middleware(['auth', 'permission:admin.access|identity.direct_studies|iden
     // Routes pour les coordinateurs (maintien de la compatibilitÃ©)
     Route::resource('coordinateurs', \App\Http\Controllers\ESBTPCoordinateurController::class);
     Route::patch('coordinateurs/{coordinateur}/toggle-status', [\App\Http\Controllers\ESBTPCoordinateurController::class, 'toggleStatus'])->name('coordinateurs.toggle-status');
-    Route::post('coordinateurs/{coordinateur}/reset-password', [\App\Http\Controllers\ESBTPCoordinateurController::class, 'resetPassword'])->name('coordinateurs.reset-password');
+    Route::post('coordinateurs/{coordinateur}/reset-password', [\App\Http\Controllers\ESBTPCoordinateurController::class, 'resetPassword'])->middleware('throttle:5,1')->name('coordinateurs.reset-password');
     Route::resource('directeurs-etudes', \App\Http\Controllers\ESBTPDirecteurEtudesController::class)
         ->parameters(['directeurs-etudes' => 'directeurEtude']);
     Route::patch('directeurs-etudes/{directeurEtude}/toggle-status', [\App\Http\Controllers\ESBTPDirecteurEtudesController::class, 'toggleStatus'])
@@ -3504,6 +3548,11 @@ require __DIR__.'/academic-pilotage.php';
 
 
 
+
+Route::get('/convocation-rdv/{jeton}', [\App\Http\Controllers\API\Public\ConvocationRdvPdfController::class, '__invoke'])
+    ->middleware('throttle:30,1')
+    ->where('jeton', '[0-9]+\.[A-Fa-f0-9]+')
+    ->name('public.rdv.convocation');
 
 // Shell mobile
 // Bascule de profil mobile reservee au superAdmin (verifiee dans le controleur) :

@@ -27,7 +27,6 @@
     border-radius: 18px;
     overflow: hidden;
     pointer-events: none;
-    z-index: 0;
 }
 .pu-hero-deco::before {
     content: '';
@@ -45,8 +44,13 @@
     background: radial-gradient(circle, rgba(255,255,255,0.05) 0%, transparent 70%);
     border-radius: 50%;
 }
-/* Tous les enfants directs du hero passent au-dessus de la deco */
-.pu-hero > *:not(.pu-hero-deco) { position: relative; z-index: 1; }
+/* Tous les enfants directs du hero passent au-dessus de la deco : la deco est
+   le PREMIER enfant (a garder tel quel dans le markup), les suivants, positionnes
+   eux aussi, se peignent apres elle dans l'ordre du document. Aucun z-index dans
+   le bandeau : chacun de ceux qui s'y trouvaient ouvrait un contexte
+   d'empilement, et les KPI puis les cartes de la page passaient au-dessus du
+   menu « Nouveau Personnel » ouvert (position:fixed). */
+.pu-hero > *:not(.pu-hero-deco) { position: relative; }
 .pu-hero-top {
     display: flex;
     justify-content: space-between;
@@ -54,7 +58,6 @@
     gap: 1rem;
     margin-bottom: 1.5rem;
     position: relative;
-    z-index: 2;
 }
 .pu-hero-title {
     font-size: 1.5rem;
@@ -75,7 +78,6 @@
     gap: 0.5rem;
     flex-shrink: 0;
     position: relative;
-    z-index: 1050;
 }
 .pu-hero-btn {
     background: rgba(255,255,255,0.15);
@@ -104,7 +106,6 @@
     grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
     gap: 0.75rem;
     position: relative;
-    z-index: 1;
 }
 .pu-hero-kpi {
     background: rgba(255,255,255,0.12);
@@ -594,9 +595,15 @@
 /* Le hero contient un dropdown qui doit s'extraire en position:fixed.
    transform: translateY(0) (état final animation) crée un containing block et
    piège le menu dans le stacking context du hero. On utilise une animation
-   opacity-only pour le hero spécifiquement, qui ne laisse aucun transform. */
+   opacity-only pour le hero spécifiquement, qui ne laisse aucun transform.
+   Sans fill-mode : Chrome garde un contexte d'empilement tant qu'une animation
+   d'opacité « remplit » son état final, même à opacité 1, et les cartes qui
+   suivent dans le document passaient alors au-dessus du menu ouvert. La valeur
+   de repos est déjà opacity:1, la fin de l'animation ne saute donc pas. Pendant
+   la demi-seconde de l'animation elle-même, le contexte existe encore : un menu
+   ouvert dans cet instant retombe sous les cartes, puis se libère. */
 @keyframes pu-fade-only { from { opacity: 0; } to { opacity: 1; } }
-.pu-hero.pu-animate { animation: pu-fade-only 0.5s ease-out both; transform: none !important; }
+.pu-hero.pu-animate { animation: pu-fade-only 0.5s ease-out; transform: none !important; }
 
 /* ─── Overflow fix for dropdown ─── */
 .dashboard-acasi,
@@ -1518,8 +1525,7 @@
                                 aria-expanded="false">
                             <i class="fas fa-plus"></i>Nouveau Personnel
                         </button>
-                        <ul class="dropdown-menu dropdown-menu-end"
-                            style="z-index:1100;">
+                        <ul class="dropdown-menu dropdown-menu-end">
                             @if(($personnelAccess['directeurs_etudes']['create'] ?? false) && ($userRole ?? '') !== 'directeurEtudes')
                             <li><a class="dropdown-item" href="{{ route('esbtp.directeurs-etudes.create') }}">
                                 <i class="fas fa-graduation-cap"></i>Directeur des études
@@ -1843,8 +1849,8 @@
                                     <div class="pu-name">{{ $directeur->name }}</div>
                                     <div class="pu-meta">
                                         <span class="pu-meta-item"><i class="fas fa-envelope"></i>{{ $directeur->email }}</span>
-                                        @if($directeur->telephone)
-                                        <span class="pu-meta-item"><i class="fas fa-phone"></i>{{ $directeur->telephone }}</span>
+                                        @if($directeur->phone)
+                                        <span class="pu-meta-item"><i class="fas fa-phone"></i>{{ $directeur->phone }}</span>
                                         @endif
                                     </div>
                                 </div>
@@ -1919,8 +1925,8 @@
                                     <div class="pu-name">{{ $coordinateur->name }}</div>
                                     <div class="pu-meta">
                                         <span class="pu-meta-item"><i class="fas fa-envelope"></i>{{ $coordinateur->email }}</span>
-                                        @if($coordinateur->telephone)
-                                        <span class="pu-meta-item"><i class="fas fa-phone"></i>{{ $coordinateur->telephone }}</span>
+                                        @if($coordinateur->phone)
+                                        <span class="pu-meta-item"><i class="fas fa-phone"></i>{{ $coordinateur->phone }}</span>
                                         @endif
                                         @if($coordinateur->specialite)
                                         <span class="pu-meta-item"><i class="fas fa-graduation-cap"></i>{{ $coordinateur->specialite }}</span>
@@ -2029,8 +2035,8 @@
                                     </div>
                                     <div class="pu-meta">
                                         <span class="pu-meta-item"><i class="fas fa-envelope"></i>{{ $teacher->user->email }}</span>
-                                        @if($teacher->user->telephone)
-                                        <span class="pu-meta-item"><i class="fas fa-phone"></i>{{ $teacher->user->telephone }}</span>
+                                        @if($teacher->user->phone)
+                                        <span class="pu-meta-item"><i class="fas fa-phone"></i>{{ $teacher->user->phone }}</span>
                                         @endif
                                         @if($teacher->specialization)
                                         <span class="pu-meta-item"><i class="fas fa-graduation-cap"></i>{{ $teacher->specialization }}</span>
@@ -2117,8 +2123,8 @@
                                     <div class="pu-name">{{ $secretaire->name }}</div>
                                     <div class="pu-meta">
                                         <span class="pu-meta-item"><i class="fas fa-envelope"></i>{{ $secretaire->email }}</span>
-                                        @if($secretaire->telephone)
-                                        <span class="pu-meta-item"><i class="fas fa-phone"></i>{{ $secretaire->telephone }}</span>
+                                        @if($secretaire->phone)
+                                        <span class="pu-meta-item"><i class="fas fa-phone"></i>{{ $secretaire->phone }}</span>
                                         @endif
                                         @if($secretaire->service)
                                         <span class="pu-meta-item"><i class="fas fa-briefcase"></i>{{ $secretaire->service }}</span>
@@ -2191,8 +2197,8 @@
                                     <div class="pu-name">{{ $responsable->name }}</div>
                                     <div class="pu-meta">
                                         <span class="pu-meta-item"><i class="fas fa-envelope"></i>{{ $responsable->email }}</span>
-                                        @if($responsable->telephone)
-                                        <span class="pu-meta-item"><i class="fas fa-phone"></i>{{ $responsable->telephone }}</span>
+                                        @if($responsable->phone)
+                                        <span class="pu-meta-item"><i class="fas fa-phone"></i>{{ $responsable->phone }}</span>
                                         @endif
                                     </div>
                                 </div>
@@ -2252,8 +2258,8 @@
                                     <div class="pu-name">{{ $service->name }}</div>
                                     <div class="pu-meta">
                                         <span class="pu-meta-item"><i class="fas fa-envelope"></i>{{ $service->email }}</span>
-                                        @if($service->telephone)
-                                        <span class="pu-meta-item"><i class="fas fa-phone"></i>{{ $service->telephone }}</span>
+                                        @if($service->phone)
+                                        <span class="pu-meta-item"><i class="fas fa-phone"></i>{{ $service->phone }}</span>
                                         @endif
                                     </div>
                                 </div>
@@ -2313,8 +2319,8 @@
                                     <div class="pu-name">{{ $agent->name }}</div>
                                     <div class="pu-meta">
                                         <span class="pu-meta-item"><i class="fas fa-envelope"></i>{{ $agent->email }}</span>
-                                        @if($agent->telephone)
-                                        <span class="pu-meta-item"><i class="fas fa-phone"></i>{{ $agent->telephone }}</span>
+                                        @if($agent->phone)
+                                        <span class="pu-meta-item"><i class="fas fa-phone"></i>{{ $agent->phone }}</span>
                                         @endif
                                     </div>
                                 </div>
@@ -2389,8 +2395,8 @@
                                     <div class="pu-name">{{ $comptable->name }}</div>
                                     <div class="pu-meta">
                                         <span class="pu-meta-item"><i class="fas fa-envelope"></i>{{ $comptable->email }}</span>
-                                        @if($comptable->telephone)
-                                        <span class="pu-meta-item"><i class="fas fa-phone"></i>{{ $comptable->telephone }}</span>
+                                        @if($comptable->phone)
+                                        <span class="pu-meta-item"><i class="fas fa-phone"></i>{{ $comptable->phone }}</span>
                                         @endif
                                         @if($comptable->department)
                                         <span class="pu-meta-item"><i class="fas fa-building"></i>{{ $comptable->department }}</span>
@@ -2474,8 +2480,8 @@
                                     <div class="pu-name">{{ $caissier->name }}</div>
                                     <div class="pu-meta">
                                         <span class="pu-meta-item"><i class="fas fa-envelope"></i>{{ $caissier->email ?: 'Sans email' }}</span>
-                                        @if($caissier->telephone)
-                                        <span class="pu-meta-item"><i class="fas fa-phone"></i>{{ $caissier->telephone }}</span>
+                                        @if($caissier->phone)
+                                        <span class="pu-meta-item"><i class="fas fa-phone"></i>{{ $caissier->phone }}</span>
                                         @endif
                                         <span class="pu-meta-item"><i class="fas fa-calendar"></i>{{ $caissier->created_at->format('d/m/Y') }}</span>
                                     </div>
@@ -2558,8 +2564,8 @@
                                         <div class="pu-name">{{ $u->name }}</div>
                                         <div class="pu-meta">
                                             <span class="pu-meta-item"><i class="fas fa-envelope"></i>{{ $u->email ?: 'Sans email' }}</span>
-                                            @if($u->telephone)
-                                            <span class="pu-meta-item"><i class="fas fa-phone"></i>{{ $u->telephone }}</span>
+                                            @if($u->phone)
+                                            <span class="pu-meta-item"><i class="fas fa-phone"></i>{{ $u->phone }}</span>
                                             @endif
                                             <span class="pu-meta-item"><i class="fas fa-calendar"></i>{{ $u->created_at->format('d/m/Y') }}</span>
                                         </div>
@@ -2743,7 +2749,7 @@ $(document).ready(function() {
 // ═══ Toggle Status Functions ═══
 function toggleTeacherStatus(teacherId) {
     if (confirm('Changer le statut de cet enseignant ?')) {
-        fetch(`/esbtp/enseignants/${teacherId}/toggle-status`, {
+        fetch({{ Js::from(route('esbtp.enseignants.toggleStatus', ['teacher' => '__ID__'])) }}.replace('__ID__', teacherId), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content, 'Accept': 'application/json' }
         })
@@ -2755,7 +2761,7 @@ function toggleTeacherStatus(teacherId) {
 
 function toggleComptableStatus(comptableId) {
     if (confirm('Changer le statut de ce comptable ?')) {
-        fetch(`/esbtp/comptables/${comptableId}/toggle-status`, {
+        fetch({{ Js::from(route('esbtp.comptables.toggle-status', ['user' => '__ID__'])) }}.replace('__ID__', comptableId), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content, 'Accept': 'application/json' }
         })
@@ -2767,7 +2773,8 @@ function toggleComptableStatus(comptableId) {
 
 function toggleSecretaireStatus(secretaireId) {
     if (confirm('Changer le statut de ce secrétaire ?')) {
-        fetch(`/esbtp/secretaires/${secretaireId}/toggle-status`, {
+        // Cette route ne vit pas sous /esbtp : on la demande au routeur plutot que de la deviner.
+        fetch({{ Js::from(route('secretaires.toggle-status', ['id' => '__ID__'])) }}.replace('__ID__', secretaireId), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content, 'Accept': 'application/json' }
         })
@@ -2780,7 +2787,7 @@ function toggleSecretaireStatus(secretaireId) {
 // Lot 18e — toggle status caissier (route PATCH dediee)
 function toggleCaissierStatus(caissierId) {
     if (confirm('Changer le statut de ce caissier ?')) {
-        fetch(`/esbtp/caissiers/${caissierId}/toggle-status`, {
+        fetch({{ Js::from(route('esbtp.caissiers.toggle-status', ['caissier' => '__ID__'])) }}.replace('__ID__', caissierId), {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content, 'Accept': 'application/json' }
         })

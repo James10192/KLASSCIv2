@@ -2,10 +2,12 @@
 
 namespace App\Models;
 
+use App\Contracts\PorteurDeRendezVous;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use OwenIt\Auditing\Contracts\Auditable;
 
 /**
@@ -16,8 +18,10 @@ use OwenIt\Auditing\Contracts\Auditable;
  * conversion passe par ReeinscriptionService::effectuerReinscription — le flux
  * canonique. C'est cette separation qui rend le canal public acceptable.
  */
-class ESBTPReinscriptionDemande extends Model implements Auditable
+class ESBTPReinscriptionDemande extends Model implements Auditable, PorteurDeRendezVous
 {
+    use Concerns\EstPorteurDeRendezVous;
+    use Concerns\HasReferencePublique;
     use HasFactory;
     use \OwenIt\Auditing\Auditable;
 
@@ -68,11 +72,14 @@ class ESBTPReinscriptionDemande extends Model implements Auditable
         'traite_par',
         'traite_at',
         'inscription_id',
+        'reference_publique',
+        'rdv_invite_at',
     ];
 
     protected $casts = [
         'consentement_at' => 'datetime',
         'traite_at' => 'datetime',
+        'rdv_invite_at' => 'datetime',
     ];
 
     /**
@@ -98,6 +105,11 @@ class ESBTPReinscriptionDemande extends Model implements Auditable
     public function etudiant(): BelongsTo
     {
         return $this->belongsTo(ESBTPEtudiant::class, 'etudiant_id');
+    }
+
+    public function reservations(): HasMany
+    {
+        return $this->hasMany(ESBTPRdvReservation::class, 'reinscription_demande_id');
     }
 
     public function anneeUniversitaire(): BelongsTo
@@ -142,5 +154,31 @@ class ESBTPReinscriptionDemande extends Model implements Auditable
             self::STATUT_CONVERTIE => 'Réinscrit',
             default => $this->statut,
         };
+    }
+
+    public function clesReservationRdv(): array
+    {
+        return [
+            'candidature_id' => null,
+            'reinscription_demande_id' => (int) $this->id,
+        ];
+    }
+
+    public function snapshotRdv(): array
+    {
+        $etudiant = $this->etudiant;
+
+        return [
+            'nom' => (string) ($etudiant?->nom ?? ''),
+            'prenoms' => (string) ($etudiant?->prenoms ?? ''),
+            'telephone' => (string) ($etudiant?->telephone ?? ''),
+            'date_naissance' => \App\Support\IdentitePersonne::jour($etudiant?->date_naissance),
+            'email' => $etudiant?->email,
+        ];
+    }
+
+    public function emailRdv(): ?string
+    {
+        return $this->etudiant?->email;
     }
 }

@@ -859,6 +859,52 @@ class CLIMaintenanceController extends BaseApiController
     }
 
     /**
+     * POST /api/cli/maintenance/reparer-encodage
+     *
+     * Repare les libelles ecrits en UTF-8 puis relus comme du latin-1 —
+     * « GÃ©ologie » pour « Géologie ». Simulation par defaut : il faut
+     * `apply=true` pour ecrire, et la reponse liste chaque changement dans les
+     * deux cas, pour qu'on puisse le lire avant de le decider.
+     */
+    public function reparerEncodage(
+        Request $request,
+        \App\Services\Maintenance\ReparateurEncodage $reparateur
+    ): JsonResponse {
+        if (! $request->user()->tokenCan('cli:admin')) {
+            return $this->errorResponse('Token missing cli:admin ability', [], 403);
+        }
+
+        $valide = $request->validate([
+            'apply' => ['nullable', 'boolean'],
+        ]);
+
+        $reparations = $reparateur->releve();
+
+        if (! ($valide['apply'] ?? false)) {
+            return $this->successResponse([
+                'applique' => false,
+                'trouve' => count($reparations),
+                'reparations' => $reparations,
+            ], sprintf('%d libelle(s) abime(s). Rien n\'a ete ecrit.', count($reparations)));
+        }
+
+        $ecrites = $reparateur->appliquer($reparations);
+
+        Log::warning('[maintenance] Reparation d encodage appliquee', [
+            'trouve' => count($reparations),
+            'ecrites' => $ecrites,
+            'par' => $request->user()->id,
+        ]);
+
+        return $this->successResponse([
+            'applique' => true,
+            'trouve' => count($reparations),
+            'ecrites' => $ecrites,
+            'reparations' => $reparations,
+        ], sprintf('%d libelle(s) repare(s).', $ecrites));
+    }
+
+    /**
      * @deprecated Hardcoded fallback — kept for emergency rollback only.
      * Real sync happens in CLIPermissionController::sync via PermissionRegistry.
      */

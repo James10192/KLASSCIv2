@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Exceptions\LastActiveSuperAdminException;
 use App\Models\User;
+use App\Rules\MotDePasseChoisi;
 use App\Services\UserLifecycle\SuperAdminLifecycleGuard;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -124,7 +125,7 @@ class ESBTPPersonnelController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
-            'password' => 'required|string|min:8|confirmed',
+            'password' => MotDePasseChoisi::obligatoireConfirme(),
             'telephone' => 'nullable|string|max:20',
             'specialite' => 'nullable|string|max:255',
             'service' => 'nullable|string|max:255', // Pour les secrétaires
@@ -181,7 +182,7 @@ class ESBTPPersonnelController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users,email,' . $personnel->id,
-            'password' => 'nullable|string|min:8|confirmed',
+            'password' => MotDePasseChoisi::facultatif(),
             'telephone' => 'nullable|string|max:20',
             'specialite' => 'nullable|string|max:255',
             'service' => 'nullable|string|max:255',

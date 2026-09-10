@@ -218,7 +218,7 @@ class ESBTPComptableController extends Controller
     }
 
     /**
-     * Lot 18d — Réinitialise le mot de passe du comptable à Bonjour@2025 et
+     * Lot 18d — Réinitialise le mot de passe du comptable à UserService::defaultPassword() et
      * force le changement à la première connexion. Logique partagée via
      * ResetsPersonnelPassword (alignée sur caissier, coordinateur, etc.).
      */

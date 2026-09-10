@@ -203,6 +203,8 @@ class PortailReinscriptionService
                 'ip_hash' => $this->empreinteAdresse($adresseVisiteur),
             ]);
 
+            $existante->assurerReferencePublique();
+
             return $existante;
         }
 
@@ -229,7 +231,14 @@ class PortailReinscriptionService
                 throw $e;
             }
 
-            return ESBTPReinscriptionDemande::where($cles)->first();
+            $rattrapee = ESBTPReinscriptionDemande::where($cles)->first();
+
+            if ($rattrapee === null) {
+                return null;
+            }
+            $rattrapee->assurerReferencePublique();
+
+            return $rattrapee;
         }
 
         if ($demande->wasRecentlyCreated) {
@@ -239,6 +248,8 @@ class PortailReinscriptionService
                 'annee_universitaire_id' => $situation->anneeCible->id,
             ]);
         }
+
+        $demande->assurerReferencePublique();
 
         return $demande;
     }

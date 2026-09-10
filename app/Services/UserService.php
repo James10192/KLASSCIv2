@@ -74,11 +74,29 @@ class UserService
     }
 
     /**
+     * Mot de passe générique posé à la création d'un compte et à chaque
+     * réinitialisation. Source unique : les contrôleurs, la règle qui le
+     * refuse comme mot de passe personnel, et les vues qui l'annoncent
+     * passent tous par ici, sinon ils divergent. Une école le remplace par le sien via
+     * `securite.mot_de_passe_par_defaut`.
+     *
+     * Le repli « Bonjour@<année> » se calcule ICI et non dans config/securite.php :
+     * `config:cache` figerait `date('Y')` au jour du cache, et les instances le
+     * font a chaque deploiement.
+     */
+    public static function defaultPassword(): string
+    {
+        $configure = config('securite.mot_de_passe_par_defaut');
+
+        return is_string($configure) && trim($configure) !== '' ? trim($configure) : 'Bonjour@' . date('Y');
+    }
+
+    /**
      * Génère le mot de passe générique de l'année courante
      */
     public function generateDefaultPassword(): string
     {
-        return 'Bonjour@' . date('Y');
+        return self::defaultPassword();
     }
 
     /**

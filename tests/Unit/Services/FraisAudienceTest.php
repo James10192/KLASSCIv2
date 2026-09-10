@@ -62,11 +62,44 @@ class FraisAudienceTest extends TestCase
         ));
     }
 
-    public function test_nouveaux_applies_when_statut_unknown(): void
+    /**
+     * Un statut inconnu ne declenche AUCUN frais restreint.
+     *
+     * La regle disait l'inverse jusqu'en septembre 2026 : « nouveaux » se
+     * contentait de « pas ancien », donc un champ vide suffisait a facturer. Un
+     * ancien d'ISLG a paye 50 000 F de tenue pour cette seule raison, et il a
+     * fallu reventiler son versement pour le lui rendre — une souscription payee
+     * ne se retire pas, sous peine de laisser l'argent sans affectation.
+     *
+     * L'ecole a tranche : mieux vaut sous-facturer que sur-facturer. Un frais
+     * oublie se reclame encore ; un frais encaisse a tort, beaucoup moins.
+     */
+    public function test_aucun_frais_restreint_quand_le_statut_est_inconnu(): void
     {
-        $category = new ESBTPFraisCategory(['audience' => ESBTPFraisCategory::AUDIENCE_NOUVEAUX]);
+        foreach ([ESBTPFraisCategory::AUDIENCE_NOUVEAUX, ESBTPFraisCategory::AUDIENCE_ANCIENS] as $audience) {
+            $category = new ESBTPFraisCategory(['audience' => $audience]);
 
-        $this->assertTrue($this->resolver(false)->categoryAppliesToStudent($category, null));
+            foreach ([null, ''] as $statutInconnu) {
+                $this->assertFalse(
+                    $this->resolver(false)->categoryAppliesToStudent($category, $statutInconnu),
+                    $audience
+                );
+                $this->assertFalse(
+                    $this->resolver(true)->categoryAppliesToStudent($category, $statutInconnu),
+                    $audience
+                );
+            }
+        }
+    }
+
+    public function test_un_frais_sans_restriction_s_applique_meme_sans_statut(): void
+    {
+        // La bascule ne doit toucher QUE les audiences restreintes : la scolarite
+        // et l'inscription se facturent a tout le monde, statut connu ou non.
+        $category = new ESBTPFraisCategory(['audience' => ESBTPFraisCategory::AUDIENCE_TOUS]);
+
+        $this->assertTrue($this->resolver(true)->categoryAppliesToStudent($category, null));
+        $this->assertTrue($this->resolver(false)->categoryAppliesToStudent($category, ''));
     }
 
     public function test_anciens_applies_only_to_ancien(): void

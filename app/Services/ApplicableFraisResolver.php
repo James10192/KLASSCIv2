@@ -22,8 +22,21 @@ class ApplicableFraisResolver
     {
         $audience = $category->audience ?? ESBTPFraisCategory::AUDIENCE_TOUS;
 
+        // Les deux audiences restreintes exigent une reponse EXPLICITE. Un statut
+        // absent ne veut pas dire « nouveau », il veut dire « on ne sait pas » —
+        // et on ne facture pas sur une supposition.
+        //
+        // La regle etait dissymetrique : « anciens » demandait un statut egal a
+        // « ancien », mais « nouveaux » se contentait de « pas ancien », donc un
+        // champ vide suffisait. Un ancien d'ISLG a paye 50 000 F de tenue pour
+        // cette seule raison, et rendre l'argent a demande une reventilation.
+        //
+        // Le choix, pose par l'ecole en septembre 2026 : mieux vaut sous-facturer
+        // que sur-facturer. Un frais oublie se reclame ; un frais encaisse a tort
+        // ne se retire plus, parce que retirer une souscription payee laisserait
+        // le versement sans affectation.
         return match ($audience) {
-            ESBTPFraisCategory::AUDIENCE_NOUVEAUX => $statutEtablissement !== ESBTPInscription::STATUT_ETABLISSEMENT_ANCIEN,
+            ESBTPFraisCategory::AUDIENCE_NOUVEAUX => $statutEtablissement === ESBTPInscription::STATUT_ETABLISSEMENT_NOUVEAU,
             ESBTPFraisCategory::AUDIENCE_ANCIENS => $statutEtablissement === ESBTPInscription::STATUT_ETABLISSEMENT_ANCIEN,
             default => true,
         };

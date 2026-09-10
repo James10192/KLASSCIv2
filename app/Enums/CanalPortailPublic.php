@@ -3,6 +3,7 @@
 namespace App\Enums;
 
 use App\Services\Inscription\PortailCandidaturePublication;
+use App\Services\RendezVous\RendezVousReglages;
 use App\Services\Reinscription\PortailReinscriptionService;
 use App\Support\SeauDeDebit;
 use Illuminate\Support\Facades\Log;
@@ -31,6 +32,8 @@ enum CanalPortailPublic: string
     case Reinscriptions = 'reinscriptions';
 
     case Candidatures = 'candidatures';
+
+    case Rendezvous = 'rendezvous';
 
     /** Bornes de volume, comptees sur des valeurs signees. */
     private const MAX_PAR_ADRESSE_PAR_MINUTE = 10;
@@ -102,6 +105,7 @@ enum CanalPortailPublic: string
         return match ($this) {
             self::Candidatures => app(PortailCandidaturePublication::class)->canalOuvert(),
             self::Reinscriptions => app(PortailReinscriptionService::class)->canalOuvert(),
+            self::Rendezvous => app(RendezVousReglages::class)->enabled(),
         };
     }
 
@@ -110,6 +114,7 @@ enum CanalPortailPublic: string
         return match ($this) {
             self::Candidatures => 'Les inscriptions en ligne ne sont pas ouvertes actuellement.',
             self::Reinscriptions => 'Les réinscriptions en ligne ne sont pas ouvertes actuellement.',
+            self::Rendezvous => 'La prise de rendez-vous n\'est pas ouverte actuellement.',
         };
     }
 

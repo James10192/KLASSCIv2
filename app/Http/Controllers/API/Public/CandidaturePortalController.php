@@ -71,7 +71,7 @@ class CandidaturePortalController extends Controller
         $donnees = $request->validated();
 
         try {
-            $this->candidatures->deposer(
+            $candidature = $this->candidatures->deposer(
                 $donnees,
                 $this->empreinte($donnees['ip_client'])
             );
@@ -111,6 +111,7 @@ class CandidaturePortalController extends Controller
             'enregistre' => true,
             'message' => 'Votre candidature a bien été transmise à l\'établissement.',
             'inscriptions_physiques' => $this->publication->inscriptionsPhysiques(),
+            'reference_publique' => $candidature->referencePubliqueAffichee(),
         ], 201);
     }
 

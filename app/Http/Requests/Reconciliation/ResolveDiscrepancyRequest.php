@@ -19,6 +19,9 @@ class ResolveDiscrepancyRequest extends FormRequest
             'resolution_type' => ['required', Rule::in(['adjust_payment', 'create_corrective', 'cancel_payment', 'no_action'])],
             'motif' => ['required', 'string', 'min:10', 'max:1000'],
             'payload' => ['nullable', 'array'],
+            // Ecart auto-detecte : DetectDiscrepancies ne lie aucun paiement, c'est
+            // l'ecran qui designe celui a corriger (cf. ResolveDiscrepancy::paiementCible).
+            'payload.paiement_id' => ['nullable', 'integer', 'exists:esbtp_paiements,id'],
             'payload.montant' => ['nullable', 'numeric', 'min:0'],
             'payload.mode_paiement' => ['nullable', Rule::in(ModePaiement::values())],
             'payload.date_paiement' => ['nullable', 'date'],

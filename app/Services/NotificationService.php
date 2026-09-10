@@ -43,10 +43,17 @@ class NotificationService
 
             $contenu = $this->personaliserMessage($template, $etudiant, $relance);
 
+            // Sujet : celui configuré par l'école (relances.template_email_sujet_niveau_N),
+            // sinon un sujet générique où l'acronyme vient des réglages, jamais en dur.
+            $sujet = $this->templateConfigure('email_sujet', $relance->niveau) ?? 'Rappel de paiement - {acronyme}';
+            if (str_contains($sujet, '{')) {
+                $sujet = $this->personaliserMessage($sujet, $etudiant, $relance);
+            }
+
             // Simulation d'envoi email (à remplacer par votre service email)
-            Mail::raw($contenu, function ($message) use ($etudiant) {
+            Mail::raw($contenu, function ($message) use ($etudiant, $sujet) {
                 $message->to($etudiant->email)
-                       ->subject('Rappel de paiement - ESBTP');
+                       ->subject($sujet);
             });
 
             $relance->update([
@@ -294,6 +301,13 @@ class NotificationService
      */
     private function getTemplateEmail($niveau, $templateName = null)
     {
+        // Modèle enregistré par l'école (page Configuration des relances) d'abord ;
+        // les textes ci-dessous ne sont qu'un repli quand rien n'est configuré.
+        $configure = $this->templateConfigure('email', $niveau);
+        if ($configure !== null) {
+            return $configure;
+        }
+
         $templates = [
             1 => "Cher/Chère {prenom} {nom},\n\nNous vous rappelons que votre solde de scolarité de {montant_dette} est en attente de paiement.\n\nMerci de régulariser votre situation dans les plus brefs délais.\n\nCordialement,\nL'administration {ecole}",
 
@@ -310,6 +324,11 @@ class NotificationService
      */
     private function getTemplateSMS($niveau)
     {
+        $configure = $this->templateConfigure('sms', $niveau);
+        if ($configure !== null) {
+            return $configure;
+        }
+
         $templates = [
             1 => "{acronyme}: Rappel paiement scolarité {montant_dette}. Merci de régulariser. Info: [telephone]",
             2 => "{acronyme}: 2e RAPPEL - Dette {montant_dette}. Contactez-nous rapidement. Info: [telephone]",
@@ -317,6 +336,18 @@ class NotificationService
         ];
 
         return $templates[$niveau] ?? $templates[1];
+    }
+
+    /**
+     * Modèle enregistré par l'école via sauvegarderTemplates() :
+     * relances.template_{canal}_niveau_{n} (canal = email | sms | courrier | email_sujet).
+     * Null quand aucun modèle non vide n'est enregistré → repli sur le texte par défaut.
+     */
+    private function templateConfigure(string $canal, $niveau): ?string
+    {
+        $valeur = DB::table('settings')->where('key', "relances.template_{$canal}_niveau_{$niveau}")->value('value');
+
+        return is_string($valeur) && trim($valeur) !== '' ? $valeur : null;
     }
 
     /**

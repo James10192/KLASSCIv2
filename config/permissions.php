@@ -382,6 +382,21 @@ return [
             'group' => 'Inscriptions',
             'icon' => 'fa-user-plus',
         ],
+        'inscriptions.rdv.view' => [
+            'label' => 'Voir le planning des rendez-vous d\'inscription',
+            'group' => 'Inscriptions',
+            'icon' => 'fa-calendar-check',
+        ],
+        'inscriptions.rdv.manage' => [
+            'label' => 'Gérer les créneaux de rendez-vous d\'inscription',
+            'group' => 'Inscriptions',
+            'icon' => 'fa-calendar-plus',
+        ],
+        'inscriptions.rdv.configure' => [
+            'label' => 'Configurer les rendez-vous d\'inscription',
+            'group' => 'Inscriptions',
+            'icon' => 'fa-sliders-h',
+        ],
         'inscriptions.manage' => [
             'label' => 'Gérer toutes les inscriptions (action globale)',
             'group' => 'Inscriptions',
@@ -2146,6 +2161,7 @@ return [
             'inscriptions.fiche.print', 'inscriptions.in_kind.mark',
             'reinscriptions.demandes.view', 'reinscriptions.demandes.process',
             'inscriptions.candidatures.view', 'inscriptions.candidatures.process',
+            'inscriptions.rdv.view', 'inscriptions.rdv.manage', 'inscriptions.rdv.configure',
             'inscriptions.cancel', 'inscriptions.manage', 'inscriptions.specialisation.manage',
             // Sous-lot C+ : corbeille (restore tout, force_delete réservé superAdmin via Gate::before)
             'trash.view', 'students.restore', 'inscriptions.restore', 'paiements.restore',
@@ -2279,6 +2295,7 @@ return [
             'inscriptions.in_kind.mark',
             'reinscriptions.demandes.view', 'reinscriptions.demandes.process',
             'inscriptions.candidatures.view', 'inscriptions.candidatures.process',
+            'inscriptions.rdv.view', 'inscriptions.rdv.manage', 'inscriptions.rdv.configure',
             'paiements.view', 'frais.view',
             // PR1 réconciliation — view + approve (séparation OHADA : approve ≠ comptable qui a ouvert)
             'comptabilite.reconciliation.view', 'comptabilite.reconciliation.approve',
@@ -2407,6 +2424,7 @@ return [
             'inscriptions.fiche.print', 'inscriptions.in_kind.mark',
             'reinscriptions.demandes.view', 'reinscriptions.demandes.process',
             'inscriptions.candidatures.view', 'inscriptions.candidatures.process',
+            'inscriptions.rdv.view', 'inscriptions.rdv.manage', 'inscriptions.rdv.configure',
             'inscriptions.cancel', 'inscriptions.manage', 'inscriptions.specialisation.manage',
             'cycles.view',
             'classes.view',
@@ -2468,6 +2486,7 @@ return [
             // conversion cree une inscription et genere des frais, elle
             // appartient a qui detient deja inscriptions.create.
             'reinscriptions.demandes.view',
+            'inscriptions.rdv.view',
             'classes.view',
             'filieres.view', 'niveaux.view',
             'matieres.view',
@@ -2509,6 +2528,7 @@ return [
             'inscriptions.fiche.print', 'inscriptions.in_kind.mark',
             'reinscriptions.demandes.view', 'reinscriptions.demandes.process',
             'inscriptions.candidatures.view', 'inscriptions.candidatures.process',
+            'inscriptions.rdv.view', 'inscriptions.rdv.manage',
             'classes.view',
             'filieres.view', 'niveaux.view',
             // Lecture seule : au guichet on applique le catalogue, on ne

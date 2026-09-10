@@ -433,7 +433,7 @@ class LMSDataController extends BaseApiController
 
         // Base query pour l'emploi du temps
         $query = \App\Models\ESBTPSeanceCours::with([
-            'matiere:id,name,nom,code,couleur',
+            'matiere:id,name,code,couleur',
             'classe:id,name,libelle,code',
             'teacher.user:id,name,first_name,email'
         ])->whereBetween('date_seance', [$dateDebut, $dateFin])
@@ -2098,7 +2098,7 @@ class LMSDataController extends BaseApiController
 
         // Query pour récupérer les séances
         $query = \App\Models\ESBTPSeanceCours::with([
-            'matiere:id,name,nom,code',
+            'matiere:id,name,code',
             'classe:id,name,libelle,code',
             'emploiTemps'
         ])

@@ -1710,17 +1710,17 @@
                          l'agent d'un role taille sur mesure — candidatures seules, ce que le
                          produit encourage — ne voyait pas la categorie qui contient sa seule
                          entree, et arrivait sur la corbeille sans que rien ne l'y situe. --}}
-                    @if(auth()->user()->canAny(['students.view', 'inscriptions.view', 'inscriptions.create', 'reinscriptions.demandes.view', 'inscriptions.candidatures.view']))
+                    @if(auth()->user()->canAny(['students.view', 'inscriptions.view', 'inscriptions.create', 'reinscriptions.demandes.view', 'inscriptions.candidatures.view', 'inscriptions.rdv.view']))
                         <div class="menu-category">Étudiants</div>
 
                         <!-- Student Management -->
                         <div class="menu-accordion">
-                            <button class="menu-accordion-btn {{ Request::routeIs('esbtp.etudiants.*') || Request::routeIs('esbtp.inscriptions.*') || Request::routeIs('esbtp.reinscription.*') || Request::routeIs('esbtp.reinscription-demandes.*') || Request::routeIs('esbtp.candidatures.*') || Request::routeIs('esbtp.pieces-dossier.*') ? 'active' : '' }}">
+                            <button class="menu-accordion-btn {{ Request::routeIs('esbtp.etudiants.*') || Request::routeIs('esbtp.inscriptions.*') || Request::routeIs('esbtp.reinscription.*') || Request::routeIs('esbtp.reinscription-demandes.*') || Request::routeIs('esbtp.candidatures.*') || Request::routeIs('esbtp.pieces-dossier.*') || Request::routeIs('esbtp.rendez-vous.*') ? 'active' : '' }}">
                                 <div class="menu-icon"><i class="fas fa-user-graduate"></i></div>
                                 <div class="menu-text">Étudiants</div>
                                 <div class="menu-arrow"><i class="fas fa-chevron-down"></i></div>
                             </button>
-                            <div class="menu-accordion-content {{ Request::routeIs('esbtp.etudiants.*') || Request::routeIs('esbtp.inscriptions.*') || Request::routeIs('esbtp.reinscription.*') || Request::routeIs('esbtp.reinscription-demandes.*') || Request::routeIs('esbtp.candidatures.*') || Request::routeIs('esbtp.pieces-dossier.*') ? 'show' : '' }}">
+                            <div class="menu-accordion-content {{ Request::routeIs('esbtp.etudiants.*') || Request::routeIs('esbtp.inscriptions.*') || Request::routeIs('esbtp.reinscription.*') || Request::routeIs('esbtp.reinscription-demandes.*') || Request::routeIs('esbtp.candidatures.*') || Request::routeIs('esbtp.pieces-dossier.*') || Request::routeIs('esbtp.rendez-vous.*') ? 'show' : '' }}">
                                 @can('students.view')
                                 <a href="{{ route('esbtp.etudiants.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.etudiants.*') ? 'active' : '' }}">
                                     <div class="menu-icon"><i class="fas fa-list"></i></div>
@@ -1731,6 +1731,12 @@
                                 <a href="{{ route('esbtp.inscriptions.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.inscriptions.index') ? 'active' : '' }}">
                                     <div class="menu-icon"><i class="fas fa-clipboard-list"></i></div>
                                     <div class="menu-text">Inscriptions</div>
+                                </a>
+                                @endcan
+                                @can('inscriptions.rdv.view')
+                                <a href="{{ route('esbtp.rendez-vous.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.rendez-vous.*') ? 'active' : '' }}">
+                                    <div class="menu-icon"><i class="fas fa-calendar-check"></i></div>
+                                    <div class="menu-text">Rendez-vous d'inscription</div>
                                 </a>
                                 @endcan
                                 @can('inscriptions.create')

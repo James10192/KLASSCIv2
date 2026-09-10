@@ -28,7 +28,11 @@ class SettingsHelper
      */
     public static function set($key, $value, $group = 'general')
     {
-        return Setting::set($key, $value, $group);
+        // Setting::set() attend l'identifiant de l'auteur en 3e argument, pas le
+        // groupe : passer $group écrivait la chaîne 'general' dans settings.updated_by
+        // (entier, FK users → SQLSTATE 1366 en base stricte). Le paramètre $group est
+        // conservé pour les appelants existants mais n'est pas transmis.
+        return Setting::set($key, $value, auth()->id());
     }
 
     /**

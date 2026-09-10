@@ -5868,11 +5868,14 @@
         </div>
         @can('students.edit')
         <div style="padding:12px 16px 4px; border-top:1px solid rgba(0,0,0,.06);">
-            <a href="{{ route('esbtp.etudiants.reset-password', $etudiant->id) }}"
-               onclick="return confirm('Réinitialiser le mot de passe de cet étudiant ? Le nouveau mot de passe sera : Bonjour@2025')"
-               style="display:inline-flex; align-items:center; gap:6px; padding:7px 14px; background:linear-gradient(135deg, #0453cb 0%, #5e91de 100%); color:#fff; border:none; border-radius:8px; font-size:.8rem; font-weight:600; text-decoration:none; cursor:pointer; box-shadow:0 2px 6px rgba(4,83,203,.25);">
-                <i class="fas fa-key" style="font-size:.7rem;"></i> Réinitialiser le mot de passe
-            </a>
+            {{-- Une mutation en POST : l'ancien lien GET réinitialisait sans jeton ni limite. --}}
+            <form method="POST" action="{{ route('esbtp.etudiants.reset-password', $etudiant->id) }}" class="d-inline"
+                  onsubmit="return confirm('Réinitialiser le mot de passe de cet étudiant ? Le nouveau mot de passe sera : ' + {{ Js::from(mot_de_passe_par_defaut()) }})">
+                @csrf
+                <button type="submit" style="display:inline-flex; align-items:center; gap:6px; padding:7px 14px; background:linear-gradient(135deg, #0453cb 0%, #5e91de 100%); color:#fff; border:none; border-radius:8px; font-size:.8rem; font-weight:600; text-decoration:none; cursor:pointer; box-shadow:0 2px 6px rgba(4,83,203,.25);">
+                    <i class="fas fa-key" style="font-size:.7rem;"></i> Réinitialiser le mot de passe
+                </button>
+            </form>
         </div>
         @endcan
     </div>

@@ -482,10 +482,10 @@
                                                 <i class="fas fa-envelope"></i>
                                                 <span>{{ $coordinateur->email }}</span>
                                             </div>
-                                            @if($coordinateur->telephone)
+                                            @if($coordinateur->phone)
                                             <div class="personnel-detail">
                                                 <i class="fas fa-phone"></i>
-                                                <span>{{ $coordinateur->telephone }}</span>
+                                                <span>{{ $coordinateur->phone }}</span>
                                             </div>
                                             @endif
                                             @if($coordinateur->specialite)

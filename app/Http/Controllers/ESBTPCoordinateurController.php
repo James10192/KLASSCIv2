@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Rules\MotDePasseChoisi;
 use App\Services\Scoring\PersonnelScoringService;
 use App\Services\UserService;
 use App\Services\UserLifecycle\SuperAdminLifecycleGuard;
@@ -154,7 +155,7 @@ class ESBTPCoordinateurController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'nullable|string|email|max:255|unique:users,email,' . $coordinateur->id,
-            'password' => 'nullable|string|min:8|confirmed',
+            'password' => MotDePasseChoisi::facultatif(),
             'telephone' => 'nullable|string|max:20',
             'specialite' => 'nullable|string|max:255',
             'date_naissance' => 'nullable|date|before:today',
@@ -262,8 +263,7 @@ class ESBTPCoordinateurController extends Controller
         }
 
         try {
-            // Default password: Bonjour@2025 (same as teachers and students)
-            $defaultPassword = 'Bonjour@2025';
+            $defaultPassword = $this->userService->generateDefaultPassword();
 
             // Update password AND force password change on first login
             $coordinateur->password = Hash::make($defaultPassword);
@@ -290,7 +290,7 @@ class ESBTPCoordinateurController extends Controller
 
             return redirect()
                 ->back()
-                ->with('success', 'Mot de passe réinitialisé à Bonjour@2025 avec succès! Le coordinateur devra changer son mot de passe à la première connexion.')
+                ->with('success', 'Mot de passe réinitialisé à '.$defaultPassword.' avec succès! Le coordinateur devra changer son mot de passe à la première connexion.')
                 ->with('new_password', $defaultPassword);
 
         } catch (\Exception $e) {

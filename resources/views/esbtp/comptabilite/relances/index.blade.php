@@ -670,7 +670,234 @@
 @endpush
 
 @section('content')
-<div class="dashboard-acasi">
+@php
+    // Shell mobile actif : le DOM de bureau se cache sous 992px au profit de
+    // l'écran m-* ci-dessous (maquette S['comptable:relances']). Shell coupé :
+    // rien ne change. $mobileRelances n'est calculé que quand le shell se rend.
+    $rlShell = ($mobileShellEnabled ?? false) && ($mobileProfile ?? null) && is_array($mobileRelances ?? null);
+@endphp
+@if($rlShell)
+@php
+    $rlmEcole = \App\Helpers\SettingsHelper::getSchoolInfo();
+    $rlmEcoleNom = $rlmEcole['name'] ?: ($rlmEcole['acronym'] ?: config('app.name'));
+    $rlmKpis = $mobileRelances['kpis'];
+
+    // Canal affiché : la colonne `canal` (recouvrement) prime, sinon le `type`.
+    $rlmCanalDe = function ($r): string {
+        $canal = (string) ($r->canal ?? '');
+        if ($canal === 'whatsapp_deeplink') return 'whatsapp';
+        if ($canal === 'tel') return 'appel';
+        if (in_array($canal, ['email', 'sms', 'manuel'], true)) return $canal;
+        return in_array($r->type, ['email', 'sms', 'courrier', 'appel'], true) ? $r->type : 'autre';
+    };
+    $rlmCanalLibelles = [
+        'whatsapp' => 'WhatsApp', 'email' => 'E-mail', 'sms' => 'SMS', 'appel' => 'Appel',
+        'courrier' => 'Courrier', 'manuel' => 'Manuel', 'autre' => 'Relance',
+    ];
+    // statut → [puce, ton, verbe]
+    $rlmStatuts = [
+        \App\Models\ESBTPRelance::STATUT_ENVOYEE   => ['Envoyé', 'ok', 'envoyé'],
+        \App\Models\ESBTPRelance::STATUT_PLANIFIEE => ['Planifié', 'info', 'planifié'],
+        \App\Models\ESBTPRelance::STATUT_ECHEC     => ['À renvoyer', 'bad', 'échec'],
+        \App\Models\ESBTPRelance::STATUT_INTENT    => ['Non confirmé', 'warn', 'ouvert'],
+    ];
+    $rlmQuand = function ($date): string {
+        if (! $date) return 'sans date';
+        if ($date->isToday()) return 'aujourd\'hui ' . $date->format('H:i');
+        if ($date->isYesterday()) return 'hier ' . $date->format('H:i');
+        if ($date->isTomorrow()) return 'demain ' . $date->format('H:i');
+        return $date->translatedFormat('D d/m') . ' ' . $date->format('H:i');
+    };
+
+    $rlmCampagnes = collect($mobileRelances['campagnes'])->map(function ($c) use ($rlmCanalDe, $rlmCanalLibelles, $rlmStatuts, $rlmQuand) {
+        $r = $c['premiere'];
+        $n = $c['relances']->count();
+        $canal = $rlmCanalDe($r);
+        [$puce, $ton, $verbe] = $rlmStatuts[$r->statut] ?? [$r->statut_formatte, 'mute', ''];
+        $objet = $r->type === 'recouvrement' ? 'Recouvrement' : $r->niveau_formatte;
+        $nomPremier = $r->etudiant?->nom_complet ?? 'Étudiant inconnu';
+        return [
+            'id'      => $r->id,
+            'canal'   => $canal,
+            'titre'   => $objet . ' · ' . ($n > 1 ? $n . ' destinataires' : $nomPremier),
+            'sub'     => $rlmCanalLibelles[$canal] . ' · ' . trim($verbe . ' ' . $rlmQuand($r->date_envoi)),
+            'puce'    => $puce,
+            'ton'     => $ton,
+            'url'     => $n === 1 ? route('esbtp.comptabilite.relances.show', $r->id) : null,
+            'groupe'  => $n > 1 ? [
+                'titre' => $objet . ' · ' . $rlmCanalLibelles[$canal],
+                'sub'   => $n . ' destinataires · ' . trim($verbe . ' ' . $rlmQuand($r->date_envoi)),
+                'items' => $c['relances']->map(fn ($x) => [
+                    'nom'       => $x->etudiant?->nom_complet ?? 'Étudiant inconnu',
+                    'matricule' => $x->etudiant?->matricule,
+                    'url'       => route('esbtp.comptabilite.relances.show', $x->id),
+                ])->values()->all(),
+            ] : null,
+        ];
+    });
+
+    $rlmConfig = [
+        'kpis'           => $rlmKpis,
+        'canaux'         => $rlmCampagnes->pluck('canal')->values()->all(),
+        'montantMinimum' => $mobileRelances['montant_minimum'],
+        'delaiNiveau1'   => $mobileRelances['delai_niveau_1'],
+        'planifierUrl'   => route('esbtp.comptabilite.relances.planifier'),
+        'maintenant'     => now()->format('Y-m-d\TH:i'),
+    ];
+@endphp
+{{-- ============================ ÉCRAN MOBILE (shell m-*) ============================ --}}
+{{-- La barre d'onglets et la navbar mobile sont rendues par le layout. --}}
+<div class="m-only-mobile m-screen rlm-screen" x-data="rlmRelances({{ \Illuminate\Support\Js::from($rlmConfig) }})">
+    <x-m.appbar title="Relances"
+                :sub="$rlmEcoleNom . ($anneeActive ? ' · ' . $anneeActive->name : '')"
+                :back="route('esbtp.comptabilite.dashboard')"
+                :action="auth()->user()?->can('comptabilite.relances.send') ? 'plus' : null"
+                action-label="Planifier des relances"
+                x-on:click="ouvrir('rlm-planifier')">
+        @can('comptabilite.config.manage')
+            <a href="{{ route('esbtp.comptabilite.relances.config') }}" class="m-ib ghost" aria-label="Configuration des relances">
+                <x-m.icon name="settings" />
+            </a>
+        @endcan
+    </x-m.appbar>
+
+    <div class="m-body" data-m-ptr="reload">
+        <div class="m-kpi">
+            <div>
+                <span class="v" x-text="kpis.envoyees_mois">{{ $rlmKpis['envoyees_mois'] }}</span>
+                <span class="l">Envoyées ce mois</span>
+            </div>
+            <div>
+                <span class="v">{{ $rlmKpis['taux_confirmes'] === null ? '—' : $rlmKpis['taux_confirmes'] . ' %' }}</span>
+                <span class="l">Envois confirmés</span>
+                <span class="d mute">{{ $rlmKpis['taux_confirmes'] === null ? 'aucune relance ce mois' : 'sur les relances du mois' }}</span>
+            </div>
+            <div>
+                <span class="v" x-text="kpis.planifiees">{{ $rlmKpis['planifiees'] }}</span>
+                <span class="l">Planifiées</span>
+                <span class="d info">à venir</span>
+            </div>
+            <div>
+                <span class="v">{{ $rlmKpis['echecs'] }}</span>
+                <span class="l">Échecs</span>
+                <span class="d {{ $rlmKpis['echecs'] > 0 ? 'bad' : 'ok' }}">{{ $rlmKpis['echecs'] > 0 ? 'à renvoyer' : 'aucun' }}</span>
+            </div>
+        </div>
+
+        @if($configManquante)
+            <div class="rlm-note" role="status">
+                <x-m.icon name="alert" />
+                <span>Les délais de relance ne sont pas configurés.@can('comptabilite.config.manage') <a href="{{ route('esbtp.comptabilite.relances.config') }}">Configurer</a>@endcan</span>
+            </div>
+        @endif
+
+        @if($rlmCampagnes->isEmpty())
+            <x-m.empty icon="msg" title="Aucune relance enregistrée" text="Les relances planifiées ou envoyées apparaîtront ici, par canal." />
+        @else
+            <div class="m-seg" role="tablist" aria-label="Filtrer par canal">
+                @foreach(['toutes' => 'Toutes', 'sms' => 'SMS', 'email' => 'E-mail', 'whatsapp' => 'WhatsApp'] as $rlmCle => $rlmLib)
+                    <button type="button" role="tab"
+                            x-bind:aria-selected="seg === '{{ $rlmCle }}' ? 'true' : 'false'"
+                            x-bind:class="seg === '{{ $rlmCle }}' ? 'on' : ''"
+                            x-on:click="seg = '{{ $rlmCle }}'">{{ $rlmLib }}</button>
+                @endforeach
+            </div>
+
+            <div class="m-list">
+                @foreach($rlmCampagnes as $rlmC)
+                    @if($rlmC['url'])
+                        <x-m.row :href="$rlmC['url']" icon="msg" :title="$rlmC['titre']" :sub="$rlmC['sub']"
+                                 :chip="$rlmC['puce']" :chip-type="$rlmC['ton']"
+                                 x-show="voir('{{ $rlmC['canal'] }}')" />
+                    @else
+                        <x-m.row icon="msg" :title="$rlmC['titre']" :sub="$rlmC['sub']"
+                                 :chip="$rlmC['puce']" :chip-type="$rlmC['ton']"
+                                 role="button" tabindex="0"
+                                 x-show="voir('{{ $rlmC['canal'] }}')"
+                                 x-on:click="ouvrirGroupe({{ \Illuminate\Support\Js::from($rlmC['groupe']) }})"
+                                 x-on:keydown.enter.prevent="ouvrirGroupe({{ \Illuminate\Support\Js::from($rlmC['groupe']) }})" />
+                    @endif
+                @endforeach
+            </div>
+
+            <div x-show="!aDesLignes()" x-cloak>
+                <x-m.empty icon="msg" title="Rien sur ce canal" text="Aucune relance par ce canal parmi les dernières enregistrées." />
+            </div>
+        @endif
+
+        @can('comptabilite.recouvrement.access')
+            <div class="m-sec"><b>Soldes impayés</b></div>
+            <div class="m-list one">
+                <x-m.row :href="route('esbtp.comptabilite.recouvrement.index')" icon="hand"
+                         title="File de recouvrement du jour"
+                         :sub="$kpis['total_etudiants'] . ' inscrits suivis · ' . number_format($kpis['total_impaye'], 0, ',', ' ') . ' FCFA impayés'" />
+            </div>
+        @endcan
+    </div>
+
+    {{-- Feuille : destinataires d'une campagne groupée --}}
+    <x-m.sheet id="rlm-groupe" title="Destinataires">
+        <template x-if="groupe">
+            <div class="rlm-groupe">
+                <p class="rlm-hint"><b x-text="groupe.titre"></b><br><span x-text="groupe.sub"></span></p>
+                <div class="m-list one">
+                    <template x-for="(it, i) in groupe.items" :key="i">
+                        <a class="m-row" x-bind:href="it.url">
+                            <div class="av" aria-hidden="true" x-text="initiales(it.nom)"></div>
+                            <div class="tt"><b x-text="it.nom"></b><span x-text="it.matricule || 'Sans matricule'"></span></div>
+                            <span class="tr" aria-hidden="true"><x-m.icon name="chr" class="m-ic ch" /></span>
+                        </a>
+                    </template>
+                </div>
+            </div>
+        </template>
+    </x-m.sheet>
+
+    @can('comptabilite.relances.send')
+    {{-- Feuille : planifier des relances (mêmes critères que l'action bureau POST /planifier) --}}
+    <x-m.sheet id="rlm-planifier" title="Planifier des relances" sub="Cible les inscriptions de l'année en cours dont le retard dépasse ces critères.">
+        <form class="rlm-form" x-on:submit.prevent="planifier()" novalidate>
+            <div class="m-field">
+                <label for="rlm-dette">Solde en retard minimum (FCFA)</label>
+                <input id="rlm-dette" type="number" inputmode="numeric" min="0" step="1" class="m-in" required
+                       x-model.number="form.critere_dette" placeholder="Ex : 50000">
+                <span class="rlm-err" x-show="erreurs.critere_dette" x-text="erreurs.critere_dette"></span>
+            </div>
+            <div class="m-field">
+                <label for="rlm-jours">Retard minimum (jours)</label>
+                <input id="rlm-jours" type="number" inputmode="numeric" min="1" step="1" class="m-in" required
+                       x-model.number="form.critere_jours" placeholder="Ex : 7">
+                <span class="rlm-err" x-show="erreurs.critere_jours" x-text="erreurs.critere_jours"></span>
+            </div>
+            <div class="m-field">
+                <label>Canal</label>
+                <div class="m-opt">
+                    @foreach(['auto' => ['Automatique', 'e-mail au 1er rappel, SMS au 2e'], 'email' => ['E-mail', null], 'sms' => ['SMS', null], 'courrier' => ['Courrier', null]] as $rlmVal => $rlmOpt)
+                        <label x-bind:class="form.type_relance === '{{ $rlmVal }}' ? 'on' : ''">
+                            <span class="rd" aria-hidden="true"></span>
+                            <span><b>{{ $rlmOpt[0] }}</b>@if($rlmOpt[1])<small>{{ $rlmOpt[1] }}</small>@endif</span>
+                            <input type="radio" name="rlm_type" value="{{ $rlmVal }}" x-model="form.type_relance" class="rlm-radio">
+                        </label>
+                    @endforeach
+                </div>
+            </div>
+            <div class="m-field">
+                <label for="rlm-date">Date d'envoi</label>
+                <input id="rlm-date" type="datetime-local" class="m-in" required x-model="form.date_envoi">
+                <span class="rlm-err" x-show="erreurs.date_envoi" x-text="erreurs.date_envoi"></span>
+            </div>
+            <p class="rlm-hint">Une inscription déjà relancée ces 7 derniers jours n'est pas reprise. Le niveau (1er, 2e, dernier rappel) suit l'historique de chaque étudiant.</p>
+            <button type="submit" class="m-btn p" x-bind:disabled="occupe">
+                <span x-show="!occupe">Planifier</span>
+                <span x-show="occupe" x-cloak>Planification…</span>
+            </button>
+        </form>
+    </x-m.sheet>
+    @endcan
+</div>
+@endif
+
+<div class="dashboard-acasi {{ $rlShell ? 'm-only-desktop' : '' }}">
 <div class="main-content">
 
     {{-- ── HERO (pattern planning-header : row 1 titre+actions / row 2 KPIs glass) ── --}}
@@ -1052,5 +1279,130 @@
     wirePaginationLinks();
     syncExportLinks();
 })();
+</script>
+@endpush
+
+{{-- ── Écran mobile : styles propres (namespace rlm-) ── --}}
+@push('styles')
+<style>
+[x-cloak] { display: none !important; }
+/* Les feuilles sont téléportées sous body : on cible .rlm-form / .rlm-groupe, jamais le conteneur de l'écran. */
+.rlm-note { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: center; background: #fff3df; color: #8a5200; border: 1px solid #f6dfb3; border-radius: 14px; padding: 12px 14px; font-size: 13px; font-weight: 600; font-family: var(--m-font); }
+.rlm-note svg { width: 20px; height: 20px; }
+.rlm-note a { color: #0453cb; font-weight: 700; margin-left: 6px; }
+.rlm-form { display: grid; gap: 12px; }
+.rlm-hint { margin: 0; font-size: 12.5px; color: #64748b; line-height: 1.45; font-family: var(--m-font); }
+.rlm-hint b { color: #0f172a; font-size: 14px; }
+.rlm-err { font-size: 12px; color: #a12016; font-weight: 600; }
+.rlm-radio { position: absolute; opacity: 0; width: 1px; height: 1px; pointer-events: none; }
+.rlm-form .m-opt label { position: relative; }
+.rlm-form .m-opt label > span:nth-child(2) { display: grid; gap: 2px; font-size: 14px; color: #0f172a; font-weight: 600; }
+.rlm-form .m-opt label > span:nth-child(2) small { font-size: 12px; color: #64748b; font-weight: 500; }
+.rlm-form .m-opt label.on .rd { border-color: #0453cb; box-shadow: inset 0 0 0 5px #0453cb; }
+.rlm-groupe { display: grid; gap: 12px; }
+</style>
+@endpush
+
+@push('scripts')
+<script>
+    if (typeof window.rlmRelances !== 'function') {
+        window.rlmRelances = function (cfg) {
+            return {
+                kpis: cfg.kpis || {},
+                canaux: cfg.canaux || [],
+                seg: 'toutes',
+                groupe: null,
+                occupe: false,
+                erreurs: {},
+                form: {
+                    critere_dette: cfg.montantMinimum === null || cfg.montantMinimum === undefined ? '' : cfg.montantMinimum,
+                    critere_jours: cfg.delaiNiveau1 === null || cfg.delaiNiveau1 === undefined ? '' : cfg.delaiNiveau1,
+                    type_relance: 'auto',
+                    date_envoi: cfg.maintenant || '',
+                },
+
+                voir(canal) { return this.seg === 'toutes' || canal === this.seg; },
+                aDesLignes() {
+                    var self = this;
+                    return this.canaux.some(function (c) { return self.voir(c); });
+                },
+                ouvrir(id) { window.dispatchEvent(new CustomEvent('m-sheet:open', { detail: { id: id } })); },
+                fermer(id) { window.dispatchEvent(new CustomEvent('m-sheet:close', { detail: { id: id } })); },
+                toast(message, type) {
+                    window.dispatchEvent(new CustomEvent('toast', { detail: { type: type || 'success', message: message } }));
+                },
+                initiales(nom) {
+                    return String(nom || '').split(/\s+/).filter(Boolean).slice(0, 2)
+                        .map(function (p) { return p.charAt(0); }).join('').toUpperCase() || '?';
+                },
+                ouvrirGroupe(g) {
+                    this.groupe = g;
+                    this.ouvrir('rlm-groupe');
+                },
+
+                async planifier() {
+                    if (this.occupe) { return; }
+                    var f = this.form;
+                    var erreurs = {};
+                    if (f.critere_dette === '' || Number(f.critere_dette) < 0) { erreurs.critere_dette = 'Indiquez un montant (0 accepté).'; }
+                    if (f.critere_jours === '' || Number(f.critere_jours) < 1) { erreurs.critere_jours = 'Au moins 1 jour de retard.'; }
+                    if (!f.date_envoi) { erreurs.date_envoi = 'Indiquez la date d\'envoi.'; }
+                    this.erreurs = erreurs;
+                    if (Object.keys(erreurs).length) { return; }
+
+                    this.occupe = true;
+                    try {
+                        var res = await fetch(cfg.planifierUrl, {
+                            method: 'POST',
+                            credentials: 'same-origin',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                            },
+                            body: JSON.stringify({
+                                critere_dette: Number(f.critere_dette),
+                                critere_jours: Number(f.critere_jours),
+                                type_relance: f.type_relance,
+                                date_envoi: f.date_envoi,
+                            }),
+                        });
+                        if (res.status === 422) {
+                            var body = await res.json().catch(function () { return {}; });
+                            var e = body.errors || {};
+                            this.erreurs = {
+                                critere_dette: (e.critere_dette || [])[0] || '',
+                                critere_jours: (e.critere_jours || [])[0] || '',
+                                date_envoi: (e.date_envoi || [])[0] || '',
+                            };
+                            if (!this.erreurs.critere_dette && !this.erreurs.critere_jours && !this.erreurs.date_envoi) {
+                                this.toast(body.message || 'Vérifiez le formulaire.', 'error');
+                            }
+                            return;
+                        }
+                        if (res.status === 429) {
+                            this.toast('Trop de demandes, réessayez dans une minute.', 'error');
+                            return;
+                        }
+                        var data = await res.json().catch(function () { return {}; });
+                        if (!res.ok || data.success === false) {
+                            throw new Error(data.message || ('Erreur ' + res.status));
+                        }
+                        // Le serveur ne renvoie que le message ; on en tire le nombre pour le repère « Planifiées ».
+                        var m = /(\d+)\s+relance/.exec(data.message || '');
+                        var n = m ? Number(m[1]) : 0;
+                        if (n > 0) { this.kpis.planifiees = (Number(this.kpis.planifiees) || 0) + n; }
+                        this.fermer('rlm-planifier');
+                        this.toast((data.message || 'Relances planifiées.') + (n > 0 ? ' Tirez la liste vers le bas pour la rafraîchir.' : ''), 'success');
+                    } catch (err) {
+                        this.toast(err.message || 'Planification impossible. Vérifiez votre connexion.', 'error');
+                    } finally {
+                        this.occupe = false;
+                    }
+                },
+            };
+        };
+    }
 </script>
 @endpush

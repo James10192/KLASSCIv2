@@ -2,10 +2,12 @@
 
 namespace App\Models;
 
+use App\Contracts\PorteurDeRendezVous;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 use OwenIt\Auditing\Contracts\Auditable;
 
@@ -17,8 +19,10 @@ use OwenIt\Auditing\Contracts\Auditable;
  * convertit en etudiant puis en inscription. Cette separation est ce qui rend
  * le canal public acceptable.
  */
-class ESBTPCandidature extends Model implements Auditable
+class ESBTPCandidature extends Model implements Auditable, PorteurDeRendezVous
 {
+    use Concerns\EstPorteurDeRendezVous;
+    use Concerns\HasReferencePublique;
     use HasFactory;
     use \OwenIt\Auditing\Auditable;
 
@@ -203,12 +207,15 @@ class ESBTPCandidature extends Model implements Auditable
         'message', 'statut', 'consentement_at', 'ip_hash',
         'motif_rejet', 'traite_par', 'traite_at',
         'etudiant_id', 'inscription_id',
+        'reference_publique',
+        'rdv_invite_at',
     ];
 
     protected $casts = [
         'date_naissance' => 'date',
         'consentement_at' => 'datetime',
         'traite_at' => 'datetime',
+        'rdv_invite_at' => 'datetime',
         'annee_bac' => 'integer',
         'est_transfert' => 'boolean',
         'annee_derniere_inscription' => 'integer',
@@ -258,6 +265,11 @@ class ESBTPCandidature extends Model implements Auditable
         return $this->belongsTo(ESBTPEtudiant::class, 'etudiant_id');
     }
 
+    public function reservations(): HasMany
+    {
+        return $this->hasMany(ESBTPRdvReservation::class, 'candidature_id');
+    }
+
     public function scopeEnAttente(Builder $query): Builder
     {
         return $query->where('statut', self::STATUT_EN_ATTENTE);
@@ -279,5 +291,29 @@ class ESBTPCandidature extends Model implements Auditable
         $depuisListe = trim(($this->filiere?->name ?? '').' '.($this->niveau?->name ?? ''));
 
         return $depuisListe !== '' ? $depuisListe : (string) ($this->voeu_libre ?? '');
+    }
+
+    public function clesReservationRdv(): array
+    {
+        return [
+            'candidature_id' => (int) $this->id,
+            'reinscription_demande_id' => null,
+        ];
+    }
+
+    public function snapshotRdv(): array
+    {
+        return [
+            'nom' => (string) $this->nom,
+            'prenoms' => (string) $this->prenoms,
+            'telephone' => (string) $this->telephone,
+            'date_naissance' => \App\Support\IdentitePersonne::jour($this->date_naissance),
+            'email' => $this->email,
+        ];
+    }
+
+    public function emailRdv(): ?string
+    {
+        return $this->email;
     }
 }

@@ -31,7 +31,9 @@ use Illuminate\Support\Facades\RateLimiter;
  */
 class ReinscriptionPortalController extends Controller
 {
-    public function __construct(private readonly PortailReinscriptionService $portail) {}
+    public function __construct(
+        private readonly PortailReinscriptionService $portail,
+    ) {}
 
     /** Retrouver sa situation. Ne cree rien. */
     public function lookup(PortailRequest $request): JsonResponse
@@ -90,6 +92,7 @@ class ReinscriptionPortalController extends Controller
             'enregistre' => true,
             'message' => 'Votre demande a bien été transmise à votre établissement.',
             'inscriptions_physiques' => app(PortailCandidaturePublication::class)->inscriptionsPhysiques(),
+            'reference_publique' => $demande->referencePubliqueAffichee(),
         ], 201);
     }
 

@@ -5,7 +5,9 @@ namespace App\Http\Controllers;
 use App\Domain\BtsTroncCommun\BtsUiPresenter;
 use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPEtudiantDocument;
+use App\Rules\MotDePasseNonGenerique;
 use App\Services\Documents\StockageDocumentEtudiant;
+use App\Services\UserService;
 use App\Models\ESBTPFiliere;
 use App\Models\ESBTPNiveauEtude;
 use App\Models\ESBTPAnneeUniversitaire;
@@ -1175,8 +1177,7 @@ class ESBTPEtudiantController extends Controller
                     ->with('error', 'Compte utilisateur introuvable.');
             }
 
-            // Default password: Bonjour@2025 (same as teachers)
-            $defaultPassword = 'Bonjour@2025';
+            $defaultPassword = UserService::defaultPassword();
 
             // Update password AND force password change on first login
             $user->password = Hash::make($defaultPassword);
@@ -1195,7 +1196,7 @@ class ESBTPEtudiantController extends Controller
 
             return redirect()
                 ->back()
-                ->with('success', 'Mot de passe réinitialisé à Bonjour@2025 avec succès! L\'étudiant devra changer son mot de passe à la première connexion.')
+                ->with('success', 'Mot de passe réinitialisé à '.$defaultPassword.' avec succès! L\'étudiant devra changer son mot de passe à la première connexion.')
                 ->with('new_password', $defaultPassword);
 
         } catch (\Exception $e) {
@@ -1464,7 +1465,9 @@ class ESBTPEtudiantController extends Controller
 
         $request->validate([
             'current_password' => ['required', 'current_password'],
-            'password'         => ['required', 'min:8', 'confirmed'],
+            'password'         => ['required', 'min:8', 'confirmed', 'different:current_password', new MotDePasseNonGenerique],
+        ], [
+            'password.different' => 'Le nouveau mot de passe doit être différent de l\'actuel.',
         ]);
 
         $user->update(['password' => bcrypt($request->password)]);

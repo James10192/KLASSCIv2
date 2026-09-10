@@ -81,6 +81,29 @@ Route::prefix('public/inscription')
             ->name('api.public.inscription.submit');
     });
 
+Route::prefix('public/rendez-vous')
+    ->withoutMiddleware(['throttle:api'])
+    ->group(function () {
+        Route::post('/creneaux', [\App\Http\Controllers\API\Public\RendezVousPortalController::class, 'creneaux'])
+            ->middleware('portail.public:rendezvous,catalogue')
+            ->name('api.public.rendez-vous.creneaux');
+        Route::post('/reserver', [\App\Http\Controllers\API\Public\RendezVousPortalController::class, 'reserver'])
+            ->middleware('portail.public:rendezvous')
+            ->name('api.public.rendez-vous.reserver');
+        Route::post('/consulter', [\App\Http\Controllers\API\Public\RendezVousPortalController::class, 'consulter'])
+            ->middleware(['portail.public:rendezvous', 'reinscription.plancher'])
+            ->name('api.public.rendez-vous.consulter');
+        Route::post('/deplacer', [\App\Http\Controllers\API\Public\RendezVousPortalController::class, 'deplacer'])
+            ->middleware(['portail.public:rendezvous', 'reinscription.plancher'])
+            ->name('api.public.rendez-vous.deplacer');
+        Route::post('/annuler', [\App\Http\Controllers\API\Public\RendezVousPortalController::class, 'annuler'])
+            ->middleware(['portail.public:rendezvous', 'reinscription.plancher'])
+            ->name('api.public.rendez-vous.annuler');
+        Route::post('/retrouver', [\App\Http\Controllers\API\Public\RendezVousPortalController::class, 'retrouver'])
+            ->middleware(['portail.public:rendezvous', 'reinscription.plancher'])
+            ->name('api.public.rendez-vous.retrouver');
+    });
+
 /*
  * Identite publique de l'etablissement, lue par le site klassci.com.
  *
@@ -118,8 +141,16 @@ Route::get('/v1/parent-chatbot/report-cards/{bulletin}', App\Http\Controllers\Pa
     ->name('parent-chatbot.report-card');
 
 // Routes API pour ESBTP
-Route::get('/classes/{classe}/matieres', [ESBTPClasseController::class, 'getMatieresForApi'])
-    ->name('api.classes.matieres');
+//
+// Ces trois adresses rendaient la structure academique complete de l ecole —
+// classes, capacites, effectifs, filieres, niveaux — a qui la demandait, sans
+// authentification, sur toutes les instances. Leurs seuls appelants etaient des
+// pages de test laissees dans public/, supprimees en meme temps ; l application,
+// elle, passe par les routes web equivalentes, qui sont protegees.
+Route::middleware(['auth:sanctum'])->group(function () {
+    Route::get('/classes/{classe}/matieres', [ESBTPClasseController::class, 'getMatieresForApi'])
+        ->name('api.classes.matieres');
+});
 
 // Routes pour le calcul des absences
 Route::middleware(['auth:sanctum'])->prefix('absences')->group(function () {
@@ -133,11 +164,11 @@ Route::middleware(['auth:sanctum'])->group(function () {
         ->name('api.attendance.sync');
 });
 
-Route::get('/classes/{id}/available-places', [ESBTPClasseController::class, 'getAvailablePlaces']);
+Route::middleware(['auth:sanctum'])->get('/classes/{id}/available-places', [ESBTPClasseController::class, 'getAvailablePlaces']);
 
 Route::middleware(['auth:sanctum'])->post('/inscriptions/validate', [ESBTPEtudiantController::class, 'validateInscription'])->name('api.inscriptions.validate');
 
-Route::get('/classes', [ESBTPClasseController::class, 'indexApi']);
+Route::middleware(['auth:sanctum'])->get('/classes', [ESBTPClasseController::class, 'indexApi']);
 
 /*
 |--------------------------------------------------------------------------
@@ -152,7 +183,12 @@ Route::get('/classes', [ESBTPClasseController::class, 'indexApi']);
 
 // Routes d'authentification LMS (sans middleware auth)
 Route::prefix('lms/auth')->group(function () {
+    // Meme limiteur que la connexion web : 5 essais par minute et par identifiant,
+    // 10 par minute et par IP. Sans lui, cette porte n heritait que du plafond
+    // general de 60 par minute — soit douze fois plus d essais de mot de passe
+    // que par le formulaire, sur les memes comptes.
     Route::post('/login', [App\Http\Controllers\API\AuthController::class, 'login'])
+        ->middleware('throttle:login')
         ->name('api.lms.auth.login');
     Route::get('/documentation', [App\Http\Controllers\API\AuthController::class, 'documentation'])
         ->name('api.lms.auth.docs');
@@ -474,6 +510,7 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
         Route::post('/cache/clear', [App\Http\Controllers\API\CLI\CLIMaintenanceController::class, 'cacheClear'])->name('cache.clear');
         Route::post('/logs/prune', [App\Http\Controllers\API\CLI\CLIMaintenanceController::class, 'logsPrune'])->name('logs.prune');
         Route::post('/permissions/fix', [App\Http\Controllers\API\CLI\CLIMaintenanceController::class, 'permissionsFix'])->name('permissions.fix');
+        Route::post('/maintenance/reparer-encodage', [App\Http\Controllers\API\CLI\CLIMaintenanceController::class, 'reparerEncodage'])->name('maintenance.reparer-encodage');
 
         // Secrets d'integration. Liste blanche stricte cote controleur : ce
         // n'est PAS un ecrivain de .env generique, qui equivaudrait a une prise
@@ -505,6 +542,8 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
         Route::get('/settings', [App\Http\Controllers\API\CLI\CLISettingsController::class, 'index'])->name('settings.index');
         Route::post('/settings', [App\Http\Controllers\API\CLI\CLISettingsController::class, 'update'])->name('settings.update');
         Route::post('/inscriptions/normaliser-type', [App\Http\Controllers\API\CLI\CLIInscriptionTypeController::class, 'normaliser'])->name('inscriptions.normaliser-type');
+        Route::post('/rendez-vous/generer', [App\Http\Controllers\API\CLI\CLIRendezVousController::class, 'generer'])->name('rendez-vous.generer');
+        Route::post('/rendez-vous/placer', [App\Http\Controllers\API\CLI\CLIRendezVousController::class, 'placer'])->name('rendez-vous.placer');
         // L'ordre des categories est l'ordre dans lequel un versement solde les
         // frais. Le changer est une decision de l'ecole, pas du code.
         Route::post('/frais/ordonner-categories', [App\Http\Controllers\API\CLI\CLIFraisController::class, 'ordonnerCategories'])->name('frais.ordonner-categories');
@@ -527,6 +566,10 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
             ->name('academic-pilotage.backfill');
         Route::post('/academic-pilotage/refresh', [App\Http\Controllers\API\CLI\CLIAcademicPilotageController::class, 'refresh'])
             ->name('academic-pilotage.refresh');
+        // Snapshots d'echeancier : regeneration par lots (couverture analytics).
+        // Meme moteur que `php artisan echeanciers:recompute`. dry_run=true par defaut.
+        Route::post('/echeanciers/recompute', [App\Http\Controllers\API\CLI\CLIEcheancierController::class, 'recompute'])
+            ->name('echeanciers.recompute');
         Route::get('/matieres/{matiere}/coefficient', [App\Http\Controllers\API\CLI\CLIMaintenanceController::class, 'matiereCoefficientLookup'])->name('matieres.coefficient');
         Route::get('/etudiants/{id}/inscriptions-diag', [App\Http\Controllers\API\CLI\CLIMaintenanceController::class, 'etudiantInscriptionsDiag'])->name('etudiants.inscriptions-diag');
         Route::get('/etudiants/{id}/inscriptions-repair-diagnostic', [App\Http\Controllers\API\CLI\CLIMaintenanceController::class, 'etudiantInscriptionRepairDiagnostic'])->name('etudiants.inscriptions-repair-diagnostic');

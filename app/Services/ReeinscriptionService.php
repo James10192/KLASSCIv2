@@ -435,6 +435,15 @@ class ReeinscriptionService
                 'montant_scolarite' => 0, // À définir plus tard comme les autres inscriptions
                 'frais_inscription' => 0, // À définir plus tard
                 'type_inscription' => NormalisationTypeInscription::REINSCRIPTION,
+                // Une reinscription, c'est quelqu'un qui etait deja la : c'est la
+                // definition meme du mot. Laisser ce champ vide le faisait passer
+                // pour un nouvel arrivant, parce que la regle d'audience lit
+                // « nouveau = tout ce qui n'est pas ancien » — un champ nul suffit
+                // donc a declencher les frais reserves aux entrants, la tenue en
+                // tete. L'ecole n'avait aucun moyen de le voir : la fiche affichait
+                // bien « ancien » apres correction, mais la souscription, elle,
+                // avait deja ete creee et payee.
+                'statut_etablissement' => \App\Models\ESBTPInscription::STATUT_ETABLISSEMENT_ANCIEN,
                 'is_redoublant' => $estRedoublement,
                 'date_inscription' => now(),
                 'status' => 'active',

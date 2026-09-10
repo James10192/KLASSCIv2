@@ -42,7 +42,7 @@ class ResolveDiscrepancy
             $resolutionPayment = match ($resolutionType) {
                 'adjust_payment' => $this->adjustPayment($discrepancy, $user, $motif, $payload),
                 'create_corrective' => $this->createCorrective($discrepancy, $user, $motif, $payload),
-                'cancel_payment' => $this->cancelPayment($discrepancy, $user, $motif),
+                'cancel_payment' => $this->cancelPayment($discrepancy, $user, $motif, $payload),
                 'no_action' => null,
             };
 
@@ -65,7 +65,7 @@ class ResolveDiscrepancy
         string $motif,
         array $payload
     ): ESBTPPaiement {
-        $paiement = ESBTPPaiement::lockForUpdate()->findOrFail($discrepancy->paiement_concerne_id);
+        $paiement = $this->paiementCible($discrepancy, $payload);
         $before = $paiement->toArray();
 
         $delta = [];
@@ -114,15 +114,50 @@ class ResolveDiscrepancy
     private function cancelPayment(
         ReconciliationDiscrepancy $discrepancy,
         User $user,
-        string $motif
+        string $motif,
+        array $payload = []
     ): ESBTPPaiement {
-        $paiement = ESBTPPaiement::lockForUpdate()->findOrFail($discrepancy->paiement_concerne_id);
+        $paiement = $this->paiementCible($discrepancy, $payload);
         $before = $paiement->toArray();
         $paiement->status = 'rejeté';
         $paiement->updated_by = $user->id;
         $paiement->save();
 
         $this->log($discrepancy->session, $paiement, 'cancel', $before, $paiement->fresh()->toArray(), ['status' => ['from' => $before['status'], 'to' => 'rejeté']], $motif, $user);
+        return $paiement;
+    }
+
+    /**
+     * Le paiement sur lequel porte une resolution « ajuster » ou « annuler ».
+     *
+     * DetectDiscrepancies ne renseigne PAS paiement_concerne_id (il ne pose que
+     * cash_count_id) : pour un écart auto-détecté, ce champ est nul et un
+     * findOrFail(null) levait une ModelNotFoundException (404) au lieu d'agir.
+     * L'écran de réconciliation envoie déjà payload.paiement_id ; on l'accepte
+     * en priorité, et on rattache le paiement à l'écart pour la traçabilité.
+     */
+    private function paiementCible(ReconciliationDiscrepancy $discrepancy, array $payload): ESBTPPaiement
+    {
+        $paiementId = $payload['paiement_id'] ?? $discrepancy->paiement_concerne_id;
+
+        if (empty($paiementId)) {
+            throw new \InvalidArgumentException(
+                "Aucun paiement n'est lié à cet écart : précisez le paiement à corriger, "
+                .'ou enregistrez un paiement correctif.'
+            );
+        }
+
+        $paiement = ESBTPPaiement::lockForUpdate()->find($paiementId);
+
+        if (!$paiement) {
+            throw new \InvalidArgumentException("Paiement introuvable (identifiant {$paiementId}).");
+        }
+
+        if ((int) $discrepancy->paiement_concerne_id !== (int) $paiement->id) {
+            $discrepancy->paiement_concerne_id = $paiement->id;
+            $discrepancy->save();
+        }
+
         return $paiement;
     }
 

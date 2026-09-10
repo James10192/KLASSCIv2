@@ -97,6 +97,7 @@ curl -H "Authorization: Bearer {token}" http://domain/api/...
 | [LMS_LOGIN_UNIFIE.md](LMS_LOGIN_UNIFIE.md) | Guide d'intégration login unifié multi-établissements (pour équipe LMS) | ✅ Complet | 21/03/2026 |
 | [ACADEMIC_PILOTAGE_CLI.md](ACADEMIC_PILOTAGE_CLI.md) | Diagnostic, backfill protégé et recalcul du pilotage académique | ✅ Complet | 14/07/2026 |
 | [PUBLIC_ETABLISSEMENT.md](PUBLIC_ETABLISSEMENT.md) | Identité publique d'un établissement (nom, logo, identité visuelle) lue par klassci.com | ✅ Complet | 02/09/2026 |
+| [PUBLIC_RENDEZ_VOUS.md](PUBLIC_RENDEZ_VOUS.md) | Prise de rendez-vous au guichet (créneaux, réserver, consulter, déplacer, annuler, retrouver) | ✅ Complet | 07/09/2026 |
 
 ## 🚀 APIs à Documenter
 

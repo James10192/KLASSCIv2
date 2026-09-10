@@ -789,7 +789,7 @@
                             <div style="flex-grow: 1;">
                                 <div style="color: var(--ss-text); font-weight: 600; margin-bottom: 0.25rem;">Attention</div>
                                 <div style="color: var(--ss-muted); font-size: 0.9rem;">
-                                    Cette action va reinitialiser le mot de passe a <strong>"Bonjour@2025"</strong> pour le secretaire
+                                    Cette action va reinitialiser le mot de passe a <strong>"{{ mot_de_passe_par_defaut() }}"</strong> pour le secretaire
                                     <strong>{{ $secretaire->first_name ?? $secretaire->name ?? '' }} {{ $secretaire->last_name ?? '' }}</strong>. Le secretaire devra changer son mot de passe a la premiere connexion.
                                 </div>
                             </div>
@@ -850,7 +850,7 @@
                         font-weight: 600;
                         box-shadow: 0 4px 12px rgba(4,83,203,.3);
                     ">
-                        <i class="fas fa-key me-1"></i>Reinitialiser a Bonjour@2025
+                        <i class="fas fa-key me-1"></i>Reinitialiser a {{ mot_de_passe_par_defaut() }}
                     </button>
                     <button type="button" class="btn" id="ssCopyPasswordBtn" style="display: none; background: var(--ss-success); color: white; border: none; padding: 0.65rem 1.5rem; border-radius: 8px; font-weight: 600;" onclick="ssCopyPassword()">
                         <i class="fas fa-copy me-1"></i>Copier le mot de passe

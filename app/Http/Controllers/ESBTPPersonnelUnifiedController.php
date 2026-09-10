@@ -6,9 +6,11 @@ use App\Exceptions\LastActiveSuperAdminException;
 use App\Models\ESBTPPersonnelScoreSnapshot;
 use App\Models\ESBTPTeacher;
 use App\Models\User;
+use App\Rules\MotDePasseChoisi;
 use App\Services\PermissionRegistry;
 use App\Services\UserService;
 use App\Services\UserLifecycle\SuperAdminLifecycleGuard;
+use App\Support\PorteDeRoute;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -21,9 +23,10 @@ use Spatie\Permission\Models\Role;
 
 class ESBTPPersonnelUnifiedController extends Controller
 {
-    private const TAB_PERMISSIONS = [
+    public const TAB_PERMISSIONS = [
         'directeurs_etudes' => [
             'role' => 'directeurEtudes',
+            'routes' => ['create' => 'esbtp.directeurs-etudes.create', 'edit' => 'esbtp.directeurs-etudes.edit'],
             'view' => 'directeurs_etudes.view',
             'create' => 'directeurs_etudes.create',
             'edit' => 'directeurs_etudes.edit',
@@ -31,6 +34,7 @@ class ESBTPPersonnelUnifiedController extends Controller
         ],
         'coordinateurs' => [
             'role' => 'coordinateur',
+            'routes' => ['create' => 'esbtp.coordinateurs.create', 'edit' => 'esbtp.coordinateurs.edit'],
             'view' => 'coordinateurs.view',
             'create' => 'coordinateurs.create',
             'edit' => 'coordinateurs.edit',
@@ -38,6 +42,7 @@ class ESBTPPersonnelUnifiedController extends Controller
         ],
         'enseignants' => [
             'role' => 'enseignant',
+            'routes' => ['create' => 'esbtp.enseignants.create', 'edit' => 'esbtp.enseignants.edit'],
             'view' => 'teachers.view',
             'create' => 'teachers.create',
             'edit' => 'teachers.edit',
@@ -45,6 +50,7 @@ class ESBTPPersonnelUnifiedController extends Controller
         ],
         'secretaires' => [
             'role' => 'secretaire',
+            'routes' => ['create' => 'esbtp.secretaires.create', 'edit' => 'esbtp.secretaires.edit'],
             'view' => 'secretaires.view',
             'create' => 'secretaires.create',
             'edit' => 'secretaires.edit',
@@ -52,6 +58,7 @@ class ESBTPPersonnelUnifiedController extends Controller
         ],
         'responsables_scolarite' => [
             'role' => 'responsableScolarite',
+            'routes' => ['create' => 'esbtp.responsables-scolarite.create', 'edit' => 'esbtp.responsables-scolarite.edit'],
             'view' => 'responsables_scolarite.view',
             'create' => 'responsables_scolarite.create',
             'edit' => 'responsables_scolarite.edit',
@@ -59,6 +66,7 @@ class ESBTPPersonnelUnifiedController extends Controller
         ],
         'services_scolarite' => [
             'role' => 'serviceScolarite',
+            'routes' => ['create' => 'esbtp.services-scolarite.create', 'edit' => 'esbtp.services-scolarite.edit'],
             'view' => 'services_scolarite.view',
             'create' => 'services_scolarite.create',
             'edit' => 'services_scolarite.edit',
@@ -66,6 +74,8 @@ class ESBTPPersonnelUnifiedController extends Controller
         ],
         'comptables' => [
             'role' => 'comptable',
+            // Pas de formulaire de modification pour les comptables : sous « edit », la vue n'affiche que la bascule de statut.
+            'routes' => ['create' => 'esbtp.comptables.create', 'edit' => 'esbtp.comptables.toggle-status'],
             'view' => 'comptables.view',
             'create' => 'comptables.create',
             'edit' => 'comptables.edit',
@@ -73,6 +83,7 @@ class ESBTPPersonnelUnifiedController extends Controller
         ],
         'caissiers' => [
             'role' => 'caissier',
+            'routes' => ['create' => 'esbtp.caissiers.create', 'edit' => 'esbtp.caissiers.edit'],
             'view' => 'caissiers.view',
             'create' => 'caissiers.create',
             'edit' => 'caissiers.edit',
@@ -80,6 +91,7 @@ class ESBTPPersonnelUnifiedController extends Controller
         ],
         'agents_inscription' => [
             'role' => 'agentInscription',
+            'routes' => ['create' => 'esbtp.agents-inscription.create', 'edit' => 'esbtp.agents-inscription.edit'],
             'view' => 'agents_inscription.view',
             'create' => 'agents_inscription.create',
             'edit' => 'agents_inscription.edit',
@@ -207,7 +219,7 @@ class ESBTPPersonnelUnifiedController extends Controller
                         ->where('is_active', true)
                         ->with(['roles:id,name'])
                         ->orderBy('name')
-                        ->get(['id', 'name', 'email', 'telephone', 'is_active', 'created_at'])
+                        ->get(['id', 'name', 'email', 'phone', 'is_active', 'created_at'])
                         ->groupBy(fn ($u) => $u->roles
                             ->whereIn('name', $customRoleNames)
                             ->first()?->name);
@@ -237,7 +249,20 @@ class ESBTPPersonnelUnifiedController extends Controller
                     ->values()
                     ->map(fn (Role $role) => $this->buildRoleCardData($role, $registry));
             } catch (\Throwable $e) {
-                // Migration pas encore lancée ou registry indispo — degrade silencieusement.
+                // La page continue de s'afficher sans les cartes de roles : elle sert
+                // d'abord a gerer le personnel, et la perdre entierement serait pire.
+                //
+                // Mais ce rattrapage ne doit plus etre MUET. Une seule colonne mal
+                // nommee dans la requete ci-dessus a fait disparaitre les trois
+                // cartes — dont celle des roles standards — sur les seules instances
+                // ayant des roles personnalises, sans message ni trace, pendant des
+                // semaines. Un incident invisible est un incident qu'on ne corrige
+                // jamais.
+                \Illuminate\Support\Facades\Log::error('[personnel-unified] Cartes de roles indisponibles', [
+                    'exception' => $e->getMessage(),
+                    'fichier' => $e->getFile().':'.$e->getLine(),
+                ]);
+
                 $customRoles = collect();
                 $standardRoles = collect();
                 $customRoleUsers = collect();
@@ -331,11 +356,42 @@ class ESBTPPersonnelUnifiedController extends Controller
             return false;
         }
 
-        if (in_array($tab, ['directeurs_etudes', 'responsables_scolarite', 'services_scolarite', 'agents_inscription'], true)) {
-            return $user->can($permission);
+        $accorde = in_array($tab, ['directeurs_etudes', 'responsables_scolarite', 'services_scolarite', 'agents_inscription'], true)
+            ? $user->can($permission)
+            : ($user->can('personnel.manage') || $user->can($permission));
+
+        if (! $accorde) {
+            return false;
         }
 
-        return $user->can('personnel.manage') || $user->can($permission);
+        // Personne ne lit le drapeau « delete » dans la vue : il n'a pas de route.
+        if ($action === 'delete') {
+            return true;
+        }
+
+        // Les deux gardes s'appliquent, la plus stricte l'emporte.
+        //
+        // La route, parce qu'elle porte des exigences que la matrice ignore,
+        // parfois posees dans le constructeur du controleur : un coordinateur
+        // voyait « Secretaire », « Comptable » et « Caissier » puis recevait
+        // 403 (`system.manage`, `role:superAdmin`).
+        //
+        // La matrice, parce que cinq routes de creation n'exigent encore que
+        // l'une des permissions d'identite (`admin.access`, `identity.direct_studies`,
+        // `identity.registrar`, `identity.registrar_clerk`) : sans elle, ce meme
+        // coordinateur verrait « Directeur des etudes » et pourrait effectivement
+        // en creer un. Tant que ces routes ne portent pas leur propre
+        // permission, elle n'est pas remplacable.
+        //
+        // La meme reponse garde les mutations de l'entree unifiee (store,
+        // update, destroy, toggleStatus) : ce qu'un bouton ne montre plus ne
+        // s'obtient pas non plus en appelant l'adresse directement.
+        //
+        // Une garde illisible ferme aussi : un bouton absent vaut mieux qu'un
+        // bouton qui mene a un refus. OngletsPersonnelRoutesTest garantit que
+        // chaque route nommee ici existe et se lit ; une cle manquante doit
+        // planter, pas ouvrir.
+        return PorteDeRoute::verdict(self::TAB_PERMISSIONS[$tab]['routes'][$action], $user) === true;
     }
 
     private function tabForPersonnelType(string $type): ?string
@@ -600,7 +656,7 @@ class ESBTPPersonnelUnifiedController extends Controller
         $rules = [
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users,email,'.$user->id,
-            'password' => 'nullable|string|min:8|confirmed',
+            'password' => MotDePasseChoisi::facultatif(),
             'telephone' => 'nullable|string|max:20',
             'is_active' => 'required|boolean',
         ];

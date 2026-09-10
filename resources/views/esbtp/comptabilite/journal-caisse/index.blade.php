@@ -162,10 +162,41 @@
 }
 
 [x-cloak] { display: none !important; }
+
+/* =========================================================
+   JOURNAL DE CAISSE — écran mobile du shell (namespace jcm-*)
+   Le socle m-* vit dans public/css/mobile-shell.css.
+   ========================================================= */
+.jcm-screen { font-family: var(--m-font); }
+.jcm-seg { margin: 0; }
+.jcm-jour { display: grid; gap: 8px; }
+.jcm-jour .m-sec { gap: 10px; }
+.jcm-jour .m-sec b { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.jcm-solde { font-size: 12.5px; font-weight: 700; color: #0f6b4c; font-variant-numeric: tabular-nums; white-space: nowrap; flex-shrink: 0; }
+.jcm-solde.neg { color: #b42318; }
+.jcm-solde.zero { color: #64748b; }
+/* Un montant ne se tronque jamais : c'est le titre qui cède la place. */
+.jcm-jour .m-row .amt { white-space: nowrap; }
+.jcm-jour .m-row.is-static { cursor: default; }
+.jcm-jour .m-row.is-static:active { background: #fff; transform: none; }
+.m-list.is-loading { opacity: .6; transition: opacity 120ms ease; }
+.jcm-err { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; background: #fdecea; color: #a12016; border: 1px solid #f5c6c0; border-radius: 14px; padding: 12px 14px; font-size: 13px; font-weight: 600; }
+.jcm-err svg { width: 20px; height: 20px; }
+.jcm-err-retry { border: 0; background: transparent; color: #a12016; font: inherit; font-weight: 700; text-decoration: underline; cursor: pointer; padding: 6px 0; min-height: 44px; }
+.jcm-suite { display: grid; }
+.jcm-fin { margin: 0; text-align: center; font-size: 12px; color: #94a3b8; }
+.jcm-menu-tt { display: grid; gap: 1px; min-width: 0; }
+.jcm-menu-tt small { font-size: 12px; color: #64748b; font-weight: 500; }
 </style>
 @endpush
 
 @section('content')
+@php
+    // Shell mobile : le DOM de bureau passe sous .m-only-desktop au profit de
+    // l'écran m-* ci-dessous. Shell coupé : rien ne change.
+    $jcmShell = ($mobileShellEnabled ?? false) && ($mobileProfile ?? null) && isset($journalMobile) && is_array($journalMobile);
+@endphp
+<div class="{{ $jcmShell ? 'm-only-desktop' : '' }}">
 <div class="dashboard-acasi">
     <div class="main-content">
 
@@ -348,6 +379,144 @@
 
     </div>
 </div>
+</div>
+
+@if($jcmShell)
+    @php
+        // Écran mobile — maquette S['comptable:journal'] : app bar « Journal de
+        // caisse » (Conforme OHADA · année, export), segments de mois, une
+        // section par jour avec son solde, une carte-ligne par mouvement.
+        $jcmAnnee = $anneeActive?->display_name ?: ($anneeActive?->name ?: null);
+        $jcmSub = 'Conforme OHADA' . ($jcmAnnee ? ' · ' . $jcmAnnee : '');
+        $jcmPeutExporter = auth()->user()?->can('comptabilite.journal.view') ?? false;
+        $jcmCfg = [
+            'devise' => 'FCFA',
+            'filtres' => $journalMobile['filtres'] ?? $filters,
+            'initial' => $journalMobile,
+            'flash' => ['success' => session('success'), 'error' => session('error')],
+            'urls' => [
+                'index' => route('esbtp.comptabilite.journal-caisse.index'),
+            ],
+            'exports' => $jcmPeutExporter ? [
+                'apercu' => ['url' => route('esbtp.comptabilite.journal-caisse.preview-pdf'), 'onglet' => true],
+                'pdf' => ['url' => route('esbtp.comptabilite.journal-caisse.export-pdf'), 'onglet' => false],
+            ] : [],
+        ];
+    @endphp
+    <div class="m-only-mobile m-screen jcm-screen" x-data="jcmJournal({{ \Illuminate\Support\Js::from($jcmCfg) }})">
+
+        <x-m.appbar title="Journal de caisse"
+                    :sub="$jcmSub"
+                    :back="route('esbtp.comptabilite.dashboard')"
+                    back-label="Tableau de bord comptable"
+                    :action="$jcmPeutExporter ? 'dl' : null"
+                    action-label="Exporter le journal"
+                    x-on:click="ouvrir('jcm-export')" />
+
+        <div class="m-body" x-ref="corps">
+
+            {{-- Segments de mois : le mois courant et les deux précédents --}}
+            <div class="m-sticky">
+                <div class="m-seg jcm-seg" role="tablist" aria-label="Choisir le mois">
+                    <template x-for="m in mois" x-bind:key="m.cle">
+                        <button type="button" role="tab"
+                                x-bind:aria-selected="m.on ? 'true' : 'false'"
+                                x-bind:class="m.on ? 'on' : ''"
+                                x-bind:disabled="chargement"
+                                x-on:click="choisirMois(m)"
+                                x-text="m.libelle"></button>
+                    </template>
+                </div>
+            </div>
+
+            <div class="jcm-err" role="alert" x-show="erreur" x-cloak>
+                <x-m.icon name="alert" />
+                <span x-text="erreur"></span>
+                <button type="button" class="jcm-err-retry" x-on:click="recharger()">Réessayer</button>
+            </div>
+
+            {{-- Squelette pendant un chargement qui remplace la liste --}}
+            <div class="m-skel" x-show="chargement && jours.length === 0" x-cloak aria-hidden="true">
+                <i></i><i></i><i></i><i></i><i></i>
+            </div>
+
+            {{-- Une section par jour : libellé, solde du jour, cartes-lignes --}}
+            <template x-for="j in jours" x-bind:key="j.date">
+                <section class="jcm-jour" x-bind:class="chargement ? 'is-loading' : ''" aria-live="polite">
+                    <div class="m-sec">
+                        <b x-text="j.libelle"></b>
+                        <span class="jcm-solde" x-bind:class="toneSolde(j.solde)" x-text="'Solde ' + montant(j.solde)"></span>
+                    </div>
+                    <div class="m-list one">
+                        <template x-for="mv in j.mouvements" x-bind:key="mv.id">
+                            <a class="m-row"
+                               x-bind:href="mv.url"
+                               x-bind:class="mv.url ? '' : 'is-static'"
+                               x-bind:aria-label="mv.titre + ', ' + montantSigne(mv)">
+                                <div class="av" x-bind:class="mv.icone ? 'ic' : ''" aria-hidden="true">
+                                    <template x-if="mv.icone === 'cash'">
+                                        <x-m.icon name="cash" />
+                                    </template>
+                                    <template x-if="mv.icone === 'user'">
+                                        <x-m.icon name="user" />
+                                    </template>
+                                    <template x-if="!mv.icone">
+                                        <span x-text="mv.initiales"></span>
+                                    </template>
+                                </div>
+                                <div class="tt">
+                                    <b x-text="mv.titre"></b>
+                                    <span x-text="mv.sous_titre"></span>
+                                </div>
+                                <div class="tr">
+                                    <span class="amt" x-bind:class="mv.sortie ? 'neg' : ''" x-text="montantSigne(mv)"></span>
+                                    <template x-if="mv.statut !== 'validé'">
+                                        <span class="m-chip" x-bind:class="toneStatut(mv.statut)" x-text="libelleStatut(mv.statut)"></span>
+                                    </template>
+                                </div>
+                            </a>
+                        </template>
+                    </div>
+                </section>
+            </template>
+
+            <template x-if="!chargement && jours.length === 0 && !erreur">
+                <div>
+                    <x-m.empty icon="book" title="Aucun mouvement" text="Aucun encaissement ni remboursement sur cette période avec ces critères." />
+                </div>
+            </template>
+
+            {{-- Pagination par jour --}}
+            <div class="jcm-suite" x-show="hasMore" x-cloak>
+                <button type="button" class="m-btn g" x-on:click="suite()" x-bind:disabled="chargementSuite">
+                    <span x-show="!chargementSuite">Jours précédents</span>
+                    <span x-show="chargementSuite" x-cloak>Chargement…</span>
+                </button>
+            </div>
+
+            <p class="jcm-fin" x-show="!hasMore && jours.length > 0" x-cloak
+               x-text="jours.length + ' sur ' + nbJours + (nbJours > 1 ? ' jours' : ' jour') + ' · ' + nbMouvements() + (nbMouvements() > 1 ? ' mouvements' : ' mouvement')"></p>
+        </div>
+
+        {{-- Feuille : exports — mêmes routes et mêmes filtres que le bureau --}}
+        @can('comptabilite.journal.view')
+            <x-m.sheet id="jcm-export" title="Exporter" sub="Le journal du mois affiché, tel qu'il est filtré.">
+                <div class="m-menu">
+                    <button type="button" x-on:click="exporter('apercu')">
+                        <x-m.icon name="file" />
+                        <span class="jcm-menu-tt">Aperçu PDF<small>Voir avant de télécharger</small></span>
+                        <span class="ch"><x-m.icon name="chr" /></span>
+                    </button>
+                    <button type="button" x-on:click="exporter('pdf')">
+                        <x-m.icon name="dl" />
+                        <span class="jcm-menu-tt">Télécharger le PDF<small>Format officiel OHADA</small></span>
+                        <span class="ch"><x-m.icon name="chr" /></span>
+                    </button>
+                </div>
+            </x-m.sheet>
+        @endcan
+    </div>
+@endif
 
 <x-fab-encaisser />
 @endsection
@@ -417,5 +586,170 @@ document.addEventListener('DOMContentLoaded', () => {
         refreshJournal(window.location.href, false);
     });
 });
+</script>
+<script>
+    /* Journal de caisse mobile (shell m-*) : la fabrique Alpine de l'ecran.
+       Exposee globalement sous garde : la vue peut etre rendue plusieurs fois
+       (rafraichissement AJAX du bureau) sans redeclarer la fonction. */
+    if (typeof window.jcmJournal !== 'function') {
+        window.jcmJournal = function (cfg) {
+            var initial = cfg.initial || {};
+            var filtresInit = Object.assign(
+                { date_debut: '', date_fin: '', filiere_id: '', classe_id: '', mode_paiement: '', statut: '' },
+                cfg.filtres || {}
+            );
+            Object.keys(filtresInit).forEach(function (k) { if (filtresInit[k] === null) { filtresInit[k] = ''; } });
+
+            return {
+                devise: cfg.devise || 'FCFA',
+                urls: cfg.urls || {},
+                exports: cfg.exports || {},
+                filtres: filtresInit,
+                mois: initial.mois || [],
+                jours: initial.jours || [],
+                hasMore: !!initial.has_more,
+                nextPage: initial.next_page || 2,
+                nbJours: Number(initial.nb_jours || 0),
+                chargement: false,
+                chargementSuite: false,
+                erreur: null,
+                _seq: 0,
+                _onPtr: null,
+
+                init() {
+                    var self = this;
+                    var flash = cfg.flash || {};
+                    if (flash.success) { this.toast(flash.success, 'success'); }
+                    if (flash.error) { this.toast(flash.error, 'error'); }
+                    if (this.$refs.corps) {
+                        // Tirer pour rafraichir : on recharge la premiere page du mois affiche.
+                        this._onPtr = function () { self.recharger(); };
+                        this.$refs.corps.addEventListener('m-ptr:refresh', this._onPtr);
+                    }
+                },
+                destroy() {
+                    if (this._onPtr && this.$refs.corps) {
+                        this.$refs.corps.removeEventListener('m-ptr:refresh', this._onPtr);
+                        this._onPtr = null;
+                    }
+                },
+
+                /* ---- feuilles, toasts ---- */
+                ouvrir(id) {
+                    window.dispatchEvent(new CustomEvent('m-sheet:open', { detail: { id: id } }));
+                },
+                fermerTout() {
+                    window.dispatchEvent(new CustomEvent('m-sheet:close', { detail: {} }));
+                },
+                toast(message, type) {
+                    window.dispatchEvent(new CustomEvent('toast', { detail: { type: type || 'success', message: message } }));
+                },
+
+                /* ---- mise en forme : fr-FR, jamais tronque ---- */
+                format(n) {
+                    return new Intl.NumberFormat('fr-FR').format(Math.round(Number(n) || 0));
+                },
+                montant(n) {
+                    var v = Number(n) || 0;
+                    return (v < 0 ? '− ' : '') + this.format(Math.abs(v)) + ' ' + this.devise;
+                },
+                montantSigne(mv) {
+                    return (mv.sortie ? '− ' : '+ ') + this.format(mv.montant) + ' ' + this.devise;
+                },
+                toneSolde(n) {
+                    var v = Number(n) || 0;
+                    return v < 0 ? 'neg' : (v === 0 ? 'zero' : '');
+                },
+                libelleStatut(s) {
+                    return { 'validé': 'Validé', 'en_attente': 'À valider', 'rejeté': 'Rejeté' }[s] || s || '—';
+                },
+                toneStatut(s) {
+                    return { 'validé': 'ok', 'en_attente': 'warn', 'rejeté': 'bad' }[s] || 'mute';
+                },
+                nbMouvements() {
+                    return this.jours.reduce(function (acc, j) { return acc + Number(j.nb || 0); }, 0);
+                },
+
+                /* ---- filtres : mois choisi + criteres herites de l'URL ---- */
+                choisirMois(m) {
+                    if (m.on) { return; }
+                    this.filtres.date_debut = m.date_debut;
+                    this.filtres.date_fin = m.date_fin;
+                    this.recharger();
+                },
+                parametres() {
+                    var p = new URLSearchParams();
+                    var f = this.filtres;
+                    Object.keys(f).forEach(function (k) { if (f[k] !== '' && f[k] !== null && f[k] !== undefined) { p.set(k, f[k]); } });
+                    return p;
+                },
+
+                /* ---- chargement : la premiere page remplace, les suivantes s'ajoutent ---- */
+                async charger(page, remplacer) {
+                    var seq = ++this._seq;
+                    if (remplacer) { this.chargement = true; } else { this.chargementSuite = true; }
+                    this.erreur = null;
+                    try {
+                        var p = this.parametres();
+                        p.set('mode', 'mobile');
+                        p.set('page', String(page));
+                        var res = await fetch(this.urls.index + '?' + p.toString(), {
+                            headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                            credentials: 'same-origin',
+                        });
+                        if (!res.ok) { throw new Error('Impossible de charger le journal (' + res.status + ').'); }
+                        var data = await res.json();
+                        if (seq !== this._seq) { return; }
+                        this.jours = remplacer ? (data.jours || []) : this.jours.concat(data.jours || []);
+                        this.hasMore = !!data.has_more;
+                        this.nextPage = data.next_page || (page + 1);
+                        this.nbJours = Number(data.nb_jours || 0);
+                        if (Array.isArray(data.mois) && data.mois.length) { this.mois = data.mois; }
+                        if (data.filtres) {
+                            var self = this;
+                            Object.keys(data.filtres).forEach(function (k) {
+                                self.filtres[k] = data.filtres[k] === null ? '' : String(data.filtres[k]);
+                            });
+                        }
+                        if (remplacer && data.url && window.history && window.history.replaceState) {
+                            window.history.replaceState(null, '', data.url);
+                        }
+                    } catch (e) {
+                        if (seq !== this._seq) { return; }
+                        this.erreur = e.message || 'Impossible de charger le journal.';
+                    } finally {
+                        if (seq === this._seq) {
+                            this.chargement = false;
+                            this.chargementSuite = false;
+                        }
+                    }
+                },
+                recharger() {
+                    return this.charger(1, true);
+                },
+                suite() {
+                    if (!this.hasMore || this.chargement || this.chargementSuite) { return; }
+                    return this.charger(this.nextPage, false);
+                },
+
+                /* ---- exports : memes routes que le bureau, memes filtres ---- */
+                exporter(format) {
+                    var ex = this.exports[format];
+                    if (!ex || !ex.url) { return; }
+                    var p = this.parametres();
+                    var url = ex.url + (p.toString() ? '?' + p.toString() : '');
+                    this.fermerTout();
+                    if (ex.onglet) {
+                        // Pas de 3e argument : avec des options, window.open ouvre
+                        // une popup que les bloqueurs avalent en silence.
+                        var w = window.open(url, '_blank');
+                        if (!w) { window.location.href = url; }
+                        return;
+                    }
+                    window.location.href = url;
+                }
+            };
+        };
+    }
 </script>
 @endpush

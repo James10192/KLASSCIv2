@@ -890,7 +890,7 @@ class ESBTPEnseignantController extends Controller
     }
 
     /**
-     * Reset teacher password to default (Bonjour@2025) and force change on first login
+     * Reset teacher password to default (UserService::defaultPassword()) and force change on first login
      */
     public function resetPassword(Request $request, ESBTPTeacher $enseignant)
     {
@@ -933,7 +933,7 @@ class ESBTPEnseignantController extends Controller
             $this->authorize('update', $user);
 
             // Mot de passe par défaut
-            $defaultPassword = "Bonjour@2025";
+            $defaultPassword = $this->userService->generateDefaultPassword();
 
             // Mettre à jour le mot de passe et forcer le changement à la première connexion
             $user->password = Hash::make($defaultPassword);
@@ -963,7 +963,7 @@ class ESBTPEnseignantController extends Controller
                 ->back()
                 ->with(
                     "success",
-                    'Mot de passe réinitialisé à Bonjour@2025 avec succès! L\'enseignant devra changer son mot de passe à la première connexion.',
+                    'Mot de passe réinitialisé à '.$defaultPassword.' avec succès! L\'enseignant devra changer son mot de passe à la première connexion.',
                 )
                 ->with("new_password", $defaultPassword);
         } catch (\Exception $e) {

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Concerns;
 
 use App\Models\User;
+use App\Services\UserService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Hash;
@@ -16,7 +17,7 @@ use Illuminate\Support\Facades\Log;
  * actuellement leur propre `resetPassword()` legacy — à migrer ici au fil
  * des touches.
  *
- * Mot de passe par défaut : `Bonjour@2025` + `must_change_password = true`.
+ * Mot de passe par défaut : `UserService::defaultPassword()` + `must_change_password = true`.
  * Réponse adaptative JSON (AJAX) ou flash redirect.
  */
 trait ResetsPersonnelPassword
@@ -30,7 +31,7 @@ trait ResetsPersonnelPassword
     protected function resetPersonnelPassword(User $user, string $roleLabel): JsonResponse|RedirectResponse
     {
         try {
-            $defaultPassword = 'Bonjour@2025';
+            $defaultPassword = UserService::defaultPassword();
 
             $user->password = Hash::make($defaultPassword);
             $user->must_change_password = true;

@@ -670,18 +670,22 @@ class DashboardController extends Controller
                 ->where('status', 'en_attente')
                 ->count();
 
-            // Recent payments (last 10 by this caissier)
-            $paiementsRecents = \App\Models\ESBTPPaiement::with(['etudiant', 'inscription'])
+            // Recent payments (last 10 by this caissier). L'ecran mobile en
+            // montre cinq avec la classe et le frais : on les charge d'un coup.
+            $paiementsRecents = \App\Models\ESBTPPaiement::with(['etudiant', 'inscription.classe', 'fraisCategory'])
                 ->where('created_by', $user->id)
                 ->orderBy('created_at', 'desc')
                 ->take(10)
                 ->get();
+
+            $caisseMobile = $this->caisseDuJourPourMobile($user, $today);
         } catch (\Exception $e) {
             $paiementsAujourdhuiCount = 0;
             $montantEncaisseAujourdhui = 0;
             $preInscriptionsAujourdhui = 0;
             $preInscriptionsEnAttente = 0;
             $paiementsRecents = collect();
+            $caisseMobile = $this->caisseDuJourVide();
         }
 
         return view('dashboard.caissier', compact(
@@ -691,8 +695,115 @@ class DashboardController extends Controller
             'montantEncaisseAujourdhui',
             'preInscriptionsAujourdhui',
             'preInscriptionsEnAttente',
-            'paiementsRecents'
+            'paiementsRecents',
+            'caisseMobile'
         ));
+    }
+
+    /**
+     * Ce que l'accueil mobile du caissier ajoute au bureau : la session de
+     * caisse du jour, l'encaisse par famille de mode, ce qui attend encore une
+     * validation et ce que le guichet peut encore annuler lui-meme.
+     *
+     * La session est LUE, jamais creee : c'est le premier encaissement en
+     * especes (ou « Ma caisse ») qui l'ouvre, pas le fait de regarder l'accueil.
+     *
+     * @return array{
+     *   session: array{statut: string|null, ouverte_a: string|null, fermee_a: string|null},
+     *   especes: array{count: int, total: float},
+     *   mobile: array{count: int, total: float},
+     *   autres: array{count: int, total: float},
+     *   a_valider: int,
+     *   annulables: int,
+     *   fenetre_annulation_minutes: int,
+     *   peut_annuler: bool
+     * }
+     */
+    private function caisseDuJourPourMobile(User $user, Carbon $today): array
+    {
+        $donnees = $this->caisseDuJourVide();
+
+        $session = \App\Models\ESBTPCashSession::query()
+            ->where('cashier_user_id', $user->id)
+            ->whereDate('business_date', $today->toDateString())
+            ->first();
+        if ($session) {
+            $donnees['session'] = [
+                'statut' => $session->status?->value,
+                'ouverte_a' => $session->opened_at?->format('H:i'),
+                'fermee_a' => $session->closed_at?->format('H:i'),
+            ];
+        }
+
+        // Un seul passage sur les versements du jour : les KPI par mode ne
+        // comptent que les encaissements valides (les avoirs se lisent a part,
+        // via netCashSum sur le total).
+        $paiementsJour = \App\Models\ESBTPPaiement::query()
+            ->ownedBy($user->id)
+            ->whereDate('created_at', $today)
+            ->get();
+
+        foreach ($paiementsJour as $paiement) {
+            if ($paiement->status === 'en_attente' && ! $paiement->isAvoir()) {
+                $donnees['a_valider']++;
+                if ($donnees['peut_annuler'] && $user->can('cancelOwnRecent', $paiement)) {
+                    $donnees['annulables']++;
+                }
+                continue;
+            }
+            if ($paiement->status !== 'validé' || $paiement->isAvoir()) {
+                continue;
+            }
+            $famille = $this->familleDeMode((string) $paiement->mode_paiement);
+            $donnees[$famille]['count']++;
+            $donnees[$famille]['total'] += (float) $paiement->montant;
+        }
+
+        foreach (['especes', 'mobile', 'autres'] as $famille) {
+            $donnees[$famille]['total'] = round($donnees[$famille]['total'], 2);
+        }
+
+        return $donnees;
+    }
+
+    private function caisseDuJourVide(): array
+    {
+        $user = Auth::user();
+
+        return [
+            'session' => ['statut' => null, 'ouverte_a' => null, 'fermee_a' => null],
+            'especes' => ['count' => 0, 'total' => 0.0],
+            'mobile' => ['count' => 0, 'total' => 0.0],
+            'autres' => ['count' => 0, 'total' => 0.0],
+            'a_valider' => 0,
+            'annulables' => 0,
+            'fenetre_annulation_minutes' => (int) SettingsHelper::get('comptabilite.cancel_own_window_minutes', 5),
+            'peut_annuler' => $user ? $user->can('paiements.cancel_own') : false,
+        ];
+    }
+
+    /**
+     * Especes au tiroir ; portefeuilles mobiles ensemble ; le reste (virement,
+     * cheque, valeur inconnue) a part, pour ne pas le faire passer pour du
+     * mobile money.
+     */
+    private function familleDeMode(string $mode): string
+    {
+        $canon = \App\Enums\ModePaiement::fromLegacy($mode);
+        if ($canon === null) {
+            return 'autres';
+        }
+        if ($canon->isDrawer()) {
+            return 'especes';
+        }
+
+        return in_array($canon, [
+            \App\Enums\ModePaiement::MOBILE_MONEY,
+            \App\Enums\ModePaiement::WAVE,
+            \App\Enums\ModePaiement::ORANGE_MONEY,
+            \App\Enums\ModePaiement::MTN_MONEY,
+            \App\Enums\ModePaiement::MOOV_MONEY,
+        ], true) ? 'mobile' : 'autres';
     }
 
     /**
@@ -1265,8 +1376,12 @@ class DashboardController extends Controller
 
         $prochaine = null;
         if ($resteDu > 0) {
+            // Un instantane d'echeancier n'existe que si une regle couvre
+            // l'inscription : la plupart des dossiers n'en ont pas, et lire
+            // ->payload sur null faisait echouer tout le bloc financier — le
+            // reste du s'affichait « indisponible » alors qu'il est connu.
             $snapshot = ESBTPInscriptionEcheancierSnapshot::where('inscription_id', $inscription->id)->first();
-            $ligne = collect($snapshot->payload['due_lines'] ?? [])
+            $ligne = collect($snapshot?->payload['due_lines'] ?? [])
                 ->filter(fn ($l) => (float) ($l['remaining_amount'] ?? 0) > 0 && ! empty($l['due_date']))
                 ->sortBy('due_date')
                 ->first();
