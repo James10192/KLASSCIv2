@@ -862,6 +862,7 @@ class ESBTPInscriptionController extends Controller
                 "satisfied_in_kind" => (bool) $satisfiedInKind,
                 "can_mark_in_kind" => $inKind->canMarkCategory($inscription, $category, $subscription),
                 "can_unmark_in_kind" => $subscription && $inKind->canUnmarkDeposited($subscription),
+                "paiement_bloquant" => $category->accepts_in_kind ? $inKind->paiementBloquant((int) $inscription->id, (int) $category->id) : null,
                 "status" => $satisfiedInKind
                     ? "deposited"
                     : ($solde <= 0
@@ -916,6 +917,7 @@ class ESBTPInscriptionController extends Controller
                     "satisfied_in_kind" => $satisfiedInKind,
                     "can_mark_in_kind" => $inKind->canMarkCategory($inscription, $category, $subscription),
                 "can_unmark_in_kind" => $subscription && $inKind->canUnmarkDeposited($subscription),
+                "paiement_bloquant" => $category->accepts_in_kind ? $inKind->paiementBloquant((int) $inscription->id, (int) $category->id) : null,
                     "status" => $satisfiedInKind
                         ? "deposited"
                         : ($solde <= 0

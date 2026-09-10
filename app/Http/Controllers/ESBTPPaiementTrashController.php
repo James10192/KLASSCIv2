@@ -136,6 +136,9 @@ class ESBTPPaiementTrashController extends Controller
                 $inscription->restore();
                 $cascadeRestored['inscription'] = true;
             }
+            // Une ligne vivante ne porte pas de motif de suppression : la trace
+            // reste au journal d'audit, pas sur le versement restauré.
+            $paiement->forceFill(['deleted_by' => null, 'motif_suppression' => null]);
             $paiement->restore();
         });
 

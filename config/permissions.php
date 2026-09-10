@@ -976,8 +976,15 @@ return [
             'icon' => 'fa-edit',
             'aliases' => ['edit_payments', 'edit-paiements'],
         ],
+        // Longtemps, cette permission ne suffisait pas : la suppression exigeait
+        // en plus « paiements.manage », donc en pratique le super administrateur.
+        // Un versement encaissé par erreur sur un frais réglé en nature (un
+        // paquet de rames payé au lieu d'être déposé) attendait le fondateur.
+        // C'est désormais un droit à part entière, que l'établissement accorde
+        // au rôle qu'il veut. Non accordé par défaut.
         'paiements.delete' => [
-            'label' => 'Supprimer un paiement',
+            'label' => 'Supprimer un versement (motif obligatoire, journalisé)',
+            'description' => 'Supprime un versement enregistré, validé ou non, en gardant sa trace : le motif (10 caractères minimum), l\'auteur et la date restent lus au journal d\'audit et sur la ligne supprimée. Reste bloquée sur une période comptable clôturée et sur un versement déjà réconcilié. Non accordée par défaut : chaque établissement choisit qui la porte.',
             'group' => 'Paiements',
             'icon' => 'fa-trash',
         ],

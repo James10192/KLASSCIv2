@@ -52,6 +52,9 @@ class ESBTPPaiement extends Model implements Auditable
         // Correction d'imputation : la date vit sur le versement pour que le
         // recu puisse se declarer rectifie sans interroger le journal d'audit.
         'ventilation_rectifiee_le',
+        // Suppression : qui, et pourquoi. Écrits juste avant deleted_at.
+        'deleted_by',
+        'motif_suppression',
     ];
 
     /**
