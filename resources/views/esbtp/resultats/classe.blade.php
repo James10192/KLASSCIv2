@@ -119,6 +119,14 @@
             </div>
         @endif
 
+        {{-- Notes reçues : une moyenne de classe calculée sur des notes
+             incomplètes se lit comme une moyenne définitive. --}}
+        @include('esbtp.partials._couverture-notes', [
+            'classeId' => $classe->id,
+            'anneeId' => $annee_universitaire_id ?? null,
+            'periode' => $periode ?: 'annuel',
+        ])
+
         {{-- Filtres --}}
         <div class="sr-filter-bar sr-animate sr-animate-delay-2">
             <form id="rc-filter-form" class="filter-form">

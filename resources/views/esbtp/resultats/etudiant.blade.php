@@ -349,6 +349,15 @@
             </div>
         @endif
 
+        {{-- Notes reçues sur la classe de cet étudiant. Une moyenne qui semble
+             basse tient souvent à une saisie inachevée, pas au travail. --}}
+        @include('esbtp.partials._couverture-notes', [
+            'classeId' => optional($classe)->id,
+            'anneeId' => $annee_id ?? null,
+            'periode' => $currentPeriodeKey ?: 'annuel',
+            'titre' => 'Notes reçues dans la classe',
+        ])
+
         {{-- 3+4. Layout deux colonnes --}}
         <div class="row mb-4">
             <div class="col-lg-4 mb-3 mb-lg-0">
