@@ -2,6 +2,8 @@
 
 namespace Tests\Unit\Services;
 
+use App\Domain\BtsTroncCommun\BtsBulletinSubjectResolver;
+use App\Domain\BtsTroncCommun\BulletinSubjectOrder;
 use App\Domain\BtsTroncCommun\ClasseOuvertureResolver;
 use App\Domain\BtsTroncCommun\BtsAnnualClassMapResolver;
 use App\Domain\BtsTroncCommun\BtsBulletinCohortResolver;
@@ -177,7 +179,8 @@ class BulletinRankRecalculationServiceTest extends TestCase
             new BtsAnnualClassMapResolver($phaseResolver, new ClasseOuvertureResolver()),
             new BtsBulletinCohortResolver(new BtsAnnualClassMapResolver($phaseResolver, new ClasseOuvertureResolver())),
             new BtsClassCohortCounter($phaseResolver),
-            new ClasseOuvertureResolver()
+            new ClasseOuvertureResolver(),
+            new BulletinSubjectOrder(new BtsBulletinSubjectResolver())
         );
 
         return new BulletinRankRecalculationService($bulletinService);

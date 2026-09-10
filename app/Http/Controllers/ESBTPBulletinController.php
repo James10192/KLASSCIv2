@@ -8,6 +8,7 @@ use App\Domain\AcademicPilotage\Exceptions\AcademicPilotageException;
 use App\Domain\AcademicPilotage\Services\BtsBulkBulletinGenerationService;
 use App\Domain\AcademicPilotage\Services\BulletinGenerationReadinessService;
 use App\Domain\BtsTroncCommun\BtsBulletinSubjectResolver;
+use App\Domain\BtsTroncCommun\BulletinSubjectOrder;
 use App\Exceptions\BulletinConfigurationException;
 use App\Exceptions\CoefficientMissingException;
 use App\Helpers\SettingsHelper;
@@ -59,6 +60,8 @@ class ESBTPBulletinController extends Controller
 
     protected BtsBulletinSubjectResolver $subjectResolver;
 
+    protected BulletinSubjectOrder $subjectOrder;
+
     protected BulletinGenerationReadinessService $bulletinReadiness;
 
     protected BtsBulkBulletinGenerationService $bulkBulletinGeneration;
@@ -69,7 +72,8 @@ class ESBTPBulletinController extends Controller
         BulletinConsistencyService $bulletinConsistencyService,
         BtsBulletinSubjectResolver $subjectResolver,
         BulletinGenerationReadinessService $bulletinReadiness,
-        BtsBulkBulletinGenerationService $bulkBulletinGeneration
+        BtsBulkBulletinGenerationService $bulkBulletinGeneration,
+        BulletinSubjectOrder $subjectOrder
     ) {
         $this->absenceService = $absenceService;
         $this->bulletinService = $bulletinService;
@@ -77,6 +81,7 @@ class ESBTPBulletinController extends Controller
         $this->subjectResolver = $subjectResolver;
         $this->bulletinReadiness = $bulletinReadiness;
         $this->bulkBulletinGeneration = $bulkBulletinGeneration;
+        $this->subjectOrder = $subjectOrder;
     }
 
     /**
@@ -229,7 +234,9 @@ class ESBTPBulletinController extends Controller
                 'Cette classe est LMD. Utilisez /esbtp/lmd/bulletins pour générer des bulletins LMD.'
             );
             // Tronc commun (C10) : union [filière classe, filière TC parente] + fallback pivot.
-            $matieres = $this->subjectResolver->subjectsForClasse($classe);
+            // Meme ordre que le PDF officiel : l'apercu et la configuration ne
+            // doivent pas presenter les matieres autrement que le bulletin.
+            $matieres = $this->subjectOrder->orderedSubjectsForClasse($classe);
 
             // Précharger toutes les évaluations pour cette classe et période
             $allEvaluations = ESBTPEvaluation::where('classe_id', $classe->id)
@@ -1586,7 +1593,9 @@ class ESBTPBulletinController extends Controller
 
             // Récupérer les matières de la classe (tronc commun-aware, C10) :
             // union [filière classe, filière TC parente] + fallback pivot.
-            $matieres = $this->subjectResolver->subjectsForClasse($classe);
+            // Meme ordre que le PDF officiel : l'apercu et la configuration ne
+            // doivent pas presenter les matieres autrement que le bulletin.
+            $matieres = $this->subjectOrder->orderedSubjectsForClasse($classe);
 
             // Période prévisualisée (evaluation.periode : semestre1 | semestre2 | annuel).
             $periode = $this->bulletinService->normalizePeriode($request->periode ?? ($bulletin->periode ?? 'semestre1'));

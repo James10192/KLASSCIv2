@@ -19,6 +19,7 @@ use App\Models\ESBTPResultatMatiere;
 use App\Domain\BtsTroncCommun\BtsAnnualClassMapResolver;
 use App\Domain\BtsTroncCommun\BtsBulletinCohortResolver;
 use App\Domain\BtsTroncCommun\BtsClassCohortCounter;
+use App\Domain\BtsTroncCommun\BulletinSubjectOrder;
 use App\Domain\BtsTroncCommun\ClasseOuvertureResolver;
 use App\Services\ESBTP\ESBTPAbsenceService;
 use App\Support\Attendance\AttendanceNoteRule;
@@ -56,6 +57,8 @@ class BulletinService
 
     private ClasseOuvertureResolver $ouvertureResolver;
 
+    private BulletinSubjectOrder $subjectOrder;
+
     private array $coefficientCache = [];
 
     private array $classeCache = [];
@@ -78,13 +81,15 @@ class BulletinService
         BtsAnnualClassMapResolver $classMapResolver,
         BtsBulletinCohortResolver $cohortResolver,
         BtsClassCohortCounter $classCohortCounter,
-        ClasseOuvertureResolver $ouvertureResolver
+        ClasseOuvertureResolver $ouvertureResolver,
+        BulletinSubjectOrder $subjectOrder
     ) {
         $this->absenceService = $absenceService;
         $this->classMapResolver = $classMapResolver;
         $this->cohortResolver = $cohortResolver;
         $this->classCohortCounter = $classCohortCounter;
         $this->ouvertureResolver = $ouvertureResolver;
+        $this->subjectOrder = $subjectOrder;
     }
 
     public function forgetPDFConfigCache(): void
@@ -499,6 +504,15 @@ class BulletinService
                 }
             }
         }
+
+        // Ordre du bulletin. Jusqu'ici les matieres sortaient dans l'ordre
+        // d'arrivee des notes : deux etudiants d'une meme classe recevaient des
+        // bulletins ordonnes differemment. `sort()` rend la collection
+        // INCHANGEE tant qu'aucun rang n'est defini pour la classe, et preserve
+        // les cles (le tableau reste indexe par matiere_id).
+        $resultatsParMatiere = $this->subjectOrder
+            ->sort(collect($resultatsParMatiere), $this->subjectOrder->rankMapForClasse($classe))
+            ->all();
 
         $periodeNormalized = $this->normalizePeriode($periode);
         if ($persistOfficial) {

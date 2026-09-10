@@ -68,6 +68,47 @@
     .mtc-seg-btn--tc.mtc-seg-btn--active { background: #0453cb; color: #fff; }
     .mtc-seg-btn--spe.mtc-seg-btn--active { background: #334155; color: #fff; }
 
+    /* Place sur le bulletin : numéro + deux flèches. Cibles tactiles 44px. */
+    .mtc-rank { display: inline-flex; align-items: center; gap: .3rem; flex-shrink: 0; }
+    .mtc-rank-input { width: 56px; height: 44px; text-align: center; font-size: .86rem; font-weight: 700;
+        color: #0453cb; border: 1px solid #d7e0ec; border-radius: 9px; background: #fff; }
+    .mtc-rank-input::placeholder { color: #cbd5e1; font-weight: 400; }
+    .mtc-rank-input--herite { color: #94a3b8; font-weight: 500; background: #f8fafc; }
+    .mtc-rank-btn { width: 44px; height: 44px; border: 1px solid #d7e0ec; border-radius: 9px; background: #fff;
+        color: #64748b; cursor: pointer; font-size: .72rem; transition: background .15s, color .15s; }
+    .mtc-rank-btn:hover:not(:disabled) { background: rgba(4,83,203,.06); color: #0453cb; }
+    .mtc-rank-btn:disabled { opacity: .4; cursor: not-allowed; }
+    .mtc-rank-tag { font-size: .64rem; color: #94a3b8; text-transform: uppercase; letter-spacing: .04em;
+        font-weight: 700; min-width: 62px; }
+
+    /* Bandeau maquette : ce qui est prévu, et d'où ça viendrait */
+    .mtc-maquette { display: flex; align-items: center; flex-wrap: wrap; gap: .75rem; padding: .8rem 1rem;
+        border: 1px solid rgba(4,83,203,.18); border-radius: 11px; margin-bottom: .9rem;
+        background: linear-gradient(135deg, rgba(4,83,203,.04), rgba(59,125,219,.06)); }
+    .mtc-maquette-txt { flex: 1; min-width: 220px; font-size: .84rem; color: #1e293b; }
+    .mtc-maquette-txt small { display: block; color: #64748b; font-size: .76rem; margin-top: .15rem; }
+    .mtc-chip { display: inline-flex; align-items: center; gap: .4rem; padding: .35rem .7rem; border-radius: 8px;
+        font-size: .76rem; font-weight: 600; background: rgba(4,83,203,.09); color: #0453cb;
+        border: 1px solid rgba(4,83,203,.22); cursor: pointer; }
+    .mtc-chip:hover { background: rgba(4,83,203,.16); }
+    .mtc-chip--muted { background: #f1f5f9; color: #64748b; border-color: #e2e8f0; cursor: default; }
+
+    /* Aperçu de l'import : ce qui changerait, avant d'écrire quoi que ce soit */
+    .mtc-modal { position: fixed; inset: 0; z-index: 2500; display: flex; align-items: center;
+        justify-content: center; background: rgba(15,23,42,.45); padding: 1rem; }
+    .mtc-modal-box { background: #fff; border-radius: 14px; width: 100%; max-width: 640px; max-height: 82vh;
+        display: flex; flex-direction: column; box-shadow: 0 20px 50px rgba(15,23,42,.28); }
+    .mtc-modal-head { padding: 1rem 1.2rem; border-bottom: 1px solid #eef2f7; }
+    .mtc-modal-head h2 { font-size: 1rem; font-weight: 700; color: #1e293b; margin: 0; }
+    .mtc-modal-head p { font-size: .8rem; color: #64748b; margin: .25rem 0 0; }
+    .mtc-modal-body { padding: .8rem 1.2rem; overflow-y: auto; }
+    .mtc-modal-foot { padding: .9rem 1.2rem; border-top: 1px solid #eef2f7; display: flex; justify-content: flex-end; gap: .6rem; }
+    .mtc-diff-row { display: flex; align-items: center; justify-content: space-between; gap: .8rem;
+        padding: .5rem .2rem; border-bottom: 1px solid #f5f7fa; font-size: .84rem; }
+    .mtc-diff-row:last-child { border-bottom: none; }
+    .mtc-diff-move { color: #0453cb; font-weight: 600; white-space: nowrap; }
+    .mtc-diff-same { color: #94a3b8; white-space: nowrap; }
+
     .mtc-empty { text-align: center; padding: 2.5rem 1rem; color: #94a3b8; }
     .mtc-empty i { font-size: 2rem; opacity: .5; margin-bottom: .5rem; display: block; }
 
@@ -145,6 +186,8 @@
 
         <template x-if="matieres.length > 0">
             <div>
+                @include('esbtp.matieres.partials._classification-maquette')
+
                 <div class="mtc-bulk">
                     <span class="mtc-bulk-lbl">Tout marquer :</span>
                     <button type="button" class="mtc-mini" @click="bulk('tronc_commun')" :disabled="saving">Tronc commun</button>
@@ -157,25 +200,17 @@
                     </template>
                 </div>
 
-                <template x-for="m in matieres" :key="m.matiere_id">
-                    <div class="mtc-row">
-                        <div class="mtc-row-main">
-                            <span class="mtc-row-name" x-text="m.name"></span>
-                            <span class="mtc-row-code" x-show="m.code" x-text="m.code"></span>
-                            <span class="mtc-suggest" x-show="m.wasSuggested && m.classification === 'specialite'">suggéré</span>
-                        </div>
-                        <div class="mtc-seg">
-                            <button type="button" class="mtc-seg-btn mtc-seg-btn--tc"
-                                :class="m.classification === 'tronc_commun' ? 'mtc-seg-btn--active' : ''"
-                                @click="setClass(m, 'tronc_commun')">Tronc commun</button>
-                            <button type="button" class="mtc-seg-btn mtc-seg-btn--spe"
-                                :class="m.classification === 'specialite' ? 'mtc-seg-btn--active' : ''"
-                                @click="setClass(m, 'specialite')">Spécialité</button>
-                        </div>
-                    </div>
-                </template>
+                @include('esbtp.matieres.partials._classification-row')
 
                 <div class="mtc-savebar">
+                    <button type="button" class="mtc-mini" @click="resetOrdre()" :disabled="saving"
+                        title="Efface les places propres à cette filière : les matières retrouvent l'ordre général.">
+                        <i class="fas fa-rotate-left"></i> Revenir à l'ordre général
+                    </button>
+                    <button type="button" class="mtc-mini" @click="promouvoirOrdreGeneral()" :disabled="saving"
+                        title="Fait de l'ordre affiché l'ordre général, repris par les filières qui n'ont pas le leur.">
+                        <i class="fas fa-arrow-up-from-bracket"></i> Faire de cet ordre l'ordre général
+                    </button>
                     <button type="button" class="mtc-btn" @click="save()" :disabled="saving">
                         <span x-show="!saving"><i class="fas fa-save"></i> Enregistrer</span>
                         <span x-show="saving" x-cloak>Enregistrement…</span>
@@ -197,135 +232,5 @@
 @endsection
 
 @push('scripts')
-<script>
-function matiereClassification() {
-    return {
-        filiereId: '',
-        niveauId: '',
-        loading: false,
-        saving: false,
-        loaded: false,
-        isTroncCommun: false,
-        filiereName: '',
-        matieres: [],
-        kpis: { total: 0, tronc_commun: 0, specialite: 0, non_classe: 0 },
-        get hasSuggestions() { return this.matieres.some(m => m.suggested); },
-
-        init() {
-            this.$watch('filiereId', () => this.tryLoad());
-            this.$watch('niveauId', () => this.tryLoad());
-        },
-
-        // Le composant au-select évalue son x-model dans son propre scope : on capte
-        // plutôt l'evenement change du select natif qui bulle jusqu'a cette racine.
-        onNativeChange(e) {
-            const t = e && e.target;
-            if (!t || !t.name) return;
-            if (t.name === 'filiere_id') this.filiereId = t.value;
-            if (t.name === 'niveau_id') this.niveauId = t.value;
-        },
-
-        tryLoad() {
-            if (this.filiereId && this.niveauId) this.loadCombo();
-        },
-
-        notify(message, type) {
-            let host = document.getElementById('mtc-toast-host');
-            if (!host) {
-                host = document.createElement('div');
-                host.id = 'mtc-toast-host';
-                host.className = 'mtc-toast-host';
-                document.body.appendChild(host);
-            }
-            const el = document.createElement('div');
-            el.className = 'mtc-toast mtc-toast--' + (type === 'error' ? 'error' : 'success');
-            el.innerHTML = '<i class="fas ' + (type === 'error' ? 'fa-circle-exclamation' : 'fa-circle-check') + '"></i><span></span>';
-            el.querySelector('span').textContent = message;
-            host.appendChild(el);
-            requestAnimationFrame(() => el.classList.add('mtc-toast--in'));
-            setTimeout(() => {
-                el.classList.remove('mtc-toast--in');
-                setTimeout(() => el.remove(), 250);
-            }, 3200);
-        },
-
-        async loadCombo() {
-            this.loading = true;
-            this.loaded = false;
-            try {
-                const url = "{{ route('esbtp.matieres.classification.combo') }}"
-                    + "?filiere_id=" + encodeURIComponent(this.filiereId)
-                    + "&niveau_id=" + encodeURIComponent(this.niveauId);
-                const res = await fetch(url, { headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } });
-                if (!res.ok) throw new Error('Chargement impossible.');
-                const data = await res.json();
-                this.isTroncCommun = !!data.is_tronc_commun;
-                this.filiereName = data.filiere || '';
-                this.matieres = (data.matieres || []).map(m => ({
-                    ...m,
-                    wasSuggested: (m.classification === null && m.suggested != null),
-                    classification: m.classification ?? (m.suggested ?? null),
-                }));
-                this.recomputeKpis();
-                this.loaded = true;
-            } catch (e) {
-                this.notify(e.message, 'error');
-            } finally {
-                this.loading = false;
-            }
-        },
-
-        setClass(m, val) {
-            m.classification = (m.classification === val) ? null : val;
-            this.recomputeKpis();
-        },
-
-        bulk(val) {
-            this.matieres.forEach(m => { m.classification = val; });
-            this.recomputeKpis();
-        },
-
-        applySuggestions() {
-            this.matieres.forEach(m => { if (m.suggested) m.classification = m.suggested; });
-            this.recomputeKpis();
-        },
-
-        recomputeKpis() {
-            this.kpis = {
-                total: this.matieres.length,
-                tronc_commun: this.matieres.filter(m => m.classification === 'tronc_commun').length,
-                specialite: this.matieres.filter(m => m.classification === 'specialite').length,
-                non_classe: this.matieres.filter(m => !m.classification).length,
-            };
-        },
-
-        async save() {
-            this.saving = true;
-            try {
-                const res = await fetch("{{ route('esbtp.matieres.classification.save') }}", {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                        'Accept': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        filiere_id: this.filiereId,
-                        niveau_id: this.niveauId,
-                        classifications: this.matieres.map(m => ({ matiere_id: m.matiere_id, classification: m.classification })),
-                    }),
-                });
-                const data = await res.json();
-                if (!res.ok || !data.success) throw new Error(data.message || 'Erreur lors de l\'enregistrement.');
-                this.matieres.forEach(m => { m.wasSuggested = false; });
-                this.notify(data.message, 'success');
-            } catch (e) {
-                this.notify(e.message, 'error');
-            } finally {
-                this.saving = false;
-            }
-        },
-    };
-}
-</script>
+@include('esbtp.matieres.partials._classification-script')
 @endpush
