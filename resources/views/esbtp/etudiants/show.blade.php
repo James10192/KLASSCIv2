@@ -3993,6 +3993,9 @@
     </div>
     @endif
 
+    {{-- ══ DISPENSES ════════════════════════════════════════════════ --}}
+    @include('esbtp.etudiants.partials.dispenses-panel', ['acadRef' => $acadRef])
+
     {{-- ══ DÉTAIL PAR SEMESTRE ══════════════════════════════════════ --}}
     @if($acadBuls->count())
         {{-- Avec bulletins officiels --}}

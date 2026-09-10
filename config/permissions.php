@@ -782,6 +782,22 @@ return [
             'icon' => 'fa-sync-alt',
         ],
 
+        // ===== Dispenses (BTS) =====
+        // Accorder une dispense retire une matiere du bulletin d'un etudiant :
+        // c'est une decision pedagogique, distincte du droit de saisir des
+        // notes. Deux permissions separees pour que l'ecole puisse ouvrir la
+        // consultation sans ouvrir la decision.
+        'dispenses.view' => [
+            'label' => 'Voir les dispenses de matière',
+            'group' => 'Dispenses',
+            'icon' => 'fa-file-circle-check',
+        ],
+        'dispenses.manage' => [
+            'label' => 'Accorder et révoquer une dispense de matière',
+            'group' => 'Dispenses',
+            'icon' => 'fa-user-check',
+        ],
+
         // ===== Bulletins =====
         'bulletins.view' => [
             'label' => 'Voir les bulletins',
@@ -2174,6 +2190,7 @@ return [
             'notes.window.manage',
             'evaluations.view', 'evaluations.create', 'evaluations.edit', 'exams.view',
             'bulletins.view', 'bulletins.generate', 'bulletins.edit', 'bulletins.delete', 'bulletins.configure',
+            'dispenses.view',
             'documents.view', 'documents.approve', 'documents.print',
             // Catalogue des pieces a fournir : c'est la scolarite qui arrete la
             // liste que le guichet reclamera ensuite a chaque inscription.
@@ -2307,6 +2324,7 @@ return [
             'evaluations.view', 'evaluations.create', 'evaluations.edit',
             'exams.view',
             'bulletins.view', 'bulletins.generate', 'bulletins.edit',
+            'dispenses.view', 'dispenses.manage',
             'bulletins.publish.bulk', 'bulletins.regenerate.bulk', 'bulletins.export.bulk',
             'attendances.view', 'attendances.create', 'attendances.edit', 'attendances.delete',
             'attendances.generate_codes',
@@ -2373,6 +2391,7 @@ return [
             'evaluations.view',
             'exams.view',
             'bulletins.view',
+            'dispenses.view', 'dispenses.manage',
             'attendances.view',
             'session_reports.view',
             'planning.view', 'planning.edit', 'planning.manage',
@@ -2434,6 +2453,7 @@ return [
             'notes.window.manage',
             'evaluations.view', 'evaluations.create', 'evaluations.edit', 'exams.view',
             'bulletins.view', 'bulletins.generate', 'bulletins.edit',
+            'dispenses.view',
             'bulletins.publish.bulk', 'bulletins.export.bulk',
             'documents.view', 'documents.approve', 'documents.print',
             // Catalogue des pieces a fournir : c'est la scolarite qui arrete la
@@ -2493,6 +2513,7 @@ return [
             'notes.view', 'notes.create', 'notes.edit',
             'evaluations.view',
             'bulletins.view',
+            'dispenses.view',
             'documents.view', 'documents.print',
             // Lecture seule : au guichet on applique le catalogue, on ne
             // l'arrete pas pour toute l'ecole.

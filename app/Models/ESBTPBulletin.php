@@ -317,6 +317,10 @@ class ESBTPBulletin extends Model implements Auditable
             ->whereHas('matiere', function ($query) {
                 $query->where('type', 'general');
             })
+            // Une matiere dispensee ou non notee sort du calcul : sans ce
+            // filtre son coefficient resterait au denominateur avec une
+            // moyenne nulle, et diluerait la moyenne de section.
+            ->notees()
             ->get();
 
         $totalPoints = 0;
@@ -336,6 +340,10 @@ class ESBTPBulletin extends Model implements Auditable
             ->whereHas('matiere', function ($query) {
                 $query->where('type', 'technique');
             })
+            // Une matiere dispensee ou non notee sort du calcul : sans ce
+            // filtre son coefficient resterait au denominateur avec une
+            // moyenne nulle, et diluerait la moyenne de section.
+            ->notees()
             ->get();
 
         $totalPoints = 0;

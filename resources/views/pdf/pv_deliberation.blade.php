@@ -107,9 +107,13 @@
                         @php
                             $resultat = $bulletin->resultats->where('matiere_id', $matiere->id)->first();
                         @endphp
-                        @if($resultat)
+                        @if($resultat && $resultat->estNotee())
                             <td>{{ number_format($resultat->moyenne, 2) }}</td>
                             <td>{{ $resultat->rang }}</td>
+                        @elseif($resultat)
+                            {{-- Matière dispensée ou non notée : le symbole de trou, jamais un zéro. --}}
+                            <td>{{ \App\Models\ESBTPResultatMatiere::SYMBOLE_TROU }}</td>
+                            <td>{{ \App\Models\ESBTPResultatMatiere::SYMBOLE_TROU }}</td>
                         @else
                             <td>-</td>
                             <td>-</td>

@@ -70,6 +70,15 @@ class AppServiceProvider extends ServiceProvider
         // l'export la demandent tous les deux dans la même requête.
         $this->app->scoped(CashFlowProjectionService::class);
         $this->app->scoped(AnalyticsScanCache::class);
+
+        // Une seule instance par requete : la generation groupee precharge les
+        // dispenses de toute la classe une fois, puis chaque bulletin lit en
+        // memoire. Deux instances distinctes rendraient ce prechargement
+        // inutile — et surtout, le service qui accorde une dispense ne saurait
+        // pas invalider celle que lit le bulletin.
+        // scoped() et non singleton() : un worker de file vit des heures, et
+        // forgetScopedInstances() borne le memo entre deux taches.
+        $this->app->scoped(\App\Domain\Dispenses\DispenseLookup::class);
         $this->app->scoped(OpenAlertMetricService::class);
 
         // Resolveurs du parcours BTS : une seule instance par requete, sinon

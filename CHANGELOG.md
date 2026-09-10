@@ -14,11 +14,35 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ### Ajouts
 
+- **Une matière peut être dispensée, et le bulletin le dit** — un étudiant qui a déjà validé une matière ailleurs devait jusqu'ici être noté quand même, ou disparaître du tableau sans explication. Depuis sa fiche, onglet Académique, une matière peut être dispensée pour un semestre ou pour l'année, avec un motif obligatoire d'au moins dix caractères. Elle reste au bulletin, avec « — » à la place de la note et son motif en observation ; un bloc « Dispenses » en pied de document les récapitule. **La matière sort entièrement du calcul** : son coefficient quitte le dénominateur en même temps que sa note quitte le numérateur, un étudiant dispensé de deux matières n'est donc pas puni de l'avoir été. Une dispense ne se supprime pas, elle se révoque, avec son propre motif : la décision reste consultable des mois plus tard, avec qui l'a prise et quand. Réservé au BTS pour l'instant, les règles de jury LMD devant d'abord être validées.
+
+- **Le bulletin liste toutes les matières prévues par la maquette** — quand les semestres ont été validés pour la filière et le niveau (page « Affectation Tronc Commun / Spécialité »), le bulletin fait figurer chaque matière prévue au semestre, y compris celles dont les notes ne sont pas arrivées : elles portent « — » et la mention « Non notée ». Une famille voit ainsi ce qui manque au lieu de ne rien voir, et deux bulletins d'une même classe se comparent ligne à ligne. La maquette ajoute des lignes, elle n'en retire jamais : une matière réellement notée mais absente de la maquette reste au bulletin. Tant qu'aucun semestre n'est validé, **rien ne change**.
+
 - **L'ordre des matières sur le bulletin se règle une fois pour toutes** — le bulletin officiel les sortait dans l'ordre où les notes étaient arrivées, si bien que deux élèves d'une même classe pouvaient recevoir des bulletins ordonnés différemment, et que l'aperçu ne ressemblait pas au document imprimé. Depuis la page « Affectation Tronc Commun / Spécialité », chaque matière reçoit une place, au clavier ou avec deux flèches. Cette place vaut pour la filière et le niveau où elle est posée ; à défaut, la matière reprend l'ordre général, et un bouton permet de faire de l'ordre affiché cet ordre général. Le document imprimé, l'aperçu et l'écran de configuration suivent désormais le même ordre. Tant qu'aucune école n'a posé une seule place, **rien ne change** : les bulletins sortent exactement comme avant.
 
 - **Chaque matière sait à quel semestre elle est prévue** — jusqu'ici, seul le planning général portait cette information, et de façon inégale. La même page permet maintenant de dire, matière par matière, si elle est prévue au premier semestre, au second, ou aux deux. Un bouton « Valider les semestres » enregistre la réponse pour la filière et le niveau : « toutes les matières aux deux semestres » est une réponse en soi, et elle est reconnue comme telle. **C'est pour l'instant une saisie de référentiel** : renseigner les semestres ne modifie encore ni la composition du bulletin, ni le suivi des notes reçues. Ces deux usages arrivent ensuite, et s'appuieront sur ce qui est saisi ici.
 
 - **Les semestres peuvent être repris du planning général** — un bouton affiche ce que le planning de l'année dirait de ce couple filière-niveau : quelles matières passeraient au premier semestre, au second, aux deux, et lesquelles ne bougeraient pas. Rien n'est écrit tant que l'aperçu n'est pas appliqué. Si le planning ou la maquette a changé entre l'aperçu et l'application, l'application est refusée et l'aperçu est rechargé, plutôt que d'écraser en silence le travail de quelqu'un d'autre. Les matières que le planning connaît mais qui ne sont pas rattachées à la filière sont signalées sans être ajoutées.
+
+### Corrections
+
+- **Le suivi des notes reçues comptait les mauvaises matières sur les classes de spécialité** — il n'interrogeait que le couple filière-niveau de la classe, sans l'union avec le tronc commun dont elle hérite. Une classe de spécialité ne voyait donc pas les matières sur lesquelles ses étudiants avaient été notés pendant la phase de tronc commun, et une matière rattachée par erreur au tronc commun mais marquée « spécialité » y était comptée à tort. Le suivi s'appuie désormais sur la même définition que le bulletin.
+
+- **Le suivi des notes reçues comptait les mauvais étudiants sur les classes de tronc commun** — il lisait la classe portée par l'inscription, alors qu'un étudiant inscrit en spécialité passe le premier semestre en tronc commun. Sur une classe de tronc commun au premier semestre, des étudiants réellement concernés n'apparaissaient jamais comme manquants : l'écran pouvait annoncer que toutes les notes étaient reçues sur une classe pleine. Il utilise maintenant la définition de cohorte qui sert déjà à générer les bulletins et à calculer les rangs.
+
+- **Une période non reconnue faisait tomber le tableau de bord** — saisir une période inconnue dans l'adresse provoquait une erreur serveur sur toute la page, au lieu d'un message. Elle est maintenant refusée proprement, avant toute lecture.
+
+- **Une classe sans étudiant était présentée comme entièrement notée** — zéro résultat manquant se lisait « tout est reçu ». Le suivi distingue désormais une cohorte vide, un référentiel absent, un semestre sans matière, une saisie qui n'a pas commencé, une saisie en cours et une saisie terminée.
+
+- **Les matières hors référentiel gonflaient le total attendu** — le nombre de matières prévues comptait le seul référentiel, mais les résultats attendus y ajoutaient les matières évaluées hors référentiel : le rapport « traité sur prévu » mélangeait deux périmètres et pouvait dépasser cent pour cent. Ces matières restent visibles, comptées à part.
+
+### Ajouts
+
+- **Le suivi des notes indique qui relancer** — pour chaque matière dont les notes manquent, l'enseignant responsable est repris du planning général, avec son numéro. Quand deux enseignants différents y figurent pour la même matière, le contact reste indéterminé plutôt que d'en désigner un au hasard : relancer la mauvaise personne coûte plus qu'un contact vide.
+
+- **Le suivi des notes d'une classe a sa propre adresse** — il se demande à la demande plutôt que d'être recalculé avec tout le tableau de bord, et son résultat est gardé dix minutes. Ce qui est gardé est oublié dès qu'une note ou une évaluation change, une fois l'enregistrement confirmé en base. Le périmètre de la personne qui demande est vérifié **avant** toute lecture.
+
+- **Le pré-contrôle de génération des bulletins dit ce qu'il manque** — il annonçait combien d'étudiants pouvaient être générés ; il indique maintenant, matière par matière, ce qu'il faudrait saisir pour que les autres le deviennent.
 
 ### Sécurité
 

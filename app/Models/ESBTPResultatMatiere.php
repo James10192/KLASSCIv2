@@ -19,6 +19,23 @@ class ESBTPResultatMatiere extends Model
     protected $table = 'esbtp_resultats_matieres';
 
     /**
+     * Ce qu'une ligne de bulletin signifie.
+     *
+     * Jusqu'ici une ligne portait une moyenne, et une matiere sans note ne
+     * figurait pas du tout : le lecteur ne pouvait pas distinguer « le
+     * professeur n'a pas rendu ses notes » de « cet etudiant en est dispense ».
+     * Ces trois etats le disent, et seul `note` entre dans les moyennes.
+     */
+    public const STATUT_NOTE = 'note';
+
+    public const STATUT_DISPENSE = 'dispense';
+
+    public const STATUT_NON_NOTE = 'non_note';
+
+    /** Ce qu'on ecrit dans la colonne moyenne quand il n'y a pas de note. */
+    public const SYMBOLE_TROU = '—';
+
+    /**
      * Les attributs qui sont assignables en masse.
      *
      * @var array
@@ -27,6 +44,9 @@ class ESBTPResultatMatiere extends Model
         'bulletin_id',
         'matiere_id',
         'moyenne',
+        'statut',
+        'motif_dispense',
+        'dispense_id',
         'coefficient',
         'rang',
         'appreciation',
@@ -98,7 +118,79 @@ class ESBTPResultatMatiere extends Model
      */
     public function getMoyennePondereeAttribute()
     {
+        // Une ligne sans moyenne (dispense, matiere non notee) n'a pas de
+        // moyenne ponderee. Rendre 0 la ferait compter comme un echec partout
+        // ou ce champ est somme.
+        if ($this->moyenne === null) {
+            return null;
+        }
+
         return round($this->moyenne * $this->coefficient, 2);
+    }
+
+    /**
+     * Les lignes qui comptent dans une moyenne.
+     *
+     * Meme definition que estNotee(), cote requete : une matiere dispensee ou
+     * non notee ne doit entrer ni au numerateur ni au denominateur.
+     */
+    public function scopeNotees($query)
+    {
+        return $query->whereNotNull('moyenne')->where('statut', self::STATUT_NOTE);
+    }
+
+    /**
+     * Cette ligne porte-t-elle une note, ou seulement un etat ?
+     *
+     * Definition unique, valable aussi pour les lignes vivantes du service de
+     * bulletin (de simples objets, pas des modeles) : elles traversent les
+     * gabarits PDF avant d'etre enregistrees, et doivent y etre jugees
+     * exactement comme les lignes deja en base. Une ligne venue d'ailleurs et
+     * sans statut est notee, comme elle l'a toujours ete.
+     *
+     * @param  object|array  $ligne
+     */
+    public static function ligneNotee($ligne): bool
+    {
+        $ligne = is_array($ligne) ? (object) $ligne : $ligne;
+
+        $statut = $ligne->statut ?? self::STATUT_NOTE;
+
+        return $statut === self::STATUT_NOTE && ($ligne->moyenne ?? null) !== null;
+    }
+
+    public function estNotee(): bool
+    {
+        return self::ligneNotee($this);
+    }
+
+    /**
+     * Ce qu'on ecrit a la place d'une appreciation quand il n'y a pas de note.
+     *
+     * Un bulletin qui laisse une case vide n'apprend rien au lecteur : il doit
+     * dire pourquoi la note manque.
+     *
+     * @param  object|array  $ligne
+     */
+    public static function libelleEtat($ligne): string
+    {
+        $ligne = is_array($ligne) ? (object) $ligne : $ligne;
+
+        return match ($ligne->statut ?? self::STATUT_NOTE) {
+            self::STATUT_DISPENSE => 'Dispensé',
+            self::STATUT_NON_NOTE => 'Non notée',
+            default => '-',
+        };
+    }
+
+    /** Ce que la colonne « Moyenne » affiche : la note, ou le symbole de trou. */
+    public function moyenneLisible(): string
+    {
+        if (! $this->estNotee()) {
+            return self::SYMBOLE_TROU;
+        }
+
+        return number_format((float) $this->moyenne, 2, ',', ' ');
     }
 
     /**

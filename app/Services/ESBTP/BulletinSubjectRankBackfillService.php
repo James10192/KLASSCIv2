@@ -59,8 +59,12 @@ class BulletinSubjectRankBackfillService
                 continue;
             }
 
+            // Une ligne dispensee ou non notee ne se classe pas : on ne la
+            // soumet meme pas au calcul, qui saurait lui trouver un rang a
+            // partir des notes brutes restees en base.
             $ranks = $this->bulletinService->calculerRangsParMatierePourEtudiant(
-                $rows->pluck('matiere_id')->map(fn ($id) => (int) $id)->all(),
+                $rows->filter(fn ($row) => $row->estNotee())
+                    ->pluck('matiere_id')->map(fn ($id) => (int) $id)->all(),
                 (int) $bulletin->etudiant_id,
                 $classeId,
                 (int) $annee->id,
@@ -70,7 +74,7 @@ class BulletinSubjectRankBackfillService
             foreach ($rows as $row) {
                 $rowsRead++;
                 $current = $row->rang === null ? null : (int) $row->rang;
-                $proposedRaw = $ranks[(int) $row->matiere_id] ?? '-';
+                $proposedRaw = $row->estNotee() ? ($ranks[(int) $row->matiere_id] ?? '-') : '-';
                 $proposed = is_numeric($proposedRaw) ? (int) $proposedRaw : null;
                 if ($current === 1) {
                     $rankOneBefore++;
