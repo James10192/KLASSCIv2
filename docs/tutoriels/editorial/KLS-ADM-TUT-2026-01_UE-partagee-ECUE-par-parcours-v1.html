@@ -71,7 +71,7 @@ li{margin-bottom:1.5mm}
   <div class="brand"><img src="../../../public/images/LOGO-KLASSCI-PNG.png" alt=""> KLASSCI</div>
   <div class="kicker">Guide utilisateur · Système LMD</div>
   <h1>Une UE partagée, des ECUE propres à chaque parcours.</h1>
-  <p class="lead" style="color:#d6deea">Comment une unité d’enseignement commune à deux parcours (Droit Privé et Droit Public, par exemple) peut porter une composition différente pour chacun d’eux, ce que l’écran permet aujourd’hui, et ce qu’il reste à ouvrir.</p>
+  <p class="lead" style="color:#d6deea">Comment une unité d’enseignement commune à deux parcours (Droit Privé et Droit Public, par exemple) peut porter une composition différente pour chacun d’eux, et comment l’écran des unités d’enseignement le fait, pas à pas.</p>
 </div>
 <div class="meta">
   <div><strong>Référence</strong>KLS-ADM-TUT-2026-01</div>
@@ -104,7 +104,7 @@ li{margin-bottom:1.5mm}
 <div class="note">
 <p><strong>Ce que cela garantit.</strong> Un élément réservé à Droit Privé n’entre pas dans la moyenne d’un étudiant de Droit Public. Un élément surchargé n’est jamais compté deux fois. Retirer un élément de la maquette Droit Privé ne le retire pas de Droit Public.</p>
 </div>
-<p>Les pages qui suivent montrent, sur des écrans réels, comment lire et entretenir ces maquettes. La dernière partie dit précisément où l’écran s’arrête aujourd’hui.</p>
+<p>Les pages qui suivent montrent, sur des écrans réels, comment lire et entretenir ces maquettes, jusqu’à réserver un élément à un seul parcours.</p>
 
 <div class="footer">KLASSCI · Guide · KLS-ADM-TUT-2026-01</div><div class="page-no">02</div>
 </section>
@@ -162,11 +162,11 @@ li{margin-bottom:1.5mm}
 
 <div class="step-head"><div class="step-num">4</div><h2>Ajouter ou modifier un élément constitutif</h2></div>
 <span class="path">Ligne de l’unité › bouton vert « Ajouter un ECUE »</span>
-<p>Le modal propose deux voies : <strong>Créer un ECUE</strong> (un nom et un code) ou <strong>Lier un existant</strong> (une matière déjà connue de l’école). Dans les deux cas, les paramètres du bas valent <em>dans cette unité</em> : un même élément peut avoir un autre coefficient dans une autre unité.</p>
-<div class="shot"><img src="captures/KLS-ADM-TUT-2026-01/etape5-ajouter-ecue.png" alt="Capture d’écran KLASSCI : etape5-ajouter-ecue.png"><div class="mark" style="left:30.2%;top:35.0%">1</div><div class="mark" style="left:56.8%;top:35.0%">2</div><div class="mark" style="left:76.0%;top:61.5%">3</div><div class="mark" style="left:69.3%;top:85.0%">4</div><div class="box" style="left:25.0%;top:24.4%;width:50.0%;height:6.8%"></div><div class="box" style="left:25.0%;top:55.6%;width:50.0%;height:21.5%"></div><div class="caption">Modal « Ajouter un ECUE » sur PAI5005. La jauge indique 3 crédits déjà répartis sur 3 : l’unité est pleine, un nouvel élément devra rester à 0 crédit ou remplacer un autre.</div></div>
-<div class="legend"><div class="n">1</div><div><strong>Créer un ECUE</strong> : saisissez le nom et le code.</div><div class="n">2</div><div><strong>Lier un existant</strong> : recherchez une matière déjà créée, ses valeurs se préremplissent.</div><div class="n">3</div><div>Coefficient, crédits et ordre sur le bulletin. La jauge en haut refuse de dépasser le plafond de l’unité.</div><div class="n">4</div><div><strong>Créer l’ECUE</strong>. La liste se met à jour sans rechargement.</div></div>
-<div class="warn">
-<p><strong>Point d’attention.</strong> Ce modal ne demande pas pour quelle maquette vous ajoutez l’élément. Aujourd’hui, tout ce que vous créez, liez, modifiez ou détachez ici s’applique à la <strong>composition commune</strong>, donc à tous les parcours de l’unité. Voir la page 9.</p>
+<p>Le modal commence par la question qui compte : <strong>pour quelle maquette</strong> ? « Commune à tous les parcours de l’UE », ou réservée à l’un des parcours qui la suivent. Le choix est prérempli avec le filtre Parcours de la liste. Viennent ensuite les deux voies habituelles, <strong>Créer un ECUE</strong> ou <strong>Lier un existant</strong>, puis le coefficient, les crédits et l’ordre, qui valent <em>dans cette unité</em>.</p>
+<div class="shot"><img src="captures/KLS-ADM-TUT-2026-01/etape5-ajouter-ecue.png" alt="Capture d’écran KLASSCI : etape5-ajouter-ecue.png"><div class="mark" style="left:21.0%;top:30.5%">1</div><div class="mark" style="left:50.0%;top:40.5%">2</div><div class="mark" style="left:21.0%;top:68.1%">3</div><div class="mark" style="left:78.6%;top:80.6%">4</div><div class="box" style="left:22.3%;top:24.4%;width:55.5%;height:12.5%"></div><div class="caption">Modal « Ajouter un ECUE » sur PAI5005, maquette réglée sur Droit Privé. Le texte sous le champ dit ce que le choix implique.</div></div>
+<div class="legend"><div class="n">1</div><div><strong>Maquette</strong> : laissez « Commune » pour un élément que tous les parcours partagent ; choisissez un parcours pour le lui réserver.</div><div class="n">2</div><div><strong>Créer un ECUE</strong> ou <strong>Lier un existant</strong>. En mode « Lier », la liste proposée dépend de la maquette choisie.</div><div class="n">3</div><div>Coefficient, crédits et ordre. La jauge compte les crédits de la maquette visée, un élément une seule fois.</div><div class="n">4</div><div><strong>Créer l’ECUE</strong>. La liste se met à jour sans rechargement.</div></div>
+<div class="note">
+<p><strong>Modifier un élément</strong> ouvre le même modal, réglé sur la maquette de la ligne cliquée. Choisir un parcours sur un élément commun ne le déplace pas : cela crée une <em>surcharge</em> propre à ce parcours, avec ses valeurs, et la version commune reste en place pour les autres.</p>
 </div>
 
 <div class="footer">KLASSCI · Guide · KLS-ADM-TUT-2026-01</div><div class="page-no">07</div>
@@ -174,39 +174,27 @@ li{margin-bottom:1.5mm}
 <section class="page ">
 <div class="kicker">Étape 5</div>
 
-<div class="step-head"><div class="step-num">5</div><h2>Vérifier la fiche de l’unité</h2></div>
-<span class="path">Unités d’Enseignement › clic sur l’intitulé › fiche de l’unité</span>
-<p>La fiche récapitule le rattachement académique, la liste des parcours et semestres, et le tableau des éléments constitutifs avec leurs volumes horaires. C’est la page à ouvrir avant une réunion de maquette : elle tient sur un écran et se lit sans manipulation.</p>
-<div class="shot"><img src="captures/KLS-ADM-TUT-2026-01/etape6-fiche-ue.png" alt="Capture d’écran KLASSCI : etape6-fiche-ue.png"><div class="mark" style="left:26.5%;top:56.4%">1</div><div class="mark" style="left:93.3%;top:69.6%">2</div><div class="box" style="left:23.5%;top:47.5%;width:38.5%;height:14.5%"></div><div class="box" style="left:23.5%;top:74.5%;width:73.5%;height:24.5%"></div><div class="caption">Fiche PAI5005 : parcours principal Droit Public, semestre 5 ; rattachements Droit Privé (S5) et Droit Public (S5) ; trois éléments, 3 crédits, 75 heures.</div></div>
-<div class="legend"><div class="n">1</div><div>La section <strong>Parcours et semestres rattachés</strong> confirme le partage. Le « parcours principal » du bloc du dessus est une information héritée : c’est cette liste qui fait foi.</div><div class="n">2</div><div><strong>Gérer</strong> ouvre le formulaire complet de l’unité. Le tableau des éléments, ici, montre la composition complète, sans distinction de maquette.</div></div>
+<div class="step-head"><div class="step-num">5</div><h2>Réserver des éléments à un seul parcours</h2></div>
+<span class="path">Unités d’Enseignement › filtre « Parcours » › « Ajouter un ECUE » › Maquette : ce parcours</span>
+<p>Filtrez la liste sur le parcours concerné, ajoutez l’élément avec la maquette préremplie sur ce parcours, et enregistrez. Dans la liste, chaque élément porte désormais un repère : <strong>Commun</strong>, ou le code du parcours qui le réserve. Sous la vue « Tous », un élément à la fois commun et surchargé apparaît deux fois, une ligne par version.</p>
+<div class="shot"><img src="captures/KLS-ADM-TUT-2026-01/etape7-reperes-maquette.png" alt="Capture d’écran KLASSCI : etape7-reperes-maquette.png"><div class="mark" style="left:45.5%;top:81.3%">1</div><div class="mark" style="left:47.5%;top:62.7%">2</div><div class="box" style="left:36.7%;top:60.8%;width:8.6%;height:5.1%"></div><div class="box" style="left:36.7%;top:79.4%;width:6.5%;height:4.9%"></div><div class="caption">Liste sous le filtre Droit Privé : la ligne réservée porte le code du parcours, les lignes communes portent « Commun ».</div></div>
+<div class="legend"><div class="n">1</div><div>Repère « Commun » : l’élément vaut pour tous les parcours de l’unité.</div><div class="n">2</div><div>Repère au code du parcours : l’élément n’entre que dans cette maquette, au bulletin comme au planning.</div></div>
+<h3>Retirer un élément</h3>
+<p>Le bouton de retrait vise la maquette de la ligne cliquée, et elle seule. Retirer une version réservée laisse la version commune intacte ; retirer une version commune la retire de tous les parcours, ce que la confirmation rappelle. Si l’élément ne tient à l’unité que par une autre maquette, KLASSCI refuse et nomme cette maquette au lieu d’annoncer un retrait qui n’aurait rien retiré.</p>
+<div class="note">
+<p><strong>Maquettes importées.</strong> L’import d’une maquette pour un second parcours partage désormais l’unité au lieu de refuser : la fiche reste au premier parcours, le second reçoit son semestre et son crédit sur le lien, et ses éléments lui sont réservés. Seul un élément déjà rattaché à une autre unité reste refusé.</p>
+</div>
 
 <div class="footer">KLASSCI · Guide · KLS-ADM-TUT-2026-01</div><div class="page-no">08</div>
 </section>
 <section class="page ">
-<div class="kicker">Où l’écran s’arrête aujourd’hui</div>
+<div class="kicker">Étape 6</div>
 
-<h2>Réserver un élément à un seul parcours : pas encore depuis l’écran.</h2>
-<p class="lead">Le socle est en place et fonctionne : bulletins, plannings, plafond de crédits et lecture filtrée distinguent bien la composition commune de celle d’un parcours. Ce qui manque, c’est le geste qui <em>écrit</em> une réservation. État constaté le 10 septembre 2026 sur le code de la branche de développement.</p>
-<table>
-<tr><th>Geste</th><th>État</th><th>Ce qui se passe</th></tr>
-<tr><td class="k">Rattacher une unité à plusieurs parcours</td><td><span class="tag ok">Disponible</span></td><td>Modal « Lier à des parcours », étape 2.</td></tr>
-<tr><td class="k">Lire la composition d’une maquette</td><td><span class="tag ok">Disponible</span></td><td>Filtre Parcours puis ligne dépliée, étape 3. Bulletins et plannings suivent la même règle.</td></tr>
-<tr><td class="k">Ajouter un élément commun à tous les parcours</td><td><span class="tag ok">Disponible</span></td><td>Modal « Ajouter un ECUE », étape 4.</td></tr>
-<tr><td class="k">Réserver un élément à un seul parcours depuis l’écran</td><td><span class="tag no">Absent</span></td><td>Le modal n’a pas de champ « Maquette ». L’élément est toujours posé en composition commune.</td></tr>
-<tr><td class="k">Voir quels éléments sont réservés</td><td><span class="tag no">Absent</span></td><td>La liste et la fiche n’affichent aucun repère « commun » ou « réservé à … ».</td></tr>
-<tr><td class="k">Retirer un élément d’une seule maquette</td><td><span class="tag part">Partiel</span></td><td>Le détachement ne vise que la composition commune. Un élément réservé n’est pas touché, sans message.</td></tr>
-<tr><td class="k">Réserver par l’import de maquette</td><td><span class="tag no">Refusé</span></td><td>L’import refuse une unité déjà rattachée à un autre parcours et annule tout, en nommant le conflit.</td></tr>
-</table>
-<div class="warn">
-<h3>Conséquence pratique</h3>
-<p>Pour obtenir aujourd’hui « des ECUE différents selon le parcours » sur une unité partagée, il faut passer par votre correspondant KLASSCI, qui posera la réservation directement avec la maquette désignée. Le résultat est ensuite visible et pris en compte partout, comme décrit aux étapes 3 et 5.</p>
-</div>
-<h3>Évolution proposée pour ouvrir le geste à l’école</h3>
-<ul>
-<li>Un choix <strong>Maquette</strong> dans le modal ECUE : « Commune à tous les parcours » ou l’un des parcours rattachés, prérempli avec le filtre Parcours en cours. Transmis à la création, à la liaison d’un existant, à la modification et au détachement.</li>
-<li>Un repère sur chaque ligne d’élément : « commun » ou « réservé à Droit Privé ».</li>
-<li>Lever le refus de l’import quand l’unité est simplement partagée, afin d’importer la seconde maquette avec ses propres éléments.</li>
-</ul>
+<div class="step-head"><div class="step-num">6</div><h2>Vérifier la fiche de l’unité</h2></div>
+<span class="path">Unités d’Enseignement › clic sur l’intitulé › fiche de l’unité</span>
+<p>La fiche récapitule le rattachement académique, la liste des parcours et semestres, et le tableau des éléments constitutifs avec leurs volumes horaires. C’est la page à ouvrir avant une réunion de maquette : elle tient sur un écran et se lit sans manipulation.</p>
+<div class="shot"><img src="captures/KLS-ADM-TUT-2026-01/etape6-fiche-ue.png" alt="Capture d’écran KLASSCI : etape6-fiche-ue.png"><div class="mark" style="left:26.5%;top:56.4%">1</div><div class="mark" style="left:93.3%;top:69.6%">2</div><div class="box" style="left:23.5%;top:47.5%;width:38.5%;height:14.5%"></div><div class="box" style="left:23.5%;top:74.5%;width:73.5%;height:24.5%"></div><div class="caption">Fiche PAI5005 : parcours principal Droit Public, semestre 5 ; rattachements Droit Privé (S5) et Droit Public (S5) ; trois éléments, 3 crédits, 75 heures.</div></div>
+<div class="legend"><div class="n">1</div><div>La section <strong>Parcours et semestres rattachés</strong> confirme le partage. Le « parcours principal » du bloc du dessus est une information héritée : c’est cette liste qui fait foi.</div><div class="n">2</div><div><strong>Gérer</strong> ouvre le formulaire complet de l’unité. Le tableau des éléments montre la composition complète, toutes maquettes confondues : pour la lecture d’une seule maquette, revenez à la liste filtrée de l’étape 3.</div></div>
 
 <div class="footer">KLASSCI · Guide · KLS-ADM-TUT-2026-01</div><div class="page-no">09</div>
 </section>
@@ -220,7 +208,8 @@ li{margin-bottom:1.5mm}
 <tr><td class="k">Pourquoi le tableau de la fiche montre-t-il des éléments absents du bulletin d’un étudiant ?</td><td>La fiche liste la composition complète. Le bulletin ne prend que la composition de la maquette de l’étudiant. Contrôlez sous le filtre Parcours.</td></tr>
 <tr><td class="k">La jauge de crédits refuse mon élément.</td><td>Elle compte l’ensemble de la maquette, communs et réservés, une seule fois chacun. Retirez ou réduisez un autre élément avant d’ajouter.</td></tr>
 <tr><td class="k">Puis-je supprimer une unité partagée ?</td><td>Non tant qu’elle figure dans plus d’une maquette. Le refus nomme les parcours concernés : retirez-la d’abord de chacun.</td></tr>
-<tr><td class="k">Un même élément peut-il avoir un coefficient différent selon le parcours ?</td><td>Oui, par une réservation qui surcharge l’élément commun. Voir la page 9 pour la marche à suivre actuelle.</td></tr>
+<tr><td class="k">Un même élément peut-il avoir un coefficient différent selon le parcours ?</td><td>Oui. Modifiez-le sous le filtre de ce parcours, maquette réglée sur ce parcours : cela crée sa version propre, la commune reste pour les autres.</td></tr>
+<tr><td class="k">J’ai retiré un élément et il est toujours là.</td><td>Vous avez retiré une version (commune ou réservée) et il en existe une autre. Le repère de la ligne dit laquelle reste ; retirez-la sous sa maquette.</td></tr>
 </table>
 <h3>Preuves d’écran</h3>
 <p>Toutes les captures de ce guide sont des écrans réels, pris le 10 septembre 2026 sur presentation.klassci.com avec un compte administrateur, sans retouche. Les repères numérotés et les cadres sont posés par-dessus.</p>
@@ -230,8 +219,9 @@ li{margin-bottom:1.5mm}
 <tr><td>4</td><td>Modal « Lier à des Parcours », unité PAI5005</td><td><span class="code">/esbtp/lmd/ue</span></td></tr>
 <tr><td>5</td><td>Liste filtrée Droit Privé, ligne dépliée</td><td><span class="code">/esbtp/lmd/ue?parcours_id=6</span></td></tr>
 <tr><td>6</td><td>Liste filtrée Droit Public, ligne dépliée</td><td><span class="code">/esbtp/lmd/ue?parcours_id=7</span></td></tr>
-<tr><td>7</td><td>Modal « Ajouter un ECUE », unité PAI5005</td><td><span class="code">/esbtp/lmd/ue</span></td></tr>
-<tr><td>8</td><td>Fiche de l’unité PAI5005</td><td><span class="code">/esbtp/lmd/ue/166</span></td></tr>
+<tr><td>7</td><td>Modal « Ajouter un ECUE » avec le champ Maquette</td><td><span class="code">/esbtp/lmd/ue</span></td></tr>
+<tr><td>8</td><td>Liste filtrée avec les repères Commun / parcours</td><td><span class="code">/esbtp/lmd/ue?parcours_id=6</span></td></tr>
+<tr><td>9</td><td>Fiche de l’unité PAI5005</td><td><span class="code">/esbtp/lmd/ue/166</span></td></tr>
 </table>
 
 <div class="footer">KLASSCI · Guide · KLS-ADM-TUT-2026-01</div><div class="page-no">10</div>
