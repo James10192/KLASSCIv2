@@ -276,6 +276,25 @@ window.busCard = function (cfg) {
         // pourcent, restant, restantTexte }.
         progression: null,
 
+        /**
+         * Annonce au bandeau de couverture ce que cette carte regarde.
+         *
+         * Seule la carte de generation le fait : c'est la qu'on decide de
+         * produire un document, et donc la que « les notes sont-elles la ? »
+         * change quelque chose. Les deux autres cartes lisent l'existant.
+         */
+        annoncerCouverture() {
+            if (this.kind !== 'generate') { return; }
+
+            window.dispatchEvent(new CustomEvent('couverture:contexte', {
+                detail: {
+                    classe_id: this.form.classe_id || null,
+                    annee_universitaire_id: this.form.annee_universitaire_id || null,
+                    periode: this.form.periode || 'annuel',
+                },
+            }));
+        },
+
         /** Duree en secondes rendue lisible, ou null si on ne sait pas encore. */
         dureeLisible(secondes) {
             if (secondes === null || secondes === undefined || !isFinite(secondes)) {
@@ -327,6 +346,7 @@ window.busCard = function (cfg) {
             if (this.form.classe_id) {
                 this.fetchStudents();
                 this.queuePreflight();
+                this.annoncerCouverture();
             }
 
             this.$watch('form.classe_id', () => {
@@ -335,6 +355,7 @@ window.busCard = function (cfg) {
                 this.lastGeneration = null;
                 this.fetchStudents();
                 this.queuePreflight();
+                this.annoncerCouverture();
             });
             this.$watch('form.annee_universitaire_id', () => {
                 this.form.etudiant_id = '';
@@ -342,11 +363,13 @@ window.busCard = function (cfg) {
                 this.lastGeneration = null;
                 this.fetchStudents();
                 this.queuePreflight();
+                this.annoncerCouverture();
             });
             this.$watch('form.periode', () => {
                 this.previewIssue = null;
                 this.lastGeneration = null;
                 this.queuePreflight();
+                this.annoncerCouverture();
             });
             this.$watch('form.recalculer', () => {
                 this.lastGeneration = null;

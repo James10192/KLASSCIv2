@@ -210,6 +210,22 @@
                         </div>
                     </div>
                     <div class="ee-card-body">
+                        {{-- Ce qui reste à saisir sur cette classe. Modifier une
+                             évaluation sans voir le retard des autres revient à
+                             traiter le symptôme sans voir la file. --}}
+                        @include('esbtp.partials._couverture-notes', [
+                            'classeId' => $evaluation->classe_id,
+                            'anneeId' => $evaluation->annee_universitaire_id,
+                            'periode' => $evaluation->periode ?: 'annuel',
+                            'titre' => 'Notes reçues sur cette classe',
+                        ])
+                        @include('esbtp.partials._couverture-notes-suivre-selects', [
+                            'selectClasse' => '#classe_id',
+                            'selectPeriode' => '#periode',
+                            'anneeId' => $evaluation->annee_universitaire_id,
+                        ])
+
+
                         <div class="ee-grid">
                             <div class="ee-field">
                                 <label class="ee-label">

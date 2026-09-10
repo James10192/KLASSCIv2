@@ -918,6 +918,19 @@
                     <input type="checkbox" id="bus-recalc" x-model="form.recalculer" :value="1">
                     <label for="bus-recalc">Recalculer si déjà existants</label>
                 </div>
+
+                {{-- Ce qui manque encore, juste avant le bouton qui produit le
+                     document. Le pré-contrôle en dessous dit qui est générable ;
+                     ceci dit ce qu'il faudrait saisir pour que les autres le
+                     deviennent. La carte annonce son contexte via
+                     `couverture:contexte` à chaque changement de sélecteur. --}}
+                @include('esbtp.partials._couverture-notes', [
+                    'classeId' => null,
+                    'anneeId' => null,
+                    'periode' => 'annuel',
+                    'titre' => 'Notes reçues',
+                ])
+
                 <div class="bus-inline-panel" x-show="preflightBusy" x-cloak>
                     <div class="bus-inline-panel__title">
                         <i class="fas fa-spinner fa-spin"></i>
