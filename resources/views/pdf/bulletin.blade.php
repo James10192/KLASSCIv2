@@ -104,17 +104,31 @@
         <tbody>
             @php $totalCoef = 0; $totalPoints = 0; @endphp
             @foreach($resultats as $resultat)
+                @php $_notee = $resultat->estNotee(); @endphp
                 <tr>
                     <td>{{ $resultat->matiere->name }}</td>
                     <td>{{ $resultat->coefficient }}</td>
-                    <td>{{ number_format($resultat->moyenne, 2) }}</td>
-                    <td>{{ number_format($resultat->moyenne * $resultat->coefficient, 2) }}</td>
-                    <td>{{ $resultat->rang }}/{{ $bulletin->effectif_classe }}</td>
-                    <td>{{ $resultat->appreciation }}</td>
+                    <td>{{ $resultat->moyenneLisible() }}</td>
+                    <td>{{ $_notee ? number_format($resultat->moyenne * $resultat->coefficient, 2) : \App\Models\ESBTPResultatMatiere::SYMBOLE_TROU }}</td>
+                    <td>{{ $_notee ? $resultat->rang.'/'.$bulletin->effectif_classe : \App\Models\ESBTPResultatMatiere::SYMBOLE_TROU }}</td>
+                    <td>
+                        @if($resultat->statut === \App\Models\ESBTPResultatMatiere::STATUT_DISPENSE)
+                            Dispensé{{ $resultat->motif_dispense ? ' : '.$resultat->motif_dispense : '' }}
+                        @elseif($resultat->statut === \App\Models\ESBTPResultatMatiere::STATUT_NON_NOTE)
+                            Non notée
+                        @else
+                            {{ $resultat->appreciation }}
+                        @endif
+                    </td>
                 </tr>
                 @php
-                    $totalCoef += $resultat->coefficient;
-                    $totalPoints += $resultat->moyenne * $resultat->coefficient;
+                    // Une matiere sans note n'entre ni au numerateur ni au
+                    // denominateur : compter son coefficient reviendrait a lui
+                    // donner zero.
+                    if ($_notee) {
+                        $totalCoef += $resultat->coefficient;
+                        $totalPoints += $resultat->moyenne * $resultat->coefficient;
+                    }
                 @endphp
             @endforeach
         </tbody>

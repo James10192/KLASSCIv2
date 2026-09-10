@@ -20,6 +20,7 @@ use App\Domain\BtsTroncCommun\BtsAnnualClassMapResolver;
 use App\Domain\BtsTroncCommun\BtsBulletinCohortResolver;
 use App\Domain\BtsTroncCommun\BtsClassCohortCounter;
 use App\Domain\BtsTroncCommun\BulletinSubjectOrder;
+use App\Domain\BtsTroncCommun\BulletinSubjectRowsCompleter;
 use App\Domain\BtsTroncCommun\ClasseOuvertureResolver;
 use App\Services\ESBTP\ESBTPAbsenceService;
 use App\Support\Attendance\AttendanceNoteRule;
@@ -59,6 +60,8 @@ class BulletinService
 
     private BulletinSubjectOrder $subjectOrder;
 
+    private BulletinSubjectRowsCompleter $rowsCompleter;
+
     private array $coefficientCache = [];
 
     private array $classeCache = [];
@@ -82,7 +85,8 @@ class BulletinService
         BtsBulletinCohortResolver $cohortResolver,
         BtsClassCohortCounter $classCohortCounter,
         ClasseOuvertureResolver $ouvertureResolver,
-        BulletinSubjectOrder $subjectOrder
+        BulletinSubjectOrder $subjectOrder,
+        BulletinSubjectRowsCompleter $rowsCompleter
     ) {
         $this->absenceService = $absenceService;
         $this->classMapResolver = $classMapResolver;
@@ -90,6 +94,7 @@ class BulletinService
         $this->classCohortCounter = $classCohortCounter;
         $this->ouvertureResolver = $ouvertureResolver;
         $this->subjectOrder = $subjectOrder;
+        $this->rowsCompleter = $rowsCompleter;
     }
 
     public function forgetPDFConfigCache(): void
@@ -515,6 +520,36 @@ class BulletinService
             ->all();
 
         $periodeNormalized = $this->normalizePeriode($periode);
+
+        // Composition du bulletin : les matieres prevues par la maquette qui
+        // n'ont pas de note y figurent avec le symbole de trou, et celles dont
+        // l'etudiant est dispense le disent. Sans maquette renseignee et sans
+        // dispense, cette etape ne change rien.
+        $resultatsParMatiere = $this->rowsCompleter
+            ->completer(
+                collect($resultatsParMatiere),
+                $classe,
+                (int) $etudiantId,
+                (int) $anneeUniversitaireId,
+                BulletinSubjectRowsCompleter::semestreDe($periodeNormalized),
+                fn (int $matiereId): array => [
+                    'coefficient' => $this->coefficientOrDefault(
+                        $matiereId,
+                        $classe->id,
+                        $anneeUniversitaireId,
+                        (string) $periode,
+                        (int) $etudiantId
+                    ),
+                    'type_formation' => $this->resolveMatiereTypeFormation(
+                        $matiereId,
+                        $classe->id,
+                        $periode,
+                        $anneeUniversitaireId,
+                        $bulletin
+                    ),
+                ]
+            )
+            ->all();
         if ($persistOfficial) {
             $this->persistResultats(
                 $resultatsParMatiere,
@@ -602,7 +637,12 @@ class BulletinService
         );
 
         // Calculer les rangs par matière via ESBTPResultat (batch-fetch pour éviter N+1)
-        $allMatiereIds = collect($resultatsParMatiere)->pluck('matiere_id')->filter()->unique()->values()->all();
+        // Seules les matieres reellement notees ont un rang : une matiere
+        // dispensee ou non notee ne se classe pas, elle garde le tiret pose
+        // par le `?? '-'` ci-dessous.
+        $allMatiereIds = collect($resultatsParMatiere)
+            ->filter(fn ($resultat) => $this->ligneEstNotee($resultat))
+            ->pluck('matiere_id')->filter()->unique()->values()->all();
         $rangsParMatiere = $this->calculerRangsParMatierePourEtudiant(
             $allMatiereIds,
             $etudiantId,
@@ -1298,6 +1338,21 @@ class BulletinService
                 continue;
             }
 
+            // Une dispense retire la matiere du dossier de l'etudiant : la
+            // ligne agregee doit partir, sinon le rang de ses camarades
+            // continuerait a le compter et les statistiques de classe aussi.
+            // Suppression douce : une revocation la fera revivre.
+            if (($resultat->statut ?? ESBTPResultatMatiere::STATUT_NOTE) === ESBTPResultatMatiere::STATUT_DISPENSE) {
+                ESBTPResultat::where('etudiant_id', $etudiantId)
+                    ->where('classe_id', $classeId)
+                    ->where('matiere_id', $resultat->matiere_id)
+                    ->where('periode', $periode)
+                    ->where('annee_universitaire_id', $anneeUniversitaireId)
+                    ->delete();
+
+                continue;
+            }
+
             if ($resultat->moyenne === null) {
                 continue;
             }
@@ -1339,13 +1394,22 @@ class BulletinService
         $keptMatiereIds = [];
 
         foreach ($resultatsParMatiere as $resultat) {
-            if (! isset($resultat->matiere_id) || $resultat->moyenne === null) {
+            if (! isset($resultat->matiere_id)) {
+                continue;
+            }
+
+            $statut = $resultat->statut ?? ESBTPResultatMatiere::STATUT_NOTE;
+            $estNotee = $this->ligneEstNotee($resultat);
+
+            // Une ligne sans note ET sans etat declare n'a rien a dire : c'est
+            // l'ancien cas « pas de moyenne », qu'on continue d'ignorer.
+            if (! $estNotee && $statut === ESBTPResultatMatiere::STATUT_NOTE) {
                 continue;
             }
 
             $matiereId = (int) $resultat->matiere_id;
             $keptMatiereIds[] = $matiereId;
-            $rang = is_numeric($resultat->rang ?? null) ? (int) $resultat->rang : null;
+            $rang = $estNotee && is_numeric($resultat->rang ?? null) ? (int) $resultat->rang : null;
 
             ESBTPResultatMatiere::updateOrCreate(
                 [
@@ -1353,10 +1417,15 @@ class BulletinService
                     'matiere_id' => $matiereId,
                 ],
                 [
-                    'moyenne' => $resultat->moyenne,
+                    'moyenne' => $estNotee ? $resultat->moyenne : null,
+                    'statut' => $statut,
+                    'motif_dispense' => $resultat->motif_dispense ?? null,
+                    'dispense_id' => $resultat->dispense_id ?? null,
                     'coefficient' => $resultat->coefficient ?? 1,
                     'rang' => $rang,
-                    'appreciation' => $resultat->appreciation ?? $this->getAppreciation($resultat->moyenne),
+                    'appreciation' => $estNotee
+                        ? ($resultat->appreciation ?? $this->getAppreciation($resultat->moyenne))
+                        : '',
                     'updated_by' => $userId,
                     'created_by' => $userId,
                 ]
@@ -1427,11 +1496,25 @@ class BulletinService
         $totalCoefficients = 0;
 
         foreach ($resultats as $resultat) {
+            // Une matiere dispensee ou non notee sort du calcul ENTIEREMENT :
+            // son coefficient ne doit pas non plus entrer au denominateur,
+            // sinon elle vaudrait zero et diluerait la moyenne — un etudiant
+            // dispense de deux matieres serait puni de l'avoir ete.
+            if (! $this->ligneEstNotee($resultat)) {
+                continue;
+            }
+
             $totalPoints += $resultat->moyenne * $resultat->coefficient;
             $totalCoefficients += $resultat->coefficient;
         }
 
         return $totalCoefficients > 0 ? $totalPoints / $totalCoefficients : 0;
+    }
+
+    /** Cette ligne de bulletin porte-t-elle une note qui compte ? */
+    private function ligneEstNotee($resultat): bool
+    {
+        return ESBTPResultatMatiere::ligneNotee($resultat);
     }
 
     /**
@@ -2837,8 +2920,13 @@ class BulletinService
                 continue;
             }
 
+            // Une ligne dispensee ou non notee ne se classe pas. Le rang vient
+            // aussi d'un calcul « live » sur les notes brutes : sans ce filtre,
+            // un etudiant dispense recevrait un rang sur une matiere dont il
+            // est precisement exempte.
             $ranks = $this->calculerRangsParMatierePourEtudiant(
-                $rows->pluck('matiere_id')->map(fn ($id) => (int) $id)->all(),
+                $rows->filter(fn ($row) => $row->estNotee())
+                    ->pluck('matiere_id')->map(fn ($id) => (int) $id)->all(),
                 (int) $bulletin->etudiant_id,
                 $classeId,
                 $anneeUniversitaireId,
@@ -2847,7 +2935,7 @@ class BulletinService
 
             $bulletinChanged = false;
             foreach ($rows as $row) {
-                $proposed = $ranks[(int) $row->matiere_id] ?? '-';
+                $proposed = $row->estNotee() ? ($ranks[(int) $row->matiere_id] ?? '-') : '-';
                 $proposedInt = is_numeric($proposed) ? (int) $proposed : null;
                 $current = $row->rang === null ? null : (int) $row->rang;
                 if ($current === $proposedInt) {

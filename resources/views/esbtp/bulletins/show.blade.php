@@ -347,18 +347,30 @@
                                 </td>
                                 <td class="text-c">{{ $resultat->coefficient }}</td>
                                 <td class="text-c">
-                                    <span class="bsh-badge {{ $resultat->moyenne >= 10 ? 'bsh-badge--success' : 'bsh-badge--danger' }}">
-                                        {{ number_format($resultat->moyenne, 2) }}/20
-                                    </span>
+                                    @if($resultat->estNotee())
+                                        <span class="bsh-badge {{ $resultat->moyenne >= 10 ? 'bsh-badge--success' : 'bsh-badge--danger' }}">
+                                            {{ number_format($resultat->moyenne, 2) }}/20
+                                        </span>
+                                    @else
+                                        <span class="bsh-muted">{{ \App\Models\ESBTPResultatMatiere::SYMBOLE_TROU }}</span>
+                                    @endif
                                 </td>
                                 <td class="text-c">
                                     @include('esbtp.bulletins.partials.appreciation', [
-                                        'moyenne' => $resultat->moyenne,
+                                        'moyenne' => $resultat->estNotee() ? $resultat->moyenne : null,
                                         'emptyLabel' => '—',
                                         'badgeClass' => 'bsh-badge',
                                     ])
                                 </td>
-                                <td>{{ $resultat->commentaire ?? '—' }}</td>
+                                <td>
+                                    @if($resultat->statut === \App\Models\ESBTPResultatMatiere::STATUT_DISPENSE)
+                                        Dispensé{{ $resultat->motif_dispense ? ' : '.$resultat->motif_dispense : '' }}
+                                    @elseif($resultat->statut === \App\Models\ESBTPResultatMatiere::STATUT_NON_NOTE)
+                                        <span class="bsh-muted">Non notée</span>
+                                    @else
+                                        {{ $resultat->commentaire ?? '—' }}
+                                    @endif
+                                </td>
                             </tr>
                         @empty
                             <tr><td colspan="7" class="text-c bsh-muted" style="padding:2rem;">Aucun résultat disponible pour cette période.</td></tr>

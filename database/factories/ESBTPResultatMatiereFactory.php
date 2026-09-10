@@ -19,6 +19,7 @@ class ESBTPResultatMatiereFactory extends Factory
             'bulletin_id' => ESBTPBulletin::factory(),
             'matiere_id' => ESBTPMatiere::factory(),
             'moyenne' => $moyenne,
+            'statut' => ESBTPResultatMatiere::STATUT_NOTE,
             'coefficient' => $this->faker->numberBetween(1, 4),
             'rang' => $this->faker->numberBetween(1, 50),
             'appreciation' => $this->determinerAppreciation($moyenne),
@@ -27,6 +28,29 @@ class ESBTPResultatMatiereFactory extends Factory
             'created_at' => now(),
             'updated_at' => now()
         ];
+    }
+
+    /** Une matière dont l'étudiant est dispensé : ni moyenne, ni rang, mais un motif. */
+    public function dispensee(string $motif = 'Validée en première année')
+    {
+        return $this->state(fn () => [
+            'moyenne' => null,
+            'statut' => ESBTPResultatMatiere::STATUT_DISPENSE,
+            'motif_dispense' => $motif,
+            'rang' => null,
+            'appreciation' => '',
+        ]);
+    }
+
+    /** Une matière prévue par la maquette dont les notes ne sont pas arrivées. */
+    public function nonNotee()
+    {
+        return $this->state(fn () => [
+            'moyenne' => null,
+            'statut' => ESBTPResultatMatiere::STATUT_NON_NOTE,
+            'rang' => null,
+            'appreciation' => '',
+        ]);
     }
 
     private function determinerAppreciation($moyenne)
