@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>KLS-INS-TUT-2026-02 · Le paquet de rames oublié, puis encaissé</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600;700&family=IBM+Plex+Serif:wght@500&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#111827;--muted:#64748b;--line:#dbe3ef;--soft:#f6f8fb;--blue:#0453cb;--blue-deep:#07377f;--blue-wash:#eaf1fd;--hl:#d97706;--hl-wash:#fff7ed;--white:#ffffff;
+--serif:"IBM Plex Serif",Georgia,"Times New Roman",serif;--sans:"IBM Plex Sans","Segoe UI",Arial,sans-serif;--mono:"IBM Plex Mono",Consolas,monospace}
+*{box-sizing:border-box}
+html,body{margin:0;font-family:var(--sans);color:var(--ink);background:var(--white)}
+@page{size:A4;margin:0}
+.page{width:210mm;min-height:297mm;max-height:297mm;padding:16mm 18mm 26mm;position:relative;overflow:hidden;page-break-after:always;break-after:page;background:var(--white)}
+.page:last-child{page-break-after:auto;break-after:auto}
+.footer,.page-no{position:absolute;bottom:9mm;font-size:8pt;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.footer{left:18mm}.page-no{right:18mm;font-variant-numeric:tabular-nums}
+.cover{background:var(--ink);color:#fff;display:flex;flex-direction:column;justify-content:space-between}
+.cover .footer,.cover .page-no{color:#9aa4b8}
+.brand{display:inline-flex;align-items:center;gap:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;font-size:10pt}
+.brand img{width:26px;height:26px;border-radius:6px;background:#fff}
+.kicker{color:var(--blue);font-size:8.5pt;text-transform:uppercase;letter-spacing:.16em;font-weight:700;margin:0 0 4mm}
+.cover .kicker{color:#93b4f0;margin-top:22mm}
+h1{font-family:var(--serif);font-weight:500;font-size:36pt;line-height:1.02;margin:0 0 8mm;max-width:160mm;text-wrap:balance}
+h2{font-family:var(--serif);font-weight:500;font-size:22pt;line-height:1.12;margin:0 0 5mm;max-width:165mm;text-wrap:balance}
+h3{font-size:11.5pt;margin:0 0 2mm;font-weight:700}
+p{font-size:10.4pt;line-height:1.55;color:#334155;margin:0 0 3.5mm;max-width:165mm}
+.lead{font-size:11.5pt;color:#1f2937}
+.cover p{color:#d6deea;max-width:150mm}
+.meta{display:grid;grid-template-columns:repeat(2,1fr);gap:4mm 8mm;margin-top:10mm;font-size:9.5pt;color:#d6deea}
+.meta strong{display:block;color:#fff;font-size:8pt;text-transform:uppercase;letter-spacing:.1em;margin-bottom:1mm}
+.step-head{display:flex;align-items:center;gap:5mm;margin-bottom:4mm}
+.step-num{width:13mm;height:13mm;border-radius:50%;background:var(--blue);color:#fff;font-family:var(--serif);font-size:15pt;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.step-head h2{margin:0}
+.path{display:inline-block;font-family:var(--mono);font-size:8.6pt;background:var(--soft);border:1px solid var(--line);border-radius:4px;padding:1mm 2.2mm;color:var(--blue-deep);margin-bottom:3mm}
+.shot{position:relative;border:1px solid var(--line);border-radius:6px;overflow:hidden;background:#fff;margin-top:3mm}
+.shot-img{position:relative}.shot img{display:block;width:100%;height:auto}
+.mark{position:absolute;width:7mm;height:7mm;border-radius:50%;background:var(--blue);color:#fff;font-weight:700;font-size:9.5pt;display:flex;align-items:center;justify-content:center;transform:translate(-50%,-50%);box-shadow:0 0 0 1.6mm rgba(255,255,255,.85),0 0 0 2.4mm rgba(4,83,203,.35);font-family:var(--sans)}
+.box{position:absolute;border:2.5px solid var(--hl);border-radius:2mm;box-shadow:0 0 0 1px rgba(255,255,255,.8)}
+.caption{font-size:8.8pt;color:var(--muted);padding:2.2mm 3mm;border-top:1px solid var(--line);background:var(--soft);line-height:1.45}
+.legend{display:grid;grid-template-columns:auto 1fr;gap:1.6mm 3mm;margin-top:3.5mm;font-size:9.6pt;color:#334155;align-items:start;line-height:1.45}
+.legend .n{width:6mm;height:6mm;border-radius:50%;background:var(--blue);color:#fff;font-size:8.5pt;font-weight:700;display:flex;align-items:center;justify-content:center;margin-top:.6mm}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:5mm;margin-top:2mm}
+.two .shot{margin-top:0}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:4mm;margin:4mm 0}
+.metric{border:1px solid var(--line);border-radius:6px;padding:4mm;background:#fff}
+.metric b{display:block;font-family:var(--serif);font-weight:500;font-size:22pt;color:var(--blue);line-height:1;margin-bottom:1.5mm}
+.metric span{font-size:9pt;color:var(--muted)}
+table{width:100%;border-collapse:collapse;margin:3mm 0 4mm;font-size:9.4pt}
+th,td{border-bottom:1px solid var(--line);padding:2.2mm 2mm;text-align:left;vertical-align:top;line-height:1.45}
+th{color:var(--muted);text-transform:uppercase;font-size:7.5pt;letter-spacing:.08em;font-weight:700}
+td.k{width:34%;font-weight:600;color:var(--ink)}
+.note{border-left:3px solid var(--blue);background:var(--blue-wash);padding:3.5mm 4.5mm;border-radius:0 5px 5px 0;margin:4mm 0}
+.note p{margin:0 0 2mm}.note p:last-child{margin:0}
+.warn{border-left:3px solid var(--hl);background:var(--hl-wash);padding:3.5mm 4.5mm;border-radius:0 5px 5px 0;margin:4mm 0}
+.warn p{margin:0 0 2mm}.warn p:last-child{margin:0}
+.warn h3{color:#9a3412}
+.code{font-family:var(--mono);font-size:8.6pt;background:#eef4ff;color:#123a82;border-radius:4px;padding:.4mm 1.4mm}
+.tag{display:inline-block;font-size:7.6pt;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:.8mm 2mm;border-radius:3px;border:1px solid}
+.tag.ok{color:#065f46;border-color:#a7f3d0;background:#ecfdf5}
+.tag.no{color:#9a3412;border-color:#fed7aa;background:#fff7ed}
+.tag.part{color:var(--blue-deep);border-color:#bfd3f5;background:var(--blue-wash)}
+ul{margin:0 0 3mm;padding-left:5mm;font-size:10.2pt;line-height:1.55;color:#334155}
+li{margin-bottom:1.5mm}
+</style>
+</head>
+<body>
+<section class="page cover">
+
+
+<div>
+  <div class="brand"><img src="../../../public/images/LOGO-KLASSCI-PNG.png" alt=""> KLASSCI</div>
+  <div class="kicker">Étude de cas · Agent d’inscription · ISLG</div>
+  <h1>Le paquet de rames oublié, puis encaissé.</h1>
+  <p class="lead" style="color:#d6deea">Aminata Carine Kouyaté a déposé son paquet de rames le jour de son inscription en RHCOM 1A. La case n’a pas été cochée, et le guichet a ensuite encaissé le paquet comme s’il était dû. Ce guide montre comment vous remettez le dossier d’aplomb vous-même, depuis sa fiche d’inscription : retirer le versement pris par erreur, puis marquer le dépôt.</p>
+</div>
+<div class="meta">
+  <div><strong>Référence</strong>KLS-INS-TUT-2026-02 · version 2</div>
+  <div><strong>Date</strong>10 septembre 2026</div>
+  <div><strong>Public</strong>Agents d’inscription de l’ISLG · page 8 pour l’administration</div>
+  <div><strong>Écrans capturés sur</strong>islg.klassci.com, compte « Agent d’inscription »</div>
+</div>
+
+<div class="footer">KLASSCI · Guide · KLS-INS-TUT-2026-02</div><div class="page-no">01</div>
+</section>
+<section class="page ">
+<div class="kicker">Comprendre en une page</div>
+
+<h2>Une fourniture déposée est un frais réglé. Une case oubliée est un frais dû, et un frais dû finit encaissé.</h2>
+<p class="lead">À l’ISLG, deux articles du dossier d’inscription se règlent en nature : le <strong>paquet de rames</strong> et la <strong>chemise cartonnée</strong>. Dans KLASSCI, ce sont des frais comme les autres, avec un tarif. Cochée, la case vaut « article remis » et le frais tombe à zéro ; non cochée, le frais reste dû au tarif, et la caisse le réclame en argent.</p>
+<h3>Ce qui s’est passé pour Aminata</h3>
+<ul>
+<li>Elle s’inscrit en RHCOM 1A et remet ses deux fournitures au guichet.</li>
+<li>Dans le formulaire, la chemise cartonnée est cochée. Le paquet de rames ne l’est pas.</li>
+<li>Pour KLASSCI, le paquet de rames est donc à payer. Au guichet suivant, il est <strong>encaissé</strong> : 3 000 F, reçu REC-00175, validé.</li>
+<li>Le dossier dit maintenant deux choses fausses à la fois : le paquet n’a pas été remis, et il a été payé.</li>
+</ul>
+<table>
+<tr><th>Sur la fiche d’inscription</th><th>Ce que cela veut dire</th><th>Ce que vous faites</th></tr>
+<tr><td class="k">Bouton <span class="tag part">Marquer déposé</span></td><td>L’article n’est pas enregistré comme remis, et rien n’a été encaissé.</td><td>Un clic : le frais vaut zéro.</td></tr>
+<tr><td class="k">Badge <span class="tag ok">Déposé</span> et « Annuler le dépôt »</td><td>L’article est enregistré comme remis.</td><td>Rien, sauf erreur : « Annuler le dépôt » revient en arrière.</td></tr>
+<tr><td class="k">Badge <span class="tag no">Encaissé (reçu …)</span> et « Supprimer le versement »</td><td>Un versement validé existe sur ce frais. Il bloque le marquage.</td><td>Supprimez le versement avec un motif, puis marquez le dépôt.</td></tr>
+<tr><td class="k">Badge <span class="tag no">Encaissé (reçu …)</span> seul</td><td>Un versement bloque, et votre compte n’a pas le droit de le supprimer.</td><td>Demandez à l’administration (page 8).</td></tr>
+</table>
+<div class="note">
+<p><strong>Vous ne voyez pas les montants.</strong> Sur votre écran, les tarifs sont masqués : vous voyez l’état (déposé, encaissé, dû) et le numéro de reçu, la caisse voit la somme. C’est la même donnée.</p>
+<p><strong>Rien n’est effacé.</strong> Un versement supprimé reste au journal d’audit avec votre nom, la date et votre motif. La corbeille de l’établissement permet de le restaurer.</p>
+</div>
+
+<div class="footer">KLASSCI · Guide · KLS-INS-TUT-2026-02</div><div class="page-no">02</div>
+</section>
+<section class="page ">
+<div class="kicker">Étape 1</div>
+
+<div class="step-head"><div class="step-num">1</div><h2>Là où l’erreur se produit</h2></div>
+<span class="path">Étudiants › Nouvelle Inscription › bloc 5 « Frais d’inscription et options »</span>
+<p>Au bas du formulaire, après le choix de la classe et du statut, KLASSCI liste les <strong>Fournitures à déposer</strong>. La consigne est écrite au-dessus : cochez uniquement les articles déjà déposés. Tout ce qui n’est pas coché sera dû au tarif, et donc encaissable au guichet. C’est ici que le paquet de rames a été oublié.</p>
+<div class="shot"><div class="shot-img"><img src="captures/KLS-INS-TUT-2026-02/etape4-frais-erreur.png" alt="Capture d’écran KLASSCI : etape4-frais-erreur.png"><div class="mark" style="left:24.6%;top:48.8%">1</div><div class="mark" style="left:24.6%;top:60.7%">2</div><div class="mark" style="left:61.0%;top:93.0%">3</div><div class="box" style="left:26.8%;top:45.2%;width:67.0%;height:10.2%"></div></div><div class="caption">Formulaire d’inscription d’Aminata, juste avant l’enregistrement : la chemise est cochée, le paquet de rames ne l’est pas.</div></div>
+<div class="legend"><div class="n">1</div><div>La case du <strong>paquet de rames</strong> est restée vide. À l’enregistrement, KLASSCI a créé le frais avec son tarif, à payer.</div><div class="n">2</div><div>La <strong>chemise cartonnée</strong> est cochée : elle sera enregistrée comme déposée, à zéro franc.</div><div class="n">3</div><div><strong>Enregistrer l’inscription</strong> fige ces deux choix. Ils restent corrigibles ensuite, depuis la fiche.</div></div>
+<div class="warn">
+<h3>Le bon réflexe avant d’enregistrer</h3>
+<p>Comptez ce que l’étudiant vous a remis, puis comptez les cases cochées. Deux articles remis, deux cases cochées. La correction après coup prend deux minutes ; mais entre-temps, un frais dû peut être encaissé, et il faut alors un motif écrit pour le retirer.</p>
+</div>
+
+<div class="footer">KLASSCI · Guide · KLS-INS-TUT-2026-02</div><div class="page-no">03</div>
+</section>
+<section class="page ">
+<div class="kicker">Étape 2</div>
+
+<div class="step-head"><div class="step-num">2</div><h2>Retrouver l’inscription</h2></div>
+<span class="path">Étudiants › Inscriptions › carte « En attente » › recherche par nom</span>
+<p>La liste des inscriptions s’ouvre sur les inscriptions <strong>validées</strong>. Une inscription du jour, pas encore validée par l’administration, est dans <strong>En attente</strong> : cliquez cette carte, puis tapez le nom dans la recherche. Les filtres actifs s’affichent sous les champs, et la ligne apparaît.</p>
+<div class="shot"><div class="shot-img"><img src="captures/KLS-INS-TUT-2026-02/etape6-liste-crop.png" alt="Capture d’écran KLASSCI : etape6-liste-crop.png"><div class="mark" style="left:55.5%;top:31.0%">1</div><div class="mark" style="left:24.5%;top:64.9%">2</div><div class="mark" style="left:53.5%;top:82.8%">3</div><div class="mark" style="left:91.0%;top:75.0%">4</div></div><div class="caption">Liste des inscriptions filtrée sur « En attente » et « KOUYATE » : une seule ligne, l’inscription d’Aminata en RHCOM 1A.</div></div>
+<div class="legend"><div class="n">1</div><div>La carte <strong>En attente</strong> restreint la liste aux dossiers non encore validés. Si l’inscription est déjà validée, restez sur « Validées ».</div><div class="n">2</div><div>Les filtres en cours : recherche « KOUYATE » et statut En attente. Un clic sur la croix retire un filtre.</div><div class="n">3</div><div>La ligne de l’étudiante : nom, matricule, filière, statut. Cliquez le nom pour ouvrir la fiche.</div><div class="n">4</div><div>Le menu d’actions ouvre aussi la fiche d’inscription.</div></div>
+<div class="note"><p>Le nom suffit. Le matricule (KOUY1403060001) ou le début du prénom fonctionnent aussi. La recherche ignore les accents et la casse.</p></div>
+
+<div class="footer">KLASSCI · Guide · KLS-INS-TUT-2026-02</div><div class="page-no">04</div>
+</section>
+<section class="page ">
+<div class="kicker">Étape 3</div>
+
+<div class="step-head"><div class="step-num">3</div><h2>Lire la carte « Fournitures à déposer »</h2></div>
+<span class="path">Fiche d’inscription › colonne de droite, sous « Parents / Tuteurs »</span>
+<p>Descendez la fiche : la carte <strong>Fournitures à déposer</strong> résume, article par article, ce que KLASSCI tient pour remis. Pour Aminata, la ligne du paquet de rames ne propose pas « Marquer déposé » : elle dit qu’un versement a été encaissé, avec son numéro de reçu, et propose de le supprimer.</p>
+<div class="shot"><div class="shot-img"><img src="captures/KLS-INS-TUT-2026-02/v2-etape3-carte-encaisse-crop.png" alt="Capture d’écran KLASSCI : v2-etape3-carte-encaisse-crop.png"><div class="mark" style="left:49.5%;top:40.0%">1</div><div class="mark" style="left:57.0%;top:51.0%">2</div><div class="mark" style="left:5.0%;top:82.0%">3</div></div><div class="caption">Fiche d’Aminata : le paquet de rames est « Encaissé (reçu REC-00175) », la chemise est « Déposé ».</div></div>
+<div class="legend"><div class="n">1</div><div>Le badge <strong>Encaissé</strong> nomme le reçu. Passez la souris dessus : la date du versement s’affiche. Tant que ce versement existe, le dépôt ne peut pas être marqué : le même frais serait réglé deux fois.</div><div class="n">2</div><div><strong>Supprimer le versement</strong> ouvre la fenêtre de l’étape 4. Le bouton n’apparaît que si votre compte porte le droit « Supprimer un versement ».</div><div class="n">3</div><div>La phrase sous la liste rappelle la règle. Elle disparaît dès qu’aucun versement ne bloque plus.</div></div>
+<div class="note"><p><strong>Le bouton manque ?</strong> Le badge « Encaissé » s’affiche quand même. Votre compte n’a pas le droit de supprimer un versement : voyez la page 8 avec l’administration, qui l’accorde au rôle de son choix.</p></div>
+
+<div class="footer">KLASSCI · Guide · KLS-INS-TUT-2026-02</div><div class="page-no">05</div>
+</section>
+<section class="page ">
+<div class="kicker">Étape 4</div>
+
+<div class="step-head"><div class="step-num">4</div><h2>Supprimer le versement pris par erreur</h2></div>
+<span class="path">Carte « Fournitures à déposer » › ligne PAQUET DE RAM › « Supprimer le versement »</span>
+<p>La fenêtre rappelle ce qui va se passer et demande un <strong>motif</strong> d’au moins dix caractères. Écrivez ce qui s’est réellement passé, en une phrase : c’est ce que lira la comptabilité, et ce qui restera au journal d’audit avec votre nom et la date.</p>
+<div class="shot"><div class="shot-img"><img src="captures/KLS-INS-TUT-2026-02/v2-etape4-modal-motif.png" alt="Capture d’écran KLASSCI : v2-etape4-modal-motif.png"><div class="mark" style="left:15.5%;top:38.0%">1</div><div class="mark" style="left:15.5%;top:54.8%">2</div><div class="mark" style="left:83.0%;top:63.6%">3</div><div class="mark" style="left:59.5%;top:72.5%">4</div></div><div class="caption">La fenêtre de suppression, motif saisi : « Encaissé par erreur au guichet : le paquet de rames a été déposé en nature le jour de l’inscription. »</div></div>
+<div class="legend"><div class="n">1</div><div>Le rappel : le reçu ne sera plus valable, le frais redeviendra dû, puis pourra être marqué déposé. Votre nom, la date et le motif restent lisibles.</div><div class="n">2</div><div>Le <strong>motif</strong>. Dites le fait (encaissé par erreur), la raison (l’article a été déposé) et le moment (le jour de l’inscription).</div><div class="n">3</div><div>Le compteur passe au rouge sous dix caractères : le bouton refuse alors d’envoyer.</div><div class="n">4</div><div><strong>Supprimer le versement</strong>. La fiche se recharge avec un bandeau de confirmation.</div></div>
+<div class="warn">
+<h3>Ce que la suppression refuse</h3>
+<p>Un versement d’une période comptable clôturée, un versement déjà réconcilié avec la caisse, un versement sur lequel un avoir a été émis, ou un versement de reliquat d’une année antérieure : KLASSCI répond par un message et ne supprime rien. Ces cas passent par la comptabilité.</p>
+</div>
+
+<div class="footer">KLASSCI · Guide · KLS-INS-TUT-2026-02</div><div class="page-no">06</div>
+</section>
+<section class="page ">
+<div class="kicker">Étape 5</div>
+
+<div class="step-head"><div class="step-num">5</div><h2>Marquer le paquet de rames déposé</h2></div>
+<span class="path">Bandeau de confirmation › carte « Fournitures à déposer » › bouton « Marquer déposé »</span>
+<p>Le bandeau confirme la suppression et cite le reçu. La ligne du paquet de rames a retrouvé son bouton <strong>Marquer déposé</strong> : un clic, et le frais vaut zéro pour la caisse. Les deux articles sont alors « Déposé », comme le jour où Aminata les a remis.</p>
+<div class="shot"><div class="shot-img"><img src="captures/KLS-INS-TUT-2026-02/v2-etape5-message-crop.png" alt="Capture d’écran KLASSCI : v2-etape5-message-crop.png"><div class="mark" style="left:21.3%;top:27.9%">1</div></div><div class="caption">Après la suppression : « Le versement REC-00175 a été supprimé. »</div></div>
+<div class="two">
+<div class="shot"><div class="shot-img"><img src="captures/KLS-INS-TUT-2026-02/v2-etape5-carte-apres-crop.png" alt="Capture d’écran KLASSCI : v2-etape5-carte-apres-crop.png"><div class="mark" style="left:66.5%;top:51.3%">2</div></div><div class="caption">La ligne PAQUET DE RAM propose de nouveau « Marquer déposé ».</div></div>
+<div class="shot"><div class="shot-img"><img src="captures/KLS-INS-TUT-2026-02/v2-etape6-carte-deposee-crop.png" alt="Capture d’écran KLASSCI : v2-etape6-carte-deposee-crop.png"><div class="mark" style="left:48.5%;top:51.5%">3</div><div class="mark" style="left:89.5%;top:51.5%">4</div></div><div class="caption">Après le clic : les deux articles sont « Déposé ».</div></div>
+</div>
+<div class="legend"><div class="n">1</div><div>Le bandeau nomme le reçu supprimé. Le même message est visible par la comptabilité dans le journal.</div><div class="n">2</div><div><strong>Marquer déposé</strong> : un clic suffit, la fiche se recharge avec « Dépôt en nature enregistré. »</div><div class="n">3</div><div>Le badge <strong>Déposé</strong> : le frais vaut zéro, le reçu de l’étudiante le mentionnera « réglé en nature ».</div><div class="n">4</div><div><strong>Annuler le dépôt</strong> reste disponible si vous vous êtes trompé de ligne ou d’étudiant.</div></div>
+
+<div class="footer">KLASSCI · Guide · KLS-INS-TUT-2026-02</div><div class="page-no">07</div>
+</section>
+<section class="page ">
+<div class="kicker">Pour l’administration</div>
+
+<div class="step-head"><div class="step-num">A</div><h2>Donner le droit de supprimer un versement</h2></div>
+<span class="path">Administration › Rôles &amp; permissions › rôle « Agent d’inscription » › groupe Paiements</span>
+<p>Le droit <strong>Supprimer un versement (motif obligatoire, journalisé)</strong> n’est accordé à personne par défaut. Chaque établissement décide qui le porte : les agents d’inscription, la caisse, la comptabilité, ou personne. Il se coche dans l’écran des rôles, sans toucher aux autres droits du rôle.</p>
+<div class="shot"><div class="shot-img"><img src="captures/KLS-INS-TUT-2026-02/v2-admin-roles-crop.png" alt="Capture d’écran KLASSCI : v2-admin-roles-crop.png"><div class="mark" style="left:64.0%;top:43.1%">1</div><div class="mark" style="left:93.7%;top:33.5%">2</div><div class="box" style="left:66.3%;top:36.9%;width:30.9%;height:13.0%"></div></div><div class="caption">Écran « Rôles & permissions », rôle Agent d’inscription sélectionné, groupe Paiements déplié : le droit est éteint par défaut.</div></div>
+<div class="legend"><div class="n">1</div><div>La carte du droit, avec son nom technique <span class="code">paiements.delete</span>. Il vaut pour tout versement, pas seulement ceux de l’agent.</div><div class="n">2</div><div>L’interrupteur. Enregistrez la page ensuite : le droit prend effet à la prochaine connexion des agents.</div></div>
+<div class="note">
+<p><strong>Ce que le droit ne permet pas.</strong> Il ne passe ni par-dessus une période comptable clôturée, ni par-dessus un versement réconcilié ; il refuse un versement support d’un avoir et un versement de reliquat. Ces verrous restent ceux de la comptabilité.</p>
+<p><strong>Ce qui reste lisible.</strong> Sur chaque versement supprimé : qui, quand, pourquoi. Dans la corbeille : la possibilité de le restaurer.</p>
+</div>
+
+<div class="footer">KLASSCI · Guide · KLS-INS-TUT-2026-02</div><div class="page-no">08</div>
+</section>
+<section class="page ">
+<div class="kicker">Aide-mémoire</div>
+
+<h2>À retenir.</h2>
+<table>
+<tr><th>Situation</th><th>Ce que vous faites</th></tr>
+<tr><td class="k">L’étudiant a remis un article, la ligne dit « Marquer déposé »</td><td>Cliquez <strong>Marquer déposé</strong>. C’est tout.</td></tr>
+<tr><td class="k">La ligne dit « Encaissé (reçu …) » et propose « Supprimer le versement »</td><td>Supprimez le versement avec un motif d’une phrase, puis cliquez <strong>Marquer déposé</strong>.</td></tr>
+<tr><td class="k">La ligne dit « Encaissé (reçu …) » sans bouton</td><td>Votre compte n’a pas le droit de supprimer un versement. Voyez l’administration (page 8).</td></tr>
+<tr><td class="k">La ligne dit « Déposé », mais rien n’a été remis</td><td>Cliquez <strong>Annuler le dépôt</strong>, confirmez. Le frais redevient dû.</td></tr>
+<tr><td class="k">La suppression répond par un refus</td><td>Période clôturée, versement réconcilié, avoir émis ou reliquat : passez par la comptabilité.</td></tr>
+<tr><td class="k">L’inscription est introuvable dans la liste</td><td>Changez de carte en haut de la liste : En attente, Non validées, Validées. Le nom se cherche dans chacune.</td></tr>
+</table>
+<h3>Les messages que vous verrez</h3>
+<table>
+<tr><th>Message</th><th>Sens</th></tr>
+<tr><td class="k">Le versement REC-… a été supprimé.</td><td>Le versement est retiré des comptes, avec votre motif au journal.</td></tr>
+<tr><td class="k">Indiquez pourquoi ce versement est supprimé.</td><td>Le motif manque ou compte moins de dix caractères.</td></tr>
+<tr><td class="k">Dépôt en nature enregistré.</td><td>L’article est marqué remis, le frais vaut zéro.</td></tr>
+<tr><td class="k">Dépôt en nature annulé : « … » redevient dû.</td><td>Le marquage est retiré, le frais est de nouveau à payer.</td></tr>
+<tr><td class="k">Ce versement a réglé un reliquat… / Un avoir a été émis sur ce versement…</td><td>Refus : ce versement porte d’autres écritures. Voir la comptabilité.</td></tr>
+</table>
+<h3>Preuves d’écran</h3>
+<p>Toutes les captures de ce guide sont des écrans réels, pris le 10 septembre 2026 sur islg.klassci.com avec un compte « Agent d’inscription » (page 8 : compte administrateur), sans retouche. Les repères numérotés et les cadres sont posés par-dessus. Le dossier d’Aminata Carine Kouyaté (RHCOM 1A, matricule KOUY1403060001) et le versement REC-00175 ont été créés pour cette étude de cas.</p>
+
+<div class="footer">KLASSCI · Guide · KLS-INS-TUT-2026-02</div><div class="page-no">09</div>
+</section>
+</body>
+</html>
