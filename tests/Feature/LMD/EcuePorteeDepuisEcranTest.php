@@ -99,17 +99,31 @@ class EcuePorteeDepuisEcranTest extends TestCase
             'ordre_bulletin' => 0,
         ], (int) $this->travauxPublics->id);
 
-        // Vue « Tous » : les deux versions, chacune avec sa portee.
+        // Vue « Tous » : les deux versions, chacune avec sa portee. L'import a
+        // reserve ECUE-BU a Batiment ; Travaux Publics vient d'y ajouter la sienne.
         $tout = $this->actingAs($this->acteur)
             ->getJson(route('esbtp.lmd.ue.index', ['format' => 'json', 'search' => 'UE-PARTAGEE']))
             ->assertOk()
             ->json('ues.0.ecues');
 
         $lignes = collect($tout)->where('code', 'ECUE-BU');
-        $this->assertCount(2, $lignes, 'La vue « Tous » doit montrer la version commune ET la version reservee.');
-        $this->assertEqualsCanonicalizing([0, (int) $this->travauxPublics->id], $lignes->pluck('portee')->all());
+        $this->assertCount(2, $lignes, 'La vue « Tous » doit montrer une ligne par maquette qui tient l element.');
+        $this->assertEqualsCanonicalizing(
+            [(int) $this->batiment->id, (int) $this->travauxPublics->id],
+            $lignes->pluck('portee')->all()
+        );
         $this->assertSame('TIR', $lignes->firstWhere('portee', (int) $this->travauxPublics->id)['portee_code']);
-        $this->assertNull($lignes->firstWhere('portee', 0)['portee_code']);
+        $this->assertSame('BU', $lignes->firstWhere('portee', (int) $this->batiment->id)['portee_code']);
+
+        // Une version commune s'ajoute aux reservees, avec sa propre ligne.
+        $this->composition->poser($this->ue, (int) $this->ecueBu->id, [
+            'coefficient_ecue' => 1, 'credit_ecue' => 3, 'ordre_bulletin' => 0,
+        ]);
+        $commune = collect($this->actingAs($this->acteur)
+            ->getJson(route('esbtp.lmd.ue.index', ['format' => 'json', 'search' => 'UE-PARTAGEE']))
+            ->json('ues.0.ecues'))->where('code', 'ECUE-BU')->firstWhere('portee', 0);
+        $this->assertNotNull($commune, 'La version commune doit avoir sa ligne.');
+        $this->assertNull($commune['portee_code']);
 
         // Vue filtree sur Travaux Publics : une seule ligne, la reservee.
         $tir = $this->actingAs($this->acteur)
