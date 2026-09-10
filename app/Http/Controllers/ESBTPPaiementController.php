@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Domain\Comptabilite\Paiements\Actions\SupprimerPaiement;
 use App\Models\ESBTPPaiement;
 use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPInscription;
@@ -1985,83 +1986,80 @@ class ESBTPPaiementController extends Controller
     }
 
     /**
-     * Supprimer définitivement un paiement (réservé au superAdmin)
+     * Supprimer un versement — droit `paiements.delete`, motif obligatoire.
+     *
+     * Le geste n'est plus réservé au super administrateur : l'établissement
+     * l'accorde au rôle qu'il veut. Les verrous restent : période comptable
+     * clôturée et versement réconcilié refusent, quel que soit le rôle.
      */
     public function destroy(Request $request, ESBTPPaiement $paiement)
     {
         $user = $request->user();
-        if (!$user || !$user->can('paiements.manage')) {
-            abort(403, 'Cette action est réservée au super administrateur.');
+        if (!$user || !$user->can('paiements.delete')) {
+            abort(403, 'Vous n\'avez pas le droit de supprimer un versement.');
         }
+
+        $veutJson = $request->ajax() || $request->wantsJson();
 
         // S1.4 — Garde verrouillage de période comptable (même superAdmin doit utiliser bypass_lock)
         if ($block = $this->assertPeriodNotLocked($paiement)) {
-            if ($request->ajax() || $request->wantsJson()) {
-                return response()->json(['success' => false, 'message' => $block['message']], 403);
-            }
-            return redirect()->back()->with('error', $block['message']);
+            return $veutJson
+                ? response()->json(['success' => false, 'message' => $block['message']], 403)
+                : redirect()->back()->with('error', $block['message']);
         }
         // PR2 réconciliation — Garde verrouillage post-réconciliation
         if ($block = $this->assertReconciliationNotLocked($paiement)) {
-            if ($request->ajax() || $request->wantsJson()) {
-                return response()->json(['success' => false, 'message' => $block['message']], 403);
-            }
-            return redirect()->back()->with('error', $block['message']);
+            return $veutJson
+                ? response()->json(['success' => false, 'message' => $block['message']], 403)
+                : redirect()->back()->with('error', $block['message']);
         }
 
-        DB::beginTransaction();
+        $donnees = $request->validate([
+            'motif' => ['required', 'string', 'min:'.SupprimerPaiement::MOTIF_MIN, 'max:500'],
+            'retour' => ['nullable', 'string', 'max:2000'],
+        ], [
+            'motif.required' => 'Indiquez pourquoi ce versement est supprimé.',
+            'motif.min' => 'Le motif doit compter au moins '.SupprimerPaiement::MOTIF_MIN.' caractères.',
+        ]);
 
         try {
-            $paiementId = $paiement->id;
-            $numeroRecu = $paiement->numero_recu;
-
-            // Désactiver les éventuels rappels associés
-            try {
-                $reminder = \App\Models\NotificationReminder::where('remindable_type', ESBTPPaiement::class)
-                    ->where('remindable_id', $paiementId)
-                    ->first();
-                if ($reminder) {
-                    $reminder->deactivate();
-                }
-            } catch (\Exception $inner) {
-                Log::warning('Impossible de désactiver le rappel du paiement avant suppression', [
-                    'paiement_id' => $paiementId,
-                    'error' => $inner->getMessage()
-                ]);
-            }
-
-            $paiement->delete();
-
-            DB::commit();
-
-            $message = "Le paiement {$numeroRecu} a été supprimé définitivement.";
-
-            if ($request->ajax() || $request->wantsJson()) {
-                return response()->json([
-                    'success' => true,
-                    'message' => $message
-                ]);
-            }
-
-            return redirect()->route('esbtp.paiements.index')->with('success', $message);
-        } catch (\Exception $e) {
-            DB::rollBack();
-
-            Log::error('Erreur lors de la suppression définitive du paiement', [
+            app(SupprimerPaiement::class)->execute($paiement, $user, $donnees['motif']);
+        } catch (\DomainException $e) {
+            return $veutJson
+                ? response()->json(['success' => false, 'message' => $e->getMessage()], 422)
+                : redirect()->back()->withInput()->with('error', $e->getMessage());
+        } catch (\Throwable $e) {
+            Log::error('Erreur lors de la suppression du paiement', [
                 'paiement_id' => $paiement->id,
                 'error' => $e->getMessage(),
-                'trace' => config('app.debug') ? $e->getTraceAsString() : null
+                'trace' => config('app.debug') ? $e->getTraceAsString() : null,
             ]);
 
-            if ($request->ajax() || $request->wantsJson()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Erreur lors de la suppression: ' . $e->getMessage()
-                ], 500);
-            }
-
-            return redirect()->back()->with('error', 'Erreur lors de la suppression: ' . $e->getMessage());
+            return $veutJson
+                ? response()->json(['success' => false, 'message' => 'Erreur lors de la suppression: '.$e->getMessage()], 500)
+                : redirect()->back()->with('error', 'Erreur lors de la suppression: '.$e->getMessage());
         }
+
+        $message = "Le versement {$paiement->numero_recu} a été supprimé.";
+
+        if ($veutJson) {
+            return response()->json(['success' => true, 'message' => $message]);
+        }
+
+        return redirect()->to($this->cibleDeRetour($donnees['retour'] ?? null))->with('success', $message);
+    }
+
+    /**
+     * Où revenir après la suppression : le chemin local demandé (la fiche
+     * d'inscription d'où l'on vient), jamais une adresse extérieure.
+     */
+    private function cibleDeRetour(?string $retour): string
+    {
+        if ($retour !== null && str_starts_with($retour, '/') && !str_starts_with($retour, '//')) {
+            return url($retour);
+        }
+
+        return route('esbtp.paiements.index');
     }
 
     /**

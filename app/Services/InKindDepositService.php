@@ -163,12 +163,30 @@ class InKindDepositService
 
     public function hasValidatedPayment(int $inscriptionId, int $categoryId): bool
     {
+        return $this->paiementsValides($inscriptionId, $categoryId)->exists();
+    }
+
+    /**
+     * Le versement validé qui empêche de marquer ce frais déposé, s'il y en a un.
+     *
+     * L'écran le nomme (numéro de reçu, date) au lieu de laisser un « Non
+     * déposé » muet : la personne sait ce qui bloque, et ce qu'il faut défaire.
+     */
+    public function paiementBloquant(int $inscriptionId, int $categoryId): ?ESBTPPaiement
+    {
+        return $this->paiementsValides($inscriptionId, $categoryId)
+            ->orderByDesc('date_paiement')
+            ->orderByDesc('id')
+            ->first();
+    }
+
+    private function paiementsValides(int $inscriptionId, int $categoryId)
+    {
         return ESBTPPaiement::query()
             ->where('inscription_id', $inscriptionId)
             ->where('frais_category_id', $categoryId)
             ->valides()
-            ->encaissements()
-            ->exists();
+            ->encaissements();
     }
 
     public function canMarkDeposited(ESBTPFraisSubscription $subscription): bool
