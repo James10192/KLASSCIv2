@@ -66,6 +66,8 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ### Sécurité
 
+- **La chaîne d'outils de développement embarquait une bibliothèque d'extraction d'archives vulnérable** (`package.json`) — l'alerte visait `extract-zip`, atteignable par la seule dépendance npm du dépôt, l'outil de rendu PDF utilisé en développement. Aucune version corrigée de cette bibliothèque n'existe : elle a été écartée en montant l'outil parent, qui ne s'en sert plus. Sept autres vulnérabilités connues, dont une critique, disparaissent avec elle, et l'arbre de dépendances passe de 98 à 25 paquets. **Aucune instance n'était exposée** : ces paquets ne sont jamais installés en production, où le rendu PDF passe par un service externe ; et l'application n'extrait aucune archive, ni pour les pièces déposées au dossier ni ailleurs.
+
 - **Des outils de dépannage étaient exposés publiquement sur toutes les instances** — un dossier `/tools/` accessible sans aucune authentification servait un `phpinfo` complet (chemins du serveur, version exacte de PHP, extensions chargées, fichier de configuration) et deux scripts qui, sur simple envoi de formulaire, écrivaient un fichier dans l'application et lançaient quatre commandes de maintenance. Personne n'avait à s'identifier, et répéter l'appel suffisait à dégrader une instance en production. Cinq pages de test traînaient à côté. Tout a été supprimé.
 
 - **La connexion par l'API mobile est protégée contre les essais de mot de passe en série** — elle n'héritait que du plafond général de soixante requêtes par minute, quand le formulaire web n'en accepte que cinq par minute et par identifiant. Une même porte, douze fois plus ouverte que l'autre, sur les mêmes comptes. Les deux appliquent désormais la même règle.
