@@ -85,6 +85,9 @@
     .lu-parcours-badges { display: flex; gap: .25rem; flex-wrap: wrap; }
     .lu-parcours-badge { display: inline-flex; align-items: center; gap: .2rem; padding: .12rem .4rem; border-radius: 5px; font-size: .7rem; font-weight: 600; background: #eef2ff; color: #4338ca; border: 1px solid #c7d2fe; }
     .lu-parcours-badge-sem { font-size: .6rem; color: #818cf8; }
+    /* Portee d'un element : commun a toutes les maquettes, ou reserve a un parcours */
+    .lu-portee-badge { display: inline-flex; align-items: center; gap: .25rem; margin-left: .45rem; padding: .1rem .4rem; border-radius: 5px; font-size: .64rem; font-weight: 600; letter-spacing: .02em; background: #f1f5f9; color: #64748b; border: 1px solid #e2e8f0; vertical-align: middle; }
+    .lu-portee-badge--reserve { background: #eef2ff; color: #4338ca; border-color: #c7d2fe; }
     .lu-empty { text-align: center; padding: 4rem 2rem; }
     .lu-empty-icon { width: 76px; height: 76px; border-radius: 20px; background: #f1f5f9; display: inline-flex; align-items: center; justify-content: center; font-size: 2rem; color: #cbd5e1; margin-bottom: 1.15rem; }
     .lu-empty-title { font-size: 1.1rem; font-weight: 700; color: #334155; margin-bottom: .4rem; }
@@ -319,11 +322,18 @@
                             </td>
                         </tr>
                         {{-- ECUE sub-rows --}}
-                        <template x-for="ecue in (ue.ecues || [])" :key="ecue.id">
+                        <template x-for="ecue in (ue.ecues || [])" :key="ecue.id + '-' + (ecue.portee || 0)">
                             <tr class="lu-sub-row" x-show="openRow === ue.id" x-cloak>
                                 <td></td>
                                 <td><span class="lu-ecue-code" x-text="ecue.code || '—'"></span></td>
-                                <td><span class="lu-ecue-indent" x-text="ecue.name"></span></td>
+                                <td>
+                                    <span class="lu-ecue-indent" x-text="ecue.name"></span>
+                                    <span class="lu-portee-badge" :class="ecue.portee ? 'lu-portee-badge--reserve' : ''"
+                                          :title="ecue.portee ? ('Réservé à la maquette ' + (ecue.portee_label || ecue.portee_code)) : 'Commun à tous les parcours de l\'unité'">
+                                        <i class="fas" :class="ecue.portee ? 'fa-lock' : 'fa-share-alt'" style="font-size:.58rem;"></i>
+                                        <span x-text="ecue.portee ? (ecue.portee_code || ecue.portee_label) : 'Commun'"></span>
+                                    </span>
+                                </td>
                                 <td><span class="lu-ecue-coeff" x-text="'Coeff. ' + (ecue.coefficient ?? '—')"></span></td>
                                 <td></td>
                                 <td style="text-align:center;"><span class="lu-credit-pill" style="background:#f1f5f9; color:#334155;" x-text="ecue.credit ?? '—'"></span></td>
@@ -502,6 +512,15 @@
                         <div id="ecue_credit_warning" style="display:none; margin-top:.35rem; font-size:.74rem; color:#dc2626; font-weight:600;">
                             <i class="fas fa-exclamation-triangle me-1"></i><span id="ecue_credit_warning_text"></span>
                         </div>
+                    </div>
+
+                    {{-- Maquette visee : la composition commune, ou celle d'un parcours --}}
+                    <div id="ecue_portee_block" style="margin-bottom:1rem; padding:.85rem 1rem; border-radius:12px; border:1px solid #e8ecf1; background:#f8fafc;">
+                        <label for="ecue_parcours_id" style="font-size:.82rem; font-weight:600; color:#334155; margin-bottom:.35rem; display:block;"><i class="fas fa-route" style="font-size:.7rem; color:#94a3b8; margin-right:.25rem;"></i>Maquette</label>
+                        <select id="ecue_parcours_id" name="parcours_id" class="lu-filter-control" style="background:#fff;" onchange="onEcuePorteeChange()">
+                            <option value="">Commune à tous les parcours de l'UE</option>
+                        </select>
+                        <div id="ecue_portee_hint" style="margin-top:.45rem; font-size:.74rem; color:#64748b; line-height:1.45;"></div>
                     </div>
 
                     {{-- Tabs: Créer / Lier existant --}}
@@ -735,14 +754,23 @@ function ueManager() {
         },
 
         // ── ECUE modals (delegate to full standalone functions) ──
+        // Credits deja pris dans l'unite : un element une seule fois, sa ligne
+        // reservee primant sur la commune (meme regle que le plafond serveur).
+        creditsUtilises(ue) {
+            const parElement = {};
+            (ue.ecues || []).forEach(e => {
+                if (!(e.id in parElement) || e.portee) parElement[e.id] = parseInt(e.credit) || 0;
+            });
+            return Object.values(parElement).reduce((s, c) => s + c, 0);
+        },
+
         openEcueModal(ue) {
-            // Calculate credits used by existing ECUEs
-            const creditsUsed = (ue.ecues || []).reduce((s, e) => s + (parseInt(e.credit) || 0), 0);
-            openEcueCreateModal(ue.id, ue.name, ue.credit || 0, creditsUsed);
+            // La maquette proposee par defaut est celle sur laquelle la liste est
+            // filtree : c'est ce que l'utilisateur regarde, donc ce qu'il edite.
+            openEcueCreateModal(ue.id, ue.name, ue.credit || 0, this.creditsUtilises(ue), ue.parcours || [], this.filters.parcours_id || '');
         },
 
         openEcueEditModal(ue, ecue) {
-            const creditsUsed = (ue.ecues || []).reduce((s, e) => s + (parseInt(e.credit) || 0), 0);
             openEcueEditModalFn(ue.id, {
                 id: ecue.id,
                 name: ecue.name,
@@ -750,22 +778,28 @@ function ueManager() {
                 coefficient_ecue: ecue.coefficient,
                 credit_ecue: ecue.credit,
                 ordre_bulletin: ecue.ordre || 0,
-            }, ue.credit || 0, creditsUsed, ue.name);
+                portee: ecue.portee || 0,
+            }, ue.credit || 0, this.creditsUtilises(ue), ue.name, ue.parcours || []);
         },
 
         // ── Delete ECUE ──
         async deleteEcue(ue, ecue) {
-            if (!confirm(`Détacher l'ECUE "${ecue.name}" ?`)) return;
+            const maquette = ecue.portee
+                ? `de la maquette ${ecue.portee_label || ecue.portee_code}`
+                : 'de la composition commune (tous les parcours de l\'UE)';
+            if (!confirm(`Retirer « ${ecue.name} » ${maquette} ?`)) return;
             try {
                 const resp = await fetch(`${BASE}/${ue.id}/ecue/${ecue.id}`, {
                     method: 'DELETE',
-                    headers: { 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                    headers: { 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'Content-Type': 'application/json' },
+                    // La ligne visee : celle de CETTE maquette, et d'elle seule.
+                    body: JSON.stringify({ parcours_id: ecue.portee || null }),
                 });
                 const data = await resp.json();
-                if (data.success) {
-                    ue.ecues = (ue.ecues || []).filter(e => e.id !== ecue.id);
-                    ue.matieres_count = (ue.matieres_count || 1) - 1;
-                    this.showToast('ECUE détaché');
+                if (resp.ok && data.success) {
+                    ue.ecues = (ue.ecues || []).filter(e => !(e.id === ecue.id && (e.portee || 0) === (ecue.portee || 0)));
+                    ue.matieres_count = new Set(ue.ecues.map(e => e.id)).size;
+                    this.showToast('ECUE retiré de la maquette');
                 } else {
                     this.showToast(data.message || 'Erreur', 'error');
                 }
@@ -978,7 +1012,8 @@ async function loadMatieresDisponibles() {
     const sel = document.getElementById('ecue_matiere_select');
     loading.style.display = 'block';
     try {
-        const resp = await fetch(`${BASE}/${ecueCurrentUeId}/matieres-disponibles`, { headers: { 'Accept': 'application/json' } });
+        const portee = document.getElementById('ecue_parcours_id').value;
+        const resp = await fetch(`${BASE}/${ecueCurrentUeId}/matieres-disponibles` + (portee ? `?parcours_id=${encodeURIComponent(portee)}` : ''), { headers: { 'Accept': 'application/json' } });
         const matieres = await resp.json();
         if (select2Initialized && $.fn.select2) { $(sel).select2('destroy'); select2Initialized = false; }
         sel.innerHTML = '<option value="">— Sélectionner une matière —</option>';
@@ -1030,11 +1065,46 @@ function onMatiereCleared() {
     document.getElementById('ecue_matiere_preview').style.display = 'none';
 }
 
-function openEcueCreateModal(ueId, ueName, ueCredit, creditsUsed) {
+// Le champ « Maquette » du modal : la composition commune, ou l'un des parcours
+// rattaches a l'unite. Un parcours qui n'utilise pas l'unite n'est pas propose :
+// le serveur le refuserait, autant ne pas l'offrir.
+function remplirEcuePortee(parcoursList, selected) {
+    const sel = document.getElementById('ecue_parcours_id');
+    sel.innerHTML = '<option value="">Commune à tous les parcours de l\'UE</option>';
+    (parcoursList || []).forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = String(p.id);
+        opt.textContent = 'Réservée à ' + (p.name || p.code) + (p.code && p.name ? ' (' + p.code + ')' : '');
+        sel.appendChild(opt);
+    });
+    const voulu = String(selected || '');
+    sel.value = Array.from(sel.options).some(o => o.value === voulu) ? voulu : '';
+    sel.disabled = (parcoursList || []).length === 0;
+    onEcuePorteeChange();
+}
+
+function onEcuePorteeChange() {
+    const sel = document.getElementById('ecue_parcours_id');
+    const hint = document.getElementById('ecue_portee_hint');
+    if (sel.disabled) {
+        hint.textContent = 'Cette unité n\'est rattachée à aucun parcours : l\'élément vaut pour sa composition commune. Rattachez-la depuis « Lier à des parcours » pour réserver des éléments.';
+    } else if (!sel.value) {
+        hint.textContent = 'Valable pour tous les parcours qui utilisent cette unité. Un parcours peut ensuite le surcharger avec ses propres valeurs.';
+    } else {
+        const nom = sel.options[sel.selectedIndex].textContent.replace(/^Réservée à /, '');
+        hint.textContent = 'Visible et compté uniquement dans la maquette ' + nom + '. Les autres parcours de l\'unité ne le voient pas.';
+    }
+    // La liste des matieres proposees depend de la maquette visee.
+    lastLoadedUeId = null;
+    if (ecueActiveTab === 'link') loadMatieresDisponibles();
+}
+
+function openEcueCreateModal(ueId, ueName, ueCredit, creditsUsed, parcoursList, porteeParDefaut) {
     ecueUeCredit = ueCredit; ecueCreditsUsed = creditsUsed; ecueOwnCredit = 0; ecueCurrentUeId = ueId; ecueIsEditMode = false;
     document.getElementById('ecue_form').action = `${BASE}/${ueId}/ecue`;
     document.getElementById('ecue_form').reset();
     document.getElementById('ecue_method').value = 'POST';
+    remplirEcuePortee(parcoursList, porteeParDefaut);
     document.getElementById('ecue_matiere_id').value = '';
     document.getElementById('ecue_ue_label').textContent = ueName;
     document.getElementById('ecue_modal_title').textContent = 'Ajouter un ECUE';
@@ -1046,12 +1116,15 @@ function openEcueCreateModal(ueId, ueName, ueCredit, creditsUsed) {
     new bootstrap.Modal(document.getElementById('modalECUE')).show();
 }
 
-function openEcueEditModalFn(ueId, ecue, ueCredit, creditsUsed, ueName) {
+function openEcueEditModalFn(ueId, ecue, ueCredit, creditsUsed, ueName, parcoursList) {
     ecueUeCredit = ueCredit; ecueCreditsUsed = creditsUsed;
     ecueOwnCredit = ecue.credit_ecue === '—' ? 0 : (parseInt(ecue.credit_ecue) || 0);
     ecueCurrentUeId = ueId; ecueIsEditMode = true;
     document.getElementById('ecue_form').action = `${BASE}/${ueId}/ecue/${ecue.id}`;
     document.getElementById('ecue_method').value = 'PUT';
+    // On modifie la ligne que l'on regarde : sa propre maquette. Choisir un
+    // parcours sur un element commun cree une surcharge propre a ce parcours.
+    remplirEcuePortee(parcoursList, ecue.portee || '');
     document.getElementById('ecue_matiere_id').value = '';
     document.getElementById('ecue_modal_title').textContent = 'Modifier l\'ECUE';
     document.getElementById('ecue_ue_label').textContent = ueName || '—';

@@ -65,6 +65,7 @@ class LMDImportService
 
             $stats = ['ues_attached' => 0, 'ues_updated' => 0, 'ecues_attached' => 0, 'ecues_updated' => 0, 'planifs_attached' => 0, 'planifs_updated' => 0];
             $linksByParcours = [];
+            $creditsPropres = [];
 
             foreach ($spec['ues'] ?? [] as $ueSpec) {
                 $niveauYear = (int) $ueSpec['niveau_year'];
@@ -75,6 +76,12 @@ class LMDImportService
 
                 [$ue, $ueCreated] = $this->upsertUE($ueSpec, $parcours, $filiere, $niveau, $userId);
                 $stats[$ueCreated ? 'ues_attached' : 'ues_updated']++;
+                // Une unite partagee garde le credit de sa fiche. Si cette maquette
+                // lui en donne un autre, il est a elle seule : sur le pivot.
+                $creditMaquette = (int) ($ueSpec['credit'] ?? 0);
+                if ((int) $ue->credit !== $creditMaquette) {
+                    $creditsPropres[(int) $ue->id] = $creditMaquette;
+                }
 
                 $linksByParcours[] = [
                     'id' => $ue->id,
@@ -96,6 +103,15 @@ class LMDImportService
             }
 
             $linkStats = $this->parcoursUeSync->sync($parcours, $linksByParcours, detachMissing: false);
+            // Le lien est pose : on y grave le credit propre a cette maquette. La
+            // synchronisation ne touche jamais `credit` (c est une decision de
+            // l ecole), c est donc a l import de le faire, pour ce parcours seul.
+            foreach ($creditsPropres as $ueId => $credit) {
+                DB::table('esbtp_lmd_parcours_ue')
+                    ->where('parcours_id', $parcours->id)
+                    ->where('unite_enseignement_id', $ueId)
+                    ->update(['credit' => $credit, 'updated_at' => now()]);
+            }
             $stats['ues_linked_to_parcours'] = $linkStats['attached'] + $linkStats['updated'] + $linkStats['unchanged'];
 
             // Une seule levee, apres avoir tout parcouru : l utilisateur voit TOUS
@@ -190,29 +206,20 @@ class LMDImportService
         $existing = $code ? ESBTPUniteEnseignement::where('code', $code)->first() : null;
         $created = $existing === null;
 
-        // Refuser plutot que d ecraser.
+        // Une unite deja tenue par un AUTRE parcours est partagee, pas ecrasee.
         //
         // Le code d une UE est unique dans toute la base : on la retrouvait donc par
         // son code, puis on reecrivait parcours_id, semestre, credit et niveau_id.
         // Importer la maquette d un second parcours REECRIVAIT celle du premier, en
-        // silence — le parcours importe en premier heritait du semestre et du credit
-        // de l autre.
-        //
-        // Le partage reel (code unique, UE partagee) demande des colonnes qui
-        // n existent pas encore. En attendant, on refuse. Voir issue #942.
+        // silence. L import a d abord refuse ; il sait maintenant partager : la
+        // fiche de l unite reste celle du premier parcours, le second n y touche
+        // pas. Ce qui lui est propre vit dans les pivots — son semestre et son
+        // credit dans `esbtp_lmd_parcours_ue`, ses elements dans `esbtp_ue_matiere`
+        // avec son `parcours_id` — et c est l appelant qui les y ecrit.
         if ($existing !== null
             && $existing->parcours_id !== null
             && (int) $existing->parcours_id !== (int) $parcours->id) {
-            $this->conflits[] = [
-                'type' => 'UE',
-                'code' => (string) $code,
-                'detail' => sprintf(
-                    "L'UE « %s » appartient déjà au parcours « %s ». L'importer pour « %s » écraserait sa maquette.",
-                    $existing->name,
-                    optional($existing->parcours)->name ?? ('#'.$existing->parcours_id),
-                    $parcours->name
-                ),
-            ];
+            return [$existing, false];
         }
 
         $payload = [

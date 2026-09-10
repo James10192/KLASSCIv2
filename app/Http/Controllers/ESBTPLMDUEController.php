@@ -108,14 +108,27 @@ class ESBTPLMDUEController extends Controller
                             'name' => $pivots->first()->name,
                             'semestres' => $pivots->pluck('pivot.semestre')->sort()->values(),
                         ])->values(),
-                        'ecues' => $ecues->map(fn($e) => [
-                            'id' => $e->id,
-                            'code' => $e->code,
-                            'name' => $e->name,
-                            'coefficient' => $e->pivot->coefficient_ecue ?? $e->coefficient_ecue ?? null,
-                            'credit' => $e->pivot->credit_ecue ?? $e->credit_ecue ?? null,
-                            'ordre' => $e->pivot->ordre_bulletin ?? $e->ordre_bulletin ?? 0,
-                        ]),
+                        // La maquette que porte chaque ligne : 0 pour la composition
+                        // commune, l'identifiant du parcours pour une reservation.
+                        // Sans elle, l'ecran ne peut ni dire a qui appartient un
+                        // element, ni viser la bonne ligne pour le modifier ou le
+                        // retirer.
+                        'ecues' => $ecues->map(function ($e) use ($ue) {
+                            $portee = (int) ($e->pivot->parcours_id ?? 0);
+                            $parcours = $portee > 0 ? $ue->parcoursMultiple->firstWhere('id', $portee) : null;
+
+                            return [
+                                'id' => $e->id,
+                                'code' => $e->code,
+                                'name' => $e->name,
+                                'coefficient' => $e->pivot->coefficient_ecue ?? $e->coefficient_ecue ?? null,
+                                'credit' => $e->pivot->credit_ecue ?? $e->credit_ecue ?? null,
+                                'ordre' => $e->pivot->ordre_bulletin ?? $e->ordre_bulletin ?? 0,
+                                'portee' => $portee,
+                                'portee_code' => $parcours?->code,
+                                'portee_label' => $parcours ? ($parcours->name ?? $parcours->code) : null,
+                            ];
+                        }),
                     ];
                 }),
                 'pagination' => [
@@ -745,7 +758,17 @@ class ESBTPLMDUEController extends Controller
         // Retirer de CETTE maquette, et d'elle seule. `detach($id)` supprimait
         // toutes les lignes de cet élément, toutes maquettes confondues : retirer
         // un élément de Bâtiment le retirait aussi de Travaux Publics.
-        $this->composition->retirer($ue, [(int) $ecue->id], $portee);
+        $retires = $this->composition->retirer($ue, [(int) $ecue->id], $portee);
+
+        // Rien retiré alors que l'élément figure dans une AUTRE maquette de
+        // l'unité : on répondait « ECUE détaché » à vide, et l'élément restait.
+        // Le refus nomme la maquette qui le tient, pour qu'on sache où aller.
+        if ($retires === 0 && ($refus = $this->refusRetraitHorsMaquette($ue, $ecue, $portee))) {
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => $refus], 422);
+            }
+            return redirect()->route('esbtp.lmd.ue.index')->with('error', $refus);
+        }
 
         // La clé étrangère est globale : on ne la libère que si l'élément ne
         // figure plus dans AUCUNE maquette de cette unité.
@@ -756,6 +779,46 @@ class ESBTPLMDUEController extends Controller
         }
         return redirect()->route('esbtp.lmd.ue.index')
             ->with('success', 'ECUE détaché de l\'UE avec succès.');
+    }
+
+    /**
+     * Pourquoi le retrait n'a rien retiré, quand l'élément tient à l'unité par
+     * une autre maquette que celle visée. Null si l'élément n'est dans aucune
+     * ligne de pivot : c'est alors un rattachement hérité, par clé étrangère,
+     * que l'appelant libère lui-même.
+     */
+    private function refusRetraitHorsMaquette(ESBTPUniteEnseignement $ue, ESBTPMatiere $ecue, int $portee): ?string
+    {
+        $portees = DB::table('esbtp_ue_matiere')
+            ->where('unite_enseignement_id', $ue->id)
+            ->where('matiere_id', $ecue->id)
+            ->pluck('parcours_id')
+            ->map(fn ($id) => (int) $id);
+
+        if ($portees->isEmpty()) {
+            return null;
+        }
+
+        $nom = $ecue->name ?? $ecue->code;
+
+        if ($portee === CompositionUe::COMMUN) {
+            $noms = ESBTPLMDParcours::whereIn('id', $portees->filter()->all())
+                ->pluck('name')
+                ->implode(', ');
+
+            return sprintf(
+                "« %s » n'est pas dans la composition commune : il est réservé à %s. "
+                . 'Filtrez la liste sur ce parcours pour le retirer de sa maquette.',
+                $nom,
+                $noms !== '' ? $noms : 'une autre maquette'
+            );
+        }
+
+        return sprintf(
+            "« %s » est commun à tous les parcours de l'unité : il ne se retire pas d'une seule maquette. "
+            . 'Retirez-le sans filtre de parcours, ou réservez à ce parcours les éléments qui lui sont propres.',
+            $nom
+        );
     }
 
     /**
