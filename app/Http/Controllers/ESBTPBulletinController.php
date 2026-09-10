@@ -1403,6 +1403,18 @@ class ESBTPBulletinController extends Controller
         // limite de 30 s pour tenir sous charge.
         $preflight['batch_size'] = 6;
 
+        // Ce qui manque encore, matiere par matiere, au moment ou l'on decide
+        // de generer. Le pre-controle dit deja combien d'etudiants sont
+        // generables ; il ne disait pas ce qu'il faudrait saisir pour que les
+        // autres le deviennent.
+        $preflight['couverture'] = app(\App\Domain\AcademicPilotage\Services\AcademicNoteCoverageService::class)
+            ->summarize(
+                $request->integer('annee_universitaire_id'),
+                (string) $request->input('periode'),
+                null,
+                (int) $classe->id
+            );
+
         return response()->json([
             'ok' => $preflight['ok'],
             'preflight' => $preflight,

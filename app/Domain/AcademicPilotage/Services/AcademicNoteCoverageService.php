@@ -13,7 +13,12 @@ use Illuminate\Support\Facades\Schema;
 
 final class AcademicNoteCoverageService
 {
-    public function __construct(private readonly AcademicPeriodNormalizer $periods) {}
+    public function __construct(
+        private readonly AcademicPeriodNormalizer $periods,
+        private readonly ExpectedSubjectsResolver $expectedSubjects,
+        private readonly \App\Domain\BtsTroncCommun\BtsClassCohortCounter $cohorte,
+        private readonly CoverageTeacherContactResolver $contacts,
+    ) {}
 
     public function summarize(
         ?int $yearId,
@@ -50,37 +55,61 @@ final class AcademicNoteCoverageService
             return $this->empty('La classe ne correspond pas au système sélectionné.');
         }
 
-        $subjects = $this->subjectsForClass($classe);
-        $students = $this->activeStudents($yearId, $classId);
+        // Une periode que le normaliseur ne reconnait pas levait une exception
+        // au premier acces aux evaluations, donc une erreur serveur sur le
+        // tableau de bord entier. On la refuse ici, proprement, avant toute
+        // requete.
+        try {
+            $this->periods->normalize($period);
+        } catch (\InvalidArgumentException) {
+            return $this->empty('Période académique non reconnue.');
+        }
+
+        $attendu = $this->expectedSubjects->forClasse($classe, $period);
+        $subjects = $attendu['subjects'];
+        $students = $this->activeStudents($yearId, $classId, $period, $classe);
         $evaluations = $this->evaluations($yearId, $period, $classId);
         $entries = $this->resolvedEntries($evaluations->pluck('id'));
 
-        return $this->buildPayload($classe, $subjects, $students, $evaluations, $entries);
+        $enseignants = $this->contacts->pourLaClasse($classe, $yearId, $attendu['semestre'], $subjects);
+
+        return $this->buildPayload($classe, $subjects, $students, $evaluations, $entries, $attendu, $enseignants);
     }
 
-    private function subjectsForClass(ESBTPClasse $classe): Collection
+    /**
+     * Les etudiants de la classe pour cette periode.
+     *
+     * Le filtre par `classe_id` brut se trompait sur le tronc commun : un
+     * etudiant y est inscrit au semestre 1 puis passe en specialite au
+     * semestre 2, et son inscription ne pointe pas forcement sur la classe
+     * qu'on regarde. Des etudiants reellement concernes n'apparaissaient donc
+     * jamais comme manquants — la couverture annoncait « tout est note » sur
+     * une classe a moitie vide.
+     *
+     * `BtsClassCohortCounter` est la seule definition correcte, celle qui sert
+     * deja a generer les bulletins et a calculer les rangs. Le LMD n'a pas de
+     * phases : il garde la lecture directe.
+     */
+    private function activeStudents(int $yearId, int $classId, string $period, ESBTPClasse $classe): Collection
     {
-        if (! $classe->filiere_id || ! $classe->niveau_etude_id) {
-            return collect();
-        }
-
-        return ESBTPMatiere::query()
-            ->where('is_active', true)
-            ->whereHas('liaisonsFilieresNiveaux', function ($query) use ($classe): void {
-                $query->where('filiere_id', $classe->filiere_id)
-                    ->where('niveau_etude_id', $classe->niveau_etude_id);
-            })
-            ->orderBy('name')
-            ->get(['id', 'name', 'code']);
-    }
-
-    private function activeStudents(int $yearId, int $classId): Collection
-    {
-        return ESBTPInscription::query()
-            ->where('classe_id', $classId)
+        $requete = ESBTPInscription::query()
             ->where('annee_universitaire_id', $yearId)
             ->where('status', 'active')
-            ->where('workflow_step', 'etudiant_cree')
+            ->where('workflow_step', 'etudiant_cree');
+
+        if (strtoupper((string) $classe->systeme_academique) !== 'LMD') {
+            $etudiantIds = $this->cohorte->etudiantIdsPourPeriode($classId, $yearId, $period);
+
+            if ($etudiantIds === []) {
+                return collect();
+            }
+
+            $requete->whereIn('etudiant_id', $etudiantIds);
+        } else {
+            $requete->where('classe_id', $classId);
+        }
+
+        return $requete
             ->with('etudiant:id,nom,prenoms,matricule')
             ->get(['id', 'etudiant_id', 'classe_id', 'annee_universitaire_id', 'status', 'workflow_step'])
             ->filter(fn (ESBTPInscription $inscription) => $inscription->etudiant !== null)
@@ -147,6 +176,8 @@ final class AcademicNoteCoverageService
         Collection $students,
         Collection $evaluations,
         Collection $entries,
+        array $attendu,
+        array $enseignants = [],
     ): array {
         $studentIndex = $this->studentIndex($students);
         $evaluationsBySubject = $evaluations->groupBy(fn (ESBTPEvaluation $evaluation) => (int) $evaluation->matiere_id);
@@ -155,12 +186,14 @@ final class AcademicNoteCoverageService
             $evaluationsBySubject->get((int) $subject->id, collect()),
             $studentIndex,
             $entries,
+            false,
+            $enseignants,
         ));
 
         $orphanRows = $evaluations
             ->filter(fn (ESBTPEvaluation $evaluation) => ! $subjects->contains('id', (int) $evaluation->matiere_id))
             ->groupBy(fn (ESBTPEvaluation $evaluation) => (int) $evaluation->matiere_id)
-            ->map(fn (Collection $items): array => $this->subjectRow($items->first()->matiere ?? null, $items, $studentIndex, $entries, true))
+            ->map(fn (Collection $items): array => $this->subjectRow($items->first()->matiere ?? null, $items, $studentIndex, $entries, true, $enseignants))
             ->values();
 
         $subjectRows = $subjectRows->concat($orphanRows)->values();
@@ -176,16 +209,34 @@ final class AcademicNoteCoverageService
                 'filiere_id' => $classe->filiere_id,
                 'niveau_etude_id' => $classe->niveau_etude_id,
             ],
+            'maquette' => [
+                'renseignee' => (bool) $attendu['maquette_renseignee'],
+                'etat' => (string) $attendu['maquette_etat'],
+                'semestre' => $attendu['semestre'],
+                'systeme' => (string) $attendu['systeme'],
+            ],
             'summary' => [
+                // Sans cet etat, une classe sans etudiant et une classe
+                // entierement notee rendaient le meme « 0 resultat manquant » —
+                // et l'ecran annoncait « toutes les notes sont recues » sur une
+                // cohorte vide.
+                'state' => $this->etatGlobal($subjects, $studentIndex, $catalogSubjectRows, $attendu),
                 'subjects_total' => $subjects->count(),
                 'subjects_evaluated' => $catalogSubjectRows->where('evaluations_count', '>', 0)->where('treated_count', '>', 0)->count(),
                 'orphan_subjects' => $subjectRows->where('is_orphan', true)->count(),
                 'evaluations_total' => $evaluations->count(),
                 'students_expected' => $studentIndex->count(),
-                'expected_results' => (int) $subjectRows->sum('expected_count'),
-                'treated_results' => (int) $subjectRows->sum('treated_count'),
-                'numeric_notes' => (int) $subjectRows->sum('numeric_count'),
-                'missing_results' => (int) $subjectRows->sum('missing_count'),
+                // Le prevu ne compte QUE le referentiel. Y ajouter les matieres
+                // hors referentiel melangeait deux perimetres : le ratio
+                // « traite / prevu » pouvait depasser 100 %, ou faire croire
+                // qu'il manque des notes sur des matieres qu'on n'attendait pas.
+                'expected_results' => (int) $catalogSubjectRows->sum('expected_count'),
+                'treated_results' => (int) $catalogSubjectRows->sum('treated_count'),
+                'numeric_notes' => (int) $catalogSubjectRows->sum('numeric_count'),
+                'missing_results' => (int) $catalogSubjectRows->sum('missing_count'),
+                // Ce qui se passe hors referentiel reste visible, mais a part.
+                'orphan_expected_results' => (int) $subjectRows->where('is_orphan', true)->sum('expected_count'),
+                'orphan_treated_results' => (int) $subjectRows->where('is_orphan', true)->sum('treated_count'),
                 'incomplete_students' => $incompleteStudents->count(),
                 'actors_count' => $subjectRows->flatMap(fn (array $row) => $row['actor_ids'])->unique()->count(),
             ],
@@ -194,7 +245,39 @@ final class AcademicNoteCoverageService
         ];
     }
 
-    private function subjectRow(?ESBTPMatiere $subject, Collection $evaluations, Collection $students, Collection $entries, bool $orphan = false): array
+    /**
+     * L'etat global, celui que l'ecran doit annoncer en une phrase.
+     *
+     * @param  Collection<int, ESBTPMatiere>  $subjects
+     * @param  array<string, mixed>  $attendu
+     */
+    private function etatGlobal(Collection $subjects, Collection $studentIndex, Collection $catalogRows, array $attendu): string
+    {
+        if ($subjects->isEmpty()) {
+            return $attendu['maquette_renseignee'] ? 'aucune_matiere_ce_semestre' : 'referentiel_absent';
+        }
+
+        if ($studentIndex->isEmpty()) {
+            return 'cohorte_vide';
+        }
+
+        if ((int) $catalogRows->sum('missing_count') > 0) {
+            return 'incomplete';
+        }
+
+        // Aucune matiere evaluee du tout : ce n'est pas « complet », c'est
+        // « rien n'a commence ».
+        if ($catalogRows->where('evaluations_count', '>', 0)->isEmpty()) {
+            return 'aucune_evaluation';
+        }
+
+        return 'complete';
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $enseignants  matiere_id => contact
+     */
+    private function subjectRow(?ESBTPMatiere $subject, Collection $evaluations, Collection $students, Collection $entries, bool $orphan = false, array $enseignants = []): array
     {
         $evaluationRows = $evaluations->map(fn (ESBTPEvaluation $evaluation): array => $this->evaluationRow($evaluation, $students, $entries))->values();
         $missingByStudent = [];
@@ -206,12 +289,29 @@ final class AcademicNoteCoverageService
         }
 
         $actors = $evaluationRows->flatMap(fn (array $row) => $row['actors'])->unique('id')->values();
+        $manquants = (int) $evaluationRows->sum('missing_count');
+
+        // Quatre situations que l'ecran doit distinguer, parce qu'elles
+        // appellent des gestes differents : relancer un enseignant qui n'a rien
+        // rendu, finir une saisie commencee, ne rien faire, ou verifier une
+        // matiere qui ne devrait pas etre la.
+        $statut = match (true) {
+            $orphan => 'hors_maquette',
+            $evaluationRows->isEmpty() => 'non_evaluee',
+            $manquants > 0 => 'partielle',
+            default => 'complete',
+        };
 
         return [
             'id' => $subject?->id,
             'name' => $subject?->name ?? 'Matière hors référentiel',
             'code' => $subject?->code,
             'is_orphan' => $orphan,
+            'statut' => $statut,
+            // Qui relancer. Vient du planning general, et ne sert QU'A CA :
+            // ni les matieres attendues, ni le semestre, ni aucun calcul n'en
+            // dependent — le planning n'entre pas dans le denominateur.
+            'enseignant' => $subject ? ($enseignants[(int) $subject->id] ?? null) : null,
             'evaluations_count' => $evaluationRows->count(),
             'expected_count' => (int) $evaluationRows->sum('expected_count'),
             'treated_count' => (int) $evaluationRows->sum('treated_count'),
@@ -365,7 +465,14 @@ final class AcademicNoteCoverageService
             'ok' => false,
             'message' => $message,
             'classe' => null,
+            'maquette' => [
+                'renseignee' => false,
+                'etat' => \App\Domain\BtsTroncCommun\BtsMaquette::ETAT_AUCUN,
+                'semestre' => null,
+                'systeme' => null,
+            ],
             'summary' => [
+                'state' => 'indisponible',
                 'subjects_total' => 0,
                 'subjects_evaluated' => 0,
                 'orphan_subjects' => 0,
@@ -375,6 +482,8 @@ final class AcademicNoteCoverageService
                 'treated_results' => 0,
                 'numeric_notes' => 0,
                 'missing_results' => 0,
+                'orphan_expected_results' => 0,
+                'orphan_treated_results' => 0,
                 'incomplete_students' => 0,
                 'actors_count' => 0,
             ],

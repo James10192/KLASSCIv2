@@ -14,6 +14,7 @@ use App\Models\ESBTPNote;
 use App\Models\ESBTPPlanificationAcademique;
 use App\Models\ESBTPSeanceCours;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
@@ -136,6 +137,8 @@ final class AcademicMetricSnapshotInvalidationService
             return 0;
         }
 
+        $this->oublierLaCouverture($classId, $academicYearId, $period);
+
         return AcademicMetricSnapshot::query()
             ->where('classe_id', $classId)
             ->where('annee_universitaire_id', $academicYearId)
@@ -145,6 +148,28 @@ final class AcademicMetricSnapshotInvalidationService
                     ->orWhere('etudiant_id', $studentId),
             ))
             ->update($this->dirtyPayload());
+    }
+
+    /**
+     * Oublie la couverture des notes mise en cache pour cette classe.
+     *
+     * Appelee depuis `invalidate()`, elle-meme jouee dans `DB::afterCommit` :
+     * vider le cache AVANT la validation en base laisserait une lecture
+     * concurrente le remplir aussitot avec l'etat d'avant, et la couverture
+     * resterait perimee jusqu'a expiration sans que rien ne le signale.
+     *
+     * La periode annuelle depend des deux semestres : une note du semestre 1
+     * change aussi ce que l'annuel raconte, donc les trois sont oubliees.
+     */
+    private function oublierLaCouverture(int $classId, int $academicYearId, string $period): void
+    {
+        $periodes = [$period, 'annuel'];
+
+        foreach (array_unique($periodes) as $periode) {
+            Cache::forget(
+                \App\Http\Controllers\AcademicPilotage\AcademicCoverageController::cle($classId, $academicYearId, $periode)
+            );
+        }
     }
 
     private function afterCommit(array $contexts, string $source, ?int $modelId = null): void
