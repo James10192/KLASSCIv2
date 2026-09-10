@@ -1290,10 +1290,9 @@ tr[data-inscription-id] > td { transition: background .15s ease; }
         </div>
     </div>
 </div>
+@endunless
 
 @endsection
-
-@endunless
 
 @push('scripts')
 <script>

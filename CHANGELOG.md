@@ -20,6 +20,8 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ### Corrections
 
+- **La liste des inscriptions s'affichait hors de la mise en page pour les agents d'inscription** (`/esbtp/inscriptions`) — sous la barre latérale, sans en-tête ni menu, alors que la même page était correcte pour un administrateur. Le modal « Valider le paiement » n'est pas rendu quand les montants sont masqués, et la fin de la section de contenu de la vue était enfermée dans ce même bloc : pour ce profil, Blade sortait le contenu avant le document. La fermeture est désormais hors du bloc conditionnel, et un test rend la page pour les deux profils.
+
 - **Retirer un élément qui n'est pas dans la maquette visée répondait « ECUE détaché » sans rien détacher** (`/esbtp/lmd/ue`) — le retrait ne visait que la composition commune ; sur un élément réservé à un parcours, rien n'était supprimé et l'écran l'annonçait pourtant retiré. Le retrait vise désormais la maquette de la ligne cliquée, et quand l'élément tient à l'unité par une autre maquette, le refus dit laquelle et comment y aller.
 
 ### Ajouts
