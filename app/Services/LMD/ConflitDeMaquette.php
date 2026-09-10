@@ -17,10 +17,12 @@ use RuntimeException;
  * cle etrangere, les deux parcours voyaient le meme sac de matieres. Deux
  * maquettes fausses, sans un message.
  *
- * Le partage reel d'une UE entre parcours — decide en septembre 2026 : code unique
- * dans l'ecole, UE partagee — demande des colonnes qui n'existent pas encore
- * (`parcours_id` sur `esbtp_ue_matiere`, `credit` sur `esbtp_lmd_parcours_ue`).
- * En attendant, on refuse plutot que de detruire. Voir l'issue #942.
+ * Le partage reel d'une UE entre parcours — code unique dans l'ecole, UE
+ * partagee — est en place depuis septembre 2026 (`parcours_id` sur
+ * `esbtp_ue_matiere`, `credit` sur `esbtp_lmd_parcours_ue`) : importer une
+ * unite deja tenue par un autre parcours la partage, sans toucher a sa fiche.
+ * Ce refus ne vaut plus que pour ce que les pivots ne savent pas exprimer : un
+ * ECUE deja rattache a une AUTRE unite, que l'import reparenterait.
  */
 class ConflitDeMaquette extends RuntimeException
 {
