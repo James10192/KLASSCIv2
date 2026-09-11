@@ -59,6 +59,40 @@ class ESBTPInscriptionPaiementController extends Controller
     }
 
     /**
+     * Refuser un encaissement en disant pourquoi, quel que soit l'appelant.
+     *
+     * Les deux refus metier de validerAvecPaiement (frais non souscrit,
+     * montant superieur au reste du), repondaient par une redirection HTML.
+     * L'ecran de la liste des inscriptions, lui, soumet en AJAX et lit du
+     * JSON : la redirection faisait echouer la lecture, et le caissier voyait
+     * « Erreur lors de la soumission » a la place d'un message qui existait
+     * pourtant et disait exactement quoi corriger.
+     */
+    private function veutDuJson(Request $request): bool
+    {
+        return $request->ajax() || $request->wantsJson();
+    }
+
+    private function refuser(Request $request, string $champ, string $message)
+    {
+        if ($this->veutDuJson($request)) {
+            return response()->json(
+                [
+                    "success" => false,
+                    "message" => $message,
+                    "errors" => [$champ => [$message]],
+                ],
+                422,
+            );
+        }
+
+        return redirect()
+            ->back()
+            ->withErrors([$champ => $message])
+            ->withInput();
+    }
+
+    /**
      * Valider une inscription avec paiement associé.
      */
     public function validerAvecPaiement(
@@ -85,7 +119,7 @@ class ESBTPInscriptionPaiementController extends Controller
             $message =
                 'La validation de l\'inscription nécessite la validation du paiement.';
 
-            if ($request->ajax()) {
+            if ($this->veutDuJson($request)) {
                 return response()->json(
                     [
                         "success" => false,
@@ -107,13 +141,11 @@ class ESBTPInscriptionPaiementController extends Controller
             ->first();
 
         if (!$subscription) {
-            return redirect()
-                ->back()
-                ->withErrors([
-                    "fee_category_id" =>
-                        'L\'étudiant n\'est pas souscrit à cette catégorie de frais.',
-                ])
-                ->withInput();
+            return $this->refuser(
+                $request,
+                "fee_category_id",
+                'L\'étudiant n\'est pas souscrit à cette catégorie de frais.',
+            );
         }
 
         // Calculer le total déjà payé (validé + en_attente)
@@ -139,10 +171,7 @@ class ESBTPInscriptionPaiementController extends Controller
                 number_format($totalPaye, 0, ",", " "),
             );
 
-            return redirect()
-                ->back()
-                ->withErrors(["montant" => $errorMessage])
-                ->withInput();
+            return $this->refuser($request, "montant", $errorMessage);
         }
 
         try {
@@ -197,8 +226,10 @@ class ESBTPInscriptionPaiementController extends Controller
                 }
             }
 
-            // Si requête AJAX, retourner JSON pour refresh partiel
-            if ($request->ajax()) {
+            // Si le client attend du JSON, le lui donner — refus comme succes.
+            // Repondre en redirection a un appel AJAX faisait echouer la lecture
+            // cote ecran et transformait un message precis en « Erreur ».
+            if ($this->veutDuJson($request)) {
                 if (
                     $result["success"] &&
                     (!$autoValidateInscription ||
@@ -250,8 +281,8 @@ class ESBTPInscriptionPaiementController extends Controller
                     $e->getMessage(),
             );
 
-            // Si requête AJAX, retourner JSON d'erreur
-            if ($request->ajax()) {
+            // Si le client attend du JSON, le lui donner.
+            if ($this->veutDuJson($request)) {
                 return response()->json(
                     [
                         "success" => false,

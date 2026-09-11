@@ -1233,10 +1233,6 @@ tr[data-inscription-id] > td { transition: background .15s ease; }
                     </div>
                     <div class="row mb-3">
                         <div class="col-md-6">
-                            <label class="form-label fw-bold">Montant (FCFA) <span class="text-danger">*</span></label>
-                            <input type="number" name="montant" class="form-control" id="creer_montant" required min="0" step="0.01" placeholder="Ex: 50000">
-                        </div>
-                        <div class="col-md-6">
                             <label class="form-label fw-bold">Catégorie de frais <span class="text-danger">*</span></label>
                             <select name="fee_category_id" class="form-select" id="creer_categorie" required>
                                 <option value="">Sélectionnez une catégorie</option>
@@ -1248,7 +1244,14 @@ tr[data-inscription-id] > td { transition: background .15s ease; }
                                 @endforeach
                             </select>
                         </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Montant (FCFA) <span class="text-danger">*</span></label>
+                            {{-- Desactive tant qu'aucune categorie n'est choisie : le reste du
+                                 a payer depend d'elle, et sans lui on ne peut pas borner la saisie. --}}
+                            <input type="number" name="montant" class="form-control" id="creer_montant" required min="0" step="0.01" placeholder="Choisissez d'abord une catégorie" disabled>
+                        </div>
                     </div>
+                    <div id="creer_montant_message" class="mb-3" style="display:none;"></div>
                     <div class="row mb-3">
                         <div class="col-md-6">
                             <label class="form-label fw-bold">Mode de paiement <span class="text-danger">*</span></label>
@@ -1309,6 +1312,7 @@ tr[data-inscription-id] > td { transition: background .15s ease; }
         paiementEnAttente: "/esbtp/inscriptions/:id/paiement-en-attente",
         classesAlternatives: "/esbtp/inscriptions/:id/classes-alternatives",
         inscriptionData: "/esbtp/inscriptions/:id/data",
+        montantRestant: "/esbtp/inscriptions/:id/frais/:category/montant-restant",
         validerAvecPaiement: "/esbtp/inscriptions/:id/valider-avec-paiement",
         changerClasseRapide: "/esbtp/inscriptions/:id/changer-classe-rapide",
         validerPaiementRapide: "/esbtp/paiements/:id/valider-rapide",
