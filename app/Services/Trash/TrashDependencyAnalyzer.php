@@ -235,32 +235,65 @@ class TrashDependencyAnalyzer
             ];
         }
 
-        // Paiements liés en corbeille → ne seront pas auto-restaurés mais à signaler
-        $paiementsActifs = DB::table('esbtp_paiements')
+        // Versements liés. Seuls les versements VALIDÉS actifs bloquent (intégrité
+        // comptable) : la clé étrangère est en cascade, ils partiraient sans bruit.
+        // Les autres suivent la suppression et sont annoncés comme tels.
+        $paiementsValidesActifs = DB::table('esbtp_paiements')
             ->where('inscription_id', $id)
             ->whereNull('deleted_at')
+            ->whereIn('status', ['validé', 'valide', 'validated'])
+            ->count();
+        $paiementsNonValidesActifs = DB::table('esbtp_paiements')
+            ->where('inscription_id', $id)
+            ->whereNull('deleted_at')
+            ->whereNotIn('status', ['validé', 'valide', 'validated'])
             ->count();
         $paiementsTrashed = DB::table('esbtp_paiements')
             ->where('inscription_id', $id)
             ->whereNotNull('deleted_at')
             ->count();
 
-        if ($paiementsActifs > 0) {
+        if ($paiementsValidesActifs > 0) {
             $blockingForceDelete[] = [
-                'type' => 'paiements',
-                'count' => $paiementsActifs,
-                'label' => $paiementsActifs.' paiement(s) actif(s) lié(s) à cette inscription',
+                'type' => 'paiements_valides',
+                'count' => $paiementsValidesActifs,
+                'label' => $paiementsValidesActifs.' versement(s) validé(s) lié(s) à cette inscription — '
+                    .'annulez-les ou supprimez-les d\'abord',
                 'icon' => 'fa-money-bill-wave',
                 'bypassable' => false,
+            ];
+        }
+        if ($paiementsNonValidesActifs > 0) {
+            $cascadingForceDelete[] = [
+                'type' => 'paiements_non_valides',
+                'count' => $paiementsNonValidesActifs,
+                'label' => $paiementsNonValidesActifs.' versement(s) non validé(s) (seront supprimés définitivement)',
+                'icon' => 'fa-money-bill-wave',
             ];
         }
         if ($paiementsTrashed > 0) {
             $cascadingForceDelete[] = [
                 'type' => 'paiements_trashed',
                 'count' => $paiementsTrashed,
-                'label' => $paiementsTrashed.' paiement(s) déjà dans la corbeille (seront supprimés définitivement)',
+                'label' => $paiementsTrashed.' versement(s) déjà dans la corbeille (seront supprimés définitivement)',
                 'icon' => 'fa-trash',
             ];
+        }
+
+        // Factures : clé étrangère RESTRICT. Elles sont retirées avec l'inscription,
+        // sans quoi la base refuserait la suppression.
+        if (Schema::hasTable('esbtp_factures')) {
+            $facturesCount = DB::table('esbtp_factures')
+                ->where('inscription_id', $id)
+                ->count();
+            if ($facturesCount > 0) {
+                $cascadingForceDelete[] = [
+                    'type' => 'factures',
+                    'count' => $facturesCount,
+                    'label' => $facturesCount.' facture(s) liée(s) (seront supprimées définitivement)',
+                    'icon' => 'fa-file-invoice',
+                ];
+            }
         }
 
         // Frais subscriptions liés
