@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'PrÃ©visualisation Certificat - ' . $etudiant->nom . ' ' . $etudiant->prenoms)
+@section('title', 'Prévisualisation Certificat - ' . $etudiant->nom . ' ' . $etudiant->prenoms)
 
 @section('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
@@ -47,7 +47,7 @@
     .doc-watermark img { max-width:100%; }
     .doc-inner { position:relative; z-index:1; padding:36px 42px 32px; }
 
-    /* Header Ã©tablissement */
+    /* Header établissement */
     .doc-header {
         background:var(--doc-header-bg); color:var(--doc-atext);
         border-radius:10px; padding:20px 24px;
@@ -137,8 +137,8 @@
 
 <div class="doc-toolbar no-print">
     <div>
-        <div class="doc-toolbar-title"><i class="fas fa-eye"></i>PrÃ©visualisation Certificat de ScolaritÃ©</div>
-        <div class="doc-toolbar-sub">{{ $etudiant->nom }} {{ $etudiant->prenoms }} â€” {{ $etudiant->matricule }}</div>
+        <div class="doc-toolbar-title"><i class="fas fa-eye"></i>Prévisualisation Certificat de Scolarité</div>
+        <div class="doc-toolbar-sub">{{ $etudiant->nom }} {{ $etudiant->prenoms }} — {{ $etudiant->matricule }}</div>
     </div>
     <div class="doc-toolbar-btns">
         <a href="{{ route('esbtp.etudiants.show', $etudiant->id) }}" class="btn-acasi secondary">
@@ -182,8 +182,8 @@
                 <div class="doc-school-name">{{ $settings['name'] ?? '' }}</div>
                 <div class="doc-school-meta">
                     @if(!empty($settings['address'])){{ $settings['address'] }}@endif
-                    @if(!empty($settings['phone'])) &nbsp;Â·&nbsp; TÃ©l: {{ $settings['phone'] }}@endif
-                    @if(!empty($settings['email'])) &nbsp;Â·&nbsp; {{ $settings['email'] }}@endif
+                    @if(!empty($settings['phone'])) &nbsp;·&nbsp; Tél: {{ $settings['phone'] }}@endif
+                    @if(!empty($settings['email'])) &nbsp;·&nbsp; {{ $settings['email'] }}@endif
                 </div>
             </div>
         </div>
@@ -191,22 +191,22 @@
         <div class="doc-divider"></div>
 
         <div class="doc-title-wrap">
-            <span class="doc-title">Certificat de ScolaritÃ©</span>
+            <span class="doc-title">Certificat de Scolarité</span>
         </div>
 
         <div class="doc-body">
-            <p>Je soussignÃ©(e), {{ $settings['director_title'] ?? '' }} de {{ $settings['name'] ?? '' }}, certifie que&nbsp;:</p>
-            <p>L'Ã©tudiant(e) <span class="doc-hl">{{ $etudiant->nom }} {{ $etudiant->prenoms }}</span></p>
+            <p>Je soussigné(e), {{ $settings['director_title'] ?? '' }} de {{ $settings['name'] ?? '' }}, certifie que&nbsp;:</p>
+            <p>L'étudiant(e) <span class="doc-hl">{{ $etudiant->nom }} {{ $etudiant->prenoms }}</span></p>
 
             @if($etudiant->date_naissance)
             <p>
-                NÃ©(e) le <span class="doc-hl">{{ $etudiant->date_naissance->format('d/m/Y') }}</span>
-                @if($etudiant->lieu_naissance) Ã  <span class="doc-hl">{{ $etudiant->lieu_naissance }}</span>@endif
+                Né(e) le <span class="doc-hl">{{ $etudiant->date_naissance->format('d/m/Y') }}</span>
+                @if($etudiant->lieu_naissance) à <span class="doc-hl">{{ $etudiant->lieu_naissance }}</span>@endif
             </p>
             @endif
 
             <p>Matricule&nbsp;: <span class="doc-hl">{{ $etudiant->matricule }}</span></p>
-            <p>Est rÃ©guliÃ¨rement inscrit(e) sur le registre des effectifs de l'annÃ©e universitaire&nbsp;:</p>
+            <p>Est régulièrement inscrit(e) sur le registre des effectifs de l'année universitaire&nbsp;:</p>
 
             @php
                 $showClasse  = $settings['show_classe']  ?? true;
@@ -217,10 +217,10 @@
             <table class="doc-table">
                 <thead>
                     <tr>
-                        <th>AnnÃ©e universitaire</th>
+                        <th>Année universitaire</th>
                         @if($showClasse)<th>Classe suivie</th>@endif
-                        @if($showNiveau)<th>Niveau d'Ã©tude</th>@endif
-                        @if($showFiliere)<th>FiliÃ¨re</th>@endif
+                        @if($showNiveau)<th>Niveau d'étude</th>@endif
+                        @if($showFiliere)<th>Filière</th>@endif
                         <th>Moyenne/20</th>
                     </tr>
                 </thead>
@@ -232,29 +232,29 @@
                                 ?? $inscription->anneeUniversitaire?->name ?? null;
                             echo $rawYear
                                 ? (preg_match('/(\d{4}-\d{4})/', $rawYear, $m) ? $m[1] : $rawYear)
-                                : 'Non renseignÃ©';
+                                : 'Non renseigné';
                         @endphp
                         @if($inscription->is_sous_reserve)
-                            <br><small style="color:#d97706;font-weight:600;">Sous rÃ©serve{{ $inscription->condition_reserve ? ' de son ' . $inscription->condition_reserve : '' }}</small>
+                            <br><small style="color:#d97706;font-weight:600;">Sous réserve{{ $inscription->condition_reserve ? ' de son ' . $inscription->condition_reserve : '' }}</small>
                         @endif
                         </td>
-                        @if($showClasse)<td>{{ $inscription->classe->name ?? 'Non renseignÃ©' }}</td>@endif
-                        @if($showNiveau)<td>{{ $inscription->niveauEtude->name ?? 'Non renseignÃ©' }}</td>@endif
-                        @if($showFiliere)<td>{{ strtoupper($inscription->filiere->name ?? 'Non renseignÃ©') }}</td>@endif
-                        <td>{{ $inscription->moyenne_generale_calculee !== null ? number_format($inscription->moyenne_generale_calculee, 2) : 'â€”' }}</td>
+                        @if($showClasse)<td>{{ $inscription->classe->name ?? 'Non renseigné' }}</td>@endif
+                        @if($showNiveau)<td>{{ $inscription->niveauEtude->name ?? 'Non renseigné' }}</td>@endif
+                        @if($showFiliere)<td>{{ strtoupper($inscription->filiere->name ?? 'Non renseigné') }}</td>@endif
+                        <td>{{ $inscription->moyenne_generale_calculee !== null ? number_format($inscription->moyenne_generale_calculee, 2) : '—' }}</td>
                     </tr>
                     @empty
-                    <tr><td colspan="{{ $colCount }}">Aucune inscription trouvÃ©e</td></tr>
+                    <tr><td colspan="{{ $colCount }}">Aucune inscription trouvée</td></tr>
                     @endforelse
                 </tbody>
             </table>
 
             <p style="font-style:italic;margin-top:16px;">Suivant l'horaire du programme complet.</p>
-            <p>Ce certificat est dÃ©livrÃ© Ã  l'intÃ©ressÃ©(e) pour servir et valoir ce que de droit.</p>
+            <p>Ce certificat est délivré à l'intéressé(e) pour servir et valoir ce que de droit.</p>
         </div>
 
         <div class="doc-footer">
-            <div class="doc-date">Fait Ã  {{ $settings['city'] ?? '' }}, le {{ now()->format('d/m/Y') }}</div>
+            <div class="doc-date">Fait à {{ $settings['city'] ?? '' }}, le {{ now()->format('d/m/Y') }}</div>
             <div class="doc-signature">
                 <div class="doc-sig-title">{{ $settings['director_title'] ?? '' }}</div>
                 @if(!empty($settings['director_name']))
@@ -264,7 +264,7 @@
         </div>
 
         <div class="doc-note">
-            Ce certificat est un document officiel. Toute falsification constitue un dÃ©lit passible de poursuites judiciaires.
+            Ce certificat est un document officiel. Toute falsification constitue un délit passible de poursuites judiciaires.
         </div>
     </div>
 </div>

@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'PrÃ©visualisation Attestation de FrÃ©quentation - ' . $etudiant->nom . ' ' . $etudiant->prenoms)
+@section('title', 'Prévisualisation Attestation de Fréquentation - ' . $etudiant->nom . ' ' . $etudiant->prenoms)
 
 @section('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
@@ -47,7 +47,7 @@
     .doc-watermark img { max-width:100%; }
     .doc-inner { position:relative; z-index:1; padding:36px 42px 32px; }
 
-    /* Header Ã©tablissement */
+    /* Header établissement */
     .doc-header {
         background:var(--doc-header-bg); color:var(--doc-atext);
         border-radius:10px; padding:20px 24px;
@@ -96,7 +96,7 @@
         border-bottom:1px solid color-mix(in srgb, var(--doc-accent) 40%, transparent);
     }
 
-    /* Bloc infos Ã©tudiant (fond accent) */
+    /* Bloc infos étudiant (fond accent) */
     .doc-student-block {
         background: color-mix(in srgb, var(--doc-accent) 8%, white);
         border-left:4px solid var(--doc-accent);
@@ -156,8 +156,8 @@
 
 <div class="doc-toolbar no-print">
     <div>
-        <div class="doc-toolbar-title"><i class="fas fa-eye"></i>PrÃ©visualisation Attestation de FrÃ©quentation</div>
-        <div class="doc-toolbar-sub">{{ $etudiant->nom }} {{ $etudiant->prenoms }} â€” {{ $etudiant->matricule }}</div>
+        <div class="doc-toolbar-title"><i class="fas fa-eye"></i>Prévisualisation Attestation de Fréquentation</div>
+        <div class="doc-toolbar-sub">{{ $etudiant->nom }} {{ $etudiant->prenoms }} — {{ $etudiant->matricule }}</div>
     </div>
     <div class="doc-toolbar-btns">
         <a href="{{ route('esbtp.etudiants.show', $etudiant->id) }}" class="btn-acasi secondary">
@@ -201,8 +201,8 @@
                 <div class="doc-school-name">{{ $settings['name'] ?? '' }}</div>
                 <div class="doc-school-meta">
                     @if(!empty($settings['address'])){{ $settings['address'] }}@endif
-                    @if(!empty($settings['phone'])) &nbsp;Â·&nbsp; TÃ©l: {{ $settings['phone'] }}@endif
-                    @if(!empty($settings['email'])) &nbsp;Â·&nbsp; {{ $settings['email'] }}@endif
+                    @if(!empty($settings['phone'])) &nbsp;·&nbsp; Tél: {{ $settings['phone'] }}@endif
+                    @if(!empty($settings['email'])) &nbsp;·&nbsp; {{ $settings['email'] }}@endif
                 </div>
             </div>
         </div>
@@ -210,26 +210,26 @@
         <div class="doc-divider"></div>
 
         <div class="doc-title-wrap">
-            <span class="doc-title">Attestation de FrÃ©quentation</span>
+            <span class="doc-title">Attestation de Fréquentation</span>
         </div>
 
-        {{-- Alerte workflow si inscription non finalisÃ©e --}}
+        {{-- Alerte workflow si inscription non finalisée --}}
         @if(!empty($alerteWorkflow) && !empty($hasFutureSousReserve))
         <div class="doc-alert" style="background:rgba(59,130,246,.08); border-color:#3b82f6; color:#1e40af;">
             <strong><i class="fas fa-info-circle me-1"></i> Information :</strong>
-            Cet Ã©tudiant a une prÃ©-inscription sous rÃ©serve pour une annÃ©e future.
-            L'attestation ci-dessous est gÃ©nÃ©rÃ©e Ã  titre indicatif.
+            Cet étudiant a une pré-inscription sous réserve pour une année future.
+            L'attestation ci-dessous est générée à titre indicatif.
         </div>
         @elseif(!empty($alerteWorkflow))
         <div class="doc-alert">
-            <strong><i class="fas fa-exclamation-triangle me-1"></i> Attention :</strong> Aucune inscription active et finalisÃ©e trouvÃ©e pour cet Ã©tudiant.
+            <strong><i class="fas fa-exclamation-triangle me-1"></i> Attention :</strong> Aucune inscription active et finalisée trouvée pour cet étudiant.
             Veuillez <a href="{{ route('esbtp.etudiants.show', $etudiant->id) }}" style="color:var(--doc-accent);">valider et finaliser l'inscription</a>
-            (Ã©tape "Ã‰tudiant crÃ©Ã©") avant de gÃ©nÃ©rer l'attestation.
+            (étape "Étudiant créé") avant de générer l'attestation.
         </div>
         @endif
 
         <div class="doc-body">
-            <p>Je soussignÃ©(e), {{ $settings['director_title'] ?? '' }} de {{ $settings['name'] ?? '' }}, atteste que&nbsp;:</p>
+            <p>Je soussigné(e), {{ $settings['director_title'] ?? '' }} de {{ $settings['name'] ?? '' }}, atteste que&nbsp;:</p>
 
             <p>
                 {{ $etudiant->sexe === 'F' ? 'Mme / M. / Mlle' : 'M.' }}
@@ -238,8 +238,8 @@
 
             @if($etudiant->date_naissance)
             <p>
-                NÃ©(e) le <span class="doc-hl">{{ $etudiant->date_naissance->format('d/m/Y') }}</span>
-                @if($etudiant->lieu_naissance) Ã  <span class="doc-hl">{{ strtoupper($etudiant->lieu_naissance) }}</span>@endif
+                Né(e) le <span class="doc-hl">{{ $etudiant->date_naissance->format('d/m/Y') }}</span>
+                @if($etudiant->lieu_naissance) à <span class="doc-hl">{{ strtoupper($etudiant->lieu_naissance) }}</span>@endif
             </p>
             @endif
 
@@ -250,39 +250,39 @@
                         ?? $inscription->anneeUniversitaire->libelle ?? '';
                     $anneeFormatted = preg_match('/(\d{4}-\d{4})/', $anneeText, $m) ? $m[1] : $anneeText;
                 @endphp
-                Est rÃ©guliÃ¨rement inscrit(e) au titre de l'annÃ©e universitaire
+                Est régulièrement inscrit(e) au titre de l'année universitaire
                 <span class="doc-hl">{{ $anneeFormatted }}</span>
                 @if($inscription->is_sous_reserve)
-                sous rÃ©serve de son <span class="doc-hl">{{ $inscription->condition_reserve ?? 'diplÃ´me' }}</span>
+                sous réserve de son <span class="doc-hl">{{ $inscription->condition_reserve ?? 'diplôme' }}</span>
                 @endif
             </p>
 
             <div class="doc-student-block">
                 <div class="doc-student-row">
                     <span class="doc-student-lbl">En classe de&nbsp;:</span>
-                    <span class="doc-student-val">{{ $inscription->classe->name ?? ($inscription->niveauEtude->name ?? 'Non renseignÃ©') }}</span>
+                    <span class="doc-student-val">{{ $inscription->classe->name ?? ($inscription->niveauEtude->name ?? 'Non renseigné') }}</span>
                 </div>
                 <div class="doc-student-row">
-                    <span class="doc-student-lbl">FiliÃ¨re&nbsp;:</span>
-                    <span class="doc-student-val">{{ strtoupper($inscription->filiere->name ?? 'Non renseignÃ©') }}</span>
+                    <span class="doc-student-lbl">Filière&nbsp;:</span>
+                    <span class="doc-student-val">{{ strtoupper($inscription->filiere->name ?? 'Non renseigné') }}</span>
                 </div>
                 <div class="doc-student-row">
-                    <span class="doc-student-lbl">Sous le numÃ©ro Matricule&nbsp;:</span>
+                    <span class="doc-student-lbl">Sous le numéro Matricule&nbsp;:</span>
                     <span class="doc-student-val">{{ $etudiant->numero_etudiant ?? $etudiant->matricule }}</span>
                 </div>
             </div>
 
             <div class="doc-status-block">
-                <strong>Statut* :</strong> AffectÃ© / Non affectÃ©
+                <strong>Statut* :</strong> Affecté / Non affecté
                 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
                 <strong>Boursier* :</strong> Oui / Non
             </div>
 
-            <p>En foi de quoi, la prÃ©sente attestation lui est dÃ©livrÃ©e pour servir et valoir ce que de droit.</p>
+            <p>En foi de quoi, la présente attestation lui est délivrée pour servir et valoir ce que de droit.</p>
         </div>
 
         <div class="doc-footer">
-            <div class="doc-date">Fait Ã  {{ $settings['city'] ?? '' }}, le {{ now()->format('d/m/Y') }}</div>
+            <div class="doc-date">Fait à {{ $settings['city'] ?? '' }}, le {{ now()->format('d/m/Y') }}</div>
             <div class="doc-signature">
                 <div class="doc-sig-title">{{ $settings['director_title'] ?? '' }}</div>
                 @if(!empty($settings['director_name']))
@@ -294,7 +294,7 @@
         <div class="doc-sig-note">*Rayer la mention inutile</div>
 
         <div class="doc-note">
-            Ce document est un certificat officiel. Toute falsification constitue un dÃ©lit passible de poursuites judiciaires.
+            Ce document est un certificat officiel. Toute falsification constitue un délit passible de poursuites judiciaires.
         </div>
     </div>
 </div>
