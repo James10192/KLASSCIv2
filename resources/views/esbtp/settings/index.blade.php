@@ -2545,6 +2545,7 @@
                             </label>
                         </div>
                     </div>
+                    @include('esbtp.settings.partials.rendez-vous-reglages')
                     <div class="bc-card">
                         <div class="bc-icon"><i class="fas fa-user-plus"></i></div>
                         <div class="bc-body">

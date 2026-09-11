@@ -16,6 +16,7 @@ use App\Services\CataloguePiecesDossier;
 use App\Services\MailPulse\MailPulseTestNotificationService;
 use App\Services\Mobile\MobileProfileResolver;
 use App\Services\Inscription\PortailCandidaturePublication;
+use App\Services\RendezVous\ConfigurationRendezVous;
 use App\Services\Reinscription\PortailReinscriptionService;
 use App\Services\TenantScolariteSettings;
 use Illuminate\Http\JsonResponse;
@@ -495,6 +496,10 @@ class ESBTPSettingsController extends Controller
                 // migration, lu par MobileProfileResolver, sans cette ligne
                 // la case de la page n'aurait jamais ete enregistree.
                 MobileProfileResolver::REGLAGE_ACTIF,
+                // Rendez-vous au guichet. Meme raison que les lignes du dessus :
+                // sans cette entree, decocher la case ne la remettrait jamais a
+                // zero, et l'ecole croirait avoir ferme un canal reste ouvert.
+                ConfigurationRendezVous::REGLAGE_ACTIF,
             ], array_keys($troncCommunDefaults));
 
             // Reglages a cle pointee qui ne sont PAS des cases a cocher. La
@@ -516,6 +521,17 @@ class ESBTPSettingsController extends Controller
                 CataloguePiecesDossier::REGLAGE_FORME_DEFAUT,
                 CataloguePiecesDossier::REGLAGE_ECHEANCE_DEFAUT,
                 CataloguePiecesDossier::REGLAGE_EPUISEMENT,
+                // La grille des rendez-vous de guichet. Le PREMIER jour n'y est
+                // pas : c'est REGLAGE_PHYSIQUES, deja declare plus haut, et le
+                // doubler donnerait deux dates pour une seule rentree.
+                ConfigurationRendezVous::REGLAGE_DERNIER_JOUR,
+                ConfigurationRendezVous::REGLAGE_JOURS_OUVERTS,
+                ConfigurationRendezVous::REGLAGE_OUVERTURE,
+                ConfigurationRendezVous::REGLAGE_FERMETURE,
+                ConfigurationRendezVous::REGLAGE_PAUSE_DEBUT,
+                ConfigurationRendezVous::REGLAGE_PAUSE_FIN,
+                ConfigurationRendezVous::REGLAGE_DUREE,
+                ConfigurationRendezVous::REGLAGE_CAPACITE,
             ];
 
             $reglagesPointes = Setting::whereIn('key', array_merge($basculesGerees, $reglagesTexte))->get();
@@ -893,6 +909,12 @@ class ESBTPSettingsController extends Controller
             // serait acceptee ici puis rejetee a la lecture : l'ecole croirait
             // avoir annonce une date, le portail n'en annoncerait aucune.
             PortailCandidaturePublication::REGLAGE_PHYSIQUES,
+            // Le dernier jour de reception au guichet. Meme severite a
+            // l'ecriture qu'a la lecture : sans cette ligne, une date qui
+            // deborde serait enregistree ici puis refusee par la grille, et
+            // l'ecole verrait sa prise de rendez-vous rester fermee sans
+            // comprendre pourquoi.
+            ConfigurationRendezVous::REGLAGE_DERNIER_JOUR,
         ];
 
         // Un texte de la couleur de son fond est invisible.

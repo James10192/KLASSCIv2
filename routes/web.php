@@ -1745,6 +1745,14 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             ->middleware(['permission:settings.pdf.manage', 'throttle:30,1'])
             ->name('esbtp.settings.pdf-preview');
 
+        // Apercu de la grille des rendez-vous, sur les valeurs en cours de
+        // saisie. Le calcul reste cote serveur : le recopier en JavaScript
+        // donnerait deux arithmetiques pour une seule regle, et l'ecran
+        // finirait par annoncer des places que la grille ne produit pas.
+        Route::post('/settings/rdv/apercu', \App\Http\Controllers\RendezVous\ApercuGrilleController::class)
+            ->middleware(['permission:system.manage', 'throttle:60,1'])
+            ->name('esbtp.settings.rdv.apercu');
+
         // ESBTP Parents Search (pour modal de sÃ©lection dans edit Ã©tudiant)
         Route::get('/parents/search', [ESBTPEtudiantController::class, 'searchParents'])->name('esbtp.parents.search');
     });
