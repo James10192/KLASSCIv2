@@ -471,6 +471,7 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
 
     // Analytics diagnose (read-only) — couverture échéancier, snapshots, saturation risque
     Route::get('/analytics/diagnose', [App\Http\Controllers\API\CLI\CLIDataController::class, 'analyticsDiagnose'])->name('analytics.diagnose');
+    Route::get('/affectation/diagnose', [App\Http\Controllers\API\CLI\CLIDataController::class, 'affectationDiagnose'])->name('affectation.diagnose');
 
     // Comptabilité (read-only) — audit + réconciliation diagnose
     Route::prefix('comptabilite')->name('comptabilite.')->group(function () {
