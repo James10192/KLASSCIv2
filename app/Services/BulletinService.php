@@ -575,7 +575,13 @@ class BulletinService
         // Calculer les moyennes par section
         $moyenneGenerale = $this->calculerMoyennePonderee($resultatsGeneraux);
         $moyenneTechnique = $this->calculerMoyennePonderee($resultatsTechniques);
-        $moyenneGlobale = $this->calculerMoyennePonderee(collect($resultatsParMatiere));
+        $moyenneGlobale = $this->composerLaMoyenneDuSemestre(
+            collect($resultatsParMatiere),
+            $resultatsGeneraux,
+            $resultatsTechniques,
+            $moyenneGenerale,
+            $moyenneTechnique
+        );
 
         // Calcul des absences et note d'assiduité
         // (priorité à la saisie manuelle par matière si disponible pour cette année/période)
@@ -1497,6 +1503,82 @@ class BulletinService
     /**
      * Calcule la moyenne pondérée d'une collection de résultats
      */
+    /**
+     * La moyenne du semestre, selon ce que l'ecole a choisi.
+     *
+     * Deux compositions, et elles ne donnent pas le meme resultat :
+     *
+     * - « ponderee » (defaut, comportement historique) : une seule moyenne
+     *   ponderee sur toutes les matieres. Une matiere de coefficient 4 pese
+     *   quatre fois une matiere de coefficient 1, d'un bloc a l'autre.
+     *
+     * - « blocs » : chaque bloc fait sa moyenne ponderee chez lui, puis les
+     *   deux sont combines selon LEURS coefficients. Chez ESBTP Abidjan, 1 et
+     *   1 : deux matieres generales pesent autant que sept professionnelles.
+     *   Sur un cas reel de leur bulletin, l'ecart est de 09.86 contre 10.01 —
+     *   la difference entre passer et ne pas passer.
+     *
+     * Un bloc SANS aucune matiere notee sort du calcul, coefficient compris,
+     * comme une matiere dispensee : sinon il vaudrait zero et tirerait la
+     * moyenne vers le bas. Le test porte sur « une ligne notee existe », pas
+     * sur « la moyenne vaut zero » : un bloc dont toutes les notes sont a zero
+     * est une realite, pas une absence.
+     *
+     * @param  \Illuminate\Support\Collection  $toutes
+     * @param  \Illuminate\Support\Collection  $generales
+     * @param  \Illuminate\Support\Collection  $professionnelles
+     */
+    public function composerLaMoyenneDuSemestre(
+        $toutes,
+        $generales,
+        $professionnelles,
+        ?float $moyenneGenerale,
+        ?float $moyenneProfessionnelle
+    ): float {
+        if (SettingsHelper::get('bulletin_moyenne_mode', 'ponderee') !== 'blocs') {
+            return (float) $this->calculerMoyennePonderee($toutes);
+        }
+
+        $blocs = [
+            [$moyenneGenerale, (float) SettingsHelper::get('bulletin_bloc_general_coef', 1), $this->blocEstNote($generales)],
+            [$moyenneProfessionnelle, (float) SettingsHelper::get('bulletin_bloc_professionnel_coef', 1), $this->blocEstNote($professionnelles)],
+        ];
+
+        $points = 0.0;
+        $coefficients = 0.0;
+        foreach ($blocs as [$moyenne, $coefficient, $estNote]) {
+            if (! $estNote || $moyenne === null || $coefficient <= 0) {
+                continue;
+            }
+            $points += $moyenne * $coefficient;
+            $coefficients += $coefficient;
+        }
+
+        // Aucun bloc exploitable : on rend ce que la ponderation classique
+        // aurait rendu, plutot qu'un zero invente.
+        if ($coefficients <= 0) {
+            return (float) $this->calculerMoyennePonderee($toutes);
+        }
+
+        return $points / $coefficients;
+    }
+
+    /**
+     * Un bloc porte-t-il au moins une matiere reellement notee ?
+     *
+     * @param  \Illuminate\Support\Collection  $resultats
+     */
+    private function blocEstNote($resultats): bool
+    {
+        foreach ($resultats as $resultat) {
+            if ($this->ligneEstNotee($resultat)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     public function calculerMoyennePonderee($resultats)
     {
         if ($resultats->isEmpty()) {
