@@ -1539,9 +1539,20 @@ class BulletinService
             return (float) $this->calculerMoyennePonderee($toutes);
         }
 
+        // Une matiere notee qui n'est dans AUCUN des deux blocs ne serait
+        // comptee nulle part : la composition par blocs l'oublierait en
+        // silence, et la moyenne serait celle d'une partie du bulletin. Le
+        // bloc d'une matiere vient de `type_formation` ; tant qu'une seule
+        // note echappe au classement, on rend la ponderation classique, qui
+        // elle n'oublie personne.
+        $noteesEnBloc = $this->compterLesLignesNotees($generales) + $this->compterLesLignesNotees($professionnelles);
+        if ($noteesEnBloc < $this->compterLesLignesNotees($toutes)) {
+            return (float) $this->calculerMoyennePonderee($toutes);
+        }
+
         $blocs = [
-            [$moyenneGenerale, (float) SettingsHelper::get('bulletin_bloc_general_coef', 1), $this->blocEstNote($generales)],
-            [$moyenneProfessionnelle, (float) SettingsHelper::get('bulletin_bloc_professionnel_coef', 1), $this->blocEstNote($professionnelles)],
+            [$moyenneGenerale, (float) SettingsHelper::get('bulletin_bloc_general_coef', 1), $noteesEnBloc > 0 && $this->blocEstNote($generales)],
+            [$moyenneProfessionnelle, (float) SettingsHelper::get('bulletin_bloc_professionnel_coef', 1), $noteesEnBloc > 0 && $this->blocEstNote($professionnelles)],
         ];
 
         $points = 0.0;
@@ -1561,6 +1572,23 @@ class BulletinService
         }
 
         return $points / $coefficients;
+    }
+
+    /**
+     * Combien de lignes reellement notees.
+     *
+     * @param  \Illuminate\Support\Collection  $resultats
+     */
+    private function compterLesLignesNotees($resultats): int
+    {
+        $total = 0;
+        foreach ($resultats as $resultat) {
+            if ($this->ligneEstNotee($resultat)) {
+                $total++;
+            }
+        }
+
+        return $total;
     }
 
     /**
