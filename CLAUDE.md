@@ -46,6 +46,7 @@ Les notes de version pour klassci-landing se produisent, elles ne se recopient p
 - `ephrata` — offre **Partenaire**
 - `hetec`, `rostan` — phase test (visent l'offre Élite)
 - `usat` — université LMD (Licence 1 à 3), ouverture 2026-2027
+- `ucao-benin` — université LMD au **Bénin** (hors Côte d'Ivoire : indicatif +229, fuseau UTC+1)
 - `presentation` — instance démo (Free, test)
 
 Chaque instance a sa propre branche Git du même nom (snapshot de `presentation` synchronisé périodiquement). Voir [.claude/rules/tenant-branches.md](.claude/rules/tenant-branches.md).

@@ -57,8 +57,32 @@ KLASSCI suit une architecture SaaS multi-instance avec **isolation complète par
 | ephrata | ephrata | ephrata.klassci.com | **Partenaire** | en cours | ~/public_html/ephrata |
 | hetec | hetec | hetec.klassci.com | Test (Élite) | en cours | ~/public_html/hetec |
 | rostan | rostan | rostan.klassci.com | Test (Élite) | en cours | **~/public_html/islg-rostan** (⚠️ pas `rostan`) |
+| ucao-benin | ucao-benin | ucao-benin.klassci.com | Élite | en cours | ~/public_html/ucao-benin |
 
 **Serveur prod** : LWS web44.lws-hosting.com (CloudLinux + LiteSpeed) — `c2569688c@web44.lws-hosting.com`
+
+## Hors Cote d'Ivoire : ce que le code suppose encore
+
+`ucao-benin` est la PREMIERE instance hors de Cote d'Ivoire. Deux hypotheses sont
+ecrites en dur et n'ont jamais gene, parce qu'elles etaient vraies partout :
+
+- **L'indicatif `+225`** — `PhoneNormalizer::E164_PREFIX` et `PhoneFormatter`
+  supposent un numero ivoirien a 10 chiffres nationaux. Le Benin est en **+229**.
+  Portee : liens WhatsApp de relance, contacts etudiants, exports de recouvrement,
+  portail de candidature, notifications MailPulse. Une relance partirait vers un
+  numero faux, sans erreur visible.
+- **Le fuseau `UTC`** — `config/app.php` le fixe en litteral, sans meme le lire
+  depuis l'environnement. La Cote d'Ivoire etant a UTC+0, la coincidence tenait
+  lieu de reglage. Le Benin est a **UTC+1** : appels, encaissements et echeances
+  de fin de mois seraient decales d'une heure.
+
+Le pays de l'etablissement, lui, est deja un reglage (`school_country`), et la
+monnaie est commune (XOF, zone UEMOA), comme le cadre LMD.
+
+**Avant qu'une instance hors Cote d'Ivoire n'envoie sa premiere relance**, rendre
+ces deux valeurs configurables par instance, avec `+225` et `UTC` par defaut —
+donc sans rien changer pour l'existant. Les modifier au moment d'ouvrir une
+nouvelle ecole reviendrait a risquer six instances en production pour en servir une.
 
 ## Tables clés `klassci_master`
 
@@ -300,6 +324,7 @@ git push origin presentation:esbtp-abidjan
 git push origin presentation:rostan
 git push origin presentation:hetec
 git push origin presentation:ephrata
+git push origin presentation:ucao-benin
 ```
 
 **Discipline cross-branch** :
