@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\BtsTroncCommun;
 
 use App\Models\ESBTPClasse;
+use App\Models\ESBTPMaquettePlaceSemestre;
 use App\Models\ESBTPMatiereFilierNiveau;
 use Illuminate\Support\Collection;
 
@@ -60,7 +61,7 @@ final class BulletinSubjectOrder
      *
      * @return array<int, int|null> matiere_id => rang effectif (null = non defini)
      */
-    public function rankMapForClasse(ESBTPClasse $classe): array
+    public function rankMapForClasse(ESBTPClasse $classe, ?int $semestre = null): array
     {
         if (! $classe->filiere_id || ! $classe->niveau_etude_id) {
             return [];
@@ -69,9 +70,11 @@ final class BulletinSubjectOrder
         return $this->rankMapForFiliereNiveau(
             (int) $classe->filiere_id,
             (int) $classe->niveau_etude_id,
-            $classe->filiere?->troncCommunUnionFiliereIds()
+            $classe->filiere?->troncCommunUnionFiliereIds(),
+            $semestre
         );
     }
+
 
     /**
      * Rang effectif des matieres d'un couple filiere x niveau.
@@ -85,11 +88,11 @@ final class BulletinSubjectOrder
      * @param  list<int>|null  $unionFiliereIds  combos a prendre en compte ; a defaut, la filiere seule
      * @return array<int, int|null>
      */
-    public function rankMapForFiliereNiveau(int $filiereId, int $niveauId, ?array $unionFiliereIds = null): array
+    public function rankMapForFiliereNiveau(int $filiereId, int $niveauId, ?array $unionFiliereIds = null, ?int $semestre = null): array
     {
         $combos = $unionFiliereIds ?: [$filiereId];
         sort($combos);
-        $cle = implode(',', $combos).':'.$niveauId;
+        $cle = implode(',', $combos).':'.$niveauId.':'.($semestre ?? '-');
 
         if (isset($this->memo[$cle])) {
             return $this->memo[$cle];
@@ -122,7 +125,49 @@ final class BulletinSubjectOrder
             }
         }
 
+        // Une place propre au semestre PRIME sur celle du pivot : c'est le seul
+        // endroit ou une matiere enseignee aux deux semestres peut occuper deux
+        // rangs differents. Sans ligne ici, rien ne change — une ecole qui n'a
+        // jamais renseigne de place par semestre garde l'ordre qu'elle avait.
+        if ($semestre !== null) {
+            foreach ($this->placesDuSemestre($combos, $niveauId, $semestre) as $matiereId => $rang) {
+                $carte[$matiereId] = $rang;
+            }
+        }
+
         return $this->memo[$cle] = $carte;
+    }
+
+    /**
+     * Places propres a un semestre, par matiere.
+     *
+     * Comme pour le pivot, le plus petit rang de l'union l'emporte : une classe
+     * de specialite garde la place que son tronc commun donnait a la matiere.
+     *
+     * @param  list<int>  $combos
+     * @return array<int, int>
+     */
+    private function placesDuSemestre(array $combos, int $niveauId, int $semestre): array
+    {
+        $places = [];
+
+        $lignes = ESBTPMaquettePlaceSemestre::query()
+            ->whereIn('filiere_id', $combos)
+            ->where('niveau_etude_id', $niveauId)
+            ->where('semestre', $semestre)
+            ->get(['matiere_id', 'ordre_bulletin']);
+
+        foreach ($lignes as $ligne) {
+            $rang = self::rang($ligne->ordre_bulletin);
+            if ($rang === null) {
+                continue;
+            }
+
+            $matiereId = (int) $ligne->matiere_id;
+            $places[$matiereId] = isset($places[$matiereId]) ? min($places[$matiereId], $rang) : $rang;
+        }
+
+        return $places;
     }
 
     /**

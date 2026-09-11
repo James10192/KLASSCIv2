@@ -516,7 +516,10 @@ class BulletinService
         // INCHANGEE tant qu'aucun rang n'est defini pour la classe, et preserve
         // les cles (le tableau reste indexe par matiere_id).
         $resultatsParMatiere = $this->subjectOrder
-            ->sort(collect($resultatsParMatiere), $this->subjectOrder->rankMapForClasse($classe))
+            ->sort(collect($resultatsParMatiere), $this->subjectOrder->rankMapForClasse(
+                $classe,
+                \App\Domain\BtsTroncCommun\BulletinSubjectRowsCompleter::semestreDe($periode)
+            ))
             ->all();
 
         $periodeNormalized = $this->normalizePeriode($periode);

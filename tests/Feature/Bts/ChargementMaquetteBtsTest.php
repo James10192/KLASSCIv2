@@ -167,6 +167,58 @@ class ChargementMaquetteBtsTest extends TestCase
         $this->assertSame(1, $this->liaisons()->count(), 'Rejouer le chargement ne doit pas creer une seconde liaison.');
     }
 
+    public function test_une_matiere_des_deux_semestres_garde_une_place_par_semestre(): void
+    {
+        // Le cas reel d'ESBTP Abidjan : en Geometre Topographe, Mathematiques
+        // generales est 4e au premier semestre et 1re au second. Le pivot, seul,
+        // ne peut en retenir qu'une — le second chargement ecrasait le premier.
+        $maths = $this->matiere('Mathematiques generales '.uniqid());
+        $topo = $this->matiere('Travaux pratiques de topometrie '.uniqid());
+        $autre = $this->matiere('Geodesie '.uniqid());
+
+        $charge = fn (int $semestre, array $noms) => $this->postJson('/api/cli/bts/maquette', [
+            'filiere' => $this->filiere->id,
+            'niveau' => $this->niveau->id,
+            'semestre' => $semestre,
+            'appliquer' => true,
+            'matieres' => $noms,
+        ])->assertOk();
+
+        $charge(1, [$autre->name, $topo->name, $maths->name]);   // maths 3e au S1
+        $charge(2, [$maths->name, $topo->name]);                 // maths 1re au S2
+
+        $ordre = app(\App\Domain\BtsTroncCommun\BulletinSubjectOrder::class);
+
+        $ordre->oublierLeCache();
+        $s1 = $ordre->rankMapForFiliereNiveau($this->filiere->id, $this->niveau->id, null, 1);
+        $ordre->oublierLeCache();
+        $s2 = $ordre->rankMapForFiliereNiveau($this->filiere->id, $this->niveau->id, null, 2);
+
+        $this->assertSame(3, $s1[$maths->id], 'Le premier semestre doit garder sa place, malgre le chargement du second.');
+        $this->assertSame(1, $s2[$maths->id], 'Le second semestre a sa place propre.');
+        $this->assertSame(2, $s1[$topo->id]);
+        $this->assertSame(2, $s2[$topo->id]);
+    }
+
+    public function test_sans_place_de_semestre_l_ordre_reste_celui_du_pivot(): void
+    {
+        // La garantie de non-regression : une ecole qui n'a jamais renseigne de
+        // place par semestre voit exactement l'ordre qu'elle avait.
+        $matiere = $this->matiere('Cartographie '.uniqid());
+
+        ESBTPMatiereFilierNiveau::create([
+            'filiere_id' => $this->filiere->id,
+            'niveau_etude_id' => $this->niveau->id,
+            'matiere_id' => $matiere->id,
+            'ordre_bulletin' => 7,
+        ]);
+
+        $ordre = app(\App\Domain\BtsTroncCommun\BulletinSubjectOrder::class);
+        $carte = $ordre->rankMapForFiliereNiveau($this->filiere->id, $this->niveau->id, null, 2);
+
+        $this->assertSame(7, $carte[$matiere->id]);
+    }
+
     private function liaisons()
     {
         return ESBTPMatiereFilierNiveau::query()
