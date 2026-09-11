@@ -83,6 +83,7 @@ class DiagnosticStatutAffectation
     {
         $cas = [];
         $manque = 0.0;
+        $comparables = 0;
 
         $inscriptions = ESBTPInscription::query()
             // La classe est chargee ENTIERE, pas en colonnes choisies : le
@@ -100,6 +101,7 @@ class DiagnosticStatutAffectation
             if (! $precedente || ! $precedente->affectation_status) {
                 continue;
             }
+            $comparables++;
             if ($precedente->affectation_status === self::AFFECTE) {
                 continue;
             }
@@ -119,7 +121,7 @@ class DiagnosticStatutAffectation
             ];
         }
 
-        return $this->trierEtBorner($cas, $manque, $limite);
+        return $this->trierEtBorner($cas, $manque, $limite, $inscriptions->count(), $comparables);
     }
 
     /**
@@ -130,6 +132,7 @@ class DiagnosticStatutAffectation
     {
         $cas = [];
         $manque = 0.0;
+        $comparables = 0;
 
         $inscriptions = ESBTPInscription::query()
             ->with(['etudiant:id,nom,prenoms,matricule', 'classe'])
@@ -142,6 +145,7 @@ class DiagnosticStatutAffectation
             if (! $origine || ! $origine->affectation_status) {
                 continue;
             }
+            $comparables++;
             if ($origine->affectation_status === $inscription->affectation_status) {
                 continue;
             }
@@ -164,7 +168,7 @@ class DiagnosticStatutAffectation
             ];
         }
 
-        return $this->trierEtBorner($cas, $manque, $limite);
+        return $this->trierEtBorner($cas, $manque, $limite, $inscriptions->count(), $comparables);
     }
 
     /**
@@ -184,14 +188,25 @@ class DiagnosticStatutAffectation
         return round(max(0.0, $somme($statutAttendu) - $somme($actuel)), 2);
     }
 
-    /** Les plus couteux d'abord ; le total porte sur tous les cas, la liste sur les premiers. */
-    private function trierEtBorner(array $cas, float $manque, int $limite): array
+    /**
+     * Les plus couteux d'abord ; le total porte sur tous les cas, la liste sur
+     * les premiers.
+     *
+     * « comparables » dit combien d'inscriptions ont reellement pu etre
+     * confrontees a une reference. Sans ce compte, « 0 cas » se lit « tout va
+     * bien » alors qu'il peut vouloir dire « rien n'etait comparable » — une
+     * instance dont c'est la premiere annee n'a aucune annee precedente, et un
+     * etablissement sans tronc commun n'a aucune specialisation.
+     */
+    private function trierEtBorner(array $cas, float $manque, int $limite, int $examinees, int $comparables): array
     {
         usort($cas, fn ($a, $b) => $b['manque_a_gagner_fcfa'] <=> $a['manque_a_gagner_fcfa']);
 
         return [
             'total' => count($cas),
             'manque_a_gagner_fcfa' => round($manque, 2),
+            'inscriptions_examinees' => $examinees,
+            'comparables' => $comparables,
             'cas' => array_slice($cas, 0, $limite),
             'cas_tronques' => max(0, count($cas) - $limite),
         ];

@@ -146,6 +146,34 @@ class DiagnosticStatutAffectationTest extends TestCase
         $this->assertSame(0, \App\Models\ESBTPFraisSubscription::count());
     }
 
+    /** @test */
+    public function un_zero_sans_reference_comparable_est_annonce_comme_tel(): void
+    {
+        // Premiere annee d'une instance : personne n'a d'annee precedente. Le
+        // signal ne vaut rien ici, et le rapport doit le dire au lieu de
+        // laisser lire « aucun cas » comme « tout va bien ».
+        $this->inscrire(ESBTPEtudiant::factory()->create(), $this->anneeCourante, 'affecté');
+
+        $bloc = $this->rapport()['retournements'];
+
+        $this->assertSame(0, $bloc['total']);
+        $this->assertSame(1, $bloc['inscriptions_examinees']);
+        $this->assertSame(0, $bloc['comparables']);
+    }
+
+    /** @test */
+    public function une_reference_comparable_est_comptee_meme_sans_ecart(): void
+    {
+        $etudiant = ESBTPEtudiant::factory()->create();
+        $this->inscrire($etudiant, $this->anneePassee, 'affecté');
+        $this->inscrire($etudiant, $this->anneeCourante, 'affecté');
+
+        $bloc = $this->rapport()['retournements'];
+
+        $this->assertSame(0, $bloc['total'], 'Statut inchangé : rien à signaler.');
+        $this->assertSame(1, $bloc['comparables'], 'Mais la comparaison a bien eu lieu.');
+    }
+
     private function rapport(): array
     {
         return app(DiagnosticStatutAffectation::class)->pour($this->anneeCourante);

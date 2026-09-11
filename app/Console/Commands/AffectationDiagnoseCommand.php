@@ -70,6 +70,14 @@ class AffectationDiagnoseCommand extends Command
             $bloc = $rapport[$cle];
             $this->line($titre.' : '.$bloc['total'].' cas, '
                 .number_format($bloc['manque_a_gagner_fcfa'], 0, ',', ' ').' FCFA non réclamés');
+            $this->line(sprintf(
+                '  (%d inscription(s) examinée(s), %d comparable(s) à une référence)',
+                $bloc['inscriptions_examinees'],
+                $bloc['comparables']
+            ));
+            if ($bloc['comparables'] === 0) {
+                $this->comment("  Aucune référence comparable : ce signal ne dit rien ici, ni dans un sens ni dans l'autre.");
+            }
 
             if ($bloc['cas']) {
                 $this->table(
