@@ -5,6 +5,7 @@ namespace App\Http\Controllers\API\CLI;
 use App\Actions\Comptabilite\GetImpayesAgingAction;
 use App\Domain\Analytics\DTOs\AnalyticsContext;
 use App\Domain\Analytics\Predictors\DefaultRiskPredictor;
+use App\Domain\Students\DiagnosticStatutAffectation;
 use App\DTOs\Comptabilite\ComptabiliteFilters;
 use App\Http\Controllers\API\BaseApiController;
 use App\Models\ESBTPAnneeUniversitaire;
@@ -620,6 +621,41 @@ class CLIDataController extends BaseApiController
      * GET /api/cli/analytics/diagnose — Diagnostic complet du sous-système Analytics
      * (couverture règles, snapshots, distribution mensuelle, saturation risque).
      */
+    /**
+     * Recense les inscriptions dont le statut d'affectation a pu etre ecrase par
+     * l'un des quatre chemins qui l'ecrivaient en dur (corriges en septembre
+     * 2026). Lecture seule : ne modifie aucun dossier.
+     */
+    public function affectationDiagnose(Request $request): JsonResponse
+    {
+        if (!$request->user()->tokenCan('cli:read')) {
+            return $this->errorResponse('Token missing cli:read ability', [], 403);
+        }
+
+        try {
+            $annee = $request->filled('annee')
+                ? ESBTPAnneeUniversitaire::find((int) $request->input('annee'))
+                : ESBTPAnneeUniversitaire::where('is_current', true)->first();
+
+            if (!$annee) {
+                return $this->errorResponse(
+                    "Aucune annee universitaire courante : preciser ?annee=ID.",
+                    [],
+                    422
+                );
+            }
+
+            $rapport = app(DiagnosticStatutAffectation::class)
+                ->pour($annee, (int) $request->input('limite', 200));
+
+            return $this->successResponse($rapport, "Diagnostic du statut d'affectation");
+        } catch (\Throwable $e) {
+            Log::error('CLI: affectation diagnose failed', ['error' => $e->getMessage()]);
+
+            return $this->errorResponse('Operation failed. Check server logs for details.', [], 500);
+        }
+    }
+
     public function analyticsDiagnose(Request $request): JsonResponse
     {
         if (!$request->user()->tokenCan('cli:read')) {
