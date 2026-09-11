@@ -4,6 +4,7 @@ namespace App\Http\Controllers\API\CLI;
 
 use App\Http\Controllers\Controller;
 use App\Models\ESBTPFiliere;
+use App\Models\ESBTPMaquettePlaceSemestre;
 use App\Models\ESBTPMatiere;
 use App\Models\ESBTPMatiereFilierNiveau;
 use App\Models\ESBTPNiveauEtude;
@@ -88,6 +89,13 @@ class CLIBtsMaquetteController extends Controller
                 ->where('matiere_id', $matiere->id)
                 ->first();
 
+            $placeSemestre = ESBTPMaquettePlaceSemestre::query()
+                ->where('filiere_id', $filiere->id)
+                ->where('niveau_etude_id', $niveau->id)
+                ->where('semestre', $semestre)
+                ->where('matiere_id', $matiere->id)
+                ->value('ordre_bulletin');
+
             $lignes[] = [
                 'place' => $place,
                 'matiere_id' => $matiere->id,
@@ -95,6 +103,7 @@ class CLIBtsMaquetteController extends Controller
                 'liaison' => $existante ? 'existante' : 'a_creer',
                 'ordre_avant' => $existante?->ordre_bulletin,
                 'semestre_avant' => $existante?->semestre,
+                'place_semestre_avant' => $placeSemestre,
             ];
         }
 
@@ -140,6 +149,21 @@ class CLIBtsMaquetteController extends Controller
                         'matiere_id' => $ligne['matiere_id'],
                     ],
                     $attributs
+                );
+
+                // La place PAR SEMESTRE, qui seule sait qu'une matiere
+                // enseignee aux deux semestres n'y occupe pas le meme rang. Le
+                // pivot, unique sur (matiere, filiere, niveau), ne peut en
+                // retenir qu'une : charger le second semestre ecrasait le
+                // premier.
+                ESBTPMaquettePlaceSemestre::updateOrCreate(
+                    [
+                        'filiere_id' => $filiere->id,
+                        'niveau_etude_id' => $niveau->id,
+                        'semestre' => $semestre,
+                        'matiere_id' => $ligne['matiere_id'],
+                    ],
+                    ['ordre_bulletin' => $ligne['place']]
                 );
             }
         });

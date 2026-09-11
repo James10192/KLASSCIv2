@@ -119,7 +119,7 @@ final class BulletinSubjectRowsCompleter
             ]);
         }
 
-        return $this->ordre->sort($lignes, $this->ordre->rankMapForClasse($classe));
+        return $this->ordre->sort($lignes, $this->ordre->rankMapForClasse($classe, $semestre));
     }
 
     /**
