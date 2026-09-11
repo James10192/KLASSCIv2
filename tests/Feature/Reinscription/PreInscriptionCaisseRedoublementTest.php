@@ -94,6 +94,7 @@ class PreInscriptionCaisseRedoublementTest extends TestCase
             'nom' => 'KOUASSI',
             'prenoms' => 'Ama',
             'classe_id' => $classe->id,
+            'affectation_status' => 'affecté',
         ])->assertSessionHasNoErrors();
 
         $inscription = ESBTPInscription::latest('id')->firstOrFail();
@@ -106,6 +107,9 @@ class PreInscriptionCaisseRedoublementTest extends TestCase
         return $this->post(route('esbtp.inscriptions.store-pre-inscription'), [
             'etudiant_existant_id' => $etudiant->id,
             'classe_id' => $classe->id,
+            // Le guichet doit maintenant repondre : voir
+            // StatutAffectationSuitLEtudiantTest.
+            'affectation_status' => 'affecté',
         ]);
     }
 

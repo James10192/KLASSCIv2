@@ -110,7 +110,11 @@ class TroncCommunService
                 'classe_id' => $classeSpec->id,
                 'inscription_origine_id' => $inscriptionOrigine->id,
                 'type_changement' => 'specialisation',
-                'affectation_status' => 'affecté',
+                // Tout le reste est repris de l'inscription d'origine — niveau, annee,
+                // type, scolarite, comptabilite. Le statut d'affectation aussi : sortir
+                // du tronc commun ne fait pas placer un etudiant par le MESRS.
+                'affectation_status' => $inscriptionOrigine->affectation_status
+                    ?: ESBTPInscription::DEFAULT_AFFECTATION_STATUS,
                 'date_inscription' => now(),
                 'type_inscription' => $inscriptionOrigine->type_inscription,
                 'status' => 'active',

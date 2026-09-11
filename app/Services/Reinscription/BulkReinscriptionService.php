@@ -205,7 +205,12 @@ class BulkReinscriptionService
                 $row['suggested_classes'] = [];
                 $row['target_classe_id'] = null;
             }
-            $row['affectation_status'] = \App\Models\ESBTPInscription::DEFAULT_AFFECTATION_STATUS;
+            // La ligne est construite a partir de l'inscription en cours : son statut
+            // d'affectation est donc connu, et c'est celui-la qu'on propose. Poser
+            // « affecte » d'office faisait repartir toute une promotion de non
+            // affectes comme subventionnee, scolarite a zero.
+            $row['affectation_status'] = $inscription->affectation_status
+                ?: \App\Models\ESBTPInscription::DEFAULT_AFFECTATION_STATUS;
             $row['observations'] = null;
 
             $row['solde_restant'] = (float) $this->reeinscriptionService->calculerSoldeInscription($inscription);
@@ -300,7 +305,7 @@ class BulkReinscriptionService
                     $item['decision'],
                     $item['observations'] ?? null,
                     $item['selected_optionals'] ?? [],
-                    $item['affectation_status'] ?? ESBTPInscription::DEFAULT_AFFECTATION_STATUS,
+                    $item['affectation_status'] ?? null, // null => le service reprend celui de l'inscription quittee
                     null, // anneeUniversitaireId
                     $item['action_reliquat'] ?? null,
                     true,  // skipTransaction — on gère la transaction au niveau de cette boucle

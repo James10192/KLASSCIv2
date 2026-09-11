@@ -885,16 +885,13 @@ class ESBTPReinscriptionController extends Controller
                 $selectedOptionals = json_decode($request->selected_optionals, true) ?: [];
             }
 
-            // Récupérer le statut d'affectation
-            $affectationStatus = $request->input('affectation_status');
-
-            // Si aucun statut fourni, utiliser 'affecté' par défaut
-            if (empty($affectationStatus)) {
-                $affectationStatus = $request->input('affectation_status_final');
-                if (empty($affectationStatus)) {
-                    $affectationStatus = \App\Models\ESBTPInscription::DEFAULT_AFFECTATION_STATUS;
-                }
-            }
+            // Statut d'affectation : ce que l'agent a saisi, sinon rien. Le service
+            // reprendra alors celui de l'inscription quittee. Poser « affecte » ici
+            // faisait passer un non affecte pour un etudiant place par le MESRS, et
+            // sa scolarite tombait a zero sans que personne ne l'ait decide.
+            $affectationStatus = $request->input('affectation_status')
+                ?: $request->input('affectation_status_final')
+                ?: null;
 
             $nouvelleInscription = $this->reinscriptionService->effectuerReinscription(
                 $etudiantId,
