@@ -20,6 +20,10 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 - **Importer la maquette d'un second parcours partage l'unité au lieu de refuser** (`POST /api/cli/lmd/import`) — le refus d'écrasement, posé quand les colonnes du partage n'existaient pas encore, bloquait précisément le cas pour lequel elles ont été créées : une unité au code unique enseignée dans deux parcours avec des éléments différents. L'import laisse maintenant la fiche de l'unité au premier parcours, rattache le second par le lien parcours-unité avec son propre semestre, y grave son crédit lorsqu'il diffère, et réserve ses éléments à sa maquette. Le refus ne subsiste que pour un élément déjà rattaché à une autre unité, que l'import déplacerait.
 
+### Ajouts
+
+- **Charger la maquette d'un bulletin officiel sans rattacher les matières une par une** — quand une école arrive avec son bulletin papier, la moitié de ses matières n'est liée à aucune filière, et l'écran « Classification » ne sait poser une place et un semestre que sur une liaison qui existe déjà : sur une 2ᵉ année vierge, il ne touchait rien. Le chargement crée désormais la liaison manquante, pose la place au bulletin et le semestre, et ne valide la maquette que si on le lui demande. Il simule par défaut : on lit ce qui sera écrit avant que ça le soit, et on peut le rejouer sans rien dupliquer. Un libellé qui désigne plusieurs matières — le catalogue d'ESBTP Abidjan compte quatre « Anglais » et quatre « Hydraulique appliquée » — fait échouer le chargement entier en nommant ses candidats, plutôt que d'en choisir une au hasard et de poser un bulletin faux.
+
 ### Corrections
 
 - **Le certificat de scolarité et l'attestation de fréquentation s'affichaient avec des accents cassés** — « CERTIFICAT DE SCOLARITÃ© », « Je soussignÃ©(e) », « NÃ©(e) le », « FILIÃ¨RE » : les deux pages portaient un texte doublement encodé, sur le titre, le corps du document et les en-têtes du tableau. Les accents sont rétablis partout. Ce sont les deux seules pages de l'application qui en souffraient.

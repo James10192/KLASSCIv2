@@ -633,6 +633,13 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
         Route::post('/niveaux', [App\Http\Controllers\API\CLI\CLINiveauEtudeController::class, 'store'])->name('niveaux.store');
         Route::post('/classes', [App\Http\Controllers\API\CLI\CLIClasseController::class, 'store'])->name('classes.store');
 
+        // Maquette BTS : rattacher les matieres d'un bulletin officiel a un
+        // couple filiere x niveau, et poser leur place et leur semestre. L'ecran
+        // Classification ne sait qu'ecraser des liaisons existantes ; une ecole
+        // qui arrive avec son bulletin papier n'en a pas encore.
+        Route::post('/bts/maquette', [App\Http\Controllers\API\CLI\CLIBtsMaquetteController::class, 'charger'])
+            ->name('bts.maquette.charger');
+
         // Diagnostic en lecture seule : evaluations dont la nature de la
         // matiere ne suit pas le systeme academique de la classe.
         Route::get('/diagnostics/evaluations-periode', [App\Http\Controllers\API\CLI\CLIEvaluationPeriodeController::class, 'index'])
