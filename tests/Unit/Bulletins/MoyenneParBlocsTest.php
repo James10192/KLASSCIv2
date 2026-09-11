@@ -131,6 +131,32 @@ class MoyenneParBlocsTest extends TestCase
         $this->assertEqualsWithDelta(4.80, $moyenne, 0.01, 'Un bloc a zero doit peser, pas disparaitre.');
     }
 
+    public function test_une_matiere_hors_des_deux_blocs_fait_retomber_sur_la_ponderation(): void
+    {
+        // Le bloc d'une matiere vient de `type_formation`. Tant qu'une matiere
+        // notee n'est classee ni en general ni en professionnel, composer par
+        // blocs l'oublierait en silence : la moyenne serait celle d'une partie
+        // du bulletin seulement. On rend alors la ponderation classique, qui
+        // n'oublie personne.
+        $this->modeBlocs(1, 1);
+        $service = app(BulletinService::class);
+
+        $orpheline = $this->ligne(20.00, 5);
+        $toutes = $this->generales()->merge($this->professionnelles())->push($orpheline);
+
+        $moyenne = $service->composerLaMoyenneDuSemestre(
+            $toutes,
+            $this->generales(),
+            $this->professionnelles(),
+            9.60,
+            10.12
+        );
+
+        $ponderee = $service->calculerMoyennePonderee($toutes);
+        $this->assertEqualsWithDelta($ponderee, $moyenne, 0.001, 'Une note hors bloc doit ramener a la ponderation classique.');
+        $this->assertNotEqualsWithDelta(9.86, $moyenne, 0.01, 'Et surtout pas a la moyenne des deux blocs, qui ignorerait cette note.');
+    }
+
     private function modeBlocs(float $general, float $professionnel): void
     {
         SettingsHelper::setOrCreate('bulletin_moyenne_mode', 'blocs', 'bulletin', 'string');
