@@ -65,8 +65,12 @@ class DocumentPrintGatesTest extends TestCase
 
     public function test_paid_student_still_needs_approval(): void
     {
-        $this->souscrire(40000);
-        ESBTPPaiement::factory()->pour($this->inscription)->create(['montant' => 40000]);
+        // Le versement designe le frais qu'il solde. Sans cette designation il
+        // tombe dans le pool « global » et n'eteint aucune tranche rattachee a
+        // une categorie : l'etudiant resterait en retard malgre son paiement.
+        $categorieId = $this->souscrire(40000);
+        ESBTPPaiement::factory()->pour($this->inscription)->surCategorie($categorieId)
+            ->create(['montant' => 40000]);
 
         $guard = $this->guardOn();
         $etudiantId = (int) $this->inscription->etudiant_id;
@@ -78,8 +82,9 @@ class DocumentPrintGatesTest extends TestCase
 
     public function test_paid_and_approved_can_print(): void
     {
-        $this->souscrire(40000);
-        ESBTPPaiement::factory()->pour($this->inscription)->create(['montant' => 40000]);
+        $categorieId = $this->souscrire(40000);
+        ESBTPPaiement::factory()->pour($this->inscription)->surCategorie($categorieId)
+            ->create(['montant' => 40000]);
 
         $etudiantId = (int) $this->inscription->etudiant_id;
         ESBTPDocumentApproval::create([
@@ -123,10 +128,16 @@ class DocumentPrintGatesTest extends TestCase
         $settings = Mockery::mock(TenantScolariteSettings::class);
         $settings->shouldReceive('printRequiresApproval')->andReturn(true);
 
-        return new DocumentPrintGuard($settings, new \App\Services\SoldeEtudiant());
+        // Le solde se resout par le conteneur : SoldeEtudiant depend de
+        // RelanceCalculationService, et l'instancier a la main ici a fige une
+        // arite qui a change depuis — la classe entiere ne tournait plus.
+        return new DocumentPrintGuard($settings, app(\App\Services\SoldeEtudiant::class));
     }
 
-    private function souscrire(int $montant): void
+    /**
+     * @return int l'id de la categorie souscrite, que le versement doit designer
+     */
+    private function souscrire(int $montant): int
     {
         $categorie = ESBTPFraisCategory::factory()->create([
             'is_mandatory' => true,
@@ -142,5 +153,7 @@ class DocumentPrintGatesTest extends TestCase
             'satisfied_in_kind' => false,
             'created_by' => $this->user->id,
         ]);
+
+        return (int) $categorie->id;
     }
 }
