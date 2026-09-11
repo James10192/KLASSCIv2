@@ -187,11 +187,14 @@ class ChargementMaquetteBtsTest extends TestCase
         $charge(1, [$autre->name, $topo->name, $maths->name]);   // maths 3e au S1
         $charge(2, [$maths->name, $topo->name]);                 // maths 1re au S2
 
+        // Deliberement SANS oublierLeCache() entre les deux appels : c'est la
+        // clef de memoire qui doit porter le semestre. Avec un vidage manuel,
+        // ce test passait meme en retirant le semestre de la clef — il ne
+        // couvrait donc pas le defaut qu'il etait cense couvrir.
         $ordre = app(\App\Domain\BtsTroncCommun\BulletinSubjectOrder::class);
+        $ordre->oublierLeCache();
 
-        $ordre->oublierLeCache();
         $s1 = $ordre->rankMapForFiliereNiveau($this->filiere->id, $this->niveau->id, null, 1);
-        $ordre->oublierLeCache();
         $s2 = $ordre->rankMapForFiliereNiveau($this->filiere->id, $this->niveau->id, null, 2);
 
         $this->assertSame(3, $s1[$maths->id], 'Le premier semestre doit garder sa place, malgre le chargement du second.');
@@ -217,6 +220,43 @@ class ChargementMaquetteBtsTest extends TestCase
         $carte = $ordre->rankMapForFiliereNiveau($this->filiere->id, $this->niveau->id, null, 2);
 
         $this->assertSame(7, $carte[$matiere->id]);
+    }
+
+    public function test_une_ecue_lmd_designee_par_son_identifiant_est_refusee(): void
+    {
+        $bts = $this->matiere('Topometrie '.uniqid());
+
+        // Une ECUE LMD : ce qui la distingue, c'est son unite d'enseignement.
+        $ue = \App\Models\ESBTPUniteEnseignement::create([
+            'name' => 'Hydraulique appliquee '.uniqid(),
+            'code' => 'UE'.substr(uniqid(), -8),
+            'credit' => 6,
+            'semestre' => 1,
+            'is_active' => true,
+        ]);
+        $ecue = $this->matiere('Hydraulique '.uniqid());
+        $ecue->forceFill(['unite_enseignement_id' => $ue->id])->save();
+
+        // Le chemin par IDENTIFIANT est celui que prend l'operateur quand un
+        // libelle a ete refuse pour ambiguite. Il doit opposer le meme refus
+        // que le chemin par libelle, sinon la fuite passe par la porte la
+        // plus frequentee.
+        $reponse = $this->postJson('/api/cli/bts/maquette', [
+            'filiere' => $this->filiere->id,
+            'niveau' => $this->niveau->id,
+            'semestre' => 1,
+            'appliquer' => true,
+            'matieres' => [['id' => $bts->id], ['id' => $ecue->id]],
+        ])->assertStatus(422);
+
+        $introuvables = $reponse->json('data.introuvables') ?? [];
+        $this->assertCount(1, $introuvables, "L'ECUE LMD doit etre refusee, la matiere BTS acceptee.");
+        $this->assertStringContainsString('LMD', $introuvables[0]['libelle']);
+        $this->assertSame(1, $reponse->json('data.resolus'), 'La matiere BTS du meme envoi, elle, est bien resolue.');
+
+        // Refus en bloc : la matiere BTS legitime n'est pas ecrite non plus,
+        // sinon la maquette serait trouee a la place de l'ECUE refusee.
+        $this->assertSame(0, $this->liaisons()->count(), "Aucune ECUE LMD ne doit atterrir dans le pivot BTS.");
     }
 
     private function liaisons()

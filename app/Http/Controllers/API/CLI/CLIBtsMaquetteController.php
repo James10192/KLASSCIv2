@@ -11,6 +11,7 @@ use App\Models\ESBTPNiveauEtude;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Charger la maquette d'un couple filiere x niveau depuis le bulletin officiel
@@ -168,6 +169,22 @@ class CLIBtsMaquetteController extends Controller
             }
         });
 
+        // Cet endpoint reecrit le referentiel qui gouverne l'ordre de chaque
+        // bulletin d'un couple filiere x niveau, sur une instance qui peut
+        // compter des milliers d'inscrits, via un jeton CLI. Sans trace, un
+        // bulletin qui sortira dans le desordre dans trois mois ne sera ni
+        // datable ni attribuable. Les controleurs CLI voisins journalisent
+        // tous leur ecriture ; celui-ci le doit aussi.
+        Log::warning('CLI: maquette BTS chargee', [
+            'filiere' => $filiere->code ?? $filiere->name,
+            'niveau' => $niveau->code ?? $niveau->name,
+            'semestre' => $semestre,
+            'matieres' => count($lignes),
+            'valider_semestre' => $valider,
+            'utilisateur_id' => optional($request->user())->id,
+            'ip' => $request->ip(),
+        ]);
+
         return response()->json([
             'success' => true,
             'message' => 'Maquette chargee pour '.count($lignes).' matiere(s).',
@@ -225,11 +242,32 @@ class CLIBtsMaquetteController extends Controller
 
         $id = is_array($entree) ? ($entree['id'] ?? null) : (is_numeric($entree) ? $entree : null);
         if ($id !== null) {
-            $matiere = ESBTPMatiere::find((int) $id);
+            // Meme garde que le chemin par libelle : une ECUE LMD n a rien a
+            // faire dans le pivot BTS. C est le chemin par identifiant que
+            // prend l operateur quand un libelle a ete refuse pour ambiguite,
+            // donc le laisser ouvert revient a livrer la fuite par la porte
+            // qu on emprunte le plus souvent.
+            $matiere = ESBTPMatiere::query()
+                ->whereNull('unite_enseignement_id')
+                ->find((int) $id);
 
-            return $matiere
-                ? ['statut' => 'ok', 'libelle' => $matiere->name, 'matiere' => $matiere]
-                : ['statut' => 'introuvable', 'libelle' => (string) $id];
+            if ($matiere !== null) {
+                return ['statut' => 'ok', 'libelle' => $matiere->name, 'matiere' => $matiere];
+            }
+
+            // On distingue << cet identifiant n existe pas >> de << cet
+            // identifiant designe une ECUE LMD >> : le second est une erreur
+            // de saisie que l operateur doit pouvoir comprendre.
+            $ecue = ESBTPMatiere::query()
+                ->whereNotNull('unite_enseignement_id')
+                ->find((int) $id);
+
+            return [
+                'statut' => 'introuvable',
+                'libelle' => $ecue !== null
+                    ? $ecue->name.' (element LMD : hors maquette BTS)'
+                    : (string) $id,
+            ];
         }
 
         $cible = $this->normaliser($libelle);

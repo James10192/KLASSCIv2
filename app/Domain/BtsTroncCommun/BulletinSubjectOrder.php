@@ -8,6 +8,7 @@ use App\Models\ESBTPClasse;
 use App\Models\ESBTPMaquettePlaceSemestre;
 use App\Models\ESBTPMatiereFilierNiveau;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Ordre des matieres sur le bulletin BTS.
@@ -151,6 +152,16 @@ final class BulletinSubjectOrder
     {
         $places = [];
 
+        // Le code arrive avant la migration : la methode de deploiement est
+        // pull, puis vidage des caches, puis migrate. Sans cette garde, tout
+        // bulletin de semestre leve une erreur SQL dans cette fenetre, et le
+        // controleur etudiant l'avale en silence en affichant << Non
+        // disponible >>. Une instance qui n'a pas encore migre doit voir
+        // l'ordre du pivot, pas un bulletin vide.
+        if (! $this->tableDesPlacesExiste()) {
+            return $places;
+        }
+
         $lignes = ESBTPMaquettePlaceSemestre::query()
             ->whereIn('filiere_id', $combos)
             ->where('niveau_etude_id', $niveauId)
@@ -168,6 +179,29 @@ final class BulletinSubjectOrder
         }
 
         return $places;
+    }
+
+    /**
+     * La table des places par semestre est-elle deja migree ?
+     *
+     * Retenu par connexion, et seul un true est retenu : une absence doit
+     * pouvoir etre reinterrogee, sinon la migration ne serait jamais vue
+     * dans un processus long.
+     */
+    private function tableDesPlacesExiste(): bool
+    {
+        static $vue = [];
+
+        $connexion = (new ESBTPMaquettePlaceSemestre())->getConnectionName() ?? DB::getDefaultConnection();
+        $cle = $connexion.'|'.DB::connection($connexion)->getDatabaseName();
+
+        if (($vue[$cle] ?? false) === true) {
+            return true;
+        }
+
+        return $vue[$cle] = DB::connection($connexion)
+            ->getSchemaBuilder()
+            ->hasTable((new ESBTPMaquettePlaceSemestre())->getTable());
     }
 
     /**

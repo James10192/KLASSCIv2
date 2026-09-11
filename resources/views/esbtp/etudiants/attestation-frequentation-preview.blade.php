@@ -35,6 +35,15 @@
     .doc-toolbar-btns { display:flex; gap:8px; flex-wrap:wrap; }
 
     .doc-page-wrap { max-width:820px; margin:0 auto; }
+    .doc-refus {
+        background:#fff; border:1px solid #e2e8f0; border-radius:14px;
+        padding:3rem 2rem; text-align:center; color:#1e293b;
+        box-shadow:0 1px 3px rgba(15,23,42,.04), 0 1px 2px rgba(15,23,42,.06);
+    }
+    .doc-refus-icone { font-size:1.75rem; color:#64748b; margin-bottom:.85rem; }
+    .doc-refus-titre { font-size:1.05rem; font-weight:700; margin-bottom:.5rem; }
+    .doc-refus-texte { font-size:.9rem; color:#334155; max-width:520px; margin:0 auto .85rem; }
+    .doc-refus-note { font-size:.78rem; color:#64748b; max-width:520px; margin:0 auto; }
     .doc-paper {
         background:#fff; border:1px solid var(--doc-border);
         border-radius:var(--doc-radius); box-shadow:var(--doc-shadow);
@@ -186,6 +195,7 @@
     </div>
 </div>
 
+@if($printAllowed)
 <div class="doc-page-wrap">
 <div class="doc-paper">
     @if(!empty($settings['logo_base64']))
@@ -299,6 +309,23 @@
     </div>
 </div>
 </div>
+@else
+{{-- La garde solde/accord ne protegeait que les boutons : le corps du document
+     etait rendu quand meme, et la feuille de style d'impression de cette page
+     le sortait tel quel au Ctrl+P, sans le bandeau de refus qui est no-print.
+     Tant que la garde refuse, on ne rend pas le document du tout. --}}
+<div class="doc-page-wrap">
+<div class="doc-refus">
+    <div class="doc-refus-icone"><i class="fas fa-lock"></i></div>
+    <div class="doc-refus-titre">Document non délivrable</div>
+    <div class="doc-refus-texte">{{ $printDecision->message() }}</div>
+    <div class="doc-refus-note">
+        Le document apparaîtra ici dès que la situation sera régularisée.
+        Aucune version imprimable n'est produite tant que ce blocage est actif.
+    </div>
+</div>
+</div>
+@endif
 
 </div>
 </div>

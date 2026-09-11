@@ -58,6 +58,11 @@ return new class extends Migration
                 'is_active' => true,
                 'requires_restart' => false,
                 'group' => 'bulletin',
+                // L'ecran de configuration trie et regroupe par `category` :
+                // sans elle, la ligne existe en base et n'apparait sur aucun
+                // ecran. C'est `group` seul qui rendait ces trois reglages
+                // invisibles, donc inactionnables par l'ecole.
+                'category' => 'bulletin',
                 'created_by' => $auteur,
                 'updated_by' => $auteur,
                 'created_at' => $maintenant,
@@ -68,8 +73,11 @@ return new class extends Migration
 
     public function down(): void
     {
-        DB::table('settings')
-            ->whereIn('key', array_column(self::REGLAGES, 'key'))
-            ->delete();
+        // Volontairement sans effet. Le `up()` ne touche jamais une valeur
+        // deja posee par l'ecole ; un `down()` qui supprime les trois cles
+        // detruirait donc une configuration que la migration n'a pas creee.
+        // Un retour arriere sur une migration voisine du meme lot ferait
+        // repasser la moyenne en « ponderee » sans que personne l'ait
+        // demande. Une graine se rejoue, elle ne se deseme pas.
     }
 };
