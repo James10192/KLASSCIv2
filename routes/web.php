@@ -453,7 +453,17 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 Route::post('inscriptions/{inscription}/unsubscribe-optional-fee', [\App\Http\Controllers\ESBTPInscriptionPaiementController::class, 'unsubscribeFromOptionalFee'])->name('inscriptions.unsubscribe-optional-fee');
             });
 
-            // Routes pour les certificats de scolaritÃ©
+
+            // Routes pour les rÃ´les et permissions
+            Route::resource('roles', \App\Http\Controllers\ESBTP\RoleController::class)->middleware(['role:superAdmin']);
+        });
+
+        Route::middleware(['auth', 'permission:admin.access|identity.direct_studies|identity.registrar|identity.registrar_clerk|identity.enrollment_officer', 'paywall'])->group(function () {
+
+            // Certificats et attestations : documents de SCOLARITE, donc
+            // ouverts aux memes cles que les bulletins. Restes derriere le seul
+            // admin.access, ils renvoyaient « Acces restreint » au service et a la
+            // responsable scolarite — dont le metier est precisement de les tirer.
             Route::get('/etudiants/{etudiant}/certificat-preview', [ESBTPEtudiantController::class, 'previewCertificat'])
                 ->name('etudiants.certificat.preview')
                 ->middleware(['permission:students.view']);
@@ -474,12 +484,6 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             Route::get('/etudiants/{etudiant}/attestation-frequentation/preview-pdf', [ESBTPEtudiantController::class, 'previewAttestationFrequentationPdf'])
                 ->name('etudiants.attestation-frequentation.preview-pdf')
                 ->middleware(['permission:students.view', 'throttle:60,1']);
-
-            // Routes pour les rÃ´les et permissions
-            Route::resource('roles', \App\Http\Controllers\ESBTP\RoleController::class)->middleware(['role:superAdmin']);
-        });
-
-        Route::middleware(['auth', 'permission:admin.access|identity.direct_studies|identity.registrar|identity.registrar_clerk|identity.enrollment_officer', 'paywall'])->group(function () {
 
             // Routes pour les filiÃ¨res â€” gates per-mÃ©thode (avant: middleware OR'd cassÃ© qui laissait passer view â†’ write)
             // /!\ Les routes statiques (create) DOIVENT Ãªtre dÃ©clarÃ©es AVANT les routes paramÃ©trÃ©es ({filiere})

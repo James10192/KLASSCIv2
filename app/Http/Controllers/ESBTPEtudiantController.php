@@ -1574,6 +1574,11 @@ class ESBTPEtudiantController extends Controller
      */
     public function previewCertificat($id)
     {
+        // Pas de garde ici, a dessein : cette page EST l'endroit d'ou l'on
+        // demande l'accord. Elle n'offre les boutons d'impression que si la
+        // garde autorise (voir la vue), et affiche sinon « Demander
+        // l'approbation ». La fermer renverrait l'agent hors du seul ecran qui
+        // lui permet d'avancer.
         // Récupérer l'étudiant avec toutes ses inscriptions
         $etudiant = ESBTPEtudiant::with([
             'inscriptions.anneeUniversitaire',
@@ -2267,6 +2272,8 @@ class ESBTPEtudiantController extends Controller
      */
     public function previewAttestationFrequentation($id)
     {
+        // Meme raison que pour le certificat : cette page porte la demande
+        // d'accord, elle reste ouverte et masque ses boutons d'impression.
         // Récupérer l'étudiant avec ses inscriptions
         $etudiant = ESBTPEtudiant::with([
             'inscriptions.anneeUniversitaire',
