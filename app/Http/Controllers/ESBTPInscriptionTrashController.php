@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Domain\Trash\Actions\ForceDeleteInscriptionWithDependencies;
+use App\Domain\Trash\ErreurDeSuppression;
 use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPInscription;
 use App\Services\Trash\TrashAuditService;
@@ -145,19 +147,33 @@ class ESBTPInscriptionTrashController extends Controller
         return response()->json(['success' => true, 'message' => $msg, 'etudiant_restored' => $etudiantWasRestored]);
     }
 
-    public function forceDelete(int $id)
+    public function forceDelete(int $id, ForceDeleteInscriptionWithDependencies $action)
     {
         abort_unless(Auth::user()?->can('inscriptions.force_delete'), 403, 'Permission inscriptions.force_delete requise.');
 
-        $inscription = ESBTPInscription::onlyTrashed()->findOrFail($id);
-
         try {
-            DB::transaction(fn () => $inscription->forceDelete());
-            Log::warning('Inscription supprimée définitivement', ['inscription_id' => $id, 'deleted_by' => Auth::id()]);
-            return response()->json(['success' => true, 'message' => "Inscription supprimée définitivement."]);
+            $recap = $action->execute($id, Auth::user());
+
+            $message = 'Inscription supprimée définitivement.';
+            if ($recap['factures_deleted'] > 0) {
+                $message .= " {$recap['factures_deleted']} facture(s) liée(s) ont été supprimées avec elle.";
+            }
+
+            return response()->json(['success' => true, 'message' => $message, 'result' => $recap]);
+        } catch (\DomainException $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Inscription introuvable ou déjà supprimée définitivement.',
+            ], 404);
         } catch (\Throwable $e) {
             Log::error('Erreur suppression définitive inscription', ['id' => $id, 'error' => $e->getMessage()]);
-            return response()->json(['success' => false, 'message' => 'Suppression impossible : '.$e->getMessage()], 422);
+
+            return response()->json([
+                'success' => false,
+                'message' => ErreurDeSuppression::messageLisible($e, 'Cette inscription'),
+            ], 422);
         }
     }
 }
