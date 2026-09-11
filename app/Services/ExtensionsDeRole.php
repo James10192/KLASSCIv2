@@ -106,11 +106,25 @@ class ExtensionsDeRole
      * synchronisation des permissions tourne pendant le deploiement, souvent
      * AVANT les migrations. Echouer la rendrait le deploiement impossible sur
      * la seule instance qui en a besoin.
+     *
+     * Seule la reponse POSITIVE est memorisee. Une reponse negative gardee pour
+     * toute la duree du processus rendait la protection inerte precisement
+     * quand elle sert : demandee une premiere fois avant les migrations, la
+     * classe repondait « pas de table » jusqu'a la fin du processus, meme une
+     * fois la table creee — et la decision de l'ecole repassait pour de la
+     * derive au nettoyage suivant. La memoire est aussi tenue par connexion :
+     * une table presente ici ne l'est pas forcement ailleurs.
      */
     private function tableExiste(): bool
     {
-        static $existe = null;
+        static $vue = [];
 
-        return $existe ??= DB::getSchemaBuilder()->hasTable(self::TABLE);
+        $connexion = DB::getDefaultConnection();
+
+        if (($vue[$connexion] ?? false) === true) {
+            return true;
+        }
+
+        return $vue[$connexion] = DB::getSchemaBuilder()->hasTable(self::TABLE);
     }
 }
