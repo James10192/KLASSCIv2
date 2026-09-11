@@ -253,6 +253,21 @@ class PermissionSyncService
             // synchronisation. Ce rattrapage ne porte que sur des droits NÉS du
             // découpage, qu'aucune école n'a pu révoquer puisqu'ils n'existaient
             // pas encore.
+
+            // Dispenses de matiere et pieces du dossier d'inscription : deux
+            // fonctionnalites nees apres l'ouverture des instances. Leurs gardes
+            // de route voyagent avec le code et se sont refermees des le
+            // deploiement, mais leurs droits ne figuraient que dans les
+            // role_defaults — c'est-a-dire nulle part, pour une instance dont
+            // les roles sont deja peuples. Meme panne silencieuse que le module
+            // universitaire ci-dessus : 403 sur le catalogue des pieces, sur le
+            // suivi du dossier et sur les dispenses, pour la scolarite dont
+            // c'est precisement le metier.
+            'dispenses.view',
+            'dispenses.manage',
+            'pieces_dossier.view',
+            'pieces_dossier.suivre',
+            'pieces_dossier.configure',
         ];
     }
 
