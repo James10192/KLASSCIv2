@@ -22,6 +22,8 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ### Ajouts
 
+- **Les réglages de composition de la moyenne arrivent sur les instances déjà ouvertes** — les défauts déclarés dans le code n'étaient chargés nulle part : un réglage ajouté n'atteignait aucune école, et l'écran de configuration le déclarait « introuvable ». Les trois nouveaux sont créés au déploiement, sans jamais écraser une valeur déjà posée.
+
 - **La moyenne du semestre peut se composer bloc par bloc, et non matière par matière** — sur le bulletin d'ESBTP Abidjan, l'enseignement général et l'enseignement professionnel pèsent chacun pour moitié, quel que soit le nombre de matières : deux matières générales valent autant que sept professionnelles. KLASSCI ne savait faire qu'une moyenne pondérée sur l'ensemble des matières, et l'écart n'est pas cosmétique — sur un cas réel de leur bulletin, 09.86 d'un côté contre 10.01 de l'autre, c'est-à-dire passer ou ne pas passer. Le mode de composition et le poids de chaque bloc se règlent désormais par établissement. Le défaut ne change rien : une école qui ne demande rien garde exactement le calcul qu'elle avait.
 
 - **Une matière enseignée aux deux semestres peut occuper une place différente sur chaque bulletin** — chez ESBTP Abidjan, Mathématiques générales est 4ᵉ au premier semestre et 1ʳᵉ au second en Géomètre Topographe. La maquette ne retenait qu'une place par matière : charger le second semestre écrasait silencieusement le premier, et le bulletin de S1 sortait dans le désordre. Chaque semestre garde désormais sa propre place. Rien ne change pour une école qui n'en a pas renseigné : l'ordre reste celui de la maquette.
