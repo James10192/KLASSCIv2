@@ -343,7 +343,7 @@ class ReeinscriptionService
         $decision,
         $observations = null,
         $selectedOptionals = [],
-        $affectationStatus = ESBTPInscription::DEFAULT_AFFECTATION_STATUS,
+        $affectationStatus = null,
         $anneeUniversitaireId = null,
         $actionReliquat = null,
         bool $skipTransaction = false,
@@ -374,6 +374,15 @@ class ReeinscriptionService
             if (!$inscriptionActuelle) {
                 throw new \App\Exceptions\ReinscriptionRefuseeException("Aucune inscription active trouvée pour cet étudiant");
             }
+
+            // Le statut d'affectation suit l'etudiant d'une annee sur l'autre : le
+            // MESRS l'a place, ou ne l'a pas place, et se reinscrire n'y change rien.
+            // Quand l'appelant ne le precise pas, on reprend celui de l'inscription
+            // quittee. Supposer « affecte » reviendrait a rendre l'etudiant
+            // subventionne du jour au lendemain, donc a effacer sa scolarite sans
+            // que personne ne l'ait decide.
+            $affectationStatus = $affectationStatus
+                ?: ($inscriptionActuelle->affectation_status ?: ESBTPInscription::DEFAULT_AFFECTATION_STATUS);
 
             // 3. Déterminer l'année universitaire pour la nouvelle inscription
             if ($anneeUniversitaireId) {

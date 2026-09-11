@@ -2479,7 +2479,11 @@ class ESBTPInscriptionController extends Controller
                     ? ESBTPInscription::STATUT_ETABLISSEMENT_ANCIEN
                     : ESBTPInscription::STATUT_ETABLISSEMENT_NOUVEAU,
                 'is_redoublant' => $estRedoublement,
-                'affectation_status' => ESBTPInscription::DEFAULT_AFFECTATION_STATUS,
+                // Saisi au guichet, comme la classe. L'ecrire en dur ici donnait a
+                // chaque pre-inscription le statut « affecte », celui qui ouvre droit
+                // a la subvention : la scolarite tombait a zero et le guichet
+                // n'encaissait que les frais d'inscription, sans que rien ne le dise.
+                'affectation_status' => $request->validated()['affectation_status'],
                 'montant_scolarite' => 0,
                 'frais_inscription' => 0,
                 'created_by' => Auth::id(),
