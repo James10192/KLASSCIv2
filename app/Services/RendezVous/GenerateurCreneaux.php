@@ -7,22 +7,13 @@ use Carbon\CarbonImmutable;
 /**
  * La grille des creneaux de guichet, deduite de la configuration.
  *
- * Du calcul pur : aucune lecture de base, aucune ecriture. L'occupation reelle
- * se greffe apres coup, par `avecOccupation()`, pour que cette classe reste
- * testable sans base de donnees et que la grille affichee a l'ecole pendant
- * qu'elle regle ses horaires ne depende de rien d'autre que de ses horaires.
- *
- * Rien n'est stocke : les creneaux se recalculent a chaque affichage. Ce qui
- * est stocke, c'est le rendez-vous, avec ses propres heures figees.
+ * Du calcul pur : aucune lecture de base, aucune ecriture. La grille montree a
+ * l'ecole pendant qu'elle regle ses horaires ne depend ainsi de rien d'autre
+ * que de ses horaires, et s'eprouve sans base de donnees.
  */
 final class GenerateurCreneaux
 {
     public function __construct(private readonly ConfigurationRendezVous $config) {}
-
-    public static function depuisLesReglages(): self
-    {
-        return new self(ConfigurationRendezVous::depuisLesReglages());
-    }
 
     public function configuration(): ConfigurationRendezVous
     {
@@ -93,28 +84,10 @@ final class GenerateurCreneaux
             $creneaux[] = new Creneau(
                 debut: $minuit->addMinutes($debut),
                 fin: $minuit->addMinutes($fin),
-                capacite: $this->config->capaciteParCreneau,
             );
         }
 
         return $creneaux;
-    }
-
-    /**
-     * Les creneaux d'une journee, avec leur occupation.
-     *
-     * Les comptes sont fournis par l'appelant plutot que lus ici : une seule
-     * requete groupee sur la journee, au lieu d'une par creneau.
-     *
-     * @param  array<string, int>  $comptes  cle « Y-m-d H:i », valeur = rendez-vous deja pris
-     * @return list<Creneau>
-     */
-    public function pourLeJourAvecOccupation(CarbonImmutable $jour, array $comptes): array
-    {
-        return array_map(
-            fn (Creneau $creneau) => $creneau->avecOccupation($comptes[$creneau->debut->format('Y-m-d H:i')] ?? 0),
-            $this->pourLeJour($jour),
-        );
     }
 
     /**

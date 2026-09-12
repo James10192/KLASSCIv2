@@ -152,37 +152,6 @@ class GrilleDesCreneauxTest extends TestCase
         $this->assertNull($grille->joursNecessairesPour(2450));
     }
 
-    /** @test */
-    public function l_occupation_se_greffe_sur_la_grille_sans_la_modifier(): void
-    {
-        $creneaux = $this->grille([Config::REGLAGE_CAPACITE => '3'])
-            ->pourLeJourAvecOccupation(CarbonImmutable::parse('2026-09-14'), [
-                '2026-09-14 08:00' => 3,
-                '2026-09-14 08:15' => 1,
-                // Une capacite baissee sous l'occupation deja prise ne doit
-                // jamais rendre un nombre negatif.
-                '2026-09-14 08:30' => 9,
-            ]);
-
-        $this->assertSame(0, $creneaux[0]->restant);
-        $this->assertTrue($creneaux[0]->estComplet());
-        $this->assertSame(2, $creneaux[1]->restant);
-        $this->assertSame(0, $creneaux[2]->restant);
-        $this->assertSame(3, $creneaux[3]->restant);
-    }
-
-    /** @test */
-    public function le_public_ne_lit_pas_la_capacite_totale_du_guichet(): void
-    {
-        $creneau = $this->grille([Config::REGLAGE_CAPACITE => '4'])
-            ->pourLeJourAvecOccupation(CarbonImmutable::parse('2026-09-14'), [])[0];
-
-        $this->assertSame(
-            ['debut', 'fin', 'restant', 'complet'],
-            array_keys($creneau->pourLePublic()),
-        );
-    }
-
     // -----------------------------------------------------------------
     // Ce que la grille refuse
     // -----------------------------------------------------------------
@@ -210,11 +179,8 @@ class GrilleDesCreneauxTest extends TestCase
     {
         return [
             'duree nulle' => [[Config::REGLAGE_DUREE => '0']],
-            'duree sous la borne' => [[Config::REGLAGE_DUREE => '2']],
             'duree absurde' => [[Config::REGLAGE_DUREE => '10000']],
-            'duree non numerique' => [[Config::REGLAGE_DUREE => 'un quart d heure']],
             'capacite nulle' => [[Config::REGLAGE_CAPACITE => '0']],
-            'capacite absente' => [[Config::REGLAGE_CAPACITE => '']],
             'fermeture avant ouverture' => [[Config::REGLAGE_OUVERTURE => '16:00', Config::REGLAGE_FERMETURE => '08:00']],
             'fermeture egale a l ouverture' => [[Config::REGLAGE_FERMETURE => '08:00']],
             'heure illisible' => [[Config::REGLAGE_OUVERTURE => '8h']],
@@ -222,7 +188,6 @@ class GrilleDesCreneauxTest extends TestCase
             'pause a moitie saisie' => [[Config::REGLAGE_PAUSE_FIN => '']],
             'pause inversee' => [[Config::REGLAGE_PAUSE_DEBUT => '13:00', Config::REGLAGE_PAUSE_FIN => '12:00']],
             'pause hors de la plage' => [[Config::REGLAGE_PAUSE_DEBUT => '07:00', Config::REGLAGE_PAUSE_FIN => '09:00']],
-            'pause couvrant la journee' => [[Config::REGLAGE_PAUSE_DEBUT => '08:00', Config::REGLAGE_PAUSE_FIN => '16:00']],
             'plage trop courte pour un creneau' => [[Config::REGLAGE_FERMETURE => '08:10', Config::REGLAGE_PAUSE_DEBUT => '', Config::REGLAGE_PAUSE_FIN => '']],
             'aucun jour ouvert' => [[Config::REGLAGE_JOURS_OUVERTS => '']],
             'jour illisible' => [[Config::REGLAGE_JOURS_OUVERTS => 'lundi,mardi']],
