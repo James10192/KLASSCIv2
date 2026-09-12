@@ -81,6 +81,13 @@ class BtsCurrentResultSnapshotService
                 $subjects[$matiereId] = [
                     'matiere_id' => $matiereId,
                     'matiere' => $matiere->name,
+                    // Le bloc de la matiere. Ce service calculait une moyenne
+                    // ponderee a plat, sans savoir que l'ecole peut composer sa
+                    // moyenne bloc par bloc : l'ecran affichait alors un chiffre
+                    // et le bulletin papier un autre, pour le meme etudiant le
+                    // meme jour. Porter le bloc ici est le prealable pour que
+                    // les deux suivent la meme regle.
+                    'type_formation' => $matiere->type_formation,
                     'source' => 'calculee',
                     'coefficient' => null,
                     'moyenne' => null,
@@ -122,6 +129,7 @@ class BtsCurrentResultSnapshotService
                 $subjects[$matiereId] = [
                     'matiere_id' => $matiereId,
                     'matiere' => $resultat->matiere?->name ?? 'Matière inconnue',
+                    'type_formation' => $resultat->matiere?->type_formation,
                     'source' => 'manuelle',
                     'coefficient' => null,
                     'moyenne' => null,
