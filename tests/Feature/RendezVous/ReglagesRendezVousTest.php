@@ -128,9 +128,24 @@ class ReglagesRendezVousTest extends TestCase
             ->put(route('esbtp.settings.update'), $this->commeLeNavigateur(
                 array_merge(self::JOURNEE, [Config::REGLAGE_DERNIER_JOUR => '2026-02-31'])
             ))
-            ->assertSessionHasErrors();
+            // Le contrôleur des parametres refuse par un message de session, pas
+            // par le sac de validation : il rend `back()->with('error', ...)`.
+            ->assertSessionHas('error');
 
         $this->assertSame('', Setting::where('key', Config::REGLAGE_DERNIER_JOUR)->value('value'));
+    }
+
+    public function test_une_heure_illisible_est_refusee_a_la_saisie(): void
+    {
+        $this->semerLesReglages();
+
+        $this->actingAs($this->superAdmin())
+            ->put(route('esbtp.settings.update'), $this->commeLeNavigateur(
+                array_merge(self::JOURNEE, [Config::REGLAGE_OUVERTURE => '8h'])
+            ))
+            ->assertSessionHas('error');
+
+        $this->assertSame('', Setting::where('key', Config::REGLAGE_OUVERTURE)->value('value'));
     }
 
     public function test_l_apercu_rend_le_nombre_de_places_sans_rien_enregistrer(): void

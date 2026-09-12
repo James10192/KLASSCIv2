@@ -975,6 +975,33 @@ class ESBTPSettingsController extends Controller
             return $this->refus($request, $message);
         }
 
+        // Les horaires du guichet, par le meme analyseur que la grille.
+        // ConfigurationRendezVous promet que la lecture et l'ecriture ont la
+        // meme severite ; sans ces lignes, la promesse etait ecrite mais pas
+        // tenue, et une heure du type « 8h » s'enregistrait pour n'etre refusee
+        // qu'ensuite, a l'affichage, par un ecran qui ne dit rien si l'apercu
+        // ne repond pas. Une valeur VIDE reste acceptee : une ecole a le droit
+        // d'enregistrer un reglage a moitie rempli et d'y revenir.
+        foreach ([
+            ConfigurationRendezVous::REGLAGE_OUVERTURE,
+            ConfigurationRendezVous::REGLAGE_FERMETURE,
+            ConfigurationRendezVous::REGLAGE_PAUSE_DEBUT,
+            ConfigurationRendezVous::REGLAGE_PAUSE_FIN,
+        ] as $cle) {
+            if (! $this->estSoumis($rawInput, $cle)) {
+                continue;
+            }
+
+            $valeur = $this->valeurSoumise($rawInput, $cle);
+            $valeur = is_string($valeur) ? trim($valeur) : '';
+
+            if ($valeur === '' || ConfigurationRendezVous::interpreterHeure($valeur) !== null) {
+                continue;
+            }
+
+            return $this->refus($request, "L'heure « {$valeur} » est invalide. Format attendu : HH:MM.");
+        }
+
         if (($refus = $this->refuserAnneeCibleInconnue($request)) !== null) {
             return $refus;
         }
