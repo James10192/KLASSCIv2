@@ -170,6 +170,61 @@ class DiagnosticPortailReinscriptionTest extends TestCase
         );
     }
 
+    public function test_deux_promotions_voisines_ne_sont_jamais_confondues(): void
+    {
+        // Promotion 2020, dossier 107. Le matricule cherche — promotion 2021,
+        // dossier 7 — n'existe pas et designe un AUTRE eleve.
+        $this->etudiantAvecAnneePrecedente('MESBTP20-0107', '2007-09-15');
+
+        $rapport = $this->diagnostiquer('MESBTP21-07', '2007-09-15');
+
+        $this->assertSame(
+            DiagnosticPortailReinscription::CAUSE_MATRICULE_INCONNU,
+            $rapport['cause'],
+        );
+
+        // La normalisation rabotait tous les zeros suivis d'un chiffre, y
+        // compris celui de l'annee : les deux se reduisaient a « MESBTP217 ».
+        // La scolarite lisait alors « faire saisir exactement MESBTP20-0107 »
+        // et dictait a une famille le matricule de quelqu'un d'autre, qui
+        // echouait ensuite sur la date de naissance sans que rien ne l'explique.
+        $this->assertSame([], $rapport['matricules_proches']);
+    }
+
+    public function test_aucune_annee_visee_annonce_une_panne_generale(): void
+    {
+        $this->etudiantAvecAnneePrecedente('MESBTP25-0070', '2007-09-15');
+
+        // Ni reglage d'annee cible, ni annee courante : le portail refuse tout
+        // le monde. C'est l'une des deux causes ou le diagnostic doit dire
+        // « ce n'est pas ce dossier, c'est l'ecole ».
+        $this->anneeCible->update(['is_current' => false]);
+        Cache::flush();
+
+        $rapport = $this->diagnostiquer('MESBTP25-0070', '2007-09-15');
+
+        $this->assertSame(
+            DiagnosticPortailReinscription::CAUSE_ANNEE_CIBLE_ABSENTE,
+            $rapport['cause'],
+        );
+    }
+
+    public function test_une_date_de_naissance_absente_du_dossier_est_nommee(): void
+    {
+        $etudiant = $this->etudiantAvecAnneePrecedente('MESBTP25-0070', '2007-09-15');
+        $etudiant->forceFill(['date_naissance' => null])->save();
+
+        $rapport = $this->diagnostiquer('MESBTP25-0070', '2007-09-15');
+
+        // Sans date en base, le portail ne peut rien comparer : il refuse, et
+        // la famille croit s'etre trompee. Le diagnostic doit designer le
+        // dossier incomplet, pas la saisie.
+        $this->assertSame(
+            DiagnosticPortailReinscription::CAUSE_DATE_NAISSANCE_ABSENTE,
+            $rapport['cause'],
+        );
+    }
+
     public function test_le_diagnostic_ne_depose_aucune_demande(): void
     {
         $this->etudiantAvecAnneePrecedente('MESBTP25-0070', '2007-09-15');

@@ -336,15 +336,55 @@ class DiagnosticPortailReinscription
     }
 
     /**
-     * Reduit un matricule a ce qui l'identifie vraiment : majuscules, sans
-     * ponctuation, et sans les zeros qui precedent son numero d'ordre.
+     * Largeur du numero d'ordre dans un matricule KLASSCI (« MESBTP25-0070 »).
+     *
+     * Elle sert a ecrire les deux graphies d'un meme dossier de la meme facon,
+     * pas a decrire un format : une ecole qui numeroterait sur cinq chiffres
+     * n'obtiendrait simplement aucune suggestion de voisin, ce qui est
+     * exactement le sens de l'echec qu'on veut ici.
+     */
+    private const LARGEUR_NUMERO_ORDRE = 4;
+
+    /**
+     * Reduit un matricule a ce qui l'identifie vraiment.
+     *
+     * Majuscules, ponctuation retiree, et numero d'ordre ramene a une largeur
+     * fixe pour que « MESBTP25-0070 », « MESBTP25 70 » et « MESBTP250070 »
+     * s'ecrivent pareil.
+     *
+     * Le rembourrage remplace un rabotage des zeros, qui confondait des eleves
+     * reels. En retirant d'abord la ponctuation, on perdait le separateur —
+     * seule chose qui distingue la promotion du numero d'ordre — puis on otait
+     * TOUS les zeros suivis d'un chiffre, y compris celui de l'annee :
+     * « MESBTP20-0107 » (promotion 2020, dossier 107) et « MESBTP21-07 »
+     * (promotion 2021, dossier 7) se reduisaient tous deux a « MESBTP217 ».
+     * Le diagnostic designait donc un autre eleve, et la scolarite dictait a
+     * une famille le matricule de quelqu'un d'autre — qui echouait ensuite sur
+     * la date de naissance, sans que personne ne comprenne pourquoi.
+     *
+     * Rembourrer plutot que raboter garde la tolerance a la graphie sans tiret,
+     * qui etait le but d'origine : « MESBTP25-70 » devient « MESBTP250070 »,
+     * soit exactement ce qu'on obtient d'un matricule tape d'un seul tenant.
      */
     private function normaliser(string $matricule): string
     {
-        $brut = mb_strtoupper(preg_replace('/[^A-Za-z0-9]/', '', $matricule) ?? '');
+        $segments = preg_split('/[^A-Za-z0-9]+/', mb_strtoupper($matricule), -1, PREG_SPLIT_NO_EMPTY) ?: [];
 
-        // « MESBTP250070 » et « MESBTP2570 » designent le meme dossier des lors
-        // que seuls des zeros les separent.
-        return preg_replace('/0+(?=\d)/', '', $brut) ?? $brut;
+        if ($segments === []) {
+            return '';
+        }
+
+        // Un seul segment : aucun separateur n'a ete tape, donc rien ne dit ou
+        // commence le numero d'ordre. On ne devine pas — c'est deja la forme
+        // canonique.
+        if (count($segments) > 1) {
+            $dernier = array_pop($segments);
+
+            $segments[] = ctype_digit($dernier)
+                ? str_pad($dernier, self::LARGEUR_NUMERO_ORDRE, '0', STR_PAD_LEFT)
+                : $dernier;
+        }
+
+        return implode('', $segments);
     }
 }
