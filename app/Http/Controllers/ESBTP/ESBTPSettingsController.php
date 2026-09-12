@@ -96,6 +96,10 @@ class ESBTPSettingsController extends Controller
         // InnoDB retenus jusqu'a la fin de la connexion. Le formulaire couvrant
         // toute la page, une seule date mal formee abandonnerait en silence
         // bulletins, PDF, MailPulse et tronc commun.
+        if (($refus = $this->refuserLaCompositionInvalide($request)) !== null) {
+            return $refus;
+        }
+
         if (($refus = $this->refuserLesBornesInvalides($request)) !== null) {
             return $refus;
         }
@@ -516,6 +520,16 @@ class ESBTPSettingsController extends Controller
                 CataloguePiecesDossier::REGLAGE_FORME_DEFAUT,
                 CataloguePiecesDossier::REGLAGE_ECHEANCE_DEFAUT,
                 CataloguePiecesDossier::REGLAGE_EPUISEMENT,
+                // Composition de la moyenne du semestre. Ces trois reglages
+                // existaient en base sans figurer sur aucun ecran : l'onglet
+                // Bulletins est ecrit champ par champ, il ne se construit pas
+                // depuis la table. Leur poser une categorie ne les affichait
+                // donc pas — il fallait les champs, et ces trois lignes pour
+                // que la page les enregistre. Le mode n'est pas une bascule :
+                // il vaut « ponderee » ou « blocs », d'ou sa place ici.
+                'bulletin_moyenne_mode',
+                'bulletin_bloc_general_coef',
+                'bulletin_bloc_professionnel_coef',
             ];
 
             $reglagesPointes = Setting::whereIn('key', array_merge($basculesGerees, $reglagesTexte))->get();
@@ -881,6 +895,38 @@ class ESBTPSettingsController extends Controller
      * applique — une date qui deborde y serait acceptee puis reportee de
      * plusieurs mois, en silence.
      */
+    /**
+     * La composition de la moyenne, refusee avant toute ecriture.
+     *
+     * Ces trois reglages passent par la boucle des reglages pointes, qui ne
+     * consulte pas `validation_rules`. Sans ce controle, un coefficient saisi
+     * « abc » vaudrait 0.0 a la lecture et le bloc correspondant sortirait du
+     * calcul : le bulletin ne porterait plus que la moitie de ses matieres,
+     * sans le moindre message. Comme son voisin, ce garde precede la
+     * transaction — valider a l'interieur obligerait a en sortir par un
+     * `return` sans `commit` ni `rollBack`.
+     *
+     * @return \Illuminate\Http\RedirectResponse|null
+     */
+    private function refuserLaCompositionInvalide(Request $request)
+    {
+        $validateur = Validator::make($request->all(), [
+            'bulletin_moyenne_mode' => ['sometimes', 'in:ponderee,blocs'],
+            'bulletin_bloc_general_coef' => ['sometimes', 'numeric', 'min:0', 'max:100'],
+            'bulletin_bloc_professionnel_coef' => ['sometimes', 'numeric', 'min:0', 'max:100'],
+        ], [
+            'bulletin_moyenne_mode.in' => 'Le mode de calcul de la moyenne doit etre « ponderee » ou « blocs ».',
+            'bulletin_bloc_general_coef.numeric' => "Le poids de l'enseignement general doit etre un nombre.",
+            'bulletin_bloc_professionnel_coef.numeric' => "Le poids de l'enseignement professionnel doit etre un nombre.",
+        ]);
+
+        if ($validateur->fails()) {
+            return redirect()->back()->withErrors($validateur)->withInput();
+        }
+
+        return null;
+    }
+
     private function refuserLesBornesInvalides(Request $request)
     {
         $rawInput = $request->all();

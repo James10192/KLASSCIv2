@@ -167,7 +167,7 @@ class ScolariteDocumentsRolesTest extends TestCase
     public function test_la_page_du_certificat_n_offre_l_impression_qu_une_fois_l_accord(): void
     {
         // Cette page reste ouverte sans accord — c'est d'elle qu'on le demande —
-        // mais elle ne donne pas les boutons qui sortent le document.
+        // mais elle ne rend pas le document lui-meme.
         $this->actingAs($this->service);
 
         $avant = $this->get(route('esbtp.etudiants.certificat.preview', $this->etudiantId));
@@ -175,12 +175,22 @@ class ScolariteDocumentsRolesTest extends TestCase
         $avant->assertSee("Demander l'approbation", false);
         $avant->assertDontSee('Générer PDF', false);
 
+        // Masquer les boutons ne suffisait pas : le corps du document etait
+        // rendu quand meme, et la feuille de style d'impression de la page en
+        // sortait le fac-simile au Ctrl+P. C'est l'absence du DOCUMENT qu'il
+        // faut tenir, pas celle des boutons.
+        $avant->assertDontSee('Je soussigné(e)', false);
+        $avant->assertDontSee('poursuites judiciaires', false);
+        $avant->assertSee('Document non délivrable', false);
+
         $this->accorder('certificat');
 
         $apres = $this->get(route('esbtp.etudiants.certificat.preview', $this->etudiantId));
         $apres->assertOk();
         $apres->assertSee('Générer PDF', false);
         $apres->assertDontSee("Demander l'approbation", false);
+        $apres->assertSee('Je soussigné(e)', false);
+        $apres->assertDontSee('Document non délivrable', false);
     }
 
     public function test_le_pdf_du_certificat_reste_ferme_sans_accord(): void

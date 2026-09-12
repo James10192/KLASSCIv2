@@ -2099,6 +2099,62 @@
                 </div>
             </div>
 
+            <!-- Section : composition de la moyenne du semestre -->
+            <div class="settings-section">
+                <div class="section-header">
+                    <div class="section-icon"><i class="fas fa-scale-balanced"></i></div>
+                    <div>
+                        <h3 class="section-title">Composition de la moyenne</h3>
+                        <p class="section-description">Comment se calcule la moyenne du semestre a partir des notes de matiere</p>
+                    </div>
+                </div>
+
+                <div class="settings-grid">
+                    <div class="form-group">
+                        <label class="form-label-modern">
+                            <i class="fas fa-calculator text-primary"></i>
+                            Mode de calcul
+                        </label>
+                        <x-au-select
+                            name="bulletin_moyenne_mode"
+                            :value="\App\Helpers\SettingsHelper::get('bulletin_moyenne_mode', 'ponderee')"
+                            :placeholder-is-first-option="false"
+                            icon="fa-calculator"
+                            :options="[
+                                'ponderee' => 'Moyenne ponderee sur toutes les matieres',
+                                'blocs' => 'Moyenne de l enseignement general et du professionnel, combinees',
+                            ]" />
+                        <small class="text-muted d-block mt-1">
+                            Le mode par blocs calcule separement la moyenne de l enseignement general et celle de
+                            l enseignement professionnel, puis les combine selon les deux coefficients ci-dessous.
+                            Il n a de sens que si chaque matiere porte bien son type de formation.
+                        </small>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label-modern">
+                            <i class="fas fa-book text-primary"></i>
+                            Poids de l enseignement general
+                        </label>
+                        <input type="number" step="0.5" min="0" class="form-control form-control-modern"
+                               name="bulletin_bloc_general_coef"
+                               value="{{ old('bulletin_bloc_general_coef', \App\Helpers\SettingsHelper::get('bulletin_bloc_general_coef', '1')) }}">
+                        <small class="text-muted d-block mt-1">Sans effet tant que le mode reste « ponderee ».</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label-modern">
+                            <i class="fas fa-helmet-safety text-primary"></i>
+                            Poids de l enseignement professionnel
+                        </label>
+                        <input type="number" step="0.5" min="0" class="form-control form-control-modern"
+                               name="bulletin_bloc_professionnel_coef"
+                               value="{{ old('bulletin_bloc_professionnel_coef', \App\Helpers\SettingsHelper::get('bulletin_bloc_professionnel_coef', '1')) }}">
+                        <small class="text-muted d-block mt-1">Sans effet tant que le mode reste « ponderee ».</small>
+                    </div>
+                </div>
+            </div>
+
             <!-- Section 4: Tronc Commun / Specialisation -->
             <div class="settings-section">
                 <div class="section-header">

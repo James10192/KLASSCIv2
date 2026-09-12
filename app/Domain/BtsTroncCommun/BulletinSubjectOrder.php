@@ -9,6 +9,7 @@ use App\Models\ESBTPMaquettePlaceSemestre;
 use App\Models\ESBTPMatiereFilierNiveau;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Ordre des matieres sur le bulletin BTS.
@@ -199,9 +200,24 @@ final class BulletinSubjectOrder
             return true;
         }
 
-        return $vue[$cle] = DB::connection($connexion)
+        $existe = DB::connection($connexion)
             ->getSchemaBuilder()
             ->hasTable((new ESBTPMaquettePlaceSemestre())->getTable());
+
+        // Un repli qui degrade l'affichage doit dire ce qu'il a rattrape.
+        // Pendant le deploiement, cette absence dure quelques secondes et la
+        // ligne est anodine. Si elle revient hors de cette fenetre — base
+        // restauree a moitie, migration interrompue —, c'est la seule trace
+        // qui expliquera pourquoi les bulletins de semestre sont repasses sur
+        // l'ordre general. Une fois par processus, pas une fois par bulletin.
+        if (! $existe && ! isset($vue[$cle])) {
+            Log::warning('Ordre des bulletins : table des places par semestre absente, repli sur le referentiel general.', [
+                'connexion' => $connexion,
+                'table' => (new ESBTPMaquettePlaceSemestre())->getTable(),
+            ]);
+        }
+
+        return $vue[$cle] = $existe;
     }
 
     /**

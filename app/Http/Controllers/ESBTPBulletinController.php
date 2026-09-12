@@ -1595,6 +1595,18 @@ class ESBTPBulletinController extends Controller
                 'Cette classe est LMD. Utilisez /esbtp/lmd/bulletins pour les bulletins LMD.'
             );
 
+            // Cette page est un fac-simile complet du bulletin : decision du
+            // jury, bloc de signature, et sa propre feuille de style
+            // d'impression. Sans cette garde, un Ctrl+P en sortait la version
+            // papier d'un etudiant au solde impaye, sans que l'accord ait ete
+            // demande une seule fois. Les sorties PDF du meme document sont
+            // gardees depuis toujours ; l'apercu, lui, ne l'etait pas.
+            app(DocumentPrintGuard::class)->assertPrintable(
+                auth()->user(),
+                'bulletin',
+                (int) $etudiant->id
+            );
+
             $anneeUniversitaire = ESBTPAnneeUniversitaire::findOrFail($request->annee);
 
             // Essayer de récupérer un bulletin existant pour avoir les configurations
@@ -1748,9 +1760,11 @@ class ESBTPBulletinController extends Controller
                 'totalEtudiants'
             ));
 
-        } catch (HttpExceptionInterface $e) {
-            // Laisser passer les réponses HTTP volontaires (ex: garde LMD abort_if(422)).
-            // Sinon le catch générique ci-dessous les convertirait en redirect 302.
+        } catch (HttpExceptionInterface | \App\Exceptions\ImpressionBloquee $e) {
+            // Laisser passer les réponses HTTP volontaires (ex: garde LMD abort_if(422))
+            // et le refus d'impression, qui porte son propre message. Sinon le
+            // catch générique ci-dessous les convertirait en un « Erreur lors de
+            // la prévisualisation » qui ne dit ni que c'est un refus, ni pourquoi.
             throw $e;
         } catch (\Exception $e) {
             \Log::error('Erreur lors de la prévisualisation du bulletin: '.$e->getMessage());
