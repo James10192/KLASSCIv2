@@ -43,6 +43,33 @@ class MoyenneParBlocsTest extends TestCase
         ]);
     }
 
+    public function test_la_moyenne_ponderee_ne_s_arrondit_pas(): void
+    {
+        // L'invariant que rien ne protegeait, et dont l'absence a coute une
+        // relecture entiere : une relecture a lu les fixtures de ce fichier —
+        // qui passaient « 9.60 » et « 10.12 » ecrits a la main — et en a
+        // conclu que la production composait la moyenne a partir de blocs
+        // deja arrondis. Elle a reclame un correctif sur une instance de plus
+        // de deux mille etudiants. La production, elle, passe la sortie de
+        // cette methode telle quelle (BulletinService, « Calculer les moyennes
+        // par section »), et cette sortie n'est pas arrondie.
+        //
+        // Le bulletin papier arrondit une fois, au niveau de la MATIERE
+        // (computeMoyenneFromNotesData). Composer ensuite sur des blocs
+        // arrondis ajouterait un second arrondi que le papier ne fait pas.
+        $service = app(BulletinService::class);
+
+        // 8.67 x 4 + 6.00 x 4 + ... : un quotient a decimales infinies.
+        $moyenne = $service->calculerMoyennePonderee($this->professionnelles());
+
+        $this->assertNotSame(
+            round($moyenne, 2),
+            $moyenne,
+            'calculerMoyennePonderee() doit rendre le quotient brut : un arrondi ici en ajouterait un second a la composition.'
+        );
+        $this->assertEqualsWithDelta(10.1155, $moyenne, 0.0001);
+    }
+
     public function test_le_defaut_reste_la_ponderation_sur_toutes_les_matieres(): void
     {
         // Aucun reglage pose : une ecole qui n'a rien demande garde son calcul.
@@ -53,8 +80,8 @@ class MoyenneParBlocsTest extends TestCase
             $toutes,
             $this->generales(),
             $this->professionnelles(),
-            9.60,
-            10.12
+            $service->calculerMoyennePonderee($this->generales()),
+            $service->calculerMoyennePonderee($this->professionnelles())
         );
 
         $this->assertEqualsWithDelta(10.01, $moyenne, 0.01, 'Le mode par defaut ne doit rien changer a l existant.');
@@ -69,8 +96,8 @@ class MoyenneParBlocsTest extends TestCase
             $this->generales()->merge($this->professionnelles()),
             $this->generales(),
             $this->professionnelles(),
-            9.60,
-            10.12
+            $service->calculerMoyennePonderee($this->generales()),
+            $service->calculerMoyennePonderee($this->professionnelles())
         );
 
         // (09.60 + 10.12) / 2 — exactement le « Moy. : 09.86 / 20 » du papier.
@@ -87,8 +114,8 @@ class MoyenneParBlocsTest extends TestCase
             $this->generales()->merge($this->professionnelles()),
             $this->generales(),
             $this->professionnelles(),
-            9.60,
-            10.12
+            $service->calculerMoyennePonderee($this->generales()),
+            $service->calculerMoyennePonderee($this->professionnelles())
         );
 
         $this->assertEqualsWithDelta((9.60 + 2 * 10.12) / 3, $moyenne, 0.01);
@@ -148,8 +175,8 @@ class MoyenneParBlocsTest extends TestCase
             $toutes,
             $this->generales(),
             $this->professionnelles(),
-            9.60,
-            10.12
+            $service->calculerMoyennePonderee($this->generales()),
+            $service->calculerMoyennePonderee($this->professionnelles())
         );
 
         $ponderee = $service->calculerMoyennePonderee($toutes);
