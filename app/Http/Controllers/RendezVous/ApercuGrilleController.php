@@ -51,7 +51,6 @@ class ApercuGrilleController extends Controller
 
         return response()->json([
             'complete' => $config->estComplete(),
-            'actif' => $config->actif,
             'problemes' => $config->problemes,
 
             'creneaux_par_jour' => $grille->creneauxParJour(),
@@ -62,7 +61,6 @@ class ApercuGrilleController extends Controller
             'jours_de_reception' => $grille->joursDeReception(),
             'places_sur_la_campagne' => $grille->placesSurLaCampagne(),
 
-            'a_recevoir' => $aRecevoir,
             'jours_necessaires' => $joursNecessaires,
 
             'verdict' => $this->verdict($grille, $aRecevoir, $joursNecessaires),
@@ -97,30 +95,23 @@ class ApercuGrilleController extends Controller
         }
 
         $disponibles = $grille->joursDeReception();
-
-        $constat = "A ce rythme, il vous faut {$joursNecessaires} "
-            .($joursNecessaires > 1 ? 'jours' : 'jour')
-            ." de reception pour recevoir les {$aRecevoir['total']} familles attendues";
+        $s = $aRecevoir['candidatures'] > 1 ? 's' : '';
 
         // Le detail du total, parce que ses deux moities ne se comportent pas
         // pareil : les reinscriptions sont un effectif connu qui ne bougera
         // plus, les candidatures un constat a l'instant T qui grossira toute la
         // campagne. Les additionner sans le dire ferait prendre le total pour
         // une prevision.
-        $detail = " ({$aRecevoir['reinscriptions']} a reinscrire, plus {$aRecevoir['candidatures']} "
-            ."candidature".($aRecevoir['candidatures'] > 1 ? 's' : '')." deja deposee"
-            .($aRecevoir['candidatures'] > 1 ? 's' : '')." — ce second nombre continuera d'augmenter).";
+        $constat = "A ce rythme, il vous faut {$joursNecessaires} jour".($joursNecessaires > 1 ? 's' : '')
+            ." de reception pour recevoir les {$aRecevoir['total']} familles attendues"
+            ." ({$aRecevoir['reinscriptions']} a reinscrire, plus {$aRecevoir['candidatures']} candidature{$s}"
+            ." deja deposee{$s} — ce second nombre continuera d'augmenter).";
 
-        if ($disponibles <= 0) {
-            return $constat.$detail." Votre periode n'en compte aucun : verifiez les dates et les jours d'ouverture.";
-        }
-
-        if ($joursNecessaires > $disponibles) {
-            return $constat.$detail
-                ." Votre periode n'en compte que {$disponibles}. Allongez-la, ouvrez plus de jours, "
-                ."ou recevez plus de familles a la fois.";
-        }
-
-        return $constat.$detail." Votre periode en compte {$disponibles} : c'est suffisant.";
+        return $constat.' '.match (true) {
+            $disponibles <= 0 => "Votre periode n'en compte aucun : verifiez les dates et les jours d'ouverture.",
+            $joursNecessaires > $disponibles => "Votre periode n'en compte que {$disponibles}. Allongez-la, "
+                ."ouvrez plus de jours, ou recevez plus de familles a la fois.",
+            default => "Votre periode en compte {$disponibles} : c'est suffisant.",
+        };
     }
 }

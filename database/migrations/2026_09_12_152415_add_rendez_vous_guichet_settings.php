@@ -17,13 +17,8 @@ use Illuminate\Support\Facades\DB;
  * seule rentree finiraient par diverger, et la famille lirait deux instructions
  * contradictoires sur le meme ecran.
  *
- * Le nombre de personnes recues dans la journee n'est pas ici non plus, et
- * c'est la decision de fond : les heures et la duree le determinent deja. Ce
- * que l'ecole declare, c'est `capacite_par_creneau` — combien de familles a la
- * fois — et son nombre par jour lui est RENDU, calcule sous les champs. Une
- * ecole qui annoncait « soixante par jour » sur une plage qui n'en produit que
- * vingt-huit ne se trompait pas : elle decrivait plusieurs guichets en
- * parallele sans le dire.
+ * Le nombre de personnes recues dans la journee n'est pas ici non plus : il se
+ * deduit. Pourquoi, c'est ConfigurationRendezVous qui le dit.
  */
 return new class extends Migration
 {

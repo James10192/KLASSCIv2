@@ -1,17 +1,8 @@
-{{-- Rendez-vous au guichet.
+{{-- Rendez-vous au guichet — troisieme carte du portail public.
 
-     Troisieme carte du portail public, apres la reinscription en ligne et les
-     candidatures. Elle ne cree pas le PREMIER jour de reception : c'est le
-     champ « Debut des inscriptions sur place » de la carte du dessus, que le
-     portail publie deja pour repondre a « je viens quand ? ». Deux dates pour
-     une seule rentree finiraient par diverger, et la famille lirait deux
-     instructions contradictoires sur le meme ecran.
-
-     Le nombre de personnes recues dans la journee ne se saisit pas : il
-     s'affiche. Les heures et la duree le determinent deja, et le demander en
-     plus donnerait deux chiffres pour une seule question. Ce que l'ecole
-     declare, c'est combien de familles elle recoit A LA FOIS — autrement dit
-     combien de guichets elle tient. --}}
+     Deux champs manquent volontairement : le premier jour de reception, qui est
+     celui de la carte du dessus, et le nombre de personnes par jour, qui se
+     deduit et s'affiche. ConfigurationRendezVous dit pourquoi. --}}
 @php
     $_cfgRdv = \App\Services\RendezVous\ConfigurationRendezVous::class;
     $_rdvActif = \App\Helpers\SettingsHelper::get($_cfgRdv::REGLAGE_ACTIF, '0') == '1';
@@ -97,10 +88,7 @@
             </div>
         </div>
 
-        {{-- Le resultat. Rempli par le serveur a chaque modification : le
-             recopier en JavaScript donnerait deux arithmetiques pour une seule
-             regle, et cet ecran finirait par annoncer des places que la grille
-             reelle ne produit pas. --}}
+        {{-- Le resultat, calcule par le serveur a chaque modification. --}}
         <div class="rdv-resultat" id="rdv-resultat" data-url="{{ route('esbtp.settings.rdv.apercu') }}" hidden>
             <div class="rdv-chiffres">
                 <div class="rdv-chiffre">
@@ -167,23 +155,20 @@
     var enCours = null;
     var minuteur = null;
 
-    function synchroniserLesJours() {
+    function valeurs() {
         var coches = [];
         carte.querySelectorAll('.rdv-jour-case').forEach(function (case_) {
             if (case_.checked) { coches.push(case_.value); }
         });
-        champJours.value = coches.join(',');
-    }
+        champJours.value = coches.join(',');   // le champ cache est le seul poste
 
-    function valeurs() {
         var charge = {};
         carte.querySelectorAll('.rdv-input').forEach(function (champ) {
             if (!champ.name) { return; }
             charge[champ.name] = (champ.type === 'checkbox') ? (champ.checked ? '1' : '0') : champ.value;
         });
 
-        // Le premier jour vit dans la carte du dessus : c'est le reglage des
-        // inscriptions sur place, et il n'est pas duplique ici.
+        // Le premier jour vit dans la carte du dessus.
         var premierJour = document.getElementById('ci-physiques');
         if (premierJour) {
             charge['{{ $_cfgRdv::REGLAGE_PREMIER_JOUR }}'] = premierJour.value;
@@ -244,17 +229,24 @@
             .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
             .then(afficher)
             .catch(function (erreur) {
-                // Un apercu indisponible n'empeche pas d'enregistrer : on se
-                // tait plutot que d'afficher une erreur qui ferait croire que
-                // la configuration est refusee.
-                if (erreur !== 'AbortError' && !(erreur instanceof DOMException)) {
-                    resultat.hidden = true;
-                }
+                // Une frappe suivante annule la requete en cours : ce n'est pas
+                // une panne, il n'y a rien a dire.
+                if (erreur instanceof DOMException) { return; }
+
+                // Tout le reste se DIT. Masquer le panneau — ce que faisait la
+                // version precedente — effacait la seule chose que cette carte
+                // apporte, et une session expiree suffisait : l'ecole ouvrait la
+                // page, ne voyait jamais les chiffres, et concluait que la
+                // fonctionnalite n'existait pas.
+                verdict.textContent = "Apercu indisponible pour le moment (" + erreur + ")."
+                    + " Vos reglages, eux, s'enregistrent normalement : rechargez la page pour reessayer.";
+                verdict.classList.remove('rdv-verdict--court');
+                verdict.hidden = false;
+                resultat.hidden = false;
             });
     }
 
     function programmer() {
-        synchroniserLesJours();
         clearTimeout(minuteur);
         minuteur = setTimeout(rafraichir, 250);
     }

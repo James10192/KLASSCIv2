@@ -1746,9 +1746,7 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             ->name('esbtp.settings.pdf-preview');
 
         // Apercu de la grille des rendez-vous, sur les valeurs en cours de
-        // saisie. Le calcul reste cote serveur : le recopier en JavaScript
-        // donnerait deux arithmetiques pour une seule regle, et l'ecran
-        // finirait par annoncer des places que la grille ne produit pas.
+        // saisie — le calcul reste cote serveur.
         Route::post('/settings/rdv/apercu', \App\Http\Controllers\RendezVous\ApercuGrilleController::class)
             ->middleware(['permission:system.manage', 'throttle:60,1'])
             ->name('esbtp.settings.rdv.apercu');

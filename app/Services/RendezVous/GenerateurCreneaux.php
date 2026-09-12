@@ -13,6 +13,11 @@ use Carbon\CarbonImmutable;
  */
 final class GenerateurCreneaux
 {
+    /** Memoires de calcul : l'apercu pose trois fois les memes questions. */
+    private ?int $creneauxParJour = null;
+
+    private ?int $joursDeReception = null;
+
     public function __construct(private readonly ConfigurationRendezVous $config) {}
 
     public function configuration(): ConfigurationRendezVous
@@ -104,7 +109,7 @@ final class GenerateurCreneaux
             return 0;
         }
 
-        return count($this->grilleDuJour($this->config->premierJour));
+        return $this->creneauxParJour ??= count($this->grilleDuJour($this->config->premierJour));
     }
 
     /**
@@ -124,6 +129,10 @@ final class GenerateurCreneaux
             return 0;
         }
 
+        if ($this->joursDeReception !== null) {
+            return $this->joursDeReception;
+        }
+
         $jours = 0;
 
         for (
@@ -136,7 +145,7 @@ final class GenerateurCreneaux
             }
         }
 
-        return $jours;
+        return $this->joursDeReception = $jours;
     }
 
     /** Ce que la campagne peut absorber en tout. */

@@ -75,6 +75,21 @@ final class ConfigurationRendezVous
     public const CAPACITE_MAXIMALE = 50;
 
     /**
+     * Duree maximale d'une campagne de reception.
+     *
+     * Le calendrier se parcourt jour par jour — c'est la seule facon de compter
+     * les jours d'ouverture reels. Sans plafond, une faute de frappe dans la
+     * case annee suffit a le faire tourner des centaines de milliers de fois :
+     * « 9999 » se tape aussi facilement que « 2026 », l'analyseur de dates
+     * l'accepte, et l'apercu relance le parcours trois fois par requete. Sur un
+     * hebergement ou le processeur est plafonne par compte, ce n'est pas un
+     * ralentissement, c'est une page qui ne revient pas.
+     *
+     * Quatre cents jours couvrent largement une rentree, y compris etalee.
+     */
+    public const AMPLITUDE_MAXIMALE_JOURS = 400;
+
+    /**
      * @param  list<int>     $joursOuverts       jours ISO ouverts (1 = lundi ... 7 = dimanche)
      * @param  ?int          $ouverture          minutes depuis minuit
      * @param  ?int          $fermeture          minutes depuis minuit
@@ -106,25 +121,16 @@ final class ConfigurationRendezVous
     public static function depuisLesReglages(): self
     {
         $cles = [
-            self::REGLAGE_ACTIF,
-            self::REGLAGE_PREMIER_JOUR,
-            self::REGLAGE_DERNIER_JOUR,
-            self::REGLAGE_JOURS_OUVERTS,
-            self::REGLAGE_OUVERTURE,
-            self::REGLAGE_FERMETURE,
-            self::REGLAGE_PAUSE_DEBUT,
-            self::REGLAGE_PAUSE_FIN,
-            self::REGLAGE_DUREE,
+            self::REGLAGE_ACTIF, self::REGLAGE_PREMIER_JOUR, self::REGLAGE_DERNIER_JOUR,
+            self::REGLAGE_JOURS_OUVERTS, self::REGLAGE_OUVERTURE, self::REGLAGE_FERMETURE,
+            self::REGLAGE_PAUSE_DEBUT, self::REGLAGE_PAUSE_FIN, self::REGLAGE_DUREE,
             self::REGLAGE_CAPACITE,
         ];
 
-        $valeurs = [];
-
-        foreach ($cles as $cle) {
-            $valeurs[$cle] = SettingsHelper::get($cle, '');
-        }
-
-        return self::depuisLesValeurs($valeurs);
+        return self::depuisLesValeurs(array_combine(
+            $cles,
+            array_map(static fn (string $cle) => SettingsHelper::get($cle, ''), $cles),
+        ));
     }
 
     /**
@@ -139,8 +145,15 @@ final class ConfigurationRendezVous
         $premierJour = self::jour($valeurs, self::REGLAGE_PREMIER_JOUR, 'le premier jour de reception', $problemes);
         $dernierJour = self::jour($valeurs, self::REGLAGE_DERNIER_JOUR, 'le dernier jour de reception', $problemes);
 
-        if ($premierJour !== null && $dernierJour !== null && $dernierJour->lt($premierJour)) {
-            $problemes[] = "Le dernier jour de reception precede le premier.";
+        if ($premierJour !== null && $dernierJour !== null) {
+            if ($dernierJour->lt($premierJour)) {
+                $problemes[] = "Le dernier jour de reception precede le premier.";
+            } elseif ($premierJour->diffInDays($dernierJour) > self::AMPLITUDE_MAXIMALE_JOURS) {
+                $problemes[] = sprintf(
+                    'La periode de reception ne peut pas depasser %d jours. Verifiez l\'annee du dernier jour.',
+                    self::AMPLITUDE_MAXIMALE_JOURS,
+                );
+            }
         }
 
         $joursOuverts = self::joursOuverts($valeurs, $problemes);
@@ -236,17 +249,6 @@ final class ConfigurationRendezVous
         return $jour->gte($this->premierJour)
             && $jour->lte($this->dernierJour)
             && in_array($jour->dayOfWeekIso, $this->joursOuverts, true);
-    }
-
-    /** Minutes reellement disponibles dans une journee, pause deduite. */
-    public function minutesUtiles(): int
-    {
-        if (! $this->estComplete()) {
-            return 0;
-        }
-
-        return ($this->fermeture - $this->ouverture)
-            - self::minutesDePause($this->ouverture, $this->fermeture, $this->pauseDebut, $this->pauseFin);
     }
 
     // -----------------------------------------------------------------
@@ -345,12 +347,6 @@ final class ConfigurationRendezVous
         }
 
         return ((int) $m[1]) * 60 + (int) $m[2];
-    }
-
-    /** L'ecriture inverse, pour l'ecran de reglage et les messages. */
-    public static function formaterHeure(int $minutes): string
-    {
-        return sprintf('%02d:%02d', intdiv($minutes, 60), $minutes % 60);
     }
 
     /**

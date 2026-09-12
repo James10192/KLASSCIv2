@@ -14,12 +14,9 @@ use PHPUnit\Framework\TestCase;
  * d'arithmetique et de refus — et une regle qu'on ne peut eprouver qu'avec
  * MySQL finit par n'etre eprouvee que par les ecoles.
  *
- * Deux familles de cas, et la seconde compte autant que la premiere :
- * ce que la grille produit quand la configuration est bonne, et ce qu'elle
- * REFUSE quand elle ne l'est pas. Une configuration incoherente qui rendrait
- * zero creneau en silence s'afficherait « aucune disponibilite » sur la
- * vitrine ; la famille conclurait « c'est complet », et l'ecole ne saurait
- * jamais que sa pause couvre sa journee.
+ * Deux familles de cas, et la seconde compte autant que la premiere : ce que la
+ * grille produit quand la configuration est bonne, et ce qu'elle REFUSE quand
+ * elle ne l'est pas.
  */
 class GrilleDesCreneauxTest extends TestCase
 {
@@ -195,6 +192,10 @@ class GrilleDesCreneauxTest extends TestCase
             'premier jour absent' => [[Config::REGLAGE_PREMIER_JOUR => '']],
             'dernier jour absent' => [[Config::REGLAGE_DERNIER_JOUR => '']],
             'campagne a l envers' => [[Config::REGLAGE_PREMIER_JOUR => '2026-10-30', Config::REGLAGE_DERNIER_JOUR => '2026-09-14']],
+            // Une faute de frappe dans la case annee. Sans plafond, le parcours
+            // du calendrier tourne des centaines de milliers de fois, trois fois
+            // par requete : la page ne revient pas.
+            'campagne interminable' => [[Config::REGLAGE_DERNIER_JOUR => '9999-12-31']],
             'date qui deborde le mois' => [[Config::REGLAGE_PREMIER_JOUR => '2026-02-31']],
             'date illisible' => [[Config::REGLAGE_DERNIER_JOUR => '30/10/2026']],
         ];

@@ -6,6 +6,7 @@ use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPCandidature;
 use App\Models\ESBTPEtudiant;
 use App\Services\Reinscription\PortailReinscriptionService;
+use Illuminate\Support\Facades\Cache;
 
 /**
  * Combien de familles l'ecole doit recevoir cette rentree.
@@ -33,41 +34,41 @@ final class VolumeARecevoir
     public function __construct(private readonly PortailReinscriptionService $saison) {}
 
     /**
-     * @return array{
-     *     annee: ?string,
-     *     reinscriptions: int,
-     *     candidatures: int,
-     *     total: int,
-     *     candidatures_previsibles: bool,
-     * }
+     * Mis en cache cinq minutes. Ce nombre ne bouge qu'au rythme des depots,
+     * alors que l'ecran de reglage le redemande a chaque frappe : sans cela,
+     * onze champs modifies declenchent onze fois les memes quatre requetes,
+     * dont deux sur toute la table des eleves, pour une reponse identique.
+     *
+     * @return array{annee: ?string, reinscriptions: int, candidatures: int, total: int}
      */
     public function pourLaRentree(): array
+    {
+        return Cache::remember('rdv.volume_a_recevoir', 300, fn () => $this->compter());
+    }
+
+    /**
+     * @return array{annee: ?string, reinscriptions: int, candidatures: int, total: int}
+     */
+    private function compter(): array
     {
         $annee = $this->saison->anneeCible();
 
         if ($annee === null) {
-            return [
-                'annee' => null,
-                'reinscriptions' => 0,
-                'candidatures' => 0,
-                'total' => 0,
-                'candidatures_previsibles' => false,
-            ];
+            return ['annee' => null, 'reinscriptions' => 0, 'candidatures' => 0, 'total' => 0];
         }
 
         $reinscriptions = $this->aReinscrire($annee);
         $candidatures = $this->candidaturesEnAttente($annee);
 
+        // Les deux moities ne se comportent pas pareil : les reinscriptions sont
+        // un effectif connu, les candidatures un constat a l'instant T. La phrase
+        // de l'ecran le dit, c'est la qu'il fallait l'ecrire — pas dans un
+        // drapeau que personne ne lit.
         return [
             'annee' => $annee->name,
             'reinscriptions' => $reinscriptions,
             'candidatures' => $candidatures,
             'total' => $reinscriptions + $candidatures,
-
-            // Personne ne sait combien de bacheliers deposeront. Le chiffre des
-            // candidatures est un CONSTAT, pas une prevision, et l'ecran doit le
-            // dire pour ce qu'il est : il grossira toute la campagne.
-            'candidatures_previsibles' => false,
         ];
     }
 
@@ -78,7 +79,7 @@ final class VolumeARecevoir
      * active et menee a son terme sur l'annee precedente, aucune sur l'annee
      * visee — mais comptes, et sur l'annee du portail.
      */
-    public function aReinscrire(ESBTPAnneeUniversitaire $annee): int
+    private function aReinscrire(ESBTPAnneeUniversitaire $annee): int
     {
         $precedente = ESBTPAnneeUniversitaire::where('end_date', '<', $annee->start_date)
             ->orderByDesc('end_date')
@@ -101,7 +102,7 @@ final class VolumeARecevoir
     }
 
     /** Les candidatures deja deposees et pas encore traitees. */
-    public function candidaturesEnAttente(ESBTPAnneeUniversitaire $annee): int
+    private function candidaturesEnAttente(ESBTPAnneeUniversitaire $annee): int
     {
         return ESBTPCandidature::query()
             ->where('annee_universitaire_id', $annee->id)
