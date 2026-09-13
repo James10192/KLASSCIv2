@@ -32,6 +32,8 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ### Corrections
 
+- **Deux caisses ne délivrent plus le même numéro de reçu** — le numéro se calculait en lisant le plus grand déjà émis, puis en ajoutant un, sans verrou : deux encaissements simultanés lisaient la même valeur et remettaient le même reçu à deux étudiants. La séquence est désormais verrouillée jusqu'à l'enregistrement du versement. Le risque cessait d'être théorique dès lors qu'un établissement tient un guichet le jour et un autre le soir.
+
 - **Le règlement d'un arriéré ne compte plus comme un paiement de l'année en cours** — un versement destiné à éteindre une dette de l'année précédente transite par le dossier de l'année courante. Il y était compté comme s'il réglait la scolarité du moment : un étudiant soldant 250 000 F d'arriéré ressortait créditeur sur son année, et la porte de réinscription s'ouvrait pour quelqu'un qui devait encore toute son année. Le filtre existait déjà et était appliqué à neuf endroits ; il manquait à celui-là. La même fonction rendait donc deux réponses différentes selon la façon dont on l'interrogeait.
 
 - **Le certificat de scolarité et l'attestation de fréquentation s'affichaient avec des accents cassés** — « CERTIFICAT DE SCOLARITÃ© », « Je soussignÃ©(e) », « NÃ©(e) le », « FILIÃ¨RE » : les deux pages portaient un texte doublement encodé, sur le titre, le corps du document et les en-têtes du tableau. Les accents sont rétablis partout. Ce sont les deux seules pages de l'application qui en souffraient.

@@ -764,8 +764,21 @@ class ESBTPPaiement extends Model implements Auditable
         $anneeCode = $anneeEnCours ? substr($anneeEnCours->code, 2, 2) : date('y');
 
         // Récupérer le dernier numéro de reçu pour ce préfixe et cette année
+        // `lockForUpdate` : sans lui, deux caisses qui encaissent en meme temps
+        // lisent le meme maximum et delivrent le MEME numero de recu a deux
+        // etudiants. Le risque cesse d etre theorique des qu il y a un guichet
+        // du jour et un guichet du soir. Les appelants ouvrent tous une
+        // transaction, le verrou tient donc jusqu a l insertion.
+        //
+        // Limite connue, assumee ici : tant qu aucune ligne n existe pour ce
+        // prefixe et cette annee, il n y a rien a verrouiller — la toute
+        // premiere emission d une annee garde une fenetre etroite. La fermer
+        // demande un index unique sur la colonne, qui ne porte aujourd hui
+        // qu un index simple ; il faut d abord verifier qu aucun doublon
+        // n existe deja en base, sinon la migration echoue.
         $lastRecu = self::where('numero_recu', 'like', "{$prefix}{$anneeCode}-%")
                         ->orderByRaw('CAST(SUBSTRING_INDEX(numero_recu, "-", -1) AS UNSIGNED) DESC')
+                        ->lockForUpdate()
                         ->first();
 
         $seq = 1;
