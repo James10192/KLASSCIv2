@@ -32,6 +32,8 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ### Corrections
 
+- **La liste des réinscriptions ne promet plus ce que le système refuse** — elle affichait « peut se réinscrire » dès que le reste dû tombait sous 50 000 francs, une tolérance écrite dans le code, alors que la validation exigeait un dossier entièrement soldé. L'agent voyait un feu vert, cliquait, et se heurtait au refus. Les deux lisent désormais le même seuil, devenu un paramètre de l'établissement. Il vaut zéro par défaut : aucune école ne change de règle, c'est l'affichage qui cesse de se tromper. Une école qui veut réellement tolérer un reliquat le fixe elle-même.
+
 - **Les paiements par carte, par Djamo ou « autre » entrent enfin dans le rapprochement de caisse** — ces trois modes figuraient dans les écrans d'encaissement mais pas dans la liste que lit la réconciliation. Un règlement par carte était donc accepté au guichet puis invisible du comptage : de l'argent reçu qu'aucune session de caisse ne pouvait justifier, et un écart inexplicable en fin de journée. Les deux listes sont désormais tenues identiques, et un contrôle automatique refuse qu'elles divergent à nouveau.
 
 - **Deux caisses ne délivrent plus le même numéro de reçu** — le numéro se calculait en lisant le plus grand déjà émis, puis en ajoutant un, sans verrou : deux encaissements simultanés lisaient la même valeur et remettaient le même reçu à deux étudiants. La séquence est désormais verrouillée jusqu'à l'enregistrement du versement. Le risque cessait d'être théorique dès lors qu'un établissement tient un guichet le jour et un autre le soir.

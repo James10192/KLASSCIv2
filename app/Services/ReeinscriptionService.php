@@ -722,7 +722,21 @@ class ReeinscriptionService
         if (!$inscriptionActive) return false;
         
         $soldeRestant = $this->calculerSoldeInscription($inscriptionActive);
-        return $soldeRestant <= 0;
+
+        return $soldeRestant <= $this->toleranceSolde();
+    }
+
+    /**
+     * Reste du jusqu'auquel une reinscription reste permise.
+     *
+     * Defaut 0 : le dossier doit etre entierement solde, ce qui est le
+     * comportement d'avant ce reglage. Une ecole qui veut tolerer un reliquat le
+     * pose dans ses parametres, et l'affichage comme la garde le suivent
+     * ensemble — c'est tout l'objet de cette methode.
+     */
+    private function toleranceSolde(): float
+    {
+        return (float) \App\Helpers\SettingsHelper::get('reinscription.tolerance_solde', 0);
     }
 
     /**
@@ -866,7 +880,11 @@ class ReeinscriptionService
             $soldeRestant = max(0, $montantAttendu - $montantPaye);
 
             // Déterminer si l'étudiant peut se réinscrire (soldé ou quasi-soldé)
-            $peutReinscrire = $soldeRestant <= 50000; // Tolérance de 50k FCFA
+            // Le MEME seuil que la garde `peutSeReinscrire()`. Cet ecran
+            // affichait une tolerance de 50 000 ecrite en dur alors que la garde
+            // exigeait un solde nul : l'agent voyait un feu vert, puis se
+            // heurtait au refus.
+            $peutReinscrire = $soldeRestant <= $this->toleranceSolde();
 
             // Ajouter les propriétés à l'objet étudiant
             $etudiant->montant_attendu = $montantAttendu;
