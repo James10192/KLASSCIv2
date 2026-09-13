@@ -1,6 +1,5 @@
 @props([
     'seances' => collect(),
-    'timeSlots' => [],
     'days' => [],
     'dayLabels' => [],
     'sessionStyles' => [],
@@ -62,19 +61,6 @@
 
         return null;
     };
-
-    $defaultTimeSlots = [];
-    for ($hour = 7; $hour <= 18; $hour++) {
-        $defaultTimeSlots[] = sprintf('%02d:00', $hour);
-    }
-
-    $normalizedSlots = empty($timeSlots) ? $defaultTimeSlots : array_values($timeSlots);
-    $normalizedSlots = array_values(array_unique($normalizedSlots));
-    sort($normalizedSlots);
-
-    if (empty($normalizedSlots)) {
-        $normalizedSlots = $defaultTimeSlots;
-    }
 
     $minutesPerSegment = 15;
 

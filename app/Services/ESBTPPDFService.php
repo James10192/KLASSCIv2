@@ -174,13 +174,6 @@ class ESBTPPDFService
 
             $seancesParJour = $emploiTemps->getSeancesParJour();
 
-            $heuresDebut = [];
-            $heuresFin = [];
-            for ($heure = 8; $heure < 18; $heure++) {
-                $heuresDebut[] = sprintf('%02d:00', $heure);
-                $heuresFin[] = sprintf('%02d:00', $heure + 1);
-            }
-
             $joursNoms = [
                 1 => 'Lundi',
                 2 => 'Mardi',
@@ -190,7 +183,6 @@ class ESBTPPDFService
                 6 => 'Samedi',
             ];
 
-            $timeSlots = $heuresDebut;
             $days = array_keys($joursNoms);
 
             $matiereStats = [];
@@ -343,11 +335,8 @@ class ESBTPPDFService
                 'emploiTemps' => $emploiTemps,
                 'seances' => $emploiTemps->seances,
                 'seancesParJour' => $seancesParJour,
-                'heuresDebut' => $heuresDebut,
-                'heuresFin' => $heuresFin,
                 'joursNoms' => $joursNoms,
                 'matiereStats' => $matiereStats,
-                'timeSlots' => $timeSlots,
                 'days' => $days,
                 'date_edition' => Carbon::now()->locale('fr')->isoFormat('LL'),
                 'settings' => $config,

@@ -192,38 +192,6 @@ class ESBTPEmploiTemps extends Model
             && ($this->date_fin === null || $this->date_fin >= $now);
     }
 
-    /**
-     * Vérifie s'il y a des conflits d'horaire dans les séances de cours.
-     *
-     * @return array
-     */
-    public function verifierConflitsHoraire()
-    {
-        $conflicts = [];
-        $seancesParJour = $this->getSeancesParJour();
-
-        foreach ($seancesParJour as $jour => $seances) {
-            for ($i = 0; $i < count($seances); $i++) {
-                for ($j = $i + 1; $j < count($seances); $j++) {
-                    $seance1 = $seances[$i];
-                    $seance2 = $seances[$j];
-
-                    // Vérifier si les horaires se chevauchent
-                    if (($seance1->heure_debut < $seance2->heure_fin) &&
-                        ($seance1->heure_fin > $seance2->heure_debut)) {
-                        $conflicts[] = [
-                            'jour' => $jour,
-                            'seance1' => $seance1,
-                            'seance2' => $seance2,
-                        ];
-                    }
-                }
-            }
-        }
-
-        return $conflicts;
-    }
-
     public function scopeCurrent($query)
     {
         return $query->where('is_current', true);

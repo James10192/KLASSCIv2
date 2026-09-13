@@ -1206,64 +1206,6 @@ class ESBTPSeanceCoursController extends Controller
     }
 
     /**
-     * Vérifie s'il y a des conflits d'horaire pour une séance donnée.
-     *
-     * @return array Liste des conflits détectés
-     */
-    private function verifierConflitsHoraire(ESBTPSeanceCours $seanceCours)
-    {
-        $conflits = [];
-        $emploiTemps = ESBTPEmploiTemps::findOrFail($seanceCours->emploi_temps_id);
-        $classe = ESBTPClasse::findOrFail($emploiTemps->classe_id);
-
-        // Requête pour trouver les séances qui se chevauchent le même jour
-        $query = ESBTPSeanceCours::where('jour', $seanceCours->jour)
-            ->where(function ($q) use ($seanceCours) {
-                // Chevauchement d'horaires
-                $q->where(function ($q1) use ($seanceCours) {
-                    $q1->where('heure_debut', '<', $seanceCours->heure_fin)
-                        ->where('heure_fin', '>', $seanceCours->heure_debut);
-                });
-            });
-
-        // Exclure la séance actuelle pour les mises à jour
-        if ($seanceCours->exists) {
-            $query->where('id', '!=', $seanceCours->id);
-        }
-
-        // Vérifier les conflits avec la même classe
-        $conflitsClasse = (clone $query)
-            ->whereHas('emploiTemps', function ($q) use ($classe) {
-                $q->where('classe_id', $classe->id);
-            })
-            ->get();
-
-        if ($conflitsClasse->count() > 0) {
-            $conflits[] = "La classe {$classe->name} a déjà cours à cet horaire";
-        }
-
-        // Vérifier les conflits avec le même enseignant
-        $conflitsEnseignant = (clone $query)
-            ->where('enseignant', $seanceCours->enseignant)
-            ->get();
-
-        if ($conflitsEnseignant->count() > 0) {
-            $conflits[] = "L'enseignant {$seanceCours->enseignant} a déjà cours à cet horaire";
-        }
-
-        // Vérifier les conflits avec la même salle
-        $conflitsSalle = (clone $query)
-            ->where('salle', $seanceCours->salle)
-            ->get();
-
-        if ($conflitsSalle->count() > 0) {
-            $conflits[] = "La salle {$seanceCours->salle} est déjà occupée à cet horaire";
-        }
-
-        return $conflits;
-    }
-
-    /**
      * PR17.2 : Page premium picker EDT quand /esbtp/seances-cours/create est appelé
      * sans emploi_temps_id. Évite redirect silencieux vers /navbar/notifications.
      */
