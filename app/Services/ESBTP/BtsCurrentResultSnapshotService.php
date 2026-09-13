@@ -149,9 +149,9 @@ class BtsCurrentResultSnapshotService
             ];
         }
 
-        $weightedPoints = 0.0;
         $weightedCoefficients = 0.0;
         $missingConfiguration = [];
+        $lignes = [];
 
         foreach ($subjects as $matiereId => $subject) {
             $coefficient = $subject['manual_resultat']['coefficient'] ?? null;
@@ -173,14 +173,21 @@ class BtsCurrentResultSnapshotService
             $subjects[$matiereId]['coefficient'] = $coefficient !== null ? round((float) $coefficient, 2) : null;
 
             if ($subject['moyenne'] !== null && $coefficient !== null) {
-                $weightedPoints += (float) $subject['moyenne'] * (float) $coefficient;
                 $weightedCoefficients += (float) $coefficient;
+                $lignes[] = (object) [
+                    'moyenne' => (float) $subject['moyenne'],
+                    'coefficient' => (float) $coefficient,
+                    'type_formation' => $subject['type_formation'] ?? null,
+                ];
             }
         }
 
         $coefficientsMissing = false;
         if ($weightedCoefficients > 0) {
-            $rawTotal = round($weightedPoints / $weightedCoefficients, 2);
+            // La composition du bulletin, blocs compris. Cet ecran additionnait
+            // toutes les matieres a plat : quand l'ecole compose par blocs, il
+            // annoncait une moyenne que le bulletin ne confirmait pas.
+            $rawTotal = round($this->bulletinService->composerLesBlocsDuSemestre($lignes)['moyenne'], 2);
             $state = 'semester_complete';
         } else {
             // Lot 3 fix: fallback moyenne arithmétique simple quand AUCUN coefficient n'est

@@ -563,25 +563,14 @@ class BulletinService
             );
         }
 
-        // Séparer par type d'enseignement
-        $resultatsGeneraux = collect($resultatsParMatiere)->filter(function ($resultat) {
-            return $resultat->type_formation == 'generale';
-        });
-
-        $resultatsTechniques = collect($resultatsParMatiere)->filter(function ($resultat) {
-            return $resultat->type_formation == 'technologique_professionnelle';
-        });
-
-        // Calculer les moyennes par section
-        $moyenneGenerale = $this->calculerMoyennePonderee($resultatsGeneraux);
-        $moyenneTechnique = $this->calculerMoyennePonderee($resultatsTechniques);
-        $moyenneGlobale = $this->composerLaMoyenneDuSemestre(
-            collect($resultatsParMatiere),
-            $resultatsGeneraux,
-            $resultatsTechniques,
-            $moyenneGenerale,
-            $moyenneTechnique
-        );
+        // Separation par bloc et composition du semestre. Le meme calcul sert a
+        // l'ecran de suivi et aux statistiques de classe : il n'existe qu'ici.
+        $blocs = $this->composerLesBlocsDuSemestre($resultatsParMatiere);
+        $resultatsGeneraux = $blocs['generales'];
+        $resultatsTechniques = $blocs['professionnelles'];
+        $moyenneGenerale = $blocs['moyenne_generale'];
+        $moyenneTechnique = $blocs['moyenne_professionnelle'];
+        $moyenneGlobale = $blocs['moyenne'];
 
         // Calcul des absences et note d'assiduité
         // (priorité à la saisie manuelle par matière si disponible pour cette année/période)
@@ -1575,6 +1564,53 @@ class BulletinService
     }
 
     /**
+     * La composition du semestre, blocs compris, depuis une liste de lignes.
+     *
+     * Le bulletin, l'ecran de suivi et les statistiques de classe calculaient
+     * chacun leur moyenne dans leur coin. Tant que l'ecole reste en
+     * « ponderee » les trois tombent juste — elles font la meme chose. Des
+     * qu'elle compose par blocs, elles divergent : l'ecran annonce un chiffre
+     * et le bulletin un autre pour le meme etudiant le meme jour, et la
+     * « meilleure moyenne de la classe » imprimee sur le bulletin peut passer
+     * sous celle de l'eleve qui la lit.
+     *
+     * Une ligne porte `moyenne`, `coefficient` et `type_formation` (objet ou
+     * tableau). Une ligne dont le bloc est inconnu ne disparait pas : elle fait
+     * retomber l'ensemble sur la ponderation classique, qui n'oublie personne.
+     *
+     * @param  iterable  $lignes
+     * @return array{generales: \Illuminate\Support\Collection, professionnelles: \Illuminate\Support\Collection, moyenne_generale: float, moyenne_professionnelle: float, moyenne: float}
+     */
+    public function composerLesBlocsDuSemestre($lignes): array
+    {
+        $toutes = collect($lignes)->map(fn ($ligne) => is_array($ligne) ? (object) $ligne : $ligne);
+
+        $generales = $toutes->filter(
+            fn ($ligne) => ($ligne->type_formation ?? null) === 'generale'
+        );
+        $professionnelles = $toutes->filter(
+            fn ($ligne) => ($ligne->type_formation ?? null) === 'technologique_professionnelle'
+        );
+
+        $moyenneGenerale = (float) $this->calculerMoyennePonderee($generales);
+        $moyenneProfessionnelle = (float) $this->calculerMoyennePonderee($professionnelles);
+
+        return [
+            'generales' => $generales,
+            'professionnelles' => $professionnelles,
+            'moyenne_generale' => $moyenneGenerale,
+            'moyenne_professionnelle' => $moyenneProfessionnelle,
+            'moyenne' => $this->composerLaMoyenneDuSemestre(
+                $toutes,
+                $generales,
+                $professionnelles,
+                $moyenneGenerale,
+                $moyenneProfessionnelle
+            ),
+        ];
+    }
+
+    /**
      * Combien de lignes reellement notees.
      *
      * @param  \Illuminate\Support\Collection  $resultats
@@ -1806,6 +1842,10 @@ class BulletinService
                 $resultatsParMatiere[] = (object) [
                     'moyenne' => $resultat->moyenne,
                     'coefficient' => $coefficient,
+                    // Ces moyennes deviennent les statistiques imprimees sur le
+                    // bulletin. Sans le bloc, elles se composaient a plat quand
+                    // le bulletin, lui, composait par blocs.
+                    'type_formation' => $resultat->matiere->type_formation,
                 ];
             }
         }
@@ -1814,7 +1854,7 @@ class BulletinService
             return 0;
         }
 
-        return $this->calculerMoyennePonderee(collect($resultatsParMatiere));
+        return $this->composerLesBlocsDuSemestre($resultatsParMatiere)['moyenne'];
     }
 
     private function calculerMoyenneDepuisNotes(int $etudiantId, ESBTPClasse $classe, int $anneeUniversitaireId, array $periodeOptions, string $periode = 'semestre1'): float
@@ -1851,6 +1891,7 @@ class BulletinService
                 $notesByMatiere[$matiereId] = [
                     'total_points' => 0,
                     'total_coefficients' => 0,
+                    'type_formation' => $note->evaluation->matiere->type_formation,
                 ];
             }
 
@@ -1868,8 +1909,7 @@ class BulletinService
             $notesByMatiere[$matiereId]['total_coefficients'] += $evalCoeff;
         }
 
-        $totalPoints = 0;
-        $totalCoefficients = 0;
+        $lignes = [];
 
         foreach ($notesByMatiere as $matiereId => $matiereData) {
             if ($matiereData['total_coefficients'] <= 0) {
@@ -1890,11 +1930,14 @@ class BulletinService
                 $coefficient = 1;
             }
 
-            $totalPoints += $moyenneMatiere * $coefficient;
-            $totalCoefficients += $coefficient;
+            $lignes[] = (object) [
+                'moyenne' => $moyenneMatiere,
+                'coefficient' => $coefficient,
+                'type_formation' => $matiereData['type_formation'] ?? null,
+            ];
         }
 
-        return $totalCoefficients > 0 ? $totalPoints / $totalCoefficients : 0;
+        return $this->composerLesBlocsDuSemestre($lignes)['moyenne'];
     }
 
     /**
