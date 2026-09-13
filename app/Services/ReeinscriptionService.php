@@ -55,7 +55,23 @@ class ReeinscriptionService
         ];
     }
     
-    public function analyserSituationEtudiantParInscription($inscription, $anneeAcademique)
+    /**
+     * Passer, rattraper ou redoubler : la decision se lit sur les resultats de
+     * l'annee que l'inscription analysee couvre — celle que l'etudiant termine.
+     *
+     * L'annee n'est donc plus un parametre que l'appelant choisit, parce que
+     * les appelants se trompaient. L'ecran de reinscription passait l'annee
+     * COURANTE, celle vers laquelle on reinscrit, ou ces etudiants n'ont par
+     * construction aucune note : la moyenne sortait a zero et toute la
+     * promotion tombait en redoublement, sans une ligne d'erreur. La fiche,
+     * elle, passait l'annee civile en cours. Seule la reinscription groupee
+     * visait juste, et rendait donc un verdict different de l'ecran sur le
+     * meme etudiant.
+     *
+     * $anneeAcademique ne sert plus que de repli, si l'inscription ne porte
+     * pas son annee.
+     */
+    public function analyserSituationEtudiantParInscription($inscription, $anneeAcademique = null)
     {
         $etudiant = $inscription->etudiant;
         $classe = $inscription->classe;
@@ -79,7 +95,9 @@ class ReeinscriptionService
             $regle = $this->regleDeRepli($niveauNom, $filiereNom);
         }
 
-        $notes = $this->getNotesEtudiant($etudiant->id, $anneeAcademique);
+        $anneeDesResultats = $inscription->anneeUniversitaire->name ?? $anneeAcademique;
+
+        $notes = $this->getNotesEtudiant($etudiant->id, $anneeDesResultats);
         $moyenneGenerale = $this->calculerMoyenneGenerale($notes);
         $matieresEchouees = $this->getMatieresEchouees($notes, $regle->moyenne_passage);
 
@@ -150,7 +168,7 @@ class ReeinscriptionService
         // (status=active + workflow_step=etudiant_cree pour ne considérer que les inscriptions
         // réelles qui produisent décisions / bulletins).
         // EXCLUSION : ceux qui ont déjà une inscription dans l'année courante (déjà réinscrits).
-        $inscriptions = \App\Models\ESBTPInscription::with(['etudiant', 'classe.niveau', 'classe.filiere'])
+        $inscriptions = \App\Models\ESBTPInscription::with(['etudiant', 'classe.niveau', 'classe.filiere', 'anneeUniversitaire'])
             ->whereNotNull('classe_id')
             ->whereNotNull('etudiant_id')
             ->where('annee_universitaire_id', $anneePrecedente->id)
