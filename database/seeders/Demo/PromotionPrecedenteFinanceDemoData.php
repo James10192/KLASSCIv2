@@ -34,8 +34,6 @@ class PromotionPrecedenteFinanceDemoData
         ['cle' => 'impaye', 'poids' => 25, 'part_inscription' => 0.0, 'part_reste' => 0.0],
     ];
 
-    private int $compteurRecu = 0;
-
     public function __construct(private readonly ?Command $command = null) {}
 
     /** @return array{souscriptions: int, versements: int} */
@@ -98,6 +96,11 @@ class PromotionPrecedenteFinanceDemoData
                 $montant = round((float) $souscription->amount * $part, 2);
 
                 if ($montant <= 0) {
+                    // Le profil ne verse rien sur cette ligne. Si un passage
+                    // precedent y avait pose un versement, le laisser figerait
+                    // l'ancienne repartition : la demo ne convergerait jamais
+                    // vers ce qu'elle annonce.
+                    $this->retirerVersement($inscription, $souscription);
                     continue;
                 }
 
@@ -108,16 +111,32 @@ class PromotionPrecedenteFinanceDemoData
         return $verses;
     }
 
-    /** Repartition deterministe : un seed rejoue donne la meme demo. */
+    /**
+     * Repartition deterministe : un seed rejoue donne la meme demo.
+     *
+     * Le rang est d'abord disperse sur 0-99 par un multiplicateur premier avec
+     * 100, sans quoi une promotion de 36 etudiants garderait des rangs tous
+     * inferieurs a 40 et tomberait entierement dans le premier profil — ce qui
+     * est arrive : trente-six etudiants tous soldes, et aucun impaye a montrer.
+     */
     private function profilPour(int $rang): int
     {
-        $reste = $rang % 100;
+        $disperse = ($rang * 37 + 11) % 100;
 
         return match (true) {
-            $reste < self::PROFILS[0]['poids'] => 0,
-            $reste < self::PROFILS[0]['poids'] + self::PROFILS[1]['poids'] => 1,
+            $disperse < self::PROFILS[0]['poids'] => 0,
+            $disperse < self::PROFILS[0]['poids'] + self::PROFILS[1]['poids'] => 1,
             default => 2,
         };
+    }
+
+    private function retirerVersement(ESBTPInscription $inscription, ESBTPFraisSubscription $souscription): void
+    {
+        ESBTPPaiement::query()
+            ->where('inscription_id', $inscription->id)
+            ->where('frais_category_id', $souscription->frais_category_id)
+            ->where('motif', 'like', 'Promotion precedente —%')
+            ->forceDelete();
     }
 
     private function poserVersement(
@@ -126,10 +145,11 @@ class PromotionPrecedenteFinanceDemoData
         float $montant,
         bool $estInscription
     ): int {
-        $this->compteurRecu++;
         $date = Carbon::parse($inscription->date_inscription)->addDays($estInscription ? 2 : 45);
 
-        $paiement = ESBTPPaiement::firstOrCreate(
+        // updateOrCreate, et non firstOrCreate : le montant depend du profil,
+        // et un profil qui change entre deux passages doit se voir a l'ecran.
+        $paiement = ESBTPPaiement::updateOrCreate(
             [
                 'inscription_id' => $inscription->id,
                 'frais_category_id' => $souscription->frais_category_id,
@@ -143,11 +163,14 @@ class PromotionPrecedenteFinanceDemoData
                 'mode_paiement' => 'especes',
                 'date_paiement' => $date->toDateString(),
                 'status' => 'validé',
-                'numero_recu' => sprintf('REC-PROMO-%05d', $this->compteurRecu),
+                // Derive de la ligne, et non d'un compteur : un profil qui
+                // passe a « rien verse » supprime des versements et decalerait
+                // un compteur, donc reattribuerait des numeros deja emis.
+                'numero_recu' => sprintf('REC-PROMO-%d-%d', $inscription->id, $souscription->frais_category_id),
                 'reference_paiement' => 'PROMO-' . strtoupper(Str::random(8)),
             ]
         );
 
-        return $paiement->wasRecentlyCreated ? 1 : 0;
+        return $paiement->exists ? 1 : 0;
     }
 }
