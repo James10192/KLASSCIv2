@@ -68,8 +68,36 @@ class ESBTPReinscriptionController extends Controller
     /**
      * Calculer les soldes pour tous les étudiants
      */
+    /**
+     * L'annee dont le solde conditionne la reinscription : celle qui precede
+     * l'annee courante. Meme derivation que BulkReinscriptionService, pour que
+     * les deux chemins de reinscription ne puissent pas diverger.
+     */
+    private function anneeAReSolder(): ?\App\Models\ESBTPAnneeUniversitaire
+    {
+        $courante = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
+        if (! $courante) {
+            return null;
+        }
+
+        return \App\Models\ESBTPAnneeUniversitaire::where('end_date', '<', $courante->start_date)
+            ->orderBy('end_date', 'desc')
+            ->first();
+    }
+
     private function calculerSoldesEtudiants(&$resultats)
     {
+        // On reinscrit VERS l'annee courante : le dossier a solder est donc celui
+        // de l'annee PRECEDENTE. Chercher `is_current` ne trouvait rien pendant
+        // toute la campagne, et chaque etudiant s'affichait a 0 attendu, 0 paye,
+        // 0 solde, puis « ne peut pas se reinscrire » — l'agent ne voyait ni la
+        // dette reelle, ni le feu vert de ceux qui etaient a jour.
+        //
+        // Meme derivation que le mode en masse (BulkReinscriptionService), qui
+        // visait juste : les deux chemins rendent desormais le meme verdict sur
+        // le meme etudiant. Calcule une fois, hors des boucles.
+        $anneePrecedente = $this->anneeAReSolder();
+
         foreach (['passages', 'rattrapages', 'redoublements', 'abandons_annee', 'abandons_ecole', 'valides'] as $categorie) {
             if (isset($resultats[$categorie])) {
                 foreach ($resultats[$categorie] as &$etudiantData) {
@@ -83,14 +111,15 @@ class ESBTPReinscriptionController extends Controller
                     
                     if ($etudiant) {
                         // Récupérer l'inscription active de l'étudiant
-                        $inscription = $etudiant->inscriptions()
-                            ->whereHas('anneeUniversitaire', function($query) {
-                                $query->where('is_current', true);
-                            })
-                            ->with(['paiements' => function($query) {
-                                $query->where('status', 'validé');
-                            }])
-                            ->first();
+                        $inscription = $anneePrecedente
+                            ? $etudiant->inscriptions()
+                                ->where('annee_universitaire_id', $anneePrecedente->id)
+                                ->with(['paiements' => function($query) {
+                                    $query->where('status', 'validé');
+                                }])
+                                ->latest()
+                                ->first()
+                            : null;
                         
                         if ($inscription) {
                             // Calculer le total attendu et payé comme sur la page inscription
@@ -133,15 +162,21 @@ class ESBTPReinscriptionController extends Controller
         
         if (!$etudiant) return;
         
-        // Récupérer l'inscription active de l'étudiant
-        $inscription = $etudiant->inscriptions()
-            ->whereHas('anneeUniversitaire', function($query) {
-                $query->where('is_current', true);
-            })
-            ->with(['paiements' => function($query) {
-                $query->where('status', 'validé');
-            }])
-            ->first();
+        // Meme correction que dans `calculerSoldesEtudiants` : le dossier a
+        // solder est celui de l'annee PRECEDENTE, pas de l'annee vers laquelle
+        // on reinscrit. Les deux methodes repondaient la meme chose a tort ; il
+        // aurait suffi d'en corriger une pour que l'ecran se contredise selon
+        // qu'il charge la liste d'un coup ou au fil du defilement.
+        $anneePrecedente = $this->anneeAReSolder();
+        $inscription = $anneePrecedente
+            ? $etudiant->inscriptions()
+                ->where('annee_universitaire_id', $anneePrecedente->id)
+                ->with(['paiements' => function($query) {
+                    $query->where('status', 'validé');
+                }])
+                ->latest()
+                ->first()
+            : null;
         
         if ($inscription) {
             // Calculer le total attendu et payé
