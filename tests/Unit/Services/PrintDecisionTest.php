@@ -35,9 +35,20 @@ class PrintDecisionTest extends TestCase
             PrintDecision::denied(PrintDecision::APPROVAL)->message()
         );
         $this->assertSame(
-            'Vous n\'avez pas le droit d\'imprimer ce document.',
+            'Impression bloquée : vous n\'avez pas le droit d\'imprimer ce document.',
             PrintDecision::denied(PrintDecision::PERMISSION, 0.0, false)->message()
         );
+    }
+
+    /**
+     * Le refus faute de droit n'est pas une impasse : l'ecran doit proposer la
+     * demande, puisqu'un accord nominatif leve ce refus.
+     */
+    public function test_permission_refusal_can_be_asked_for(): void
+    {
+        $this->assertTrue(PrintDecision::denied(PrintDecision::PERMISSION)->needsApprovalRequest());
+        $this->assertTrue(PrintDecision::denied(PrintDecision::APPROVAL)->needsApprovalRequest());
+        $this->assertFalse(PrintDecision::denied(PrintDecision::SOLDE, 25000)->needsApprovalRequest());
     }
 
     public function test_approved_exposes_the_stamp(): void

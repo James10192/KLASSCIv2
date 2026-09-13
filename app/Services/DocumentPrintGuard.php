@@ -21,12 +21,25 @@ class DocumentPrintGuard
 
     public function decide(User $user, string $documentType, int $etudiantId, ?int $documentId = null): PrintDecision
     {
-        if (! $user->can('documents.print') && ! $user->can('students.view') && ! $user->can('bulletins.view')) {
-            return PrintDecision::denied(PrintDecision::PERMISSION, 0.0, false);
+        $peutImprimer = $this->porteLeDroit($user, $documentType);
+
+        // On ne cherche l'accord que pour qui n'a pas le droit : celui qui l'a
+        // n'en a pas besoin pour passer la porte, et le solde doit pouvoir le
+        // barrer avant toute lecture d'accord.
+        $approval = $peutImprimer
+            ? null
+            : $this->latestApproved($documentType, $etudiantId, $documentId);
+
+        if (! $peutImprimer && $approval === null) {
+            // Refus, mais la porte reste ouverte : l'ecran proposera de demander
+            // l'autorisation a qui a le droit de l'accorder.
+            return PrintDecision::denied(PrintDecision::PERMISSION, 0.0);
         }
 
         if (! $this->requiresApproval()) {
-            return PrintDecision::open();
+            return $approval === null
+                ? PrintDecision::open()
+                : PrintDecision::approved($approval);
         }
 
         $solde = $this->soldes->impaye($etudiantId);
@@ -34,12 +47,37 @@ class DocumentPrintGuard
             return PrintDecision::denied(PrintDecision::SOLDE, $solde);
         }
 
-        $approval = $this->latestApproved($documentType, $etudiantId, $documentId);
+        $approval ??= $this->latestApproved($documentType, $etudiantId, $documentId);
         if ($approval === null) {
             return PrintDecision::denied(PrintDecision::APPROVAL, $solde);
         }
 
         return PrintDecision::approved($approval, $solde);
+    }
+
+    /**
+     * Le droit qui gouverne ce document — et c'est le registre qui le dit, pas
+     * cette garde.
+     *
+     * Certificat et attestation appartiennent a la famille `documents.*` : leur
+     * impression demande `documents.print`. Avant, la garde acceptait aussi
+     * « voir les etudiants » ou « voir les bulletins », donc elle n'exigeait
+     * jamais le droit d'imprimer : caissier, comptable, enseignant, agent
+     * d'inscription et directeur des etudes sortaient des certificats signes au
+     * nom du directeur alors que le registre le leur refuse.
+     *
+     * Le bulletin, lui, a sa propre famille (`bulletins.*`) et ses propres
+     * gardes de route. Lui imposer EN PLUS `documents.print` ne fermerait pas un
+     * abus : cela casserait l'export groupe du coordinateur, a qui l'ecole a
+     * justement accorde `bulletins.export.bulk`.
+     */
+    private function porteLeDroit(User $user, string $documentType): bool
+    {
+        if ($documentType === 'bulletin') {
+            return $user->can('bulletins.view');
+        }
+
+        return $user->can('documents.print');
     }
 
     public function assertPrintable(User $user, string $documentType, int $etudiantId, ?int $documentId = null): PrintDecision
@@ -65,7 +103,7 @@ class DocumentPrintGuard
             return ['allowed_ids' => $ids, 'bloques_solde' => 0, 'bloques_approbation' => 0];
         }
 
-        if (! $user->can('documents.print') && ! $user->can('students.view') && ! $user->can('bulletins.view')) {
+        if (! $this->porteLeDroit($user, $documentType)) {
             return ['allowed_ids' => [], 'bloques_solde' => 0, 'bloques_approbation' => 0];
         }
 

@@ -44,7 +44,7 @@ final class PrintDecision
                 number_format($this->solde, 0, ',', ' ')
             ),
             self::APPROVAL => 'Impression bloquée : l\'accord de la responsable scolarité est requis.',
-            self::PERMISSION => 'Vous n\'avez pas le droit d\'imprimer ce document.',
+            self::PERMISSION => 'Impression bloquée : vous n\'avez pas le droit d\'imprimer ce document.',
             default => 'Impression bloquée.',
         };
     }
@@ -56,7 +56,14 @@ final class PrintDecision
 
     public function needsApprovalRequest(): bool
     {
-        return $this->gated && $this->reason === self::APPROVAL;
+        // Le refus faute de droit se demande aussi : c'est la sortie prevue.
+        // Qui n'a pas le droit d'imprimer peut le faire une fois qu'une personne
+        // habilitee le lui a accorde, document par document.
+        //
+        // Le message, lui, ne promet pas la demarche : l'ecran ne montre le
+        // bouton qu'a qui porte l'un des droits `documents.*`, et promettre a
+        // tous une porte que sept roles n'ont pas serait mentir.
+        return $this->gated && in_array($this->reason, [self::APPROVAL, self::PERMISSION], true);
     }
 
     public function isApproved(): bool

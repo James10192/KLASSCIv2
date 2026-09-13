@@ -236,6 +236,110 @@ class ScolariteDocumentsRolesTest extends TestCase
     }
 
     /**
+     * Le trou que ce chantier ferme. La garde acceptait « voir les etudiants »
+     * ou « voir les bulletins » a la place de « imprimer ». Autrement dit elle
+     * n'exigeait jamais le droit d'imprimer : sept roles qui ne le portent pas
+     * — caissier, comptable, coordinateur, directeur des etudes, charge de
+     * communication, agent d'inscription, enseignant — sortaient certificats et
+     * attestations. La permission existait, elle ne barrait rien.
+     *
+     * @dataProvider rolesQuiVoyaientSansPouvoirImprimer
+     */
+    public function test_voir_un_etudiant_ou_un_bulletin_ne_donne_pas_le_droit_d_imprimer(string $role): void
+    {
+        $agent = $this->utilisateurAvecLeRole($role);
+
+        // Le role voit bien : c'est par la qu'il passait.
+        $this->assertTrue(
+            $agent->can('students.view') || $agent->can('bulletins.view'),
+            "Ce test ne prouve rien si {$role} ne voit ni etudiant ni bulletin."
+        );
+        $this->assertFalse($agent->can('documents.print'), "{$role} ne doit pas porter documents.print.");
+
+        $this->assertSame(
+            PrintDecision::PERMISSION,
+            app(DocumentPrintGuard::class)->decide($agent, 'certificat', $this->etudiantId)->reason,
+            "{$role} voit l'etudiant, cela ne lui donne pas le droit d'imprimer son certificat."
+        );
+    }
+
+    public static function rolesQuiVoyaientSansPouvoirImprimer(): array
+    {
+        return [
+            'caissier' => ['caissier'],
+            'comptable' => ['comptable'],
+            'coordinateur' => ['coordinateur'],
+            'directeurEtudes' => ['directeurEtudes'],
+            'enseignant' => ['enseignant'],
+        ];
+    }
+
+    /**
+     * Le droit barre vraiment — y compris quand l'ecole n'a PAS active le
+     * workflow d'accord. C'est l'autre moitie du trou : la garde relachait tout
+     * des que le reglage etait a 0. Le reglage regle l'accord, pas le droit.
+     */
+    public function test_le_droit_barre_meme_quand_l_ecole_n_exige_pas_d_accord(): void
+    {
+        SettingsHelper::setOrCreate(TenantScolariteSettings::PRINT_REQUIRES_APPROVAL, '0', 'scolarite', 'boolean');
+
+        $guard = app(DocumentPrintGuard::class);
+        $caissier = $this->utilisateurAvecLeRole('caissier');
+
+        $this->assertSame(
+            PrintDecision::PERMISSION,
+            $guard->decide($caissier, 'certificat', $this->etudiantId)->reason,
+            "Sans le droit d'imprimer, le document ne sort pas — meme sans workflow d'accord."
+        );
+
+        $this->assertTrue(
+            $guard->decide($this->service, 'certificat', $this->etudiantId)->allowed,
+            "Qui porte le droit passe directement quand l'ecole n'exige pas d'accord."
+        );
+    }
+
+    /**
+     * L'autre moitie de la regle, celle qui evite d'avoir simplement ferme une
+     * porte : le refus n'est pas une impasse. Qui n'a pas le droit d'imprimer
+     * l'obtient, pour CE document et cet etudiant, des que quelqu'un portant
+     * `documents.approve` le lui accorde.
+     */
+    public function test_l_accord_nominatif_tient_lieu_de_droit_d_imprimer(): void
+    {
+        $caissier = $this->utilisateurAvecLeRole('caissier');
+        $guard = app(DocumentPrintGuard::class);
+
+        $this->assertSame(
+            PrintDecision::PERMISSION,
+            $guard->decide($caissier, 'certificat', $this->etudiantId)->reason
+        );
+
+        $this->accorder('certificat');
+
+        $decision = $guard->decide($caissier, 'certificat', $this->etudiantId);
+        $this->assertTrue($decision->allowed, "L'accord de la responsable doit ouvrir la porte a qui n'a pas le droit.");
+        $this->assertTrue($decision->isApproved());
+
+        $this->assertSame(
+            PrintDecision::PERMISSION,
+            $guard->decide($caissier, 'bulletin', $this->etudiantId)->reason,
+            "L'accord ne vaut que pour le document qu'il nomme : il ne donne pas le droit en general."
+        );
+    }
+
+    /**
+     * Un refus faute de droit doit proposer la demande — sinon la personne
+     * n'a aucun moyen d'obtenir l'accord qui la debloquerait.
+     */
+    public function test_le_refus_faute_de_droit_propose_de_demander_l_autorisation(): void
+    {
+        $decision = app(DocumentPrintGuard::class)
+            ->decide($this->utilisateurAvecLeRole('caissier'), 'certificat', $this->etudiantId);
+
+        $this->assertTrue($decision->needsApprovalRequest());
+    }
+
+    /**
      * Le refus d'impression prend deux formes selon ce que le client accepte :
      * une redirection avec le message en session pour un navigateur, un 403
      * pour un appel qui attend du JSON. Les deux disent la meme chose.
