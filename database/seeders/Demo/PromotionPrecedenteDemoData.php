@@ -61,6 +61,7 @@ class PromotionPrecedenteDemoData
 
         $inscriptions = $this->inscrireLaPromotion($academic['classes'], $annee);
         $argent = (new PromotionPrecedenteFinanceDemoData($this->command))->run($inscriptions);
+        (new PromotionPrecedenteNotesDemoData($this->command))->run($inscriptions, $annee);
 
         $this->command?->line(sprintf(
             '   • Annee %s · %d etudiants · %d souscriptions · %d versements',
