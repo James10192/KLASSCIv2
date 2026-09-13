@@ -453,8 +453,21 @@ class ESBTPPaiement extends Model implements Auditable
             $query->valides();
         }
 
-        $encaisse = (float) (clone $query)->encaissements()->sum('montant');
-        $avoirs = (float) (clone $query)->avoires()->valides()->sum('montant');
+        // `horsReliquat()` ici aussi, et pas seulement dans la branche par
+        // categorie ci-dessus. Celle-ci passe par MontantsParFrais, qui l'applique
+        // (MontantsParFrais:100) ; celle-la construisait sa propre requete et
+        // l'oubliait. La MEME fonction rendait donc deux reponses differentes
+        // selon qu'on lui passait une categorie ou non.
+        //
+        // Un versement de reliquat porte `type_paiement = 'reliquat'` et
+        // `inscription_id` = l'inscription de DESTINATION : il transite par
+        // l'annee en cours, mais il eteint une dette de l'annee precedente. Le
+        // compter ici le faisait passer pour un paiement de la scolarite
+        // courante. Un etudiant reglant 250 000 d'arriere ressortait crediteur
+        // sur son annee, et `peutSeReinscrire()` — qui appelle cette branche —
+        // lui ouvrait l'annee suivante alors qu'il devait encore la sienne.
+        $encaisse = (float) (clone $query)->horsReliquat()->encaissements()->sum('montant');
+        $avoirs = (float) (clone $query)->horsReliquat()->avoires()->valides()->sum('montant');
 
         return max(0.0, $encaisse - $avoirs);
     }
