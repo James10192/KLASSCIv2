@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Models\ESBTPBulletin;
 use App\Models\ESBTPNote;
 use App\Models\ESBTPResultat;
+use App\Services\BulletinService;
 use App\Services\NoteCalculationService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -140,7 +141,11 @@ class RecomputeStudentResultatJob implements ShouldQueue
                     ],
                     [
                         'moyenne' => $moyenneApres,
-                        'coefficient' => $resultatExistant?->coefficient ?? 1,
+                        // A la creation, le vrai coefficient — pas 1. Poser 1 ici
+                        // laissait la ligne mentir jusqu'a la premiere generation
+                        // de bulletin, seule a la reecrire.
+                        'coefficient' => $resultatExistant?->coefficient
+                            ?? $this->coefficientConfigure($periode),
                         'appreciation' => $calc->getMention($moyenneApres),
                         'updated_by' => $this->triggeredBy,
                         'created_by' => $resultatExistant?->created_by ?? $this->triggeredBy,
@@ -171,6 +176,42 @@ class RecomputeStudentResultatJob implements ShouldQueue
             ]);
 
             throw $e; // laisse le mécanisme de retry agir
+        }
+    }
+
+    /**
+     * Le coefficient configure pour cette matiere, ou 1 si l'ecole n'en a pas pose.
+     *
+     * Resolu ici et pas ailleurs : c'est la seule facon pour la ligne de resultat
+     * de naitre avec la valeur que le bulletin utilisera. Le service est resolu au
+     * vol plutot qu'injecte — un job est serialise, et seule cette lecture-la en a
+     * besoin.
+     */
+    private function coefficientConfigure(string $periode): float
+    {
+        try {
+            return app(BulletinService::class)->coefficientOrDefault(
+                $this->matiereId,
+                $this->classeId,
+                $this->anneeUniversitaireId,
+                $periode,
+                $this->etudiantId
+            );
+        } catch (\Throwable $e) {
+            // Le coefficient est un confort ici, pas la raison d'etre du job :
+            // la ligne de resultat doit naitre. `coefficientOrDefault` ne rattrape
+            // que le coefficient absent — une classe archivee lui fait lever un
+            // RuntimeException nu, et cette exception-la annulerait la
+            // transaction ouverte par handle(), donc la moyenne, l'audit et le
+            // bulletin touche. On journalise et on pose 1.
+            Log::warning('Coefficient irresolvable au recalcul — la ligne naitra a 1', [
+                'matiere_id' => $this->matiereId,
+                'classe_id' => $this->classeId,
+                'periode' => $periode,
+                'erreur' => $e->getMessage(),
+            ]);
+
+            return 1.0;
         }
     }
 

@@ -3,10 +3,12 @@
 namespace App\Services\ESBTP;
 
 use App\Domain\BtsTroncCommun\BtsAnnualClassMapResolver;
+use App\Exceptions\CoefficientMissingException;
+use App\Models\ESBTPClasse;
 use App\Models\ESBTPNote;
 use App\Models\ESBTPResultat;
-use App\Models\ESBTPClasse;
 use App\Services\BulletinService;
+use Illuminate\Support\Facades\Log;
 
 class BtsCurrentResultSnapshotService
 {
@@ -161,20 +163,49 @@ class BtsCurrentResultSnapshotService
         $lignes = [];
 
         foreach ($subjects as $matiereId => $subject) {
-            $coefficient = $subject['manual_resultat']['coefficient'] ?? null;
+            // Le coefficient que le BULLETIN utilisera, c'est-a-dire celui qui est
+            // configure. Cet ecran faisait l'inverse : il preferait celui pose sur
+            // la ligne de resultat. Or cette ligne nait des qu'une note est saisie,
+            // avec un coefficient de remplissage a 1 (RecomputeStudentResultatJob).
+            // Tant qu'aucun bulletin n'avait ete genere — la generation, elle,
+            // reecrit le vrai — l'ecran rendait donc une moyenne NON PONDEREE :
+            // toutes les matieres a egalite, y compris celles de coefficient 4.
+            // La ligne de resultat ne sert plus que de repli, pour une matiere dont
+            // le coefficient n'est pas configure du tout.
+            $coefficient = null;
 
-            if ($coefficient === null) {
-                try {
-                    $coefficient = $this->bulletinService->getCoefficientForCombination(
-                        $matiereId,
-                        $classeId,
-                        $anneeUniversitaireId,
-                        $periode,
-                        $etudiantId
-                    );
-                } catch (\RuntimeException) {
+            try {
+                $coefficient = $this->bulletinService->getCoefficientForCombination(
+                    $matiereId,
+                    $classeId,
+                    $anneeUniversitaireId,
+                    $periode,
+                    $etudiantId
+                );
+            } catch (CoefficientMissingException) {
+                // Cas attendu : l'ecole n'a pas configure ce coefficient. La
+                // ligne de resultat sert alors de repli, et son absence se dit.
+                $coefficient = $subject['manual_resultat']['coefficient'] ?? null;
+
+                if ($coefficient === null) {
                     $missingConfiguration[] = "coefficient:matiere:{$matiereId}";
                 }
+            } catch (\Throwable $e) {
+                // Tout le reste — classe archivee, panne SQL — n'est pas une
+                // configuration manquante. Retomber en silence sur la ligne
+                // enregistree rendrait une moyenne fausse annoncee comme fiable :
+                // `QueryException` descend de `RuntimeException`, un incident
+                // passager suffisait a la produire. On le journalise et on marque
+                // le releve comme non fiable.
+                Log::error('Coefficient irresolvable au releve courant', [
+                    'matiere_id' => $matiereId,
+                    'classe_id' => $classeId,
+                    'periode' => $periode,
+                    'erreur' => $e->getMessage(),
+                ]);
+
+                $coefficient = null;
+                $missingConfiguration[] = "coefficient:matiere:{$matiereId}";
             }
 
             $subjects[$matiereId]['coefficient'] = $coefficient !== null ? round((float) $coefficient, 2) : null;
