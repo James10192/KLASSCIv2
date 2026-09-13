@@ -45,6 +45,11 @@ class BtsCurrentResultSnapshotService
 
     private function buildSemesterSnapshot(int $etudiantId, int $classeId, int $anneeUniversitaireId, string $periode): array
     {
+        // Le classement que le bulletin utilisera. Lire `type_formation` sur la
+        // matiere ne suffit pas : le bulletin lit d'abord la classification par
+        // classe, et la colonne globale vaut « generale » par defaut.
+        $blocs = $this->bulletinService->blocsDesMatieresPourScope($classeId, $anneeUniversitaireId, $periode);
+
         $notes = ESBTPNote::query()
             ->where('etudiant_id', $etudiantId)
             ->with(['evaluation.matiere'])
@@ -87,7 +92,8 @@ class BtsCurrentResultSnapshotService
                     // et le bulletin papier un autre, pour le meme etudiant le
                     // meme jour. Porter le bloc ici est le prealable pour que
                     // les deux suivent la meme regle.
-                    'type_formation' => $matiere->type_formation,
+                    'type_formation' => $blocs[(int) $matiereId]
+                        ?? $this->bulletinService->normaliserBloc($matiere->type_formation),
                     'source' => 'calculee',
                     'coefficient' => null,
                     'moyenne' => null,
@@ -129,7 +135,8 @@ class BtsCurrentResultSnapshotService
                 $subjects[$matiereId] = [
                     'matiere_id' => $matiereId,
                     'matiere' => $resultat->matiere?->name ?? 'Matière inconnue',
-                    'type_formation' => $resultat->matiere?->type_formation,
+                    'type_formation' => $blocs[(int) $matiereId]
+                        ?? $this->bulletinService->normaliserBloc($resultat->matiere?->type_formation),
                     'source' => 'manuelle',
                     'coefficient' => null,
                     'moyenne' => null,
@@ -187,7 +194,7 @@ class BtsCurrentResultSnapshotService
             // La composition du bulletin, blocs compris. Cet ecran additionnait
             // toutes les matieres a plat : quand l'ecole compose par blocs, il
             // annoncait une moyenne que le bulletin ne confirmait pas.
-            $rawTotal = round($this->bulletinService->composerLesBlocsDuSemestre($lignes)['moyenne'], 2);
+            $rawTotal = round($this->bulletinService->moyenneDuSemestre($lignes), 2);
             $state = 'semester_complete';
         } else {
             // Lot 3 fix: fallback moyenne arithmétique simple quand AUCUN coefficient n'est

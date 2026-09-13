@@ -64,6 +64,12 @@ class BulletinService
 
     private array $coefficientCache = [];
 
+    /** @var array<string, array<int, string>> Classement par classe/periode, resolu une fois. */
+    private array $blocsParScopeCache = [];
+
+    /** @var array{mode: string, general: float, professionnel: float}|null */
+    private ?array $compositionCache = null;
+
     private array $classeCache = [];
 
     // Caches request-scoped d'invariants de classe : accélèrent l'export groupé (~40
@@ -563,8 +569,10 @@ class BulletinService
             );
         }
 
-        // Separation par bloc et composition du semestre. Le meme calcul sert a
-        // l'ecran de suivi et aux statistiques de classe : il n'existe qu'ici.
+        // Separation par bloc et composition du semestre. L'ecran de suivi et les
+        // statistiques de classe passent par le meme calcul ET par le meme
+        // classement (blocsDesMatieresPourScope) : composer pareil ne suffit
+        // pas si l'on ne met pas les memes matieres dans les memes blocs.
         $blocs = $this->composerLesBlocsDuSemestre($resultatsParMatiere);
         $resultatsGeneraux = $blocs['generales'];
         $resultatsTechniques = $blocs['professionnelles'];
@@ -1524,7 +1532,7 @@ class BulletinService
         ?float $moyenneGenerale,
         ?float $moyenneProfessionnelle
     ): float {
-        if (SettingsHelper::get('bulletin_moyenne_mode', 'ponderee') !== 'blocs') {
+        if ($this->reglagesDeComposition()['mode'] !== 'blocs') {
             return (float) $this->calculerMoyennePonderee($toutes);
         }
 
@@ -1539,9 +1547,10 @@ class BulletinService
             return (float) $this->calculerMoyennePonderee($toutes);
         }
 
+        $reglages = $this->reglagesDeComposition();
         $blocs = [
-            [$moyenneGenerale, (float) SettingsHelper::get('bulletin_bloc_general_coef', 1), $noteesEnBloc > 0 && $this->blocEstNote($generales)],
-            [$moyenneProfessionnelle, (float) SettingsHelper::get('bulletin_bloc_professionnel_coef', 1), $noteesEnBloc > 0 && $this->blocEstNote($professionnelles)],
+            [$moyenneGenerale, $reglages['general'], $noteesEnBloc > 0 && $this->blocEstNote($generales)],
+            [$moyenneProfessionnelle, $reglages['professionnel'], $noteesEnBloc > 0 && $this->blocEstNote($professionnelles)],
         ];
 
         $points = 0.0;
@@ -1561,6 +1570,133 @@ class BulletinService
         }
 
         return $points / $coefficients;
+    }
+
+    /**
+     * Le bloc de chaque matiere d'une classe, tel que le BULLETIN le lit.
+     *
+     * Le bulletin ne lit pas `esbtp_matieres.type_formation` : il lit d'abord la
+     * classification par classe (« Configuration des matieres »), puis le JSON
+     * d'un bulletin deja genere, et ne retombe sur la colonne globale qu'en
+     * dernier ressort (resolveMatiereTypeFormation). Et la generation REFUSE de
+     * produire un bulletin tant qu'aucune matiere n'est classee par classe :
+     * cette classification-la est donc la vraie, la colonne globale n'est qu'un
+     * defaut — elle vaut « generale » pour toute matiere jamais typee.
+     *
+     * L'ecran de suivi et les statistiques de classe lisaient la colonne globale.
+     * Une matiere classee « technique » par l'ecole mais jamais typee globalement
+     * tombait donc dans l'autre bloc chez eux : meme regle de composition, mais
+     * pas les memes matieres dedans — et deux moyennes differentes pour le meme
+     * etudiant le meme jour.
+     *
+     * Resolu une fois par classe/periode et garde en memoire : le calcul des
+     * statistiques repasse par ici pour chaque eleve de la classe.
+     *
+     * @return array<int, string> matiere_id => 'generale'|'technologique_professionnelle'
+     */
+    public function blocsDesMatieresPourScope(int $classeId, int $anneeUniversitaireId, string $periode): array
+    {
+        $periode = $this->normalizePeriode($periode);
+        $cle = $classeId.'|'.$anneeUniversitaireId.'|'.$periode;
+
+        if (isset($this->blocsParScopeCache[$cle])) {
+            return $this->blocsParScopeCache[$cle];
+        }
+
+        $blocs = [];
+
+        // Etage 3 d'abord, pour que les etages superieurs l'ecrasent.
+        $config = $this->classementDepuisUnBulletinExistant($classeId, $anneeUniversitaireId, $periode);
+        foreach ($config['generales'] as $matiereId) {
+            $blocs[$matiereId] = 'generale';
+        }
+        foreach ($config['techniques'] as $matiereId) {
+            $blocs[$matiereId] = 'technologique_professionnelle';
+        }
+
+        $payload = $this->configMatieresPayloadForBulletin($classeId, $anneeUniversitaireId, $periode);
+        foreach ($payload['generales'] as $matiereId) {
+            $blocs[(int) $matiereId] = 'generale';
+        }
+        foreach ($payload['techniques'] as $matiereId) {
+            $blocs[(int) $matiereId] = 'technologique_professionnelle';
+        }
+
+        return $this->blocsParScopeCache[$cle] = $blocs;
+    }
+
+    /**
+     * Le classement tel qu'un bulletin deja genere de cette classe le porte.
+     *
+     * Des instances anciennes n'ont leur classement que la : il a ete saisi
+     * avant que « Configuration des matieres » n'existe et n'a jamais ete
+     * reporte. resolveConfiguredBulletinContext() le lit en priorite ; l'ignorer
+     * ici rendrait toutes leurs matieres « generale ».
+     *
+     * @return array{generales: array<int, int>, techniques: array<int, int>}
+     */
+    private function classementDepuisUnBulletinExistant(int $classeId, int $anneeUniversitaireId, string $periode): array
+    {
+        $bulletin = ESBTPBulletin::where('classe_id', $classeId)
+            ->where('annee_universitaire_id', $anneeUniversitaireId)
+            ->whereIn('periode', $this->configPeriodsForBulletin($periode))
+            ->whereNotNull('config_matieres')
+            ->orderByDesc('id')
+            ->first(['id', 'config_matieres']);
+
+        $config = $this->decodeJsonToArray($bulletin?->config_matieres);
+
+        return [
+            'generales' => array_map('intval', $config['generales'] ?? []),
+            'techniques' => array_map('intval', $config['techniques'] ?? []),
+        ];
+    }
+
+    /** Ramene un type de formation aux deux seules valeurs que le calcul connait. */
+    public function normaliserBloc(?string $type): string
+    {
+        return ($type === 'technique' || $type === 'technologique_professionnelle')
+            ? 'technologique_professionnelle'
+            : 'generale';
+    }
+
+    /**
+     * Les reglages de composition, lus une fois.
+     *
+     * Ils etaient relus a chaque composition. Depuis que l'ecran de suivi et les
+     * statistiques de classe composent eux aussi, cela faisait une vingtaine de
+     * lectures par bulletin la ou il y en avait une — et le pilote de cache est
+     * le disque en production.
+     *
+     * @return array{mode: string, general: float, professionnel: float}
+     */
+    private function reglagesDeComposition(): array
+    {
+        return $this->compositionCache ??= [
+            'mode' => (string) SettingsHelper::get('bulletin_moyenne_mode', 'ponderee'),
+            'general' => (float) SettingsHelper::get('bulletin_bloc_general_coef', 1),
+            'professionnel' => (float) SettingsHelper::get('bulletin_bloc_professionnel_coef', 1),
+        ];
+    }
+
+    /**
+     * La moyenne du semestre, sans construire les deux blocs quand c'est inutile.
+     *
+     * Les appelants qui n'affichent pas les moyennes de section (l'ecran de
+     * suivi, les statistiques de classe) passent par ici : en mode « ponderee »,
+     * un seul parcours suffit.
+     *
+     * @param  iterable  $lignes
+     */
+    public function moyenneDuSemestre($lignes): float
+    {
+        if ($this->reglagesDeComposition()['mode'] !== 'blocs') {
+            return (float) $this->calculerMoyennePonderee(
+                collect($lignes)->map(fn ($ligne) => is_array($ligne) ? (object) $ligne : $ligne)
+            );
+        }
+
+        return $this->composerLesBlocsDuSemestre($lignes)['moyenne'];
     }
 
     /**
@@ -1825,6 +1961,12 @@ class BulletinService
             );
         }
 
+        $blocs = $this->blocsDesMatieresPourScope(
+            (int) $classeId,
+            (int) $anneeUniversitaireId,
+            (string) $periode
+        );
+
         foreach ($resultats as $resultat) {
             if ($resultat->matiere) {
                 try {
@@ -1843,9 +1985,9 @@ class BulletinService
                     'moyenne' => $resultat->moyenne,
                     'coefficient' => $coefficient,
                     // Ces moyennes deviennent les statistiques imprimees sur le
-                    // bulletin. Sans le bloc, elles se composaient a plat quand
-                    // le bulletin, lui, composait par blocs.
-                    'type_formation' => $resultat->matiere->type_formation,
+                    // bulletin : elles doivent classer les matieres comme lui.
+                    'type_formation' => $blocs[(int) $resultat->matiere_id]
+                        ?? $this->normaliserBloc($resultat->matiere->type_formation),
                 ];
             }
         }
@@ -1854,7 +1996,7 @@ class BulletinService
             return 0;
         }
 
-        return $this->composerLesBlocsDuSemestre($resultatsParMatiere)['moyenne'];
+        return $this->moyenneDuSemestre($resultatsParMatiere);
     }
 
     private function calculerMoyenneDepuisNotes(int $etudiantId, ESBTPClasse $classe, int $anneeUniversitaireId, array $periodeOptions, string $periode = 'semestre1'): float
@@ -1891,7 +2033,6 @@ class BulletinService
                 $notesByMatiere[$matiereId] = [
                     'total_points' => 0,
                     'total_coefficients' => 0,
-                    'type_formation' => $note->evaluation->matiere->type_formation,
                 ];
             }
 
@@ -1910,6 +2051,11 @@ class BulletinService
         }
 
         $lignes = [];
+        $blocs = $this->blocsDesMatieresPourScope(
+            (int) $classe->id,
+            (int) $anneeUniversitaireId,
+            $this->normalizePeriode($periode)
+        );
 
         foreach ($notesByMatiere as $matiereId => $matiereData) {
             if ($matiereData['total_coefficients'] <= 0) {
@@ -1933,11 +2079,15 @@ class BulletinService
             $lignes[] = (object) [
                 'moyenne' => $moyenneMatiere,
                 'coefficient' => $coefficient,
-                'type_formation' => $matiereData['type_formation'] ?? null,
+                // Le bloc se lit sur la MEME matiere que celle qui porte la
+                // cle du seau. Le prendre sur `evaluation->matiere` alors que
+                // la cle vient de `notes.matiere_id` les ferait diverger des
+                // que les deux ont derive (cf. evaluations:sync-notes).
+                'type_formation' => $blocs[(int) $matiereId] ?? 'generale',
             ];
         }
 
-        return $this->composerLesBlocsDuSemestre($lignes)['moyenne'];
+        return $this->moyenneDuSemestre($lignes);
     }
 
     /**
