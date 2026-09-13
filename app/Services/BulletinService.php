@@ -26,6 +26,7 @@ use App\Services\ESBTP\ESBTPAbsenceService;
 use App\Support\Attendance\AttendanceNoteRule;
 use App\Support\InscriptionWorkflowAlertPresenter;
 use App\Models\ESBTPConfigMatiere;
+use App\Models\ESBTPMatiereFilierNiveau;
 use App\Models\ESBTPEvaluation;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
@@ -911,6 +912,31 @@ class BulletinService
 
     private function configMatieresPayloadForBulletin(int $classeId, int $anneeUniversitaireId, string $periode): array
     {
+        $payload = $this->blocsSaisisClasseParClasse($classeId, $anneeUniversitaireId, $periode);
+
+        // Rien de pose classe par classe : on lit la maquette du couple
+        // (filiere, niveau). C'est la que le bloc se regle desormais, une fois
+        // pour toutes les classes du meme programme, au lieu d'etre resaisi a
+        // l'identique pour 1A BTS A, puis B, puis D.
+        if ($payload['generales'] === [] && $payload['techniques'] === []) {
+            $payload = $this->blocsDeLaMaquetteDuCouple($classeId);
+        }
+
+        $payload['generales'] = array_values(array_unique($payload['generales']));
+        $payload['techniques'] = array_values(array_unique($payload['techniques']));
+
+        return $payload;
+    }
+
+    /**
+     * Les blocs tels que « Configuration des matieres » les pose pour CETTE
+     * classe. C'est l'etage le plus precis : un choix explicite pour une classe
+     * donnee prime sur la maquette partagee du programme.
+     *
+     * @return array{generales: list<int>, techniques: list<int>}
+     */
+    private function blocsSaisisClasseParClasse(int $classeId, int $anneeUniversitaireId, string $periode): array
+    {
         $payload = ['generales' => [], 'techniques' => []];
 
         $rows = ESBTPConfigMatiere::query()
@@ -934,6 +960,35 @@ class BulletinService
 
         $payload['generales'] = array_values(array_unique($payload['generales']));
         $payload['techniques'] = array_values(array_unique($payload['techniques']));
+
+        return $payload;
+    }
+
+    /**
+     * Les deux blocs du bulletin tels que la maquette (filiere, niveau) les pose.
+     *
+     * Renvoie deux listes vides quand rien n'y est pose : l'appelant doit
+     * pouvoir distinguer « cette ecole n'a rien classe » de « tout est general ».
+     *
+     * @return array{generales: list<int>, techniques: list<int>}
+     */
+    private function blocsDeLaMaquetteDuCouple(int $classeId): array
+    {
+        $payload = ['generales' => [], 'techniques' => []];
+
+        if (! isset($this->classeCache[$classeId])) {
+            $this->classeCache[$classeId] = ESBTPClasse::find($classeId);
+        }
+        $classe = $this->classeCache[$classeId];
+
+        if (! $classe || ! $classe->filiere_id || ! $classe->niveau_etude_id) {
+            return $payload;
+        }
+
+        foreach (ESBTPMatiereFilierNiveau::blocMapForCombo($classe->filiere_id, $classe->niveau_etude_id) as $matiereId => $bloc) {
+            $cle = $bloc === ESBTPMatiereFilierNiveau::BLOC_PROFESSIONNEL ? 'techniques' : 'generales';
+            $payload[$cle][] = (int) $matiereId;
+        }
 
         return $payload;
     }
@@ -1030,7 +1085,9 @@ class BulletinService
      * Priorité de résolution :
      *   1. ESBTPConfigMatiere (table per matiere+classe+période+année) — override saisi via /config-matieres
      *   2. $bulletin->config_matieres JSON (arrays generales[]/techniques[])
-     *   3. $matiere->type_formation (fallback global)
+     *   3. esbtp_matiere_filiere_niveau.type_formation — la maquette du couple
+     *      (filière, niveau), partagée par toutes les classes du programme
+     *   4. $matiere->type_formation (fallback global)
      *
      * @return string 'generale' | 'technologique_professionnelle'
      */
@@ -1073,7 +1130,24 @@ class BulletinService
             }
         }
 
-        // 3. Fallback : type global de la matière
+        // 3. Maquette du couple (filiere, niveau) : le bloc pose une fois pour
+        //    toutes les classes du meme programme. Il passe APRES la
+        //    classification par classe, qui reste un choix explicite pour une
+        //    classe donnee, et AVANT le type global de la matiere, qui ne sait
+        //    rien du programme ou elle est enseignee.
+        if (! isset($this->classeCache[$classeId])) {
+            $this->classeCache[$classeId] = ESBTPClasse::find($classeId);
+        }
+        $classe = $this->classeCache[$classeId];
+
+        if ($classe && $classe->filiere_id && $classe->niveau_etude_id) {
+            $blocs = ESBTPMatiereFilierNiveau::blocMapForCombo($classe->filiere_id, $classe->niveau_etude_id);
+            if (isset($blocs[$matiereId])) {
+                return $blocs[$matiereId];
+            }
+        }
+
+        // 4. Fallback : type global de la matière
         $matiere = ESBTPMatiere::find($matiereId);
         $globalType = $matiere?->type_formation;
         if ($globalType === 'technique' || $globalType === 'technologique_professionnelle') {
@@ -1605,21 +1679,26 @@ class BulletinService
 
         $blocs = [];
 
-        // Etage 3 d'abord, pour que les etages superieurs l'ecrasent.
-        $config = $this->classementDepuisUnBulletinExistant($classeId, $anneeUniversitaireId, $periode);
-        foreach ($config['generales'] as $matiereId) {
-            $blocs[$matiereId] = 'generale';
-        }
-        foreach ($config['techniques'] as $matiereId) {
-            $blocs[$matiereId] = 'technologique_professionnelle';
-        }
+        // On empile du moins precis au plus precis, pour que chaque etage
+        // ecrase le precedent. L'ordre est celui de resolveMatiereTypeFormation,
+        // et il doit le rester : l'ecran et le bulletin qui classent une matiere
+        // dans deux blocs differents, c'est deux moyennes differentes.
+        $etages = [
+            // Etage 3 : la maquette du couple (filiere, niveau).
+            $this->blocsDeLaMaquetteDuCouple($classeId),
+            // Etage 2 : le classement porte par un bulletin deja genere.
+            $this->classementDepuisUnBulletinExistant($classeId, $anneeUniversitaireId, $periode),
+            // Etage 1 : « Configuration des matieres », classe par classe.
+            $this->blocsSaisisClasseParClasse($classeId, $anneeUniversitaireId, $periode),
+        ];
 
-        $payload = $this->configMatieresPayloadForBulletin($classeId, $anneeUniversitaireId, $periode);
-        foreach ($payload['generales'] as $matiereId) {
-            $blocs[(int) $matiereId] = 'generale';
-        }
-        foreach ($payload['techniques'] as $matiereId) {
-            $blocs[(int) $matiereId] = 'technologique_professionnelle';
+        foreach ($etages as $etage) {
+            foreach ($etage['generales'] as $matiereId) {
+                $blocs[(int) $matiereId] = 'generale';
+            }
+            foreach ($etage['techniques'] as $matiereId) {
+                $blocs[(int) $matiereId] = 'technologique_professionnelle';
+            }
         }
 
         return $this->blocsParScopeCache[$cle] = $blocs;

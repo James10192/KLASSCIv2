@@ -11,6 +11,7 @@ function matiereClassification() {
         filiereName: '',
         matieres: [],
         kpis: { total: 0, tronc_commun: 0, specialite: 0, non_classe: 0 },
+        blocs: { generales: 0, professionnelles: 0, sans_bloc: 0 },
         maquette: { renseignee: false, semestre_1: 0, semestre_2: 0 },
         planning: null,
         apercuOuvert: false,
@@ -104,6 +105,30 @@ function matiereClassification() {
                 tronc_commun: this.matieres.filter(m => m.classification === 'tronc_commun').length,
                 specialite: this.matieres.filter(m => m.classification === 'specialite').length,
                 non_classe: this.matieres.filter(m => !m.classification).length,
+            };
+            this.recomputeBlocs();
+        },
+
+        // --- Bloc du bulletin -------------------------------------------
+
+        // Le bloc sous lequel la matiere s'imprime, pose ici pour toutes les
+        // classes du couple. Recliquer sur le bloc actif l'efface : la ligne
+        // redescend alors sur la classification par classe.
+        setBloc(m, valeur) {
+            m.type_formation = (m.type_formation === valeur) ? null : valeur;
+            this.recomputeBlocs();
+        },
+
+        bulkBloc(valeur) {
+            this.matieres.forEach(m => { m.type_formation = valeur; });
+            this.recomputeBlocs();
+        },
+
+        recomputeBlocs() {
+            this.blocs = {
+                generales: this.matieres.filter(m => m.type_formation === 'generale').length,
+                professionnelles: this.matieres.filter(m => m.type_formation === 'technologique_professionnelle').length,
+                sans_bloc: this.matieres.filter(m => !m.type_formation).length,
             };
         },
 
@@ -258,6 +283,7 @@ function matiereClassification() {
                             // sinon le simple fait d'enregistrer figerait l'héritage.
                             ordre_bulletin: m.ordre_source === 'combo' ? m.ordre_effectif : null,
                             semestre: m.semestre ?? null,
+                            type_formation: m.type_formation ?? null,
                         })),
                     }),
                 });

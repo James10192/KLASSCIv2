@@ -1,6 +1,12 @@
 {{--
     Une matière de la maquette : sa place sur le bulletin, son statut tronc
-    commun / spécialité, et le semestre auquel elle est prévue.
+    commun / spécialité, le semestre auquel elle est prévue, et le bloc sous
+    lequel elle s'imprime.
+
+    Le bloc se pose ici pour TOUTES les classes du couple (filière, niveau) :
+    c'est ce qui évite de refaire la même classification pour 1A BTS A, puis B,
+    puis D. Une classe peut toujours s'en écarter depuis « Configuration des
+    matières », qui reste prioritaire.
 
     La place se règle au clavier (champ numérique) ou aux flèches. Une place
     héritée de l'ordre général s'affiche en gris : elle devient propre à la
@@ -49,6 +55,17 @@
             <button type="button" class="mtc-seg-btn mtc-seg-btn--spe"
                 :class="m.classification === 'specialite' ? 'mtc-seg-btn--active' : ''"
                 @click="setClass(m, 'specialite')">Spécialité</button>
+        </div>
+
+        <div class="mtc-seg">
+            <button type="button" class="mtc-seg-btn mtc-seg-btn--tc"
+                :class="m.type_formation === 'generale' ? 'mtc-seg-btn--active' : ''"
+                :aria-label="'Classer ' + m.name + ' en enseignement général'"
+                @click="setBloc(m, 'generale')">Général</button>
+            <button type="button" class="mtc-seg-btn mtc-seg-btn--spe"
+                :class="m.type_formation === 'technologique_professionnelle' ? 'mtc-seg-btn--active' : ''"
+                :aria-label="'Classer ' + m.name + ' en enseignement professionnel'"
+                @click="setBloc(m, 'technologique_professionnelle')">Professionnel</button>
         </div>
     </div>
 </template>

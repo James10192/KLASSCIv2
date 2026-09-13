@@ -105,6 +105,10 @@ class ESBTPMatiereClassificationController extends Controller
                     'suggested' => $row->classification === null && isset($specialiteSuggestionIds[$row->matiere_id])
                         ? ESBTPMatiereFilierNiveau::SPECIALITE
                         : null,
+                    // Le bloc du bulletin, pose ici pour toutes les classes du
+                    // couple. Null veut dire « rien de pose a ce niveau » : le
+                    // bulletin descendra alors sur la classification par classe.
+                    'type_formation' => ESBTPMatiereFilierNiveau::normaliserBloc($row->type_formation),
                     'ordre_bulletin' => $rangPropre,
                     'ordre_general' => $rangGeneral,
                     'ordre_effectif' => $rangEffectif,
@@ -128,6 +132,11 @@ class ESBTPMatiereClassificationController extends Controller
             'is_tronc_commun' => $isTroncCommun,
             'filiere' => $filiere?->name,
             'matieres' => $rows,
+            'blocs' => [
+                'generales' => $rows->where('type_formation', ESBTPMatiereFilierNiveau::BLOC_GENERAL)->count(),
+                'professionnelles' => $rows->where('type_formation', ESBTPMatiereFilierNiveau::BLOC_PROFESSIONNEL)->count(),
+                'sans_bloc' => $rows->whereNull('type_formation')->count(),
+            ],
             'maquette' => [
                 'renseignee' => $rows->contains(fn ($ligne) => $ligne['semestre_renseigne']),
                 // Meme regle que le domaine : une ligne non validee vaut « les
@@ -219,6 +228,9 @@ class ESBTPMatiereClassificationController extends Controller
 
                     if (array_key_exists('classification', $item)) {
                         $changements['classification'] = $item['classification'];
+                    }
+                    if (array_key_exists('type_formation', $item)) {
+                        $changements['type_formation'] = $item['type_formation'];
                     }
                     if (array_key_exists('ordre_bulletin', $item)) {
                         $changements['ordre_bulletin'] = $item['ordre_bulletin'];

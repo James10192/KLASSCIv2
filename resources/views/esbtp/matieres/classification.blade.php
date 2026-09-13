@@ -200,6 +200,18 @@
                     </template>
                 </div>
 
+                <div class="mtc-bulk">
+                    <span class="mtc-bulk-lbl">Bloc du bulletin :</span>
+                    <button type="button" class="mtc-mini" @click="bulkBloc('generale')" :disabled="saving">Tout en général</button>
+                    <button type="button" class="mtc-mini" @click="bulkBloc('technologique_professionnelle')" :disabled="saving">Tout en professionnel</button>
+                    <button type="button" class="mtc-mini" @click="bulkBloc(null)" :disabled="saving">Effacer</button>
+                    <span class="mtc-bulk-lbl">
+                        <span x-text="blocs.generales"></span> général,
+                        <span x-text="blocs.professionnelles"></span> professionnel,
+                        <span x-text="blocs.sans_bloc"></span> sans bloc
+                    </span>
+                </div>
+
                 @include('esbtp.matieres.partials._classification-row')
 
                 <div class="mtc-savebar">

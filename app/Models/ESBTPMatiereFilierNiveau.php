@@ -11,11 +11,20 @@ class ESBTPMatiereFilierNiveau extends Model
     public const TRONC_COMMUN = 'tronc_commun';
     public const SPECIALITE = 'specialite';
 
+    /**
+     * Les deux blocs du bulletin BTS. `classification` ci-dessus dit d'ou vient
+     * la matiere (tronc commun ou specialite) ; `type_formation` dit sous quel
+     * bloc elle s'imprime. Deux questions distinctes, deux colonnes.
+     */
+    public const BLOC_GENERAL = 'generale';
+    public const BLOC_PROFESSIONNEL = 'technologique_professionnelle';
+
     protected $fillable = [
         'matiere_id',
         'filiere_id',
         'niveau_etude_id',
         'classification',
+        'type_formation',
         'ordre_bulletin',
         'semestre',
         'semestre_renseigne',
@@ -96,6 +105,37 @@ class ESBTPMatiereFilierNiveau extends Model
         return static::forCombo($filiereId, $niveauId)
             ->pluck('classification', 'matiere_id')
             ->all();
+    }
+
+    /**
+     * Carte matiere_id => bloc du bulletin pour un combo (filiere, niveau).
+     *
+     * Les matieres sans bloc pose sont absentes de la carte plutot que rendues
+     * avec une valeur par defaut : l'appelant doit pouvoir distinguer « cette
+     * ecole l'a classee generale » de « cette ecole n'a rien dit ».
+     *
+     * @return array<int, string>
+     */
+    public static function blocMapForCombo($filiereId, $niveauId): array
+    {
+        return static::forCombo($filiereId, $niveauId)
+            ->whereNotNull('type_formation')
+            ->pluck('type_formation', 'matiere_id')
+            ->map(fn ($bloc) => static::normaliserBloc($bloc))
+            ->all();
+    }
+
+    /**
+     * Ramene les ecritures historiques du bloc a l'une des deux valeurs
+     * canoniques. L'ecran a longtemps ecrit « general » et « technique ».
+     */
+    public static function normaliserBloc(?string $bloc): ?string
+    {
+        return match ($bloc) {
+            'general', 'generale' => self::BLOC_GENERAL,
+            'technique', 'technologique_professionnelle' => self::BLOC_PROFESSIONNEL,
+            default => null,
+        };
     }
 
     public static function activeMatiereCountForCombo($filiereId, $niveauId)

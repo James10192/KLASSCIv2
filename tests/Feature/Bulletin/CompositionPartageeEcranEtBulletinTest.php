@@ -6,6 +6,7 @@ use App\Helpers\SettingsHelper;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPConfigMatiere;
+use App\Models\ESBTPMatiereFilierNiveau;
 use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPEvaluation;
 use App\Models\ESBTPFiliere;
@@ -124,6 +125,43 @@ class CompositionPartageeEcranEtBulletinTest extends TestCase
         $this->assertEqualsWithDelta($attendu, $this->moyenneDeLEcran(), 0.01);
     }
 
+    public function test_enregistrer_une_note_pose_le_vrai_coefficient_et_non_un_remplissage(): void
+    {
+        // Enregistrer une note fait naitre la ligne de resultat de la matiere.
+        // Elle naissait avec un coefficient de 1, quel que soit le coefficient
+        // configure : la ligne mentait jusqu'a la premiere generation de
+        // bulletin, seule a la reecrire.
+        $professionnelle = $this->matieres['professionnelle'];
+
+        $this->assertEqualsWithDelta(
+            3.0,
+            (float) ESBTPResultat::where('etudiant_id', $this->etudiant->id)
+                ->where('matiere_id', $professionnelle->id)
+                ->value('coefficient'),
+            0.01,
+            'La ligne de resultat doit naitre avec le coefficient configure.'
+        );
+    }
+
+    public function test_l_ecran_ignore_un_coefficient_errone_pose_sur_la_ligne_de_resultat(): void
+    {
+        // Le correctif ci-dessus ne repare pas les lignes deja en base. L'ecran
+        // doit donc lire le coefficient CONFIGURE, comme le bulletin, et non
+        // celui que porte la ligne. Sinon toutes les instances continueraient
+        // d'afficher une moyenne non ponderee sur leurs donnees existantes.
+        ESBTPResultat::where('etudiant_id', $this->etudiant->id)->update(['coefficient' => 1]);
+
+        $moyenne = $this->moyenneDeLEcran();
+
+        $this->assertEqualsWithDelta(10.00, $moyenne, 0.01);
+        $this->assertNotEqualsWithDelta(
+            12.00,
+            $moyenne,
+            0.01,
+            "L'ecran a suivi le coefficient de la ligne de resultat : il rend une moyenne non ponderee."
+        );
+    }
+
     public function test_l_ecran_classe_les_matieres_comme_le_bulletin_et_non_par_la_colonne_globale(): void
     {
         // Le bulletin ne lit pas `esbtp_matieres.type_formation` : il lit la
@@ -183,6 +221,86 @@ class CompositionPartageeEcranEtBulletinTest extends TestCase
             (float) $stats['plus_faible_moyenne'],
             0.01,
             'La plus faible moyenne de la classe ne peut pas differer de celle du seul eleve qui la compose.'
+        );
+    }
+
+    /**
+     * La classification se pose une fois pour le couple (filiere, niveau) et
+     * vaut pour toutes ses classes — c'est ce que demandait ESBTP Abidjan, qui
+     * refaisait la meme saisie pour 1A BTS A, puis B, puis D.
+     */
+    public function test_la_maquette_du_couple_classe_les_matieres_sans_saisie_par_classe(): void
+    {
+        $this->modeBlocs();
+
+        // Rien dans « Configuration des matieres » pour cette classe. Sans la
+        // maquette partagee, les deux matieres tomberaient sur la colonne
+        // globale : 12.00 (deux blocs). Avec elle, l'ecole les met dans le meme
+        // bloc, et la composition par blocs revient a la ponderation : 10.00.
+        $this->classerParCouple($this->matieres['generale'], ESBTPMatiereFilierNiveau::BLOC_PROFESSIONNEL);
+        $this->classerParCouple($this->matieres['professionnelle'], ESBTPMatiereFilierNiveau::BLOC_PROFESSIONNEL);
+
+        $this->assertEqualsWithDelta(
+            10.00,
+            $this->moyenneDeLEcran(),
+            0.01,
+            "La maquette du couple doit classer les matieres sans qu'on ait rien saisi pour la classe."
+        );
+    }
+
+    /**
+     * Et elle suffit a generer : une ecole qui remplit la maquette du programme
+     * ne doit plus se voir refuser le bulletin faute de configuration de classe.
+     */
+    public function test_la_maquette_du_couple_suffit_a_generer_le_bulletin(): void
+    {
+        $this->classerParCouple($this->matieres['generale'], ESBTPMatiereFilierNiveau::BLOC_GENERAL);
+        $this->classerParCouple($this->matieres['professionnelle'], ESBTPMatiereFilierNiveau::BLOC_PROFESSIONNEL);
+
+        $donnees = app(BulletinService::class)->genererDonneesBulletinPreview(
+            $this->etudiant->id,
+            $this->classe->id,
+            $this->annee->id,
+            'semestre1'
+        );
+
+        $this->assertNotEmpty($donnees['resultatsGeneraux'] ?? [], 'Le bloc general doit porter la matiere que la maquette y met.');
+        $this->assertNotEmpty($donnees['resultatsTechniques'] ?? [], 'Le bloc professionnel doit porter la sienne.');
+    }
+
+    /**
+     * La saisie par classe reste au-dessus : une ecole qui a deja classe une
+     * matiere pour UNE classe garde son choix, la maquette ne l'ecrase pas.
+     */
+    public function test_la_saisie_par_classe_prime_sur_la_maquette_du_couple(): void
+    {
+        $this->modeBlocs();
+
+        $this->classerParCouple($this->matieres['generale'], ESBTPMatiereFilierNiveau::BLOC_PROFESSIONNEL);
+        $this->classerParCouple($this->matieres['professionnelle'], ESBTPMatiereFilierNiveau::BLOC_PROFESSIONNEL);
+
+        // Pour CETTE classe, l'ecole remet la matiere generale dans son bloc.
+        // Les deux blocs sont de nouveau peuples : on retombe sur 12.00.
+        $this->classerParClasse($this->matieres['generale'], 'general');
+        $this->classerParClasse($this->matieres['professionnelle'], 'technique');
+
+        $this->assertEqualsWithDelta(
+            12.00,
+            $this->moyenneDeLEcran(),
+            0.01,
+            'La classification saisie pour la classe doit primer sur la maquette du programme.'
+        );
+    }
+
+    private function classerParCouple(ESBTPMatiere $matiere, string $bloc): void
+    {
+        ESBTPMatiereFilierNiveau::updateOrCreate(
+            [
+                'matiere_id' => $matiere->id,
+                'filiere_id' => $this->classe->filiere_id,
+                'niveau_etude_id' => $this->classe->niveau_etude_id,
+            ],
+            ['type_formation' => $bloc]
         );
     }
 
@@ -265,13 +383,10 @@ class CompositionPartageeEcranEtBulletinTest extends TestCase
             'updated_by' => $this->auteur->id,
         ]);
 
-        // Enregistrer une note fait naitre sa ligne de resultat, avec un
-        // coefficient de remplissage a 1. Le releve preferant ce coefficient-la
-        // a celui configure, il faut y porter le vrai — c'est aussi ce que fait
-        // la generation du bulletin (persistResultats).
-        ESBTPResultat::where('etudiant_id', $this->etudiant->id)
-            ->where('matiere_id', $matiere->id)
-            ->update(['coefficient' => $coefficient]);
+        // Rien a corriger ici : l'ecran lit le coefficient CONFIGURE, comme le
+        // bulletin. Ce fixture a longtemps du reecrire a la main la ligne de
+        // resultat nee avec un coefficient de remplissage a 1 — c'etait le
+        // defaut, pas le montage du test.
     }
 
     private function modeBlocs(): void
