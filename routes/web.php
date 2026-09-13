@@ -628,7 +628,6 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                     Route::post('{etudiant}/abandon', [\App\Http\Controllers\ESBTP\ESBTPReinscriptionController::class, 'marquerAbandon'])->name('marquer-abandon');
                     Route::post('{etudiant}/restaurer', [\App\Http\Controllers\ESBTP\ESBTPReinscriptionController::class, 'restaurerAbandon'])->name('restaurer-abandon');
                 });
-                Route::post('{etudiant}/valider', [\App\Http\Controllers\ESBTP\ESBTPReinscriptionController::class, 'validerReinscription'])->name('valider-reinscription');
 
                 // Route AJAX pour lazy loading des catÃ©gories
                 Route::get('load-category/{category}', [\App\Http\Controllers\ESBTP\ESBTPReinscriptionController::class, 'loadCategory'])->name('load-category');

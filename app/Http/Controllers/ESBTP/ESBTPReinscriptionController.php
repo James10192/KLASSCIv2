@@ -848,50 +848,6 @@ class ESBTPReinscriptionController extends Controller
             });
     }
 
-    /**
-     * Valider la réinscription d'un étudiant (le déplacer vers "validés")
-     */
-    public function validerReinscription(Request $request, $etudiantId)
-    {
-        $request->validate([
-            'decision' => 'required|in:passage,redoublement,rattrapage',
-            'observations' => 'nullable|string|max:500',
-        ]);
-
-        try {
-            // Trouver l'inscription active de l'étudiant
-            $inscription = \App\Models\ESBTPInscription::whereHas('etudiant', function($query) use ($etudiantId) {
-                $query->where('id', $etudiantId);
-            })
-            ->whereHas('anneeUniversitaire', function($query) {
-                $query->where('is_current', true);
-            })
-            ->first();
-
-            if (!$inscription) {
-                throw new \Exception("Inscription non trouvée pour cet étudiant");
-            }
-
-            // Mettre à jour le statut de réinscription
-            $inscription->update([
-                'reinscription_status' => 'validated',
-                'reinscription_validated_at' => now(),
-                'reinscription_validated_by' => auth()->id(),
-                'reinscription_observations' => $request->decision . ' - ' . ($request->observations ?? 'Réinscription validée')
-            ]);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Réinscription validée avec succès'
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur: ' . $e->getMessage()
-            ], 500);
-        }
-    }
-
     public function update(Request $request, $etudiantId)
     {
         $request->validate([
