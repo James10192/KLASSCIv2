@@ -116,13 +116,15 @@ class PromotionPrecedenteNotesDemoData
     {
         $code = strtoupper(($codeFiliere !== '' ? $codeFiliere : 'GEN')) . '-' . str_pad((string) ($rang + 1), 2, '0', STR_PAD_LEFT);
 
+        // Ni `filiere_id` ni `niveau_etude_id` ne vivent sur la matiere : ces
+        // colonnes ont ete retirees au profit du pivot ci-dessous. Elles
+        // figurent encore dans le `$fillable` du modele, ce qui ne les fait
+        // pas exister — les y remettre casse l'insertion.
         $matiere = ESBTPMatiere::firstOrCreate(
             ['code' => $code],
             [
                 'name' => $intitule,
                 'coefficient' => $rang < 2 ? 3 : 2,
-                'filiere_id' => $classe->filiere_id,
-                'niveau_etude_id' => $classe->niveau_etude_id,
                 'is_active' => true,
                 'created_by' => $auteur,
             ]
