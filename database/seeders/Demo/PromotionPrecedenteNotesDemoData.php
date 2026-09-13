@@ -56,9 +56,21 @@ class PromotionPrecedenteNotesDemoData
         $auteur = User::query()->min('id');
         $posees = 0;
         $matieres = 0;
+        $ecartees = collect();
 
-        foreach ($inscriptions->groupBy('classe_id') as $classeId => $lot) {
+        foreach ($inscriptions->groupBy('classe_id') as $lot) {
             $premiere = $lot->first();
+
+            // Une classe LMD attend une ECUE rattachee a une unite
+            // d'enseignement, pas une matiere BTS : l'application refuse le
+            // rattachement, et elle a raison. Poser une maquette LMD est un
+            // autre chantier — on laisse ces etudiants sans resultat plutot
+            // que de leur en inventer un que le systeme rejetterait.
+            if (($premiere->classe->systeme_academique ?? 'BTS') === 'LMD') {
+                $ecartees->push($premiere->classe->name);
+                continue;
+            }
+
             $grille = $this->grilleDeLaClasse($premiere, $annee, $auteur);
             $matieres += $grille->count();
 
@@ -68,6 +80,13 @@ class PromotionPrecedenteNotesDemoData
         }
 
         $this->command?->line(sprintf('   • %d matieres · %d notes posees sur %s', $matieres, $posees, $annee->name));
+
+        if ($ecartees->isNotEmpty()) {
+            $this->command?->line(sprintf(
+                '   • sans resultat (classe LMD, maquette UE/ECUE requise) : %s',
+                $ecartees->unique()->implode(', ')
+            ));
+        }
 
         return ['matieres' => $matieres, 'notes' => $posees];
     }
