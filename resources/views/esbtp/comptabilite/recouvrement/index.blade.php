@@ -161,7 +161,7 @@
                                         <strong x-text="row.etudiant_nom"></strong>
                                         <small x-show="row.has_valid_phone" class="re-phone">
                                             <i class="fas fa-phone"></i>
-                                            <span x-text="formatPhone(row.phone)"></span>
+                                            <span x-text="row.phone_lisible"></span>
                                         </small>
                                         <small x-show="!row.has_valid_phone" class="re-warn">
                                             <i class="fas fa-exclamation-triangle"></i> Téléphone invalide
@@ -771,16 +771,6 @@ window.recouvrement = function (config) {
             this.toast = message;
             this.toastType = type;
             setTimeout(() => { this.toast = null; }, 3500);
-        },
-
-        formatPhone(raw) {
-            if (!raw) return '';
-            const digits = String(raw).replace(/\D+/g, '');
-            let national = digits;
-            if (digits.startsWith('00225')) national = digits.slice(5);
-            else if (digits.length === 13 && digits.startsWith('225')) national = digits.slice(3);
-            if (national.length !== 10) return raw;
-            return '+225 ' + national.match(/.{1,2}/g).join(' ');
         },
 
         /* ---------- écran mobile : file, segments, fiche ---------- */
