@@ -142,16 +142,60 @@ class LMDImportService
 
     private function upsertMention(array $data, ESBTPLMDDomaine $domaine, ?int $userId): ESBTPLMDMention
     {
+        $code = $data['code'] ?? Str::slug($data['name']);
+        $existante = ESBTPLMDMention::where('code', $code)->first();
+
+        // Un code deja porte par une mention d'un AUTRE domaine : updateOrCreate
+        // la deplacait, avec tous ses parcours, sans un mot. Le cas est certain
+        // des qu'un meme intitule vit dans deux domaines et que la maquette ne
+        // donne pas de code (le code se deduit alors du nom).
+        if ($existante && (int) $existante->domaine_id !== (int) $domaine->id) {
+            $this->conflits[] = [
+                'type' => 'MENTION',
+                'code' => (string) $code,
+                'detail' => sprintf(
+                    "Le code « %s » désigne déjà la mention « %s » du domaine « %s ». L'importer sous « %s » l'y déplacerait avec ses parcours : donnez à cette mention un code propre.",
+                    $code,
+                    $existante->name,
+                    optional($existante->domaine)->name ?? ('#'.$existante->domaine_id),
+                    $domaine->name
+                ),
+            ];
+
+            return $existante;
+        }
+
         return ESBTPLMDMention::updateOrCreate(
-            ['code' => $data['code'] ?? Str::slug($data['name'])],
+            ['code' => $code],
             ['name' => $data['name'], 'domaine_id' => $domaine->id, 'created_by' => $userId, 'is_active' => true]
         );
     }
 
     private function upsertParcours(array $data, ESBTPLMDMention $mention, ?ESBTPFiliere $filiere, ?int $userId): ESBTPLMDParcours
     {
+        $code = $data['code'] ?? Str::slug($data['name']);
+        $existant = ESBTPLMDParcours::where('code', $code)->first();
+
+        // Meme defaut que pour la mention : un parcours d'une AUTRE mention etait
+        // rattache a celle-ci, et sa maquette avec lui.
+        if ($existant && (int) $existant->mention_id !== (int) $mention->id) {
+            $this->conflits[] = [
+                'type' => 'PARCOURS',
+                'code' => (string) $code,
+                'detail' => sprintf(
+                    "Le code « %s » désigne déjà le parcours « %s » de la mention « %s ». L'importer sous « %s » l'y déplacerait avec sa maquette : donnez à ce parcours un code propre.",
+                    $code,
+                    $existant->name,
+                    optional($existant->mention)->name ?? ('#'.$existant->mention_id),
+                    $mention->name
+                ),
+            ];
+
+            return $existant;
+        }
+
         return ESBTPLMDParcours::updateOrCreate(
-            ['code' => $data['code'] ?? Str::slug($data['name'])],
+            ['code' => $code],
             [
                 'name' => $data['name'],
                 'mention_id' => $mention->id,
