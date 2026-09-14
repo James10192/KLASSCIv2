@@ -386,9 +386,37 @@ class ESBTPLMDJuryController extends Controller
             // des colonnes gelées, et certifiait une moyenne que le relevé
             // réémis contredisait. Les décisions que le jury a reprises à son
             // compte ne sont pas touchées.
-            $this->delib->rouvrirLaDeliberation($jury, $data['motif']);
+            //
+            // Les DEUX gestes dans UNE transaction, et c'est la partie qui
+            // compte. Chacun ouvre la sienne ; enchaînés, la réouverture était
+            // déjà validée quand l'émission échouait — et elle échoue justement
+            // sur le chemin le plus probable, celui d'une réclamation aboutie
+            // qui a rouvert une feuille de notes que le garde exige verrouillée.
+            // Le jury restait alors déverrouillé et réécrit, sous un PV v1
+            // toujours valide qui certifie les anciens chiffres.
+            //
+            // On ne peut pas non plus interroger le garde AVANT de rouvrir : il
+            // signalerait la divergence que la réouverture vient précisément
+            // réparer, et aucune rectification ne passerait jamais.
+            $document = \Illuminate\Support\Facades\DB::transaction(function () use ($jury, $data) {
+                $this->delib->rouvrirLaDeliberation($jury, $data['motif']);
 
-            $document = $this->officialDocuments->issueJuryPv($jury, auth()->user(), $data['motif']);
+                return $this->officialDocuments->issueJuryPv($jury, auth()->user(), $data['motif']);
+            });
+        } catch (\App\Domain\OfficialDocuments\Exceptions\JuryPvNotIssuableException $e) {
+            // Ce refus-là est utile : il nomme ce qui manque. L'avaler dans le
+            // message générique en faisait un mur, alors que le nouveau motif de
+            // concordance est écrit pour indiquer la sortie.
+            Log::warning('Rectification du PV refusee par le garde d emission.', [
+                'jury_id' => $jury->id,
+                'raisons' => $e->reasons,
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Le PV rectificatif ne peut pas etre emis en l etat.',
+                'reasons' => $e->reasons,
+            ], 422);
         } catch (\Throwable $e) {
             Log::error('Echec de la rectification du PV officiel.', ['jury_id' => $jury->id, 'exception' => $e]);
             return response()->json([

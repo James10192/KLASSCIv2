@@ -1887,16 +1887,20 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
 
     // Routes pour la configuration du paywall - Service Technique ADC seulement
     //
-    // La garde est `abonnement.manage`, et non `system.manage` : le commentaire
+    // La garde est `paywall.manage`, et non `system.manage` : le commentaire
     // ci-dessus disait « Service Technique seulement » alors que la garde réelle
     // était la permission qui ouvre AUSSI `/esbtp/settings`. Confier les réglages
     // au service informatique d'un établissement lui donnait donc la main sur son
-    // propre abonnement — prolongation et code de déblocage d'urgence compris —
-    // et il n'existait aucune façon de faire l'un sans l'autre.
+    // propre abonnement — prolongation et code de déblocage d'urgence compris.
+    //
+    // `paywall.manage` est la permission que `ESBTPPaywallConfigController`
+    // exige DÉJÀ, action par action (`checkServiceTechniqueAccess()`). Poser ici
+    // le même nom fait dire la même chose à la route et au contrôleur ; en
+    // inventer un autre aurait laissé le porteur de l'un buter sur l'autre.
     //
     // Le lien de la barre latérale, lui, était déjà réservé au rôle ;
     // seule l'URL restait ouverte à qui la connaissait.
-    Route::prefix('esbtp')->name('esbtp.')->middleware(['auth', 'paywall', 'permission:abonnement.manage'])->group(function () {
+    Route::prefix('esbtp')->name('esbtp.')->middleware(['auth', 'paywall', 'permission:paywall.manage'])->group(function () {
         Route::get('/paywall-config', [ESBTPPaywallConfigController::class, 'index'])->name('paywall-config.index');
         Route::get('/paywall-config/blocked', [ESBTPPaywallConfigController::class, 'blocked'])->name('paywall-config.blocked');
         Route::get('/paywall-config/upgrade', [ESBTPPaywallConfigController::class, 'upgrade'])->name('paywall-config.upgrade');

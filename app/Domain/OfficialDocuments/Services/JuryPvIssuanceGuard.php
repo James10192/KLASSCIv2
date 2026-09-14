@@ -213,6 +213,12 @@ class JuryPvIssuanceGuard
                 $divergence = $divergence
                     || (int) $decision->credits_obtenus !== AgregatDeLaPeriode::creditsObtenus($periode)
                     || (int) $decision->credits_attendus !== AgregatDeLaPeriode::creditsAttendus($periode);
+            } elseif ($decision->credits_obtenus !== null || $decision->credits_attendus !== null) {
+                // Le cas inverse, qui passait entre les mailles : les bulletins
+                // ne portent PLUS de crédits, mais la décision en porte encore.
+                // Sans ce test, le PV scellait des crédits que plus aucun
+                // bulletin ne justifie.
+                $divergence = true;
             }
 
             if ($divergence) {

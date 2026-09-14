@@ -16,7 +16,16 @@ class JuryPvSnapshotBuilder
      * car elles n'entrent dans aucun calcul de note. Un PV conserve cinq ans ne doit
      * enoncer que des regles reellement appliquees.
      */
-    public const RULES_VERSION = 'lmd-academic-profile-v2';
+    /**
+     * v3 — septembre 2026 : l'arithmétique de décision d'un jury ANNUEL change
+     * (agrégation pondérée des semestres au lieu d'un bulletin unique), et
+     * l'instantané gagne la motivation de chaque décision.
+     *
+     * Ce tampon est gravé sur des documents conservés cinq ans. Le laisser à
+     * `v2` ferait porter le même numéro à deux jeux de règles différents, et
+     * personne ne pourrait plus dire, devant un PV de 2026, lequel l'a produit.
+     */
+    public const RULES_VERSION = 'lmd-academic-profile-v3';
 
     public function __construct(private readonly LmdAcademicRuleProfile $profile) {}
 

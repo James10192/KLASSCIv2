@@ -539,9 +539,15 @@ class ESBTPAuditController extends Controller
             $riskFactors += 2;
         }
 
-        // Modifications en dehors des heures de bureau
+        // Modifications en dehors des heures de bureau.
+        //
+        // Les mêmes bornes que le compteur d'activités suspectes, et pour la
+        // même raison : ce sont celles de la journée réglée par l'établissement.
+        // Deux règles différentes sur le même écran donneraient un badge de
+        // risque qui contredit le compteur juste au-dessus.
+        $plage = app(PlageHoraireJournee::class);
         $hour = $audit->created_at->hour;
-        if ($hour < 8 || $hour > 18) {
+        if ($hour < $plage->debut() || $hour >= $plage->fin()) {
             $riskFactors += 1;
         }
 

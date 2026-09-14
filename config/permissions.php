@@ -161,14 +161,6 @@ return [
             'icon' => 'fa-server',
             'aliases' => ['manage_system'],
         ],
-        'abonnement.manage' => [
-            'label' => 'Gérer l’abonnement de l’établissement',
-            'description' => 'Prolonger l’abonnement, générer un code de déblocage d’urgence, changer l’offre. '
-                .'Distincte de « Gérer la configuration système » : confier les réglages à une équipe '
-                .'informatique ne doit pas lui confier la main sur son propre abonnement.',
-            'group' => 'Système',
-            'icon' => 'fa-shield-alt',
-        ],
         'parent_chatbot.manage' => [
             'label' => 'Gérer le chatbot parent',
             'group' => 'Communication',

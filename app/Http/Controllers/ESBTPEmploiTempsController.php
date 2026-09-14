@@ -1616,36 +1616,16 @@ class ESBTPEmploiTempsController extends Controller
         $seance->matiere_id = $validated['matiere_id'];
         // `enseignant_id` n'est plus une colonne de cette table : elle a été
         // supprimée en mars 2025 (`update_esbtp_seance_cours_table_for_enseignant_text`)
-        // au profit de `teacher_id`, qui référence `esbtp_teachers` — et non
-        // `users`, comme le fait encore la règle de validation de ce formulaire.
+        // au profit de `teacher_id`. L'affectation partait donc en
+        // `SQLSTATE[42S22] Unknown column` : ce chemin de saisie était cassé net,
+        // pas seulement aveugle aux conflits.
         //
-        // Ce chemin écrivait donc à côté, et les séances qu'il crée n'ont pas de
-        // `teacher_id`. Or la détection de conflit d'agenda saute toute séance
-        // qui n'en porte pas : ces séances étaient invisibles au contrôle de
-        // disponibilité des enseignants. Créer un chevauchement était bloqué par
-        // l'autre chemin de saisie, et libre par celui-ci.
-        //
-        // Les deux identifiants ne sont pas interchangeables : on traduit
-        // l'utilisateur choisi vers sa fiche d'enseignant.
-        $ficheEnseignant = \App\Models\ESBTPTeacher::query()
-            ->where('user_id', $validated['enseignant_id'])
-            ->value('id');
-
-        if ($ficheEnseignant === null) {
-            // Refuser plutôt qu'écrire `null` : une séance sans enseignant
-            // identifié est précisément celle que la détection de conflit ne
-            // voit pas. Mieux vaut le dire à la saisie que le découvrir sur un
-            // chevauchement en cours d'année.
-            return redirect()->back()
-                ->withInput()
-                ->withErrors([
-                    'enseignant_id' => "Cet utilisateur n'a pas de fiche enseignant : la séance ne pourrait pas "
-                        ."être prise en compte dans la détection des conflits d'emploi du temps. "
-                        ."Créez sa fiche enseignant, puis recommencez.",
-                ]);
-        }
-
-        $seance->teacher_id = $ficheEnseignant;
+        // Le champ du formulaire s'appelle `enseignant_id` mais porte déjà un
+        // `esbtp_teachers.id` — la liste est bâtie sur `ESBTPTeacher`. C'est donc
+        // la MÊME valeur que `teacher_id` attend : rien à traduire, seulement la
+        // bonne colonne. (La règle de validation, elle, l'attestait contre
+        // `users` ; elle est corrigée dans la FormRequest.)
+        $seance->teacher_id = $validated['enseignant_id'];
         $seance->type_seance = $validated['type_seance'];
         $seance->jour = $validated['jour'];
         $seance->heure_debut = $validated['heure_debut'];
