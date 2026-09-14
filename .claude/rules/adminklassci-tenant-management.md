@@ -151,6 +151,32 @@ inscription. C'est aussi pourquoi `APP_TIMEZONE` n'est volontairement PAS dans
 `CleEnvAutorisee` : le CLI ne doit pas pouvoir deplacer le fuseau d'une instance
 vivante.
 
+**Le provisionnement le pose donc lui-meme** (`tenant:provision --timezone=`,
+adminKlassci, septembre 2026). Defaut `UTC`, soit le comportement d'avant. La
+commande REFUSE un fuseau qui pratique l'heure d'ete plutot que de figer un
+decalage juste la moitie de l'annee, et refuse un identifiant IANA inconnu.
+
+**Il y a un SECOND fuseau, et `APP_TIMEZONE` ne le couvre pas.** MySQL renseigne
+lui-meme sept colonnes (`useCurrent()` dans leur migration, dont
+`esbtp_inscription_workflow_history.action_timestamp`,
+`group_portal_sso_logs.created_at` et `esbtp_grade_sheet_revisions.created_at`)
+et les ecrit dans le fuseau de SA session. Laissee a celle du serveur, une
+instance a UTC+1 verrait ces colonnes prendre une heure de retard sur le
+`created_at` de la MEME ligne. D'ou `DB_TIMEZONE`, lu par `config/database.php`,
+pose au provisionnement a cote d'`APP_TIMEZONE`. Defaut null : Laravel n'emet
+alors AUCUN `SET time_zone` (`MySqlConnector::configureTimezone()` teste
+`isset()`, verifie en 9.x comme en 10.x), donc rien ne change la ou rien n'est
+regle. Un **decalage fixe** et non un nom de fuseau, parce que les tables de
+fuseaux de MySQL ne sont pas chargees sur l'hebergement mutualise.
+
+**Ce que le fuseau ne corrige PAS** : les numeros de telephone. C'est un defaut
+distinct, decrit plus haut dans cette rule, et il se corrige par ses deux
+reglages a lui.
+
+Les gestes concrets pour `ucao-benin` — reglages, fuseau, recensement de
+l'existant — sont dans
+[docs/runbooks/ucao-benin-mise-en-service.md](../../docs/runbooks/ucao-benin-mise-en-service.md).
+
 Ce que le fuseau aligne, une fois pose au provisionnement — **pour les donnees
 ecrites ensuite, pas pour celles deja en base** :
 
@@ -256,7 +282,10 @@ group_member_notification_preferences
 # Provisioning (17 étapes : DB + Git + .env + migrations + subdomain + SSL)
 php artisan tenant:provision --code=lycee-yop --name="Lycée Y" \
     --subdomain=lycee-yop --branch=main --plan=elite \
-    --admin-email=admin@example.ci
+    --admin-email=admin@example.ci \
+    --timezone=Africa/Abidjan      # hors CI : Africa/Porto-Novo pour le Bénin.
+                                   # Defaut UTC. Le seul moment ou le fuseau
+                                   # se pose sans degats — voir plus haut.
 
 # Déploiement (9 étapes : backup + maintenance + git pull + composer + migrate + cache)
 php artisan tenant:deploy esbtp-yakro              # 1 tenant
