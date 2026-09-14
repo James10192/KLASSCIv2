@@ -45,7 +45,12 @@ return new class extends Migration
             'default_value' => '0',
             'description' => "Reste dû, en francs, jusqu'auquel un étudiant est encore autorisé à se réinscrire. À 0, la réinscription exige un dossier entièrement soldé. Une valeur plus haute tolère un reliquat : l'écran et la garde appliquent alors le même seuil, ce qui n'était pas le cas avant ce réglage.",
             'is_required' => 0,
-            'validation_rules' => 'numeric|min:0',
+            // `validation_rules` est une colonne JSON : sur MariaDB, Laravel y
+            // attache un `CHECK (json_valid(...))`, et une chaine de regles a
+            // la Laravel — « numeric|min:0 » — la fait echouer. L'ecran, de
+            // son cote, lit bien un TABLEAU de regles. Passant par le query
+            // builder, aucun cast de modele n'encode a notre place.
+            'validation_rules' => json_encode(['nullable', 'numeric', 'min:0']),
             'is_active' => 1,
             'sort_order' => 200,
             'created_by' => $createur,
