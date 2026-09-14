@@ -127,16 +127,31 @@ deux sens.
    `esbtp_etudiants.telephone` et `esbtp_parents.telephone` sont bruts : aucun
    backfill.
 
-### Le fuseau — le reglage est deja seme, personne ne le lit
+### Le fuseau — dans le `.env`, et nulle part ailleurs (septembre 2026)
 
-`config/app.php` fixe `'timezone' => 'UTC'` en litteral, sans lire l'environnement.
-Mais `SettingsSeeder` seme deja **`app_timezone` a `Africa/Abidjan`** — et
-`grep -rn app_timezone app/ config/` ne rend **aucune lecture**. Le travail n'est
-donc pas de rendre le fuseau configurable : c'est de **brancher un reglage existant**.
-`Africa/Abidjan` valant UTC+0, les six instances ivoiriennes ne bougent pas d'une
-seconde.
+`config/app.php` lit desormais `env('APP_TIMEZONE', 'UTC')`. Defaut `UTC`, soit
+le comportement d'avant ; `Africa/Abidjan` valant UTC+0 sans heure d'ete, les six
+instances ivoiriennes ne bougent pas d'une seconde. Les trois taches planifiees
+qui figeaient `->timezone('Africa/Abidjan')` suivent maintenant le fuseau de
+l'application.
 
-Ce que cela corrige d'un coup :
+**La fausse piste a ne pas reprendre.** `SettingsSeeder` semait un `app_timezone`
+que rien ne lisait et que l'ecran des reglages n'affichait pas — d'ou la
+conclusion tentante « il suffit de le brancher ». Elle est fausse : Laravel
+appelle `date_default_timezone_set()` pendant `LoadConfiguration`, **avant** tout
+fournisseur de services et avant que la base soit joignable. Un reglage en base
+ne peut pas etre lu a cet instant. La ligne a ete retiree du seeder ; les
+instances en service gardent une ligne morte, que rien ne lit ni ne montre.
+
+**Le moment compte plus que la valeur.** Laravel ecrit les horodatages dans le
+fuseau de l'application : le changer sur une instance QUI A DEJA DES DONNEES
+laisse derriere des lignes ecrites dans l'ancien, que les nouvelles ne rejoignent
+pas. Le seul moment gratuit est le **provisionnement**, avant la premiere
+inscription. C'est aussi pourquoi `APP_TIMEZONE` n'est volontairement PAS dans
+`CleEnvAutorisee` : le CLI ne doit pas pouvoir deplacer le fuseau d'une instance
+vivante.
+
+Ce que le fuseau corrige, une fois pose au provisionnement :
 
 - **24 filtres `whereDate('created_at', …)`** comparent un horodatage UTC a un jour
   local — dont `CashSessionService::queryJour()`, la caisse d'un caissier.
