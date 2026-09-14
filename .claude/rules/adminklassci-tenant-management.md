@@ -151,15 +151,33 @@ inscription. C'est aussi pourquoi `APP_TIMEZONE` n'est volontairement PAS dans
 `CleEnvAutorisee` : le CLI ne doit pas pouvoir deplacer le fuseau d'une instance
 vivante.
 
-Ce que le fuseau corrige, une fois pose au provisionnement :
+Ce que le fuseau aligne, une fois pose au provisionnement — **pour les donnees
+ecrites ensuite, pas pour celles deja en base** :
 
-- **24 filtres `whereDate('created_at', …)`** comparent un horodatage UTC a un jour
-  local — dont `CashSessionService::queryJour()`, la caisse d'un caissier.
+- **24 filtres `whereDate('created_at', …)`** comparent le jour de `now()` a une
+  chaine que Laravel a ecrite dans le fuseau de l'application — dont
+  `CashSessionService::queryJour()`, la caisse d'un caissier. Les deux cotes
+  bougent ensemble, donc l'alignement est immediat pour les nouvelles lignes ;
+  celles ecrites avant gardent l'ancien fuseau et decalent d'une heure.
 - **`date_paiement` est ecrite depuis `now()`** en une dizaine d'endroits. Elle est
   bien de type `date` (donc la lecture de la reconciliation, elle, ne decale pas),
   mais un encaissement saisi apres minuit local porterait la date de la veille — et
   pourrait tomber dans une periode deja verrouillee.
 - `app/Console/Kernel.php` fige `->timezone('Africa/Abidjan')` sur trois taches.
+
+**`APP_TIMEZONE` ne suffit pas seul : il y a un second fuseau.** Sept colonnes
+sont renseignees par MySQL lui-meme (`useCurrent()` dans leur migration) — dont
+`esbtp_inscription_workflow_history.action_timestamp`,
+`group_portal_sso_logs.created_at` et `esbtp_grade_sheet_revisions.created_at`.
+MySQL les ecrit dans le fuseau de SA session, pas dans celui de l'application :
+sur une instance a UTC+1 servie par un serveur a UTC, elles prennent une heure de
+retard sur le `created_at` de la MEME ligne, dans un journal d'audit. D'ou
+`DB_TIMEZONE` sur la connexion mysql (`config/database.php`), a poser **en meme
+temps** qu'`APP_TIMEZONE`. Defaut `null` = aucun `SET time_zone` emis, donc les
+instances ivoiriennes ne bougent pas.
+
+**Ce que le fuseau ne corrige PAS** : les huit sites qui posent `telephone` ou un
+indicatif. Ce sont deux chantiers distincts — voir la section telephone ci-dessus.
 
 ### Les moyens de paiement
 

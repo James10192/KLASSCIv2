@@ -45,7 +45,7 @@ final class PhoneNormalizer
      * rester octet pour octet `+225` + dix chiffres : `esbtp_candidatures`
      * porte un index UNIQUE dessus, et toute la détection de doublon en dépend.
      */
-    private const INDICATIF_PAR_DEFAUT = '225';
+    public const INDICATIF_PAR_DEFAUT = '225';
 
     /**
      * Les préfixes qu'un numéro national peut porter ici.
@@ -63,7 +63,7 @@ final class PhoneNormalizer
      * compris. Le numéro produit serait injoignable, et le serait en silence :
      * c'est l'image en miroir du défaut que cette classe corrige.
      */
-    private const PREFIXES_PAR_DEFAUT = '01,02,03,05,06,07,08,09';
+    public const PREFIXES_PAR_DEFAUT = '01,02,03,05,06,07,08,09';
 
     /**
      * La longueur d'un numéro national, dix chiffres — le zéro initial en fait

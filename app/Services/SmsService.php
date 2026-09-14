@@ -231,8 +231,29 @@ class SmsService
                 return false;
             }
 
+            // L'expéditeur est le numéro de l'école, et il suivait le même
+            // « +225 » en dur que le destinataire réparé plus haut. Il passe
+            // donc par le même normaliseur : une instance hors Côte d'Ivoire y
+            // pose son indicatif, et l'écriture du `.env` (nationale ou
+            // internationale) cesse d'avoir de l'importance.
+            //
+            // Un expéditeur illisible arrête l'envoi au lieu de fabriquer une
+            // adresse que l'opérateur rejettera sans dire pourquoi — c'est le
+            // cas du `0000000000` de remplissage, qu'aucun plan n'accepte.
+            $expediteurBrut = (string) env('SMS_SENDER_NUMBER', '');
+            $expediteur = PhoneNormalizer::toE164($expediteurBrut);
+
+            if ($expediteur === null) {
+                Log::error('SMS non envoyé : SMS_SENDER_NUMBER illisible', [
+                    'valeur_brute' => $expediteurBrut === '' ? '(vide)' : $expediteurBrut,
+                    'indicatif_instance' => PhoneNormalizer::indicatifNationalParDefaut(),
+                ]);
+
+                return false;
+            }
+
             // Format sender address (doit commencer par tel:)
-            $senderAddress = 'tel:+225' . env('SMS_SENDER_NUMBER', '0000000000');
+            $senderAddress = 'tel:' . $expediteur;
 
             // Construire l'URL avec le sender
             $url = $this->apiUrl . '/' . urlencode($senderAddress) . '/requests';

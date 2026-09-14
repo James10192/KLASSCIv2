@@ -17,6 +17,7 @@ use App\Services\MailPulse\MailPulseTestNotificationService;
 use App\Services\Mobile\MobileProfileResolver;
 use App\Services\Inscription\PortailCandidaturePublication;
 use App\Services\Reinscription\PortailReinscriptionService;
+use App\Services\TelephoneSettingsService;
 use App\Services\TenantScolariteSettings;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -68,7 +69,7 @@ class ESBTPSettingsController extends Controller
         $appreciationScaleSettings = app(AppreciationScaleSettingsService::class);
         $appreciationScaleSettings->ensureDefaults();
         $this->ensureMailPulseSettings();
-        $this->ensureTelephoneSettings();
+        app(TelephoneSettingsService::class)->ensureDefaults();
         $allSettings = Setting::orderBy('category')->orderBy('sort_order')->get();
         $settings = $allSettings->groupBy('category');
         $flatSettings = $allSettings; // Collection plate pour l'accès direct par clé
@@ -110,7 +111,8 @@ class ESBTPSettingsController extends Controller
             $appreciationScaleSettings = app(AppreciationScaleSettingsService::class);
             $appreciationScaleSettings->ensureDefaults();
             $this->ensureMailPulseSettings();
-            $this->ensureTelephoneSettings();
+            $telephoneSettings = app(TelephoneSettingsService::class);
+            $telephoneSettings->ensureDefaults();
 
             $pdfColorDefaults = [
                 'pdf_primary_color' => '#0453cb',
@@ -207,6 +209,20 @@ class ESBTPSettingsController extends Controller
 
             $updatedSettings = [];
             $errors = [];
+
+            // Indicatif + préfixes vont par paire : la boucle générique plus bas
+            // traite chaque champ isolément et ne peut donc pas voir qu'un
+            // changement de pays sans ses préfixes laisse l'instance en état
+            // d'accepter des numéros qui n'existent pas. Contrôle avant tout
+            // enregistrement — un rollback partiel serait pire que le refus.
+            $incoherenceTelephone = $telephoneSettings->incoherenceDuChangementDePays(
+                $request->input('setting_'.PhoneNormalizer::CLE_INDICATIF),
+                $request->input('setting_'.PhoneNormalizer::CLE_PREFIXES)
+            );
+
+            if ($incoherenceTelephone !== null) {
+                $errors[PhoneNormalizer::CLE_PREFIXES] = $incoherenceTelephone;
+            }
 
             // Barème d'assiduité à tranches (JSON) : validation structurelle dédiée via
             // le value object (contiguïté, dernière tranche ouverte, bornes) — la boucle
@@ -1950,59 +1966,6 @@ class ESBTPSettingsController extends Controller
         }
 
         return $overrides;
-    }
-
-    /**
-     * Les deux réglages téléphoniques de l'instance, créés s'ils manquent.
-     *
-     * Sans ce `firstOrCreate`, ces réglages n'auraient AUCUN chemin d'écriture
-     * sur une instance vivante : leur seul autre écrivain est `SettingsSeeder`,
-     * qui réécrit d'un bloc les dix-sept réglages de base — le relancer sur une
-     * instance en production y remettrait le nom de l'école d'origine. Personne
-     * ne le lance, donc `ucao-benin` serait restée à `+225` alors même que le
-     * correctif était déployé. Un correctif qu'on ne peut pas activer n'en est
-     * pas un.
-     *
-     * La ligne en base ne suffit PAS à faire apparaître le champ : l'écran des
-     * réglages n'énumère pas la table, il déclare ses champs un par un en
-     * `name="setting_<clé>"` (`$settings` n'y sert qu'à un compteur). Les deux
-     * champs sont donc posés dans l'onglet Général, à côté du téléphone de
-     * l'école. Ce `firstOrCreate` reste nécessaire pour autant : la boucle
-     * d'enregistrement ignore un `setting_*` dont la ligne n'existe pas.
-     */
-    private function ensureTelephoneSettings(): void
-    {
-        $defauts = [
-            PhoneNormalizer::CLE_INDICATIF => [
-                'value' => PhoneNormalizer::indicatifNationalParDefaut(),
-                'description' => 'Indicatif pays des numéros saisis sans indicatif (225 = Côte d’Ivoire, 229 = Bénin)',
-                'validation_rules' => ['nullable', 'regex:/^\+?[0-9]{1,3}$/'],
-                'sort_order' => 4,
-            ],
-            PhoneNormalizer::CLE_PREFIXES => [
-                'value' => implode(',', PhoneNormalizer::prefixesNationaux()),
-                'description' => 'Préfixes qu’un numéro national peut porter ici, séparés par des virgules (Côte d’Ivoire : 01,02,03,05,06,07,08,09 — Bénin : 01)',
-                'validation_rules' => ['nullable', 'regex:/^[0-9]{1,4}([ ,;|]+[0-9]{1,4})*$/'],
-                'sort_order' => 5,
-            ],
-        ];
-
-        foreach ($defauts as $cle => $attrs) {
-            Setting::firstOrCreate(
-                ['key' => $cle],
-                [
-                    'value' => $attrs['value'],
-                    'type' => 'string',
-                    'group' => 'general',
-                    'category' => 'general',
-                    'description' => $attrs['description'],
-                    'is_required' => false,
-                    'default_value' => $attrs['value'],
-                    'validation_rules' => $attrs['validation_rules'],
-                    'sort_order' => $attrs['sort_order'],
-                ]
-            );
-        }
     }
 
     private function ensureAttendanceNoteSettings(): void

@@ -1428,41 +1428,17 @@ class SettingsSeeder extends Seeder
             // provisionnement — voir le commentaire de `config/app.php`. Les
             // instances déjà en service gardent la ligne morte en base ; rien
             // ne la lit, rien ne la montre.
-            [
-                // L'indicatif pays apposé aux téléphones saisis à la nationale
-                // (« 0707121234 »). Une écriture internationale (« +229 … »)
-                // porte le sien et n'est pas touchée : voir PhoneNormalizer.
-                //
-                // Ne s'en déduit RIEN d'autre : pas de liste de préfixes
-                // mobiles par pays. « 0142345678 » est simultanément un mobile
-                // MTN Bénin et un mobile Moov Côte d'Ivoire — aucune inférence
-                // n'est possible.
-                'key' => 'telephone_indicatif_pays',
-                'value' => '225',
-                'type' => 'string',
-                'group' => 'general',
-                'category' => 'general',
-                'description' => 'Indicatif pays des numéros saisis sans indicatif (225 = Côte d\'Ivoire, 229 = Bénin)',
-                'is_required' => false,
-                'default_value' => '225',
-                'validation_rules' => ['regex:/^\+?[0-9]{1,3}$/'],
-                'sort_order' => 4
-            ],
-            [
-                // Les préfixes qu'un numéro national peut porter ici. DÉCLARÉS
-                // par l'école, jamais déduits du pays : « 0142345678 » est
-                // simultanément un MTN Bénin et un Moov ivoirien valides.
-                'key' => 'telephone_prefixes_mobiles',
-                'value' => '01,02,03,05,06,07,08,09',
-                'type' => 'string',
-                'group' => 'general',
-                'category' => 'general',
-                'description' => 'Préfixes qu\'un numéro national peut porter ici, séparés par des virgules (Côte d\'Ivoire : 01,02,03,05,06,07,08,09 — Bénin : 01)',
-                'is_required' => false,
-                'default_value' => '01,02,03,05,06,07,08,09',
-                'validation_rules' => ['regex:/^[0-9]{1,4}([ ,;|]+[0-9]{1,4})*$/'],
-                'sort_order' => 5
-            ],
+            //
+            // PAS de réglages téléphoniques ici non plus — pour une autre
+            // raison, celle-là.
+            //
+            // `telephone_indicatif_pays` et `telephone_prefixes_mobiles` se
+            // lisent très bien, eux. Mais ce seeder écrit en `updateOrCreate`
+            // sur la totalité du bloc : le relancer sur une instance béninoise
+            // lui RAMÈNERAIT son indicatif à 225, et ses relances repartiraient
+            // chez des abonnés Moov ivoiriens. Ils sont donc posés par
+            // `ESBTPSettingsController::ensureTelephoneSettings()`, en
+            // `firstOrCreate` — qui n'écrase jamais ce que l'école a réglé.
             [
                 'key' => 'app_locale',
                 'value' => 'fr',

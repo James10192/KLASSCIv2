@@ -1132,12 +1132,12 @@
                             <i class="fas fa-building text-primary"></i>
                             Nom de l'établissement <span class="text-danger">*</span>
                         </label>
-                        <input type="text" class="form-control form-control-modern @error('setting_school_name') is-invalid @enderror"
+                        <input type="text" class="form-control form-control-modern @error('school_name') is-invalid @enderror"
                                name="setting_school_name"
                                value="{{ old('setting_school_name', \App\Helpers\SettingsHelper::get('school_name', 'KLASSCI')) }}"
                                placeholder="Nom complet de votre établissement"
                                required>
-                        @error('setting_school_name')
+                        @error('school_name')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
@@ -1147,12 +1147,12 @@
                             <i class="fas fa-tag text-primary"></i>
                             Sigle
                         </label>
-                        <input type="text" class="form-control form-control-modern @error('setting_school_acronym') is-invalid @enderror"
+                        <input type="text" class="form-control form-control-modern @error('school_acronym') is-invalid @enderror"
                                name="setting_school_acronym"
                                value="{{ old('setting_school_acronym', \App\Helpers\SettingsHelper::get('school_acronym', '')) }}"
                                placeholder="Ex: ESBTP">
                         <small class="text-muted d-block mt-1">Forme courte du nom, utilisée là où la place manque.</small>
-                        @error('setting_school_acronym')
+                        @error('school_acronym')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
@@ -1162,11 +1162,11 @@
                             <i class="fas fa-map-marker-alt text-primary"></i>
                             Adresse
                         </label>
-                        <input type="text" class="form-control form-control-modern @error('setting_school_address') is-invalid @enderror"
+                        <input type="text" class="form-control form-control-modern @error('school_address') is-invalid @enderror"
                                name="setting_school_address"
                                value="{{ old('setting_school_address', \App\Helpers\SettingsHelper::get('school_address', '')) }}"
                                placeholder="Ex: BP 04 BP 1234 Abidjan 04">
-                        @error('setting_school_address')
+                        @error('school_address')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
@@ -1176,11 +1176,11 @@
                             <i class="fas fa-phone text-primary"></i>
                             Téléphone
                         </label>
-                        <input type="text" class="form-control form-control-modern @error('setting_school_phone') is-invalid @enderror"
+                        <input type="text" class="form-control form-control-modern @error('school_phone') is-invalid @enderror"
                                name="setting_school_phone"
                                value="{{ old('setting_school_phone', \App\Helpers\SettingsHelper::get('school_phone', '')) }}"
                                placeholder="Ex: +225 00 00 00 00">
-                        @error('setting_school_phone')
+                        @error('school_phone')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
@@ -1190,12 +1190,12 @@
                             <i class="fas fa-globe-africa text-primary"></i>
                             Indicatif pays des numéros
                         </label>
-                        <input type="text" class="form-control form-control-modern @error('setting_telephone_indicatif_pays') is-invalid @enderror"
+                        <input type="text" class="form-control form-control-modern @error('telephone_indicatif_pays') is-invalid @enderror"
                                name="setting_telephone_indicatif_pays"
                                value="{{ old('setting_telephone_indicatif_pays', \App\Domain\Notifications\PhoneNormalizer::indicatifNationalParDefaut()) }}"
                                placeholder="Ex: 225">
                         <small class="text-muted d-block mt-1">Apposé aux numéros saisis sans indicatif. 225 pour la Côte d'Ivoire, 229 pour le Bénin. Un numéro écrit en entier (+229…) garde le sien.</small>
-                        @error('setting_telephone_indicatif_pays')
+                        @error('telephone_indicatif_pays')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
@@ -1205,12 +1205,12 @@
                             <i class="fas fa-mobile-screen text-primary"></i>
                             Préfixes des numéros locaux
                         </label>
-                        <input type="text" class="form-control form-control-modern @error('setting_telephone_prefixes_mobiles') is-invalid @enderror"
+                        <input type="text" class="form-control form-control-modern @error('telephone_prefixes_mobiles') is-invalid @enderror"
                                name="setting_telephone_prefixes_mobiles"
                                value="{{ old('setting_telephone_prefixes_mobiles', implode(',', \App\Domain\Notifications\PhoneNormalizer::prefixesNationaux())) }}"
                                placeholder="Ex: 01,02,03,05,06,07,08,09">
                         <small class="text-muted d-block mt-1">Séparés par des virgules. Côte d'Ivoire : 01,02,03,05,06,07,08,09 — Bénin : 01 seul. Un numéro qui ne commence par aucun d'eux est refusé à la saisie.</small>
-                        @error('setting_telephone_prefixes_mobiles')
+                        @error('telephone_prefixes_mobiles')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
@@ -1220,11 +1220,11 @@
                             <i class="fas fa-envelope text-primary"></i>
                             Email
                         </label>
-                        <input type="email" class="form-control form-control-modern @error('setting_school_email') is-invalid @enderror"
+                        <input type="email" class="form-control form-control-modern @error('school_email') is-invalid @enderror"
                                name="setting_school_email"
                                value="{{ old('setting_school_email', \App\Helpers\SettingsHelper::get('school_email', '')) }}"
                                placeholder="Ex: contact@votre-ecole.com">
-                        @error('setting_school_email')
+                        @error('school_email')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
@@ -1234,11 +1234,11 @@
                             <i class="fas fa-mobile-screen text-primary"></i>
                             Mobile
                         </label>
-                        <input type="text" class="form-control form-control-modern @error('setting_school_mobile') is-invalid @enderror"
+                        <input type="text" class="form-control form-control-modern @error('school_mobile') is-invalid @enderror"
                                name="setting_school_mobile"
                                value="{{ old('setting_school_mobile', \App\Helpers\SettingsHelper::get('school_mobile', '')) }}"
                                placeholder="Ex: +225 07 00 00 00 00">
-                        @error('setting_school_mobile')
+                        @error('school_mobile')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
@@ -1247,11 +1247,11 @@
                             <i class="fas fa-envelope-open-text text-primary"></i>
                             Code postal
                         </label>
-                        <input type="text" class="form-control form-control-modern @error('setting_school_postal_code') is-invalid @enderror"
+                        <input type="text" class="form-control form-control-modern @error('school_postal_code') is-invalid @enderror"
                                name="setting_school_postal_code"
                                value="{{ old('setting_school_postal_code', \App\Helpers\SettingsHelper::get('school_postal_code', '')) }}"
                                placeholder="Ex: 01 BP 1234">
-                        @error('setting_school_postal_code')
+                        @error('school_postal_code')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
@@ -1260,11 +1260,11 @@
                             <i class="fas fa-globe text-primary"></i>
                             Site web
                         </label>
-                        <input type="text" class="form-control form-control-modern @error('setting_school_website') is-invalid @enderror"
+                        <input type="text" class="form-control form-control-modern @error('school_website') is-invalid @enderror"
                                name="setting_school_website"
                                value="{{ old('setting_school_website', \App\Helpers\SettingsHelper::get('school_website', '')) }}"
                                placeholder="Ex: https://www.mon-ecole.ci">
-                        @error('setting_school_website')
+                        @error('school_website')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
@@ -1274,11 +1274,11 @@
                             <i class="fas fa-city text-primary"></i>
                             Ville
                         </label>
-                        <input type="text" class="form-control form-control-modern @error('setting_school_city') is-invalid @enderror"
+                        <input type="text" class="form-control form-control-modern @error('school_city') is-invalid @enderror"
                                name="setting_school_city"
                                value="{{ old('setting_school_city', \App\Helpers\SettingsHelper::get('school_city', '')) }}"
                                placeholder="Ex: Yamoussoukro">
-                        @error('setting_school_city')
+                        @error('school_city')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
@@ -1288,11 +1288,11 @@
                             <i class="fas fa-flag text-primary"></i>
                             Pays
                         </label>
-                        <input type="text" class="form-control form-control-modern @error('setting_school_country') is-invalid @enderror"
+                        <input type="text" class="form-control form-control-modern @error('school_country') is-invalid @enderror"
                                name="setting_school_country"
                                value="{{ old('setting_school_country', \App\Helpers\SettingsHelper::get('school_country', '')) }}"
                                placeholder="Ex: Côte d'Ivoire">
-                        @error('setting_school_country')
+                        @error('school_country')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
@@ -1302,11 +1302,11 @@
                             <i class="fas fa-user-tie text-primary"></i>
                             Nom du directeur
                         </label>
-                        <input type="text" class="form-control form-control-modern @error('setting_director_name') is-invalid @enderror"
+                        <input type="text" class="form-control form-control-modern @error('director_name') is-invalid @enderror"
                                name="setting_director_name"
                                value="{{ old('setting_director_name', \App\Helpers\SettingsHelper::get('director_name', '')) }}"
                                placeholder="Ex: N'GUESSAN Marcel">
-                        @error('setting_director_name')
+                        @error('director_name')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
@@ -1316,11 +1316,11 @@
                             <i class="fas fa-briefcase text-primary"></i>
                             Titre du directeur
                         </label>
-                        <input type="text" class="form-control form-control-modern @error('setting_director_title') is-invalid @enderror"
+                        <input type="text" class="form-control form-control-modern @error('director_title') is-invalid @enderror"
                                name="setting_director_title"
                                value="{{ old('setting_director_title', \App\Helpers\SettingsHelper::get('director_title', 'Directeur Général')) }}"
                                placeholder="Ex: Directeur Général">
-                        @error('setting_director_title')
+                        @error('director_title')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
@@ -3793,13 +3793,13 @@
                                 <label class="form-label" for="setting_saari_code_journal">
                                     <i class="fas fa-book-open me-1 text-primary"></i> Code journal SAARI
                                 </label>
-                                <input type="text" class="form-control form-control-modern @error('setting_saari_code_journal') is-invalid @enderror"
+                                <input type="text" class="form-control form-control-modern @error('saari_code_journal') is-invalid @enderror"
                                        id="setting_saari_code_journal"
                                        name="setting_saari_code_journal"
                                        maxlength="10"
                                        value="{{ old('setting_saari_code_journal', \App\Helpers\SettingsHelper::get('saari_code_journal', 'JV')) }}"
                                        placeholder="JV">
-                                @error('setting_saari_code_journal')
+                                @error('saari_code_journal')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                                 <small class="text-muted">Ex: <code>JV</code> (Journal de Versement), <code>BK</code> (Banque), <code>CA</code> (Caisse).</small>
@@ -3809,13 +3809,13 @@
                                 <label class="form-label" for="setting_saari_default_account">
                                     <i class="fas fa-coins me-1 text-success"></i> Compte SAARI par défaut
                                 </label>
-                                <input type="text" class="form-control form-control-modern @error('setting_saari_default_account') is-invalid @enderror"
+                                <input type="text" class="form-control form-control-modern @error('saari_default_account') is-invalid @enderror"
                                        id="setting_saari_default_account"
                                        name="setting_saari_default_account"
                                        maxlength="20"
                                        value="{{ old('setting_saari_default_account', \App\Helpers\SettingsHelper::get('saari_default_account', '')) }}"
                                        placeholder="411000">
-                                @error('setting_saari_default_account')
+                                @error('saari_default_account')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                                 <small class="text-muted">Numéro de compte utilisé si une catégorie de frais n'a pas de mapping spécifique. Ex: <code>411000</code> (clients).</small>
@@ -3826,13 +3826,13 @@
                             <label class="form-label" for="setting_saari_account_mapping">
                                 <i class="fas fa-link me-1 text-info"></i> Mapping catégories → comptes SAARI (JSON)
                             </label>
-                            <textarea class="form-control form-control-modern @error('setting_saari_account_mapping') is-invalid @enderror"
+                            <textarea class="form-control form-control-modern @error('saari_account_mapping') is-invalid @enderror"
                                       id="setting_saari_account_mapping"
                                       name="setting_saari_account_mapping"
                                       rows="6"
                                       style="font-family:'Courier New', monospace; font-size:.85rem;"
                                       placeholder='{"1": "411000", "Inscription": "706100", "Scolarite": "706200"}'>{{ old('setting_saari_account_mapping', \App\Helpers\SettingsHelper::get('saari_account_mapping', '{}')) }}</textarea>
-                            @error('setting_saari_account_mapping')
+                            @error('saari_account_mapping')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                             <div style="background:rgba(4,83,203,.04); border:1px solid rgba(4,83,203,.15); border-radius:8px; padding:.85rem 1rem; margin-top:.6rem; font-size:.82rem; color:#1e293b;">
