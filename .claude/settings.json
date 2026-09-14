@@ -10,5 +10,17 @@
     "additionalDirectories": [
       "C:\\Users\\yabla\\.claude\\skills\\linkedin-post\\scripts"
     ]
+  },
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/completude-check.sh\""
+          }
+        ]
+      }
+    ]
   }
 }

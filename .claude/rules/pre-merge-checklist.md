@@ -25,7 +25,7 @@ Coût : ~4h de plan + agents + ultrathink pour réparer ce qui aurait été 1h d
 ### 0. Revue thermo-nucléaire — obligatoire, avant commit, merge ET déploiement
 
 Avant tout commit, toute fusion et tout déploiement qui touche du code, lancer
-le skill `thermo-nuclear-code-quality-review` **en sous-agent** (voir la section
+le skill `thermo-review` **en sous-agent** (voir la section
 « Running it yourself, as an agent » du skill).
 
 ```bash
@@ -40,7 +40,7 @@ git diff origin/presentation...HEAD --stat   # la plage à donner au sous-agent
 - Exemptions : docs seuls, config seule, suppressions pures, diff de moins de
   cinq lignes dans un seul fichier.
 
-Cette revue s'ajoute à l'audit 4 axes (`quality-gate.md`), elle ne le remplace
+Cette revue s'ajoute à l'audit 4 axes (`pre-commit-quality-gate.md`), elle ne le remplace
 pas : l'audit 4 axes cherche les régressions, la revue thermo-nucléaire cherche
 la complexité qu'on aurait pu supprimer.
 

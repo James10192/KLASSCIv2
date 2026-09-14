@@ -1,6 +1,6 @@
 ---
-name: thermo-nuclear-code-quality-review
-description: Revue de qualité adverse avec verdict bloquant sur un diff KLASSCI. Cherche la complexité qu'on aurait pu ne pas écrire, le code écrit et jamais lu, les valeurs en dur, les replis silencieux et les secondes sources de vérité. Obligatoire avant tout commit, toute fusion et tout déploiement (rule pre-merge-checklist, commandement 0). Use before committing, merging or deploying any code change.
+name: thermo-review
+description: Revue adverse avec verdict bloquant sur un diff KLASSCI, sur onze axes. Côté code — complexité évitable, code écrit et jamais lu, valeurs en dur, replis silencieux, secondes sources de vérité. Côté produit — pertinence vérifiée à sa source, design premium prouvé par capture réelle, répartition du travail à la source plutôt qu'accumulation et relance, liens profonds, modales, absence de rechargement. Obligatoire avant tout commit, toute fusion et tout déploiement (rule pre-merge-checklist, commandement 0). Use before committing, merging or deploying any change.
 ---
 
 # Revue thermo-nucléaire
@@ -12,8 +12,8 @@ Trois revues coexistent dans ce dépôt. Elles ne font pas le même travail, et 
 | Revue | Question posée | Sortie |
 |---|---|---|
 | `/code-review` | **Est-ce que ça marche ?** Bugs, sécurité, tests, performance | Liste de constats |
-| Audit 4 axes (`quality-gate`) | **Est-ce que ça casse autre chose ?** Régressions, multi-instance, SOLID | Liste de risques |
-| **Thermo-nucléaire** | **Fallait-il l'écrire ?** Complexité évitable, code mort-né, doublons d'autorité | **Verdict `PASS` / `BLOCK`** |
+| Audit 4 axes (`pre-commit-quality-gate`) | **Est-ce que ça casse autre chose ?** Régressions, multi-instance, SOLID | Liste de risques |
+| **Thermo-nucléaire** | **Fallait-il l'écrire — et fallait-il le faire ainsi ?** Complexité évitable, code mort-né, doublons d'autorité ; puis pertinence, ergonomie, répartition du travail | **Verdict `PASS` / `BLOCK`** |
 
 La thermo **ne remplace pas** l'audit 4 axes, elle s'y ajoute. L'audit cherche les régressions ; la thermo cherche ce qu'on aurait pu supprimer.
 
@@ -60,9 +60,16 @@ Agent(
 >
 > **Plage à relire :** `git diff origin/presentation...HEAD` (lis le diff ET les fichiers entiers qu'il touche — un diff ne montre pas ce qui manque).
 >
-> Ta question n'est pas « est-ce que ça marche ». C'est **« fallait-il l'écrire ? »**. Applique les sept axes et les détecteurs KLASSCI du skill `thermo-nuclear-code-quality-review` (`.claude/skills/thermo-nuclear-code-quality-review/SKILL.md`) — lis-le en entier avant de commencer.
+> Ta question n'est pas « est-ce que ça marche ». C'est **« fallait-il l'écrire, et fallait-il le faire ainsi ? »**. Applique les onze axes et les détecteurs KLASSCI du skill `thermo-review` (`.claude/skills/thermo-review/SKILL.md`) — lis-le en entier avant de commencer, **partie B comprise**.
 >
 > Les rules de `.claude/rules/` font autorité. Toute violation est un `BLOCK`.
+>
+> **Pour la partie B, tu as le droit et le devoir d'utiliser :**
+> - **la recherche internet** — axe 8 : toute affirmation sur le monde extérieur que le diff encode doit porter sa source, ou être marquée non vérifiée. Vérifie-la toi-même plutôt que de la croire.
+> - **la mémoire projet et les rules** — une question déjà tranchée ne se retranche pas ; une décision déjà écrite se cite.
+> - **l'agent `critique-transversale`** si le diff touche un parcours utilisateur entier et que tu veux un second angle.
+>
+> Tu ne peux pas exécuter l'application. Pour les axes 9 et 11, **exige la preuve plutôt que de la produire** : dis précisément quelle capture d'écran ou quelle exécution `/klassci-test-e2e` manque, et sur quel écran.
 >
 > **Contraintes :**
 > - `fichier:ligne` obligatoire pour chaque constat. Si tu n'as pas lu, ne l'affirme pas.
@@ -76,7 +83,7 @@ Agent(
 
 Contexte saturé, outil refusé, quota. Alors : **dis-le clairement** et fais la revue toi-même contre les mêmes standards. La sauter en silence n'est jamais acceptable — et c'est exactement ce que cette règle existe pour empêcher.
 
-## Les sept axes
+## Partie A — Axes code : fallait-il l'écrire ?
 
 ### 1. Ce qui est écrit et jamais lu
 
@@ -141,6 +148,76 @@ Le piège n°1 de `.claude/rules/klassci-debugging-discipline.md` — `ESBTPEtud
 
 Question à poser sur chaque classe ajoutée : **qu'est-ce qui, dans le dépôt, faisait déjà ça ?**
 
+## Partie B — Axes produit : fallait-il le faire ainsi ?
+
+Un diff peut être irréprochable en code et livrer la mauvaise chose, ou la bonne chose sous une forme que personne ne voudra utiliser. Ces quatre axes gouvernent le **même verdict** que les sept précédents.
+
+### 8. Pertinence — est-ce seulement vrai ?
+
+KLASSCI est adossé à des réalités extérieures : textes UEMOA et CAMES, droit national, procédures d'un ministère, pratique réelle d'une école. **Une décision de conception qui repose sur une affirmation sur le monde extérieur doit porter sa source.**
+
+Ce n'est pas théorique. En une seule session d'audit, trois affirmations qui semblaient solides se sont révélées fausses ou périmées :
+
+- « la migration téléphonique béninoise de 2020 » — c'était **novembre 2024**, et la règle réelle rendait le défaut bien plus large ;
+- un décret cité comme fondement en vigueur avait été **déclaré contraire à la Constitution** sept ans plus tôt ;
+- « homologation » et « accréditation » étaient employées comme synonymes — deux autorités, deux conséquences.
+
+**Le contrôle :** pour chaque affirmation extérieure que le diff encode — un seuil réglementaire, un format de document, une obligation légale, une pratique métier — l'auteur peut-il produire la source ? Sinon, deux issues seulement : aller la chercher, ou **marquer l'hypothèse comme non vérifiée dans le code et dans l'issue**. Une supposition assumée est acceptable ; une supposition déguisée en fait ne l'est pas.
+
+Corollaire : une recherche qui n'aboutit pas se dit. « Je n'ai pas pu vérifier le texte officiel » vaut infiniment mieux qu'un silence qui laissera croire que c'était vérifié.
+
+### 9. Design premium et ergonomie — preuve, pas déclaration
+
+Une page n'est pas premium parce qu'on l'affirme. Elle l'est quand on la voit.
+
+**La preuve exigée est une capture d'écran réelle du parcours livré**, prise sur un tenant, jamais une maquette redessinée — c'est la règle d'or de `/klassci-user-tutorial`, et elle vaut ici : *une capture réelle mal cadrée vaut mieux qu'une belle maquette fausse*. Pour un parcours qui traverse données et écrans, la preuve est une exécution `/klassci-test-e2e` sur le tenant, avec le chemin réel qui plantait.
+
+Grille, tirée de `premium-redesign.md` et `premium-selects.md` :
+
+- hero copié du patron `planning-header`, pas réinventé — et réservé aux pages de liste ou de tableau de bord ;
+- palette monochrome bleu ; couleurs sémantiques **seulement** quand elles portent un statut à capter en moins d'une seconde ;
+- namespace CSS dédié, pas de fuite dans les classes globales ;
+- aucun `<select>` natif visible ; aucun menu déroulant tronqué par un parent ;
+- utilisable à 400 px de large, sans défilement horizontal ;
+- états vides qui **proposent l'action** au lieu de constater l'absence ;
+- boutons Guide et Aide dès que l'écran cumule filtres, indicateurs et actions (`interactive-guides.md`).
+
+**Le test qui tranche :** une secrétaire qui n'a jamais vu cet écran sait-elle quoi faire en dix secondes ? Si la réponse exige une formation, le défaut est dans l'écran, pas dans la secrétaire.
+
+### 10. La répartition du travail — le plus important, et le plus oublié
+
+Une fonctionnalité peut être juste, belle, et **faire porter à une personne un travail qu'une autre aurait fait sans effort à la source**.
+
+Deux formes, toutes deux coûteuses :
+
+- **L'accumulation.** Une entité collecte, empile, puis ressaisit d'un coup ce que dix personnes savaient chacune au moment où l'information existait. Une secrétaire qui recopie cent fiches de présence papier fait un travail que cent enseignants avaient déjà fait.
+- **La relance.** Une entité doit courir après une autre pour obtenir ce dont elle a besoin. Chaque relance est un travail pur, qui ne produit rien, et qui recommence.
+
+**La question à poser sur toute fonctionnalité ajoutée :**
+
+> Qui détient l'information **au moment exact où elle existe** ? C'est là qu'elle doit être saisie, une fois, par cette personne.
+
+Si le diff crée un écran dont l'unique fonction est de permettre à quelqu'un de **ressaisir ce qu'un autre savait déjà**, ce n'est pas une fonctionnalité : c'est une dette organisationnelle déguisée en produit.
+
+Contrôles concrets :
+
+- La donnée est-elle saisie par celui qui la détient, ou recopiée par un tiers ?
+- Le parcours crée-t-il une attente d'un acteur envers un autre ? Si oui, l'attendu peut-il agir directement — et sinon, le système relance-t-il **à la place** de l'humain ?
+- Le travail est-il étalé au fil de l'eau, ou concentré en une pointe que quelqu'un devra absorber ?
+- Existe-t-il une saisie en masse pour les cas où l'étalement est impossible ?
+
+Le module de travail personnel étudiant en est l'illustration réussie : l'étudiant déclare, l'enseignant valide si l'école le veut, et **personne ne ressaisit**.
+
+### 11. Fluidité — liens profonds, modales, absence de rechargement
+
+**Liens profonds.** Le test tient en une phrase : **puis-je envoyer à un collègue l'écran exact que je regarde ?** Tout état filtré, trié, paginé doit vivre dans l'URL, et l'écran cible doit pré-remplir ses filtres depuis la chaîne de requête (`premium-redesign.md`, section « Pré-remplir un filtre UI depuis query string »). Un bouton qui mène vers une page cible **sans emporter son contexte** est un défaut.
+
+**Modales.** Elles sont légitimes pour une décision unitaire — un champ, une confirmation. Elles ne le sont pas pour un parcours à plusieurs étapes, ni quand l'utilisateur doit consulter autre chose en parallèle : cela réclame une route. Une modale empilée sur une modale signale presque toujours un problème de flux en amont. Toute modale conservée ferme sur `Échap`, rend le focus à son déclencheur et porte un titre lié en ARIA.
+
+**Aucun rechargement.** `ajax-no-reload-premium.md` fait autorité : `window.location.reload()`, un formulaire sans `@submit.prevent`, un `redirect()->back()` après une mutation simple, un bouton « Actualiser » visible — chacun est un `BLOCK`. Les exceptions tolérées existent et se **commentent dans le code**.
+
+**Brouillon récupérable** sur tout parcours à étapes : un utilisateur interrompu ne doit rien perdre.
+
 ## Les détecteurs KLASSCI
 
 Défauts récurrents, chacun déjà survenu en production. Chaque ligne est un `BLOCK`.
@@ -203,4 +280,8 @@ Un bloquant ne se discute pas avec le relecteur : il se corrige, ou il se retire
 - `.claude/rules/blade-pitfalls.md` · `.claude/rules/blade-alpine-pitfalls.md`
 - `.claude/rules/customizable-roles.md` · `.claude/rules/permissions.md`
 - `.claude/rules/feature-delivery-methodology.md` — phase 9
+- `.claude/rules/ajax-no-reload-premium.md` · `.claude/rules/premium-redesign.md` · `.claude/rules/interactive-guides.md` — axes 9 et 11
+- `/klassci-test-e2e` — la preuve d'exécution exigée par l'axe 9
+- `/klassci-user-tutorial` — la règle d'or de la capture réelle, et le test « une secrétaire sait-elle quoi faire »
+- `critique-transversale` (agent) — le second angle sur un parcours entier
 - `/code-review` et `/simplify` — les deux autres revues, qui posent d'autres questions

@@ -5,6 +5,11 @@ description: Create a conventional commit. Use when the user asks to commit chan
 
 Create a conventional commit following these steps:
 
+0. **Revue `/thermo-review` en sous-agent** — obligatoire avant tout commit qui
+   touche du code (rule `pre-merge-checklist.md`, commandement 0). Verdict
+   `BLOCK` → on corrige, on ne commite pas. Exemptions : docs seuls, config
+   seule, suppressions pures, diff de moins de cinq lignes dans un seul fichier.
+
 1. Run `git status` to see all changed files
 2. Run `git diff --staged` and `git diff` to review all changes
 3. Run `git log --oneline -5` to understand the project's commit style and scopes in use
