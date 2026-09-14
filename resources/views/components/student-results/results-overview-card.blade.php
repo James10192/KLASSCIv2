@@ -200,7 +200,7 @@
                 </div>
                 <div class="sr-stat sr-stat--warning">
                     <div class="sr-stat-icon"><i class="fas fa-calculator"></i></div>
-                    <div class="sr-stat-value">{{ array_sum(array_column($notesByMatiere, 'total_coefficients')) }}</div>
+                    <div class="sr-stat-value">{{ \App\Support\CoefficientsAffiches::sommeAffichee($annualSubjectBlocks ?? [], $notesByMatiere) }}</div>
                     <div class="sr-stat-label">Coefficients</div>
                 </div>
                 <div class="sr-stat sr-stat--{{ $gaugeClass }}">

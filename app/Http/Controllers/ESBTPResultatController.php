@@ -866,12 +866,25 @@ class ESBTPResultatController extends Controller
             // SANS try/catch, RuntimeException 'Coefficient manquant' déclencherait
             // un redirect vers evaluations.index — exactement ce que Marcel veut éviter.
             try {
+                // `?: 1` ici ramenait a 1 un coefficient configure a ZERO — une
+                // decision de l'ecole (etudiant dispense), pas une absence. La
+                // methode rend une valeur ou leve : il n'y a rien a rattraper.
                 $matiereData['matiere_coefficient'] = $this->bulletinService->getCoefficientForCombination(
                     (int) $matiere_id,
                     (int) $classe->id,
                     $annee_universitaire_id
-                ) ?: 1;
+                );
+            } catch (CoefficientMissingException $e) {
+                $matiereData['matiere_coefficient'] = 1;
+                $matiereData['matiere_coefficient_missing'] = true;
             } catch (\RuntimeException $e) {
+                // Classe invalide, panne SQL : ce n'est pas une configuration
+                // manquante. On le journalise plutot que de le confondre avec.
+                Log::error('Coefficient irresolvable sur la fiche resultats', [
+                    'matiere_id' => $matiere_id,
+                    'classe_id' => $classe->id,
+                    'erreur' => $e->getMessage(),
+                ]);
                 $matiereData['matiere_coefficient'] = 1;
                 $matiereData['matiere_coefficient_missing'] = true;
             }
@@ -921,9 +934,21 @@ class ESBTPResultatController extends Controller
                         (int) $matiere_id,
                         (int) $classe->id,
                         $annee_universitaire_id
-                    ) ?: ($resultat->coefficient ?: 1);
+                    );
+                } catch (CoefficientMissingException $e) {
+                    // La ligne enregistree sert de repli. `??` et non `?:` : un
+                    // coefficient a zero est une valeur, pas une absence.
+                    $matiereCoefOfficiel = $resultat->coefficient ?? 1;
                 } catch (\RuntimeException $e) {
-                    $matiereCoefOfficiel = $resultat->coefficient ?: 1;
+                    // Classe invalide, panne SQL : un rattrapage qui degrade
+                    // l'affichage doit dire ce qu'il a rattrape, sinon personne
+                    // ne cherche.
+                    Log::error('Coefficient irresolvable sur la fiche resultats (moyenne saisie)', [
+                        'matiere_id' => $matiere_id,
+                        'classe_id' => $classe->id,
+                        'erreur' => $e->getMessage(),
+                    ]);
+                    $matiereCoefOfficiel = $resultat->coefficient ?? 1;
                 }
 
                 $notesByMatiere[$matiere_id] = [
@@ -943,7 +968,7 @@ class ESBTPResultatController extends Controller
             $notesByMatiere[$matiere_id]['total_coefficients'] = $resultat->coefficient;
             // Conserve matiere_coefficient déjà calculé (officiel) — NE PAS l'écraser
             if (! isset($notesByMatiere[$matiere_id]['matiere_coefficient'])) {
-                $notesByMatiere[$matiere_id]['matiere_coefficient'] = $resultat->coefficient ?: 1;
+                $notesByMatiere[$matiere_id]['matiere_coefficient'] = $resultat->coefficient ?? 1;
             }
         }
 

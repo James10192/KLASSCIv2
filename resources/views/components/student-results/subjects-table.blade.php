@@ -28,10 +28,7 @@
         $scopeClasse = $srBlock['classe_name'] ?? null;
         $resolvedAverage = $srBlock['average'] ?? null;
         $hasResolvedAverage = $resolvedAverage !== null;
-        $blockCoefficients = array_sum(array_map(
-            fn ($m) => $m['matiere_coefficient'] ?? $m['total_coefficients'] ?? 0,
-            $blockSubjects
-        ));
+        $blockCoefficients = \App\Support\CoefficientsAffiches::somme($blockSubjects);
         // Libelles pre-calcules : pas de directive Blade collee a du texte accentue.
         // Le semestre va dans le TITRE (deux h3 identiques sinon) et la puce porte la classe.
         $blockTitle = $scopeLabel ? 'Résultats par matière · '.$scopeLabel : 'Résultats par matière';
@@ -119,7 +116,7 @@
                             <td class="text-center">
                                 {{-- Coefficient OFFICIEL de la matière dans la classe (esbtp_matiere_coefficients),
                                      PAS la somme des coefficients d'évaluations. --}}
-                                <span class="sr-coeff">{{ $matiereData['matiere_coefficient'] ?? $matiereData['total_coefficients'] }}</span>
+                                <span class="sr-coeff">{{ \App\Support\CoefficientsAffiches::pourUneMatiere($matiereData) }}</span>
                             </td>
                             <td class="text-center">
                                 <div class="sr-avg-cell">
