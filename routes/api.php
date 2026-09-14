@@ -481,6 +481,7 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
         Route::get('/period-locks', [App\Http\Controllers\API\CLI\CLIComptabiliteController::class, 'periodLocks'])->name('period-locks');
         Route::get('/reconciliation-candidates', [App\Http\Controllers\API\CLI\CLIComptabiliteController::class, 'reconciliationCandidates'])->name('reconciliation-candidates');
         Route::get('/orphan-paiements-annee-drift', [App\Http\Controllers\API\CLI\CLIComptabiliteController::class, 'orphanPaiementsAnneeDrift'])->name('orphan-paiements-annee-drift');
+        Route::get('/reliquats-comptes-en-double', [App\Http\Controllers\API\CLI\CLIComptabiliteController::class, 'reliquatsComptesEnDouble'])->name('reliquats-comptes-en-double');
         Route::get('/recus-en-double', [App\Http\Controllers\API\CLI\CLIComptabiliteController::class, 'recusEnDouble'])->name('recus-en-double');
         Route::post('/recus-en-double/renumeroter', [App\Http\Controllers\API\CLI\CLIComptabiliteController::class, 'renumeroterLesRecusEnDouble'])->name('recus-en-double.renumeroter');
         Route::post('/cleanup-orphan-paiements', [App\Http\Controllers\API\CLI\CLIComptabiliteController::class, 'cleanupOrphanPaiements'])->name('cleanup-orphan-paiements');

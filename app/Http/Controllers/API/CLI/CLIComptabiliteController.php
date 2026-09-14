@@ -642,6 +642,103 @@ class CLIComptabiliteController extends BaseApiController
     }
 
     /**
+     * GET /api/cli/comptabilite/reliquats-comptes-en-double
+     *
+     * Un versement de reliquat porte `type_paiement = 'reliquat'` et
+     * l'inscription de DESTINATION : il transite par l'annee en cours, mais il
+     * eteint une dette de l'annee precedente. `netPaidForInscription()` le
+     * comptait comme un paiement de la scolarite courante — un etudiant reglant
+     * 250 000 d'arriere ressortait crediteur sur son annee, et
+     * `peutSeReinscrire()` lui ouvrait l'annee suivante alors qu'il devait
+     * encore la sienne.
+     *
+     * Le calcul est corrige. Cet endpoint repond a l'autre question, celle que
+     * le correctif ne traite pas : le defaut avait-il DEJA mordu, et sur qui ?
+     *
+     * Il ne suffit pas de compter les reliquats. Un reliquat n'a fausse un
+     * verdict que s'il a fait BASCULER l'inscription du cote « a jour » — le
+     * cas ou l'etudiant restait debiteur meme en le comptant, ou etait deja
+     * solde sans lui, n'a trompe personne. C'est cette bascule qui est
+     * comptee ici, inscription par inscription.
+     *
+     * Lecture seule.
+     */
+    public function reliquatsComptesEnDouble(Request $request): JsonResponse
+    {
+        if (!$request->user()->tokenCan('cli:read')) {
+            return $this->errorResponse('Token missing cli:read ability', [], 403);
+        }
+
+        $reliquats = DB::table('esbtp_paiements')
+            ->select('inscription_id', DB::raw('SUM(montant) as total'), DB::raw('COUNT(*) as nb'))
+            ->whereNull('deleted_at')
+            ->where('type_paiement', 'reliquat')
+            ->where('status', 'validé')
+            ->whereNotNull('inscription_id')
+            ->groupBy('inscription_id')
+            ->get();
+
+        if ($reliquats->isEmpty()) {
+            return $this->successResponse([
+                'versements_reliquat' => 0,
+                'montant_total' => 0.0,
+                'inscriptions_concernees' => 0,
+                'verdicts_fausses' => 0,
+                'detail' => [],
+            ], 'Aucun versement de reliquat : le defaut n a jamais pu mordre ici');
+        }
+
+        $detail = [];
+        $fausses = 0;
+
+        foreach ($reliquats as $ligne) {
+            $attendu = (float) DB::table('esbtp_frais_subscriptions')
+                ->where('inscription_id', $ligne->inscription_id)
+                ->where('is_active', true)
+                ->sum('amount');
+
+            $payeHorsReliquat = (float) DB::table('esbtp_paiements')
+                ->whereNull('deleted_at')
+                ->where('inscription_id', $ligne->inscription_id)
+                ->where('status', 'validé')
+                ->where(fn ($q) => $q->where('type_paiement', '!=', 'reliquat')->orWhereNull('type_paiement'))
+                ->sum('montant');
+
+            $payeAvecReliquat = $payeHorsReliquat + (float) $ligne->total;
+
+            // La bascule : credite a tort hier, debiteur en verite.
+            $verdictFausse = $attendu > 0
+                && $payeAvecReliquat >= $attendu
+                && $payeHorsReliquat < $attendu;
+
+            if ($verdictFausse) {
+                $fausses++;
+            }
+
+            $detail[] = [
+                'inscription_id' => (int) $ligne->inscription_id,
+                'versements_reliquat' => (int) $ligne->nb,
+                'montant_reliquat' => (float) $ligne->total,
+                'attendu' => $attendu,
+                'paye_hors_reliquat' => $payeHorsReliquat,
+                'reste_du_reel' => max(0.0, $attendu - $payeHorsReliquat),
+                'verdict_fausse' => $verdictFausse,
+            ];
+        }
+
+        usort($detail, fn ($a, $b) => ($b['verdict_fausse'] <=> $a['verdict_fausse'])
+            ?: ($b['reste_du_reel'] <=> $a['reste_du_reel']));
+
+        return $this->successResponse([
+            'versements_reliquat' => (int) $reliquats->sum('nb'),
+            'montant_total' => (float) $reliquats->sum('total'),
+            'inscriptions_concernees' => $reliquats->count(),
+            'verdicts_fausses' => $fausses,
+            'detail' => array_slice($detail, 0, 40),
+        ], 'Impact historique du reliquat compte comme paiement courant');
+    }
+
+    /**
      * POST /api/cli/comptabilite/recus-en-double/renumeroter
      *
      * Simule par defaut (`dry_run=1`). La logique vit dans l'action dediee ;
