@@ -213,13 +213,17 @@ class JuryPvIssuanceGuard
                 $divergence = $divergence
                     || (int) $decision->credits_obtenus !== AgregatDeLaPeriode::creditsObtenus($periode)
                     || (int) $decision->credits_attendus !== AgregatDeLaPeriode::creditsAttendus($periode);
-            } elseif ($decision->credits_obtenus !== null || $decision->credits_attendus !== null) {
-                // Le cas inverse, qui passait entre les mailles : les bulletins
-                // ne portent PLUS de crédits, mais la décision en porte encore.
-                // Sans ce test, le PV scellait des crédits que plus aucun
-                // bulletin ne justifie.
-                $divergence = true;
             }
+            // Pas de branche « les bulletins ne portent plus de crédits » : elle
+            // serait morte. `esbtp_lmd_bulletins.credits_capitalises` et
+            // `credits_totaux` sont NOT NULL avec valeur par défaut, donc
+            // `creditsDisponibles()` ne peut pas rendre faux sur une période non
+            // vide. Et si elle le pouvait, la décision porterait `0` (NOT NULL
+            // elle aussi) face à `null` : divergence permanente, refus d'émission
+            // sans issue, que relancer le calcul ne lèverait jamais.
+            //
+            // Distinguer « non calculé » de « zéro » demanderait de rendre ces
+            // colonnes nullables — un vrai chantier, pas une branche.
 
             if ($divergence) {
                 $divergents[] = (int) $decision->etudiant_id;

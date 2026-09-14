@@ -429,6 +429,12 @@ class JuryDeliberationService
             }
             $decision->forceFill([
                 'bulletin_id' => $decision->bulletin_id,
+                // Ici, et non dans la seule branche de création : le cas courant
+                // est que la décision existe déjà (le calcul automatique passe
+                // avant toute dérogation). Écrite d'un seul côté, la motivation
+                // aurait décrit une période sans rapport avec le `bulletin_id`
+                // rafraîchi juste au-dessus, sur un jury annuel.
+                'raisons' => $calculation['raisons'] ?? [],
                 'decision' => $nouvelleDecision,
                 'override_par_jury' => true,
                 'motif_override' => trim($motif),

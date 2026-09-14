@@ -1887,19 +1887,26 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
 
     // Routes pour la configuration du paywall - Service Technique ADC seulement
     //
-    // La garde est `paywall.manage`, et non `system.manage` : le commentaire
-    // ci-dessus disait « Service Technique seulement » alors que la garde réelle
-    // était la permission qui ouvre AUSSI `/esbtp/settings`. Confier les réglages
-    // au service informatique d'un établissement lui donnait donc la main sur son
-    // propre abonnement — prolongation et code de déblocage d'urgence compris.
+    // TROIS gardes protègent ces pages, et il faut les connaître toutes les
+    // trois avant d'en toucher une :
     //
-    // `paywall.manage` est la permission que `ESBTPPaywallConfigController`
-    // exige DÉJÀ, action par action (`checkServiceTechniqueAccess()`). Poser ici
-    // le même nom fait dire la même chose à la route et au contrôleur ; en
-    // inventer un autre aurait laissé le porteur de l'un buter sur l'autre.
+    //   1. `paywall` → `PaywallMiddleware::hasServiceTechniquePermissions()`,
+    //      qui est un `hasRole('serviceTechnique')` EN DUR. C'est le plus
+    //      strict, il s'exécute en premier, et `Gate::before` ne le contourne
+    //      pas — un superAdmin n'entre pas ici. C'est la garde OPÉRANTE :
+    //      le jour où une école voudra déléguer ce droit, c'est cette
+    //      ligne-là qu'il faudra changer, pas la permission ci-dessous.
+    //   2. `permission:paywall.manage` → la présente garde de route.
+    //   3. `ESBTPPaywallConfigController::checkServiceTechniqueAccess()`, qui
+    //      exige `paywall.manage` action par action.
     //
-    // Le lien de la barre latérale, lui, était déjà réservé au rôle ;
-    // seule l'URL restait ouverte à qui la connaissait.
+    // La route exigeait `system.manage` — celle qui ouvre AUSSI `/esbtp/settings`,
+    // donc une troisième permission, plus large que les deux autres. Aucune
+    // faille n'en résultait (le contrôle de rôle passe avant), mais les trois
+    // gardes ne disaient pas la même chose, et c'est ainsi qu'on finit par
+    // croire l'une en ayant lu l'autre.
+    //
+    // Le lien de la barre latérale est réservé au rôle, lui aussi.
     Route::prefix('esbtp')->name('esbtp.')->middleware(['auth', 'paywall', 'permission:paywall.manage'])->group(function () {
         Route::get('/paywall-config', [ESBTPPaywallConfigController::class, 'index'])->name('paywall-config.index');
         Route::get('/paywall-config/blocked', [ESBTPPaywallConfigController::class, 'blocked'])->name('paywall-config.blocked');
