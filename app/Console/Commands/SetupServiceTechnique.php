@@ -72,15 +72,17 @@ class SetupServiceTechnique extends Command
             $this->info('🎉 Configuration terminée avec succès !');
             $this->line('');
 
+            // Les mots de passe ne sont plus dans le code : le seeder les lit dans
+            // SERVICE_TECHNIQUE_PASSWORD / SERVICE_TECHNIQUE_BACKUP_PASSWORD, ou les
+            // genere et les affiche une seule fois, a la creation du compte.
             $this->table(
-                ['Type', 'Email', 'Mot de passe', 'Rôle'],
+                ['Type', 'Email', 'Rôle'],
                 [
-                    ['Principal', 'technique@africandigitconsulting.com', 'ADC2024Tech!SecurePass', 'serviceTechnique'],
-                    ['Backup', 'support@africandigitconsulting.com', 'ADCSupport2024!Backup', 'serviceTechnique']
+                    ['Principal', 'technique@africandigitconsulting.com', 'serviceTechnique'],
+                    ['Backup', 'support@africandigitconsulting.com', 'serviceTechnique'],
                 ]
             );
 
-            $this->warn('⚠️  IMPORTANT : Changez ces mots de passe en production !');
             $this->info('🔒 Les comptes Service Technique ont accès à la configuration paywall');
 
         } catch (\Exception $e) {
