@@ -38,6 +38,19 @@ class PermissionsAuditCommand extends Command
     /** Permissions référencées en code (chaque clé = nom utilisé) */
     private array $usedInCode = [];
 
+    /**
+     * Abilities declarees par `Gate::define()`.
+     *
+     * Ce ne sont PAS des permissions Spatie : elles n'ont rien a faire ni dans
+     * le registry ni en base, et leur absence est normale. L'audit les rangeait
+     * pourtant en « cassees », et criait donc au loup sur chaque instance a
+     * chaque execution — un diagnostic qui ment fait perdre le temps qu'il est
+     * cense faire gagner.
+     *
+     * @var array<string, string> nom => fichier:ligne de la declaration
+     */
+    private array $abilitiesDeGate = [];
+
     public function handle(PermissionRegistry $registry): int
     {
         $this->info('🔍 Audit du système de permissions');
@@ -63,10 +76,21 @@ class PermissionsAuditCommand extends Command
         $broken = [];        // référencé en code, ni en registry ni en DB
         $offRegistry = [];   // référencé en code, en DB, mais pas dans le registry
         $aliasesUsed = [];   // alias legacy utilisé en code (à migrer)
+        $gates = [];         // ability declarée par Gate::define — absence normale
         $dbNamesIndex = array_flip($dbNames);
 
         foreach ($this->usedInCode as $name => $locations) {
             $sample = array_slice($locations, 0, 3);
+
+            // Une ability de Gate n'est pas une permission : son absence du
+            // registry et de la base est ce qu'on attend d'elle.
+            if (isset($this->abilitiesDeGate[$name])) {
+                $gates[$name] = [
+                    'declaree' => $this->abilitiesDeGate[$name],
+                    'locations' => $sample,
+                ];
+                continue;
+            }
 
             if (isset($aliasMap[$name])) {
                 $aliasesUsed[$name] = [
@@ -104,6 +128,7 @@ class PermissionsAuditCommand extends Command
             ? '🔴 Cassées (référencées en code, ni registry ni DB)'
             : '🔴 Cassées (référencées en code, hors registry — DB non vérifiée)';
         $this->report($brokenLabel, $broken);
+        $this->report('🔵 Abilities de Gate (normales hors registry)', $gates);
         if ($dbAvailable) {
             $this->report('🟠 Hors-registry (référencées + DB, à ajouter au registry)', $offRegistry);
         }
@@ -127,6 +152,7 @@ class PermissionsAuditCommand extends Command
             $path = storage_path('app/permissions-audit.json');
             file_put_contents($path, json_encode([
                 'broken' => $broken,
+                'gates' => $gates,
                 'off_registry' => $offRegistry,
                 'aliases_used' => $aliasesUsed,
                 'orphaned' => $orphaned,
@@ -148,6 +174,10 @@ class PermissionsAuditCommand extends Command
      */
     private function scanCode(): void
     {
+        // La declaration d'une ability : on la retient a part, pour ne pas
+        // reprocher ensuite son absence du registry.
+        $motifDeclarationGate = '/Gate::define\s*\(\s*[\'"]([^\'"]+)[\'"]/';
+
         $patterns = [
             // @can('xxx'), @canany([...]), @cannot('xxx')
             '/@can(?:any|not)?\s*\(\s*[\'"]([^\'"]+)[\'"]/',
@@ -180,6 +210,17 @@ class PermissionsAuditCommand extends Command
         foreach ($finder as $file) {
             $content = $file->getContents();
             $relPath = str_replace(base_path().'/', '', $file->getRealPath());
+
+            if (preg_match_all($motifDeclarationGate, $content, $declarations, PREG_OFFSET_CAPTURE)) {
+                foreach ($declarations[1] as $declaration) {
+                    $nom = $declaration[0];
+                    if (str_contains($nom, '$') || str_contains($nom, '{')) {
+                        continue;
+                    }
+                    $ligne = substr_count(substr($content, 0, $declaration[1]), "\n") + 1;
+                    $this->abilitiesDeGate[$nom] = "{$relPath}:{$ligne}";
+                }
+            }
 
             foreach ($patterns as $pattern) {
                 if (preg_match_all($pattern, $content, $matches, PREG_OFFSET_CAPTURE)) {
