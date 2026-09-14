@@ -10,6 +10,6 @@
 #   sh .githooks/install.sh
 #
 git config core.hooksPath .githooks
-chmod +x .githooks/commit-msg .githooks/pre-push 2>/dev/null
-echo "Hooks actives : commit-msg, pre-push."
+chmod +x .githooks/pre-commit .githooks/commit-msg .githooks/pre-push 2>/dev/null
+echo "Hooks actives : pre-commit, commit-msg, pre-push."
 echo "Pour les desactiver : git config --unset core.hooksPath"

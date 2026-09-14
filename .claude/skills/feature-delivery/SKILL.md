@@ -167,6 +167,21 @@ php vendor/bin/phpunit tests/Unit/<TestFile>.php --testdox
 
 ---
 
+### Phase 7.5 — /thermo-review (garde-fou bloquant)
+
+Avant `/simplify`, avant la fusion, avant le déploiement : lance `/thermo-review`
+**en sous-agent** sur `git diff origin/presentation...HEAD`. C'est le
+commandement 0 de `pre-merge-checklist.md`, et il passe avant les deux revues
+qui suivent : elles cherchent des défauts dans ce qui est écrit, celle-ci
+demande d'abord **s'il fallait l'écrire** — et, côté produit, si la pertinence
+est sourcée, l'écran prouvé par capture, le travail réparti à la source, et le
+parcours fluide (liens profonds, modales, aucun rechargement).
+
+Verdict `BLOCK` → on corrige et on relance la revue sur le nouveau diff. On ne
+passe pas à la phase 8 sur un `BLOCK`.
+
+---
+
 ### Phase 8 — /simplify cleanup
 
 Invoque la skill `/simplify` (ou `/pr-review-toolkit:code-simplifier`) — 3 agents parallèles :

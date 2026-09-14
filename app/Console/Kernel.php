@@ -151,7 +151,6 @@ class Kernel extends ConsoleKernel
         // Envoi des rappels pour inscriptions et paiements en attente (08h00 chaque jour)
         $schedule->command('reminders:send-inscription-paiement')
             ->dailyAt('08:00')
-            ->timezone('Africa/Abidjan')
             ->name('rappels-inscriptions-paiements')
             ->description('Envoi automatique des rappels pour inscriptions et paiements en attente')
             ->onOneServer();
@@ -242,10 +241,9 @@ class Kernel extends ConsoleKernel
         // ANALYTICS — Phase 4 (PR feat/analytics-default-risk-anomaly)
         // =====================================================================
 
-        // Calcul quotidien des prédictions analytics (4h Africa/Abidjan)
+        // Calcul quotidien des prédictions analytics (4h au fuseau de l'instance)
         $schedule->job(new ComputeAnalyticsPredictionsJob)
             ->dailyAt('04:00')
-            ->timezone('Africa/Abidjan')
             ->name('analytics-predictions-daily')
             ->description('Calcul quotidien cash flow + default risk + persistence + cache warm-up')
             ->onOneServer();
@@ -260,7 +258,6 @@ class Kernel extends ConsoleKernel
         // Évaluation rétrospective de la précision des prédictions (1er du mois 5h)
         $schedule->job(new EvaluateAnalyticsAccuracyJob)
             ->monthlyOn(1, '05:00')
-            ->timezone('Africa/Abidjan')
             ->name('analytics-accuracy-evaluation')
             ->description('Comparaison predicted vs actual du mois écoulé + update accuracy_score')
             ->onOneServer();

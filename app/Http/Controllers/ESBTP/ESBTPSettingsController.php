@@ -17,6 +17,7 @@ use App\Services\MailPulse\MailPulseTestNotificationService;
 use App\Services\Mobile\MobileProfileResolver;
 use App\Services\Inscription\PortailCandidaturePublication;
 use App\Services\Reinscription\PortailReinscriptionService;
+use App\Services\TelephoneSettingsService;
 use App\Services\TenantScolariteSettings;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -68,6 +69,7 @@ class ESBTPSettingsController extends Controller
         $appreciationScaleSettings = app(AppreciationScaleSettingsService::class);
         $appreciationScaleSettings->ensureDefaults();
         $this->ensureMailPulseSettings();
+        app(TelephoneSettingsService::class)->ensureDefaults();
         $allSettings = Setting::orderBy('category')->orderBy('sort_order')->get();
         $settings = $allSettings->groupBy('category');
         $flatSettings = $allSettings; // Collection plate pour l'accès direct par clé
@@ -109,6 +111,8 @@ class ESBTPSettingsController extends Controller
             $appreciationScaleSettings = app(AppreciationScaleSettingsService::class);
             $appreciationScaleSettings->ensureDefaults();
             $this->ensureMailPulseSettings();
+            $telephoneSettings = app(TelephoneSettingsService::class);
+            $telephoneSettings->ensureDefaults();
 
             $pdfColorDefaults = [
                 'pdf_primary_color' => '#0453cb',
@@ -205,6 +209,10 @@ class ESBTPSettingsController extends Controller
 
             $updatedSettings = [];
             $errors = [];
+
+            if (($cleTelephone = $this->refuserLeChangementDePaysIncomplet($request, $telephoneSettings)) !== null) {
+                $errors[PhoneNormalizer::CLE_PREFIXES] = $cleTelephone;
+            }
 
             // Barème d'assiduité à tranches (JSON) : validation structurelle dédiée via
             // le value object (contiguïté, dernière tranche ouverte, bornes) — la boucle
@@ -870,6 +878,27 @@ class ESBTPSettingsController extends Controller
     {
         return array_key_exists($cle, $rawInput)
             || array_key_exists(str_replace('.', '_', $cle), $rawInput);
+    }
+
+    /**
+     * L'indicatif pays et les prefixes locaux vont par paire.
+     *
+     * La boucle generique d'enregistrement traite chaque champ isolement : elle
+     * ne peut donc pas voir qu'un changement de pays laissant derriere lui les
+     * prefixes ivoiriens livres met l'instance en etat d'accepter des numeros
+     * qui n'existent pas dans le nouveau pays. Le controle a lieu AVANT tout
+     * enregistrement — un rollback partiel serait pire que le refus.
+     *
+     * @return string|null Le message a afficher sous le champ, ou null.
+     */
+    private function refuserLeChangementDePaysIncomplet(
+        Request $request,
+        TelephoneSettingsService $telephoneSettings
+    ): ?string {
+        return $telephoneSettings->incoherenceDuChangementDePays(
+            $request->input('setting_'.PhoneNormalizer::CLE_INDICATIF),
+            $request->input('setting_'.PhoneNormalizer::CLE_PREFIXES)
+        );
     }
 
     /**
@@ -1774,7 +1803,7 @@ class ESBTPSettingsController extends Controller
             }
 
             if ($type === 'phone' && PhoneNormalizer::toE164($value) === null) {
-                return 'Un numéro WhatsApp de test est invalide. Utilisez un numéro ivoirien complet.';
+                return 'Un numéro WhatsApp de test est invalide. Indiquez-le en entier, avec son indicatif pays.';
             }
         }
 

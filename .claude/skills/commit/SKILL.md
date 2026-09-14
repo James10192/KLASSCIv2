@@ -5,6 +5,11 @@ description: Create a conventional commit. Use when the user asks to commit chan
 
 Create a conventional commit following these steps:
 
+0. **Revue `/thermo-review` en sous-agent** — obligatoire avant tout commit qui
+   touche du code (rule `pre-merge-checklist.md`, commandement 0). Verdict
+   `BLOCK` → on corrige, on ne commite pas. Exemptions : docs seuls, config
+   seule, suppressions pures, diff de moins de cinq lignes dans un seul fichier.
+
 1. Run `git status` to see all changed files
 2. Run `git diff --staged` and `git diff` to review all changes
 3. Run `git log --oneline -5` to understand the project's commit style and scopes in use
@@ -97,6 +102,32 @@ Closes #158
 EOF
 )"
 ```
+
+## Ce que les hooks n'attrapent pas
+
+`.githooks/commit-msg` et `hygiene-commits.yml` contrôlent la **forme** : signature
+d'outil, message non conventionnel, `feat`/`fix` sans entrée au `CHANGELOG`. Ils ne
+peuvent rien contre le **fond**. Un bon message porte deux choses — **ce qui change**
+et **pourquoi**. Le *quoi* se relit dans le diff ; le *pourquoi* n'est écrit nulle
+part ailleurs, et c'est lui qu'on regrette dans six mois.
+
+Quatre défauts à refuser sur son propre message (axe 14 de `/thermo-review`) :
+
+- **Décrire une intention au lieu du changement.** « améliore la gestion des
+  paiements » ne dit ni ce qui bouge ni pourquoi.
+- **Affirmer ce que le diff ne fait pas.** « corrige X » alors que X reste : c'est
+  la forme la plus coûteuse, elle ferme l'enquête future.
+- **`[sans-changelog]` par confort.** L'échappatoire vaut pour ce qui n'est
+  réellement pas visible par un utilisateur. Sur un `feat`/`fix` qui touche `app/`
+  `resources/` `routes/` `database/`, elle demande une raison écrite dans le corps.
+- **`--no-verify`.** Pour le **message**, contourner ne fait que déplacer l'échec :
+  `hygiene-commits.yml` rejoue les mêmes règles côté serveur. Pour les **pièges
+  Blade** de `.githooks/pre-commit`, c'est autre chose — **aucun contrôle serveur ne
+  les rejoue**, et `--no-verify` les laisse aller jusqu'en production. Si tu
+  l'emploies, dis-le, et dis lequel des deux tu contournes.
+
+Et ce que `git add -A` met dedans n'a pas été relu : résidus d'agent, fichier de
+travail, secret. Toujours `git diff --cached` avant de figer.
 
 ## Rules
 

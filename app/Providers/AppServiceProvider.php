@@ -9,6 +9,7 @@ use App\Domain\BtsTroncCommun\ClasseOuvertureResolver;
 use App\Domain\AcademicPilotage\Contracts\AcademicSystemMetricsProvider;
 use App\Domain\AcademicPilotage\Services\AcademicMetricsProviderResolver;
 use App\Domain\AcademicPilotage\Services\OpenAlertMetricService;
+use App\Domain\Notifications\PhoneNormalizer;
 use App\Helpers\SettingsHelper;
 use App\Models\ESBTPAttendance;
 use App\Models\ESBTPCandidature;
@@ -114,6 +115,53 @@ class AppServiceProvider extends ServiceProvider
     }
 
     /**
+     * Branche la lecture des réglages téléphoniques de l'instance.
+     *
+     * `PhoneNormalizer` est du calcul pur — il s'exécute sans application, et
+     * son test aussi — donc il ne peut pas lire un réglage lui-même. On lui
+     * branche une fermeture, qu'il n'évalue qu'au premier numéro analysé : une
+     * commande qui ne touche pas au téléphone ne paie aucune lecture.
+     *
+     * Réglages absents : l'indicatif `225` et les préfixes ivoiriens, soit
+     * exactement ce que faisaient les constantes en dur. Les six instances
+     * ivoiriennes ne bougent pas.
+     */
+    private function brancherReglagesTelephone(): void
+    {
+        PhoneNormalizer::definirResolveurReglages(static function (string $cle): ?string {
+            try {
+                return SettingsHelper::get($cle, null);
+            } catch (\Throwable $e) {
+                // Base injoignable ou pas encore migrée (installation, test qui
+                // boote l'application sans schéma).
+                //
+                // Le repli n'est neutre QUE si l'instance a laissé l'indicatif
+                // par défaut. Sur une instance qui l'a changé — c'est-à-dire
+                // celle pour qui tout ceci existe — il réapposerait `+225` à un
+                // numéro qui n'est pas ivoirien, et l'écrirait sous l'index
+                // UNIQUE d'`esbtp_candidatures`. C'est une dégradation, donc
+                // elle se journalise.
+                //
+                // Une ligne par processus, pas par appel : sans mémoïsation
+                // dans le normaliseur (voir son commentaire), ce rattrapage se
+                // déclenche à chaque numéro analysé, et journaliser à chaque
+                // fois noierait le journal au lieu de le renseigner.
+                static $signale = false;
+
+                if (! $signale) {
+                    $signale = true;
+                    Log::warning('Réglages téléphoniques illisibles : indicatif par défaut appliqué.', [
+                        'cle' => $cle,
+                        'erreur' => $e->getMessage(),
+                    ]);
+                }
+
+                return null;
+            }
+        });
+    }
+
+    /**
      * Bootstrap any application services.
      */
     public function boot(): void
@@ -122,6 +170,8 @@ class AppServiceProvider extends ServiceProvider
         Schema::defaultStringLength(191);
 
         SsoSecretValidator::validate();
+
+        $this->brancherReglagesTelephone();
 
         $this->partagerCompteurDemandesReinscription();
 

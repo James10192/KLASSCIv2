@@ -7,6 +7,30 @@ use PHPUnit\Framework\TestCase;
 
 class PhoneNormalizerTest extends TestCase
 {
+    /**
+     * Les réglages de l'instance sont un état statique : sans cette remise à
+     * zéro, un test qui en configure un le laisserait aux suivants, et les cas
+     * ivoiriens ci-dessous échoueraient selon l'ordre d'exécution.
+     *
+     * Des deux côtés, et pas seulement en sortie : une classe de test qui boote
+     * l'application laisse derrière elle le résolveur du fournisseur de
+     * services. Le premier test d'ici en hériterait — il retombe sur `225` par
+     * le rattrapage, donc il passerait, mais par accident.
+     */
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        PhoneNormalizer::definirResolveurReglages(null);
+    }
+
+    protected function tearDown(): void
+    {
+        PhoneNormalizer::definirResolveurReglages(null);
+
+        parent::tearDown();
+    }
+
     public function test_null_returns_null(): void
     {
         $this->assertNull(PhoneNormalizer::toE164(null));
@@ -44,6 +68,29 @@ class PhoneNormalizerTest extends TestCase
         $this->assertSame('+2250707123456', PhoneNormalizer::toE164('002250707123456'));
     }
 
+    /**
+     * La forme canonique écrite sans le « + » — c'est ce que rend
+     * `toWhatsAppId()`, et ce que certains stockages ont conservé. Le chatbot
+     * parent s'en sert : `normalize('2250707123456')`.
+     */
+    public function test_e164_sans_le_plus(): void
+    {
+        $this->assertSame('+2250707123456', PhoneNormalizer::toE164('2250707123456'));
+        $this->assertSame(
+            '+2250707123456',
+            PhoneNormalizer::toE164(PhoneNormalizer::toWhatsAppId('07 07 12 34 56'))
+        );
+    }
+
+    /**
+     * Mais pas pour un AUTRE pays : sans « + », `33612345678` et une saisie
+     * nationale sont indistinguables, et rien ne permettrait de trancher.
+     */
+    public function test_e164_sans_le_plus_refuse_un_autre_pays(): void
+    {
+        $this->assertNull(PhoneNormalizer::toE164('33612345678'));
+    }
+
     public function test_invalid_prefix_returns_null(): void
     {
         $this->assertNull(PhoneNormalizer::toE164('1234567890'));
@@ -76,5 +123,183 @@ class PhoneNormalizerTest extends TestCase
         $this->assertTrue(PhoneNormalizer::isValid('0707123456'));
         $this->assertFalse(PhoneNormalizer::isValid('invalid'));
         $this->assertFalse(PhoneNormalizer::isValid(null));
+    }
+
+    // ------------------------------------------------------------------
+    // Hors de Côte d'Ivoire — ajouté pour `ucao-benin`, septembre 2026.
+    //
+    // Les cas ci-dessus décrivent le plan ivoirien et ne bougent pas : leur
+    // forme canonique est l'index UNIQUE d'`esbtp_candidatures`.
+    // ------------------------------------------------------------------
+
+    /**
+     * Le refus de cette écriture est ce qui rendait l'instance béninoise
+     * inutilisable : elle acceptait la saisie nationale EN LA CORROMPANT
+     * (`0142345678` → `+2250142345678`, un abonné Moov ivoirien réel) et
+     * refusait la seule écriture qui disait juste.
+     */
+    public function test_une_ecriture_internationale_etrangere_est_crue(): void
+    {
+        $this->assertSame('+2290142345678', PhoneNormalizer::toE164('+229 01 42 34 56 78'));
+        $this->assertSame('+2290142345678', PhoneNormalizer::toE164('00229 01 42 34 56 78'));
+        $this->assertSame('2290142345678', PhoneNormalizer::toWhatsAppId('+229 01 42 34 56 78'));
+    }
+
+    /**
+     * On croit l'indicatif écrit, et on ne rejoue PAS sur lui le contrôle de
+     * préfixe d'un plan qui n'est pas le sien.
+     */
+    public function test_un_indicatif_etranger_n_est_pas_mesure_au_plan_local(): void
+    {
+        $this->assertSame('+33612345678', PhoneNormalizer::toE164('+33 6 12 34 56 78'));
+        $this->assertFalse(PhoneNormalizer::estMobileNational('+33 6 12 34 56 78'));
+    }
+
+    /**
+     * Sur NOTRE indicatif en revanche, on connaît le plan : on l'applique.
+     * Sans cela `+225` suivi de n'importe quoi passerait sur la seule forme, et
+     * deux refus que le portail tient aujourd'hui tomberaient.
+     */
+    public function test_le_plan_national_reste_applique_a_notre_propre_indicatif(): void
+    {
+        $this->assertNull(PhoneNormalizer::toE164('+225 27 20 30 10 20'));
+        $this->assertNull(PhoneNormalizer::toE164('+225 07 07 12 34'));
+    }
+
+    public function test_une_forme_e164_hors_bornes_est_refusee(): void
+    {
+        $this->assertNull(PhoneNormalizer::toE164('+229 01 42'));
+        $this->assertNull(PhoneNormalizer::toE164('+2290142345678901234'));
+    }
+
+    /**
+     * Aucun indicatif pays ne commence par zéro — l'UIT-T les répartit en neuf
+     * zones, de 1 à 9. Sans ce contrôle, la forme produite avait l'air d'un
+     * E.164 sans en être un.
+     */
+    public function test_un_indicatif_commencant_par_zero_est_refuse(): void
+    {
+        $this->assertNull(PhoneNormalizer::toE164('000707123456'));
+        $this->assertNull(PhoneNormalizer::toE164('+0707123456'));
+        $this->assertNull(PhoneNormalizer::toE164('+000123456789'));
+    }
+
+    /**
+     * Les préfixes nationaux sont DÉCLARÉS par l'instance, jamais déduits du
+     * pays. Laissés au défaut ivoirien sur une instance béninoise, ils
+     * accepteraient `0707123456` — un préfixe que l'ARCEP Bénin n'attribue à
+     * personne, puisque la renumérotation de 2024 a préfixé `01` à tous ses
+     * numéros. Le numéro produit serait injoignable, et en silence.
+     */
+    public function test_les_prefixes_nationaux_se_declarent(): void
+    {
+        PhoneNormalizer::definirResolveurReglages(static fn (string $cle): ?string => match ($cle) {
+            PhoneNormalizer::CLE_INDICATIF => '229',
+            PhoneNormalizer::CLE_PREFIXES => '01',
+            default => null,
+        });
+
+        $this->assertSame('+2290142345678', PhoneNormalizer::toE164('0142345678'));
+        $this->assertNull(PhoneNormalizer::toE164('0707123456'));
+
+        // Écrit avec son indicatif, un numéro ivoirien reste joignable : ce
+        // n'est pas le pays qu'on filtre, c'est une saisie sans indicatif.
+        $this->assertSame('+2250707123456', PhoneNormalizer::toE164('+2250707123456'));
+    }
+
+    public function test_des_prefixes_illisibles_retombent_sur_le_defaut(): void
+    {
+        PhoneNormalizer::definirResolveurReglages(
+            static fn (string $cle): ?string => $cle === PhoneNormalizer::CLE_PREFIXES ? '   ' : null
+        );
+
+        $this->assertSame('+2250707123456', PhoneNormalizer::toE164('0707123456'));
+    }
+
+    public function test_l_indicatif_configure_change_la_saisie_nationale(): void
+    {
+        PhoneNormalizer::definirResolveurReglages(
+            static fn (string $cle): ?string => $cle === PhoneNormalizer::CLE_INDICATIF ? '229' : null
+        );
+
+        $this->assertSame('+2290142345678', PhoneNormalizer::toE164('0142345678'));
+        $this->assertTrue(PhoneNormalizer::estMobileNational('0142345678'));
+
+        // Et l'ivoirien devient, sur cette instance, un étranger bien formé :
+        // conservé tel quel, joignable, mais hors du périmètre « national ».
+        $this->assertSame('+2250707123456', PhoneNormalizer::toE164('+2250707123456'));
+        $this->assertFalse(PhoneNormalizer::estMobileNational('+2250707123456'));
+    }
+
+    /**
+     * Un réglage mal saisi ne doit pas corrompre une base : on retombe sur le
+     * défaut plutôt que de produire des numéros que personne ne rattrapera.
+     */
+    public function test_un_reglage_illisible_retombe_sur_le_defaut(): void
+    {
+        PhoneNormalizer::definirResolveurReglages(
+            static fn (string $cle): ?string => $cle === PhoneNormalizer::CLE_INDICATIF ? 'Bénin' : null
+        );
+
+        $this->assertSame('+2250707123456', PhoneNormalizer::toE164('0707123456'));
+    }
+
+    /**
+     * Aucun indicatif pays ne commence par zéro.
+     *
+     * L'UIT-T E.164 les répartit en neuf zones, de 1 à 9. Le contrôle existait
+     * déjà pour une saisie écrite avec son indicatif (`000707123456` refusé) ;
+     * il manquait pour le RÉGLAGE, et un `0` y produisait `+00707123456` — une
+     * chaîne qui a la forme de l'E.164 sans en être une, donc un numéro
+     * injoignable écrit en base sans que rien ne le signale.
+     *
+     * @dataProvider indicatifsCommencantParZero
+     */
+    public function test_un_indicatif_commencant_par_zero_retombe_sur_le_defaut(string $reglage): void
+    {
+        PhoneNormalizer::definirResolveurReglages(
+            static fn (string $cle): ?string => $cle === PhoneNormalizer::CLE_INDICATIF ? $reglage : null
+        );
+
+        $this->assertSame(
+            PhoneNormalizer::INDICATIF_PAR_DEFAUT,
+            PhoneNormalizer::indicatifNationalParDefaut(),
+            "Le réglage « {$reglage} » doit être écarté"
+        );
+        $this->assertSame('+2250707123456', PhoneNormalizer::toE164('0707123456'));
+    }
+
+    /** @return array<string, array{string}> */
+    public static function indicatifsCommencantParZero(): array
+    {
+        return [
+            'un zéro seul' => ['0'],
+            'deux zéros' => ['00'],
+            'zéro en tête d’un indicatif par ailleurs valide' => ['007'],
+            'le préfixe international, pris pour un indicatif' => ['0033'],
+        ];
+    }
+
+    public function test_est_mobile_national(): void
+    {
+        $this->assertTrue(PhoneNormalizer::estMobileNational('0707123456'));
+        $this->assertTrue(PhoneNormalizer::estMobileNational('+2250707123456'));
+        $this->assertFalse(PhoneNormalizer::estMobileNational('27 20 30 10 20'));
+        $this->assertFalse(PhoneNormalizer::estMobileNational(null));
+    }
+
+    public function test_decomposer_separe_ce_qu_il_sait_separer(): void
+    {
+        $this->assertSame(
+            ['indicatif' => '225', 'national' => '0707123456'],
+            PhoneNormalizer::decomposer('07 07 12 34 56')
+        );
+
+        // Indicatif inconnu de cette instance : on ne prétend pas savoir où le
+        // couper — découper demanderait la table des indicatifs mondiaux.
+        $this->assertSame(
+            ['indicatif' => null, 'national' => '33612345678'],
+            PhoneNormalizer::decomposer('+33 6 12 34 56 78')
+        );
     }
 }

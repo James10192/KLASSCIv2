@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Domain\Notifications\PhoneNormalizer;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Cache;
@@ -172,12 +173,22 @@ class SmsService
                 return false;
             }
 
-            // Nettoyer le numéro
-            $cleanPhone = preg_replace('/[^0-9+]/', '', $phoneNumber);
+            // L'analyseur canonique du projet, et lui seul.
+            //
+            // Ce bloc reconstituait le numéro à la main — `'+225' . ltrim($p, '0')` —
+            // ce qui cassait aussi la Côte d'Ivoire : depuis 2021 le zéro initial
+            // fait partie du numéro national, donc tout numéro ivoirien y perdait
+            // un chiffre (0707121234 → +225707121234, neuf chiffres, injoignable).
+            // Et l'indicatif était écrit en dur, ce qui expédiait un SMS béninois
+            // vers un abonné ivoirien.
+            $cleanPhone = PhoneNormalizer::toE164($phoneNumber);
 
-            // Ajouter +225 si nécessaire (Côte d'Ivoire)
-            if (!str_starts_with($cleanPhone, '+')) {
-                $cleanPhone = '+225' . ltrim($cleanPhone, '0');
+            if ($cleanPhone === null) {
+                // Dire ce qu'on ne fait pas : sans cette ligne, un numéro
+                // illisible partait vers l'opérateur et échouait chez lui.
+                Log::warning('SMS non envoyé : numéro illisible', ['phone' => $phoneNumber]);
+
+                return false;
             }
 
             // Limiter message à 160 caractères (1 SMS standard)
@@ -220,8 +231,29 @@ class SmsService
                 return false;
             }
 
+            // L'expéditeur est le numéro de l'école, et il suivait le même
+            // « +225 » en dur que le destinataire réparé plus haut. Il passe
+            // donc par le même normaliseur : une instance hors Côte d'Ivoire y
+            // pose son indicatif, et l'écriture du `.env` (nationale ou
+            // internationale) cesse d'avoir de l'importance.
+            //
+            // Un expéditeur illisible arrête l'envoi au lieu de fabriquer une
+            // adresse que l'opérateur rejettera sans dire pourquoi — c'est le
+            // cas du `0000000000` de remplissage, qu'aucun plan n'accepte.
+            $expediteurBrut = (string) env('SMS_SENDER_NUMBER', '');
+            $expediteur = PhoneNormalizer::toE164($expediteurBrut);
+
+            if ($expediteur === null) {
+                Log::error('SMS non envoyé : SMS_SENDER_NUMBER illisible', [
+                    'valeur_brute' => $expediteurBrut === '' ? '(vide)' : $expediteurBrut,
+                    'indicatif_instance' => PhoneNormalizer::indicatifNationalParDefaut(),
+                ]);
+
+                return false;
+            }
+
             // Format sender address (doit commencer par tel:)
-            $senderAddress = 'tel:+225' . env('SMS_SENDER_NUMBER', '0000000000');
+            $senderAddress = 'tel:' . $expediteur;
 
             // Construire l'URL avec le sender
             $url = $this->apiUrl . '/' . urlencode($senderAddress) . '/requests';

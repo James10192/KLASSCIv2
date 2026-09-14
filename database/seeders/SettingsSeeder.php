@@ -1415,18 +1415,30 @@ class SettingsSeeder extends Seeder
                 'validation_rules' => ['regex:/^#[0-9A-Fa-f]{6}$/'],
                 'sort_order' => 2
             ],
-            [
-                'key' => 'app_timezone',
-                'value' => 'Africa/Abidjan',
-                'type' => 'string',
-                'group' => 'general',
-                'category' => 'general',
-                'description' => 'Fuseau horaire de l\'application',
-                'is_required' => false,
-                'default_value' => 'Africa/Abidjan',
-                'validation_rules' => ['string'],
-                'sort_order' => 3
-            ],
+            // PAS de `app_timezone` ici, et ce n'est pas un oubli.
+            //
+            // Il y a dormi des années sans que rien ne le lise, et sans jamais
+            // apparaître dans l'écran des réglages : un réglage muet, qui a
+            // coûté une fausse piste (« il suffit de le brancher »). Il ne peut
+            // pas être branché : Laravel fixe le fuseau pendant
+            // `LoadConfiguration`, avant qu'un fournisseur de services démarre
+            // et avant que la base soit joignable.
+            //
+            // Le fuseau se pose donc dans le `.env` de l'instance, au
+            // provisionnement — voir le commentaire de `config/app.php`. Les
+            // instances déjà en service gardent la ligne morte en base ; rien
+            // ne la lit, rien ne la montre.
+            //
+            // PAS de réglages téléphoniques ici non plus — pour une autre
+            // raison, celle-là.
+            //
+            // `telephone_indicatif_pays` et `telephone_prefixes_mobiles` se
+            // lisent très bien, eux. Mais ce seeder écrit en `updateOrCreate`
+            // sur la totalité du bloc : le relancer sur une instance béninoise
+            // lui RAMÈNERAIT son indicatif à 225, et ses relances repartiraient
+            // chez des abonnés Moov ivoiriens. Ils sont donc posés par
+            // `TelephoneSettingsService::ensureDefaults()`, en
+            // `firstOrCreate` — qui n'écrase jamais ce que l'école a réglé.
             [
                 'key' => 'app_locale',
                 'value' => 'fr',

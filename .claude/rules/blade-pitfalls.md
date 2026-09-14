@@ -253,6 +253,56 @@ const rules = @json($_attendanceRules);
 grep -nE "@(json|js)\(\[\s*$" path/to/file.blade.php
 ```
 
+## Le hook qui les attrape — `.githooks/pre-commit`
+
+Depuis septembre 2026, les quatre pièges sont refusés **au commit**, sur la version
+mise en index (pas l'arbre de travail — c'est elle qui part). Installation :
+`sh .githooks/install.sh`.
+
+Le détecteur du piège #1 tient compte de **l'ordre** : un `@php(...)` court placé
+**après** le dernier `@endphp` du fichier n'est pas englouti, puisque le regex de
+bloc cherche le `@endphp` *suivant* et n'en trouve aucun. C'est ce qui rend
+`personnel/unified-index.blade.php` sain malgré ses cinq shortforms — mais fragile :
+y ajouter un bloc `@php…@endphp` plus bas déclencherait le piège, et le hook le
+refuserait alors.
+
+Les pièges #2 et #3 vivent **à l'intérieur des commentaires**, qui courent sur
+plusieurs lignes : un `grep` ligne à ligne rate précisément l'incident fondateur du
+piège #3 (le `/*` sur une ligne, le `<x-export-modal>` sur la suivante). Le hook est
+donc un automate à états, pas une collection de `grep`.
+
+**Ce qu'il ne considère pas comme un piège, et pourquoi :**
+
+- **Dans un `{{-- … --}}`** — `BladeCompiler::compileString()` appelle
+  `compileComments()` **avant** `compileComponentTags()` : le commentaire Blade est
+  supprimé avant que composants et directives ne soient compilés. En revanche
+  `storeUncompiledBlocks()` passe **encore avant** : commenter un `@php(` en Blade ne
+  le protège pas, et le hook le refuse toujours.
+- **Dans un `@php … @endphp`** — extrait par `storeUncompiledBlocks()`, donc jamais
+  scanné pour les composants ni les directives. Un `<x-pdf-document>` cité dans un
+  docblock PHP est sans danger (c'est le cas de `liste-appel-pdf.blade.php`).
+- **`/*` et `//` hors `<style>`, `<script>` ou `@push('styles'|'scripts')`** — ailleurs
+  ce ne sont pas des commentaires. Une seule attribut HTML, `accept="image/*"`, avait
+  suffi à coller l'état « commentaire ouvert » jusqu'au bas du fichier et à faire
+  remonter cinq fausses alertes lors de la calibration.
+
+Angles morts assumés : un commentaire JS dans un attribut `onclick`, et un `@php(`
+suivi de son `@endphp` sur **la même ligne** (dégât confiné à cette ligne).
+
+**Auditer tout le dépôt d'un coup** — le hook sait aussi scanner l'arbre entier, ce
+qui rend le chiffre de calibration reproductible en une commande :
+
+```bash
+sh .githooks/pre-commit --arbre   # 0 = aucune vue piégée
+```
+
+Au 14 septembre 2026 : **769 vues suivies, 0 signalée**. Un `@@can` échappé est
+correctement accepté.
+
+**Attention** : contrairement au contrôle de message de commit, aucun garde-fou
+serveur ne rejoue ces règles. `--no-verify` ici ne déplace pas l'échec — il le
+laisse aller jusqu'en production.
+
 ## Audit obligatoire avant de pousser un .blade.php modifié
 
 ```bash

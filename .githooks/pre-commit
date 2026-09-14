@@ -1,0 +1,200 @@
+#!/bin/sh
+#
+# Pieges Blade silencieux — refus avant commit.
+#
+# Quatre motifs compilent sans erreur et cassent la page au rendu, en
+# production, chez l'utilisateur. `php artisan view:cache` ne les voit pas :
+# c'est tout le probleme. Deux d'entre eux ont deja mis des pages a terre
+# (mai 2026 : /esbtp/inscriptions/create, quatre PDF, /esbtp/comptabilite/analytics).
+#
+# Voir .claude/rules/blade-pitfalls.md pour le detail de chaque piege.
+#
+# Ce hook lit la version MISE EN INDEX, pas l'arbre de travail : c'est elle
+# qui part dans le commit.
+#
+# Contrairement a commit-msg, aucun controle serveur ne rejoue ces regles.
+# `--no-verify` ici ne deplace pas l'echec : il le laisse passer jusqu'en
+# production.
+#
+# Les pieges 2 et 3 se cherchent A L'INTERIEUR DES COMMENTAIRES, qui courent
+# sur plusieurs lignes : un `grep` ligne a ligne rate l'incident fondateur du
+# piege 3 (commentaire CSS ouvert sur une ligne, `<x-...>` sur la suivante).
+# D'ou un seul automate a etats plutot que quatre `grep` qui se recouvrent mal.
+
+set -u
+
+# Mode audit : `sh .githooks/pre-commit --arbre` verifie TOUTES les vues suivies
+# telles qu'elles sont sur le disque, au lieu des seules vues mises en index.
+# C'est ce mode qui produit le chiffre de calibration cite dans blade-pitfalls.md.
+arbre=0
+[ "${1:-}" = "--arbre" ] && arbre=1
+
+if [ "$arbre" -eq 1 ]; then
+  fichiers=$(git -c core.quotePath=false ls-files -z '*.blade.php' | tr '\0' '\n')
+else
+  fichiers=$(git -c core.quotePath=false diff --cached --name-only -z --diff-filter=ACMR \
+             | tr '\0' '\n' | grep '\.blade\.php$' || true)
+fi
+[ -z "$fichiers" ] && exit 0
+
+tmp=$(mktemp -d) || {
+  echo "pre-commit : mktemp a echoue, controle Blade desactive pour ce commit." >&2
+  exit 0
+}
+trap 'rm -rf "$tmp"' EXIT
+constats="$tmp/constats"
+: > "$constats"
+
+# Un fichier par ligne : les chemins a espace sont lus tels quels.
+printf '%s\n' "$fichiers" > "$tmp/liste"
+
+while IFS= read -r f; do
+  [ -z "$f" ] && continue
+  copie="$tmp/indexe"
+  if [ "$arbre" -eq 1 ]; then
+    [ -f "$f" ] || continue
+    copie="$f"
+  elif ! git show ":$f" > "$copie" 2>/dev/null; then
+    echo "pre-commit : impossible de lire la version indexee de $f, non verifie." >&2
+    continue
+  fi
+
+  awk -v f="$f" '
+    # --- Piege 1 -------------------------------------------------------
+    # @php(expr) court AVANT un @php...@endphp : le regex de bloc de Laravel
+    # (/(?<!@)@php(.*?)@endphp/s) engloutit tout ce qui les separe, qui nest
+    # alors jamais compile. LORDRE compte : un shortform APRES le dernier
+    # @endphp ne trouve pas de fermeture et navale rien.
+    # Ce piege ignore {{-- --}} : storeUncompiledBlocks() passe AVANT
+    # compileComments(), donc commenter un @php( ne le protege pas.
+    /@php\(/ && !php_premier { php_premier = FNR }
+    /@endphp/ && php_premier && FNR > php_premier && !php_dit {
+      print f ":" php_premier "  @php(...) court, englouti par le @endphp de la ligne " FNR
+      print "        -> passer en bloc sur une seule ligne : @php $x = ...; @endphp"
+      php_dit = 1
+    }
+
+    # --- Suivi des zones ------------------------------------------------
+    # Un @php...@endphp est extrait par storeUncompiledBlocks() AVANT que les
+    # composants et les directives ne soient compiles : son contenu nest donc
+    # jamais un piege pour les detecteurs 2 et 3.
+    /@php([^(]|$)/ { dansphp = 1 }
+    /@endphp/      { dansphp = 0; bloc = 0 }
+
+    # `/*` et `//` ne sont des commentaires que dans du CSS ou du JS. Ailleurs
+    # ils vivent dans du texte ordinaire — `accept="image/*"` a suffi a coller
+    # letat « commentaire ouvert » sur cinq vues du depot lors de la calibration.
+    /<style|<script|@push\([\x27"](styles|scripts)[\x27"]\)/ { zone = 1 }
+    /<\/style>|<\/script>|@endpush/ { zone = 0; bloc = 0 }
+
+    # --- Pieges 2, 3 et 4 : analyse caractere par caractere -------------
+    {
+      ligne = $0
+      n = length(ligne)
+      i = 1
+      while (i <= n) {
+        reste = substr(ligne, i)
+
+        # {{-- ... --}} : Blade les supprime AVANT de compiler composants et
+        # directives (compileComments precede compileComponentTags). Ce nest
+        # donc PAS un contexte piege — on saute la zone.
+        if (!bloc && !html && substr(reste, 1, 4) == "{{--") { blade = 1; i += 4; continue }
+        if (blade) {
+          if (substr(reste, 1, 4) == "--}}") { blade = 0; i += 4 } else { i++ }
+          continue
+        }
+
+        if (dansphp) { i++; continue }
+
+        # Commentaire CSS / JS multiligne — seulement dans une zone style/script
+        if (zone && !html && !bloc && substr(reste, 1, 2) == "/*") { bloc = 1; i += 2; continue }
+        if (bloc) {
+          if (substr(reste, 1, 2) == "*/") { bloc = 0; i += 2 } else { verifier(reste, i) ; i++ }
+          continue
+        }
+
+        # Commentaire HTML multiligne
+        if (!html && substr(reste, 1, 4) == "<!--") { html = 1; i += 4; continue }
+        if (html) {
+          if (substr(reste, 1, 3) == "-->") { html = 0; i += 3 } else { verifier(reste, i) ; i++ }
+          continue
+        }
+
+        # Commentaire JS de fin de ligne. On ecarte "://" (http://, https://)
+        # qui nouvre pas un commentaire.
+        if (zone && substr(reste, 1, 2) == "//" && substr(ligne, i - 1, 1) != ":") {
+          j = i + 2
+          while (j <= n) { verifier(substr(ligne, j), j); j++ }
+          break
+        }
+
+        # --- Piege 4 : @json([ / @js([ dont le crochet ne ferme pas sur la
+        # meme ligne. Le parser Blade recolle mal les parentheses et PHP leve
+        # « Unclosed [ » au rendu.
+        if (!json_dit && (substr(reste, 1, 7) == "@json([" || substr(reste, 1, 5) == "@js([")) {
+          depart = (substr(reste, 1, 5) == "@js([") ? i + 4 : i + 6
+          profondeur = 0
+          for (k = depart; k <= n; k++) {
+            c = substr(ligne, k, 1)
+            if (c == "[") profondeur++
+            else if (c == "]") profondeur--
+            if (profondeur == 0) break
+          }
+          if (profondeur != 0) {
+            print f ":" FNR "  @json([...]) / @js([...]) avec un tableau multiligne"
+            print "        -> extraire avant : @php $var = [...]; @endphp puis @json($var)"
+            json_dit = 1
+          }
+        }
+
+        i++
+      }
+    }
+
+    # Signale une directive Blade ou un composant trouve dans un commentaire.
+    # Blade ne parse pas le langage hote : il voit le motif et lemet pour de vrai.
+    function verifier(s, col,   d) {
+      if (s ~ /^<x-[a-z]/) {
+        if (!comp_dit) {
+          print f ":" FNR "  <x-composant> dans un commentaire — Blade emet son rendu, sans le endif"
+          print "        -> ecrire le nom sans le chevron : (composant x-mon-composant)"
+          comp_dit = 1
+        }
+        return
+      }
+      if (substr(s, 1, 1) == "@" && substr(s, 2, 1) != "@") {
+        # @@directive est la forme echappee : elle est correcte, on la laisse.
+        if (col > 1 && substr($0, col - 1, 1) == "@") return
+        d = s
+        sub(/^@/, "", d)
+        sub(/[^A-Za-z].*$/, "", d)
+        if (d ~ /^(can|cannot|if|elseif|else|endif|endcan|endcannot|foreach|endforeach|forelse|endforelse|for|endfor|while|endwhile|push|endpush|once|endonce|section|endsection|isset|endisset|empty|endempty|auth|endauth|guest|endguest|switch|endswitch|verbatim|endverbatim)$/) {
+          if (!dir_dit) {
+            print f ":" FNR "  directive @" d " dans un commentaire — Blade louvre pour de vrai"
+            print "        -> reformuler, ou echapper en @@" d
+            dir_dit = 1
+          }
+        }
+      }
+    }
+  ' "$copie" >> "$constats"
+done < "$tmp/liste"
+
+[ -s "$constats" ] || exit 0
+
+{
+  echo
+  echo "Commit refuse — piege(s) Blade silencieux dans les fichiers mis en index."
+  echo
+  sed 's/^/  /' "$constats"
+  echo
+  echo "Ces motifs compilent sans erreur et cassent la page au rendu."
+  echo "Detail et corrections : .claude/rules/blade-pitfalls.md"
+  echo
+  echo "Verification complete apres correction :"
+  echo "  rm -f storage/framework/views/*.php && php artisan view:cache"
+  echo "  for v in storage/framework/views/*.php; do php -l \"\$v\"; done | grep -v 'No syntax errors'"
+  echo
+} >&2
+
+exit 1
