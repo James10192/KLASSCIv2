@@ -18,6 +18,36 @@ class ESBTPNiveauEtude extends Model
     protected $table = 'esbtp_niveau_etudes';
 
     /**
+     * Les annees qu'un niveau LMD peut porter, par cycle.
+     *
+     * L'annee est comptee EN CONTINU d'un cycle a l'autre : Master 1 est l'annee
+     * 4, pas l'annee 1. C'est la convention sur laquelle repose la correspondance
+     * niveau → semestres (`ESBTPClasse::getSemestresLMD()`, annee 4 → S7-S8) et
+     * tout ce qui la lit.
+     *
+     * Un Master saisi en annee 1 ne leve aucune erreur : il est range en S1-S2,
+     * c'est-a-dire traite comme une Licence 1, et recoit ses unites. C'est
+     * exactement ce qui est arrive a une ecole avant que cette liste existe.
+     */
+    public const ANNEES_PAR_CYCLE_LMD = [
+        'Licence' => [1, 2, 3],
+        'Master' => [4, 5],
+        'Doctorat' => [6, 7, 8],
+    ];
+
+    /**
+     * Vrai si l'annee est de celles de son cycle, faux sinon, et null pour un
+     * niveau qui n'est pas un cycle LMD (BTS, Ingenieur...) : la question ne se
+     * pose pas pour lui.
+     */
+    public function anneeCoherenteAvecSonCycle(): ?bool
+    {
+        $annees = self::ANNEES_PAR_CYCLE_LMD[$this->type] ?? null;
+
+        return $annees === null ? null : in_array((int) $this->year, $annees, true);
+    }
+
+    /**
      * Les attributs qui sont assignables en masse.
      *
      * @var array

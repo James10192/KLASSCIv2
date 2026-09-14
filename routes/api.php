@@ -633,6 +633,7 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
         Route::post('/filieres', [App\Http\Controllers\API\CLI\CLIFiliereController::class, 'store'])->name('filieres.store');
 
         // Niveaux d'etudes — pendant des filieres pour l'ouverture d'un tenant.
+        Route::get('/niveaux/coherence', [App\Http\Controllers\API\CLI\CLINiveauEtudeController::class, 'coherence'])->name('niveaux.coherence');
         Route::get('/niveaux', [App\Http\Controllers\API\CLI\CLINiveauEtudeController::class, 'index'])->name('niveaux.index');
         Route::post('/niveaux', [App\Http\Controllers\API\CLI\CLINiveauEtudeController::class, 'store'])->name('niveaux.store');
         Route::post('/classes', [App\Http\Controllers\API\CLI\CLIClasseController::class, 'store'])->name('classes.store');

@@ -18,6 +18,27 @@ use Illuminate\Support\Facades\Log;
 class CLINiveauEtudeController extends BaseApiController
 {
     /**
+     * GET /api/cli/niveaux/coherence
+     *
+     * Niveaux LMD dont l'annee contredit le cycle (un Master en annee 1), avec
+     * ce qu'une correction toucherait. Lecture seule.
+     */
+    public function coherence(Request $request, \App\Services\LMD\CoherenceNiveauxLmd $coherence): JsonResponse
+    {
+        if (! $request->user()->tokenCan('cli:read')) {
+            return $this->errorResponse('Token missing cli:read ability', [], 403);
+        }
+
+        $rapport = $coherence->rapport();
+
+        return $this->successResponse($rapport, sprintf(
+            '%d niveau(x) LMD incoherent(s) sur %d.',
+            count($rapport['incoherents']),
+            $rapport['niveaux_lmd']
+        ));
+    }
+
+    /**
      * GET /api/cli/niveaux
      */
     public function index(Request $request): JsonResponse
