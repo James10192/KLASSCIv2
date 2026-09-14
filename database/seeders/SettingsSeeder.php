@@ -1428,6 +1428,26 @@ class SettingsSeeder extends Seeder
                 'sort_order' => 3
             ],
             [
+                // L'indicatif pays apposé aux téléphones saisis à la nationale
+                // (« 0707121234 »). Une écriture internationale (« +229 … »)
+                // porte le sien et n'est pas touchée : voir PhoneNormalizer.
+                //
+                // Ne s'en déduit RIEN d'autre : pas de liste de préfixes
+                // mobiles par pays. « 0142345678 » est simultanément un mobile
+                // MTN Bénin et un mobile Moov Côte d'Ivoire — aucune inférence
+                // n'est possible.
+                'key' => 'telephone_indicatif_pays',
+                'value' => '225',
+                'type' => 'string',
+                'group' => 'general',
+                'category' => 'general',
+                'description' => 'Indicatif pays des numéros saisis sans indicatif (225 = Côte d\'Ivoire, 229 = Bénin)',
+                'is_required' => false,
+                'default_value' => '225',
+                'validation_rules' => ['regex:/^\+?[0-9]{1,3}$/'],
+                'sort_order' => 4
+            ],
+            [
                 'key' => 'app_locale',
                 'value' => 'fr',
                 'type' => 'string',

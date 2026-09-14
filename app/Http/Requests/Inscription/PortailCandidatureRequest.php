@@ -66,18 +66,26 @@ class PortailCandidatureRequest extends FormRequest
             // aucun des refus « deja inscrit » ou « autre personne » ne se
             // declenchait. La cle etait canonique en apparence seulement.
             //
-            // Le perimetre — mobile ivoirien — est celui du champ : « c'est par
-            // ce numero que l'etablissement vous rappellera », six ecoles
-            // ivoiriennes. Un fixe ou un numero etranger n'est pas perdu pour
-            // autant : `tuteur_telephone` reste libre, et c'est souvent lui
-            // qu'une famille de la diaspora renseigne.
+            // Le perimetre — un mobile du pays de l'ecole — est celui du champ :
+            // « c'est par ce numero que l'etablissement vous rappellera ». Un
+            // fixe ou un numero etranger n'est pas perdu pour autant :
+            // `tuteur_telephone` reste libre, et c'est souvent lui qu'une
+            // famille de la diaspora renseigne.
+            //
+            // `estMobileNational` et non `toE164` : depuis septembre 2026
+            // l'analyseur CROIT un indicatif ecrit explicitement, donc
+            // « +33 6 12 34 56 78 » lui est desormais valide. C'est juste pour
+            // une relance, et faux pour une cle d'unicite : ce champ garde donc
+            // sa portee etroite, mais en la DISANT au lieu de l'heriter.
+            // L'instance beninoise y gagne ce qu'elle attendait — « +229 01 42
+            // 34 56 78 » y est du pays de l'ecole, donc accepte.
             'telephone' => [
                 'required',
                 'string',
                 'max:30',
                 static function (string $attribut, $valeur, callable $echec): void {
-                    if (PhoneNormalizer::toE164(is_string($valeur) ? $valeur : null) === null) {
-                        $echec('Indiquez un numéro de téléphone mobile ivoirien, par exemple 07 07 12 12 34.');
+                    if (! PhoneNormalizer::estMobileNational(is_string($valeur) ? $valeur : null)) {
+                        $echec('Indiquez un numéro de téléphone mobile valide, par exemple 07 07 12 12 34, ou son écriture internationale complète.');
                     }
                 },
             ],
@@ -244,12 +252,15 @@ class PortailCandidatureRequest extends FormRequest
      * numero du foyer.
      *
      * PhoneNormalizer est l'analyseur canonique du projet, deja utilise pour
-     * les relances et les exports. Il rend du E.164 pour un mobile ivoirien
-     * ecrit de n'importe quelle facon, et refuse le reste.
+     * les relances et les exports. Il rend du E.164 pour un mobile du pays de
+     * l'ecole ecrit de n'importe quelle facon.
      *
-     * Pas de repli ici : ce qu'il refuse, la regle de validation le refuse
-     * aussi, et la saisie d'origine reste alors intacte pour que le message
-     * d'erreur parle du numero que le candidat a reellement tape.
+     * On canonise SEULEMENT ce que la regle acceptera — meme garde des deux
+     * cotes. Sinon un « +33 6 12 34 56 78 », valide pour l'analyseur mais hors
+     * perimetre pour ce champ, serait recrit en « +33612345678 » puis refuse :
+     * le message d'erreur parlerait d'un numero que le candidat n'a pas tape.
+     *
+     * Pas de repli non plus : ce qui est refuse reste tel quel.
      */
     private function canoniserLeTelephone(): void
     {
@@ -258,7 +269,13 @@ class PortailCandidatureRequest extends FormRequest
         // Un canal public peut recevoir un tableau la ou on attend une chaine :
         // `telephone[]=x` suffit. L'analyseur exige `?string`, et un TypeError
         // ici rendrait un 500 la ou la validation doit rendre un 422.
-        $canonique = PhoneNormalizer::toE164(is_string($brut) ? $brut : null);
+        $saisie = is_string($brut) ? $brut : null;
+
+        if (! PhoneNormalizer::estMobileNational($saisie)) {
+            return;
+        }
+
+        $canonique = PhoneNormalizer::toE164($saisie);
 
         if ($canonique !== null) {
             $this->merge(['telephone' => $canonique]);

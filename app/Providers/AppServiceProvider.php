@@ -9,6 +9,7 @@ use App\Domain\BtsTroncCommun\ClasseOuvertureResolver;
 use App\Domain\AcademicPilotage\Contracts\AcademicSystemMetricsProvider;
 use App\Domain\AcademicPilotage\Services\AcademicMetricsProviderResolver;
 use App\Domain\AcademicPilotage\Services\OpenAlertMetricService;
+use App\Domain\Notifications\PhoneNormalizer;
 use App\Helpers\SettingsHelper;
 use App\Models\ESBTPAttendance;
 use App\Models\ESBTPCandidature;
@@ -122,6 +123,29 @@ class AppServiceProvider extends ServiceProvider
         Schema::defaultStringLength(191);
 
         SsoSecretValidator::validate();
+
+        // L'indicatif pays apposé aux téléphones saisis à la nationale.
+        //
+        // PhoneNormalizer est du calcul pur — il s'exécute sans application, et
+        // son test aussi — donc il ne peut pas lire un réglage lui-même. On lui
+        // branche une fermeture, qu'il n'évalue qu'au premier numéro analysé :
+        // une commande qui ne touche pas au téléphone ne paie aucune lecture.
+        //
+        // Le réglage absent rend `225`, soit exactement ce que faisait la
+        // constante en dur : les six instances ivoiriennes ne bougent pas.
+        PhoneNormalizer::definirResolveurIndicatif(static function (): ?string {
+            try {
+                return SettingsHelper::get('telephone_indicatif_pays', null);
+            } catch (\Throwable) {
+                // Base injoignable ou pas encore migrée (installation, test qui
+                // boote l'application sans schéma). Ce rattrapage ne masque
+                // rien : il rend exactement ce que rendait la constante en dur
+                // avant ce changement. Il ne journalise donc pas — il n'y a pas
+                // de dégradation à chercher, et `migrate` en émettrait à chaque
+                // exécution d'une installation neuve.
+                return null;
+            }
+        });
 
         $this->partagerCompteurDemandesReinscription();
 
