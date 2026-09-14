@@ -209,8 +209,9 @@ class CLINotesZeroController extends BaseApiController
     /**
      * Les eleves reellement presents dans chaque classe pour cette annee.
      *
-     * Memes criteres que partout ailleurs : inscription active et dossier mene
-     * a son terme. Un dossier en cours ne doit pas recevoir de note.
+     * Memes criteres que partout ailleurs : inscription active, dossier mene a
+     * son terme, et non supprimee. Un dossier en cours ne doit pas recevoir de
+     * note, un dossier supprime encore moins.
      *
      * @param  Collection<int, int>  $classeIds
      * @return Collection<int, Collection<int, int>>
