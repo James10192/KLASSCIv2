@@ -631,4 +631,35 @@ class CLIComptabiliteController extends BaseApiController
             'echantillon' => $groupes->take(25)->values()->all(),
         ], 'Diagnostic des numeros de recu');
     }
+
+    /**
+     * POST /api/cli/comptabilite/recus-en-double/renumeroter
+     *
+     * Simule par defaut (`dry_run=1`). La logique vit dans l'action dediee ;
+     * on ne fait ici que la declencher et rendre son compte-rendu.
+     */
+    public function renumeroterLesRecusEnDouble(
+        Request $request,
+        \App\Domain\Comptabilite\Receipts\Actions\RenumeroterLesRecusEnDouble $action
+    ): JsonResponse {
+        if (!$request->user()->tokenCan('cli:admin')) {
+            return $this->errorResponse('Token missing cli:admin ability', [], 403);
+        }
+
+        $simulation = $request->boolean('dry_run', true);
+        $resultat = $action->executer($simulation);
+
+        if ($resultat['refus'] !== []) {
+            return $this->errorResponse(
+                'Renumerotation refusee : un numero au moins porte plusieurs recus vivants. Rien n a ete ecrit.',
+                $resultat,
+                422
+            );
+        }
+
+        return $this->successResponse(
+            $resultat,
+            $simulation ? 'Simulation — rien n a ete ecrit' : 'Renumerotation effectuee'
+        );
+    }
 }
