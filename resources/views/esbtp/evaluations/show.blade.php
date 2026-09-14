@@ -385,11 +385,13 @@
                             label="Évaluation"
                             buttonClass="ev-btn ev-btn--ghost ev-btn--block" />
 
-                        @if($evaluation->isDeletable())
-                            <button type="button" class="ev-btn ev-btn--danger ev-btn--block" data-bs-toggle="modal" data-bs-target="#deleteModal">
-                                <i class="fas fa-trash-alt"></i> Supprimer l'évaluation
-                            </button>
-                        @endif
+                        @canany(['evaluations.edit', 'admin.access'])
+                            @if($evaluation->isDeletable())
+                                <button type="button" class="ev-btn ev-btn--danger ev-btn--block" data-bs-toggle="modal" data-bs-target="#deleteModal">
+                                    <i class="fas fa-trash-alt"></i> Supprimer l'évaluation
+                                </button>
+                            @endif
+                        @endcanany
                     </div>
                 </div>
 
@@ -455,6 +457,7 @@
 </div>
 
 {{-- Modal suppression --}}
+@canany(['evaluations.edit', 'admin.access'])
 <div class="modal fade" id="deleteModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content ev-modal">
@@ -484,6 +487,7 @@
         </div>
     </div>
 </div>
+@endcanany
 @endsection
 
 @push('styles')

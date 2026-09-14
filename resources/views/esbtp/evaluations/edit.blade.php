@@ -343,11 +343,11 @@
 
                 {{-- Actions --}}
                 <div class="ee-actions">
-                    @can('evaluations.delete')
+                    @canany(['evaluations.edit', 'admin.access'])
                         <button type="button" class="ee-btn ee-btn--danger" data-bs-toggle="modal" data-bs-target="#deleteEvaluationModal">
                             <i class="fas fa-trash"></i> Supprimer
                         </button>
-                    @endcan
+                    @endcanany
                     <div class="ee-actions-right">
                         <a href="{{ route('esbtp.evaluations.show', $evaluation) }}" class="ee-btn ee-btn--ghost">
                             <i class="fas fa-times"></i> Annuler
@@ -363,7 +363,7 @@
 </div>
 
 {{-- Modal suppression --}}
-@can('evaluations.delete')
+@canany(['evaluations.edit', 'admin.access'])
 <div class="modal fade" id="deleteEvaluationModal" tabindex="-1" aria-labelledby="deleteEvaluationModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content" style="border-radius:14px;border:none;box-shadow:0 20px 60px rgba(15,23,42,.25);">
@@ -407,7 +407,7 @@
         </div>
     </div>
 </div>
-@endcan
+@endcanany
 @endsection
 
 @push('styles')
