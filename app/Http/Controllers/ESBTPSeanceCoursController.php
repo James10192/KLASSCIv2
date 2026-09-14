@@ -385,7 +385,7 @@ class ESBTPSeanceCoursController extends Controller
 
             // Marquer comme occupé tous les créneaux de cette séance
             for ($hour = $startHour; $hour < $endHour; $hour++) {
-                $hourIndex = $hour - 8; // 8h = index 0
+                $hourIndex = $hour - app(\App\Services\Planning\PlageHoraireJournee::class)->debut();
                 if ($hourIndex >= 0 && $hourIndex < count($baseAvailability[$dayKey])) {
                     $baseAvailability[$dayKey][$hourIndex] = 'occupied';
                 }

@@ -910,7 +910,7 @@
         @php
             if (!isset($timeSlots) || !is_array($timeSlots) || empty($timeSlots)) {
                 $timeSlots = [];
-                for ($hour = 8; $hour < 18; $hour++) {
+                foreach (app(\App\Services\Planning\PlageHoraireJournee::class)->creneaux() as $hour) {
                     $timeSlots[] = sprintf('%02d:00', $hour);
                 }
             }

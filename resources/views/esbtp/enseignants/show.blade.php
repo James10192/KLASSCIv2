@@ -1034,17 +1034,17 @@
                 </div>
 
                 @php
-                    $hours = range(8, 18);
+                    $hours = app(\App\Services\Planning\PlageHoraireJournee::class)->heuresDeSaisie();
                     $days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
                     $dayLabels = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
                     $availability = $realAvailability ?? [
-                        'monday' => array_fill(0, 11, 'unavailable'),
-                        'tuesday' => array_fill(0, 11, 'unavailable'),
-                        'wednesday' => array_fill(0, 11, 'unavailable'),
-                        'thursday' => array_fill(0, 11, 'unavailable'),
-                        'friday' => array_fill(0, 11, 'unavailable'),
-                        'saturday' => array_fill(0, 11, 'unavailable'),
-                        'sunday' => array_fill(0, 11, 'unavailable')
+                        'monday' => array_fill(0, count($hours), 'unavailable'),
+                        'tuesday' => array_fill(0, count($hours), 'unavailable'),
+                        'wednesday' => array_fill(0, count($hours), 'unavailable'),
+                        'thursday' => array_fill(0, count($hours), 'unavailable'),
+                        'friday' => array_fill(0, count($hours), 'unavailable'),
+                        'saturday' => array_fill(0, count($hours), 'unavailable'),
+                        'sunday' => array_fill(0, count($hours), 'unavailable')
                     ];
                 @endphp
 
@@ -1483,8 +1483,7 @@ function saveAvailability() {
         var slot = document.getElementById(slotId);
         var statuses = ['unavailable', 'available', 'preferred'];
         var currentStatus = statuses.find(function(s) { return slot.classList.contains(s); });
-        var timeIndex = parseInt(slot.dataset.timeIndex);
-        var startHour = 8 + timeIndex;
+        var startHour = parseInt(slot.dataset.hour);
         var endHour = startHour + 1;
         changedSlots.push({
             day: parseInt(slot.dataset.day),

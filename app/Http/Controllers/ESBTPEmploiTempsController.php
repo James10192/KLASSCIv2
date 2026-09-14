@@ -311,8 +311,11 @@ class ESBTPEmploiTempsController extends Controller
     /**
      * Génère une liste de créneaux horaires à partir des séances existantes.
      */
-    private function generateTimeSlots($seances, int $intervalMinutes = 60, string $defaultStart = '07:00', string $defaultEnd = '18:00'): array
+    private function generateTimeSlots($seances, int $intervalMinutes = 60, ?string $defaultStart = null, ?string $defaultEnd = null): array
     {
+        $plage = app(\App\Services\Planning\PlageHoraireJournee::class);
+        $defaultStart ??= sprintf('%02d:00', $plage->debut());
+        $defaultEnd ??= sprintf('%02d:00', $plage->fin());
         $intervalMinutes = max(1, $intervalMinutes);
 
         $convertToMinutes = function ($value) {
@@ -1976,44 +1979,9 @@ class ESBTPEmploiTempsController extends Controller
      */
     private function prepareAvailabilityData($teacher)
     {
-        // Définition des créneaux horaires (8h-18h = 11 créneaux d'1h)
-        $hours = range(8, 18);
-        $days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']; // Pas de dimanche
-
-        // Initialiser toutes les cases comme indisponibles
-        $availability = [];
-        foreach ($days as $day) {
-            $availability[$day] = array_fill(0, count($hours), 'unavailable');
-        }
-
-        // Traiter les disponibilités enregistrées
-        foreach ($teacher->availabilities as $avail) {
-            // Mapping jour de semaine (0=Lundi, 1=Mardi, etc.)
-            $dayName = $days[$avail->day_of_week] ?? null;
-            if (! $dayName) {
-                continue;
-            }
-
-            // Parser les heures depuis les timestamps
-            if ($avail->start_time instanceof \Carbon\Carbon) {
-                $startHour = $avail->start_time->hour;
-                $endHour = $avail->end_time->hour;
-            } else {
-                // Format TIME ou string
-                $startHour = (int) substr($avail->start_time, 11, 2); // Position 11-12 pour heure
-                $endHour = (int) substr($avail->end_time, 11, 2);
-            }
-
-            // Décomposer les créneaux multi-heures en créneaux d'1h
-            for ($hour = $startHour; $hour < $endHour; $hour++) {
-                $hourIndex = $hour - 8; // 8h = index 0
-                if ($hourIndex >= 0 && $hourIndex < count($hours)) {
-                    $availability[$dayName][$hourIndex] = $avail->availability_type;
-                }
-            }
-        }
-
-        return $availability;
+        // Meme matrice que les pages enseignant : une seule construction, sur
+        // la plage horaire de l'etablissement (les copies bornaient a 8h-18h).
+        return app(\App\Services\TeacherPlanningService::class)->getAvailabilityMatrix($teacher)['availability'];
     }
 
     private function calculateTextColor(string $hex, string $fallback = '#ffffff'): string

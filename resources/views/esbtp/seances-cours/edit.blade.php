@@ -527,6 +527,7 @@
 </div>
 
 <div id="seance-data"
+     data-plage='@json(app(\App\Services\Planning\PlageHoraireJournee::class)->pourLeNavigateur())'
      data-default-colors='@json($defaultColors)'
      data-session-types='@json($sessionTypes)'
      data-teachers='@json($teachers->keyBy("id"))'
@@ -541,6 +542,11 @@
 <script>
 const currentTeacherId = "{{ old('teacher_id', $seancesCour->teacher_id) }}";
 const initialSessionType = "{{ old('type', $seancesCour->type) }}";
+// Plage horaire de la journee, reglee par l'etablissement (cours du soir
+// compris). Les matrices de disponibilite sont indexees par `heure - debut`.
+const PLAGE_HORAIRE = JSON.parse((document.getElementById('seance-data') || {dataset: {}}).dataset.plage || '{"debut":7,"fin":18}');
+const PLAGE_DEBUT = PLAGE_HORAIRE.debut;
+const PLAGE_FIN = PLAGE_HORAIRE.fin;
 const seanceDataElement = document.getElementById('seance-data');
 const seanceData = seanceDataElement
     ? {
@@ -766,8 +772,8 @@ function updateSelectedTimeInGrid() {
         if (dayColumnIndex !== undefined) {
             // Parcourir chaque ligne d'heure pour surligner les cellules correspondantes
             for (let hour = startHour; hour < endHour; hour++) {
-                if (hour >= 8 && hour < 18) {
-                    const rowIndex = hour - 8; // 8h = row 0
+                if (hour >= PLAGE_DEBUT && hour < PLAGE_FIN) {
+                    const rowIndex = hour - PLAGE_DEBUT;
                     const cell = getAvailabilityCell(selectedDay, hour);
                     if (cell) {
                         cell.classList.add('selected-time');
@@ -886,7 +892,7 @@ function getAvailabilityCell(dayNumber, hour) {
         return null;
     }
 
-    const rowIndex = hour - 8;
+    const rowIndex = hour - PLAGE_DEBUT;
     const timeRows = document.querySelectorAll('.availability-time-row');
     if (!timeRows[rowIndex]) {
         return null;
@@ -1158,7 +1164,7 @@ function validateTeacherAvailability() {
     // Vérifier chaque heure du créneau
     const teacherDayAvailability = availabilityData[teacherId][dayKey];
     for (let hour = startHour; hour < endHour; hour++) {
-        const hourIndex = hour - 8; // 8h = index 0
+        const hourIndex = hour - PLAGE_DEBUT;
         if (hourIndex >= 0 && hourIndex < teacherDayAvailability.length) {
             const status = teacherDayAvailability[hourIndex];
             const jourNoms = {1: 'lundi', 2: 'mardi', 3: 'mercredi', 4: 'jeudi', 5: 'vendredi', 6: 'samedi'};
@@ -1235,7 +1241,7 @@ function previewTeacherAvailability() {
     const jourNoms = {1: 'lundi', 2: 'mardi', 3: 'mercredi', 4: 'jeudi', 5: 'vendredi', 6: 'samedi'};
 
     for (let hour = startHour; hour < endHour; hour++) {
-        const hourIndex = hour - 8;
+        const hourIndex = hour - PLAGE_DEBUT;
         if (hourIndex >= 0 && hourIndex < teacherDayAvailability.length) {
             const status = teacherDayAvailability[hourIndex];
             if (status === 'unavailable') {
@@ -1409,8 +1415,8 @@ function showTeacherAvailability() {
             }
             gridHtml += '</div>';
             
-            // Créer les lignes pour chaque heure (8h-18h)
-            for (let hour = 8; hour < 18; hour++) {
+            // Une ligne par heure de la plage de l'etablissement
+            for (let hour = PLAGE_DEBUT; hour < PLAGE_FIN; hour++) {
                 gridHtml += '<div class="availability-time-row">';
                 gridHtml += `<div class="time-label">${hour}:00</div>`;
                 
@@ -1424,7 +1430,7 @@ function showTeacherAvailability() {
 
                     // Le format est: rawAvailability[dayKey][hourIndex] = 'available'/'preferred'/'unavailable'/'occupied'
                     if (rawAvailability[dayKey]) {
-                        const hourIndex = hour - 8; // 8h = index 0
+                        const hourIndex = hour - PLAGE_DEBUT;
                         if (hourIndex >= 0 && hourIndex < rawAvailability[dayKey].length) {
                             const status = rawAvailability[dayKey][hourIndex];
                             if (status === 'occupied') {

@@ -20,13 +20,6 @@ use Illuminate\Support\Facades\DB;
 class TeacherPlanningService
 {
     /**
-     * Heures couvertes par la grille de disponibilité (8h → 18h).
-     *
-     * @var array<int, int>
-     */
-    private const AVAILABILITY_HOURS_RANGE = [8, 18];
-
-    /**
      * Jours de la semaine (clés ISO anglais), alignés sur day_of_week 0..6 = Lundi..Dimanche.
      *
      * @var array<int, string>
@@ -136,7 +129,11 @@ class TeacherPlanningService
     {
         $enseignant->loadMissing('availabilities');
 
-        $hours = range(self::AVAILABILITY_HOURS_RANGE[0], self::AVAILABILITY_HOURS_RANGE[1]);
+        // Plage reglee par l'etablissement (cours du soir compris). L'indice
+        // d'une heure dans la matrice est `heure - debut` : les ecrans qui la
+        // lisent recoivent le meme debut via PlageHoraireJournee.
+        $plage = app(\App\Services\Planning\PlageHoraireJournee::class);
+        $hours = $plage->heuresDeSaisie();
         $days = self::AVAILABILITY_DAYS;
 
         // Initialisation : tous les créneaux indisponibles par défaut.
@@ -155,7 +152,7 @@ class TeacherPlanningService
             [$startHour, $endHour] = $this->parseAvailabilityHours($avail);
 
             for ($hour = $startHour; $hour < $endHour; $hour++) {
-                $hourIndex = $hour - self::AVAILABILITY_HOURS_RANGE[0];
+                $hourIndex = $hour - $plage->debut();
                 if ($hourIndex >= 0 && $hourIndex < count($hours)) {
                     $availability[$dayName][$hourIndex] = $avail->availability_type;
                 }

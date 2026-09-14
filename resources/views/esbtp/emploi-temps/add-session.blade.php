@@ -631,7 +631,8 @@
         const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
         const dayNames = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
         const dayNamesFull = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
-        const hours = Array.from({length: 11}, (_, i) => i + 8); // 8h à 18h
+        // Plage de l'etablissement, fin comprise : meme forme que la matrice serveur.
+        const hours = @json(app(\App\Services\Planning\PlageHoraireJournee::class)->heuresDeSaisie());
 
         // État édition inline
         let inlineEditMode = false;
@@ -794,8 +795,7 @@
                 if (!slot) return;
                 const statuses = ['unavailable', 'available', 'preferred'];
                 const currentStatus = statuses.find(s => slot.classList.contains(s));
-                const timeIndex = parseInt(slot.dataset.timeIndex);
-                const startHour = 8 + timeIndex;
+                const startHour = parseInt(slot.dataset.hour);
                 const endHour = startHour + 1;
 
                 changedSlots.push({

@@ -442,7 +442,7 @@ input[type="checkbox"]:checked + .ee-status-switch::before { transform: translat
                     </div>
 
                     @php
-                        $hours = range(8, 18);
+                        $hours = app(\App\Services\Planning\PlageHoraireJournee::class)->heuresDeSaisie();
                         $days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
                         $dayLabels = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
                     @endphp
