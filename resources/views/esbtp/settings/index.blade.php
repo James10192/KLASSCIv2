@@ -1187,6 +1187,36 @@
 
                     <div class="form-group">
                         <label class="form-label-modern">
+                            <i class="fas fa-globe-africa text-primary"></i>
+                            Indicatif pays des numéros
+                        </label>
+                        <input type="text" class="form-control form-control-modern @error('setting_telephone_indicatif_pays') is-invalid @enderror"
+                               name="setting_telephone_indicatif_pays"
+                               value="{{ old('setting_telephone_indicatif_pays', \App\Domain\Notifications\PhoneNormalizer::indicatifNationalParDefaut()) }}"
+                               placeholder="Ex: 225">
+                        <small class="text-muted d-block mt-1">Apposé aux numéros saisis sans indicatif. 225 pour la Côte d'Ivoire, 229 pour le Bénin. Un numéro écrit en entier (+229…) garde le sien.</small>
+                        @error('setting_telephone_indicatif_pays')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label-modern">
+                            <i class="fas fa-mobile-screen text-primary"></i>
+                            Préfixes des numéros locaux
+                        </label>
+                        <input type="text" class="form-control form-control-modern @error('setting_telephone_prefixes_mobiles') is-invalid @enderror"
+                               name="setting_telephone_prefixes_mobiles"
+                               value="{{ old('setting_telephone_prefixes_mobiles', implode(',', \App\Domain\Notifications\PhoneNormalizer::prefixesNationaux())) }}"
+                               placeholder="Ex: 01,02,03,05,06,07,08,09">
+                        <small class="text-muted d-block mt-1">Séparés par des virgules. Côte d'Ivoire : 01,02,03,05,06,07,08,09 — Bénin : 01 seul. Un numéro qui ne commence par aucun d'eux est refusé à la saisie.</small>
+                        @error('setting_telephone_prefixes_mobiles')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label-modern">
                             <i class="fas fa-envelope text-primary"></i>
                             Email
                         </label>

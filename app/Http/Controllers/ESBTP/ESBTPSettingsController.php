@@ -1963,9 +1963,12 @@ class ESBTPSettingsController extends Controller
      * correctif était déployé. Un correctif qu'on ne peut pas activer n'en est
      * pas un.
      *
-     * La page des réglages liste ce qu'elle trouve en base, groupé par
-     * catégorie : les deux champs apparaissent donc dans l'onglet Général dès
-     * leur création, sans une ligne de gabarit.
+     * La ligne en base ne suffit PAS à faire apparaître le champ : l'écran des
+     * réglages n'énumère pas la table, il déclare ses champs un par un en
+     * `name="setting_<clé>"` (`$settings` n'y sert qu'à un compteur). Les deux
+     * champs sont donc posés dans l'onglet Général, à côté du téléphone de
+     * l'école. Ce `firstOrCreate` reste nécessaire pour autant : la boucle
+     * d'enregistrement ignore un `setting_*` dont la ligne n'existe pas.
      */
     private function ensureTelephoneSettings(): void
     {
