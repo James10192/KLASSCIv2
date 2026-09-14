@@ -44,6 +44,8 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ### Sécurité
 
+- **Confier les réglages n'ouvre plus la main sur l'abonnement** — les pages de configuration de l'abonnement (`/esbtp/paywall-config` : prolongation, code de déblocage d'urgence, changement d'offre) étaient gardées par la même permission que l'écran des réglages. Le lien n'apparaissait que pour le Service Technique, mais l'adresse restait accessible à qui la connaissait : donner les réglages au service informatique d'un établissement lui donnait, du même geste, la main sur son propre abonnement — et il n'existait aucune façon de faire l'un sans l'autre. Une permission distincte, « Gérer l'abonnement de l'établissement », garde désormais ces pages.
+
 - **Plus aucun mot de passe du Service Technique dans le code** — les deux comptes de support d'African Digit Consulting étaient créés avec des mots de passe écrits en clair dans le dépôt, identiques sur chaque instance, et réaffichés par la commande d'installation. Ils se lisent désormais dans l'environnement de l'instance (`SERVICE_TECHNIQUE_PASSWORD`, `SERVICE_TECHNIQUE_BACKUP_PASSWORD`) ou se génèrent au hasard, affichés une seule fois à la création. Un compte existant garde son mot de passe : ceux créés avant ce changement doivent être renouvelés, les anciens restant lisibles dans l'historique.
 
 ### Corrections
@@ -137,6 +139,10 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 - **La liste des inscriptions s'affichait hors de la mise en page pour les agents d'inscription** (`/esbtp/inscriptions`) — sous la barre latérale, sans en-tête ni menu, alors que la même page était correcte pour un administrateur. Le modal « Valider le paiement » n'est pas rendu quand les montants sont masqués, et la fin de la section de contenu de la vue était enfermée dans ce même bloc : pour ce profil, Blade sortait le contenu avant le document. La fermeture est désormais hors du bloc conditionnel, et un test rend la page pour les deux profils.
 
 - **Retirer un élément qui n'est pas dans la maquette visée répondait « ECUE détaché » sans rien détacher** (`/esbtp/lmd/ue`) — le retrait ne visait que la composition commune ; sur un élément réservé à un parcours, rien n'était supprimé et l'écran l'annonçait pourtant retiré. Le retrait vise désormais la maquette de la ligne cliquée, et quand l'élément tient à l'unité par une autre maquette, le refus dit laquelle et comment y aller.
+
+- **Le filtre du journal d'audit reflète enfin ce que le journal contient** (`/esbtp/audit`) — la liste des types filtrables était écrite à la main et avait dérivé : huit entrées, dont quatre ne pouvaient rien retourner (l'une désignait un modèle qui n'existe pas). À l'inverse, trente et un types sont réellement journalisés et vingt-cinq manquaient — inscriptions, notes, étudiants, paiements et jurys n'étaient pas filtrables du tout. La liste se déduit désormais du journal lui-même : plus de type proposé sans lignes, plus de type tu, et plus de liste à tenir à jour.
+
+- **Le compteur d'activités suspectes ne compte plus tout le journal** (`/esbtp/audit`) — la règle « en dehors des heures ouvrées » comparait chaque ligne à 8 h **du jour même** : tout ce qui datait d'avant ce matin était donc compté suspect, y compris des semaines d'activité parfaitement normale. C'est l'heure de la ligne dans sa propre journée qui est désormais regardée, et les bornes sont celles de la journée réglée par l'établissement — une école qui donne ses masters jusqu'à 22 h ne voit plus ses soirées signalées.
 
 ### Ajouts
 
