@@ -380,6 +380,14 @@ class ESBTPLMDJuryController extends Controller
         }
 
         try {
+            // Rectifier, c'est d'abord rouvrir la délibération. Les décisions
+            // sont verrouillées depuis l'émission du PV v1 et personne ne les
+            // déverrouillait : le PV rectificatif rebâtissait ses chiffres sur
+            // des colonnes gelées, et certifiait une moyenne que le relevé
+            // réémis contredisait. Les décisions que le jury a reprises à son
+            // compte ne sont pas touchées.
+            $this->delib->rouvrirLaDeliberation($jury, $data['motif']);
+
             $document = $this->officialDocuments->issueJuryPv($jury, auth()->user(), $data['motif']);
         } catch (\Throwable $e) {
             Log::error('Echec de la rectification du PV officiel.', ['jury_id' => $jury->id, 'exception' => $e]);

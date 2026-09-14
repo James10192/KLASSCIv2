@@ -80,7 +80,19 @@ class LMDImportService
                 // lui en donne un autre, il est a elle seule : sur le pivot.
                 $creditMaquette = (int) ($ueSpec['credit'] ?? 0);
                 if ((int) $ue->credit !== $creditMaquette) {
-                    $creditsPropres[(int) $ue->id] = $creditMaquette;
+                    // Le SEMESTRE fait partie de l'adresse, pas seulement l'unité.
+                    //
+                    // La clé d'unicité du pivot est (parcours, unité, semestre) :
+                    // une unité posée sur deux semestres d'un même parcours y a
+                    // deux lignes. Une liste indexée par la seule unité écrasait
+                    // la première entrée par la seconde à l'intérieur d'un même
+                    // import, et l'écriture sans `where('semestre')` reportait
+                    // ensuite le crédit trouvé sur les DEUX semestres.
+                    $creditsPropres[] = [
+                        'ue_id' => (int) $ue->id,
+                        'semestre' => (int) $ueSpec['semestre'],
+                        'credit' => $creditMaquette,
+                    ];
                 }
 
                 $linksByParcours[] = [
@@ -106,11 +118,17 @@ class LMDImportService
             // Le lien est pose : on y grave le credit propre a cette maquette. La
             // synchronisation ne touche jamais `credit` (c est une decision de
             // l ecole), c est donc a l import de le faire, pour ce parcours seul.
-            foreach ($creditsPropres as $ueId => $credit) {
+            foreach ($creditsPropres as $propre) {
                 DB::table('esbtp_lmd_parcours_ue')
                     ->where('parcours_id', $parcours->id)
-                    ->where('unite_enseignement_id', $ueId)
-                    ->update(['credit' => $credit, 'updated_at' => now()]);
+                    ->where('unite_enseignement_id', $propre['ue_id'])
+                    // Sans ce troisième critère, importer le S3 gravait son
+                    // crédit sur le S3 ET le S5 de la même unité, puis importer
+                    // le S5 les écrasait tous les deux à son tour. C'est
+                    // exactement l'arbitrage que la migration de septembre
+                    // refusait de forcer, et que l'import forçait en silence.
+                    ->where('semestre', $propre['semestre'])
+                    ->update(['credit' => $propre['credit'], 'updated_at' => now()]);
             }
             $stats['ues_linked_to_parcours'] = $linkStats['attached'] + $linkStats['updated'] + $linkStats['unchanged'];
 

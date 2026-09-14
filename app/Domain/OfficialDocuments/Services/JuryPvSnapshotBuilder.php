@@ -59,7 +59,15 @@ class JuryPvSnapshotBuilder
     private function decisionData($decision): array
     {
         $student = $decision->etudiant;
-        return ['id' => $decision->id, 'student_id' => $decision->etudiant_id, 'matricule' => $student?->matricule, 'last_name' => $student?->nom, 'first_names' => $student?->prenoms, 'bulletin_id' => $decision->bulletin_id, 'automatic_decision' => $decision->decision_auto, 'decision' => $decision->decision, 'mention' => $decision->mention, 'average' => $decision->moyenne_generale, 'credits' => $decision->credits_obtenus, 'expected_credits' => $decision->credits_attendus, 'overridden' => (bool) $decision->override_par_jury, 'override_reason' => $decision->motif_override, 'vote' => $decision->vote_resultat];
+        return ['id' => $decision->id, 'student_id' => $decision->etudiant_id, 'matricule' => $student?->matricule, 'last_name' => $student?->nom, 'first_names' => $student?->prenoms, 'bulletin_id' => $decision->bulletin_id, 'automatic_decision' => $decision->decision_auto, 'decision' => $decision->decision, 'mention' => $decision->mention, 'average' => $decision->moyenne_generale, 'credits' => $decision->credits_obtenus, 'expected_credits' => $decision->credits_attendus, 'overridden' => (bool) $decision->override_par_jury, 'override_reason' => $decision->motif_override, 'vote' => $decision->vote_resultat,
+            // La motivation du calcul, gravée avec la décision. Un procès-verbal
+            // qui dit « ajourné » sans dire pourquoi se conteste mal : la raison
+            // existait, elle était jetée avant d'arriver jusqu'ici.
+            //
+            // `?? []` et non l'absence de clé : l'instantané est canonicalisé
+            // puis empreinté en SHA-256, et une clé qui apparaît ou disparaît
+            // selon les données rendrait deux PV incomparables.
+            'reasons' => $decision->raisons ?? []];
     }
 
     private function rules(): array

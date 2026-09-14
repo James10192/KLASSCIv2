@@ -15,6 +15,7 @@ use App\Models\ESBTPLMDJuryDecision;
 use App\Models\ESBTPLMDJuryMembre;
 use App\Models\ESBTPLMDResultatECUE;
 use App\Models\User;
+use App\Services\LMD\AgregatDeLaPeriode;
 use App\Services\LMD\LmdAcademicRuleProfile;
 use App\Services\LMD\LmdDecisionProjectionService;
 use App\Services\LMDBulletinService;
@@ -63,29 +64,52 @@ class JuryDeliberationService
      */
     public function calculerDecisionAuto(ESBTPEtudiant $etudiant, ESBTPLMDJury $jury): array
     {
-        $bulletin = $this->resolveBulletin($etudiant, $jury);
+        // Un jury peut être semestriel OU annuel : `esbtp_lmd_jurys.semestre` est
+        // nullable, et `scopeForJury` ne filtre par semestre que s'il est
+        // renseigné. Sur un jury annuel, plusieurs bulletins remontent donc — et
+        // ce code n'en retenait qu'un, le dernier créé. La moyenne, les crédits
+        // et la mention gravés au procès-verbal venaient d'un semestre sur deux,
+        // sans qu'aucune erreur ne soit levée, sur un document ensuite scellé,
+        // empreinté et conservé cinq ans.
+        $bulletins = $this->resolveBulletins($etudiant, $jury);
+
+        // Le bulletin de référence — le dernier semestre de la période — porte
+        // l'identifiant gravé sur la décision. Les NOMBRES, eux, agrègent toute
+        // la période délibérée.
+        $bulletin = $bulletins->last();
         // Passer par le profil : il lit la cle de l'ecran de reglages
         // (`lmd_validation_threshold`) puis retombe sur l'ancienne (`lmd_seuil_validation_ecue`).
         $seuilValidation = $this->rules->validationThreshold();
         $noteEliminatoire = $this->rules->eliminatoryGrade();
 
-        $moyenne = $bulletin?->moyenne_generale !== null
-            ? (float) $bulletin->moyenne_generale
-            : null;
-
-        $creditsDisponibles = $bulletin !== null
-            && $bulletin->credits_capitalises !== null
-            && $bulletin->credits_totaux !== null;
-        $creditsObtenus = $creditsDisponibles ? (int) $bulletin->credits_capitalises : null;
-        $creditsAttendus = $creditsDisponibles ? (int) $bulletin->credits_totaux : null;
+        // L'arithmétique de la période vit dans `AgregatDeLaPeriode`, parce que
+        // le garde d'émission du PV doit trouver EXACTEMENT le même résultat :
+        // deux formules qui divergent d'un millième refuseraient des
+        // procès-verbaux justes.
+        $moyenne = AgregatDeLaPeriode::moyenne($bulletins);
+        $creditsDisponibles = AgregatDeLaPeriode::creditsDisponibles($bulletins);
+        $creditsObtenus = $creditsDisponibles ? AgregatDeLaPeriode::creditsObtenus($bulletins) : null;
+        $creditsAttendus = $creditsDisponibles ? AgregatDeLaPeriode::creditsAttendus($bulletins) : null;
 
         $raisons = [];
         $decision = 'ajourne';
 
-        // ECUE eliminatoires
+        // Dire la période délibérée : sur un jury annuel, la moyenne n'est pas
+        // celle d'un bulletin mais l'agrégat pondéré par les crédits de chaque
+        // semestre. Le jury doit pouvoir le lire, pas le supposer.
+        if ($bulletins->count() > 1) {
+            $raisons[] = sprintf(
+                'Periode annuelle : %d bulletins agreges (semestres %s), moyenne ponderee par les credits',
+                $bulletins->count(),
+                $bulletins->pluck('semestre')->filter()->implode(' et ')
+            );
+        }
+
+        // ECUE eliminatoires — sur TOUTE la periode. Une note eliminatoire au
+        // premier semestre ne disparait pas parce que le jury est annuel.
         $hasEliminatoire = false;
-        if ($bulletin && $noteEliminatoire > 0) {
-            $resultats = ESBTPLMDResultatECUE::where('bulletin_id', $bulletin->id)->get();
+        if ($bulletins->isNotEmpty() && $noteEliminatoire > 0) {
+            $resultats = ESBTPLMDResultatECUE::whereIn('bulletin_id', $bulletins->pluck('id'))->get();
             foreach ($resultats as $r) {
                 // La note retenue, pas celle de premiere session : un etudiant
                 // passe de 7 a 14 en seconde session verrait sinon sa moyenne
@@ -178,17 +202,7 @@ class JuryDeliberationService
                     continue;
                 }
                 $calculation = $this->calculerDecisionAuto($student, $lockedJury);
-                $attributes = [
-                    'bulletin_id' => $this->requireBulletinId($calculation),
-                    'decision_auto' => $calculation['decision_auto'],
-                    'decision' => $calculation['decision_auto'],
-                    'mention' => $calculation['mention'],
-                    'moyenne_generale' => $calculation['moyenne'],
-                    'credits_obtenus' => $calculation['credits_obtenus'],
-                    'credits_attendus' => $calculation['credits_attendus'],
-                    'override_par_jury' => false,
-                    'updated_by' => auth()->id(),
-                ];
+                $attributes = $this->attributsDeDecision($calculation);
                 if ($decision) {
                     $decision->forceFill($attributes)->save();
                 } else {
@@ -200,6 +214,106 @@ class JuryDeliberationService
                 $count++;
             }
             return $count;
+        });
+    }
+
+    /**
+     * Les attributs d'une décision issue du calcul automatique.
+     *
+     * Partagés entre la délibération initiale et la réouverture pour
+     * rectification : deux copies divergeraient, et l'une des deux graverait un
+     * jeu de colonnes incomplet sur un document officiel.
+     */
+    private function attributsDeDecision(array $calculation): array
+    {
+        return [
+            'bulletin_id' => $this->requireBulletinId($calculation),
+            'decision_auto' => $calculation['decision_auto'],
+            'decision' => $calculation['decision_auto'],
+            'mention' => $calculation['mention'],
+            'moyenne_generale' => $calculation['moyenne'],
+            'credits_obtenus' => $calculation['credits_obtenus'],
+            'credits_attendus' => $calculation['credits_attendus'],
+            // La motivation, désormais conservée. Elle était rédigée à chaque
+            // branche du calcul puis perdue au retour : le jury lisait une
+            // décision sans jamais lire ce qui l'avait produite.
+            'raisons' => $calculation['raisons'] ?? [],
+            'override_par_jury' => false,
+            'updated_by' => auth()->id(),
+        ];
+    }
+
+    /**
+     * Rouvre la délibération d'un jury dont le PV est déjà émis, pour qu'une
+     * rectification porte sur des chiffres à jour.
+     *
+     * Le verrou posé sur les décisions à l'émission du PV n'était levé nulle
+     * part : `grep "'locked' => false"` ne rendait aucun résultat. Une
+     * réclamation aboutie — note corrigée, bulletin recalculé — laissait donc
+     * la décision figée sur l'ancienne valeur, et le PV rectificatif
+     * re-certifiait ce que le relevé réémis contredisait.
+     *
+     * Ce que cette méthode NE fait pas : toucher aux décisions que le jury a
+     * reprises à son compte. Un `override_par_jury` est une décision humaine,
+     * motivée et signée ; la recalculer l'effacerait. Le jury reste souverain,
+     * et c'est le calcul automatique — lui seul — qui se remet à jour.
+     *
+     * @return int le nombre de décisions recalculées
+     */
+    public function rouvrirLaDeliberation(ESBTPLMDJury $jury, string $motif): int
+    {
+        if (trim($motif) === '') {
+            throw new \InvalidArgumentException('Le motif de réouverture est obligatoire.');
+        }
+
+        return DB::transaction(function () use ($jury, $motif): int {
+            $lockedJury = ESBTPLMDJury::query()->lockForUpdate()->findOrFail($jury->id);
+
+            $decisions = ESBTPLMDJuryDecision::query()
+                ->where('jury_id', $lockedJury->id)
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->get()
+                ->keyBy('etudiant_id');
+
+            // Le déverrouillage proprement dit. Sans lui, le recalcul plus bas
+            // lèverait « Une decision verrouillee ne peut pas etre modifiee ».
+            ESBTPLMDJuryDecision::query()
+                ->where('jury_id', $lockedJury->id)
+                ->update(['locked' => false, 'locked_at' => null, 'updated_by' => auth()->id()]);
+
+            $recalculees = 0;
+            $preservees = 0;
+            foreach ($this->getEtudiantsForJury($lockedJury)->sortBy('id') as $student) {
+                $decision = $decisions->get($student->id);
+                if ($decision === null) {
+                    // La cohorte incomplète est déjà dite par le garde d'émission ;
+                    // en créer une ici masquerait le trou.
+                    continue;
+                }
+                if ($decision->override_par_jury) {
+                    $preservees++;
+                    continue;
+                }
+
+                $calculation = $this->calculerDecisionAuto($student, $lockedJury);
+                $decision->forceFill($this->attributsDeDecision($calculation))->save();
+                $recalculees++;
+            }
+
+            // En `warning` et non `info` : rouvrir une délibération scellée est
+            // un acte rare, et la production filtre `info`. Le jour où l'on
+            // cherche pourquoi une décision a changé après le PV, cette ligne
+            // est la seule trace hors journal d'audit.
+            Log::warning('Deliberation rouverte pour rectification du PV.', [
+                'jury_id' => $lockedJury->id,
+                'motif' => $motif,
+                'decisions_recalculees' => $recalculees,
+                'decisions_preservees_override' => $preservees,
+                'par' => auth()->id(),
+            ]);
+
+            return $recalculees;
         });
     }
 
@@ -461,14 +575,31 @@ class JuryDeliberationService
         ];
     }
 
-    private function resolveBulletin(ESBTPEtudiant $etudiant, ESBTPLMDJury $jury): ?ESBTPLMDBulletin
+    /**
+     * Les bulletins de la période délibérée, un par semestre, du plus ancien au
+     * plus récent.
+     *
+     * Un jury semestriel en rend un — le comportement d'avant, à l'identique.
+     * Un jury annuel en rend autant que la période compte de semestres.
+     *
+     * La déduplication par semestre n'est pas décorative : si un bulletin a été
+     * régénéré, deux lignes portent le même semestre, et les sommer compterait
+     * ses crédits deux fois. On garde le dernier écrit, ce que faisait déjà
+     * l'ancien `orderByDesc('id')->first()` pour le cas à un seul bulletin.
+     *
+     * @return Collection<int, ESBTPLMDBulletin>
+     */
+    private function resolveBulletins(ESBTPEtudiant $etudiant, ESBTPLMDJury $jury): Collection
     {
-        return ESBTPLMDBulletin::query()
+        $bulletins = ESBTPLMDBulletin::query()
             ->forJury($jury)
             ->where('etudiant_id', $etudiant->id)
-            ->orderByDesc('id')
-            ->first();
+            ->orderBy('id')
+            ->get();
+
+        return collect(AgregatDeLaPeriode::parSemestre($bulletins));
     }
+
 
     private function requireBulletinId(array $calculation): int
     {

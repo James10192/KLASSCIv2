@@ -11,6 +11,7 @@ use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPLMDBulletin;
 use App\Models\ESBTPLMDJury;
 use App\Models\User;
+use App\Services\LMD\AgregatDeLaPeriode;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -32,6 +33,7 @@ class JuryPvIssuanceGuard
             $this->quorumReasons($members),
             $this->signatureReasons($members),
             $this->cohortReasons($bulletins, $decisions),
+            $this->concordanceReasons($bulletins, $decisions),
             $this->gradeSheetReasons($sheets),
         );
 
@@ -159,6 +161,78 @@ class JuryPvIssuanceGuard
         }
 
         return $reasons;
+    }
+
+    /**
+     * La délibération dit-elle encore ce que disent les bulletins ?
+     *
+     * Une décision est GELÉE : sa moyenne et ses crédits sont recopiés au
+     * moment du calcul, puis verrouillés à l'émission du PV — et jamais
+     * déverrouillés. Le parcours réel d'une réclamation aboutie le montre : la
+     * feuille est rouverte, la note passe de 08 à 14, le bulletin recalcule,
+     * l'étudiant devient admis à 11,2 — et la décision reste « ajourné, 9,4 ».
+     * Le PV rectificatif certifiait alors 9,4 pendant que le relevé réémis
+     * affichait 11,2 : deux documents officiels signés, tous deux vérifiables
+     * par code public, qui se contredisent sur le même étudiant.
+     *
+     * Le contrôle d'intégrité ne pouvait pas le voir : il vérifie l'empreinte
+     * de l'instantané par elle-même, jamais sa concordance avec la source.
+     *
+     * On refuse donc l'émission plutôt que de sceller un écart. Le message dit
+     * quoi faire — relancer le calcul des décisions — parce qu'un refus qui
+     * n'indique pas la sortie est un mur.
+     *
+     * Les décisions que le jury a reprises à son compte (`override_par_jury`)
+     * sont exclues : un humain les a motivées et signées, elles ne sont pas un
+     * calcul à rejouer. Le jury reste souverain.
+     */
+    private function concordanceReasons(Collection $bulletins, Collection $decisions): array
+    {
+        $parEtudiant = $bulletins->groupBy('etudiant_id');
+        $divergents = [];
+
+        foreach ($decisions as $decision) {
+            if ($decision->override_par_jury) {
+                continue;
+            }
+
+            $periode = AgregatDeLaPeriode::parSemestre($parEtudiant->get($decision->etudiant_id, collect()));
+            if ($periode === []) {
+                // L'absence de bulletin est déjà dite par le contrôle de cohorte ;
+                // la répéter ici noierait le message utile.
+                continue;
+            }
+
+            $geleeMoyenne = $decision->moyenne_generale !== null ? (float) $decision->moyenne_generale : null;
+            $divergence = ! AgregatDeLaPeriode::moyennesConcordent(
+                $geleeMoyenne,
+                AgregatDeLaPeriode::moyenne($periode),
+            );
+
+            if (AgregatDeLaPeriode::creditsDisponibles($periode)) {
+                $divergence = $divergence
+                    || (int) $decision->credits_obtenus !== AgregatDeLaPeriode::creditsObtenus($periode)
+                    || (int) $decision->credits_attendus !== AgregatDeLaPeriode::creditsAttendus($periode);
+            }
+
+            if ($divergence) {
+                $divergents[] = (int) $decision->etudiant_id;
+            }
+        }
+
+        if ($divergents === []) {
+            return [];
+        }
+
+        $cites = array_slice($divergents, 0, 10);
+
+        return [sprintf(
+            'La délibération ne reflète plus les bulletins pour %d étudiant(s) (identifiants : %s%s). '
+            .'Relancez le calcul des décisions avant d’émettre le procès-verbal.',
+            count($divergents),
+            implode(', ', $cites),
+            count($divergents) > count($cites) ? ', …' : '',
+        )];
     }
 
     private function gradeSheetReasons(Collection $sheets): array
