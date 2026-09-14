@@ -1715,12 +1715,12 @@
 
                         <!-- Student Management -->
                         <div class="menu-accordion">
-                            <button class="menu-accordion-btn {{ Request::routeIs('esbtp.etudiants.*') || Request::routeIs('esbtp.inscriptions.*') || Request::routeIs('esbtp.reinscription.*') || Request::routeIs('esbtp.reinscription-demandes.*') || Request::routeIs('esbtp.candidatures.*') || Request::routeIs('esbtp.pieces-dossier.*') || Request::routeIs('esbtp.rendez-vous.*') ? 'active' : '' }}">
+                            <button class="menu-accordion-btn {{ Request::routeIs('esbtp.etudiants.*') || Request::routeIs('esbtp.inscriptions.*') || Request::routeIs('esbtp.reinscription.*') || Request::routeIs('esbtp.reinscription-demandes.*') || Request::routeIs('esbtp.candidatures.*') || Request::routeIs('esbtp.pieces-dossier.*') || Request::routeIs('esbtp.rendez-vous.*') || Request::routeIs('esbtp.documents.approvals.*') ? 'active' : '' }}">
                                 <div class="menu-icon"><i class="fas fa-user-graduate"></i></div>
                                 <div class="menu-text">Étudiants</div>
                                 <div class="menu-arrow"><i class="fas fa-chevron-down"></i></div>
                             </button>
-                            <div class="menu-accordion-content {{ Request::routeIs('esbtp.etudiants.*') || Request::routeIs('esbtp.inscriptions.*') || Request::routeIs('esbtp.reinscription.*') || Request::routeIs('esbtp.reinscription-demandes.*') || Request::routeIs('esbtp.candidatures.*') || Request::routeIs('esbtp.pieces-dossier.*') || Request::routeIs('esbtp.rendez-vous.*') ? 'show' : '' }}">
+                            <div class="menu-accordion-content {{ Request::routeIs('esbtp.etudiants.*') || Request::routeIs('esbtp.inscriptions.*') || Request::routeIs('esbtp.reinscription.*') || Request::routeIs('esbtp.reinscription-demandes.*') || Request::routeIs('esbtp.candidatures.*') || Request::routeIs('esbtp.pieces-dossier.*') || Request::routeIs('esbtp.rendez-vous.*') || Request::routeIs('esbtp.documents.approvals.*') ? 'show' : '' }}">
                                 @can('students.view')
                                 <a href="{{ route('esbtp.etudiants.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.etudiants.*') ? 'active' : '' }}">
                                     <div class="menu-icon"><i class="fas fa-list"></i></div>
@@ -1731,6 +1731,12 @@
                                 <a href="{{ route('esbtp.inscriptions.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.inscriptions.index') ? 'active' : '' }}">
                                     <div class="menu-icon"><i class="fas fa-clipboard-list"></i></div>
                                     <div class="menu-text">Inscriptions</div>
+                                </a>
+                                @endcan
+                                @can('documents.approve')
+                                <a href="{{ route('esbtp.documents.approvals.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.documents.approvals.*') ? 'active' : '' }}">
+                                    <div class="menu-icon"><i class="fas fa-stamp"></i></div>
+                                    <div class="menu-text">File d'approbation</div>
                                 </a>
                                 @endcan
                                 @can('inscriptions.rdv.view')

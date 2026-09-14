@@ -328,6 +328,89 @@ class ScolariteDocumentsRolesTest extends TestCase
     }
 
     /**
+     * La file des demandes doit etre visible par qui peut les accorder.
+     *
+     * Elle ne vivait que sur le tableau de bord de la responsable, garde par
+     * `identity.registrar`. Sur une ecole qui n'a pas scinde ses roles de
+     * scolarite — Yakro, six secretaires — personne ne voyait jamais une
+     * demande : l'accord etant la seule sortie du refus, c'etait une boite aux
+     * lettres morte.
+     */
+    public function test_la_file_des_demandes_s_ouvre_a_qui_porte_le_droit_d_approuver(): void
+    {
+        $secretaire = $this->utilisateurAvecLeRole('secretaire');
+
+        $this->assertTrue($secretaire->can('documents.approve'));
+        $this->assertFalse(
+            $secretaire->can('identity.registrar'),
+            "Ce test ne prouve rien si la secretaire porte deja la clef de l'ancien ecran."
+        );
+
+        ESBTPDocumentApproval::create([
+            'document_type' => 'certificat',
+            'etudiant_id' => $this->etudiantId,
+            'status' => ESBTPDocumentApproval::STATUS_PENDING,
+            'requested_by' => $this->service->id,
+        ]);
+
+        $reponse = $this->actingAs($secretaire)->get(route('esbtp.documents.approvals.index'));
+
+        $reponse->assertOk();
+        $reponse->assertSee('Certificat', false);
+    }
+
+    public function test_la_file_reste_fermee_a_qui_ne_peut_pas_approuver(): void
+    {
+        $this->actingAs($this->service)
+            ->get(route('esbtp.documents.approvals.index'))
+            ->assertForbidden();
+    }
+
+    /**
+     * Redemander ne doit pas empiler les lignes : chaque clic en posait une, et
+     * la file de qui doit accorder se remplissait de doublons.
+     */
+    public function test_redemander_le_meme_document_n_empile_pas_les_demandes(): void
+    {
+        $charge = ['document_type' => 'certificat', 'etudiant_id' => $this->etudiantId];
+
+        $this->actingAs($this->service)->post(route('esbtp.documents.approvals.store'), $charge);
+        $this->actingAs($this->service)->post(route('esbtp.documents.approvals.store'), $charge);
+        $this->actingAs($this->service)->post(route('esbtp.documents.approvals.store'), $charge);
+
+        $this->assertSame(
+            1,
+            ESBTPDocumentApproval::where('document_type', 'certificat')
+                ->where('etudiant_id', $this->etudiantId)
+                ->enAttente()
+                ->count(),
+            'Trois clics ne doivent laisser qu une seule demande en attente.'
+        );
+    }
+
+    /**
+     * Une fois la demande posee, le bouton ne doit plus etre propose : la
+     * deduplication le rend inoperant, et recliquer ne repondait plus que
+     * « une demande est deja en attente ».
+     */
+    public function test_une_demande_posee_remplace_le_bouton_par_son_etat(): void
+    {
+        $this->actingAs($this->service);
+
+        $avant = $this->get(route('esbtp.etudiants.certificat.preview', $this->etudiantId));
+        $avant->assertSee("Demander l'approbation", false);
+
+        $this->post(route('esbtp.documents.approvals.store'), [
+            'document_type' => 'certificat',
+            'etudiant_id' => $this->etudiantId,
+        ]);
+
+        $apres = $this->get(route('esbtp.etudiants.certificat.preview', $this->etudiantId));
+        $apres->assertSee('Demande envoyée', false);
+        $apres->assertDontSee("Demander l'approbation", false);
+    }
+
+    /**
      * Un refus faute de droit doit proposer la demande — sinon la personne
      * n'a aucun moyen d'obtenir l'accord qui la debloquerait.
      */

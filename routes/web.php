@@ -241,6 +241,8 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             ->name('esbtp.notes-windows.close');
     });
 
+    Route::get('/esbtp/documents/approvals', [\App\Http\Controllers\ESBTPDocumentApprovalController::class, 'index'])
+        ->name('esbtp.documents.approvals.index');
     Route::post('/esbtp/documents/approvals', [\App\Http\Controllers\ESBTPDocumentApprovalController::class, 'store'])
         ->name('esbtp.documents.approvals.store');
     Route::post('/esbtp/documents/approvals/{approval}/approve', [\App\Http\Controllers\ESBTPDocumentApprovalController::class, 'approve'])

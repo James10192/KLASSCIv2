@@ -37,6 +37,37 @@ class ESBTPDocumentApproval extends Model
         return $this->belongsTo(ESBTPEtudiant::class, 'etudiant_id');
     }
 
+    public function demandeur(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'requested_by');
+    }
+
+    public function approbateur(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'approved_by');
+    }
+
+    public function scopeEnAttente($query)
+    {
+        return $query->where('status', self::STATUS_PENDING);
+    }
+
+    /**
+     * La demande en attente qui porte deja sur ce document, s'il y en a une.
+     *
+     * Deux demandes en attente pour le meme document ne veulent rien dire de
+     * plus qu'une seule : elles noient la file de qui doit accorder.
+     */
+    public static function demandeEnAttentePour(string $documentType, int $etudiantId, ?int $documentId = null): ?self
+    {
+        return static::query()
+            ->enAttente()
+            ->where('document_type', $documentType)
+            ->where('etudiant_id', $etudiantId)
+            ->where(fn ($q) => $documentId === null ? $q->whereNull('document_id') : $q->where('document_id', $documentId))
+            ->first();
+    }
+
     public function isApproved(): bool
     {
         return $this->status === self::STATUS_APPROVED;
