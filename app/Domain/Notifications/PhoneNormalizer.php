@@ -13,14 +13,19 @@ namespace App\Domain\Notifications;
  *    instance béninoise, et `+229 01 42 34 56 78` était refusé jusqu'ici.
  *
  * 2. **L'écriture nationale** ne porte aucun indicatif : on lui appose celui de
- *    l'instance (réglage `telephone_indicatif_pays`, `225` à défaut).
+ *    l'instance, et on la mesure aux préfixes que l'instance déclare
+ *    (`telephone_indicatif_pays`, `telephone_prefixes_mobiles` — le plan
+ *    ivoirien à défaut, donc rien ne bouge là où rien n'est réglé).
  *
- * Ce qu'on ne fait JAMAIS : deviner le pays depuis les chiffres. `0142345678`
- * est simultanément un mobile MTN Bénin valide et un mobile Moov Côte d'Ivoire
+ * Ce qu'on ne fait JAMAIS : **déduire** le pays des chiffres. `0142345678` est
+ * simultanément un mobile MTN Bénin valide et un mobile Moov Côte d'Ivoire
  * valide — les deux plans font dix chiffres et commencent par `01` depuis la
  * renumérotation béninoise du 30 novembre 2024. Aucune inférence n'est possible,
- * et les séries se réattribuent. Une liste blanche de préfixes par pays serait
- * donc fausse le jour de son écriture, pas seulement plus tard.
+ * et les séries se réattribuent. Une table « pays → préfixes » serait donc
+ * fausse le jour de son écriture, pas seulement plus tard.
+ *
+ * Que l'instance DÉCLARE ses préfixes est l'inverse exact : ce n'est plus le
+ * code qui devine un pays, c'est l'école qui dit le sien.
  *
  * La contrepartie assumée : hors de l'indicatif de l'instance, on ne valide que
  * la FORME (UIT-T E.164 §6.2 : quinze chiffres au plus, indicatif compris). On
@@ -43,19 +48,34 @@ final class PhoneNormalizer
     private const INDICATIF_PAR_DEFAUT = '225';
 
     /**
-     * La forme d'une saisie nationale, telle que le plan ivoirien la fixe
-     * depuis 2021 : dix chiffres, dont le zéro initial fait partie.
+     * Les préfixes qu'un numéro national peut porter ici.
      *
-     * Ces deux constantes décrivent un plan de numérotation, pas une liste de
-     * pays — et elles ne doivent PAS le devenir. Le plan béninois s'y range :
-     * dix chiffres depuis le 30 novembre 2024, et tous ses mobiles commencent
-     * par `01`. Le filtre y est simplement plus lâche (un fixe béninois porte
-     * aussi `01`, il passe donc) — ce qui laisse entrer un numéro joignable, pas
-     * un numéro corrompu.
+     * DÉCLARÉS par l'instance, jamais déduits d'un pays — c'est toute la
+     * différence avec la liste blanche que cette classe refuse. Déduire
+     * « Bénin → 01 » serait une inférence, et elle serait fausse dans l'autre
+     * sens : `0142345678` est aussi un Moov ivoirien valide. Déclarer « ici, un
+     * numéro national commence par 01 » est un fait que l'école connaît.
+     *
+     * Le défaut est le plan ivoirien depuis 2021. Laissé tel quel sur une
+     * instance béninoise, le filtre accepterait `0707123456` — un préfixe que
+     * l'ARCEP Bénin n'attribue à personne, puisque la renumérotation du
+     * 30 novembre 2024 a préfixé `01` à TOUS les numéros du pays, fixes
+     * compris. Le numéro produit serait injoignable, et le serait en silence :
+     * c'est l'image en miroir du défaut que cette classe corrige.
+     */
+    private const PREFIXES_PAR_DEFAUT = '01,02,03,05,06,07,08,09';
+
+    /**
+     * La longueur d'un numéro national, dix chiffres — le zéro initial en fait
+     * partie depuis le passage à dix chiffres (Côte d'Ivoire 2021, Bénin 2024).
+     *
+     * Volontairement NON configurable : les deux pays servis s'y rangent, et
+     * une constante qu'on ne peut pas éprouver vieillit mal. Condition de
+     * réouverture, nommable : la première instance dont le plan national n'est
+     * pas à dix chiffres (le Sénégal en fait neuf). La dégradation serait alors
+     * un refus visible, pas une corruption — d'où l'attente.
      */
     private const LONGUEUR_NATIONALE = 10;
-
-    private const PREFIXES_MOBILES = '/^(01|02|03|05|06|07|08|09)/';
 
     /** UIT-T E.164 §6.2 : quinze chiffres au plus, indicatif pays compris. */
     private const LONGUEUR_E164_MAX = 15;
@@ -63,24 +83,35 @@ final class PhoneNormalizer
     /** Plancher pratique : aucun plan national n'attribue en dessous. */
     private const LONGUEUR_E164_MIN = 8;
 
-    /** @var (callable():?string)|null */
-    private static $resolveurIndicatif = null;
+    public const CLE_INDICATIF = 'telephone_indicatif_pays';
 
-    private static ?string $indicatifMemoise = null;
+    public const CLE_PREFIXES = 'telephone_prefixes_mobiles';
+
+    /** @var (callable(string):?string)|null */
+    private static $resolveurReglages = null;
 
     /**
-     * Branche la lecture de l'indicatif de l'instance.
+     * Branche la lecture des deux réglages de l'instance.
      *
      * Appelé une fois au démarrage. La fermeture n'est évaluée qu'au premier
      * numéro analysé : une commande qui ne touche pas au téléphone ne paie
      * aucune lecture de réglage.
      *
-     * @param  (callable():?string)|null  $resolveur
+     * **Aucune mémoïsation ici, et c'est délibéré.** `Setting::get()` met déjà
+     * en cache, avec une invalidation qui marche (`Setting::saved` purge la
+     * clé). Un second cache posé ici n'aurait, lui, aucune invalidation — et il
+     * vivrait aussi longtemps que le processus. Or le travailleur de file
+     * (`queue:work`, sans `--max-time`) est un démon, et c'est précisément lui
+     * qui normalise les numéros des relances. Corriger l'indicatif d'une
+     * instance aurait donc réparé l'écran tout en laissant les relances partir
+     * avec l'ancien, jusqu'au prochain recyclage : exactement la corruption que
+     * cette classe existe pour supprimer.
+     *
+     * @param  (callable(string):?string)|null  $resolveur
      */
-    public static function definirResolveurIndicatif(?callable $resolveur): void
+    public static function definirResolveurReglages(?callable $resolveur): void
     {
-        self::$resolveurIndicatif = $resolveur;
-        self::$indicatifMemoise = null;
+        self::$resolveurReglages = $resolveur;
     }
 
     /**
@@ -92,16 +123,39 @@ final class PhoneNormalizer
      */
     public static function indicatifNationalParDefaut(): string
     {
-        if (self::$indicatifMemoise !== null) {
-            return self::$indicatifMemoise;
-        }
+        $chiffres = preg_replace('/\D+/', '', (string) self::reglage(self::CLE_INDICATIF));
 
-        $brut = self::$resolveurIndicatif !== null ? (self::$resolveurIndicatif)() : null;
-        $chiffres = preg_replace('/\D+/', '', (string) $brut);
-
-        return self::$indicatifMemoise = ($chiffres !== '' && $chiffres !== null && strlen($chiffres) <= 3)
+        return ($chiffres !== '' && $chiffres !== null && strlen($chiffres) <= 3)
             ? $chiffres
             : self::INDICATIF_PAR_DEFAUT;
+    }
+
+    /**
+     * Les préfixes qu'un numéro national peut porter sur cette instance.
+     *
+     * @return list<string>
+     */
+    public static function prefixesNationaux(): array
+    {
+        $brut = (string) (self::reglage(self::CLE_PREFIXES) ?? '');
+        $prefixes = [];
+
+        foreach (preg_split('/[\s,;|]+/', $brut) ?: [] as $morceau) {
+            $chiffres = preg_replace('/\D+/', '', $morceau);
+
+            if ($chiffres !== '' && $chiffres !== null && strlen($chiffres) <= 4) {
+                $prefixes[] = $chiffres;
+            }
+        }
+
+        return $prefixes !== []
+            ? $prefixes
+            : explode(',', self::PREFIXES_PAR_DEFAUT);
+    }
+
+    private static function reglage(string $cle): ?string
+    {
+        return self::$resolveurReglages !== null ? (self::$resolveurReglages)($cle) : null;
     }
 
     /**
@@ -183,6 +237,13 @@ final class PhoneNormalizer
             );
         }
 
+        // Aucun indicatif pays ne commence par zéro : l'UIT-T E.164 les répartit
+        // en neuf zones, de 1 à 9. Sans ce contrôle, `000707123456` produisait
+        // `+0707123456` — une chaîne qui a la forme de l'E.164 et n'en est pas.
+        if ($chiffres[0] === '0') {
+            return null;
+        }
+
         if (strlen($chiffres) < self::LONGUEUR_E164_MIN || strlen($chiffres) > self::LONGUEUR_E164_MAX) {
             return null;
         }
@@ -229,10 +290,12 @@ final class PhoneNormalizer
             return null;
         }
 
-        if (! preg_match(self::PREFIXES_MOBILES, $national)) {
-            return null;
+        foreach (self::prefixesNationaux() as $prefixe) {
+            if (str_starts_with($national, $prefixe)) {
+                return ['indicatif' => $indicatif, 'national' => $national];
+            }
         }
 
-        return ['indicatif' => $indicatif, 'national' => $national];
+        return null;
     }
 }

@@ -8,9 +8,16 @@ use PHPUnit\Framework\TestCase;
 
 class PhoneFormatterTest extends TestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        PhoneNormalizer::definirResolveurReglages(null);
+    }
+
     protected function tearDown(): void
     {
-        PhoneNormalizer::definirResolveurIndicatif(null);
+        PhoneNormalizer::definirResolveurReglages(null);
 
         parent::tearDown();
     }
@@ -56,7 +63,9 @@ class PhoneFormatterTest extends TestCase
      */
     public function test_l_indicatif_rendu_est_celui_qui_a_ete_reconnu(): void
     {
-        PhoneNormalizer::definirResolveurIndicatif(static fn (): string => '229');
+        PhoneNormalizer::definirResolveurReglages(
+            static fn (string $cle): ?string => $cle === PhoneNormalizer::CLE_INDICATIF ? '229' : null
+        );
 
         $this->assertSame('+229 01 42 34 56 78', PhoneFormatter::toReadable('0142345678'));
         $this->assertSame('+229 01 42 34 56 78', PhoneFormatter::toReadable('+229 01 42 34 56 78'));

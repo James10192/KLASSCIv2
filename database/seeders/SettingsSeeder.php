@@ -1448,6 +1448,21 @@ class SettingsSeeder extends Seeder
                 'sort_order' => 4
             ],
             [
+                // Les préfixes qu'un numéro national peut porter ici. DÉCLARÉS
+                // par l'école, jamais déduits du pays : « 0142345678 » est
+                // simultanément un MTN Bénin et un Moov ivoirien valides.
+                'key' => 'telephone_prefixes_mobiles',
+                'value' => '01,02,03,05,06,07,08,09',
+                'type' => 'string',
+                'group' => 'general',
+                'category' => 'general',
+                'description' => 'Préfixes qu\'un numéro national peut porter ici, séparés par des virgules (Côte d\'Ivoire : 01,02,03,05,06,07,08,09 — Bénin : 01)',
+                'is_required' => false,
+                'default_value' => '01,02,03,05,06,07,08,09',
+                'validation_rules' => ['regex:/^[0-9]{1,4}([ ,;|]+[0-9]{1,4})*$/'],
+                'sort_order' => 5
+            ],
+            [
                 'key' => 'app_locale',
                 'value' => 'fr',
                 'type' => 'string',
