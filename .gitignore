@@ -83,3 +83,13 @@ storage/fonts/*.ufm.json
 # (`%SystemDrive%`). Meme raison que les deux precedents : non suivi et non
 # ignore, il attend un `git add -A` pour entrer dans l'historique.
 /%SystemDrive%/
+
+# Espace de travail des sessions : correctifs extraits, exports intermediaires,
+# scripts jetables. Il s'y accumule des fichiers qu'un `git add -A` emporterait
+# sans qu'on l'ait voulu.
+#
+# Les archives deja versionnees (`worktrees-2026-09-13`,
+# `branches-locales-2026-09-14`) restent suivies : ignorer un chemin ne detache
+# pas ce qui l'est deja. Verser une NOUVELLE archive devient donc un geste
+# delibere, `git add -f`, ce qui est exactement ce qu'on veut d'une archive.
+/.patches/
