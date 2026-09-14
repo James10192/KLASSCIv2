@@ -774,9 +774,22 @@ class ESBTPPaiement extends Model implements Auditable
         // prefixe et cette annee, il n y a rien a verrouiller — la toute
         // premiere emission d une annee garde une fenetre etroite. La fermer
         // demande un index unique sur la colonne, qui ne porte aujourd hui
-        // qu un index simple ; il faut d abord verifier qu aucun doublon
-        // n existe deja en base, sinon la migration echoue.
-        $lastRecu = self::where('numero_recu', 'like', "{$prefix}{$anneeCode}-%")
+        // qu un index simple.
+        //
+        // `withTrashed` n est pas un detail : le modele porte SoftDeletes, donc
+        // sans lui cette lecture ignore les paiements supprimes et REATTRIBUE
+        // leur numero. C etait la cause de tous les doublons releves en
+        // septembre 2026 — 28 sur Abidjan, 3 sur ISLG, 1 sur Yakro — dont
+        // chacun, sans exception, appariait un recu vivant a un recu supprime.
+        // Aucun doublon entre deux recus vivants nulle part : la comptabilite
+        // n a jamais delivre deux fois la meme preuve de paiement. Mais un
+        // numero rendu deux fois reste un numero rendu deux fois, et il suffit
+        // a faire echouer la pose de l index unique.
+        //
+        // Une sequence ne revient pas en arriere parce qu une ligne a ete
+        // retiree de la vue.
+        $lastRecu = self::withTrashed()
+                        ->where('numero_recu', 'like', "{$prefix}{$anneeCode}-%")
                         ->orderByRaw('CAST(SUBSTRING_INDEX(numero_recu, "-", -1) AS UNSIGNED) DESC')
                         ->lockForUpdate()
                         ->first();
