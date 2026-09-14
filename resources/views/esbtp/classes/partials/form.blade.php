@@ -77,7 +77,7 @@
     $oldNiveauObj = $oldNiveauId ? $niveaux->firstWhere('id', (int) $oldNiveauId) : null;
     $renderedMode = '';
     if ($oldNiveauObj) {
-        $renderedMode = in_array($oldNiveauObj->type, ['Licence', 'Master', 'Doctorat'], true) ? 'LMD' : 'BTS';
+        $renderedMode = in_array($oldNiveauObj->type, \App\Models\ESBTPNiveauEtude::CYCLES_LMD, true) ? 'LMD' : 'BTS';
     } elseif ($isEdit) {
         $renderedMode = $classe->systeme_academique ?? '';
     }

@@ -290,7 +290,7 @@
             // les 2 sets de types (BTS legacy + LMD UEMOA) s'affichaient simultanement.
             // Solution : detection inclusive partout = (systeme_academique='LMD' OR niveau.type IN [Licence/Master/Doctorat]).
             $isClasseLmd = ($emploiTemps->classe->systeme_academique ?? '') === 'LMD'
-                || in_array($emploiTemps->classe->niveau->type ?? '', ['Licence', 'Master', 'Doctorat'], true);
+                || in_array($emploiTemps->classe->niveau->type ?? '', \App\Models\ESBTPNiveauEtude::CYCLES_LMD, true);
         @endphp
         {{-- Hero premium namespace sce-* (Seance Creation Edit) --}}
         <div class="sce-hero">

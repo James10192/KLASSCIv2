@@ -10,7 +10,7 @@ class ClasseManagementService
     /**
      * Types de niveaux consideres comme LMD.
      */
-    public const LMD_TYPES = ['Licence', 'Master', 'Doctorat'];
+    public const LMD_TYPES = \App\Models\ESBTPNiveauEtude::CYCLES_LMD;
 
     /**
      * Determiner le systeme academique a partir du type de niveau.

@@ -150,7 +150,7 @@
                 @foreach($niveauxEtudes as $niveau)
                 @php
                     $nType = $niveau->type;
-                    $lmdTypes = ['Licence', 'Master', 'Doctorat', 'Bachelor'];
+                    $lmdTypes = \App\Models\ESBTPNiveauEtude::CYCLES_LMD;
                     if (!$nType) {
                         $chipCls = 'ne-chip-null'; $chipIco = 'fa-exclamation-triangle'; $chipLbl = 'Non typé';
                     } elseif (in_array($nType, $lmdTypes)) {

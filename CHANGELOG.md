@@ -44,6 +44,8 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ### Corrections
 
+- **Le Bachelor n'est plus compté parmi les cycles LMD** (`/esbtp/niveaux-etudes`) — la liste des niveaux le rangeait avec Licence, Master et Doctorat dans le compteur et le badge « LMD ». Le Bachelor est un diplôme de tradition anglo-saxonne, hors du système LMD francophone régi par l'UEMOA. Il reste un type de niveau disponible, traité hors LMD. Les seize listes « Licence, Master, Doctorat » recopiées dans l'application lisent désormais une seule définition.
+
 - **Le relevé de notes officiel (modèle du Ministère) est délivré au nom de l'État de l'établissement** — la république, la devise et le ministère étaient écrits en dur (Côte d'Ivoire) dans le gabarit, alors que les bulletins LMD les lisaient déjà dans les réglages. Un relevé émis par une école béninoise serait sorti au nom d'un autre État, et un relevé signé ne se corrige pas. Ces trois textes sont repris des réglages du bulletin LMD et gravés dans le relevé à son émission. Sans réglage, les textes d'origine : rien ne change pour les écoles ivoiriennes, ni pour les relevés déjà émis.
 
 - **L'import de maquette LMD ne déplace plus une mention ou un parcours d'un autre domaine** (`POST /api/cli/lmd/import`) — l'import retrouvait mentions et parcours par leur code, puis réécrivait leur rattachement : une mention d'un autre domaine y était transférée avec tous ses parcours, sans un message. C'est certain dès qu'un même intitulé vit dans deux domaines et que la maquette ne donne pas de code, puisque le code se déduit alors du nom. L'import est refusé et nomme l'élément concerné, comme il le faisait déjà pour un élément constitutif rattaché à une autre unité.

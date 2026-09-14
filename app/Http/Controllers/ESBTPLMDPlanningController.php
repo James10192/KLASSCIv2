@@ -36,7 +36,7 @@ use Illuminate\View\View;
 class ESBTPLMDPlanningController extends Controller
 {
     /** Types `esbtp_niveau_etudes.type` identifiant les niveaux LMD (valeurs canoniques de niveaux-etudes/create). */
-    private const LMD_TYPES = ['Licence', 'Master', 'Doctorat'];
+    private const LMD_TYPES = ESBTPNiveauEtude::CYCLES_LMD;
 
     public function index(Request $request): View
     {

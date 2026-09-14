@@ -29,6 +29,17 @@ class ESBTPNiveauEtude extends Model
      * c'est-a-dire traite comme une Licence 1, et recoit ses unites. C'est
      * exactement ce qui est arrive a une ecole avant que cette liste existe.
      */
+    /**
+     * Les cycles du systeme LMD (directive UEMOA 03/2007). Source unique : toute
+     * liste « est-ce du LMD ? » passe par ici.
+     *
+     * Le Bachelor n'en fait PAS partie. C'est un diplome de tradition
+     * anglo-saxonne, hors du cadre LMD francophone et non regi par l'UEMOA :
+     * le ranger ici lui appliquerait credits ECTS, semestres continus et
+     * deliberation UEMOA qui ne le concernent pas.
+     */
+    public const CYCLES_LMD = ['Licence', 'Master', 'Doctorat'];
+
     public const ANNEES_PAR_CYCLE_LMD = [
         'Licence' => [1, 2, 3],
         'Master' => [4, 5],

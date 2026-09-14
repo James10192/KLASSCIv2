@@ -27,7 +27,7 @@
                     }
                 } elseif ($inscription->classe?->systeme_academique === 'BTS' || ($inscription->niveau && in_array($inscription->niveau->type, ['BTS', 'BAC+2', 'DUT'], true))) {
                     $insRenderedMode = 'BTS';
-                } elseif ($inscription->niveau && in_array($inscription->niveau->type, ['Licence', 'Master', 'Doctorat'], true)) {
+                } elseif ($inscription->niveau && in_array($inscription->niveau->type, \App\Models\ESBTPNiveauEtude::CYCLES_LMD, true)) {
                     $insRenderedMode = 'LMD';
                 }
             @endphp

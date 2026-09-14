@@ -23,7 +23,7 @@ class ESBTPMatiereController extends Controller
 
         $filieres = ESBTPFiliere::where('is_active', true)->orderBy('name')->get();
         $niveaux = ESBTPNiveauEtude::where('is_active', true)
-            ->whereNotIn('type', ['Licence', 'Master', 'Doctorat']) // Exclure niveaux LMD
+            ->whereNotIn('type', \App\Models\ESBTPNiveauEtude::CYCLES_LMD) // Exclure niveaux LMD
             ->orderBy('name')->get();
 
         if ($request->ajax()) {
@@ -248,7 +248,7 @@ class ESBTPMatiereController extends Controller
         $this->authorize('create', ESBTPMatiere::class);
 
         $filieres = ESBTPFiliere::where('is_active', true)->get();
-        $niveauxEtudes = ESBTPNiveauEtude::whereNotIn('type', ['Licence', 'Master', 'Doctorat'])->get();
+        $niveauxEtudes = ESBTPNiveauEtude::whereNotIn('type', \App\Models\ESBTPNiveauEtude::CYCLES_LMD)->get();
         $unitesEnseignement = collect(); // Collection vide temporaire
 
         // Récupérer les paramètres de pré-sélection depuis l'URL
@@ -491,7 +491,7 @@ class ESBTPMatiereController extends Controller
         // $this->authorize('update', $matiere); // Temporairement désactivé pour test
 
         $filieres = ESBTPFiliere::where('is_active', true)->get();
-        $niveauxEtudes = ESBTPNiveauEtude::whereNotIn('type', ['Licence', 'Master', 'Doctorat'])->get();
+        $niveauxEtudes = ESBTPNiveauEtude::whereNotIn('type', \App\Models\ESBTPNiveauEtude::CYCLES_LMD)->get();
         $unitesEnseignement = collect(); // Collection vide temporaire
 
         return view('esbtp.matieres.edit', compact('matiere', 'filieres', 'niveauxEtudes', 'unitesEnseignement'));

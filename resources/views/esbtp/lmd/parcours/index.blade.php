@@ -658,7 +658,7 @@
                                 <label><i class="fas fa-graduation-cap"></i> Niveau d'études</label>
                                 <select class="form-select" name="niveau_etude_id" required>
                                     <option value="">— Sélectionner —</option>
-                                    @foreach(\App\Models\ESBTPNiveauEtude::whereIn('type', ['Licence', 'Master', 'Doctorat'])->orderBy('name')->get() as $niv)
+                                    @foreach(\App\Models\ESBTPNiveauEtude::whereIn('type', \App\Models\ESBTPNiveauEtude::CYCLES_LMD)->orderBy('name')->get() as $niv)
                                         <option value="{{ $niv->id }}">{{ $niv->name }} ({{ $niv->type }})</option>
                                     @endforeach
                                 </select>

@@ -720,7 +720,7 @@ class ESBTPEmploiTempsController extends Controller
             // bulk-edit affiche les heures CM/TD/TP realisees comme emploi-temps/show.
             // Feedback Marcel : "Dans bulk-edit il n'y a pas budgetisation par CM tp etc"
             if (($emploiTemps->classe->systeme_academique ?? '') === 'LMD'
-                || in_array($emploiTemps->classe->niveau->type ?? '', ['Licence', 'Master', 'Doctorat'], true)) {
+                || in_array($emploiTemps->classe->niveau->type ?? '', \App\Models\ESBTPNiveauEtude::CYCLES_LMD, true)) {
                 // Pas de filtre semestre : la planification académique (UE/ECUE) couvre tout le
                 // niveau (ex L3 = S5+S6). Le label esbtp_emploi_temps.semestre est BTS-orienté et
                 // ne correspond pas aux semestres LMD réels → on charge la planification complète,
@@ -886,7 +886,7 @@ class ESBTPEmploiTempsController extends Controller
             // canonical (SSOT). buildWithVolumeBudget() calcule les heures realisees CM/TD/TP
             // via VolumeBudgetService pour les KPIs hero "heures restantes / % realise".
             if (($emploi_temp->classe->systeme_academique ?? '') === 'LMD'
-                || in_array($emploi_temp->classe->niveau->type ?? '', ['Licence', 'Master', 'Doctorat'], true)) {
+                || in_array($emploi_temp->classe->niveau->type ?? '', \App\Models\ESBTPNiveauEtude::CYCLES_LMD, true)) {
                 // Pas de filtre semestre : planification complète du niveau LMD (cf. note bulk-edit
                 // plus haut). Le label semestre BTS de l'emploi du temps ne mappe pas les semestres LMD.
                 $planificationData = app(\App\Services\LMD\MatiereTreeBuilder::class)

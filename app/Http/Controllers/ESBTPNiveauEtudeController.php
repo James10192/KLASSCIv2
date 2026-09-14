@@ -28,7 +28,7 @@ class ESBTPNiveauEtudeController extends Controller
         }
 
         $niveauxEtudes = $query->get();
-        $lmdTypes      = ['Licence', 'Master', 'Doctorat', 'Bachelor'];
+        $lmdTypes      = ESBTPNiveauEtude::CYCLES_LMD;
         $totalCount    = $niveauxEtudes->count();
         $lmdCount      = $niveauxEtudes->whereIn('type', $lmdTypes)->count();
         $btsCount      = $niveauxEtudes->where('type', 'BTS')->count();

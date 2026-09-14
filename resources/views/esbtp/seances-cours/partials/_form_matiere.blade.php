@@ -5,7 +5,7 @@
 @php
     // Detection LMD inclusive : systeme_academique OR niveau.type (cf hotfix PR17.1 create.blade)
     $isLmd = ($emploiTemps->classe->systeme_academique ?? '') === 'LMD'
-        || in_array($emploiTemps->classe->niveau->type ?? '', ['Licence', 'Master', 'Doctorat'], true);
+        || in_array($emploiTemps->classe->niveau->type ?? '', \App\Models\ESBTPNiveauEtude::CYCLES_LMD, true);
 @endphp
 
 <div class="form-group">
