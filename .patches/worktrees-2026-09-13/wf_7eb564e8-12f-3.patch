@@ -1,0 +1,452 @@
+diff --git a/app/Http/Controllers/ESBTP/AvoirPaiementController.php b/app/Http/Controllers/ESBTP/AvoirPaiementController.php
+index 5a2213283..e00e12f34 100644
+--- a/app/Http/Controllers/ESBTP/AvoirPaiementController.php
++++ b/app/Http/Controllers/ESBTP/AvoirPaiementController.php
+@@ -54,6 +54,10 @@ public function pdf(Request $request, ESBTPPaiement $paiement)
+             'inscription.niveauEtude',
+             'fraisCategory',
+             'parentPaiement',
++            // L'avoir se lit contre son versement d'origine : s'il etait reparti,
++            // le document doit le dire plutot que de nommer un seul frais.
++            'parentPaiement.allocations',
++            'allocations.fraisCategory',
+             'creator:id,name',
+             'validatedBy',
+         ]);
+diff --git a/app/Http/Controllers/ESBTPPaiementController.php b/app/Http/Controllers/ESBTPPaiementController.php
+index 074ac6d8c..2a82f9d43 100644
+--- a/app/Http/Controllers/ESBTPPaiementController.php
++++ b/app/Http/Controllers/ESBTPPaiementController.php
+@@ -498,7 +498,10 @@ public function show($id)
+             'inscription.niveauEtude',
+             'validatedBy',
+             'creator:id,name',
+-            'updatedBy'
++            'updatedBy',
++            // La fiche affiche le detail de la repartition : sans ce chargement,
++            // une requete par ligne allouee.
++            'allocations.fraisCategory',
+         ])->findOrFail($id);
+ 
+         $this->authorize('view', $paiement);
+@@ -646,7 +649,10 @@ public function genererRecu($id, ?Request $request = null)
+             'inscription.niveauEtude',
+             'fraisCategory',
+             'validatedBy',
+-            'creator:id,name'
++            'creator:id,name',
++            // Le recu imprime le decompte frais par frais quand le versement a
++            // ete reparti.
++            'allocations.fraisCategory',
+         ])->findOrFail($id);
+ 
+         $settings = $this->getReceiptSettings();
+@@ -704,7 +710,15 @@ private function receiptFraisEtat(ESBTPPaiement $paiement): array
+ 
+         $payeParCategorie = ESBTPPaiement::netPaidByCategory($inscriptionId);
+ 
+-        $lignes = $subscriptions->map(function ($sub) use ($payeParCategorie, $paiement) {
++        // Quels frais ce versement-ci a-t-il touches ? Sa colonne
++        // `frais_category_id` n'en designe qu'un ; des qu'il a ete reparti, ce
++        // sont ses allocations qui disent la verite — sinon le recu mettrait en
++        // avant un seul frais alors que l'argent en a couvert plusieurs.
++        $categoriesDuVersement = $paiement->allocations->isNotEmpty()
++            ? $paiement->allocations->pluck('frais_category_id')->map(fn ($id) => (int) $id)->all()
++            : [(int) $paiement->frais_category_id];
++
++        $lignes = $subscriptions->map(function ($sub) use ($payeParCategorie, $categoriesDuVersement) {
+             $due = $sub->chargedAmount();
+             $paye = (float) ($payeParCategorie[$sub->frais_category_id] ?? 0);
+             $restant = max(0.0, $due - $paye);
+@@ -718,7 +732,7 @@ private function receiptFraisEtat(ESBTPPaiement $paiement): array
+                 // sait ce qu'elle reclame, et elle s'y teste sans base.
+                 'non_configure' => $sub->montantNonDefini(),
+                 'checked' => $sub->estSolde($paye),
+-                'current' => (int) $paiement->frais_category_id === (int) $sub->frais_category_id,
++                'current' => in_array((int) $sub->frais_category_id, $categoriesDuVersement, true),
+             ];
+         })->values();
+ 
+diff --git a/app/Services/PaymentFilterService.php b/app/Services/PaymentFilterService.php
+index 91a6dc181..5062a5cd4 100644
+--- a/app/Services/PaymentFilterService.php
++++ b/app/Services/PaymentFilterService.php
+@@ -35,6 +35,9 @@ public function preparePaiementListing(Request $request, FuzzyNameMatcher $match
+             'creator:id,name',
+             'fraisCategory',
+             'categorie',
++            // Chaque ligne annonce le nombre de frais couverts : sans ce
++            // chargement, une requete de comptage par paiement affiche.
++            'allocations.fraisCategory',
+         ])->orderByDesc('created_at');
+ 
+         // Lot 13 — Ownership filter : si user n'a PAS `paiements.view` mais a `paiements.view_own`,
+@@ -437,6 +440,9 @@ public function getAllFilteredPaiements(Request $request, FuzzyNameMatcher $matc
+             'creator:id,name',
+             'fraisCategory',
+             'categorie',
++            // Chaque ligne annonce le nombre de frais couverts : sans ce
++            // chargement, une requete de comptage par paiement affiche.
++            'allocations.fraisCategory',
+         ])->orderByDesc('created_at');
+ 
+         // Lot 13 — Ownership filter pour l'export aussi (cohérence avec preparePaiementListing)
+diff --git a/resources/views/esbtp/paiements/avoir.blade.php b/resources/views/esbtp/paiements/avoir.blade.php
+index 7b2ba7f55..2583493a2 100644
+--- a/resources/views/esbtp/paiements/avoir.blade.php
++++ b/resources/views/esbtp/paiements/avoir.blade.php
+@@ -10,6 +10,12 @@
+         $hdrBg   = $pdfCfg['header_bg_color'] ?? $primary;
+         $hdrText = $pdfCfg['header_text_on_bg'] ?? $pdfCfg['header_text_color'] ?? '#ffffff';
+         $kindLabel = $paiement->avoir_kind === 'refund' ? 'Remboursement caisse' : 'Crédit sur compte';
++
++        // Un avoir se lit toujours contre son versement d'origine. Si celui-ci
++        // couvrait plusieurs frais, taire la repartition laisserait croire que
++        // l'avoir annule un versement affecte a un seul frais.
++        $allocationsAvoir = $paiement->allocations->sortByDesc('montant');
++        $origineRepartie = ($paiement->parentPaiement?->allocations->count() ?? 0) > 1;
+         $copies = [
+             'EXEMPLAIRE ÉLÈVE / PARENT — à conserver',
+             'EXEMPLAIRE CAISSE — à archiver',
+@@ -82,13 +88,33 @@
+                     <td><div class="lbl">Étudiant</div><div class="val">{{ $paiement->etudiant->user->name ?? $paiement->etudiant->nom_complet ?? 'N/A' }}</div></td>
+                     <td><div class="lbl">Matricule</div><div class="val">{{ $paiement->etudiant->matricule ?? '—' }}</div></td>
+                     <td><div class="lbl">Type</div><div class="val">{{ $kindLabel }}</div></td>
+-                    <td><div class="lbl">Reçu d'origine</div><div class="val">{{ $paiement->parentPaiement->numero_recu ?? '—' }}</div></td>
++                    <td>
++                        <div class="lbl">Reçu d'origine</div>
++                        <div class="val">{{ $paiement->parentPaiement->numero_recu ?? '—' }}</div>
++                        @if($origineRepartie)
++                        <div class="lbl" style="margin-top:1mm;">Versement réparti sur {{ $paiement->parentPaiement->allocations->count() }} frais</div>
++                        @endif
++                    </td>
+                 </tr>
+                 <tr>
+-                    <td><div class="lbl">Catégorie</div><div class="val">{{ $paiement->fraisCategory->name ?? $paiement->motif }}</div></td>
++                    <td><div class="lbl">Catégorie</div><div class="val">{{ $paiement->libelleCategorie }}</div></td>
+                     <td><div class="lbl">Date</div><div class="val">{{ $paiement->date_paiement?->format('d/m/Y') }}</div></td>
+                     <td colspan="2"><div class="lbl">Motif</div><div class="val">{{ $paiement->motif }}</div></td>
+                 </tr>
++                @if($allocationsAvoir->count() > 1)
++                <tr>
++                    <td colspan="4">
++                        <div class="lbl">Répartition de cet avoir</div>
++                        <div class="val">
++                            @foreach($allocationsAvoir as $allocation)
++                                @if(! $loop->first) &nbsp;·&nbsp; @endif
++                                {{ $allocation->fraisCategory->name ?? 'Frais supprimé' }}
++                                {{ number_format($allocation->montant, 0, ',', ' ') }} FCFA
++                            @endforeach
++                        </div>
++                    </td>
++                </tr>
++                @endif
+             </table>
+             <table width="100%" border="0" cellspacing="0" cellpadding="0" style="border-collapse:collapse;margin-bottom:2mm">
+                 <tr>
+diff --git a/resources/views/esbtp/paiements/export-pdf.blade.php b/resources/views/esbtp/paiements/export-pdf.blade.php
+index c89183608..25378fe47 100644
+--- a/resources/views/esbtp/paiements/export-pdf.blade.php
++++ b/resources/views/esbtp/paiements/export-pdf.blade.php
+@@ -340,6 +340,13 @@
+                             case 'en_attente': case 'en attente': case 'pending': $statusLabel = 'En attente'; $statusClass = 'status-pending'; break;
+                             default: $statusLabel = $status ? mb_strtoupper(mb_substr($status, 0, 1, 'UTF-8'), 'UTF-8') . mb_substr($status, 1, null, 'UTF-8') : 'N/D'; $statusClass = 'status-default'; break;
+                         }
++
++                        // Un versement reparti sur plusieurs frais ne peut pas figurer
++                        // sous le nom d'un seul : la colonne annonce alors le nombre de
++                        // frais couverts, et la fiche du paiement en donne le detail.
++                        $libelleFrais = $paiement->allocations->count() > 1
++                            ? $paiement->libelleCategorie
++                            : ($paiement->fraisCategory->name ?? ($paiement->categorie->nom ?? ($paiement->motif ?? 'N/A')));
+                     @endphp
+                     <tr>
+                         <td style="text-align:center;"><span class="num-col">{{ $index + 1 }}</span></td>
+@@ -347,7 +354,7 @@
+                         <td style="text-align:center;"><span class="matricule-col">{{ $paiement->etudiant->matricule ?? 'N/A' }}</span></td>
+                         <td><span class="student-name">{{ trim(($paiement->etudiant->nom ?? '') . ' ' . ($paiement->etudiant->prenoms ?? '')) ?: 'N/A' }}</span></td>
+                         <td style="font-size:9px;">{{ optional(optional($paiement->inscription)->classe)->name ?? 'N/A' }}</td>
+-                        <td style="font-size:9px;">{{ $paiement->fraisCategory->name ?? ($paiement->categorie->nom ?? ($paiement->motif ?? 'N/A')) }}</td>
++                        <td style="font-size:9px;">{{ $libelleFrais }}</td>
+                         <td class="montant-col">{{ $formatMontant($paiement->montant ?? 0) }}</td>
+                         <td style="text-align:center; font-size:9px;">{{ $paiement->mode_paiement ?? 'N/A' }}</td>
+                         <td style="text-align:center;"><span class="status-badge {{ $statusClass }}">{{ $statusLabel }}</span></td>
+diff --git a/resources/views/esbtp/paiements/partials/recu-exemplaire.blade.php b/resources/views/esbtp/paiements/partials/recu-exemplaire.blade.php
+index 6d2921cdf..aaea6904c 100644
+--- a/resources/views/esbtp/paiements/partials/recu-exemplaire.blade.php
++++ b/resources/views/esbtp/paiements/partials/recu-exemplaire.blade.php
+@@ -1,6 +1,14 @@
+ @php
++    // Un versement peut couvrir plusieurs frais d'un seul geste. L'annoncer sous
++    // le nom d'un seul laisserait croire au porteur du recu que tout l'argent y
++    // est alle : on lui donne alors le decompte frais par frais.
++    $allocationsPaiement = $paiement->allocations->sortByDesc('montant');
++    $estReparti = $allocationsPaiement->count() > 1;
++
+     $categoryName = $categoryName ?? null;
+-    if ($categoryName === null) {
++    if ($estReparti) {
++        $categoryName = $paiement->libelleCategorie;
++    } elseif ($categoryName === null) {
+         if ($paiement->fraisCategory) {
+             $categoryName = $paiement->fraisCategory->name;
+         } elseif ($paiement->categorie) {
+@@ -103,7 +111,12 @@
+             </div>
+         </td>
+     </tr>
+-    @if($categoryName || $paiement->fraisCategory?->accepts_in_kind || $paiement->tranche || $paiement->reference_paiement)
++    @php
++        // La mention « regle en nature » qualifie UN frais. L'imprimer pour un
++        // versement reparti sur plusieurs frais l'etendrait a tort a tous.
++        $reglementEnNature = ! $estReparti && $paiement->fraisCategory?->accepts_in_kind;
++    @endphp
++    @if($categoryName || $reglementEnNature || $paiement->tranche || $paiement->reference_paiement)
+     <tr>
+         <td>
+             <div class="lbl">Catégorie de frais</div>
+@@ -111,7 +124,7 @@
+         </td>
+         <td>
+             <div class="lbl">Règlement</div>
+-            <div class="val">{{ $paiement->fraisCategory?->accepts_in_kind ? 'Équivalent en frais (fourniture non déposée)' : '—' }}</div>
++            <div class="val">{{ $reglementEnNature ? 'Équivalent en frais (fourniture non déposée)' : '—' }}</div>
+         </td>
+         <td>
+             <div class="lbl">Tranche</div>
+@@ -133,6 +146,29 @@
+     </tr>
+ </table>
+ 
++@if($estReparti)
++<table class="alloc" width="100%" border="0" cellspacing="0" cellpadding="0">
++    <tr>
++        <td colspan="3" style="border: none; padding-left: 0;">
++            <div class="alloc-title">Répartition de ce versement</div>
++        </td>
++    </tr>
++    @foreach ($allocationsPaiement->chunk(3) as $rangee)
++    <tr>
++        @foreach ($rangee as $allocation)
++        <td>
++            <span class="alloc-name">{{ $allocation->fraisCategory->name ?? 'Frais supprimé' }}</span>
++            <span class="alloc-amount">{{ number_format($allocation->montant, 0, ',', ' ') }}</span>
++        </td>
++        @endforeach
++        @for ($i = $rangee->count(); $i < 3; $i++)
++        <td></td>
++        @endfor
++    </tr>
++    @endforeach
++</table>
++@endif
++
+ @php
+     $fraisLignes = collect($fraisLignes ?? []);
+     $resteAPayer = (float) ($resteAPayer ?? 0);
+diff --git a/resources/views/esbtp/paiements/preview.blade.php b/resources/views/esbtp/paiements/preview.blade.php
+index 29ad99eb9..8099122ef 100644
+--- a/resources/views/esbtp/paiements/preview.blade.php
++++ b/resources/views/esbtp/paiements/preview.blade.php
+@@ -288,6 +288,28 @@
+         color: var(--rc-text);
+     }
+ 
++    /* ── Repartition du versement ── */
++    .rc-alloc-list {
++        list-style: none;
++        margin: 6px 0 0;
++        padding: 0;
++    }
++
++    .rc-alloc-list li {
++        display: flex;
++        justify-content: space-between;
++        gap: 16px;
++        padding: 4px 0;
++        font-size: 15px;
++        font-weight: 500;
++        color: var(--rc-text);
++        border-bottom: 1px dotted var(--rc-border);
++    }
++
++    .rc-alloc-list li:last-child { border-bottom: none; }
++
++    .rc-alloc-amount { font-weight: 700; white-space: nowrap; }
++
+     /* ── Amount Section ── */
+     .rc-amount-section {
+         margin-bottom: 20px;
+@@ -595,6 +617,10 @@
+                                     <div class="rc-kv-value">{{ $paiement->motif }}</div>
+                                 </div>
+                                 @php
++                                    // Un versement reparti ne peut pas s'annoncer sous le nom d'un
++                                    // seul frais : le lecteur du recu croirait que tout l'argent y
++                                    // est alle. On liste alors la part recue par chaque frais.
++                                    $allocations = $paiement->allocations->sortByDesc('montant');
+                                     $categoryName = null;
+                                     if ($paiement->fraisCategory) {
+                                         $categoryName = $paiement->fraisCategory->name;
+@@ -602,13 +628,27 @@
+                                         $categoryName = $paiement->categorie->nom ?? null;
+                                     }
+                                 @endphp
+-                                @if($categoryName)
++                                @if($allocations->count() > 1)
++                                <div class="rc-kv-row">
++                                    <div class="rc-kv-label">Répartition</div>
++                                    <div class="rc-kv-value">
++                                        <ul class="rc-alloc-list">
++                                            @foreach($allocations as $allocation)
++                                            <li>
++                                                <span>{{ $allocation->fraisCategory->name ?? 'Frais supprimé' }}</span>
++                                                <span class="rc-alloc-amount">{{ number_format($allocation->montant, 0, ',', ' ') }} FCFA</span>
++                                            </li>
++                                            @endforeach
++                                        </ul>
++                                    </div>
++                                </div>
++                                @elseif($categoryName)
+                                 <div class="rc-kv-row">
+                                     <div class="rc-kv-label">Catégorie de frais</div>
+                                     <div class="rc-kv-value">{{ $categoryName }}</div>
+                                 </div>
+                                 @endif
+-                                @if($paiement->fraisCategory?->accepts_in_kind)
++                                @if($allocations->count() <= 1 && $paiement->fraisCategory?->accepts_in_kind)
+                                 <div class="rc-kv-row">
+                                     <div class="rc-kv-label">Règlement</div>
+                                     <div class="rc-kv-value">Équivalent en frais (fourniture non déposée)</div>
+diff --git a/resources/views/esbtp/paiements/recu.blade.php b/resources/views/esbtp/paiements/recu.blade.php
+index 7039f3601..18b561b6c 100644
+--- a/resources/views/esbtp/paiements/recu.blade.php
++++ b/resources/views/esbtp/paiements/recu.blade.php
+@@ -186,6 +186,25 @@
+             padding: 2mm 3mm;
+         }
+ 
++        /* Repartition d'un versement sur plusieurs frais */
++        .alloc { width: 100%; border-collapse: collapse; margin-bottom: 2mm; }
++        .alloc td {
++            width: 33.33%;
++            border: 0.4pt solid #cbd5e1;
++            padding: 1.2mm 2mm;
++            font-size: 8px;
++            vertical-align: middle;
++        }
++        .alloc-title {
++            font-size: 7px;
++            color: #64748b;
++            text-transform: uppercase;
++            letter-spacing: 0.04em;
++            margin-bottom: 1mm;
++        }
++        .alloc-name { color: #1e293b; }
++        .alloc-amount { font-weight: 700; color: {{ $primary }}; }
++
+         .fees { width: 100%; border-collapse: collapse; margin: 1.5mm 0; }
+         .fees td {
+             width: 33.33%;
+diff --git a/resources/views/esbtp/paiements/show.blade.php b/resources/views/esbtp/paiements/show.blade.php
+index f137da933..104a0c3d4 100644
+--- a/resources/views/esbtp/paiements/show.blade.php
++++ b/resources/views/esbtp/paiements/show.blade.php
+@@ -275,6 +275,24 @@
+ .ps-pending-text p { color: #a16207; font-size: .82rem; margin: 2px 0 0; }
+ .ps-pending-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+ 
++/* Repartition d'un versement sur plusieurs frais */
++.ps-alloc { width: 100%; border-collapse: collapse; }
++.ps-alloc th {
++    font-size: .74rem; font-weight: 700; color: var(--k-muted);
++    text-transform: uppercase; letter-spacing: .05em;
++    text-align: left; padding: 0 0 10px; border-bottom: 1px solid #e2e8f0;
++}
++.ps-alloc th.num, .ps-alloc td.num { text-align: right; }
++.ps-alloc td {
++    font-size: .88rem; font-weight: 600; color: var(--k-text);
++    padding: 12px 0; border-bottom: 1px solid #f1f5f9;
++}
++.ps-alloc tfoot td {
++    font-weight: 800; color: var(--k-blue);
++    border-bottom: none; border-top: 2px solid rgba(4,83,203,.18);
++}
++.ps-alloc-hint { font-size: .8rem; color: var(--k-muted); margin: 0 0 14px; line-height: 1.5; }
++
+ /* ── Animation ───────────────────────────────────────────────── */
+ @keyframes psFadeUp {
+     from { opacity: 0; transform: translateY(16px); }
+@@ -294,6 +312,12 @@
+ @endsection
+ 
+ @section('content')
++@php
++    // La repartition, quand elle existe, est la seule source honnete : elle dit
++    // ou est reellement alle chaque franc du versement. Chargee une fois ici
++    // pour que la fiche et le tableau de detail lisent la meme collection.
++    $allocations = $paiement->allocations->sortByDesc('montant');
++@endphp
+ <div class="ps-page">
+ 
+ {{-- ═══ HERO ═══ --}}
+@@ -452,7 +476,11 @@ class="ps-btn warning"
+                     <div class="ps-info">
+                         <span class="ps-info-lbl">Catégorie de frais</span>
+                         <span class="ps-info-val">
+-                            @if($paiement->fraisCategory)
++                            @if($allocations->count() > 1)
++                                {{-- Nommer une seule categorie ici laisserait croire que tout
++                                     l'argent y est alle : le detail est plus bas. --}}
++                                <span class="ps-badge blue"><i class="fas fa-layer-group"></i> {{ $paiement->libelleCategorie }}</span>
++                            @elseif($paiement->fraisCategory)
+                                 <span class="ps-badge blue"><i class="fas fa-tag"></i> {{ $paiement->fraisCategory->name }}</span>
+                             @else
+                                 <span class="ps-badge" style="background:#f1f5f9; color:var(--k-muted);">Non définie</span>
+@@ -574,6 +602,46 @@ class="ps-btn warning"
+         </div>
+     </div>
+ 
++    {{-- ═══ Repartition du versement ═══ --}}
++    @if($allocations->count() > 1)
++    <div class="ps-card" style="margin-top:20px;">
++        <div class="ps-card-header">
++            <div class="ps-card-icon"><i class="fas fa-layer-group"></i></div>
++            <div class="ps-card-title">Répartition du versement</div>
++        </div>
++        <div class="ps-card-body">
++            <p class="ps-alloc-hint">
++                Ce versement unique a été réparti sur plusieurs frais.
++                Voici la part reçue par chacun.
++            </p>
++            <table class="ps-alloc">
++                <thead>
++                    <tr>
++                        <th>Frais</th>
++                        <th class="num">Montant affecté</th>
++                    </tr>
++                </thead>
++                <tbody>
++                    @foreach($allocations as $allocation)
++                    <tr>
++                        <td>
++                            <span class="ps-badge blue"><i class="fas fa-tag"></i> {{ $allocation->fraisCategory->name ?? 'Frais supprimé' }}</span>
++                        </td>
++                        <td class="num">{{ number_format($allocation->montant, 0, ',', ' ') }} FCFA</td>
++                    </tr>
++                    @endforeach
++                </tbody>
++                <tfoot>
++                    <tr>
++                        <td>Total réparti</td>
++                        <td class="num">{{ number_format($allocations->sum('montant'), 0, ',', ' ') }} FCFA</td>
++                    </tr>
++                </tfoot>
++            </table>
++        </div>
++    </div>
++    @endif
++
+     {{-- ═══ Commentaires & Historique ═══ --}}
+     <div class="ps-card" style="margin-top:20px;">
+         <div class="ps-card-header">
