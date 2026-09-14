@@ -54,7 +54,12 @@ class FinanceDemoData
 
         $count += $this->seedAnalyticsOutliers($students['inscriptions'], $scolarite, $configs);
 
+        $renumerotes = $this->normaliserLesRecus();
+
         $this->command?->line(sprintf('   • %d paiements créés (mix profils + outliers)', $count));
+        if ($renumerotes > 0) {
+            $this->command?->line(sprintf('   • %d numéros de reçu de démo remis sur le schéma déterministe', $renumerotes));
+        }
     }
 
     private function pickProfile(): array
@@ -94,7 +99,7 @@ class FinanceDemoData
                 'mode_paiement'          => self::MODES_PAIEMENT[array_rand(self::MODES_PAIEMENT)],
                 'date_paiement'          => $date,
                 'status'                 => 'validé',
-                'numero_recu'            => $this->makeReceiptNumber(),
+                'numero_recu'            => $this->makeReceiptNumber($insc, $cat->id),
                 'reference_paiement'     => 'PAY-' . strtoupper(\Illuminate\Support\Str::random(8)),
             ]
         );
@@ -143,7 +148,7 @@ class FinanceDemoData
                     'mode_paiement'          => self::MODES_PAIEMENT[array_rand(self::MODES_PAIEMENT)],
                     'date_paiement'          => $payDate,
                     'status'                 => 'validé',
-                    'numero_recu'            => $this->makeReceiptNumber(),
+                    'numero_recu'            => $this->makeReceiptNumber($insc, $cat->id, '-T' . ($i + 1)),
                     'reference_paiement'     => 'PAY-' . strtoupper(\Illuminate\Support\Str::random(8)),
                 ]
             );
@@ -186,7 +191,7 @@ class FinanceDemoData
                     'mode_paiement'          => 'Virement',
                     'date_paiement'          => Carbon::now()->subDays(mt_rand(2, 25)),
                     'status'                 => 'validé',
-                    'numero_recu'            => $this->makeReceiptNumber(),
+                    'numero_recu'            => $this->makeReceiptNumber($insc, $scolarite->id, '-OUT'),
                     'reference_paiement'     => 'OUTLIER-' . strtoupper(\Illuminate\Support\Str::random(6)),
                     'commentaire'            => 'Paiement aberrant injecté par PresentationDemoSeeder pour analytics.',
                 ]
@@ -200,8 +205,76 @@ class FinanceDemoData
         return $count;
     }
 
-    private function makeReceiptNumber(): string
+    /**
+     * Remettre sur le schema deterministe les recus tires au sort par les
+     * passages precedents.
+     *
+     * `firstOrCreate` ne corrige pas une ligne existante : sans cette passe,
+     * les doublons deja en base survivraient a toutes les re-executions. Elle
+     * ne touche QUE les numeros `REC-DEMO-%`, donc rien qui vienne d'un vrai
+     * encaissement, et elle est idempotente — un numero deja conforme n'est
+     * pas reecrit.
+     */
+    private function normaliserLesRecus(): int
     {
-        return 'REC-DEMO-' . str_pad((string) mt_rand(1, 99999), 5, '0', STR_PAD_LEFT);
+        $corriges = 0;
+
+        ESBTPPaiement::withTrashed()
+            ->where('numero_recu', 'like', 'REC-DEMO-%')
+            ->whereNotNull('inscription_id')
+            ->whereNotNull('frais_category_id')
+            ->chunkById(200, function (Collection $lot) use (&$corriges) {
+                foreach ($lot as $paiement) {
+                    $attendu = sprintf(
+                        'REC-DEMO-%d-%d%s',
+                        $paiement->inscription_id,
+                        $paiement->frais_category_id,
+                        $this->suffixeDepuisLeMotif((string) $paiement->motif)
+                    );
+
+                    if ($paiement->numero_recu === $attendu) {
+                        continue;
+                    }
+
+                    $paiement->numero_recu = $attendu;
+                    $paiement->saveQuietly();
+                    $corriges++;
+                }
+            });
+
+        return $corriges;
+    }
+
+    /** Le motif porte deja la nature du versement : on la relit plutot que de la deviner. */
+    private function suffixeDepuisLeMotif(string $motif): string
+    {
+        if (str_contains($motif, 'outlier')) {
+            return '-OUT';
+        }
+
+        if (preg_match('/tranche (\d+)\/3/u', $motif, $m) === 1) {
+            return '-T' . $m[1];
+        }
+
+        return '';
+    }
+
+    /**
+     * Un numero de recu derive de la ligne qu'il designe, et non tire au sort.
+     *
+     * `mt_rand(1, 99999)` rendait deux fois le meme numero des que la demo
+     * depassait quelques centaines de paiements — le paradoxe des
+     * anniversaires suffit, il n'y a pas besoin de malchance. Sur
+     * `presentation`, trois numeros etaient ainsi portes par deux paiements
+     * VIVANTS chacun, ce qu'aucune instance reelle ne presentait : la demo
+     * fabriquait un defaut que la production n'avait pas, et bloquait a elle
+     * seule la pose de l'index unique.
+     *
+     * Derive de l'inscription et du frais, le numero est unique par
+     * construction et stable d'un passage a l'autre.
+     */
+    private function makeReceiptNumber(ESBTPInscription $inscription, int $categoryId, string $suffixe = ''): string
+    {
+        return sprintf('REC-DEMO-%d-%d%s', $inscription->id, $categoryId, $suffixe);
     }
 }
