@@ -634,6 +634,7 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
 
         // Niveaux d'etudes — pendant des filieres pour l'ouverture d'un tenant.
         Route::get('/niveaux/coherence', [App\Http\Controllers\API\CLI\CLINiveauEtudeController::class, 'coherence'])->name('niveaux.coherence');
+        Route::post('/niveaux/{niveau}/annee', [App\Http\Controllers\API\CLI\CLINiveauEtudeController::class, 'corrigerAnnee'])->whereNumber('niveau')->name('niveaux.corriger-annee');
         Route::get('/niveaux', [App\Http\Controllers\API\CLI\CLINiveauEtudeController::class, 'index'])->name('niveaux.index');
         Route::post('/niveaux', [App\Http\Controllers\API\CLI\CLINiveauEtudeController::class, 'store'])->name('niveaux.store');
         Route::post('/classes', [App\Http\Controllers\API\CLI\CLIClasseController::class, 'store'])->name('classes.store');

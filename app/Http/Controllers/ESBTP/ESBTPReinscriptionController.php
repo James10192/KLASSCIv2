@@ -1190,7 +1190,7 @@ class ESBTPReinscriptionController extends Controller
                 ->map(function($niveau) {
                     return [
                         'id' => $niveau->id,
-                        'name' => $this->formatNiveauLabel($niveau->year, $niveau->type)
+                        'name' => $this->formatNiveauLabel($niveau)
                     ];
                 });
 
@@ -1209,13 +1209,20 @@ class ESBTPReinscriptionController extends Controller
     }
 
     /**
-     * Formate le label d'un niveau : "1ère année — BTS", "2ème année — Licence", etc.
+     * Formate le label d'un niveau : "1ère année — BTS", etc.
+     *
+     * Un niveau LMD garde son nom : son annee est comptee en continu, et un
+     * Master 1 affiche en « 4ème année — Master » ne se reconnaitrait pas.
      */
-    private function formatNiveauLabel(int $year, string $type): string
+    private function formatNiveauLabel(\App\Models\ESBTPNiveauEtude $niveau): string
     {
-        $suffixes = [1 => 'ère', 2 => 'ème', 3 => 'ème', 4 => 'ème', 5 => 'ème'];
-        $suffix = $suffixes[$year] ?? 'ème';
-        return "{$year}{$suffix} année — {$type}";
+        if ($niveau->estUnCycleLmd()) {
+            return $niveau->name;
+        }
+
+        $suffix = (int) $niveau->year === 1 ? 'ère' : 'ème';
+
+        return "{$niveau->year}{$suffix} année — {$niveau->type}";
     }
 
     /**

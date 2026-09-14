@@ -14,13 +14,66 @@ use Illuminate\Support\Facades\Schema;
  * unites de Licence qu'il recevait a tort. Si des notes, des evaluations ou des
  * bulletins ont deja ete ecrits sur ces unites, la correction les detacherait.
  *
- * On ne corrige donc rien ici : on montre, pour chaque niveau incoherent, ce
- * que la correction toucherait. La decision revient a qui connait l'ecole.
- *
- * Lecture seule.
+ * Le rapport montre, pour chaque niveau incoherent, ce que la correction
+ * toucherait. La correction elle-meme n'est faite que sur demande, niveau par
+ * niveau, et refusee des qu'une donnee academique s'y rattache : la decision
+ * revient a qui connait l'ecole, et ce qui a deja ete note ne se deplace pas
+ * en silence.
  */
 class CoherenceNiveauxLmd
 {
+    /** Ce qui se detacherait si les semestres du niveau changeaient. */
+    private const DEPENDANCES_BLOQUANTES = [
+        'unites_enseignement', 'seances', 'evaluations', 'notes', 'bulletins_lmd', 'jurys',
+    ];
+
+    /**
+     * Passe un niveau LMD sur une annee de son cycle. Sans `$appliquer`, rend
+     * seulement ce qui serait fait.
+     *
+     * @return array{applique: bool, refus: list<string>, niveau: array<string,mixed>, annee_cible: int}
+     */
+    public function corrigerAnnee(ESBTPNiveauEtude $niveau, int $annee, bool $appliquer): array
+    {
+        $detail = $this->detail($niveau);
+        $refus = $this->refus($niveau, $annee, $detail['dependances']);
+        $applique = $appliquer && $refus === [];
+
+        if ($applique) {
+            $niveau->update(['year' => $annee]);
+        }
+
+        return ['applique' => $applique, 'refus' => $refus, 'niveau' => $detail, 'annee_cible' => $annee];
+    }
+
+    /** @return list<string> */
+    private function refus(ESBTPNiveauEtude $niveau, int $annee, array $dependances): array
+    {
+        if (! $niveau->estUnCycleLmd()) {
+            return ["{$niveau->name} n'est pas un niveau LMD."];
+        }
+
+        $refus = [];
+        $annees = ESBTPNiveauEtude::ANNEES_PAR_CYCLE_LMD[$niveau->type];
+        if (! in_array($annee, $annees, true)) {
+            $refus[] = sprintf('Un %s porte une annee parmi %s, pas %d.', $niveau->type, implode(', ', $annees), $annee);
+        }
+
+        $homonyme = ESBTPNiveauEtude::where('type', $niveau->type)->where('year', $annee)
+            ->whereKeyNot($niveau->getKey())->first();
+        if ($homonyme) {
+            $refus[] = "Le niveau {$homonyme->name} (id {$homonyme->id}) porte deja {$niveau->type} annee {$annee}.";
+        }
+
+        foreach (self::DEPENDANCES_BLOQUANTES as $cle) {
+            if ($dependances[$cle] > 0) {
+                $refus[] = "{$dependances[$cle]} {$cle} rattache(s) : la correction les detacherait de leurs semestres.";
+            }
+        }
+
+        return $refus;
+    }
+
     /** @return array{niveaux_lmd: int, incoherents: list<array<string,mixed>>} */
     public function rapport(): array
     {

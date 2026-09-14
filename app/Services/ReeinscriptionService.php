@@ -9,6 +9,7 @@ use App\Models\ESBTPNote;
 use App\Models\ESBTPMatiere;
 use App\Models\ESBTPFraisSubscription;
 use App\Models\ESBTPInscription;
+use App\Models\ESBTPNiveauEtude;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use App\Services\Inscriptions\NormalisationTypeInscription;
@@ -620,6 +621,25 @@ class ReeinscriptionService
         $yearActuel = $niveauActuel->year;
         $typeActuel = $niveauActuel->type;
         $filiereId = $classeActuelle->filiere_id;
+
+        // En LMD l'annee est comptee en continu d'un cycle a l'autre : l'annee
+        // qui suit la Licence 3 (annee 3) est le Master 1 (annee 4), celle qui
+        // suit le Master 2 le Doctorat. Le passage se cherche donc sur l'annee
+        // suivante, quel que soit le cycle. Le repli « premiere annee d'un autre
+        // type » ci-dessous n'a de sens que hors LMD : applique a une Licence 3,
+        // il proposerait une premiere annee de BTS.
+        if ($niveauActuel->estUnCycleLmd()) {
+            $cyclesLmd = array_keys(ESBTPNiveauEtude::ANNEES_PAR_CYCLE_LMD);
+
+            return ESBTPClasse::where('filiere_id', $filiereId)
+                ->where('is_active', 1)
+                ->whereHas('niveau', function ($query) use ($yearActuel, $cyclesLmd) {
+                    $query->where('year', $yearActuel + 1)
+                          ->whereIn('type', $cyclesLmd);
+                })
+                ->with(['niveau', 'filiere'])
+                ->get();
+        }
 
         // Passage normal : même type de formation, année suivante (year + 1)
         $classesNiveauSuivant = ESBTPClasse::where('filiere_id', $filiereId)

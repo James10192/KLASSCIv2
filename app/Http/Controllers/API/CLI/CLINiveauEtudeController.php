@@ -39,6 +39,45 @@ class CLINiveauEtudeController extends BaseApiController
     }
 
     /**
+     * POST /api/cli/niveaux/{niveau}/annee — Replace un niveau LMD sur une
+     * annee de son cycle. Previsualisation sans `apply: true`.
+     *
+     * Body: { year: int, apply?: bool }
+     */
+    public function corrigerAnnee(Request $request, ESBTPNiveauEtude $niveau, \App\Services\LMD\CoherenceNiveauxLmd $coherence): JsonResponse
+    {
+        if (! $request->user()->tokenCan('cli:admin')) {
+            return $this->errorResponse('Token missing cli:admin ability', [], 403);
+        }
+
+        $validated = $request->validate([
+            'year' => 'required|integer|min:1|max:10',
+            'apply' => 'nullable|boolean',
+        ]);
+
+        $avant = (int) $niveau->year;
+        $resultat = $coherence->corrigerAnnee($niveau, (int) $validated['year'], (bool) ($validated['apply'] ?? false));
+
+        if ($resultat['applique']) {
+            Log::warning('CLI: annee de niveau LMD corrigee', [
+                'niveau_id' => $niveau->id,
+                'avant' => $avant,
+                'apres' => $resultat['annee_cible'],
+                'caller_user_id' => $request->user()->id,
+                'ip' => $request->ip(),
+            ]);
+        }
+
+        $message = match (true) {
+            $resultat['refus'] !== [] => 'Correction refusee.',
+            $resultat['applique'] => "{$niveau->name} passe en annee {$resultat['annee_cible']}.",
+            default => 'Aucune ecriture : previsualisation seulement.',
+        };
+
+        return $this->successResponse($resultat, $message);
+    }
+
+    /**
      * GET /api/cli/niveaux
      */
     public function index(Request $request): JsonResponse

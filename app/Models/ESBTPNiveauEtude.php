@@ -42,9 +42,16 @@ class ESBTPNiveauEtude extends Model
      */
     public function anneeCoherenteAvecSonCycle(): ?bool
     {
-        $annees = self::ANNEES_PAR_CYCLE_LMD[$this->type] ?? null;
+        if (! $this->estUnCycleLmd()) {
+            return null;
+        }
 
-        return $annees === null ? null : in_array((int) $this->year, $annees, true);
+        return in_array((int) $this->year, self::ANNEES_PAR_CYCLE_LMD[$this->type], true);
+    }
+
+    public function estUnCycleLmd(): bool
+    {
+        return array_key_exists((string) $this->type, self::ANNEES_PAR_CYCLE_LMD);
     }
 
     /**
