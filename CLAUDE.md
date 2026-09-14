@@ -25,8 +25,16 @@ Sans ça, aucun garde-fou : git ne versionne pas `.git/hooks`, et un poste neuf 
 `fix` touchant `app/` `resources/` `routes/` `database/` sans entrée dans `CHANGELOG.md`
 (échappatoire assumée : `[sans-changelog]` dans le corps).
 
-Les hooks se contournent avec `--no-verify` ; le contrôle serveur
-(`.github/workflows/hygiene-commits.yml`) rejoue les mêmes règles et ne se contourne pas.
+**Refusé localement seulement, par `pre-commit` :** les quatre pièges Blade silencieux
+(`@php(...)` court avalé par un `@endphp` plus bas, directive dans un commentaire JS/HTML,
+`<x-composant>` dans un commentaire CSS/JS, `@json([...])` multiligne). Ils compilent sans
+erreur et cassent la page **au rendu, chez l'utilisateur** — `view:cache` ne les voit pas.
+Voir [.claude/rules/blade-pitfalls.md](.claude/rules/blade-pitfalls.md).
+
+Les hooks se contournent avec `--no-verify`. Pour le message de commit, le contrôle serveur
+(`.github/workflows/hygiene-commits.yml`) rejoue les mêmes règles et ne se contourne pas —
+contourner en local ne fait que déplacer l'échec. **Pour les pièges Blade, aucun contrôle
+serveur ne rejoue :** `--no-verify` les laisse passer jusqu'en production.
 
 Les notes de version pour klassci-landing se produisent, elles ne se recopient pas :
 `php artisan release:notes --sortie=release.json`. Voir [docs/VERSIONING.md](docs/VERSIONING.md).
@@ -108,7 +116,14 @@ Le rôle `parent` a été supprimé : les parents utilisent le compte de leur en
 - Backend prêt : `GET /esbtp/classes/{id}/available-places` + `ClasseManagementService::getAvailablePlaces()`
 
 ### 🟡 Moyenne
-- Refactoring controllers : `ESBTPBulletinController` (6852 lignes), `ESBTPComptabiliteController` (~2950 lignes), `ESBTPInscriptionController` (3275 lignes) → extraire services
+- Refactoring : les plus gros fichiers du dépôt, mesurés (`wc -l`, septembre 2026) —
+  `app/Services/BulletinService.php` **3969**, `ESBTPResultatController` **3343**,
+  `app/Services/NotificationService.php` **3056**, `ESBTPInscriptionController` **2869**,
+  `ESBTPBulletinController` **2526** → extraire services.
+  `ESBTPComptabiliteController` est **fait** : 204 lignes, éclaté en `…RelanceController` (1233),
+  `…FraisController` (430), `…AnalyticsController` (421), `…ReportController` (47).
+  Le seuil qui se tient en revue est celui de la **méthode** (> 80 lignes), pas du fichier —
+  voir l'axe 6 de [.claude/skills/thermo-review/SKILL.md](.claude/skills/thermo-review/SKILL.md).
 - Chatbot : intents `get_etudiants`, `get_classes` + contexte conversationnel
 
 ### 🟢 Backlog

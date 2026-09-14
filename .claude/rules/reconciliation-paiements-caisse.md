@@ -29,53 +29,83 @@ Le comptable doit pouvoir :
 4. Justifier la correction (motif obligatoire)
 5. Garantir l'audit trail immuable (qui a fait quoi quand, snapshot avant/après)
 
-KLASSCI a déjà partiellement les briques (verrouillage période OHADA, permissions, `paiements.manage`) mais **aucune feature de réconciliation guidée** n'existe à ce jour.
+## État actuel — la feature EST construite
 
-## État actuel KLASSCI (à savoir avant de coder)
+> **Cette rule a d'abord été un cahier des charges. Elle ne l'est plus.** Tout ce qui
+> suit (modèles, actions, workflow, permissions, écrans, PV) existe dans le dépôt depuis
+> juin 2026. Les sections « architecture », « schéma », « workflow » et « API » décrivent
+> désormais **ce qui est en place**, pas ce qu'il reste à écrire. Ne reconstruisez rien :
+> ouvrez `app/Domain/Comptabilite/Reconciliation/` d'abord.
+
+Vérifiable en une commande :
+
+```bash
+find app/Domain/Comptabilite/Reconciliation -name '*.php' | sort
+ls resources/views/esbtp/comptabilite/reconciliation/   # create, index, pdf, show
+grep -n "comptabilite/reconciliation" routes/web.php
+grep -n "comptabilite.reconciliation" config/permissions.php
+```
 
 ### Garde-fous existants
 
-1. **`status='validé'` quasi-immuable** : `ESBTPPaiementController::update()` lignes 503-506 refuse toute modification d'un paiement validé.
-2. **Permission `paiements.manage`** : seuls les users avec cette perm peuvent éditer un paiement (lignes 490, 536).
-3. **Verrouillage période comptable** (`comptabilite.period_locked_until`) : voir `ESBTPPaiementController::assertPeriodNotLocked()` ligne 1812. Bloque modification rétroactive de toute période passée.
-4. **Bypass permission `comptabilite.period.bypass_lock`** : rare, journalisé en `Log::warning('[S1.4] Bypass verrouillage période utilisé')`.
-5. **Soft-delete** sur `esbtp_paiements` (`deleted_at`).
-6. **Champs audit** sur ESBTPPaiement : `created_by`, `updated_by`, `validated_by`, `date_validation`.
+Cités par **nom**, pas par numéro de ligne — les lignes bougent à chaque refactor, et
+les anciennes adresses écrites ici étaient toutes fausses au bout de trois mois.
 
-### Briques manquantes (à construire pour la feature)
+1. **`status='validé'` quasi-immuable** — `ESBTPPaiementController::update()` refuse la
+   modification d'un paiement validé, avant toute autre garde.
+2. **Permission `paiements.manage`** — exigée en tête de `update()`.
+3. **Verrouillage de période comptable** (`comptabilite.period_locked_until`) —
+   `assertPeriodNotLocked()` vit dans le trait
+   `app/Http/Controllers/Concerns/VerrouilleLesPeriodesComptables.php`, partagé par
+   `ESBTPPaiementController`, `VentilationPaiementController` et `ModeReglementController`.
+4. **Verrouillage post-réconciliation** — `assertReconciliationNotLocked()`, même trait,
+   appuyé sur `esbtp_paiements.reconciliation_locked_at`.
+5. **Bypass `comptabilite.period.bypass_lock`** — rare, journalisé en `Log::warning`.
+6. **Soft-delete** sur `esbtp_paiements`, et **`OwenIt\Auditing`** branché sur
+   `ESBTPPaiement` (`implements Auditable` + whitelist `$auditInclude`).
 
-1. **Comptage caisse physique** : pas de modèle `CashCount` qui stocke le montant compté par mode/date.
-2. **Session réconciliation** : pas de wrapper qui groupe N corrections sous 1 session avec ID unique, statut workflow.
-3. **Audit log dense** : `OwenIt\Auditing` n'est pas branché sur ESBTPPaiement (seul `updated_by` existe — pas de snapshot avant/après).
-4. **UI guidée** : pas de wizard comptable « écart constaté → ligne candidate → action ».
-5. **Verrouillage automatique des paiements rapprochés** : permettrait de différencier « paiement déjà réconcilié » de « paiement libre ».
-6. **PV de réconciliation PDF** : pour signature comptable + archivage légal.
+## Architecture livrée (Domain-driven)
 
-## Architecture cible (Domain-driven)
+Inventaire réel (`find app/Domain/Comptabilite/Reconciliation -name '*.php'`) :
 
 ```
 app/Domain/Comptabilite/Reconciliation/
 ├── Models/
-│   ├── ReconciliationSession.php          // 1 session = 1 cycle de réconciliation (jour/mois)
-│   ├── CashCount.php                      // Comptage caisse physique par mode
+│   ├── ReconciliationSession.php          // 1 session = 1 cycle (jour/mois)
+│   ├── CashCount.php                      // comptage caisse physique par mode
 │   ├── ReconciliationDiscrepancy.php      // 1 ligne d'écart constaté
-│   └── PaymentReconciliationLog.php       // Trace immuable correction paiement
+│   └── PaymentReconciliationLog.php       // trace immuable d'une correction
+├── Actions/                               // une action = une transition du workflow
+│   ├── OpenSession.php                    // draft
+│   ├── RecordCashCount.php                // saisie d'un comptage
+│   ├── DetectDiscrepancies.php            // calcul des écarts
+│   ├── ResolveDiscrepancy.php             // résolution d'une ligne + log dense
+│   ├── ReviewSession.php                  // → review
+│   ├── ApproveSession.php                 // → approved (2e personne)
+│   ├── CloseSession.php                   // → locked + PV
+│   └── ReopenSession.php                  // réouverture exceptionnelle
 ├── Services/
-│   ├── ReconciliationSessionService.php   // open/close session, calcul écart
-│   ├── CashCountCaptureService.php        // saisie comptage par mode
-│   ├── DiscrepancyResolverService.php     // workflow résolution écart
-│   └── ReconciliationPVGeneratorService.php  // PV PDF signable
-├── Actions/
-│   ├── AdjustPaymentForReconciliation.php // mutation paiement avec audit
-│   ├── CreateCorrectivePayment.php        // crée un paiement correctif
-│   └── LockReconciledPayments.php         // verrouille post-réconciliation
-└── Events/
-    ├── ReconciliationSessionOpened.php
-    ├── PaymentAdjusted.php
-    └── ReconciliationApproved.php
+│   ├── ReconciliationSessionService.php   // orchestration
+│   ├── ReconciliationMetricsService.php   // KPIs et santé
+│   └── PaymentDrillDownService.php        // lignes candidates d'un écart
+├── Support/
+│   └── SeparationOfDutiesGuard.php        // opened_by ≠ approved_by (OHADA)
+├── Events/
+│   ├── ReconciliationSessionOpened.php
+│   ├── PaymentAdjusted.php
+│   ├── ReconciliationApproved.php
+│   └── ReconciliationClosed.php
+├── Listeners/
+│   └── LockPaymentsAfterReconciliation.php // pose reconciliation_locked_at
+└── Notifications/
+    └── ReconciliationOverdueNotification.php
 ```
 
-## Schéma DB (proposition)
+La séparation des devoirs n'est pas qu'une consigne de cette rule : elle est portée
+par `SeparationOfDutiesGuard`, et conditionnée au réglage d'instance
+`comptabilite.reconciliation.require_separation_of_duties`.
+
+## Schéma DB (en place)
 
 ```sql
 -- Sessions de réconciliation (1 par jour ou par période)
@@ -219,7 +249,7 @@ ALTER TABLE esbtp_paiements
    - Rétention 10 ans (norme OHADA Côte d'Ivoire)
 ```
 
-## Permissions à ajouter (registry `config/permissions.php`)
+## Permissions (registry `config/permissions.php`, déjà déclarées)
 
 ```php
 'comptabilite.reconciliation.view' => [
@@ -267,7 +297,7 @@ Defaults : `comptabilite.reconciliation.view + open + resolve` à `comptable`. `
 7. **TOUJOURS exiger motif texte ≥ 10 caractères** sur chaque action de résolution (cas legal en cas de contrôle fiscal).
 8. **TOUJOURS générer PV PDF même si écart = 0** : preuve qu'une réconciliation a été effectuée.
 
-## API REST attendue
+## API REST (routes en place sous `comptabilite/reconciliation`)
 
 ```
 POST   /esbtp/comptabilite/reconciliation/sessions          Open new session
@@ -285,7 +315,7 @@ GET    /esbtp/comptabilite/reconciliation/sessions/{id}/pv      Download PV PDF
 
 Toutes en AJAX-no-reload (rule `ajax-no-reload-premium`), validation `FormRequest`, throttle 30/min.
 
-## UI premium attendue (namespace `rec-*`)
+## UI premium (namespace `rec-*`) — `resources/views/esbtp/comptabilite/reconciliation/`
 
 - **Hero gradient bleu** avec icône `fa-balance-scale`, KPIs : sessions ce mois, montant écart total, sessions en review/approuvées
 - **Tableau sessions** : code, période, status badge, écart total, opened_by, approved_by, actions
@@ -334,5 +364,5 @@ Toutes en AJAX-no-reload (rule `ajax-no-reload-premium`), validation `FormReques
 - `.claude/rules/premium-redesign.md` — namespace `rec-*`, palette KLASSCI
 - `.claude/rules/exports-pdf-excel.md` — PV PDF via `<x-pdf-document>` + `ExportableReport`
 - Norme OHADA Côte d'Ivoire : rétention 10 ans, séparation des devoirs comptable/approbateur
-- `app/Http/Controllers/ESBTPPaiementController.php::assertPeriodNotLocked()` — pattern verrouillage déjà en place
+- `app/Http/Controllers/Concerns/VerrouilleLesPeriodesComptables.php` — le trait qui porte `assertPeriodNotLocked()` et `assertReconciliationNotLocked()`
 - `docs/audits/2026-06-04-audit-comptable-klassci.md` — audit qui a déclenché cette rule

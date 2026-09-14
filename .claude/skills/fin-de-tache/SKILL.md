@@ -1,6 +1,6 @@
 ---
 name: fin-de-tache
-description: Ouvre et tient le compte rendu de complétude d'une tâche KLASSCI, pour ne jamais rendre un travail à moitié fait. À utiliser dès qu'une demande comporte plusieurs points, produit du code, des fichiers, des issues ou un livrable. Le hook Stop refuse de rendre la main tant qu'un point reste non coché. Use at the start of any multi-part task, not at the end.
+description: Ouvre et tient le compte rendu de complétude d'une tâche KLASSCI, pour ne jamais rendre un travail à moitié fait. À utiliser dès qu'une demande comporte plusieurs points, produit du code, des fichiers, des issues ou un livrable. Le hook Stop rappelle une fois les points non cochés avant de rendre la main. Use at the start of any multi-part task, not at the end.
 ---
 
 # Fin de tâche
@@ -80,9 +80,22 @@ Une raison valable nomme l'obstacle : une décision qui lui appartient, une donn
 
 `.claude/hooks/completude-check.sh`, branché sur `Stop` dans `.claude/settings.json`.
 
-**Il refuse** de rendre la main si `.claude/completude.md` existe et contient une case non cochée, ou le marqueur `À COMPLÉTER`.
+**Il interrompt une fois** si `.claude/completude.md` existe et contient une case non cochée, ou le marqueur `À COMPLÉTER`. Une fois, pas indéfiniment : c'est un rappel qui force à regarder la liste, pas un verrou.
 
-**Il ne peut pas** juger si le travail est bon. Un compte rendu tout coché sur un travail bâclé passe. Le hook empêche l'oubli, pas la complaisance — c'est la relecture adverse qui sert à ça.
+**Il compte aussi les preuves.** À partir de trois points cochés, il exige que le
+tableau « Vérifié, et comment » porte au moins une ligne pour deux cases. Une case
+cochée est une auto-déclaration ; la ligne du tableau dit **par quel moyen on le
+sait**, et c'est la seule chose qui la rend vérifiable.
+
+> Pourquoi ce compte existe : le 14 septembre 2026, un dispositif entièrement coché
+> citait six méthodes, fichiers et chiffres qui n'existaient pas — une méthode
+> `generate()` absente, une rule inexistante, trois tailles de contrôleur recopiées
+> d'un `CLAUDE.md` périmé. Toutes les cases étaient cochées. Aucune ne disait
+> comment on le savait.
+
+**Il ne peut pas** juger si le travail est bon. Un compte rendu tout coché, preuves
+comprises, sur un travail bâclé passe. Le hook empêche l'oubli et l'affirmation sans
+source, pas la complaisance — c'est la relecture adverse qui sert à ça.
 
 Il se désactive au second passage (`stop_hook_active`) : une case qu'on n'arrive pas à cocher ne boucle pas indéfiniment. Ce n'est pas une porte de sortie, c'est une sécurité.
 

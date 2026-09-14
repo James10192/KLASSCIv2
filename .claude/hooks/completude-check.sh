@@ -40,7 +40,20 @@ REC="$REPO/.claude/completude.md"
 restes=$(grep -cE '^[[:space:]]*[-*][[:space:]]\[[[:space:]]\]' "$REC" 2>/dev/null || true)
 gabarit=$(grep -cE 'À COMPLÉTER' "$REC" 2>/dev/null || true)
 
-if [[ "${restes:-0}" -gt 0 || "${gabarit:-0}" -gt 0 ]]; then
+# Cocher une case ne prouve rien : c'est une auto-déclaration. Ce qui la rend
+# vérifiable, c'est la ligne du tableau « Vérifié, et comment » qui dit PAR QUEL
+# MOYEN on le sait. Sans ce rapport, on obtient un compte rendu entièrement coché
+# qui affirme des choses fausses — c'est exactement ce qui est arrivé le
+# 14/09/2026 : six citations de rules pointaient vers des méthodes, des fichiers
+# et des chiffres qui n'existaient pas, toutes dans des tâches « terminées ».
+faits=$(grep -cE '^[[:space:]]*[-*][[:space:]]\[[xX]\]' "$REC" 2>/dev/null || true)
+preuves=$(awk '/^\|/ && !/^\|[[:space:]]*-/ && !/Comment je le sais/ {n++} END{print n+0}' "$REC" 2>/dev/null || echo 0)
+preuves_maigres=0
+if [[ "${faits:-0}" -ge 3 && "${preuves:-0}" -lt $(( faits / 2 )) ]]; then
+  preuves_maigres=1
+fi
+
+if [[ "${restes:-0}" -gt 0 || "${gabarit:-0}" -gt 0 || "$preuves_maigres" -eq 1 ]]; then
   {
     echo "Compte rendu de tâche incomplet — .claude/completude.md"
     echo
@@ -51,6 +64,14 @@ if [[ "${restes:-0}" -gt 0 || "${gabarit:-0}" -gt 0 ]]; then
     fi
     if [[ "${gabarit:-0}" -gt 0 ]]; then
       echo "  Le gabarit contient encore « À COMPLÉTER »."
+      echo
+    fi
+    if [[ "$preuves_maigres" -eq 1 ]]; then
+      echo "  $faits point(s) coché(s) pour seulement $preuves ligne(s) de preuve."
+      echo "  Une case cochée est une affirmation ; le tableau « Vérifié, et comment »"
+      echo "  est ce qui la rend vérifiable. Pour chaque affirmation qui nomme un"
+      echo "  fichier, une méthode, une ligne ou un chiffre : dis par quelle commande"
+      echo "  tu le sais. Si tu ne l'as pas exécutée, ne l'affirme pas."
       echo
     fi
     echo "Avant de rendre la main, pour chaque point restant : soit tu le fais,"
