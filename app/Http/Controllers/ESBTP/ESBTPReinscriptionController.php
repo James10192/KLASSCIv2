@@ -286,19 +286,18 @@ class ESBTPReinscriptionController extends Controller
 
         try {
             // Chercher l'inscription de l'étudiant avec une classe assignée
-            $inscription = \App\Models\ESBTPInscription::whereNotNull('classe_id')
-                ->whereHas('etudiant', function($query) use ($etudiantId) {
-                    $query->where('id', $etudiantId);
-                })
-                ->with(['etudiant', 'classe.niveau', 'classe.filiere'])
-                ->first();
+            // L'inscription de la derniere annee suivie : une inscription
+            // quelconque pouvait etre celle d'un cursus deja quitte.
+            $inscription = $this->reinscriptionService->inscriptionQuittee((int) $etudiantId);
 
             if (!$inscription) {
                 throw new \Exception("Aucune inscription avec classe trouvée pour cet étudiant");
             }
 
+            $inscription->loadMissing('etudiant');
+
             $analyse = $this->reinscriptionService->analyserSituationEtudiantParInscription($inscription, $anneeAcademique);
-            $classesProposees = $this->reinscriptionService->proposerNouvellesClasses($etudiantId, $analyse['decision']);
+            $classesProposees = $this->reinscriptionService->proposerNouvellesClasses($etudiantId, $analyse['decision'], $inscription->classe);
 
             // Calculer les soldes financiers pour l'étudiant
             $etudiant = $analyse['etudiant'];

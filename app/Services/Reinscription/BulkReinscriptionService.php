@@ -192,7 +192,8 @@ class BulkReinscriptionService
             try {
                 $suggestedClasses = $this->reeinscriptionService->proposerNouvellesClasses(
                     $etudiant->id,
-                    $row['decision'] ?? 'redoublement'
+                    $row['decision'] ?? 'redoublement',
+                    $inscription->classe
                 );
                 $row['suggested_classes'] = collect($suggestedClasses)->map(fn ($c) => [
                     'id' => is_object($c) ? $c->id : $c,

@@ -18,14 +18,18 @@ class ReeinscriptionService
 {
     public function analyserSituationEtudiant($etudiantId, $anneeAcademique)
     {
-        $etudiant = ESBTPEtudiant::with(['classe.niveau', 'classe.filiere'])->findOrFail($etudiantId);
-        
-        if (!$etudiant->classe) {
+        $etudiant = ESBTPEtudiant::findOrFail($etudiantId);
+
+        // La regle de passage se choisit sur la classe quittee, pas sur une
+        // inscription active quelconque (cf. proposerNouvellesClasses).
+        $classe = $this->inscriptionQuittee((int) $etudiantId)?->classe;
+
+        if (!$classe) {
             throw new \Exception("Étudiant non assigné à une classe");
         }
 
-        $niveauNom = $etudiant->classe->niveau ? $etudiant->classe->niveau->name : '';
-        $filiereNom = $etudiant->classe->filiere ? $etudiant->classe->filiere->name : '';
+        $niveauNom = $classe->niveau ? $classe->niveau->name : '';
+        $filiereNom = $classe->filiere ? $classe->filiere->name : '';
         
         $regle = ESBTPRegleAcademique::getRegleForNiveauFiliere($niveauNom, $filiereNom);
 
@@ -334,20 +338,55 @@ class ReeinscriptionService
         ];
     }
 
-    public function proposerNouvellesClasses($etudiantId, $decision)
+    /**
+     * Classes vers lesquelles reinscrire un etudiant, a partir de la classe
+     * qu'il QUITTE.
+     *
+     * Cette classe se lisait sur `$etudiant->classe` : une inscription active
+     * quelconque, sans ordre. Un etudiant passe du BTS a la Licence garde son
+     * ancienne inscription active, et c'est elle qui sortait — une Licence 3
+     * se voyait proposer une 2e annee de BTS, que la reinscription groupee
+     * preselectionnait. L'appelant qui connait deja l'inscription quittee la
+     * passe ; a defaut, on prend celle de la derniere annee suivie.
+     */
+    public function proposerNouvellesClasses($etudiantId, $decision, ?ESBTPClasse $classeQuittee = null)
     {
-        $etudiant = ESBTPEtudiant::with(['classe.niveau', 'classe.filiere'])->findOrFail($etudiantId);
-        
+        $classeQuittee ??= $this->inscriptionQuittee((int) $etudiantId)?->classe;
+
+        if (! $classeQuittee) {
+            return [];
+        }
+
+        $classeQuittee->loadMissing(['niveau', 'filiere']);
+
         switch ($decision) {
             case 'passage':
-                return $this->getClassesNiveauSuperieut($etudiant->classe);
+                return $this->getClassesNiveauSuperieut($classeQuittee);
             case 'redoublement':
-                return $this->getClassesMemeNiveau($etudiant->classe);
+                return $this->getClassesMemeNiveau($classeQuittee);
             case 'rattrapage':
-                return [$etudiant->classe]; // Reste dans la même classe
+                return [$classeQuittee]; // Reste dans la même classe
         }
 
         return [];
+    }
+
+    /**
+     * L'inscription active de la derniere annee suivie par l'etudiant : celle
+     * dont une reinscription part.
+     */
+    public function inscriptionQuittee(int $etudiantId): ?ESBTPInscription
+    {
+        return ESBTPInscription::query()
+            ->select('esbtp_inscriptions.*')
+            ->join('esbtp_annee_universitaires as annee', 'annee.id', '=', 'esbtp_inscriptions.annee_universitaire_id')
+            ->where('esbtp_inscriptions.etudiant_id', $etudiantId)
+            ->where('esbtp_inscriptions.status', 'active')
+            ->whereNotNull('esbtp_inscriptions.classe_id')
+            ->orderByDesc('annee.start_date')
+            ->orderByDesc('esbtp_inscriptions.id')
+            ->with(['classe.niveau', 'classe.filiere', 'anneeUniversitaire'])
+            ->first();
     }
 
     /**

@@ -65,6 +65,26 @@ class ClassesProposeesAuPassageTest extends TestCase
         $this->assertSame([], $this->proposees($this->etudiantEn($master2)));
     }
 
+    public function test_la_proposition_part_de_la_derniere_annee_suivie_pas_d_un_ancien_cursus(): void
+    {
+        // Cas reel d'ESBTP Abidjan : un BTS 2 reste actif sur une annee
+        // ancienne, puis l'etudiant fait sa Licence 3. Lue au hasard, l'ancienne
+        // inscription lui faisait proposer une 2e annee de BTS.
+        $bts2 = $this->classe('BTS', 2);
+        $licence3 = $this->classe('Licence', 3);
+        $master1 = $this->classe('Master', 4);
+        $this->classe('BTS', 1);
+
+        $etudiant = $this->etudiantEn($licence3, '2025-09-01');
+        $this->etudiantEn($bts2, '2022-09-01', $etudiant);
+
+        $this->assertSame([$master1->id], $this->proposees($etudiant));
+        $this->assertSame(
+            $licence3->id,
+            app(ReeinscriptionService::class)->inscriptionQuittee($etudiant->id)?->classe_id
+        );
+    }
+
     public function test_le_bts_garde_son_repli_vers_une_premiere_annee_d_un_autre_type(): void
     {
         // Comportement anterieur, que ce correctif ne doit pas toucher.
@@ -96,16 +116,22 @@ class ClassesProposeesAuPassageTest extends TestCase
         ]);
     }
 
-    private function etudiantEn(ESBTPClasse $classe): ESBTPEtudiant
+    private function etudiantEn(ESBTPClasse $classe, string $debutAnnee = '2025-09-01', ?ESBTPEtudiant $etudiant = null): ESBTPEtudiant
     {
-        $etudiant = ESBTPEtudiant::factory()->create();
+        $etudiant ??= ESBTPEtudiant::factory()->create();
+        $debut = \Carbon\Carbon::parse($debutAnnee);
+        $annee = ESBTPAnneeUniversitaire::factory()->create([
+            'name' => $debut->year.'-'.($debut->year + 1),
+            'start_date' => $debut->toDateString(),
+            'end_date' => $debut->copy()->addMonths(10)->toDateString(),
+        ]);
 
         ESBTPInscription::factory()->create([
             'etudiant_id' => $etudiant->id,
             'filiere_id' => $classe->filiere_id,
             'niveau_id' => $classe->niveau_etude_id,
             'classe_id' => $classe->id,
-            'annee_universitaire_id' => ESBTPAnneeUniversitaire::factory()->create()->id,
+            'annee_universitaire_id' => $annee->id,
             'status' => 'active',
             'workflow_step' => 'etudiant_cree',
         ]);

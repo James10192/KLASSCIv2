@@ -2296,7 +2296,9 @@ class ESBTPInscriptionController extends Controller
             $decision = $analysis['decision'] ?? 'passage';
             $classesProposees = [];
             try {
-                $classesProposees = $reinscriptionService->proposerNouvellesClasses($etudiantId, $decision);
+                // Meme inscription que celle analysee, sinon la decision et les
+                // classes proposees partent de deux cursus differents.
+                $classesProposees = $reinscriptionService->proposerNouvellesClasses($etudiantId, $decision, $inscriptionActive->classe);
             } catch (\Exception $e) {
                 // Fallback : toutes les classes actives
             }
