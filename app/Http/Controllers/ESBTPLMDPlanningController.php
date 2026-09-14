@@ -623,10 +623,10 @@ class ESBTPLMDPlanningController extends Controller
             : ($semestresMap['all'] ?? []);
 
         // Defensive fallback : si la map ne contient rien (cas pathologique),
-        // expose la plage canonique 1..6 (couverture L1 à M2 standard UEMOA)
-        // pour que le user puisse toujours sélectionner quelque chose.
+        // expose la plage canonique L1 a M2 pour que le user puisse toujours
+        // sélectionner quelque chose.
         if (empty($availableSemestres)) {
-            $availableSemestres = range(1, 6);
+            $availableSemestres = ESBTPNiveauEtude::semestresLmd();
         }
 
         $filters = [
@@ -689,9 +689,9 @@ class ESBTPLMDPlanningController extends Controller
      *     ...
      *   ]
      *
-     * Note : pour Master/Doctorat la numérotation des semestres redémarre (M1 = S1+S2)
-     * conformément à la convention LMD UEMOA — d'où le calcul basé uniquement sur
-     * `year` du niveau.
+     * Note : l'annee du niveau est comptee en continu d'un cycle a l'autre
+     * (Master 1 = annee 4 → S7+S8), d'ou le calcul base uniquement sur `year`
+     * (cf. ESBTPClasse::getSemestresLMD()).
      */
     private function buildSemestresMap(Collection $niveaux): array
     {
@@ -704,7 +704,7 @@ class ESBTPLMDPlanningController extends Controller
                 $semestres = [$year * 2 - 1, $year * 2];
             } else {
                 // Niveau sans year défini → fallback large (rare, défensif).
-                $semestres = range(1, 6);
+                $semestres = ESBTPNiveauEtude::semestresLmd();
             }
 
             $map[(int) $niveau->id] = $semestres;

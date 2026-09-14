@@ -327,18 +327,8 @@ class MatiereTreeBuilder
             }
 
             $volumeBudgetService = app(VolumeBudgetService::class);
-            $niveauType = optional($classe->niveau)->type ?? '';
-            $niveauYear = (int) (optional($classe->niveau)->year ?? 1);
 
-            // Calcul base semestre selon le type de niveau LMD UEMOA
-            $baseSem = match ($niveauType) {
-                'Licence' => ($niveauYear - 1) * 2,
-                'Master' => 6 + ($niveauYear - 1) * 2,
-                'Doctorat' => 10 + ($niveauYear - 1) * 2,
-                default => 0,
-            };
-
-            foreach ([$baseSem + 1, $baseSem + 2] as $sem) {
+            foreach ($classe->getSemestresLMD() as $sem) {
                 $sb = $volumeBudgetService->forClasse(
                     $classe,
                     $classe->niveau_etude_id,

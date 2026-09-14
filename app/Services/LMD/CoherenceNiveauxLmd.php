@@ -65,13 +65,38 @@ class CoherenceNiveauxLmd
             $refus[] = "Le niveau {$homonyme->name} (id {$homonyme->id}) porte deja {$niveau->type} annee {$annee}.";
         }
 
-        foreach (self::DEPENDANCES_BLOQUANTES as $cle) {
-            if ($dependances[$cle] > 0) {
-                $refus[] = "{$dependances[$cle]} {$cle} rattache(s) : la correction les detacherait de leurs semestres.";
-            }
+        foreach ($this->bloquantesParmi($dependances) as $bloquante) {
+            $refus[] = "{$bloquante} rattache(s) : la correction les detacherait de leurs semestres.";
         }
 
         return $refus;
+    }
+
+    /**
+     * Ce qui interdit de changer l'annee du niveau, sous forme lisible
+     * (« 12 notes »). Vide si rien ne s'y oppose.
+     *
+     * @return list<string>
+     */
+    public function dependancesBloquantes(ESBTPNiveauEtude $niveau): array
+    {
+        return $this->bloquantesParmi($this->detail($niveau)['dependances']);
+    }
+
+    /** @return list<string> */
+    private function bloquantesParmi(array $dependances): array
+    {
+        $libelles = [
+            'unites_enseignement' => 'unité(s) d\'enseignement', 'seances' => 'séance(s)',
+            'evaluations' => 'évaluation(s)', 'notes' => 'note(s)',
+            'bulletins_lmd' => 'bulletin(s)', 'jurys' => 'jury(s)',
+        ];
+
+        return collect(self::DEPENDANCES_BLOQUANTES)
+            ->filter(fn ($cle) => $dependances[$cle] > 0)
+            ->map(fn ($cle) => $dependances[$cle].' '.$libelles[$cle])
+            ->values()
+            ->all();
     }
 
     /** @return array{niveaux_lmd: int, incoherents: list<array<string,mixed>>} */

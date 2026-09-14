@@ -236,7 +236,13 @@ class CLILMDSetupController extends BaseApiController
             'filiere.code' => 'nullable|string|max:50',
             'niveaux' => 'required|array|min:1',
             'niveaux.*.name' => 'required|string|max:50',
-            'niveaux.*.year' => 'required|integer|between:1,8',
+            // Le type et le code etaient lus par l'import mais absents des
+            // regles, donc retires par validate() : tout niveau importe
+            // devenait une Licence. L'annee doit appartenir au cycle annonce.
+            'niveaux.*.type' => ['nullable', 'string', \Illuminate\Validation\Rule::in(array_keys(\App\Models\ESBTPNiveauEtude::ANNEES_PAR_CYCLE_LMD))],
+            'niveaux.*.code' => 'nullable|string|max:50',
+            'niveaux.*.libelle' => 'nullable|string|max:255',
+            'niveaux.*.year' => ['required', 'integer', 'between:1,8', new \App\Rules\AnneeDuCycleLmd()],
             'ues' => 'required|array|min:1',
             'ues.*.code' => 'nullable|string|max:50',
             'ues.*.name' => 'required|string|max:255',

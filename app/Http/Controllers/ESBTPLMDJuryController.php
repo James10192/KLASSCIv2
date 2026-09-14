@@ -141,7 +141,7 @@ class ESBTPLMDJuryController extends Controller
             'session_id' => ['nullable', 'exists:esbtp_lmd_sessions,id'],
             'parcours_id' => ['nullable', 'exists:esbtp_lmd_parcours,id'],
             'classe_id' => ['nullable', 'exists:esbtp_classes,id'],
-            'semestre' => ['nullable', 'integer', 'between:1,8'],
+            'semestre' => ['nullable', 'integer', 'between:1,'.\App\Models\ESBTPNiveauEtude::SEMESTRE_LMD_MAX],
             'libelle' => ['required', 'string', 'max:255'],
             'date_jury' => ['nullable', 'date'],
             'observations' => ['nullable', 'string', 'max:2000'],

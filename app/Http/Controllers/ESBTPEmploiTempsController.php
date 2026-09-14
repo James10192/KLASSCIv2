@@ -993,17 +993,7 @@ class ESBTPEmploiTempsController extends Controller
         // doit aussi filtrer par semestre quand periode='semestre1'/'semestre2').
         $lmdSemestres = [];
         if ($isLmd) {
-            $niveauType = optional($classe->niveau)->type ?? '';
-            $niveauYear = (int) (optional($classe->niveau)->year ?? 1);
-            $baseSem = 0;
-            if ($niveauType === 'Licence') {
-                $baseSem = ($niveauYear - 1) * 2;
-            } elseif ($niveauType === 'Master') {
-                $baseSem = 6 + ($niveauYear - 1) * 2;
-            } elseif ($niveauType === 'Doctorat') {
-                $baseSem = 10 + ($niveauYear - 1) * 2;
-            }
-            $lmdSemestres = [$baseSem + 1, $baseSem + 2];
+            $lmdSemestres = $classe->getSemestresLMD();
         }
 
         $planningMatiere = ['stats' => ['heures_planifiees' => 0, 'heures_realisees' => 0, 'nb_seances' => 0, 'taux_realisation' => 0], 'matieres' => collect()];

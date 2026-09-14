@@ -144,7 +144,7 @@
                     <label style="font-size:.72rem;color:#475569;font-weight:600;text-transform:uppercase;">Semestre</label>
                     <select name="semestre" style="width:100%;padding:.5rem;border:1px solid #e2e8f0;border-radius:8px;">
                         <option value="">—</option>
-                        @foreach([1,2,3,4,5,6] as $sem)<option value="{{ $sem }}">S{{ $sem }}</option>@endforeach
+                        @foreach(\App\Models\ESBTPNiveauEtude::semestresLmd() as $sem)<option value="{{ $sem }}">S{{ $sem }}</option>@endforeach
                     </select>
                 </div>
                 <div style="grid-column:1/-1;">

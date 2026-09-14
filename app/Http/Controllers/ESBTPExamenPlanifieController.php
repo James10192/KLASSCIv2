@@ -165,7 +165,7 @@ class ESBTPExamenPlanifieController extends Controller
             'scope_type' => ['nullable', 'in:'.implode(',', ESBTPExamenPlanifie::SCOPE_TYPES)],
             'scope_id' => ['nullable', 'integer'],
             'session_id' => ['nullable', 'integer', 'exists:esbtp_lmd_sessions,id'],
-            'semestre' => ['nullable', 'integer', 'between:1,8'],
+            'semestre' => ['nullable', 'integer', 'between:1,'.\App\Models\ESBTPNiveauEtude::SEMESTRE_LMD_MAX],
             'type_examen' => ['required', 'in:'.implode(',', TypeExamen::values())],
             'titre' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:1000'],
@@ -465,7 +465,7 @@ class ESBTPExamenPlanifieController extends Controller
         $data = $request->validate([
             'classe_id' => ['required', 'exists:esbtp_classes,id'],
             'annee_universitaire_id' => ['required', 'exists:esbtp_annee_universitaires,id'],
-            'semestre' => ['required', 'integer', 'between:1,8'],
+            'semestre' => ['required', 'integer', 'between:1,'.\App\Models\ESBTPNiveauEtude::SEMESTRE_LMD_MAX],
             'type_examen' => ['required', 'in:'.implode(',', TypeExamen::values())],
             'date_premier_examen' => ['nullable', 'date'],
             'session_id' => ['nullable', 'integer'],

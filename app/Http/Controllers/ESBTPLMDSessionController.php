@@ -217,7 +217,7 @@ class ESBTPLMDSessionController extends Controller
             'parcours_id' => ['nullable', 'exists:esbtp_lmd_parcours,id'],
             'type' => ['required', 'in:normale,rattrapage,extra'],
             'parent_session_id' => ['nullable', 'exists:esbtp_lmd_sessions,id'],
-            'semestre' => ['nullable', 'integer', 'between:1,8'],
+            'semestre' => ['nullable', 'integer', 'between:1,'.\App\Models\ESBTPNiveauEtude::SEMESTRE_LMD_MAX],
             'libelle' => ['required', 'string', 'max:255'],
             'date_debut' => ['nullable', 'date'],
             'date_fin' => ['nullable', 'date', 'after_or_equal:date_debut'],

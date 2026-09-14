@@ -36,6 +36,22 @@ class ESBTPNiveauEtude extends Model
     ];
 
     /**
+     * Dernier semestre LMD : celui du Master 2 (annee 5 → S9-S10). Le doctorat
+     * ne se decoupe pas en semestres.
+     *
+     * Les listes et validations de semestre s'arretaient a 6 ou 8, heritage
+     * d'ecoles qui n'ouvraient que la Licence : un Master 2 ne pouvait ni
+     * planifier, ni deliberer, ni filtrer son S9 et son S10.
+     */
+    public const SEMESTRE_LMD_MAX = 10;
+
+    /** @return list<int> */
+    public static function semestresLmd(): array
+    {
+        return range(1, self::SEMESTRE_LMD_MAX);
+    }
+
+    /**
      * Vrai si l'annee est de celles de son cycle, faux sinon, et null pour un
      * niveau qui n'est pas un cycle LMD (BTS, Ingenieur...) : la question ne se
      * pose pas pour lui.
@@ -47,6 +63,18 @@ class ESBTPNiveauEtude extends Model
         }
 
         return in_array((int) $this->year, self::ANNEES_PAR_CYCLE_LMD[$this->type], true);
+    }
+
+    /** Le cycle LMD auquel une annee appartient (4 → Master), null hors plage. */
+    public static function cycleLmdPourAnnee(int $annee): ?string
+    {
+        foreach (self::ANNEES_PAR_CYCLE_LMD as $cycle => $annees) {
+            if (in_array($annee, $annees, true)) {
+                return $cycle;
+            }
+        }
+
+        return null;
     }
 
     public function estUnCycleLmd(): bool

@@ -469,15 +469,8 @@ class ESBTPClasseController extends Controller
         $lmdMatieres = collect();
         $lmdSemestres = [];
         if ($classe->systeme_academique === 'LMD' && $anneeCourante) {
-            // UEMOA : 2 semestres par annee LMD. L1=S1+S2, L2=S3+S4, L3=S5+S6,
-            // M1=S7+S8, M2=S9+S10. Le mapping decoule de niveau.type + niveau.year.
-            $niveauType = optional($classe->niveau)->type ?? '';
-            $niveauYear = (int) (optional($classe->niveau)->year ?? 1);
-            $baseSem = 0;
-            if ($niveauType === 'Licence')   $baseSem = ($niveauYear - 1) * 2;
-            elseif ($niveauType === 'Master')   $baseSem = 6 + ($niveauYear - 1) * 2;
-            elseif ($niveauType === 'Doctorat') $baseSem = 10 + ($niveauYear - 1) * 2;
-            $lmdSemestres = [$baseSem + 1, $baseSem + 2];
+            // UEMOA : 2 semestres par annee LMD (L1=S1+S2 ... M2=S9+S10).
+            $lmdSemestres = $classe->getSemestresLMD();
 
             // Semestres effectivement chargés selon periode :
             //  - 'annee'      → tous les semestres du niveau (ex L2 → [3,4])

@@ -117,7 +117,7 @@ class CLINiveauEtudeController extends BaseApiController
             'niveaux' => 'required|array|min:1|max:50',
             'niveaux.*.name' => 'required|string|max:255',
             'niveaux.*.type' => 'required|string|max:50',
-            'niveaux.*.year' => 'required|integer|min:1|max:10',
+            'niveaux.*.year' => ['required', 'integer', 'min:1', 'max:10', new \App\Rules\AnneeDuCycleLmd()],
             'niveaux.*.code' => 'nullable|string|max:50',
             'niveaux.*.libelle' => 'nullable|string|max:255',
             'niveaux.*.is_active' => 'nullable|boolean',

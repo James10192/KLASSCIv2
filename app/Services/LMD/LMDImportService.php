@@ -176,9 +176,10 @@ class LMDImportService
     private function upsertNiveau(array $data): ESBTPNiveauEtude
     {
         // Match by (year + type) — multiple niveaux can share a year (BTS 1ère, Licence 1ère, etc.).
-        // Defaulting to 'Licence' since this service is LMD-only.
-        $type = $data['type'] ?? 'Licence';
+        // Sans type fourni, le cycle se deduit de l'annee continue (4 → Master).
+        // Le defaut « Licence » d'autrefois creait des « Licence 4 » pour un Master 1.
         $year = (int) $data['year'];
+        $type = $data['type'] ?? ESBTPNiveauEtude::cycleLmdPourAnnee($year) ?? 'Licence';
 
         // Generate a unique code per type×year for LMD niveaux, prefixed to avoid collision
         // with legacy niveau codes (BTS '1A', '2A', or legacy untyped 'L1', 'L2' etc.).
