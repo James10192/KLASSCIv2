@@ -3665,7 +3665,7 @@
                                 <label class="ls-toggle" for="lmd_bulletin_show_specialite">
                                     <div class="ls-toggle-text">
                                         <div class="ls-toggle-label">Spécialité</div>
-                                        <div class="ls-toggle-hint">Optionnel — niveau intermédiaire entre Mention et Parcours</div>
+                                        <div class="ls-toggle-hint">Niveau intermédiaire entre Mention et Parcours. Aucune spécialité n'est encore enregistrée sur les étudiants : cette ligne reste vide sur le bulletin tant que la donnée n'existe pas.</div>
                                     </div>
                                     <div class="form-check form-switch" style="margin:0; padding-left:2.5em;">
                                         <input class="form-check-input" type="checkbox" id="lmd_bulletin_show_specialite"

@@ -369,8 +369,8 @@
                             <label class="exe-checkbox">
                                 <input type="checkbox" name="is_anonymous" value="1" x-model="form.is_anonymous">
                                 <span class="exe-checkbox-text">
-                                    <strong><i class="fas fa-mask" style="color:#0453cb;"></i> Anonymiser les copies</strong>
-                                    <small>Génère un numéro d'anonymat par étudiant pour la correction (UEMOA recommandé).</small>
+                                    <strong><i class="fas fa-mask" style="color:#0453cb;"></i> Copies anonymes</strong>
+                                    <small>Indique l'anonymat sur les convocations et le procès-verbal de surveillance. Aucun numéro d'anonymat n'est généré, et la saisie des notes affiche toujours le nom des étudiants.</small>
                                 </span>
                             </label>
                         </div>

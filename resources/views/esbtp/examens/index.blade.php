@@ -1057,7 +1057,7 @@
                                 <label class="exp-checkbox" style="font-weight:500;text-transform:none;font-size:.85rem;color:#1e293b;">
                                     <input type="checkbox" x-model="form.is_anonymous">
                                     <span><i class="fas fa-mask" style="color:#0453cb;margin-right:.35rem;"></i>
-                                    Anonymiser les copies (génère un numéro d'anonymat par étudiant)</span>
+                                    Copies anonymes (mention sur les convocations et le PV — aucun numéro d'anonymat n'est généré, les notes se saisissent au nom de l'étudiant)</span>
                                 </label>
                             </div>
                         </div>

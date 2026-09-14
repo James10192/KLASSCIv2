@@ -605,7 +605,8 @@
                             <div class="exs-kv-label">Anonymisation copies</div>
                             <div class="exs-kv-value">
                                 @if($examen->is_anonymous)
-                                    <i class="fas fa-mask" style="color:#0453cb;"></i> Activée
+                                    <i class="fas fa-mask" style="color:#0453cb;"></i> Mentionnée sur les convocations
+                                    <small class="exs-kv-empty" style="display:block;">Sans numéro d'anonymat : la saisie des notes affiche les noms.</small>
                                 @else
                                     <span class="exs-kv-empty">Désactivée</span>
                                 @endif

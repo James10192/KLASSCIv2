@@ -108,7 +108,7 @@
                                    {{ ($settings['lmd_bulletin_show_mention'] ?? '1') == '1' ? 'checked' : '' }}>
                         </label>
                         <label class="bcfg-toggle" for="lmd_bulletin_show_specialite">
-                            <span class="bcfg-toggle-label">Afficher Spécialité</span>
+                            <span class="bcfg-toggle-label" title="Aucune spécialité n'est encore enregistrée sur les étudiants : la ligne reste absente du bulletin tant que la donnée n'existe pas.">Afficher Spécialité (aucune donnée pour l'instant)</span>
                             <input class="form-check-input" type="checkbox" id="lmd_bulletin_show_specialite" name="lmd_bulletin_show_specialite" value="1"
                                    {{ ($settings['lmd_bulletin_show_specialite'] ?? '0') == '1' ? 'checked' : '' }}>
                         </label>
