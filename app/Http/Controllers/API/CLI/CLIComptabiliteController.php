@@ -557,4 +557,78 @@ class CLIComptabiliteController extends BaseApiController
             'pending_too_old_sample' => $pendingOld->all(),
         ], 'Reconciliation candidates');
     }
+
+    /**
+     * GET /api/cli/comptabilite/recus-en-double
+     *
+     * Deux recus portant le meme numero, c'est deux preuves de paiement
+     * indiscernables : en cas de contestation, rien ne dit laquelle est la
+     * bonne. `genererNumeroRecu()` verrouille desormais sa lecture du dernier
+     * numero, mais ce verrou ne protege pas la toute premiere emission d'une
+     * annee — il n'y a alors aucune ligne a verrouiller. Seul un index unique
+     * ferme cette fenetre.
+     *
+     * Cet endpoint repond a la question qui conditionne cette migration :
+     * la base contient-elle DEJA des doublons ? Si oui, l'index echoue a la
+     * pose, et il faut d'abord trancher quel recu garde son numero.
+     *
+     * Trois pieges, verifies ici plutot que supposes :
+     * - un index unique porte sur TOUTES les lignes, y compris celles que le
+     *   soft-delete a retirees de la vue. Un numero rendu a un paiement
+     *   supprime bloque la migration.
+     * - MySQL tolere plusieurs NULL sur une colonne unique, mais PAS
+     *   plusieurs chaines vides. Les deux cas se comptent separement.
+     * - le meme numero peut coexister sur deux annees universitaires ; c'est
+     *   un doublon quand meme, la colonne ne portant pas l'annee.
+     *
+     * Lecture seule. Aucune ecriture, aucune suggestion de suppression : le
+     * choix du recu qui garde son numero appartient a la comptabilite.
+     */
+    public function recusEnDouble(Request $request): JsonResponse
+    {
+        if (!$request->user()->tokenCan('cli:read')) {
+            return $this->errorResponse('Token missing cli:read ability', [], 403);
+        }
+
+        $groupes = DB::table('esbtp_paiements')
+            ->select('numero_recu', DB::raw('COUNT(*) as occurrences'), DB::raw('GROUP_CONCAT(id ORDER BY id) as ids'))
+            ->whereNotNull('numero_recu')
+            ->where('numero_recu', '!=', '')
+            ->groupBy('numero_recu')
+            ->havingRaw('COUNT(*) > 1')
+            ->orderByDesc('occurrences')
+            ->get();
+
+        // Les memes, en ignorant les lignes supprimees : l'ecart entre les deux
+        // dit combien de doublons ne viennent QUE du soft-delete.
+        $groupesVisibles = DB::table('esbtp_paiements')
+            ->select('numero_recu', DB::raw('COUNT(*) as occurrences'))
+            ->whereNull('deleted_at')
+            ->whereNotNull('numero_recu')
+            ->where('numero_recu', '!=', '')
+            ->groupBy('numero_recu')
+            ->havingRaw('COUNT(*) > 1')
+            ->get();
+
+        $vides = DB::table('esbtp_paiements')->where('numero_recu', '')->count();
+        $nuls = DB::table('esbtp_paiements')->whereNull('numero_recu')->count();
+        $total = DB::table('esbtp_paiements')->count();
+
+        $bloquants = $groupes->count() + ($vides > 1 ? 1 : 0);
+
+        return $this->successResponse([
+            'paiements_total' => $total,
+            'numeros_en_double' => $groupes->count(),
+            'lignes_concernees' => (int) $groupes->sum('occurrences'),
+            'dont_visibles_hors_supprimes' => $groupesVisibles->count(),
+            'numero_vide' => $vides,
+            'numero_nul' => $nuls,
+            'index_unique_posable' => $bloquants === 0,
+            'ce_qui_bloque' => $bloquants === 0
+                ? null
+                : trim(($groupes->count() > 0 ? $groupes->count() . ' numero(s) en double. ' : '')
+                    . ($vides > 1 ? $vides . ' paiements portent une chaine vide, que MySQL refuse en double (le NULL, lui, est tolere).' : '')),
+            'echantillon' => $groupes->take(25)->values()->all(),
+        ], 'Diagnostic des numeros de recu');
+    }
 }

@@ -481,6 +481,7 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
         Route::get('/period-locks', [App\Http\Controllers\API\CLI\CLIComptabiliteController::class, 'periodLocks'])->name('period-locks');
         Route::get('/reconciliation-candidates', [App\Http\Controllers\API\CLI\CLIComptabiliteController::class, 'reconciliationCandidates'])->name('reconciliation-candidates');
         Route::get('/orphan-paiements-annee-drift', [App\Http\Controllers\API\CLI\CLIComptabiliteController::class, 'orphanPaiementsAnneeDrift'])->name('orphan-paiements-annee-drift');
+        Route::get('/recus-en-double', [App\Http\Controllers\API\CLI\CLIComptabiliteController::class, 'recusEnDouble'])->name('recus-en-double');
         Route::post('/cleanup-orphan-paiements', [App\Http\Controllers\API\CLI\CLIComptabiliteController::class, 'cleanupOrphanPaiements'])->name('cleanup-orphan-paiements');
         // PR1 réconciliation
         Route::get('/reconciliation/sessions', [App\Http\Controllers\API\CLI\CLIComptabiliteController::class, 'reconciliationSessions'])->name('reconciliation.sessions');
