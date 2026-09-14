@@ -904,7 +904,7 @@
                         </div>
                         <div class="lp-field-row">
                             <div class="lp-field-full">
-                                <label for="mention_domaine_id"><i class="fas fa-globe-africa"></i> Domaine <span class="text-danger">*</span></label>
+                                <label for="mention_domaine_id"><i class="fas fa-globe-africa"></i> {{ $rang['domaine'] }} <span class="text-danger">*</span></label>
                                 <select class="form-select" id="mention_domaine_id" name="domaine_id" required>
                                     <option value="">-- Sélectionner un domaine --</option>
                                     @foreach($domaines as $d)
@@ -977,7 +977,7 @@
                         </div>
                         <div class="lp-field-row">
                             <div>
-                                <label for="parcours_mention_id"><i class="fas fa-bookmark"></i> Mention <span class="text-danger">*</span></label>
+                                <label for="parcours_mention_id"><i class="fas fa-bookmark"></i> {{ $rang['mention'] }} <span class="text-danger">*</span></label>
                                 <select class="form-select" id="parcours_mention_id" name="mention_id" required>
                                     <option value="">-- Sélectionner une mention --</option>
                                     @foreach($domaines as $d)

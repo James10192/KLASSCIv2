@@ -172,7 +172,7 @@
                 <dt>Classe</dt>
                 <dd>{{ $mClasseLabel !== '' ? $mClasseLabel : '—' }}</dd>
                 @if($mParcoursLabel)
-                    <dt>Parcours</dt>
+                    <dt>@rang('parcours')</dt>
                     <dd>{{ $mParcoursLabel }}</dd>
                 @endif
                 @if($mInscription?->anneeUniversitaire)

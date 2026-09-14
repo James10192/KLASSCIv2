@@ -80,6 +80,9 @@ class AppServiceProvider extends ServiceProvider
         // forgetScopedInstances() borne le memo entre deux taches.
         $this->app->scoped(\App\Domain\Dispenses\DispenseLookup::class);
         $this->app->scoped(OpenAlertMetricService::class);
+        // Le vocabulaire de la structure LMD est lu par des dizaines de libelles
+        // dans une meme page : une instance par requete.
+        $this->app->scoped(\App\Services\LMD\VocabulaireStructure::class);
 
         // Resolveurs du parcours BTS : une seule instance par requete, sinon
         // leur memoire ne sert a rien. Le compteur de cohorte balaie toutes les
@@ -126,6 +129,14 @@ class AppServiceProvider extends ServiceProvider
         // vues. Sur '*' a dessein — le layout, ses partials et les feuilles
         // mobiles en ont tous besoin, et le resolver est memoise par requete.
         View::composer('*', MobileShellComposer::class);
+
+        // Nom des rangs de la structure LMD, regle par etablissement (Domaine /
+        // Mention / Parcours, ou Composante / Departement / Specialite).
+        // @rang('mention') → « Mention » ; @rangs('mention') → « Mentions ».
+        \Illuminate\Support\Facades\Blade::directive('rang', fn (string $cle) =>
+            "<?php echo e(app(\\App\\Services\\LMD\\VocabulaireStructure::class)->rang({$cle})); ?>");
+        \Illuminate\Support\Facades\Blade::directive('rangs', fn (string $cle) =>
+            "<?php echo e(app(\\App\\Services\\LMD\\VocabulaireStructure::class)->rangs({$cle})); ?>");
 
         // Observers
         ESBTPNote::observe(ESBTPNoteObserver::class);

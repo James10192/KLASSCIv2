@@ -184,7 +184,7 @@
 
             <div class="row mb-3">
                 <div class="col-md-4">
-                    <label class="form-label fw-semibold">Parcours</label>
+                    <label class="form-label fw-semibold">@rang('parcours')</label>
                     <x-au-select class="lmd-au-full"
                                  name="parcours_id"
                                  icon="fa-route"

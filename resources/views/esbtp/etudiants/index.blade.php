@@ -3096,7 +3096,7 @@
                                         />
                                     </div>
                                     <div class="col-md-2 mb-3" x-show="etSysteme === 'LMD'" x-cloak>
-                                        <label class="form-label">Parcours</label>
+                                        <label class="form-label">@rang('parcours')</label>
                                         <x-au-parcours-picker
                                             name="parcours"
                                             :value="request('parcours')"
@@ -3307,7 +3307,7 @@
                         />
                     </div>
                     <div class="form-group" x-show="etSysteme === 'LMD'" x-cloak>
-                        <label class="form-label">Parcours</label>
+                        <label class="form-label">@rang('parcours')</label>
                         <x-au-parcours-picker
                             name="parcours"
                             :value="request('parcours')"

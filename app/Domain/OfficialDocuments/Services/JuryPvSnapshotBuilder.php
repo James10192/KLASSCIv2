@@ -28,6 +28,8 @@ class JuryPvSnapshotBuilder
             'document' => ['reference' => $identity['reference'], 'version' => $identity['version'], 'number' => $identity['number']],
             'institution' => SettingsHelper::getSchoolInfo(),
             'jury' => $this->juryData($jury),
+            // Nom des rangs de la structure LMD, gele comme le reste du PV.
+            'vocabulary' => app(\App\Services\LMD\VocabulaireStructure::class)->tous(),
             'members' => $state['members']->map(fn ($member) => $this->memberData($member))->sortBy('user_id')->values()->all(),
             'decisions' => $state['decisions']->map(fn ($decision) => $this->decisionData($decision))->sortBy('student_id')->values()->all(),
             'grade_sheets' => $state['sheets']->map(fn ($sheet) => ['id' => $sheet->id, 'code' => $sheet->code, 'status' => $sheet->status->value, 'lock_version' => $sheet->lock_version])->sortBy('id')->values()->all(),

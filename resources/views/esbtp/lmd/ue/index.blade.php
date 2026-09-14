@@ -217,7 +217,7 @@
             <input type="text" class="lu-filter-control" x-model.debounce.400ms="filters.search" placeholder="Code ou intitulé..." @input="loadUes()">
         </div>
         <div class="lu-filter-group">
-            <label class="lu-filter-label">Parcours</label>
+            <label class="lu-filter-label">@rang('parcours')</label>
             <select class="lu-filter-control" x-model="filters.parcours_id" @change="loadUes()">
                 <option value="">Tous</option>
                 @foreach($parcours as $p)
@@ -270,7 +270,7 @@
                         <th>Code</th>
                         <th>Intitulé</th>
                         <th>Type UE</th>
-                        <th>Parcours</th>
+                        <th>@rang('parcours')</th>
                         <th style="text-align:center;">Crédits</th>
                         <th style="text-align:center;">ECUEs</th>
                         <th style="text-align:right; width:120px;">Actions</th>

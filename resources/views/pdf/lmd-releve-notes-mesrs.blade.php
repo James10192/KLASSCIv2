@@ -2,6 +2,9 @@
     $doc = $snapshot['document'] ?? [];
     $etudiant = $snapshot['student'] ?? [];
     $portee = $snapshot['scope'] ?? [];
+    // Vocabulaire gele a l'emission ; un releve anterieur ne le porte pas.
+    $rangs = ($portee['vocabulary'] ?? []) + ['domaine' => 'Domaine', 'mention' => 'Mention', 'parcours' => 'Parcours'];
+    $libelleDomaine = $portee['domain_nature'] ?? $rangs['domaine'];
     $semestres = $snapshot['semesters'] ?? [];
     $totaux = $snapshot['totals'] ?? [];
     $ecole = $snapshot['institution'] ?? [];
@@ -157,12 +160,12 @@
         <td>
             {{ \App\Support\AccordGenre::accorder('Redoublant', $sexe) }} :
             <strong>{{ ($etudiant['is_redoublant'] ?? null) === null ? '—' : (($etudiant['is_redoublant']) ? 'Oui' : 'Non') }}</strong>
-            &nbsp;&nbsp;&nbsp; Domaine : <strong>{{ $texte($portee['domain'] ?? null) }}</strong>
+            &nbsp;&nbsp;&nbsp; {{ $libelleDomaine }} : <strong>{{ $texte($portee['domain'] ?? null) }}</strong>
         </td>
-        <td>Mention : <strong>{{ $texte($portee['mention'] ?? null) }}</strong></td>
+        <td>{{ $rangs['mention'] }} : <strong>{{ $texte($portee['mention'] ?? null) }}</strong></td>
     </tr>
     <tr>
-        <td colspan="2">Parcours : <strong>{{ $texte($portee['parcours']['label'] ?? null) }}</strong></td>
+        <td colspan="2">{{ $rangs['parcours'] }} : <strong>{{ $texte($portee['parcours']['label'] ?? null) }}</strong></td>
     </tr>
 </table>
 

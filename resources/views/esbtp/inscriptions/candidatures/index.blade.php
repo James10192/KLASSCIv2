@@ -149,7 +149,7 @@
                             <th>Candidat</th>
                             <th>Contact</th>
                             <th>Vœu</th>
-                            <th>Parcours</th>
+                            <th>@rang('parcours')</th>
                             <th>Reçue le</th>
                             <th>Statut</th>
                             <th style="text-align:right;">Actions</th>

@@ -11,9 +11,9 @@
     $systeme = $isMixteSysteme ? 'MIXTE' : $examen->systeme;
 
     $scopeLabel = match($examen->scope_type) {
-        'parcours' => 'Parcours',
-        'mention' => 'Mention (L1 tronc commun)',
-        'domaine' => 'Domaine',
+        'parcours' => app(\App\Services\LMD\VocabulaireStructure::class)->rang('parcours'),
+        'mention' => app(\App\Services\LMD\VocabulaireStructure::class)->rang('mention').' (L1 tronc commun)',
+        'domaine' => app(\App\Services\LMD\VocabulaireStructure::class)->rang('domaine'),
         default => 'Classe unique',
     };
 
@@ -564,7 +564,7 @@
                         </div>
                         @if($examen->parcours)
                             <div class="exs-kv-row exs-kv-row--full">
-                                <div class="exs-kv-label">Parcours</div>
+                                <div class="exs-kv-label">@rang('parcours')</div>
                                 <div class="exs-kv-value">
                                     <i class="fas fa-route"></i>{{ $examen->parcours->name }}
                                     @if($examen->parcours->code) · <code>{{ $examen->parcours->code }}</code> @endif

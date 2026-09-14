@@ -628,9 +628,9 @@
                     <div class="cs-hero-chips">
                         @php $isLmd = ($classe->systeme_academique ?? '') === 'LMD'; @endphp
                         @if($isLmd && $classe->parcours && optional($classe->parcours->mention)->domaine)
-                            <span class="cs-hero-chip" title="Domaine UEMOA"><i class="fas fa-folder-open"></i>{{ $classe->parcours->mention->domaine->name }}</span>
-                            <span class="cs-hero-chip" title="Mention"><i class="fas fa-graduation-cap"></i>{{ $classe->parcours->mention->name }}</span>
-                            <span class="cs-hero-chip" title="Parcours"><i class="fas fa-route"></i>{{ $classe->parcours->name }}@if($classe->parcours->code) ({{ $classe->parcours->code }})@endif</span>
+                            <span class="cs-hero-chip" title="@rang('domaine')"><i class="fas fa-folder-open"></i>{{ $classe->parcours->mention->domaine->name }}</span>
+                            <span class="cs-hero-chip" title="@rang('mention')"><i class="fas fa-graduation-cap"></i>{{ $classe->parcours->mention->name }}</span>
+                            <span class="cs-hero-chip" title="@rang('parcours')"><i class="fas fa-route"></i>{{ $classe->parcours->name }}@if($classe->parcours->code) ({{ $classe->parcours->code }})@endif</span>
                             <span class="cs-hero-chip" style="background:rgba(255,255,255,.18);font-weight:700;letter-spacing:.5px;"><i class="fas fa-university"></i>LMD</span>
                         @elseif($isLmd && optional($classe->parcours)->mention)
                             <span class="cs-hero-chip"><i class="fas fa-graduation-cap"></i>{{ $classe->parcours->mention->name }}</span>
@@ -828,7 +828,7 @@
                         </div>
                     @elseif($isLmdInfo)
                         <div class="cs-info-row">
-                            <span class="cs-info-label">Mention</span>
+                            <span class="cs-info-label">@rang('mention')</span>
                             <span class="cs-info-value">
                                 @if($classe->filiere)
                                     {{ $classe->filiere->name }}

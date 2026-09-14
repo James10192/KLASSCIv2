@@ -44,6 +44,23 @@ class VocabulaireStructure
         return $domaine->nature?->label() ?? $this->domaine();
     }
 
+    /** Le nom d'un rang par sa cle : 'domaine', 'mention' ou 'parcours'. */
+    public function rang(string $cle): string
+    {
+        return match ($cle) {
+            'domaine' => $this->domaine(),
+            'mention' => $this->mention(),
+            'parcours' => $this->parcours(),
+            default => throw new \InvalidArgumentException("Rang LMD inconnu : {$cle}"),
+        };
+    }
+
+    /** Le nom d'un rang au pluriel. */
+    public function rangs(string $cle): string
+    {
+        return $this->pluriel($this->rang($cle));
+    }
+
     /** @return array{domaine: string, mention: string, parcours: string} */
     public function tous(): array
     {

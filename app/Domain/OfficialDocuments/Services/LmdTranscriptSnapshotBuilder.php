@@ -155,6 +155,11 @@ class LmdTranscriptSnapshotBuilder
                 'label' => $firstBulletin?->parcours_label ?? $firstBulletin?->parcours?->name,
                 'code' => $firstBulletin?->parcours?->code,
             ],
+            // Le nom des rangs (Domaine, ou Composante...) et la nature du
+            // premier (UFR, Ecole...) sont des reglages : geles ici, un releve
+            // reedite ne change pas de vocabulaire si l'ecole change le sien.
+            'vocabulary' => app(\App\Services\LMD\VocabulaireStructure::class)->tous(),
+            'domain_nature' => $firstBulletin?->parcours?->mention?->domaine?->nature?->label(),
         ];
     }
 

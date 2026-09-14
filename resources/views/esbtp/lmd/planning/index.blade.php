@@ -49,7 +49,7 @@
         <template x-if="loading"><div class="lp-spinner"></div></template>
         <div class="lp-filters-row">
             <div class="lp-filter-group" data-tour-node="filter-parcours">
-                <label class="lp-filter-label">Parcours</label>
+                <label class="lp-filter-label">@rang('parcours')</label>
                 <x-au-select
                     name="parcours_id"
                     icon="fa-route"

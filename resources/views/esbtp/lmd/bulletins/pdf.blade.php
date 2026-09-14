@@ -239,15 +239,15 @@
                     @endforeach
                 @else
                     <tr>
-                        <td width="40%" style="font-size: 9px; font-weight: bold;">DOMAINE :</td>
+                        <td width="40%" style="font-size: 9px; font-weight: bold;">{{ mb_strtoupper(app(\App\Services\LMD\VocabulaireStructure::class)->rang('domaine'), 'UTF-8') }} :</td>
                         <td style="font-size: 9px;">{{ $domaine ?? '' }}</td>
                     </tr>
                     <tr>
-                        <td style="font-size: 9px; font-weight: bold;">MENTION :</td>
+                        <td style="font-size: 9px; font-weight: bold;">{{ mb_strtoupper(app(\App\Services\LMD\VocabulaireStructure::class)->rang('mention'), 'UTF-8') }} :</td>
                         <td style="font-size: 9px;">{{ $mention ?? '' }}</td>
                     </tr>
                     <tr>
-                        <td style="font-size: 9px; font-weight: bold;">PARCOURS :</td>
+                        <td style="font-size: 9px; font-weight: bold;">{{ mb_strtoupper(app(\App\Services\LMD\VocabulaireStructure::class)->rang('parcours'), 'UTF-8') }} :</td>
                         <td style="font-size: 9px;">{{ $parcours_label ?? '' }}</td>
                     </tr>
                 @endif

@@ -186,7 +186,7 @@
             </tr>
             @endif
             <tr>
-                <td style="width:40%"><div class="lbl">{{ $_parcours ? 'Parcours' : 'Filière' }}</div><div class="val">{{ $_filiereLisible ?? '—' }}</div></td>
+                <td style="width:40%"><div class="lbl">{{ $_parcours ? app(\App\Services\LMD\VocabulaireStructure::class)->rang('parcours') : 'Filière' }}</div><div class="val">{{ $_filiereLisible ?? '—' }}</div></td>
                 <td style="width:30%"><div class="lbl">Niveau</div><div class="val">{{ $inscription->niveau->name ?? $inscription->classe->niveau->name ?? '—' }}</div></td>
                 <td><div class="lbl">Classe</div><div class="val">{{ $inscription->classe->name ?? '—' }}</div></td>
             </tr>

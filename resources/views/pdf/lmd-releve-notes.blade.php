@@ -2,6 +2,9 @@
     $doc = $snapshot['document'] ?? [];
     $student = $snapshot['student'] ?? [];
     $scope = $snapshot['scope'] ?? [];
+    // Vocabulaire gele a l'emission ; un releve anterieur ne le porte pas.
+    $rangs = ($scope['vocabulary'] ?? []) + ['domaine' => 'Domaine', 'mention' => 'Mention', 'parcours' => 'Parcours'];
+    $libelleDomaine = $scope['domain_nature'] ?? $rangs['domaine'];
     $semesters = $snapshot['semesters'] ?? [];
     $totals = $snapshot['totals'] ?? [];
     $rules = $snapshot['rules'] ?? [];
@@ -77,13 +80,13 @@
         <td class="rn-v">{{ $texte($anneeLibelle) }}</td>
     </tr>
     <tr>
-        <td class="rn-k">Domaine</td>
+        <td class="rn-k">{{ $libelleDomaine }}</td>
         <td class="rn-v">{{ $texte($scope['domain'] ?? null) }}</td>
-        <td class="rn-k">Mention</td>
+        <td class="rn-k">{{ $rangs['mention'] }}</td>
         <td class="rn-v">{{ $texte($scope['mention'] ?? null) }}</td>
     </tr>
     <tr>
-        <td class="rn-k">Parcours</td>
+        <td class="rn-k">{{ $rangs['parcours'] }}</td>
         <td class="rn-v">
             {{ $texte($scope['parcours']['label'] ?? null) }}
             @if(!empty($scope['parcours']['code'])) ({{ $scope['parcours']['code'] }}) @endif

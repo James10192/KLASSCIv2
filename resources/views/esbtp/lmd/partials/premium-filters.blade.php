@@ -31,7 +31,7 @@
         </div>
         @if($showParcours)
         <div class="lmd-field">
-            <label class="lmd-label">Parcours</label>
+            <label class="lmd-label">@rang('parcours')</label>
             <x-au-select
                 name="parcours_id"
                 :value="$filters['parcours_id'] ?? ''"

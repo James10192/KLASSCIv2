@@ -164,12 +164,12 @@
         <div class="rec-card-body">
             <div class="rec-filters">
                 <div class="rec-field">
-                    <label>Mention</label>
+                    <label>@rang('mention')</label>
                     <x-au-select name="rec_mention" x-model="filters.mention_id" icon="fa-graduation-cap"
                         placeholder="Toutes les mentions" :options="$recMentionOptions" :searchable="true" />
                 </div>
                 <div class="rec-field">
-                    <label>Parcours</label>
+                    <label>@rang('parcours')</label>
                     <x-au-select name="rec_parcours" x-model="filters.parcours_id" icon="fa-route"
                         placeholder="Tous les parcours" :options="$recParcoursOptions" :searchable="true" />
                 </div>

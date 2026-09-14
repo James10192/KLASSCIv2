@@ -48,7 +48,7 @@
         <div class="lht-node lht-node--lvl0">
             <div class="lht-icon"><i class="fas fa-folder-open"></i></div>
             <div class="lht-body">
-                <div class="lht-label">Domaine</div>
+                <div class="lht-label">{{ $domaineResolved->nature?->label() ?? app(\App\Services\LMD\VocabulaireStructure::class)->rang('domaine') }}</div>
                 <div class="lht-name">{{ $domaineResolved->name }}</div>
                 @if($domaineResolved->code)
                     <span class="lht-code">{{ $domaineResolved->code }}</span>
@@ -61,7 +61,7 @@
         <div class="lht-node lht-node--lvl1">
             <div class="lht-icon"><i class="fas fa-graduation-cap"></i></div>
             <div class="lht-body">
-                <div class="lht-label">Mention{{ $isTroncCommun ? ' · tronc commun' : '' }}</div>
+                <div class="lht-label">@rang('mention'){{ $isTroncCommun ? ' · tronc commun' : '' }}</div>
                 <div class="lht-name">{{ $mentionResolved->name }}</div>
                 @if($mentionResolved->code)
                     <span class="lht-code">{{ $mentionResolved->code }}</span>
@@ -74,7 +74,7 @@
         <div class="lht-node lht-node--lvl2">
             <div class="lht-icon"><i class="fas fa-route"></i></div>
             <div class="lht-body">
-                <div class="lht-label">Parcours</div>
+                <div class="lht-label">@rang('parcours')</div>
                 <div class="lht-name">{{ $parcours->name }}</div>
                 @if($parcours->code)
                     <span class="lht-code">{{ $parcours->code }}</span>
