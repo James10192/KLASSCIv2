@@ -134,10 +134,14 @@ class LMDImportService
 
     private function upsertDomaine(array $data, ?int $userId): ESBTPLMDDomaine
     {
-        return ESBTPLMDDomaine::updateOrCreate(
-            ['code' => $data['code'] ?? Str::slug($data['name'])],
-            ['name' => $data['name'], 'description' => $data['description'] ?? null, 'created_by' => $userId, 'is_active' => true]
-        );
+        $valeurs = ['name' => $data['name'], 'description' => $data['description'] ?? null, 'created_by' => $userId, 'is_active' => true];
+        // Nature (UFR, ecole...) ecrite seulement si la maquette la donne : une
+        // maquette qui l'omet n'efface pas celle posee depuis l'ecran.
+        if (array_key_exists('nature', $data)) {
+            $valeurs['nature'] = $data['nature'];
+        }
+
+        return ESBTPLMDDomaine::updateOrCreate(['code' => $data['code'] ?? Str::slug($data['name'])], $valeurs);
     }
 
     private function upsertMention(array $data, ESBTPLMDDomaine $domaine, ?int $userId): ESBTPLMDMention

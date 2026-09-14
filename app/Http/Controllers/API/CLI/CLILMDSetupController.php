@@ -53,6 +53,7 @@ class CLILMDSetupController extends BaseApiController
         $validated = $request->validate([
             'domaine.name' => 'required|string|max:255',
             'domaine.code' => 'nullable|string|max:50',
+            'domaine.nature' => ['nullable', \Illuminate\Validation\Rule::in(\App\Enums\NatureComposante::values())],
             'domaine.description' => 'nullable|string|max:1000',
             'mention.name' => 'required|string|max:255',
             'mention.code' => 'nullable|string|max:50',
@@ -113,6 +114,7 @@ class CLILMDSetupController extends BaseApiController
                 'id' => $d->id,
                 'name' => $d->name,
                 'code' => $d->code,
+                'nature' => $d->nature?->value,
                 'mentions' => $d->mentions->map(fn (ESBTPLMDMention $m) => [
                     'id' => $m->id,
                     'name' => $m->name,
@@ -226,6 +228,7 @@ class CLILMDSetupController extends BaseApiController
         $validated = $request->validate([
             'domaine.name' => 'required|string|max:255',
             'domaine.code' => 'nullable|string|max:50',
+            'domaine.nature' => ['nullable', \Illuminate\Validation\Rule::in(\App\Enums\NatureComposante::values())],
             'mention.name' => 'required|string|max:255',
             'mention.code' => 'nullable|string|max:50',
             'parcours.name' => 'required|string|max:255',
@@ -480,16 +483,20 @@ class CLILMDSetupController extends BaseApiController
     private function upsertDomaine(array $data, ?int $userId): ESBTPLMDDomaine
     {
         $code = $data['code'] ?? Str::upper(Str::slug($data['name'], ''));
-        return ESBTPLMDDomaine::updateOrCreate(
-            ['code' => $code],
-            [
-                'name' => $data['name'],
-                'description' => $data['description'] ?? null,
-                'is_active' => true,
-                'created_by' => $userId,
-                'updated_by' => $userId,
-            ]
-        );
+        $valeurs = [
+            'name' => $data['name'],
+            'description' => $data['description'] ?? null,
+            'is_active' => true,
+            'created_by' => $userId,
+            'updated_by' => $userId,
+        ];
+        // La nature (UFR, ecole...) n'est ecrite que si l'appel la donne : un
+        // appel qui l'omet ne doit pas effacer celle posee depuis l'ecran.
+        if (array_key_exists('nature', $data)) {
+            $valeurs['nature'] = $data['nature'];
+        }
+
+        return ESBTPLMDDomaine::updateOrCreate(['code' => $code], $valeurs);
     }
 
     private function upsertMention(array $data, int $domaineId, ?int $userId): ESBTPLMDMention

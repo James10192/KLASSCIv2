@@ -316,6 +316,14 @@
     }
     .lp-modal-btn--cancel { background: #fff; color: #64748b; border: 1.5px solid #e2e8f0; }
     .lp-modal-btn--cancel:hover { background: #f1f5f9; border-color: #cbd5e1; }
+    .lp-nature-badge { display:inline-flex; align-items:center; padding:.15rem .5rem; border-radius:6px; font-size:.68rem; font-weight:700; letter-spacing:.3px; background:rgba(4,83,203,.08); color:#0453cb; border:1px solid rgba(4,83,203,.22); margin-left:.4rem; }
+    .lp-nature-label { display:block; font-size:.82rem; font-weight:600; color:#1e293b; margin-bottom:.4rem; }
+    .lp-nature-choix { display:flex; flex-wrap:wrap; gap:.5rem; }
+    .lp-nature-pill { position:relative; cursor:pointer; margin:0; }
+    .lp-nature-pill input { position:absolute; opacity:0; pointer-events:none; }
+    .lp-nature-pill span { display:inline-block; padding:.4rem .85rem; border-radius:999px; border:1px solid #e2e8f0; background:#fff; color:#475569; font-size:.8rem; font-weight:600; transition:all .15s ease; }
+    .lp-nature-pill input:checked + span { background:#0453cb; border-color:#0453cb; color:#fff; }
+    .lp-nature-pill input:focus-visible + span { outline:2px solid #5e91de; outline-offset:2px; }
     .lp-modal-btn--domaine { background: #0453cb; color: #fff; box-shadow: 0 2px 8px rgba(4,83,203,.2); }
     .lp-modal-btn--domaine:hover { background: #0340a0; }
     .lp-modal-btn--mention { background: #059669; color: #fff; box-shadow: 0 2px 8px rgba(5,150,105,.2); }
@@ -373,6 +381,12 @@
         $totalDomaines = $domaines->count();
         $totalMentions = $domaines->sum(fn($d) => $d->mentions->count());
         $totalParcours = $domaines->sum(fn($d) => $d->mentions->sum(fn($m) => $m->parcours->count()));
+        // Le nom des trois rangs est un reglage d'etablissement (Domaine, ou
+        // Composante, Faculte...) : cette page ne l'ecrit plus en dur.
+        $vocabulaire = app(\App\Services\LMD\VocabulaireStructure::class);
+        $rang = $vocabulaire->tous();
+        $rangs = array_map(fn ($l) => $vocabulaire->pluriel($l), $rang);
+        $naturesComposante = \App\Enums\NatureComposante::selectOptions();
     @endphp
 
     <div class="lp-hero">
@@ -380,8 +394,8 @@
             <div class="lp-hero-left">
                 <div class="lp-hero-icon"><i class="fas fa-sitemap"></i></div>
                 <div class="lp-hero-info">
-                    <h1>Parcours LMD</h1>
-                    <p>Domaines, Mentions et Parcours — organisation hiérarchique</p>
+                    <h1>Structure LMD</h1>
+                    <p>{{ $rangs['domaine'] }}, {{ $rangs['mention'] }} et {{ $rangs['parcours'] }} — organisation hiérarchique</p>
                 </div>
             </div>
             <div class="lp-hero-actions">
@@ -397,21 +411,21 @@
                 <div class="lp-kpi-icon"><i class="fas fa-globe-africa"></i></div>
                 <div>
                     <div class="lp-kpi-value">{{ $totalDomaines }}</div>
-                    <div class="lp-kpi-label">Domaines</div>
+                    <div class="lp-kpi-label">{{ $rangs['domaine'] }}</div>
                 </div>
             </div>
             <div class="lp-kpi lp-kpi--mentions">
                 <div class="lp-kpi-icon"><i class="fas fa-bookmark"></i></div>
                 <div>
                     <div class="lp-kpi-value">{{ $totalMentions }}</div>
-                    <div class="lp-kpi-label">Mentions</div>
+                    <div class="lp-kpi-label">{{ $rangs['mention'] }}</div>
                 </div>
             </div>
             <div class="lp-kpi lp-kpi--parcours">
                 <div class="lp-kpi-icon"><i class="fas fa-route"></i></div>
                 <div>
                     <div class="lp-kpi-value">{{ $totalParcours }}</div>
-                    <div class="lp-kpi-label">Parcours</div>
+                    <div class="lp-kpi-label">{{ $rangs['parcours'] }}</div>
                 </div>
             </div>
         </div>
@@ -430,13 +444,13 @@
     {{-- ══ Action Buttons ══ --}}
     <div class="lp-action-bar">
         <button type="button" class="lp-add-btn lp-add-btn--domaine" data-bs-toggle="modal" data-bs-target="#modalDomaine" onclick="resetModal('domaine')">
-            <i class="fas fa-plus"></i>Domaine
+            <i class="fas fa-plus"></i>{{ $rang['domaine'] }}
         </button>
         <button type="button" class="lp-add-btn lp-add-btn--mention" data-bs-toggle="modal" data-bs-target="#modalMention" onclick="resetModal('mention')">
-            <i class="fas fa-plus"></i>Mention
+            <i class="fas fa-plus"></i>{{ $rang['mention'] }}
         </button>
         <button type="button" class="lp-add-btn lp-add-btn--parcours" data-bs-toggle="modal" data-bs-target="#modalParcours" onclick="resetModal('parcours')">
-            <i class="fas fa-plus"></i>Parcours
+            <i class="fas fa-plus"></i>{{ $rang['parcours'] }}
         </button>
     </div>
 
@@ -450,6 +464,9 @@
                      @click="openDomaine = openDomaine === {{ $domaine->id }} ? null : {{ $domaine->id }}; if(openDomaine !== {{ $domaine->id }}) openMention = null;">
                     <div class="lp-domaine-header-left">
                         <span class="lp-code-badge lp-code-badge--domaine">{{ $domaine->code }}</span>
+                        @if($domaine->nature)
+                            <span class="lp-nature-badge" title="{{ $domaine->nature->intitule() }}">{{ $domaine->nature->label() }}</span>
+                        @endif
                         <div>
                             <div class="lp-item-name">{{ $domaine->name }}</div>
                             <div class="lp-item-meta">
@@ -806,8 +823,8 @@
                             <div class="lp-modal-hero-left">
                                 <div class="lp-modal-icon"><i class="fas fa-layer-group"></i></div>
                                 <div>
-                                    <h5 class="lp-modal-title" id="modalDomaineLabel">Nouveau Domaine</h5>
-                                    <div class="lp-modal-subtitle">Définir un domaine académique LMD</div>
+                                    <h5 class="lp-modal-title" id="modalDomaineLabel">{{ $rang['domaine'] }} : ajout</h5>
+                                    <div class="lp-modal-subtitle">Premier rang de la structure LMD</div>
                                 </div>
                             </div>
                             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -828,6 +845,16 @@
                             <div>
                                 <label for="domaine_name"><i class="fas fa-font"></i> Nom <span class="text-danger">*</span></label>
                                 <input type="text" class="form-control" id="domaine_name" name="name" required placeholder="Ex: Sciences et Technologies">
+                            </div>
+                            <div class="lp-field-full">
+                                <span class="lp-nature-label"><i class="fas fa-building-columns"></i> Nature</span>
+                                <div class="lp-nature-choix" role="radiogroup" aria-label="Nature">
+                                    <label class="lp-nature-pill"><input type="radio" name="nature" value="" checked><span>{{ $rang['domaine'] }}</span></label>
+                                    @foreach($naturesComposante as $valeurNature => $libelleNature)
+                                        <label class="lp-nature-pill"><input type="radio" name="nature" value="{{ $valeurNature }}"><span>{{ $libelleNature }}</span></label>
+                                    @endforeach
+                                </div>
+                                <div class="form-text">Ce que cet élément est dans l'université : une UFR, une faculté, une école ou un institut. Laissez « {{ $rang['domaine'] }} » s'il n'y a pas lieu de le préciser.</div>
                             </div>
                             <div class="lp-field-full">
                                 <label for="domaine_description"><i class="fas fa-align-left"></i> Description</label>
@@ -1034,6 +1061,13 @@
         return d.innerHTML;
     }
 
+    /** Coche la pastille de nature correspondant a la valeur (vide = rang simple). */
+    function choisirNatureDomaine(valeur) {
+        document.querySelectorAll('#formDomaine input[name="nature"]').forEach(function (radio) {
+            radio.checked = radio.value === valeur;
+        });
+    }
+
     /**
      * Reset modal to "create" mode
      */
@@ -1041,7 +1075,8 @@
         if (type === 'domaine') {
             document.getElementById('formDomaine').action = "{{ route('esbtp.lmd.domaines.store') }}";
             document.getElementById('domaine_method').value = 'POST';
-            document.getElementById('modalDomaineLabel').textContent = 'Nouveau Domaine';
+            document.getElementById('modalDomaineLabel').textContent = @json($rang['domaine'] . ' : ajout');
+            choisirNatureDomaine('');
             document.getElementById('domaine_submit_text').textContent = 'Enregistrer';
             document.getElementById('domaine_code').value = '';
             document.getElementById('domaine_name').value = '';
@@ -1075,7 +1110,8 @@
     function editDomaine(domaine) {
         document.getElementById('formDomaine').action = "{{ url('esbtp/lmd/domaines') }}/" + domaine.id;
         document.getElementById('domaine_method').value = 'PUT';
-        document.getElementById('modalDomaineLabel').textContent = 'Modifier le Domaine';
+        document.getElementById('modalDomaineLabel').textContent = @json($rang['domaine'] . ' : modification');
+        choisirNatureDomaine(domaine.nature || '');
         document.getElementById('domaine_submit_text').textContent = 'Mettre à jour';
         document.getElementById('domaine_code').value = domaine.code || '';
         document.getElementById('domaine_name').value = domaine.name || '';
