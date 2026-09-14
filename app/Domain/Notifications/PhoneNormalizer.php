@@ -80,7 +80,26 @@ final class PhoneNormalizer
     /** UIT-T E.164 §6.2 : quinze chiffres au plus, indicatif pays compris. */
     private const LONGUEUR_E164_MAX = 15;
 
-    /** Plancher pratique : aucun plan national n'attribue en dessous. */
+    /**
+     * Plancher de forme pour un numéro étranger. Ni une norme, ni une garantie.
+     *
+     * L'E.164 ne fixe AUCUN minimum, et huit chiffres n'est donc pas une borne
+     * universelle : Niue (+683) attribue des numéros nationaux à quatre
+     * chiffres, soit sept en tout, et ce plancher les refuserait. C'est assumé —
+     * aucune des huit instances ne dessert le Pacifique, et un refus se voit à
+     * l'écran alors qu'un numéro corrompu ne se voit nulle part.
+     *
+     * Ce qu'il ne fait PAS, et qu'il ne faut pas lui prêter : prouver que le
+     * numéro existe. `+12345678` a huit chiffres et passe, alors que le plan
+     * nord-américain en exige dix après l'indicatif. Le savoir demanderait la
+     * table des plans nationaux du monde — la dette que cette classe refuse, et
+     * pour un gain nul ici : un tel numéro ne route vers personne, donc il
+     * échoue à la livraison, il ne se livre pas au mauvais destinataire.
+     *
+     * C'est toute la différence avec le défaut que cette classe corrige. Là où
+     * la portée étroite est une DÉCISION plutôt qu'un effet de bord, c'est
+     * `estMobileNational()` qu'il faut appeler, pas `isValid()`.
+     */
     private const LONGUEUR_E164_MIN = 8;
 
     public const CLE_INDICATIF = 'telephone_indicatif_pays';

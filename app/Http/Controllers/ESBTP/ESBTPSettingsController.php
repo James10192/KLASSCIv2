@@ -69,7 +69,9 @@ class ESBTPSettingsController extends Controller
         $appreciationScaleSettings = app(AppreciationScaleSettingsService::class);
         $appreciationScaleSettings->ensureDefaults();
         $this->ensureMailPulseSettings();
-        app(TelephoneSettingsService::class)->ensureDefaults();
+        $telephoneSettings = app(TelephoneSettingsService::class);
+        $telephoneSettings->ensureDefaults();
+        $telephoneReglages = $telephoneSettings->etatAffichable();
         $allSettings = Setting::orderBy('category')->orderBy('sort_order')->get();
         $settings = $allSettings->groupBy('category');
         $flatSettings = $allSettings; // Collection plate pour l'accès direct par clé
@@ -83,7 +85,8 @@ class ESBTPSettingsController extends Controller
             'flatSettings',
             'missingSettings',
             'backupStats',
-            'appreciationScales'
+            'appreciationScales',
+            'telephoneReglages'
         ));
     }
 
