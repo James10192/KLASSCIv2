@@ -38,7 +38,17 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 - **La base garantit désormais qu'aucun reçu valide ne partage son numéro** — jusqu'ici, rien dans le schéma ne l'empêchait : seule la prudence du code tenait, et elle laissait une brèche à la toute première émission d'une année, quand aucun numéro antérieur n'existe encore à verrouiller. La contrainte ne porte que sur les reçus **en circulation** : un numéro reste réattribuable après la suppression d'un paiement, ce qui a toujours été légitime. Rien ne change à l'usage, et aucune saisie n'est refusée qui passait avant : c'est une garantie ajoutée sous la caisse, pas une règle nouvelle imposée au guichet.
 
+### Sécurité
+
+- **Plus aucun mot de passe du Service Technique dans le code** — les deux comptes de support d'African Digit Consulting étaient créés avec des mots de passe écrits en clair dans le dépôt, identiques sur chaque instance, et réaffichés par la commande d'installation. Ils se lisent désormais dans l'environnement de l'instance (`SERVICE_TECHNIQUE_PASSWORD`, `SERVICE_TECHNIQUE_BACKUP_PASSWORD`) ou se génèrent au hasard, affichés une seule fois à la création. Un compte existant garde son mot de passe : ceux créés avant ce changement doivent être renouvelés, les anciens restant lisibles dans l'historique.
+
 ### Corrections
+
+- **Le relevé de notes officiel (modèle du Ministère) est délivré au nom de l'État de l'établissement** — la république, la devise et le ministère étaient écrits en dur (Côte d'Ivoire) dans le gabarit, alors que les bulletins LMD les lisaient déjà dans les réglages. Un relevé émis par une école béninoise serait sorti au nom d'un autre État, et un relevé signé ne se corrige pas. Ces trois textes sont repris des réglages du bulletin LMD et gravés dans le relevé à son émission. Sans réglage, les textes d'origine : rien ne change pour les écoles ivoiriennes, ni pour les relevés déjà émis.
+
+- **L'import de maquette LMD ne déplace plus une mention ou un parcours d'un autre domaine** (`POST /api/cli/lmd/import`) — l'import retrouvait mentions et parcours par leur code, puis réécrivait leur rattachement : une mention d'un autre domaine y était transférée avec tous ses parcours, sans un message. C'est certain dès qu'un même intitulé vit dans deux domaines et que la maquette ne donne pas de code, puisque le code se déduit alors du nom. L'import est refusé et nomme l'élément concerné, comme il le faisait déjà pour un élément constitutif rattaché à une autre unité.
+
+- **Deux options disaient faire ce qu'elles ne font pas** — « Anonymiser les copies » promettait un numéro d'anonymat par étudiant, qui n'existe pas : l'option indique seulement l'anonymat sur les convocations et le procès-verbal, et la saisie des notes affiche toujours les noms. Son libellé le dit maintenant, sur le formulaire comme sur la fiche de l'examen. « Afficher Spécialité » sur le bulletin LMD ne pouvait rien afficher, aucune spécialité n'étant enregistrée : la configuration le signale.
 
 - **Le cycle Master est pris en charge de bout en bout, jusqu'au S10** — l'année d'un niveau LMD se compte depuis la Licence (Master 1 = année 4, Master 2 = année 5), mais plusieurs écrans ne le savaient pas :
   - le suivi des heures d'une classe, d'un emploi du temps et le budget de volume horaire recomptaient le Master à partir de la Licence, et envoyaient un Master 1 correctement numéroté en S13-S14 ; ils lisent désormais la même correspondance que le reste de l'application ;

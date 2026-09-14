@@ -109,12 +109,12 @@
     <tr>
         <td style="width:52%">
             <div class="ministere">
-                Ministère de l'Enseignement Supérieur<br>et de la Recherche Scientifique
+                {!! nl2br(e($snapshot['authority']['ministry'] ?? \App\Domain\OfficialDocuments\Services\LmdTranscriptSnapshotBuilder::MINISTERE_PAR_DEFAUT)) !!}
             </div>
         </td>
         <td style="width:48%">
-            <div class="republique">République de Côte d'Ivoire</div>
-            <div class="devise">Union – Discipline – Travail</div>
+            <div class="republique">{{ $snapshot['authority']['republic'] ?? \App\Domain\OfficialDocuments\Services\LmdTranscriptSnapshotBuilder::REPUBLIQUE_PAR_DEFAUT }}</div>
+            <div class="devise">{{ $snapshot['authority']['motto'] ?? \App\Domain\OfficialDocuments\Services\LmdTranscriptSnapshotBuilder::DEVISE_PAR_DEFAUT }}</div>
         </td>
     </tr>
 </table>

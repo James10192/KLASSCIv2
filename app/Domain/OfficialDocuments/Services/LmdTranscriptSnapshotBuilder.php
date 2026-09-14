@@ -45,6 +45,11 @@ class LmdTranscriptSnapshotBuilder
     public const MODELE_MESRS = 'lmd-releve-notes-mesrs-v1';
     public const REGLAGE_MODELE = 'lmd_releve_modele';
 
+    /** Textes du gabarit officiel d'origine, et de tout instantane qui ne porte pas `authority`. */
+    public const REPUBLIQUE_PAR_DEFAUT = "République de Côte d'Ivoire";
+    public const DEVISE_PAR_DEFAUT = 'Union – Discipline – Travail';
+    public const MINISTERE_PAR_DEFAUT = "Ministère de l'Enseignement Supérieur\net de la Recherche Scientifique";
+
     public function __construct(
         private readonly LmdAcademicRuleProfile $profile,
         private readonly LMDBulletinService $bulletins,
@@ -59,13 +64,14 @@ class LmdTranscriptSnapshotBuilder
         $semesters = $bulletins->map(fn ($bulletin) => $this->semesterData($bulletin))->values()->all();
 
         $snapshot = [
-            'schema' => 'lmd-transcript-snapshot-v2',
+            'schema' => 'lmd-transcript-snapshot-v3',
             'document' => [
                 'reference' => $identity['reference'],
                 'version' => $identity['version'],
                 'number' => $identity['number'],
             ],
             'institution' => SettingsHelper::getSchoolInfo(),
+            'authority' => $this->authority(),
             'student' => $this->studentData($state['student'], $state['year']),
             'scope' => $this->scopeData($state['year'], $bulletins->first()),
             'semesters' => $semesters,
@@ -89,6 +95,24 @@ class LmdTranscriptSnapshotBuilder
             $this->canonicalize($snapshot),
             JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR,
         );
+    }
+
+    /**
+     * L'Etat au nom duquel le releve est delivre : republique, devise, ministere.
+     *
+     * Le modele officiel les ecrivait en dur (Cote d'Ivoire). Un releve delivre
+     * au Benin serait sorti au nom d'un autre Etat, et un releve signe ne se
+     * corrige pas. Ils sont lus dans les reglages que l'ecole renseigne deja pour
+     * ses bulletins LMD, et GELES ici comme le reste. A defaut de reglage, les
+     * textes du gabarit d'origine : rien ne change pour une ecole ivoirienne.
+     */
+    private function authority(): array
+    {
+        return [
+            'republic' => SettingsHelper::get('lmd_bulletin_republic_text', self::REPUBLIQUE_PAR_DEFAUT),
+            'motto' => SettingsHelper::get('lmd_bulletin_union_text', self::DEVISE_PAR_DEFAUT),
+            'ministry' => SettingsHelper::get('lmd_bulletin_ministry_text', self::MINISTERE_PAR_DEFAUT),
+        ];
     }
 
     private function studentData($student, $year = null): array
