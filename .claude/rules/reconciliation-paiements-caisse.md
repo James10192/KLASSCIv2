@@ -105,87 +105,46 @@ La séparation des devoirs n'est pas qu'une consigne de cette rule : elle est po
 par `SeparationOfDutiesGuard`, et conditionnée au réglage d'instance
 `comptabilite.reconciliation.require_separation_of_duties`.
 
-## Schéma DB (en place)
+## Schéma DB — lisez les migrations, pas cette rule
 
-```sql
--- Sessions de réconciliation (1 par jour ou par période)
-CREATE TABLE reconciliation_sessions (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    code VARCHAR(20) UNIQUE,         -- ex: REC-2026-0042
-    annee_universitaire_id BIGINT NOT NULL,
-    date_periode DATE NOT NULL,      -- ex: 2026-06-04
-    status ENUM('draft','review','approved','locked') DEFAULT 'draft',
-    opened_by BIGINT NOT NULL,
-    opened_at TIMESTAMP NOT NULL,
-    closed_by BIGINT NULL,
-    closed_at TIMESTAMP NULL,
-    approved_by BIGINT NULL,
-    approved_at TIMESTAMP NULL,
-    pv_pdf_path VARCHAR(255) NULL,
-    notes TEXT NULL,
-    created_at TIMESTAMP, updated_at TIMESTAMP, deleted_at TIMESTAMP NULL,
-    INDEX (annee_universitaire_id, date_periode),
-    INDEX (status)
-);
+> Cette rule publiait ici un bloc SQL de 80 lignes. Il datait de la conception et
+> **divergeait du schéma livré sur cinq points** : `cash_counts.mode_paiement` y était
+> un `ENUM` (c'est un `string(30)`), une colonne `ecart` y était calculée en SQL (elle
+> n'existe pas — le modèle la calcule), `reconciliation_sessions` y portait une
+> `date_periode` (ce sont `period_start` / `period_end` / `frequency`), et la liste des
+> statuts y était fausse. Le retitrer « en place » n'a fait qu'affirmer une erreur.
+>
+> **Une copie du schéma dans une rule diverge toujours.** Les migrations sont la source ;
+> ce qui suit ne dit que ce qu'on ne devine pas en les lisant.
 
--- Comptages physiques par mode (1 row par mode et par session)
-CREATE TABLE cash_counts (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    reconciliation_session_id BIGINT NOT NULL,
-    mode_paiement ENUM('especes','mobile_money','virement','cheque','wave','orange_money','mtn_money','moov_money') NOT NULL,
-    montant_compte DECIMAL(15,2) NOT NULL,     -- compté physiquement
-    montant_systeme DECIMAL(15,2) NOT NULL,     -- somme paiements validés période/mode
-    ecart DECIMAL(15,2) GENERATED ALWAYS AS (montant_compte - montant_systeme) STORED,
-    counted_by BIGINT NOT NULL,
-    counted_at TIMESTAMP NOT NULL,
-    notes TEXT NULL,
-    FOREIGN KEY (reconciliation_session_id) REFERENCES reconciliation_sessions(id) ON DELETE CASCADE,
-    UNIQUE (reconciliation_session_id, mode_paiement)
-);
-
--- Écarts constatés à résoudre (1 row par écart identifié)
-CREATE TABLE reconciliation_discrepancies (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    reconciliation_session_id BIGINT NOT NULL,
-    cash_count_id BIGINT NULL,                   -- lien vers le mode concerné
-    type ENUM('paiement_manquant','paiement_en_trop','montant_errone','mode_errone','date_erronee','autre') NOT NULL,
-    montant_ecart DECIMAL(15,2) NOT NULL,
-    paiement_concerne_id BIGINT NULL,            -- nullable si nouveau paiement à créer
-    action ENUM('a_traiter','en_revue','resolu','rejete') DEFAULT 'a_traiter',
-    resolution_type ENUM('adjust_payment','create_corrective','cancel_payment','no_action') NULL,
-    resolution_payment_id BIGINT NULL,           -- paiement créé ou modifié
-    motif TEXT NOT NULL,                         -- justification obligatoire
-    resolved_by BIGINT NULL,
-    resolved_at TIMESTAMP NULL,
-    FOREIGN KEY (reconciliation_session_id) REFERENCES reconciliation_sessions(id) ON DELETE CASCADE,
-    FOREIGN KEY (cash_count_id) REFERENCES cash_counts(id) ON DELETE SET NULL,
-    FOREIGN KEY (paiement_concerne_id) REFERENCES esbtp_paiements(id) ON DELETE SET NULL,
-    INDEX (action)
-);
-
--- Log immuable des mutations paiement effectuées en réconciliation
-CREATE TABLE payment_reconciliation_logs (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    reconciliation_session_id BIGINT NOT NULL,
-    paiement_id BIGINT NOT NULL,
-    action_type ENUM('adjust_montant','adjust_mode','adjust_date','create','cancel','validate','revalidate') NOT NULL,
-    snapshot_before JSON NOT NULL,               -- état complet avant
-    snapshot_after JSON NOT NULL,                -- état complet après
-    delta JSON NOT NULL,                         -- diff lisible
-    motif TEXT NOT NULL,
-    performed_by BIGINT NOT NULL,
-    performed_at TIMESTAMP NOT NULL,
-    FOREIGN KEY (reconciliation_session_id) REFERENCES reconciliation_sessions(id),
-    FOREIGN KEY (paiement_id) REFERENCES esbtp_paiements(id),
-    INDEX (paiement_id),
-    INDEX (performed_at)
-);
-
--- Marqueur "paiement déjà réconcilié" sur la table paiements existante
-ALTER TABLE esbtp_paiements
-    ADD COLUMN reconciliation_locked_at TIMESTAMP NULL AFTER validated_by,
-    ADD COLUMN last_reconciliation_session_id BIGINT NULL AFTER reconciliation_locked_at;
+```bash
+ls database/migrations/*reconciliation* database/migrations/*cash_counts*
+grep -E '\$table->' database/migrations/*create_cash_counts*.php
 ```
+
+Quatre tables : `reconciliation_sessions`, `cash_counts`,
+`reconciliation_discrepancies`, `payment_reconciliation_logs`, plus deux colonnes
+ajoutées à `esbtp_paiements` (`reconciliation_locked_at`,
+`last_reconciliation_session_id`).
+
+Ce qui se devine mal, et qui décide du coût d'une évolution :
+
+- **`cash_counts.mode_paiement` est un `string(30)`**, pas un `ENUM` SQL. Ajouter un
+  moyen de paiement — `celtiis_money` pour une instance béninoise, par exemple —
+  **ne demande aucun `ALTER` d'énumération ni verrou de table** sur les huit instances.
+  Le commentaire de colonne pointe vers `App\Enums\ModePaiement`, qui reste la
+  source de vérité applicative.
+- **L'écart n'est pas une colonne.** `CashCount::ecart()` le calcule
+  (`montant_compte - montant_systeme`). Rien à migrer pour le changer.
+- **La période est un intervalle**, `period_start` / `period_end`, avec une
+  `frequency` (`daily` / `weekly` / `monthly`) — pas une date unique.
+- **Les statuts sont** `draft` · `review` · `approved` · `closed` · `reopened`.
+  Une session close se rouvre : c'est `reopened`, pas un statut terminal `locked`.
+- **`period_start` et `period_end` sont des `date`**, donc insensibles au fuseau.
+  Mais `date_paiement` est **écrite depuis `now()`** en une dizaine d'endroits : sur
+  une instance hors UTC, un encaissement saisi après minuit local porte la date de la
+  veille, et peut tomber dans une période déjà verrouillée. Voir
+  `adminklassci-tenant-management.md`.
 
 ## Workflow complet (UEMOA/OHADA-compliant)
 

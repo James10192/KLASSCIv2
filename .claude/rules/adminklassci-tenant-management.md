@@ -63,26 +63,110 @@ KLASSCI suit une architecture SaaS multi-instance avec **isolation complète par
 
 ## Hors Cote d'Ivoire : ce que le code suppose encore
 
-`ucao-benin` est la PREMIERE instance hors de Cote d'Ivoire. Deux hypotheses sont
-ecrites en dur et n'ont jamais gene, parce qu'elles etaient vraies partout :
+`ucao-benin` est la PREMIERE instance hors de Cote d'Ivoire. Ce qui suit a ete
+**mesure le 14 septembre 2026**, pas deduit : chaque affirmation se rejoue avec la
+commande qui l'accompagne.
 
-- **L'indicatif `+225`** — `PhoneNormalizer::E164_PREFIX` et `PhoneFormatter`
-  supposent un numero ivoirien a 10 chiffres nationaux. Le Benin est en **+229**.
-  Portee : liens WhatsApp de relance, contacts etudiants, exports de recouvrement,
-  portail de candidature, notifications MailPulse. Une relance partirait vers un
-  numero faux, sans erreur visible.
-- **Le fuseau `UTC`** — `config/app.php` le fixe en litteral, sans meme le lire
-  depuis l'environnement. La Cote d'Ivoire etant a UTC+0, la coincidence tenait
-  lieu de reglage. Le Benin est a **UTC+1** : appels, encaissements et echeances
-  de fin de mois seraient decales d'une heure.
+### Le telephone — plus grave qu'un indicatif faux
 
-Le pays de l'etablissement, lui, est deja un reglage (`school_country`), et la
+Le Benin est passe de 8 a 10 chiffres le **30 novembre 2024**, en prefixant `01`
+devant l'ancien numero ([ARCEP Benin](https://arcep.bj/a-partir-de-30-novembre-2024-les-numeros-de-telephone-au-benin-passent-de-08-a-10-chiffres/),
+[UIT-T](https://www.itu.int/dms_pub/itu-t/oth/02/02/T02020000170002PDFF.pdf)).
+La Cote d'Ivoire a fait de meme en 2021, et `01` y designe Moov. **Les deux plans
+se recouvrent donc entierement** : meme longueur, meme debut.
+
+Consequence, executee contre le vrai code :
+
+```
+0142345678  (MTN Benin)  ->  PhoneNormalizer::toE164()  ->  +2250142345678
+                             https://wa.me/2250142345678
+```
+
+- **Aucun numero beninois n'est rejete.** Ils commencent tous par `01` et font tous
+  dix chiffres : les deux controles passent, et `+225` est appose en sortie.
+- Pour **huit series attribuees des deux cotes** (`0140`-`0143`, `0150`-`0153`), le
+  numero produit est un mobile Moov CI **joignable, appartenant a un tiers**. La
+  relance part avec le nom de l'etudiant et le montant du.
+- Pour les autres, la serie n'est pas attribuee en CI : le message n'arrive nulle
+  part, **sans erreur ni ligne au journal**.
+- **L'ecriture internationale `+229…` est REFUSEE** (`toE164` rend `null`), et
+  `PortailCandidatureRequest` rend le telephone obligatoire en calquant ce refus —
+  son message parle meme d'un « numero mobile **ivoirien** ». Le portail refuse donc
+  qui ecrit juste, et accepte en corrompant qui ecrit en national.
+
+**Trois fichiers, pas un.** Corriger `PhoneNormalizer` seul ne suffit pas :
+
+| Fichier | Ce qu'il fait |
+|---|---|
+| `app/Domain/Notifications/PhoneNormalizer.php` | cinq constantes ivoiriennes (`COUNTRY_CODE`, `E164_PREFIX`, le regex de prefixes mobiles, `NATIONAL_LENGTH`, `FULL_LENGTH`) |
+| `app/Domain/Notifications/PhoneFormatter.php` | **recolle `'+225 '` en dur a l'affichage**, quoi qu'ait produit le normaliseur — et `substr($e164, 4)` suppose un indicatif a trois chiffres. Corrige seul, le premier serait neutralise a l'ecran et dans l'export de recouvrement |
+| `SmsService.php` · `WhatsAppService.php` | `'+225' . ltrim($phone, '0')` — **casse aussi la Cote d'Ivoire** : le zero initial fait partie du numero national depuis 2021, donc tout numero ivoirien y perd un chiffre. Dormant (canaux fermes par `env()`), mais charge |
+
+### Le remede : cesser de deviner le pays, pas rendre l'indicatif configurable
+
+Rendre l'indicatif configurable par instance traite le pays comme une propriete de
+**l'ecole**. Il ne l'est pas : `PortailCandidatureRequest` documente lui-meme le cas
+inverse — « une famille de la diaspora » renseigne un numero etranger sur une
+instance ivoirienne. Un indicatif configurable laisserait ce cas casser dans les
+deux sens.
+
+1. **Croire l'indicatif explicite.** Si l'entree porte un `+` ou un `00` suivi d'un
+   indicatif, on la valide sur sa forme et on la conserve — sans rejouer le controle
+   de prefixe national. Repare a soi seul le refus de `+229…`, sans reglage ni
+   migration.
+2. **Un seul reglage, pour la saisie nationale seulement** : l'indicatif par defaut,
+   `225`. N'en deriver rien de `school_country`, qui est un libelle libre.
+3. **Jamais de liste blanche de prefixes par pays.** `0142345678` est simultanement
+   un MTN Benin et un Moov CI valides : aucune inference n'est possible, et les
+   series se reattribuent.
+4. **L'invariant qui protege les six instances ivoiriennes** : la forme canonique
+   d'un numero ivoirien doit rester **octet pour octet** `+225` + 10 chiffres.
+   `esbtp_candidatures.telephone` est le seul stockage canonique, sous index UNIQUE
+   `(telephone, annee_universitaire_id)` — la detection de doublon en depend. Les
+   cas ivoiriens de `PhoneNormalizerTest` doivent rester verts **sans modification**.
+   `esbtp_etudiants.telephone` et `esbtp_parents.telephone` sont bruts : aucun
+   backfill.
+
+### Le fuseau — le reglage est deja seme, personne ne le lit
+
+`config/app.php` fixe `'timezone' => 'UTC'` en litteral, sans lire l'environnement.
+Mais `SettingsSeeder` seme deja **`app_timezone` a `Africa/Abidjan`** — et
+`grep -rn app_timezone app/ config/` ne rend **aucune lecture**. Le travail n'est
+donc pas de rendre le fuseau configurable : c'est de **brancher un reglage existant**.
+`Africa/Abidjan` valant UTC+0, les six instances ivoiriennes ne bougent pas d'une
+seconde.
+
+Ce que cela corrige d'un coup :
+
+- **24 filtres `whereDate('created_at', …)`** comparent un horodatage UTC a un jour
+  local — dont `CashSessionService::queryJour()`, la caisse d'un caissier.
+- **`date_paiement` est ecrite depuis `now()`** en une dizaine d'endroits. Elle est
+  bien de type `date` (donc la lecture de la reconciliation, elle, ne decale pas),
+  mais un encaissement saisi apres minuit local porterait la date de la veille — et
+  pourrait tomber dans une periode deja verrouillee.
+- `app/Console/Kernel.php` fige `->timezone('Africa/Abidjan')` sur trois taches.
+
+### Les moyens de paiement
+
+`app/Enums/ModePaiement.php` liste Wave, Djamo et Orange Money — et **Celtiis Cash
+manque**. `cash_counts.mode_paiement` etant un `string(30)` et non un `ENUM` SQL,
+l'ajout ne coute ni `ALTER` ni verrou. **Ne retirez pas** les modes ivoiriens pour
+autant : l'enum est partage par les huit instances et lu par la reconciliation ; un
+mode inutilise ne coute rien, un mode manquant rend un encaissement invisible du
+rapprochement.
+
+### Ce qui est deja neutre — ne le rouvrez pas
+
+Les textes d'Etat des releves et bulletins LMD sont **deja des reglages**
+(`lmd_bulletin_republic_text`, `_union_text`, `_ministry_text`), branches et exposes
+a l'ecran. `LmdTranscriptSnapshotBuilder` porte meme le commentaire qui l'explique :
+« un releve delivre au Benin serait sorti au nom d'un autre Etat ». C'est le
+precedent a imiter. La nationalite « Beninoise » est deja au referentiel, et la
 monnaie est commune (XOF, zone UEMOA), comme le cadre LMD.
 
-**Avant qu'une instance hors Cote d'Ivoire n'envoie sa premiere relance**, rendre
-ces deux valeurs configurables par instance, avec `+225` et `UTC` par defaut —
-donc sans rien changer pour l'existant. Les modifier au moment d'ouvrir une
-nouvelle ecole reviendrait a risquer six instances en production pour en servir une.
+**Le declencheur n'est pas l'ouverture de l'instance, c'est la premiere relance ou
+la premiere candidature beninoise.** Tant qu'aucune n'est partie, rien n'est
+corrompu.
 
 ## Tables clés `klassci_master`
 
