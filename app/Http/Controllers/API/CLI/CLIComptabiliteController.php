@@ -616,7 +616,16 @@ class CLIComptabiliteController extends BaseApiController
 
         $bloquants = $groupes->count() + ($vides > 1 ? 1 : 0);
 
+        // Une garantie qu'on ne peut pas constater n'en est pas une : on lit
+        // le schema plutot que de supposer que la migration est passee.
+        $contraintePosee = DB::table('information_schema.STATISTICS')
+            ->whereRaw('TABLE_SCHEMA = DATABASE()')
+            ->where('TABLE_NAME', 'esbtp_paiements')
+            ->where('INDEX_NAME', 'esbtp_paiements_recu_en_circulation_unique')
+            ->exists();
+
         return $this->successResponse([
+            'contrainte_posee' => $contraintePosee,
             'paiements_total' => $total,
             'numeros_en_double' => $groupes->count(),
             'lignes_concernees' => (int) $groupes->sum('occurrences'),
