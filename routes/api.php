@@ -550,7 +550,8 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
         Route::post('/rendez-vous/placer', [App\Http\Controllers\API\CLI\CLIRendezVousController::class, 'placer'])->name('rendez-vous.placer');
         // L'ordre des categories est l'ordre dans lequel un versement solde les
         // frais. Le changer est une decision de l'ecole, pas du code.
-        Route::post('/frais/ordonner-categories', [App\Http\Controllers\API\CLI\CLIFraisController::class, 'ordonnerCategories'])->name('frais.ordonner-categories');
+        Route::post('/frais/retirer-configurations-inutiles', [App\Http\Controllers\API\CLI\CLIFraisController::class, 'retirerConfigurationsInutiles'])->name('frais.retirer-configurations-inutiles');
+        Route::post('/frais/ordonner-categories',[App\Http\Controllers\API\CLI\CLIFraisController::class, 'ordonnerCategories'])->name('frais.ordonner-categories');
         Route::post('/frais/poser-bareme', [App\Http\Controllers\API\CLI\CLIFraisController::class, 'poserBareme'])->name('frais.poser-bareme');
         Route::post('/db/fix-duplicates', [App\Http\Controllers\API\CLI\CLIMaintenanceController::class, 'fixDuplicates'])->name('db.fix-duplicates');
         Route::post('/migrate', [App\Http\Controllers\API\CLI\CLIMaintenanceController::class, 'migrate'])->name('migrate');
