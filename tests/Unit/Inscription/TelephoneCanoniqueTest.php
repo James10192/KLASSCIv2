@@ -58,6 +58,26 @@ class TelephoneCanoniqueTest extends TestCase
         return Validator::make(['telephone' => $saisie], ['telephone' => $regles['telephone']])->passes();
     }
 
+    /**
+     * Bascule l'instance sur le plan beninois : indicatif 229, prefixe `01` seul.
+     *
+     * Les DEUX reglages, jamais l'indicatif seul — c'est la combinaison que
+     * l'ecran refuse desormais d'enregistrer, et la reproduire ici donnerait
+     * une instance qui accepte des numeros qui n'existent pas.
+     *
+     * `tearDown()` remet le resolveur a null.
+     */
+    private function reglerSurLeBenin(): void
+    {
+        \App\Domain\Notifications\PhoneNormalizer::definirResolveurReglages(
+            static fn (string $cle): ?string => match ($cle) {
+                \App\Domain\Notifications\PhoneNormalizer::CLE_INDICATIF => '229',
+                \App\Domain\Notifications\PhoneNormalizer::CLE_PREFIXES => '01',
+                default => null,
+            }
+        );
+    }
+
     /** Les six ecritures qu'un formulaire public voit vraiment passer. */
     public function test_toutes_les_ecritures_d_un_mobile_ivoirien_donnent_la_meme_cle(): void
     {
@@ -139,13 +159,7 @@ class TelephoneCanoniqueTest extends TestCase
      */
     public function test_les_ecritures_d_un_numero_beninois_donnent_la_meme_cle(): void
     {
-        \App\Domain\Notifications\PhoneNormalizer::definirResolveurReglages(
-            static fn (string $cle): ?string => match ($cle) {
-                \App\Domain\Notifications\PhoneNormalizer::CLE_INDICATIF => '229',
-                \App\Domain\Notifications\PhoneNormalizer::CLE_PREFIXES => '01',
-                default => null,
-            }
-        );
+        $this->reglerSurLeBenin();
 
         $ecritures = [
             '0142345678',
@@ -175,8 +189,8 @@ class TelephoneCanoniqueTest extends TestCase
      * Le message de refus doit dire quoi taper.
      *
      * « Le champ telephone est invalide » enverrait un bachelier essayer des
-     * variantes au hasard ; l'exemple lui donne la forme attendue du premier
-     * coup.
+     * variantes au hasard ; nommer la longueur et les prefixes attendus lui
+     * donne la forme du premier coup.
      */
     public function test_le_refus_montre_la_forme_attendue(): void
     {
@@ -184,9 +198,34 @@ class TelephoneCanoniqueTest extends TestCase
         $validateur = Validator::make(['telephone' => '27 20 30 10 20'], ['telephone' => $regles['telephone']]);
 
         $this->assertTrue($validateur->fails());
-        $this->assertStringContainsString(
-            '07 07 12 12 34',
-            implode(' ', $validateur->errors()->get('telephone'))
+
+        $message = implode(' ', $validateur->errors()->get('telephone'));
+        $this->assertStringContainsString('10 chiffres', $message);
+        $this->assertStringContainsString('07', $message, 'Les prefixes ivoiriens doivent etre cites sur une instance ivoirienne');
+    }
+
+    /**
+     * Le message de refus ne doit pas recommander la saisie qu'il refuse.
+     *
+     * C'etait le cas : l'exemple « 07 07 12 12 34 » etait ecrit en dur, donc le
+     * portail beninois conseillait un mobile ivoirien — precisement la forme que
+     * l'instance venait de rejeter, dans la phrase la plus lue de l'ecran.
+     */
+    public function test_le_refus_ne_conseille_pas_un_numero_que_l_instance_rejette(): void
+    {
+        $this->reglerSurLeBenin();
+
+        $regles = (new PortailCandidatureRequest)->rules();
+        $validateur = Validator::make(['telephone' => '27 20 30 10 20'], ['telephone' => $regles['telephone']]);
+
+        $this->assertTrue($validateur->fails());
+
+        $message = implode(' ', $validateur->errors()->get('telephone'));
+        $this->assertStringContainsString('01', $message, 'Le prefixe declare par l\'instance doit etre cite');
+        $this->assertStringNotContainsString(
+            '07 07',
+            $message,
+            'Le message ne doit plus citer un mobile ivoirien sur une instance beninoise'
         );
     }
 }

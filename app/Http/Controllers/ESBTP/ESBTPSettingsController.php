@@ -69,9 +69,7 @@ class ESBTPSettingsController extends Controller
         $appreciationScaleSettings = app(AppreciationScaleSettingsService::class);
         $appreciationScaleSettings->ensureDefaults();
         $this->ensureMailPulseSettings();
-        $telephoneSettings = app(TelephoneSettingsService::class);
-        $telephoneSettings->ensureDefaults();
-        $telephoneReglages = $telephoneSettings->etatAffichable();
+        app(TelephoneSettingsService::class)->ensureDefaults();
         $allSettings = Setting::orderBy('category')->orderBy('sort_order')->get();
         $settings = $allSettings->groupBy('category');
         $flatSettings = $allSettings; // Collection plate pour l'accès direct par clé
@@ -85,8 +83,7 @@ class ESBTPSettingsController extends Controller
             'flatSettings',
             'missingSettings',
             'backupStats',
-            'appreciationScales',
-            'telephoneReglages'
+            'appreciationScales'
         ));
     }
 
@@ -213,18 +210,8 @@ class ESBTPSettingsController extends Controller
             $updatedSettings = [];
             $errors = [];
 
-            // Indicatif + préfixes vont par paire : la boucle générique plus bas
-            // traite chaque champ isolément et ne peut donc pas voir qu'un
-            // changement de pays sans ses préfixes laisse l'instance en état
-            // d'accepter des numéros qui n'existent pas. Contrôle avant tout
-            // enregistrement — un rollback partiel serait pire que le refus.
-            $incoherenceTelephone = $telephoneSettings->incoherenceDuChangementDePays(
-                $request->input('setting_'.PhoneNormalizer::CLE_INDICATIF),
-                $request->input('setting_'.PhoneNormalizer::CLE_PREFIXES)
-            );
-
-            if ($incoherenceTelephone !== null) {
-                $errors[PhoneNormalizer::CLE_PREFIXES] = $incoherenceTelephone;
+            if (($cleTelephone = $this->refuserLeChangementDePaysIncomplet($request, $telephoneSettings)) !== null) {
+                $errors[PhoneNormalizer::CLE_PREFIXES] = $cleTelephone;
             }
 
             // Barème d'assiduité à tranches (JSON) : validation structurelle dédiée via
@@ -891,6 +878,27 @@ class ESBTPSettingsController extends Controller
     {
         return array_key_exists($cle, $rawInput)
             || array_key_exists(str_replace('.', '_', $cle), $rawInput);
+    }
+
+    /**
+     * L'indicatif pays et les prefixes locaux vont par paire.
+     *
+     * La boucle generique d'enregistrement traite chaque champ isolement : elle
+     * ne peut donc pas voir qu'un changement de pays laissant derriere lui les
+     * prefixes ivoiriens livres met l'instance en etat d'accepter des numeros
+     * qui n'existent pas dans le nouveau pays. Le controle a lieu AVANT tout
+     * enregistrement — un rollback partiel serait pire que le refus.
+     *
+     * @return string|null Le message a afficher sous le champ, ou null.
+     */
+    private function refuserLeChangementDePaysIncomplet(
+        Request $request,
+        TelephoneSettingsService $telephoneSettings
+    ): ?string {
+        return $telephoneSettings->incoherenceDuChangementDePays(
+            $request->input('setting_'.PhoneNormalizer::CLE_INDICATIF),
+            $request->input('setting_'.PhoneNormalizer::CLE_PREFIXES)
+        );
     }
 
     /**

@@ -1437,7 +1437,7 @@ class SettingsSeeder extends Seeder
             // sur la totalité du bloc : le relancer sur une instance béninoise
             // lui RAMÈNERAIT son indicatif à 225, et ses relances repartiraient
             // chez des abonnés Moov ivoiriens. Ils sont donc posés par
-            // `ESBTPSettingsController::ensureTelephoneSettings()`, en
+            // `TelephoneSettingsService::ensureDefaults()`, en
             // `firstOrCreate` — qui n'écrase jamais ce que l'école a réglé.
             [
                 'key' => 'app_locale',

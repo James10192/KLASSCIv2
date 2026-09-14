@@ -84,9 +84,38 @@ class PortailCandidatureRequest extends FormRequest
                 'string',
                 'max:30',
                 static function (string $attribut, $valeur, callable $echec): void {
-                    if (! PhoneNormalizer::estMobileNational(is_string($valeur) ? $valeur : null)) {
-                        $echec('Indiquez un numéro de téléphone mobile valide, par exemple 07 07 12 12 34, ou son écriture internationale complète.');
+                    if (PhoneNormalizer::estMobileNational(is_string($valeur) ? $valeur : null)) {
+                        return;
                     }
+
+                    // Le message se DÉRIVE des préfixes déclarés par l'instance.
+                    // Écrit en dur, il donnait pour exemple « 07 07 12 12 34 »
+                    // — un mobile ivoirien, donc exactement la forme que cette
+                    // validation REFUSE sur l'instance béninoise, dont le seul
+                    // préfixe est `01`. Le portail recommandait au candidat
+                    // refusé la saisie qui le fait refuser, dans la phrase la
+                    // plus lue de l'écran.
+                    //
+                    // On nomme les préfixes et la longueur plutôt que de
+                    // fabriquer un numéro : un exemple inventé désigne toujours
+                    // un abonné réel quelque part, et celui-ci serait affiché à
+                    // chaque refus du portail public.
+                    $prefixes = PhoneNormalizer::prefixesNationaux();
+
+                    // L'indicatif cité se dérive lui aussi. Ce champ exige un
+                    // mobile DU PAYS DE L'ÉCOLE (`estMobileNational`), donc la
+                    // seule écriture internationale qu'il accepte est celle de
+                    // l'indicatif de l'instance : proposer « +225… » au Bénin
+                    // conseillerait une seconde fois une saisie refusée.
+                    $echec(sprintf(
+                        'Indiquez un numéro de téléphone mobile valide : %s chiffres, commençant par %s. '
+                        .'Vous pouvez aussi l’écrire en entier avec son indicatif pays (+%s…).',
+                        PhoneNormalizer::LONGUEUR_NATIONALE,
+                        count($prefixes) === 1
+                            ? $prefixes[0]
+                            : implode(', ', array_slice($prefixes, 0, -1)).' ou '.end($prefixes),
+                        PhoneNormalizer::indicatifNationalParDefaut()
+                    ));
                 },
             ],
             'email' => ['nullable', 'email:rfc', 'max:100'],

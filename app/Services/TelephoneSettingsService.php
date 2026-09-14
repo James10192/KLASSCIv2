@@ -41,7 +41,13 @@ final class TelephoneSettingsService
             PhoneNormalizer::CLE_INDICATIF => [
                 'value' => PhoneNormalizer::INDICATIF_PAR_DEFAUT,
                 'description' => 'Indicatif pays des numéros saisis sans indicatif (225 = Côte d’Ivoire, 229 = Bénin)',
-                'validation_rules' => ['nullable', 'regex:/^\+?[0-9]{1,3}$/'],
+                // Le premier chiffre ne peut pas être zéro : l'UIT-T E.164
+                // répartit les indicatifs en neuf zones, de 1 à 9. Sans cette
+                // borne, `0` passait la validation et produisait ensuite
+                // `+00707123456` — une chaîne qui a la forme de l'E.164 sans
+                // en être une. `PhoneNormalizer` le refuse aussi de son côté ;
+                // ici on évite simplement de l'écrire en base.
+                'validation_rules' => ['nullable', 'regex:/^\+?[1-9][0-9]{0,2}$/'],
                 'sort_order' => 4,
             ],
             PhoneNormalizer::CLE_PREFIXES => [
@@ -136,79 +142,6 @@ final class TelephoneSettingsService
         }
 
         return null;
-    }
-
-    /**
-     * Ce que l'écran doit montrer : la valeur ÉCRITE, et ce qui s'applique.
-     *
-     * Les deux champs affichaient jusqu'ici la valeur effective, celle que rend
-     * le résolveur. C'est le repli, pas le réglage — et sur une valeur illisible
-     * les deux divergent sans que rien ne le dise. Une école qui aurait saisi
-     * « Bénin » dans l'indicatif voyait `225` s'afficher : l'écran lui confirmait
-     * un réglage qu'elle n'avait pas, pendant que ses relances partaient en
-     * Côte d'Ivoire. C'est le repli silencieux que `rien-en-dur.md` interdit.
-     *
-     * On rend donc les deux, et l'écran signale l'écart quand il y en a un.
-     * Sur une instance saine ils coïncident, et rien ne change à l'affichage.
-     *
-     * @return array<string, array{stockee: string, appliquee: string, ignoree: bool}>
-     */
-    public function etatAffichable(): array
-    {
-        $etat = [];
-
-        foreach ([
-            PhoneNormalizer::CLE_INDICATIF => PhoneNormalizer::indicatifNationalParDefaut(),
-            PhoneNormalizer::CLE_PREFIXES => implode(',', PhoneNormalizer::prefixesNationaux()),
-        ] as $cle => $appliquee) {
-            $stockee = $this->normaliser($this->valeurStockee($cle));
-
-            $etat[$cle] = [
-                'stockee' => $stockee ?? '',
-                'appliquee' => $appliquee,
-                'ignoree' => $this->estIgnoree($stockee, $appliquee),
-            ];
-        }
-
-        return $etat;
-    }
-
-    /**
-     * La valeur écrite a-t-elle été écartée par le résolveur ?
-     *
-     * Une valeur vide n'est pas « ignorée » : c'est une absence, et le défaut
-     * livré est alors la réponse attendue — l'annoncer comme une anomalie
-     * ferait crier le garde-fou sur les huit instances.
-     *
-     * N'est ignorée que la valeur écrite qui ne se retrouve PAS dans ce que le
-     * résolveur rend. C'est la seule preuve fiable qu'il l'a écartée, et elle
-     * ne duplique aucune des règles de `PhoneNormalizer` : refaire ici son test
-     * de longueur les ferait diverger au premier changement là-bas.
-     *
-     * La comparaison porte sur les listes de chiffres, parce que `+229` et
-     * `229`, ou `01 ; 02` et `01,02`, sont la même chose : une normalisation
-     * n'est pas un rejet, et la signaler serait un faux positif.
-     */
-    private function estIgnoree(?string $stockee, string $appliquee): bool
-    {
-        if ($stockee === null) {
-            return false;
-        }
-
-        return $this->decouper($this->chiffresSeuls($stockee))
-            !== $this->decouper($this->chiffresSeuls($appliquee));
-    }
-
-    /**
-     * Réduit une saisie à ses groupes de chiffres, séparateurs conservés.
-     *
-     * `+229` devient `229`, `01 ; 02` devient `01 02`, `Bénin` devient la chaîne
-     * vide — donc une valeur qui ne porte aucun chiffre ne peut jamais coïncider
-     * avec ce que le résolveur rend, et ressort bien comme ignorée.
-     */
-    private function chiffresSeuls(string $valeur): string
-    {
-        return trim((string) preg_replace('/[^0-9]+/', ' ', $valeur));
     }
 
     private function valeurStockee(string $cle): ?string

@@ -74,8 +74,12 @@ final class PhoneNormalizer
      * réouverture, nommable : la première instance dont le plan national n'est
      * pas à dix chiffres (le Sénégal en fait neuf). La dégradation serait alors
      * un refus visible, pas une corruption — d'où l'attente.
+     *
+     * Publique parce que le message de refus du portail de candidature la cite
+     * (« dix chiffres, commençant par 01 ») : l'écrire une seconde fois là-bas
+     * la ferait mentir le jour où elle change ici.
      */
-    private const LONGUEUR_NATIONALE = 10;
+    public const LONGUEUR_NATIONALE = 10;
 
     /** UIT-T E.164 §6.2 : quinze chiffres au plus, indicatif pays compris. */
     private const LONGUEUR_E164_MAX = 15;
@@ -144,7 +148,13 @@ final class PhoneNormalizer
     {
         $chiffres = preg_replace('/\D+/', '', (string) self::reglage(self::CLE_INDICATIF));
 
-        return ($chiffres !== '' && $chiffres !== null && strlen($chiffres) <= 3)
+        // `$chiffres[0] !== '0'` est le symétrique exact du contrôle appliqué
+        // plus bas à l'écriture internationale : aucun indicatif pays ne
+        // commence par zéro, l'UIT-T E.164 les répartit en neuf zones de 1 à 9.
+        // Il manquait ici, et un réglage à `0` produisait `+00707123456` — une
+        // chaîne qui a la forme de l'E.164 et n'en est pas, exactement ce que
+        // le contrôle jumeau existe pour empêcher.
+        return ($chiffres !== '' && $chiffres !== null && strlen($chiffres) <= 3 && $chiffres[0] !== '0')
             ? $chiffres
             : self::INDICATIF_PAR_DEFAUT;
     }

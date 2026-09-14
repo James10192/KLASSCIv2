@@ -61,71 +61,75 @@ KLASSCI suit une architecture SaaS multi-instance avec **isolation complète par
 
 **Serveur prod** : LWS web44.lws-hosting.com (CloudLinux + LiteSpeed) — `c2569688c@web44.lws-hosting.com`
 
-## Hors Cote d'Ivoire : ce que le code suppose encore
+## Hors Cote d'Ivoire : ce qui a ete corrige, et ce qui reste
 
 `ucao-benin` est la PREMIERE instance hors de Cote d'Ivoire. Ce qui suit a ete
-**mesure le 14 septembre 2026**, pas deduit : chaque affirmation se rejoue avec la
-commande qui l'accompagne.
+**mesure**, pas deduit : chaque affirmation se rejoue avec la commande qui
+l'accompagne.
 
-### Le telephone — plus grave qu'un indicatif faux
+### Le telephone — CORRIGE (septembre 2026)
 
-Le Benin est passe de 8 a 10 chiffres le **30 novembre 2024**, en prefixant `01`
-devant l'ancien numero ([ARCEP Benin](https://arcep.bj/a-partir-de-30-novembre-2024-les-numeros-de-telephone-au-benin-passent-de-08-a-10-chiffres/),
+> **Cette section a d'abord decrit un defaut a corriger. Il l'est.** Elle decrit
+> maintenant le code en place. Ne reconstruisez rien : ouvrez d'abord
+> `app/Domain/Notifications/PhoneNormalizer.php`, dont les commentaires portent
+> le *pourquoi* de chaque choix.
+
+**Le defaut, pour comprendre ce que les gardes protegent.** Le Benin est passe de
+8 a 10 chiffres le **30 novembre 2024**, en prefixant `01` devant l'ancien numero
+([ARCEP Benin](https://arcep.bj/a-partir-de-30-novembre-2024-les-numeros-de-telephone-au-benin-passent-de-08-a-10-chiffres/),
 [UIT-T](https://www.itu.int/dms_pub/itu-t/oth/02/02/T02020000170002PDFF.pdf)).
 La Cote d'Ivoire a fait de meme en 2021, et `01` y designe Moov. **Les deux plans
-se recouvrent donc entierement** : meme longueur, meme debut.
+se recouvrent entierement** : meme longueur, meme debut. L'analyseur apposait
+`+225` a toute saisie, donc `0142345678` (MTN Benin) devenait `+2250142345678` —
+pour huit series attribuees des deux cotes (`0140`-`0143`, `0150`-`0153`), un
+mobile Moov CI **joignable appartenant a un tiers**, a qui partait la relance avec
+le nom de l'etudiant et le montant du. Et l'ecriture correcte `+229…` etait, elle,
+REFUSEE : le portail n'acceptait que la saisie qui corrompt.
 
-Consequence, executee contre le vrai code :
+**Ce qui est en place aujourd'hui** :
 
-```
-0142345678  (MTN Benin)  ->  PhoneNormalizer::toE164()  ->  +2250142345678
-                             https://wa.me/2250142345678
-```
+1. **L'indicatif explicite est cru.** Une entree portant `+` ou `00` est validee
+   sur sa FORME (UIT-T E.164 §6.2) et conservee telle quelle, sans rejouer le
+   controle de prefixe national. `+229 01 42 34 56 78` est accepte.
+2. **DEUX reglages, pas un** — `telephone_indicatif_pays` et
+   `telephone_prefixes_mobiles`, exposes dans `/esbtp/settings` onglet General.
+   L'indicatif seul ne suffit pas : pose a `229` avec la liste ivoirienne livree,
+   l'instance accepterait `0707123456`, qui ne designe personne au Benin.
+   `TelephoneSettingsService::incoherenceDuChangementDePays()` refuse cette
+   combinaison au moment ou l'indicatif change.
+3. **Jamais de liste blanche de prefixes par pays.** `0142345678` est
+   simultanement un MTN Benin et un Moov CI valides : aucune inference n'est
+   possible, et les series se reattribuent. Que l'instance DECLARE ses prefixes
+   est l'inverse — ce n'est plus le code qui devine un pays, c'est l'ecole qui
+   dit le sien. Rien n'est derive de `school_country`, un libelle libre.
+4. **Les cinq normaliseurs paralleles sont supprimes**, y compris le
+   `formatPhone()` en JavaScript du recouvrement. `grep '+225'` hors commentaire
+   dans `app/` ne rend plus rien — c'est le controle a rejouer avant d'en
+   rajouter un.
+5. **`estMobileNational()` est distinct d'`isValid()`**. Le premier exige un
+   mobile du pays de l'instance ; il n'est pose que la ou la portee etroite est
+   une DECISION, c'est-a-dire sur les cles d'unicite (portail de candidature,
+   chatbot parent). Partout ailleurs, `isValid()` accepte tout numero
+   international bien forme — une famille de la diaspora sur une instance
+   ivoirienne est un cas legitime, que le portail documente lui-meme.
 
-- **Aucun numero beninois n'est rejete.** Ils commencent tous par `01` et font tous
-  dix chiffres : les deux controles passent, et `+225` est appose en sortie.
-- Pour **huit series attribuees des deux cotes** (`0140`-`0143`, `0150`-`0153`), le
-  numero produit est un mobile Moov CI **joignable, appartenant a un tiers**. La
-  relance part avec le nom de l'etudiant et le montant du.
-- Pour les autres, la serie n'est pas attribuee en CI : le message n'arrive nulle
-  part, **sans erreur ni ligne au journal**.
-- **L'ecriture internationale `+229…` est REFUSEE** (`toE164` rend `null`), et
-  `PortailCandidatureRequest` rend le telephone obligatoire en calquant ce refus —
-  son message parle meme d'un « numero mobile **ivoirien** ». Le portail refuse donc
-  qui ecrit juste, et accepte en corrompant qui ecrit en national.
+**L'invariant qui protege les six instances ivoiriennes, et qui tient** : la forme
+canonique d'un numero ivoirien reste **octet pour octet** `+225` + 10 chiffres.
+`esbtp_candidatures.telephone` est le seul stockage canonique, sous index UNIQUE
+`(telephone, annee_universitaire_id)` — la detection de doublon en depend. Les cas
+ivoiriens de `PhoneNormalizerTest` sont restes verts **sans qu'une seule ligne
+existante soit modifiee** ; c'est le controle a refaire avant tout changement ici.
+`esbtp_etudiants.telephone` et `esbtp_parents.telephone` sont bruts : aucun
+backfill.
 
-**Trois fichiers, pas un.** Corriger `PhoneNormalizer` seul ne suffit pas :
-
-| Fichier | Ce qu'il fait |
-|---|---|
-| `app/Domain/Notifications/PhoneNormalizer.php` | cinq constantes ivoiriennes (`COUNTRY_CODE`, `E164_PREFIX`, le regex de prefixes mobiles, `NATIONAL_LENGTH`, `FULL_LENGTH`) |
-| `app/Domain/Notifications/PhoneFormatter.php` | **recolle `'+225 '` en dur a l'affichage**, quoi qu'ait produit le normaliseur — et `substr($e164, 4)` suppose un indicatif a trois chiffres. Corrige seul, le premier serait neutralise a l'ecran et dans l'export de recouvrement |
-| `SmsService.php` · `WhatsAppService.php` | `'+225' . ltrim($phone, '0')` — **casse aussi la Cote d'Ivoire** : le zero initial fait partie du numero national depuis 2021, donc tout numero ivoirien y perd un chiffre. Dormant (canaux fermes par `env()`), mais charge |
-
-### Le remede : cesser de deviner le pays, pas rendre l'indicatif configurable
-
-Rendre l'indicatif configurable par instance traite le pays comme une propriete de
-**l'ecole**. Il ne l'est pas : `PortailCandidatureRequest` documente lui-meme le cas
-inverse — « une famille de la diaspora » renseigne un numero etranger sur une
-instance ivoirienne. Un indicatif configurable laisserait ce cas casser dans les
-deux sens.
-
-1. **Croire l'indicatif explicite.** Si l'entree porte un `+` ou un `00` suivi d'un
-   indicatif, on la valide sur sa forme et on la conserve — sans rejouer le controle
-   de prefixe national. Repare a soi seul le refus de `+229…`, sans reglage ni
-   migration.
-2. **Un seul reglage, pour la saisie nationale seulement** : l'indicatif par defaut,
-   `225`. N'en deriver rien de `school_country`, qui est un libelle libre.
-3. **Jamais de liste blanche de prefixes par pays.** `0142345678` est simultanement
-   un MTN Benin et un Moov CI valides : aucune inference n'est possible, et les
-   series se reattribuent.
-4. **L'invariant qui protege les six instances ivoiriennes** : la forme canonique
-   d'un numero ivoirien doit rester **octet pour octet** `+225` + 10 chiffres.
-   `esbtp_candidatures.telephone` est le seul stockage canonique, sous index UNIQUE
-   `(telephone, annee_universitaire_id)` — la detection de doublon en depend. Les
-   cas ivoiriens de `PhoneNormalizerTest` doivent rester verts **sans modification**.
-   `esbtp_etudiants.telephone` et `esbtp_parents.telephone` sont bruts : aucun
-   backfill.
+**Ce qui reste a faire, et son declencheur.** Le declencheur n'est pas l'ouverture
+de l'instance, c'est la **premiere relance ou la premiere candidature beninoise** :
+tant qu'aucune n'est partie, rien n'est corrompu. Les gestes de mise en service —
+poser les deux reglages, poser le fuseau, recenser l'existant — sont dans
+[docs/runbooks/ucao-benin-mise-en-service.md](../../docs/runbooks/ucao-benin-mise-en-service.md).
+Ce recensement ne peut PAS trancher tout seul : `+2250142345678` est simultanement
+la corruption d'un MTN Benin et un Moov CI valide, donc la requete enumere des
+candidats et l'ecole decide.
 
 ### Le fuseau — dans le `.env`, et nulle part ailleurs (septembre 2026)
 

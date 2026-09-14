@@ -1192,17 +1192,9 @@
                         </label>
                         <input type="text" class="form-control form-control-modern @error('telephone_indicatif_pays') is-invalid @enderror"
                                name="setting_telephone_indicatif_pays"
-                               value="{{ old('setting_telephone_indicatif_pays', $telephoneReglages['telephone_indicatif_pays']['stockee'] ?? '') }}"
+                               value="{{ old('setting_telephone_indicatif_pays', \App\Helpers\SettingsHelper::get('telephone_indicatif_pays', '')) }}"
                                placeholder="Ex: 225">
                         <small class="text-muted d-block mt-1">Apposé aux numéros saisis sans indicatif. 225 pour la Côte d'Ivoire, 229 pour le Bénin. Un numéro écrit en entier (+229…) garde le sien.</small>
-                        @if (($telephoneReglages['telephone_indicatif_pays']['ignoree'] ?? false))
-                            <small class="d-block mt-1" style="color:#b45309;">
-                                <i class="fas fa-triangle-exclamation"></i>
-                                Cette valeur n'est pas lisible : l'indicatif réellement apposé aux numéros est
-                                <strong>{{ $telephoneReglages['telephone_indicatif_pays']['appliquee'] }}</strong>.
-                                Corrigez-la, sinon les messages partiront vers ce pays-là.
-                            </small>
-                        @endif
                         @error('telephone_indicatif_pays')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
@@ -1215,16 +1207,9 @@
                         </label>
                         <input type="text" class="form-control form-control-modern @error('telephone_prefixes_mobiles') is-invalid @enderror"
                                name="setting_telephone_prefixes_mobiles"
-                               value="{{ old('setting_telephone_prefixes_mobiles', $telephoneReglages['telephone_prefixes_mobiles']['stockee'] ?? '') }}"
+                               value="{{ old('setting_telephone_prefixes_mobiles', \App\Helpers\SettingsHelper::get('telephone_prefixes_mobiles', '')) }}"
                                placeholder="Ex: 01,02,03,05,06,07,08,09">
                         <small class="text-muted d-block mt-1">Séparés par des virgules. Côte d'Ivoire : 01,02,03,05,06,07,08,09 — Bénin : 01 seul. Un numéro qui ne commence par aucun d'eux est refusé à la saisie.</small>
-                        @if (($telephoneReglages['telephone_prefixes_mobiles']['ignoree'] ?? false))
-                            <small class="d-block mt-1" style="color:#b45309;">
-                                <i class="fas fa-triangle-exclamation"></i>
-                                Tout ou partie de cette liste n'est pas lisible : les préfixes réellement acceptés sont
-                                <strong>{{ $telephoneReglages['telephone_prefixes_mobiles']['appliquee'] }}</strong>.
-                            </small>
-                        @endif
                         @error('telephone_prefixes_mobiles')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
