@@ -52,10 +52,15 @@ le 30 novembre 2024, fixes compris, en passant de huit à dix chiffres.
 ### Vérifier que c'est pris
 
 Sur la même page, après enregistrement, les deux champs doivent afficher
-exactement ce que vous avez saisi. Si un avertissement orange apparaît sous l'un
-d'eux (« Cette valeur n'est pas lisible… »), la saisie a été écartée et c'est
-l'indicatif nommé dans l'avertissement qui s'applique réellement — corrigez
-avant d'aller plus loin.
+**exactement** ce que vous avez saisi — ils montrent la valeur enregistrée, pas
+une valeur de repli. Si l'un des deux affiche autre chose, l'enregistrement n'a
+pas eu lieu : corrigez avant d'aller plus loin.
+
+Une saisie que le logiciel ne sait pas lire (des lettres, un indicatif
+commençant par zéro) est **refusée à l'enregistrement**, avec le motif affiché
+sous le champ concerné. Elle n'atteint donc jamais la base : il n'y a pas d'état
+intermédiaire où l'écran montrerait une chose et les relances en feraient une
+autre.
 
 ---
 

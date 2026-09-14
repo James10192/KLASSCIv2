@@ -244,6 +244,42 @@ class PhoneNormalizerTest extends TestCase
         $this->assertSame('+2250707123456', PhoneNormalizer::toE164('0707123456'));
     }
 
+    /**
+     * Aucun indicatif pays ne commence par zéro.
+     *
+     * L'UIT-T E.164 les répartit en neuf zones, de 1 à 9. Le contrôle existait
+     * déjà pour une saisie écrite avec son indicatif (`000707123456` refusé) ;
+     * il manquait pour le RÉGLAGE, et un `0` y produisait `+00707123456` — une
+     * chaîne qui a la forme de l'E.164 sans en être une, donc un numéro
+     * injoignable écrit en base sans que rien ne le signale.
+     *
+     * @dataProvider indicatifsCommencantParZero
+     */
+    public function test_un_indicatif_commencant_par_zero_retombe_sur_le_defaut(string $reglage): void
+    {
+        PhoneNormalizer::definirResolveurReglages(
+            static fn (string $cle): ?string => $cle === PhoneNormalizer::CLE_INDICATIF ? $reglage : null
+        );
+
+        $this->assertSame(
+            PhoneNormalizer::INDICATIF_PAR_DEFAUT,
+            PhoneNormalizer::indicatifNationalParDefaut(),
+            "Le réglage « {$reglage} » doit être écarté"
+        );
+        $this->assertSame('+2250707123456', PhoneNormalizer::toE164('0707123456'));
+    }
+
+    /** @return array<string, array{string}> */
+    public static function indicatifsCommencantParZero(): array
+    {
+        return [
+            'un zéro seul' => ['0'],
+            'deux zéros' => ['00'],
+            'zéro en tête d’un indicatif par ailleurs valide' => ['007'],
+            'le préfixe international, pris pour un indicatif' => ['0033'],
+        ];
+    }
+
     public function test_est_mobile_national(): void
     {
         $this->assertTrue(PhoneNormalizer::estMobileNational('0707123456'));

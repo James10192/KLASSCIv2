@@ -103,9 +103,17 @@ REFUSEE : le portail n'acceptait que la saisie qui corrompt.
    est l'inverse — ce n'est plus le code qui devine un pays, c'est l'ecole qui
    dit le sien. Rien n'est derive de `school_country`, un libelle libre.
 4. **Les cinq normaliseurs paralleles sont supprimes**, y compris le
-   `formatPhone()` en JavaScript du recouvrement. `grep '+225'` hors commentaire
-   dans `app/` ne rend plus rien — c'est le controle a rejouer avant d'en
-   rajouter un.
+   `formatPhone()` en JavaScript du recouvrement. Le controle a rejouer avant
+   d'en rajouter un :
+
+   ```bash
+   grep -rn "+225" app/ --include="*.php" | grep -vE "^\S+:[0-9]+:\s*(\*|//)"
+   ```
+
+   Rend **deux lignes**, et deux seulement : `MailPulseTestNotificationService`
+   et `ESBTPComptabiliteRelanceController`, qui sont des jeux de donnees de
+   demonstration (`'school_phone' => …`, `'telephone' => …`). Aucun normaliseur.
+   Toute TROISIEME ligne est un normaliseur qui repousse.
 5. **`estMobileNational()` est distinct d'`isValid()`**. Le premier exige un
    mobile du pays de l'instance ; il n'est pose que la ou la portee etroite est
    une DECISION, c'est-a-dire sur les cles d'unicite (portail de candidature,
@@ -495,6 +503,13 @@ git push origin presentation:ucao-benin
    - `.env` rempli : MASTER_API_URL, MASTER_API_TOKEN, TENANT_CODE
    - GROUP_SSO_SHARED_SECRET si tenant fait partie d'un groupe
    - Setup script exécuté : storage symlinks, permissions, seeders
+   - **Instance hors Côte d'Ivoire** → suivre
+     [docs/runbooks/ucao-benin-mise-en-service.md](../../docs/runbooks/ucao-benin-mise-en-service.md)
+     **avant la première candidature** : les deux réglages de téléphone et les
+     deux lignes de fuseau. Le runbook porte `ucao-benin` dans son titre parce
+     qu'il en vient, mais ses gestes valent pour toute instance hors CI — seules
+     changent les valeurs (indicatif, préfixes, fuseau). Posés après la première
+     saisie, ils ne rattrapent plus ce qui est déjà écrit.
 
 3. **Subdomain cPanel** :
    - `X.klassci.com` → `/home/c2569688c/public_html/X/public`
