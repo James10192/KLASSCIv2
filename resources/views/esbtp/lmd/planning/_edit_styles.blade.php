@@ -182,7 +182,7 @@
     width: 100%;
     min-height: min(480px, 85vh);
     max-height: calc(100vh - 4rem);
-    overflow: hidden;
+    overflow: visible;
     box-shadow: 0 20px 60px rgba(15, 23, 42, .25);
     display: flex;
     flex-direction: column;
@@ -227,7 +227,7 @@
 .lpt-close:hover { background: rgba(255, 255, 255, .25); }
 .lpt-body {
     padding: 1.75rem 2rem;
-    overflow-y: auto;
+    overflow: visible;
     flex: 1 1 auto;
     min-height: 280px;
 }

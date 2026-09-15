@@ -12,6 +12,10 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ## Septembre 2026
 
+### Correctifs
+
+- **L'enseignant posé sur le planning LMD apparaît enfin à la création d'une séance** — le formulaire d'ajout de séance vidait la liste des enseignants des ECUE, alors que la page Planning LMD les affichait. On reprend l'enseignant principal (et les assignations) de la planification.
+
 ### Améliorations
 
 - **La réinscription propose les classes depuis le cursus quitté, et le passage LMD suit le parcours puis la mention** (`/esbtp/reinscription`) — cinq écrans (fiche, création, AJAX, lot, guichet) lisaient chacun une inscription différente : un étudiant passé du BTS à la Licence se voyait proposer une 2ᵉ année de BTS. Ils partent désormais de la dernière année suivie, dossier finalisé. En LMD, la classe suivante se cherche d'abord sur le même parcours, puis la même mention, puis la filière reflet : un Master 1 d'un autre parcours de la même mention n'était jamais proposé.
