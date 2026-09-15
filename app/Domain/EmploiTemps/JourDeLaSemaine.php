@@ -110,7 +110,7 @@ final class JourDeLaSemaine
      *
      * ## Pourquoi ce n'est pas `rang($jour)` tout court
      *
-     * **Ce docbloc est le seul endroit du dépôt qui porte ce décompte.** Les
+     * **Ce docbloc est le seul endroit du code qui porte ce décompte.** Les
      * autres commentaires y renvoient au lieu de le recopier : un nombre écrit
      * en cinq endroits vieillit en cinq endroits, ce qui est exactement le
      * défaut que ce domaine corrige. Si le décompte change, il change ici.

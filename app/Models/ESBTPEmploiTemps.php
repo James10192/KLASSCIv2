@@ -125,7 +125,7 @@ class ESBTPEmploiTemps extends Model
      * chacun à sa façon, et la plupart par un raccourci qui n'est juste que si
      * la période commence un lundi — ce que rien n'impose. Le décompte exact,
      * les sites concernés et ce que chacun rendait sont dans le docbloc de
-     * `JourDeLaSemaine::decalageDepuis()`, qui est le seul endroit du dépôt à
+     * `JourDeLaSemaine::decalageDepuis()`, qui est le seul endroit du code à
      * les porter. Ne les recopiez pas ici.
      *
      * Le jour accepte les deux écritures de `esbtp_seance_cours.jour` : l'entier
@@ -167,34 +167,7 @@ class ESBTPEmploiTemps extends Model
         return $this->belongsTo(User::class, 'updated_by');
     }
 
-    /**
-     * Obtenir les séances de cours groupées par jour de la semaine.
-     *
-     * @return array
-     */
-    public function getSeancesParJour()
-    {
-        $jours = [
-            0 => 'Lundi',
-            1 => 'Mardi',
-            2 => 'Mercredi',
-            3 => 'Jeudi',
-            4 => 'Vendredi',
-            5 => 'Samedi',
-        ];
-
-        $seancesParJour = [];
-
-        foreach ($jours as $index => $jour) {
-            $seancesParJour[$jour] = $this->seances()
-                ->where('jour', $index)
-                ->orderBy('heure_debut')
-                ->get();
-        }
-
-        return $seancesParJour;
-    }
-
+    
     /**
      * Obtenir la période de validité de l'emploi du temps.
      *

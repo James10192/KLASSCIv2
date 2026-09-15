@@ -172,8 +172,6 @@ class ESBTPPDFService
                 'annee',
             ]);
 
-            $seancesParJour = $emploiTemps->getSeancesParJour();
-
             $joursNoms = [
                 1 => 'Lundi',
                 2 => 'Mardi',
@@ -334,7 +332,6 @@ class ESBTPPDFService
             $data = [
                 'emploiTemps' => $emploiTemps,
                 'seances' => $emploiTemps->seances,
-                'seancesParJour' => $seancesParJour,
                 'joursNoms' => $joursNoms,
                 'matiereStats' => $matiereStats,
                 'days' => $days,

@@ -837,9 +837,6 @@ class ESBTPEmploiTempsController extends Controller
         // Variable $seances pour la vue
         $seances = $emploi_temp->seances;
 
-        // Grouper les séances par jour
-        $seancesParJour = $emploi_temp->getSeancesParJour();
-
         // Setting configurable : afficher le dimanche ou non (default false)
         $showSunday = (bool) \App\Models\ESBTPSystemSetting::getValue('emploi_temps.show_sunday', false);
 
@@ -939,7 +936,7 @@ class ESBTPEmploiTempsController extends Controller
         $lmdUesAvecEcues = $suiviData['lmdUesAvecEcues'];
 
         return view('esbtp.emploi-temps.show', compact(
-            'emploiTemps', 'seances', 'seancesParJour',
+            'emploiTemps', 'seances',
             'joursNoms', 'matiereStats', 'timeSlots', 'days', 'planificationData',
             'heroKpis', 'showSunday',
             // Tab Suivi heures
@@ -1605,18 +1602,7 @@ class ESBTPEmploiTempsController extends Controller
 
         $validated['emploi_temps_id'] = $emploi_temp->id;
 
-        // Le même garde qu'à la création côté `/esbtp/seances-cours`, qui
-        // n'existait pas ici : ce chemin de saisie — celui de l'écran emploi du
-        // temps — posait une séance sur un créneau occupé sans rien dire.
-        $conflits = (new ConflitsDUnCreneau($emploi_temp))->pourUneNouvelleSeance(
-            $validated['jour'],
-            $validated['heure_debut'],
-            $validated['heure_fin'],
-            (int) $validated['enseignant_id'],
-            $validated['salle'] ?? null,
-        );
-
-        if (! empty($conflits)) {
+        if ($conflits = $this->conflitsDeLaSeance($emploi_temp, $validated)) {
             return redirect()->back()->withInput()->withErrors(['conflicts' => $conflits]);
         }
 
@@ -2682,6 +2668,35 @@ class ESBTPEmploiTempsController extends Controller
     }
 
     /**
+     * Les conflits du créneau demandé par le formulaire de l'emploi du temps.
+     *
+     * Ce chemin de saisie n'avait aucun garde : il posait une séance sur un
+     * créneau occupé sans rien dire, alors que c'est le chemin principal.
+     *
+     * Ses champs ne portent pas les mêmes noms que ceux de
+     * `/esbtp/seances-cours` — `enseignant_id` ici, `teacher_id` là-bas — d'où
+     * cette traduction, et non un appel direct. `enseignant_id` porte bien un
+     * `esbtp_teachers.id` : la liste du formulaire est bâtie sur `ESBTPTeacher`.
+     *
+     * Aucun test sur le type : ce formulaire ne propose que des séances qui
+     * mobilisent un enseignant (sa validation l'exige) — il n'y crée ni pause
+     * ni déjeuner.
+     *
+     * @param  array<string, mixed>  $validated
+     * @return string[]
+     */
+    private function conflitsDeLaSeance(ESBTPEmploiTemps $emploiTemps, array $validated): array
+    {
+        return (new ConflitsDUnCreneau($emploiTemps))->pourUneNouvelleSeance(
+            $validated['jour'],
+            $validated['heure_debut'],
+            $validated['heure_fin'],
+            (int) $validated['enseignant_id'],
+            $validated['salle'] ?? null,
+        );
+    }
+
+    /**
      * La date d'une séance, que `storeSession()` n'écrivait PAS.
      *
      * `date_seance` est nullable et aucun observateur ne la remplit : toute
@@ -2697,7 +2712,7 @@ class ESBTPEmploiTempsController extends Controller
      *
      * Le calcul vit sur `ESBTPEmploiTemps::dateDuJour()`, que partagent tous les
      * sites qui en avaient chacun une copie — leur liste est dans le docbloc de
-     * `JourDeLaSemaine::decalageDepuis()`, seul endroit du dépôt à la porter.
+     * `JourDeLaSemaine::decalageDepuis()`, seul endroit du code à la porter.
      *
      * Rend `null` plutôt qu'une date approchée quand le jour est illisible ou
      * que l'emploi du temps n'a pas de début : une date fausse se propagerait

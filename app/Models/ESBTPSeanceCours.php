@@ -73,6 +73,24 @@ class ESBTPSeanceCours extends Model
     const TYPE_BREAK = 'break';
     const TYPE_LUNCH = 'lunch';
 
+    /**
+     * Ce type de séance mobilise-t-il un enseignant et une salle ?
+     *
+     * Une pause ou un déjeuner n'en mobilisent aucun : on ne cherche donc pas
+     * de conflit d'enseignant ni de salle pour eux.
+     *
+     * Ici et non dans les contrôleurs : la règle s'y écrivait à trois endroits
+     * et sous trois formes — deux `in_array(…, ['course', 'homework'])` séparés
+     * par 260 lignes dans `ESBTPSeanceCoursController`, et une troisième
+     * variante implicite dans `storeSession()`, qui passait toujours les deux.
+     * Les libellés y étaient littéraux alors que le même fichier emploie
+     * `self::TYPE_COURSE` vingt lignes plus haut pour ses règles de validation.
+     */
+    public static function mobiliseUneRessource(?string $type): bool
+    {
+        return in_array($type, [self::TYPE_COURSE, self::TYPE_HOMEWORK], true);
+    }
+
     // Default colors for different types
     const DEFAULT_COLORS = [
         self::TYPE_COURSE => '#2196F3',   // Blue

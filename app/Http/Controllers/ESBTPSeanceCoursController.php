@@ -579,16 +579,6 @@ class ESBTPSeanceCoursController extends Controller
                 $data['classe_id'] = $emploiTemps->classe_id;
                 $data['annee_universitaire_id'] = $emploiTemps->annee_universitaire_id;
 
-                // Calcul automatique de la date de séance.
-                //
-                // Il posait `date_debut + (jour - 1)`, juste UNIQUEMENT si la
-                // période commence un lundi — que rien n'impose : la validation
-                // de l'emploi du temps ne demande qu'une `date`, et seul le
-                // message d'erreur sur la durée évoque « du lundi au samedi ».
-                // Sur une période ouverte un mercredi, le « Lundi » tombait sur
-                // ce mercredi, deux jours avant l'ouverture.
-                $data['date_seance'] = $emploiTemps->dateDuJour($data['jour']);
-
                 // Couleur dynamique selon le type
                 if (empty($data['color'])) {
                     $data['color'] = \App\Models\ESBTPSeanceCours::DEFAULT_COLORS[$data['type']] ?? '#000000';
@@ -762,9 +752,6 @@ class ESBTPSeanceCoursController extends Controller
     }
 
     /**
-     * Check for scheduling conflicts
-     */
-    /**
      * Les jours que `store()` va réellement écrire.
      *
      * Sans récurrence : le jour du formulaire. Avec récurrence : les jours
@@ -810,11 +797,7 @@ class ESBTPSeanceCoursController extends Controller
     {
         $emploiTemps = ESBTPEmploiTemps::findOrFail($request->emploi_temps_id);
 
-        // Une pause ou un déjeuner ne mobilisent ni enseignant ni salle : on ne
-        // les cherche que pour un cours ou un devoir. C'est ce que faisait la
-        // version précédente, et l'étendre serait un changement de conduite
-        // qu'aucune mesure n'appuie aujourd'hui.
-        $mobiliseUneRessource = in_array($request->type, ['course', 'homework'], true);
+        $mobiliseUneRessource = ESBTPSeanceCours::mobiliseUneRessource($request->type);
 
         return (new ConflitsDUnCreneau($emploiTemps))->pourUneNouvelleSeance(
             $jour,
@@ -822,6 +805,84 @@ class ESBTPSeanceCoursController extends Controller
             $request->heure_fin,
             $mobiliseUneRessource && $request->teacher_id ? (int) $request->teacher_id : null,
             $mobiliseUneRessource ? $request->salle : null,
+        );
+    }
+
+    /**
+     * Les règles de validation de la modification d'une séance.
+     *
+     * Extraites du corps de `update()`, qui franchissait le seuil de l'axe 6 :
+     * ce bloc en occupait la moitié, et il ne décrit rien de ce que la méthode
+     * FAIT — il décrit la forme du formulaire.
+     *
+     * @return array<string, mixed>
+     */
+    private function reglesDeModification(?string $type): array
+    {
+        $regles = [
+            'type' => 'required|in:'.implode(',', [
+                ESBTPSeanceCours::TYPE_COURSE,
+                ESBTPSeanceCours::TYPE_HOMEWORK,
+                ESBTPSeanceCours::TYPE_BREAK,
+                ESBTPSeanceCours::TYPE_LUNCH,
+            ]),
+            'jour' => 'required|integer|min:1|max:6',
+            'heure_debut' => 'required|date_format:H:i',
+            'heure_fin' => 'required|date_format:H:i|after:heure_debut',
+            'is_recurring' => 'boolean',
+            'recurrence_days' => 'nullable|array',
+            'recurrence_days.*' => 'integer|min:1|max:6',
+            'priority' => 'integer',
+        ];
+
+        if ($type === ESBTPSeanceCours::TYPE_COURSE) {
+            return array_merge($regles, [
+                'teacher_id' => 'required|exists:esbtp_teachers,id',
+                'matiere_id' => 'required|exists:esbtp_matieres,id',
+                'salle' => 'required|string|max:50',
+            ]);
+        }
+
+        if ($type === ESBTPSeanceCours::TYPE_HOMEWORK) {
+            return array_merge($regles, [
+                'teacher_id' => 'nullable|exists:esbtp_teachers,id',
+                'matiere_id' => 'required|exists:esbtp_matieres,id',
+                'salle' => 'nullable|string|max:50',
+                'homework_description' => 'required|string',
+                'homework_due_date' => 'required|date|after:today',
+            ]);
+        }
+
+        return $regles;
+    }
+
+    /**
+     * Les conflits du créneau demandé, pour une séance qui existe déjà.
+     *
+     * Le pendant de `checkSchedulingConflicts()` pour `update()`. Il n'existait
+     * pas : créer une séance sur un créneau occupé était refusé, y DÉPLACER une
+     * séance existante passait sans un mot.
+     *
+     * `pourUneSeanceModifiee()` et non `pourUneNouvelleSeance()` : sans quoi la
+     * séance entrerait en conflit avec sa propre ligne.
+     *
+     * @param  array<string, mixed>  $validated
+     * @return string[]
+     */
+    private function conflitsDeLaModification(
+        ESBTPSeanceCours $seance,
+        ESBTPEmploiTemps $emploiTemps,
+        array $validated,
+    ): array {
+        $mobiliseUneRessource = ESBTPSeanceCours::mobiliseUneRessource($validated['type'] ?? null);
+
+        return (new ConflitsDUnCreneau($emploiTemps))->pourUneSeanceModifiee(
+            $seance,
+            $validated['jour'],
+            $validated['heure_debut'],
+            $validated['heure_fin'],
+            $mobiliseUneRessource && ! empty($validated['teacher_id']) ? (int) $validated['teacher_id'] : null,
+            $mobiliseUneRessource ? ($validated['salle'] ?? null) : null,
         );
     }
 
@@ -1023,42 +1084,7 @@ class ESBTPSeanceCoursController extends Controller
     public function update(Request $request, ESBTPSeanceCours $seancesCour)
     {
         try {
-            // Base validation rules
-            $rules = [
-                'type' => 'required|in:'.implode(',', [
-                    ESBTPSeanceCours::TYPE_COURSE,
-                    ESBTPSeanceCours::TYPE_HOMEWORK,
-                    ESBTPSeanceCours::TYPE_BREAK,
-                    ESBTPSeanceCours::TYPE_LUNCH,
-                ]),
-                'jour' => 'required|integer|min:1|max:6',
-                'heure_debut' => 'required|date_format:H:i',
-                'heure_fin' => 'required|date_format:H:i|after:heure_debut',
-                'is_recurring' => 'boolean',
-                'recurrence_days' => 'nullable|array',
-                'recurrence_days.*' => 'integer|min:1|max:6',
-                'priority' => 'integer',
-            ];
-
-            // Add conditional validation rules based on session type
-            if ($request->type === ESBTPSeanceCours::TYPE_COURSE) {
-                $rules = array_merge($rules, [
-                    'teacher_id' => 'required|exists:esbtp_teachers,id',
-                    'matiere_id' => 'required|exists:esbtp_matieres,id',
-                    'salle' => 'required|string|max:50',
-                ]);
-            } elseif ($request->type === ESBTPSeanceCours::TYPE_HOMEWORK) {
-                $rules = array_merge($rules, [
-                    'teacher_id' => 'nullable|exists:esbtp_teachers,id',
-                    'matiere_id' => 'required|exists:esbtp_matieres,id',
-                    'salle' => 'nullable|string|max:50',
-                    'homework_description' => 'required|string',
-                    'homework_due_date' => 'required|date|after:today',
-                ]);
-            }
-
-            // Validate the request
-            $validated = $request->validate($rules);
+            $validated = $request->validate($this->reglesDeModification($request->type));
             if (! array_key_exists('teacher_id', $validated)) {
                 $validated['teacher_id'] = null;
             }
@@ -1075,19 +1101,7 @@ class ESBTPSeanceCoursController extends Controller
             // sans changer de jour pour le reste de l'application.
             $validated['date_seance'] = $emploiTemps->dateDuJour($validated['jour']);
 
-            // Le même garde qu'à la création. Il n'existait que du côté de
-            // `store()` : créer une séance sur un créneau occupé était refusé,
-            // y DÉPLACER une séance existante passait sans un mot.
-            $mobiliseUneRessource = in_array($validated['type'], ['course', 'homework'], true);
-
-            $conflits = (new ConflitsDUnCreneau($emploiTemps))->pourUneSeanceModifiee(
-                $seancesCour,
-                $validated['jour'],
-                $validated['heure_debut'],
-                $validated['heure_fin'],
-                $mobiliseUneRessource && ! empty($validated['teacher_id']) ? (int) $validated['teacher_id'] : null,
-                $mobiliseUneRessource ? ($validated['salle'] ?? null) : null,
-            );
+            $conflits = $this->conflitsDeLaModification($seancesCour, $emploiTemps, $validated);
 
             if (! empty($conflits)) {
                 throw ValidationException::withMessages(['conflicts' => $conflits]);
