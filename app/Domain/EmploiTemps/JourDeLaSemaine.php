@@ -101,6 +101,46 @@ final class JourDeLaSemaine
         return $rang !== null && $rang === self::rang($autre);
     }
 
+    /**
+     * Combien de jours séparent le début d'une semaine du jour visé.
+     *
+     * `$departIso` est le jour de la semaine du premier jour de l'emploi du
+     * temps, au format ISO (1 = lundi … 7 = dimanche), c'est-à-dire ce que rend
+     * `Carbon::dayOfWeekIso`.
+     *
+     * ## Pourquoi ce n'est pas `rang($jour)` tout court
+     *
+     * Trois endroits du dépôt calculaient la date d'une séance, et deux le
+     * faisaient par `date_debut + (jour - 1)`. Ce raccourci n'est juste **que si
+     * `date_debut` tombe un lundi** — or rien ne l'impose : la validation de
+     * l'emploi du temps ne demande qu'une `date`, et seul le message d'erreur
+     * sur la durée évoque « du lundi au samedi ». Sur un emploi du temps
+     * commençant un mercredi, ce raccourci place le « Lundi » sur le mercredi
+     * même, deux jours avant l'ouverture de la période.
+     *
+     * Le troisième endroit, `ESBTPSeanceCours::getDateSeance()`, faisait le
+     * calcul juste : il cherche la prochaine occurrence du jour visé à partir du
+     * début de période. C'est cette formule-là qui est ici, et que les trois
+     * partagent désormais.
+     *
+     * Rend toujours 0..6, donc une date qui reste dans la semaine ouverte par
+     * `date_debut` — jamais avant elle.
+     */
+    public static function decalageDepuis(mixed $jour, int $departIso): ?int
+    {
+        $rang = self::rang($jour);
+
+        if ($rang === null) {
+            return null;
+        }
+
+        $cibleIso = $rang + 1;
+
+        return $cibleIso >= $departIso
+            ? $cibleIso - $departIso
+            : 7 - $departIso + $cibleIso;
+    }
+
     /** Le libellé français, ou `null` si l'écriture ne désigne aucun jour connu. */
     public static function libelle(mixed $jour): ?string
     {

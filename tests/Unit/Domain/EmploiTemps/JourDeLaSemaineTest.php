@@ -115,6 +115,49 @@ class JourDeLaSemaineTest extends TestCase
         $this->assertNull(JourDeLaSemaine::libelle('Dimanche'));
     }
 
+    // --- Le décalage depuis le début d'un emploi du temps ---
+
+    public function test_depuis_un_lundi_le_decalage_est_le_rang(): void
+    {
+        // Le cas où le raccourci `jour - 1` était juste, et qui explique qu'on
+        // ne l'ait jamais vu échouer : les emplois du temps commencent
+        // généralement un lundi.
+        $this->assertSame(0, JourDeLaSemaine::decalageDepuis('Lundi', 1));
+        $this->assertSame(2, JourDeLaSemaine::decalageDepuis('Mercredi', 1));
+        $this->assertSame(5, JourDeLaSemaine::decalageDepuis('Samedi', 1));
+    }
+
+    public function test_depuis_un_autre_jour_le_decalage_reste_dans_la_semaine_ouverte(): void
+    {
+        // Emploi du temps commençant un MERCREDI (ISO 3). Le raccourci
+        // `jour - 1` placerait « Lundi » sur le mercredi même, deux jours AVANT
+        // l'ouverture de la période. La bonne réponse est le lundi suivant,
+        // cinq jours plus tard.
+        $this->assertSame(5, JourDeLaSemaine::decalageDepuis('Lundi', 3));
+        $this->assertSame(0, JourDeLaSemaine::decalageDepuis('Mercredi', 3));
+        $this->assertSame(3, JourDeLaSemaine::decalageDepuis('Samedi', 3));
+    }
+
+    public function test_le_decalage_reste_toujours_dans_la_semaine(): void
+    {
+        foreach (range(1, 7) as $departIso) {
+            foreach (range(1, 6) as $jour) {
+                $decalage = JourDeLaSemaine::decalageDepuis($jour, $departIso);
+
+                $this->assertGreaterThanOrEqual(0, $decalage, "jour {$jour} depuis {$departIso}");
+                $this->assertLessThanOrEqual(6, $decalage, "jour {$jour} depuis {$departIso}");
+            }
+        }
+    }
+
+    public function test_un_jour_illisible_n_a_pas_de_decalage(): void
+    {
+        // Et non zéro : une date fausse se propagerait aux heures de
+        // l'enseignant et à son émargement, où personne ne la rattraperait.
+        $this->assertNull(JourDeLaSemaine::decalageDepuis('Dimanche', 1));
+        $this->assertNull(JourDeLaSemaine::decalageDepuis(null, 1));
+    }
+
     // --- Interroger une colonne non normalisée ---
 
     public function test_les_ecritures_d_un_jour_couvrent_les_deux_formats(): void

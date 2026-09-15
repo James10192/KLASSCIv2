@@ -2629,9 +2629,9 @@ class ESBTPEmploiTempsController extends Controller
      */
     private function dateDeLaSeance(ESBTPEmploiTemps $emploiTemps, $jour): ?string
     {
-        $rang = JourDeLaSemaine::rang($jour);
+        $date = $emploiTemps->dateDuJour($jour);
 
-        if ($rang === null || ! $emploiTemps->date_debut) {
+        if ($date === null) {
             \Log::warning('Date de séance non calculable à la création', [
                 'emploi_temps_id' => $emploiTemps->id,
                 'jour' => $jour,
@@ -2641,7 +2641,7 @@ class ESBTPEmploiTempsController extends Controller
             return null;
         }
 
-        return Carbon::parse($emploiTemps->date_debut)->addDays($rang)->toDateString();
+        return $date->toDateString();
     }
 
     private function resolveSeanceDayIndex($jour): ?int

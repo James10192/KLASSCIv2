@@ -533,10 +533,15 @@ class ESBTPSeanceCoursController extends Controller
                 $data['classe_id'] = $emploiTemps->classe_id;
                 $data['annee_universitaire_id'] = $emploiTemps->annee_universitaire_id;
 
-                // Calcul automatique de la date de séance
-                // On suppose que jour = 1 (Lundi) à 7 (Dimanche)
-                $dateDebut = $emploiTemps->date_debut instanceof \Carbon\Carbon ? $emploiTemps->date_debut : \Carbon\Carbon::parse($emploiTemps->date_debut);
-                $data['date_seance'] = $dateDebut->copy()->addDays($data['jour'] - 1);
+                // Calcul automatique de la date de séance.
+                //
+                // Il posait `date_debut + (jour - 1)`, juste UNIQUEMENT si la
+                // période commence un lundi — que rien n'impose : la validation
+                // de l'emploi du temps ne demande qu'une `date`, et seul le
+                // message d'erreur sur la durée évoque « du lundi au samedi ».
+                // Sur une période ouverte un mercredi, le « Lundi » tombait sur
+                // ce mercredi, deux jours avant l'ouverture.
+                $data['date_seance'] = $emploiTemps->dateDuJour($data['jour']);
 
                 // Couleur dynamique selon le type
                 if (empty($data['color'])) {
@@ -729,8 +734,17 @@ class ESBTPSeanceCoursController extends Controller
         $conflicts = [];
 
         $emploiTemps = ESBTPEmploiTemps::findOrFail($request->emploi_temps_id);
-        $dateDebut = $emploiTemps->date_debut instanceof \Carbon\Carbon ? $emploiTemps->date_debut : \Carbon\Carbon::parse($emploiTemps->date_debut);
-        $dateSeance = $dateDebut->copy()->addDays($request->jour - 1);
+
+        // La MÊME date que celle qui sera écrite par `store()` — les deux
+        // doivent bouger ensemble, sinon le garde compare une date et
+        // l'enregistrement en pose une autre, et la détection devient muette.
+        $dateSeance = $emploiTemps->dateDuJour($request->jour);
+
+        if ($dateSeance === null) {
+            // Sans date, aucune des trois recherches ci-dessous ne veut dire
+            // quoi que ce soit. Mieux vaut le dire que rendre « aucun conflit ».
+            return ['Le jour de la séance est illisible : les conflits n\'ont pas pu être vérifiés.'];
+        }
 
         // Les trois recherches ci-dessous ne retiennent que les séances dont
         // l'emploi du temps couvre une date. Cette date DOIT être celle de la

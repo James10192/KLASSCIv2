@@ -361,24 +361,16 @@ class ESBTPSeanceCours extends Model
         // que `JourDeLaSemaine` ne connaît pas. Aucun des deux formulaires ne le
         // propose, et `getNomJour()` le rendait déjà « Jour inconnu ». La
         // semaine est désormais la même partout.
-        $rang = \App\Domain\EmploiTemps\JourDeLaSemaine::rang($this->jour);
+        // Le calcul de décalage qui vivait ici est parti dans `JourDeLaSemaine` :
+        // c'était le SEUL des trois sites du dépôt à le faire juste, et les deux
+        // autres se rangent maintenant derrière lui.
+        $joursAAjouter = \App\Domain\EmploiTemps\JourDeLaSemaine::decalageDepuis(
+            $this->jour,
+            $dateDebut->dayOfWeekIso
+        );
 
-        if ($rang === null) {
+        if ($joursAAjouter === null) {
             return null;
-        }
-
-        $jourSeance = $rang + 1;
-
-        // Calculer le décalage entre le jour de la semaine de la date de début (1 = lundi, 7 = dimanche)
-        // et le jour de la séance (1 = lundi, 7 = dimanche)
-        $jourDebutSemaine = $dateDebut->dayOfWeek ?: 7; // Carbon retourne 0 pour dimanche, on le convertit en 7
-
-        // Calculer le nombre de jours à ajouter
-        $joursAAjouter = 0;
-        if ($jourSeance >= $jourDebutSemaine) {
-            $joursAAjouter = $jourSeance - $jourDebutSemaine;
-        } else {
-            $joursAAjouter = 7 - $jourDebutSemaine + $jourSeance;
         }
 
         // Si le jour calculé dépasse la date de fin, on retourne null
