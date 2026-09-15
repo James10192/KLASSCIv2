@@ -3516,6 +3516,40 @@
                                 </label>
                             </div>
                         </div>
+                        {{-- Separation des devoirs : trois regles independantes, lues
+                             depuis config/sod.php. Aucune cle n'est ecrite ici : en
+                             ajouter une au fichier de configuration l'affiche. --}}
+                        @php $reglesSod = \App\Services\Security\SeparationOfDutiesService::reglesExposables(); @endphp
+                        @if (count($reglesSod) > 0)
+                        <div class="row g-3" style="margin-top:.25rem;">
+                            <div class="col-12">
+                                <div class="ls-toggle-label" style="margin-bottom:.35rem;">
+                                    <i class="fas fa-user-shield" style="margin-right:.35rem;"></i>Séparation des devoirs
+                                </div>
+                                <div class="ls-toggle-hint" style="margin-bottom:.5rem;">
+                                    Norme OHADA : personne ne signe les deux bouts d'une même chaîne.
+                                    La permission « {{ \App\Services\Security\SeparationOfDutiesService::permissionDeContournement() }} »
+                                    lève ces contrôles ; chaque levée est journalisée.
+                                </div>
+                            </div>
+                            @foreach ($reglesSod as $regleSod)
+                            <div class="col-md-4">
+                                <label class="ls-toggle" for="sod_{{ $loop->index }}">
+                                    <div class="ls-toggle-text">
+                                        <div class="ls-toggle-label">{{ $regleSod['label'] }}</div>
+                                        <div class="ls-toggle-hint">{{ $regleSod['hint'] }}</div>
+                                    </div>
+                                    <div class="form-check form-switch" style="margin:0; padding-left:2.5em;">
+                                        <input class="form-check-input" type="checkbox" id="sod_{{ $loop->index }}"
+                                               name="{{ $regleSod['cle'] }}" value="1"
+                                               {{ \App\Helpers\SettingsHelper::get($regleSod['cle'], $regleSod['defaut'] ? '1' : '0') == '1' ? 'checked' : '' }}>
+                                    </div>
+                                </label>
+                            </div>
+                            @endforeach
+                        </div>
+                        @endif
+
                         <div class="row g-3" style="margin-top:.25rem;">
                             <div class="col-md-6">
                                 <label class="ls-toggle" for="lmd_suppression_ue_libere_ecues_vers_bts">

@@ -17,6 +17,7 @@ use App\Services\MailPulse\MailPulseTestNotificationService;
 use App\Services\Mobile\MobileProfileResolver;
 use App\Services\Inscription\PortailCandidaturePublication;
 use App\Services\Reinscription\PortailReinscriptionService;
+use App\Services\Security\SeparationOfDutiesService;
 use App\Services\TelephoneSettingsService;
 use App\Services\TenantScolariteSettings;
 use Illuminate\Http\JsonResponse;
@@ -503,7 +504,7 @@ class ESBTPSettingsController extends Controller
                 // migration, lu par MobileProfileResolver, sans cette ligne
                 // la case de la page n'aurait jamais ete enregistree.
                 MobileProfileResolver::REGLAGE_ACTIF,
-            ], array_keys($troncCommunDefaults));
+            ], array_keys($troncCommunDefaults), SeparationOfDutiesService::clesDeReglage());
 
             // Reglages a cle pointee qui ne sont PAS des cases a cocher. La
             // distinction ne peut PAS se lire sur la colonne `type` : plusieurs
