@@ -68,7 +68,7 @@
                                     <select class="form-select select2" id="enseignant" name="enseignant">
                                         <option value="">Tous les enseignants</option>
                                         @foreach($enseignants as $enseignant)
-                                            <option value="{{ $enseignant->name }}" {{ request('enseignant') == $enseignant->name ? 'selected' : '' }}>
+                                            <option value="{{ $enseignant->id }}" {{ (string) request('enseignant') === (string) $enseignant->id ? 'selected' : '' }}>
                                                 {{ $enseignant->name }}
                                             </option>
                                         @endforeach

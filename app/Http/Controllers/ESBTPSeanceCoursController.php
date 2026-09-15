@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Domain\EmploiTemps\DetectionDesConflits;
 use App\Enums\TypeSeance;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPClasse;
@@ -9,7 +10,6 @@ use App\Models\ESBTPEmploiTemps;
 use App\Models\ESBTPEvaluation;
 use App\Models\ESBTPSeanceCours;
 use App\Models\ESBTPTeacher;
-use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -30,7 +30,7 @@ class ESBTPSeanceCoursController extends Controller
             $emploiTempsId = $request->input('emploi_temps_id');
             $jourSemaine = $request->input('jour_semaine');
             $typeSeance = $request->input('type_seance');
-            $enseignantNom = $request->input('enseignant');
+            $enseignantId = $request->input('enseignant');
 
             // Construire la requête de base
             $query = ESBTPSeanceCours::with(['emploiTemps.classe', 'matiere']);
@@ -48,8 +48,14 @@ class ESBTPSeanceCoursController extends Controller
                 $query->where('type_seance', $typeSeance);
             }
 
-            if ($enseignantNom) {
-                $query->where('enseignant', $enseignantNom);
+            // Filtre enseignant — sur `teacher_id`, la colonne vivante.
+            //
+            // Il portait sur la colonne texte `enseignant`, que rien n'écrit
+            // (absente de `$fillable`, aucun code du dépôt ne la renseigne) : le
+            // filtre rendait donc systématiquement zéro séance, et la liste
+            // paraissait vide dès qu'on choisissait un enseignant.
+            if ($enseignantId) {
+                $query->where('teacher_id', $enseignantId);
             }
 
             // Récupérer les séances de cours paginées
@@ -58,8 +64,12 @@ class ESBTPSeanceCoursController extends Controller
             // Récupérer tous les emplois du temps pour le filtre
             $emploisTemps = ESBTPEmploiTemps::with('classe')->orderBy('created_at', 'desc')->get();
 
-            // Récupérer tous les enseignants pour le filtre
-            $enseignants = User::role('enseignant')->where('is_active', true)->orderBy('name')->get();
+            // Les enseignants du filtre — des `ESBTPTeacher`, parce que c'est ce
+            // que `esbtp_seance_cours.teacher_id` désigne. La liste portait des
+            // `User`, dont les identifiants ne correspondent pas.
+            // Le tri se fait en mémoire : `name` est un accesseur qui lit le
+            // compte lié, donc il n'existe pas en base.
+            $enseignants = ESBTPTeacher::with('user')->get()->sortBy('name')->values();
 
             // Statistiques par type de séance (single aggregated query, keys UPPERCASE per TypeSeance enum)
             $rawCounts = ESBTPSeanceCours::query()
@@ -99,134 +109,22 @@ class ESBTPSeanceCoursController extends Controller
     }
 
     /**
-     * Détecte les conflits d'horaire entre les séances de cours.
+     * Les conflits d'horaire du bandeau, délégués à `DetectionDesConflits`.
      *
-     * @return array Liste des conflits détectés
+     * Le raisonnement a quitté ce contrôleur : privé dans un fichier de plus de
+     * mille lignes, il n'était prouvé que par ses commentaires. Il est désormais
+     * rejouable sans base — voir `tests/Unit/Domain/EmploiTemps`.
+     *
+     * Ce qui reste ici est ce qui appartient au contrôleur : la requête, et les
+     * relations à charger pour que la détection n'en déclenche aucune.
      */
-    private function detecterConflitsHoraire()
+    private function detecterConflitsHoraire(): array
     {
-        $conflits = [];
-
-        // Récupérer toutes les séances actives
-        // `teacher.user` est chargé parce que le conflit d'enseignant se lit
-        // maintenant sur `teacher_id` et s'affiche par le nom — sans lui, une
-        // requête par séance.
         $seances = ESBTPSeanceCours::with(['emploiTemps.classe', 'matiere', 'teacher.user'])
             ->where('is_active', true)
             ->get();
 
-        // Vérifier les conflits pour chaque séance
-        foreach ($seances as $seance) {
-            // Vérifier les conflits avec les autres séances
-            foreach ($seances as $autreSeance) {
-                // Ne pas comparer une séance avec elle-même
-                if ($seance->id == $autreSeance->id) {
-                    continue;
-                }
-
-                // Ni deux séances d'années universitaires DIFFÉRENTES.
-                //
-                // L'appariement ne teste que le jour de la semaine et le
-                // chevauchement horaire : sans cette garde, un permanent qui
-                // tient le lundi 8h-10h en 2024-2025 et de nouveau en 2026-2027
-                // se retrouve en conflit avec lui-même. Sur les instances qui
-                // portent plusieurs années en base — c'est le cas des deux plus
-                // grosses — c'est une catégorie entière de faux conflits.
-                //
-                // Seulement quand les DEUX années sont connues et diffèrent : sur
-                // des lignes anciennes où la colonne est nulle, se taire ferait
-                // disparaître des conflits réels. Cette garde ne peut donc que
-                // retirer du bruit, jamais un signal.
-                if ($seance->annee_universitaire_id
-                    && $autreSeance->annee_universitaire_id
-                    && (int) $seance->annee_universitaire_id !== (int) $autreSeance->annee_universitaire_id) {
-                    continue;
-                }
-
-                // Vérifier si les séances sont le même jour et se chevauchent
-                if ($seance->jour == $autreSeance->jour &&
-                    $seance->heure_debut < $autreSeance->heure_fin &&
-                    $seance->heure_fin > $autreSeance->heure_debut) {
-
-                    // Conflit d'enseignant, lu sur `teacher_id`.
-                    //
-                    // Il se lisait sur la colonne texte `enseignant`, qui est
-                    // MORTE : absente de `$fillable`, écrite par aucun code du
-                    // dépôt, donc nulle sur toute séance créée par l'application.
-                    // Comme `null == null` est vrai, la branche se déclenchait sur
-                    // n'importe quelle paire qui se chevauche — un bandeau de faux
-                    // conflits, qui apprend à ignorer le bandeau.
-                    //
-                    // S'en garder par `trim() !== ''` supprimait bien le bruit,
-                    // mais rendait du même coup la détection d'enseignant
-                    // définitivement inerte : elle ne pouvait plus JAMAIS se
-                    // déclencher. Échanger un faux positif systématique contre un
-                    // faux négatif systématique n'est pas un progrès.
-                    //
-                    // `teacher_id` est la colonne vivante : c'est elle que `store()`
-                    // écrit et que `checkSchedulingConflicts()` interroge.
-                    if ($seance->teacher_id
-                        && (int) $seance->teacher_id === (int) $autreSeance->teacher_id) {
-                        $conflits[] = [
-                            'type' => 'Enseignant',
-                            'nom' => $seance->teacher?->user?->name
-                                ?? $seance->teacher?->name
-                                ?? ('Enseignant #' . $seance->teacher_id),
-                            'jour' => $seance->jour,
-                            'heure_debut' => $seance->heure_debut,
-                            'heure_fin' => $seance->heure_fin,
-                            'seance_id' => $seance->id,
-                        ];
-                    }
-
-                    // Conflit de salle. `salle`, elle, est bien peuplée.
-                    //
-                    // La garde de nullité y était le vrai besoin : deux séances
-                    // sans salle se déclaraient en conflit. Le passage de `==` à
-                    // `trim() === trim()` élargit par ailleurs un peu la détection
-                    // — espaces de bord, et plus de comparaison numérique de deux
-                    // chaînes, où PHP tient « 10 » et « 1e1 » pour égales.
-                    //
-                    // La casse et les abréviations restent distinctes : « Amphi A »,
-                    // « amphi A » et « A » sont trois salles. Les rapprocher
-                    // élargirait la détection sur des données existantes, ce qui
-                    // est un autre geste que celui-ci.
-                    if (trim((string) $seance->salle) !== ''
-                        && trim((string) $seance->salle) === trim((string) $autreSeance->salle)) {
-                        $conflits[] = [
-                            'type' => 'Salle',
-                            'nom' => $seance->salle,
-                            'jour' => $seance->jour,
-                            'heure_debut' => $seance->heure_debut,
-                            'heure_fin' => $seance->heure_fin,
-                            'seance_id' => $seance->id,
-                        ];
-                    }
-
-                    // Vérifier les conflits de classe
-                    if ($seance->emploiTemps && $autreSeance->emploiTemps &&
-                        $seance->emploiTemps->classe_id == $autreSeance->emploiTemps->classe_id) {
-                        $conflits[] = [
-                            'type' => 'Classe',
-                            'nom' => $seance->emploiTemps->classe->name,
-                            'jour' => $seance->jour,
-                            'heure_debut' => $seance->heure_debut,
-                            'heure_fin' => $seance->heure_fin,
-                            'seance_id' => $seance->id,
-                        ];
-                    }
-                }
-            }
-        }
-
-        // Éliminer les doublons
-        $conflitsUniques = [];
-        foreach ($conflits as $conflit) {
-            $key = $conflit['type'].'-'.$conflit['nom'].'-'.$conflit['jour'].'-'.$conflit['heure_debut'].'-'.$conflit['heure_fin'];
-            $conflitsUniques[$key] = $conflit;
-        }
-
-        return array_values($conflitsUniques);
+        return (new DetectionDesConflits)->depuis($seances);
     }
 
     /**
@@ -394,12 +292,14 @@ class ESBTPSeanceCoursController extends Controller
         // Sans emploi du temps de référence, on retombe sur « en vigueur
         // aujourd'hui », le comportement d'avant.
         //
-        // Aucun appelant n'y tombe aujourd'hui : `emploi_temps_id` est NOT NULL
-        // depuis sa migration, et la relation porte `->withTrashed()`, donc elle
-        // rend son objet même pour un emploi du temps à la corbeille. Le repli
-        // n'existe que parce que le paramètre est nullable par signature — j'ai
-        // d'abord écrit qu'il était atteignable par la suppression douce, ce qui
-        // était faux et contredit par le commentaire de la relation elle-même.
+        // Aucun appelant n'y tombe aujourd'hui, et ce sont les APPELANTS qui le
+        // disent, pas le schéma : `create()` obtient son emploi du temps par
+        // `findOrFail()`, et `edit()` sort en `back()` quand la relation est
+        // nulle. Deux affirmations plus fortes ont figuré ici et étaient
+        // fausses — « atteignable par la suppression douce » (la relation porte
+        // `->withTrashed()`), puis « `emploi_temps_id` est NOT NULL depuis sa
+        // migration » (une seconde migration le recrée `nullable()` si la
+        // colonne manque, donc la nullité dépend de l'instance).
         //
         // Il reste écrit parce qu'un paramètre nullable finit par recevoir `null`,
         // et parce qu'il coûte une ligne. D'où la fenêtre `[aujourd'hui,
