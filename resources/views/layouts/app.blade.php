@@ -2124,6 +2124,12 @@
                                     <span class="menu-dot"></span>
                                     <span>Gestion du personnel</span>
                                 </a>
+                                @can('users.manage')
+                                <a href="{{ route('esbtp.diagnostic-acces.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.diagnostic-acces.*') ? 'active' : '' }}">
+                                    <span class="menu-dot"></span>
+                                    <span>Diagnostic des accès</span>
+                                </a>
+                                @endcan
                             </div>
                         </div>
 

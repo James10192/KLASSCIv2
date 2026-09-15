@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use App\Services\Mobile\MobileProfileResolver;
 use App\Services\PermissionRegistry;
+use App\Services\Security\AttributionSensible;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -213,6 +214,9 @@ class ESBTPCustomRoleController extends Controller
         if ($denial = $this->denyIfPermissionsNotGrantable($requestedPerms, $registry)) {
             return $denial;
         }
+        if ($denial = $this->denyIfAutoSensible($requestedPerms, $validated['name'] ?? null)) {
+            return $denial;
+        }
 
         return $this->runMutation($registry, 'la création', function () use ($validated, $requestedPerms) {
             $role = new Role();
@@ -298,6 +302,9 @@ class ESBTPCustomRoleController extends Controller
         if ($denial = $this->denyIfPermissionsNotGrantable($requestedPerms, $registry)) {
             return $denial;
         }
+        if ($denial = $this->denyIfAutoSensible($requestedPerms, $roleModel->name)) {
+            return $denial;
+        }
 
         return $this->runMutation($registry, 'la mise à jour', function () use ($roleModel, $validated, $requestedPerms) {
             $roleModel->label_fr = $validated['label_fr'];
@@ -372,6 +379,9 @@ class ESBTPCustomRoleController extends Controller
         $requestedPerms = $this->normalizePermissionsList($validated['permissions'] ?? []);
         $requestedPerms = $this->applyPermissionDependencies($requestedPerms);
         if ($denial = $this->denyIfPermissionsNotGrantable($requestedPerms, $registry)) {
+            return $denial;
+        }
+        if ($denial = $this->denyIfAutoSensible($requestedPerms, $roleModel->name)) {
             return $denial;
         }
 
@@ -603,6 +613,22 @@ class ESBTPCustomRoleController extends Controller
      *
      * @param  array<int, string>  $requestedPerms
      */
+    /** @param  array<int, string>  $requestedPerms */
+    private function denyIfAutoSensible(array $requestedPerms, ?string $roleName): ?\Illuminate\Http\JsonResponse
+    {
+        $acteur = Auth::user();
+        $memePersonne = $acteur && $roleName && $acteur->hasRole($roleName);
+        $message = AttributionSensible::messageSiAutoAttribution((bool) $memePersonne, $requestedPerms);
+        if ($message === null) {
+            return null;
+        }
+
+        return response()->json([
+            'success' => false,
+            'message' => $message,
+        ], 403);
+    }
+
     private function denyIfPermissionsNotGrantable(array $requestedPerms, PermissionRegistry $registry): ?\Illuminate\Http\JsonResponse
     {
         $allowedPerms = $this->grantablePermissionsForActor($registry)

@@ -33,6 +33,9 @@ final class SuperAdminLifecycleGuard
             }
 
             $user->update(['is_active' => !$user->is_active]);
+            if (! $user->is_active) {
+                $user->tokens()->delete();
+            }
             $afterUpdate?->__invoke($user);
 
             return (bool) $user->is_active;

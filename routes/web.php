@@ -2912,6 +2912,11 @@ Route::middleware(['auth', 'permission:personnel.manage', 'paywall'])->prefix('e
     Route::patch('/personnel/unified/{type}/{id}/toggle-status', [\App\Http\Controllers\ESBTPPersonnelUnifiedController::class, 'toggleStatus'])->name('personnel.unified.toggle-status');
 });
 
+Route::middleware(['auth', 'permission:users.manage', 'paywall'])->prefix('esbtp')->name('esbtp.')->group(function () {
+    Route::get('/diagnostic-acces', [\App\Http\Controllers\ESBTP\DiagnosticAccesController::class, 'index'])->name('diagnostic-acces.index');
+    Route::get('/diagnostic-acces/{user}', [\App\Http\Controllers\ESBTP\DiagnosticAccesController::class, 'show'])->name('diagnostic-acces.show');
+});
+
 Route::middleware(['auth', 'permission:personnel.manage', 'paywall'])->prefix('esbtp')->name('esbtp.')->group(function () {
     Route::get('/custom-roles', [\App\Http\Controllers\ESBTPCustomRoleController::class, 'index'])->name('custom-roles.index');
     Route::get('/custom-roles/create', [\App\Http\Controllers\ESBTPCustomRoleController::class, 'create'])->name('custom-roles.create');

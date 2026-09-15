@@ -3463,6 +3463,28 @@
                         </div>
                     </div>
 
+                    @php
+                        $tpeMode = old('setting_tpe.mode', \App\Helpers\SettingsHelper::get('tpe.mode', 'non_planifiable'));
+                        $tpeProvenance = app(\App\Services\Security\ProvenanceReglage::class)->de('tpe.mode');
+                    @endphp
+                    <div class="ls-section">
+                        <div class="ls-head">
+                            <div class="ls-icon"><i class="fas fa-user-pen"></i></div>
+                            <div class="ls-title">TPE à l'emploi du temps</div>
+                        </div>
+                        <div class="ls-desc">
+                            Par défaut le TPE n'est pas une séance : c'est un volume d'ECUE. Une école qui le fait sur site choisit la séance encadrée. Ça ne paie pas l'enseignant.
+                        </div>
+                        <div class="ls-field">
+                            <div class="ls-label">Mode TPE</div>
+                            <select class="ls-input" name="setting_tpe.mode">
+                                <option value="non_planifiable" {{ $tpeMode === 'non_planifiable' ? 'selected' : '' }}>Non planifiable (défaut)</option>
+                                <option value="seance_encadree" {{ $tpeMode === 'seance_encadree' ? 'selected' : '' }}>Séance encadrée sur site</option>
+                            </select>
+                            <div class="ls-hint">{{ $tpeProvenance['phrase'] }}</div>
+                        </div>
+                    </div>
+
                     {{-- Section 2: Validation & Compensation --}}
                     <div class="ls-section ls-section--validation">
                         <div class="ls-head">

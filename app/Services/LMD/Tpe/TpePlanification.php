@@ -34,4 +34,9 @@ final class TpePlanification
     {
         return self::modeIsPlanifiable(self::mode());
     }
+
+    public static function messageRefus(): string
+    {
+        return 'Le TPE n\'est pas planifiable en emploi du temps.';
+    }
 }

@@ -3,8 +3,10 @@
 namespace App\Policies;
 
 use App\Models\User;
+use App\Services\Security\AttributionSensible;
 use App\Services\UserManagementService;
 use Illuminate\Auth\Access\HandlesAuthorization;
+use Spatie\Permission\Models\Role;
 
 /**
  * Policy pour la gestion granulaire des utilisateurs.
@@ -47,6 +49,17 @@ class UserManagementPolicy
         if (! $this->service->canManage($actor, $target)) {
             return false;
         }
+        if ($actor->is($target)) {
+            try {
+                $permissions = Role::findByName($role, 'web')->permissions->pluck('name')->all();
+            } catch (\Throwable) {
+                $permissions = [];
+            }
+            if (AttributionSensible::messageSiAutoAttribution(true, $permissions) !== null) {
+                return false;
+            }
+        }
+
         return $this->service->canAssignRole($actor, $role);
     }
 }

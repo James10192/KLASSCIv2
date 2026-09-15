@@ -36,7 +36,11 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ### Améliorations
 
-- **Administrateur d'instance** — rôle visible, sans joker `*`, pour les réglages, comptes, personnel et audit. L'abonnement ADC et le style de bulletin restent à African Digit. Le court-circuit `superAdmin` se coupe par instance (`PERMISSIONS_SUPERADMIN_GATE_BEFORE=false`) sans toucher la Côte d'Ivoire.
+- **Administrateur d'instance** — rôle visible, sans joker `*`, pour les réglages, comptes, personnel et audit. L'abonnement ADC et le style de bulletin restent à African Digit. Le court-circuit `superAdmin` se coupe par instance (`PERMISSIONS_SUPERADMIN_GATE_BEFORE=false`) sans toucher la Côte d'Ivoire. Il ouvre aussi les réglages (plus seulement Super Admin / secrétaire).
+
+- **Diagnostic des accès** (`/esbtp/diagnostic-acces`) — l'administrateur cherche une personne et un droit en français : compte désactivé, permission manquante, ou fenêtre de notes fermée. Pas de bouton « voir comme ». La page dit aussi d'où viennent le mode TPE et le court-circuit Super Admin.
+
+- **Un compte désactivé ne se connecte plus** — le personnel « inactif » passait encore le login web. Il est refusé, sa session en cours est coupée, ses jetons d'API sont révoqués. L'administrateur d'instance ne peut plus se donner le droit de valider un paiement ou de publier un jury.
 
 - **Celtiis Cash** entre dans les modes de paiement — un encaissement béninois n'est plus invisible du rapprochement. Wave et Orange Money restent.
 

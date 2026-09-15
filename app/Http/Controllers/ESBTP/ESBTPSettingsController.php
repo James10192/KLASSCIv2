@@ -56,7 +56,7 @@ class ESBTPSettingsController extends Controller
     public function __construct()
     {
         $this->middleware('auth');
-        $this->middleware('role:superAdmin|secretaire');
+        $this->middleware('role:superAdmin|secretaire|administrateurInstance');
     }
 
     /**
@@ -67,6 +67,7 @@ class ESBTPSettingsController extends Controller
         $this->ensureAttendanceNoteSettings();
         $this->ensureBtsBulletinPolicySettings();
         $this->ensureBulletinStyleSetting();
+        $this->ensureTpeModeSetting();
         $appreciationScaleSettings = app(AppreciationScaleSettingsService::class);
         $appreciationScaleSettings->ensureDefaults();
         $this->ensureMailPulseSettings();
@@ -1082,6 +1083,24 @@ class ESBTPSettingsController extends Controller
         return $request->expectsJson()
             ? response()->json(['success' => false, 'message' => $message], 422)
             : back()->withInput()->with('error', $message);
+    }
+
+    private function ensureTpeModeSetting(): void
+    {
+        Setting::firstOrCreate(
+            ['key' => 'tpe.mode'],
+            [
+                'value' => 'non_planifiable',
+                'type' => 'string',
+                'group' => 'lmd',
+                'category' => 'lmd',
+                'description' => 'TPE planifiable en emploi du temps',
+                'is_required' => false,
+                'is_active' => true,
+                'default_value' => 'non_planifiable',
+                'validation_rules' => ['nullable', 'in:non_planifiable,seance_encadree'],
+            ]
+        );
     }
 
     private function ensureBulletinStyleSetting(): void

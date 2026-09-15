@@ -468,7 +468,7 @@ class ESBTPSeanceCoursController extends Controller
                 if ($typeSeanceEnum) {
                     if ($typeSeanceEnum === \App\Enums\TypeSeance::TPE && ! TpePlanification::isPlanifiable()) {
                         throw ValidationException::withMessages([
-                            'type_seance' => 'Le TPE n\'est pas planifiable en emploi du temps. C\'est une métadonnée de l\'ECUE configurée dans /esbtp/lmd/planning.',
+                            'type_seance' => TpePlanification::messageRefus(),
                         ]);
                     }
                     // Derive le top-type (creneau) depuis la nature du sous-type :
@@ -1104,7 +1104,7 @@ class ESBTPSeanceCoursController extends Controller
                             : TypeSeance::tryFrom((string) $value);
                         if ($enum === TypeSeance::TPE) {
                             if (! TpePlanification::isPlanifiable() || $topType !== ESBTPSeanceCours::TYPE_COURSE) {
-                                $fail('Le TPE n\'est pas planifiable en emploi du temps.');
+                                $fail(TpePlanification::messageRefus());
                             }
                             return;
                         }
