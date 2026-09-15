@@ -6,13 +6,13 @@ use App\Models\ESBTPClasse;
 use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPExamenPlanifie;
 use App\Models\ESBTPInscription;
+use App\Models\ESBTPLMDBulletin;
+use App\Models\ESBTPLMDJury;
 use App\Models\ESBTPLMDResultatECUE;
 use App\Models\ESBTPLMDResultatUE;
 use App\Models\ESBTPLMDSession;
-use App\Services\LMD\Exceptions\MaquetteSansCompositionException;
-use App\Models\ESBTPLMDBulletin;
-use App\Models\ESBTPLMDJury;
 use App\Models\ESBTPMatiere;
+use App\Services\LMD\Exceptions\MaquetteSansCompositionException;
 use App\Services\LMD\LmdAcademicRuleProfile;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
@@ -397,7 +397,7 @@ class RattrapageSchedulingService
      * le couple (classe, ECUE) ; a defaut, le bareme par defaut du projet.
      *
      * @param  array<int, array{resultat_id: int|string, note: float|int|string|null}>  $notes
-     * @return array{saisies: int, effacees: int, recalculees: int, ignorees: int, bulletins_recalcules: int}
+     * @return array{saisies: int, effacees: int, recalculees: int, ignorees: int, bulletins_recalcules: int, bulletins_refuses: array<int, array{classe_id: int, classe: string, semestre: int, message: string}>}
      */
     /**
      * @param int|null $limiterAEnseignantId n'accepte que les elements constitutifs
@@ -493,8 +493,32 @@ class RattrapageSchedulingService
             }
         });
 
-        $etudiantsTouches = $etudiantsTouches->unique()->values();
+        return $this->repercuterEtBiler(
+            $sessionRattrapage,
+            $bulletins,
+            $etudiantsTouches->unique()->values(),
+            ['saisies' => $saisies, 'effacees' => $effacees, 'ignorees' => $ignorees],
+        );
+    }
 
+    /**
+     * Repercute les notes saisies sur les moyennes et les bulletins, puis rend le bilan.
+     *
+     * Appele APRES la fermeture de la transaction de saisie : les notes sont deja en
+     * base, donc ce qui echoue ici ne les remet pas en cause — d'ou le refus par
+     * classe plutot que l'echec global (voir `reagregerBulletins`).
+     *
+     * @param  Collection<int, ESBTPLMDBulletin>  $bulletins
+     * @param  Collection<int, int>  $etudiantsTouches
+     * @param  array{saisies: int, effacees: int, ignorees: int}  $compteurs
+     * @return array{saisies: int, effacees: int, recalculees: int, ignorees: int, bulletins_recalcules: int, bulletins_refuses: array<int, array<string, mixed>>}
+     */
+    private function repercuterEtBiler(
+        ESBTPLMDSession $sessionRattrapage,
+        Collection $bulletins,
+        Collection $etudiantsTouches,
+        array $compteurs
+    ): array {
         $recalculees = 0;
         foreach ($etudiantsTouches as $etudiantId) {
             $recalculees += $this->recalculerMoyennesAvecRattrapage((int) $etudiantId, $sessionRattrapage);
@@ -504,28 +528,20 @@ class RattrapageSchedulingService
         // l'unite, son statut, les credits, la moyenne generale et le rang continueraient
         // de porter sur la seule premiere session.
         $reagregation = $this->reagregerBulletins($bulletins, $etudiantsTouches);
-        $bulletinsRecalcules = $reagregation['recalcules'];
 
-        Log::info('[RattrapageSchedulingService] notes de seconde session enregistrees', [
-            'session_id' => $sessionRattrapage->id,
-            'saisies' => $saisies,
-            'effacees' => $effacees,
-            'ignorees' => $ignorees,
+        $bilan = $compteurs + [
             'recalculees' => $recalculees,
-            'bulletins_recalcules' => $bulletinsRecalcules,
+            'bulletins_recalcules' => $reagregation['recalcules'],
             'bulletins_refuses' => $reagregation['refuses'],
+        ];
+
+        Log::info('[RattrapageSchedulingService] notes de seconde session enregistrees', $bilan + [
+            'session_id' => $sessionRattrapage->id,
             'etudiants' => $etudiantsTouches->all(),
             'user_id' => optional(auth()->user())->id,
         ]);
 
-        return [
-            'saisies' => $saisies,
-            'effacees' => $effacees,
-            'recalculees' => $recalculees,
-            'ignorees' => $ignorees,
-            'bulletins_recalcules' => $bulletinsRecalcules,
-            'bulletins_refuses' => $reagregation['refuses'],
-        ];
+        return $bilan;
     }
 
     /**
@@ -559,20 +575,50 @@ class RattrapageSchedulingService
             ->filter(fn (ESBTPLMDBulletin $bulletin): bool => $bulletin->classe_id !== null)
             ->values();
 
+        // Le nom de la classe sert au bilan d'un refus. Chargé ici, en une
+        // requête pour tout le lot, plutôt qu'une par bulletin au moment de
+        // l'écrire.
+        $concernes->loadMissing('classe:id,name');
+
         if ($concernes->isEmpty()) {
             return ['recalcules' => 0, 'refuses' => []];
         }
 
         $service = $this->resolveBulletinService();
+
+        [$recalcules, $refuses] = $this->regenererChaqueBulletin($concernes, $service);
+        $this->rangerLesClassesRegenerees($concernes, $service, $refuses);
+
+        return ['recalcules' => $recalcules, 'refuses' => array_values($refuses)];
+    }
+
+    /**
+     * Regenere un bulletin par etudiant touche, et collecte les classes refusees.
+     *
+     * @param  Collection<int, ESBTPLMDBulletin>  $concernes
+     * @return array{0: int, 1: array<string, array{classe_id: int, classe: string, semestre: int, message: string}>}
+     *                                                                                                                les refus sont indexes par « classe_id|semestre »
+     */
+    private function regenererChaqueBulletin(Collection $concernes, LMDBulletinService $service): array
+    {
         $refuses = [];
         $recalcules = 0;
 
         foreach ($concernes as $bulletin) {
+            // Le semestre est epingle par le perimetre de la session
+            // (`bulletinsForSession`), donc cette moitie de cle ne discrimine
+            // rien aujourd'hui. Elle est la pour qu'un elargissement du
+            // perimetre ne fasse pas silencieusement deborder un refus d'un
+            // semestre sur l'autre.
             $perimetre = $bulletin->classe_id.'|'.$bulletin->semestre;
 
-            // La maquette est une propriete de la classe, pas de l'etudiant :
-            // une fois refusee, inutile de la retenter pour les vingt-quatre
-            // autres, et inutile de repeter le meme avertissement au journal.
+            // La composition de la maquette ne depend pas de l'etudiant : une
+            // fois refusee pour une classe, inutile de la retenter pour les
+            // vingt-quatre autres, ni de repeter le meme avertissement.
+            //
+            // Le refus, lui, exige AUSSI que le bulletin existe et porte deja
+            // des lignes — conditions par etudiant. Un etudiant dont le bulletin
+            // est vierge passe donc, meme dans une classe autrement refusee.
             if (isset($refuses[$perimetre])) {
                 continue;
             }
@@ -583,18 +629,32 @@ class RattrapageSchedulingService
                     (int) $bulletin->classe_id,
                     (int) $bulletin->annee_universitaire_id,
                     (int) $bulletin->semestre,
-                    true, // rang et statistiques recalcules une seule fois par classe, ci-dessous
+                    true, // rang et statistiques recalcules une seule fois par classe, ensuite
                 );
                 $recalcules++;
             } catch (MaquetteSansCompositionException $e) {
+                // Le nom de la classe, pas seulement son identifiant : c'est ce
+                // que le secretaire doit lire pour savoir OU aller corriger.
                 $refuses[$perimetre] = [
                     'classe_id' => (int) $bulletin->classe_id,
+                    'classe' => (string) ($bulletin->classe?->name ?? 'Classe #'.$bulletin->classe_id),
                     'semestre' => (int) $bulletin->semestre,
                     'message' => $e->getMessage(),
                 ];
             }
         }
 
+        return [$recalcules, $refuses];
+    }
+
+    /**
+     * Range et statistiques, une fois par classe effectivement regeneree.
+     *
+     * @param  Collection<int, ESBTPLMDBulletin>  $concernes
+     * @param  array<string, array<string, mixed>>  $refuses  indexe par « classe_id|semestre »
+     */
+    private function rangerLesClassesRegenerees(Collection $concernes, LMDBulletinService $service, array $refuses): void
+    {
         foreach ($concernes->groupBy('classe_id') as $classeId => $groupe) {
             $reference = $groupe->first();
 
@@ -615,8 +675,6 @@ class RattrapageSchedulingService
                 (int) $reference->semestre,
             );
         }
-
-        return ['recalcules' => $recalcules, 'refuses' => array_values($refuses)];
     }
 
     /**

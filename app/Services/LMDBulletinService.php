@@ -348,7 +348,7 @@ class LMDBulletinService
             'lignes_conservees' => $lignes,
         ]);
 
-        throw new MaquetteSansCompositionException($classeId, $semestre, $lignes);
+        throw new MaquetteSansCompositionException($semestre);
     }
 
     /**

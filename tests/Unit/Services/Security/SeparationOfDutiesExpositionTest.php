@@ -16,7 +16,9 @@ use Tests\TestCase;
  * controles OHADA pilotables seulement par un fichier de configuration
  * livre — c'est-a-dire pas pilotables.
  *
- * Aucune base ici : on boote l’application pour lire sa configuration, rien de plus.
+ * On boote l’application pour lire sa configuration. Les contrôles qui
+ * touchent à `enabled()` neutralisent d’abord la clé de réglage, pour ne
+ * dépendre d’aucune base ni d’aucun choix d’instance.
  */
 class SeparationOfDutiesExpositionTest extends TestCase
 {
@@ -116,6 +118,12 @@ class SeparationOfDutiesExpositionTest extends TestCase
      */
     public function test_les_trois_regles_livrees_sont_reellement_actives(): void
     {
+        // On neutralise la clé de réglage de chaque règle : `enabled()` rend
+        // alors la valeur d'usine sans lire la base. Le test ne dépend donc ni
+        // d'une base disponible, ni du choix qu'une école aurait posé dans
+        // `klassci_testing` — il ne mesure que ce qu'il annonce mesurer : la
+        // définition de la règle est-elle ATTEINTE.
+        $this->neutraliserLesReglagesDInstance();
         $service = new SeparationOfDutiesService;
 
         foreach (array_keys($this->configurationLivree()['rules']) as $regle) {
@@ -128,7 +136,24 @@ class SeparationOfDutiesExpositionTest extends TestCase
 
     public function test_une_regle_inconnue_reste_inactive(): void
     {
+        $this->neutraliserLesReglagesDInstance();
+
         $this->assertFalse((new SeparationOfDutiesService)->enabled('regle.qui.n.existe.pas'));
+    }
+
+    /**
+     * Met `setting` à null sur chaque règle, sans toucher au reste.
+     *
+     * L'écriture passe par le tableau ENTIER : `config(['sod.rules.lmd.jury.publish…'])`
+     * fabriquerait un `rules → lmd → jury → publish` imbriqué à côté de la vraie
+     * clé plate — le chemin fantôme qui a masqué le défaut pendant des mois.
+     */
+    private function neutraliserLesReglagesDInstance(): void
+    {
+        config(['sod.rules' => array_map(
+            static fn (array $definition): array => array_replace($definition, ['setting' => null]),
+            (array) config('sod.rules'),
+        )]);
     }
 
     public function test_chaque_regle_rend_son_propre_message_de_refus(): void

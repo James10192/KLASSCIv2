@@ -24,11 +24,16 @@ use DomainException;
  */
 final class MaquetteSansCompositionException extends DomainException
 {
-    public function __construct(
-        public readonly int $classeId,
-        public readonly int $semestre,
-        public readonly int $lignesConservees,
-    ) {
+    /**
+     * Seul le semestre est porté : il entre dans le message.
+     *
+     * La classe et le nombre de lignes conservées l'étaient aussi, sans lecteur
+     * — celui qui attrape connaît déjà sa classe, et le décompte est journalisé
+     * au moment du refus. Des propriétés écrites et jamais lues laissent croire
+     * qu'un appelant s'en sert.
+     */
+    public function __construct(public readonly int $semestre)
+    {
         parent::__construct(sprintf(
             'La maquette du semestre S%d ne rattache aucune unité d’enseignement à cette classe. '
             .'Les bulletins déjà calculés sont laissés intacts — les recalculer les viderait. '

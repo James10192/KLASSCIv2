@@ -174,11 +174,17 @@ class ESBTPLMDSessionController extends Controller
         // Un refus de reagregation doit se voir ici. Les notes SONT enregistrees,
         // mais le bulletin d'une classe n'a pas suivi : sans cette phrase, seul
         // un journal le dirait, et l'ecran laisserait croire que tout a suivi.
-        $refuses = $bilan['bulletins_refuses'] ?? [];
+        $refuses = $bilan['bulletins_refuses'];
         if ($refuses !== []) {
-            $message .= ' Attention : ' . count($refuses) . ' classe' . (count($refuses) > 1 ? 's n\'ont' : ' n\'a')
-                . ' pas pu etre reagregee' . (count($refuses) > 1 ? 's' : '') . '. '
-                . implode(' ', array_column($refuses, 'message'));
+            $classes = implode(', ', array_column($refuses, 'classe'));
+            $pluriel = count($refuses) > 1;
+
+            // Les classes NOMMEES, et l'explication UNE FOIS. Le motif est le
+            // meme pour toutes — le repeter n'ajoute rien et noie les noms, qui
+            // sont la seule information que le lecteur n'a pas deja.
+            $message .= ' Attention : ' . $classes . ($pluriel ? ' n\'ont' : ' n\'a')
+                . ' pas pu etre reagregee' . ($pluriel ? 's' : '') . '. '
+                . implode(' ', array_unique(array_column($refuses, 'message')));
         }
 
         return $message;
