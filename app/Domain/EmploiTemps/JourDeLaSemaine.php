@@ -141,6 +141,26 @@ final class JourDeLaSemaine
             : 7 - $departIso + $cibleIso;
     }
 
+    /**
+     * Les jours ouvrés, du lundi au samedi, indexés par leur écriture entière.
+     *
+     * Pour que les écrans cessent de recopier la liste : c'est en la recopiant
+     * que la « Répartition par jour » de `/esbtp/seances-cours` s'est retrouvée
+     * à lire six clés entières sur une colonne qui porte aussi des libellés.
+     *
+     * @return array<int, string>
+     */
+    public static function libelles(): array
+    {
+        $libelles = [];
+
+        foreach (self::LIBELLES as $rang => $libelle) {
+            $libelles[$rang + 1] = $libelle;
+        }
+
+        return $libelles;
+    }
+
     /** Le libellé français, ou `null` si l'écriture ne désigne aucun jour connu. */
     public static function libelle(mixed $jour): ?string
     {

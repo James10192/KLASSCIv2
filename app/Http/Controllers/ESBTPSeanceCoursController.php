@@ -50,11 +50,7 @@ class ESBTPSeanceCoursController extends Controller
                 $statsCours[$case->value] = (int) ($rawCounts[$case->value] ?? 0);
             }
 
-            // Calculer les statistiques par jour
-            $statsJours = ESBTPSeanceCours::select('jour', DB::raw('count(*) as total'))
-                ->groupBy('jour')
-                ->pluck('total', 'jour')
-                ->toArray();
+            $statsJours = $this->comptesParJour();
 
             // Détecter les conflits potentiels
             $conflits = $this->detecterConflitsHoraire();
@@ -109,6 +105,49 @@ class ESBTPSeanceCoursController extends Controller
         }
 
         return $query;
+    }
+
+    /**
+     * Le nombre de séances par jour, les deux écritures réunies.
+     *
+     * `groupBy('jour')` rend des clés BRUTES : une séance écrite « Lundi » sort
+     * sous la clé `'Lundi'`, une autre du même lundi sous la clé `1`. Le panneau
+     * « Répartition par jour » lisant six clés entières, toutes les séances
+     * saisies depuis l'emploi du temps y comptaient pour zéro.
+     *
+     * @return array<int, int> indexé par l'écriture entière du jour, 1 à 6
+     */
+    private function comptesParJour(): array
+    {
+        $bruts = ESBTPSeanceCours::select('jour', DB::raw('count(*) as total'))
+            ->groupBy('jour')
+            ->pluck('total', 'jour');
+
+        $comptes = array_fill_keys(array_keys(JourDeLaSemaine::libelles()), 0);
+        $illisibles = 0;
+
+        foreach ($bruts as $ecriture => $total) {
+            $rang = JourDeLaSemaine::rang($ecriture);
+
+            if ($rang === null) {
+                $illisibles += (int) $total;
+
+                continue;
+            }
+
+            $comptes[$rang + 1] += (int) $total;
+        }
+
+        if ($illisibles > 0) {
+            // Ces séances ne sont comptées nulle part, et c'est le seul endroit
+            // du dépôt qui peut s'en apercevoir. Les taire ferait un total qui
+            // ne tombe jamais juste, sans qu'on sache pourquoi.
+            Log::warning('Séances dont le jour est illisible, absentes de la répartition', [
+                'nombre' => $illisibles,
+            ]);
+        }
+
+        return $comptes;
     }
 
     /**
@@ -182,7 +221,7 @@ class ESBTPSeanceCoursController extends Controller
             // Validate required parameters - jour et heure_debut sont optionnels
             $request->validate([
                 'emploi_temps_id' => 'required|exists:esbtp_emploi_temps,id',
-                'jour' => 'nullable|integer|min:1|max:7',
+                'jour' => 'nullable|integer|min:1|max:6',
                 'heure_debut' => 'nullable|date_format:H:i',
             ]);
 
@@ -461,7 +500,7 @@ class ESBTPSeanceCoursController extends Controller
                 'emploi_temps_id' => 'required|exists:esbtp_emploi_temps,id',
                 'type' => 'required|in:course,homework,break,lunch',
                 'type_seance' => ['nullable', \Illuminate\Validation\Rule::enum(\App\Enums\TypeSeance::class)],
-                'jour' => 'required|integer|min:1|max:7',
+                'jour' => 'required|integer|min:1|max:6',
                 'heure_debut' => 'required|date_format:H:i',
                 'heure_fin' => 'required|date_format:H:i|after:heure_debut',
             ]);
@@ -1028,12 +1067,12 @@ class ESBTPSeanceCoursController extends Controller
                     ESBTPSeanceCours::TYPE_BREAK,
                     ESBTPSeanceCours::TYPE_LUNCH,
                 ]),
-                'jour' => 'required|integer|min:1|max:7',
+                'jour' => 'required|integer|min:1|max:6',
                 'heure_debut' => 'required|date_format:H:i',
                 'heure_fin' => 'required|date_format:H:i|after:heure_debut',
                 'is_recurring' => 'boolean',
                 'recurrence_days' => 'nullable|array',
-                'recurrence_days.*' => 'integer|min:1|max:7',
+                'recurrence_days.*' => 'integer|min:1|max:6',
                 'priority' => 'integer',
             ];
 

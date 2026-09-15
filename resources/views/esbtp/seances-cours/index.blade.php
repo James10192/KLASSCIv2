@@ -46,12 +46,9 @@
                                     <label for="jour_semaine" class="form-label">Jour</label>
                                     <select class="form-select select2" id="jour_semaine" name="jour_semaine">
                                         <option value="">Tous les jours</option>
-                                        <option value="1" {{ request('jour_semaine') == '1' ? 'selected' : '' }}>Lundi</option>
-                                        <option value="2" {{ request('jour_semaine') == '2' ? 'selected' : '' }}>Mardi</option>
-                                        <option value="3" {{ request('jour_semaine') == '3' ? 'selected' : '' }}>Mercredi</option>
-                                        <option value="4" {{ request('jour_semaine') == '4' ? 'selected' : '' }}>Jeudi</option>
-                                        <option value="5" {{ request('jour_semaine') == '5' ? 'selected' : '' }}>Vendredi</option>
-                                        <option value="6" {{ request('jour_semaine') == '6' ? 'selected' : '' }}>Samedi</option>
+                                        @foreach(\App\Domain\EmploiTemps\JourDeLaSemaine::libelles() as $jourValeur => $jourLibelle)
+                                            <option value="{{ $jourValeur }}" {{ (string) request('jour_semaine') === (string) $jourValeur ? 'selected' : '' }}>{{ $jourLibelle }}</option>
+                                        @endforeach
                                     </select>
                                 </div>
                                 <div class="col-md-2">
@@ -216,30 +213,17 @@
                         <div class="col-md-6">
                             <h6>Répartition par jour</h6>
                             <ul class="list-group">
-                                <li class="list-group-item d-flex justify-content-between align-items-center">
-                                    Lundi
-                                    <span class="badge bg-info rounded-pill">{{ $statsJours[1] ?? 0 }}</span>
-                                </li>
-                                <li class="list-group-item d-flex justify-content-between align-items-center">
-                                    Mardi
-                                    <span class="badge bg-info rounded-pill">{{ $statsJours[2] ?? 0 }}</span>
-                                </li>
-                                <li class="list-group-item d-flex justify-content-between align-items-center">
-                                    Mercredi
-                                    <span class="badge bg-info rounded-pill">{{ $statsJours[3] ?? 0 }}</span>
-                                </li>
-                                <li class="list-group-item d-flex justify-content-between align-items-center">
-                                    Jeudi
-                                    <span class="badge bg-info rounded-pill">{{ $statsJours[4] ?? 0 }}</span>
-                                </li>
-                                <li class="list-group-item d-flex justify-content-between align-items-center">
-                                    Vendredi
-                                    <span class="badge bg-info rounded-pill">{{ $statsJours[5] ?? 0 }}</span>
-                                </li>
-                                <li class="list-group-item d-flex justify-content-between align-items-center">
-                                    Samedi
-                                    <span class="badge bg-info rounded-pill">{{ $statsJours[6] ?? 0 }}</span>
-                                </li>
+                                {{-- Les six jours viennent de `JourDeLaSemaine`, et non d'une liste
+                                     recopiée ici : c'est en la recopiant que ce panneau s'est
+                                     retrouvé à lire six clés entières sur une colonne qui porte
+                                     aussi des libellés, et à compter pour zéro toutes les séances
+                                     saisies depuis l'emploi du temps. --}}
+                                @foreach(\App\Domain\EmploiTemps\JourDeLaSemaine::libelles() as $jourValeur => $jourLibelle)
+                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                        {{ $jourLibelle }}
+                                        <span class="badge bg-info rounded-pill">{{ $statsJours[$jourValeur] ?? 0 }}</span>
+                                    </li>
+                                @endforeach
                             </ul>
                         </div>
                     </div>

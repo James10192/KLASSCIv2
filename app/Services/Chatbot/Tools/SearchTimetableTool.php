@@ -2,6 +2,7 @@
 
 namespace App\Services\Chatbot\Tools;
 
+use App\Domain\EmploiTemps\JourDeLaSemaine;
 use App\Models\ESBTPEmploiTemps;
 use Illuminate\Support\Facades\Route;
 
@@ -62,21 +63,28 @@ class SearchTimetableTool extends ChatbotTool
             ];
         }
 
-        $jourMap = ['lundi' => 0, 'mardi' => 1, 'mercredi' => 2, 'jeudi' => 3, 'vendredi' => 4, 'samedi' => 5];
-        $jourNames = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
-
         $seances = $emploiTemps->seances->filter(fn ($s) => $s->is_active && $s->type === 'course');
 
-        // Filtrer par jour si spécifié
-        if (!empty($args['jour'])) {
-            $jourNum = $jourMap[mb_strtolower(trim($args['jour']))] ?? null;
-            if ($jourNum !== null) {
-                $seances = $seances->filter(fn ($s) => $s->jour === $jourNum);
+        // Filtrer par jour si spécifié.
+        //
+        // Ce filtre ne rendait JAMAIS rien : sa table était à base zéro
+        // (`lundi => 0`) et la comparaison stricte, alors que la colonne `jour`
+        // porte soit l'entier à base un, soit le libellé « Lundi ». Ni `1 === 0`
+        // ni `'Lundi' === 0` ne tiennent. Demander l'emploi du temps « du
+        // mercredi » au chatbot rendait donc une journée vide.
+        if (! empty($args['jour'])) {
+            $rangDemande = JourDeLaSemaine::rang($args['jour']);
+            if ($rangDemande !== null) {
+                $seances = $seances->filter(
+                    fn ($s) => JourDeLaSemaine::rang($s->jour) === $rangDemande
+                );
             }
         }
 
-        // Grouper par jour et trier par heure
-        $grouped = $seances->groupBy('jour')->sortKeys();
+        // Grouper par RANG et non par l'écriture brute : sans quoi le même
+        // mercredi forme deux groupes selon l'écran qui a saisi la séance.
+        // Un jour illisible va en fin de semaine plutôt que de disparaître.
+        $grouped = $seances->groupBy(fn ($s) => JourDeLaSemaine::rang($s->jour) ?? 99)->sortKeys();
 
         $days = [];
         foreach ($grouped as $jour => $daySeances) {
@@ -95,7 +103,7 @@ class SearchTimetableTool extends ChatbotTool
             })->values()->toArray();
 
             $days[] = [
-                'jour' => $jourNames[$jour] ?? "Jour {$jour}",
+                'jour' => JourDeLaSemaine::libelle($jour + 1) ?? 'Jour inconnu',
                 'slots' => $slots,
             ];
         }

@@ -158,6 +158,26 @@ class JourDeLaSemaineTest extends TestCase
         $this->assertNull(JourDeLaSemaine::decalageDepuis(null, 1));
     }
 
+    // --- La liste des jours, pour que les écrans cessent de la recopier ---
+
+    public function test_les_libelles_couvrent_la_semaine_ouvree_indexee_par_l_entier(): void
+    {
+        $this->assertSame(
+            [1 => 'Lundi', 2 => 'Mardi', 3 => 'Mercredi', 4 => 'Jeudi', 5 => 'Vendredi', 6 => 'Samedi'],
+            JourDeLaSemaine::libelles()
+        );
+    }
+
+    public function test_chaque_libelle_se_relit_par_sa_propre_cle(): void
+    {
+        // Le contrat dont dépendent les écrans qui bouclent dessus : la clé
+        // proposée en filtre doit être une écriture que `rang()` comprend.
+        foreach (JourDeLaSemaine::libelles() as $valeur => $libelle) {
+            $this->assertSame($libelle, JourDeLaSemaine::libelle($valeur));
+            $this->assertNotNull(JourDeLaSemaine::rang($valeur));
+        }
+    }
+
     // --- Interroger une colonne non normalisée ---
 
     public function test_les_ecritures_d_un_jour_couvrent_les_deux_formats(): void

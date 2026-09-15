@@ -615,7 +615,13 @@ class ESBTPSeanceCours extends Model
             return 'Date non disponible';
         }
 
-        $nomJour = $jourMapping[$this->jour] ?? $jourMapping[(int) $date->dayOfWeekIso] ?? 'Jour inconnu';
+        // La table locale ne connaissait que les entiers : pour une séance
+        // saisie depuis l'emploi du temps, elle retombait sur le jour de la
+        // date calculée. Le repli reste — il est juste — mais il n'est plus
+        // atteint par défaut pour la moitié des séances.
+        $nomJour = \App\Domain\EmploiTemps\JourDeLaSemaine::libelle($this->jour)
+            ?? $jourMapping[(int) $date->dayOfWeekIso]
+            ?? 'Jour inconnu';
 
         return $nomJour . ' ' . $date->format('d/m/Y');
     }

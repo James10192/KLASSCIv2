@@ -1589,26 +1589,10 @@ class ESBTPEmploiTempsController extends Controller
         $heureFin = \Carbon\Carbon::parse($validated['heure_fin']);
         $dureeSeance = $heureFin->diffInMinutes($heureDebut) / 60; // Convertir en heures
 
-        // Vérifier s'il existe une planification académique pour cette matière
-        $planification = ESBTPPlanificationAcademique::where('annee_universitaire_id', $validated['annee_universitaire_id'])
-            ->where('filiere_id', $emploi_temp->classe->filiere_id)
-            ->where('niveau_etude_id', $emploi_temp->classe->niveau_etude_id)
-            ->where('matiere_id', $validated['matiere_id'])
-            ->first();
+        $planification = $this->planificationDeLaMatiere($emploi_temp, $validated);
 
-        // Vérifier si le volume horaire n'est pas dépassé
-        if ($planification) {
-            $heuresEffectuees = $planification->heures_effectuees ?? 0;
-            $volumeTotal = $planification->volume_horaire_total;
-
-            if (($heuresEffectuees + $dureeSeance) > $volumeTotal) {
-                return redirect()->back()
-                    ->withInput()
-                    ->withErrors([
-                        'heure_fin' => 'Cette séance dépasserait le volume horaire total de la matière. Heures disponibles: '.
-                                      ($volumeTotal - $heuresEffectuees).'h sur '.$volumeTotal.'h total.',
-                    ]);
-            }
+        if ($depassement = $this->depassementDuVolumeHoraire($planification, $dureeSeance)) {
+            return redirect()->back()->withInput()->withErrors(['heure_fin' => $depassement]);
         }
 
         $seance = new \App\Models\ESBTPSeanceCours;
@@ -1629,22 +1613,8 @@ class ESBTPEmploiTempsController extends Controller
         $seance->teacher_id = $validated['enseignant_id'];
         $seance->type_seance = $validated['type_seance'];
         $seance->jour = $validated['jour'];
-        // La date de la séance, que ce chemin de saisie n'écrivait PAS.
-        //
-        // `date_seance` est nullable et aucun observateur ne la remplit : toute
-        // séance créée ici la portait à `null`, et disparaissait alors
-        // silencieusement de tout ce qui interroge la colonne —
-        // `TeacherHoursService` la filtre en `whereNotNull`, donc la séance ne
-        // comptait pas dans les heures de l'enseignant ni dans son bulletin de
-        // paie ; l'émargement (`ESBTPTeacherAttendance`) la rapproche par date,
-        // donc ne pouvait pas s'y rattacher ; et le garde de conflit de
-        // `ESBTPSeanceCoursController` la compare à une date, donc ces séances
-        // lui étaient invisibles dans les deux sens. Aucune erreur nulle part :
-        // la séance s'affichait à l'écran et n'existait pour personne d'autre.
-        //
-        // Le calcul est celui que l'autre chemin de saisie faisait déjà —
-        // premier jour de l'emploi du temps, plus le rang du jour. Il passe par
-        // `JourDeLaSemaine` parce qu'ici `jour` est un libellé, pas un entier.
+        // La date de la séance, que ce chemin de saisie n'écrivait pas — voir
+        // `dateDeLaSeance()`, qui porte le pourquoi.
         $seance->date_seance = $this->dateDeLaSeance($emploi_temp, $validated['jour']);
         $seance->heure_debut = $validated['heure_debut'];
         $seance->heure_fin = $validated['heure_fin'];
@@ -2619,7 +2589,58 @@ class ESBTPEmploiTempsController extends Controller
     }
 
     /**
-     * La date d'une séance : premier jour de l'emploi du temps, plus le rang.
+     * La planification académique de la matière, si l'école en a posé une.
+     *
+     * @param  array<string, mixed>  $validated
+     */
+    private function planificationDeLaMatiere(ESBTPEmploiTemps $emploiTemps, array $validated): ?ESBTPPlanificationAcademique
+    {
+        return ESBTPPlanificationAcademique::where('annee_universitaire_id', $validated['annee_universitaire_id'])
+            ->where('filiere_id', $emploiTemps->classe->filiere_id)
+            ->where('niveau_etude_id', $emploiTemps->classe->niveau_etude_id)
+            ->where('matiere_id', $validated['matiere_id'])
+            ->first();
+    }
+
+    /**
+     * Le message à afficher si la séance ferait dépasser le volume horaire.
+     *
+     * Rend `null` quand elle passe, ou quand aucune planification n'existe :
+     * sans volume déclaré, il n'y a rien à dépasser.
+     */
+    private function depassementDuVolumeHoraire(?ESBTPPlanificationAcademique $planification, float $dureeSeance): ?string
+    {
+        if (! $planification) {
+            return null;
+        }
+
+        $effectuees = $planification->heures_effectuees ?? 0;
+        $total = $planification->volume_horaire_total;
+
+        if (($effectuees + $dureeSeance) <= $total) {
+            return null;
+        }
+
+        return 'Cette séance dépasserait le volume horaire total de la matière. Heures disponibles: '
+            .($total - $effectuees).'h sur '.$total.'h total.';
+    }
+
+    /**
+     * La date d'une séance, que `storeSession()` n'écrivait PAS.
+     *
+     * `date_seance` est nullable et aucun observateur ne la remplit : toute
+     * séance créée depuis l'emploi du temps la portait à `null`, et disparaissait
+     * alors silencieusement de tout ce qui interroge la colonne —
+     * `TeacherHoursService` la filtre en `whereNotNull`, donc la séance ne
+     * comptait ni dans les heures de l'enseignant ni dans son bulletin de paie ;
+     * l'émargement (`ESBTPTeacherAttendance`) la rapproche par date, donc ne
+     * pouvait pas s'y rattacher ; et le garde de conflit de
+     * `ESBTPSeanceCoursController` la compare à une date, donc ces séances lui
+     * étaient invisibles dans les deux sens. Aucune erreur nulle part : la
+     * séance s'affichait à l'écran et n'existait pour personne d'autre.
+     *
+     * Le calcul vit sur `ESBTPEmploiTemps::dateDuJour()`, partagé par les trois
+     * sites qui en avaient chacun un.
      *
      * Rend `null` plutôt qu'une date approchée quand le jour est illisible ou
      * que l'emploi du temps n'a pas de début : une date fausse se propagerait
