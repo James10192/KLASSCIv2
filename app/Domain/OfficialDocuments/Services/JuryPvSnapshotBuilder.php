@@ -16,7 +16,16 @@ class JuryPvSnapshotBuilder
      * car elles n'entrent dans aucun calcul de note. Un PV conserve cinq ans ne doit
      * enoncer que des regles reellement appliquees.
      */
-    public const RULES_VERSION = 'lmd-academic-profile-v2';
+    /**
+     * v3 — septembre 2026 : l'arithmétique de décision d'un jury ANNUEL change
+     * (agrégation pondérée des semestres au lieu d'un bulletin unique), et
+     * l'instantané gagne la motivation de chaque décision.
+     *
+     * Ce tampon est gravé sur des documents conservés cinq ans. Le laisser à
+     * `v2` ferait porter le même numéro à deux jeux de règles différents, et
+     * personne ne pourrait plus dire, devant un PV de 2026, lequel l'a produit.
+     */
+    public const RULES_VERSION = 'lmd-academic-profile-v3';
 
     public function __construct(private readonly LmdAcademicRuleProfile $profile) {}
 
@@ -59,7 +68,15 @@ class JuryPvSnapshotBuilder
     private function decisionData($decision): array
     {
         $student = $decision->etudiant;
-        return ['id' => $decision->id, 'student_id' => $decision->etudiant_id, 'matricule' => $student?->matricule, 'last_name' => $student?->nom, 'first_names' => $student?->prenoms, 'bulletin_id' => $decision->bulletin_id, 'automatic_decision' => $decision->decision_auto, 'decision' => $decision->decision, 'mention' => $decision->mention, 'average' => $decision->moyenne_generale, 'credits' => $decision->credits_obtenus, 'expected_credits' => $decision->credits_attendus, 'overridden' => (bool) $decision->override_par_jury, 'override_reason' => $decision->motif_override, 'vote' => $decision->vote_resultat];
+        return ['id' => $decision->id, 'student_id' => $decision->etudiant_id, 'matricule' => $student?->matricule, 'last_name' => $student?->nom, 'first_names' => $student?->prenoms, 'bulletin_id' => $decision->bulletin_id, 'automatic_decision' => $decision->decision_auto, 'decision' => $decision->decision, 'mention' => $decision->mention, 'average' => $decision->moyenne_generale, 'credits' => $decision->credits_obtenus, 'expected_credits' => $decision->credits_attendus, 'overridden' => (bool) $decision->override_par_jury, 'override_reason' => $decision->motif_override, 'vote' => $decision->vote_resultat,
+            // La motivation du calcul, gravée avec la décision. Un procès-verbal
+            // qui dit « ajourné » sans dire pourquoi se conteste mal : la raison
+            // existait, elle était jetée avant d'arriver jusqu'ici.
+            //
+            // `?? []` et non l'absence de clé : l'instantané est canonicalisé
+            // puis empreinté en SHA-256, et une clé qui apparaît ou disparaît
+            // selon les données rendrait deux PV incomparables.
+            'reasons' => $decision->raisons ?? []];
     }
 
     private function rules(): array

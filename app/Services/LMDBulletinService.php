@@ -174,7 +174,7 @@ class LMDBulletinService
             foreach ($ues as $ue) {
                 $resultatUE = $this->calculerResultatUE($bulletin, $ue, $etudiantId, $classeId, $semestre, $anneeUniversitaireId, $classe->parcours_id ? (int) $classe->parcours_id : null);
                 $resultatsUEs[] = $resultatUE;
-                $creditsTotaux += $ue->credit;
+                $creditsTotaux += $ue->creditEffectif();
             }
 
             // 4. Calculer la moyenne generale ponderee par credits
@@ -291,7 +291,30 @@ class LMDBulletinService
                     ->get()
                     ->keyBy('id');
 
-                return $pivotData->map(fn($p) => $ues->get($p->unite_enseignement_id))->filter()->values();
+                return $pivotData->map(function ($p) use ($ues) {
+                    $ue = $ues->get($p->unite_enseignement_id);
+                    if ($ue === null) {
+                        return null;
+                    }
+
+                    // Le crédit de CETTE maquette, quand elle en grave un.
+                    //
+                    // Sans cette ligne, le bulletin d'un parcours calculait son
+                    // total avec le crédit de la FICHE — c'est-à-dire celui du
+                    // premier parcours qui a importé l'unité. Sur esbtp-abidjan,
+                    // Bâtiment et Travaux Publics partagent des unités à crédits
+                    // divergents : le second parcours comparait ses crédits
+                    // obtenus à un dénominateur emprunté au premier, et la
+                    // frontière entre « admis » et « admis sous condition » se
+                    // déplaçait, sans qu'aucune erreur ne soit levée.
+                    //
+                    // `!== null` et non `?:` ni `??` sur la valeur brute : un
+                    // crédit de 0 est une décision de l'école (unité qui ne
+                    // rapporte rien dans ce parcours), pas une absence.
+                    $ue->creditDeLaMaquette = $p->credit !== null ? (int) $p->credit : null;
+
+                    return $ue;
+                })->filter()->values();
             }
         }
 
@@ -330,7 +353,10 @@ class LMDBulletinService
             ],
             [
                 'etudiant_id' => $etudiantId,
-                'credit' => $ue->credit,
+                // Le crédit de la maquette lue, pas celui de la fiche : c'est ce
+                // résultat qui pondère ensuite la moyenne générale et qui sert de
+                // dénominateur aux crédits capitalisés.
+                'credit' => $ue->creditEffectif(),
                 'updated_by' => auth()->id(),
             ]
         );

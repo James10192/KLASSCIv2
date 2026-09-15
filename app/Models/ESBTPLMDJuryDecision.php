@@ -34,6 +34,9 @@ class ESBTPLMDJuryDecision extends Model implements Auditable
         'decision_auto', 'decision', 'mention',
         'override_par_jury', 'motif_override', 'vote_resultat',
         'moyenne_generale', 'credits_obtenus', 'credits_attendus',
+        // La motivation rédigée par le calcul. Elle était produite puis jetée :
+        // absente d'ici, elle ne pouvait pas être écrite.
+        'raisons',
         'locked', 'locked_at',
         'created_by', 'updated_by',
     ];
@@ -45,6 +48,7 @@ class ESBTPLMDJuryDecision extends Model implements Auditable
         'moyenne_generale' => 'decimal:2',
         'credits_obtenus' => 'integer',
         'credits_attendus' => 'integer',
+        'raisons' => 'array',
     ];
 
     protected $auditInclude = [

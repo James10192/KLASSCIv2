@@ -333,6 +333,16 @@ class ESBTPPaywallConfigController extends Controller
      */
     public function extendSubscription(Request $request)
     {
+        // Seule action de ce contrôleur qui ne vérifiait pas l'accès elle-même :
+        // `index()`, `store()` et `generateEmergencyCode()` le font toutes.
+        // Elle ne dépendait donc que de la garde de route — et prolonger un
+        // abonnement est précisément le geste qu'on ne veut pas laisser à
+        // l'établissement lui-même.
+        $accessCheck = $this->checkServiceTechniqueAccess();
+        if ($accessCheck) {
+            return $accessCheck; // Redirection si accès refusé
+        }
+
         $request->validate([
             'months' => 'required|integer|min:1|max:24'
         ]);

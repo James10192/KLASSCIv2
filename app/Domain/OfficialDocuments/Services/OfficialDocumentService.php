@@ -154,7 +154,26 @@ class OfficialDocumentService
     {
         $seriesKey = 'lmd-jury-pv:'.$jury->id;
         $document = OfficialDocument::query()->create(['document_type' => OfficialDocument::TYPE_LMD_JURY_PV, 'source_type' => ESBTPLMDJury::class, 'source_id' => $jury->id, 'series_key' => $seriesKey, 'version' => $identity['version'], 'reference' => $identity['reference'], 'status' => OfficialDocument::STATUS_VALID, 'valid_series_key' => $seriesKey, 'disk' => OfficialDocumentStorage::DISK, 'path' => $path, 'original_name' => $identity['number'].'-v'.$identity['version'].'.pdf', 'mime_type' => 'application/pdf', 'size_bytes' => strlen($contents), 'checksum_sha256' => hash('sha256', $contents), 'snapshot' => $snapshot, 'snapshot_sha256' => hash('sha256', $this->snapshots->canonicalJson($snapshot)), 'rules_version' => JuryPvSnapshotBuilder::RULES_VERSION, 'template_version' => 'lmd-jury-pv-v3', 'renderer_version' => 'dompdf-v2', 'verification_code_digest' => hash('sha256', $identity['verification_code']), 'issued_by' => $actor->id, 'issued_at' => $snapshot['issuance']['issued_at'], 'supersedes_document_id' => $previous?->id]);
-        $jury->forceFill(['pv_path' => $path, 'pv_genere_at' => now(), 'pv_genere_par' => $actor->id, 'status' => 'clos', 'clos_at' => now(), 'updated_by' => $actor->id])->save();
+        // Émettre un PV clôt le jury — mais ne le DÉCLÔT pas.
+        //
+        // Ce `forceFill` était inconditionnel, et il sert aussi la rectification :
+        // rectifier le PV d'un jury déjà publié le ramenait donc à « clos ». Les
+        // bulletins restaient publiés et l'étudiant ne voyait rien changer, mais
+        // le compteur des jurys publiés décroissait et le bouton « Publier les
+        // décisions » réapparaissait sur un jury qui l'était déjà.
+        $statutApres = in_array($jury->status, ['publie', 'archive'], true) ? $jury->status : 'clos';
+
+        $jury->forceFill([
+            'pv_path' => $path,
+            'pv_genere_at' => now(),
+            'pv_genere_par' => $actor->id,
+            'status' => $statutApres,
+            // La date de clôture est celle de la PREMIÈRE clôture. La réécrire à
+            // chaque rectification effacerait la seule trace du moment où le
+            // jury a réellement clos ses travaux.
+            'clos_at' => $jury->clos_at ?? now(),
+            'updated_by' => $actor->id,
+        ])->save();
         $jury->decisions()->update(['locked' => true, 'locked_at' => now()]);
         $this->events->record($document, 'issued', $actor->id, ['jury_id' => $jury->id, 'version' => $document->version]);
         return $document;

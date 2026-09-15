@@ -1886,7 +1886,34 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
     });
 
     // Routes pour la configuration du paywall - Service Technique ADC seulement
-    Route::prefix('esbtp')->name('esbtp.')->middleware(['auth', 'paywall', 'permission:system.manage'])->group(function () {
+    //
+    // TROIS gardes protègent ces pages, et il faut les connaître toutes les
+    // trois avant d'en toucher une :
+    //
+    //   1. `paywall` → `PaywallMiddleware::hasServiceTechniquePermissions()`,
+    //      qui est un `hasRole('serviceTechnique')` EN DUR. C'est le plus
+    //      strict, il s'exécute en premier, et `Gate::before` ne le contourne
+    //      pas — un superAdmin n'entre pas ici. C'est la garde OPÉRANTE :
+    //      le jour où une école voudra déléguer ce droit, c'est cette
+    //      ligne-là qu'il faudra changer, pas la permission ci-dessous.
+    //   2. `permission:paywall.manage` → la présente garde de route.
+    //   3. `ESBTPPaywallConfigController::checkServiceTechniqueAccess()`, qui
+    //      exige `paywall.manage` action par action.
+    //
+    // Deux exceptions à la garde #1 : `blocked` et `upgrade` sont dans
+    // `PaywallMiddleware::$excludedRoutes`, testé AVANT la détection des routes
+    // d'abonnement. Un superAdmin y accède donc, et ni l'une ni l'autre
+    // n'appelle la garde #3 — sans conséquence, les deux ne font que rendre une
+    // vue. Mais ce sont bien deux pages de ce groupe qui n'ont qu'une garde.
+    //
+    // La route exigeait `system.manage` — celle qui ouvre AUSSI `/esbtp/settings`,
+    // donc une troisième permission, plus large que les deux autres. Aucune
+    // faille n'en résultait (le contrôle de rôle passe avant), mais les trois
+    // gardes ne disaient pas la même chose, et c'est ainsi qu'on finit par
+    // croire l'une en ayant lu l'autre.
+    //
+    // Le lien de la barre latérale est réservé au rôle, lui aussi.
+    Route::prefix('esbtp')->name('esbtp.')->middleware(['auth', 'paywall', 'permission:paywall.manage'])->group(function () {
         Route::get('/paywall-config', [ESBTPPaywallConfigController::class, 'index'])->name('paywall-config.index');
         Route::get('/paywall-config/blocked', [ESBTPPaywallConfigController::class, 'blocked'])->name('paywall-config.blocked');
         Route::get('/paywall-config/upgrade', [ESBTPPaywallConfigController::class, 'upgrade'])->name('paywall-config.upgrade');

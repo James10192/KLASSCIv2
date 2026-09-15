@@ -1614,7 +1614,18 @@ class ESBTPEmploiTempsController extends Controller
         $seance->emploi_temps_id = $validated['emploi_temps_id'];
         $seance->classe_id = $validated['classe_id'];
         $seance->matiere_id = $validated['matiere_id'];
-        $seance->enseignant_id = $validated['enseignant_id'];
+        // `enseignant_id` n'est plus une colonne de cette table : elle a été
+        // supprimée en mars 2025 (`update_esbtp_seance_cours_table_for_enseignant_text`)
+        // au profit de `teacher_id`. L'affectation partait donc en
+        // `SQLSTATE[42S22] Unknown column` : ce chemin de saisie était cassé net,
+        // pas seulement aveugle aux conflits.
+        //
+        // Le champ du formulaire s'appelle `enseignant_id` mais porte déjà un
+        // `esbtp_teachers.id` — la liste est bâtie sur `ESBTPTeacher`. C'est donc
+        // la MÊME valeur que `teacher_id` attend : rien à traduire, seulement la
+        // bonne colonne. (La règle de validation, elle, l'attestait contre
+        // `users` ; elle est corrigée dans la FormRequest.)
+        $seance->teacher_id = $validated['enseignant_id'];
         $seance->type_seance = $validated['type_seance'];
         $seance->jour = $validated['jour'];
         $seance->heure_debut = $validated['heure_debut'];
