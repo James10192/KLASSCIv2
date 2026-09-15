@@ -35,21 +35,57 @@ use Illuminate\Support\Facades\DB;
 class DiagnosticDesDatesDeSeance
 {
     /**
+     * La population du défaut : les séances qui n'ont pas de date.
+     *
+     * Sa portée n'est pas « tout ce qui a `date_seance` nulle », mais
+     * **exactement ce que la paie compterait si la date était là**. C'est ce
+     * qui rend le chiffre du relevé utilisable pour décider d'un rattrapage :
+     * un total plus large serait une alerte qu'on ne peut pas recouper.
+     *
+     * D'où les deux bornes, copiées de `TeacherHoursService::seancesDeLaPeriode()`,
+     * la requête qui alimente le bulletin de paie :
+     *
+     *  - **récréations et pauses déjeuner exclues** (`type` `break` / `lunch`).
+     *    Elles n'ont jamais compté d'heures d'enseignement ; les faire figurer
+     *    au relevé gonflerait le total d'heures « perdues » avec des heures que
+     *    personne n'a jamais dû payer.
+     *  - **séances supprimées exclues**, par la portée globale de `SoftDeletes`
+     *    que porte le modèle. Rien à écrire : c'est le comportement par défaut
+     *    de `query()`, et il est juste ici.
+     *
+     * Ce qui n'est PAS filtré, et pourquoi : `is_active`. La paie ne le filtre
+     * pas non plus — une séance désactivée après avoir été faite reste due.
+     * Filtrer ici et pas là ferait diverger les deux comptes.
+     */
+    private function requete(?int $emploiTempsId = null): \Illuminate\Database\Eloquent\Builder
+    {
+        return ESBTPSeanceCours::query()
+            ->whereNull('date_seance')
+            ->whereNotIn('type', [ESBTPSeanceCours::TYPE_BREAK, ESBTPSeanceCours::TYPE_LUNCH])
+            ->when($emploiTempsId !== null, fn ($q) => $q->where('emploi_temps_id', $emploiTempsId));
+    }
+
+    /**
      * Ce que l'on perd, sans rien modifier.
      *
      * @param  int  $limite  nombre de lignes détaillées ; les totaux, eux, portent sur tout
+     * @param  int|null  $emploiTempsId  restreint le relevé au même périmètre que le rattrapage.
+     *                                   Sans lui, la confirmation d'écriture annonçait des totaux
+     *                                   globaux au moment où l'opérateur décide d'écrire sur un
+     *                                   seul emploi du temps — un chiffre juste, sur le mauvais
+     *                                   périmètre, à l'instant précis où il engage.
      * @return array<string, mixed>
      */
-    public function rapport(int $limite = 200): array
+    public function rapport(int $limite = 200, ?int $emploiTempsId = null): array
     {
-        $total = $this->requete()->count();
+        $total = $this->requete($emploiTempsId)->count();
 
         $parEnseignant = [];
         $rattrapables = 0;
         $irrattrapables = [];
         $detail = [];
 
-        $this->requete()
+        $this->requete($emploiTempsId)
             ->with(['emploiTemps', 'teacher.user', 'matiere', 'classe'])
             ->orderBy('id')
             ->chunkById(500, function ($seances) use (&$parEnseignant, &$rattrapables, &$irrattrapables, &$detail, $limite) {
@@ -131,11 +167,7 @@ class DiagnosticDesDatesDeSeance
         $posees = 0;
         $laissees = [];
 
-        $requete = $this->requete()->with('emploiTemps');
-
-        if ($emploiTempsId !== null) {
-            $requete->where('emploi_temps_id', $emploiTempsId);
-        }
+        $requete = $this->requete($emploiTempsId)->with('emploiTemps');
 
         DB::transaction(function () use ($requete, $appliquer, &$posees, &$laissees) {
             $requete->orderBy('id')->chunkById(500, function ($seances) use ($appliquer, &$posees, &$laissees) {
@@ -209,10 +241,24 @@ class DiagnosticDesDatesDeSeance
      */
     public static function dureeEnHeures(ESBTPSeanceCours $seance): float
     {
-        // Les valeurs BRUTES, et non `$seance->heure_debut`. Ces colonnes sont
-        // castées en `datetime`, et sous ce cast une heure NULLE ne se lit pas
-        // `null` : `asDateTime(null)` rend l'instant présent. Lire l'attribut
-        // casté donnerait donc une durée calculée sur l'heure qu'il est.
+        // Les valeurs BRUTES, et non `$seance->heure_debut` : ces colonnes sont
+        // castées en `datetime`, donc l'attribut rend un Carbon daté d'AUJOURD'HUI
+        // et toute découpe de chaîne y lit la date. C'est ce qui rendait zéro
+        // heure pour toutes les séances.
+        //
+        // Un second effet existe — une heure nulle rend l'instant présent plutôt
+        // que `null` — mais il ne concerne QUE les objets en mémoire : la
+        // migration d'origine déclare `$table->time('heure_debut')` et
+        // `$table->time('heure_fin')` sans `nullable()`, et aucune migration
+        // ultérieure ne les relâche. Une séance aux horaires vides ne peut donc
+        // pas exister en base. Le garde ci-dessous le couvre quand même, parce
+        // qu'il ne coûte rien ; ce n'est pas une population à aller corriger.
+        //
+        // Le premier effet, lui, est bien général et vivant AILLEURS — une
+        // dizaine de lectures en contexte chaîne (`substr($seance->heure_debut,
+        // 0, 5)` rend « 2026- »), dont l'avis d'absence envoyé au parent et
+        // l'export CSV des présences. Antérieur à ce chantier, hors de son
+        // périmètre, et suivi à part : ne pas le corriger ici sans le mesurer.
         $brutes = $seance->getAttributes();
 
         $debut = self::secondeDeLaJournee($brutes['heure_debut'] ?? null);

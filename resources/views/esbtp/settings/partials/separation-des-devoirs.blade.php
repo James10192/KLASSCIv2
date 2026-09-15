@@ -3,6 +3,16 @@
      de configuration l'affiche. --}}
 @php $reglesSod = \App\Services\Security\SeparationOfDutiesService::reglesExposables(); @endphp
 @if (count($reglesSod) > 0)
+@once
+<style>
+/* `.au-select` est en `inline-flex; flex:1 1 0%`, et `flex` ne s'applique que
+   sous un parent flex ou grid. `.ls-field` n'est ni l'un ni l'autre : sans
+   cette règle, le champ rétrécit à la largeur de son texte et le menu, posé
+   sur ses bords, tronque les libellés — le piège décrit dans premium-selects. */
+.sod-select-full { display: flex !important; width: 100%; }
+.sod-select-full .au-select-trigger { width: 100%; }
+</style>
+@endonce
 <div class="row g-3" style="margin-top:.25rem;">
     <div class="col-12">
         <div class="ls-toggle-label" style="margin-bottom:.35rem;">
@@ -43,13 +53,22 @@
                     \App\Helpers\SettingsHelper::get($regleSod['cle'], $regleSod['defaut'])
                 ) ?? \App\Enums\ModeSeparationDesDevoirs::from($regleSod['defaut']);
             @endphp
-            <select class="form-select" id="sod_{{ $loop->index }}" name="{{ $regleSod['cle'] }}">
-                @foreach ($modesSod as $modeOption)
-                    <option value="{{ $modeOption->value }}" @selected($modeOption === $modeSod)>
-                        {{ $modeOption->label() }} — {{ $modeOption->hint() }}
-                    </option>
-                @endforeach
-            </select>
+            @php
+                // Le composant premium attend ['valeur' => 'libellé'] ; il garde
+                // un <select> caché, donc la boucle de `ESBTPSettingsController::update()`
+                // reçoit ce champ exactement comme avant.
+                $optionsSod = [];
+                foreach ($modesSod as $modeOption) {
+                    $optionsSod[$modeOption->value] = $modeOption->label().' — '.$modeOption->hint();
+                }
+            @endphp
+            <x-au-select
+                class="sod-select-full"
+                :name="$regleSod['cle']"
+                :value="$modeSod->value"
+                :options="$optionsSod"
+                :placeholder-is-first-option="false"
+                icon="fa-user-shield" />
         </div>
     </div>
     @endforeach

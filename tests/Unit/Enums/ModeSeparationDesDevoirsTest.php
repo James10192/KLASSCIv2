@@ -29,6 +29,8 @@ class ModeSeparationDesDevoirsTest extends TestCase
             'chaine zero' => ['0', ModeSeparationDesDevoirs::INACTIF],
             'chaine true' => ['true', ModeSeparationDesDevoirs::BLOQUANT],
             'chaine false' => ['false', ModeSeparationDesDevoirs::INACTIF],
+            'entier un' => [1, ModeSeparationDesDevoirs::BLOQUANT],
+            'entier zero' => [0, ModeSeparationDesDevoirs::INACTIF],
             'deja un mode' => [ModeSeparationDesDevoirs::OBSERVATION, ModeSeparationDesDevoirs::OBSERVATION],
         ];
     }

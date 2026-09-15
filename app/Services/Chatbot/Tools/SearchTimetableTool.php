@@ -81,32 +81,7 @@ class SearchTimetableTool extends ChatbotTool
             }
         }
 
-        // Grouper par RANG et non par l'écriture brute : sans quoi le même
-        // mercredi forme deux groupes selon l'écran qui a saisi la séance.
-        // Un jour illisible va en fin de semaine plutôt que de disparaître.
-        $grouped = $seances->groupBy(fn ($s) => JourDeLaSemaine::rang($s->jour) ?? 99)->sortKeys();
-
-        $days = [];
-        foreach ($grouped as $jour => $daySeances) {
-            $slots = $daySeances->sortBy(function ($s) {
-                return $s->heure_debut?->format('H:i') ?? '00:00';
-            })->map(function ($s) {
-                $teacher = $s->teacher?->user;
-                $teacherName = $teacher ? trim(($teacher->name ?? '')) : ($s->teacher?->specialization ?? 'N/A');
-
-                return [
-                    'horaire' => ($s->heure_debut?->format('H:i') ?? '?') . ' - ' . ($s->heure_fin?->format('H:i') ?? '?'),
-                    'matiere' => $s->matiere?->name ?? $s->matiere?->nom ?? 'N/A',
-                    'enseignant' => $teacherName,
-                    'salle' => $s->salle ?? 'N/A',
-                ];
-            })->values()->toArray();
-
-            $days[] = [
-                'jour' => JourDeLaSemaine::libelle($jour + 1) ?? 'Jour inconnu',
-                'slots' => $slots,
-            ];
-        }
+        $days = $this->journeesDeLaSemaine($seances);
 
         $classe = $emploiTemps->classe;
 
@@ -121,6 +96,64 @@ class SearchTimetableTool extends ChatbotTool
             'display_type' => 'timetable',
             'deep_link' => Route::has('esbtp.emploi-temps.show')
                 ? route('esbtp.emploi-temps.show', $emploiTemps->id) : null,
+        ];
+    }
+
+    /**
+     * Les séances rangées par jour, chaque jour trié par heure.
+     *
+     * Le groupement se fait par RANG et non par l'écriture brute de `jour` :
+     * sans quoi le même mercredi forme deux groupes selon l'écran qui a saisi
+     * la séance, l'un écrivant l'entier et l'autre le libellé.
+     *
+     * Un jour illisible part au rang 99, donc en fin de semaine sous « Jour
+     * inconnu », plutôt que de disparaître de la réponse sans que personne
+     * s'en aperçoive.
+     *
+     * `rang()` est à base zéro et `libelle()` attend une base un : d'où le
+     * `+ 1`, qui n'est pas un décalage mais la conversion entre les deux.
+     *
+     * @param  \Illuminate\Support\Collection<int, \App\Models\ESBTPSeanceCours>  $seances
+     * @return list<array{jour: string, slots: list<array<string, string>>}>
+     */
+    private function journeesDeLaSemaine($seances): array
+    {
+        $journees = [];
+
+        foreach ($seances->groupBy(fn ($s) => JourDeLaSemaine::rang($s->jour) ?? 99)->sortKeys() as $rang => $duJour) {
+            $journees[] = [
+                'jour' => JourDeLaSemaine::libelle($rang + 1) ?? 'Jour inconnu',
+                'slots' => $duJour
+                    ->sortBy(fn ($s) => $s->heure_debut?->format('H:i') ?? '00:00')
+                    ->map(fn ($s) => $this->creneau($s))
+                    ->values()->toArray(),
+            ];
+        }
+
+        return $journees;
+    }
+
+    /**
+     * Un créneau, tel que le chatbot le lit à voix haute.
+     *
+     * `format('H:i')` et non l'attribut brut : `heure_debut` est casté en
+     * `datetime`, donc le lire en contexte chaîne rendrait « 2026-09-15
+     * 08:00:00 » au lieu de « 08:00 ».
+     *
+     * @return array<string, string>
+     */
+    private function creneau($seance): array
+    {
+        $enseignant = $seance->teacher?->user;
+
+        return [
+            'horaire' => ($seance->heure_debut?->format('H:i') ?? '?')
+                . ' - ' . ($seance->heure_fin?->format('H:i') ?? '?'),
+            'matiere' => $seance->matiere?->name ?? $seance->matiere?->nom ?? 'N/A',
+            'enseignant' => $enseignant
+                ? trim($enseignant->name ?? '')
+                : ($seance->teacher?->specialization ?? 'N/A'),
+            'salle' => $seance->salle ?? 'N/A',
         ];
     }
 }

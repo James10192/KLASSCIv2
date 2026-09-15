@@ -66,7 +66,12 @@ class SeancesDateBackfillCommand extends Command
      */
     private function confirmerEcriture(DiagnosticDesDatesDeSeance $diagnostic, ?int $emploiTempsId): bool
     {
-        $rapport = $diagnostic->rapport(0);
+        // Le relevé porte SUR LE MÊME périmètre que l'écriture qui va suivre.
+        // Sans ce second argument, la confirmation affichait les totaux de
+        // toute l'instance en les suffixant « emploi du temps X seulement » :
+        // l'opérateur lisait un grand nombre juste au moment de n'écrire que
+        // sur une poignée de lignes.
+        $rapport = $diagnostic->rapport(0, $emploiTempsId);
 
         $this->warn(sprintf(
             'À écrire : %d séance(s) sans date, dont %d recalculable(s)%s.',

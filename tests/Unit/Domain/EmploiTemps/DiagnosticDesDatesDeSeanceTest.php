@@ -10,12 +10,19 @@ use PHPUnit\Framework\TestCase;
 /**
  * Les deux décisions du relevé qui ne dépendent pas de la base.
  *
- * Le reste — le comptage, le groupement par enseignant, le rattrapage — est une
- * requête SQL, et cet environnement n'a pas de MySQL. Ce n'est PAS couvert ici,
- * et il faut le dire plutôt que laisser croire le contraire : le relevé étant en
- * lecture seule, son premier passage sur une instance est sa première mesure.
+ * Le reste — comptage, groupement par enseignant, rattrapage — est couvert par
+ * `tests/Feature/EmploiTemps/DiagnosticDesDatesDeSeanceSurBaseTest`, qui monte
+ * une base SQLite en mémoire et exécute le vrai code dessus.
  *
- * Ce qui est couvert est ce qui porte une décision :
+ * **Ce docbloc a d'abord dit l'inverse**, et c'est la raison d'être de la
+ * phrase précédente. Il expliquait que ce reste n'était « pas couvert » parce
+ * que l'environnement n'a pas de MySQL. C'était vrai, et ça ne justifiait
+ * rien : `requete()` n'avait jamais été écrite, et les trois points d'entrée
+ * tombaient sur `Call to undefined method` **avant** toute connexion. Une
+ * seule exécution de la commande l'aurait montré. Une limite énoncée
+ * honnêtement n'est une garantie de rien tant qu'on n'a pas essayé.
+ *
+ * Ce qui est couvert ici est ce qui porte une décision :
  *
  *  - **pourquoi** une date n'a pas pu être recalculée — le libellé sert dans
  *    les deux rapports (relevé et rattrapage), et deux libellés divergents

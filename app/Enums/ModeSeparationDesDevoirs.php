@@ -66,7 +66,13 @@ enum ModeSeparationDesDevoirs: string
             return $mode;
         }
 
-        if (is_bool($valeur) || (is_string($valeur) && in_array(strtolower(trim($valeur)), ['1', '0', 'true', 'false', 'on', 'off'], true))) {
+        // `0` et `1` entiers compris : un réglage relu depuis une colonne
+        // déclarée `boolean` peut remonter en entier selon le pilote, et les
+        // écarter ici ferait retomber la règle sur son défaut — muettement,
+        // ce que cet enum existe précisément pour empêcher.
+        if (is_bool($valeur)
+            || (is_int($valeur) && in_array($valeur, [0, 1], true))
+            || (is_string($valeur) && in_array(strtolower(trim($valeur)), ['1', '0', 'true', 'false', 'on', 'off'], true))) {
             return filter_var($valeur, FILTER_VALIDATE_BOOLEAN) ? self::BLOQUANT : self::INACTIF;
         }
 
