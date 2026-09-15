@@ -91,4 +91,35 @@ class ModeSeparationDesDevoirsTest extends TestCase
             $this->assertNotSame('', $mode->hint());
         }
     }
+
+    /**
+     * Le libellé du sélecteur est COURT, et rien ne le disait.
+     *
+     * Ce format a changé deux fois en deux commits — long (`label — hint`) puis
+     * court — et la suite est restée verte aux deux états : elle ne vérifiait
+     * que le NOMBRE de clés. Or le libellé long se faisait couper par le menu à
+     * 1280 px comme à 400 px, et c'est ce qu'un utilisateur lit au moment de
+     * choisir. Ce contrôle-ci fige donc ce qu'il lit, pas seulement combien.
+     *
+     * Le `hint()` reste testé ailleurs : l'écran l'énonce une fois au-dessus
+     * des champs, il n'a pas à être répété dans chaque option.
+     */
+    public function test_le_selecteur_porte_le_libelle_court_et_non_l_explication(): void
+    {
+        $options = ModeSeparationDesDevoirs::options();
+
+        $this->assertSame([
+            'bloquant' => 'Bloquer',
+            'observation' => 'Observer sans bloquer',
+            'inactif' => 'Ne rien contrôler',
+        ], $options);
+
+        foreach (ModeSeparationDesDevoirs::cases() as $mode) {
+            $this->assertStringNotContainsString(
+                $mode->hint(),
+                $options[$mode->value],
+                "L'option « {$mode->value} » répète son explication : le menu la coupera.",
+            );
+        }
+    }
 }

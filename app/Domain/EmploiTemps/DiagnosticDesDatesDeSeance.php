@@ -61,6 +61,14 @@ class DiagnosticDesDatesDeSeance
      *    posant `teacher_id = null` sur tout `type = 'homework'`, c'est-à-dire
      *    sur TOUTES les évaluations LMD (examen, partiel, rattrapage, soutenance).
      *
+     *  - **la période**, que la paie borne aussi (`whereDate` entre deux dates).
+     *    Elle est dégénérée ici — il n'y a pas de date à borner, c'est le sujet
+     *    du relevé — mais sa conséquence ne l'est pas : `heures_recoupables_paie`
+     *    porte sur toute la vie de l'instance, et une fois datées, ces heures
+     *    tomberont dans la période de LEUR date, qui peut être une paie déjà
+     *    close ou une année antérieure. « Recoupable » dit donc que la paie
+     *    saurait quoi en faire, pas qu'elle les paiera ce mois-ci.
+     *
      * **Conséquence directe sur la lecture du rapport, à ne pas perdre de vue :**
      * son total d'heures est donc PLUS LARGE que ce que la paie recouperait. Le
      * rapport ne publie pas ce total seul — il le scinde en
@@ -102,44 +110,7 @@ class DiagnosticDesDatesDeSeance
             ->orderBy('id')
             ->chunkById(500, function ($seances) use (&$parEnseignant, &$rattrapables, &$irrattrapables, &$detail, $limite) {
                 foreach ($seances as $seance) {
-                    $heures = self::dureeEnHeures($seance);
-                    $cle = $seance->teacher_id ?: 0;
-
-                    $parEnseignant[$cle] ??= [
-                        'teacher_id' => $seance->teacher_id,
-                        'enseignant' => $seance->teacher?->user?->name ?? '(aucun enseignant affecté)',
-                        'seances' => 0,
-                        'heures' => 0.0,
-                    ];
-                    $parEnseignant[$cle]['seances']++;
-                    $parEnseignant[$cle]['heures'] += $heures;
-
-                    $date = $seance->emploiTemps?->dateDuJour($seance->jour);
-
-                    if ($date === null) {
-                        $raison = self::raisonDeLEchec($seance->emploiTemps, $seance->jour);
-                        $irrattrapables[$raison] = ($irrattrapables[$raison] ?? 0) + 1;
-                    } else {
-                        $rattrapables++;
-                    }
-
-                    if (count($detail) < $limite) {
-                        $detail[] = [
-                            'seance_id' => $seance->id,
-                            'emploi_temps_id' => $seance->emploi_temps_id,
-                            'classe' => $seance->classe?->name,
-                            'matiere' => $seance->matiere?->name,
-                            'enseignant' => $seance->teacher?->user?->name,
-                            'jour' => $seance->jour,
-                            // Brutes, pour la même raison que la durée : l'accesseur
-                            // du modèle rendrait « 2026-09-15 08:00:00 » — une date
-                            // du jour collée devant l'heure, dans un rapport qui
-                            // sert justement à traquer des dates manquantes.
-                            'heure_debut' => $seance->getAttributes()['heure_debut'] ?? null,
-                            'heure_fin' => $seance->getAttributes()['heure_fin'] ?? null,
-                            'date_calculable' => $date?->toDateString(),
-                        ];
-                    }
+                    $this->releverUneSeance($seance, $limite, $parEnseignant, $rattrapables, $irrattrapables, $detail);
                 }
             });
 
@@ -150,21 +121,7 @@ class DiagnosticDesDatesDeSeance
         }
         unset($ligne);
 
-        // Deux totaux, pas un. La paie exige un `teacher_id` ; les séances qui
-        // n'en ont pas — toutes les évaluations LMD en font partie — sont un
-        // vrai défaut à voir, mais leurs heures ne se rapprocheront d'aucun
-        // bulletin. Les additionner sous un libellé unique ferait engager une
-        // écriture de masse sur un chiffre irrécupérable de moitié.
-        $recoupables = 0.0;
-        $sansEnseignant = 0.0;
-
-        foreach ($parEnseignant as $ligne) {
-            if ($ligne['teacher_id'] === null) {
-                $sansEnseignant += $ligne['heures'];
-            } else {
-                $recoupables += $ligne['heures'];
-            }
-        }
+        [$recoupables, $sansEnseignant] = self::partageDesHeures($parEnseignant);
 
         return [
             'total_sans_date' => $total,
@@ -177,6 +134,96 @@ class DiagnosticDesDatesDeSeance
             'detail' => $detail,
             'limite_detail' => $limite,
         ];
+    }
+
+    /**
+     * Ce qu'une séance ajoute au relevé : ses heures, sa réparabilité, sa ligne.
+     *
+     * Extraite de la fermeture de `chunkById` : celle-ci portait quarante lignes
+     * et faisait passer `rapport()` au-dessus du seuil de méthode. Les quatre
+     * accumulateurs restent passés par référence — ils traversent les lots.
+     *
+     * @param  array<int|string, array<string, mixed>>  $parEnseignant
+     * @param  array<string, int>  $irrattrapables
+     * @param  list<array<string, mixed>>  $detail
+     */
+    private function releverUneSeance(
+        ESBTPSeanceCours $seance,
+        int $limite,
+        array &$parEnseignant,
+        int &$rattrapables,
+        array &$irrattrapables,
+        array &$detail,
+    ): void {
+        // `?? 0` et non `?: 0` : `?:` confondrait l'identifiant 0 avec l'absence
+        // d'enseignant, et ferait fusionner les deux sous la même ligne — le
+        // partage des heures dépendrait alors de l'ordre de lecture.
+        $cle = $seance->teacher_id ?? 0;
+
+        $parEnseignant[$cle] ??= [
+            'teacher_id' => $seance->teacher_id,
+            'enseignant' => $seance->teacher?->user?->name ?? '(aucun enseignant affecté)',
+            'seances' => 0,
+            'heures' => 0.0,
+        ];
+        $parEnseignant[$cle]['seances']++;
+        $parEnseignant[$cle]['heures'] += self::dureeEnHeures($seance);
+
+        $date = $seance->emploiTemps?->dateDuJour($seance->jour);
+
+        if ($date === null) {
+            $raison = self::raisonDeLEchec($seance->emploiTemps, $seance->jour);
+            $irrattrapables[$raison] = ($irrattrapables[$raison] ?? 0) + 1;
+        } else {
+            $rattrapables++;
+        }
+
+        if (count($detail) >= $limite) {
+            return;
+        }
+
+        $detail[] = [
+            'seance_id' => $seance->id,
+            'emploi_temps_id' => $seance->emploi_temps_id,
+            'classe' => $seance->classe?->name,
+            'matiere' => $seance->matiere?->name,
+            'enseignant' => $seance->teacher?->user?->name,
+            'jour' => $seance->jour,
+            // Brutes, pour la même raison que la durée : l'accesseur du modèle
+            // rendrait « 2026-09-15 08:00:00 » — une date du jour collée devant
+            // l'heure, dans un rapport qui traque justement des dates manquantes.
+            'heure_debut' => $seance->getAttributes()['heure_debut'] ?? null,
+            'heure_fin' => $seance->getAttributes()['heure_fin'] ?? null,
+            'date_calculable' => $date?->toDateString(),
+        ];
+    }
+
+    /**
+     * Les heures qu'un bulletin pourra recouper, et celles qu'il ne pourra pas.
+     *
+     * La paie exige un `teacher_id` ; les séances qui n'en ont pas — toutes les
+     * évaluations LMD en font partie — sont un vrai défaut à voir, mais leurs
+     * heures ne se rapprocheront d'aucun bulletin. Les additionner sous un
+     * libellé unique ferait engager une écriture de masse sur un chiffre
+     * irrécupérable de moitié.
+     *
+     * @param  array<int|string, array<string, mixed>>  $parEnseignant
+     * @return array{0: float, 1: float}
+     */
+    private static function partageDesHeures(array $parEnseignant): array
+    {
+        $recoupables = 0.0;
+        $sansEnseignant = 0.0;
+
+        foreach ($parEnseignant as $ligne) {
+            if ($ligne['teacher_id'] === null) {
+                $sansEnseignant += $ligne['heures'];
+            } else {
+                $recoupables += $ligne['heures'];
+            }
+        }
+
+        return [$recoupables, $sansEnseignant];
     }
 
     /**
@@ -310,13 +357,18 @@ class DiagnosticDesDatesDeSeance
     /**
      * L'heure de la journée, en secondes depuis minuit.
      *
-     * `heure_debut` et `heure_fin` sont des colonnes `time`, mais le modèle les
-     * caste en `datetime` : les lire rend un `Carbon` daté d'AUJOURD'HUI, pas
-     * une chaîne « 08:00 ». Une découpe de chaîne y lisait donc la date et
-     * rendait zéro heure pour toutes les séances — ce que le test a attrapé.
+     * `heure_debut` et `heure_fin` sont des colonnes `time`, mais le modèle
+     * déclare un accesseur `getHeureDebutAttribute()` qui fait `Carbon::parse()` :
+     * les lire rend un `Carbon` daté d'AUJOURD'HUI, pas une chaîne « 08:00 ».
+     * Une découpe de chaîne y lisait donc la date et rendait zéro heure pour
+     * toutes les séances — ce que le test a attrapé.
+     *
+     * Le cast `'datetime'` homonyme que porte aussi le modèle n'y est pour rien,
+     * et n'y peut rien : un accesseur passe avant lui, il est inerte. Le
+     * débrancher ne changerait pas cette lecture d'un caractère.
      *
      * On ne soustrait pas deux `Carbon` non plus : ils portent la même date ici,
-     * mais rien ne le garantit si le cast change. Seule l'heure du jour compte.
+     * mais rien ne le garantit si l'accesseur change. Seule l'heure du jour compte.
      */
     private static function secondeDeLaJournee(mixed $heure): ?int
     {

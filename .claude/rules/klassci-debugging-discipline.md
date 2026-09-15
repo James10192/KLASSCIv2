@@ -289,15 +289,36 @@ $s = new \App\Models\ESBTPSeanceCours();
 (new ReflectionMethod($s, 'hasGetMutator'))->invoke($s, 'heure_debut');  // true → l'accesseur gagne
 ```
 
-**Sites vivants au 15 septembre 2026** (antérieurs à tout chantier en cours, mesurés, non corrigés) :
+**Ce que l'inventaire du 15 septembre 2026 a trouvé, et ce qu'il avait manqué.** Le relevé de
+départ en citait **cinq**. Écrire la commande de contrôle ci-dessous — et la lancer — en a sorti
+**deux de plus**. Les cinq n'étaient donc pas la liste : c'était ce qu'une lecture à l'œil avait
+attrapé. **Six sites vivants** sont corrigés, plus un repli mort retiré :
 
-| fichier:ligne | ce que l'utilisateur voit |
-|---|---|
-| `resources/views/esbtp/seances-cours/index.blade.php:105` | colonne horaire de la liste des séances |
-| `resources/views/esbtp/seances-cours/index.blade.php:155` | confirmation de suppression |
-| `app/Http/Controllers/ESBTPAttendanceController.php:1568-1569` | **« Heure: 2026- » dans l'avis d'absence envoyé au parent** |
-| `app/Http/Controllers/ESBTPAttendanceController.php:1711-1712` | export CSV des présences |
-| `app/Http/Controllers/ESBTPPlanningGeneralController.php:1307` | `"horaire"` du planning général |
+| fichier | ce que l'utilisateur voyait | état |
+|---|---|---|
+| `resources/views/esbtp/seances-cours/index.blade.php` | colonne horaire de la liste | corrigé |
+| `resources/views/esbtp/seances-cours/index.blade.php` | confirmation de suppression | corrigé |
+| `app/Http/Controllers/ESBTPAttendanceController.php` | **« Heure: 2026- » dans l'avis d'absence envoyé au parent** | corrigé |
+| `app/Http/Controllers/ESBTPAttendanceController.php` | export CSV des présences | corrigé |
+| `app/Http/Controllers/ESBTPPlanningGeneralController.php` | `"horaire"` du planning général | corrigé |
+| `resources/views/teacher/attendance.blade.php` | **« 2026- - 2026- » sur l'écran d'appel de l'enseignant** — hors du relevé initial | corrigé |
+
+Et un septième, `ESBTPSeanceCoursController` (`(int) substr($session->heure_debut, 0, 2)`), qui
+aurait lu l'heure **20** au lieu de **08**. Celui-là était une **branche morte** : le ternaire qui
+le gardait teste `instanceof Carbon`, et l'accesseur rend toujours un Carbon. Il a été retiré
+quand même — un piège désamorcé reste un piège écrit, et le prochain lecteur le recopiera.
+
+Les lignes ne sont plus citées par numéro : c'est ce qui rendait ce tableau faux au bout de trois
+mois. Le contrôle qui vaut, lui, se rejoue — et c'est lui qui fait foi, pas ce tableau :
+
+```bash
+grep -rnE 'substr\(\$[a-zA-Z_>-]*heure_(debut|fin)|\$[a-zA-Z_>-]*heure_debut\s*\.' app/ resources/ \
+  | grep -vE '^\S+:[0-9]+:\s*(\*|//)'
+```
+
+Il doit rendre **zéro ligne**. Toute nouvelle occurrence est le piège qui repousse. Le second
+`grep` écarte les lignes de commentaire : `DiagnosticDesDatesDeSeance` cite le motif pour
+l'expliquer, et le compter comme une occurrence rendrait le contrôle bruyant — donc ignoré.
 
 **Second effet, à ne PAS confondre** : sur `ESBTPSeanceCours`, une heure NULLE ne se lit pas `null` —
 `Carbon::parse(null)` rend l'instant présent. C'est encore l'accesseur, **pas** le cast : celui-ci

@@ -1565,8 +1565,13 @@ class ESBTPAttendanceController extends Controller
 
             // Récupérer les informations du cours
             $matiereName = $seanceCours->matiere ? $seanceCours->matiere->name : 'Matière non définie';
-            $heureDebut = $seanceCours->heure_debut ? substr($seanceCours->heure_debut, 0, 5) : 'Heure non définie';
-            $heureFin = $seanceCours->heure_fin ? substr($seanceCours->heure_fin, 0, 5) : '';
+            // `format('H:i')` et non `substr(..., 0, 5)` : le modèle déclare un accesseur
+            // qui fait `Carbon::parse()`, donc la lecture en contexte chaîne rend
+            // « 2026-09-15 08:00:00 » — et la découpe à cinq caractères en tirait
+            // « 2026- ». C'est ce qui partait à la famille, dans l'avis d'absence.
+            // Piège #14 de klassci-debugging-discipline.
+            $heureDebut = $seanceCours->heure_debut ? $seanceCours->heure_debut->format('H:i') : 'Heure non définie';
+            $heureFin = $seanceCours->heure_fin ? $seanceCours->heure_fin->format('H:i') : '';
             $heureFormatee = $heureDebut . ($heureFin ? ' - ' . $heureFin : '');
             $classeName = $seanceCours->emploiTemps && $seanceCours->emploiTemps->classe ? $seanceCours->emploiTemps->classe->name : 'Classe non définie';
 
@@ -1708,8 +1713,10 @@ class ESBTPAttendanceController extends Controller
                     $attendance->seanceCours && $attendance->seanceCours->matiere ? $attendance->seanceCours->matiere->name : 'N/A',
                     $attendance->etudiant ? $attendance->etudiant->nom . ' ' . $attendance->etudiant->prenoms : 'N/A',
                     ucfirst($attendance->statut),
-                    $attendance->seanceCours ? substr($attendance->seanceCours->heure_debut, 0, 5) : 'N/A',
-                    $attendance->seanceCours ? substr($attendance->seanceCours->heure_fin, 0, 5) : 'N/A',
+                    // Même piège que l'avis d'absence : la découpe à cinq caractères
+                    // rendait « 2026- » dans les deux colonnes horaires de l'export.
+                    $attendance->seanceCours ? $attendance->seanceCours->heure_debut->format('H:i') : 'N/A',
+                    $attendance->seanceCours ? $attendance->seanceCours->heure_fin->format('H:i') : 'N/A',
                     $attendance->commentaire
                 ];
 

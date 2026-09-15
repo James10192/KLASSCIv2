@@ -418,13 +418,12 @@ class ESBTPSeanceCoursController extends Controller
                 continue;
             }
 
-            // Parser les heures de la séance
-            $startHour = $session->heure_debut instanceof \Carbon\Carbon ?
-                $session->heure_debut->hour :
-                (int) substr($session->heure_debut, 0, 2);
-            $endHour = $session->heure_fin instanceof \Carbon\Carbon ?
-                $session->heure_fin->hour :
-                (int) substr($session->heure_fin, 0, 2);
+            // L'accesseur du modèle rend TOUJOURS un Carbon : le repli sur
+            // `substr(..., 0, 2)` était mort, et il était faux — il aurait lu
+            // « 20 » dans « 2026-09-15 08:00:00 », soit 20 h au lieu de 8 h.
+            // Le garder aurait tendu le piège au prochain lecteur.
+            $startHour = (int) $session->heure_debut->format('H');
+            $endHour = (int) $session->heure_fin->format('H');
 
             // Marquer comme occupé tous les créneaux de cette séance
             for ($hour = $startHour; $hour < $endHour; $hour++) {

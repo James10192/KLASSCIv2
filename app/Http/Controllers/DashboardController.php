@@ -797,13 +797,9 @@ class DashboardController extends Controller
             return 'especes';
         }
 
-        return in_array($canon, [
-            \App\Enums\ModePaiement::MOBILE_MONEY,
-            \App\Enums\ModePaiement::WAVE,
-            \App\Enums\ModePaiement::ORANGE_MONEY,
-            \App\Enums\ModePaiement::MTN_MONEY,
-            \App\Enums\ModePaiement::MOOV_MONEY,
-        ], true) ? 'mobile' : 'autres';
+        // Dérivé de l'enum : la liste recopiée ici rangeait Djamo et Celtiis
+        // Cash dans « autres », alors que ce sont des portefeuilles mobiles.
+        return $canon->estMobile() ? 'mobile' : 'autres';
     }
 
     /**

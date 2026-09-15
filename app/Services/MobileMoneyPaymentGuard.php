@@ -35,14 +35,18 @@ class MobileMoneyPaymentGuard
         return in_array($canonical, $this->allowedModes($user), true);
     }
 
+    /**
+     * Dérivé de l'enum, et non recopié : cette liste avait déjà divergé (ni
+     * Djamo ni Celtiis Cash), et un mode absent d'ici est REFUSÉ au caissier
+     * qui n'a que la permission « mobile money ».
+     *
+     * @return list<string>
+     */
     public function mobileMoneyModes(): array
     {
-        return [
-            ModePaiement::MOBILE_MONEY->value,
-            ModePaiement::WAVE->value,
-            ModePaiement::ORANGE_MONEY->value,
-            ModePaiement::MTN_MONEY->value,
-            ModePaiement::MOOV_MONEY->value,
-        ];
+        return array_values(array_map(
+            fn (ModePaiement $mode) => $mode->value,
+            array_filter(ModePaiement::cases(), fn (ModePaiement $mode) => $mode->estMobile()),
+        ));
     }
 }

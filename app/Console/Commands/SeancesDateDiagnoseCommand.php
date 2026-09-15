@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Domain\EmploiTemps\DiagnosticDesDatesDeSeance;
+use App\Models\ESBTPEmploiTemps;
 use Illuminate\Console\Command;
 
 /**
@@ -29,7 +30,23 @@ class SeancesDateDiagnoseCommand extends Command
     public function handle(DiagnosticDesDatesDeSeance $diagnostic): int
     {
         $emploiTempsId = $this->option('emploi-temps');
+
+        // Un identifiant mal tapé devenait `0` par le seul `(int)`, la requête
+        // ne rendait rien, et l'écran annonçait « rien à rattraper » : un repli
+        // muet, sur un outil dont c'est précisément le contraire du métier.
+        if ($emploiTempsId !== null && ! ctype_digit(ltrim((string) $emploiTempsId, '+'))) {
+            $this->error(sprintf('--emploi-temps attend un identifiant numérique, reçu « %s ».', $emploiTempsId));
+
+            return self::FAILURE;
+        }
+
         $emploiTempsId = $emploiTempsId === null ? null : (int) $emploiTempsId;
+
+        if ($emploiTempsId !== null && ! ESBTPEmploiTemps::whereKey($emploiTempsId)->exists()) {
+            $this->error(sprintf('Emploi du temps %d introuvable.', $emploiTempsId));
+
+            return self::FAILURE;
+        }
 
         $rapport = $diagnostic->rapport((int) $this->option('limite'), $emploiTempsId);
 

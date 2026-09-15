@@ -72,6 +72,59 @@ enum ModePaiement: string
         return $this === self::ESPECES;
     }
 
+    /**
+     * Ce mode est-il un portefeuille mobile ?
+     *
+     * Trois endroits répondaient à cette question chacun de leur côté, par une
+     * liste recopiée : le garde de permission du caissier, le regroupement du
+     * tableau de bord, et le catalogue de l'écran de caisse. Ajouter Celtiis
+     * Cash à l'enum seul ne les touchait pas — le garde REFUSAIT le mode à un
+     * caissier n'ayant que la permission « mobile money », et le tableau de
+     * bord le rangeait dans « autres ». C'est l'anti-pattern 4 de
+     * `rien-en-dur.md` : une liste de valeurs recopiée à côté de son enum.
+     *
+     * La réponse vit donc ici, une fois. Un mode ajouté plus tard n'a plus
+     * qu'un endroit à renseigner.
+     */
+    public function estMobile(): bool
+    {
+        return match ($this) {
+            self::MOBILE_MONEY, self::WAVE, self::ORANGE_MONEY,
+            self::MTN_MONEY, self::MOOV_MONEY, self::DJAMO,
+            self::CELTIIS_CASH => true,
+            default => false,
+        };
+    }
+
+    /**
+     * Les modes qu'un guichet peut encaisser, `'Libellé' => 'valeur'`.
+     *
+     * L'écran de caisse portait cette liste en dur et elle avait dérivé :
+     * ni Djamo, ni Celtiis Cash, alors que la réconciliation les connaît. Un
+     * mode absent d'ici n'est jamais proposé, quel que soit le réglage — donc
+     * un encaissement réel n'a aucune façon d'être saisi sous son vrai nom.
+     *
+     * `AUTRE` est le seul écarté, et c'est une décision : c'est un fourre-tout
+     * de reprise de données. L'offrir au guichet reviendrait à laisser un
+     * encaissement échapper au rapprochement par le choix le plus rapide.
+     *
+     * @return array<string, string>
+     */
+    public static function optionsDeGuichet(): array
+    {
+        $options = [];
+
+        foreach (self::cases() as $mode) {
+            if ($mode === self::AUTRE) {
+                continue;
+            }
+
+            $options[$mode->label()] = $mode->value;
+        }
+
+        return $options;
+    }
+
     public function icon(): string
     {
         return match ($this) {
