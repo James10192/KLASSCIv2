@@ -3,6 +3,7 @@
 use App\Services\Security\SeparationOfDutiesService;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Les trois reglages de separation des devoirs, crees en base.
@@ -53,7 +54,19 @@ return new class extends Migration
                 continue;
             }
 
-            $regle = $definitions->get($cle, ['label' => $cle, 'hint' => '', 'defaut' => true]);
+            $regle = $definitions->get($cle);
+
+            if ($regle === null) {
+                // La cle gelee n'est plus declaree : semer une ligne avec la cle
+                // technique en description, que plus rien ne lit, serait un
+                // repli muet de plus. On passe, et on le dit.
+                Log::warning('Reglage de separation des devoirs non seme : la regle a disparu de la configuration', [
+                    'cle' => $cle,
+                ]);
+
+                continue;
+            }
+
             $valeur = $regle['defaut'] ? '1' : '0';
 
             DB::table('settings')->insert([

@@ -10,6 +10,7 @@ use App\Models\ESBTPClasse;
 use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPLMDBulletin;
 use App\Services\DocumentPrintGuard;
+use App\Services\LMD\Exceptions\MaquetteSansCompositionException;
 use App\Services\LMD\LmdCreditWalletService;
 use App\Services\LMDBulletinService;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -126,12 +127,18 @@ class ESBTPLMDBulletinController extends Controller
             return $this->academicPilotageFailure($request, $exception);
         }
 
-        $bulletin = $this->service->genererBulletinLMD(
-            $request->etudiant_id,
-            $request->classe_id,
-            $request->annee_universitaire_id,
-            $request->semestre
-        );
+        try {
+            $bulletin = $this->service->genererBulletinLMD(
+                $request->etudiant_id,
+                $request->classe_id,
+                $request->annee_universitaire_id,
+                $request->semestre
+            );
+        } catch (MaquetteSansCompositionException $exception) {
+            // Le refus doit se voir. Rendre le bulletin tel quel afficherait
+            // « généré avec succès » sur un calcul qui n'a rien recalculé.
+            return redirect()->back()->withInput()->with('error', $exception->getMessage());
+        }
 
         return redirect()
             ->route('esbtp.lmd.bulletins.show', $bulletin)
@@ -188,11 +195,18 @@ class ESBTPLMDBulletinController extends Controller
             }
         }
 
-        $bulletins = $this->service->genererBulletinsClasse(
-            $request->classe_id,
-            $request->annee_universitaire_id,
-            $request->semestre
-        );
+        try {
+            $bulletins = $this->service->genererBulletinsClasse(
+                $request->classe_id,
+                $request->annee_universitaire_id,
+                $request->semestre
+            );
+        } catch (MaquetteSansCompositionException $exception) {
+            // La maquette est une propriété de la classe, pas de l'étudiant :
+            // le refus vaut pour les vingt-cinq d'un coup. L'annoncer une fois
+            // vaut mieux que vingt-cinq échecs comptés sans leur raison.
+            return redirect()->back()->withInput()->with('error', $exception->getMessage());
+        }
 
         $count = count($bulletins);
         $expectedCount = $studentIds->count();

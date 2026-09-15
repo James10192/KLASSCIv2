@@ -3529,8 +3529,12 @@
                                 @php
                                     // Le libellé français du registre, pas la clé technique : cet
                                     // écran est lu par une secrétaire, pas par un administrateur système.
+                                    // Via PermissionRegistry et jamais config('permissions.…') :
+                                    // la clé « sod.bypass » contient un point, et un chemin pointé
+                                    // ferait chercher à Laravel un tableau imbriqué qui n'existe pas.
                                     $clePermissionSod = \App\Services\Security\SeparationOfDutiesService::permissionDeContournement();
-                                    $libellePermissionSod = config('permissions.permissions.'.$clePermissionSod.'.label', $clePermissionSod);
+                                    $metaPermissionSod = app(\App\Services\PermissionRegistry::class)->permissionMeta($clePermissionSod);
+                                    $libellePermissionSod = $metaPermissionSod['label'] ?? $clePermissionSod;
                                 @endphp
                                 <div class="ls-toggle-hint" style="margin-bottom:.5rem;">
                                     Norme OHADA : personne ne signe les deux bouts d'une même chaîne.

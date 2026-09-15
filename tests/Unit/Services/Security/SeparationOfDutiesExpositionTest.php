@@ -100,6 +100,53 @@ class SeparationOfDutiesExpositionTest extends TestCase
         }
     }
 
+    /**
+     * Le contrôle qui manquait, et sans lequel tout le reste était décoratif.
+     *
+     * `config('sod.rules.lmd.jury.publish.enabled')` ne peut pas marcher :
+     * `Arr::get()` découpe sur les points et cherche un tableau imbriqué
+     * `rules → lmd → jury → publish`, alors que la clé est littéralement
+     * `'lmd.jury.publish'`, en un seul morceau. Il rendait donc toujours le
+     * défaut — `false` —, `violation()` sortait au premier garde, et les trois
+     * règles OHADA n'ont jamais rien empêché. Aucune erreur, aucun journal.
+     *
+     * Ce test échoue sur l'ancien code et passe sur le nouveau. Les précédents,
+     * qui ne lisaient `config('sod.rules')` que sans sous-chemin, passaient dans
+     * les deux cas : c'est exactement pourquoi ils n'ont rien vu.
+     */
+    public function test_les_trois_regles_livrees_sont_reellement_actives(): void
+    {
+        $service = new SeparationOfDutiesService;
+
+        foreach (array_keys($this->configurationLivree()['rules']) as $regle) {
+            $this->assertTrue(
+                $service->enabled($regle),
+                "La règle « {$regle} » est déclarée active et ne l'est pas : elle n'empêchera rien.",
+            );
+        }
+    }
+
+    public function test_une_regle_inconnue_reste_inactive(): void
+    {
+        $this->assertFalse((new SeparationOfDutiesService)->enabled('regle.qui.n.existe.pas'));
+    }
+
+    public function test_chaque_regle_rend_son_propre_message_de_refus(): void
+    {
+        // Un message générique signale que la définition n'a pas été atteinte —
+        // c'est le symptôme exact du chemin pointé qui échoue.
+        $service = new SeparationOfDutiesService;
+
+        foreach ($this->configurationLivree()['rules'] as $regle => $definition) {
+            $this->assertSame($definition['message'], $service->messageDeRefus($regle));
+        }
+
+        $this->assertSame(
+            'Separation des devoirs requise pour cette action.',
+            $service->messageDeRefus('regle.qui.n.existe.pas'),
+        );
+    }
+
     public function test_la_permission_de_contournement_est_lue_depuis_la_configuration(): void
     {
         $this->assertSame(

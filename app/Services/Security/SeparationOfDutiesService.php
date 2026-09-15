@@ -8,6 +8,29 @@ use Illuminate\Support\Facades\Log;
 
 final class SeparationOfDutiesService
 {
+    /**
+     * La définition d'une règle, lue SANS passer par un chemin pointé.
+     *
+     * `config('sod.rules.lmd.jury.publish.enabled')` ne peut pas marcher :
+     * `Arr::get()` découpe sur les points, donc il cherche un tableau imbriqué
+     * `rules → lmd → jury → publish`, alors que la clé est littéralement
+     * `'lmd.jury.publish'`, en un seul morceau. Il ne trouve rien et rend le
+     * défaut — `false` pour `enabled`, `null` pour `setting`.
+     *
+     * Conséquence : `enabled()` rendait toujours `false`, `violation()` sortait
+     * au premier garde, et les TROIS règles de séparation des devoirs
+     * n'empêchaient rien depuis leur écriture. Aucune erreur, aucun journal :
+     * l'écran des jurys laissait simplement passer.
+     *
+     * @return array<string, mixed>
+     */
+    private function regle(string $rule): array
+    {
+        $regles = (array) config('sod.rules', []);
+
+        return (array) ($regles[$rule] ?? []);
+    }
+
     public function violation(string $rule, ?int $previousActorId, ?User $actor): ?string
     {
         if (! $this->enabled($rule) || ! $actor || ! $previousActorId) {
@@ -34,13 +57,24 @@ final class SeparationOfDutiesService
             return null;
         }
 
-        return (string) config("sod.rules.{$rule}.message", 'Separation des devoirs requise pour cette action.');
+        return $this->messageDeRefus($rule);
+    }
+
+    /** Le message montré à qui est bloqué par la règle. */
+    public function messageDeRefus(string $rule): string
+    {
+        $message = $this->regle($rule)['message'] ?? null;
+
+        return is_string($message) && $message !== ''
+            ? $message
+            : 'Separation des devoirs requise pour cette action.';
     }
 
     public function enabled(string $rule): bool
     {
-        $default = (bool) config("sod.rules.{$rule}.enabled", false);
-        $setting = config("sod.rules.{$rule}.setting");
+        $definition = $this->regle($rule);
+        $default = (bool) ($definition['enabled'] ?? false);
+        $setting = $definition['setting'] ?? null;
 
         if (! is_string($setting) || $setting === '') {
             return $default;

@@ -14,6 +14,7 @@ use App\Models\ESBTPNote;
 use App\Models\ESBTPUniteEnseignement;
 use App\Helpers\SettingsHelper;
 use App\Services\LMD\CompositionDuBulletin;
+use App\Services\LMD\Exceptions\MaquetteSansCompositionException;
 use App\Services\LMD\LmdAcademicRuleProfile;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -117,6 +118,13 @@ class LMDBulletinService
             $classe = ESBTPClasse::with(['parcours.mention.domaine', 'parcours.filiere', 'niveau'])->findOrFail($classeId);
             $parcours = $classe->parcours;
 
+            // 0. La composition du semestre, lue AVANT la moindre écriture.
+            // Un bulletin qu'on va refuser de recalculer ne doit pas non plus
+            // voir son en-tête réécrit ni son horodatage bougé : ce sont
+            // justement les deux signaux qui feraient croire qu'il a été traité.
+            $ues = $this->getUEsForSemestre($classe, $semestre);
+            $this->refuserSurUneMaquetteVide($etudiantId, $classeId, $anneeUniversitaireId, $semestre, $ues);
+
             // 1. Creer ou mettre a jour le bulletin
             // Label parcours bulletin. Composition automatique Niveau + Filiere
             // ("LICENCE 3 GCV BATIMENT & URBANISME") pilotee par le reglage
@@ -144,9 +152,6 @@ class LMDBulletinService
                     'updated_by' => auth()->id(),
                 ]
             );
-
-            // 2. Recuperer les UEs du semestre pour cette classe
-            $ues = $this->getUEsForSemestre($classe, $semestre);
 
             // Pre-load ALL notes for this student in this semestre (avoid N+1)
             $periodeVariants = $this->getPeriodeVariants($semestre);
@@ -181,20 +186,7 @@ class LMDBulletinService
                 $creditsTotaux += $ue->creditEffectif();
             }
 
-            // La maquette ne rend rien alors que le bulletin porte des lignes :
-            // on n'y touche pas du tout. Conserver les lignes sans s'arrêter ici
-            // écrirait une moyenne nulle et des crédits à zéro sous une liste
-            // d'unités intacte — et sortirait l'étudiant du classement, ce qui
-            // décale les rangs de toute la classe.
-            if ($this->composition->elaguerLesUnites($bulletin, $resultatsUEs)) {
-                return $bulletin->fresh([
-                    'resultatsUEs.uniteEnseignement',
-                    'resultatsUEs.resultatsECUEs.matiere',
-                    'etudiant',
-                    'classe',
-                    'deliberation',
-                ]);
-            }
+            $this->composition->elaguerLesUnites($bulletin, $resultatsUEs);
 
             // 4. Calculer la moyenne generale ponderee par credits
             $moyenneGenerale = $this->calculerMoyenneGenerale($resultatsUEs);
@@ -256,6 +248,12 @@ class LMDBulletinService
                     $semestre,
                     skipRanksAndStats: true // Calculer une seule fois apres la boucle
                 );
+            } catch (MaquetteSansCompositionException $e) {
+                // Sans ce rattrapage, le `catch (\Exception)` juste en dessous
+                // l'avalerait : la maquette vide vaut pour TOUTE la classe, donc
+                // l'écran afficherait « 0/25 bulletins générés » sans jamais dire
+                // pourquoi. On laisse remonter, le contrôleur le dit une fois.
+                throw $e;
             } catch (\Exception $e) {
                 Log::error("LMD Bulletin generation failed for etudiant {$studentId}: {$e->getMessage()}");
                 $errors[] = $studentId;
@@ -269,6 +267,62 @@ class LMDBulletinService
         }
 
         return $bulletins;
+    }
+
+    /**
+     * Une maquette vide ne recalcule pas un bulletin qui porte déjà des lignes.
+     *
+     * Le pivot de maquette ne rend momentanément rien dans des cas parfaitement
+     * ordinaires : le nettoyage avant réimport supprime les liens parcours-unité
+     * PUIS met les unités à la corbeille, et désactiver les matières d'une unité
+     * vide sa composition. Recalculer dans cette fenêtre écrirait une moyenne
+     * nulle et des crédits à zéro sous une liste d'unités intacte, et sortirait
+     * l'étudiant du classement — décalant les rangs de toute sa classe.
+     *
+     * On refuse, et on refuse BRUYAMMENT. La condition vaut pour la classe
+     * entière : rendre le bulletin tel quel ferait annoncer « 25 bulletins
+     * générés » à une génération en masse qui n'en a recalculé aucun. Une donnée
+     * fausse remplacée par un message faux n'est pas un progrès.
+     *
+     * La PREMIÈRE génération, elle, passe : il n'y a encore rien à protéger, et
+     * une école qui prépare sa maquette garde le comportement d'avant.
+     */
+    private function refuserSurUneMaquetteVide(
+        int $etudiantId,
+        int $classeId,
+        int $anneeUniversitaireId,
+        int $semestre,
+        Collection $ues
+    ): void {
+        if ($ues->isNotEmpty()) {
+            return;
+        }
+
+        $bulletin = ESBTPLMDBulletin::query()
+            ->where('etudiant_id', $etudiantId)
+            ->where('classe_id', $classeId)
+            ->where('annee_universitaire_id', $anneeUniversitaireId)
+            ->where('semestre', $semestre)
+            ->first();
+
+        if ($bulletin === null) {
+            return;
+        }
+
+        $lignes = ESBTPLMDResultatUE::query()->where('bulletin_id', $bulletin->id)->count();
+
+        if ($lignes === 0) {
+            return;
+        }
+
+        Log::warning('Maquette sans composition : recalcul du bulletin refusé', [
+            'bulletin_id' => $bulletin->id,
+            'classe_id' => $classeId,
+            'semestre' => $semestre,
+            'lignes_conservees' => $lignes,
+        ]);
+
+        throw new MaquetteSansCompositionException($classeId, $semestre, $lignes);
     }
 
     /**
@@ -406,7 +460,14 @@ class LMDBulletinService
             }
         }
 
-        $this->composition->elaguerLesElements($resultatUE, $resultatsECUEs);
+        // La maquette ne rattache plus aucun élément à cette unité alors qu'elle
+        // en portait : on la rend telle quelle. Écrire ici une moyenne vide et
+        // un « non acquis » retirerait ses crédits du capitalisé alors que le
+        // total continue de les compter — et ferait bouger la moyenne générale
+        // du bulletin, donc la frontière entre admis et admis sous condition.
+        if ($this->composition->elaguerLesElements($resultatUE, $resultatsECUEs)) {
+            return $resultatUE;
+        }
 
         // Moyenne UE = Σ(moyenne_ecue × coeff_ecue) / Σ coeff_ecue
         $moyenneUE = $totalCoefficients > 0
