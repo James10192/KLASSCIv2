@@ -1900,6 +1900,12 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
     //   3. `ESBTPPaywallConfigController::checkServiceTechniqueAccess()`, qui
     //      exige `paywall.manage` action par action.
     //
+    // Deux exceptions à la garde #1 : `blocked` et `upgrade` sont dans
+    // `PaywallMiddleware::$excludedRoutes`, testé AVANT la détection des routes
+    // d'abonnement. Un superAdmin y accède donc, et ni l'une ni l'autre
+    // n'appelle la garde #3 — sans conséquence, les deux ne font que rendre une
+    // vue. Mais ce sont bien deux pages de ce groupe qui n'ont qu'une garde.
+    //
     // La route exigeait `system.manage` — celle qui ouvre AUSSI `/esbtp/settings`,
     // donc une troisième permission, plus large que les deux autres. Aucune
     // faille n'en résultait (le contrôle de rôle passe avant), mais les trois
