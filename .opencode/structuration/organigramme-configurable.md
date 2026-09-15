@@ -22,22 +22,20 @@ Deux écoles peuvent-elles vouloir une valeur différente ? Oui → setting, per
 - Renouvellement d’agrément `+3 years` en dur
 - TPE toujours / jamais planifiable en dur hors enum + setting
 
-Canon figé (déjà dans `config/permissions.php`) : `superAdmin`, `secretaire`, `comptable`, `caissier`, `coordinateur`, `directeurEtudes`, `enseignant`, `etudiant`, `serviceTechnique` (masqué) + scolarité split si settings ON.
+Canon figé aujourd’hui : `superAdmin`, `secretaire`, `comptable`, `caissier`, `coordinateur`, `directeurEtudes`, `enseignant`, `etudiant`, `serviceTechnique` (masqué, **ADC**, `visible_in_ui => false`, `*`).
 
-`serviceTechnique` **est** le service informatique KLASSCI (paramétrage instance, comptes, audit, outils ADC). On n’ajoute pas un jumeau « service informatique ».
+**Correction 15/09 (dossier artifact, pas Wikipédia) :** `serviceTechnique` n’est **pas** le DSI du client. C’est ADC. Le dossier exige un second rôle canonique **Administrateur d’instance** : réglages, comptes, droits, dépannage. Jamais l’abonnement, jamais le style de bulletin. Scinder `system.manage`. Il peut **distribuer** des droits de jury sans les **exercer** (pas d’auto-attribution, finance à deux mains). Pas d’impersonation (« voir comme ») : ça corrompt l’audit.
 
 ## Cartographie demandée → comment ça vit
 
-### Service informatique (déjà `serviceTechnique`)
+### Service informatique (Administrateur d’instance — à créer ; pas `serviceTechnique`)
 
 | Demande | Mécanisme |
 |---|---|
-| Paramétrage de l’instance | permissions settings / paywall déjà ST |
-| Comptes, rôles, permissions | `/esbtp/roles-permissions` + custom roles |
-| Audit complet | permission d’audit, pas un rôle nouveau |
-| « Des service technique » | comptes ST existants, pas un libellé d’école |
-
-Une école qui veut appeler ça « DSI » change le **label** du rôle, pas le nom interne.
+| Paramétrage de l’instance | `system.settings.manage` (scindé de l’abonnement) |
+| Comptes, rôles, permissions | admin d’instance + explicateur de droits en français |
+| Audit complet | filtre du journal dérivé des lignes réelles (déjà un lot) |
+| Dépannage | diagnostics métier à l’écran ; **pas** impersonation, pas console infra, pas journal brut |
 
 ### Service scolarité
 

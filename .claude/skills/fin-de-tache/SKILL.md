@@ -29,6 +29,8 @@ Le compte rendu sert d'abord à **découper la demande en points distincts avant
 
 Relis la demande et compte les verbes. Chaque verbe à l'impératif est un point.
 
+Si la demande est assez large pour des **agents parallèles**, une architecture déjà écrite, ou un risque de couper une vue mobile : charger aussi le skill `orchestrate-until-done` tout de suite après avoir ouvert ce compte rendu. `/orchestrate` fait les deux.
+
 ## Le gabarit
 
 Écrire dans `.claude/completude.md` (ignoré par git, donc jamais commité).

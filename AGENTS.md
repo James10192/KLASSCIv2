@@ -12,6 +12,10 @@
 - **Docs API REST** → toujours dans `docs/api/NOM_API.md`
 - Nouvelle API → créer le fichier. API modifiée → mettre à jour + section "Historique" + marquer breaking changes.
 
+### Pre-prompt — ne pas rendre un travail à moitié (tout harness)
+
+Dès que la demande a **plusieurs points**, produit du code, un audit ou un livrable : charger le skill `orchestrate-until-done` (`.claude/skills/orchestrate-until-done/SKILL.md`), ouvrir `.claude/completude.md` **au début**, découper, lancer des agents en parallèle, chercher sur internet si le monde extérieur est en jeu. Ne pas s'arrêter sur « veux-tu que je continue ». Ne pas supprimer une vue mobile/print pour « simplifier ». Commande : `/orchestrate`. Hook Claude : `.claude/hooks/completude-check.sh`. OpenCode : `.opencode/plugins/completude-idle.js`. Architecture UCAO déjà écrite : `.opencode/structuration/ucao-uuc-dossier-2026-09/` — suivre ses lots, ne pas réinventer.
+
 ---
 
 ## Architecture
