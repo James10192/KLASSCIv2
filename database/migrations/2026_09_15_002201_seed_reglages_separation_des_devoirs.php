@@ -22,6 +22,22 @@ use Illuminate\Support\Facades\DB;
  */
 return new class extends Migration
 {
+    /**
+     * Les trois cles, GELEES ici plutot que relues depuis `config/sod.php`.
+     *
+     * Une migration decrit un etat fige du passe : elle ne doit pas suivre
+     * l'evolution des constantes. Lire la configuration au moment du retour en
+     * arriere ferait supprimer a `down()` une quatrieme regle ajoutee plus tard
+     * et semee par une AUTRE migration — un effacement qu'`up()` n'a jamais
+     * ecrit. Le controle qui garantit qu'aucune regle ne reste sans migration
+     * vit dans `SeparationOfDutiesExpositionTest`, pas ici.
+     */
+    private const CLES = [
+        'lmd.sod.jury_publish_requires_distinct_pv_issuer',
+        'lmd.sod.pv_rectification_requires_distinct_issuer',
+        'lmd.sod.pv_reissue_after_publication_requires_distinct_publisher',
+    ];
+
     public function up(): void
     {
         // Le premier utilisateur existant, et null sur une base vide : ecrire
@@ -30,15 +46,18 @@ return new class extends Migration
         $auteur = DB::table('users')->min('id');
         $maintenant = now();
 
-        foreach (SeparationOfDutiesService::reglesExposables() as $regle) {
-            if (DB::table('settings')->where('key', $regle['cle'])->exists()) {
+        $definitions = collect(SeparationOfDutiesService::reglesExposables())->keyBy('cle');
+
+        foreach (self::CLES as $cle) {
+            if (DB::table('settings')->where('key', $cle)->exists()) {
                 continue;
             }
 
+            $regle = $definitions->get($cle, ['label' => $cle, 'hint' => '', 'defaut' => true]);
             $valeur = $regle['defaut'] ? '1' : '0';
 
             DB::table('settings')->insert([
-                'key' => $regle['cle'],
+                'key' => $cle,
                 'value' => $valeur,
                 'type' => 'boolean',
                 'description' => $regle['label'].' — '.$regle['hint'],
@@ -58,7 +77,7 @@ return new class extends Migration
     public function down(): void
     {
         DB::table('settings')
-            ->whereIn('key', SeparationOfDutiesService::clesDeReglage())
+            ->whereIn('key', self::CLES)
             ->delete();
     }
 };

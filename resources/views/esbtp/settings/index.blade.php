@@ -3526,10 +3526,16 @@
                                 <div class="ls-toggle-label" style="margin-bottom:.35rem;">
                                     <i class="fas fa-user-shield" style="margin-right:.35rem;"></i>Séparation des devoirs
                                 </div>
+                                @php
+                                    // Le libellé français du registre, pas la clé technique : cet
+                                    // écran est lu par une secrétaire, pas par un administrateur système.
+                                    $clePermissionSod = \App\Services\Security\SeparationOfDutiesService::permissionDeContournement();
+                                    $libellePermissionSod = config('permissions.permissions.'.$clePermissionSod.'.label', $clePermissionSod);
+                                @endphp
                                 <div class="ls-toggle-hint" style="margin-bottom:.5rem;">
                                     Norme OHADA : personne ne signe les deux bouts d'une même chaîne.
-                                    La permission « {{ \App\Services\Security\SeparationOfDutiesService::permissionDeContournement() }} »
-                                    lève ces contrôles ; chaque levée est journalisée.
+                                    La permission « {{ $libellePermissionSod }} » lève ces contrôles ;
+                                    chaque levée est journalisée.
                                 </div>
                             </div>
                             @foreach ($reglesSod as $regleSod)
@@ -3542,7 +3548,10 @@
                                     <div class="form-check form-switch" style="margin:0; padding-left:2.5em;">
                                         <input class="form-check-input" type="checkbox" id="sod_{{ $loop->index }}"
                                                name="{{ $regleSod['cle'] }}" value="1"
-                                               {{ \App\Helpers\SettingsHelper::get($regleSod['cle'], $regleSod['defaut'] ? '1' : '0') == '1' ? 'checked' : '' }}>
+                                               {{-- filter_var et non « == '1' » : le réglage rend un vrai booléen
+                                                    quand il existe en base (type boolean), une chaîne sinon. La
+                                                    comparaison lâche marchait par accident ; passer à === l'aurait cassée. --}}
+                                               {{ filter_var(\App\Helpers\SettingsHelper::get($regleSod['cle'], $regleSod['defaut']), FILTER_VALIDATE_BOOLEAN) ? 'checked' : '' }}>
                                     </div>
                                 </label>
                             </div>

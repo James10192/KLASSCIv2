@@ -73,24 +73,31 @@ class SeparationOfDutiesExpositionTest extends TestCase
         }
     }
 
-    public function test_la_migration_seme_toutes_les_cles_exposees(): void
+    public function test_chaque_cle_exposee_est_semee_par_une_migration(): void
     {
         // Une case affichée dont la clé n'existe pas en base se coche, se
         // soumet, et n'est jamais enregistrée : la boucle d'enregistrement
-        // ignore en silence toute clé absente de la table `settings`.
-        $migration = file_get_contents(
-            __DIR__.'/../../../../database/migrations/2026_09_15_002201_seed_reglages_separation_des_devoirs.php'
-        );
+        // ignore en silence toute clé absente de la table `settings`. C'est une
+        // panne muette, et c'est celle que ce contrôle attrape — au moment où
+        // quelqu'un ajoute une quatrième règle sans sa migration.
+        //
+        // On cherche la clé dans TOUTES les migrations, pas dans une seule :
+        // une règle ajoutée plus tard aura légitimement la sienne.
+        $migrations = glob(__DIR__.'/../../../../database/migrations/*.php') ?: [];
+        $this->assertNotEmpty($migrations);
 
-        $this->assertIsString($migration);
+        $contenu = '';
+        foreach ($migrations as $fichier) {
+            $contenu .= (string) file_get_contents($fichier);
+        }
 
-        // La migration sème depuis le service, jamais depuis des chaînes
-        // recopiées : c'est ce qui garantit qu'aucune règle ajoutée plus tard
-        // ne sera oubliée.
-        $this->assertStringContainsString(
-            'SeparationOfDutiesService::reglesExposables()',
-            $migration,
-        );
+        foreach (SeparationOfDutiesService::clesDeReglage() as $cle) {
+            $this->assertStringContainsString(
+                "'".$cle."'",
+                $contenu,
+                "La règle « {$cle} » n'est semée par aucune migration : la case s'affichera sans jamais s'enregistrer.",
+            );
+        }
     }
 
     public function test_la_permission_de_contournement_est_lue_depuis_la_configuration(): void

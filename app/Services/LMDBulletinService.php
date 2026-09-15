@@ -181,7 +181,20 @@ class LMDBulletinService
                 $creditsTotaux += $ue->creditEffectif();
             }
 
-            $this->composition->elaguerLesUnites($bulletin, $resultatsUEs);
+            // La maquette ne rend rien alors que le bulletin porte des lignes :
+            // on n'y touche pas du tout. Conserver les lignes sans s'arrêter ici
+            // écrirait une moyenne nulle et des crédits à zéro sous une liste
+            // d'unités intacte — et sortirait l'étudiant du classement, ce qui
+            // décale les rangs de toute la classe.
+            if ($this->composition->elaguerLesUnites($bulletin, $resultatsUEs)) {
+                return $bulletin->fresh([
+                    'resultatsUEs.uniteEnseignement',
+                    'resultatsUEs.resultatsECUEs.matiere',
+                    'etudiant',
+                    'classe',
+                    'deliberation',
+                ]);
+            }
 
             // 4. Calculer la moyenne generale ponderee par credits
             $moyenneGenerale = $this->calculerMoyenneGenerale($resultatsUEs);

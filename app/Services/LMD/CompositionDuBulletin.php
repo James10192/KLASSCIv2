@@ -59,8 +59,11 @@ final class CompositionDuBulletin
 
     /**
      * @param  array<int, ESBTPLMDResultatUE>  $resultatsRetenus
+     * @return bool `true` quand la maquette ne rend rien alors que le bulletin
+     *              porte des lignes — l'appelant doit alors s'arrêter là, sans
+     *              toucher à la moyenne ni aux crédits.
      */
-    public function elaguerLesUnites(ESBTPLMDBulletin $bulletin, array $resultatsRetenus): void
+    public function elaguerLesUnites(ESBTPLMDBulletin $bulletin, array $resultatsRetenus): bool
     {
         $presents = ESBTPLMDResultatUE::query()
             ->where('bulletin_id', $bulletin->id)
@@ -72,6 +75,12 @@ final class CompositionDuBulletin
         $retirees = self::idsAElaguer($idsRetenus, $presents);
 
         if ($idsRetenus === [] && $presents !== []) {
+            // Conserver les lignes ne suffit PAS. Si le calcul reprend son
+            // cours, il écrit une moyenne nulle et des crédits à zéro sur un
+            // bulletin qui garde toutes ses unités imprimées : la forme la plus
+            // aboutie du défaut qu'on corrige ici. Et le dégât déborde
+            // l'étudiant — le classement écarte les moyennes nulles, donc les
+            // rangs de toute la classe se décalent.
             Log::warning('Composition de maquette vide : bulletin laissé intact', [
                 'bulletin_id' => $bulletin->id,
                 'classe_id' => $bulletin->classe_id,
@@ -79,18 +88,32 @@ final class CompositionDuBulletin
                 'lignes_conservees' => count($presents),
             ]);
 
-            return;
+            return true;
         }
 
         if ($retirees === []) {
-            return;
+            return false;
         }
+
+        // Une suppression de masse ne déclenche aucun événement de modèle : ni
+        // piste d'audit, ni horodatage d'auteur. Ces lignes portent des notes
+        // SAISIES — seconde session, note finale retenue — que rien ne
+        // recalcule. Elles se retrouvent en corbeille, mais encore faut-il
+        // savoir qu'il faut les y chercher.
+        Log::warning('Unités retirées de la maquette : lignes sorties du bulletin', [
+            'bulletin_id' => $bulletin->id,
+            'classe_id' => $bulletin->classe_id,
+            'semestre' => $bulletin->semestre,
+            'resultats_ue_retires' => $retirees,
+        ]);
 
         // Les éléments ne tombent pas avec leur unité : pas de cascade sur une
         // suppression en douceur. Sans cette ligne, ils resteraient visibles
         // sous `$bulletin->resultatsECUEs`, orphelins de leur unité.
         ESBTPLMDResultatECUE::query()->whereIn('resultat_ue_id', $retirees)->delete();
         ESBTPLMDResultatUE::query()->whereIn('id', $retirees)->delete();
+
+        return false;
     }
 
     /**
@@ -120,6 +143,12 @@ final class CompositionDuBulletin
         if ($retires === []) {
             return;
         }
+
+        Log::warning('Éléments retirés de la maquette : lignes sorties de l’unité', [
+            'resultat_ue_id' => $resultatUE->id,
+            'unite_enseignement_id' => $resultatUE->unite_enseignement_id,
+            'resultats_ecue_retires' => $retires,
+        ]);
 
         ESBTPLMDResultatECUE::query()->whereIn('id', $retires)->delete();
     }
