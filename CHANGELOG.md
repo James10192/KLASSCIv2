@@ -14,6 +14,8 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ### Correctifs
 
+- **Jour, matière et enseignant de la modification de séance ne sont plus des listes natives** (`/esbtp/seances-cours/{id}/edit`) — les trois listes du navigateur (flèche grise, pas de recherche) sont remplacées par les sélecteurs premium : jour, ECUE groupée par UE, enseignant searchable.
+
 - **Les types pédagogiques LMD recomptent les séances, et la carte de l'emploi du temps réaffiche CM / TD / TP** (`/esbtp/emploi-temps/{id}`) — le bandeau « Types pédagogiques LMD » comparait l'enum à la chaîne `'CM'` : tout restait à zéro alors qu'une séance était bien sur la grille. Le décompte lit la valeur ; la carte porte un badge du sous-type.
 
 - **On peut enfin corriger CM / TD / TP sur une séance déjà créée** (`/esbtp/seances-cours/{id}/edit`) — le sous-type pédagogique existait à la création, pas à la modification : une séance enregistrée en CM par erreur forçait à tout supprimer. Le type Cours/Devoir reste gelé ; CM↔TD↔TP (ou Examen↔Partiel) se change dans la même famille.

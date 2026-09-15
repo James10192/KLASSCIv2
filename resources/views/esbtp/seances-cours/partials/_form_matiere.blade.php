@@ -21,7 +21,7 @@
         <x-sce-ecue-picker
             name="matiere_id"
             :matieres="$matieres"
-            :value="old('matiere_id')"
+            :value="old('matiere_id', isset($seancesCour) ? $seancesCour->matiere_id : null)"
             :required="true"
             placeholder="Rechercher une ECUE par code, nom ou UE…"
             onchange-js="updateTeachersForSubject();" />
@@ -48,7 +48,7 @@
                             data-volume-total-formatted="{{ $matiere['volume_horaire_total_formatted'] ?? $matiere['volume_horaire_total'] }}"
                             data-enseignants="{{ ($matiere['enseignants_selectables'] ?? collect())->pluck('id')->toJson() }}"
                             data-planification-id="{{ $matiere['planification_id'] ?? '' }}"
-                            {{ old('matiere_id') == $m->id ? 'selected' : '' }}>
+                             {{ (string) old('matiere_id', isset($seancesCour) ? $seancesCour->matiere_id : '') === (string) $m->id ? 'selected' : '' }}>
                         {{ $optLabel }}
                     </option>
                 @endforeach

@@ -106,6 +106,12 @@
     @media (max-width: 768px) {
         .sce-type-radio-group { grid-template-columns: 1fr; }
     }
+    #courseFields { overflow: visible; }
+    #courseFields .main-card-body { overflow: visible; }
+    .form-group .au-select,
+    .form-group .xx-au-full,
+    .form-group .scep-wrap { display: flex !important; width: 100%; }
+    .form-group .au-select-trigger { width: 100%; }
 </style>
 @endsection
 
@@ -243,14 +249,16 @@
                         <div class="form-grid">
                             <div class="form-group">
                                 <label for="jour" class="form-label">Jour <span class="text-danger">*</span></label>
-                                <select name="jour" id="jour" class="form-select @error('jour') error @enderror" required>
-                                    <option value="">Sélectionner un jour</option>
-                                    @foreach($joursSemaine as $value => $label)
-                                        <option value="{{ $value }}" {{ (string) old('jour', $seancesCour->jour) === (string) $value ? 'selected' : '' }}>
-                                            {{ $label }}
-                                        </option>
-                                    @endforeach
-                                </select>
+                                <x-au-select
+                                    class="xx-au-full"
+                                    name="jour"
+                                    id="jour"
+                                    icon="fa-calendar-day"
+                                    :options="$joursSemaine"
+                                    :value="old('jour', $seancesCour->jour)"
+                                    placeholder="Sélectionner un jour"
+                                    required
+                                />
                                 @error('jour')
                                     <div class="form-error">{{ $message }}</div>
                                 @enderror
@@ -362,36 +370,22 @@
                                 </div>
                             </div>
 
-                            <div class="form-grid">
-                                <div class="form-group">
-                                    <label for="matiere_id" class="form-label">Matière <span class="text-danger">*</span></label>
-                                    <select name="matiere_id" id="matiere_id" class="form-select @error('matiere_id') error @enderror" onchange="updateTeachersForSubject()" required>
-                                        <option value="">Sélectionner une matière</option>
-                                        @foreach($matieres as $matiere)
-                                            <option value="{{ $matiere['matiere']->id }}"
-                                                    data-heures-restantes="{{ $matiere['heures_restantes'] }}"
-                                                    data-volume-total="{{ $matiere['volume_horaire_total'] }}"
-                                                    data-enseignants="{{ ($matiere['enseignants_selectables'] ?? collect())->pluck('id')->toJson() }}"
-                                                    {{ (string) old('matiere_id', $seancesCour->matiere_id) === (string) $matiere['matiere']->id ? 'selected' : '' }}>
-                                                {{ $matiere['matiere']->name }}
-                                                ({{ $matiere['heures_restantes'] }}h restantes / {{ $matiere['volume_horaire_total'] }}h)
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                    <div id="matiere-info" class="form-info" style="display: none;">
-                                        <i class="fas fa-clock"></i>
-                                        <span id="heures-restantes-text"></span>
-                                    </div>
-                                    @error('matiere_id')
-                                        <div class="form-error">{{ $message }}</div>
-                                    @enderror
-                                </div>
+                            @include('esbtp.seances-cours.partials._form_matiere')
 
-                                <div class="form-group" id="teacherFieldGroup">
+                            <div class="form-group" id="teacherFieldGroup">
                                     <label for="teacher_id" class="form-label">Enseignant assigné <span class="text-danger">*</span></label>
-                                    <select name="teacher_id" id="teacher_id" class="form-select @error('teacher_id') error @enderror" onchange="showTeacherAvailability()" required>
-                                        <option value="">Sélectionner d'abord une matière</option>
-                                    </select>
+                                    <x-au-select
+                                        class="xx-au-full"
+                                        name="teacher_id"
+                                        id="teacher_id"
+                                        icon="fa-user-tie"
+                                        :searchable="true"
+                                        :options="[]"
+                                        :value="old('teacher_id', $seancesCour->teacher_id)"
+                                        placeholder="Sélectionner d'abord une matière"
+                                        required
+                                        onchange="showTeacherAvailability()"
+                                    />
                                     <div id="teacher-info" class="form-info" style="display: none;">
                                         <i class="fas fa-check-circle"></i>
                                         <span id="teacher-assignment-text"></span>
@@ -411,7 +405,6 @@
                                         <div class="form-error">{{ $message }}</div>
                                     @enderror
                                 </div>
-                            </div>
 
                             <div id="teacher-availability" class="availability-section mt-4" style="display: none;">
                                 <div class="availability-header d-flex align-items-center gap-2 mb-3">
@@ -1445,11 +1438,13 @@ function updateTeachersForSubject() {
         if (teacherSelect.options.length <= 1) {
             teacherSelect.innerHTML = '<option value="">Aucun enseignant disponible pour cette matière</option>';
         }
+        teacherSelect.dispatchEvent(new Event('change', { bubbles: true }));
     } else {
         matiereInfo.style.display = 'none';
         teacherSelect.innerHTML = requiresTeacher
             ? '<option value="">Sélectionner d\'abord une matière</option>'
             : '<option value="">Aucun enseignant requis pour un devoir</option>';
+        teacherSelect.dispatchEvent(new Event('change', { bubbles: true }));
         if (teacherInfo) {
             teacherInfo.style.display = 'none';
         }
