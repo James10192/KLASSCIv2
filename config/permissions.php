@@ -1313,6 +1313,17 @@ return [
             'icon' => 'fa-trash',
             'aliases' => ['delete_teachers', 'delete_enseignants'],
         ],
+        'teachers.agrement.manage' => [
+            'label' => 'Gérer les agréments enseignants',
+            'group' => 'Personnel',
+            'icon' => 'fa-stamp',
+        ],
+        'teachers.prestation.validate' => [
+            'label' => 'Viser le service fait (SP)',
+            'description' => 'Le sigle SP est conservé ; l\'intitulé exact des attributions reste à confirmer.',
+            'group' => 'Personnel',
+            'icon' => 'fa-check-double',
+        ],
         'personnel.view' => [
             'label' => 'Voir le personnel',
             'group' => 'Personnel',

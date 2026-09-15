@@ -136,13 +136,16 @@ class PayrollComputationService
 
         $brut = round($base + $primesTotal, 2);
 
+        $profil = ProfilPaysPaie::depuis(SettingsHelper::get('paie.profil_pays', ProfilPaysPaie::CI));
+        $ivoirien = ProfilPaysPaie::appliqueRetenuesIvoiriennes($profil);
+
         // Retenues : impôt ITS (auto, modifiable) + CNPS (auto) + retenues manuelles.
         $impotIts = isset($options['impot_its']) && $options['impot_its'] !== null
             ? round((float) $options['impot_its'], 2)
-            : $this->computeIts($brut);
+            : ($ivoirien ? $this->computeIts($brut) : 0.0);
         $cnps = isset($options['cnps']) && $options['cnps'] !== null
             ? round((float) $options['cnps'], 2)
-            : round($brut * $this->tauxCnps() / 100, 2);
+            : ($ivoirien ? round($brut * $this->tauxCnps() / 100, 2) : 0.0);
 
         $retenues = [];
         $ordreR = 0;
@@ -185,6 +188,8 @@ class PayrollComputationService
             'total_retenues'   => $totalRetenues,
             'net'              => $net,
             'lignes'           => array_merge($gains, $retenues),
+            'profil_pays'      => $profil,
+            'paiement_definitif_autorise' => ProfilPaysPaie::permetPaiementDefinitif($profil),
         ];
     }
 }

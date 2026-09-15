@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use App\Enums\TypeSeance;
+use App\Domain\Enseignants\HeuresConstatees;
+use App\Domain\Enseignants\TitulaireOuRemplacant;
 use App\Models\ESBTPSeanceCours;
 use App\Models\ESBTPTeacher;
 use App\Models\ESBTPTeacherAttendance;
@@ -88,7 +90,12 @@ class TeacherHoursService
         $emargements = $this->emargementsParSeance($seances->pluck('id')->all());
 
         $parEnseignant = [];
-        foreach ($seances->groupBy('teacher_id') as $teacherId => $sesEns) {
+        foreach ($seances->groupBy(function ($seance) {
+            return (string) TitulaireOuRemplacant::paye(
+                $seance->teacher_id ? (int) $seance->teacher_id : null,
+                $seance->remplacant_id ? (int) $seance->remplacant_id : null
+            );
+        }) as $teacherId => $sesEns) {
             if (!$teacherId) {
                 continue;
             }
@@ -199,7 +206,10 @@ class TeacherHoursService
     public function seancesDeLaPeriode(ESBTPTeacher $teacher, Carbon $from, Carbon $to, array $filtres = []): Collection
     {
         $query = ESBTPSeanceCours::query()
-            ->where('teacher_id', $teacher->id)
+            ->where(function ($q) use ($teacher) {
+                $q->where('teacher_id', $teacher->id)
+                    ->orWhere('remplacant_id', $teacher->id);
+            })
             // Séances d'enseignement uniquement (exclut récréations / pauses déjeuner).
             ->whereNotIn('type', [ESBTPSeanceCours::TYPE_BREAK, ESBTPSeanceCours::TYPE_LUNCH])
             ->whereNotNull('date_seance')
@@ -237,7 +247,10 @@ class TeacherHoursService
             ->whereDate('date_seance', '<=', $to->toDateString());
 
         if (!empty($filtres['teacher_id'])) {
-            $query->where('teacher_id', $filtres['teacher_id']);
+            $query->where(function ($q) use ($filtres) {
+                $q->where('teacher_id', $filtres['teacher_id'])
+                    ->orWhere('remplacant_id', $filtres['teacher_id']);
+            });
         }
         if (!empty($filtres['classe_id'])) {
             $query->where('classe_id', $filtres['classe_id']);
@@ -291,16 +304,17 @@ class TeacherHoursService
             ->groupBy('course_id');
     }
 
-    /** Durée planifiée d'une séance en heures (depuis heure_debut / heure_fin). */
+    /** Durée retenue : constatée si saisie, sinon planifiée. */
     private function dureeHeures(ESBTPSeanceCours $seance): float
     {
-        if (!$seance->heure_debut || !$seance->heure_fin) {
-            return 0.0;
-        }
+        $attrs = $seance->getAttributes();
 
-        $minutes = abs($seance->heure_fin->diffInMinutes($seance->heure_debut));
-
-        return round($minutes / 60, 2);
+        return HeuresConstatees::dureeHeures(
+            isset($attrs['heure_debut']) ? (string) $attrs['heure_debut'] : null,
+            isset($attrs['heure_fin']) ? (string) $attrs['heure_fin'] : null,
+            isset($attrs['heure_reelle_debut']) ? (string) $attrs['heure_reelle_debut'] : null,
+            isset($attrs['heure_reelle_fin']) ? (string) $attrs['heure_reelle_fin'] : null,
+        );
     }
 
     /** Une séance est réalisée si au moins un émargement n'est pas une absence. */
