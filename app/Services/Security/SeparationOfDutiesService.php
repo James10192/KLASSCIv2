@@ -143,6 +143,19 @@ final class SeparationOfDutiesService
             $cle = $definition['setting'] ?? null;
 
             if (! is_string($cle) || $cle === '') {
+                // La derniere porte muette de ce fichier, et elle donne sur la
+                // meme piece que les autres : une regle declaree sans cle de
+                // reglage disparait de l'ecran et n'est semee par aucune
+                // migration — mais elle continue de s'APPLIQUER, avec sa valeur
+                // d'usine, que plus personne ne peut ni voir ni changer.
+                //
+                // `SeparationOfDutiesExpositionTest` l'attrape au moment de
+                // l'ecrire ; ce journal l'attrape sur une instance en service,
+                // ou aucun test ne tourne.
+                Log::warning('Regle de separation des devoirs sans cle de reglage : elle s appliquera sans etre pilotable', [
+                    'regle' => $regle,
+                ]);
+
                 continue;
             }
 

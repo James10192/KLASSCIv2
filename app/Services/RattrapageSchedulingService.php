@@ -617,11 +617,19 @@ class RattrapageSchedulingService
             // vingt-quatre autres, ni de repeter le meme avertissement.
             //
             // Ce raccourci saute donc TOUS les etudiants suivants de la classe,
-            // sans exception. Il le peut parce que le refus ne depend ici que de
-            // la classe : les bulletins de `$concernes` viennent tous de
-            // `bulletinsForSession()`, donc ils existent et portent des lignes.
-            // Le jour ou cette boucle recevrait des bulletins vierges, le
-            // raccourci deviendrait faux et il faudrait tenter chaque etudiant.
+            // sans exception — y compris ceux dont on n'a pas tente la
+            // regeneration.
+            //
+            // Il le peut parce que `$concernes` est filtre sur `$etudiantIds`,
+            // et qu'un etudiant n'y entre qu'apres lecture d'une ligne
+            // `ESBTPLMDResultatECUE` bien reelle, laquelle porte un
+            // `resultat_ue_id` : son bulletin compte donc au moins une unite, et
+            // le refus qui vaut pour l'un vaut pour les autres.
+            //
+            // Ce n'est PAS `bulletinsForSession()` qui le garantit : cette
+            // requete ne filtre que sur l'annee, le parcours, le semestre et
+            // l'existence d'une inscription active — elle ramenerait sans broncher
+            // un bulletin sans la moindre ligne.
             if (isset($refuses[$perimetre])) {
                 continue;
             }
