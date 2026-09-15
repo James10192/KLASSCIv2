@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Domain\EmploiTemps\ConflitsDUnCreneau;
 use App\Domain\EmploiTemps\JourDeLaSemaine;
 use App\Helpers\SettingsHelper;
 use App\Models\ESBTPAnneeUniversitaire;
@@ -1583,6 +1584,21 @@ class ESBTPEmploiTempsController extends Controller
         $validated = $request->validated();
 
         $validated['emploi_temps_id'] = $emploi_temp->id;
+
+        // Le même garde qu'à la création côté `/esbtp/seances-cours`, qui
+        // n'existait pas ici : ce chemin de saisie — celui de l'écran emploi du
+        // temps — posait une séance sur un créneau occupé sans rien dire.
+        $conflits = (new ConflitsDUnCreneau($emploi_temp))->pourUneNouvelleSeance(
+            $validated['jour'],
+            $validated['heure_debut'],
+            $validated['heure_fin'],
+            (int) $validated['enseignant_id'],
+            $validated['salle'] ?? null,
+        );
+
+        if (! empty($conflits)) {
+            return redirect()->back()->withInput()->withErrors(['conflicts' => $conflits]);
+        }
 
         // Calculer la durée de la séance en heures
         $heureDebut = \Carbon\Carbon::parse($validated['heure_debut']);

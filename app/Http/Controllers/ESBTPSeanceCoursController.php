@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Domain\EmploiTemps\ConflitsDUnCreneau;
 use App\Domain\EmploiTemps\DetectionDesConflits;
 use App\Domain\EmploiTemps\JourDeLaSemaine;
 use App\Enums\TypeSeance;
@@ -558,8 +559,28 @@ class ESBTPSeanceCoursController extends Controller
             $creationSucceeded = false;
 
             try {
-                // Check for scheduling conflicts (uniquement pour le jour principal, on peut améliorer pour tous les jours si besoin)
-                $conflicts = $this->checkSchedulingConflicts($request);
+                // Les jours réellement écrits — établis UNE fois, et servant à la
+                // fois au garde et à la boucle de création plus bas.
+                //
+                // Le garde ne portait que sur `$request->jour`. Or en récurrence
+                // ce jour-là n'est PAS écrit : seuls les jours cochés le sont.
+                // La vérification tombait donc sur un jour où rien n'est créé, et
+                // les jours créés n'étaient jamais vérifiés — un « lundi, mercredi,
+                // vendredi » posé sur trois créneaux occupés passait entier.
+                $joursAEcrire = $this->joursAEcrire($request);
+
+                $conflicts = [];
+                foreach ($joursAEcrire as $jourAEcrire) {
+                    foreach ($this->checkSchedulingConflicts($request, $jourAEcrire) as $message) {
+                        // Le libellé d'un conflit ne nomme pas son jour ; sans
+                        // ce dédoublonnage, une récurrence sur trois jours tous
+                        // occupés par la même classe répéterait trois fois la
+                        // même phrase.
+                        $conflicts[$message] = $message;
+                    }
+                }
+                $conflicts = array_values($conflicts);
+
                 if (! empty($conflicts)) {
                     \Log::warning('Conflit horaire lors de la création de séance', $conflicts);
                     throw ValidationException::withMessages([
@@ -594,36 +615,21 @@ class ESBTPSeanceCoursController extends Controller
                 // Log des données à enregistrer
                 \Log::info('Création séance - Données enregistrées', $data);
 
-                // Correction : récupérer is_recurring et recurrence_days depuis $request
-                $isRecurring = $request->has('is_recurring');
-                $recurrenceDays = $request->input('recurrence_days', []);
-                if (is_string($recurrenceDays)) {
-                    $recurrenceDays = explode(',', $recurrenceDays);
-                }
-                \Log::info('DEBUG - is_recurring', [
-                    'is_recurring' => $isRecurring,
-                    'recurrence_days' => $recurrenceDays,
-                    'data' => $data,
-                ]);
-
-                if ($isRecurring && ! empty($recurrenceDays) && is_array($recurrenceDays)) {
-                    foreach ($recurrenceDays as $recurringDay) {
-                        $dataForDay = $data;
-                        $dataForDay['jour'] = $recurringDay;
-                        // La MÊME formule que la séance simple juste au-dessus.
-                        // Elle portait le raccourci `date_debut + (jour - 1)`,
-                        // et c'est la dernière à l'avoir gardé : sur un emploi du
-                        // temps ouvert un mercredi, une récurrence du vendredi
-                        // recevait une date tombant un dimanche.
-                        $dataForDay['date_seance'] = $emploiTemps->dateDuJour($recurringDay);
-                        $session = ESBTPSeanceCours::create($dataForDay);
-                        $createdSessions[] = $session->id;
-                        \Log::info('Séance récurrente créée', ['id' => $session->id, 'jour' => $recurringDay]);
-                    }
-                } else {
-                    $session = ESBTPSeanceCours::create($data);
+                // Une seule boucle pour les deux cas : `joursAEcrire()` rend le
+                // jour du formulaire quand il n'y a pas de récurrence. C'est la
+                // MÊME liste que celle passée au garde plus haut, et c'est ce qui
+                // empêche que l'un vérifie un jour que l'autre n'écrit pas.
+                foreach ($joursAEcrire as $jourAEcrire) {
+                    $dataForDay = $data;
+                    $dataForDay['jour'] = $jourAEcrire;
+                    // La MÊME formule que le garde. Elle portait le raccourci
+                    // `date_debut + (jour - 1)` : sur un emploi du temps ouvert un
+                    // mercredi, une récurrence du vendredi recevait une date
+                    // tombant un dimanche.
+                    $dataForDay['date_seance'] = $emploiTemps->dateDuJour($jourAEcrire);
+                    $session = ESBTPSeanceCours::create($dataForDay);
                     $createdSessions[] = $session->id;
-                    \Log::info('Séance simple créée', ['id' => $session->id, 'jour' => $data['jour']]);
+                    \Log::info('Séance créée', ['id' => $session->id, 'jour' => $jourAEcrire]);
                 }
 
                 // Création automatique d'évaluations :
@@ -772,103 +778,65 @@ class ESBTPSeanceCoursController extends Controller
     /**
      * Check for scheduling conflicts
      */
-    private function checkSchedulingConflicts(Request $request)
+    /**
+     * Les jours que `store()` va réellement écrire.
+     *
+     * Sans récurrence : le jour du formulaire. Avec récurrence : les jours
+     * cochés, et eux seuls — le jour du formulaire n'est PAS créé dans ce cas.
+     *
+     * @return array<int, mixed>
+     */
+    private function joursAEcrire(Request $request): array
     {
-        $conflicts = [];
+        if (! $request->has('is_recurring')) {
+            return [$request->jour];
+        }
 
+        $jours = $request->input('recurrence_days', []);
+
+        if (is_string($jours)) {
+            $jours = explode(',', $jours);
+        }
+
+        if (! is_array($jours) || $jours === []) {
+            // Case cochée sans aucun jour : on retombe sur le jour du
+            // formulaire, ce que faisait déjà la boucle de création.
+            return [$request->jour];
+        }
+
+        return array_values($jours);
+    }
+
+    /**
+     * Les conflits du créneau demandé, pour une séance qui n'existe pas encore.
+     *
+     * La recherche elle-même vit dans `ConflitsDUnCreneau`, parce qu'elle sert
+     * aussi à `update()` ici et à `storeSession()` de l'autre contrôleur — dont
+     * les champs de formulaire ne portent pas les mêmes noms. Ce qui reste ici
+     * est la traduction de CE formulaire vers ces valeurs.
+     *
+     * Le jour est passé à part : en récurrence, un même formulaire en écrit
+     * plusieurs, et chacun doit être vérifié.
+     *
+     * @return string[]
+     */
+    private function checkSchedulingConflicts(Request $request, mixed $jour)
+    {
         $emploiTemps = ESBTPEmploiTemps::findOrFail($request->emploi_temps_id);
 
-        // La MÊME date que celle qui sera écrite par `store()` — les deux
-        // doivent bouger ensemble, sinon le garde compare une date et
-        // l'enregistrement en pose une autre, et la détection devient muette.
-        $dateSeance = $emploiTemps->dateDuJour($request->jour);
+        // Une pause ou un déjeuner ne mobilisent ni enseignant ni salle : on ne
+        // les cherche que pour un cours ou un devoir. C'est ce que faisait la
+        // version précédente, et l'étendre serait un changement de conduite
+        // qu'aucune mesure n'appuie aujourd'hui.
+        $mobiliseUneRessource = in_array($request->type, ['course', 'homework'], true);
 
-        if ($dateSeance === null) {
-            // Sans date, aucune des trois recherches ci-dessous ne veut dire
-            // quoi que ce soit. Mieux vaut le dire que rendre « aucun conflit ».
-            //
-            // Inatteignable depuis l'unique appelant d'aujourd'hui : il valide
-            // `jour` en `integer|min:1|max:6` et `date_debut` est une colonne
-            // non nullable. La garde est là pour le jour où un second appelant
-            // arrive — c'est exactement ce qui s'est produit du côté de
-            // `storeSession()`, dont la validation accepte `string|max:20`.
-            return ['Le jour de la séance est illisible : les conflits n\'ont pas pu être vérifiés.'];
-        }
-
-        // Les trois recherches ci-dessous ne retiennent que les séances dont
-        // l'emploi du temps couvre une date. Cette date DOIT être celle de la
-        // séance qu'on crée, et non aujourd'hui.
-        //
-        // Avec « aujourd'hui », un emploi du temps qui n'est pas encore en
-        // vigueur était écarté de la recherche : préparer le planning du
-        // semestre suivant ne déclenchait donc AUCUN conflit, ni d'enseignant,
-        // ni de salle, ni de classe — c'est-à-dire précisément au moment où le
-        // conflit se corrige sans coût. Il ne réapparaissait qu'une fois le
-        // semestre commencé, quand les emplois du temps sont imprimés et que les
-        // étudiants sont dans les salles.
-        //
-        // Une seule fermeture, partagée par les trois requêtes : elles étaient
-        // recopiées à l'identique, et une correction sur une seule des trois
-        // aurait laissé deux angles morts.
-        $emploiDuTempsEnVigueur = function ($q) use ($dateSeance) {
-            $jour = $dateSeance->toDateString();
-
-            $q->where('is_active', true)
-                ->whereDate('date_debut', '<=', $jour)
-                ->where(function ($subQuery) use ($jour) {
-                    $subQuery->whereNull('date_fin')
-                        ->orWhereDate('date_fin', '>=', $jour);
-                });
-        };
-
-        // Conflit enseignant sur tous les emplois du temps actifs
-        if (in_array($request->type, ['course', 'homework']) && $request->teacher_id) {
-            $teacherConflictQuery = ESBTPSeanceCours::where('teacher_id', $request->teacher_id)
-                ->where('date_seance', $dateSeance)
-                ->where('is_active', true)
-                ->where(function ($q) use ($request) {
-                    $q->where('heure_debut', '<', $request->heure_fin)
-                        ->where('heure_fin', '>', $request->heure_debut);
-                })
-                ->whereHas('emploiTemps', $emploiDuTempsEnVigueur);
-            if ($teacherConflictQuery->count() > 0) {
-                $teacher = ESBTPTeacher::find($request->teacher_id);
-                $conflicts[] = "L'enseignant {$teacher->user->name} a déjà un cours à cet horaire sur un emploi du temps actif.";
-            }
-        }
-
-        // Check room conflicts for course and homework
-        if (in_array($request->type, ['course', 'homework']) && $request->salle) {
-            $roomConflicts = ESBTPSeanceCours::where('salle', $request->salle)
-                ->where('date_seance', $dateSeance)
-                ->where('is_active', true)
-                ->where('heure_debut', '<', $request->heure_fin)
-                ->where('heure_fin', '>', $request->heure_debut)
-                ->whereHas('emploiTemps', $emploiDuTempsEnVigueur)
-                ->count();
-
-            if ($roomConflicts > 0) {
-                $conflicts[] = "La salle {$request->salle} est déjà occupée à cet horaire";
-            }
-        }
-
-        // Check class conflicts
-        $classConflicts = ESBTPSeanceCours::where('classe_id', $emploiTemps->classe_id)
-            ->where('date_seance', $dateSeance)
-            ->where('is_active', true)
-            ->where(function ($q) use ($request) {
-                $q->where(function ($q) use ($request) {
-                    $q->where('heure_debut', '<', $request->heure_fin)
-                        ->where('heure_fin', '>', $request->heure_debut);
-                });
-            })
-            ->whereHas('emploiTemps', $emploiDuTempsEnVigueur)
-            ->count();
-        if ($classConflicts > 0) {
-            $conflicts[] = 'La classe a déjà une séance programmée à cet horaire';
-        }
-
-        return $conflicts;
+        return (new ConflitsDUnCreneau($emploiTemps))->pourUneNouvelleSeance(
+            $jour,
+            $request->heure_debut,
+            $request->heure_fin,
+            $mobiliseUneRessource && $request->teacher_id ? (int) $request->teacher_id : null,
+            $mobiliseUneRessource ? $request->salle : null,
+        );
     }
 
     /**
@@ -1112,6 +1080,33 @@ class ESBTPSeanceCoursController extends Controller
                 $validated['teacher_id'] = null;
             }
 
+            $emploiTemps = ESBTPEmploiTemps::findOrFail($seancesCour->emploi_temps_id);
+
+            // La date suit le jour. Elle ne le suivait pas : déplacer une séance
+            // du lundi au jeudi laissait `date_seance` sur le lundi, et c'est
+            // cette colonne — non le `jour` — que lisent les heures enseignant,
+            // la paie et l'émargement. La séance changeait de case à l'écran
+            // sans changer de jour pour le reste de l'application.
+            $validated['date_seance'] = $emploiTemps->dateDuJour($validated['jour']);
+
+            // Le même garde qu'à la création. Il n'existait que du côté de
+            // `store()` : créer une séance sur un créneau occupé était refusé,
+            // y DÉPLACER une séance existante passait sans un mot.
+            $mobiliseUneRessource = in_array($validated['type'], ['course', 'homework'], true);
+
+            $conflits = (new ConflitsDUnCreneau($emploiTemps))->pourUneSeanceModifiee(
+                $seancesCour,
+                $validated['jour'],
+                $validated['heure_debut'],
+                $validated['heure_fin'],
+                $mobiliseUneRessource && ! empty($validated['teacher_id']) ? (int) $validated['teacher_id'] : null,
+                $mobiliseUneRessource ? ($validated['salle'] ?? null) : null,
+            );
+
+            if (! empty($conflits)) {
+                throw ValidationException::withMessages(['conflicts' => $conflits]);
+            }
+
             // Update the session
             $seancesCour->update($validated);
 
@@ -1122,6 +1117,12 @@ class ESBTPSeanceCoursController extends Controller
             return redirect()
                 ->route('esbtp.emploi-temps.show', $seancesCour->emploi_temps_id)
                 ->with('success', 'Séance mise à jour avec succès.');
+        } catch (ValidationException $e) {
+            // À relancer AVANT le filet large, qui la convertissait en « une
+            // erreur est survenue » : l'utilisateur perdait le détail. Cela vaut
+            // aussi pour le `$request->validate()` de cette méthode, dont les
+            // messages de champ tombaient déjà dans ce filet.
+            throw $e;
         } catch (\Exception $e) {
             Log::error('Error in SeanceCoursController@update: '.$e->getMessage());
 
