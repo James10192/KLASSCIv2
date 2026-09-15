@@ -146,6 +146,38 @@ class ESBTPLMDBulletinController extends Controller
     }
 
     /**
+     * Le premier etudiant de la cohorte dont le bulletin n'est pas pret, s'il y en a un.
+     *
+     * On s'arrete au premier : les donnees academiques manquantes sont presque
+     * toujours les memes pour toute la classe, et enumerer vingt-cinq fois le
+     * meme motif noierait celui qui compte.
+     *
+     * @param  \Illuminate\Support\Collection<int, int>  $studentIds
+     */
+    private function premierBlocageDeLaCohorte(\Illuminate\Support\Collection $studentIds, Request $request)
+    {
+        foreach ($studentIds as $studentId) {
+            try {
+                $this->assertLmdBulletinReady(
+                    (int) $studentId,
+                    (int) $request->classe_id,
+                    (int) $request->annee_universitaire_id,
+                    (int) $request->semestre,
+                    $request
+                );
+            } catch (AcademicPilotageException $exception) {
+                return $this->academicPilotageFailure(
+                    $request,
+                    $exception,
+                    "Bulletin LMD bloqué pour l'étudiant {$studentId} : {$exception->getMessage()}",
+                );
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Generer les bulletins pour toute une classe.
      */
     public function genererClasse(Request $request)
@@ -177,22 +209,8 @@ class ESBTPLMDBulletinController extends Controller
                 ->with('error', 'Aucun étudiant actif trouvé pour cette classe et cette année universitaire.');
         }
 
-        foreach ($studentIds as $studentId) {
-            try {
-                $this->assertLmdBulletinReady(
-                    (int) $studentId,
-                    (int) $request->classe_id,
-                    (int) $request->annee_universitaire_id,
-                    (int) $request->semestre,
-                    $request
-                );
-            } catch (AcademicPilotageException $exception) {
-                return $this->academicPilotageFailure(
-                    $request,
-                    $exception,
-                    "Bulletin LMD bloqué pour l'étudiant {$studentId} : {$exception->getMessage()}",
-                );
-            }
+        if ($refus = $this->premierBlocageDeLaCohorte($studentIds, $request)) {
+            return $refus;
         }
 
         try {

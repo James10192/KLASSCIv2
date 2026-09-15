@@ -169,7 +169,19 @@ class ESBTPLMDSessionController extends Controller
             return 'Aucune modification.';
         }
 
-        return implode(', ', $parties) . '. ' . $bilan['recalculees'] . ' note' . ($bilan['recalculees'] > 1 ? 's finales recalculees' : ' finale recalculee') . '.';
+        $message = implode(', ', $parties) . '. ' . $bilan['recalculees'] . ' note' . ($bilan['recalculees'] > 1 ? 's finales recalculees' : ' finale recalculee') . '.';
+
+        // Un refus de reagregation doit se voir ici. Les notes SONT enregistrees,
+        // mais le bulletin d'une classe n'a pas suivi : sans cette phrase, seul
+        // un journal le dirait, et l'ecran laisserait croire que tout a suivi.
+        $refuses = $bilan['bulletins_refuses'] ?? [];
+        if ($refuses !== []) {
+            $message .= ' Attention : ' . count($refuses) . ' classe' . (count($refuses) > 1 ? 's n\'ont' : ' n\'a')
+                . ' pas pu etre reagregee' . (count($refuses) > 1 ? 's' : '') . '. '
+                . implode(' ', array_column($refuses, 'message'));
+        }
+
+        return $message;
     }
 
     /**

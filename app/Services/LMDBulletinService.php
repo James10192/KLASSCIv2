@@ -116,7 +116,6 @@ class LMDBulletinService
         return DB::transaction(function () use ($etudiantId, $classeId, $anneeUniversitaireId, $semestre, $skipRanksAndStats) {
 
             $classe = ESBTPClasse::with(['parcours.mention.domaine', 'parcours.filiere', 'niveau'])->findOrFail($classeId);
-            $parcours = $classe->parcours;
 
             // 0. La composition du semestre, lue AVANT la moindre écriture.
             // Un bulletin qu'on va refuser de recalculer ne doit pas non plus
@@ -126,55 +125,9 @@ class LMDBulletinService
             $this->refuserSurUneMaquetteVide($etudiantId, $classeId, $anneeUniversitaireId, $semestre, $ues);
 
             // 1. Creer ou mettre a jour le bulletin
-            // Label parcours bulletin. Composition automatique Niveau + Filiere
-            // ("LICENCE 3 GCV BATIMENT & URBANISME") pilotee par le reglage
-            // `lmd_bulletin_parcours_auto` ; desactivee, on imprime le nom du parcours tel quel.
-            $parcoursAuto = $this->getSetting('lmd_bulletin_parcours_auto', '1') == '1';
-            $parcoursLabel = $parcours
-                ? ($parcoursAuto
-                    ? $parcours->genererLabelBulletin($classe->niveau)
-                    : (string) $parcours->name)
-                : ($classe->niveau?->name ?? '');
+            $bulletin = $this->poserEnTeteDuBulletin($classe, $etudiantId, $classeId, $anneeUniversitaireId, $semestre);
 
-            $bulletin = ESBTPLMDBulletin::updateOrCreate(
-                [
-                    'etudiant_id' => $etudiantId,
-                    'classe_id' => $classeId,
-                    'annee_universitaire_id' => $anneeUniversitaireId,
-                    'semestre' => $semestre,
-                ],
-                [
-                    'parcours_id' => $parcours?->id,
-                    'niveau' => $classe->niveau?->name,
-                    'domaine_label' => $parcours?->mention?->domaine?->name,
-                    'mention_label' => $parcours?->mention?->name,
-                    'parcours_label' => $parcoursLabel,
-                    'updated_by' => auth()->id(),
-                ]
-            );
-
-            // Pre-load ALL notes for this student in this semestre (avoid N+1)
-            $periodeVariants = $this->getPeriodeVariants($semestre);
-            $allNotes = ESBTPNote::where('etudiant_id', $etudiantId)
-                ->where('classe_id', $classeId)
-                ->whereHas('evaluation', function ($q) use ($periodeVariants, $anneeUniversitaireId) {
-                    $q->whereIn('periode', $periodeVariants)
-                      ->where('annee_universitaire_id', $anneeUniversitaireId)
-                      ->where('status', ESBTPEvaluation::STATUS_COMPLETED);
-                })
-                ->with('evaluation')
-                ->get()
-                ->groupBy('matiere_id');
-
-            // Pre-load enseignant mapping (avoid N+1)
-            $enseignantMap = ESBTPEvaluation::where('classe_id', $classeId)
-                ->where('annee_universitaire_id', $anneeUniversitaireId)
-                ->whereNotNull('enseignant_id')
-                ->distinct()
-                ->pluck('enseignant_id', 'matiere_id');
-
-            $this->preloadedNotes = $allNotes;
-            $this->preloadedEnseignants = $enseignantMap;
+            $this->prechargerNotesEtEnseignants($etudiantId, $classeId, $semestre, $anneeUniversitaireId);
 
             // 3. Calculer les resultats par UE et ECUE
             $resultatsUEs = [];
@@ -267,6 +220,79 @@ class LMDBulletinService
         }
 
         return $bulletins;
+    }
+
+    /**
+     * Le bulletin et son en-tête : rangs de la structure, libellé du parcours.
+     *
+     * Le libellé se compose automatiquement à partir du niveau et de la filière
+     * (« LICENCE 3 GCV BATIMENT & URBANISME ») quand le réglage
+     * `lmd_bulletin_parcours_auto` est posé ; sinon on imprime le nom du
+     * parcours tel que l'école l'a saisi.
+     */
+    private function poserEnTeteDuBulletin(
+        ESBTPClasse $classe,
+        int $etudiantId,
+        int $classeId,
+        int $anneeUniversitaireId,
+        int $semestre
+    ): ESBTPLMDBulletin {
+        $parcours = $classe->parcours;
+        $parcoursAuto = $this->getSetting('lmd_bulletin_parcours_auto', '1') == '1';
+        $parcoursLabel = $parcours
+            ? ($parcoursAuto
+                ? $parcours->genererLabelBulletin($classe->niveau)
+                : (string) $parcours->name)
+            : ($classe->niveau?->name ?? '');
+
+        return ESBTPLMDBulletin::updateOrCreate(
+            [
+                'etudiant_id' => $etudiantId,
+                'classe_id' => $classeId,
+                'annee_universitaire_id' => $anneeUniversitaireId,
+                'semestre' => $semestre,
+            ],
+            [
+                'parcours_id' => $parcours?->id,
+                'niveau' => $classe->niveau?->name,
+                'domaine_label' => $parcours?->mention?->domaine?->name,
+                'mention_label' => $parcours?->mention?->name,
+                'parcours_label' => $parcoursLabel,
+                'updated_by' => auth()->id(),
+            ]
+        );
+    }
+
+    /**
+     * Les notes et les enseignants du semestre, chargés une fois pour toutes.
+     *
+     * Sans ce préchargement, chaque élément constitutif irait chercher ses notes
+     * et son enseignant tout seul : une requête par élément et par étudiant.
+     */
+    private function prechargerNotesEtEnseignants(
+        int $etudiantId,
+        int $classeId,
+        int $semestre,
+        int $anneeUniversitaireId
+    ): void {
+        $periodeVariants = $this->getPeriodeVariants($semestre);
+
+        $this->preloadedNotes = ESBTPNote::where('etudiant_id', $etudiantId)
+            ->where('classe_id', $classeId)
+            ->whereHas('evaluation', function ($q) use ($periodeVariants, $anneeUniversitaireId) {
+                $q->whereIn('periode', $periodeVariants)
+                  ->where('annee_universitaire_id', $anneeUniversitaireId)
+                  ->where('status', ESBTPEvaluation::STATUS_COMPLETED);
+            })
+            ->with('evaluation')
+            ->get()
+            ->groupBy('matiere_id');
+
+        $this->preloadedEnseignants = ESBTPEvaluation::where('classe_id', $classeId)
+            ->where('annee_universitaire_id', $anneeUniversitaireId)
+            ->whereNotNull('enseignant_id')
+            ->distinct()
+            ->pluck('enseignant_id', 'matiere_id');
     }
 
     /**
@@ -439,32 +465,17 @@ class LMDBulletinService
         // Le parcours decide de la composition : sans lui, un element propre a une
         // autre maquette entrerait dans cette moyenne, et un element surcharge y
         // entrerait DEUX fois, avec son coefficient compte deux fois.
-        $ecues = $ue->getEcuesEffectifs($parcoursId);
-        $totalPoints = 0;
-        $totalCoefficients = 0;
-        $resultatsECUEs = [];
-
-        foreach ($ecues as $ecue) {
-            $resultatECUE = $this->calculerResultatECUE(
-                $bulletin, $resultatUE, $ecue, $etudiantId, $classeId, $semestre, $anneeUniversitaireId
-            );
-            $resultatsECUEs[] = $resultatECUE;
-
-            $noteEffective = $this->noteEffectiveECUE($resultatECUE);
-
-            if ($noteEffective !== null) {
-                // Priorité: pivot coefficient > matière coefficient_ecue > matière coefficient > 1
-                $coeff = $ecue->pivot?->coefficient_ecue ?? $ecue->coefficient_ecue ?? $ecue->coefficient ?? 1;
-                $totalPoints += $noteEffective * (float) $coeff;
-                $totalCoefficients += (float) $coeff;
-            }
-        }
+        [$resultatsECUEs, $totalPoints, $totalCoefficients] = $this->calculerLesElementsDeLUnite(
+            $bulletin, $resultatUE, $ue, $etudiantId, $classeId, $semestre, $anneeUniversitaireId, $parcoursId
+        );
 
         // La maquette ne rattache plus aucun élément à cette unité alors qu'elle
-        // en portait : on la rend telle quelle. Écrire ici une moyenne vide et
-        // un « non acquis » retirerait ses crédits du capitalisé alors que le
-        // total continue de les compter — et ferait bouger la moyenne générale
-        // du bulletin, donc la frontière entre admis et admis sous condition.
+        // en portait : sa moyenne, son statut et sa mention sont laissés intacts.
+        // (Son crédit, lui, vient d'être réécrit avec celui de la maquette — c'est
+        // voulu : il ne dépend pas des notes.) Écrire ici une moyenne vide et un
+        // « non acquis » retirerait ses crédits du capitalisé alors que le total
+        // continue de les compter — et ferait bouger la moyenne générale du
+        // bulletin, donc la frontière entre admis et admis sous condition.
         if ($this->composition->elaguerLesElements($resultatUE, $resultatsECUEs)) {
             return $resultatUE;
         }
@@ -489,6 +500,49 @@ class LMDBulletinService
         ]);
 
         return $resultatUE;
+    }
+
+    /**
+     * Les elements constitutifs d'une unite, et les deux sommes qui font sa moyenne.
+     *
+     * @return array{0: array<int, ESBTPLMDResultatECUE>, 1: float, 2: float}
+     *         les resultats calcules, la somme des points ponderes, la somme des coefficients
+     */
+    private function calculerLesElementsDeLUnite(
+        ESBTPLMDBulletin $bulletin,
+        ESBTPLMDResultatUE $resultatUE,
+        ESBTPUniteEnseignement $ue,
+        int $etudiantId,
+        int $classeId,
+        int $semestre,
+        int $anneeUniversitaireId,
+        ?int $parcoursId
+    ): array {
+        // Le parcours decide de la composition : sans lui, un element propre a une
+        // autre maquette entrerait dans cette moyenne, et un element surcharge y
+        // entrerait DEUX fois, avec son coefficient compte deux fois.
+        $ecues = $ue->getEcuesEffectifs($parcoursId);
+        $resultats = [];
+        $totalPoints = 0.0;
+        $totalCoefficients = 0.0;
+
+        foreach ($ecues as $ecue) {
+            $resultatECUE = $this->calculerResultatECUE(
+                $bulletin, $resultatUE, $ecue, $etudiantId, $classeId, $semestre, $anneeUniversitaireId
+            );
+            $resultats[] = $resultatECUE;
+
+            $noteEffective = $this->noteEffectiveECUE($resultatECUE);
+
+            if ($noteEffective !== null) {
+                // Priorité: pivot coefficient > matière coefficient_ecue > matière coefficient > 1
+                $coeff = $ecue->pivot?->coefficient_ecue ?? $ecue->coefficient_ecue ?? $ecue->coefficient ?? 1;
+                $totalPoints += $noteEffective * (float) $coeff;
+                $totalCoefficients += (float) $coeff;
+            }
+        }
+
+        return [$resultats, $totalPoints, $totalCoefficients];
     }
 
     /**

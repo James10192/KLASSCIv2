@@ -44,12 +44,12 @@ class CompositionDuBulletinTest extends TestCase
 
     public function test_une_composition_vide_n_elague_rien(): void
     {
-        // Le cas qui compte. La maquette peut être vide passagèrement : le
-        // nettoyage avant réimport supprime les liens parcours-unité PUIS met
-        // les unités à la corbeille, et désactiver les matières d'une unité vide
-        // sa liste d'éléments. Vider le bulletin dans ces fenêtres effacerait
-        // des résultats — note de seconde session comprise — pour un état qui
-        // n'a duré qu'un instant.
+        // Le cas qui compte, et qui sert aujourd'hui au rang des ÉLÉMENTS : une
+        // unité dont les matières viennent d'être désactivées, ou dont la
+        // maquette réserve tous les éléments à l'autre parcours. Rendre `[]` est
+        // ce qui permet à `elaguerLesElements()` de laisser l'unité intacte au
+        // lieu d'effacer des notes pour un état passager. Au rang des UNITÉS, le
+        // refus intervient plus tôt, avant toute écriture.
         $this->assertSame([], CompositionDuBulletin::idsAElaguer([], [10, 20, 30]));
     }
 

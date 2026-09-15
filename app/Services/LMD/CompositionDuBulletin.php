@@ -28,21 +28,19 @@ final class CompositionDuBulletin
     /**
      * Les lignes à retirer — la décision seule, sans la base.
      *
-     * Le cas qui compte est celui de la composition VIDE. Il se produit pour de
-     * bon (une maquette qu'on vient de vider) mais aussi, et bien plus souvent,
-     * de façon passagère :
+     * Le cas qui compte est celui de la composition VIDE, et il se produit dans
+     * des situations ordinaires : désactiver les matières d'une unité vide sa
+     * liste d'éléments, et une unité partagée dont la maquette réserve tous ses
+     * éléments à l'autre parcours donne le même résultat.
      *
-     * - `LMDCleanupService` supprime les liens parcours-unité PUIS met les
-     *   unités à la corbeille ; entre les deux, la maquette ne rend rien. Le
-     *   couple « nettoyer puis réimporter » est le geste que la documentation du
-     *   dépôt décrit comme normal.
-     * - la composition ne retient que les matières actives : désactiver les
-     *   matières d'une unité — geste d'administration courant — vide sa liste
-     *   d'éléments.
+     * Rendre `[]` protège donc les lignes plutôt que de les effacer pour un état
+     * qui n'aura duré qu'un instant.
      *
-     * Vider le bulletin dans ces fenêtres-là effacerait des résultats, note de
-     * seconde session comprise, pour un état qui n'a duré qu'un instant. On
-     * garde donc les lignes et on le dit : c'est l'appelant qui journalise.
+     * Deux issues, selon le rang : au niveau de l'UNITÉ, le cas n'arrive plus
+     * jusqu'ici — `LMDBulletinService::refuserSurUneMaquetteVide()` l'intercepte
+     * avant toute écriture et lève. Au niveau des ÉLÉMENTS, la garde sert : elle
+     * est la condition qu'`elaguerLesElements()` remonte pour que l'unité soit
+     * laissée telle quelle.
      *
      * @param  array<int, int>  $idsRetenus
      * @param  array<int, int>  $idsPresents

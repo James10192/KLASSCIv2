@@ -9,6 +9,7 @@ use App\Models\ESBTPInscription;
 use App\Models\ESBTPLMDResultatECUE;
 use App\Models\ESBTPLMDResultatUE;
 use App\Models\ESBTPLMDSession;
+use App\Services\LMD\Exceptions\MaquetteSansCompositionException;
 use App\Models\ESBTPLMDBulletin;
 use App\Models\ESBTPLMDJury;
 use App\Models\ESBTPMatiere;
@@ -502,7 +503,8 @@ class RattrapageSchedulingService
         // Sans cette reagregation, la note finale resterait sans effet : la moyenne de
         // l'unite, son statut, les credits, la moyenne generale et le rang continueraient
         // de porter sur la seule premiere session.
-        $bulletinsRecalcules = $this->reagregerBulletins($bulletins, $etudiantsTouches);
+        $reagregation = $this->reagregerBulletins($bulletins, $etudiantsTouches);
+        $bulletinsRecalcules = $reagregation['recalcules'];
 
         Log::info('[RattrapageSchedulingService] notes de seconde session enregistrees', [
             'session_id' => $sessionRattrapage->id,
@@ -511,6 +513,7 @@ class RattrapageSchedulingService
             'ignorees' => $ignorees,
             'recalculees' => $recalculees,
             'bulletins_recalcules' => $bulletinsRecalcules,
+            'bulletins_refuses' => $reagregation['refuses'],
             'etudiants' => $etudiantsTouches->all(),
             'user_id' => optional(auth()->user())->id,
         ]);
@@ -521,6 +524,7 @@ class RattrapageSchedulingService
             'recalculees' => $recalculees,
             'ignorees' => $ignorees,
             'bulletins_recalcules' => $bulletinsRecalcules,
+            'bulletins_refuses' => $reagregation['refuses'],
         ];
     }
 
@@ -534,12 +538,20 @@ class RattrapageSchedulingService
      *
      * @param  Collection<int, ESBTPLMDBulletin>  $bulletins  bulletins du perimetre de la session
      * @param  Collection<int, int>  $etudiantIds  etudiants dont une note vient de changer
-     * @return int  nombre de bulletins reagreges
+     * Une classe dont la maquette ne rend momentanement aucune unite est REFUSEE,
+     * pas plantee. Les notes sont deja enregistrees a ce stade — la transaction
+     * est fermee plus haut — donc laisser l'exception traverser arreterait la
+     * boucle, priverait de leur recalcul de rang les classes parfaitement saines
+     * du meme lot, et rendrait un echec a l'utilisateur alors que ses notes sont
+     * bien en base. On continue, et on remonte le refus dans le bilan pour qu'il
+     * se voie a l'ecran plutot que dans un journal que personne ne lit.
+     *
+     * @return array{recalcules: int, refuses: array<int, array{classe_id: int, semestre: int, message: string}>}
      */
-    private function reagregerBulletins(Collection $bulletins, Collection $etudiantIds): int
+    private function reagregerBulletins(Collection $bulletins, Collection $etudiantIds): array
     {
         if ($etudiantIds->isEmpty()) {
-            return 0;
+            return ['recalcules' => 0, 'refuses' => []];
         }
 
         $concernes = $bulletins
@@ -548,23 +560,50 @@ class RattrapageSchedulingService
             ->values();
 
         if ($concernes->isEmpty()) {
-            return 0;
+            return ['recalcules' => 0, 'refuses' => []];
         }
 
         $service = $this->resolveBulletinService();
+        $refuses = [];
+        $recalcules = 0;
 
         foreach ($concernes as $bulletin) {
-            $service->genererBulletinLMD(
-                (int) $bulletin->etudiant_id,
-                (int) $bulletin->classe_id,
-                (int) $bulletin->annee_universitaire_id,
-                (int) $bulletin->semestre,
-                true, // rang et statistiques recalcules une seule fois par classe, ci-dessous
-            );
+            $perimetre = $bulletin->classe_id.'|'.$bulletin->semestre;
+
+            // La maquette est une propriete de la classe, pas de l'etudiant :
+            // une fois refusee, inutile de la retenter pour les vingt-quatre
+            // autres, et inutile de repeter le meme avertissement au journal.
+            if (isset($refuses[$perimetre])) {
+                continue;
+            }
+
+            try {
+                $service->genererBulletinLMD(
+                    (int) $bulletin->etudiant_id,
+                    (int) $bulletin->classe_id,
+                    (int) $bulletin->annee_universitaire_id,
+                    (int) $bulletin->semestre,
+                    true, // rang et statistiques recalcules une seule fois par classe, ci-dessous
+                );
+                $recalcules++;
+            } catch (MaquetteSansCompositionException $e) {
+                $refuses[$perimetre] = [
+                    'classe_id' => (int) $bulletin->classe_id,
+                    'semestre' => (int) $bulletin->semestre,
+                    'message' => $e->getMessage(),
+                ];
+            }
         }
 
         foreach ($concernes->groupBy('classe_id') as $classeId => $groupe) {
             $reference = $groupe->first();
+
+            // Recalculer le rang d'une classe dont les bulletins n'ont pas bouge
+            // rangerait des moyennes perimees : on s'abstient, et le bilan le dit.
+            if (isset($refuses[$classeId.'|'.$reference->semestre])) {
+                continue;
+            }
+
             $service->calculerRangsClasse(
                 (int) $classeId,
                 (int) $reference->annee_universitaire_id,
@@ -577,7 +616,7 @@ class RattrapageSchedulingService
             );
         }
 
-        return $concernes->count();
+        return ['recalcules' => $recalcules, 'refuses' => array_values($refuses)];
     }
 
     /**
