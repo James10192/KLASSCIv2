@@ -19,10 +19,21 @@ use Tests\TestCase;
  * Sans base de données, malgré `Tests\TestCase` : `presentFromCollections()`
  * prend les collections qu'on lui donne et ne va rien chercher. Le cadre Laravel
  * n'est là que pour les façades dont le journal d'audit a besoin à la
- * construction d'un modèle ; aucune requête n'est émise — toutes les relations
- * lues par le présentateur sont épinglées plus bas. C'est ce qui rend ce contrôle
- * exécutable là où MySQL n'est pas disponible, donc réellement rejoué au lieu
- * d'être écrit et jamais lancé.
+ * construction d'un modèle. C'est ce qui rend ce contrôle exécutable là où MySQL
+ * n'est pas disponible, donc réellement rejoué au lieu d'être écrit et jamais
+ * lancé.
+ *
+ * Deux raisons distinctes font qu'aucune requête n'est émise, et la seconde est
+ * fragile — autant l'écrire :
+ *
+ *  1. les relations que le présentateur lit sur l'inscription et sur la classe
+ *     sont épinglées plus bas par `setRelation()` ;
+ *  2. celles qu'il lit SANS qu'elles soient épinglées — `inscription->niveauEtude`,
+ *     `->niveau`, `->filiere` — se taisent seulement parce que leur clé étrangère
+ *     est nulle : `BelongsTo::getResults()` court-circuite alors sans requête.
+ *     Poser un `niveau_etude_id` dans les fabriques ci-dessous suffirait donc à
+ *     envoyer ce contrôle chercher la base. Si ce jour vient, épinglez-les aussi
+ *     plutôt que de retirer le cas.
  */
 class MoyenneAnnuelleDuParcoursTest extends TestCase
 {

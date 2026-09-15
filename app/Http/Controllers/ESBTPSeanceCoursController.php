@@ -108,7 +108,10 @@ class ESBTPSeanceCoursController extends Controller
         $conflits = [];
 
         // Récupérer toutes les séances actives
-        $seances = ESBTPSeanceCours::with(['emploiTemps.classe', 'matiere'])
+        // `teacher.user` est chargé parce que le conflit d'enseignant se lit
+        // maintenant sur `teacher_id` et s'affiche par le nom — sans lui, une
+        // requête par séance.
+        $seances = ESBTPSeanceCours::with(['emploiTemps.classe', 'matiere', 'teacher.user'])
             ->where('is_active', true)
             ->get();
 
@@ -126,21 +129,30 @@ class ESBTPSeanceCoursController extends Controller
                     $seance->heure_debut < $autreSeance->heure_fin &&
                     $seance->heure_fin > $autreSeance->heure_debut) {
 
-                    // Vérifier les conflits d'enseignant
+                    // Conflit d'enseignant, lu sur `teacher_id`.
                     //
-                    // `trim() !== ''` avant la comparaison : sans cette garde,
-                    // deux séances SANS enseignant se déclaraient mutuellement en
-                    // conflit, puisque `null == null` est vrai. Même chose pour la
-                    // salle juste en dessous — une paire de séances sans
-                    // enseignant ni salle produisait donc DEUX faux conflits à
-                    // elle seule. Sur une page qui les liste toutes, ce bruit
-                    // apprend à ignorer le bandeau, ce qui coûte plus cher que
-                    // l'absence de bandeau.
-                    if (trim((string) $seance->enseignant) !== ''
-                        && trim((string) $seance->enseignant) === trim((string) $autreSeance->enseignant)) {
+                    // Il se lisait sur la colonne texte `enseignant`, qui est
+                    // MORTE : absente de `$fillable`, écrite par aucun code du
+                    // dépôt, donc nulle sur toute séance créée par l'application.
+                    // Comme `null == null` est vrai, la branche se déclenchait sur
+                    // n'importe quelle paire qui se chevauche — un bandeau de faux
+                    // conflits, qui apprend à ignorer le bandeau.
+                    //
+                    // S'en garder par `trim() !== ''` supprimait bien le bruit,
+                    // mais rendait du même coup la détection d'enseignant
+                    // définitivement inerte : elle ne pouvait plus JAMAIS se
+                    // déclencher. Échanger un faux positif systématique contre un
+                    // faux négatif systématique n'est pas un progrès.
+                    //
+                    // `teacher_id` est la colonne vivante : c'est elle que `store()`
+                    // écrit et que `checkSchedulingConflicts()` interroge.
+                    if ($seance->teacher_id
+                        && (int) $seance->teacher_id === (int) $autreSeance->teacher_id) {
                         $conflits[] = [
                             'type' => 'Enseignant',
-                            'nom' => $seance->enseignant,
+                            'nom' => $seance->teacher?->user?->name
+                                ?? $seance->teacher?->name
+                                ?? ('Enseignant #' . $seance->teacher_id),
                             'jour' => $seance->jour,
                             'heure_debut' => $seance->heure_debut,
                             'heure_fin' => $seance->heure_fin,
@@ -148,14 +160,18 @@ class ESBTPSeanceCoursController extends Controller
                         ];
                     }
 
-                    // Vérifier les conflits de salle (voir la garde ci-dessus).
+                    // Conflit de salle. `salle`, elle, est bien peuplée.
                     //
-                    // La comparaison reste sensible à la casse et aux
-                    // abréviations : « Amphi A », « amphi A » et « A » restent
-                    // trois salles. Les rapprocher élargirait la détection sur
-                    // des données existantes, ce qui est un autre geste que
-                    // celui-ci — lequel ne fait que cesser de signaler un
-                    // conflit là où il n'y en a jamais eu.
+                    // La garde de nullité y était le vrai besoin : deux séances
+                    // sans salle se déclaraient en conflit. Le passage de `==` à
+                    // `trim() === trim()` élargit par ailleurs un peu la détection
+                    // — espaces de bord, et plus de comparaison numérique de deux
+                    // chaînes, où PHP tient « 10 » et « 1e1 » pour égales.
+                    //
+                    // La casse et les abréviations restent distinctes : « Amphi A »,
+                    // « amphi A » et « A » sont trois salles. Les rapprocher
+                    // élargirait la détection sur des données existantes, ce qui
+                    // est un autre geste que celui-ci.
                     if (trim((string) $seance->salle) !== ''
                         && trim((string) $seance->salle) === trim((string) $autreSeance->salle)) {
                         $conflits[] = [
@@ -356,12 +372,21 @@ class ESBTPSeanceCoursController extends Controller
         // du temps recoupe celle-ci. Une fin non renseignée vaut « sans terme »
         // des deux côtés.
         //
-        // Sans emploi du temps de référence — appelant qui n'en fournit pas —
-        // on retombe sur « en vigueur aujourd'hui », le comportement d'avant.
+        // Sans emploi du temps de référence, on retombe sur « en vigueur
+        // aujourd'hui », le comportement d'avant — et ce repli est atteignable :
+        // `ESBTPEmploiTemps` est en suppression douce, donc `$seance->emploiTemps`
+        // rend `null` dès que l'emploi du temps est à la corbeille.
+        //
+        // D'où la fenêtre `[aujourd'hui, aujourd'hui]` et non `[aujourd'hui, ∞)`.
+        // Laisser la borne droite ouverte aurait élargi le repli aux emplois du
+        // temps À VENIR, ce que l'ancien `date_debut <= today` excluait : un repli
+        // doit rendre le comportement d'avant, pas un comportement voisin.
         $debut = $emploiTempsEdite?->date_debut;
         $fin = $emploiTempsEdite?->date_fin;
         $debutJour = $debut ? Carbon::parse($debut)->toDateString() : now()->toDateString();
-        $finJour = $fin ? Carbon::parse($fin)->toDateString() : null;
+        $finJour = $fin
+            ? Carbon::parse($fin)->toDateString()
+            : ($emploiTempsEdite ? null : now()->toDateString());
 
         $existingSessions = ESBTPSeanceCours::where('teacher_id', $teacher->id)
             ->where('is_active', true)

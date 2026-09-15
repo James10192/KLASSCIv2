@@ -63,10 +63,20 @@ final class AgregatDeLaPeriode
     /**
      * Un bulletin par semestre, du plus ancien au plus récent.
      *
-     * La déduplication n'est pas décorative : si un bulletin a été régénéré,
-     * deux lignes portent le même semestre, et les sommer compterait ses
-     * crédits deux fois. On garde le dernier écrit — ce que faisait déjà
-     * l'ancien `orderByDesc('id')->first()` pour le cas à un seul bulletin.
+     * Ce que la déduplication attrape, exactement — et ce qu'elle n'attrape pas.
+     *
+     * Elle NE sert PAS contre un bulletin régénéré : `esbtp_lmd_bulletins` porte
+     * l'index UNIQUE `lmd_bulletin_unique` sur (etudiant_id, classe_id,
+     * annee_universitaire_id, semestre), et `LMDBulletinService` régénère par
+     * `updateOrCreate` sur exactement cette clé. Une régénération met la ligne à
+     * jour, elle n'en crée pas de seconde. Cette précision est ici parce que la
+     * phrase inverse y a figuré, et qu'elle était fausse.
+     *
+     * Elle sert contre le jury : `ESBTPLMDBulletin::scopeForJury()` n'épingle
+     * `classe_id` que `->when($jury->classe_id, …)`. Un jury sans classe ramène
+     * donc, pour un même étudiant et un même semestre, les bulletins de plusieurs
+     * classes — et les sommer compterait leurs crédits deux fois. On garde le
+     * dernier écrit.
      *
      * Partagée, parce que le calcul de la décision et le garde d'émission
      * doivent dédupliquer de la même façon pour trouver le même nombre.

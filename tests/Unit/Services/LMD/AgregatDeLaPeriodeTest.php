@@ -88,8 +88,8 @@ class AgregatDeLaPeriodeTest extends TestCase
         // non-régression. `AgregatDeLaPeriode` n'a jamais filtré `> 0`, donc ce
         // cas passait déjà avant que les appelants ne lui soient confiés. Il ne
         // couvre pas la correction ; il verrouille la distinction du côté où le
-        // filtre ne doit plus revenir. Ce qui couvre la correction est un cas
-        // Feature sur la fiche elle-même.
+        // filtre ne doit plus revenir. Ce qui couvre la correction est
+        // `tests/Unit/Services/MoyenneAnnuelleDuParcoursTest`.
         //
         // Le comparer à `test_un_semestre_non_calculable…`, juste en dessous,
         // qui montre le cas où l'absence est réelle.
