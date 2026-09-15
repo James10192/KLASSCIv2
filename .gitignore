@@ -94,3 +94,8 @@ storage/fonts/*.ufm.json
 # delibere, `git add -f`, ce qui est exactement ce qu'on veut d'une archive.
 /.patches/
 .claude/completude.md
+
+# Junctions Windows .opencode → .claude (script scripts/link-opencode-claude.ps1)
+.opencode/rules/
+.opencode/hooks/
+.opencode/skills/
