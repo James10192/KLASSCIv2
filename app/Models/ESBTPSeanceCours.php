@@ -272,16 +272,12 @@ class ESBTPSeanceCours extends Model
      */
     public function getJourSemaineTexteAttribute()
     {
-        $jours = [
-            0 => 'Lundi',
-            1 => 'Mardi',
-            2 => 'Mercredi',
-            3 => 'Jeudi',
-            4 => 'Vendredi',
-            5 => 'Samedi',
-        ];
-
-        return $jours[$this->jour] ?? 'Jour inconnu';
+        // Sa table de correspondance partait de ZÉRO (`0 => 'Lundi'`) alors que
+        // les formulaires écrivent `1` pour lundi : cet accesseur décalait donc
+        // tous les libellés d'un jour, et rendait « Jour inconnu » pour tout
+        // jour écrit en toutes lettres. Aucun appelant dans le dépôt, ce qui
+        // explique que personne ne l'ait vu.
+        return \App\Domain\EmploiTemps\JourDeLaSemaine::libelle($this->jour) ?? 'Jour inconnu';
     }
 
     /**
@@ -323,8 +319,14 @@ class ESBTPSeanceCours extends Model
      */
     public function estEnConflitAvec(ESBTPSeanceCours $autreSeance)
     {
-        // Vérifier si les séances sont le même jour
-        if ($this->jour !== $autreSeance->jour) {
+        // Vérifier si les séances sont le même jour.
+        //
+        // Par `JourDeLaSemaine` et non par `!==` : la colonne `jour` porte deux
+        // écritures selon l'écran de saisie — l'entier `1` depuis la liste des
+        // séances, le libellé « Lundi » depuis l'emploi du temps. Comparées
+        // directement, deux séances du même lundi issues des deux chemins ne
+        // sont jamais en conflit.
+        if (! \App\Domain\EmploiTemps\JourDeLaSemaine::memeJour($this->jour, $autreSeance->jour)) {
             return false;
         }
 
@@ -347,22 +349,25 @@ class ESBTPSeanceCours extends Model
         // Récupérer la date de début de l'emploi du temps
         $dateDebut = \Carbon\Carbon::parse($this->emploiTemps->date_debut);
 
-        // Convertir le nom du jour en numéro (1 = lundi, 7 = dimanche)
-        $joursMapping = [
-            'lundi' => 1,
-            'mardi' => 2,
-            'mercredi' => 3,
-            'jeudi' => 4,
-            'vendredi' => 5,
-            'samedi' => 6,
-            'dimanche' => 7,
-        ];
+        // Convertir le jour en numéro (1 = lundi).
+        //
+        // Sa table ne connaissait que les libellés : pour une séance saisie
+        // depuis la liste des séances, où `jour` vaut l'entier `1`,
+        // `strtolower(1)` rend `'1'`, absent de la table, donc la méthode
+        // rendait `null` — et l'écran des présences, son seul appelant, restait
+        // sans date calculée pour toutes ces séances.
+        //
+        // Un écart assumé avec la table remplacée : elle acceptait `dimanche`,
+        // que `JourDeLaSemaine` ne connaît pas. Aucun des deux formulaires ne le
+        // propose, et `getNomJour()` le rendait déjà « Jour inconnu ». La
+        // semaine est désormais la même partout.
+        $rang = \App\Domain\EmploiTemps\JourDeLaSemaine::rang($this->jour);
 
-        $jourSeance = $joursMapping[strtolower($this->jour)] ?? null;
-
-        if (!$jourSeance) {
+        if ($rang === null) {
             return null;
         }
+
+        $jourSeance = $rang + 1;
 
         // Calculer le décalage entre le jour de la semaine de la date de début (1 = lundi, 7 = dimanche)
         // et le jour de la séance (1 = lundi, 7 = dimanche)
@@ -392,16 +397,9 @@ class ESBTPSeanceCours extends Model
      */
     public function getNomJour()
     {
-        $jours = [
-            1 => 'Lundi',
-            2 => 'Mardi',
-            3 => 'Mercredi',
-            4 => 'Jeudi',
-            5 => 'Vendredi',
-            6 => 'Samedi'
-        ];
-
-        return $jours[$this->jour] ?? 'Jour inconnu';
+        // Sa table ne connaissait que les entiers, donc « Jour inconnu » pour
+        // toute séance saisie depuis l'emploi du temps, qui écrit « Lundi ».
+        return \App\Domain\EmploiTemps\JourDeLaSemaine::libelle($this->jour) ?? 'Jour inconnu';
     }
 
     /**
@@ -442,7 +440,8 @@ class ESBTPSeanceCours extends Model
 
     public function isOverlapping(ESBTPSeanceCours $other)
     {
-        if ($this->jour !== $other->jour) {
+        // Même raison qu'à `estEnConflitAvec()` : les deux écritures du jour.
+        if (! \App\Domain\EmploiTemps\JourDeLaSemaine::memeJour($this->jour, $other->jour)) {
             return false;
         }
 

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Domain\EmploiTemps\JourDeLaSemaine;
 use App\Helpers\SettingsHelper;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPClasse;
@@ -2219,7 +2220,7 @@ class ESBTPEmploiTempsController extends Controller
                         $newSeance->homework_evaluation_id = null;
                         $newSeance->is_active = $isActive;
 
-                        $dayOffset = is_numeric($seance->jour) ? ((int) $seance->jour - 1) : 0;
+                        $dayOffset = $this->decalageDuJour($seance);
                         $newDateSeance = $targetStart->copy()->addDays($dayOffset);
                         $newSeance->date_seance = $newDateSeance->toDateString();
 
@@ -2436,7 +2437,7 @@ class ESBTPEmploiTempsController extends Controller
                     $newSeance->homework_evaluation_id = null;
                     $newSeance->is_active = $isActiveTarget;
 
-                    $dayOffset = is_numeric($seance->jour) ? ((int) $seance->jour - 1) : 0;
+                    $dayOffset = $this->decalageDuJour($seance);
                     $newDateSeance = $targetStartCarbon->copy()->addDays($dayOffset);
                     $newSeance->date_seance = $newDateSeance->toDateString();
 
@@ -2573,76 +2574,41 @@ class ESBTPEmploiTempsController extends Controller
         return ['ok' => true];
     }
 
+    /**
+     * Le décalage, en jours, du premier jour d'un emploi du temps.
+     *
+     * Le repli sur lundi était déjà là, mais muet : `is_numeric($jour) ? … : 0`
+     * faisait passer TOUT jour écrit en toutes lettres pour un lundi. Or c'est
+     * précisément ce que le formulaire de l'emploi du temps écrit (« Mercredi »),
+     * donc dupliquer un emploi du temps ramenait ses séances au lundi, en
+     * silence. Le repli subsiste pour ne pas perdre une séance, mais il se
+     * journalise : un rattrapage qu'on ne voit pas est un rattrapage qu'on ne
+     * corrige jamais.
+     */
+    private function decalageDuJour(ESBTPSeanceCours $seance): int
+    {
+        $rang = JourDeLaSemaine::rang($seance->jour);
+
+        if ($rang !== null) {
+            return $rang;
+        }
+
+        \Log::warning('Jour de séance illisible, replié sur le lundi', [
+            'seance_id' => $seance->id,
+            'jour' => $seance->jour,
+        ]);
+
+        return 0;
+    }
+
     private function resolveSeanceDayIndex($jour): ?int
     {
-        $days = [
-            1 => 0,
-            2 => 1,
-            3 => 2,
-            4 => 3,
-            5 => 4,
-            6 => 5,
-        ];
-
-        if (is_numeric($jour)) {
-            return $days[(int) $jour] ?? null;
-        }
-
-        if (is_string($jour)) {
-            $normalized = strtolower(trim($jour));
-            $map = [
-                'lundi' => 0,
-                'mardi' => 1,
-                'mercredi' => 2,
-                'jeudi' => 3,
-                'vendredi' => 4,
-                'samedi' => 5,
-                'monday' => 0,
-                'tuesday' => 1,
-                'wednesday' => 2,
-                'thursday' => 3,
-                'friday' => 4,
-                'saturday' => 5,
-            ];
-
-            return $map[$normalized] ?? null;
-        }
-
-        return null;
+        return JourDeLaSemaine::rang($jour);
     }
 
     private function resolveSeanceDayLabel($jour): string
     {
-        $labels = [
-            1 => 'Lundi',
-            2 => 'Mardi',
-            3 => 'Mercredi',
-            4 => 'Jeudi',
-            5 => 'Vendredi',
-            6 => 'Samedi',
-        ];
-
-        if (is_numeric($jour)) {
-            return $labels[(int) $jour] ?? 'Jour inconnu';
-        }
-
-        $normalized = strtolower(trim((string) $jour));
-        $map = [
-            'lundi' => 'Lundi',
-            'monday' => 'Lundi',
-            'mardi' => 'Mardi',
-            'tuesday' => 'Mardi',
-            'mercredi' => 'Mercredi',
-            'wednesday' => 'Mercredi',
-            'jeudi' => 'Jeudi',
-            'thursday' => 'Jeudi',
-            'vendredi' => 'Vendredi',
-            'friday' => 'Vendredi',
-            'samedi' => 'Samedi',
-            'saturday' => 'Samedi',
-        ];
-
-        return $map[$normalized] ?? 'Jour inconnu';
+        return JourDeLaSemaine::libelle($jour) ?? 'Jour inconnu';
     }
 
     private function normalizeTime($value): ?string
