@@ -14,6 +14,12 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ### Correctifs
 
+- **Réimputer un versement se voit enfin sur grand écran** (`/esbtp/paiements/{id}`) — le lien était blanc sur fond clair (« Corriger ») ; il est dans la barre d'actions, libellé comme sur le téléphone.
+
+- **Le bandeau « changer le mot de passe » tient sur un téléphone** — il ne déborde plus : le texte et le bouton s'empilent.
+
+- **Le tableau de bord Super Admin a un écran téléphone** — KPIs, inscriptions en attente et récentes, sans la grille bureau.
+
 - **Sur le reçu, le caissier qui peut encore annuler sa saisie le voit sur le téléphone** (`/esbtp/paiements/{id}`) — le geste n'apparaissait que dans le menu « ⋯ » et disparaissait derrière une condition d'attente ; on ne voyait plus que « Supprimer ». Le bouton est désormais en bas d'écran, dès que le droit et la fenêtre sont ouverts.
 
 - **Jour, matière et enseignant de la modification de séance ne sont plus des listes natives** (`/esbtp/seances-cours/{id}/edit`) — les trois listes du navigateur (flèche grise, pas de recherche) sont remplacées par les sélecteurs premium : jour, ECUE groupée par UE, enseignant searchable.
