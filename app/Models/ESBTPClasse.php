@@ -246,16 +246,11 @@ class ESBTPClasse extends Model implements Auditable
      * L1 (year=1) → [1,2], L2 (year=2) → [3,4], L3 → [5,6], M1 → [7,8], M2 → [9,10]
      *
      * L'annee du niveau est comptee en continu (Master 1 = annee 4, cf.
-     * ESBTPNiveauEtude::ANNEES_PAR_CYCLE_LMD). Toute correspondance niveau →
-     * semestres passe par ici : trois copies qui recomptaient le Master a
-     * partir de la Licence ont donne S13-S14 a un Master 1 correctement numerote.
+     * ESBTPNiveauEtude::ANNEES_PAR_CYCLE_LMD). La formule vit sur le niveau.
      */
     public function getSemestresLMD(): array
     {
-        $year = $this->niveau->year ?? 1;
-        $s1 = ($year - 1) * 2 + 1;
-        $s2 = $s1 + 1;
-        return [$s1, $s2];
+        return $this->niveau?->semestres() ?: [1, 2];
     }
 
     public function scopeLmd($query)

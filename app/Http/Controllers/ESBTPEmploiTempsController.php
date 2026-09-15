@@ -1564,7 +1564,8 @@ class ESBTPEmploiTempsController extends Controller
 
         // Préparer les données de disponibilités pour chaque enseignant
         $enseignantsAvecDisponibilites = $enseignants->map(function ($enseignant) {
-            $enseignant->availability_data = $this->prepareAvailabilityData($enseignant);
+            $enseignant->availability_data = app(\App\Services\TeacherPlanningService::class)
+                ->getAvailabilityMatrix($enseignant)['availability'];
 
             return $enseignant;
         });
@@ -1982,17 +1983,6 @@ class ESBTPEmploiTempsController extends Controller
             return redirect()->back()
                 ->with('error', 'Une erreur est survenue lors de la prévisualisation.');
         }
-    }
-
-    /**
-     * Prépare les données de disponibilité d'un enseignant pour l'affichage
-     * Format standardisé: $availability[$day][$hourIndex]
-     */
-    private function prepareAvailabilityData($teacher)
-    {
-        // Meme matrice que les pages enseignant : une seule construction, sur
-        // la plage horaire de l'etablissement (les copies bornaient a 8h-18h).
-        return app(\App\Services\TeacherPlanningService::class)->getAvailabilityMatrix($teacher)['availability'];
     }
 
     private function calculateTextColor(string $hex, string $fallback = '#ffffff'): string

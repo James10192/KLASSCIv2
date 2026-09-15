@@ -41,6 +41,27 @@ class PlageHoraireJourneeTest extends TestCase
         $this->assertSame(8, $plage->debut());
     }
 
+    public function test_la_grille_de_disponibilite_s_arrete_au_dernier_creneau(): void
+    {
+        // Journee 8h-22h : dernier creneau 21h-22h. Une ligne « 22h » ouvrirait
+        // un creneau 22h-23h hors de la journee reglee.
+        $this->regler(8, 22);
+        $this->app->forgetScopedInstances();
+
+        $enseignant = new \App\Models\ESBTPTeacher();
+        $enseignant->setRelation('availabilities', collect([
+            new \App\Models\ESBTPTeacherAvailability([
+                'day_of_week' => 0, 'start_time' => '21:00', 'end_time' => '22:00', 'availability_type' => 'available',
+            ]),
+        ]));
+
+        $matrice = app(\App\Services\TeacherPlanningService::class)->getAvailabilityMatrix($enseignant);
+
+        $this->assertSame(range(8, 21), $matrice['hours']);
+        $this->assertCount(14, $matrice['availability']['monday']);
+        $this->assertSame('available', $matrice['availability']['monday'][21 - 8]);
+    }
+
     public function test_la_forme_heure_minutes_est_acceptee(): void
     {
         $this->regler('07:30', '21:00');

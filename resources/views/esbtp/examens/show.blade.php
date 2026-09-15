@@ -1,5 +1,6 @@
 @extends('layouts.app')
 @section('title', $examen->titre)
+@inject('vocabulaire', 'App\Services\LMD\VocabulaireStructure')
 
 @php
     use App\Enums\ExamenStatus;
@@ -11,9 +12,9 @@
     $systeme = $isMixteSysteme ? 'MIXTE' : $examen->systeme;
 
     $scopeLabel = match($examen->scope_type) {
-        'parcours' => app(\App\Services\LMD\VocabulaireStructure::class)->rang('parcours'),
-        'mention' => app(\App\Services\LMD\VocabulaireStructure::class)->rang('mention').' (L1 tronc commun)',
-        'domaine' => app(\App\Services\LMD\VocabulaireStructure::class)->rang('domaine'),
+        'parcours' => $vocabulaire->rang('parcours'),
+        'mention' => $vocabulaire->rang('mention').' (L1 tronc commun)',
+        'domaine' => $vocabulaire->rang('domaine'),
         default => 'Classe unique',
     };
 

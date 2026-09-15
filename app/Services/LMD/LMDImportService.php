@@ -32,6 +32,7 @@ class LMDImportService
     public function __construct(
         private ParcoursUeSyncService $parcoursUeSync,
         private CompositionUe $composition,
+        private RefusDeDeplacement $deplacement,
         ?LmdAcademicRuleProfile $rules = null,
     ) {
         $this->rules = $rules ?? new LmdAcademicRuleProfile();
@@ -152,12 +153,11 @@ class LMDImportService
 
     private function upsertDomaine(array $data, ?int $userId): ESBTPLMDDomaine
     {
-        $valeurs = ['name' => $data['name'], 'description' => $data['description'] ?? null, 'created_by' => $userId, 'is_active' => true];
-        // Nature (UFR, ecole...) ecrite seulement si la maquette la donne : une
-        // maquette qui l'omet n'efface pas celle posee depuis l'ecran.
-        if (array_key_exists('nature', $data)) {
-            $valeurs['nature'] = $data['nature'];
-        }
+        $valeurs = $this->deplacement->preserver(
+            ['name' => $data['name'], 'description' => $data['description'] ?? null, 'created_by' => $userId, 'is_active' => true],
+            $data,
+            'nature',
+        );
 
         return ESBTPLMDDomaine::updateOrCreate(['code' => $data['code'] ?? Str::slug($data['name'])], $valeurs);
     }
@@ -166,23 +166,21 @@ class LMDImportService
     {
         $code = $data['code'] ?? Str::slug($data['name']);
         $existante = ESBTPLMDMention::where('code', $code)->first();
-
-        // Un code deja porte par une mention d'un AUTRE domaine : updateOrCreate
-        // la deplacait, avec tous ses parcours, sans un mot. Le cas est certain
-        // des qu'un meme intitule vit dans deux domaines et que la maquette ne
-        // donne pas de code (le code se deduit alors du nom).
-        if ($existante && (int) $existante->domaine_id !== (int) $domaine->id) {
-            $this->conflits[] = [
-                'type' => 'MENTION',
-                'code' => (string) $code,
-                'detail' => sprintf(
-                    "Le code « %s » désigne déjà la mention « %s » du domaine « %s ». L'importer sous « %s » l'y déplacerait avec ses parcours : donnez à cette mention un code propre.",
-                    $code,
-                    $existante->name,
-                    optional($existante->domaine)->name ?? ('#'.$existante->domaine_id),
-                    $domaine->name
-                ),
-            ];
+        if ($conflit = $this->deplacement->siAutreParent(
+            $existante,
+            'domaine_id',
+            (int) $domaine->id,
+            'MENTION',
+            (string) $code,
+            fn ($e) => sprintf(
+                "Le code « %s » désigne déjà la mention « %s » du domaine « %s ». L'importer sous « %s » l'y déplacerait avec ses parcours : donnez à cette mention un code propre.",
+                $code,
+                $e->name,
+                optional($e->domaine)->name ?? ('#'.$e->domaine_id),
+                $domaine->name
+            ),
+        )) {
+            $this->conflits[] = $conflit;
 
             return $existante;
         }
@@ -197,21 +195,21 @@ class LMDImportService
     {
         $code = $data['code'] ?? Str::slug($data['name']);
         $existant = ESBTPLMDParcours::where('code', $code)->first();
-
-        // Meme defaut que pour la mention : un parcours d'une AUTRE mention etait
-        // rattache a celle-ci, et sa maquette avec lui.
-        if ($existant && (int) $existant->mention_id !== (int) $mention->id) {
-            $this->conflits[] = [
-                'type' => 'PARCOURS',
-                'code' => (string) $code,
-                'detail' => sprintf(
-                    "Le code « %s » désigne déjà le parcours « %s » de la mention « %s ». L'importer sous « %s » l'y déplacerait avec sa maquette : donnez à ce parcours un code propre.",
-                    $code,
-                    $existant->name,
-                    optional($existant->mention)->name ?? ('#'.$existant->mention_id),
-                    $mention->name
-                ),
-            ];
+        if ($conflit = $this->deplacement->siAutreParent(
+            $existant,
+            'mention_id',
+            (int) $mention->id,
+            'PARCOURS',
+            (string) $code,
+            fn ($e) => sprintf(
+                "Le code « %s » désigne déjà le parcours « %s » de la mention « %s ». L'importer sous « %s » l'y déplacerait avec sa maquette : donnez à ce parcours un code propre.",
+                $code,
+                $e->name,
+                optional($e->mention)->name ?? ('#'.$e->mention_id),
+                $mention->name
+            ),
+        )) {
+            $this->conflits[] = $conflit;
 
             return $existant;
         }
@@ -331,21 +329,22 @@ class LMDImportService
         // l'est — on ne la reecrit donc que si elle est libre ou deja la notre, et
         // le conflit ne se leve que pour un rattachement a une AUTRE unite, ce que
         // le pivot ne sait pas exprimer.
-        $appartientAilleurs = $existing !== null
-            && $existing->unite_enseignement_id !== null
-            && (int) $existing->unite_enseignement_id !== (int) $ue->id;
-
-        if ($appartientAilleurs) {
-            $this->conflits[] = [
-                'type' => 'ECUE',
-                'code' => (string) $code,
-                'detail' => sprintf(
-                    "L'ECUE « %s » appartient déjà à l'UE « %s ». Le rattacher à « %s » le retirerait de la première.",
-                    $existing->name,
-                    optional($existing->uniteEnseignement)->name ?? ('#'.$existing->unite_enseignement_id),
-                    $ue->name
-                ),
-            ];
+        $conflitEcue = $this->deplacement->siAutreParent(
+            $existing,
+            'unite_enseignement_id',
+            (int) $ue->id,
+            'ECUE',
+            (string) $code,
+            fn ($e) => sprintf(
+                "L'ECUE « %s » appartient déjà à l'UE « %s ». Le rattacher à « %s » le retirerait de la première.",
+                $e->name,
+                optional($e->uniteEnseignement)->name ?? ('#'.$e->unite_enseignement_id),
+                $ue->name
+            ),
+        );
+        $appartientAilleurs = $conflitEcue !== null;
+        if ($conflitEcue) {
+            $this->conflits[] = $conflitEcue;
         }
 
         // Note: filiere_id was dropped from esbtp_matieres in 2025-04 cleanup migration —

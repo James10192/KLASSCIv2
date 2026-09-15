@@ -7,9 +7,12 @@ use App\Models\ESBTPClasse;
 use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPFiliere;
 use App\Models\ESBTPInscription;
+use App\Models\ESBTPLMDDomaine;
+use App\Models\ESBTPLMDMention;
+use App\Models\ESBTPLMDParcours;
 use App\Models\ESBTPNiveauEtude;
 use App\Models\User;
-use App\Services\ReeinscriptionService;
+use App\Services\Reinscription\ClassesDeReinscription;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -17,10 +20,10 @@ use Tests\TestCase;
  * La classe proposee a un etudiant admis se cherche sur l'annee suivante.
  *
  * En LMD l'annee est comptee en continu (Licence 1-3, Master 4-5, Doctorat
- * 6-8). Avant cette convention, une Licence 3 ne trouvait son Master 1 que par
- * un repli — « premiere annee d'un autre type » — qui cesse de fonctionner des
- * que le Master 1 porte son annee 4. Ces tests fixent le passage d'un cycle a
- * l'autre, et ce qu'un etudiant en fin de Master ne doit PAS se voir proposer.
+ * 6-8), et la classe suivante se cherche par parcours, puis par mention, puis
+ * par filiere : `filiere_id` n'est en LMD que le reflet de la mention ou du
+ * parcours de la classe, et deux classes d'une meme mention peuvent porter deux
+ * reflets differents.
  */
 class ClassesProposeesAuPassageTest extends TestCase
 {
@@ -43,9 +46,7 @@ class ClassesProposeesAuPassageTest extends TestCase
         $master1 = $this->classe('Master', 4);
         $this->classe('BTS', 1);
 
-        $proposees = $this->proposees($this->etudiantEn($licence3));
-
-        $this->assertSame([$master1->id], $proposees);
+        $this->assertSame([$master1->id], $this->proposees($this->etudiantEn($licence3)));
     }
 
     public function test_un_master_1_passe_en_master_2(): void
@@ -65,6 +66,34 @@ class ClassesProposeesAuPassageTest extends TestCase
         $this->assertSame([], $this->proposees($this->etudiantEn($master2)));
     }
 
+    public function test_le_master_1_d_un_autre_reflet_de_la_meme_mention_est_propose(): void
+    {
+        // Cas UCAO : la Licence 3 et le Master 1 appartiennent a la meme
+        // mention mais a deux parcours, donc a deux filieres reflets. Cherchee
+        // par filiere_id, la proposition revenait vide.
+        $mention = $this->mention();
+        $parcoursLicence = $this->parcours($mention, 'LFIN');
+        $parcoursMaster = $this->parcours($mention, 'MFIN');
+
+        $licence3 = $this->classe('Licence', 3, $parcoursLicence, ESBTPFiliere::factory()->create());
+        $master1 = $this->classe('Master', 4, $parcoursMaster, ESBTPFiliere::factory()->create());
+        $this->classe('Master', 4, $this->parcours($this->mention('AUTRE'), 'MDROIT'), ESBTPFiliere::factory()->create());
+
+        $this->assertSame([$master1->id], $this->proposees($this->etudiantEn($licence3)));
+    }
+
+    public function test_le_meme_parcours_l_emporte_sur_le_reste_de_la_mention(): void
+    {
+        $mention = $this->mention();
+        $finance = $this->parcours($mention, 'FIN');
+
+        $licence3 = $this->classe('Licence', 3, $finance, ESBTPFiliere::factory()->create());
+        $masterFinance = $this->classe('Master', 4, $finance, ESBTPFiliere::factory()->create());
+        $this->classe('Master', 4, $this->parcours($mention, 'AUDIT'), ESBTPFiliere::factory()->create());
+
+        $this->assertSame([$masterFinance->id], $this->proposees($this->etudiantEn($licence3)));
+    }
+
     public function test_la_proposition_part_de_la_derniere_annee_suivie_pas_d_un_ancien_cursus(): void
     {
         // Cas reel d'ESBTP Abidjan : un BTS 2 reste actif sur une annee
@@ -79,10 +108,17 @@ class ClassesProposeesAuPassageTest extends TestCase
         $this->etudiantEn($bts2, '2022-09-01', $etudiant);
 
         $this->assertSame([$master1->id], $this->proposees($etudiant));
-        $this->assertSame(
-            $licence3->id,
-            app(ReeinscriptionService::class)->inscriptionQuittee($etudiant->id)?->classe_id
-        );
+        $this->assertSame($licence3->id, app(ClassesDeReinscription::class)->inscriptionQuittee($etudiant->id)?->classe_id);
+    }
+
+    public function test_un_dossier_non_finalise_n_est_pas_l_inscription_quittee(): void
+    {
+        // Memes conditions que la liste de reinscription : un dossier encore en
+        // cours n'est pas une annee suivie.
+        $licence3 = $this->classe('Licence', 3);
+        $etudiant = $this->etudiantEn($licence3, '2025-09-01', null, 'paiement_en_attente');
+
+        $this->assertNull(app(ClassesDeReinscription::class)->inscriptionQuittee($etudiant->id));
     }
 
     public function test_le_bts_garde_son_repli_vers_une_premiere_annee_d_un_autre_type(): void
@@ -97,11 +133,13 @@ class ClassesProposeesAuPassageTest extends TestCase
     /** @return list<int> */
     private function proposees(ESBTPEtudiant $etudiant): array
     {
-        return collect(app(ReeinscriptionService::class)->proposerNouvellesClasses($etudiant->id, 'passage'))
-            ->pluck('id')->sort()->values()->all();
+        $classes = app(ClassesDeReinscription::class);
+        $quittee = $classes->inscriptionQuittee($etudiant->id)?->classe;
+
+        return $quittee ? $classes->pour($quittee, 'passage')->pluck('id')->sort()->values()->all() : [];
     }
 
-    private function classe(string $type, int $annee): ESBTPClasse
+    private function classe(string $type, int $annee, ?ESBTPLMDParcours $parcours = null, ?ESBTPFiliere $filiere = null): ESBTPClasse
     {
         $niveau = ESBTPNiveauEtude::factory()->create([
             'name' => "{$type} {$annee}",
@@ -110,13 +148,26 @@ class ClassesProposeesAuPassageTest extends TestCase
         ]);
 
         return ESBTPClasse::factory()->create([
-            'filiere_id' => $this->filiere->id,
+            'filiere_id' => ($filiere ?? $this->filiere)->id,
             'niveau_etude_id' => $niveau->id,
+            'parcours_id' => $parcours?->id,
             'is_active' => true,
         ]);
     }
 
-    private function etudiantEn(ESBTPClasse $classe, string $debutAnnee = '2025-09-01', ?ESBTPEtudiant $etudiant = null): ESBTPEtudiant
+    private function mention(string $code = 'GEST'): ESBTPLMDMention
+    {
+        $domaine = ESBTPLMDDomaine::create(['name' => "Domaine {$code}", 'code' => "D{$code}", 'is_active' => true]);
+
+        return ESBTPLMDMention::create(['name' => "Mention {$code}", 'code' => $code, 'domaine_id' => $domaine->id, 'is_active' => true]);
+    }
+
+    private function parcours(ESBTPLMDMention $mention, string $code): ESBTPLMDParcours
+    {
+        return ESBTPLMDParcours::create(['name' => "Parcours {$code}", 'code' => $code, 'mention_id' => $mention->id, 'is_active' => true]);
+    }
+
+    private function etudiantEn(ESBTPClasse $classe, string $debutAnnee = '2025-09-01', ?ESBTPEtudiant $etudiant = null, string $etape = 'etudiant_cree'): ESBTPEtudiant
     {
         $etudiant ??= ESBTPEtudiant::factory()->create();
         $debut = \Carbon\Carbon::parse($debutAnnee);
@@ -133,7 +184,7 @@ class ClassesProposeesAuPassageTest extends TestCase
             'classe_id' => $classe->id,
             'annee_universitaire_id' => $annee->id,
             'status' => 'active',
-            'workflow_step' => 'etudiant_cree',
+            'workflow_step' => $etape,
         ]);
 
         return $etudiant;

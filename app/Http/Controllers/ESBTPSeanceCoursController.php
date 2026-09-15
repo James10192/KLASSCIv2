@@ -254,14 +254,9 @@ class ESBTPSeanceCoursController extends Controller
                 }
             }
 
-            // Préparer les données de disponibilité pour tous les enseignants
-            $prepareAvailabilityMethod = $reflection->getMethod('prepareAvailabilityData');
-            $prepareAvailabilityMethod->setAccessible(true);
-
+            $planning = app(\App\Services\TeacherPlanningService::class);
             foreach ($teachers as $teacher) {
-                $baseAvailability = $prepareAvailabilityMethod->invoke($emploiTempsController, $teacher);
-
-                // Ajouter les séances existantes comme créneaux occupés
+                $baseAvailability = $planning->getAvailabilityMatrix($teacher)['availability'];
                 $availabilityData[$teacher->id] = $this->addExistingSessionsToAvailability($baseAvailability, $teacher);
             }
 
@@ -326,6 +321,8 @@ class ESBTPSeanceCoursController extends Controller
      */
     private function addExistingSessionsToAvailability($baseAvailability, $teacher, $ignoreSessionId = null)
     {
+        $debutJournee = app(\App\Services\Planning\PlageHoraireJournee::class)->debut();
+
         // Récupérer toutes les séances du professeur dans des emplois du temps actifs
         $today = now()->toDateString();
         $existingSessions = ESBTPSeanceCours::where('teacher_id', $teacher->id)
@@ -385,7 +382,7 @@ class ESBTPSeanceCoursController extends Controller
 
             // Marquer comme occupé tous les créneaux de cette séance
             for ($hour = $startHour; $hour < $endHour; $hour++) {
-                $hourIndex = $hour - app(\App\Services\Planning\PlageHoraireJournee::class)->debut();
+                $hourIndex = $hour - $debutJournee;
                 if ($hourIndex >= 0 && $hourIndex < count($baseAvailability[$dayKey])) {
                     $baseAvailability[$dayKey][$hourIndex] = 'occupied';
                 }
@@ -878,12 +875,10 @@ class ESBTPSeanceCoursController extends Controller
                     return $teacher->user->name ?? $teacher->matricule ?? '';
                 })->values();
 
-                $prepareAvailabilityMethod = $reflection->getMethod('prepareAvailabilityData');
-                $prepareAvailabilityMethod->setAccessible(true);
-
+                $planning = app(\App\Services\TeacherPlanningService::class);
                 $availabilityData = [];
                 foreach ($teachers as $teacher) {
-                    $baseAvailability = $prepareAvailabilityMethod->invoke($emploiTempsController, $teacher);
+                    $baseAvailability = $planning->getAvailabilityMatrix($teacher)['availability'];
                     $availabilityData[$teacher->id] = $this->addExistingSessionsToAvailability($baseAvailability, $teacher, $seancesCour->id);
                 }
 

@@ -21,8 +21,11 @@ class ESBTPReinscriptionController extends Controller
     protected $reinscriptionService;
     protected FuzzyNameMatcher $matcher;
 
-    public function __construct(ReeinscriptionService $reinscriptionService, FuzzyNameMatcher $matcher)
-    {
+    public function __construct(
+        ReeinscriptionService $reinscriptionService,
+        FuzzyNameMatcher $matcher,
+        private readonly \App\Services\Reinscription\ClassesDeReinscription $classes,
+    ) {
         $this->reinscriptionService = $reinscriptionService;
         $this->matcher = $matcher;
     }
@@ -285,19 +288,14 @@ class ESBTPReinscriptionController extends Controller
         $anneeAcademique = $request->get('annee_academique', date('Y') . '-' . (date('Y') + 1));
 
         try {
-            // Chercher l'inscription de l'étudiant avec une classe assignée
-            // L'inscription de la derniere annee suivie : une inscription
-            // quelconque pouvait etre celle d'un cursus deja quitte.
-            $inscription = $this->reinscriptionService->inscriptionQuittee((int) $etudiantId);
+            $inscription = $this->classes->inscriptionQuittee((int) $etudiantId);
 
             if (!$inscription) {
                 throw new \Exception("Aucune inscription avec classe trouvée pour cet étudiant");
             }
 
-            $inscription->loadMissing('etudiant');
-
             $analyse = $this->reinscriptionService->analyserSituationEtudiantParInscription($inscription, $anneeAcademique);
-            $classesProposees = $this->reinscriptionService->proposerNouvellesClasses($etudiantId, $analyse['decision'], $inscription->classe);
+            $classesProposees = $this->classes->pour($inscription->classe, $analyse['decision']);
 
             // Calculer les soldes financiers pour l'étudiant
             $etudiant = $analyse['etudiant'];
@@ -366,40 +364,16 @@ class ESBTPReinscriptionController extends Controller
         $anneeAcademique = $request->get('annee_academique', date('Y') . '-' . (date('Y') + 1));
 
         try {
-            // Récupérer l'inscription la plus récente de l'étudiant avec classe
-            $inscription = \App\Models\ESBTPInscription::whereNotNull('classe_id')
-                ->whereHas('etudiant', function($query) use ($etudiantId) {
-                    $query->where('id', $etudiantId);
-                })
-                ->with(['etudiant', 'classe.niveau', 'classe.filiere', 'anneeUniversitaire'])
-                ->orderBy('created_at', 'desc')
-                ->first();
+            // La meme inscription que la fiche de reinscription : decision et
+            // classes proposees partent du meme cursus.
+            $inscription = $this->classes->inscriptionQuittee((int) $etudiantId);
 
             if (!$inscription) {
                 throw new \Exception("Aucune inscription avec classe trouvée pour cet étudiant");
             }
 
             $analyse = $this->reinscriptionService->analyserSituationEtudiantParInscription($inscription, $anneeAcademique);
-
-            // Récupérer TOUTES les classes possibles selon les différentes décisions
-            $classesParDecision = [
-                'passage' => $this->reinscriptionService->proposerNouvellesClasses($etudiantId, 'passage'),
-                'redoublement' => $this->reinscriptionService->proposerNouvellesClasses($etudiantId, 'redoublement'),
-                'rattrapage' => $this->reinscriptionService->proposerNouvellesClasses($etudiantId, 'rattrapage')
-            ];
-
-            // Charger les relations pour toutes les classes
-            foreach ($classesParDecision as $decision => $classes) {
-                if (is_array($classes)) {
-                    $classes = collect($classes);
-                }
-                $classesParDecision[$decision] = $classes->map(function($classe) {
-                    if ($classe && !$classe->relationLoaded('niveau')) {
-                        $classe->load(['niveau', 'filiere']);
-                    }
-                    return $classe;
-                });
-            }
+            $classesParDecision = $this->classes->parDecision($inscription->classe);
 
             // Calculer les informations financières
             $etudiant = $analyse['etudiant'];
@@ -625,23 +599,11 @@ class ESBTPReinscriptionController extends Controller
                 ]);
             }
 
-            $classesProposees = $this->reinscriptionService->proposerNouvellesClasses($etudiantId, $decision);
-
-            // S'assurer que les relations sont chargées
-            if (is_array($classesProposees)) {
-                $classesProposees = collect($classesProposees);
-            }
-
-            $classesWithRelations = $classesProposees->map(function($classe) {
-                if ($classe && !$classe->relationLoaded('niveau')) {
-                    $classe->load(['niveau', 'filiere']);
-                }
-                return $classe;
-            });
+            $quittee = $this->classes->inscriptionQuittee((int) $etudiantId)?->classe;
 
             return response()->json([
                 'success' => true,
-                'classes' => $classesWithRelations
+                'classes' => $quittee ? $this->classes->pour($quittee, (string) $decision) : [],
             ]);
 
         } catch (\Exception $e) {
@@ -1444,16 +1406,8 @@ class ESBTPReinscriptionController extends Controller
         // + la décision (passage → niveau+1, redoublement/rattrapage → même classe).
         $items = collect($request->input('items'))->map(function ($item) {
             if (empty($item['classe_id'])) {
-                $etudiant = \App\Models\ESBTPEtudiant::find($item['etudiant_id']);
-                if ($etudiant) {
-                    $classes = $this->reinscriptionService->proposerNouvellesClasses(
-                        $etudiant->id,
-                        $item['decision']
-                    );
-                    if (!empty($classes)) {
-                        $item['classe_id'] = is_object($classes[0]) ? $classes[0]->id : $classes[0];
-                    }
-                }
+                $quittee = $this->classes->inscriptionQuittee((int) $item['etudiant_id'])?->classe;
+                $item['classe_id'] = $quittee ? $this->classes->pour($quittee, $item['decision'])->first()?->id : null;
             }
             return $item;
         })->filter(fn ($item) => !empty($item['classe_id']))->values()->all();

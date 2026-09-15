@@ -32,9 +32,6 @@ class ESBTPPlanningGeneralController extends Controller
     protected $planningStatsService;
     protected $planningFilterCatalog;
 
-    /** Types LMD exclus du planning général BTS (Licence/Master/Doctorat). */
-    private const LMD_TYPES = \App\Models\ESBTPNiveauEtude::CYCLES_LMD;
-
     public function __construct(
         PlanningConfigurationService $planningConfigService,
         PlanningStatisticsService $planningStatsService,

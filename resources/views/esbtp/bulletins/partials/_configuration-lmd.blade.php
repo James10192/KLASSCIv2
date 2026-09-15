@@ -121,11 +121,11 @@
                     <div class="row g-3">
                         <div class="col-md-3">
                             <label class="bcfg-label">Libellé Domaine</label>
-                            <input type="text" class="bcfg-input" name="lmd_bulletin_label_domaine" value="{{ $settings['lmd_bulletin_label_domaine'] ?? 'DOMAINE' }}">
+                            <input type="text" class="bcfg-input" name="lmd_bulletin_label_domaine" value="{{ $settings['lmd_bulletin_label_domaine'] ?? '' }}" placeholder="@rang('domaine')">
                         </div>
                         <div class="col-md-3">
                             <label class="bcfg-label">Libellé Mention</label>
-                            <input type="text" class="bcfg-input" name="lmd_bulletin_label_mention" value="{{ $settings['lmd_bulletin_label_mention'] ?? 'MENTION' }}">
+                            <input type="text" class="bcfg-input" name="lmd_bulletin_label_mention" value="{{ $settings['lmd_bulletin_label_mention'] ?? '' }}" placeholder="@rang('mention')">
                         </div>
                         <div class="col-md-3">
                             <label class="bcfg-label">Libellé Spécialité</label>
@@ -133,7 +133,7 @@
                         </div>
                         <div class="col-md-3">
                             <label class="bcfg-label">Libellé Parcours</label>
-                            <input type="text" class="bcfg-input" name="lmd_bulletin_label_parcours" value="{{ $settings['lmd_bulletin_label_parcours'] ?? 'PARCOURS' }}">
+                            <input type="text" class="bcfg-input" name="lmd_bulletin_label_parcours" value="{{ $settings['lmd_bulletin_label_parcours'] ?? '' }}" placeholder="@rang('parcours')">
                         </div>
                     </div>
                 </div>

@@ -2255,18 +2255,15 @@ class ESBTPInscriptionController extends Controller
     /**
      * Analyse académique d'un étudiant pour réinscription caissier (AJAX)
      */
-    public function analyseEtudiant(Request $request, $etudiantId)
+    public function analyseEtudiant(Request $request, $etudiantId, \App\Services\Reinscription\ClassesDeReinscription $classes)
     {
         try {
-            $etudiant = \App\Models\ESBTPEtudiant::findOrFail($etudiantId);
+            \App\Models\ESBTPEtudiant::findOrFail($etudiantId);
             $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->first();
 
-            // Inscription active de l'année précédente
-            $inscriptionActive = $etudiant->inscriptions()
-                ->where('status', 'active')
-                ->where('workflow_step', 'etudiant_cree')
-                ->latest()
-                ->first();
+            // L'inscription quittee, definie au meme endroit que pour la
+            // reinscription : derniere annee suivie, et non la derniere creee.
+            $inscriptionActive = $classes->inscriptionQuittee((int) $etudiantId);
 
             if (!$inscriptionActive) {
                 return response()->json([
@@ -2294,14 +2291,7 @@ class ESBTPInscriptionController extends Controller
 
             // Classes proposées
             $decision = $analysis['decision'] ?? 'passage';
-            $classesProposees = [];
-            try {
-                // Meme inscription que celle analysee, sinon la decision et les
-                // classes proposees partent de deux cursus differents.
-                $classesProposees = $reinscriptionService->proposerNouvellesClasses($etudiantId, $decision, $inscriptionActive->classe);
-            } catch (\Exception $e) {
-                // Fallback : toutes les classes actives
-            }
+            $classesProposees = $classes->pour($inscriptionActive->classe, $decision);
 
             return response()->json([
                 'success' => true,

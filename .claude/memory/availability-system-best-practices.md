@@ -11,7 +11,8 @@
 
 ```php
 // ✅ CORRECT - Utiliser la méthode standardisée
-$availabilityData = $this->prepareAvailabilityData($teacher);
+$availabilityData = app(\App\Services\TeacherPlanningService::class)
+    ->getAvailabilityMatrix($teacher)['availability'];
 
 // ❌ INCORRECT - Créer sa propre logique de formatage
 $availabilityData = [];
@@ -51,8 +52,8 @@ for ($hour = $startHour; $hour < $endHour; $hour++) {
 
 ### Avant de Créer une Nouvelle Page de Disponibilités
 
-- [ ] Vérifier si `prepareAvailabilityData()` existe dans le contrôleur cible
-- [ ] Si non, copier la méthode depuis `ESBTPEnseignantController`
+- [ ] Appeler `TeacherPlanningService::getAvailabilityMatrix($teacher)['availability']`
+- [ ] Ne pas recopier une méthode de préparation dans le contrôleur
 - [ ] Adapter les jours si nécessaire (inclure/exclure dimanche)
 - [ ] Utiliser le format de vue standardisé avec `$availability[$day][$index]`
 
@@ -90,34 +91,12 @@ assert(\$adminData === \$teacherData, 'Incohérence détectée');
 class AnyAvailabilityController extends Controller
 {
     /**
-     * MÉTHODE OBLIGATOIRE - Copier depuis ESBTPEnseignantController
+     * Une seule construction : TeacherPlanningService, plage de l'établissement.
      */
-    private function prepareAvailabilityData($teacher)
+    private function matriceDisponibilite($teacher)
     {
-        $hours = range(8, 18); // Standard: 8h-18h
-        $days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-        // Exclure dimanche si pas de travail le dimanche
-        
-        $availability = [];
-        foreach ($days as $day) {
-            $availability[$day] = array_fill(0, count($hours), 'unavailable');
-        }
-        
-        foreach ($teacher->availabilities as $avail) {
-            $dayName = $days[$avail->day_of_week] ?? null;
-            $startHour = /* parser correctement */;
-            $endHour = /* parser correctement */;
-            
-            // CRITIQUE: Décomposer les créneaux multi-heures
-            for ($hour = $startHour; $hour < $endHour; $hour++) {
-                $hourIndex = $hour - 8;
-                if ($hourIndex >= 0 && $hourIndex < count($hours)) {
-                    $availability[$dayName][$hourIndex] = $avail->availability_type;
-                }
-            }
-        }
-        
-        return $availability;
+        return app(\App\Services\TeacherPlanningService::class)
+            ->getAvailabilityMatrix($teacher)['availability'];
     }
 }
 ```
@@ -262,7 +241,7 @@ $workingHours = range(8, 18); // 8h00 à 18h00 (11 créneaux d'1h)
 
 ### Lors d'Ajout de Nouvelles Pages
 
-1. **Copier** la méthode `prepareAvailabilityData()` 
+1. **Appeler** `TeacherPlanningService::getAvailabilityMatrix()` 
 2. **Adapter** les jours selon les besoins métier
 3. **Tester** avec des données réelles
 4. **Valider** la cohérence avec les pages existantes
@@ -281,7 +260,7 @@ $workingHours = range(8, 18); // 8h00 à 18h00 (11 créneaux d'1h)
 
 **3 règles d'or pour éviter les incohérences :**
 
-1. 🔧 **Une seule méthode** de préparation des données : `prepareAvailabilityData()`
+1. 🔧 **Une seule méthode** de préparation des données : `TeacherPlanningService::getAvailabilityMatrix()`
 2. 📊 **Un seul format** d'affichage : `$availability[$day][$hourIndex]`
 3. 🧪 **Tests systématiques** de cohérence entre toutes les pages
 

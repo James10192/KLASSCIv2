@@ -59,7 +59,7 @@ Base de données (esbtp_teacher_availabilities)
 - **Teacher v1** : Affichait incorrectement `[8h=preferred]` seulement (1 case)
 
 **Solution appliquée :**
-1. ✅ Harmonisation de la méthode `prepareAvailabilityData()` 
+1. ✅ Harmonisation via `TeacherPlanningService::getAvailabilityMatrix()` 
 2. ✅ Adaptation de la vue pour utiliser le format `$availability[$day][$hourIndex]`
 3. ✅ Suppression de la colonne dimanche (pas de travail le dimanche)
 4. ✅ Tests de validation complets
@@ -100,7 +100,7 @@ Route::middleware(['role:teacher'])->group(function () {
 
 #### `showAvailability()`
 - Récupère l'enseignant connecté via `Auth::user()`
-- **IMPORTANT** : Utilise `prepareAvailabilityData()` pour garantir la cohérence avec les pages admin
+- **IMPORTANT** : Utilise `TeacherPlanningService::getAvailabilityMatrix()['availability']` pour garantir la cohérence avec les pages admin
 - Retourne la vue avec les données formatées au format standard
 
 #### `updateAvailability(Request $request)`
@@ -110,7 +110,7 @@ Route::middleware(['role:teacher'])->group(function () {
 - Logging détaillé pour le debug
 - Réponse JSON pour le feedback utilisateur
 
-#### `prepareAvailabilityData($teacher)` ⭐ **Méthode critique pour la cohérence**
+#### `TeacherPlanningService::getAvailabilityMatrix($teacher)` ⭐ **Source unique**
 - **Rôle** : Convertit les créneaux DB (souvent 2h) en créneaux d'affichage (1h)
 - **Format retour** : `$availability[$day][$hourIndex]` (identique aux pages admin)
 - **Logique** : 
@@ -390,7 +390,7 @@ routes/
 - **`teacher-availability-system-fixes.md`** - Documentation détaillée des corrections SQL et regex
 
 ### Points Clés pour les Développeurs
-1. **TOUJOURS** utiliser `prepareAvailabilityData()` pour l'affichage des disponibilités
+1. **TOUJOURS** utiliser `TeacherPlanningService::getAvailabilityMatrix()['availability']` pour l'affichage des disponibilités
 2. **JAMAIS** créer sa propre logique de formatage des créneaux  
 3. **TESTER** la cohérence avec les pages admin après toute modification
 4. **RESPECTER** le format `$availability[$day][$hourIndex]` dans les vues

@@ -422,7 +422,7 @@
 
                 <!-- Créneaux horaires et cases de disponibilité -->
                 @php
-                    $hours = app(\App\Services\Planning\PlageHoraireJournee::class)->heuresDeSaisie();
+                    $hours = app(\App\Services\Planning\PlageHoraireJournee::class)->creneaux();
                     $days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']; // Exclure dimanche
                     $dayNames = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
                     $icons = ['unavailable' => '✗', 'available' => '✓', 'preferred' => '★'];

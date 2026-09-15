@@ -7,6 +7,7 @@ use App\Models\ESBTPInscription;
 use App\Models\ESBTPLMDResultatUE;
 use App\Models\User;
 use App\Services\LMD\LmdAcademicRuleProfile;
+use App\Services\LMD\VocabulaireStructure;
 use App\Services\LMDBulletinService;
 use Carbon\CarbonInterface;
 
@@ -53,6 +54,7 @@ class LmdTranscriptSnapshotBuilder
     public function __construct(
         private readonly LmdAcademicRuleProfile $profile,
         private readonly LMDBulletinService $bulletins,
+        private readonly VocabulaireStructure $vocabulaire,
     ) {}
 
     /**
@@ -158,7 +160,7 @@ class LmdTranscriptSnapshotBuilder
             // Le nom des rangs (Domaine, ou Composante...) et la nature du
             // premier (UFR, Ecole...) sont des reglages : geles ici, un releve
             // reedite ne change pas de vocabulaire si l'ecole change le sien.
-            'vocabulary' => app(\App\Services\LMD\VocabulaireStructure::class)->tous(),
+            'vocabulary' => $this->vocabulaire->instantane(),
             'domain_nature' => $firstBulletin?->parcours?->mention?->domaine?->nature?->label(),
         ];
     }

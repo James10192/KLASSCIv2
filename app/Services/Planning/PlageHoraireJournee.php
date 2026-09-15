@@ -27,6 +27,9 @@ class PlageHoraireJournee
 
     public const FIN_PAR_DEFAUT = 18;
 
+    /** Lues une fois par requete (service `scoped`) : les grilles bouclent heure par heure. */
+    private ?array $bornes = null;
+
     /** Heure a laquelle commence le premier creneau (7 → 7h00). */
     public function debut(): int
     {
@@ -50,7 +53,10 @@ class PlageHoraireJournee
     }
 
     /**
-     * Heures proposees a la saisie, fin comprise : 7..18 pour 7h-18h.
+     * Heures proposees dans les listes d'heure de debut et de fin d'une
+     * seance, fin comprise : 7..18 pour 7h-18h. Les grilles, elles, s'arretent
+     * au dernier creneau (`creneaux()`) : une ligne pour l'heure de fin
+     * ouvrirait un creneau hors de la journee.
      *
      * @return list<int>
      */
@@ -72,6 +78,12 @@ class PlageHoraireJournee
      * @return array{0: int, 1: int}
      */
     private function bornes(): array
+    {
+        return $this->bornes ??= $this->lireBornes();
+    }
+
+    /** @return array{0: int, 1: int} */
+    private function lireBornes(): array
     {
         $debut = $this->heure(SettingsHelper::get(self::CLE_DEBUT, self::DEBUT_PAR_DEFAUT));
         $fin = $this->heure(SettingsHelper::get(self::CLE_FIN, self::FIN_PAR_DEFAUT));

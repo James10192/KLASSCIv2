@@ -5,6 +5,7 @@ namespace App\Domain\OfficialDocuments\Services;
 use App\Helpers\SettingsHelper;
 use App\Models\User;
 use App\Services\LMD\LmdAcademicRuleProfile;
+use App\Services\LMD\VocabulaireStructure;
 use Carbon\CarbonInterface;
 
 class JuryPvSnapshotBuilder
@@ -27,7 +28,10 @@ class JuryPvSnapshotBuilder
      */
     public const RULES_VERSION = 'lmd-academic-profile-v3';
 
-    public function __construct(private readonly LmdAcademicRuleProfile $profile) {}
+    public function __construct(
+        private readonly LmdAcademicRuleProfile $profile,
+        private readonly VocabulaireStructure $vocabulaire,
+    ) {}
 
     public function build(array $state, array $identity, User $actor, CarbonInterface $issuedAt): array
     {
@@ -38,7 +42,7 @@ class JuryPvSnapshotBuilder
             'institution' => SettingsHelper::getSchoolInfo(),
             'jury' => $this->juryData($jury),
             // Nom des rangs de la structure LMD, gele comme le reste du PV.
-            'vocabulary' => app(\App\Services\LMD\VocabulaireStructure::class)->tous(),
+            'vocabulary' => $this->vocabulaire->instantane(),
             'members' => $state['members']->map(fn ($member) => $this->memberData($member))->sortBy('user_id')->values()->all(),
             'decisions' => $state['decisions']->map(fn ($decision) => $this->decisionData($decision))->sortBy('student_id')->values()->all(),
             'grade_sheets' => $state['sheets']->map(fn ($sheet) => ['id' => $sheet->id, 'code' => $sheet->code, 'status' => $sheet->status->value, 'lock_version' => $sheet->lock_version])->sortBy('id')->values()->all(),

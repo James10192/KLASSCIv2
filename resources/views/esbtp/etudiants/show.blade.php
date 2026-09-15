@@ -2949,7 +2949,7 @@
             @if($parcours || $lmdCredits)
                 @if($parcours && $parcours->mention && $parcours->mention->domaine)
                     <div class="info-row">
-                        <span class="info-lbl">{{ $parcours->mention->domaine->nature?->label() ?? app(\App\Services\LMD\VocabulaireStructure::class)->rang('domaine') }}</span>
+                        <span class="info-lbl">@natureDe($parcours->mention->domaine)</span>
                         <span class="info-val">{{ $parcours->mention->domaine->name }}</span>
                     </div>
                     <div class="info-row">

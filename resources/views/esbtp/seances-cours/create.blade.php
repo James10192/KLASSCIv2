@@ -1096,7 +1096,9 @@
 const currentTeacherId = "{{ old('teacher_id') }}";
 // Plage horaire de la journee, reglee par l'etablissement (cours du soir
 // compris). Les matrices de disponibilite sont indexees par `heure - debut`.
-const PLAGE_HORAIRE = JSON.parse((document.getElementById('seance-data') || {dataset: {}}).dataset.plage || '{"debut":7,"fin":18}');
+// Pose par le serveur dans #seance-data, sur cette meme page : pas de repli
+// recopie ici, qui divergerait du reglage sans prevenir.
+const PLAGE_HORAIRE = JSON.parse(document.getElementById('seance-data').dataset.plage);
 const PLAGE_DEBUT = PLAGE_HORAIRE.debut;
 const PLAGE_FIN = PLAGE_HORAIRE.fin;
 const seanceDataElement = document.getElementById('seance-data');

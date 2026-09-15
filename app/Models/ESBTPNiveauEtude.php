@@ -90,7 +90,24 @@ class ESBTPNiveauEtude extends Model
 
     public function estUnCycleLmd(): bool
     {
-        return array_key_exists((string) $this->type, self::ANNEES_PAR_CYCLE_LMD);
+        return in_array((string) $this->type, self::CYCLES_LMD, true);
+    }
+
+    /**
+     * Les deux semestres de cette annee : annee 1 → S1-S2, annee 4 (Master 1) → S7-S8.
+     *
+     * @return list<int>
+     */
+    public function semestres(): array
+    {
+        $annee = (int) $this->year;
+        if ($annee < 1) {
+            return [];
+        }
+
+        $premier = ($annee - 1) * 2 + 1;
+
+        return [$premier, $premier + 1];
     }
 
     /**

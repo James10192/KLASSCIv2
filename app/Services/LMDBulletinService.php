@@ -14,6 +14,7 @@ use App\Models\ESBTPNote;
 use App\Models\ESBTPUniteEnseignement;
 use App\Helpers\SettingsHelper;
 use App\Services\LMD\LmdAcademicRuleProfile;
+use App\Services\LMD\VocabulaireStructure;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -31,7 +32,10 @@ class LMDBulletinService
      */
     public const NOTICE_DEFAUT = "Un ECUE n'est ni transférable ni capitalisable. Les crédits d'une UE non acquise ne sont capitalisés qu'après validation de celle-ci.";
 
-    public function __construct(private readonly LmdAcademicRuleProfile $rules) {}
+    public function __construct(
+        private readonly LmdAcademicRuleProfile $rules,
+        private readonly VocabulaireStructure $vocabulaire,
+    ) {}
 
     /** Cache des settings LMD pour eviter des requetes repetees. */
     protected array $settings = [];
@@ -50,26 +54,11 @@ class LMDBulletinService
         return $this->settings[$key];
     }
 
-    /**
-     * Libelle d'un rang sur le bulletin.
-     *
-     * Un libelle que l'ecole a personnalise l'emporte. Absent, ou laisse a sa
-     * valeur d'usine (« DOMAINE »), il suit le vocabulaire de l'etablissement :
-     * une universite qui nomme ses rangs Composante / Departement n'a pas a les
-     * ressaisir une seconde fois pour ses bulletins.
-     */
-    private function libelleDeRang(string $cle, string $valeurUsine, string $vocabulaire): string
+    private function libelleOuVocabulaire(string $cle, string $vocabulaire): string
     {
         $regle = trim((string) $this->getSetting($cle, ''));
 
-        return $regle !== '' && mb_strtoupper($regle, 'UTF-8') !== $valeurUsine
-            ? $regle
-            : mb_strtoupper($vocabulaire, 'UTF-8');
-    }
-
-    private function vocabulaire(): \App\Services\LMD\VocabulaireStructure
-    {
-        return app(\App\Services\LMD\VocabulaireStructure::class);
+        return $regle !== '' ? $regle : mb_strtoupper($vocabulaire, 'UTF-8');
     }
 
     protected function getValidationThreshold(): float
@@ -825,10 +814,10 @@ class LMDBulletinService
 
         // Bulletin field visibility & labels (configurable per tenant)
         $bulletinFields = [
-            ['key' => 'domaine', 'show' => $this->getSetting('lmd_bulletin_show_domaine', '1') == '1', 'label' => $this->libelleDeRang('lmd_bulletin_label_domaine', 'DOMAINE', $bulletin->parcours?->mention?->domaine?->nature?->label() ?? $this->vocabulaire()->domaine()), 'value' => $bulletin->domaine_label],
-            ['key' => 'mention', 'show' => $this->getSetting('lmd_bulletin_show_mention', '1') == '1', 'label' => $this->libelleDeRang('lmd_bulletin_label_mention', 'MENTION', $this->vocabulaire()->mention()), 'value' => $bulletin->mention_label],
+            ['key' => 'domaine', 'show' => $this->getSetting('lmd_bulletin_show_domaine', '1') == '1', 'label' => $this->libelleOuVocabulaire('lmd_bulletin_label_domaine', $this->vocabulaire->natureDe($bulletin->parcours?->mention?->domaine)), 'value' => $bulletin->domaine_label],
+            ['key' => 'mention', 'show' => $this->getSetting('lmd_bulletin_show_mention', '1') == '1', 'label' => $this->libelleOuVocabulaire('lmd_bulletin_label_mention', $this->vocabulaire->mention()), 'value' => $bulletin->mention_label],
             ['key' => 'specialite', 'show' => $this->getSetting('lmd_bulletin_show_specialite', '0') == '1', 'label' => $this->getSetting('lmd_bulletin_label_specialite', 'SPÉCIALITÉ'), 'value' => $bulletin->specialite_label ?? ''],
-            ['key' => 'parcours', 'show' => $this->getSetting('lmd_bulletin_show_parcours', '1') == '1', 'label' => $this->libelleDeRang('lmd_bulletin_label_parcours', 'PARCOURS', $this->vocabulaire()->parcours()), 'value' => $bulletin->parcours_label],
+            ['key' => 'parcours', 'show' => $this->getSetting('lmd_bulletin_show_parcours', '1') == '1', 'label' => $this->libelleOuVocabulaire('lmd_bulletin_label_parcours', $this->vocabulaire->parcours()), 'value' => $bulletin->parcours_label],
         ];
 
         return [

@@ -26,6 +26,7 @@ class BulkReinscriptionService
 {
     public function __construct(
         private readonly ReeinscriptionService $reeinscriptionService,
+        private readonly ClassesDeReinscription $classes,
     ) {}
 
     /**
@@ -190,17 +191,14 @@ class BulkReinscriptionService
 
             // Suggestions de classes cibles selon la décision (1-3 options typiquement)
             try {
-                $suggestedClasses = $this->reeinscriptionService->proposerNouvellesClasses(
-                    $etudiant->id,
-                    $row['decision'] ?? 'redoublement',
-                    $inscription->classe
-                );
-                $row['suggested_classes'] = collect($suggestedClasses)->map(fn ($c) => [
-                    'id' => is_object($c) ? $c->id : $c,
-                    'name' => is_object($c) ? $c->name : 'Classe #' . $c,
-                    'filiere' => is_object($c) ? (optional($c->filiere)->name ?? '—') : null,
-                    'niveau' => is_object($c) ? (optional($c->niveau)->name ?? '—') : null,
-                ])->values()->all();
+                $row['suggested_classes'] = $this->classes
+                    ->pour($inscription->classe, $row['decision'] ?? 'redoublement')
+                    ->map(fn ($c) => [
+                        'id' => $c->id,
+                        'name' => $c->name,
+                        'filiere' => $c->filiere?->name ?? '—',
+                        'niveau' => $c->niveau?->name ?? '—',
+                    ])->values()->all();
                 $row['target_classe_id'] = $row['suggested_classes'][0]['id'] ?? null;
             } catch (\Throwable $e) {
                 $row['suggested_classes'] = [];
