@@ -1,14 +1,10 @@
-@php
-    $emailPrimaryColor = $emailPrimaryColor ?? \App\Helpers\SettingsHelper::get('pdf_primary_color', '#0453cb');
-    $emailHeaderBgColor = $emailHeaderBgColor ?? \App\Helpers\SettingsHelper::get('pdf_header_bg_color', $emailPrimaryColor);
-    $emailHeaderTextColor = $emailHeaderTextColor ?? \App\Helpers\SettingsHelper::getPdfSettings()['header_text_on_bg'];
-    $emailSecondaryColor = $emailSecondaryColor ?? \App\Helpers\SettingsHelper::get('pdf_secondary_color', '#64748b');
-    $safeEmailColor = fn ($value, $fallback) => preg_match('/^#[0-9A-Fa-f]{6}$/', (string) $value) ? (string) $value : $fallback;
-    $emailPrimaryColor = $safeEmailColor($emailPrimaryColor, '#0453cb');
-    $emailHeaderBgColor = $safeEmailColor($emailHeaderBgColor, $emailPrimaryColor);
-    $emailHeaderTextColor = $safeEmailColor($emailHeaderTextColor, '#ffffff');
-    $emailSecondaryColor = $safeEmailColor($emailSecondaryColor, '#64748b');
-@endphp
+{{-- Les quatre couleurs sont posées par `CouleursDesCourrielsParents`, un
+     composeur enregistré sur `esbtp.emails.parents.*`. Elles étaient résolues
+     ici même, dans un `@php` : or Blade évalue le corps des `@section` du
+     modèle ENFANT avant de rendre ce gabarit, si bien qu'un enfant qui lisait
+     `$emailPrimaryColor` tombait sur une variable indéfinie. Ne les
+     recalculez pas ici — ce serait la seconde source de vérité qui a produit
+     le défaut. --}}
 <!DOCTYPE html>
 <html lang="fr">
 <head>
