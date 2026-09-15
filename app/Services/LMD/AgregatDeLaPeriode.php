@@ -32,8 +32,9 @@ namespace App\Services\LMD;
  *    un résultat — celui de l'étudiant absent tout le semestre — et non une
  *    absence de résultat. Avec S1 à 8,50 et S2 à 0,00, il ne restait qu'un
  *    bulletin, donc la page annonçait 8,50 comme moyenne de l'ANNÉE, au lieu de
- *    4,25. Une de ces copies convertissait en plus ce nombre en mention
- *    officielle ;
+ *    4,25. L'une de ces copies alimente en outre la mention officielle affichée
+ *    — elle ne le faisait pas avant, sa valeur étant écrasée aussitôt calculée ;
+ *    c'est de la corriger qui a rallumé ce chemin ;
  *  - un repli sur `avg()` rendait une moyenne arithmétique NON pondérée sous la
  *    même étiquette que la pondérée, sans le dire.
  *

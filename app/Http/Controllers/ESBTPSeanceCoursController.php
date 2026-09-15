@@ -124,6 +124,25 @@ class ESBTPSeanceCoursController extends Controller
                     continue;
                 }
 
+                // Ni deux séances d'années universitaires DIFFÉRENTES.
+                //
+                // L'appariement ne teste que le jour de la semaine et le
+                // chevauchement horaire : sans cette garde, un permanent qui
+                // tient le lundi 8h-10h en 2024-2025 et de nouveau en 2026-2027
+                // se retrouve en conflit avec lui-même. Sur les instances qui
+                // portent plusieurs années en base — c'est le cas des deux plus
+                // grosses — c'est une catégorie entière de faux conflits.
+                //
+                // Seulement quand les DEUX années sont connues et diffèrent : sur
+                // des lignes anciennes où la colonne est nulle, se taire ferait
+                // disparaître des conflits réels. Cette garde ne peut donc que
+                // retirer du bruit, jamais un signal.
+                if ($seance->annee_universitaire_id
+                    && $autreSeance->annee_universitaire_id
+                    && (int) $seance->annee_universitaire_id !== (int) $autreSeance->annee_universitaire_id) {
+                    continue;
+                }
+
                 // Vérifier si les séances sont le même jour et se chevauchent
                 if ($seance->jour == $autreSeance->jour &&
                     $seance->heure_debut < $autreSeance->heure_fin &&
@@ -373,14 +392,21 @@ class ESBTPSeanceCoursController extends Controller
         // des deux côtés.
         //
         // Sans emploi du temps de référence, on retombe sur « en vigueur
-        // aujourd'hui », le comportement d'avant — et ce repli est atteignable :
-        // `ESBTPEmploiTemps` est en suppression douce, donc `$seance->emploiTemps`
-        // rend `null` dès que l'emploi du temps est à la corbeille.
+        // aujourd'hui », le comportement d'avant.
         //
-        // D'où la fenêtre `[aujourd'hui, aujourd'hui]` et non `[aujourd'hui, ∞)`.
-        // Laisser la borne droite ouverte aurait élargi le repli aux emplois du
-        // temps À VENIR, ce que l'ancien `date_debut <= today` excluait : un repli
-        // doit rendre le comportement d'avant, pas un comportement voisin.
+        // Aucun appelant n'y tombe aujourd'hui : `emploi_temps_id` est NOT NULL
+        // depuis sa migration, et la relation porte `->withTrashed()`, donc elle
+        // rend son objet même pour un emploi du temps à la corbeille. Le repli
+        // n'existe que parce que le paramètre est nullable par signature — j'ai
+        // d'abord écrit qu'il était atteignable par la suppression douce, ce qui
+        // était faux et contredit par le commentaire de la relation elle-même.
+        //
+        // Il reste écrit parce qu'un paramètre nullable finit par recevoir `null`,
+        // et parce qu'il coûte une ligne. D'où la fenêtre `[aujourd'hui,
+        // aujourd'hui]` et non `[aujourd'hui, ∞)` : laisser la borne droite
+        // ouverte élargirait le repli aux emplois du temps À VENIR, que l'ancien
+        // `date_debut <= today` excluait. Un repli rend le comportement d'avant,
+        // pas un comportement voisin.
         $debut = $emploiTempsEdite?->date_debut;
         $fin = $emploiTempsEdite?->date_fin;
         $debutJour = $debut ? Carbon::parse($debut)->toDateString() : now()->toDateString();

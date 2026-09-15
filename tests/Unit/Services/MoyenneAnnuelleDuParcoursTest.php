@@ -28,12 +28,17 @@ use Tests\TestCase;
  *
  *  1. les relations que le présentateur lit sur l'inscription et sur la classe
  *     sont épinglées plus bas par `setRelation()` ;
- *  2. celles qu'il lit SANS qu'elles soient épinglées — `inscription->niveauEtude`,
- *     `->niveau`, `->filiere` — se taisent seulement parce que leur clé étrangère
- *     est nulle : `BelongsTo::getResults()` court-circuite alors sans requête.
- *     Poser un `niveau_etude_id` dans les fabriques ci-dessous suffirait donc à
- *     envoyer ce contrôle chercher la base. Si ce jour vient, épinglez-les aussi
- *     plutôt que de retirer le cas.
+ *  2. celles qu'il lit SANS qu'elles soient épinglées se taisent seulement parce
+ *     que leur clé étrangère est nulle : `BelongsTo::getResults()` court-circuite
+ *     alors sans requête. Il y en a quatre, et chacune a sa propre clé —
+ *     `inscription->niveau` / `->niveauEtude` sur `niveau_id`,
+ *     `inscription->filiere` sur `filiere_id`, et `classe->niveauEtude` sur
+ *     `niveau_etude_id` (que `setRelation('niveau', …)` ne couvre pas, Eloquent
+ *     cherchant la relation sous le nom `niveauEtude`).
+ *
+ *     Poser l'une de ces colonnes dans les fabriques ci-dessous enverrait donc ce
+ *     contrôle chercher la base. Si ce jour vient, épinglez la relation
+ *     correspondante plutôt que de retirer le cas.
  */
 class MoyenneAnnuelleDuParcoursTest extends TestCase
 {
