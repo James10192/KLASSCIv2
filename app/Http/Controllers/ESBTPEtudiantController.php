@@ -66,7 +66,7 @@ class ESBTPEtudiantController extends Controller
     /**
      * Afficher la liste des étudiants.
      */
-    public function index(Request $request, FuzzyNameMatcher $matcher)
+    public function index(Request $request, FuzzyNameMatcher $matcher, \App\Services\LMD\PerimetreComposante $perimetre)
     {
         // Récupérer les filtres de recherche
         $search = $request->input('search');
@@ -88,6 +88,7 @@ class ESBTPEtudiantController extends Controller
                     'inscriptionSpecialisation.classe.filiere',
                 ]);
             }]);
+        $baseQuery = $perimetre->restreindreEtudiants($baseQuery, $request->user());
 
         if ($status) {
             $baseQuery->where('statut', $status);

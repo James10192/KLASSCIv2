@@ -109,6 +109,18 @@ class LMDBulletinService
             // voir son en-tête réécrit ni son horodatage bougé : ce sont
             // justement les deux signaux qui feraient croire qu'il a été traité.
             $ues = $this->getUEsForSemestre($classe, $semestre);
+            $existant = ESBTPLMDBulletin::query()
+                ->with('resultatsUEs')
+                ->where('etudiant_id', $etudiantId)
+                ->where('classe_id', $classeId)
+                ->where('annee_universitaire_id', $anneeUniversitaireId)
+                ->where('semestre', $semestre)
+                ->first();
+            [$ues, $geler] = $this->composition->appliquerGel(
+                $ues,
+                $existant,
+                (bool) SettingsHelper::get('lmd.freeze_composition', false)
+            );
             $this->refuserSurUneMaquetteVide($etudiantId, $classeId, $anneeUniversitaireId, $semestre, $ues);
 
             // 1. Creer ou mettre a jour le bulletin
@@ -126,7 +138,9 @@ class LMDBulletinService
                 $creditsTotaux += $ue->creditEffectif();
             }
 
-            $this->composition->elaguerLesUnites($bulletin, $resultatsUEs);
+            if (! $geler) {
+                $this->composition->elaguerLesUnites($bulletin, $resultatsUEs);
+            }
 
             // 4. Calculer la moyenne generale ponderee par credits
             $moyenneGenerale = $this->calculerMoyenneGenerale($resultatsUEs);

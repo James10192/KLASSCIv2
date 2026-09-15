@@ -3427,6 +3427,26 @@
                     @endphp
 
                     {{-- Section 1: Crédits CECT --}}
+                    <div class="ls-section">
+                        <div class="ls-head">
+                            <div class="ls-icon"><i class="fas fa-lock"></i></div>
+                            <div class="ls-title">Gel de la maquette sur un bulletin publié</div>
+                        </div>
+                        <div class="ls-desc">
+                            Une fois le bulletin publié, une évolution de maquette n'ajoute plus d'unité et n'efface plus celles déjà calculées. Défaut : désactivé (les écoles actuelles ne changent pas).
+                        </div>
+                        <label class="ls-toggle" for="lmd_freeze_composition">
+                            <div class="ls-toggle-text">
+                                <div class="ls-toggle-label">Geler la composition des bulletins publiés</div>
+                            </div>
+                            <div class="form-check form-switch" style="margin:0; padding-left:2.5em;">
+                                <input class="form-check-input" type="checkbox" id="lmd_freeze_composition"
+                                       name="setting_lmd.freeze_composition" value="1"
+                                       {{ $lmdVal('lmd.freeze_composition', '0') == '1' ? 'checked' : '' }}>
+                            </div>
+                        </label>
+                    </div>
+
                     <div class="ls-section ls-section--credits">
                         <div class="ls-head">
                             <div class="ls-icon ls-icon--credits"><i class="fas fa-award"></i></div>

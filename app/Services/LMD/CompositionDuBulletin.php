@@ -46,6 +46,43 @@ final class CompositionDuBulletin
      * @param  array<int, int>  $idsPresents
      * @return array<int, int>
      */
+    public static function gelActif(bool $reglage, bool $dejaPublie, bool $aDesUnites): bool
+    {
+        return $reglage && $dejaPublie && $aDesUnites;
+    }
+
+    /**
+     * @param  array<int, int>  $idsMaquette
+     * @param  array<int, int>  $idsGelees
+     * @return array<int, int>
+     */
+    public static function idsMaquetteSousGel(array $idsMaquette, array $idsGelees): array
+    {
+        return array_values(array_intersect($idsMaquette, $idsGelees));
+    }
+
+    /**
+     * @param  \Illuminate\Support\Collection<int, object>  $ues
+     * @return array{0: \Illuminate\Support\Collection<int, object>, 1: bool}
+     */
+    public function appliquerGel($ues, ?ESBTPLMDBulletin $existant, bool $reglage): array
+    {
+        $geler = self::gelActif(
+            $reglage,
+            (bool) ($existant?->is_published),
+            $existant !== null && $existant->resultatsUEs->isNotEmpty()
+        );
+        if (! $geler) {
+            return [$ues, false];
+        }
+
+        $idsGelees = $existant->resultatsUEs->pluck('unite_enseignement_id')->map(static fn ($id): int => (int) $id)->all();
+        $idsMaquette = $ues->pluck('id')->map(static fn ($id): int => (int) $id)->all();
+        $retenus = self::idsMaquetteSousGel($idsMaquette, $idsGelees);
+
+        return [$ues->filter(static fn ($ue) => in_array((int) $ue->id, $retenus, true))->values(), true];
+    }
+
     public static function idsAElaguer(array $idsRetenus, array $idsPresents): array
     {
         if ($idsRetenus === []) {

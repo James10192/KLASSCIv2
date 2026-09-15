@@ -74,6 +74,7 @@ class AgregatDeLaPeriodeTest extends TestCase
         ];
 
         $this->assertSame(11.0, AgregatDeLaPeriode::moyenne($periode));
+        $this->assertNotEquals(13.0, AgregatDeLaPeriode::moyenne($periode));
     }
 
     public function test_un_semestre_a_zero_pese_au_lieu_de_disparaitre(): void

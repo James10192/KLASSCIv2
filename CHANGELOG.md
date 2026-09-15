@@ -36,6 +36,14 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ### Améliorations
 
+- **Le procès-verbal annuel LMD pèse les semestres par leurs crédits** — il faisait la moyenne arithmétique de S1 et S2, donc un semestre à zéro ou un volume différent faussait la décision. Il emploie désormais le même agrégat que le jury et la fiche étudiant.
+
+- **Un bulletin LMD publié peut geler sa maquette** (`lmd.freeze_composition`) — défaut désactivé. Activé, une unité ajoutée ensuite n'entre plus, et les unités déjà calculées ne sont plus élaguées.
+
+- **L'import de maquette accepte un aperçu sans écriture** (`dry_run` sur `POST /api/cli/lmd/import`) — la transaction est annulée après le parcours ; les conflits restent visibles.
+
+- **Un compte peut être rattaché à des composantes** (domaines LMD) — la liste des étudiants se restreint alors à ces composantes. Sans rattachement, rien ne change (Côte d'Ivoire).
+
 - **Administrateur d'instance** — rôle visible, sans joker `*`, pour les réglages, comptes, personnel et audit. L'abonnement ADC et le style de bulletin restent à African Digit. Le court-circuit `superAdmin` se coupe par instance (`PERMISSIONS_SUPERADMIN_GATE_BEFORE=false`) sans toucher la Côte d'Ivoire. Il ouvre aussi les réglages (plus seulement Super Admin / secrétaire).
 
 - **Diagnostic des accès** (`/esbtp/diagnostic-acces`) — l'administrateur cherche une personne et un droit en français : compte désactivé, permission manquante, ou fenêtre de notes fermée. Pas de bouton « voir comme ». La page dit aussi d'où viennent le mode TPE et le court-circuit Super Admin.

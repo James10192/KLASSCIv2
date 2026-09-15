@@ -67,4 +67,17 @@ class CompositionDuBulletinTest extends TestCase
         $this->assertSame([0, 1], array_keys($retirees));
         $this->assertSame([10, 30], $retirees);
     }
+
+    public function test_le_gel_n_agit_que_sur_un_bulletin_publie_qui_a_deja_des_unites(): void
+    {
+        $this->assertFalse(CompositionDuBulletin::gelActif(true, false, true));
+        $this->assertFalse(CompositionDuBulletin::gelActif(true, true, false));
+        $this->assertFalse(CompositionDuBulletin::gelActif(false, true, true));
+        $this->assertTrue(CompositionDuBulletin::gelActif(true, true, true));
+    }
+
+    public function test_sous_gel_une_unite_nouvelle_n_entre_pas(): void
+    {
+        $this->assertSame([10, 20], CompositionDuBulletin::idsMaquetteSousGel([10, 20, 30], [10, 20]));
+    }
 }
