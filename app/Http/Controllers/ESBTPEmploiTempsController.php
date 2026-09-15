@@ -1629,6 +1629,23 @@ class ESBTPEmploiTempsController extends Controller
         $seance->teacher_id = $validated['enseignant_id'];
         $seance->type_seance = $validated['type_seance'];
         $seance->jour = $validated['jour'];
+        // La date de la séance, que ce chemin de saisie n'écrivait PAS.
+        //
+        // `date_seance` est nullable et aucun observateur ne la remplit : toute
+        // séance créée ici la portait à `null`, et disparaissait alors
+        // silencieusement de tout ce qui interroge la colonne —
+        // `TeacherHoursService` la filtre en `whereNotNull`, donc la séance ne
+        // comptait pas dans les heures de l'enseignant ni dans son bulletin de
+        // paie ; l'émargement (`ESBTPTeacherAttendance`) la rapproche par date,
+        // donc ne pouvait pas s'y rattacher ; et le garde de conflit de
+        // `ESBTPSeanceCoursController` la compare à une date, donc ces séances
+        // lui étaient invisibles dans les deux sens. Aucune erreur nulle part :
+        // la séance s'affichait à l'écran et n'existait pour personne d'autre.
+        //
+        // Le calcul est celui que l'autre chemin de saisie faisait déjà —
+        // premier jour de l'emploi du temps, plus le rang du jour. Il passe par
+        // `JourDeLaSemaine` parce qu'ici `jour` est un libellé, pas un entier.
+        $seance->date_seance = $this->dateDeLaSeance($emploi_temp, $validated['jour']);
         $seance->heure_debut = $validated['heure_debut'];
         $seance->heure_fin = $validated['heure_fin'];
         $seance->salle = $validated['salle'] ?? null;
@@ -2599,6 +2616,32 @@ class ESBTPEmploiTempsController extends Controller
         ]);
 
         return 0;
+    }
+
+    /**
+     * La date d'une séance : premier jour de l'emploi du temps, plus le rang.
+     *
+     * Rend `null` plutôt qu'une date approchée quand le jour est illisible ou
+     * que l'emploi du temps n'a pas de début : une date fausse se propagerait
+     * aux heures de l'enseignant et à son émargement, où personne ne la
+     * rattraperait. `null` laisse la séance dans l'état qu'elle avait toujours,
+     * et le journal dit pourquoi.
+     */
+    private function dateDeLaSeance(ESBTPEmploiTemps $emploiTemps, $jour): ?string
+    {
+        $rang = JourDeLaSemaine::rang($jour);
+
+        if ($rang === null || ! $emploiTemps->date_debut) {
+            \Log::warning('Date de séance non calculable à la création', [
+                'emploi_temps_id' => $emploiTemps->id,
+                'jour' => $jour,
+                'date_debut' => $emploiTemps->date_debut,
+            ]);
+
+            return null;
+        }
+
+        return Carbon::parse($emploiTemps->date_debut)->addDays($rang)->toDateString();
     }
 
     private function resolveSeanceDayIndex($jour): ?int

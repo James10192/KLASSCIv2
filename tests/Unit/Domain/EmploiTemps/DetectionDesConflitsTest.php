@@ -173,9 +173,11 @@ class DetectionDesConflitsTest extends TestCase
 
     public function test_une_paire_ne_rend_qu_une_ligne_par_type(): void
     {
-        // La double boucle voyait chaque paire deux fois, dans les deux sens.
-        // Sans la garde sur les identifiants, le bandeau afficherait tout en
-        // double.
+        // CARACTÉRISATION, pas non-régression : à horaires identiques, l'ancien
+        // code rendait déjà une ligne — sa clé de déduplication porte les
+        // horaires, donc les deux visites de la paire se repliaient. Ce cas
+        // verrouille le comportement, il ne prouve pas le correctif. Ce qui le
+        // prouve est le cas suivant.
         $conflits = (new DetectionDesConflits)->depuis([
             $this->seance(['id' => 1, 'salle' => 'Amphi A']),
             $this->seance(['id' => 2, 'salle' => 'Amphi A']),
@@ -200,10 +202,29 @@ class DetectionDesConflitsTest extends TestCase
         $this->assertSame('08:00', $conflits[0]['heure_debut']);
     }
 
-    public function test_trois_seances_sur_le_meme_creneau_ne_rendent_qu_une_ligne(): void
+    public function test_trois_seances_aux_horaires_decales_ne_rendent_plus_trois_lignes(): void
     {
-        // Trois paires en conflit, mais une seule chose à dire à l'utilisateur :
-        // « cet enseignant est pris, lundi 8h-10h ».
+        // Mesuré sur le code d'avant : trois lignes, une par paire ordonnée
+        // survivante. Il en reste DEUX, pas une — les paires (1,2) et (1,3)
+        // s'ancrent toutes deux sur la séance 1 et se replient, la paire (2,3)
+        // s'ancre sur la 2 et garde sa ligne.
+        //
+        // Deux et non une : c'est la limite de la clé de déduplication, qui
+        // porte les horaires de la séance d'ancrage. La dire ici évite de
+        // promettre au lecteur suivant un repli qui n'a pas lieu.
+        $conflits = (new DetectionDesConflits)->depuis([
+            $this->seance(['id' => 1, 'teacher_id' => 3, 'heure_debut' => '08:00', 'heure_fin' => '10:00']),
+            $this->seance(['id' => 2, 'teacher_id' => 3, 'heure_debut' => '09:00', 'heure_fin' => '11:00']),
+            $this->seance(['id' => 3, 'teacher_id' => 3, 'heure_debut' => '09:30', 'heure_fin' => '11:30']),
+        ]);
+
+        $this->assertCount(2, $conflits);
+    }
+
+    public function test_trois_seances_au_meme_creneau_ne_rendent_qu_une_ligne(): void
+    {
+        // CARACTÉRISATION : à horaires identiques, l'ancien code rendait déjà
+        // une ligne. Verrouille le comportement sans prouver le correctif.
         $conflits = (new DetectionDesConflits)->depuis([
             $this->seance(['id' => 1, 'teacher_id' => 3]),
             $this->seance(['id' => 2, 'teacher_id' => 3]),
@@ -211,6 +232,53 @@ class DetectionDesConflitsTest extends TestCase
         ]);
 
         $this->assertCount(1, $conflits);
+    }
+
+    public function test_le_meme_conflit_dans_deux_annees_rend_deux_lignes(): void
+    {
+        // Le regroupement par année empêche d'APPARIER deux années ; il ne fait
+        // rien contre deux conflits nés séparément qui se télescopent dans la
+        // déduplication, laquelle tourne une fois, après tous les groupes.
+        // Sans l'année dans sa clé, ce cas rendait UNE ligne : un double-emploi
+        // bien réel disparaissait du bandeau.
+        $conflits = (new DetectionDesConflits)->depuis([
+            $this->seance(['id' => 1, 'annee_universitaire_id' => 7, 'teacher_id' => 3]),
+            $this->seance(['id' => 2, 'annee_universitaire_id' => 7, 'teacher_id' => 3]),
+            $this->seance(['id' => 3, 'annee_universitaire_id' => 8, 'teacher_id' => 3]),
+            $this->seance(['id' => 4, 'annee_universitaire_id' => 8, 'teacher_id' => 3]),
+        ]);
+
+        $this->assertCount(2, $conflits);
+        $this->assertSame([7, 8], array_column($conflits, 'annee_universitaire_id'));
+    }
+
+    // --- Les deux écritures du jour ---
+
+    public function test_deux_seances_du_meme_jour_ecrit_differemment_sont_comparees(): void
+    {
+        // `esbtp_seance_cours.jour` reçoit l'entier depuis un écran et le
+        // libellé depuis l'autre. Comparés par `==`, ils ne concordaient jamais :
+        // deux séances du même lundi, saisies par les deux chemins, n'étaient
+        // pas en conflit.
+        $conflits = (new DetectionDesConflits)->depuis([
+            $this->seance(['id' => 1, 'jour' => 1, 'teacher_id' => 3]),
+            $this->seance(['id' => 2, 'jour' => 'Lundi', 'teacher_id' => 3]),
+        ]);
+
+        $this->assertSame(['Enseignant'], array_column($conflits, 'type'));
+    }
+
+    public function test_deux_seances_a_jour_illisible_ne_sont_pas_en_conflit(): void
+    {
+        // Les tenir pour égales replierait toutes les données abîmées les unes
+        // sur les autres — c'est le défaut `null == null` de la branche
+        // enseignant, transposé au jour.
+        $conflits = (new DetectionDesConflits)->depuis([
+            $this->seance(['id' => 1, 'jour' => null, 'teacher_id' => 3]),
+            $this->seance(['id' => 2, 'jour' => null, 'teacher_id' => 3]),
+        ]);
+
+        $this->assertSame([], $conflits);
     }
 
     public function test_le_libelle_de_l_enseignant_vient_de_son_compte(): void

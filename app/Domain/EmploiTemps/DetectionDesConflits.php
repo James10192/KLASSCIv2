@@ -4,6 +4,7 @@ namespace App\Domain\EmploiTemps;
 
 use Illuminate\Support\Collection;
 
+
 /**
  * Les conflits d'horaire du bandeau de `/esbtp/seances-cours`.
  *
@@ -36,14 +37,18 @@ use Illuminate\Support\Collection;
  * dates, c'est-à-dire de faire de ce détecteur ce que les deux autres sont déjà.
  *
  * Le regroupement est posé à la source plutôt qu'en garde dans la boucle : il n'y
- * a alors rien à tester par paire, et la double boucle passe de l'histoire
- * entière de la base à chaque année prise à part.
+ * a alors plus d'année à tester par paire, et la double boucle passe de
+ * l'histoire entière de la base à chaque année prise à part.
+ *
+ * Il ne dispense PAS de dater la déduplication, et c'est le piège : regrouper
+ * empêche d'apparier deux années, pas deux conflits nés séparément dans deux
+ * années de se replier l'un sur l'autre à la fin. Voir `dedupliquer()`.
  */
 final class DetectionDesConflits
 {
     /**
      * @param  iterable<object>  $seances  séances actives, avec `emploiTemps.classe` et `teacher.user` chargés
-     * @return list<array{type: string, nom: string, jour: mixed, heure_debut: mixed, heure_fin: mixed, seance_id: mixed}>
+     * @return list<array{type: string, nom: string, jour: mixed, heure_debut: mixed, heure_fin: mixed, seance_id: mixed, annee_universitaire_id: mixed}>
      */
     public function depuis(iterable $seances): array
     {
@@ -77,15 +82,30 @@ final class DetectionDesConflits
         return $this->dedupliquer($conflits);
     }
 
+    /**
+     * Le jour passe par `JourDeLaSemaine` et non par `==`.
+     *
+     * `esbtp_seance_cours.jour` porte deux écritures selon l'écran de saisie :
+     * l'entier `1` depuis la liste des séances, le libellé « Lundi » depuis
+     * l'emploi du temps. En PHP 8, `1 == 'Lundi'` est faux — c'est l'entier qui
+     * est converti en chaîne. Deux séances du même lundi issues des deux
+     * chemins ne se voyaient donc jamais.
+     *
+     * Le regroupement par jour à la source, qui supprimerait ce test comme le
+     * regroupement par année a supprimé le sien, n'est PAS fait : un jour
+     * illisible formerait son propre groupe, et toutes les données abîmées se
+     * déclareraient en conflit entre elles. `memeJour()` refuse ce cas, un
+     * `groupBy` ne le saurait pas.
+     */
     private function seChevauchent(object $seance, object $autre): bool
     {
-        return $seance->jour == $autre->jour
+        return JourDeLaSemaine::memeJour($seance->jour, $autre->jour)
             && $seance->heure_debut < $autre->heure_fin
             && $seance->heure_fin > $autre->heure_debut;
     }
 
     /**
-     * @return list<array{type: string, nom: string, jour: mixed, heure_debut: mixed, heure_fin: mixed, seance_id: mixed}>
+     * @return list<array{type: string, nom: string, jour: mixed, heure_debut: mixed, heure_fin: mixed, seance_id: mixed, annee_universitaire_id: mixed}>
      */
     private function conflitsDeLaPaire(object $seance, object $autre): array
     {
@@ -131,7 +151,7 @@ final class DetectionDesConflits
             ?? ('Enseignant #' . $seance->teacher_id);
     }
 
-    /** @return array{type: string, nom: string, jour: mixed, heure_debut: mixed, heure_fin: mixed, seance_id: mixed} */
+    /** @return array{type: string, nom: string, jour: mixed, heure_debut: mixed, heure_fin: mixed, seance_id: mixed, annee_universitaire_id: mixed} */
     private function conflit(string $type, string $nom, object $seance): array
     {
         return [
@@ -141,32 +161,44 @@ final class DetectionDesConflits
             'heure_debut' => $seance->heure_debut,
             'heure_fin' => $seance->heure_fin,
             'seance_id' => $seance->id,
+            // Portée pour la déduplication ci-dessous, pas pour l'affichage.
+            'annee_universitaire_id' => $seance->annee_universitaire_id,
         ];
     }
 
     /**
-     * Une ligne de bandeau par (type, nom, jour, horaire).
+     * Une ligne de bandeau par (année, type, nom, jour, horaire).
      *
      * Ce qu'elle replie, maintenant que chaque paire n'est visitée qu'une fois :
-     * un même enseignant en conflit avec DEUX autres séances sur le même
-     * créneau. Trois séances qui se chevauchent rendent alors une ligne, et non
-     * trois. Le `seance_id` conservé est celui de la dernière paire vue.
+     * un même enseignant en conflit avec DEUX autres séances au même créneau et
+     * dans la même année. Le `seance_id` conservé est celui de la dernière paire
+     * vue.
      *
-     * La clé n'inclut pas l'année : deux conflits réels de deux années
-     * différentes, pour le même enseignant au même créneau, se replieraient sur
-     * une seule ligne. Le regroupement par année en amont rend le cas
-     * inatteignable pour les conflits d'enseignant et de classe ; il reste
-     * théoriquement possible pour une salle portant le même libellé.
+     * **L'année est dans la clé, et ce n'est pas décoratif.** Le regroupement en
+     * amont empêche d'APPARIER deux années ; il ne fait rien contre deux
+     * conflits produits indépendamment dans deux années et qui se télescopent
+     * ici, puisque cette méthode tourne une seule fois, après tous les groupes.
+     * Sans l'année, un enseignant doublement réservé le même lundi en 2024-2025
+     * ET en 2026-2027 ne rendait qu'une ligne : un double-emploi bien réel
+     * disparaissait du bandeau. Les trois types y étaient également exposés — ce
+     * commentaire a d'abord affirmé le contraire, et c'était faux.
      *
-     * @param  list<array{type: string, nom: string, jour: mixed, heure_debut: mixed, heure_fin: mixed, seance_id: mixed}>  $conflits
-     * @return list<array{type: string, nom: string, jour: mixed, heure_debut: mixed, heure_fin: mixed, seance_id: mixed}>
+     * @param  list<array{type: string, nom: string, jour: mixed, heure_debut: mixed, heure_fin: mixed, seance_id: mixed, annee_universitaire_id: mixed}>  $conflits
+     * @return list<array{type: string, nom: string, jour: mixed, heure_debut: mixed, heure_fin: mixed, seance_id: mixed, annee_universitaire_id: mixed}>
      */
     private function dedupliquer(array $conflits): array
     {
         $uniques = [];
 
         foreach ($conflits as $conflit) {
-            $cle = $conflit['type'].'-'.$conflit['nom'].'-'.$conflit['jour'].'-'.$conflit['heure_debut'].'-'.$conflit['heure_fin'];
+            $cle = implode('-', [
+                $conflit['annee_universitaire_id'],
+                $conflit['type'],
+                $conflit['nom'],
+                $conflit['jour'],
+                $conflit['heure_debut'],
+                $conflit['heure_fin'],
+            ]);
             $uniques[$cle] = $conflit;
         }
 

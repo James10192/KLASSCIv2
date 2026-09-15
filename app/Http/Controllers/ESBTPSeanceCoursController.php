@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Domain\EmploiTemps\DetectionDesConflits;
+use App\Domain\EmploiTemps\JourDeLaSemaine;
 use App\Enums\TypeSeance;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPClasse;
@@ -11,6 +12,7 @@ use App\Models\ESBTPEvaluation;
 use App\Models\ESBTPSeanceCours;
 use App\Models\ESBTPTeacher;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -26,50 +28,15 @@ class ESBTPSeanceCoursController extends Controller
     public function index(Request $request)
     {
         try {
-            // Récupérer les filtres de la requête
-            $emploiTempsId = $request->input('emploi_temps_id');
-            $jourSemaine = $request->input('jour_semaine');
-            $typeSeance = $request->input('type_seance');
-            $enseignantId = $request->input('enseignant');
-
-            // Construire la requête de base
-            $query = ESBTPSeanceCours::with(['emploiTemps.classe', 'matiere']);
-
-            // Appliquer les filtres si présents
-            if ($emploiTempsId) {
-                $query->where('emploi_temps_id', $emploiTempsId);
-            }
-
-            if ($jourSemaine) {
-                $query->where('jour', $jourSemaine);
-            }
-
-            if ($typeSeance) {
-                $query->where('type_seance', $typeSeance);
-            }
-
-            // Filtre enseignant — sur `teacher_id`, la colonne vivante.
-            //
-            // Il portait sur la colonne texte `enseignant`, que rien n'écrit
-            // (absente de `$fillable`, aucun code du dépôt ne la renseigne) : le
-            // filtre rendait donc systématiquement zéro séance, et la liste
-            // paraissait vide dès qu'on choisissait un enseignant.
-            if ($enseignantId) {
-                $query->where('teacher_id', $enseignantId);
-            }
-
-            // Récupérer les séances de cours paginées
-            $seancesCours = $query->orderBy('jour')->orderBy('heure_debut')->paginate(25);
+            $seancesCours = $this->listeFiltree($request)
+                ->orderBy('jour')
+                ->orderBy('heure_debut')
+                ->paginate(25);
 
             // Récupérer tous les emplois du temps pour le filtre
             $emploisTemps = ESBTPEmploiTemps::with('classe')->orderBy('created_at', 'desc')->get();
 
-            // Les enseignants du filtre — des `ESBTPTeacher`, parce que c'est ce
-            // que `esbtp_seance_cours.teacher_id` désigne. La liste portait des
-            // `User`, dont les identifiants ne correspondent pas.
-            // Le tri se fait en mémoire : `name` est un accesseur qui lit le
-            // compte lié, donc il n'existe pas en base.
-            $enseignants = ESBTPTeacher::with('user')->get()->sortBy('name')->values();
+            $enseignants = $this->enseignantsDuFiltre();
 
             // Statistiques par type de séance (single aggregated query, keys UPPERCASE per TypeSeance enum)
             $rawCounts = ESBTPSeanceCours::query()
@@ -106,6 +73,63 @@ class ESBTPSeanceCoursController extends Controller
 
             return back()->with('error', 'Une erreur est survenue lors du chargement des séances de cours: '.$e->getMessage());
         }
+    }
+
+    /**
+     * La liste des séances, filtrée comme le demande la requête.
+     *
+     * Le filtre enseignant porte sur `teacher_id`, la colonne vivante. Il
+     * portait sur la colonne texte `enseignant`, que rien n'écrit — absente de
+     * `$fillable`, renseignée par aucun code du dépôt : il rendait donc
+     * systématiquement zéro séance, et la liste paraissait vide dès qu'on
+     * choisissait un enseignant.
+     *
+     * Le filtre jour interroge les DEUX écritures de la colonne. Le formulaire
+     * envoie un entier, mais les séances saisies depuis l'emploi du temps
+     * portent un libellé (« Lundi ») : un `where` sur l'entier les rate toutes.
+     */
+    private function listeFiltree(Request $request): Builder
+    {
+        $query = ESBTPSeanceCours::with(['emploiTemps.classe', 'matiere', 'teacher.user']);
+
+        if ($emploiTempsId = $request->input('emploi_temps_id')) {
+            $query->where('emploi_temps_id', $emploiTempsId);
+        }
+
+        if ($jourSemaine = $request->input('jour_semaine')) {
+            $query->whereIn('jour', JourDeLaSemaine::ecrituresDe($jourSemaine));
+        }
+
+        if ($typeSeance = $request->input('type_seance')) {
+            $query->where('type_seance', $typeSeance);
+        }
+
+        if ($enseignantId = $request->input('enseignant')) {
+            $query->where('teacher_id', $enseignantId);
+        }
+
+        return $query;
+    }
+
+    /**
+     * Les enseignants proposés au filtre.
+     *
+     * Des `ESBTPTeacher`, parce que c'est ce que `esbtp_seance_cours.teacher_id`
+     * désigne. La liste portait des `User`, dont les identifiants ne
+     * correspondent pas.
+     *
+     * Tous, y compris les désactivés — la liste portait un `is_active`, retiré
+     * ici à dessein : elle filtre des séances DÉJÀ enregistrées, et masquer un
+     * enseignant parti rendrait ses séances passées introuvables.
+     *
+     * Le tri se fait en mémoire : `name` est un accesseur qui lit le compte
+     * lié, donc il n'existe pas en base.
+     *
+     * @return \Illuminate\Support\Collection<int, ESBTPTeacher>
+     */
+    private function enseignantsDuFiltre()
+    {
+        return ESBTPTeacher::with('user')->get()->sortBy('name')->values();
     }
 
     /**

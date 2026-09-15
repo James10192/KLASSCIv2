@@ -99,17 +99,21 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                @php
-                                    $jours = ['', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
-                                @endphp
-
+                                {{-- La table de correspondance des jours a été retirée : elle ne
+                                     connaissait que les entiers, et la colonne `jour` porte aussi
+                                     des libellés. `JourDeLaSemaine` comprend les deux. --}}
                                 @forelse($seancesCours as $seance)
                                     <tr @if(!$seance->is_active) class="table-secondary" @endif>
-                                        <td>{{ $jours[$seance->jour] ?? 'Inconnu' }}</td>
+                                        <td>{{ \App\Domain\EmploiTemps\JourDeLaSemaine::libelle($seance->jour) ?? 'Inconnu' }}</td>
                                         <td>{{ $seance->heure_debut }} - {{ $seance->heure_fin }}</td>
                                         <td>{{ $seance->emploiTemps->classe->name }}</td>
                                         <td>{{ $seance->matiere->name }}</td>
-                                        <td>{{ $seance->enseignant }}</td>
+                                        {{-- Par la relation, pas par `$seance->enseignant` : le modèle porte
+                                             une colonne morte de ce nom ET une relation homonyme, et Eloquent
+                                             sert l'attribut avant la relation. La colonne s'affichait donc
+                                             vide sur toutes les lignes. `teacher.user` est chargé par
+                                             `listeFiltree()`, sans quoi ce serait un N+1 sur la page. --}}
+                                        <td>{{ $seance->teacher?->name ?? '—' }}</td>
                                         <td>{{ $seance->salle }}</td>
                                         <td>
                                             @php
@@ -151,7 +155,7 @@
                                                         </div>
                                                         <div class="modal-body">
                                                             <p>Êtes-vous sûr de vouloir supprimer cette séance de cours ?</p>
-                                                            <p class="fw-bold">{{ $jours[$seance->jour] }} de {{ $seance->heure_debut }} à {{ $seance->heure_fin }} - {{ $seance->matiere->name }}</p>
+                                                            <p class="fw-bold">{{ \App\Domain\EmploiTemps\JourDeLaSemaine::libelle($seance->jour) ?? 'Jour inconnu' }} de {{ $seance->heure_debut }} à {{ $seance->heure_fin }} - {{ $seance->matiere->name }}</p>
                                                             <p class="fw-bold">Classe: {{ $seance->emploiTemps->classe->name }}</p>
                                                             <p class="text-danger">
                                                                 <i class="fas fa-exclamation-triangle me-1"></i>
@@ -258,7 +262,7 @@
                             <ul class="list-group">
                                 @foreach($conflits as $conflit)
                                     <li class="list-group-item list-group-item-warning">
-                                        <strong>{{ $jours[$conflit['jour']] }} - {{ $conflit['heure_debut'] }} à {{ $conflit['heure_fin'] }}</strong><br>
+                                        <strong>{{ \App\Domain\EmploiTemps\JourDeLaSemaine::libelle($conflit['jour']) ?? 'Jour inconnu' }} - {{ $conflit['heure_debut'] }} à {{ $conflit['heure_fin'] }}</strong><br>
                                         <span class="text-danger">{{ $conflit['type'] }}</span> :
                                         @if($conflit['type'] == 'Enseignant')
                                             {{ $conflit['nom'] }} a plusieurs cours en même temps
