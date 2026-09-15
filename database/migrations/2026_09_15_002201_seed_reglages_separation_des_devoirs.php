@@ -11,15 +11,17 @@ use Illuminate\Support\Facades\Log;
  * `SeparationOfDutiesService` les LIT deja (`SettingsHelper::get()`), et le
  * service se replie proprement sur la valeur d'usine quand ils n'existent pas.
  * Mais la boucle d'enregistrement de l'ecran des reglages, elle, ignore en
- * SILENCE toute cle absente de la table : sans ces lignes, les trois nouvelles
- * cases s'afficheraient, se cocheraient, et ne s'enregistreraient jamais.
+ * SILENCE toute cle absente de la table : sans ces lignes, les trois nouveaux
+ * selecteurs s'afficheraient, se choisiraient, et ne s'enregistreraient jamais.
  *
  * Meme panne que pour les reglages de composition de la moyenne : les defauts
  * declares dans le code n'atteignent aucune instance en service.
  *
  * Additive et rejouable : une valeur deja posee par l'ecole n'est jamais
- * ecrasee. Le defaut reprend `config/sod.php`, c'est-a-dire le comportement
- * actuel — les trois regles restent actives tant que l'ecole ne demande rien.
+ * ecrasee. Le defaut sème est `config/sod.php`, soit OBSERVATION : la regle
+ * s'applique et journalise, mais ne refuse rien. Voir le commentaire de la
+ * boucle plus bas — livrer ces trois regles bloquantes ferait basculer d'un
+ * coup une instance en service d'« aucun controle » a « 403 ».
  */
 return new class extends Migration
 {

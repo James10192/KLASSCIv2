@@ -108,13 +108,23 @@ enum ModeSeparationDesDevoirs: string
         };
     }
 
-    /** @return array<string, string> valeur => libellé, pour un sélecteur */
+    /**
+     * Les trois modes tels qu'un sélecteur les affiche.
+     *
+     * Porte le libellé COMPLET — « Bloquer — Le second geste est refusé. » — et
+     * pas seulement `label()`. L'écran des réglages construisait cette
+     * concaténation lui-même : le même assemblage s'écrivait à deux endroits,
+     * dont un seul était couvert. Ajouter un quatrième mode n'en corrigeait
+     * alors qu'un, et l'écran gardait l'ancienne liste sans rien signaler.
+     *
+     * @return array<string, string> valeur => libellé complet
+     */
     public static function options(): array
     {
         $options = [];
 
         foreach (self::cases() as $mode) {
-            $options[$mode->value] = $mode->label();
+            $options[$mode->value] = $mode->label().' — '.$mode->hint();
         }
 
         return $options;

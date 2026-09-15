@@ -28,11 +28,14 @@ use Tests\TestCase;
  *
  * ## Ce que la table de départ met à l'épreuve
  *
- * Quatre séances sans date, dont deux recalculables, et quatre pièges qui
- * doivent être ignorés : une récréation, une pause déjeuner, une séance déjà
- * datée, une séance supprimée. La portée de `requete()` est la seule chose qui
- * les distingue, et c'est elle qui décide si le chiffre remis à l'école est
- * utilisable.
+ * Cinq séances sans date, dont trois recalculables et **une sans enseignant**,
+ * plus quatre pièges qui doivent être ignorés : une récréation, une pause
+ * déjeuner, une séance déjà datée, une séance supprimée.
+ *
+ * La séance sans enseignant n'est pas un cas de figure inventé : elle est ce
+ * qui distingue le total du relevé de ce que la paie recouperait. Son absence
+ * de la table de départ est ce qui avait laissé passer un docbloc affirmant que
+ * les deux coïncidaient.
  */
 class DiagnosticDesDatesDeSeanceSurBaseTest extends TestCase
 {
@@ -135,6 +138,12 @@ class DiagnosticDesDatesDeSeanceSurBaseTest extends TestCase
             // Irrattrapables, une par raison.
             $seance(['teacher_id' => 9, 'jour' => 'Dimanche', 'heure_fin' => '09:30:00']),
             $seance(['emploi_temps_id' => 2, 'teacher_id' => 9, 'heure_fin' => '09:00:00']),
+            // SANS enseignant : 3h. Population réelle et non marginale —
+            // `ESBTPSeanceCoursController` pose `teacher_id = null` sur tout
+            // `type = 'homework'`, donc sur TOUTES les évaluations LMD. Elle
+            // entre au relevé (elle n'est ni récréation ni déjeuner) mais la
+            // paie ne la compterait pas même datée : elle exige un enseignant.
+            $seance(['type' => 'homework', 'teacher_id' => null, 'heure_debut' => '15:00:00', 'heure_fin' => '18:00:00']),
             // Hors périmètre : récréation, déjeuner, déjà datée, supprimée.
             $seance(['type' => 'break', 'heure_debut' => '10:00:00', 'heure_fin' => '10:15:00']),
             $seance(['type' => 'lunch', 'heure_debut' => '12:00:00', 'heure_fin' => '13:00:00']),
@@ -148,14 +157,14 @@ class DiagnosticDesDatesDeSeanceSurBaseTest extends TestCase
         return app(DiagnosticDesDatesDeSeance::class);
     }
 
-    public function test_le_releve_ne_compte_que_ce_que_la_paie_compterait(): void
+    public function test_la_recreation_le_dejeuner_le_date_et_le_supprime_sont_hors_du_releve(): void
     {
         $rapport = $this->diagnostic()->rapport(50);
 
-        // Quatre, et non huit : la récréation, le déjeuner, la séance déjà
-        // datée et la supprimée sont hors de la population du défaut.
-        $this->assertSame(4, $rapport['total_sans_date']);
-        $this->assertSame(2, $rapport['rattrapables']);
+        // Cinq, et non neuf : la récréation, le déjeuner, la séance déjà datée
+        // et la supprimée sont hors de la population du défaut.
+        $this->assertSame(5, $rapport['total_sans_date']);
+        $this->assertSame(3, $rapport['rattrapables']);
         $this->assertSame([
             'jour illisible' => 1,
             'emploi du temps sans date de début' => 1,
@@ -164,10 +173,27 @@ class DiagnosticDesDatesDeSeanceSurBaseTest extends TestCase
 
     public function test_les_heures_perdues_sont_chiffrees_et_non_nulles(): void
     {
-        // 2 + 3 + 1,5 + 1. Ce total valait 0.0 tant que la durée était lue sur
-        // l'attribut casté en `datetime` : c'est le seul chiffre qui rend ce
-        // défaut visible, et il était le seul à être faux.
-        $this->assertSame(7.5, $this->diagnostic()->rapport(50)['heures_perdues']);
+        // 2 + 3 + 1,5 + 1 + 3. Ce total valait 0.0 tant que la durée était lue
+        // sur l'attribut du modèle : c'est le seul chiffre qui rend ce défaut
+        // visible, et il était le seul à être faux.
+        $this->assertSame(10.5, $this->diagnostic()->rapport(50)['heures_perdues']);
+    }
+
+    public function test_les_heures_sans_enseignant_sont_comptees_a_part(): void
+    {
+        // La borne que le relevé NE reprend PAS de la paie est `teacher_id`.
+        // Le total global est donc plus large que le recoupable, et publier la
+        // somme seule ferait engager une écriture de masse sur un chiffre dont
+        // une part ne se rapprochera d'aucun bulletin — c'est précisément pour
+        // cela que les deux sont séparés.
+        $rapport = $this->diagnostic()->rapport(50);
+
+        $this->assertSame(7.5, $rapport['heures_recoupables_paie']);
+        $this->assertSame(3.0, $rapport['heures_sans_enseignant']);
+        $this->assertSame(
+            $rapport['heures_perdues'],
+            round($rapport['heures_recoupables_paie'] + $rapport['heures_sans_enseignant'], 2),
+        );
     }
 
     public function test_les_heures_sont_groupees_par_enseignant(): void
@@ -177,12 +203,18 @@ class DiagnosticDesDatesDeSeanceSurBaseTest extends TestCase
 
         $this->assertSame(5.0, $parEnseignant[7]['heures']);
         $this->assertSame(2.5, $parEnseignant[9]['heures']);
+
+        // La séance sans enseignant a sa propre ligne, sous un libellé qui le
+        // dit : la faire disparaître du groupement la rendrait invisible alors
+        // que c'est précisément un défaut à corriger.
+        $this->assertSame(3.0, $parEnseignant[null]['heures']);
+        $this->assertSame('(aucun enseignant affecté)', $parEnseignant[null]['enseignant']);
     }
 
     public function test_le_detail_rend_les_heures_brutes(): void
     {
-        // Et non « 2026-09-15 08:00:00 » : le cast `datetime` colle la date du
-        // jour devant l'heure, dans un rapport qui traque des dates manquantes.
+        // Et non « 2026-09-15 08:00:00 » : l'accesseur du modèle colle la date
+        // du jour devant l'heure, dans un rapport qui traque des dates manquantes.
         $this->assertSame('08:00:00', $this->diagnostic()->rapport(50)['detail'][0]['heure_debut']);
     }
 
@@ -201,7 +233,7 @@ class DiagnosticDesDatesDeSeanceSurBaseTest extends TestCase
         $resultat = $this->diagnostic()->rattraper(false);
 
         $this->assertFalse($resultat['applique']);
-        $this->assertSame(2, $resultat['dates_posees']);
+        $this->assertSame(3, $resultat['dates_posees']);
         $this->assertSame(
             $avant,
             DB::table('esbtp_seance_cours')->whereNull('date_seance')->count(),

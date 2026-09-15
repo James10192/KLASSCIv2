@@ -618,15 +618,6 @@ class CLIDataController extends BaseApiController
     }
 
     /**
-     * GET /api/cli/analytics/diagnose — Diagnostic complet du sous-système Analytics
-     * (couverture règles, snapshots, distribution mensuelle, saturation risque).
-     */
-    /**
-     * Recense les inscriptions dont le statut d'affectation a pu etre ecrase par
-     * l'un des quatre chemins qui l'ecrivaient en dur (corriges en septembre
-     * 2026). Lecture seule : ne modifie aucun dossier.
-     */
-    /**
      * Les seances sans date, et les heures enseignant qu'elles font disparaitre.
      *
      * Lecture seule. Le rattrapage n'a PAS d'endpoint : il ecrit, et une
@@ -652,6 +643,11 @@ class CLIDataController extends BaseApiController
         }
     }
 
+    /**
+     * Recense les inscriptions dont le statut d'affectation a pu etre ecrase par
+     * l'un des quatre chemins qui l'ecrivaient en dur (corriges en septembre
+     * 2026). Lecture seule : ne modifie aucun dossier.
+     */
     public function affectationDiagnose(Request $request): JsonResponse
     {
         if (!$request->user()->tokenCan('cli:read')) {
@@ -682,6 +678,10 @@ class CLIDataController extends BaseApiController
         }
     }
 
+    /**
+     * GET /api/cli/analytics/diagnose — Diagnostic complet du sous-système Analytics
+     * (couverture règles, snapshots, distribution mensuelle, saturation risque).
+     */
     public function analyticsDiagnose(Request $request): JsonResponse
     {
         if (!$request->user()->tokenCan('cli:read')) {

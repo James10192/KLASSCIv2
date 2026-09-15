@@ -37,13 +37,9 @@ class DiagnosticDesDatesDeSeance
     /**
      * La population du défaut : les séances qui n'ont pas de date.
      *
-     * Sa portée n'est pas « tout ce qui a `date_seance` nulle », mais
-     * **exactement ce que la paie compterait si la date était là**. C'est ce
-     * qui rend le chiffre du relevé utilisable pour décider d'un rattrapage :
-     * un total plus large serait une alerte qu'on ne peut pas recouper.
-     *
-     * D'où les deux bornes, copiées de `TeacherHoursService::seancesDeLaPeriode()`,
-     * la requête qui alimente le bulletin de paie :
+     * Sa portée est celle de la paie **moins le filtre enseignant**, et c'est
+     * délibéré. Les deux bornes reprises de
+     * `TeacherHoursService::seancesDeLaPeriode()` :
      *
      *  - **récréations et pauses déjeuner exclues** (`type` `break` / `lunch`).
      *    Elles n'ont jamais compté d'heures d'enseignement ; les faire figurer
@@ -53,9 +49,25 @@ class DiagnosticDesDatesDeSeance
      *    que porte le modèle. Rien à écrire : c'est le comportement par défaut
      *    de `query()`, et il est juste ici.
      *
-     * Ce qui n'est PAS filtré, et pourquoi : `is_active`. La paie ne le filtre
-     * pas non plus — une séance désactivée après avoir été faite reste due.
-     * Filtrer ici et pas là ferait diverger les deux comptes.
+     * Ce qui n'est PAS filtré, et pourquoi :
+     *
+     *  - `is_active` — la paie ne le filtre pas non plus. Une séance désactivée
+     *    après avoir été faite reste due ; filtrer ici et pas là ferait diverger
+     *    les deux comptes.
+     *  - **`teacher_id`**, que la paie exige pourtant (`->where('teacher_id', …)`
+     *    et `->whereNotNull('teacher_id')` selon la méthode). Le relevé le laisse
+     *    passer parce qu'une séance sans enseignant mérite d'être vue : c'est
+     *    une population réelle et non marginale, `ESBTPSeanceCoursController`
+     *    posant `teacher_id = null` sur tout `type = 'homework'`, c'est-à-dire
+     *    sur TOUTES les évaluations LMD (examen, partiel, rattrapage, soutenance).
+     *
+     * **Conséquence directe sur la lecture du rapport, à ne pas perdre de vue :**
+     * son total d'heures est donc PLUS LARGE que ce que la paie recouperait. Le
+     * rapport ne publie pas ce total seul — il le scinde en
+     * `heures_recoupables_paie` et `heures_sans_enseignant`, et la commande
+     * affiche les deux. Annoncer la somme sous un libellé « heures dues » ferait
+     * décider d'une écriture de masse sur un chiffre que personne ne peut
+     * rapprocher d'un bulletin.
      */
     private function requete(?int $emploiTempsId = null): \Illuminate\Database\Eloquent\Builder
     {
@@ -119,8 +131,8 @@ class DiagnosticDesDatesDeSeance
                             'matiere' => $seance->matiere?->name,
                             'enseignant' => $seance->teacher?->user?->name,
                             'jour' => $seance->jour,
-                            // Brutes, pour la même raison que la durée : l'attribut
-                            // casté rendrait « 2026-09-15 08:00:00 » — une date
+                            // Brutes, pour la même raison que la durée : l'accesseur
+                            // du modèle rendrait « 2026-09-15 08:00:00 » — une date
                             // du jour collée devant l'heure, dans un rapport qui
                             // sert justement à traquer des dates manquantes.
                             'heure_debut' => $seance->getAttributes()['heure_debut'] ?? null,
@@ -138,11 +150,29 @@ class DiagnosticDesDatesDeSeance
         }
         unset($ligne);
 
+        // Deux totaux, pas un. La paie exige un `teacher_id` ; les séances qui
+        // n'en ont pas — toutes les évaluations LMD en font partie — sont un
+        // vrai défaut à voir, mais leurs heures ne se rapprocheront d'aucun
+        // bulletin. Les additionner sous un libellé unique ferait engager une
+        // écriture de masse sur un chiffre irrécupérable de moitié.
+        $recoupables = 0.0;
+        $sansEnseignant = 0.0;
+
+        foreach ($parEnseignant as $ligne) {
+            if ($ligne['teacher_id'] === null) {
+                $sansEnseignant += $ligne['heures'];
+            } else {
+                $recoupables += $ligne['heures'];
+            }
+        }
+
         return [
             'total_sans_date' => $total,
             'rattrapables' => $rattrapables,
             'irrattrapables' => $irrattrapables,
-            'heures_perdues' => round(array_sum(array_column($parEnseignant, 'heures')), 2),
+            'heures_perdues' => round($recoupables + $sansEnseignant, 2),
+            'heures_recoupables_paie' => round($recoupables, 2),
+            'heures_sans_enseignant' => round($sansEnseignant, 2),
             'par_enseignant' => array_values($parEnseignant),
             'detail' => $detail,
             'limite_detail' => $limite,
@@ -241,13 +271,19 @@ class DiagnosticDesDatesDeSeance
      */
     public static function dureeEnHeures(ESBTPSeanceCours $seance): float
     {
-        // Les valeurs BRUTES, et non `$seance->heure_debut` : ces colonnes sont
-        // castées en `datetime`, donc l'attribut rend un Carbon daté d'AUJOURD'HUI
-        // et toute découpe de chaîne y lit la date. C'est ce qui rendait zéro
-        // heure pour toutes les séances.
+        // Les valeurs BRUTES, et non `$seance->heure_debut` : le modèle déclare
+        // un ACCESSEUR `getHeureDebutAttribute()` qui fait `Carbon::parse()`,
+        // donc l'attribut rend un Carbon daté d'AUJOURD'HUI et toute découpe de
+        // chaîne y lit la date. C'est ce qui rendait zéro heure partout.
+        //
+        // La cause est bien l'accesseur, PAS le cast `'datetime'` que porte
+        // aussi le modèle : un accesseur passe avant le cast, qui est donc
+        // inerte ici. Y toucher ne changerait rien — voir le piège #14 de
+        // `klassci-debugging-discipline.md`.
         //
         // Un second effet existe — une heure nulle rend l'instant présent plutôt
-        // que `null` — mais il ne concerne QUE les objets en mémoire : la
+        // que `null`, par ce même `Carbon::parse(null)` — mais il ne concerne
+        // QUE les objets en mémoire : la
         // migration d'origine déclare `$table->time('heure_debut')` et
         // `$table->time('heure_fin')` sans `nullable()`, et aucune migration
         // ultérieure ne les relâche. Une séance aux horaires vides ne peut donc

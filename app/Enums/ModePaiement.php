@@ -30,6 +30,23 @@ enum ModePaiement: string
     case MTN_MONEY = 'mtn_money';
     case MOOV_MONEY = 'moov_money';
     case DJAMO = 'djamo';
+
+    /**
+     * Celtiis Cash — le mobile money de SBIN SA, l'operateur public beninois.
+     *
+     * Absent tant que KLASSCI ne servait que la Cote d'Ivoire ; `ucao-benin` est
+     * la premiere instance hors CI, et un mode manquant ne fait pas refuser
+     * l'encaissement, il le rend INVISIBLE du rapprochement de caisse.
+     *
+     * Les autres operateurs beninois sont deja couverts et n'ont PAS besoin de
+     * cases a eux : MTN Benin encaisse sous MoMo (`MTN_MONEY`) et Moov Africa
+     * Benin sous Flooz (`MOOV_MONEY`, que `fromLegacy()` reconnait deja).
+     *
+     * Ne retirez aucun mode ivoirien en echange : l'enum est partage par les
+     * huit instances. Un mode inutilise ne coute rien.
+     */
+    case CELTIIS_CASH = 'celtiis_cash';
+
     case AUTRE = 'autre';
 
     public function label(): string
@@ -45,6 +62,7 @@ enum ModePaiement: string
             self::MTN_MONEY => 'MTN MoMo',
             self::MOOV_MONEY => 'Moov Money',
             self::DJAMO => 'Djamo',
+            self::CELTIIS_CASH => 'Celtiis Cash',
             self::AUTRE => 'Autre',
         };
     }
@@ -106,6 +124,10 @@ enum ModePaiement: string
             str_contains($normalized, 'orange') => self::ORANGE_MONEY,
             str_contains($normalized, 'mtn') || str_contains($normalized, 'momo') => self::MTN_MONEY,
             str_contains($normalized, 'moov') || str_contains($normalized, 'flooz') => self::MOOV_MONEY,
+            // Avant le repli 'mobile' : « Celtiis Mobile Money » y tomberait sinon.
+            // Le mot « cash » de la marque ne peut pas, lui, faire confondre avec
+            // les especes : ce controle-la est un `in_array` exact, pas un contains.
+            str_contains($normalized, 'celtiis') => self::CELTIIS_CASH,
             str_contains($normalized, 'mobile') => self::MOBILE_MONEY,
             str_contains($normalized, 'virement') || str_contains($normalized, 'bank') => self::VIREMENT,
             str_contains($normalized, 'cheque') || str_contains($normalized, 'cheq') => self::CHEQUE,

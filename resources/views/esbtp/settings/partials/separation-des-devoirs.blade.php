@@ -27,7 +27,6 @@
             $clePermissionSod = \App\Services\Security\SeparationOfDutiesService::permissionDeContournement();
             $metaPermissionSod = app(\App\Services\PermissionRegistry::class)->permissionMeta($clePermissionSod);
             $libellePermissionSod = $metaPermissionSod['label'] ?? $clePermissionSod;
-            $modesSod = \App\Enums\ModeSeparationDesDevoirs::cases();
         @endphp
         <div class="ls-toggle-hint" style="margin-bottom:.5rem;">
             Norme OHADA : personne ne signe les deux bouts d'une même chaîne.
@@ -53,20 +52,16 @@
                     \App\Helpers\SettingsHelper::get($regleSod['cle'], $regleSod['defaut'])
                 ) ?? \App\Enums\ModeSeparationDesDevoirs::from($regleSod['defaut']);
             @endphp
-            @php
-                // Le composant premium attend ['valeur' => 'libellé'] ; il garde
-                // un <select> caché, donc la boucle de `ESBTPSettingsController::update()`
-                // reçoit ce champ exactement comme avant.
-                $optionsSod = [];
-                foreach ($modesSod as $modeOption) {
-                    $optionsSod[$modeOption->value] = $modeOption->label().' — '.$modeOption->hint();
-                }
-            @endphp
+            {{-- Le composant premium attend ['valeur' => 'libellé'], ce que rend
+                 `options()` — la liste vit dans l'enum, pas ici, sinon un
+                 quatrième mode n'apparaîtrait qu'à un seul des deux endroits.
+                 Le composant garde un <select> caché, donc la boucle de
+                 `ESBTPSettingsController::update()` reçoit ce champ comme avant. --}}
             <x-au-select
                 class="sod-select-full"
                 :name="$regleSod['cle']"
                 :value="$modeSod->value"
-                :options="$optionsSod"
+                :options="\App\Enums\ModeSeparationDesDevoirs::options()"
                 :placeholder-is-first-option="false"
                 icon="fa-user-shield" />
         </div>

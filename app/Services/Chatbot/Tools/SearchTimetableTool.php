@@ -136,9 +136,11 @@ class SearchTimetableTool extends ChatbotTool
     /**
      * Un créneau, tel que le chatbot le lit à voix haute.
      *
-     * `format('H:i')` et non l'attribut brut : `heure_debut` est casté en
-     * `datetime`, donc le lire en contexte chaîne rendrait « 2026-09-15
-     * 08:00:00 » au lieu de « 08:00 ».
+     * `format('H:i')` et non l'attribut brut : le modèle déclare un accesseur
+     * `getHeureDebutAttribute()` qui fait `Carbon::parse()`, donc le lire en
+     * contexte chaîne rendrait « 2026-09-15 08:00:00 » au lieu de « 08:00 ».
+     * (C'est l'accesseur et non le cast homonyme — piège #14 de
+     * `klassci-debugging-discipline.md`.)
      *
      * @return array<string, string>
      */

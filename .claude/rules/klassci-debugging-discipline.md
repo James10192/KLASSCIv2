@@ -254,14 +254,15 @@ journaliser ce qu'il a rattrape** — sinon on ne cherche meme pas.
 
 ---
 
-### Piège #14 — `heure_debut` / `heure_fin` castées en `datetime` : « 2026- » au lieu de « 08:00 »
+### Piège #14 — `heure_debut` / `heure_fin` rendent « 2026- » au lieu de « 08:00 »
 
 **Symptôme** : un horaire s'affiche « 2026-09-15 08:00:00 » là où on attend « 08:00 », ou pire —
 avec un `substr(..., 0, 5)` — **« 2026- »**, sans aucune erreur.
 
-**Cause** : `ESBTPSeanceCours` (et `ESBTPCours`) castent ces deux colonnes `time` en `datetime`.
-L'attribut rend donc un `Carbon` **daté d'aujourd'hui**, pas la chaîne « 08:00:00 ». Toute lecture
-en contexte chaîne y lit la DATE.
+**Cause : un ACCESSEUR, pas le cast.** `ESBTPSeanceCours` déclare
+`getHeureDebutAttribute()` / `getHeureFinAttribute()` qui font `Carbon::parse($value)`. L'attribut
+rend donc un `Carbon` **daté d'aujourd'hui**, pas la chaîne « 08:00:00 », et toute lecture en
+contexte chaîne y lit la DATE.
 
 ```php
 $s->heure_debut              // Carbon\Carbon
@@ -269,10 +270,24 @@ $s->heure_debut              // Carbon\Carbon
 substr($s->heure_debut, 0,5) // "2026-"     ← et non "08:00"
 ```
 
-⚠️ `'datetime:H:i'` **ne corrige pas ce cas** : ce format ne change que `toArray()`/`toJson()`.
-`(string)` et `substr()` rendent toujours « 2026- ». C'est la fausse piste évidente.
+**Le modèle porte AUSSI un cast `'datetime'` sur ces colonnes, et ce cast ne sert à rien** :
+`transformModelValue()` consulte l'accesseur **avant** le cast. Débrancher le cast en laissant
+l'accesseur ne change donc strictement rien — c'est la première fausse piste, et la plus coûteuse
+parce qu'elle a l'air de marcher jusqu'au test.
+
+⚠️ `'datetime:H:i'` **ne corrige rien non plus, `toArray()` compris** : `addCastAttributesToArray()`
+saute les attributs mutés, donc `toArray()` rend l'objet `Carbon` brut. Tant que l'accesseur est là,
+**aucun** réglage de cast n'a d'effet ; c'est l'accesseur qu'il faudrait retirer, et alors seulement
+le cast reprendrait la main.
 
 **Le fix** : `->format('H:i')` pour afficher, ou `$s->getAttributes()['heure_debut']` pour la valeur brute.
+
+Le contrôle qui tranche, à rejouer plutôt qu'à croire :
+
+```php
+$s = new \App\Models\ESBTPSeanceCours();
+(new ReflectionMethod($s, 'hasGetMutator'))->invoke($s, 'heure_debut');  // true → l'accesseur gagne
+```
 
 **Sites vivants au 15 septembre 2026** (antérieurs à tout chantier en cours, mesurés, non corrigés) :
 
@@ -284,10 +299,22 @@ substr($s->heure_debut, 0,5) // "2026-"     ← et non "08:00"
 | `app/Http/Controllers/ESBTPAttendanceController.php:1711-1712` | export CSV des présences |
 | `app/Http/Controllers/ESBTPPlanningGeneralController.php:1307` | `"horaire"` du planning général |
 
-**Second effet, à ne PAS confondre** : sous ce cast, une heure NULLE ne se lit pas `null` —
-`asDateTime(null)` rend l'instant présent. Mais `heure_debut` et `heure_fin` sont **NOT NULL**
-(migration `2024_03_18_000002`, jamais relâchée) : ce cas ne concerne que les objets construits
-en mémoire, il n'a aucune population en base. Ne pas partir en chasse dessus.
+**Second effet, à ne PAS confondre** : sur `ESBTPSeanceCours`, une heure NULLE ne se lit pas `null` —
+`Carbon::parse(null)` rend l'instant présent. C'est encore l'accesseur, **pas** le cast : celui-ci
+court-circuite le nul (`castAttribute()` teste `is_null()` avant tout), donc `asDateTime(null)` n'est
+jamais atteint. La preuve croisée est `ESBTPCours`, qui porte le cast **sans** accesseur : là, une
+heure nulle se lit bien `null`.
+
+Et ce second effet n'a **aucune population en base** : `heure_debut` et `heure_fin` sont **NOT NULL**
+(migration `2024_03_18_000002`, jamais relâchée). Il ne concerne que les objets construits en
+mémoire. Ne pas partir en chasse dessus.
+
+**Les deux modèles ne se comportent donc pas pareil** — c'est le piège dans le piège :
+
+| modèle | accesseur | cast | une heure nulle se lit |
+|---|---|---|---|
+| `ESBTPSeanceCours` | oui (`Carbon::parse`) | `'datetime'` (inerte) | l'instant présent |
+| `ESBTPCours` | non | `'datetime:H:i'` | `null` |
 
 ---
 
