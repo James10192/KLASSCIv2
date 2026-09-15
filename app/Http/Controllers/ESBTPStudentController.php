@@ -18,6 +18,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Pagination\LengthAwarePaginator;
 use App\Services\FuzzyNameMatcher;
+use App\Services\LMD\AgregatDeLaPeriode;
 use App\Services\ESBTP\BtsCurrentResultSnapshotService;
 use App\Services\EtudiantAcademicJourneyPresenter;
 use App\Services\EtudiantDossierService;
@@ -596,16 +597,26 @@ class ESBTPStudentController extends Controller
 
             $bulletinLMD = $bulletinsLMD->last();
 
-            // Moyenne annuelle pondérée par crédits
-            $bulletinsAvecMoyenne = $bulletinsLMD->filter(fn($b) => $b->moyenne_generale > 0);
-            if ($bulletinsAvecMoyenne->count() > 1) {
-                $totalCredits = $bulletinsAvecMoyenne->sum('credits_totaux');
-                $lmdMoyenneAnnuelle = $totalCredits > 0
-                    ? round($bulletinsAvecMoyenne->sum(fn($b) => $b->moyenne_generale * $b->credits_totaux) / $totalCredits, 2)
-                    : round($bulletinsAvecMoyenne->avg('moyenne_generale'), 2);
-            } elseif ($bulletinsAvecMoyenne->count() === 1) {
-                $lmdMoyenneAnnuelle = round($bulletinsAvecMoyenne->first()->moyenne_generale, 2);
-            }
+            // La moyenne annuelle est celle du jury et du procès-verbal, pas une
+            // quatrième formule. Ce qui suivait ici en divergeait sur trois points,
+            // et chacun rendait un nombre plus sûr que la donnée qui le porte :
+            //
+            //  - `moyenne_generale > 0` écartait un semestre à 0,00. Or zéro est un
+            //    résultat, pas une absence — l'étudiant absent toute l'année en a un.
+            //    Avec S1 à 8,50 et S2 à 0,00, il ne restait qu'un bulletin, donc la
+            //    page annonçait 8,50 comme moyenne de l'ANNÉE, au lieu de 4,25.
+            //  - Rien ne dédupliquait les semestres : un bulletin régénéré laisse
+            //    deux lignes pour le même semestre, dont les crédits comptaient double.
+            //  - Le repli sur `avg()` rendait une moyenne arithmétique NON pondérée
+            //    sous la même étiquette que la pondérée, sans le dire.
+            //
+            // `AgregatDeLaPeriode` rend `null` dès qu'un semestre de l'année n'est
+            // pas calculable, plutôt qu'un nombre plausible calculé sur l'autre
+            // moitié. Un seul bulletin reste son propre agrégat : en janvier, avec
+            // le seul S1 en base, l'écran montre S1 comme aujourd'hui.
+            $lmdMoyenneAnnuelle = AgregatDeLaPeriode::moyenne(
+                AgregatDeLaPeriode::parSemestre($bulletinsLMD)
+            );
         }
 
         // ── Crédits CECT cumulés = TOUTES les inscriptions LMD (capitalisés à vie) ──

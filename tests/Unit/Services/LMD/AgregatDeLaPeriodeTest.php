@@ -76,6 +76,25 @@ class AgregatDeLaPeriodeTest extends TestCase
         $this->assertSame(11.0, AgregatDeLaPeriode::moyenne($periode));
     }
 
+    public function test_un_semestre_a_zero_pese_au_lieu_de_disparaitre(): void
+    {
+        // Zéro est un résultat — celui de l'étudiant absent tout le semestre —
+        // et non une absence de résultat. C'est la distinction sur laquelle la
+        // fiche étudiant se trompait : elle filtrait `moyenne_generale > 0`,
+        // donc ce semestre sortait du calcul, il n'en restait qu'un, et la page
+        // annonçait 8,50 comme moyenne de l'ANNÉE au lieu de 4,25.
+        //
+        // Ce cas garde la distinction du côté de l'agrégat, là où le filtre ne
+        // peut plus revenir : le comparer à `test_un_semestre_non_calculable…`,
+        // juste en dessous, qui montre le cas où l'absence est réelle.
+        $periode = [
+            $this->bulletin(1, 1, 8.5, 0, 30),
+            $this->bulletin(2, 2, 0.0, 0, 30),
+        ];
+
+        $this->assertSame(4.25, AgregatDeLaPeriode::moyenne($periode));
+    }
+
     public function test_les_credits_de_la_periode_sont_sommes(): void
     {
         $periode = [

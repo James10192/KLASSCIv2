@@ -2725,7 +2725,11 @@
         $kpiPaiDu = max(0, $kpiTotalAttendu - ($kpiPaiTotal ?? 0));
 
         // Moyenne : LMD → depuis bulletinLMD, BTS → depuis ESBTPBulletin/ESBTPResultat
-        if ($isLMD && $lmdMoyenneAnnuelle) {
+        // `!== null` et non un test de vérité : en PHP, 0.0 est faux. Une moyenne
+        // annuelle de 0,00 est un résultat — celui de l'étudiant absent toute
+        // l'année — et le test de vérité la traitait comme une absence de calcul,
+        // laissant l'indicateur vide là où il devait afficher zéro.
+        if ($isLMD && $lmdMoyenneAnnuelle !== null) {
             // ── LMD : moyenne annuelle pondérée (tous semestres) ──
             $kpiMoyenneGen    = $lmdMoyenneAnnuelle;
             $kpiMoyenneIsLive = false;
