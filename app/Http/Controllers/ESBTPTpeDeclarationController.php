@@ -10,6 +10,8 @@ use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPMatiere;
 use App\Models\ESBTPPlanificationAcademique;
 use App\Models\ESBTPTpeDeclaration;
+use App\Models\ESBTPSeanceCours;
+use App\Services\LMD\Tpe\TpeConstat;
 use App\Services\LMD\Tpe\TpeValidationStrategy;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -66,6 +68,8 @@ class ESBTPTpeDeclarationController extends Controller
             'requiresValidation' => $this->strategy->requiresTeacherAction(),
             'maxHoursPerWeek' => (float) SettingsHelper::get('tpe.max_hours_per_week_per_ecue', 10),
             'windowWeeks' => (int) SettingsHelper::get('tpe.declaration_window_weeks', 2),
+            'exigeSeanceEncadree' => TpeConstat::exigeSeanceEncadree(),
+            'seancesTpe' => $this->seancesTpeDeLaClasse($classe),
         ]);
     }
 
@@ -80,17 +84,19 @@ class ESBTPTpeDeclarationController extends Controller
         }
 
         try {
-            ESBTPTpeDeclaration::create([
+            $donnees = $request->validated();
+            $constat = $this->constatDepuisSeance($donnees['seance_id'] ?? null);
+            ESBTPTpeDeclaration::create(array_merge([
                 'etudiant_id' => $etudiant->id,
-                'matiere_id' => $request->validated('matiere_id'),
-                'annee_universitaire_id' => $request->validated('annee_universitaire_id'),
-                'semaine_debut' => $request->validated('semaine_debut'),
-                'heures' => $request->validated('heures'),
-                'description' => $request->validated('description'),
+                'matiere_id' => $donnees['matiere_id'],
+                'annee_universitaire_id' => $donnees['annee_universitaire_id'],
+                'semaine_debut' => $donnees['semaine_debut'] ?? $constat['semaine_debut'],
+                'heures' => $constat['heures'] ?? $donnees['heures'],
+                'description' => $donnees['description'] ?? null,
                 'statut' => $this->strategy->initialStatut()->value,
                 'created_by' => $request->user()?->id,
                 'updated_by' => $request->user()?->id,
-            ]);
+            ], $constat));
 
             $msg = $this->strategy->requiresTeacherAction()
                 ? 'Déclaration envoyée. En attente de validation par l\'enseignant.'
@@ -99,7 +105,7 @@ class ESBTPTpeDeclarationController extends Controller
             return back()->with('success', $msg);
         } catch (\Illuminate\Database\QueryException $e) {
             // UNIQUE composite (étudiant × ECUE × semaine × année)
-            if (str_contains($e->getMessage(), 'tpe_decl_unique')) {
+            if (str_contains($e->getMessage(), 'tpe_decl_unique') || str_contains($e->getMessage(), 'tpe_decl_seance_unique')) {
                 return back()
                     ->withInput()
                     ->with('error', 'Vous avez déjà déclaré pour cette matière et cette semaine. Modifiez la déclaration existante.');
@@ -141,6 +147,46 @@ class ESBTPTpeDeclarationController extends Controller
     }
 
     // ===== Helpers privés (orchestration légère) =====
+
+    private function constatDepuisSeance(?int $seanceId): array
+    {
+        if (! TpeConstat::exigeSeanceEncadree() || ! $seanceId) {
+            return [];
+        }
+
+        $seance = ESBTPSeanceCours::query()->find($seanceId);
+        if (! $seance) {
+            return [];
+        }
+
+        $debut = (string) ($seance->getAttributes()['heure_debut'] ?? '');
+        $fin = (string) ($seance->getAttributes()['heure_fin'] ?? '');
+        $date = $seance->getAttributes()['date_seance'] ?? null;
+
+        return [
+            'seance_id' => $seance->id,
+            'heures' => TpeConstat::heuresRetenues($debut, $fin),
+            'lieu' => $seance->salle,
+            'heure_debut' => $debut,
+            'heure_fin' => $fin,
+            'semaine_debut' => $date
+                ? \Carbon\Carbon::parse($date)->startOfWeek(\Carbon\Carbon::MONDAY)->format('Y-m-d')
+                : now()->startOfWeek(\Carbon\Carbon::MONDAY)->format('Y-m-d'),
+        ];
+    }
+
+    private function seancesTpeDeLaClasse($classe)
+    {
+        if (! $classe || ! TpeConstat::exigeSeanceEncadree()) {
+            return collect();
+        }
+
+        return ESBTPSeanceCours::query()
+            ->whereHas('emploiTemps', fn ($q) => $q->where('classe_id', $classe->id))
+            ->where('type_seance', 'TPE')
+            ->orderBy('date_seance')
+            ->get();
+    }
 
     private function resolveStudent(Request $request): ?ESBTPEtudiant
     {

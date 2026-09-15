@@ -313,7 +313,9 @@
                 <div>
                     <p class="tj-card-title">Déclarer mes heures de la semaine</p>
                     <p class="tj-card-subtitle">
-                        @if ($requiresValidation)
+                        @if ($exigeSeanceEncadree)
+                            Le TPE se fait sur site : choisissez la séance encadrée. Les heures retenues sont celles de la séance, pas une déclaration libre. Ce n'est pas une heure enseignante payable.
+                        @elseif ($requiresValidation)
                             La déclaration sera <strong>en attente de validation</strong> par l'enseignant.
                         @else
                             La déclaration est enregistrée immédiatement.
@@ -336,20 +338,36 @@
                                 icon="fa-book"
                                 :searchable="$ecues->count() > 8" />
                         </div>
-                        <div>
-                            <label class="tj-form-label">Semaine du lundi</label>
-                            <input type="date" name="semaine_debut" class="tj-input"
-                                   value="{{ now()->startOfWeek()->format('Y-m-d') }}"
-                                   max="{{ now()->startOfWeek()->format('Y-m-d') }}"
-                                   min="{{ now()->startOfWeek()->subWeeks($windowWeeks)->format('Y-m-d') }}"
-                                   required>
-                        </div>
-                        <div>
-                            <label class="tj-form-label">Heures effectuées</label>
-                            <input type="number" name="heures" class="tj-input"
-                                   step="0.25" min="0.25" max="{{ $maxHoursPerWeek }}"
-                                   placeholder="Ex: 4.5" required>
-                        </div>
+                        @if ($exigeSeanceEncadree)
+                            <div>
+                                <label class="tj-form-label">Séance encadrée</label>
+                                <select name="seance_id" class="tj-input" required>
+                                    <option value="">— Choisir la séance —</option>
+                                    @foreach ($seancesTpe as $seance)
+                                        <option value="{{ $seance->id }}">
+                                            {{ optional($seance->date_seance)->format('d/m/Y') }}
+                                            · {{ substr((string) ($seance->getAttributes()['heure_debut'] ?? ''), 0, 5) }}–{{ substr((string) ($seance->getAttributes()['heure_fin'] ?? ''), 0, 5) }}
+                                            @if($seance->salle) · {{ $seance->salle }} @endif
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        @else
+                            <div>
+                                <label class="tj-form-label">Semaine du lundi</label>
+                                <input type="date" name="semaine_debut" class="tj-input"
+                                       value="{{ now()->startOfWeek()->format('Y-m-d') }}"
+                                       max="{{ now()->startOfWeek()->format('Y-m-d') }}"
+                                       min="{{ now()->startOfWeek()->subWeeks($windowWeeks)->format('Y-m-d') }}"
+                                       required>
+                            </div>
+                            <div>
+                                <label class="tj-form-label">Heures effectuées</label>
+                                <input type="number" name="heures" class="tj-input"
+                                       step="0.25" min="0.25" max="{{ $maxHoursPerWeek }}"
+                                       placeholder="Ex: 4.5" required>
+                            </div>
+                        @endif
                     </div>
 
                     <div style="margin-bottom: .75rem;">

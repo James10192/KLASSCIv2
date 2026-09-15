@@ -36,6 +36,8 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ### Améliorations
 
+- **Le TPE encadré sur site retient la durée de la séance, pas une déclaration libre** — si l'établissement choisit « séance encadrée », l'étudiant rattache sa déclaration à la séance (lieu, début, fin). Ces heures étudiantes ne paient pas l'enseignant. Un TPE qui chevauche un CM/TD/TP se détecte. Sans ce réglage, la déclaration libre reste.
+
 - **Le procès-verbal annuel LMD pèse les semestres par leurs crédits** — il faisait la moyenne arithmétique de S1 et S2, donc un semestre à zéro ou un volume différent faussait la décision. Il emploie désormais le même agrégat que le jury et la fiche étudiant.
 
 - **Un bulletin LMD publié peut geler sa maquette** (`lmd.freeze_composition`) — défaut désactivé. Activé, une unité ajoutée ensuite n'entre plus, et les unités déjà calculées ne sont plus élaguées.

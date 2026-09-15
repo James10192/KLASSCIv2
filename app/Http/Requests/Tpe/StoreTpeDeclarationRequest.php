@@ -5,6 +5,8 @@ namespace App\Http\Requests\Tpe;
 use App\Helpers\SettingsHelper;
 use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPPlanificationAcademique;
+use App\Models\ESBTPSeanceCours;
+use App\Services\LMD\Tpe\TpeConstat;
 use Carbon\Carbon;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -51,18 +53,20 @@ class StoreTpeDeclarationRequest extends FormRequest
                 'integer',
                 'exists:esbtp_annee_universitaires,id',
             ],
-            'semaine_debut' => [
-                'required',
-                'date_format:Y-m-d',
-                "after_or_equal:{$earliest}",
-                "before_or_equal:{$latest}",
-            ],
-            'heures' => [
-                'required',
-                'numeric',
-                'min:0.25',
-                "max:{$maxHours}",
-            ],
+            'semaine_debut' => TpeConstat::exigeSeanceEncadree()
+                ? ['nullable', 'date_format:Y-m-d']
+                : [
+                    'required',
+                    'date_format:Y-m-d',
+                    "after_or_equal:{$earliest}",
+                    "before_or_equal:{$latest}",
+                ],
+            'heures' => TpeConstat::exigeSeanceEncadree()
+                ? ['nullable', 'numeric']
+                : ['required', 'numeric', 'min:0.25', "max:{$maxHours}"],
+            'seance_id' => TpeConstat::exigeSeanceEncadree()
+                ? ['required', 'integer', 'exists:esbtp_seance_cours,id']
+                : ['prohibited'],
             'description' => 'nullable|string|max:1000',
         ];
     }
@@ -77,6 +81,7 @@ class StoreTpeDeclarationRequest extends FormRequest
             'semaine_debut.required' => 'Veuillez choisir la semaine concernée.',
             'semaine_debut.after_or_equal' => "Vous ne pouvez déclarer que les {$windowWeeks} dernières semaines.",
             'semaine_debut.before_or_equal' => 'Vous ne pouvez pas déclarer pour une semaine future.',
+            'seance_id.required' => 'Choisissez la séance de TPE encadrée à laquelle vous avez participé.',
             'heures.required' => 'Le nombre d\'heures est obligatoire.',
             'heures.min' => 'Saisissez au moins 0,25 heure (15 minutes).',
             'heures.max' => 'Le plafond hebdomadaire par ECUE est configuré par l\'école.',
@@ -121,6 +126,17 @@ class StoreTpeDeclarationRequest extends FormRequest
                     'matiere_id',
                     'Cette matière n\'est pas planifiée pour votre classe cette année — choisissez une autre ECUE.'
                 );
+            }
+
+            if (TpeConstat::exigeSeanceEncadree() && $this->filled('seance_id')) {
+                $seance = ESBTPSeanceCours::query()->with('emploiTemps')->find($this->input('seance_id'));
+                if (! $seance || $seance->getRawOriginal('type_seance') !== 'TPE') {
+                    $v->errors()->add('seance_id', 'Choisissez une séance de TPE encadrée.');
+                    return;
+                }
+                if ((int) $seance->emploiTemps?->classe_id !== (int) $classe->id) {
+                    $v->errors()->add('seance_id', 'Cette séance n\'appartient pas à votre classe.');
+                }
             }
         });
     }
