@@ -12,7 +12,13 @@
     Rule .claude/rules/blade-alpine-pitfalls.md (pas de {{ }} dans un object-literal Alpine)
 --}}
 @php
-    $currentType = old('type_seance', 'CM');
+    $rawCurrent = old('type_seance');
+    if ($rawCurrent === null && isset($seancesCour) && $seancesCour && $seancesCour->type_seance) {
+        $rawCurrent = $seancesCour->type_seance instanceof \App\Enums\TypeSeance
+            ? $seancesCour->type_seance->value
+            : (string) $seancesCour->type_seance;
+    }
+    $currentType = $rawCurrent ?: 'CM';
 
     // Cours : enseignement (3 tones monochrome bleu — rule premium-redesign)
     $teachingTypes = [

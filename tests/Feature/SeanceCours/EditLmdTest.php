@@ -40,4 +40,18 @@ class EditLmdTest extends TestCase
             'buildForPlanning doit etre appele dans create() ET edit() (au moins 2 occurrences)'
         );
     }
+
+    /** @test */
+    public function update_accepts_type_seance_within_the_frozen_top_type(): void
+    {
+        $reflection = new \ReflectionClass(\App\Http\Controllers\ESBTPSeanceCoursController::class);
+        $source = file_get_contents($reflection->getFileName());
+        $updatePos = strpos($source, 'public function update(');
+        $this->assertNotFalse($updatePos);
+        $updateSource = substr($source, $updatePos, 2500);
+
+        $this->assertStringContainsString('type_seance', $updateSource);
+        $this->assertStringContainsString('isCompatibleWithTopType', $updateSource);
+        $this->assertStringContainsString("merge(['type' => \$seancesCour->type])", $updateSource);
+    }
 }

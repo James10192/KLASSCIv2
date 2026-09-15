@@ -49,6 +49,63 @@
         background-color: var(--bs-primary);
         color: white;
     }
+    [x-cloak] { display: none !important; }
+    .sce-type-seance { margin-top: .25rem; }
+    .sce-type-radio-group { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: .75rem; }
+    .sce-type-radio {
+        position: relative;
+        display: flex; align-items: flex-start; gap: .65rem;
+        padding: .85rem 1rem;
+        background: #fff;
+        border: 2px solid #e2e8f0;
+        border-radius: 12px;
+        cursor: pointer;
+        text-align: left;
+        transition: all .15s;
+    }
+    .sce-type-radio:hover { border-color: rgba(4,83,203,.4); background: rgba(4,83,203,.02); }
+    .sce-type-radio.is-active {
+        border-color: #0453cb;
+        background: rgba(4,83,203,.04);
+        box-shadow: 0 4px 16px rgba(4,83,203,.08);
+    }
+    .sce-type-radio-icon {
+        width: 36px; height: 36px; border-radius: 9px;
+        display: flex; align-items: center; justify-content: center;
+        color: #fff; font-size: .85rem; flex-shrink: 0;
+    }
+    .sce-type-radio--primary .sce-type-radio-icon { background: linear-gradient(135deg, #033a8e, #0453cb); }
+    .sce-type-radio--accent  .sce-type-radio-icon { background: linear-gradient(135deg, #0453cb, #3b7ddb); }
+    .sce-type-radio--muted   .sce-type-radio-icon { background: linear-gradient(135deg, #3b7ddb, #5e91de); }
+    .sce-type-radio-body { flex: 1; min-width: 0; }
+    .sce-type-radio-label { font-family: 'Courier New', monospace; font-size: .72rem; font-weight: 700; color: #0453cb; background: rgba(4,83,203,.08); padding: .12rem .4rem; border-radius: 4px; display: inline-block; margin-bottom: .25rem; }
+    .sce-type-radio-name { font-size: .9rem; font-weight: 700; color: #1e293b; line-height: 1.2; }
+    .sce-type-radio-desc { font-size: .72rem; color: #64748b; margin-top: .2rem; }
+    .sce-type-radio-check { position: absolute; top: .6rem; right: .65rem; color: #0453cb; font-size: 1rem; }
+    .sce-tpe-info {
+        margin-top: 1rem;
+        display: flex; align-items: flex-start; gap: .65rem;
+        padding: .75rem 1rem;
+        background: rgba(4,83,203,.04);
+        border: 1px solid rgba(4,83,203,.18);
+        border-left: 3px solid #0453cb;
+        border-radius: 10px;
+        font-size: .82rem; color: #475569;
+    }
+    .sce-tpe-info i { color: #0453cb; font-size: 1rem; margin-top: .15rem; flex-shrink: 0; }
+    .sce-tpe-info strong { color: #0453cb; }
+    .sce-tpe-info a { color: #0453cb; font-weight: 600; text-decoration: underline; }
+    .sce-form-label { display: flex; align-items: center; gap: .55rem; flex-wrap: wrap; font-size: .82rem; font-weight: 600; color: #1e293b; margin-bottom: .5rem; }
+    .sce-form-label-chip {
+        display: inline-flex; align-items: center; gap: .3rem;
+        background: rgba(4,83,203,.08); color: #0453cb;
+        border: 1px solid rgba(4,83,203,.2);
+        padding: .15rem .5rem; border-radius: 5px;
+        font-size: .65rem; font-weight: 700; letter-spacing: .3px;
+    }
+    @media (max-width: 768px) {
+        .sce-type-radio-group { grid-template-columns: 1fr; }
+    }
 </style>
 @endsection
 
@@ -57,6 +114,8 @@
     if (is_string($selectedRecurrenceDays)) {
         $selectedRecurrenceDays = explode(',', $selectedRecurrenceDays);
     }
+    $isClasseLmd = ($emploiTemps->classe->systeme_academique ?? '') === 'LMD'
+        || in_array($emploiTemps->classe->niveau->type ?? '', \App\Models\ESBTPNiveauEtude::CYCLES_LMD, true);
 @endphp
 
 @section('content')
@@ -255,6 +314,28 @@
                         <div class="main-card-subtitle">Configuration pédagogique de la séance</div>
                     </div>
                     <div class="main-card-body">
+                        <div class="form-group" style="margin-bottom: 1.5rem;"
+                             x-data="{ topType: document.getElementById('sessionType').value }"
+                             x-init="document.addEventListener('session-type-changed', e => topType = e.detail)"
+                             x-show="topType === 'course' || topType === 'homework'"
+                             x-cloak>
+                            <label class="sce-form-label">
+                                <span x-show="topType !== 'homework'">Sous-type pédagogique</span>
+                                <span x-show="topType === 'homework'" x-cloak>Type d'évaluation</span>
+                                <span class="text-danger">*</span>
+                                @if($isClasseLmd)
+                                    <span class="sce-form-label-chip"><i class="fas fa-university"></i>LMD — UEMOA</span>
+                                @else
+                                    <span class="sce-form-label-chip"><i class="fas fa-graduation-cap"></i>BTS</span>
+                                @endif
+                            </label>
+                            @if($isClasseLmd)
+                                @include('esbtp.seances-cours.partials._form_type_seance_lmd')
+                            @else
+                                @include('esbtp.seances-cours.partials._form_type_seance_bts')
+                            @endif
+                        </div>
+
                         @if(($planificationData['planifications_configurees'] ?? false))
                             <div class="context-card mb-4">
                                 <div class="context-header">

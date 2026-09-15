@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class ESBTPSeanceCoursController extends Controller
@@ -980,7 +981,9 @@ class ESBTPSeanceCoursController extends Controller
     public function update(Request $request, ESBTPSeanceCours $seancesCour)
     {
         try {
-            // Base validation rules
+            $request->merge(['type' => $seancesCour->type]);
+            $topType = $seancesCour->type;
+
             $rules = [
                 'type' => 'required|in:'.implode(',', [
                     ESBTPSeanceCours::TYPE_COURSE,
@@ -988,6 +991,26 @@ class ESBTPSeanceCoursController extends Controller
                     ESBTPSeanceCours::TYPE_BREAK,
                     ESBTPSeanceCours::TYPE_LUNCH,
                 ]),
+                'type_seance' => [
+                    'nullable',
+                    Rule::enum(TypeSeance::class),
+                    function (string $attribute, mixed $value, \Closure $fail) use ($topType) {
+                        if ($value === null || $value === '') {
+                            return;
+                        }
+                        if (in_array($topType, [ESBTPSeanceCours::TYPE_BREAK, ESBTPSeanceCours::TYPE_LUNCH], true)) {
+                            return;
+                        }
+                        $enum = $value instanceof TypeSeance
+                            ? $value
+                            : TypeSeance::tryFrom((string) $value);
+                        if ($enum && ! $enum->isCompatibleWithTopType($topType)) {
+                            $fail($enum->isEvaluation()
+                                ? 'Une séance de type Cours ne peut pas être un examen. Recréez-la en Devoir.'
+                                : 'Une séance de type Devoir doit rester une évaluation (Examen, Partiel…).');
+                        }
+                    },
+                ],
                 'jour' => 'required|integer|min:1|max:7',
                 'heure_debut' => 'required|date_format:H:i',
                 'heure_fin' => 'required|date_format:H:i|after:heure_debut',
@@ -997,14 +1020,13 @@ class ESBTPSeanceCoursController extends Controller
                 'priority' => 'integer',
             ];
 
-            // Add conditional validation rules based on session type
-            if ($request->type === ESBTPSeanceCours::TYPE_COURSE) {
+            if ($topType === ESBTPSeanceCours::TYPE_COURSE) {
                 $rules = array_merge($rules, [
                     'teacher_id' => 'required|exists:esbtp_teachers,id',
                     'matiere_id' => 'required|exists:esbtp_matieres,id',
                     'salle' => 'required|string|max:50',
                 ]);
-            } elseif ($request->type === ESBTPSeanceCours::TYPE_HOMEWORK) {
+            } elseif ($topType === ESBTPSeanceCours::TYPE_HOMEWORK) {
                 $rules = array_merge($rules, [
                     'teacher_id' => 'nullable|exists:esbtp_teachers,id',
                     'matiere_id' => 'required|exists:esbtp_matieres,id',
@@ -1014,16 +1036,17 @@ class ESBTPSeanceCoursController extends Controller
                 ]);
             }
 
-            // Validate the request
             $validated = $request->validate($rules);
             if (! array_key_exists('teacher_id', $validated)) {
                 $validated['teacher_id'] = null;
             }
-            if (($validated['type'] ?? $seancesCour->type) === ESBTPSeanceCours::TYPE_HOMEWORK) {
+            if ($topType === ESBTPSeanceCours::TYPE_HOMEWORK) {
                 $validated['teacher_id'] = null;
             }
+            if (in_array($topType, [ESBTPSeanceCours::TYPE_BREAK, ESBTPSeanceCours::TYPE_LUNCH], true)) {
+                unset($validated['type_seance']);
+            }
 
-            // Update the session
             $seancesCour->update($validated);
 
             if ($seancesCour->type === ESBTPSeanceCours::TYPE_HOMEWORK) {
@@ -1033,6 +1056,8 @@ class ESBTPSeanceCoursController extends Controller
             return redirect()
                 ->route('esbtp.emploi-temps.show', $seancesCour->emploi_temps_id)
                 ->with('success', 'Séance mise à jour avec succès.');
+        } catch (ValidationException $e) {
+            throw $e;
         } catch (\Exception $e) {
             Log::error('Error in SeanceCoursController@update: '.$e->getMessage());
 

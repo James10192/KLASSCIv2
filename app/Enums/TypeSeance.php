@@ -37,6 +37,22 @@ enum TypeSeance: string
         return array_column(self::cases(), 'value');
     }
 
+    public static function codeOf(mixed $raw): ?string
+    {
+        if ($raw === null || $raw === '') {
+            return null;
+        }
+        if ($raw instanceof self) {
+            return $raw->value;
+        }
+        $asString = trim((string) $raw);
+        if ($asString === '') {
+            return null;
+        }
+
+        return (self::tryFrom($asString) ?? self::fromLegacy($asString))->value;
+    }
+
     /**
      * Map legacy type_seance strings to canonical enum values.
      * Conservative: ambiguous values ('cours') → AUTRE, not CM.
@@ -95,6 +111,19 @@ enum TypeSeance: string
     public function isVolumeTracked(): bool
     {
         return in_array($this, [self::CM, self::TD, self::TP], true);
+    }
+
+    public function isCompatibleWithTopType(string $topType): bool
+    {
+        if ($this === self::TPE) {
+            return false;
+        }
+
+        return match ($topType) {
+            'course' => ! $this->isEvaluation(),
+            'homework' => $this->isEvaluation(),
+            default => false,
+        };
     }
 
     /**

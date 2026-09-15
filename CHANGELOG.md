@@ -14,6 +14,10 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ### Correctifs
 
+- **Les types pédagogiques LMD recomptent les séances, et la carte de l'emploi du temps réaffiche CM / TD / TP** (`/esbtp/emploi-temps/{id}`) — le bandeau « Types pédagogiques LMD » comparait l'enum à la chaîne `'CM'` : tout restait à zéro alors qu'une séance était bien sur la grille. Le décompte lit la valeur ; la carte porte un badge du sous-type.
+
+- **On peut enfin corriger CM / TD / TP sur une séance déjà créée** (`/esbtp/seances-cours/{id}/edit`) — le sous-type pédagogique existait à la création, pas à la modification : une séance enregistrée en CM par erreur forçait à tout supprimer. Le type Cours/Devoir reste gelé ; CM↔TD↔TP (ou Examen↔Partiel) se change dans la même famille.
+
 - **La grille verte de disponibilité n'est plus contredite à l'enregistrement** — DJO MARC était libre mercredi 11h (planning général vide, cases vertes) mais le formulaire refusait le créneau : la validation relisait un tableau JS périmé, pas la grille affichée.
 
 - **L'enseignant posé sur le planning LMD apparaît enfin à la création d'une séance** — le formulaire d'ajout de séance vidait la liste des enseignants des ECUE, alors que la page Planning LMD les affichait. On reprend l'enseignant principal (et les assignations) de la planification.
