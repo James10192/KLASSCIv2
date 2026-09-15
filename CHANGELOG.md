@@ -14,6 +14,8 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ### Correctifs
 
+- **Sur le reçu, le caissier qui peut encore annuler sa saisie le voit sur le téléphone** (`/esbtp/paiements/{id}`) — le geste n'apparaissait que dans le menu « ⋯ » et disparaissait derrière une condition d'attente ; on ne voyait plus que « Supprimer ». Le bouton est désormais en bas d'écran, dès que le droit et la fenêtre sont ouverts.
+
 - **Jour, matière et enseignant de la modification de séance ne sont plus des listes natives** (`/esbtp/seances-cours/{id}/edit`) — les trois listes du navigateur (flèche grise, pas de recherche) sont remplacées par les sélecteurs premium : jour, ECUE groupée par UE, enseignant searchable.
 
 - **Les types pédagogiques LMD recomptent les séances, et la carte de l'emploi du temps réaffiche CM / TD / TP** (`/esbtp/emploi-temps/{id}`) — le bandeau « Types pédagogiques LMD » comparait l'enum à la chaîne `'CM'` : tout restait à zéro alors qu'une séance était bien sur la grille. Le décompte lit la valeur ; la carte porte un badge du sous-type.

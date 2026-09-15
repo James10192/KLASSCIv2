@@ -259,13 +259,20 @@
         </div>
     </div>
 
-    @can('paiements.create')
-        <x-m.actionbar>
-            <a href="{{ route('esbtp.paiements.create') }}" class="m-btn p">
-                <x-m.icon name="plus" />Nouvel encaissement
-            </a>
+    @if($mPeutAnnulerMien || ($mUser?->can('paiements.create')))
+        <x-m.actionbar :row="$mPeutAnnulerMien && ($mUser?->can('paiements.create') ?? false)">
+            @if($mPeutAnnulerMien)
+                <button type="button" class="m-btn {{ ($mUser?->can('paiements.create') ?? false) ? 'g' : 'p' }}" x-on:click="ouvrir('psm-annuler')">
+                    <x-m.icon name="clock" />Annuler ma saisie
+                </button>
+            @endif
+            @can('paiements.create')
+                <a href="{{ route('esbtp.paiements.create') }}" class="m-btn p">
+                    <x-m.icon name="plus" />Nouvel encaissement
+                </a>
+            @endcan
         </x-m.actionbar>
-    @endcan
+    @endif
 
     {{-- ============ Feuille « Actions » ============ --}}
     @if($mADesActions)
@@ -301,8 +308,8 @@
                 @endif
             @endcan
             @can('cancelOwnRecent', $paiement)
-                <button type="button" x-show="statut === 'en_attente'" x-on:click="ouvrir('psm-annuler')">
-                    <x-m.icon name="clock" />Annuler mon encaissement<span class="ch"><x-m.icon name="chr" /></span>
+                <button type="button" x-on:click="ouvrir('psm-annuler')">
+                    <x-m.icon name="clock" />Annuler ma saisie<span class="ch"><x-m.icon name="chr" /></span>
                 </button>
             @endcan
         </div>
