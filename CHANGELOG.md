@@ -36,6 +36,12 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ### Améliorations
 
+- **Administrateur d'instance** — rôle visible, sans joker `*`, pour les réglages, comptes, personnel et audit. L'abonnement ADC et le style de bulletin restent à African Digit. Le court-circuit `superAdmin` se coupe par instance (`PERMISSIONS_SUPERADMIN_GATE_BEFORE=false`) sans toucher la Côte d'Ivoire.
+
+- **Celtiis Cash** entre dans les modes de paiement — un encaissement béninois n'est plus invisible du rapprochement. Wave et Orange Money restent.
+
+- **TPE planifiable sur setting** (`tpe.mode`) — défaut `non_planifiable` (CI inchangé). Une instance peut poser `seance_encadree` : la séance TPE apparaît à l'emploi du temps. Ce n'est toujours pas une heure enseignante payable.
+
 - **La réinscription propose les classes depuis le cursus quitté, et le passage LMD suit le parcours puis la mention** (`/esbtp/reinscription`) — cinq écrans (fiche, création, AJAX, lot, guichet) lisaient chacun une inscription différente : un étudiant passé du BTS à la Licence se voyait proposer une 2ᵉ année de BTS. Ils partent désormais de la dernière année suivie, dossier finalisé. En LMD, la classe suivante se cherche d'abord sur le même parcours, puis la même mention, puis la filière reflet : un Master 1 d'un autre parcours de la même mention n'était jamais proposé.
 
 - **Les grilles de disponibilité s'arrêtent au dernier créneau de la journée réglée** — une journée 8h-22h ouvrait une ligne « 22h » (créneau 22h-23h hors plage). Les grilles lisent les créneaux `[début, fin)` ; les listes de saisie gardent l'heure de fin.

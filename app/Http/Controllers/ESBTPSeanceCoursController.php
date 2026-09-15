@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\TypeSeance;
+use App\Services\LMD\Tpe\TpePlanification;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPEmploiTemps;
@@ -417,14 +418,13 @@ class ESBTPSeanceCoursController extends Controller
             // LMD-aware : derive le `type` (creneau emploi-temps) depuis le
             // `type_seance` UEMOA si la classe est LMD. La directrice LMD ne
             // choisit qu'un seul selecteur (type_seance), le `type` est calcule.
-            // TPE n'est jamais plannable (volume theorique ECUE, pas seance).
+            // TPE : interdit tant que tpe.mode = non_planifiable (défaut CI).
             // ════════════════════════════════════════════════════════════════
             $isLmdClasse = ($emploiTemps->classe->systeme_academique ?? '') === 'LMD';
             if ($isLmdClasse && $request->filled('type_seance')) {
                 $typeSeanceEnum = \App\Enums\TypeSeance::tryFrom($request->input('type_seance'));
                 if ($typeSeanceEnum) {
-                    // TPE n'est jamais plannable (volume theorique ECUE, pas une seance).
-                    if ($typeSeanceEnum === \App\Enums\TypeSeance::TPE) {
+                    if ($typeSeanceEnum === \App\Enums\TypeSeance::TPE && ! TpePlanification::isPlanifiable()) {
                         throw ValidationException::withMessages([
                             'type_seance' => 'Le TPE n\'est pas planifiable en emploi du temps. C\'est une métadonnée de l\'ECUE configurée dans /esbtp/lmd/planning.',
                         ]);
@@ -1004,6 +1004,12 @@ class ESBTPSeanceCoursController extends Controller
                         $enum = $value instanceof TypeSeance
                             ? $value
                             : TypeSeance::tryFrom((string) $value);
+                        if ($enum === TypeSeance::TPE) {
+                            if (! TpePlanification::isPlanifiable() || $topType !== ESBTPSeanceCours::TYPE_COURSE) {
+                                $fail('Le TPE n\'est pas planifiable en emploi du temps.');
+                            }
+                            return;
+                        }
                         if ($enum && ! $enum->isCompatibleWithTopType($topType)) {
                             $fail($enum->isEvaluation()
                                 ? 'Une séance de type Cours ne peut pas être un examen. Recréez-la en Devoir.'

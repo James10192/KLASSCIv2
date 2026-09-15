@@ -31,6 +31,7 @@ class PermissionRegistryTest extends TestCase
         $this->assertContains('enseignant', $roles);
         $this->assertContains('etudiant', $roles);
         $this->assertContains('serviceTechnique', $roles);
+        $this->assertContains('administrateurInstance', $roles);
     }
 
     public function test_parent_role_is_removed(): void
@@ -44,6 +45,7 @@ class PermissionRegistryTest extends TestCase
         $visible = $this->registry->rolesVisibleInUi()->keys()->all();
         $this->assertNotContains('serviceTechnique', $visible);
         $this->assertContains('superAdmin', $visible);
+        $this->assertContains('administrateurInstance', $visible);
         $this->assertContains('caissier', $visible);
     }
 

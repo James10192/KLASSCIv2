@@ -69,6 +69,10 @@ return [
             'label' => 'Djamo',
             'icon' => 'fa-mobile-alt',
         ],
+        'celtiis_cash' => [
+            'label' => 'Celtiis Cash',
+            'icon' => 'fa-mobile-alt',
+        ],
         'autre' => [
             'label' => 'Autre',
             'icon' => 'fa-question-circle',
@@ -125,6 +129,10 @@ return [
         'wave_money' => 'wave',
 
         'djamo' => 'djamo',
+
+        'celtiis_cash' => 'celtiis_cash',
+        'celtiis' => 'celtiis_cash',
+        'celtiis_money' => 'celtiis_cash',
 
         // Catch-all
         'autre' => 'autre',

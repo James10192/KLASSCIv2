@@ -59,8 +59,11 @@ class AuthServiceProvider extends ServiceProvider
     {
         $this->registerPolicies();
 
-        // superAdmin court-circuite tous les checks (Lot 0).
         Gate::before(function ($user, $ability) {
+            if (! config('permissions.superadmin_gate_before', true)) {
+                return null;
+            }
+
             return $user && $user->hasRole('superAdmin') ? true : null;
         });
 

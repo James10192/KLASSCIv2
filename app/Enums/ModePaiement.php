@@ -30,6 +30,7 @@ enum ModePaiement: string
     case MTN_MONEY = 'mtn_money';
     case MOOV_MONEY = 'moov_money';
     case DJAMO = 'djamo';
+    case CELTIIS_CASH = 'celtiis_cash';
     case AUTRE = 'autre';
 
     public function label(): string
@@ -45,6 +46,7 @@ enum ModePaiement: string
             self::MTN_MONEY => 'MTN MoMo',
             self::MOOV_MONEY => 'Moov Money',
             self::DJAMO => 'Djamo',
+            self::CELTIIS_CASH => 'Celtiis Cash',
             self::AUTRE => 'Autre',
         };
     }
@@ -106,6 +108,7 @@ enum ModePaiement: string
             str_contains($normalized, 'orange') => self::ORANGE_MONEY,
             str_contains($normalized, 'mtn') || str_contains($normalized, 'momo') => self::MTN_MONEY,
             str_contains($normalized, 'moov') || str_contains($normalized, 'flooz') => self::MOOV_MONEY,
+            str_contains($normalized, 'celtiis') => self::CELTIIS_CASH,
             str_contains($normalized, 'mobile') => self::MOBILE_MONEY,
             str_contains($normalized, 'virement') || str_contains($normalized, 'bank') => self::VIREMENT,
             str_contains($normalized, 'cheque') || str_contains($normalized, 'cheq') => self::CHEQUE,
