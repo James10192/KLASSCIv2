@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Domain\AcademicPilotage\Exceptions\AcademicPilotageException;
+use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPEvaluation;
 use App\Models\ESBTPLMDBulletin;
@@ -30,6 +32,15 @@ class LMDBulletinService
      * (Configuration des bulletins > Textes du bulletin).
      */
     public const NOTICE_DEFAUT = "Un ECUE n'est ni transférable ni capitalisable. Les crédits d'une UE non acquise ne sont capitalisés qu'après validation de celle-ci.";
+
+    /**
+     * Permission qui autorise à recalculer un bulletin d'une année refermée.
+     *
+     * Rare et journalisée, comme le contournement du verrouillage comptable :
+     * une réclamation aboutie sur une année close est un cas réel, l'interdire
+     * tout à fait reviendrait à poser un mur.
+     */
+    public const PERMISSION_ANNEE_CLOSE = 'lmd.bulletins.regenerate_closed_year';
 
     public function __construct(private readonly LmdAcademicRuleProfile $rules) {}
 
@@ -113,6 +124,8 @@ class LMDBulletinService
             $classe = ESBTPClasse::with(['parcours.mention.domaine', 'parcours.filiere', 'niveau'])->findOrFail($classeId);
             $parcours = $classe->parcours;
 
+            $this->refuserLeRecalculSurUneAnneeClose($etudiantId, $classeId, $anneeUniversitaireId, $semestre);
+
             // 1. Creer ou mettre a jour le bulletin
             // Label parcours bulletin. Composition automatique Niveau + Filiere
             // ("LICENCE 3 GCV BATIMENT & URBANISME") pilotee par le reglage
@@ -177,6 +190,8 @@ class LMDBulletinService
                 $creditsTotaux += $ue->creditEffectif();
             }
 
+            $this->elaguerLesUnitesRetireesDeLaMaquette($bulletin, $resultatsUEs);
+
             // 4. Calculer la moyenne generale ponderee par credits
             $moyenneGenerale = $this->calculerMoyenneGenerale($resultatsUEs);
 
@@ -237,6 +252,12 @@ class LMDBulletinService
                     $semestre,
                     skipRanksAndStats: true // Calculer une seule fois apres la boucle
                 );
+            } catch (AcademicPilotageException $e) {
+                // Un refus de pilotage vaut pour toute la classe, pas pour un
+                // étudiant : une année close l'est pour tout le monde. Le noyer
+                // dans le compteur d'échecs ferait disparaître sa raison, et
+                // l'écran n'afficherait qu'un « 0/25 bulletins générés » muet.
+                throw $e;
             } catch (\Exception $e) {
                 Log::error("LMD Bulletin generation failed for etudiant {$studentId}: {$e->getMessage()}");
                 $errors[] = $studentId;
@@ -250,6 +271,148 @@ class LMDBulletinService
         }
 
         return $bulletins;
+    }
+
+    /**
+     * Un bulletin déjà calculé ne se recalcule pas sur une année refermée.
+     *
+     * Le pivot `esbtp_lmd_parcours_ue` ne porte aucune année : la maquette
+     * appartient au parcours et vaut jusqu'à ce qu'on la change. La génération
+     * lit donc TOUJOURS la maquette d'aujourd'hui, même pour un semestre de
+     * 2026-2027. Modifier une maquette en 2028 change ce qu'une régénération
+     * produit pour une année déjà arrêtée — et il y a des régénérations à
+     * chaque correction de note, chaque relevé réémis, chaque réclamation.
+     *
+     * La PREMIÈRE génération d'une année close reste permise : elle ne
+     * contredit rien, puisqu'il n'existe encore aucun résultat à contredire.
+     * Une école qui reprend un archivage en retard n'est pas bloquée.
+     *
+     * Une année sans `is_active = false` ne déclenche rien : les instances qui
+     * ne referment jamais leurs années gardent exactement le comportement
+     * d'avant.
+     */
+    private function refuserLeRecalculSurUneAnneeClose(
+        int $etudiantId,
+        int $classeId,
+        int $anneeUniversitaireId,
+        int $semestre
+    ): void {
+        $annee = ESBTPAnneeUniversitaire::find($anneeUniversitaireId);
+
+        // Année introuvable : ce n'est pas à cette garde de le dire. La clé
+        // étrangère et la validation du contrôleur s'en chargent, et refuser ici
+        // ferait porter un message de clôture à un défaut qui n'en est pas un.
+        if ($annee === null || $annee->is_active) {
+            return;
+        }
+
+        $dejaCalcule = ESBTPLMDBulletin::query()
+            ->where('etudiant_id', $etudiantId)
+            ->where('classe_id', $classeId)
+            ->where('annee_universitaire_id', $anneeUniversitaireId)
+            ->where('semestre', $semestre)
+            ->exists();
+
+        $peutContourner = auth()->check() && auth()->user()->can(self::PERMISSION_ANNEE_CLOSE);
+
+        if (! self::recalculInterdit(false, $dejaCalcule, $peutContourner)) {
+            if ($dejaCalcule && $peutContourner) {
+                Log::warning('Recalcul d’un bulletin LMD sur une année clôturée', [
+                    'permission' => self::PERMISSION_ANNEE_CLOSE,
+                    'user_id' => auth()->id(),
+                    'etudiant_id' => $etudiantId,
+                    'classe_id' => $classeId,
+                    'annee_universitaire_id' => $anneeUniversitaireId,
+                    'semestre' => $semestre,
+                ]);
+            }
+
+            return;
+        }
+
+        throw AcademicPilotageException::closedAcademicYear(
+            (string) ($annee->name ?? $anneeUniversitaireId),
+            $anneeUniversitaireId,
+            self::PERMISSION_ANNEE_CLOSE,
+        );
+    }
+
+    /**
+     * La décision seule, sans la base : trois faits, une réponse.
+     *
+     * Séparée de sa collecte pour être vérifiable telle quelle. Les trois cas
+     * qui laissent passer ne sont pas interchangeables :
+     *
+     * - année ouverte      → rien à protéger, comportement d'avant ;
+     * - premier calcul     → il n'existe rien qui puisse être contredit ;
+     * - permission accordée → décision assumée, et journalisée par l'appelant.
+     */
+    public static function recalculInterdit(
+        bool $anneeEstOuverte,
+        bool $bulletinExisteDeja,
+        bool $peutContourner
+    ): bool {
+        return ! $anneeEstOuverte && $bulletinExisteDeja && ! $peutContourner;
+    }
+
+    /**
+     * Retirer du bulletin les unités que la maquette ne contient plus.
+     *
+     * `updateOrCreate` ajoute et met à jour, il n'enlève jamais. Une unité
+     * retirée de la maquette laissait donc sa ligne de résultat derrière elle :
+     * elle continuait d'être IMPRIMÉE sur le bulletin, avec sa moyenne et ses
+     * crédits — alors que ni le total des crédits ni la moyenne générale ne la
+     * comptaient, puisque ceux-ci se calculent sur la composition relue. Le
+     * document affichait une unité acquise dont les crédits manquaient au
+     * décompte, sans qu'aucune erreur ne soit levée.
+     *
+     * Suppression en douceur : la ligne reste en base, hors de la relation.
+     * C'est aussi ce qui permet de la ressortir telle quelle — avec sa note de
+     * seconde session — si l'unité revient à la maquette.
+     *
+     * Une maquette vide vide donc le bulletin. C'est voulu : dans ce cas la
+     * moyenne et les crédits valent déjà zéro, et garder les lignes ne ferait
+     * qu'imprimer une composition qui n'existe plus.
+     *
+     * @param  array<int, ESBTPLMDResultatUE>  $resultatsRetenus
+     */
+    private function elaguerLesUnitesRetireesDeLaMaquette(ESBTPLMDBulletin $bulletin, array $resultatsRetenus): void
+    {
+        $idsRetenus = array_map(static fn (ESBTPLMDResultatUE $r): int => (int) $r->id, $resultatsRetenus);
+
+        $retirees = ESBTPLMDResultatUE::query()
+            ->where('bulletin_id', $bulletin->id)
+            ->when($idsRetenus !== [], fn ($q) => $q->whereNotIn('id', $idsRetenus))
+            ->pluck('id');
+
+        if ($retirees->isEmpty()) {
+            return;
+        }
+
+        // Les éléments ne tombent pas avec leur unité : pas de cascade sur une
+        // suppression en douceur. Sans cette ligne, ils resteraient visibles
+        // sous `$bulletin->resultatsECUEs`, orphelins de leur unité.
+        ESBTPLMDResultatECUE::query()->whereIn('resultat_ue_id', $retirees)->delete();
+        ESBTPLMDResultatUE::query()->whereIn('id', $retirees)->delete();
+    }
+
+    /**
+     * Retirer d'une unité les éléments que la maquette ne lui rattache plus.
+     *
+     * Même défaut que pour les unités, un cran plus bas : un ECUE retiré d'une
+     * UE gardait sa ligne, imprimée sous l'unité avec son coefficient, alors
+     * que la moyenne de l'unité se recalculait sans lui.
+     *
+     * @param  array<int, ESBTPLMDResultatECUE>  $resultatsRetenus
+     */
+    private function elaguerLesElementsRetires(ESBTPLMDResultatUE $resultatUE, array $resultatsRetenus): void
+    {
+        $idsRetenus = array_map(static fn (ESBTPLMDResultatECUE $r): int => (int) $r->id, $resultatsRetenus);
+
+        ESBTPLMDResultatECUE::query()
+            ->where('resultat_ue_id', $resultatUE->id)
+            ->when($idsRetenus !== [], fn ($q) => $q->whereNotIn('id', $idsRetenus))
+            ->delete();
     }
 
     /**
@@ -346,7 +509,8 @@ class LMDBulletinService
     ): ESBTPLMDResultatUE {
 
         // Creer/mettre a jour le resultat UE
-        $resultatUE = ESBTPLMDResultatUE::updateOrCreate(
+        $resultatUE = $this->reprendreOuCreer(
+            ESBTPLMDResultatUE::query(),
             [
                 'bulletin_id' => $bulletin->id,
                 'unite_enseignement_id' => $ue->id,
@@ -368,11 +532,13 @@ class LMDBulletinService
         $ecues = $ue->getEcuesEffectifs($parcoursId);
         $totalPoints = 0;
         $totalCoefficients = 0;
+        $resultatsECUEs = [];
 
         foreach ($ecues as $ecue) {
             $resultatECUE = $this->calculerResultatECUE(
                 $bulletin, $resultatUE, $ecue, $etudiantId, $classeId, $semestre, $anneeUniversitaireId
             );
+            $resultatsECUEs[] = $resultatECUE;
 
             $noteEffective = $this->noteEffectiveECUE($resultatECUE);
 
@@ -383,6 +549,8 @@ class LMDBulletinService
                 $totalCoefficients += (float) $coeff;
             }
         }
+
+        $this->elaguerLesElementsRetires($resultatUE, $resultatsECUEs);
 
         // Moyenne UE = Σ(moyenne_ecue × coeff_ecue) / Σ coeff_ecue
         $moyenneUE = $totalCoefficients > 0
@@ -437,7 +605,9 @@ class LMDBulletinService
             'updated_by' => auth()->id(),
         ];
 
-        $existant = ESBTPLMDResultatECUE::query()
+        // `withTrashed()` : un élément retiré puis remis à la maquette doit
+        // retrouver sa note de seconde session, pas repartir de zéro.
+        $existant = ESBTPLMDResultatECUE::withTrashed()
             ->where('bulletin_id', $bulletin->id)
             ->where('matiere_id', $ecue->id)
             ->first();
@@ -456,13 +626,47 @@ class LMDBulletinService
             );
         }
 
-        return ESBTPLMDResultatECUE::updateOrCreate(
+        return $this->reprendreOuCreer(
+            ESBTPLMDResultatECUE::query(),
             [
                 'bulletin_id' => $bulletin->id,
                 'matiere_id' => $ecue->id,
             ],
             $attributs
         );
+    }
+
+    /**
+     * Un `updateOrCreate` qui voit les lignes mises à la corbeille.
+     *
+     * `esbtp_lmd_resultats_ues` et `esbtp_lmd_resultats_ecues` portent chacune
+     * un index UNIQUE en base — et un index MySQL compte les lignes supprimées
+     * en douceur, alors qu'`updateOrCreate` ne les voit pas. Une unité retirée
+     * de la maquette puis remise y produirait donc une insertion refusée
+     * (`Duplicate entry`), et toute la génération du bulletin tomberait.
+     *
+     * On ressort la ligne de la corbeille au lieu d'en créer une seconde. Elle
+     * revient avec ce qu'elle portait — une note de seconde session, par
+     * exemple — plutôt que remise à zéro.
+     *
+     * @param  array<string, mixed>  $cles
+     * @param  array<string, mixed>  $valeurs
+     */
+    private function reprendreOuCreer(\Illuminate\Database\Eloquent\Builder $requete, array $cles, array $valeurs)
+    {
+        $existant = $requete->clone()->withTrashed()->where($cles)->first();
+
+        if ($existant === null) {
+            return $requete->clone()->create($cles + $valeurs);
+        }
+
+        if ($existant->trashed()) {
+            $existant->restore();
+        }
+
+        $existant->update($valeurs);
+
+        return $existant;
     }
 
     /**

@@ -126,12 +126,16 @@ class ESBTPLMDBulletinController extends Controller
             return $this->academicPilotageFailure($request, $exception);
         }
 
-        $bulletin = $this->service->genererBulletinLMD(
-            $request->etudiant_id,
-            $request->classe_id,
-            $request->annee_universitaire_id,
-            $request->semestre
-        );
+        try {
+            $bulletin = $this->service->genererBulletinLMD(
+                $request->etudiant_id,
+                $request->classe_id,
+                $request->annee_universitaire_id,
+                $request->semestre
+            );
+        } catch (AcademicPilotageException $exception) {
+            return $this->academicPilotageFailure($request, $exception);
+        }
 
         return redirect()
             ->route('esbtp.lmd.bulletins.show', $bulletin)
@@ -188,11 +192,15 @@ class ESBTPLMDBulletinController extends Controller
             }
         }
 
-        $bulletins = $this->service->genererBulletinsClasse(
-            $request->classe_id,
-            $request->annee_universitaire_id,
-            $request->semestre
-        );
+        try {
+            $bulletins = $this->service->genererBulletinsClasse(
+                $request->classe_id,
+                $request->annee_universitaire_id,
+                $request->semestre
+            );
+        } catch (AcademicPilotageException $exception) {
+            return $this->academicPilotageFailure($request, $exception);
+        }
 
         $count = count($bulletins);
         $expectedCount = $studentIds->count();

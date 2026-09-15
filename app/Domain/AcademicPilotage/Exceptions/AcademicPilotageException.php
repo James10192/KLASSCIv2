@@ -36,6 +36,8 @@ final class AcademicPilotageException extends RuntimeException
 
     public const INCOMPLETE_BULLETIN_REASON_REQUIRED = 'academic_pilotage.incomplete_bulletin_reason_required';
 
+    public const CLOSED_ACADEMIC_YEAR = 'academic_pilotage.closed_academic_year';
+
     public function __construct(
         public readonly string $errorCode,
         string $message,
@@ -178,6 +180,37 @@ final class AcademicPilotageException extends RuntimeException
             self::INCOMPLETE_BULLETIN_REASON_REQUIRED,
             'Un motif est obligatoire pour générer un bulletin incomplet.',
             ['preparation' => $preparation],
+        );
+    }
+
+    /**
+     * Un bulletin déjà calculé ne se recalcule pas sur une année refermée.
+     *
+     * La maquette appartient au parcours et n'est datée nulle part : la modifier
+     * en 2028 change ce qu'une régénération produit pour 2026-2027. Le PV, lui,
+     * est scellé — le relevé, non : il relit les bulletins. Deux pièces
+     * officielles finiraient par se contredire sur le même étudiant, sans
+     * qu'aucune erreur ne soit levée.
+     *
+     * On refuse donc le recalcul, jamais la première génération : celle-ci ne
+     * contredit rien puisqu'il n'existe encore rien à contredire.
+     */
+    public static function closedAcademicYear(string $anneeLabel, int $anneeId, string $permissionDeContournement): self
+    {
+        return new self(
+            self::CLOSED_ACADEMIC_YEAR,
+            sprintf(
+                'L’année %s est clôturée : son bulletin ne peut plus être recalculé. '
+                .'Une maquette modifiée depuis produirait des résultats différents de ceux déjà certifiés. '
+                .'Rouvrez l’année, ou faites-vous accorder la permission « %s ».',
+                $anneeLabel,
+                $permissionDeContournement,
+            ),
+            [
+                'annee_universitaire_id' => $anneeId,
+                'permission' => $permissionDeContournement,
+            ],
+            409,
         );
     }
 
