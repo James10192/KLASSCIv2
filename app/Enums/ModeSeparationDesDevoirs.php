@@ -111,20 +111,29 @@ enum ModeSeparationDesDevoirs: string
     /**
      * Les trois modes tels qu'un sélecteur les affiche.
      *
-     * Porte le libellé COMPLET — « Bloquer — Le second geste est refusé. » — et
-     * pas seulement `label()`. L'écran des réglages construisait cette
-     * concaténation lui-même : le même assemblage s'écrivait à deux endroits,
-     * dont un seul était couvert. Ajouter un quatrième mode n'en corrigeait
-     * alors qu'un, et l'écran gardait l'ancienne liste sans rien signaler.
+     * Le libellé COURT, et c'est mesuré : l'écran assemblait `label() — hint()`
+     * de son côté, ce qui faisait 72 caractères pour « Observer sans bloquer ».
+     * Une capture du sélecteur ouvert montre ces libellés **tronqués** dans le
+     * menu, à 1280 px comme à 400 px — `.au-select-value` coupe à l'ellipse.
+     * On lisait donc « Ne rien contrôler — Aucun contrôle, auc… », c'est-à-dire
+     * la moitié d'une explication au moment précis de choisir.
      *
-     * @return array<string, string> valeur => libellé complet
+     * Le `hint()` n'est pas perdu : l'écran énonce les trois états en toutes
+     * lettres juste au-dessus des champs. Le mettre AUSSI dans chaque option le
+     * répétait, et le répétait coupé.
+     *
+     * Cette liste est la seule : l'écran la consomme au lieu de rebâtir la
+     * sienne. Le même assemblage s'écrivait à deux endroits, dont un seul était
+     * couvert — un quatrième mode n'en aurait corrigé qu'un.
+     *
+     * @return array<string, string> valeur => libellé
      */
     public static function options(): array
     {
         $options = [];
 
         foreach (self::cases() as $mode) {
-            $options[$mode->value] = $mode->label().' — '.$mode->hint();
+            $options[$mode->value] = $mode->label();
         }
 
         return $options;
