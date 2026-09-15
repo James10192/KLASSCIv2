@@ -127,7 +127,17 @@ class ESBTPSeanceCoursController extends Controller
                     $seance->heure_fin > $autreSeance->heure_debut) {
 
                     // Vérifier les conflits d'enseignant
-                    if ($seance->enseignant == $autreSeance->enseignant) {
+                    //
+                    // `trim() !== ''` avant la comparaison : sans cette garde,
+                    // deux séances SANS enseignant se déclaraient mutuellement en
+                    // conflit, puisque `null == null` est vrai. Même chose pour la
+                    // salle juste en dessous — une paire de séances sans
+                    // enseignant ni salle produisait donc DEUX faux conflits à
+                    // elle seule. Sur une page qui les liste toutes, ce bruit
+                    // apprend à ignorer le bandeau, ce qui coûte plus cher que
+                    // l'absence de bandeau.
+                    if (trim((string) $seance->enseignant) !== ''
+                        && trim((string) $seance->enseignant) === trim((string) $autreSeance->enseignant)) {
                         $conflits[] = [
                             'type' => 'Enseignant',
                             'nom' => $seance->enseignant,
@@ -138,8 +148,16 @@ class ESBTPSeanceCoursController extends Controller
                         ];
                     }
 
-                    // Vérifier les conflits de salle
-                    if ($seance->salle == $autreSeance->salle) {
+                    // Vérifier les conflits de salle (voir la garde ci-dessus).
+                    //
+                    // La comparaison reste sensible à la casse et aux
+                    // abréviations : « Amphi A », « amphi A » et « A » restent
+                    // trois salles. Les rapprocher élargirait la détection sur
+                    // des données existantes, ce qui est un autre geste que
+                    // celui-ci — lequel ne fait que cesser de signaler un
+                    // conflit là où il n'y en a jamais eu.
+                    if (trim((string) $seance->salle) !== ''
+                        && trim((string) $seance->salle) === trim((string) $autreSeance->salle)) {
                         $conflits[] = [
                             'type' => 'Salle',
                             'nom' => $seance->salle,
@@ -262,7 +280,7 @@ class ESBTPSeanceCoursController extends Controller
                 $baseAvailability = $prepareAvailabilityMethod->invoke($emploiTempsController, $teacher);
 
                 // Ajouter les séances existantes comme créneaux occupés
-                $availabilityData[$teacher->id] = $this->addExistingSessionsToAvailability($baseAvailability, $teacher);
+                $availabilityData[$teacher->id] = $this->addExistingSessionsToAvailability($baseAvailability, $teacher, null, $emploiTemps);
             }
 
             // Définir les types de séances disponibles
@@ -324,19 +342,43 @@ class ESBTPSeanceCoursController extends Controller
     /**
      * Ajouter les séances existantes du professeur comme créneaux occupés
      */
-    private function addExistingSessionsToAvailability($baseAvailability, $teacher, $ignoreSessionId = null)
+    private function addExistingSessionsToAvailability($baseAvailability, $teacher, $ignoreSessionId = null, ?ESBTPEmploiTemps $emploiTempsEdite = null)
     {
-        // Récupérer toutes les séances du professeur dans des emplois du temps actifs
-        $today = now()->toDateString();
+        // La grille des disponibilités montrait les séances des emplois du temps
+        // en vigueur AUJOURD'HUI. En préparant le planning du semestre suivant,
+        // elle déclarait donc l'enseignant libre sur des créneaux qu'il a déjà —
+        // et l'enregistrement, lui, refuse maintenant le conflit. La grille et
+        // le garde auraient dit deux choses contraires.
+        //
+        // La bonne fenêtre n'est pas une date mais un CHEVAUCHEMENT : cette
+        // grille est hebdomadaire et vaut pour toute la période de l'emploi du
+        // temps qu'on édite. Une séance compte donc si la période de SON emploi
+        // du temps recoupe celle-ci. Une fin non renseignée vaut « sans terme »
+        // des deux côtés.
+        //
+        // Sans emploi du temps de référence — appelant qui n'en fournit pas —
+        // on retombe sur « en vigueur aujourd'hui », le comportement d'avant.
+        $debut = $emploiTempsEdite?->date_debut;
+        $fin = $emploiTempsEdite?->date_fin;
+        $debutJour = $debut ? Carbon::parse($debut)->toDateString() : now()->toDateString();
+        $finJour = $fin ? Carbon::parse($fin)->toDateString() : null;
+
         $existingSessions = ESBTPSeanceCours::where('teacher_id', $teacher->id)
             ->where('is_active', true)
-            ->whereHas('emploiTemps', function ($query) use ($today) {
+            ->whereHas('emploiTemps', function ($query) use ($debutJour, $finJour) {
                 $query->where('is_active', true)
-                    ->whereDate('date_debut', '<=', $today)
-                    ->where(function ($subQuery) use ($today) {
-                        $subQuery->whereNull('date_fin')
-                            ->orWhereDate('date_fin', '>=', $today);
+                    // L'autre finit après le début de la nôtre.
+                    ->where(function ($sub) use ($debutJour) {
+                        $sub->whereNull('date_fin')
+                            ->orWhereDate('date_fin', '>=', $debutJour);
                     });
+
+                // L'autre commence avant la fin de la nôtre. Une fin non
+                // renseignée de notre côté vaut « sans terme » : aucune borne
+                // droite à poser, tout début convient.
+                if ($finJour !== null) {
+                    $query->whereDate('date_debut', '<=', $finJour);
+                }
             })
             ->get();
 
@@ -714,7 +756,32 @@ class ESBTPSeanceCoursController extends Controller
         $emploiTemps = ESBTPEmploiTemps::findOrFail($request->emploi_temps_id);
         $dateDebut = $emploiTemps->date_debut instanceof \Carbon\Carbon ? $emploiTemps->date_debut : \Carbon\Carbon::parse($emploiTemps->date_debut);
         $dateSeance = $dateDebut->copy()->addDays($request->jour - 1);
-        $today = now()->toDateString();
+
+        // Les trois recherches ci-dessous ne retiennent que les séances dont
+        // l'emploi du temps couvre une date. Cette date DOIT être celle de la
+        // séance qu'on crée, et non aujourd'hui.
+        //
+        // Avec « aujourd'hui », un emploi du temps qui n'est pas encore en
+        // vigueur était écarté de la recherche : préparer le planning du
+        // semestre suivant ne déclenchait donc AUCUN conflit, ni d'enseignant,
+        // ni de salle, ni de classe — c'est-à-dire précisément au moment où le
+        // conflit se corrige sans coût. Il ne réapparaissait qu'une fois le
+        // semestre commencé, quand les emplois du temps sont imprimés et que les
+        // étudiants sont dans les salles.
+        //
+        // Une seule fermeture, partagée par les trois requêtes : elles étaient
+        // recopiées à l'identique, et une correction sur une seule des trois
+        // aurait laissé deux angles morts.
+        $emploiDuTempsEnVigueur = function ($q) use ($dateSeance) {
+            $jour = $dateSeance->toDateString();
+
+            $q->where('is_active', true)
+                ->whereDate('date_debut', '<=', $jour)
+                ->where(function ($subQuery) use ($jour) {
+                    $subQuery->whereNull('date_fin')
+                        ->orWhereDate('date_fin', '>=', $jour);
+                });
+        };
 
         // Conflit enseignant sur tous les emplois du temps actifs
         if (in_array($request->type, ['course', 'homework']) && $request->teacher_id) {
@@ -725,14 +792,7 @@ class ESBTPSeanceCoursController extends Controller
                     $q->where('heure_debut', '<', $request->heure_fin)
                         ->where('heure_fin', '>', $request->heure_debut);
                 })
-                ->whereHas('emploiTemps', function ($q) use ($today) {
-                    $q->where('is_active', true)
-                        ->whereDate('date_debut', '<=', $today)
-                        ->where(function ($subQuery) use ($today) {
-                            $subQuery->whereNull('date_fin')
-                                ->orWhereDate('date_fin', '>=', $today);
-                        });
-                });
+                ->whereHas('emploiTemps', $emploiDuTempsEnVigueur);
             if ($teacherConflictQuery->count() > 0) {
                 $teacher = ESBTPTeacher::find($request->teacher_id);
                 $conflicts[] = "L'enseignant {$teacher->user->name} a déjà un cours à cet horaire sur un emploi du temps actif.";
@@ -746,14 +806,7 @@ class ESBTPSeanceCoursController extends Controller
                 ->where('is_active', true)
                 ->where('heure_debut', '<', $request->heure_fin)
                 ->where('heure_fin', '>', $request->heure_debut)
-                ->whereHas('emploiTemps', function ($q) use ($today) {
-                    $q->where('is_active', true)
-                        ->whereDate('date_debut', '<=', $today)
-                        ->where(function ($subQuery) use ($today) {
-                            $subQuery->whereNull('date_fin')
-                                ->orWhereDate('date_fin', '>=', $today);
-                        });
-                })
+                ->whereHas('emploiTemps', $emploiDuTempsEnVigueur)
                 ->count();
 
             if ($roomConflicts > 0) {
@@ -771,14 +824,7 @@ class ESBTPSeanceCoursController extends Controller
                         ->where('heure_fin', '>', $request->heure_debut);
                 });
             })
-            ->whereHas('emploiTemps', function ($q) use ($today) {
-                $q->where('is_active', true)
-                    ->whereDate('date_debut', '<=', $today)
-                    ->where(function ($subQuery) use ($today) {
-                        $subQuery->whereNull('date_fin')
-                            ->orWhereDate('date_fin', '>=', $today);
-                    });
-            })
+            ->whereHas('emploiTemps', $emploiDuTempsEnVigueur)
             ->count();
         if ($classConflicts > 0) {
             $conflicts[] = 'La classe a déjà une séance programmée à cet horaire';
@@ -884,7 +930,7 @@ class ESBTPSeanceCoursController extends Controller
                 $availabilityData = [];
                 foreach ($teachers as $teacher) {
                     $baseAvailability = $prepareAvailabilityMethod->invoke($emploiTempsController, $teacher);
-                    $availabilityData[$teacher->id] = $this->addExistingSessionsToAvailability($baseAvailability, $teacher, $seancesCour->id);
+                    $availabilityData[$teacher->id] = $this->addExistingSessionsToAvailability($baseAvailability, $teacher, $seancesCour->id, $seancesCour->emploiTemps);
                 }
 
                 // Assurer la présence de la matière actuelle même si aucune planification n'est configurée
