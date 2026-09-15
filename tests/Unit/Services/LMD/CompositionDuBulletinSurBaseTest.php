@@ -130,6 +130,12 @@ class CompositionDuBulletinSurBaseTest extends TestCase
         $ue = $this->creerUniteEnCorbeille();
 
         $this->expectException(QueryException::class);
+        // Et pas n'importe laquelle : sans cette ligne, ajouter demain une
+        // colonne NOT NULL au schéma monté plus haut laisserait ce contrôle vert
+        // pour une tout autre raison, et il cesserait en silence de démontrer ce
+        // que son titre affirme. La formulation est celle de SQLite, le moteur
+        // que ce fichier choisit lui-même ; MySQL dirait « Duplicate entry ».
+        $this->expectExceptionMessage('UNIQUE constraint failed');
 
         // `updateOrCreate` applique le scope de suppression en douceur : il ne
         // voit pas la ligne, conclut qu'elle n'existe pas, et tente une
@@ -157,8 +163,11 @@ class CompositionDuBulletinSurBaseTest extends TestCase
         // créée à côté de l'ancienne.
         $this->assertSame(1, ESBTPLMDResultatUE::withTrashed()->count());
 
-        // Et elle a bien été MISE À JOUR : `restoreOrCreate()`, le voisin
-        // canonique, s'appuie sur `firstOrCreate` et n'aurait rien écrit ici.
+        // Et elle a bien été MISE À JOUR. C'est ce que ces deux assertions
+        // discriminent : une implémentation bâtie sur `firstOrCreate` — la forme
+        // du `restoreOrCreate()` arrivé en Laravel 11, absent d'ici (9.52) —
+        // ressortirait bien la ligne, mais la laisserait à `NAQ` et sans
+        // moyenne.
         $this->assertSame('AQ', $repris->fresh()->statut);
         $this->assertEqualsWithDelta(14.5, (float) $repris->fresh()->moyenne, 0.001);
     }
