@@ -397,21 +397,12 @@ class ESBTPSeanceCoursController extends Controller
             })
             ->get();
 
+        // Les clés de la grille de disponibilité, dans l'ordre de `JourDeLaSemaine`
+        // (rang 0 = lundi). La table de traduction français → anglais qui vivait
+        // ici a été retirée : c'était une troisième source de vérité sur la
+        // lecture du jour, dans le fichier même où la recopie de la deuxième
+        // avait déjà fait compter « Répartition par jour » pour zéro.
         $days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-        $dayTranslations = [
-            'monday' => 'monday',
-            'tuesday' => 'tuesday',
-            'wednesday' => 'wednesday',
-            'thursday' => 'thursday',
-            'friday' => 'friday',
-            'saturday' => 'saturday',
-            'lundi' => 'monday',
-            'mardi' => 'tuesday',
-            'mercredi' => 'wednesday',
-            'jeudi' => 'thursday',
-            'vendredi' => 'friday',
-            'samedi' => 'saturday',
-        ];
 
         foreach ($existingSessions as $session) {
             if ($ignoreSessionId && (int) $session->id === (int) $ignoreSessionId) {
@@ -419,14 +410,9 @@ class ESBTPSeanceCoursController extends Controller
                 continue;
             }
 
-            // Mapper le jour numérique vers la clé jour
-            $dayKey = null;
-            if (is_numeric($session->jour)) {
-                $dayKey = $days[(int) $session->jour - 1] ?? null; // jour 1=lundi -> index 0=monday
-            } elseif (is_string($session->jour)) {
-                $normalizedDay = strtolower(trim($session->jour));
-                $dayKey = $dayTranslations[$normalizedDay] ?? null;
-            }
+            // Les deux écritures de la colonne, par la lecture unique du domaine.
+            $rang = JourDeLaSemaine::rang($session->jour);
+            $dayKey = $rang === null ? null : ($days[$rang] ?? null);
 
             if (! $dayKey || ! isset($baseAvailability[$dayKey])) {
                 continue;

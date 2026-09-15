@@ -121,13 +121,12 @@ class ESBTPEmploiTemps extends Model
     /**
      * La date, dans cette période, du jour de semaine donné.
      *
-     * Ici et non dans un contrôleur : trois endroits calculaient cette date, et
-     * chacun à sa façon. Deux posaient `date_debut + (jour - 1)`, juste
-     * UNIQUEMENT si la période commence un lundi — que rien n'impose. La
-     * validation de l'emploi du temps ne demande qu'une `date` ; seul le
-     * message d'erreur sur la durée évoque « du lundi au samedi ». Sur une
-     * période ouverte un mercredi, le « Lundi » tombait donc sur ce mercredi,
-     * deux jours avant l'ouverture.
+     * Ici et non dans un contrôleur : plusieurs endroits calculaient cette date,
+     * chacun à sa façon, et la plupart par un raccourci qui n'est juste que si
+     * la période commence un lundi — ce que rien n'impose. Le décompte exact,
+     * les sites concernés et ce que chacun rendait sont dans le docbloc de
+     * `JourDeLaSemaine::decalageDepuis()`, qui est le seul endroit du dépôt à
+     * les porter. Ne les recopiez pas ici.
      *
      * Le jour accepte les deux écritures de `esbtp_seance_cours.jour` : l'entier
      * de la liste des séances comme le libellé de l'emploi du temps.

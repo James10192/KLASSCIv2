@@ -1134,13 +1134,16 @@ class DashboardController extends Controller
 
         // Récupérer l'emploi du temps d'aujourd'hui pour l'étudiant
         try {
-            // Les séances stockent le jour en français (« lundi », …) : le nom
-            // anglais de date('l') ne trouvait jamais rien.
-            $today = mb_strtolower(now()->locale('fr')->dayName, 'UTF-8');
+            // Les séances stockent le jour de DEUX façons : en toutes lettres
+            // depuis l'emploi du temps, par son numéro depuis la liste des
+            // séances. Ce filtre ne portait que sur la première (« lundi » en
+            // minuscules, après un premier correctif contre le nom anglais de
+            // `date('l')`) : les séances saisies depuis la liste n'arrivaient
+            // jamais sur le tableau de bord de l'étudiant.
             $data['todayTimetable'] = ESBTPSeanceCours::whereHas('emploiTemps', function($query) use ($classeId) {
                     $query->where('classe_id', $classeId)->where('is_active', true);
                 })
-                ->where('jour', $today)
+                ->whereIn('jour', \App\Domain\EmploiTemps\JourDeLaSemaine::ecrituresDe(now()->dayOfWeekIso))
                 ->orderBy('heure_debut')
                 ->with(['matiere', 'emploiTemps.classe', 'enseignant.user'])
                 ->get();

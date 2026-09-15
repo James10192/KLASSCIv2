@@ -110,22 +110,38 @@ final class JourDeLaSemaine
      *
      * ## Pourquoi ce n'est pas `rang($jour)` tout court
      *
-     * **Cinq** endroits du dépôt calculaient la date d'une séance, et trois le
-     * faisaient par `date_debut + (jour - 1)` : la création d'une séance simple,
-     * celle d'une séance récurrente, et le contrôle de conflit. Ce raccourci
-     * n'est juste **que si `date_debut` tombe un lundi** — or rien ne l'impose :
-     * la validation de l'emploi du temps ne demande qu'une `date`, et seul le
+     * **Ce docbloc est le seul endroit du dépôt qui porte ce décompte.** Les
+     * autres commentaires y renvoient au lieu de le recopier : un nombre écrit
+     * en cinq endroits vieillit en cinq endroits, ce qui est exactement le
+     * défaut que ce domaine corrige. Si le décompte change, il change ici.
+     *
+     * **Cinq** endroits calculaient la date d'une séance à partir de la période
+     * de son emploi du temps, et **trois** le faisaient par
+     * `date_debut + (jour - 1)` : la création d'une séance simple, celle d'une
+     * séance récurrente, et le contrôle de conflit. Ce raccourci n'est juste
+     * **que si `date_debut` tombe un lundi** — or rien ne l'impose : la
+     * validation de l'emploi du temps ne demande qu'une `date`, et seul le
      * message d'erreur sur la durée évoque « du lundi au samedi ». Sur un emploi
      * du temps commençant un mercredi, ce raccourci place le « Lundi » sur le
      * mercredi même, deux jours avant l'ouverture, et une récurrence du vendredi
      * sur un dimanche.
      *
      * Les deux autres — `ESBTPSeanceCours::getDateSeance()` et
-     * `getDateCompleteSeance()` — faisaient le calcul juste : la prochaine
-     * occurrence du jour visé à partir du début de période. C'est cette
-     * formule-là qui est ici, et que les cinq partagent désormais. (Une première
-     * version de ce commentaire disait « trois endroits, dont un seul juste » :
-     * c'était faux des deux côtés.)
+     * `getDateCompleteSeance()` — portaient **la bonne formule** : la prochaine
+     * occurrence du jour visé à partir du début de période. C'est elle qui est
+     * ici, et que les cinq partagent désormais.
+     *
+     * Une réserve sur ces deux-là, parce que « juste » y serait trop rapide :
+     * seul `getDateSeance()` rendait une date juste. `getDateCompleteSeance()`
+     * appliquait la bonne formule à `(int) $this->jour`, soit **0 pour
+     * « Lundi »** — elle rendait donc une date fausse pour toute séance saisie
+     * depuis l'emploi du temps. Formule juste, sortie fausse.
+     *
+     * Deux sites de plus écrivent une date de séance sans passer par ici : les
+     * deux duplications d'emploi du temps (`ESBTPEmploiTempsController`). Elles
+     * emploient bien `+ (jour - 1)`, mais sur un début de semaine obtenu par
+     * `startOfWeek(Carbon::MONDAY)` (`TimetableShortcutService`) : le raccourci
+     * y est légitime, et c'est pourquoi elles ne comptent pas dans les cinq.
      *
      * Rend toujours 0..6, donc une date qui reste dans la semaine ouverte par
      * `date_debut` — jamais avant elle.

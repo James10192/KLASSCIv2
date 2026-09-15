@@ -49,7 +49,11 @@ class ESBTPAttendanceCodeController extends Controller
                 // OU séances récurrentes du jour dont l'heure n'est pas passée
                 ->orWhere(function ($sub) use ($todayDow, $currentTime) {
                     $sub->whereNull('date_seance')
-                        ->where('jour', $todayDow)
+                        // Les deux écritures de la colonne. Le `where` sur le
+                        // seul entier ignorait les séances saisies depuis
+                        // l'emploi du temps, qui écrit le jour en toutes
+                        // lettres : aucun code de présence ne leur était proposé.
+                        ->whereIn('jour', \App\Domain\EmploiTemps\JourDeLaSemaine::ecrituresDe($todayDow))
                         ->whereTime('heure_debut', '>=', $currentTime);
                 });
             })

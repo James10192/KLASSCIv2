@@ -361,9 +361,10 @@ class ESBTPSeanceCours extends Model
         // que `JourDeLaSemaine` ne connaît pas. Aucun des deux formulaires ne le
         // propose, et `getNomJour()` le rendait déjà « Jour inconnu ». La
         // semaine est désormais la même partout.
-        // Le calcul de décalage qui vivait ici est parti dans `JourDeLaSemaine` :
-        // c'était le SEUL des trois sites du dépôt à le faire juste, et les deux
-        // autres se rangent maintenant derrière lui.
+        // Le calcul de décalage qui vivait ici est parti dans `JourDeLaSemaine`,
+        // dont le docbloc de `decalageDepuis()` dit quels sites le partagent
+        // désormais et lesquels le faisaient faux. Le décompte n'est écrit que
+        // là ; ne le recopiez pas ici.
         $joursAAjouter = \App\Domain\EmploiTemps\JourDeLaSemaine::decalageDepuis(
             $this->jour,
             $dateDebut->dayOfWeekIso

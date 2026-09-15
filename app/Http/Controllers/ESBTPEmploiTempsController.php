@@ -1413,8 +1413,28 @@ class ESBTPEmploiTempsController extends Controller
             })->toArray(),
         ]);
 
-        // Grouper les séances par jour
-        $seancesGroupees = $seances->groupBy('jour');
+        // Grouper les séances par jour, sur le NUMÉRO du jour (1 = lundi).
+        //
+        // C'était `groupBy('jour')`, donc sur la valeur brute de la colonne — qui
+        // porte indifféremment « 1 » ou « Lundi ». Or la vue lit
+        // `$seancesGroupees[1]`…`[6]` (grille bureau et onglets mobile) : les
+        // séances saisies depuis l'emploi du temps, écrites en toutes lettres,
+        // n'étaient dans AUCUN de ces six seaux. L'étudiant ne les voyait pas sur
+        // sa propre page d'emploi du temps, sans rien qui le signale.
+        //
+        // Le seau `0` recueille les jours illisibles : la vue ne le lit pas, donc
+        // ils restent hors écran comme avant, mais ils sont journalisés au lieu
+        // de disparaître en silence.
+        $seancesGroupees = $seances->groupBy(
+            fn ($seance) => ($rang = JourDeLaSemaine::rang($seance->jour)) === null ? 0 : $rang + 1
+        );
+
+        if ($seancesGroupees->has(0)) {
+            \Log::warning('Séances au jour illisible, absentes de l\'emploi du temps étudiant', [
+                'etudiant_id' => $etudiant->id ?? null,
+                'jours' => $seancesGroupees->get(0)->pluck('jour')->unique()->values()->all(),
+            ]);
+        }
 
         \Log::info('Séances après groupement:', [
             'jours_avec_seances' => $seancesGroupees->keys()->toArray(),
@@ -1670,9 +1690,33 @@ class ESBTPEmploiTempsController extends Controller
     {
         // Le jour d'aujourd'hui, dans l'écriture de la colonne (1 = lundi).
         //
-        // Il valait `dayOfWeekIso - 1`, soit ZÉRO le lundi, et servait tel quel
-        // à un `where('jour', …)` sur une colonne qui porte `1` ou « Lundi » :
-        // cette page ne rendait donc AUCUNE séance, aucun jour de la semaine.
+        // Il valait `dayOfWeekIso - 1`, soit ZÉRO le lundi : la page cherchait
+        // donc, chaque jour, un numéro qui n'est celui d'aucune séance de ce
+        // jour-là. Ça, c'est certain — il suffit de lire la ligne.
+        //
+        // Ce qu'elle rendait alors demande une précision qui n'est PAS
+        // intuitive, et une première version de ce commentaire s'y est trompée
+        // en écrivant « aucune séance, aucun jour » :
+        //
+        //   `esbtp_seance_cours.jour` est un VARCHAR (migration de mars 2024),
+        //   la liaison PDO envoie un entier en `PARAM_INT` (`Connection::bindValues`)
+        //   et les requêtes sont préparées nativement (`Connector` pose
+        //   `ATTR_EMULATE_PREPARES => false`, que `config/database.php` ne
+        //   surcharge pas). MySQL compare alors la chaîne au nombre EN NOMBRE,
+        //   et « Lundi » vaut 0.
+        //
+        //   Donc le lundi, `where('jour', 0)` ramenait TOUTES les séances
+        //   écrites en toutes lettres, tous jours confondus ; et les autres
+        //   jours, celles de la veille écrites en chiffres. La page n'était pas
+        //   vide : elle servait le mauvais jour, en silence — et c'est sur cette
+        //   liste que les présences se prennent.
+        //
+        // La distinction vaut d'être notée : PHP 8 ne fait PAS cette conversion
+        // (RFC « Saner string to number comparisons » — `1 == 'Lundi'` y est
+        // faux, ce que fixe `JourDeLaSemaineTest`). Le raisonnement PHP ne se
+        // transpose pas à SQL. Rejouable en trois secondes sur n'importe quelle
+        // instance : `SELECT 'Lundi' = 0;` rend 1. Non exécuté ici, cet
+        // environnement n'ayant pas de MySQL.
         $jourActuel = now()->dayOfWeekIso;
 
         // Récupérer la date actuelle
@@ -2651,8 +2695,9 @@ class ESBTPEmploiTempsController extends Controller
      * étaient invisibles dans les deux sens. Aucune erreur nulle part : la
      * séance s'affichait à l'écran et n'existait pour personne d'autre.
      *
-     * Le calcul vit sur `ESBTPEmploiTemps::dateDuJour()`, partagé par les trois
-     * sites qui en avaient chacun un.
+     * Le calcul vit sur `ESBTPEmploiTemps::dateDuJour()`, que partagent tous les
+     * sites qui en avaient chacun une copie — leur liste est dans le docbloc de
+     * `JourDeLaSemaine::decalageDepuis()`, seul endroit du dépôt à la porter.
      *
      * Rend `null` plutôt qu'une date approchée quand le jour est illisible ou
      * que l'emploi du temps n'a pas de début : une date fausse se propagerait
