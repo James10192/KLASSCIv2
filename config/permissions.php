@@ -1681,14 +1681,6 @@ return [
             'group' => 'LMD',
             'icon' => 'fa-trash',
         ],
-        'lmd.bulletins.regenerate_closed_year' => [
-            'label' => 'Recalculer un bulletin sur une année clôturée (rare)',
-            'description' => 'La maquette n\'est pas datée : la modifier change ce qu\'une régénération produit pour les années passées. '
-                .'Recalculer un bulletin déjà arrêté peut donc le faire diverger du relevé et du procès-verbal déjà délivrés. '
-                .'À réserver aux réclamations abouties ; chaque recalcul est journalisé.',
-            'group' => 'LMD',
-            'icon' => 'fa-key',
-        ],
 
         // ===== Relevé de notes (document officiel) =====
         'lmd.releve.view' => [
