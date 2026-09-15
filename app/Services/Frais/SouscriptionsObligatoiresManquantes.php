@@ -372,6 +372,8 @@ class SouscriptionsObligatoiresManquantes
             }
         });
 
+        $this->rafraichirEcheanciers(array_column($aAjuster, 'inscription_id'));
+
         if ($doublons > 0) {
             // Sans cette trace, un ecart entre « n ajoutes » annonce et ce qui
             // existe en base resterait inexplicable.
@@ -505,8 +507,24 @@ class SouscriptionsObligatoiresManquantes
     }
 
     /**
-     * Le bareme applicable a cette inscription, memoise par scope.
+     * @param  array<int, int>  $inscriptionIds
      */
+    private function rafraichirEcheanciers(array $inscriptionIds): void
+    {
+        $ids = array_values(array_unique(array_filter($inscriptionIds)));
+        if ($ids === []) {
+            return;
+        }
+
+        $snapshots = app(\App\Services\EcheancierSnapshotService::class);
+        ESBTPInscription::query()
+            ->whereIn('id', $ids)
+            ->get()
+            ->each(function (ESBTPInscription $inscription) use ($snapshots): void {
+                $snapshots->refreshForInscription($inscription);
+            });
+    }
+
     private function baremePour(ESBTPInscription $inscription): Collection
     {
         $cle = implode('|', [
@@ -581,8 +599,10 @@ class SouscriptionsObligatoiresManquantes
                 'montant' => $nouveau,
                 'montant_actuel' => $actuel,
                 'ecart' => $nouveau - $actuel,
+                'ecart_prevu' => $nouveau - $actuel,
                 'deja_paye' => $dejaPaye,
                 'restera_du' => max(0.0, $nouveau - $dejaPaye),
+                'credit_prevu' => max(0.0, $dejaPaye - $nouveau),
                 // Il avait solde l'ancien tarif : le relever lui cree une dette
                 // qu'il n'a pas contractee. On l'applique, mais on le dit.
                 'cree_une_dette' => $actuel - $dejaPaye <= 0.009 && $nouveau - $dejaPaye > 0.009,

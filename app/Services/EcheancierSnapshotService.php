@@ -65,6 +65,7 @@ class EcheancierSnapshotService
                     'total_due' => (float) ($computed['total_due'] ?? 0),
                     'total_paid_validated' => (float) ($computed['total_paid_validated'] ?? 0),
                     'remaining_total' => (float) ($computed['remaining_total'] ?? 0),
+                    'credit_amount' => (float) ($computed['credit_amount'] ?? 0),
                 ],
                 'created_by' => auth()->id(),
             ]

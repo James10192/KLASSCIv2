@@ -122,6 +122,25 @@ class RegenerationMontantsFraisTest extends TestCase
         $this->assertSame(15000.0, (float) $souscription->fresh()->amount);
     }
 
+    public function test_une_baisse_de_tarif_produit_un_ecart_prevu_negatif(): void
+    {
+        [$categorie, $souscription] = $this->fraisSouscrit(8000, 10000);
+
+        $apercu = $this->service()->executer(false, null, [$this->inscription->id], true);
+        $ligne = $this->ligneDe($apercu['lignes_ajustement'], $categorie->id);
+
+        $this->assertNotNull($ligne, 'Une baisse de barème doit apparaître comme un écart, pas « aucun écart ».');
+        $this->assertSame(10000.0, $ligne['montant_actuel']);
+        $this->assertSame(8000.0, $ligne['montant']);
+        $this->assertSame(-2000.0, $ligne['ecart']);
+        $this->assertSame(-2000.0, $ligne['ecart_prevu']);
+
+        $applique = $this->service()->executer(true, null, [$this->inscription->id], true);
+
+        $this->assertSame(1, $applique['total_ajuster']);
+        $this->assertSame(8000.0, (float) $souscription->fresh()->amount);
+    }
+
     public function test_sans_demande_explicite_les_montants_ne_bougent_pas(): void
     {
         [$categorie, $souscription] = $this->fraisSouscrit(15000, 10000);

@@ -178,6 +178,7 @@ class EcheancierComputationService
         $totalPaidOnSchedule = round(collect($allocatedLines)->sum(fn ($line) => (float) ($line['paid_amount'] ?? 0)), 2);
         $totalPaidValidated = round(\App\Models\ESBTPPaiement::netStudentPaidFrom($validatedPayments), 2);
         $remainingTotal = round(max(0, $totalDue - $totalPaidOnSchedule), 2);
+        $creditAmount = round(max(0, $totalPaidOnSchedule - $totalDue), 2);
 
         $expectedDueToDate = 0.0;
         $paidDueToDate = 0.0;
@@ -248,6 +249,7 @@ class EcheancierComputationService
             'total_paid' => $totalPaidOnSchedule,
             'total_paid_validated' => $totalPaidValidated,
             'remaining_total' => $remainingTotal,
+            'credit_amount' => $creditAmount,
             'expected_due_to_date' => $expectedDueToDate,
             'paid_due_to_date' => $paidDueToDate,
             'overdue_amount' => $overdueAmount,
