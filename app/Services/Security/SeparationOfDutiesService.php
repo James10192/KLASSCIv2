@@ -2,6 +2,7 @@
 
 namespace App\Services\Security;
 
+use App\Enums\ModeSeparationDesDevoirs;
 use App\Helpers\SettingsHelper;
 use App\Models\User;
 use Illuminate\Support\Facades\Log;
@@ -15,10 +16,10 @@ final class SeparationOfDutiesService
      * `Arr::get()` découpe sur les points, donc il cherche un tableau imbriqué
      * `rules → lmd → jury → publish`, alors que la clé est littéralement
      * `'lmd.jury.publish'`, en un seul morceau. Il ne trouve rien et rend le
-     * défaut — `false` pour `enabled`, `null` pour `setting`.
+     * défaut — vide pour le mode, `null` pour `setting`.
      *
-     * Conséquence : `enabled()` rendait toujours `false`, `violation()` sortait
-     * au premier garde, et les TROIS règles de séparation des devoirs
+     * Conséquence : la règle retombait toujours sur « inactif », `violation()`
+     * sortait au premier garde, et les TROIS règles de séparation des devoirs
      * n'empêchaient rien depuis leur écriture. Aucune erreur, aucun journal :
      * l'écran des jurys laissait simplement passer.
      *
@@ -32,7 +33,7 @@ final class SeparationOfDutiesService
             // Le repli muet par lequel le défaut ci-dessus est arrivé jusqu'en
             // production. Un nom inconnu — faute de frappe sur un site d'appel,
             // règle renommée dans `config/sod.php` sans que l'appelant suive —
-            // rend un tableau vide, donc `enabled()` rend `false`, donc
+            // rend un tableau vide, donc `mode()` rend INACTIF, donc
             // `violation()` sort au premier garde : le contrôle disparaît en
             // silence, exactement comme les trois règles l'ont fait.
             //
@@ -52,11 +53,32 @@ final class SeparationOfDutiesService
 
     public function violation(string $rule, ?int $previousActorId, ?User $actor): ?string
     {
-        if (! $this->enabled($rule) || ! $actor || ! $previousActorId) {
+        $mode = $this->mode($rule);
+
+        if (! $mode->sApplique() || ! $actor || ! $previousActorId) {
             return null;
         }
 
         if ((int) $previousActorId !== (int) $actor->id) {
+            return null;
+        }
+
+        if (! $mode->refuse()) {
+            // Mode observation : la regle constate et laisse passer. C'est ce
+            // qui rend ces controles deployables sur des instances en service
+            // ou la meme personne tient les deux bouts depuis toujours — elle
+            // voit d'abord ce que la regle bloquerait, puis decide.
+            //
+            // Journalise au meme niveau qu'un contournement : c'est la meme
+            // information — quelqu'un a enchaine deux gestes d'une meme chaine
+            // — et elle doit se retrouver d'un seul coup d'oeil au journal.
+            Log::warning('Separation des devoirs enfreinte, mode observation : le geste est passe', [
+                'regle' => $rule,
+                'mode' => $mode->value,
+                'user_id' => $actor->id,
+                'acteur_precedent_id' => (int) $previousActorId,
+            ]);
+
             return null;
         }
 
@@ -89,10 +111,18 @@ final class SeparationOfDutiesService
             : 'Separation des devoirs requise pour cette action.';
     }
 
-    public function enabled(string $rule): bool
+    /**
+     * Ce que la regle fait quand elle est enfreinte.
+     *
+     * Trois etats et non deux : voir `ModeSeparationDesDevoirs`, qui porte le
+     * pourquoi. Une regle inconnue ou sans cle de reglage retombe sur INACTIF,
+     * ce que `regle()` journalise deja.
+     */
+    public function mode(string $rule): ModeSeparationDesDevoirs
     {
         $definition = $this->regle($rule);
-        $default = (bool) ($definition['enabled'] ?? false);
+        $default = ModeSeparationDesDevoirs::depuisReglage($definition['mode'] ?? null)
+            ?? ModeSeparationDesDevoirs::INACTIF;
         $setting = $definition['setting'] ?? null;
 
         if (! is_string($setting) || $setting === '') {
@@ -100,7 +130,7 @@ final class SeparationOfDutiesService
         }
 
         try {
-            $value = SettingsHelper::get($setting, $default ? '1' : '0');
+            $value = SettingsHelper::get($setting, $default->value);
         } catch (\Throwable $e) {
             // Le repli est sur : il rend la valeur d'usine, donc la regle reste
             // active. Mais il le faisait sans un mot — et un repli muet sur une
@@ -109,14 +139,32 @@ final class SeparationOfDutiesService
             Log::warning('Reglage de separation des devoirs illisible, repli sur la valeur d’usine', [
                 'regle' => $rule,
                 'reglage' => $setting,
-                'valeur_usine' => $default,
+                'valeur_usine' => $default->value,
                 'erreur' => $e->getMessage(),
             ]);
 
             return $default;
         }
 
-        return filter_var($value, FILTER_VALIDATE_BOOLEAN);
+        $mode = ModeSeparationDesDevoirs::depuisReglage($value);
+
+        if ($mode === null) {
+            // Une valeur que personne ne sait lire : ni un mode connu, ni un
+            // booleen d'avant le troisieme etat. Le repli est le defaut du
+            // fichier de configuration, et il se DIT — un mode illisible sur
+            // une regle de separation des devoirs se decouvre le jour d'un
+            // controle, pas avant.
+            Log::warning('Mode de separation des devoirs inconnu, repli sur la valeur d’usine', [
+                'regle' => $rule,
+                'reglage' => $setting,
+                'valeur_lue' => is_scalar($value) ? (string) $value : gettype($value),
+                'valeur_usine' => $default->value,
+            ]);
+
+            return $default;
+        }
+
+        return $mode;
     }
 
     /** La permission qui autorise a enchainer deux gestes d'une meme chaine. */
@@ -133,7 +181,7 @@ final class SeparationOfDutiesService
      * toucher ni a la vue ni au controleur — c'est la lecon de la PR #591, ou
      * une chaine recopiee remettait une bascule a zero en silence.
      *
-     * @return array<int, array{cle: string, label: string, hint: string, defaut: bool}>
+     * @return array<int, array{cle: string, label: string, hint: string, defaut: string}>
      */
     public static function reglesExposables(): array
     {
@@ -163,7 +211,8 @@ final class SeparationOfDutiesService
                 'cle' => $cle,
                 'label' => (string) ($definition['label'] ?? $regle),
                 'hint' => (string) ($definition['hint'] ?? ''),
-                'defaut' => (bool) ($definition['enabled'] ?? false),
+                'defaut' => (ModeSeparationDesDevoirs::depuisReglage($definition['mode'] ?? null)
+                    ?? ModeSeparationDesDevoirs::INACTIF)->value,
             ];
         }
 

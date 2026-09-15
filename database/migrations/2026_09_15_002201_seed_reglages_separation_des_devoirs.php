@@ -67,12 +67,17 @@ return new class extends Migration
                 continue;
             }
 
-            $valeur = $regle['defaut'] ? '1' : '0';
+            // Un mode a trois etats, pas un booleen : l'ecole choisit entre
+            // bloquer, observer sans bloquer, ou ne rien controler. Le defaut
+            // livre est OBSERVATION — ces regles n'ont jamais rien empeche
+            // jusqu'ici, et les semer bloquantes ferait basculer d'un coup une
+            // instance en service d'« aucun controle » a « 403 ».
+            $valeur = (string) $regle['defaut'];
 
             DB::table('settings')->insert([
                 'key' => $cle,
                 'value' => $valeur,
-                'type' => 'boolean',
+                'type' => 'string',
                 'description' => $regle['label'].' — '.$regle['hint'],
                 'default_value' => $valeur,
                 'is_required' => false,

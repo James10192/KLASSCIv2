@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Services\Security;
 
+use App\Enums\ModeSeparationDesDevoirs;
 use App\Services\Security\SeparationOfDutiesService;
 use Tests\TestCase;
 
@@ -71,7 +72,12 @@ class SeparationOfDutiesExpositionTest extends TestCase
             $this->assertArrayHasKey('label', $regle);
             $this->assertArrayHasKey('hint', $regle);
             $this->assertArrayHasKey('defaut', $regle);
-            $this->assertIsBool($regle['defaut']);
+            // Une chaîne et non un booléen : le défaut est désormais un mode
+            // à trois états, que l'écran rend en sélecteur et non en case.
+            $this->assertNotNull(
+                ModeSeparationDesDevoirs::tryFrom($regle['defaut']),
+                "Le défaut de « {$regle['cle']} » n'est pas un mode connu : le sélecteur n'aurait rien à présélectionner.",
+            );
         }
     }
 
@@ -116,20 +122,42 @@ class SeparationOfDutiesExpositionTest extends TestCase
      * qui ne lisaient `config('sod.rules')` que sans sous-chemin, passaient dans
      * les deux cas : c'est exactement pourquoi ils n'ont rien vu.
      */
-    public function test_les_trois_regles_livrees_sont_reellement_actives(): void
+    public function test_les_trois_regles_livrees_sont_reellement_atteintes(): void
     {
-        // On neutralise la clé de réglage de chaque règle : `enabled()` rend
-        // alors la valeur d'usine sans lire la base. Le test ne dépend donc ni
-        // d'une base disponible, ni du choix qu'une école aurait posé dans
+        // On neutralise la clé de réglage de chaque règle : `mode()` rend alors
+        // la valeur d'usine sans lire la base. Le test ne dépend donc ni d'une
+        // base disponible, ni du choix qu'une école aurait posé dans
         // `klassci_testing` — il ne mesure que ce qu'il annonce mesurer : la
         // définition de la règle est-elle ATTEINTE.
+        //
+        // « Atteinte » et non « bloquante » : depuis que le mode existe, le
+        // défaut livré est OBSERVATION. Une règle qui retomberait sur INACTIF
+        // serait le symptôme du chemin pointé qui échoue — c'est cela qu'on
+        // attrape, et non un choix de politique.
         $this->neutraliserLesReglagesDInstance();
         $service = new SeparationOfDutiesService;
 
         foreach (array_keys($this->configurationLivree()['rules']) as $regle) {
             $this->assertTrue(
-                $service->enabled($regle),
-                "La règle « {$regle} » est déclarée active et ne l'est pas : elle n'empêchera rien.",
+                $service->mode($regle)->sApplique(),
+                "La règle « {$regle} » est déclarée et n'est pas atteinte : elle ne constatera rien.",
+            );
+        }
+    }
+
+    public function test_les_trois_regles_sont_livrees_en_observation(): void
+    {
+        // Le défaut doit rester non bloquant tant qu'une école n'a pas durci.
+        // Le livrer bloquant ferait basculer d'un coup six instances en service
+        // d'« aucun contrôle » à « 403 » sur un geste quotidien.
+        $this->neutraliserLesReglagesDInstance();
+        $service = new SeparationOfDutiesService;
+
+        foreach (array_keys($this->configurationLivree()['rules']) as $regle) {
+            $this->assertSame(
+                ModeSeparationDesDevoirs::OBSERVATION,
+                $service->mode($regle),
+                "La règle « {$regle} » est livrée bloquante : le déploiement casserait les instances en service.",
             );
         }
     }
@@ -138,7 +166,10 @@ class SeparationOfDutiesExpositionTest extends TestCase
     {
         $this->neutraliserLesReglagesDInstance();
 
-        $this->assertFalse((new SeparationOfDutiesService)->enabled('regle.qui.n.existe.pas'));
+        $this->assertSame(
+            ModeSeparationDesDevoirs::INACTIF,
+            (new SeparationOfDutiesService)->mode('regle.qui.n.existe.pas'),
+        );
     }
 
     /**

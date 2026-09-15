@@ -17,29 +17,40 @@
             $clePermissionSod = \App\Services\Security\SeparationOfDutiesService::permissionDeContournement();
             $metaPermissionSod = app(\App\Services\PermissionRegistry::class)->permissionMeta($clePermissionSod);
             $libellePermissionSod = $metaPermissionSod['label'] ?? $clePermissionSod;
+            $modesSod = \App\Enums\ModeSeparationDesDevoirs::cases();
         @endphp
         <div class="ls-toggle-hint" style="margin-bottom:.5rem;">
             Norme OHADA : personne ne signe les deux bouts d'une même chaîne.
-            La permission « {{ $libellePermissionSod }} » lève ces contrôles ;
-            chaque levée est journalisée.
+            Chaque règle se règle séparément — <strong>Bloquer</strong> refuse le
+            second geste, <strong>Observer sans bloquer</strong> le laisse passer
+            en le consignant au journal, <strong>Ne rien contrôler</strong> ne
+            garde aucune trace. Une école dont la même personne tient les deux
+            bouts commence par observer, lit son journal, puis durcit.
+            La permission « {{ $libellePermissionSod }} » lève ces contrôles
+            nominativement ; chaque levée est journalisée.
         </div>
     </div>
     @foreach ($reglesSod as $regleSod)
     <div class="col-md-4">
-        <label class="ls-toggle" for="sod_{{ $loop->index }}">
-            <div class="ls-toggle-text">
-                <div class="ls-toggle-label">{{ $regleSod['label'] }}</div>
-                <div class="ls-toggle-hint">{{ $regleSod['hint'] }}</div>
-            </div>
-            <div class="form-check form-switch" style="margin:0; padding-left:2.5em;">
-                <input class="form-check-input" type="checkbox" id="sod_{{ $loop->index }}"
-                       name="{{ $regleSod['cle'] }}" value="1"
-                       {{-- filter_var et non « == '1' » : le réglage rend un vrai booléen
-                            quand il existe en base (type boolean), une chaîne sinon. La
-                            comparaison lâche marchait par accident ; passer à === l'aurait cassée. --}}
-                       {{ filter_var(\App\Helpers\SettingsHelper::get($regleSod['cle'], $regleSod['defaut']), FILTER_VALIDATE_BOOLEAN) ? 'checked' : '' }}>
-            </div>
-        </label>
+        <div class="ls-field">
+            <label class="ls-toggle-label" for="sod_{{ $loop->index }}">{{ $regleSod['label'] }}</label>
+            <div class="ls-toggle-hint" style="margin-bottom:.4rem;">{{ $regleSod['hint'] }}</div>
+            @php
+                // Le mode posé par l'école, ou le défaut livré. Passe par l'enum
+                // plutôt que par une comparaison de chaînes : un réglage écrit
+                // avant l'existence du troisième état porte encore un booléen.
+                $modeSod = \App\Enums\ModeSeparationDesDevoirs::depuisReglage(
+                    \App\Helpers\SettingsHelper::get($regleSod['cle'], $regleSod['defaut'])
+                ) ?? \App\Enums\ModeSeparationDesDevoirs::from($regleSod['defaut']);
+            @endphp
+            <select class="form-select" id="sod_{{ $loop->index }}" name="{{ $regleSod['cle'] }}">
+                @foreach ($modesSod as $modeOption)
+                    <option value="{{ $modeOption->value }}" @selected($modeOption === $modeSod)>
+                        {{ $modeOption->label() }} — {{ $modeOption->hint() }}
+                    </option>
+                @endforeach
+            </select>
+        </div>
     </div>
     @endforeach
 </div>

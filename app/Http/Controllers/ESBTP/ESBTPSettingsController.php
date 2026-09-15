@@ -504,7 +504,7 @@ class ESBTPSettingsController extends Controller
                 // migration, lu par MobileProfileResolver, sans cette ligne
                 // la case de la page n'aurait jamais ete enregistree.
                 MobileProfileResolver::REGLAGE_ACTIF,
-            ], array_keys($troncCommunDefaults), SeparationOfDutiesService::clesDeReglage());
+            ], array_keys($troncCommunDefaults));
 
             // Reglages a cle pointee qui ne sont PAS des cases a cocher. La
             // distinction ne peut PAS se lire sur la colonne `type` : plusieurs
@@ -526,6 +526,12 @@ class ESBTPSettingsController extends Controller
                 CataloguePiecesDossier::REGLAGE_ECHEANCE_DEFAUT,
                 CataloguePiecesDossier::REGLAGE_EPUISEMENT,
             ];
+
+            // Les trois regles de separation des devoirs : un mode a trois
+            // etats, donc un selecteur et non une case. Elles etaient dans les
+            // bascules, ou une valeur absente se lit comme un « non » — ce qui
+            // aurait remis « inactif » a chaque enregistrement de la page.
+            $reglagesTexte = array_merge($reglagesTexte, SeparationOfDutiesService::clesDeReglage());
 
             $reglagesPointes = Setting::whereIn('key', array_merge($basculesGerees, $reglagesTexte))->get();
 
