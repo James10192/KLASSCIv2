@@ -377,8 +377,14 @@
                                  une colonne morte de ce nom ET une relation homonyme, et Eloquent
                                  sert l'attribut avant la relation. La colonne s'affichait donc
                                  vide sur toutes les lignes. `teacher.user` est chargé par
-                                 `listeFiltree()`, sans quoi ce serait un N+1 sur la page. --}}
-                            <td>{{ $seance->teacher?->name ?? '—' }}</td>
+                                 `listeFiltree()`, sans quoi ce serait un N+1 sur la page.
+
+                                 Le compte est testé AVANT le nom, et pas seulement l'affectation :
+                                 `ESBTPTeacher::getNameAttribute()` ne rend jamais `null` — sans
+                                 compte lié, il rend la chaîne « N/A ». Un `?? '—'` écrit ici
+                                 serait donc du code mort, et afficherait ce sigle technique dans
+                                 une colonne en français. --}}
+                            <td>{{ $seance->teacher?->user ? $seance->teacher->name : '—' }}</td>
                             <td>{{ $seance->salle ?: '—' }}</td>
                             <td>
                                 @php
