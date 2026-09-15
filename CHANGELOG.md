@@ -14,6 +14,8 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ### Correctifs
 
+- **La grille verte de disponibilité n'est plus contredite à l'enregistrement** — DJO MARC était libre mercredi 11h (planning général vide, cases vertes) mais le formulaire refusait le créneau : la validation relisait un tableau JS périmé, pas la grille affichée.
+
 - **L'enseignant posé sur le planning LMD apparaît enfin à la création d'une séance** — le formulaire d'ajout de séance vidait la liste des enseignants des ECUE, alors que la page Planning LMD les affichait. On reprend l'enseignant principal (et les assignations) de la planification.
 
 ### Améliorations

@@ -1165,25 +1165,28 @@ function validateTeacherAvailability() {
     
     // Vérifier chaque heure du créneau
     const teacherDayAvailability = availabilityData[teacherId][dayKey];
+    const jourNoms = {1: 'lundi', 2: 'mardi', 3: 'mercredi', 4: 'jeudi', 5: 'vendredi', 6: 'samedi'};
     for (let hour = startHour; hour < endHour; hour++) {
         const hourIndex = hour - PLAGE_DEBUT;
-        if (hourIndex >= 0 && hourIndex < teacherDayAvailability.length) {
-            const status = teacherDayAvailability[hourIndex];
-            const jourNoms = {1: 'lundi', 2: 'mardi', 3: 'mercredi', 4: 'jeudi', 5: 'vendredi', 6: 'samedi'};
-            
-            if (status === 'unavailable') {
-                const errorMessage = `L'enseignant n'est pas disponible ${jourNoms[selectedDay]} à ${hour}:00.\n\nVeuillez ajuster les horaires ou choisir un autre enseignant.`;
-                markAvailabilityError(selectedDay, hour, errorMessage);
-                showFormError(errorMessage);
-                setAvailabilityErrorMessage(errorMessage);
-                return false;
-            } else if (status === 'occupied') {
-                const errorMessage = `L'enseignant a déjà une séance programmée ${jourNoms[selectedDay]} à ${hour}:00 dans un autre emploi du temps.\n\nVeuillez choisir un autre créneau.`;
-                markAvailabilityError(selectedDay, hour, errorMessage);
-                showFormError(errorMessage);
-                setAvailabilityErrorMessage(errorMessage);
-                return false;
-            }
+        const cell = getAvailabilityCell(selectedDay, hour);
+        const status = cell?.dataset.status
+            ?? ((hourIndex >= 0 && hourIndex < (teacherDayAvailability.length || 0))
+                ? teacherDayAvailability[hourIndex]
+                : null);
+
+        if (status === 'unavailable') {
+            const errorMessage = `L'enseignant n'est pas disponible ${jourNoms[selectedDay]} à ${hour}:00.\n\nVeuillez ajuster les horaires ou choisir un autre enseignant.`;
+            markAvailabilityError(selectedDay, hour, errorMessage);
+            showFormError(errorMessage);
+            setAvailabilityErrorMessage(errorMessage);
+            return false;
+        }
+        if (status === 'occupied') {
+            const errorMessage = `L'enseignant a déjà une séance programmée ${jourNoms[selectedDay]} à ${hour}:00 dans un autre emploi du temps.\n\nVeuillez choisir un autre créneau.`;
+            markAvailabilityError(selectedDay, hour, errorMessage);
+            showFormError(errorMessage);
+            setAvailabilityErrorMessage(errorMessage);
+            return false;
         }
     }
     
