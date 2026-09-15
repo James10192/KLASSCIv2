@@ -472,6 +472,8 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
     // Analytics diagnose (read-only) — couverture échéancier, snapshots, saturation risque
     Route::get('/analytics/diagnose', [App\Http\Controllers\API\CLI\CLIDataController::class, 'analyticsDiagnose'])->name('analytics.diagnose');
     Route::get('/affectation/diagnose', [App\Http\Controllers\API\CLI\CLIDataController::class, 'affectationDiagnose'])->name('affectation.diagnose');
+    // Seances sans date (lecture seule) — heures enseignant hors de la paie
+    Route::get('/seances/date-diagnose', [App\Http\Controllers\API\CLI\CLIDataController::class, 'seancesDateDiagnose'])->name('seances.date-diagnose');
 
     // Comptabilité (read-only) — audit + réconciliation diagnose
     Route::prefix('comptabilite')->name('comptabilite.')->group(function () {

@@ -626,6 +626,32 @@ class CLIDataController extends BaseApiController
      * l'un des quatre chemins qui l'ecrivaient en dur (corriges en septembre
      * 2026). Lecture seule : ne modifie aucun dossier.
      */
+    /**
+     * Les seances sans date, et les heures enseignant qu'elles font disparaitre.
+     *
+     * Lecture seule. Le rattrapage n'a PAS d'endpoint : il ecrit, et une
+     * ecriture de masse sur huit instances se lance depuis le terminal de
+     * l'hebergeur, ou quelqu'un la confirme — pas par une requete HTTP dont on
+     * ne voit pas l'ampleur avant de l'avoir envoyee.
+     */
+    public function seancesDateDiagnose(Request $request): JsonResponse
+    {
+        if (!$request->user()->tokenCan('cli:read')) {
+            return $this->errorResponse('Token missing cli:read ability', [], 403);
+        }
+
+        try {
+            $rapport = app(\App\Domain\EmploiTemps\DiagnosticDesDatesDeSeance::class)
+                ->rapport((int) $request->input('limite', 200));
+
+            return $this->successResponse($rapport, 'Seances sans date de seance');
+        } catch (\Throwable $e) {
+            Log::error('CLI: seances date diagnose failed', ['error' => $e->getMessage()]);
+
+            return $this->errorResponse('Operation failed. Check server logs for details.', [], 500);
+        }
+    }
+
     public function affectationDiagnose(Request $request): JsonResponse
     {
         if (!$request->user()->tokenCan('cli:read')) {
