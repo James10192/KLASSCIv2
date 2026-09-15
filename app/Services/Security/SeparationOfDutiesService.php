@@ -28,7 +28,26 @@ final class SeparationOfDutiesService
     {
         $regles = (array) config('sod.rules', []);
 
-        return (array) ($regles[$rule] ?? []);
+        if (! isset($regles[$rule])) {
+            // Le repli muet par lequel le défaut ci-dessus est arrivé jusqu'en
+            // production. Un nom inconnu — faute de frappe sur un site d'appel,
+            // règle renommée dans `config/sod.php` sans que l'appelant suive —
+            // rend un tableau vide, donc `enabled()` rend `false`, donc
+            // `violation()` sort au premier garde : le contrôle disparaît en
+            // silence, exactement comme les trois règles l'ont fait.
+            //
+            // Journaliser ne rétablit pas le contrôle, mais rend la panne
+            // trouvable. C'est la leçon déjà écrite dans
+            // `ESBTPSettingsController::update()` à propos des clés pointées.
+            Log::warning('Regle de separation des devoirs inconnue : le controle ne s appliquera pas', [
+                'regle' => $rule,
+                'regles_connues' => array_keys($regles),
+            ]);
+
+            return [];
+        }
+
+        return (array) $regles[$rule];
     }
 
     public function violation(string $rule, ?int $previousActorId, ?User $actor): ?string

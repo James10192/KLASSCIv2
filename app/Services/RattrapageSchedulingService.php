@@ -616,9 +616,12 @@ class RattrapageSchedulingService
             // fois refusee pour une classe, inutile de la retenter pour les
             // vingt-quatre autres, ni de repeter le meme avertissement.
             //
-            // Le refus, lui, exige AUSSI que le bulletin existe et porte deja
-            // des lignes — conditions par etudiant. Un etudiant dont le bulletin
-            // est vierge passe donc, meme dans une classe autrement refusee.
+            // Ce raccourci saute donc TOUS les etudiants suivants de la classe,
+            // sans exception. Il le peut parce que le refus ne depend ici que de
+            // la classe : les bulletins de `$concernes` viennent tous de
+            // `bulletinsForSession()`, donc ils existent et portent des lignes.
+            // Le jour ou cette boucle recevrait des bulletins vierges, le
+            // raccourci deviendrait faux et il faudrait tenter chaque etudiant.
             if (isset($refuses[$perimetre])) {
                 continue;
             }
