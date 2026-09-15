@@ -610,8 +610,12 @@ class ESBTPSeanceCoursController extends Controller
                     foreach ($recurrenceDays as $recurringDay) {
                         $dataForDay = $data;
                         $dataForDay['jour'] = $recurringDay;
-                        // Calcul automatique de la date_seance pour chaque jour récurrent
-                        $dataForDay['date_seance'] = $dateDebut->copy()->addDays($recurringDay - 1);
+                        // La MÊME formule que la séance simple juste au-dessus.
+                        // Elle portait le raccourci `date_debut + (jour - 1)`,
+                        // et c'est la dernière à l'avoir gardé : sur un emploi du
+                        // temps ouvert un mercredi, une récurrence du vendredi
+                        // recevait une date tombant un dimanche.
+                        $dataForDay['date_seance'] = $emploiTemps->dateDuJour($recurringDay);
                         $session = ESBTPSeanceCours::create($dataForDay);
                         $createdSessions[] = $session->id;
                         \Log::info('Séance récurrente créée', ['id' => $session->id, 'jour' => $recurringDay]);
@@ -782,6 +786,12 @@ class ESBTPSeanceCoursController extends Controller
         if ($dateSeance === null) {
             // Sans date, aucune des trois recherches ci-dessous ne veut dire
             // quoi que ce soit. Mieux vaut le dire que rendre « aucun conflit ».
+            //
+            // Inatteignable depuis l'unique appelant d'aujourd'hui : il valide
+            // `jour` en `integer|min:1|max:6` et `date_debut` est une colonne
+            // non nullable. La garde est là pour le jour où un second appelant
+            // arrive — c'est exactement ce qui s'est produit du côté de
+            // `storeSession()`, dont la validation accepte `string|max:20`.
             return ['Le jour de la séance est illisible : les conflits n\'ont pas pu être vérifiés.'];
         }
 

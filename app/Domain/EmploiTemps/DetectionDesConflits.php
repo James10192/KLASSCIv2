@@ -195,7 +195,12 @@ final class DetectionDesConflits
                 $conflit['annee_universitaire_id'],
                 $conflit['type'],
                 $conflit['nom'],
-                $conflit['jour'],
+                // Le RANG, pas l'écriture : sinon trois séances du même lundi
+                // écrites `1`, « Lundi » et « Lundi » rendent deux lignes de
+                // bandeau pour un seul conflit — le défaut même que cette
+                // déduplication est censée supprimer. Repli sur l'écriture
+                // brute pour ne pas replier tous les jours illisibles ensemble.
+                JourDeLaSemaine::rang($conflit['jour']) ?? $conflit['jour'],
                 $conflit['heure_debut'],
                 $conflit['heure_fin'],
             ]);

@@ -1652,8 +1652,12 @@ class ESBTPEmploiTempsController extends Controller
      */
     public function today()
     {
-        // Récupérer le jour de la semaine actuel (0 = Lundi, 1 = Mardi, etc.)
-        $jourActuel = now()->dayOfWeekIso - 1; // dayOfWeekIso retourne 1 pour lundi, 2 pour mardi, etc.
+        // Le jour d'aujourd'hui, dans l'écriture de la colonne (1 = lundi).
+        //
+        // Il valait `dayOfWeekIso - 1`, soit ZÉRO le lundi, et servait tel quel
+        // à un `where('jour', …)` sur une colonne qui porte `1` ou « Lundi » :
+        // cette page ne rendait donc AUCUNE séance, aucun jour de la semaine.
+        $jourActuel = now()->dayOfWeekIso;
 
         // Récupérer la date actuelle
         $dateActuelle = now()->format('Y-m-d');
@@ -1670,7 +1674,8 @@ class ESBTPEmploiTempsController extends Controller
 
         // Récupérer les séances de cours pour aujourd'hui
         $seancesAujourdhui = ESBTPSeanceCours::whereIn('emploi_temps_id', $emploisTempsIds)
-            ->where('jour', $jourActuel)
+            // Les deux écritures : la colonne n'est pas normalisée.
+            ->whereIn('jour', JourDeLaSemaine::ecrituresDe($jourActuel))
             ->with(['matiere', 'enseignant', 'emploiTemps.classe'])
             ->orderBy('heure_debut')
             ->get();
@@ -1684,18 +1689,9 @@ class ESBTPEmploiTempsController extends Controller
         $totalSeancesAujourdhui = $seancesAujourdhui->count();
         $totalClassesAujourdhui = $seancesParClasse->count();
 
-        // Noms des jours pour l'affichage
-        $joursNoms = [
-            1 => 'Lundi',
-            2 => 'Mardi',
-            3 => 'Mercredi',
-            4 => 'Jeudi',
-            5 => 'Vendredi',
-            6 => 'Samedi',
-        ];
-
-        // Jour actuel en texte
-        $jourActuelTexte = $joursNoms[$jourActuel] ?? 'Jour inconnu';
+        // Jour actuel en texte. La table locale qui servait ici est retirée :
+        // elle n'était lue que par cette ligne.
+        $jourActuelTexte = JourDeLaSemaine::libelle($jourActuel) ?? 'Jour inconnu';
 
         return view('esbtp.emploi-temps.today', compact(
             'seancesAujourdhui',

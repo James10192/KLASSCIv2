@@ -110,18 +110,22 @@ final class JourDeLaSemaine
      *
      * ## Pourquoi ce n'est pas `rang($jour)` tout court
      *
-     * Trois endroits du dépôt calculaient la date d'une séance, et deux le
-     * faisaient par `date_debut + (jour - 1)`. Ce raccourci n'est juste **que si
-     * `date_debut` tombe un lundi** — or rien ne l'impose : la validation de
-     * l'emploi du temps ne demande qu'une `date`, et seul le message d'erreur
-     * sur la durée évoque « du lundi au samedi ». Sur un emploi du temps
-     * commençant un mercredi, ce raccourci place le « Lundi » sur le mercredi
-     * même, deux jours avant l'ouverture de la période.
+     * **Cinq** endroits du dépôt calculaient la date d'une séance, et trois le
+     * faisaient par `date_debut + (jour - 1)` : la création d'une séance simple,
+     * celle d'une séance récurrente, et le contrôle de conflit. Ce raccourci
+     * n'est juste **que si `date_debut` tombe un lundi** — or rien ne l'impose :
+     * la validation de l'emploi du temps ne demande qu'une `date`, et seul le
+     * message d'erreur sur la durée évoque « du lundi au samedi ». Sur un emploi
+     * du temps commençant un mercredi, ce raccourci place le « Lundi » sur le
+     * mercredi même, deux jours avant l'ouverture, et une récurrence du vendredi
+     * sur un dimanche.
      *
-     * Le troisième endroit, `ESBTPSeanceCours::getDateSeance()`, faisait le
-     * calcul juste : il cherche la prochaine occurrence du jour visé à partir du
-     * début de période. C'est cette formule-là qui est ici, et que les trois
-     * partagent désormais.
+     * Les deux autres — `ESBTPSeanceCours::getDateSeance()` et
+     * `getDateCompleteSeance()` — faisaient le calcul juste : la prochaine
+     * occurrence du jour visé à partir du début de période. C'est cette
+     * formule-là qui est ici, et que les cinq partagent désormais. (Une première
+     * version de ce commentaire disait « trois endroits, dont un seul juste » :
+     * c'était faux des deux côtés.)
      *
      * Rend toujours 0..6, donc une date qui reste dans la semaine ouverte par
      * `date_debut` — jamais avant elle.

@@ -268,6 +268,20 @@ class DetectionDesConflitsTest extends TestCase
         $this->assertSame(['Enseignant'], array_column($conflits, 'type'));
     }
 
+    public function test_un_conflit_du_meme_jour_ecrit_differemment_ne_rend_qu_une_ligne(): void
+    {
+        // La déduplication portait le jour BRUT dans sa clé : trois séances du
+        // même lundi écrites `1`, « Lundi » et « Lundi » rendaient DEUX lignes
+        // de bandeau pour un seul conflit — le défaut même qu'elle supprime.
+        $conflits = (new DetectionDesConflits)->depuis([
+            $this->seance(['id' => 1, 'jour' => '1', 'teacher_id' => 3]),
+            $this->seance(['id' => 2, 'jour' => 'Lundi', 'teacher_id' => 3]),
+            $this->seance(['id' => 3, 'jour' => 'Lundi', 'teacher_id' => 3]),
+        ]);
+
+        $this->assertCount(1, $conflits);
+    }
+
     public function test_deux_seances_a_jour_illisible_ne_sont_pas_en_conflit(): void
     {
         // Les tenir pour égales replierait toutes les données abîmées les unes

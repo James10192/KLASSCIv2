@@ -538,37 +538,36 @@ class ESBTPSeanceCours extends Model
     }
 
     /**
-     * Calculer la date complète de la séance à partir de l'emploi du temps et du jour
+     * La date complète de la séance, ramenée dans la période si elle en sort.
+     *
+     * Elle ne diffère de `getDateSeance()` que par ce rabattement : celle-là
+     * rend `null` quand le jour tombe après la fin de période, celle-ci recule
+     * jusqu'à la dernière occurrence possible. C'est la seule raison pour
+     * laquelle les deux coexistent.
+     *
+     * Le calcul lui-même a quitté cette méthode. Il y faisait `(int) $this->jour`,
+     * soit **zéro** pour une séance dont le jour est écrit « Lundi » — donc un
+     * jour ISO invalide et une date fausse. Rendu plus visible encore par le
+     * correctif du libellé : `getDateCompleteFormattee()` affichait « Dimanche
+     * 13/09 » pour une date qui est un dimanche, faux mais cohérent ; il aurait
+     * affiché « Lundi 13/09 », juste à côté d'une date qui ne l'est pas. Une
+     * sortie qui se contredit se repère moins bien qu'une sortie franchement
+     * fausse.
      */
     public function getDateCompleteSeance()
     {
-        if (!$this->emploiTemps || !$this->emploiTemps->date_debut) {
+        if (! $this->emploiTemps) {
             return null;
         }
 
-        $dateDebut = $this->emploiTemps->date_debut;
-        $jourSeance = (int)$this->jour; // 1=lundi, 2=mardi, etc.
+        $dateSeance = $this->emploiTemps->dateDuJour($this->jour);
 
-        // Convertir le jour de la séance en jour de la semaine ISO (1=lundi, 7=dimanche)
-        $jourISO = $jourSeance === 7 ? 7 : $jourSeance;
-
-        // Trouver le premier occurrence de ce jour dans la période de l'emploi du temps
-        $dateRecherche = clone $dateDebut;
-
-        // Obtenir le jour de la semaine de la date de début (1=lundi, 7=dimanche)
-        $jourDateDebut = (int)$dateRecherche->dayOfWeekIso;
-
-        // Calculer combien de jours ajouter pour atteindre le jour voulu dans la même semaine
-        if ($jourISO >= $jourDateDebut) {
-            // Le jour est dans la même semaine
-            $joursAjouter = $jourISO - $jourDateDebut;
-        } else {
-            // Le jour est dans la semaine suivante
-            $joursAjouter = (7 - $jourDateDebut) + $jourISO;
+        if ($dateSeance === null) {
+            return null;
         }
-        
-        $dateSeance = $dateRecherche->addDays($joursAjouter);
-        
+
+        $jourISO = \App\Domain\EmploiTemps\JourDeLaSemaine::rang($this->jour) + 1;
+
         // Vérifier si la date calculée est dans la période de l'emploi du temps
         if ($this->emploiTemps->date_fin && $dateSeance->gt($this->emploiTemps->date_fin)) {
             // Si on dépasse la date de fin, prendre la dernière occurrence possible
