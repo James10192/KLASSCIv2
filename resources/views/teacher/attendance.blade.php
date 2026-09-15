@@ -144,7 +144,10 @@
                                             <td>{{ \Carbon\Carbon::parse($seance->date)->format('d/m/Y') }}</td>
                                             <td>{{ $seance->emploiTemps->classe->name ?? 'Non définie' }}</td>
                                             <td>{{ $seance->matiere->name ?? 'Non définie' }}</td>
-                                            <td>{{ substr($seance->heure_debut, 0, 5) }} - {{ substr($seance->heure_fin, 0, 5) }}</td>
+                                            {{-- `format('H:i')` : l'accesseur du modèle rend un Carbon daté d'aujourd'hui,
+                                                 donc la découpe à cinq caractères affichait « 2026- » à l'enseignant.
+                                                 Piège #14 de klassci-debugging-discipline. --}}
+                                            <td>{{ optional($seance->heure_debut)->format('H:i') ?? '--:--' }} - {{ optional($seance->heure_fin)->format('H:i') ?? '--:--' }}</td>
                                             <td>
                                                 @php
                                                     $attendances = $seance->attendances;

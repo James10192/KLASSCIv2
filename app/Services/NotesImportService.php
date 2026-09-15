@@ -120,6 +120,13 @@ class NotesImportService
             ];
         }
 
+        // Une colonne porteuse de notes que nulle évaluation ne réclame était
+        // jusqu'ici perdue en silence — voir `erreursDesColonnesIgnorees()`.
+        foreach ($this->erreursDesColonnesIgnorees($headerRow, $dataRows, $evalColumns, $meta !== null) as $erreur) {
+            $errors[] = $erreur;
+            $summary['errors']++;
+        }
+
         // Charger les inscriptions actives de la classe pour mapping matricule → etudiant
         $inscriptions = ESBTPInscription::query()
             ->with(['etudiant:id,matricule,nom,prenoms'])
@@ -438,6 +445,87 @@ class NotesImportService
         }
 
         return $resolved;
+    }
+
+    /**
+     * Les colonnes qui portent des notes sans qu'aucune évaluation ne les réclame.
+     *
+     * Elles disparaissaient sans un mot : le tableau de prévisualisation
+     * annonçait « 3 notes à créer », l'utilisateur validait, et une colonne
+     * entière n'était jamais écrite.
+     *
+     * Le cas n'est pas théorique. L'export et l'import posent la MÊME requête —
+     * même classe, même matière, même période, même année, `is_published = 1` —
+     * donc un fichier fraîchement exporté se relit entièrement. Mais entre
+     * l'export et l'import, l'évaluation a pu être dépubliée, supprimée, ou
+     * changer de période : son identifiant reste dans les métadonnées du fichier,
+     * la base ne le rend plus, et `resolveEvaluations()` laisse un trou à cet
+     * index. Les autres colonnes ne se décalent pas — l'incrément de colonne y
+     * est hors du `if` — mais celle-là est perdue.
+     *
+     * Le contrôle est posé ici, au niveau du fichier, et non dans
+     * `resolveEvaluations()`, parce qu'il couvre ainsi les DEUX stratégies d'un
+     * seul geste : celle par métadonnées, où un identifiant absent laisse un
+     * trou, et celle par titre, explicitement « best-effort », qui ne peut pas
+     * juger elle-même si un non-appariement est grave.
+     *
+     * C'est la présence de valeurs qui tranche, et c'est elle qui évite les
+     * fausses alertes : une colonne vide — décorative, séparatrice — ne fait rien
+     * perdre, donc on se tait. Une colonne qui porte ne serait-ce qu'une valeur
+     * en fait perdre, donc on parle.
+     *
+     * Signalé comme erreur et non comme avertissement, parce qu'`apply()` est
+     * tout-ou-rien : une erreur refuse le fichier entier. C'est la bonne conduite
+     * ici — écrire deux colonnes sur trois en annonçant un succès laisserait une
+     * matière à moitié saisie que personne n'irait rechercher.
+     *
+     * @param  array<int, mixed>  $headerRow
+     * @param  array<int, array<int, mixed>>  $dataRows
+     * @param  array<int, array{id: int, titre: string, bareme: float, coefficient: float}>  $evalColumns
+     * @return list<array{row: int, col: string, evaluation: string, reason: string}>
+     */
+    private function erreursDesColonnesIgnorees(array $headerRow, array $dataRows, array $evalColumns, bool $avecMeta): array
+    {
+        $erreurs = [];
+        // Borne droite alignée sur la stratégie par titre : la dernière colonne
+        // du modèle est la moyenne calculée, jamais une évaluation.
+        $derniereColonne = count($headerRow) - 1;
+
+        for ($colIndex = 2; $colIndex < $derniereColonne; $colIndex++) {
+            if (isset($evalColumns[$colIndex])) {
+                continue;
+            }
+
+            $porteuse = false;
+            foreach ($dataRows as $row) {
+                if (trim((string) ($row[$colIndex] ?? '')) !== '') {
+                    $porteuse = true;
+                    break;
+                }
+            }
+
+            if (! $porteuse) {
+                continue;
+            }
+
+            // Le titre tel qu'il figure dans le fichier — « Devoir 1 (/20) » —
+            // parce que c'est celui que l'utilisateur a sous les yeux.
+            $titre = trim((string) ($headerRow[$colIndex] ?? ''));
+
+            $erreurs[] = [
+                'row' => $avecMeta ? 2 : 1,
+                'col' => $this->columnLetter($colIndex + 1),
+                'evaluation' => $titre,
+                'reason' => $titre === ''
+                    ? 'Cette colonne porte des notes mais aucun en-tête : impossible de savoir à quelle évaluation les rattacher.'
+                    : sprintf(
+                        'L\'évaluation « %s » porte des notes dans le fichier mais n\'existe plus pour cette classe, cette matière et cette période — dépubliée, supprimée ou déplacée depuis l\'export. Republiez-la, ou réexportez le modèle.',
+                        $titre
+                    ),
+            ];
+        }
+
+        return $erreurs;
     }
 
     private function columnLetter(int $index): string

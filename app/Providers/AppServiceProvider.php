@@ -34,6 +34,7 @@ use App\Services\LMD\Tpe\AutoValidateStrategy;
 use App\Services\LMD\Tpe\TeacherValidateStrategy;
 use App\Services\LMD\Tpe\TpeValidationStrategy;
 use App\Services\SsoSecretValidator;
+use App\View\Composers\CouleursDesCourrielsParents;
 use App\View\Composers\MobileShellComposer;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Cache;
@@ -182,6 +183,12 @@ class AppServiceProvider extends ServiceProvider
         // vues. Sur '*' a dessein — le layout, ses partials et les feuilles
         // mobiles en ont tous besoin, et le resolver est memoise par requete.
         View::composer('*', MobileShellComposer::class);
+
+        // Couleurs des courriels aux parents. Elles étaient résolues dans le
+        // `@php` du gabarit, donc APRÈS l'évaluation des `@section` de ses
+        // enfants : l'avis de paiement validé échouait sur
+        // `Undefined variable $emailPrimaryColor`, dans un `try` muet.
+        View::composer('esbtp.emails.parents.*', CouleursDesCourrielsParents::class);
 
         // Nom des rangs de la structure LMD, regle par etablissement (Domaine /
         // Mention / Parcours, ou Composante / Departement / Specialite).

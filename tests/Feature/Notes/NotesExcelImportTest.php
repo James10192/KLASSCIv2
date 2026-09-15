@@ -203,6 +203,130 @@ class NotesExcelImportTest extends TestCase
         $this->assertStringContainsString('hors barème', $diff['errors'][0]['reason']);
     }
 
+    /**
+     * Un fichier à deux évaluations, dont la seconde a été dépubliée depuis
+     * l'export. Elle porte des notes que plus rien ne réclame.
+     */
+    private function buildExcelFileDeuxEvaluations(array $ctx, ESBTPEvaluation $seconde): UploadedFile
+    {
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+
+        $sheet->setCellValue('A1', '__KLASSCI_NOTES_EXPORT__');
+        $sheet->setCellValue('B1', json_encode([
+            'classe_id' => $ctx['classe']->id,
+            'matiere_id' => $ctx['matiere']->id,
+            'periode' => 'semestre1',
+            'annee_universitaire_id' => $ctx['annee']->id,
+            'evaluations' => [
+                ['id' => $ctx['eval']->id, 'titre' => $ctx['eval']->titre, 'bareme' => 20, 'coefficient' => 1],
+                ['id' => $seconde->id, 'titre' => $seconde->titre, 'bareme' => 20, 'coefficient' => 1],
+            ],
+            'generated_at' => now()->toIso8601String(),
+        ]));
+
+        $sheet->setCellValue('A2', 'Matricule');
+        $sheet->setCellValue('B2', 'Nom & Prénoms');
+        $sheet->setCellValue('C2', 'Devoir 1 (/20 ×1)');
+        $sheet->setCellValue('D2', 'Devoir 2 (/20 ×1)');
+        $sheet->setCellValue('E2', 'Moyenne /20');
+
+        $sheet->setCellValueExplicit('A3', 'STU001', \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
+        $sheet->setCellValue('B3', 'KOFFI Marie');
+        $sheet->setCellValue('C3', 12);
+        $sheet->setCellValue('D3', 14);
+
+        $tmpPath = tempnam(sys_get_temp_dir(), 'notes_imp_deux_') . '.xlsx';
+        (new XlsxWriter($spreadsheet))->save($tmpPath);
+
+        return new UploadedFile($tmpPath, 'notes_deux.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', null, true);
+    }
+
+    public function test_une_colonne_dont_l_evaluation_a_disparu_refuse_le_fichier_au_lieu_de_se_taire(): void
+    {
+        $this->authUser();
+        $ctx = $this->buildContext();
+        $this->makeInscription($ctx['classe']->id, $ctx['annee']->id, 'STU001');
+
+        $seconde = ESBTPEvaluation::factory()->create([
+            'classe_id' => $ctx['classe']->id,
+            'matiere_id' => $ctx['matiere']->id,
+            'periode' => 'semestre1',
+            'annee_universitaire_id' => $ctx['annee']->id,
+            'is_published' => 1,
+            'bareme' => 20,
+            'coefficient' => 1,
+            'titre' => 'Devoir 2',
+        ]);
+
+        $file = $this->buildExcelFileDeuxEvaluations($ctx, $seconde);
+
+        // Entre l'export et l'import, quelqu'un dépublie la seconde évaluation.
+        // Son identifiant reste dans les métadonnées du fichier ; la requête de
+        // l'import, qui exige `is_published = 1`, ne la rend plus.
+        $seconde->update(['is_published' => 0]);
+
+        $service = app(NotesImportService::class);
+        $parsed = $service->parseFile($file);
+        $diff = $service->dryRun($parsed, $ctx['classe']->id, $ctx['matiere']->id, 'semestre1', $ctx['annee']->id);
+
+        // Ce qui rendait le défaut coûteux : la première colonne, elle, se lisait
+        // parfaitement. Le tableau annonçait donc un import propre.
+        $this->assertSame(1, $diff['summary']['will_create']);
+
+        // Désormais la colonne D est nommée, avec sa lettre et son titre.
+        $this->assertSame(1, $diff['summary']['errors']);
+        $this->assertCount(1, $diff['errors']);
+        $this->assertSame('D', $diff['errors'][0]['col']);
+        $this->assertStringContainsString('Devoir 2', $diff['errors'][0]['reason']);
+
+        // Et `apply()` étant tout-ou-rien, RIEN n'est écrit : mieux vaut refuser
+        // le fichier entier que d'enregistrer une matière à moitié saisie.
+        $result = $service->apply($parsed, $ctx['classe']->id, $ctx['matiere']->id, 'semestre1', $ctx['annee']->id);
+
+        $this->assertSame(0, $result['created']);
+        $this->assertSame(0, ESBTPNote::count());
+    }
+
+    public function test_une_colonne_vide_non_reconnue_ne_declenche_aucune_erreur(): void
+    {
+        $this->authUser();
+        $ctx = $this->buildContext();
+        $this->makeInscription($ctx['classe']->id, $ctx['annee']->id, 'STU001');
+
+        $seconde = ESBTPEvaluation::factory()->create([
+            'classe_id' => $ctx['classe']->id,
+            'matiere_id' => $ctx['matiere']->id,
+            'periode' => 'semestre1',
+            'annee_universitaire_id' => $ctx['annee']->id,
+            'is_published' => 1,
+            'bareme' => 20,
+            'coefficient' => 1,
+            'titre' => 'Devoir 2',
+        ]);
+
+        $file = $this->buildExcelFileDeuxEvaluations($ctx, $seconde);
+        $seconde->update(['is_published' => 0]);
+
+        // Le contre-cas, qui borne le contrôle : c'est la présence de NOTES qui
+        // déclenche l'erreur, pas l'absence de rattachement. Une colonne non
+        // reconnue mais vide ne fait rien perdre — sans cette borne, toute
+        // colonne décorative refuserait le fichier.
+        $parsed = app(NotesImportService::class)->parseFile($file);
+        foreach ($parsed['rows'] as $i => $row) {
+            if ($i === 0) {
+                continue; // en-tête
+            }
+            $parsed['rows'][$i][3] = null; // colonne D vidée
+        }
+
+        $diff = app(NotesImportService::class)
+            ->dryRun($parsed, $ctx['classe']->id, $ctx['matiere']->id, 'semestre1', $ctx['annee']->id);
+
+        $this->assertSame(0, $diff['summary']['errors']);
+        $this->assertSame(1, $diff['summary']['will_create']);
+    }
+
     public function test_it_throttles_import_dry_run_at_5_per_minute(): void
     {
         $this->authUser();
