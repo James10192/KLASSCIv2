@@ -586,36 +586,10 @@ class ESBTPStudentController extends Controller
         if ($classeCourante && $classeCourante->isLMD()) {
             $isLMD = true;
             $parcours = $classeCourante->parcours?->load('mention.domaine');
-
-            // Bulletins LMD de cette classe pour L'ANNÉE COURANTE uniquement
-            $bulletinsLMD = \App\Models\ESBTPLMDBulletin::where('etudiant_id', $etudiant->id)
-                ->where('classe_id', $classeCourante->id)
-                ->where('annee_universitaire_id', $anneeCourante->id)
-                ->with(['resultatsUEs.uniteEnseignement', 'resultatsECUEs.matiere', 'deliberation'])
-                ->orderBy('semestre')
-                ->get();
-
-            $bulletinLMD = $bulletinsLMD->last();
-
-            // La moyenne annuelle est celle du jury et du procès-verbal, pas une
-            // quatrième formule. Ce qui suivait ici en divergeait sur trois points,
-            // et chacun rendait un nombre plus sûr que la donnée qui le porte :
-            //
-            //  - `moyenne_generale > 0` écartait un semestre à 0,00. Or zéro est un
-            //    résultat, pas une absence — l'étudiant absent toute l'année en a un.
-            //    Avec S1 à 8,50 et S2 à 0,00, il ne restait qu'un bulletin, donc la
-            //    page annonçait 8,50 comme moyenne de l'ANNÉE, au lieu de 4,25.
-            //  - Rien ne dédupliquait les semestres : un bulletin régénéré laisse
-            //    deux lignes pour le même semestre, dont les crédits comptaient double.
-            //  - Le repli sur `avg()` rendait une moyenne arithmétique NON pondérée
-            //    sous la même étiquette que la pondérée, sans le dire.
-            //
-            // `AgregatDeLaPeriode` rend `null` dès qu'un semestre de l'année n'est
-            // pas calculable, plutôt qu'un nombre plausible calculé sur l'autre
-            // moitié. Un seul bulletin reste son propre agrégat : en janvier, avec
-            // le seul S1 en base, l'écran montre S1 comme aujourd'hui.
-            $lmdMoyenneAnnuelle = AgregatDeLaPeriode::moyenne(
-                AgregatDeLaPeriode::parSemestre($bulletinsLMD)
+            [$bulletinsLMD, $bulletinLMD, $lmdMoyenneAnnuelle] = $this->contexteLmdDeLAnnee(
+                $etudiant,
+                $classeCourante,
+                $anneeCourante
             );
         }
 
@@ -745,6 +719,36 @@ class ESBTPStudentController extends Controller
             'filiereIdForMatricule',
             'inscriptionRecente'
         ));
+    }
+
+    /**
+     * Les bulletins LMD de l'année courante, le dernier d'entre eux, et la
+     * moyenne annuelle.
+     *
+     * La moyenne est celle du jury et du procès-verbal — `AgregatDeLaPeriode` —
+     * et non une formule propre à cet écran. Le pourquoi est sur cette classe,
+     * section « Les formules concurrentes qu'elle a remplacées » : c'est là que
+     * ses trois appelants doivent le lire, plutôt que d'en recopier une version.
+     *
+     * @return array{0: \Illuminate\Support\Collection, 1: ?\App\Models\ESBTPLMDBulletin, 2: ?float}
+     */
+    private function contexteLmdDeLAnnee(
+        ESBTPEtudiant $etudiant,
+        ESBTPClasse $classeCourante,
+        ESBTPAnneeUniversitaire $anneeCourante
+    ): array {
+        $bulletins = \App\Models\ESBTPLMDBulletin::where('etudiant_id', $etudiant->id)
+            ->where('classe_id', $classeCourante->id)
+            ->where('annee_universitaire_id', $anneeCourante->id)
+            ->with(['resultatsUEs.uniteEnseignement', 'resultatsECUEs.matiere', 'deliberation'])
+            ->orderBy('semestre')
+            ->get();
+
+        return [
+            $bulletins,
+            $bulletins->last(),
+            AgregatDeLaPeriode::moyenne(AgregatDeLaPeriode::parSemestre($bulletins)),
+        ];
     }
 
     private function resolveBtsJourney(ESBTPEtudiant $etudiant): ?array

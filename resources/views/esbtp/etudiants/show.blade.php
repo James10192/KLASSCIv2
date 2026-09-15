@@ -4487,18 +4487,14 @@
 
         /* Calcul moyenne générale selon le système */
         if ($autreIsLMD) {
-            // LMD : moyenne pondérée des bulletins LMD par crédits
-            $autreBulsValides = $autreBulsLMD->filter(fn($b) => ($b->moyenne_generale ?? 0) > 0);
-            if ($autreBulsValides->count() > 1) {
-                $atc = $autreBulsValides->sum('credits_totaux');
-                $autreMg = $atc > 0
-                    ? round($autreBulsValides->sum(fn($b) => $b->moyenne_generale * $b->credits_totaux) / $atc, 2)
-                    : round($autreBulsValides->avg('moyenne_generale'), 2);
-            } elseif ($autreBulsValides->count() === 1) {
-                $autreMg = round($autreBulsValides->first()->moyenne_generale, 2);
-            } else {
-                $autreMg = null;
-            }
+            // Même calcul que l'indicateur de l'année courante et que le jury.
+            // Ce bloc portait la troisième copie de l'ancienne formule, et la
+            // valeur obtenue ici n'est pas seulement affichée : elle est
+            // convertie plus bas en mention officielle. Voir
+            // `AgregatDeLaPeriode`, section « Les formules concurrentes ».
+            $autreMg = \App\Services\LMD\AgregatDeLaPeriode::moyenne(
+                \App\Services\LMD\AgregatDeLaPeriode::parSemestre($autreBulsLMD)
+            );
             $autreResultatsBruts = collect(); // pas de résultats BTS bruts pour LMD
         } else {
             // BTS : logique existante

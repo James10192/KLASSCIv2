@@ -20,6 +20,35 @@ namespace App\Services\LMD;
  *
  * C'est précisément pour cette raison qu'elle est ici et non recopiée des deux
  * côtés : deux formules qui divergent d'un millième bloqueraient l'émission.
+ *
+ * ## Les formules concurrentes qu'elle a remplacées
+ *
+ * La fiche étudiant en portait trois de plus, sur la MÊME page — l'indicateur
+ * « Moy. générale », le diagramme de parcours et le bloc des années antérieures.
+ * Elles divergeaient sur deux points, dont chacun rendait un nombre plus sûr que
+ * la donnée qui le porte :
+ *
+ *  - un filtre `moyenne_generale > 0` écartait un semestre à 0,00. Or zéro est
+ *    un résultat — celui de l'étudiant absent tout le semestre — et non une
+ *    absence de résultat. Avec S1 à 8,50 et S2 à 0,00, il ne restait qu'un
+ *    bulletin, donc la page annonçait 8,50 comme moyenne de l'ANNÉE, au lieu de
+ *    4,25. Une de ces copies convertissait en plus ce nombre en mention
+ *    officielle ;
+ *  - un repli sur `avg()` rendait une moyenne arithmétique NON pondérée sous la
+ *    même étiquette que la pondérée, sans le dire.
+ *
+ * Elles y passent toutes les trois. Un écran qui affiche deux fois la même
+ * grandeur doit l'affirmer deux fois de la même façon : tant qu'elles
+ * coexistaient, corriger l'une sans les autres aurait fait dire à une seule
+ * fiche deux moyennes annuelles différentes pour un même étudiant.
+ *
+ * Ce que `parSemestre()` y fait, puisque la question se pose : rien, et c'est
+ * voulu. Les requêtes de la fiche épinglent étudiant, classe et année, et
+ * `esbtp_lmd_bulletins` porte un index UNIQUE sur ces trois colonnes plus le
+ * semestre (`lmd_bulletin_unique`), que la régénération respecte par
+ * `updateOrCreate` sur exactement cette clé — il ne peut donc pas y avoir deux
+ * lignes à dédupliquer. Il est appelé par uniformité avec le jury, dont la
+ * requête, elle, n'épingle pas toujours la classe.
  */
 final class AgregatDeLaPeriode
 {
