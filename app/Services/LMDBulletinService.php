@@ -13,6 +13,8 @@ use App\Models\ESBTPMatiere;
 use App\Models\ESBTPNote;
 use App\Models\ESBTPUniteEnseignement;
 use App\Helpers\SettingsHelper;
+use App\Domain\Scolarite\FamilleEvaluation;
+use App\Domain\Scolarite\MoyenneEcue;
 use App\Services\LMD\CompositionDuBulletin;
 use App\Services\LMD\Exceptions\MaquetteSansCompositionException;
 use App\Services\LMD\LmdAcademicRuleProfile;
@@ -689,26 +691,28 @@ class LMDBulletinService
 
         if ($notes->isEmpty()) return null;
 
-        $totalPoints = 0;
-        $totalCoeff = 0;
-
+        $lignes = [];
         foreach ($notes as $note) {
             $eval = $note->evaluation;
-            if (!$eval) continue;
-
-            $bareme = $eval->bareme ?: 20;
-            $coeffEval = $eval->coefficient ?: 1;
-
-            // Normaliser la note sur 20
-            $noteNormalisee = $note->is_absent ? 0 : (($note->note / $bareme) * 20);
-
-            $totalPoints += $noteNormalisee * $coeffEval;
-            $totalCoeff += $coeffEval;
+            if (!$eval) {
+                continue;
+            }
+            $lignes[] = [
+                'valeur' => $note->note === null ? null : (float) $note->note,
+                'absent' => (bool) $note->is_absent,
+                'dispense' => false,
+                'famille' => FamilleEvaluation::depuis($eval->type ?? $note->type_evaluation),
+                'coefficient' => (float) ($eval->coefficient ?: 1),
+                'bareme' => (float) ($eval->bareme ?: 20),
+            ];
         }
 
-        if ($totalCoeff == 0) return null;
-
-        return round($totalPoints / $totalCoeff, 2);
+        return MoyenneEcue::calculer(
+            $lignes,
+            $this->rules->continuousAssessmentWeight(),
+            $this->rules->finalExamWeight(),
+            (bool) $this->getSetting('lmd_absence_compte_zero', true)
+        );
     }
 
     /**

@@ -36,6 +36,8 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ### Améliorations
 
+- **Pondérations CC/examen consommées** — dès qu'un ECUE a du contrôle continu et un examen, la moyenne suit `lmd_cc_weight` / `lmd_exam_weight` (défaut 40/60). Un zéro compte ; une absence n'est un zéro que si `lmd_absence_compte_zero` (défaut oui, CI inchangé) ; une dispense et une note manquante n'entrent pas. Sans les deux familles, l'ancienne moyenne par coefficient reste.
+
 - **Fin de cycle** — l'attestation de réussite n'est pas l'attestation de fréquentation déjà produite. Une équivalence d'UE ne recompte pas des crédits déjà au wallet. L'homologation d'un programme n'est ni un agrément enseignant ni une accréditation CAMES.
 
 - **Pont ADC Paie (contrat, pas une API inventée)** — un timeout ne passe pas à « synchronisé ». Une relance exige une clé d'idempotence et n'écrase pas un accusé accepté. Un CSV exporté n'est pas une intégration. ADC Paie n'est dans aucun des deux dépôts.
