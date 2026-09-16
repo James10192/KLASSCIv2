@@ -36,6 +36,10 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ### Améliorations
 
+- **Paiement enseignant refusé si le profil pays n'est pas validé** — UCAO en `non_valide` ne peut plus marquer un bulletin « payé ». La Côte d'Ivoire (`CI`) inchangée.
+
+- **Réclamation de notes** — un bulletin publié se corrige par une nouvelle version, pas une réécriture. Un impayé ne bloque pas les notes (D-05).
+
 - **Export comptable sans grand livre interne** — D-04 : KLASSCI n'est pas le livre. Un mapping vide n'est pas prêt. Le défaut produit ne préremplit pas les comptes ivoiriens. Les totaux exportés se rapprochent, ils ne s'envoient pas seulement.
 
 - **Pondérations CC/examen consommées** — dès qu'un ECUE a du contrôle continu et un examen, la moyenne suit `lmd_cc_weight` / `lmd_exam_weight` (défaut 40/60). Un zéro compte ; une absence n'est un zéro que si `lmd_absence_compte_zero` (défaut oui, CI inchangé) ; une dispense et une note manquante n'entrent pas. Sans les deux familles, l'ancienne moyenne par coefficient reste.
