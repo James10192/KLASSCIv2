@@ -36,6 +36,8 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ### Améliorations
 
+- **Une carte de chat ne déclenche plus une action toute seule** — le bouton est un lien recalculé selon l'état et les droits du lecteur. Sans permission, il disparaît. L'ancien MessageController n'a toujours pas de route.
+
 - **Paiement enseignant refusé si le profil pays n'est pas validé** — UCAO en `non_valide` ne peut plus marquer un bulletin « payé ». La Côte d'Ivoire (`CI`) inchangée.
 
 - **Réclamation de notes** — un bulletin publié se corrige par une nouvelle version, pas une réécriture. Un impayé ne bloque pas les notes (D-05).
