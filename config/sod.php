@@ -38,6 +38,13 @@ return [
             'label' => 'Rectifier un PV : personne distincte de l’émetteur précédent',
             'hint' => 'Celui qui a émis le PV d’origine ne peut pas signer sa rectification.',
         ],
+        'achats.paiement.viser' => [
+            'mode' => env('KLASSCI_SOD_ACHATS_PAIEMENT_VISER', 'observation'),
+            'setting' => 'achats.sod.paiement_requires_distinct_saisisseur',
+            'message' => 'Separation des devoirs : celui qui a saisi la facture ne peut pas viser le paiement.',
+            'label' => 'Viser un paiement fournisseur : personne distincte du saisisseur',
+            'hint' => 'Celui qui a préparé le dossier ne vise pas la sortie de fonds.',
+        ],
         'lmd.jury.generate_pv_after_publication' => [
             'mode' => env('KLASSCI_SOD_LMD_JURY_REISSUE_AFTER_PUBLICATION', 'observation'),
             'setting' => 'lmd.sod.pv_reissue_after_publication_requires_distinct_publisher',

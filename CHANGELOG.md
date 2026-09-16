@@ -36,6 +36,8 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ### Améliorations
 
+- **Noyau achats (P2P) sans ressusciter les dépenses mortes** — une réception partielle ne facture que le reçu ; le reliquat reste ; une facture ne remue pas un stock déjà réceptionné ; une proforma n'est pas une facture. Le saisisseur ne vise pas le paiement. Un IBAN changé après visa invalide le visa. Un paiement à l'état inconnu ne se relance pas. Le job KPI trimestriel ne crash plus sur `ESBTPDepense`.
+
 - **Agrément enseignant, heures constatées, remplaçant, profil paie et visa SP** — un agrément expiré bloque une nouvelle affectation sans effacer une séance déjà faite. Un cours écourté retient la durée constatée. Le remplaçant est payé, pas le titulaire. Le profil `paie.profil_pays=non_valide` (UCAO) n'hérite pas du CNPS ivoirien et interdit un paiement définitif. Le sigle SP est conservé ; viser le service fait est une permission distincte (`teachers.prestation.validate`).
 
 - **Le TPE encadré sur site retient la durée de la séance, pas une déclaration libre** — si l'établissement choisit « séance encadrée », l'étudiant rattache sa déclaration à la séance (lieu, début, fin). Ces heures étudiantes ne paient pas l'enseignant. Un TPE qui chevauche un CM/TD/TP se détecte. Sans ce réglage, la déclaration libre reste.

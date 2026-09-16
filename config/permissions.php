@@ -1324,6 +1324,36 @@ return [
             'group' => 'Personnel',
             'icon' => 'fa-check-double',
         ],
+        'achats.besoin.create' => [
+            'label' => 'Exprimer un besoin d\'achat',
+            'group' => 'Achats',
+            'icon' => 'fa-clipboard-list',
+        ],
+        'achats.commande.authorize' => [
+            'label' => 'Autoriser une commande',
+            'group' => 'Achats',
+            'icon' => 'fa-file-signature',
+        ],
+        'achats.reception.saisir' => [
+            'label' => 'Saisir une réception',
+            'group' => 'Achats',
+            'icon' => 'fa-truck',
+        ],
+        'achats.facture.controler' => [
+            'label' => 'Contrôler une facture fournisseur',
+            'group' => 'Achats',
+            'icon' => 'fa-file-invoice',
+        ],
+        'achats.paiement.proposer' => [
+            'label' => 'Proposer un paiement fournisseur',
+            'group' => 'Achats',
+            'icon' => 'fa-hand-holding-usd',
+        ],
+        'achats.paiement.viser' => [
+            'label' => 'Viser un paiement fournisseur',
+            'group' => 'Achats',
+            'icon' => 'fa-stamp',
+        ],
         'personnel.view' => [
             'label' => 'Voir le personnel',
             'group' => 'Personnel',
