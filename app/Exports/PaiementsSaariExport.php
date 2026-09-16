@@ -2,6 +2,7 @@
 
 namespace App\Exports;
 
+use App\Domain\Comptabilite\MappingComptesExport;
 use App\Helpers\SettingsHelper;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
@@ -46,6 +47,14 @@ class PaiementsSaariExport implements FromCollection, WithMapping, WithTitle, Wi
         $this->paiements = $paiements;
         $this->filters = $filters;
         $this->settings = !empty($settings) ? $settings : $this->loadDefaultSettings();
+    }
+
+    public function mappingEstPret(): bool
+    {
+        return MappingComptesExport::estPret(
+            $this->settings['saari_account_mapping'] ?? [],
+            (string) ($this->settings['saari_default_account'] ?? '')
+        );
     }
 
     public function collection()
