@@ -357,8 +357,8 @@
                     @endphp
                     @if($specialitesPassage->count() > 1)
                         <div class="mb-4" id="re-choix-specialite">
-                            <p style="font-weight:700;color:#1e293b;margin-bottom:.75rem;">Choisir la spécialité de L2</p>
-                            <p style="color:#64748b;font-size:.88rem;margin-bottom:.75rem;">Plusieurs parcours s’ouvrent l’an prochain. Cliquez sur une carte, puis confirmez la classe.</p>
+                            <p style="font-weight:700;color:#1e293b;margin-bottom:.75rem;">Choisir la spécialité</p>
+                            <p style="color:#64748b;font-size:.88rem;margin-bottom:.75rem;">Plusieurs destinations s’ouvrent l’an prochain. Cliquez sur une carte, puis confirmez la classe.</p>
                             <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:.75rem;">
                                 @foreach($specialitesPassage as $nomSpecialite => $groupe)
                                     @php $premiere = $groupe->first(); @endphp

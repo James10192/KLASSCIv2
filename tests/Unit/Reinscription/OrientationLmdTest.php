@@ -17,7 +17,7 @@ class OrientationLmdTest extends TestCase
         $this->assertTrue(OrientationLmd::doitProposerTousLesParcoursDeLaMention(99, [11, 12]));
     }
 
-    public function test_deja_en_productions_animales_ne_rouvre_pas_le_choix(): void
+    public function test_deja_specialise_ne_rouvre_pas_le_choix(): void
     {
         $this->assertFalse(OrientationLmd::doitProposerTousLesParcoursDeLaMention(11, [11]));
         $this->assertFalse(OrientationLmd::doitProposerTousLesParcoursDeLaMention(11, [11, 12]));

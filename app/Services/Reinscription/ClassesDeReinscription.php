@@ -157,8 +157,7 @@ class ClassesDeReinscription
     }
 
     /**
-     * Tronc commun (filière parente) : l'année suivante est dans les filières filles
-     * (USAT L1 Productions végétales et animales → L2 Animales / Végétales).
+     * Tronc commun (filière parente) : l'année suivante est dans les filières filles.
      */
     private function passageDepuisTroncCommun(ESBTPClasse $quittee, int $annee): Collection
     {
