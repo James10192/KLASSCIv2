@@ -36,6 +36,8 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ### Améliorations
 
+- **Fin de cycle** — l'attestation de réussite n'est pas l'attestation de fréquentation déjà produite. Une équivalence d'UE ne recompte pas des crédits déjà au wallet. L'homologation d'un programme n'est ni un agrément enseignant ni une accréditation CAMES.
+
 - **Pont ADC Paie (contrat, pas une API inventée)** — un timeout ne passe pas à « synchronisé ». Une relance exige une clé d'idempotence et n'écrase pas un accusé accepté. Un CSV exporté n'est pas une intégration. ADC Paie n'est dans aucun des deux dépôts.
 
 - **Patrimoine, maintenance, véhicules, missions** — fermer un ticket n'efface pas les coûts. Une salle ou un véhicule indisponible remonte au planning (réutilise `DisponibiliteSalle`). Mission RH et réservation logistique peuvent décrire le même déplacement sans fusionner. Les pièces consommées sont une sortie de stock, pas une cession.
