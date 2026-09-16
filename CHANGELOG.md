@@ -36,6 +36,8 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ### Améliorations
 
+- **Réinscription L1 tronc commun → spécialités L2** — si l'année suivante ouvre plusieurs parcours dans la même mention (Productions animales / végétales), les deux classes sont proposées. Un L2 déjà spécialisé ne revoit pas l'autre option. Même logique si le L1 est une filière tronc commun dont les L2 sont des filières filles.
+
 - **Réinscription BTS et LMD lisibles** — listes, fiche, finalisation et modal groupée affichent le cycle. En LMD, « même parcours » ; un redoublement reste d'abord sur le même parcours. En BTS, la filière annuelle inchangée.
 
 - **La photo QR reste dans le cadre** — l'aperçu téléphone et le cliché reçu au guichet ne s'étalent plus sur toute la page. On peut retirer une photo (poubelle sur le portrait) depuis la fiche étudiant, la fiche inscription et la page de modification.
