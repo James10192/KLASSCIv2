@@ -14,6 +14,8 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ### Correctifs
 
+- **Réinscription L1 tronc commun → spécialités L2** — un L1 Agronomie (ou tout tronc commun de mention / filière parente) se voit proposer **toutes** les classes L2 de la mention ou des filières filles (Productions animales **et** végétales). Un étudiant déjà spécialisé ne revoit pas l'autre option. À la finalisation, des cartes de spécialité apparaissent s'il y a plus d'une destination.
+
 - **Baisser un tarif produit enfin un écart prévu à la régénération** — hausser le barème réalignait les dossiers ; le baisser disparaissait : pas d'écart affiché, trop-perçu avalé, échéancier figé. L'aperçu montre désormais `100 000 → 80 000, écart prévu −20 000 F`, le trop-perçu est nommé, et l'échéancier est recalculé.
 
 - **Réimputer un versement se voit enfin sur grand écran** (`/esbtp/paiements/{id}`) — le lien était blanc sur fond clair (« Corriger ») ; il est dans la barre d'actions, libellé comme sur le téléphone.

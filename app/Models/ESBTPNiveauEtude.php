@@ -93,6 +93,11 @@ class ESBTPNiveauEtude extends Model
         return in_array((string) $this->type, self::CYCLES_LMD, true);
     }
 
+    public function etiquetteCycle(): string
+    {
+        return $this->estUnCycleLmd() ? 'LMD' : (string) ($this->type !== '' && $this->type !== null ? $this->type : 'BTS');
+    }
+
     /**
      * Les deux semestres de cette annee : annee 1 → S1-S2, annee 4 (Master 1) → S7-S8.
      *

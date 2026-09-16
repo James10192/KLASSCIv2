@@ -1,0 +1,27 @@
+<?php
+
+namespace App\Services\Reinscription;
+
+/**
+ * Quand l'année suivante ouvre plusieurs parcours dans la même mention
+ * (L1 Agronomie → L2 Productions animales / Productions végétales),
+ * l'étudiant doit choisir. S'il est déjà sur un parcours qui continue,
+ * on ne rouvre pas le choix (L2 PA → L3 PA seulement).
+ */
+final class OrientationLmd
+{
+    /** @param  list<int>  $parcoursIdsAnneeSuivante */
+    public static function doitProposerTousLesParcoursDeLaMention(?int $parcoursQuitte, array $parcoursIdsAnneeSuivante): bool
+    {
+        $ids = array_values(array_unique(array_filter($parcoursIdsAnneeSuivante)));
+        if (count($ids) < 2) {
+            return false;
+        }
+
+        if ($parcoursQuitte === null) {
+            return true;
+        }
+
+        return ! in_array($parcoursQuitte, $ids, true);
+    }
+}
