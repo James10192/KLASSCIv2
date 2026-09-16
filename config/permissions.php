@@ -1394,6 +1394,16 @@ return [
             'group' => 'Moyens généraux',
             'icon' => 'fa-suitcase',
         ],
+        'paie.pont.voir' => [
+            'label' => 'Voir les anomalies de synchronisation ADC Paie',
+            'group' => 'Paie',
+            'icon' => 'fa-exchange-alt',
+        ],
+        'paie.pont.relancer' => [
+            'label' => 'Relancer une synchronisation ADC Paie',
+            'group' => 'Paie',
+            'icon' => 'fa-redo',
+        ],
         'personnel.view' => [
             'label' => 'Voir le personnel',
             'group' => 'Personnel',

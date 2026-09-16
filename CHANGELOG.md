@@ -36,6 +36,8 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ### Améliorations
 
+- **Pont ADC Paie (contrat, pas une API inventée)** — un timeout ne passe pas à « synchronisé ». Une relance exige une clé d'idempotence et n'écrase pas un accusé accepté. Un CSV exporté n'est pas une intégration. ADC Paie n'est dans aucun des deux dépôts.
+
 - **Patrimoine, maintenance, véhicules, missions** — fermer un ticket n'efface pas les coûts. Une salle ou un véhicule indisponible remonte au planning (réutilise `DisponibiliteSalle`). Mission RH et réservation logistique peuvent décrire le même déplacement sans fusionner. Les pièces consommées sont une sortie de stock, pas une cession.
 
 - **Rapprochement banque / mobile money** — un relevé rejoué est un doublon. Même montant et même date peuvent *proposer* un lien, jamais le fusionner seuls. Un paiement à l'état inconnu ne se relance pas. Celtiis Cash reste le mode mobile déjà livré ; la reco caisse n'est pas réécrite.
