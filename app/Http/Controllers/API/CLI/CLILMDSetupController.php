@@ -267,7 +267,7 @@ class CLILMDSetupController extends BaseApiController
         ]);
 
         try {
-            $result = $importer->import($validated, $request->user()->id);
+            $result = $importer->import($validated, $request->user()->id, $request->boolean('dry_run'));
         } catch (\App\Services\LMD\ConflitDeMaquette $e) {
             // 422 et non 500 : l import n a pas echoue, il a REFUSE. La difference
             // compte pour qui lit la reponse — un 500 invite a reessayer, un 422 dit

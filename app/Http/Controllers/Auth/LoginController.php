@@ -94,6 +94,12 @@ class LoginController extends Controller
         // Si la tentative de connexion échoue, nous augmenterons le nombre de tentatives
         // et redirigerons l'utilisateur vers le formulaire de connexion. Bien sûr, lorsque cela
         // l'utilisateur dépasse leur nombre maximum de tentatives, il sera bloqué.
+        if ($this->compteDesactive($request)) {
+            throw ValidationException::withMessages([
+                'username' => ['Ce compte a été désactivé. Demandez à l\'administrateur de l\'établissement de le réactiver.'],
+            ]);
+        }
+
         if ($this->attemptLogin($request)) {
             if ($request->hasSession()) {
                 $request->session()->put('auth.password_confirmed_at', time());
@@ -132,8 +138,23 @@ class LoginController extends Controller
     protected function attemptLogin(Request $request)
     {
         return Auth::attempt(
-            $this->credentials($request), $request->filled('remember')
+            $this->credentials($request) + ['is_active' => true], $request->filled('remember')
         );
+    }
+
+    private function compteDesactive(Request $request): bool
+    {
+        $identifiants = $this->credentials($request);
+        $champ = array_key_exists('email', $identifiants) ? 'email' : 'username';
+        $utilisateur = \App\Models\User::query()
+            ->where($champ, $identifiants[$champ])
+            ->first();
+
+        if (! $utilisateur || $utilisateur->is_active) {
+            return false;
+        }
+
+        return \Illuminate\Support\Facades\Hash::check($identifiants['password'], $utilisateur->password);
     }
 
     /**

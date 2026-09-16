@@ -679,6 +679,13 @@ class ESBTPSalaireController extends Controller
             return $this->refusWorkflow($request, 'Seul un bulletin validé peut être marqué payé.');
         }
 
+        $profil = \App\Domain\Comptabilite\Paie\ProfilPaysPaie::depuis(
+            \App\Helpers\SettingsHelper::get('paie.profil_pays', \App\Domain\Comptabilite\Paie\ProfilPaysPaie::CI)
+        );
+        if (! \App\Domain\Comptabilite\Paie\ProfilPaysPaie::permetPaiementDefinitif($profil)) {
+            return $this->refusWorkflow($request, 'Profil de paie non validé : les calculs restent indicatifs, aucun paiement définitif.');
+        }
+
         $data = $request->validate([
             'mode_paiement'      => ['required', Rule::in(array_keys(config('payment_modes.labels', [])))],
             'reference_paiement' => 'nullable|string|max:100',

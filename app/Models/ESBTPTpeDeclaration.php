@@ -38,9 +38,13 @@ class ESBTPTpeDeclaration extends Model implements Auditable
     protected $fillable = [
         'etudiant_id',
         'matiere_id',
+        'seance_id',
         'annee_universitaire_id',
         'semaine_debut',
         'heures',
+        'lieu',
+        'heure_debut',
+        'heure_fin',
         'description',
         'statut',
         'validated_by',
@@ -84,6 +88,11 @@ class ESBTPTpeDeclaration extends Model implements Auditable
     public function matiere(): BelongsTo
     {
         return $this->belongsTo(ESBTPMatiere::class, 'matiere_id');
+    }
+
+    public function seance(): BelongsTo
+    {
+        return $this->belongsTo(ESBTPSeanceCours::class, 'seance_id');
     }
 
     public function anneeUniversitaire(): BelongsTo

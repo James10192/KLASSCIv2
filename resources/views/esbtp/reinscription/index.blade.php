@@ -693,7 +693,7 @@
                                 </div>
                             </span>
                         </h1>
-                        <p>Gestion des passages, rattrapages et redoublements</p>
+                        <p>Passages, rattrapages et redoublements — BTS (année suivante, même filière) et LMD (parcours, puis mention).</p>
                         <div class="re-hero-meta">
                             <span class="re-hero-pill">
                                 <i class="fas fa-calendar-alt"></i>

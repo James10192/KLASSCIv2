@@ -30,10 +30,14 @@ class ESBTPSeanceCours extends Model
         'classe_id',
         'matiere_id',
         'teacher_id',
+        'remplacant_id',
         'jour',
         'heure_debut',
         'heure_fin',
+        'heure_reelle_debut',
+        'heure_reelle_fin',
         'salle',
+        'salle_id',
         'description',
         'type',
         'color',
@@ -72,6 +76,24 @@ class ESBTPSeanceCours extends Model
     const TYPE_HOMEWORK = 'homework';
     const TYPE_BREAK = 'break';
     const TYPE_LUNCH = 'lunch';
+
+    /**
+     * Ce type de séance mobilise-t-il un enseignant et une salle ?
+     *
+     * Une pause ou un déjeuner n'en mobilisent aucun : on ne cherche donc pas
+     * de conflit d'enseignant ni de salle pour eux.
+     *
+     * Ici et non dans les contrôleurs : la règle s'y écrivait à trois endroits
+     * et sous trois formes — deux `in_array(…, ['course', 'homework'])` séparés
+     * par 260 lignes dans `ESBTPSeanceCoursController`, et une troisième
+     * variante implicite dans `storeSession()`, qui passait toujours les deux.
+     * Les libellés y étaient littéraux alors que le même fichier emploie
+     * `self::TYPE_COURSE` vingt lignes plus haut pour ses règles de validation.
+     */
+    public static function mobiliseUneRessource(?string $type): bool
+    {
+        return in_array($type, [self::TYPE_COURSE, self::TYPE_HOMEWORK], true);
+    }
 
     // Default colors for different types
     const DEFAULT_COLORS = [
@@ -272,16 +294,12 @@ class ESBTPSeanceCours extends Model
      */
     public function getJourSemaineTexteAttribute()
     {
-        $jours = [
-            0 => 'Lundi',
-            1 => 'Mardi',
-            2 => 'Mercredi',
-            3 => 'Jeudi',
-            4 => 'Vendredi',
-            5 => 'Samedi',
-        ];
-
-        return $jours[$this->jour] ?? 'Jour inconnu';
+        // Sa table de correspondance partait de ZÉRO (`0 => 'Lundi'`) alors que
+        // les formulaires écrivent `1` pour lundi : cet accesseur décalait donc
+        // tous les libellés d'un jour, et rendait « Jour inconnu » pour tout
+        // jour écrit en toutes lettres. Aucun appelant dans le dépôt, ce qui
+        // explique que personne ne l'ait vu.
+        return \App\Domain\EmploiTemps\JourDeLaSemaine::libelle($this->jour) ?? 'Jour inconnu';
     }
 
     /**
@@ -323,8 +341,14 @@ class ESBTPSeanceCours extends Model
      */
     public function estEnConflitAvec(ESBTPSeanceCours $autreSeance)
     {
-        // Vérifier si les séances sont le même jour
-        if ($this->jour !== $autreSeance->jour) {
+        // Vérifier si les séances sont le même jour.
+        //
+        // Par `JourDeLaSemaine` et non par `!==` : la colonne `jour` porte deux
+        // écritures selon l'écran de saisie — l'entier `1` depuis la liste des
+        // séances, le libellé « Lundi » depuis l'emploi du temps. Comparées
+        // directement, deux séances du même lundi issues des deux chemins ne
+        // sont jamais en conflit.
+        if (! \App\Domain\EmploiTemps\JourDeLaSemaine::memeJour($this->jour, $autreSeance->jour)) {
             return false;
         }
 
@@ -347,33 +371,29 @@ class ESBTPSeanceCours extends Model
         // Récupérer la date de début de l'emploi du temps
         $dateDebut = \Carbon\Carbon::parse($this->emploiTemps->date_debut);
 
-        // Convertir le nom du jour en numéro (1 = lundi, 7 = dimanche)
-        $joursMapping = [
-            'lundi' => 1,
-            'mardi' => 2,
-            'mercredi' => 3,
-            'jeudi' => 4,
-            'vendredi' => 5,
-            'samedi' => 6,
-            'dimanche' => 7,
-        ];
+        // Convertir le jour en numéro (1 = lundi).
+        //
+        // Sa table ne connaissait que les libellés : pour une séance saisie
+        // depuis la liste des séances, où `jour` vaut l'entier `1`,
+        // `strtolower(1)` rend `'1'`, absent de la table, donc la méthode
+        // rendait `null` — et l'écran des présences, son seul appelant, restait
+        // sans date calculée pour toutes ces séances.
+        //
+        // Un écart assumé avec la table remplacée : elle acceptait `dimanche`,
+        // que `JourDeLaSemaine` ne connaît pas. Aucun des deux formulaires ne le
+        // propose, et `getNomJour()` le rendait déjà « Jour inconnu ». La
+        // semaine est désormais la même partout.
+        // Le calcul de décalage qui vivait ici est parti dans `JourDeLaSemaine`,
+        // dont le docbloc de `decalageDepuis()` dit quels sites le partagent
+        // désormais et lesquels le faisaient faux. Le décompte n'est écrit que
+        // là ; ne le recopiez pas ici.
+        $joursAAjouter = \App\Domain\EmploiTemps\JourDeLaSemaine::decalageDepuis(
+            $this->jour,
+            $dateDebut->dayOfWeekIso
+        );
 
-        $jourSeance = $joursMapping[strtolower($this->jour)] ?? null;
-
-        if (!$jourSeance) {
+        if ($joursAAjouter === null) {
             return null;
-        }
-
-        // Calculer le décalage entre le jour de la semaine de la date de début (1 = lundi, 7 = dimanche)
-        // et le jour de la séance (1 = lundi, 7 = dimanche)
-        $jourDebutSemaine = $dateDebut->dayOfWeek ?: 7; // Carbon retourne 0 pour dimanche, on le convertit en 7
-
-        // Calculer le nombre de jours à ajouter
-        $joursAAjouter = 0;
-        if ($jourSeance >= $jourDebutSemaine) {
-            $joursAAjouter = $jourSeance - $jourDebutSemaine;
-        } else {
-            $joursAAjouter = 7 - $jourDebutSemaine + $jourSeance;
         }
 
         // Si le jour calculé dépasse la date de fin, on retourne null
@@ -392,16 +412,9 @@ class ESBTPSeanceCours extends Model
      */
     public function getNomJour()
     {
-        $jours = [
-            1 => 'Lundi',
-            2 => 'Mardi',
-            3 => 'Mercredi',
-            4 => 'Jeudi',
-            5 => 'Vendredi',
-            6 => 'Samedi'
-        ];
-
-        return $jours[$this->jour] ?? 'Jour inconnu';
+        // Sa table ne connaissait que les entiers, donc « Jour inconnu » pour
+        // toute séance saisie depuis l'emploi du temps, qui écrit « Lundi ».
+        return \App\Domain\EmploiTemps\JourDeLaSemaine::libelle($this->jour) ?? 'Jour inconnu';
     }
 
     /**
@@ -442,7 +455,8 @@ class ESBTPSeanceCours extends Model
 
     public function isOverlapping(ESBTPSeanceCours $other)
     {
-        if ($this->jour !== $other->jour) {
+        // Même raison qu'à `estEnConflitAvec()` : les deux écritures du jour.
+        if (! \App\Domain\EmploiTemps\JourDeLaSemaine::memeJour($this->jour, $other->jour)) {
             return false;
         }
 
@@ -547,37 +561,36 @@ class ESBTPSeanceCours extends Model
     }
 
     /**
-     * Calculer la date complète de la séance à partir de l'emploi du temps et du jour
+     * La date complète de la séance, ramenée dans la période si elle en sort.
+     *
+     * Elle ne diffère de `getDateSeance()` que par ce rabattement : celle-là
+     * rend `null` quand le jour tombe après la fin de période, celle-ci recule
+     * jusqu'à la dernière occurrence possible. C'est la seule raison pour
+     * laquelle les deux coexistent.
+     *
+     * Le calcul lui-même a quitté cette méthode. Il y faisait `(int) $this->jour`,
+     * soit **zéro** pour une séance dont le jour est écrit « Lundi » — donc un
+     * jour ISO invalide et une date fausse. Rendu plus visible encore par le
+     * correctif du libellé : `getDateCompleteFormattee()` affichait « Dimanche
+     * 13/09 » pour une date qui est un dimanche, faux mais cohérent ; il aurait
+     * affiché « Lundi 13/09 », juste à côté d'une date qui ne l'est pas. Une
+     * sortie qui se contredit se repère moins bien qu'une sortie franchement
+     * fausse.
      */
     public function getDateCompleteSeance()
     {
-        if (!$this->emploiTemps || !$this->emploiTemps->date_debut) {
+        if (! $this->emploiTemps) {
             return null;
         }
 
-        $dateDebut = $this->emploiTemps->date_debut;
-        $jourSeance = (int)$this->jour; // 1=lundi, 2=mardi, etc.
+        $dateSeance = $this->emploiTemps->dateDuJour($this->jour);
 
-        // Convertir le jour de la séance en jour de la semaine ISO (1=lundi, 7=dimanche)
-        $jourISO = $jourSeance === 7 ? 7 : $jourSeance;
-
-        // Trouver le premier occurrence de ce jour dans la période de l'emploi du temps
-        $dateRecherche = clone $dateDebut;
-
-        // Obtenir le jour de la semaine de la date de début (1=lundi, 7=dimanche)
-        $jourDateDebut = (int)$dateRecherche->dayOfWeekIso;
-
-        // Calculer combien de jours ajouter pour atteindre le jour voulu dans la même semaine
-        if ($jourISO >= $jourDateDebut) {
-            // Le jour est dans la même semaine
-            $joursAjouter = $jourISO - $jourDateDebut;
-        } else {
-            // Le jour est dans la semaine suivante
-            $joursAjouter = (7 - $jourDateDebut) + $jourISO;
+        if ($dateSeance === null) {
+            return null;
         }
-        
-        $dateSeance = $dateRecherche->addDays($joursAjouter);
-        
+
+        $jourISO = \App\Domain\EmploiTemps\JourDeLaSemaine::rang($this->jour) + 1;
+
         // Vérifier si la date calculée est dans la période de l'emploi du temps
         if ($this->emploiTemps->date_fin && $dateSeance->gt($this->emploiTemps->date_fin)) {
             // Si on dépasse la date de fin, prendre la dernière occurrence possible
@@ -624,7 +637,13 @@ class ESBTPSeanceCours extends Model
             return 'Date non disponible';
         }
 
-        $nomJour = $jourMapping[$this->jour] ?? $jourMapping[(int) $date->dayOfWeekIso] ?? 'Jour inconnu';
+        // La table locale ne connaissait que les entiers : pour une séance
+        // saisie depuis l'emploi du temps, elle retombait sur le jour de la
+        // date calculée. Le repli reste — il est juste — mais il n'est plus
+        // atteint par défaut pour la moitié des séances.
+        $nomJour = \App\Domain\EmploiTemps\JourDeLaSemaine::libelle($this->jour)
+            ?? $jourMapping[(int) $date->dayOfWeekIso]
+            ?? 'Jour inconnu';
 
         return $nomJour . ' ' . $date->format('d/m/Y');
     }

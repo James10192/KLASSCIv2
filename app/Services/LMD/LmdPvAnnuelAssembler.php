@@ -43,9 +43,9 @@ class LmdPvAnnuelAssembler
             }
             $s1 = $byEtudiant->first(fn ($b) => (int) $b->semestre === $premierSemestre);
             $s2 = $byEtudiant->first(fn ($b) => (int) $b->semestre === $secondSemestre);
-            $moyAnnuelle = ($s1 && $s2)
-                ? round(((float) $s1->moyenne_generale + (float) $s2->moyenne_generale) / 2, 2)
-                : ($s2?->moyenne_generale ?? $s1?->moyenne_generale);
+            $deLaPeriode = array_values(array_filter([$s1, $s2]));
+            $moyAnnuelle = AgregatDeLaPeriode::moyenne($deLaPeriode);
+            $creditsAnnuels = AgregatDeLaPeriode::creditsObtenus($deLaPeriode);
 
             $rows[] = [
                 'ordre' => $ordre++,
@@ -61,7 +61,7 @@ class LmdPvAnnuelAssembler
                 'moy_s2' => $s2?->moyenne_generale,
                 'credits_s2' => $s2?->credits_capitalises,
                 'moy_annuelle' => $moyAnnuelle,
-                'credits_annuels' => (int) $s1?->credits_capitalises + (int) $s2?->credits_capitalises,
+                'credits_annuels' => $creditsAnnuels,
                 'decision' => $decisions[$etudiantId] ?? $s2?->decision_deliberation ?? $s1?->decision_deliberation,
                 'ues' => $this->mapUes($byEtudiant),
                 'ues_non_validees' => $this->uesNonValidees($byEtudiant),

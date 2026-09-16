@@ -146,8 +146,18 @@
                             <div style="color: var(--text-primary); margin-bottom: var(--space-md);">{{ $analyse['inscription']->classe->name ?? 'N/A' }}</div>
                         </div>
                         <div>
-                            <div style="font-size: var(--text-small); font-weight: 600; color: var(--text-secondary); margin-bottom: var(--space-xs); text-transform: uppercase; letter-spacing: 0.5px;">Filière</div>
-                            <div style="color: var(--text-primary); margin-bottom: var(--space-md);">{{ $analyse['inscription']->classe->filiere->name ?? 'N/A' }}</div>
+                            <div style="font-size: var(--text-small); font-weight: 600; color: var(--text-secondary); margin-bottom: var(--space-xs); text-transform: uppercase; letter-spacing: 0.5px;">Cycle</div>
+                            <div style="color: var(--text-primary); margin-bottom: var(--space-md);">{{ $analyse['inscription']->classe->niveau?->etiquetteCycle() ?? '—' }}</div>
+                        </div>
+                        <div>
+                            <div style="font-size: var(--text-small); font-weight: 600; color: var(--text-secondary); margin-bottom: var(--space-xs); text-transform: uppercase; letter-spacing: 0.5px;">{{ ($analyse['inscription']->classe->niveau?->estUnCycleLmd() ?? false) ? 'Parcours' : 'Filière' }}</div>
+                            <div style="color: var(--text-primary); margin-bottom: var(--space-md);">
+                                @if($analyse['inscription']->classe->niveau?->estUnCycleLmd() ?? false)
+                                    {{ $analyse['inscription']->classe->parcours->name ?? $analyse['inscription']->classe->filiere->name ?? 'N/A' }}
+                                @else
+                                    {{ $analyse['inscription']->classe->filiere->name ?? 'N/A' }}
+                                @endif
+                            </div>
                         </div>
                     </div>
                 </div>

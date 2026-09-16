@@ -244,6 +244,11 @@ class User extends Authenticatable implements Auditable
         return $this->belongsTo(User::class, 'updated_by');
     }
 
+    public function composantes()
+    {
+        return $this->belongsToMany(ESBTPLMDDomaine::class, 'esbtp_user_composantes', 'user_id', 'domaine_id');
+    }
+
     public function directedUfrs()
     {
         return $this->hasMany(UFR::class, 'director_id');

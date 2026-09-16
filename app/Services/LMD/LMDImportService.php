@@ -45,9 +45,10 @@ class LMDImportService
     /** @var list<array{type: string, code: string, detail: string}> */
     private array $conflits = [];
 
-    public function import(array $spec, ?int $userId = null): array
+    public function import(array $spec, ?int $userId = null, bool $dryRun = false): array
     {
-        return DB::transaction(function () use ($spec, $userId) {
+        try {
+            return DB::transaction(function () use ($spec, $userId, $dryRun) {
             $annee = ESBTPAnneeUniversitaire::where('is_current', true)->first()
                 ?? ESBTPAnneeUniversitaire::where('is_active', true)->orderByDesc('start_date')->first();
             if (!$annee) {
@@ -140,15 +141,25 @@ class LMDImportService
                 throw new ConflitDeMaquette($this->conflits);
             }
 
-            return [
+            $resultat = [
                 'domaine' => $this->summarize($domaine, ['name', 'code']),
                 'mention' => $this->summarize($mention, ['name', 'code']),
                 'parcours' => $this->summarize($parcours, ['name', 'code']),
                 'filiere' => $filiere ? $this->summarize($filiere, ['name', 'code']) : null,
                 'niveaux' => array_map(fn ($n) => $this->summarize($n, ['name', 'year']), $niveauxByYear),
                 'stats' => $stats,
+                'dry_run' => $dryRun,
             ];
-        });
+
+            if ($dryRun) {
+                throw new ApercuImportMaquette($resultat);
+            }
+
+            return $resultat;
+            });
+        } catch (ApercuImportMaquette $apercu) {
+            return $apercu->resultat;
+        }
     }
 
     private function upsertDomaine(array $data, ?int $userId): ESBTPLMDDomaine

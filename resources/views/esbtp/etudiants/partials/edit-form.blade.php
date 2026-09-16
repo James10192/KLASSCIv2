@@ -196,8 +196,8 @@
                     @if($etudiant->photo_url)
                         <div class="mt-2">
                             <label class="form-label">Photo actuelle</label>
-                            <div>
-                                <img src="{{ $etudiant->photo_url }}" alt="Photo de profil" class="img-thumbnail" style="width: 100px; height: 100px; object-fit: cover; border-radius: 10px;">
+                            <div data-photo-etudiant-cadre style="position:relative;width:100px;height:100px;">
+                                <img src="{{ $etudiant->photo_url }}" alt="Photo de profil" data-photo-etudiant class="img-thumbnail" style="width: 100px; height: 100px; object-fit: cover; border-radius: 10px; display:block;">
                             </div>
                         </div>
                     @endif

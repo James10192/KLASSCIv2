@@ -13,7 +13,7 @@
         <div class="dashboard-header">
             <div class="header-left">
                 <h1>Règles Académiques</h1>
-                <p class="header-subtitle">Configuration des seuils de passage, rattrapage et redoublement</p>
+                <p class="header-subtitle">Seuils de moyenne. Les classes proposées suivent le cycle : BTS (même filière) ou LMD (parcours puis mention).</p>
             </div>
             <div class="header-actions">
                 <a href="{{ route('esbtp.reinscription.index') }}" class="btn-acasi secondary">

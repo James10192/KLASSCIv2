@@ -4,6 +4,27 @@ Fourchettes : **construction** (dev+tests), hors reprise de données, validation
 
 Rollback = feature flag / permissions non cochées / revert git instance, **sauf** fuseau et documents émis.
 
+**État branche `feat/lot0-rebase-audit-on-presentation` (16/09/2026, HEAD `497b3b529`)** — noyaux livrés, pas mergés dans `presentation` (Feature MySQL down).
+
+| Lot | Noyau | SHA |
+|---|---|---|
+| 0 merge audit | oui | `5dccb6f71` |
+| 1 admin instance / diagnostic / TPE setting | oui | `69c382a5f` |
+| 2 gel / moyenne annuelle / dry_run / composante | oui | `60c84c45a` |
+| 3 TPE constat | oui | `d1e565f43` |
+| 4 agrément / heures / SP / profil paie | oui | `706799273` |
+| 5 P2P trois-voies | oui | `5b1b7cdcd` |
+| 6 stock / salle_id | oui | `e3e7a0ee5` |
+| 7 relevé banque | oui | `20c6792f4` |
+| 8 patrimoine | oui | `3e7c18cd7` |
+| 9 pont ADC Paie | oui | `3ee3979de` |
+| 10 fin de cycle | oui | `c611631be` |
+| 11 CC/examen | oui | `2d4515889` |
+| 12 export sans GL | oui | `a7eb6f60e` |
+| câblage pay() + réclamations | oui | `497b3b529` |
+
+UI métier, reprise de données, formation, PR : encore ouverts.
+
 ## Lot 0 — Ne pas casser (P0, avant tout code UCAO)
 
 | | |

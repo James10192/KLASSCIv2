@@ -39,6 +39,13 @@
                         <div>
                             <div style="font-weight: 600; color: #1f2937;">{{ $analyse['etudiant']->prenoms ?? 'N/A' }} {{ $analyse['etudiant']->nom ?? 'N/A' }}</div>
                             <small style="color: #64748b;">{{ $analyse['etudiant']->matricule ?? 'Matricule non disponible' }}</small>
+                            @php
+                                $classeListe = $analyse['classe'] ?? $analyse['inscription']->classe ?? null;
+                                $niveauListe = $classeListe?->niveau;
+                            @endphp
+                            @if($niveauListe)
+                                <div><span class="badge" style="background:#e8f0fe;color:#0453cb;font-size:.65rem;">{{ $niveauListe->etiquetteCycle() }}</span></div>
+                            @endif
                         </div>
                     </div>
                 </td>

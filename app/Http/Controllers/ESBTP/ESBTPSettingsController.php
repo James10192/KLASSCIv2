@@ -17,6 +17,7 @@ use App\Services\MailPulse\MailPulseTestNotificationService;
 use App\Services\Mobile\MobileProfileResolver;
 use App\Services\Inscription\PortailCandidaturePublication;
 use App\Services\Reinscription\PortailReinscriptionService;
+use App\Services\Security\SeparationOfDutiesService;
 use App\Services\TelephoneSettingsService;
 use App\Services\TenantScolariteSettings;
 use Illuminate\Http\JsonResponse;
@@ -55,7 +56,7 @@ class ESBTPSettingsController extends Controller
     public function __construct()
     {
         $this->middleware('auth');
-        $this->middleware('role:superAdmin|secretaire');
+        $this->middleware('role:superAdmin|secretaire|administrateurInstance');
     }
 
     /**
@@ -66,6 +67,7 @@ class ESBTPSettingsController extends Controller
         $this->ensureAttendanceNoteSettings();
         $this->ensureBtsBulletinPolicySettings();
         $this->ensureBulletinStyleSetting();
+        $this->ensureTpeModeSetting();
         $appreciationScaleSettings = app(AppreciationScaleSettingsService::class);
         $appreciationScaleSettings->ensureDefaults();
         $this->ensureMailPulseSettings();
@@ -525,6 +527,12 @@ class ESBTPSettingsController extends Controller
                 CataloguePiecesDossier::REGLAGE_ECHEANCE_DEFAUT,
                 CataloguePiecesDossier::REGLAGE_EPUISEMENT,
             ];
+
+            // Les trois regles de separation des devoirs : un mode a trois
+            // etats, donc un selecteur et non une case. Elles etaient dans les
+            // bascules, ou une valeur absente se lit comme un « non » — ce qui
+            // aurait remis « inactif » a chaque enregistrement de la page.
+            $reglagesTexte = array_merge($reglagesTexte, SeparationOfDutiesService::clesDeReglage());
 
             $reglagesPointes = Setting::whereIn('key', array_merge($basculesGerees, $reglagesTexte))->get();
 
@@ -1075,6 +1083,24 @@ class ESBTPSettingsController extends Controller
         return $request->expectsJson()
             ? response()->json(['success' => false, 'message' => $message], 422)
             : back()->withInput()->with('error', $message);
+    }
+
+    private function ensureTpeModeSetting(): void
+    {
+        Setting::firstOrCreate(
+            ['key' => 'tpe.mode'],
+            [
+                'value' => 'non_planifiable',
+                'type' => 'string',
+                'group' => 'lmd',
+                'category' => 'lmd',
+                'description' => 'TPE planifiable en emploi du temps',
+                'is_required' => false,
+                'is_active' => true,
+                'default_value' => 'non_planifiable',
+                'validation_rules' => ['nullable', 'in:non_planifiable,seance_encadree'],
+            ]
+        );
     }
 
     private function ensureBulletinStyleSetting(): void

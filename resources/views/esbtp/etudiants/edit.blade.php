@@ -236,13 +236,16 @@
 {{-- HERO --}}
 <div class="se-hero">
     <div class="se-hero-inner">
+        <div class="se-hero-avatar-wrap" data-photo-etudiant-cadre style="position:relative;flex-shrink:0;">
         <div class="se-hero-avatar">
             @if($etudiant->photo && $etudiant->photo_url)
                 <img src="{{ $etudiant->photo_url }}" alt="{{ $etudiant->nom_complet }}"
+                     data-photo-etudiant
                      onerror="this.parentElement.innerHTML='<i class=\'fas fa-user-graduate\'></i>'">
             @else
                 {{ strtoupper(substr($etudiant->prenoms ?? 'E', 0, 1)) }}{{ strtoupper(substr($etudiant->nom, 0, 1)) }}
             @endif
+        </div>
         </div>
         <div class="se-hero-info">
             <h1 class="se-hero-title"><i class="fas fa-edit" style="font-size:1.1rem; opacity:.7;"></i> Modifier — {{ $etudiant->nom_complet }}</h1>
@@ -283,6 +286,7 @@
 </div>
 
 </div>
+<x-photo-etudiant :etudiant="$etudiant" />
 @endsection
 
 @push('scripts')

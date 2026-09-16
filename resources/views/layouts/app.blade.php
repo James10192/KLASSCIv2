@@ -1902,6 +1902,18 @@
                             </a>
                         </div>
 
+                        {{-- Séances de cours : la seule vue transversale (tous emplois du
+                             temps confondus) et le seul relevé des conflits DÉJÀ en base.
+                             Elle existait mais n'était référencée nulle part — on n'y
+                             arrivait qu'en tapant l'URL, ce qui explique qu'elle soit
+                             restée sans refonte pendant que le reste passait en premium. --}}
+                        <div class="menu-item">
+                            <a href="{{ route('esbtp.seances-cours.index') }}" class="menu-link {{ Request::routeIs('esbtp.seances-cours.*') ? 'active' : '' }}">
+                                <div class="menu-icon"><i class="fas fa-calendar-day"></i></div>
+                                <div class="menu-text">Séances de cours</div>
+                            </a>
+                        </div>
+
                         @can('matieres.view')
                         <!-- Matières -->
                         <div class="menu-item">
@@ -2112,6 +2124,12 @@
                                     <span class="menu-dot"></span>
                                     <span>Gestion du personnel</span>
                                 </a>
+                                @can('users.manage')
+                                <a href="{{ route('esbtp.diagnostic-acces.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.diagnostic-acces.*') ? 'active' : '' }}">
+                                    <span class="menu-dot"></span>
+                                    <span>Diagnostic des accès</span>
+                                </a>
+                                @endcan
                             </div>
                         </div>
 

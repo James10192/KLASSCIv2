@@ -1313,6 +1313,97 @@ return [
             'icon' => 'fa-trash',
             'aliases' => ['delete_teachers', 'delete_enseignants'],
         ],
+        'teachers.agrement.manage' => [
+            'label' => 'Gérer les agréments enseignants',
+            'group' => 'Personnel',
+            'icon' => 'fa-stamp',
+        ],
+        'teachers.prestation.validate' => [
+            'label' => 'Viser le service fait (SP)',
+            'description' => 'Le sigle SP est conservé ; l\'intitulé exact des attributions reste à confirmer.',
+            'group' => 'Personnel',
+            'icon' => 'fa-check-double',
+        ],
+        'achats.besoin.create' => [
+            'label' => 'Exprimer un besoin d\'achat',
+            'group' => 'Achats',
+            'icon' => 'fa-clipboard-list',
+        ],
+        'achats.commande.authorize' => [
+            'label' => 'Autoriser une commande',
+            'group' => 'Achats',
+            'icon' => 'fa-file-signature',
+        ],
+        'achats.reception.saisir' => [
+            'label' => 'Saisir une réception',
+            'group' => 'Achats',
+            'icon' => 'fa-truck',
+        ],
+        'achats.facture.controler' => [
+            'label' => 'Contrôler une facture fournisseur',
+            'group' => 'Achats',
+            'icon' => 'fa-file-invoice',
+        ],
+        'achats.paiement.proposer' => [
+            'label' => 'Proposer un paiement fournisseur',
+            'group' => 'Achats',
+            'icon' => 'fa-hand-holding-usd',
+        ],
+        'achats.paiement.viser' => [
+            'label' => 'Viser un paiement fournisseur',
+            'group' => 'Achats',
+            'icon' => 'fa-stamp',
+        ],
+        'stock.view' => [
+            'label' => 'Voir le stock',
+            'group' => 'Stock',
+            'icon' => 'fa-boxes',
+        ],
+        'stock.mouvement.saisir' => [
+            'label' => 'Saisir un mouvement de stock',
+            'group' => 'Stock',
+            'icon' => 'fa-exchange-alt',
+        ],
+        'tresorerie.releve.importer' => [
+            'label' => 'Importer un relevé banque ou mobile money',
+            'group' => 'Trésorerie',
+            'icon' => 'fa-university',
+        ],
+        'tresorerie.releve.rapprocher' => [
+            'label' => 'Rapprocher un relevé',
+            'group' => 'Trésorerie',
+            'icon' => 'fa-link',
+        ],
+        'patrimoine.view' => [
+            'label' => 'Voir le patrimoine',
+            'group' => 'Moyens généraux',
+            'icon' => 'fa-building',
+        ],
+        'maintenance.saisir' => [
+            'label' => 'Saisir un incident ou une maintenance',
+            'group' => 'Moyens généraux',
+            'icon' => 'fa-tools',
+        ],
+        'vehicules.gerer' => [
+            'label' => 'Gérer les véhicules',
+            'group' => 'Moyens généraux',
+            'icon' => 'fa-car',
+        ],
+        'missions.demander' => [
+            'label' => 'Demander une mission',
+            'group' => 'Moyens généraux',
+            'icon' => 'fa-suitcase',
+        ],
+        'paie.pont.voir' => [
+            'label' => 'Voir les anomalies de synchronisation ADC Paie',
+            'group' => 'Paie',
+            'icon' => 'fa-exchange-alt',
+        ],
+        'paie.pont.relancer' => [
+            'label' => 'Relancer une synchronisation ADC Paie',
+            'group' => 'Paie',
+            'icon' => 'fa-redo',
+        ],
         'personnel.view' => [
             'label' => 'Voir le personnel',
             'group' => 'Personnel',

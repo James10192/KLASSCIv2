@@ -254,6 +254,91 @@ journaliser ce qu'il a rattrape** — sinon on ne cherche meme pas.
 
 ---
 
+### Piège #14 — `heure_debut` / `heure_fin` rendent « 2026- » au lieu de « 08:00 »
+
+**Symptôme** : un horaire s'affiche « 2026-09-15 08:00:00 » là où on attend « 08:00 », ou pire —
+avec un `substr(..., 0, 5)` — **« 2026- »**, sans aucune erreur.
+
+**Cause : un ACCESSEUR, pas le cast.** `ESBTPSeanceCours` déclare
+`getHeureDebutAttribute()` / `getHeureFinAttribute()` qui font `Carbon::parse($value)`. L'attribut
+rend donc un `Carbon` **daté d'aujourd'hui**, pas la chaîne « 08:00:00 », et toute lecture en
+contexte chaîne y lit la DATE.
+
+```php
+$s->heure_debut              // Carbon\Carbon
+(string) $s->heure_debut     // "2026-09-15 08:00:00"
+substr($s->heure_debut, 0,5) // "2026-"     ← et non "08:00"
+```
+
+**Le modèle porte AUSSI un cast `'datetime'` sur ces colonnes, et ce cast ne sert à rien** :
+`transformModelValue()` consulte l'accesseur **avant** le cast. Débrancher le cast en laissant
+l'accesseur ne change donc strictement rien — c'est la première fausse piste, et la plus coûteuse
+parce qu'elle a l'air de marcher jusqu'au test.
+
+⚠️ `'datetime:H:i'` **ne corrige rien non plus, `toArray()` compris** : `addCastAttributesToArray()`
+saute les attributs mutés, donc `toArray()` rend l'objet `Carbon` brut. Tant que l'accesseur est là,
+**aucun** réglage de cast n'a d'effet ; c'est l'accesseur qu'il faudrait retirer, et alors seulement
+le cast reprendrait la main.
+
+**Le fix** : `->format('H:i')` pour afficher, ou `$s->getAttributes()['heure_debut']` pour la valeur brute.
+
+Le contrôle qui tranche, à rejouer plutôt qu'à croire :
+
+```php
+$s = new \App\Models\ESBTPSeanceCours();
+(new ReflectionMethod($s, 'hasGetMutator'))->invoke($s, 'heure_debut');  // true → l'accesseur gagne
+```
+
+**Ce que l'inventaire du 15 septembre 2026 a trouvé, et ce qu'il avait manqué.** Le relevé de
+départ en citait **cinq**. Écrire la commande de contrôle ci-dessous — et la lancer — en a sorti
+**deux de plus**. Les cinq n'étaient donc pas la liste : c'était ce qu'une lecture à l'œil avait
+attrapé. **Six sites vivants** sont corrigés, plus un repli mort retiré :
+
+| fichier | ce que l'utilisateur voyait | état |
+|---|---|---|
+| `resources/views/esbtp/seances-cours/index.blade.php` | colonne horaire de la liste | corrigé |
+| `resources/views/esbtp/seances-cours/index.blade.php` | confirmation de suppression | corrigé |
+| `app/Http/Controllers/ESBTPAttendanceController.php` | **« Heure: 2026- » dans l'avis d'absence envoyé au parent** | corrigé |
+| `app/Http/Controllers/ESBTPAttendanceController.php` | export CSV des présences | corrigé |
+| `app/Http/Controllers/ESBTPPlanningGeneralController.php` | `"horaire"` du planning général | corrigé |
+| `resources/views/teacher/attendance.blade.php` | **« 2026- - 2026- » sur l'écran d'appel de l'enseignant** — hors du relevé initial | corrigé |
+
+Et un septième, `ESBTPSeanceCoursController` (`(int) substr($session->heure_debut, 0, 2)`), qui
+aurait lu l'heure **20** au lieu de **08**. Celui-là était une **branche morte** : le ternaire qui
+le gardait teste `instanceof Carbon`, et l'accesseur rend toujours un Carbon. Il a été retiré
+quand même — un piège désamorcé reste un piège écrit, et le prochain lecteur le recopiera.
+
+Les lignes ne sont plus citées par numéro : c'est ce qui rendait ce tableau faux au bout de trois
+mois. Le contrôle qui vaut, lui, se rejoue — et c'est lui qui fait foi, pas ce tableau :
+
+```bash
+grep -rnE 'substr\(\$[a-zA-Z_>-]*heure_(debut|fin)|\$[a-zA-Z_>-]*heure_debut\s*\.' app/ resources/ \
+  | grep -vE '^\S+:[0-9]+:\s*(\*|//)'
+```
+
+Il doit rendre **zéro ligne**. Toute nouvelle occurrence est le piège qui repousse. Le second
+`grep` écarte les lignes de commentaire : `DiagnosticDesDatesDeSeance` cite le motif pour
+l'expliquer, et le compter comme une occurrence rendrait le contrôle bruyant — donc ignoré.
+
+**Second effet, à ne PAS confondre** : sur `ESBTPSeanceCours`, une heure NULLE ne se lit pas `null` —
+`Carbon::parse(null)` rend l'instant présent. C'est encore l'accesseur, **pas** le cast : celui-ci
+court-circuite le nul (`castAttribute()` teste `is_null()` avant tout), donc `asDateTime(null)` n'est
+jamais atteint. La preuve croisée est `ESBTPCours`, qui porte le cast **sans** accesseur : là, une
+heure nulle se lit bien `null`.
+
+Et ce second effet n'a **aucune population en base** : `heure_debut` et `heure_fin` sont **NOT NULL**
+(migration `2024_03_18_000002`, jamais relâchée). Il ne concerne que les objets construits en
+mémoire. Ne pas partir en chasse dessus.
+
+**Les deux modèles ne se comportent donc pas pareil** — c'est le piège dans le piège :
+
+| modèle | accesseur | cast | une heure nulle se lit |
+|---|---|---|---|
+| `ESBTPSeanceCours` | oui (`Carbon::parse`) | `'datetime'` (inerte) | l'instant présent |
+| `ESBTPCours` | non | `'datetime:H:i'` | `null` |
+
+---
+
 ## Workflow systematic pour debug d'un bug "mes changements ne prennent pas effet"
 
 Quand tu vois le symptôme « mes logs/changements n'apparaissent pas », exécute ce checklist DANS L'ORDRE :

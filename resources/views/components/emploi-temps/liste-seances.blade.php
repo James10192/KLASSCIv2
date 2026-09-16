@@ -357,17 +357,10 @@
                             @endif
                             <td>
                                 @php
-                                    $joursMapping = [
-                                        1 => 'Lundi',
-                                        2 => 'Mardi',
-                                        3 => 'Mercredi',
-                                        4 => 'Jeudi',
-                                        5 => 'Vendredi',
-                                        6 => 'Samedi',
-                                        0 => 'Dimanche',
-                                        7 => 'Dimanche'
-                                    ];
-                                    $jourNom = $joursMapping[$seance->jour] ?? 'Jour ' . $seance->jour;
+                                    // Sa table ne connaissait que les entiers : une séance saisie
+                                    // depuis l'emploi du temps, où le jour s'écrit « Lundi »,
+                                    // s'affichait « Jour Lundi ».
+                                    $jourNom = \App\Domain\EmploiTemps\JourDeLaSemaine::libelle($seance->jour) ?? 'Jour inconnu';
                                 @endphp
                                 <small class="fw-bold">{{ $jourNom }}</small>
                             </td>

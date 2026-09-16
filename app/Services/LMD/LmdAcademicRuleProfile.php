@@ -52,9 +52,7 @@ final class LmdAcademicRuleProfile
     /**
      * Ponderation du controle continu, en pourcentage.
      *
-     * ATTENTION : ce reglage n'entre encore dans aucun calcul de moyenne. Il est expose
-     * ici pour un branchement futur, et volontairement absent du proces-verbal de jury
-     * tant qu'il ne pilote rien (un document legal ne doit pas affirmer une regle inappliquee).
+     * Consomme par MoyenneEcue dès qu'un ECUE a à la fois du CC et un examen.
      */
     public function continuousAssessmentWeight(): float
     {
@@ -62,8 +60,7 @@ final class LmdAcademicRuleProfile
     }
 
     /**
-     * Ponderation de l'examen terminal, en pourcentage. Meme reserve que
-     * continuousAssessmentWeight() : expose, pas encore applique au calcul des notes.
+     * Pondération de l'examen terminal, en pourcentage. Consommée avec continuousAssessmentWeight().
      */
     public function finalExamWeight(): float
     {

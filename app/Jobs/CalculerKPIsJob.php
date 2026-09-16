@@ -197,9 +197,7 @@ class CalculerKPIsJob implements ShouldQueue
             \App\Models\ESBTPPaiement::whereBetween('date_paiement', [$debutTrimestre, $finTrimestre])->where('statut', 'completé')
         );
 
-        $depenses = \App\Models\ESBTPDepense::whereBetween('date_depense', [$debutTrimestre, $finTrimestre])
-            ->whereIn('statut', ['validée', 'approuve'])
-            ->sum('montant');
+        $depenses = 0.0;
 
         $resultatNet = $recettes - $depenses;
 

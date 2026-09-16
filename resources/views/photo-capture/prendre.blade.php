@@ -43,8 +43,13 @@
             background: #f1f5f9; border: 2px dashed #cbd5e1;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
             gap: .5rem; color: #64748b; overflow: hidden; position: relative;
+            max-height: 70vh; min-height: 220px;
         }
-        .cible img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .cible img {
+            position: absolute; inset: 0;
+            width: 100%; height: 100%; max-width: 100%; max-height: 100%;
+            object-fit: cover; display: block;
+        }
         .cible-texte { font-size: .85rem; padding: 0 1.5rem; text-align: center; line-height: 1.5; }
         .cible-icone { font-size: 2.4rem; line-height: 1; }
 
@@ -144,6 +149,7 @@
         var img = document.createElement('img');
         img.src = apercu;
         img.alt = 'Aperçu de la photo';
+        img.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;max-width:100%;max-height:100%;object-fit:cover;display:block;';
         cible.appendChild(img);
 
         envoyer.disabled = false;

@@ -41,6 +41,10 @@
 .rtn-bar{position:sticky;bottom:0;background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:.85rem 1.1rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;box-shadow:0 -4px 16px rgba(15,23,42,.06);}
 .rtn-statut{font-size:.82rem;color:#475569;}
 .rtn-statut--ok{color:#047857;}
+/* Enregistre, mais une classe n'a pas suivi : ni le vert qui dit « tout va bien »,
+   ni le rouge qui dirait que la saisie a echoue — elle est bien en base. Meme ton
+   ambre que .rtn-alerte, la couleur du « a surveiller » du systeme de design. */
+.rtn-statut--attention{color:#92400e;}
 .rtn-statut--ko{color:#b91c1c;}
 .rtn-alerte{display:flex;align-items:flex-start;gap:.6rem;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.25);border-radius:10px;padding:.85rem 1rem;font-size:.85rem;color:#92400e;}
 @media (max-width: 768px){
@@ -242,7 +246,10 @@ function saisieRattrapage() {
         finales: {},
         enregistrement: false,
         statut: '',
-        statutOk: true,
+        // Trois issues, pas deux : enregistre / enregistre mais une classe
+        // n'a pas pu etre reagregee / echec. Un booleen forcait le cas du
+        // milieu a se peindre en vert.
+        statutNiveau: 'ok',
 
         init() {
             initiales.forEach((ligne) => {
@@ -274,7 +281,7 @@ function saisieRattrapage() {
 
         get statutClasse() {
             if (!this.statut) return '';
-            return this.statutOk ? 'rtn-statut--ok' : 'rtn-statut--ko';
+            return 'rtn-statut--' + this.statutNiveau;
         },
 
         formate(valeur) {
@@ -287,7 +294,7 @@ function saisieRattrapage() {
                 this.notes[id] = this.initial[id];
             });
             this.statut = 'Modifications annulees.';
-            this.statutOk = true;
+            this.statutNiveau = 'ok';
         },
 
         async enregistrer() {
@@ -324,13 +331,21 @@ function saisieRattrapage() {
                     this.finales[ligne.resultat_id] = ligne.note_finale;
                 });
 
+                // Les notes SONT enregistrees — donc jamais une erreur — mais si
+                // une classe n'a pas pu etre reagregee, le message le dit et
+                // l'ecran doit le dire aussi. Sans ceci, le texte d'alerte
+                // s'affichait en vert, sous une notification de succes.
+                const refuses = (donnees.bilan && donnees.bilan.bulletins_refuses) || [];
+
                 this.statut = donnees.message || 'Notes enregistrees.';
-                this.statutOk = true;
+                this.statutNiveau = refuses.length ? 'attention' : 'ok';
                 window.dispatchEvent(new CustomEvent('rattrapage:notes-enregistrees', { detail: donnees.bilan || {} }));
-                window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'success', message: this.statut } }));
+                window.dispatchEvent(new CustomEvent('toast', {
+                    detail: { type: refuses.length ? 'warning' : 'success', message: this.statut }
+                }));
             } catch (erreur) {
                 this.statut = erreur.message;
-                this.statutOk = false;
+                this.statutNiveau = 'ko';
                 window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'error', message: erreur.message } }));
             } finally {
                 this.enregistrement = false;
