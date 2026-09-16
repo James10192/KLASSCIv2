@@ -2362,6 +2362,18 @@ class ESBTPEtudiantController extends Controller
         }
     }
 
+    public function destroyPhoto(ESBTPEtudiant $etudiant)
+    {
+        $photos = app(\App\Services\Photos\StockagePhoto::class);
+        $photos->supprimer($etudiant->photo);
+        $etudiant->update(['photo' => null]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Photo retirée.',
+        ]);
+    }
+
     public function storeDocument(Request $request, ESBTPEtudiant $etudiant)
     {
         $request->validate([

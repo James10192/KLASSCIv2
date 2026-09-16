@@ -1169,7 +1169,7 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                     @endif
                     @can('students.edit')
                         <button type="button" class="is-hero-photo-btn"
-                                title="Photo de l'etudiant"
+                                title="Changer la photo"
                                 onclick="window.dispatchEvent(new CustomEvent('photo-etudiant:ouvrir'))">
                             <i class="fas fa-camera"></i>
                         </button>

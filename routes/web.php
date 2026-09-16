@@ -2542,6 +2542,9 @@ Route::middleware(['auth', 'permission:admin.access|identity.direct_studies|iden
     Route::post('esbtp/etudiants/{etudiant}/update-photo', [ESBTPEtudiantController::class, 'updatePhoto'])
         ->name('esbtp.etudiants.update-photo')
         ->middleware('permission:students.edit');
+    Route::post('esbtp/etudiants/{etudiant}/destroy-photo', [ESBTPEtudiantController::class, 'destroyPhoto'])
+        ->name('esbtp.etudiants.destroy-photo')
+        ->middleware('permission:students.edit');
 
     // La prise de vue au telephone, cote guichet. Meme permission que le
     // televersement classique : c'est le meme geste par un autre chemin.

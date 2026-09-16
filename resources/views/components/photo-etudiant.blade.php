@@ -16,9 +16,11 @@
         // de sens, et c'est le cas de toute premiere inscription.
         'confirmer' => $_phxDejaUnePhoto && $_phxCaptures->confirmerLeRemplacement(),
         'telephoneActif' => $_phxCaptures->actif(),
+        'peutEditer' => auth()->user()?->can('students.edit') ?? false,
         'ouvrirAuChargement' => (bool) $ouvrirAuChargement,
         'urls' => [
             'televerser' => route('esbtp.etudiants.update-photo', $etudiant),
+            'supprimer' => route('esbtp.etudiants.destroy-photo', $etudiant),
             'ouvrirCapture' => route('esbtp.captures-photo.ouvrir', $etudiant),
             'capture' => url('/esbtp/captures-photo'),
         ],
@@ -226,11 +228,23 @@
     .phx-chemin-aide { font-size: .7rem; color: #64748b; line-height: 1.35; }
 
     .phx-scene {
-        width: 100%; max-height: 46vh; aspect-ratio: 4 / 3; border-radius: 12px;
-        background: #0f172a; overflow: hidden;
+        width: 100%; height: min(46vh, 320px); border-radius: 12px;
+        background: #0f172a; overflow: hidden; position: relative;
         display: flex; align-items: center; justify-content: center;
     }
-    .phx-scene video, .phx-scene img { width: 100%; height: 100%; object-fit: contain; }
+    .phx-scene video, .phx-scene img {
+        position: absolute; inset: 0;
+        width: 100%; height: 100%; max-width: 100%; max-height: 100%;
+        object-fit: contain;
+    }
+    .phx-cadre-retirer {
+        position: absolute; top: -4px; right: -4px; z-index: 4;
+        width: 24px; height: 24px; border-radius: 50%; padding: 0;
+        background: #fff; color: #0453cb; border: 2px solid #0453cb;
+        display: flex; align-items: center; justify-content: center;
+        font-size: .65rem; cursor: pointer; box-shadow: 0 2px 8px rgba(15,23,42,.18);
+    }
+    .phx-cadre-retirer:hover { background: #0453cb; color: #fff; }
 
     .phx-actuelle {
         width: 130px; height: 160px; margin: 0 auto; border-radius: 12px;
@@ -295,6 +309,7 @@ if (typeof window.photoEtudiant !== 'function') {
             aDejaUnePhoto: false,
             confirmer: false,
             telephoneActif: true,
+            peutEditer: false,
             urls: {},
 
             apercu: null,
@@ -322,6 +337,7 @@ if (typeof window.photoEtudiant !== 'function') {
                 this.aDejaUnePhoto = !!charge.aDejaUnePhoto;
                 this.confirmer = !!charge.confirmer;
                 this.telephoneActif = !!charge.telephoneActif;
+                this.peutEditer = !!charge.peutEditer;
                 this.urls = charge.urls || {};
 
                 // Le dialogue s'expose pour que n'importe quel bouton de la page
@@ -331,6 +347,7 @@ if (typeof window.photoEtudiant !== 'function') {
                 if (charge.ouvrirAuChargement) {
                     this.$nextTick(() => this.ouvrir());
                 }
+                this.$nextTick(() => this.poserActionsCadre());
             },
 
             ouvrir() {
@@ -437,6 +454,60 @@ if (typeof window.photoEtudiant !== 'function') {
                     if (bouton) { cadre.appendChild(bouton); }
                 });
                 window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'success', message: 'Photo enregistrée.' } }));
+                this.poserActionsCadre();
+            },
+
+            poserActionsCadre() {
+                if (!this.peutEditer) { return; }
+                document.querySelectorAll('[data-photo-etudiant-cadre]').forEach((cadre) => {
+                    const deja = cadre.querySelector('[data-phx-retirer]');
+                    const aUnePhoto = !!cadre.querySelector('[data-photo-etudiant]');
+                    if (!aUnePhoto) {
+                        if (deja) { deja.remove(); }
+                        return;
+                    }
+                    if (deja) { return; }
+                    const style = window.getComputedStyle(cadre);
+                    if (style.position === 'static') { cadre.style.position = 'relative'; }
+                    const retirer = document.createElement('button');
+                    retirer.type = 'button';
+                    retirer.setAttribute('data-phx-retirer', '');
+                    retirer.className = 'phx-cadre-retirer';
+                    retirer.title = 'Retirer la photo';
+                    retirer.setAttribute('aria-label', 'Retirer la photo');
+                    retirer.innerHTML = '<i class="fas fa-trash-alt"></i>';
+                    retirer.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        this.demanderSuppression();
+                    });
+                    cadre.appendChild(retirer);
+                });
+            },
+
+            async demanderSuppression() {
+                if (!this.urls.supprimer) { return; }
+                if (!window.confirm('Retirer la photo de cet étudiant ?')) { return; }
+                this.occupe = true;
+                this.erreur = '';
+                try {
+                    await this.lire(await fetch(this.urls.supprimer, {
+                        method: 'POST', headers: this.entetes(),
+                    }));
+                    this.photoActuelle = null;
+                    this.aDejaUnePhoto = false;
+                    this.confirmer = false;
+                    document.querySelectorAll('[data-photo-etudiant]').forEach((noeud) => noeud.remove());
+                    this.poserActionsCadre();
+                    this.fermer();
+                    window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'success', message: 'Photo retirée.' } }));
+                } catch (e) {
+                    this.erreur = e.message;
+                    this.ouvert = true;
+                    this.ecran = 'choix';
+                } finally {
+                    this.occupe = false;
+                }
             },
 
             /* ---------- Caméra du poste ---------- */

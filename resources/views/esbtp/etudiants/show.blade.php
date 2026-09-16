@@ -2273,8 +2273,8 @@
 <div class="fiche-hero">
     <div class="hero-inner">
         {{-- Avatar avec badge statut --}}
-        <div class="hero-avatar-wrap">
-            <div class="hero-avatar" id="heroAvatarDisplay" data-photo-etudiant-cadre>
+        <div class="hero-avatar-wrap" data-photo-etudiant-cadre>
+            <div class="hero-avatar" id="heroAvatarDisplay">
                 @if($etudiant->photo && $etudiant->photo_url)
                     <img src="{{ $etudiant->photo_url }}"
                          data-photo-etudiant
@@ -2295,7 +2295,7 @@
                  comptes que le serveur aurait refuses. --}}
             @can('students.edit')
                 <button type="button" class="hero-avatar-upload" id="heroPhotoUploadBtn"
-                        title="Photo de l'etudiant"
+                         title="Changer la photo"
                         onclick="window.dispatchEvent(new CustomEvent('photo-etudiant:ouvrir'))">
                     <i class="fas fa-camera"></i>
                 </button>
