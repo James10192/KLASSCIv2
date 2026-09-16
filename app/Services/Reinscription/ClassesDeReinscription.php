@@ -201,6 +201,6 @@ class ClassesDeReinscription
 
     private function avecRelations(Builder $requete): Collection
     {
-        return $requete->with(['niveau', 'filiere'])->get();
+        return $requete->with(['niveau', 'filiere', 'parcours'])->get();
     }
 }

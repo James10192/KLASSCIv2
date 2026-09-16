@@ -349,6 +349,28 @@
                             La classe suivante est l’année d’après dans la même filière.
                         @endif
                     </div>
+                    @php
+                        $classesPassage = collect($classesParDecision['passage'] ?? []);
+                        $specialitesPassage = $classesPassage->groupBy(function ($classe) {
+                            return $classe->filiere->name ?? $classe->parcours->name ?? $classe->name;
+                        })->filter(fn ($groupe) => $groupe->isNotEmpty());
+                    @endphp
+                    @if($specialitesPassage->count() > 1)
+                        <div class="mb-4" id="re-choix-specialite">
+                            <p style="font-weight:700;color:#1e293b;margin-bottom:.75rem;">Choisir la spécialité de L2</p>
+                            <p style="color:#64748b;font-size:.88rem;margin-bottom:.75rem;">Plusieurs parcours s’ouvrent l’an prochain. Cliquez sur une carte, puis confirmez la classe.</p>
+                            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:.75rem;">
+                                @foreach($specialitesPassage as $nomSpecialite => $groupe)
+                                    @php $premiere = $groupe->first(); @endphp
+                                    <button type="button" class="re-spe-card" data-classe-id="{{ $premiere->id }}"
+                                            style="text-align:left;background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:1rem;cursor:pointer;">
+                                        <strong style="color:#0453cb;display:block;">{{ $nomSpecialite }}</strong>
+                                        <span style="font-size:.8rem;color:#64748b;">{{ $groupe->count() }} classe(s)</span>
+                                    </button>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endif
                     <div class="row mb-4">
                         <div class="col-md-6">
                             <div class="form-group-moderne form-group-disabled">
@@ -1035,6 +1057,11 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         setReinscriptionButtonState(false, 'Sélectionnez une classe disponible pour finaliser la réinscription.');
 
+        const blocSpe = document.getElementById('re-choix-specialite');
+        if (blocSpe) {
+            blocSpe.style.display = decision === 'passage' ? '' : 'none';
+        }
+
         if (decision && classesParDecision[decision]) {
             const classes = classesParDecision[decision];
 
@@ -1055,6 +1082,18 @@ document.addEventListener('DOMContentLoaded', function() {
                     };
                 })
             ];
+
+            document.querySelectorAll('.re-spe-card').forEach(function (carte) {
+                carte.addEventListener('click', function () {
+                    const id = String(carte.getAttribute('data-classe-id'));
+                    const option = classesOptions.find(function (o) { return o.value === id; });
+                    if (option && window.nouvelleClasseSelector) {
+                        window.nouvelleClasseSelector.selectOption(option);
+                        document.querySelectorAll('.re-spe-card').forEach(function (c) { c.style.borderColor = '#e2e8f0'; });
+                        carte.style.borderColor = '#0453cb';
+                    }
+                });
+            });
 
             // Mettre à jour le searchable select
             if (window.nouvelleClasseSelector) {

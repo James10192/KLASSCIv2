@@ -36,7 +36,7 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ### Améliorations
 
-- **Réinscription L1 tronc commun → spécialités L2** — si l'année suivante ouvre plusieurs parcours dans la même mention (Productions animales / végétales), les deux classes sont proposées. Un L2 déjà spécialisé ne revoit pas l'autre option. Même logique si le L1 est une filière tronc commun dont les L2 sont des filières filles.
+- **Réinscription L1 tronc commun → spécialités L2** — si l'année suivante ouvre plusieurs parcours dans la même mention (Productions animales / végétales), les deux classes sont proposées. Un L2 déjà spécialisé ne revoit pas l'autre option. Même logique si le L1 est une filière tronc commun dont les L2 sont des filières filles. À la finalisation, des cartes « Choisir la spécialité de L2 » apparaissent dès qu'il y a plus d'une destination.
 
 - **Réinscription BTS et LMD lisibles** — listes, fiche, finalisation et modal groupée affichent le cycle. En LMD, « même parcours » ; un redoublement reste d'abord sur le même parcours. En BTS, la filière annuelle inchangée.
 
