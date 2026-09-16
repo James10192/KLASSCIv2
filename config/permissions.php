@@ -1364,6 +1364,16 @@ return [
             'group' => 'Stock',
             'icon' => 'fa-exchange-alt',
         ],
+        'tresorerie.releve.importer' => [
+            'label' => 'Importer un relevé banque ou mobile money',
+            'group' => 'Trésorerie',
+            'icon' => 'fa-university',
+        ],
+        'tresorerie.releve.rapprocher' => [
+            'label' => 'Rapprocher un relevé',
+            'group' => 'Trésorerie',
+            'icon' => 'fa-link',
+        ],
         'personnel.view' => [
             'label' => 'Voir le personnel',
             'group' => 'Personnel',

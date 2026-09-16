@@ -36,6 +36,8 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ### Améliorations
 
+- **Rapprochement banque / mobile money** — un relevé rejoué est un doublon. Même montant et même date peuvent *proposer* un lien, jamais le fusionner seuls. Un paiement à l'état inconnu ne se relance pas. Celtiis Cash reste le mode mobile déjà livré ; la reco caisse n'est pas réécrite.
+
 - **Stock et salles** — une facture ne remue pas un stock déjà réceptionné ; une sortie vers un service n'est pas une cession. Les séances peuvent porter `salle_id` (entité `classrooms`) en plus du libellé : deux séances sur le même id sont en conflit même si le texte diffère. Une salle en maintenance remonte comme conflit de planning.
 
 - **Noyau achats (P2P) sans ressusciter les dépenses mortes** — une réception partielle ne facture que le reçu ; le reliquat reste ; une facture ne remue pas un stock déjà réceptionné ; une proforma n'est pas une facture. Le saisisseur ne vise pas le paiement. Un IBAN changé après visa invalide le visa. Un paiement à l'état inconnu ne se relance pas. Le job KPI trimestriel ne crash plus sur `ESBTPDepense`.
