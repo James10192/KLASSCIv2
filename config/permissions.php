@@ -1354,6 +1354,16 @@ return [
             'group' => 'Achats',
             'icon' => 'fa-stamp',
         ],
+        'stock.view' => [
+            'label' => 'Voir le stock',
+            'group' => 'Stock',
+            'icon' => 'fa-boxes',
+        ],
+        'stock.mouvement.saisir' => [
+            'label' => 'Saisir un mouvement de stock',
+            'group' => 'Stock',
+            'icon' => 'fa-exchange-alt',
+        ],
         'personnel.view' => [
             'label' => 'Voir le personnel',
             'group' => 'Personnel',

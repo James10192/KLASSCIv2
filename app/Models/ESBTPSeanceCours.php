@@ -37,6 +37,7 @@ class ESBTPSeanceCours extends Model
         'heure_reelle_debut',
         'heure_reelle_fin',
         'salle',
+        'salle_id',
         'description',
         'type',
         'color',

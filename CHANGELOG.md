@@ -36,6 +36,8 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ### Améliorations
 
+- **Stock et salles** — une facture ne remue pas un stock déjà réceptionné ; une sortie vers un service n'est pas une cession. Les séances peuvent porter `salle_id` (entité `classrooms`) en plus du libellé : deux séances sur le même id sont en conflit même si le texte diffère. Une salle en maintenance remonte comme conflit de planning.
+
 - **Noyau achats (P2P) sans ressusciter les dépenses mortes** — une réception partielle ne facture que le reçu ; le reliquat reste ; une facture ne remue pas un stock déjà réceptionné ; une proforma n'est pas une facture. Le saisisseur ne vise pas le paiement. Un IBAN changé après visa invalide le visa. Un paiement à l'état inconnu ne se relance pas. Le job KPI trimestriel ne crash plus sur `ESBTPDepense`.
 
 - **Agrément enseignant, heures constatées, remplaçant, profil paie et visa SP** — un agrément expiré bloque une nouvelle affectation sans effacer une séance déjà faite. Un cours écourté retient la durée constatée. Le remplaçant est payé, pas le titulaire. Le profil `paie.profil_pays=non_valide` (UCAO) n'hérite pas du CNPS ivoirien et interdit un paiement définitif. Le sigle SP est conservé ; viser le service fait est une permission distincte (`teachers.prestation.validate`).

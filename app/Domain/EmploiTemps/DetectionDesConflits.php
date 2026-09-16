@@ -130,9 +130,14 @@ final class DetectionDesConflits
         // La casse et les abréviations restent distinctes : « Amphi A », « amphi A »
         // et « A » sont trois salles. Les rapprocher élargirait la détection sur
         // des données existantes, ce qui est un autre geste.
-        if (trim((string) $seance->salle) !== ''
-            && trim((string) $seance->salle) === trim((string) $autre->salle)) {
-            $trouves[] = $this->conflit('Salle', (string) $seance->salle, $seance);
+        $salleId = isset($seance->salle_id) ? (int) $seance->salle_id : 0;
+        $autreSalleId = isset($autre->salle_id) ? (int) $autre->salle_id : 0;
+        $memeSalleId = $salleId > 0 && $salleId === $autreSalleId;
+        $memeSalleTexte = trim((string) $seance->salle) !== ''
+            && trim((string) $seance->salle) === trim((string) $autre->salle);
+        if ($memeSalleId || $memeSalleTexte) {
+            $nomSalle = $memeSalleId ? ('Salle #'.$salleId) : (string) $seance->salle;
+            $trouves[] = $this->conflit('Salle', $nomSalle, $seance);
         }
 
         // Classe — par l'emploi du temps, qui la porte.

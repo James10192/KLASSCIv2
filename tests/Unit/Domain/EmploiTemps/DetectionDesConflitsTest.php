@@ -74,6 +74,16 @@ class DetectionDesConflitsTest extends TestCase
         $this->assertSame('Amphi A', $conflits[0]['nom']);
     }
 
+    public function test_deux_seances_sur_la_meme_salle_id_sont_en_conflit_meme_si_le_libelle_differe(): void
+    {
+        $conflits = (new DetectionDesConflits)->depuis([
+            $this->seance(['id' => 1, 'salle' => 'Amphi A', 'salle_id' => 4]),
+            $this->seance(['id' => 2, 'salle' => 'amphi A', 'salle_id' => 4]),
+        ]);
+
+        $this->assertSame(['Salle'], array_column($conflits, 'type'));
+    }
+
     public function test_une_classe_convoquee_deux_fois_est_un_conflit(): void
     {
         $conflits = (new DetectionDesConflits)->depuis([
