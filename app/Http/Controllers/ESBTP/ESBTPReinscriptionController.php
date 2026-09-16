@@ -1404,13 +1404,28 @@ class ESBTPReinscriptionController extends Controller
 
         // Si classe_id manquante côté front, on dérive automatiquement depuis la classe d'origine
         // + la décision (passage → niveau+1, redoublement/rattrapage → même classe).
-        $items = collect($request->input('items'))->map(function ($item) {
+        $sansChoix = [];
+        $items = collect($request->input('items'))->map(function ($item) use (&$sansChoix) {
             if (empty($item['classe_id'])) {
                 $quittee = $this->classes->inscriptionQuittee((int) $item['etudiant_id'])?->classe;
-                $item['classe_id'] = $quittee ? $this->classes->pour($quittee, $item['decision'])->first()?->id : null;
+                $proposees = $quittee ? $this->classes->pour($quittee, $item['decision']) : collect();
+                if ($proposees->count() === 1) {
+                    $item['classe_id'] = $proposees->first()->id;
+                } elseif ($proposees->count() > 1) {
+                    $sansChoix[] = (int) $item['etudiant_id'];
+                    $item['classe_id'] = null;
+                }
             }
             return $item;
         })->filter(fn ($item) => !empty($item['classe_id']))->values()->all();
+
+        if ($sansChoix !== []) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Plusieurs spécialités L2 sont possibles : choisissez la classe pour chaque étudiant, le lot ne prend pas la première au hasard.',
+                'etudiants_sans_choix' => $sansChoix,
+            ], 422);
+        }
 
         if (empty($items)) {
             return response()->json([

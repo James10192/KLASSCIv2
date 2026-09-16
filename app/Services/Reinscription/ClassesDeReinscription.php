@@ -118,9 +118,15 @@ class ClassesDeReinscription
 
         $prochainsParcours = $memeMention->pluck('parcours_id')->filter()->map(fn ($id) => (int) $id)->unique()->values()->all();
 
+        $anneeDOrientation = OrientationLmd::estAnneeDOrientation(
+            $annee,
+            (string) $quittee->niveau->type
+        );
+
         if (OrientationLmd::doitProposerTousLesParcoursDeLaMention(
             $quittee->parcours_id ? (int) $quittee->parcours_id : null,
-            $prochainsParcours
+            $prochainsParcours,
+            $anneeDOrientation
         ) && $memeMention->isNotEmpty()) {
             return $memeMention;
         }
@@ -166,11 +172,17 @@ class ClassesDeReinscription
             return collect();
         }
 
-        return $this->avecRelations(
+        $dansFilles = fn (int $year) => $this->avecRelations(
             ESBTPClasse::whereIn('filiere_id', $filles)
                 ->where('is_active', 1)
-                ->whereHas('niveau', fn (Builder $q) => $q->where('year', $annee + 1))
+                ->whereHas('niveau', fn (Builder $q) => $q->where('year', $year))
         );
+
+        $suivantes = $dansFilles($annee + 1);
+
+        return $suivantes->isNotEmpty()
+            ? $suivantes
+            : $dansFilles(1)->reject(fn ($classe) => (int) $classe->id === (int) $quittee->id)->values();
     }
 
     /**
