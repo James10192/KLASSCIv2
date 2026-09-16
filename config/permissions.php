@@ -1374,6 +1374,26 @@ return [
             'group' => 'Trésorerie',
             'icon' => 'fa-link',
         ],
+        'patrimoine.view' => [
+            'label' => 'Voir le patrimoine',
+            'group' => 'Moyens généraux',
+            'icon' => 'fa-building',
+        ],
+        'maintenance.saisir' => [
+            'label' => 'Saisir un incident ou une maintenance',
+            'group' => 'Moyens généraux',
+            'icon' => 'fa-tools',
+        ],
+        'vehicules.gerer' => [
+            'label' => 'Gérer les véhicules',
+            'group' => 'Moyens généraux',
+            'icon' => 'fa-car',
+        ],
+        'missions.demander' => [
+            'label' => 'Demander une mission',
+            'group' => 'Moyens généraux',
+            'icon' => 'fa-suitcase',
+        ],
         'personnel.view' => [
             'label' => 'Voir le personnel',
             'group' => 'Personnel',

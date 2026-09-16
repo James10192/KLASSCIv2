@@ -36,6 +36,8 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ### Améliorations
 
+- **Patrimoine, maintenance, véhicules, missions** — fermer un ticket n'efface pas les coûts. Une salle ou un véhicule indisponible remonte au planning (réutilise `DisponibiliteSalle`). Mission RH et réservation logistique peuvent décrire le même déplacement sans fusionner. Les pièces consommées sont une sortie de stock, pas une cession.
+
 - **Rapprochement banque / mobile money** — un relevé rejoué est un doublon. Même montant et même date peuvent *proposer* un lien, jamais le fusionner seuls. Un paiement à l'état inconnu ne se relance pas. Celtiis Cash reste le mode mobile déjà livré ; la reco caisse n'est pas réécrite.
 
 - **Stock et salles** — une facture ne remue pas un stock déjà réceptionné ; une sortie vers un service n'est pas une cession. Les séances peuvent porter `salle_id` (entité `classrooms`) en plus du libellé : deux séances sur le même id sont en conflit même si le texte diffère. Une salle en maintenance remonte comme conflit de planning.
