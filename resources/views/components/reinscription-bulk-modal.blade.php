@@ -21,6 +21,7 @@
             'matricule' => $e->matricule,
             'nom_complet' => $e->nom_complet ?? trim(($e->nom ?? '') . ' ' . ($e->prenoms ?? '')),
             'classe' => optional($insc)->classe?->name,
+            'cycle' => optional($insc)->classe?->niveau?->etiquetteCycle(),
             'telephone' => $e->telephone ?? null,
             'email' => $e->email ?? null,
             'fiche_complete' => !empty($e->telephone) && !empty($e->email),
@@ -104,6 +105,7 @@
                                     <div class="brm-student-meta">
                                         <span class="brm-meta-chip" x-text="student.matricule"></span>
                                         <span class="brm-meta-chip brm-meta-chip--muted" x-text="student.classe || 'Sans classe'"></span>
+                                        <span class="brm-meta-chip" x-show="student.cycle" x-text="student.cycle" style="background:#e8f0fe;color:#0453cb;"></span>
                                         <span x-show="!student.fiche_complete" class="brm-meta-chip brm-meta-chip--warn" title="Fiche incomplète (téléphone ou email manquant)">
                                             <i class="fas fa-circle-exclamation"></i> Fiche
                                         </span>

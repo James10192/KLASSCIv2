@@ -111,7 +111,7 @@
                     <div class="rd-hero-icon"><i class="fas fa-inbox"></i></div>
                     <div>
                         <h1>Demandes de réinscription</h1>
-                        <p>Déposées en ligne par les étudiants. Une demande ne devient une inscription qu'une fois convertie ici.</p>
+                        <p>Déposées en ligne. La conversion utilise le même algorithme que le guichet (BTS : filière ; LMD : parcours).</p>
                     </div>
                 </div>
             </div>

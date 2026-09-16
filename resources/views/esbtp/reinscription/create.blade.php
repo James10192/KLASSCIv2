@@ -336,6 +336,19 @@
                         </div>
                     </div>
 
+                    @php
+                        $classeQuittee = $analyse['inscription']->classe ?? null;
+                        $estLmd = $classeQuittee?->niveau?->estUnCycleLmd() ?? false;
+                    @endphp
+                    <div class="alert" style="background:#e8f0fe;color:#0a3d8f;border:none;border-radius:10px;padding:.85rem 1rem;margin-bottom:1.25rem;">
+                        <strong>{{ $estLmd ? 'Parcours LMD' : 'Cycle '.($classeQuittee?->niveau?->etiquetteCycle() ?? 'BTS') }}</strong>
+                        — décision proposée : {{ $analyse['decision'] ?? '—' }}.
+                        @if($estLmd)
+                            La classe suivante suit le parcours, puis la mention.
+                        @else
+                            La classe suivante est l’année d’après dans la même filière.
+                        @endif
+                    </div>
                     <div class="row mb-4">
                         <div class="col-md-6">
                             <div class="form-group-moderne form-group-disabled">
@@ -394,17 +407,17 @@
                         <div class="col-md-6">
                             <!-- Radio buttons pour choix de filière -->
                             <div class="form-group-moderne mb-3">
-                                <label class="form-label-moderne">Choix de filière *</label>
+                                <label class="form-label-moderne">{{ $estLmd ? 'Choix de parcours *' : 'Choix de filière *' }}</label>
                                 <div class="d-flex gap-3">
                                     <div class="form-check">
                                         <input type="radio" class="form-check-input" name="choix_filiere_radio" value="meme" id="meme_filiere"
                                                x-model="choixFiliere" checked>
-                                        <label class="form-check-label" for="meme_filiere">Même filière</label>
+                                        <label class="form-check-label" for="meme_filiere">{{ $estLmd ? 'Même parcours' : 'Même filière' }}</label>
                                     </div>
                                     <div class="form-check">
                                         <input type="radio" class="form-check-input" name="choix_filiere_radio" value="autre" id="autre_filiere"
                                                x-model="choixFiliere">
-                                        <label class="form-check-label" for="autre_filiere">Autre filière</label>
+                                        <label class="form-check-label" for="autre_filiere">{{ $estLmd ? 'Autre parcours ou filière' : 'Autre filière' }}</label>
                                     </div>
                                 </div>
                             </div>

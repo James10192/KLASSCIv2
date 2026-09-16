@@ -56,8 +56,7 @@ class ClassesDeReinscription
 
         return match ($decision) {
             'passage' => $this->passage($quittee),
-            'redoublement' => $this->avecRelations(ESBTPClasse::where('niveau_etude_id', $quittee->niveau_etude_id)
-                ->where('filiere_id', $quittee->filiere_id)),
+            'redoublement' => $this->redoublement($quittee),
             'rattrapage' => collect([$quittee]),
             default => collect(),
         };
@@ -116,6 +115,20 @@ class ClassesDeReinscription
         }
 
         return collect();
+    }
+
+    private function redoublement(ESBTPClasse $quittee): Collection
+    {
+        $memeNiveau = fn () => ESBTPClasse::where('niveau_etude_id', $quittee->niveau_etude_id)->where('is_active', 1);
+
+        if ($quittee->niveau?->estUnCycleLmd() && $quittee->parcours_id) {
+            $memeParcours = $this->avecRelations($memeNiveau()->where('parcours_id', $quittee->parcours_id));
+            if ($memeParcours->isNotEmpty()) {
+                return $memeParcours;
+            }
+        }
+
+        return $this->avecRelations($memeNiveau()->where('filiere_id', $quittee->filiere_id));
     }
 
     /**

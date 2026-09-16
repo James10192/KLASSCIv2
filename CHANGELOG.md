@@ -36,6 +36,8 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ### Améliorations
 
+- **Réinscription BTS et LMD lisibles** — listes, fiche, finalisation et modal groupée affichent le cycle. En LMD, « même parcours » ; un redoublement reste d'abord sur le même parcours. En BTS, la filière annuelle inchangée.
+
 - **La photo QR reste dans le cadre** — l'aperçu téléphone et le cliché reçu au guichet ne s'étalent plus sur toute la page. On peut retirer une photo (poubelle sur le portrait) depuis la fiche étudiant, la fiche inscription et la page de modification.
 
 - **Une carte de chat ne déclenche plus une action toute seule** — le bouton est un lien recalculé selon l'état et les droits du lecteur. Sans permission, il disparaît. L'ancien MessageController n'a toujours pas de route.
