@@ -56,8 +56,7 @@ class ClassesDeReinscription
 
         return match ($decision) {
             'passage' => $this->passage($quittee),
-            'redoublement' => $this->avecRelations(ESBTPClasse::where('niveau_etude_id', $quittee->niveau_etude_id)
-                ->where('filiere_id', $quittee->filiere_id)),
+            'redoublement' => $this->redoublement($quittee),
             'rattrapage' => collect([$quittee]),
             default => collect(),
         };
@@ -80,9 +79,16 @@ class ClassesDeReinscription
             return collect();
         }
 
-        return $niveau->estUnCycleLmd()
+        $proposes = $niveau->estUnCycleLmd()
             ? $this->passageLmd($quittee, (int) $niveau->year)
             : $this->passageHorsLmd($quittee, (int) $niveau->year, (string) $niveau->type);
+
+        $depuisTc = $this->passageDepuisTroncCommun($quittee, (int) $niveau->year);
+        if ($depuisTc->isEmpty()) {
+            return $proposes;
+        }
+
+        return $proposes->concat($depuisTc)->unique('id')->values();
     }
 
     /**
@@ -100,22 +106,82 @@ class ClassesDeReinscription
 
         $mentionId = $this->mentionDe($quittee);
 
-        $paliers = array_filter([
-            $quittee->parcours_id ? fn () => $suivantes()->where('parcours_id', $quittee->parcours_id) : null,
-            $mentionId ? fn () => $suivantes()->where(fn (Builder $q) => $q
-                ->whereHas('parcours', fn (Builder $p) => $p->where('mention_id', $mentionId))
-                ->orWhereHas('filiere', fn (Builder $f) => $f->where('lmd_mention_id', $mentionId))) : null,
-            fn () => $suivantes()->where('filiere_id', $quittee->filiere_id),
-        ]);
+        $memeParcours = $quittee->parcours_id
+            ? $this->avecRelations($suivantes()->where('parcours_id', $quittee->parcours_id))
+            : collect();
 
-        foreach ($paliers as $palier) {
-            $classes = $this->avecRelations($palier());
-            if ($classes->isNotEmpty()) {
-                return $classes;
+        $memeMention = $mentionId
+            ? $this->avecRelations($suivantes()->where(fn (Builder $q) => $q
+                ->whereHas('parcours', fn (Builder $p) => $p->where('mention_id', $mentionId))
+                ->orWhereHas('filiere', fn (Builder $f) => $f->where('lmd_mention_id', $mentionId))))
+            : collect();
+
+        $prochainsParcours = $memeMention->pluck('parcours_id')->filter()->map(fn ($id) => (int) $id)->unique()->values()->all();
+
+        $anneeDOrientation = OrientationLmd::estAnneeDOrientation(
+            $annee,
+            (string) $quittee->niveau->type
+        );
+
+        if (OrientationLmd::doitProposerTousLesParcoursDeLaMention(
+            $quittee->parcours_id ? (int) $quittee->parcours_id : null,
+            $prochainsParcours,
+            $anneeDOrientation
+        ) && $memeMention->isNotEmpty()) {
+            return $memeMention;
+        }
+
+        if ($memeParcours->isNotEmpty()) {
+            return $memeParcours;
+        }
+
+        if ($memeMention->isNotEmpty()) {
+            return $memeMention;
+        }
+
+        return $this->avecRelations($suivantes()->where('filiere_id', $quittee->filiere_id));
+    }
+
+    private function redoublement(ESBTPClasse $quittee): Collection
+    {
+        $memeNiveau = fn () => ESBTPClasse::where('niveau_etude_id', $quittee->niveau_etude_id)->where('is_active', 1);
+
+        if ($quittee->niveau?->estUnCycleLmd() && $quittee->parcours_id) {
+            $memeParcours = $this->avecRelations($memeNiveau()->where('parcours_id', $quittee->parcours_id));
+            if ($memeParcours->isNotEmpty()) {
+                return $memeParcours;
             }
         }
 
-        return collect();
+        return $this->avecRelations($memeNiveau()->where('filiere_id', $quittee->filiere_id));
+    }
+
+    /**
+     * Tronc commun (filière parente) : l'année suivante est dans les filières filles.
+     */
+    private function passageDepuisTroncCommun(ESBTPClasse $quittee, int $annee): Collection
+    {
+        $filiere = $quittee->filiere;
+        if (! $filiere || ! $filiere->isTroncCommun()) {
+            return collect();
+        }
+
+        $filles = \App\Models\ESBTPFiliere::query()->where('parent_id', $filiere->id)->pluck('id');
+        if ($filles->isEmpty()) {
+            return collect();
+        }
+
+        $dansFilles = fn (int $year) => $this->avecRelations(
+            ESBTPClasse::whereIn('filiere_id', $filles)
+                ->where('is_active', 1)
+                ->whereHas('niveau', fn (Builder $q) => $q->where('year', $year))
+        );
+
+        $suivantes = $dansFilles($annee + 1);
+
+        return $suivantes->isNotEmpty()
+            ? $suivantes
+            : $dansFilles(1)->reject(fn ($classe) => (int) $classe->id === (int) $quittee->id)->values();
     }
 
     /**
@@ -146,6 +212,6 @@ class ClassesDeReinscription
 
     private function avecRelations(Builder $requete): Collection
     {
-        return $requete->with(['niveau', 'filiere'])->get();
+        return $requete->with(['niveau', 'filiere', 'parcours'])->get();
     }
 }

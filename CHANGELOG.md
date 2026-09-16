@@ -14,6 +14,8 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ### Correctifs
 
+- **Réinscription : tronc commun → toutes les spécialités suivantes** — dès que l'année d'après ouvre **plusieurs** parcours dans la même mention, ou que la filière quittée est un tronc commun avec des filles, **toutes** ces classes sont proposées (pas un nom d'option en dur). Un étudiant déjà sur un parcours qui continue ne revoit pas les autres. Le lot refuse d'affecter tout le monde à la première classe. À la finalisation, des cartes apparaissent s'il y a plus d'une destination.
+
 - **Baisser un tarif produit enfin un écart prévu à la régénération** — hausser le barème réalignait les dossiers ; le baisser disparaissait : pas d'écart affiché, trop-perçu avalé, échéancier figé. L'aperçu montre désormais `100 000 → 80 000, écart prévu −20 000 F`, le trop-perçu est nommé, et l'échéancier est recalculé.
 
 - **Réimputer un versement se voit enfin sur grand écran** (`/esbtp/paiements/{id}`) — le lien était blanc sur fond clair (« Corriger ») ; il est dans la barre d'actions, libellé comme sur le téléphone.
