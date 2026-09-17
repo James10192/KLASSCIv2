@@ -118,15 +118,9 @@ class ClassesDeReinscription
 
         $prochainsParcours = $memeMention->pluck('parcours_id')->filter()->map(fn ($id) => (int) $id)->unique()->values()->all();
 
-        $anneeDOrientation = OrientationLmd::estAnneeDOrientation(
-            $annee,
-            (string) $quittee->niveau->type
-        );
-
         if (OrientationLmd::doitProposerTousLesParcoursDeLaMention(
             $quittee->parcours_id ? (int) $quittee->parcours_id : null,
-            $prochainsParcours,
-            $anneeDOrientation
+            $prochainsParcours
         ) && $memeMention->isNotEmpty()) {
             return $memeMention;
         }

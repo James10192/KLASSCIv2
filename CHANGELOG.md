@@ -14,6 +14,8 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ### Correctifs
 
+- **Réinscription LMD : une L1 déjà spécialisée n'est plus renvoyée vers les autres parcours** (`/esbtp/reinscription/{id}/finaliser`, réinscription groupée) — le correctif précédent traitait toute Licence 1 (et tout Master 1) comme une année d'orientation : une école qui ouvre des L1 Bâtiment et Travaux Publics distinctes dès l'entrée se voyait proposer les deux L2, et le lot refusait de passer la promotion entière. Le choix s'ouvre désormais uniquement quand le parcours quitté ne se poursuit pas l'année suivante (un tronc commun) et que la mention offre plusieurs parcours. Aucun numéro d'année n'en décide plus. Le message du lot ne parle plus de « L2 ».
+
 - **Réinscription : tronc commun → toutes les spécialités suivantes** — dès que l'année d'après ouvre **plusieurs** parcours dans la même mention, ou que la filière quittée est un tronc commun avec des filles, **toutes** ces classes sont proposées (pas un nom d'option en dur). Un étudiant déjà sur un parcours qui continue ne revoit pas les autres. Le lot refuse d'affecter tout le monde à la première classe. À la finalisation, des cartes apparaissent s'il y a plus d'une destination.
 
 - **Baisser un tarif produit enfin un écart prévu à la régénération** — hausser le barème réalignait les dossiers ; le baisser disparaissait : pas d'écart affiché, trop-perçu avalé, échéancier figé. L'aperçu montre désormais `100 000 → 80 000, écart prévu −20 000 F`, le trop-perçu est nommé, et l'échéancier est recalculé.

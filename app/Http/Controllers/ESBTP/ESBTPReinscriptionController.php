@@ -1422,7 +1422,7 @@ class ESBTPReinscriptionController extends Controller
         if ($sansChoix !== []) {
             return response()->json([
                 'success' => false,
-                'message' => 'Plusieurs spécialités L2 sont possibles : choisissez la classe pour chaque étudiant, le lot ne prend pas la première au hasard.',
+                'message' => 'Plusieurs parcours sont possibles l’an prochain : choisissez la classe pour chaque étudiant, le lot ne prend pas la première au hasard.',
                 'etudiants_sans_choix' => $sansChoix,
             ], 422);
         }
