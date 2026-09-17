@@ -90,6 +90,26 @@ class AuthServiceProvider extends ServiceProvider
             static fn ($utilisateur) => \App\Support\PorteDeRoute::ouverte('esbtp.inscriptions.create', $utilisateur)
         );
 
+        // Mêmes portes, pour le menu latéral. Deux entrées y montraient un lien
+        // qui répond 403 : leurs routes n'ont pas de permission propre et héritent
+        // de celle de leur groupe, que la barre ne connaissait pas.
+        //
+        // Recopier ces listes dans la vue aurait marché le jour même. « Planning
+        // Général » le prouve : sa route est définie DEUX fois, et celle qui gagne
+        // est dans un groupe qui pose une SECONDE permission — deux middlewares
+        // valent « et », donc la moitié recopiée laissait passer un rôle que la
+        // page refuse. `gatherMiddleware()` ramasse les deux, et la conjonction
+        // est déjà traitée ici.
+        foreach ([
+            'esbtp.seances-cours.index',
+            'esbtp.planning-general.index',
+        ] as $porte) {
+            Gate::define(
+                "porte:{$porte}",
+                static fn ($utilisateur) => \App\Support\PorteDeRoute::ouverte($porte, $utilisateur)
+            );
+        }
+
         // `users.manage` : exposé en Gate explicite pour éviter toute ambiguïté
         // entre les routes qui consomment Gate::* et le résolveur Spatie.
         Gate::define('users.manage', function ($user) {

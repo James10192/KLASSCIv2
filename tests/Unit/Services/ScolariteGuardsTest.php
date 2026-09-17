@@ -29,22 +29,19 @@ class ScolariteGuardsTest extends TestCase
 
         $this->assertTrue($guard->canCreate($user));
 
-        // Dérivé de l'énumération, et NON recopié. La liste était écrite ici en
-        // toutes lettres ; quand le garde a cessé de la recopier lui aussi, ce
-        // test est devenu la troisième copie — et la seule restée à cinq modes
-        // alors que Djamo et Celtiis Cash étaient entrés. Une assertion qui
-        // recopie la source qu'elle vérifie ne vérifie qu'elle-même.
-        $attendus = array_values(array_map(
-            fn (ModePaiement $mode) => $mode->value,
-            array_filter(ModePaiement::cases(), fn (ModePaiement $mode) => $mode->estMobile()),
-        ));
+        // Ce que cette ligne vérifie : qu'un guichet « mobile money » reçoit la
+        // liste du garde, et rien d'autre. Elle a d'abord recopié cette liste en
+        // toutes lettres, et est restée à cinq modes quand Djamo et Celtiis Cash
+        // sont entrés. La dériver de l'énumération ici ne réparait rien : c'était
+        // le corps de `mobileMoneyModes()`, mot pour mot, donc une assertion qui
+        // ne pouvait plus échouer. On interroge donc le garde.
+        $this->assertSame($guard->mobileMoneyModes(), $guard->allowedModes($user));
 
-        $this->assertSame($attendus, $guard->allowedModes($user));
-
-        // Ce que l'assertion dérivée ne peut plus dire toute seule : que la
-        // liste n'est pas vide, et qu'elle exclut bien l'espèce. C'est
-        // l'intention du garde, et elle se vérifie par des valeurs nommées.
-        $this->assertNotEmpty($attendus);
+        // Ce que la ligne ci-dessus ne dit pas : que la liste n'est pas vide, et
+        // qu'elle exclut bien l'espèce. C'est l'intention du garde, et elle se
+        // vérifie par des valeurs nommées. Que `estMobile()` classe les douze
+        // modes est vérifié à sa source, dans `ModePaiementTest`.
+        $this->assertNotEmpty($guard->allowedModes($user));
         $this->assertTrue($guard->allowsMode($user, ModePaiement::WAVE->value));
         $this->assertTrue($guard->allowsMode($user, ModePaiement::CELTIIS_CASH->value));
         $this->assertFalse($guard->allowsMode($user, ModePaiement::ESPECES->value));
