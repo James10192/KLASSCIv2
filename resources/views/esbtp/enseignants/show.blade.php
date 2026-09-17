@@ -1034,7 +1034,7 @@
                 </div>
 
                 @php
-                    $hours = app(\App\Services\Planning\PlageHoraireJournee::class)->heuresDeSaisie();
+                    $hours = app(\App\Services\Planning\PlageHoraireJournee::class)->creneaux();
                     $days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
                     $dayLabels = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
                     $availability = $realAvailability ?? [

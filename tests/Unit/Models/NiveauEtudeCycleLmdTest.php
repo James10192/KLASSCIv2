@@ -19,6 +19,12 @@ class NiveauEtudeCycleLmdTest extends TestCase
         $this->assertSame([7, 8], $this->classeEnAnnee(4)->getSemestresLMD(), 'Master 1');
         $this->assertSame([9, 10], $this->classeEnAnnee(5)->getSemestresLMD(), 'Master 2');
         $this->assertSame([5, 6], $this->classeEnAnnee(3)->getSemestresLMD(), 'Licence 3');
+        $this->assertSame([7, 8], (new ESBTPNiveauEtude(['year' => 4]))->semestres());
+    }
+
+    public function test_les_cycles_et_les_annees_nomment_les_memes_grades(): void
+    {
+        $this->assertSame(ESBTPNiveauEtude::CYCLES_LMD, array_keys(ESBTPNiveauEtude::ANNEES_PAR_CYCLE_LMD));
     }
 
     public function test_les_listes_de_semestres_vont_jusqu_au_master_2(): void

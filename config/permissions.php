@@ -38,6 +38,13 @@ return [
             'group' => 'Administration',
             'visible_in_ui' => true,
         ],
+        'administrateurInstance' => [
+            'label' => 'Administrateur d\'instance',
+            'description' => 'Réglages métier, comptes, rôles, diagnostics et audit. Sans abonnement ADC ni style de bulletin.',
+            'icon' => 'fa-user-shield',
+            'group' => 'Administration',
+            'visible_in_ui' => true,
+        ],
         'secretaire' => [
             'label' => 'Secrétaire',
             'description' => 'Gestion administrative : étudiants, inscriptions, classes, communication',
@@ -2176,6 +2183,15 @@ return [
 
         'serviceTechnique' => ['*'],
 
+        'administrateurInstance' => [
+            'dashboard.view', 'admin.access',
+            'system.manage',
+            'settings.view', 'settings.edit',
+            'users.manage',
+            'personnel.view', 'personnel.manage',
+            'security.audit.view',
+        ],
+
         'secretaire' => [
             'dashboard.view', 'admin.access', 'parent_chatbot.manage',
             'students.view', 'students.create', 'students.edit', 'students.delete',
@@ -2636,8 +2652,9 @@ return [
     */
 
     'role_management' => [
-        'superAdmin'       => ['secretaire', 'responsableScolarite', 'serviceScolarite', 'agentInscription', 'chargeCommunication', 'comptable', 'caissier', 'coordinateur', 'directeurEtudes', 'enseignant', 'etudiant'],
-        'serviceTechnique' => ['superAdmin', 'secretaire', 'responsableScolarite', 'serviceScolarite', 'agentInscription', 'chargeCommunication', 'comptable', 'caissier', 'coordinateur', 'directeurEtudes', 'enseignant', 'etudiant'],
+        'superAdmin'       => ['administrateurInstance', 'secretaire', 'responsableScolarite', 'serviceScolarite', 'agentInscription', 'chargeCommunication', 'comptable', 'caissier', 'coordinateur', 'directeurEtudes', 'enseignant', 'etudiant'],
+        'serviceTechnique' => ['superAdmin', 'administrateurInstance', 'secretaire', 'responsableScolarite', 'serviceScolarite', 'agentInscription', 'chargeCommunication', 'comptable', 'caissier', 'coordinateur', 'directeurEtudes', 'enseignant', 'etudiant'],
+        'administrateurInstance' => ['secretaire', 'responsableScolarite', 'serviceScolarite', 'agentInscription', 'chargeCommunication', 'comptable', 'caissier', 'coordinateur', 'directeurEtudes', 'enseignant', 'etudiant'],
         'secretaire'       => ['enseignant', 'etudiant', 'caissier', 'chargeCommunication'],
         'responsableScolarite' => ['serviceScolarite', 'enseignant', 'etudiant'],
         'serviceScolarite' => ['enseignant'],
@@ -2686,5 +2703,12 @@ return [
         'admin'                   => ['since' => '2026-04', 'reason' => 'Rôle doublon de superAdmin — à fusionner Lot 6j'],
         'teacher'                 => ['since' => '2026-04', 'reason' => 'Rôle doublon de enseignant — à fusionner Lot 6j'],
     ],
+
+    /*
+    | superAdmin Gate::before. Défaut true = CI inchangé. Une instance
+    | (UCAO) pose PERMISSIONS_SUPERADMIN_GATE_BEFORE=false dans son .env :
+    | le rôle reste, mais il n'a plus le joker. Pas de if (tenant).
+    */
+    'superadmin_gate_before' => env('PERMISSIONS_SUPERADMIN_GATE_BEFORE', true),
 
 ];

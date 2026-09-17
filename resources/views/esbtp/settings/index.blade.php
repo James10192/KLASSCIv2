@@ -3665,7 +3665,7 @@
                                 <div class="ls-field">
                                     <div class="ls-label">Libellé "Domaine"</div>
                                     <input type="text" class="ls-input" name="setting_lmd_bulletin_label_domaine"
-                                           value="{{ $lmdVal('lmd_bulletin_label_domaine', 'DOMAINE') }}" placeholder="DOMAINE">
+                                            value="{{ $lmdVal('lmd_bulletin_label_domaine') }}" placeholder="@rang('domaine')">
                                 </div>
                             </div>
 
@@ -3687,7 +3687,7 @@
                                 <div class="ls-field">
                                     <div class="ls-label">Libellé "Mention"</div>
                                     <input type="text" class="ls-input" name="setting_lmd_bulletin_label_mention"
-                                           value="{{ $lmdVal('lmd_bulletin_label_mention', 'MENTION') }}" placeholder="MENTION">
+                                            value="{{ $lmdVal('lmd_bulletin_label_mention') }}" placeholder="@rang('mention')">
                                 </div>
                             </div>
 
@@ -3731,7 +3731,7 @@
                                 <div class="ls-field">
                                     <div class="ls-label">Libellé "Parcours"</div>
                                     <input type="text" class="ls-input" name="setting_lmd_bulletin_label_parcours"
-                                           value="{{ $lmdVal('lmd_bulletin_label_parcours', 'PARCOURS') }}" placeholder="PARCOURS">
+                                            value="{{ $lmdVal('lmd_bulletin_label_parcours') }}" placeholder="@rang('parcours')">
                                 </div>
                             </div>
 

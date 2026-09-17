@@ -83,4 +83,35 @@ class TypeSeanceTest extends TestCase
         $this->assertSame('Travaux Dirigés', TypeSeance::TD->label());
         $this->assertSame('Travaux Pratiques', TypeSeance::TP->label());
     }
+
+    public function test_teaching_types_are_compatible_with_course_not_homework(): void
+    {
+        foreach ([TypeSeance::CM, TypeSeance::TD, TypeSeance::TP, TypeSeance::PROJET, TypeSeance::AUTRE] as $type) {
+            $this->assertTrue($type->isCompatibleWithTopType('course'), $type->value.' should fit a Cours');
+            $this->assertFalse($type->isCompatibleWithTopType('homework'), $type->value.' should not fit a Devoir');
+        }
+    }
+
+    public function test_evaluations_are_compatible_with_homework_not_course(): void
+    {
+        foreach ([TypeSeance::EXAMEN, TypeSeance::PARTIEL, TypeSeance::RATTRAPAGE, TypeSeance::SOUTENANCE] as $type) {
+            $this->assertTrue($type->isCompatibleWithTopType('homework'), $type->value.' should fit a Devoir');
+            $this->assertFalse($type->isCompatibleWithTopType('course'), $type->value.' should not fit a Cours');
+        }
+    }
+
+    public function test_tpe_is_never_compatible_with_an_edt_slot(): void
+    {
+        $this->assertFalse(TypeSeance::TPE->isCompatibleWithTopType('course'));
+        $this->assertFalse(TypeSeance::TPE->isCompatibleWithTopType('homework'));
+        $this->assertFalse(TypeSeance::CM->isCompatibleWithTopType('break'));
+    }
+
+    public function test_code_of_unwraps_enum_string_and_null(): void
+    {
+        $this->assertSame('CM', TypeSeance::codeOf(TypeSeance::CM));
+        $this->assertSame('TD', TypeSeance::codeOf('TD'));
+        $this->assertNull(TypeSeance::codeOf(null));
+        $this->assertNull(TypeSeance::codeOf(''));
+    }
 }

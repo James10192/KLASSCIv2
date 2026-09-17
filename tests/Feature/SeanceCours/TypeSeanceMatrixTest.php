@@ -42,8 +42,8 @@ class TypeSeanceMatrixTest extends TestCase
         $this->assertStringContainsString("'TD'", $content);
         $this->assertStringContainsString("'TP'", $content);
         $this->assertStringNotContainsString("'PROJET'", $content, 'PROJET est LMD-only');
-        $this->assertStringNotContainsString("'EXAMEN'", $content, 'EXAMEN est LMD-only en PR5 (changera en PR6+)');
-        $this->assertStringNotContainsString("'RATTRAPAGE'", $content, 'RATTRAPAGE est LMD-only');
+        $this->assertStringContainsString("'EXAMEN'", $content, 'Devoir BTS : Examen / CC / Rattrapage');
+        $this->assertStringNotContainsString("'SOUTENANCE'", $content, 'SOUTENANCE est LMD-only');
     }
 
     /** @test */
@@ -63,9 +63,37 @@ class TypeSeanceMatrixTest extends TestCase
             'create.blade.php doit inclure _form_type_seance_bts (PR5)'
         );
         $this->assertStringContainsString(
-            "\$isLmdClasse",
+            "\$isClasseLmd",
             $content,
-            'create.blade.php doit utiliser variable \$isLmdClasse pour conditional include'
+            'create.blade.php doit utiliser variable \$isClasseLmd pour conditional include'
+        );
+    }
+
+    /** @test */
+    public function emploi_temps_stats_count_type_seance_via_enum_code(): void
+    {
+        $path = resource_path('views/components/emploi-temps/info-stats-section.blade.php');
+        $content = file_get_contents($path);
+
+        $this->assertStringContainsString('TypeSeance::codeOf', $content);
+        $this->assertStringNotContainsString("where('type_seance', \$tk)", $content);
+    }
+
+    /** @test */
+    public function edit_blade_has_conditional_include(): void
+    {
+        $path = resource_path('views/esbtp/seances-cours/edit.blade.php');
+        $content = file_get_contents($path);
+
+        $this->assertStringContainsString(
+            '_form_type_seance_lmd',
+            $content,
+            'edit.blade.php doit inclure le sous-type pédagogique LMD'
+        );
+        $this->assertStringContainsString(
+            '_form_type_seance_bts',
+            $content,
+            'edit.blade.php doit inclure le sous-type pédagogique BTS'
         );
     }
 }

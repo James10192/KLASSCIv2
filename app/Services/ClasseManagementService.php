@@ -8,16 +8,11 @@ use App\Models\ESBTPNiveauEtude;
 class ClasseManagementService
 {
     /**
-     * Types de niveaux consideres comme LMD.
-     */
-    public const LMD_TYPES = \App\Models\ESBTPNiveauEtude::CYCLES_LMD;
-
-    /**
      * Determiner le systeme academique a partir du type de niveau.
      */
     public static function determinerSystemeAcademique(string $niveauType): string
     {
-        return in_array($niveauType, self::LMD_TYPES) ? 'LMD' : 'BTS';
+        return in_array($niveauType, ESBTPNiveauEtude::CYCLES_LMD, true) ? 'LMD' : 'BTS';
     }
 
     /**

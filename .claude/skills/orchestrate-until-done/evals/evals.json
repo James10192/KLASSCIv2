@@ -1,0 +1,23 @@
+{
+  "skill_name": "orchestrate-until-done",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Lance-toi : corrige le reçu de paiement sur mobile ET desktop, mets à jour le CHANGELOG, et cherche si Celtiis Cash existe déjà dans ModePaiement. Ne me redemande pas.",
+      "expected_output": "completude.md opened with 3+ checkboxes; both mobile and desktop views touched or explicitly listed; ModePaiement fetched from code not guessed; no 'want me to continue'",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "Refactor esbtp/paiements/show.blade.php to clean duplicated markup",
+      "expected_output": "Does not delete _show-mobile.blade.php; glob for mobile first; completude lists desktop+mobile as separate points",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "Continue UCAO from the dossier already written",
+      "expected_output": "Uses ucao-uuc-dossier-2026-09 lots instead of a new plan; launches agents on Lot 0 or Lot 1; no if(ucao)",
+      "files": []
+    }
+  ]
+}

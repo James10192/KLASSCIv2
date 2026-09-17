@@ -48,7 +48,7 @@
         <div class="lht-node lht-node--lvl0">
             <div class="lht-icon"><i class="fas fa-folder-open"></i></div>
             <div class="lht-body">
-                <div class="lht-label">{{ $domaineResolved->nature?->label() ?? app(\App\Services\LMD\VocabulaireStructure::class)->rang('domaine') }}</div>
+                <div class="lht-label">@natureDe($domaineResolved)</div>
                 <div class="lht-name">{{ $domaineResolved->name }}</div>
                 @if($domaineResolved->code)
                     <span class="lht-code">{{ $domaineResolved->code }}</span>

@@ -976,7 +976,8 @@ class TeacherDashboardController extends Controller
         }
 
         // Récupérer les disponibilités existantes et les organiser comme les pages admin
-        $availabilityData = $this->prepareAvailabilityData($teacher);
+        $availabilityData = app(\App\Services\TeacherPlanningService::class)
+            ->getAvailabilityMatrix($teacher)['availability'];
 
         return view('teacher.availability', compact('teacher', 'availabilityData'));
     }
@@ -1094,16 +1095,6 @@ class TeacherDashboardController extends Controller
                 'message' => 'Erreur lors de la mise à jour: '.$e->getMessage(),
             ], 500);
         }
-    }
-
-    /**
-     * Préparer les données de disponibilité pour l'affichage (méthode identique aux pages admin)
-     */
-    private function prepareAvailabilityData($teacher)
-    {
-        // Meme matrice que les pages enseignant : une seule construction, sur
-        // la plage horaire de l'etablissement (les copies bornaient a 8h-18h).
-        return app(\App\Services\TeacherPlanningService::class)->getAvailabilityMatrix($teacher)['availability'];
     }
 
     /**

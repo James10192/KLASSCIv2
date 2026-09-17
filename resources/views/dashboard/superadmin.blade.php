@@ -3,7 +3,56 @@
 @section('title', 'Tableau de bord Super Admin')
 
 @section('content')
-<div class="main-content">
+@php
+    $saShellMobile = ($mobileShellEnabled ?? false) && ($mobileProfile ?? null);
+@endphp
+@if($saShellMobile)
+<div class="m-only-mobile m-screen">
+    <x-m.appbar title="Tableau de bord" :sub="$anneeEnCours->name ?? 'Année non définie'" />
+    <div class="m-body" data-m-ptr="reload">
+        @if(($pendingInscriptionsCount ?? 0) > 0)
+            <a href="{{ route('esbtp.inscriptions.index', ['status' => 'non_validee']) }}" class="m-btn g" style="margin-bottom:12px;">
+                {{ $pendingInscriptionsCount }} inscription(s) en attente — consulter
+            </a>
+        @endif
+        <x-m.kpi :items="[
+            ['value' => $totalStudents, 'label' => 'Inscrits ' . ($anneeLabel ?? ''), 'tone' => 'ok', 'href' => route('esbtp.etudiants.index')],
+            ['value' => $totalStudentsBase ?? $totalStudents, 'label' => 'Étudiants en base', 'tone' => 'info'],
+            ['value' => $totalClasses, 'label' => 'Classes', 'tone' => 'info', 'href' => route('esbtp.classes.index')],
+            ['value' => $totalTeachers ?? 0, 'label' => 'Enseignants', 'tone' => 'mute', 'href' => route('esbtp.enseignants.index')],
+        ]" />
+        <div class="m-sec"><b>Inscriptions récentes</b><a href="{{ route('esbtp.inscriptions.index') }}">Tout voir</a></div>
+        @if(($recentInscriptions ?? collect())->isEmpty())
+            <x-m.empty icon="inbox" title="Aucune inscription récente" />
+        @else
+            <div class="m-list">
+                @foreach($recentInscriptions->take(8) as $inscription)
+                    @php
+                        $saNom = trim(($inscription->etudiant->prenoms ?? '') . ' ' . ($inscription->etudiant->nom ?? ''));
+                        $saNom = $saNom !== '' ? $saNom : 'N/A';
+                        $saIni = mb_strtoupper(mb_substr($inscription->etudiant->prenoms ?? 'N', 0, 1) . mb_substr($inscription->etudiant->nom ?? 'A', 0, 1));
+                        $saSous = collect([
+                            $inscription->classe->filiere->name ?? null,
+                            $inscription->classe->name ?? null,
+                            optional($inscription->created_at)->format('d/m'),
+                        ])->filter()->implode(' · ');
+                    @endphp
+                    <x-m.row :href="$inscription->etudiant ? route('esbtp.etudiants.show', $inscription->etudiant->id) : null"
+                             :av="$saIni"
+                             :title="$saNom"
+                             :sub="$saSous"
+                             :chip="$inscription->status === 'active' ? 'Active' : 'En attente'"
+                             :chip-type="$inscription->status === 'active' ? 'ok' : 'warn'" />
+                @endforeach
+            </div>
+        @endif
+    </div>
+    <x-m.actionbar>
+        <a href="{{ route('esbtp.inscriptions.create') }}" class="m-btn p"><x-m.icon name="plus" />Nouvel étudiant</a>
+    </x-m.actionbar>
+</div>
+@endif
+<div class="main-content {{ $saShellMobile ? 'm-only-desktop' : '' }}">
     <!-- Header -->
     <div class="dashboard-header mb-xl" style="background-color: var(--primary); color: white; border-radius: var(--radius-medium); display: block;">
         <div class="row align-items-center">

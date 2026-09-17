@@ -1,6 +1,7 @@
 @extends('layouts.app')
 
 @section('title', 'Examens planifiés')
+@inject('vocabulaire', 'App\Services\LMD\VocabulaireStructure')
 
 @php
     use App\Enums\ExamenStatus;
@@ -1137,7 +1138,7 @@ function examensIndex() {
 
         // Cycle des scopes possibles
         scopeCycleOrder: ['parcours', 'mention', 'domaine', 'classe'],
-        scopeLabels: { parcours: @json(app(\App\Services\LMD\VocabulaireStructure::class)->rang('parcours')), mention: @json(app(\App\Services\LMD\VocabulaireStructure::class)->rang('mention').' (L1 tronc commun)'), domaine: @json(app(\App\Services\LMD\VocabulaireStructure::class)->rang('domaine')), classe: 'Classe unique' },
+        scopeLabels: { parcours: @json($vocabulaire->rang('parcours')), mention: @json($vocabulaire->rang('mention').' (L1 tronc commun)'), domaine: @json($vocabulaire->rang('domaine')), classe: 'Classe unique' },
 
         init() {
             window.addEventListener('toast', (ev) => this.pushToast(ev.detail));

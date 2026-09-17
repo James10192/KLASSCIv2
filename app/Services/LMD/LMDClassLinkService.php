@@ -4,7 +4,7 @@ namespace App\Services\LMD;
 
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPLMDParcours;
-use App\Services\ClasseManagementService;
+use App\Models\ESBTPNiveauEtude;
 use App\Services\LMD\FiliereMiroirLmd;
 use Illuminate\Support\Facades\DB;
 
@@ -52,7 +52,7 @@ class LMDClassLinkService
 
             foreach ($classes as $classe) {
                 $type = $classe->niveauEtude->type ?? null;
-                if (!in_array($type, ClasseManagementService::LMD_TYPES, true)) {
+                if (!in_array($type, ESBTPNiveauEtude::CYCLES_LMD, true)) {
                     $skipped[] = ['id' => $classe->id, 'name' => $classe->name,
                         'reason' => 'niveau non-LMD (' . ($type ?? 'inconnu') . ')'];
                     continue;

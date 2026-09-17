@@ -76,20 +76,22 @@
         adj.forEach((l) => {
             // Le tarif a bouge depuis l'inscription : on montre l'ancien ET le
             // nouveau, sinon « ajuste » ne veut rien dire pour la caisse.
+            const ecart = Number(l.ecart_prevu != null ? l.ecart_prevu : l.ecart || 0);
+            const signe = ecart >= 0 ? '+' : '−';
             const corps = '<span class="rf-line-adj">≠ ' + esc(l.categorie || '—') + '   '
-                + fmt(l.montant_actuel) + ' F → ' + fmt(l.montant) + ' F' + qui(l) + '</span>';
+                + fmt(l.montant_actuel) + ' F → ' + fmt(l.montant) + ' F'
+                + '  écart prévu ' + signe + fmt(Math.abs(ecart)) + ' F'
+                + qui(l) + '</span>';
 
             let note = null;
             if (l.montant_deja_retouche) {
-                // Ce montant porte une decision — remise, bourse, arrangement.
-                // On ne la remplace pas d'un clic : la case reste decochee.
                 note = '! montant déjà retouché à la main'
                     + (l.retouche_le ? ' le ' + esc(l.retouche_le) : '')
                     + ' — décoché par précaution';
             } else if (l.cree_une_dette) {
                 note = '! avait soldé — recrée une dette de ' + fmt(l.restera_du) + ' F';
-            } else if (l.trop_percu) {
-                note = '! déjà payé ' + fmt(l.deja_paye) + ' F — trop-perçu';
+            } else if (l.trop_percu || Number(l.credit_prevu || 0) > 0) {
+                note = '! trop-perçu prévu ' + fmt(l.credit_prevu || (l.deja_paye - l.montant)) + ' F — à rembourser ou réaffecter';
             }
 
             out.push(rangee(l.cle, corps, !l.montant_deja_retouche, note));

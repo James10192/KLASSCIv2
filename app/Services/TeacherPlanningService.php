@@ -131,9 +131,11 @@ class TeacherPlanningService
 
         // Plage reglee par l'etablissement (cours du soir compris). L'indice
         // d'une heure dans la matrice est `heure - debut` : les ecrans qui la
-        // lisent recoivent le meme debut via PlageHoraireJournee.
+        // lisent recoivent le meme debut via PlageHoraireJournee. Une ligne par
+        // creneau de la journee : l'heure de fin n'ouvre pas de creneau.
         $plage = app(\App\Services\Planning\PlageHoraireJournee::class);
-        $hours = $plage->heuresDeSaisie();
+        $hours = $plage->creneaux();
+        $debut = $plage->debut();
         $days = self::AVAILABILITY_DAYS;
 
         // Initialisation : tous les créneaux indisponibles par défaut.
@@ -152,7 +154,7 @@ class TeacherPlanningService
             [$startHour, $endHour] = $this->parseAvailabilityHours($avail);
 
             for ($hour = $startHour; $hour < $endHour; $hour++) {
-                $hourIndex = $hour - $plage->debut();
+                $hourIndex = $hour - $debut;
                 if ($hourIndex >= 0 && $hourIndex < count($hours)) {
                     $availability[$dayName][$hourIndex] = $avail->availability_type;
                 }

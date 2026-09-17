@@ -1595,6 +1595,48 @@
         [class*="-card "]:has(.dropdown-menu.show) {
             transform: none !important;
         }
+        .pwd-expiry-banner {
+            background: linear-gradient(135deg, #0453cb, #5e91de);
+            color: #fff;
+            padding: .75rem 1.25rem;
+            border-radius: .5rem;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+        }
+        .pwd-expiry-banner-copy {
+            display: flex;
+            align-items: flex-start;
+            gap: .75rem;
+            min-width: 0;
+        }
+        .pwd-expiry-banner-copy i { font-size: 1.2rem; margin-top: .15rem; flex-shrink: 0; }
+        .pwd-expiry-banner-sub { font-size: .85rem; opacity: .85; }
+        .pwd-expiry-banner-btn {
+            background: #fff;
+            color: #0453cb;
+            padding: .5rem 1rem;
+            border-radius: .375rem;
+            font-weight: 600;
+            font-size: .85rem;
+            text-decoration: none;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+        @media (max-width: 768px) {
+            .pwd-expiry-banner {
+                flex-direction: column;
+                align-items: stretch;
+                padding: .85rem 1rem;
+            }
+            .pwd-expiry-banner-btn {
+                white-space: normal;
+                text-align: center;
+                width: 100%;
+            }
+        }
     </style>
     @yield('styles')
     @stack('styles')
@@ -3306,17 +3348,15 @@
                         $expiresAt = $refDate ? $refDate->copy()->addMonths($expiryMonths) : now();
                         $daysLeft = (int) now()->diffInDays($expiresAt, false);
                     @endphp
-                    <div style="background: linear-gradient(135deg, #0453cb, #5e91de); color: white; padding: 0.75rem 1.25rem; border-radius: 0.5rem; margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem;">
-                        <div style="display: flex; align-items: center; gap: 0.75rem;">
-                            <i class="fas fa-clock" style="font-size: 1.2rem;"></i>
+                    <div class="pwd-expiry-banner">
+                        <div class="pwd-expiry-banner-copy">
+                            <i class="fas fa-clock" aria-hidden="true"></i>
                             <div>
                                 <strong>Votre mot de passe expire dans {{ $daysLeft }} jour{{ $daysLeft > 1 ? 's' : '' }}</strong>
-                                <div style="font-size: 0.85rem; opacity: 0.85;">Pour éviter d'être bloqué, changez-le maintenant depuis votre profil.</div>
+                                <div class="pwd-expiry-banner-sub">Pour éviter d'être bloqué, changez-le maintenant depuis votre profil.</div>
                             </div>
                         </div>
-                        <a href="{{ route('password.change.form') }}" style="background: white; color: #0453cb; padding: 0.4rem 1rem; border-radius: 0.375rem; font-weight: 600; font-size: 0.85rem; text-decoration: none; white-space: nowrap;">
-                            Changer maintenant
-                        </a>
+                        <a href="{{ route('password.change.form') }}" class="pwd-expiry-banner-btn">Changer maintenant</a>
                     </div>
                 @endif
             @endauth

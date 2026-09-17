@@ -35,13 +35,19 @@ class VocabulaireStructure
         return $this->libelle(self::CLE_PARCOURS, 'Parcours');
     }
 
+    /** @return array{domaine: string, mention: string, parcours: string} */
+    public function instantane(): array
+    {
+        return $this->tous();
+    }
+
     /**
      * Le nom qu'un element du premier rang porte en propre : sa nature s'il en
      * a une (UFR, Ecole...), sinon le nom du rang.
      */
-    public function natureDe(ESBTPLMDDomaine $domaine): string
+    public function natureDe(?ESBTPLMDDomaine $domaine): string
     {
-        return $domaine->nature?->label() ?? $this->domaine();
+        return $domaine?->nature?->label() ?? $this->domaine();
     }
 
     /** Le nom d'un rang par sa cle : 'domaine', 'mention' ou 'parcours'. */

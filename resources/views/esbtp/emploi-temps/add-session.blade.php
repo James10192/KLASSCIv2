@@ -631,8 +631,8 @@
         const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
         const dayNames = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
         const dayNamesFull = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
-        // Plage de l'etablissement, fin comprise : meme forme que la matrice serveur.
-        const hours = @json(app(\App\Services\Planning\PlageHoraireJournee::class)->heuresDeSaisie());
+        // Creneaux de la journee de l'etablissement : meme forme que la matrice serveur.
+        const hours = @json(app(\App\Services\Planning\PlageHoraireJournee::class)->creneaux());
 
         // État édition inline
         let inlineEditMode = false;

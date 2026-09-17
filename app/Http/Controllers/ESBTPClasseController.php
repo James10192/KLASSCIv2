@@ -2561,7 +2561,7 @@ class ESBTPClasseController extends Controller
         $niveau = ESBTPNiveauEtude::find($donnees['niveau_etude_id'] ?? null);
 
         if ($niveau === null
-            || ! in_array($niveau->type, ClasseManagementService::LMD_TYPES, true)) {
+            || ! $niveau->estUnCycleLmd()) {
             return $donnees;
         }
 

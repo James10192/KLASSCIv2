@@ -98,8 +98,8 @@ relevé les données réelles de chaque instance.
 `StoreClasseRequest` + `UpdateClasseRequest` détectent le mode via :
 ```php
 $niveau = ESBTPNiveauEtude::find($this->input('niveau_etude_id'));
-$isLmd = in_array($niveau->type, ClasseManagementService::LMD_TYPES, true);
-// LMD_TYPES = ['Licence', 'Master', 'Doctorat']
+$isLmd = $niveau->estUnCycleLmd();
+// CYCLES_LMD = ['Licence', 'Master', 'Doctorat']
 ```
 
 Règles appliquées :
@@ -134,7 +134,7 @@ les inputs descendants du form data).
 4. ❌ Filtrer les classes par `filiere_id` en supposant uniquement filière BTS —
    en LMD c'est un reflet. Toujours `where systeme_academique` en plus.
 5. ❌ Hardcoder `LMD_TYPES = ['Licence', 'Master']` — utiliser
-   `ClasseManagementService::LMD_TYPES` (source de vérité)
+   `ESBTPNiveauEtude::CYCLES_LMD` ou `$niveau->estUnCycleLmd()`
 6. ❌ Submit le form avec 2 inputs `name="filiere_id"` actifs simultanément
    (un BTS + un LMD picker) — utiliser le pattern `<fieldset :disabled>`
 7. ❌ Tester un fix LMD uniquement sur le modal AJAX sans tester `/esbtp/classes/create`
@@ -144,8 +144,8 @@ les inputs descendants du form data).
 
 - Rule globale : `~/.claude/rules/klassci-classe-matieres.md` — source canonique
   des matières via `esbtp_planifications_academiques`
-- `app/Services/ClasseManagementService.php` — `determinerSystemeAcademique()` +
-  `LMD_TYPES` constante
+- `app/Services/ClasseManagementService.php` — `determinerSystemeAcademique()`
+- `app/Models/ESBTPNiveauEtude.php` — `CYCLES_LMD` / `estUnCycleLmd()`
 - `app/Models/ESBTPLMDParcours.php` — relation `filiere()` qui sert au derive
 - Mémoire projet : `lmd-business-rules.md` — règles métier LMD complètes
 - PR `feat/classes-lmd-aware-form` (mai 2026) — implémentation initiale Option A

@@ -35,9 +35,6 @@ use Illuminate\View\View;
  */
 class ESBTPLMDPlanningController extends Controller
 {
-    /** Types `esbtp_niveau_etudes.type` identifiant les niveaux LMD (valeurs canoniques de niveaux-etudes/create). */
-    private const LMD_TYPES = ESBTPNiveauEtude::CYCLES_LMD;
-
     public function index(Request $request): View
     {
         $ctx = $this->buildContext($request);
@@ -603,7 +600,7 @@ class ESBTPLMDPlanningController extends Controller
         // Charge TOUS les niveaux LMD actifs (Licence/Master/Doctorat) — la liste
         // doit être indépendante du parcours sélectionné, sinon L3 (et autres
         // niveaux dont le parcours n'a pas encore d'UE liée) disparaît du dropdown.
-        $niveaux = ESBTPNiveauEtude::whereIn('type', self::LMD_TYPES)
+        $niveaux = ESBTPNiveauEtude::whereIn('type', ESBTPNiveauEtude::CYCLES_LMD)
             ->where('is_active', true)
             ->orderBy('type')->orderBy('year')->get();
 
@@ -684,14 +681,9 @@ class ESBTPLMDPlanningController extends Controller
      * Returns shape:
      *   [
      *     'all'      => [1, 2, 3, 4, 5, 6, ...],  // union de tous les niveaux LMD
-     *     <niveauId> => [year*2 - 1, year*2],     // UEMOA : L1=[1,2], L2=[3,4], L3=[5,6]
-     *                                              // M1=[1,2] (M1 redémarre), M2=[3,4]
+     *     <niveauId> => semestres de l'annee (L1=[1,2], M1 annee 4=[7,8]),
      *     ...
      *   ]
-     *
-     * Note : l'annee du niveau est comptee en continu d'un cycle a l'autre
-     * (Master 1 = annee 4 → S7+S8), d'ou le calcul base uniquement sur `year`
-     * (cf. ESBTPClasse::getSemestresLMD()).
      */
     private function buildSemestresMap(Collection $niveaux): array
     {
@@ -699,13 +691,7 @@ class ESBTPLMDPlanningController extends Controller
         $allSet = [];
 
         foreach ($niveaux as $niveau) {
-            $year = (int) ($niveau->year ?? 0);
-            if ($year > 0) {
-                $semestres = [$year * 2 - 1, $year * 2];
-            } else {
-                // Niveau sans year défini → fallback large (rare, défensif).
-                $semestres = ESBTPNiveauEtude::semestresLmd();
-            }
+            $semestres = $niveau->semestres() ?: ESBTPNiveauEtude::semestresLmd();
 
             $map[(int) $niveau->id] = $semestres;
             foreach ($semestres as $sem) {

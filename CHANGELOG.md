@@ -12,9 +12,42 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ## Septembre 2026
 
+### Correctifs
+
+- **Réinscription LMD : une L1 déjà spécialisée n'est plus renvoyée vers les autres parcours** (`/esbtp/reinscription/{id}/finaliser`, réinscription groupée) — le correctif précédent traitait toute Licence 1 (et tout Master 1) comme une année d'orientation : une école qui ouvre des L1 Bâtiment et Travaux Publics distinctes dès l'entrée se voyait proposer les deux L2, et le lot refusait de passer la promotion entière. Le choix s'ouvre désormais uniquement quand le parcours quitté ne se poursuit pas l'année suivante (un tronc commun) et que la mention offre plusieurs parcours. Aucun numéro d'année n'en décide plus. Le message du lot ne parle plus de « L2 ».
+
+- **Réinscription : tronc commun → toutes les spécialités suivantes** — dès que l'année d'après ouvre **plusieurs** parcours dans la même mention, ou que la filière quittée est un tronc commun avec des filles, **toutes** ces classes sont proposées (pas un nom d'option en dur). Un étudiant déjà sur un parcours qui continue ne revoit pas les autres. Le lot refuse d'affecter tout le monde à la première classe. À la finalisation, des cartes apparaissent s'il y a plus d'une destination.
+
+- **Baisser un tarif produit enfin un écart prévu à la régénération** — hausser le barème réalignait les dossiers ; le baisser disparaissait : pas d'écart affiché, trop-perçu avalé, échéancier figé. L'aperçu montre désormais `100 000 → 80 000, écart prévu −20 000 F`, le trop-perçu est nommé, et l'échéancier est recalculé.
+
+- **Réimputer un versement se voit enfin sur grand écran** (`/esbtp/paiements/{id}`) — le lien était blanc sur fond clair (« Corriger ») ; il est dans la barre d'actions, libellé comme sur le téléphone.
+
+- **Le bandeau « changer le mot de passe » tient sur un téléphone** — il ne déborde plus : le texte et le bouton s'empilent.
+
+- **Le tableau de bord Super Admin a un écran téléphone** — KPIs, inscriptions en attente et récentes, sans la grille bureau.
+
+- **Sur le reçu, le caissier qui peut encore annuler sa saisie le voit sur le téléphone** (`/esbtp/paiements/{id}`) — le geste n'apparaissait que dans le menu « ⋯ » et disparaissait derrière une condition d'attente ; on ne voyait plus que « Supprimer ». Le bouton est désormais en bas d'écran, dès que le droit et la fenêtre sont ouverts.
+
+- **Jour, matière et enseignant de la modification de séance ne sont plus des listes natives** (`/esbtp/seances-cours/{id}/edit`) — les trois listes du navigateur (flèche grise, pas de recherche) sont remplacées par les sélecteurs premium : jour, ECUE groupée par UE, enseignant searchable.
+
+- **Les types pédagogiques LMD recomptent les séances, et la carte de l'emploi du temps réaffiche CM / TD / TP** (`/esbtp/emploi-temps/{id}`) — le bandeau « Types pédagogiques LMD » comparait l'enum à la chaîne `'CM'` : tout restait à zéro alors qu'une séance était bien sur la grille. Le décompte lit la valeur ; la carte porte un badge du sous-type.
+
+- **On peut enfin corriger CM / TD / TP sur une séance déjà créée** (`/esbtp/seances-cours/{id}/edit`) — le sous-type pédagogique existait à la création, pas à la modification : une séance enregistrée en CM par erreur forçait à tout supprimer. Le type Cours/Devoir reste gelé ; CM↔TD↔TP (ou Examen↔Partiel) se change dans la même famille.
+
+- **La grille verte de disponibilité n'est plus contredite à l'enregistrement** — DJO MARC était libre mercredi 11h (planning général vide, cases vertes) mais le formulaire refusait le créneau : la validation relisait un tableau JS périmé, pas la grille affichée.
+
+- **L'enseignant posé sur le planning LMD apparaît enfin à la création d'une séance** — le formulaire d'ajout de séance vidait la liste des enseignants des ECUE, alors que la page Planning LMD les affichait. On reprend l'enseignant principal (et les assignations) de la planification.
+
 ### Améliorations
 
 - **La liste des séances de cours sort de l'ombre et prend l'habillage des autres écrans** (`/esbtp/seances-cours`) — cette page n'était atteignable par aucun menu : il fallait connaître son adresse, ou cliquer un lien depuis un emploi du temps. Elle est pourtant la **seule vue transversale** de toutes les séances, tous emplois du temps confondus, et le seul écran qui signale les conflits d'enseignant, de salle et de classe **déjà enregistrés** — le formulaire de saisie, lui, ne peut prévenir que ceux qu'on s'apprête à créer. Elle entre donc au menu, sous « Emplois du temps », et reçoit l'habillage des autres pages : bandeau bleu avec les quatre chiffres qui comptent, filtres au format des autres écrans, tableau lisible, panneau de conflits qui nomme les deux séances de chaque paire. Aucun filtre ni aucune action ne change : c'est la même page, visible et lisible.
+- **Administrateur d'instance** — rôle visible, sans joker `*`, pour les réglages, comptes, personnel et audit. L'abonnement ADC et le style de bulletin restent à African Digit. Le court-circuit `superAdmin` se coupe par instance (`PERMISSIONS_SUPERADMIN_GATE_BEFORE=false`) sans toucher la Côte d'Ivoire.
+
+- **TPE planifiable sur setting** (`tpe.mode`) — défaut `non_planifiable` (CI inchangé). Une instance peut poser `seance_encadree` : la séance TPE apparaît à l'emploi du temps. Ce n'est toujours pas une heure enseignante payable.
+
+- **La réinscription propose les classes depuis le cursus quitté, et le passage LMD suit le parcours puis la mention** (`/esbtp/reinscription`) — cinq écrans (fiche, création, AJAX, lot, guichet) lisaient chacun une inscription différente : un étudiant passé du BTS à la Licence se voyait proposer une 2ᵉ année de BTS. Ils partent désormais de la dernière année suivie, dossier finalisé. En LMD, la classe suivante se cherche d'abord sur le même parcours, puis la même mention, puis la filière reflet : un Master 1 d'un autre parcours de la même mention n'était jamais proposé.
+
+- **Les grilles de disponibilité s'arrêtent au dernier créneau de la journée réglée** — une journée 8h-22h ouvrait une ligne « 22h » (créneau 22h-23h hors plage). Les grilles lisent les créneaux `[début, fin)` ; les listes de saisie gardent l'heure de fin.
 
 - **La structure LMD parle le vocabulaire de l'université : UFR, écoles, départements, spécialités** (`/esbtp/lmd/parcours-domaines`) — KLASSCI range ses formations en trois rangs, Domaine → Mention → Parcours. Une université organisée en composantes, départements et spécialités a la même structure : il lui manquait les mots. Les trois rangs se nomment désormais par établissement (réglages `lmd.structure_libelle_domaine`, `_mention`, `_parcours`), et chaque élément du premier rang peut dire ce qu'il est (UFR, faculté, école, institut), choisi dans la fenêtre d'ajout ou de modification et affiché dans l'arborescence. L'import de maquette et la mise en place par la ligne de commande acceptent aussi la nature (`domaine.nature`). Défaut : le vocabulaire actuel, sans nature ; rien ne change pour les instances existantes.
 

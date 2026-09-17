@@ -6,6 +6,7 @@ use App\Domain\EmploiTemps\ConflitsDUnCreneau;
 use App\Domain\EmploiTemps\DetectionDesConflits;
 use App\Domain\EmploiTemps\JourDeLaSemaine;
 use App\Enums\TypeSeance;
+use App\Services\LMD\Tpe\TpePlanification;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPEmploiTemps;
@@ -19,6 +20,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class ESBTPSeanceCoursController extends Controller
@@ -269,14 +271,12 @@ class ESBTPSeanceCoursController extends Controller
                 }
             }
 
-            // Préparer les données de disponibilité pour tous les enseignants
-            $prepareAvailabilityMethod = $reflection->getMethod('prepareAvailabilityData');
-            $prepareAvailabilityMethod->setAccessible(true);
-
+            $planning = app(\App\Services\TeacherPlanningService::class);
             foreach ($teachers as $teacher) {
-                $baseAvailability = $prepareAvailabilityMethod->invoke($emploiTempsController, $teacher);
+                $baseAvailability = $planning->getAvailabilityMatrix($teacher)['availability'];
 
-                // Ajouter les séances existantes comme créneaux occupés
+                // Ajouter les séances existantes comme créneaux occupés, sur la
+                // fenêtre de CET emploi du temps et non sur celle d'aujourd'hui.
                 $availabilityData[$teacher->id] = $this->addExistingSessionsToAvailability($baseAvailability, $teacher, null, $emploiTemps);
             }
 
@@ -378,6 +378,9 @@ class ESBTPSeanceCoursController extends Controller
             ? Carbon::parse($fin)->toDateString()
             : ($emploiTempsEdite ? null : now()->toDateString());
 
+        // Résolu une fois, pas à chaque créneau de chaque séance.
+        $debutJournee = app(\App\Services\Planning\PlageHoraireJournee::class)->debut();
+
         $existingSessions = ESBTPSeanceCours::where('teacher_id', $teacher->id)
             ->where('is_active', true)
             ->whereHas('emploiTemps', function ($query) use ($debutJour, $finJour) {
@@ -427,7 +430,7 @@ class ESBTPSeanceCoursController extends Controller
 
             // Marquer comme occupé tous les créneaux de cette séance
             for ($hour = $startHour; $hour < $endHour; $hour++) {
-                $hourIndex = $hour - app(\App\Services\Planning\PlageHoraireJournee::class)->debut();
+                $hourIndex = $hour - $debutJournee;
                 if ($hourIndex >= 0 && $hourIndex < count($baseAvailability[$dayKey])) {
                     $baseAvailability[$dayKey][$hourIndex] = 'occupied';
                 }
@@ -461,14 +464,13 @@ class ESBTPSeanceCoursController extends Controller
             // LMD-aware : derive le `type` (creneau emploi-temps) depuis le
             // `type_seance` UEMOA si la classe est LMD. La directrice LMD ne
             // choisit qu'un seul selecteur (type_seance), le `type` est calcule.
-            // TPE n'est jamais plannable (volume theorique ECUE, pas seance).
+            // TPE : interdit tant que tpe.mode = non_planifiable (défaut CI).
             // ════════════════════════════════════════════════════════════════
             $isLmdClasse = ($emploiTemps->classe->systeme_academique ?? '') === 'LMD';
             if ($isLmdClasse && $request->filled('type_seance')) {
                 $typeSeanceEnum = \App\Enums\TypeSeance::tryFrom($request->input('type_seance'));
                 if ($typeSeanceEnum) {
-                    // TPE n'est jamais plannable (volume theorique ECUE, pas une seance).
-                    if ($typeSeanceEnum === \App\Enums\TypeSeance::TPE) {
+                    if ($typeSeanceEnum === \App\Enums\TypeSeance::TPE && ! TpePlanification::isPlanifiable()) {
                         throw ValidationException::withMessages([
                             'type_seance' => 'Le TPE n\'est pas planifiable en emploi du temps. C\'est une métadonnée de l\'ECUE configurée dans /esbtp/lmd/planning.',
                         ]);
@@ -814,6 +816,11 @@ class ESBTPSeanceCoursController extends Controller
      * ce bloc en occupait la moitié, et il ne décrit rien de ce que la méthode
      * FAIT — il décrit la forme du formulaire.
      *
+     * `$type` est le type STOCKÉ de la séance, pas celui que le formulaire
+     * renvoie : `update()` le réimpose avant de valider, parce qu'une séance ne
+     * change pas de nature en cours de route. La règle de compatibilité
+     * ci-dessous s'y adosse donc sans avoir à refuser un changement de type.
+     *
      * @return array<string, mixed>
      */
     private function reglesDeModification(?string $type): array
@@ -825,6 +832,35 @@ class ESBTPSeanceCoursController extends Controller
                 ESBTPSeanceCours::TYPE_BREAK,
                 ESBTPSeanceCours::TYPE_LUNCH,
             ]),
+            'type_seance' => [
+                'nullable',
+                Rule::enum(TypeSeance::class),
+                function (string $attribute, mixed $value, \Closure $fail) use ($type) {
+                    if ($value === null || $value === '') {
+                        return;
+                    }
+                    // Une récréation ou un déjeuner ne porte pas de type de séance :
+                    // `update()` l'écarte ensuite du jeu validé.
+                    if (in_array($type, [ESBTPSeanceCours::TYPE_BREAK, ESBTPSeanceCours::TYPE_LUNCH], true)) {
+                        return;
+                    }
+                    $enum = $value instanceof TypeSeance
+                        ? $value
+                        : TypeSeance::tryFrom((string) $value);
+                    if ($enum === TypeSeance::TPE) {
+                        if (! TpePlanification::isPlanifiable() || $type !== ESBTPSeanceCours::TYPE_COURSE) {
+                            $fail('Le TPE n\'est pas planifiable en emploi du temps.');
+                        }
+
+                        return;
+                    }
+                    if ($enum && ! $enum->isCompatibleWithTopType($type)) {
+                        $fail($enum->isEvaluation()
+                            ? 'Une séance de type Cours ne peut pas être un examen. Recréez-la en Devoir.'
+                            : 'Une séance de type Devoir doit rester une évaluation (Examen, Partiel…).');
+                    }
+                },
+            ],
             'jour' => 'required|integer|min:1|max:6',
             'heure_debut' => 'required|date_format:H:i',
             'heure_fin' => 'required|date_format:H:i|after:heure_debut',
@@ -976,12 +1012,10 @@ class ESBTPSeanceCoursController extends Controller
                     return $teacher->user->name ?? $teacher->matricule ?? '';
                 })->values();
 
-                $prepareAvailabilityMethod = $reflection->getMethod('prepareAvailabilityData');
-                $prepareAvailabilityMethod->setAccessible(true);
-
+                $planning = app(\App\Services\TeacherPlanningService::class);
                 $availabilityData = [];
                 foreach ($teachers as $teacher) {
-                    $baseAvailability = $prepareAvailabilityMethod->invoke($emploiTempsController, $teacher);
+                    $baseAvailability = $planning->getAvailabilityMatrix($teacher)['availability'];
                     $availabilityData[$teacher->id] = $this->addExistingSessionsToAvailability($baseAvailability, $teacher, $seancesCour->id, $seancesCour->emploiTemps);
                 }
 
@@ -1083,12 +1117,21 @@ class ESBTPSeanceCoursController extends Controller
     public function update(Request $request, ESBTPSeanceCours $seancesCour)
     {
         try {
-            $validated = $request->validate($this->reglesDeModification($request->type));
+            // Une séance ne change pas de nature en cours de route : le type
+            // stocké est réimposé avant validation, et c'est lui qui pilote les
+            // règles conditionnelles.
+            $request->merge(['type' => $seancesCour->type]);
+            $topType = $seancesCour->type;
+
+            $validated = $request->validate($this->reglesDeModification($topType));
             if (! array_key_exists('teacher_id', $validated)) {
                 $validated['teacher_id'] = null;
             }
-            if (($validated['type'] ?? $seancesCour->type) === ESBTPSeanceCours::TYPE_HOMEWORK) {
+            if ($topType === ESBTPSeanceCours::TYPE_HOMEWORK) {
                 $validated['teacher_id'] = null;
+            }
+            if (in_array($topType, [ESBTPSeanceCours::TYPE_BREAK, ESBTPSeanceCours::TYPE_LUNCH], true)) {
+                unset($validated['type_seance']);
             }
 
             $emploiTemps = ESBTPEmploiTemps::findOrFail($seancesCour->emploi_temps_id);

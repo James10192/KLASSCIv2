@@ -117,7 +117,9 @@
     transition: all .2s; border: none;
 }
 .ps-btn.ghost { background: rgba(255,255,255,.12); color: #fff; border: 1px solid rgba(255,255,255,.3); }
-.ps-btn.ghost:hover { background: rgba(255,255,255,.25); color: #fff; }
+    .ps-btn.ghost:hover { background: rgba(255,255,255,.25); color: #fff; }
+    .ps-btn.outline { background: rgba(4,83,203,.08); color: #0453cb; border: 1px solid rgba(4,83,203,.28); }
+    .ps-btn.outline:hover { background: rgba(4,83,203,.14); }
 .ps-btn.success { background: var(--k-success); color: #fff; }
 .ps-btn.success:hover { box-shadow: 0 4px 12px rgba(16,185,129,.4); }
 .ps-btn.danger { background: var(--k-danger); color: #fff; }
@@ -355,6 +357,13 @@
                     <i class="fas fa-edit"></i> Modifier
                 </a>
                 @endcan
+                @can('paiements.reventiler')
+                @if(! $paiement->isAvoir())
+                <a href="{{ route('esbtp.paiements.ventilation.edit', $paiement->id) }}" class="ps-btn ghost" title="Corriger l'imputation sans changer le montant ni le numéro de reçu">
+                    <i class="fas fa-sliders-h"></i> Réimputer sur d'autres frais
+                </a>
+                @endif
+                @endcan
                 @can('paiements.delete')
                 <button type="button" class="ps-btn danger" data-bs-toggle="modal" data-bs-target="#modalSupprimerPaiement" title="Supprimer ce versement">
                     <i class="fas fa-trash"></i>
@@ -589,9 +598,9 @@
             </div>
             @if($psPeutReventiler)
                 <a href="{{ route('esbtp.paiements.ventilation.edit', $paiement->id) }}"
-                   class="ps-btn ghost"
+                   class="ps-btn outline"
                    title="Corriger l'imputation sans changer le montant ni le numéro de reçu">
-                    <i class="fas fa-sliders-h"></i> Corriger
+                    <i class="fas fa-sliders-h"></i> Réimputer sur d'autres frais
                 </a>
             @endif
         </div>

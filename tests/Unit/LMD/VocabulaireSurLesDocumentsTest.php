@@ -53,16 +53,14 @@ class VocabulaireSurLesDocumentsTest extends TestCase
     public function test_le_bulletin_suit_le_vocabulaire_sauf_libelle_personnalise(): void
     {
         $service = (new \ReflectionClass(LMDBulletinService::class))->newInstanceWithoutConstructor();
-        $libelle = new \ReflectionMethod($service, 'libelleDeRang');
+        $libelle = new \ReflectionMethod($service, 'libelleOuVocabulaire');
         $reglages = new \ReflectionProperty($service, 'settings');
 
-        // Valeur d'usine : le vocabulaire de l'ecole prend le relais.
-        $reglages->setValue($service, ['lmd_bulletin_label_mention' => 'MENTION']);
-        $this->assertSame('DÉPARTEMENT', $libelle->invoke($service, 'lmd_bulletin_label_mention', 'MENTION', 'Département'));
+        $reglages->setValue($service, ['lmd_bulletin_label_mention' => '']);
+        $this->assertSame('DÉPARTEMENT', $libelle->invoke($service, 'lmd_bulletin_label_mention', 'Département'));
 
-        // Libelle personnalise : il l'emporte.
         $reglages->setValue($service, ['lmd_bulletin_label_mention' => 'FILIÈRE DE FORMATION']);
-        $this->assertSame('FILIÈRE DE FORMATION', $libelle->invoke($service, 'lmd_bulletin_label_mention', 'MENTION', 'Département'));
+        $this->assertSame('FILIÈRE DE FORMATION', $libelle->invoke($service, 'lmd_bulletin_label_mention', 'Département'));
     }
 
     private function rendre(string $gabarit, array $scopeEnPlus): string

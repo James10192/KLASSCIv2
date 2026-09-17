@@ -6,6 +6,7 @@ use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPMatiere;
 use App\Models\ESBTPPlanificationAcademique;
+use App\Models\ESBTPTeacher;
 use App\Services\VolumeBudgetService;
 use Illuminate\Support\Collection;
 
@@ -110,15 +111,18 @@ class MatiereTreeBuilder
             ->where('niveau_etude_id', $classe->niveau_etude_id)
             ->whereIn('matiere_id', $matiereIds)
             ->when($semestre !== null, fn ($q) => $q->where('semestre', $semestre))
+            ->with(['teachers.user', 'teachers.availabilities'])
             ->orderBy('semestre')
             ->get()
             ->groupBy('matiere_id');
+
+        $teachersByUserId = $this->teachersParUserId($planifs->flatten(1));
 
         // 4. Construire la structure $lmdMatieres
         //    Si semestre fourni : ne garder que les ECUE qui ont au moins une planif a ce semestre.
         return $ecuesByMatiereId
             ->filter(fn ($ecue) => $semestre === null || $planifs->has($ecue->id))
-            ->map(function ($ecue) use ($planifs) {
+            ->map(function ($ecue) use ($planifs, $teachersByUserId) {
             $planifsEcue = $planifs->get($ecue->id, collect());
             $first = $planifsEcue->first();
 
@@ -132,6 +136,8 @@ class MatiereTreeBuilder
                 'td' => $planifsEcue->sum('volume_horaire_td'),
                 'tp' => $planifsEcue->sum('volume_horaire_tp'),
                 'tpe' => $planifsEcue->sum('volume_horaire_tpe'),
+                'enseignants' => $this->enseignantsDesPlanifs($planifsEcue, $teachersByUserId),
+                'planification_id' => $first?->id,
             ];
         })->values();
     }
@@ -142,31 +148,65 @@ class MatiereTreeBuilder
      */
     private function loadFromFiliereNiveau(ESBTPClasse $classe, ?int $semestre = null): Collection
     {
-        return ESBTPPlanificationAcademique::query()
+        $planifs = ESBTPPlanificationAcademique::query()
             ->where('filiere_id', $classe->filiere_id)
             ->where('niveau_etude_id', $classe->niveau_etude_id)
             ->whereNotNull('matiere_id')
             ->when($semestre !== null, fn ($q) => $q->where('semestre', $semestre))
-            ->with(['matiere.uniteEnseignement'])
+            ->with(['matiere.uniteEnseignement', 'teachers.user', 'teachers.availabilities'])
             ->orderBy('semestre')
             ->get()
-            ->groupBy('matiere_id')
-            ->map(function ($planifs) {
-                $first = $planifs->first();
+            ->groupBy('matiere_id');
+
+        $teachersByUserId = $this->teachersParUserId($planifs->flatten(1));
+
+        return $planifs
+            ->map(function ($planifsMatiere) use ($teachersByUserId) {
+                $first = $planifsMatiere->first();
                 return [
                     'matiere' => $first->matiere,
-                    'volume_horaire_total' => $planifs->sum('volume_horaire_total'),
+                    'volume_horaire_total' => $planifsMatiere->sum('volume_horaire_total'),
                     'coefficient' => (float) ($first->coefficient ?? 0),
                     'credits_ects' => (int) ($first->credits_ects ?? 0),
-                    'semestres' => $planifs->pluck('semestre')->unique()->sort()->values()->all(),
-                    'cm' => $planifs->sum('volume_horaire_cm'),
-                    'td' => $planifs->sum('volume_horaire_td'),
-                    'tp' => $planifs->sum('volume_horaire_tp'),
-                    'tpe' => $planifs->sum('volume_horaire_tpe'),
+                    'semestres' => $planifsMatiere->pluck('semestre')->unique()->sort()->values()->all(),
+                    'cm' => $planifsMatiere->sum('volume_horaire_cm'),
+                    'td' => $planifsMatiere->sum('volume_horaire_td'),
+                    'tp' => $planifsMatiere->sum('volume_horaire_tp'),
+                    'tpe' => $planifsMatiere->sum('volume_horaire_tpe'),
+                    'enseignants' => $this->enseignantsDesPlanifs($planifsMatiere, $teachersByUserId),
+                    'planification_id' => $first?->id,
                 ];
             })
             ->filter(fn ($row) => $row['matiere'] !== null)
             ->values();
+    }
+
+    private function teachersParUserId(Collection $planifs): Collection
+    {
+        $userIds = $planifs->pluck('enseignant_principal_id')->filter()->unique()->values();
+        if ($userIds->isEmpty()) {
+            return collect();
+        }
+
+        return ESBTPTeacher::with(['user', 'availabilities'])
+            ->whereIn('user_id', $userIds)
+            ->get()
+            ->keyBy('user_id');
+    }
+
+    private function enseignantsDesPlanifs(Collection $planifs, Collection $teachersByUserId): Collection
+    {
+        $enseignants = collect();
+        foreach ($planifs as $planif) {
+            if ($planif->enseignant_principal_id && ($teacher = $teachersByUserId->get($planif->enseignant_principal_id))) {
+                $enseignants->push($teacher);
+            }
+            foreach ($planif->teachers as $teacher) {
+                $enseignants->push($teacher);
+            }
+        }
+
+        return $enseignants->unique('id')->values();
     }
 
     /**
@@ -200,8 +240,9 @@ class MatiereTreeBuilder
                 'heures_restantes' => $totalPlanifie,
                 'heures_restantes_formatted' => $fmt($totalPlanifie),
                 'pourcentage_utilise' => 0,
-                'enseignant_affiche' => null,
-                'enseignants_selectables' => collect(),
+                'enseignant_affiche' => ($row['enseignants'] ?? collect())->first()?->user,
+                'enseignants_selectables' => $row['enseignants'] ?? collect(),
+                'planification_id' => $row['planification_id'] ?? null,
             ];
         });
 
@@ -272,8 +313,9 @@ class MatiereTreeBuilder
                 'heures_restantes' => $heuresRestantes,
                 'heures_restantes_formatted' => $fmt($heuresRestantes),
                 'pourcentage_utilise' => $pct,
-                'enseignant_affiche' => null,
-                'enseignants_selectables' => collect(),
+                'enseignant_affiche' => ($row['enseignants'] ?? collect())->first()?->user,
+                'enseignants_selectables' => $row['enseignants'] ?? collect(),
+                'planification_id' => $row['planification_id'] ?? null,
                 // PR17.4 : expose budget CM/TD/TP detail pour planification-section component
                 'volume_budget' => [
                     'cm' => [

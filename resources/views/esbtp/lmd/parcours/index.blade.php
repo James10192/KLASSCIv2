@@ -372,6 +372,7 @@
 @endpush
 
 @section('page_title', 'Parcours LMD')
+@inject('vocabulaire', 'App\Services\LMD\VocabulaireStructure')
 
 @section('content')
 <div class="lp-page">
@@ -381,9 +382,6 @@
         $totalDomaines = $domaines->count();
         $totalMentions = $domaines->sum(fn($d) => $d->mentions->count());
         $totalParcours = $domaines->sum(fn($d) => $d->mentions->sum(fn($m) => $m->parcours->count()));
-        // Le nom des trois rangs est un reglage d'etablissement (Domaine, ou
-        // Composante, Faculte...) : cette page ne l'ecrit plus en dur.
-        $vocabulaire = app(\App\Services\LMD\VocabulaireStructure::class);
         $rang = $vocabulaire->tous();
         $rangs = array_map(fn ($l) => $vocabulaire->pluriel($l), $rang);
         $naturesComposante = \App\Enums\NatureComposante::selectOptions();

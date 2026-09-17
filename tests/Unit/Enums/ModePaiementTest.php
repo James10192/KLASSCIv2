@@ -79,6 +79,7 @@ class ModePaiementTest extends TestCase
         $this->assertSame(ModePaiement::MTN_MONEY, ModePaiement::fromLegacy('MTN MoMo'));
         $this->assertSame(ModePaiement::MOOV_MONEY, ModePaiement::fromLegacy('Moov'));
         $this->assertSame(ModePaiement::MOOV_MONEY, ModePaiement::fromLegacy('flooz'));
+        $this->assertSame(ModePaiement::CELTIIS_CASH, ModePaiement::fromLegacy('Celtiis Cash'));
         $this->assertSame(ModePaiement::MOBILE_MONEY, ModePaiement::fromLegacy('mobile générique'));
         $this->assertSame(ModePaiement::VIREMENT, ModePaiement::fromLegacy('virement bank'));
         $this->assertSame(ModePaiement::CHEQUE, ModePaiement::fromLegacy('chèque'));

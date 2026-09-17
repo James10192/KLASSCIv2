@@ -233,9 +233,8 @@
         // Afficher le sous-type type_seance (CM/TD/TP/EXAMEN/...) des qu'il est defini,
         // que la classe soit BTS ou LMD. Fallback sur le type generique (Cours/Devoir/
         // Récréation/Pause) seulement si type_seance est null (récréation, pause, ancien data).
-        $typeSeanceValue = $seance->type_seance
-            ? ($seance->type_seance instanceof \App\Enums\TypeSeance ? $seance->type_seance->value : (string) $seance->type_seance)
-            : null;
+        $typeSeanceValue = \App\Enums\TypeSeance::codeOf($seance->type_seance);
+        $typeSeanceEnum = $typeSeanceValue ? \App\Enums\TypeSeance::tryFrom($typeSeanceValue) : null;
 
         $matiere = $seance->matiere->name ?? 'Matière';
         $enseignant = $seance->enseignant_nom ?? optional(optional($seance->teacher)->user)->name;
@@ -261,6 +260,9 @@
             // LMD : affiche type_seance UEMOA (CM/TD/TP/EXAMEN/PROJET/AUTRE) en priorite.
             // BTS : fallback type generique (Cours/Devoir/Récréation/Pause).
             'typeLabel' => $typeSeanceValue ?: strtoupper($labelMap[$type] ?? 'Séance'),
+            'typeSeanceValue' => $typeSeanceValue,
+            'typeSeanceStyle' => $typeSeanceEnum?->badgeInlineStyle(),
+            'typeSeanceIcon' => $typeSeanceEnum?->badgeIcon(),
             'background' => $backgroundColor,
             'textColor' => $textColor,
             'matiere' => $matiere,
@@ -369,6 +371,19 @@
                 letter-spacing: 0.1em;
                 font-weight: 600;
                 opacity: 0.75;
+                text-transform: uppercase;
+            }
+            .timeline-grid .timeline-session-type-chip {
+                align-self: flex-start;
+                display: inline-flex;
+                align-items: center;
+                gap: .25rem;
+                font-size: 0.65rem;
+                font-weight: 700;
+                letter-spacing: 0.04em;
+                padding: .15rem .45rem;
+                border-radius: 6px;
+                line-height: 1.2;
                 text-transform: uppercase;
             }
             .timeline-grid .timeline-session-subject {
@@ -551,7 +566,14 @@
                      data-seance-id="{{ $session['id'] }}"
                      data-seance-matiere="{{ $session['matiere'] }}"
                      style="position: relative; grid-column: {{ $columnIndex }}; grid-row: {{ $session['gridRowStart'] }} / {{ $session['gridRowEnd'] }}; background: {{ $session['background'] }}; color: {{ $session['textColor'] }}; justify-self: center; width: 95%; transform: translateY(12px);">
-                    <div class="timeline-session-type">{{ $session['typeLabel'] }}</div>
+                    @if(!empty($session['typeSeanceValue']))
+                        <span class="timeline-session-type-chip" style="{{ $session['typeSeanceStyle'] }}">
+                            @if(!empty($session['typeSeanceIcon']))<i class="fas {{ $session['typeSeanceIcon'] }}"></i>@endif
+                            {{ $session['typeSeanceValue'] }}
+                        </span>
+                    @else
+                        <div class="timeline-session-type">{{ $session['typeLabel'] }}</div>
+                    @endif
                     <div class="timeline-session-subject">{{ $session['matiere'] }}</div>
                     <div class="timeline-session-bottom">
                         @if($session['enseignant'])
@@ -645,8 +667,8 @@
             @foreach($timelineSessions[$daySlug] ?? [] as $session)
                 <div style="grid-column: {{ $columnIndex }}; grid-row: {{ $session['gridRowStart'] }} / {{ $session['gridRowEnd'] }}; background: {{ $session['background'] }}; color: {{ $session['textColor'] }}; margin: 0 2px; border-radius: 5px; padding: 4px; display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.15);">
                     {{-- Type en haut (petit) --}}
-                    <div style="font-size: 0.5rem; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; opacity: 0.8; text-align: center;">
-                        {{ $session['typeLabel'] }}
+                    <div style="font-size: 0.5rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; text-align: center; {{ $session['typeSeanceStyle'] ?? '' }} border-radius: 4px; padding: 1px 4px; align-self: center;">
+                        {{ $session['typeSeanceValue'] ?: $session['typeLabel'] }}
                     </div>
 
                     {{-- Matière au centre (GRAND titre) --}}

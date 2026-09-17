@@ -85,6 +85,9 @@ class AppServiceProvider extends ServiceProvider
         // Le vocabulaire de la structure LMD est lu par des dizaines de libelles
         // dans une meme page : une instance par requete.
         $this->app->scoped(\App\Services\LMD\VocabulaireStructure::class);
+        // Bornes de la journee de cours, lues par des grilles qui bouclent heure
+        // par heure et par enseignant : une lecture des reglages par requete.
+        $this->app->scoped(\App\Services\Planning\PlageHoraireJournee::class);
 
         // Resolveurs du parcours BTS : une seule instance par requete, sinon
         // leur memoire ne sert a rien. Le compteur de cohorte balaie toutes les
@@ -194,6 +197,8 @@ class AppServiceProvider extends ServiceProvider
             "<?php echo e(app(\\App\\Services\\LMD\\VocabulaireStructure::class)->rang({$cle})); ?>");
         \Illuminate\Support\Facades\Blade::directive('rangs', fn (string $cle) =>
             "<?php echo e(app(\\App\\Services\\LMD\\VocabulaireStructure::class)->rangs({$cle})); ?>");
+        \Illuminate\Support\Facades\Blade::directive('natureDe', fn (string $domaine) =>
+            "<?php echo e(app(\\App\\Services\\LMD\\VocabulaireStructure::class)->natureDe({$domaine})); ?>");
 
         // Observers
         ESBTPNote::observe(ESBTPNoteObserver::class);

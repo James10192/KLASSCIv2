@@ -6,7 +6,6 @@ use App\Models\ESBTPFiliere;
 use App\Models\ESBTPMatiere;
 use App\Models\ESBTPMatiereFilierNiveau;
 use App\Models\ESBTPNiveauEtude;
-use App\Services\ClasseManagementService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -40,7 +39,7 @@ class ESBTPMatiereClassificationController extends Controller
 
         // Niveaux BTS uniquement (les niveaux LMD gèrent leurs matières via MatiereTreeBuilder).
         $niveaux = ESBTPNiveauEtude::query()
-            ->whereNotIn('type', ClasseManagementService::LMD_TYPES)
+            ->whereNotIn('type', ESBTPNiveauEtude::CYCLES_LMD)
             ->orderBy('name')
             ->get(['id', 'name', 'code', 'type']);
 

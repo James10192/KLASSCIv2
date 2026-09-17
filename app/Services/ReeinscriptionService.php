@@ -9,20 +9,22 @@ use App\Models\ESBTPNote;
 use App\Models\ESBTPMatiere;
 use App\Models\ESBTPFraisSubscription;
 use App\Models\ESBTPInscription;
-use App\Models\ESBTPNiveauEtude;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use App\Services\Inscriptions\NormalisationTypeInscription;
 
 class ReeinscriptionService
 {
+    public function __construct(
+        private readonly \App\Services\Reinscription\ClassesDeReinscription $classes,
+    ) {}
+
     public function analyserSituationEtudiant($etudiantId, $anneeAcademique)
     {
         $etudiant = ESBTPEtudiant::findOrFail($etudiantId);
 
-        // La regle de passage se choisit sur la classe quittee, pas sur une
-        // inscription active quelconque (cf. proposerNouvellesClasses).
-        $classe = $this->inscriptionQuittee((int) $etudiantId)?->classe;
+        // La regle de passage se choisit sur la classe quittee (ClassesDeReinscription).
+        $classe = $this->classes->inscriptionQuittee((int) $etudiantId)?->classe;
 
         if (!$classe) {
             throw new \Exception("Étudiant non assigné à une classe");
@@ -339,57 +341,6 @@ class ReeinscriptionService
     }
 
     /**
-     * Classes vers lesquelles reinscrire un etudiant, a partir de la classe
-     * qu'il QUITTE.
-     *
-     * Cette classe se lisait sur `$etudiant->classe` : une inscription active
-     * quelconque, sans ordre. Un etudiant passe du BTS a la Licence garde son
-     * ancienne inscription active, et c'est elle qui sortait — une Licence 3
-     * se voyait proposer une 2e annee de BTS, que la reinscription groupee
-     * preselectionnait. L'appelant qui connait deja l'inscription quittee la
-     * passe ; a defaut, on prend celle de la derniere annee suivie.
-     */
-    public function proposerNouvellesClasses($etudiantId, $decision, ?ESBTPClasse $classeQuittee = null)
-    {
-        $classeQuittee ??= $this->inscriptionQuittee((int) $etudiantId)?->classe;
-
-        if (! $classeQuittee) {
-            return [];
-        }
-
-        $classeQuittee->loadMissing(['niveau', 'filiere']);
-
-        switch ($decision) {
-            case 'passage':
-                return $this->getClassesNiveauSuperieut($classeQuittee);
-            case 'redoublement':
-                return $this->getClassesMemeNiveau($classeQuittee);
-            case 'rattrapage':
-                return [$classeQuittee]; // Reste dans la même classe
-        }
-
-        return [];
-    }
-
-    /**
-     * L'inscription active de la derniere annee suivie par l'etudiant : celle
-     * dont une reinscription part.
-     */
-    public function inscriptionQuittee(int $etudiantId): ?ESBTPInscription
-    {
-        return ESBTPInscription::query()
-            ->select('esbtp_inscriptions.*')
-            ->join('esbtp_annee_universitaires as annee', 'annee.id', '=', 'esbtp_inscriptions.annee_universitaire_id')
-            ->where('esbtp_inscriptions.etudiant_id', $etudiantId)
-            ->where('esbtp_inscriptions.status', 'active')
-            ->whereNotNull('esbtp_inscriptions.classe_id')
-            ->orderByDesc('annee.start_date')
-            ->orderByDesc('esbtp_inscriptions.id')
-            ->with(['classe.niveau', 'classe.filiere', 'anneeUniversitaire'])
-            ->first();
-    }
-
-    /**
      * Effectue une réinscription (1 étudiant).
      *
      * @param bool $skipTransaction Si true, ne gère pas la transaction (laisse au caller, ex: batch)
@@ -648,70 +599,6 @@ class ReeinscriptionService
         }
 
         return 'redoublement';
-    }
-
-    private function getClassesNiveauSuperieut($classeActuelle)
-    {
-        $niveauActuel = $classeActuelle->niveau;
-        if (!$niveauActuel) {
-            return collect();
-        }
-
-        $yearActuel = $niveauActuel->year;
-        $typeActuel = $niveauActuel->type;
-        $filiereId = $classeActuelle->filiere_id;
-
-        // En LMD l'annee est comptee en continu d'un cycle a l'autre : l'annee
-        // qui suit la Licence 3 (annee 3) est le Master 1 (annee 4), celle qui
-        // suit le Master 2 le Doctorat. Le passage se cherche donc sur l'annee
-        // suivante, quel que soit le cycle. Le repli « premiere annee d'un autre
-        // type » ci-dessous n'a de sens que hors LMD : applique a une Licence 3,
-        // il proposerait une premiere annee de BTS.
-        if ($niveauActuel->estUnCycleLmd()) {
-            $cyclesLmd = array_keys(ESBTPNiveauEtude::ANNEES_PAR_CYCLE_LMD);
-
-            return ESBTPClasse::where('filiere_id', $filiereId)
-                ->where('is_active', 1)
-                ->whereHas('niveau', function ($query) use ($yearActuel, $cyclesLmd) {
-                    $query->where('year', $yearActuel + 1)
-                          ->whereIn('type', $cyclesLmd);
-                })
-                ->with(['niveau', 'filiere'])
-                ->get();
-        }
-
-        // Passage normal : même type de formation, année suivante (year + 1)
-        $classesNiveauSuivant = ESBTPClasse::where('filiere_id', $filiereId)
-            ->where('is_active', 1)
-            ->whereHas('niveau', function($query) use ($yearActuel, $typeActuel) {
-                $query->where('year', $yearActuel + 1)
-                      ->where('type', $typeActuel);
-            })
-            ->with(['niveau', 'filiere'])
-            ->get();
-
-        if ($classesNiveauSuivant->isNotEmpty()) {
-            return $classesNiveauSuivant;
-        }
-
-        // Dernière année du type actuel : proposer la 1ère année de tous les autres types
-        // disponibles pour cette même filière
-        return ESBTPClasse::where('filiere_id', $filiereId)
-            ->where('is_active', 1)
-            ->whereHas('niveau', function($query) use ($typeActuel) {
-                $query->where('year', 1)
-                      ->where('type', '!=', $typeActuel);
-            })
-            ->with(['niveau', 'filiere'])
-            ->get();
-    }
-
-    private function getClassesMemeNiveau($classeActuelle)
-    {
-        return ESBTPClasse::where('niveau_etude_id', $classeActuelle->niveau_etude_id)
-            ->where('filiere_id', $classeActuelle->filiere_id)
-            ->with(['niveau', 'filiere'])
-            ->get();
     }
 
     private function sauvegarderHistoriqueComplet($etudiant, $decision, $observations, $nouvelleInscription, $generatedFees)
