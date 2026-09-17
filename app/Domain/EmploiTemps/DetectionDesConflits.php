@@ -12,7 +12,9 @@ use Illuminate\Support\Collection;
  * morceau de raisonnement d'un fichier qui en compte peu, et elle n'y était pas
  * vérifiable — privée, dans une classe de plus de mille lignes, donc jamais
  * prouvée autrement que par un commentaire. Ici, elle ne touche ni la base ni le
- * conteneur, et se rejoue en trois assertions.
+ * conteneur, et elle EST prouvée : `tests/Unit/EmploiTemps/DetectionDesConflitsTest.php`.
+ * Cette phrase a d'abord annoncé qu'elle « se rejouait en trois assertions »
+ * alors qu'aucun test n'existait — le même défaut que celui qu'elle corrigeait.
  *
  * ## Ce que ce détecteur sait, et ce qu'il ignore
  *
@@ -48,7 +50,7 @@ final class DetectionDesConflits
 {
     /**
      * @param  iterable<object>  $seances  séances actives, avec `emploiTemps.classe` et `teacher.user` chargés
-     * @return list<array{type: string, nom: string, jour: mixed, heure_debut: mixed, heure_fin: mixed, seance_id: mixed, annee_universitaire_id: mixed}>
+     * @return list<array{type: string, nom: string, jour: mixed, heure_debut: ?string, heure_fin: ?string, seance_id: mixed, annee_universitaire_id: mixed}>
      */
     public function depuis(iterable $seances): array
     {
@@ -151,15 +153,30 @@ final class DetectionDesConflits
             ?? ('Enseignant #' . $seance->teacher_id);
     }
 
-    /** @return array{type: string, nom: string, jour: mixed, heure_debut: mixed, heure_fin: mixed, seance_id: mixed, annee_universitaire_id: mixed} */
+    /**
+     * Une ligne de conflit, prête à être affichée.
+     *
+     * Les heures sont mises en forme ICI, et non à l'affichage. Sur
+     * `ESBTPSeanceCours`, `heure_debut` rend un `Carbon` daté du jour (piège #14
+     * de `klassci-debugging-discipline.md`) : transporter l'objet jusqu'au
+     * bandeau faisait afficher « 2026-09-17 08:00:00 à 2026-09-17 10:00:00 » à
+     * la place de « 08:00 à 10:00 ». Le tamis de la rule ne pouvait pas le voir,
+     * son motif cherchant `->heure_debut` quand la vue lit `$conflit['heure_debut']`.
+     *
+     * Formater à la source plutôt qu'à l'affichage rend aussi la clé de
+     * `dedupliquer()` explicite : elle reposait jusqu'ici sur le `__toString()`
+     * d'un `Carbon`.
+     *
+     * @return array{type: string, nom: string, jour: mixed, heure_debut: ?string, heure_fin: ?string, seance_id: mixed, annee_universitaire_id: mixed}
+     */
     private function conflit(string $type, string $nom, object $seance): array
     {
         return [
             'type' => $type,
             'nom' => $nom,
             'jour' => $seance->jour,
-            'heure_debut' => $seance->heure_debut,
-            'heure_fin' => $seance->heure_fin,
+            'heure_debut' => optional($seance->heure_debut)->format('H:i'),
+            'heure_fin' => optional($seance->heure_fin)->format('H:i'),
             'seance_id' => $seance->id,
             // Portée pour la déduplication ci-dessous, pas pour l'affichage.
             'annee_universitaire_id' => $seance->annee_universitaire_id,

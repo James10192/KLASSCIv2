@@ -310,12 +310,18 @@ rien dans un sens comme dans l'autre. **Avant de corriger un site signalé, ouvr
 lit** — le tableau ci-dessous porte une colonne pour ça, et son absence est exactement ce qui a
 permis les deux casses.
 
-**Neuf sites vivants** sont corrigés à ce jour, plus un repli mort retiré. Tous les neuf lisent un
+**Dix sites vivants** sont corrigés à ce jour, plus un repli mort retiré. Tous lisent un
 `ESBTPSeanceCours` ; aucun autre modèle n'est concerné.
+
+**Ce chiffre a été faux quatre fois de suite** — cinq, puis six, puis neuf, puis dix — et chaque
+version a été publiée comme définitive. Lisez-le donc pour ce qu'il est : le nombre de sites trouvés
+à ce jour, pas le nombre de sites existants. Le dixième a été trouvé par une revue adverse, dans le
+fichier même que la version précédente de ce tableau déclarait couvert « (×2) ».
 
 | fichier | ce que l'utilisateur voyait | modèle lu | trouvé par |
 |---|---|---|---|
 | `resources/views/esbtp/seances-cours/index.blade.php` (×2) | colonne horaire, confirmation de suppression | `ESBTPSeanceCours` | lecture |
+| `app/Domain/EmploiTemps/DetectionDesConflits.php` → bandeau de `seances-cours/index` | **« — 2026-09-17 08:00:00 à 2026-09-17 10:00:00 » dans le panneau de conflits** | `ESBTPSeanceCours` | revue adverse |
 | `app/Http/Controllers/ESBTPAttendanceController.php` (×2) | **« Heure: 2026- » dans l'avis d'absence au parent**, export CSV | `ESBTPSeanceCours` (via `->seanceCours`) | lecture |
 | `app/Http/Controllers/ESBTPPlanningGeneralController.php` | `"horaire"` du planning général | `ESBTPSeanceCours` | lecture |
 | `resources/views/teacher/attendance.blade.php` | **« 2026- - 2026- » sur l'écran d'appel** | `ESBTPSeanceCours` | 1ᵉʳ contrôle |
@@ -346,6 +352,13 @@ Ce qu'il **ne voit pas**, et qu'il faut chercher à l'œil : une heure passée e
 fonction qui la met en texte plus loin, une mise en forme construite ailleurs que sur la ligne, un
 appel via une variable intermédiaire. Et il exclut toute ligne portant `format(`, donc une ligne
 qui affiche **deux** heures dont une seule est formatée lui échappe.
+
+**L'angle mort a une forme reconnaissable, et c'est par elle qu'est arrivé le dixième site** : un
+`Carbon` rangé dans un tableau, puis affiché plus loin par sa clé. La vue écrit
+`{{ $conflit['heure_debut'] }}` — aucun `->heure_debut` sur la ligne, donc le motif ne peut pas
+mordre, et le tableau était pourtant rempli d'objets `Carbon` bruts. D'où la consigne qui vaut
+mieux que le tamis : **une heure se met en forme là où elle est mise dans un tableau d'affichage,
+pas là où on l'affiche.** Un tableau destiné à l'écran ne transporte pas de `Carbon`.
 
 **Il rend aujourd'hui trois lignes, et les trois sont des faux positifs. Laissez-les.** C'est
 l'état normal de ce contrôle, pas un reste à traiter :

@@ -86,34 +86,24 @@
 
 .sdc-filters { display: flex; flex-wrap: wrap; gap: .75rem; align-items: flex-end; }
 .sdc-field { display: flex; flex-direction: column; gap: .3rem; flex: 1 1 200px; min-width: 0; }
-/* Le menu d'un sélecteur premium (composant x-au-select) est épinglé aux bords de son déclencheur
-   (`left:8px; right:8px`) et le libellé d'une option est coupé à l'ellipse.
-   Sur une colonne de filtre étroite, on lisait « Semestre 3 — 2026-2027 (… » :
-   le nom de la classe, c'est-à-dire la seule chose qui distingue deux emplois
-   du temps, tombait — à 1440 px comme à 400 px.
+/* Le libellé d'une option de sélecteur premium est coupé à l'ellipse, et le menu
+   fait la largeur de son déclencheur. Sur une colonne de filtre étroite, on
+   lisait « Semestre 3 — 2026-2027 (… » : le nom de la classe, c'est-à-dire la
+   seule chose qui distingue deux emplois du temps, tombait.
    L'écran de séparation des devoirs a résolu le même piège en RACCOURCISSANT
-   ses libellés ; ici c'est impossible, ce sont des données.
+   ses libellés ; ici c'est impossible, ce sont des données. Le libellé passe
+   donc à la ligne au lieu d'être coupé — l'option grandit en hauteur, ce qui ne
+   coûte rien dans un menu déroulant.
 
-   PORTÉE EXACTE, mesurée et non déduite : ces trois lignes n'agissent que là où
-   le composant laisse le menu en `position:absolute`, soit le cas large. Mesuré
-   à 1440 px : aucun style en ligne sur le menu, largeur calculée 396,7 px,
-   `max-width` 480 px — la règle porte. À 400 px, le menu bascule vers le haut et
-   le composant lui écrit sa taille EN LIGNE (`width:270px;min-width:270px;
-   max-width:270px`) : un style en ligne bat une feuille, donc ces trois lignes
-   sont alors sans effet. Ce n'est pas un défaut, c'est le partage : en étroit,
-   c'est le retour à la ligne des libellés (règle suivante) qui fait le travail,
-   et lui reste actif puisqu'il porte sur le libellé, pas sur la boîte du menu. */
-.sdc-field .au-select-menu {
-    right: auto;
-    min-width: calc(100% - 16px);
-    width: max-content;
-    max-width: min(30rem, calc(100vw - 2.5rem));
-}
-/* Sur un téléphone, aucune largeur ne suffit : « Semestre 3 — 2026-2027
-   (LICENCE 2 DROIT PRIVE A) » fait quarante-huit caractères pour 400 px de
-   fenêtre. Le libellé passe donc à la ligne au lieu d'être coupé — l'option
-   grandit en hauteur, ce qui ne coûte rien dans un menu déroulant, et le nom
-   de la classe reste lisible au moment de choisir. */
+   N'ESSAYEZ PAS D'ÉLARGIR LE MENU PAR UNE FEUILLE DE STYLE. Ce fichier a porté
+   dix lignes le faisant (`width: max-content`, `max-width`, `min-width`), plus
+   un commentaire certifiant les avoir mesurées actives. Elles étaient mortes :
+   `ouvrir()` appelle `positionMenu(true)` SANS condition, et cette méthode écrit
+   toujours `width` / `min-width` / `max-width` en ligne via `:style="menuStyle"`
+   — un style en ligne bat une feuille sans `!important`. La « mesure » de 396,7 px
+   invoquée pour les défendre était en réalité la largeur du déclencheur, donc la
+   preuve qu'elles ne portaient pas. Élargir le menu se règle dans `positionMenu()`,
+   pas ici. */
 .sdc-field .au-select-option-label { white-space: normal; overflow: visible; text-overflow: clip; }
 .sdc-field-label {
     font-size: .72rem; font-weight: 700; color: #64748b;

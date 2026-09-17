@@ -341,64 +341,12 @@ class ESBTPSeanceCoursController extends Controller
      */
     private function addExistingSessionsToAvailability($baseAvailability, $teacher, $ignoreSessionId = null, ?ESBTPEmploiTemps $emploiTempsEdite = null)
     {
-        // La grille des disponibilités montrait les séances des emplois du temps
-        // en vigueur AUJOURD'HUI. En préparant le planning du semestre suivant,
-        // elle déclarait donc l'enseignant libre sur des créneaux qu'il a déjà —
-        // et l'enregistrement, lui, refuse maintenant le conflit. La grille et
-        // le garde auraient dit deux choses contraires.
-        //
-        // La bonne fenêtre n'est pas une date mais un CHEVAUCHEMENT : cette
-        // grille est hebdomadaire et vaut pour toute la période de l'emploi du
-        // temps qu'on édite. Une séance compte donc si la période de SON emploi
-        // du temps recoupe celle-ci. Une fin non renseignée vaut « sans terme »
-        // des deux côtés.
-        //
-        // Sans emploi du temps de référence, on retombe sur « en vigueur
-        // aujourd'hui », le comportement d'avant.
-        //
-        // Aucun appelant n'y tombe aujourd'hui, et ce sont les APPELANTS qui le
-        // disent, pas le schéma : `create()` obtient son emploi du temps par
-        // `findOrFail()`, et `edit()` sort en `back()` quand la relation est
-        // nulle. Deux affirmations plus fortes ont figuré ici et étaient
-        // fausses — « atteignable par la suppression douce » (la relation porte
-        // `->withTrashed()`), puis « `emploi_temps_id` est NOT NULL depuis sa
-        // migration » (une seconde migration le recrée `nullable()` si la
-        // colonne manque, donc la nullité dépend de l'instance).
-        //
-        // Il reste écrit parce qu'un paramètre nullable finit par recevoir `null`,
-        // et parce qu'il coûte une ligne. D'où la fenêtre `[aujourd'hui,
-        // aujourd'hui]` et non `[aujourd'hui, ∞)` : laisser la borne droite
-        // ouverte élargirait le repli aux emplois du temps À VENIR, que l'ancien
-        // `date_debut <= today` excluait. Un repli rend le comportement d'avant,
-        // pas un comportement voisin.
-        $debut = $emploiTempsEdite?->date_debut;
-        $fin = $emploiTempsEdite?->date_fin;
-        $debutJour = $debut ? Carbon::parse($debut)->toDateString() : now()->toDateString();
-        $finJour = $fin
-            ? Carbon::parse($fin)->toDateString()
-            : ($emploiTempsEdite ? null : now()->toDateString());
+        [$debutJour, $finJour] = $this->fenetreDeLaGrille($emploiTempsEdite);
 
         // Résolu une fois, pas à chaque créneau de chaque séance.
         $debutJournee = app(\App\Services\Planning\PlageHoraireJournee::class)->debut();
 
-        $existingSessions = ESBTPSeanceCours::where('teacher_id', $teacher->id)
-            ->where('is_active', true)
-            ->whereHas('emploiTemps', function ($query) use ($debutJour, $finJour) {
-                $query->where('is_active', true)
-                    // L'autre finit après le début de la nôtre.
-                    ->where(function ($sub) use ($debutJour) {
-                        $sub->whereNull('date_fin')
-                            ->orWhereDate('date_fin', '>=', $debutJour);
-                    });
-
-                // L'autre commence avant la fin de la nôtre. Une fin non
-                // renseignée de notre côté vaut « sans terme » : aucune borne
-                // droite à poser, tout début convient.
-                if ($finJour !== null) {
-                    $query->whereDate('date_debut', '<=', $finJour);
-                }
-            })
-            ->get();
+        $existingSessions = $this->seancesOccupantLaFenetre($teacher, $debutJour, $finJour);
 
         // Les clés de la grille de disponibilité, dans l'ordre de `JourDeLaSemaine`
         // (rang 0 = lundi). La table de traduction français → anglais qui vivait
@@ -438,6 +386,79 @@ class ESBTPSeanceCoursController extends Controller
         }
 
         return $baseAvailability;
+    }
+
+    /**
+     * La fenêtre de dates sur laquelle la grille de disponibilité fait foi.
+     *
+     * La grille montrait les séances des emplois du temps en vigueur
+     * AUJOURD'HUI. En préparant le planning du semestre suivant, elle déclarait
+     * donc l'enseignant libre sur des créneaux qu'il a déjà — et
+     * l'enregistrement, lui, refuse maintenant le conflit. La grille et le garde
+     * auraient dit deux choses contraires.
+     *
+     * La bonne fenêtre n'est pas une date mais un CHEVAUCHEMENT : cette grille
+     * est hebdomadaire et vaut pour toute la période de l'emploi du temps qu'on
+     * édite. Une séance compte donc si la période de SON emploi du temps recoupe
+     * celle-ci. Une fin non renseignée vaut « sans terme » des deux côtés.
+     *
+     * Sans emploi du temps de référence, on retombe sur « en vigueur
+     * aujourd'hui », le comportement d'avant.
+     *
+     * Aucun appelant n'y tombe aujourd'hui, et ce sont les APPELANTS qui le
+     * disent, pas le schéma : `create()` obtient son emploi du temps par
+     * `findOrFail()`, et `edit()` sort en `back()` quand la relation est nulle.
+     * Deux affirmations plus fortes ont figuré ici et étaient fausses —
+     * « atteignable par la suppression douce » (la relation porte
+     * `->withTrashed()`), puis « `emploi_temps_id` est NOT NULL depuis sa
+     * migration » (une seconde migration le recrée `nullable()` si la colonne
+     * manque, donc la nullité dépend de l'instance).
+     *
+     * Le repli reste écrit parce qu'un paramètre nullable finit par recevoir
+     * `null`, et parce qu'il coûte une ligne. D'où la fenêtre `[aujourd'hui,
+     * aujourd'hui]` et non `[aujourd'hui, ∞)` : laisser la borne droite ouverte
+     * élargirait le repli aux emplois du temps À VENIR, que l'ancien
+     * `date_debut <= today` excluait. Un repli rend le comportement d'avant, pas
+     * un comportement voisin.
+     *
+     * @return array{0: string, 1: ?string} [début, fin] — fin `null` = sans terme
+     */
+    private function fenetreDeLaGrille(?ESBTPEmploiTemps $emploiTempsEdite): array
+    {
+        $debut = $emploiTempsEdite?->date_debut;
+        $fin = $emploiTempsEdite?->date_fin;
+
+        return [
+            $debut ? Carbon::parse($debut)->toDateString() : now()->toDateString(),
+            $fin
+                ? Carbon::parse($fin)->toDateString()
+                : ($emploiTempsEdite ? null : now()->toDateString()),
+        ];
+    }
+
+    /**
+     * Les séances de cet enseignant dont l'emploi du temps recoupe la fenêtre.
+     */
+    private function seancesOccupantLaFenetre($teacher, string $debutJour, ?string $finJour)
+    {
+        return ESBTPSeanceCours::where('teacher_id', $teacher->id)
+            ->where('is_active', true)
+            ->whereHas('emploiTemps', function ($query) use ($debutJour, $finJour) {
+                $query->where('is_active', true)
+                    // L'autre finit après le début de la nôtre.
+                    ->where(function ($sub) use ($debutJour) {
+                        $sub->whereNull('date_fin')
+                            ->orWhereDate('date_fin', '>=', $debutJour);
+                    });
+
+                // L'autre commence avant la fin de la nôtre. Une fin non
+                // renseignée de notre côté vaut « sans terme » : aucune borne
+                // droite à poser, tout début convient.
+                if ($finJour !== null) {
+                    $query->whereDate('date_debut', '<=', $finJour);
+                }
+            })
+            ->get();
     }
 
     /**
