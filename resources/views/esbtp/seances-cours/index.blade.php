@@ -86,6 +86,26 @@
 
 .sdc-filters { display: flex; flex-wrap: wrap; gap: .75rem; align-items: flex-end; }
 .sdc-field { display: flex; flex-direction: column; gap: .3rem; flex: 1 1 200px; min-width: 0; }
+/* Le menu d'un sélecteur premium (composant x-au-select) est épinglé aux bords de son déclencheur
+   (`left:8px; right:8px`) et le libellé d'une option est coupé à l'ellipse.
+   Sur une colonne de filtre étroite, on lisait « Semestre 3 — 2026-2027 (… » :
+   le nom de la classe, c'est-à-dire la seule chose qui distingue deux emplois
+   du temps, tombait — à 1440 px comme à 400 px.
+   L'écran de séparation des devoirs a résolu le même piège en RACCOURCISSANT
+   ses libellés ; ici c'est impossible, ce sont des données. Le menu prend donc
+   la largeur de son contenu, borné par la fenêtre pour ne jamais en sortir. */
+.sdc-field .au-select-menu {
+    right: auto;
+    min-width: calc(100% - 16px);
+    width: max-content;
+    max-width: min(30rem, calc(100vw - 2.5rem));
+}
+/* Sur un téléphone, aucune largeur ne suffit : « Semestre 3 — 2026-2027
+   (LICENCE 2 DROIT PRIVE A) » fait quarante-huit caractères pour 400 px de
+   fenêtre. Le libellé passe donc à la ligne au lieu d'être coupé — l'option
+   grandit en hauteur, ce qui ne coûte rien dans un menu déroulant, et le nom
+   de la classe reste lisible au moment de choisir. */
+.sdc-field .au-select-option-label { white-space: normal; overflow: visible; text-overflow: clip; }
 .sdc-field-label {
     font-size: .72rem; font-weight: 700; color: #64748b;
     text-transform: uppercase; letter-spacing: .5px;
