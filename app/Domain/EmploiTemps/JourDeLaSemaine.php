@@ -96,6 +96,39 @@ final class JourDeLaSemaine
     }
 
     /**
+     * Le numéro du jour, base UN : lundi vaut 1, samedi vaut 6.
+     *
+     * C'est la valeur que porte `esbtp_seance_cours.jour`, celle qu'exige la
+     * validation (`integer|min:1|max:6`), celle qui sert de clé à `libelles()`,
+     * et celle qu'emploie l'ISO 8601. **C'est donc la seule qu'on écrive.**
+     *
+     * ## Pourquoi cette méthode existe, alors que `rang()` était là
+     *
+     * Parce que `rang()` rend l'autre convention — base zéro, un décalage à
+     * ajouter à un premier jour — et que la classe n'offrait rien pour la
+     * première. Chaque écrivain devait donc se rappeler le `+ 1` lui-même. Sur
+     * les trois qui en avaient besoin, deux le faisaient et un l'a oublié : une
+     * commande de jeu de données a écrit `rang('Lundi')`, soit `0`, que plus
+     * rien ne sait relire — `rang(0)` rend `null`. Et son voisin, `rang('Mardi')`
+     * soit `1`, se relit « Lundi ».
+     *
+     * Le plus instructif est que cette ligne a été écrite **en corrigeant** un
+     * écart de format, dans le lot qui crée ce domaine précisément pour que les
+     * appelants cessent de redécouvrir la convention. Couvrir la lecture et
+     * laisser l'écriture ouverte, c'est laisser le piège entier.
+     *
+     * Rend `null` sur une écriture inconnue, comme `rang()` : au site d'appel de
+     * décider, et `rang(…) + 1` ne le permettait pas — en PHP, `null + 1` vaut
+     * `1`, donc un jour illisible devenait un lundi sans un mot.
+     */
+    public static function numero(mixed $jour): ?int
+    {
+        $rang = self::rang($jour);
+
+        return $rang === null ? null : $rang + 1;
+    }
+
+    /**
      * Deux écritures désignent-elles le même jour ?
      *
      * Deux jours inconnus ne concordent PAS. Les tenir pour égaux replierait

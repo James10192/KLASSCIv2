@@ -1906,13 +1906,32 @@
                              temps confondus) et le seul relevé des conflits DÉJÀ en base.
                              Elle existait mais n'était référencée nulle part — on n'y
                              arrivait qu'en tapant l'URL, ce qui explique qu'elle soit
-                             restée sans refonte pendant que le reste passait en premium. --}}
+                             restée sans refonte pendant que le reste passait en premium.
+
+                             La garde ci-dessous n'est PAS celle du bloc, et c'est voulu :
+                             sa voisine « Emplois du temps » porte `permission:timetables.view`
+                             sur sa route, alors que `seances-cours` n'a aucune permission
+                             propre et hérite du groupe `admin.access|identity.*`. Sans cette
+                             garde, une école qui coche `timetables.view` sur un rôle
+                             personnalisé verrait un lien qui répond 403.
+
+                             Oui, cette liste est recopiée depuis la route — et une liste
+                             écrite à deux endroits vieillit à deux endroits. Elle est gardée
+                             telle quelle parce que son sens de panne est le bon : si la
+                             route s'ouvre à un rôle de plus, le menu en montre trop PEU
+                             (un lien caché), jamais trop (un lien qui refuse). La vraie
+                             question — cette page devrait-elle être gardée par
+                             `timetables.view` comme sa voisine ? — reste ouverte : changer
+                             la garde d'une route en service sur huit instances ne se glisse
+                             pas dans un commit de menu. --}}
+                        @canany(['admin.access', 'identity.direct_studies', 'identity.registrar', 'identity.registrar_clerk', 'identity.enrollment_officer'])
                         <div class="menu-item">
                             <a href="{{ route('esbtp.seances-cours.index') }}" class="menu-link {{ Request::routeIs('esbtp.seances-cours.*') ? 'active' : '' }}">
                                 <div class="menu-icon"><i class="fas fa-calendar-day"></i></div>
                                 <div class="menu-text">Séances de cours</div>
                             </a>
                         </div>
+                        @endcanany
 
                         @can('matieres.view')
                         <!-- Matières -->

@@ -206,12 +206,18 @@ class TestCalculAbsencesCommand extends Command
             }
 
             // Créer deux séances de cours.
-            // Le jour s'écrit par son RANG, comme les deux écrans de saisie : une
-            // commande de test qui sème « Lundi » rouvrirait à elle seule l'écart
-            // de format que le reste du lot vient de refermer.
+            //
+            // Le jour s'écrit par son NUMÉRO, comme les deux écrans de saisie :
+            // une commande de test qui sème « Lundi » rouvrirait à elle seule
+            // l'écart de format que le reste du lot vient de refermer.
+            //
+            // Et par `numero()`, PAS par `rang()` : celui-ci est en base zéro,
+            // donc il écrivait `0` pour lundi — une valeur que plus rien ne sait
+            // relire — et `1` pour mardi, qui se relit « Lundi ». C'était pire
+            // que le « Lundi » littéral qu'il remplaçait.
             $seanceId1 = DB::table('esbtp_seance_cours')->insertGetId([
                 'classe_id' => $classeId,
-                'jour' => \App\Domain\EmploiTemps\JourDeLaSemaine::rang('Lundi'),
+                'jour' => \App\Domain\EmploiTemps\JourDeLaSemaine::numero('Lundi'),
                 'heure_debut' => '08:00:00',
                 'heure_fin' => '10:00:00',
                 'matiere_id' => $matiere->id,
@@ -221,7 +227,7 @@ class TestCalculAbsencesCommand extends Command
 
             $seanceId2 = DB::table('esbtp_seance_cours')->insertGetId([
                 'classe_id' => $classeId,
-                'jour' => \App\Domain\EmploiTemps\JourDeLaSemaine::rang('Mardi'),
+                'jour' => \App\Domain\EmploiTemps\JourDeLaSemaine::numero('Mardi'),
                 'heure_debut' => '14:00:00',
                 'heure_fin' => '16:00:00',
                 'matiere_id' => $matiere->id,

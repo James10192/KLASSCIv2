@@ -1362,7 +1362,7 @@ class ESBTPEmploiTempsController extends Controller
         // ils restent hors écran comme avant, mais ils sont journalisés au lieu
         // de disparaître en silence.
         $seancesGroupees = $seances->groupBy(
-            fn ($seance) => ($rang = JourDeLaSemaine::rang($seance->jour)) === null ? 0 : $rang + 1
+            fn ($seance) => JourDeLaSemaine::numero($seance->jour) ?? 0
         );
 
         if ($seancesGroupees->has(0)) {

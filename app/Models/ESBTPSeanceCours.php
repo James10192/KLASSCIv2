@@ -585,7 +585,12 @@ class ESBTPSeanceCours extends Model
             return null;
         }
 
-        $jourISO = \App\Domain\EmploiTemps\JourDeLaSemaine::rang($this->jour) + 1;
+        // `numero()` et non `rang(…) + 1` : ce dernier rendait `1` — donc lundi —
+        // sur un jour illisible, puisque `null + 1` vaut `1` en PHP. Ici, le nul
+        // ne peut pas survenir (`dateDuJour()` au-dessus rend déjà `null` quand
+        // le jour ne se lit pas), mais s'appuyer là-dessus sans le dire est ce
+        // qui fait vieillir mal ce genre de ligne.
+        $jourISO = \App\Domain\EmploiTemps\JourDeLaSemaine::numero($this->jour);
 
         // Vérifier si la date calculée est dans la période de l'emploi du temps
         if ($this->emploiTemps->date_fin && $dateSeance->gt($this->emploiTemps->date_fin)) {

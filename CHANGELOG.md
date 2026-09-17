@@ -14,6 +14,8 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ### Correctifs
 
+- **« Séances de cours » n'apparaît plus au menu de ceux à qui la page répond 403** — l'entrée était la seule de son bloc sans garde propre : sa voisine « Emplois du temps » est ouverte par la permission de consultation des emplois du temps, celle-ci par l'accès administratif ou l'un des rôles de scolarité. Aucun rôle livré ne voyait la différence ; une école qui compose un rôle personnalisé avec la seule consultation des emplois du temps, si. Le lien suit désormais l'accès réel à la page.
+
 - **Réinscription LMD : une L1 déjà spécialisée n'est plus renvoyée vers les autres parcours** (`/esbtp/reinscription/{id}/finaliser`, réinscription groupée) — le correctif précédent traitait toute Licence 1 (et tout Master 1) comme une année d'orientation : une école qui ouvre des L1 Bâtiment et Travaux Publics distinctes dès l'entrée se voyait proposer les deux L2, et le lot refusait de passer la promotion entière. Le choix s'ouvre désormais uniquement quand le parcours quitté ne se poursuit pas l'année suivante (un tronc commun) et que la mention offre plusieurs parcours. Aucun numéro d'année n'en décide plus. Le message du lot ne parle plus de « L2 ».
 
 - **Réinscription : tronc commun → toutes les spécialités suivantes** — dès que l'année d'après ouvre **plusieurs** parcours dans la même mention, ou que la filière quittée est un tronc commun avec des filles, **toutes** ces classes sont proposées (pas un nom d'option en dur). Un étudiant déjà sur un parcours qui continue ne revoit pas les autres. Le lot refuse d'affecter tout le monde à la première classe. À la finalisation, des cartes apparaissent s'il y a plus d'une destination.

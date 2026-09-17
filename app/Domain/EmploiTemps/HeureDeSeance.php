@@ -33,6 +33,21 @@ use Illuminate\Support\Facades\Log;
  * même pas.
  *
  * D'où le `Log::warning` sur la seule branche qui perd de l'information.
+ *
+ * ## Ce qu'elle n'est PAS, aujourd'hui
+ *
+ * **Elle n'est pas encore la seule façon de mettre une heure en forme.** Le
+ * message du commit qui l'introduit l'a annoncé comme telle, et c'était plus
+ * large que le diff : elle compte une douzaine de sites d'appel, quand le dépôt
+ * porte une centaine de `->format()` posés directement sur `heure_debut` /
+ * `heure_fin` — dont quelques `optional(…)->format()`, la forme même que ce
+ * docbloc désigne comme dangereuse.
+ *
+ * Ce n'est pas un aveu d'inachèvement : la plupart de ces cent sites lisent un
+ * `ESBTPSeanceCours`, où `->format()` est juste. Le remplacement en masse
+ * n'apporterait rien et toucherait cent fichiers. Ce qui compte est la règle de
+ * lecture : **dès qu'un site peut recevoir autre chose qu'un `Carbon`, il passe
+ * ici.** Migrer les autres au fil des touches, jamais en balayage.
  */
 final class HeureDeSeance
 {

@@ -178,6 +178,51 @@ class JourDeLaSemaineTest extends TestCase
         }
     }
 
+    // --- Le numéro : la valeur qu'on écrit, base UN ---
+
+    public function test_le_numero_est_en_base_un_et_le_rang_en_base_zero(): void
+    {
+        // Les deux conventions coexistent, et c'est de les confondre qu'est né
+        // le défaut : une commande a écrit `rang('Lundi')`, soit 0.
+        $this->assertSame(0, JourDeLaSemaine::rang('Lundi'));
+        $this->assertSame(1, JourDeLaSemaine::numero('Lundi'));
+        $this->assertSame(6, JourDeLaSemaine::numero('Samedi'));
+    }
+
+    public function test_ce_que_numero_ecrit_se_relit_par_le_meme_jour(): void
+    {
+        // Le contrat qui manquait : la valeur écrite doit se relire. `rang()`
+        // n'en offre AUCUN — 0 ne se relit pas, 1 se relit « Lundi » pour mardi.
+        foreach (JourDeLaSemaine::libelles() as $libelle) {
+            $ecrit = JourDeLaSemaine::numero($libelle);
+
+            $this->assertNotNull($ecrit, "« {$libelle} » doit avoir un numéro");
+            $this->assertSame($libelle, JourDeLaSemaine::libelle($ecrit));
+        }
+    }
+
+    public function test_un_jour_illisible_n_a_pas_de_numero_et_ne_devient_pas_lundi(): void
+    {
+        // `rang(…) + 1` rendait 1 — donc lundi — puisque `null + 1` vaut 1.
+        $this->assertNull(JourDeLaSemaine::numero('Dimanche'));
+        $this->assertNull(JourDeLaSemaine::numero(''));
+        $this->assertNull(JourDeLaSemaine::numero(null));
+        $this->assertNull(JourDeLaSemaine::numero(0));
+    }
+
+    public function test_le_numero_valide_la_regle_de_saisie(): void
+    {
+        // `StoreSeanceCoursRequest` exige integer|min:1|max:6 : tout ce que
+        // `numero()` rend doit passer cette validation, sans quoi la classe
+        // écrirait des valeurs que le formulaire refuserait.
+        foreach (JourDeLaSemaine::libelles() as $libelle) {
+            $ecrit = JourDeLaSemaine::numero($libelle);
+
+            $this->assertGreaterThanOrEqual(1, $ecrit);
+            $this->assertLessThanOrEqual(6, $ecrit);
+        }
+    }
+
     // --- Interroger une colonne non normalisée ---
 
     public function test_les_ecritures_d_un_jour_couvrent_les_deux_formats(): void
