@@ -1902,6 +1902,25 @@
                             </a>
                         </div>
 
+                        {{-- Séances de cours : la seule vue transversale (tous emplois du
+                             temps confondus) et le seul relevé des conflits DÉJÀ en base.
+                             Elle existait mais n'était référencée nulle part — on n'y
+                             arrivait qu'en tapant l'URL, ce qui explique qu'elle soit
+                             restée sans refonte pendant que le reste passait en premium.
+
+                             La garde interroge la ROUTE (`PorteDeRoute`, posé en Gate dans
+                             `AuthServiceProvider`) et non une copie de ses permissions :
+                             `seances-cours` n'en a pas en propre et hérite de celle de son
+                             groupe, que `timetables.view` ne couvre pas. --}}
+                        @can('porte:esbtp.seances-cours.index')
+                        <div class="menu-item">
+                            <a href="{{ route('esbtp.seances-cours.index') }}" class="menu-link {{ Request::routeIs('esbtp.seances-cours.*') ? 'active' : '' }}">
+                                <div class="menu-icon"><i class="fas fa-calendar-day"></i></div>
+                                <div class="menu-text">Séances de cours</div>
+                            </a>
+                        </div>
+                        @endcan
+
                         @can('matieres.view')
                         <!-- Matières -->
                         <div class="menu-item">
@@ -1912,13 +1931,20 @@
                         </div>
                         @endcan
 
+                        {{-- Même divergence que « Séances de cours » juste au-dessus, et
+                             plus retorse : cette page exige TROIS permissions — celle de
+                             son groupe de routes, la sienne, et celle que son contrôleur
+                             pose. Il faut les trois pour entrer. Raison de plus pour lire
+                             la route plutôt que d'en recopier un bout. --}}
                         <!-- Planning Général -->
+                        @can('porte:esbtp.planning-general.index')
                         <div class="menu-item">
                             <a href="{{ route('esbtp.planning-general.index') }}" class="menu-link {{ Request::routeIs('esbtp.planning-general.*') ? 'active' : '' }}">
                                 <div class="menu-icon"><i class="fas fa-calendar-check"></i></div>
                                 <div class="menu-text">Planning Général</div>
                             </a>
                         </div>
+                        @endcan
 
                     @endcan
                     @endcan

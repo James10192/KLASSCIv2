@@ -26,7 +26,13 @@ class StoreSeanceCoursRequest extends FormRequest
             // valide, appartenant à quelqu'un d'autre.
             'enseignant_id'           => 'required|exists:esbtp_teachers,id',
             'type_seance'             => ['required', Rule::enum(TypeSeance::class)],
-            'jour'                    => 'required|string|max:20',
+            // Le rang du jour, 1 (lundi) à 6 (samedi) — la même écriture que
+            // l'autre écran de création. La règle acceptait `string|max:20`,
+            // donc la colonne recevait « Lundi » d'un côté et 1 de l'autre, et
+            // toute lecture devait réconcilier les deux. Les lignes déjà
+            // écrites en toutes lettres restent lisibles ; ce qui s'écrit
+            // désormais ne diverge plus.
+            'jour'                    => 'required|integer|min:1|max:6',
             'heure_debut'             => 'required|date_format:H:i',
             'heure_fin'               => 'required|date_format:H:i|after:heure_debut',
             'salle'                   => 'nullable|string|max:50',

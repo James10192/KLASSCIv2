@@ -797,13 +797,9 @@ class DashboardController extends Controller
             return 'especes';
         }
 
-        return in_array($canon, [
-            \App\Enums\ModePaiement::MOBILE_MONEY,
-            \App\Enums\ModePaiement::WAVE,
-            \App\Enums\ModePaiement::ORANGE_MONEY,
-            \App\Enums\ModePaiement::MTN_MONEY,
-            \App\Enums\ModePaiement::MOOV_MONEY,
-        ], true) ? 'mobile' : 'autres';
+        // Dérivé de l'enum : la liste recopiée ici rangeait Djamo et Celtiis
+        // Cash dans « autres », alors que ce sont des portefeuilles mobiles.
+        return $canon->estMobile() ? 'mobile' : 'autres';
     }
 
     /**
@@ -1134,13 +1130,16 @@ class DashboardController extends Controller
 
         // Récupérer l'emploi du temps d'aujourd'hui pour l'étudiant
         try {
-            // Les séances stockent le jour en français (« lundi », …) : le nom
-            // anglais de date('l') ne trouvait jamais rien.
-            $today = mb_strtolower(now()->locale('fr')->dayName, 'UTF-8');
+            // Les séances stockent le jour de DEUX façons : en toutes lettres
+            // depuis l'emploi du temps, par son numéro depuis la liste des
+            // séances. Ce filtre ne portait que sur la première (« lundi » en
+            // minuscules, après un premier correctif contre le nom anglais de
+            // `date('l')`) : les séances saisies depuis la liste n'arrivaient
+            // jamais sur le tableau de bord de l'étudiant.
             $data['todayTimetable'] = ESBTPSeanceCours::whereHas('emploiTemps', function($query) use ($classeId) {
                     $query->where('classe_id', $classeId)->where('is_active', true);
                 })
-                ->where('jour', $today)
+                ->whereIn('jour', \App\Domain\EmploiTemps\JourDeLaSemaine::ecrituresDe(now()->dayOfWeekIso))
                 ->orderBy('heure_debut')
                 ->with(['matiere', 'emploiTemps.classe', 'enseignant.user'])
                 ->get();

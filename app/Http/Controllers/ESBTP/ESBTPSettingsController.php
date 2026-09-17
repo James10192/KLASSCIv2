@@ -17,6 +17,7 @@ use App\Services\MailPulse\MailPulseTestNotificationService;
 use App\Services\Mobile\MobileProfileResolver;
 use App\Services\Inscription\PortailCandidaturePublication;
 use App\Services\Reinscription\PortailReinscriptionService;
+use App\Services\Security\SeparationOfDutiesService;
 use App\Services\TelephoneSettingsService;
 use App\Services\TenantScolariteSettings;
 use Illuminate\Http\JsonResponse;
@@ -525,6 +526,12 @@ class ESBTPSettingsController extends Controller
                 CataloguePiecesDossier::REGLAGE_ECHEANCE_DEFAUT,
                 CataloguePiecesDossier::REGLAGE_EPUISEMENT,
             ];
+
+            // Les trois regles de separation des devoirs : un mode a trois
+            // etats, donc un selecteur et non une case. Elles etaient dans les
+            // bascules, ou une valeur absente se lit comme un « non » — ce qui
+            // aurait remis « inactif » a chaque enregistrement de la page.
+            $reglagesTexte = array_merge($reglagesTexte, SeparationOfDutiesService::clesDeReglage());
 
             $reglagesPointes = Setting::whereIn('key', array_merge($basculesGerees, $reglagesTexte))->get();
 

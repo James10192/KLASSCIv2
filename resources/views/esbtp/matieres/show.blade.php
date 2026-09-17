@@ -412,16 +412,16 @@
                                                         @endif
                                                     </strong>
                                                     <small class="d-block text-muted">
-                                                        @switch($seance->jour)
-                                                            @case('lundi') Lundi @break
-                                                            @case('mardi') Mardi @break
-                                                            @case('mercredi') Mercredi @break
-                                                            @case('jeudi') Jeudi @break
-                                                            @case('vendredi') Vendredi @break
-                                                            @case('samedi') Samedi @break
-                                                            @default {{ $seance->jour }}
-                                                        @endswitch
-                                                        • {{ $seance->heure_debut }} - {{ $seance->heure_fin }}
+                                                        {{-- La lecture unique du domaine. Le `@switch` posé ici ne
+                                                             comparait qu'à des libellés EN MINUSCULES (« lundi ») :
+                                                             la colonne portant « Lundi » ou l'entier 1, aucun cas ne
+                                                             tombait jamais, et le repli imprimait l'écriture brute.
+                                                             `libelle()` connaît les deux écritures. --}}
+                                                        {{ \App\Domain\EmploiTemps\JourDeLaSemaine::libelle($seance->jour) ?? $seance->jour }}
+                                                        {{-- `format('H:i')` et non l'attribut nu : l'accesseur du
+                                                             modèle rend un Carbon daté d'aujourd'hui, donc
+                                                             « 2026-09-17 08:00:00 ». Voir le piège #14. --}}
+                                                        • {{ $seance->heure_debut->format('H:i') }} - {{ $seance->heure_fin->format('H:i') }}
                                                     </small>
                                                     @switch($seance->type)
                                                         @case('cm')

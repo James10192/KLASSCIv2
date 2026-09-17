@@ -44,7 +44,13 @@ class TeacherAttendanceController extends Controller
         $todayCourses = ESBTPSeanceCours::with(['matiere', 'emploiTemps.classe'])
             ->where('teacher_id', $teacherProfileId)
             ->where('is_active', true)
-            ->where('jour', $dayOfWeekDb)
+            // Les deux écritures de la colonne : l'entier de la liste des
+            // séances comme le libellé de l'emploi du temps. Le `where` sur le
+            // seul entier ne voyait que la moitié des séances — un enseignant
+            // dont l'emploi du temps est saisi depuis l'écran emploi du temps
+            // n'avait donc aucun cours à émarger. Dimanche rend une liste vide,
+            // la semaine allant du lundi au samedi.
+            ->whereIn('jour', \App\Domain\EmploiTemps\JourDeLaSemaine::ecrituresDe($dayOfWeekDb))
             ->get();
 
         // Load teacher attendance status for each course

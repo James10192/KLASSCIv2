@@ -585,17 +585,12 @@
         }
     }
 
-    $allModeOptions = [
-        'Espèces' => 'especes',
-        'Chèque' => 'cheque',
-        'Virement' => 'virement',
-        'Mobile Money' => 'mobile_money',
-        'Orange Money' => 'orange_money',
-        'MTN Money' => 'mtn_money',
-        'Moov Money' => 'moov_money',
-        'Wave' => 'wave',
-        'Carte bancaire' => 'carte',
-    ];
+    // Dérivé de l'enum, et non recopié : cette liste avait divergé — ni Djamo
+    // ni Celtiis Cash n'y figuraient, alors que la réconciliation les connaît.
+    // Un mode absent d'ici n'est JAMAIS proposé (la boucle plus bas ne montre
+    // que ce qu'elle contient, `$allowedPaymentModes` ne fait que restreindre),
+    // donc l'encaissement correspondant n'avait aucune façon d'être saisi.
+    $allModeOptions = \App\Enums\ModePaiement::optionsDeGuichet();
     $allowedPaymentModes = $allowedPaymentModes ?? array_values($allModeOptions);
     $modeOptions = [];
     foreach ($allModeOptions as $label => $canonical) {

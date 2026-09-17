@@ -18,6 +18,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Pagination\LengthAwarePaginator;
 use App\Services\FuzzyNameMatcher;
+use App\Services\LMD\AgregatDeLaPeriode;
 use App\Services\ESBTP\BtsCurrentResultSnapshotService;
 use App\Services\EtudiantAcademicJourneyPresenter;
 use App\Services\EtudiantDossierService;
@@ -585,27 +586,11 @@ class ESBTPStudentController extends Controller
         if ($classeCourante && $classeCourante->isLMD()) {
             $isLMD = true;
             $parcours = $classeCourante->parcours?->load('mention.domaine');
-
-            // Bulletins LMD de cette classe pour L'ANNÉE COURANTE uniquement
-            $bulletinsLMD = \App\Models\ESBTPLMDBulletin::where('etudiant_id', $etudiant->id)
-                ->where('classe_id', $classeCourante->id)
-                ->where('annee_universitaire_id', $anneeCourante->id)
-                ->with(['resultatsUEs.uniteEnseignement', 'resultatsECUEs.matiere', 'deliberation'])
-                ->orderBy('semestre')
-                ->get();
-
-            $bulletinLMD = $bulletinsLMD->last();
-
-            // Moyenne annuelle pondérée par crédits
-            $bulletinsAvecMoyenne = $bulletinsLMD->filter(fn($b) => $b->moyenne_generale > 0);
-            if ($bulletinsAvecMoyenne->count() > 1) {
-                $totalCredits = $bulletinsAvecMoyenne->sum('credits_totaux');
-                $lmdMoyenneAnnuelle = $totalCredits > 0
-                    ? round($bulletinsAvecMoyenne->sum(fn($b) => $b->moyenne_generale * $b->credits_totaux) / $totalCredits, 2)
-                    : round($bulletinsAvecMoyenne->avg('moyenne_generale'), 2);
-            } elseif ($bulletinsAvecMoyenne->count() === 1) {
-                $lmdMoyenneAnnuelle = round($bulletinsAvecMoyenne->first()->moyenne_generale, 2);
-            }
+            [$bulletinsLMD, $bulletinLMD, $lmdMoyenneAnnuelle] = $this->contexteLmdDeLAnnee(
+                $etudiant,
+                $classeCourante,
+                $anneeCourante
+            );
         }
 
         // ── Crédits CECT cumulés = TOUTES les inscriptions LMD (capitalisés à vie) ──
@@ -734,6 +719,36 @@ class ESBTPStudentController extends Controller
             'filiereIdForMatricule',
             'inscriptionRecente'
         ));
+    }
+
+    /**
+     * Les bulletins LMD de l'année courante, le dernier d'entre eux, et la
+     * moyenne annuelle.
+     *
+     * La moyenne est celle du jury et du procès-verbal — `AgregatDeLaPeriode` —
+     * et non une formule propre à cet écran. Le pourquoi est sur cette classe,
+     * section « Les formules concurrentes qu'elle a remplacées » : c'est là que
+     * ses trois appelants doivent le lire, plutôt que d'en recopier une version.
+     *
+     * @return array{0: \Illuminate\Support\Collection, 1: ?\App\Models\ESBTPLMDBulletin, 2: ?float}
+     */
+    private function contexteLmdDeLAnnee(
+        ESBTPEtudiant $etudiant,
+        ESBTPClasse $classeCourante,
+        ESBTPAnneeUniversitaire $anneeCourante
+    ): array {
+        $bulletins = \App\Models\ESBTPLMDBulletin::where('etudiant_id', $etudiant->id)
+            ->where('classe_id', $classeCourante->id)
+            ->where('annee_universitaire_id', $anneeCourante->id)
+            ->with(['resultatsUEs.uniteEnseignement', 'resultatsECUEs.matiere', 'deliberation'])
+            ->orderBy('semestre')
+            ->get();
+
+        return [
+            $bulletins,
+            $bulletins->last(),
+            AgregatDeLaPeriode::moyenne(AgregatDeLaPeriode::parSemestre($bulletins)),
+        ];
     }
 
     private function resolveBtsJourney(ESBTPEtudiant $etudiant): ?array

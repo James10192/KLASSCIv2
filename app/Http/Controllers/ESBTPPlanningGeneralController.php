@@ -235,9 +235,6 @@ class ESBTPPlanningGeneralController extends Controller
         // Progression vs objectifs
         $progressionObjectifs = $this->calculerProgressionObjectifs($anneeId);
 
-        // Classes avec conflits d'horaires
-        $conflitsHoraires = $this->detecterConflitsHoraires($anneeId);
-
         return view(
             "esbtp.planning-general.index",
             compact(
@@ -247,7 +244,6 @@ class ESBTPPlanningGeneralController extends Controller
                 "repartitionMatieres",
                 "emploisTempsClasses",
                 "progressionObjectifs",
-                "conflitsHoraires",
             ),
         );
     }
@@ -276,11 +272,6 @@ class ESBTPPlanningGeneralController extends Controller
             ->orderBy("heure_debut")
             ->get();
 
-        // Grouper par semaine et jour
-        $planningHebdomadaire = $this->grouperSeancesParSemaine(
-            $seancesEnseignant,
-        );
-
         // Charge horaire par matière
         $chargeHoraireMatiere = $this->planningStatsService->calculerChargeHoraireEnseignant(
             $user->id,
@@ -294,7 +285,6 @@ class ESBTPPlanningGeneralController extends Controller
                 "anneeSelectionnee",
                 "stats",
                 "seancesEnseignant",
-                "planningHebdomadaire",
                 "chargeHoraireMatiere",
             ),
         );
@@ -656,16 +646,6 @@ class ESBTPPlanningGeneralController extends Controller
     }
 
     private function calculerProgressionObjectifs($anneeId)
-    {
-        return [];
-    }
-
-    private function detecterConflitsHoraires($anneeId)
-    {
-        return [];
-    }
-
-    private function grouperSeancesParSemaine($seances)
     {
         return [];
     }
@@ -1300,8 +1280,12 @@ class ESBTPPlanningGeneralController extends Controller
                         "matiere" => $seance->matiere
                             ? $seance->matiere->name
                             : "Matière inconnue",
-                        "horaire" =>
-                            $seance->heure_debut . "-" . $seance->heure_fin,
+                        // `format('H:i')` : l'accesseur du modèle rend un Carbon daté
+                        // d'aujourd'hui, donc la concaténation brute produisait
+                        // « 2026-09-15 08:00:00-2026-09-15 10:00:00 ».
+                        "horaire" => optional($seance->heure_debut)->format("H:i")
+                            . "-"
+                            . optional($seance->heure_fin)->format("H:i"),
                         "classe" => $seance->classe
                             ? $seance->classe->name
                             : "Classe inconnue",

@@ -2725,7 +2725,11 @@
         $kpiPaiDu = max(0, $kpiTotalAttendu - ($kpiPaiTotal ?? 0));
 
         // Moyenne : LMD → depuis bulletinLMD, BTS → depuis ESBTPBulletin/ESBTPResultat
-        if ($isLMD && $lmdMoyenneAnnuelle) {
+        // `!== null` et non un test de vérité : en PHP, 0.0 est faux. Une moyenne
+        // annuelle de 0,00 est un résultat — celui de l'étudiant absent toute
+        // l'année — et le test de vérité la traitait comme une absence de calcul,
+        // laissant l'indicateur vide là où il devait afficher zéro.
+        if ($isLMD && $lmdMoyenneAnnuelle !== null) {
             // ── LMD : moyenne annuelle pondérée (tous semestres) ──
             $kpiMoyenneGen    = $lmdMoyenneAnnuelle;
             $kpiMoyenneIsLive = false;
@@ -4483,18 +4487,19 @@
 
         /* Calcul moyenne générale selon le système */
         if ($autreIsLMD) {
-            // LMD : moyenne pondérée des bulletins LMD par crédits
-            $autreBulsValides = $autreBulsLMD->filter(fn($b) => ($b->moyenne_generale ?? 0) > 0);
-            if ($autreBulsValides->count() > 1) {
-                $atc = $autreBulsValides->sum('credits_totaux');
-                $autreMg = $atc > 0
-                    ? round($autreBulsValides->sum(fn($b) => $b->moyenne_generale * $b->credits_totaux) / $atc, 2)
-                    : round($autreBulsValides->avg('moyenne_generale'), 2);
-            } elseif ($autreBulsValides->count() === 1) {
-                $autreMg = round($autreBulsValides->first()->moyenne_generale, 2);
-            } else {
-                $autreMg = null;
-            }
+            // Même calcul que l'indicateur de l'année courante et que le jury.
+            // Ce bloc portait la troisième copie de l'ancienne formule. Voir
+            // `AgregatDeLaPeriode`, section « Les formules concurrentes ».
+            //
+            // Cette valeur est celle qui SORT : la cascade BTS qui suit est
+            // désormais close sur `!$autreIsLMD`. Elle ne l'était pas, et son
+            // `else` final rattrapait le cas LMD pour écraser la moyenne par
+            // `null` — une année LMD antérieure n'affichait donc ni moyenne ni
+            // mention, silencieusement, et déjà avant ce lot. Corriger le calcul
+            // sans refermer la cascade laissait le résultat juste être jeté.
+            $autreMg = \App\Services\LMD\AgregatDeLaPeriode::moyenne(
+                \App\Services\LMD\AgregatDeLaPeriode::parSemestre($autreBulsLMD)
+            );
             $autreResultatsBruts = collect(); // pas de résultats BTS bruts pour LMD
         } else {
             // BTS : logique existante
@@ -4505,33 +4510,35 @@
             $autreBulsValides = $autreBuls->filter(fn($b) => ($b->moyenne_generale ?? 0) > 0);
         }
 
-        if (!$autreIsLMD && $autreBulsValides->count()) {
-            $autreMg = round($autreBulsValides->avg('moyenne_generale'), 2);
-        } elseif ($autreResultatsBruts->whereNotNull('moyenne')->count()) {
-            /* Pondération S1/S2 depuis settings (cohérence avec bulletins) */
-            $_aPoidS1 = max(0, (float) \App\Helpers\SettingsHelper::get('bulletin_semester1_weight', 1));
-            $_aPoidS2 = max(0, (float) \App\Helpers\SettingsHelper::get('bulletin_semester2_weight', 1));
-            if ($_aPoidS1 + $_aPoidS2 <= 0) { $_aPoidS1 = 1; $_aPoidS2 = 1; }
+        if (! $autreIsLMD) {
+            if ($autreBulsValides->count()) {
+                $autreMg = round($autreBulsValides->avg('moyenne_generale'), 2);
+            } elseif ($autreResultatsBruts->whereNotNull('moyenne')->count()) {
+                /* Pondération S1/S2 depuis settings (cohérence avec bulletins) */
+                $_aPoidS1 = max(0, (float) \App\Helpers\SettingsHelper::get('bulletin_semester1_weight', 1));
+                $_aPoidS2 = max(0, (float) \App\Helpers\SettingsHelper::get('bulletin_semester2_weight', 1));
+                if ($_aPoidS1 + $_aPoidS2 <= 0) { $_aPoidS1 = 1; $_aPoidS2 = 1; }
 
-            $_aCalcSem = function($group) {
-                $_sp = 0; $_sc = 0;
-                foreach ($group as $_r) { $_c = $_r->coefficient ?? $_r->matiere?->coefficient ?? 1; $_sp += $_r->moyenne * $_c; $_sc += $_c; }
-                return $_sc > 0 ? $_sp / $_sc : null;
-            };
-            $_aS1 = $_aCalcSem($autreResultatsBruts->whereNotNull('moyenne')->where('periode', 'semestre1'));
-            $_aS2 = $_aCalcSem($autreResultatsBruts->whereNotNull('moyenne')->where('periode', 'semestre2'));
+                $_aCalcSem = function($group) {
+                    $_sp = 0; $_sc = 0;
+                    foreach ($group as $_r) { $_c = $_r->coefficient ?? $_r->matiere?->coefficient ?? 1; $_sp += $_r->moyenne * $_c; $_sc += $_c; }
+                    return $_sc > 0 ? $_sp / $_sc : null;
+                };
+                $_aS1 = $_aCalcSem($autreResultatsBruts->whereNotNull('moyenne')->where('periode', 'semestre1'));
+                $_aS2 = $_aCalcSem($autreResultatsBruts->whereNotNull('moyenne')->where('periode', 'semestre2'));
 
-            if ($_aS1 !== null && $_aS2 !== null) {
-                $autreMg = round(($_aS1 * $_aPoidS1 + $_aS2 * $_aPoidS2) / ($_aPoidS1 + $_aPoidS2), 2);
-            } elseif ($_aS1 !== null) {
-                $autreMg = round($_aS1, 2);
-            } elseif ($_aS2 !== null) {
-                $autreMg = round($_aS2, 2);
+                if ($_aS1 !== null && $_aS2 !== null) {
+                    $autreMg = round(($_aS1 * $_aPoidS1 + $_aS2 * $_aPoidS2) / ($_aPoidS1 + $_aPoidS2), 2);
+                } elseif ($_aS1 !== null) {
+                    $autreMg = round($_aS1, 2);
+                } elseif ($_aS2 !== null) {
+                    $autreMg = round($_aS2, 2);
+                } else {
+                    $autreMg = ($_r2 = $_aCalcSem($autreResultatsBruts->whereNotNull('moyenne'))) !== null ? round($_r2, 2) : null;
+                }
             } else {
-                $autreMg = ($_r2 = $_aCalcSem($autreResultatsBruts->whereNotNull('moyenne'))) !== null ? round($_r2, 2) : null;
+                $autreMg = null;
             }
-        } else {
-            $autreMg = null;
         }
 
         $autreMention = $autreMg === null

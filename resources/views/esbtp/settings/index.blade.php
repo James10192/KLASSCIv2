@@ -3516,6 +3516,7 @@
                                 </label>
                             </div>
                         </div>
+                        @include('esbtp.settings.partials.separation-des-devoirs')
                         <div class="row g-3" style="margin-top:.25rem;">
                             <div class="col-md-6">
                                 <label class="ls-toggle" for="lmd_suppression_ue_libere_ecues_vers_bts">

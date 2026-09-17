@@ -178,7 +178,18 @@ class OfficialDocumentHttpTest extends OfficialDocumentDatabaseTestCase
 
     public function test_pv_rectification_enforces_configurable_sod_without_bypass(): void
     {
-        config(['sod.rules.lmd.jury.rectify_pv.enabled' => true, 'sod.rules.lmd.jury.rectify_pv.setting' => null]);
+        // Le nom de la règle contient des points, donc `config(['sod.rules.lmd.jury.rectify_pv…'])`
+        // ne l'atteint PAS : `Arr::set` découpe sur les points et fabrique un
+        // `rules → lmd → jury → rectify_pv` imbriqué, à côté de la vraie clé plate.
+        // C'est exactement ce chemin fantôme que l'ancien `enabled()` lisait —
+        // voilà pourquoi ce test était vert pendant que la production ne bloquait
+        // rien. On écrit donc la règle par remplacement du tableau entier.
+        config(['sod.rules' => array_replace((array) config('sod.rules'), [
+            'lmd.jury.rectify_pv' => array_replace(
+                (array) config('sod.rules')['lmd.jury.rectify_pv'],
+                ['enabled' => true, 'setting' => null],
+            ),
+        ])]);
         $jury = $this->seedIssuableJury();
         $issuer = $this->authorizedUser(2, false);
         $checker = $this->authorizedUser(1, true);

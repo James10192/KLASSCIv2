@@ -7,6 +7,7 @@ use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPInscription;
 use App\Models\ESBTPLMDBulletin;
 use App\Models\ESBTPResultat;
+use App\Services\LMD\AgregatDeLaPeriode;
 use Illuminate\Support\Collection;
 
 class EtudiantAcademicJourneyPresenter
@@ -239,16 +240,14 @@ class EtudiantAcademicJourneyPresenter
             ];
         }
 
-        $withAverage = $bulletins->filter(fn (ESBTPLMDBulletin $bulletin) => $bulletin->moyenne_generale !== null && $bulletin->moyenne_generale > 0);
         $creditsTotal = (int) $bulletins->sum('credits_totaux');
-        $average = null;
 
-        if ($withAverage->isNotEmpty()) {
-            $weightedCredits = (int) $withAverage->sum('credits_totaux');
-            $average = $weightedCredits > 0
-                ? round((float) $withAverage->sum(fn (ESBTPLMDBulletin $bulletin) => (float) $bulletin->moyenne_generale * (int) $bulletin->credits_totaux) / $weightedCredits, 2)
-                : round((float) $withAverage->avg('moyenne_generale'), 2);
-        }
+        // Ce diagramme est rendu sur `/esbtp/etudiants/{id}`, à quelques
+        // centimètres de l'indicateur « Moy. générale » et sur le même
+        // regroupement (classe + année) : il doit donc afficher le même nombre,
+        // par le même calcul. Il portait sa propre formule — voir
+        // `AgregatDeLaPeriode`, section « Les formules concurrentes ».
+        $average = AgregatDeLaPeriode::moyenne(AgregatDeLaPeriode::parSemestre($bulletins));
 
         $last = $bulletins->sortBy('semestre')->last();
         $creditsCapitalises = (int) $bulletins->sum('credits_capitalises');
