@@ -92,8 +92,17 @@
    le nom de la classe, c'est-à-dire la seule chose qui distingue deux emplois
    du temps, tombait — à 1440 px comme à 400 px.
    L'écran de séparation des devoirs a résolu le même piège en RACCOURCISSANT
-   ses libellés ; ici c'est impossible, ce sont des données. Le menu prend donc
-   la largeur de son contenu, borné par la fenêtre pour ne jamais en sortir. */
+   ses libellés ; ici c'est impossible, ce sont des données.
+
+   PORTÉE EXACTE, mesurée et non déduite : ces trois lignes n'agissent que là où
+   le composant laisse le menu en `position:absolute`, soit le cas large. Mesuré
+   à 1440 px : aucun style en ligne sur le menu, largeur calculée 396,7 px,
+   `max-width` 480 px — la règle porte. À 400 px, le menu bascule vers le haut et
+   le composant lui écrit sa taille EN LIGNE (`width:270px;min-width:270px;
+   max-width:270px`) : un style en ligne bat une feuille, donc ces trois lignes
+   sont alors sans effet. Ce n'est pas un défaut, c'est le partage : en étroit,
+   c'est le retour à la ligne des libellés (règle suivante) qui fait le travail,
+   et lui reste actif puisqu'il porte sur le libellé, pas sur la boîte du menu. */
 .sdc-field .au-select-menu {
     right: auto;
     min-width: calc(100% - 16px);

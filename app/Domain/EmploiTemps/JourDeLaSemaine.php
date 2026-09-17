@@ -7,13 +7,21 @@ namespace App\Domain\EmploiTemps;
  *
  * ## Pourquoi cette classe existe
  *
- * `esbtp_seance_cours.jour` reçoit DEUX formats, selon l'écran de saisie :
+ * `esbtp_seance_cours.jour` PORTE deux formats, hérités de deux écrans de
+ * saisie qui n'écrivaient pas pareil :
  *
- *  - depuis l'emploi du temps (« Ajouter une séance »), une chaîne capitalisée,
- *    `Lundi` … `Samedi` — le formulaire émet le libellé, et la règle de
- *    validation est `string|max:20` ;
- *  - depuis la liste des séances, un entier `1` … `7` — le formulaire émet les
- *    clés d'un tableau `[1 => 'Lundi', …]`.
+ *  - une chaîne capitalisée, `Lundi` … `Samedi`, écrite jusqu'en septembre 2026
+ *    par l'écran emploi du temps (« Ajouter une séance »), dont la règle de
+ *    validation était alors `string|max:20` ;
+ *  - un entier `1` … `6`, écrit par la liste des séances.
+ *
+ * **Les deux écrans écrivent aujourd'hui le rang** : le formulaire d'ajout émet
+ * désormais les clés de `libelles()` et `StoreSeanceCoursRequest` valide
+ * `integer|min:1|max:6`. Cette classe reste néanmoins nécessaire, et le restera :
+ * les lignes déjà écrites en toutes lettres n'ont PAS été converties — aucune
+ * migration de données n'a été faite — donc toute lecture doit continuer de
+ * comprendre les deux. Ne retirez pas la moitié « chaîne » sous prétexte que
+ * plus rien ne l'écrit.
  *
  * Les deux écrans écrivent dans la même colonne. En PHP 8, `1 == 'Lundi'` est
  * **faux** : depuis la RFC « Saner string to number comparisons », c'est l'entier

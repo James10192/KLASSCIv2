@@ -289,41 +289,40 @@ $s = new \App\Models\ESBTPSeanceCours();
 (new ReflectionMethod($s, 'hasGetMutator'))->invoke($s, 'heure_debut');  // true → l'accesseur gagne
 ```
 
-**L'inventaire s'est trompé trois fois de suite, et chaque fois de la même façon.** Le relevé du
-15 septembre en citait **cinq** ; écrire la commande de contrôle et la lancer en a sorti **deux de
-plus**, d'où « six sites » (le septième étant mort). Cette phrase-là a tenu deux jours : le
+**L'inventaire s'est trompé quatre fois — et la quatrième dans l'AUTRE sens.** Le relevé du
+15 septembre citait **cinq** sites ; écrire la commande de contrôle et la lancer en a sorti **deux
+de plus**, d'où « six » (le septième étant mort). Cette phrase-là a tenu deux jours : le
 17 septembre, une revue adverse en a trouvé **trois autres bien vivants** — deux sur l'écran des
 codes de présence, un sur la fiche matière — qu'aucune version du contrôle ne pouvait voir, parce
 qu'il ne cherchait que `substr(…)` et la concaténation, jamais l'affichage nu `{{ $s->heure_debut }}`.
-Et en élargissant le contrôle pour les attraper, **deux de plus encore** sont sortis : un message
-d'absence et l'écran « mes absences » de l'étudiant, tous deux sur `ESBTPAbsence`, que personne
-n'avait pensé à regarder puisque le piège était réputé propre à `ESBTPSeanceCours`.
 
-**Onze sites vivants** sont corrigés à ce jour, plus un repli mort retiré. La leçon n'est pas le
-chiffre, c'est le mécanisme : **à chaque fois, le détecteur était plus étroit que le défaut, et
-son silence a été lu comme une preuve.** Ne lisez pas le tableau ci-dessous comme une liste close.
+Puis, en élargissant le contrôle, **deux « sites » de plus sont sortis — et c'étaient deux faux**.
+Un message d'absence et l'écran « mes absences » de l'étudiant : le contrôle les a signalés, je les
+ai « corrigés » en posant `->format('H:i')`, et **j'ai cassé les deux**. Ils lisent un
+`ESBTPAttendance`, **qui n'a ni accesseur ni cast sur ses heures** : l'attribut y est la chaîne
+brute `'08:00:00'`, le code d'avant était juste, et `format()` sur une chaîne lève une `Error` —
+que le `catch (\Exception)` alentour ne rattrape pas, puisque `Error` ne descend pas d'`Exception`.
+L'écran des absences serait tombé en 500 pour tout étudiant ayant une absence horodatée.
 
-| fichier | ce que l'utilisateur voyait | trouvé par |
-|---|---|---|
-| `resources/views/esbtp/seances-cours/index.blade.php` (×2) | colonne horaire, confirmation de suppression | lecture |
-| `app/Http/Controllers/ESBTPAttendanceController.php` (×2) | **« Heure: 2026- » dans l'avis d'absence au parent**, export CSV | lecture |
-| `app/Http/Controllers/ESBTPPlanningGeneralController.php` | `"horaire"` du planning général | lecture |
-| `resources/views/teacher/attendance.blade.php` | **« 2026- - 2026- » sur l'écran d'appel** | 1ᵉʳ contrôle |
-| `resources/views/esbtp/attendance/generate-code.blade.php` (×2) | code de présence : carte du code actif, codes récents | revue adverse |
-| `resources/views/esbtp/matieres/show.blade.php` | séances de la fiche matière | revue adverse |
-| `app/Services/NotificationService.php` | **heure d'un message d'absence** (`ESBTPAbsence`) | contrôle élargi |
-| `resources/views/esbtp/attendances/mes-absences.blade.php` | **« 2026- » sur l'écran des absences de l'étudiant** | contrôle élargi |
+**C'est la même erreur que les trois précédentes, retournée** : j'ai pris le silence du détecteur
+pour une preuve d'absence, puis son signalement pour une preuve de présence. Un tamis ne prouve
+rien dans un sens comme dans l'autre. **Avant de corriger un site signalé, ouvrez le modèle qu'il
+lit** — le tableau ci-dessous porte une colonne pour ça, et son absence est exactement ce qui a
+permis les deux casses.
 
-| fichier | ce que l'utilisateur voyait | état |
-|---|---|---|
-| `resources/views/esbtp/seances-cours/index.blade.php` | colonne horaire de la liste | corrigé |
-| `resources/views/esbtp/seances-cours/index.blade.php` | confirmation de suppression | corrigé |
-| `app/Http/Controllers/ESBTPAttendanceController.php` | **« Heure: 2026- » dans l'avis d'absence envoyé au parent** | corrigé |
-| `app/Http/Controllers/ESBTPAttendanceController.php` | export CSV des présences | corrigé |
-| `app/Http/Controllers/ESBTPPlanningGeneralController.php` | `"horaire"` du planning général | corrigé |
-| `resources/views/teacher/attendance.blade.php` | **« 2026- - 2026- » sur l'écran d'appel de l'enseignant** — hors du relevé initial | corrigé |
+**Neuf sites vivants** sont corrigés à ce jour, plus un repli mort retiré. Tous les neuf lisent un
+`ESBTPSeanceCours` ; aucun autre modèle n'est concerné.
 
-Et un septième, `ESBTPSeanceCoursController` (`(int) substr($session->heure_debut, 0, 2)`), qui
+| fichier | ce que l'utilisateur voyait | modèle lu | trouvé par |
+|---|---|---|---|
+| `resources/views/esbtp/seances-cours/index.blade.php` (×2) | colonne horaire, confirmation de suppression | `ESBTPSeanceCours` | lecture |
+| `app/Http/Controllers/ESBTPAttendanceController.php` (×2) | **« Heure: 2026- » dans l'avis d'absence au parent**, export CSV | `ESBTPSeanceCours` (via `->seanceCours`) | lecture |
+| `app/Http/Controllers/ESBTPPlanningGeneralController.php` | `"horaire"` du planning général | `ESBTPSeanceCours` | lecture |
+| `resources/views/teacher/attendance.blade.php` | **« 2026- - 2026- » sur l'écran d'appel** | `ESBTPSeanceCours` | 1ᵉʳ contrôle |
+| `resources/views/esbtp/attendance/generate-code.blade.php` (×2) | code de présence : carte du code actif, codes récents | `ESBTPSeanceCours` (via `->seance`) | revue adverse |
+| `resources/views/esbtp/matieres/show.blade.php` | séances de la fiche matière | `ESBTPSeanceCours` | revue adverse |
+
+Et un dixième, `ESBTPSeanceCoursController` (`(int) substr($session->heure_debut, 0, 2)`), qui
 aurait lu l'heure **20** au lieu de **08**. Celui-là était une **branche morte** : le ternaire qui
 le gardait teste `instanceof Carbon`, et l'accesseur rend toujours un Carbon. Il a été retiré
 quand même — un piège désamorcé reste un piège écrit, et le prochain lecteur le recopiera.
@@ -348,13 +347,24 @@ fonction qui la met en texte plus loin, une mise en forme construite ailleurs qu
 appel via une variable intermédiaire. Et il exclut toute ligne portant `format(`, donc une ligne
 qui affiche **deux** heures dont une seule est formatée lui échappe.
 
-Il porte un **faux positif connu**, à laisser tel quel : `resources/views/dashboard/etudiant.blade.php`
-calcule une durée par `diffInHours()` entre les deux heures — aucune mise en texte, donc aucun
-défaut. Ajuster le motif jusqu'à ce qu'il rende zéro serait refaire exactement l'erreur que cette
-section raconte.
+**Il rend aujourd'hui trois lignes, et les trois sont des faux positifs. Laissez-les.** C'est
+l'état normal de ce contrôle, pas un reste à traiter :
 
-**La règle à appliquer en lecture prime sur le tamis** : une heure de séance ou d'absence qui part
-à l'écran, dans un courriel ou dans un export passe par `->format('H:i')`. Toujours.
+- `resources/views/dashboard/etudiant.blade.php` — calcule une durée par `diffInHours()` entre les
+  deux heures ; aucune mise en texte, donc aucun défaut.
+- `app/Services/NotificationService.php` — heure d'un message d'absence, sur un `ESBTPAttendance`.
+- `resources/views/esbtp/attendances/mes-absences.blade.php` — écran des absences de l'étudiant,
+  sur un `ESBTPAttendance`.
+
+Les deux derniers ont **déjà été « corrigés » une fois, et la correction les a cassés** : y poser
+`->format('H:i')` lève une `Error` non rattrapée (voir plus haut). Les deux fichiers portent
+maintenant un commentaire qui dit pourquoi le code est juste tel quel. Ajuster le motif jusqu'à ce
+qu'il rende zéro serait refaire exactement l'erreur que cette section raconte.
+
+**La règle à appliquer en lecture prime sur le tamis** : une heure **de séance** qui part à
+l'écran, dans un courriel ou dans un export passe par `->format('H:i')` — parce que c'est un
+`Carbon`. Une heure **d'absence** (`ESBTPAttendance`) est une chaîne et se coupe à cinq
+caractères. Le geste dépend du modèle, jamais du nom de la colonne.
 
 **Second effet, à ne PAS confondre** : sur `ESBTPSeanceCours`, une heure NULLE ne se lit pas `null` —
 `Carbon::parse(null)` rend l'instant présent. C'est encore l'accesseur, **pas** le cast : celui-ci
@@ -366,12 +376,23 @@ Et ce second effet n'a **aucune population en base** : `heure_debut` et `heure_f
 (migration `2024_03_18_000002`, jamais relâchée). Il ne concerne que les objets construits en
 mémoire. Ne pas partir en chasse dessus.
 
-**Les deux modèles ne se comportent donc pas pareil** — c'est le piège dans le piège :
+**Trois modèles portent des colonnes d'heures, et les trois se comportent différemment** — c'est le
+piège dans le piège, et la colonne du milieu est celle qui décide du geste :
 
-| modèle | accesseur | cast | une heure nulle se lit |
-|---|---|---|---|
-| `ESBTPSeanceCours` | oui (`Carbon::parse`) | `'datetime'` (inerte) | l'instant présent |
-| `ESBTPCours` | non | `'datetime:H:i'` | `null` |
+| modèle | accesseur | cast | `->heure_debut` rend | une heure nulle se lit |
+|---|---|---|---|---|
+| `ESBTPSeanceCours` | oui (`Carbon::parse`) | `'datetime'` (inerte) | un `Carbon` daté d'aujourd'hui | l'instant présent |
+| `ESBTPCours` | non | `'datetime:H:i'` | un `Carbon` | `null` |
+| `ESBTPAttendance` | **non** | **aucun** | **la chaîne `'08:00:00'`** | `null` |
+
+Le contrôle à rejouer avant de toucher une heure sur un modèle qu'on ne connaît pas :
+
+```bash
+grep -n "getHeure\(Debut\|Fin\)Attribute\|heure_debut" app/Models/LeModele.php
+```
+
+Pas d'accesseur et pas de `'heure_debut' => 'datetime'` dans `$casts` → c'est une **chaîne**, et
+`->format()` dessus lève une `Error` que `catch (\Exception)` ne rattrape pas.
 
 ---
 

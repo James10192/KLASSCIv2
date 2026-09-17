@@ -54,8 +54,21 @@ class DiagnosticDesDatesDeSeance
      */
     public static function perimetre(mixed $option): ?int
     {
-        if ($option === null || $option === '') {
+        // L'option ABSENTE (null) vaut « toute l'instance ». Une option PRÉSENTE
+        // mais vide (`--emploi-temps=`) est une frappe incomplète, pas cette
+        // intention-là, et le silence lui coûterait cher : sur la commande qui
+        // écrit en masse, la lire comme null ferait porter le rattrapage sur
+        // toute l'instance alors que l'ancienne conversion muette (`(int) ''`)
+        // n'écrivait nulle part. On ne retourne pas une conduite par accident.
+        if ($option === null) {
             return null;
+        }
+
+        if ($option === '') {
+            throw new \InvalidArgumentException(
+                '--emploi-temps attend un identifiant numérique, reçu une valeur vide. '
+                .'Retirez l\'option pour porter sur toute l\'instance.'
+            );
         }
 
         if (! ctype_digit(ltrim((string) $option, '+'))) {

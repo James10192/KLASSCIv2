@@ -291,7 +291,22 @@ class DiagnosticDesDatesDeSeanceSurBaseTest extends TestCase
     public function test_un_perimetre_absent_ne_restreint_rien(): void
     {
         $this->assertNull(DiagnosticDesDatesDeSeance::perimetre(null));
-        $this->assertNull(DiagnosticDesDatesDeSeance::perimetre(''));
+    }
+
+    /**
+     * `--emploi-temps=` n'est PAS `--emploi-temps` omis.
+     *
+     * L'option omise vaut « toute l'instance » ; l'option posée sans valeur est
+     * une frappe incomplète. Les confondre inverserait la portée de la commande
+     * qui ÉCRIT : l'ancienne conversion muette (`(int) ''` → 0) ne rattrapait
+     * rien, la lire comme « toute l'instance » la ferait écrire partout.
+     */
+    public function test_un_perimetre_vide_leve_au_lieu_de_valoir_toute_l_instance(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('valeur vide');
+
+        DiagnosticDesDatesDeSeance::perimetre('');
     }
 
     public function test_un_perimetre_valide_est_rendu_en_entier(): void
