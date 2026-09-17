@@ -560,7 +560,11 @@ class NotificationService
                 } else {
                     // Sinon, construire le message avec les informations disponibles
                     if ($absence->heure_debut) {
-                        $message .= " à {$absence->heure_debut}";
+                        // `format('H:i')` et non l'attribut nu : `heure_debut` est
+                        // une colonne d'heure portant un cast `datetime`, donc
+                        // l'interpolation rendait « à 2026-09-17 08:00:00 » dans
+                        // un message d'absence. Voir le piège #14.
+                        $message .= ' à '.$absence->heure_debut->format('H:i');
                     }
 
                     // Ajouter la matière si disponible

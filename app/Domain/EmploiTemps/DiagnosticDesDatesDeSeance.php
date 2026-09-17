@@ -35,6 +35,45 @@ use Illuminate\Support\Facades\DB;
 class DiagnosticDesDatesDeSeance
 {
     /**
+     * L'option `--emploi-temps` des deux commandes, validée en un seul endroit.
+     *
+     * Les deux commandes portent cette option sous le même nom et la même
+     * sémantique, et ce constat était écrit dans leur docbloc sans rien en
+     * tirer : la garde n'existait que sur celle qui LIT. Celle qui écrit en
+     * masse gardait un `(int)` nu, et `(int) '12O'` vaut `0` — la requête
+     * cherchait alors l'emploi du temps 0, n'en trouvait aucun, et la commande
+     * annonçait « 0 séance à écrire » comme une bonne nouvelle. C'est le repli
+     * muet que cette classe existe pour interdire, sur son outil le plus
+     * dangereux.
+     *
+     * Rendre `null` signifie « aucune restriction », jamais « identifiant
+     * illisible » : ce dernier cas lève.
+     *
+     * @throws \InvalidArgumentException si la valeur n'est pas un entier, ou ne
+     *                                   désigne aucun emploi du temps
+     */
+    public static function perimetre(mixed $option): ?int
+    {
+        if ($option === null || $option === '') {
+            return null;
+        }
+
+        if (! ctype_digit(ltrim((string) $option, '+'))) {
+            throw new \InvalidArgumentException(
+                sprintf('--emploi-temps attend un identifiant numérique, reçu « %s ».', $option)
+            );
+        }
+
+        $id = (int) $option;
+
+        if (! ESBTPEmploiTemps::whereKey($id)->exists()) {
+            throw new \InvalidArgumentException(sprintf('Emploi du temps %d introuvable.', $id));
+        }
+
+        return $id;
+    }
+
+    /**
      * La population du défaut : les séances qui n'ont pas de date.
      *
      * Sa portée est celle de la paie **moins le filtre enseignant**, et c'est

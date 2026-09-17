@@ -289,10 +289,30 @@ $s = new \App\Models\ESBTPSeanceCours();
 (new ReflectionMethod($s, 'hasGetMutator'))->invoke($s, 'heure_debut');  // true → l'accesseur gagne
 ```
 
-**Ce que l'inventaire du 15 septembre 2026 a trouvé, et ce qu'il avait manqué.** Le relevé de
-départ en citait **cinq**. Écrire la commande de contrôle ci-dessous — et la lancer — en a sorti
-**deux de plus**. Les cinq n'étaient donc pas la liste : c'était ce qu'une lecture à l'œil avait
-attrapé. **Six sites vivants** sont corrigés, plus un repli mort retiré :
+**L'inventaire s'est trompé trois fois de suite, et chaque fois de la même façon.** Le relevé du
+15 septembre en citait **cinq** ; écrire la commande de contrôle et la lancer en a sorti **deux de
+plus**, d'où « six sites » (le septième étant mort). Cette phrase-là a tenu deux jours : le
+17 septembre, une revue adverse en a trouvé **trois autres bien vivants** — deux sur l'écran des
+codes de présence, un sur la fiche matière — qu'aucune version du contrôle ne pouvait voir, parce
+qu'il ne cherchait que `substr(…)` et la concaténation, jamais l'affichage nu `{{ $s->heure_debut }}`.
+Et en élargissant le contrôle pour les attraper, **deux de plus encore** sont sortis : un message
+d'absence et l'écran « mes absences » de l'étudiant, tous deux sur `ESBTPAbsence`, que personne
+n'avait pensé à regarder puisque le piège était réputé propre à `ESBTPSeanceCours`.
+
+**Onze sites vivants** sont corrigés à ce jour, plus un repli mort retiré. La leçon n'est pas le
+chiffre, c'est le mécanisme : **à chaque fois, le détecteur était plus étroit que le défaut, et
+son silence a été lu comme une preuve.** Ne lisez pas le tableau ci-dessous comme une liste close.
+
+| fichier | ce que l'utilisateur voyait | trouvé par |
+|---|---|---|
+| `resources/views/esbtp/seances-cours/index.blade.php` (×2) | colonne horaire, confirmation de suppression | lecture |
+| `app/Http/Controllers/ESBTPAttendanceController.php` (×2) | **« Heure: 2026- » dans l'avis d'absence au parent**, export CSV | lecture |
+| `app/Http/Controllers/ESBTPPlanningGeneralController.php` | `"horaire"` du planning général | lecture |
+| `resources/views/teacher/attendance.blade.php` | **« 2026- - 2026- » sur l'écran d'appel** | 1ᵉʳ contrôle |
+| `resources/views/esbtp/attendance/generate-code.blade.php` (×2) | code de présence : carte du code actif, codes récents | revue adverse |
+| `resources/views/esbtp/matieres/show.blade.php` | séances de la fiche matière | revue adverse |
+| `app/Services/NotificationService.php` | **heure d'un message d'absence** (`ESBTPAbsence`) | contrôle élargi |
+| `resources/views/esbtp/attendances/mes-absences.blade.php` | **« 2026- » sur l'écran des absences de l'étudiant** | contrôle élargi |
 
 | fichier | ce que l'utilisateur voyait | état |
 |---|---|---|
@@ -309,16 +329,32 @@ le gardait teste `instanceof Carbon`, et l'accesseur rend toujours un Carbon. Il
 quand même — un piège désamorcé reste un piège écrit, et le prochain lecteur le recopiera.
 
 Les lignes ne sont plus citées par numéro : c'est ce qui rendait ce tableau faux au bout de trois
-mois. Le contrôle qui vaut, lui, se rejoue — et c'est lui qui fait foi, pas ce tableau :
+mois. Le contrôle, lui, se rejoue — il cherche les **quatre mises en contexte texte** d'une heure
+(affichage Blade, `substr`, concaténation, interpolation) :
 
 ```bash
-grep -rnE 'substr\(\$[a-zA-Z_>-]*heure_(debut|fin)|\$[a-zA-Z_>-]*heure_debut\s*\.' app/ resources/ \
-  | grep -vE '^\S+:[0-9]+:\s*(\*|//)'
+grep -rnP '(\{\{[^}]*->heure_(debut|fin)\b[^}]*\}\}|substr\(\s*\$[^,]*->heure_(debut|fin)\b|->heure_(debut|fin)\s*\.[^.]|\{\$[^}]*->heure_(debut|fin)\b[^}]*\})' app/ resources/ \
+  | grep -vE "format\(|old\(|^\S+:[0-9]+:\s*(\*|//|\{\{--)"
 ```
 
-Il doit rendre **zéro ligne**. Toute nouvelle occurrence est le piège qui repousse. Le second
-`grep` écarte les lignes de commentaire : `DiagnosticDesDatesDeSeance` cite le motif pour
-l'expliquer, et le compter comme une occurrence rendrait le contrôle bruyant — donc ignoré.
+**Ce contrôle est un tamis, PAS une preuve — et c'est le point le plus important de cette
+section.** La version précédente de cette rule le déclarait « faire foi » ; elle rendait bien zéro
+ligne, et cinq sites vivants imprimaient pourtant la date. Un détecteur qui se dit autorité ferme
+l'enquête suivante : on le lance, on lit zéro, on conclut. Il est ici pour signaler, jamais pour
+absoudre.
+
+Ce qu'il **ne voit pas**, et qu'il faut chercher à l'œil : une heure passée en argument à une
+fonction qui la met en texte plus loin, une mise en forme construite ailleurs que sur la ligne, un
+appel via une variable intermédiaire. Et il exclut toute ligne portant `format(`, donc une ligne
+qui affiche **deux** heures dont une seule est formatée lui échappe.
+
+Il porte un **faux positif connu**, à laisser tel quel : `resources/views/dashboard/etudiant.blade.php`
+calcule une durée par `diffInHours()` entre les deux heures — aucune mise en texte, donc aucun
+défaut. Ajuster le motif jusqu'à ce qu'il rende zéro serait refaire exactement l'erreur que cette
+section raconte.
+
+**La règle à appliquer en lecture prime sur le tamis** : une heure de séance ou d'absence qui part
+à l'écran, dans un courriel ou dans un export passe par `->format('H:i')`. Toujours.
 
 **Second effet, à ne PAS confondre** : sur `ESBTPSeanceCours`, une heure NULLE ne se lit pas `null` —
 `Carbon::parse(null)` rend l'instant présent. C'est encore l'accesseur, **pas** le cast : celui-ci

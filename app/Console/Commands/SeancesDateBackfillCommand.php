@@ -29,9 +29,18 @@ class SeancesDateBackfillCommand extends Command
     public function handle(DiagnosticDesDatesDeSeance $diagnostic): int
     {
         $appliquer = (bool) $this->option('appliquer');
-        $emploiTempsId = $this->option('emploi-temps') !== null
-            ? (int) $this->option('emploi-temps')
-            : null;
+
+        // La MÊME garde que `seances:date-diagnose`, parce que c'est le même
+        // périmètre — et elle vit dans le domaine, pas recopiée ici. Un `(int)`
+        // nu lisait « 12O » comme 0 et annonçait « rien à rattraper », juste
+        // avant une écriture de masse.
+        try {
+            $emploiTempsId = DiagnosticDesDatesDeSeance::perimetre($this->option('emploi-temps'));
+        } catch (\InvalidArgumentException $e) {
+            $this->error($e->getMessage());
+
+            return self::FAILURE;
+        }
 
         if ($appliquer && ! $this->confirmerEcriture($diagnostic, $emploiTempsId)) {
             $this->line('Abandon : rien n\'a été écrit.');

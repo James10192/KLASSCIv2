@@ -261,4 +261,41 @@ class DiagnosticDesDatesDeSeanceSurBaseTest extends TestCase
         // aucune séance déjà datée.
         $this->assertSame(0, $this->diagnostic()->rattraper(true)['dates_posees']);
     }
+
+    /**
+     * Le périmètre `--emploi-temps`, qui garde la commande d'ÉCRITURE.
+     *
+     * Ce cas n'est pas décoratif : la garde n'existait que sur la commande de
+     * lecture, et celle qui écrit en masse gardait un `(int)` nu. `(int) '12O'`
+     * valant `0`, elle cherchait l'emploi du temps 0, n'en trouvait aucun, et
+     * annonçait « 0 séance à écrire » — un « tout va bien » juste avant une
+     * écriture de masse. La garde vit maintenant dans le domaine, donc une
+     * seule série la couvre pour les deux commandes.
+     */
+    public function test_un_perimetre_illisible_leve_au_lieu_de_valoir_zero(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('identifiant numérique');
+
+        DiagnosticDesDatesDeSeance::perimetre('12O');
+    }
+
+    public function test_un_emploi_du_temps_inconnu_leve(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('introuvable');
+
+        DiagnosticDesDatesDeSeance::perimetre('4242');
+    }
+
+    public function test_un_perimetre_absent_ne_restreint_rien(): void
+    {
+        $this->assertNull(DiagnosticDesDatesDeSeance::perimetre(null));
+        $this->assertNull(DiagnosticDesDatesDeSeance::perimetre(''));
+    }
+
+    public function test_un_perimetre_valide_est_rendu_en_entier(): void
+    {
+        $this->assertSame(1, DiagnosticDesDatesDeSeance::perimetre('1'));
+    }
 }
