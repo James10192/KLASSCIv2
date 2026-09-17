@@ -15,6 +15,14 @@ use PHPUnit\Framework\TestCase;
  * Les séances sont des objets nus. Le détecteur ne lit que ces champs, et les
  * garder nus interdit qu'un cas passe par accident grâce à un accesseur
  * Eloquent que le code réel n'utilise pas.
+ *
+ * **Un seul cas déroge, et la dérogation est le sujet.** Cette prudence a un
+ * angle mort : en production, `depuis()` reçoit des `ESBTPSeanceCours`, dont
+ * l'accesseur rend un `Carbon` daté du jour. Les objets nus portant des chaînes
+ * « 08:00 », aucun cas d'ici ne pouvait voir que le bandeau affichait en réalité
+ * « 2026-09-17 08:00:00 ». Il a fallu une revue adverse pour le trouver. D'où
+ * `test_une_seance_eloquent_rend_une_heure_et_non_une_date`, qui hydrate le vrai
+ * modèle — le seul endroit où le type réel est éprouvé.
  */
 class DetectionDesConflitsTest extends TestCase
 {
@@ -322,5 +330,40 @@ class DetectionDesConflitsTest extends TestCase
     public function test_aucune_seance_ne_rend_aucun_conflit(): void
     {
         $this->assertSame([], (new DetectionDesConflits)->depuis([]));
+    }
+
+    public function test_une_seance_eloquent_rend_une_heure_et_non_une_date(): void
+    {
+        // LE cas que les objets nus ne peuvent pas voir — voir le docbloc de
+        // classe. On hydrate le vrai modèle, donc le vrai accesseur.
+        $seance = new \App\Models\ESBTPSeanceCours;
+        $seance->forceFill([
+            'id' => 1,
+            'annee_universitaire_id' => 7,
+            'jour' => 1,
+            'heure_debut' => '08:00:00',
+            'heure_fin' => '10:00:00',
+            'teacher_id' => 42,
+            'salle' => null,
+        ]);
+        // Les relations sont POSÉES, même à null : sans cela Eloquent les charge
+        // paresseusement et réclame une connexion. En production l'appelant les
+        // pré-charge — c'est écrit dans la signature de `depuis()`.
+        $seance->setRelation('teacher', null);
+        $seance->setRelation('emploiTemps', null);
+
+        $autre = clone $seance;
+        $autre->forceFill(['id' => 2]);
+
+        // L'attribut EST un Carbon daté du jour : c'est le piège #14, et c'est
+        // ce qui rendait le bandeau faux.
+        $this->assertInstanceOf(\Carbon\Carbon::class, $seance->heure_debut);
+
+        $conflits = (new DetectionDesConflits)->depuis([$seance, $autre]);
+
+        $this->assertCount(1, $conflits);
+        $this->assertSame('08:00', $conflits[0]['heure_debut']);
+        $this->assertSame('10:00', $conflits[0]['heure_fin']);
+        $this->assertStringNotContainsString('-', (string) $conflits[0]['heure_debut']);
     }
 }

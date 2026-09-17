@@ -12,9 +12,16 @@ use Illuminate\Support\Collection;
  * morceau de raisonnement d'un fichier qui en compte peu, et elle n'y était pas
  * vérifiable — privée, dans une classe de plus de mille lignes, donc jamais
  * prouvée autrement que par un commentaire. Ici, elle ne touche ni la base ni le
- * conteneur, et elle EST prouvée : `tests/Unit/EmploiTemps/DetectionDesConflitsTest.php`.
- * Cette phrase a d'abord annoncé qu'elle « se rejouait en trois assertions »
- * alors qu'aucun test n'existait — le même défaut que celui qu'elle corrigeait.
+ * conteneur, et elle EST prouvée :
+ * `tests/Unit/Domain/EmploiTemps/DetectionDesConflitsTest.php`.
+ *
+ * Cette phrase a porté deux mensonges successifs, et le second est instructif :
+ * elle a d'abord annoncé « se rejoue en trois assertions » quand la suite
+ * n'existait pas encore ; puis, une fois la suite écrite **dans le même commit
+ * que cette classe**, une correction ultérieure a déclaré qu'« aucun test ne
+ * l'accompagnait » et en a créé une seconde, rivale, sous un autre chemin —
+ * sans voir que la première existait, ni qu'elle venait de la mettre au rouge.
+ * Avant d'écrire qu'une classe n'a pas de test, cherchez-le.
  *
  * ## Ce que ce détecteur sait, et ce qu'il ignore
  *
@@ -107,7 +114,7 @@ final class DetectionDesConflits
     }
 
     /**
-     * @return list<array{type: string, nom: string, jour: mixed, heure_debut: mixed, heure_fin: mixed, seance_id: mixed, annee_universitaire_id: mixed}>
+     * @return list<array{type: string, nom: string, jour: mixed, heure_debut: ?string, heure_fin: ?string, seance_id: mixed, annee_universitaire_id: mixed}>
      */
     private function conflitsDeLaPaire(object $seance, object $autre): array
     {
@@ -167,6 +174,14 @@ final class DetectionDesConflits
      * `dedupliquer()` explicite : elle reposait jusqu'ici sur le `__toString()`
      * d'un `Carbon`.
      *
+     * Par `HeureDeSeance::hi()` et NON par `optional(…)->format('H:i')`, qui a
+     * d'abord été posé ici : ce dernier ne couvre que l'objet et rend `null` sur
+     * une chaîne, sans un mot. Les `null` entraient dans la clé de
+     * `dedupliquer()` et repliaient deux conflits distincts en une seule ligne —
+     * un double-emploi d'enseignant disparaissait de l'écran. Deux tests de
+     * `DetectionDesConflitsTest` l'ont dit tout de suite ; encore fallait-il
+     * savoir qu'ils existaient.
+     *
      * @return array{type: string, nom: string, jour: mixed, heure_debut: ?string, heure_fin: ?string, seance_id: mixed, annee_universitaire_id: mixed}
      */
     private function conflit(string $type, string $nom, object $seance): array
@@ -175,8 +190,8 @@ final class DetectionDesConflits
             'type' => $type,
             'nom' => $nom,
             'jour' => $seance->jour,
-            'heure_debut' => optional($seance->heure_debut)->format('H:i'),
-            'heure_fin' => optional($seance->heure_fin)->format('H:i'),
+            'heure_debut' => HeureDeSeance::hi($seance->heure_debut),
+            'heure_fin' => HeureDeSeance::hi($seance->heure_fin),
             'seance_id' => $seance->id,
             // Portée pour la déduplication ci-dessous, pas pour l'affichage.
             'annee_universitaire_id' => $seance->annee_universitaire_id,
@@ -200,8 +215,8 @@ final class DetectionDesConflits
      * disparaissait du bandeau. Les trois types y étaient également exposés — ce
      * commentaire a d'abord affirmé le contraire, et c'était faux.
      *
-     * @param  list<array{type: string, nom: string, jour: mixed, heure_debut: mixed, heure_fin: mixed, seance_id: mixed, annee_universitaire_id: mixed}>  $conflits
-     * @return list<array{type: string, nom: string, jour: mixed, heure_debut: mixed, heure_fin: mixed, seance_id: mixed, annee_universitaire_id: mixed}>
+     * @param  list<array{type: string, nom: string, jour: mixed, heure_debut: ?string, heure_fin: ?string, seance_id: mixed, annee_universitaire_id: mixed}>  $conflits
+     * @return list<array{type: string, nom: string, jour: mixed, heure_debut: ?string, heure_fin: ?string, seance_id: mixed, annee_universitaire_id: mixed}>
      */
     private function dedupliquer(array $conflits): array
     {

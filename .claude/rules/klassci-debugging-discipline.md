@@ -328,7 +328,7 @@ fichier même que la version précédente de ce tableau déclarait couvert « (�
 | `resources/views/esbtp/attendance/generate-code.blade.php` (×2) | code de présence : carte du code actif, codes récents | `ESBTPSeanceCours` (via `->seance`) | revue adverse |
 | `resources/views/esbtp/matieres/show.blade.php` | séances de la fiche matière | `ESBTPSeanceCours` | revue adverse |
 
-Et un dixième, `ESBTPSeanceCoursController` (`(int) substr($session->heure_debut, 0, 2)`), qui
+Et un onzième, `ESBTPSeanceCoursController` (`(int) substr($session->heure_debut, 0, 2)`), qui
 aurait lu l'heure **20** au lieu de **08**. Celui-là était une **branche morte** : le ternaire qui
 le gardait teste `instanceof Carbon`, et l'accesseur rend toujours un Carbon. Il a été retiré
 quand même — un piège désamorcé reste un piège écrit, et le prochain lecteur le recopiera.

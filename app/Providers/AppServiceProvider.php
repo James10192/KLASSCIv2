@@ -202,54 +202,76 @@ class AppServiceProvider extends ServiceProvider
 
         // Observers
         ESBTPNote::observe(ESBTPNoteObserver::class);
-        // Un encaissement validé se réimpute sur des mois déjà clos (allocation
-        // FIFO) : les balayages analytiques mémorisés doivent être déréférencés.
-        // PAS d'invalidation a chaque paiement valide. Elle semblait prudente et
-        // elle vidait la fonction de son objet : sur une ecole guichet ouvert, la
-        // memoire aurait ete purgee en continu, et la page serait restee a 24 ou 34
-        // secondes PRECISEMENT pendant les heures d encaissement — c est-a-dire la
-        // fenetre ou ces 24 a 34 secondes ont ete mesurees.
-        //
-        // Ce n est pas grave, et c est la raison de fond : l ecart de recouvrement ne
-        // porte QUE sur des mois CLOS. Un encaissement du jour ne le deplace que par
-        // reallocation FIFO, lentement. La duree de memorisation, reglable par ecole,
-        // suffit — a condition d afficher la fraicheur, ce que l ecran fait.
-        $academicPilotageObserversEnabled = (bool) config('academic_pilotage.observers_enabled', true);
-        if (! $academicPilotageObserversEnabled && app()->environment('production')) {
-            Log::critical('Academic pilotage observers cannot be disabled in production.');
-            $academicPilotageObserversEnabled = true;
-        }
 
-        if ($academicPilotageObserversEnabled) {
-            ESBTPNote::observe(ESBTPNoteAcademicPilotageObserver::class);
-            ESBTPEvaluation::observe(ESBTPEvaluationAcademicPilotageObserver::class);
-            ESBTPAttendance::observe(ESBTPAttendanceAcademicPilotageObserver::class);
-            ESBTPLMDBulletin::observe(ESBTPLMDBulletinAcademicPilotageObserver::class);
-            ESBTPInscription::observe(ESBTPInscriptionAcademicPilotageObserver::class);
-            ESBTPPlanificationAcademique::observe(ESBTPPlanificationAcademicPilotageObserver::class);
-        }
+        $this->brancherLesObservateursDePilotage();
 
         // Use Bootstrap for pagination
         Paginator::useBootstrap();
         Paginator::defaultView('pagination::bootstrap-4');
 
-        // Force URLs to use the correct base path
+        $this->forcerLesUrlsDeBase();
+    }
+
+    /**
+     * Les observateurs du pilotage académique, et le réglage qui les coupe.
+     *
+     * Un encaissement validé se réimpute sur des mois déjà clos (allocation
+     * FIFO) : les balayages analytiques mémorisés doivent être déréférencés.
+     * PAS d'invalidation a chaque paiement valide. Elle semblait prudente et
+     * elle vidait la fonction de son objet : sur une ecole guichet ouvert, la
+     * memoire aurait ete purgee en continu, et la page serait restee a 24 ou 34
+     * secondes PRECISEMENT pendant les heures d encaissement — c est-a-dire la
+     * fenetre ou ces 24 a 34 secondes ont ete mesurees.
+     *
+     * Ce n est pas grave, et c est la raison de fond : l ecart de recouvrement ne
+     * porte QUE sur des mois CLOS. Un encaissement du jour ne le deplace que par
+     * reallocation FIFO, lentement. La duree de memorisation, reglable par ecole,
+     * suffit — a condition d afficher la fraicheur, ce que l ecran fait.
+     *
+     * Le réglage n'est PAS honoré en production : le couper y rendrait les
+     * indicateurs faux en silence. On le journalise en `critical` et on rebranche.
+     */
+    private function brancherLesObservateursDePilotage(): void
+    {
+        $actifs = (bool) config('academic_pilotage.observers_enabled', true);
+
+        if (! $actifs && app()->environment('production')) {
+            Log::critical('Academic pilotage observers cannot be disabled in production.');
+            $actifs = true;
+        }
+
+        if (! $actifs) {
+            return;
+        }
+
+        ESBTPNote::observe(ESBTPNoteAcademicPilotageObserver::class);
+        ESBTPEvaluation::observe(ESBTPEvaluationAcademicPilotageObserver::class);
+        ESBTPAttendance::observe(ESBTPAttendanceAcademicPilotageObserver::class);
+        ESBTPLMDBulletin::observe(ESBTPLMDBulletinAcademicPilotageObserver::class);
+        ESBTPInscription::observe(ESBTPInscriptionAcademicPilotageObserver::class);
+        ESBTPPlanificationAcademique::observe(ESBTPPlanificationAcademicPilotageObserver::class);
+    }
+
+    /**
+     * Le schéma et la racine des URLs générées.
+     *
+     * Hors local, tout est en HTTPS. En local, le sous-dossier `public` doit être
+     * réintroduit dans la racine quand le service est rendu par Apache/WAMP —
+     * mais PAS sous `artisan serve` (port 8000), qui sert déjà depuis `public`.
+     */
+    private function forcerLesUrlsDeBase(): void
+    {
         if (env('APP_ENV') !== 'local') {
             URL::forceScheme('https');
-        } else {
-            // Pour le développement local
-            $rootUrl = request()->getSchemeAndHttpHost();
 
-            // Vérifier si nous sommes sur le serveur de développement Laravel (port 8000)
-            $isArtisanServe = (request()->getPort() == 8000);
-
-            if (! $isArtisanServe) {
-                // Si nous sommes sur Apache/WAMP, forcer l'URL de base pour le sous-dossier
-                URL::forceRootUrl($rootUrl.'public');
-            }
-
-            URL::forceScheme('http');
+            return;
         }
+
+        if (request()->getPort() != 8000) {
+            URL::forceRootUrl(request()->getSchemeAndHttpHost().'public');
+        }
+
+        URL::forceScheme('http');
     }
 
     /**

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Domain\EmploiTemps\ConflitsDUnCreneau;
+use App\Domain\EmploiTemps\HeureDeSeance;
 use App\Domain\EmploiTemps\JourDeLaSemaine;
 use App\Helpers\SettingsHelper;
 use App\Models\ESBTPAnneeUniversitaire;
@@ -1306,11 +1307,7 @@ class ESBTPEmploiTempsController extends Controller
      */
     public function studentTimetable()
     {
-        $user = Auth::user();
-        \Log::info('Utilisateur connecté:', ['user_id' => $user->id]);
-
-        $etudiant = ESBTPEtudiant::where('user_id', $user->id)->first();
-        \Log::info('Étudiant trouvé:', ['etudiant_id' => $etudiant ? $etudiant->id : null]);
+        $etudiant = ESBTPEtudiant::where('user_id', Auth::id())->first();
 
         if (! $etudiant) {
             return redirect()->route('dashboard')->with('error', 'Profil étudiant non trouvé.');
@@ -1323,16 +1320,6 @@ class ESBTPEmploiTempsController extends Controller
                 $query->where('is_current', true);
             })
             ->first();
-        \Log::info('Inscription trouvée:', [
-            'inscription_id' => $inscription ? $inscription->id : null,
-            'classe_id' => $inscription ? $inscription->classe_id : null,
-            'status' => $inscription ? $inscription->status : null,
-            'annee_universitaire' => $inscription && $inscription->anneeUniversitaire ? [
-                'id' => $inscription->anneeUniversitaire->id,
-                'name' => $inscription->anneeUniversitaire->name,
-                'is_current' => $inscription->anneeUniversitaire->is_current,
-            ] : null,
-        ]);
 
         if (! $inscription) {
             return view('etudiants.emploi-temps', [
@@ -1343,41 +1330,7 @@ class ESBTPEmploiTempsController extends Controller
             ])->with('warning', 'Aucune inscription active trouvée pour l\'année en cours.');
         }
 
-        // Récupérer l'emploi du temps actif pour la classe de l'étudiant
-        $emploiTemps = ESBTPEmploiTemps::where('classe_id', $inscription->classe_id)
-            ->where(function ($query) {
-                $query->where('is_active', true)
-                    ->orWhere('is_current', true);
-            })
-            ->orderBy('created_at', 'desc')
-            ->first();
-        \Log::info('Emploi du temps trouvé:', [
-            'emploi_temps_id' => $emploiTemps ? $emploiTemps->id : null,
-            'classe_id' => $emploiTemps ? $emploiTemps->classe_id : null,
-            'is_active' => $emploiTemps ? $emploiTemps->is_active : null,
-            'is_current' => $emploiTemps ? $emploiTemps->is_current : null,
-            'sql' => ESBTPEmploiTemps::where('classe_id', $inscription->classe_id)
-                ->where(function ($query) {
-                    $query->where('is_active', true)
-                        ->orWhere('is_current', true);
-                })
-                ->orderBy('created_at', 'desc')
-                ->toSql(),
-            'bindings' => ESBTPEmploiTemps::where('classe_id', $inscription->classe_id)
-                ->where(function ($query) {
-                    $query->where('is_active', true)
-                        ->orWhere('is_current', true);
-                })
-                ->orderBy('created_at', 'desc')
-                ->getBindings(),
-            'total_emplois_temps' => ESBTPEmploiTemps::where('classe_id', $inscription->classe_id)->count(),
-            'emplois_temps_actifs' => ESBTPEmploiTemps::where('classe_id', $inscription->classe_id)
-                ->where(function ($query) {
-                    $query->where('is_active', true)
-                        ->orWhere('is_current', true);
-                })
-                ->count(),
-        ]);
+        $emploiTemps = $this->emploiTempsActifDeLaClasse($inscription->classe_id);
 
         if (! $emploiTemps) {
             return view('etudiants.emploi-temps', [
@@ -1395,20 +1348,6 @@ class ESBTPEmploiTempsController extends Controller
             ->orderBy('jour')
             ->orderBy('heure_debut')
             ->get();
-
-        \Log::info('Séances trouvées avant groupement:', [
-            'nombre_seances' => $seances->count(),
-            'seances' => $seances->map(function ($seance) {
-                return [
-                    'id' => $seance->id,
-                    'jour' => $seance->jour,
-                    'heure_debut' => $seance->heure_debut,
-                    'heure_fin' => $seance->heure_fin,
-                    'matiere' => $seance->matiere ? $seance->matiere->name : null,
-                    'enseignant' => $seance->enseignantName,
-                ];
-            })->toArray(),
-        ]);
 
         // Grouper les séances par jour, sur le NUMÉRO du jour (1 = lundi).
         //
@@ -1433,12 +1372,25 @@ class ESBTPEmploiTempsController extends Controller
             ]);
         }
 
-        \Log::info('Séances après groupement:', [
-            'jours_avec_seances' => $seancesGroupees->keys()->toArray(),
-            'nombre_seances_par_jour' => $seancesGroupees->map->count()->toArray(),
-        ]);
-
         return view('etudiants.emploi-temps', compact('etudiant', 'emploiTemps', 'inscription', 'seancesGroupees'));
+    }
+
+    /**
+     * L'emploi du temps que voit un étudiant de cette classe.
+     *
+     * `is_active` OU `is_current` : les deux colonnes coexistent et ont été
+     * peuplées séparément selon l'époque, donc exiger les deux masquerait des
+     * emplois du temps bien en service. Le plus récent gagne.
+     */
+    private function emploiTempsActifDeLaClasse(int $classeId): ?ESBTPEmploiTemps
+    {
+        return ESBTPEmploiTemps::where('classe_id', $classeId)
+            ->where(function ($query) {
+                $query->where('is_active', true)
+                    ->orWhere('is_current', true);
+            })
+            ->orderBy('created_at', 'desc')
+            ->first();
     }
 
     public function setAsCurrent($id)
@@ -2519,8 +2471,8 @@ class ESBTPEmploiTempsController extends Controller
                     'matiere' => $seance->matiere->name ?? 'Matière',
                     'enseignant' => $seance->teacher->name ?? $seance->teacher?->user?->name ?? 'Enseignant',
                     'jour' => $jourLabel,
-                    'heure_debut' => $this->normalizeTime($seance->heure_debut),
-                    'heure_fin' => $this->normalizeTime($seance->heure_fin),
+                    'heure_debut' => HeureDeSeance::hi($seance->heure_debut),
+                    'heure_fin' => HeureDeSeance::hi($seance->heure_fin),
                     'reason' => $check['reason'] ?? 'conflict',
                     'message' => $check['message'] ?? 'Indisponible',
                 ];
@@ -2543,8 +2495,8 @@ class ESBTPEmploiTempsController extends Controller
         }
 
         $targetDate = $targetStart->copy()->addDays($dayIndex)->toDateString();
-        $startTime = $this->normalizeTime($seance->heure_debut);
-        $endTime = $this->normalizeTime($seance->heure_fin);
+        $startTime = HeureDeSeance::hi($seance->heure_debut);
+        $endTime = HeureDeSeance::hi($seance->heure_fin);
 
         if ($startTime && $endTime) {
             $hasAvailability = $teacher->availabilities->isNotEmpty();
@@ -2555,8 +2507,8 @@ class ESBTPEmploiTempsController extends Controller
                             && in_array($availability->availability_type, ['available', 'preferred'], true);
                     })
                     ->first(function (ESBTPTeacherAvailability $availability) use ($startTime, $endTime) {
-                        $availableStart = $this->normalizeTime($availability->start_time);
-                        $availableEnd = $this->normalizeTime($availability->end_time);
+                        $availableStart = HeureDeSeance::hi($availability->start_time);
+                        $availableEnd = HeureDeSeance::hi($availability->end_time);
                         if (! $availableStart || ! $availableEnd) {
                             return false;
                         }
@@ -2735,18 +2687,5 @@ class ESBTPEmploiTempsController extends Controller
     private function resolveSeanceDayLabel($jour): string
     {
         return JourDeLaSemaine::libelle($jour) ?? 'Jour inconnu';
-    }
-
-    private function normalizeTime($value): ?string
-    {
-        if ($value instanceof Carbon) {
-            return $value->format('H:i');
-        }
-
-        if (is_string($value)) {
-            return substr($value, 0, 5);
-        }
-
-        return null;
     }
 }
