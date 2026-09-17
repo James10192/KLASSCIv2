@@ -1070,7 +1070,12 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
 
             // Routes pour le planning gÃ©nÃ©ral
             Route::prefix('planning-general')->name('planning-general.')->group(function () {
-                Route::get('/', [ESBTPPlanningGeneralController::class, 'index'])->name('index');
+                // `index` etait declaree ici AUSSI, sans permission propre. Meme
+                // methode et meme URI que celle plus bas dans ce fichier : la
+                // collection n'en garde qu'une, la derniere enregistree, donc
+                // celle-ci ne repondait jamais. Elle a ete retiree plutot que
+                // documentee : tant qu'elle existait, supprimer un jour l'autre
+                // bloc l'aurait fait revivre en silence, avec d'autres gardes.
                 Route::get('/test', [ESBTPPlanningGeneralController::class, 'indexTest'])->name('test');
                 Route::post('/planification', [ESBTPPlanningGeneralController::class, 'storePlanification'])->name('store-planification');
                 Route::delete('/planification/{id}', [ESBTPPlanningGeneralController::class, 'destroyPlanification'])->name('destroy-planification');

@@ -1932,9 +1932,10 @@
                         @endcan
 
                         {{-- Même divergence que « Séances de cours » juste au-dessus, et
-                             plus retorse : cette route est définie deux fois, et celle qui
-                             gagne ajoute sa permission à celle de son groupe. Il faut les
-                             DEUX pour entrer — raison de plus pour lire la route. --}}
+                             plus retorse : cette page exige TROIS permissions — celle de
+                             son groupe de routes, la sienne, et celle que son contrôleur
+                             pose. Il faut les trois pour entrer. Raison de plus pour lire
+                             la route plutôt que d'en recopier un bout. --}}
                         <!-- Planning Général -->
                         @can('porte:esbtp.planning-general.index')
                         <div class="menu-item">

@@ -91,15 +91,22 @@ class AuthServiceProvider extends ServiceProvider
         );
 
         // Mêmes portes, pour le menu latéral. Deux entrées y montraient un lien
-        // qui répond 403 : leurs routes n'ont pas de permission propre et héritent
-        // de celle de leur groupe, que la barre ne connaissait pas.
+        // qui répond 403, parce que la barre connaissait une autre permission que
+        // la page.
         //
-        // Recopier ces listes dans la vue aurait marché le jour même. « Planning
-        // Général » le prouve : sa route est définie DEUX fois, et celle qui gagne
-        // est dans un groupe qui pose une SECONDE permission — deux middlewares
-        // valent « et », donc la moitié recopiée laissait passer un rôle que la
-        // page refuse. `gatherMiddleware()` ramasse les deux, et la conjonction
-        // est déjà traitée ici.
+        // Ces deux routes tiennent leur garde d'endroits DIFFÉRENTS :
+        // `seances-cours` n'en a aucune en propre et hérite de celle de son
+        // groupe ; `planning-general` cumule celle de son groupe, la sienne, et
+        // celle que son contrôleur pose dans son constructeur. Trois clauses, à
+        // satisfaire toutes.
+        //
+        // Recopier l'une ou l'autre dans la vue ne marchait déjà pas le jour même
+        // — la copie de « Planning Général » ne reprenait pas celle de son groupe.
+        // (Compter ce qu'elle reprenait serait plus long qu'utile : la vue posait
+        // aussi une permission que la route n'exige pas. Ce qui décide, c'est la
+        // clause manquante.)
+        // `gatherMiddleware()` les ramasse toutes, groupe, route et contrôleur, et
+        // la conjonction est déjà traitée ici.
         foreach ([
             'esbtp.seances-cours.index',
             'esbtp.planning-general.index',
