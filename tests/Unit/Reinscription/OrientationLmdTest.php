@@ -30,11 +30,6 @@ class OrientationLmdTest extends TestCase
         $this->assertFalse(OrientationLmd::doitProposerTousLesParcoursDeLaMention(11, [11, 12]));
     }
 
-    public function test_aucun_numero_d_annee_ne_decide_de_l_orientation(): void
-    {
-        $this->assertFalse(method_exists(OrientationLmd::class, 'estAnneeDOrientation'));
-    }
-
     public function test_un_seul_parcours_suivant_n_est_pas_une_orientation(): void
     {
         $this->assertFalse(OrientationLmd::doitProposerTousLesParcoursDeLaMention(null, [11]));

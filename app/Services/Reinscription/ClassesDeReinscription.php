@@ -83,7 +83,12 @@ class ClassesDeReinscription
             ? $this->passageLmd($quittee, (int) $niveau->year)
             : $this->passageHorsLmd($quittee, (int) $niveau->year, (string) $niveau->type);
 
-        $depuisTc = $this->passageDepuisTroncCommun($quittee, (int) $niveau->year);
+        // Le tronc commun par filiere mere est un montage BTS. En LMD la filiere
+        // n'est que le reflet du parcours : le tronc commun y est un parcours qui
+        // ne continue pas, et passageLmd() le traite deja.
+        $depuisTc = $niveau->estUnCycleLmd()
+            ? collect()
+            : $this->passageDepuisTroncCommun($quittee, (int) $niveau->year, (string) $niveau->type);
         if ($depuisTc->isEmpty()) {
             return $proposes;
         }
@@ -153,7 +158,7 @@ class ClassesDeReinscription
     /**
      * Tronc commun (filière parente) : l'année suivante est dans les filières filles.
      */
-    private function passageDepuisTroncCommun(ESBTPClasse $quittee, int $annee): Collection
+    private function passageDepuisTroncCommun(ESBTPClasse $quittee, int $annee, string $type): Collection
     {
         $filiere = $quittee->filiere;
         if (! $filiere || ! $filiere->isTroncCommun()) {
@@ -168,7 +173,7 @@ class ClassesDeReinscription
         $dansFilles = fn (int $year) => $this->avecRelations(
             ESBTPClasse::whereIn('filiere_id', $filles)
                 ->where('is_active', 1)
-                ->whereHas('niveau', fn (Builder $q) => $q->where('year', $year))
+                ->whereHas('niveau', fn (Builder $q) => $q->where('year', $year)->where('type', $type))
         );
 
         $suivantes = $dansFilles($annee + 1);
