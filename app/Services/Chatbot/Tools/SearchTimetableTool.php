@@ -120,9 +120,13 @@ class SearchTimetableTool extends ChatbotTool
     {
         $journees = [];
 
-        foreach ($seances->groupBy(fn ($s) => JourDeLaSemaine::rang($s->jour) ?? 99)->sortKeys() as $rang => $duJour) {
+        // Groupé sur le NUMÉRO (base un), pas sur le rang : la clé du groupe est
+        // alors directement ce que `libelle()` sait relire, et le `+ 1` qui les
+        // séparait disparaît. Le tri reste celui de la semaine — 1..6 — et le
+        // seau 99 des jours illisibles tombe en dernier.
+        foreach ($seances->groupBy(fn ($s) => JourDeLaSemaine::numero($s->jour) ?? 99)->sortKeys() as $numero => $duJour) {
             $journees[] = [
-                'jour' => JourDeLaSemaine::libelle($rang + 1) ?? 'Jour inconnu',
+                'jour' => JourDeLaSemaine::libelle($numero) ?? 'Jour inconnu',
                 'slots' => $duJour
                     ->sortBy(fn ($s) => $s->heure_debut?->format('H:i') ?? '00:00')
                     ->map(fn ($s) => $this->creneau($s))

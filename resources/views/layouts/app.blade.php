@@ -1909,19 +1909,29 @@
                              restée sans refonte pendant que le reste passait en premium.
 
                              La garde ci-dessous n'est PAS celle du bloc, et c'est voulu :
-                             sa voisine « Emplois du temps » porte `permission:timetables.view`
-                             sur sa route, alors que `seances-cours` n'a aucune permission
-                             propre et hérite du groupe `admin.access|identity.*`. Sans cette
-                             garde, une école qui coche `timetables.view` sur un rôle
-                             personnalisé verrait un lien qui répond 403.
+                             « Emplois du temps » porte `permission:timetables.view` sur sa
+                             route, alors que `seances-cours` n'a aucune permission propre et
+                             hérite du groupe `admin.access|identity.*`. Sans cette garde,
+                             une école qui coche `timetables.view` sur un rôle personnalisé
+                             verrait un lien qui répond 403.
 
-                             Oui, cette liste est recopiée depuis la route — et une liste
-                             écrite à deux endroits vieillit à deux endroits. Elle est gardée
-                             telle quelle parce que son sens de panne est le bon : si la
-                             route s'ouvre à un rôle de plus, le menu en montre trop PEU
-                             (un lien caché), jamais trop (un lien qui refuse). La vraie
-                             question — cette page devrait-elle être gardée par
-                             `timetables.view` comme sa voisine ? — reste ouverte : changer
+                             Deux entrées de ce bloc divergeaient ainsi de leur route — pas
+                             une. « Planning Général », plus bas, porte la même, et reçoit la
+                             même garde : ne traiter que celle-ci aurait rendu fausse la
+                             phrase qui la justifie.
+
+                             Oui, ces listes sont recopiées depuis les routes, et une liste
+                             écrite à deux endroits vieillit à deux endroits. Le compromis
+                             est assumé, mais PAS sous prétexte que « le sens de panne est
+                             bon » — il ne l'est que dans un sens. Si la route s'OUVRE à un
+                             rôle de plus, le menu en montre trop peu : un lien caché, sans
+                             gravité. Si elle se RESTREINT, le menu en montre trop, et c'est
+                             exactement le 403 qu'on répare ici. Ce qui protège vraiment,
+                             c'est que ces deux listes bougent rarement et qu'un changement
+                             de garde de route se relit.
+
+                             La vraie question — ces pages devraient-elles être gardées par
+                             `timetables.view` comme leur voisine ? — reste ouverte : changer
                              la garde d'une route en service sur huit instances ne se glisse
                              pas dans un commit de menu. --}}
                         @canany(['admin.access', 'identity.direct_studies', 'identity.registrar', 'identity.registrar_clerk', 'identity.enrollment_officer'])
@@ -1943,13 +1953,21 @@
                         </div>
                         @endcan
 
+                        {{-- Même divergence que « Séances de cours » juste au-dessus, et
+                             elle avait été manquée : la garde du bloc est
+                             `timetables.view`, la route exige
+                             `planning.manage|timetables.view_all`. Symétrique, donc
+                             traitée dans le même geste — sans quoi la phrase qui
+                             justifiait l'autre correction serait fausse. --}}
                         <!-- Planning Général -->
+                        @canany(['planning.manage', 'timetables.view_all'])
                         <div class="menu-item">
                             <a href="{{ route('esbtp.planning-general.index') }}" class="menu-link {{ Request::routeIs('esbtp.planning-general.*') ? 'active' : '' }}">
                                 <div class="menu-icon"><i class="fas fa-calendar-check"></i></div>
                                 <div class="menu-text">Planning Général</div>
                             </a>
                         </div>
+                        @endcanany
 
                     @endcan
                     @endcan

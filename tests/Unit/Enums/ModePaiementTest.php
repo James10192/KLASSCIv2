@@ -115,4 +115,82 @@ class ModePaiementTest extends TestCase
         $this->assertNull(ModePaiement::fromLegacy(''));
         $this->assertNull(ModePaiement::fromLegacy('xyz_unknown'));
     }
+
+    // --- Les deux réponses que quatre endroits donnaient chacun de leur côté ---
+
+    /**
+     * `estMobile()` décide qui un caissier « mobile money » peut encaisser.
+     *
+     * Ce n'est pas décoratif : `MobileMoneyPaymentGuard` en dérive la liste des
+     * modes autorisés, et un mode qui répond `false` à tort est REFUSÉ au
+     * guichet. C'est ce qui est arrivé à Djamo et à Celtiis Cash tant que la
+     * liste était recopiée dans le garde.
+     */
+    public function test_les_modes_mobiles_sont_exactement_ceux_du_guichet_mobile(): void
+    {
+        foreach ([
+            ModePaiement::MOBILE_MONEY,
+            ModePaiement::WAVE,
+            ModePaiement::ORANGE_MONEY,
+            ModePaiement::MTN_MONEY,
+            ModePaiement::MOOV_MONEY,
+            ModePaiement::DJAMO,
+            ModePaiement::CELTIIS_CASH,
+        ] as $mode) {
+            $this->assertTrue($mode->estMobile(), "{$mode->value} doit être un mode mobile");
+        }
+
+        foreach ([
+            ModePaiement::ESPECES,
+            ModePaiement::VIREMENT,
+            ModePaiement::CARTE,
+            ModePaiement::CHEQUE,
+            ModePaiement::AUTRE,
+        ] as $mode) {
+            $this->assertFalse($mode->estMobile(), "{$mode->value} ne doit pas être un mode mobile");
+        }
+    }
+
+    public function test_tout_mode_declare_est_couvert_par_estMobile(): void
+    {
+        // Le contrôle qui survit à l'ajout d'un case : un mode neuf doit avoir
+        // été classé sciemment, pas retomber sur le `default` par oubli. Ce test
+        // ne le prouve pas seul — il dit combien de modes sont mobiles, donc
+        // ajouter un mode mobile sans mettre ce chiffre à jour le signale.
+        $mobiles = array_filter(ModePaiement::cases(), fn (ModePaiement $m) => $m->estMobile());
+
+        $this->assertCount(7, $mobiles, 'Un mode a changé de camp : est-ce voulu ?');
+        $this->assertCount(12, ModePaiement::cases());
+    }
+
+    /**
+     * `optionsDeGuichet()` peuple l'écran de caisse.
+     *
+     * `AUTRE` en est écarté par décision : c'est un fourre-tout de reprise de
+     * données, et l'offrir au guichet laisserait un encaissement échapper au
+     * rapprochement par le choix le plus rapide.
+     */
+    public function test_le_guichet_propose_tout_sauf_le_fourre_tout(): void
+    {
+        $options = ModePaiement::optionsDeGuichet();
+
+        $this->assertNotContains(ModePaiement::AUTRE->value, $options);
+        $this->assertContains(ModePaiement::CELTIIS_CASH->value, $options);
+        $this->assertContains(ModePaiement::DJAMO->value, $options);
+        $this->assertContains(ModePaiement::ESPECES->value, $options);
+        $this->assertCount(count(ModePaiement::cases()) - 1, $options);
+    }
+
+    public function test_chaque_option_de_guichet_est_un_mode_relisible(): void
+    {
+        // Le contrat de l'écran : la valeur postée doit se relire en mode, et
+        // la clé est le libellé montré. Une option dont la valeur ne se relit
+        // pas produirait un encaissement au mode inconnu.
+        foreach (ModePaiement::optionsDeGuichet() as $libelle => $valeur) {
+            $mode = ModePaiement::tryFrom($valeur);
+
+            $this->assertNotNull($mode, "« {$valeur} » doit se relire en mode");
+            $this->assertSame($libelle, $mode->label());
+        }
+    }
 }

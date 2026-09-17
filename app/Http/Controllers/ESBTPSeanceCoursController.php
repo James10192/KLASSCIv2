@@ -130,15 +130,15 @@ class ESBTPSeanceCoursController extends Controller
         $illisibles = 0;
 
         foreach ($bruts as $ecriture => $total) {
-            $rang = JourDeLaSemaine::rang($ecriture);
+            $numero = JourDeLaSemaine::numero($ecriture);
 
-            if ($rang === null) {
+            if ($numero === null) {
                 $illisibles += (int) $total;
 
                 continue;
             }
 
-            $comptes[$rang + 1] += (int) $total;
+            $comptes[$numero] += (int) $total;
         }
 
         if ($illisibles > 0) {

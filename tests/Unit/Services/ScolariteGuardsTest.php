@@ -28,15 +28,26 @@ class ScolariteGuardsTest extends TestCase
         $guard = new MobileMoneyPaymentGuard();
 
         $this->assertTrue($guard->canCreate($user));
-        $this->assertSame([
-            ModePaiement::MOBILE_MONEY->value,
-            ModePaiement::WAVE->value,
-            ModePaiement::ORANGE_MONEY->value,
-            ModePaiement::MTN_MONEY->value,
-            ModePaiement::MOOV_MONEY->value,
-        ], $guard->allowedModes($user));
-        $this->assertTrue($guard->allowsMode($user, 'wave'));
-        $this->assertFalse($guard->allowsMode($user, 'especes'));
+
+        // Dérivé de l'énumération, et NON recopié. La liste était écrite ici en
+        // toutes lettres ; quand le garde a cessé de la recopier lui aussi, ce
+        // test est devenu la troisième copie — et la seule restée à cinq modes
+        // alors que Djamo et Celtiis Cash étaient entrés. Une assertion qui
+        // recopie la source qu'elle vérifie ne vérifie qu'elle-même.
+        $attendus = array_values(array_map(
+            fn (ModePaiement $mode) => $mode->value,
+            array_filter(ModePaiement::cases(), fn (ModePaiement $mode) => $mode->estMobile()),
+        ));
+
+        $this->assertSame($attendus, $guard->allowedModes($user));
+
+        // Ce que l'assertion dérivée ne peut plus dire toute seule : que la
+        // liste n'est pas vide, et qu'elle exclut bien l'espèce. C'est
+        // l'intention du garde, et elle se vérifie par des valeurs nommées.
+        $this->assertNotEmpty($attendus);
+        $this->assertTrue($guard->allowsMode($user, ModePaiement::WAVE->value));
+        $this->assertTrue($guard->allowsMode($user, ModePaiement::CELTIIS_CASH->value));
+        $this->assertFalse($guard->allowsMode($user, ModePaiement::ESPECES->value));
     }
 
     public function test_print_stays_open_when_approval_setting_is_off(): void
