@@ -130,6 +130,64 @@ class ClassesProposeesAuPassageTest extends TestCase
         $this->assertSame([$licence1->id], $this->proposees($this->etudiantEn($bts2)));
     }
 
+    public function test_une_licence_1_deja_specialisee_ne_voit_que_son_parcours(): void
+    {
+        // Cas ESBTP Abidjan : L1 Batiment et L1 Travaux Publics sont distinctes
+        // des l'entree. Etre en L1 n'ouvre aucun choix d'orientation.
+        $mention = $this->mention('GC');
+        $batiment = $this->parcours($mention, 'BU');
+        $travauxPublics = $this->parcours($mention, 'TIR');
+
+        $licence1 = $this->classe('Licence', 1, $batiment, ESBTPFiliere::factory()->create());
+        $licence2Batiment = $this->classe('Licence', 2, $batiment, ESBTPFiliere::factory()->create());
+        $this->classe('Licence', 2, $travauxPublics, ESBTPFiliere::factory()->create());
+
+        $this->assertSame([$licence2Batiment->id], $this->proposees($this->etudiantEn($licence1)));
+    }
+
+    public function test_un_tronc_commun_propose_toutes_les_specialites_de_la_mention(): void
+    {
+        // Le tronc commun est un parcours qui ne continue pas l'annee suivante :
+        // c'est ce fait, et aucun nom de specialite, qui ouvre le choix.
+        $mention = $this->mention('PVA');
+        $troncCommun = $this->parcours($mention, 'TC');
+
+        $licence1 = $this->classe('Licence', 1, $troncCommun, ESBTPFiliere::factory()->create());
+        $animales = $this->classe('Licence', 2, $this->parcours($mention, 'LPA'), ESBTPFiliere::factory()->create());
+        $vegetales = $this->classe('Licence', 2, $this->parcours($mention, 'LPV'), ESBTPFiliere::factory()->create());
+
+        $this->assertSame(
+            collect([$animales->id, $vegetales->id])->sort()->values()->all(),
+            $this->proposees($this->etudiantEn($licence1))
+        );
+    }
+
+    public function test_une_specialite_rangee_dans_une_autre_mention_n_est_pas_devinee(): void
+    {
+        // Etat d'USAT en septembre 2026 : Productions animales et vegetales sont
+        // deux mentions a cote de celle du tronc commun. Rien ne les relie au
+        // tronc commun ; le code ne devine pas un lien par le domaine ou le nom.
+        $troncCommun = $this->parcours($this->mention('PVA'), 'TC');
+        $licence1 = $this->classe('Licence', 1, $troncCommun, ESBTPFiliere::factory()->create());
+        $this->classe('Licence', 2, $this->parcours($this->mention('PA'), 'LPA'), ESBTPFiliere::factory()->create());
+        $this->classe('Licence', 2, $this->parcours($this->mention('PV'), 'LPV'), ESBTPFiliere::factory()->create());
+
+        $this->assertSame([], $this->proposees($this->etudiantEn($licence1)));
+    }
+
+    public function test_une_filiere_tronc_commun_bts_ne_s_ajoute_pas_a_une_classe_lmd(): void
+    {
+        $troncCommun = ESBTPFiliere::factory()->create(['is_tronc_commun' => true, 'parent_id' => null]);
+        $fille = ESBTPFiliere::factory()->create(['parent_id' => $troncCommun->id]);
+
+        $licence1 = $this->classe('Licence', 1, null, $troncCommun);
+        $licence2 = $this->classe('Licence', 2, null, $troncCommun);
+        $this->classe('BTS', 2, null, $fille);
+        $this->classe('Licence', 1, null, $fille);
+
+        $this->assertSame([$licence2->id], $this->proposees($this->etudiantEn($licence1)));
+    }
+
     /** @return list<int> */
     private function proposees(ESBTPEtudiant $etudiant): array
     {

@@ -351,8 +351,13 @@
                     </div>
                     @php
                         $classesPassage = collect($classesParDecision['passage'] ?? []);
+                        // En LMD la destination est le parcours : deux parcours peuvent
+                        // pointer vers la meme filiere BTS, les grouper par filiere les
+                        // fondrait en une seule carte.
                         $specialitesPassage = $classesPassage->groupBy(function ($classe) {
-                            return $classe->filiere->name ?? $classe->parcours->name ?? $classe->name;
+                            return $classe->niveau?->estUnCycleLmd()
+                                ? ($classe->parcours->name ?? $classe->filiere->name ?? $classe->name)
+                                : ($classe->filiere->name ?? $classe->name);
                         })->filter(fn ($groupe) => $groupe->isNotEmpty());
                     @endphp
                     @if($specialitesPassage->count() > 1)
@@ -361,8 +366,7 @@
                             <p style="color:#64748b;font-size:.88rem;margin-bottom:.75rem;">Plusieurs destinations s’ouvrent l’an prochain. Cliquez sur une carte, puis confirmez la classe.</p>
                             <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:.75rem;">
                                 @foreach($specialitesPassage as $nomSpecialite => $groupe)
-                                    @php $premiere = $groupe->first(); @endphp
-                                    <button type="button" class="re-spe-card" data-classe-id="{{ $premiere->id }}"
+                                    <button type="button" class="re-spe-card" data-classe-ids="{{ $groupe->pluck('id')->implode(',') }}"
                                             style="text-align:left;background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:1rem;cursor:pointer;">
                                         <strong style="color:#0453cb;display:block;">{{ $nomSpecialite }}</strong>
                                         <span style="font-size:.8rem;color:#64748b;">{{ $groupe->count() }} classe(s)</span>
@@ -1083,16 +1087,33 @@ document.addEventListener('DOMContentLoaded', function() {
                 })
             ];
 
+            // Une carte = un parcours. S'il n'a qu'une classe on la choisit ; s'il
+            // en a plusieurs (sections A, B...) on restreint la liste a celles-ci
+            // sans en prendre une au hasard.
             document.querySelectorAll('.re-spe-card').forEach(function (carte) {
-                carte.addEventListener('click', function () {
-                    const id = String(carte.getAttribute('data-classe-id'));
-                    const option = classesOptions.find(function (o) { return o.value === id; });
-                    if (option && window.nouvelleClasseSelector) {
-                        window.nouvelleClasseSelector.selectOption(option);
-                        document.querySelectorAll('.re-spe-card').forEach(function (c) { c.style.borderColor = '#e2e8f0'; });
-                        carte.style.borderColor = '#0453cb';
+                carte.onclick = function () {
+                    const selecteur = window.nouvelleClasseSelector;
+                    if (!selecteur) {
+                        return;
                     }
-                });
+                    const ids = String(carte.getAttribute('data-classe-ids') || '').split(',').filter(Boolean);
+                    const options = classesOptions.filter(function (o) { return o.value === '' || ids.indexOf(o.value) !== -1; });
+                    document.querySelectorAll('.re-spe-card').forEach(function (c) { c.style.borderColor = '#e2e8f0'; });
+                    carte.style.borderColor = '#0453cb';
+                    selecteur.options = options;
+                    selecteur.filteredOptions = options;
+                    if (ids.length === 1) {
+                        const option = options.find(function (o) { return o.value === ids[0]; });
+                        if (option) {
+                            selecteur.selectOption(option);
+                        }
+                        return;
+                    }
+                    selecteur.selectedValue = '';
+                    selecteur.selectedLabel = 'Sélectionner une classe...';
+                    setReinscriptionButtonState(false, 'Choisissez la section dans la liste des classes.');
+                    document.getElementById('classes-help').textContent = ids.length + ' classe(s) pour ce parcours';
+                };
             });
 
             // Mettre à jour le searchable select
