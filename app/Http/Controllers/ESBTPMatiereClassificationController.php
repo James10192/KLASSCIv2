@@ -125,18 +125,25 @@ class ESBTPMatiereClassificationController extends Controller
             ])
             ->values();
 
+        // Le COUPLE est renseigne des qu'une de ses lignes a ete validee —
+        // c'est la regle du domaine (`BtsMaquette::isRenseignee`), et c'est
+        // elle qui decide si les semestres comptent. La poser ici, une fois,
+        // evite que le decompte affiche et l'etat annonce divergent.
+        $comboRenseigne = $rows->contains(fn ($ligne) => $ligne['semestre_renseigne']);
+
         return response()->json([
             'success' => true,
             'is_tronc_commun' => $isTroncCommun,
             'filiere' => $filiere?->name,
             'matieres' => $rows,
             'maquette' => [
-                'renseignee' => $rows->contains(fn ($ligne) => $ligne['semestre_renseigne']),
-                // Meme regle que le domaine : une ligne non validee vaut « les
-                // deux semestres ». Les compter comme absentes ferait dire a
-                // l'ecran « aucune matiere au semestre 2 » alors que neuf y sont.
-                'semestre_1' => $rows->filter(fn ($l) => $this->prevueAu($l, 1))->count(),
-                'semestre_2' => $rows->filter(fn ($l) => $this->prevueAu($l, 2))->count(),
+                'renseignee' => $comboRenseigne,
+                // Meme regle que le domaine : tant que le couple n'est pas
+                // valide, le bulletin rend la liste entiere. Les compter
+                // autrement ferait dire a l'ecran « aucune matiere au semestre
+                // 2 » alors que le bulletin en portera dix-huit.
+                'semestre_1' => $rows->filter(fn ($l) => $this->prevueAu($l, 1, $comboRenseigne))->count(),
+                'semestre_2' => $rows->filter(fn ($l) => $this->prevueAu($l, 2, $comboRenseigne))->count(),
             ],
             'planning' => $this->apercuDuPlanning($filiereId, $niveauId, $request),
             'kpis' => [
@@ -189,13 +196,22 @@ class ESBTPMatiereClassificationController extends Controller
      *
      * @param  array<string, mixed>  $ligne
      */
-    private function prevueAu(array $ligne, int $semestre): bool
+    private function prevueAu(array $ligne, int $semestre, bool $comboRenseigne): bool
     {
-        if (! $ligne['semestre_renseigne'] || $ligne['semestre'] === null) {
+        // Tant que le COUPLE n'est pas valide, le bulletin ignore les
+        // semestres et rend la liste entiere : l'écran doit dire la même
+        // chose, sinon il annonce « aucune matière au semestre 2 » pour un
+        // bulletin qui en portera dix-huit.
+        //
+        // Cette garde se posait ligne par ligne, quand le domaine la pose par
+        // couple : une ligne portant un semestre sans avoir été validée — ce
+        // que l'import produit par défaut — était comptée « aux deux » ici et
+        // « à un seul » au bulletin.
+        if (! $comboRenseigne) {
             return true;
         }
 
-        return $ligne['semestre'] === $semestre;
+        return \App\Domain\BtsTroncCommun\SemestreDeMaquette::estPrevueAu($ligne['semestre'], $semestre);
     }
 
     /**
@@ -228,6 +244,23 @@ class ESBTPMatiereClassificationController extends Controller
         $matiereId = (int) $valide['matiere_id'];
 
         $matiere = ESBTPMatiere::find($matiereId);
+
+        // D'abord : est-elle seulement là ? Compter les évaluations avant de
+        // le savoir fait demander une confirmation pour un retrait qui n'aura
+        // rien à retirer — l'utilisateur confirme, et reçoit ensuite « elle
+        // n'est pas dans la maquette ».
+        $estDansLaMaquette = ESBTPMatiereFilierNiveau::query()
+            ->where('filiere_id', $filiereId)
+            ->where('niveau_etude_id', $niveauId)
+            ->where('matiere_id', $matiereId)
+            ->exists();
+
+        if (! $estDansLaMaquette) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Cette matière n\'est pas dans la maquette de ce niveau.',
+            ], 422);
+        }
 
         $classeIds = ESBTPClasse::query()
             ->where('filiere_id', $filiereId)

@@ -195,7 +195,7 @@ final class BtsMaquette
         }
 
         foreach ($semestresDeclares as $declare) {
-            if ($declare === null || $declare === $semestre) {
+            if (SemestreDeMaquette::estPrevueAu($declare, $semestre)) {
                 return true;
             }
         }

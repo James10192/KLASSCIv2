@@ -10,29 +10,33 @@ use App\Models\ESBTPMatiereFilierNiveau;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Le rattachement d'une matiere a un couple (filiere, niveau), en UN seul
- * endroit qui ecrit les trois tables a la fois.
+ * Le rattachement d'une matiere a un couple (filiere, niveau), en un seul
+ * endroit.
  *
- * TROIS TABLES, DEUX VERITES, UN ECART PERMANENT. Le rattachement vit
- * aujourd'hui a la fois dans `esbtp_matiere_filiere_niveau` (le pivot
- * canonique, au grain filiere x niveau) et dans les deux pivots plats
- * `esbtp_matiere_filiere` et `esbtp_matiere_niveau`, qui sont deux listes
- * independantes. Le produit des deux listes n'est pas le pivot canonique :
- * une matiere en filieres [A, B] et en niveaux [1, 2] parait rattachee a
- * quatre couples alors que le pivot n'en porte peut-etre qu'un. C'est ce que
- * `CLIMatiereController::diagnoseLiaisons` appelle des combinaisons fantomes.
+ * TROIS TABLES, DEUX VERITES. Le rattachement vit dans
+ * `esbtp_matiere_filiere_niveau` (le pivot canonique, au grain filiere x
+ * niveau) et dans les deux pivots plats `esbtp_matiere_filiere` et
+ * `esbtp_matiere_niveau`, qui sont deux listes independantes. Le produit des
+ * deux listes n'est pas le pivot canonique : une matiere en filieres [A, B] et
+ * en niveaux [1, 2] parait rattachee a quatre couples alors que le pivot n'en
+ * porte peut-etre qu'un. C'est ce que `CLIMatiereController::diagnoseLiaisons`
+ * appelle des combinaisons fantomes.
  *
- * L'ecart se voit a l'ecran : le bulletin se compose sur le pivot canonique
- * (`BtsBulletinSubjectResolver`), pendant que l'ecran de configuration des
- * matieres du bulletin et l'onglet Matieres d'une classe lisent les pivots
- * plats. Retirer une matiere d'un cote ne la retire pas de l'autre.
+ * ON NE REPARE PAS CET ECART PAR EFFET DE BORD. Une premiere version de cette
+ * classe recalculait les pivots plats depuis le canonique apres chaque
+ * ecriture, par un `sync()`. La revue l'a demontee, et elle avait raison :
+ * `sync()` detache tout ce qui n'est pas dans la liste, et la liste ne
+ * connaissait que le couple qu'on venait de toucher. Ajouter une matiere a
+ * (Batiment, 1re annee) l'aurait detachee de Travaux Publics et de la 2e
+ * annee — en emportant `esbtp_matiere_niveau.coefficient` et
+ * `heures_cours`, qui ne se retrouvent nulle part ailleurs.
  *
- * CE SERVICE FAIT DES PIVOTS PLATS UNE PROJECTION DU PIVOT CANONIQUE. Apres
- * toute ecriture sur une matiere, ses filieres et ses niveaux sont recalcules
- * depuis ses lignes canoniques. La projection n'est jamais globale : elle ne
- * porte que sur la matiere qu'on vient de toucher, pour qu'aucune ecriture ne
- * remue des donnees que personne n'a demande a changer. La reconciliation de
- * l'existant est un geste separe et explicite.
+ * Ce service n'ECRIT donc les pivots plats qu'en AJOUT (`syncWithoutDetaching`,
+ * le geste qu'`addToCombination` faisait deja), et n'en retire jamais rien. La
+ * coherence des LECTURES se gagne ailleurs, et c'est la qu'elle se gagne
+ * vraiment : les ecrans lisent le pivot canonique par
+ * `BtsBulletinSubjectResolver`, pas le produit des deux listes. Reconcilier
+ * l'existant reste un geste separe, explicite et simule d'abord.
  *
  * BTS uniquement. Le LMD tient ses matieres par parcours -> UE -> ECUE et
  * n'utilise aucun de ces trois pivots.
@@ -55,19 +59,29 @@ final class LiaisonsDeMatiere
                 'niveau_etude_id' => $niveauId,
             ]);
 
-            $this->projeterLesPivotsPlats($matiereId);
+            // En AJOUT seulement : les pivots plats portent d'autres couples
+            // que celui-ci, et leur charge utile (coefficient, heures) ne se
+            // retrouve nulle part ailleurs.
+            $matiere = ESBTPMatiere::find($matiereId);
+            if ($matiere) {
+                $matiere->filieres()->syncWithoutDetaching([$filiereId]);
+                $matiere->niveaux()->syncWithoutDetaching([$niveauId]);
+            }
 
             return $ligne;
         });
     }
 
     /**
-     * Detache une matiere d'un couple : la ligne canonique, ses places par
-     * semestre, et ce que les pivots plats en gardaient.
+     * Detache une matiere d'un couple : la ligne canonique et ses places par
+     * semestre.
      *
-     * Rend ce qui a ete supprime, pour que l'appelant puisse le rapporter.
+     * NE TOUCHE PAS aux pivots plats. Ils ne savent pas de quel couple vient
+     * une filiere : retirer « Batiment » parce qu'on quitte (Batiment, 2e
+     * annee) retirerait aussi la matiere de (Batiment, 1re annee), que
+     * personne n'a nomme.
      *
-     * @return array{canonique: int, places_semestre: int, filiere_detachee: bool, niveau_detache: bool}
+     * @return array{canonique: int, places_semestre: int}
      */
     public function retirer(int $matiereId, int $filiereId, int $niveauId): array
     {
@@ -78,6 +92,12 @@ final class LiaisonsDeMatiere
                 ->where('niveau_etude_id', $niveauId)
                 ->delete();
 
+            if ($canonique === 0) {
+                // Rien n'etait rattache : rien a nettoyer, et surtout rien a
+                // ecrire avant de repondre « rien n'a ete fait ».
+                return ['canonique' => 0, 'places_semestre' => 0];
+            }
+
             // La place au bulletin d'un couple qui n'existe plus n'a plus de
             // sens, et sa ligne resterait a jamais : rien ne la relit.
             $places = ESBTPMaquettePlaceSemestre::query()
@@ -86,84 +106,7 @@ final class LiaisonsDeMatiere
                 ->where('niveau_etude_id', $niveauId)
                 ->delete();
 
-            $avant = $this->pivotsPlats($matiereId);
-            // `true` : on SAIT que cette matiere etait au pivot canonique, on
-            // vient d'y supprimer sa ligne. Le garde-fou des matieres
-            // historiques ne s'applique donc pas, et retirer la derniere
-            // liaison d'une matiere doit bien vider ses pivots plats.
-            $this->projeterLesPivotsPlats($matiereId, true);
-            $apres = $this->pivotsPlats($matiereId);
-
-            return [
-                'canonique' => (int) $canonique,
-                'places_semestre' => (int) $places,
-                'filiere_detachee' => in_array($filiereId, $avant['filieres'], true)
-                    && ! in_array($filiereId, $apres['filieres'], true),
-                'niveau_detache' => in_array($niveauId, $avant['niveaux'], true)
-                    && ! in_array($niveauId, $apres['niveaux'], true),
-            ];
+            return ['canonique' => (int) $canonique, 'places_semestre' => (int) $places];
         });
-    }
-
-    /**
-     * Recalcule les pivots plats d'une matiere depuis ses lignes canoniques.
-     *
-     * Une filiere reste attachee tant qu'une ligne canonique la cite, meme via
-     * un autre niveau ; idem pour un niveau. C'est ce qui evite qu'un retrait
-     * sur un couple n'efface la matiere d'un couple voisin.
-     *
-     * Ne fait rien si la matiere n'a aucune ligne canonique ET des pivots
-     * plats deja remplis : ce cas est celui des matieres historiques, jamais
-     * passees par le pivot canonique. Les vider ici les ferait disparaitre de
-     * l'ecran de configuration du bulletin sans que personne l'ait demande.
-     *
-     * `$forcerMemeSiAucuneLigne` leve ce garde-fou, et seul un appelant qui
-     * vient de supprimer une ligne canonique de cette matiere a le droit de le
-     * poser : lui sait qu'elle y etait.
-     */
-    public function projeterLesPivotsPlats(int $matiereId, bool $forcerMemeSiAucuneLigne = false): void
-    {
-        $matiere = ESBTPMatiere::find($matiereId);
-        if (! $matiere) {
-            return;
-        }
-
-        $lignes = ESBTPMatiereFilierNiveau::query()
-            ->where('matiere_id', $matiereId)
-            ->get(['filiere_id', 'niveau_etude_id']);
-
-        if ($lignes->isEmpty() && ! $forcerMemeSiAucuneLigne) {
-            $plats = $this->pivotsPlats($matiereId);
-            if ($plats['filieres'] !== [] || $plats['niveaux'] !== []) {
-                // Matiere historique, hors pivot canonique : on n'y touche pas.
-                return;
-            }
-        }
-
-        $matiere->filieres()->sync($lignes->pluck('filiere_id')->unique()->values()->all());
-        $matiere->niveaux()->sync($lignes->pluck('niveau_etude_id')->unique()->values()->all());
-    }
-
-    /**
-     * Ce que les pivots plats portent aujourd'hui pour cette matiere.
-     *
-     * @return array{filieres: list<int>, niveaux: list<int>}
-     */
-    public function pivotsPlats(int $matiereId): array
-    {
-        return [
-            'filieres' => DB::table('esbtp_matiere_filiere')
-                ->where('matiere_id', $matiereId)
-                ->pluck('filiere_id')
-                ->map(static fn ($id) => (int) $id)
-                ->values()
-                ->all(),
-            'niveaux' => DB::table('esbtp_matiere_niveau')
-                ->where('matiere_id', $matiereId)
-                ->pluck('niveau_etude_id')
-                ->map(static fn ($id) => (int) $id)
-                ->values()
-                ->all(),
-        ];
     }
 }

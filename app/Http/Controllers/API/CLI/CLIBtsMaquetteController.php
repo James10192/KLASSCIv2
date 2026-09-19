@@ -193,6 +193,10 @@ class CLIBtsMaquetteController extends Controller
 
         DB::transaction(function () use ($lignes, $filiere, $niveau, $valider, $liaisons): void {
             foreach ($lignes as $ligne) {
+                // Cree la liaison si elle manque, et ajoute le couple aux
+                // pivots plats sans jamais en retirer.
+                $liaisons->poser((int) $ligne['matiere_id'], (int) $filiere->id, (int) $niveau->id);
+
                 $attributs = [
                     'ordre_bulletin' => $ligne['place'],
                     'semestre' => $ligne['semestre_apres'],
@@ -226,11 +230,6 @@ class CLIBtsMaquetteController extends Controller
                         ['ordre_bulletin' => $ligne['place']]
                     );
                 }
-
-                // Les deux pivots plats suivent le pivot canonique, sans quoi
-                // une matiere ajoutee ici resterait absente de l'ecran de
-                // configuration des matieres du bulletin, qui les lit.
-                $liaisons->projeterLesPivotsPlats((int) $ligne['matiere_id']);
             }
         });
 
@@ -445,17 +444,29 @@ class CLIBtsMaquetteController extends Controller
             ]);
         }
 
+        $retirees = 0;
+
         foreach ($lignes as $index => $ligne) {
+            // Une matiere absente de la maquette n'a rien a perdre : la
+            // compter comme retiree ferait dire « 3 matiere(s) retiree(s) »
+            // pour un lot dont une seule etait la.
+            if (! $ligne['dans_la_maquette']) {
+                $lignes[$index]['retire'] = ['canonique' => 0, 'places_semestre' => 0];
+
+                continue;
+            }
+
             $lignes[$index]['retire'] = $liaisons->retirer(
                 (int) $ligne['matiere_id'],
                 (int) $filiere->id,
                 (int) $niveau->id,
             );
+            $retirees++;
         }
 
         return response()->json([
             'success' => true,
-            'message' => count($lignes).' matiere(s) retiree(s) de la maquette.',
+            'message' => $retirees.' matiere(s) retiree(s) de la maquette sur '.count($lignes).' demandee(s).',
             'data' => $this->rapportDeRetrait($filiere, $niveau, $lignes, true),
         ]);
     }
@@ -528,7 +539,12 @@ class CLIBtsMaquetteController extends Controller
 
         $id = is_array($entree) ? ($entree['id'] ?? null) : (is_numeric($entree) ? $entree : null);
         if ($id !== null) {
-            $matiere = ESBTPMatiere::find((int) $id);
+            // Meme garde BTS que la resolution par libelle, plus bas : une
+            // ECUE LMD passee par son identifiant entrerait sinon dans la
+            // maquette BTS, ou rien ne sait la lire.
+            $matiere = ESBTPMatiere::query()
+                ->whereNull('unite_enseignement_id')
+                ->find((int) $id);
 
             return $matiere
                 ? ['statut' => 'ok', 'libelle' => $matiere->name, 'matiere' => $matiere]

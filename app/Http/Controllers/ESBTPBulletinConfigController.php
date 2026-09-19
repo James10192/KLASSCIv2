@@ -105,41 +105,23 @@ class ESBTPBulletinConfigController extends Controller
             $classeFiliereId = $classe->filiere_id;
             $classeNiveauId = $classe->niveau_etude_id;
 
-            // La MAQUETTE fait foi : `esbtp_matiere_filiere_niveau`, au grain
-            // (matière, filière, niveau). Cet écran lisait les deux pivots
-            // plats `esbtp_matiere_filiere` et `esbtp_matiere_niveau`, qui sont
-            // deux listes indépendantes : leur produit invente des couples que
-            // la maquette ne porte pas. Le bulletin, lui, se compose déjà sur
-            // la maquette (BtsBulletinSubjectResolver) — les deux écrans
-            // pouvaient donc afficher deux listes différentes pour une même
-            // classe, et retirer une matière d'un côté ne la retirait pas de
-            // l'autre.
+            // EXACTEMENT la liste du bulletin, par le meme resolveur.
             //
-            // Repli sur l'ancienne lecture quand la maquette ne porte rien pour
-            // ce couple : une instance qui n'a jamais ouvert l'écran Maquette
-            // garde exactement ce qu'elle affichait.
-            $idsDeLaMaquette = ($classeFiliereId && $classeNiveauId)
-                ? \App\Models\ESBTPMatiereFilierNiveau::matiereIdsForCombo($classeFiliereId, $classeNiveauId)
-                    ->map(static fn ($id) => (int) $id)
-                : collect();
+            // Cet ecran lisait les deux pivots plats `esbtp_matiere_filiere` et
+            // `esbtp_matiere_niveau`, qui sont deux listes independantes : leur
+            // produit invente des couples que la maquette ne porte pas. Lire la
+            // maquette du seul combo de la classe ne suffisait pas non plus —
+            // le bulletin fait l'union avec le tronc commun parent, ecarte les
+            // matieres classees « specialite » sur un combo de tronc commun, et
+            // retombe sur `esbtp_classe_matiere` pour les classes historiques.
+            // Trois lectures differentes pour une meme classe : retirer une
+            // matiere d'un cote ne la retirait pas de l'autre.
+            $matieres = app(\App\Domain\BtsTroncCommun\BtsBulletinSubjectResolver::class)
+                ->subjectsForClasse($classe);
 
-            $matieres = \App\Models\ESBTPMatiere::with(['filieres:id,name,code', 'niveaux:id,name,code'])
-                ->where('is_active', true)
-                ->orderBy('name')
-                ->get()
-                ->filter(function ($matiere) use ($classeFiliereId, $classeNiveauId, $idsDeLaMaquette) {
-                    if (! $classeFiliereId || ! $classeNiveauId) {
-                        return false;
-                    }
-
-                    if ($idsDeLaMaquette->isNotEmpty()) {
-                        return $idsDeLaMaquette->contains($matiere->id);
-                    }
-
-                    return $matiere->filieres->pluck('id')->contains($classeFiliereId)
-                        && $matiere->niveaux->pluck('id')->contains($classeNiveauId);
-                })
-                ->values();
+            // La vue affiche filieres et niveaux de chaque matiere.
+            $matieres->loadMissing(['filieres:id,name,code', 'niveaux:id,name,code']);
+            $matieres = $matieres->values();
             $matieresClasseIds = $matieres->pluck('id')->all();
 
             $matieresFromNotes = ESBTPNote::where('etudiant_id', $etudiant_id)
@@ -715,21 +697,17 @@ class ESBTPBulletinConfigController extends Controller
             $periode
         );
 
-        // Récupérer les matières basées sur la combinaison filière + niveau de la classe
-        $classeFiliereId = $classe->filiere_id;
-        $classeNiveauId = $classe->niveau_etude_id;
+        // EXACTEMENT la liste du bulletin, par le meme resolveur.
+        //
+        // Lire le seul combo de la classe laissait de cote l'union avec le
+        // tronc commun parent : une classe de specialite affichait ici moins de
+        // matieres que son bulletin n'en porte, et le professeur d'une matiere
+        // heritee du tronc commun n'etait nulle part saisissable.
+        $matieresFiltrees = app(\App\Domain\BtsTroncCommun\BtsBulletinSubjectResolver::class)
+            ->subjectsForClasse($classe);
 
-        // Source canonique : pivot esbtp_matiere_filiere_niveau pour combinaison stricte.
-        // Bug : filter sur filieres ET niveaux séparément donnait OR-logic erroné
-        // (matière liée à filière A + matière liée à niveau B = considérée liée à A+B).
-        $matieresFiltrees = ESBTPMatiere::with(['filieres:id,name,code', 'niveaux:id,name,code'])
-            ->where('is_active', true)
-            ->whereHas('liaisonsFilieresNiveaux', function ($q) use ($classeFiliereId, $classeNiveauId) {
-                $q->where('filiere_id', $classeFiliereId)
-                  ->where('niveau_etude_id', $classeNiveauId);
-            })
-            ->orderBy('name')
-            ->get();
+        // La vue affiche filieres et niveaux de chaque matiere.
+        $matieresFiltrees->loadMissing(['filieres:id,name,code', 'niveaux:id,name,code']);
         $matieresClasseIds = $matieresFiltrees->pluck('id')->all();
 
         // Vérifier si la configuration des matières a été faite pour ces matières.

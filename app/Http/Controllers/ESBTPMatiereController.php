@@ -989,8 +989,12 @@ class ESBTPMatiereController extends Controller
             // Récupérer les IDs des matières déjà liées en une seule requête
             $linkedMatiereIds = \App\Models\ESBTPMatiereFilierNiveau::matiereIdsForCombo($filiereId, $niveauId)->toArray();
 
-            // Récupérer TOUTES les matières actives
+            // Toutes les matières actives — BTS uniquement. Ce listing est
+            // GLOBAL (aucun filtre filière/niveau) : sans cette garde, les
+            // ECUE LMD y apparaissent et peuvent être rattachées à une
+            // maquette BTS, où plus rien ne sait les lire.
             $matieres = ESBTPMatiere::where('is_active', true)
+                ->whereNull('unite_enseignement_id')
                 ->select('id', 'name', 'code', 'description', 'coefficient', 'heures_cm', 'heures_td', 'heures_tp')
                 ->orderBy('name')
                 ->get()

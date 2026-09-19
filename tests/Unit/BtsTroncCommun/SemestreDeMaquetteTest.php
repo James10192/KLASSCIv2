@@ -26,11 +26,32 @@ class SemestreDeMaquetteTest extends TestCase
         $this->assertSame(2, SemestreDeMaquette::depuisLaSaisie('2'));
     }
 
-    public function test_une_ligne_jamais_renseignee_ne_fait_jamais_conflit(): void
+    public function test_une_ligne_vide_ne_fait_pas_conflit(): void
     {
         // Premier chargement : il n'y a rien a contredire.
         $this->assertFalse(SemestreDeMaquette::estUnConflit(null, false, 1));
-        $this->assertFalse(SemestreDeMaquette::estUnConflit(2, false, 1));
+        $this->assertFalse(SemestreDeMaquette::estUnConflit(null, false, null));
+    }
+
+    /**
+     * Le trou par lequel le defaut fondateur est passe.
+     *
+     * Un chargement sans `valider` ecrit le semestre et laisse la ligne non
+     * validee. La premiere version de cette regle ne regardait QUE les lignes
+     * validees : deux chargements de suite, S1 puis S2, basculaient donc en
+     * silence toute matiere commune aux deux — precisement ce qu'elle devait
+     * empecher. Une valeur inerte reste une valeur.
+     */
+    public function test_une_ligne_non_validee_qui_porte_deja_un_semestre_fait_conflit(): void
+    {
+        $this->assertTrue(SemestreDeMaquette::estUnConflit(2, false, 1));
+        $this->assertTrue(SemestreDeMaquette::estUnConflit(1, false, 2));
+        $this->assertTrue(SemestreDeMaquette::estUnConflit(2, false, null));
+    }
+
+    public function test_recharger_le_meme_semestre_sur_une_ligne_non_validee_ne_fait_pas_conflit(): void
+    {
+        $this->assertFalse(SemestreDeMaquette::estUnConflit(2, false, 2));
     }
 
     public function test_recharger_le_meme_semestre_ne_fait_pas_conflit(): void

@@ -53,21 +53,63 @@ final class SemestreDeMaquette
     /**
      * Ce chargement contredit-il le semestre deja declare ?
      *
-     * Non si la ligne n'a jamais ete renseignee : le chargement la renseigne,
-     * il ne la contredit pas. Non non plus si le semestre demande est celui
-     * qui est deja pose. Oui dans tous les autres cas, y compris quand la
-     * ligne dit « les deux » et que le chargement la restreindrait a un seul.
+     * Trois cas, et le troisieme est celui qui a couté cher :
+     *
+     * - le semestre demande est celui qui est deja pose : rien ne change ;
+     * - la ligne ne dit encore RIEN (pas de semestre, jamais validee) : le
+     *   chargement la renseigne, il ne la contredit pas ;
+     * - la ligne porte deja un semestre : conflit, MEME SI le couple n'a pas
+     *   encore ete valide.
+     *
+     * Cette derniere clause a d'abord ete ecrite a l'envers — on ne signalait
+     * que les lignes deja validees — et elle laissait passer exactement le
+     * defaut qu'elle devait arreter. Un chargement sans `valider` ecrit le
+     * semestre et laisse `semestre_renseigne` a faux : charger le semestre 1
+     * puis le semestre 2 de cette facon basculait en silence toute matiere
+     * commune aux deux, et c'est la maquette qu'on retrouve aujourd'hui chez
+     * ESBTP Abidjan, dix matieres figees au semestre 2.
+     *
+     * Une valeur inerte n'est pas une valeur absente : elle devient vraie au
+     * moment ou quelqu'un valide le couple. La reecrire sans le dire, c'est
+     * choisir a la place de l'ecole ce qu'elle validera.
+     *
+     * Le couple valide qui dit « les deux » (semestre null) reste un conflit
+     * quand le chargement le restreindrait a un seul : la validation a fait de
+     * ce nul une declaration.
      */
     public static function estUnConflit(
         ?int $semestreActuel,
         bool $dejaRenseigne,
         ?int $semestreDemande,
     ): bool {
-        if (! $dejaRenseigne) {
+        if ($semestreActuel === $semestreDemande) {
             return false;
         }
 
-        return $semestreActuel !== $semestreDemande;
+        if ($semestreActuel === null && ! $dejaRenseigne) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Une matiere declaree a `$semestreDeclare` est-elle prevue a `$semestreVise` ?
+     *
+     * `null` veut dire « les deux », donc oui partout. Cette regle etait
+     * ecrite deux fois — dans `BtsMaquette` et dans le controleur de l'ecran
+     * Maquette — et les deux copies ne disaient pas la meme chose : celle du
+     * controleur consultait `semestre_renseigne` LIGNE PAR LIGNE, alors que le
+     * domaine tranche par COUPLE. Une ligne portant un semestre sans avoir ete
+     * validee, ce que l'import produit par defaut, etait donc comptee « aux
+     * deux » a l'ecran et « a un seul » au bulletin.
+     *
+     * La validation reste une question de couple : elle se pose avant, et pas
+     * ici.
+     */
+    public static function estPrevueAu(?int $semestreDeclare, int $semestreVise): bool
+    {
+        return $semestreDeclare === null || $semestreDeclare === $semestreVise;
     }
 
     /** Libelle lisible, pour les rapports rendus a l'appelant. */

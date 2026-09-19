@@ -451,9 +451,6 @@ class ESBTPClasseController extends Controller
             "parcours.mention.domaine",
         ]);
 
-        $classeFiliereId = $classe->filiere_id;
-        $classeNiveauId = $classe->niveau_etude_id;
-
         // Periode du toggle Suivi des heures (Semestre 1 / Semestre 2 / Année).
         // Lu en amont pour pouvoir filtrer $lmdVolumeBudget côté serveur — sinon les blocs
         // "Répartition par catégorie" et "Détail par UE" affichent l'année entière même
@@ -529,61 +526,36 @@ class ESBTPClasseController extends Controller
                 ->forClasse($lmdMatieres, $lmdVolumeBudget);
         }
 
-        // La MAQUETTE fait foi, comme pour le bulletin. Ce listing croisait les
-        // deux pivots plats (`whereHas(filieres)` ET `whereHas(niveaux)`), dont
-        // le produit cartésien invente des couples absents de la maquette —
-        // c'est ce que `diagnoseLiaisons` appelle des combinaisons fantômes.
-        // L'onglet Matières d'une classe montrait donc des matières que son
-        // bulletin ne composait pas.
+        // EXACTEMENT la liste du bulletin, par le meme resolveur.
         //
-        // Repli sur l'ancienne lecture quand la maquette est vide pour ce
-        // couple : aucune instance ne perd ce qu'elle affichait.
-        $idsDeLaMaquette =
-            $classeFiliereId && $classeNiveauId
-                ? \App\Models\ESBTPMatiereFilierNiveau::matiereIdsForCombo(
-                    $classeFiliereId,
-                    $classeNiveauId,
-                )
-                : collect();
+        // Ce listing croisait les deux pivots plats (`whereHas(filieres)` ET
+        // `whereHas(niveaux)`), dont le produit cartesien invente des couples
+        // absents de la maquette — ce que `diagnoseLiaisons` appelle des
+        // combinaisons fantomes. Lire la maquette du seul combo de la classe ne
+        // suffisait pas non plus : le bulletin fait l'union avec le tronc
+        // commun parent, ecarte les matieres classees « specialite » sur un
+        // combo de tronc commun, et retombe sur `esbtp_classe_matiere` pour les
+        // classes historiques. L'onglet Matieres montrait donc une troisieme
+        // liste, ni celle de la maquette ni celle du bulletin.
+        $combinationMatieres = app(
+            \App\Domain\BtsTroncCommun\BtsBulletinSubjectResolver::class,
+        )->subjectsForClasse($classe);
 
-        $combinationMatieres = ESBTPMatiere::with([
+        // La vue affiche filieres et niveaux de chaque matiere.
+        $combinationMatieres->loadMissing([
             "filieres:id,name,code",
             "niveaux:id,name,code",
-        ])
-            ->where("is_active", true)
-            ->when($idsDeLaMaquette->isNotEmpty(), function ($query) use (
-                $idsDeLaMaquette,
-            ) {
-                $query->whereIn("id", $idsDeLaMaquette);
-            })
-            ->when($idsDeLaMaquette->isEmpty() && $classeFiliereId, function (
-                $query,
-            ) use ($classeFiliereId) {
-                $query->whereHas("filieres", function ($q) use (
-                    $classeFiliereId,
-                ) {
-                    $q->where("esbtp_filieres.id", $classeFiliereId);
-                });
-            })
-            ->when($idsDeLaMaquette->isEmpty() && $classeNiveauId, function (
-                $query,
-            ) use ($classeNiveauId) {
-                $query->whereHas("niveaux", function ($q) use (
-                    $classeNiveauId,
-                ) {
-                    $q->where("esbtp_niveau_etudes.id", $classeNiveauId);
-                });
-            })
-            ->orderBy("name")
-            ->get()
-            ->map(function (ESBTPMatiere $matiere) {
-                $matiere->setAttribute(
-                    "classe_coefficient",
-                    $matiere->coefficient ??
-                        ($matiere->coefficient_default ?? 1),
-                );
-                return $matiere;
-            });
+        ]);
+
+        $combinationMatieres = $combinationMatieres->map(function (
+            ESBTPMatiere $matiere,
+        ) {
+            $matiere->setAttribute(
+                "classe_coefficient",
+                $matiere->coefficient ?? ($matiere->coefficient_default ?? 1),
+            );
+            return $matiere;
+        });
 
         $planningMatiere = $this->planningService->buildPlanningMatierePourClasse(
             $classe,
