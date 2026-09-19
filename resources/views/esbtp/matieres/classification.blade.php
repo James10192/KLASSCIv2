@@ -70,9 +70,6 @@
     .mtc-ajout-ligne--prise:hover { background: transparent; }
     .mtc-ajout-prise { margin-left: auto; font-size: .7rem; color: #64748b; }
 
-    /* Retrait d'une matière de la maquette. Rouge assumé : l'action est
-       destructive, et c'est la convention universelle — la palette monochrome
-       ne vaut que pour le décor. */
     /* Intrus LMD : couleur semantique danger, parce que la ligne fausse un
        bulletin deja imprime. Ce n'est pas de la decoration. */
     .mtc-intrus { border: 1px solid rgba(220,38,38,.28); background: rgba(220,38,38,.05);
@@ -85,6 +82,9 @@
         margin-top: .6rem; padding-top: .6rem; border-top: 1px solid rgba(220,38,38,.15); }
     .mtc-intrus-row .mtc-row-name { flex: 1; min-width: 0; }
 
+    /* Retrait d'une matière de la maquette. Rouge assumé : l'action est
+       destructive, et c'est la convention universelle — la palette monochrome
+       ne vaut que pour le décor. */
     .mtc-retirer { flex-shrink: 0; width: 30px; height: 30px; border-radius: 8px; border: 1px solid #e2e8f0;
         background: #fff; color: #94a3b8; font-size: .78rem; cursor: pointer; transition: all .15s ease;
         display: inline-flex; align-items: center; justify-content: center; }
@@ -268,5 +268,9 @@
 @endsection
 
 @push('scripts')
+{{-- common.js : fournit window.iiConfirm(). Cet ecran ne le chargeait pas et
+     utilisait donc les boites natives du navigateur — celui d'a cote, qui pose
+     la confirmation jumelle, le charge depuis toujours. --}}
+<script src="{{ asset('js/inscriptions/common.js') }}"></script>
 @include('esbtp.matieres.partials._classification-script')
 @endpush

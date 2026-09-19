@@ -1026,7 +1026,23 @@ class ESBTPMatiereController extends Controller
                 'liaisons.*.niveau_id'  => 'required|exists:esbtp_niveau_etudes,id',
             ]);
 
-            $liaisons = $validated['liaisons'] ?? [];
+            // LE REFUS S'ECRIT ICI, PAS DANS `error_reporting`.
+            //
+            // `present` laisse passer une chaine vide : `Array` n'est pas une
+            // regle implicite, donc elle est SAUTEE quand la valeur est vide.
+            // `$validated['liaisons']` valait alors `''`, et seul le fait que
+            // Laravel convertisse l'avertissement du `foreach` en exception
+            // evitait la suite — un 500 « Erreur lors de la sauvegarde » au lieu
+            // d'un refus clair. La surete ne doit pas dependre d'un reglage
+            // d'erreurs, surtout dans la methode dont tout le sujet est de
+            // distinguer « absent » de « vide ».
+            abort_unless(
+                is_array($validated['liaisons'] ?? null),
+                422,
+                'Le champ liaisons doit etre une liste, meme vide.'
+            );
+
+            $liaisons = $validated['liaisons'];
 
             // Voulues, dédoublonnées.
             $voulues = [];

@@ -102,8 +102,13 @@ Toute ligne rendue est un écrivain à garder. Si elle en rend plus de trois,
 l'inventaire ci-dessus est périmé — corrigez-le plutôt que de le contourner.
 
 Corollaire, et c'est le piège symétrique : **le RETRAIT doit rester ouvert.**
-`ResolutionDeMatiere::matiere(..., pourRetrait: true)` accepte une ECUE, et c'est
-délibéré. Refuser des deux côtés est exactement ce qui avait rendu la ligne
+`ResolutionDeMatiere::matierePourRetrait()` accepte une ECUE, et c'est délibéré.
+**Deux méthodes publiques, pas un drapeau** : le paramètre booléen d'origine
+faisait basculer la garde centrale de ce chantier, et un appelant qui l'oublie
+doit se voir plutôt que se deviner — c'est la consigne de
+`lmd-bts-matieres-single-source.md`, et `MatiereTreeBuilder` l'applique déjà
+(`buildForPlanning()` / `buildWithVolumeBudget()`). Ne le re-fusionnez pas en un
+seul appel « plus simple ». Refuser des deux côtés est exactement ce qui avait rendu la ligne
 inextirpable — listée par le CLI, masquée par l'écran, refusée au retrait.
 Le chargement contamine, le retrait corrige : ils ne peuvent pas porter le même
 garde.

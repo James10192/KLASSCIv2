@@ -175,6 +175,13 @@ Refuse (422) une matière qui porte des **évaluations sur ce couple** tant que
 `malgre_les_notes=true` n'est pas envoyé : la note resterait en base sans plus
 apparaître nulle part.
 
+**Tout ou rien.** Un lot est retiré dans une seule transaction : si l'un des
+retraits échoue, aucun n'est conservé. L'appel peut donc être rejoué tel quel
+après correction, sans avoir à relire ce qui aurait déjà été effacé. Ce n'était
+pas le cas avant septembre 2026 : chaque retrait était transactionnel isolément,
+et un échec en cours de lot laissait un état partiel que la réponse ne décrivait
+pas.
+
 Le retrait supprime la ligne canonique et ses places par semestre. Il **ne touche
 pas** aux pivots plats `esbtp_matiere_filiere` / `esbtp_matiere_niveau` : ceux-ci ne
 savent pas de quel couple vient une filière, et en retirer « Bâtiment » parce qu'on

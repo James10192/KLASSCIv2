@@ -52,6 +52,8 @@ class EcritureDesLignesDeBulletinTest extends TestCase
      * Il est donc exempté EXPLICITEMENT — pour qu'un lecteur voie l'exception au
      * lieu de croire qu'il n'y en a pas.
      */
+    // Compare sur le chemin RELATIF a la racine, et ancree a son debut : sur
+    // l'absolu, un `str_contains` aurait pu mordre un dossier homonyme du poste.
     private const EXEMPTE = 'database/seeders/old/';
 
     /** Ce que personne ne doit écrire hors du modèle. */
@@ -73,7 +75,7 @@ class EcritureDesLignesDeBulletinTest extends TestCase
                 continue;
             }
 
-            if (str_contains(str_replace('\\', '/', $fichier), self::EXEMPTE)) {
+            if (str_starts_with($this->cheminRelatif($fichier), self::EXEMPTE)) {
                 continue;
             }
 

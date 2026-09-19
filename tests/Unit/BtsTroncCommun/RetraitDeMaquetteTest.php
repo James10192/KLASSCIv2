@@ -29,12 +29,20 @@ class LiaisonsQuiNotentLesRetraits extends LiaisonsDeMatiere
 }
 
 /**
- * Le chemin destructeur de la maquette, eprouve sans base.
+ * Le chemin destructeur de la maquette, eprouve sans ECRITURE en base.
  *
  * `preparer()` interroge trois tables et n'est pas testable ici. `appliquer()`,
  * lui, DECIDE CE QUI EST SUPPRIME a partir du seul plan qu'on lui passe : c'est
- * du branchement pur, et c'est la moitie qui efface des lignes de
- * `esbtp_matiere_filiere_niveau` et `esbtp_maquette_places_semestre`.
+ * du branchement pur, enveloppe d'une transaction, et c'est la moitie qui efface
+ * des lignes de `esbtp_matiere_filiere_niveau` et
+ * `esbtp_maquette_places_semestre`.
+ *
+ * CE FICHIER A DIT « eprouve sans base » PENDANT UN COMMIT DE TROP. La
+ * transaction posee sur `appliquer()` exige une connexion PDO vivante : le test
+ * n'ecrit rien, mais il ne tourne plus sans MySQL. Le docblock de classe est ce
+ * que les outils affichent — le laisser dire le contraire rangeait ce fichier
+ * dans la mauvaise categorie pour qui cherche « quels tests tournent sans
+ * base ? ». Voir le commentaire dans le corps de la classe.
  *
  * Le defaut fondateur que ces tests gelent : le compteur annoncait
  * « 3 matiere(s) retiree(s) » pour un lot dont une seule etait dans la

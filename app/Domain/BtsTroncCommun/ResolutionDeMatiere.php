@@ -100,7 +100,7 @@ final class ResolutionDeMatiere
         $id = is_array($entree) ? ($entree['id'] ?? null) : (is_numeric($entree) ? $entree : null);
         if ($id !== null) {
             $matiere = ESBTPMatiere::query()
-                ->unless($accepteUneEcue, fn ($q) => $q->whereNull('unite_enseignement_id'))
+                ->unless($accepteUneEcue, fn ($q) => $q->btsOnly())
                 ->find((int) $id);
 
             return $matiere
@@ -110,7 +110,7 @@ final class ResolutionDeMatiere
 
         $cible = $this->normaliser($libelle);
         $candidats = ESBTPMatiere::query()
-            ->unless($accepteUneEcue, fn ($q) => $q->whereNull('unite_enseignement_id'))
+            ->unless($accepteUneEcue, fn ($q) => $q->btsOnly())
             ->get(['id', 'name', 'code'])
             ->filter(fn ($m) => $this->normaliser($m->name) === $cible)
             ->values();
