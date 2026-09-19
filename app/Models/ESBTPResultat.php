@@ -79,12 +79,27 @@ class ESBTPResultat extends Model implements Auditable
      * DEUX `find()` PAR LIGNE CREEE, ET C'EST ASSUME. `bulkUpdateMoyennes()`
      * enregistre une matiere pour tous les eleves d'une classe d'un seul envoi :
      * sur 60 eleves, cela fait 120 lectures par cle primaire dont 118
-     * redondantes. Un memo statique les supprimerait — et servirait des lignes
-     * perimees d'un test a l'autre sous `RefreshDatabase`, ou les identifiants
-     * se reutilisent apres chaque rollback. Une lecture par cle primaire coute
-     * moins cher qu'un garde qui se trompe. Si le cout se mesure un jour, c'est
-     * a l'appelant en lot de valider une fois avant sa boucle, pas a ce garde
-     * de devenir un cache.
+     * redondantes. Un memo statique les supprimerait, et il est refuse pour
+     * deux raisons :
+     *
+     * - PERIME AU SEIN D'UNE MEME REQUETE. Le `systeme_academique` d'une classe
+     *   ou l'`unite_enseignement_id` d'une matiere peut changer, puis une ligne
+     *   etre enregistree : le memo servirait l'etat d'avant, et laisserait
+     *   passer une ecriture devenue incoherente — ou refuserait une ecriture
+     *   devenue valide.
+     * - PERIME DANS UN WORKER. Le memo voisin `$ecartsJournalises` est borne
+     *   (quelques couples incoherents par instance) ; un memo de MODELES n'a ni
+     *   cette borne ni cette immunite dans un processus long.
+     *
+     * Une lecture par cle primaire coute moins cher qu'un garde qui se trompe.
+     * Si le cout se mesure un jour, c'est a l'appelant en lot de valider une
+     * fois avant sa boucle, pas a ce garde de devenir un cache.
+     *
+     * (Une premiere version invoquait ici la reutilisation des identifiants
+     * apres un rollback de `RefreshDatabase`. C'est FAUX sur MySQL : le
+     * compteur AUTO_INCREMENT d'InnoDB n'est pas transactionnel, les
+     * identifiants montent. Une raison fausse invite au mauvais geste — qui la
+     * refute croit avoir leve l'objection et ajoute le memo.)
      *
      * MEME EXCEPTION QUE POUR L'EVALUATION, et pour la meme raison : le
      * controle ne se declenche qu'a la creation, ou si la classe ou la matiere

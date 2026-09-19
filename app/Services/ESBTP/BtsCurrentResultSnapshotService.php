@@ -99,7 +99,7 @@ class BtsCurrentResultSnapshotService
         // Sans ce filtre, une ECUE evaluee dans une classe BTS fausserait la
         // moyenne des deux cotes a la fois — donc l'ecart « Officiel / Courant »
         // resterait nul et n'alerterait personne. Voir
-        // `BulletinService::matiereAppartientAuBulletin()`.
+        // `CoherenceSystemeAcademique::matiereRetenue()`.
         $classeDuSnapshot = $this->classe($classeId);
 
         foreach ($notes as $note) {

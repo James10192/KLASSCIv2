@@ -3,7 +3,9 @@
 namespace Tests\Feature\Bts;
 
 use App\Domain\Academique\CoherenceSystemeAcademique;
+use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPEvaluation;
+use App\Models\ESBTPNote;
 use App\Models\ESBTPMatiere;
 use App\Models\ESBTPResultat;
 use App\Models\ESBTPUniteEnseignement;
@@ -279,6 +281,65 @@ class EcueLmdHorsDuBulletinNoteTest extends TestCase
             $moyenneEleve,
             "Un eleve ne peut pas depasser la « plus forte moyenne » de sa classe : c'est le "
             .'symptome visible du filtre pose sur la moyenne mais pas sur les statistiques.'
+        );
+    }
+
+    /**
+     * Le QUATRIEME lecteur, et le seul qu'aucun test n'atteignait.
+     *
+     * `calculateStudentStatsFixed()` alimente les moyennes et les rangs de
+     * `/esbtp/resultats`, et il porte DEUX chemins d'ingestion : les notes, puis
+     * les moyennes manuelles — qui ECRASENT les premieres. Filtrer un seul des
+     * deux ne filtre aucun des deux des qu'une ligne heritee existe. Le defaut
+     * a survecu a une passe de revue parce que le correctif etait declare
+     * couvert par un filtre large de 327 tests : un filtre stable prouve
+     * l'absence de regression, jamais la presence d'une couverture.
+     */
+    public function test_les_moyennes_de_l_ecran_resultats_ecartent_l_ecue_par_ses_deux_chemins(): void
+    {
+        $this->monterLaClasse();
+        $bts = $this->matiereConfiguree();
+        $ecue = $this->uneEcue('TPGC647');
+
+        $evalBts = $this->evaluationDe($bts);
+        $evalEcue = $this->evaluationHeritee($bts, $ecue);
+
+        $etudiant = $this->etudiantInscrit();
+        $this->noter($etudiant, $evalBts, 14);
+        $this->noter($etudiant, $evalEcue, 4);
+
+        // La ligne heritee : c'est elle qui emprunte le SECOND chemin, celui
+        // qui ecrase. Sans elle, seul le chemin des notes serait exerce.
+        ESBTPResultat::withoutEvents(fn () => ESBTPResultat::create([
+            'etudiant_id' => $etudiant->id,
+            'classe_id' => $this->classe->id,
+            'matiere_id' => $ecue->id,
+            'annee_universitaire_id' => $this->annee->id,
+            'periode' => 'semestre1',
+            'moyenne' => 4,
+            'coefficient' => 1,
+        ]));
+
+        $moyennes = [];
+        $rangs = [];
+
+        app(BulletinService::class)->calculateStudentStatsFixed(
+            ESBTPEtudiant::whereKey($etudiant->id)->get(),
+            ESBTPNote::with('evaluation.matiere')->where('etudiant_id', $etudiant->id)->get(),
+            $moyennes,
+            $rangs,
+            $this->classe->id,
+            $this->annee->id,
+            'semestre1'
+        );
+
+        $this->assertArrayHasKey($etudiant->id, $moyennes, 'Temoin : sans moyenne calculee, le test ne prouve rien.');
+        $this->assertEqualsWithDelta(
+            14.0,
+            (float) $moyennes[$etudiant->id],
+            0.01,
+            "L'ecran des resultats doit rendre 14,00 comme le bulletin. Sans le filtre sur les "
+            .'DEUX chemins, il rend 9,00 — et contredit le PDF pour le meme eleve.'
         );
     }
 

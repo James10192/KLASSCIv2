@@ -1805,16 +1805,6 @@ class BulletinService
             ->with('matiere')
             ->get();
 
-        if ($resultats->isEmpty()) {
-            return $this->calculerMoyenneDepuisNotes(
-                $etudiantId,
-                $classe,
-                $anneeUniversitaireId,
-                $periodeOptions,
-                $this->normalizePeriode((string) $periode)
-            );
-        }
-
         foreach ($resultats as $resultat) {
             // MEME FILTRE QUE LE BULLETIN, et c'est le point : ces moyennes
             // alimentent `moyenne_classe`, `meilleure_moyenne` et
@@ -1847,8 +1837,34 @@ class BulletinService
             }
         }
 
+        // LE REPLI SE DECIDE APRES LE FILTRE, ET NON AVANT.
+        //
+        // Ce test portait sur `$resultats->isEmpty()`, donc sur la requete
+        // BRUTE, et il etait place au-dessus de la boucle. Le filtre de
+        // coherence ajoute dans cette boucle a rendu atteignable un cas
+        // ordinaire qui ne l'etait pas : un eleve dont les seules moyennes
+        // manuelles de la periode portent sur une ECUE. Toutes ses lignes
+        // etaient ecartees, `$resultatsParMatiere` restait vide, et la methode
+        // rendait **0** — sans lire ses notes, qui sont pourtant la.
+        //
+        // Or `calculerStatistiquesClasse()` ecarte les moyennes <= 0 : l'eleve
+        // DISPARAISSAIT des statistiques. Une saisie en masse posee par erreur
+        // sur une ECUE — un seul envoi de `bulkUpdateMoyennes()` suffit — vidait
+        // ainsi les trois statistiques de toute une classe, imprimees a zero sur
+        // chaque bulletin, pendant que le journal ne parlait que de « matiere
+        // ecartee ». C'est la moitie muette d'un rattrapage, le piege #12.
+        //
+        // Decider apres le filtre supprime la branche `return 0` : ou bien il
+        // reste des moyennes retenues, ou bien on lit les notes — elles-memes
+        // filtrees par `calculerMoyenneDepuisNotes()`.
         if (empty($resultatsParMatiere)) {
-            return 0;
+            return $this->calculerMoyenneDepuisNotes(
+                $etudiantId,
+                $classe,
+                $anneeUniversitaireId,
+                $periodeOptions,
+                $this->normalizePeriode((string) $periode)
+            );
         }
 
         return $this->calculerMoyennePonderee(collect($resultatsParMatiere));
@@ -3544,6 +3560,10 @@ class BulletinService
         if ($classeId && $anneeUniversitaireId) {
             $etudiantIds = $etudiants->pluck('id')->toArray();
             $resultatsQuery = \App\Models\ESBTPResultat::whereIn('etudiant_id', $etudiantIds)
+                // `with('matiere')` : le filtre de coherence ci-dessous lit la
+                // matiere de chaque ligne. Sans l'eager-load, c'est une requete
+                // par ligne, sur toute une classe.
+                ->with('matiere')
                 ->where('classe_id', $classeId)
                 ->where('annee_universitaire_id', $anneeUniversitaireId);
 
@@ -3562,6 +3582,19 @@ class BulletinService
                     $notesByStudentMatiere[$etudiantId] = [];
                 }
                 foreach ($resultats as $resultat) {
+                    // LE MEME FILTRE QU'AU CHEMIN DES NOTES, et c'est ici qu'il
+                    // manquait. Cette methode a DEUX chemins d'ingestion, et
+                    // celui-ci ne fait pas qu'ajouter : il ECRASE la valeur
+                    // calculee depuis les notes, et RECREE l'entree que le
+                    // `continue` du premier chemin venait d'ecarter. Filtrer un
+                    // seul des deux revenait donc a ne filtrer aucun des deux
+                    // des qu'une ligne heritee existe — c'est-a-dire dans le cas
+                    // meme que ce correctif vise.
+                    if ($classeDesStats && $resultat->matiere
+                        && ! CoherenceSystemeAcademique::matiereRetenue($resultat->matiere, $classeDesStats, 'stats resultats/moyenne manuelle')) {
+                        continue;
+                    }
+
                     $matiereId = $resultat->matiere_id;
                     if (! isset($notesByStudentMatiere[$etudiantId][$matiereId])) {
                         $notesByStudentMatiere[$etudiantId][$matiereId] = ['total_points' => 0, 'total_coefficients' => 0, 'moyenne' => 0];
