@@ -862,11 +862,16 @@ class EcueLmdHorsDuBulletinNoteTest extends TestCase
     /**
      * L'ecran ne PROPOSE plus l'ECUE, meme quand elle porte des notes.
      *
-     * L'apercu a DEUX chemins d'ingestion vers la meme liste : celui qui part
-     * des notes, et celui qui comble les trous depuis le catalogue. Le second
-     * n'AJOUTE que ce qui manque — filtrer le second seul ne retirait donc rien
-     * de ce que le premier avait deja pose, c'est-a-dire precisement les ECUE
-     * qui portent des notes.
+     * L'apercu a QUATRE chemins d'ingestion vers la meme liste — deux revues
+     * successives en ont compte trois, puis deux, et se sont trompees les deux
+     * fois : les lignes DEJA ENREGISTREES, les notes, le catalogue, le snapshot.
+     * Chacun n'AJOUTE que ce que le precedent n'a pas pose, donc filtrer un
+     * chemin tardif ne retire rien de ce qu'un chemin plus tot a deja mis.
+     *
+     * Ce test monte les DEUX cas qui comptent : une ECUE qui porte seulement des
+     * notes (chemin « notes »), et une ECUE qui porte en plus une ligne
+     * `esbtp_resultats` heritee (chemin « deja enregistre », celui qui a la
+     * preseance et que les deux premiers correctifs ne pouvaient pas voir).
      *
      * CE QUI SE PASSE SANS LE CORRECTIF, MESURE en retirant le filtre : ce n'est
      * pas que l'ECUE s'ajoute a la liste, c'est que **l'ecran ne s'ouvre plus du
@@ -903,6 +908,22 @@ class EcueLmdHorsDuBulletinNoteTest extends TestCase
         $evaluationEcue = $this->evaluationHeritee($bts, $ecue);
         $this->noter($etudiant, $evaluationEcue, 4);
 
+        // Seconde ECUE : elle porte une ligne `esbtp_resultats` heritee, donc
+        // elle entre par le chemin qui a la PRESEANCE. Sans son correctif, elle
+        // n'est pas seulement proposee : `getCoefficientForCombination()` leve
+        // (une ECUE n'a pas de coefficient sur un couple BTS) et l'ecran rend
+        // 302 au lieu de s'ouvrir.
+        $ecueEnregistree = $this->uneEcue('TPGC649');
+        ESBTPResultat::withoutEvents(fn () => ESBTPResultat::create([
+            'etudiant_id' => $etudiant->id,
+            'classe_id' => $this->classe->id,
+            'matiere_id' => $ecueEnregistree->id,
+            'annee_universitaire_id' => $this->annee->id,
+            'periode' => 'semestre1',
+            'moyenne' => 4,
+            'coefficient' => 1,
+        ]));
+
         $this->actingAs($this->unSuperAdmin());
 
         $reponse = $this->get(route('esbtp.bulletins.moyennes-preview', [
@@ -925,6 +946,26 @@ class EcueLmdHorsDuBulletinNoteTest extends TestCase
             $proposees->contains($ecue->id),
             'L\'ECUE porte des notes : elle passait par le chemin « depuis les '
             .'notes », que le filtre pose sur l\'autre chemin ne pouvait pas retirer.'
+        );
+
+        // Celle qui porte une ligne enregistree reste AFFICHEE — la cacher
+        // emporterait son bouton de suppression et la rendrait inextirpable —
+        // mais elle est marquee, donc ni modifiable ni renvoyee au serveur.
+        $lignes = collect($reponse->viewData('resultatsData'));
+
+        $this->assertTrue(
+            $lignes->has($ecueEnregistree->id),
+            'La ligne heritee doit rester visible pour rester supprimable.'
+        );
+
+        $this->assertTrue(
+            (bool) ($lignes[$ecueEnregistree->id]['intruse'] ?? false),
+            'La ligne heritee doit etre marquee « hors systeme ».'
+        );
+
+        $this->assertFalse(
+            (bool) ($lignes[$bts->id]['intruse'] ?? false),
+            'Temoin : la matiere BTS ne doit pas etre marquee intruse.'
         );
     }
 

@@ -177,12 +177,22 @@ Le jumeau AJAX `bulkUpdateMoyennes()` avait bien sa transaction et son
 fichier** qui a survécu à quatre passes : on relit celle qu'on vient d'écrire, pas
 sa voisine.
 
-**Et un écran peut avoir plusieurs chemins vers la MÊME liste.** Le premier jet
-de ce correctif n'en a filtré qu'un : `previewMoyennes()` remplit `$resultatsData`
-d'abord **depuis les notes**, puis comble les trous **depuis le catalogue**. Le
-second n'ajoute que ce qui manque, donc y poser le filtre ne retirait rien de ce
-que le premier avait déjà posé — c'est-à-dire précisément les ECUE **qui portent
-des notes**, celles qu'on enregistre. C'est la même leçon que
+**Et un écran peut avoir plusieurs chemins vers la MÊME liste. Comptez-les, ne les
+estimez pas.** `previewMoyennes()` en a **quatre**, et ce chantier les a comptés à
+voix haute « trois », puis « deux », avant de les compter vraiment :
+
+| ordre | source | pourquoi il masque les suivants |
+|---|---|---|
+| 1 | les lignes **déjà enregistrées** de `esbtp_resultats` | il a la préséance : `array_diff_key` retire d'emblée ce qu'il a posé |
+| 2 | les **notes** | n'ajoute que `if (! isset(...))` |
+| 3 | le **catalogue** | idem |
+| 4 | le **snapshot** | filtré en amont |
+
+Deux correctifs successifs ont visé le 2 puis le 3, et aucun des deux ne pouvait
+voir une ECUE portant une ligne enregistrée — c'est-à-dire le cas le plus courant
+en production, celui que `diagnostics:evaluation-system-mismatch` recense sous
+`moyennes_manuelles`. **Un filtre placé tard ne retire rien de ce qu'un chemin
+plus tôt a déjà mis.** C'est la même leçon que
 `calculateStudentStatsFixed()` avait déjà coûtée, reprise une passe plus tard sur
 un autre fichier : **compter les chemins d'ingestion, pas les méthodes.**
 

@@ -542,7 +542,7 @@ class ESBTPClasseController extends Controller
         // meme coutait deux requetes dont le resultat partait a la poubelle.
         // Une collection ELOQUENT, pas `collect()` : `loadMissing()` est appele
         // juste en dessous et n'existe que sur celle-la.
-        $estBtsPourLOnglet = strtoupper((string) ($classe->systeme_academique ?? 'BTS')) !== 'LMD';
+        $estBtsPourLOnglet = ! \App\Domain\Academique\CoherenceSystemeAcademique::classeEstLmd($classe->systeme_academique);
 
         $combinationMatieres = $estBtsPourLOnglet
             ? app(\App\Domain\BtsTroncCommun\BtsBulletinSubjectResolver::class)->subjectsForClasse($classe)

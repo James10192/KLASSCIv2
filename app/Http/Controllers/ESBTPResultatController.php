@@ -1604,16 +1604,24 @@ class ESBTPResultatController extends Controller
         $anneeUniversitaire = ESBTPAnneeUniversitaire::find($annee_universitaire_id);
 
         // KPIs
+        //
+        // Le numerateur se compte sur les MEMES matieres que le denominateur.
+        // Depuis que `$matieres` est filtre, une ligne heritee sur une matiere
+        // d'un autre systeme gonflait le compte sans gonfler l'attendu : 30
+        // eleves x 10 matieres = 300 attendus, 330 lignes, soit 110 % de
+        // completion.
+        $idsDesMatieresAffichees = $matieres->pluck('id')->all();
+
+        $resultatsComptes = $resultats->sum(function ($group) use ($idsDesMatieresAffichees) {
+            return $group->whereIn('matiere_id', $idsDesMatieresAffichees)->count();
+        });
+
         $kpis = [
             'total_students' => $students->count(),
             'total_matieres' => $matieres->count(),
-            'total_resultats' => $resultats->sum(function ($group) {
-                return $group->count();
-            }),
+            'total_resultats' => $resultatsComptes,
             'completion_rate' => $students->count() > 0 && $matieres->count() > 0
-                ? round(($resultats->sum(function ($group) {
-                    return $group->count();
-                }) / ($students->count() * $matieres->count())) * 100, 1)
+                ? round(($resultatsComptes / ($students->count() * $matieres->count())) * 100, 1)
                 : 0,
         ];
 
@@ -2525,11 +2533,12 @@ class ESBTPResultatController extends Controller
             // classe LMD, la ou le garde de `ESBTPResultat` refusait avant. Elle
             // n'aurait pas ferme une porte, elle en aurait ouvert une.
             //
-            // Voir `.claude/rules/lmd-bts-bulletin-separation.md`. Le `?? ''`
-            // n'est pas decoratif : la colonne est nullable, et une classe BTS
-            // historique peut l'avoir nulle.
+            // Voir `.claude/rules/lmd-bts-bulletin-separation.md`. Le predicat
+            // plutot qu'une comparaison en ligne : la colonne est nullable, la
+            // casse a deja diverge dans ce depot, et `CoherenceSystemeAcademique`
+            // existe pour que cette phrase n'ait qu'UN endroit.
             abort_if(
-                ($classe->systeme_academique ?? '') === 'LMD',
+                CoherenceSystemeAcademique::classeEstLmd($classe->systeme_academique),
                 422,
                 'Cette classe est LMD. Utilisez /esbtp/lmd/bulletins pour ses releves.'
             );
@@ -2644,11 +2653,37 @@ class ESBTPResultatController extends Controller
                     $matiere = $resultat->matiere;
                 }
 
+                // LE PREMIER CHEMIN D'INGESTION, et celui qui a la PRESEANCE.
+                //
+                // Deux passes de revue ont compte « trois chemins » puis « deux »
+                // pour cet ecran : il y en a QUATRE, et c'est celui-ci qui gagne.
+                // Les lignes deja enregistrees sont posees ici, et le chemin
+                // « depuis les notes » ne comble ensuite que ce qui manque
+                // (`array_diff_key`). Le filtre pose sur lui ne pouvait donc
+                // JAMAIS voir une ECUE portant une ligne `esbtp_resultats`.
+                //
+                // ON NE LA CACHE PAS, ON LA MONTRE COMME INTRUSE. L'ecarter
+                // d'ici emporterait son bouton de suppression, et la rendrait
+                // inextirpable depuis l'ecran — exactement le defaut que le
+                // retrait de maquette corrige par ailleurs, et que
+                // `/esbtp/matieres/classification` a deja resolu ainsi : un bloc
+                // distinct, avec sa croix de retrait. Le sort de ces lignes est
+                // une decision d'ecole (`rien-en-dur.md`), pas du code.
+                $intruse = ! CoherenceSystemeAcademique::matiereRetenue($matiere, $classe, 'apercu moyennes/ligne enregistree');
+
                 $resultatsData[$resultat->matiere_id] = [
                     'id' => $resultat->id,
                     'matiere' => $matiere,
                     'moyenne' => $resultat->moyenne,
-                    'coefficient' => $this->bulletinService->getCoefficientForCombination(
+                    'intruse' => $intruse,
+                    // `coefficientOrDefault()` et non `getCoefficientForCombination()` :
+                    // une ECUE n'a pas de coefficient sur un couple BTS, son
+                    // coefficient vit dans la maquette LMD. L'appel nu levait, et
+                    // le `catch (\RuntimeException)` de fin de methode renvoyait
+                    // l'utilisateur vers « configurez les coefficients » — pour une
+                    // matiere dont configurer le coefficient ne reglerait rien.
+                    // L'ecran ne s'ouvrait donc PAS.
+                    'coefficient' => $this->bulletinService->coefficientOrDefault(
                         $resultat->matiere_id,
                         $classeId,
                         $anneeUniversitaireId
@@ -2928,7 +2963,7 @@ class ESBTPResultatController extends Controller
         // Meme refus qu'a l'apercu, et AVANT la transaction : cet ecran ecrit
         // dans `esbtp_resultats`, la table du bulletin BTS.
         abort_if(
-            ($classe->systeme_academique ?? '') === 'LMD',
+            CoherenceSystemeAcademique::classeEstLmd($classe->systeme_academique),
             422,
             'Cette classe est LMD. Utilisez /esbtp/lmd/bulletins pour ses releves.'
         );

@@ -1465,6 +1465,19 @@ class DashboardController extends Controller
         // filtrage — precisement le cas que ce filtre protege.
         $classeCible = ESBTPClasse::withTrashed()->find($classeId);
 
+        // UNE LIGNE, UNE FOIS, HORS DE LA BOUCLE. `$classeCible` est invariant :
+        // journaliser dans le `map()` rendait une ligne PAR NOTE, donc soixante
+        // lignes identiques a chaque affichage de l'accueil — la page la plus
+        // chaude de l'application. C'est exactement la noyade que le memo de
+        // `CoherenceSystemeAcademique` existe pour empecher, et elle degradait
+        // l'artefact dont tout le diagnostic de ce chantier depend.
+        if (! $classeCible) {
+            \Log::warning('Moyenne de l\'accueil : classe introuvable, coherence non verifiable.', [
+                'etudiant_id' => $etudiantId,
+                'classe_id' => $classeId,
+            ]);
+        }
+
         $notes = ESBTPNote::query()
             ->where('etudiant_id', $etudiantId)
             ->where(function ($q) {
@@ -1478,23 +1491,13 @@ class DashboardController extends Controller
             ->get();
 
         $sur20 = $notes
-            ->map(function ($note) use ($classeCible, $etudiantId, $classeId) {
+            ->map(function ($note) use ($classeCible) {
                 $matiere = $note->evaluation?->matiere;
 
                 // Pas de classe ou pas de matiere : on ne peut pas juger, donc on
                 // ne retranche pas. Ecarter sur une donnee manquante inventerait
                 // une moyenne differente de celle que l'eleve attend — mais on le
                 // DIT, sinon la moyenne bouge sans que personne ne sache chercher.
-                if (! $classeCible || ! $matiere) {
-                    \Log::warning('Moyenne de l\'accueil : coherence non verifiable.', [
-                        'etudiant_id' => $etudiantId,
-                        'classe_id' => $classeId,
-                        'note_id' => $note->id,
-                        'classe_trouvee' => (bool) $classeCible,
-                        'matiere_trouvee' => (bool) $matiere,
-                    ]);
-                }
-
                 if ($classeCible && $matiere
                     && ! CoherenceSystemeAcademique::matiereRetenue($matiere, $classeCible, 'accueil mobile/moyenne courante')) {
                     return null;

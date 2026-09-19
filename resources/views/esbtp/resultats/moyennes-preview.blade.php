@@ -757,6 +757,10 @@
                                         $calculatedMoyenne = isset($notesByMatiere[$matiereId]) ? $notesByMatiere[$matiereId]['moyenne'] : null;
                                         $existingMoyenne   = $resultat['moyenne'] ?? $calculatedMoyenne;
                                         $source            = $resultat['source'] ?? 'manuelle';
+                                        // Une ligne heritee sur une matiere d'un autre systeme
+                                        // academique. On la MONTRE, en lecture seule, pour qu'elle
+                                        // reste supprimable : la cacher la rendrait inextirpable.
+                                        $intruse           = (bool) ($resultat['intruse'] ?? false);
                                     @endphp
                                     <tr>
                                         {{-- # --}}
@@ -785,6 +789,12 @@
                                                                 <i class="fas fa-pen"></i> Manuel
                                                             </span>
                                                         @endif
+                                                        @if($intruse)
+                                                            <span class="mp-badge" style="background:#fef3c7;color:#92400e;border:1px solid #fcd34d;"
+                                                                  title="Cette matiere n'appartient pas au systeme academique de la classe. Elle ne compte dans aucune moyenne et n'est plus modifiable ici — vous pouvez la supprimer.">
+                                                                <i class="fas fa-triangle-exclamation"></i> Hors systeme
+                                                            </span>
+                                                        @endif
                                                     </div>
                                                 </div>
                                             </div>
@@ -805,20 +815,33 @@
 
                                         {{-- Moy. à enregistrer --}}
                                         <td>
-                                            <input type="hidden" name="resultats[{{ $matiereId }}][matiere_id]" value="{{ $matiereId }}">
-                                            <input type="hidden" name="resultats[{{ $matiereId }}][id]" value="{{ $resultat['id'] }}">
-                                            <input type="number"
-                                                   class="mp-input"
-                                                   name="resultats[{{ $matiereId }}][moyenne]"
-                                                   value="{{ old('resultats.' . $matiereId . '.moyenne', $existingMoyenne ? number_format($existingMoyenne, 2) : '') }}"
-                                                   min="0" max="20" step="0.01"
-                                                   placeholder="0.00"
-                                                   required>
+                                            @if($intruse)
+                                                {{-- AUCUN champ poste pour une ligne hors systeme : le
+                                                     garde d'enregistrement la refuserait, et le refus
+                                                     ferait echouer TOUT l'envoi. Elle reste affichee et
+                                                     supprimable, jamais reenregistrable. --}}
+                                                <span class="mp-input" style="display:inline-block;background:#f8fafc;color:#64748b;">
+                                                    {{ $existingMoyenne !== null ? number_format($existingMoyenne, 2) : '—' }}
+                                                </span>
+                                            @else
+                                                <input type="hidden" name="resultats[{{ $matiereId }}][matiere_id]" value="{{ $matiereId }}">
+                                                <input type="hidden" name="resultats[{{ $matiereId }}][id]" value="{{ $resultat['id'] }}">
+                                                <input type="number"
+                                                       class="mp-input"
+                                                       name="resultats[{{ $matiereId }}][moyenne]"
+                                                       value="{{ old('resultats.' . $matiereId . '.moyenne', $existingMoyenne ? number_format($existingMoyenne, 2) : '') }}"
+                                                       min="0" max="20" step="0.01"
+                                                       placeholder="0.00"
+                                                       required>
+                                            @endif
                                         </td>
 
                                         {{-- Coefficient --}}
                                         <td>
                                             <div class="mp-coeff-group">
+                                                @if($intruse)
+                                                    <span class="mp-coeff-input" style="display:inline-block;background:#f8fafc;color:#64748b;">{{ $resultat['coefficient'] ?? 1 }}</span>
+                                                @else
                                                 <input type="number"
                                                        class="mp-coeff-input coefficient-input"
                                                        name="resultats[{{ $matiereId }}][coefficient]"
@@ -826,23 +849,30 @@
                                                        min="0" max="20" step="0.5"
                                                        data-matiere-id="{{ $matiereId }}"
                                                        placeholder="1">
+                                                @endif
+                                                @unless($intruse)
                                                 <button type="button"
                                                         class="mp-coeff-sync sync-coefficient-btn"
                                                         title="Synchroniser le coefficient configuré"
                                                         data-matiere-id="{{ $matiereId }}">
                                                     <i class="fas fa-sync-alt"></i>
                                                 </button>
+                                                @endunless
                                             </div>
                                             <div id="coeff-info-{{ $matiereId }}" class="coeff-info" style="display:none;"></div>
                                         </td>
 
                                         {{-- Appréciation --}}
                                         <td>
+                                            @if($intruse)
+                                                <span class="mp-input mp-input-appreciation" style="display:inline-block;background:#f8fafc;color:#64748b;">{{ $resultat['appreciation'] ?? '—' }}</span>
+                                            @else
                                             <input type="text"
                                                    class="mp-input mp-input-appreciation"
                                                    name="resultats[{{ $matiereId }}][appreciation]"
                                                    value="{{ old('resultats.' . $matiereId . '.appreciation', $resultat['appreciation'] ?? '') }}"
                                                    placeholder="Optionnel">
+                                            @endif
                                         </td>
 
                                         {{-- Action --}}
