@@ -23,8 +23,26 @@ use Illuminate\Support\Collection;
  *
  * BTS uniquement — LMD intouché. Stateless, sans dépendance à BulletinService.
  *
+ * **Les ECUE LMD sont écartées, et ce filtre n'est pas décoratif.** Les deux
+ * écrans qui gèrent les matières BTS l'appliquent déjà — `prepareMatieresListing()`
+ * par un `whereNull('unite_enseignement_id')`, `lignesDuCombo()` par un `filter()`
+ * sur le même attribut. Ce résolveur, lui, ne filtrait que `is_active` : une ECUE
+ * qui obtient une ligne dans le pivot canonique BTS sortait donc **au bulletin**
+ * tout en restant **introuvable** depuis les écrans censés la gérer. Le cas mesuré
+ * sur esbtp-abidjan : « Alimentation en eau et QTE » (TPOH243), importée avec les
+ * maquettes Génie Civil, portait une ligne `(TRAVAUX_PUBLICS, 2A)` et s'imprimait
+ * sur les bulletins de Travaux Publics 2ᵉ année — sans qu'on puisse l'en retirer.
+ *
+ * Le filtre est sûr ici parce que ce résolveur est BTS-strict, ce qui se vérifie
+ * chez ses appelants et non par son nom : `ExpectedSubjectsResolver::forClasse()`
+ * ne l'appelle qu'après `$systeme === BTS` (le LMD part sur `matieresHistoriques()`),
+ * et `ESBTPBulletinController` refuse une classe LMD en 422. Ne recopie PAS
+ * `btsOnly()` sur un lecteur au contexte mixte — les présences, par exemple,
+ * concernent légitimement des ECUE (cf. le garde-fou de la rule ci-dessous).
+ *
  * @see .claude/rules/klassci-classe-matieres.md
  * @see .claude/rules/lmd-bts-bulletin-separation.md
+ * @see .claude/rules/lmd-ecue-leak-bts-picker.md
  */
 class BtsBulletinSubjectResolver
 {
@@ -65,6 +83,7 @@ class BtsBulletinSubjectResolver
                 ->values();
 
             $matieres = ESBTPMatiere::whereIn('id', $matiereIds)
+                ->btsOnly()
                 ->where('is_active', true)
                 ->orderBy('name')
                 ->get();
@@ -75,7 +94,11 @@ class BtsBulletinSubjectResolver
         }
 
         // Fallback classes BTS historiques attachées directement via le pivot.
+        // `btsOnly()` ferait la meme chose, mais sans qualifier la colonne : dans
+        // cette jointure on les nomme toutes, comme `is_active` juste en dessous,
+        // qui existe des deux cotes du pivot et serait ambigue sans son prefixe.
         return $classe->matieres()
+            ->whereNull('esbtp_matieres.unite_enseignement_id')
             ->where('esbtp_matieres.is_active', true)
             ->orderBy('esbtp_matieres.name')
             ->get();
