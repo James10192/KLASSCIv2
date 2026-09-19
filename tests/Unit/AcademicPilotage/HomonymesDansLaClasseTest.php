@@ -128,4 +128,43 @@ class HomonymesDansLaClasseTest extends TestCase
             $this->appeler('nomComparable', ['  kouassi   affoué  grace RUCHÂMA '])
         );
     }
+
+    /**
+     * Les paires servies a l'ecran : une seule par couple, jamais deux fois la
+     * meme dans l'autre sens — et cherchees sur TOUTE la classe, pas seulement
+     * sur ceux a qui il manque une note. Deux dossiers entierement notes pour
+     * la meme personne ne font bouger aucun compteur et produisent pourtant
+     * deux bulletins.
+     */
+    public function test_les_paires_ne_sont_rendues_qu_une_fois(): void
+    {
+        $index = (new Collection([
+            ['id' => 1443, 'name' => 'KOUASSI AFFOUE GRACE', 'matricule' => 'A'],
+            ['id' => 1444, 'name' => 'KOUASSI AFFOUE GRACE RUCHAMA', 'matricule' => 'B'],
+            ['id' => 1500, 'name' => 'TRAORE MOUSSA', 'matricule' => 'C'],
+        ]))->keyBy('id');
+
+        $m = new ReflectionMethod(AcademicNoteCoverageService::class, 'doublonsProbables');
+        $m->setAccessible(true);
+        $paires = $m->invoke($this->service(), $index);
+
+        $this->assertCount(1, $paires);
+        $this->assertSame(1443, $paires[0]['a']['id']);
+        $this->assertSame(1444, $paires[0]['b']['id']);
+        $this->assertSame('A', $paires[0]['a']['matricule']);
+        $this->assertSame('B', $paires[0]['b']['matricule']);
+    }
+
+    public function test_une_classe_sans_homonyme_ne_rend_aucune_paire(): void
+    {
+        $index = (new Collection([
+            ['id' => 1, 'name' => 'TRAORE MOUSSA', 'matricule' => 'A'],
+            ['id' => 2, 'name' => 'KONE AWA', 'matricule' => 'B'],
+        ]))->keyBy('id');
+
+        $m = new ReflectionMethod(AcademicNoteCoverageService::class, 'doublonsProbables');
+        $m->setAccessible(true);
+
+        $this->assertSame([], $m->invoke($this->service(), $index));
+    }
 }

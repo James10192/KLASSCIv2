@@ -445,21 +445,28 @@ class ESBTPInscriptionController extends Controller
             }
         }
 
-        // Détection de doublons (blocage tant que non confirmé)
-        if (!$request->boolean("duplicate_override")) {
-            $duplicates = $duplicateDetector->find(
-                $request->input("nom", ""),
-                $request->input("prenoms", ""),
-                $request->input("date_naissance"),
-                $request->input("sexe"),
-            );
+        // Détection de doublons (blocage tant que non confirmé).
+        //
+        // LE CONTRÔLE TOURNE MÊME QUAND LA CASE DE CONFIRMATION EST COCHÉE.
+        // Auparavant la confirmation le sautait entièrement : l'inscription
+        // partait sans que rien, nulle part, ne garde trace de ce qui avait été
+        // écarté. Des mois plus tard, devant deux dossiers actifs pour la même
+        // personne dans une classe — la note saisie sur l'un, comptée manquante
+        // sur l'autre — plus personne ne pouvait dire si quelqu'un avait
+        // sciemment confirmé ou si le contrôle n'avait tout simplement jamais
+        // mordu. La confirmation reste souveraine, elle n'est simplement plus
+        // muette.
+        $blockingDuplicates = $duplicateDetector->find(
+            $request->input("nom", ""),
+            $request->input("prenoms", ""),
+            $request->input("date_naissance"),
+            $request->input("sexe"),
+        )->filter(function ($duplicate) {
+            return ($duplicate["score"] ?? 0) >= self::DUPLICATE_BLOCKING_SCORE;
+        });
 
-            $blockingDuplicates = $duplicates->filter(function ($duplicate) {
-                return ($duplicate["score"] ?? 0) >=
-                    self::DUPLICATE_BLOCKING_SCORE;
-            });
-
-            if ($blockingDuplicates->isNotEmpty()) {
+        if ($blockingDuplicates->isNotEmpty()) {
+            if (!$request->boolean("duplicate_override")) {
                 return redirect()
                     ->back()
                     ->withInput()
@@ -472,6 +479,23 @@ class ESBTPInscriptionController extends Controller
                         $blockingDuplicates->toArray(),
                     );
             }
+
+            Log::warning("Inscription créée malgré un doublon probable, sur confirmation explicite.", [
+                "saisi" => [
+                    "nom" => $request->input("nom"),
+                    "prenoms" => $request->input("prenoms"),
+                    "date_naissance" => $request->input("date_naissance"),
+                ],
+                "classe_id" => $request->input("classe_id"),
+                "annee_universitaire_id" => $request->input("annee_universitaire_id"),
+                "confirme_par" => optional($request->user())->id,
+                "doublons_ecartes" => $blockingDuplicates->map(fn ($doublon): array => [
+                    "etudiant_id" => $doublon["id"] ?? null,
+                    "nom_complet" => $doublon["full_name"] ?? null,
+                    "matricule" => $doublon["matricule"] ?? null,
+                    "score" => $doublon["score"] ?? null,
+                ])->values()->all(),
+            ]);
         }
 
         // Avant la creation, tant que la decision est reversible : voir

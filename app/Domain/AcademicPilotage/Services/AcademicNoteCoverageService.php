@@ -333,6 +333,7 @@ final class AcademicNoteCoverageService
             ],
             'subjects' => $subjectRows->all(),
             'incomplete_students' => $incompleteStudents->values()->all(),
+            'doublons_probables' => $this->doublonsProbables($studentIndex),
         ];
     }
 
@@ -569,11 +570,48 @@ final class AcademicNoteCoverageService
                 'missing_subjects_count' => $missingSubjects->count(),
                 'missing_evaluations_count' => (int) $missingSubjects->sum('missing_count'),
                 'missing_subjects' => $missingSubjects->all(),
-                // Pourquoi l'ecole jurera que la note a ete saisie : elle l'a
-                // ete, sur l'homonyme. Voir `homonymesDansLaClasse()`.
-                'homonymes' => $this->homonymesDansLaClasse($student, $students),
             ];
         })->filter(fn (array $student) => $student['missing_subjects_count'] > 0)->values();
+    }
+
+    /**
+     * Les paires d'eleves de la classe qui sont probablement la meme personne.
+     *
+     * Cherchees sur TOUTE la cohorte, pas seulement sur ceux a qui il manque
+     * une note. Le doublon s'est fait reperer par un compteur faux, mais ce
+     * n'est pas la son pire effet : deux dossiers entierement notes pour la
+     * meme personne passent tous les controles et produisent DEUX bulletins,
+     * que la cle unique laisse passer puisqu'elle porte l'etudiant.
+     *
+     * Aucune requete, et la comparaison est celle de `homonymesDansLaClasse()`.
+     * Le cout est quadratique en la taille de la classe — quelques milliers de
+     * comparaisons de chaines courtes pour une classe de soixante-dix.
+     *
+     * @return list<array{a: array<string, mixed>, b: array<string, mixed>}>
+     */
+    private function doublonsProbables(Collection $index): array
+    {
+        $eleves = $index->values()->all();
+        $paires = [];
+
+        foreach ($eleves as $position => $eleve) {
+            // Seulement les SUIVANTS : la relation est symetrique, et la
+            // parcourir dans les deux sens rendrait chaque paire deux fois.
+            $suivants = new Collection(array_slice($eleves, $position + 1));
+
+            foreach ($this->homonymesDansLaClasse($eleve, $suivants) as $autre) {
+                $paires[] = [
+                    'a' => [
+                        'id' => $eleve['id'],
+                        'name' => $eleve['name'],
+                        'matricule' => $eleve['matricule'] ?? null,
+                    ],
+                    'b' => $autre,
+                ];
+            }
+        }
+
+        return $paires;
     }
 
     /**

@@ -146,27 +146,29 @@ if (typeof window.couvertureNotes !== 'function') {
             },
 
             /*
-             * Les doublons probables de la classe, quand un eleve a qui il
-             * manque une note porte presque le meme nom qu'un autre.
+             * Les doublons probables de la classe : deux eleves dont les noms
+             * se ressemblent au point d'etre vraisemblablement la meme
+             * personne.
              *
              * C'est l'explication qui manquait : sur ESBTP Abidjan, la note
              * annoncee manquante AVAIT bien ete saisie — sur l'homonyme. Sans
              * ce rapprochement, le chiffre se lit comme une accusation et
              * personne ne trouve la cause.
+             *
+             * Lu sur TOUTE la classe, et plus seulement sur ceux a qui il
+             * manque une note : deux dossiers entierement notes pour la meme
+             * personne ne font pas bouger le compteur et produisent pourtant
+             * deux bulletins.
              */
             doublons() {
-                var eleves = (this.donnees && this.donnees.incomplete_students) || [];
-                var paires = [];
-                eleves.forEach(function (e) {
-                    (e.homonymes || []).forEach(function (h) {
-                        paires.push({
-                            cle: e.id + '-' + h.id,
-                            sans: e.name + (e.matricule ? ' (' + e.matricule + ')' : ''),
-                            avec: h.name + (h.matricule ? ' (' + h.matricule + ')' : ''),
-                        });
-                    });
+                var paires = (this.donnees && this.donnees.doublons_probables) || [];
+                return paires.map(function (p) {
+                    return {
+                        cle: p.a.id + '-' + p.b.id,
+                        sans: p.a.name + (p.a.matricule ? ' (' + p.a.matricule + ')' : ''),
+                        avec: p.b.name + (p.b.matricule ? ' (' + p.b.matricule + ')' : ''),
+                    };
                 });
-                return paires;
             },
 
             ton() {
