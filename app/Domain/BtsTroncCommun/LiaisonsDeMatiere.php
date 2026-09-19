@@ -43,7 +43,11 @@ use Illuminate\Support\Facades\DB;
  *
  * @see .claude/rules/lmd-bts-matieres-single-source.md
  */
-final class LiaisonsDeMatiere
+// Non `final` a dessein : `RetraitDeMaquette::appliquer()` est le chemin qui
+// EFFACE des lignes de maquette, et le seul moyen de l'eprouver sans base est
+// de lui passer une doublure de ce service. Aucune sous-classe n'existe en
+// production, et il n'y a pas de contrat d'heritage a tenir ici.
+class LiaisonsDeMatiere
 {
     /**
      * Rattache une matiere a un couple, sans toucher a ses autres couples.

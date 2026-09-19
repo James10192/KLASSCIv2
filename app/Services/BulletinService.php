@@ -736,14 +736,9 @@ class BulletinService
             $bulletin?->decision_conseil
         );
 
-        // NOTE, pour qui viendrait ajouter un avertissement ici : quand la
-        // moyenne de decision manque, la case reste vide et RIEN ne le dit a
-        // l'utilisateur. Un avertissement de plus dans `$warnings` n'y
-        // changerait rien — la cle est rendue par cette methode mais AUCUN
-        // appelant ne la lit (`grep -rn "\['warnings'\]" app/ resources/`),
-        // pas meme les deux `fallback_calcul` poses plus bas, morts depuis
-        // toujours. Le rendre visible demande d'abord un lecteur ; le dire
-        // sans lecteur, c'est ecrire une correction qui n'en est pas une.
+        // Quand la moyenne de decision manque, la case reste vide et rien ne le
+        // dit a l'utilisateur. Le pourquoi, et pourquoi un `$warnings[]` de
+        // plus n'y changerait rien, est sur `automaticCouncilDecision()`.
         $councilDecision = [
             'title' => $this->councilDecisionTitle($classe, $periode),
             'text' => (string) ($decisionConseil ?? ''),
@@ -1184,8 +1179,7 @@ class BulletinService
             }
         }
 
-        $cleSource = "bulletin_bts{$levelYear}_council_average_source";
-        $source = $settings[$cleSource] ?? (BtsBulletinPolicy::defaultFor($cleSource) ?? 'annual');
+        $source = BtsBulletinPolicy::councilAverageSource($levelYear, $settings);
         $decisionAverage = BtsBulletinPolicy::decisionAverage($source, $semester2Average, $annualAverage);
 
         return BtsBulletinPolicy::councilDecision(

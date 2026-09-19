@@ -28,6 +28,15 @@ final class BtsBulletinPolicy
         'bulletin_bts1_council_at_or_above_text' => ['value' => 'Admis(e) en 2e Année BTS', 'type' => 'string', 'description' => 'Décision BTS 1 au seuil ou au-dessus', 'validation_rules' => ['required_if:bulletin_bts1_council_mode,threshold', 'nullable', 'string', 'max:191']],
         'bulletin_bts1_s1_council_title' => ['value' => 'Décision du conseil de classe', 'type' => 'string', 'description' => 'Titre du conseil BTS 1 semestre 1', 'validation_rules' => ['nullable', 'string', 'max:191']],
         'bulletin_bts2_council_mode' => ['value' => 'manual', 'type' => 'string', 'description' => 'Mode de décision BTS 2', 'validation_rules' => ['nullable', 'in:manual,fixed']],
+        // BTS 2 n'a pas de mode « seuil » aujourd'hui (`in:manual,fixed`), donc
+        // cette cle n'est lue par personne. Elle est declaree quand meme : sans
+        // elle, `defaultFor()` rendait `null` et c'est un litteral 'annual'
+        // ecrit dans deux appelants qui repondait — un reglage que l'ecole ne
+        // voit nulle part et ne peut pas changer. Le jour ou « seuil » s'ouvre
+        // a BTS 2, la decision se prendra sur ce qui est ecrit ici, pas sur un
+        // repli cache. Elle n'est pas encore a l'ecran, faute de mode qui la
+        // consulte ; l'y mettre afficherait un choix sans effet.
+        'bulletin_bts2_council_average_source' => ['value' => 'annual', 'type' => 'string', 'description' => 'Moyenne de décision BTS 2', 'validation_rules' => ['nullable', 'in:semestre2,annual']],
         'bulletin_bts2_council_fixed_text' => ['value' => "Redouble en cas d'échec à l'examen du BTS", 'type' => 'string', 'description' => 'Décision fixe BTS 2', 'validation_rules' => ['required_if:bulletin_bts2_council_mode,fixed', 'nullable', 'string', 'max:191']],
     ];
 
@@ -179,6 +188,30 @@ final class BtsBulletinPolicy
         // manuel, qui est le DEFAUT, regenerer un bulletin de semestre 2
         // suffisait a perdre la decision du conseil.
         return $configuredDecision ?? self::textOrNull($storedDecision);
+    }
+
+    /**
+     * La moyenne sur laquelle le conseil tranche, pour ce niveau.
+     *
+     * Rend TOUJOURS une valeur declaree. Les deux appelants composaient la cle
+     * eux-memes et retombaient sur un litteral `'annual'` quand le registre ne
+     * repondait pas — c'est-a-dire pour tout niveau sans cle declaree, dont
+     * `null` (classe sans niveau). Ce repli etait invisible et incontrolable :
+     * `decisionAverage()` prend un `string` non nullable, donc un `null` y
+     * devient `''` par coercition, `'' !== 'annual'`, et la decision se prenait
+     * en silence sur le semestre 2 — l'inverse de ce qui est livre.
+     *
+     * @param  array<string, mixed>  $settings
+     */
+    public static function councilAverageSource(?int $levelYear, array $settings): string
+    {
+        $cle = "bulletin_bts{$levelYear}_council_average_source";
+        $valeur = $settings[$cle] ?? self::defaultFor($cle);
+
+        // Un niveau hors BTS 1 / BTS 2 n'a pas de cle declaree, et une ligne
+        // vidée en base rend ''. Dans les deux cas on nomme le comportement
+        // plutot que de le laisser tomber du cote du semestre 2 par accident.
+        return is_string($valeur) && $valeur !== '' ? $valeur : 'annual';
     }
 
     public static function decisionAverage(string $source, ?float $semester2Average, ?float $annualAverage): ?float
