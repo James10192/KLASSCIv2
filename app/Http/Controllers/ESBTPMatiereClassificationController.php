@@ -74,6 +74,19 @@ class ESBTPMatiereClassificationController extends Controller
         return response()->json([
             'success' => true,
             'is_tronc_commun' => $isTroncCommun,
+            // La maquette ne s'applique au bulletin que lorsque TOUS les
+            // combos de la classe sont valides (`BtsMaquette::etatPourClasse`).
+            // Pour une filiere de specialite rattachee a un tronc commun, ce
+            // sont deux combos : valider celui-ci seul ne declenche rien.
+            //
+            // Le predicat est `troncCommunUnionFiliereIds()`, PAS
+            // `is_tronc_commun` : une filiere normale SANS parent tronc commun
+            // — la forme la plus courante — n'a qu'un seul combo et s'applique
+            // donc immediatement. L'ecran a annonce le contraire, c'est-a-dire
+            // « rien ne s'appliquera » au moment precis ou tout s'applique.
+            'depend_du_tronc_commun' => $filiere
+                ? count($filiere->troncCommunUnionFiliereIds()) > 1
+                : false,
             'filiere' => $filiere?->name,
             'matieres' => $rows,
             'maquette' => [

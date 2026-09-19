@@ -86,9 +86,17 @@ l'utilisateur ; ce garde-ci sert au sixième, celui qui n'est pas encore écrit.
 La commande qui rejoue cette liste, au lieu de la croire :
 
 ```bash
-grep -rn "esbtp_matiere_filiere_niveau\|ESBTPMatiereFilierNiveau::" app/ database/ --include="*.php" \
-  | grep -iE "insert|updateOrCreate|firstOrCreate|->create\(" | grep -v LiaisonsDeMatiere.php
+grep -rn "esbtp_matiere_filiere_niveau\|ESBTPMatiereFilierNiveau" app/ database/ --include="*.php" \
+  | grep -E "::(insert|create|upsert|updateOrCreate|firstOrCreate|firstOrNew)\(|->insert\(|new ESBTPMatiereFilierNiveau" \
+  | grep -vE "LiaisonsDeMatiere\.php|database/migrations/|^\S+:[0-9]+:\s*(\*|//)"
 ```
+
+Au 19 septembre 2026, il rend **exactement les trois lignes du tableau**.
+
+Le motif cherche les **créateurs** : `update()` et `delete()` sur une ligne
+existante ne posent pas de nouvelle ligne et ne sont pas concernés. Il exclut
+aussi les lignes de commentaire — une première version les comptait, et rendait
+quatre lignes pour trois écrivains, ce qui rendait son propre seuil faux.
 
 Toute ligne rendue est un écrivain à garder. Si elle en rend plus de trois,
 l'inventaire ci-dessus est périmé — corrigez-le plutôt que de le contourner.

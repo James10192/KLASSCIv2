@@ -8,6 +8,10 @@ function matiereClassification() {
         saving: false,
         loaded: false,
         isTroncCommun: false,
+        // Cette filiere a-t-elle un tronc commun parent dont les semestres
+        // doivent AUSSI etre valides pour que la maquette s'applique ?
+        // Calcule par le serveur : lui seul connait `parent_id`.
+        dependDuTroncCommun: false,
         filiereName: '',
         matieres: [],
         // ECUE LMD posees par erreur sur cette maquette BTS. Tenues a part des
@@ -75,6 +79,7 @@ function matiereClassification() {
                 if (!res.ok) throw new Error('Chargement impossible.');
                 const data = await res.json();
                 this.isTroncCommun = !!data.is_tronc_commun;
+                this.dependDuTroncCommun = !!data.depend_du_tronc_commun;
                 this.filiereName = data.filiere || '';
                 this.matieres = (data.matieres || []).map(m => ({
                     ...m,
@@ -383,14 +388,17 @@ function matiereClassification() {
             const deux = this.matieres.length - s1 - s2;
 
             // `BtsMaquette::etatPourClasse()` exige que TOUS les combos de la
-            // classe soient renseignes : pour une filiere de specialite, ce
-            // sont [specialite, tronc commun parent]. Valider le premier seul
-            // laisse l'etat PARTIEL, et rien ne s'applique. Annoncer un effet
-            // qui n'aura pas lieu est pire que ne rien annoncer.
-            const tete = this.isTroncCommun
-                ? 'Valider les semestres applique la maquette au bulletin et au suivi des notes.'
-                : 'Valider les semestres appliquera la maquette au bulletin et au suivi des notes '
-                  + 'des que les semestres de la filiere de tronc commun parente seront valides eux aussi.';
+            // classe soient renseignes. Le predicat vient du SERVEUR
+            // (`depend_du_tronc_commun`, derive de `troncCommunUnionFiliereIds`)
+            // et non de `is_tronc_commun` : une filiere normale sans parent
+            // tronc commun — la forme la plus courante — n'a qu'un combo et
+            // s'applique immediatement. S'y tromper faisait annoncer « rien ne
+            // s'appliquera » a l'instant ou tout s'applique, ce qui est pire
+            // encore que de ne rien annoncer.
+            const tete = this.dependDuTroncCommun
+                ? 'Valider les semestres appliquera la maquette au bulletin et au suivi des notes '
+                  + 'des que les semestres du tronc commun parent seront valides eux aussi.'
+                : 'Valider les semestres applique la maquette au bulletin et au suivi des notes.';
 
             const lignes = [
                 tete,

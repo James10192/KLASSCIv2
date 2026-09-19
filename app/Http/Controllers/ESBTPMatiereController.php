@@ -963,65 +963,57 @@ class ESBTPMatiereController extends Controller
     }
 
     /**
+     * Applique la liste voulue : retire ce qui n'y est plus, pose ce qui manque.
+     *
+     * @param  array<string, array{0: int, 1: int}>  $voulues
+     */
+    private function appliquerLesLiaisons(ESBTPMatiere $matiere, array $voulues, LiaisonsDeMatiere $service): void
+    {
+        DB::transaction(function () use ($matiere, $voulues, $service) {
+            $actuelles = \App\Models\ESBTPMatiereFilierNiveau::where('matiere_id', $matiere->id)
+                ->get(['filiere_id', 'niveau_etude_id'])
+                ->mapWithKeys(fn ($l) => [(int) $l->filiere_id.'|'.(int) $l->niveau_etude_id => true]);
+
+            foreach ($actuelles as $cle => $_) {
+                if (! array_key_exists($cle, $voulues)) {
+                    [$filiereId, $niveauId] = array_map('intval', explode('|', $cle));
+                    $service->retirer($matiere->id, $filiereId, $niveauId);
+                }
+            }
+
+            // PAR DIFFERENCE des deux cotes. Reposer un couple deja en
+            // place etait sans effet sur une matiere BTS (`firstOrCreate`
+            // + `syncWithoutDetaching` sont des no-op) — mais depuis que
+            // `poser()` refuse les ECUE, cela faisait LEVER sur un couple
+            // qu'on ne demandait meme pas d'ajouter. Retirer un couple
+            // d'une ECUE qui en portait deux repassait donc par le second,
+            // levait, annulait la transaction, et rendait 500 : la ligne
+            // redevenait « visible, et retirable par rien », c'est-a-dire
+            // exactement le defaut que tout ce chantier corrige.
+            foreach ($voulues as $cle => [$filiereId, $niveauId]) {
+                if (! $actuelles->has($cle)) {
+                    $service->poser($matiere->id, $filiereId, $niveauId);
+                }
+            }
+        });
+    }
+
+    /**
      * Met à jour les liaisons d'une matière avec les combinaisons filière+niveau sélectionnées.
      * Format attendu : { "liaisons": [ {"filiere_id": 1, "niveau_id": 1}, ... ] }
      *
      * @return \Illuminate\Http\JsonResponse
      */
-    /**
-     * Refuse les couples qu'une ECUE LMD n'a pas deja, et laisse passer le reste.
-     *
-     * POURQUOI CE N'EST PAS UN REFUS EN BLOC. Une premiere version vidait
-     * `$voulues` quand la matiere etait une ECUE. Le diff qui suit interprete
-     * alors « aucun couple voulu » comme « retire-les tous » : l'appel effacait
-     * TOUTES les lignes canoniques de la matiere et leurs places par semestre,
-     * journalisait « Ajout refuse » pour une suppression, et repondait succes.
-     * Le chemin reellement atteignable — le bouton « Retirer de la classe » de
-     * `/esbtp/classes/{id}/matieres`, qui renvoie les liaisons RESTANTES —
-     * transformait donc le retrait d'un couple en effacement de tous les autres.
-     *
-     * Le retrait reste ouvert : c'est le geste correcteur, et l'un des trois
-     * chemins par lesquels une ligne posee par erreur peut etre enlevee, avec
-     * la croix de `/esbtp/matieres/classification` et
-     * `POST /api/cli/bts/maquette/retirer`.
-     *
-     * @param  array<string, array{0: int, 1: int}>  $voulues
-     */
-    private function refuserLesAjoutsDUneEcue(ESBTPMatiere $matiere, array $voulues): ?\Illuminate\Http\JsonResponse
-    {
-        if ($matiere->unite_enseignement_id === null) {
-            return null;
-        }
-
-        $deja = \App\Models\ESBTPMatiereFilierNiveau::where('matiere_id', $matiere->id)
-            ->get(['filiere_id', 'niveau_etude_id'])
-            ->map(fn ($l) => (int) $l->filiere_id.'|'.(int) $l->niveau_etude_id)
-            ->all();
-
-        $ajouts = array_diff(array_keys($voulues), $deja);
-
-        if ($ajouts === []) {
-            return null;
-        }
-
-        \Log::warning('Ajout a une maquette BTS refuse : la matiere est un ECUE LMD.', [
-            'matiere_id' => (int) $matiere->id,
-            'couples_refuses' => array_values($ajouts),
-            'user_id' => optional(auth()->user())->id,
-        ]);
-
-        return response()->json([
-            'success' => false,
-            'message' => $matiere->name.' est un élément constitutif LMD : elle ne peut pas être '
-                .'rattachée à une maquette BTS. Elle se gère dans /esbtp/lmd/ue.',
-        ], 422);
-    }
-
     public function updateLiaisons(Request $request, ESBTPMatiere $matiere, LiaisonsDeMatiere $service)
     {
         try {
             $validated = $request->validate([
-                'liaisons'             => 'array',
+                // `required` et pas seulement `array` : une requete qui OMET
+                // la cle passait la validation, `?? []` la rendait vide, et le
+                // diff lisait « aucun couple voulu » comme « retire-les tous ».
+                // Les deux appelants envoient toujours la cle ; exiger sa
+                // presence transforme un effacement silencieux en 422.
+                'liaisons'             => 'required|array',
                 'liaisons.*.filiere_id' => 'required|exists:esbtp_filieres,id',
                 'liaisons.*.niveau_id'  => 'required|exists:esbtp_niveau_etudes,id',
             ]);
@@ -1037,34 +1029,13 @@ class ESBTPMatiereController extends Controller
                 ];
             }
 
-            // Une ECUE LMD ne s'AJOUTE pas a une maquette BTS ; elle s'en
-            // RETIRE. Le refus porte donc sur les seuls couples nouveaux, et
-            // jamais sur la liste entiere — voir `refuserLesAjoutsDUneEcue()`.
-            if ($refus = $this->refuserLesAjoutsDUneEcue($matiere, $voulues)) {
-                return $refus;
-            }
-
             // Un DIFF, et non un « supprime tout puis recrée ». L'ancien code
             // effaçait les lignes existantes avant de les réinsérer nues :
             // toute combinaison conservée y perdait sa place au bulletin, son
             // semestre et son statut tronc commun / spécialité. Sur une
             // matière qui couvre huit combinaisons, régler la neuvième
             // remettait les huit autres à zéro, sans un mot.
-            DB::transaction(function () use ($matiere, $voulues, $service) {
-                $actuelles = \App\Models\ESBTPMatiereFilierNiveau::where('matiere_id', $matiere->id)
-                    ->get(['filiere_id', 'niveau_etude_id']);
-
-                foreach ($actuelles as $ligne) {
-                    $cle = (int) $ligne->filiere_id.'|'.(int) $ligne->niveau_etude_id;
-                    if (! array_key_exists($cle, $voulues)) {
-                        $service->retirer($matiere->id, (int) $ligne->filiere_id, (int) $ligne->niveau_etude_id);
-                    }
-                }
-
-                foreach ($voulues as [$filiereId, $niveauId]) {
-                    $service->poser($matiere->id, $filiereId, $niveauId);
-                }
-            });
+            $this->appliquerLesLiaisons($matiere, $voulues, $service);
 
             $count = count($voulues);
             $message = $count > 0
@@ -1080,6 +1051,22 @@ class ESBTPMatiereController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Données invalides: '.implode(', ', $e->validator->errors()->all()),
+            ], 422);
+        } catch (\InvalidArgumentException $e) {
+            // `LiaisonsDeMatiere::poser()` refuse une ECUE LMD. La regle vit
+            // la-bas, en UN endroit ; ce controleur n'a pas a savoir ce qu'est
+            // une ECUE — il se contente de rendre le refus lisible. Une
+            // premiere version dupliquait la question ici, et cette seconde
+            // source repondait deja autrement que l'originale.
+            \Log::warning('Rattachement refuse par le domaine.', [
+                'matiere_id' => (int) $matiere->id,
+                'raison' => $e->getMessage(),
+                'user_id' => optional(auth()->user())->id,
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
             ], 422);
         } catch (\Exception $e) {
             \Log::error('Erreur lors de la mise à jour des liaisons: '.$e->getMessage());

@@ -94,20 +94,6 @@ final class SemestreDeMaquette
     }
 
     /**
-     * Une matiere declaree a `$semestreDeclare` est-elle prevue a `$semestreVise` ?
-     *
-     * `null` veut dire « les deux », donc oui partout. Cette regle etait
-     * ecrite deux fois — dans `BtsMaquette` et dans le controleur de l'ecran
-     * Maquette — et les deux copies ne disaient pas la meme chose : celle du
-     * controleur consultait `semestre_renseigne` LIGNE PAR LIGNE, alors que le
-     * domaine tranche par COUPLE. Une ligne portant un semestre sans avoir ete
-     * validee, ce que l'import produit par defaut, etait donc comptee « aux
-     * deux » a l'ecran et « a un seul » au bulletin.
-     *
-     * La validation reste une question de couple : elle se pose avant, et pas
-     * ici.
-     */
-    /**
      * Ce qu'une ligne de maquette DECLARE vraiment comme semestre.
      *
      * Une ligne non validee vaut « les deux », quel que soit le semestre
@@ -134,6 +120,12 @@ final class SemestreDeMaquette
         return $renseigne ? $semestre : null;
     }
 
+    /**
+     * Une matiere declaree a `$semestreDeclare` est-elle prevue a `$semestreVise` ?
+     *
+     * `null` veut dire « les deux », donc oui partout. On lui passe ce que rend
+     * `declarationEffective()`, jamais la colonne `semestre` brute.
+     */
     public static function estPrevueAu(?int $semestreDeclare, int $semestreVise): bool
     {
         return $semestreDeclare === null || $semestreDeclare === $semestreVise;
