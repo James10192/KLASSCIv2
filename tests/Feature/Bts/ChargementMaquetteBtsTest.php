@@ -184,8 +184,21 @@ class ChargementMaquetteBtsTest extends TestCase
             'matieres' => $noms,
         ])->assertOk();
 
-        $charge(1, [$autre->name, $topo->name, $maths->name]);   // maths 3e au S1
-        $charge(2, [$maths->name, $topo->name]);                 // maths 1re au S2
+        // LE SEMESTRE EST POSE SUR LA LIGNE, ET C'EST LE SUJET.
+        //
+        // Ce test passait des libelles nus. Depuis que le chargement refuse
+        // « deja au semestre 1, chargee au semestre 2 » — parce que cela veut
+        // dire « elle est aux deux » aussi souvent que « elle a change de
+        // semestre », et que les deux ne donnent pas le meme bulletin — le
+        // second appel rendait 422 et la place par semestre etait devenue
+        // inatteignable par son propre chemin documente.
+        //
+        // La reponse attendue de l'appelant est de DIRE la couverture :
+        // « les_deux ». La place, elle, reste celle du semestre qu'on ordonne.
+        $deuxSemestres = fn ($m) => ['nom' => $m->name, 'semestre' => 'les_deux'];
+
+        $charge(1, [$autre->name, $deuxSemestres($topo), $deuxSemestres($maths)]);  // maths 3e au S1
+        $charge(2, [$deuxSemestres($maths), $deuxSemestres($topo)]);                // maths 1re au S2
 
         $ordre = app(\App\Domain\BtsTroncCommun\BulletinSubjectOrder::class);
 

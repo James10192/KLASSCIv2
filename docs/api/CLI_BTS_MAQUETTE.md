@@ -140,6 +140,14 @@ Le refus vaut que la ligne ait été validée **ou non**. Un chargement sans `va
 exactement le défaut que cette garde doit arrêter — charger S1 puis S2 basculait en
 silence toute matière commune aux deux.
 
+**La place au bulletin, elle, appartient au semestre qu'on ordonne — pas à la
+couverture.** Une matière aux deux semestres qui n'y occupe pas le même rang se
+charge donc en deux appels, `semestre: 1` puis `semestre: 2`, en posant
+`"semestre": "les_deux"` sur SA ligne dans les deux : la couverture dit où elle
+est enseignée, le semestre du lot dit quel bulletin on range. Les confondre
+rendait cette capacité inatteignable — le second chargement écrivait le rang du
+S2 dans le S1 et effaçait celui qu'on venait d'y poser.
+
 ```jsonc
 { "success": false, "data": { "conflits": [{ "matiere_id": 41,
   "matiere": "Mathématiques générales", "place": 1,
@@ -206,6 +214,12 @@ Tout ceci se fait aussi à la main sur `/esbtp/matieres/classification` (permiss
 semestres, et reprendre les semestres du planning général de l'année.
 
 ## Historique
+
+- **Septembre 2026** — la place au bulletin suit le semestre **du lot**, non la
+  couverture de la matière. Le refus d'un semestre déjà écrit, ajouté quelques
+  jours plus tôt, avait rendu la place par semestre inatteignable par son propre
+  chemin : le contournement documenté (`"semestre": "les_deux"`) écrivait le même
+  rang dans les deux semestres.
 
 - **Septembre 2026** — `POST /retirer` accepte désormais une ECUE LMD, alors que le
   chargement continue de la refuser. Les refuser des deux côtés rendait une ligne

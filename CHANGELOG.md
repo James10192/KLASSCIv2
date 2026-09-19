@@ -14,6 +14,8 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ### Correctifs
 
+- **Une matière enseignée aux deux semestres retrouve une place par semestre** — le contrôle ajouté quelques jours plus tôt, qui refuse de basculer en silence une matière d'un semestre à l'autre, avait rendu cette capacité inatteignable : le second chargement écrivait le rang du second semestre dans le premier et effaçait celui qu'on venait d'y poser. Le cas réel est « Mathématiques générales » en Géomètre Topographe, 4ᵉ au premier semestre et 1ʳᵉ au second. La place appartient désormais au bulletin qu'on est en train de ranger, la couverture dit seulement où la matière est enseignée.
+
 - **L'écran Maquette se cite par son adresse** (`/esbtp/matieres/classification?filiere_id=…&niveau_id=…`) — il fallait jusqu'ici repiocher la filière et le niveau à la main dans deux listes, y compris quand on venait d'un diagnostic qui donnait précisément ces deux valeurs. L'adresse ouvre désormais la maquette du couple, et la fiche d'une matière y renvoie couple par couple.
 
 - **Une confirmation enchaînée pouvait s'annuler toute seule** — quand un écran en demande deux à la suite, la seconde fenêtre ne s'ouvrait pas si la première n'avait pas fini de se refermer, et l'action était abandonnée en silence. C'est le cas du retrait d'une matière qui porte des évaluations, sur un serveur rapide. La réponse n'est plus donnée au clic mais une fois la fenêtre refermée.
