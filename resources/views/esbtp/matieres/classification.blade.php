@@ -159,6 +159,28 @@
     .mtc-toast--success { background: #0d9f74; }
     .mtc-toast--error { background: #dc2626; }
     [x-cloak] { display: none !important; }
+    /* ===== Téléphone =====
+       MESURE, pas supposition : à 400 px de large, cet écran débordait de
+       56 px AVANT cette branche — le sélecteur de semestre (`mtc-seg`, 204 px
+       incompressible) ne rentre pas à côté du nom, du rang et des deux
+       segments. La croix de retrait ajoutée ici portait ce débordement à
+       102 px. Le bloc des éléments LMD, lui, ne déborde pas : sa ligne n'a
+       qu'un nom, un code et sa croix.
+
+       `premium-redesign.md` interdit le défilement horizontal. La ligne passe
+       donc sur deux niveaux sous 640 px : identité au-dessus, commandes en
+       dessous, la croix restant à portée du pouce, à droite.
+
+       `@@media` et non `@media` : Blade prend `@media` pour une directive et
+       avale la suite (voir `blade-pitfalls.md`, piège n°2). */
+    @@media (max-width: 640px) {
+        .mtc-row { flex-wrap: wrap; gap: .6rem; }
+        .mtc-row-main { flex: 1 1 100%; }
+        .mtc-row-actions, .mtc-seg, .mtc-rank { flex-wrap: wrap; }
+        .mtc-seg { flex: 1 1 auto; }
+        .mtc-seg-btn { flex: 1 1 auto; padding: .4rem .55rem; }
+        .mtc-rank-tag { min-width: 0; }
+    }
 </style>
 @endpush
 
