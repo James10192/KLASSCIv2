@@ -1780,9 +1780,15 @@ class ESBTPEvaluationController extends Controller
             ], 422);
         }
 
-        // Matières applicables = pivot esbtp_matiere_filiere_niveau (combinaison stricte)
+        // Matières applicables. Attention, le commentaire d'origine annonçait ici
+        // le pivot canonique `esbtp_matiere_filiere_niveau` : c'est faux, ce sont
+        // les deux pivots PLATS, dont le produit invente des couples que la
+        // maquette ne porte pas. On ne change pas cette lecture (aucun appelant
+        // aujourd'hui, et la corriger sort du sujet), mais on ferme au moins la
+        // porte aux ECUE, comme les deux méthodes voisines du même fichier.
         $matieresQuery = ESBTPMatiere::query()
             ->where('is_active', true)
+            ->btsOnly()
             ->whereHas('filieres', fn ($q) => $q->where('esbtp_filieres.id', $filiereId))
             ->whereHas('niveaux', fn ($q) => $q->where('esbtp_niveau_etudes.id', $niveauId));
 

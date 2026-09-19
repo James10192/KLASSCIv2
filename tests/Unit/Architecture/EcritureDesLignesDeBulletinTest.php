@@ -21,6 +21,13 @@ use PHPUnit\Framework\TestCase;
  * s'oublie ; un invariant vérifié, non.
  *
  * Ce test n'a besoin d'aucune base : il lit le dépôt.
+ *
+ * SA PORTÉE EST LIMITÉE, ET C'EST ASSUMÉ. Il cherche cinq formes littérales
+ * dans `app/` seulement. Lui échapperaient : une écriture relationnelle
+ * (`->resultatsMatieres()->create(...)`), un `DB::table('esbtp_resultats_matieres')`,
+ * un alias d'import, ou une écriture hors `app/` (commande, seeder, job). Aucune
+ * n'existe aujourd'hui — vérifié — mais ce test est un garde-fou, pas une preuve
+ * d'exhaustivité. Ne le lisez pas comme « il n'y a qu'une porte ».
  */
 class EcritureDesLignesDeBulletinTest extends TestCase
 {

@@ -59,7 +59,7 @@ class AcademicCoverageController extends Controller
         if ($anneeId === null) {
             $payload = $this->coverage->summarize(null, $periode, null, (int) $classe->id);
 
-            return response()->json($detailComplet ? $payload : $this->coverage->sansLeDetailParEtudiant($payload), 200);
+            return response()->json($detailComplet ? $payload : $this->coverage->sansLesNotesNiLeursAuteurs($payload), 200);
         }
 
         $cle = $this->cle((int) $classe->id, $anneeId, $periode);
@@ -76,7 +76,7 @@ class AcademicCoverageController extends Controller
 
         // APRES le cache, jamais avant : la premiere lecture par un enseignant
         // servirait sinon une version amputee a tous les suivants.
-        return response()->json($detailComplet ? $payload : $this->coverage->sansLeDetailParEtudiant($payload), 200);
+        return response()->json($detailComplet ? $payload : $this->coverage->sansLesNotesNiLeursAuteurs($payload), 200);
     }
 
     /**

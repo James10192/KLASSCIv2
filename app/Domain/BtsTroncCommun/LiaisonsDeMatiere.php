@@ -37,7 +37,7 @@ use Illuminate\Support\Facades\DB;
  * vraiment : les ecrans lisent le pivot canonique par
  * `BtsBulletinSubjectResolver`, pas le produit des deux listes.
  *
- * UNE exception, et elle compte : le repli de
+ * Des exceptions subsistent, et la principale compte : le repli de
  * `BulletinInlineConfigurationService::matieresPourConfiguration()` lit encore
  * le produit des deux pivots plats quand le couple n'a AUCUNE ligne canonique.
  * Vider entierement la maquette d'un couple par `retirer()` declenche donc ce

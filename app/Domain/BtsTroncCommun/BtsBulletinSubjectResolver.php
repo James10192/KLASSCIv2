@@ -33,10 +33,12 @@ use Illuminate\Support\Collection;
  * maquettes Génie Civil, portait une ligne `(TRAVAUX_PUBLICS, 2A)` et s'imprimait
  * sur les bulletins de Travaux Publics 2ᵉ année — sans qu'on puisse l'en retirer.
  *
- * Le filtre est sûr ici parce que ce résolveur est BTS-strict, ce qui se vérifie
- * chez ses appelants et non par son nom : `ExpectedSubjectsResolver::forClasse()`
- * ne l'appelle qu'après `$systeme === BTS` (le LMD part sur `matieresHistoriques()`),
- * et `ESBTPBulletinController` refuse une classe LMD en 422. Ne recopie PAS
+ * Le filtre est sûr ici PAR CONSTRUCTION, et non par énumération de ses
+ * appelants : une classe LMD ne porte aucune ligne dans le pivot canonique BTS
+ * ni dans `esbtp_classe_matiere`, donc ce résolveur rend vide pour elle — ce qui
+ * est le bon résultat sur un écran BTS. (Une version antérieure de ce commentaire
+ * citait deux appelants ; le chantier en a ajouté trois, et une preuve par
+ * énumération cesse d'en être une dès qu'elle est incomplète.) Ne recopie PAS
  * `btsOnly()` sur un lecteur au contexte mixte — les présences, par exemple,
  * concernent légitimement des ECUE (cf. le garde-fou de la rule ci-dessous).
  *

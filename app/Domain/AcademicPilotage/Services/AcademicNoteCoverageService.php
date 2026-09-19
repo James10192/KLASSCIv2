@@ -160,7 +160,16 @@ final class AcademicNoteCoverageService
     }
 
     /**
-     * Le meme constat, sans le detail nominatif par etudiant.
+     * Le meme constat, sans les NOTES ni leurs AUTEURS.
+     *
+     * Le nom dit ce qui part, et rien de plus : `doublons_probables` survit,
+     * avec les noms et les matricules des deux eleves. C'est voulu — le bandeau
+     * les affiche, et c'est precisement ce qu'un enseignant doit voir pour
+     * comprendre pourquoi une note « manque ». Une version anterieure de cette
+     * methode s'appelait « sansLeDetailParEtudiant » et son en-tete promettait
+     * qu'aucun nominatif ne survivait : c'etait faux, et le test cense le
+     * garder passait sur une donnee d'essai irrealiste (des identifiants nus,
+     * alors que la production met toujours nom et matricule).
      *
      * Le payload complet porte, pour CHAQUE evaluation et CHAQUE eleve, la
      * note chiffree, le nom de qui l'a saisie, celui de qui l'a corrigee et
@@ -181,7 +190,7 @@ final class AcademicNoteCoverageService
      * @param  array<string, mixed>  $payload
      * @return array<string, mixed>
      */
-    public function sansLeDetailParEtudiant(array $payload): array
+    public function sansLesNotesNiLeursAuteurs(array $payload): array
     {
         if (isset($payload['subjects']) && is_array($payload['subjects'])) {
             $payload['subjects'] = array_map(static function (array $matiere): array {

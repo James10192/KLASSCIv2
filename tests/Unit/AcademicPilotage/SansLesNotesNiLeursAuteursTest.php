@@ -15,7 +15,7 @@ use ReflectionClass;
  * de qui l'a saisie — que seul le tableau de bord du pilotage affiche, et qui
  * exige le droit global.
  */
-class SansLeDetailParEtudiantTest extends TestCase
+class SansLesNotesNiLeursAuteursTest extends TestCase
 {
     private function service(): AcademicNoteCoverageService
     {
@@ -48,13 +48,19 @@ class SansLeDetailParEtudiantTest extends TestCase
                 ]],
             ]],
             'incomplete_students' => [['id' => 1444, 'name' => 'KOUASSI AFFOUE GRACE RUCHAMA']],
-            'doublons_probables' => [['a' => ['id' => 1443], 'b' => ['id' => 1444]]],
+            // Forme REELLE : `doublonsProbables()` met toujours nom et
+            // matricule. Une donnee d'essai a identifiants nus rendait
+            // l'assertion « rien de nominatif » vraie sans rien garantir.
+            'doublons_probables' => [[
+                'a' => ['id' => 1443, 'name' => 'KOUASSI AFFOUE GRACE', 'matricule' => 'FESBTP23-0322'],
+                'b' => ['id' => 1444, 'name' => 'KOUASSI AFFOUE GRACE RUCHAMA', 'matricule' => 'FESBTP24-0022'],
+            ]],
         ];
     }
 
     public function test_les_notes_et_leurs_auteurs_disparaissent(): void
     {
-        $allege = $this->service()->sansLeDetailParEtudiant($this->payload());
+        $allege = $this->service()->sansLesNotesNiLeursAuteurs($this->payload());
         $matiere = $allege['subjects'][0];
 
         $this->assertArrayNotHasKey('evaluations', $matiere);
@@ -62,7 +68,9 @@ class SansLeDetailParEtudiantTest extends TestCase
         $this->assertArrayNotHasKey('actors', $matiere);
         $this->assertArrayNotHasKey('actor_ids', $matiere);
 
-        // Rien de nominatif ne doit survivre dans la réponse sérialisée.
+        // Ce qui est reellement garanti : aucune note, et aucun nom de qui
+        // l'a saisie ou corrigee. PAS « rien de nominatif » — les doublons
+        // gardent leurs noms, et le test suivant le verifie.
         $json = json_encode($allege, JSON_UNESCAPED_UNICODE);
         $this->assertStringNotContainsString('Mme KONE', $json);
         $this->assertStringNotContainsString('"note"', $json);
@@ -71,7 +79,7 @@ class SansLeDetailParEtudiantTest extends TestCase
     /** Ce que le bandeau affiche doit survivre intact. */
     public function test_ce_que_l_ecran_affiche_reste(): void
     {
-        $allege = $this->service()->sansLeDetailParEtudiant($this->payload());
+        $allege = $this->service()->sansLesNotesNiLeursAuteurs($this->payload());
         $matiere = $allege['subjects'][0];
 
         $this->assertSame('Pathologie', $matiere['name']);
@@ -88,7 +96,7 @@ class SansLeDetailParEtudiantTest extends TestCase
      */
     public function test_la_liste_des_eleves_incomplets_reste_presente_mais_vide(): void
     {
-        $allege = $this->service()->sansLeDetailParEtudiant($this->payload());
+        $allege = $this->service()->sansLesNotesNiLeursAuteurs($this->payload());
 
         $this->assertArrayHasKey('incomplete_students', $allege);
         $this->assertSame([], $allege['incomplete_students']);
@@ -99,6 +107,23 @@ class SansLeDetailParEtudiantTest extends TestCase
     {
         $vide = ['ok' => false, 'message' => 'Classe introuvable.'];
 
-        $this->assertSame($vide, $this->service()->sansLeDetailParEtudiant($vide));
+        $this->assertSame($vide, $this->service()->sansLesNotesNiLeursAuteurs($vide));
+    }
+
+    /**
+     * Les doublons gardent noms et matricules, et c'est VOULU.
+     *
+     * Le bandeau les affiche a qui detient `academic_health.view_own`. Les
+     * retirer priverait l'enseignant de la seule information qui explique
+     * pourquoi une note « manque » — mais il faut que ce soit ecrit, sinon la
+     * prochaine lecture du nom de la methode conclura l'inverse.
+     */
+    public function test_les_doublons_gardent_noms_et_matricules(): void
+    {
+        $allege = $this->service()->sansLesNotesNiLeursAuteurs($this->payload());
+        $json = json_encode($allege, JSON_UNESCAPED_UNICODE);
+
+        $this->assertStringContainsString('FESBTP24-0022', $json);
+        $this->assertStringContainsString('KOUASSI AFFOUE GRACE RUCHAMA', $json);
     }
 }
