@@ -107,7 +107,11 @@
                         </div>
                         <div class="cvn-matiere-qui">
                             <template x-if="contact(m)">
-                                <span>
+                                {{-- Le nom venu du bulletin n'a pas de numéro : le téléphone
+                                     reste conditionnel, et la source se lit au survol. --}}
+                                <span :title="contact(m).source === 'bulletin'
+                                        ? 'Nom saisi dans « Éditer les professeurs » du bulletin'
+                                        : 'Enseignant principal au planning général'">
                                     <i class="fas fa-user"></i>
                                     <span x-text="contact(m).name"></span>
                                     <template x-if="contact(m).phone">
@@ -116,9 +120,14 @@
                                 </span>
                             </template>
                             <template x-if="!contact(m)">
-                                {{-- Deux enseignants différents au planning, ou aucun : on ne
-                                     désigne personne au hasard. --}}
-                                <span class="cvn-muet">Enseignant à confirmer</span>
+                                {{-- Ni le planning ni le bulletin ne répondent, ou ils se
+                                     contredisent : on ne désigne personne au hasard. Le
+                                     libellé nomme les deux endroits où aller le poser —
+                                     « à confirmer » laissait croire à une donnée saisie
+                                     mais douteuse, alors qu'il n'y en a aucune. --}}
+                                <span class="cvn-muet" title="Renseignez l'enseignant dans le planning général, ou dans « Éditer les professeurs » du bulletin.">
+                                    Aucun enseignant au planning ni au bulletin
+                                </span>
                             </template>
                         </div>
                     </div>
