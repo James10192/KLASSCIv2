@@ -59,6 +59,26 @@
         color: #a5670a; background: rgba(245,158,11,.12); border: 1px solid rgba(245,158,11,.28);
         padding: .1rem .45rem; border-radius: 5px; }
 
+    /* Choix des matières à rattacher */
+    .mtc-ajout-recherche { width: 100%; padding: .55rem .8rem; border: 1px solid #d7e0ec; border-radius: 9px;
+        font-size: .86rem; color: #1e293b; margin-bottom: .75rem; }
+    .mtc-ajout-recherche:focus { outline: none; border-color: #0453cb; box-shadow: 0 0 0 3px rgba(4,83,203,.1); }
+    .mtc-ajout-ligne { display: flex; align-items: center; gap: .6rem; padding: .5rem .65rem; border-radius: 8px;
+        cursor: pointer; font-size: .88rem; color: #1e293b; }
+    .mtc-ajout-ligne:hover { background: rgba(4,83,203,.05); }
+    .mtc-ajout-ligne--prise { color: #94a3b8; cursor: not-allowed; }
+    .mtc-ajout-ligne--prise:hover { background: transparent; }
+    .mtc-ajout-prise { margin-left: auto; font-size: .7rem; color: #64748b; }
+
+    /* Retrait d'une matière de la maquette. Rouge assumé : l'action est
+       destructive, et c'est la convention universelle — la palette monochrome
+       ne vaut que pour le décor. */
+    .mtc-retirer { flex-shrink: 0; width: 30px; height: 30px; border-radius: 8px; border: 1px solid #e2e8f0;
+        background: #fff; color: #94a3b8; font-size: .78rem; cursor: pointer; transition: all .15s ease;
+        display: inline-flex; align-items: center; justify-content: center; }
+    .mtc-retirer:hover:not(:disabled) { border-color: rgba(220,38,38,.35); background: rgba(220,38,38,.06); color: #dc2626; }
+    .mtc-retirer:disabled { opacity: .45; cursor: not-allowed; }
+
     /* Toggle segmenté TC / Spé — état actif via :class, jamais :style inline */
     .mtc-seg { display: inline-flex; border: 1px solid #d7e0ec; border-radius: 9px; overflow: hidden; flex-shrink: 0; }
     .mtc-seg-btn { padding: .4rem .8rem; font-size: .78rem; font-weight: 600; cursor: pointer; border: none;

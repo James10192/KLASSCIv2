@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Domain\BtsTroncCommun\LiaisonsDeMatiere;
+use App\Models\ESBTPClasse;
+use App\Models\ESBTPEvaluation;
 use App\Models\ESBTPFiliere;
 use App\Models\ESBTPMatiere;
 use App\Models\ESBTPMatiereFilierNiveau;
@@ -198,6 +201,84 @@ class ESBTPMatiereClassificationController extends Controller
     /**
      * Enregistre en masse la classification des matières d'un combo.
      */
+    /**
+     * Retire une matière de la maquette d'un combo.
+     *
+     * Cet écran savait régler ce qui est déjà là — la place, le semestre, le
+     * statut — mais ni ajouter ni retirer : son enregistrement fait un
+     * `update`, jamais un `insert` ni un `delete`. Retirer une matière
+     * obligeait donc à quitter la maquette pour le modal des liaisons de la
+     * matière, qui supprimait au passage les réglages de ses autres combos.
+     *
+     * Refuse une matière qui porte des évaluations sur ce combo tant que
+     * l'utilisateur ne l'a pas confirmé : la note resterait en base sans plus
+     * apparaître nulle part.
+     */
+    public function retirer(Request $request, LiaisonsDeMatiere $liaisons): JsonResponse
+    {
+        $valide = $request->validate([
+            'filiere_id' => ['required', 'integer', 'exists:esbtp_filieres,id'],
+            'niveau_id' => ['required', 'integer', 'exists:esbtp_niveau_etudes,id'],
+            'matiere_id' => ['required', 'integer', 'exists:esbtp_matieres,id'],
+            'malgre_les_notes' => ['sometimes', 'boolean'],
+        ]);
+
+        $filiereId = (int) $valide['filiere_id'];
+        $niveauId = (int) $valide['niveau_id'];
+        $matiereId = (int) $valide['matiere_id'];
+
+        $matiere = ESBTPMatiere::find($matiereId);
+
+        $classeIds = ESBTPClasse::query()
+            ->where('filiere_id', $filiereId)
+            ->where('niveau_etude_id', $niveauId)
+            ->pluck('id');
+
+        $evaluations = $classeIds->isEmpty() ? 0 : ESBTPEvaluation::query()
+            ->where('matiere_id', $matiereId)
+            ->whereIn('classe_id', $classeIds)
+            ->count();
+
+        if ($evaluations > 0 && ! $request->boolean('malgre_les_notes')) {
+            return response()->json([
+                'success' => false,
+                'evaluations' => $evaluations,
+                'confirmation_requise' => true,
+                'message' => $matiere?->name.' porte '.$evaluations.' évaluation(s) sur ce niveau. '
+                    .'Les retirer de la maquette les fera disparaître du bulletin.',
+            ], 422);
+        }
+
+        try {
+            $retire = $liaisons->retirer($matiereId, $filiereId, $niveauId);
+
+            if ($retire['canonique'] === 0) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Cette matière n\'est pas dans la maquette de ce niveau.',
+                ], 422);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => ($matiere?->name ?? 'La matière').' a été retirée de la maquette.',
+                'retire' => $retire,
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Erreur retrait d\'une matière de la maquette', [
+                'filiere_id' => $filiereId,
+                'niveau_id' => $niveauId,
+                'matiere_id' => $matiereId,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors du retrait de la matière.',
+            ], 500);
+        }
+    }
+
     public function save(\App\Http\Requests\Matiere\ClassificationSaveRequest $request): JsonResponse
     {
         $validated = $request->validated();

@@ -1020,7 +1020,7 @@ class ESBTPMatiereController extends Controller
      *
      * @return \Illuminate\Http\JsonResponse
      */
-    public function addToCombination(Request $request)
+    public function addToCombination(Request $request, LiaisonsDeMatiere $service)
     {
         $request->validate([
             'matiere_ids' => 'required|array',
@@ -1035,21 +1035,23 @@ class ESBTPMatiereController extends Controller
             $combinations = $request->combinations;
             $addedCount = 0;
 
-            \DB::transaction(function () use ($matiereIds, $combinations, &$addedCount) {
+            // Le rattachement, avec sa tenue des pivots plats, vit dans
+            // `LiaisonsDeMatiere` : il était recopié ici, et les deux copies
+            // avaient déjà commencé à diverger.
+            DB::transaction(function () use ($matiereIds, $combinations, $service, &$addedCount) {
                 $matieres = ESBTPMatiere::whereIn('id', $matiereIds)->get()->keyBy('id');
 
                 foreach ($matiereIds as $matiereId) {
-                    $matiere = $matieres->get($matiereId);
-                    if (!$matiere) continue;
+                    if (! $matieres->get($matiereId)) {
+                        continue;
+                    }
 
                     foreach ($combinations as $combo) {
-                        \App\Models\ESBTPMatiereFilierNiveau::firstOrCreate([
-                            'matiere_id' => $matiereId,
-                            'filiere_id' => $combo['filiere_id'],
-                            'niveau_etude_id' => $combo['niveau_id'],
-                        ]);
-                        $matiere->filieres()->syncWithoutDetaching([$combo['filiere_id']]);
-                        $matiere->niveaux()->syncWithoutDetaching([$combo['niveau_id']]);
+                        $service->poser(
+                            (int) $matiereId,
+                            (int) $combo['filiere_id'],
+                            (int) $combo['niveau_id'],
+                        );
                     }
                     $addedCount++;
                 }

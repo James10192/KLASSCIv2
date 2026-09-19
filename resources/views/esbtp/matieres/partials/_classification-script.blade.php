@@ -15,6 +15,11 @@ function matiereClassification() {
         planning: null,
         apercuOuvert: false,
         apercu: { lignes: [], hors_maquette: [], changements: 0, empreinte: null },
+        ajoutOuvert: false,
+        ajoutChargement: false,
+        ajoutRecherche: '',
+        ajoutDisponibles: [],
+        ajoutSelection: [],
         get hasSuggestions() { return this.matieres.some(m => m.suggested); },
 
         init() {
@@ -236,6 +241,121 @@ function matiereClassification() {
                 filiere_id: this.filiereId,
                 niveau_id: this.niveauId,
             });
+        },
+
+        // --- Ajout à la maquette -----------------------------------------
+
+        async ouvrirAjout() {
+            this.ajoutOuvert = true;
+            this.ajoutRecherche = '';
+            this.ajoutSelection = [];
+            this.ajoutChargement = true;
+            try {
+                const url = "{{ route('esbtp.matieres.available-for-combination') }}"
+                    + "?filiere_id=" + encodeURIComponent(this.filiereId)
+                    + "&niveau_id=" + encodeURIComponent(this.niveauId);
+                const res = await fetch(url, { headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } });
+                const data = await res.json();
+                if (!res.ok || !data.success) throw new Error(data.message || 'Chargement impossible.');
+                this.ajoutDisponibles = data.matieres || [];
+            } catch (e) {
+                this.notify(e.message, 'error');
+                this.ajoutDisponibles = [];
+            } finally {
+                this.ajoutChargement = false;
+            }
+        },
+
+        fermerAjout() {
+            this.ajoutOuvert = false;
+            this.ajoutSelection = [];
+        },
+
+        /** Les matières proposées, filtrées par la recherche. */
+        ajoutFiltrees() {
+            const q = (this.ajoutRecherche || '').trim().toLowerCase();
+            if (!q) return this.ajoutDisponibles;
+            return this.ajoutDisponibles.filter(m =>
+                (m.name || '').toLowerCase().includes(q)
+                || (m.code || '').toLowerCase().includes(q)
+            );
+        },
+
+        basculerAjout(id) {
+            const i = this.ajoutSelection.indexOf(id);
+            if (i === -1) this.ajoutSelection.push(id);
+            else this.ajoutSelection.splice(i, 1);
+        },
+
+        async appliquerAjout() {
+            if (this.ajoutSelection.length === 0) return;
+            this.saving = true;
+            try {
+                const res = await fetch("{{ route('esbtp.matieres.add-to-combination') }}", {
+                    method: 'POST',
+                    headers: this.entetes(),
+                    body: JSON.stringify({
+                        matiere_ids: this.ajoutSelection,
+                        combinations: [{ filiere_id: this.filiereId, niveau_id: this.niveauId }],
+                    }),
+                });
+                const data = await res.json();
+                if (!res.ok || !data.success) throw new Error(data.message || 'Ajout impossible.');
+                this.notify(data.message, 'success');
+                this.fermerAjout();
+                await this.loadCombo();
+            } catch (e) {
+                this.notify(e.message, 'error');
+            } finally {
+                this.saving = false;
+            }
+        },
+
+        // --- Retrait de la maquette --------------------------------------
+
+        /**
+         * Retire une matière du combo courant.
+         *
+         * Le serveur refuse d'abord si la matière porte des évaluations ici, et
+         * renvoie combien : on redemande alors, une seule fois, avec le nombre
+         * sous les yeux. Une note retirée de la maquette reste en base mais
+         * n'apparaît plus au bulletin, et c'est ce qu'il faut avoir compris
+         * avant de valider.
+         */
+        async retirerDeLaMaquette(m, malgreLesNotes = false) {
+            if (!malgreLesNotes && !confirm('Retirer « ' + m.name + ' » de cette maquette ?')) return;
+
+            this.saving = true;
+            try {
+                const res = await fetch("{{ route('esbtp.matieres.classification.retirer') }}", {
+                    method: 'POST',
+                    headers: this.entetes(),
+                    body: JSON.stringify({
+                        filiere_id: this.filiereId,
+                        niveau_id: this.niveauId,
+                        matiere_id: m.matiere_id,
+                        malgre_les_notes: malgreLesNotes,
+                    }),
+                });
+                const data = await res.json();
+
+                if (!res.ok && data.confirmation_requise) {
+                    this.saving = false;
+                    if (confirm(data.message + '\n\nRetirer quand même ?')) {
+                        await this.retirerDeLaMaquette(m, true);
+                    }
+                    return;
+                }
+
+                if (!res.ok || !data.success) throw new Error(data.message || 'Retrait impossible.');
+
+                this.notify(data.message, 'success');
+                await this.loadCombo();
+            } catch (e) {
+                this.notify(e.message, 'error');
+            } finally {
+                this.saving = false;
+            }
         },
 
         // --- Enregistrement ---------------------------------------------

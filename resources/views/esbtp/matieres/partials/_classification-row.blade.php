@@ -50,5 +50,15 @@
                 :class="m.classification === 'specialite' ? 'mtc-seg-btn--active' : ''"
                 @click="setClass(m, 'specialite')">Spécialité</button>
         </div>
+
+        {{-- Retirer de la maquette. Le retrait n'existait nulle part sur cet
+             écran : il fallait passer par les liaisons de la matière, qui
+             effaçaient les réglages de ses autres filières et niveaux. --}}
+        <button type="button" class="mtc-retirer" :disabled="saving"
+            :aria-label="'Retirer ' + m.name + ' de la maquette'"
+            title="Retirer de la maquette"
+            @click="retirerDeLaMaquette(m)">
+            <i class="fas fa-xmark"></i>
+        </button>
     </div>
 </template>

@@ -742,6 +742,13 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 Route::post('/classification/save', [\App\Http\Controllers\ESBTPMatiereClassificationController::class, 'save'])
                     ->name('classification.save')
                     ->middleware(['permission:matieres.edit']);
+                // Retirer une matière de la maquette. L'enregistrement de cet
+                // écran ne fait que des `update` : sans cette route, retirer
+                // une matière obligeait à passer par le modal des liaisons,
+                // qui effaçait les réglages de ses autres combos.
+                Route::post('/classification/retirer', [\App\Http\Controllers\ESBTPMatiereClassificationController::class, 'retirer'])
+                    ->name('classification.retirer')
+                    ->middleware(['permission:matieres.edit', 'throttle:30,1']);
                 // Maquette : import depuis le planning général, ordre général, retour à l'ordre général.
                 // Également déclarées avant les routes {matiere}.
                 Route::post('/classification/import-planning', [\App\Http\Controllers\ESBTPMatiereMaquetteController::class, 'importPlanning'])

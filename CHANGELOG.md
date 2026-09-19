@@ -76,6 +76,8 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ### Ajouts
 
+- **L'écran Maquette sait enfin ajouter et retirer une matière** (`/esbtp/matieres/classification`) — il ne savait que régler ce qui s'y trouvait déjà : la place au bulletin, le semestre, le statut tronc commun / spécialité. Compléter une maquette obligeait à en sortir et à passer par la fiche de chaque matière, une par une ; en retirer une n'était possible nulle part sans effacer au passage les réglages de ses autres filières et niveaux. Un bouton « Ajouter une matière » ouvre la liste du catalogue, en signalant celles déjà rattachées ; une croix en bout de ligne retire, et prévient d'abord quand la matière porte des évaluations sur ce niveau.
+
 - **La maquette d'une filière et d'un niveau se relit et se corrige à distance** — il n'existait aucun moyen d'en obtenir le contenu autrement qu'en simulant un import, donc en connaissant d'avance la liste qu'on cherchait à découvrir ; et aucun moyen d'en retirer une matière, le seul chemin passant par un écran qui effaçait au passage les réglages des autres combinaisons. La lecture rend le semestre de chaque matière, sa place au bulletin et l'état des semestres ; le retrait simule par défaut et refuse une matière qui porte des évaluations sur ce couple, tant qu'on ne le lui confirme pas.
 
 - **Les réglages de composition de la moyenne arrivent sur les instances déjà ouvertes** — les défauts déclarés dans le code n'étaient chargés nulle part : un réglage ajouté n'atteignait aucune école, et l'écran de configuration le déclarait « introuvable ». Les trois nouveaux sont créés au déploiement, sans jamais écraser une valeur déjà posée.
