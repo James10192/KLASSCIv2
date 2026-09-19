@@ -1783,9 +1783,23 @@ class ESBTPEvaluationController extends Controller
         // Matières applicables. Attention, le commentaire d'origine annonçait ici
         // le pivot canonique `esbtp_matiere_filiere_niveau` : c'est faux, ce sont
         // les deux pivots PLATS, dont le produit invente des couples que la
-        // maquette ne porte pas. On ne change pas cette lecture (aucun appelant
-        // aujourd'hui, et la corriger sort du sujet), mais on ferme au moins la
-        // porte aux ECUE, comme les deux méthodes voisines du même fichier.
+        // maquette ne porte pas.
+        //
+        // CETTE METHODE A UN APPELANT, contrairement a ce que cette ligne a
+        // affirme un temps : `student-coefficients-modal.blade.php`
+        // (`refreshCompletion()`) l'appelle a chaque changement de periode et
+        // en remplit la barre « Complet / Incomplet » du modal des
+        // coefficients. Une revue s'est appuyee sur cette phrase fausse pour
+        // recommander de SUPPRIMER la route — ce qui aurait casse la barre sur
+        // les huit instances. Le cout d'un commentaire faux n'est pas qu'il
+        // trompe : c'est qu'il est cru.
+        //
+        // On ne change donc pas la lecture des pivots ici — elle est affichee,
+        // et la corriger deplacerait un chiffre visible sans mesure prealable.
+        // C'est une dette nommee, pas une dette ignoree : le decompte peut
+        // surestimer le total sur une filiere dont les deux pivots plats se
+        // croisent. On ferme en revanche la porte aux ECUE, comme les deux
+        // methodes voisines du meme fichier.
         $matieresQuery = ESBTPMatiere::query()
             ->where('is_active', true)
             ->btsOnly()

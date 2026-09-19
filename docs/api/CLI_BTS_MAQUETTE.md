@@ -9,7 +9,29 @@ matières composent le bulletin, dans quel ordre, et à quel semestre.
 | Authentification | Bearer Sanctum |
 | Abilities | `cli:read` en lecture, `cli:admin` en écriture |
 | Contrôleur | `App\Http\Controllers\API\CLI\CLIBtsMaquetteController` |
-| Portée | **BTS uniquement** — une ECUE LMD est refusée |
+| Portée | **BTS uniquement à l'écriture** — le chargement refuse une ECUE LMD ; la lecture les montre et le retrait les accepte (voir « ECUE LMD » plus bas) |
+
+## ECUE LMD : refusées à l'entrée, visibles, retirables
+
+Un élément constitutif LMD (`unite_enseignement_id` non nul) n'a rien à faire dans
+une maquette BTS : la ligne le fait sortir sur les bulletins du niveau. Les trois
+verbes ne se comportent donc **pas** de la même façon, et c'est délibéré :
+
+| Verbe | Comportement | Pourquoi |
+|---|---|---|
+| `POST /` (chargement) | **refusée**, par identifiant comme par libellé | c'est le geste qui contamine |
+| `GET /` (lecture) | **listée** comme les autres | c'est le seul endroit où on peut la *voir* |
+| `POST /retirer` | **acceptée** | c'est le geste qui corrige |
+
+Les refuser aux trois endroits est ce qui avait rendu le défaut incorrigible : sur
+esbtp-abidjan, `TPOH243` « Alimentation en eau et QTE » portait
+(TRAVAUX_PUBLICS, 2A), sortait sur les bulletins, était listée ici — et refusée au
+retrait avec « ne désigne pas une matière unique ».
+
+Côté écran, `/esbtp/matieres/classification` affiche ces lignes dans un bloc
+distinct « éléments LMD dans cette maquette BTS », avec leur croix de retrait.
+Elles restent hors des décomptes et de l'enregistrement : la seule action qui ait
+du sens sur elles est le retrait.
 
 ## Ce qu'est la maquette, et ce qu'elle n'est pas
 
@@ -178,6 +200,11 @@ semestres, et reprendre les semestres du planning général de l'année.
 
 ## Historique
 
+- **Septembre 2026** — `POST /retirer` accepte désormais une ECUE LMD, alors que le
+  chargement continue de la refuser. Les refuser des deux côtés rendait une ligne
+  posée par erreur impossible à enlever autrement qu'en base. Cette ligne du tableau
+  d'en-tête annonçait « BTS uniquement — une ECUE LMD est refusée » : c'était faux
+  pour `GET`, qui les listait déjà, et c'est maintenant faux pour `/retirer`.
 - **Septembre 2026** — `GET` (relire) et `POST /retirer` ajoutés. `semestre` accepte
   `"les_deux"` et se pose ligne par ligne ; un chargement qui contredit un semestre
   déjà écrit est refusé au lieu d'être appliqué en silence. La place au bulletin est

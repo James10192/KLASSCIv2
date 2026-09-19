@@ -18,10 +18,21 @@ use Illuminate\Support\Str;
  * bulletin faux que personne ne saurait relire. Un libelle ambigu est rendu
  * comme tel, avec ses candidats, et c'est l'appelant qui tranche.
  *
- * BTS uniquement : une ECUE LMD (`unite_enseignement_id` non nul) est refusee,
- * qu'elle soit designee par son libelle ou par son identifiant. La garde
- * n'existait que sur le libelle, et l'identifiant passait a cote.
+ * BTS uniquement POUR CE QUI ENTRE : une ECUE LMD (`unite_enseignement_id` non
+ * nul) est refusee au chargement, qu'elle soit designee par son libelle ou par
+ * son identifiant. La garde n'existait que sur le libelle, et l'identifiant
+ * passait a cote.
  *
+ * MAIS PAS POUR CE QUI SORT. Refuser une ECUE au RETRAIT aussi rendait la
+ * ligne fautive inextirpable : le CLI la listait (`lignesDeLaMaquette` ne
+ * filtre pas — c'est voulu, c'est le seul endroit ou on peut la VOIR), l'ecran
+ * de classification l'ecartait de ses lignes donc n'offrait aucune croix, et
+ * `POST /retirer` repondait « ne designe pas une matiere unique » pour un
+ * identifiant que l'endpoint voisin venait de rendre. Le retrait est le geste
+ * CORRECTEUR : il ne peut pas contaminer une maquette, il ne peut que la
+ * nettoyer. D'ou `$pourRetrait`.
+ *
+ * @see .claude/rules/lmd-ecue-leak-bts-picker.md
  * @see .claude/rules/lmd-bts-matieres-single-source.md
  */
 final class ResolutionDeMatiere
@@ -46,16 +57,19 @@ final class ResolutionDeMatiere
     }
 
     /**
+     * @param  bool  $pourRetrait  true : accepte aussi une ECUE LMD, parce que
+     *                             le retrait est le seul geste qui peut enlever
+     *                             une ligne posee par erreur.
      * @return array{statut: 'ok'|'ambigu'|'introuvable', libelle: string, matiere?: ESBTPMatiere, candidats?: array<int, array{id: int, name: string, code: ?string}>}
      */
-    public function matiere(mixed $entree, int $filiereId, int $niveauId): array
+    public function matiere(mixed $entree, int $filiereId, int $niveauId, bool $pourRetrait = false): array
     {
         $libelle = is_array($entree) ? (string) ($entree['nom'] ?? $entree['id'] ?? '') : (string) $entree;
 
         $id = is_array($entree) ? ($entree['id'] ?? null) : (is_numeric($entree) ? $entree : null);
         if ($id !== null) {
             $matiere = ESBTPMatiere::query()
-                ->whereNull('unite_enseignement_id')
+                ->unless($pourRetrait, fn ($q) => $q->whereNull('unite_enseignement_id'))
                 ->find((int) $id);
 
             return $matiere
@@ -65,7 +79,7 @@ final class ResolutionDeMatiere
 
         $cible = $this->normaliser($libelle);
         $candidats = ESBTPMatiere::query()
-            ->whereNull('unite_enseignement_id')
+            ->unless($pourRetrait, fn ($q) => $q->whereNull('unite_enseignement_id'))
             ->get(['id', 'name', 'code'])
             ->filter(fn ($m) => $this->normaliser($m->name) === $cible)
             ->values();

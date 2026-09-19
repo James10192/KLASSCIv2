@@ -21,8 +21,15 @@ use Tests\TestCase;
  * pivot canonique BTS sur (TRAVAUX_PUBLICS, 2A). Elle s'imprimait donc sur les
  * bulletins de Travaux Publics 2ᵉ année, tout en restant **introuvable** depuis
  * `/esbtp/matieres` et depuis l'écran de classification — les deux écrans qui
- * auraient permis de l'en retirer filtrent déjà les ECUE. Impossible à corriger
- * par l'école : c'est ce qui rend ce défaut coûteux, pas la matière en trop.
+ * auraient permis de l'en retirer filtrent déjà les ECUE. C'est ce qui rendait
+ * ce défaut coûteux, pas la matière en trop.
+ *
+ * Cette dernière phrase est au PASSÉ depuis la correction, et il faut le dire
+ * ici sous peine de laisser un énoncé faux dans un fichier qu'on relit en
+ * confiance : l'écran de classification affiche désormais ces lignes dans un
+ * bloc « éléments LMD dans cette maquette BTS », avec leur croix de retrait, et
+ * la résolution du retrait les accepte. Voir
+ * `MaquetteBtsRefuseUneEcueTest`, qui garde cette asymétrie entrée/sortie.
  *
  * Ce que ce test garde : les deux branches de lecture du résolveur, parce que
  * corriger la branche canonique seule laissait la porte du repli grande ouverte.

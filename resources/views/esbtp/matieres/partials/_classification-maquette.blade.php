@@ -2,8 +2,12 @@
     Bandeau « matières prévues » : dit si les semestres de ce combo ont été
     validés, et propose de les reprendre du planning général.
 
-    Tant que le combo n'est pas validé, rien ne change nulle part : le bulletin
-    et la couverture des notes se comportent exactement comme avant.
+    Tant que le combo n'est PAS validé, rien ne change nulle part : le bulletin
+    et la couverture des notes se comportent exactement comme avant. Une fois
+    validé, c'est l'inverse — `BulletinSubjectRowsCompleter` et
+    `ExpectedSubjectsResolver` lisent la maquette. Le texte ci-dessous doit dire
+    cette conséquence : il a longtemps annoncé « ne modifie pas encore », ce qui
+    était vrai à l'écriture et ne l'est plus depuis que la vanne est ouverte.
 --}}
 <div class="mtc-maquette">
     <div class="mtc-maquette-txt">
@@ -18,7 +22,7 @@
         <template x-if="!maquette.renseignee">
             <span>
                 <strong>Semestres non renseignés</strong> pour cette filière et ce niveau.
-                <small>Indiquez à quel semestre chaque matière est prévue. Cette saisie prépare le suivi des notes reçues et la composition du bulletin ; elle ne les modifie pas encore.</small>
+                <small>Indiquez à quel semestre chaque matière est prévue. Tant que vous n'avez pas validé, rien ne change. Une fois validés, les semestres sont appliqués : le bulletin d'un semestre ne fait plus figurer les matières prévues à l'autre, et le suivi des notes n'en attend plus de notes.</small>
             </span>
         </template>
     </div>
@@ -43,7 +47,7 @@
         <i class="fas fa-plus"></i> Ajouter une matière
     </button>
 
-    <button type="button" class="mtc-btn" @click="save(true)" :disabled="saving">
+    <button type="button" class="mtc-btn" @click="validerLesSemestres()" :disabled="saving">
         <i class="fas fa-check"></i> Valider les semestres
     </button>
 </div>

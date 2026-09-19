@@ -8,6 +8,7 @@ use App\Models\ESBTPMaquettePlaceSemestre;
 use App\Models\ESBTPMatiere;
 use App\Models\ESBTPMatiereFilierNiveau;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Le rattachement d'une matiere a un couple (filiere, niveau), en un seul
@@ -46,9 +47,27 @@ use Illuminate\Support\Facades\DB;
  *
  * Reconcilier l'existant reste un geste separe, explicite et simule d'abord.
  *
- * BTS uniquement. Le LMD tient ses matieres par parcours -> UE -> ECUE et
- * n'utilise aucun de ces trois pivots.
+ * BTS uniquement, et `poser()` le FAIT RESPECTER. Le LMD tient ses matieres par
+ * parcours -> UE -> ECUE et n'ecrit aucun de ces trois pivots : une ECUE qui y
+ * obtient une ligne est toujours une erreur, jamais un cas legitime.
  *
+ * C'est le filet, et il est place ici a dessein. Le chantier qui a decouvert la
+ * fuite a d'abord filtre chez les LECTEURS — douze filtres dans neuf fichiers,
+ * trouves en trois passes de revue, et il en restait. Filtrer en lecture
+ * demande a chaque futur ecran de s'en souvenir ; refuser a l'ECRITURE ne le
+ * demande qu'une fois. Les cinq appelants d'aujourd'hui refusent deja en amont,
+ * avec un message pour l'utilisateur : ce garde-ci ne leur sert pas, il sert au
+ * sixieme.
+ *
+ * Il LEVE au lieu de retourner silencieusement : une ligne posee par erreur
+ * fait sortir une matiere sur un bulletin deja imprime, ce dont personne ne
+ * s'apercoit. Une erreur 500 se voit le jour meme.
+ *
+ * `retirer()` n'a PAS ce garde, et c'est l'inverse d'un oubli : le retrait est
+ * le geste correcteur. Le refuser des deux cotes a rendu `TPOH243` x
+ * (TRAVAUX_PUBLICS, 2A) visible par le CLI et retirable par rien.
+ *
+ * @see .claude/rules/lmd-ecue-leak-bts-picker.md
  * @see .claude/rules/lmd-bts-matieres-single-source.md
  */
 // Non `final` a dessein : `RetraitDeMaquette::appliquer()` est le chemin qui
@@ -65,6 +84,23 @@ class LiaisonsDeMatiere
     public function poser(int $matiereId, int $filiereId, int $niveauId): ESBTPMatiereFilierNiveau
     {
         return DB::transaction(function () use ($matiereId, $filiereId, $niveauId) {
+            $matiere = ESBTPMatiere::find($matiereId);
+
+            if ($matiere && $matiere->unite_enseignement_id !== null) {
+                Log::warning('Ecriture refusee : une ECUE LMD ne se rattache pas a une maquette BTS.', [
+                    'matiere_id' => $matiereId,
+                    'filiere_id' => $filiereId,
+                    'niveau_etude_id' => $niveauId,
+                    'unite_enseignement_id' => $matiere->unite_enseignement_id,
+                    'user_id' => optional(auth()->user())->id,
+                ]);
+
+                throw new \InvalidArgumentException(
+                    "La matiere #{$matiereId} est un element constitutif LMD : elle ne peut pas "
+                    .'etre rattachee a une maquette BTS. Elle se gere dans /esbtp/lmd/ue.'
+                );
+            }
+
             $ligne = ESBTPMatiereFilierNiveau::firstOrCreate([
                 'matiere_id' => $matiereId,
                 'filiere_id' => $filiereId,
@@ -74,7 +110,6 @@ class LiaisonsDeMatiere
             // En AJOUT seulement : les pivots plats portent d'autres couples
             // que celui-ci, et leur charge utile (coefficient, heures) ne se
             // retrouve nulle part ailleurs.
-            $matiere = ESBTPMatiere::find($matiereId);
             if ($matiere) {
                 $matiere->filieres()->syncWithoutDetaching([$filiereId]);
                 $matiere->niveaux()->syncWithoutDetaching([$niveauId]);

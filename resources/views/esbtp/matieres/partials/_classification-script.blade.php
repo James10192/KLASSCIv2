@@ -10,6 +10,10 @@ function matiereClassification() {
         isTroncCommun: false,
         filiereName: '',
         matieres: [],
+        // ECUE LMD posees par erreur sur cette maquette BTS. Tenues a part des
+        // `matieres` : elles ne sont ni classables ni ordonnables, la seule
+        // action qui a du sens sur elles est le retrait.
+        intrusLmd: [],
         kpis: { total: 0, tronc_commun: 0, specialite: 0, non_classe: 0 },
         maquette: { renseignee: false, semestre_1: 0, semestre_2: 0 },
         planning: null,
@@ -78,6 +82,7 @@ function matiereClassification() {
                     classification: m.classification ?? (m.suggested ?? null),
                 }));
                 this.maquette = data.maquette || { renseignee: false, semestre_1: 0, semestre_2: 0 };
+                this.intrusLmd = data.intrus_lmd || [];
                 this.planning = data.planning || null;
                 this.recomputeKpis();
                 this.loaded = true;
@@ -359,6 +364,37 @@ function matiereClassification() {
         },
 
         // --- Enregistrement ---------------------------------------------
+
+        /**
+         * Valider les semestres n'est pas un enregistrement de plus : c'est le
+         * geste qui OUVRE la vanne. Tant que le combo n'est pas validé, le
+         * bulletin et la couverture des notes ignorent la maquette ; une fois
+         * validé, ils la lisent. Une matière posée au semestre 1 sort donc du
+         * bulletin du semestre 2, et réciproquement.
+         *
+         * Le cas qui impose cette confirmation est mesuré, pas supposé : chez
+         * ESBTP Abidjan, dix matières de Bâtiment 2e année sont figées au
+         * semestre 2 par un chargement fautif. Valider sans le savoir les
+         * retirerait du bulletin du semestre 1 de toute la classe.
+         */
+        async validerLesSemestres() {
+            const s1 = this.matieres.filter(m => Number(m.semestre) === 1).length;
+            const s2 = this.matieres.filter(m => Number(m.semestre) === 2).length;
+            const deux = this.matieres.length - s1 - s2;
+
+            const lignes = [
+                'Valider les semestres applique la maquette au bulletin et au suivi des notes.',
+                '',
+                `\u2022 ${s1} matiere(s) au semestre 1 seulement : elles sortiront du bulletin du semestre 2.`,
+                `\u2022 ${s2} matiere(s) au semestre 2 seulement : elles sortiront du bulletin du semestre 1.`,
+                `\u2022 ${deux} matiere(s) sans semestre : elles restent aux deux.`,
+                '',
+                'Continuer ?',
+            ];
+
+            if (!window.confirm(lignes.join('\n'))) return;
+            await this.save(true);
+        },
 
         /** `validerSemestres` marque le combo comme renseigné : c'est un geste explicite. */
         async save(validerSemestres = false) {

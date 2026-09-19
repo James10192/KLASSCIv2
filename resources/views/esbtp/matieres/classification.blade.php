@@ -73,6 +73,18 @@
     /* Retrait d'une matière de la maquette. Rouge assumé : l'action est
        destructive, et c'est la convention universelle — la palette monochrome
        ne vaut que pour le décor. */
+    /* Intrus LMD : couleur semantique danger, parce que la ligne fausse un
+       bulletin deja imprime. Ce n'est pas de la decoration. */
+    .mtc-intrus { border: 1px solid rgba(220,38,38,.28); background: rgba(220,38,38,.05);
+        border-radius: 12px; padding: .9rem 1rem; margin-bottom: 1rem; }
+    .mtc-intrus-head { display: flex; align-items: flex-start; gap: .65rem; color: #b91c1c; }
+    .mtc-intrus-head i { margin-top: .15rem; }
+    .mtc-intrus-head strong { display: block; font-size: .9rem; }
+    .mtc-intrus-head small { display: block; color: #64748b; font-size: .78rem; margin-top: .2rem; }
+    .mtc-intrus-row { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap;
+        margin-top: .6rem; padding-top: .6rem; border-top: 1px solid rgba(220,38,38,.15); }
+    .mtc-intrus-row .mtc-row-name { flex: 1; min-width: 0; }
+
     .mtc-retirer { flex-shrink: 0; width: 30px; height: 30px; border-radius: 8px; border: 1px solid #e2e8f0;
         background: #fff; color: #94a3b8; font-size: .78rem; cursor: pointer; transition: all .15s ease;
         display: inline-flex; align-items: center; justify-content: center; }
@@ -203,6 +215,10 @@
                 <span>Filière de spécialité. La classification sert surtout à cadrer l'héritage tronc commun ; les matières de spécialité restent au bulletin de spécialité.</span>
             </div>
         </template>
+
+        {{-- Hors du `x-if` sur `matieres` : un combo dont la seule ligne est un
+             intrus LMD doit quand meme pouvoir s'en debarrasser. --}}
+        @include('esbtp.matieres.partials._classification-intrus-lmd')
 
         <template x-if="matieres.length > 0">
             <div>

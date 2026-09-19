@@ -25,6 +25,12 @@ use App\Models\ESBTPNiveauEtude;
  * - une matiere qui porte des EVALUATIONS sur ce couple est refusee tant que
  *   l'appelant ne l'a pas confirme : la note resterait en base sans plus
  *   apparaitre nulle part.
+ *
+ * ET UNE NON-GARDE, DELIBEREE : contrairement au chargement, le retrait
+ * ACCEPTE une ECUE LMD. Le chargement doit la refuser (elle contaminerait un
+ * bulletin BTS) ; le retrait doit l'accepter (c'est le seul geste qui enleve
+ * une ligne deja posee). Les refuser des deux cotes rendait `TPOH243` x
+ * (TRAVAUX_PUBLICS, 2A) visible par le CLI et retirable par rien.
  */
 final class RetraitDeMaquette
 {
@@ -49,7 +55,10 @@ final class RetraitDeMaquette
         $plan = ['lignes' => [], 'ambigus' => [], 'introuvables' => [], 'notees' => []];
 
         foreach (array_values($matieres) as $entree) {
-            $resolue = $this->resolution->matiere($entree, (int) $filiere->id, (int) $niveau->id);
+            // `pourRetrait: true` : une ECUE LMD posee par erreur sur cette
+            // maquette BTS doit pouvoir en sortir. C'est le SEUL chemin — voir
+            // le docblock de ResolutionDeMatiere.
+            $resolue = $this->resolution->matiere($entree, (int) $filiere->id, (int) $niveau->id, pourRetrait: true);
 
             if ($resolue['statut'] === 'ambigu') {
                 $plan['ambigus'][] = ['libelle' => $resolue['libelle'], 'candidats' => $resolue['candidats']];

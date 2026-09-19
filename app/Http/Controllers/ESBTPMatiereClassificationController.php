@@ -85,6 +85,13 @@ class ESBTPMatiereClassificationController extends Controller
                 'semestre_1' => $rows->filter(fn ($l) => $this->prevueAu($l, 1, $comboRenseigne))->count(),
                 'semestre_2' => $rows->filter(fn ($l) => $this->prevueAu($l, 2, $comboRenseigne))->count(),
             ],
+            // Les ECUE LMD posees par erreur sur cette maquette BTS. Elles ne
+            // sont PAS dans `matieres` : les y mettre fausserait les
+            // decomptes, l'ordre et l'enregistrement, qui sont tous des
+            // notions BTS. Mais ne les montrer nulle part est ce qui a rendu
+            // le defaut incorrigible — la ligne sortait sur le bulletin et
+            // aucun ecran ne permettait de l'enlever.
+            'intrus_lmd' => $this->intrusLmdDuCombo($filiereId, $niveauId),
             'planning' => $this->apercuDuPlanning($filiereId, $niveauId, $request),
             'kpis' => [
                 'total' => $rows->count(),
@@ -93,6 +100,36 @@ class ESBTPMatiereClassificationController extends Controller
                 'non_classe' => $rows->whereNull('classification')->count(),
             ],
         ]);
+    }
+
+    /**
+     * Les ECUE LMD presentes dans la maquette BTS de ce couple.
+     *
+     * Normalement : aucune. Quand il y en a, c'est qu'un ecran BTS a pose la
+     * ligne sans garde — cas mesure sur esbtp-abidjan, ou `TPOH243`
+     * « Alimentation en eau et QTE » portait (TRAVAUX_PUBLICS, 2A) et sortait
+     * donc sur les bulletins de Travaux Publics 2e annee.
+     *
+     * On ne les rend ni classables ni ordonnables : la seule action qui a du
+     * sens sur elles est le retrait.
+     *
+     * @return \Illuminate\Support\Collection<int, array<string, mixed>>
+     */
+    private function intrusLmdDuCombo(int $filiereId, int $niveauId)
+    {
+        return ESBTPMatiereFilierNiveau::query()
+            ->where('filiere_id', $filiereId)
+            ->where('niveau_etude_id', $niveauId)
+            ->with('matiere:id,name,code,unite_enseignement_id')
+            ->get()
+            ->filter(fn ($row) => $row->matiere && $row->matiere->unite_enseignement_id !== null)
+            ->map(fn ($row) => [
+                'matiere_id' => (int) $row->matiere_id,
+                'name' => $row->matiere->name,
+                'code' => $row->matiere->code,
+            ])
+            ->sortBy(fn ($l) => mb_strtolower((string) $l['name'], 'UTF-8'))
+            ->values();
     }
 
     /**

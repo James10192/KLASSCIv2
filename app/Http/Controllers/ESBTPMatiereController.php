@@ -979,9 +979,35 @@ class ESBTPMatiereController extends Controller
 
             $liaisons = $validated['liaisons'] ?? [];
 
+            // Une ECUE LMD ne s'AJOUTE pas a une maquette BTS : poser la ligne
+            // ici, c'est exactement ce qui la fait sortir sur un bulletin BTS.
+            // `edit()` et `update()` refusent deja en 404, mais cette methode
+            // est une adresse a part (POST .../update-liaisons), atteignable
+            // sans passer par l'ecran, et elle appelle `poser()` plus bas.
+            //
+            // Le RETRAIT, lui, reste ouvert, et c'est deliberé : c'est
+            // aujourd'hui le seul chemin par lequel une ligne deja posee par
+            // erreur peut etre enlevee — l'ecran de classification ecarte les
+            // ECUE de ses lignes (donc pas de croix) et la resolution du CLI
+            // les refuse. Fermer ici fermerait la porte de sortie en meme temps
+            // que la porte d'entree.
+            $estUneEcue = $matiere->unite_enseignement_id !== null;
+
             // Voulues, dédoublonnées.
             $voulues = [];
             foreach ($liaisons as $liaison) {
+                if ($estUneEcue) {
+                    // Un refus muet ne se cherche pas : on dit lequel.
+                    \Log::warning('Ajout a une maquette BTS refuse : la matiere est un ECUE LMD.', [
+                        'matiere_id' => (int) $matiere->id,
+                        'filiere_id' => (int) $liaison['filiere_id'],
+                        'niveau_id' => (int) $liaison['niveau_id'],
+                        'user_id' => optional(auth()->user())->id,
+                    ]);
+
+                    continue;
+                }
+
                 $voulues[(int) $liaison['filiere_id'].'|'.(int) $liaison['niveau_id']] = [
                     (int) $liaison['filiere_id'],
                     (int) $liaison['niveau_id'],

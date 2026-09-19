@@ -50,7 +50,9 @@ Chaque résultat = à auditer :
   Mesuré sur esbtp-abidjan (septembre 2026) : `TPOH243` « Alimentation en eau et
   QTE », une ECUE, portait une ligne `(TRAVAUX_PUBLICS, 2A)` et sortait donc sur
   les bulletins de Travaux Publics 2ᵉ année — invisible des deux écrans qui
-  auraient permis de l'en retirer.
+  auraient permis de l'en retirer. **Cette dernière partie est corrigée** :
+  `/esbtp/matieres/classification` affiche ces lignes dans un bloc distinct, avec
+  leur croix de retrait. Le défaut, lui, se mesure toujours — voir plus bas.
 
   **Le coût de cette phrase n'est pas le défaut, c'est l'audit qu'elle a clos.**
   Six lecteurs scopés ont été examinés, déclarés sains sur cette prémisse, et
@@ -58,6 +60,44 @@ Chaque résultat = à auditer :
   ne réécris pas celle-ci en « sain » sans avoir compté les lignes de ce pivot qui
   pointent vers une matière à `unite_enseignement_id` non nul.
 - ⚠️ `whereHas('filieres')` seul (pivot 2-way `esbtp_matiere_filiere`) → **PEUT fuiter** (l'import LMD peuple `esbtp_matiere_filiere`). Vérifier : si pas aussi `whereHas('niveaux')`, ajouter `whereNull('unite_enseignement_id')`.
+
+## Depuis septembre 2026 : le garde est à l'ÉCRITURE, pas en lecture
+
+**Ne sème plus de `btsOnly()` chez les lecteurs. Ça ne marche pas.** Le chantier
+qui a corrigé `TPOH243` l'a essayé : douze filtres, neuf fichiers, **quatre passes
+de revue** — et chaque passe trouvait une porte que la précédente avait manquée
+(le panneau des coefficients, `updateLiaisons()`, le « Total matières » du planning
+général). Filtrer en lecture demande à chaque futur écran de s'en souvenir.
+
+`LiaisonsDeMatiere::poser()` est le goulot unique d'écriture du pivot canonique.
+Il **lève** désormais sur une ECUE, avec un `Log::warning`. Les cinq appelants
+refusent déjà en amont avec un message pour l'utilisateur ; ce garde-ci sert au
+sixième, celui qui n'est pas encore écrit.
+
+Corollaire, et c'est le piège symétrique : **le RETRAIT doit rester ouvert.**
+`ResolutionDeMatiere::matiere(..., pourRetrait: true)` accepte une ECUE, et c'est
+délibéré. Refuser des deux côtés est exactement ce qui avait rendu la ligne
+inextirpable — listée par le CLI, masquée par l'écran, refusée au retrait.
+Le chargement contamine, le retrait corrige : ils ne peuvent pas porter le même
+garde.
+
+Les filtres en lecture qui restent sont une ceinture, pas la bretelle. Un nouvel
+écran BTS n'a plus à en poser.
+
+## Compter ce qui est déjà en base
+
+Le garde protège l'avenir ; il n'efface rien. À faire sur chaque instance ayant
+importé des maquettes LMD :
+
+```sql
+SELECT mfn.filiere_id, mfn.niveau_etude_id, m.id, m.code, m.name
+  FROM esbtp_matiere_filiere_niveau mfn
+  JOIN esbtp_matieres m ON m.id = mfn.matiere_id
+ WHERE m.unite_enseignement_id IS NOT NULL;
+```
+
+Chaque ligne rendue sort sur un bulletin BTS. Retrait par l'écran de
+classification (bloc « éléments LMD »), ou par `POST /api/cli/bts/maquette/retirer`.
 
 ## Garde-fou avant d'appliquer
 
