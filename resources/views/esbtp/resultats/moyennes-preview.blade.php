@@ -666,7 +666,7 @@
             <div class="mp-kpi-card">
                 <div class="mp-kpi-icon"><i class="fas fa-book"></i></div>
                 <div class="mp-kpi-label">Matières</div>
-                <div class="mp-kpi-value" style="color: var(--k-primary);">{{ count($resultatsData) }}</div>
+                <div class="mp-kpi-value" style="color: var(--k-primary);">{{ collect($resultatsData)->reject(fn ($r) => $r['intruse'] ?? false)->count() }}</div>
                 <div class="mp-kpi-sub">à modifier</div>
             </div>
         </div>
@@ -791,8 +791,8 @@
                                                         @endif
                                                         @if($intruse)
                                                             <span class="mp-badge" style="background:#fef3c7;color:#92400e;border:1px solid #fcd34d;"
-                                                                  title="Cette matiere n'appartient pas au systeme academique de la classe. Elle ne compte dans aucune moyenne et n'est plus modifiable ici — vous pouvez la supprimer.">
-                                                                <i class="fas fa-triangle-exclamation"></i> Hors systeme
+                                                                  title="Cette matière n'appartient pas au système académique de la classe. Elle ne compte dans aucune moyenne et n'est plus modifiable ici — vous pouvez la supprimer.">
+                                                                <i class="fas fa-triangle-exclamation"></i> Hors système
                                                             </span>
                                                         @endif
                                                     </div>

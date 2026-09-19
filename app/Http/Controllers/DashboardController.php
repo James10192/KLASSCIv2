@@ -1490,14 +1490,31 @@ class DashboardController extends Controller
             ->with(['evaluation:id,bareme,matiere_id', 'evaluation.matiere:id,name,unite_enseignement_id'])
             ->get();
 
+        // Memo : une ligne par ELEVE, pas une par note. Sans lui, soixante notes
+        // rendraient soixante lignes identiques a chaque affichage de l'accueil.
+        $matiereIntrouvableDeja = false;
+
         $sur20 = $notes
-            ->map(function ($note) use ($classeCible) {
+            ->map(function ($note) use ($classeCible, $etudiantId, $classeId, &$matiereIntrouvableDeja) {
                 $matiere = $note->evaluation?->matiere;
+
+                if (! $matiere && ! $matiereIntrouvableDeja) {
+                    $matiereIntrouvableDeja = true;
+                    \Log::warning('Moyenne de l\'accueil : au moins une note sans matiere, coherence non verifiable.', [
+                        'etudiant_id' => $etudiantId,
+                        'classe_id' => $classeId,
+                        'note_id' => $note->id,
+                    ]);
+                }
 
                 // Pas de classe ou pas de matiere : on ne peut pas juger, donc on
                 // ne retranche pas. Ecarter sur une donnee manquante inventerait
-                // une moyenne differente de celle que l'eleve attend — mais on le
-                // DIT, sinon la moyenne bouge sans que personne ne sache chercher.
+                // une moyenne differente de celle que l'eleve attend.
+                //
+                // LA CLASSE INTROUVABLE EST DITE UNE FOIS, HORS BOUCLE (voir
+                // plus haut). La matiere introuvable, elle, se dit ICI parce
+                // qu'elle varie d'une note a l'autre — et `matiereIntrouvable`
+                // memoise pour ne pas rendre une ligne par note.
                 if ($classeCible && $matiere
                     && ! CoherenceSystemeAcademique::matiereRetenue($matiere, $classeCible, 'accueil mobile/moyenne courante')) {
                     return null;

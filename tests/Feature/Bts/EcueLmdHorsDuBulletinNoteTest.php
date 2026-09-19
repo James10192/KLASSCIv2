@@ -967,6 +967,14 @@ class EcueLmdHorsDuBulletinNoteTest extends TestCase
             (bool) ($lignes[$bts->id]['intruse'] ?? false),
             'Temoin : la matiere BTS ne doit pas etre marquee intruse.'
         );
+
+        // L'AFFIRMATION CENTRALE DU CORRECTIF, et elle vit dans le gabarit, pas
+        // dans le controleur : aucun champ de la ligne intruse n'est renvoye au
+        // serveur. Sans cette assertion, qui retablirait demain un champ
+        // coefficient casserait TOUT l'envoi et la suite resterait verte.
+        $reponse->assertDontSee('resultats['.$ecueEnregistree->id.']', false);
+
+        $reponse->assertSee('resultats['.$bts->id.']', false);
     }
 
     /**

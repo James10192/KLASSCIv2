@@ -1470,6 +1470,19 @@ class ESBTPResultatController extends Controller
             $query->withPivot('coefficient');
         }, 'filiere', 'niveau'])->findOrFail($classe_id);
 
+        // Meme refus que sur l'apercu individuel : cette grille ecrit dans
+        // `esbtp_resultats`, la table du bulletin BTS. Sur une classe LMD
+        // atteinte par URL forgee, elle rendait soit une grille vide, soit —
+        // sur une instance mixte ou le parcours LMD pointe une vraie filiere
+        // BTS — une grille INSAUVEGARDABLE, le garde refusant toute la classe.
+        // C'est litteralement le defaut que ce chantier a nomme deux commits
+        // plus tot, sur la methode voisine du meme fichier.
+        abort_if(
+            CoherenceSystemeAcademique::classeEstLmd($classe->systeme_academique),
+            422,
+            'Cette classe est LMD. Utilisez /esbtp/lmd/bulletins pour ses releves.'
+        );
+
         // Get students through inscriptions
         $studentsQuery = ESBTPEtudiant::whereHas('inscriptions', function ($query) use ($classe_id, $annee_universitaire_id, $include_all_statuses) {
             $query->where('classe_id', $classe_id)
@@ -1971,6 +1984,20 @@ class ESBTPResultatController extends Controller
      */
     public function bulkUpdateMoyennes(BulkUpdateMoyennesRequest $request)
     {
+        // Meme refus que ses trois methodes soeurs de ce fichier : cet
+        // enregistrement ecrit dans `esbtp_resultats`, la table du bulletin BTS.
+        // Ici le garde du modele ne rattrape PAS : sur une classe LMD, une ECUE
+        // est parfaitement coherente, donc `estCoherente('LMD', ecue)` rend vrai
+        // et un envoi forge ecrirait des lignes de bulletin BTS pour une classe
+        // LMD. C'est la seule des quatre ou ce refus n'est pas redondant avec le
+        // garde du modele.
+        $classeDuLot = \App\Models\ESBTPClasse::find($request->classe_id);
+
+        abort_if(
+            $classeDuLot && CoherenceSystemeAcademique::classeEstLmd($classeDuLot->systeme_academique),
+            422,
+            'Cette classe est LMD. Utilisez /esbtp/lmd/bulletins pour ses releves.'
+        );
 
         \DB::beginTransaction();
         try {
@@ -2757,7 +2784,7 @@ class ESBTPResultatController extends Controller
                         'id' => null,
                         'matiere' => $matiere, // Utiliser l'objet matière fraîchement récupéré
                         'moyenne' => $matiereData['moyenne'],
-                        'coefficient' => $this->bulletinService->getCoefficientForCombination(
+                        'coefficient' => $this->bulletinService->coefficientOrDefault(
                             $matiereId,
                             $classeId,
                             $anneeUniversitaireId
@@ -2832,16 +2859,26 @@ class ESBTPResultatController extends Controller
                     // Vérifier si cette matière a des moyennes calculées depuis les évaluations
                     $moyenneCalculee = isset($notesByMatiere[$matiere->id]) ? $notesByMatiere[$matiere->id]['moyenne'] : null;
                     
-                    // Récupérer le coefficient avec fallback = 1 si non configuré
-                    try {
-                        $coefficientCalcule = $this->bulletinService->getCoefficientForCombination(
-                            $matiere->id,
-                            $classe->id,
-                            $anneeUniversitaire->id
-                        );
-                    } catch (\RuntimeException $exception) {
-                        $coefficientCalcule = 1; // Fallback au lieu de bloquer
-                    }
+                    // UNE SEULE POLITIQUE DE COEFFICIENT POUR TOUT CET ECRAN.
+                    //
+                    // Les quatre chemins en avaient trois differentes, et deux
+                    // d'entre elles se contredisaient A L'ECRAN sur une matiere
+                    // BTS ordinaire dont le coefficient n'est pas configure :
+                    // l'eleve sans ligne enregistree tombait sur un 302
+                    // « configurez les coefficients », le meme eleve avec une
+                    // ligne enregistree voyait l'ecran s'ouvrir avec 1. Meme
+                    // matiere, meme configuration manquante, deux issues.
+                    //
+                    // Ce `try/catch` repliait en SILENCE, ce qui est le defaut
+                    // que ce chantier passe son temps a corriger ailleurs.
+                    // `coefficientOrDefault()` replie sur 1 EN LE DISANT, et
+                    // laisse passer le « Classe invalide » que le `catch`
+                    // terminal de cette methode doit continuer de recevoir.
+                    $coefficientCalcule = $this->bulletinService->coefficientOrDefault(
+                        $matiere->id,
+                        $classe->id,
+                        $anneeUniversitaire->id
+                    );
 
                     $resultatsData[$matiere->id] = [
                         'id' => null, // Nouveau résultat à créer
@@ -2885,6 +2922,14 @@ class ESBTPResultatController extends Controller
                     $resultatsData[$matiereId] = [
                         'id' => $resultatsData[$matiereId]['id'] ?? ($subject['manual_resultat']['resultat_id'] ?? null),
                         'matiere' => $matiereModel,
+                        // CE BLOC REECRASE, IL NE FUSIONNE PAS. Sans reconduire
+                        // `intruse`, il effacerait le marquage pose par le
+                        // premier chemin. Inoffensif aujourd'hui — le snapshot
+                        // filtre ses deux lectures, donc aucune ECUE n'y entre —
+                        // mais c'est la forme exacte du defaut que ce chantier a
+                        // paye trois fois : une seconde ecriture qui annule la
+                        // premiere.
+                        'intruse' => $resultatsData[$matiereId]['intruse'] ?? false,
                         'moyenne' => $subject['moyenne'] ?? null,
                         'coefficient' => $subject['coefficient'] ?? null,
                         'rang' => $resultatsData[$matiereId]['rang'] ?? null,
