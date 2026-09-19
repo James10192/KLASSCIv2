@@ -1231,10 +1231,10 @@ class ESBTPNoteController extends Controller
      * de saisir cinq notes sur soixante y lisait un reproche, et l'ecran
      * devenait desagreable a chaque enregistrement intermediaire.
      *
-     * « Reste(nt) a saisir » dit la meme chose sans accuser, et reste juste
-     * quand il n'en reste qu'une — qui est le cas qui a motive tout ceci : une
-     * ligne oubliee passait en silence, et le suivi la comptait manquante
-     * pendant que la personne etait certaine d'avoir tout rempli.
+     * « Reste(nt) a saisir » dit la meme chose sans accuser. Le cas qui a
+     * motive tout ceci est justement celui d'UNE ligne oubliee : elle passait
+     * en silence, et le suivi la comptait manquante pendant que la personne
+     * etait certaine d'avoir tout rempli.
      *
      * Les noms ne sont donnes que lorsqu'ils tiennent : au-dela de cinq, le
      * compte seul, et la liste complete se lit sur l'ecran de l'evaluation.
@@ -1253,7 +1253,7 @@ class ESBTPNoteController extends Controller
         }
 
         if ($reste > self::SAISIE_RAPIDE_NOMS_MAX) {
-            return $message . ' ' . $reste . ' ligne(s) restent à saisir.';
+            return $message . ' ' . $reste . ' ligne(s) reste(nt) à saisir.';
         }
 
         $noms = ESBTPEtudiant::whereIn('id', $ignorees)
@@ -1264,10 +1264,17 @@ class ESBTPNoteController extends Controller
             ->all();
 
         if ($noms === []) {
-            return $message . ' ' . $reste . ' ligne(s) restent à saisir.';
+            return $message . ' ' . $reste . ' ligne(s) reste(nt) à saisir.';
         }
 
-        return $message . ' ' . $reste . ' ligne(s) restent à saisir : ' . implode(', ', $noms) . '.';
+        // Un identifiant qui ne resout pas — etudiant supprime entre-temps, nom
+        // vide — rendrait la liste plus courte que le compte, et elle se
+        // presenterait pourtant comme exhaustive. On dit alors ce qui manque.
+        $sansNom = $reste - count($noms);
+
+        return $message . ' ' . $reste . ' ligne(s) reste(nt) à saisir : ' . implode(', ', $noms)
+            . ($sansNom > 0 ? ' et ' . $sansNom . ' autre(s)' : '')
+            . '.';
     }
 
     /**

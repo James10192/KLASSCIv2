@@ -82,11 +82,6 @@ class ESBTPResultatMatiere extends Model
      *
      * @var array
      */
-    /**
-     * Les attributs qui sont assignables en masse.
-     *
-     * @var array
-     */
     protected $fillable = [
         'bulletin_id',
         'matiere_id',

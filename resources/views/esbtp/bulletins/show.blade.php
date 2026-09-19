@@ -368,7 +368,7 @@
                                     @elseif($resultat->statut === \App\Models\ESBTPResultatMatiere::STATUT_NON_NOTE)
                                         <span class="bsh-muted">Non notée</span>
                                     @else
-                                        {{ $resultat->commentaire ?? '—' }}
+                                        {{ $resultat->appreciation ?? '—' }}
                                     @endif
                                 </td>
                             </tr>

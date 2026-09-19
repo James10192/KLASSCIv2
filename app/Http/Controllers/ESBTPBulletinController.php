@@ -299,21 +299,24 @@ class ESBTPBulletinController extends Controller
                     continue;
                 }
 
-                // `withTrashed` + `firstOrNew` et non `new` : la cle unique
-                // `(bulletin_id, matiere_id)` ne porte pas `deleted_at`, donc une
-                // ligne soft-deletee par une generation precedente occupe la
-                // place sans etre visible. Un `new` butait dessus en
-                // « Duplicate entry », et la ligne fantome ne disparaissant
-                // jamais, l'erreur etait definitive pour cet etudiant.
-                $resultat = ESBTPResultatMatiere::withTrashed()->firstOrNew([
-                    'bulletin_id' => $bulletin->id,
-                    'matiere_id' => $matiere->id,
-                ]);
-                $resultat->moyenne = $moyenne;
-                $resultat->coefficient = $coefficient;
-                $resultat->commentaire = null;
-                $resultat->deleted_at = null;
-                $resultat->save();
+                // Le point d'entree unique, et non un `withTrashed()` recopie
+                // ici : il porte l'explication de la cle unique sans
+                // `deleted_at`, et c'est lui qu'on trouvera en cherchant
+                // comment ecrire une ligne de bulletin.
+                //
+                // Passer par lui retire au passage l'ecriture de `commentaire`,
+                // qui n'est une colonne d'AUCUNE des deux tables de resultats —
+                // un nom invente, jamais migre. `$fillable` l'ecarte. La vraie
+                // colonne s'appelle `appreciation`, et c'est la generation qui
+                // la renseigne.
+                ESBTPResultatMatiere::poserSurLeBulletin(
+                    (int) $bulletin->id,
+                    (int) $matiere->id,
+                    [
+                        'moyenne' => $moyenne,
+                        'coefficient' => $coefficient,
+                    ]
+                );
             }
 
             // Calculer et mettre à jour la moyenne générale du bulletin
@@ -422,36 +425,28 @@ class ESBTPBulletinController extends Controller
             $bulletin->save();
 
             // Mettre à jour les résultats par matière
-            // `withTrashed` : une ligne soft-deletee occupe la cle unique sans
-            // etre visible. Sans elle, la branche « sinon » plus bas creait une
-            // ligne en doublon et la base refusait tout l'enregistrement.
-            $existingResultats = ESBTPResultatMatiere::withTrashed()
-                ->where('bulletin_id', $bulletin->id)
-                ->get()->keyBy('matiere_id');
-
+            // Un seul chemin d'ecriture, celui du modele : il sait qu'une ligne
+            // soft-deletee occupe la cle unique sans etre visible, et il la
+            // ressuscite au lieu d'en creer une seconde. Le chargement prealable
+            // de toutes les lignes et la bifurcation qui l'accompagnait ne
+            // servaient qu'a rejouer ce que cette methode fait deja.
+            //
+            // `commentaire` a disparu avec : ce n'est une colonne d'AUCUNE des
+            // deux tables de resultats. La colonne reelle est `appreciation`,
+            // et la renseigner ici demanderait de reparer d'abord cet ecran —
+            // voir la note de suivi sur `/esbtp/bulletins/{id}/edit`.
             foreach ($request->resultats as $resultatData) {
-                $matiereId = $resultatData['matiere_id'];
                 $moyenne = $resultatData['moyenne'] !== null && $resultatData['moyenne'] !== ''
                     ? $resultatData['moyenne'] : null;
 
-                $resultat = $existingResultats->get($matiereId);
-
-                if ($resultat) {
-                    $resultat->moyenne = $moyenne;
-                    $resultat->coefficient = $resultatData['coefficient'];
-                    $resultat->commentaire = $resultatData['commentaire'] ?? null;
-                    // La matiere est de nouveau au bulletin : sa ligne revit.
-                    $resultat->deleted_at = null;
-                    $resultat->save();
-                } else {
-                    $resultat = new ESBTPResultatMatiere;
-                    $resultat->bulletin_id = $bulletin->id;
-                    $resultat->matiere_id = $matiereId;
-                    $resultat->moyenne = $moyenne;
-                    $resultat->coefficient = $resultatData['coefficient'];
-                    $resultat->commentaire = $resultatData['commentaire'] ?? null;
-                    $resultat->save();
-                }
+                ESBTPResultatMatiere::poserSurLeBulletin(
+                    (int) $bulletin->id,
+                    (int) $resultatData['matiere_id'],
+                    [
+                        'moyenne' => $moyenne,
+                        'coefficient' => $resultatData['coefficient'],
+                    ]
+                );
             }
 
             // Recalculer la moyenne générale
