@@ -1008,12 +1008,20 @@ class ESBTPMatiereController extends Controller
     {
         try {
             $validated = $request->validate([
-                // `required` et pas seulement `array` : une requete qui OMET
-                // la cle passait la validation, `?? []` la rendait vide, et le
-                // diff lisait « aucun couple voulu » comme « retire-les tous ».
-                // Les deux appelants envoient toujours la cle ; exiger sa
-                // presence transforme un effacement silencieux en 422.
-                'liaisons'             => 'required|array',
+                // `present` et NON `required`, et la nuance est tout le sujet.
+                //
+                // Le but est de distinguer « la cle est absente » (une requete
+                // malformee, que `?? []` transformait en « retire-les tous »)
+                // de « la cle est la, vide » (l'utilisateur a decoche toutes les
+                // combinaisons, et l'ecran le lui a fait confirmer).
+                //
+                // `required` refuse LES DEUX : il rejette aussi `[]`. « Tout
+                // retirer » rendait donc 422 « Le champ liaisons est
+                // obligatoire », alors que l'ecran propose l'action, ouvre une
+                // confirmation explicite et annonce « Cela supprimera toutes les
+                // liaisons existantes ». `present` exige la cle sans exiger son
+                // contenu — c'est exactement la distinction voulue.
+                'liaisons'             => 'present|array',
                 'liaisons.*.filiere_id' => 'required|exists:esbtp_filieres,id',
                 'liaisons.*.niveau_id'  => 'required|exists:esbtp_niveau_etudes,id',
             ]);

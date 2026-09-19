@@ -115,11 +115,10 @@ class MaquetteBtsRefuseUneEcueTest extends TestCase
         $this->assertSame('introuvable', $auChargement['statut']);
 
         // Retrait : elle existe, pour qu'on puisse l'enlever.
-        $auRetrait = $resolution->matiere(
+        $auRetrait = $resolution->matierePourRetrait(
             ['id' => (int) $ecue->id],
             (int) $filiere->id,
             (int) $niveau->id,
-            pourRetrait: true,
         );
         $this->assertSame('ok', $auRetrait['statut']);
         $this->assertSame((int) $ecue->id, (int) $auRetrait['matiere']->id);
@@ -170,6 +169,81 @@ class MaquetteBtsRefuseUneEcueTest extends TestCase
         $this->assertSame(2, ESBTPMatiereFilierNiveau::where('matiere_id', $ecue->id)->count());
     }
 
+    /**
+     * « TOUT RETIRER » EST UNE ACTION DE L'ECRAN, PAS UNE REQUETE MALFORMEE.
+     *
+     * L'utilisateur decoche toutes les combinaisons, l'ecran ouvre une
+     * confirmation qui annonce « Cela supprimera toutes les liaisons
+     * existantes », il confirme — et le front poste `liaisons: []`.
+     *
+     * Avec `required|array`, cet envoi rendait 422 « Le champ liaisons est
+     * obligatoire » : une capacite que l'interface annonce, confirme et
+     * documente etait devenue inatteignable, et le message de succes du cas
+     * « zero liaison » etait du code mort. `present|array` exige la cle sans
+     * exiger son contenu.
+     */
+    public function test_tout_retirer_est_accepte_et_efface_bien_tout(): void
+    {
+        $matiere = ESBTPMatiere::factory()->create(['unite_enseignement_id' => null]);
+        $niveau = ESBTPNiveauEtude::factory()->create(['type' => 'BTS']);
+        $filiere = ESBTPFiliere::factory()->create(['is_tronc_commun' => false, 'parent_id' => null]);
+
+        ESBTPMatiereFilierNiveau::create([
+            'matiere_id' => $matiere->id,
+            'filiere_id' => $filiere->id,
+            'niveau_etude_id' => $niveau->id,
+        ]);
+
+        $this->assertSame(
+            1,
+            ESBTPMatiereFilierNiveau::where('matiere_id', $matiere->id)->count(),
+            'Temoin : sans une liaison a retirer, ce test ne prouve rien.'
+        );
+
+        $reponse = $this->actingAs($this->unSuperAdmin())
+            ->postJson("/esbtp/matieres/{$matiere->id}/update-liaisons", [
+                'liaisons' => [],
+            ]);
+
+        $reponse->assertOk();
+
+        $this->assertSame(
+            0,
+            ESBTPMatiereFilierNiveau::where('matiere_id', $matiere->id)->count(),
+            'Le vide EST une instruction : tout retirer.'
+        );
+    }
+
+    /**
+     * La cle ABSENTE, elle, reste refusee.
+     *
+     * C'est la distinction que `present` preserve et que `required` ecrasait :
+     * une requete malformee ne doit pas etre lue comme « retire-les tous ».
+     */
+    public function test_une_requete_qui_omet_la_cle_est_refusee(): void
+    {
+        $matiere = ESBTPMatiere::factory()->create(['unite_enseignement_id' => null]);
+        $niveau = ESBTPNiveauEtude::factory()->create(['type' => 'BTS']);
+        $filiere = ESBTPFiliere::factory()->create(['is_tronc_commun' => false, 'parent_id' => null]);
+
+        ESBTPMatiereFilierNiveau::create([
+            'matiere_id' => $matiere->id,
+            'filiere_id' => $filiere->id,
+            'niveau_etude_id' => $niveau->id,
+        ]);
+
+        $reponse = $this->actingAs($this->unSuperAdmin())
+            ->postJson("/esbtp/matieres/{$matiere->id}/update-liaisons", []);
+
+        $reponse->assertStatus(422);
+
+        $this->assertSame(
+            1,
+            ESBTPMatiereFilierNiveau::where('matiere_id', $matiere->id)->count(),
+            'Une requete malformee ne doit RIEN effacer.'
+        );
+    }
+
     public function test_retirer_un_couple_d_une_ecue_passe_et_ne_touche_que_lui(): void
     {
         $ecue = $this->ecue();
@@ -206,11 +280,10 @@ class MaquetteBtsRefuseUneEcueTest extends TestCase
         // Le garde n'existait d'abord que sur le libellé, et l'identifiant
         // passait à côté ; en levant la garde pour le retrait, il faut la lever
         // des DEUX côtés, sinon le retrait par nom reste impossible.
-        $resolue = app(ResolutionDeMatiere::class)->matiere(
+        $resolue = app(ResolutionDeMatiere::class)->matierePourRetrait(
             $ecue->name,
             (int) $filiere->id,
             (int) $niveau->id,
-            pourRetrait: true,
         );
 
         $this->assertSame('ok', $resolue['statut']);

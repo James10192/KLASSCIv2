@@ -7,7 +7,7 @@ use App\Domain\BtsTroncCommun\ResolutionDeMatiere;
 use App\Domain\BtsTroncCommun\RetraitDeMaquette;
 use App\Models\ESBTPFiliere;
 use App\Models\ESBTPNiveauEtude;
-use PHPUnit\Framework\TestCase;
+use Tests\TestCase;
 
 /**
  * Doublure qui NOTE ce qu'on lui demande d'effacer, sans rien effacer.
@@ -43,6 +43,17 @@ class LiaisonsQuiNotentLesRetraits extends LiaisonsDeMatiere
  */
 class RetraitDeMaquetteTest extends TestCase
 {
+    // CE TEST BOOTE L'APPLICATION, et c'est un changement assume.
+    //
+    // Il etendait `PHPUnit\Framework\TestCase` : pas de framework, pas de base,
+    // rien que la logique — et c'etait une qualite. Mais `appliquer()` enveloppe
+    // desormais son lot dans une transaction, sans quoi un echec au troisieme
+    // tour laissait deux lignes effacees et trois intactes. Une facade a besoin
+    // d'une application.
+    //
+    // Les doublures restent des doublures : rien n'est ecrit, aucune table n'est
+    // lue. Le test gagne un `BEGIN`/`COMMIT` a vide, et garde tout le reste.
+
     private function filiere(int $id): ESBTPFiliere
     {
         $filiere = new ESBTPFiliere();
