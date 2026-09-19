@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use OwenIt\Auditing\Contracts\Auditable;
 
@@ -116,10 +117,21 @@ class ESBTPResultat extends Model implements Auditable
             return;
         }
 
-        $classe = ESBTPClasse::find($this->classe_id);
-        $matiere = ESBTPMatiere::find($this->matiere_id);
+        // `withTrashed()` : les deux modeles sont en `SoftDeletes`. Un `find()`
+        // nu rend `null` sur une ligne effacee en douceur, et le garde se
+        // DESARMAIT alors tout seul — une classe archivee puis rouverte suffit.
+        $classe = ESBTPClasse::withTrashed()->find($this->classe_id);
+        $matiere = ESBTPMatiere::withTrashed()->find($this->matiere_id);
 
         if (! $classe || ! $matiere) {
+            // On ne peut pas juger, donc on n'interdit pas — mais on le DIT.
+            // Un garde qui se tait quand il renonce ne se cherche meme pas.
+            Log::warning('Coherence non verifiee : classe ou matiere introuvable.', [
+                'modele' => static::class,
+                'classe_id' => $this->classe_id,
+                'matiere_id' => $this->matiere_id,
+            ]);
+
             return;
         }
 

@@ -1478,12 +1478,23 @@ class DashboardController extends Controller
             ->get();
 
         $sur20 = $notes
-            ->map(function ($note) use ($classeCible) {
+            ->map(function ($note) use ($classeCible, $etudiantId, $classeId) {
                 $matiere = $note->evaluation?->matiere;
 
                 // Pas de classe ou pas de matiere : on ne peut pas juger, donc on
                 // ne retranche pas. Ecarter sur une donnee manquante inventerait
-                // une moyenne differente de celle que l'eleve attend.
+                // une moyenne differente de celle que l'eleve attend — mais on le
+                // DIT, sinon la moyenne bouge sans que personne ne sache chercher.
+                if (! $classeCible || ! $matiere) {
+                    \Log::warning('Moyenne de l\'accueil : coherence non verifiable.', [
+                        'etudiant_id' => $etudiantId,
+                        'classe_id' => $classeId,
+                        'note_id' => $note->id,
+                        'classe_trouvee' => (bool) $classeCible,
+                        'matiere_trouvee' => (bool) $matiere,
+                    ]);
+                }
+
                 if ($classeCible && $matiere
                     && ! CoherenceSystemeAcademique::matiereRetenue($matiere, $classeCible, 'accueil mobile/moyenne courante')) {
                     return null;

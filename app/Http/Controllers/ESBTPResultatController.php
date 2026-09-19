@@ -1518,7 +1518,12 @@ class ESBTPResultatController extends Controller
         $classeFiliereId = $classe->filiere_id;
         $classeNiveauId = $classe->niveau_etude_id;
 
+        // `btsOnly()` : ce croisement des deux pivots PLATS est le troisieme
+        // chemin par lequel une ECUE arrivait sur cet ecran. Sa grille poste vers
+        // `bulkUpdateMoyennes()`, dont la transaction evite l'etat partiel — mais
+        // une valeur saisie sur l'ECUE faisait refuser TOUTE la classe.
         $matieres = ESBTPMatiere::with(['filieres:id,name,code', 'niveaux:id,name,code'])
+            ->btsOnly()
             ->where('is_active', true)
             ->orderBy('name')
             ->get()
@@ -2507,6 +2512,28 @@ class ESBTPResultatController extends Controller
             $classe = \App\Models\ESBTPClasse::with('matieres')->findOrFail($classeId);
             $anneeUniversitaire = \App\Models\ESBTPAnneeUniversitaire::findOrFail($anneeUniversitaireId);
 
+            // CET ECRAN EST BTS, COMME LES QUATRE POINTS D'ENTREE FRERES de
+            // `ESBTPBulletinController` (`store`, `genererClasseBulletins`,
+            // `preflightClasseBulletins`, `previewBulletin`). Il ecrit dans
+            // `esbtp_resultats`, qui est la table du bulletin BTS.
+            //
+            // Une premiere version rendait cet ecran BILINGUE — `lmdOnly()` sur
+            // une classe LMD — et c'etait pire qu'inutile : la selection de
+            // classe exclut deja les classes LMD (deux `where` plus haut dans ce
+            // fichier), donc la branche etait inatteignable ; et si une URL
+            // forgee l'atteignait, elle rendait l'ecran ENREGISTRABLE pour une
+            // classe LMD, la ou le garde de `ESBTPResultat` refusait avant. Elle
+            // n'aurait pas ferme une porte, elle en aurait ouvert une.
+            //
+            // Voir `.claude/rules/lmd-bts-bulletin-separation.md`. Le `?? ''`
+            // n'est pas decoratif : la colonne est nullable, et une classe BTS
+            // historique peut l'avoir nulle.
+            abort_if(
+                ($classe->systeme_academique ?? '') === 'LMD',
+                422,
+                'Cette classe est LMD. Utilisez /esbtp/lmd/bulletins pour ses releves.'
+            );
+
             // MODIFIÉ: Récupérer les notes de l'étudiant avec une requête plus flexible, similaire à resultatEtudiant
             // Récupérer toutes les notes de l'étudiant d'abord
             $notesQuery = \App\Models\ESBTPNote::where('etudiant_id', $etudiantId)
@@ -2665,6 +2692,23 @@ class ESBTPResultatController extends Controller
                         continue;
                     }
 
+                    // LE SECOND CHEMIN D'INGESTION DE CET ECRAN, et le plus
+                    // piegeux : cette boucle pose ses entrees AVANT celle qui
+                    // comble les trous plus bas, et celle-la n'AJOUTE que ce qui
+                    // manque. Filtrer la seconde seule ne retirait donc rien ici
+                    // — et ce qui passait par ici est precisement le
+                    // sous-ensemble qui PORTE DES NOTES, c'est-a-dire celui
+                    // qu'on enregistre.
+                    //
+                    // `matiereRetenue()` plutot qu'un `btsOnly()` muet : la
+                    // ligne est HERITEE (quelqu'un a saisi ces notes), donc on
+                    // l'ecarte en le disant. Un rattrapage silencieux ne se
+                    // cherche meme pas — piege #12 de
+                    // `klassci-debugging-discipline.md`.
+                    if (! CoherenceSystemeAcademique::matiereRetenue($matiere, $classe, 'apercu moyennes')) {
+                        continue;
+                    }
+
                     $matchesFiliere = $matiere->filieres->pluck('id')->contains($classeFiliereIdForNotes);
                     $matchesNiveau = $matiere->niveaux->pluck('id')->contains($classeNiveauIdForNotes);
 
@@ -2732,12 +2776,9 @@ class ESBTPResultatController extends Controller
             // `ESBTPResultat` levait au milieu de la boucle d'enregistrement —
             // l'ecran devenait insauvegardable. Voir
             // `.claude/rules/lmd-ecue-leak-bts-picker.md`, forme « PEUT fuiter ».
-            $estBtsPourLesMatieres = strtoupper((string) ($classe->systeme_academique ?? 'BTS')) !== 'LMD';
-
             $toutesLesMatieres = \App\Models\ESBTPMatiere::with(['filieres:id,name,code', 'niveaux:id,name,code'])
                 ->where('is_active', true)
-                ->when($estBtsPourLesMatieres, fn ($q) => $q->btsOnly())
-                ->when(! $estBtsPourLesMatieres, fn ($q) => $q->lmdOnly())
+                ->btsOnly()
                 ->orderBy('name')
                 ->get()
                 ->filter(function ($matiere) use ($classeFiliereId, $classeNiveauId) {
@@ -2883,6 +2924,14 @@ class ESBTPResultatController extends Controller
         $etudiant = \App\Models\ESBTPEtudiant::findOrFail($etudiantId);
         $classe = \App\Models\ESBTPClasse::findOrFail($classeId);
         $anneeUniversitaire = \App\Models\ESBTPAnneeUniversitaire::findOrFail($anneeUniversitaireId);
+
+        // Meme refus qu'a l'apercu, et AVANT la transaction : cet ecran ecrit
+        // dans `esbtp_resultats`, la table du bulletin BTS.
+        abort_if(
+            ($classe->systeme_academique ?? '') === 'LMD',
+            422,
+            'Cette classe est LMD. Utilisez /esbtp/lmd/bulletins pour ses releves.'
+        );
 
         // TOUT OU RIEN, et un refus qui se dit.
         //

@@ -566,8 +566,12 @@ class ESBTPClasseController extends Controller
         //
         // `btsOnly()` est ce qui compte ici : l'ancienne liste croisait les deux
         // pivots PLATS, que `LiaisonsDeMatiere::retirer()` ne nettoie pas — c'est
-        // par la qu'une ECUE retiree de la maquette ressortait. Le repli rend
-        // donc la meme liste qu'avant, moins les ECUE.
+        // par la qu'une ECUE retiree de la maquette ressortait.
+        //
+        // CE N'EST PAS EXACTEMENT LA MEME LISTE QU'AVANT, et le dire serait faux :
+        // l'ancien code n'exigeait pas `niveau_etude_id`, donc une classe sans
+        // niveau voyait toutes les matieres actives de sa filiere. Ce repli exige
+        // les deux et rend vide sinon — c'est plus juste, pas identique.
         if ($estBtsPourLOnglet && $combinationMatieres->isEmpty() && $classe->filiere_id && $classe->niveau_etude_id) {
             $combinationMatieres = \App\Models\ESBTPMatiere::query()
                 ->btsOnly()

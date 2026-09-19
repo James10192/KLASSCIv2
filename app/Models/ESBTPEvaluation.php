@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Domain\Academique\CoherenceSystemeAcademique;
+use Illuminate\Support\Facades\Log;
 use App\Domain\BtsTroncCommun\ClasseOuvertureResolver;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -407,10 +408,20 @@ class ESBTPEvaluation extends Model implements Auditable
                 return;
             }
 
-            $classe = ESBTPClasse::find($evaluation->classe_id);
-            $matiere = ESBTPMatiere::find($evaluation->matiere_id);
+            // `withTrashed()` : les deux modeles sont en `SoftDeletes`. Un
+            // `find()` nu rend `null` sur une ligne effacee en douceur, et le
+            // garde se DESARMAIT alors tout seul.
+            $classe = ESBTPClasse::withTrashed()->find($evaluation->classe_id);
+            $matiere = ESBTPMatiere::withTrashed()->find($evaluation->matiere_id);
 
             if (! $classe || ! $matiere) {
+                // On ne peut pas juger, donc on n'interdit pas — mais on le DIT.
+                Log::warning('Coherence non verifiee : classe ou matiere introuvable.', [
+                    'modele' => ESBTPEvaluation::class,
+                    'classe_id' => $evaluation->classe_id,
+                    'matiere_id' => $evaluation->matiere_id,
+                ]);
+
                 return;
             }
 

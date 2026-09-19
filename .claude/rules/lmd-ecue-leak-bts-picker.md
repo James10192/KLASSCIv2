@@ -177,9 +177,33 @@ Le jumeau AJAX `bulkUpdateMoyennes()` avait bien sa transaction et son
 fichier** qui a survécu à quatre passes : on relit celle qu'on vient d'écrire, pas
 sa voisine.
 
+**Et un écran peut avoir plusieurs chemins vers la MÊME liste.** Le premier jet
+de ce correctif n'en a filtré qu'un : `previewMoyennes()` remplit `$resultatsData`
+d'abord **depuis les notes**, puis comble les trous **depuis le catalogue**. Le
+second n'ajoute que ce qui manque, donc y poser le filtre ne retirait rien de ce
+que le premier avait déjà posé — c'est-à-dire précisément les ECUE **qui portent
+des notes**, celles qu'on enregistre. C'est la même leçon que
+`calculateStudentStatsFixed()` avait déjà coûtée, reprise une passe plus tard sur
+un autre fichier : **compter les chemins d'ingestion, pas les méthodes.**
+
+Un troisième écran, `editResultatsClasse()`, portait le même croisement non filtré.
+Le précédent à imiter était dans le dépôt : `BulletinInlineConfigurationService::matieresPourConfiguration()`
+a **trois** lectures — la canonique, le repli plat, et les matières qui portent une
+évaluation — et les trois portent `btsOnly()`.
+
+**Ce qui reste à faire, et son déclencheur.** Ces trois listes appellent une
+extraction : une action unique où poser le prédicat, au lieu d'un `btsOnly()` par
+liste. Elle n'est pas faite, et ce n'est pas un oubli — `updateMoyennes()` fait
+219 lignes sur le chemin d'impression de huit instances, et la sortir au seizième
+tour d'une branche qui porte déjà quatre chantiers ajouterait du risque au lieu
+d'en retirer. Ce qui protège réellement est **le garde à l'écriture**, qui refuse ;
+les listes ne font que ne plus proposer. Le déclencheur de l'extraction est donc
+la **quatrième** liste, pas la prochaine revue.
+
 **Le contrôle à faire en posant un garde d'écriture** : chercher tous les
 écrivains du modèle gardé, et pour chacun se demander (a) d'où vient ce qu'il
-écrit, et (b) que reste-t-il en base si le garde lève au troisième tour de boucle.
+écrit, (b) combien de chemins mènent à ce qu'il propose, et (c) que reste-t-il en
+base si le garde lève au troisième tour de boucle.
 
 ```bash
 grep -rn "ESBTPResultat::\(create\|updateOrCreate\)\|new ESBTPResultat" app/ --include="*.php"

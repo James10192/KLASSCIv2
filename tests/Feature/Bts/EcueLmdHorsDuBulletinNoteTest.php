@@ -812,13 +812,119 @@ class EcueLmdHorsDuBulletinNoteTest extends TestCase
             ],
         ]);
 
-        $reponse->assertSessionHasErrors();
+        // La CLE compte : `assertSessionHasErrors()` nu passe pour n'importe
+        // quelle erreur de validation, y compris une regle du `FormRequest` qui
+        // changerait demain. Ce test resterait vert en ne prouvant plus rien.
+        $reponse->assertSessionHasErrors('matiere_id');
 
         $this->assertSame(
             0,
             ESBTPResultat::where('etudiant_id', $etudiant->id)->count(),
             'Tout ou rien : sans transaction, la ligne BTS postee AVANT l\'ECUE '
             .'restait enregistree et l\'ecran devenait insauvegardable.'
+        );
+    }
+
+    /**
+     * TEMOIN du test precedent.
+     *
+     * Sans lui, un `count() === 0` serait vrai aussi bien parce que la
+     * transaction a fonctionne que parce que la requete n'a jamais atteint le
+     * controleur — la forme de faux-vert que ce fichier s'interdit.
+     */
+    public function test_l_enregistrement_des_moyennes_passe_sur_une_matiere_bts(): void
+    {
+        $this->monterLaClasse();
+        $bts = $this->matiereConfiguree();
+        $etudiant = $this->etudiantInscrit();
+
+        $this->actingAs($this->unSuperAdmin());
+
+        $reponse = $this->post(route('esbtp.bulletins.moyennes-update'), [
+            'etudiant_id' => $etudiant->id,
+            'classe_id' => $this->classe->id,
+            'periode' => 'semestre1',
+            'annee_universitaire_id' => $this->annee->id,
+            'resultats' => [
+                ['matiere_id' => $bts->id, 'moyenne' => 14, 'coefficient' => 2],
+            ],
+        ]);
+
+        $reponse->assertSessionHasNoErrors();
+
+        $this->assertSame(
+            1,
+            ESBTPResultat::where('etudiant_id', $etudiant->id)->count(),
+            'Le meme envoi, sans l\'ECUE, doit bien enregistrer sa ligne.'
+        );
+    }
+
+    /**
+     * L'ecran ne PROPOSE plus l'ECUE, meme quand elle porte des notes.
+     *
+     * L'apercu a DEUX chemins d'ingestion vers la meme liste : celui qui part
+     * des notes, et celui qui comble les trous depuis le catalogue. Le second
+     * n'AJOUTE que ce qui manque — filtrer le second seul ne retirait donc rien
+     * de ce que le premier avait deja pose, c'est-a-dire precisement les ECUE
+     * qui portent des notes.
+     *
+     * CE QUI SE PASSE SANS LE CORRECTIF, MESURE en retirant le filtre : ce n'est
+     * pas que l'ECUE s'ajoute a la liste, c'est que **l'ecran ne s'ouvre plus du
+     * tout**. L'ECUE n'a pas de coefficient sur ce couple (filiere, niveau), donc
+     * `getCoefficientForCombination()` leve, et l'apercu redirige vers « Configurez
+     * les coefficients avant de continuer » — pour une matiere qui n'a rien a
+     * faire la, et dont configurer le coefficient ne reglerait rien. C'est
+     * `assertOk()` qui echoue en premier, avant l'assertion sur la liste ; les
+     * deux sont gardees, dans cet ordre.
+     */
+    public function test_l_apercu_des_moyennes_ne_propose_pas_une_ecue_qui_porte_des_notes(): void
+    {
+        $this->monterLaClasse();
+        $bts = $this->matiereConfiguree();
+        $ecue = $this->uneEcue('TPGC648');
+        $etudiant = $this->etudiantInscrit();
+
+        // L'ECUE est rattachee a la classe par les deux pivots PLATS, comme le
+        // laisse une ECUE retiree de la maquette : `retirer()` ne les nettoie pas.
+        $ecue->filieres()->syncWithoutDetaching([$this->filiere->id]);
+        $ecue->niveaux()->syncWithoutDetaching([$this->niveau->id]);
+
+        $evaluationBts = ESBTPEvaluation::factory()->create([
+            'matiere_id' => $bts->id,
+            'classe_id' => $this->classe->id,
+            'annee_universitaire_id' => $this->annee->id,
+            'periode' => 'semestre1',
+            'status' => 'published',
+            'bareme' => 20,
+            'coefficient' => 2,
+        ]);
+        $this->noter($etudiant, $evaluationBts, 14);
+
+        $evaluationEcue = $this->evaluationHeritee($bts, $ecue);
+        $this->noter($etudiant, $evaluationEcue, 4);
+
+        $this->actingAs($this->unSuperAdmin());
+
+        $reponse = $this->get(route('esbtp.bulletins.moyennes-preview', [
+            'etudiant_id' => $etudiant->id,
+            'classe_id' => $this->classe->id,
+            'periode' => 'semestre1',
+            'annee_universitaire_id' => $this->annee->id,
+        ]));
+
+        $reponse->assertOk();
+
+        $proposees = collect($reponse->viewData('resultatsData'))->keys()->map(fn ($id) => (int) $id);
+
+        $this->assertTrue(
+            $proposees->contains($bts->id),
+            'Temoin : la matiere BTS notee doit bien etre proposee.'
+        );
+
+        $this->assertFalse(
+            $proposees->contains($ecue->id),
+            'L\'ECUE porte des notes : elle passait par le chemin « depuis les '
+            .'notes », que le filtre pose sur l\'autre chemin ne pouvait pas retirer.'
         );
     }
 
