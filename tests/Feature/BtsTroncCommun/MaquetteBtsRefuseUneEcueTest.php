@@ -244,6 +244,83 @@ class MaquetteBtsRefuseUneEcueTest extends TestCase
         );
     }
 
+    /**
+     * LA MATRICE COMPLETE DE `liaisons`, parce que deux versions s'y sont
+     * trompees en raisonnant au lieu de mesurer.
+     *
+     * `present|array` semble laisser passer une chaine vide : `Array` n'est pas
+     * une regle implicite, donc `Validator::presentOrRuleIsImplicit()` la saute
+     * quand la valeur est `''`. Un garde a donc ete ajoute deux fois pour
+     * rattraper ce cas — et il n'a jamais pu s'executer, parce que le
+     * raisonnement oubliait `ConvertEmptyStringsToNull` : le middleware change
+     * `''` en `null` AVANT la validation, `null` n'est pas une chaine, la regle
+     * reprend la main et refuse.
+     *
+     * CE TEST EXISTE POUR QUE L'ABSENCE DE GARDE SOIT SURE. Il gele les sept
+     * entrees et la frontiere qui compte : seule la liste vide passe, et elle
+     * retire tout. Si un jour le middleware bouge ou que la regle change, c'est
+     * ici que ca se voit — pas en production, sur un effacement silencieux.
+     *
+     * @dataProvider entreesDeLiaisons
+     */
+    public function test_seule_une_liste_franchit_la_validation_des_liaisons(
+        array $charge,
+        int $statutAttendu,
+        int $liaisonsRestantes,
+        string $pourquoi
+    ): void {
+        $matiere = ESBTPMatiere::factory()->create(['unite_enseignement_id' => null]);
+        $niveau = ESBTPNiveauEtude::factory()->create(['type' => 'BTS']);
+        $filiere = ESBTPFiliere::factory()->create(['is_tronc_commun' => false, 'parent_id' => null]);
+
+        ESBTPMatiereFilierNiveau::create([
+            'matiere_id' => $matiere->id,
+            'filiere_id' => $filiere->id,
+            'niveau_etude_id' => $niveau->id,
+        ]);
+
+        $this->assertSame(
+            1,
+            ESBTPMatiereFilierNiveau::where('matiere_id', $matiere->id)->count(),
+            'Temoin de montage : sans liaison de depart, ce test ne prouve rien.'
+        );
+
+        $reponse = $this->actingAs($this->unSuperAdmin())
+            ->postJson("/esbtp/matieres/{$matiere->id}/update-liaisons", $charge);
+
+        $reponse->assertStatus($statutAttendu);
+
+        $this->assertSame(
+            $liaisonsRestantes,
+            ESBTPMatiereFilierNiveau::where('matiere_id', $matiere->id)->count(),
+            $pourquoi
+        );
+
+        // Un refus de forme n'est pas une panne : il ne doit jamais se
+        // presenter comme telle. C'est ce que le `catch (\Exception)` de la
+        // methode aurait fait d'un `abort()`.
+        if ($statutAttendu === 422) {
+            $this->assertStringNotContainsString(
+                'Erreur lors de la sauvegarde',
+                (string) $reponse->getContent()
+            );
+        }
+    }
+
+    /** @return array<string, array{0: array<string, mixed>, 1: int, 2: int, 3: string}> */
+    public static function entreesDeLiaisons(): array
+    {
+        return [
+            'chaine vide'     => [['liaisons' => ''], 422, 1, 'Une chaine vide ne doit RIEN effacer.'],
+            'null explicite'  => [['liaisons' => null], 422, 1, 'Un nul ne doit RIEN effacer.'],
+            'chaine non vide' => [['liaisons' => 'x'], 422, 1, 'Une chaine ne doit RIEN effacer.'],
+            'entier'          => [['liaisons' => 3], 422, 1, 'Un entier ne doit RIEN effacer.'],
+            'booleen'         => [['liaisons' => true], 422, 1, 'Un booleen ne doit RIEN effacer.'],
+            'cle absente'     => [[], 422, 1, 'Une requete malformee ne doit RIEN effacer.'],
+            'liste vide'      => [['liaisons' => []], 200, 0, 'Le vide EST une instruction : tout retirer.'],
+        ];
+    }
+
     public function test_retirer_un_couple_d_une_ecue_passe_et_ne_touche_que_lui(): void
     {
         $ecue = $this->ecue();

@@ -1026,22 +1026,31 @@ class ESBTPMatiereController extends Controller
                 'liaisons.*.niveau_id'  => 'required|exists:esbtp_niveau_etudes,id',
             ]);
 
-            // LE REFUS S'ECRIT ICI, PAS DANS `error_reporting`.
+            // PAS DE GARDE ICI, ET C'EST MESURE.
             //
-            // `present` laisse passer une chaine vide : `Array` n'est pas une
-            // regle implicite, donc elle est SAUTEE quand la valeur est vide.
-            // `$validated['liaisons']` valait alors `''`, et seul le fait que
-            // Laravel convertisse l'avertissement du `foreach` en exception
-            // evitait la suite — un 500 « Erreur lors de la sauvegarde » au lieu
-            // d'un refus clair. La surete ne doit pas dependre d'un reglage
-            // d'erreurs, surtout dans la methode dont tout le sujet est de
-            // distinguer « absent » de « vide ».
-            abort_unless(
-                is_array($validated['liaisons'] ?? null),
-                422,
-                'Le champ liaisons doit etre une liste, meme vide.'
-            );
-
+            // Deux versions successives en ont pose un — `abort_unless()` puis
+            // un `return` anticipe — sur la crainte que `present|array` laisse
+            // passer une chaine vide : `Array` n'est pas une regle implicite,
+            // donc `Validator::presentOrRuleIsImplicit()` la SAUTE quand la
+            // valeur est `''`. Le raisonnement est juste ; la conclusion etait
+            // fausse, parce qu'il lui manquait le middleware.
+            //
+            // `ConvertEmptyStringsToNull` (Kernel, groupe `web`) transforme `''`
+            // en `null` AVANT la validation. `null` n'est pas une chaine, la
+            // regle n'est donc plus sautee, et `array` la refuse. Les sept
+            // entrees possibles ont ete passees a l'endpoint :
+            //
+            //   ''  ·  null  ·  'x'  ·  3  ·  true   → 422 « doit etre un tableau »
+            //   cle absente                          → 422 « doit etre present »
+            //   []                                   → 200, et tout est retire
+            //
+            // `$validated['liaisons']` est donc TOUJOURS un tableau ici. Le
+            // garde etait du code mort — et pire, sa premiere forme trainait un
+            // piege : `abort()` leve un `HttpException`, qui herite de
+            // `RuntimeException` donc d'`Exception`, et le `catch (\Exception)`
+            // de cette meme methode l'aurait converti en 500 si la branche
+            // avait pu s'executer. `MaquetteBtsRefuseUneEcueTest` gele la
+            // matrice ci-dessus : elle seule protege cette absence de garde.
             $liaisons = $validated['liaisons'];
 
             // Voulues, dédoublonnées.

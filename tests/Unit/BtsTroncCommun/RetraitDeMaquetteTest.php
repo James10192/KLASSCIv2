@@ -7,6 +7,7 @@ use App\Domain\BtsTroncCommun\ResolutionDeMatiere;
 use App\Domain\BtsTroncCommun\RetraitDeMaquette;
 use App\Models\ESBTPFiliere;
 use App\Models\ESBTPNiveauEtude;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 /**
@@ -20,9 +21,23 @@ class LiaisonsQuiNotentLesRetraits extends LiaisonsDeMatiere
     /** @var array<int, array{0: int, 1: int, 2: int}> */
     public array $appels = [];
 
+    /**
+     * Le niveau de transaction AU MOMENT de chaque retrait.
+     *
+     * C'est la seule facon de prouver le « tout ou rien » sans base : une
+     * transaction ouverte se lit, elle ne se devine pas. Sans ce releve, les
+     * quatre premiers tests restaient verts qu'`appliquer()` enveloppe ou non
+     * la boucle — le cout du booting de l'application etait paye, la
+     * contrepartie ne l'etait pas.
+     *
+     * @var array<int, int>
+     */
+    public array $niveauxDeTransaction = [];
+
     public function retirer(int $matiereId, int $filiereId, int $niveauId): array
     {
         $this->appels[] = [$matiereId, $filiereId, $niveauId];
+        $this->niveauxDeTransaction[] = DB::transactionLevel();
 
         return ['canonique' => 1, 'places_semestre' => 2];
     }
@@ -141,5 +156,48 @@ class RetraitDeMaquetteTest extends TestCase
             $this->assertArrayHasKey('canonique', $ligne['retire']);
             $this->assertArrayHasKey('places_semestre', $ligne['retire']);
         }
+    }
+
+    /**
+     * LE LOT EST TOUT OU RIEN — et c'est le SEUL test qui le prouve.
+     *
+     * Les quatre precedents restent verts qu'`appliquer()` enveloppe ou non sa
+     * boucle : ils n'observent que ce qui est retire, pas dans quel contexte.
+     * C'est pour cette garantie-la que ce fichier boote l'application et exige
+     * une connexion vivante ; sans cette assertion, le cout etait paye sans
+     * contrepartie.
+     *
+     * Le controle a rejouer avant de toucher `appliquer()` : remplacer
+     * `DB::transaction(fn () => $this->retirerLeLot(...))` par un appel direct.
+     * Ce test doit virer au rouge — les autres, non.
+     */
+    public function test_le_lot_entier_est_retire_dans_une_seule_transaction(): void
+    {
+        $liaisons = new LiaisonsQuiNotentLesRetraits();
+
+        $this->assertSame(
+            0,
+            DB::transactionLevel(),
+            'Temoin de montage : le test doit partir hors transaction, sinon il ne mesure rien.'
+        );
+
+        $this->retrait($liaisons)->appliquer($this->filiere(7), $this->niveau(3), [
+            ['matiere_id' => 1, 'dans_la_maquette' => true],
+            ['matiere_id' => 2, 'dans_la_maquette' => false],
+            ['matiere_id' => 3, 'dans_la_maquette' => true],
+        ]);
+
+        $this->assertSame(
+            [1, 1],
+            $liaisons->niveauxDeTransaction,
+            'Les deux retraits doivent se faire dans UNE transaction, la meme : '
+            .'un echec au second doit annuler le premier.'
+        );
+
+        $this->assertSame(
+            0,
+            DB::transactionLevel(),
+            'Et la transaction doit etre refermee en sortant.'
+        );
     }
 }
