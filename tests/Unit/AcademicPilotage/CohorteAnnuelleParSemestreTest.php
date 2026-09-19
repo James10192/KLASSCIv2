@@ -6,9 +6,9 @@ use App\Domain\AcademicPilotage\Services\AcademicNoteCoverageService;
 use App\Domain\AcademicPilotage\Services\AcademicPeriodNormalizer;
 use App\Models\ESBTPEvaluation;
 use Illuminate\Support\Collection;
-use PHPUnit\Framework\TestCase;
 use ReflectionClass;
 use ReflectionMethod;
+use Tests\TestCase;
 
 /**
  * La vue annuelle d'une classe de tronc commun.
@@ -23,6 +23,12 @@ use ReflectionMethod;
  * L'union des deux semestres repare ce cas — et en ouvre un autre, que ce test
  * ferme : un etudiant present au seul semestre 1 ne doit pas etre compte
  * manquant sur les evaluations du semestre 2.
+ *
+ * Herite de `Tests\TestCase` : `new ESBTPEvaluation()` declenche le boot du
+ * modele, et `ESBTPEvaluation implements Auditable` y consulte la
+ * configuration. Sans application demarree, cela ne passe que si un autre test
+ * a deja boote ce modele dans le meme processus — une dependance a l'ordre
+ * d'execution, pas une garantie.
  */
 class CohorteAnnuelleParSemestreTest extends TestCase
 {

@@ -95,9 +95,21 @@ class CoverageTeacherContactResolverTest extends TestCase
         $this->assertSame($duPlanning, $carte[31], 'Le planning porte un telephone : il prime.');
     }
 
-    public function test_la_cle_du_reglage_rendue_en_chaine_par_json_est_acceptee(): void
+    /**
+     * Une cle ecrite en chaine dans le JSON arrive en ENTIER : `json_decode`
+     * rend `{"31":…}` sous la cle `31`, et PHP normalise de toute facon toute
+     * cle numerique a la construction du tableau. Ce test le FIGE, au lieu de
+     * pretendre couvrir une branche qui n'existe pas : la version precedente
+     * portait un repli `$template[(string) $matiereId]` inatteignable, et ce
+     * test passait sans jamais l'emprunter.
+     */
+    public function test_une_cle_numerique_ecrite_en_chaine_arrive_en_entier(): void
     {
-        $carte = $this->completer([31 => null], ['31' => 'M TOURE'], 2, [31]);
+        $reglage = json_decode('{"31":"M TOURE"}', true);
+
+        $this->assertSame([31], array_keys($reglage), 'json_decode rend une cle entiere.');
+
+        $carte = $this->completer([31 => null], $reglage, 2, [31]);
 
         $this->assertSame('M TOURE', $carte[31]['name']);
     }

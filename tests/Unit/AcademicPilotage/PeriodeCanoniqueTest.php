@@ -6,8 +6,9 @@ use App\Domain\AcademicPilotage\Services\AcademicPeriodNormalizer;
 use App\Domain\BtsTroncCommun\BtsClassCohortCounter;
 use App\Domain\BtsTroncCommun\BtsPhaseResolver;
 use App\Http\Controllers\AcademicPilotage\AcademicCoverageController;
-use PHPUnit\Framework\TestCase;
+use Illuminate\Support\Facades\Log;
 use ReflectionMethod;
+use Tests\TestCase;
 
 /**
  * Deux endroits qui lisaient une periode « a la lettre », et se trompaient.
@@ -18,6 +19,12 @@ use ReflectionMethod;
  * reellement rencontrees — « 2 », « S2 », « s2 », « Semestre 2 », « semester2 ».
  * Comparer sans normaliser, c'est se tromper sur la moitie d'entre elles, en
  * silence.
+ *
+ * Herite de `Tests\TestCase` et non de `PHPUnit\Framework\TestCase` : le repli
+ * sur periode inconnue appelle `Log::warning()`, et une facade sans application
+ * demarree leve « A facade root has not been set » — ou pire, passe par hasard
+ * parce qu'un test Laravel a tourne avant dans le meme processus. Un test dont
+ * le resultat depend de l'ordre d'execution ne prouve rien.
  */
 class PeriodeCanoniqueTest extends TestCase
 {
@@ -83,12 +90,20 @@ class PeriodeCanoniqueTest extends TestCase
 
     /**
      * Une periode que personne ne reconnait garde l'ancien repli — mais elle
-     * est desormais journalisee, ce que ce test ne peut pas verifier sans
-     * application ; c'est le comportement de repli qu'il fige.
+     * n'est plus muette. Le journal EST la correction : sans lui, une cohorte
+     * fausse ne laisse aucune trace permettant de la retrouver. Le test le
+     * verifie donc, plutot que de se contenter de la valeur de repli.
      */
-    public function test_une_periode_inconnue_retombe_sur_le_premier_semestre(): void
+    public function test_une_periode_inconnue_retombe_sur_le_premier_semestre_et_le_dit(): void
     {
+        Log::spy();
+
         $this->assertSame(1, $this->semestreDeLaCohorte('trimestre 3'));
+
+        Log::shouldHaveReceived('warning')
+            ->once()
+            ->withArgs(fn (string $message, array $contexte): bool => str_contains($message, 'période non reconnue')
+                && ($contexte['periode'] ?? null) === 'trimestre 3');
     }
 
     /**

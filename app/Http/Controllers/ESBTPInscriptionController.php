@@ -390,13 +390,6 @@ class ESBTPInscriptionController extends Controller
     }
 
     /**
-     * Valide les paramètres de recherche de doublons.
-     */
-    private function validateDuplicateRequest(Request $request): array
-    {
-    }
-
-    /**
      * Détermine si une exception SQL correspond à un conflit d'unicité sur le matricule.
      */
     private function isMatriculeUniqueViolation(QueryException $exception): bool

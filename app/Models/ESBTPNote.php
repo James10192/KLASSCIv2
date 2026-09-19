@@ -334,22 +334,25 @@ class ESBTPNote extends Model implements Auditable
      * ferait sauter en silence les notes mal renseignees. Une classe KLASSCI
      * n'est de toute facon pas liee a une annee (voir la rule
      * `classes-universelles-pas-annee.md`).
+     *
+     * `esbtp_resultats` et `esbtp_bulletins` gardent, eux, le seul
+     * `classe_id`, et c'est voulu : leur colonne est ecrite a la generation
+     * avec la classe du bulletin, elle ne derive pas d'une evaluation dont on
+     * changerait la classe apres coup.
      */
     public function scopeRattacheesALaClasse($query, $classeId)
     {
         return $query->where(function ($scope) use ($classeId) {
             $scope->where('classe_id', $classeId)
                 ->orWhereHas('evaluation', function ($evaluation) use ($classeId) {
-                    $evaluation->where('classe_id', $classeId);
+                    // Colonne qualifiee : `classe_id` existe des DEUX cotes de
+                    // la jointure, et laisser MySQL trancher rend la requete
+                    // juste mais illisible.
+                    $evaluation->where('esbtp_evaluations.classe_id', $classeId);
                 });
         });
     }
 
-    /**
-     * Synchroniser le semestre de la note avec la période de l'évaluation
-     *
-     * @return bool
-     */
     /**
      * Synchroniser le semestre de la note avec la période de l'évaluation
      *

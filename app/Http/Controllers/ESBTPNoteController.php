@@ -1218,12 +1218,26 @@ class ESBTPNoteController extends Controller
         }
     }
 
+    /** Au-dela, nommer les etudiants rend le message illisible. */
+    private const SAISIE_RAPIDE_NOMS_MAX = 5;
+
     /**
-     * Le compte rendu d'une saisie rapide : ce qui a ete ecrit, et qui a ete saute.
+     * Le compte rendu d'une saisie rapide : ce qui a ete ecrit, et ce qui reste.
      *
-     * Nommer les etudiants sautes est tout l'interet du message : « 1 ligne
-     * laissee vide » ne dit pas laquelle, et c'est justement ce qu'on cherche
-     * quand le suivi de couverture annonce une note manquante.
+     * LE TON COMPTE AUTANT QUE LE CHIFFRE. La saisie est progressive par
+     * nature — on note dix eleves, on enregistre, on reprend. Une premiere
+     * version disait « 55 ligne(s) laissee(s) vide(s), donc aucune note
+     * enregistree pour… » dans un message de SUCCES : un enseignant qui vient
+     * de saisir cinq notes sur soixante y lisait un reproche, et l'ecran
+     * devenait desagreable a chaque enregistrement intermediaire.
+     *
+     * « Reste(nt) a saisir » dit la meme chose sans accuser, et reste juste
+     * quand il n'en reste qu'une — qui est le cas qui a motive tout ceci : une
+     * ligne oubliee passait en silence, et le suivi la comptait manquante
+     * pendant que la personne etait certaine d'avoir tout rempli.
+     *
+     * Les noms ne sont donnes que lorsqu'ils tiennent : au-dela de cinq, le
+     * compte seul, et la liste complete se lit sur l'ecran de l'evaluation.
      *
      * @param  array<int, int>  $ignorees  identifiants des etudiants dont la ligne etait vide
      */
@@ -1232,30 +1246,28 @@ class ESBTPNoteController extends Controller
         $message = $enregistrees . ' note(s) enregistrée(s).';
 
         $ignorees = array_values(array_unique(array_filter($ignorees)));
+        $reste = count($ignorees);
 
-        if ($ignorees === []) {
+        if ($reste === 0) {
             return $message;
         }
 
-        // Au plus cinq noms : au-dela, le message devient illisible et la liste
-        // complete se lit mieux sur l'ecran de l'evaluation.
-        $noms = ESBTPEtudiant::whereIn('id', array_slice($ignorees, 0, 5))
+        if ($reste > self::SAISIE_RAPIDE_NOMS_MAX) {
+            return $message . ' ' . $reste . ' ligne(s) restent à saisir.';
+        }
+
+        $noms = ESBTPEtudiant::whereIn('id', $ignorees)
             ->get(['id', 'nom', 'prenoms'])
             ->map(fn (ESBTPEtudiant $etudiant): string => trim($etudiant->nom_complet))
             ->filter()
             ->values()
             ->all();
 
-        $reste = count($ignorees) - count($noms);
-
         if ($noms === []) {
-            return $message . ' ' . count($ignorees) . ' ligne(s) laissée(s) vide(s) : aucune note enregistrée pour ces étudiants.';
+            return $message . ' ' . $reste . ' ligne(s) restent à saisir.';
         }
 
-        return $message . ' ' . count($ignorees) . ' ligne(s) laissée(s) vide(s), donc aucune note enregistrée pour : '
-            . implode(', ', $noms)
-            . ($reste > 0 ? ' et ' . $reste . ' autre(s)' : '')
-            . '.';
+        return $message . ' ' . $reste . ' ligne(s) restent à saisir : ' . implode(', ', $noms) . '.';
     }
 
     /**

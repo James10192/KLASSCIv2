@@ -250,6 +250,12 @@ final class AcademicNoteCoverageService
             // tout l'effectif en « manquant » des qu'une evaluation etait
             // programmee. Une evaluation sans date reste comptee : l'application
             // ne la bloque pas non plus.
+            //
+            // L'alignement n'est pas exact, et c'est assume : la saisie compare
+            // des instants (`isFuture()`), ce filtre compare des JOURS. Une
+            // evaluation prevue aujourd'hui a 14 h est refusee a la saisie a
+            // 10 h mais reste comptee. L'ecart tient au jour meme et va dans le
+            // bon sens — on compte trop plutot que pas assez.
             ->where(function ($scope): void {
                 $scope->whereNull('date_evaluation')
                     ->orWhereDate('date_evaluation', '<=', now());
@@ -285,6 +291,13 @@ final class AcademicNoteCoverageService
                 'sheets.evaluation_id',
                 'entries.etudiant_id',
                 'entries.status',
+                // `metadata` porte `cohort_active`, que `studentResultStatus()`
+                // doit lire pour distinguer un retrait DECIDE par l'ecole d'un
+                // simple « n'etait pas encore dans la classe ». Sans cette
+                // colonne, la lecture rendait null sans rien signaler : la
+                // ligne echouait par `$p->metadata` inexistant sur un stdClass,
+                // le `??` avalait le diagnostic, et le garde etait inerte.
+                'entries.metadata',
                 'entries.entered_by',
                 'entries.updated_at',
             ])
@@ -560,7 +573,7 @@ final class AcademicNoteCoverageService
         // le seul sens d'erreur qui fasse generer des bulletins a tort.
         $desactivee = $entry
             && $entry->status === GradeSheetEntryStatus::NOT_APPLICABLE->value
-            && (($entry->metadata['cohort_active'] ?? null) === false);
+            && ($this->metadonnees($entry)['cohort_active'] ?? null) === false;
 
         if ($entry && ! $desactivee && in_array($entry->status, [
             GradeSheetEntryStatus::ABSENT->value,
@@ -575,6 +588,35 @@ final class AcademicNoteCoverageService
         }
 
         return 'missing';
+    }
+
+    /**
+     * Les metadonnees d'une entree de feuille de notes, en tableau.
+     *
+     * `resolvedEntries()` interroge la base par `DB::table()`, qui ne passe
+     * AUCUN cast : `metadata` revient en chaine JSON, la ou le modele Eloquent
+     * l'aurait rendue en tableau. Lire `$entry->metadata['cohort_active']`
+     * directement y lisait donc un offset de chaine, et rendait `null` sans
+     * lever la moindre erreur — un garde muet, indiscernable d'un garde qui
+     * fonctionne. C'est exactement le piege #12 de la discipline de debogage.
+     *
+     * @return array<string, mixed>
+     */
+    private function metadonnees(object $entry): array
+    {
+        $brut = $entry->metadata ?? null;
+
+        if (is_array($brut)) {
+            return $brut;
+        }
+
+        if (! is_string($brut) || $brut === '') {
+            return [];
+        }
+
+        $decode = json_decode($brut, true);
+
+        return is_array($decode) ? $decode : [];
     }
 
     private function noteValue($note): mixed
@@ -637,7 +679,12 @@ final class AcademicNoteCoverageService
      */
     private function doublonsProbables(Collection $index): array
     {
-        $eleves = $index->values()->all();
+        // Le nom comparable est calcule UNE FOIS par eleve. `nomComparable()`
+        // passe par `Str::ascii()`, et le laisser dans la comparaison le faisait
+        // tourner une fois par PAIRE — quadratique pour un resultat identique.
+        $eleves = $index->values()
+            ->map(fn (array $eleve): array => $eleve + ['_comparable' => $this->nomComparable((string) $eleve['name'])])
+            ->all();
         $paires = [];
 
         foreach ($eleves as $position => $eleve) {
@@ -652,6 +699,9 @@ final class AcademicNoteCoverageService
                         'name' => $eleve['name'],
                         'matricule' => $eleve['matricule'] ?? null,
                     ],
+                    // `homonymesDansLaClasse()` ne rend que id / name /
+                    // matricule : la cle de travail `_comparable` ne fuit pas
+                    // dans la reponse.
                     'b' => $autre,
                 ];
             }
@@ -686,7 +736,9 @@ final class AcademicNoteCoverageService
      */
     private function homonymesDansLaClasse(array $student, Collection $students): array
     {
-        $reference = $this->nomComparable((string) $student['name']);
+        // `_comparable` est pose par `doublonsProbables()`, qui normalise une
+        // fois par eleve. Le repli sert les appels directs — dont les tests.
+        $reference = $student['_comparable'] ?? $this->nomComparable((string) $student['name']);
 
         if ($reference === '') {
             return [];
@@ -695,7 +747,7 @@ final class AcademicNoteCoverageService
         return $students
             ->reject(fn (array $autre): bool => (int) $autre['id'] === (int) $student['id'])
             ->filter(function (array $autre) use ($reference): bool {
-                $candidat = $this->nomComparable((string) $autre['name']);
+                $candidat = $autre['_comparable'] ?? $this->nomComparable((string) $autre['name']);
 
                 if ($candidat === '' || $candidat === $reference) {
                     return $candidat !== '';

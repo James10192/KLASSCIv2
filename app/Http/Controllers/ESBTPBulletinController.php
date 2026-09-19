@@ -1413,24 +1413,17 @@ class ESBTPBulletinController extends Controller
         // limite de 30 s pour tenir sous charge.
         $preflight['batch_size'] = 6;
 
-        // Ce qui manque encore, matiere par matiere, au moment ou l'on decide
-        // de generer. Le pre-controle dit deja combien d'etudiants sont
-        // generables ; il ne disait pas ce qu'il faudrait saisir pour que les
-        // autres le deviennent.
+        // Le constat de couverture etait calcule ici et joint a la reponse.
+        // AUCUN ecran ne le lisait : le panneau de pre-controle
+        // (`bulletins/partials/select-scripts.blade.php`) lit `ok`, `status`,
+        // `students_count`, `student_ids`, `batch_size` et `message`, jamais
+        // `couverture`. C'etait donc un calcul complet — matieres, cohorte,
+        // notes de toute la classe — paye a chaque pre-controle pour personne.
         //
-        // SANS le detail nominatif : la reponse portait, pour chaque evaluation
-        // et chaque eleve, la note chiffree et le nom de qui l'a saisie. Rien
-        // ne l'affiche ici, et sur une classe de soixante-dix eleves cela
-        // represente l'essentiel du poids de la reponse.
-        $couverture = app(\App\Domain\AcademicPilotage\Services\AcademicNoteCoverageService::class);
-        $preflight['couverture'] = $couverture->sansLeDetailParEtudiant(
-            $couverture->summarize(
-                $request->integer('annee_universitaire_id'),
-                (string) $request->input('periode'),
-                null,
-                (int) $classe->id
-            )
-        );
+        // Le bandeau de couverture, lui, est deja present sur l'ecran de
+        // selection des bulletins : il interroge sa propre adresse, avec son
+        // cache. Si le panneau de pre-controle doit un jour montrer ce constat,
+        // c'est de la qu'il faut le prendre.
 
         return response()->json([
             'ok' => $preflight['ok'],

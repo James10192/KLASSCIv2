@@ -150,8 +150,13 @@ final class CoverageTeacherContactResolver
         );
 
         foreach ($aCombler as $matiereId) {
-            // Les cles du reglage viennent de JSON : numeriques en chaines.
-            $nom = trim((string) ($template[$matiereId] ?? $template[(string) $matiereId] ?? ''));
+            // La cle est un ENTIER, et la seconde branche que portait cette
+            // ligne etait inatteignable : `json_decode(..., true)` rend `{"31":…}`
+            // sous la cle `31`, et PHP normalise de toute facon toute cle
+            // numerique en entier a la construction d'un tableau. Le test qui
+            // croyait couvrir le cas « cle en chaine » passait pour cette
+            // raison, pas pour la sienne.
+            $nom = trim((string) ($template[$matiereId] ?? ''));
 
             if ($nom === '') {
                 continue;
