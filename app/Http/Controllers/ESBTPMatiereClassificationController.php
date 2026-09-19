@@ -305,9 +305,6 @@ class ESBTPMatiereClassificationController extends Controller
     }
 
     /**
-     * Enregistre en masse la classification des matières d'un combo.
-     */
-    /**
      * Retire une matière de la maquette d'un combo.
      *
      * Cet écran savait régler ce qui est déjà là — la place, le semestre, le
@@ -392,6 +389,9 @@ class ESBTPMatiereClassificationController extends Controller
         }
     }
 
+    /**
+     * Enregistre en masse la classification des matières d'un combo.
+     */
     public function save(\App\Http\Requests\Matiere\ClassificationSaveRequest $request): JsonResponse
     {
         $validated = $request->validated();

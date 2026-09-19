@@ -162,6 +162,23 @@ class RecomputeStudentResultatJob implements ShouldQueue
                 'moyenne_apres' => $moyenneApres,
                 'source' => $this->source,
             ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            // REFUS DELIBERE, PAS UNE PANNE — donc pas de rejeu. Le garde de
+            // `ESBTPResultat` refuse d'enregistrer une moyenne sur une matiere
+            // etrangere au systeme academique de la classe. Ce refus est
+            // DEFINITIF : le relancer trois fois (`$tries = 3`) puis l'empiler
+            // dans `failed_jobs` ne le rendra jamais valide, et remplirait la
+            // table a chaque enregistrement d'une des notes heritees — 34 sur la
+            // seule `TPGC641` d'Abidjan. On le journalise et on rend la main.
+            Log::warning('RecomputeStudentResultatJob: recalcul refuse — matiere etrangere au systeme academique de la classe', [
+                'etudiant_id' => $this->etudiantId,
+                'matiere_id' => $this->matiereId,
+                'classe_id' => $this->classeId,
+                'periode' => $this->periode,
+                'error' => $e->getMessage(),
+            ]);
+
+            return;
         } catch (\Throwable $e) {
             Log::error('RecomputeStudentResultatJob: failed', [
                 'etudiant_id' => $this->etudiantId,

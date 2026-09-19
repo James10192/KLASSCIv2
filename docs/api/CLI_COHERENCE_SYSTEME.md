@@ -107,8 +107,17 @@ d'arbitrer. **Ne les effacez jamais d'office** — c'est une politique d'école
 2. **Déplacer l'évaluation vers sa classe LMD** — le garde l'accepte dès que
    classe et matière redeviennent du même côté. L'endpoint ci-dessus ne change
    que la matière : ce déplacement se fait par l'écran.
-3. **Annuler l'évaluation** (`status = cancelled`) — déjà exclue du bulletin, les
-   notes restent en base et tracées.
+3. **Annuler l'évaluation** (`status = cancelled`) — exclue du bulletin **par le
+   chemin de génération**, les notes restent en base et tracées.
+
+   ⚠️ **Ce n'est pas vrai de tous les chemins.** La moyenne **annuelle** de
+   secours (`BulletinService::calculateStudentAverageForPeriode()`, branche
+   `annuel`, celle qu'emprunte le rattrapage des bulletins sans moyenne) ne
+   filtre ni le statut `cancelled`, ni l'année, ni la classe — et son résultat
+   est **écrit** dans `esbtp_bulletins.moyenne_generale`. Annuler l'évaluation
+   ne la retire donc pas de cette valeur-là. Le cadrage de cette requête est un
+   changement de comportement sur une donnée écrite : il est identifié,
+   volontairement reporté, et commenté sur place dans le code.
 
 Côté génération, la ligne est de toute façon **écartée du bulletin et journalisée**
 (`Log::warning`, dédoublonnée par couple classe × matière) depuis septembre 2026 :

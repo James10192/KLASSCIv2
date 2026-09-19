@@ -2395,6 +2395,25 @@ class BulletinService
 
         $semestre = $periode === 'semestre2' ? '2' : '1';
 
+        // CE QUE CETTE REQUETE NE CADRE PAS, ET QUI EST REPORTE VOLONTAIREMENT.
+        // Son jumeau `BtsCurrentResultSnapshotService::buildSemesterSnapshot()`
+        // porte trois portees que la requete ci-dessous n'a PAS :
+        // `annee_universitaire_id`, `classe_id`, et `status != 'cancelled'`.
+        // Pour `periode = 'annuel'`, `$semestre` vaut `'1'` : elle ramasse donc
+        // toutes les notes de semestre 1 de l'eleve, TOUTES ANNEES ET TOUTES
+        // CLASSES CONFONDUES — l'annee precedente d'un redoublant y entre, et une
+        // evaluation annulee aussi. Et ce resultat est ECRIT dans
+        // `esbtp_bulletins.moyenne_generale` par `BulletinAverageBackfillService`.
+        //
+        // Ce n'est PAS une regression de ce chantier : ces notes passaient deja
+        // avant lui, le filtre de coherence ne fait qu'y ajouter l'exclusion des
+        // matieres d'un autre systeme. Le cadrage est un changement de
+        // comportement sur une valeur ecrite : il demande sa propre mesure et sa
+        // propre ligne de journal des versions, pas d'etre glisse ici.
+        // ⚠️ `docs/api/CLI_COHERENCE_SYSTEME.md` conseille d'annuler l'evaluation
+        // en disant « deja exclue du bulletin » : c'est vrai du chemin de
+        // generation, FAUX de celui-ci tant que le cadrage n'est pas fait.
+        //
         // La classe CIBLE : celle du bulletin qu'on calcule. Les quatre
         // appelants la renseignent ; le repli `null` n'existe que parce que la
         // signature la declare nullable depuis toujours.
@@ -2499,8 +2518,16 @@ class BulletinService
 
             $classeDeReference = $classeCible ?? $resultat->classe;
 
-            if ($classeDeReference
-                && ! CoherenceSystemeAcademique::matiereRetenue($resultat->matiere, $classeDeReference, 'moyenne periode/moyenne enregistree')) {
+            if (! $classeDeReference) {
+                if (! $sansClassePeriodeJournalise) {
+                    $sansClassePeriodeJournalise = true;
+                    \Log::warning('Moyenne de periode : ligne enregistree sans classe de reference, coherence non verifiable.', [
+                        'resultat_id' => $resultat->id,
+                        'etudiant_id' => $etudiantId,
+                        'periode' => $periode,
+                    ]);
+                }
+            } elseif (! CoherenceSystemeAcademique::matiereRetenue($resultat->matiere, $classeDeReference, 'moyenne periode/moyenne enregistree')) {
                 continue;
             }
 
@@ -3345,7 +3372,10 @@ class BulletinService
 
                 $notes = $notesQuery->get();
 
-                $this->calculateStudentStatsFixed($students, $notes, $moyennes, $rangs, $classe_id, $annee_universitaire_id);
+                // `$semestre` est transmis : sans lui, la lecture des moyennes
+                // enregistrees de `calculateStudentStatsFixed()` ne filtre aucune
+                // periode et melange S1 et S2 dans un KPI de S1.
+                $this->calculateStudentStatsFixed($students, $notes, $moyennes, $rangs, $classe_id, $annee_universitaire_id, $semestre);
             }
         }
 
@@ -3489,7 +3519,16 @@ class BulletinService
         }
 
         if ($semestre) {
-            $resultatsQuery->where('periode', 'semestre'.$semestre);
+            // MEME PREDICAT QUE LA COLONNE. `calculateStudentStatsFixed()`
+            // accepte les deux ecritures, parce que des lignes heritees portent
+            // `'1'` / `'2'` la ou les recentes portent `'semestre1'` / `'semestre2'`
+            // (voir `periodeAliases()`). N'accepter que la seconde faisait entrer
+            // ces lignes dans la colonne et pas dans la bande — deux populations
+            // differentes pour deux chiffres affiches cote a cote.
+            $resultatsQuery->where(function ($q) use ($semestre) {
+                $q->where('periode', 'semestre'.$semestre)
+                    ->orWhere('periode', (string) $semestre);
+            });
         }
 
         $resultats = $resultatsQuery->get();
@@ -3534,13 +3573,18 @@ class BulletinService
         // bas a partir des moyennes corrigees.
         $cumuls = [];
         $sansClasseKpiJournalise = false;
+        $classeCibleKpi = $classe_id ? \App\Models\ESBTPClasse::withTrashed()->find($classe_id) : null;
 
         foreach ($resultats as $resultat) {
             if ($resultat->moyenne === null) {
                 continue;
             }
 
-            $classeDeLaLigne = $resultat->classe;
+            // La classe CIBLE d'abord, celle de la ligne sinon — le meme
+            // invariant que partout ailleurs. Ici la cible n'existe que si
+            // l'ecran a selectionne une classe ; en « Toutes les classes », la
+            // ligne est la seule reference possible.
+            $classeDeLaLigne = $classeCibleKpi ?? $resultat->classe;
 
             if (! $classeDeLaLigne || ! $resultat->matiere) {
                 // Classe ou matiere effacee en douceur : on ne PEUT pas juger.
@@ -3609,6 +3653,7 @@ class BulletinService
         // filtre de recherche.
         $classeDuParametre = $classeId ? ESBTPClasse::withTrashed()->find($classeId) : null;
         $sansClasseJournalisee = false;
+        $sansClasseManuelleJournalise = false;
 
         foreach ($notes as $note) {
             if (! $note->evaluation || ! $note->evaluation->matiere) {
@@ -3621,7 +3666,13 @@ class BulletinService
             // s'affichent sur `/esbtp/resultats`, a cote du bulletin PDF. Les
             // laisser diverger donnait deux chiffres differents pour le meme
             // eleve selon l'ecran consulte.
-            $classeDeLaNote = $note->evaluation->classe ?? $classeDuParametre;
+            // La classe CIBLE d'abord, celle de la note ensuite — l'invariant
+            // ecrit dans la rule. L'ordre inverse etait sans effet aujourd'hui
+            // (les deux appelants pre-filtrent les notes sur la classe quand elle
+            // est posee), mais il contredisait la regle affichee : le prochain
+            // appelant qui passe une classe sans pre-filtrer rouvrait le cas d'un
+            // eleve inscrit la meme annee en LMD et en BTS.
+            $classeDeLaNote = $classeDuParametre ?? $note->evaluation->classe;
 
             if (! $classeDeLaNote) {
                 // Ni l'evaluation ni le parametre ne nomment de classe : on ne
@@ -3726,8 +3777,18 @@ class BulletinService
                     // douceur rend `null` — d'ou le `withTrashed()` a sa
                     // resolution. « Repond forcement » etait ecrit ici, et
                     // c'etait faux.
-                    if ($classeDuParametre && $resultat->matiere
-                        && ! CoherenceSystemeAcademique::matiereRetenue($resultat->matiere, $classeDuParametre, 'stats resultats/moyenne manuelle')) {
+                    if (! $classeDuParametre || ! $resultat->matiere) {
+                        // Quatrieme repli « on ne peut pas juger » — il se taisait,
+                        // seul des quatre. L'asymetrie est precisement ce que les
+                        // trois autres commentaires interdisent.
+                        if (! $sansClasseManuelleJournalise) {
+                            $sansClasseManuelleJournalise = true;
+                            \Log::warning('Statistiques : moyenne enregistree sans classe ou sans matiere resolvable, coherence non verifiable.', [
+                                'resultat_id' => $resultat->id,
+                                'classe_id' => $classeId,
+                            ]);
+                        }
+                    } elseif (! CoherenceSystemeAcademique::matiereRetenue($resultat->matiere, $classeDuParametre, 'stats resultats/moyenne manuelle')) {
                         continue;
                     }
 

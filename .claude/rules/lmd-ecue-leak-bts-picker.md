@@ -206,7 +206,7 @@ autre `foreach` est un second chemin, même s'il est 30 lignes plus bas.
 | `BulletinService::calculerMoyenneGlobaleEtudiant()` | `moyenne_classe`, `meilleure_moyenne`, `plus_faible_moyenne` | moyennes enregistrées, repli sur notes | filtré |
 | `BulletinService::calculateStudentStatsFixed()` | moyennes et rangs du **tableau** de `/esbtp/resultats` | notes **+** moyennes enregistrées qui écrasent | filtré, y compris sans classe sélectionnée (passe 12) |
 | `BulletinService::getPreCalculatedResults()` | **la bande KPI** de `/esbtp/resultats` (Moyenne générale, Taux de réussite) | moyennes enregistrées | filtré (passe 12) |
-| `BulletinService::calculateStudentAverageForPeriode()`, branche `annuel` | **écrit** `esbtp_bulletins.moyenne_generale` via le backfill | notes **+** moyennes enregistrées qui écrasent | filtré (passe 12) |
+| `BulletinService::calculateStudentAverageForPeriode()`, branche `annuel` | **écrit** `esbtp_bulletins.moyenne_generale` via le backfill | notes **+** moyennes enregistrées qui écrasent | filtré (passe 12) — **mais sa requête reste non cadrée**, voir plus bas |
 | `BtsCurrentResultSnapshotService` | écart « Officiel / Courant », Bilan de la fiche étudiant | notes + moyennes enregistrées | filtré |
 | `ESBTPResultatController::resultatEtudiant()` | tableau « Résultats par matière », KPI Matières / Coefficients | notes + moyennes enregistrées | filtré |
 | `ESBTPBulletinController::buildBulletinPdf()` | rien — **écrasé** par la projection du service (voir plus bas) | notes | filtré par précaution |
@@ -323,6 +323,22 @@ entièrement son calcul par le snapshot (donc sains), mais la branche annuelle
 libellés. Une ECUE y ressortait dans le tableau et pesait dans la moyenne du pied,
 pendant que le KPI d'en-tête affichait la valeur filtrée. Deux chiffres
 contradictoires sur un seul écran.
+
+**La branche `annuel` est filtrée mais pas cadrée, et c'est écrit exprès.** Son
+jumeau `BtsCurrentResultSnapshotService::buildSemesterSnapshot()` porte trois
+portées qu'elle n'a pas : `annee_universitaire_id`, `classe_id`, et
+`status != 'cancelled'`. Pour `periode = 'annuel'`, son `$semestre` vaut `'1'` :
+elle ramasse **toutes** les notes de semestre 1 de l'élève, toutes années et
+toutes classes confondues — l'année précédente d'un redoublant y entre, et une
+évaluation annulée aussi. Et son résultat est **écrit** dans
+`esbtp_bulletins.moyenne_generale`.
+
+Ce n'est **pas** une régression du chantier : ces notes passaient déjà avant lui.
+Le cadrage est un changement de comportement sur une valeur écrite — il demande
+sa propre mesure et sa propre entrée de journal des versions, pas d'être glissé
+dans un correctif de fuite. Il est reporté, commenté sur place, et
+`docs/api/CLI_COHERENCE_SYSTEME.md` corrige le conseil qui disait qu'annuler une
+évaluation suffisait (vrai du chemin de génération, faux de celui-ci).
 
 **Ce qui n'est PAS concerné, et pourquoi** — utile pour ne pas les « corriger »
 par réflexe, comme le piège #14 l'a déjà fait payer : `BulletinService::calculerMoyenneGenerale()`

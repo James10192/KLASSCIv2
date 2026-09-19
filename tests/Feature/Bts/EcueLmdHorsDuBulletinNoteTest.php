@@ -554,17 +554,25 @@ class EcueLmdHorsDuBulletinNoteTest extends TestCase
     }
 
     /**
-     * La bande KPI et la colonne « Moyenne » doivent dire la MEME chose.
+     * La bande KPI traite chaque matiere a egalite, comme la colonne.
      *
-     * Elles s'affichent sur le meme ecran, l'une au-dessus de l'autre, et une
-     * classe de moins de 50 eleves tient sur une page : l'ecole peut faire la
-     * moyenne de la colonne a la main. La premiere version du correctif
-     * ponderait la bande par `esbtp_resultats.coefficient` alors que la colonne
-     * traite chaque matiere a egalite — deux chiffres plausibles et
-     * contradictoires. Avec 8 (coef 2) et 18 (coef 1) : pondere 11,33, simple
-     * 13,00.
+     * CE TEST NE COMPARE PAS LES DEUX CHIFFRES, et le nom qu'il portait
+     * (« dit la meme chose que la colonne ») le laissait croire. Il n'appelle
+     * que `computeResultatsKpis()` et verifie la valeur attendue a la main : si
+     * la colonne changeait d'agregation demain, il resterait vert.
+     *
+     * ET L'EGALITE ANNONCEE N'ETAIT PAS VRAIE. Les deux chiffres ne couvrent pas
+     * la meme population : la bande agrege TOUTE la cohorte depuis
+     * `esbtp_resultats`, la colonne agrege LA PAGE depuis les notes. Elles ne
+     * coincident que quand les deux sources concordent — c'est une propriete des
+     * donnees, pas de l'ecran, et l'affirmer etait un absolu non mesure.
+     *
+     * Ce que ce test verrouille vraiment : la bande ne PONDERE plus par
+     * `esbtp_resultats.coefficient`. Avec 8 (coef 2) et 18 (coef 1), ponderee
+     * elle rendait 11,33 la ou la colonne, qui traite chaque matiere a egalite,
+     * donne 13,00.
      */
-    public function test_la_bande_kpi_dit_la_meme_chose_que_la_colonne(): void
+    public function test_la_bande_kpi_traite_chaque_matiere_a_egalite(): void
     {
         $this->monterLaClasse();
         $premiere = $this->matiereConfiguree();
@@ -604,8 +612,8 @@ class EcueLmdHorsDuBulletinNoteTest extends TestCase
             13.0,
             (float) $kpis['moyenne_generale'],
             0.01,
-            'La bande traite chaque matiere a egalite, comme la colonne. Ponderee, elle rendrait 11,33 '
-            .'sous une colonne qui affiche 13,00.'
+            'La bande traite chaque matiere a egalite. Ponderee, elle rendrait 11,33 '
+            .'la ou la colonne, elle, donne 13,00.'
         );
     }
 

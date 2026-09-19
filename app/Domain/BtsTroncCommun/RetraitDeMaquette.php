@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\BtsTroncCommun;
 
+use Illuminate\Support\Facades\DB;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPEvaluation;
 use App\Models\ESBTPFiliere;
@@ -109,6 +110,22 @@ final class RetraitDeMaquette
      * @return array{lignes: array<int, array<string, mixed>>, retirees: int}
      */
     public function appliquer(ESBTPFiliere $filiere, ESBTPNiveauEtude $niveau, array $lignes): array
+    {
+        // TOUT OU RIEN, comme `ChargementDeMaquette::appliquer()`. L'endpoint
+        // CLI accepte un tableau `matieres[]` de taille libre : sans
+        // transaction, une erreur en cours de boucle validait une partie du lot
+        // et rendait un 500 qui ne dit pas ce qui a ete retire. L'ecole n'avait
+        // alors aucun moyen de savoir ou elle en etait.
+        return DB::transaction(function () use ($filiere, $niveau, $lignes) {
+            return $this->retirerLeLot($filiere, $niveau, $lignes);
+        });
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $lignes
+     * @return array{lignes: array<int, array<string, mixed>>, retirees: int}
+     */
+    private function retirerLeLot(ESBTPFiliere $filiere, ESBTPNiveauEtude $niveau, array $lignes): array
     {
         $retirees = 0;
 
