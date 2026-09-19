@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Domain\Academique\CoherenceSystemeAcademique;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use App\Exceptions\CoefficientMissingException;
 use App\Domain\BtsTroncCommun\BtsAnnualAggregationService;
 use App\Domain\BtsTroncCommun\BtsUiPresenter;
@@ -1991,12 +1992,25 @@ class ESBTPResultatController extends Controller
         // et un envoi forge ecrirait des lignes de bulletin BTS pour une classe
         // LMD. C'est la seule des quatre ou ce refus n'est pas redondant avec le
         // garde du modele.
-        $classeDuLot = \App\Models\ESBTPClasse::find($request->classe_id);
+        // `withTrashed()` et `abort_unless`, parce que c'est le SEUL des quatre
+        // gardes sans second rempart. La regle `exists:esbtp_classes,id` du
+        // FormRequest interroge la table SANS le scope de soft-delete : une
+        // classe LMD archivee passe la validation, et un `find()` nu rendait
+        // alors `null`. Le `&&` court-circuitait le garde, en silence, et le
+        // garde du modele ne rattrape pas — sur une classe LMD, une ECUE EST
+        // coherente. Des lignes de bulletin BTS partaient pour une classe LMD.
+        $classeDuLot = \App\Models\ESBTPClasse::withTrashed()->find($request->classe_id);
 
-        abort_if(
-            $classeDuLot && CoherenceSystemeAcademique::classeEstLmd($classeDuLot->systeme_academique),
+        if (! $classeDuLot) {
+            \Log::warning('Enregistrement groupe des moyennes : classe introuvable, coherence non verifiable.', [
+                'classe_id' => $request->classe_id,
+            ]);
+        }
+
+        abort_unless(
+            $classeDuLot && ! CoherenceSystemeAcademique::classeEstLmd($classeDuLot->systeme_academique),
             422,
-            'Cette classe est LMD. Utilisez /esbtp/lmd/bulletins pour ses releves.'
+            'Classe introuvable, ou classe LMD : utilisez /esbtp/lmd/bulletins pour ses releves.'
         );
 
         \DB::beginTransaction();
@@ -2859,11 +2873,22 @@ class ESBTPResultatController extends Controller
                     // Vérifier si cette matière a des moyennes calculées depuis les évaluations
                     $moyenneCalculee = isset($notesByMatiere[$matiere->id]) ? $notesByMatiere[$matiere->id]['moyenne'] : null;
                     
-                    // UNE SEULE POLITIQUE DE COEFFICIENT POUR TOUT CET ECRAN.
+                    // TROIS DES QUATRE CHEMINS, et le quatrieme a la preseance
+                    // sur S1/S2 — la nuance compte, et l'avoir ecrite « une
+                    // seule politique » etait faux.
                     //
-                    // Les quatre chemins en avaient trois differentes, et deux
-                    // d'entre elles se contredisaient A L'ECRAN sur une matiere
-                    // BTS ordinaire dont le coefficient n'est pas configure :
+                    // Le chemin du snapshot prend son coefficient de
+                    // `BtsCurrentResultSnapshotService`, qui le calcule avec la
+                    // PERIODE et l'ELEVE (donc avec le repli Tronc Commun, que
+                    // cet ecran n'a pas). C'est une valeur plus riche, pas une
+                    // divergence a corriger — mais elle peut etre nulle, et ce
+                    // nul-la est repris plus bas au lieu d'etre blanchi en 1 par
+                    // le gabarit.
+                    //
+                    // Les trois chemins ci-dessous, eux, en avaient trois
+                    // differentes, et deux se contredisaient A L'ECRAN sur une
+                    // matiere BTS ordinaire dont le coefficient n'est pas
+                    // configure :
                     // l'eleve sans ligne enregistree tombait sur un 302
                     // « configurez les coefficients », le meme eleve avec une
                     // ligne enregistree voyait l'ecran s'ouvrir avec 1. Meme
@@ -2931,7 +2956,14 @@ class ESBTPResultatController extends Controller
                         // premiere.
                         'intruse' => $resultatsData[$matiereId]['intruse'] ?? false,
                         'moyenne' => $subject['moyenne'] ?? null,
-                        'coefficient' => $subject['coefficient'] ?? null,
+                        // Le snapshot peut rendre un coefficient nul (son
+                        // propre repli est muet). Le gabarit le blanchissait
+                        // alors en 1 sans une ligne de journal — le defaut que
+                        // ce chantier corrige partout ailleurs. On reprend donc
+                        // la valeur des chemins 1 a 3, qui vient de
+                        // `coefficientOrDefault()` et qui est, elle, journalisee.
+                        'coefficient' => $subject['coefficient']
+                            ?? ($resultatsData[$matiereId]['coefficient'] ?? null),
                         'rang' => $resultatsData[$matiereId]['rang'] ?? null,
                         'appreciation' => $resultatsData[$matiereId]['appreciation']
                             ?? ($subject['manual_resultat']['appreciation'] ?? null)
@@ -2958,6 +2990,20 @@ class ESBTPResultatController extends Controller
                 'notesByMatiere',
                 'resultatsData'
             ));
+        } catch (HttpExceptionInterface $exception) {
+            // AVANT le `catch (\RuntimeException)`, et c'est tout l'objet de ce
+            // bloc : `Symfony\…\HttpException` HERITE de `RuntimeException`.
+            // Le `abort_if(… LMD, 422)` pose plus haut tombait donc dans le
+            // catch suivant, et l'utilisateur recevait un 302 portant
+            // « Cette classe est LMD. […] Configurez les coefficients avant de
+            // continuer. » — on l'envoyait configurer des coefficients pour une
+            // classe LMD, c'est-a-dire exactement la boucle absurde que le reste
+            // de ce chantier supprime.
+            //
+            // C'est le piege §5 de `.claude/rules/klassci-local-test-suite.md`,
+            // nomme mot pour mot : « abort(422) avale -> 302 ». Il vaut pour tout
+            // `abort()` futur pose dans ce `try`, pas seulement pour celui-ci.
+            throw $exception;
         } catch (\RuntimeException $exception) {
             $periodeParam = isset($periode) ? str_replace('semestre', '', $periode) : '1';
             $redirectUrl = route('esbtp.resultats.etudiant', ['etudiant' => $etudiantId])

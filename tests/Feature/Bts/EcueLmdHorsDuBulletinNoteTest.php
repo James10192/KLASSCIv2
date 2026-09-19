@@ -5,6 +5,8 @@ namespace Tests\Feature\Bts;
 use App\Domain\Academique\CoherenceSystemeAcademique;
 use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPInscription;
+use App\Models\ESBTPClasse;
+use App\Models\ESBTPNiveauEtude;
 use App\Models\ESBTPEvaluation;
 use App\Models\ESBTPNote;
 use App\Models\ESBTPMatiere;
@@ -1044,6 +1046,79 @@ class EcueLmdHorsDuBulletinNoteTest extends TestCase
             'Sans le correctif, le 4/20 de l\'ECUE tombait dans la moyenne BTS de '
             .'l\'accueil mobile et rendait 9,00.'
         );
+    }
+
+    /**
+     * LES QUATRE ECRANS QUI ECRIVENT `esbtp_resultats` REFUSENT UNE CLASSE LMD.
+     *
+     * Aucun test ne couvrait ces gardes, et c'est PRECISEMENT pour cela qu'un
+     * defaut y a survecu a quatre passes de revue : le `abort_if` de l'apercu
+     * etait pose DANS un `try` dont le `catch (\RuntimeException)` attrape aussi
+     * les `HttpException` de Symfony — le 422 devenait un 302 portant
+     * « Cette classe est LMD. […] Configurez les coefficients avant de
+     * continuer. », c'est-a-dire l'inverse du service rendu.
+     *
+     * Un test d'une ligne par garde l'aurait attrape du premier coup.
+     */
+    public function test_les_ecrans_de_moyennes_refusent_une_classe_lmd(): void
+    {
+        $this->monterLaClasse();
+        $etudiant = $this->etudiantInscrit();
+
+        // LE SYSTEME SE DEDUIT DU NIVEAU, il ne se pose pas a la main.
+        // `ESBTPClasse::saving()` rappelle
+        // `ClasseManagementService::determinerSystemeAcademique($niveau->type)`
+        // des que `niveau_etude_id` est sale — donc a la creation. Une premiere
+        // version de ce test posait `systeme_academique => 'LMD'` sur un niveau
+        // BTS : la classe naissait BTS, l'ecran l'acceptait, et le test echouait
+        // — a raison. C'est le montage qui etait faux, pas le garde.
+        $niveauLmd = ESBTPNiveauEtude::factory()->create(['year' => 1, 'type' => 'Licence']);
+
+        $classeLmd = ESBTPClasse::factory()->create([
+            'filiere_id' => $this->filiere->id,
+            'niveau_etude_id' => $niveauLmd->id,
+            'annee_universitaire_id' => $this->annee->id,
+        ]);
+
+        $this->assertTrue(
+            $classeLmd->fresh()->isLMD(),
+            'Temoin de montage : sans une classe reellement LMD, ce test ne prouve rien.'
+        );
+
+        $this->actingAs($this->unSuperAdmin());
+
+        $apercu = $this->get(route('esbtp.bulletins.moyennes-preview', [
+            'etudiant_id' => $etudiant->id,
+            'classe_id' => $classeLmd->id,
+            'periode' => 'semestre1',
+            'annee_universitaire_id' => $this->annee->id,
+        ]));
+
+        $apercu->assertStatus(422);
+
+        $enregistrement = $this->post(route('esbtp.bulletins.moyennes-update'), [
+            'etudiant_id' => $etudiant->id,
+            'classe_id' => $classeLmd->id,
+            'periode' => 'semestre1',
+            'annee_universitaire_id' => $this->annee->id,
+            'resultats' => [
+                ['matiere_id' => $this->matiereConfiguree()->id, 'moyenne' => 14, 'coefficient' => 2],
+            ],
+        ]);
+
+        $enregistrement->assertStatus(422);
+
+        // TEMOIN : la meme classe en BTS passe. Sans lui, un 422 rendu pour une
+        // toute autre raison (route absente, permission) ferait un test vert qui
+        // ne prouve rien.
+        $temoin = $this->get(route('esbtp.bulletins.moyennes-preview', [
+            'etudiant_id' => $etudiant->id,
+            'classe_id' => $this->classe->id,
+            'periode' => 'semestre1',
+            'annee_universitaire_id' => $this->annee->id,
+        ]));
+
+        $temoin->assertOk();
     }
 
     public function test_une_ligne_heritee_reste_modifiable_sur_sa_moyenne(): void
