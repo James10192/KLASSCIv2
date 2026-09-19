@@ -1472,7 +1472,7 @@ class DashboardController extends Controller
         // `CoherenceSystemeAcademique` existe pour empecher, et elle degradait
         // l'artefact dont tout le diagnostic de ce chantier depend.
         if (! $classeCible) {
-            \Log::warning('Moyenne de l\'accueil : classe introuvable, coherence non verifiable.', [
+            CoherenceSystemeAcademique::coherenceNonVerifiable('moyenne accueil/classe introuvable', [
                 'etudiant_id' => $etudiantId,
                 'classe_id' => $classeId,
             ]);
@@ -1496,20 +1496,17 @@ class DashboardController extends Controller
             ])
             ->get();
 
-        // Memo : une ligne par ELEVE, pas une par note. Sans lui, soixante notes
-        // rendraient soixante lignes identiques a chaque affichage de l'accueil.
-        $matiereIntrouvableDeja = false;
-
+        // Le memo local a disparu : `coherenceNonVerifiable()` porte le sien,
+        // et sa cle ne retient PAS `note_id` — donc soixante notes du meme
+        // eleve rendent bien une seule ligne, comme le faisait le booleen.
         $sur20 = $notes
-            ->map(function ($note) use ($classeCible, $etudiantId, $classeId, &$matiereIntrouvableDeja) {
+            ->map(function ($note) use ($classeCible, $etudiantId, $classeId) {
                 $matiere = $note->evaluation?->matiere;
 
-                if (! $matiere && ! $matiereIntrouvableDeja) {
-                    $matiereIntrouvableDeja = true;
-                    \Log::warning('Moyenne de l\'accueil : au moins une note sans matiere, coherence non verifiable.', [
+                if (! $matiere) {
+                    CoherenceSystemeAcademique::coherenceNonVerifiable('moyenne accueil/note sans matiere', [
                         'etudiant_id' => $etudiantId,
                         'classe_id' => $classeId,
-                        'note_id' => $note->id,
                     ]);
                 }
 

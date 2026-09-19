@@ -159,6 +159,50 @@ final class CoherenceSystemeAcademique
     }
 
 
+    /**
+     * « Je ne peux pas verifier la coherence ici, et je le dis une fois. »
+     *
+     * La jumelle de `matiereRetenue()`, pour le cas ou le rapprochement est
+     * IMPOSSIBLE : classe introuvable, note sans matiere resolvable, ligne
+     * enregistree sans classe de reference. On ne peut ni retenir ni ecarter,
+     * donc on laisse passer — et on le dit, sinon personne ne saura jamais
+     * qu'une moyenne a ete calculee sans garde.
+     *
+     * CENTRALISEE POUR LA MEME RAISON QUE LE PREDICAT. Cette phrase etait
+     * recopiee a la main dans huit methodes, sous huit libelles differents,
+     * dont cinq gardees par leur propre memo booleen local. Un operateur qui
+     * cherchait ce cas dans les journaux devait connaitre les huit
+     * formulations, et chaque nouvel appelant en inventait une neuvieme.
+     * La lecon du chantier, ecrite en tete de cette classe, vaut ici aussi :
+     * une seule phrase, un seul endroit, et les appelants la citent.
+     *
+     * Le memo est celui de `matiereRetenue()`, volontairement : les deux cas
+     * surviennent dans les memes boucles, sur les memes lots, et se bornent
+     * donc de la meme facon. La cle est construite sur la provenance et le
+     * contexte, faute de couple (classe, matiere) — c'est precisement ce qui
+     * manque quand cette methode est appelee.
+     *
+     * @param  array<string, scalar|null>  $contexte
+     */
+    public static function coherenceNonVerifiable(string $provenance, array $contexte): void
+    {
+        $cle = 'nv:' . $provenance . ':' . implode(',', array_map(
+            static fn ($v) => (string) $v,
+            $contexte,
+        ));
+
+        if (isset(self::$ecartsJournalises[$cle])) {
+            return;
+        }
+
+        self::$ecartsJournalises[$cle] = true;
+
+        Log::warning(
+            'Coherence non verifiable : rapprochement impossible, la ligne est conservee.',
+            $contexte + ['provenance' => $provenance],
+        );
+    }
+
     /** Vide le memo — reservee aux tests, qui rejouent le meme couple. */
     public static function oublierLesEcartsJournalises(): void
     {

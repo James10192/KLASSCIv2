@@ -2418,7 +2418,6 @@ class BulletinService
         // appelants la renseignent ; le repli `null` n'existe que parce que la
         // signature la declare nullable depuis toujours.
         $classeCible = $classeId ? ESBTPClasse::withTrashed()->find($classeId) : null;
-        $sansClassePeriodeJournalise = false;
 
         $notesQuery = ESBTPNote::where('etudiant_id', $etudiantId)
             // `evaluation.classe` : le filtre de coherence plus bas en a besoin.
@@ -2458,14 +2457,11 @@ class BulletinService
             $classeDeReference = $classeCible ?? $note->evaluation->classe;
 
             if (! $classeDeReference) {
-                if (! $sansClassePeriodeJournalise) {
-                    $sansClassePeriodeJournalise = true;
-                    \Log::warning('Moyenne de periode : aucune classe de reference, coherence non verifiable.', [
-                        'etudiant_id' => $etudiantId,
-                        'classe_id' => $classeId,
-                        'periode' => $periode,
-                    ]);
-                }
+                CoherenceSystemeAcademique::coherenceNonVerifiable('moyenne periode/note', [
+                    'etudiant_id' => $etudiantId,
+                    'classe_id' => $classeId,
+                    'periode' => $periode,
+                ]);
             } elseif (! CoherenceSystemeAcademique::matiereRetenue($note->evaluation->matiere, $classeDeReference, 'moyenne periode/note')) {
                 continue;
             }
@@ -2519,14 +2515,11 @@ class BulletinService
             $classeDeReference = $classeCible ?? $resultat->classe;
 
             if (! $classeDeReference) {
-                if (! $sansClassePeriodeJournalise) {
-                    $sansClassePeriodeJournalise = true;
-                    \Log::warning('Moyenne de periode : ligne enregistree sans classe de reference, coherence non verifiable.', [
-                        'resultat_id' => $resultat->id,
-                        'etudiant_id' => $etudiantId,
-                        'periode' => $periode,
-                    ]);
-                }
+                CoherenceSystemeAcademique::coherenceNonVerifiable('Moyenne de periode/ligne enregistree sans classe de reference', [
+                    'resultat_id' => $resultat->id,
+                    'etudiant_id' => $etudiantId,
+                    'periode' => $periode,
+                ]);
             } elseif (! CoherenceSystemeAcademique::matiereRetenue($resultat->matiere, $classeDeReference, 'moyenne periode/moyenne enregistree')) {
                 continue;
             }
@@ -3572,7 +3565,6 @@ class BulletinService
         // un rang de classe etait le meme defaut. Les rangs sont recalcules plus
         // bas a partir des moyennes corrigees.
         $cumuls = [];
-        $sansClasseKpiJournalise = false;
         $classeCibleKpi = $classe_id ? \App\Models\ESBTPClasse::withTrashed()->find($classe_id) : null;
 
         foreach ($resultats as $resultat) {
@@ -3598,14 +3590,11 @@ class BulletinService
                 // On garde la ligne et on le dit une fois — un repli muet est le
                 // piege #12, et les deux autres chemins de ce chantier le disent
                 // deja. Le silence ici serait une asymetrie de conduite.
-                if (! $sansClasseKpiJournalise) {
-                    $sansClasseKpiJournalise = true;
-                    \Log::warning('KPI resultats : ligne sans classe ou sans matiere resolvable, coherence non verifiable.', [
-                        'resultat_id' => $resultat->id,
-                        'classe_id' => $resultat->classe_id,
-                        'matiere_id' => $resultat->matiere_id,
-                    ]);
-                }
+                CoherenceSystemeAcademique::coherenceNonVerifiable('KPI resultats/ligne sans classe ou sans matiere resolvable', [
+                    'resultat_id' => $resultat->id,
+                    'classe_id' => $resultat->classe_id,
+                    'matiere_id' => $resultat->matiere_id,
+                ]);
             } elseif (! CoherenceSystemeAcademique::matiereRetenue($resultat->matiere, $classeDeLaLigne, 'kpi resultats/moyenne enregistree')) {
                 continue;
             }
@@ -3659,8 +3648,6 @@ class BulletinService
         // de plus, et c'est plus juste que le parametre, qui ne decrit qu'un
         // filtre de recherche.
         $classeDuParametre = $classeId ? ESBTPClasse::withTrashed()->find($classeId) : null;
-        $sansClasseJournalisee = false;
-        $sansClasseManuelleJournalise = false;
 
         foreach ($notes as $note) {
             if (! $note->evaluation || ! $note->evaluation->matiere) {
@@ -3685,13 +3672,10 @@ class BulletinService
                 // Ni l'evaluation ni le parametre ne nomment de classe : on ne
                 // PEUT pas juger. On garde la note et on le dit une fois, plutot
                 // que de filtrer au hasard ou de se taire.
-                if (! $sansClasseJournalisee) {
-                    $sansClasseJournalisee = true;
-                    \Log::warning('Statistiques : note sans classe resolvable, coherence non verifiable.', [
-                        'note_id' => $note->id,
-                        'classe_id_parametre' => $classeId,
-                    ]);
-                }
+                CoherenceSystemeAcademique::coherenceNonVerifiable('Statistiques/note sans classe resolvable', [
+                    'note_id' => $note->id,
+                    'classe_id_parametre' => $classeId,
+                ]);
             } elseif (! CoherenceSystemeAcademique::matiereRetenue($note->evaluation->matiere, $classeDeLaNote, 'stats resultats/note')) {
                 continue;
             }
@@ -3788,13 +3772,10 @@ class BulletinService
                         // Quatrieme repli « on ne peut pas juger » — il se taisait,
                         // seul des quatre. L'asymetrie est precisement ce que les
                         // trois autres commentaires interdisent.
-                        if (! $sansClasseManuelleJournalise) {
-                            $sansClasseManuelleJournalise = true;
-                            \Log::warning('Statistiques : moyenne enregistree sans classe ou sans matiere resolvable, coherence non verifiable.', [
-                                'resultat_id' => $resultat->id,
-                                'classe_id' => $classeId,
-                            ]);
-                        }
+                        CoherenceSystemeAcademique::coherenceNonVerifiable('Statistiques/moyenne enregistree sans classe ou sans matiere resolvable', [
+                            'resultat_id' => $resultat->id,
+                            'classe_id' => $classeId,
+                        ]);
                     } elseif (! CoherenceSystemeAcademique::matiereRetenue($resultat->matiere, $classeDuParametre, 'stats resultats/moyenne manuelle')) {
                         continue;
                     }

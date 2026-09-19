@@ -2002,7 +2002,7 @@ class ESBTPResultatController extends Controller
         $classeDuLot = \App\Models\ESBTPClasse::withTrashed()->find($request->classe_id);
 
         if (! $classeDuLot) {
-            \Log::warning('Enregistrement groupe des moyennes : classe introuvable, coherence non verifiable.', [
+            CoherenceSystemeAcademique::coherenceNonVerifiable('enregistrement groupe/classe introuvable', [
                 'classe_id' => $request->classe_id,
             ]);
         }
