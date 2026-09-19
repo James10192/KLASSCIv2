@@ -2,9 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Domain\BtsTroncCommun\LiaisonsDeMatiere;
-use App\Models\ESBTPClasse;
-use App\Models\ESBTPEvaluation;
+use App\Domain\BtsTroncCommun\RetraitDeMaquette;
 use App\Models\ESBTPFiliere;
 use App\Models\ESBTPMatiere;
 use App\Models\ESBTPMatiereFilierNiveau;
@@ -65,6 +63,45 @@ class ESBTPMatiereClassificationController extends Controller
         $filiere = ESBTPFiliere::find($filiereId);
         $isTroncCommun = $filiere && $filiere->isTroncCommun();
 
+        $rows = $this->lignesDuCombo($filiereId, $niveauId, $filiere, $isTroncCommun);
+
+        // Le COUPLE est renseigne des qu'une de ses lignes a ete validee —
+        // c'est la regle du domaine (`BtsMaquette::isRenseignee`), et c'est
+        // elle qui decide si les semestres comptent. La poser ici, une fois,
+        // evite que le decompte affiche et l'etat annonce divergent.
+        $comboRenseigne = $rows->contains(fn ($ligne) => $ligne['semestre_renseigne']);
+
+        return response()->json([
+            'success' => true,
+            'is_tronc_commun' => $isTroncCommun,
+            'filiere' => $filiere?->name,
+            'matieres' => $rows,
+            'maquette' => [
+                'renseignee' => $comboRenseigne,
+                // Meme regle que le domaine : tant que le couple n'est pas
+                // valide, le bulletin rend la liste entiere. Les compter
+                // autrement ferait dire a l'ecran « aucune matiere au semestre
+                // 2 » alors que le bulletin en portera dix-huit.
+                'semestre_1' => $rows->filter(fn ($l) => $this->prevueAu($l, 1, $comboRenseigne))->count(),
+                'semestre_2' => $rows->filter(fn ($l) => $this->prevueAu($l, 2, $comboRenseigne))->count(),
+            ],
+            'planning' => $this->apercuDuPlanning($filiereId, $niveauId, $request),
+            'kpis' => [
+                'total' => $rows->count(),
+                'tronc_commun' => $rows->where('classification', ESBTPMatiereFilierNiveau::TRONC_COMMUN)->count(),
+                'specialite' => $rows->where('classification', ESBTPMatiereFilierNiveau::SPECIALITE)->count(),
+                'non_classe' => $rows->whereNull('classification')->count(),
+            ],
+        ]);
+    }
+
+    /**
+     * Les matieres de ce combo, dans l'ordre ou le bulletin les sortira.
+     *
+     * @return \Illuminate\Support\Collection<int, array<string, mixed>>
+     */
+    private function lignesDuCombo(int $filiereId, int $niveauId, ?ESBTPFiliere $filiere, bool $isTroncCommun)
+    {
         // Suggestion : sur un combo TC, une matière aussi rattachée à une filière fille
         // (spécialité) du même niveau est probablement de spécialité mal rattachée.
         $specialiteSuggestionIds = [];
@@ -84,7 +121,7 @@ class ESBTPMatiereClassificationController extends Controller
         $rangsEffectifs = app(\App\Domain\BtsTroncCommun\BulletinSubjectOrder::class)
             ->rankMapForFiliereNiveau($filiereId, $niveauId, $filiere?->troncCommunUnionFiliereIds());
 
-        $rows = ESBTPMatiereFilierNiveau::query()
+        return ESBTPMatiereFilierNiveau::query()
             ->where('filiere_id', $filiereId)
             ->where('niveau_etude_id', $niveauId)
             ->with('matiere:id,name,code,unite_enseignement_id,is_active,ordre_bulletin')
@@ -124,35 +161,6 @@ class ESBTPMatiereClassificationController extends Controller
                 mb_strtolower((string) $ligne['name'], 'UTF-8'),
             ])
             ->values();
-
-        // Le COUPLE est renseigne des qu'une de ses lignes a ete validee —
-        // c'est la regle du domaine (`BtsMaquette::isRenseignee`), et c'est
-        // elle qui decide si les semestres comptent. La poser ici, une fois,
-        // evite que le decompte affiche et l'etat annonce divergent.
-        $comboRenseigne = $rows->contains(fn ($ligne) => $ligne['semestre_renseigne']);
-
-        return response()->json([
-            'success' => true,
-            'is_tronc_commun' => $isTroncCommun,
-            'filiere' => $filiere?->name,
-            'matieres' => $rows,
-            'maquette' => [
-                'renseignee' => $comboRenseigne,
-                // Meme regle que le domaine : tant que le couple n'est pas
-                // valide, le bulletin rend la liste entiere. Les compter
-                // autrement ferait dire a l'ecran « aucune matiere au semestre
-                // 2 » alors que le bulletin en portera dix-huit.
-                'semestre_1' => $rows->filter(fn ($l) => $this->prevueAu($l, 1, $comboRenseigne))->count(),
-                'semestre_2' => $rows->filter(fn ($l) => $this->prevueAu($l, 2, $comboRenseigne))->count(),
-            ],
-            'planning' => $this->apercuDuPlanning($filiereId, $niveauId, $request),
-            'kpis' => [
-                'total' => $rows->count(),
-                'tronc_commun' => $rows->where('classification', ESBTPMatiereFilierNiveau::TRONC_COMMUN)->count(),
-                'specialite' => $rows->where('classification', ESBTPMatiereFilierNiveau::SPECIALITE)->count(),
-                'non_classe' => $rows->whereNull('classification')->count(),
-            ],
-        ]);
     }
 
     /**
@@ -230,7 +238,7 @@ class ESBTPMatiereClassificationController extends Controller
      * l'utilisateur ne l'a pas confirmé : la note resterait en base sans plus
      * apparaître nulle part.
      */
-    public function retirer(Request $request, LiaisonsDeMatiere $liaisons): JsonResponse
+    public function retirer(Request $request, RetraitDeMaquette $retrait): JsonResponse
     {
         $valide = $request->validate([
             'filiere_id' => ['required', 'integer', 'exists:esbtp_filieres,id'],
@@ -239,69 +247,59 @@ class ESBTPMatiereClassificationController extends Controller
             'malgre_les_notes' => ['sometimes', 'boolean'],
         ]);
 
-        $filiereId = (int) $valide['filiere_id'];
-        $niveauId = (int) $valide['niveau_id'];
-        $matiereId = (int) $valide['matiere_id'];
+        $filiere = ESBTPFiliere::find((int) $valide['filiere_id']);
+        $niveau = ESBTPNiveauEtude::find((int) $valide['niveau_id']);
 
-        $matiere = ESBTPMatiere::find($matiereId);
+        if (! $filiere || ! $niveau) {
+            return response()->json(['success' => false, 'message' => 'Filière ou niveau introuvable.'], 404);
+        }
+
+        // Le même constat que l'endpoint CLI, par le même code : il résout la
+        // matière, dit si elle est dans la maquette et compte ses évaluations
+        // sur ce couple. Cet écran en refaisait une copie, et les deux
+        // pouvaient répondre différemment de la même question.
+        $plan = $retrait->preparer($filiere, $niveau, [['id' => (int) $valide['matiere_id']]]);
+        $ligne = $plan['lignes'][0] ?? null;
+
+        if ($ligne === null) {
+            return response()->json(['success' => false, 'message' => 'Matière introuvable.'], 404);
+        }
 
         // D'abord : est-elle seulement là ? Compter les évaluations avant de
         // le savoir fait demander une confirmation pour un retrait qui n'aura
         // rien à retirer — l'utilisateur confirme, et reçoit ensuite « elle
         // n'est pas dans la maquette ».
-        $estDansLaMaquette = ESBTPMatiereFilierNiveau::query()
-            ->where('filiere_id', $filiereId)
-            ->where('niveau_etude_id', $niveauId)
-            ->where('matiere_id', $matiereId)
-            ->exists();
-
-        if (! $estDansLaMaquette) {
+        if (! $ligne['dans_la_maquette']) {
             return response()->json([
                 'success' => false,
                 'message' => 'Cette matière n\'est pas dans la maquette de ce niveau.',
             ], 422);
         }
 
-        $classeIds = ESBTPClasse::query()
-            ->where('filiere_id', $filiereId)
-            ->where('niveau_etude_id', $niveauId)
-            ->pluck('id');
-
-        $evaluations = $classeIds->isEmpty() ? 0 : ESBTPEvaluation::query()
-            ->where('matiere_id', $matiereId)
-            ->whereIn('classe_id', $classeIds)
-            ->count();
-
-        if ($evaluations > 0 && ! $request->boolean('malgre_les_notes')) {
+        if ($ligne['evaluations_sur_ce_couple'] > 0 && ! $request->boolean('malgre_les_notes')) {
             return response()->json([
                 'success' => false,
-                'evaluations' => $evaluations,
+                'evaluations' => $ligne['evaluations_sur_ce_couple'],
                 'confirmation_requise' => true,
-                'message' => $matiere?->name.' porte '.$evaluations.' évaluation(s) sur ce niveau. '
+                'message' => $ligne['matiere'].' porte '.$ligne['evaluations_sur_ce_couple']
+                    .' évaluation(s) sur ce niveau. '
                     .'Les retirer de la maquette les fera disparaître du bulletin.',
             ], 422);
         }
 
         try {
-            $retire = $liaisons->retirer($matiereId, $filiereId, $niveauId);
-
-            if ($retire['canonique'] === 0) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Cette matière n\'est pas dans la maquette de ce niveau.',
-                ], 422);
-            }
+            $ecrit = $retrait->appliquer($filiere, $niveau, $plan['lignes']);
 
             return response()->json([
                 'success' => true,
-                'message' => ($matiere?->name ?? 'La matière').' a été retirée de la maquette.',
-                'retire' => $retire,
+                'message' => $ligne['matiere'].' a été retirée de la maquette.',
+                'retire' => $ecrit['lignes'][0]['retire'],
             ]);
         } catch (\Throwable $e) {
             Log::error('Erreur retrait d\'une matière de la maquette', [
-                'filiere_id' => $filiereId,
-                'niveau_id' => $niveauId,
-                'matiere_id' => $matiereId,
+                'filiere_id' => $filiere->id,
+                'niveau_id' => $niveau->id,
+                'matiere_id' => $valide['matiere_id'],
                 'error' => $e->getMessage(),
             ]);
 
