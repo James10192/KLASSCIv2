@@ -133,6 +133,17 @@ final class AcademicNoteCoverageService
                     $scope->whereNull('status')->orWhere('status', '!=', ESBTPEvaluation::STATUS_CANCELLED);
                 }),
             )
+            // Une evaluation qui n'a pas encore eu lieu ne peut pas avoir de
+            // notes : `ESBTPNoteController::saisieRapide()` et `store()` la
+            // REFUSENT tant que la date est future. La compter revenait a
+            // reclamer ce que l'application interdit de saisir — et a passer
+            // tout l'effectif en « manquant » des qu'une evaluation etait
+            // programmee. Une evaluation sans date reste comptee : l'application
+            // ne la bloque pas non plus.
+            ->where(function ($scope): void {
+                $scope->whereNull('date_evaluation')
+                    ->orWhereDate('date_evaluation', '<=', now());
+            })
             ->with([
                 'matiere:id,name,code',
                 'notes' => fn ($query) => $query
@@ -381,7 +392,22 @@ final class AcademicNoteCoverageService
             return $this->noteValue($note) !== null ? 'numeric' : 'missing';
         }
 
-        if ($entry && in_array($entry->status, [
+        // « Dispense » et « n'est plus dans la classe » portent le MEME statut
+        // `NOT_APPLICABLE` : `ExpectedGradeSheetEntrySynchronizer::deactivateMissing()`
+        // s'en sert pour desactiver l'entree d'un eleve sorti de sa cohorte, et
+        // le marque par `metadata.cohort_active = false`.
+        //
+        // Or les trois definitions de cohorte du depot ne coincident pas : le
+        // synchroniseur filtre sur `classe_id` brut, la couverture sur les
+        // phases. Un eleve present ICI a donc pu etre desactive LA-BAS. Sans ce
+        // test, son entree comptait comme « traitee » et le bandeau pouvait
+        // annoncer « toutes les notes sont recues » sur une classe incomplete —
+        // le seul sens d'erreur qui fasse generer des bulletins a tort.
+        $desactivee = $entry
+            && $entry->status === GradeSheetEntryStatus::NOT_APPLICABLE->value
+            && (($entry->metadata['cohort_active'] ?? null) === false);
+
+        if ($entry && ! $desactivee && in_array($entry->status, [
             GradeSheetEntryStatus::ABSENT->value,
             GradeSheetEntryStatus::EXEMPT->value,
             GradeSheetEntryStatus::NOT_APPLICABLE->value,

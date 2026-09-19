@@ -1109,6 +1109,16 @@ class ESBTPNoteController extends Controller
             ->allowedStudentIdsForEvaluation($evaluation)
             ->all();
 
+        // Ce que la saisie a REELLEMENT ecrit, et ce qu'elle a saute. Les lignes
+        // laissees vides sont ignorees en silence depuis toujours : l'ecran
+        // annoncait « enregistrees avec succes » pour cinquante lignes dont une
+        // n'avait rien ecrit, et le suivi de couverture la comptait manquante.
+        // `esbtp_notes.note` etant NOT NULL, une ligne vide ne cree AUCUNE
+        // ligne — c'est la cause la plus banale d'un « toutes les notes ont
+        // pourtant ete saisies ».
+        $enregistrees = 0;
+        $ignorees = [];
+
         DB::beginTransaction();
         try {
             foreach ($request->notes as $noteData) {
@@ -1118,6 +1128,8 @@ class ESBTPNoteController extends Controller
 
                 // Ignorer les entrées sans valeur et non marquées comme absentes
                 if (! $hasValue && ! $isAbsent) {
+                    $ignorees[] = (int) ($noteData['etudiant_id'] ?? 0);
+
                     continue;
                 }
 
@@ -1189,12 +1201,14 @@ class ESBTPNoteController extends Controller
                         $this->sendAbsenceNotificationForNote($note, $evaluation);
                     }
                 }
+
+                $enregistrees++;
             }
 
             DB::commit();
 
             return redirect()->route('esbtp.evaluations.show', $evaluation)
-                ->with('success', 'Les notes ont été enregistrées avec succès');
+                ->with('success', $this->messageDeSaisieRapide($enregistrees, $ignorees));
         } catch (\Exception $e) {
             DB::rollBack();
 
@@ -1202,6 +1216,46 @@ class ESBTPNoteController extends Controller
                 ->with('error', 'Une erreur est survenue lors de l\'enregistrement des notes: '.$e->getMessage())
                 ->withInput();
         }
+    }
+
+    /**
+     * Le compte rendu d'une saisie rapide : ce qui a ete ecrit, et qui a ete saute.
+     *
+     * Nommer les etudiants sautes est tout l'interet du message : « 1 ligne
+     * laissee vide » ne dit pas laquelle, et c'est justement ce qu'on cherche
+     * quand le suivi de couverture annonce une note manquante.
+     *
+     * @param  array<int, int>  $ignorees  identifiants des etudiants dont la ligne etait vide
+     */
+    private function messageDeSaisieRapide(int $enregistrees, array $ignorees): string
+    {
+        $message = $enregistrees . ' note(s) enregistrée(s).';
+
+        $ignorees = array_values(array_unique(array_filter($ignorees)));
+
+        if ($ignorees === []) {
+            return $message;
+        }
+
+        // Au plus cinq noms : au-dela, le message devient illisible et la liste
+        // complete se lit mieux sur l'ecran de l'evaluation.
+        $noms = ESBTPEtudiant::whereIn('id', array_slice($ignorees, 0, 5))
+            ->get(['id', 'nom', 'prenoms'])
+            ->map(fn (ESBTPEtudiant $etudiant): string => trim($etudiant->nom_complet))
+            ->filter()
+            ->values()
+            ->all();
+
+        $reste = count($ignorees) - count($noms);
+
+        if ($noms === []) {
+            return $message . ' ' . count($ignorees) . ' ligne(s) laissée(s) vide(s) : aucune note enregistrée pour ces étudiants.';
+        }
+
+        return $message . ' ' . count($ignorees) . ' ligne(s) laissée(s) vide(s), donc aucune note enregistrée pour : '
+            . implode(', ', $noms)
+            . ($reste > 0 ? ' et ' . $reste . ' autre(s)' : '')
+            . '.';
     }
 
     /**

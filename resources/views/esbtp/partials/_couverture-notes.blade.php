@@ -125,8 +125,8 @@
                                      libellé nomme les deux endroits où aller le poser —
                                      « à confirmer » laissait croire à une donnée saisie
                                      mais douteuse, alors qu'il n'y en a aucune. --}}
-                                <span class="cvn-muet" title="Renseignez l'enseignant dans le planning général, ou dans « Éditer les professeurs » du bulletin.">
-                                    Aucun enseignant au planning ni au bulletin
+                                <span class="cvn-muet" title="Renseignez l'enseignant dans le planning général, ou dans « Éditer les professeurs ».">
+                                    Aucun enseignant au planning ni dans la configuration des bulletins
                                 </span>
                             </template>
                         </div>

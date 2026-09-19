@@ -3,96 +3,141 @@
 namespace Tests\Unit\AcademicPilotage;
 
 use App\Domain\AcademicPilotage\Services\CoverageTeacherContactResolver;
+use App\Models\ESBTPClasse;
+use App\Models\ESBTPMatiere;
+use App\Services\BulletinInlineConfigurationService;
 use Illuminate\Support\Collection;
 use PHPUnit\Framework\TestCase;
 use ReflectionMethod;
 
 /**
- * Le repli sur les noms de professeurs saisis au bulletin.
+ * Doublure du lecteur canonique : elle note la periode qu'on lui demande et
+ * rend le tableau qu'on lui a pose, sans toucher aux reglages ni a la base.
+ */
+class ConfigurationQuiNoteLaPeriode extends BulletinInlineConfigurationService
+{
+    public ?string $periodeDemandee = null;
+
+    /** @param array<int|string, string> $template */
+    public function __construct(private array $template = [])
+    {
+        // Pas d'appel au parent : ce double ne lit rien.
+    }
+
+    public function loadProfesseursTemplate(int $classeId, int $anneeUniversitaireId, string $periode): array
+    {
+        $this->periodeDemandee = $periode;
+
+        return $this->template;
+    }
+}
+
+/**
+ * Le repli sur les noms de professeurs saisis par l'ecole.
  *
- * Sans base : la regle qui compte est le rapprochement des copies. Chaque
- * bulletin porte SA copie des noms ; l'ecran sait les propager a la classe,
- * mais rien ne l'impose. Deux copies qui se contredisent, c'est la meme
- * situation que deux enseignants au planning — on ne tranche pas au hasard.
+ * Cas fondateur, ESBTP Abidjan, classe 46 (2BTS GBAT B) : aucune planification
+ * academique pour ce couple filiere x niveau, donc les onze matieres
+ * affichaient « aucun enseignant » — alors que le reglage
+ * `bulletin_professeurs_template.46.4.semestre2` portait DIX-SEPT noms, dont
+ * « M TOURE » pour Pathologie (matiere 31).
  *
- * Contexte : sur ESBTP Abidjan, la classe 2BTS GBAT B n'a AUCUNE planification,
- * donc ses onze matieres annoncaient « Enseignant a confirmer » alors que
- * l'ecole avait saisi les professeurs sur le bulletin, juste a cote.
+ * Une premiere version lisait `esbtp_bulletins.professeurs` en direct. Ce
+ * champ n'est renseigne qu'a la GENERATION d'un bulletin, et l'ecole consulte
+ * ce bandeau AVANT de generer : il etait vide. D'ou le passage par le lecteur
+ * canonique, qui regarde le reglage d'abord.
  */
 class CoverageTeacherContactResolverTest extends TestCase
 {
-    /** @param list<string|null> $bulletins */
-    private function noms(array $bulletins, array $matieresVoulues): array
+    private function matieres(int ...$ids): Collection
     {
-        $m = new ReflectionMethod(CoverageTeacherContactResolver::class, 'nomsParMatiere');
+        return new Collection(array_map(function (int $id): ESBTPMatiere {
+            $m = new ESBTPMatiere();
+            $m->forceFill(['id' => $id]);
+
+            return $m;
+        }, $ids));
+    }
+
+    private function classe(int $id = 46): ESBTPClasse
+    {
+        $c = new ESBTPClasse();
+        $c->forceFill(['id' => $id]);
+
+        return $c;
+    }
+
+    private function completer(array $carte, array $template, ?int $semestre, array $ids, ?ConfigurationQuiNoteLaPeriode $double = null): array
+    {
+        $double ??= new ConfigurationQuiNoteLaPeriode($template);
+        $resolveur = new CoverageTeacherContactResolver($double);
+        $m = new ReflectionMethod(CoverageTeacherContactResolver::class, 'completerParLaConfiguration');
         $m->setAccessible(true);
 
-        return $m->invoke(new CoverageTeacherContactResolver(), new Collection($bulletins), $matieresVoulues);
+        return $m->invoke($resolveur, $carte, $this->classe(), 4, $semestre, $this->matieres(...$ids));
     }
 
-    public function test_un_nom_partage_par_tous_les_bulletins_est_retenu(): void
+    public function test_le_nom_saisi_par_l_ecole_comble_une_matiere_sans_planning(): void
     {
-        $noms = $this->noms([
-            json_encode([7 => 'M. KOUAME']),
-            json_encode([7 => 'M. KOUAME']),
-        ], [7]);
+        $carte = $this->completer([31 => null], [31 => 'M TOURE'], 2, [31]);
 
-        $this->assertSame([7 => 'M. KOUAME'], $noms);
+        $this->assertSame('M TOURE', $carte[31]['name']);
+        $this->assertSame('bulletin', $carte[31]['source']);
+        $this->assertNull($carte[31]['phone'], "La configuration ne stocke qu'un nom.");
+        $this->assertNull($carte[31]['id']);
     }
 
-    public function test_deux_noms_qui_se_contredisent_ne_designent_personne(): void
+    public function test_un_contact_venu_du_planning_n_est_jamais_ecrase(): void
     {
-        $noms = $this->noms([
-            json_encode([7 => 'M. KOUAME']),
-            json_encode([7 => 'Mme DIALLO']),
-        ], [7]);
+        $duPlanning = ['id' => 5, 'name' => 'Mme DIALLO', 'phone' => '+22507000000', 'source' => 'planning'];
 
-        $this->assertSame([], $noms, 'Designer l un des deux ferait relancer quelqu un qui n y peut rien.');
+        $carte = $this->completer([31 => $duPlanning], [31 => 'M TOURE'], 2, [31]);
+
+        $this->assertSame($duPlanning, $carte[31], 'Le planning porte un telephone : il prime.');
     }
 
-    public function test_une_matiere_hors_de_la_liste_demandee_est_ignoree(): void
+    public function test_la_cle_du_reglage_rendue_en_chaine_par_json_est_acceptee(): void
     {
-        // La matiere 9 a deja un contact venu du planning : on ne l ecrase pas.
-        $noms = $this->noms([json_encode([7 => 'M. KOUAME', 9 => 'M. AUTRE'])], [7]);
+        $carte = $this->completer([31 => null], ['31' => 'M TOURE'], 2, [31]);
 
-        $this->assertSame([7 => 'M. KOUAME'], $noms);
+        $this->assertSame('M TOURE', $carte[31]['name']);
     }
 
-    public function test_un_nom_vide_ou_blanc_ne_compte_pas(): void
+    public function test_un_nom_vide_ou_blanc_ne_comble_rien(): void
     {
-        $this->assertSame([], $this->noms([json_encode([7 => '   '])], [7]));
-        $this->assertSame([], $this->noms([json_encode([7 => ''])], [7]));
-        $this->assertSame([], $this->noms([json_encode([7 => null])], [7]));
+        $this->assertNull($this->completer([31 => null], [31 => '   '], 2, [31])[31]);
+        $this->assertNull($this->completer([31 => null], [31 => ''], 2, [31])[31]);
+        $this->assertNull($this->completer([31 => null], [], 2, [31])[31]);
     }
 
-    public function test_un_bulletin_vide_ou_illisible_n_empeche_pas_les_autres(): void
+    public function test_la_periode_demandee_suit_le_semestre_du_bandeau(): void
     {
-        $noms = $this->noms([
-            null,
-            'ceci n est pas du json',
-            json_encode([7 => 'M. KOUAME']),
-        ], [7]);
+        $double = new ConfigurationQuiNoteLaPeriode([]);
+        $this->completer([31 => null], [], 2, [31], $double);
+        $this->assertSame('semestre2', $double->periodeDemandee);
 
-        $this->assertSame([7 => 'M. KOUAME'], $noms);
+        $double = new ConfigurationQuiNoteLaPeriode([]);
+        $this->completer([31 => null], [], 1, [31], $double);
+        $this->assertSame('semestre1', $double->periodeDemandee);
     }
 
-    public function test_les_espaces_autour_du_nom_ne_creent_pas_un_desaccord(): void
+    public function test_en_periode_annuelle_le_lecteur_canonique_tranche(): void
     {
-        $noms = $this->noms([
-            json_encode([7 => 'M. KOUAME']),
-            json_encode([7 => '  M. KOUAME  ']),
-        ], [7]);
+        // `loadProfesseursTemplate('annuel')` essaie semestre1 puis semestre2 et
+        // rend le premier non vide : c'est lui qui decide, pas ce service.
+        $double = new ConfigurationQuiNoteLaPeriode([31 => 'M TOURE']);
+        $carte = $this->completer([31 => null], [], null, [31], $double);
 
-        $this->assertSame([7 => 'M. KOUAME'], $noms);
+        $this->assertSame('annuel', $double->periodeDemandee);
+        $this->assertSame('M TOURE', $carte[31]['name']);
     }
 
-    public function test_la_cle_matiere_rendue_en_chaine_par_json_reste_un_entier(): void
+    public function test_aucune_lecture_quand_tout_est_deja_nomme(): void
     {
-        // json_decode rend des cles numeriques en chaines : sans le cast, la
-        // comparaison avec la liste des matieres attendues echouerait en silence.
-        $noms = $this->noms([json_encode(['7' => 'M. KOUAME'])], [7]);
+        $double = new ConfigurationQuiNoteLaPeriode([31 => 'M TOURE']);
+        $duPlanning = ['id' => 5, 'name' => 'Mme DIALLO', 'phone' => null, 'source' => 'planning'];
 
-        $this->assertSame([7 => 'M. KOUAME'], $noms);
-        $this->assertSame([7], array_keys($noms));
+        $this->completer([31 => $duPlanning], [], 2, [31], $double);
+
+        $this->assertNull($double->periodeDemandee, 'Rien a combler : pas de lecture inutile.');
     }
 }

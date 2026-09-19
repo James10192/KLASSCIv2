@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Domain\AcademicPilotage\Services;
 
-use App\Models\ESBTPBulletin;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPPlanificationAcademique;
+use App\Services\BulletinInlineConfigurationService;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Schema;
 
@@ -22,7 +22,17 @@ use Illuminate\Support\Facades\Schema;
  *
  * 1. Le planning general (`esbtp_planifications_academiques`), qui porte un
  *    vrai utilisateur : nom ET telephone, donc un contact appelable.
- * 2. A defaut, les noms saisis dans « Editer les professeurs » du bulletin.
+ * 2. A defaut, les noms saisis dans « Editer les professeurs », lus par le
+ *    lecteur canonique `BulletinInlineConfigurationService::loadProfesseursTemplate()`.
+ *
+ * Ce lecteur n'est pas un detail d'implementation : les noms vivent d'abord
+ * dans un REGLAGE (`bulletin_professeurs_template.{classe}.{annee}.{periode}`),
+ * et seulement ensuite dans `esbtp_bulletins.professeurs`, qui n'est renseigne
+ * qu'a la GENERATION d'un bulletin. Or l'ecole consulte ce bandeau AVANT de
+ * generer. Une premiere version lisait la table directement : sur Abidjan, le
+ * reglage de la classe 46 portait 17 professeurs pour le semestre 2 — dont
+ * « M TOURE » pour Pathologie — et le bandeau affichait quand meme « aucun
+ * enseignant ». Ne pas reecrire ce lecteur : l'appeler.
  *
  * Le repli n'est pas un luxe. Mesure sur ESBTP Abidjan, classe 2BTS GBAT B :
  * l'instance n'a AUCUNE planification pour ce couple filiere x niveau, donc les
@@ -37,6 +47,10 @@ use Illuminate\Support\Facades\Schema;
  */
 final class CoverageTeacherContactResolver
 {
+    public function __construct(
+        private readonly BulletinInlineConfigurationService $configuration,
+    ) {}
+
     /**
      * @param  Collection<int, \App\Models\ESBTPMatiere>  $matieres
      * @return array<int, array<string, mixed>|null> matiere_id => contact (null = indetermine)
@@ -53,7 +67,7 @@ final class CoverageTeacherContactResolver
         // sert le plus.
         $carte = $this->planning($classe, $anneeId, $semestre, $matieres);
 
-        return $this->completerParLesBulletins($carte, $classe, $anneeId, $semestre, $matieres);
+        return $this->completerParLaConfiguration($carte, $classe, $anneeId, $semestre, $matieres);
     }
 
     /**
@@ -99,16 +113,22 @@ final class CoverageTeacherContactResolver
 
     /**
      * Comble les matieres que le planning ne nomme pas, avec ce que l'ecole a
-     * saisi sur le bulletin.
+     * saisi dans la configuration des bulletins.
      *
-     * Le planning garde la priorite : lui seul porte un telephone. On ne
-     * remplace donc jamais un contact deja trouve, on ne comble que les trous.
+     * Le planning garde la priorite : lui seul porte un telephone.
+     *
+     * DECISION ASSUMEE : on comble aussi quand `contactUnique()` a rendu `null`
+     * DELIBEREMENT, c'est-a-dire quand deux enseignants differents sont
+     * declares au planning. Ce n'est pas un trou, c'est un refus de trancher —
+     * mais un nom que l'ecole a elle-meme saisi vaut mieux que rien, et
+     * l'infobulle dit d'ou il vient. Ne pas « corriger » dans un sens ou dans
+     * l'autre sans relire cette ligne.
      *
      * @param  array<int, array<string, mixed>|null>  $carte
      * @param  Collection<int, \App\Models\ESBTPMatiere>  $matieres
      * @return array<int, array<string, mixed>|null>
      */
-    private function completerParLesBulletins(
+    private function completerParLaConfiguration(
         array $carte,
         ESBTPClasse $classe,
         int $anneeId,
@@ -119,80 +139,34 @@ final class CoverageTeacherContactResolver
             ->map(fn ($id): int => (int) $id)
             ->reject(fn (int $id): bool => ($carte[$id] ?? null) !== null);
 
-        if ($aCombler->isEmpty() || ! Schema::hasTable('esbtp_bulletins')) {
+        if ($aCombler->isEmpty()) {
             return $carte;
         }
 
-        $bulletins = ESBTPBulletin::query()
-            ->where('classe_id', $classe->id)
-            ->where('annee_universitaire_id', $anneeId)
-            ->when($semestre !== null, fn ($q) => $q->where('periode', 'semestre' . $semestre))
-            ->whereNotNull('professeurs')
-            ->pluck('professeurs');
+        $template = $this->configuration->loadProfesseursTemplate(
+            (int) $classe->id,
+            $anneeId,
+            $semestre === null ? 'annuel' : 'semestre' . $semestre,
+        );
 
-        if ($bulletins->isEmpty()) {
-            return $carte;
-        }
+        foreach ($aCombler as $matiereId) {
+            // Les cles du reglage viennent de JSON : numeriques en chaines.
+            $nom = trim((string) ($template[$matiereId] ?? $template[(string) $matiereId] ?? ''));
 
-        $noms = $this->nomsParMatiere($bulletins, $aCombler->all());
+            if ($nom === '') {
+                continue;
+            }
 
-        foreach ($noms as $matiereId => $nom) {
             $carte[$matiereId] = [
                 'id' => null,
                 'name' => $nom,
-                // Le bulletin ne stocke qu'un nom : pas de numero a proposer.
+                // La configuration ne stocke qu'un nom : pas de numero.
                 'phone' => null,
                 'source' => 'bulletin',
             ];
         }
 
         return $carte;
-    }
-
-    /**
-     * Les noms sur lesquels TOUS les bulletins de la classe s'accordent.
-     *
-     * Chaque bulletin porte sa propre copie ; l'ecran d'edition sait les
-     * propager a la classe, mais rien ne le garantit. Deux noms differents pour
-     * la meme matiere, c'est la meme situation que deux enseignants au planning :
-     * on ne tranche pas au hasard.
-     *
-     * @param  Collection<int, string|null>  $bulletins
-     * @param  list<int>  $matieresVoulues
-     * @return array<int, string>
-     */
-    private function nomsParMatiere(Collection $bulletins, array $matieresVoulues): array
-    {
-        $vus = [];
-
-        foreach ($bulletins as $brut) {
-            $decode = is_string($brut) ? json_decode($brut, true) : $brut;
-
-            if (! is_array($decode)) {
-                continue;
-            }
-
-            foreach ($decode as $matiereId => $nom) {
-                $matiereId = (int) $matiereId;
-                $nom = is_string($nom) ? trim($nom) : '';
-
-                if ($nom === '' || ! in_array($matiereId, $matieresVoulues, true)) {
-                    continue;
-                }
-
-                $vus[$matiereId][$nom] = true;
-            }
-        }
-
-        $retenus = [];
-
-        foreach ($vus as $matiereId => $candidats) {
-            if (count($candidats) === 1) {
-                $retenus[$matiereId] = (string) array_key_first($candidats);
-            }
-        }
-
-        return $retenus;
     }
 
     /**
