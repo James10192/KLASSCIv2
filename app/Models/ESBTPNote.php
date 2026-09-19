@@ -309,6 +309,48 @@ class ESBTPNote extends Model implements Auditable
     }
 
     /**
+     * Les notes rattachees a une classe — LES DEUX rattachements, reunis.
+     *
+     * `esbtp_notes.classe_id` est une colonne denormalisee, recopiee depuis
+     * l'evaluation au moment ou la note est enregistree. Le crochet qui la
+     * synchronise ne se declenche qu'a l'enregistrement de LA NOTE : changer
+     * la classe d'une evaluation laisse derriere elle des notes qui portent
+     * encore l'ancienne. C'est le piege documente dans
+     * `.claude/rules/klassci-debugging-discipline.md` (#7), et la commande
+     * `evaluations:sync-notes` existe justement pour le rattraper apres coup.
+     *
+     * L'archivage s'appuyait sur la seule colonne denormalisee. Une note dont
+     * elle avait derive restait donc VIVANTE quand l'eleve quittait la classe,
+     * et continuait a peser sur ses moyennes ailleurs. La reunion des deux
+     * rattachements ne peut qu'en prendre davantage, jamais moins — c'est le
+     * bon sens d'erreur pour un archivage.
+     *
+     * ⚠️ Le retrait et la restauration doivent employer le MEME predicat.
+     * Archiver large et restaurer etroit perdrait definitivement des notes
+     * au retour d'un eleve dans sa classe.
+     *
+     * Volontairement SANS filtre d'annee : `esbtp_notes` ne porte l'annee que
+     * sous forme de libelle (« 2025-2026 », parfois « N/A »), et s'en servir
+     * ferait sauter en silence les notes mal renseignees. Une classe KLASSCI
+     * n'est de toute facon pas liee a une annee (voir la rule
+     * `classes-universelles-pas-annee.md`).
+     */
+    public function scopeRattacheesALaClasse($query, $classeId)
+    {
+        return $query->where(function ($scope) use ($classeId) {
+            $scope->where('classe_id', $classeId)
+                ->orWhereHas('evaluation', function ($evaluation) use ($classeId) {
+                    $evaluation->where('classe_id', $classeId);
+                });
+        });
+    }
+
+    /**
+     * Synchroniser le semestre de la note avec la période de l'évaluation
+     *
+     * @return bool
+     */
+    /**
      * Synchroniser le semestre de la note avec la période de l'évaluation
      *
      * @return bool
