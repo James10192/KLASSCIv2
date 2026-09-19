@@ -210,11 +210,13 @@
             <div class="mtc-field">
                 <label>Filière</label>
                 <x-au-select name="filiere_id" icon="fa-sitemap" placeholder="Choisir une filière"
+                    :value="$filiereChoisie ?? ''"
                     :searchable="true" :options="$filiereOptions" />
             </div>
             <div class="mtc-field">
                 <label>Niveau d'étude</label>
                 <x-au-select name="niveau_id" icon="fa-graduation-cap" placeholder="Choisir un niveau"
+                    :value="$niveauChoisi ?? ''"
                     :searchable="$niveauSearchable" :options="$niveauOptions" />
             </div>
         </div>

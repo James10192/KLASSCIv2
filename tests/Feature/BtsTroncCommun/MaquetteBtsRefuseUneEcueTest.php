@@ -366,4 +366,121 @@ class MaquetteBtsRefuseUneEcueTest extends TestCase
         $this->assertSame('ok', $resolue['statut']);
         $this->assertSame((int) $ecue->id, (int) $resolue['matiere']->id);
     }
+
+    /**
+     * LA FICHE D'UNE MATIERE N'ECRIT PAS LA MAQUETTE — ET C'EST UNE CORRECTION.
+     *
+     * Ce test garde le RETRAIT d'un comportement, pas son ajout : la premiere
+     * version du correctif « cocher une filiere rattache vraiment » posait,
+     * depuis `update()`, le PRODUIT CARTESIEN des deux listes du formulaire
+     * dans la table que lit le bulletin.
+     *
+     * Le piege est que les cases y arrivent PRECOCHEES depuis les deux pivots
+     * plats, dont le produit sur-rapporte. Une matiere en filieres [A, B] et
+     * niveaux [1, 2] dont la maquette ne porte que (A,1) gagnait donc (A,2),
+     * (B,1) et (B,2) au premier enregistrement venu — trois apparitions au
+     * bulletin de classes que personne n'a nommees, et aucun moyen de revenir
+     * en arriere depuis cet ecran, puisque deux listes ne decrivent pas un
+     * ensemble de couples qui n'est pas un rectangle plein.
+     *
+     * Le controle a rejouer avant de toucher `update()` : remettre l'appel a
+     * `poserLesCouplesDuFormulaire()`. Ce test doit passer de 1 a 4.
+     */
+    public function test_enregistrer_la_fiche_d_une_matiere_n_ajoute_rien_a_la_maquette(): void
+    {
+        $matiere = ESBTPMatiere::factory()->create([
+            'unite_enseignement_id' => null,
+            'is_active' => true,
+        ]);
+
+        $niveauUn = ESBTPNiveauEtude::factory()->create(['type' => 'BTS']);
+        $niveauDeux = ESBTPNiveauEtude::factory()->create(['type' => 'BTS']);
+        $filiereA = ESBTPFiliere::factory()->create(['is_tronc_commun' => false, 'parent_id' => null]);
+        $filiereB = ESBTPFiliere::factory()->create(['is_tronc_commun' => false, 'parent_id' => null]);
+
+        // La maquette ne porte QU'UN couple : (A, 1).
+        ESBTPMatiereFilierNiveau::create([
+            'matiere_id' => $matiere->id,
+            'filiere_id' => $filiereA->id,
+            'niveau_etude_id' => $niveauUn->id,
+        ]);
+
+        // Les deux pivots plats, eux, en portent deux chacun : c'est ce que
+        // l'ecran precoche, et son produit vaut quatre couples.
+        $matiere->filieres()->sync([$filiereA->id, $filiereB->id]);
+        $matiere->niveaux()->sync([$niveauUn->id, $niveauDeux->id]);
+
+        $reponse = $this->actingAs($this->unSuperAdmin())
+            ->put("/esbtp/matieres/{$matiere->id}", [
+                'name' => $matiere->name,
+                'code' => $matiere->code,
+                'coefficient' => 1,
+                'is_active' => 1,
+                'type_formation' => 'generale',
+                // Exactement ce que le formulaire renvoie quand personne ne
+                // touche a rien : les cases telles qu'elles etaient cochees.
+                'liaisons_presentes' => 1,
+                'filieres' => [$filiereA->id, $filiereB->id],
+                'niveaux' => [$niveauUn->id, $niveauDeux->id],
+            ]);
+
+        $reponse->assertRedirect(route('esbtp.matieres.index'));
+
+        $this->assertSame(
+            1,
+            ESBTPMatiereFilierNiveau::where('matiere_id', $matiere->id)->count(),
+            "Enregistrer la fiche ne doit RIEN ajouter a la maquette : le produit "
+            ."des deux listes precochees vaut quatre couples, la maquette n'en porte qu'un.",
+        );
+
+        // Et le couple d'origine est intact : on ne retire rien non plus.
+        $this->assertDatabaseHas('esbtp_matiere_filiere_niveau', [
+            'matiere_id' => $matiere->id,
+            'filiere_id' => $filiereA->id,
+            'niveau_etude_id' => $niveauUn->id,
+        ]);
+    }
+
+    /**
+     * Les deux pivots plats, eux, suivent bien les cases — c'est leur travail.
+     *
+     * Le test precedent pourrait passer pour une raison creuse : « la fiche
+     * n'enregistre plus rien du tout ». Celui-ci le refute. Les deux listes
+     * portent `coefficient` et `heures_cours`, elles ont un role propre, et le
+     * vrai defaut d'origine — le formulaire envoyait `filieres[]`, le code ne
+     * lisait que `filiere_id`, donc enregistrer DETACHAIT tout — reste corrige.
+     */
+    public function test_enregistrer_la_fiche_synchronise_bien_les_deux_listes(): void
+    {
+        $matiere = ESBTPMatiere::factory()->create([
+            'unite_enseignement_id' => null,
+            'is_active' => true,
+        ]);
+
+        $niveau = ESBTPNiveauEtude::factory()->create(['type' => 'BTS']);
+        $ancienne = ESBTPFiliere::factory()->create(['is_tronc_commun' => false, 'parent_id' => null]);
+        $nouvelle = ESBTPFiliere::factory()->create(['is_tronc_commun' => false, 'parent_id' => null]);
+
+        $matiere->filieres()->sync([$ancienne->id]);
+        $matiere->niveaux()->sync([$niveau->id]);
+
+        $this->actingAs($this->unSuperAdmin())
+            ->put("/esbtp/matieres/{$matiere->id}", [
+                'name' => $matiere->name,
+                'code' => $matiere->code,
+                'coefficient' => 1,
+                'is_active' => 1,
+                'type_formation' => 'generale',
+                'liaisons_presentes' => 1,
+                'filieres' => [$nouvelle->id],
+                'niveaux' => [$niveau->id],
+            ])
+            ->assertRedirect(route('esbtp.matieres.index'));
+
+        $this->assertSame(
+            [$nouvelle->id],
+            $matiere->fresh()->filieres->pluck('id')->all(),
+            'La liste des filieres doit suivre les cases cochees.',
+        );
+    }
 }

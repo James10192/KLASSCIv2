@@ -524,17 +524,34 @@ class ESBTPMatiereController extends Controller
         $niveauxEtudes = ESBTPNiveauEtude::whereNotIn('type', \App\Models\ESBTPNiveauEtude::CYCLES_LMD)->get();
         $unitesEnseignement = collect(); // Collection vide temporaire
 
-        // Les couples DEJA dans la maquette, pour que l'apercu distingue ce qui
-        // existe de ce que l'enregistrement va CREER. Les cases sont prealablement
-        // cochees depuis les pivots plats, dont le produit cartesien sur-rapporte :
-        // sans cette liste, enregistrer sans rien toucher ajoute en silence des
-        // combinaisons que personne n'a demandees, et le bulletin les lit.
-        $couplesExistants = $matiere->liaisonsFilieresNiveaux
-            ->map(fn ($liaison) => $liaison->filiere_id . '-' . $liaison->niveau_etude_id)
+        // La maquette REELLE de cette matiere, telle que le bulletin la lit.
+        //
+        // Cet ecran ne l'ecrit pas — voir `poserLesCouplesDuFormulaire()`. Il
+        // la MONTRE, et renvoie vers celui qui sait la modifier couple par
+        // couple. Auparavant il affichait a la place le produit cartesien des
+        // deux listes cochees, qui invente des combinaisons que la maquette ne
+        // porte pas : l'ecran promettait donc un rattachement qu'il n'avait pas
+        // les moyens de tenir, et l'enregistrement le posait pour de bon.
+        $couplesDeLaMaquette = $matiere->liaisonsFilieresNiveaux
+            ->map(fn ($liaison) => [
+                'filiere_id' => (int) $liaison->filiere_id,
+                'niveau_id' => (int) $liaison->niveau_etude_id,
+                'filiere' => optional($filieres->firstWhere('id', $liaison->filiere_id))->name
+                    ?? 'Filière #'.$liaison->filiere_id,
+                'niveau' => optional($niveauxEtudes->firstWhere('id', $liaison->niveau_etude_id))->name
+                    ?? 'Niveau #'.$liaison->niveau_etude_id,
+            ])
+            ->sortBy([['filiere', 'asc'], ['niveau', 'asc']])
             ->values()
             ->all();
 
-        return view('esbtp.matieres.edit', compact('matiere', 'filieres', 'niveauxEtudes', 'unitesEnseignement', 'couplesExistants'));
+        return view('esbtp.matieres.edit', compact(
+            'matiere',
+            'filieres',
+            'niveauxEtudes',
+            'unitesEnseignement',
+            'couplesDeLaMaquette',
+        ));
     }
 
     /**
@@ -542,7 +559,7 @@ class ESBTPMatiereController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-    public function update(Request $request, ESBTPMatiere $matiere, LiaisonsDeMatiere $service)
+    public function update(Request $request, ESBTPMatiere $matiere)
     {
         $this->refuserUneEcueLmd($matiere);
 
@@ -577,15 +594,31 @@ class ESBTPMatiereController extends Controller
         // Mettre à jour la matière
         $matiere->update($validatedData);
 
-        [$filiereIds, $niveauIds] = $this->synchroniserLesPivotsPlats($request, $matiere);
+        $this->synchroniserLesPivotsPlats($request, $matiere);
 
-        $couples = $this->poserLesCouplesDuFormulaire($matiere, $filiereIds, $niveauIds, $service);
+        // CET ECRAN N'ECRIT PAS LA MAQUETTE, ET C'EST UNE CORRECTION.
+        //
+        // La premiere version de ce correctif y posait le PRODUIT CARTESIEN des
+        // deux listes — la meme faute que `SyncMatiereFilireNiveau` porte en
+        // avertissement dans son en-tete. Les cases sont precochees depuis les
+        // deux pivots plats, dont le produit sur-rapporte : une matiere en
+        // filieres [A, B] et niveaux [1, 2] dont la maquette ne porte que (A,1)
+        // gagnait (A,2), (B,1) et (B,2) au premier enregistrement venu, donc
+        // trois apparitions au bulletin de classes que personne n'a nommees.
+        // L'ecran l'annoncait, mais il ne savait pas RETIRER : deux listes ne
+        // decrivent pas un ensemble de couples qui n'est pas un rectangle
+        // plein. C'etait donc une roue a cliquet sur la table que lit le
+        // bulletin, et la porte meme que ce chantier existe pour fermer.
+        //
+        // La maquette s'edite la ou elle se VOIT, couple par couple :
+        // `/esbtp/matieres/classification`, vers lequel la fiche pointe
+        // maintenant, presélectionné sur les couples de cette matiere.
+        //
+        // La creation, elle, garde l'ecriture : voir `store()`.
 
         // Rediriger avec un message de succès
         return redirect()->route('esbtp.matieres.index')
-            ->with('success', $couples === 0
-                ? 'La matière a été mise à jour avec succès.'
-                : 'La matière a été mise à jour avec succès. '.$couples.' combinaison(s) filière × niveau rattachée(s).');
+            ->with('success', 'La matière a été mise à jour avec succès.');
     }
 
     /**
@@ -622,22 +655,31 @@ class ESBTPMatiereController extends Controller
     }
 
     /**
-     * Écrit dans la maquette les combinaisons que ce formulaire annonce.
+     * Écrit dans la maquette les combinaisons du formulaire de CRÉATION.
      *
-     * Ce formulaire demande deux listes indépendantes — des filières, des
+     * Le formulaire demande deux listes indépendantes — des filières, des
      * niveaux — et affiche sous elles un « Aperçu des combinaisons » qui en
      * montre le produit. C'est donc bien ce produit qu'il promet d'enregistrer.
      * Il ne l'écrivait pourtant que dans les deux pivots plats, jamais dans le
      * pivot canonique. Tant que les écrans lisaient eux aussi le produit des
      * pivots plats, cela ne se voyait pas ; depuis qu'ils lisent la maquette,
-     * cocher une filière ici affichait « mise à jour avec succès » sans que la
+     * cocher une filière affichait « enregistrée avec succès » sans que la
      * matière apparaisse nulle part.
      *
-     * En AJOUT seulement. Décocher ne retire rien : deux listes ne peuvent pas
-     * décrire un ensemble de couples qui n'est pas un rectangle plein, donc un
-     * enregistrement calculerait des retraits que personne n'a demandés. Le
-     * retrait d'un couple précis se fait là où il se voit — l'écran Maquette,
-     * ou le modal des liaisons.
+     * RÉSERVÉ À `store()`, ET CE N'EST PAS UNE SYMÉTRIE OUBLIÉE. La première
+     * version l'appelait aussi depuis `update()`, et c'était une régression :
+     * là, les cases arrivent PRÉCOCHÉES depuis les deux pivots plats, dont le
+     * produit sur-rapporte. Une matière dont la maquette ne porte qu'un couple
+     * en gagnait trois au premier enregistrement venu — et rien ici ne sait
+     * retirer, puisque deux listes ne décrivent pas un ensemble de couples qui
+     * n'est pas un rectangle plein. Roue à cliquet sur la table que lit le
+     * bulletin.
+     *
+     * À la création, rien de tout cela : il n'y a pas de maquette antérieure à
+     * sur-rapporter, les deux listes sont ce que la personne vient de saisir,
+     * et sans cette écriture la matière créée n'apparaît nulle part. Le
+     * formulaire de création offre par ailleurs le mode `liaisons[]`, qui
+     * nomme des couples précis quand le rectangle plein ne convient pas.
      *
      * @param  list<int>|null  $filiereIds
      * @param  list<int>|null  $niveauIds

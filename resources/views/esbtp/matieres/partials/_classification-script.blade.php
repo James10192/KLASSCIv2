@@ -2,8 +2,13 @@
 <script>
 function matiereClassification() {
     return {
-        filiereId: '',
-        niveauId: '',
+        // Presélection depuis la chaîne de requête, pour que l'écran soit
+        // citable : `?filiere_id=3&niveau_id=2` ouvre directement la maquette
+        // de ce couple. Le serveur a validé les deux, ce ne sont pas des
+        // valeurs libres. Cast en chaîne parce que les `<option value>` en
+        // sont, et qu'un entier ne s'y retrouverait pas sélectionné.
+        filiereId: @json((string) ($filiereChoisie ?? '')),
+        niveauId: @json((string) ($niveauChoisi ?? '')),
         loading: false,
         saving: false,
         loaded: false,
@@ -33,6 +38,12 @@ function matiereClassification() {
         init() {
             this.$watch('filiereId', () => this.tryLoad());
             this.$watch('niveauId', () => this.tryLoad());
+
+            // Les observateurs ne se déclenchent qu'au CHANGEMENT : une valeur
+            // posée à l'initialisation ne les réveille pas. Sans cet appel, le
+            // couple venu de la chaîne de requête s'affichait dans les deux
+            // listes sans que rien ne se charge.
+            this.tryLoad();
         },
 
         // Le composant au-select évalue son x-model dans son propre scope : on capte
