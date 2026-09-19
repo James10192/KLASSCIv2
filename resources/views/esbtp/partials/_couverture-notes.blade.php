@@ -133,6 +133,25 @@
                     </div>
                 </template>
 
+                {{-- Le doublon probable, avant la liste des matières : c'est
+                     l'explication, pas un détail. Une note annoncée manquante
+                     l'a souvent été saisie sur l'homonyme. --}}
+                <template x-if="doublons().length > 0">
+                    <div class="cvn-doublons">
+                        <template x-for="d in doublons()" :key="d.cle">
+                            <div class="cvn-doublon">
+                                <i class="fas fa-user-group"></i>
+                                <span>
+                                    <strong x-text="d.sans"></strong> et
+                                    <strong x-text="d.avec"></strong>
+                                    portent presque le même nom dans cette classe.
+                                    La note a peut-être été saisie sur l'autre dossier.
+                                </span>
+                            </div>
+                        </template>
+                    </div>
+                </template>
+
                 <template x-if="prioritaires().length > 6">
                     <div class="cvn-muet" x-text="`et ${prioritaires().length - 6} autre(s) matière(s)`"></div>
                 </template>
@@ -171,6 +190,10 @@
 .cvn-matiere-qui { font-size: .76rem; color: #64748b; display: flex; align-items: center; gap: .4rem; }
 .cvn-matiere-qui a { color: #0453cb; text-decoration: none; }
 .cvn-muet { color: #94a3b8; font-size: .76rem; }
+.cvn-doublons { display: flex; flex-direction: column; gap: .35rem; margin-bottom: .2rem; }
+.cvn-doublon { display: flex; align-items: flex-start; gap: .5rem; font-size: .78rem; color: #b45309; background: rgba(245,158,11,.08); border: 1px solid rgba(245,158,11,.25); border-radius: 8px; padding: .45rem .6rem; }
+.cvn-doublon > i { margin-top: .15rem; flex-shrink: 0; }
+.cvn-doublon strong { color: #92400e; }
 @@media (max-width: 576px) {
     .cvn-jauge { width: 100%; }
     .cvn-matiere { flex-direction: column; align-items: flex-start; gap: .2rem; }

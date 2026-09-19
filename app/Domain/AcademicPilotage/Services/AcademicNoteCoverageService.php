@@ -8,6 +8,7 @@ use App\Models\ESBTPEvaluation;
 use App\Models\ESBTPInscription;
 use App\Models\ESBTPMatiere;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
@@ -434,8 +435,86 @@ final class AcademicNoteCoverageService
                 'missing_subjects_count' => $missingSubjects->count(),
                 'missing_evaluations_count' => (int) $missingSubjects->sum('missing_count'),
                 'missing_subjects' => $missingSubjects->all(),
+                // Pourquoi l'ecole jurera que la note a ete saisie : elle l'a
+                // ete, sur l'homonyme. Voir `homonymesDansLaClasse()`.
+                'homonymes' => $this->homonymesDansLaClasse($student, $students),
             ];
         })->filter(fn (array $student) => $student['missing_subjects_count'] > 0)->values();
+    }
+
+    /**
+     * Les autres eleves de la MEME classe dont le nom est quasi identique.
+     *
+     * Cas fondateur, ESBTP Abidjan, 2BTS GBAT B : le bandeau annoncait
+     * « 1 note manquante » sur Pathologie pour KOUASSI AFFOUE GRACE RUCHAMA, et
+     * la direction affirmait que tout avait ete saisi. Les deux avaient raison.
+     * La classe portait DEUX inscriptions actives :
+     *
+     *   1443  KOUASSI AFFOUE GRACE          FESBTP23-0322  — note 12,00
+     *   1444  KOUASSI AFFOUE GRACE RUCHAMA  FESBTP24-0022  — rien
+     *
+     * Cinq matieres portaient meme des notes identiques sur les deux dossiers.
+     * Le compteur etait juste ; ce qu'il revelait n'etait pas un oubli de
+     * saisie, c'etait un doublon. Sans ce rapprochement, l'information se lit
+     * comme une accusation et personne ne trouve la cause.
+     *
+     * Aucune requete : la comparaison se fait sur la cohorte deja chargee. On
+     * ne rapproche que dans la classe — un homonyme a l'autre bout de l'ecole
+     * n'explique rien et ferait du bruit.
+     *
+     * @param  array<string, mixed>  $student
+     * @param  Collection<int, array<string, mixed>>  $students
+     * @return list<array<string, mixed>>
+     */
+    private function homonymesDansLaClasse(array $student, Collection $students): array
+    {
+        $reference = $this->nomComparable((string) $student['name']);
+
+        if ($reference === '') {
+            return [];
+        }
+
+        return $students
+            ->reject(fn (array $autre): bool => (int) $autre['id'] === (int) $student['id'])
+            ->filter(function (array $autre) use ($reference): bool {
+                $candidat = $this->nomComparable((string) $autre['name']);
+
+                if ($candidat === '' || $candidat === $reference) {
+                    return $candidat !== '';
+                }
+
+                // Un prenom supplementaire suffit a creer le doublon : on
+                // rapproche donc aussi quand un nom prolonge l'autre, a la
+                // frontiere d'un mot. « GRACE » et « GRACES » ne se
+                // rapprochent pas ; « GRACE » et « GRACE RUCHAMA », si.
+                $court = min(strlen($reference), strlen($candidat));
+                // Le PLUS LONG des deux, par la longueur — pas par l'ordre
+                // alphabetique, que `>` sur deux chaines aurait compare.
+                $long = strlen($reference) >= strlen($candidat) ? $reference : $candidat;
+                $prefixe = substr($reference, 0, $court) === substr($candidat, 0, $court);
+
+                return $prefixe && substr($long, $court, 1) === ' ';
+            })
+            ->map(fn (array $autre): array => [
+                'id' => $autre['id'],
+                'name' => $autre['name'],
+                'matricule' => $autre['matricule'],
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Le nom reduit a ce qui se compare : sans accent, sans casse, sans
+     * espaces superflus. « RUCHÂMA » et « RUCHAMA » sont la meme personne.
+     */
+    private function nomComparable(string $nom): string
+    {
+        $sansAccent = Str::ascii($nom);
+        $majuscules = mb_strtoupper($sansAccent, 'UTF-8');
+        $lettresSeules = preg_replace('/[^A-Z0-9 ]/', ' ', $majuscules) ?? '';
+
+        return trim(preg_replace('/\s+/', ' ', $lettresSeules) ?? '');
     }
 
     private function studentIndex(Collection $inscriptions): Collection

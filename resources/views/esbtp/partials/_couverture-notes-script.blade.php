@@ -145,6 +145,30 @@ if (typeof window.couvertureNotes !== 'function') {
                 }
             },
 
+            /*
+             * Les doublons probables de la classe, quand un eleve a qui il
+             * manque une note porte presque le meme nom qu'un autre.
+             *
+             * C'est l'explication qui manquait : sur ESBTP Abidjan, la note
+             * annoncee manquante AVAIT bien ete saisie — sur l'homonyme. Sans
+             * ce rapprochement, le chiffre se lit comme une accusation et
+             * personne ne trouve la cause.
+             */
+            doublons() {
+                var eleves = (this.donnees && this.donnees.incomplete_students) || [];
+                var paires = [];
+                eleves.forEach(function (e) {
+                    (e.homonymes || []).forEach(function (h) {
+                        paires.push({
+                            cle: e.id + '-' + h.id,
+                            sans: e.name + (e.matricule ? ' (' + e.matricule + ')' : ''),
+                            avec: h.name + (h.matricule ? ' (' + h.matricule + ')' : ''),
+                        });
+                    });
+                });
+                return paires;
+            },
+
             ton() {
                 switch (this.etat()) {
                     case 'complete': return 'cvn--ok';
