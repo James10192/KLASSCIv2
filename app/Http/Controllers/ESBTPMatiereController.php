@@ -542,7 +542,7 @@ class ESBTPMatiereController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-    public function update(Request $request, ESBTPMatiere $matiere, LiaisonsDeMatiere $service)
+    public function update(Request $request, ESBTPMatiere $matiere)
     {
         $this->refuserUneEcueLmd($matiere);
 
@@ -577,36 +577,32 @@ class ESBTPMatiereController extends Controller
         // Mettre à jour la matière
         $matiere->update($validatedData);
 
-        // Les deux listes AVANT l'enregistrement, pour savoir si l'utilisateur
-        // y a touche. Lues ici, apres `update()` mais avant la synchronisation
-        // des pivots plats, qui va les reecrire.
-        $filieresAvant = $matiere->filieres()->pluck('esbtp_filieres.id')->map('intval')->sort()->values()->all();
-        $niveauxAvant = $matiere->niveaux()->pluck('esbtp_niveau_etudes.id')->map('intval')->sort()->values()->all();
-
         [$filiereIds, $niveauIds] = $this->synchroniserLesPivotsPlats($request, $matiere);
 
-        // ON N'ECRIT DANS LA MAQUETTE QUE SI LES LISTES ONT BOUGE.
+        // CET ECRAN N'ECRIT PAS LA MAQUETTE.
         //
-        // Le produit des deux listes n'est pas la maquette : les cases sont
-        // precochees depuis les pivots PLATS, qui sur-rapportent. Une matiere
-        // canoniquement rattachee au seul (Batiment, 1A), mais dont les listes
-        // plates portent [Batiment, TP] x [1A, 2A], voyait son produit poser
-        // TROIS lignes de plus — donc trois bulletins de plus — a la faveur
-        // d'une simple correction de libelle, sans que personne ait rien coche.
+        // Deux versions de ce correctif ont essaye de l'y faire ecrire, et les
+        // deux sont revenues au meme defaut. Le produit des deux listes n'est
+        // pas la maquette : les cases sont precochees depuis les pivots PLATS,
+        // qui sur-rapportent. Une matiere canoniquement rattachee au seul
+        // (Batiment, 1A), mais dont les listes plates portent
+        // [Batiment, TP] x [1A, 2A], voyait son produit poser TROIS lignes de
+        // plus — donc trois bulletins de plus.
         //
-        // Reserver l'ecriture au cas ou l'utilisateur a REELLEMENT modifie une
-        // des deux listes supprime ce cas-la sans rien retirer a l'autre :
-        // cocher une filiere ici continue de la poser en maquette, ce que
-        // l'apercu du formulaire promet explicitement.
-        $couples = $this->lesListesOntChange($filiereIds, $niveauIds, $filieresAvant, $niveauxAvant)
-            ? $this->poserLesCouplesDuFormulaire($matiere, $filiereIds, $niveauIds, $service)
-            : 0;
+        // Ne l'ecrire QUE si les listes ont bouge retirait le cas de la simple
+        // correction de libelle, pas le fond : cocher UNE filiere posait encore
+        // son produit avec TOUS les niveaux. Et rien ici ne sait retirer,
+        // puisque deux listes ne decrivent pas un ensemble de couples qui n'est
+        // pas un rectangle plein. C'etait une roue a cliquet sur la table que
+        // lit le bulletin.
+        //
+        // La maquette s'edite la ou elle se VOIT, couple par couple :
+        // `/esbtp/matieres/classification`. La creation, elle, garde
+        // l'ecriture — voir `poserLesCouplesDuFormulaire()`.
 
         // Rediriger avec un message de succès
         return redirect()->route('esbtp.matieres.index')
-            ->with('success', $couples === 0
-                ? 'La matière a été mise à jour avec succès.'
-                : 'La matière a été mise à jour avec succès. '.$couples.' combinaison(s) filière × niveau rattachée(s).');
+            ->with('success', 'La matière a été mise à jour avec succès.');
     }
 
     /**
@@ -640,39 +636,6 @@ class ESBTPMatiereController extends Controller
         }
 
         return [$filiereIds, $niveauIds];
-    }
-
-    /**
-     * L'utilisateur a-t-il touche a l'une des deux listes ?
-     *
-     * `null` veut dire « le formulaire n'en a pas parle » : rien n'a change de
-     * ce cote. Les deux listes sont comparees en ENSEMBLES — l'ordre des cases
-     * cochees ne veut rien dire, et le comparer ferait passer pour un
-     * changement un simple reordonnancement du navigateur.
-     *
-     * @param  list<int>|null  $filiereIds
-     * @param  list<int>|null  $niveauIds
-     * @param  list<int>  $filieresAvant
-     * @param  list<int>  $niveauxAvant
-     */
-    private function lesListesOntChange(
-        ?array $filiereIds,
-        ?array $niveauIds,
-        array $filieresAvant,
-        array $niveauxAvant
-    ): bool {
-        $normalise = static function (array $ids): array {
-            $ids = array_values(array_unique(array_map('intval', $ids)));
-            sort($ids);
-
-            return $ids;
-        };
-
-        if ($filiereIds !== null && $normalise($filiereIds) !== $normalise($filieresAvant)) {
-            return true;
-        }
-
-        return $niveauIds !== null && $normalise($niveauIds) !== $normalise($niveauxAvant);
     }
 
     /**
