@@ -1981,6 +1981,21 @@ class ESBTPResultatController extends Controller
                 ],
             ]);
 
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            // AVANT le catch large, et c'est le piege §5 de
+            // `klassci-local-test-suite` : le garde de coherence de
+            // `ESBTPResultat` leve une ValidationException, que le
+            // `catch (\Exception)` ci-dessous transformait en 500. Le texte du
+            // message survivait, donc l'utilisateur lisait la bonne phrase —
+            // mais le contrat HTTP etait faux, et un appelant qui distingue
+            // 422 de 500 se trompait de conduite.
+            \DB::rollBack();
+
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+                'errors' => $e->errors(),
+            ], 422);
         } catch (\Exception $e) {
             \DB::rollBack();
             \Log::error('❌ Erreur bulk update moyennes: '.$e->getMessage(), [

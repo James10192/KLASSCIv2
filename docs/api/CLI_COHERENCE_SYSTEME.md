@@ -33,7 +33,7 @@ moyenne générale de **10,67 au lieu de 14,00**, persistée dans `esbtp_resulta
 | Famille | Table | Depuis quand elle est refusée à l'écriture |
 |---|---|---|
 | Évaluation sur une matière du mauvais système | `esbtp_evaluations` | août 2026 (`ESBTPEvaluation::booted()`) |
-| **Moyenne saisie à la main** | `esbtp_resultats` | **septembre 2026** (`ESBTPResultat::booted()`) |
+| **Moyenne « manuelle »** — saisie à la main, **ou écrite par une génération antérieure** | `esbtp_resultats` | **septembre 2026** (`ESBTPResultat::booted()`) |
 
 La seconde atteint la **même ligne de bulletin** sans passer par aucune
 évaluation : `ESBTPResultatController` y écrit depuis trois endroits, dont
@@ -95,7 +95,11 @@ curl -s -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/
 ## Le sort des notes trouvées n'est pas une décision de code
 
 Ces notes ont été saisies par quelqu'un : elles sont mal rangées, pas
-illégitimes. **Ne les effacez jamais d'office** — c'est une politique d'école
+illégitimes. ⚠️ Sur une instance déjà touchée, une bonne part des lignes
+`esbtp_resultats` incohérentes n'ont **pas** été tapées par une personne : elles
+ont été écrites par `persistResultats()` lors d'une génération antérieure. Ne
+lisez donc pas « moyenne manuelle » comme « quelqu'un l'a voulue » au moment
+d'arbitrer. **Ne les effacez jamais d'office** — c'est une politique d'école
 (`.claude/rules/rien-en-dur.md`) :
 
 1. **Rebasculer vers la bonne matière BTS** (endpoint ci-dessus) — si le travail

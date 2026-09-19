@@ -378,7 +378,7 @@ class BulletinService
                 $matiere = $note->evaluation->matiere;
                 $matiereId = $matiere->id;
 
-                if (! $this->matiereAppartientAuBulletin($matiere, $classe, 'evaluation')) {
+                if (! CoherenceSystemeAcademique::matiereRetenue($matiere, $classe, 'bulletin/evaluation')) {
                     continue;
                 }
 
@@ -467,7 +467,7 @@ class BulletinService
             $matiereId = $resultatManuel->matiere_id;
 
             if ($resultatManuel->matiere
-                && ! $this->matiereAppartientAuBulletin($resultatManuel->matiere, $classe, 'moyenne manuelle')) {
+                && ! CoherenceSystemeAcademique::matiereRetenue($resultatManuel->matiere, $classe, 'bulletin/moyenne manuelle')) {
                 continue;
             }
 
@@ -1496,36 +1496,6 @@ class BulletinService
      *
      * @param array<int, array{note: float|int|string, coefficient: float|int, bareme?: float|int|null, is_absent?: bool}> $notes
      */
-    /**
-     * Cette matiere a-t-elle sa place au bulletin de cette classe ?
-     *
-     * CE CONTROLE EST LE SEUL QUI RETRANCHE. Le bulletin BTS est pilote par les
-     * NOTES : une matiere notee y figure, que la maquette la connaisse ou non —
-     * `BulletinSubjectRowsCompleter` le dit lui-meme, « la maquette ajoute des
-     * lignes, elle n'en retire jamais ». Les filtres `btsOnly()` poses ailleurs
-     * dans ce chantier portent tous sur des lecteurs de la MAQUETTE : ils
-     * decident ce qu'elle ajoute, et ne peuvent par construction rien enlever a
-     * une ligne qui porte une note. C'est pourquoi ils ne suffisaient pas.
-     *
-     * Mesure qui a motive ce garde (septembre 2026, esbtp-abidjan) : l'ECUE
-     * `TPGC641` « OGC », evaluee dans la classe BTS 2BTS GBAT E, portait 34
-     * notes. Rejoue en test, un 14/20 en matiere BTS (coef 2) accompagne d'un
-     * 4/20 sur l'ECUE (coef 1) rendait une moyenne generale de **10,67 au lieu
-     * de 14,00** — valeur fausse persistee dans `esbtp_resultats`,
-     * `esbtp_resultats_matieres` et `esbtp_bulletins.moyenne_generale`.
-     *
-     * Le sort des notes ecartees est une decision d'ecole, pas de code : les
-     * rebasculer vers la bonne matiere (`POST /api/cli/evaluations/{id}/matiere`),
-     * deplacer l'evaluation vers sa classe LMD, ou l'annuler.
-     */
-    private function matiereAppartientAuBulletin(
-        ESBTPMatiere $matiere,
-        ESBTPClasse $classe,
-        string $provenance
-    ): bool {
-        return CoherenceSystemeAcademique::matiereRetenue($matiere, $classe, $provenance);
-    }
-
     public function computeMoyenneFromNotesData(array $notes): float
     {
         $totalPoints = 0.0;
@@ -1846,6 +1816,17 @@ class BulletinService
         }
 
         foreach ($resultats as $resultat) {
+            // MEME FILTRE QUE LE BULLETIN, et c'est le point : ces moyennes
+            // alimentent `moyenne_classe`, `meilleure_moyenne` et
+            // `plus_faible_moyenne`, qui s'impriment sur la MEME feuille que la
+            // moyenne de l'eleve. Filtrer l'une sans l'autre faisait cohabiter,
+            // sur un A4, une moyenne juste et des statistiques fausses — un
+            // eleve pouvait depasser la « plus forte moyenne » de sa classe.
+            if ($resultat->matiere
+                && ! CoherenceSystemeAcademique::matiereRetenue($resultat->matiere, $classe, 'stats classe/moyenne manuelle')) {
+                continue;
+            }
+
             if ($resultat->matiere) {
                 try {
                     $coefficient = $this->getCoefficientForCombination(
@@ -1895,6 +1876,11 @@ class BulletinService
 
         foreach ($notes as $note) {
             if (! $note->evaluation || ! $note->evaluation->matiere) {
+                continue;
+            }
+
+            // Voir le commentaire jumeau dans `calculerMoyenneGlobaleEtudiant()`.
+            if (! CoherenceSystemeAcademique::matiereRetenue($note->evaluation->matiere, $classe, 'stats classe/note')) {
                 continue;
             }
 
@@ -3479,10 +3465,31 @@ class BulletinService
         // Group notes by student and matière - using the same logic as resultatEtudiant
         $notesByStudentMatiere = [];
 
+        // Les deux appelants passent toujours la classe ; le parametre est
+        // nullable par heritage. Sans elle on ne PEUT pas savoir de quel
+        // systeme academique releve la note — on le dit plutot que de filtrer
+        // au hasard ou de se taire.
+        $classeDesStats = $classeId ? ESBTPClasse::find($classeId) : null;
+
+        if (! $classeDesStats) {
+            \Log::warning('Statistiques de classe calculees sans classe : les matieres d un autre systeme academique ne peuvent pas etre ecartees.', [
+                'classe_id' => $classeId,
+            ]);
+        }
+
         foreach ($notes as $note) {
             if (! $note->evaluation || ! $note->evaluation->matiere) {
                 \Log::warning('Note without evaluation or matière', ['note_id' => $note->id]);
 
+                continue;
+            }
+
+            // Meme filtre que le bulletin : ces moyennes et ces rangs
+            // s'affichent sur `/esbtp/resultats`, a cote du bulletin PDF. Les
+            // laisser diverger donnait deux chiffres differents pour le meme
+            // eleve selon l'ecran consulte.
+            if ($classeDesStats
+                && ! CoherenceSystemeAcademique::matiereRetenue($note->evaluation->matiere, $classeDesStats, 'stats resultats/note')) {
                 continue;
             }
 

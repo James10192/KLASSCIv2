@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Academique;
 
+use Illuminate\Database\Eloquent\Builder;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPMatiere;
 use Illuminate\Support\Facades\Log;
@@ -62,6 +63,45 @@ final class CoherenceSystemeAcademique
     }
 
 
+
+    /**
+     * Restreint une requete aux lignes INCOHERENTES, pour les recenser.
+     *
+     * Le meme `where()` imbrique etait ecrit trois fois : deux en SQL dans
+     * `CLIMaintenanceController` (evaluations, puis moyennes manuelles), une en
+     * PHP dans `evaluationChangeMatiere()`. La classe qui porte le predicat
+     * canonique en ajoutait donc elle-meme une quatrieme copie le jour de sa
+     * creation — exactement ce que son propre docblock dit avoir appris.
+     *
+     * Les deux tables sont passees en parametre parce que seule la table des
+     * lignes change (`esbtp_evaluations` ou `esbtp_resultats`) : la jointure
+     * sur les classes et les matieres, elle, est la meme.
+     *
+     * @param  Builder<covariant \Illuminate\Database\Eloquent\Model>  $query
+     */
+    public static function contraindreLIncoherence(
+        Builder $query,
+        string $tableClasses = 'esbtp_classes',
+        string $tableMatieres = 'esbtp_matieres'
+    ): Builder {
+        return $query->where(function ($q) use ($tableClasses, $tableMatieres) {
+            // Classe BTS portant une ECUE. `!= LMD` ET `IS NULL`, jamais
+            // `= 'BTS'` : la colonne est nullable et les classes BTS
+            // historiques l'ont nulle.
+            $q->where(function ($bts) use ($tableClasses, $tableMatieres) {
+                $bts->where(function ($sys) use ($tableClasses) {
+                    $sys->where($tableClasses.'.systeme_academique', '!=', self::LMD)
+                        ->orWhereNull($tableClasses.'.systeme_academique');
+                })->whereNotNull($tableMatieres.'.unite_enseignement_id');
+            })
+            // Classe LMD portant une matiere BTS.
+            ->orWhere(function ($lmd) use ($tableClasses, $tableMatieres) {
+                $lmd->where($tableClasses.'.systeme_academique', self::LMD)
+                    ->whereNull($tableMatieres.'.unite_enseignement_id');
+            });
+        });
+    }
+
     /**
      * Memo des ecarts deja journalises, par processus.
      *
@@ -117,6 +157,7 @@ final class CoherenceSystemeAcademique
 
         return false;
     }
+
 
     /** Vide le memo — reservee aux tests, qui rejouent le meme couple. */
     public static function oublierLesEcartsJournalises(): void

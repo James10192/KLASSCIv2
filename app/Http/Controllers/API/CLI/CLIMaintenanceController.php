@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\API\CLI;
 
 use App\Http\Controllers\API\BaseApiController;
+use App\Domain\Academique\CoherenceSystemeAcademique;
 use App\Models\Setting;
 use App\Models\ESBTPEvaluation;
 use App\Models\ESBTPNote;
@@ -1259,20 +1260,7 @@ class CLIMaintenanceController extends BaseApiController
             ->join('esbtp_classes', 'esbtp_classes.id', '=', 'esbtp_evaluations.classe_id')
             ->join('esbtp_matieres', 'esbtp_matieres.id', '=', 'esbtp_evaluations.matiere_id')
             ->whereNull('esbtp_evaluations.deleted_at')
-            ->where(function ($q) {
-                // Classe BTS portant une ECUE.
-                $q->where(function ($bts) {
-                    $bts->where(function ($sys) {
-                        $sys->where('esbtp_classes.systeme_academique', '!=', 'LMD')
-                            ->orWhereNull('esbtp_classes.systeme_academique');
-                    })->whereNotNull('esbtp_matieres.unite_enseignement_id');
-                })
-                // Classe LMD portant une matiere BTS.
-                ->orWhere(function ($lmd) {
-                    $lmd->where('esbtp_classes.systeme_academique', 'LMD')
-                        ->whereNull('esbtp_matieres.unite_enseignement_id');
-                });
-            })
+            ->tap(fn ($q) => CoherenceSystemeAcademique::contraindreLIncoherence($q))
             ->orderBy('esbtp_evaluations.id')
             ->limit(500)
             ->get([
@@ -1353,17 +1341,7 @@ class CLIMaintenanceController extends BaseApiController
             ->join('esbtp_classes', 'esbtp_classes.id', '=', 'esbtp_resultats.classe_id')
             ->join('esbtp_matieres', 'esbtp_matieres.id', '=', 'esbtp_resultats.matiere_id')
             ->whereNull('esbtp_resultats.deleted_at')
-            ->where(function ($q) {
-                $q->where(function ($bts) {
-                    $bts->where(function ($sys) {
-                        $sys->where('esbtp_classes.systeme_academique', '!=', 'LMD')
-                            ->orWhereNull('esbtp_classes.systeme_academique');
-                    })->whereNotNull('esbtp_matieres.unite_enseignement_id');
-                })->orWhere(function ($lmd) {
-                    $lmd->where('esbtp_classes.systeme_academique', 'LMD')
-                        ->whereNull('esbtp_matieres.unite_enseignement_id');
-                });
-            })
+            ->tap(fn ($q) => CoherenceSystemeAcademique::contraindreLIncoherence($q))
             ->orderBy('esbtp_resultats.id')
             ->limit(500)
             ->get([
@@ -1424,10 +1402,13 @@ class CLIMaintenanceController extends BaseApiController
         }
 
         $cible = ESBTPMatiere::find($validated['matiere_id']);
-        $classeEstLmd = ($evaluation->classe?->systeme_academique ?? '') === 'LMD';
-        $cibleEstEcue = $cible->unite_enseignement_id !== null;
+        $classeEstLmd = CoherenceSystemeAcademique::classeEstLmd($evaluation->classe?->systeme_academique);
+        $cibleEstEcue = CoherenceSystemeAcademique::matiereEstEcue($cible->unite_enseignement_id);
 
-        if ($classeEstLmd !== $cibleEstEcue) {
+        if (! CoherenceSystemeAcademique::estCoherente(
+            $evaluation->classe?->systeme_academique,
+            $cible->unite_enseignement_id
+        )) {
             return $this->errorResponse(
                 'Refus : la matiere cible ne correspond pas au systeme de la classe. '
                 .'Classe '.($classeEstLmd ? 'LMD' : 'BTS').', matiere cible '

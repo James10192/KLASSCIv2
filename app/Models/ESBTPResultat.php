@@ -76,6 +76,16 @@ class ESBTPResultat extends Model implements Auditable
      * qui a fait echouer les quatre premieres passes du chantier : un filtre
      * pose chez l'appelant demande a chaque futur ecran de s'en souvenir.
      *
+     * DEUX `find()` PAR LIGNE CREEE, ET C'EST ASSUME. `bulkUpdateMoyennes()`
+     * enregistre une matiere pour tous les eleves d'une classe d'un seul envoi :
+     * sur 60 eleves, cela fait 120 lectures par cle primaire dont 118
+     * redondantes. Un memo statique les supprimerait — et servirait des lignes
+     * perimees d'un test a l'autre sous `RefreshDatabase`, ou les identifiants
+     * se reutilisent apres chaque rollback. Une lecture par cle primaire coute
+     * moins cher qu'un garde qui se trompe. Si le cout se mesure un jour, c'est
+     * a l'appelant en lot de valider une fois avant sa boucle, pas a ce garde
+     * de devenir un cache.
+     *
      * MEME EXCEPTION QUE POUR L'EVALUATION, et pour la meme raison : le
      * controle ne se declenche qu'a la creation, ou si la classe ou la matiere
      * change. Une ligne historiquement incoherente reste modifiable sur sa

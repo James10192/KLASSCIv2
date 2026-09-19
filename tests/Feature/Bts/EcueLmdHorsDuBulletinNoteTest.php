@@ -186,6 +186,102 @@ class EcueLmdHorsDuBulletinNoteTest extends TestCase
         );
     }
 
+    public function test_les_statistiques_de_classe_ecartent_l_ecue_comme_la_moyenne_de_l_eleve(): void
+    {
+        $this->monterLaClasse();
+        $bts = $this->matiereConfiguree();
+        $ecue = $this->uneEcue('TPGC646');
+
+        $evalBts = $this->evaluationDe($bts);
+        $evalEcue = $this->evaluationHeritee($bts, $ecue);
+
+        // DEUX eleves, et un seul porte l'ECUE. C'est ce qui rend le test
+        // capable de voir le defaut : les statistiques de classe (moyenne de
+        // la classe, plus forte, plus faible) s'impriment sur la MEME feuille
+        // que la moyenne de l'eleve. Filtrer l'une sans l'autre laissait un
+        // eleve depasser la « plus forte moyenne » de sa propre classe.
+        $avecEcue = $this->etudiantInscrit();
+        $this->noter($avecEcue, $evalBts, 14);
+        $this->noter($avecEcue, $evalEcue, 4);
+
+        $sansEcue = $this->etudiantInscrit();
+        $this->noter($sansEcue, $evalBts, 10);
+
+        // LA LIGNE HERITEE QUI FAIT LE DEFAUT, et sans elle le test ne prouve
+        // rien. Les statistiques de classe lisent `esbtp_resultats` en
+        // priorite, et n'en viennent aux notes que si la table est vide. Or
+        // `persistResultats()` ecrit cette table a chaque generation — donc sur
+        // une instance touchee, l'ECUE y a SA ligne, ecrite par une generation
+        // anterieure au correctif. C'est elle qui empoisonne, et elle survit a
+        // la regeneration : `persistResultats()` n'efface jamais la ligne d'une
+        // matiere qui a disparu du bulletin.
+        //
+        // `withoutEvents` parce que le garde de `ESBTPResultat` refuse
+        // desormais cette ecriture : on reproduit un heritage, pas un geste
+        // encore possible.
+        ESBTPResultat::withoutEvents(fn () => ESBTPResultat::create([
+            'etudiant_id' => $avecEcue->id,
+            'classe_id' => $this->classe->id,
+            'matiere_id' => $ecue->id,
+            'annee_universitaire_id' => $this->annee->id,
+            'periode' => 'semestre1',
+            'moyenne' => 4,
+            'coefficient' => 1,
+        ]));
+
+        ESBTPResultat::withoutEvents(fn () => ESBTPResultat::create([
+            'etudiant_id' => $avecEcue->id,
+            'classe_id' => $this->classe->id,
+            'matiere_id' => $bts->id,
+            'annee_universitaire_id' => $this->annee->id,
+            'periode' => 'semestre1',
+            'moyenne' => 14,
+            'coefficient' => 2,
+        ]));
+
+        $this->seedConfiguredBulletin(
+            $avecEcue->id, $this->classe->id, $this->annee->id, 'semestre1', [$bts->id], []
+        );
+
+        $donnees = app(BulletinService::class)->genererDonneesBulletinPreview(
+            $avecEcue->id, $this->classe->id, $this->annee->id, 'semestre1'
+        );
+
+        $moyenneEleve = (float) $donnees['moyenneGlobale'];
+        $meilleure = (float) $donnees['meilleure_moyenne'];
+        $plusFaible = (float) $donnees['plus_faible_moyenne'];
+        $moyenneClasse = (float) $donnees['moyenne_classe'];
+
+        // Temoin : les statistiques sont bien calculees sur les deux eleves.
+        $this->assertGreaterThan(0.0, $moyenneClasse, 'Temoin : sans statistiques, le test ne prouve rien.');
+
+        // Tolerance a 0,2 et non a 0,01 : les statistiques de classe appliquent
+        // la note d'assiduite (+0,13 pour zero absence) que la moyenne du
+        // bulletin n'applique pas. Le test vise le DEFAUT — 14 au lieu de
+        // 10,67 — pas le bareme d'assiduite, qui a ses propres tests et
+        // dont la valeur est un reglage d'instance.
+        $this->assertEqualsWithDelta(14.0, $meilleure, 0.2, 'La plus forte moyenne compte 14 (sans l ECUE), pas 10,67.');
+        $this->assertEqualsWithDelta(10.0, $plusFaible, 0.2, 'La plus faible moyenne est celle de l eleve sans ECUE.');
+        $this->assertEqualsWithDelta(
+            ($meilleure + $plusFaible) / 2,
+            $moyenneClasse,
+            0.01,
+            'La moyenne de la classe est la moyenne des deux eleves.'
+        );
+        $this->assertGreaterThan(
+            11.0,
+            $meilleure,
+            'Sans le filtre sur les statistiques, la plus forte moyenne vaut 10,67 : c est le defaut.'
+        );
+
+        $this->assertLessThanOrEqual(
+            $meilleure + 0.01,
+            $moyenneEleve,
+            "Un eleve ne peut pas depasser la « plus forte moyenne » de sa classe : c'est le "
+            .'symptome visible du filtre pose sur la moyenne mais pas sur les statistiques.'
+        );
+    }
+
     public function test_une_moyenne_manuelle_sur_une_ecue_est_refusee_dans_une_classe_bts(): void
     {
         $this->monterLaClasse();

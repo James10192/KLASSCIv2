@@ -66,13 +66,18 @@ curl -s -H "Authorization: Bearer $TOKEN" \
   "data": {
     "filiere": "BATIMENT", "filiere_id": 3,
     "niveau": "2ème année", "niveau_id": 2,
-    "semestres_renseignes": false,   // ← tant que c'est faux, le bulletin ignore les semestres
-    "totaux": { "matieres": 18, "semestre_1": 0, "semestre_2": 10, "les_deux": 8 },
+    "semestres_renseignes": false,   // ← au grain du COUPLE : « au moins une ligne validée »
+    // Les totaux comptent le semestre EFFECTIF, pas la colonne brute : ici
+    // aucune ligne n'est validée, donc les 18 matières valent « les deux ».
+    "totaux": { "matieres": 18, "semestre_1": 0, "semestre_2": 0, "les_deux": 18 },
     "matieres": [
       {
         "matiere_id": 41, "matiere": "Mathématiques générales", "code": "MATH",
         "active": true,
-        "semestre": 2, "semestre_libelle": "semestre 2", "semestre_renseigne": false,
+        "semestre": 2,                      // la colonne brute, pour le diagnostic
+        "semestre_effectif": null,          // ce que le BULLETIN retient
+        "semestre_libelle": "les deux semestres",
+        "semestre_renseigne": false,
         "classification": "tronc_commun",
         "ordre_bulletin": 1,
         "places_par_semestre": { "2": 1 }   // place au bulletin, par semestre
@@ -81,6 +86,19 @@ curl -s -H "Authorization: Bearer $TOKEN" \
   }
 }
 ```
+
+**`semestre` et `semestre_effectif` peuvent différer, et c'est le point.** Une ligne
+non validée porte souvent un semestre — `ChargementDeMaquette` en pose un sans
+valider — et vaut pourtant « les deux » au bulletin. Lire la colonne brute faisait
+annoncer « semestre 2 » pour des matières que le bulletin sort **aux deux**, sur le
+cas fondateur même du chantier (Bâtiment 2ᵉ année, dix matières figées au
+semestre 2). `semestre_effectif` passe par la normalisation unique de
+`SemestreDeMaquette::declarationEffective()`.
+
+⚠️ `semestres_renseignes` est au grain du **couple** (« au moins une ligne
+validée »), alors que la règle effective est au grain de la **ligne**. Sur un couple
+mixte, le lire seul fait croire que les semestres bruts s'appliquent partout : c'est
+`semestre_effectif`, ligne par ligne, qui dit ce que le bulletin retient.
 
 Erreurs : `403` ability manquante, `404` filière ou niveau introuvable.
 
@@ -200,6 +218,12 @@ semestres, et reprendre les semestres du planning général de l'année.
 
 ## Historique
 
+- **Septembre 2026 — changement de comportement sur `GET`.** `semestre_libelle` et
+  les trois `totaux` comptent désormais le semestre **effectif**
+  (`SemestreDeMaquette::declarationEffective()`) et non la colonne brute ; nouveau
+  champ `semestre_effectif`. **Tout appelant qui lisait `semestre_libelle` ou les
+  totaux voit ses valeurs changer** sur les couples dont les lignes ne sont pas
+  validées — c'est-à-dire là où l'ancienne réponse contredisait le bulletin.
 - **Septembre 2026** — `POST /retirer` accepte désormais une ECUE LMD, alors que le
   chargement continue de la refuser. Les refuser des deux côtés rendait une ligne
   posée par erreur impossible à enlever autrement qu'en base. Cette ligne du tableau
