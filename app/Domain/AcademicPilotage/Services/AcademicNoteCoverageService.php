@@ -87,6 +87,52 @@ final class AcademicNoteCoverageService
     }
 
     /**
+     * Le meme constat, sans le detail nominatif par etudiant.
+     *
+     * Le payload complet porte, pour CHAQUE evaluation et CHAQUE eleve, la
+     * note chiffree, le nom de qui l'a saisie, celui de qui l'a corrigee et
+     * les horodatages. Un seul ecran l'affiche : le tableau de bord du
+     * pilotage, qui exige `academic_health.view`. Le bandeau de couverture,
+     * lui, n'en lit pas une ligne — il compte.
+     *
+     * Or la route qui sert le bandeau accepte aussi `academic_health.view_own`,
+     * pour que l'enseignant qui saisit voie ce qui manque. Il recevait donc,
+     * dans une reponse dont son ecran n'affiche rien, les notes de tous les
+     * eleves de la classe sur toutes les matieres, y compris celles qu'il
+     * n'enseigne pas.
+     *
+     * Le retrait se fait A LA REPONSE, jamais avant la mise en cache : sinon
+     * la premiere lecture par un enseignant servirait une version amputee a
+     * tous les suivants.
+     *
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     */
+    public function sansLeDetailParEtudiant(array $payload): array
+    {
+        if (isset($payload['subjects']) && is_array($payload['subjects'])) {
+            $payload['subjects'] = array_map(static function (array $matiere): array {
+                unset(
+                    $matiere['evaluations'],
+                    $matiere['missing_students'],
+                    $matiere['actors'],
+                    $matiere['actor_ids'],
+                );
+
+                return $matiere;
+            }, $payload['subjects']);
+        }
+
+        // Vide plutot qu'absent : une cle qui disparait casse un appelant qui
+        // la parcourt, une cle vide non.
+        if (array_key_exists('incomplete_students', $payload)) {
+            $payload['incomplete_students'] = [];
+        }
+
+        return $payload;
+    }
+
+    /**
      * Les etudiants de la classe pour cette periode.
      *
      * Le filtre par `classe_id` brut se trompait sur le tronc commun : un

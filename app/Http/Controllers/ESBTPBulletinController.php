@@ -1404,13 +1404,20 @@ class ESBTPBulletinController extends Controller
         // de generer. Le pre-controle dit deja combien d'etudiants sont
         // generables ; il ne disait pas ce qu'il faudrait saisir pour que les
         // autres le deviennent.
-        $preflight['couverture'] = app(\App\Domain\AcademicPilotage\Services\AcademicNoteCoverageService::class)
-            ->summarize(
+        //
+        // SANS le detail nominatif : la reponse portait, pour chaque evaluation
+        // et chaque eleve, la note chiffree et le nom de qui l'a saisie. Rien
+        // ne l'affiche ici, et sur une classe de soixante-dix eleves cela
+        // represente l'essentiel du poids de la reponse.
+        $couverture = app(\App\Domain\AcademicPilotage\Services\AcademicNoteCoverageService::class);
+        $preflight['couverture'] = $couverture->sansLeDetailParEtudiant(
+            $couverture->summarize(
                 $request->integer('annee_universitaire_id'),
                 (string) $request->input('periode'),
                 null,
                 (int) $classe->id
-            );
+            )
+        );
 
         return response()->json([
             'ok' => $preflight['ok'],
