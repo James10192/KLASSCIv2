@@ -105,13 +105,35 @@ class ESBTPBulletinConfigController extends Controller
             $classeFiliereId = $classe->filiere_id;
             $classeNiveauId = $classe->niveau_etude_id;
 
+            // La MAQUETTE fait foi : `esbtp_matiere_filiere_niveau`, au grain
+            // (matière, filière, niveau). Cet écran lisait les deux pivots
+            // plats `esbtp_matiere_filiere` et `esbtp_matiere_niveau`, qui sont
+            // deux listes indépendantes : leur produit invente des couples que
+            // la maquette ne porte pas. Le bulletin, lui, se compose déjà sur
+            // la maquette (BtsBulletinSubjectResolver) — les deux écrans
+            // pouvaient donc afficher deux listes différentes pour une même
+            // classe, et retirer une matière d'un côté ne la retirait pas de
+            // l'autre.
+            //
+            // Repli sur l'ancienne lecture quand la maquette ne porte rien pour
+            // ce couple : une instance qui n'a jamais ouvert l'écran Maquette
+            // garde exactement ce qu'elle affichait.
+            $idsDeLaMaquette = ($classeFiliereId && $classeNiveauId)
+                ? \App\Models\ESBTPMatiereFilierNiveau::matiereIdsForCombo($classeFiliereId, $classeNiveauId)
+                    ->map(static fn ($id) => (int) $id)
+                : collect();
+
             $matieres = \App\Models\ESBTPMatiere::with(['filieres:id,name,code', 'niveaux:id,name,code'])
                 ->where('is_active', true)
                 ->orderBy('name')
                 ->get()
-                ->filter(function ($matiere) use ($classeFiliereId, $classeNiveauId) {
+                ->filter(function ($matiere) use ($classeFiliereId, $classeNiveauId, $idsDeLaMaquette) {
                     if (! $classeFiliereId || ! $classeNiveauId) {
                         return false;
+                    }
+
+                    if ($idsDeLaMaquette->isNotEmpty()) {
+                        return $idsDeLaMaquette->contains($matiere->id);
                     }
 
                     return $matiere->filieres->pluck('id')->contains($classeFiliereId)

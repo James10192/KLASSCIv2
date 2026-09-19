@@ -2,12 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Domain\BtsTroncCommun\LiaisonsDeMatiere;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPFiliere;
 use App\Models\ESBTPMatiere;
 use App\Models\ESBTPNiveauEtude;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 class ESBTPMatiereController extends Controller
@@ -512,10 +514,22 @@ class ESBTPMatiereController extends Controller
             'coefficient' => 'required|numeric|min:0',
             'niveau_etude_id' => 'nullable|exists:esbtp_niveau_etudes,id',
             'filiere_id' => 'nullable|exists:esbtp_filieres,id',
+            // Ce que le formulaire envoie reellement. Leur absence de cette
+            // liste laissait `update()` ne lire que les deux cles au singulier,
+            // qui n'existent nulle part dans ce formulaire.
+            'filieres' => 'sometimes|array',
+            'filieres.*' => 'integer|exists:esbtp_filieres,id',
+            'niveaux' => 'sometimes|array',
+            'niveaux.*' => 'integer|exists:esbtp_niveau_etudes,id',
+            'liaisons_presentes' => 'sometimes|boolean',
             'type_formation' => 'nullable|in:generale,technologique_professionnelle',
             'couleur' => 'nullable|string|max:50',
             'is_active' => 'required|boolean',
         ]);
+
+        // `$validatedData` alimente `$matiere->update()` : les deux listes n'y
+        // ont pas leur place, elles se posent par leurs relations juste apres.
+        unset($validatedData['filieres'], $validatedData['niveaux'], $validatedData['liaisons_presentes']);
 
         // Ajouter l'identifiant de l'utilisateur courant
         $validatedData['updated_by'] = Auth::id();
@@ -523,23 +537,56 @@ class ESBTPMatiereController extends Controller
         // Mettre à jour la matière
         $matiere->update($validatedData);
 
-        // Synchroniser les filières
-        if ($request->has('filiere_id')) {
-            $matiere->filieres()->sync($request->filiere_id);
-        } else {
-            $matiere->filieres()->detach();
+        // Le formulaire envoie `filieres[]` et `niveaux[]`. L'ancien code ne
+        // lisait que `filiere_id` et `niveau_etude_id`, absents de ce
+        // formulaire : les deux tests étaient donc toujours faux, les deux
+        // branches `else` s'exécutaient, et enregistrer une matière détachait
+        // TOUTES ses filières et TOUS ses niveaux, quoi qu'on ait coché.
+        //
+        // `liaisons_presentes` est le témoin posé par le formulaire. Sans lui,
+        // « aucune case cochée » et « champ absent » arrivent identiques, et on
+        // ne peut pas distinguer « tout retirer » d'une mise à jour partielle
+        // qui ne parle pas des liaisons.
+        $listesSoumises = $request->boolean('liaisons_presentes');
+
+        $filiereIds = $this->identifiantsSoumis($request, 'filieres', 'filiere_id');
+        if ($filiereIds !== null || $listesSoumises) {
+            $matiere->filieres()->sync($filiereIds ?? []);
         }
 
-        // Synchroniser les niveaux d'études
-        if ($request->has('niveau_etude_id')) {
-            $matiere->niveaux()->sync($request->niveau_etude_id);
-        } else {
-            $matiere->niveaux()->detach();
+        $niveauIds = $this->identifiantsSoumis($request, 'niveaux', 'niveau_etude_id');
+        if ($niveauIds !== null || $listesSoumises) {
+            $matiere->niveaux()->sync($niveauIds ?? []);
         }
 
         // Rediriger avec un message de succès
         return redirect()->route('esbtp.matieres.index')
             ->with('success', 'La matière a été mise à jour avec succès.');
+    }
+
+    /**
+     * Les identifiants qu'une requête pose pour une liste (filières, niveaux).
+     *
+     * Accepte la liste au pluriel comme la clé historique au singulier.
+     * Rend `null` quand la requête ne dit rien de cette liste — ce qui n'est
+     * pas la même chose qu'une liste vide, et c'est toute la différence entre
+     * « ne touche à rien » et « détache tout ».
+     *
+     * @return list<int>|null
+     */
+    private function identifiantsSoumis(Request $request, string $cleListe, string $cleUnique): ?array
+    {
+        if ($request->has($cleListe) && is_array($request->input($cleListe))) {
+            return array_values(array_unique(array_filter(
+                array_map('intval', $request->input($cleListe)),
+            )));
+        }
+
+        if ($request->filled($cleUnique)) {
+            return [(int) $request->input($cleUnique)];
+        }
+
+        return null;
     }
 
     /**
@@ -821,7 +868,7 @@ class ESBTPMatiereController extends Controller
      *
      * @return \Illuminate\Http\JsonResponse
      */
-    public function updateLiaisons(Request $request, ESBTPMatiere $matiere)
+    public function updateLiaisons(Request $request, ESBTPMatiere $matiere, LiaisonsDeMatiere $service)
     {
         try {
             $validated = $request->validate([
@@ -832,26 +879,38 @@ class ESBTPMatiereController extends Controller
 
             $liaisons = $validated['liaisons'] ?? [];
 
-            // Supprimer toutes les liaisons existantes pour cette matière
-            \App\Models\ESBTPMatiereFilierNiveau::where('matiere_id', $matiere->id)->delete();
-
-            // Réinsérer les nouvelles combinaisons (dédoublonnées)
-            $seen = [];
+            // Voulues, dédoublonnées.
+            $voulues = [];
             foreach ($liaisons as $liaison) {
-                $key = $liaison['filiere_id'].'_'.$liaison['niveau_id'];
-                if (isset($seen[$key])) {
-                    continue;
-                }
-                $seen[$key] = true;
-
-                \App\Models\ESBTPMatiereFilierNiveau::create([
-                    'matiere_id'      => $matiere->id,
-                    'filiere_id'      => $liaison['filiere_id'],
-                    'niveau_etude_id' => $liaison['niveau_id'],
-                ]);
+                $voulues[(int) $liaison['filiere_id'].'|'.(int) $liaison['niveau_id']] = [
+                    (int) $liaison['filiere_id'],
+                    (int) $liaison['niveau_id'],
+                ];
             }
 
-            $count = count($seen);
+            // Un DIFF, et non un « supprime tout puis recrée ». L'ancien code
+            // effaçait les lignes existantes avant de les réinsérer nues :
+            // toute combinaison conservée y perdait sa place au bulletin, son
+            // semestre et son statut tronc commun / spécialité. Sur une
+            // matière qui couvre huit combinaisons, régler la neuvième
+            // remettait les huit autres à zéro, sans un mot.
+            DB::transaction(function () use ($matiere, $voulues, $service) {
+                $actuelles = \App\Models\ESBTPMatiereFilierNiveau::where('matiere_id', $matiere->id)
+                    ->get(['filiere_id', 'niveau_etude_id']);
+
+                foreach ($actuelles as $ligne) {
+                    $cle = (int) $ligne->filiere_id.'|'.(int) $ligne->niveau_etude_id;
+                    if (! array_key_exists($cle, $voulues)) {
+                        $service->retirer($matiere->id, (int) $ligne->filiere_id, (int) $ligne->niveau_etude_id);
+                    }
+                }
+
+                foreach ($voulues as [$filiereId, $niveauId]) {
+                    $service->poser($matiere->id, $filiereId, $niveauId);
+                }
+            });
+
+            $count = count($voulues);
             $message = $count > 0
                 ? "Liaisons mises à jour avec succès ! {$count} combinaison(s) configurée(s)."
                 : 'Liaisons mises à jour avec succès ! Toutes les liaisons ont été supprimées.';

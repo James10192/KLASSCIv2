@@ -121,6 +121,12 @@
                                         <p class="main-card-subtitle">Filières et niveaux d'étude</p>
                                     </div>
                                     <div class="main-card-body">
+                                        {{-- Témoin : ce formulaire porte bien les deux listes. Sans lui,
+                                             « aucune case cochée » arrive au serveur comme « champ absent »,
+                                             et le contrôleur ne peut pas distinguer un retrait volontaire
+                                             d'une mise à jour qui ne parle pas des liaisons. --}}
+                                        <input type="hidden" name="liaisons_presentes" value="1">
+
                                         <!-- Filières associées (multi-sélection) -->
                                         <div class="mb-3">
                                             <label class="form-label">

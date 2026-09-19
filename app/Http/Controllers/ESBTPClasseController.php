@@ -529,19 +529,45 @@ class ESBTPClasseController extends Controller
                 ->forClasse($lmdMatieres, $lmdVolumeBudget);
         }
 
+        // La MAQUETTE fait foi, comme pour le bulletin. Ce listing croisait les
+        // deux pivots plats (`whereHas(filieres)` ET `whereHas(niveaux)`), dont
+        // le produit cartésien invente des couples absents de la maquette —
+        // c'est ce que `diagnoseLiaisons` appelle des combinaisons fantômes.
+        // L'onglet Matières d'une classe montrait donc des matières que son
+        // bulletin ne composait pas.
+        //
+        // Repli sur l'ancienne lecture quand la maquette est vide pour ce
+        // couple : aucune instance ne perd ce qu'elle affichait.
+        $idsDeLaMaquette =
+            $classeFiliereId && $classeNiveauId
+                ? \App\Models\ESBTPMatiereFilierNiveau::matiereIdsForCombo(
+                    $classeFiliereId,
+                    $classeNiveauId,
+                )
+                : collect();
+
         $combinationMatieres = ESBTPMatiere::with([
             "filieres:id,name,code",
             "niveaux:id,name,code",
         ])
             ->where("is_active", true)
-            ->when($classeFiliereId, function ($query) use ($classeFiliereId) {
+            ->when($idsDeLaMaquette->isNotEmpty(), function ($query) use (
+                $idsDeLaMaquette,
+            ) {
+                $query->whereIn("id", $idsDeLaMaquette);
+            })
+            ->when($idsDeLaMaquette->isEmpty() && $classeFiliereId, function (
+                $query,
+            ) use ($classeFiliereId) {
                 $query->whereHas("filieres", function ($q) use (
                     $classeFiliereId,
                 ) {
                     $q->where("esbtp_filieres.id", $classeFiliereId);
                 });
             })
-            ->when($classeNiveauId, function ($query) use ($classeNiveauId) {
+            ->when($idsDeLaMaquette->isEmpty() && $classeNiveauId, function (
+                $query,
+            ) use ($classeNiveauId) {
                 $query->whereHas("niveaux", function ($q) use (
                     $classeNiveauId,
                 ) {

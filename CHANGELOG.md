@@ -14,6 +14,15 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ### Correctifs
 
+- **La maquette d'un semestre n'écrase plus celle de l'autre** — charger la maquette du second semestre après celle du premier faisait basculer d'un semestre à l'autre toute matière commune aux deux : elle disparaissait du bulletin du premier, sans un mot. L'import accepte désormais « les deux semestres », et le semestre se pose aussi matière par matière. Quand un chargement contredit un semestre déjà validé, le lot entier est refusé avec la liste des matières concernées, plutôt que d'écrire un choix que personne n'a fait.
+
+- **Enregistrer une matière ne détache plus toutes ses filières et tous ses niveaux** (`/esbtp/matieres/{id}` → Modifier) — le formulaire envoyait ses deux listes sous un nom que l'enregistrement ne lisait pas : il concluait à chaque fois qu'aucune n'était cochée et vidait les deux, quoi qu'on ait coché à l'écran.
+
+- **Régler les liaisons d'une matière ne remet plus les autres à zéro** — l'enregistrement supprimait toutes ses combinaisons avant de les recréer nues : chaque combinaison conservée y perdait sa place au bulletin, son semestre et son statut tronc commun / spécialité. Seules les combinaisons réellement retirées le sont maintenant.
+
+- **L'onglet Matières d'une classe et la configuration des matières du bulletin montrent la même liste que le bulletin** — ces deux écrans croisaient la liste des filières et celle des niveaux d'une matière, dont le produit invente des couples que la maquette ne porte pas. Ils lisent désormais la maquette, comme le bulletin. Une école dont la maquette est vide pour un couple garde exactement l'affichage qu'elle avait.
+
+
 - **« Séances de cours » et « Planning Général » n'apparaissent plus au menu de ceux à qui la page répond 403** — deux entrées du bloc « Enseignement » s'affichaient dès la permission de consultation des emplois du temps, alors que leurs pages exigent autre chose. Aucun rôle livré ne voyait la différence ; une école qui compose un rôle personnalisé avec la seule consultation des emplois du temps, si. Les deux liens interrogent désormais la page elle-même plutôt qu'une copie de ses conditions d'accès — copie qui, pour « Planning Général », en oubliait la moitié.
 
 - **Réinscription LMD : une L1 déjà spécialisée n'est plus renvoyée vers les autres parcours** (`/esbtp/reinscription/{id}/finaliser`, réinscription groupée) — le correctif précédent traitait toute Licence 1 (et tout Master 1) comme une année d'orientation : une école qui ouvre des L1 Bâtiment et Travaux Publics distinctes dès l'entrée se voyait proposer les deux L2, et le lot refusait de passer la promotion entière. Le choix s'ouvre désormais uniquement quand le parcours quitté ne se poursuit pas l'année suivante (un tronc commun) et que la mention offre plusieurs parcours. Aucun numéro d'année n'en décide plus. Le message du lot ne parle plus de « L2 ».
@@ -66,6 +75,8 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 - **Importer la maquette d'un second parcours partage l'unité au lieu de refuser** (`POST /api/cli/lmd/import`) — le refus d'écrasement, posé quand les colonnes du partage n'existaient pas encore, bloquait précisément le cas pour lequel elles ont été créées : une unité au code unique enseignée dans deux parcours avec des éléments différents. L'import laisse maintenant la fiche de l'unité au premier parcours, rattache le second par le lien parcours-unité avec son propre semestre, y grave son crédit lorsqu'il diffère, et réserve ses éléments à sa maquette. Le refus ne subsiste que pour un élément déjà rattaché à une autre unité, que l'import déplacerait.
 
 ### Ajouts
+
+- **La maquette d'une filière et d'un niveau se relit et se corrige à distance** — il n'existait aucun moyen d'en obtenir le contenu autrement qu'en simulant un import, donc en connaissant d'avance la liste qu'on cherchait à découvrir ; et aucun moyen d'en retirer une matière, le seul chemin passant par un écran qui effaçait au passage les réglages des autres combinaisons. La lecture rend le semestre de chaque matière, sa place au bulletin et l'état des semestres ; le retrait simule par défaut et refuse une matière qui porte des évaluations sur ce couple, tant qu'on ne le lui confirme pas.
 
 - **Les réglages de composition de la moyenne arrivent sur les instances déjà ouvertes** — les défauts déclarés dans le code n'étaient chargés nulle part : un réglage ajouté n'atteignait aucune école, et l'écran de configuration le déclarait « introuvable ». Les trois nouveaux sont créés au déploiement, sans jamais écraser une valeur déjà posée.
 
