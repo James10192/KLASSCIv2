@@ -1857,6 +1857,11 @@ class BulletinService
         // Decider apres le filtre supprime la branche `return 0` : ou bien il
         // reste des moyennes retenues, ou bien on lit les notes — elles-memes
         // filtrees par `calculerMoyenneDepuisNotes()`.
+        //
+        // UN SECOND CAS CHANGE AU PASSAGE, et il vaut mieux le dire : une ligne
+        // dont la `matiere_id` est pendante (FK cassee) rendait 0, elle mene
+        // maintenant au meme repli. C'est meilleur — l'eleve garde ses notes —
+        // mais ce n'est pas le defaut que ce correctif visait.
         if (empty($resultatsParMatiere)) {
             return $this->calculerMoyenneDepuisNotes(
                 $etudiantId,

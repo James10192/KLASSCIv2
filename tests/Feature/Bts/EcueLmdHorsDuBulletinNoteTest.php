@@ -9,6 +9,9 @@ use App\Models\ESBTPNote;
 use App\Models\ESBTPMatiere;
 use App\Models\ESBTPResultat;
 use App\Models\ESBTPUniteEnseignement;
+use App\Models\User;
+use Spatie\Permission\Models\Role;
+use Spatie\Permission\PermissionRegistrar;
 use App\Services\BulletinService;
 use App\Services\ESBTP\BtsCurrentResultSnapshotService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -340,6 +343,113 @@ class EcueLmdHorsDuBulletinNoteTest extends TestCase
             0.01,
             "L'ecran des resultats doit rendre 14,00 comme le bulletin. Sans le filtre sur les "
             .'DEUX chemins, il rend 9,00 — et contredit le PDF pour le meme eleve.'
+        );
+    }
+
+    public function test_un_eleve_dont_toutes_les_moyennes_enregistrees_sont_ecartees_retombe_sur_ses_notes(): void
+    {
+        $this->monterLaClasse();
+        $bts = $this->matiereConfiguree();
+        $ecue = $this->uneEcue('TPGC649');
+
+        $avecEcue = $this->etudiantInscrit();
+        $this->noter($avecEcue, $this->evaluationDe($bts), 14);
+
+        // Sa SEULE ligne enregistree de la periode porte sur l'ECUE, et il
+        // n'en a AUCUNE sur la matiere BTS : c'est ce qui rend la branche
+        // atteignable. L'apercu n'ecrit rien (`persistOfficial: false`), donc
+        // le decor tient jusqu'au calcul des statistiques.
+        ESBTPResultat::withoutEvents(fn () => ESBTPResultat::create([
+            'etudiant_id' => $avecEcue->id,
+            'classe_id' => $this->classe->id,
+            'matiere_id' => $ecue->id,
+            'annee_universitaire_id' => $this->annee->id,
+            'periode' => 'semestre1',
+            'moyenne' => 4,
+            'coefficient' => 1,
+        ]));
+
+        // Saisir une note fait ecrire une ligne `esbtp_resultats` pour la
+        // matiere BTS — c'est un observateur, pas l'apercu, qui la pose. On la
+        // retire ici pour ISOLER la branche visee : l'eleve dont il ne reste
+        // aucune moyenne enregistree retenue apres filtrage. Sans ce retrait,
+        // la ligne BTS survit au filtre, `$resultatsParMatiere` n'est pas vide,
+        // et la branche n'est jamais atteinte — c'est ce qui m'avait fait
+        // conclure a tort qu'elle etait intestable.
+        ESBTPResultat::where('etudiant_id', $avecEcue->id)
+            ->where('matiere_id', $bts->id)
+            ->forceDelete();
+
+        $this->seedConfiguredBulletin(
+            $avecEcue->id, $this->classe->id, $this->annee->id, 'semestre1', [$bts->id], []
+        );
+
+        $donnees = app(BulletinService::class)->genererDonneesBulletinPreview(
+            $avecEcue->id, $this->classe->id, $this->annee->id, 'semestre1'
+        );
+
+        $this->assertGreaterThan(
+            0.0,
+            (float) $donnees['moyenne_classe'],
+            "L'eleve ne doit pas disparaitre des statistiques : ses notes existent, seule sa "
+            .'moyenne enregistree etait posee sur une matiere etrangere.'
+        );
+        $this->assertEqualsWithDelta(
+            14.0,
+            (float) $donnees['meilleure_moyenne'],
+            0.2,
+            'Le repli sur les notes doit rendre 14, pas 0.'
+        );
+    }
+
+    private function unSuperAdmin(): User
+    {
+        Role::findOrCreate('superAdmin', 'web');
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+        $user = User::withoutEvents(fn () => User::factory()->create());
+        $user->assignRole('superAdmin');
+
+        return $user;
+    }
+
+    /**
+     * Le CINQUIEME calcul de moyenne, et sa branche annuelle.
+     *
+     * `ESBTPResultatController::resultatEtudiant()` construit son propre
+     * tableau de matieres. Les onglets semestriels le remplacent ensuite par le
+     * snapshot (filtre) ; la branche annuelle d'une classe dont un seul
+     * semestre est renseigne ne remplace RIEN — elle renomme les libelles. Une
+     * ECUE y ressortait dans « Resultats par matiere » et pesait dans la
+     * moyenne du pied, pendant que le KPI d'en-tete affichait la valeur filtree.
+     */
+    public function test_la_fiche_resultats_annuelle_n_affiche_pas_l_ecue(): void
+    {
+        $this->monterLaClasse();
+        $bts = $this->matiereConfiguree();
+        $ecue = $this->uneEcue('TPGC650');
+
+        $etudiant = $this->etudiantInscrit();
+        $this->noter($etudiant, $this->evaluationDe($bts), 14);
+        $this->noter($etudiant, $this->evaluationHeritee($bts, $ecue), 4);
+
+        $reponse = $this->actingAs($this->unSuperAdmin())
+            ->get(route('esbtp.resultats.etudiant', [
+                'etudiant' => $etudiant->id,
+                'classe_id' => $this->classe->id,
+                'annee_universitaire_id' => $this->annee->id,
+                'periode' => 'annuel',
+            ]));
+
+        $reponse->assertOk();
+
+        $matieres = $reponse->viewData('notesByMatiere') ?? [];
+
+        // Temoin : sans la matiere BTS, le test ne prouve rien.
+        $this->assertArrayHasKey($bts->id, $matieres, 'Temoin : la matiere BTS doit etre dans le tableau.');
+        $this->assertArrayNotHasKey(
+            $ecue->id,
+            $matieres,
+            'Une ECUE ne figure pas dans « Resultats par matiere » d une classe BTS.'
         );
     }
 

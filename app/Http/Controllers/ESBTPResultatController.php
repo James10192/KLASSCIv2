@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Domain\Academique\CoherenceSystemeAcademique;
 use App\Exceptions\CoefficientMissingException;
 use App\Domain\BtsTroncCommun\BtsAnnualAggregationService;
 use App\Domain\BtsTroncCommun\BtsUiPresenter;
@@ -796,6 +797,26 @@ class ESBTPResultatController extends Controller
                 continue;
             }
 
+            // CINQUIEME calcul de moyenne du depot, et il a son propre
+            // `$notesByMatiere`. Les onglets semestriels le remplacent ensuite
+            // par le snapshot, qui est filtre — mais la branche annuelle
+            // `annual_incomplete` ne le remplace PAS : elle se contente de
+            // renommer les libelles. Une ECUE notee ressortait donc dans
+            // « Resultats par matiere » et pesait dans la moyenne du pied de
+            // tableau, pendant que le KPI d'en-tete affichait, lui, la valeur
+            // filtree. Deux chiffres contradictoires sur un seul ecran — le
+            // defaut meme que ce chantier existe pour tuer.
+            //
+            // Le filtre est pose a l'INGESTION, pas dans la branche : il couvre
+            // ainsi les trois branches et tout futur lecteur de ce tableau.
+            //
+            // `$classe` est nullable ici (`:664`, `find()` sur un id optionnel).
+            // Sans classe on ne PEUT pas savoir de quel systeme releve la note :
+            // on n'ecarte rien plutot que d'ecarter au hasard.
+            if ($classe && ! CoherenceSystemeAcademique::matiereRetenue($matiere, $classe, 'resultats etudiant/note')) {
+                continue;
+            }
+
             // Initialize if this is the first note for this matière
             if (! isset($notesByMatiere[$matiere_id])) {
                 $notesByMatiere[$matiere_id] = [
@@ -909,6 +930,13 @@ class ESBTPResultatController extends Controller
 
         foreach ($resultats as $resultat) {
             if (! $resultat->matiere) {
+                continue;
+            }
+
+            // Second chemin d'ingestion du meme tableau — voir le commentaire
+            // jumeau dans la boucle des notes. Dans `BulletinService`, filtrer
+            // un seul des deux chemins revenait a n'en filtrer aucun.
+            if ($classe && ! CoherenceSystemeAcademique::matiereRetenue($resultat->matiere, $classe, 'resultats etudiant/moyenne enregistree')) {
                 continue;
             }
 

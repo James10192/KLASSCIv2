@@ -165,6 +165,52 @@ classe × matière). Une moyenne qui bouge sans explication est pire qu'une moye
 fausse : on ne sait même pas qu'il faut chercher. C'est le piège #12 de
 `klassci-debugging-discipline.md`.
 
+### La leçon qui a coûté trois passes de revue : un lecteur peut avoir DEUX portes
+
+Le correctif de lecture a été posé trois fois, et deux fois il ne servait à rien —
+non pas parce qu'un lecteur avait été oublié, mais parce qu'**un lecteur déjà
+corrigé avait un second chemin d'ingestion qui annulait le premier**.
+
+`BulletinService::calculateStudentStatsFixed()` lit les notes, **puis** lit
+`esbtp_resultats` — et cette seconde lecture n'ajoute pas, elle **écrase et
+recrée** l'entrée que le filtre du premier chemin venait d'écarter :
+
+```php
+// Manual moyenne overrides the note-computed value
+$notesByStudentMatiere[$etudiantId][$matiereId]['total_points'] = $resultat->moyenne;
+```
+
+Filtrer un seul des deux chemins revenait donc à **n'en filtrer aucun** dès qu'une
+ligne héritée existe — c'est-à-dire dans le cas même que le correctif visait.
+Mesuré : `/esbtp/resultats` rendait **9,00** pendant que le PDF affichait **14,00**,
+pour le même élève.
+
+**Le contrôle à faire avant de déclarer un lecteur corrigé** : compter ses chemins
+d'ingestion, pas ses méthodes. Un `foreach` qui écrit dans le même tableau qu'un
+autre `foreach` est un second chemin, même s'il est 30 lignes plus bas.
+
+Les cinq calculs de moyenne du dépôt, et leur état :
+
+| calcul | ce qu'il alimente | chemins |
+|---|---|---|
+| `BulletinService::buildDonneesBulletin()` | bulletin, `esbtp_resultats`, `esbtp_resultats_matieres` | notes + moyennes enregistrées |
+| `BulletinService::calculerMoyenneGlobaleEtudiant()` | `moyenne_classe`, `meilleure_moyenne`, `plus_faible_moyenne` | moyennes enregistrées, repli sur notes |
+| `BulletinService::calculateStudentStatsFixed()` | moyennes et rangs de `/esbtp/resultats`, bande KPI | notes **+** moyennes enregistrées qui écrasent |
+| `BtsCurrentResultSnapshotService` | écart « Officiel / Courant », Bilan de la fiche étudiant | notes + moyennes enregistrées |
+| **`ESBTPResultatController::resultatEtudiant()`** | tableau « Résultats par matière », KPI Matières / Coefficients | notes + moyennes enregistrées |
+
+Le cinquième est le plus piégeux : ses onglets **semestriels** remplacent
+entièrement son calcul par le snapshot (donc sains), mais la branche annuelle
+`annual_incomplete` ne remplace rien — elle se contente de **renommer** les
+libellés. Une ECUE y ressortait dans le tableau et pesait dans la moyenne du pied,
+pendant que le KPI d'en-tête affichait la valeur filtrée. Deux chiffres
+contradictoires sur un seul écran.
+
+**Corollaire de méthode.** Un filtre large de tests qui ne bouge pas prouve
+l'absence de régression, **jamais** la présence d'une couverture. Le quatrième
+lecteur a survécu à une passe entière parce que `grep -rn "calculateStudentStatsFixed" tests/`
+rendait zéro, et qu'un « 327 tests, chiffres identiques » avait tenu lieu de preuve.
+
 ### Recenser la famille 2
 
 ```bash
