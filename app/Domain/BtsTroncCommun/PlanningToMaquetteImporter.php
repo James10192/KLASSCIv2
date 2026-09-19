@@ -160,6 +160,11 @@ final class PlanningToMaquetteImporter
             ->with('matiere:id,name')
             ->where('filiere_id', $filiereId)
             ->where('niveau_etude_id', $niveauId)
+            // Maquette BTS. Sans cette garde, une ECUE presente dans le pivot
+            // remontait dans l'apercu d'import, et `appliquer()` lui posait
+            // `semestre_renseigne` — c'est le seul chemin qui peut faire
+            // compter une ECUE comme une ligne validee de maquette BTS.
+            ->whereHas('matiere', fn ($q) => $q->btsOnly())
             ->get(['matiere_id', 'semestre', 'semestre_renseigne']);
 
         $maquette = [];

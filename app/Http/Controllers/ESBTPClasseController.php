@@ -1015,12 +1015,22 @@ class ESBTPClasseController extends Controller
                 return $matiere;
             });
 
+        // Listing GLOBAL : sans garde, ce panneau propose les elements
+        // constitutifs LMD a cote des matieres BTS — et les cocher les ecrit
+        // dans `esbtp_classe_matiere`, que le resolveur du bulletin relit en
+        // repli. C'est le chemin le plus court entre « je coche » et « une
+        // matiere LMD s'imprime sur un bulletin BTS ».
+        //
+        // La garde ne vaut QUE pour les matieres a rattacher. Celles qui le
+        // sont deja restent affichees telles quelles : les filtrer ici rendrait
+        // une ECUE deja attachee impossible a detacher.
         $availableMatieres = ESBTPMatiere::with([
             "filieres:id,name,code",
             "niveaux:id,name,code",
             "liaisonsFilieresNiveaux.filiere:id,name,code",
             "liaisonsFilieresNiveaux.niveauEtude:id,name,code",
         ])
+            ->btsOnly()
             ->where("is_active", true)
             ->orderBy("name")
             ->get()

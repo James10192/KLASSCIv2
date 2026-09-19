@@ -39,7 +39,24 @@ grep -rnE "ESBTPMatiere::(orderBy|all|query|where\('is_active')" app/Http/Contro
 
 Chaque résultat = à auditer :
 - **Listing GLOBAL non scopé** (`->get()` direct, pas de `whereHas('filieres'/'niveaux'/'liaisonsFilieresNiveaux')`) → **FUITE** → applique le filtre.
-- **Listing scopé filière+niveau via `liaisonsFilieresNiveaux`** (pivot 3-way `esbtp_matiere_filiere_niveau`) → **PAS de fuite** (l'import LMD ne peuple pas ce pivot) → laisser.
+- **Listing scopé filière+niveau via `liaisonsFilieresNiveaux`** (pivot 3-way `esbtp_matiere_filiere_niveau`) → **FUITE AUSSI. Applique le filtre.**
+
+  Cette rule a dit le contraire pendant trois mois — « pas de fuite, l'import LMD
+  ne peuple pas ce pivot, laisser » — et c'est exact sur l'import : `LMDImportService`
+  n'écrit jamais cette table. Mais **d'autres écrivains le font**, eux sans garde :
+  `ESBTPMatiereController::addToCombination()`, son `update()`, et le picker
+  « matières disponibles » de `/esbtp/classes/{id}/matieres`. Il suffit d'un clic.
+
+  Mesuré sur esbtp-abidjan (septembre 2026) : `TPOH243` « Alimentation en eau et
+  QTE », une ECUE, portait une ligne `(TRAVAUX_PUBLICS, 2A)` et sortait donc sur
+  les bulletins de Travaux Publics 2ᵉ année — invisible des deux écrans qui
+  auraient permis de l'en retirer.
+
+  **Le coût de cette phrase n'est pas le défaut, c'est l'audit qu'elle a clos.**
+  Six lecteurs scopés ont été examinés, déclarés sains sur cette prémisse, et
+  laissés tels quels. Une rule qui absout est plus dangereuse qu'une rule absente :
+  ne réécris pas celle-ci en « sain » sans avoir compté les lignes de ce pivot qui
+  pointent vers une matière à `unite_enseignement_id` non nul.
 - ⚠️ `whereHas('filieres')` seul (pivot 2-way `esbtp_matiere_filiere`) → **PEUT fuiter** (l'import LMD peuple `esbtp_matiere_filiere`). Vérifier : si pas aussi `whereHas('niveaux')`, ajouter `whereNull('unite_enseignement_id')`.
 
 ## Garde-fou avant d'appliquer

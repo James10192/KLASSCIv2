@@ -70,14 +70,23 @@ class ESBTPPlanningConfigController extends Controller
             }
         }
 
+        // Planning BTS : le LMD a `ESBTPLMDPlanningController`, et
+        // `ESBTPEmploiTempsController` l'aiguille vers `MatiereTreeBuilder`.
+        // La lecture scopee elle-meme fuit — une ECUE qui a obtenu une ligne
+        // dans le pivot canonique BTS y remonte comme une matiere ordinaire.
         $matieresLiees = ESBTPMatiere::where("is_active", true)
+            ->btsOnly()
             ->whereIn("id", $matiereIds)
             ->orderBy("name")
             ->get();
 
         // Si aucune matière liée, proposer toutes les matières disponibles pour association
         if ($matieresLiees->isEmpty()) {
+            // Repli GLOBAL : sans garde, un combo BTS sans maquette proposait
+            // TOUTES les matieres de l'instance, ECUE comprises, pretes a etre
+            // planifiees.
             $matieres = ESBTPMatiere::where("is_active", true)
+                ->btsOnly()
                 ->orderBy("name")
                 ->get();
             $modeAssociation = true;
@@ -1042,7 +1051,7 @@ class ESBTPPlanningConfigController extends Controller
             return $p->matiere && $linkedMatiereIds->contains($p->matiere->id);
         });
 
-        $totalMatieres = \App\Models\ESBTPMatiereFilierNiveau::activeMatiereCountForCombo($filiereId, $niveauId);
+        $totalMatieres = \App\Models\ESBTPMatiereFilierNiveau::btsMatiereCountForCombo($filiereId, $niveauId);
 
         $s1 = $valides->where('semestre', 1);
         $s2 = $valides->where('semestre', 2);

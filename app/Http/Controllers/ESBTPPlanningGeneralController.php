@@ -144,7 +144,7 @@ class ESBTPPlanningGeneralController extends Controller
                     return $planification->matiere && $linkedMatiereIds->contains($planification->matiere->id);
                 });
 
-                $matieresLieesALaCombinaisonCount = \App\Models\ESBTPMatiereFilierNiveau::activeMatiereCountForCombo($filiere->id, $niveau->id);
+                $matieresLieesALaCombinaisonCount = \App\Models\ESBTPMatiereFilierNiveau::btsMatiereCountForCombo($filiere->id, $niveau->id);
 
                 // Calculer les statistiques
                 $totalMatieres = $matieresLieesALaCombinaisonCount; // Toutes les matières liées à cette combinaison

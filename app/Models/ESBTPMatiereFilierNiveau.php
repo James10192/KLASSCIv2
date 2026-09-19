@@ -98,10 +98,18 @@ class ESBTPMatiereFilierNiveau extends Model
             ->all();
     }
 
-    public static function activeMatiereCountForCombo($filiereId, $niveauId)
+    /**
+     * Combien de matieres BTS actives porte ce couple.
+     *
+     * Le nom dit « bts » parce que le compte l'est : une ECUE LMD ayant une
+     * ligne dans ce pivot gonflait le « Total matieres » du planning et faussait
+     * le denominateur du taux de configuration. Un compteur dont la portee ne
+     * se lit pas dans son nom rend un chiffre faux sans que personne ne cherche.
+     */
+    public static function btsMatiereCountForCombo($filiereId, $niveauId)
     {
         return static::forCombo($filiereId, $niveauId)
-            ->whereHas('matiere', fn($q) => $q->where('is_active', true))
+            ->whereHas('matiere', fn($q) => $q->where('is_active', true)->btsOnly())
             ->count();
     }
 }

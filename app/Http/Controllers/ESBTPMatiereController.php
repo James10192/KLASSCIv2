@@ -492,8 +492,32 @@ class ESBTPMatiereController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
+    /**
+     * Une ECUE LMD ne se modifie pas par les ecrans BTS.
+     *
+     * `prepareMatieresListing()` les ecarte de l'index, donc le lien n'est
+     * jamais offert — mais la liaison de modele de route, elle, resout
+     * n'importe quel identifiant : /esbtp/matieres/174/edit s'ouvrait. Et
+     * l'enregistrement qui suit ecrit le produit filieres x niveaux dans le
+     * pivot canonique BTS, c'est-a-dire exactement la ligne qui fait sortir une
+     * ECUE sur un bulletin. Les ECUE se gerent dans /esbtp/lmd/ue.
+     *
+     * Symetrique de la garde que le cote LMD pose depuis toujours
+     * (`ESBTPLMDPlanningController` refuse en 422 une matiere sans unite).
+     */
+    private function refuserUneEcueLmd(ESBTPMatiere $matiere): void
+    {
+        abort_if(
+            $matiere->unite_enseignement_id !== null,
+            404,
+            "Cette matière est un élément constitutif LMD : elle se gère dans /esbtp/lmd/ue.",
+        );
+    }
+
     public function edit(ESBTPMatiere $matiere)
     {
+        $this->refuserUneEcueLmd($matiere);
+
         // $this->authorize('update', $matiere); // Temporairement désactivé pour test
 
         $filieres = ESBTPFiliere::where('is_active', true)->get();
@@ -520,6 +544,8 @@ class ESBTPMatiereController extends Controller
      */
     public function update(Request $request, ESBTPMatiere $matiere, LiaisonsDeMatiere $service)
     {
+        $this->refuserUneEcueLmd($matiere);
+
         // Valider les données du formulaire
         $validatedData = $request->validate([
             'name' => 'required|string|max:255',
@@ -1117,10 +1143,23 @@ class ESBTPMatiereController extends Controller
             // `LiaisonsDeMatiere` : il était recopié ici, et les deux copies
             // avaient déjà commencé à diverger.
             DB::transaction(function () use ($matiereIds, $combinations, $service, &$addedCount) {
-                $matieres = ESBTPMatiere::whereIn('id', $matiereIds)->get()->keyBy('id');
+                // `getAvailableForCombination`, le lecteur jumeau, ecarte deja
+                // les ECUE LMD. L'ecrivain, lui, ne le faisait pas : garder la
+                // soumission revenait a garder la porte ouverte et a n'en
+                // fermer que l'affiche. Une page restee ouverte, un rejeu, un
+                // appel en masse suffisaient a poser une ECUE dans une maquette
+                // BTS — ou plus aucun ecran ne sait ensuite l'atteindre.
+                $matieres = ESBTPMatiere::whereIn('id', $matiereIds)->btsOnly()->get()->keyBy('id');
 
                 foreach ($matiereIds as $matiereId) {
                     if (! $matieres->get($matiereId)) {
+                        // Un refus muet ne se cherche pas : on dit lequel, et
+                        // d'ou il venait.
+                        \Log::warning('Rattachement a une maquette BTS refuse : matiere absente ou ECUE LMD.', [
+                            'matiere_id' => (int) $matiereId,
+                            'user_id' => optional(auth()->user())->id,
+                        ]);
+
                         continue;
                     }
 
@@ -1159,7 +1198,11 @@ class ESBTPMatiereController extends Controller
     public function apiList(Request $request)
     {
         try {
-            $query = ESBTPMatiere::where('is_active', true);
+            // Listing GLOBAL : les filtres filiere/niveau ci-dessous sont
+            // optionnels, et le consommateur connu (la saisie de moyenne du
+            // bulletin) n'en passe aucun. Sans cette garde il propose les ECUE
+            // LMD a cote des matieres BTS.
+            $query = ESBTPMatiere::where('is_active', true)->btsOnly();
 
             // Filtrer par terme de recherche si fourni
             if ($request->has('search') && $request->search) {

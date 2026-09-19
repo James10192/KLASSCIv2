@@ -233,8 +233,13 @@ class BulletinInlineConfigurationService
 
     private function matieresPourConfiguration(ESBTPClasse $classe, int $anneeUniversitaireId, string $periode): Collection
     {
+        // Configuration d'un bulletin BTS (le LMD a `ESBTPLMDBulletinController`).
+        // La lecture est scopee sur le combo de la classe, ce qui ne suffit pas :
+        // une ECUE ayant une ligne dans ce pivot y remonte. Le repli plus bas,
+        // lui, exige les deux pivots plats — qu'un ECUE n'a jamais tous les deux.
         $official = ESBTPMatiere::query()
             ->where('is_active', true)
+            ->btsOnly()
             ->whereHas('liaisonsFilieresNiveaux', function ($query) use ($classe) {
                 $query->where('filiere_id', $classe->filiere_id)
                     ->where('niveau_etude_id', $classe->niveau_etude_id);

@@ -27,6 +27,7 @@
         // niveaux) = OR-logique sur les combinaisons → IGC liée à GTP-1A + IGC liée
         // à GBAT-2A étaient considérées comme liée à GTP-2A à tort.
         $coeffMatieresLiees = \App\Models\ESBTPMatiere::where('is_active', true)
+            ->btsOnly()
             ->whereHas('liaisonsFilieresNiveaux', function ($q) use ($coeffFiliere, $coeffNiveau) {
                 $q->where('filiere_id', $coeffFiliere->id)
                   ->where('niveau_etude_id', $coeffNiveau->id);
