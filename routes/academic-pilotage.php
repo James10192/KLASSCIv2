@@ -59,7 +59,14 @@ Route::prefix('esbtp')->name('esbtp.')
             ->middleware([
                 ForceJsonResponse::class,
                 'permission:module.academic_pilotage.access',
-                'permission:academic_health.view',
+                // `view_own` suffit ICI, et nulle part ailleurs sur ce groupe :
+                // l'enseignant qui saisit les notes est le premier a devoir
+                // savoir ce qui manque, et c'est lui qui n'avait pas le droit
+                // de le lire. Le perimetre n'est pas relache pour autant —
+                // `AcademicCoverageController::show()` refuse en 403 une classe
+                // hors du perimetre rendu par `dashboardScope()`, qui pour un
+                // enseignant se limite a ce qu'il enseigne, corrige ou a saisi.
+                'permission:academic_health.view|academic_health.view_own',
                 'throttle:60,1',
             ])
             ->name('pilotage-academique.classes.couverture');

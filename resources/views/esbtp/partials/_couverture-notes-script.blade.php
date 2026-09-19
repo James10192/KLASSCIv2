@@ -40,7 +40,13 @@ if (typeof window.couvertureNotes !== 'function') {
 
                 // Une note enregistrée ailleurs sur la page rend ce chiffre
                 // faux : le bandeau se remet à jour sans rechargement.
-                this._surInvalidation = () => this.charger();
+                //
+                // EN FORÇANT LE RECALCUL. Le serveur garde la couverture dix
+                // minutes ; redemander sans le dire rendait la même réponse
+                // périmée, et le bandeau continuait d'annoncer les notes qu'on
+                // venait justement de saisir. C'est le seul appel qui force :
+                // un simple changement de classe se contente du cache.
+                this._surInvalidation = () => this.charger(true);
                 window.addEventListener('couverture:invalider', this._surInvalidation);
 
                 if (this.pret()) { this.charger(); }
@@ -75,13 +81,14 @@ if (typeof window.couvertureNotes !== 'function') {
                 if (this.pret()) { this.charger(); }
             },
 
-            url() {
+            url(forcer) {
                 return this.modele.replace('__CLASSE__', String(this.classeId))
                     + '?annee_universitaire_id=' + encodeURIComponent(this.anneeId)
-                    + '&periode=' + encodeURIComponent(this.periode);
+                    + '&periode=' + encodeURIComponent(this.periode)
+                    + (forcer ? '&recalculer=1' : '');
             },
 
-            async charger() {
+            async charger(forcer) {
                 if (!this.pret()) { return; }
 
                 // Un choix rapide dans un sélecteur lance plusieurs requêtes :
@@ -93,7 +100,7 @@ if (typeof window.couvertureNotes !== 'function') {
                 this.erreur = '';
                 this.interdit = false;
                 try {
-                    var res = await fetch(this.url(), { headers: { 'Accept': 'application/json' } });
+                    var res = await fetch(this.url(forcer), { headers: { 'Accept': 'application/json' } });
                     if (jeton !== this._requete) { return; }
                     if (res.status === 403) { this.interdit = true; return; }
                     if (!res.ok) { throw new Error('Suivi des notes indisponible (' + res.status + ').'); }

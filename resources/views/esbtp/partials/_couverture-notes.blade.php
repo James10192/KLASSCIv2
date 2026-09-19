@@ -11,13 +11,19 @@
     quelqu'un qui ne peut rien y faire. Il ne s'affiche pas non plus tant
     qu'aucune classe n'est choisie.
 
+    LE DROIT SE LIT AU PLURIEL. La garde ne connaissait que `academic_health.view`,
+    que l'enseignant n'a pas : il a `academic_health.view_own`. Le bandeau était
+    donc invisible pour la seule personne qui saisit les notes — y compris dans
+    la fenêtre de saisie, où il avait pourtant été posé. Le périmètre reste tenu
+    par l'endpoint, qui refuse en 403 une classe hors de celui de l'acteur.
+
     @param int|null    $classeId   null si la page fait choisir la classe
     @param int|null    $anneeId
     @param string      $periode    semestre1 | semestre2 | annuel
     @param bool        $replie     détail plié par défaut (true)
     @param string|null $titre      surcharge du libellé
 --}}
-@can('academic_health.view')
+@canany(['academic_health.view', 'academic_health.view_own'])
 @php
     $_cvnClasseId = $classeId ?? null;
     $_cvnAnneeId = $anneeId ?? null;
@@ -163,4 +169,4 @@
 </style>
 
 @include('esbtp.partials._couverture-notes-script')
-@endcan
+@endcanany
