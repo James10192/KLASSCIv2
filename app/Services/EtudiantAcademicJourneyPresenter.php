@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Domain\Academique\CoherenceSystemeAcademique;
 use App\Models\ESBTPBulletin;
 use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPInscription;
@@ -179,11 +180,21 @@ class EtudiantAcademicJourneyPresenter
         }
 
         return ESBTPResultat::query()
+            ->with(['matiere', 'classe'])
             ->where('etudiant_id', $etudiant->id)
             ->whereIn('classe_id', $classeIds)
             ->whereIn('annee_universitaire_id', $anneeIds)
             ->whereNotNull('moyenne')
-            ->get();
+            ->get()
+            // Ce repli sert EXACTEMENT le cas d'avant-bulletin (`btsMetrics()`
+            // ne le lit que si aucun bulletin n'est calcule), soit le moment ou
+            // une ECUE mal rangee se voit le plus. Et il est rendu sur le MEME
+            // ecran que `$btsAnnualSnapshot`, deja filtre : sans ce filtre-ci,
+            // la meme page affichait deux moyennes differentes.
+            ->filter(fn (ESBTPResultat $resultat) => ! $resultat->matiere
+                || ! $resultat->classe
+                || CoherenceSystemeAcademique::matiereRetenue($resultat->matiere, $resultat->classe, 'parcours etudiant/moyenne enregistree'))
+            ->values();
     }
 
     private function btsMetrics(Collection $bulletins, Collection $resultats): array

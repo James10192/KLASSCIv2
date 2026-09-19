@@ -4,6 +4,7 @@ namespace Tests\Feature\Bts;
 
 use App\Domain\Academique\CoherenceSystemeAcademique;
 use App\Models\ESBTPEtudiant;
+use App\Models\ESBTPInscription;
 use App\Models\ESBTPEvaluation;
 use App\Models\ESBTPNote;
 use App\Models\ESBTPMatiere;
@@ -13,6 +14,7 @@ use App\Models\User;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
 use App\Services\BulletinService;
+use App\Services\ReeinscriptionService;
 use App\Services\ESBTP\BtsCurrentResultSnapshotService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -163,6 +165,27 @@ class EcueLmdHorsDuBulletinNoteTest extends TestCase
             (float) DB::table('esbtp_bulletins')->where('id', $bulletin->id)->value('moyenne_generale'),
             0.01,
             'La moyenne figee au bulletin ne compte que la matiere BTS.'
+        );
+
+        // CETTE ASSERTION N'EST PAS UNE PREUVE DU FILTRE, ET C'EST ECRIT ICI POUR
+        // QUE PERSONNE NE S'Y TROMPE. `buildBulletinPdf()` refait son propre
+        // calcul depuis `esbtp_notes` et l'enregistre — une revue y a donc vu un
+        // sixieme calcul non filtre. Le filtre a bien ete pose, puis RETIRE pour
+        // mesurer : ce test restait vert. La raison est plus bas dans la methode,
+        // `array_replace()` remplace le calcul du controleur par la projection du
+        // service, deja filtree, laquelle re-enregistre la bonne moyenne.
+        //
+        // Ce qui est garde ici, c'est donc l'ETAT FINAL : apres un telechargement,
+        // la base porte toujours la moyenne juste. Si quelqu'un deplace ce
+        // `array_replace` ou retire une cle de la projection, ce test tombe.
+        app(\App\Http\Controllers\ESBTPBulletinController::class)
+            ->buildBulletinPdf($bulletin->fresh());
+
+        $this->assertEqualsWithDelta(
+            14.0,
+            (float) DB::table('esbtp_bulletins')->where('id', $bulletin->id)->value('moyenne_generale'),
+            0.01,
+            'Apres un telechargement de PDF, la base doit toujours porter la moyenne filtree.'
         );
     }
 
@@ -450,6 +473,69 @@ class EcueLmdHorsDuBulletinNoteTest extends TestCase
             $ecue->id,
             $matieres,
             'Une ECUE ne figure pas dans « Resultats par matiere » d une classe BTS.'
+        );
+
+        // La cle absente ne prouve que la LISTE. La moyenne, elle, est calculee
+        // a part : un filtre pose sur l'affichage et oublie sur le calcul
+        // laisserait ce test au vert avec une moyenne fausse a l'ecran.
+        $this->assertEqualsWithDelta(
+            14.0,
+            (float) $reponse->viewData('moyenneGenerale'),
+            0.01,
+            'La moyenne annuelle affichee ne compte que la matiere BTS (sans le garde : 9,00).'
+        );
+    }
+
+    /**
+     * Le SEPTIEME calcul : celui qui n'affiche pas, il DECIDE.
+     *
+     * `ReeinscriptionService` lit les notes de l'annee pour trancher entre
+     * passage, rattrapage et redoublement. Une ECUE notee 4/20 y pesait dans la
+     * moyenne ET comptait comme une matiere echouee — pour un eleve comme pour
+     * une promotion entiere, via la reinscription groupee.
+     */
+    public function test_la_decision_de_reinscription_ne_compte_pas_l_ecue(): void
+    {
+        $this->monterLaClasse();
+        $bts = $this->matiereConfiguree();
+        $ecue = $this->uneEcue('TPGC651');
+
+        $etudiant = $this->etudiantInscrit();
+        $this->noter($etudiant, $this->evaluationDe($bts), 14);
+        $this->noter($etudiant, $this->evaluationHeritee($bts, $ecue), 4);
+
+        // Ce service lit la colonne TEXTE `annee_universitaire`, que le decor
+        // commun ne renseigne pas. Mise a jour en masse : la passer par le
+        // modele reveillerait l'observateur de notes pour rien.
+        ESBTPNote::where('etudiant_id', $etudiant->id)
+            ->update(['annee_universitaire' => $this->annee->name]);
+
+        $inscription = ESBTPInscription::where('etudiant_id', $etudiant->id)->firstOrFail();
+
+        $analyse = app(ReeinscriptionService::class)
+            ->analyserSituationEtudiantParInscription($inscription);
+
+        $this->assertNotEmpty(
+            $analyse['notes'],
+            'Temoin : sans note retenue, une moyenne de 14 ne prouverait rien.'
+        );
+
+        $this->assertEqualsWithDelta(
+            14.0,
+            (float) $analyse['moyenne_generale'],
+            0.01,
+            'La decision se prend sur la seule matiere BTS (sans le garde : 9,00).'
+        );
+
+        $matieresEchouees = collect($analyse['matieres_echouees'])
+            ->map(fn ($ligne) => (int) $ligne['matiere']->id)
+            ->all();
+
+        $this->assertNotContains(
+            $ecue->id,
+            $matieresEchouees,
+            "Une ECUE ne peut pas compter comme une matiere echouee d'une classe BTS : "
+            .'elle plafonne le rattrapage et pousse au redoublement.'
         );
     }
 

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Domain\Bulletins\FiltresBulletins;
 use App\Http\Controllers\Concerns\ExporteBulletinsParTranches;
+use App\Domain\Academique\CoherenceSystemeAcademique;
 use App\Domain\AcademicPilotage\Exceptions\AcademicPilotageException;
 use App\Domain\AcademicPilotage\Services\BtsBulkBulletinGenerationService;
 use App\Domain\AcademicPilotage\Services\BulletinGenerationReadinessService;
@@ -813,6 +814,29 @@ class ESBTPBulletinController extends Controller
 
                 foreach ($notesByMatiere as $matiereId => $notes) {
                     $matiere = $notes->first()->matiere; // already eager-loaded via ->with(['matiere', 'evaluation'])
+
+                    // CE CALCUL EST INERTE AUJOURD'HUI, ET LE FILTRE RESTE QUAND MEME.
+                    // Une revue l'a signale comme « sixieme calcul de moyenne, et le
+                    // seul qui ecrive » : il relit bien `esbtp_notes` lui-meme, sans
+                    // passer par `BulletinService`, et il ecrit sa moyenne plus bas
+                    // (`$bulletin->save()`). MESURE : ce n'est pas une fuite.
+                    // `array_replace($data, getOfficialBulletinTemplateDefaults(...))`
+                    // remplace ensuite `resultatsGeneraux`, `resultatsTechniques` et
+                    // `moyenneGlobale` par la projection du service, deja filtree ; et
+                    // cette projection re-enregistre la bonne moyenne apres celle-ci.
+                    // Le document imprime et la base portent donc la valeur juste,
+                    // avec ou sans ce filtre — verifie en retirant le filtre : le test
+                    // reste vert.
+                    //
+                    // Il est garde pour une seule raison : le jour ou l'ordre de
+                    // `array_replace` change, ou qu'une cle disparait de la projection,
+                    // ce calcul-ci reprend la main en silence. La vraie correction
+                    // serait qu'il cesse d'exister et lise le service, comme l'apercu ;
+                    // c'est un refactor a part, note dans
+                    // `.claude/rules/lmd-ecue-leak-bts-picker.md`.
+                    if ($matiere && ! CoherenceSystemeAcademique::matiereRetenue($matiere, $bulletin->classe, 'pdf bulletin/note')) {
+                        continue;
+                    }
 
                     if ($matiere && $notes->count() > 0) {
                         // Calculer la moyenne pondérée de la matière avec les coefficients des évaluations

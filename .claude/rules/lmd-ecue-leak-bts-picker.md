@@ -189,22 +189,92 @@ pour le même élève.
 d'ingestion, pas ses méthodes. Un `foreach` qui écrit dans le même tableau qu'un
 autre `foreach` est un second chemin, même s'il est 30 lignes plus bas.
 
-Les cinq calculs de moyenne du dépôt, et leur état :
+### Les calculs de moyenne TROUVÉS À CE JOUR — ce nombre n'est pas une garantie
 
-| calcul | ce qu'il alimente | chemins |
-|---|---|---|
-| `BulletinService::buildDonneesBulletin()` | bulletin, `esbtp_resultats`, `esbtp_resultats_matieres` | notes + moyennes enregistrées |
-| `BulletinService::calculerMoyenneGlobaleEtudiant()` | `moyenne_classe`, `meilleure_moyenne`, `plus_faible_moyenne` | moyennes enregistrées, repli sur notes |
-| `BulletinService::calculateStudentStatsFixed()` | moyennes et rangs de `/esbtp/resultats`, bande KPI | notes **+** moyennes enregistrées qui écrasent |
-| `BtsCurrentResultSnapshotService` | écart « Officiel / Courant », Bilan de la fiche étudiant | notes + moyennes enregistrées |
-| **`ESBTPResultatController::resultatEtudiant()`** | tableau « Résultats par matière », KPI Matières / Coefficients | notes + moyennes enregistrées |
+> La version précédente de cette section écrivait « **les cinq calculs de moyenne
+> du dépôt** ». C'était un absolu jamais mesuré, et il était faux : il y en a au
+> moins **neuf**. C'est exactement le défaut que le piège #14 de
+> `klassci-debugging-discipline.md` raconte pour lui-même — un inventaire
+> démenti quatre fois, chaque version publiée comme définitive. Lisez donc ce
+> tableau pour ce qu'il est : ce qui a été trouvé, pas ce qui existe.
 
-Le cinquième est le plus piégeux : ses onglets **semestriels** remplacent
+| calcul | ce qu'il alimente | chemins | état |
+|---|---|---|---|
+| `BulletinService::buildDonneesBulletin()` | bulletin, `esbtp_resultats`, `esbtp_resultats_matieres` | notes + moyennes enregistrées | filtré |
+| `BulletinService::calculerMoyenneGlobaleEtudiant()` | `moyenne_classe`, `meilleure_moyenne`, `plus_faible_moyenne` | moyennes enregistrées, repli sur notes | filtré |
+| `BulletinService::calculateStudentStatsFixed()` | moyennes et rangs de `/esbtp/resultats`, bande KPI | notes **+** moyennes enregistrées qui écrasent | filtré |
+| `BtsCurrentResultSnapshotService` | écart « Officiel / Courant », Bilan de la fiche étudiant | notes + moyennes enregistrées | filtré |
+| `ESBTPResultatController::resultatEtudiant()` | tableau « Résultats par matière », KPI Matières / Coefficients | notes + moyennes enregistrées | filtré |
+| `ESBTPBulletinController::buildBulletinPdf()` | rien — **écrasé** par la projection du service (voir plus bas) | notes | filtré par précaution |
+| `ReeinscriptionService::getNotesEtudiant()` | décision passage / rattrapage / redoublement, matières échouées | notes | filtré (passe 11) |
+| `EtudiantAcademicJourneyPresenter::resultats()` | moyenne du parcours, fiche étudiant | moyennes enregistrées | filtré (passe 11) |
+| `EtudiantDossierService::getNotesParSemestre()` | rien — `$dossier` n'est cité dans aucune vue | notes | filtré par précaution |
+
+**Le sixième a été signalé comme « le seul qui écrive », et il est INERTE.**
+C'est le cas le plus instructif du chantier, parce qu'il se lit exactement comme
+une fuite : `buildBulletinPdf()` n'appelle pas `genererDonneesBulletin()`, il
+relit `esbtp_notes` lui-même, recalcule, et **persiste** (`$bulletin->save()`).
+
+**Mesuré, et l'inverse de ce qui était annoncé.** Cent trente lignes plus bas,
+`array_replace($data, getOfficialBulletinTemplateDefaults(...))` remplace
+`resultatsGeneraux`, `resultatsTechniques`, `moyenneGenerale` et `moyenneGlobale`
+par la projection du service — déjà filtrée — et cette projection **ré-enregistre**
+la bonne moyenne après celle du contrôleur. Le gabarit `pdf-configurable` ne lit
+d'ailleurs que `$moyenneGlobale`, jamais `$bulletin->moyenne_generale`. Le filtre
+a donc été posé, puis **retiré pour mesurer** : le test restait vert. Rien
+n'atteignait ni le document, ni l'état final de la base.
+
+Le filtre est gardé quand même — dix lignes, et le jour où l'ordre de ce
+`array_replace` change, ce calcul-là reprend la main en silence. Mais il ne ferme
+aucune fuite, et le prétendre serait la quatrième assertion creuse de ce
+chantier. **La correction qui vaudrait vraiment** est que `buildBulletinPdf()`
+cesse d'avoir un calcul propre et lise le service, comme l'aperçu : tant que deux
+calculs cohabitent, une revue les re-signalera. Ce refactor n'est pas fait — un
+contrôleur de 2500 lignes sur le chemin d'impression de huit instances demande sa
+propre revue.
+
+**La leçon de méthode, elle, n'est pas annulée** : c'est en retirant le correctif
+et en relançant le test qu'on apprend s'il prouve quelque chose. Un test écrit
+après le correctif et jamais rejoué sans lui ne dit rien — quatre fois sur ce
+chantier, il ne disait rien.
+
+**Le septième n'affiche rien, il DÉCIDE.** `ReeinscriptionService` compte la
+matière étrangère dans la moyenne **et** dans les matières échouées : un 4/20 sur
+une ECUE peut faire basculer un passage en redoublement, pour un élève comme pour
+une promotion entière via la réinscription groupée.
+
+Le cinquième reste le plus piégeux à lire : ses onglets **semestriels** remplacent
 entièrement son calcul par le snapshot (donc sains), mais la branche annuelle
 `annual_incomplete` ne remplace rien — elle se contente de **renommer** les
 libellés. Une ECUE y ressortait dans le tableau et pesait dans la moyenne du pied,
 pendant que le KPI d'en-tête affichait la valeur filtrée. Deux chiffres
 contradictoires sur un seul écran.
+
+**Ce qui n'est PAS concerné, et pourquoi** — utile pour ne pas les « corriger »
+par réflexe, comme le piège #14 l'a déjà fait payer : `BulletinService::calculerMoyenneGenerale()`
+et `ESBTPBulletin::calculerMoyenneGenerale()` agrègent `esbtp_resultats_matieres`,
+c'est-à-dire une table **écrite** par la génération déjà filtrée ; `ESBTPPDFService::genererEvaluationPDF()`
+moyenne les notes d'**une seule** évaluation, donc d'une seule matière ;
+`ESBTPEtudiantController` moyenne des bulletins ; `JuryPvSnapshotBuilder` est LMD.
+(Une revue a par ailleurs cité `ESBTPBulletin::calculerMoyenneGeneraleSansSauvegarde()` :
+cette méthode n'existe pas dans le dépôt.)
+
+**Le tamis, à rejouer plutôt qu'à croire** — il liste les fichiers qui lisent des
+lignes par matière *et* en tirent une moyenne. Il rend **34 fichiers**, dont la
+plupart sont hors sujet : c'est un point de départ pour la lecture, pas un
+verdict. Un fichier qu'il ne rend pas n'est pas pour autant innocent.
+
+```bash
+grep -rlE "ESBTPNote::|ESBTPResultat::|->notes\b|->resultats\b" app/ --include="*.php" \
+  | xargs grep -lE "avg\(|sommeCoef|sommeCoefficients|total_coefficients|totalCoefficients|moyenne" 2>/dev/null \
+  | grep -viE "lmd" | sort
+```
+
+**Le contrôle qui décide, lui, se fait à la lecture** : pour chaque fichier rendu,
+compter ses **chemins d'ingestion**, pas ses méthodes. Un `foreach` qui écrit dans
+le même tableau qu'un autre `foreach` est un second chemin, même trente lignes
+plus bas — et s'il **écrase** au lieu d'ajouter, filtrer le premier seul revient
+à n'en filtrer aucun.
 
 **Corollaire de méthode.** Un filtre large de tests qui ne bouge pas prouve
 l'absence de régression, **jamais** la présence d'une couverture. Le quatrième

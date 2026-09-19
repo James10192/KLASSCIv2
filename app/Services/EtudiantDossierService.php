@@ -5,6 +5,8 @@ namespace App\Services;
 use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPBulletin;
 use App\Models\ESBTPResultat;
+use App\Domain\Academique\CoherenceSystemeAcademique;
+use App\Models\ESBTPClasse;
 use App\Models\ESBTPNote;
 use App\Models\ESBTPAttendance;
 use App\Models\ESBTPReliquatDetail;
@@ -119,11 +121,21 @@ class EtudiantDossierService
             return collect();
         }
 
+        // Ce calcul est aujourd'hui SANS LECTEUR : `$dossier` est passe a
+        // `esbtp/etudiants/show.blade.php` et cette vue ne le cite nulle part.
+        // Le filtre est pose quand meme, parce que le jour ou quelqu'un
+        // rebranchera cet affichage, personne ne relira ce fichier — et une
+        // ECUE du LMD y reapparaitrait dans la moyenne d'une classe BTS.
+        $classe = $classeId ? ESBTPClasse::find($classeId) : null;
+
         return ESBTPNote::where('etudiant_id', $etudiantId)
             ->where('semestre', $this->semestreNumero($periode))
             ->whereHas('evaluation', fn($q) => $q->where('annee_universitaire_id', $anneeId))
             ->with(['matiere', 'evaluation'])
             ->get()
+            ->filter(fn(ESBTPNote $note) => ! $classe
+                || ! $note->matiere
+                || CoherenceSystemeAcademique::matiereRetenue($note->matiere, $classe, 'dossier etudiant/note'))
             ->groupBy('matiere_id')
             ->map(function (Collection $notesMatiere) {
                 /** @var \App\Models\ESBTPNote $premiere */
