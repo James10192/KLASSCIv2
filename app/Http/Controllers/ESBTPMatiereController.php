@@ -500,7 +500,17 @@ class ESBTPMatiereController extends Controller
         $niveauxEtudes = ESBTPNiveauEtude::whereNotIn('type', \App\Models\ESBTPNiveauEtude::CYCLES_LMD)->get();
         $unitesEnseignement = collect(); // Collection vide temporaire
 
-        return view('esbtp.matieres.edit', compact('matiere', 'filieres', 'niveauxEtudes', 'unitesEnseignement'));
+        // Les couples DEJA dans la maquette, pour que l'apercu distingue ce qui
+        // existe de ce que l'enregistrement va CREER. Les cases sont prealablement
+        // cochees depuis les pivots plats, dont le produit cartesien sur-rapporte :
+        // sans cette liste, enregistrer sans rien toucher ajoute en silence des
+        // combinaisons que personne n'a demandees, et le bulletin les lit.
+        $couplesExistants = $matiere->liaisonsFilieresNiveaux
+            ->map(fn ($liaison) => $liaison->filiere_id . '-' . $liaison->niveau_etude_id)
+            ->values()
+            ->all();
+
+        return view('esbtp.matieres.edit', compact('matiere', 'filieres', 'niveauxEtudes', 'unitesEnseignement', 'couplesExistants'));
     }
 
     /**
@@ -541,16 +551,35 @@ class ESBTPMatiereController extends Controller
         // Mettre à jour la matière
         $matiere->update($validatedData);
 
-        // Le formulaire envoie `filieres[]` et `niveaux[]`. L'ancien code ne
-        // lisait que `filiere_id` et `niveau_etude_id`, absents de ce
-        // formulaire : les deux tests étaient donc toujours faux, les deux
-        // branches `else` s'exécutaient, et enregistrer une matière détachait
-        // TOUTES ses filières et TOUS ses niveaux, quoi qu'on ait coché.
-        //
-        // `liaisons_presentes` est le témoin posé par le formulaire. Sans lui,
-        // « aucune case cochée » et « champ absent » arrivent identiques, et on
-        // ne peut pas distinguer « tout retirer » d'une mise à jour partielle
-        // qui ne parle pas des liaisons.
+        [$filiereIds, $niveauIds] = $this->synchroniserLesPivotsPlats($request, $matiere);
+
+        $couples = $this->poserLesCouplesDuFormulaire($matiere, $filiereIds, $niveauIds, $service);
+
+        // Rediriger avec un message de succès
+        return redirect()->route('esbtp.matieres.index')
+            ->with('success', $couples === 0
+                ? 'La matière a été mise à jour avec succès.'
+                : 'La matière a été mise à jour avec succès. '.$couples.' combinaison(s) filière × niveau rattachée(s).');
+    }
+
+    /**
+     * Pose les deux listes du formulaire dans les pivots plats, et les rend.
+     *
+     * Le formulaire envoie `filieres[]` et `niveaux[]`. L'ancien code ne lisait
+     * que `filiere_id` et `niveau_etude_id`, absents de ce formulaire : les
+     * deux tests étaient donc toujours faux, les deux branches `else`
+     * s'exécutaient, et enregistrer une matière détachait TOUTES ses filières
+     * et TOUS ses niveaux, quoi qu'on ait coché.
+     *
+     * `liaisons_presentes` est le témoin posé par le formulaire. Sans lui,
+     * « aucune case cochée » et « champ absent » arrivent identiques, et on ne
+     * peut pas distinguer « tout retirer » d'une mise à jour partielle qui ne
+     * parle pas des liaisons.
+     *
+     * @return array{0: list<int>|null, 1: list<int>|null}
+     */
+    private function synchroniserLesPivotsPlats(Request $request, ESBTPMatiere $matiere): array
+    {
         $listesSoumises = $request->boolean('liaisons_presentes');
 
         $filiereIds = $this->identifiantsSoumis($request, 'filieres', 'filiere_id');
@@ -563,13 +592,7 @@ class ESBTPMatiereController extends Controller
             $matiere->niveaux()->sync($niveauIds ?? []);
         }
 
-        $couples = $this->poserLesCouplesDuFormulaire($matiere, $filiereIds, $niveauIds, $service);
-
-        // Rediriger avec un message de succès
-        return redirect()->route('esbtp.matieres.index')
-            ->with('success', $couples === 0
-                ? 'La matière a été mise à jour avec succès.'
-                : 'La matière a été mise à jour avec succès. '.$couples.' combinaison(s) filière × niveau rattachée(s).');
+        return [$filiereIds, $niveauIds];
     }
 
     /**

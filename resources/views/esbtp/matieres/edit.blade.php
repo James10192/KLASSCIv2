@@ -332,7 +332,14 @@
 @endsection
 
 @section('scripts')
+@php $_couplesExistants = $couplesExistants ?? []; @endphp
 <script>
+    // Couples deja dans la maquette. Sert a distinguer, dans l'apercu, ce qui
+    // existe de ce que l'enregistrement va creer : les cases sont precochees
+    // depuis les deux pivots plats, dont le produit invente des combinaisons
+    // que la maquette ne porte pas.
+    const couplesDejaEnMaquette = new Set(@json($_couplesExistants));
+
     $(document).ready(function() {
         // Initialisation de Select2
         $('.select2').select2({
@@ -375,21 +382,42 @@
                 return;
             }
             
+            let aCreer = 0;
+            selectedFilieres.forEach(filiere => {
+                selectedNiveaux.forEach(niveau => {
+                    if (!couplesDejaEnMaquette.has(filiere.id + '-' + niveau.id)) { aCreer++; }
+                });
+            });
+
             let combinationsHtml = `
                 <div class="d-flex align-items-center mb-3">
                     <i class="fas fa-check-circle text-success me-2"></i>
                     <strong>${selectedFilieres.length * selectedNiveaux.length} combinaison(s) sélectionnée(s)</strong>
                 </div>
-                <div class="row">
             `;
-            
+
+            if (aCreer > 0) {
+                combinationsHtml += `
+                    <div class="alert alert-warning py-2 px-3 mb-3">
+                        <i class="fas fa-plus-circle me-1"></i>
+                        <strong>${aCreer}</strong> sera(ont) <strong>ajoutée(s)</strong> à la maquette à l'enregistrement.
+                        Les autres y sont déjà. Décocher ne retire rien : le retrait d'une
+                        combinaison se fait sur l'écran Maquette.
+                    </div>
+                `;
+            }
+
+            combinationsHtml += '<div class="row">';
+
             selectedFilieres.forEach(filiere => {
                 selectedNiveaux.forEach(niveau => {
+                    const existe = couplesDejaEnMaquette.has(filiere.id + '-' + niveau.id);
                     combinationsHtml += `
                         <div class="col-md-4 mb-2">
-                            <div class="badge bg-primary text-wrap p-2">
-                                <i class="fas fa-link me-1"></i>
+                            <div class="badge ${existe ? 'bg-primary' : 'bg-warning text-dark'} text-wrap p-2">
+                                <i class="fas ${existe ? 'fa-link' : 'fa-plus'} me-1"></i>
                                 ${filiere.name} ↔ ${niveau.name}
+                                <small class="d-block fw-normal">${existe ? 'déjà en maquette' : 'à créer'}</small>
                             </div>
                         </div>
                     `;
