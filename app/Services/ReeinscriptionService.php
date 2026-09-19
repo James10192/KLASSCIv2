@@ -545,7 +545,14 @@ class ReeinscriptionService
         // Récupérer les notes filtrées par année académique (utilise le champ STRING annee_universitaire)
         $notes = ESBTPNote::where('etudiant_id', $etudiantId)
             ->where('annee_universitaire', $anneeAcademique)
-            ->with(['evaluation.matiere', 'matiere'])
+            // `withTrashed()` : `ESBTPMatiere` est en `SoftDeletes`. Sans lui, une
+            // matiere effacee depuis `/esbtp/matieres` rend `null`, le `! $matiere ||`
+            // ci-dessous court-circuite, et la note etrangere revient peser — sur une
+            // DECISION de passage, pas sur un affichage.
+            ->with([
+                'evaluation.matiere' => fn ($q) => $q->withTrashed(),
+                'matiere' => fn ($q) => $q->withTrashed(),
+            ])
             ->get();
 
         // POURQUOI LE FILTRE EST ICI, ET NON DANS LES TROIS CONSOMMATEURS.

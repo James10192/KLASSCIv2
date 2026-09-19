@@ -267,6 +267,25 @@ autre `foreach` est un second chemin, même s'il est 30 lignes plus bas.
 > `klassci-debugging-discipline.md` raconte pour lui-même — un inventaire
 > démenti quatre fois, chaque version publiée comme définitive. Lisez donc ce
 > tableau pour ce qu'il est : ce qui a été trouvé, pas ce qui existe.
+>
+> **Et la passe 16 en a trouvé un treizième**, `ESBTPNoteController::computeGeneralAverage()`,
+> qui alimente le panneau d'impact affiché SOUS LA MAIN de l'enseignant pendant
+> qu'il saisit une note. Le tamis ci-dessous ne pouvait pas le rendre : il ne
+> moyenne ni par `avg(` ni par une somme de coefficients sur la ligne, il
+> délègue à `NoteCalculationService` matière par matière. C'est la lecture qui
+> l'a trouvé, comme cette section le prescrit — et il illustre le coût réel du
+> défaut : tant que **tous** les écrans se trompaient d'accord, personne ne
+> voyait rien. C'est en corrigeant les douze autres qu'on fabriquait la
+> contradiction.
+
+Ce qui vaut pour les calculs vaut pour les **lectures** : le balayage
+`withTrashed()` — une lecture nue rend `null` sur une ligne effacée en douceur,
+ce qui désarme tout filtre écrit en `! $x ||` — a été annoncé à **sept sites**,
+et il en manquait **trois**, écrits dans la même branche :
+`ReeinscriptionService::getNotesEtudiant()`,
+`EtudiantAcademicJourneyPresenter::resultats()` et
+`EtudiantDossierService::getNotesParSemestre()`. Le premier ne montre rien : il
+DÉCIDE du passage en année supérieure. Même leçon, même forme, même passe.
 
 | calcul | ce qu'il alimente | chemins | état |
 |---|---|---|---|

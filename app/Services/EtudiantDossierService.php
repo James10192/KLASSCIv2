@@ -133,7 +133,10 @@ class EtudiantDossierService
         return ESBTPNote::where('etudiant_id', $etudiantId)
             ->where('semestre', $this->semestreNumero($periode))
             ->whereHas('evaluation', fn($q) => $q->where('annee_universitaire_id', $anneeId))
-            ->with(['matiere', 'evaluation'])
+            // `withTrashed()` sur la matiere AUSSI. La classe l'avait deja, avec le
+            // commentaire qui l'explique quatre lignes plus haut — et la matiere, qui
+            // est en `SoftDeletes` pour les memes raisons, ne l'avait pas.
+            ->with(['matiere' => fn ($q) => $q->withTrashed(), 'evaluation'])
             ->get()
             ->filter(fn(ESBTPNote $note) => ! $classe
                 || ! $note->matiere

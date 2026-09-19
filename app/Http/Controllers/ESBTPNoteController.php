@@ -8,6 +8,7 @@ use App\Http\Requests\Notes\StoreBulkNotesRequest;
 use App\Http\Requests\Notes\StoreNoteRequest;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPBulletin;
+use App\Domain\Academique\CoherenceSystemeAcademique;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPEvaluation;
@@ -1832,9 +1833,35 @@ class ESBTPNoteController extends Controller
 
         $matiereIds = $evaluations->pluck('matiere_id')->unique()->values()->all();
 
-        $matiereCoefs = ESBTPMatiere::whereIn('id', $matiereIds)
-            ->get(['id', 'coefficient'])
-            ->mapWithKeys(fn ($m) => [$m->id => max(0.01, (float) ($m->coefficient ?? 1))]);
+        // LE TREIZIEME CALCUL DE MOYENNE, et le dernier a avoir ete filtre.
+        //
+        // C'est une vraie moyenne generale ponderee, calculee ici plutot que
+        // par `BulletinService` ou le snapshot — donc aucun des douze filtres
+        // poses ailleurs ne la couvrait. Elle alimente le panneau d'impact
+        // affiche SOUS LA MAIN de l'enseignant qui saisit une note
+        // (`previewImpact()` → `esbtp.notes.preview-impact` → `notes/index`).
+        //
+        // Sans ce filtre, cette branche creait exactement la contradiction
+        // qu'elle pretend supprimer ailleurs : le bulletin, `/esbtp/resultats`,
+        // la fiche etudiant et l'accueil mobile annoncant 14,00, et ce panneau
+        // 10,67 — au moment le plus sensible du parcours.
+        //
+        // `withTrashed()` : `ESBTPClasse` et `ESBTPMatiere` sont en
+        // `SoftDeletes`, et une lecture nue rendrait `null`, ce qui desarmerait
+        // le filtre au lieu de l'appliquer.
+        // `unite_enseignement_id` DOIT etre selectionnee : le prédicat la lit,
+        // et un `->get(['id', 'coefficient'])` la laisserait a `null` — le
+        // filtre serait inerte sans rien signaler (piege #12).
+        $classeCible = ESBTPClasse::withTrashed()->find($classeId);
+
+        $matieres = ESBTPMatiere::withTrashed()
+            ->whereIn('id', $matiereIds)
+            ->get(['id', 'name', 'coefficient', 'unite_enseignement_id'])
+            ->keyBy('id');
+
+        $matiereCoefs = $matieres->mapWithKeys(
+            fn ($m) => [$m->id => max(0.01, (float) ($m->coefficient ?? 1))]
+        );
 
         $notes = ESBTPNote::where('etudiant_id', $etudiantId)
             ->whereIn('evaluation_id', $evaluations->pluck('id'))
@@ -1845,6 +1872,15 @@ class ESBTPNoteController extends Controller
         $matieresPayload = [];
 
         foreach ($byMatiere as $matiereId => $evalsMat) {
+            $matiere = $matieres->get((int) $matiereId);
+
+            // Une matiere etrangere au systeme de la classe ne pese pas sur
+            // l'apercu d'impact, comme elle ne pese deja plus sur le bulletin.
+            if ($classeCible && $matiere
+                && ! CoherenceSystemeAcademique::matiereRetenue($matiere, $classeCible, 'apercu impact/moyenne generale')) {
+                continue;
+            }
+
             $notesMat = $notes->where('matiere_id', $matiereId)->keyBy('evaluation_id');
 
             $isOverridden = ($overrideMatiereId === (int) $matiereId);

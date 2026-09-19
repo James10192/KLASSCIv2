@@ -180,7 +180,15 @@ class EtudiantAcademicJourneyPresenter
         }
 
         return ESBTPResultat::query()
-            ->with(['matiere', 'classe'])
+            // `withTrashed()` sur LES DEUX : `ESBTPMatiere` et `ESBTPClasse` sont en
+            // `SoftDeletes`, et le filtre plus bas est en echec ouvert. Une classe
+            // archivee en fin d'annee — geste ordinaire — suffisait a le desarmer,
+            // alors que le snapshot affiche a cote, lui, est deja en `withTrashed()` :
+            // les deux moyennes de la meme page divergeaient a nouveau.
+            ->with([
+                'matiere' => fn ($q) => $q->withTrashed(),
+                'classe' => fn ($q) => $q->withTrashed(),
+            ])
             ->where('etudiant_id', $etudiant->id)
             ->whereIn('classe_id', $classeIds)
             ->whereIn('annee_universitaire_id', $anneeIds)

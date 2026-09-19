@@ -699,6 +699,192 @@ class EcueLmdHorsDuBulletinNoteTest extends TestCase
     }
 
     /**
+     * LE PANNEAU D'IMPACT, SOUS LA MAIN DE L'ENSEIGNANT QUI SAISIT.
+     *
+     * `previewImpact()` calcule sa propre moyenne generale ponderee — il ne
+     * passe ni par `BulletinService` ni par le snapshot. Aucun des douze
+     * filtres poses ailleurs ne le couvrait, et personne ne l'avait remarque
+     * parce qu'il ne ressemble pas aux autres : il ne moyenne pas en SQL, il
+     * delegue a `NoteCalculationService` matiere par matiere.
+     *
+     * TANT QUE TOUS LES ECRANS MENTAIENT D'ACCORD, cela ne se voyait pas. C'est
+     * cette branche qui rend le defaut visible : elle corrige le bulletin,
+     * `/esbtp/resultats`, la fiche etudiant et l'accueil mobile — et ce panneau
+     * aurait continue d'annoncer 10,67 pendant que tout le reste disait 14,00,
+     * au moment le plus sensible du parcours.
+     */
+    public function test_l_apercu_d_impact_ecarte_l_ecue_de_la_moyenne_generale(): void
+    {
+        $this->monterLaClasse();
+        $bts = $this->matiereConfiguree();
+        $ecue = $this->uneEcue('TPGC654');
+
+        $etudiant = $this->etudiantInscrit();
+        $evalBts = $this->evaluationDe($bts);
+        $evalEcue = $this->evaluationHeritee($bts, $ecue);
+        $this->noter($etudiant, $evalBts, 14);
+        $this->noter($etudiant, $evalEcue, 4);
+
+        // `previewImpact()` ne lit que les evaluations PUBLIEES, et la fabrique
+        // ne renseigne pas `is_published`. Pose en masse : passer par le modele
+        // reveillerait le garde de coherence sur la ligne heritee, qui est
+        // precisement celle qu'on veut voir entrer puis etre ecartee.
+        ESBTPEvaluation::whereIn('id', [$evalBts->id, $evalEcue->id])
+            ->update(['is_published' => true]);
+
+        $reponse = $this->actingAs($this->unSuperAdminPourNotes())
+            ->postJson(route('esbtp.notes.preview-impact'), [
+                'etudiant_id' => $etudiant->id,
+                'classe_id' => $this->classe->id,
+                'matiere_id' => $bts->id,
+                'periode' => 'semestre1',
+                'evaluation_id' => $evalBts->id,
+                'hypothetical_note' => 14,
+            ]);
+
+        $reponse->assertOk();
+        $charge = $reponse->json();
+
+        $this->assertNotNull(
+            $charge['moyenne_generale_avant'] ?? null,
+            'Temoin : sans moyenne generale rendue, ce test ne prouve rien.'
+        );
+
+        $this->assertEqualsWithDelta(
+            14.0,
+            (float) $charge['moyenne_generale_avant'],
+            0.01,
+            'Le panneau d\'impact ne doit compter que la matiere BTS. Sans le '
+            .'filtre : 9,00 — et il contredisait alors tous les autres ecrans, '
+            .'qui annoncent 14,00 depuis cette branche.'
+        );
+    }
+
+    /** Un compte autorise a consulter l'apercu d'impact. */
+    private function unSuperAdminPourNotes(): User
+    {
+        Role::findOrCreate('superAdmin', 'web');
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+        $utilisateur = User::factory()->create();
+        $utilisateur->assignRole('superAdmin');
+
+        return $utilisateur;
+    }
+
+    /**
+     * EFFACER LA MATIERE DESARMAIT AUSSI LA DECISION DE REINSCRIPTION.
+     *
+     * Le balayage `withTrashed()` a d'abord couvert les lecteurs de moyennes et
+     * annonce « sept sites ». Il en manquait trois, ecrits dans la meme
+     * branche — et celui-ci est le plus cher, parce qu'il ne montre rien : il
+     * tranche entre passage, rattrapage et redoublement.
+     *
+     * Le filtre est en ECHEC OUVERT (`! $matiere || retenue(...)`), ce qui est
+     * juste quand on ne peut pas juger. Mais une matiere effacee en douceur
+     * n'est pas « injugeable » : elle est seulement invisible d'un eager-load
+     * nu. Le `null` court-circuitait le `||`, et la note etrangere revenait.
+     */
+    public function test_effacer_la_matiere_ne_desarme_pas_la_decision_de_reinscription(): void
+    {
+        $this->monterLaClasse();
+        $bts = $this->matiereConfiguree();
+        $ecue = $this->uneEcue('TPGC652');
+
+        $etudiant = $this->etudiantInscrit();
+        $this->noter($etudiant, $this->evaluationDe($bts), 14);
+        $this->noter($etudiant, $this->evaluationHeritee($bts, $ecue), 4);
+
+        ESBTPNote::where('etudiant_id', $etudiant->id)
+            ->update(['annee_universitaire' => $this->annee->name]);
+
+        $ecue->delete();
+        $this->assertNotNull(
+            $ecue->fresh()?->deleted_at,
+            'Temoin de montage : sans effacement en douceur, ce test ne prouve rien.'
+        );
+
+        $inscription = ESBTPInscription::where('etudiant_id', $etudiant->id)->firstOrFail();
+
+        $analyse = app(ReeinscriptionService::class)
+            ->analyserSituationEtudiantParInscription($inscription);
+
+        $this->assertNotEmpty(
+            $analyse['notes'],
+            'Temoin : sans note retenue, une moyenne de 14 ne prouverait rien.'
+        );
+
+        $this->assertEqualsWithDelta(
+            14.0,
+            (float) $analyse['moyenne_generale'],
+            0.01,
+            'Sans `withTrashed()`, la matiere effacee rendait le filtre aveugle '
+            .'et le 4/20 revenait dans la decision (9,00).'
+        );
+    }
+
+    /**
+     * Et la fiche etudiant affichait alors DEUX moyennes differentes.
+     *
+     * `EtudiantAcademicJourneyPresenter` est rendu sur le meme ecran que le
+     * snapshot BTS. Le snapshot etait passe en `withTrashed()`, le presentateur
+     * non : sur une matiere effacee, l'un ecartait et l'autre gardait.
+     */
+    public function test_effacer_la_matiere_ne_desarme_pas_le_parcours_etudiant(): void
+    {
+        $this->monterLaClasse();
+        $bts = $this->matiereConfiguree();
+        $ecue = $this->uneEcue('TPGC653');
+        $etudiant = $this->etudiantInscrit();
+
+        ESBTPResultat::create([
+            'etudiant_id' => $etudiant->id,
+            'classe_id' => $this->classe->id,
+            'matiere_id' => $bts->id,
+            'annee_universitaire_id' => $this->annee->id,
+            'periode' => 'semestre1',
+            'moyenne' => 14,
+            'coefficient' => 2,
+        ]);
+
+        ESBTPResultat::withoutEvents(fn () => ESBTPResultat::create([
+            'etudiant_id' => $etudiant->id,
+            'classe_id' => $this->classe->id,
+            'matiere_id' => $ecue->id,
+            'annee_universitaire_id' => $this->annee->id,
+            'periode' => 'semestre1',
+            'moyenne' => 4,
+            'coefficient' => 1,
+        ]));
+
+        $ecue->delete();
+        $this->assertNotNull($ecue->fresh()?->deleted_at, 'Temoin de montage.');
+
+        $parcours = app(\App\Services\EtudiantAcademicJourneyPresenter::class)
+            ->present($etudiant->fresh());
+
+        // Aucun bulletin genere : `btsMetrics()` retombe sur « Resultats
+        // saisis », c'est-a-dire exactement le cas que le filtre protege.
+        $metrics = collect($parcours['items'])->pluck('metrics')->firstWhere('moyenne', '!==', null);
+
+        $this->assertNotNull($metrics, 'Temoin : sans moyenne rendue, ce test ne prouve rien.');
+        $this->assertSame(
+            'Résultats saisis',
+            $metrics['source'],
+            'Temoin : le repli d\'avant-bulletin doit bien etre celui qu\'on mesure.'
+        );
+
+        $this->assertEqualsWithDelta(
+            14.0,
+            (float) $metrics['moyenne'],
+            0.01,
+            'Sans `withTrashed()`, la matiere effacee court-circuitait le filtre '
+            .'et le 4/20 revenait (9,00) — pendant que le snapshot affiche a cote, '
+            .'lui, annoncait 14,00.'
+        );
+    }
+
+    /**
      * Le SEPTIEME calcul : celui qui n'affiche pas, il DECIDE.
      *
      * `ReeinscriptionService` lit les notes de l'annee pour trancher entre
