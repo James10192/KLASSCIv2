@@ -35,8 +35,16 @@ use Illuminate\Support\Facades\DB;
  * le geste qu'`addToCombination` faisait deja), et n'en retire jamais rien. La
  * coherence des LECTURES se gagne ailleurs, et c'est la qu'elle se gagne
  * vraiment : les ecrans lisent le pivot canonique par
- * `BtsBulletinSubjectResolver`, pas le produit des deux listes. Reconcilier
- * l'existant reste un geste separe, explicite et simule d'abord.
+ * `BtsBulletinSubjectResolver`, pas le produit des deux listes.
+ *
+ * UNE exception, et elle compte : le repli de
+ * `BulletinInlineConfigurationService::matieresPourConfiguration()` lit encore
+ * le produit des deux pivots plats quand le couple n'a AUCUNE ligne canonique.
+ * Vider entierement la maquette d'un couple par `retirer()` declenche donc ce
+ * repli, et les matieres qu'on vient d'en retirer reapparaissent sur l'ecran
+ * de configuration du bulletin. Le nettoyage de ce repli est un geste separe.
+ *
+ * Reconcilier l'existant reste un geste separe, explicite et simule d'abord.
  *
  * BTS uniquement. Le LMD tient ses matieres par parcours -> UE -> ECUE et
  * n'utilise aucun de ces trois pivots.

@@ -537,9 +537,14 @@ class ESBTPClasseController extends Controller
         // combo de tronc commun, et retombe sur `esbtp_classe_matiere` pour les
         // classes historiques. L'onglet Matieres montrait donc une troisieme
         // liste, ni celle de la maquette ni celle du bulletin.
-        $combinationMatieres = app(
-            \App\Domain\BtsTroncCommun\BtsBulletinSubjectResolver::class,
-        )->subjectsForClasse($classe);
+        // Resolveur BTS : une classe LMD n'en tire rien (la vue lit ses UE par
+        // `MatiereTreeBuilder` bien avant d'arriver ici), et l'appeler quand
+        // meme coutait deux requetes dont le resultat partait a la poubelle.
+        // Une collection ELOQUENT, pas `collect()` : `loadMissing()` est appele
+        // juste en dessous et n'existe que sur celle-la.
+        $combinationMatieres = strtoupper((string) ($classe->systeme_academique ?? 'BTS')) === 'LMD'
+            ? new \Illuminate\Database\Eloquent\Collection()
+            : app(\App\Domain\BtsTroncCommun\BtsBulletinSubjectResolver::class)->subjectsForClasse($classe);
 
         // La vue affiche filieres et niveaux de chaque matiere.
         $combinationMatieres->loadMissing([

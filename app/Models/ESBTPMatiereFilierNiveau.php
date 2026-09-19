@@ -107,13 +107,19 @@ class ESBTPMatiereFilierNiveau extends Model
      * total » ne pouvait plus etre vraie, et la carte du planning restait
      * « Partiel » a jamais, sans aucune issue par l'interface.
      *
+     * Les DEUX filtres doivent etre identiques, pas seulement celui sur les
+     * ECUE. Une premiere version n'alignait que `btsOnly()` et laissait
+     * `is_active` au seul denominateur : une matiere BTS planifiee puis
+     * DESACTIVEE reproduisait exactement la meme impasse, par l'autre axe.
+     * Si vous touchez l'un, touchez l'autre.
+     *
      * `matiereIdsForCombo` reste sans filtre : il sert aussi des lecteurs au
      * contexte mixte (l'assiduite), ou ecarter les ECUE casserait le LMD.
      */
     public static function btsMatiereIdsForCombo($filiereId, $niveauId)
     {
         return static::forCombo($filiereId, $niveauId)
-            ->whereHas('matiere', fn ($q) => $q->btsOnly())
+            ->whereHas('matiere', fn ($q) => $q->where('is_active', true)->btsOnly())
             ->pluck('matiere_id');
     }
 
