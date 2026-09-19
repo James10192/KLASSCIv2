@@ -16,7 +16,13 @@ final class BtsBulletinPolicy
         'bulletin_bts2_semester1_weight' => ['value' => '1', 'type' => 'float', 'description' => 'Coefficient BTS 2 Semestre 1', 'validation_rules' => ['nullable', 'numeric', 'min:0']],
         'bulletin_bts2_semester2_weight' => ['value' => '1', 'type' => 'float', 'description' => 'Coefficient BTS 2 Semestre 2', 'validation_rules' => ['nullable', 'numeric', 'min:0']],
         'bulletin_bts1_council_mode' => ['value' => 'manual', 'type' => 'string', 'description' => 'Mode de décision BTS 1', 'validation_rules' => ['nullable', 'in:manual,threshold']],
-        'bulletin_bts1_council_average_source' => ['value' => 'semestre2', 'type' => 'string', 'description' => 'Moyenne de décision BTS 1', 'validation_rules' => ['nullable', 'in:semestre2,annual']],
+        // Le passage en 2e année se décide sur l'ANNÉE, pas sur le seul
+        // semestre 2 : un étudiant qui s'effondre au second semestre après un
+        // premier solide n'est pas dans la même situation que celui qui n'a
+        // jamais suivi, et le bulletin qui annonce « Redouble » imprime juste
+        // au-dessus une moyenne annuelle au-dessus du seuil. Le réglage reste,
+        // une école peut décider autrement ; c'est le défaut qui change.
+        'bulletin_bts1_council_average_source' => ['value' => 'annual', 'type' => 'string', 'description' => 'Moyenne de décision BTS 1', 'validation_rules' => ['nullable', 'in:semestre2,annual']],
         'bulletin_bts1_council_threshold' => ['value' => '10', 'type' => 'float', 'description' => 'Seuil de décision BTS 1', 'validation_rules' => ['required_if:bulletin_bts1_council_mode,threshold', 'nullable', 'numeric', 'between:0,20']],
         'bulletin_bts1_council_below_text' => ['value' => 'Redouble la classe', 'type' => 'string', 'description' => 'Décision BTS 1 sous le seuil', 'validation_rules' => ['required_if:bulletin_bts1_council_mode,threshold', 'nullable', 'string', 'max:191']],
         'bulletin_bts1_council_at_or_above_text' => ['value' => 'Admis(e) en 2e Année BTS', 'type' => 'string', 'description' => 'Décision BTS 1 au seuil ou au-dessus', 'validation_rules' => ['required_if:bulletin_bts1_council_mode,threshold', 'nullable', 'string', 'max:191']],
@@ -28,6 +34,21 @@ final class BtsBulletinPolicy
     public static function settingDefinitions(): array
     {
         return self::SETTING_DEFINITIONS;
+    }
+
+    /**
+     * Le defaut d'un reglage, lu la ou il est declare.
+     *
+     * `bulletin_bts1_council_average_source` etait replie sur « semestre2 »
+     * dans cinq fichiers a la fois — ce service, deux controleurs, deux vues.
+     * Changer le defaut en un seul endroit n'aurait donc rien change : les
+     * quatre autres copies auraient continue a repondre l'ancienne valeur.
+     */
+    public static function defaultFor(string $key): ?string
+    {
+        $definition = self::SETTING_DEFINITIONS[$key] ?? null;
+
+        return $definition === null ? null : (string) $definition['value'];
     }
 
     public static function defaultSettings(): array
@@ -140,17 +161,23 @@ final class BtsBulletinPolicy
         return $isBts && in_array($levelYear, [1, 2], true) && $period === 'semestre2';
     }
 
+    /**
+     * Ce qui s'imprime, entre la decision calculee et celle saisie a la main.
+     *
+     * Les trois premiers parametres — systeme, annee, periode — ont disparu :
+     * ils ne servaient qu'a rendre '' quand la politique s'appliquait sans
+     * repondre, ce qui etait precisement le defaut.
+     */
     public static function displayCouncilDecision(
-        bool $isBts,
-        ?int $levelYear,
-        string $period,
         ?string $configuredDecision,
         mixed $storedDecision,
     ): ?string {
-        if (self::usesCouncilPolicy($isBts, $levelYear, $period)) {
-            return $configuredDecision ?? '';
-        }
-
+        // La politique prime quand elle repond. Quand elle ne repond pas —
+        // mode manuel, ou moyenne de decision indisponible — c'est la decision
+        // saisie a la main qui tient. Rendre '' dans ce cas effacait de
+        // l'ecran, puis de la base, ce qu'un humain avait ecrit : en mode
+        // manuel, qui est le DEFAUT, regenerer un bulletin de semestre 2
+        // suffisait a perdre la decision du conseil.
         return $configuredDecision ?? self::textOrNull($storedDecision);
     }
 

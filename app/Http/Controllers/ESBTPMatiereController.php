@@ -271,7 +271,7 @@ class ESBTPMatiereController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-    public function store(Request $request)
+    public function store(Request $request, LiaisonsDeMatiere $service)
     {
         // Valider les données du formulaire
         $validatedData = $request->validate([
@@ -344,23 +344,27 @@ class ESBTPMatiereController extends Controller
             $matiere->niveaux()->attach($niveauIds);
         }
 
-        // Mode liaisons précises (filière × niveau pairs from create form)
+        // Et dans la maquette, que les écrans et le bulletin lisent. Sans
+        // cela, une matière créée par les deux listes n'apparaissait nulle
+        // part — voir `poserLesCouplesDuFormulaire()`.
+        $this->poserLesCouplesDuFormulaire($matiere, $filiereIds, $niveauIds, $service);
+
+        // Mode liaisons précises (couples filière × niveau du formulaire de
+        // création). Le rattachement, avec sa tenue des pivots plats, vit dans
+        // `LiaisonsDeMatiere` : c'était ici la troisième copie, et elle
+        // utilisait `create()` — donc un doublon levait une erreur là où les
+        // deux autres copies ne faisaient rien.
         if ($request->has('liaisons') && is_array($request->liaisons)) {
-            $seen = [];
             foreach ($request->liaisons as $liaison) {
-                $key = ($liaison['filiere_id'] ?? 0) . '_' . ($liaison['niveau_id'] ?? 0);
-                if (isset($seen[$key])) continue;
-                $seen[$key] = true;
+                if (empty($liaison['filiere_id']) || empty($liaison['niveau_id'])) {
+                    continue;
+                }
 
-                \App\Models\ESBTPMatiereFilierNiveau::create([
-                    'matiere_id'      => $matiere->id,
-                    'filiere_id'      => $liaison['filiere_id'],
-                    'niveau_etude_id' => $liaison['niveau_id'],
-                ]);
-
-                // Also attach to pivot tables for compatibility
-                $matiere->filieres()->syncWithoutDetaching([$liaison['filiere_id']]);
-                $matiere->niveaux()->syncWithoutDetaching([$liaison['niveau_id']]);
+                $service->poser(
+                    (int) $matiere->id,
+                    (int) $liaison['filiere_id'],
+                    (int) $liaison['niveau_id'],
+                );
             }
         }
 
@@ -504,7 +508,7 @@ class ESBTPMatiereController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-    public function update(Request $request, ESBTPMatiere $matiere)
+    public function update(Request $request, ESBTPMatiere $matiere, LiaisonsDeMatiere $service)
     {
         // Valider les données du formulaire
         $validatedData = $request->validate([
@@ -559,9 +563,56 @@ class ESBTPMatiereController extends Controller
             $matiere->niveaux()->sync($niveauIds ?? []);
         }
 
+        $couples = $this->poserLesCouplesDuFormulaire($matiere, $filiereIds, $niveauIds, $service);
+
         // Rediriger avec un message de succès
         return redirect()->route('esbtp.matieres.index')
-            ->with('success', 'La matière a été mise à jour avec succès.');
+            ->with('success', $couples === 0
+                ? 'La matière a été mise à jour avec succès.'
+                : 'La matière a été mise à jour avec succès. '.$couples.' combinaison(s) filière × niveau rattachée(s).');
+    }
+
+    /**
+     * Écrit dans la maquette les combinaisons que ce formulaire annonce.
+     *
+     * Ce formulaire demande deux listes indépendantes — des filières, des
+     * niveaux — et affiche sous elles un « Aperçu des combinaisons » qui en
+     * montre le produit. C'est donc bien ce produit qu'il promet d'enregistrer.
+     * Il ne l'écrivait pourtant que dans les deux pivots plats, jamais dans le
+     * pivot canonique. Tant que les écrans lisaient eux aussi le produit des
+     * pivots plats, cela ne se voyait pas ; depuis qu'ils lisent la maquette,
+     * cocher une filière ici affichait « mise à jour avec succès » sans que la
+     * matière apparaisse nulle part.
+     *
+     * En AJOUT seulement. Décocher ne retire rien : deux listes ne peuvent pas
+     * décrire un ensemble de couples qui n'est pas un rectangle plein, donc un
+     * enregistrement calculerait des retraits que personne n'a demandés. Le
+     * retrait d'un couple précis se fait là où il se voit — l'écran Maquette,
+     * ou le modal des liaisons.
+     *
+     * @param  list<int>|null  $filiereIds
+     * @param  list<int>|null  $niveauIds
+     * @return int  Nombre de couples posés
+     */
+    private function poserLesCouplesDuFormulaire(
+        ESBTPMatiere $matiere,
+        ?array $filiereIds,
+        ?array $niveauIds,
+        LiaisonsDeMatiere $service,
+    ): int {
+        if (empty($filiereIds) || empty($niveauIds)) {
+            return 0;
+        }
+
+        $poses = 0;
+        foreach (array_unique($filiereIds) as $filiereId) {
+            foreach (array_unique($niveauIds) as $niveauId) {
+                $service->poser((int) $matiere->id, (int) $filiereId, (int) $niveauId);
+                $poses++;
+            }
+        }
+
+        return $poses;
     }
 
     /**

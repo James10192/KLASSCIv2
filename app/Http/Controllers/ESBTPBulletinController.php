@@ -977,7 +977,9 @@ class ESBTPBulletinController extends Controller
                 $settings = \App\Services\BtsBulletinPolicy::readSettings(
                     fn (string $key, string $default) => \App\Helpers\SettingsHelper::get($key, $default)
                 );
-                $source = $settings["bulletin_bts{$levelYear}_council_average_source"] ?? 'semestre2';
+                $cleSource = "bulletin_bts{$levelYear}_council_average_source";
+                $source = $settings[$cleSource]
+                    ?? (\App\Services\BtsBulletinPolicy::defaultFor($cleSource) ?? 'annual');
                 $decisionAverage = \App\Services\BtsBulletinPolicy::decisionAverage($source, $moyenneSemestre2, $moyenneAnnuelle);
                 $automaticCouncilDecision = \App\Services\BtsBulletinPolicy::councilDecision(
                     (bool) $classe->isBTS(),
@@ -988,9 +990,6 @@ class ESBTPBulletinController extends Controller
                 );
             }
             $decisionConseil = \App\Services\BtsBulletinPolicy::displayCouncilDecision(
-                (bool) ($classe?->isBTS() ?? false),
-                $levelYear,
-                $this->bulletinService->normalizePeriode((string) $bulletin->periode),
                 $automaticCouncilDecision,
                 $bulletin->decision_conseil
             );

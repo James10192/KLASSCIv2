@@ -732,20 +732,33 @@ class BulletinService
             $levelYear
         );
         $decisionConseil = BtsBulletinPolicy::displayCouncilDecision(
-            $classe->isBTS(),
-            $levelYear,
-            $this->normalizePeriode($periode),
-            $automaticCouncilDecision,
+            $automaticCouncilDecision['text'],
             $bulletin?->decision_conseil
         );
+
+        // Le conseil se decide par defaut sur la moyenne ANNUELLE, qui n'existe
+        // pas tant qu'un des deux semestres n'a aucune note. Le dire, plutot
+        // que de laisser une case vide que personne ne saurait expliquer.
+        if ($automaticCouncilDecision['moyenne_manquante']) {
+            $warnings[] = [
+                'type' => 'decision_conseil',
+                'message' => $automaticCouncilDecision['source'] === 'annual'
+                    ? "La décision du conseil se prend sur la moyenne annuelle, qui n'a pas pu être calculée : il manque les notes d'un des deux semestres. La décision reste à saisir à la main."
+                    : "La décision du conseil se prend sur la moyenne du semestre 2, qui n'a pas pu être calculée. La décision reste à saisir à la main.",
+            ];
+        }
         $councilDecision = [
             'title' => $this->councilDecisionTitle($classe, $periode),
             'text' => (string) ($decisionConseil ?? ''),
             'mode' => $this->councilDecisionMode($levelYear),
         ];
         $appreciation = $this->getAppreciation($moyenneAvecAssiduite);
-        if ($persistOfficial && $bulletin) {
-            $bulletin->decision_conseil = $councilDecision['text'] !== '' ? $councilDecision['text'] : null;
+        // N'ecrire que ce qu'on a. Ecraser par `null` faisait disparaitre la
+        // decision saisie a la main chaque fois que la politique ne repondait
+        // pas — c'est-a-dire en mode manuel, et desormais aussi quand la
+        // moyenne annuelle manque parce qu'un semestre n'a pas de notes.
+        if ($persistOfficial && $bulletin && $councilDecision['text'] !== '') {
+            $bulletin->decision_conseil = $councilDecision['text'];
             $bulletin->save();
         }
 
@@ -1148,13 +1161,24 @@ class BulletinService
         $this->calculerRangsPourClasse($classeId, $anneeUniversitaireId, $periode);
     }
 
+    /**
+     * La decision calculee, et la raison quand il n'y en a pas.
+     *
+     * Rend un couple plutot qu'un texte : « pas de decision » recouvre deux
+     * situations qui n'appellent pas la meme reponse. En mode manuel, c'est
+     * normal — l'ecole ecrit la sienne. En mode seuil, c'est que la moyenne de
+     * decision manque, et l'utilisateur doit l'apprendre autrement que par une
+     * case vide au bas du bulletin.
+     *
+     * @return array{text: ?string, moyenne_manquante: bool, source: string}
+     */
     private function automaticCouncilDecision(
         ESBTPClasse $classe,
         string $periode,
         ?float $semester2Average,
         ?float $annualAverage,
         ?int $levelYear = null,
-    ): ?string
+    ): array
     {
         $levelYear ??= $this->classeLevelYear($classe);
         $settings = [];
@@ -1165,16 +1189,25 @@ class BulletinService
             }
         }
 
-        $source = $settings["bulletin_bts{$levelYear}_council_average_source"] ?? 'semestre2';
+        $cleSource = "bulletin_bts{$levelYear}_council_average_source";
+        $source = $settings[$cleSource] ?? (BtsBulletinPolicy::defaultFor($cleSource) ?? 'annual');
         $decisionAverage = BtsBulletinPolicy::decisionAverage($source, $semester2Average, $annualAverage);
+        $modeSeuil = ($settings["bulletin_bts{$levelYear}_council_mode"] ?? 'manual') === 'threshold';
+        $periodeNormalisee = $this->normalizePeriode($periode);
 
-        return BtsBulletinPolicy::councilDecision(
-            $classe->isBTS(),
-            $levelYear,
-            $this->normalizePeriode($periode),
-            $decisionAverage,
-            $settings,
-        );
+        return [
+            'text' => BtsBulletinPolicy::councilDecision(
+                $classe->isBTS(),
+                $levelYear,
+                $periodeNormalisee,
+                $decisionAverage,
+                $settings,
+            ),
+            'moyenne_manquante' => $modeSeuil
+                && $decisionAverage === null
+                && BtsBulletinPolicy::usesCouncilPolicy($classe->isBTS(), $levelYear, $periodeNormalisee),
+            'source' => $source,
+        ];
     }
 
 
