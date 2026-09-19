@@ -2508,7 +2508,7 @@ class BulletinService
                 return $query->where('annee_universitaire_id', $anneeUniversitaireId);
             })
             ->where('periode', $periode)
-            ->with(['matiere', 'classe'])
+            ->with(['matiere' => fn ($q) => $q->withTrashed(), 'classe' => fn ($q) => $q->withTrashed()])
             ->get();
 
         foreach ($resultats as $resultat) {
@@ -3508,7 +3508,7 @@ class BulletinService
             // Le filtre de coherence ci-dessous lit la matiere ET la classe de
             // chaque ligne. Sans ces deux eager-loads, c'est deux requetes par
             // ligne, sur toute une promotion.
-            ->with(['matiere', 'classe']);
+            ->with(['matiere' => fn ($q) => $q->withTrashed(), 'classe' => fn ($q) => $q->withTrashed()]);
 
         if ($classe_id) {
             $resultatsQuery->where('classe_id', $classe_id);
@@ -3587,7 +3587,14 @@ class BulletinService
             $classeDeLaLigne = $classeCibleKpi ?? $resultat->classe;
 
             if (! $classeDeLaLigne || ! $resultat->matiere) {
-                // Classe ou matiere effacee en douceur : on ne PEUT pas juger.
+                // UNE VRAIE LIGNE ORPHELINE : cle etrangere pendante, pas une
+                // ligne effacee en douceur. La distinction compte, et ce
+                // commentaire disait l'inverse : il affirmait « effacee en
+                // douceur : on ne PEUT pas juger », alors qu'on pouvait — les
+                // gardes d'ECRITURE du meme chantier le font en une ligne, avec
+                // `withTrashed()`. L'eager-load ci-dessus le fait desormais
+                // aussi, donc ce repli ne voit plus que l'orpheline.
+                //
                 // On garde la ligne et on le dit une fois — un repli muet est le
                 // piege #12, et les deux autres chemins de ce chantier le disent
                 // deja. Le silence ici serait une asymetrie de conduite.
@@ -3743,7 +3750,7 @@ class BulletinService
                 // `with('matiere')` : le filtre de coherence ci-dessous lit la
                 // matiere de chaque ligne. Sans l'eager-load, c'est une requete
                 // par ligne, sur toute une classe.
-                ->with('matiere')
+                ->with(['matiere' => fn ($q) => $q->withTrashed()])
                 ->where('classe_id', $classeId)
                 ->where('annee_universitaire_id', $anneeUniversitaireId);
 

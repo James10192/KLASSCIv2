@@ -2675,7 +2675,9 @@ class ESBTPResultatController extends Controller
                 ->where('classe_id', $classeId)
                 ->where('periode', $periodePourBDD)
                 ->where('annee_universitaire_id', $anneeUniversitaireId)
-                ->with('matiere')
+                // `withTrashed()` : voir le chemin 1 ci-dessous — une matiere effacee
+                // en douceur desarmait le marquage « hors systeme ».
+                ->with(['matiere' => fn ($q) => $q->withTrashed()])
                 ->get();
 
             // Préparer les données des résultats pour l'affichage et l'édition
@@ -2684,7 +2686,14 @@ class ESBTPResultatController extends Controller
                 // Vérifier si la relation matiere existe
                 if (! $resultat->matiere) {
                     // Si la relation n'existe pas, essayer de récupérer la matière directement
-                    $matiere = \App\Models\ESBTPMatiere::find($resultat->matiere_id);
+                    // `withTrashed()` : `ESBTPMatiere` est en `SoftDeletes`. Sans
+                    // lui, une matiere effacee en douceur faisait `continue` plus
+                    // bas — la ligne disparaissait de l'ecran, donc SA CROIX DE
+                    // SUPPRESSION avec elle, et le chemin du snapshot la recreait
+                    // ensuite sous « Matiere inconnue », sans son marquage, donc
+                    // modifiable et repostable. C'est precisement l'inextirpable
+                    // que cet ecran evite par ailleurs.
+                    $matiere = \App\Models\ESBTPMatiere::withTrashed()->find($resultat->matiere_id);
 
                     // Si la matière n'existe toujours pas, ignorer ce résultat
                     if (! $matiere) {

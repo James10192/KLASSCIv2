@@ -1121,6 +1121,75 @@ class EcueLmdHorsDuBulletinNoteTest extends TestCase
         $temoin->assertOk();
     }
 
+    /**
+     * EFFACER LA MATIERE NE DOIT PAS DESARMER LE FILTRE.
+     *
+     * `ESBTPMatiere` est en `SoftDeletes`, et `ESBTPMatiereController::destroy()`
+     * fait un `delete()`. La ligne `esbtp_resultats` survit a l'effacement.
+     *
+     * Les deux gardes d'ECRITURE de ce chantier resolvent deja leur matiere en
+     * `withTrashed()` — les lecteurs, eux, ne le faisaient pas : un eager-load
+     * nu rendait `null`, le `&& $resultat->matiere` du filtre court-circuitait,
+     * et l'ECUE rentrait dans la moyenne. Le bulletin, lui, l'ecartait : 14,00
+     * au PDF, 9,00 a l'ecran, pour le meme eleve. Exactement les deux chiffres
+     * contradictoires que cette branche supprime par ailleurs.
+     */
+    public function test_effacer_la_matiere_ne_reintegre_pas_l_ecue_dans_les_moyennes(): void
+    {
+        $this->monterLaClasse();
+        $bts = $this->matiereConfiguree();
+        $ecue = $this->uneEcue('TPGC650');
+        $etudiant = $this->etudiantInscrit();
+
+        ESBTPResultat::create([
+            'etudiant_id' => $etudiant->id,
+            'classe_id' => $this->classe->id,
+            'matiere_id' => $bts->id,
+            'annee_universitaire_id' => $this->annee->id,
+            'periode' => 'semestre1',
+            'moyenne' => 14,
+            'coefficient' => 2,
+        ]);
+
+        ESBTPResultat::withoutEvents(fn () => ESBTPResultat::create([
+            'etudiant_id' => $etudiant->id,
+            'classe_id' => $this->classe->id,
+            'matiere_id' => $ecue->id,
+            'annee_universitaire_id' => $this->annee->id,
+            'periode' => 'semestre1',
+            'moyenne' => 4,
+            'coefficient' => 1,
+        ]));
+
+        // LE GESTE QUI DESARMAIT TOUT : un effacement en douceur, celui que
+        // l'ecran des matieres produit.
+        $ecue->delete();
+
+        $this->assertNotNull(
+            $ecue->fresh()?->deleted_at,
+            'Temoin de montage : sans effacement en douceur, ce test ne prouve rien.'
+        );
+
+        $moyennes = [];
+        $rangs = [];
+
+        app(BulletinService::class)->getPreCalculatedResults(
+            collect([$etudiant]),
+            $this->classe->id,
+            $this->annee->id,
+            'semestre1',
+            $moyennes,
+            $rangs
+        );
+
+        $this->assertSame(
+            14.0,
+            round((float) $moyennes[$etudiant->id], 2),
+            'Sans le correctif, la matiere effacee rendait le filtre aveugle et '
+            .'le 4/20 de l\'ECUE retombait dans la moyenne (9,00).'
+        );
+    }
+
     public function test_une_ligne_heritee_reste_modifiable_sur_sa_moyenne(): void
     {
         $this->monterLaClasse();

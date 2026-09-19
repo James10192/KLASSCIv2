@@ -77,7 +77,10 @@ class BtsCurrentResultSnapshotService
     {
         $notes = ESBTPNote::query()
             ->where('etudiant_id', $etudiantId)
-            ->with(['evaluation.matiere'])
+            // `withTrashed()` sur la matiere, pour la meme raison qu'au chemin
+            // des moyennes enregistrees : effacee en douceur, elle rendait le
+            // filtre aveugle au lieu de le rendre prudent.
+            ->with(['evaluation.matiere' => fn ($q) => $q->withTrashed()])
             ->whereHas('evaluation', function ($query) use ($anneeUniversitaireId, $classeId, $periode) {
                 // Aligné sur la génération réelle (buildDonneesBulletin) : mêmes
                 // aliases de période ET exclusion des évaluations annulées, sinon
@@ -94,7 +97,11 @@ class BtsCurrentResultSnapshotService
             ->where('classe_id', $classeId)
             ->where('annee_universitaire_id', $anneeUniversitaireId)
             ->where('periode', $periode)
-            ->with('matiere')
+            // `withTrashed()` : `ESBTPMatiere` est en `SoftDeletes`. Sans lui, une
+            // matiere effacee en douceur rendait `$resultat->matiere` nul, le
+            // `&&` du filtre court-circuitait, et la ligne incoherente rentrait
+            // dans le « Courant » — exactement ce que ce filtre protege.
+            ->with(['matiere' => fn ($q) => $q->withTrashed()])
             ->get();
 
         $subjects = [];
@@ -284,7 +291,7 @@ class BtsCurrentResultSnapshotService
             $anneeUniversitaireId,
             'semestre2'
         );
-        $classe = ESBTPClasse::with(['filiere', 'niveau', 'niveauEtude'])->find($classeId);
+        $classe = ESBTPClasse::withTrashed()->with(['filiere', 'niveau', 'niveauEtude'])->find($classeId);
         $weights = $this->bulletinService->getSemesterWeights($classe);
 
         $annualEffective = $this->bulletinService->calculateAnnualAverage(

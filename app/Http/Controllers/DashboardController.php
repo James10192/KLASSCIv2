@@ -1487,7 +1487,13 @@ class DashboardController extends Controller
                 $q->where('annee_universitaire_id', $anneeId)
                     ->where('status', '!=', ESBTPEvaluation::STATUS_CANCELLED);
             })
-            ->with(['evaluation:id,bareme,matiere_id', 'evaluation.matiere:id,name,unite_enseignement_id'])
+            // `withTrashed()` sur la matiere : sans lui, une matiere effacee en
+            // douceur rendait `$matiere` nul, le filtre etait court-circuite, et
+            // la note entrait dans la moyenne de l'accueil.
+            ->with([
+                'evaluation:id,bareme,matiere_id',
+                'evaluation.matiere' => fn ($q) => $q->withTrashed()->select('id', 'name', 'unite_enseignement_id'),
+            ])
             ->get();
 
         // Memo : une ligne par ELEVE, pas une par note. Sans lui, soixante notes
