@@ -36,6 +36,53 @@ class ESBTPResultatMatiere extends Model
     public const SYMBOLE_TROU = '—';
 
     /**
+     * Pose la ligne d'une matiere sur un bulletin, meme si une ligne SUPPRIMEE
+     * occupe deja la place.
+     *
+     * La cle unique `(bulletin_id, matiere_id)` ne porte pas `deleted_at` :
+     * une ligne soft-deletee occupe donc la place tout en etant invisible aux
+     * requetes ordinaires. `updateOrCreate` ne la trouvait pas, tentait un
+     * INSERT, et la base repondait « Duplicate entry » — une erreur 500
+     * DEFINITIVE sur cet etudiant, puisque la ligne fantome ne disparait
+     * jamais d'elle-meme.
+     *
+     * C'est exactement ce qui arrive apres une regeneration : la generation
+     * termine en soft-deletant les matieres qu'elle n'a pas retenues
+     * (`persistOfficialSubjectRows`), et la generation SUIVANTE, si la matiere
+     * revient, butait dessus. Les bulletins d'une classe ou une matiere a ete
+     * retiree puis remise etaient donc definitivement ingenerables.
+     *
+     * `ESBTPResultat` avait deja recu ce traitement, avec le meme commentaire,
+     * dans `BulletinService::persistSubjectAverages()`. Sa table jumelle avait
+     * ete oubliee ; cette methode existe pour qu'on ne puisse plus l'oublier.
+     *
+     * @param  array<string, mixed>  $valeurs
+     */
+    public static function poserSurLeBulletin(int $bulletinId, int $matiereId, array $valeurs): self
+    {
+        $ligne = static::withTrashed()->updateOrCreate(
+            [
+                'bulletin_id' => $bulletinId,
+                'matiere_id' => $matiereId,
+            ],
+            $valeurs,
+        );
+
+        // La ligne revit : une matiere de nouveau au bulletin n'a aucune raison
+        // de rester marquee supprimee.
+        if ($ligne->trashed()) {
+            $ligne->restore();
+        }
+
+        return $ligne;
+    }
+
+    /**
+     * Les attributs qui sont assignables en masse.
+     *
+     * @var array
+     */
+    /**
      * Les attributs qui sont assignables en masse.
      *
      * @var array

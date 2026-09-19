@@ -299,13 +299,20 @@ class ESBTPBulletinController extends Controller
                     continue;
                 }
 
-                // Créer le résultat pour cette matière
-                $resultat = new ESBTPResultatMatiere;
-                $resultat->bulletin_id = $bulletin->id;
-                $resultat->matiere_id = $matiere->id;
+                // `withTrashed` + `firstOrNew` et non `new` : la cle unique
+                // `(bulletin_id, matiere_id)` ne porte pas `deleted_at`, donc une
+                // ligne soft-deletee par une generation precedente occupe la
+                // place sans etre visible. Un `new` butait dessus en
+                // « Duplicate entry », et la ligne fantome ne disparaissant
+                // jamais, l'erreur etait definitive pour cet etudiant.
+                $resultat = ESBTPResultatMatiere::withTrashed()->firstOrNew([
+                    'bulletin_id' => $bulletin->id,
+                    'matiere_id' => $matiere->id,
+                ]);
                 $resultat->moyenne = $moyenne;
                 $resultat->coefficient = $coefficient;
                 $resultat->commentaire = null;
+                $resultat->deleted_at = null;
                 $resultat->save();
             }
 
@@ -415,7 +422,11 @@ class ESBTPBulletinController extends Controller
             $bulletin->save();
 
             // Mettre à jour les résultats par matière
-            $existingResultats = ESBTPResultatMatiere::where('bulletin_id', $bulletin->id)
+            // `withTrashed` : une ligne soft-deletee occupe la cle unique sans
+            // etre visible. Sans elle, la branche « sinon » plus bas creait une
+            // ligne en doublon et la base refusait tout l'enregistrement.
+            $existingResultats = ESBTPResultatMatiere::withTrashed()
+                ->where('bulletin_id', $bulletin->id)
                 ->get()->keyBy('matiere_id');
 
             foreach ($request->resultats as $resultatData) {
@@ -429,6 +440,8 @@ class ESBTPBulletinController extends Controller
                     $resultat->moyenne = $moyenne;
                     $resultat->coefficient = $resultatData['coefficient'];
                     $resultat->commentaire = $resultatData['commentaire'] ?? null;
+                    // La matiere est de nouveau au bulletin : sa ligne revit.
+                    $resultat->deleted_at = null;
                     $resultat->save();
                 } else {
                     $resultat = new ESBTPResultatMatiere;

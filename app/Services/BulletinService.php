@@ -1442,11 +1442,13 @@ class BulletinService
             $keptMatiereIds[] = $matiereId;
             $rang = $estNotee && is_numeric($resultat->rang ?? null) ? (int) $resultat->rang : null;
 
-            ESBTPResultatMatiere::updateOrCreate(
-                [
-                    'bulletin_id' => $bulletin->id,
-                    'matiere_id' => $matiereId,
-                ],
+            // `poserSurLeBulletin` et non `updateOrCreate` : la boucle se termine
+            // par un soft-delete des matieres non retenues, et la cle unique ne
+            // porte pas `deleted_at`. Une matiere retiree puis remise rendait
+            // donc le bulletin DEFINITIVEMENT ingenerable — « Duplicate entry ».
+            ESBTPResultatMatiere::poserSurLeBulletin(
+                (int) $bulletin->id,
+                $matiereId,
                 [
                     'moyenne' => $estNotee ? $resultat->moyenne : null,
                     'statut' => $statut,
