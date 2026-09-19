@@ -129,12 +129,30 @@ class ESBTPMatiereClassificationController extends Controller
      */
     private function lignesBrutesDuCombo(int $filiereId, int $niveauId)
     {
-        return ESBTPMatiereFilierNiveau::query()
-            ->where('filiere_id', $filiereId)
-            ->where('niveau_etude_id', $niveauId)
-            ->with('matiere:id,name,code,unite_enseignement_id,is_active,ordre_bulletin')
-            ->get();
+        // Memoise : les deux listes que cette methode partitionne — les
+        // matieres BTS et les intrus LMD — l'appellent chacune une fois, sur
+        // le meme couple, dans la meme reponse. La definition etait bien
+        // unique, la REQUETE ne l'etait pas : deux fois la meme, a chaque
+        // ouverture de combo.
+        $cle = $filiereId.':'.$niveauId;
+
+        if (! isset($this->lignesDuComboMemoisees[$cle])) {
+            $this->lignesDuComboMemoisees[$cle] = ESBTPMatiereFilierNiveau::query()
+                ->where('filiere_id', $filiereId)
+                ->where('niveau_etude_id', $niveauId)
+                ->with('matiere:id,name,code,unite_enseignement_id,is_active,ordre_bulletin')
+                ->get();
+        }
+
+        return $this->lignesDuComboMemoisees[$cle];
     }
+
+    /**
+     * Lignes deja lues, par couple « filiereId:niveauId ».
+     *
+     * @var array<string, \Illuminate\Support\Collection<int, ESBTPMatiereFilierNiveau>>
+     */
+    private array $lignesDuComboMemoisees = [];
 
     /**
      * Les ECUE LMD presentes dans la maquette BTS de ce couple.

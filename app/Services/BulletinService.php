@@ -16,6 +16,7 @@ use App\Models\ESBTPNote;
 use App\Models\ESBTPPlanificationAcademique;
 use App\Models\ESBTPResultat;
 use App\Models\ESBTPResultatMatiere;
+use App\Domain\Academique\CoherenceSystemeAcademique;
 use App\Domain\BtsTroncCommun\BtsAnnualClassMapResolver;
 use App\Domain\BtsTroncCommun\BtsBulletinCohortResolver;
 use App\Domain\BtsTroncCommun\BtsClassCohortCounter;
@@ -377,6 +378,10 @@ class BulletinService
                 $matiere = $note->evaluation->matiere;
                 $matiereId = $matiere->id;
 
+                if (! $this->matiereAppartientAuBulletin($matiere, $classe, 'evaluation')) {
+                    continue;
+                }
+
                 if (! isset($resultatsParMatiere[$matiereId])) {
                     // Type de formation : résolution canonique (ConfigMatiere → bulletin JSON → matiere globale)
                     $typeFormation = $this->resolveMatiereTypeFormation(
@@ -460,6 +465,11 @@ class BulletinService
         // Ajouter les matières qui ont seulement des moyennes manuelles (sans évaluations)
         foreach ($resultats as $resultatManuel) {
             $matiereId = $resultatManuel->matiere_id;
+
+            if ($resultatManuel->matiere
+                && ! $this->matiereAppartientAuBulletin($resultatManuel->matiere, $classe, 'moyenne manuelle')) {
+                continue;
+            }
 
             if ($resultatManuel->matiere) {
                 // Si la matière n'existe pas encore dans les résultats, l'ajouter
@@ -1486,6 +1496,36 @@ class BulletinService
      *
      * @param array<int, array{note: float|int|string, coefficient: float|int, bareme?: float|int|null, is_absent?: bool}> $notes
      */
+    /**
+     * Cette matiere a-t-elle sa place au bulletin de cette classe ?
+     *
+     * CE CONTROLE EST LE SEUL QUI RETRANCHE. Le bulletin BTS est pilote par les
+     * NOTES : une matiere notee y figure, que la maquette la connaisse ou non —
+     * `BulletinSubjectRowsCompleter` le dit lui-meme, « la maquette ajoute des
+     * lignes, elle n'en retire jamais ». Les filtres `btsOnly()` poses ailleurs
+     * dans ce chantier portent tous sur des lecteurs de la MAQUETTE : ils
+     * decident ce qu'elle ajoute, et ne peuvent par construction rien enlever a
+     * une ligne qui porte une note. C'est pourquoi ils ne suffisaient pas.
+     *
+     * Mesure qui a motive ce garde (septembre 2026, esbtp-abidjan) : l'ECUE
+     * `TPGC641` « OGC », evaluee dans la classe BTS 2BTS GBAT E, portait 34
+     * notes. Rejoue en test, un 14/20 en matiere BTS (coef 2) accompagne d'un
+     * 4/20 sur l'ECUE (coef 1) rendait une moyenne generale de **10,67 au lieu
+     * de 14,00** — valeur fausse persistee dans `esbtp_resultats`,
+     * `esbtp_resultats_matieres` et `esbtp_bulletins.moyenne_generale`.
+     *
+     * Le sort des notes ecartees est une decision d'ecole, pas de code : les
+     * rebasculer vers la bonne matiere (`POST /api/cli/evaluations/{id}/matiere`),
+     * deplacer l'evaluation vers sa classe LMD, ou l'annuler.
+     */
+    private function matiereAppartientAuBulletin(
+        ESBTPMatiere $matiere,
+        ESBTPClasse $classe,
+        string $provenance
+    ): bool {
+        return CoherenceSystemeAcademique::matiereRetenue($matiere, $classe, $provenance);
+    }
+
     public function computeMoyenneFromNotesData(array $notes): float
     {
         $totalPoints = 0.0;

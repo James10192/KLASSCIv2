@@ -2,6 +2,7 @@
 
 namespace App\Services\ESBTP;
 
+use App\Domain\Academique\CoherenceSystemeAcademique;
 use App\Domain\BtsTroncCommun\BtsAnnualClassMapResolver;
 use App\Models\ESBTPNote;
 use App\Models\ESBTPResultat;
@@ -43,6 +44,31 @@ class BtsCurrentResultSnapshotService
         return $this->buildAnnualSnapshot($etudiantId, $classeId, $anneeUniversitaireId);
     }
 
+    /**
+     * Classes deja chargees, par identifiant.
+     *
+     * @var array<int, \App\Models\ESBTPClasse|null>
+     */
+    private array $classesChargees = [];
+
+    /**
+     * La classe du snapshot, chargee UNE fois par instance de service.
+     *
+     * `RankingService::classement()` et le tableau des resultats d'une classe
+     * appellent ce service DANS une boucle sur les eleves — un `find()` nu y
+     * ferait une requete par eleve, et deux par eleve sur un snapshot annuel
+     * (un par semestre). Sur une classe de 200, cela ajoutait 400 requetes a
+     * un ecran qui en fait deja beaucoup.
+     */
+    private function classe(int $classeId): ?ESBTPClasse
+    {
+        if (! array_key_exists($classeId, $this->classesChargees)) {
+            $this->classesChargees[$classeId] = ESBTPClasse::find($classeId);
+        }
+
+        return $this->classesChargees[$classeId];
+    }
+
     private function buildSemesterSnapshot(int $etudiantId, int $classeId, int $anneeUniversitaireId, string $periode): array
     {
         $notes = ESBTPNote::query()
@@ -69,11 +95,23 @@ class BtsCurrentResultSnapshotService
 
         $subjects = [];
 
+        // Le snapshot doit voir EXACTEMENT ce que la generation reelle retient.
+        // Sans ce filtre, une ECUE evaluee dans une classe BTS fausserait la
+        // moyenne des deux cotes a la fois — donc l'ecart « Officiel / Courant »
+        // resterait nul et n'alerterait personne. Voir
+        // `BulletinService::matiereAppartientAuBulletin()`.
+        $classeDuSnapshot = $this->classe($classeId);
+
         foreach ($notes as $note) {
             $matiere = $note->evaluation?->matiere;
             $matiereId = $note->matiere_id ?: $matiere?->id;
 
             if (! $matiere || ! $matiereId) {
+                continue;
+            }
+
+            if ($classeDuSnapshot
+                && ! CoherenceSystemeAcademique::matiereRetenue($matiere, $classeDuSnapshot, 'snapshot/evaluation')) {
                 continue;
             }
 
@@ -118,6 +156,12 @@ class BtsCurrentResultSnapshotService
 
         foreach ($manualResultats as $resultat) {
             $matiereId = $resultat->matiere_id;
+
+            if ($classeDuSnapshot && $resultat->matiere
+                && ! CoherenceSystemeAcademique::matiereRetenue($resultat->matiere, $classeDuSnapshot, 'snapshot/moyenne manuelle')) {
+                continue;
+            }
+
             if (! isset($subjects[$matiereId])) {
                 $subjects[$matiereId] = [
                     'matiere_id' => $matiereId,

@@ -133,12 +133,22 @@ class CLIBtsMaquetteController extends Controller
                 // Tant que ce drapeau est faux, le bulletin ignore les
                 // semestres et rend la liste entiere : c'est la premiere chose
                 // a regarder quand une matiere apparait la ou on ne l'attend pas.
+                //
+                // ⚠ Il est au grain du COUPLE (« au moins une ligne validee »),
+                // alors que la regle effective est au grain de la LIGNE. Sur un
+                // couple mixte, le lire seul fait croire que les semestres
+                // bruts s'appliquent partout : c'est `semestre_effectif`, ligne
+                // par ligne, qui dit ce que le bulletin retient.
                 'semestres_renseignes' => $maquette->isRenseignee($filiere->id, $niveau->id),
+                // Les totaux comptent le semestre EFFECTIF, pas la colonne :
+                // une ligne non validee compte dans « les deux », comme au
+                // bulletin. Assis sur la colonne brute, ils contredisaient
+                // le document qu'ils sont censes decrire.
                 'totaux' => [
                     'matieres' => $lignes->count(),
-                    'semestre_1' => $lignes->where('semestre', 1)->count(),
-                    'semestre_2' => $lignes->where('semestre', 2)->count(),
-                    'les_deux' => $lignes->whereNull('semestre')->count(),
+                    'semestre_1' => $lignes->where('semestre_effectif', 1)->count(),
+                    'semestre_2' => $lignes->where('semestre_effectif', 2)->count(),
+                    'les_deux' => $lignes->whereNull('semestre_effectif')->count(),
                 ],
                 'matieres' => $lignes->all(),
             ],
@@ -318,8 +328,27 @@ class CLIBtsMaquetteController extends Controller
                 'matiere' => $ligne->matiere?->name,
                 'code' => $ligne->matiere?->code,
                 'active' => (bool) $ligne->matiere?->is_active,
+                // DEUX champs, et ils peuvent differer. `semestre` est la
+                // colonne brute, utile au diagnostic ; `semestre_effectif` est
+                // ce que le BULLETIN retient, via la normalisation unique de
+                // `SemestreDeMaquette::declarationEffective()`. Une ligne non
+                // validee porte souvent un semestre — `ChargementDeMaquette`
+                // en pose un sans valider — et vaut pourtant « les deux ».
+                // Lire la colonne brute faisait annoncer « semestre 2 » a un
+                // outil de diagnostic pour des matieres que le bulletin sort
+                // aux DEUX semestres, sur le cas fondateur meme du chantier
+                // (Batiment 2e annee, dix matieres figees au semestre 2).
                 'semestre' => $ligne->semestre,
-                'semestre_libelle' => SemestreDeMaquette::libelle($ligne->semestre),
+                'semestre_effectif' => SemestreDeMaquette::declarationEffective(
+                    $ligne->semestre,
+                    (bool) $ligne->semestre_renseigne
+                ),
+                'semestre_libelle' => SemestreDeMaquette::libelle(
+                    SemestreDeMaquette::declarationEffective(
+                        $ligne->semestre,
+                        (bool) $ligne->semestre_renseigne
+                    )
+                ),
                 'semestre_renseigne' => (bool) $ligne->semestre_renseigne,
                 'classification' => $ligne->classification,
                 'ordre_bulletin' => $ligne->ordre_bulletin,

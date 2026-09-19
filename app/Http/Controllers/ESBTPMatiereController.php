@@ -577,9 +577,30 @@ class ESBTPMatiereController extends Controller
         // Mettre à jour la matière
         $matiere->update($validatedData);
 
+        // Les deux listes AVANT l'enregistrement, pour savoir si l'utilisateur
+        // y a touche. Lues ici, apres `update()` mais avant la synchronisation
+        // des pivots plats, qui va les reecrire.
+        $filieresAvant = $matiere->filieres()->pluck('esbtp_filieres.id')->map('intval')->sort()->values()->all();
+        $niveauxAvant = $matiere->niveaux()->pluck('esbtp_niveau_etudes.id')->map('intval')->sort()->values()->all();
+
         [$filiereIds, $niveauIds] = $this->synchroniserLesPivotsPlats($request, $matiere);
 
-        $couples = $this->poserLesCouplesDuFormulaire($matiere, $filiereIds, $niveauIds, $service);
+        // ON N'ECRIT DANS LA MAQUETTE QUE SI LES LISTES ONT BOUGE.
+        //
+        // Le produit des deux listes n'est pas la maquette : les cases sont
+        // precochees depuis les pivots PLATS, qui sur-rapportent. Une matiere
+        // canoniquement rattachee au seul (Batiment, 1A), mais dont les listes
+        // plates portent [Batiment, TP] x [1A, 2A], voyait son produit poser
+        // TROIS lignes de plus — donc trois bulletins de plus — a la faveur
+        // d'une simple correction de libelle, sans que personne ait rien coche.
+        //
+        // Reserver l'ecriture au cas ou l'utilisateur a REELLEMENT modifie une
+        // des deux listes supprime ce cas-la sans rien retirer a l'autre :
+        // cocher une filiere ici continue de la poser en maquette, ce que
+        // l'apercu du formulaire promet explicitement.
+        $couples = $this->lesListesOntChange($filiereIds, $niveauIds, $filieresAvant, $niveauxAvant)
+            ? $this->poserLesCouplesDuFormulaire($matiere, $filiereIds, $niveauIds, $service)
+            : 0;
 
         // Rediriger avec un message de succès
         return redirect()->route('esbtp.matieres.index')
@@ -619,6 +640,39 @@ class ESBTPMatiereController extends Controller
         }
 
         return [$filiereIds, $niveauIds];
+    }
+
+    /**
+     * L'utilisateur a-t-il touche a l'une des deux listes ?
+     *
+     * `null` veut dire « le formulaire n'en a pas parle » : rien n'a change de
+     * ce cote. Les deux listes sont comparees en ENSEMBLES — l'ordre des cases
+     * cochees ne veut rien dire, et le comparer ferait passer pour un
+     * changement un simple reordonnancement du navigateur.
+     *
+     * @param  list<int>|null  $filiereIds
+     * @param  list<int>|null  $niveauIds
+     * @param  list<int>  $filieresAvant
+     * @param  list<int>  $niveauxAvant
+     */
+    private function lesListesOntChange(
+        ?array $filiereIds,
+        ?array $niveauIds,
+        array $filieresAvant,
+        array $niveauxAvant
+    ): bool {
+        $normalise = static function (array $ids): array {
+            $ids = array_values(array_unique(array_map('intval', $ids)));
+            sort($ids);
+
+            return $ids;
+        };
+
+        if ($filiereIds !== null && $normalise($filiereIds) !== $normalise($filieresAvant)) {
+            return true;
+        }
+
+        return $niveauIds !== null && $normalise($niveauIds) !== $normalise($niveauxAvant);
     }
 
     /**
@@ -1008,12 +1062,22 @@ class ESBTPMatiereController extends Controller
     {
         try {
             $validated = $request->validate([
-                // `required` et pas seulement `array` : une requete qui OMET
-                // la cle passait la validation, `?? []` la rendait vide, et le
-                // diff lisait « aucun couple voulu » comme « retire-les tous ».
+                // `present` et NON `required` : une requete qui OMET la cle
+                // passait la validation, `?? []` la rendait vide, et le diff
+                // lisait « aucun couple voulu » comme « retire-les tous ».
                 // Les deux appelants envoient toujours la cle ; exiger sa
                 // presence transforme un effacement silencieux en 422.
-                'liaisons'             => 'required|array',
+                //
+                // POURQUOI PAS `required` — la premiere version l'a ecrit, et
+                // c'etait une regression. Laravel traite un tableau VIDE comme
+                // absent (`ValidatesAttributes::validateRequired()` teste
+                // `count($value) < 1`) : le modal « Configurer les liaisons »,
+                // qui demande pourtant confirmation avant de tout retirer, et
+                // le bouton « Retirer » de `/esbtp/classes/{id}/matieres` sur
+                // la derniere liaison, tombaient tous deux en 422. La matiere
+                // devenait indetachable. `present` exige la cle sans exiger
+                // qu'elle porte quelque chose — c'est exactement l'intention.
+                'liaisons'             => 'present|array',
                 'liaisons.*.filiere_id' => 'required|exists:esbtp_filieres,id',
                 'liaisons.*.niveau_id'  => 'required|exists:esbtp_niveau_etudes,id',
             ]);

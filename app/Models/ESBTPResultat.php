@@ -2,11 +2,13 @@
 
 namespace App\Models;
 
+use App\Domain\Academique\CoherenceSystemeAcademique;
 use App\Services\AppreciationScaleService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Validation\ValidationException;
 use OwenIt\Auditing\Contracts\Auditable;
 
 class ESBTPResultat extends Model implements Auditable
@@ -53,6 +55,63 @@ class ESBTPResultat extends Model implements Auditable
         static::addGlobalScope('not_archived', function (Builder $builder) {
             $builder->whereNull($builder->getModel()->getTable() . '.archived_at');
         });
+
+        static::saving(function (self $resultat): void {
+            $resultat->assertMatiereCoherenteAvecLaClasse();
+        });
+    }
+
+    /**
+     * Une moyenne manuelle ne se pose pas sur une matiere etrangere a la classe.
+     *
+     * CE GARDE EXISTE PARCE QUE SON JUMEAU NE SUFFISAIT PAS. `ESBTPEvaluation`
+     * refuse depuis aout 2026 qu'une ECUE soit evaluee dans une classe BTS ;
+     * personne n'avait vu que la moyenne manuelle atteint la MEME ligne de
+     * bulletin sans passer par une evaluation. `ESBTPResultatController` ecrit
+     * ici depuis trois endroits (dont `bulkUpdateMoyennes`, en AJAX), et sa
+     * `FormRequest` ne valide qu'un `exists:esbtp_matieres,id` : rien ne
+     * rapprochait la matiere du systeme de la classe.
+     *
+     * Le garde est au modele, et non dans les trois appelants, pour la raison
+     * qui a fait echouer les quatre premieres passes du chantier : un filtre
+     * pose chez l'appelant demande a chaque futur ecran de s'en souvenir.
+     *
+     * MEME EXCEPTION QUE POUR L'EVALUATION, et pour la meme raison : le
+     * controle ne se declenche qu'a la creation, ou si la classe ou la matiere
+     * change. Une ligne historiquement incoherente reste modifiable sur sa
+     * moyenne ou son rang — sinon on ne pourrait meme plus la corriger, et
+     * c'est exactement ce qui avait rendu une liaison posee par erreur
+     * inextirpable ailleurs dans ce chantier.
+     */
+    protected function assertMatiereCoherenteAvecLaClasse(): void
+    {
+        $doitControler = ! $this->exists || $this->isDirty(['matiere_id', 'classe_id']);
+
+        if (! $doitControler || ! $this->matiere_id || ! $this->classe_id) {
+            return;
+        }
+
+        $classe = ESBTPClasse::find($this->classe_id);
+        $matiere = ESBTPMatiere::find($this->matiere_id);
+
+        if (! $classe || ! $matiere) {
+            return;
+        }
+
+        if (CoherenceSystemeAcademique::estCoherente(
+            $classe->systeme_academique,
+            $matiere->unite_enseignement_id
+        )) {
+            return;
+        }
+
+        throw ValidationException::withMessages([
+            'matiere_id' => CoherenceSystemeAcademique::messageDeRefus(
+                $classe->systeme_academique,
+                (string) $classe->name,
+                (string) $matiere->name
+            ),
+        ]);
     }
 
     /**

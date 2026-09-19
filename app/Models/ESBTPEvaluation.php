@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Domain\Academique\CoherenceSystemeAcademique;
 use App\Domain\BtsTroncCommun\ClasseOuvertureResolver;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -413,17 +414,19 @@ class ESBTPEvaluation extends Model implements Auditable
                 return;
             }
 
-            $classeEstLmd = ($classe->systeme_academique ?? '') === 'LMD';
-            $matiereEstEcue = $matiere->unite_enseignement_id !== null;
-
-            if ($classeEstLmd === $matiereEstEcue) {
+            if (CoherenceSystemeAcademique::estCoherente(
+                $classe->systeme_academique,
+                $matiere->unite_enseignement_id
+            )) {
                 return;
             }
 
             throw ValidationException::withMessages([
-                'matiere_id' => $classeEstLmd
-                    ? "La classe « {$classe->name} » est en LMD : elle attend une ECUE, or « {$matiere->name} » est une matière BTS."
-                    : "La classe « {$classe->name} » est en BTS : elle attend une matière BTS, or « {$matiere->name} » est une ECUE du LMD.",
+                'matiere_id' => CoherenceSystemeAcademique::messageDeRefus(
+                    $classe->systeme_academique,
+                    (string) $classe->name,
+                    (string) $matiere->name
+                ),
             ]);
         });
 

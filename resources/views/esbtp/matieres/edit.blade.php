@@ -400,9 +400,9 @@
                 combinationsHtml += `
                     <div class="alert alert-warning py-2 px-3 mb-3">
                         <i class="fas fa-plus-circle me-1"></i>
-                        <strong>${aCreer}</strong> sera(ont) <strong>ajoutée(s)</strong> à la maquette à l'enregistrement.
-                        Les autres y sont déjà. Décocher ne retire rien : le retrait d'une
-                        combinaison se fait sur l'écran Maquette.
+                        <strong>${aCreer}</strong> sera(ont) <strong>ajoutée(s)</strong> à la maquette
+                        si vous modifiez l'une des deux listes. Enregistrer sans y toucher n'ajoute rien.
+                        Décocher ne retire rien : le retrait d'une combinaison se fait sur l'écran Maquette.
                     </div>
                 `;
             }

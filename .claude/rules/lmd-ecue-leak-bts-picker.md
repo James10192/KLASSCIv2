@@ -111,6 +111,89 @@ garde.
 Les filtres en lecture qui restent sont une ceinture, pas la bretelle. Un nouvel
 écran BTS n'a plus à en poser.
 
+## Il y a DEUX familles, et la première n'était pas la pire
+
+Tout ce qui précède décrit la **famille 1** : une ECUE rattachée à une maquette BTS
+par le pivot `esbtp_matiere_filiere_niveau`. Le garde à l'écriture la ferme.
+
+**La famille 2 était ouverte, et elle coûte plus cher : une ECUE ÉVALUÉE dans une
+classe BTS.** Elle n'a rien à voir avec les pivots — elle passe par
+`esbtp_evaluations` (ou par une moyenne manuelle dans `esbtp_resultats`), et elle
+atteint le bulletin **par les notes**.
+
+**Pourquoi aucun des douze filtres `btsOnly()` ne l'arrêtait.** Ils portent tous
+sur des lecteurs de la **maquette**. Or `BulletinSubjectRowsCompleter` le dit
+lui-même, en toutes lettres dans son en-tête :
+
+> **Rien ne disparait.** Une matiere reellement notee mais absente de la maquette
+> reste au bulletin. La maquette ajoute des lignes, elle n'en retire jamais.
+
+Le bulletin BTS est **piloté par les notes** : la maquette complète, elle ne
+retranche pas. Un filtre posé sur ce qu'elle ajoute ne peut, par construction,
+rien enlever à une ligne qui porte une note.
+
+**Ce que ça faisait, mesuré et rejoué en test** (septembre 2026, esbtp-abidjan) :
+l'ECUE `TPGC641` « OGC », évaluée dans la classe BTS **2BTS GBAT E**, portait
+**34 notes**. Un 14/20 en matière BTS (coef 2) accompagné d'un 4/20 sur l'ECUE
+(coef 1) rendait une moyenne générale de **10,67 au lieu de 14,00** — et la valeur
+fausse était **persistée** dans `esbtp_resultats`, `esbtp_resultats_matieres` et
+`esbtp_bulletins.moyenne_generale`.
+
+### Ce qui est en place depuis septembre 2026
+
+Un seul prédicat, `App\Domain\Academique\CoherenceSystemeAcademique`, et trois
+usages qui n'ont volontairement pas la même conduite :
+
+| site | conduite | pourquoi |
+|---|---|---|
+| `ESBTPEvaluation::booted()` (existait depuis août 2026) | **refuse** | c'est le geste qui contamine |
+| `ESBTPResultat::booted()` (nouveau) | **refuse** | la moyenne manuelle atteint la même ligne sans passer par une évaluation |
+| `BulletinService` + `BtsCurrentResultSnapshotService` | **écarte, et le journalise** | ces notes ont été saisies par quelqu'un : refuser de générer le bulletin punirait l'élève |
+
+Les deux gardes d'écriture ne se déclenchent **qu'à la création, ou si la classe
+ou la matière change**. Une ligne héritée reste modifiable sur sa moyenne ou son
+titre — sinon elle deviendrait incorrigeable, exactement le défaut que le retrait
+de maquette corrige par ailleurs.
+
+**Le snapshot est filtré AUSSI, et ce n'est pas une redondance.**
+`BtsCurrentResultSnapshotService` alimente l'écart « Officiel / Courant ». Filtrer
+seulement la génération laisserait l'erreur des deux côtés de la comparaison :
+l'écart resterait nul et **n'alerterait personne**.
+
+**L'écart écarté est journalisé** (`Log::warning`, dédoublonné par couple
+classe × matière). Une moyenne qui bouge sans explication est pire qu'une moyenne
+fausse : on ne sait même pas qu'il faut chercher. C'est le piège #12 de
+`klassci-debugging-discipline.md`.
+
+### Recenser la famille 2
+
+```bash
+klassci diagnostics:evaluation-system-mismatch <tenant>
+# ou : GET /api/cli/diagnostics/evaluation-system-mismatch
+```
+
+Depuis septembre 2026 la réponse porte **deux** blocs : `details` (évaluations) et
+`moyennes_manuelles` (`esbtp_resultats`). La version antérieure ne voyait que le
+premier **et a été prise pour l'inventaire complet** — c'est ce qui a laissé la
+famille des moyennes manuelles hors de tout recensement.
+
+**Le sort des notes trouvées est une décision d'école, pas de code** (`rien-en-dur.md`) :
+les rebasculer vers la bonne matière (`POST /api/cli/evaluations/{id}/matiere`,
+qui existe et gère la colonne dénormalisée `esbtp_notes.matiere_id`), déplacer
+l'évaluation vers sa classe LMD, ou l'annuler (`status = cancelled`, déjà exclu du
+bulletin). Ne les efface jamais d'office.
+
+### Ce qui n'est PAS vérifié
+
+`esbtp_planifications_academiques` est bien peuplée avec des ECUE par
+`LMDImportService::upsertPlanification()`, et ses lecteurs BTS sont scopés sur
+`(filiere_id, niveau_etude_id)`. L'argument « les niveaux LMD et BTS sont
+disjoints, donc c'est sain » **a exactement la forme de celui qui s'est révélé
+faux pour la famille 1** (« l'import LMD ne peuple pas ce pivot » — vrai de
+l'import, faux des autres écrivains). Traite-le comme *non vérifié*, pas comme
+*sain* : le contrôle à faire est de chercher un couple (ECUE, niveau de type BTS)
+dans cette table, pas de relire le code de l'import.
+
 ## Compter ce qui est déjà en base
 
 Le garde protège l'avenir ; il n'efface rien. À faire sur chaque instance ayant
