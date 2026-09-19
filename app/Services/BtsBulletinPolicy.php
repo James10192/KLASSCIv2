@@ -22,6 +22,17 @@ final class BtsBulletinPolicy
         // jamais suivi, et le bulletin qui annonce « Redouble » imprime juste
         // au-dessus une moyenne annuelle au-dessus du seuil. Le réglage reste,
         // une école peut décider autrement ; c'est le défaut qui change.
+        //
+        // CE CHANGEMENT DE DÉFAUT EST UNE DÉCISION, PRISE EXPLICITEMENT.
+        // Une revue l'a signalé comme un changement de comportement de
+        // production embarqué dans une branche de correctif : sur une instance
+        // en mode `threshold` qui n'a PAS de ligne en base pour cette clé, un
+        // bulletin BTS 1 semestre 2 déjà imprimé et remis à une famille peut
+        // passer de « Redouble la classe » à « Admis(e) en 2e Année BTS » à la
+        // prochaine régénération. Le signalement est juste. Le fondateur a été
+        // consulté (septembre 2026) et a tranché : on garde `annual`, l'effet
+        // sur les bulletins déjà générés est assumé. Ne pas le rebasculer sans
+        // le lui redemander.
         'bulletin_bts1_council_average_source' => ['value' => 'annual', 'type' => 'string', 'description' => 'Moyenne de décision BTS 1', 'validation_rules' => ['nullable', 'in:semestre2,annual']],
         'bulletin_bts1_council_threshold' => ['value' => '10', 'type' => 'float', 'description' => 'Seuil de décision BTS 1', 'validation_rules' => ['required_if:bulletin_bts1_council_mode,threshold', 'nullable', 'numeric', 'between:0,20']],
         'bulletin_bts1_council_below_text' => ['value' => 'Redouble la classe', 'type' => 'string', 'description' => 'Décision BTS 1 sous le seuil', 'validation_rules' => ['required_if:bulletin_bts1_council_mode,threshold', 'nullable', 'string', 'max:191']],

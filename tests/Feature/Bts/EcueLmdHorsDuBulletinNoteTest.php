@@ -290,11 +290,14 @@ class EcueLmdHorsDuBulletinNoteTest extends TestCase
         // dont la valeur est un reglage d'instance.
         $this->assertEqualsWithDelta(14.0, $meilleure, 0.2, 'La plus forte moyenne compte 14 (sans l ECUE), pas 10,67.');
         $this->assertEqualsWithDelta(10.0, $plusFaible, 0.2, 'La plus faible moyenne est celle de l eleve sans ECUE.');
+        // Valeur ATTENDUE, et non `($meilleure + $plusFaible) / 2` : avec deux
+        // eleves cette egalite-la est arithmetiquement vraie quoi qu'on casse,
+        // donc elle ne prouvait rien. Sans le filtre, la classe tombe a 10,33.
         $this->assertEqualsWithDelta(
-            ($meilleure + $plusFaible) / 2,
+            12.0,
             $moyenneClasse,
-            0.01,
-            'La moyenne de la classe est la moyenne des deux eleves.'
+            0.2,
+            'La moyenne de la classe vaut 12 (14 et 10), pas 10,33.'
         );
         $this->assertGreaterThan(
             11.0,
@@ -483,6 +486,149 @@ class EcueLmdHorsDuBulletinNoteTest extends TestCase
             (float) $reponse->viewData('moyenneGenerale'),
             0.01,
             'La moyenne annuelle affichee ne compte que la matiere BTS (sans le garde : 9,00).'
+        );
+    }
+
+    /**
+     * La bande KPI de `/esbtp/resultats`, et le defaut qu'elle cachait.
+     *
+     * `computeResultatsKpis()` appelle d'abord `getPreCalculatedResults()`, et
+     * ne retombe sur le calcul filtre QUE si celui-ci ne rend rien. Sur une
+     * instance en service `esbtp_resultats` est toujours peuplee : le chemin
+     * filtre n'etait donc jamais emprunte.
+     *
+     * Pire : `esbtp_resultats` porte UNE LIGNE PAR MATIERE, et la boucle
+     * ecrivait `$moyennes[$eleve] = $resultat->moyenne` sur chacune — la
+     * DERNIERE matiere lue devenait la moyenne generale de l'eleve. Avec une
+     * ECUE a 4 lue en dernier, le KPI affichait 4,00.
+     */
+    public function test_la_bande_kpi_pondere_les_matieres_et_ecarte_l_ecue(): void
+    {
+        $this->monterLaClasse();
+        $bts = $this->matiereConfiguree();
+        $ecue = $this->uneEcue('TPGC652');
+
+        $etudiant = $this->etudiantInscrit();
+
+        // Ordre volontaire : l'ECUE est creee EN DERNIER. C'est elle que
+        // l'ancienne boucle retenait comme « moyenne generale ».
+        ESBTPResultat::withoutEvents(fn () => ESBTPResultat::create([
+            'etudiant_id' => $etudiant->id,
+            'classe_id' => $this->classe->id,
+            'matiere_id' => $bts->id,
+            'annee_universitaire_id' => $this->annee->id,
+            'periode' => 'semestre1',
+            'moyenne' => 14,
+            'coefficient' => 2,
+        ]));
+
+        ESBTPResultat::withoutEvents(fn () => ESBTPResultat::create([
+            'etudiant_id' => $etudiant->id,
+            'classe_id' => $this->classe->id,
+            'matiere_id' => $ecue->id,
+            'annee_universitaire_id' => $this->annee->id,
+            'periode' => 'semestre1',
+            'moyenne' => 4,
+            'coefficient' => 1,
+        ]));
+
+        $kpis = app(BulletinService::class)->computeResultatsKpis(
+            collect([$etudiant->id]),
+            $this->classe->id,
+            $this->annee->id,
+            '1'
+        );
+
+        $this->assertNotNull(
+            $kpis['moyenne_generale'] ?? null,
+            'Temoin : sans KPI calcule, le test ne prouve rien.'
+        );
+
+        $this->assertEqualsWithDelta(
+            14.0,
+            (float) $kpis['moyenne_generale'],
+            0.01,
+            'La bande KPI ne compte que la matiere BTS. Sans le correctif elle rendait 4,00 '
+            .'— la moyenne de la DERNIERE ligne lue, prise pour la moyenne generale.'
+        );
+    }
+
+    /**
+     * Le mode « Toutes les classes » : le filtre y etait inerte.
+     *
+     * `ESBTPResultatController` transmet `classe_id = null` quand l'ecran est
+     * sur « Toutes les classes ». La classe se resout donc par NOTE, via son
+     * evaluation — que les deux appelants eager-loadent deja.
+     */
+    public function test_les_statistiques_sans_classe_selectionnee_ecartent_quand_meme_l_ecue(): void
+    {
+        $this->monterLaClasse();
+        $bts = $this->matiereConfiguree();
+        $ecue = $this->uneEcue('TPGC653');
+
+        $etudiant = $this->etudiantInscrit();
+        $this->noter($etudiant, $this->evaluationDe($bts), 14);
+        $this->noter($etudiant, $this->evaluationHeritee($bts, $ecue), 4);
+
+        $moyennes = [];
+        $rangs = [];
+
+        app(BulletinService::class)->calculateStudentStatsFixed(
+            ESBTPEtudiant::whereKey($etudiant->id)->get(),
+            ESBTPNote::with(['evaluation.matiere', 'evaluation.classe'])->where('etudiant_id', $etudiant->id)->get(),
+            $moyennes,
+            $rangs,
+            null,   // « Toutes les classes »
+            $this->annee->id,
+            'semestre1'
+        );
+
+        $this->assertArrayHasKey($etudiant->id, $moyennes, 'Temoin : sans moyenne calculee, le test ne prouve rien.');
+        $this->assertEqualsWithDelta(
+            14.0,
+            (float) $moyennes[$etudiant->id],
+            0.01,
+            'Sans classe selectionnee, le filtre doit tenir quand meme (sans le correctif : 9,00).'
+        );
+    }
+
+    /**
+     * La periode « annuel » : la branche de repli, et elle ECRIT.
+     *
+     * `calculateStudentAverageForPeriode()` delegue au snapshot filtre pour
+     * `semestre1` / `semestre2`. Pour `annuel`, elle retombe sur un calcul
+     * propre a deux chemins d'ingestion — et `BulletinAverageBackfillService`
+     * ecrit son resultat dans `esbtp_bulletins.moyenne_generale`.
+     *
+     * NUANCE HONNETE SUR CE TEST : retire le correctif, il vire au rouge par
+     * une `CoefficientMissingException`, pas par son assertion. L'ECUE atteint
+     * la resolution de coefficient, qui n'en trouve aucun et leve. Rouge quand
+     * meme — et l'exception prouve bien qu'elle etait comptee — mais ce n'est
+     * pas le mecanisme annonce par le message d'assertion.
+     */
+    public function test_la_moyenne_annuelle_de_repli_ecarte_l_ecue(): void
+    {
+        $this->monterLaClasse();
+        $bts = $this->matiereConfiguree();
+        $ecue = $this->uneEcue('TPGC654');
+
+        $etudiant = $this->etudiantInscrit();
+        $this->noter($etudiant, $this->evaluationDe($bts), 14);
+        $this->noter($etudiant, $this->evaluationHeritee($bts, $ecue), 4);
+
+        $moyenne = app(BulletinService::class)->calculateStudentAverageForPeriode(
+            $etudiant->id,
+            $this->classe->id,
+            $this->annee->id,
+            'annuel'
+        );
+
+        $this->assertNotNull($moyenne, 'Temoin : sans moyenne, le test ne prouve rien.');
+        $this->assertEqualsWithDelta(
+            14.0,
+            (float) $moyenne,
+            0.01,
+            'La moyenne annuelle de repli ne compte que la matiere BTS (sans le correctif : 9,00).'
         );
     }
 

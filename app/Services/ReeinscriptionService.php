@@ -540,17 +540,13 @@ class ReeinscriptionService
         }
     }
 
-    private function getNotesEtudiant($etudiantId, $anneeAcademique, ?ESBTPClasse $classe = null)
+    private function getNotesEtudiant($etudiantId, $anneeAcademique, ESBTPClasse $classe)
     {
         // Récupérer les notes filtrées par année académique (utilise le champ STRING annee_universitaire)
         $notes = ESBTPNote::where('etudiant_id', $etudiantId)
             ->where('annee_universitaire', $anneeAcademique)
             ->with(['evaluation.matiere', 'matiere'])
             ->get();
-
-        if (! $classe) {
-            return $notes;
-        }
 
         // POURQUOI LE FILTRE EST ICI, ET NON DANS LES TROIS CONSOMMATEURS.
         // Ces notes alimentent la moyenne (`calculerMoyenneGenerale()`), la

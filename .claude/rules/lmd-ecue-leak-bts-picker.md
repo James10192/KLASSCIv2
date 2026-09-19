@@ -192,8 +192,10 @@ autre `foreach` est un second chemin, même s'il est 30 lignes plus bas.
 ### Les calculs de moyenne TROUVÉS À CE JOUR — ce nombre n'est pas une garantie
 
 > La version précédente de cette section écrivait « **les cinq calculs de moyenne
-> du dépôt** ». C'était un absolu jamais mesuré, et il était faux : il y en a au
-> moins **neuf**. C'est exactement le défaut que le piège #14 de
+> du dépôt** ». C'était un absolu jamais mesuré, et il était faux. La version
+> d'après annonçait **neuf**, mesurés — et la passe 12 en a trouvé **deux de
+> plus**. Le nombre ci-dessous est donc, lui aussi, à lire comme un relevé, pas
+> comme un inventaire. C'est exactement le défaut que le piège #14 de
 > `klassci-debugging-discipline.md` raconte pour lui-même — un inventaire
 > démenti quatre fois, chaque version publiée comme définitive. Lisez donc ce
 > tableau pour ce qu'il est : ce qui a été trouvé, pas ce qui existe.
@@ -202,7 +204,9 @@ autre `foreach` est un second chemin, même s'il est 30 lignes plus bas.
 |---|---|---|---|
 | `BulletinService::buildDonneesBulletin()` | bulletin, `esbtp_resultats`, `esbtp_resultats_matieres` | notes + moyennes enregistrées | filtré |
 | `BulletinService::calculerMoyenneGlobaleEtudiant()` | `moyenne_classe`, `meilleure_moyenne`, `plus_faible_moyenne` | moyennes enregistrées, repli sur notes | filtré |
-| `BulletinService::calculateStudentStatsFixed()` | moyennes et rangs de `/esbtp/resultats`, bande KPI | notes **+** moyennes enregistrées qui écrasent | filtré |
+| `BulletinService::calculateStudentStatsFixed()` | moyennes et rangs du **tableau** de `/esbtp/resultats` | notes **+** moyennes enregistrées qui écrasent | filtré, y compris sans classe sélectionnée (passe 12) |
+| `BulletinService::getPreCalculatedResults()` | **la bande KPI** de `/esbtp/resultats` (Moyenne générale, Taux de réussite) | moyennes enregistrées | filtré (passe 12) |
+| `BulletinService::calculateStudentAverageForPeriode()`, branche `annuel` | **écrit** `esbtp_bulletins.moyenne_generale` via le backfill | notes **+** moyennes enregistrées qui écrasent | filtré (passe 12) |
 | `BtsCurrentResultSnapshotService` | écart « Officiel / Courant », Bilan de la fiche étudiant | notes + moyennes enregistrées | filtré |
 | `ESBTPResultatController::resultatEtudiant()` | tableau « Résultats par matière », KPI Matières / Coefficients | notes + moyennes enregistrées | filtré |
 | `ESBTPBulletinController::buildBulletinPdf()` | rien — **écrasé** par la projection du service (voir plus bas) | notes | filtré par précaution |
@@ -237,6 +241,44 @@ propre revue.
 et en relançant le test qu'on apprend s'il prouve quelque chose. Un test écrit
 après le correctif et jamais rejoué sans lui ne dit rien — quatre fois sur ce
 chantier, il ne disait rien.
+
+**La ligne « bande KPI : filtré » était fausse, et c'est le défaut de cette rule
+qu'elle décrit ailleurs.** `computeResultatsKpis()` appelle
+`getPreCalculatedResults()` **d'abord**, et ne retombe sur le calcul filtré que
+`if (empty($moyennes))`. Or `esbtp_resultats` est peuplée à chaque génération de
+bulletin **et** à chaque sauvegarde de note : sur toute instance en service, le
+chemin filtré n'était jamais emprunté. Une ligne de tableau qui absout ferme
+l'enquête suivante — c'est exactement ce que cette rule reproche à ses versions
+antérieures.
+
+**Et le défaut qu'elle cachait était plus gros que la fuite.** `esbtp_resultats`
+porte **une ligne par matière** ; la boucle faisait
+`$moyennes[$etudiantId] = $resultat->moyenne` sur chacune. La **dernière matière
+lue** devenait donc la « moyenne générale » de l'élève, sans pondération ni ordre.
+Mesuré en test : avec une matière BTS à 14 (coef 2) et une ECUE à 4 (coef 1)
+créée après, la bande KPI affichait **4,00**. Elle agrège désormais par élève,
+pondérée par le coefficient de la ligne. Le `rang` n'est plus relu du tout : c'est
+un rang **par matière**, et le prendre pour un rang de classe était le même défaut.
+
+**Le mode « Toutes les classes » rendait le filtre inerte.** Le commentaire de
+`calculateStudentStatsFixed()` affirmait « les deux appelants passent toujours la
+classe ». Faux : `resultats/index.blade.php` porte un `<option value="">Toutes les
+classes</option>`, et le contrôleur transmet alors `classe_id = null`. La classe
+se résout maintenant **par note**, via `$note->evaluation->classe` — que les deux
+appelants eager-loadent déjà, donc sans requête de plus, et c'est plus juste que
+le paramètre dans un mode où les élèves viennent de plusieurs classes.
+
+**Pourquoi PAS un scope SQL, alors que ce serait plus court.** La passe 12 a
+proposé de remplacer les quatorze filtres PHP par
+`ESBTPNote::scopeCoherentesAvecLaClasse()` appuyé sur `contraindreLIncoherence()`,
+qui existe déjà. L'argument de forme est juste — et la proposition est refusée
+pour une raison de fond : **un `WHERE` écarte en silence**. La conduite choisie à
+la lecture est « on écarte, *et on le journalise* », parce qu'une moyenne qui
+bouge sans explication est pire qu'une moyenne fausse (piège #12). Un scope SQL
+perdrait le couple (classe, matière) écarté, donc la seule trace qui permet à une
+école de retrouver la note mal rangée. Ce qui a été retenu de la critique, c'est
+son vrai fond : **plus aucun site ne dépend d'un `$classeId` passé en paramètre
+avec un repli `null`** — la classe vient de la ligne lue.
 
 **Le septième n'affiche rien, il DÉCIDE.** `ReeinscriptionService` compte la
 matière étrangère dans la moyenne **et** dans les matières échouées : un 4/20 sur
