@@ -107,6 +107,33 @@ final class SemestreDeMaquette
      * La validation reste une question de couple : elle se pose avant, et pas
      * ici.
      */
+    /**
+     * Ce qu'une ligne de maquette DECLARE vraiment comme semestre.
+     *
+     * Une ligne non validee vaut « les deux », quel que soit le semestre
+     * qu'elle porte : `ChargementDeMaquette` pose un semestre sans valider, et
+     * la maquette d'ESBTP Abidjan en compte (voir plus haut). Lire `semestre`
+     * sans consulter `semestre_renseigne` fait donc sortir du bulletin des
+     * matieres que le bulletin garde.
+     *
+     * CETTE NORMALISATION EST LA REGLE, ET ELLE VIT ICI. Elle a ete ecrite
+     * trois fois — ici, dans `BtsMaquette::semestresParMatiere()`, et dans
+     * `ESBTPMatiereClassificationController::prevueAu()`, ou la troisieme
+     * version la remplacait par une garde PAR COUPLE. Les deux premieres
+     * s'accordaient, la troisieme divergeait dans son unique cas d'effet : une
+     * ligne non validee, dans un combo dont une AUTRE ligne l'etait. L'ecran
+     * annoncait alors moins de matieres au semestre 1 que le bulletin n'en
+     * portait.
+     *
+     * Le controle qui rejoue cette phrase, plutot que de la croire :
+     *   grep -rn "semestre_renseigne" app/ | grep -v SemestreDeMaquette
+     * Toute lecture de cette colonne hors d'ici doit passer par cette methode.
+     */
+    public static function declarationEffective(?int $semestre, bool $renseigne): ?int
+    {
+        return $renseigne ? $semestre : null;
+    }
+
     public static function estPrevueAu(?int $semestreDeclare, int $semestreVise): bool
     {
         return $semestreDeclare === null || $semestreDeclare === $semestreVise;

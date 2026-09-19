@@ -9,7 +9,10 @@ use App\Models\ESBTPMatiere;
 use App\Models\ESBTPMatiereFilierNiveau;
 use App\Models\ESBTPNiveauEtude;
 use App\Models\ESBTPUniteEnseignement;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Spatie\Permission\Models\Role;
+use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
 
 /**
@@ -35,6 +38,16 @@ use Tests\TestCase;
 class MaquetteBtsRefuseUneEcueTest extends TestCase
 {
     use RefreshDatabase;
+
+    private function unSuperAdmin(): User
+    {
+        Role::findOrCreate('superAdmin', 'web');
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+        $user = User::withoutEvents(fn () => User::factory()->create());
+        $user->assignRole('superAdmin');
+
+        return $user;
+    }
 
     private function ecue(string $nom = 'Alimentation en eau et QTE'): ESBTPMatiere
     {
@@ -110,6 +123,78 @@ class MaquetteBtsRefuseUneEcueTest extends TestCase
         );
         $this->assertSame('ok', $auRetrait['statut']);
         $this->assertSame((int) $ecue->id, (int) $auRetrait['matiere']->id);
+    }
+
+    /**
+     * Le garde à l'ajout ne doit pas se transformer en effacement de masse.
+     *
+     * Une première version vidait la liste voulue quand la matière était une
+     * ECUE. Le diff qui suit lit « aucun couple voulu » comme « retire-les
+     * tous » : l'appel effaçait TOUTES les lignes de la matière, journalisait
+     * « Ajout refusé » pour une suppression, et répondait succès. Le chemin
+     * réellement atteignable — le bouton « Retirer de la classe », qui renvoie
+     * les liaisons restantes — transformait donc le retrait d'un couple en
+     * effacement de tous les autres.
+     */
+    public function test_refuser_un_ajout_sur_une_ecue_n_efface_pas_ses_autres_couples(): void
+    {
+        $ecue = $this->ecue();
+        $niveau = ESBTPNiveauEtude::factory()->create(['type' => 'BTS']);
+        $garde = ESBTPFiliere::factory()->create(['is_tronc_commun' => false, 'parent_id' => null]);
+        $nouveau = ESBTPFiliere::factory()->create(['is_tronc_commun' => false, 'parent_id' => null]);
+
+        // Deux lignes deja posees par erreur, avant que le garde n'existe.
+        foreach ([$garde, $nouveau] as $f) {
+            ESBTPMatiereFilierNiveau::create([
+                'matiere_id' => $ecue->id,
+                'filiere_id' => $f->id,
+                'niveau_etude_id' => $niveau->id,
+            ]);
+        }
+
+        $reponse = $this->actingAs($this->unSuperAdmin())
+            ->postJson("/esbtp/matieres/{$ecue->id}/update-liaisons", [
+                'liaisons' => [
+                    // Celui-ci existe deja : ce n'est pas un ajout.
+                    ['filiere_id' => $garde->id, 'niveau_id' => $niveau->id],
+                    // Celui-la n'existe pas : c'est un ajout, et il est refuse.
+                    ['filiere_id' => ESBTPFiliere::factory()->create([
+                        'is_tronc_commun' => false, 'parent_id' => null,
+                    ])->id, 'niveau_id' => $niveau->id],
+                ],
+            ]);
+
+        $reponse->assertStatus(422);
+
+        // Et surtout : RIEN n'a ete efface.
+        $this->assertSame(2, ESBTPMatiereFilierNiveau::where('matiere_id', $ecue->id)->count());
+    }
+
+    public function test_retirer_un_couple_d_une_ecue_passe_et_ne_touche_que_lui(): void
+    {
+        $ecue = $this->ecue();
+        $niveau = ESBTPNiveauEtude::factory()->create(['type' => 'BTS']);
+        $garde = ESBTPFiliere::factory()->create(['is_tronc_commun' => false, 'parent_id' => null]);
+        $retire = ESBTPFiliere::factory()->create(['is_tronc_commun' => false, 'parent_id' => null]);
+
+        foreach ([$garde, $retire] as $f) {
+            ESBTPMatiereFilierNiveau::create([
+                'matiere_id' => $ecue->id,
+                'filiere_id' => $f->id,
+                'niveau_etude_id' => $niveau->id,
+            ]);
+        }
+
+        // Ce que renvoie « Retirer de la classe » : les liaisons RESTANTES.
+        $this->actingAs($this->unSuperAdmin())
+            ->postJson("/esbtp/matieres/{$ecue->id}/update-liaisons", [
+                'liaisons' => [['filiere_id' => $garde->id, 'niveau_id' => $niveau->id]],
+            ])
+            ->assertOk();
+
+        $restantes = ESBTPMatiereFilierNiveau::where('matiere_id', $ecue->id)->get();
+        $this->assertCount(1, $restantes);
+        $this->assertSame((int) $garde->id, (int) $restantes->first()->filiere_id);
     }
 
     public function test_le_retrait_par_libelle_retrouve_aussi_une_ecue(): void

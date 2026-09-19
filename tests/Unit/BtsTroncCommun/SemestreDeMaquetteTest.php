@@ -92,4 +92,40 @@ class SemestreDeMaquetteTest extends TestCase
         $this->assertSame('semestre 2', SemestreDeMaquette::libelle(2));
         $this->assertSame('les deux semestres', SemestreDeMaquette::libelle(null));
     }
+
+    /**
+     * Le cas qui a fait diverger l'ecran du bulletin, et le seul qui compte.
+     *
+     * Une ligne NON validee vaut « les deux », quel que soit le semestre
+     * qu'elle porte. `ChargementDeMaquette` pose un semestre sans valider :
+     * lire `semestre` sans consulter `semestre_renseigne` retire du bulletin
+     * des matieres que le bulletin garde.
+     *
+     * L'ecran de maquette l'avait remplace par une garde PAR COUPLE — juste
+     * tant qu'aucune ligne n'etait validee, fausse des qu'une seule l'etait.
+     */
+    public function test_une_ligne_non_validee_vaut_les_deux_semestres(): void
+    {
+        $this->assertNull(SemestreDeMaquette::declarationEffective(2, false));
+        $this->assertNull(SemestreDeMaquette::declarationEffective(1, false));
+        $this->assertNull(SemestreDeMaquette::declarationEffective(null, false));
+    }
+
+    public function test_une_ligne_validee_declare_son_semestre(): void
+    {
+        $this->assertSame(1, SemestreDeMaquette::declarationEffective(1, true));
+        $this->assertSame(2, SemestreDeMaquette::declarationEffective(2, true));
+        // Validee ET sans semestre : c'est « les deux », dit explicitement.
+        $this->assertNull(SemestreDeMaquette::declarationEffective(null, true));
+    }
+
+    public function test_non_validee_au_semestre_2_reste_prevue_au_semestre_1(): void
+    {
+        // Le bout par lequel l'ecran se trompait : il annonçait cette matiere
+        // hors du semestre 1, le bulletin l'y laissait.
+        $declare = SemestreDeMaquette::declarationEffective(2, false);
+
+        $this->assertTrue(SemestreDeMaquette::estPrevueAu($declare, 1));
+        $this->assertTrue(SemestreDeMaquette::estPrevueAu($declare, 2));
+    }
 }

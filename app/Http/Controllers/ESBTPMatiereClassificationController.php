@@ -78,12 +78,13 @@ class ESBTPMatiereClassificationController extends Controller
             'matieres' => $rows,
             'maquette' => [
                 'renseignee' => $comboRenseigne,
-                // Meme regle que le domaine : tant que le couple n'est pas
-                // valide, le bulletin rend la liste entiere. Les compter
+                // Meme regle que le domaine, et par la MEME methode : une
+                // ligne non validee vaut « les deux », donc tant qu'aucune ne
+                // l'est, ces deux nombres valent le total. Les compter
                 // autrement ferait dire a l'ecran « aucune matiere au semestre
                 // 2 » alors que le bulletin en portera dix-huit.
-                'semestre_1' => $rows->filter(fn ($l) => $this->prevueAu($l, 1, $comboRenseigne))->count(),
-                'semestre_2' => $rows->filter(fn ($l) => $this->prevueAu($l, 2, $comboRenseigne))->count(),
+                'semestre_1' => $rows->filter(fn ($l) => $this->prevueAu($l, 1))->count(),
+                'semestre_2' => $rows->filter(fn ($l) => $this->prevueAu($l, 2))->count(),
             ],
             // Les ECUE LMD posees par erreur sur cette maquette BTS. Elles ne
             // sont PAS dans `matieres` : les y mettre fausserait les
@@ -103,6 +104,26 @@ class ESBTPMatiereClassificationController extends Controller
     }
 
     /**
+     * Les lignes de pivot de ce couple, avant tout tri BTS / LMD.
+     *
+     * Une seule definition, parce que `lignesDuCombo()` et
+     * `intrusLmdDuCombo()` lisent la MEME chose avec le filtre inverse : les
+     * ecrire deux fois aurait suffi a ce qu'une condition ajoutee demain ne
+     * soit appliquee qu'a l'une des deux moities, et que des lignes
+     * disparaissent des DEUX listes sans que personne ne le voie.
+     *
+     * @return \Illuminate\Support\Collection<int, ESBTPMatiereFilierNiveau>
+     */
+    private function lignesBrutesDuCombo(int $filiereId, int $niveauId)
+    {
+        return ESBTPMatiereFilierNiveau::query()
+            ->where('filiere_id', $filiereId)
+            ->where('niveau_etude_id', $niveauId)
+            ->with('matiere:id,name,code,unite_enseignement_id,is_active,ordre_bulletin')
+            ->get();
+    }
+
+    /**
      * Les ECUE LMD presentes dans la maquette BTS de ce couple.
      *
      * Normalement : aucune. Quand il y en a, c'est qu'un ecran BTS a pose la
@@ -117,11 +138,7 @@ class ESBTPMatiereClassificationController extends Controller
      */
     private function intrusLmdDuCombo(int $filiereId, int $niveauId)
     {
-        return ESBTPMatiereFilierNiveau::query()
-            ->where('filiere_id', $filiereId)
-            ->where('niveau_etude_id', $niveauId)
-            ->with('matiere:id,name,code,unite_enseignement_id')
-            ->get()
+        return $this->lignesBrutesDuCombo($filiereId, $niveauId)
             ->filter(fn ($row) => $row->matiere && $row->matiere->unite_enseignement_id !== null)
             ->map(fn ($row) => [
                 'matiere_id' => (int) $row->matiere_id,
@@ -158,11 +175,7 @@ class ESBTPMatiereClassificationController extends Controller
         $rangsEffectifs = app(\App\Domain\BtsTroncCommun\BulletinSubjectOrder::class)
             ->rankMapForFiliereNiveau($filiereId, $niveauId, $filiere?->troncCommunUnionFiliereIds());
 
-        return ESBTPMatiereFilierNiveau::query()
-            ->where('filiere_id', $filiereId)
-            ->where('niveau_etude_id', $niveauId)
-            ->with('matiere:id,name,code,unite_enseignement_id,is_active,ordre_bulletin')
-            ->get()
+        return $this->lignesBrutesDuCombo($filiereId, $niveauId)
             ->filter(fn ($row) => $row->matiere && $row->matiere->unite_enseignement_id === null) // BTS only
             ->map(function ($row) use ($specialiteSuggestionIds, $rangsEffectifs) {
                 $rangPropre = \App\Domain\BtsTroncCommun\BulletinSubjectOrder::rang($row->ordre_bulletin);
@@ -235,28 +248,29 @@ class ESBTPMatiereClassificationController extends Controller
     /**
      * Une matiere est-elle prevue a ce semestre ?
      *
-     * Non validee ou sans semestre : prevue aux deux. Meme regle que
-     * `BtsMaquette`, pour que le decompte affiche corresponde a ce que le
-     * bulletin fera.
+     * LIGNE PAR LIGNE, comme le domaine — et non par couple. Une version
+     * precedente remplacait `semestre_renseigne` par une garde sur le couple
+     * entier (« si aucune ligne n'est validee, tout vaut les deux »). Elle
+     * etait juste tant qu'AUCUNE ligne n'etait validee, et fausse des qu'une
+     * seule l'etait : les lignes non validees du meme couple etaient alors
+     * lues a leur semestre brut, donc retirees d'un semestre que le bulletin,
+     * lui, leur laissait. Le commentaire qui l'accompagnait affirmait « le
+     * domaine la pose par couple » — `BtsMaquette::semestresParMatiere()` la
+     * pose ligne par ligne, et c'est verifiable en trois lignes de lecture.
+     *
+     * C'est le cas mesure : `ChargementDeMaquette` pose un semestre sans
+     * valider, et la maquette d'ESBTP Abidjan en compte.
      *
      * @param  array<string, mixed>  $ligne
      */
-    private function prevueAu(array $ligne, int $semestre, bool $comboRenseigne): bool
+    private function prevueAu(array $ligne, int $semestre): bool
     {
-        // Tant que le COUPLE n'est pas valide, le bulletin ignore les
-        // semestres et rend la liste entiere : l'écran doit dire la même
-        // chose, sinon il annonce « aucune matière au semestre 2 » pour un
-        // bulletin qui en portera dix-huit.
-        //
-        // Cette garde se posait ligne par ligne, quand le domaine la pose par
-        // couple : une ligne portant un semestre sans avoir été validée — ce
-        // que l'import produit par défaut — était comptée « aux deux » ici et
-        // « à un seul » au bulletin.
-        if (! $comboRenseigne) {
-            return true;
-        }
+        $declare = \App\Domain\BtsTroncCommun\SemestreDeMaquette::declarationEffective(
+            $ligne['semestre'] === null ? null : (int) $ligne['semestre'],
+            (bool) $ligne['semestre_renseigne'],
+        );
 
-        return \App\Domain\BtsTroncCommun\SemestreDeMaquette::estPrevueAu($ligne['semestre'], $semestre);
+        return \App\Domain\BtsTroncCommun\SemestreDeMaquette::estPrevueAu($declare, $semestre);
     }
 
     /**

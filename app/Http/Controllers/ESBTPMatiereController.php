@@ -968,6 +968,55 @@ class ESBTPMatiereController extends Controller
      *
      * @return \Illuminate\Http\JsonResponse
      */
+    /**
+     * Refuse les couples qu'une ECUE LMD n'a pas deja, et laisse passer le reste.
+     *
+     * POURQUOI CE N'EST PAS UN REFUS EN BLOC. Une premiere version vidait
+     * `$voulues` quand la matiere etait une ECUE. Le diff qui suit interprete
+     * alors « aucun couple voulu » comme « retire-les tous » : l'appel effacait
+     * TOUTES les lignes canoniques de la matiere et leurs places par semestre,
+     * journalisait « Ajout refuse » pour une suppression, et repondait succes.
+     * Le chemin reellement atteignable — le bouton « Retirer de la classe » de
+     * `/esbtp/classes/{id}/matieres`, qui renvoie les liaisons RESTANTES —
+     * transformait donc le retrait d'un couple en effacement de tous les autres.
+     *
+     * Le retrait reste ouvert : c'est le geste correcteur, et l'un des trois
+     * chemins par lesquels une ligne posee par erreur peut etre enlevee, avec
+     * la croix de `/esbtp/matieres/classification` et
+     * `POST /api/cli/bts/maquette/retirer`.
+     *
+     * @param  array<string, array{0: int, 1: int}>  $voulues
+     */
+    private function refuserLesAjoutsDUneEcue(ESBTPMatiere $matiere, array $voulues): ?\Illuminate\Http\JsonResponse
+    {
+        if ($matiere->unite_enseignement_id === null) {
+            return null;
+        }
+
+        $deja = \App\Models\ESBTPMatiereFilierNiveau::where('matiere_id', $matiere->id)
+            ->get(['filiere_id', 'niveau_etude_id'])
+            ->map(fn ($l) => (int) $l->filiere_id.'|'.(int) $l->niveau_etude_id)
+            ->all();
+
+        $ajouts = array_diff(array_keys($voulues), $deja);
+
+        if ($ajouts === []) {
+            return null;
+        }
+
+        \Log::warning('Ajout a une maquette BTS refuse : la matiere est un ECUE LMD.', [
+            'matiere_id' => (int) $matiere->id,
+            'couples_refuses' => array_values($ajouts),
+            'user_id' => optional(auth()->user())->id,
+        ]);
+
+        return response()->json([
+            'success' => false,
+            'message' => $matiere->name.' est un élément constitutif LMD : elle ne peut pas être '
+                .'rattachée à une maquette BTS. Elle se gère dans /esbtp/lmd/ue.',
+        ], 422);
+    }
+
     public function updateLiaisons(Request $request, ESBTPMatiere $matiere, LiaisonsDeMatiere $service)
     {
         try {
@@ -979,39 +1028,20 @@ class ESBTPMatiereController extends Controller
 
             $liaisons = $validated['liaisons'] ?? [];
 
-            // Une ECUE LMD ne s'AJOUTE pas a une maquette BTS : poser la ligne
-            // ici, c'est exactement ce qui la fait sortir sur un bulletin BTS.
-            // `edit()` et `update()` refusent deja en 404, mais cette methode
-            // est une adresse a part (POST .../update-liaisons), atteignable
-            // sans passer par l'ecran, et elle appelle `poser()` plus bas.
-            //
-            // Le RETRAIT, lui, reste ouvert, et c'est deliberé : c'est
-            // aujourd'hui le seul chemin par lequel une ligne deja posee par
-            // erreur peut etre enlevee — l'ecran de classification ecarte les
-            // ECUE de ses lignes (donc pas de croix) et la resolution du CLI
-            // les refuse. Fermer ici fermerait la porte de sortie en meme temps
-            // que la porte d'entree.
-            $estUneEcue = $matiere->unite_enseignement_id !== null;
-
             // Voulues, dédoublonnées.
             $voulues = [];
             foreach ($liaisons as $liaison) {
-                if ($estUneEcue) {
-                    // Un refus muet ne se cherche pas : on dit lequel.
-                    \Log::warning('Ajout a une maquette BTS refuse : la matiere est un ECUE LMD.', [
-                        'matiere_id' => (int) $matiere->id,
-                        'filiere_id' => (int) $liaison['filiere_id'],
-                        'niveau_id' => (int) $liaison['niveau_id'],
-                        'user_id' => optional(auth()->user())->id,
-                    ]);
-
-                    continue;
-                }
-
                 $voulues[(int) $liaison['filiere_id'].'|'.(int) $liaison['niveau_id']] = [
                     (int) $liaison['filiere_id'],
                     (int) $liaison['niveau_id'],
                 ];
+            }
+
+            // Une ECUE LMD ne s'AJOUTE pas a une maquette BTS ; elle s'en
+            // RETIRE. Le refus porte donc sur les seuls couples nouveaux, et
+            // jamais sur la liste entiere — voir `refuserLesAjoutsDUneEcue()`.
+            if ($refus = $this->refuserLesAjoutsDUneEcue($matiere, $voulues)) {
+                return $refus;
             }
 
             // Un DIFF, et non un « supprime tout puis recrée ». L'ancien code

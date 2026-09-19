@@ -382,8 +382,18 @@ function matiereClassification() {
             const s2 = this.matieres.filter(m => Number(m.semestre) === 2).length;
             const deux = this.matieres.length - s1 - s2;
 
+            // `BtsMaquette::etatPourClasse()` exige que TOUS les combos de la
+            // classe soient renseignes : pour une filiere de specialite, ce
+            // sont [specialite, tronc commun parent]. Valider le premier seul
+            // laisse l'etat PARTIEL, et rien ne s'applique. Annoncer un effet
+            // qui n'aura pas lieu est pire que ne rien annoncer.
+            const tete = this.isTroncCommun
+                ? 'Valider les semestres applique la maquette au bulletin et au suivi des notes.'
+                : 'Valider les semestres appliquera la maquette au bulletin et au suivi des notes '
+                  + 'des que les semestres de la filiere de tronc commun parente seront valides eux aussi.';
+
             const lignes = [
-                'Valider les semestres applique la maquette au bulletin et au suivi des notes.',
+                tete,
                 '',
                 `\u2022 ${s1} matiere(s) au semestre 1 seulement : elles sortiront du bulletin du semestre 2.`,
                 `\u2022 ${s2} matiere(s) au semestre 2 seulement : elles sortiront du bulletin du semestre 1.`,

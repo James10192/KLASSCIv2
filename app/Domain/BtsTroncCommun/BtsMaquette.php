@@ -177,8 +177,13 @@ final class BtsMaquette
         foreach ($lignes as $ligne) {
             $matiereId = (int) $ligne->matiere_id;
             // Une ligne jamais validee vaut « les deux semestres » : une matiere
-            // ajoutee au combo apres la validation reste visible partout.
-            $semestre = $ligne->semestre_renseigne ? $ligne->semestre : null;
+            // ajoutee au combo apres la validation reste visible partout. La
+            // regle vit dans `SemestreDeMaquette`, et pas ici : elle avait ete
+            // reecrite trois fois, et la troisieme divergeait.
+            $semestre = SemestreDeMaquette::declarationEffective(
+                $ligne->semestre === null ? null : (int) $ligne->semestre,
+                (bool) $ligne->semestre_renseigne,
+            );
             $carte[$matiereId][] = $semestre === null ? null : (int) $semestre;
         }
 

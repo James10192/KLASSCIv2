@@ -98,6 +98,12 @@ final class ChargementDeMaquette
             foreach ($lignes as $ligne) {
                 // Cree la liaison si elle manque, et ajoute le couple aux
                 // pivots plats sans jamais en retirer.
+                //
+                // L'ORDRE COMPTE : c'est `poser()` qui porte le garde contre
+                // les ECUE LMD, et l'`updateOrCreate` ci-dessous ecrit le
+                // meme pivot sans garde. Deplacer cet appel APRES lui rouvrirait
+                // la porte. La resolution en amont ecarte deja les ECUE, donc
+                // ce chemin en a deux ; ne comptez pas sur une seule.
                 $this->liaisons->poser((int) $ligne['matiere_id'], (int) $filiere->id, (int) $niveau->id);
 
                 $attributs = [

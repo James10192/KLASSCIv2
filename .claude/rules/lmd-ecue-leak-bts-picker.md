@@ -69,10 +69,29 @@ de revue** — et chaque passe trouvait une porte que la précédente avait manq
 (le panneau des coefficients, `updateLiaisons()`, le « Total matières » du planning
 général). Filtrer en lecture demande à chaque futur écran de s'en souvenir.
 
-`LiaisonsDeMatiere::poser()` est le goulot unique d'écriture du pivot canonique.
-Il **lève** désormais sur une ECUE, avec un `Log::warning`. Les cinq appelants
-refusent déjà en amont avec un message pour l'utilisateur ; ce garde-ci sert au
-sixième, celui qui n'est pas encore écrit.
+`LiaisonsDeMatiere::poser()` **lève** désormais sur une ECUE, avec un
+`Log::warning`. Les cinq appelants refusent déjà en amont avec un message pour
+l'utilisateur ; ce garde-ci sert au sixième, celui qui n'est pas encore écrit.
+
+**Ce n'est PAS le goulot unique, et cette rule l'a affirmé à tort.** Trois
+écrivains touchent le pivot canonique sans passer par lui — la phrase a été
+écrite sans être mesurée, exactement comme celle qu'elle remplaçait :
+
+| écrivain | garde |
+|---|---|
+| `app/Console/Commands/SyncMatiereFilireNiveau.php` (`insert()` brut) | **le sien**, ajouté en même temps que cette ligne |
+| `app/Domain/BtsTroncCommun/ChargementDeMaquette.php` (`updateOrCreate`) | par l'**ordre** : `poser()` lève d'abord. Fragile, commenté sur place |
+| `database/seeders/Demo/PromotionPrecedenteNotesDemoData.php` | aucun — données de démonstration |
+
+La commande qui rejoue cette liste, au lieu de la croire :
+
+```bash
+grep -rn "esbtp_matiere_filiere_niveau\|ESBTPMatiereFilierNiveau::" app/ database/ --include="*.php" \
+  | grep -iE "insert|updateOrCreate|firstOrCreate|->create\(" | grep -v LiaisonsDeMatiere.php
+```
+
+Toute ligne rendue est un écrivain à garder. Si elle en rend plus de trois,
+l'inventaire ci-dessus est périmé — corrigez-le plutôt que de le contourner.
 
 Corollaire, et c'est le piège symétrique : **le RETRAIT doit rester ouvert.**
 `ResolutionDeMatiere::matiere(..., pourRetrait: true)` accepte une ECUE, et c'est
@@ -98,6 +117,22 @@ SELECT mfn.filiere_id, mfn.niveau_etude_id, m.id, m.code, m.name
 
 Chaque ligne rendue sort sur un bulletin BTS. Retrait par l'écran de
 classification (bloc « éléments LMD »), ou par `POST /api/cli/bts/maquette/retirer`.
+
+**Et le retrait ne suffit pas à rendre le nettoyage durable.**
+`LiaisonsDeMatiere::retirer()` ne touche volontairement pas les pivots plats :
+leur charge utile (`coefficient`, `heures_cours`) ne se retrouve nulle part
+ailleurs. Une ECUE retirée de la maquette garde donc ses lignes dans
+`esbtp_matiere_filiere` et `esbtp_matiere_niveau`, et `sync:matiere-filiere-niveau`
+la recréerait — c'est pour ça que cette commande a désormais son propre garde.
+Pour vérifier ce qui reste :
+
+```sql
+SELECT m.id, m.code, m.name
+  FROM esbtp_matieres m
+ WHERE m.unite_enseignement_id IS NOT NULL
+   AND (EXISTS (SELECT 1 FROM esbtp_matiere_filiere f WHERE f.matiere_id = m.id)
+     OR EXISTS (SELECT 1 FROM esbtp_matiere_niveau n WHERE n.matiere_id = m.id));
+```
 
 ## Garde-fou avant d'appliquer
 
