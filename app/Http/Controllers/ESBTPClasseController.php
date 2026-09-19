@@ -542,9 +542,41 @@ class ESBTPClasseController extends Controller
         // meme coutait deux requetes dont le resultat partait a la poubelle.
         // Une collection ELOQUENT, pas `collect()` : `loadMissing()` est appele
         // juste en dessous et n'existe que sur celle-la.
-        $combinationMatieres = strtoupper((string) ($classe->systeme_academique ?? 'BTS')) === 'LMD'
-            ? new \Illuminate\Database\Eloquent\Collection()
-            : app(\App\Domain\BtsTroncCommun\BtsBulletinSubjectResolver::class)->subjectsForClasse($classe);
+        $estBtsPourLOnglet = strtoupper((string) ($classe->systeme_academique ?? 'BTS')) !== 'LMD';
+
+        $combinationMatieres = $estBtsPourLOnglet
+            ? app(\App\Domain\BtsTroncCommun\BtsBulletinSubjectResolver::class)->subjectsForClasse($classe)
+            : new \Illuminate\Database\Eloquent\Collection();
+
+        // CE REPLI EXISTE POUR NE VIDER L'ONGLET DE PERSONNE.
+        //
+        // `subjectsForClasse()` lit deux sources : la maquette canonique, puis
+        // `esbtp_classe_matiere`. Une classe qui n'a NI l'une NI l'autre mais
+        // porte des lignes dans les deux pivots plats voyait jusqu'ici une liste,
+        // et n'aurait plus rien vu.
+        //
+        // MESURE (19 septembre 2026, lecture seule, classe par classe) :
+        // `esbtp-abidjan` 64 classes BTS sur 64, `esbtp-yakro` 50 sur 50 et
+        // `presentation` 8 sur 8 ne changent pas d'etat — celles qui affichent
+        // une liste la gardent, les trois qui n'affichent rien n'affichaient
+        // deja rien. Mais sur `rostan`, les 23 classes BTS ont
+        // `esbtp_classe_matiere` VIDE, et sa maquette canonique n'est pas
+        // lisible a distance. Plutot que de parier sur elle, on garde
+        // l'ancienne liste comme dernier recours.
+        //
+        // `btsOnly()` est ce qui compte ici : l'ancienne liste croisait les deux
+        // pivots PLATS, que `LiaisonsDeMatiere::retirer()` ne nettoie pas — c'est
+        // par la qu'une ECUE retiree de la maquette ressortait. Le repli rend
+        // donc la meme liste qu'avant, moins les ECUE.
+        if ($estBtsPourLOnglet && $combinationMatieres->isEmpty() && $classe->filiere_id && $classe->niveau_etude_id) {
+            $combinationMatieres = \App\Models\ESBTPMatiere::query()
+                ->btsOnly()
+                ->where('is_active', true)
+                ->whereHas('filieres', fn ($q) => $q->where('esbtp_filieres.id', $classe->filiere_id))
+                ->whereHas('niveaux', fn ($q) => $q->where('esbtp_niveau_etudes.id', $classe->niveau_etude_id))
+                ->orderBy('name')
+                ->get();
+        }
 
         // La vue affiche filieres et niveaux de chaque matiere.
         $combinationMatieres->loadMissing([

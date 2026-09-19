@@ -23,6 +23,14 @@ use Illuminate\Support\Facades\Log;
  * porte peut-etre qu'un. C'est ce que `CLIMatiereController::diagnoseLiaisons`
  * appelle des combinaisons fantomes.
  *
+ * DEPUIS SEPTEMBRE 2026, L'ECRAN DES MATIERES EN ECRIT DELIBEREMENT.
+ * `ESBTPMatiereController::poserLesCouplesDuFormulaire()` materialise le produit
+ * des deux listes dans le pivot canonique, et l'ecran le DIT a qui le remplit
+ * (badges « a creer », avertissement « Decocher ne retire rien »). Ce n'est donc
+ * plus un ecart subi mais un choix expose : ne le prenez pas pour une regression
+ * a retirer au passage. Ce qui reste interdit est ci-dessous — reparer l'ecart
+ * par EFFET DE BORD, c'est-a-dire sans que personne ne l'ait demande.
+ *
  * ON NE REPARE PAS CET ECART PAR EFFET DE BORD. Une premiere version de cette
  * classe recalculait les pivots plats depuis le canonique apres chaque
  * ecriture, par un `sync()`. La revue l'a demontee, et elle avait raison :

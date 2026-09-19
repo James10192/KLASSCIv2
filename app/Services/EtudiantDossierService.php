@@ -126,7 +126,9 @@ class EtudiantDossierService
         // Le filtre est pose quand meme, parce que le jour ou quelqu'un
         // rebranchera cet affichage, personne ne relira ce fichier — et une
         // ECUE du LMD y reapparaitrait dans la moyenne d'une classe BTS.
-        $classe = $classeId ? ESBTPClasse::find($classeId) : null;
+        // `withTrashed()` : `ESBTPClasse` est en `SoftDeletes`, et un `find()` nu
+        // rendrait `null` sur une classe effacee, donc aucun filtrage.
+        $classe = $classeId ? ESBTPClasse::withTrashed()->find($classeId) : null;
 
         return ESBTPNote::where('etudiant_id', $etudiantId)
             ->where('semestre', $this->semestreNumero($periode))

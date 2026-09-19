@@ -11,6 +11,7 @@ use App\Models\Timetable;
 use App\Models\User;
 use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPParent;
+use App\Domain\Academique\CoherenceSystemeAcademique;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPFiliere;
 use App\Models\ESBTPMatiere;
@@ -1451,6 +1452,19 @@ class DashboardController extends Controller
             }
         }
 
+        // CE REPLI EST EMPRUNTE QUAND LE SNAPSHOT NE REPOND PAS, c'est-a-dire
+        // avant qu'un bulletin ne soit configure — le moment ou une ECUE mal
+        // rangee se voit le plus. Il lisait TOUTES les notes de l'annee sans
+        // prendre garde au systeme academique de la classe : un 4/20 sur une
+        // ECUE tombait dans la moyenne BTS affichee sur l'accueil mobile de
+        // l'eleve. Le predicat se juge contre la CLASSE CIBLE, celle dont on
+        // affiche la moyenne — voir `.claude/rules/lmd-ecue-leak-bts-picker.md`.
+        //
+        // `withTrashed()` : `ESBTPClasse` est en `SoftDeletes`, et un `find()`
+        // nu rendrait `null` sur une classe effacee en douceur, donc aucun
+        // filtrage — precisement le cas que ce filtre protege.
+        $classeCible = ESBTPClasse::withTrashed()->find($classeId);
+
         $notes = ESBTPNote::query()
             ->where('etudiant_id', $etudiantId)
             ->where(function ($q) {
@@ -1460,11 +1474,21 @@ class DashboardController extends Controller
                 $q->where('annee_universitaire_id', $anneeId)
                     ->where('status', '!=', ESBTPEvaluation::STATUS_CANCELLED);
             })
-            ->with('evaluation:id,bareme')
+            ->with(['evaluation:id,bareme,matiere_id', 'evaluation.matiere:id,name,unite_enseignement_id'])
             ->get();
 
         $sur20 = $notes
-            ->map(function ($note) {
+            ->map(function ($note) use ($classeCible) {
+                $matiere = $note->evaluation?->matiere;
+
+                // Pas de classe ou pas de matiere : on ne peut pas juger, donc on
+                // ne retranche pas. Ecarter sur une donnee manquante inventerait
+                // une moyenne differente de celle que l'eleve attend.
+                if ($classeCible && $matiere
+                    && ! CoherenceSystemeAcademique::matiereRetenue($matiere, $classeCible, 'accueil mobile/moyenne courante')) {
+                    return null;
+                }
+
                 $valeur = is_numeric($note->note) ? (float) $note->note : (is_numeric($note->valeur) ? (float) $note->valeur : null);
                 if ($valeur === null) {
                     return null;

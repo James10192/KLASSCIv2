@@ -63,7 +63,11 @@ class BtsCurrentResultSnapshotService
     private function classe(int $classeId): ?ESBTPClasse
     {
         if (! array_key_exists($classeId, $this->classesChargees)) {
-            $this->classesChargees[$classeId] = ESBTPClasse::find($classeId);
+            // `withTrashed()` : `ESBTPClasse` est en `SoftDeletes`. Un `find()` nu
+            // rend `null` sur une classe effacee en douceur, donc AUCUN filtrage
+            // de coherence — l'ecart « Officiel / Courant » redeviendrait aveugle
+            // exactement dans le cas que ce filtre protege.
+            $this->classesChargees[$classeId] = ESBTPClasse::withTrashed()->find($classeId);
         }
 
         return $this->classesChargees[$classeId];

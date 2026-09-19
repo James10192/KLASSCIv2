@@ -784,6 +784,113 @@ class EcueLmdHorsDuBulletinNoteTest extends TestCase
         ]);
     }
 
+    /**
+     * L'ecran « Modifier les moyennes » ecrit UNE LIGNE PAR MATIERE.
+     *
+     * Le garde de `ESBTPResultat` levait au milieu de cette boucle : les
+     * matieres deja traitees restaient enregistrees, les suivantes jamais. Ce
+     * test poste volontairement l'ECUE EN DEUXIEME, pour qu'une ligne BTS soit
+     * deja ecrite quand le refus tombe — sans transaction, elle survivrait.
+     */
+    public function test_l_enregistrement_des_moyennes_ne_laisse_aucun_etat_partiel(): void
+    {
+        $this->monterLaClasse();
+        $bts = $this->matiereConfiguree();
+        $ecue = $this->uneEcue('TPGC646');
+        $etudiant = $this->etudiantInscrit();
+
+        $this->actingAs($this->unSuperAdmin());
+
+        $reponse = $this->post(route('esbtp.bulletins.moyennes-update'), [
+            'etudiant_id' => $etudiant->id,
+            'classe_id' => $this->classe->id,
+            'periode' => 'semestre1',
+            'annee_universitaire_id' => $this->annee->id,
+            'resultats' => [
+                ['matiere_id' => $bts->id, 'moyenne' => 14, 'coefficient' => 2],
+                ['matiere_id' => $ecue->id, 'moyenne' => 4, 'coefficient' => 1],
+            ],
+        ]);
+
+        $reponse->assertSessionHasErrors();
+
+        $this->assertSame(
+            0,
+            ESBTPResultat::where('etudiant_id', $etudiant->id)->count(),
+            'Tout ou rien : sans transaction, la ligne BTS postee AVANT l\'ECUE '
+            .'restait enregistree et l\'ecran devenait insauvegardable.'
+        );
+    }
+
+    /**
+     * La moyenne de l'accueil mobile, quand aucun bulletin n'est configure.
+     *
+     * Ce repli est emprunte precisement avant qu'un bulletin n'existe — le
+     * moment ou une ECUE mal rangee se voit le plus. Il lisait toutes les notes
+     * de l'annee sans regarder le systeme academique de la classe.
+     */
+    public function test_la_moyenne_de_l_accueil_mobile_ecarte_l_ecue(): void
+    {
+        $this->monterLaClasse();
+        $bts = $this->matiereConfiguree();
+        $ecue = $this->uneEcue('TPGC647');
+        $etudiant = $this->etudiantInscrit();
+
+        $evaluationBts = ESBTPEvaluation::factory()->create([
+            'matiere_id' => $bts->id,
+            'classe_id' => $this->classe->id,
+            'annee_universitaire_id' => $this->annee->id,
+            'periode' => 'semestre1',
+            'status' => 'published',
+            'bareme' => 20,
+            'coefficient' => 2,
+        ]);
+        $this->noter($etudiant, $evaluationBts, 14);
+
+        $evaluationEcue = $this->evaluationHeritee($bts, $ecue);
+        $this->noter($etudiant, $evaluationEcue, 4);
+
+        // ON FORCE LE REPLI, sinon ce test ne prouve rien. Le snapshot repond
+        // des qu'une configuration de bulletin existe, et il est DEJA filtre :
+        // une premiere version de ce test le laissait repondre et validait donc
+        // le filtre d'un AUTRE calcul, pas celui qu'on corrige ici. C'est
+        // exactement la forme d'assertion creuse que ce chantier a payee.
+        $this->instance(
+            \App\Services\ESBTP\BtsCurrentResultSnapshotService::class,
+            new class extends \App\Services\ESBTP\BtsCurrentResultSnapshotService
+            {
+                // Le constructeur du parent exige deux services dont ce double
+                // n'a que faire : il ne fait que lever.
+                public function __construct()
+                {
+                }
+
+                public function getAnnualSnapshot(int $etudiantId, int $classeId, int $anneeUniversitaireId): array
+                {
+                    throw new \RuntimeException('Configuration de bulletin absente.');
+                }
+            }
+        );
+
+        $methode = new \ReflectionMethod(\App\Http\Controllers\DashboardController::class, 'moyenneCourante');
+        $methode->setAccessible(true);
+
+        $moyenne = $methode->invoke(
+            app(\App\Http\Controllers\DashboardController::class),
+            $etudiant->id,
+            $this->classe->id,
+            $this->annee->id,
+            false
+        );
+
+        $this->assertSame(
+            14.0,
+            $moyenne,
+            'Sans le correctif, le 4/20 de l\'ECUE tombait dans la moyenne BTS de '
+            .'l\'accueil mobile et rendait 9,00.'
+        );
+    }
+
     public function test_une_ligne_heritee_reste_modifiable_sur_sa_moyenne(): void
     {
         $this->monterLaClasse();

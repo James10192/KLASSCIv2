@@ -155,6 +155,36 @@ ou la matière change**. Une ligne héritée reste modifiable sur sa moyenne ou 
 titre — sinon elle deviendrait incorrigeable, exactement le défaut que le retrait
 de maquette corrige par ailleurs.
 
+### Un garde à l'écriture rend insauvegardable tout écran qui offre ce qu'il refuse
+
+C'est la leçon de la passe 15, et elle vaut pour tout garde futur : poser un
+`throw` sur un modèle ne suffit pas. **Il faut retirer la chose refusée de tous
+les écrans qui la proposent, et rendre atomique toute boucle qui l'écrit.**
+
+Mesuré sur `ESBTPResultatController` :
+
+- `previewMoyennes()` construisait sa liste en croisant les deux pivots **plats**,
+  que `LiaisonsDeMatiere::retirer()` ne nettoie volontairement pas. Une ECUE
+  retirée de la maquette y ressortait donc, et l'écran la proposait à la saisie.
+- `updateMoyennes()` écrit **une ligne par matière**, sans transaction. Le garde
+  levait au milieu : les matières déjà traitées restaient enregistrées, les
+  suivantes jamais, et chaque nouvelle tentative laissait un état partiel
+  différent. **L'écran devenait insauvegardable**, et la seule façon d'en sortir
+  était de comprendre le refus — que le redirect n'expliquait pas.
+
+Le jumeau AJAX `bulkUpdateMoyennes()` avait bien sa transaction et son
+`catch (ValidationException)`. C'est cette **asymétrie entre deux méthodes du même
+fichier** qui a survécu à quatre passes : on relit celle qu'on vient d'écrire, pas
+sa voisine.
+
+**Le contrôle à faire en posant un garde d'écriture** : chercher tous les
+écrivains du modèle gardé, et pour chacun se demander (a) d'où vient ce qu'il
+écrit, et (b) que reste-t-il en base si le garde lève au troisième tour de boucle.
+
+```bash
+grep -rn "ESBTPResultat::\(create\|updateOrCreate\)\|new ESBTPResultat" app/ --include="*.php"
+```
+
 **Le snapshot est filtré AUSSI, et ce n'est pas une redondance.**
 `BtsCurrentResultSnapshotService` alimente l'écart « Officiel / Courant ». Filtrer
 seulement la génération laisserait l'erreur des deux côtés de la comparaison :
@@ -195,7 +225,11 @@ autre `foreach` est un second chemin, même s'il est 30 lignes plus bas.
 > du dépôt** ». C'était un absolu jamais mesuré, et il était faux. La version
 > d'après annonçait **neuf**, mesurés — et la passe 12 en a trouvé **deux de
 > plus**. Le nombre ci-dessous est donc, lui aussi, à lire comme un relevé, pas
-> comme un inventaire. C'est exactement le défaut que le piège #14 de
+> comme un inventaire. La passe 15 en a trouvé un **douzième**,
+> `DashboardController::moyenneCourante()`, et c'était le plus vicieux des
+> douze : son repli n'est emprunté que **quand aucun bulletin n'est
+> configuré**, c'est-à-dire précisément au moment où une ECUE mal rangée se
+> voit le plus. C'est exactement le défaut que le piège #14 de
 > `klassci-debugging-discipline.md` raconte pour lui-même — un inventaire
 > démenti quatre fois, chaque version publiée comme définitive. Lisez donc ce
 > tableau pour ce qu'il est : ce qui a été trouvé, pas ce qui existe.
@@ -213,6 +247,7 @@ autre `foreach` est un second chemin, même s'il est 30 lignes plus bas.
 | `ReeinscriptionService::getNotesEtudiant()` | décision passage / rattrapage / redoublement, matières échouées | notes | filtré (passe 11) |
 | `EtudiantAcademicJourneyPresenter::resultats()` | moyenne du parcours, fiche étudiant | moyennes enregistrées | filtré (passe 11) |
 | `EtudiantDossierService::getNotesParSemestre()` | rien — `$dossier` n'est cité dans aucune vue | notes | filtré par précaution |
+| `DashboardController::moyenneCourante()` | la moyenne de **l'accueil mobile** de l'élève | snapshot, **repli sur notes brutes** si aucun bulletin n'est configuré | filtré (passe 15) |
 
 > **Ne désignez jamais ces calculs par leur rang.** La passe 12 a inséré deux
 > lignes au milieu de ce tableau, et trois renvois de la prose (« le sixième »,

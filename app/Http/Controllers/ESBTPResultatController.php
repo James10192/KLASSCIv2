@@ -2722,8 +2722,22 @@ class ESBTPResultatController extends Controller
             $classeNiveauId = $classe->niveau_etude_id;
 
             // Plus de blocage pour coefficients manquants - utiliser fallback = 1
+            //
+            // `btsOnly()` N'EST PAS UNE CEINTURE DE PLUS, c'est la source de cet
+            // ecran. Le croisement ci-dessous porte sur les deux pivots PLATS
+            // (`esbtp_matiere_filiere` + `esbtp_matiere_niveau`), que
+            // `LiaisonsDeMatiere::retirer()` ne nettoie volontairement pas : une
+            // ECUE retiree de la maquette garde ses lignes plates et ressortait
+            // donc ici. Elle etait alors POSTEE en creation, et le garde de
+            // `ESBTPResultat` levait au milieu de la boucle d'enregistrement —
+            // l'ecran devenait insauvegardable. Voir
+            // `.claude/rules/lmd-ecue-leak-bts-picker.md`, forme « PEUT fuiter ».
+            $estBtsPourLesMatieres = strtoupper((string) ($classe->systeme_academique ?? 'BTS')) !== 'LMD';
+
             $toutesLesMatieres = \App\Models\ESBTPMatiere::with(['filieres:id,name,code', 'niveaux:id,name,code'])
                 ->where('is_active', true)
+                ->when($estBtsPourLesMatieres, fn ($q) => $q->btsOnly())
+                ->when(! $estBtsPourLesMatieres, fn ($q) => $q->lmdOnly())
                 ->orderBy('name')
                 ->get()
                 ->filter(function ($matiere) use ($classeFiliereId, $classeNiveauId) {
@@ -2870,85 +2884,30 @@ class ESBTPResultatController extends Controller
         $classe = \App\Models\ESBTPClasse::findOrFail($classeId);
         $anneeUniversitaire = \App\Models\ESBTPAnneeUniversitaire::findOrFail($anneeUniversitaireId);
 
-        // Traiter chaque résultat (si présents)
-        if ($request->has('resultats') && is_array($request->resultats)) {
-            foreach ($request->resultats as $resultatData) {
-                $matiereId = $resultatData['matiere_id'];
-                $moyenne = $resultatData['moyenne'];
-                // Récupérer le coefficient depuis le formulaire (priorité haute)
-                $coefficient = isset($resultatData['coefficient']) && $resultatData['coefficient'] > 0 
-                    ? floatval($resultatData['coefficient']) 
-                    : null;
-                
-                // Si pas de coefficient dans le formulaire, essayer de récupérer depuis la matière
-                if ($coefficient === null) {
-                    try {
-                        $coefficient = $this->bulletinService->getCoefficientForCombination(
-                            $matiereId,
-                            $classeId,
-                            $anneeUniversitaireId
-                        );
-                    } catch (\RuntimeException $exception) {
-                        // Fallback: utiliser 1 comme valeur par défaut au lieu de bloquer
-                        $coefficient = 1;
-                        \Log::warning("Coefficient manquant pour matière {$matiereId}, utilisation du défaut: 1");
-                    }
-                }
-                $appreciation = trim((string) ($resultatData['appreciation'] ?? ''));
-                if ($appreciation === '') {
-                    $appreciation = app(AppreciationScaleService::class)->labelFor((float) $moyenne, 'bts');
-                }
-                $resultatId = $resultatData['id'] ?? null;
+        // TOUT OU RIEN, et un refus qui se dit.
+        //
+        // Cette boucle ecrit une ligne PAR MATIERE. Sans transaction, le garde
+        // de `ESBTPResultat` (une ECUE dans une classe BTS) levait au milieu :
+        // les matieres deja traitees restaient enregistrees, les suivantes
+        // jamais, et chaque nouvelle tentative laissait un etat partiel
+        // different. C'est la symetrie de `bulkUpdateMoyennes()`, juste au-dessus
+        // dans ce fichier, qui manquait ici.
+        //
+        // Le `catch (ValidationException)` vient AVANT le catch large : un catch
+        // large transforme un refus metier en 500 et avale son message.
+        \DB::beginTransaction();
 
-                // Si un ID de résultat est fourni, mettre à jour le résultat existant
-                if ($resultatId) {
-                    $resultat = \App\Models\ESBTPResultat::find($resultatId);
-                    if ($resultat) {
-                        $resultat->update([
-                            'moyenne' => $moyenne,
-                            'coefficient' => $coefficient,
-                            'appreciation' => $appreciation,
-                        ]);
-
-                        continue;
-                    }
-                }
-
-                // Sinon, créer un nouveau résultat
-                \App\Models\ESBTPResultat::create([
-                    'etudiant_id' => $etudiantId,
-                    'classe_id' => $classeId,
-                    'matiere_id' => $matiereId,
-                    'periode' => $periodePourBDD,
-                    'annee_universitaire_id' => $anneeUniversitaireId,
-                    'moyenne' => $moyenne,
-                    'coefficient' => $coefficient,
-                    'appreciation' => $appreciation,
-                ]);
-            }
-        }
-
-        // NOUVELLE LOGIQUE: Traiter les nouvelles matières ajoutées dynamiquement
-        if ($request->has('nouvelles_matieres') && is_array($request->nouvelles_matieres)) {
-            foreach ($request->nouvelles_matieres as $nouvelleMatiereData) {
-                $matiereType = $nouvelleMatiereData['matiere_type'];
-                $moyenne = $nouvelleMatiereData['moyenne'];
-                $coefficient = null;
-                $appreciation = trim((string) ($nouvelleMatiereData['appreciation'] ?? ''));
-                if ($appreciation === '') {
-                    $appreciation = app(AppreciationScaleService::class)->labelFor((float) $moyenne, 'bts');
-                }
-
-                if ($matiereType === 'existante') {
-                    // Utiliser une matière existante
-                    $matiereId = $nouvelleMatiereData['matiere_existante_id'];
-                    $matiere = \App\Models\ESBTPMatiere::findOrFail($matiereId);
-
+        try {
+            // Traiter chaque résultat (si présents)
+            if ($request->has('resultats') && is_array($request->resultats)) {
+                foreach ($request->resultats as $resultatData) {
+                    $matiereId = $resultatData['matiere_id'];
+                    $moyenne = $resultatData['moyenne'];
                     // Récupérer le coefficient depuis le formulaire (priorité haute)
-                    $coefficient = isset($nouvelleMatiereData['coefficient']) && $nouvelleMatiereData['coefficient'] > 0 
-                        ? floatval($nouvelleMatiereData['coefficient']) 
+                    $coefficient = isset($resultatData['coefficient']) && $resultatData['coefficient'] > 0 
+                        ? floatval($resultatData['coefficient']) 
                         : null;
-                    
+                
                     // Si pas de coefficient dans le formulaire, essayer de récupérer depuis la matière
                     if ($coefficient === null) {
                         try {
@@ -2960,60 +2919,151 @@ class ESBTPResultatController extends Controller
                         } catch (\RuntimeException $exception) {
                             // Fallback: utiliser 1 comme valeur par défaut au lieu de bloquer
                             $coefficient = 1;
-                            \Log::warning("Coefficient manquant pour matière existante {$matiereId}, utilisation du défaut: 1");
+                            \Log::warning("Coefficient manquant pour matière {$matiereId}, utilisation du défaut: 1");
+                        }
+                    }
+                    $appreciation = trim((string) ($resultatData['appreciation'] ?? ''));
+                    if ($appreciation === '') {
+                        $appreciation = app(AppreciationScaleService::class)->labelFor((float) $moyenne, 'bts');
+                    }
+                    $resultatId = $resultatData['id'] ?? null;
+
+                    // Si un ID de résultat est fourni, mettre à jour le résultat existant
+                    if ($resultatId) {
+                        $resultat = \App\Models\ESBTPResultat::find($resultatId);
+                        if ($resultat) {
+                            $resultat->update([
+                                'moyenne' => $moyenne,
+                                'coefficient' => $coefficient,
+                                'appreciation' => $appreciation,
+                            ]);
+
+                            continue;
                         }
                     }
 
-                    // Associer la matière à la classe si ce n'est pas déjà fait
-                    if (! $classe->matieres->contains($matiere->id)) {
-                        $classe->matieres()->attach($matiere->id);
-                    }
-                } elseif ($matiereType === 'nouvelle') {
-                    // Créer une nouvelle matière
-                    $nomMatiere = $nouvelleMatiereData['nom_nouvelle'];
-                    $coefficient = $nouvelleMatiereData['coefficient'];
-                    $matiere = \App\Models\ESBTPMatiere::firstOrCreate(
-                        ['name' => $nomMatiere],
-                        [
-                            'code' => strtoupper(substr($nomMatiere, 0, 3)).'_'.time(),
-                            'description' => 'Matière ajoutée manuellement via le bulletin',
-                            'coefficient' => $coefficient,
-                            'type_formation' => 'generale',
-                            'is_active' => true,
-                        ]
-                    );
-
-                    ESBTPMatiereCoefficient::updateOrCreate([
-                        'matiere_id' => $matiere->id,
-                        'filiere_id' => $classe->filiere_id,
-                        'niveau_etude_id' => $classe->niveau_etude_id,
+                    // Sinon, créer un nouveau résultat
+                    \App\Models\ESBTPResultat::create([
+                        'etudiant_id' => $etudiantId,
+                        'classe_id' => $classeId,
+                        'matiere_id' => $matiereId,
+                        'periode' => $periodePourBDD,
                         'annee_universitaire_id' => $anneeUniversitaireId,
-                    ], [
+                        'moyenne' => $moyenne,
                         'coefficient' => $coefficient,
-                        'created_by' => auth()->id(),
-                        'updated_by' => auth()->id(),
+                        'appreciation' => $appreciation,
                     ]);
-
-                    // Associer la matière à la classe
-                    if (! $classe->matieres->contains($matiere->id)) {
-                        $classe->matieres()->attach($matiere->id);
-                    }
-                } else {
-                    continue; // Type invalide, ignorer
                 }
-
-                // Créer le résultat pour cette matière
-                \App\Models\ESBTPResultat::create([
-                    'etudiant_id' => $etudiantId,
-                    'classe_id' => $classeId,
-                    'matiere_id' => $matiere->id,
-                    'periode' => $periodePourBDD,
-                    'annee_universitaire_id' => $anneeUniversitaireId,
-                    'moyenne' => $moyenne,
-                    'coefficient' => $coefficient,
-                    'appreciation' => $appreciation,
-                ]);
             }
+
+            // NOUVELLE LOGIQUE: Traiter les nouvelles matières ajoutées dynamiquement
+            if ($request->has('nouvelles_matieres') && is_array($request->nouvelles_matieres)) {
+                foreach ($request->nouvelles_matieres as $nouvelleMatiereData) {
+                    $matiereType = $nouvelleMatiereData['matiere_type'];
+                    $moyenne = $nouvelleMatiereData['moyenne'];
+                    $coefficient = null;
+                    $appreciation = trim((string) ($nouvelleMatiereData['appreciation'] ?? ''));
+                    if ($appreciation === '') {
+                        $appreciation = app(AppreciationScaleService::class)->labelFor((float) $moyenne, 'bts');
+                    }
+
+                    if ($matiereType === 'existante') {
+                        // Utiliser une matière existante
+                        $matiereId = $nouvelleMatiereData['matiere_existante_id'];
+                        $matiere = \App\Models\ESBTPMatiere::findOrFail($matiereId);
+
+                        // Récupérer le coefficient depuis le formulaire (priorité haute)
+                        $coefficient = isset($nouvelleMatiereData['coefficient']) && $nouvelleMatiereData['coefficient'] > 0 
+                            ? floatval($nouvelleMatiereData['coefficient']) 
+                            : null;
+                    
+                        // Si pas de coefficient dans le formulaire, essayer de récupérer depuis la matière
+                        if ($coefficient === null) {
+                            try {
+                                $coefficient = $this->bulletinService->getCoefficientForCombination(
+                                    $matiereId,
+                                    $classeId,
+                                    $anneeUniversitaireId
+                                );
+                            } catch (\RuntimeException $exception) {
+                                // Fallback: utiliser 1 comme valeur par défaut au lieu de bloquer
+                                $coefficient = 1;
+                                \Log::warning("Coefficient manquant pour matière existante {$matiereId}, utilisation du défaut: 1");
+                            }
+                        }
+
+                        // Associer la matière à la classe si ce n'est pas déjà fait
+                        if (! $classe->matieres->contains($matiere->id)) {
+                            $classe->matieres()->attach($matiere->id);
+                        }
+                    } elseif ($matiereType === 'nouvelle') {
+                        // Créer une nouvelle matière
+                        $nomMatiere = $nouvelleMatiereData['nom_nouvelle'];
+                        $coefficient = $nouvelleMatiereData['coefficient'];
+                        $matiere = \App\Models\ESBTPMatiere::firstOrCreate(
+                            ['name' => $nomMatiere],
+                            [
+                                'code' => strtoupper(substr($nomMatiere, 0, 3)).'_'.time(),
+                                'description' => 'Matière ajoutée manuellement via le bulletin',
+                                'coefficient' => $coefficient,
+                                'type_formation' => 'generale',
+                                'is_active' => true,
+                            ]
+                        );
+
+                        ESBTPMatiereCoefficient::updateOrCreate([
+                            'matiere_id' => $matiere->id,
+                            'filiere_id' => $classe->filiere_id,
+                            'niveau_etude_id' => $classe->niveau_etude_id,
+                            'annee_universitaire_id' => $anneeUniversitaireId,
+                        ], [
+                            'coefficient' => $coefficient,
+                            'created_by' => auth()->id(),
+                            'updated_by' => auth()->id(),
+                        ]);
+
+                        // Associer la matière à la classe
+                        if (! $classe->matieres->contains($matiere->id)) {
+                            $classe->matieres()->attach($matiere->id);
+                        }
+                    } else {
+                        continue; // Type invalide, ignorer
+                    }
+
+                    // Créer le résultat pour cette matière
+                    \App\Models\ESBTPResultat::create([
+                        'etudiant_id' => $etudiantId,
+                        'classe_id' => $classeId,
+                        'matiere_id' => $matiere->id,
+                        'periode' => $periodePourBDD,
+                        'annee_universitaire_id' => $anneeUniversitaireId,
+                        'moyenne' => $moyenne,
+                        'coefficient' => $coefficient,
+                        'appreciation' => $appreciation,
+                    ]);
+                }
+            }
+
+            \DB::commit();
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            \DB::rollBack();
+
+            return redirect()->back()
+                ->withInput()
+                ->withErrors($e->errors());
+        } catch (\Throwable $e) {
+            \DB::rollBack();
+
+            \Log::error('Echec de l\'enregistrement des moyennes.', [
+                'etudiant_id' => $etudiantId,
+                'classe_id' => $classeId,
+                'periode' => $periodePourBDD,
+                'message' => $e->getMessage(),
+            ]);
+
+            return redirect()->back()
+                ->withInput()
+                ->with('error', "Les moyennes n'ont pas pu etre enregistrees. Aucune modification n'a ete conservee.");
         }
 
         // Rediriger vers la page des résultats de l'étudiant
