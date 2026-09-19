@@ -214,7 +214,15 @@ autre `foreach` est un second chemin, même s'il est 30 lignes plus bas.
 | `EtudiantAcademicJourneyPresenter::resultats()` | moyenne du parcours, fiche étudiant | moyennes enregistrées | filtré (passe 11) |
 | `EtudiantDossierService::getNotesParSemestre()` | rien — `$dossier` n'est cité dans aucune vue | notes | filtré par précaution |
 
-**Le sixième a été signalé comme « le seul qui écrive », et il est INERTE.**
+> **Ne désignez jamais ces calculs par leur rang.** La passe 12 a inséré deux
+> lignes au milieu de ce tableau, et trois renvois de la prose (« le sixième »,
+> « le septième », « le cinquième ») se sont mis à pointer ailleurs. Deux se
+> rattrapaient parce que le paragraphe nommait sa méthode ; le troisième, non —
+> il envoyait le lecteur vers une méthode qui existe, qui est dans le tableau,
+> et dont la description ne correspond pas. Un faux repère qui se lit comme un
+> vrai. Les renvois nomment donc la méthode, et le tableau peut grandir.
+
+**`buildBulletinPdf()` a été signalé comme « le seul calcul qui écrive », et il est INERTE.**
 C'est le cas le plus instructif du chantier, parce qu'il se lit exactement comme
 une fuite : `buildBulletinPdf()` n'appelle pas `genererDonneesBulletin()`, il
 relit `esbtp_notes` lui-même, recalcule, et **persiste** (`$bulletin->save()`).
@@ -270,22 +278,46 @@ le paramètre dans un mode où les élèves viennent de plusieurs classes.
 
 **Pourquoi PAS un scope SQL, alors que ce serait plus court.** La passe 12 a
 proposé de remplacer les quatorze filtres PHP par
-`ESBTPNote::scopeCoherentesAvecLaClasse()` appuyé sur `contraindreLIncoherence()`,
-qui existe déjà. L'argument de forme est juste — et la proposition est refusée
-pour une raison de fond : **un `WHERE` écarte en silence**. La conduite choisie à
-la lecture est « on écarte, *et on le journalise* », parce qu'une moyenne qui
-bouge sans explication est pire qu'une moyenne fausse (piège #12). Un scope SQL
-perdrait le couple (classe, matière) écarté, donc la seule trace qui permet à une
-école de retrouver la note mal rangée. Ce qui a été retenu de la critique, c'est
-son vrai fond : **plus aucun site ne dépend d'un `$classeId` passé en paramètre
-avec un repli `null`** — la classe vient de la ligne lue.
+`ESBTPNote::scopeCoherentesAvecLaClasse()` appuyé sur `contraindreLIncoherence()`.
 
-**Le septième n'affiche rien, il DÉCIDE.** `ReeinscriptionService` compte la
+> **Le premier motif écrit ici était faux, et il a été remplacé.** Il disait
+> qu'« un `WHERE` écarte en silence, donc un scope perdrait la trace du couple
+> (classe, matière) ». C'est réfutable en une ligne : `contraindreLIncoherence()`
+> existe précisément pour **énumérer** les lignes incohérentes, donc un scope qui
+> écarte peut être doublé d'une requête qui recense et journalise. Une raison
+> fausse invite au mauvais geste — qui la réfute croit avoir levé l'objection et
+> refait la passe. C'est l'avertissement que `ESBTPResultat` porte déjà pour
+> lui-même.
+
+Les raisons qui tiennent, elles, sont des raisons de **portée** :
+
+- `calculateStudentStatsFixed()` reçoit `$notes` **en paramètre**, déjà
+  matérialisée par l'appelant. Un scope sur `ESBTPNote` ne l'atteint pas sans
+  changer les deux appelants.
+- Plusieurs sites filtrent des **collections en mémoire** (`ReeinscriptionService`,
+  les tableaux `$resultatsParMatiere`) : il n'y a pas de requête à scoper.
+- Le mémo de dédoublonnage donne **une ligne de journal par couple**, pas par
+  requête. Le doubler côté SQL ferait deux mécaniques de trace à tenir d'accord.
+
+Un scope resterait donc une couverture **partielle**, à côté des filtres PHP, pas
+à leur place. Ce qui a été retenu de la critique est son vrai fond : **plus aucun
+site ne dépend d'un `$classeId` passé en paramètre avec un repli `null`.**
+
+**Et la question qu'il fallait poser avant : contre QUELLE classe juge-t-on une
+note ?** Le dépôt avait trois réponses implicites. Elle tient en une ligne, et
+c'est celle appliquée partout depuis la passe 13 : **la classe cible quand il y en
+a une** (le bulletin qu'on calcule, la classe d'où part la décision), **celle de
+la ligne lue sinon**. La différence n'est pas théorique : un élève inscrit la même
+année en LMD *et* en BTS a des ECUE parfaitement cohérentes avec leur propre
+classe — juger note par note les déclarait valides et les laissait entrer dans sa
+moyenne BTS.
+
+**`ReeinscriptionService` n'affiche rien, il DÉCIDE.** Il compte la
 matière étrangère dans la moyenne **et** dans les matières échouées : un 4/20 sur
 une ECUE peut faire basculer un passage en redoublement, pour un élève comme pour
 une promotion entière via la réinscription groupée.
 
-Le cinquième reste le plus piégeux à lire : ses onglets **semestriels** remplacent
+`ESBTPResultatController::resultatEtudiant()` reste le plus piégeux à lire : ses onglets **semestriels** remplacent
 entièrement son calcul par le snapshot (donc sains), mais la branche annuelle
 `annual_incomplete` ne remplace rien — elle se contente de **renommer** les
 libellés. Une ECUE y ressortait dans le tableau et pesait dans la moyenne du pied,

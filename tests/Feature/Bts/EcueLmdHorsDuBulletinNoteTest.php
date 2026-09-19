@@ -502,7 +502,7 @@ class EcueLmdHorsDuBulletinNoteTest extends TestCase
      * DERNIERE matiere lue devenait la moyenne generale de l'eleve. Avec une
      * ECUE a 4 lue en dernier, le KPI affichait 4,00.
      */
-    public function test_la_bande_kpi_pondere_les_matieres_et_ecarte_l_ecue(): void
+    public function test_la_bande_kpi_agrege_toutes_les_matieres_et_ecarte_l_ecue(): void
     {
         $this->monterLaClasse();
         $bts = $this->matiereConfiguree();
@@ -550,6 +550,62 @@ class EcueLmdHorsDuBulletinNoteTest extends TestCase
             0.01,
             'La bande KPI ne compte que la matiere BTS. Sans le correctif elle rendait 4,00 '
             .'— la moyenne de la DERNIERE ligne lue, prise pour la moyenne generale.'
+        );
+    }
+
+    /**
+     * La bande KPI et la colonne « Moyenne » doivent dire la MEME chose.
+     *
+     * Elles s'affichent sur le meme ecran, l'une au-dessus de l'autre, et une
+     * classe de moins de 50 eleves tient sur une page : l'ecole peut faire la
+     * moyenne de la colonne a la main. La premiere version du correctif
+     * ponderait la bande par `esbtp_resultats.coefficient` alors que la colonne
+     * traite chaque matiere a egalite — deux chiffres plausibles et
+     * contradictoires. Avec 8 (coef 2) et 18 (coef 1) : pondere 11,33, simple
+     * 13,00.
+     */
+    public function test_la_bande_kpi_dit_la_meme_chose_que_la_colonne(): void
+    {
+        $this->monterLaClasse();
+        $premiere = $this->matiereConfiguree();
+        $seconde = ESBTPMatiere::factory()->create(['unite_enseignement_id' => null]);
+
+        $etudiant = $this->etudiantInscrit();
+
+        ESBTPResultat::withoutEvents(fn () => ESBTPResultat::create([
+            'etudiant_id' => $etudiant->id,
+            'classe_id' => $this->classe->id,
+            'matiere_id' => $premiere->id,
+            'annee_universitaire_id' => $this->annee->id,
+            'periode' => 'semestre1',
+            'moyenne' => 8,
+            'coefficient' => 2,
+        ]));
+
+        ESBTPResultat::withoutEvents(fn () => ESBTPResultat::create([
+            'etudiant_id' => $etudiant->id,
+            'classe_id' => $this->classe->id,
+            'matiere_id' => $seconde->id,
+            'annee_universitaire_id' => $this->annee->id,
+            'periode' => 'semestre1',
+            'moyenne' => 18,
+            'coefficient' => 1,
+        ]));
+
+        $kpis = app(BulletinService::class)->computeResultatsKpis(
+            collect([$etudiant->id]),
+            $this->classe->id,
+            $this->annee->id,
+            '1'
+        );
+
+        $this->assertNotNull($kpis['moyenne_generale'] ?? null, 'Temoin : sans KPI, le test ne prouve rien.');
+        $this->assertEqualsWithDelta(
+            13.0,
+            (float) $kpis['moyenne_generale'],
+            0.01,
+            'La bande traite chaque matiere a egalite, comme la colonne. Ponderee, elle rendrait 11,33 '
+            .'sous une colonne qui affiche 13,00.'
         );
     }
 

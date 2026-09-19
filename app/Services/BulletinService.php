@@ -2395,6 +2395,12 @@ class BulletinService
 
         $semestre = $periode === 'semestre2' ? '2' : '1';
 
+        // La classe CIBLE : celle du bulletin qu'on calcule. Les quatre
+        // appelants la renseignent ; le repli `null` n'existe que parce que la
+        // signature la declare nullable depuis toujours.
+        $classeCible = $classeId ? ESBTPClasse::withTrashed()->find($classeId) : null;
+        $sansClassePeriodeJournalise = false;
+
         $notesQuery = ESBTPNote::where('etudiant_id', $etudiantId)
             // `evaluation.classe` : le filtre de coherence plus bas en a besoin.
             // Cette branche est celle de la periode « annuel », et son resultat
@@ -2421,10 +2427,27 @@ class BulletinService
 
             // Cette branche a DEUX chemins d'ingestion et le second ECRASE le
             // premier (voir plus bas) : les filtrer tous les deux, ou aucun.
-            $classeDeLaNote = $note->evaluation->classe;
+            //
+            // ON JUGE CONTRE LA CLASSE CIBLE, PAS CELLE DE LA NOTE — corrige en
+            // passe 13. La question posee ici n'est pas « cette note est-elle
+            // bien rangee ? » mais « cette note appartient-elle a CE bulletin ? ».
+            // Un eleve inscrit la meme annee dans une classe LMD et dans une
+            // classe BTS a des ECUE parfaitement coherentes AVEC LEUR PROPRE
+            // classe : juger note par note les declarait valides et les laissait
+            // entrer dans la moyenne BTS. C'est le choix que font deja
+            // `BtsCurrentResultSnapshotService` et `ReeinscriptionService`.
+            $classeDeReference = $classeCible ?? $note->evaluation->classe;
 
-            if ($classeDeLaNote
-                && ! CoherenceSystemeAcademique::matiereRetenue($note->evaluation->matiere, $classeDeLaNote, 'moyenne periode/note')) {
+            if (! $classeDeReference) {
+                if (! $sansClassePeriodeJournalise) {
+                    $sansClassePeriodeJournalise = true;
+                    \Log::warning('Moyenne de periode : aucune classe de reference, coherence non verifiable.', [
+                        'etudiant_id' => $etudiantId,
+                        'classe_id' => $classeId,
+                        'periode' => $periode,
+                    ]);
+                }
+            } elseif (! CoherenceSystemeAcademique::matiereRetenue($note->evaluation->matiere, $classeDeReference, 'moyenne periode/note')) {
                 continue;
             }
 
@@ -2474,8 +2497,10 @@ class BulletinService
                 continue;
             }
 
-            if ($resultat->classe
-                && ! CoherenceSystemeAcademique::matiereRetenue($resultat->matiere, $resultat->classe, 'moyenne periode/moyenne enregistree')) {
+            $classeDeReference = $classeCible ?? $resultat->classe;
+
+            if ($classeDeReference
+                && ! CoherenceSystemeAcademique::matiereRetenue($resultat->matiere, $classeDeReference, 'moyenne periode/moyenne enregistree')) {
                 continue;
             }
 
@@ -3481,14 +3506,34 @@ class BulletinService
         // la moyenne d'une matiere prise au hasard — et si cette matiere etait
         // une ECUE du LMD, elle affichait la note de l'ECUE.
         //
-        // On agrege desormais par eleve, pondere par le coefficient de la ligne,
-        // et on ecarte les matieres etrangeres au systeme academique de la
-        // classe comme partout ailleurs.
+        // On agrege desormais par eleve, et on ecarte les matieres etrangeres au
+        // systeme academique de la classe comme partout ailleurs.
+        //
+        // MOYENNE SIMPLE, ET NON PONDEREE — corrige en passe 13. La premiere
+        // version ponderait par `esbtp_resultats.coefficient`. Deux raisons de
+        // ne pas le faire :
+        //
+        // 1. LA COLONNE JUSTE EN DESSOUS NE PONDERE PAS.
+        //    `calculateStudentStatsFixed()` traite chaque matiere a egalite
+        //    (« For overall average, treat each matiere equally »), et les deux
+        //    s'affichent sur le MEME ecran. Ponderer ici rendait une bande KPI
+        //    plausible et fausse par rapport au tableau dessous : avec des
+        //    coefficients 4/3/2/1 et des moyennes 8/12/14/18, le KPI annoncait
+        //    11,40 sous une colonne dont la moyenne a la main donne 13,00.
+        //    C'est le defaut que ce chantier passe son temps a corriger ailleurs.
+        // 2. LE COEFFICIENT DE CETTE COLONNE EST HETEROGENE. Il vaut le vrai
+        //    coefficient quand la ligne vient d'une generation de bulletin, et
+        //    1 quand elle vient de l'observateur de notes — donc la ponderation
+        //    aurait reflete QUEL ECRAN a touche la ligne en dernier, pas la
+        //    configuration de l'ecole (`ESBTPMatiereCoefficient`).
+        //
+        // Ponderer les deux cotes est un chantier a part, pas ce correctif.
         //
         // `rang` n'est PAS relu : c'est un rang PAR MATIERE, et le prendre pour
         // un rang de classe etait le meme defaut. Les rangs sont recalcules plus
         // bas a partir des moyennes corrigees.
         $cumuls = [];
+        $sansClasseKpiJournalise = false;
 
         foreach ($resultats as $resultat) {
             if ($resultat->moyenne === null) {
@@ -3497,25 +3542,31 @@ class BulletinService
 
             $classeDeLaLigne = $resultat->classe;
 
-            if ($classeDeLaLigne && $resultat->matiere
-                && ! CoherenceSystemeAcademique::matiereRetenue($resultat->matiere, $classeDeLaLigne, 'kpi resultats/moyenne enregistree')) {
+            if (! $classeDeLaLigne || ! $resultat->matiere) {
+                // Classe ou matiere effacee en douceur : on ne PEUT pas juger.
+                // On garde la ligne et on le dit une fois — un repli muet est le
+                // piege #12, et les deux autres chemins de ce chantier le disent
+                // deja. Le silence ici serait une asymetrie de conduite.
+                if (! $sansClasseKpiJournalise) {
+                    $sansClasseKpiJournalise = true;
+                    \Log::warning('KPI resultats : ligne sans classe ou sans matiere resolvable, coherence non verifiable.', [
+                        'resultat_id' => $resultat->id,
+                        'classe_id' => $resultat->classe_id,
+                        'matiere_id' => $resultat->matiere_id,
+                    ]);
+                }
+            } elseif (! CoherenceSystemeAcademique::matiereRetenue($resultat->matiere, $classeDeLaLigne, 'kpi resultats/moyenne enregistree')) {
                 continue;
             }
 
-            $coefficient = (float) ($resultat->coefficient ?: 1);
-
-            if ($coefficient <= 0) {
-                $coefficient = 1;
-            }
-
             $etudiantId = $resultat->etudiant_id;
-            $cumuls[$etudiantId]['points'] = ($cumuls[$etudiantId]['points'] ?? 0) + ((float) $resultat->moyenne * $coefficient);
-            $cumuls[$etudiantId]['coefs'] = ($cumuls[$etudiantId]['coefs'] ?? 0) + $coefficient;
+            $cumuls[$etudiantId]['somme'] = ($cumuls[$etudiantId]['somme'] ?? 0) + (float) $resultat->moyenne;
+            $cumuls[$etudiantId]['matieres'] = ($cumuls[$etudiantId]['matieres'] ?? 0) + 1;
         }
 
         foreach ($cumuls as $etudiantId => $cumul) {
-            if ($cumul['coefs'] > 0) {
-                $moyennes[$etudiantId] = round($cumul['points'] / $cumul['coefs'], 2);
+            if ($cumul['matieres'] > 0) {
+                $moyennes[$etudiantId] = round($cumul['somme'] / $cumul['matieres'], 2);
             }
         }
 
@@ -3556,7 +3607,7 @@ class BulletinService
         // appelants l'eager-loadent deja (`evaluation.classe`) : aucune requete
         // de plus, et c'est plus juste que le parametre, qui ne decrit qu'un
         // filtre de recherche.
-        $classeDuParametre = $classeId ? ESBTPClasse::find($classeId) : null;
+        $classeDuParametre = $classeId ? ESBTPClasse::withTrashed()->find($classeId) : null;
         $sansClasseJournalisee = false;
 
         foreach ($notes as $note) {
@@ -3669,8 +3720,12 @@ class BulletinService
                     // des qu'une ligne heritee existe — c'est-a-dire dans le cas
                     // meme que ce correctif vise.
                     // Ce bloc n'est atteint que si `$classeId` est renseigne
-                    // (voir le `if` qui l'englobe), donc `$classeDuParametre`
-                    // repond forcement ici — contrairement au chemin des notes.
+                    // (voir le `if` qui l'englobe). Cela ne veut PAS dire que
+                    // `$classeDuParametre` repond : `ESBTPClasse` est en
+                    // `SoftDeletes`, donc un `find()` sur une classe effacee en
+                    // douceur rend `null` — d'ou le `withTrashed()` a sa
+                    // resolution. « Repond forcement » etait ecrit ici, et
+                    // c'etait faux.
                     if ($classeDuParametre && $resultat->matiere
                         && ! CoherenceSystemeAcademique::matiereRetenue($resultat->matiere, $classeDuParametre, 'stats resultats/moyenne manuelle')) {
                         continue;
