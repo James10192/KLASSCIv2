@@ -6,6 +6,7 @@ namespace App\Http\Controllers\AcademicPilotage;
 
 use App\Domain\AcademicPilotage\Services\AcademicActorScopeService;
 use App\Domain\AcademicPilotage\Services\AcademicNoteCoverageService;
+use App\Domain\AcademicPilotage\Services\AcademicPeriodNormalizer;
 use App\Http\Controllers\Controller;
 use App\Models\ESBTPClasse;
 use Illuminate\Http\JsonResponse;
@@ -72,9 +73,27 @@ class AcademicCoverageController extends Controller
      * Le contenu ne depend que de la classe, de l'annee et de la periode —
      * jamais de qui regarde. Le prefixe de cache est deja propre a chaque
      * instance (`CACHE_PREFIX`), l'isolation entre ecoles est donc acquise.
+     *
+     * LA PERIODE EST NORMALISEE, et c'est tout l'interet de cette methode.
+     * La cle se construisait sur la valeur brute passee en parametre : une
+     * demande `?periode=S1` remplissait `…s1`, quand l'invalidation, qui parle
+     * toujours canonique, oubliait `…semestre1`. L'entree survivait donc a
+     * chaque saisie de note, et le bandeau annonçait pendant dix minutes des
+     * notes manquantes qui venaient d'etre saisies — exactement le defaut que
+     * le bouton « recalculer » avait ete ajoute pour corriger.
+     *
+     * Une periode que le normaliseur refuse garde sa forme brute : le service
+     * rend de toute facon un refus, et deux ecritures illisibles differentes
+     * meritent deux entrees plutot qu'une confusion de plus.
      */
     public static function cle(int $classeId, int $anneeId, string $periode): string
     {
+        try {
+            $periode = (new AcademicPeriodNormalizer())->normalize($periode);
+        } catch (\InvalidArgumentException) {
+            // Volontairement laissee telle quelle.
+        }
+
         return 'pilotage.couverture.'.$classeId.'.'.$anneeId.'.'.mb_strtolower($periode, 'UTF-8');
     }
 }

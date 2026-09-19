@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Domain\BtsTroncCommun;
 
+use App\Domain\AcademicPilotage\Services\AcademicPeriodNormalizer;
 use App\Models\ESBTPInscription;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Effectif BTS aligne sur l'historique de phases, pas seulement classe_id courant.
@@ -23,8 +25,17 @@ final class BtsClassCohortCounter
      */
     private array $cohortCache = [];
 
-    public function __construct(private BtsPhaseResolver $phaseResolver)
+    private AcademicPeriodNormalizer $periodes;
+
+    /**
+     * Le normaliseur est optionnel a la construction — et seulement pour ne pas
+     * casser la douzaine d'appels `new BtsClassCohortCounter($resolver)` des
+     * tests. Il n'a aucune dependance, donc le construire ici ne coute rien et
+     * ne cache rien.
+     */
+    public function __construct(private BtsPhaseResolver $phaseResolver, ?AcademicPeriodNormalizer $periodes = null)
     {
+        $this->periodes = $periodes ?? new AcademicPeriodNormalizer();
     }
 
     /**
@@ -187,11 +198,32 @@ final class BtsClassCohortCounter
         return $inscription->classe_id ? (int) $inscription->classe_id : null;
     }
 
+    /**
+     * Le numero de semestre d'une periode.
+     *
+     * Ce `match` etait litteral : il ne connaissait que « 2 », « semestre2 » et
+     * « annuel ». Or les periodes viennent de la base, qui porte aussi « S2 »
+     * et « Semestre 2 » — `AcademicPeriodNormalizer::databaseVariants()` les
+     * enumere. Toutes ces ecritures-la tombaient sur le `default` et rendaient
+     * le semestre 1, sans un signal : la cohorte du second semestre etait
+     * silencieusement celle du premier, donc des bulletins generes sur les
+     * mauvais etudiants dans une classe de tronc commun.
+     *
+     * « Annuel » reste volontairement le semestre 2 : voir l'invariant
+     * d'exclusivite documente sur `etudiantIdsPourPeriode()`.
+     */
     private function semesterNumber(string $periode): int
     {
-        return match ($periode) {
-            '2', 'semestre2', 'annuel' => 2,
-            default => 1,
-        };
+        try {
+            return $this->periodes->semesterNumber($periode) ?? 2;
+        } catch (\InvalidArgumentException) {
+            // Un repli, mais plus un repli muet : sans cette ligne, une periode
+            // inconnue rend une cohorte fausse que rien ne permet de retrouver.
+            Log::warning('BtsClassCohortCounter : période non reconnue, cohorte du semestre 1 par défaut.', [
+                'periode' => $periode,
+            ]);
+
+            return 1;
+        }
     }
 }

@@ -74,7 +74,16 @@ final class AcademicNoteCoverageService
 
         $enseignants = $this->contacts->pourLaClasse($classe, $yearId, $attendu['semestre'], $subjects);
 
-        return $this->buildPayload($classe, $subjects, $students, $evaluations, $entries, $attendu, $enseignants);
+        return $this->buildPayload(
+            $classe,
+            $subjects,
+            $students,
+            $evaluations,
+            $entries,
+            $attendu,
+            $enseignants,
+            $this->cohortesParSemestre($classId, $yearId, $period, $classe),
+        );
     }
 
     /**
@@ -99,7 +108,7 @@ final class AcademicNoteCoverageService
             ->where('workflow_step', 'etudiant_cree');
 
         if (strtoupper((string) $classe->systeme_academique) !== 'LMD') {
-            $etudiantIds = $this->cohorte->etudiantIdsPourPeriode($classId, $yearId, $period);
+            $etudiantIds = $this->cohorteIdsPourPeriode($classId, $yearId, $period);
 
             if ($etudiantIds === []) {
                 return collect();
@@ -116,6 +125,61 @@ final class AcademicNoteCoverageService
             ->filter(fn (ESBTPInscription $inscription) => $inscription->etudiant !== null)
             ->unique('etudiant_id')
             ->values();
+    }
+
+    /**
+     * Les identifiants de la cohorte pour cette periode.
+     *
+     * « Annuel » est le cas qui ne se devine pas. `BtsClassCohortCounter` y
+     * rend la cohorte du SEUL semestre 2, et ce choix est deliberement le sien :
+     * un bulletin annuel doit avoir un proprietaire unique, sinon un etudiant
+     * oriente en cours d'annee en recoit deux. Mais ici on ne genere rien, on
+     * COMPTE — et compter la vue annuelle d'une classe de tronc commun avec la
+     * cohorte du semestre 2 rendait zero etudiant : l'ecran annoncait « aucun
+     * etudiant sur cette periode » sur une classe dont tout le semestre 1 est
+     * saisi. L'union est donc juste ici, et elle ne l'est nulle part ailleurs.
+     *
+     * Elle ne suffit pas seule : un etudiant present au seul semestre 1 serait
+     * compte manquant sur les evaluations du semestre 2. C'est ce que
+     * `cohortesParSemestre()` redresse, evaluation par evaluation.
+     *
+     * @return list<int>
+     */
+    private function cohorteIdsPourPeriode(int $classId, int $yearId, string $period): array
+    {
+        if ($this->periods->normalize($period) !== 'annuel') {
+            return $this->cohorte->etudiantIdsPourPeriode($classId, $yearId, $period);
+        }
+
+        return array_values(array_unique(array_merge(
+            $this->cohorte->etudiantIdsPourPeriode($classId, $yearId, 'semestre1'),
+            $this->cohorte->etudiantIdsPourPeriode($classId, $yearId, 'semestre2'),
+        )));
+    }
+
+    /**
+     * Qui appartenait a la classe a CHAQUE semestre, quand la vue est annuelle.
+     *
+     * Rend un tableau vide partout ailleurs, et ce vide veut dire « aucune
+     * restriction » : hors du cas annuel BTS, la cohorte ne bouge pas d'une
+     * evaluation a l'autre.
+     *
+     * @return array<int, array<int, true>>  numero de semestre => ids en cle
+     */
+    private function cohortesParSemestre(int $classId, int $yearId, string $period, ESBTPClasse $classe): array
+    {
+        if (strtoupper((string) $classe->systeme_academique) === 'LMD') {
+            return [];
+        }
+
+        if ($this->periods->normalize($period) !== 'annuel') {
+            return [];
+        }
+
+        return [
+            1 => array_fill_keys($this->cohorte->etudiantIdsPourPeriode($classId, $yearId, 'semestre1'), true),
+            2 => array_fill_keys($this->cohorte->etudiantIdsPourPeriode($classId, $yearId, 'semestre2'), true),
+        ];
     }
 
     private function evaluations(int $yearId, string $period, int $classId): Collection
@@ -182,6 +246,9 @@ final class AcademicNoteCoverageService
             ->groupBy(fn ($row) => (int) $row->evaluation_id.'-'.(int) $row->etudiant_id);
     }
 
+    /**
+     * @param  array<int, array<int, true>>  $cohortesParSemestre  vide = aucune restriction
+     */
     private function buildPayload(
         ESBTPClasse $classe,
         Collection $subjects,
@@ -190,13 +257,25 @@ final class AcademicNoteCoverageService
         Collection $entries,
         array $attendu,
         array $enseignants = [],
+        array $cohortesParSemestre = [],
     ): array {
         $studentIndex = $this->studentIndex($students);
+
+        // Qui etait attendu SUR CETTE EVALUATION-LA. Sur une vue annuelle, la
+        // liste des etudiants est l'union des deux semestres ; sans ce filtre,
+        // un etudiant parti apres le semestre 1 serait compte manquant sur
+        // chaque evaluation du semestre 2.
+        $indexPour = fn (ESBTPEvaluation $evaluation): Collection => $this->indexPourEvaluation(
+            $evaluation,
+            $studentIndex,
+            $cohortesParSemestre,
+        );
+
         $evaluationsBySubject = $evaluations->groupBy(fn (ESBTPEvaluation $evaluation) => (int) $evaluation->matiere_id);
         $subjectRows = $subjects->map(fn (ESBTPMatiere $subject): array => $this->subjectRow(
             $subject,
             $evaluationsBySubject->get((int) $subject->id, collect()),
-            $studentIndex,
+            $indexPour,
             $entries,
             false,
             $enseignants,
@@ -205,7 +284,7 @@ final class AcademicNoteCoverageService
         $orphanRows = $evaluations
             ->filter(fn (ESBTPEvaluation $evaluation) => ! $subjects->contains('id', (int) $evaluation->matiere_id))
             ->groupBy(fn (ESBTPEvaluation $evaluation) => (int) $evaluation->matiere_id)
-            ->map(fn (Collection $items): array => $this->subjectRow($items->first()->matiere ?? null, $items, $studentIndex, $entries, true, $enseignants))
+            ->map(fn (Collection $items): array => $this->subjectRow($items->first()->matiere ?? null, $items, $indexPour, $entries, true, $enseignants))
             ->values();
 
         $subjectRows = $subjectRows->concat($orphanRows)->values();
@@ -289,9 +368,9 @@ final class AcademicNoteCoverageService
     /**
      * @param  array<int, array<string, mixed>>  $enseignants  matiere_id => contact
      */
-    private function subjectRow(?ESBTPMatiere $subject, Collection $evaluations, Collection $students, Collection $entries, bool $orphan = false, array $enseignants = []): array
+    private function subjectRow(?ESBTPMatiere $subject, Collection $evaluations, \Closure $indexPour, Collection $entries, bool $orphan = false, array $enseignants = []): array
     {
-        $evaluationRows = $evaluations->map(fn (ESBTPEvaluation $evaluation): array => $this->evaluationRow($evaluation, $students, $entries))->values();
+        $evaluationRows = $evaluations->map(fn (ESBTPEvaluation $evaluation): array => $this->evaluationRow($evaluation, $indexPour($evaluation), $entries))->values();
         $missingByStudent = [];
 
         foreach ($evaluationRows as $row) {
@@ -337,6 +416,35 @@ final class AcademicNoteCoverageService
             'missing_students' => array_values($missingByStudent),
             'evaluations' => $evaluationRows->all(),
         ];
+    }
+
+    /**
+     * L'index des etudiants attendus sur une evaluation donnee.
+     *
+     * Hors vue annuelle BTS, `$cohortes` est vide et l'index complet s'applique
+     * tel quel. Une periode d'evaluation que le normaliseur ne reconnait pas ne
+     * fait rien perdre : on retombe sur l'index complet plutot que de rendre
+     * une liste vide, qui compterait toute la classe comme traitee.
+     *
+     * @param  array<int, array<int, true>>  $cohortes
+     */
+    private function indexPourEvaluation(ESBTPEvaluation $evaluation, Collection $index, array $cohortes): Collection
+    {
+        if ($cohortes === []) {
+            return $index;
+        }
+
+        try {
+            $semestre = $this->periods->semesterNumber((string) $evaluation->periode);
+        } catch (\InvalidArgumentException) {
+            return $index;
+        }
+
+        if ($semestre === null || ! isset($cohortes[$semestre])) {
+            return $index;
+        }
+
+        return $index->filter(fn (array $student): bool => isset($cohortes[$semestre][$student['id']]));
     }
 
     private function evaluationRow(ESBTPEvaluation $evaluation, Collection $students, Collection $entries): array
