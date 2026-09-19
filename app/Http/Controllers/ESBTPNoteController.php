@@ -95,6 +95,12 @@ class ESBTPNoteController extends Controller
         // Get current academic year
         $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', 1)->first();
         $anneeAcademique = $anneeCourante ? $anneeCourante->name : 'Aucune année active';
+        // `$anneeAcademique` est une CHAINE (le libelle affiche en en-tete). La vue
+        // appelait `optional($anneeAcademique)->id` pour le bandeau de couverture :
+        // sur une chaine, cela rend toujours null, donc le bandeau n'avait jamais
+        // d'annee, ne se considerait jamais pret, et ne chargeait rien — y compris
+        // pour un superAdmin. L'identifiant voyage donc a part.
+        $anneeCouranteId = $anneeCourante?->id;
 
         $semesterWeights = [
             'semester1' => floatval(\App\Helpers\SettingsHelper::get('bulletin_semester1_weight', '50')),
@@ -342,7 +348,7 @@ class ESBTPNoteController extends Controller
                 ? collect()
                 : User::whereHas('roles', fn ($q) => $q->whereIn('name', ['teacher', 'enseignant']))->orderBy('name')->get();
 
-            return view('esbtp.notes.index', compact('notes', 'classes', 'allClasses', 'matieres', 'anneeAcademique', 'filieres', 'niveaux', 'classStatsById', 'heroStats', 'semesterWeights', 'evaluationTypes', 'enseignants'));
+            return view('esbtp.notes.index', compact('notes', 'classes', 'allClasses', 'matieres', 'anneeAcademique', 'anneeCouranteId', 'filieres', 'niveaux', 'classStatsById', 'heroStats', 'semesterWeights', 'evaluationTypes', 'enseignants'));
         }
 
         // Get filter options for dropdowns (if needed)
@@ -363,6 +369,7 @@ class ESBTPNoteController extends Controller
             'allClasses',
             'matieres',
             'anneeAcademique',
+            'anneeCouranteId',
             'filieres',
             'niveaux',
             'classStatsById',

@@ -14,6 +14,8 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ### Correctifs
 
+- **Le suivi des notes reçues s'affiche enfin sur la saisie des notes et sur la liste des évaluations** (`/esbtp/notes`, `/esbtp/evaluations`) — sur ces deux écrans, le bandeau attendait une année universitaire qu'il ne recevait jamais : la page lui passait le *libellé* de l'année (« 2025-2026 ») là où il attendait son identifiant. Sans année, il ne se considérait jamais prêt et n'interrogeait rien. Il restait donc invisible pour tout le monde, y compris pour un administrateur, même une classe choisie. Les six autres écrans qui le portent n'étaient pas touchés.
+
 - **Le suivi des notes reçues s'affiche enfin pour ceux qui saisissent les notes** (`/esbtp/notes`, fenêtre de choix de la classe) — le bandeau qui annonce ce qui manque était posé dans la fenêtre depuis le début, mais sa condition d'affichage ne connaissait que le droit de consultation globale du pilotage académique. L'enseignant, qui a le droit restreint à son propre périmètre, ne le voyait jamais : la seule personne à qui le chiffre sert était la seule à ne pas l'avoir. Le périmètre n'est pas élargi pour autant — une classe qu'un enseignant n'enseigne pas, ne corrige pas et n'a pas saisie lui reste refusée.
 
 - **Le chiffre se remet à jour après un enregistrement de notes** — le serveur garde ce calcul dix minutes ; le bandeau le redemandait sans le dire, recevait la même réponse périmée, et continuait d'annoncer manquantes les notes qu'on venait de saisir. L'enregistrement force désormais le recalcul ; un simple changement de classe continue de se servir dans le cache.
