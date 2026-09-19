@@ -99,6 +99,25 @@ class ESBTPMatiereFilierNiveau extends Model
     }
 
     /**
+     * Les matieres BTS de ce couple — le jumeau de `btsMatiereCountForCombo`.
+     *
+     * Il existe parce qu'un ratio se calcule avec UN seul filtre. Poser la
+     * garde sur le seul denominateur laissait le numerateur compter une ECUE
+     * planifiee : le compte depassait le total, l'egalite « configuree ==
+     * total » ne pouvait plus etre vraie, et la carte du planning restait
+     * « Partiel » a jamais, sans aucune issue par l'interface.
+     *
+     * `matiereIdsForCombo` reste sans filtre : il sert aussi des lecteurs au
+     * contexte mixte (l'assiduite), ou ecarter les ECUE casserait le LMD.
+     */
+    public static function btsMatiereIdsForCombo($filiereId, $niveauId)
+    {
+        return static::forCombo($filiereId, $niveauId)
+            ->whereHas('matiere', fn ($q) => $q->btsOnly())
+            ->pluck('matiere_id');
+    }
+
+    /**
      * Combien de matieres BTS actives porte ce couple.
      *
      * Le nom dit « bts » parce que le compte l'est : une ECUE LMD ayant une

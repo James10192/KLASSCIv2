@@ -1045,7 +1045,8 @@ class ESBTPPlanningConfigController extends Controller
             ->get();
 
         // Pré-charger les matière IDs liées (1 requête au lieu de N)
-        $linkedMatiereIds = \App\Models\ESBTPMatiereFilierNiveau::matiereIdsForCombo($filiereId, $niveauId);
+        // Meme filtre que le total calcule juste apres : c'est un ratio.
+        $linkedMatiereIds = \App\Models\ESBTPMatiereFilierNiveau::btsMatiereIdsForCombo($filiereId, $niveauId);
 
         $valides = $planifications->filter(function ($p) use ($linkedMatiereIds) {
             return $p->matiere && $linkedMatiereIds->contains($p->matiere->id);

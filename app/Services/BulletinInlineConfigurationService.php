@@ -234,9 +234,11 @@ class BulletinInlineConfigurationService
     private function matieresPourConfiguration(ESBTPClasse $classe, int $anneeUniversitaireId, string $periode): Collection
     {
         // Configuration d'un bulletin BTS (le LMD a `ESBTPLMDBulletinController`).
-        // La lecture est scopee sur le combo de la classe, ce qui ne suffit pas :
-        // une ECUE ayant une ligne dans ce pivot y remonte. Le repli plus bas,
-        // lui, exige les deux pivots plats — qu'un ECUE n'a jamais tous les deux.
+        // Les TROIS lectures de cette methode sont gardees, pas seulement
+        // celle-ci : le repli lit les deux pivots plats, que `LiaisonsDeMatiere`
+        // ecrit ensemble, et `$evaluated` remonte tout ce qui porte une
+        // evaluation — y compris ce qui a ete cree avant que les ecrans
+        // d'evaluation ne soient gardes.
         $official = ESBTPMatiere::query()
             ->where('is_active', true)
             ->btsOnly()
@@ -250,6 +252,7 @@ class BulletinInlineConfigurationService
         if ($official->isEmpty()) {
             $official = ESBTPMatiere::with(['filieres:id', 'niveaux:id'])
                 ->where('is_active', true)
+                ->btsOnly()
                 ->orderBy('name')
                 ->get()
                 ->filter(function ($matiere) use ($classe) {
@@ -260,8 +263,11 @@ class BulletinInlineConfigurationService
         }
 
         $officialIds = $official->pluck('id')->all();
+        // Une evaluation a pu etre creee sur une ECUE avant que les ecrans
+        // d'evaluation ne soient gardes : l'historique la ramenerait ici.
         $evaluated = ESBTPMatiere::query()
             ->where('is_active', true)
+            ->btsOnly()
             ->whereNotIn('id', $officialIds)
             ->whereHas('evaluations', function ($query) use ($classe, $anneeUniversitaireId, $periode) {
                 $query->where('classe_id', $classe->id)

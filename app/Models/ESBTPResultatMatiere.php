@@ -52,9 +52,39 @@ class ESBTPResultatMatiere extends Model
      * revient, butait dessus. Les bulletins d'une classe ou une matiere a ete
      * retiree puis remise etaient donc definitivement ingenerables.
      *
-     * `ESBTPResultat` avait deja recu ce traitement, avec le meme commentaire,
-     * dans `BulletinService::persistSubjectAverages()`. Sa table jumelle avait
-     * ete oubliee ; cette methode existe pour qu'on ne puisse plus l'oublier.
+     * POURQUOI PAS UNE MIGRATION, comme sur la table jumelle.
+     *
+     * `esbtp_resultats` a eu ce defaut et a ete « corrigee » le 24 aout 2026
+     * par `2026_08_24_104041_rebuild_esbtp_resultats_unique_with_deleted_at`,
+     * qui ajoute `deleted_at` a la cle unique. Recopier ce geste ici serait
+     * recopier une erreur.
+     *
+     * Cette migration part d'une observation juste — « MySQL considere les
+     * NULL comme distincts dans un index unique » — et en tire la conclusion
+     * inverse. Si les NULL sont distincts, alors DEUX lignes VIVANTES
+     * (`deleted_at IS NULL`) ne se voient plus l'une l'autre : l'unicite n'est
+     * pas preservee sur les lignes vivantes, elle est SUPPRIMEE. La
+     * documentation MySQL est explicite (« A UNIQUE index permits multiple
+     * NULL values for columns that can contain NULL »), et pour une cle
+     * multi-colonnes il suffit qu'UNE colonne soit nulle pour que la ligne
+     * n'entre en conflit avec aucune autre.
+     *
+     * Autrement dit, la jumelle a fait taire le « Duplicate entry » en
+     * enlevant la contrainte qui le levait. Deux resultats vivants pour le
+     * meme (etudiant, classe, matiere, periode, annee) y sont desormais
+     * acceptes en silence — c'est un defaut LATENT a traiter pour lui-meme,
+     * pas un precedent a suivre. La requete qui le mesure en production :
+     *
+     *   SELECT etudiant_id, classe_id, matiere_id, periode,
+     *          annee_universitaire_id, COUNT(*) c
+     *     FROM esbtp_resultats WHERE deleted_at IS NULL
+     *    GROUP BY 1,2,3,4,5 HAVING c > 1;
+     *
+     * Ici on garde donc la cle unique INTACTE — elle protege reellement — et
+     * on rend `updateOrCreate` conscient des lignes fantomes. Le cout est une
+     * discipline : passer par cette methode. C'est ce que garde le test
+     * d'architecture `EcritureDesLignesDeBulletinTest`, dont le perimetre
+     * (`app/`, cinq formes litterales) est assume et documente la-bas.
      *
      * @param  array<string, mixed>  $valeurs
      */

@@ -28,20 +28,8 @@ final class AcademicNoteCoverageService
         ?int $classId,
         ?Collection $allowedClassIds = null,
     ): array {
-        if ($yearId === null) {
-            return $this->empty('Aucune année universitaire sélectionnée.');
-        }
-
-        if ($classId === null) {
-            return $this->empty('Sélectionnez une classe pour voir la couverture des notes.');
-        }
-
-        if ($allowedClassIds !== null && ! $allowedClassIds->contains($classId)) {
-            return $this->empty('Classe hors périmètre.');
-        }
-
-        if (! $this->hasRequiredTables()) {
-            return $this->empty('Données académiques indisponibles.');
+        if ($refus = $this->refusAvantLaClasse($yearId, $classId, $allowedClassIds)) {
+            return $refus;
         }
 
         $classe = ESBTPClasse::query()
@@ -52,18 +40,8 @@ final class AcademicNoteCoverageService
             return $this->empty('Classe introuvable.');
         }
 
-        if ($system && strtoupper((string) $classe->systeme_academique) !== strtoupper($system)) {
-            return $this->empty('La classe ne correspond pas au système sélectionné.');
-        }
-
-        // Une periode que le normaliseur ne reconnait pas levait une exception
-        // au premier acces aux evaluations, donc une erreur serveur sur le
-        // tableau de bord entier. On la refuse ici, proprement, avant toute
-        // requete.
-        try {
-            $this->periods->normalize($period);
-        } catch (\InvalidArgumentException) {
-            return $this->empty('Période académique non reconnue.');
+        if ($refus = $this->refusSurLaClasse($classe, $system, $period)) {
+            return $refus;
         }
 
         $attendu = $this->expectedSubjects->forClasse($classe, $period);
@@ -84,6 +62,101 @@ final class AcademicNoteCoverageService
             $enseignants,
             $this->cohortesParSemestre($classId, $yearId, $period, $classe),
         );
+    }
+
+    /**
+     * Les compteurs du bandeau, a part parce qu'ils se lisent ensemble.
+     *
+     * @param  Collection<int, ESBTPMatiere>  $subjects
+     * @param  Collection<int, array<string, mixed>>  $subjectRows
+     * @param  Collection<int, array<string, mixed>>  $catalogSubjectRows
+     * @param  array<string, mixed>  $attendu
+     * @return array<string, mixed>
+     */
+    private function resume(
+        Collection $subjects,
+        Collection $studentIndex,
+        Collection $subjectRows,
+        Collection $catalogSubjectRows,
+        Collection $evaluations,
+        Collection $incompleteStudents,
+        array $attendu,
+    ): array {
+        return [
+                // Sans cet etat, une classe sans etudiant et une classe
+                // entierement notee rendaient le meme « 0 resultat manquant » —
+                // et l'ecran annoncait « toutes les notes sont recues » sur une
+                // cohorte vide.
+                'state' => $this->etatGlobal($subjects, $studentIndex, $catalogSubjectRows, $attendu),
+                'subjects_total' => $subjects->count(),
+                'subjects_evaluated' => $catalogSubjectRows->where('evaluations_count', '>', 0)->where('treated_count', '>', 0)->count(),
+                'orphan_subjects' => $subjectRows->where('is_orphan', true)->count(),
+                'evaluations_total' => $evaluations->count(),
+                'students_expected' => $studentIndex->count(),
+                // Le prevu ne compte QUE le referentiel. Y ajouter les matieres
+                // hors referentiel melangeait deux perimetres : le ratio
+                // « traite / prevu » pouvait depasser 100 %, ou faire croire
+                // qu'il manque des notes sur des matieres qu'on n'attendait pas.
+                'expected_results' => (int) $catalogSubjectRows->sum('expected_count'),
+                'treated_results' => (int) $catalogSubjectRows->sum('treated_count'),
+                'numeric_notes' => (int) $catalogSubjectRows->sum('numeric_count'),
+                'missing_results' => (int) $catalogSubjectRows->sum('missing_count'),
+                // Ce qui se passe hors referentiel reste visible, mais a part.
+                'orphan_expected_results' => (int) $subjectRows->where('is_orphan', true)->sum('expected_count'),
+                'orphan_treated_results' => (int) $subjectRows->where('is_orphan', true)->sum('treated_count'),
+                'incomplete_students' => $incompleteStudents->count(),
+                'actors_count' => $subjectRows->flatMap(fn (array $row) => $row['actor_ids'])->unique()->count(),
+        ];
+    }
+
+    /**
+     * Ce qui empeche de calculer avant meme de connaitre la classe.
+     *
+     * @return array<string, mixed>|null  Le constat vide, ou null si on peut continuer.
+     */
+    private function refusAvantLaClasse(?int $yearId, ?int $classId, ?Collection $allowedClassIds): ?array
+    {
+        if ($yearId === null) {
+            return $this->empty('Aucune année universitaire sélectionnée.');
+        }
+
+        if ($classId === null) {
+            return $this->empty('Sélectionnez une classe pour voir la couverture des notes.');
+        }
+
+        if ($allowedClassIds !== null && ! $allowedClassIds->contains($classId)) {
+            return $this->empty('Classe hors périmètre.');
+        }
+
+        if (! $this->hasRequiredTables()) {
+            return $this->empty('Données académiques indisponibles.');
+        }
+
+        return null;
+    }
+
+    /**
+     * Ce qui empeche de calculer une fois la classe connue.
+     *
+     * @return array<string, mixed>|null  Le constat vide, ou null si on peut continuer.
+     */
+    private function refusSurLaClasse(ESBTPClasse $classe, ?string $system, string $period): ?array
+    {
+        if ($system && strtoupper((string) $classe->systeme_academique) !== strtoupper($system)) {
+            return $this->empty('La classe ne correspond pas au système sélectionné.');
+        }
+
+        // Une periode que le normaliseur ne reconnait pas levait une exception
+        // au premier acces aux evaluations, donc une erreur serveur sur le
+        // tableau de bord entier. On la refuse ici, proprement, avant toute
+        // requete.
+        try {
+            $this->periods->normalize($period);
+        } catch (\InvalidArgumentException) {
+            return $this->empty('Période académique non reconnue.');
+        }
+
+        return null;
     }
 
     /**
@@ -365,31 +438,15 @@ final class AcademicNoteCoverageService
                 'semestre' => $attendu['semestre'],
                 'systeme' => (string) $attendu['systeme'],
             ],
-            'summary' => [
-                // Sans cet etat, une classe sans etudiant et une classe
-                // entierement notee rendaient le meme « 0 resultat manquant » —
-                // et l'ecran annoncait « toutes les notes sont recues » sur une
-                // cohorte vide.
-                'state' => $this->etatGlobal($subjects, $studentIndex, $catalogSubjectRows, $attendu),
-                'subjects_total' => $subjects->count(),
-                'subjects_evaluated' => $catalogSubjectRows->where('evaluations_count', '>', 0)->where('treated_count', '>', 0)->count(),
-                'orphan_subjects' => $subjectRows->where('is_orphan', true)->count(),
-                'evaluations_total' => $evaluations->count(),
-                'students_expected' => $studentIndex->count(),
-                // Le prevu ne compte QUE le referentiel. Y ajouter les matieres
-                // hors referentiel melangeait deux perimetres : le ratio
-                // « traite / prevu » pouvait depasser 100 %, ou faire croire
-                // qu'il manque des notes sur des matieres qu'on n'attendait pas.
-                'expected_results' => (int) $catalogSubjectRows->sum('expected_count'),
-                'treated_results' => (int) $catalogSubjectRows->sum('treated_count'),
-                'numeric_notes' => (int) $catalogSubjectRows->sum('numeric_count'),
-                'missing_results' => (int) $catalogSubjectRows->sum('missing_count'),
-                // Ce qui se passe hors referentiel reste visible, mais a part.
-                'orphan_expected_results' => (int) $subjectRows->where('is_orphan', true)->sum('expected_count'),
-                'orphan_treated_results' => (int) $subjectRows->where('is_orphan', true)->sum('treated_count'),
-                'incomplete_students' => $incompleteStudents->count(),
-                'actors_count' => $subjectRows->flatMap(fn (array $row) => $row['actor_ids'])->unique()->count(),
-            ],
+            'summary' => $this->resume(
+                $subjects,
+                $studentIndex,
+                $subjectRows,
+                $catalogSubjectRows,
+                $evaluations,
+                $incompleteStudents,
+                $attendu,
+            ),
             'subjects' => $subjectRows->all(),
             'incomplete_students' => $incompleteStudents->values()->all(),
             'doublons_probables' => $this->doublonsProbables($studentIndex),

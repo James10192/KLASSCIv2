@@ -1024,13 +1024,20 @@ class ESBTPClasseController extends Controller
         // La garde ne vaut QUE pour les matieres a rattacher. Celles qui le
         // sont deja restent affichees telles quelles : les filtrer ici rendrait
         // une ECUE deja attachee impossible a detacher.
+        // Le filtre ne vaut que pour une classe BTS. Cet ecran n'a aucune garde
+        // sur `systeme_academique` : l'appliquer sans condition aurait fait
+        // disparaitre les ECUE du panneau d'une classe LMD, alors que le defaut
+        // qu'on ferme ici est strictement BTS. Une classe LMD garde donc
+        // exactement ce qu'elle voyait avant.
+        $estBts = strtoupper((string) ($classe->systeme_academique ?? 'BTS')) !== 'LMD';
+
         $availableMatieres = ESBTPMatiere::with([
             "filieres:id,name,code",
             "niveaux:id,name,code",
             "liaisonsFilieresNiveaux.filiere:id,name,code",
             "liaisonsFilieresNiveaux.niveauEtude:id,name,code",
         ])
-            ->btsOnly()
+            ->when($estBts, fn ($q) => $q->btsOnly())
             ->where("is_active", true)
             ->orderBy("name")
             ->get()
