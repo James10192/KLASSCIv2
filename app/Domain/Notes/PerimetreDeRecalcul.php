@@ -73,7 +73,16 @@ final class PerimetreDeRecalcul
             ->whereNotNull('periode')
             ->when($this->classeId, fn ($q, $v) => $q->where('classe_id', $v))
             ->when($this->matiereId, fn ($q, $v) => $q->where('matiere_id', $v))
-            ->when($this->periode, fn ($q, $v) => $q->where('periode', $v))
+            // `whereIn` et non `where` : `esbtp_evaluations.periode` accepte
+            // `'1'` autant que `'semestre1'`, et `ESBTPEvaluation::aliasDePeriode()`
+            // existe precisement pour que cette connaissance vive sur le modele
+            // « et non recopiee chez chaque appelant ». Un `where` nu rendait
+            // zero couple sur une evaluation encodee en `'1'` — et l'endpoint
+            // repondait alors « Aucune note ne correspond a ce perimetre : rien
+            // a recalculer », un SUCCES rassurant sur un perimetre explicitement
+            // signale comme a recalculer. C'est le mode d'echec que tout ce
+            // chantier existe pour supprimer, reintroduit dans l'echappatoire.
+            ->when($this->periode, fn ($q, $v) => $q->whereIn('periode', ESBTPEvaluation::aliasDePeriode($v)))
             ->when($this->anneeUniversitaireId, fn ($q, $v) => $q->where('annee_universitaire_id', $v))
             ->get(['id', 'classe_id', 'matiere_id', 'annee_universitaire_id', 'periode'])
             ->keyBy('id');

@@ -12,6 +12,7 @@ use App\Models\ESBTPResultat;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Tests\Feature\Bts\Concerns\MonteUneClasseBts;
 use Tests\TestCase;
 
@@ -147,6 +148,106 @@ class DeplacementDePeriodeEnLotTest extends TestCase
         $this->assertTrue($reponse['recalcul_reporte']);
         $this->assertCount(1, $reponse['perimetres_reportes']);
         $this->assertSame($autreClasse->id, $reponse['perimetres_reportes'][0]['classe_id']);
+    }
+
+    /** @test */
+    public function le_budget_global_de_la_requete_reporte_ce_qui_depasse(): void
+    {
+        $this->monterLaClasse();
+        $matiere = $this->matiereConfiguree();
+        $etudiant = $this->etudiantInscrit();
+
+        // Quatre classes, chacune SOUS le plafond par classe, mais dont la somme
+        // depasse le budget de la requete. Sans borne globale, les quatre
+        // partaient en recalcul dans une seule requete HTTP.
+        $parClasse = RecalculApresDeplacement::PLAFOND_NOTES_PAR_CLASSE - 1;
+        $combien = (int) ceil(RecalculApresDeplacement::PLAFOND_NOTES_PAR_APPEL / $parClasse) + 1;
+
+        $ids = [];
+        for ($i = 0; $i < $combien; $i++) {
+            $classe = ESBTPClasse::factory()->create([
+                'filiere_id' => $this->filiere->id,
+                'niveau_etude_id' => $this->niveau->id,
+                'annee_universitaire_id' => $this->annee->id,
+            ]);
+            $evaluation = ESBTPEvaluation::factory()->create([
+                'matiere_id' => $matiere->id,
+                'classe_id' => $classe->id,
+                'annee_universitaire_id' => $this->annee->id,
+                'periode' => 'semestre2',
+                'status' => 'published',
+                'bareme' => 20,
+                'coefficient' => 1,
+            ]);
+            $this->posterDesNotesEnMasse($evaluation, $etudiant->id, $parClasse, $classe->id);
+            $ids[] = $evaluation->id;
+        }
+
+        $reponse = $this->deplacerVers($ids, 'semestre1');
+
+        $this->assertTrue($reponse['recalcul_reporte']);
+
+        // Aucune classe ne depasse le plafond par classe : tout ce qui est
+        // reporte l'est donc par le budget de la requete.
+        $raisons = array_column($reponse['perimetres_reportes'], 'raison');
+        $this->assertNotEmpty($raisons);
+        $this->assertSame(['budget_de_la_requete_epuise'], array_values(array_unique($raisons)));
+
+        // Et ce qui tenait dans le budget a bien ete traite : le report n'est
+        // pas un refus global deguise.
+        $this->assertGreaterThan(0, $reponse['recalculs_tentes']);
+        $this->assertLessThan($combien, count($reponse['perimetres_reportes']));
+    }
+
+    /** @test */
+    public function le_semestre_des_notes_est_ecrit_en_entier_et_non_en_chaine(): void
+    {
+        $this->monterLaClasse();
+        $matiere = $this->matiereConfiguree();
+        $etudiant = $this->etudiantInscrit();
+
+        $evaluation = $this->evaluationDe($matiere);
+        $evaluation->update(['periode' => 'semestre2']);
+        $this->noter($etudiant, $evaluation, 11);
+
+        $this->deplacerVers([$evaluation->id], 'semestre1');
+
+        // C'est le predicat exact de la categorie 2 d'
+        // `evaluations:sync-notes --clean-resultats`, qui SUPPRIME ce qu'elle ne
+        // retrouve pas. En MySQL `'semestre1' = 1` vaut 0 : ecrire la chaine
+        // rendait la note introuvable et l'agregat supprimable.
+        $this->assertSame(
+            1,
+            DB::table('esbtp_notes')->where('evaluation_id', $evaluation->id)->where('semestre', 1)->count(),
+            'la note doit etre retrouvee par une comparaison a l entier 1'
+        );
+    }
+
+    /** @test */
+    public function un_agregat_orphelin_n_est_signale_qu_une_fois(): void
+    {
+        $this->monterLaClasse();
+        $matiere = $this->matiereConfiguree();
+        $etudiant = $this->etudiantInscrit();
+
+        // Deux evaluations de la MEME coordonnee, deplacees dans le meme lot.
+        $une = $this->evaluationDe($matiere);
+        $this->noter($etudiant, $une, 10);
+        $deux = $this->evaluationDe($matiere);
+        $this->noter($etudiant, $deux, 14);
+
+        $this->assertSame(12.0, $this->moyenne($etudiant->id, $matiere->id, 'semestre1'));
+
+        $reponse = $this->deplacerVers([$une->id, $deux->id], 'semestre2');
+
+        // Le semestre 1 n'a plus aucune note : son agregat devient orphelin. Une
+        // seule ligne existe en base, elle ne doit etre signalee qu'une fois —
+        // `pour()` etant appele par evaluation, elle l'etait deux fois.
+        $this->assertCount(1, $reponse['agregats_orphelins']);
+        $this->assertSame(1, ESBTPResultat::where('etudiant_id', $etudiant->id)
+            ->where('matiere_id', $matiere->id)
+            ->where('periode', 'semestre1')
+            ->count());
     }
 
     /**

@@ -77,41 +77,7 @@ class CLIEvaluationPeriodeController extends BaseApiController
             ], 'Simulation : rien n a ete ecrit. Relancer avec dry_run=false pour appliquer.');
         }
 
-        $traitees = [];
-        $deplacees = [];
-
-        DB::transaction(function () use ($anomalies, &$traitees, &$deplacees) {
-            foreach ($anomalies as $a) {
-                $evaluation = ESBTPEvaluation::find($a['evaluation_id']);
-                if (! $evaluation) {
-                    continue;
-                }
-
-                $avant = $evaluation->periode;
-                $evaluation->periode = 'semestre'.$a['semestre_attendu'];
-                $evaluation->save();
-
-                // esbtp_notes porte une copie denormalisee du semestre. Sans
-                // cette mise a jour, la note resterait rattachee a l ancien
-                // semestre partout ou cette colonne est lue.
-                $notes = ESBTPNote::where('evaluation_id', $evaluation->id)
-                    ->update(['semestre' => 'semestre'.$a['semestre_attendu']]);
-
-                $deplacees[] = ['evaluation' => $evaluation, 'periode_avant' => $avant];
-
-                $traitees[] = [
-                    'evaluation_id' => $evaluation->id,
-                    'titre' => $a['titre'],
-                    'classe' => $a['classe'],
-                    'classe_id' => $a['classe_id'],
-                    'annee_universitaire_id' => $a['annee_universitaire_id'],
-                    'matiere' => $a['matiere'],
-                    'de' => $avant,
-                    'vers' => $evaluation->periode,
-                    'notes_realignees' => $notes,
-                ];
-            }
-        });
+        [$traitees, $deplacees] = $this->appliquerLeLot($anomalies);
 
         // Cet `update()` est un update de QUERY BUILDER : aucun evenement
         // Eloquent, donc aucun recalcul. `periode` etant une coordonnee de la
@@ -134,33 +100,9 @@ class CLIEvaluationPeriodeController extends BaseApiController
             'recalculs_en_echec' => $recalcul['echecs'],
             'recalcul_reporte' => $recalcul['reporte'],
             'perimetres_reportes' => $recalcul['perimetres_reportes'],
-        ], count($traitees).' evaluation(s) deplacee(s).'.self::motDeLaFin($recalcul));
+        ], count($traitees).' evaluation(s) deplacee(s).'.RecalculApresDeplacement::motDeLaFin($recalcul));
     }
 
-    /**
-     * Le plafond porte sur la classe : un meme appel peut donc avoir recalcule
-     * une partie des classes et reporte les autres. Cet endpoint-ci ne borne pas
-     * sa selection (`detecter()` rend tout ce qu'il trouve), donc le cas est la
-     * regle et non l'exception sur une grosse instance.
-     *
-     * @param  array<string,mixed>  $recalcul
-     */
-    private static function motDeLaFin(array $recalcul): string
-    {
-        $fait = ' '.$recalcul['recalculs_tentes'].' recalcul(s) lance(s).';
-
-        if (! $recalcul['reporte']) {
-            return $fait;
-        }
-
-        return $fait.' ATTENTION : '.count($recalcul['perimetres_reportes'])
-            .' classe(s) au-dela du plafond de '
-            .RecalculApresDeplacement::PLAFOND_NOTES_PAR_CLASSE
-            .' notes — leurs moyennes n ont PAS ete recalculees. Chaque ligne de'
-            .' `perimetres_reportes` porte les parametres a rejouer sur'
-            .' POST /api/cli/notes/recompute (classe_id, annee_universitaire_id,'
-            .' et une fois par periode listee).';
-    }
 
     /**
      * @return array<int, array<string, mixed>>
@@ -199,6 +141,9 @@ class CLIEvaluationPeriodeController extends BaseApiController
                 // `POST /api/cli/notes/recompute`, qui les EXIGE tous les deux.
                 'classe_id' => (int) $evaluation->classe_id,
                 'annee_universitaire_id' => (int) $evaluation->annee_universitaire_id,
+                // `matiere_id` et pas seulement le nom : sans lui, le conseil
+                // « Ajoutez matiere_id » du refus de rattrapage ne se suit pas.
+                'matiere_id' => $evaluation->matiere_id !== null ? (int) $evaluation->matiere_id : null,
                 'matiere' => $evaluation->matiere->name ?? null,
                 'periode_actuelle' => $evaluation->periode,
                 'semestre_attendu' => $attendu,
@@ -207,5 +152,55 @@ class CLIEvaluationPeriodeController extends BaseApiController
         }
 
         return $anomalies;
+    }
+
+    /**
+     * L'ecriture, et rien d'autre : la transaction courte qui deplace, realigne
+     * les notes, et rend de quoi recalculer ensuite. Le recalcul reste DEHORS —
+     * il tourne sur place et ne doit pas tenir la transaction ouverte.
+     *
+     * @param  array<int,array<string,mixed>>  $anomalies
+     * @return array{0:array<int,array<string,mixed>>, 1:array<int,array{evaluation:ESBTPEvaluation, periode_avant:string}>}
+     */
+    private function appliquerLeLot(array $anomalies): array
+    {
+        $traitees = [];
+        $deplacees = [];
+
+        DB::transaction(function () use ($anomalies, &$traitees, &$deplacees) {
+            foreach ($anomalies as $a) {
+                $evaluation = ESBTPEvaluation::find($a['evaluation_id']);
+                if (! $evaluation) {
+                    continue;
+                }
+
+                $avant = $evaluation->periode;
+                $evaluation->periode = 'semestre'.$a['semestre_attendu'];
+                $evaluation->save();
+
+                // L'encodage de cette colonne vit sur le modele, avec le hook
+                // qui le decide : y ecrire la chaine plutot que l'entier ouvrait
+                // un chemin de SUPPRESSION d'agregat. Voir
+                // ESBTPNote::realignerLeSemestre().
+                $notes = ESBTPNote::realignerLeSemestre($evaluation->id, $evaluation->periode);
+
+                $deplacees[] = ['evaluation' => $evaluation, 'periode_avant' => $avant];
+
+                $traitees[] = [
+                    'evaluation_id' => $evaluation->id,
+                    'titre' => $a['titre'],
+                    'classe' => $a['classe'],
+                    'classe_id' => $a['classe_id'],
+                    'annee_universitaire_id' => $a['annee_universitaire_id'],
+                    'matiere_id' => $a['matiere_id'],
+                    'matiere' => $a['matiere'],
+                    'de' => $avant,
+                    'vers' => $evaluation->periode,
+                    'notes_realignees' => $notes,
+                ];
+            }
+        });
+
+        return [$traitees, $deplacees];
     }
 }

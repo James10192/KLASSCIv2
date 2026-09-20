@@ -354,6 +354,31 @@ class ESBTPNote extends Model implements Auditable
     }
 
     /**
+     * Realigne `esbtp_notes.semestre` sur la periode d'une evaluation, pour
+     * toutes ses notes, et rend le nombre de lignes touchees.
+     *
+     * **L'encodage de cette colonne vit ici, avec le hook qui le decide.** Elle
+     * est un `varchar`, mais tout le depot y ecrit l'ENTIER : `booted()::saving`
+     * fait `(int) str_replace('semestre', '', …)` et a le dernier mot sur chaque
+     * chemin Eloquent — y compris `synchronizerPeriode()` juste en dessous, qui
+     * pose pourtant la chaine avant d'appeler `save()`.
+     *
+     * Seul un `update()` de query builder contourne le hook. Les deux endpoints
+     * de deplacement de periode en faisaient un, et y ecrivaient `'semestre1'`.
+     * Ce n'etait pas une nuance de format : en MySQL `'semestre1' = 1` vaut
+     * **0**, la chaine etant castee en zero. La categorie 2 d'
+     * `evaluations:sync-notes --clean-resultats` joint sur
+     * `esbtp_notes.semestre = 1`, ne retrouvait donc pas la note, et
+     * **supprimait** l'agregat — la commande meme qu'on recommande pour le
+     * menage des agregats orphelins.
+     */
+    public static function realignerLeSemestre(int $evaluationId, string $periodeCible): int
+    {
+        return static::where('evaluation_id', $evaluationId)
+            ->update(['semestre' => (int) str_replace('semestre', '', $periodeCible)]);
+    }
+
+    /**
      * Synchroniser le semestre de la note avec la période de l'évaluation
      *
      * @return bool

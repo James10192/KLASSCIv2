@@ -54,6 +54,16 @@ défaut lui-même.
 | `POST /api/cli/diagnostics/evaluations-periode/repair` | période, en masse | en lot, plafonné |
 | `MergeDuplicateEcue` (LMD, sous `force`) | matière, en masse | **aucun** |
 
+⚠️ **Ce tableau compte les endroits qui changent les coordonnées d'une
+ÉVALUATION, et il liste ceux trouvés à ce jour — pas ceux qui existent.** La
+nuance n'est pas rhétorique : deux commandes écrivent les mêmes colonnes
+dénormalisées sans déplacer d'évaluation, et sans recalcul —
+`evaluations:sync-notes` (qui réaligne `classe_id`, `matiere_id` et `semestre`
+d'un seul `update()`, et qui est l'outil recommandé plus bas pour le ménage) et
+`notes:sync-periodes`. Elles ne sont pas branchées à dessein : `sync-notes`
+tourne sans bornes sur l'école entière, et y ajouter un recalcul synchrone par
+note est exactement ce que les deux plafonds cherchent à éviter.
+
 Le cinquième, `app/Domain/LMD/Actions/MergeDuplicateEcue.php`, est atteignable
 par `POST /esbtp/lmd/reconciliation/merge` avec `type=ecue&force=true`. Il
 reparente `esbtp_evaluations.matiere_id` **et** `esbtp_notes.matiere_id` vers
@@ -71,17 +81,33 @@ glisser dans celui-ci.
 
 `periode` est une coordonnée de la clé d'`esbtp_resultats` au même titre que
 `matiere_id` : un changement de semestre laisse exactement le même agrégat
-périmé. Pour les deux chemins en lot, `App\Domain\Notes\RecalculApresDeplacement`
-plafonne à **400 notes par classe et par année** ; au-delà il ne recalcule pas
-CE périmètre-là, le dit dans sa réponse (`recalcul_reporte`), et rend dans
-`perimetres_reportes` les paramètres exacts à rejouer sur l'endpoint ci-dessous.
+périmé.
 
-Le plafond porte sur la classe et non sur le lot, et la différence n'est pas
-cosmétique : sur le lot, un appel touchant cinq classes dont une seule est
-lourde ne recalculait **aucune** des quatre autres — et comme
-`evaluations-periode/repair` ne borne pas sa sélection, une instance à plus de
-2000 inscriptions franchissait le plafond à tous les coups. Le correctif s'y
-réduisait à un message.
+### Deux bornes, et il faut les deux
+
+`App\Domain\Notes\RecalculApresDeplacement` plafonne à **400 notes par classe et
+par année**, *et* à **1200 notes par requête**, tous périmètres confondus.
+
+La première seule ne suffisait pas — c'était le plafond par lot, et un appel
+touchant cinq classes dont une seule est lourde ne recalculait **aucune** des
+quatre autres. Mais **la seconde seule ne bornait plus rien** : le nombre de
+classes n'est limité nulle part (`deplacer` accepte 200 évaluations réparties
+sur autant de classes, `evaluations-periode/repair` n'a aucun `LIMIT`), donc
+vingt classes à 399 notes passaient toutes sous le plafond — huit mille notes
+recalculées sur place dans une seule requête HTTP.
+
+Et le mode d'échec était le plus mauvais des deux. Le recalcul est hors
+transaction à dessein : les évaluations sont **déjà enregistrées**. Si la requête
+meurt sur le délai d'attente, on garde des évaluations déplacées, des agrégats
+rafraîchis à moitié, et surtout `perimetres_reportes` — tout l'objet du
+mécanisme — **n'arrive jamais**, puisque la réponse n'arrive pas. Le plafond par
+lot, lui, refusait proprement et le disait.
+
+Tout périmètre non traité part donc dans `perimetres_reportes` avec sa `raison`
+(`plafond_classe` ou `budget_de_la_requete_epuise`) et les paramètres exacts à
+rejouer : `classe_id`, `annee_universitaire_id`, les `periodes` sous leur forme
+canonique `semestreN`, et les `matiere_ids` pour découper si le rattrapage bute
+à son tour sur son propre plafond de couples.
 
 ### Ce que le recalcul après déplacement ne fait PAS, et pourquoi
 

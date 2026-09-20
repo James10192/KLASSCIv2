@@ -336,6 +336,32 @@ class RecalculApresDeplacementTest extends TestCase
     }
 
     /** @test */
+    public function le_recalcul_cli_voit_une_periode_encodee_en_chiffre(): void
+    {
+        $this->monterLaClasse();
+        $matiere = $this->matiereConfiguree();
+        $etudiant = $this->etudiantInscrit();
+
+        // `esbtp_evaluations.periode` accepte `'1'` autant que `'semestre1'` —
+        // c'est la raison d'etre d'`ESBTPEvaluation::aliasDePeriode()`.
+        $evaluation = $this->evaluationDe($matiere);
+        $evaluation->update(['periode' => '1']);
+        $this->noter($etudiant, $evaluation, 9);
+
+        $reponse = $this->appeler('notesRecompute', ['cli:admin'], [
+            'classe_id' => $this->classe->id,
+            'periode' => 'semestre1',
+            'annee_universitaire_id' => $this->annee->id,
+            'dry_run' => true,
+        ]);
+
+        // Avec un `where('periode', 'semestre1')` nu, le perimetre etait vide et
+        // l'endpoint repondait « rien a recalculer » : un SUCCES rassurant sur
+        // un perimetre explicitement signale comme a recalculer.
+        $this->assertSame(1, $reponse['total'], 'la note encodee en "1" doit entrer dans le perimetre');
+    }
+
+    /** @test */
     public function la_route_de_recalcul_est_enregistree(): void
     {
         $uris = collect(Route::getRoutes()->getRoutes())->map(fn ($r) => $r->uri());
