@@ -108,7 +108,7 @@
                                    {{ ($settings['lmd_bulletin_show_mention'] ?? '1') == '1' ? 'checked' : '' }}>
                         </label>
                         <label class="bcfg-toggle" for="lmd_bulletin_show_specialite">
-                            <span class="bcfg-toggle-label">Afficher Spécialité</span>
+                            <span class="bcfg-toggle-label" title="Aucune spécialité n'est encore enregistrée sur les étudiants : la ligne reste absente du bulletin tant que la donnée n'existe pas.">Afficher Spécialité (aucune donnée pour l'instant)</span>
                             <input class="form-check-input" type="checkbox" id="lmd_bulletin_show_specialite" name="lmd_bulletin_show_specialite" value="1"
                                    {{ ($settings['lmd_bulletin_show_specialite'] ?? '0') == '1' ? 'checked' : '' }}>
                         </label>
@@ -121,11 +121,11 @@
                     <div class="row g-3">
                         <div class="col-md-3">
                             <label class="bcfg-label">Libellé Domaine</label>
-                            <input type="text" class="bcfg-input" name="lmd_bulletin_label_domaine" value="{{ $settings['lmd_bulletin_label_domaine'] ?? 'DOMAINE' }}">
+                            <input type="text" class="bcfg-input" name="lmd_bulletin_label_domaine" value="{{ $settings['lmd_bulletin_label_domaine'] ?? '' }}" placeholder="@rang('domaine')">
                         </div>
                         <div class="col-md-3">
                             <label class="bcfg-label">Libellé Mention</label>
-                            <input type="text" class="bcfg-input" name="lmd_bulletin_label_mention" value="{{ $settings['lmd_bulletin_label_mention'] ?? 'MENTION' }}">
+                            <input type="text" class="bcfg-input" name="lmd_bulletin_label_mention" value="{{ $settings['lmd_bulletin_label_mention'] ?? '' }}" placeholder="@rang('mention')">
                         </div>
                         <div class="col-md-3">
                             <label class="bcfg-label">Libellé Spécialité</label>
@@ -133,7 +133,7 @@
                         </div>
                         <div class="col-md-3">
                             <label class="bcfg-label">Libellé Parcours</label>
-                            <input type="text" class="bcfg-input" name="lmd_bulletin_label_parcours" value="{{ $settings['lmd_bulletin_label_parcours'] ?? 'PARCOURS' }}">
+                            <input type="text" class="bcfg-input" name="lmd_bulletin_label_parcours" value="{{ $settings['lmd_bulletin_label_parcours'] ?? '' }}" placeholder="@rang('parcours')">
                         </div>
                     </div>
                 </div>

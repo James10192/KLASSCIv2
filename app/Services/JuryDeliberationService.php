@@ -15,6 +15,7 @@ use App\Models\ESBTPLMDJuryDecision;
 use App\Models\ESBTPLMDJuryMembre;
 use App\Models\ESBTPLMDResultatECUE;
 use App\Models\User;
+use App\Services\LMD\AgregatDeLaPeriode;
 use App\Services\LMD\LmdAcademicRuleProfile;
 use App\Services\LMD\LmdDecisionProjectionService;
 use App\Services\LMDBulletinService;
@@ -63,71 +64,62 @@ class JuryDeliberationService
      */
     public function calculerDecisionAuto(ESBTPEtudiant $etudiant, ESBTPLMDJury $jury): array
     {
-        $bulletin = $this->resolveBulletin($etudiant, $jury);
+        // Un jury peut être semestriel OU annuel : `esbtp_lmd_jurys.semestre` est
+        // nullable, et `scopeForJury` ne filtre par semestre que s'il est
+        // renseigné. Sur un jury annuel, plusieurs bulletins remontent donc — et
+        // ce code n'en retenait qu'un, le dernier créé. La moyenne, les crédits
+        // et la mention gravés au procès-verbal venaient d'un semestre sur deux,
+        // sans qu'aucune erreur ne soit levée, sur un document ensuite scellé,
+        // empreinté et conservé cinq ans.
+        $bulletins = $this->resolveBulletins($etudiant, $jury);
+
+        // Le bulletin de référence — le dernier semestre de la période — porte
+        // l'identifiant gravé sur la décision. Les NOMBRES, eux, agrègent toute
+        // la période délibérée.
+        $bulletin = $bulletins->last();
         // Passer par le profil : il lit la cle de l'ecran de reglages
         // (`lmd_validation_threshold`) puis retombe sur l'ancienne (`lmd_seuil_validation_ecue`).
         $seuilValidation = $this->rules->validationThreshold();
         $noteEliminatoire = $this->rules->eliminatoryGrade();
 
-        $moyenne = $bulletin?->moyenne_generale !== null
-            ? (float) $bulletin->moyenne_generale
-            : null;
-
-        $creditsDisponibles = $bulletin !== null
-            && $bulletin->credits_capitalises !== null
-            && $bulletin->credits_totaux !== null;
-        $creditsObtenus = $creditsDisponibles ? (int) $bulletin->credits_capitalises : null;
-        $creditsAttendus = $creditsDisponibles ? (int) $bulletin->credits_totaux : null;
+        // L'arithmétique de la période vit dans `AgregatDeLaPeriode`, parce que
+        // le garde d'émission du PV doit trouver EXACTEMENT le même résultat :
+        // deux formules qui divergent d'un millième refuseraient des
+        // procès-verbaux justes.
+        $moyenne = AgregatDeLaPeriode::moyenne($bulletins);
+        $creditsDisponibles = AgregatDeLaPeriode::creditsDisponibles($bulletins);
+        $creditsObtenus = $creditsDisponibles ? AgregatDeLaPeriode::creditsObtenus($bulletins) : null;
+        $creditsAttendus = $creditsDisponibles ? AgregatDeLaPeriode::creditsAttendus($bulletins) : null;
 
         $raisons = [];
         $decision = 'ajourne';
 
-        // ECUE eliminatoires
-        $hasEliminatoire = false;
-        if ($bulletin && $noteEliminatoire > 0) {
-            $resultats = ESBTPLMDResultatECUE::where('bulletin_id', $bulletin->id)->get();
-            foreach ($resultats as $r) {
-                // La note retenue, pas celle de premiere session : un etudiant
-                // passe de 7 a 14 en seconde session verrait sinon sa moyenne
-                // generale monter tout en restant marque eliminatoire, et la
-                // branche eliminatoire, evaluee AVANT le test de la moyenne, le
-                // laisserait ajourne. Le rattrapage n'aurait servi a rien.
-                $note = $this->bulletins()->noteEffectiveECUE($r);
-                if ($note !== null && $note < $noteEliminatoire) {
-                    $hasEliminatoire = true;
-                    $raisons[] = sprintf('ECUE %d note %s < eliminatoire %s', $r->matiere_id, $note, $noteEliminatoire);
-                    break;
-                }
-            }
+        // Dire la période délibérée : sur un jury annuel, la moyenne n'est pas
+        // celle d'un bulletin mais l'agrégat pondéré par les crédits de chaque
+        // semestre. Le jury doit pouvoir le lire, pas le supposer.
+        if ($bulletins->count() > 1) {
+            $raisons[] = sprintf(
+                'Periode annuelle : %d bulletins agreges (semestres %s), moyenne ponderee par les credits',
+                $bulletins->count(),
+                $bulletins->pluck('semestre')->filter()->implode(' et ')
+            );
         }
 
-        // Decision principale
-        if ($moyenne === null) {
-            $decision = 'defere';
-            $raisons[] = 'Moyenne non calculee';
-        } elseif (!$creditsDisponibles) {
-            $decision = 'defere';
-            $raisons[] = 'Credits manquants sur bulletin';
-        } elseif ($hasEliminatoire) {
-            $decision = 'ajourne';
-            $raisons[] = 'Note eliminatoire detectee';
-        } elseif ($moyenne >= $seuilValidation && $creditsObtenus >= $creditsAttendus) {
-            $decision = 'admis';
-            $raisons[] = sprintf('Moyenne %.2f >= %.2f, credits %d/%d', $moyenne, $seuilValidation, $creditsObtenus, $creditsAttendus);
-        } elseif ($moyenne >= $seuilValidation && $creditsObtenus < $creditsAttendus) {
-            $decision = 'admis_sous_condition';
-            $raisons[] = sprintf('Moyenne %.2f OK mais credits %d/%d insuffisants', $moyenne, $creditsObtenus, $creditsAttendus);
-        } else {
-            $decision = 'admission_rattrapage';
-            $raisons[] = sprintf('Moyenne %.2f < %.2f, eligible 2e session', $moyenne, $seuilValidation);
+        [$hasEliminatoire, $raisonEliminatoire] = $this->chercherNoteEliminatoire($bulletins, $noteEliminatoire);
+        if ($raisonEliminatoire !== null) {
+            $raisons[] = $raisonEliminatoire;
         }
 
-        // Mention
-        $mention = null;
-        if ($decision === 'admis' && $moyenne !== null) {
-            $classification = app(AppreciationScaleService::class)->classificationFor($moyenne, 'lmd', '');
-            $mention = $this->canonicalMentionFromSlug($classification['slug']);
-        }
+        [$decision, $raisonsDeLaDecision] = $this->trancherLaDecision(
+            $moyenne,
+            $creditsDisponibles,
+            $creditsObtenus,
+            $creditsAttendus,
+            $hasEliminatoire,
+            $seuilValidation,
+        );
+        $raisons = array_merge($raisons, $raisonsDeLaDecision);
+        $mention = $this->mentionSiAdmis($decision, $moyenne);
 
         return [
             'decision_auto' => $decision,
@@ -178,17 +170,7 @@ class JuryDeliberationService
                     continue;
                 }
                 $calculation = $this->calculerDecisionAuto($student, $lockedJury);
-                $attributes = [
-                    'bulletin_id' => $this->requireBulletinId($calculation),
-                    'decision_auto' => $calculation['decision_auto'],
-                    'decision' => $calculation['decision_auto'],
-                    'mention' => $calculation['mention'],
-                    'moyenne_generale' => $calculation['moyenne'],
-                    'credits_obtenus' => $calculation['credits_obtenus'],
-                    'credits_attendus' => $calculation['credits_attendus'],
-                    'override_par_jury' => false,
-                    'updated_by' => auth()->id(),
-                ];
+                $attributes = $this->attributsDeDecision($calculation);
                 if ($decision) {
                     $decision->forceFill($attributes)->save();
                 } else {
@@ -200,6 +182,204 @@ class JuryDeliberationService
                 $count++;
             }
             return $count;
+        });
+    }
+
+    /**
+     * Une note éliminatoire sur la période, et la phrase qui la nomme.
+     *
+     * Sur TOUTE la période : une note éliminatoire au premier semestre ne
+     * disparaît pas parce que le jury est annuel.
+     *
+     * @param Collection<int, ESBTPLMDBulletin> $bulletins
+     * @return array{0: bool, 1: ?string}
+     */
+    private function chercherNoteEliminatoire(Collection $bulletins, float $noteEliminatoire): array
+    {
+        if ($bulletins->isEmpty() || $noteEliminatoire <= 0) {
+            return [false, null];
+        }
+
+        $resultats = ESBTPLMDResultatECUE::whereIn('bulletin_id', $bulletins->pluck('id'))->get();
+
+        foreach ($resultats as $r) {
+            // La note retenue, pas celle de premiere session : un etudiant
+            // passe de 7 a 14 en seconde session verrait sinon sa moyenne
+            // generale monter tout en restant marque eliminatoire, et la
+            // branche eliminatoire, evaluee AVANT le test de la moyenne, le
+            // laisserait ajourne. Le rattrapage n'aurait servi a rien.
+            $note = $this->bulletins()->noteEffectiveECUE($r);
+            if ($note !== null && $note < $noteEliminatoire) {
+                return [true, sprintf('ECUE %d note %s < eliminatoire %s', $r->matiere_id, $note, $noteEliminatoire)];
+            }
+        }
+
+        return [false, null];
+    }
+
+    /**
+     * La décision elle-même, et la phrase qui la motive.
+     *
+     * Extraite de `calculerDecisionAuto()` pour la ramener sous le seuil de
+     * lisibilité du projet : le mélange « rassembler les données » puis
+     * « trancher » dans une seule méthode rendait chaque branche difficile à
+     * relire, sur du code qui décide du sort académique d'un étudiant.
+     *
+     * L'ordre des branches est significatif et ne doit pas être réarrangé : la
+     * note éliminatoire est évaluée AVANT le test de la moyenne, faute de quoi
+     * un étudiant rattrapé verrait sa moyenne monter tout en restant ajourné.
+     *
+     * @return array{0: string, 1: list<string>}
+     */
+    private function trancherLaDecision(
+        ?float $moyenne,
+        bool $creditsDisponibles,
+        ?int $creditsObtenus,
+        ?int $creditsAttendus,
+        bool $hasEliminatoire,
+        float $seuilValidation,
+    ): array {
+        if ($moyenne === null) {
+            return ['defere', ['Moyenne non calculee']];
+        }
+
+        if (! $creditsDisponibles) {
+            return ['defere', ['Credits manquants sur bulletin']];
+        }
+
+        if ($hasEliminatoire) {
+            return ['ajourne', ['Note eliminatoire detectee']];
+        }
+
+        if ($moyenne >= $seuilValidation && $creditsObtenus >= $creditsAttendus) {
+            return ['admis', [sprintf(
+                'Moyenne %.2f >= %.2f, credits %d/%d',
+                $moyenne, $seuilValidation, $creditsObtenus, $creditsAttendus
+            )]];
+        }
+
+        if ($moyenne >= $seuilValidation) {
+            return ['admis_sous_condition', [sprintf(
+                'Moyenne %.2f OK mais credits %d/%d insuffisants',
+                $moyenne, $creditsObtenus, $creditsAttendus
+            )]];
+        }
+
+        return ['admission_rattrapage', [sprintf(
+            'Moyenne %.2f < %.2f, eligible 2e session',
+            $moyenne, $seuilValidation
+        )]];
+    }
+
+    /** La mention n'existe que pour un admis ; ailleurs elle n'aurait pas de sens. */
+    private function mentionSiAdmis(string $decision, ?float $moyenne): ?string
+    {
+        if ($decision !== 'admis' || $moyenne === null) {
+            return null;
+        }
+
+        $classification = app(AppreciationScaleService::class)->classificationFor($moyenne, 'lmd', '');
+
+        return $this->canonicalMentionFromSlug($classification['slug']);
+    }
+
+    /**
+     * Les attributs d'une décision issue du calcul automatique.
+     *
+     * Partagés entre la délibération initiale et la réouverture pour
+     * rectification : deux copies divergeraient, et l'une des deux graverait un
+     * jeu de colonnes incomplet sur un document officiel.
+     */
+    private function attributsDeDecision(array $calculation): array
+    {
+        return [
+            'bulletin_id' => $this->requireBulletinId($calculation),
+            'decision_auto' => $calculation['decision_auto'],
+            'decision' => $calculation['decision_auto'],
+            'mention' => $calculation['mention'],
+            'moyenne_generale' => $calculation['moyenne'],
+            'credits_obtenus' => $calculation['credits_obtenus'],
+            'credits_attendus' => $calculation['credits_attendus'],
+            // La motivation, désormais conservée. Elle était rédigée à chaque
+            // branche du calcul puis perdue au retour : le jury lisait une
+            // décision sans jamais lire ce qui l'avait produite.
+            'raisons' => $calculation['raisons'] ?? [],
+            'override_par_jury' => false,
+            'updated_by' => auth()->id(),
+        ];
+    }
+
+    /**
+     * Rouvre la délibération d'un jury dont le PV est déjà émis, pour qu'une
+     * rectification porte sur des chiffres à jour.
+     *
+     * Le verrou posé sur les décisions à l'émission du PV n'était levé nulle
+     * part : `grep "'locked' => false"` ne rendait aucun résultat. Une
+     * réclamation aboutie — note corrigée, bulletin recalculé — laissait donc
+     * la décision figée sur l'ancienne valeur, et le PV rectificatif
+     * re-certifiait ce que le relevé réémis contredisait.
+     *
+     * Ce que cette méthode NE fait pas : toucher aux décisions que le jury a
+     * reprises à son compte. Un `override_par_jury` est une décision humaine,
+     * motivée et signée ; la recalculer l'effacerait. Le jury reste souverain,
+     * et c'est le calcul automatique — lui seul — qui se remet à jour.
+     *
+     * @return int le nombre de décisions recalculées
+     */
+    public function rouvrirLaDeliberation(ESBTPLMDJury $jury, string $motif): int
+    {
+        if (trim($motif) === '') {
+            throw new \InvalidArgumentException('Le motif de réouverture est obligatoire.');
+        }
+
+        return DB::transaction(function () use ($jury, $motif): int {
+            $lockedJury = ESBTPLMDJury::query()->lockForUpdate()->findOrFail($jury->id);
+
+            $decisions = ESBTPLMDJuryDecision::query()
+                ->where('jury_id', $lockedJury->id)
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->get()
+                ->keyBy('etudiant_id');
+
+            // Le déverrouillage proprement dit. Sans lui, le recalcul plus bas
+            // lèverait « Une decision verrouillee ne peut pas etre modifiee ».
+            ESBTPLMDJuryDecision::query()
+                ->where('jury_id', $lockedJury->id)
+                ->update(['locked' => false, 'locked_at' => null, 'updated_by' => auth()->id()]);
+
+            $recalculees = 0;
+            $preservees = 0;
+            foreach ($this->getEtudiantsForJury($lockedJury)->sortBy('id') as $student) {
+                $decision = $decisions->get($student->id);
+                if ($decision === null) {
+                    // La cohorte incomplète est déjà dite par le garde d'émission ;
+                    // en créer une ici masquerait le trou.
+                    continue;
+                }
+                if ($decision->override_par_jury) {
+                    $preservees++;
+                    continue;
+                }
+
+                $calculation = $this->calculerDecisionAuto($student, $lockedJury);
+                $decision->forceFill($this->attributsDeDecision($calculation))->save();
+                $recalculees++;
+            }
+
+            // En `warning` et non `info` : rouvrir une délibération scellée est
+            // un acte rare, et la production filtre `info`. Le jour où l'on
+            // cherche pourquoi une décision a changé après le PV, cette ligne
+            // est la seule trace hors journal d'audit.
+            Log::warning('Deliberation rouverte pour rectification du PV.', [
+                'jury_id' => $lockedJury->id,
+                'motif' => $motif,
+                'decisions_recalculees' => $recalculees,
+                'decisions_preservees_override' => $preservees,
+                'par' => auth()->id(),
+            ]);
+
+            return $recalculees;
         });
     }
 
@@ -235,6 +415,12 @@ class JuryDeliberationService
                     'moyenne_generale' => $calculation['moyenne'],
                     'credits_obtenus' => $calculation['credits_obtenus'],
                     'credits_attendus' => $calculation['credits_attendus'],
+                    // La motivation du calcul est conservée MÊME quand le jury
+                    // reprend la décision à son compte : le procès-verbal
+                    // montrera alors les deux — ce que le calcul disait, et le
+                    // motif par lequel le jury s'en est écarté. C'est
+                    // précisément ce qui rend une dérogation lisible.
+                    'raisons' => $calculation['raisons'] ?? [],
                     'created_by' => auth()->id(),
                 ]);
             } else {
@@ -243,6 +429,12 @@ class JuryDeliberationService
             }
             $decision->forceFill([
                 'bulletin_id' => $decision->bulletin_id,
+                // Ici, et non dans la seule branche de création : le cas courant
+                // est que la décision existe déjà (le calcul automatique passe
+                // avant toute dérogation). Écrite d'un seul côté, la motivation
+                // aurait décrit une période sans rapport avec le `bulletin_id`
+                // rafraîchi juste au-dessus, sur un jury annuel.
+                'raisons' => $calculation['raisons'] ?? [],
                 'decision' => $nouvelleDecision,
                 'override_par_jury' => true,
                 'motif_override' => trim($motif),
@@ -461,14 +653,31 @@ class JuryDeliberationService
         ];
     }
 
-    private function resolveBulletin(ESBTPEtudiant $etudiant, ESBTPLMDJury $jury): ?ESBTPLMDBulletin
+    /**
+     * Les bulletins de la période délibérée, un par semestre, du plus ancien au
+     * plus récent.
+     *
+     * Un jury semestriel en rend un — le comportement d'avant, à l'identique.
+     * Un jury annuel en rend autant que la période compte de semestres.
+     *
+     * La déduplication par semestre n'est pas décorative : si un bulletin a été
+     * régénéré, deux lignes portent le même semestre, et les sommer compterait
+     * ses crédits deux fois. On garde le dernier écrit, ce que faisait déjà
+     * l'ancien `orderByDesc('id')->first()` pour le cas à un seul bulletin.
+     *
+     * @return Collection<int, ESBTPLMDBulletin>
+     */
+    private function resolveBulletins(ESBTPEtudiant $etudiant, ESBTPLMDJury $jury): Collection
     {
-        return ESBTPLMDBulletin::query()
+        $bulletins = ESBTPLMDBulletin::query()
             ->forJury($jury)
             ->where('etudiant_id', $etudiant->id)
-            ->orderByDesc('id')
-            ->first();
+            ->orderBy('id')
+            ->get();
+
+        return collect(AgregatDeLaPeriode::parSemestre($bulletins));
     }
+
 
     private function requireBulletinId(array $calculation): int
     {

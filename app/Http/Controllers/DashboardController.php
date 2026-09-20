@@ -11,6 +11,7 @@ use App\Models\Timetable;
 use App\Models\User;
 use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPParent;
+use App\Domain\Academique\CoherenceSystemeAcademique;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPFiliere;
 use App\Models\ESBTPMatiere;
@@ -797,13 +798,9 @@ class DashboardController extends Controller
             return 'especes';
         }
 
-        return in_array($canon, [
-            \App\Enums\ModePaiement::MOBILE_MONEY,
-            \App\Enums\ModePaiement::WAVE,
-            \App\Enums\ModePaiement::ORANGE_MONEY,
-            \App\Enums\ModePaiement::MTN_MONEY,
-            \App\Enums\ModePaiement::MOOV_MONEY,
-        ], true) ? 'mobile' : 'autres';
+        // Dérivé de l'enum : la liste recopiée ici rangeait Djamo et Celtiis
+        // Cash dans « autres », alors que ce sont des portefeuilles mobiles.
+        return $canon->estMobile() ? 'mobile' : 'autres';
     }
 
     /**
@@ -1134,13 +1131,16 @@ class DashboardController extends Controller
 
         // Récupérer l'emploi du temps d'aujourd'hui pour l'étudiant
         try {
-            // Les séances stockent le jour en français (« lundi », …) : le nom
-            // anglais de date('l') ne trouvait jamais rien.
-            $today = mb_strtolower(now()->locale('fr')->dayName, 'UTF-8');
+            // Les séances stockent le jour de DEUX façons : en toutes lettres
+            // depuis l'emploi du temps, par son numéro depuis la liste des
+            // séances. Ce filtre ne portait que sur la première (« lundi » en
+            // minuscules, après un premier correctif contre le nom anglais de
+            // `date('l')`) : les séances saisies depuis la liste n'arrivaient
+            // jamais sur le tableau de bord de l'étudiant.
             $data['todayTimetable'] = ESBTPSeanceCours::whereHas('emploiTemps', function($query) use ($classeId) {
                     $query->where('classe_id', $classeId)->where('is_active', true);
                 })
-                ->where('jour', $today)
+                ->whereIn('jour', \App\Domain\EmploiTemps\JourDeLaSemaine::ecrituresDe(now()->dayOfWeekIso))
                 ->orderBy('heure_debut')
                 ->with(['matiere', 'emploiTemps.classe', 'enseignant.user'])
                 ->get();
@@ -1452,6 +1452,32 @@ class DashboardController extends Controller
             }
         }
 
+        // CE REPLI EST EMPRUNTE QUAND LE SNAPSHOT NE REPOND PAS, c'est-a-dire
+        // avant qu'un bulletin ne soit configure — le moment ou une ECUE mal
+        // rangee se voit le plus. Il lisait TOUTES les notes de l'annee sans
+        // prendre garde au systeme academique de la classe : un 4/20 sur une
+        // ECUE tombait dans la moyenne BTS affichee sur l'accueil mobile de
+        // l'eleve. Le predicat se juge contre la CLASSE CIBLE, celle dont on
+        // affiche la moyenne — voir `.claude/rules/lmd-ecue-leak-bts-picker.md`.
+        //
+        // `withTrashed()` : `ESBTPClasse` est en `SoftDeletes`, et un `find()`
+        // nu rendrait `null` sur une classe effacee en douceur, donc aucun
+        // filtrage — precisement le cas que ce filtre protege.
+        $classeCible = ESBTPClasse::withTrashed()->find($classeId);
+
+        // UNE LIGNE, UNE FOIS, HORS DE LA BOUCLE. `$classeCible` est invariant :
+        // journaliser dans le `map()` rendait une ligne PAR NOTE, donc soixante
+        // lignes identiques a chaque affichage de l'accueil — la page la plus
+        // chaude de l'application. C'est exactement la noyade que le memo de
+        // `CoherenceSystemeAcademique` existe pour empecher, et elle degradait
+        // l'artefact dont tout le diagnostic de ce chantier depend.
+        if (! $classeCible) {
+            CoherenceSystemeAcademique::coherenceNonVerifiable('moyenne accueil/classe introuvable', [
+                'etudiant_id' => $etudiantId,
+                'classe_id' => $classeId,
+            ], portee: ['etudiant_id', 'classe_id']);
+        }
+
         $notes = ESBTPNote::query()
             ->where('etudiant_id', $etudiantId)
             ->where(function ($q) {
@@ -1461,11 +1487,45 @@ class DashboardController extends Controller
                 $q->where('annee_universitaire_id', $anneeId)
                     ->where('status', '!=', ESBTPEvaluation::STATUS_CANCELLED);
             })
-            ->with('evaluation:id,bareme')
+            // `withTrashed()` sur la matiere : sans lui, une matiere effacee en
+            // douceur rendait `$matiere` nul, le filtre etait court-circuite, et
+            // la note entrait dans la moyenne de l'accueil.
+            ->with([
+                'evaluation:id,bareme,matiere_id',
+                'evaluation.matiere' => fn ($q) => $q->withTrashed()->select('id', 'name', 'unite_enseignement_id'),
+            ])
             ->get();
 
+        // Le memo local a disparu : `coherenceNonVerifiable()` porte le sien,
+        // et sa cle ne retient PAS `note_id` — donc soixante notes du meme
+        // eleve rendent bien une seule ligne, comme le faisait le booleen.
         $sur20 = $notes
-            ->map(function ($note) {
+            ->map(function ($note) use ($classeCible, $etudiantId, $classeId) {
+                $matiere = $note->evaluation?->matiere;
+
+                if (! $matiere) {
+                    CoherenceSystemeAcademique::coherenceNonVerifiable('moyenne accueil/note sans matiere', [
+                        'etudiant_id' => $etudiantId,
+                        'classe_id' => $classeId,
+                    ], portee: ['etudiant_id', 'classe_id']);
+                }
+
+                // Pas de classe ou pas de matiere : on ne peut pas juger, donc on
+                // ne retranche pas. Ecarter sur une donnee manquante inventerait
+                // une moyenne differente de celle que l'eleve attend.
+                //
+                // LA CLASSE INTROUVABLE EST DITE UNE FOIS, HORS BOUCLE (voir
+                // plus haut). La matiere introuvable, elle, se dit ICI parce
+                // qu'elle varie d'une note a l'autre — et c'est le memo interne
+                // de `CoherenceSystemeAcademique` qui evite une ligne par note,
+                // pas un memo local. Une version de ce commentaire nommait
+                // `matiereIntrouvableDeja`, qui n'existe nulle part : le memo
+                // local a ete retire quand le predicat a pris le sien.
+                if ($classeCible && $matiere
+                    && ! CoherenceSystemeAcademique::matiereRetenue($matiere, $classeCible, 'accueil mobile/moyenne courante')) {
+                    return null;
+                }
+
                 $valeur = is_numeric($note->note) ? (float) $note->note : (is_numeric($note->valeur) ? (float) $note->valeur : null);
                 if ($valeur === null) {
                     return null;

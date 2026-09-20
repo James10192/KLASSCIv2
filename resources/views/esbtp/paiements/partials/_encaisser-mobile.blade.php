@@ -14,16 +14,9 @@
 
     // Les modes proposés : ceux du formulaire de bureau, filtrés par le garde
     // (MobileMoneyPaymentGuard) puis, ligne à ligne, par la permission exacte.
-    $mabTousModes = $allModeOptions ?? [
-        'Espèces' => 'especes',
-        'Chèque' => 'cheque',
-        'Virement' => 'virement',
-        'Mobile Money' => 'mobile_money',
-        'Orange Money' => 'orange_money',
-        'MTN Money' => 'mtn_money',
-        'Moov Money' => 'moov_money',
-        'Wave' => 'wave',
-    ];
+    // Le repli dérive de l'enum lui aussi : recopié, il perdait Carte, Djamo
+    // et Celtiis Cash, donc le pas-à-pas mobile offrait moins que le bureau.
+    $mabTousModes = $allModeOptions ?? \App\Enums\ModePaiement::optionsDeGuichet();
     $mabAutorises = $allowedPaymentModes ?? [];
     $mabModesMobiles = app(\App\Services\MobileMoneyPaymentGuard::class)->mobileMoneyModes();
     $mabModes = [];

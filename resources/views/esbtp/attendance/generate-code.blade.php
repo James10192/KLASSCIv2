@@ -428,7 +428,10 @@
                                     <div class="acode-info-extra">
                                         {{ $activeCode->seance->classe->name ?? 'Classe' }}
                                         @if($activeCode->seance->heure_debut && $activeCode->seance->heure_fin)
-                                            · {{ $activeCode->seance->heure_debut }}–{{ $activeCode->seance->heure_fin }}
+                                            {{-- `format('H:i')` : l'accesseur du modèle rend un Carbon daté
+                                                 d'aujourd'hui, donc l'attribut nu imprime « 2026-09-17 08:00:00 ».
+                                                 Voir le piège #14 de klassci-debugging-discipline.md. --}}
+                                            · {{ $activeCode->seance->heure_debut->format('H:i') }}–{{ $activeCode->seance->heure_fin->format('H:i') }}
                                         @endif
                                         @if($activeCode->seance->teacher)
                                             <br>{{ $activeCode->seance->teacher->name }}
@@ -565,7 +568,8 @@
                                     <div class="seance-meta">
                                         {{ $code->seance->classe->name ?? 'Classe' }}
                                         @if($code->seance->heure_debut && $code->seance->heure_fin)
-                                            · {{ $code->seance->heure_debut }}–{{ $code->seance->heure_fin }}
+                                            {{-- Même piège que la carte du code actif ci-dessus. --}}
+                                            · {{ $code->seance->heure_debut->format('H:i') }}–{{ $code->seance->heure_fin->format('H:i') }}
                                         @endif
                                     </div>
                                     @if($code->seance->teacher)

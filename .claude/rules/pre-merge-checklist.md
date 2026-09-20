@@ -22,25 +22,37 @@ Coût : ~4h de plan + agents + ultrathink pour réparer ce qui aurait été 1h d
 
 ## Les 7 commandements pre-merge
 
-### 0. Revue thermo-nucléaire — obligatoire, avant commit, merge ET déploiement
+### 0. Revue thermo-nucléaire — obligatoire avant merge ET déploiement
 
 Avant tout commit, toute fusion et tout déploiement qui touche du code, lancer
-le skill `thermo-nuclear-code-quality-review` **en sous-agent** (voir la section
+le skill `thermo-review` **en sous-agent** (voir la section
 « Running it yourself, as an agent » du skill).
 
 ```bash
 git diff origin/presentation...HEAD --stat   # la plage à donner au sous-agent
 ```
 
-- Verdict `BLOCK` → on ne commit pas, on ne merge pas, on ne déploie pas. On
-  corrige, puis on relance la revue sur le nouveau diff.
+- Verdict `BLOCK` → on ne fusionne pas, on ne déploie pas. On corrige, puis on
+  relance la revue sur le nouveau diff.
 - Sous-agent indisponible (contexte saturé, outil refusé) → le dire clairement
   et faire la revue soi-même contre les mêmes standards. La sauter en silence
   n'est jamais acceptable.
 - Exemptions : docs seuls, config seule, suppressions pures, diff de moins de
   cinq lignes dans un seul fichier.
 
-Cette revue s'ajoute à l'audit 4 axes (`quality-gate.md`), elle ne le remplace
+**Sur une branche de travail, le commit n'attend pas le verdict.** La revue est
+longue et les garde-fous de session exigent un arbre propre à chaque fin de tour :
+faire porter le blocage sur le commit mettait ces deux exigences en contradiction,
+et l'une forçait à violer l'autre. Ce qui est réellement gardé, c'est **ce qui
+atteint `presentation` et la production** — pas chaque point de sauvegarde sur une
+branche qui n'est déployée nulle part.
+
+Donc, sur une branche de travail : on commit, on dit que la revue tourne, et **le
+verdict s'applique dans un commit de suite, avant toute fusion**. Ce qui reste
+interdit et n'a jamais changé : fusionner ou déployer sans verdict `PASS`, et
+laisser un `BLOCK` sans correction.
+
+Cette revue s'ajoute à l'audit 4 axes (`pre-commit-quality-gate.md`), elle ne le remplace
 pas : l'audit 4 axes cherche les régressions, la revue thermo-nucléaire cherche
 la complexité qu'on aurait pu supprimer.
 
@@ -115,7 +127,7 @@ Marcel a explicitement préféré un process humain documenté plutôt qu'un hoo
 
 ## Voir aussi
 
-- Rule globale `pre-commit-quality-gate.md` — audit 4-axes avant commit
+- Rule globale `pre-commit-quality-gate.md` — audit 4-axes avant commit. **Absente de ce dépôt** : elle vit dans `~/.claude/rules/` sur le poste, donc illisible depuis un conteneur. Les quatre axes : architecture, dette assumée, tenue en production multi-instance, SOLID.
 - Rule projet `feature-delivery-methodology.md` — méthodologie 13 phases
 - Rule projet `multi-agent-git-safety.md` — discipline parallel agents
 - Mémoire `feedback_defer_gaps_lmd_volume.md` — pourquoi G1/G3 ont été deferé (conditions de réveil mesurables)

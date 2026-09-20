@@ -8,9 +8,12 @@ use App\Models\User;
 use App\Models\ESBTPPaiement;
 use App\Models\ESBTPDepense;
 use App\Models\ESBTPFacture;
+use App\Helpers\EntityLabelHelper;
 use App\Services\Audit\AuditEntityResolver;
 use App\Services\Audit\AuditStatsSnapshot;
+use App\Services\Planning\PlageHoraireJournee;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Response;
 use Maatwebsite\Excel\Facades\Excel;
@@ -402,16 +405,41 @@ class ESBTPAuditController extends Controller
      */
     private function getAuditableModels()
     {
-        return [
-            'App\Models\ESBTPPaiement' => 'Paiements',
-            'App\Models\ESBTPDepense' => 'Dépenses',
-            'App\Models\ESBTPFacture' => 'Factures',
-            'App\Models\ESBTPFactureDetail' => 'Détails Factures',
-            'App\Models\ESBTPFraisScolarite' => 'Frais Scolarité',
-            'App\Models\ESBTPSalaire' => 'Salaires',
-            'App\Models\ESBTPBourse' => 'Bourses',
-            'App\Models\User' => 'Utilisateurs',
-        ];
+        // La liste était écrite à la main, et elle avait dérivé : huit types
+        // proposés, dont `ESBTPDepense` qui n'existe même pas comme modèle.
+        // Quatre des huit ne pouvaient donc rien retourner — un filtre qui ne
+        // filtre rien. À l'inverse, trente et un modèles sont réellement
+        // audités, et vingt-cinq manquaient : inscriptions, notes, étudiants,
+        // paiements, jurys n'étaient pas filtrables du tout.
+        //
+        // C'est la première chose qu'un service informatique en audit essaie.
+        //
+        // On la dérive donc de ce que la table contient VRAIMENT. Le filtre ne
+        // peut plus proposer un type sans lignes, ni taire un type qui en a, et
+        // il n'y a plus de liste à tenir à jour à la main.
+        //
+        // Cache court : la requête est un `DISTINCT` sur une table qui peut être
+        // volumineuse, et l'ensemble des types audités ne bouge qu'au rythme des
+        // livraisons. Pas de `tags()` — le pilote de cache d'une instance peut
+        // être `file`, qui ne les supporte pas.
+        return Cache::remember('audit.types_filtrables', 300, function (): array {
+            $libelles = [];
+
+            foreach (Audit::query()->select('auditable_type')->distinct()->pluck('auditable_type') as $type) {
+                if (! $type) {
+                    continue;
+                }
+
+                // `EntityLabelHelper` et non `class_basename` : ce libellé est
+                // montré à l'utilisateur, et « ESBTPNote » est une fuite
+                // technique que la règle du projet interdit à l'écran.
+                $libelles[$type] = EntityLabelHelper::plural($type);
+            }
+
+            asort($libelles, SORT_NATURAL | SORT_FLAG_CASE);
+
+            return $libelles;
+        });
     }
 
     /**
@@ -435,9 +463,13 @@ class ESBTPAuditController extends Controller
      */
     private function formatModelType($type)
     {
-        $models = $this->getAuditableModels();
-        // Fallback centralisé : retire le préfixe technique « ESBTP » des libellés.
-        return $models[$type] ?? \App\Helpers\EntityLabelHelper::for($type);
+        // Au SINGULIER : une ligne de journal désigne une entité, pas une
+        // famille. La liste du filtre, elle, est au pluriel — s'en servir ici
+        // ferait afficher « Notes » sur la modification d'une seule note.
+        //
+        // Le helper retire aussi le préfixe technique « ESBTP », que la règle du
+        // projet interdit à l'écran.
+        return EntityLabelHelper::for($type);
     }
 
     /**
@@ -507,9 +539,15 @@ class ESBTPAuditController extends Controller
             $riskFactors += 2;
         }
 
-        // Modifications en dehors des heures de bureau
+        // Modifications en dehors des heures de bureau.
+        //
+        // Les mêmes bornes que le compteur d'activités suspectes, et pour la
+        // même raison : ce sont celles de la journée réglée par l'établissement.
+        // Deux règles différentes sur le même écran donneraient un badge de
+        // risque qui contredit le compteur juste au-dessus.
+        $plage = app(PlageHoraireJournee::class);
         $hour = $audit->created_at->hour;
-        if ($hour < 8 || $hour > 18) {
+        if ($hour < $plage->debut() || $hour >= $plage->fin()) {
             $riskFactors += 1;
         }
 
@@ -697,11 +735,24 @@ class ESBTPAuditController extends Controller
      */
     private function getSuspiciousActivities($dateFrom, $dateTo)
     {
+        // `now()->setHour(8)` désigne AUJOURD'HUI à 8 h — pas « 8 h du matin ».
+        // Toute ligne antérieure à ce matin passait donc la condition, et le
+        // compteur des activités suspectes affichait à peu près tout le journal.
+        // Ce qu'on cherche est l'heure de la ligne elle-même, dans sa propre
+        // journée.
+        //
+        // Les bornes sont celles de la journée de l'établissement, déjà réglées
+        // et déjà exposées à l'écran : une école qui donne ses masters jusqu'à
+        // 22 h n'a pas à voir ses soirées comptées comme suspectes.
+        $plage = app(PlageHoraireJournee::class);
+        $ouverture = $plage->debut();
+        $fermeture = $plage->fin();
+
         return Audit::whereBetween('created_at', [$dateFrom, $dateTo])
-            ->where(function ($query) {
+            ->where(function ($query) use ($ouverture, $fermeture) {
                 $query->whereIn('event', ['deleted', 'restored'])
-                      ->orWhere('created_at', '<', now()->setHour(8))
-                      ->orWhere('created_at', '>', now()->setHour(18));
+                      ->orWhereRaw('HOUR(created_at) < ?', [$ouverture])
+                      ->orWhereRaw('HOUR(created_at) >= ?', [$fermeture]);
             })->count();
     }
 

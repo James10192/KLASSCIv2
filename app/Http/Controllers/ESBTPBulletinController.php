@@ -4,10 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Domain\Bulletins\FiltresBulletins;
 use App\Http\Controllers\Concerns\ExporteBulletinsParTranches;
+use App\Domain\Academique\CoherenceSystemeAcademique;
 use App\Domain\AcademicPilotage\Exceptions\AcademicPilotageException;
 use App\Domain\AcademicPilotage\Services\BtsBulkBulletinGenerationService;
 use App\Domain\AcademicPilotage\Services\BulletinGenerationReadinessService;
 use App\Domain\BtsTroncCommun\BtsBulletinSubjectResolver;
+use App\Domain\BtsTroncCommun\BulletinSubjectOrder;
 use App\Exceptions\BulletinConfigurationException;
 use App\Exceptions\CoefficientMissingException;
 use App\Helpers\SettingsHelper;
@@ -59,6 +61,8 @@ class ESBTPBulletinController extends Controller
 
     protected BtsBulletinSubjectResolver $subjectResolver;
 
+    protected BulletinSubjectOrder $subjectOrder;
+
     protected BulletinGenerationReadinessService $bulletinReadiness;
 
     protected BtsBulkBulletinGenerationService $bulkBulletinGeneration;
@@ -69,7 +73,8 @@ class ESBTPBulletinController extends Controller
         BulletinConsistencyService $bulletinConsistencyService,
         BtsBulletinSubjectResolver $subjectResolver,
         BulletinGenerationReadinessService $bulletinReadiness,
-        BtsBulkBulletinGenerationService $bulkBulletinGeneration
+        BtsBulkBulletinGenerationService $bulkBulletinGeneration,
+        BulletinSubjectOrder $subjectOrder
     ) {
         $this->absenceService = $absenceService;
         $this->bulletinService = $bulletinService;
@@ -77,6 +82,7 @@ class ESBTPBulletinController extends Controller
         $this->subjectResolver = $subjectResolver;
         $this->bulletinReadiness = $bulletinReadiness;
         $this->bulkBulletinGeneration = $bulkBulletinGeneration;
+        $this->subjectOrder = $subjectOrder;
     }
 
     /**
@@ -229,7 +235,9 @@ class ESBTPBulletinController extends Controller
                 'Cette classe est LMD. Utilisez /esbtp/lmd/bulletins pour générer des bulletins LMD.'
             );
             // Tronc commun (C10) : union [filière classe, filière TC parente] + fallback pivot.
-            $matieres = $this->subjectResolver->subjectsForClasse($classe);
+            // Meme ordre que le PDF officiel : l'apercu et la configuration ne
+            // doivent pas presenter les matieres autrement que le bulletin.
+            $matieres = $this->subjectOrder->orderedSubjectsForClasse($classe);
 
             // Précharger toutes les évaluations pour cette classe et période
             $allEvaluations = ESBTPEvaluation::where('classe_id', $classe->id)
@@ -292,14 +300,24 @@ class ESBTPBulletinController extends Controller
                     continue;
                 }
 
-                // Créer le résultat pour cette matière
-                $resultat = new ESBTPResultatMatiere;
-                $resultat->bulletin_id = $bulletin->id;
-                $resultat->matiere_id = $matiere->id;
-                $resultat->moyenne = $moyenne;
-                $resultat->coefficient = $coefficient;
-                $resultat->commentaire = null;
-                $resultat->save();
+                // Le point d'entree unique, et non un `withTrashed()` recopie
+                // ici : il porte l'explication de la cle unique sans
+                // `deleted_at`, et c'est lui qu'on trouvera en cherchant
+                // comment ecrire une ligne de bulletin.
+                //
+                // Passer par lui retire au passage l'ecriture de `commentaire`,
+                // qui n'est une colonne d'AUCUNE des deux tables de resultats —
+                // un nom invente, jamais migre. `$fillable` l'ecarte. La vraie
+                // colonne s'appelle `appreciation`, et c'est la generation qui
+                // la renseigne.
+                ESBTPResultatMatiere::poserSurLeBulletin(
+                    (int) $bulletin->id,
+                    (int) $matiere->id,
+                    [
+                        'moyenne' => $moyenne,
+                        'coefficient' => $coefficient,
+                    ]
+                );
             }
 
             // Calculer et mettre à jour la moyenne générale du bulletin
@@ -408,30 +426,28 @@ class ESBTPBulletinController extends Controller
             $bulletin->save();
 
             // Mettre à jour les résultats par matière
-            $existingResultats = ESBTPResultatMatiere::where('bulletin_id', $bulletin->id)
-                ->get()->keyBy('matiere_id');
-
+            // Un seul chemin d'ecriture, celui du modele : il sait qu'une ligne
+            // soft-deletee occupe la cle unique sans etre visible, et il la
+            // ressuscite au lieu d'en creer une seconde. Le chargement prealable
+            // de toutes les lignes et la bifurcation qui l'accompagnait ne
+            // servaient qu'a rejouer ce que cette methode fait deja.
+            //
+            // `commentaire` a disparu avec : ce n'est une colonne d'AUCUNE des
+            // deux tables de resultats. La colonne reelle est `appreciation`,
+            // et la renseigner ici demanderait de reparer d'abord cet ecran —
+            // voir la note de suivi sur `/esbtp/bulletins/{id}/edit`.
             foreach ($request->resultats as $resultatData) {
-                $matiereId = $resultatData['matiere_id'];
                 $moyenne = $resultatData['moyenne'] !== null && $resultatData['moyenne'] !== ''
                     ? $resultatData['moyenne'] : null;
 
-                $resultat = $existingResultats->get($matiereId);
-
-                if ($resultat) {
-                    $resultat->moyenne = $moyenne;
-                    $resultat->coefficient = $resultatData['coefficient'];
-                    $resultat->commentaire = $resultatData['commentaire'] ?? null;
-                    $resultat->save();
-                } else {
-                    $resultat = new ESBTPResultatMatiere;
-                    $resultat->bulletin_id = $bulletin->id;
-                    $resultat->matiere_id = $matiereId;
-                    $resultat->moyenne = $moyenne;
-                    $resultat->coefficient = $resultatData['coefficient'];
-                    $resultat->commentaire = $resultatData['commentaire'] ?? null;
-                    $resultat->save();
-                }
+                ESBTPResultatMatiere::poserSurLeBulletin(
+                    (int) $bulletin->id,
+                    (int) $resultatData['matiere_id'],
+                    [
+                        'moyenne' => $moyenne,
+                        'coefficient' => $resultatData['coefficient'],
+                    ]
+                );
             }
 
             // Recalculer la moyenne générale
@@ -799,6 +815,29 @@ class ESBTPBulletinController extends Controller
                 foreach ($notesByMatiere as $matiereId => $notes) {
                     $matiere = $notes->first()->matiere; // already eager-loaded via ->with(['matiere', 'evaluation'])
 
+                    // CE CALCUL EST INERTE AUJOURD'HUI, ET LE FILTRE RESTE QUAND MEME.
+                    // Une revue l'a signale comme « sixieme calcul de moyenne, et le
+                    // seul qui ecrive » : il relit bien `esbtp_notes` lui-meme, sans
+                    // passer par `BulletinService`, et il ecrit sa moyenne plus bas
+                    // (`$bulletin->save()`). MESURE : ce n'est pas une fuite.
+                    // `array_replace($data, getOfficialBulletinTemplateDefaults(...))`
+                    // remplace ensuite `resultatsGeneraux`, `resultatsTechniques` et
+                    // `moyenneGlobale` par la projection du service, deja filtree ; et
+                    // cette projection re-enregistre la bonne moyenne apres celle-ci.
+                    // Le document imprime et la base portent donc la valeur juste,
+                    // avec ou sans ce filtre — verifie en retirant le filtre : le test
+                    // reste vert.
+                    //
+                    // Il est garde pour une seule raison : le jour ou l'ordre de
+                    // `array_replace` change, ou qu'une cle disparait de la projection,
+                    // ce calcul-ci reprend la main en silence. La vraie correction
+                    // serait qu'il cesse d'exister et lise le service, comme l'apercu ;
+                    // c'est un refactor a part, note dans
+                    // `.claude/rules/lmd-ecue-leak-bts-picker.md`.
+                    if ($matiere && ! CoherenceSystemeAcademique::matiereRetenue($matiere, $bulletin->classe, 'pdf bulletin/note')) {
+                        continue;
+                    }
+
                     if ($matiere && $notes->count() > 0) {
                         // Calculer la moyenne pondérée de la matière avec les coefficients des évaluations
                         $totalPondere = 0;
@@ -970,7 +1009,7 @@ class ESBTPBulletinController extends Controller
                 $settings = \App\Services\BtsBulletinPolicy::readSettings(
                     fn (string $key, string $default) => \App\Helpers\SettingsHelper::get($key, $default)
                 );
-                $source = $settings["bulletin_bts{$levelYear}_council_average_source"] ?? 'semestre2';
+                $source = \App\Services\BtsBulletinPolicy::councilAverageSource($levelYear, $settings);
                 $decisionAverage = \App\Services\BtsBulletinPolicy::decisionAverage($source, $moyenneSemestre2, $moyenneAnnuelle);
                 $automaticCouncilDecision = \App\Services\BtsBulletinPolicy::councilDecision(
                     (bool) $classe->isBTS(),
@@ -981,9 +1020,6 @@ class ESBTPBulletinController extends Controller
                 );
             }
             $decisionConseil = \App\Services\BtsBulletinPolicy::displayCouncilDecision(
-                (bool) ($classe?->isBTS() ?? false),
-                $levelYear,
-                $this->bulletinService->normalizePeriode((string) $bulletin->periode),
                 $automaticCouncilDecision,
                 $bulletin->decision_conseil
             );
@@ -1396,6 +1432,18 @@ class ESBTPBulletinController extends Controller
         // limite de 30 s pour tenir sous charge.
         $preflight['batch_size'] = 6;
 
+        // Le constat de couverture etait calcule ici et joint a la reponse.
+        // AUCUN ecran ne le lisait : le panneau de pre-controle
+        // (`bulletins/partials/select-scripts.blade.php`) lit `ok`, `status`,
+        // `students_count`, `student_ids`, `batch_size` et `message`, jamais
+        // `couverture`. C'etait donc un calcul complet — matieres, cohorte,
+        // notes de toute la classe — paye a chaque pre-controle pour personne.
+        //
+        // Le bandeau de couverture, lui, est deja present sur l'ecran de
+        // selection des bulletins : il interroge sa propre adresse, avec son
+        // cache. Si le panneau de pre-controle doit un jour montrer ce constat,
+        // c'est de la qu'il faut le prendre.
+
         return response()->json([
             'ok' => $preflight['ok'],
             'preflight' => $preflight,
@@ -1586,7 +1634,9 @@ class ESBTPBulletinController extends Controller
 
             // Récupérer les matières de la classe (tronc commun-aware, C10) :
             // union [filière classe, filière TC parente] + fallback pivot.
-            $matieres = $this->subjectResolver->subjectsForClasse($classe);
+            // Meme ordre que le PDF officiel : l'apercu et la configuration ne
+            // doivent pas presenter les matieres autrement que le bulletin.
+            $matieres = $this->subjectOrder->orderedSubjectsForClasse($classe);
 
             // Période prévisualisée (evaluation.periode : semestre1 | semestre2 | annuel).
             $periode = $this->bulletinService->normalizePeriode($request->periode ?? ($bulletin->periode ?? 'semestre1'));

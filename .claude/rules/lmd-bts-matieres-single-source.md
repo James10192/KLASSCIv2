@@ -125,7 +125,7 @@ if ($matieres->isEmpty()) {
 ESBTPMatiere::whereNull('unite_enseignement_id') // BTS only : exclure les ECUE LMD
     ->orderBy('name')->get();
 ```
-- `whereNull('unite_enseignement_id')` = matières BTS pures (le pivot `esbtp_matiere_filiere_niveau` 3-way n'est PAS peuplé par l'import LMD, donc les requêtes scopées filière+niveau via `liaisonsFilieresNiveaux` ne fuitent pas — seuls les listings GLOBAUX fuitent).
+- `whereNull('unite_enseignement_id')` = matières BTS pures. ⚠️ **Ne conclus pas qu'une requête scopée est à l'abri** : cette rule l'a affirmé, à tort. L'import LMD ne peuple effectivement pas `esbtp_matiere_filiere_niveau`, mais plusieurs écrans BTS l'écrivent sans garde, et une ECUE qui y obtient une ligne remonte dans toute lecture scopée sur ce couple. Cas mesuré et correctif : `.claude/rules/lmd-ecue-leak-bts-picker.md`.
 - Inversement, un contexte **LMD strict** utilise `whereNotNull('unite_enseignement_id')` (cf. `ESBTPLMDNoteController`, `ESBTPTpeDeclarationController`).
 - Référence du pattern : `ESBTPMatiereController` (la liste des matières BTS l'applique déjà).
 

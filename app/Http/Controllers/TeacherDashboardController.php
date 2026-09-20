@@ -644,9 +644,9 @@ class TeacherDashboardController extends Controller
             6 => 'Samedi',
         ];
 
-        // Créneaux horaires d'1h de 08:00 à 18:00
+        // Creneaux d'une heure sur la plage de l'etablissement
         $creneaux = [];
-        for ($h = 8; $h < 18; $h++) {
+        foreach (app(\App\Services\Planning\PlageHoraireJournee::class)->creneaux() as $h) {
             $start = str_pad($h, 2, '0', STR_PAD_LEFT).':00';
             $end = str_pad($h + 1, 2, '0', STR_PAD_LEFT).':00';
             $creneaux[] = "$start-$end";
@@ -976,7 +976,8 @@ class TeacherDashboardController extends Controller
         }
 
         // Récupérer les disponibilités existantes et les organiser comme les pages admin
-        $availabilityData = $this->prepareAvailabilityData($teacher);
+        $availabilityData = app(\App\Services\TeacherPlanningService::class)
+            ->getAvailabilityMatrix($teacher)['availability'];
 
         return view('teacher.availability', compact('teacher', 'availabilityData'));
     }
@@ -1094,51 +1095,6 @@ class TeacherDashboardController extends Controller
                 'message' => 'Erreur lors de la mise à jour: '.$e->getMessage(),
             ], 500);
         }
-    }
-
-    /**
-     * Préparer les données de disponibilité pour l'affichage (méthode identique aux pages admin)
-     */
-    private function prepareAvailabilityData($teacher)
-    {
-        // Utiliser des créneaux par heure comme la page EDIT pour cohérence
-        $hours = range(8, 18); // 8h à 18h = 11 heures
-        $days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']; // Exclure dimanche
-
-        // Initialiser avec 'unavailable' par défaut
-        $availability = [];
-        foreach ($days as $day) {
-            $availability[$day] = array_fill(0, count($hours), 'unavailable');
-        }
-
-        // Remplir avec les vraies données - traitement par heure
-        foreach ($teacher->availabilities as $avail) {
-            $dayName = $days[$avail->day_of_week] ?? null;
-
-            // Parser l'heure de début et de fin
-            if ($avail->start_time instanceof \Carbon\Carbon) {
-                $startHour = $avail->start_time->hour;
-                $endHour = $avail->end_time->hour;
-            } elseif (is_string($avail->start_time)) {
-                $startHour = (int) substr($avail->start_time, 0, 2);
-                $endHour = (int) substr($avail->end_time, 0, 2);
-            } else {
-                $startHour = (int) substr((string) $avail->start_time, 0, 2);
-                $endHour = (int) substr((string) $avail->end_time, 0, 2);
-            }
-
-            // Remplir toutes les heures entre start_time et end_time
-            if ($dayName) {
-                for ($hour = $startHour; $hour < $endHour; $hour++) {
-                    $hourIndex = $hour - 8; // Index dans le tableau (8h = index 0)
-                    if ($hourIndex >= 0 && $hourIndex < count($hours)) {
-                        $availability[$dayName][$hourIndex] = $avail->availability_type;
-                    }
-                }
-            }
-        }
-
-        return $availability;
     }
 
     /**

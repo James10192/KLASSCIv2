@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPRegleAcademique;
 use App\Models\ESBTPClasse;
+use App\Domain\Academique\CoherenceSystemeAcademique;
 use App\Models\ESBTPNote;
 use App\Models\ESBTPMatiere;
 use App\Models\ESBTPFraisSubscription;
@@ -15,16 +16,23 @@ use App\Services\Inscriptions\NormalisationTypeInscription;
 
 class ReeinscriptionService
 {
+    public function __construct(
+        private readonly \App\Services\Reinscription\ClassesDeReinscription $classes,
+    ) {}
+
     public function analyserSituationEtudiant($etudiantId, $anneeAcademique)
     {
-        $etudiant = ESBTPEtudiant::with(['classe.niveau', 'classe.filiere'])->findOrFail($etudiantId);
-        
-        if (!$etudiant->classe) {
+        $etudiant = ESBTPEtudiant::findOrFail($etudiantId);
+
+        // La regle de passage se choisit sur la classe quittee (ClassesDeReinscription).
+        $classe = $this->classes->inscriptionQuittee((int) $etudiantId)?->classe;
+
+        if (!$classe) {
             throw new \Exception("Étudiant non assigné à une classe");
         }
 
-        $niveauNom = $etudiant->classe->niveau ? $etudiant->classe->niveau->name : '';
-        $filiereNom = $etudiant->classe->filiere ? $etudiant->classe->filiere->name : '';
+        $niveauNom = $classe->niveau ? $classe->niveau->name : '';
+        $filiereNom = $classe->filiere ? $classe->filiere->name : '';
         
         $regle = ESBTPRegleAcademique::getRegleForNiveauFiliere($niveauNom, $filiereNom);
 
@@ -38,7 +46,7 @@ class ReeinscriptionService
             $regle = $this->regleDeRepli($niveauNom, $filiereNom);
         }
 
-        $notes = $this->getNotesEtudiant($etudiantId, $anneeAcademique);
+        $notes = $this->getNotesEtudiant($etudiantId, $anneeAcademique, $classe);
         $moyenneGenerale = $this->calculerMoyenneGenerale($notes);
         $matieresEchouees = $this->getMatieresEchouees($notes, $regle->moyenne_passage);
         
@@ -55,7 +63,23 @@ class ReeinscriptionService
         ];
     }
     
-    public function analyserSituationEtudiantParInscription($inscription, $anneeAcademique)
+    /**
+     * Passer, rattraper ou redoubler : la decision se lit sur les resultats de
+     * l'annee que l'inscription analysee couvre — celle que l'etudiant termine.
+     *
+     * L'annee n'est donc plus un parametre que l'appelant choisit, parce que
+     * les appelants se trompaient. L'ecran de reinscription passait l'annee
+     * COURANTE, celle vers laquelle on reinscrit, ou ces etudiants n'ont par
+     * construction aucune note : la moyenne sortait a zero et toute la
+     * promotion tombait en redoublement, sans une ligne d'erreur. La fiche,
+     * elle, passait l'annee civile en cours. Seule la reinscription groupee
+     * visait juste, et rendait donc un verdict different de l'ecran sur le
+     * meme etudiant.
+     *
+     * $anneeAcademique ne sert plus que de repli, si l'inscription ne porte
+     * pas son annee.
+     */
+    public function analyserSituationEtudiantParInscription($inscription, $anneeAcademique = null)
     {
         $etudiant = $inscription->etudiant;
         $classe = $inscription->classe;
@@ -79,7 +103,9 @@ class ReeinscriptionService
             $regle = $this->regleDeRepli($niveauNom, $filiereNom);
         }
 
-        $notes = $this->getNotesEtudiant($etudiant->id, $anneeAcademique);
+        $anneeDesResultats = $inscription->anneeUniversitaire->name ?? $anneeAcademique;
+
+        $notes = $this->getNotesEtudiant($etudiant->id, $anneeDesResultats, $classe);
         $moyenneGenerale = $this->calculerMoyenneGenerale($notes);
         $matieresEchouees = $this->getMatieresEchouees($notes, $regle->moyenne_passage);
 
@@ -150,7 +176,7 @@ class ReeinscriptionService
         // (status=active + workflow_step=etudiant_cree pour ne considérer que les inscriptions
         // réelles qui produisent décisions / bulletins).
         // EXCLUSION : ceux qui ont déjà une inscription dans l'année courante (déjà réinscrits).
-        $inscriptions = \App\Models\ESBTPInscription::with(['etudiant', 'classe.niveau', 'classe.filiere'])
+        $inscriptions = \App\Models\ESBTPInscription::with(['etudiant', 'classe.niveau', 'classe.filiere', 'anneeUniversitaire'])
             ->whereNotNull('classe_id')
             ->whereNotNull('etudiant_id')
             ->where('annee_universitaire_id', $anneePrecedente->id)
@@ -315,22 +341,6 @@ class ReeinscriptionService
         ];
     }
 
-    public function proposerNouvellesClasses($etudiantId, $decision)
-    {
-        $etudiant = ESBTPEtudiant::with(['classe.niveau', 'classe.filiere'])->findOrFail($etudiantId);
-        
-        switch ($decision) {
-            case 'passage':
-                return $this->getClassesNiveauSuperieut($etudiant->classe);
-            case 'redoublement':
-                return $this->getClassesMemeNiveau($etudiant->classe);
-            case 'rattrapage':
-                return [$etudiant->classe]; // Reste dans la même classe
-        }
-
-        return [];
-    }
-
     /**
      * Effectue une réinscription (1 étudiant).
      *
@@ -343,7 +353,7 @@ class ReeinscriptionService
         $decision,
         $observations = null,
         $selectedOptionals = [],
-        $affectationStatus = ESBTPInscription::DEFAULT_AFFECTATION_STATUS,
+        $affectationStatus = null,
         $anneeUniversitaireId = null,
         $actionReliquat = null,
         bool $skipTransaction = false,
@@ -374,6 +384,15 @@ class ReeinscriptionService
             if (!$inscriptionActuelle) {
                 throw new \App\Exceptions\ReinscriptionRefuseeException("Aucune inscription active trouvée pour cet étudiant");
             }
+
+            // Le statut d'affectation suit l'etudiant d'une annee sur l'autre : le
+            // MESRS l'a place, ou ne l'a pas place, et se reinscrire n'y change rien.
+            // Quand l'appelant ne le precise pas, on reprend celui de l'inscription
+            // quittee. Supposer « affecte » reviendrait a rendre l'etudiant
+            // subventionne du jour au lendemain, donc a effacer sa scolarite sans
+            // que personne ne l'ait decide.
+            $affectationStatus = $affectationStatus
+                ?: ($inscriptionActuelle->affectation_status ?: ESBTPInscription::DEFAULT_AFFECTATION_STATUS);
 
             // 3. Déterminer l'année universitaire pour la nouvelle inscription
             if ($anneeUniversitaireId) {
@@ -521,13 +540,41 @@ class ReeinscriptionService
         }
     }
 
-    private function getNotesEtudiant($etudiantId, $anneeAcademique)
+    private function getNotesEtudiant($etudiantId, $anneeAcademique, ESBTPClasse $classe)
     {
         // Récupérer les notes filtrées par année académique (utilise le champ STRING annee_universitaire)
-        return ESBTPNote::where('etudiant_id', $etudiantId)
+        $notes = ESBTPNote::where('etudiant_id', $etudiantId)
             ->where('annee_universitaire', $anneeAcademique)
-            ->with(['evaluation.matiere', 'matiere'])
+            // `withTrashed()` : `ESBTPMatiere` est en `SoftDeletes`. Sans lui, une
+            // matiere effacee depuis `/esbtp/matieres` rend `null`, le `! $matiere ||`
+            // ci-dessous court-circuite, et la note etrangere revient peser — sur une
+            // DECISION de passage, pas sur un affichage.
+            ->with([
+                'evaluation.matiere' => fn ($q) => $q->withTrashed(),
+                'matiere' => fn ($q) => $q->withTrashed(),
+            ])
             ->get();
+
+        // POURQUOI LE FILTRE EST ICI, ET NON DANS LES TROIS CONSOMMATEURS.
+        // Ces notes alimentent la moyenne (`calculerMoyenneGenerale()`), la
+        // liste des matieres echouees (`getMatieresEchouees()`) ET le tableau
+        // rendu a l'ecran ('notes' => $notes). Filtrer a la source les corrige
+        // ensemble ; filtrer chez chaque consommateur demanderait au quatrieme,
+        // celui qui n'existe pas encore, de s'en souvenir.
+        //
+        // L'ENJEU N'EST PAS UN AFFICHAGE. Une ECUE du LMD notee 4/20 dans une
+        // classe BTS tire la moyenne vers le bas et compte comme une matiere
+        // echouee : elle peut faire basculer un passage en redoublement, pour
+        // toute une promotion via la reinscription groupee.
+        return $notes->filter(function (ESBTPNote $note) use ($classe) {
+            $matiere = $note->matiere ?? $note->evaluation?->matiere;
+
+            return ! $matiere || CoherenceSystemeAcademique::matiereRetenue(
+                $matiere,
+                $classe,
+                'reinscription/note'
+            );
+        })->values();
     }
 
     private function calculerMoyenneGenerale($notes)
@@ -581,51 +628,6 @@ class ReeinscriptionService
         }
 
         return 'redoublement';
-    }
-
-    private function getClassesNiveauSuperieut($classeActuelle)
-    {
-        $niveauActuel = $classeActuelle->niveau;
-        if (!$niveauActuel) {
-            return collect();
-        }
-
-        $yearActuel = $niveauActuel->year;
-        $typeActuel = $niveauActuel->type;
-        $filiereId = $classeActuelle->filiere_id;
-
-        // Passage normal : même type de formation, année suivante (year + 1)
-        $classesNiveauSuivant = ESBTPClasse::where('filiere_id', $filiereId)
-            ->where('is_active', 1)
-            ->whereHas('niveau', function($query) use ($yearActuel, $typeActuel) {
-                $query->where('year', $yearActuel + 1)
-                      ->where('type', $typeActuel);
-            })
-            ->with(['niveau', 'filiere'])
-            ->get();
-
-        if ($classesNiveauSuivant->isNotEmpty()) {
-            return $classesNiveauSuivant;
-        }
-
-        // Dernière année du type actuel : proposer la 1ère année de tous les autres types
-        // disponibles pour cette même filière
-        return ESBTPClasse::where('filiere_id', $filiereId)
-            ->where('is_active', 1)
-            ->whereHas('niveau', function($query) use ($typeActuel) {
-                $query->where('year', 1)
-                      ->where('type', '!=', $typeActuel);
-            })
-            ->with(['niveau', 'filiere'])
-            ->get();
-    }
-
-    private function getClassesMemeNiveau($classeActuelle)
-    {
-        return ESBTPClasse::where('niveau_etude_id', $classeActuelle->niveau_etude_id)
-            ->where('filiere_id', $classeActuelle->filiere_id)
-            ->with(['niveau', 'filiere'])
-            ->get();
     }
 
     private function sauvegarderHistoriqueComplet($etudiant, $decision, $observations, $nouvelleInscription, $generatedFees)
@@ -713,7 +715,21 @@ class ReeinscriptionService
         if (!$inscriptionActive) return false;
         
         $soldeRestant = $this->calculerSoldeInscription($inscriptionActive);
-        return $soldeRestant <= 0;
+
+        return $soldeRestant <= $this->toleranceSolde();
+    }
+
+    /**
+     * Reste du jusqu'auquel une reinscription reste permise.
+     *
+     * Defaut 0 : le dossier doit etre entierement solde, ce qui est le
+     * comportement d'avant ce reglage. Une ecole qui veut tolerer un reliquat le
+     * pose dans ses parametres, et l'affichage comme la garde le suivent
+     * ensemble — c'est tout l'objet de cette methode.
+     */
+    private function toleranceSolde(): float
+    {
+        return (float) \App\Helpers\SettingsHelper::get('reinscription.tolerance_solde', 0);
     }
 
     /**
@@ -857,7 +873,11 @@ class ReeinscriptionService
             $soldeRestant = max(0, $montantAttendu - $montantPaye);
 
             // Déterminer si l'étudiant peut se réinscrire (soldé ou quasi-soldé)
-            $peutReinscrire = $soldeRestant <= 50000; // Tolérance de 50k FCFA
+            // Le MEME seuil que la garde `peutSeReinscrire()`. Cet ecran
+            // affichait une tolerance de 50 000 ecrite en dur alors que la garde
+            // exigeait un solde nul : l'agent voyait un feu vert, puis se
+            // heurtait au refus.
+            $peutReinscrire = $soldeRestant <= $this->toleranceSolde();
 
             // Ajouter les propriétés à l'objet étudiant
             $etudiant->montant_attendu = $montantAttendu;

@@ -143,7 +143,7 @@
                     <input type="text" name="libelle" required maxlength="255" style="width:100%;padding:.5rem;border:1px solid #e2e8f0;border-radius:8px;" placeholder="Ex: Délibération S1 L1 Droit 2025-2026">
                 </div>
                 <div>
-                    <label style="font-size:.72rem;color:#475569;font-weight:600;text-transform:uppercase;">Parcours</label>
+                    <label style="font-size:.72rem;color:#475569;font-weight:600;text-transform:uppercase;">@rang('parcours')</label>
                     <x-au-select name="parcours_id" placeholder="Tous les parcours" icon="fa-route" :searchable="$parcours->count() > 8" :options="$parcours->pluck('name', 'id')" />
                 </div>
                 <div>

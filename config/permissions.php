@@ -38,6 +38,13 @@ return [
             'group' => 'Administration',
             'visible_in_ui' => true,
         ],
+        'administrateurInstance' => [
+            'label' => 'Administrateur d\'instance',
+            'description' => 'Réglages métier, comptes, rôles, diagnostics et audit. Sans abonnement ADC ni style de bulletin.',
+            'icon' => 'fa-user-shield',
+            'group' => 'Administration',
+            'visible_in_ui' => true,
+        ],
         'secretaire' => [
             'label' => 'Secrétaire',
             'description' => 'Gestion administrative : étudiants, inscriptions, classes, communication',
@@ -782,6 +789,22 @@ return [
             'icon' => 'fa-sync-alt',
         ],
 
+        // ===== Dispenses (BTS) =====
+        // Accorder une dispense retire une matiere du bulletin d'un etudiant :
+        // c'est une decision pedagogique, distincte du droit de saisir des
+        // notes. Deux permissions separees pour que l'ecole puisse ouvrir la
+        // consultation sans ouvrir la decision.
+        'dispenses.view' => [
+            'label' => 'Voir les dispenses de matière',
+            'group' => 'Dispenses',
+            'icon' => 'fa-file-circle-check',
+        ],
+        'dispenses.manage' => [
+            'label' => 'Accorder et révoquer une dispense de matière',
+            'group' => 'Dispenses',
+            'icon' => 'fa-user-check',
+        ],
+
         // ===== Bulletins =====
         'bulletins.view' => [
             'label' => 'Voir les bulletins',
@@ -960,8 +983,15 @@ return [
             'icon' => 'fa-edit',
             'aliases' => ['edit_payments', 'edit-paiements'],
         ],
+        // Longtemps, cette permission ne suffisait pas : la suppression exigeait
+        // en plus « paiements.manage », donc en pratique le super administrateur.
+        // Un versement encaissé par erreur sur un frais réglé en nature (un
+        // paquet de rames payé au lieu d'être déposé) attendait le fondateur.
+        // C'est désormais un droit à part entière, que l'établissement accorde
+        // au rôle qu'il veut. Non accordé par défaut.
         'paiements.delete' => [
-            'label' => 'Supprimer un paiement',
+            'label' => 'Supprimer un versement (motif obligatoire, journalisé)',
+            'description' => 'Supprime un versement enregistré, validé ou non, en gardant sa trace : le motif (10 caractères minimum), l\'auteur et la date restent lus au journal d\'audit et sur la ligne supprimée. Reste bloquée sur une période comptable clôturée et sur un versement déjà réconcilié. Non accordée par défaut : chaque établissement choisit qui la porte.',
             'group' => 'Paiements',
             'icon' => 'fa-trash',
         ],
@@ -2153,6 +2183,15 @@ return [
 
         'serviceTechnique' => ['*'],
 
+        'administrateurInstance' => [
+            'dashboard.view', 'admin.access',
+            'system.manage',
+            'settings.view', 'settings.edit',
+            'users.manage',
+            'personnel.view', 'personnel.manage',
+            'security.audit.view',
+        ],
+
         'secretaire' => [
             'dashboard.view', 'admin.access', 'parent_chatbot.manage',
             'students.view', 'students.create', 'students.edit', 'students.delete',
@@ -2174,6 +2213,7 @@ return [
             'notes.window.manage',
             'evaluations.view', 'evaluations.create', 'evaluations.edit', 'exams.view',
             'bulletins.view', 'bulletins.generate', 'bulletins.edit', 'bulletins.delete', 'bulletins.configure',
+            'dispenses.view',
             'documents.view', 'documents.approve', 'documents.print',
             // Catalogue des pieces a fournir : c'est la scolarite qui arrete la
             // liste que le guichet reclamera ensuite a chaque inscription.
@@ -2307,6 +2347,7 @@ return [
             'evaluations.view', 'evaluations.create', 'evaluations.edit',
             'exams.view',
             'bulletins.view', 'bulletins.generate', 'bulletins.edit',
+            'dispenses.view', 'dispenses.manage',
             'bulletins.publish.bulk', 'bulletins.regenerate.bulk', 'bulletins.export.bulk',
             'attendances.view', 'attendances.create', 'attendances.edit', 'attendances.delete',
             'attendances.generate_codes',
@@ -2373,6 +2414,7 @@ return [
             'evaluations.view',
             'exams.view',
             'bulletins.view',
+            'dispenses.view', 'dispenses.manage',
             'attendances.view',
             'session_reports.view',
             'planning.view', 'planning.edit', 'planning.manage',
@@ -2434,6 +2476,7 @@ return [
             'notes.window.manage',
             'evaluations.view', 'evaluations.create', 'evaluations.edit', 'exams.view',
             'bulletins.view', 'bulletins.generate', 'bulletins.edit',
+            'dispenses.view',
             'bulletins.publish.bulk', 'bulletins.export.bulk',
             'documents.view', 'documents.approve', 'documents.print',
             // Catalogue des pieces a fournir : c'est la scolarite qui arrete la
@@ -2493,6 +2536,7 @@ return [
             'notes.view', 'notes.create', 'notes.edit',
             'evaluations.view',
             'bulletins.view',
+            'dispenses.view',
             'documents.view', 'documents.print',
             // Lecture seule : au guichet on applique le catalogue, on ne
             // l'arrete pas pour toute l'ecole.
@@ -2608,8 +2652,9 @@ return [
     */
 
     'role_management' => [
-        'superAdmin'       => ['secretaire', 'responsableScolarite', 'serviceScolarite', 'agentInscription', 'chargeCommunication', 'comptable', 'caissier', 'coordinateur', 'directeurEtudes', 'enseignant', 'etudiant'],
-        'serviceTechnique' => ['superAdmin', 'secretaire', 'responsableScolarite', 'serviceScolarite', 'agentInscription', 'chargeCommunication', 'comptable', 'caissier', 'coordinateur', 'directeurEtudes', 'enseignant', 'etudiant'],
+        'superAdmin'       => ['administrateurInstance', 'secretaire', 'responsableScolarite', 'serviceScolarite', 'agentInscription', 'chargeCommunication', 'comptable', 'caissier', 'coordinateur', 'directeurEtudes', 'enseignant', 'etudiant'],
+        'serviceTechnique' => ['superAdmin', 'administrateurInstance', 'secretaire', 'responsableScolarite', 'serviceScolarite', 'agentInscription', 'chargeCommunication', 'comptable', 'caissier', 'coordinateur', 'directeurEtudes', 'enseignant', 'etudiant'],
+        'administrateurInstance' => ['secretaire', 'responsableScolarite', 'serviceScolarite', 'agentInscription', 'chargeCommunication', 'comptable', 'caissier', 'coordinateur', 'directeurEtudes', 'enseignant', 'etudiant'],
         'secretaire'       => ['enseignant', 'etudiant', 'caissier', 'chargeCommunication'],
         'responsableScolarite' => ['serviceScolarite', 'enseignant', 'etudiant'],
         'serviceScolarite' => ['enseignant'],
@@ -2658,5 +2703,12 @@ return [
         'admin'                   => ['since' => '2026-04', 'reason' => 'Rôle doublon de superAdmin — à fusionner Lot 6j'],
         'teacher'                 => ['since' => '2026-04', 'reason' => 'Rôle doublon de enseignant — à fusionner Lot 6j'],
     ],
+
+    /*
+    | superAdmin Gate::before. Défaut true = CI inchangé. Une instance
+    | (UCAO) pose PERMISSIONS_SUPERADMIN_GATE_BEFORE=false dans son .env :
+    | le rôle reste, mais il n'a plus le joker. Pas de if (tenant).
+    */
+    'superadmin_gate_before' => env('PERMISSIONS_SUPERADMIN_GATE_BEFORE', true),
 
 ];

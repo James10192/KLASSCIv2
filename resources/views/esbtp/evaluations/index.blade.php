@@ -117,6 +117,22 @@
             </div>
         @endif
 
+        {{-- ═══════════════════════ NOTES REÇUES ═══════════════════════ --}}
+        {{-- Une évaluation créée sans notes saisies est exactement ce que le
+             suivi compte comme manquant : le dire ici évite d'en créer une de
+             plus avant d'avoir fini les précédentes.
+             Période « annuel » : cet écran ne filtre pas par semestre, et
+             annoncer un semestre au hasard donnerait un chiffre faux. --}}
+        @include('esbtp.partials._couverture-notes', [
+            'classeId' => $filters['classe_id'] ?? null,
+            {{-- `$anneeAcademique` est une CHAINE (le libelle affiche). `optional()`
+                 dessus rend toujours null, donc le bandeau n'avait jamais d'annee et
+                 ne chargeait rien. Le modele, lui, est deja passe a la vue. --}}
+            'anneeId' => optional($anneeUniversitaire ?? null)->id,
+            'periode' => 'annuel',
+            'titre' => "Notes reçues sur l'année",
+        ])
+
         {{-- ═══════════════════════ FILTRES + RÉSULTATS ═══════════════════════ --}}
         <div class="ev-card">
             <div class="ev-card-header">

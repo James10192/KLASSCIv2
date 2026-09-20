@@ -30,7 +30,6 @@ use App\Services\InscriptionWorkflowService;
 use App\Services\ClasseManagementService;
 use App\Services\FuzzyNameMatcher;
 use App\Services\DocumentPrintGuard;
-use App\Services\LMD\LmdCreditWalletService;
 use App\Services\Frais\SoldesParSouscription;
 
 class ESBTPEtudiantController extends Controller
@@ -39,7 +38,6 @@ class ESBTPEtudiantController extends Controller
     protected $inscriptionWorkflowService;
     protected $classeManagementService;
     protected $btsUiPresenter;
-    protected $lmdCreditWalletService;
 
     /**
      * Constructeur avec injection du service d'inscription
@@ -48,16 +46,18 @@ class ESBTPEtudiantController extends Controller
         ESBTPInscriptionService $inscriptionService,
         InscriptionWorkflowService $inscriptionWorkflowService,
         ClasseManagementService $classeManagementService,
-        BtsUiPresenter $btsUiPresenter,
-        LmdCreditWalletService $lmdCreditWalletService
+        BtsUiPresenter $btsUiPresenter
     ) {
         $this->inscriptionService = $inscriptionService;
         $this->inscriptionWorkflowService = $inscriptionWorkflowService;
         $this->classeManagementService = $classeManagementService;
         $this->btsUiPresenter = $btsUiPresenter;
-        $this->lmdCreditWalletService = $lmdCreditWalletService;
         $this->middleware('auth');
-        $this->middleware('permission:students.view', ['only' => ['index', 'show']]);
+        // Plus de `show` : la fiche étudiant est servie par ESBTPStudentController,
+        // et la méthode morte qui vivait ici a été retirée. Laisser son nom dans
+        // cette liste ne protégeait rien et entretenait la confusion entre les
+        // deux contrôleurs.
+        $this->middleware('permission:students.view', ['only' => ['index']]);
         $this->middleware('permission:students.create', ['only' => ['create', 'store']]);
         $this->middleware('permission:students.edit', ['only' => ['edit', 'update']]);
         $this->middleware('permission:students.delete', ['only' => ['destroy']]);
@@ -462,104 +462,6 @@ class ESBTPEtudiantController extends Controller
                 ->with('error', 'Erreur lors de l\'inscription: ' . $e->getMessage())
                 ->withInput();
         }
-    }
-
-    /**
-     * Afficher les détails d'un étudiant.
-     */
-    public function show(ESBTPEtudiant $etudiant)
-    {
-        // Charger les relations nécessaires avec optimisation
-        $etudiant->load([
-            'user',
-            'parents' => function($q) {
-                $q->with('etudiants'); // Pour afficher les autres étudiants du même parent
-            },
-            'inscriptions' => function($q) {
-                $q->with(['filiere', 'niveauEtude', 'anneeUniversitaire', 'paiements',
-                          'fraisSubscriptions.fraisCategory',
-                          'classe' => fn($cq) => $cq->with(['filiere', 'niveauEtude'])])
-                  ->orderBy('created_at', 'desc');
-            },
-            'paiements' => function($q) {
-                $q->with(['inscription', 'fraisCategory', 'categorie', 'validatedBy'])
-                  ->orderBy('date_paiement', 'desc');
-            },
-            'absences',
-            'documents' => function($q) {
-                $q->with('uploadedBy')->orderBy('created_at', 'desc');
-            },
-        ]);
-
-        // Récupérer les reliquats de l'étudiant
-        $inscriptionIds = $etudiant->inscriptions->pluck('id');
-
-        // Reliquats entrants (provenant d'inscriptions précédentes)
-        $reliquatsEntrants = \App\Models\ESBTPReliquatDetail::whereIn('inscription_destination_id', $inscriptionIds)
-            ->with(['inscriptionSource.anneeUniversitaire', 'fraisSubscription.fraisCategory', 'fraisSubscription.selectedOption'])
-            ->actifs()
-            ->get();
-
-        // Reliquats sortants (transférés vers des inscriptions futures)
-        $reliquatsSortants = \App\Models\ESBTPReliquatDetail::whereIn('inscription_source_id', $inscriptionIds)
-            ->with(['inscriptionDestination.anneeUniversitaire', 'fraisSubscription.fraisCategory', 'fraisSubscription.selectedOption'])
-            ->get();
-
-        // Calculer quelques statistiques utiles
-        $statistiques = [
-            'total_paiements' => \App\Models\ESBTPPaiement::netStudentPaidFrom($etudiant->paiements) + \App\Models\ESBTPPaiement::pendingEncaissementsFrom($etudiant->paiements),
-            'paiements_valides' => \App\Models\ESBTPPaiement::netStudentPaidFrom($etudiant->paiements),
-            'paiements_en_attente' => \App\Models\ESBTPPaiement::pendingEncaissementsFrom($etudiant->paiements),
-            'nombre_paiements' => $etudiant->paiements->count(),
-            'inscription_active' => $etudiant->inscriptions->where('status', 'active')->first(),
-            'derniere_inscription' => $etudiant->inscriptions->first(),
-            'total_reliquats_entrants' => $reliquatsEntrants->sum('solde_restant'),
-            'total_reliquats_sortants' => $reliquatsSortants->sum('solde_restant'),
-            'nombre_reliquats_actifs' => $reliquatsEntrants->where('statut', 'actif')->count(),
-        ];
-
-        // Catégories de frais pour la modal de paiement
-        $categoriesfrais = \App\Models\ESBTPFraisCategory::where('is_active', true)->orderBy('name')->get();
-
-        // ── Détection LMD et chargement des données spécifiques ──
-        $isLMD = false;
-        $bulletinLMD = null;
-        $bulletinsLMD = collect();
-        $lmdMoyenneAnnuelle = null;
-        $parcours = null;
-        $lmdCredits = null;
-        $lmdCreditWallet = null;
-
-        $classeCourante = $statistiques['inscription_active']?->classe
-            ?? $statistiques['derniere_inscription']?->classe;
-
-        if ($classeCourante && $classeCourante->isLMD()) {
-            $isLMD = true;
-            $parcours = $classeCourante->parcours?->load('mention.domaine');
-            $semestresLMD = $classeCourante->getSemestresLMD();
-            $lmdCreditWallet = $this->lmdCreditWalletService->forStudent($etudiant, $classeCourante->id, $semestresLMD);
-            $bulletinsLMD = $lmdCreditWallet['bulletins_for_current_context'];
-            $bulletinLMD = $bulletinsLMD->last();
-            $lmdCredits = [
-                'capitalises' => $lmdCreditWallet['capitalises'],
-                'totaux' => $lmdCreditWallet['totaux'],
-                'semestres' => $lmdCreditWallet['semestres'],
-                'progression_pct' => $lmdCreditWallet['progression_pct'],
-            ];
-
-            $weighted = $bulletinsLMD->filter(fn ($bulletin) => $bulletin->moyenne_generale !== null && ($bulletin->credits_totaux ?? 0) > 0);
-            $weightTotal = $weighted->sum('credits_totaux');
-            $lmdMoyenneAnnuelle = $weightTotal > 0
-                ? round($weighted->sum(fn ($bulletin) => ((float) $bulletin->moyenne_generale) * ((int) $bulletin->credits_totaux)) / $weightTotal, 2)
-                : null;
-        }
-
-        $btsJourney = $this->btsUiPresenter->forStudent($etudiant);
-
-        return view('esbtp.etudiants.show', compact(
-            'etudiant', 'statistiques', 'reliquatsEntrants', 'reliquatsSortants', 'categoriesfrais',
-            'isLMD', 'bulletinLMD', 'bulletinsLMD', 'lmdMoyenneAnnuelle', 'parcours', 'lmdCredits', 'lmdCreditWallet', 'btsJourney'
-        ));
     }
 
     /**
@@ -1574,6 +1476,11 @@ class ESBTPEtudiantController extends Controller
      */
     public function previewCertificat($id)
     {
+        // Pas de garde ici, a dessein : cette page EST l'endroit d'ou l'on
+        // demande l'accord. Elle n'offre les boutons d'impression que si la
+        // garde autorise (voir la vue), et affiche sinon « Demander
+        // l'approbation ». La fermer renverrait l'agent hors du seul ecran qui
+        // lui permet d'avancer.
         // Récupérer l'étudiant avec toutes ses inscriptions
         $etudiant = ESBTPEtudiant::with([
             'inscriptions.anneeUniversitaire',
@@ -2267,6 +2174,8 @@ class ESBTPEtudiantController extends Controller
      */
     public function previewAttestationFrequentation($id)
     {
+        // Meme raison que pour le certificat : cette page porte la demande
+        // d'accord, elle reste ouverte et masque ses boutons d'impression.
         // Récupérer l'étudiant avec ses inscriptions
         $etudiant = ESBTPEtudiant::with([
             'inscriptions.anneeUniversitaire',

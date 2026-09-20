@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Domain\Trash\ErreurDeSuppression;
 use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPInscription;
 use App\Models\ESBTPPaiement;
@@ -136,6 +137,9 @@ class ESBTPPaiementTrashController extends Controller
                 $inscription->restore();
                 $cascadeRestored['inscription'] = true;
             }
+            // Une ligne vivante ne porte pas de motif de suppression : la trace
+            // reste au journal d'audit, pas sur le versement restauré.
+            $paiement->forceFill(['deleted_by' => null, 'motif_suppression' => null]);
             $paiement->restore();
         });
 
@@ -167,7 +171,12 @@ class ESBTPPaiementTrashController extends Controller
             Log::warning('Paiement supprimé définitivement', ['paiement_id' => $id, 'deleted_by' => Auth::id()]);
             return response()->json(['success' => true, 'message' => "Paiement supprimé définitivement."]);
         } catch (\Throwable $e) {
-            return response()->json(['success' => false, 'message' => 'Suppression impossible : '.$e->getMessage()], 422);
+            Log::error('Erreur suppression définitive paiement', ['id' => $id, 'error' => $e->getMessage()]);
+
+            return response()->json([
+                'success' => false,
+                'message' => ErreurDeSuppression::messageLisible($e, 'Ce versement'),
+            ], 422);
         }
     }
 }

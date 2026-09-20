@@ -2,12 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Domain\BtsTroncCommun\LiaisonsDeMatiere;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPFiliere;
 use App\Models\ESBTPMatiere;
 use App\Models\ESBTPNiveauEtude;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 class ESBTPMatiereController extends Controller
@@ -23,7 +25,7 @@ class ESBTPMatiereController extends Controller
 
         $filieres = ESBTPFiliere::where('is_active', true)->orderBy('name')->get();
         $niveaux = ESBTPNiveauEtude::where('is_active', true)
-            ->whereNotIn('type', ['Licence', 'Master', 'Doctorat']) // Exclure niveaux LMD
+            ->whereNotIn('type', \App\Models\ESBTPNiveauEtude::CYCLES_LMD) // Exclure niveaux LMD
             ->orderBy('name')->get();
 
         if ($request->ajax()) {
@@ -248,7 +250,7 @@ class ESBTPMatiereController extends Controller
         $this->authorize('create', ESBTPMatiere::class);
 
         $filieres = ESBTPFiliere::where('is_active', true)->get();
-        $niveauxEtudes = ESBTPNiveauEtude::whereNotIn('type', ['Licence', 'Master', 'Doctorat'])->get();
+        $niveauxEtudes = ESBTPNiveauEtude::whereNotIn('type', \App\Models\ESBTPNiveauEtude::CYCLES_LMD)->get();
         $unitesEnseignement = collect(); // Collection vide temporaire
 
         // Récupérer les paramètres de pré-sélection depuis l'URL
@@ -269,7 +271,7 @@ class ESBTPMatiereController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-    public function store(Request $request)
+    public function store(Request $request, LiaisonsDeMatiere $service)
     {
         // Valider les données du formulaire
         $validatedData = $request->validate([
@@ -279,10 +281,6 @@ class ESBTPMatiereController extends Controller
             'coefficient' => 'nullable|numeric|min:0',
             'niveau_etude_id' => 'nullable|exists:esbtp_niveau_etudes,id',
             'filiere_id' => 'nullable|exists:esbtp_filieres,id',
-            'filieres' => 'nullable|array',
-            'filieres.*' => 'exists:esbtp_filieres,id',
-            'niveaux' => 'nullable|array',
-            'niveaux.*' => 'exists:esbtp_niveau_etudes,id',
             'liaisons' => 'nullable|array',
             'liaisons.*.filiere_id' => 'required_with:liaisons|exists:esbtp_filieres,id',
             'liaisons.*.niveau_id' => 'required_with:liaisons|exists:esbtp_niveau_etudes,id',
@@ -315,50 +313,41 @@ class ESBTPMatiereController extends Controller
         // Créer la nouvelle matière
         $matiere = ESBTPMatiere::create($validatedData);
 
-        // Gérer les liaisons multiple ou simples
-        $filiereIds = [];
-        $niveauIds = [];
+        // CE FORMULAIRE N'A QU'UN SEUL MODE, ET C'EST UNE CORRECTION.
+        //
+        // Il a porte une branche « deux listes independantes » — des filieres,
+        // des niveaux — dont le produit etait ecrit dans les deux pivots plats
+        // PUIS dans le pivot canonique. Le formulaire ne l'emet plus depuis
+        // qu'il se remplit couple par couple : son inventaire complet est
+        // `name`, `code`, `description`, `couleur`, `is_active`,
+        // `type_formation`, et les `liaisons[i][...]` injectes par son script.
+        //
+        // La branche etait donc morte, mais son cout n'etait pas le code mort :
+        // trois paragraphes la justifiaient en decrivant un ecran qui n'existe
+        // plus (« Apercu des combinaisons »), sur l'invariant central de ce
+        // chantier — qui a le droit d'ecrire `esbtp_matiere_filiere_niveau`.
+        // Le prochain lecteur en aurait conclu que cet ecran en est un
+        // ecrivain legitime, et serait alle chercher la contamination ailleurs.
+        //
+        // Les pivots plats restent tenus, mais par `LiaisonsDeMatiere::poser()`
+        // et en AJOUT seulement : c'est lui qui sait ce qu'il ecrit.
 
-        // Priorité à la multi-sélection si elle existe
-        if ($request->has('filieres') && is_array($request->filieres)) {
-            $filiereIds = $request->filieres;
-        } elseif ($request->has('filiere_id') && $request->filiere_id) {
-            $filiereIds = [$request->filiere_id];
-        }
-
-        if ($request->has('niveaux') && is_array($request->niveaux)) {
-            $niveauIds = $request->niveaux;
-        } elseif ($request->has('niveau_etude_id') && $request->niveau_etude_id) {
-            $niveauIds = [$request->niveau_etude_id];
-        }
-
-        // Attacher les filières (mode legacy — cartésien)
-        if (! empty($filiereIds)) {
-            $matiere->filieres()->attach($filiereIds);
-        }
-
-        // Attacher les niveaux d'études (mode legacy — cartésien)
-        if (! empty($niveauIds)) {
-            $matiere->niveaux()->attach($niveauIds);
-        }
-
-        // Mode liaisons précises (filière × niveau pairs from create form)
+        // Mode liaisons précises (couples filière × niveau du formulaire de
+        // création). Le rattachement, avec sa tenue des pivots plats, vit dans
+        // `LiaisonsDeMatiere` : c'était ici la troisième copie, et elle
+        // utilisait `create()` — donc un doublon levait une erreur là où les
+        // deux autres copies ne faisaient rien.
         if ($request->has('liaisons') && is_array($request->liaisons)) {
-            $seen = [];
             foreach ($request->liaisons as $liaison) {
-                $key = ($liaison['filiere_id'] ?? 0) . '_' . ($liaison['niveau_id'] ?? 0);
-                if (isset($seen[$key])) continue;
-                $seen[$key] = true;
+                if (empty($liaison['filiere_id']) || empty($liaison['niveau_id'])) {
+                    continue;
+                }
 
-                \App\Models\ESBTPMatiereFilierNiveau::create([
-                    'matiere_id'      => $matiere->id,
-                    'filiere_id'      => $liaison['filiere_id'],
-                    'niveau_etude_id' => $liaison['niveau_id'],
-                ]);
-
-                // Also attach to pivot tables for compatibility
-                $matiere->filieres()->syncWithoutDetaching([$liaison['filiere_id']]);
-                $matiere->niveaux()->syncWithoutDetaching([$liaison['niveau_id']]);
+                $service->poser(
+                    (int) $matiere->id,
+                    (int) $liaison['filiere_id'],
+                    (int) $liaison['niveau_id'],
+                );
             }
         }
 
@@ -482,19 +471,70 @@ class ESBTPMatiereController extends Controller
     }
 
     /**
+     * Une ECUE LMD ne se modifie pas par les ecrans BTS.
+     *
+     * `prepareMatieresListing()` les ecarte de l'index, donc le lien n'est
+     * jamais offert — mais la liaison de modele de route, elle, resout
+     * n'importe quel identifiant : /esbtp/matieres/174/edit s'ouvrait. Et
+     * l'enregistrement qui suit ecrit le produit filieres x niveaux dans le
+     * pivot canonique BTS, c'est-a-dire exactement la ligne qui fait sortir une
+     * ECUE sur un bulletin. Les ECUE se gerent dans /esbtp/lmd/ue.
+     *
+     * Symetrique de la garde que le cote LMD pose depuis toujours
+     * (`ESBTPLMDPlanningController` refuse en 422 une matiere sans unite).
+     */
+    private function refuserUneEcueLmd(ESBTPMatiere $matiere): void
+    {
+        abort_if(
+            $matiere->unite_enseignement_id !== null,
+            404,
+            "Cette matière est un élément constitutif LMD : elle se gère dans /esbtp/lmd/ue.",
+        );
+    }
+
+    /**
      * Affiche le formulaire de modification d'une matière.
      *
      * @return \Illuminate\Http\Response
      */
     public function edit(ESBTPMatiere $matiere)
     {
+        $this->refuserUneEcueLmd($matiere);
+
         // $this->authorize('update', $matiere); // Temporairement désactivé pour test
 
         $filieres = ESBTPFiliere::where('is_active', true)->get();
-        $niveauxEtudes = ESBTPNiveauEtude::whereNotIn('type', ['Licence', 'Master', 'Doctorat'])->get();
+        $niveauxEtudes = ESBTPNiveauEtude::whereNotIn('type', \App\Models\ESBTPNiveauEtude::CYCLES_LMD)->get();
         $unitesEnseignement = collect(); // Collection vide temporaire
 
-        return view('esbtp.matieres.edit', compact('matiere', 'filieres', 'niveauxEtudes', 'unitesEnseignement'));
+        // La maquette REELLE de cette matiere, telle que le bulletin la lit.
+        //
+        // Cet ecran ne l'ecrit pas, et celui de creation non plus : la maquette
+        // ne s'ecrit que couple par couple. Il la MONTRE, et renvoie vers celui
+        // qui sait la modifier. Auparavant il affichait a la place le produit cartesien des
+        // deux listes cochees, qui invente des combinaisons que la maquette ne
+        // porte pas : l'ecran promettait donc un rattachement qu'il n'avait pas
+        // les moyens de tenir, et l'enregistrement le posait pour de bon.
+        $couplesDeLaMaquette = $matiere->liaisonsFilieresNiveaux
+            ->map(fn ($liaison) => [
+                'filiere_id' => (int) $liaison->filiere_id,
+                'niveau_id' => (int) $liaison->niveau_etude_id,
+                'filiere' => optional($filieres->firstWhere('id', $liaison->filiere_id))->name
+                    ?? 'Filière #'.$liaison->filiere_id,
+                'niveau' => optional($niveauxEtudes->firstWhere('id', $liaison->niveau_etude_id))->name
+                    ?? 'Niveau #'.$liaison->niveau_etude_id,
+            ])
+            ->sortBy([['filiere', 'asc'], ['niveau', 'asc']])
+            ->values()
+            ->all();
+
+        return view('esbtp.matieres.edit', compact(
+            'matiere',
+            'filieres',
+            'niveauxEtudes',
+            'unitesEnseignement',
+            'couplesDeLaMaquette',
+        ));
     }
 
     /**
@@ -504,6 +544,8 @@ class ESBTPMatiereController extends Controller
      */
     public function update(Request $request, ESBTPMatiere $matiere)
     {
+        $this->refuserUneEcueLmd($matiere);
+
         // Valider les données du formulaire
         $validatedData = $request->validate([
             'name' => 'required|string|max:255',
@@ -512,10 +554,22 @@ class ESBTPMatiereController extends Controller
             'coefficient' => 'required|numeric|min:0',
             'niveau_etude_id' => 'nullable|exists:esbtp_niveau_etudes,id',
             'filiere_id' => 'nullable|exists:esbtp_filieres,id',
+            // Ce que le formulaire envoie reellement. Leur absence de cette
+            // liste laissait `update()` ne lire que les deux cles au singulier,
+            // qui n'existent nulle part dans ce formulaire.
+            'filieres' => 'sometimes|array',
+            'filieres.*' => 'integer|exists:esbtp_filieres,id',
+            'niveaux' => 'sometimes|array',
+            'niveaux.*' => 'integer|exists:esbtp_niveau_etudes,id',
+            'liaisons_presentes' => 'sometimes|boolean',
             'type_formation' => 'nullable|in:generale,technologique_professionnelle',
             'couleur' => 'nullable|string|max:50',
             'is_active' => 'required|boolean',
         ]);
+
+        // `$validatedData` alimente `$matiere->update()` : les deux listes n'y
+        // ont pas leur place, elles se posent par leurs relations juste apres.
+        unset($validatedData['filieres'], $validatedData['niveaux'], $validatedData['liaisons_presentes']);
 
         // Ajouter l'identifiant de l'utilisateur courant
         $validatedData['updated_by'] = Auth::id();
@@ -523,23 +577,90 @@ class ESBTPMatiereController extends Controller
         // Mettre à jour la matière
         $matiere->update($validatedData);
 
-        // Synchroniser les filières
-        if ($request->has('filiere_id')) {
-            $matiere->filieres()->sync($request->filiere_id);
-        } else {
-            $matiere->filieres()->detach();
-        }
+        $this->synchroniserLesPivotsPlats($request, $matiere);
 
-        // Synchroniser les niveaux d'études
-        if ($request->has('niveau_etude_id')) {
-            $matiere->niveaux()->sync($request->niveau_etude_id);
-        } else {
-            $matiere->niveaux()->detach();
-        }
+        // CET ECRAN N'ECRIT PAS LA MAQUETTE, ET C'EST UNE CORRECTION.
+        //
+        // La premiere version de ce correctif y posait le PRODUIT CARTESIEN des
+        // deux listes — la meme faute que `SyncMatiereFilireNiveau` porte en
+        // avertissement dans son en-tete. Les cases sont precochees depuis les
+        // deux pivots plats, dont le produit sur-rapporte : une matiere en
+        // filieres [A, B] et niveaux [1, 2] dont la maquette ne porte que (A,1)
+        // gagnait (A,2), (B,1) et (B,2) au premier enregistrement venu, donc
+        // trois apparitions au bulletin de classes que personne n'a nommees.
+        // L'ecran l'annoncait, mais il ne savait pas RETIRER : deux listes ne
+        // decrivent pas un ensemble de couples qui n'est pas un rectangle
+        // plein. C'etait donc une roue a cliquet sur la table que lit le
+        // bulletin, et la porte meme que ce chantier existe pour fermer.
+        //
+        // La maquette s'edite la ou elle se VOIT, couple par couple :
+        // `/esbtp/matieres/classification`, vers lequel la fiche pointe
+        // maintenant, presélectionné sur les couples de cette matiere.
+        //
+        // La creation non plus n'ecrit la maquette : son formulaire poste des
+        // couples nommes (`liaisons[]`), jamais deux listes a croiser.
 
         // Rediriger avec un message de succès
         return redirect()->route('esbtp.matieres.index')
             ->with('success', 'La matière a été mise à jour avec succès.');
+    }
+
+    /**
+     * Pose les deux listes du formulaire dans les pivots plats, et les rend.
+     *
+     * Le formulaire envoie `filieres[]` et `niveaux[]`. L'ancien code ne lisait
+     * que `filiere_id` et `niveau_etude_id`, absents de ce formulaire : les
+     * deux tests étaient donc toujours faux, les deux branches `else`
+     * s'exécutaient, et enregistrer une matière détachait TOUTES ses filières
+     * et TOUS ses niveaux, quoi qu'on ait coché.
+     *
+     * `liaisons_presentes` est le témoin posé par le formulaire. Sans lui,
+     * « aucune case cochée » et « champ absent » arrivent identiques, et on ne
+     * peut pas distinguer « tout retirer » d'une mise à jour partielle qui ne
+     * parle pas des liaisons.
+     *
+     * @return array{0: list<int>|null, 1: list<int>|null}
+     */
+    private function synchroniserLesPivotsPlats(Request $request, ESBTPMatiere $matiere): array
+    {
+        $listesSoumises = $request->boolean('liaisons_presentes');
+
+        $filiereIds = $this->identifiantsSoumis($request, 'filieres', 'filiere_id');
+        if ($filiereIds !== null || $listesSoumises) {
+            $matiere->filieres()->sync($filiereIds ?? []);
+        }
+
+        $niveauIds = $this->identifiantsSoumis($request, 'niveaux', 'niveau_etude_id');
+        if ($niveauIds !== null || $listesSoumises) {
+            $matiere->niveaux()->sync($niveauIds ?? []);
+        }
+
+        return [$filiereIds, $niveauIds];
+    }
+
+    /**
+     * Les identifiants qu'une requête pose pour une liste (filières, niveaux).
+     *
+     * Accepte la liste au pluriel comme la clé historique au singulier.
+     * Rend `null` quand la requête ne dit rien de cette liste — ce qui n'est
+     * pas la même chose qu'une liste vide, et c'est toute la différence entre
+     * « ne touche à rien » et « détache tout ».
+     *
+     * @return list<int>|null
+     */
+    private function identifiantsSoumis(Request $request, string $cleListe, string $cleUnique): ?array
+    {
+        if ($request->has($cleListe) && is_array($request->input($cleListe))) {
+            return array_values(array_unique(array_filter(
+                array_map('intval', $request->input($cleListe)),
+            )));
+        }
+
+        if ($request->filled($cleUnique)) {
+            return [(int) $request->input($cleUnique)];
+        }
+
+        return null;
     }
 
     /**
@@ -816,42 +937,114 @@ class ESBTPMatiereController extends Controller
     }
 
     /**
+     * Applique la liste voulue : retire ce qui n'y est plus, pose ce qui manque.
+     *
+     * @param  array<string, array{0: int, 1: int}>  $voulues
+     */
+    private function appliquerLesLiaisons(ESBTPMatiere $matiere, array $voulues, LiaisonsDeMatiere $service): void
+    {
+        DB::transaction(function () use ($matiere, $voulues, $service) {
+            $actuelles = \App\Models\ESBTPMatiereFilierNiveau::where('matiere_id', $matiere->id)
+                ->get(['filiere_id', 'niveau_etude_id'])
+                ->mapWithKeys(fn ($l) => [(int) $l->filiere_id.'|'.(int) $l->niveau_etude_id => true]);
+
+            foreach ($actuelles as $cle => $_) {
+                if (! array_key_exists($cle, $voulues)) {
+                    [$filiereId, $niveauId] = array_map('intval', explode('|', $cle));
+                    $service->retirer($matiere->id, $filiereId, $niveauId);
+                }
+            }
+
+            // PAR DIFFERENCE des deux cotes. Reposer un couple deja en
+            // place etait sans effet sur une matiere BTS (`firstOrCreate`
+            // + `syncWithoutDetaching` sont des no-op) — mais depuis que
+            // `poser()` refuse les ECUE, cela faisait LEVER sur un couple
+            // qu'on ne demandait meme pas d'ajouter. Retirer un couple
+            // d'une ECUE qui en portait deux repassait donc par le second,
+            // levait, annulait la transaction, et rendait 500 : la ligne
+            // redevenait « visible, et retirable par rien », c'est-a-dire
+            // exactement le defaut que tout ce chantier corrige.
+            foreach ($voulues as $cle => [$filiereId, $niveauId]) {
+                if (! $actuelles->has($cle)) {
+                    $service->poser($matiere->id, $filiereId, $niveauId);
+                }
+            }
+        });
+    }
+
+    /**
      * Met à jour les liaisons d'une matière avec les combinaisons filière+niveau sélectionnées.
      * Format attendu : { "liaisons": [ {"filiere_id": 1, "niveau_id": 1}, ... ] }
      *
      * @return \Illuminate\Http\JsonResponse
      */
-    public function updateLiaisons(Request $request, ESBTPMatiere $matiere)
+    public function updateLiaisons(Request $request, ESBTPMatiere $matiere, LiaisonsDeMatiere $service)
     {
         try {
             $validated = $request->validate([
-                'liaisons'             => 'array',
+                // `present` et NON `required`, et la nuance est tout le sujet.
+                //
+                // Le but est de distinguer « la cle est absente » (une requete
+                // malformee, que `?? []` transformait en « retire-les tous »)
+                // de « la cle est la, vide » (l'utilisateur a decoche toutes les
+                // combinaisons, et l'ecran le lui a fait confirmer).
+                //
+                // `required` refuse LES DEUX : il rejette aussi `[]`. « Tout
+                // retirer » rendait donc 422 « Le champ liaisons est
+                // obligatoire », alors que l'ecran propose l'action, ouvre une
+                // confirmation explicite et annonce « Cela supprimera toutes les
+                // liaisons existantes ». `present` exige la cle sans exiger son
+                // contenu — c'est exactement la distinction voulue.
+                'liaisons'             => 'present|array',
                 'liaisons.*.filiere_id' => 'required|exists:esbtp_filieres,id',
                 'liaisons.*.niveau_id'  => 'required|exists:esbtp_niveau_etudes,id',
             ]);
 
-            $liaisons = $validated['liaisons'] ?? [];
+            // PAS DE GARDE ICI, ET C'EST MESURE.
+            //
+            // Deux versions successives en ont pose un — `abort_unless()` puis
+            // un `return` anticipe — sur la crainte que `present|array` laisse
+            // passer une chaine vide : `Array` n'est pas une regle implicite,
+            // donc `Validator::presentOrRuleIsImplicit()` la SAUTE quand la
+            // valeur est `''`. Le raisonnement est juste ; la conclusion etait
+            // fausse, parce qu'il lui manquait le middleware.
+            //
+            // `ConvertEmptyStringsToNull` (Kernel, groupe `web`) transforme `''`
+            // en `null` AVANT la validation. `null` n'est pas une chaine, la
+            // regle n'est donc plus sautee, et `array` la refuse. Les sept
+            // entrees possibles ont ete passees a l'endpoint :
+            //
+            //   ''  ·  null  ·  'x'  ·  3  ·  true   → 422 « doit etre un tableau »
+            //   cle absente                          → 422 « doit etre present »
+            //   []                                   → 200, et tout est retire
+            //
+            // `$validated['liaisons']` est donc TOUJOURS un tableau ici. Le
+            // garde etait du code mort — et pire, sa premiere forme trainait un
+            // piege : `abort()` leve un `HttpException`, qui herite de
+            // `RuntimeException` donc d'`Exception`, et le `catch (\Exception)`
+            // de cette meme methode l'aurait converti en 500 si la branche
+            // avait pu s'executer. `MaquetteBtsRefuseUneEcueTest` gele la
+            // matrice ci-dessus : elle seule protege cette absence de garde.
+            $liaisons = $validated['liaisons'];
 
-            // Supprimer toutes les liaisons existantes pour cette matière
-            \App\Models\ESBTPMatiereFilierNiveau::where('matiere_id', $matiere->id)->delete();
-
-            // Réinsérer les nouvelles combinaisons (dédoublonnées)
-            $seen = [];
+            // Voulues, dédoublonnées.
+            $voulues = [];
             foreach ($liaisons as $liaison) {
-                $key = $liaison['filiere_id'].'_'.$liaison['niveau_id'];
-                if (isset($seen[$key])) {
-                    continue;
-                }
-                $seen[$key] = true;
-
-                \App\Models\ESBTPMatiereFilierNiveau::create([
-                    'matiere_id'      => $matiere->id,
-                    'filiere_id'      => $liaison['filiere_id'],
-                    'niveau_etude_id' => $liaison['niveau_id'],
-                ]);
+                $voulues[(int) $liaison['filiere_id'].'|'.(int) $liaison['niveau_id']] = [
+                    (int) $liaison['filiere_id'],
+                    (int) $liaison['niveau_id'],
+                ];
             }
 
-            $count = count($seen);
+            // Un DIFF, et non un « supprime tout puis recrée ». L'ancien code
+            // effaçait les lignes existantes avant de les réinsérer nues :
+            // toute combinaison conservée y perdait sa place au bulletin, son
+            // semestre et son statut tronc commun / spécialité. Sur une
+            // matière qui couvre huit combinaisons, régler la neuvième
+            // remettait les huit autres à zéro, sans un mot.
+            $this->appliquerLesLiaisons($matiere, $voulues, $service);
+
+            $count = count($voulues);
             $message = $count > 0
                 ? "Liaisons mises à jour avec succès ! {$count} combinaison(s) configurée(s)."
                 : 'Liaisons mises à jour avec succès ! Toutes les liaisons ont été supprimées.';
@@ -865,6 +1058,22 @@ class ESBTPMatiereController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Données invalides: '.implode(', ', $e->validator->errors()->all()),
+            ], 422);
+        } catch (\InvalidArgumentException $e) {
+            // `LiaisonsDeMatiere::poser()` refuse une ECUE LMD. La regle vit
+            // la-bas, en UN endroit ; ce controleur n'a pas a savoir ce qu'est
+            // une ECUE — il se contente de rendre le refus lisible. Une
+            // premiere version dupliquait la question ici, et cette seconde
+            // source repondait deja autrement que l'originale.
+            \Log::warning('Rattachement refuse par le domaine.', [
+                'matiere_id' => (int) $matiere->id,
+                'raison' => $e->getMessage(),
+                'user_id' => optional(auth()->user())->id,
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
             ], 422);
         } catch (\Exception $e) {
             \Log::error('Erreur lors de la mise à jour des liaisons: '.$e->getMessage());
@@ -930,8 +1139,12 @@ class ESBTPMatiereController extends Controller
             // Récupérer les IDs des matières déjà liées en une seule requête
             $linkedMatiereIds = \App\Models\ESBTPMatiereFilierNiveau::matiereIdsForCombo($filiereId, $niveauId)->toArray();
 
-            // Récupérer TOUTES les matières actives
+            // Toutes les matières actives — BTS uniquement. Ce listing est
+            // GLOBAL (aucun filtre filière/niveau) : sans cette garde, les
+            // ECUE LMD y apparaissent et peuvent être rattachées à une
+            // maquette BTS, où plus rien ne sait les lire.
             $matieres = ESBTPMatiere::where('is_active', true)
+                ->whereNull('unite_enseignement_id')
                 ->select('id', 'name', 'code', 'description', 'coefficient', 'heures_cm', 'heures_td', 'heures_tp')
                 ->orderBy('name')
                 ->get()
@@ -961,7 +1174,7 @@ class ESBTPMatiereController extends Controller
      *
      * @return \Illuminate\Http\JsonResponse
      */
-    public function addToCombination(Request $request)
+    public function addToCombination(Request $request, LiaisonsDeMatiere $service)
     {
         $request->validate([
             'matiere_ids' => 'required|array',
@@ -976,21 +1189,36 @@ class ESBTPMatiereController extends Controller
             $combinations = $request->combinations;
             $addedCount = 0;
 
-            \DB::transaction(function () use ($matiereIds, $combinations, &$addedCount) {
-                $matieres = ESBTPMatiere::whereIn('id', $matiereIds)->get()->keyBy('id');
+            // Le rattachement, avec sa tenue des pivots plats, vit dans
+            // `LiaisonsDeMatiere` : il était recopié ici, et les deux copies
+            // avaient déjà commencé à diverger.
+            DB::transaction(function () use ($matiereIds, $combinations, $service, &$addedCount) {
+                // `getAvailableForCombination`, le lecteur jumeau, ecarte deja
+                // les ECUE LMD. L'ecrivain, lui, ne le faisait pas : garder la
+                // soumission revenait a garder la porte ouverte et a n'en
+                // fermer que l'affiche. Une page restee ouverte, un rejeu, un
+                // appel en masse suffisaient a poser une ECUE dans une maquette
+                // BTS — ou plus aucun ecran ne sait ensuite l'atteindre.
+                $matieres = ESBTPMatiere::whereIn('id', $matiereIds)->btsOnly()->get()->keyBy('id');
 
                 foreach ($matiereIds as $matiereId) {
-                    $matiere = $matieres->get($matiereId);
-                    if (!$matiere) continue;
+                    if (! $matieres->get($matiereId)) {
+                        // Un refus muet ne se cherche pas : on dit lequel, et
+                        // d'ou il venait.
+                        \Log::warning('Rattachement a une maquette BTS refuse : matiere absente ou ECUE LMD.', [
+                            'matiere_id' => (int) $matiereId,
+                            'user_id' => optional(auth()->user())->id,
+                        ]);
+
+                        continue;
+                    }
 
                     foreach ($combinations as $combo) {
-                        \App\Models\ESBTPMatiereFilierNiveau::firstOrCreate([
-                            'matiere_id' => $matiereId,
-                            'filiere_id' => $combo['filiere_id'],
-                            'niveau_etude_id' => $combo['niveau_id'],
-                        ]);
-                        $matiere->filieres()->syncWithoutDetaching([$combo['filiere_id']]);
-                        $matiere->niveaux()->syncWithoutDetaching([$combo['niveau_id']]);
+                        $service->poser(
+                            (int) $matiereId,
+                            (int) $combo['filiere_id'],
+                            (int) $combo['niveau_id'],
+                        );
                     }
                     $addedCount++;
                 }
@@ -1020,7 +1248,11 @@ class ESBTPMatiereController extends Controller
     public function apiList(Request $request)
     {
         try {
-            $query = ESBTPMatiere::where('is_active', true);
+            // Listing GLOBAL : les filtres filiere/niveau ci-dessous sont
+            // optionnels, et le consommateur connu (la saisie de moyenne du
+            // bulletin) n'en passe aucun. Sans cette garde il propose les ECUE
+            // LMD a cote des matieres BTS.
+            $query = ESBTPMatiere::where('is_active', true)->btsOnly();
 
             // Filtrer par terme de recherche si fourni
             if ($request->has('search') && $request->search) {

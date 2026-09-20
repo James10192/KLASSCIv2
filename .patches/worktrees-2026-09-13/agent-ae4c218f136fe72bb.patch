@@ -1,0 +1,25 @@
+diff --git a/resources/views/components/au-user-picker.blade.php b/resources/views/components/au-user-picker.blade.php
+index fb9ed53bb..3fe60a318 100644
+--- a/resources/views/components/au-user-picker.blade.php
++++ b/resources/views/components/au-user-picker.blade.php
+@@ -356,8 +356,18 @@ class="au-up-option au-up-option--all"
+                 const margin = 12;
+                 const gap = 6;
+                 const triggerRect = trigger.getBoundingClientRect();
+-                const visibleWidth = window.visualViewport?.width || window.innerWidth;
+-                const visibleHeight = window.visualViewport?.height || window.innerHeight;
++                // Le repere du viewport de MISE EN PAGE, celui de
++                // `getBoundingClientRect()` et de `position: fixed`. Surtout pas
++                // `visualViewport`, qui decrit ce qui reste visible apres un
++                // zoom : les deux divergent des qu'on zoome, et melanger une
++                // largeur visuelle avec une position de mise en page plaquait le
++                // menu a gauche de l'ecran (meme defaut que <x-au-select>, cf.
++                // AuSelectGeometrieMenuTest). Les ecouteurs `visualViewport`
++                // restent : un zoom doit bien declencher un repositionnement,
++                // c'est seulement la MESURE qui change de repere.
++                const racine = document.documentElement;
++                const visibleWidth = racine.clientWidth || window.innerWidth;
++                const visibleHeight = racine.clientHeight || window.innerHeight;
+                 const viewportWidth = visibleWidth - (margin * 2);
+                 const menuWidth = Math.min(Math.max(380, triggerRect.width), viewportWidth);
+                 const minimumWidth = Math.min(triggerRect.width, viewportWidth);

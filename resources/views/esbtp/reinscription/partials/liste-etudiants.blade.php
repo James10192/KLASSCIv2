@@ -138,7 +138,16 @@
                     </div>
                 </td>
                 <td style="padding: 16px; text-align: center;">
-                    @switch($analyse['decision'])
+                    {{-- La categorie « Erreurs » ne porte pas de decision, mais un
+                         motif : ses elements n'ont que « etudiant » et « error ».
+                         Lire $analyse['decision'] sans precaution y leve une
+                         exception et blanchit tout l'onglet. --}}
+                    @if (isset($analyse['error']))
+                        <span class="badge warning">
+                            <i class="fas fa-exclamation-triangle"></i> {{ $analyse['error'] }}
+                        </span>
+                    @else
+                    @switch($analyse['decision'] ?? '')
                         @case('passage')
                             <span class="badge success">
                                 <i class="fas fa-arrow-up"></i> Passage
@@ -155,6 +164,7 @@
                             </span>
                             @break
                     @endswitch
+                    @endif
                 </td>
                 <td style="padding: 16px; text-align: center;">
                     <div style="display: flex; gap: 4px; justify-content: center; align-items: center;">
@@ -163,12 +173,7 @@
                            style="padding: 8px; border-radius: 6px; min-width: 36px; display: flex; align-items: center; justify-content: center;">
                             <i class="fas fa-eye"></i>
                         </a>
-                        <button type="button" class="btn btn-success btn-sm" 
-                                onclick="validerReinscription({{ $analyse['etudiant']->id }}, '{{ $analyse['decision'] }}')" title="Valider réinscription"
-                                style="padding: 8px; border-radius: 6px; min-width: 36px; display: flex; align-items: center; justify-content: center;">
-                            <i class="fas fa-check-double"></i>
-                        </button>
-                        <button type="button" class="btn btn-warning btn-sm" 
+                        <button type="button" class="btn btn-warning btn-sm"
                                 onclick="marquerAbandonModal({{ $analyse['etudiant']->id }})" title="Marquer comme abandon"
                                 style="padding: 8px; border-radius: 6px; min-width: 36px; display: flex; align-items: center; justify-content: center;">
                             <i class="fas fa-user-times"></i>
@@ -244,36 +249,4 @@ function marquerAbandon(etudiantId) {
     }
 }
 
-function validerReinscription(etudiantId, decision) {
-    const observations = prompt(`Valider la réinscription avec décision: ${decision}\n\nObservations (optionnel):`);
-    
-    if (observations === null) return; // Annulé
-    
-    if (confirm(`Confirmer la validation de la réinscription ?\n\nDécision: ${decision}\nObservations: ${observations || 'Aucune'}`)) {
-        fetch(`{{ url('esbtp/reinscription') }}/${etudiantId}/valider`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-            },
-            body: JSON.stringify({
-                decision: decision,
-                observations: observations
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                alert(data.message);
-                location.reload(); // Recharger la page pour voir les changements
-            } else {
-                alert('Erreur: ' + data.message);
-            }
-        })
-        .catch(error => {
-            debugError('Erreur:', error);
-            alert('Erreur lors de la validation');
-        });
-    }
-}
 </script>

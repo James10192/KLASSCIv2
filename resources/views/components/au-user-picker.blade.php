@@ -321,7 +321,11 @@ if (typeof window.auUserPicker !== 'function') {
                 this.currentValue = this.$el.dataset.current || '';
                 this.submitOnChange = this.$el.dataset.submitOnChange === '1';
                 this.$nextTick(() => { if (this.$refs.native) this.$refs.native.value = this.currentValue; });
-                this._repositionMenu = () => this.open && this.positionMenu();
+                this._repositionMenu = (e) => {
+                    if (!this.open) return;
+                    if (e?.target && this.$el.querySelector('.au-up-menu')?.contains(e.target)) return;
+                    this.positionMenu();
+                };
                 window.addEventListener('resize', this._repositionMenu, { passive: true });
                 window.addEventListener('scroll', this._repositionMenu, { passive: true, capture: true });
                 window.visualViewport?.addEventListener('resize', this._repositionMenu, { passive: true });

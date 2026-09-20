@@ -51,7 +51,7 @@
         <div class="juy-kpi"><div class="juy-kpi-icon"><i class="fas fa-book"></i></div>
             <div><div class="juy-kpi-value">{{ $kpis['ie'] }}</div><div class="juy-kpi-label">IE &lt; 10</div></div></div>
         <div class="juy-kpi"><div class="juy-kpi-icon"><i class="fas fa-sitemap"></i></div>
-            <div><div class="juy-kpi-value">{{ $kpis['parcours'] }}</div><div class="juy-kpi-label">Parcours</div></div></div>
+            <div><div class="juy-kpi-value">{{ $kpis['parcours'] }}</div><div class="juy-kpi-label">@rang('parcours')</div></div></div>
     </div>
 </div>
 

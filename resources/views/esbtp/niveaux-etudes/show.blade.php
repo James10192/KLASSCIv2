@@ -9,7 +9,7 @@
 
 @php
     $nType = $niveauxEtude->type;
-    $lmdTypes = ['Licence', 'Master', 'Doctorat', 'Bachelor'];
+    $lmdTypes = \App\Models\ESBTPNiveauEtude::CYCLES_LMD;
     if (!$nType) {
         $chipCls = 'warn'; $chipIco = 'fa-exclamation-triangle'; $chipLbl = 'Type non défini';
     } elseif (in_array($nType, $lmdTypes)) {

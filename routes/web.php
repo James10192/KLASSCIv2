@@ -453,7 +453,17 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 Route::post('inscriptions/{inscription}/unsubscribe-optional-fee', [\App\Http\Controllers\ESBTPInscriptionPaiementController::class, 'unsubscribeFromOptionalFee'])->name('inscriptions.unsubscribe-optional-fee');
             });
 
-            // Routes pour les certificats de scolaritÃ©
+
+            // Routes pour les rÃ´les et permissions
+            Route::resource('roles', \App\Http\Controllers\ESBTP\RoleController::class)->middleware(['role:superAdmin']);
+        });
+
+        Route::middleware(['auth', 'permission:admin.access|identity.direct_studies|identity.registrar|identity.registrar_clerk|identity.enrollment_officer', 'paywall'])->group(function () {
+
+            // Certificats et attestations : documents de SCOLARITE, donc
+            // ouverts aux memes cles que les bulletins. Restes derriere le seul
+            // admin.access, ils renvoyaient « Acces restreint » au service et a la
+            // responsable scolarite — dont le metier est precisement de les tirer.
             Route::get('/etudiants/{etudiant}/certificat-preview', [ESBTPEtudiantController::class, 'previewCertificat'])
                 ->name('etudiants.certificat.preview')
                 ->middleware(['permission:students.view']);
@@ -474,12 +484,6 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             Route::get('/etudiants/{etudiant}/attestation-frequentation/preview-pdf', [ESBTPEtudiantController::class, 'previewAttestationFrequentationPdf'])
                 ->name('etudiants.attestation-frequentation.preview-pdf')
                 ->middleware(['permission:students.view', 'throttle:60,1']);
-
-            // Routes pour les rÃ´les et permissions
-            Route::resource('roles', \App\Http\Controllers\ESBTP\RoleController::class)->middleware(['role:superAdmin']);
-        });
-
-        Route::middleware(['auth', 'permission:admin.access|identity.direct_studies|identity.registrar|identity.registrar_clerk|identity.enrollment_officer', 'paywall'])->group(function () {
 
             // Routes pour les filiÃ¨res â€” gates per-mÃ©thode (avant: middleware OR'd cassÃ© qui laissait passer view â†’ write)
             // /!\ Les routes statiques (create) DOIVENT Ãªtre dÃ©clarÃ©es AVANT les routes paramÃ©trÃ©es ({filiere})
@@ -624,7 +628,6 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                     Route::post('{etudiant}/abandon', [\App\Http\Controllers\ESBTP\ESBTPReinscriptionController::class, 'marquerAbandon'])->name('marquer-abandon');
                     Route::post('{etudiant}/restaurer', [\App\Http\Controllers\ESBTP\ESBTPReinscriptionController::class, 'restaurerAbandon'])->name('restaurer-abandon');
                 });
-                Route::post('{etudiant}/valider', [\App\Http\Controllers\ESBTP\ESBTPReinscriptionController::class, 'validerReinscription'])->name('valider-reinscription');
 
                 // Route AJAX pour lazy loading des catÃ©gories
                 Route::get('load-category/{category}', [\App\Http\Controllers\ESBTP\ESBTPReinscriptionController::class, 'loadCategory'])->name('load-category');
@@ -728,7 +731,10 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 ->middleware(['permission:classes.view']);
             // Routes pour les matiÃ¨res
             Route::name('matieres.')->prefix('matieres')->group(function () {
-                // Affectation Tronc Commun / Spécialité par (filière, niveau) — BTS.
+                // Maquette du bulletin par (filière, niveau) — BTS : composition,
+                // semestre, rang au bulletin, et marquage tronc commun / spécialité.
+                // Le segment d'URL reste `classification` : il est cité dans le
+                // journal des versions et dans `lmd-ecue-leak-bts-picker.md`.
                 // Déclarées AVANT les routes {matiere} pour éviter toute collision literal/param.
                 Route::get('/classification', [\App\Http\Controllers\ESBTPMatiereClassificationController::class, 'index'])
                     ->name('classification')
@@ -739,6 +745,24 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 Route::post('/classification/save', [\App\Http\Controllers\ESBTPMatiereClassificationController::class, 'save'])
                     ->name('classification.save')
                     ->middleware(['permission:matieres.edit']);
+                // Retirer une matière de la maquette. L'enregistrement de cet
+                // écran ne fait que des `update` : sans cette route, retirer
+                // une matière obligeait à passer par le modal des liaisons,
+                // qui effaçait les réglages de ses autres combos.
+                Route::post('/classification/retirer', [\App\Http\Controllers\ESBTPMatiereClassificationController::class, 'retirer'])
+                    ->name('classification.retirer')
+                    ->middleware(['permission:matieres.edit', 'throttle:30,1']);
+                // Maquette : import depuis le planning général, ordre général, retour à l'ordre général.
+                // Également déclarées avant les routes {matiere}.
+                Route::post('/classification/import-planning', [\App\Http\Controllers\ESBTPMatiereMaquetteController::class, 'importPlanning'])
+                    ->name('classification.import-planning')
+                    ->middleware(['permission:matieres.edit', 'throttle:30,1']);
+                Route::post('/classification/ordre-general', [\App\Http\Controllers\ESBTPMatiereMaquetteController::class, 'ordreGeneral'])
+                    ->name('classification.ordre-general')
+                    ->middleware(['permission:matieres.edit', 'throttle:30,1']);
+                Route::post('/classification/reset-ordre', [\App\Http\Controllers\ESBTPMatiereMaquetteController::class, 'resetOrdre'])
+                    ->name('classification.reset-ordre')
+                    ->middleware(['permission:matieres.edit', 'throttle:30,1']);
                 Route::get('/json', [ESBTPMatiereController::class, 'getMatieresJson'])
                     ->name('json')
                     ->middleware(['permission:matieres.view']);
@@ -1056,7 +1080,12 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
 
             // Routes pour le planning gÃ©nÃ©ral
             Route::prefix('planning-general')->name('planning-general.')->group(function () {
-                Route::get('/', [ESBTPPlanningGeneralController::class, 'index'])->name('index');
+                // `index` etait declaree ici AUSSI, sans permission propre. Meme
+                // methode et meme URI que celle plus bas dans ce fichier : la
+                // collection n'en garde qu'une, la derniere enregistree, donc
+                // celle-ci ne repondait jamais. Elle a ete retiree plutot que
+                // documentee : tant qu'elle existait, supprimer un jour l'autre
+                // bloc l'aurait fait revivre en silence, avec d'autres gardes.
                 Route::get('/test', [ESBTPPlanningGeneralController::class, 'indexTest'])->name('test');
                 Route::post('/planification', [ESBTPPlanningGeneralController::class, 'storePlanification'])->name('store-planification');
                 Route::delete('/planification/{id}', [ESBTPPlanningGeneralController::class, 'destroyPlanification'])->name('destroy-planification');
@@ -1872,7 +1901,34 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
     });
 
     // Routes pour la configuration du paywall - Service Technique ADC seulement
-    Route::prefix('esbtp')->name('esbtp.')->middleware(['auth', 'paywall', 'permission:system.manage'])->group(function () {
+    //
+    // TROIS gardes protègent ces pages, et il faut les connaître toutes les
+    // trois avant d'en toucher une :
+    //
+    //   1. `paywall` → `PaywallMiddleware::hasServiceTechniquePermissions()`,
+    //      qui est un `hasRole('serviceTechnique')` EN DUR. C'est le plus
+    //      strict, il s'exécute en premier, et `Gate::before` ne le contourne
+    //      pas — un superAdmin n'entre pas ici. C'est la garde OPÉRANTE :
+    //      le jour où une école voudra déléguer ce droit, c'est cette
+    //      ligne-là qu'il faudra changer, pas la permission ci-dessous.
+    //   2. `permission:paywall.manage` → la présente garde de route.
+    //   3. `ESBTPPaywallConfigController::checkServiceTechniqueAccess()`, qui
+    //      exige `paywall.manage` action par action.
+    //
+    // Deux exceptions à la garde #1 : `blocked` et `upgrade` sont dans
+    // `PaywallMiddleware::$excludedRoutes`, testé AVANT la détection des routes
+    // d'abonnement. Un superAdmin y accède donc, et ni l'une ni l'autre
+    // n'appelle la garde #3 — sans conséquence, les deux ne font que rendre une
+    // vue. Mais ce sont bien deux pages de ce groupe qui n'ont qu'une garde.
+    //
+    // La route exigeait `system.manage` — celle qui ouvre AUSSI `/esbtp/settings`,
+    // donc une troisième permission, plus large que les deux autres. Aucune
+    // faille n'en résultait (le contrôle de rôle passe avant), mais les trois
+    // gardes ne disaient pas la même chose, et c'est ainsi qu'on finit par
+    // croire l'une en ayant lu l'autre.
+    //
+    // Le lien de la barre latérale est réservé au rôle, lui aussi.
+    Route::prefix('esbtp')->name('esbtp.')->middleware(['auth', 'paywall', 'permission:paywall.manage'])->group(function () {
         Route::get('/paywall-config', [ESBTPPaywallConfigController::class, 'index'])->name('paywall-config.index');
         Route::get('/paywall-config/blocked', [ESBTPPaywallConfigController::class, 'blocked'])->name('paywall-config.blocked');
         Route::get('/paywall-config/upgrade', [ESBTPPaywallConfigController::class, 'upgrade'])->name('paywall-config.upgrade');
@@ -3544,6 +3600,7 @@ Route::middleware(['auth', 'permission:module.tpe.access'])->group(function () {
 });
 
 require __DIR__.'/academic-pilotage.php';
+require __DIR__.'/dispenses.php';
 
 
 

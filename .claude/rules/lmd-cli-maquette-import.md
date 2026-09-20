@@ -20,15 +20,16 @@ Une **UE et ses ECUE peuvent être partagées** entre plusieurs domaines / menti
 
 `ESBTPUniteEnseignement::ecues()` lit **le pivot `esbtp_ue_matiere` d'abord**, et retombe sur le `hasMany` (FK directe) seulement si le pivot est vide.
 
-## ⚠️ Limite de l'`import` : pivot UE↔parcours OUI, pivot ECUE↔UE NON
+## Partage d'une UE entre parcours par l'`import` (depuis septembre 2026)
 
 `LMDImportService::import()` :
-- **UE↔Parcours** : appelle `parcoursUeSync->sync($parcours, $links, detachMissing:false)` → peuple le pivot `esbtp_lmd_parcours_ue` en **mode append** (jamais de detach). Une même UE (même code) importée pour 2 parcours est correctement partagée. ✅
-- **ECUE↔UE** : `upsertECUE()` écrit **seulement** `esbtp_matieres.unite_enseignement_id` (FK simple). Il **ne touche pas** `esbtp_ue_matiere`.
+- **UE↔Parcours** : `parcoursUeSync->sync($parcours, $links, detachMissing:false)` peuple `esbtp_lmd_parcours_ue` en **mode append**. Une UE déjà tenue par un autre parcours (même `code`) est **partagée, pas réécrite** : sa fiche (`parcours_id`, `semestre`, `credit`, `niveau_id`) reste celle du premier import ; le second parcours reçoit son propre semestre sur le lien, et son crédit y est gravé (`esbtp_lmd_parcours_ue.credit`) s'il diffère de celui de la fiche. ✅
+- **ECUE↔UE** : `upsertECUE()` écrit la FK `esbtp_matieres.unite_enseignement_id` (rétro-compat) **et** la ligne de pivot `esbtp_ue_matiere` **réservée au parcours importé** (`parcours_id`). Deux parcours qui partagent une UE peuvent donc importer des éléments différents sans se déposséder. ✅
+- **Refus restant** (`ConflitDeMaquette`, transaction annulée, tous les conflits listés) : un ECUE dont le `code` appartient déjà à une **autre UE** — l'import le reparenterait et le retirerait de la première.
+- **Refus de reparentage** (septembre 2026) : une mention dont le `code` appartient déjà à une mention d'un **autre domaine**, ou un parcours dont le `code` appartient à un parcours d'une **autre mention**. `updateOrCreate` les déplaçait en silence, maquette comprise. Piège fréquent : sans `code` dans la maquette, le code se déduit du nom, donc deux « Gestion » dans deux domaines se télescopent. Donner un code propre à chaque mention et parcours.
+- **Niveaux** : `niveaux.*.type` est conservé (déduit de l'année à défaut : 4-5 → Master) et doit correspondre à l'année (Master 1 = année 4, `App\Rules\AnneeDuCycleLmd`).
 
-**Piège** : si une même matière (même `code`, ex `BPM311` RDM) est importée sous **deux UE différentes** (ex PM de BU `BPM3` et PM de TP `TPPM3`), le 2ᵉ import **réécrit** `unite_enseignement_id` → la matière n'appartient plus qu'à la dernière UE. Comme l'import ne peuple pas `esbtp_ue_matiere`, `ecues()` retombe sur la FK directe → **la matière disparaît de la 1ʳᵉ UE**. Codes UE et ECUE sont **globalement uniques** (`where('code')`).
-
-→ Pour qu'une ECUE soit réellement partagée entre 2 UE distinctes, il faut **peupler `esbtp_ue_matiere`** (les 2 `unite_enseignement_id`), ce que l'import ne fait pas nativement. Sinon : donner à chaque parcours sa propre ECUE (code distinct).
+**Côté écran** (`/esbtp/lmd/ue`) : le modal ECUE porte un champ **Maquette** (commune / réservée à un parcours), prérempli avec le filtre Parcours ; chaque ligne d'élément affiche « Commun » ou le code du parcours qui la réserve ; le retrait vise la maquette de la ligne cliquée.
 
 ## Idempotence & sécurité
 

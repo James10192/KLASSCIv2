@@ -1285,7 +1285,7 @@ class ESBTPInscriptionService
             $etudiantId = $inscription->etudiant_id;
             $now = now();
             ESBTPNote::where('etudiant_id', $etudiantId)
-                ->where('classe_id', $ancienneClasseId)
+                ->rattacheesALaClasse($ancienneClasseId)
                 ->update(['archived_at' => $now]);
             ESBTPResultat::where('etudiant_id', $etudiantId)
                 ->where('classe_id', $ancienneClasseId)
@@ -1297,9 +1297,12 @@ class ESBTPInscriptionService
 
         // Restaurer les données archivées si l'étudiant revient dans la nouvelle classe
         $etudiantId = $inscription->etudiant_id;
+        // MEME predicat qu'a l'archivage ci-dessus, sans quoi un retour dans la
+        // classe laisserait archivees les notes dont la colonne denormalisee
+        // avait derive.
         ESBTPNote::withoutGlobalScope('not_archived')
             ->where('etudiant_id', $etudiantId)
-            ->where('classe_id', $nouvelleClasseId)
+            ->rattacheesALaClasse($nouvelleClasseId)
             ->whereNotNull('archived_at')
             ->update(['archived_at' => null]);
         ESBTPResultat::withoutGlobalScope('not_archived')

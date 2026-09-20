@@ -128,14 +128,21 @@
                         <div class="form-grid">
                             <div class="form-group">
                                 <label for="jour" class="form-label">Jour <span class="text-danger">*</span></label>
+                                {{-- Ce formulaire postait « Lundi »…« Samedi », quand l'autre écran de
+                                     création poste 1…6 : la colonne recevait donc DEUX écritures, et
+                                     chacune des onze lectures devait se rappeler de les réconcilier —
+                                     onze lectures qui étaient toutes fausses avant ce chantier. Il
+                                     poste désormais le rang, comme l'autre. Les lignes déjà écrites en
+                                     toutes lettres restent lisibles (`JourDeLaSemaine::rang()` connaît
+                                     les deux) : rien à migrer, mais la divergence cesse de grossir.
+
+                                     Les libellés viennent du domaine plutôt que d'être recopiés ici —
+                                     c'était la septième copie de cette même liste. --}}
                                 <select name="jour" id="jour" class="form-select @error('jour') error @enderror" required>
                                     <option value="">Sélectionner un jour</option>
-                                    <option value="Lundi" {{ old('jour') == 'Lundi' ? 'selected' : '' }}>Lundi</option>
-                                    <option value="Mardi" {{ old('jour') == 'Mardi' ? 'selected' : '' }}>Mardi</option>
-                                    <option value="Mercredi" {{ old('jour') == 'Mercredi' ? 'selected' : '' }}>Mercredi</option>
-                                    <option value="Jeudi" {{ old('jour') == 'Jeudi' ? 'selected' : '' }}>Jeudi</option>
-                                    <option value="Vendredi" {{ old('jour') == 'Vendredi' ? 'selected' : '' }}>Vendredi</option>
-                                    <option value="Samedi" {{ old('jour') == 'Samedi' ? 'selected' : '' }}>Samedi</option>
+                                    @foreach (\App\Domain\EmploiTemps\JourDeLaSemaine::libelles() as $rang => $libelle)
+                                        <option value="{{ $rang }}" {{ (string) old('jour') === (string) $rang ? 'selected' : '' }}>{{ $libelle }}</option>
+                                    @endforeach
                                 </select>
                                 @error('jour')
                                     <div class="form-error">{{ $message }}</div>
@@ -631,7 +638,8 @@
         const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
         const dayNames = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
         const dayNamesFull = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
-        const hours = Array.from({length: 11}, (_, i) => i + 8); // 8h à 18h
+        // Creneaux de la journee de l'etablissement : meme forme que la matrice serveur.
+        const hours = @json(app(\App\Services\Planning\PlageHoraireJournee::class)->creneaux());
 
         // État édition inline
         let inlineEditMode = false;
@@ -794,8 +802,7 @@
                 if (!slot) return;
                 const statuses = ['unavailable', 'available', 'preferred'];
                 const currentStatus = statuses.find(s => slot.classList.contains(s));
-                const timeIndex = parseInt(slot.dataset.timeIndex);
-                const startHour = 8 + timeIndex;
+                const startHour = parseInt(slot.dataset.hour);
                 const endHour = startHour + 1;
 
                 changedSlots.push({

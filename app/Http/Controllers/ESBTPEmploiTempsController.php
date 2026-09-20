@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Domain\EmploiTemps\ConflitsDUnCreneau;
+use App\Domain\EmploiTemps\HeureDeSeance;
+use App\Domain\EmploiTemps\JourDeLaSemaine;
 use App\Helpers\SettingsHelper;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPClasse;
@@ -311,8 +314,11 @@ class ESBTPEmploiTempsController extends Controller
     /**
      * Génère une liste de créneaux horaires à partir des séances existantes.
      */
-    private function generateTimeSlots($seances, int $intervalMinutes = 60, string $defaultStart = '07:00', string $defaultEnd = '18:00'): array
+    private function generateTimeSlots($seances, int $intervalMinutes = 60, ?string $defaultStart = null, ?string $defaultEnd = null): array
     {
+        $plage = app(\App\Services\Planning\PlageHoraireJournee::class);
+        $defaultStart ??= sprintf('%02d:00', $plage->debut());
+        $defaultEnd ??= sprintf('%02d:00', $plage->fin());
         $intervalMinutes = max(1, $intervalMinutes);
 
         $convertToMinutes = function ($value) {
@@ -717,7 +723,7 @@ class ESBTPEmploiTempsController extends Controller
             // bulk-edit affiche les heures CM/TD/TP realisees comme emploi-temps/show.
             // Feedback Marcel : "Dans bulk-edit il n'y a pas budgetisation par CM tp etc"
             if (($emploiTemps->classe->systeme_academique ?? '') === 'LMD'
-                || in_array($emploiTemps->classe->niveau->type ?? '', ['Licence', 'Master', 'Doctorat'], true)) {
+                || in_array($emploiTemps->classe->niveau->type ?? '', \App\Models\ESBTPNiveauEtude::CYCLES_LMD, true)) {
                 // Pas de filtre semestre : la planification académique (UE/ECUE) couvre tout le
                 // niveau (ex L3 = S5+S6). Le label esbtp_emploi_temps.semestre est BTS-orienté et
                 // ne correspond pas aux semestres LMD réels → on charge la planification complète,
@@ -832,9 +838,6 @@ class ESBTPEmploiTempsController extends Controller
         // Variable $seances pour la vue
         $seances = $emploi_temp->seances;
 
-        // Grouper les séances par jour
-        $seancesParJour = $emploi_temp->getSeancesParJour();
-
         // Setting configurable : afficher le dimanche ou non (default false)
         $showSunday = (bool) \App\Models\ESBTPSystemSetting::getValue('emploi_temps.show_sunday', false);
 
@@ -883,7 +886,7 @@ class ESBTPEmploiTempsController extends Controller
             // canonical (SSOT). buildWithVolumeBudget() calcule les heures realisees CM/TD/TP
             // via VolumeBudgetService pour les KPIs hero "heures restantes / % realise".
             if (($emploi_temp->classe->systeme_academique ?? '') === 'LMD'
-                || in_array($emploi_temp->classe->niveau->type ?? '', ['Licence', 'Master', 'Doctorat'], true)) {
+                || in_array($emploi_temp->classe->niveau->type ?? '', \App\Models\ESBTPNiveauEtude::CYCLES_LMD, true)) {
                 // Pas de filtre semestre : planification complète du niveau LMD (cf. note bulk-edit
                 // plus haut). Le label semestre BTS de l'emploi du temps ne mappe pas les semestres LMD.
                 $planificationData = app(\App\Services\LMD\MatiereTreeBuilder::class)
@@ -934,7 +937,7 @@ class ESBTPEmploiTempsController extends Controller
         $lmdUesAvecEcues = $suiviData['lmdUesAvecEcues'];
 
         return view('esbtp.emploi-temps.show', compact(
-            'emploiTemps', 'seances', 'seancesParJour',
+            'emploiTemps', 'seances',
             'joursNoms', 'matiereStats', 'timeSlots', 'days', 'planificationData',
             'heroKpis', 'showSunday',
             // Tab Suivi heures
@@ -993,17 +996,7 @@ class ESBTPEmploiTempsController extends Controller
         // doit aussi filtrer par semestre quand periode='semestre1'/'semestre2').
         $lmdSemestres = [];
         if ($isLmd) {
-            $niveauType = optional($classe->niveau)->type ?? '';
-            $niveauYear = (int) (optional($classe->niveau)->year ?? 1);
-            $baseSem = 0;
-            if ($niveauType === 'Licence') {
-                $baseSem = ($niveauYear - 1) * 2;
-            } elseif ($niveauType === 'Master') {
-                $baseSem = 6 + ($niveauYear - 1) * 2;
-            } elseif ($niveauType === 'Doctorat') {
-                $baseSem = 10 + ($niveauYear - 1) * 2;
-            }
-            $lmdSemestres = [$baseSem + 1, $baseSem + 2];
+            $lmdSemestres = $classe->getSemestresLMD();
         }
 
         $planningMatiere = ['stats' => ['heures_planifiees' => 0, 'heures_realisees' => 0, 'nb_seances' => 0, 'taux_realisation' => 0], 'matieres' => collect()];
@@ -1314,11 +1307,7 @@ class ESBTPEmploiTempsController extends Controller
      */
     public function studentTimetable()
     {
-        $user = Auth::user();
-        \Log::info('Utilisateur connecté:', ['user_id' => $user->id]);
-
-        $etudiant = ESBTPEtudiant::where('user_id', $user->id)->first();
-        \Log::info('Étudiant trouvé:', ['etudiant_id' => $etudiant ? $etudiant->id : null]);
+        $etudiant = ESBTPEtudiant::where('user_id', Auth::id())->first();
 
         if (! $etudiant) {
             return redirect()->route('dashboard')->with('error', 'Profil étudiant non trouvé.');
@@ -1331,16 +1320,6 @@ class ESBTPEmploiTempsController extends Controller
                 $query->where('is_current', true);
             })
             ->first();
-        \Log::info('Inscription trouvée:', [
-            'inscription_id' => $inscription ? $inscription->id : null,
-            'classe_id' => $inscription ? $inscription->classe_id : null,
-            'status' => $inscription ? $inscription->status : null,
-            'annee_universitaire' => $inscription && $inscription->anneeUniversitaire ? [
-                'id' => $inscription->anneeUniversitaire->id,
-                'name' => $inscription->anneeUniversitaire->name,
-                'is_current' => $inscription->anneeUniversitaire->is_current,
-            ] : null,
-        ]);
 
         if (! $inscription) {
             return view('etudiants.emploi-temps', [
@@ -1351,41 +1330,7 @@ class ESBTPEmploiTempsController extends Controller
             ])->with('warning', 'Aucune inscription active trouvée pour l\'année en cours.');
         }
 
-        // Récupérer l'emploi du temps actif pour la classe de l'étudiant
-        $emploiTemps = ESBTPEmploiTemps::where('classe_id', $inscription->classe_id)
-            ->where(function ($query) {
-                $query->where('is_active', true)
-                    ->orWhere('is_current', true);
-            })
-            ->orderBy('created_at', 'desc')
-            ->first();
-        \Log::info('Emploi du temps trouvé:', [
-            'emploi_temps_id' => $emploiTemps ? $emploiTemps->id : null,
-            'classe_id' => $emploiTemps ? $emploiTemps->classe_id : null,
-            'is_active' => $emploiTemps ? $emploiTemps->is_active : null,
-            'is_current' => $emploiTemps ? $emploiTemps->is_current : null,
-            'sql' => ESBTPEmploiTemps::where('classe_id', $inscription->classe_id)
-                ->where(function ($query) {
-                    $query->where('is_active', true)
-                        ->orWhere('is_current', true);
-                })
-                ->orderBy('created_at', 'desc')
-                ->toSql(),
-            'bindings' => ESBTPEmploiTemps::where('classe_id', $inscription->classe_id)
-                ->where(function ($query) {
-                    $query->where('is_active', true)
-                        ->orWhere('is_current', true);
-                })
-                ->orderBy('created_at', 'desc')
-                ->getBindings(),
-            'total_emplois_temps' => ESBTPEmploiTemps::where('classe_id', $inscription->classe_id)->count(),
-            'emplois_temps_actifs' => ESBTPEmploiTemps::where('classe_id', $inscription->classe_id)
-                ->where(function ($query) {
-                    $query->where('is_active', true)
-                        ->orWhere('is_current', true);
-                })
-                ->count(),
-        ]);
+        $emploiTemps = $this->emploiTempsActifDeLaClasse($inscription->classe_id);
 
         if (! $emploiTemps) {
             return view('etudiants.emploi-temps', [
@@ -1404,29 +1349,48 @@ class ESBTPEmploiTempsController extends Controller
             ->orderBy('heure_debut')
             ->get();
 
-        \Log::info('Séances trouvées avant groupement:', [
-            'nombre_seances' => $seances->count(),
-            'seances' => $seances->map(function ($seance) {
-                return [
-                    'id' => $seance->id,
-                    'jour' => $seance->jour,
-                    'heure_debut' => $seance->heure_debut,
-                    'heure_fin' => $seance->heure_fin,
-                    'matiere' => $seance->matiere ? $seance->matiere->name : null,
-                    'enseignant' => $seance->enseignantName,
-                ];
-            })->toArray(),
-        ]);
+        // Grouper les séances par jour, sur le NUMÉRO du jour (1 = lundi).
+        //
+        // C'était `groupBy('jour')`, donc sur la valeur brute de la colonne — qui
+        // porte indifféremment « 1 » ou « Lundi ». Or la vue lit
+        // `$seancesGroupees[1]`…`[6]` (grille bureau et onglets mobile) : les
+        // séances saisies depuis l'emploi du temps, écrites en toutes lettres,
+        // n'étaient dans AUCUN de ces six seaux. L'étudiant ne les voyait pas sur
+        // sa propre page d'emploi du temps, sans rien qui le signale.
+        //
+        // Le seau `0` recueille les jours illisibles : la vue ne le lit pas, donc
+        // ils restent hors écran comme avant, mais ils sont journalisés au lieu
+        // de disparaître en silence.
+        $seancesGroupees = $seances->groupBy(
+            fn ($seance) => JourDeLaSemaine::numero($seance->jour) ?? 0
+        );
 
-        // Grouper les séances par jour
-        $seancesGroupees = $seances->groupBy('jour');
-
-        \Log::info('Séances après groupement:', [
-            'jours_avec_seances' => $seancesGroupees->keys()->toArray(),
-            'nombre_seances_par_jour' => $seancesGroupees->map->count()->toArray(),
-        ]);
+        if ($seancesGroupees->has(0)) {
+            \Log::warning('Séances au jour illisible, absentes de l\'emploi du temps étudiant', [
+                'etudiant_id' => $etudiant->id ?? null,
+                'jours' => $seancesGroupees->get(0)->pluck('jour')->unique()->values()->all(),
+            ]);
+        }
 
         return view('etudiants.emploi-temps', compact('etudiant', 'emploiTemps', 'inscription', 'seancesGroupees'));
+    }
+
+    /**
+     * L'emploi du temps que voit un étudiant de cette classe.
+     *
+     * `is_active` OU `is_current` : les deux colonnes coexistent et ont été
+     * peuplées séparément selon l'époque, donc exiger les deux masquerait des
+     * emplois du temps bien en service. Le plus récent gagne.
+     */
+    private function emploiTempsActifDeLaClasse(int $classeId): ?ESBTPEmploiTemps
+    {
+        return ESBTPEmploiTemps::where('classe_id', $classeId)
+            ->where(function ($query) {
+                $query->where('is_active', true)
+                    ->orWhere('is_current', true);
+            })
+            ->orderBy('created_at', 'desc')
+            ->first();
     }
 
     public function setAsCurrent($id)
@@ -1571,7 +1535,8 @@ class ESBTPEmploiTempsController extends Controller
 
         // Préparer les données de disponibilités pour chaque enseignant
         $enseignantsAvecDisponibilites = $enseignants->map(function ($enseignant) {
-            $enseignant->availability_data = $this->prepareAvailabilityData($enseignant);
+            $enseignant->availability_data = app(\App\Services\TeacherPlanningService::class)
+                ->getAvailabilityMatrix($enseignant)['availability'];
 
             return $enseignant;
         });
@@ -1590,40 +1555,42 @@ class ESBTPEmploiTempsController extends Controller
 
         $validated['emploi_temps_id'] = $emploi_temp->id;
 
+        if ($conflits = $this->conflitsDeLaSeance($emploi_temp, $validated)) {
+            return redirect()->back()->withInput()->withErrors(['conflicts' => $conflits]);
+        }
+
         // Calculer la durée de la séance en heures
         $heureDebut = \Carbon\Carbon::parse($validated['heure_debut']);
         $heureFin = \Carbon\Carbon::parse($validated['heure_fin']);
         $dureeSeance = $heureFin->diffInMinutes($heureDebut) / 60; // Convertir en heures
 
-        // Vérifier s'il existe une planification académique pour cette matière
-        $planification = ESBTPPlanificationAcademique::where('annee_universitaire_id', $validated['annee_universitaire_id'])
-            ->where('filiere_id', $emploi_temp->classe->filiere_id)
-            ->where('niveau_etude_id', $emploi_temp->classe->niveau_etude_id)
-            ->where('matiere_id', $validated['matiere_id'])
-            ->first();
+        $planification = $this->planificationDeLaMatiere($emploi_temp, $validated);
 
-        // Vérifier si le volume horaire n'est pas dépassé
-        if ($planification) {
-            $heuresEffectuees = $planification->heures_effectuees ?? 0;
-            $volumeTotal = $planification->volume_horaire_total;
-
-            if (($heuresEffectuees + $dureeSeance) > $volumeTotal) {
-                return redirect()->back()
-                    ->withInput()
-                    ->withErrors([
-                        'heure_fin' => 'Cette séance dépasserait le volume horaire total de la matière. Heures disponibles: '.
-                                      ($volumeTotal - $heuresEffectuees).'h sur '.$volumeTotal.'h total.',
-                    ]);
-            }
+        if ($depassement = $this->depassementDuVolumeHoraire($planification, $dureeSeance)) {
+            return redirect()->back()->withInput()->withErrors(['heure_fin' => $depassement]);
         }
 
         $seance = new \App\Models\ESBTPSeanceCours;
         $seance->emploi_temps_id = $validated['emploi_temps_id'];
         $seance->classe_id = $validated['classe_id'];
         $seance->matiere_id = $validated['matiere_id'];
-        $seance->enseignant_id = $validated['enseignant_id'];
+        // `enseignant_id` n'est plus une colonne de cette table : elle a été
+        // supprimée en mars 2025 (`update_esbtp_seance_cours_table_for_enseignant_text`)
+        // au profit de `teacher_id`. L'affectation partait donc en
+        // `SQLSTATE[42S22] Unknown column` : ce chemin de saisie était cassé net,
+        // pas seulement aveugle aux conflits.
+        //
+        // Le champ du formulaire s'appelle `enseignant_id` mais porte déjà un
+        // `esbtp_teachers.id` — la liste est bâtie sur `ESBTPTeacher`. C'est donc
+        // la MÊME valeur que `teacher_id` attend : rien à traduire, seulement la
+        // bonne colonne. (La règle de validation, elle, l'attestait contre
+        // `users` ; elle est corrigée dans la FormRequest.)
+        $seance->teacher_id = $validated['enseignant_id'];
         $seance->type_seance = $validated['type_seance'];
         $seance->jour = $validated['jour'];
+        // La date de la séance, que ce chemin de saisie n'écrivait pas — voir
+        // `dateDeLaSeance()`, qui porte le pourquoi.
+        $seance->date_seance = $this->dateDeLaSeance($emploi_temp, $validated['jour']);
         $seance->heure_debut = $validated['heure_debut'];
         $seance->heure_fin = $validated['heure_fin'];
         $seance->salle = $validated['salle'] ?? null;
@@ -1660,8 +1627,36 @@ class ESBTPEmploiTempsController extends Controller
      */
     public function today()
     {
-        // Récupérer le jour de la semaine actuel (0 = Lundi, 1 = Mardi, etc.)
-        $jourActuel = now()->dayOfWeekIso - 1; // dayOfWeekIso retourne 1 pour lundi, 2 pour mardi, etc.
+        // Le jour d'aujourd'hui, dans l'écriture de la colonne (1 = lundi).
+        //
+        // Il valait `dayOfWeekIso - 1`, soit ZÉRO le lundi : la page cherchait
+        // donc, chaque jour, un numéro qui n'est celui d'aucune séance de ce
+        // jour-là. Ça, c'est certain — il suffit de lire la ligne.
+        //
+        // Ce qu'elle rendait alors demande une précision qui n'est PAS
+        // intuitive, et une première version de ce commentaire s'y est trompée
+        // en écrivant « aucune séance, aucun jour » :
+        //
+        //   `esbtp_seance_cours.jour` est un VARCHAR (migration de mars 2024),
+        //   la liaison PDO envoie un entier en `PARAM_INT` (`Connection::bindValues`)
+        //   et les requêtes sont préparées nativement (`Connector` pose
+        //   `ATTR_EMULATE_PREPARES => false`, que `config/database.php` ne
+        //   surcharge pas). MySQL compare alors la chaîne au nombre EN NOMBRE,
+        //   et « Lundi » vaut 0.
+        //
+        //   Donc le lundi, `where('jour', 0)` ramenait TOUTES les séances
+        //   écrites en toutes lettres, tous jours confondus ; et les autres
+        //   jours, celles de la veille écrites en chiffres. La page n'était pas
+        //   vide : elle servait le mauvais jour, en silence — et c'est sur cette
+        //   liste que les présences se prennent.
+        //
+        // La distinction vaut d'être notée : PHP 8 ne fait PAS cette conversion
+        // (RFC « Saner string to number comparisons » — `1 == 'Lundi'` y est
+        // faux, ce que fixe `JourDeLaSemaineTest`). Le raisonnement PHP ne se
+        // transpose pas à SQL. Rejouable en trois secondes sur n'importe quelle
+        // instance : `SELECT 'Lundi' = 0;` rend 1. Non exécuté ici, cet
+        // environnement n'ayant pas de MySQL.
+        $jourActuel = now()->dayOfWeekIso;
 
         // Récupérer la date actuelle
         $dateActuelle = now()->format('Y-m-d');
@@ -1678,7 +1673,8 @@ class ESBTPEmploiTempsController extends Controller
 
         // Récupérer les séances de cours pour aujourd'hui
         $seancesAujourdhui = ESBTPSeanceCours::whereIn('emploi_temps_id', $emploisTempsIds)
-            ->where('jour', $jourActuel)
+            // Les deux écritures : la colonne n'est pas normalisée.
+            ->whereIn('jour', JourDeLaSemaine::ecrituresDe($jourActuel))
             ->with(['matiere', 'enseignant', 'emploiTemps.classe'])
             ->orderBy('heure_debut')
             ->get();
@@ -1692,18 +1688,9 @@ class ESBTPEmploiTempsController extends Controller
         $totalSeancesAujourdhui = $seancesAujourdhui->count();
         $totalClassesAujourdhui = $seancesParClasse->count();
 
-        // Noms des jours pour l'affichage
-        $joursNoms = [
-            1 => 'Lundi',
-            2 => 'Mardi',
-            3 => 'Mercredi',
-            4 => 'Jeudi',
-            5 => 'Vendredi',
-            6 => 'Samedi',
-        ];
-
-        // Jour actuel en texte
-        $jourActuelTexte = $joursNoms[$jourActuel] ?? 'Jour inconnu';
+        // Jour actuel en texte. La table locale qui servait ici est retirée :
+        // elle n'était lue que par cette ligne.
+        $jourActuelTexte = JourDeLaSemaine::libelle($jourActuel) ?? 'Jour inconnu';
 
         return view('esbtp.emploi-temps.today', compact(
             'seancesAujourdhui',
@@ -1980,52 +1967,6 @@ class ESBTPEmploiTempsController extends Controller
         }
     }
 
-    /**
-     * Prépare les données de disponibilité d'un enseignant pour l'affichage
-     * Format standardisé: $availability[$day][$hourIndex]
-     */
-    private function prepareAvailabilityData($teacher)
-    {
-        // Définition des créneaux horaires (8h-18h = 11 créneaux d'1h)
-        $hours = range(8, 18);
-        $days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']; // Pas de dimanche
-
-        // Initialiser toutes les cases comme indisponibles
-        $availability = [];
-        foreach ($days as $day) {
-            $availability[$day] = array_fill(0, count($hours), 'unavailable');
-        }
-
-        // Traiter les disponibilités enregistrées
-        foreach ($teacher->availabilities as $avail) {
-            // Mapping jour de semaine (0=Lundi, 1=Mardi, etc.)
-            $dayName = $days[$avail->day_of_week] ?? null;
-            if (! $dayName) {
-                continue;
-            }
-
-            // Parser les heures depuis les timestamps
-            if ($avail->start_time instanceof \Carbon\Carbon) {
-                $startHour = $avail->start_time->hour;
-                $endHour = $avail->end_time->hour;
-            } else {
-                // Format TIME ou string
-                $startHour = (int) substr($avail->start_time, 11, 2); // Position 11-12 pour heure
-                $endHour = (int) substr($avail->end_time, 11, 2);
-            }
-
-            // Décomposer les créneaux multi-heures en créneaux d'1h
-            for ($hour = $startHour; $hour < $endHour; $hour++) {
-                $hourIndex = $hour - 8; // 8h = index 0
-                if ($hourIndex >= 0 && $hourIndex < count($hours)) {
-                    $availability[$dayName][$hourIndex] = $avail->availability_type;
-                }
-            }
-        }
-
-        return $availability;
-    }
-
     private function calculateTextColor(string $hex, string $fallback = '#ffffff'): string
     {
         $hex = ltrim($hex, '#');
@@ -2250,7 +2191,7 @@ class ESBTPEmploiTempsController extends Controller
                         $newSeance->homework_evaluation_id = null;
                         $newSeance->is_active = $isActive;
 
-                        $dayOffset = is_numeric($seance->jour) ? ((int) $seance->jour - 1) : 0;
+                        $dayOffset = $this->decalageDuJour($seance);
                         $newDateSeance = $targetStart->copy()->addDays($dayOffset);
                         $newSeance->date_seance = $newDateSeance->toDateString();
 
@@ -2467,7 +2408,7 @@ class ESBTPEmploiTempsController extends Controller
                     $newSeance->homework_evaluation_id = null;
                     $newSeance->is_active = $isActiveTarget;
 
-                    $dayOffset = is_numeric($seance->jour) ? ((int) $seance->jour - 1) : 0;
+                    $dayOffset = $this->decalageDuJour($seance);
                     $newDateSeance = $targetStartCarbon->copy()->addDays($dayOffset);
                     $newSeance->date_seance = $newDateSeance->toDateString();
 
@@ -2530,8 +2471,8 @@ class ESBTPEmploiTempsController extends Controller
                     'matiere' => $seance->matiere->name ?? 'Matière',
                     'enseignant' => $seance->teacher->name ?? $seance->teacher?->user?->name ?? 'Enseignant',
                     'jour' => $jourLabel,
-                    'heure_debut' => $this->normalizeTime($seance->heure_debut),
-                    'heure_fin' => $this->normalizeTime($seance->heure_fin),
+                    'heure_debut' => HeureDeSeance::hi($seance->heure_debut),
+                    'heure_fin' => HeureDeSeance::hi($seance->heure_fin),
                     'reason' => $check['reason'] ?? 'conflict',
                     'message' => $check['message'] ?? 'Indisponible',
                 ];
@@ -2554,8 +2495,8 @@ class ESBTPEmploiTempsController extends Controller
         }
 
         $targetDate = $targetStart->copy()->addDays($dayIndex)->toDateString();
-        $startTime = $this->normalizeTime($seance->heure_debut);
-        $endTime = $this->normalizeTime($seance->heure_fin);
+        $startTime = HeureDeSeance::hi($seance->heure_debut);
+        $endTime = HeureDeSeance::hi($seance->heure_fin);
 
         if ($startTime && $endTime) {
             $hasAvailability = $teacher->availabilities->isNotEmpty();
@@ -2566,8 +2507,8 @@ class ESBTPEmploiTempsController extends Controller
                             && in_array($availability->availability_type, ['available', 'preferred'], true);
                     })
                     ->first(function (ESBTPTeacherAvailability $availability) use ($startTime, $endTime) {
-                        $availableStart = $this->normalizeTime($availability->start_time);
-                        $availableEnd = $this->normalizeTime($availability->end_time);
+                        $availableStart = HeureDeSeance::hi($availability->start_time);
+                        $availableEnd = HeureDeSeance::hi($availability->end_time);
                         if (! $availableStart || ! $availableEnd) {
                             return false;
                         }
@@ -2604,88 +2545,147 @@ class ESBTPEmploiTempsController extends Controller
         return ['ok' => true];
     }
 
+    /**
+     * Le décalage, en jours, du premier jour d'un emploi du temps.
+     *
+     * Le repli sur lundi était déjà là, mais muet : `is_numeric($jour) ? … : 0`
+     * faisait passer TOUT jour écrit en toutes lettres pour un lundi. Or c'est
+     * précisément ce que le formulaire de l'emploi du temps écrit (« Mercredi »),
+     * donc dupliquer un emploi du temps ramenait ses séances au lundi, en
+     * silence. Le repli subsiste pour ne pas perdre une séance, mais il se
+     * journalise : un rattrapage qu'on ne voit pas est un rattrapage qu'on ne
+     * corrige jamais.
+     */
+    private function decalageDuJour(ESBTPSeanceCours $seance): int
+    {
+        $rang = JourDeLaSemaine::rang($seance->jour);
+
+        if ($rang !== null) {
+            return $rang;
+        }
+
+        \Log::warning('Jour de séance illisible, replié sur le lundi', [
+            'seance_id' => $seance->id,
+            'jour' => $seance->jour,
+        ]);
+
+        return 0;
+    }
+
+    /**
+     * La planification académique de la matière, si l'école en a posé une.
+     *
+     * @param  array<string, mixed>  $validated
+     */
+    private function planificationDeLaMatiere(ESBTPEmploiTemps $emploiTemps, array $validated): ?ESBTPPlanificationAcademique
+    {
+        return ESBTPPlanificationAcademique::where('annee_universitaire_id', $validated['annee_universitaire_id'])
+            ->where('filiere_id', $emploiTemps->classe->filiere_id)
+            ->where('niveau_etude_id', $emploiTemps->classe->niveau_etude_id)
+            ->where('matiere_id', $validated['matiere_id'])
+            ->first();
+    }
+
+    /**
+     * Le message à afficher si la séance ferait dépasser le volume horaire.
+     *
+     * Rend `null` quand elle passe, ou quand aucune planification n'existe :
+     * sans volume déclaré, il n'y a rien à dépasser.
+     */
+    private function depassementDuVolumeHoraire(?ESBTPPlanificationAcademique $planification, float $dureeSeance): ?string
+    {
+        if (! $planification) {
+            return null;
+        }
+
+        $effectuees = $planification->heures_effectuees ?? 0;
+        $total = $planification->volume_horaire_total;
+
+        if (($effectuees + $dureeSeance) <= $total) {
+            return null;
+        }
+
+        return 'Cette séance dépasserait le volume horaire total de la matière. Heures disponibles: '
+            .($total - $effectuees).'h sur '.$total.'h total.';
+    }
+
+    /**
+     * Les conflits du créneau demandé par le formulaire de l'emploi du temps.
+     *
+     * Ce chemin de saisie n'avait aucun garde : il posait une séance sur un
+     * créneau occupé sans rien dire, alors que c'est le chemin principal.
+     *
+     * Ses champs ne portent pas les mêmes noms que ceux de
+     * `/esbtp/seances-cours` — `enseignant_id` ici, `teacher_id` là-bas — d'où
+     * cette traduction, et non un appel direct. `enseignant_id` porte bien un
+     * `esbtp_teachers.id` : la liste du formulaire est bâtie sur `ESBTPTeacher`.
+     *
+     * Aucun test sur le type : ce formulaire ne propose que des séances qui
+     * mobilisent un enseignant (sa validation l'exige) — il n'y crée ni pause
+     * ni déjeuner.
+     *
+     * @param  array<string, mixed>  $validated
+     * @return string[]
+     */
+    private function conflitsDeLaSeance(ESBTPEmploiTemps $emploiTemps, array $validated): array
+    {
+        return (new ConflitsDUnCreneau($emploiTemps))->pourUneNouvelleSeance(
+            $validated['jour'],
+            $validated['heure_debut'],
+            $validated['heure_fin'],
+            (int) $validated['enseignant_id'],
+            $validated['salle'] ?? null,
+        );
+    }
+
+    /**
+     * La date d'une séance, que `storeSession()` n'écrivait PAS.
+     *
+     * `date_seance` est nullable et aucun observateur ne la remplit : toute
+     * séance créée depuis l'emploi du temps la portait à `null`, et disparaissait
+     * alors silencieusement de tout ce qui interroge la colonne —
+     * `TeacherHoursService` la filtre en `whereNotNull`, donc la séance ne
+     * comptait ni dans les heures de l'enseignant ni dans son bulletin de paie ;
+     * l'émargement (`ESBTPTeacherAttendance`) la rapproche par date, donc ne
+     * pouvait pas s'y rattacher ; et le garde de conflit de
+     * `ESBTPSeanceCoursController` la compare à une date, donc ces séances lui
+     * étaient invisibles dans les deux sens. Aucune erreur nulle part : la
+     * séance s'affichait à l'écran et n'existait pour personne d'autre.
+     *
+     * Le calcul vit sur `ESBTPEmploiTemps::dateDuJour()`, que partagent tous les
+     * sites qui en avaient chacun une copie — leur liste est dans le docbloc de
+     * `JourDeLaSemaine::decalageDepuis()`, seul endroit du code à la porter.
+     *
+     * Rend `null` plutôt qu'une date approchée quand le jour est illisible ou
+     * que l'emploi du temps n'a pas de début : une date fausse se propagerait
+     * aux heures de l'enseignant et à son émargement, où personne ne la
+     * rattraperait. `null` laisse la séance dans l'état qu'elle avait toujours,
+     * et le journal dit pourquoi.
+     */
+    private function dateDeLaSeance(ESBTPEmploiTemps $emploiTemps, $jour): ?string
+    {
+        $date = $emploiTemps->dateDuJour($jour);
+
+        if ($date === null) {
+            \Log::warning('Date de séance non calculable à la création', [
+                'emploi_temps_id' => $emploiTemps->id,
+                'jour' => $jour,
+                'date_debut' => $emploiTemps->date_debut,
+            ]);
+
+            return null;
+        }
+
+        return $date->toDateString();
+    }
+
     private function resolveSeanceDayIndex($jour): ?int
     {
-        $days = [
-            1 => 0,
-            2 => 1,
-            3 => 2,
-            4 => 3,
-            5 => 4,
-            6 => 5,
-        ];
-
-        if (is_numeric($jour)) {
-            return $days[(int) $jour] ?? null;
-        }
-
-        if (is_string($jour)) {
-            $normalized = strtolower(trim($jour));
-            $map = [
-                'lundi' => 0,
-                'mardi' => 1,
-                'mercredi' => 2,
-                'jeudi' => 3,
-                'vendredi' => 4,
-                'samedi' => 5,
-                'monday' => 0,
-                'tuesday' => 1,
-                'wednesday' => 2,
-                'thursday' => 3,
-                'friday' => 4,
-                'saturday' => 5,
-            ];
-
-            return $map[$normalized] ?? null;
-        }
-
-        return null;
+        return JourDeLaSemaine::rang($jour);
     }
 
     private function resolveSeanceDayLabel($jour): string
     {
-        $labels = [
-            1 => 'Lundi',
-            2 => 'Mardi',
-            3 => 'Mercredi',
-            4 => 'Jeudi',
-            5 => 'Vendredi',
-            6 => 'Samedi',
-        ];
-
-        if (is_numeric($jour)) {
-            return $labels[(int) $jour] ?? 'Jour inconnu';
-        }
-
-        $normalized = strtolower(trim((string) $jour));
-        $map = [
-            'lundi' => 'Lundi',
-            'monday' => 'Lundi',
-            'mardi' => 'Mardi',
-            'tuesday' => 'Mardi',
-            'mercredi' => 'Mercredi',
-            'wednesday' => 'Mercredi',
-            'jeudi' => 'Jeudi',
-            'thursday' => 'Jeudi',
-            'vendredi' => 'Vendredi',
-            'friday' => 'Vendredi',
-            'samedi' => 'Samedi',
-            'saturday' => 'Samedi',
-        ];
-
-        return $map[$normalized] ?? 'Jour inconnu';
-    }
-
-    private function normalizeTime($value): ?string
-    {
-        if ($value instanceof Carbon) {
-            return $value->format('H:i');
-        }
-
-        if (is_string($value)) {
-            return substr($value, 0, 5);
-        }
-
-        return null;
+        return JourDeLaSemaine::libelle($jour) ?? 'Jour inconnu';
     }
 }

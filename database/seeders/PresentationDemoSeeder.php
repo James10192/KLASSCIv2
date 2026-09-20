@@ -8,6 +8,7 @@ use App\Services\ESBTPInscriptionService;
 use Database\Seeders\Demo\AcademicDemoData;
 use Database\Seeders\Demo\AccessibilityDemoData;
 use Database\Seeders\Demo\FraisDemoData;
+use Database\Seeders\Demo\PromotionPrecedenteDemoData;
 use Database\Seeders\Demo\StudentsDemoData;
 use Database\Seeders\Demo\FinanceDemoData;
 use Illuminate\Database\Seeder;
@@ -33,23 +34,30 @@ class PresentationDemoSeeder extends Seeder
         $this->guardTenant();
 
         DB::transaction(function () {
-            $this->command?->info('▶ 1/4 — Académique (année, filières, niveaux, classes)');
+            $this->command?->info('▶ 1/7 — Académique (année, filières, niveaux, classes)');
             $academic = (new AcademicDemoData($this->command))->run();
 
-            $this->command?->info('▶ 2/4 — Frais (catégories, configurations, échéanciers)');
+            $this->command?->info('▶ 2/7 — Frais (catégories, configurations, échéanciers)');
             $frais = (new FraisDemoData($this->command))->run($academic);
 
-            $this->command?->info('▶ 3/4 — Étudiants + inscriptions');
+            $this->command?->info('▶ 3/7 — Étudiants + inscriptions');
             $students = (new StudentsDemoData($this->command))->run($academic);
 
-            $this->command?->info('▶ 4/6 — Paiements (mix réaliste + outliers analytics)');
+            $this->command?->info('▶ 4/7 — Paiements (mix réaliste + outliers analytics)');
             (new FinanceDemoData($this->command))->run($academic, $frais, $students);
 
-            $this->command?->info('▶ 5/6 — Génération des frais subscriptions par inscription');
+            $this->command?->info('▶ 5/7 — Génération des frais subscriptions par inscription');
             $this->regenerateFeesSubscriptions($academic['annee']->id);
 
-            $this->command?->info('▶ 6/6 — Profils accessibilité (5 cas démo)');
+            $this->command?->info('▶ 6/7 — Profils accessibilité (5 cas démo)');
             (new AccessibilityDemoData($this->command))->run();
+
+            // En dernier : cette promotion-la ne doit surtout PAS recevoir
+            // d'inscription dans l'annee courante, sinon la reinscription
+            // cesse de la voir. Les etapes precedentes ne touchent qu'a
+            // l'annee courante, celle-ci n'ecrit que sur l'annee ecoulee.
+            $this->command?->info('▶ 7/7 — Promotion de l\'année écoulée (à réinscrire)');
+            (new PromotionPrecedenteDemoData($this->command))->run($academic);
         });
 
         $this->command?->info('✅ Seed presentation terminé.');

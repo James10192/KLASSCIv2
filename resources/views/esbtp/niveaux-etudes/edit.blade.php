@@ -122,7 +122,7 @@
             <div class="ne-form-icon"><i class="fas fa-layer-group"></i></div>
             <div>
                 <h5>Classification</h5>
-                <p>Type de formation et année dans le cycle</p>
+                <p>Type de formation et année d'études</p>
             </div>
         </div>
         <div class="ne-form-body">
@@ -139,14 +139,15 @@
                     @error('type')<div class="ne-error"><i class="fas fa-exclamation-circle"></i>{{ $message }}</div>@enderror
                 </div>
                 <div class="ne-field">
-                    <label for="ne-niveau" class="ne-label">Année dans le cycle<span class="req">*</span></label>
+                    <label for="ne-niveau" class="ne-label">Année d'études<span class="req">*</span></label>
                     <x-au-select
                         name="niveau"
                         :value="old('niveau', $niveauxEtude->year)"
                         icon="fa-graduation-cap"
                         placeholder="Sélectionner une année"
                         :searchable="false"
-                        :options="['1' => 'Année 1', '2' => 'Année 2', '3' => 'Année 3', '4' => 'Année 4', '5' => 'Année 5', '6' => 'Année 6', '7' => 'Année 7']" />
+                        :options="['1' => 'Année 1', '2' => 'Année 2', '3' => 'Année 3', '4' => 'Année 4', '5' => 'Année 5', '6' => 'Année 6', '7' => 'Année 7', '8' => 'Année 8']" />
+                    <div class="ne-help">En LMD, l'année se compte depuis la Licence : Licence 1 à 3 = années 1 à 3, Master 1 et 2 = années 4 et 5, Doctorat = années 6 à 8.</div>
                     @error('niveau')<div class="ne-error"><i class="fas fa-exclamation-circle"></i>{{ $message }}</div>@enderror
                 </div>
             </div>

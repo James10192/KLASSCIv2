@@ -2,6 +2,8 @@
 
 namespace Tests\Feature\Bulletin;
 
+use App\Domain\BtsTroncCommun\BtsBulletinSubjectResolver;
+use App\Domain\BtsTroncCommun\BulletinSubjectOrder;
 use App\Domain\BtsTroncCommun\ClasseOuvertureResolver;
 use App\Domain\BtsTroncCommun\BtsAnnualClassMapResolver;
 use App\Domain\BtsTroncCommun\BtsBulletinCohortResolver;
@@ -67,7 +69,8 @@ class BulletinYakroTypographyContractTest extends TestCase
             new BtsAnnualClassMapResolver(new BtsPhaseResolver(), new ClasseOuvertureResolver()),
             new BtsBulletinCohortResolver(new BtsAnnualClassMapResolver(new BtsPhaseResolver(), new ClasseOuvertureResolver())),
             new BtsClassCohortCounter(new BtsPhaseResolver()),
-            new ClasseOuvertureResolver()
+            new ClasseOuvertureResolver(),
+            new BulletinSubjectOrder(new BtsBulletinSubjectResolver())
         );
 
         self::assertSame('esbtp.bulletins.pdf-configurable', $service->getBulletinTemplateView());

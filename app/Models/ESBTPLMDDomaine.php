@@ -14,12 +14,14 @@ class ESBTPLMDDomaine extends Model
     protected $table = 'esbtp_lmd_domaines';
 
     protected $fillable = [
-        'name', 'code', 'description', 'is_active',
+        'name', 'code', 'nature', 'description', 'is_active',
         'created_by', 'updated_by',
     ];
 
     protected $casts = [
         'is_active' => 'boolean',
+        // UFR, faculte, ecole, institut — null pour un domaine au sens du referentiel LMD.
+        'nature' => \App\Enums\NatureComposante::class,
     ];
 
     public function mentions()

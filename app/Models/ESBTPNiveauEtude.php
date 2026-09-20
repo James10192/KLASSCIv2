@@ -18,6 +18,104 @@ class ESBTPNiveauEtude extends Model
     protected $table = 'esbtp_niveau_etudes';
 
     /**
+     * Les annees qu'un niveau LMD peut porter, par cycle.
+     *
+     * L'annee est comptee EN CONTINU d'un cycle a l'autre : Master 1 est l'annee
+     * 4, pas l'annee 1. C'est la convention sur laquelle repose la correspondance
+     * niveau → semestres (`ESBTPClasse::getSemestresLMD()`, annee 4 → S7-S8) et
+     * tout ce qui la lit.
+     *
+     * Un Master saisi en annee 1 ne leve aucune erreur : il est range en S1-S2,
+     * c'est-a-dire traite comme une Licence 1, et recoit ses unites. C'est
+     * exactement ce qui est arrive a une ecole avant que cette liste existe.
+     */
+    /**
+     * Les cycles du systeme LMD (directive UEMOA 03/2007). Source unique : toute
+     * liste « est-ce du LMD ? » passe par ici.
+     *
+     * Le Bachelor n'en fait PAS partie. C'est un diplome de tradition
+     * anglo-saxonne, hors du cadre LMD francophone et non regi par l'UEMOA :
+     * le ranger ici lui appliquerait credits ECTS, semestres continus et
+     * deliberation UEMOA qui ne le concernent pas.
+     */
+    public const CYCLES_LMD = ['Licence', 'Master', 'Doctorat'];
+
+    public const ANNEES_PAR_CYCLE_LMD = [
+        'Licence' => [1, 2, 3],
+        'Master' => [4, 5],
+        'Doctorat' => [6, 7, 8],
+    ];
+
+    /**
+     * Dernier semestre LMD : celui du Master 2 (annee 5 → S9-S10). Le doctorat
+     * ne se decoupe pas en semestres.
+     *
+     * Les listes et validations de semestre s'arretaient a 6 ou 8, heritage
+     * d'ecoles qui n'ouvraient que la Licence : un Master 2 ne pouvait ni
+     * planifier, ni deliberer, ni filtrer son S9 et son S10.
+     */
+    public const SEMESTRE_LMD_MAX = 10;
+
+    /** @return list<int> */
+    public static function semestresLmd(): array
+    {
+        return range(1, self::SEMESTRE_LMD_MAX);
+    }
+
+    /**
+     * Vrai si l'annee est de celles de son cycle, faux sinon, et null pour un
+     * niveau qui n'est pas un cycle LMD (BTS, Ingenieur...) : la question ne se
+     * pose pas pour lui.
+     */
+    public function anneeCoherenteAvecSonCycle(): ?bool
+    {
+        if (! $this->estUnCycleLmd()) {
+            return null;
+        }
+
+        return in_array((int) $this->year, self::ANNEES_PAR_CYCLE_LMD[$this->type], true);
+    }
+
+    /** Le cycle LMD auquel une annee appartient (4 → Master), null hors plage. */
+    public static function cycleLmdPourAnnee(int $annee): ?string
+    {
+        foreach (self::ANNEES_PAR_CYCLE_LMD as $cycle => $annees) {
+            if (in_array($annee, $annees, true)) {
+                return $cycle;
+            }
+        }
+
+        return null;
+    }
+
+    public function estUnCycleLmd(): bool
+    {
+        return in_array((string) $this->type, self::CYCLES_LMD, true);
+    }
+
+    public function etiquetteCycle(): string
+    {
+        return $this->estUnCycleLmd() ? 'LMD' : (string) ($this->type !== '' && $this->type !== null ? $this->type : 'BTS');
+    }
+
+    /**
+     * Les deux semestres de cette annee : annee 1 → S1-S2, annee 4 (Master 1) → S7-S8.
+     *
+     * @return list<int>
+     */
+    public function semestres(): array
+    {
+        $annee = (int) $this->year;
+        if ($annee < 1) {
+            return [];
+        }
+
+        $premier = ($annee - 1) * 2 + 1;
+
+        return [$premier, $premier + 1];
+    }
+
+    /**
      * Les attributs qui sont assignables en masse.
      *
      * @var array

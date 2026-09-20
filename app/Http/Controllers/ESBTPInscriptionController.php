@@ -390,13 +390,6 @@ class ESBTPInscriptionController extends Controller
     }
 
     /**
-     * Valide les paramètres de recherche de doublons.
-     */
-    private function validateDuplicateRequest(Request $request): array
-    {
-    }
-
-    /**
      * Détermine si une exception SQL correspond à un conflit d'unicité sur le matricule.
      */
     private function isMatriculeUniqueViolation(QueryException $exception): bool
@@ -445,21 +438,28 @@ class ESBTPInscriptionController extends Controller
             }
         }
 
-        // Détection de doublons (blocage tant que non confirmé)
-        if (!$request->boolean("duplicate_override")) {
-            $duplicates = $duplicateDetector->find(
-                $request->input("nom", ""),
-                $request->input("prenoms", ""),
-                $request->input("date_naissance"),
-                $request->input("sexe"),
-            );
+        // Détection de doublons (blocage tant que non confirmé).
+        //
+        // LE CONTRÔLE TOURNE MÊME QUAND LA CASE DE CONFIRMATION EST COCHÉE.
+        // Auparavant la confirmation le sautait entièrement : l'inscription
+        // partait sans que rien, nulle part, ne garde trace de ce qui avait été
+        // écarté. Des mois plus tard, devant deux dossiers actifs pour la même
+        // personne dans une classe — la note saisie sur l'un, comptée manquante
+        // sur l'autre — plus personne ne pouvait dire si quelqu'un avait
+        // sciemment confirmé ou si le contrôle n'avait tout simplement jamais
+        // mordu. La confirmation reste souveraine, elle n'est simplement plus
+        // muette.
+        $blockingDuplicates = $duplicateDetector->find(
+            $request->input("nom", ""),
+            $request->input("prenoms", ""),
+            $request->input("date_naissance"),
+            $request->input("sexe"),
+        )->filter(function ($duplicate) {
+            return ($duplicate["score"] ?? 0) >= self::DUPLICATE_BLOCKING_SCORE;
+        });
 
-            $blockingDuplicates = $duplicates->filter(function ($duplicate) {
-                return ($duplicate["score"] ?? 0) >=
-                    self::DUPLICATE_BLOCKING_SCORE;
-            });
-
-            if ($blockingDuplicates->isNotEmpty()) {
+        if ($blockingDuplicates->isNotEmpty()) {
+            if (!$request->boolean("duplicate_override")) {
                 return redirect()
                     ->back()
                     ->withInput()
@@ -472,6 +472,23 @@ class ESBTPInscriptionController extends Controller
                         $blockingDuplicates->toArray(),
                     );
             }
+
+            Log::warning("Inscription créée malgré un doublon probable, sur confirmation explicite.", [
+                "saisi" => [
+                    "nom" => $request->input("nom"),
+                    "prenoms" => $request->input("prenoms"),
+                    "date_naissance" => $request->input("date_naissance"),
+                ],
+                "classe_id" => $request->input("classe_id"),
+                "annee_universitaire_id" => $request->input("annee_universitaire_id"),
+                "confirme_par" => optional($request->user())->id,
+                "doublons_ecartes" => $blockingDuplicates->map(fn ($doublon): array => [
+                    "etudiant_id" => $doublon["id"] ?? null,
+                    "nom_complet" => $doublon["full_name"] ?? null,
+                    "matricule" => $doublon["matricule"] ?? null,
+                    "score" => $doublon["score"] ?? null,
+                ])->values()->all(),
+            ]);
         }
 
         // Avant la creation, tant que la decision est reversible : voir
@@ -862,6 +879,7 @@ class ESBTPInscriptionController extends Controller
                 "satisfied_in_kind" => (bool) $satisfiedInKind,
                 "can_mark_in_kind" => $inKind->canMarkCategory($inscription, $category, $subscription),
                 "can_unmark_in_kind" => $subscription && $inKind->canUnmarkDeposited($subscription),
+                "paiement_bloquant" => $category->accepts_in_kind ? $inKind->paiementBloquant((int) $inscription->id, (int) $category->id) : null,
                 "status" => $satisfiedInKind
                     ? "deposited"
                     : ($solde <= 0
@@ -916,6 +934,7 @@ class ESBTPInscriptionController extends Controller
                     "satisfied_in_kind" => $satisfiedInKind,
                     "can_mark_in_kind" => $inKind->canMarkCategory($inscription, $category, $subscription),
                 "can_unmark_in_kind" => $subscription && $inKind->canUnmarkDeposited($subscription),
+                "paiement_bloquant" => $category->accepts_in_kind ? $inKind->paiementBloquant((int) $inscription->id, (int) $category->id) : null,
                     "status" => $satisfiedInKind
                         ? "deposited"
                         : ($solde <= 0
@@ -2253,18 +2272,15 @@ class ESBTPInscriptionController extends Controller
     /**
      * Analyse académique d'un étudiant pour réinscription caissier (AJAX)
      */
-    public function analyseEtudiant(Request $request, $etudiantId)
+    public function analyseEtudiant(Request $request, $etudiantId, \App\Services\Reinscription\ClassesDeReinscription $classes)
     {
         try {
-            $etudiant = \App\Models\ESBTPEtudiant::findOrFail($etudiantId);
+            \App\Models\ESBTPEtudiant::findOrFail($etudiantId);
             $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->first();
 
-            // Inscription active de l'année précédente
-            $inscriptionActive = $etudiant->inscriptions()
-                ->where('status', 'active')
-                ->where('workflow_step', 'etudiant_cree')
-                ->latest()
-                ->first();
+            // L'inscription quittee, definie au meme endroit que pour la
+            // reinscription : derniere annee suivie, et non la derniere creee.
+            $inscriptionActive = $classes->inscriptionQuittee((int) $etudiantId);
 
             if (!$inscriptionActive) {
                 return response()->json([
@@ -2292,12 +2308,7 @@ class ESBTPInscriptionController extends Controller
 
             // Classes proposées
             $decision = $analysis['decision'] ?? 'passage';
-            $classesProposees = [];
-            try {
-                $classesProposees = $reinscriptionService->proposerNouvellesClasses($etudiantId, $decision);
-            } catch (\Exception $e) {
-                // Fallback : toutes les classes actives
-            }
+            $classesProposees = $classes->pour($inscriptionActive->classe, $decision);
 
             return response()->json([
                 'success' => true,
@@ -2477,7 +2488,11 @@ class ESBTPInscriptionController extends Controller
                     ? ESBTPInscription::STATUT_ETABLISSEMENT_ANCIEN
                     : ESBTPInscription::STATUT_ETABLISSEMENT_NOUVEAU,
                 'is_redoublant' => $estRedoublement,
-                'affectation_status' => ESBTPInscription::DEFAULT_AFFECTATION_STATUS,
+                // Saisi au guichet, comme la classe. L'ecrire en dur ici donnait a
+                // chaque pre-inscription le statut « affecte », celui qui ouvre droit
+                // a la subvention : la scolarite tombait a zero et le guichet
+                // n'encaissait que les frais d'inscription, sans que rien ne le dise.
+                'affectation_status' => $request->validated()['affectation_status'],
                 'montant_scolarite' => 0,
                 'frais_inscription' => 0,
                 'created_by' => Auth::id(),

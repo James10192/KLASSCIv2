@@ -322,6 +322,9 @@ class RattrapageSchedulingServiceScopeTest extends TestCase
 
         Schema::create('esbtp_matieres', function (Blueprint $table): void {
             $table->id();
+            // Voir AcademicNoteCoverageServiceTest : sans cette colonne, SQLite rend
+            // `btsOnly()` silencieusement vide au lieu d'echouer.
+            $table->unsignedBigInteger('unite_enseignement_id')->nullable();
             $table->string('name');
             $table->timestamps();
             $table->softDeletes();

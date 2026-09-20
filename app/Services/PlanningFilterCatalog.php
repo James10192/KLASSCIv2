@@ -26,7 +26,7 @@ class PlanningFilterCatalog
     {
         return ESBTPNiveauEtude::query()
             ->where('is_active', true)
-            ->whereNotIn('type', ['Licence', 'Master', 'Doctorat'])
+            ->whereNotIn('type', \App\Models\ESBTPNiveauEtude::CYCLES_LMD)
             ->orderBy('year')
             ->get();
     }

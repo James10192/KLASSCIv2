@@ -165,15 +165,15 @@
                     @endforeach
                 @else
                     <div>
-                        <div class="bp-info-label">Domaine</div>
+                        <div class="bp-info-label">@rang('domaine')</div>
                         <div class="bp-info-value">{{ $domaine ?? '--' }}</div>
                     </div>
                     <div>
-                        <div class="bp-info-label">Mention</div>
+                        <div class="bp-info-label">@rang('mention')</div>
                         <div class="bp-info-value">{{ $mention ?? '--' }}</div>
                     </div>
                     <div>
-                        <div class="bp-info-label">Parcours</div>
+                        <div class="bp-info-label">@rang('parcours')</div>
                         <div class="bp-info-value">{{ $parcours_label ?? '--' }}</div>
                     </div>
                 @endif

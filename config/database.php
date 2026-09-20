@@ -58,6 +58,33 @@ return [
             'prefix_indexes' => true,
             'strict' => true,
             'engine' => null,
+
+            /*
+             * Le fuseau de la SESSION MySQL, distinct de celui de l'application.
+             *
+             * Il ne sert pas aux horodatages écrits par Laravel : ceux-là sont
+             * des chaînes déjà datées dans le fuseau de l'application, et elles
+             * font l'aller-retour inchangées. Il sert aux sept colonnes que
+             * MySQL renseigne LUI-MÊME, en `useCurrent()` — parmi elles
+             * `esbtp_inscription_workflow_history.action_timestamp`,
+             * `group_portal_sso_logs.created_at` et
+             * `esbtp_grade_sheet_revisions.created_at`.
+             *
+             * Sur une instance dont l'application est à UTC+1 et le serveur
+             * MySQL à UTC, ces colonnes-là prennent une heure de retard sur le
+             * `created_at` de la MÊME ligne. Un journal d'audit dont deux
+             * horodatages voisins divergent d'une heure ne se remarque pas ; il
+             * se découvre le jour où on lui demande de prouver quelque chose.
+             *
+             * Défaut `null` : Laravel n'émet alors AUCUN `SET time_zone`
+             * (`MySqlConnector::configureTimezone()` teste `isset()`, en 9.x
+             * comme en 10.x), donc rien ne change là où rien n'est réglé. À
+             * poser au provisionnement avec `APP_TIMEZONE`, et pour la même
+             * raison : déplacer le fuseau d'une instance qui a déjà des
+             * données laisse derrière des lignes écrites dans l'ancien.
+             */
+            'timezone' => env('DB_TIMEZONE'),
+
             'options' => extension_loaded('pdo_mysql') ? array_filter([
                 (defined('Pdo\Mysql::ATTR_SSL_CA') ? Pdo\Mysql::ATTR_SSL_CA : PDO::MYSQL_ATTR_SSL_CA) => env('MYSQL_ATTR_SSL_CA'),
             ]) : [],

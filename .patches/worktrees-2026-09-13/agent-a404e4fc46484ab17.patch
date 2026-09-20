@@ -1,0 +1,244 @@
+diff --git a/app/Exports/ClassesExport.php b/app/Exports/ClassesExport.php
+index 9f08bb278..ad3d9441a 100644
+--- a/app/Exports/ClassesExport.php
++++ b/app/Exports/ClassesExport.php
+@@ -147,7 +147,7 @@ public function registerEvents(): array
+      */
+     private function renderHeader($sheet, $highestColumn)
+     {
+-        $schoolName = $this->settings['nom'] ?? 'ESBTP-yAKRO';
++        $schoolName = $this->settings['nom'] ?? 'KLASSCI';
+         $anneeName = $this->anneeCourante ? $this->anneeCourante->name : 'Année en cours';
+ 
+         // Ligne 1: Nom de l'établissement
+@@ -421,7 +421,7 @@ private function addFiltersInfo($sheet, $currentRow, $highestColumn)
+     private function loadDefaultSettings(): array
+     {
+         return [
+-            'nom' => SettingsHelper::get('school_name', 'ESBTP-yAKRO'),
++            'nom' => SettingsHelper::get('school_name', 'KLASSCI'),
+             'adresse' => SettingsHelper::get('school_address', ''),
+             'telephone' => SettingsHelper::get('school_phone', ''),
+             'email' => SettingsHelper::get('school_email', ''),
+diff --git a/app/Http/Controllers/ESBTP/ESBTPSettingsController.php b/app/Http/Controllers/ESBTP/ESBTPSettingsController.php
+index 75c3ccc00..6d3520899 100644
+--- a/app/Http/Controllers/ESBTP/ESBTPSettingsController.php
++++ b/app/Http/Controllers/ESBTP/ESBTPSettingsController.php
+@@ -265,11 +265,36 @@ public function update(Request $request)
+                     $setting = Setting::where('key', $settingKey)->first();
+ 
+                     if ($setting) {
++                        // Lot 17b — Champs établissement nullable :
++                        // si la valeur est vide ET le champ n'est pas marqué `is_required`,
++                        // on skip la validation (sinon les règles legacy ['required', ...]
++                        // dans la DB rejettent les champs facultatifs laissés vides).
++                        $isEmpty = $value === null || $value === '';
++
++                        if ($isEmpty && ! $setting->is_required) {
++                            // Permet d'écraser une valeur existante par '' (vidage volontaire).
++                            $setting->update([
++                                'value' => '',
++                                'updated_by' => auth()->id()
++                            ]);
++                            $updatedSettings[] = $settingKey;
++                            continue;
++                        }
++
+                         // Valider la valeur selon les règles définies
+                         if ($setting->validation_rules) {
++                            // Lot 17b — Forcer `nullable` en tête de liste sauf si le champ
++                            // est explicitement `is_required` (sinon Laravel évalue
++                            // `email|string|...` avant `nullable` et rejette '').
++                            $rules = $setting->validation_rules;
++                            if (! $setting->is_required && ! in_array('nullable', $rules, true)) {
++                                $rules = array_values(array_diff($rules, ['required']));
++                                array_unshift($rules, 'nullable');
++                            }
++
+                             $validator = Validator::make(
+                                 [$settingKey => $value],
+-                                [$settingKey => $setting->validation_rules]
++                                [$settingKey => $rules]
+                             );
+ 
+                             if ($validator->fails()) {
+diff --git a/app/Http/Controllers/ESBTPClasseController.php b/app/Http/Controllers/ESBTPClasseController.php
+index f74ada798..b84d3b425 100644
+--- a/app/Http/Controllers/ESBTPClasseController.php
++++ b/app/Http/Controllers/ESBTPClasseController.php
+@@ -1445,7 +1445,7 @@ public function listeAppel(ESBTPClasse $classe)
+ 
+         // Récupérer les paramètres de l'établissement
+         $etablissement = [
+-            "nom" => Setting::get("school_name", "ESBTP-yAKRO"),
++            "nom" => Setting::get("school_name", "KLASSCI"),
+             "adresse" => Setting::get("school_address", ""),
+             "telephone" => Setting::get("school_phone", ""),
+             "email" => Setting::get("school_email", ""),
+@@ -1498,7 +1498,7 @@ public function listeAppelPDF(ESBTPClasse $classe)
+ 
+         // Récupérer les paramètres de l'établissement
+         $etablissement = [
+-            "nom" => Setting::get("school_name", "ESBTP-yAKRO"),
++            "nom" => Setting::get("school_name", "KLASSCI"),
+             "adresse" => Setting::get("school_address", ""),
+             "telephone" => Setting::get("school_phone", ""),
+             "email" => Setting::get("school_email", ""),
+@@ -1557,7 +1557,7 @@ public function listeComplete(ESBTPClasse $classe)
+ 
+         // Récupérer les paramètres de l'établissement
+         $etablissement = [
+-            "nom" => Setting::get("school_name", "ESBTP-yAKRO"),
++            "nom" => Setting::get("school_name", "KLASSCI"),
+             "adresse" => Setting::get("school_address", ""),
+             "telephone" => Setting::get("school_phone", ""),
+             "email" => Setting::get("school_email", ""),
+@@ -1607,7 +1607,7 @@ public function listeCompletePDF(ESBTPClasse $classe)
+ 
+         // Récupérer les paramètres de l'établissement
+         $etablissement = [
+-            "nom" => Setting::get("school_name", "ESBTP-yAKRO"),
++            "nom" => Setting::get("school_name", "KLASSCI"),
+             "adresse" => Setting::get("school_address", ""),
+             "telephone" => Setting::get("school_phone", ""),
+             "email" => Setting::get("school_email", ""),
+@@ -1666,7 +1666,7 @@ public function listeCompleteExcel(ESBTPClasse $classe)
+ 
+         // Récupérer les paramètres de l'établissement
+         $etablissement = [
+-            "nom" => Setting::get("school_name", "ESBTP-yAKRO"),
++            "nom" => Setting::get("school_name", "KLASSCI"),
+             "adresse" => Setting::get("school_address", ""),
+             "telephone" => Setting::get("school_phone", ""),
+             "email" => Setting::get("school_email", ""),
+@@ -1882,7 +1882,7 @@ public function exportPdf(Request $request)
+ 
+             // Récupérer les paramètres de l'école
+             $settings = [
+-                "nom" => Setting::get("school_name", "ESBTP-yAKRO"),
++                "nom" => Setting::get("school_name", "KLASSCI"),
+                 "adresse" => Setting::get("school_address", ""),
+                 "telephone" => Setting::get("school_phone", ""),
+                 "email" => Setting::get("school_email", ""),
+diff --git a/app/Http/Controllers/ESBTPInscriptionPaiementController.php b/app/Http/Controllers/ESBTPInscriptionPaiementController.php
+index f27c55896..0b0d07e65 100644
+--- a/app/Http/Controllers/ESBTPInscriptionPaiementController.php
++++ b/app/Http/Controllers/ESBTPInscriptionPaiementController.php
+@@ -835,7 +835,7 @@ public function previewSituationFinanciere(ESBTPInscription $inscription)
+ 
+         // Récupérer les paramètres de l'établissement
+         $etablissement = [
+-            "nom" => Setting::get("school_name", "ESBTP-yAKRO"),
++            "nom" => Setting::get("school_name", "KLASSCI"),
+             "adresse" => Setting::get("school_address", ""),
+             "telephone" => Setting::get("school_phone", ""),
+             "email" => Setting::get("school_email", ""),
+@@ -921,7 +921,7 @@ public function exportSituationFinanciere(ESBTPInscription $inscription)
+ 
+         // Récupérer les paramètres de l'établissement
+         $etablissement = [
+-            "nom" => Setting::get("school_name", "ESBTP-yAKRO"),
++            "nom" => Setting::get("school_name", "KLASSCI"),
+             "adresse" => Setting::get("school_address", ""),
+             "telephone" => Setting::get("school_phone", ""),
+             "email" => Setting::get("school_email", ""),
+diff --git a/app/Mail/Parents/ReinscriptionConfirmationMail.php b/app/Mail/Parents/ReinscriptionConfirmationMail.php
+index 5e910d369..407fd25db 100644
+--- a/app/Mail/Parents/ReinscriptionConfirmationMail.php
++++ b/app/Mail/Parents/ReinscriptionConfirmationMail.php
+@@ -30,7 +30,7 @@ public function __construct($data)
+      */
+     public function build()
+     {
+-        return $this->subject('Confirmation de Réinscription - ESBTP-yAKRO')
++        return $this->subject('Confirmation de Réinscription - ' . \App\Helpers\SettingsHelper::get('school_name', 'KLASSCI'))
+                     ->view('esbtp.emails.parents.reinscription-confirmation')
+                     ->with($this->data);
+     }
+diff --git a/app/Services/NotificationService.php b/app/Services/NotificationService.php
+index fb12af0c1..cbd1d836b 100644
+--- a/app/Services/NotificationService.php
++++ b/app/Services/NotificationService.php
+@@ -952,7 +952,7 @@ public function notifySystemMaintenance(string $message, Carbon $scheduledAt): v
+     public function notifyWelcomeNewUser(User $user, string $role): void
+     {
+         try {
+-            $title = "Bienvenue dans ESBTP-yAKRO";
++            $title = "Bienvenue dans " . \App\Helpers\SettingsHelper::get('school_name', 'KLASSCI');
+             $message = "Votre compte a été créé avec succès. Vous avez le rôle de {$role}. Explorez toutes les fonctionnalités disponibles.";
+             $link = route('dashboard');
+ 
+diff --git a/app/Services/ParentNotificationMethods.php b/app/Services/ParentNotificationMethods.php
+index a446cdb74..7bacb925b 100644
+--- a/app/Services/ParentNotificationMethods.php
++++ b/app/Services/ParentNotificationMethods.php
+@@ -50,7 +50,7 @@ public function notifyParentsInscriptionCreated($inscription, $credentials)
+             'montantTotal' => $inscription->frais_scolarite ?? 0,
+             'montantPaye' => $inscription->montant_paye ?? 0,
+             'montantDu' => ($inscription->frais_scolarite ?? 0) - ($inscription->montant_paye ?? 0),
+-            'schoolName' => \App\Helpers\SettingsHelper::get('school_name', 'ESBTP-yAKRO'),
++            'schoolName' => \App\Helpers\SettingsHelper::get('school_name', 'KLASSCI'),
+             'schoolAddress' => \App\Helpers\SettingsHelper::get('school_address', ''),
+             'schoolPhone' => \App\Helpers\SettingsHelper::get('school_phone', ''),
+             'schoolEmail' => \App\Helpers\SettingsHelper::get('school_email', ''),
+@@ -117,7 +117,7 @@ public function notifyParentsPaiementValide($paiement)
+             'resteDu' => ($inscription->frais_scolarite ?? 0) - ($inscription->montant_paye ?? 0),
+             'pourcentagePaye' => ($inscription->frais_scolarite > 0) ? round((($inscription->montant_paye ?? 0) / $inscription->frais_scolarite) * 100) : 0,
+             'recuUrl' => route('esbtp.paiements.recu', $paiement->id),
+-            'schoolName' => \App\Helpers\SettingsHelper::get('school_name', 'ESBTP-yAKRO'),
++            'schoolName' => \App\Helpers\SettingsHelper::get('school_name', 'KLASSCI'),
+             'schoolAddress' => \App\Helpers\SettingsHelper::get('school_address', ''),
+             'schoolPhone' => \App\Helpers\SettingsHelper::get('school_phone', ''),
+             'schoolEmail' => \App\Helpers\SettingsHelper::get('school_email', ''),
+@@ -171,7 +171,7 @@ public function notifyParentsPaiementRejete($paiement)
+             'dateRejet' => $paiement->rejected_at ? $paiement->rejected_at->format('d/m/Y à H:i') : now()->format('d/m/Y à H:i'),
+             'motifRejet' => $paiement->rejection_reason ?? 'Non spécifié',
+             'paiementUrl' => route('esbtp.paiements.create', ['inscription_id' => $inscription->id]),
+-            'schoolName' => \App\Helpers\SettingsHelper::get('school_name', 'ESBTP-yAKRO'),
++            'schoolName' => \App\Helpers\SettingsHelper::get('school_name', 'KLASSCI'),
+             'schoolAddress' => \App\Helpers\SettingsHelper::get('school_address', ''),
+             'schoolPhone' => \App\Helpers\SettingsHelper::get('school_phone', ''),
+             'schoolEmail' => \App\Helpers\SettingsHelper::get('school_email', ''),
+@@ -249,7 +249,7 @@ public function notifyParentsAbsence($attendance)
+             'tauxPresence' => $tauxPresence,
+             'periodeStats' => 'Ce mois',
+             'justificationUrl' => route('parent.absences.justify', $attendance->id),
+-            'schoolName' => \App\Helpers\SettingsHelper::get('school_name', 'ESBTP-yAKRO'),
++            'schoolName' => \App\Helpers\SettingsHelper::get('school_name', 'KLASSCI'),
+             'schoolAddress' => \App\Helpers\SettingsHelper::get('school_address', ''),
+             'schoolPhone' => \App\Helpers\SettingsHelper::get('school_phone', ''),
+             'schoolEmail' => \App\Helpers\SettingsHelper::get('school_email', ''),
+@@ -313,7 +313,7 @@ public function notifyParentsBulletinPublished($bulletin)
+                 'periode' => $bulletin->periode,
+                 'annee_universitaire_id' => $bulletin->annee_universitaire_id
+             ]),
+-            'schoolName' => \App\Helpers\SettingsHelper::get('school_name', 'ESBTP-yAKRO'),
++            'schoolName' => \App\Helpers\SettingsHelper::get('school_name', 'KLASSCI'),
+             'schoolAddress' => \App\Helpers\SettingsHelper::get('school_address', ''),
+             'schoolPhone' => \App\Helpers\SettingsHelper::get('school_phone', ''),
+             'schoolEmail' => \App\Helpers\SettingsHelper::get('school_email', ''),
+@@ -394,7 +394,7 @@ public function notifyParentsLowGrades($bulletin)
+                 'annee_universitaire_id' => $bulletin->annee_universitaire_id
+             ]),
+             'contactUrl' => route('parent.contact.coordinateur'),
+-            'schoolName' => \App\Helpers\SettingsHelper::get('school_name', 'ESBTP-yAKRO'),
++            'schoolName' => \App\Helpers\SettingsHelper::get('school_name', 'KLASSCI'),
+             'schoolAddress' => \App\Helpers\SettingsHelper::get('school_address', ''),
+             'schoolPhone' => \App\Helpers\SettingsHelper::get('school_phone', ''),
+             'schoolEmail' => \App\Helpers\SettingsHelper::get('school_email', ''),
+diff --git a/database/seeders/SettingsSeeder.php b/database/seeders/SettingsSeeder.php
+index 7fdc270ac..28cc4e157 100644
+--- a/database/seeders/SettingsSeeder.php
++++ b/database/seeders/SettingsSeeder.php
+@@ -107,9 +107,9 @@ public function run()
+                 'group' => 'establishment',
+                 'category' => 'establishment',
+                 'description' => 'Nom du directeur',
+-                'is_required' => true,
++                'is_required' => false,
+                 'default_value' => '',
+-                'validation_rules' => ['required', 'string', 'max:255'],
++                'validation_rules' => ['nullable', 'string', 'max:255'],
+                 'sort_order' => 8
+             ],
+             [

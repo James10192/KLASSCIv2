@@ -2,11 +2,14 @@
 
 namespace App\Models;
 
+use App\Domain\Academique\CoherenceSystemeAcademique;
 use App\Services\AppreciationScaleService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 use OwenIt\Auditing\Contracts\Auditable;
 
 class ESBTPResultat extends Model implements Auditable
@@ -53,6 +56,99 @@ class ESBTPResultat extends Model implements Auditable
         static::addGlobalScope('not_archived', function (Builder $builder) {
             $builder->whereNull($builder->getModel()->getTable() . '.archived_at');
         });
+
+        static::saving(function (self $resultat): void {
+            $resultat->assertMatiereCoherenteAvecLaClasse();
+        });
+    }
+
+    /**
+     * Une moyenne manuelle ne se pose pas sur une matiere etrangere a la classe.
+     *
+     * CE GARDE EXISTE PARCE QUE SON JUMEAU NE SUFFISAIT PAS. `ESBTPEvaluation`
+     * refuse depuis aout 2026 qu'une ECUE soit evaluee dans une classe BTS ;
+     * personne n'avait vu que la moyenne manuelle atteint la MEME ligne de
+     * bulletin sans passer par une evaluation. `ESBTPResultatController` ecrit
+     * ici depuis trois endroits (dont `bulkUpdateMoyennes`, en AJAX), et sa
+     * `FormRequest` ne valide qu'un `exists:esbtp_matieres,id` : rien ne
+     * rapprochait la matiere du systeme de la classe.
+     *
+     * Le garde est au modele, et non dans les trois appelants, pour la raison
+     * qui a fait echouer les quatre premieres passes du chantier : un filtre
+     * pose chez l'appelant demande a chaque futur ecran de s'en souvenir.
+     *
+     * DEUX `find()` PAR LIGNE CREEE, ET C'EST ASSUME. `bulkUpdateMoyennes()`
+     * enregistre une matiere pour tous les eleves d'une classe d'un seul envoi :
+     * sur 60 eleves, cela fait 120 lectures par cle primaire dont 118
+     * redondantes. Un memo statique les supprimerait, et il est refuse pour
+     * deux raisons :
+     *
+     * - PERIME AU SEIN D'UNE MEME REQUETE. Le `systeme_academique` d'une classe
+     *   ou l'`unite_enseignement_id` d'une matiere peut changer, puis une ligne
+     *   etre enregistree : le memo servirait l'etat d'avant, et laisserait
+     *   passer une ecriture devenue incoherente — ou refuserait une ecriture
+     *   devenue valide.
+     * - PERIME DANS UN WORKER. Le memo voisin `$ecartsJournalises` est borne
+     *   (quelques couples incoherents par instance) ; un memo de MODELES n'a ni
+     *   cette borne ni cette immunite dans un processus long.
+     *
+     * Une lecture par cle primaire coute moins cher qu'un garde qui se trompe.
+     * Si le cout se mesure un jour, c'est a l'appelant en lot de valider une
+     * fois avant sa boucle, pas a ce garde de devenir un cache.
+     *
+     * (Une premiere version invoquait ici la reutilisation des identifiants
+     * apres un rollback de `RefreshDatabase`. C'est FAUX sur MySQL : le
+     * compteur AUTO_INCREMENT d'InnoDB n'est pas transactionnel, les
+     * identifiants montent. Une raison fausse invite au mauvais geste — qui la
+     * refute croit avoir leve l'objection et ajoute le memo.)
+     *
+     * MEME EXCEPTION QUE POUR L'EVALUATION, et pour la meme raison : le
+     * controle ne se declenche qu'a la creation, ou si la classe ou la matiere
+     * change. Une ligne historiquement incoherente reste modifiable sur sa
+     * moyenne ou son rang — sinon on ne pourrait meme plus la corriger, et
+     * c'est exactement ce qui avait rendu une liaison posee par erreur
+     * inextirpable ailleurs dans ce chantier.
+     */
+    protected function assertMatiereCoherenteAvecLaClasse(): void
+    {
+        $doitControler = ! $this->exists || $this->isDirty(['matiere_id', 'classe_id']);
+
+        if (! $doitControler || ! $this->matiere_id || ! $this->classe_id) {
+            return;
+        }
+
+        // `withTrashed()` : les deux modeles sont en `SoftDeletes`. Un `find()`
+        // nu rend `null` sur une ligne effacee en douceur, et le garde se
+        // DESARMAIT alors tout seul — une classe archivee puis rouverte suffit.
+        $classe = ESBTPClasse::withTrashed()->find($this->classe_id);
+        $matiere = ESBTPMatiere::withTrashed()->find($this->matiere_id);
+
+        if (! $classe || ! $matiere) {
+            // On ne peut pas juger, donc on n'interdit pas — mais on le DIT.
+            // Un garde qui se tait quand il renonce ne se cherche meme pas.
+            Log::warning('Coherence non verifiee : classe ou matiere introuvable.', [
+                'modele' => static::class,
+                'classe_id' => $this->classe_id,
+                'matiere_id' => $this->matiere_id,
+            ]);
+
+            return;
+        }
+
+        if (CoherenceSystemeAcademique::estCoherente(
+            $classe->systeme_academique,
+            $matiere->unite_enseignement_id
+        )) {
+            return;
+        }
+
+        throw ValidationException::withMessages([
+            'matiere_id' => CoherenceSystemeAcademique::messageDeRefus(
+                $classe->systeme_academique,
+                (string) $classe->name,
+                (string) $matiere->name
+            ),
+        ]);
     }
 
     /**

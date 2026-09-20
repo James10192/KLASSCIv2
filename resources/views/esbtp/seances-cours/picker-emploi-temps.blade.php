@@ -56,7 +56,7 @@
             @php
                 $classe = $edt->classe;
                 $isLmd = ($classe->systeme_academique ?? '') === 'LMD'
-                    || in_array($classe->niveau->type ?? '', ['Licence', 'Master', 'Doctorat'], true);
+                    || in_array($classe->niveau->type ?? '', \App\Models\ESBTPNiveauEtude::CYCLES_LMD, true);
             @endphp
             <a href="{{ route('esbtp.seances-cours.create', ['emploi_temps_id' => $edt->id]) }}" class="scep2-card">
                 <div class="scep2-card-head">

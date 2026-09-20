@@ -290,7 +290,7 @@
             // les 2 sets de types (BTS legacy + LMD UEMOA) s'affichaient simultanement.
             // Solution : detection inclusive partout = (systeme_academique='LMD' OR niveau.type IN [Licence/Master/Doctorat]).
             $isClasseLmd = ($emploiTemps->classe->systeme_academique ?? '') === 'LMD'
-                || in_array($emploiTemps->classe->niveau->type ?? '', ['Licence', 'Master', 'Doctorat'], true);
+                || in_array($emploiTemps->classe->niveau->type ?? '', \App\Models\ESBTPNiveauEtude::CYCLES_LMD, true);
         @endphp
         {{-- Hero premium namespace sce-* (Seance Creation Edit) --}}
         <div class="sce-hero">
@@ -472,10 +472,10 @@
                                 @if(request()->boolean('embed'))
                                     <div class="d-flex align-items-center gap-2">
                                         <select id="heure_debut_h" class="form-input">
-                                            @for($h = 7; $h <= 18; $h++)
+                                            @foreach(app(\App\Services\Planning\PlageHoraireJournee::class)->heuresDeSaisie() as $h)
                                                 @php $hourValue = str_pad($h, 2, '0', STR_PAD_LEFT); @endphp
                                                 <option value="{{ $hourValue }}">{{ $hourValue }}</option>
-                                            @endfor
+                                            @endforeach
                                         </select>
                                         <span class="text-muted">:</span>
                                         <select id="heure_debut_m" class="form-input">
@@ -502,10 +502,10 @@
                                 @if(request()->boolean('embed'))
                                     <div class="d-flex align-items-center gap-2">
                                         <select id="heure_fin_h" class="form-input">
-                                            @for($h = 7; $h <= 18; $h++)
+                                            @foreach(app(\App\Services\Planning\PlageHoraireJournee::class)->heuresDeSaisie() as $h)
                                                 @php $hourValue = str_pad($h, 2, '0', STR_PAD_LEFT); @endphp
                                                 <option value="{{ $hourValue }}">{{ $hourValue }}</option>
-                                            @endfor
+                                            @endforeach
                                         </select>
                                         <span class="text-muted">:</span>
                                         <select id="heure_fin_m" class="form-input">
@@ -1079,6 +1079,7 @@
 </div>
 
 <div id="seance-data"
+     data-plage='@json(app(\App\Services\Planning\PlageHoraireJournee::class)->pourLeNavigateur())'
      data-default-colors='@json($defaultColors)'
      data-availability='@json($availabilityData ?? [])'
      data-teachers='@json($teachers->keyBy("id"))'
@@ -1093,6 +1094,13 @@
 <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/fr.js"></script>
 <script>
 const currentTeacherId = "{{ old('teacher_id') }}";
+// Plage horaire de la journee, reglee par l'etablissement (cours du soir
+// compris). Les matrices de disponibilite sont indexees par `heure - debut`.
+// Pose par le serveur dans #seance-data, sur cette meme page : pas de repli
+// recopie ici, qui divergerait du reglage sans prevenir.
+const PLAGE_HORAIRE = JSON.parse(document.getElementById('seance-data').dataset.plage);
+const PLAGE_DEBUT = PLAGE_HORAIRE.debut;
+const PLAGE_FIN = PLAGE_HORAIRE.fin;
 const seanceDataElement = document.getElementById('seance-data');
 const isEmbedded = seanceDataElement ? seanceDataElement.dataset.embed === '1' : false;
 const teacherQuickCreateUrl = "{{ route('esbtp.enseignants.quick-create') }}";
@@ -1104,6 +1112,7 @@ const seanceData = seanceDataElement
         teachers: JSON.parse(seanceDataElement.dataset.teachers || '{}')
     }
     : { defaultColors: {}, availability: {}, teachers: {} };
+window.seanceData = seanceData;
 
 const debugLog = typeof window !== 'undefined' && typeof window.debugLog === 'function'
     ? window.debugLog
@@ -1415,8 +1424,8 @@ function updateSelectedTimeInGrid() {
         if (dayColumnIndex !== undefined) {
             // Parcourir chaque ligne d'heure pour surligner les cellules correspondantes
             for (let hour = startHour; hour < endHour; hour++) {
-                if (hour >= 8 && hour < 18) {
-                    const rowIndex = hour - 8; // 8h = row 0
+                if (hour >= PLAGE_DEBUT && hour < PLAGE_FIN) {
+                    const rowIndex = hour - PLAGE_DEBUT;
                     const cell = getAvailabilityCell(selectedDay, hour);
                     if (cell) {
                         cell.classList.add('selected-time');
@@ -1534,7 +1543,7 @@ function getAvailabilityCell(dayNumber, hour) {
         return null;
     }
 
-    const rowIndex = hour - 8;
+    const rowIndex = hour - PLAGE_DEBUT;
     const timeRows = document.querySelectorAll('.availability-time-row');
     if (!timeRows[rowIndex]) {
         return null;
@@ -1891,25 +1900,28 @@ function validateTeacherAvailability() {
 
     // Vérifier chaque heure du créneau
     const teacherDayAvailability = availabilityData[teacherId][dayKey];
+    const jourNoms = {1: 'lundi', 2: 'mardi', 3: 'mercredi', 4: 'jeudi', 5: 'vendredi', 6: 'samedi'};
     for (let hour = startHour; hour < endHour; hour++) {
-        const hourIndex = hour - 8; // 8h = index 0
-        if (hourIndex >= 0 && hourIndex < teacherDayAvailability.length) {
-            const status = teacherDayAvailability[hourIndex];
-            const jourNoms = {1: 'lundi', 2: 'mardi', 3: 'mercredi', 4: 'jeudi', 5: 'vendredi', 6: 'samedi'};
+        const hourIndex = hour - PLAGE_DEBUT;
+        const cell = getAvailabilityCell(selectedDay, hour);
+        const status = cell?.dataset.status
+            ?? ((hourIndex >= 0 && hourIndex < (teacherDayAvailability.length || 0))
+                ? teacherDayAvailability[hourIndex]
+                : null);
 
-            if (status === 'unavailable') {
-                const errorMessage = `L'enseignant n'est pas disponible ${jourNoms[selectedDay]} à ${hour}:00.\n\nVeuillez ajuster les horaires ou choisir un autre enseignant.`;
-                markAvailabilityError(selectedDay, hour, errorMessage);
-                showFormError(errorMessage);
-                setAvailabilityErrorMessage(errorMessage);
-                return false;
-            } else if (status === 'occupied') {
-                const errorMessage = `L'enseignant a déjà une séance programmée ${jourNoms[selectedDay]} à ${hour}:00 dans un autre emploi du temps.\n\nVeuillez choisir un autre créneau.`;
-                markAvailabilityError(selectedDay, hour, errorMessage);
-                showFormError(errorMessage);
-                setAvailabilityErrorMessage(errorMessage);
-                return false;
-            }
+        if (status === 'unavailable') {
+            const errorMessage = `L'enseignant n'est pas disponible ${jourNoms[selectedDay]} à ${hour}:00.\n\nVeuillez ajuster les horaires ou choisir un autre enseignant.`;
+            markAvailabilityError(selectedDay, hour, errorMessage);
+            showFormError(errorMessage);
+            setAvailabilityErrorMessage(errorMessage);
+            return false;
+        }
+        if (status === 'occupied') {
+            const errorMessage = `L'enseignant a déjà une séance programmée ${jourNoms[selectedDay]} à ${hour}:00 dans un autre emploi du temps.\n\nVeuillez choisir un autre créneau.`;
+            markAvailabilityError(selectedDay, hour, errorMessage);
+            showFormError(errorMessage);
+            setAvailabilityErrorMessage(errorMessage);
+            return false;
         }
     }
 
@@ -2060,7 +2072,7 @@ function initTeacherAvailabilityGrid() {
         { key: 4, label: 'Ven' },
         { key: 5, label: 'Sam' }
     ];
-    const hours = Array.from({ length: 10 }, (_, i) => 8 + i);
+    const hours = Array.from({ length: PLAGE_FIN - PLAGE_DEBUT }, (_, i) => PLAGE_DEBUT + i);
 
     let html = '';
     html += '<div class="availability-header-row">';
@@ -2514,8 +2526,8 @@ function showTeacherAvailability() {
             }
             gridHtml += '</div>';
 
-            // Créer les lignes pour chaque heure (8h-18h)
-            for (let hour = 8; hour < 18; hour++) {
+            // Une ligne par heure de la plage de l'etablissement
+            for (let hour = PLAGE_DEBUT; hour < PLAGE_FIN; hour++) {
                 gridHtml += '<div class="availability-time-row">';
                 gridHtml += `<div class="time-label">${hour}:00</div>`;
 
@@ -2529,7 +2541,7 @@ function showTeacherAvailability() {
 
                     // Le format est: rawAvailability[dayKey][hourIndex] = 'available'/'preferred'/'unavailable'/'occupied'
                     if (rawAvailability[dayKey]) {
-                        const hourIndex = hour - 8; // 8h = index 0
+                        const hourIndex = hour - PLAGE_DEBUT;
                         if (hourIndex >= 0 && hourIndex < rawAvailability[dayKey].length) {
                             const status = rawAvailability[dayKey][hourIndex];
                             if (status === 'occupied') {
@@ -2650,10 +2662,18 @@ function refreshAvailabilityGridFromPolling(teacherId, newData) {
     const refreshIcon = document.getElementById('refresh-icon');
     if (refreshIcon) refreshIcon.classList.add('fa-spin');
 
-    // Mettre à jour les données globales seanceData
-    if (window.seanceData && window.seanceData.availability) {
-        window.seanceData.availability[teacherId] = newData;
+    const previous = seanceData.availability[teacherId];
+    if (previous) {
+        Object.keys(previous).forEach(day => {
+            if (!newData[day] || !previous[day]) return;
+            previous[day].forEach((status, i) => {
+                if (status === 'occupied' && newData[day][i] !== undefined) {
+                    newData[day][i] = 'occupied';
+                }
+            });
+        });
     }
+    seanceData.availability[teacherId] = newData;
 
     // Reconstruire le HTML de la grille (même logique que showTeacherAvailability)
     const rawAvailability = newData;
@@ -2667,7 +2687,7 @@ function refreshAvailabilityGridFromPolling(teacherId, newData) {
 
     const dayKeys = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
 
-    for (let hour = 8; hour < 18; hour++) {
+    for (let hour = PLAGE_DEBUT; hour < PLAGE_FIN; hour++) {
         gridHtml += '<div class="availability-time-row">';
         gridHtml += `<div class="time-label">${hour}:00</div>`;
 
@@ -2677,7 +2697,7 @@ function refreshAvailabilityGridFromPolling(teacherId, newData) {
             let cellStatus = 'unavailable';
 
             if (rawAvailability[dayKey]) {
-                const hourIndex = hour - 8;
+                const hourIndex = hour - PLAGE_DEBUT;
                 if (hourIndex >= 0 && hourIndex < rawAvailability[dayKey].length) {
                     const status = rawAvailability[dayKey][hourIndex];
                     if (status === 'occupied') {

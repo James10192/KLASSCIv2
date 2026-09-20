@@ -31,6 +31,10 @@ class StorePreInscriptionRequest extends FormRequest
             'nom' => 'required_without:etudiant_existant_id|string|max:100',
             'prenoms' => 'required_without:etudiant_existant_id|string|max:100',
             'classe_id' => 'required|exists:esbtp_classes,id',
+            // Exige une reponse explicite. La colonne a « affecte » pour defaut en
+            // base, et c'est justement le statut qui met la scolarite a zero : ne
+            // pas demander revenait a declarer chaque etudiant place par l'Etat.
+            'affectation_status' => 'required|in:affecté,réaffecté,non_affecté',
             'telephone' => 'nullable|string|max:20',
             // Matricule manuel optionnel pour un nouvel étudiant (ignoré en réinscription)
             'matricule' => [
@@ -58,6 +62,8 @@ class StorePreInscriptionRequest extends FormRequest
             'nom.required_without' => 'Le nom est obligatoire',
             'prenoms.required_without' => 'Le(s) prénom(s) est/sont obligatoire(s)',
             'classe_id.required' => 'Veuillez sélectionner une classe',
+            'affectation_status.required' => "Veuillez indiquer le statut d'affectation MESRS de l'étudiant",
+            'affectation_status.in' => "Statut d'affectation inconnu : affecté, réaffecté ou non affecté.",
             'matricule.unique' => 'Ce matricule est déjà attribué à un autre étudiant.',
             'matricule.regex' => 'Le matricule ne peut contenir que des lettres, chiffres, tirets, underscores ou /.',
             'matricule.max' => 'Le matricule ne peut excéder 50 caractères.',

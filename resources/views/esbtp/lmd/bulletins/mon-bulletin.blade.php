@@ -181,7 +181,7 @@
                 <div class="mbl-hero-meta">
                     <span class="mbl-hero-chip">Classe <strong>{{ $mblClasse }}</strong></span>
                     @if($inscription?->classe?->parcours?->name)
-                        <span class="mbl-hero-chip">Parcours <strong>{{ $inscription->classe->parcours->name }}</strong></span>
+                        <span class="mbl-hero-chip">@rang('parcours') <strong>{{ $inscription->classe->parcours->name }}</strong></span>
                     @endif
                 </div>
             @endif

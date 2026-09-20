@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Domain\Notifications\PhoneNormalizer;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Http;
 
@@ -225,13 +226,20 @@ class WhatsAppService
                 return false;
             }
 
-            // Nettoyer le numéro de téléphone (enlever espaces, tirets, etc.)
-            $cleanPhone = preg_replace('/[^0-9+]/', '', $phoneNumber);
+            // L'analyseur canonique du projet, et lui seul.
+            //
+            // Ce bloc reconstituait le numéro à la main — `'+225' . ltrim($p, '0')` —
+            // ce qui cassait aussi la Côte d'Ivoire : depuis 2021 le zéro initial
+            // fait partie du numéro national, donc tout numéro ivoirien y perdait
+            // un chiffre (0707121234 → +225707121234, neuf chiffres, injoignable).
+            // Et l'indicatif était écrit en dur, ce qui expédiait un message
+            // béninois vers un abonné ivoirien.
+            $cleanPhone = PhoneNormalizer::toE164($phoneNumber);
 
-            // S'assurer que le numéro commence par +
-            if (!str_starts_with($cleanPhone, '+')) {
-                // Ajouter +225 pour la Côte d'Ivoire si pas de code pays
-                $cleanPhone = '+225' . ltrim($cleanPhone, '0');
+            if ($cleanPhone === null) {
+                Log::warning('WhatsApp non envoyé : numéro illisible', ['phone' => $phoneNumber]);
+
+                return false;
             }
 
             $url = "{$this->apiUrl}/{$this->phoneNumberId}/messages";

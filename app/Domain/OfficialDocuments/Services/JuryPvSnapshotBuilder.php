@@ -5,6 +5,7 @@ namespace App\Domain\OfficialDocuments\Services;
 use App\Helpers\SettingsHelper;
 use App\Models\User;
 use App\Services\LMD\LmdAcademicRuleProfile;
+use App\Services\LMD\VocabulaireStructure;
 use Carbon\CarbonInterface;
 
 class JuryPvSnapshotBuilder
@@ -16,9 +17,21 @@ class JuryPvSnapshotBuilder
      * car elles n'entrent dans aucun calcul de note. Un PV conserve cinq ans ne doit
      * enoncer que des regles reellement appliquees.
      */
-    public const RULES_VERSION = 'lmd-academic-profile-v2';
+    /**
+     * v3 — septembre 2026 : l'arithmétique de décision d'un jury ANNUEL change
+     * (agrégation pondérée des semestres au lieu d'un bulletin unique), et
+     * l'instantané gagne la motivation de chaque décision.
+     *
+     * Ce tampon est gravé sur des documents conservés cinq ans. Le laisser à
+     * `v2` ferait porter le même numéro à deux jeux de règles différents, et
+     * personne ne pourrait plus dire, devant un PV de 2026, lequel l'a produit.
+     */
+    public const RULES_VERSION = 'lmd-academic-profile-v3';
 
-    public function __construct(private readonly LmdAcademicRuleProfile $profile) {}
+    public function __construct(
+        private readonly LmdAcademicRuleProfile $profile,
+        private readonly VocabulaireStructure $vocabulaire,
+    ) {}
 
     public function build(array $state, array $identity, User $actor, CarbonInterface $issuedAt): array
     {
@@ -28,6 +41,8 @@ class JuryPvSnapshotBuilder
             'document' => ['reference' => $identity['reference'], 'version' => $identity['version'], 'number' => $identity['number']],
             'institution' => SettingsHelper::getSchoolInfo(),
             'jury' => $this->juryData($jury),
+            // Nom des rangs de la structure LMD, gele comme le reste du PV.
+            'vocabulary' => $this->vocabulaire->instantane(),
             'members' => $state['members']->map(fn ($member) => $this->memberData($member))->sortBy('user_id')->values()->all(),
             'decisions' => $state['decisions']->map(fn ($decision) => $this->decisionData($decision))->sortBy('student_id')->values()->all(),
             'grade_sheets' => $state['sheets']->map(fn ($sheet) => ['id' => $sheet->id, 'code' => $sheet->code, 'status' => $sheet->status->value, 'lock_version' => $sheet->lock_version])->sortBy('id')->values()->all(),
@@ -57,7 +72,15 @@ class JuryPvSnapshotBuilder
     private function decisionData($decision): array
     {
         $student = $decision->etudiant;
-        return ['id' => $decision->id, 'student_id' => $decision->etudiant_id, 'matricule' => $student?->matricule, 'last_name' => $student?->nom, 'first_names' => $student?->prenoms, 'bulletin_id' => $decision->bulletin_id, 'automatic_decision' => $decision->decision_auto, 'decision' => $decision->decision, 'mention' => $decision->mention, 'average' => $decision->moyenne_generale, 'credits' => $decision->credits_obtenus, 'expected_credits' => $decision->credits_attendus, 'overridden' => (bool) $decision->override_par_jury, 'override_reason' => $decision->motif_override, 'vote' => $decision->vote_resultat];
+        return ['id' => $decision->id, 'student_id' => $decision->etudiant_id, 'matricule' => $student?->matricule, 'last_name' => $student?->nom, 'first_names' => $student?->prenoms, 'bulletin_id' => $decision->bulletin_id, 'automatic_decision' => $decision->decision_auto, 'decision' => $decision->decision, 'mention' => $decision->mention, 'average' => $decision->moyenne_generale, 'credits' => $decision->credits_obtenus, 'expected_credits' => $decision->credits_attendus, 'overridden' => (bool) $decision->override_par_jury, 'override_reason' => $decision->motif_override, 'vote' => $decision->vote_resultat,
+            // La motivation du calcul, gravée avec la décision. Un procès-verbal
+            // qui dit « ajourné » sans dire pourquoi se conteste mal : la raison
+            // existait, elle était jetée avant d'arriver jusqu'ici.
+            //
+            // `?? []` et non l'absence de clé : l'instantané est canonicalisé
+            // puis empreinté en SHA-256, et une clé qui apparaît ou disparaît
+            // selon les données rendrait deux PV incomparables.
+            'reasons' => $decision->raisons ?? []];
     }
 
     private function rules(): array

@@ -18,6 +18,66 @@ use Illuminate\Support\Facades\Log;
 class CLINiveauEtudeController extends BaseApiController
 {
     /**
+     * GET /api/cli/niveaux/coherence
+     *
+     * Niveaux LMD dont l'annee contredit le cycle (un Master en annee 1), avec
+     * ce qu'une correction toucherait. Lecture seule.
+     */
+    public function coherence(Request $request, \App\Services\LMD\CoherenceNiveauxLmd $coherence): JsonResponse
+    {
+        if (! $request->user()->tokenCan('cli:read')) {
+            return $this->errorResponse('Token missing cli:read ability', [], 403);
+        }
+
+        $rapport = $coherence->rapport();
+
+        return $this->successResponse($rapport, sprintf(
+            '%d niveau(x) LMD incoherent(s) sur %d.',
+            count($rapport['incoherents']),
+            $rapport['niveaux_lmd']
+        ));
+    }
+
+    /**
+     * POST /api/cli/niveaux/{niveau}/annee — Replace un niveau LMD sur une
+     * annee de son cycle. Previsualisation sans `apply: true`.
+     *
+     * Body: { year: int, apply?: bool }
+     */
+    public function corrigerAnnee(Request $request, ESBTPNiveauEtude $niveau, \App\Services\LMD\CoherenceNiveauxLmd $coherence): JsonResponse
+    {
+        if (! $request->user()->tokenCan('cli:admin')) {
+            return $this->errorResponse('Token missing cli:admin ability', [], 403);
+        }
+
+        $validated = $request->validate([
+            'year' => 'required|integer|min:1|max:10',
+            'apply' => 'nullable|boolean',
+        ]);
+
+        $avant = (int) $niveau->year;
+        $resultat = $coherence->corrigerAnnee($niveau, (int) $validated['year'], (bool) ($validated['apply'] ?? false));
+
+        if ($resultat['applique']) {
+            Log::warning('CLI: annee de niveau LMD corrigee', [
+                'niveau_id' => $niveau->id,
+                'avant' => $avant,
+                'apres' => $resultat['annee_cible'],
+                'caller_user_id' => $request->user()->id,
+                'ip' => $request->ip(),
+            ]);
+        }
+
+        $message = match (true) {
+            $resultat['refus'] !== [] => 'Correction refusee.',
+            $resultat['applique'] => "{$niveau->name} passe en annee {$resultat['annee_cible']}.",
+            default => 'Aucune ecriture : previsualisation seulement.',
+        };
+
+        return $this->successResponse($resultat, $message);
+    }
+
+    /**
      * GET /api/cli/niveaux
      */
     public function index(Request $request): JsonResponse
@@ -57,7 +117,7 @@ class CLINiveauEtudeController extends BaseApiController
             'niveaux' => 'required|array|min:1|max:50',
             'niveaux.*.name' => 'required|string|max:255',
             'niveaux.*.type' => 'required|string|max:50',
-            'niveaux.*.year' => 'required|integer|min:1|max:10',
+            'niveaux.*.year' => ['required', 'integer', 'min:1', 'max:10', new \App\Rules\AnneeDuCycleLmd()],
             'niveaux.*.code' => 'nullable|string|max:50',
             'niveaux.*.libelle' => 'nullable|string|max:255',
             'niveaux.*.is_active' => 'nullable|boolean',

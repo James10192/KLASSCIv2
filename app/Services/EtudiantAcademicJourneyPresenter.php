@@ -2,11 +2,13 @@
 
 namespace App\Services;
 
+use App\Domain\Academique\CoherenceSystemeAcademique;
 use App\Models\ESBTPBulletin;
 use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPInscription;
 use App\Models\ESBTPLMDBulletin;
 use App\Models\ESBTPResultat;
+use App\Services\LMD\AgregatDeLaPeriode;
 use Illuminate\Support\Collection;
 
 class EtudiantAcademicJourneyPresenter
@@ -178,11 +180,29 @@ class EtudiantAcademicJourneyPresenter
         }
 
         return ESBTPResultat::query()
+            // `withTrashed()` sur LES DEUX : `ESBTPMatiere` et `ESBTPClasse` sont en
+            // `SoftDeletes`, et le filtre plus bas est en echec ouvert. Une classe
+            // archivee en fin d'annee — geste ordinaire — suffisait a le desarmer,
+            // alors que le snapshot affiche a cote, lui, est deja en `withTrashed()` :
+            // les deux moyennes de la meme page divergeaient a nouveau.
+            ->with([
+                'matiere' => fn ($q) => $q->withTrashed(),
+                'classe' => fn ($q) => $q->withTrashed(),
+            ])
             ->where('etudiant_id', $etudiant->id)
             ->whereIn('classe_id', $classeIds)
             ->whereIn('annee_universitaire_id', $anneeIds)
             ->whereNotNull('moyenne')
-            ->get();
+            ->get()
+            // Ce repli sert EXACTEMENT le cas d'avant-bulletin (`btsMetrics()`
+            // ne le lit que si aucun bulletin n'est calcule), soit le moment ou
+            // une ECUE mal rangee se voit le plus. Et il est rendu sur le MEME
+            // ecran que `$btsAnnualSnapshot`, deja filtre : sans ce filtre-ci,
+            // la meme page affichait deux moyennes differentes.
+            ->filter(fn (ESBTPResultat $resultat) => ! $resultat->matiere
+                || ! $resultat->classe
+                || CoherenceSystemeAcademique::matiereRetenue($resultat->matiere, $resultat->classe, 'parcours etudiant/moyenne enregistree'))
+            ->values();
     }
 
     private function btsMetrics(Collection $bulletins, Collection $resultats): array
@@ -239,16 +259,14 @@ class EtudiantAcademicJourneyPresenter
             ];
         }
 
-        $withAverage = $bulletins->filter(fn (ESBTPLMDBulletin $bulletin) => $bulletin->moyenne_generale !== null && $bulletin->moyenne_generale > 0);
         $creditsTotal = (int) $bulletins->sum('credits_totaux');
-        $average = null;
 
-        if ($withAverage->isNotEmpty()) {
-            $weightedCredits = (int) $withAverage->sum('credits_totaux');
-            $average = $weightedCredits > 0
-                ? round((float) $withAverage->sum(fn (ESBTPLMDBulletin $bulletin) => (float) $bulletin->moyenne_generale * (int) $bulletin->credits_totaux) / $weightedCredits, 2)
-                : round((float) $withAverage->avg('moyenne_generale'), 2);
-        }
+        // Ce diagramme est rendu sur `/esbtp/etudiants/{id}`, à quelques
+        // centimètres de l'indicateur « Moy. générale » et sur le même
+        // regroupement (classe + année) : il doit donc afficher le même nombre,
+        // par le même calcul. Il portait sa propre formule — voir
+        // `AgregatDeLaPeriode`, section « Les formules concurrentes ».
+        $average = AgregatDeLaPeriode::moyenne(AgregatDeLaPeriode::parSemestre($bulletins));
 
         $last = $bulletins->sortBy('semestre')->last();
         $creditsCapitalises = (int) $bulletins->sum('credits_capitalises');

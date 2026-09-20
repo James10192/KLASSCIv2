@@ -96,7 +96,7 @@
     @else
     <table class="rtp-table">
         <thead><tr>
-            <th>Libellé</th><th>Type</th><th>Parcours</th><th>Semestre</th><th>Dates</th><th>Statut</th><th></th>
+            <th>Libellé</th><th>Type</th><th>@rang('parcours')</th><th>Semestre</th><th>Dates</th><th>Statut</th><th></th>
         </tr></thead>
         <tbody>
         @foreach($sessions as $s)
@@ -144,11 +144,11 @@
                     <label style="font-size:.72rem;color:#475569;font-weight:600;text-transform:uppercase;">Semestre</label>
                     <select name="semestre" style="width:100%;padding:.5rem;border:1px solid #e2e8f0;border-radius:8px;">
                         <option value="">—</option>
-                        @foreach([1,2,3,4,5,6] as $sem)<option value="{{ $sem }}">S{{ $sem }}</option>@endforeach
+                        @foreach(\App\Models\ESBTPNiveauEtude::semestresLmd() as $sem)<option value="{{ $sem }}">S{{ $sem }}</option>@endforeach
                     </select>
                 </div>
                 <div style="grid-column:1/-1;">
-                    <label style="font-size:.72rem;color:#475569;font-weight:600;text-transform:uppercase;">Parcours</label>
+                    <label style="font-size:.72rem;color:#475569;font-weight:600;text-transform:uppercase;">@rang('parcours')</label>
                     <select name="parcours_id" style="width:100%;padding:.5rem;border:1px solid #e2e8f0;border-radius:8px;">
                         <option value="">— Tous parcours —</option>
                         @foreach($parcours as $p)<option value="{{ $p->id }}">{{ $p->name }}</option>@endforeach

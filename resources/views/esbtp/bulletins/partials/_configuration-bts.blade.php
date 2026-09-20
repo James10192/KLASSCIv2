@@ -290,9 +290,10 @@
                         </div>
                         <div class="col-md-6">
                             <label class="bcfg-label">BTS 1 · Moyenne de décision</label>
+                            @php $_sourceDecisionBts1 = $settings['bulletin_bts1_council_average_source'] ?? \App\Services\BtsBulletinPolicy::defaultFor('bulletin_bts1_council_average_source'); @endphp
                             <select class="bcfg-select" name="bulletin_bts1_council_average_source">
-                                <option value="semestre2" {{ ($settings['bulletin_bts1_council_average_source'] ?? 'semestre2') === 'semestre2' ? 'selected' : '' }}>Moyenne du semestre 2 avec assiduité</option>
-                                <option value="annual" {{ ($settings['bulletin_bts1_council_average_source'] ?? 'semestre2') === 'annual' ? 'selected' : '' }}>Moyenne annuelle avec assiduité</option>
+                                <option value="annual" {{ $_sourceDecisionBts1 === 'annual' ? 'selected' : '' }}>Moyenne annuelle avec assiduité</option>
+                                <option value="semestre2" {{ $_sourceDecisionBts1 === 'semestre2' ? 'selected' : '' }}>Moyenne du semestre 2 avec assiduité</option>
                             </select>
                         </div>
                         <div class="col-md-4">

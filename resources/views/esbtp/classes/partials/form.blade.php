@@ -77,7 +77,7 @@
     $oldNiveauObj = $oldNiveauId ? $niveaux->firstWhere('id', (int) $oldNiveauId) : null;
     $renderedMode = '';
     if ($oldNiveauObj) {
-        $renderedMode = in_array($oldNiveauObj->type, ['Licence', 'Master', 'Doctorat'], true) ? 'LMD' : 'BTS';
+        $renderedMode = in_array($oldNiveauObj->type, \App\Models\ESBTPNiveauEtude::CYCLES_LMD, true) ? 'LMD' : 'BTS';
     } elseif ($isEdit) {
         $renderedMode = $classe->systeme_academique ?? '';
     }
@@ -256,7 +256,7 @@
                             </div>
                         @else
                             <div class="col-md-6 mb-3">
-                                <label class="form-label">Mention <span class="text-danger">*</span></label>
+                                <label class="form-label">@rang('mention') <span class="text-danger">*</span></label>
                                 <x-au-mention-picker
                                     :name="'filiere_id'"
                                     :value="$initialMentionId ?: $oldFiliereId"
@@ -271,7 +271,7 @@
                             </div>
 
                             <div class="col-md-6 mb-3">
-                                <label class="form-label text-muted">Domaine</label>
+                                <label class="form-label text-muted">@rang('domaine')</label>
                                 <div class="form-control bg-light d-flex align-items-center"
                                      style="min-height: 38px;">
                                     <i class="fas fa-folder-open me-2 text-primary"></i>

@@ -27,7 +27,7 @@
                     }
                 } elseif ($inscription->classe?->systeme_academique === 'BTS' || ($inscription->niveau && in_array($inscription->niveau->type, ['BTS', 'BAC+2', 'DUT'], true))) {
                     $insRenderedMode = 'BTS';
-                } elseif ($inscription->niveau && in_array($inscription->niveau->type, ['Licence', 'Master', 'Doctorat'], true)) {
+                } elseif ($inscription->niveau && in_array($inscription->niveau->type, \App\Models\ESBTPNiveauEtude::CYCLES_LMD, true)) {
                     $insRenderedMode = 'LMD';
                 }
             @endphp
@@ -278,7 +278,7 @@
                                         <small class="form-text text-muted">Filtre les classes LMD affichées ci-dessous.</small>
                                     </div>
                                     <div class="col-md-6 mb-3">
-                                        <label class="form-label">Parcours <small class="text-muted">(filtre, optionnel)</small></label>
+                                        <label class="form-label">@rang('parcours') <small class="text-muted">(filtre, optionnel)</small></label>
                                         <x-au-parcours-picker
                                             name="lmd_filter_parcours_id"
                                             :value="$insInitialParcoursId"

@@ -169,7 +169,25 @@ class ESBTPLMDSessionController extends Controller
             return 'Aucune modification.';
         }
 
-        return implode(', ', $parties) . '. ' . $bilan['recalculees'] . ' note' . ($bilan['recalculees'] > 1 ? 's finales recalculees' : ' finale recalculee') . '.';
+        $message = implode(', ', $parties) . '. ' . $bilan['recalculees'] . ' note' . ($bilan['recalculees'] > 1 ? 's finales recalculees' : ' finale recalculee') . '.';
+
+        // Un refus de reagregation doit se voir ici. Les notes SONT enregistrees,
+        // mais le bulletin d'une classe n'a pas suivi : sans cette phrase, seul
+        // un journal le dirait, et l'ecran laisserait croire que tout a suivi.
+        $refuses = $bilan['bulletins_refuses'];
+        if ($refuses !== []) {
+            $classes = implode(', ', array_column($refuses, 'classe'));
+            $pluriel = count($refuses) > 1;
+
+            // Les classes NOMMEES, et l'explication UNE FOIS. Le motif est le
+            // meme pour toutes — le repeter n'ajoute rien et noie les noms, qui
+            // sont la seule information que le lecteur n'a pas deja.
+            $message .= ' Attention : ' . $classes . ($pluriel ? ' n\'ont' : ' n\'a')
+                . ' pas pu etre reagregee' . ($pluriel ? 's' : '') . '. '
+                . implode(' ', array_unique(array_column($refuses, 'message')));
+        }
+
+        return $message;
     }
 
     /**
@@ -217,7 +235,7 @@ class ESBTPLMDSessionController extends Controller
             'parcours_id' => ['nullable', 'exists:esbtp_lmd_parcours,id'],
             'type' => ['required', 'in:normale,rattrapage,extra'],
             'parent_session_id' => ['nullable', 'exists:esbtp_lmd_sessions,id'],
-            'semestre' => ['nullable', 'integer', 'between:1,8'],
+            'semestre' => ['nullable', 'integer', 'between:1,'.\App\Models\ESBTPNiveauEtude::SEMESTRE_LMD_MAX],
             'libelle' => ['required', 'string', 'max:255'],
             'date_debut' => ['nullable', 'date'],
             'date_fin' => ['nullable', 'date', 'after_or_equal:date_debut'],

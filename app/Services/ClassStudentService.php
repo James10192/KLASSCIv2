@@ -129,9 +129,12 @@ class ClassStudentService
                 }
 
                 // Restaurer les notes/resultats/bulletins archives si l'etudiant revient dans cette classe
+                // MEME predicat qu'a l'archivage : restaurer plus etroit
+                // perdrait definitivement les notes dont la colonne
+                // denormalisee avait derive.
                 $restoredNotes = ESBTPNote::withoutGlobalScope('not_archived')
                     ->where('etudiant_id', $etudiantId)
-                    ->where('classe_id', $classe->id)
+                    ->rattacheesALaClasse($classe->id)
                     ->whereNotNull('archived_at')
                     ->update(['archived_at' => null]);
 
@@ -239,7 +242,7 @@ class ClassStudentService
                 // Archiver les notes, resultats et bulletins de l'ancienne classe
                 $now = now();
                 $archivedNotes = ESBTPNote::where('etudiant_id', $etudiantId)
-                    ->where('classe_id', $classe->id)
+                    ->rattacheesALaClasse($classe->id)
                     ->update(['archived_at' => $now]);
 
                 $archivedResultats = ESBTPResultat::where('etudiant_id', $etudiantId)

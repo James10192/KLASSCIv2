@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Models\ESBTPResultatMatiere;
+
 class BulletinSectionSummary
 {
     /**
@@ -53,10 +55,36 @@ class BulletinSectionSummary
 
         foreach ($resultats as $resultat) {
             $coef = (float) ($resultat->coefficient ?? 0);
+            $matiereId = (int) ($resultat->matiere_id ?? 0);
+
+            // Une matiere dispensee ou non notee reste AFFICHEE sur le
+            // bulletin — c'est tout l'objet du lot — mais elle ne doit entrer
+            // dans aucun total. Sans ce filtre, son coefficient s'ajoutait au
+            // denominateur pendant que sa moyenne nulle valait zero point : la
+            // ligne de synthese imprimait « Moyenne 13,50 · Coef 8 · M×C 54,00 »,
+            // et 54/8 = 6,75. Le document se contredisait sur une seule ligne,
+            // sans erreur, devant une famille.
+            //
+            // Meme raison pour le jeu de matieres du rang : classer un eleve sur
+            // une matiere dont il est dispense n'a pas de sens.
+            if (! ESBTPResultatMatiere::ligneNotee($resultat)) {
+                // Les heures d'absence, elles, restent comptees : ce sont des
+                // heures reellement manquees, la ligne les affiche, et les
+                // retirer du total de section rendrait la colonne fausse.
+                if ($matiereId > 0) {
+                    $absences += (float) (
+                        $absencesParMatiere[$matiereId]['total_heures']
+                        ?? $absencesParMatiere[(string) $matiereId]['total_heures']
+                        ?? 0
+                    );
+                }
+
+                continue;
+            }
+
             $moyenne = (float) ($resultat->moyenne ?? 0);
             $coefficient += $coef;
             $weighted += $moyenne * $coef;
-            $matiereId = (int) ($resultat->matiere_id ?? 0);
             if ($matiereId <= 0) {
                 continue;
             }

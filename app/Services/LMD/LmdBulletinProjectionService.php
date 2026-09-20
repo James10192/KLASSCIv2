@@ -280,7 +280,14 @@ class LmdBulletinProjectionService
                 ? ESBTPLMDResultatUE::STATUT_AQ
                 : ESBTPLMDResultatUE::STATUT_NAQ,
             'mention' => $this->bulletins->determinerMentionUE($moyenneUE),
-            'credit' => (int) $ue->credit,
+            // Le crédit de la maquette lue, comme le bulletin généré.
+            //
+            // Les unités arrivent ici par `LMDBulletinService::getUEsForSemestre()`,
+            // qui grave désormais le crédit du pivot sur chaque modèle. Lire
+            // `$ue->credit` — la fiche — donnerait à l'étudiant des crédits par
+            // unité qui ne totalisent pas le total imprimé sur son bulletin, là
+            // où deux parcours partagent une unité à crédits divergents.
+            'credit' => $ue->creditEffectif(),
             'credits_capitalises' => 0,
             'resultats_ecues' => collect($resultatsECUEs),
             'missing_ecues' => $missingEcues,

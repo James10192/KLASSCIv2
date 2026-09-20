@@ -93,9 +93,8 @@
     $mAvoirDisponible = (float) $paiement->avoir_disponible;
     $mPeutAvoir = $paiement->status === 'validé' && ! $mEstAvoir && $mAvoirDisponible > 0
         && ($mUser?->can('paiements.avoir') ?? false);
-    // destroy() exige paiements.manage en plus de paiements.delete : sans les
-    // deux, le bouton menerait a un 403, donc il ne s'affiche pas.
-    $mPeutSupprimer = ($mUser?->can('paiements.delete') ?? false) && ($mUser?->can('paiements.manage') ?? false);
+    // Le droit `paiements.delete` suffit : l'etablissement l'accorde au role qu'il veut.
+    $mPeutSupprimer = $mUser?->can('paiements.delete') ?? false;
     $mADesActions = $mPeutValider || $mRecuDisponible || $mPeutCorrigerMode || $mPeutReventiler
         || $mPeutAnnulerMien || $mPeutAvoir || $mPeutSupprimer;
 
@@ -173,7 +172,7 @@
                 <dt>Classe</dt>
                 <dd>{{ $mClasseLabel !== '' ? $mClasseLabel : '—' }}</dd>
                 @if($mParcoursLabel)
-                    <dt>Parcours</dt>
+                    <dt>@rang('parcours')</dt>
                     <dd>{{ $mParcoursLabel }}</dd>
                 @endif
                 @if($mInscription?->anneeUniversitaire)
@@ -260,13 +259,20 @@
         </div>
     </div>
 
-    @can('paiements.create')
-        <x-m.actionbar>
-            <a href="{{ route('esbtp.paiements.create') }}" class="m-btn p">
-                <x-m.icon name="plus" />Nouvel encaissement
-            </a>
+    @if($mPeutAnnulerMien || ($mUser?->can('paiements.create')))
+        <x-m.actionbar :row="$mPeutAnnulerMien && ($mUser?->can('paiements.create') ?? false)">
+            @if($mPeutAnnulerMien)
+                <button type="button" class="m-btn {{ ($mUser?->can('paiements.create') ?? false) ? 'g' : 'p' }}" x-on:click="ouvrir('psm-annuler')">
+                    <x-m.icon name="clock" />Annuler ma saisie
+                </button>
+            @endif
+            @can('paiements.create')
+                <a href="{{ route('esbtp.paiements.create') }}" class="m-btn p">
+                    <x-m.icon name="plus" />Nouvel encaissement
+                </a>
+            @endcan
         </x-m.actionbar>
-    @endcan
+    @endif
 
     {{-- ============ Feuille « Actions » ============ --}}
     @if($mADesActions)
@@ -302,8 +308,8 @@
                 @endif
             @endcan
             @can('cancelOwnRecent', $paiement)
-                <button type="button" x-show="statut === 'en_attente'" x-on:click="ouvrir('psm-annuler')">
-                    <x-m.icon name="clock" />Annuler mon encaissement<span class="ch"><x-m.icon name="chr" /></span>
+                <button type="button" x-on:click="ouvrir('psm-annuler')">
+                    <x-m.icon name="clock" />Annuler ma saisie<span class="ch"><x-m.icon name="chr" /></span>
                 </button>
             @endcan
         </div>
@@ -317,13 +323,12 @@
         @endcan
 
         @can('paiements.delete')
-            @can('paiements.manage')
                 <div class="psm-sep" aria-hidden="true"></div>
                 <button type="button" class="psm-danger-link" x-on:click="ouvrir('psm-supprimer')">
                     <x-m.icon name="x" />Supprimer définitivement ce paiement
                 </button>
             @endcan
-        @endcan
+
     </x-m.sheet>
     @endif
 
@@ -480,26 +485,29 @@
 
     {{-- ============ Feuille « Supprimer » ============ --}}
     @can('paiements.delete')
-    @can('paiements.manage')
-    <x-m.sheet id="psm-supprimer" title="Supprimer ce paiement" :sub="'Action irréversible · N° ' . $mNumero">
+    <x-m.sheet id="psm-supprimer" title="Supprimer ce versement" :sub="'Motif obligatoire · N° ' . $mNumero">
         <form x-on:submit.prevent="supprimer()" class="psm-form">
             <div class="psm-note bad">
                 <x-m.icon name="alert" />
-                <span>Le paiement de {{ $mMontant }} FCFA disparaîtra définitivement. Pour confirmer, retapez le numéro du reçu.</span>
+                <span>Le versement de {{ $mMontant }} FCFA sera retiré des comptes de l'étudiant. Votre nom, la date et le motif restent lisibles au journal d'audit. Pour confirmer, retapez le numéro du reçu.</span>
+            </div>
+            <div class="m-field">
+                <label for="psm-suppr-motif">Motif de la suppression (10 caractères minimum)</label>
+                <textarea id="psm-suppr-motif" class="m-in" rows="3" maxlength="500"
+                          x-model="formSuppr.motif" placeholder="Ex : Encaissé par erreur, le paquet de rames a été déposé en nature."></textarea>
             </div>
             <div class="m-field">
                 <label for="psm-suppr-numero">Numéro du reçu : {{ $mNumero }}</label>
                 <input id="psm-suppr-numero" type="text" class="m-in" autocomplete="off" autocapitalize="characters"
                        x-model="formSuppr.saisie" placeholder="{{ $mNumero }}">
             </div>
-            <button type="submit" class="m-btn d" x-bind:disabled="occupe || formSuppr.saisie.trim().toUpperCase() !== numero.toUpperCase()">
+            <button type="submit" class="m-btn d" x-bind:disabled="occupe || formSuppr.motif.trim().length < 10 || formSuppr.saisie.trim().toUpperCase() !== numero.toUpperCase()">
                 <span x-show="!occupe">Supprimer définitivement</span>
                 <span x-show="occupe" x-cloak>Suppression…</span>
             </button>
             <button type="button" class="m-btn g" x-on:click="hide()">Annuler</button>
         </form>
     </x-m.sheet>
-    @endcan
     @endcan
 </div>
 
@@ -546,7 +554,7 @@
                 formRejet: { motif: '' },
                 formMode: { mode: cfg.mode, motif: '' },
                 formAvoir: { kind: 'credit', montant: Number(cfg.avoirDisponible || 0), motif: '' },
-                formSuppr: { saisie: '' },
+                formSuppr: { saisie: '', motif: '' },
 
                 init() {
                     if (cfg.flash) {
@@ -685,7 +693,7 @@
                 supprimer() {
                     var self = this;
                     return this.executer(async function () {
-                        var data = await self.appeler(self.urls.supprimer, 'DELETE', {});
+                        var data = await self.appeler(self.urls.supprimer, 'DELETE', { motif: self.formSuppr.motif.trim() });
                         self.fermerTout();
                         self.toast(data.message || 'Paiement supprimé.', 'success');
                         // EXCEPTION ajax-no-reload-premium : le versement n'existe plus, la fiche n'a plus d'objet.

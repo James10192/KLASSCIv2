@@ -523,6 +523,39 @@ class CLIFraisController extends BaseApiController
      * `repartir-trop-percu` avec `reset` pour que les versements deja encaisses
      * suivent le nouvel ordre.
      */
+    /**
+     * POST /api/cli/frais/retirer-configurations-inutiles
+     *
+     * Doublons de portee identiques : detectes. Configurations a zero : seulement
+     * celles designees par `ids_nuls`. Simule sans `apply`.
+     */
+    public function retirerConfigurationsInutiles(
+        Request $request,
+        \App\Services\Frais\RetraitConfigurationsInutiles $retrait
+    ): JsonResponse {
+        if (! $request->user()->tokenCan('cli:admin')) {
+            return $this->errorResponse('Token missing cli:admin ability', [], 403);
+        }
+
+        $valide = $request->validate([
+            'ids_nuls' => ['nullable', 'array'],
+            'ids_nuls.*' => ['integer'],
+            'apply' => ['nullable', 'boolean'],
+        ]);
+
+        $resultat = $retrait->executer(
+            (bool) ($valide['apply'] ?? false),
+            array_map('intval', $valide['ids_nuls'] ?? []),
+        );
+
+        return $this->successResponse($resultat, sprintf(
+            '%d configuration(s) %s, %d refus.',
+            count($resultat['a_retirer']),
+            $resultat['applique'] ? 'retiree(s)' : 'a retirer — rien n a ete ecrit',
+            count($resultat['refus'])
+        ));
+    }
+
     public function ordonnerCategories(Request $request, OrdreDesCategoriesFrais $ordre): JsonResponse
     {
         if (! $request->user()->tokenCan('cli:admin')) {

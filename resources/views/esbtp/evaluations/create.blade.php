@@ -172,6 +172,21 @@
                         </div>
                     </div>
                     <div class="ec-card-body">
+                        {{-- Ce qui reste à saisir sur la classe choisie. Créer
+                             une évaluation de plus quand les précédentes ne sont
+                             pas notées ajoute au retard au lieu de le réduire. --}}
+                        @include('esbtp.partials._couverture-notes', [
+                            'classeId' => $classe_id ?? null,
+                            'anneeId' => optional($anneeUniversitaire ?? null)->id,
+                            'periode' => 'annuel',
+                            'titre' => 'Notes reçues sur cette classe',
+                        ])
+                        @include('esbtp.partials._couverture-notes-suivre-selects', [
+                            'selectClasse' => '#classe_id',
+                            'selectPeriode' => '#periode',
+                            'anneeId' => optional($anneeUniversitaire ?? null)->id,
+                        ])
+
                         <div class="ec-grid">
                             <div class="ec-field">
                                 <label class="ec-label">Classe <span class="ec-required">*</span></label>

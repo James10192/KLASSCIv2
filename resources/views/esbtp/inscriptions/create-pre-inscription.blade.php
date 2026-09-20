@@ -34,6 +34,9 @@
     .pi-field input:hover, .pi-field select:hover { border-color: #cbd5e1; }
     .pi-field input:focus, .pi-field select:focus { outline: none; border-color: #0453cb; box-shadow: 0 0 0 3px rgba(4,83,203,.1); background: #fafbff; }
     .pi-field .field-error { font-size: .74rem; color: #dc2626; margin-top: 3px; font-weight: 500; }
+    /* Le picker premium est en inline-flex : hors d'un parent flex il se réduit à
+       son contenu, et son menu avec lui — les libellés longs y sont tronqués. */
+    .pi-field .au-select { display: flex; width: 100%; }
 
     /* ── Footer / submit ── */
     .pi-submit { display: flex; justify-content: flex-end; gap: 12px; padding: 18px 28px; border-top: 1px solid rgba(0,0,0,.05); background: linear-gradient(180deg, #f8fafc, #f1f5f9); border-radius: 0 0 18px 18px; }
@@ -378,6 +381,28 @@
                                 <div class="field-error" x-show="errors.classe_id" x-text="errors.classe_id" style="display:none;"></div>
                             </div>
                         </div>
+                        <div class="pi-row full">
+                            <div class="pi-field">
+                                <label>Statut d'affectation MESRS <span class="required">*</span></label>
+                                <x-au-select
+                                    name="affectation_status"
+                                    :value="old('affectation_status', '')"
+                                    :options="[
+                                        'affecté' => 'Affecté — placé par le MESRS',
+                                        'réaffecté' => 'Réaffecté — placé par la DOB',
+                                        'non_affecté' => 'Non affecté — inscription directe',
+                                    ]"
+                                    placeholder="— Sélectionner le statut —"
+                                    icon="fa-university"
+                                    x-model="affectation_status"
+                                    required />
+                                <small class="text-muted d-block mt-1">
+                                    Le statut commande le tarif : un étudiant placé par l'État peut être
+                                    subventionné, un non affecté paie le tarif complet.
+                                </small>
+                                <div class="field-error" x-show="errors.affectation_status" x-text="errors.affectation_status" style="display:none;"></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -643,6 +668,7 @@ function preInscription() {
         telephone: '{{ old("telephone", "") }}',
         matricule: '{{ old("matricule", "") }}',
         classe_id: '{{ old("classe_id", "") }}',
+        affectation_status: '{{ old("affectation_status", "") }}',
         searchQuery: '',
         searchResults: [],
         searchLoading: false,
@@ -747,6 +773,7 @@ function preInscription() {
                 if (!this.prenoms.trim()) this.errors.prenoms = 'Le(s) prénom(s) est/sont obligatoire(s)';
             }
             if (!this.classe_id) this.errors.classe_id = 'Veuillez sélectionner une classe';
+            if (!this.affectation_status) this.errors.affectation_status = 'Veuillez indiquer le statut d\'affectation';
             return Object.keys(this.errors).length === 0;
         },
 
@@ -759,7 +786,8 @@ function preInscription() {
             this.loadingFrais = true;
             this.step = 2;
 
-            fetch(`/esbtp/inscriptions/frais-by-classe/${this.classe_id}?affectation_status=affecté`, {
+            const parametres = new URLSearchParams({ affectation_status: this.affectation_status });
+            fetch(`/esbtp/inscriptions/frais-by-classe/${this.classe_id}?${parametres.toString()}`, {
                 method: 'GET',
                 headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
             })

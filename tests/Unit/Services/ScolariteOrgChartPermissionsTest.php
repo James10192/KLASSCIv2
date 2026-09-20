@@ -23,11 +23,11 @@ class ScolariteOrgChartPermissionsTest extends TestCase
         }
 
         $responsable = $this->registry->roleMeta('responsableScolarite');
-        $this->assertSame('Responsable scolarite', $responsable['label']);
+        $this->assertSame('Responsable scolarité', $responsable['label']);
         $this->assertSame('Administration', $responsable['group']);
 
         $service = $this->registry->roleMeta('serviceScolarite');
-        $this->assertSame('Service scolarite', $service['label']);
+        $this->assertSame('Service scolarité', $service['label']);
         $this->assertSame('Administration', $service['group']);
 
         $agent = $this->registry->roleMeta('agentInscription');

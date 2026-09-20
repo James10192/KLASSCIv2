@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Affectation Tronc Commun / Spécialité - KLASSCI')
+@section('title', 'Maquette du bulletin - KLASSCI')
 
 @php
     $filiereOptions = $filieres->mapWithKeys(fn ($f) => [$f->id => $f->name . ($f->is_tronc_commun ? ' (Tronc commun)' : '')])->all();
@@ -59,6 +59,38 @@
         color: #a5670a; background: rgba(245,158,11,.12); border: 1px solid rgba(245,158,11,.28);
         padding: .1rem .45rem; border-radius: 5px; }
 
+    /* Choix des matières à rattacher */
+    .mtc-ajout-recherche { width: 100%; padding: .55rem .8rem; border: 1px solid #d7e0ec; border-radius: 9px;
+        font-size: .86rem; color: #1e293b; margin-bottom: .75rem; }
+    .mtc-ajout-recherche:focus { outline: none; border-color: #0453cb; box-shadow: 0 0 0 3px rgba(4,83,203,.1); }
+    .mtc-ajout-ligne { display: flex; align-items: center; gap: .6rem; padding: .5rem .65rem; border-radius: 8px;
+        cursor: pointer; font-size: .88rem; color: #1e293b; }
+    .mtc-ajout-ligne:hover { background: rgba(4,83,203,.05); }
+    .mtc-ajout-ligne--prise { color: #94a3b8; cursor: not-allowed; }
+    .mtc-ajout-ligne--prise:hover { background: transparent; }
+    .mtc-ajout-prise { margin-left: auto; font-size: .7rem; color: #64748b; }
+
+    /* Intrus LMD : couleur semantique danger, parce que la ligne fausse un
+       bulletin deja imprime. Ce n'est pas de la decoration. */
+    .mtc-intrus { border: 1px solid rgba(220,38,38,.28); background: rgba(220,38,38,.05);
+        border-radius: 12px; padding: .9rem 1rem; margin-bottom: 1rem; }
+    .mtc-intrus-head { display: flex; align-items: flex-start; gap: .65rem; color: #b91c1c; }
+    .mtc-intrus-head i { margin-top: .15rem; }
+    .mtc-intrus-head strong { display: block; font-size: .9rem; }
+    .mtc-intrus-head small { display: block; color: #64748b; font-size: .78rem; margin-top: .2rem; }
+    .mtc-intrus-row { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap;
+        margin-top: .6rem; padding-top: .6rem; border-top: 1px solid rgba(220,38,38,.15); }
+    .mtc-intrus-row .mtc-row-name { flex: 1; min-width: 0; }
+
+    /* Retrait d'une matière de la maquette. Rouge assumé : l'action est
+       destructive, et c'est la convention universelle — la palette monochrome
+       ne vaut que pour le décor. */
+    .mtc-retirer { flex-shrink: 0; width: 30px; height: 30px; border-radius: 8px; border: 1px solid #e2e8f0;
+        background: #fff; color: #94a3b8; font-size: .78rem; cursor: pointer; transition: all .15s ease;
+        display: inline-flex; align-items: center; justify-content: center; }
+    .mtc-retirer:hover:not(:disabled) { border-color: rgba(220,38,38,.35); background: rgba(220,38,38,.06); color: #dc2626; }
+    .mtc-retirer:disabled { opacity: .45; cursor: not-allowed; }
+
     /* Toggle segmenté TC / Spé — état actif via :class, jamais :style inline */
     .mtc-seg { display: inline-flex; border: 1px solid #d7e0ec; border-radius: 9px; overflow: hidden; flex-shrink: 0; }
     .mtc-seg-btn { padding: .4rem .8rem; font-size: .78rem; font-weight: 600; cursor: pointer; border: none;
@@ -67,6 +99,47 @@
     .mtc-seg-btn:hover:not(.mtc-seg-btn--active) { background: rgba(4,83,203,.05); color: #0453cb; }
     .mtc-seg-btn--tc.mtc-seg-btn--active { background: #0453cb; color: #fff; }
     .mtc-seg-btn--spe.mtc-seg-btn--active { background: #334155; color: #fff; }
+
+    /* Place sur le bulletin : numéro + deux flèches. Cibles tactiles 44px. */
+    .mtc-rank { display: inline-flex; align-items: center; gap: .3rem; flex-shrink: 0; }
+    .mtc-rank-input { width: 56px; height: 44px; text-align: center; font-size: .86rem; font-weight: 700;
+        color: #0453cb; border: 1px solid #d7e0ec; border-radius: 9px; background: #fff; }
+    .mtc-rank-input::placeholder { color: #cbd5e1; font-weight: 400; }
+    .mtc-rank-input--herite { color: #94a3b8; font-weight: 500; background: #f8fafc; }
+    .mtc-rank-btn { width: 44px; height: 44px; border: 1px solid #d7e0ec; border-radius: 9px; background: #fff;
+        color: #64748b; cursor: pointer; font-size: .72rem; transition: background .15s, color .15s; }
+    .mtc-rank-btn:hover:not(:disabled) { background: rgba(4,83,203,.06); color: #0453cb; }
+    .mtc-rank-btn:disabled { opacity: .4; cursor: not-allowed; }
+    .mtc-rank-tag { font-size: .64rem; color: #94a3b8; text-transform: uppercase; letter-spacing: .04em;
+        font-weight: 700; min-width: 62px; }
+
+    /* Bandeau maquette : ce qui est prévu, et d'où ça viendrait */
+    .mtc-maquette { display: flex; align-items: center; flex-wrap: wrap; gap: .75rem; padding: .8rem 1rem;
+        border: 1px solid rgba(4,83,203,.18); border-radius: 11px; margin-bottom: .9rem;
+        background: linear-gradient(135deg, rgba(4,83,203,.04), rgba(59,125,219,.06)); }
+    .mtc-maquette-txt { flex: 1; min-width: 220px; font-size: .84rem; color: #1e293b; }
+    .mtc-maquette-txt small { display: block; color: #64748b; font-size: .76rem; margin-top: .15rem; }
+    .mtc-chip { display: inline-flex; align-items: center; gap: .4rem; padding: .35rem .7rem; border-radius: 8px;
+        font-size: .76rem; font-weight: 600; background: rgba(4,83,203,.09); color: #0453cb;
+        border: 1px solid rgba(4,83,203,.22); cursor: pointer; }
+    .mtc-chip:hover { background: rgba(4,83,203,.16); }
+    .mtc-chip--muted { background: #f1f5f9; color: #64748b; border-color: #e2e8f0; cursor: default; }
+
+    /* Aperçu de l'import : ce qui changerait, avant d'écrire quoi que ce soit */
+    .mtc-modal { position: fixed; inset: 0; z-index: 2500; display: flex; align-items: center;
+        justify-content: center; background: rgba(15,23,42,.45); padding: 1rem; }
+    .mtc-modal-box { background: #fff; border-radius: 14px; width: 100%; max-width: 640px; max-height: 82vh;
+        display: flex; flex-direction: column; box-shadow: 0 20px 50px rgba(15,23,42,.28); }
+    .mtc-modal-head { padding: 1rem 1.2rem; border-bottom: 1px solid #eef2f7; }
+    .mtc-modal-head h2 { font-size: 1rem; font-weight: 700; color: #1e293b; margin: 0; }
+    .mtc-modal-head p { font-size: .8rem; color: #64748b; margin: .25rem 0 0; }
+    .mtc-modal-body { padding: .8rem 1.2rem; overflow-y: auto; }
+    .mtc-modal-foot { padding: .9rem 1.2rem; border-top: 1px solid #eef2f7; display: flex; justify-content: flex-end; gap: .6rem; }
+    .mtc-diff-row { display: flex; align-items: center; justify-content: space-between; gap: .8rem;
+        padding: .5rem .2rem; border-bottom: 1px solid #f5f7fa; font-size: .84rem; }
+    .mtc-diff-row:last-child { border-bottom: none; }
+    .mtc-diff-move { color: #0453cb; font-weight: 600; white-space: nowrap; }
+    .mtc-diff-same { color: #94a3b8; white-space: nowrap; }
 
     .mtc-empty { text-align: center; padding: 2.5rem 1rem; color: #94a3b8; }
     .mtc-empty i { font-size: 2rem; opacity: .5; margin-bottom: .5rem; display: block; }
@@ -86,6 +159,28 @@
     .mtc-toast--success { background: #0d9f74; }
     .mtc-toast--error { background: #dc2626; }
     [x-cloak] { display: none !important; }
+    /* ===== Téléphone =====
+       MESURE, pas supposition : à 400 px de large, cet écran débordait de
+       56 px AVANT cette branche — le sélecteur de semestre (`mtc-seg`, 204 px
+       incompressible) ne rentre pas à côté du nom, du rang et des deux
+       segments. La croix de retrait ajoutée ici portait ce débordement à
+       102 px. Le bloc des éléments LMD, lui, ne déborde pas : sa ligne n'a
+       qu'un nom, un code et sa croix.
+
+       `premium-redesign.md` interdit le défilement horizontal. La ligne passe
+       donc sur deux niveaux sous 640 px : identité au-dessus, commandes en
+       dessous, la croix restant à portée du pouce, à droite.
+
+       `@@media` et non `@media` : Blade prend `@media` pour une directive et
+       avale la suite (voir `blade-pitfalls.md`, piège n°2). */
+    @@media (max-width: 640px) {
+        .mtc-row { flex-wrap: wrap; gap: .6rem; }
+        .mtc-row-main { flex: 1 1 100%; }
+        .mtc-row-actions, .mtc-seg, .mtc-rank { flex-wrap: wrap; }
+        .mtc-seg { flex: 1 1 auto; }
+        .mtc-seg-btn { flex: 1 1 auto; padding: .4rem .55rem; }
+        .mtc-rank-tag { min-width: 0; }
+    }
 </style>
 @endpush
 
@@ -96,8 +191,18 @@
             <div class="mtc-hero-left">
                 <div class="mtc-hero-icon"><i class="fas fa-layer-group"></i></div>
                 <div>
-                    <h1>Affectation Tronc Commun / Spécialité</h1>
-                    <p>Marquez, par filière et niveau, les matières du tronc commun et celles de spécialité. Le bulletin de tronc commun n'affichera que les matières TC.</p>
+                    {{-- « Affectation Tronc Commun / Spécialité » était le nom
+                         d'origine, et il ne décrivait plus qu'UNE des quatre
+                         choses que fait cet écran : il porte aussi la
+                         composition de la maquette, le semestre de chaque
+                         matière et son rang au bulletin. Un titre faux par
+                         omission envoie chercher ailleurs ce qui est ici — la
+                         fiche d'une matière disait d'ailleurs déjà
+                         « l'écran Maquette ». L'adresse, elle, ne change pas :
+                         elle est citée dans le journal des versions et dans la
+                         requête SQL de `lmd-ecue-leak-bts-picker.md`. --}}
+                    <h1>Maquette du bulletin</h1>
+                    <p>Par filière et niveau : quelles matières composent le bulletin, à quel semestre, dans quel ordre, et lesquelles relèvent du tronc commun.</p>
                 </div>
             </div>
             <a href="{{ route('esbtp.matieres.index') }}" class="mtc-mini"><i class="fas fa-arrow-left"></i> Matières</a>
@@ -115,11 +220,13 @@
             <div class="mtc-field">
                 <label>Filière</label>
                 <x-au-select name="filiere_id" icon="fa-sitemap" placeholder="Choisir une filière"
+                    :value="$filiereChoisie ?? ''"
                     :searchable="true" :options="$filiereOptions" />
             </div>
             <div class="mtc-field">
                 <label>Niveau d'étude</label>
                 <x-au-select name="niveau_id" icon="fa-graduation-cap" placeholder="Choisir un niveau"
+                    :value="$niveauChoisi ?? ''"
                     :searchable="$niveauSearchable" :options="$niveauOptions" />
             </div>
         </div>
@@ -143,8 +250,14 @@
             </div>
         </template>
 
+        {{-- Hors du `x-if` sur `matieres` : un combo dont la seule ligne est un
+             intrus LMD doit quand meme pouvoir s'en debarrasser. --}}
+        @include('esbtp.matieres.partials._classification-intrus-lmd')
+
         <template x-if="matieres.length > 0">
             <div>
+                @include('esbtp.matieres.partials._classification-maquette')
+
                 <div class="mtc-bulk">
                     <span class="mtc-bulk-lbl">Tout marquer :</span>
                     <button type="button" class="mtc-mini" @click="bulk('tronc_commun')" :disabled="saving">Tronc commun</button>
@@ -157,25 +270,17 @@
                     </template>
                 </div>
 
-                <template x-for="m in matieres" :key="m.matiere_id">
-                    <div class="mtc-row">
-                        <div class="mtc-row-main">
-                            <span class="mtc-row-name" x-text="m.name"></span>
-                            <span class="mtc-row-code" x-show="m.code" x-text="m.code"></span>
-                            <span class="mtc-suggest" x-show="m.wasSuggested && m.classification === 'specialite'">suggéré</span>
-                        </div>
-                        <div class="mtc-seg">
-                            <button type="button" class="mtc-seg-btn mtc-seg-btn--tc"
-                                :class="m.classification === 'tronc_commun' ? 'mtc-seg-btn--active' : ''"
-                                @click="setClass(m, 'tronc_commun')">Tronc commun</button>
-                            <button type="button" class="mtc-seg-btn mtc-seg-btn--spe"
-                                :class="m.classification === 'specialite' ? 'mtc-seg-btn--active' : ''"
-                                @click="setClass(m, 'specialite')">Spécialité</button>
-                        </div>
-                    </div>
-                </template>
+                @include('esbtp.matieres.partials._classification-row')
 
                 <div class="mtc-savebar">
+                    <button type="button" class="mtc-mini" @click="resetOrdre()" :disabled="saving"
+                        title="Efface les places propres à cette filière : les matières retrouvent l'ordre général.">
+                        <i class="fas fa-rotate-left"></i> Revenir à l'ordre général
+                    </button>
+                    <button type="button" class="mtc-mini" @click="promouvoirOrdreGeneral()" :disabled="saving"
+                        title="Fait de l'ordre affiché l'ordre général, repris par les filières qui n'ont pas le leur.">
+                        <i class="fas fa-arrow-up-from-bracket"></i> Faire de cet ordre l'ordre général
+                    </button>
                     <button type="button" class="mtc-btn" @click="save()" :disabled="saving">
                         <span x-show="!saving"><i class="fas fa-save"></i> Enregistrer</span>
                         <span x-show="saving" x-cloak>Enregistrement…</span>
@@ -197,135 +302,9 @@
 @endsection
 
 @push('scripts')
-<script>
-function matiereClassification() {
-    return {
-        filiereId: '',
-        niveauId: '',
-        loading: false,
-        saving: false,
-        loaded: false,
-        isTroncCommun: false,
-        filiereName: '',
-        matieres: [],
-        kpis: { total: 0, tronc_commun: 0, specialite: 0, non_classe: 0 },
-        get hasSuggestions() { return this.matieres.some(m => m.suggested); },
-
-        init() {
-            this.$watch('filiereId', () => this.tryLoad());
-            this.$watch('niveauId', () => this.tryLoad());
-        },
-
-        // Le composant au-select évalue son x-model dans son propre scope : on capte
-        // plutôt l'evenement change du select natif qui bulle jusqu'a cette racine.
-        onNativeChange(e) {
-            const t = e && e.target;
-            if (!t || !t.name) return;
-            if (t.name === 'filiere_id') this.filiereId = t.value;
-            if (t.name === 'niveau_id') this.niveauId = t.value;
-        },
-
-        tryLoad() {
-            if (this.filiereId && this.niveauId) this.loadCombo();
-        },
-
-        notify(message, type) {
-            let host = document.getElementById('mtc-toast-host');
-            if (!host) {
-                host = document.createElement('div');
-                host.id = 'mtc-toast-host';
-                host.className = 'mtc-toast-host';
-                document.body.appendChild(host);
-            }
-            const el = document.createElement('div');
-            el.className = 'mtc-toast mtc-toast--' + (type === 'error' ? 'error' : 'success');
-            el.innerHTML = '<i class="fas ' + (type === 'error' ? 'fa-circle-exclamation' : 'fa-circle-check') + '"></i><span></span>';
-            el.querySelector('span').textContent = message;
-            host.appendChild(el);
-            requestAnimationFrame(() => el.classList.add('mtc-toast--in'));
-            setTimeout(() => {
-                el.classList.remove('mtc-toast--in');
-                setTimeout(() => el.remove(), 250);
-            }, 3200);
-        },
-
-        async loadCombo() {
-            this.loading = true;
-            this.loaded = false;
-            try {
-                const url = "{{ route('esbtp.matieres.classification.combo') }}"
-                    + "?filiere_id=" + encodeURIComponent(this.filiereId)
-                    + "&niveau_id=" + encodeURIComponent(this.niveauId);
-                const res = await fetch(url, { headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } });
-                if (!res.ok) throw new Error('Chargement impossible.');
-                const data = await res.json();
-                this.isTroncCommun = !!data.is_tronc_commun;
-                this.filiereName = data.filiere || '';
-                this.matieres = (data.matieres || []).map(m => ({
-                    ...m,
-                    wasSuggested: (m.classification === null && m.suggested != null),
-                    classification: m.classification ?? (m.suggested ?? null),
-                }));
-                this.recomputeKpis();
-                this.loaded = true;
-            } catch (e) {
-                this.notify(e.message, 'error');
-            } finally {
-                this.loading = false;
-            }
-        },
-
-        setClass(m, val) {
-            m.classification = (m.classification === val) ? null : val;
-            this.recomputeKpis();
-        },
-
-        bulk(val) {
-            this.matieres.forEach(m => { m.classification = val; });
-            this.recomputeKpis();
-        },
-
-        applySuggestions() {
-            this.matieres.forEach(m => { if (m.suggested) m.classification = m.suggested; });
-            this.recomputeKpis();
-        },
-
-        recomputeKpis() {
-            this.kpis = {
-                total: this.matieres.length,
-                tronc_commun: this.matieres.filter(m => m.classification === 'tronc_commun').length,
-                specialite: this.matieres.filter(m => m.classification === 'specialite').length,
-                non_classe: this.matieres.filter(m => !m.classification).length,
-            };
-        },
-
-        async save() {
-            this.saving = true;
-            try {
-                const res = await fetch("{{ route('esbtp.matieres.classification.save') }}", {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                        'Accept': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        filiere_id: this.filiereId,
-                        niveau_id: this.niveauId,
-                        classifications: this.matieres.map(m => ({ matiere_id: m.matiere_id, classification: m.classification })),
-                    }),
-                });
-                const data = await res.json();
-                if (!res.ok || !data.success) throw new Error(data.message || 'Erreur lors de l\'enregistrement.');
-                this.matieres.forEach(m => { m.wasSuggested = false; });
-                this.notify(data.message, 'success');
-            } catch (e) {
-                this.notify(e.message, 'error');
-            } finally {
-                this.saving = false;
-            }
-        },
-    };
-}
-</script>
+{{-- common.js : fournit window.iiConfirm(). Cet ecran ne le chargeait pas et
+     utilisait donc les boites natives du navigateur — celui d'a cote, qui pose
+     la confirmation jumelle, le charge depuis toujours. --}}
+<script src="{{ asset('js/inscriptions/common.js') }}"></script>
+@include('esbtp.matieres.partials._classification-script')
 @endpush

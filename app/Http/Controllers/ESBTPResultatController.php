@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Domain\Academique\CoherenceSystemeAcademique;
+use App\Domain\Bulletins\MoyennesDeLApercu;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use App\Exceptions\CoefficientMissingException;
 use App\Domain\BtsTroncCommun\BtsAnnualAggregationService;
 use App\Domain\BtsTroncCommun\BtsUiPresenter;
@@ -58,6 +61,7 @@ class ESBTPResultatController extends Controller
     private $btsAnnualAggregationService;
     private $btsUiPresenter;
     private \App\Services\RankingService $rankingService;
+    private MoyennesDeLApercu $moyennesDeLApercu;
 
     public function __construct(
         \App\Services\ESBTP\ESBTPAbsenceService $absenceService,
@@ -66,7 +70,8 @@ class ESBTPResultatController extends Controller
         BtsCurrentResultSnapshotService $currentResultSnapshotService,
         BtsAnnualAggregationService $btsAnnualAggregationService,
         BtsUiPresenter $btsUiPresenter,
-        \App\Services\RankingService $rankingService
+        \App\Services\RankingService $rankingService,
+        MoyennesDeLApercu $moyennesDeLApercu
     )
     {
         $this->absenceService = $absenceService;
@@ -76,6 +81,7 @@ class ESBTPResultatController extends Controller
         $this->btsAnnualAggregationService = $btsAnnualAggregationService;
         $this->btsUiPresenter = $btsUiPresenter;
         $this->rankingService = $rankingService;
+        $this->moyennesDeLApercu = $moyennesDeLApercu;
     }
 
     public function resultats(ResultatsFilterRequest $request)
@@ -796,6 +802,26 @@ class ESBTPResultatController extends Controller
                 continue;
             }
 
+            // CINQUIEME calcul de moyenne du depot, et il a son propre
+            // `$notesByMatiere`. Les onglets semestriels le remplacent ensuite
+            // par le snapshot, qui est filtre — mais la branche annuelle
+            // `annual_incomplete` ne le remplace PAS : elle se contente de
+            // renommer les libelles. Une ECUE notee ressortait donc dans
+            // « Resultats par matiere » et pesait dans la moyenne du pied de
+            // tableau, pendant que le KPI d'en-tete affichait, lui, la valeur
+            // filtree. Deux chiffres contradictoires sur un seul ecran — le
+            // defaut meme que ce chantier existe pour tuer.
+            //
+            // Le filtre est pose a l'INGESTION, pas dans la branche : il couvre
+            // ainsi les trois branches et tout futur lecteur de ce tableau.
+            //
+            // `$classe` est nullable ici (`:664`, `find()` sur un id optionnel).
+            // Sans classe on ne PEUT pas savoir de quel systeme releve la note :
+            // on n'ecarte rien plutot que d'ecarter au hasard.
+            if ($classe && ! CoherenceSystemeAcademique::matiereRetenue($matiere, $classe, 'resultats etudiant/note')) {
+                continue;
+            }
+
             // Initialize if this is the first note for this matière
             if (! isset($notesByMatiere[$matiere_id])) {
                 $notesByMatiere[$matiere_id] = [
@@ -909,6 +935,13 @@ class ESBTPResultatController extends Controller
 
         foreach ($resultats as $resultat) {
             if (! $resultat->matiere) {
+                continue;
+            }
+
+            // Second chemin d'ingestion du meme tableau — voir le commentaire
+            // jumeau dans la boucle des notes. Dans `BulletinService`, filtrer
+            // un seul des deux chemins revenait a n'en filtrer aucun.
+            if ($classe && ! CoherenceSystemeAcademique::matiereRetenue($resultat->matiere, $classe, 'resultats etudiant/moyenne enregistree')) {
                 continue;
             }
 
@@ -1056,7 +1089,7 @@ class ESBTPResultatController extends Controller
                 $moyenneSemestre2 = $moyenneAvecAssiduite;
             }
 
-            $notesByMatiere = $this->mapConsistencySubjectsToDetailNotes($bulletinConsistency['current_subjects'] ?? [], $notes);
+            $notesByMatiere = $this->moyennesDeLApercu->notesDetailleesDepuisLeSnapshot($bulletinConsistency['current_subjects'] ?? [], $notes);
             $detailUiState = $this->buildAnnualDetailUiState($periode, $moyenneSemestre1, $moyenneSemestre2, $moyenneAnnuelle);
         } elseif ($bulletinConsistency && ($detailUiState['state'] ?? null) === 'annual_incomplete') {
             $notesByMatiere = $this->overlayConsistencySubjectLabels(
@@ -1069,7 +1102,7 @@ class ESBTPResultatController extends Controller
             && ($detailUiState['state'] ?? null) === 'standard'
             && $notes->isNotEmpty()
         ) {
-            $mappedSubjects = $this->mapConsistencySubjectsToDetailNotes(
+            $mappedSubjects = $this->moyennesDeLApercu->notesDetailleesDepuisLeSnapshot(
                 $bulletinConsistency['current_subjects'] ?? [],
                 $notes
             );
@@ -1442,6 +1475,19 @@ class ESBTPResultatController extends Controller
             $query->withPivot('coefficient');
         }, 'filiere', 'niveau'])->findOrFail($classe_id);
 
+        // Meme refus que sur l'apercu individuel : cette grille ecrit dans
+        // `esbtp_resultats`, la table du bulletin BTS. Sur une classe LMD
+        // atteinte par URL forgee, elle rendait soit une grille vide, soit —
+        // sur une instance mixte ou le parcours LMD pointe une vraie filiere
+        // BTS — une grille INSAUVEGARDABLE, le garde refusant toute la classe.
+        // C'est litteralement le defaut que ce chantier a nomme deux commits
+        // plus tot, sur la methode voisine du meme fichier.
+        abort_if(
+            CoherenceSystemeAcademique::classeEstLmd($classe->systeme_academique),
+            422,
+            'Cette classe est LMD. Utilisez /esbtp/lmd/bulletins pour ses releves.'
+        );
+
         // Get students through inscriptions
         $studentsQuery = ESBTPEtudiant::whereHas('inscriptions', function ($query) use ($classe_id, $annee_universitaire_id, $include_all_statuses) {
             $query->where('classe_id', $classe_id)
@@ -1490,7 +1536,12 @@ class ESBTPResultatController extends Controller
         $classeFiliereId = $classe->filiere_id;
         $classeNiveauId = $classe->niveau_etude_id;
 
+        // `btsOnly()` : ce croisement des deux pivots PLATS est le troisieme
+        // chemin par lequel une ECUE arrivait sur cet ecran. Sa grille poste vers
+        // `bulkUpdateMoyennes()`, dont la transaction evite l'etat partiel — mais
+        // une valeur saisie sur l'ECUE faisait refuser TOUTE la classe.
         $matieres = ESBTPMatiere::with(['filieres:id,name,code', 'niveaux:id,name,code'])
+            ->btsOnly()
             ->where('is_active', true)
             ->orderBy('name')
             ->get()
@@ -1571,16 +1622,24 @@ class ESBTPResultatController extends Controller
         $anneeUniversitaire = ESBTPAnneeUniversitaire::find($annee_universitaire_id);
 
         // KPIs
+        //
+        // Le numerateur se compte sur les MEMES matieres que le denominateur.
+        // Depuis que `$matieres` est filtre, une ligne heritee sur une matiere
+        // d'un autre systeme gonflait le compte sans gonfler l'attendu : 30
+        // eleves x 10 matieres = 300 attendus, 330 lignes, soit 110 % de
+        // completion.
+        $idsDesMatieresAffichees = $matieres->pluck('id')->all();
+
+        $resultatsComptes = $resultats->sum(function ($group) use ($idsDesMatieresAffichees) {
+            return $group->whereIn('matiere_id', $idsDesMatieresAffichees)->count();
+        });
+
         $kpis = [
             'total_students' => $students->count(),
             'total_matieres' => $matieres->count(),
-            'total_resultats' => $resultats->sum(function ($group) {
-                return $group->count();
-            }),
+            'total_resultats' => $resultatsComptes,
             'completion_rate' => $students->count() > 0 && $matieres->count() > 0
-                ? round(($resultats->sum(function ($group) {
-                    return $group->count();
-                }) / ($students->count() * $matieres->count())) * 100, 1)
+                ? round(($resultatsComptes / ($students->count() * $matieres->count())) * 100, 1)
                 : 0,
         ];
 
@@ -1854,9 +1913,6 @@ class ESBTPResultatController extends Controller
     }
 
     /**
-     * Récupère le coefficient d'une matière pour une combinaison filiere + niveau + année
-     */
-    /**
      * Récupérer le coefficient d'une matière pour une classe (AJAX)
      *
      * @param Request $request
@@ -1930,6 +1986,33 @@ class ESBTPResultatController extends Controller
      */
     public function bulkUpdateMoyennes(BulkUpdateMoyennesRequest $request)
     {
+        // Meme refus que ses trois methodes soeurs de ce fichier : cet
+        // enregistrement ecrit dans `esbtp_resultats`, la table du bulletin BTS.
+        // Ici le garde du modele ne rattrape PAS : sur une classe LMD, une ECUE
+        // est parfaitement coherente, donc `estCoherente('LMD', ecue)` rend vrai
+        // et un envoi forge ecrirait des lignes de bulletin BTS pour une classe
+        // LMD. C'est la seule des quatre ou ce refus n'est pas redondant avec le
+        // garde du modele.
+        // `withTrashed()` et `abort_unless`, parce que c'est le SEUL des quatre
+        // gardes sans second rempart. La regle `exists:esbtp_classes,id` du
+        // FormRequest interroge la table SANS le scope de soft-delete : une
+        // classe LMD archivee passe la validation, et un `find()` nu rendait
+        // alors `null`. Le `&&` court-circuitait le garde, en silence, et le
+        // garde du modele ne rattrape pas — sur une classe LMD, une ECUE EST
+        // coherente. Des lignes de bulletin BTS partaient pour une classe LMD.
+        $classeDuLot = \App\Models\ESBTPClasse::withTrashed()->find($request->classe_id);
+
+        if (! $classeDuLot) {
+            CoherenceSystemeAcademique::coherenceNonVerifiable('enregistrement groupe/classe introuvable', [
+                'classe_id' => $request->classe_id,
+            ], portee: ['classe_id']);
+        }
+
+        abort_unless(
+            $classeDuLot && ! CoherenceSystemeAcademique::classeEstLmd($classeDuLot->systeme_academique),
+            422,
+            'Classe introuvable, ou classe LMD : utilisez /esbtp/lmd/bulletins pour ses releves.'
+        );
 
         \DB::beginTransaction();
         try {
@@ -1981,6 +2064,21 @@ class ESBTPResultatController extends Controller
                 ],
             ]);
 
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            // AVANT le catch large, et c'est le piege §5 de
+            // `klassci-local-test-suite` : le garde de coherence de
+            // `ESBTPResultat` leve une ValidationException, que le
+            // `catch (\Exception)` ci-dessous transformait en 500. Le texte du
+            // message survivait, donc l'utilisateur lisait la bonne phrase —
+            // mais le contrat HTTP etait faux, et un appelant qui distingue
+            // 422 de 500 se trompait de conduite.
+            \DB::rollBack();
+
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+                'errors' => $e->errors(),
+            ], 422);
         } catch (\Exception $e) {
             \DB::rollBack();
             \Log::error('❌ Erreur bulk update moyennes: '.$e->getMessage(), [
@@ -2404,21 +2502,6 @@ class ESBTPResultatController extends Controller
     }
 
     /**
-     * Détermine la mention en fonction de la moyenne
-     *
-     * @param  float  $moyenne
-     * @return string
-     */
-    /**
-     * Calcule la moyenne générale d'un étudiant pour une classe, période et année universitaire données
-     *
-     * @param  int  $etudiant_id
-     * @param  int  $classe_id
-     * @param  string  $periode
-     * @param  int  $annee_universitaire_id
-     * @return float
-     */
-    /**
      * Prévisualise les moyennes d'un étudiant pour une classe, période et année universitaire données
      * Permet de modifier les moyennes avant génération du bulletin.
      *
@@ -2431,366 +2514,103 @@ class ESBTPResultatController extends Controller
             abort(403, 'Vous n\'avez pas les permissions nécessaires pour modifier les moyennes.');
         }
 
-        // Validation déjà faite par PreviewMoyennesRequest si besoin
+        $etudiantId = $request->etudiant_id;
+        $classeId = $request->classe_id;
+        $anneeUniversitaireId = $request->annee_universitaire_id;
+        $periode = $this->periodeDeLApercu($request->periode);
 
         try {
-            $etudiantId = $request->etudiant_id;
-            $classeId = $request->classe_id;
-            $periode = $request->periode;
-            $anneeUniversitaireId = $request->annee_universitaire_id;
+            $etudiant = ESBTPEtudiant::findOrFail($etudiantId);
+            $classe = ESBTPClasse::with('matieres')->findOrFail($classeId);
+            $anneeUniversitaire = ESBTPAnneeUniversitaire::findOrFail($anneeUniversitaireId);
 
-            // Si la période est vide, utiliser semestre1 comme valeur par défaut
-            if (empty($periode)) {
-                $periode = 'semestre1';
-            }
+            // CET ECRAN EST BTS, COMME LES QUATRE POINTS D'ENTREE FRERES de
+            // `ESBTPBulletinController` (`store`, `genererClasseBulletins`,
+            // `preflightClasseBulletins`, `previewBulletin`). Il ecrit dans
+            // `esbtp_resultats`, qui est la table du bulletin BTS.
+            //
+            // Une premiere version rendait cet ecran BILINGUE — `lmdOnly()` sur
+            // une classe LMD — et c'etait pire qu'inutile : la selection de
+            // classe exclut deja les classes LMD (deux `where` plus haut dans ce
+            // fichier), donc la branche etait inatteignable ; et si une URL
+            // forgee l'atteignait, elle rendait l'ecran ENREGISTRABLE pour une
+            // classe LMD, la ou le garde de `ESBTPResultat` refusait avant. Elle
+            // n'aurait pas ferme une porte, elle en aurait ouvert une.
+            //
+            // Voir `.claude/rules/lmd-bts-bulletin-separation.md`. Le predicat
+            // plutot qu'une comparaison en ligne : la colonne est nullable, la
+            // casse a deja diverge dans ce depot, et `CoherenceSystemeAcademique`
+            // existe pour que cette phrase n'ait qu'UN endroit.
+            abort_if(
+                CoherenceSystemeAcademique::classeEstLmd($classe->systeme_academique),
+                422,
+                'Cette classe est LMD. Utilisez /esbtp/lmd/bulletins pour ses releves.'
+            );
 
-            // Normaliser la période si nécessaire
-            if ($periode == '1') {
-                $periode = 'semestre1';
-                $periodePourBDD = 'semestre1';
-            } elseif ($periode == '2') {
-                $periode = 'semestre2';
-                $periodePourBDD = 'semestre2';
-            } elseif (in_array($periode, ['semestre1', 'semestre2', 'annuel'])) {
-                $periodePourBDD = $periode;
-            } else {
-                // Utiliser semestre1 comme valeur par défaut si la période n'est pas reconnue
-                $periode = 'semestre1';
-                $periodePourBDD = 'semestre1';
-            }
+            // QUATRE SOURCES, UNE PRESEANCE, ET ELLE EST ECRITE AILLEURS.
+            // Cet assemblage tenait ici sur 500 lignes et sa preseance ne se
+            // lisait que dans l'ordre de quatre boucles separees par des
+            // requetes. Voir `App\Domain\Bulletins\MoyennesDeLApercu`, dont
+            // l'en-tete porte le pourquoi de chaque chemin.
+            $apercu = $this->moyennesDeLApercu->assembler(
+                $etudiant,
+                $classe,
+                $anneeUniversitaire,
+                $periode
+            );
 
-            // Récupérer l'étudiant, la classe et l'année universitaire
-            $etudiant = \App\Models\ESBTPEtudiant::findOrFail($etudiantId);
-            $classe = \App\Models\ESBTPClasse::with('matieres')->findOrFail($classeId);
-            $anneeUniversitaire = \App\Models\ESBTPAnneeUniversitaire::findOrFail($anneeUniversitaireId);
-
-            // MODIFIÉ: Récupérer les notes de l'étudiant avec une requête plus flexible, similaire à resultatEtudiant
-            // Récupérer toutes les notes de l'étudiant d'abord
-            $notesQuery = \App\Models\ESBTPNote::where('etudiant_id', $etudiantId)
-                ->with(['evaluation.matiere', 'matiere']);
-
-            // Filtrer par période (semestre)
-            $notesQuery->where(function ($q) use ($periodePourBDD) {
-                $q->where('semestre', $periodePourBDD)
-                    ->orWhereHas('evaluation', function ($query) use ($periodePourBDD) {
-                        $query->where('periode', $periodePourBDD);
-                    });
-            });
-
-            // MODIFIÉ: Utilisation du scope byClasse pour filtrer les notes par classe
-            // Cela limite les notes aux évaluations de la classe spécifique demandée
-            $notesQuery->byClasse($classeId);
-
-            // MODIFIÉ: Filtrage par année universitaire pour inclure aussi l'année précédente
-            // Utiliser le scope byAnneeUniversitaireWithPrevious qui permet de récupérer les notes
-            // des évaluations de l'année courante (anneeUniversitaireId) ET de l'année précédente (anneeUniversitaireId-1)
-            $notesQuery->byAnneeUniversitaireWithPrevious($anneeUniversitaireId);
-
-            // Log pour le débogage - voir quelles notes sont récupérées
-            \Log::debug("Notes query for student {$etudiantId}, class {$classeId}, period {$periodePourBDD}, year {$anneeUniversitaireId}");
-
-            $notes = $notesQuery->get();
-
-            // Log des notes récupérées
-            foreach ($notes as $note) {
-                \Log::debug("Note ID: {$note->id}, Value: {$note->note}, Evaluation ID: {$note->evaluation_id}, Evaluation Year: {$note->evaluation->annee_universitaire_id}, Matiere ID: {$note->evaluation->matiere_id}");
-            }
-
-            // Si aucune note n'est trouvée, vérifier s'il existe des notes dans l'année précédente uniquement
-            if ($notes->isEmpty()) {
-                \Log::debug('No notes found for current criteria. Checking previous year explicitly.');
-                $prevYearId = $anneeUniversitaireId - 1;
-
-                $prevNotesQuery = \App\Models\ESBTPNote::query()
-                    ->where('etudiant_id', $etudiantId)
-                    ->withValidEvaluation()
-                    ->whereHas('evaluation', function ($query) use ($periodePourBDD, $classeId, $prevYearId) {
-                        $query->where('classe_id', $classeId);
-                        if ($periodePourBDD != 'annuel') {
-                            $query->where('periode', $periodePourBDD);
-                        }
-                        $query->where('annee_universitaire_id', $prevYearId);
-                    });
-
-                $prevNotes = $prevNotesQuery->get();
-
-                if ($prevNotes->isNotEmpty()) {
-                    \Log::debug("Found notes in previous year {$prevYearId}");
-                    $notes = $prevNotes;
-                }
-            }
-
-            // Organiser les notes par matière
-            $notesByMatiere = [];
-            foreach ($notes as $note) {
-                if (! $note->evaluation) {
-                    \Log::debug("Skipping note ID {$note->id} - no evaluation");
-
-                    continue;
-                }
-                $matiere = $note->evaluation->matiere;
-                if (! $matiere) {
-                    \Log::debug("Skipping note ID {$note->id} - no matiere for evaluation {$note->evaluation_id}");
-
-                    continue;
-                }
-
-                $matiereId = $matiere->id;
-                if (! isset($notesByMatiere[$matiereId])) {
-                    $notesByMatiere[$matiereId] = [
-                        'matiere' => $matiere,
-                        'notes' => [],
-                        'total_points' => 0,
-                        'total_coefficients' => 0,
-                        'moyenne' => 0,
-                    ];
-                }
-
-                $notesByMatiere[$matiereId]['notes'][] = $note;
-            }
-
-            // Récupérer les résultats existants pour cet étudiant (exclure les soft-deleted)
-            // Les soft-deleted doivent être définitivement supprimés avec forceDelete()
-            $resultats = \App\Models\ESBTPResultat::where('etudiant_id', $etudiantId)
-                ->where('classe_id', $classeId)
-                ->where('periode', $periodePourBDD)
-                ->where('annee_universitaire_id', $anneeUniversitaireId)
-                ->with('matiere')
-                ->get();
-
-            // Préparer les données des résultats pour l'affichage et l'édition
-            $resultatsData = [];
-            foreach ($resultats as $resultat) {
-                // Vérifier si la relation matiere existe
-                if (! $resultat->matiere) {
-                    // Si la relation n'existe pas, essayer de récupérer la matière directement
-                    $matiere = \App\Models\ESBTPMatiere::find($resultat->matiere_id);
-
-                    // Si la matière n'existe toujours pas, ignorer ce résultat
-                    if (! $matiere) {
-                        continue;
-                    }
-                } else {
-                    $matiere = $resultat->matiere;
-                }
-
-                $resultatsData[$resultat->matiere_id] = [
-                    'id' => $resultat->id,
-                    'matiere' => $matiere,
-                    'moyenne' => $resultat->moyenne,
-                    'coefficient' => $this->bulletinService->getCoefficientForCombination(
-                        $resultat->matiere_id,
-                        $classeId,
-                        $anneeUniversitaireId
-                    ),
-                    'rang' => $resultat->rang,
-                    'appreciation' => $resultat->appreciation ?: app(AppreciationScaleService::class)->labelFor(
-                        $resultat->moyenne === null ? null : (float) $resultat->moyenne,
-                        'bts',
-                        ''
-                    ),
-                ];
-            }
-
-            // Récupérer filière et niveau de la classe pour filtrer les matières
-            $classeFiliereIdForNotes = $classe->filiere_id;
-            $classeNiveauIdForNotes = $classe->niveau_etude_id;
-
-            // Si des moyennes calculées n'ont pas de résultat correspondant, les ajouter
-            // MAIS seulement si la matière correspond à la combinaison filière+niveau de la classe
-
-            // Preload toutes les matières manquantes en une seule requête (évite N×3 requêtes)
-            $missingMatiereIds = array_keys(array_diff_key($notesByMatiere, $resultatsData));
-            $missingMatieres = $missingMatiereIds
-                ? \App\Models\ESBTPMatiere::with(['filieres', 'niveaux'])->whereIn('id', $missingMatiereIds)->get()->keyBy('id')
-                : collect();
-
-            foreach ($notesByMatiere as $matiereId => $matiereData) {
-                if (! isset($resultatsData[$matiereId])) {
-                    $matiere = $missingMatieres->get($matiereId);
-
-                    if (! $matiere) {
-                        \Log::warning("Matiere with ID {$matiereId} not found when adding calculated averages - skipping");
-
-                        continue; // Ignorer cette entrée si la matière n'existe pas
-                    }
-
-                    // Vérifier que la matière correspond à la combinaison filière+niveau de la classe
-                    if (! $classeFiliereIdForNotes || ! $classeNiveauIdForNotes) {
-                        \Log::warning("Classe {$classeId} missing filiere_id or niveau_etude_id - skipping matiere {$matiereId}");
-
-                        continue;
-                    }
-
-                    $matchesFiliere = $matiere->filieres->pluck('id')->contains($classeFiliereIdForNotes);
-                    $matchesNiveau = $matiere->niveaux->pluck('id')->contains($classeNiveauIdForNotes);
-
-                    if (! $matchesFiliere || ! $matchesNiveau) {
-                        \Log::debug("Matiere {$matiereId} ({$matiere->name}) skipped - does not match classe filiere/niveau combination");
-
-                        continue; // Ignorer les matières qui ne correspondent pas à la combinaison
-                    }
-
-                    $resultatsData[$matiereId] = [
-                        'id' => null,
-                        'matiere' => $matiere, // Utiliser l'objet matière fraîchement récupéré
-                        'moyenne' => $matiereData['moyenne'],
-                        'coefficient' => $this->bulletinService->getCoefficientForCombination(
-                            $matiereId,
-                            $classeId,
-                            $anneeUniversitaireId
-                        ),
-                        'rang' => null,
-                        'appreciation' => app(AppreciationScaleService::class)->labelFor(
-                            $matiereData['moyenne'] === null ? null : (float) $matiereData['moyenne'],
-                            'bts',
-                            ''
-                        ),
-                    ];
-                }
-            }
-
-            // Calculer la moyenne pour chaque matière
-            foreach ($notesByMatiere as $matiereId => &$matiereData) {
-                $totalPoints = 0;
-                $totalCoefficients = 0;
-
-                foreach ($matiereData['notes'] as $note) {
-                    if ($note->evaluation && $note->evaluation->bareme > 0) {
-                        $noteValue = is_numeric($note->note) ? floatval($note->note) : (is_numeric($note->valeur) ? floatval($note->valeur) : 0);
-                        $bareme = floatval($note->evaluation->bareme);
-                        $coefficient = $note->evaluation->coefficient ? floatval($note->evaluation->coefficient) : 1;
-
-                        $normalized = ($noteValue / $bareme) * 20;
-                        $totalPoints += $normalized * $coefficient;
-                        $totalCoefficients += $coefficient;
-                    }
-                }
-
-                $matiereData['total_points'] = $totalPoints;
-                $matiereData['total_coefficients'] = $totalCoefficients;
-                $matiereData['moyenne'] = $totalCoefficients > 0 ? $totalPoints / $totalCoefficients : 0;
-
-            }
-
-            // NOUVELLE LOGIQUE: Récupérer les matières basées sur la combinaison filière + niveau de la classe
-            // même si l'étudiant n'a aucune évaluation/note
-            $classeFiliereId = $classe->filiere_id;
-            $classeNiveauId = $classe->niveau_etude_id;
-
-            // Plus de blocage pour coefficients manquants - utiliser fallback = 1
-            $toutesLesMatieres = \App\Models\ESBTPMatiere::with(['filieres:id,name,code', 'niveaux:id,name,code'])
-                ->where('is_active', true)
-                ->orderBy('name')
-                ->get()
-                ->filter(function ($matiere) use ($classeFiliereId, $classeNiveauId) {
-                    if (! $classeFiliereId || ! $classeNiveauId) {
-                        return false;
-                    }
-
-                    return $matiere->filieres->pluck('id')->contains($classeFiliereId)
-                        && $matiere->niveaux->pluck('id')->contains($classeNiveauId);
-                })
-                ->values();
-
-            // Ajouter les matières de la classe qui n'ont pas encore de résultats
-            foreach ($toutesLesMatieres as $matiere) {
-                if (! isset($resultatsData[$matiere->id])) {
-                    // Vérifier si cette matière a des moyennes calculées depuis les évaluations
-                    $moyenneCalculee = isset($notesByMatiere[$matiere->id]) ? $notesByMatiere[$matiere->id]['moyenne'] : null;
-                    
-                    // Récupérer le coefficient avec fallback = 1 si non configuré
-                    try {
-                        $coefficientCalcule = $this->bulletinService->getCoefficientForCombination(
-                            $matiere->id,
-                            $classe->id,
-                            $anneeUniversitaire->id
-                        );
-                    } catch (\RuntimeException $exception) {
-                        $coefficientCalcule = 1; // Fallback au lieu de bloquer
-                    }
-
-                    $resultatsData[$matiere->id] = [
-                        'id' => null, // Nouveau résultat à créer
-                        'matiere' => $matiere,
-                        'moyenne' => $moyenneCalculee, // null si pas d'évaluations
-                        'coefficient' => $coefficientCalcule,
-                        'rang' => null,
-                        'appreciation' => $moyenneCalculee === null
-                            ? null
-                            : app(AppreciationScaleService::class)->labelFor((float) $moyenneCalculee, 'bts', ''),
-                        'source' => $moyenneCalculee !== null ? 'calculee' : 'manuelle',
-                    ];
-                } else {
-                    // Marquer la source des résultats existants
-                    $moyenneCalculee = isset($notesByMatiere[$matiere->id]) ? $notesByMatiere[$matiere->id]['moyenne'] : null;
-                    $resultatsData[$matiere->id]['source'] = $moyenneCalculee !== null ? 'calculee' : 'manuelle';
-                }
-            }
-
-            // Trier les matières par nom pour un affichage cohérent
-            if (in_array($periodePourBDD, ['semestre1', 'semestre2'], true)) {
-                $snapshot = $this->currentResultSnapshotService->getSemesterSnapshot(
-                    $etudiantId,
-                    $classeId,
-                    $anneeUniversitaireId,
-                    $periodePourBDD
-                );
-
-                $notesByMatiere = $this->mapConsistencySubjectsToDetailNotes($snapshot['subjects'] ?? [], $notes);
-
-                foreach ($snapshot['subjects'] ?? [] as $subject) {
-                    $matiereId = $subject['matiere_id'] ?? null;
-                    if (! $matiereId) {
-                        continue;
-                    }
-
-                    $matiereModel = $resultatsData[$matiereId]['matiere']
-                        ?? $notesByMatiere[$matiereId]['matiere']
-                        ?? (object) ['id' => $matiereId, 'name' => $subject['matiere'] ?? 'Matière inconnue'];
-
-                    $resultatsData[$matiereId] = [
-                        'id' => $resultatsData[$matiereId]['id'] ?? ($subject['manual_resultat']['resultat_id'] ?? null),
-                        'matiere' => $matiereModel,
-                        'moyenne' => $subject['moyenne'] ?? null,
-                        'coefficient' => $subject['coefficient'] ?? null,
-                        'rang' => $resultatsData[$matiereId]['rang'] ?? null,
-                        'appreciation' => $resultatsData[$matiereId]['appreciation']
-                            ?? ($subject['manual_resultat']['appreciation'] ?? null)
-                            ?? app(AppreciationScaleService::class)->labelFor(
-                                ($subject['moyenne'] ?? null) === null ? null : (float) $subject['moyenne'],
-                                'bts',
-                                ''
-                            ),
-                        'source' => $subject['source'] ?? 'calculee',
-                    ];
-                }
-            }
-
-            uasort($resultatsData, function ($a, $b) {
-                return strcasecmp($a['matiere']->name, $b['matiere']->name);
-            });
-
-            // Afficher la vue de prévisualisation des moyennes
-            return view('esbtp.resultats.moyennes-preview', compact(
-                'etudiant',
-                'classe',
-                'periode',
-                'anneeUniversitaire',
-                'notesByMatiere',
-                'resultatsData'
-            ));
+            return view('esbtp.resultats.moyennes-preview', [
+                'etudiant' => $etudiant,
+                'classe' => $classe,
+                'periode' => $periode,
+                'anneeUniversitaire' => $anneeUniversitaire,
+                'notesByMatiere' => $apercu['notes_par_matiere'],
+                'resultatsData' => $apercu['lignes'],
+            ]);
+        } catch (HttpExceptionInterface $exception) {
+            // AVANT le `catch (\RuntimeException)`, et c'est tout l'objet de ce
+            // bloc : `Symfony\…\HttpException` HERITE de `RuntimeException`.
+            // Le `abort_if(… LMD, 422)` pose plus haut tombait donc dans le
+            // catch suivant, et l'utilisateur recevait un 302 portant
+            // « Cette classe est LMD. […] Configurez les coefficients avant de
+            // continuer. » — on l'envoyait configurer des coefficients pour une
+            // classe LMD, c'est-a-dire exactement la boucle absurde que le reste
+            // de ce chantier supprime.
+            //
+            // C'est le piege §5 de `.claude/rules/klassci-local-test-suite.md`,
+            // nomme mot pour mot : « abort(422) avale -> 302 ». Il vaut pour tout
+            // `abort()` futur pose dans ce `try`, pas seulement pour celui-ci.
+            throw $exception;
         } catch (\RuntimeException $exception) {
-            $periodeParam = isset($periode) ? str_replace('semestre', '', $periode) : '1';
             $redirectUrl = route('esbtp.resultats.etudiant', ['etudiant' => $etudiantId])
                 . '?classe_id=' . ($classeId ?? '')
                 . '&annee_universitaire_id=' . ($anneeUniversitaireId ?? '')
-                . '&periode=' . $periodeParam
+                . '&periode=' . str_replace('semestre', '', $periode)
                 . '&open_coeff_modal=1';
 
             return redirect($redirectUrl)
                 ->with('error', $exception->getMessage().' Configurez les coefficients avant de continuer.');
         }
+    }
+
+    /**
+     * La periode de l'apercu, ramenee aux trois seules valeurs que la base porte.
+     *
+     * Une cascade de six `if` faisait ce travail, en tenant DEUX variables
+     * (`$periode` et `$periodePourBDD`) dont les quatre branches finissaient
+     * toujours par poser la meme valeur. Le gabarit recevait la premiere, la
+     * requete la seconde : deux noms pour une valeur, donc une divergence qui
+     * n'attendait qu'une cinquieme branche.
+     */
+    private function periodeDeLApercu(mixed $periode): string
+    {
+        return match ((string) $periode) {
+            '2', 'semestre2' => 'semestre2',
+            'annuel' => 'annuel',
+            // `semestre1` par defaut : une periode vide ou inconnue ne doit pas
+            // ouvrir un ecran vide, elle doit ouvrir le premier semestre.
+            default => 'semestre1',
+        };
     }
 
     /**
@@ -2827,150 +2647,209 @@ class ESBTPResultatController extends Controller
         $classe = \App\Models\ESBTPClasse::findOrFail($classeId);
         $anneeUniversitaire = \App\Models\ESBTPAnneeUniversitaire::findOrFail($anneeUniversitaireId);
 
-        // Traiter chaque résultat (si présents)
-        if ($request->has('resultats') && is_array($request->resultats)) {
-            foreach ($request->resultats as $resultatData) {
-                $matiereId = $resultatData['matiere_id'];
-                $moyenne = $resultatData['moyenne'];
-                // Récupérer le coefficient depuis le formulaire (priorité haute)
-                $coefficient = isset($resultatData['coefficient']) && $resultatData['coefficient'] > 0 
-                    ? floatval($resultatData['coefficient']) 
-                    : null;
-                
-                // Si pas de coefficient dans le formulaire, essayer de récupérer depuis la matière
-                if ($coefficient === null) {
-                    try {
-                        $coefficient = $this->bulletinService->getCoefficientForCombination(
-                            $matiereId,
-                            $classeId,
-                            $anneeUniversitaireId
-                        );
-                    } catch (\RuntimeException $exception) {
-                        // Fallback: utiliser 1 comme valeur par défaut au lieu de bloquer
-                        $coefficient = 1;
-                        \Log::warning("Coefficient manquant pour matière {$matiereId}, utilisation du défaut: 1");
-                    }
-                }
-                $appreciation = trim((string) ($resultatData['appreciation'] ?? ''));
-                if ($appreciation === '') {
-                    $appreciation = app(AppreciationScaleService::class)->labelFor((float) $moyenne, 'bts');
-                }
-                $resultatId = $resultatData['id'] ?? null;
+        // Meme refus qu'a l'apercu, et AVANT la transaction : cet ecran ecrit
+        // dans `esbtp_resultats`, la table du bulletin BTS.
+        abort_if(
+            CoherenceSystemeAcademique::classeEstLmd($classe->systeme_academique),
+            422,
+            'Cette classe est LMD. Utilisez /esbtp/lmd/bulletins pour ses releves.'
+        );
 
-                // Si un ID de résultat est fourni, mettre à jour le résultat existant
-                if ($resultatId) {
-                    $resultat = \App\Models\ESBTPResultat::find($resultatId);
-                    if ($resultat) {
-                        $resultat->update([
-                            'moyenne' => $moyenne,
-                            'coefficient' => $coefficient,
-                            'appreciation' => $appreciation,
-                        ]);
+        // TOUT OU RIEN, et un refus qui se dit.
+        //
+        // Cette boucle ecrit une ligne PAR MATIERE. Sans transaction, le garde
+        // de `ESBTPResultat` (une ECUE dans une classe BTS) levait au milieu :
+        // les matieres deja traitees restaient enregistrees, les suivantes
+        // jamais, et chaque nouvelle tentative laissait un etat partiel
+        // different. C'est la symetrie de `bulkUpdateMoyennes()`, juste au-dessus
+        // dans ce fichier, qui manquait ici.
+        //
+        // Le `catch (ValidationException)` vient AVANT le catch large : un catch
+        // large transforme un refus metier en 500 et avale son message.
+        \DB::beginTransaction();
 
-                        continue;
-                    }
-                }
-
-                // Sinon, créer un nouveau résultat
-                \App\Models\ESBTPResultat::create([
-                    'etudiant_id' => $etudiantId,
-                    'classe_id' => $classeId,
-                    'matiere_id' => $matiereId,
-                    'periode' => $periodePourBDD,
-                    'annee_universitaire_id' => $anneeUniversitaireId,
-                    'moyenne' => $moyenne,
-                    'coefficient' => $coefficient,
-                    'appreciation' => $appreciation,
-                ]);
-            }
-        }
-
-        // NOUVELLE LOGIQUE: Traiter les nouvelles matières ajoutées dynamiquement
-        if ($request->has('nouvelles_matieres') && is_array($request->nouvelles_matieres)) {
-            foreach ($request->nouvelles_matieres as $nouvelleMatiereData) {
-                $matiereType = $nouvelleMatiereData['matiere_type'];
-                $moyenne = $nouvelleMatiereData['moyenne'];
-                $coefficient = null;
-                $appreciation = trim((string) ($nouvelleMatiereData['appreciation'] ?? ''));
-                if ($appreciation === '') {
-                    $appreciation = app(AppreciationScaleService::class)->labelFor((float) $moyenne, 'bts');
-                }
-
-                if ($matiereType === 'existante') {
-                    // Utiliser une matière existante
-                    $matiereId = $nouvelleMatiereData['matiere_existante_id'];
-                    $matiere = \App\Models\ESBTPMatiere::findOrFail($matiereId);
-
+        try {
+            // Traiter chaque résultat (si présents)
+            if ($request->has('resultats') && is_array($request->resultats)) {
+                foreach ($request->resultats as $resultatData) {
+                    $matiereId = $resultatData['matiere_id'];
+                    $moyenne = $resultatData['moyenne'];
                     // Récupérer le coefficient depuis le formulaire (priorité haute)
-                    $coefficient = isset($nouvelleMatiereData['coefficient']) && $nouvelleMatiereData['coefficient'] > 0 
-                        ? floatval($nouvelleMatiereData['coefficient']) 
+                    $coefficient = isset($resultatData['coefficient']) && $resultatData['coefficient'] > 0 
+                        ? floatval($resultatData['coefficient']) 
                         : null;
-                    
+                
                     // Si pas de coefficient dans le formulaire, essayer de récupérer depuis la matière
                     if ($coefficient === null) {
                         try {
+                            // LA PERIODE ET L'ELEVE, PARCE QUE C'EST ICI QU'ON ECRIT.
+                            // Sans eux, `getCoefficientForCombination()` normalise a
+                            // `semestre1` et n'atteint jamais le repli Tronc Commun :
+                            // enregistrer depuis l'onglet du SECOND semestre gravait le
+                            // coefficient du premier. L'apercu, lui, avait ete corrige ;
+                            // l'ecrivain de cet ecran etait reste en arriere — et le
+                            // commentaire d'alors nommait meme le mauvais ecrivain
+                            // (`bulkUpdateMoyennes()`, qui sert `classe-edit`, pas cet
+                            // ecran-ci : son formulaire poste vers `moyennes-update`).
                             $coefficient = $this->bulletinService->getCoefficientForCombination(
                                 $matiereId,
                                 $classeId,
-                                $anneeUniversitaireId
+                                $anneeUniversitaireId,
+                                $periodePourBDD,
+                                $etudiantId
                             );
                         } catch (\RuntimeException $exception) {
                             // Fallback: utiliser 1 comme valeur par défaut au lieu de bloquer
                             $coefficient = 1;
-                            \Log::warning("Coefficient manquant pour matière existante {$matiereId}, utilisation du défaut: 1");
+                            \Log::warning("Coefficient manquant pour matière {$matiereId}, utilisation du défaut: 1");
+                        }
+                    }
+                    $appreciation = trim((string) ($resultatData['appreciation'] ?? ''));
+                    if ($appreciation === '') {
+                        $appreciation = app(AppreciationScaleService::class)->labelFor((float) $moyenne, 'bts');
+                    }
+                    $resultatId = $resultatData['id'] ?? null;
+
+                    // Si un ID de résultat est fourni, mettre à jour le résultat existant
+                    if ($resultatId) {
+                        $resultat = \App\Models\ESBTPResultat::find($resultatId);
+                        if ($resultat) {
+                            $resultat->update([
+                                'moyenne' => $moyenne,
+                                'coefficient' => $coefficient,
+                                'appreciation' => $appreciation,
+                            ]);
+
+                            continue;
                         }
                     }
 
-                    // Associer la matière à la classe si ce n'est pas déjà fait
-                    if (! $classe->matieres->contains($matiere->id)) {
-                        $classe->matieres()->attach($matiere->id);
-                    }
-                } elseif ($matiereType === 'nouvelle') {
-                    // Créer une nouvelle matière
-                    $nomMatiere = $nouvelleMatiereData['nom_nouvelle'];
-                    $coefficient = $nouvelleMatiereData['coefficient'];
-                    $matiere = \App\Models\ESBTPMatiere::firstOrCreate(
-                        ['name' => $nomMatiere],
-                        [
-                            'code' => strtoupper(substr($nomMatiere, 0, 3)).'_'.time(),
-                            'description' => 'Matière ajoutée manuellement via le bulletin',
-                            'coefficient' => $coefficient,
-                            'type_formation' => 'generale',
-                            'is_active' => true,
-                        ]
-                    );
-
-                    ESBTPMatiereCoefficient::updateOrCreate([
-                        'matiere_id' => $matiere->id,
-                        'filiere_id' => $classe->filiere_id,
-                        'niveau_etude_id' => $classe->niveau_etude_id,
+                    // Sinon, créer un nouveau résultat
+                    \App\Models\ESBTPResultat::create([
+                        'etudiant_id' => $etudiantId,
+                        'classe_id' => $classeId,
+                        'matiere_id' => $matiereId,
+                        'periode' => $periodePourBDD,
                         'annee_universitaire_id' => $anneeUniversitaireId,
-                    ], [
+                        'moyenne' => $moyenne,
                         'coefficient' => $coefficient,
-                        'created_by' => auth()->id(),
-                        'updated_by' => auth()->id(),
+                        'appreciation' => $appreciation,
                     ]);
-
-                    // Associer la matière à la classe
-                    if (! $classe->matieres->contains($matiere->id)) {
-                        $classe->matieres()->attach($matiere->id);
-                    }
-                } else {
-                    continue; // Type invalide, ignorer
                 }
-
-                // Créer le résultat pour cette matière
-                \App\Models\ESBTPResultat::create([
-                    'etudiant_id' => $etudiantId,
-                    'classe_id' => $classeId,
-                    'matiere_id' => $matiere->id,
-                    'periode' => $periodePourBDD,
-                    'annee_universitaire_id' => $anneeUniversitaireId,
-                    'moyenne' => $moyenne,
-                    'coefficient' => $coefficient,
-                    'appreciation' => $appreciation,
-                ]);
             }
+
+            // NOUVELLE LOGIQUE: Traiter les nouvelles matières ajoutées dynamiquement
+            if ($request->has('nouvelles_matieres') && is_array($request->nouvelles_matieres)) {
+                foreach ($request->nouvelles_matieres as $nouvelleMatiereData) {
+                    $matiereType = $nouvelleMatiereData['matiere_type'];
+                    $moyenne = $nouvelleMatiereData['moyenne'];
+                    $coefficient = null;
+                    $appreciation = trim((string) ($nouvelleMatiereData['appreciation'] ?? ''));
+                    if ($appreciation === '') {
+                        $appreciation = app(AppreciationScaleService::class)->labelFor((float) $moyenne, 'bts');
+                    }
+
+                    if ($matiereType === 'existante') {
+                        // Utiliser une matière existante
+                        $matiereId = $nouvelleMatiereData['matiere_existante_id'];
+                        $matiere = \App\Models\ESBTPMatiere::findOrFail($matiereId);
+
+                        // Récupérer le coefficient depuis le formulaire (priorité haute)
+                        $coefficient = isset($nouvelleMatiereData['coefficient']) && $nouvelleMatiereData['coefficient'] > 0 
+                            ? floatval($nouvelleMatiereData['coefficient']) 
+                            : null;
+                    
+                        // Si pas de coefficient dans le formulaire, essayer de récupérer depuis la matière
+                        if ($coefficient === null) {
+                            try {
+                                // Meme raison qu'au-dessus : on ECRIT, donc la periode
+                                // et l'eleve ne sont pas facultatifs.
+                                $coefficient = $this->bulletinService->getCoefficientForCombination(
+                                    $matiereId,
+                                    $classeId,
+                                    $anneeUniversitaireId,
+                                    $periodePourBDD,
+                                    $etudiantId
+                                );
+                            } catch (\RuntimeException $exception) {
+                                // Fallback: utiliser 1 comme valeur par défaut au lieu de bloquer
+                                $coefficient = 1;
+                                \Log::warning("Coefficient manquant pour matière existante {$matiereId}, utilisation du défaut: 1");
+                            }
+                        }
+
+                        // Associer la matière à la classe si ce n'est pas déjà fait
+                        if (! $classe->matieres->contains($matiere->id)) {
+                            $classe->matieres()->attach($matiere->id);
+                        }
+                    } elseif ($matiereType === 'nouvelle') {
+                        // Créer une nouvelle matière
+                        $nomMatiere = $nouvelleMatiereData['nom_nouvelle'];
+                        $coefficient = $nouvelleMatiereData['coefficient'];
+                        $matiere = \App\Models\ESBTPMatiere::firstOrCreate(
+                            ['name' => $nomMatiere],
+                            [
+                                'code' => strtoupper(substr($nomMatiere, 0, 3)).'_'.time(),
+                                'description' => 'Matière ajoutée manuellement via le bulletin',
+                                'coefficient' => $coefficient,
+                                'type_formation' => 'generale',
+                                'is_active' => true,
+                            ]
+                        );
+
+                        ESBTPMatiereCoefficient::updateOrCreate([
+                            'matiere_id' => $matiere->id,
+                            'filiere_id' => $classe->filiere_id,
+                            'niveau_etude_id' => $classe->niveau_etude_id,
+                            'annee_universitaire_id' => $anneeUniversitaireId,
+                        ], [
+                            'coefficient' => $coefficient,
+                            'created_by' => auth()->id(),
+                            'updated_by' => auth()->id(),
+                        ]);
+
+                        // Associer la matière à la classe
+                        if (! $classe->matieres->contains($matiere->id)) {
+                            $classe->matieres()->attach($matiere->id);
+                        }
+                    } else {
+                        continue; // Type invalide, ignorer
+                    }
+
+                    // Créer le résultat pour cette matière
+                    \App\Models\ESBTPResultat::create([
+                        'etudiant_id' => $etudiantId,
+                        'classe_id' => $classeId,
+                        'matiere_id' => $matiere->id,
+                        'periode' => $periodePourBDD,
+                        'annee_universitaire_id' => $anneeUniversitaireId,
+                        'moyenne' => $moyenne,
+                        'coefficient' => $coefficient,
+                        'appreciation' => $appreciation,
+                    ]);
+                }
+            }
+
+            \DB::commit();
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            \DB::rollBack();
+
+            return redirect()->back()
+                ->withInput()
+                ->withErrors($e->errors());
+        } catch (\Throwable $e) {
+            \DB::rollBack();
+
+            \Log::error('Echec de l\'enregistrement des moyennes.', [
+                'etudiant_id' => $etudiantId,
+                'classe_id' => $classeId,
+                'periode' => $periodePourBDD,
+                'message' => $e->getMessage(),
+            ]);
+
+            return redirect()->back()
+                ->withInput()
+                ->with('error', "Les moyennes n'ont pas pu etre enregistrees. Aucune modification n'a ete conservee.");
         }
 
         // Rediriger vers la page des résultats de l'étudiant
@@ -3212,7 +3091,7 @@ class ESBTPResultatController extends Controller
             // coefficient brut du snapshot (0 quand la matiere n'est pas configuree), et cette
             // valeur correspond a la ponderation reellement utilisee pour la moyenne du semestre.
             // Forcer 1 ferait diverger l'annuel de l'onglet semestriel pour la meme donnee.
-            $mapped = $this->mapConsistencySubjectsToDetailNotes($subjects, $notes);
+            $mapped = $this->moyennesDeLApercu->notesDetailleesDepuisLeSnapshot($subjects, $notes);
 
             $blocks[] = [
                 'key' => $key,
@@ -3242,54 +3121,6 @@ class ESBTPResultatController extends Controller
 
             return $block;
         }, $blocks);
-    }
-
-    private function mapConsistencySubjectsToDetailNotes(array $subjects, Collection $notes): array
-    {
-        $mapped = [];
-
-        foreach ($subjects as $subject) {
-            $matiereId = $subject['matiere_id'] ?? null;
-            if (! $matiereId) {
-                continue;
-            }
-
-            $notesForSubject = $notes->filter(function ($note) use ($matiereId, $subject) {
-                $noteMatiereId = $note->matiere_id ?: $note->evaluation?->matiere?->id;
-                if ($noteMatiereId !== $matiereId) {
-                    return false;
-                }
-
-                $evaluationIds = collect($subject['evaluations'] ?? [])->pluck('evaluation_id')->filter()->all();
-                if (empty($evaluationIds)) {
-                    return true;
-                }
-
-                return in_array($note->evaluation_id, $evaluationIds, true);
-            })->values();
-
-            $matiereModel = $notesForSubject->first()?->matiere ?: $notesForSubject->first()?->evaluation?->matiere;
-            if (! $matiereModel) {
-                $matiereModel = (object) [
-                    'id' => $matiereId,
-                    'name' => $subject['matiere'] ?? 'Matière inconnue',
-                    'code' => null,
-                ];
-            }
-
-            $mapped[$matiereId] = [
-                'matiere' => $matiereModel,
-                'notes' => $notesForSubject->all(),
-                'calculations' => [],
-                'total_points' => 0,
-                'total_coefficients' => (float) ($subject['coefficient'] ?? 0),
-                'moyenne' => (float) ($subject['moyenne'] ?? 0),
-                'origin' => 'notes',
-                'source' => ($subject['source'] ?? 'calculee') === 'manuelle' ? 'manuelle' : 'calculee',
-            ];
-        }
-
-        return $mapped;
     }
 
     private function overlayConsistencySubjectLabels(array $notesByMatiere, array $subjects): array

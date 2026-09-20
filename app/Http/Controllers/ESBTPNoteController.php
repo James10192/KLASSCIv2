@@ -8,6 +8,7 @@ use App\Http\Requests\Notes\StoreBulkNotesRequest;
 use App\Http\Requests\Notes\StoreNoteRequest;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPBulletin;
+use App\Domain\Academique\CoherenceSystemeAcademique;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPEvaluation;
@@ -95,6 +96,12 @@ class ESBTPNoteController extends Controller
         // Get current academic year
         $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', 1)->first();
         $anneeAcademique = $anneeCourante ? $anneeCourante->name : 'Aucune année active';
+        // `$anneeAcademique` est une CHAINE (le libelle affiche en en-tete). La vue
+        // appelait `optional($anneeAcademique)->id` pour le bandeau de couverture :
+        // sur une chaine, cela rend toujours null, donc le bandeau n'avait jamais
+        // d'annee, ne se considerait jamais pret, et ne chargeait rien — y compris
+        // pour un superAdmin. L'identifiant voyage donc a part.
+        $anneeCouranteId = $anneeCourante?->id;
 
         $semesterWeights = [
             'semester1' => floatval(\App\Helpers\SettingsHelper::get('bulletin_semester1_weight', '50')),
@@ -342,7 +349,7 @@ class ESBTPNoteController extends Controller
                 ? collect()
                 : User::whereHas('roles', fn ($q) => $q->whereIn('name', ['teacher', 'enseignant']))->orderBy('name')->get();
 
-            return view('esbtp.notes.index', compact('notes', 'classes', 'allClasses', 'matieres', 'anneeAcademique', 'filieres', 'niveaux', 'classStatsById', 'heroStats', 'semesterWeights', 'evaluationTypes', 'enseignants'));
+            return view('esbtp.notes.index', compact('notes', 'classes', 'allClasses', 'matieres', 'anneeAcademique', 'anneeCouranteId', 'filieres', 'niveaux', 'classStatsById', 'heroStats', 'semesterWeights', 'evaluationTypes', 'enseignants'));
         }
 
         // Get filter options for dropdowns (if needed)
@@ -363,6 +370,7 @@ class ESBTPNoteController extends Controller
             'allClasses',
             'matieres',
             'anneeAcademique',
+            'anneeCouranteId',
             'filieres',
             'niveaux',
             'classStatsById',
@@ -1102,6 +1110,16 @@ class ESBTPNoteController extends Controller
             ->allowedStudentIdsForEvaluation($evaluation)
             ->all();
 
+        // Ce que la saisie a REELLEMENT ecrit, et ce qu'elle a saute. Les lignes
+        // laissees vides sont ignorees en silence depuis toujours : l'ecran
+        // annoncait « enregistrees avec succes » pour cinquante lignes dont une
+        // n'avait rien ecrit, et le suivi de couverture la comptait manquante.
+        // `esbtp_notes.note` etant NOT NULL, une ligne vide ne cree AUCUNE
+        // ligne — c'est la cause la plus banale d'un « toutes les notes ont
+        // pourtant ete saisies ».
+        $enregistrees = 0;
+        $ignorees = [];
+
         DB::beginTransaction();
         try {
             foreach ($request->notes as $noteData) {
@@ -1111,6 +1129,8 @@ class ESBTPNoteController extends Controller
 
                 // Ignorer les entrées sans valeur et non marquées comme absentes
                 if (! $hasValue && ! $isAbsent) {
+                    $ignorees[] = (int) ($noteData['etudiant_id'] ?? 0);
+
                     continue;
                 }
 
@@ -1182,12 +1202,14 @@ class ESBTPNoteController extends Controller
                         $this->sendAbsenceNotificationForNote($note, $evaluation);
                     }
                 }
+
+                $enregistrees++;
             }
 
             DB::commit();
 
             return redirect()->route('esbtp.evaluations.show', $evaluation)
-                ->with('success', 'Les notes ont été enregistrées avec succès');
+                ->with('success', $this->messageDeSaisieRapide($enregistrees, $ignorees));
         } catch (\Exception $e) {
             DB::rollBack();
 
@@ -1195,6 +1217,65 @@ class ESBTPNoteController extends Controller
                 ->with('error', 'Une erreur est survenue lors de l\'enregistrement des notes: '.$e->getMessage())
                 ->withInput();
         }
+    }
+
+    /** Au-dela, nommer les etudiants rend le message illisible. */
+    private const SAISIE_RAPIDE_NOMS_MAX = 5;
+
+    /**
+     * Le compte rendu d'une saisie rapide : ce qui a ete ecrit, et ce qui reste.
+     *
+     * LE TON COMPTE AUTANT QUE LE CHIFFRE. La saisie est progressive par
+     * nature — on note dix eleves, on enregistre, on reprend. Une premiere
+     * version disait « 55 ligne(s) laissee(s) vide(s), donc aucune note
+     * enregistree pour… » dans un message de SUCCES : un enseignant qui vient
+     * de saisir cinq notes sur soixante y lisait un reproche, et l'ecran
+     * devenait desagreable a chaque enregistrement intermediaire.
+     *
+     * « Reste(nt) a saisir » dit la meme chose sans accuser. Le cas qui a
+     * motive tout ceci est justement celui d'UNE ligne oubliee : elle passait
+     * en silence, et le suivi la comptait manquante pendant que la personne
+     * etait certaine d'avoir tout rempli.
+     *
+     * Les noms ne sont donnes que lorsqu'ils tiennent : au-dela de cinq, le
+     * compte seul, et la liste complete se lit sur l'ecran de l'evaluation.
+     *
+     * @param  array<int, int>  $ignorees  identifiants des etudiants dont la ligne etait vide
+     */
+    private function messageDeSaisieRapide(int $enregistrees, array $ignorees): string
+    {
+        $message = $enregistrees . ' note(s) enregistrée(s).';
+
+        $ignorees = array_values(array_unique(array_filter($ignorees)));
+        $reste = count($ignorees);
+
+        if ($reste === 0) {
+            return $message;
+        }
+
+        if ($reste > self::SAISIE_RAPIDE_NOMS_MAX) {
+            return $message . ' ' . $reste . ' ligne(s) reste(nt) à saisir.';
+        }
+
+        $noms = ESBTPEtudiant::whereIn('id', $ignorees)
+            ->get(['id', 'nom', 'prenoms'])
+            ->map(fn (ESBTPEtudiant $etudiant): string => trim($etudiant->nom_complet))
+            ->filter()
+            ->values()
+            ->all();
+
+        if ($noms === []) {
+            return $message . ' ' . $reste . ' ligne(s) reste(nt) à saisir.';
+        }
+
+        // Un identifiant qui ne resout pas — etudiant supprime entre-temps, nom
+        // vide — rendrait la liste plus courte que le compte, et elle se
+        // presenterait pourtant comme exhaustive. On dit alors ce qui manque.
+        $sansNom = $reste - count($noms);
+
+        return $message . ' ' . $reste . ' ligne(s) reste(nt) à saisir : ' . implode(', ', $noms)
+            . ($sansNom > 0 ? ' et ' . $sansNom . ' autre(s)' : '')
+            . '.';
     }
 
     /**
@@ -1752,9 +1833,35 @@ class ESBTPNoteController extends Controller
 
         $matiereIds = $evaluations->pluck('matiere_id')->unique()->values()->all();
 
-        $matiereCoefs = ESBTPMatiere::whereIn('id', $matiereIds)
-            ->get(['id', 'coefficient'])
-            ->mapWithKeys(fn ($m) => [$m->id => max(0.01, (float) ($m->coefficient ?? 1))]);
+        // LE TREIZIEME CALCUL DE MOYENNE, et le dernier a avoir ete filtre.
+        //
+        // C'est une vraie moyenne generale ponderee, calculee ici plutot que
+        // par `BulletinService` ou le snapshot — donc aucun des douze filtres
+        // poses ailleurs ne la couvrait. Elle alimente le panneau d'impact
+        // affiche SOUS LA MAIN de l'enseignant qui saisit une note
+        // (`previewImpact()` → `esbtp.notes.preview-impact` → `notes/index`).
+        //
+        // Sans ce filtre, cette branche creait exactement la contradiction
+        // qu'elle pretend supprimer ailleurs : le bulletin, `/esbtp/resultats`,
+        // la fiche etudiant et l'accueil mobile annoncant 14,00, et ce panneau
+        // 10,67 — au moment le plus sensible du parcours.
+        //
+        // `withTrashed()` : `ESBTPClasse` et `ESBTPMatiere` sont en
+        // `SoftDeletes`, et une lecture nue rendrait `null`, ce qui desarmerait
+        // le filtre au lieu de l'appliquer.
+        // `unite_enseignement_id` DOIT etre selectionnee : le prédicat la lit,
+        // et un `->get(['id', 'coefficient'])` la laisserait a `null` — le
+        // filtre serait inerte sans rien signaler (piege #12).
+        $classeCible = ESBTPClasse::withTrashed()->find($classeId);
+
+        $matieres = ESBTPMatiere::withTrashed()
+            ->whereIn('id', $matiereIds)
+            ->get(['id', 'name', 'coefficient', 'unite_enseignement_id'])
+            ->keyBy('id');
+
+        $matiereCoefs = $matieres->mapWithKeys(
+            fn ($m) => [$m->id => max(0.01, (float) ($m->coefficient ?? 1))]
+        );
 
         $notes = ESBTPNote::where('etudiant_id', $etudiantId)
             ->whereIn('evaluation_id', $evaluations->pluck('id'))
@@ -1765,6 +1872,15 @@ class ESBTPNoteController extends Controller
         $matieresPayload = [];
 
         foreach ($byMatiere as $matiereId => $evalsMat) {
+            $matiere = $matieres->get((int) $matiereId);
+
+            // Une matiere etrangere au systeme de la classe ne pese pas sur
+            // l'apercu d'impact, comme elle ne pese deja plus sur le bulletin.
+            if ($classeCible && $matiere
+                && ! CoherenceSystemeAcademique::matiereRetenue($matiere, $classeCible, 'apercu impact/moyenne generale')) {
+                continue;
+            }
+
             $notesMat = $notes->where('matiere_id', $matiereId)->keyBy('evaluation_id');
 
             $isOverridden = ($overrideMatiereId === (int) $matiereId);

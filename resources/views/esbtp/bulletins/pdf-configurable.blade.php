@@ -667,16 +667,14 @@
                         @foreach($resultatsGeneraux as $resultat)
                             <tr class="subject-row{{ $loop->even ? ' subject-row-even' : '' }}">
                                 <td>{{ $resultat->matiere->name ?? $resultat->matiere->nom ?? 'N/A' }}</td>
-                                @if($showSubjectAverage)<td class="center">{{ number_format($resultat->moyenne, 2) }}</td>@endif
-                                @if($showCoefficient)<td class="center">{{ $resultat->coefficient }}</td>@endif
-                                @if($showWeightedAverage)<td class="center">{{ number_format($resultat->moyenne * $resultat->coefficient, 2) }}</td>@endif
-                                @if($showRankPerSubject)<td class="center">{{ $resultat->rang ?: '-' }}</td>@endif
+                                @include('esbtp.bulletins.partials.subject-row-cells', ['resultat' => $resultat])
                                 @if($showAbsencesParMatiere)<td class="center">{{ isset($absencesParMatiere[$resultat->matiere_id]) ? $absencesParMatiere[$resultat->matiere_id]['total_heures'] : 0 }}</td>@endif
                                 @if($showTeachers)<td>{{ trim((string) ($professeurs[$resultat->matiere_id] ?? '')) ?: 'Non attribué' }}</td>@endif
                                 @if($showAppreciations)
                                     <td class="center">
                                         @include('esbtp.bulletins.partials.appreciation', [
-                                            'moyenne' => $resultat->moyenne,
+                                            'moyenne' => \App\Models\ESBTPResultatMatiere::ligneNotee($resultat) ? $resultat->moyenne : null,
+                                            'emptyLabel' => \App\Models\ESBTPResultatMatiere::libelleEtat($resultat),
                                             'badgeClass' => 'appreciation-badge',
                                         ])
                                     </td>
@@ -702,16 +700,14 @@
                     @foreach($resultatsTechniques as $resultat)
                         <tr class="subject-row{{ $loop->even ? ' subject-row-even' : '' }}">
                             <td>{{ $resultat->matiere->name ?? $resultat->matiere->nom ?? 'N/A' }}</td>
-                            @if($showSubjectAverage)<td class="center">{{ number_format($resultat->moyenne, 2) }}</td>@endif
-                            @if($showCoefficient)<td class="center">{{ $resultat->coefficient }}</td>@endif
-                            @if($showWeightedAverage)<td class="center">{{ number_format($resultat->moyenne * $resultat->coefficient, 2) }}</td>@endif
-                            @if($showRankPerSubject)<td class="center">{{ $resultat->rang ?: '-' }}</td>@endif
+                            @include('esbtp.bulletins.partials.subject-row-cells', ['resultat' => $resultat])
                             @if($showAbsencesParMatiere)<td class="center">{{ isset($absencesParMatiere[$resultat->matiere_id]) ? $absencesParMatiere[$resultat->matiere_id]['total_heures'] : 0 }}</td>@endif
                             @if($showTeachers)<td>{{ trim((string) ($professeurs[$resultat->matiere_id] ?? '')) ?: 'Non attribué' }}</td>@endif
                             @if($showAppreciations)
                                 <td class="center">
                                     @include('esbtp.bulletins.partials.appreciation', [
-                                        'moyenne' => $resultat->moyenne,
+                                        'moyenne' => \App\Models\ESBTPResultatMatiere::ligneNotee($resultat) ? $resultat->moyenne : null,
+                                        'emptyLabel' => \App\Models\ESBTPResultatMatiere::libelleEtat($resultat),
                                         'badgeClass' => 'appreciation-badge',
                                     ])
                                 </td>
@@ -756,6 +752,8 @@
             </tbody>
         </table>
         @endif
+
+        @include('esbtp.bulletins.partials.dispenses-note')
 
         {{-- Note de Conduite --}}
         @if(($settings['bulletin_conduite_enabled'] ?? '0') == '1' && isset($noteConduite))

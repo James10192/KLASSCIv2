@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>KLS-ADM-TUT-2026-01 · Une UE partagée, des ECUE propres à chaque parcours</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600;700&family=IBM+Plex+Serif:wght@500&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#111827;--muted:#64748b;--line:#dbe3ef;--soft:#f6f8fb;--blue:#0453cb;--blue-deep:#07377f;--blue-wash:#eaf1fd;--hl:#d97706;--hl-wash:#fff7ed;--white:#ffffff;
+--serif:"IBM Plex Serif",Georgia,"Times New Roman",serif;--sans:"IBM Plex Sans","Segoe UI",Arial,sans-serif;--mono:"IBM Plex Mono",Consolas,monospace}
+*{box-sizing:border-box}
+html,body{margin:0;font-family:var(--sans);color:var(--ink);background:var(--white)}
+@page{size:A4;margin:0}
+.page{width:210mm;min-height:297mm;max-height:297mm;padding:16mm 18mm 26mm;position:relative;overflow:hidden;page-break-after:always;break-after:page;background:var(--white)}
+.page:last-child{page-break-after:auto;break-after:auto}
+.footer,.page-no{position:absolute;bottom:9mm;font-size:8pt;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.footer{left:18mm}.page-no{right:18mm;font-variant-numeric:tabular-nums}
+.cover{background:var(--ink);color:#fff;display:flex;flex-direction:column;justify-content:space-between}
+.cover .footer,.cover .page-no{color:#9aa4b8}
+.brand{display:inline-flex;align-items:center;gap:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;font-size:10pt}
+.brand img{width:26px;height:26px;border-radius:6px;background:#fff}
+.kicker{color:var(--blue);font-size:8.5pt;text-transform:uppercase;letter-spacing:.16em;font-weight:700;margin:0 0 4mm}
+.cover .kicker{color:#93b4f0;margin-top:22mm}
+h1{font-family:var(--serif);font-weight:500;font-size:36pt;line-height:1.02;margin:0 0 8mm;max-width:160mm;text-wrap:balance}
+h2{font-family:var(--serif);font-weight:500;font-size:22pt;line-height:1.12;margin:0 0 5mm;max-width:165mm;text-wrap:balance}
+h3{font-size:11.5pt;margin:0 0 2mm;font-weight:700}
+p{font-size:10.4pt;line-height:1.55;color:#334155;margin:0 0 3.5mm;max-width:165mm}
+.lead{font-size:11.5pt;color:#1f2937}
+.cover p{color:#d6deea;max-width:150mm}
+.meta{display:grid;grid-template-columns:repeat(2,1fr);gap:4mm 8mm;margin-top:10mm;font-size:9.5pt;color:#d6deea}
+.meta strong{display:block;color:#fff;font-size:8pt;text-transform:uppercase;letter-spacing:.1em;margin-bottom:1mm}
+.step-head{display:flex;align-items:center;gap:5mm;margin-bottom:4mm}
+.step-num{width:13mm;height:13mm;border-radius:50%;background:var(--blue);color:#fff;font-family:var(--serif);font-size:15pt;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.step-head h2{margin:0}
+.path{display:inline-block;font-family:var(--mono);font-size:8.6pt;background:var(--soft);border:1px solid var(--line);border-radius:4px;padding:1mm 2.2mm;color:var(--blue-deep);margin-bottom:3mm}
+.shot{position:relative;border:1px solid var(--line);border-radius:6px;overflow:hidden;background:#fff;margin-top:3mm}
+.shot img{display:block;width:100%;height:auto}
+.mark{position:absolute;width:7mm;height:7mm;border-radius:50%;background:var(--blue);color:#fff;font-weight:700;font-size:9.5pt;display:flex;align-items:center;justify-content:center;transform:translate(-50%,-50%);box-shadow:0 0 0 1.6mm rgba(255,255,255,.85),0 0 0 2.4mm rgba(4,83,203,.35);font-family:var(--sans)}
+.box{position:absolute;border:2.5px solid var(--hl);border-radius:2mm;box-shadow:0 0 0 1px rgba(255,255,255,.8)}
+.caption{font-size:8.8pt;color:var(--muted);padding:2.2mm 3mm;border-top:1px solid var(--line);background:var(--soft);line-height:1.45}
+.legend{display:grid;grid-template-columns:auto 1fr;gap:1.6mm 3mm;margin-top:3.5mm;font-size:9.6pt;color:#334155;align-items:start;line-height:1.45}
+.legend .n{width:6mm;height:6mm;border-radius:50%;background:var(--blue);color:#fff;font-size:8.5pt;font-weight:700;display:flex;align-items:center;justify-content:center;margin-top:.6mm}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:5mm;margin-top:2mm}
+.two .shot{margin-top:0}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:4mm;margin:4mm 0}
+.metric{border:1px solid var(--line);border-radius:6px;padding:4mm;background:#fff}
+.metric b{display:block;font-family:var(--serif);font-weight:500;font-size:22pt;color:var(--blue);line-height:1;margin-bottom:1.5mm}
+.metric span{font-size:9pt;color:var(--muted)}
+table{width:100%;border-collapse:collapse;margin:3mm 0 4mm;font-size:9.4pt}
+th,td{border-bottom:1px solid var(--line);padding:2.2mm 2mm;text-align:left;vertical-align:top;line-height:1.45}
+th{color:var(--muted);text-transform:uppercase;font-size:7.5pt;letter-spacing:.08em;font-weight:700}
+td.k{width:34%;font-weight:600;color:var(--ink)}
+.note{border-left:3px solid var(--blue);background:var(--blue-wash);padding:3.5mm 4.5mm;border-radius:0 5px 5px 0;margin:4mm 0}
+.note p{margin:0 0 2mm}.note p:last-child{margin:0}
+.warn{border-left:3px solid var(--hl);background:var(--hl-wash);padding:3.5mm 4.5mm;border-radius:0 5px 5px 0;margin:4mm 0}
+.warn p{margin:0 0 2mm}.warn p:last-child{margin:0}
+.warn h3{color:#9a3412}
+.code{font-family:var(--mono);font-size:8.6pt;background:#eef4ff;color:#123a82;border-radius:4px;padding:.4mm 1.4mm}
+.tag{display:inline-block;font-size:7.6pt;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:.8mm 2mm;border-radius:3px;border:1px solid}
+.tag.ok{color:#065f46;border-color:#a7f3d0;background:#ecfdf5}
+.tag.no{color:#9a3412;border-color:#fed7aa;background:#fff7ed}
+.tag.part{color:var(--blue-deep);border-color:#bfd3f5;background:var(--blue-wash)}
+ul{margin:0 0 3mm;padding-left:5mm;font-size:10.2pt;line-height:1.55;color:#334155}
+li{margin-bottom:1.5mm}
+</style>
+</head>
+<body>
+<section class="page cover">
+
+
+<div>
+  <div class="brand"><img src="../../../public/images/LOGO-KLASSCI-PNG.png" alt=""> KLASSCI</div>
+  <div class="kicker">Guide utilisateur · Système LMD</div>
+  <h1>Une UE partagée, des ECUE propres à chaque parcours.</h1>
+  <p class="lead" style="color:#d6deea">Comment une unité d’enseignement commune à deux parcours (Droit Privé et Droit Public, par exemple) peut porter une composition différente pour chacun d’eux, et comment l’écran des unités d’enseignement le fait, pas à pas.</p>
+</div>
+<div class="meta">
+  <div><strong>Référence</strong>KLS-ADM-TUT-2026-01</div>
+  <div><strong>Date</strong>10 septembre 2026</div>
+  <div><strong>Public</strong>Direction des études, responsable de scolarité LMD</div>
+  <div><strong>Écrans capturés sur</strong>presentation.klassci.com, compte administrateur</div>
+</div>
+
+<div class="footer">KLASSCI · Guide · KLS-ADM-TUT-2026-01</div><div class="page-no">01</div>
+</section>
+<section class="page ">
+<div class="kicker">Comprendre en une page</div>
+
+<h2>Une seule unité, plusieurs maquettes.</h2>
+<p class="lead">Dans KLASSCI, le code d’une unité d’enseignement est unique dans toute l’école. « Principaux actes introductifs d’instance » (PAI5005) est donc <strong>une seule et même unité</strong>, que l’étudiant soit en Droit Privé ou en Droit Public. Ce qui peut changer d’un parcours à l’autre, ce sont ses <strong>éléments constitutifs</strong> (les ECUE), leurs coefficients et leurs crédits.</p>
+<div class="grid-3">
+  <div class="metric"><b>1</b><span>unité, un seul code, une seule fiche</span></div>
+  <div class="metric"><b>N</b><span>parcours rattachés, chacun avec son semestre</span></div>
+  <div class="metric"><b>1 + N</b><span>compositions : la commune, plus une réservée par parcours qui le souhaite</span></div>
+</div>
+<h3>Ce qui se partage et ce qui peut différer</h3>
+<table>
+<tr><th>Porté par l’unité (identique partout)</th><th>Porté par la maquette du parcours (peut différer)</th></tr>
+<tr><td>Le code, l’intitulé, le type d’UE (fondamentale, méthodologique…)</td><td>Le semestre où l’unité apparaît, son caractère optionnel, son ordre sur le bulletin</td></tr>
+<tr><td>La fiche de l’unité et son responsable</td><td>La liste des éléments constitutifs, leur coefficient et leurs crédits</td></tr>
+<tr><td>Le plafond de crédits de l’unité</td><td>Le total de crédits effectivement consommé, compté maquette par maquette</td></tr>
+</table>
+<h3>Comment les deux compositions se combinent</h3>
+<p>Une unité porte toujours une <strong>composition commune</strong> : les éléments valables pour tous les parcours qui l’utilisent. Un parcours peut, en plus, <strong>réserver</strong> ses propres éléments ou surcharger un élément commun avec un autre coefficient. Partout où le parcours est connu, c’est cette composition-là qui s’applique : bulletins des étudiants, plannings, arbre des matières, écran des unités filtré sur le parcours.</p>
+<div class="note">
+<p><strong>Ce que cela garantit.</strong> Un élément réservé à Droit Privé n’entre pas dans la moyenne d’un étudiant de Droit Public. Un élément surchargé n’est jamais compté deux fois. Retirer un élément de la maquette Droit Privé ne le retire pas de Droit Public.</p>
+</div>
+<p>Les pages qui suivent montrent, sur des écrans réels, comment lire et entretenir ces maquettes, jusqu’à réserver un élément à un seul parcours.</p>
+
+<div class="footer">KLASSCI · Guide · KLS-ADM-TUT-2026-01</div><div class="page-no">02</div>
+</section>
+<section class="page ">
+<div class="kicker">Étape 1</div>
+
+<div class="step-head"><div class="step-num">1</div><h2>Ouvrir la liste des unités d’enseignement</h2></div>
+<span class="path">Menu latéral › Système LMD › LMD › Unités d’Enseignement</span>
+<p>Dans le menu de gauche, descendez jusqu’à la section <strong>Système LMD</strong>, dépliez <strong>LMD</strong> puis choisissez <strong>Unités d’Enseignement</strong>. C’est l’écran de référence pour tout ce qui suit : rattacher une unité à ses parcours, lire sa composition, ajouter ou retirer un élément.</p>
+<div class="shot"><img src="captures/KLS-ADM-TUT-2026-01/etape1-menu-lmd.png" alt="Capture d’écran KLASSCI : etape1-menu-lmd.png"><div class="mark" style="left:6.0%;top:56.2%">1</div><div class="mark" style="left:9.5%;top:68.2%">2</div><div class="box" style="left:1.5%;top:61.2%;width:18.5%;height:37.5%"></div><div class="caption">Tableau de bord administrateur, menu LMD déplié. Les entrées Domaines &amp; Parcours, Unités d’Enseignement, Notes LMD, Bulletins LMD et Maquettes sont visibles.</div></div>
+<div class="legend"><div class="n">1</div><div>Dépliez <strong>LMD</strong> dans la section Système LMD.</div><div class="n">2</div><div>Cliquez sur <strong>Unités d’Enseignement</strong>. L’adresse de la page est <span class="code">/esbtp/lmd/ue</span>.</div></div>
+
+<div class="footer">KLASSCI · Guide · KLS-ADM-TUT-2026-01</div><div class="page-no">03</div>
+</section>
+<section class="page ">
+<div class="kicker">Étape 2</div>
+
+<div class="step-head"><div class="step-num">2</div><h2>Rattacher l’unité à chacun de ses parcours</h2></div>
+<span class="path">Unités d’Enseignement › ligne de l’unité › bouton « Lier à des parcours »</span>
+<p>Sur la ligne de l’unité, cliquez sur l’icône <strong>Lier à des parcours</strong> (la troisième action, en violet). Cochez chaque parcours qui suit cette unité et cliquez sur le <strong>semestre</strong> où elle est enseignée dans ce parcours. Les deux parcours peuvent la suivre au même semestre ou à des semestres différents.</p>
+<div class="shot"><img src="captures/KLS-ADM-TUT-2026-01/etape4-lier-parcours.png" alt="Capture d’écran KLASSCI : etape4-lier-parcours.png"><div class="mark" style="left:34.5%;top:32.6%">1</div><div class="mark" style="left:46.5%;top:34.2%">2</div><div class="mark" style="left:60.9%;top:86.2%">3</div><div class="box" style="left:32.6%;top:28.0%;width:35.0%;height:17.6%"></div><div class="caption">Modal « Lier à des Parcours » de l’unité PAI5005 : Droit Privé et Droit Public cochés, semestre S5 sélectionné pour chacun.</div></div>
+<div class="legend"><div class="n">1</div><div>Cochez le parcours. Les parcours déjà rattachés apparaissent cochés en tête de liste.</div><div class="n">2</div><div>Cliquez sur le semestre. Un seul clic par parcours ; une unité suivie sur deux semestres se coche deux fois.</div><div class="n">3</div><div><strong>Enregistrer</strong>. Depuis septembre 2026, cet enregistrement ne remet plus à zéro le crédit, l’ordre ni le caractère optionnel déjà réglés sur les autres parcours.</div></div>
+
+<div class="footer">KLASSCI · Guide · KLS-ADM-TUT-2026-01</div><div class="page-no">04</div>
+</section>
+<section class="page ">
+<div class="kicker">Étape 3</div>
+
+<div class="step-head"><div class="step-num">3</div><h2>Lire la composition d’une maquette</h2></div>
+<span class="path">Unités d’Enseignement › filtre « Parcours » › flèche de la ligne</span>
+<p>Le filtre <strong>Parcours</strong>, en haut de la liste, ne fait pas que trier : quand il est réglé sur un parcours, chaque unité affiche <strong>la composition de cette maquette-là</strong>, c’est-à-dire les éléments communs plus ceux que ce parcours a réservés. Sans filtre, l’écran montre tout, chaque élément une seule fois.</p>
+<div class="two">
+<div class="shot"><img src="captures/KLS-ADM-TUT-2026-01/etape2a-filtre-parcours.png" alt="Capture d’écran KLASSCI : etape2a-filtre-parcours.png"><div class="mark" style="left:72.6%;top:50.0%">1</div><div class="box" style="left:63.0%;top:46.0%;width:19.6%;height:7.5%"></div><div class="caption">Filtre Parcours réglé sur « DROIT-PRIVE — Droit Prive ». Les compteurs du bandeau se recalculent sur ce parcours : 18 unités, 37 éléments, 59 crédits.</div></div>
+<div class="shot"><img src="captures/KLS-ADM-TUT-2026-01/etape2-ue-filtre-droit-prive.png" alt="Capture d’écran KLASSCI : etape2-ue-filtre-droit-prive.png"><div class="mark" style="left:26.0%;top:50.0%">2</div><div class="mark" style="left:85.9%;top:50.0%">3</div><div class="box" style="left:24.5%;top:56.5%;width:72.0%;height:23.0%"></div><div class="caption">Ligne PAI5005 dépliée sous le filtre Droit Privé : trois éléments, coefficient 1, un crédit chacun.</div></div>
+</div>
+<div class="legend"><div class="n">1</div><div>Choisissez le parcours dans le filtre. La liste se recharge sans quitter la page.</div><div class="n">2</div><div>Cliquez sur la flèche de la ligne pour déplier les éléments constitutifs de l’unité dans cette maquette.</div><div class="n">3</div><div>Le bouton vert <strong>Ajouter un ECUE</strong> et, à côté, l’icône <strong>Lier à des parcours</strong> restent accessibles sur chaque ligne.</div></div>
+
+<div class="footer">KLASSCI · Guide · KLS-ADM-TUT-2026-01</div><div class="page-no">05</div>
+</section>
+<section class="page ">
+<div class="kicker">Étape 3 · suite</div>
+
+<h2>Le même contrôle, parcours par parcours.</h2>
+<p>Passez le filtre sur <strong>Droit Public</strong> et dépliez à nouveau PAI5005. Sur l’instance de démonstration, les trois éléments sont communs aux deux maquettes : la liste est donc identique. Le jour où un élément est réservé à Droit Privé, il disparaît de cette vue, et seulement de celle-ci.</p>
+<div class="shot"><img src="captures/KLS-ADM-TUT-2026-01/etape3-ue-filtre-droit-public.png" alt="Capture d’écran KLASSCI : etape3-ue-filtre-droit-public.png"><div class="mark" style="left:26.0%;top:49.8%">1</div><div class="box" style="left:62.8%;top:44.5%;width:7.6%;height:11.5%"></div><div class="box" style="left:24.5%;top:56.3%;width:72.0%;height:23.0%"></div><div class="caption">Filtre Droit Public : PAI5005 porte les deux badges DROIT-PRIVE (S5) et DROIT-PUBLIC (S5) et les trois mêmes éléments.</div></div>
+<div class="legend"><div class="n">1</div><div>La colonne <strong>Parcours</strong> affiche un badge par maquette rattachée, avec son semestre. Deux badges signifient une unité partagée.</div></div>
+<div class="note">
+<p><strong>À retenir.</strong> Ce que vous lisez sous un filtre est exactement ce que le bulletin d’un étudiant de ce parcours comptera. Vérifiez donc toujours une maquette <em>sous son filtre</em>, jamais dans la vue « Tous », qui mélange les compositions.</p>
+</div>
+
+<div class="footer">KLASSCI · Guide · KLS-ADM-TUT-2026-01</div><div class="page-no">06</div>
+</section>
+<section class="page ">
+<div class="kicker">Étape 4</div>
+
+<div class="step-head"><div class="step-num">4</div><h2>Ajouter ou modifier un élément constitutif</h2></div>
+<span class="path">Ligne de l’unité › bouton vert « Ajouter un ECUE »</span>
+<p>Le modal commence par la question qui compte : <strong>pour quelle maquette</strong> ? « Commune à tous les parcours de l’UE », ou réservée à l’un des parcours qui la suivent. Le choix est prérempli avec le filtre Parcours de la liste. Viennent ensuite les deux voies habituelles, <strong>Créer un ECUE</strong> ou <strong>Lier un existant</strong>, puis le coefficient, les crédits et l’ordre, qui valent <em>dans cette unité</em>.</p>
+<div class="shot"><img src="captures/KLS-ADM-TUT-2026-01/etape5-ajouter-ecue.png" alt="Capture d’écran KLASSCI : etape5-ajouter-ecue.png"><div class="mark" style="left:21.0%;top:30.5%">1</div><div class="mark" style="left:50.0%;top:40.5%">2</div><div class="mark" style="left:21.0%;top:68.1%">3</div><div class="mark" style="left:78.6%;top:80.6%">4</div><div class="box" style="left:22.3%;top:24.4%;width:55.5%;height:12.5%"></div><div class="caption">Modal « Ajouter un ECUE » sur PAI5005, maquette réglée sur Droit Privé. Le texte sous le champ dit ce que le choix implique.</div></div>
+<div class="legend"><div class="n">1</div><div><strong>Maquette</strong> : laissez « Commune » pour un élément que tous les parcours partagent ; choisissez un parcours pour le lui réserver.</div><div class="n">2</div><div><strong>Créer un ECUE</strong> ou <strong>Lier un existant</strong>. En mode « Lier », la liste proposée dépend de la maquette choisie.</div><div class="n">3</div><div>Coefficient, crédits et ordre. La jauge compte les crédits de la maquette visée, un élément une seule fois.</div><div class="n">4</div><div><strong>Créer l’ECUE</strong>. La liste se met à jour sans rechargement.</div></div>
+<div class="note">
+<p><strong>Modifier un élément</strong> ouvre le même modal, réglé sur la maquette de la ligne cliquée. Choisir un parcours sur un élément commun ne le déplace pas : cela crée une <em>surcharge</em> propre à ce parcours, avec ses valeurs, et la version commune reste en place pour les autres.</p>
+</div>
+
+<div class="footer">KLASSCI · Guide · KLS-ADM-TUT-2026-01</div><div class="page-no">07</div>
+</section>
+<section class="page ">
+<div class="kicker">Étape 5</div>
+
+<div class="step-head"><div class="step-num">5</div><h2>Réserver des éléments à un seul parcours</h2></div>
+<span class="path">Unités d’Enseignement › filtre « Parcours » › « Ajouter un ECUE » › Maquette : ce parcours</span>
+<p>Filtrez la liste sur le parcours concerné, ajoutez l’élément avec la maquette préremplie sur ce parcours, et enregistrez. Dans la liste, chaque élément porte désormais un repère : <strong>Commun</strong>, ou le code du parcours qui le réserve. Sous la vue « Tous », un élément à la fois commun et surchargé apparaît deux fois, une ligne par version.</p>
+<div class="shot"><img src="captures/KLS-ADM-TUT-2026-01/etape7-reperes-maquette.png" alt="Capture d’écran KLASSCI : etape7-reperes-maquette.png"><div class="mark" style="left:45.5%;top:68.0%">1</div><div class="mark" style="left:47.5%;top:58.7%">2</div><div class="box" style="left:36.8%;top:57.0%;width:8.6%;height:5.2%"></div><div class="box" style="left:36.8%;top:66.3%;width:6.5%;height:4.9%"></div><div class="caption">Liste sous le filtre Droit Privé : la ligne réservée porte le code du parcours, les lignes communes portent « Commun ».</div></div>
+<div class="legend"><div class="n">1</div><div>Repère « Commun » : l’élément vaut pour tous les parcours de l’unité.</div><div class="n">2</div><div>Repère au code du parcours : l’élément n’entre que dans cette maquette, au bulletin comme au planning.</div></div>
+<h3>Retirer un élément</h3>
+<p>Le bouton de retrait vise la maquette de la ligne cliquée, et elle seule. Retirer une version réservée laisse la version commune intacte ; retirer une version commune la retire de tous les parcours, ce que la confirmation rappelle. Si l’élément ne tient à l’unité que par une autre maquette, KLASSCI refuse et nomme cette maquette au lieu d’annoncer un retrait qui n’aurait rien retiré.</p>
+<div class="note">
+<p><strong>Maquettes importées.</strong> L’import d’une maquette pour un second parcours partage désormais l’unité au lieu de refuser : la fiche reste au premier parcours, le second reçoit son semestre et son crédit sur le lien, et ses éléments lui sont réservés. Seul un élément déjà rattaché à une autre unité reste refusé.</p>
+</div>
+
+<div class="footer">KLASSCI · Guide · KLS-ADM-TUT-2026-01</div><div class="page-no">08</div>
+</section>
+<section class="page ">
+<div class="kicker">Étape 6</div>
+
+<div class="step-head"><div class="step-num">6</div><h2>Vérifier la fiche de l’unité</h2></div>
+<span class="path">Unités d’Enseignement › clic sur l’intitulé › fiche de l’unité</span>
+<p>La fiche récapitule le rattachement académique, la liste des parcours et semestres, et le tableau des éléments constitutifs avec leurs volumes horaires. C’est la page à ouvrir avant une réunion de maquette : elle tient sur un écran et se lit sans manipulation.</p>
+<div class="shot"><img src="captures/KLS-ADM-TUT-2026-01/etape6-fiche-ue.png" alt="Capture d’écran KLASSCI : etape6-fiche-ue.png"><div class="mark" style="left:26.5%;top:56.4%">1</div><div class="mark" style="left:93.3%;top:69.6%">2</div><div class="box" style="left:23.5%;top:47.5%;width:38.5%;height:14.5%"></div><div class="box" style="left:23.5%;top:74.5%;width:73.5%;height:24.5%"></div><div class="caption">Fiche PAI5005 : parcours principal Droit Public, semestre 5 ; rattachements Droit Privé (S5) et Droit Public (S5) ; trois éléments, 3 crédits, 75 heures.</div></div>
+<div class="legend"><div class="n">1</div><div>La section <strong>Parcours et semestres rattachés</strong> confirme le partage. Le « parcours principal » du bloc du dessus est une information héritée : c’est cette liste qui fait foi.</div><div class="n">2</div><div><strong>Gérer</strong> ouvre le formulaire complet de l’unité. Le tableau des éléments montre la composition complète, toutes maquettes confondues : pour la lecture d’une seule maquette, revenez à la liste filtrée de l’étape 3.</div></div>
+
+<div class="footer">KLASSCI · Guide · KLS-ADM-TUT-2026-01</div><div class="page-no">09</div>
+</section>
+<section class="page ">
+<div class="kicker">Aide-mémoire</div>
+
+<h2>Les questions qui reviennent.</h2>
+<table>
+<tr><td class="k">Faut-il créer deux unités, une par parcours ?</td><td>Non. Une seule unité, rattachée aux deux parcours. Deux unités au même intitulé finiraient en doublon, que la page « Détecter les doublons » signalerait.</td></tr>
+<tr><td class="k">Les deux parcours doivent-ils suivre l’unité au même semestre ?</td><td>Non. Le semestre se coche par parcours dans « Lier à des parcours ».</td></tr>
+<tr><td class="k">Pourquoi le tableau de la fiche montre-t-il des éléments absents du bulletin d’un étudiant ?</td><td>La fiche liste la composition complète. Le bulletin ne prend que la composition de la maquette de l’étudiant. Contrôlez sous le filtre Parcours.</td></tr>
+<tr><td class="k">La jauge de crédits refuse mon élément.</td><td>Elle compte l’ensemble de la maquette, communs et réservés, une seule fois chacun. Retirez ou réduisez un autre élément avant d’ajouter.</td></tr>
+<tr><td class="k">Puis-je supprimer une unité partagée ?</td><td>Non tant qu’elle figure dans plus d’une maquette. Le refus nomme les parcours concernés : retirez-la d’abord de chacun.</td></tr>
+<tr><td class="k">Un même élément peut-il avoir un coefficient différent selon le parcours ?</td><td>Oui. Modifiez-le sous le filtre de ce parcours, maquette réglée sur ce parcours : cela crée sa version propre, la commune reste pour les autres.</td></tr>
+<tr><td class="k">J’ai retiré un élément et il est toujours là.</td><td>Vous avez retiré une version (commune ou réservée) et il en existe une autre. Le repère de la ligne dit laquelle reste ; retirez-la sous sa maquette.</td></tr>
+</table>
+<h3>Preuves d’écran</h3>
+<p>Toutes les captures de ce guide sont des écrans réels, pris le 10 septembre 2026 sur presentation.klassci.com avec un compte administrateur, sans retouche. Les repères numérotés et les cadres sont posés par-dessus.</p>
+<table>
+<tr><th>Page</th><th>Écran</th><th>Adresse</th></tr>
+<tr><td>3</td><td>Tableau de bord, menu LMD déplié</td><td><span class="code">/dashboard</span></td></tr>
+<tr><td>4</td><td>Modal « Lier à des Parcours », unité PAI5005</td><td><span class="code">/esbtp/lmd/ue</span></td></tr>
+<tr><td>5</td><td>Liste filtrée Droit Privé, ligne dépliée</td><td><span class="code">/esbtp/lmd/ue?parcours_id=6</span></td></tr>
+<tr><td>6</td><td>Liste filtrée Droit Public, ligne dépliée</td><td><span class="code">/esbtp/lmd/ue?parcours_id=7</span></td></tr>
+<tr><td>7</td><td>Modal « Ajouter un ECUE » avec le champ Maquette</td><td><span class="code">/esbtp/lmd/ue</span></td></tr>
+<tr><td>8</td><td>Liste filtrée avec les repères Commun / parcours</td><td><span class="code">/esbtp/lmd/ue?parcours_id=6</span></td></tr>
+<tr><td>9</td><td>Fiche de l’unité PAI5005</td><td><span class="code">/esbtp/lmd/ue/166</span></td></tr>
+</table>
+
+<div class="footer">KLASSCI · Guide · KLS-ADM-TUT-2026-01</div><div class="page-no">10</div>
+</section>
+</body>
+</html>

@@ -72,7 +72,7 @@ class StudentsDemoData
             }
         }
 
-        $this->refreshClassePlacesOccupees($academic['classes']);
+        $this->refreshClassePlacesOccupees($academic['classes'], (int) $academic['annee']->id);
 
         $this->command?->line(sprintf('   • %d étudiants créés · %d inscriptions actives', $etudiants->count(), $inscriptions->count()));
 
@@ -160,10 +160,17 @@ class StudentsDemoData
         );
     }
 
-    private function refreshClassePlacesOccupees(Collection $classes): void
+    /**
+     * Une place occupee l'est pour une annee donnee : une classe accueille
+     * une promotion apres l'autre, elle ne les cumule pas. Sans ce filtre,
+     * la promotion de l'annee ecoulee s'ajoute a celle de l'annee courante
+     * et la classe s'affiche au-dela de sa capacite.
+     */
+    private function refreshClassePlacesOccupees(Collection $classes, int $anneeId): void
     {
         foreach ($classes as $classe) {
             $count = ESBTPInscription::where('classe_id', $classe->id)
+                ->where('annee_universitaire_id', $anneeId)
                 ->where('status', 'active')
                 ->where('workflow_step', 'etudiant_cree')
                 ->count();

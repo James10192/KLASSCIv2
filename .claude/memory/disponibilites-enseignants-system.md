@@ -95,7 +95,7 @@ $isExactMatch = ($clickedStart == $existingStart) && ($clickedEnd == $existingEn
 ```
 app/Http/Controllers/
 └── ESBTPEnseignantController.php           # Logique métier et corrections
-    ├── prepareAvailabilityData()           # Préparation données SHOW
+    ├── TeacherPlanningService::getAvailabilityMatrix()  # Source unique SHOW
     ├── edit()                              # Données page EDIT
     └── updateAvailability()                # AJAX endpoint (CORRIGÉ)
 

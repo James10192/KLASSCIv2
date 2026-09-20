@@ -16,7 +16,7 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 
 /**
- * Job quotidien (4h Africa/Abidjan via scheduler) qui calcule toutes les
+ * Job quotidien (4h au fuseau de l'instance, via scheduler) qui calcule toutes les
  * prédictions analytics du tenant courant pour le contexte global, persiste
  * dans analytics_predictions et préchauffe le cache.
  *

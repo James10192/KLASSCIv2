@@ -88,9 +88,31 @@ return [
     | will be used by the PHP date and date-time functions. We have gone
     | ahead and set this to a sensible default for you out of the box.
     |
+    | Le fuseau se pose dans le `.env` de l'instance, et NULLE PART ailleurs.
+    |
+    | Pas dans les réglages d'établissement, malgré un `app_timezone` qui y a
+    | dormi longtemps sans que rien ne le lise : Laravel appelle
+    | `date_default_timezone_set()` pendant `LoadConfiguration`, avant que le
+    | moindre fournisseur de services démarre et bien avant que la base soit
+    | joignable. Un réglage en base ne peut pas être lu à cet instant ; le
+    | brancher plus tard ferait tourner le début de chaque requête, et le
+    | planificateur, dans un autre fuseau que la suite.
+    |
+    | Défaut `UTC`, soit exactement le comportement d'avant. `Africa/Abidjan`
+    | vaut UTC+0 sans heure d'été : les instances ivoiriennes n'ont rien à
+    | poser, et ne bougent pas d'une seconde.
+    |
+    | ⚠ Le moment où on le pose n'est pas neutre. Laravel écrit les
+    | horodatages dans le fuseau de l'application : changer ce fuseau sur une
+    | instance QUI A DÉJÀ DES DONNÉES laisse derrière des lignes écrites dans
+    | l'ancien, que les nouvelles ne rejoignent pas. Le seul moment gratuit est
+    | le provisionnement, avant la première inscription — et c'est aussi
+    | pourquoi `APP_TIMEZONE` n'est pas dans `CleEnvAutorisee` : le CLI ne doit
+    | pas pouvoir déplacer le fuseau d'une instance vivante.
+    |
     */
 
-    'timezone' => 'UTC',
+    'timezone' => env('APP_TIMEZONE', 'UTC'),
 
     /*
     |--------------------------------------------------------------------------

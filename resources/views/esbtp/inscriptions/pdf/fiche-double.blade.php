@@ -1,3 +1,4 @@
+@inject('vocabulaire', 'App\Services\LMD\VocabulaireStructure')
 @php
     $school = $school ?? \App\Helpers\SettingsHelper::getSchoolInfo();
     $pdfSettings = \App\Helpers\SettingsHelper::getPdfSettings();
@@ -186,7 +187,7 @@
             </tr>
             @endif
             <tr>
-                <td style="width:40%"><div class="lbl">{{ $_parcours ? 'Parcours' : 'Filière' }}</div><div class="val">{{ $_filiereLisible ?? '—' }}</div></td>
+                <td style="width:40%"><div class="lbl">{{ $_parcours ? $vocabulaire->rang('parcours') : 'Filière' }}</div><div class="val">{{ $_filiereLisible ?? '—' }}</div></td>
                 <td style="width:30%"><div class="lbl">Niveau</div><div class="val">{{ $inscription->niveau->name ?? $inscription->classe->niveau->name ?? '—' }}</div></td>
                 <td><div class="lbl">Classe</div><div class="val">{{ $inscription->classe->name ?? '—' }}</div></td>
             </tr>

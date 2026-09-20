@@ -53,7 +53,7 @@
     <tr><td class="label">Libellé</td><td>{{ $snapshot['jury']['label'] }}</td></tr>
     <tr><td class="label">Date du jury</td><td>{{ $snapshot['jury']['date'] ?? 'Non renseignée' }}</td></tr>
     <tr><td class="label">Session</td><td>{{ $snapshot['jury']['session']['label'] ?? 'Non renseignée' }}</td></tr>
-    <tr><td class="label">Parcours</td><td>{{ $snapshot['jury']['parcours']['label'] ?? 'Non renseigné' }}</td></tr>
+    <tr><td class="label">{{ $snapshot['vocabulary']['parcours'] ?? 'Parcours' }}</td><td>{{ $snapshot['jury']['parcours']['label'] ?? 'Non renseigné' }}</td></tr>
     <tr><td class="label">Classe</td><td>{{ $snapshot['jury']['class']['label'] ?? 'Non renseignée' }}</td></tr>
     <tr><td class="label">Observations</td><td>{{ $snapshot['jury']['observations'] ?: 'Aucune observation' }}</td></tr>
 </table>

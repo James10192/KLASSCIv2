@@ -560,6 +560,15 @@ class NotificationService
                 } else {
                     // Sinon, construire le message avec les informations disponibles
                     if ($absence->heure_debut) {
+                        // Interpolation NUE, et surtout PAS `->format('H:i')` :
+                        // `$absence` est un `ESBTPAttendance`, qui ne porte NI
+                        // accesseur NI cast sur ses heures. L'attribut est donc
+                        // la chaîne brute de la colonne (« 08:00:00 »), et
+                        // `format()` sur une chaîne lève une `Error` — que le
+                        // `catch (\Exception)` de cette méthode NE RATTRAPE PAS,
+                        // puisque `Error` ne descend pas d'`Exception`. Le piège
+                        // #14 vise `ESBTPSeanceCours` ; ne le transposez pas ici
+                        // sans vérifier le modèle.
                         $message .= " à {$absence->heure_debut}";
                     }
 

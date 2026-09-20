@@ -47,7 +47,20 @@ class ESBTPSalaireController extends Controller
         $kpis = $this->recapKpis($recap);
         $periodLabel = $this->periodLabel($this->resolvePeriode($filtres)[2]);
 
-        $teachers = ESBTPTeacher::with('user:id,name')->get()
+        // Seuls les enseignants en activite sont proposes a la preparation d'un
+        // bulletin de paie. Un enseignant qui part est desactive ; s'il faut
+        // encore lui payer ses dernieres heures, l'ecole le reactive le temps du
+        // versement — c'est la regle posee par l'etablissement, et elle garde la
+        // liste lisible au lieu d'y accumuler les partants de toutes les annees.
+        //
+        // Le recapitulatif des heures, lui, n'est PAS filtre : il sert de table
+        // de correspondance par identifiant pour afficher les heures deja
+        // realisees. Le filtrer masquerait les heures d'un enseignant desactive
+        // depuis, c'est-a-dire reecrirait le passe.
+        $teachers = ESBTPTeacher::query()
+            ->where('is_active', true)
+            ->with('user:id,name')
+            ->get()
             ->map(fn ($t) => ['id' => $t->id, 'name' => $t->user->name ?? $t->name ?? 'Enseignant'])
             ->sortBy('name')->values();
 

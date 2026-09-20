@@ -569,6 +569,12 @@
                                 <div class="ja-card-matiere">{{ $matiereName }}</div>
                                 <div class="ja-card-meta">
                                     @if($abs->heure_debut)
+                                        {{-- Les cinq premiers caractères, et surtout PAS `->format('H:i')` :
+                                             ces lignes sont des `ESBTPAttendance`, un modèle sans accesseur ni
+                                             cast sur les heures. L'attribut est donc la chaîne brute
+                                             « 08:00:00 », et `format()` dessus lève une `Error` qui casserait
+                                             la page pour tout étudiant ayant une absence horodatée. Le piège
+                                             #14 vise `ESBTPSeanceCours` — pas ce modèle. --}}
                                         <span><i class="fas fa-clock"></i> {{ \Illuminate\Support\Str::limit((string) $abs->heure_debut, 5, '') }}@if($abs->heure_fin) — {{ \Illuminate\Support\Str::limit((string) $abs->heure_fin, 5, '') }}@endif</span>
                                     @endif
                                     @if($statusVal === 'pending' && $abs->justified_at)

@@ -1,5 +1,6 @@
 @extends('layouts.app')
 @section('title', $examen->titre)
+@inject('vocabulaire', 'App\Services\LMD\VocabulaireStructure')
 
 @php
     use App\Enums\ExamenStatus;
@@ -11,9 +12,9 @@
     $systeme = $isMixteSysteme ? 'MIXTE' : $examen->systeme;
 
     $scopeLabel = match($examen->scope_type) {
-        'parcours' => 'Parcours',
-        'mention' => 'Mention (L1 tronc commun)',
-        'domaine' => 'Domaine',
+        'parcours' => $vocabulaire->rang('parcours'),
+        'mention' => $vocabulaire->rang('mention').' (L1 tronc commun)',
+        'domaine' => $vocabulaire->rang('domaine'),
         default => 'Classe unique',
     };
 
@@ -564,7 +565,7 @@
                         </div>
                         @if($examen->parcours)
                             <div class="exs-kv-row exs-kv-row--full">
-                                <div class="exs-kv-label">Parcours</div>
+                                <div class="exs-kv-label">@rang('parcours')</div>
                                 <div class="exs-kv-value">
                                     <i class="fas fa-route"></i>{{ $examen->parcours->name }}
                                     @if($examen->parcours->code) · <code>{{ $examen->parcours->code }}</code> @endif
@@ -605,7 +606,8 @@
                             <div class="exs-kv-label">Anonymisation copies</div>
                             <div class="exs-kv-value">
                                 @if($examen->is_anonymous)
-                                    <i class="fas fa-mask" style="color:#0453cb;"></i> Activée
+                                    <i class="fas fa-mask" style="color:#0453cb;"></i> Mentionnée sur les convocations
+                                    <small class="exs-kv-empty" style="display:block;">Sans numéro d'anonymat : la saisie des notes affiche les noms.</small>
                                 @else
                                     <span class="exs-kv-empty">Désactivée</span>
                                 @endif

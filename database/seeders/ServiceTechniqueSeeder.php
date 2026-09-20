@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use App\Models\User;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\Models\Permission;
@@ -45,7 +46,7 @@ class ServiceTechniqueSeeder extends Seeder
             'name' => 'Service Technique ADC',
             'username' => 'service.technique.adc',
             'email' => 'technique@africandigitconsulting.com',
-            'password' => Hash::make('ADC2024Tech!SecurePass'), // Mot de passe sécurisé
+            'password' => Hash::make($motDePassePrincipal = $this->motDePasse('SERVICE_TECHNIQUE_PASSWORD')),
             'email_verified_at' => now(),
         ];
 
@@ -65,7 +66,7 @@ class ServiceTechniqueSeeder extends Seeder
             'name' => 'Service Technique ADC (Backup)',
             'username' => 'support.technique.adc',
             'email' => 'support@africandigitconsulting.com',
-            'password' => Hash::make('ADCSupport2024!Backup'),
+            'password' => Hash::make($motDePasseBackup = $this->motDePasse('SERVICE_TECHNIQUE_BACKUP_PASSWORD')),
             'email_verified_at' => now(),
         ];
 
@@ -80,12 +81,12 @@ class ServiceTechniqueSeeder extends Seeder
 
         $this->command->info('✅ Compte Service Technique principal créé :');
         $this->command->line("   📧 Email: {$serviceTechniqueUser->email}");
-        $this->command->line("   🔑 Mot de passe: ADC2024Tech!SecurePass");
+        $this->afficherMotDePasse($serviceTechniqueUser, $motDePassePrincipal);
         $this->command->line("   🎭 Rôle: serviceTechnique");
 
         $this->command->info('✅ Compte Service Technique backup créé :');
         $this->command->line("   📧 Email: {$backupServiceTechniqueUser->email}");
-        $this->command->line("   🔑 Mot de passe: ADCSupport2024!Backup");
+        $this->afficherMotDePasse($backupServiceTechniqueUser, $motDePasseBackup);
         $this->command->line("   🎭 Rôle: serviceTechnique");
 
         $this->command->info('🔐 Permissions spéciales attribuées :');
@@ -94,6 +95,32 @@ class ServiceTechniqueSeeder extends Seeder
         }
 
         $this->command->warn('⚠️  IMPORTANT : Ces comptes sont réservés exclusivement au Service Technique d\'African Digit Consulting');
-        $this->command->warn('⚠️  Changez les mots de passe en production !');
+    }
+
+    /**
+     * Les mots de passe etaient ecrits en clair ici, donc publies avec le depot
+     * et identiques sur chaque instance. Ils se lisent desormais dans
+     * l'environnement de l'instance, et a defaut se generent au hasard.
+     */
+    private function motDePasse(string $variable): string
+    {
+        $fourni = env($variable);
+
+        return is_string($fourni) && $fourni !== '' ? $fourni : Str::random(32);
+    }
+
+    /**
+     * Un compte deja present garde son mot de passe (firstOrCreate) : on ne
+     * montre donc le mot de passe qu'a la creation, une seule fois.
+     */
+    private function afficherMotDePasse(User $compte, string $motDePasse): void
+    {
+        if ($compte->wasRecentlyCreated) {
+            $this->command->line("   🔑 Mot de passe (affiché une seule fois) : {$motDePasse}");
+
+            return;
+        }
+
+        $this->command->line('   🔑 Compte déjà présent : mot de passe inchangé.');
     }
 }

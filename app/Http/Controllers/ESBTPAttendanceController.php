@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Domain\EmploiTemps\HeureDeSeance;
 use App\Models\ESBTPAttendance;
 use App\Models\ESBTPAttendanceManualHours;
 use App\Models\ESBTPClasse;
@@ -1558,38 +1559,15 @@ class ESBTPAttendanceController extends Controller
             // Charger les informations de la séance de cours avec ses relations
             $seanceCours->load(['matiere', 'emploiTemps.classe']);
 
-            // Formater la date et l'heure
             $dateAbsence = Carbon::parse($date);
-            $jourSemaine = $dateAbsence->locale('fr')->dayName;
-            $dateFormatee = $dateAbsence->format('d/m/Y');
-
-            // Récupérer les informations du cours
-            $matiereName = $seanceCours->matiere ? $seanceCours->matiere->name : 'Matière non définie';
-            $heureDebut = $seanceCours->heure_debut ? substr($seanceCours->heure_debut, 0, 5) : 'Heure non définie';
-            $heureFin = $seanceCours->heure_fin ? substr($seanceCours->heure_fin, 0, 5) : '';
-            $heureFormatee = $heureDebut . ($heureFin ? ' - ' . $heureFin : '');
-            $classeName = $seanceCours->emploiTemps && $seanceCours->emploiTemps->classe ? $seanceCours->emploiTemps->classe->name : 'Classe non définie';
-
-            // Créer un message détaillé pour le cours
-            $messageDetail = sprintf(
-                "Absence lors d'un cours\n" .
-                "Matière: %s\n" .
-                "Date: %s (%s)\n" .
-                "Heure: %s\n" .
-                "Classe: %s",
-                $matiereName,
-                $dateFormatee,
-                ucfirst($jourSemaine),
-                $heureFormatee,
-                $classeName
-            );
+            $resume = $this->resumeDeLaSeanceManquee($seanceCours, $dateAbsence);
 
             // Créer une entrée d'absence temporaire pour la notification avec informations enrichies
             $absence = new ESBTPAttendance();
             $absence->date = $dateAbsence;
             $absence->etudiant_id = $etudiantId;
             $absence->statut = 'absent';
-            $absence->commentaire = $messageDetail;
+            $absence->commentaire = $resume['message'];
             $absence->matiere_id = $seanceCours->matiere_id;
             $absence->type_activite = 'cours';
             $absence->heure_debut = $seanceCours->heure_debut;
@@ -1602,15 +1580,10 @@ class ESBTPAttendanceController extends Controller
             // Notifier les parents de l'absence
             $this->notificationService->notifyParentsAbsence($absence);
 
-            \Log::info("Notification d'absence enrichie envoyée pour le cours", [
+            \Log::info("Notification d'absence enrichie envoyée pour le cours", array_merge([
                 'etudiant_id' => $etudiantId,
                 'seance_cours_id' => $seanceCours->id,
-                'matiere' => $matiereName,
-                'date' => $dateFormatee,
-                'jour' => $jourSemaine,
-                'heure' => $heureFormatee,
-                'classe' => $classeName
-            ]);
+            ], $resume['contexte']));
 
         } catch (\Exception $e) {
             \Log::error("Erreur lors de l'envoi de la notification d'absence", [
@@ -1620,6 +1593,49 @@ class ESBTPAttendanceController extends Controller
                 'trace' => config('app.debug') ? $e->getTraceAsString() : null
             ]);
         }
+    }
+
+    /**
+     * Le cours manqué, mis en mots pour la famille et pour le journal.
+     *
+     * Les heures passent par `HeureDeSeance::hi()`, et surtout PAS par une
+     * découpe à cinq caractères : sur `ESBTPSeanceCours`, `heure_debut` est lue
+     * à travers un accesseur qui fait `Carbon::parse()`, donc en contexte chaîne
+     * elle rend « 2026-09-15 08:00:00 » — et `substr(…, 0, 5)` en tirait
+     * « 2026- ». C'est ce qui partait à la famille, dans l'avis d'absence.
+     * Piège #14 de `klassci-debugging-discipline.md`.
+     *
+     * @return array{message: string, contexte: array<string, string>}
+     */
+    private function resumeDeLaSeanceManquee(ESBTPSeanceCours $seance, Carbon $date): array
+    {
+        $jour = $date->locale('fr')->dayName;
+        $dateFormatee = $date->format('d/m/Y');
+
+        $matiere = $seance->matiere->name ?? 'Matière non définie';
+        $classe = $seance->emploiTemps?->classe?->name ?? 'Classe non définie';
+
+        $debut = HeureDeSeance::hi($seance->heure_debut) ?? 'Heure non définie';
+        $fin = HeureDeSeance::hi($seance->heure_fin);
+        $heure = $debut.($fin ? ' - '.$fin : '');
+
+        return [
+            'message' => sprintf(
+                "Absence lors d'un cours\nMatière: %s\nDate: %s (%s)\nHeure: %s\nClasse: %s",
+                $matiere,
+                $dateFormatee,
+                ucfirst($jour),
+                $heure,
+                $classe
+            ),
+            'contexte' => [
+                'matiere' => $matiere,
+                'date' => $dateFormatee,
+                'jour' => $jour,
+                'heure' => $heure,
+                'classe' => $classe,
+            ],
+        ];
     }
 
     /**
@@ -1708,8 +1724,10 @@ class ESBTPAttendanceController extends Controller
                     $attendance->seanceCours && $attendance->seanceCours->matiere ? $attendance->seanceCours->matiere->name : 'N/A',
                     $attendance->etudiant ? $attendance->etudiant->nom . ' ' . $attendance->etudiant->prenoms : 'N/A',
                     ucfirst($attendance->statut),
-                    $attendance->seanceCours ? substr($attendance->seanceCours->heure_debut, 0, 5) : 'N/A',
-                    $attendance->seanceCours ? substr($attendance->seanceCours->heure_fin, 0, 5) : 'N/A',
+                    // Même piège que l'avis d'absence : la découpe à cinq caractères
+                    // rendait « 2026- » dans les deux colonnes horaires de l'export.
+                    $attendance->seanceCours ? $attendance->seanceCours->heure_debut->format('H:i') : 'N/A',
+                    $attendance->seanceCours ? $attendance->seanceCours->heure_fin->format('H:i') : 'N/A',
                     $attendance->commentaire
                 ];
 

@@ -336,6 +336,45 @@
                         </div>
                     </div>
 
+                    @php
+                        $classeQuittee = $analyse['inscription']->classe ?? null;
+                        $estLmd = $classeQuittee?->niveau?->estUnCycleLmd() ?? false;
+                    @endphp
+                    <div class="alert" style="background:#e8f0fe;color:#0a3d8f;border:none;border-radius:10px;padding:.85rem 1rem;margin-bottom:1.25rem;">
+                        <strong>{{ $estLmd ? 'Parcours LMD' : 'Cycle '.($classeQuittee?->niveau?->etiquetteCycle() ?? 'BTS') }}</strong>
+                        — décision proposée : {{ $analyse['decision'] ?? '—' }}.
+                        @if($estLmd)
+                            La classe suivante suit le parcours, puis la mention.
+                        @else
+                            La classe suivante est l’année d’après dans la même filière.
+                        @endif
+                    </div>
+                    @php
+                        $classesPassage = collect($classesParDecision['passage'] ?? []);
+                        // En LMD la destination est le parcours : deux parcours peuvent
+                        // pointer vers la meme filiere BTS, les grouper par filiere les
+                        // fondrait en une seule carte.
+                        $specialitesPassage = $classesPassage->groupBy(function ($classe) {
+                            return $classe->niveau?->estUnCycleLmd()
+                                ? ($classe->parcours->name ?? $classe->filiere->name ?? $classe->name)
+                                : ($classe->filiere->name ?? $classe->name);
+                        })->filter(fn ($groupe) => $groupe->isNotEmpty());
+                    @endphp
+                    @if($specialitesPassage->count() > 1)
+                        <div class="mb-4" id="re-choix-specialite">
+                            <p style="font-weight:700;color:#1e293b;margin-bottom:.75rem;">Choisir la spécialité</p>
+                            <p style="color:#64748b;font-size:.88rem;margin-bottom:.75rem;">Plusieurs destinations s’ouvrent l’an prochain. Cliquez sur une carte, puis confirmez la classe.</p>
+                            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:.75rem;">
+                                @foreach($specialitesPassage as $nomSpecialite => $groupe)
+                                    <button type="button" class="re-spe-card" data-classe-ids="{{ $groupe->pluck('id')->implode(',') }}"
+                                            style="text-align:left;background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:1rem;cursor:pointer;">
+                                        <strong style="color:#0453cb;display:block;">{{ $nomSpecialite }}</strong>
+                                        <span style="font-size:.8rem;color:#64748b;">{{ $groupe->count() }} classe(s)</span>
+                                    </button>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endif
                     <div class="row mb-4">
                         <div class="col-md-6">
                             <div class="form-group-moderne form-group-disabled">
@@ -394,17 +433,17 @@
                         <div class="col-md-6">
                             <!-- Radio buttons pour choix de filière -->
                             <div class="form-group-moderne mb-3">
-                                <label class="form-label-moderne">Choix de filière *</label>
+                                <label class="form-label-moderne">{{ $estLmd ? 'Choix de parcours *' : 'Choix de filière *' }}</label>
                                 <div class="d-flex gap-3">
                                     <div class="form-check">
                                         <input type="radio" class="form-check-input" name="choix_filiere_radio" value="meme" id="meme_filiere"
                                                x-model="choixFiliere" checked>
-                                        <label class="form-check-label" for="meme_filiere">Même filière</label>
+                                        <label class="form-check-label" for="meme_filiere">{{ $estLmd ? 'Même parcours' : 'Même filière' }}</label>
                                     </div>
                                     <div class="form-check">
                                         <input type="radio" class="form-check-input" name="choix_filiere_radio" value="autre" id="autre_filiere"
                                                x-model="choixFiliere">
-                                        <label class="form-check-label" for="autre_filiere">Autre filière</label>
+                                        <label class="form-check-label" for="autre_filiere">{{ $estLmd ? 'Autre parcours ou filière' : 'Autre filière' }}</label>
                                     </div>
                                 </div>
                             </div>
@@ -1022,6 +1061,11 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         setReinscriptionButtonState(false, 'Sélectionnez une classe disponible pour finaliser la réinscription.');
 
+        const blocSpe = document.getElementById('re-choix-specialite');
+        if (blocSpe) {
+            blocSpe.style.display = decision === 'passage' ? '' : 'none';
+        }
+
         if (decision && classesParDecision[decision]) {
             const classes = classesParDecision[decision];
 
@@ -1042,6 +1086,35 @@ document.addEventListener('DOMContentLoaded', function() {
                     };
                 })
             ];
+
+            // Une carte = un parcours. S'il n'a qu'une classe on la choisit ; s'il
+            // en a plusieurs (sections A, B...) on restreint la liste a celles-ci
+            // sans en prendre une au hasard.
+            document.querySelectorAll('.re-spe-card').forEach(function (carte) {
+                carte.onclick = function () {
+                    const selecteur = window.nouvelleClasseSelector;
+                    if (!selecteur) {
+                        return;
+                    }
+                    const ids = String(carte.getAttribute('data-classe-ids') || '').split(',').filter(Boolean);
+                    const options = classesOptions.filter(function (o) { return o.value === '' || ids.indexOf(o.value) !== -1; });
+                    document.querySelectorAll('.re-spe-card').forEach(function (c) { c.style.borderColor = '#e2e8f0'; });
+                    carte.style.borderColor = '#0453cb';
+                    selecteur.options = options;
+                    selecteur.filteredOptions = options;
+                    if (ids.length === 1) {
+                        const option = options.find(function (o) { return o.value === ids[0]; });
+                        if (option) {
+                            selecteur.selectOption(option);
+                        }
+                        return;
+                    }
+                    selecteur.selectedValue = '';
+                    selecteur.selectedLabel = 'Sélectionner une classe...';
+                    setReinscriptionButtonState(false, 'Choisissez la section dans la liste des classes.');
+                    document.getElementById('classes-help').textContent = ids.length + ' classe(s) pour ce parcours';
+                };
+            });
 
             // Mettre à jour le searchable select
             if (window.nouvelleClasseSelector) {

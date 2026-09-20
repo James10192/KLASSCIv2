@@ -611,6 +611,16 @@ class SettingsHelper
             'bulletin_bts1_s1_council_title' => ['value' => 'Décision du conseil de classe', 'group' => 'bulletin'],
             'bulletin_semester1_weight' => ['value' => '1', 'group' => 'bulletin'],
             'bulletin_semester2_weight' => ['value' => '1', 'group' => 'bulletin'],
+            // Comment la moyenne du semestre se compose. « ponderee » : une
+            // moyenne ponderee sur toutes les matieres, coefficient par
+            // coefficient. « blocs » : la moyenne de l'enseignement general et
+            // celle du professionnel, chacune ponderee chez elle, puis
+            // combinees selon les deux coefficients ci-dessous. ESBTP Abidjan
+            // fait 1 et 1 — les deux blocs pesent autant, quel que soit le
+            // nombre de matieres. Le defaut ne change rien a l'existant.
+            'bulletin_moyenne_mode' => ['value' => 'ponderee', 'group' => 'bulletin'],
+            'bulletin_bloc_general_coef' => ['value' => '1', 'group' => 'bulletin'],
+            'bulletin_bloc_professionnel_coef' => ['value' => '1', 'group' => 'bulletin'],
 
             // Interface
             'theme_primary_color' => ['value' => '#007bff', 'group' => 'interface'],

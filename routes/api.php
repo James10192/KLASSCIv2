@@ -471,6 +471,9 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
 
     // Analytics diagnose (read-only) — couverture échéancier, snapshots, saturation risque
     Route::get('/analytics/diagnose', [App\Http\Controllers\API\CLI\CLIDataController::class, 'analyticsDiagnose'])->name('analytics.diagnose');
+    Route::get('/affectation/diagnose', [App\Http\Controllers\API\CLI\CLIDataController::class, 'affectationDiagnose'])->name('affectation.diagnose');
+    // Seances sans date (lecture seule) — heures enseignant hors de la paie
+    Route::get('/seances/date-diagnose', [App\Http\Controllers\API\CLI\CLIDataController::class, 'seancesDateDiagnose'])->name('seances.date-diagnose');
 
     // Comptabilité (read-only) — audit + réconciliation diagnose
     Route::prefix('comptabilite')->name('comptabilite.')->group(function () {
@@ -480,6 +483,9 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
         Route::get('/period-locks', [App\Http\Controllers\API\CLI\CLIComptabiliteController::class, 'periodLocks'])->name('period-locks');
         Route::get('/reconciliation-candidates', [App\Http\Controllers\API\CLI\CLIComptabiliteController::class, 'reconciliationCandidates'])->name('reconciliation-candidates');
         Route::get('/orphan-paiements-annee-drift', [App\Http\Controllers\API\CLI\CLIComptabiliteController::class, 'orphanPaiementsAnneeDrift'])->name('orphan-paiements-annee-drift');
+        Route::get('/reliquats-comptes-en-double', [App\Http\Controllers\API\CLI\CLIComptabiliteController::class, 'reliquatsComptesEnDouble'])->name('reliquats-comptes-en-double');
+        Route::get('/recus-en-double', [App\Http\Controllers\API\CLI\CLIComptabiliteController::class, 'recusEnDouble'])->name('recus-en-double');
+        Route::post('/recus-en-double/renumeroter', [App\Http\Controllers\API\CLI\CLIComptabiliteController::class, 'renumeroterLesRecusEnDouble'])->name('recus-en-double.renumeroter');
         Route::post('/cleanup-orphan-paiements', [App\Http\Controllers\API\CLI\CLIComptabiliteController::class, 'cleanupOrphanPaiements'])->name('cleanup-orphan-paiements');
         // PR1 réconciliation
         Route::get('/reconciliation/sessions', [App\Http\Controllers\API\CLI\CLIComptabiliteController::class, 'reconciliationSessions'])->name('reconciliation.sessions');
@@ -546,7 +552,8 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
         Route::post('/rendez-vous/placer', [App\Http\Controllers\API\CLI\CLIRendezVousController::class, 'placer'])->name('rendez-vous.placer');
         // L'ordre des categories est l'ordre dans lequel un versement solde les
         // frais. Le changer est une decision de l'ecole, pas du code.
-        Route::post('/frais/ordonner-categories', [App\Http\Controllers\API\CLI\CLIFraisController::class, 'ordonnerCategories'])->name('frais.ordonner-categories');
+        Route::post('/frais/retirer-configurations-inutiles', [App\Http\Controllers\API\CLI\CLIFraisController::class, 'retirerConfigurationsInutiles'])->name('frais.retirer-configurations-inutiles');
+        Route::post('/frais/ordonner-categories',[App\Http\Controllers\API\CLI\CLIFraisController::class, 'ordonnerCategories'])->name('frais.ordonner-categories');
         Route::post('/frais/poser-bareme', [App\Http\Controllers\API\CLI\CLIFraisController::class, 'poserBareme'])->name('frais.poser-bareme');
         Route::post('/db/fix-duplicates', [App\Http\Controllers\API\CLI\CLIMaintenanceController::class, 'fixDuplicates'])->name('db.fix-duplicates');
         Route::post('/migrate', [App\Http\Controllers\API\CLI\CLIMaintenanceController::class, 'migrate'])->name('migrate');
@@ -628,9 +635,31 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
         Route::post('/filieres', [App\Http\Controllers\API\CLI\CLIFiliereController::class, 'store'])->name('filieres.store');
 
         // Niveaux d'etudes — pendant des filieres pour l'ouverture d'un tenant.
+        Route::get('/niveaux/coherence', [App\Http\Controllers\API\CLI\CLINiveauEtudeController::class, 'coherence'])->name('niveaux.coherence');
+        Route::post('/niveaux/{niveau}/annee', [App\Http\Controllers\API\CLI\CLINiveauEtudeController::class, 'corrigerAnnee'])->whereNumber('niveau')->name('niveaux.corriger-annee');
         Route::get('/niveaux', [App\Http\Controllers\API\CLI\CLINiveauEtudeController::class, 'index'])->name('niveaux.index');
         Route::post('/niveaux', [App\Http\Controllers\API\CLI\CLINiveauEtudeController::class, 'store'])->name('niveaux.store');
         Route::post('/classes', [App\Http\Controllers\API\CLI\CLIClasseController::class, 'store'])->name('classes.store');
+
+        // Maquette BTS : rattacher les matieres d'un bulletin officiel a un
+        // couple filiere x niveau, et poser leur place et leur semestre. L'ecran
+        // Classification ne sait qu'ecraser des liaisons existantes ; une ecole
+        // qui arrive avec son bulletin papier n'en a pas encore.
+        Route::post('/bts/maquette', [App\Http\Controllers\API\CLI\CLIBtsMaquetteController::class, 'charger'])
+            ->name('bts.maquette.charger');
+
+        // Relire la maquette d'un couple. Sans cette adresse, son contenu ne
+        // s'obtenait qu'en simulant un chargement, donc en connaissant deja la
+        // liste des matieres qu'on cherchait a decouvrir.
+        Route::get('/bts/maquette', [App\Http\Controllers\API\CLI\CLIBtsMaquetteController::class, 'lire'])
+            ->name('bts.maquette.lire');
+
+        // Retirer une matiere d'un couple. Le seul chemin existant passait par
+        // le modal des liaisons, qui supprime toutes les liaisons de la
+        // matiere puis les recree, et perd la place et le semestre des couples
+        // qu'on gardait.
+        Route::post('/bts/maquette/retirer', [App\Http\Controllers\API\CLI\CLIBtsMaquetteController::class, 'retirer'])
+            ->name('bts.maquette.retirer');
 
         // Diagnostic en lecture seule : evaluations dont la nature de la
         // matiere ne suit pas le systeme academique de la classe.

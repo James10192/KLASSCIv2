@@ -59,8 +59,11 @@ class AuthServiceProvider extends ServiceProvider
     {
         $this->registerPolicies();
 
-        // superAdmin court-circuite tous les checks (Lot 0).
         Gate::before(function ($user, $ability) {
+            if (! config('permissions.superadmin_gate_before', true)) {
+                return null;
+            }
+
             return $user && $user->hasRole('superAdmin') ? true : null;
         });
 
@@ -86,6 +89,33 @@ class AuthServiceProvider extends ServiceProvider
             'inscriptions.ouvrir-formulaire',
             static fn ($utilisateur) => \App\Support\PorteDeRoute::ouverte('esbtp.inscriptions.create', $utilisateur)
         );
+
+        // Mêmes portes, pour le menu latéral. Deux entrées y montraient un lien
+        // qui répond 403, parce que la barre connaissait une autre permission que
+        // la page.
+        //
+        // Ces deux routes tiennent leur garde d'endroits DIFFÉRENTS :
+        // `seances-cours` n'en a aucune en propre et hérite de celle de son
+        // groupe ; `planning-general` cumule celle de son groupe, la sienne, et
+        // celle que son contrôleur pose dans son constructeur. Trois clauses, à
+        // satisfaire toutes.
+        //
+        // Recopier l'une ou l'autre dans la vue ne marchait déjà pas le jour même
+        // — la copie de « Planning Général » ne reprenait pas celle de son groupe.
+        // (Compter ce qu'elle reprenait serait plus long qu'utile : la vue posait
+        // aussi une permission que la route n'exige pas. Ce qui décide, c'est la
+        // clause manquante.)
+        // `gatherMiddleware()` les ramasse toutes, groupe, route et contrôleur, et
+        // la conjonction est déjà traitée ici.
+        foreach ([
+            'esbtp.seances-cours.index',
+            'esbtp.planning-general.index',
+        ] as $porte) {
+            Gate::define(
+                "porte:{$porte}",
+                static fn ($utilisateur) => \App\Support\PorteDeRoute::ouverte($porte, $utilisateur)
+            );
+        }
 
         // `users.manage` : exposé en Gate explicite pour éviter toute ambiguïté
         // entre les routes qui consomment Gate::* et le résolveur Spatie.

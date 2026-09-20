@@ -28,7 +28,7 @@ class ESBTPNiveauEtudeController extends Controller
         }
 
         $niveauxEtudes = $query->get();
-        $lmdTypes      = ['Licence', 'Master', 'Doctorat', 'Bachelor'];
+        $lmdTypes      = ESBTPNiveauEtude::CYCLES_LMD;
         $totalCount    = $niveauxEtudes->count();
         $lmdCount      = $niveauxEtudes->whereIn('type', $lmdTypes)->count();
         $btsCount      = $niveauxEtudes->where('type', 'BTS')->count();
@@ -58,15 +58,7 @@ class ESBTPNiveauEtudeController extends Controller
     public function store(Request $request)
     {
         // Valider les données du formulaire
-        $validatedData = $request->validate([
-            'name' => 'required|string|max:255',
-            'code' => 'required|string|max:50|unique:esbtp_niveau_etudes,code',
-            'type' => 'required|string|max:255',
-            'niveau' => 'required|integer|between:1,7',
-            'libelle' => 'nullable|string|max:255',
-            'description' => 'nullable|string',
-            'is_active' => 'boolean',
-        ]);
+        $validatedData = $request->validate($this->regles());
 
         // S'assurer que is_active est défini
         $validatedData['is_active'] = $request->has('is_active') ? true : false;
@@ -81,6 +73,39 @@ class ESBTPNiveauEtudeController extends Controller
         // Rediriger avec un message de succès
         return redirect()->route('esbtp.niveaux-etudes.index')
             ->with('success', 'Le niveau d\'études a été créé avec succès.');
+    }
+
+    /**
+     * Regles communes a la creation et a la modification.
+     *
+     * L'annee d'un niveau LMD se compte depuis la Licence : un Master 1 est en
+     * annee 4. Saisi en annee 1, il etait range en S1-S2 et recevait les unites
+     * de Licence, sans qu'aucune erreur ne le signale. D'ou le controle croise
+     * type / annee, et le refus de deplacer l'annee d'un niveau qui porte deja
+     * des unites, des notes ou des bulletins.
+     */
+    private function regles(?ESBTPNiveauEtude $niveau = null): array
+    {
+        $anneeFigee = function (string $attribut, $valeur, \Closure $echec) use ($niveau) {
+            if (! $niveau || (int) $valeur === (int) $niveau->year) {
+                return;
+            }
+
+            $bloquantes = app(\App\Services\LMD\CoherenceNiveauxLmd::class)->dependancesBloquantes($niveau);
+            if ($bloquantes !== []) {
+                $echec("L'année de ce niveau ne peut plus changer : ".implode(', ', $bloquantes)." s'y rattachent déjà et seraient détachés de leurs semestres.");
+            }
+        };
+
+        return [
+            'name' => 'required|string|max:255',
+            'code' => 'required|string|max:50|unique:esbtp_niveau_etudes,code'.($niveau ? ','.$niveau->id : ''),
+            'type' => 'required|string|max:255',
+            'niveau' => ['required', 'integer', 'between:1,8', new \App\Rules\AnneeDuCycleLmd(), $anneeFigee],
+            'libelle' => 'nullable|string|max:255',
+            'description' => 'nullable|string',
+            'is_active' => 'boolean',
+        ];
     }
 
     /**
@@ -123,15 +148,7 @@ class ESBTPNiveauEtudeController extends Controller
     public function update(Request $request, ESBTPNiveauEtude $niveauxEtude)
     {
         // Valider les données du formulaire
-        $validatedData = $request->validate([
-            'name' => 'required|string|max:255',
-            'code' => 'required|string|max:50|unique:esbtp_niveau_etudes,code,' . $niveauxEtude->id,
-            'type' => 'required|string|max:255',
-            'niveau' => 'required|integer|between:1,7',
-            'libelle' => 'nullable|string|max:255',
-            'description' => 'nullable|string',
-            'is_active' => 'boolean',
-        ]);
+        $validatedData = $request->validate($this->regles($niveauxEtude));
 
         // S'assurer que is_active est défini
         $validatedData['is_active'] = $request->has('is_active') ? true : false;

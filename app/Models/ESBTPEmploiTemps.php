@@ -119,6 +119,35 @@ class ESBTPEmploiTemps extends Model
     }
 
     /**
+     * La date, dans cette période, du jour de semaine donné.
+     *
+     * Ici et non dans un contrôleur : plusieurs endroits calculaient cette date,
+     * chacun à sa façon, et la plupart par un raccourci qui n'est juste que si
+     * la période commence un lundi — ce que rien n'impose. Le décompte exact,
+     * les sites concernés et ce que chacun rendait sont dans le docbloc de
+     * `JourDeLaSemaine::decalageDepuis()`, qui est le seul endroit du code à
+     * les porter. Ne les recopiez pas ici.
+     *
+     * Le jour accepte les deux écritures de `esbtp_seance_cours.jour` : l'entier
+     * de la liste des séances comme le libellé de l'emploi du temps.
+     *
+     * Rend `null` plutôt qu'une date approchée quand le jour est illisible ou la
+     * période sans début : une date fausse se propagerait aux heures de
+     * l'enseignant et à son émargement, où personne ne la rattraperait.
+     */
+    public function dateDuJour(mixed $jour): ?\Carbon\Carbon
+    {
+        if (! $this->date_debut) {
+            return null;
+        }
+
+        $debut = \Carbon\Carbon::parse($this->date_debut);
+        $decalage = \App\Domain\EmploiTemps\JourDeLaSemaine::decalageDepuis($jour, $debut->dayOfWeekIso);
+
+        return $decalage === null ? null : $debut->copy()->addDays($decalage);
+    }
+
+    /**
      * Relation avec l'utilisateur qui a créé l'emploi du temps.
      *
      * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
@@ -138,34 +167,7 @@ class ESBTPEmploiTemps extends Model
         return $this->belongsTo(User::class, 'updated_by');
     }
 
-    /**
-     * Obtenir les séances de cours groupées par jour de la semaine.
-     *
-     * @return array
-     */
-    public function getSeancesParJour()
-    {
-        $jours = [
-            0 => 'Lundi',
-            1 => 'Mardi',
-            2 => 'Mercredi',
-            3 => 'Jeudi',
-            4 => 'Vendredi',
-            5 => 'Samedi',
-        ];
-
-        $seancesParJour = [];
-
-        foreach ($jours as $index => $jour) {
-            $seancesParJour[$jour] = $this->seances()
-                ->where('jour', $index)
-                ->orderBy('heure_debut')
-                ->get();
-        }
-
-        return $seancesParJour;
-    }
-
+    
     /**
      * Obtenir la période de validité de l'emploi du temps.
      *
@@ -190,38 +192,6 @@ class ESBTPEmploiTemps extends Model
         return $this->is_active
             && $this->date_debut <= $now
             && ($this->date_fin === null || $this->date_fin >= $now);
-    }
-
-    /**
-     * Vérifie s'il y a des conflits d'horaire dans les séances de cours.
-     *
-     * @return array
-     */
-    public function verifierConflitsHoraire()
-    {
-        $conflicts = [];
-        $seancesParJour = $this->getSeancesParJour();
-
-        foreach ($seancesParJour as $jour => $seances) {
-            for ($i = 0; $i < count($seances); $i++) {
-                for ($j = $i + 1; $j < count($seances); $j++) {
-                    $seance1 = $seances[$i];
-                    $seance2 = $seances[$j];
-
-                    // Vérifier si les horaires se chevauchent
-                    if (($seance1->heure_debut < $seance2->heure_fin) &&
-                        ($seance1->heure_fin > $seance2->heure_debut)) {
-                        $conflicts[] = [
-                            'jour' => $jour,
-                            'seance1' => $seance1,
-                            'seance2' => $seance2,
-                        ];
-                    }
-                }
-            }
-        }
-
-        return $conflicts;
     }
 
     public function scopeCurrent($query)

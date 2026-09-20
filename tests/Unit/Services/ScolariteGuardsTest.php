@@ -28,15 +28,42 @@ class ScolariteGuardsTest extends TestCase
         $guard = new MobileMoneyPaymentGuard();
 
         $this->assertTrue($guard->canCreate($user));
-        $this->assertSame([
-            ModePaiement::MOBILE_MONEY->value,
-            ModePaiement::WAVE->value,
-            ModePaiement::ORANGE_MONEY->value,
-            ModePaiement::MTN_MONEY->value,
-            ModePaiement::MOOV_MONEY->value,
-        ], $guard->allowedModes($user));
-        $this->assertTrue($guard->allowsMode($user, 'wave'));
-        $this->assertFalse($guard->allowsMode($user, 'especes'));
+
+        // DEUX propriétés distinctes, et il faut les deux.
+        //
+        // 1. Le CONTENU : le guichet mobile offre exactement les modes que
+        //    l'énumération classe mobiles. C'est le contrat du garde, et c'est
+        //    ce qui rattrape la panne d'origine — une liste écrite en dur qui
+        //    oublie un mode neuf. Elle a coûté Djamo et Celtiis Cash une fois
+        //    déjà, silencieusement : un mode absent d'ici est REFUSÉ au guichet.
+        //
+        //    Cette ligne-là a été retirée une fois, au motif qu'elle recopiait
+        //    le corps de `mobileMoneyModes()` « donc ne pouvait pas échouer ».
+        //    C'était faux : elle pouvait échouer, et elle l'a fait. Ce qu'elle
+        //    duplique est l'IMPLÉMENTATION, pas le contrat — et c'est
+        //    exactement ce qu'un test de contrat doit faire quand les deux
+        //    coïncident. La retirer a laissé le dépôt sans aucun test rouge si
+        //    le garde repartait en liste en dur.
+        $attendus = array_values(array_map(
+            fn (ModePaiement $mode) => $mode->value,
+            array_filter(ModePaiement::cases(), fn (ModePaiement $mode) => $mode->estMobile()),
+        ));
+
+        $this->assertSame($attendus, $guard->mobileMoneyModes());
+
+        // 2. L'AIGUILLAGE : ce guichet reçoit cette liste-là, et pas une autre.
+        //    Distinct du point 1 — une branche dévoyée rendrait les douze modes
+        //    sans que le contenu de la liste ait bougé.
+        $this->assertSame($guard->mobileMoneyModes(), $guard->allowedModes($user));
+
+        // 3. L'intention, par des valeurs nommées : la liste n'est pas vide,
+        //    elle contient les trois modes que des écoles utilisent vraiment,
+        //    et elle exclut l'espèce.
+        $this->assertNotEmpty($attendus);
+        $this->assertTrue($guard->allowsMode($user, ModePaiement::WAVE->value));
+        $this->assertTrue($guard->allowsMode($user, ModePaiement::DJAMO->value));
+        $this->assertTrue($guard->allowsMode($user, ModePaiement::CELTIIS_CASH->value));
+        $this->assertFalse($guard->allowsMode($user, ModePaiement::ESPECES->value));
     }
 
     public function test_print_stays_open_when_approval_setting_is_off(): void

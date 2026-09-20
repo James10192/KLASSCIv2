@@ -16,18 +16,65 @@ final class BtsBulletinPolicy
         'bulletin_bts2_semester1_weight' => ['value' => '1', 'type' => 'float', 'description' => 'Coefficient BTS 2 Semestre 1', 'validation_rules' => ['nullable', 'numeric', 'min:0']],
         'bulletin_bts2_semester2_weight' => ['value' => '1', 'type' => 'float', 'description' => 'Coefficient BTS 2 Semestre 2', 'validation_rules' => ['nullable', 'numeric', 'min:0']],
         'bulletin_bts1_council_mode' => ['value' => 'manual', 'type' => 'string', 'description' => 'Mode de décision BTS 1', 'validation_rules' => ['nullable', 'in:manual,threshold']],
-        'bulletin_bts1_council_average_source' => ['value' => 'semestre2', 'type' => 'string', 'description' => 'Moyenne de décision BTS 1', 'validation_rules' => ['nullable', 'in:semestre2,annual']],
+        // Le passage en 2e année se décide sur l'ANNÉE, pas sur le seul
+        // semestre 2 : un étudiant qui s'effondre au second semestre après un
+        // premier solide n'est pas dans la même situation que celui qui n'a
+        // jamais suivi, et le bulletin qui annonce « Redouble » imprime juste
+        // au-dessus une moyenne annuelle au-dessus du seuil. Le réglage reste,
+        // une école peut décider autrement ; c'est le défaut qui change.
+        //
+        // CE CHANGEMENT DE DÉFAUT EST UNE DÉCISION, PRISE EXPLICITEMENT.
+        // Une revue l'a signalé comme un changement de comportement de
+        // production embarqué dans une branche de correctif : sur une instance
+        // en mode `threshold` qui n'a PAS de ligne en base pour cette clé, un
+        // bulletin BTS 1 semestre 2 déjà imprimé et remis à une famille peut
+        // passer de « Redouble la classe » à « Admis(e) en 2e Année BTS » à la
+        // prochaine régénération. Le signalement est juste. Le fondateur a été
+        // consulté (septembre 2026) et a tranché : on garde `annual`.
+        //
+        // ET LE PARC A ÉTÉ RELEVÉ, plutôt que le risque assumé à l'aveugle :
+        // le seul tenant en `threshold` (esbtp-abidjan) porte la clé EN BASE à
+        // `semestre2`, et une valeur en base l'emporte sur ce défaut ; le seul
+        // tenant sans la clé (ephrata) est en `manual`, où elle n'est jamais
+        // lue. Aucun bulletin déjà imprimé ne change. Le nouveau défaut ne vaut
+        // donc que pour une instance future en `threshold` sans réglage posé.
+        // Ne pas le rebasculer sans redemander au fondateur.
+        'bulletin_bts1_council_average_source' => ['value' => 'annual', 'type' => 'string', 'description' => 'Moyenne de décision BTS 1', 'validation_rules' => ['nullable', 'in:semestre2,annual']],
         'bulletin_bts1_council_threshold' => ['value' => '10', 'type' => 'float', 'description' => 'Seuil de décision BTS 1', 'validation_rules' => ['required_if:bulletin_bts1_council_mode,threshold', 'nullable', 'numeric', 'between:0,20']],
         'bulletin_bts1_council_below_text' => ['value' => 'Redouble la classe', 'type' => 'string', 'description' => 'Décision BTS 1 sous le seuil', 'validation_rules' => ['required_if:bulletin_bts1_council_mode,threshold', 'nullable', 'string', 'max:191']],
         'bulletin_bts1_council_at_or_above_text' => ['value' => 'Admis(e) en 2e Année BTS', 'type' => 'string', 'description' => 'Décision BTS 1 au seuil ou au-dessus', 'validation_rules' => ['required_if:bulletin_bts1_council_mode,threshold', 'nullable', 'string', 'max:191']],
         'bulletin_bts1_s1_council_title' => ['value' => 'Décision du conseil de classe', 'type' => 'string', 'description' => 'Titre du conseil BTS 1 semestre 1', 'validation_rules' => ['nullable', 'string', 'max:191']],
         'bulletin_bts2_council_mode' => ['value' => 'manual', 'type' => 'string', 'description' => 'Mode de décision BTS 2', 'validation_rules' => ['nullable', 'in:manual,fixed']],
+        // BTS 2 n'a pas de mode « seuil » aujourd'hui (`in:manual,fixed`), donc
+        // cette cle n'est lue par personne. Elle est declaree quand meme : sans
+        // elle, `defaultFor()` rendait `null` et c'est un litteral 'annual'
+        // ecrit dans deux appelants qui repondait — un reglage que l'ecole ne
+        // voit nulle part et ne peut pas changer. Le jour ou « seuil » s'ouvre
+        // a BTS 2, la decision se prendra sur ce qui est ecrit ici, pas sur un
+        // repli cache. Elle n'est pas encore a l'ecran, faute de mode qui la
+        // consulte ; l'y mettre afficherait un choix sans effet.
+        'bulletin_bts2_council_average_source' => ['value' => 'annual', 'type' => 'string', 'description' => 'Moyenne de décision BTS 2', 'validation_rules' => ['nullable', 'in:semestre2,annual']],
         'bulletin_bts2_council_fixed_text' => ['value' => "Redouble en cas d'échec à l'examen du BTS", 'type' => 'string', 'description' => 'Décision fixe BTS 2', 'validation_rules' => ['required_if:bulletin_bts2_council_mode,fixed', 'nullable', 'string', 'max:191']],
     ];
 
     public static function settingDefinitions(): array
     {
         return self::SETTING_DEFINITIONS;
+    }
+
+    /**
+     * Le defaut d'un reglage, lu la ou il est declare.
+     *
+     * `bulletin_bts1_council_average_source` etait replie sur « semestre2 »
+     * dans cinq fichiers a la fois — ce service, deux controleurs, deux vues.
+     * Changer le defaut en un seul endroit n'aurait donc rien change : les
+     * quatre autres copies auraient continue a repondre l'ancienne valeur.
+     */
+    public static function defaultFor(string $key): ?string
+    {
+        $definition = self::SETTING_DEFINITIONS[$key] ?? null;
+
+        return $definition === null ? null : (string) $definition['value'];
     }
 
     public static function defaultSettings(): array
@@ -140,18 +187,48 @@ final class BtsBulletinPolicy
         return $isBts && in_array($levelYear, [1, 2], true) && $period === 'semestre2';
     }
 
+    /**
+     * Ce qui s'imprime, entre la decision calculee et celle saisie a la main.
+     *
+     * Les trois premiers parametres — systeme, annee, periode — ont disparu :
+     * ils ne servaient qu'a rendre '' quand la politique s'appliquait sans
+     * repondre, ce qui etait precisement le defaut.
+     */
     public static function displayCouncilDecision(
-        bool $isBts,
-        ?int $levelYear,
-        string $period,
         ?string $configuredDecision,
         mixed $storedDecision,
     ): ?string {
-        if (self::usesCouncilPolicy($isBts, $levelYear, $period)) {
-            return $configuredDecision ?? '';
-        }
-
+        // La politique prime quand elle repond. Quand elle ne repond pas —
+        // mode manuel, ou moyenne de decision indisponible — c'est la decision
+        // saisie a la main qui tient. Rendre '' dans ce cas effacait de
+        // l'ecran, puis de la base, ce qu'un humain avait ecrit : en mode
+        // manuel, qui est le DEFAUT, regenerer un bulletin de semestre 2
+        // suffisait a perdre la decision du conseil.
         return $configuredDecision ?? self::textOrNull($storedDecision);
+    }
+
+    /**
+     * La moyenne sur laquelle le conseil tranche, pour ce niveau.
+     *
+     * Rend TOUJOURS une valeur declaree. Les deux appelants composaient la cle
+     * eux-memes et retombaient sur un litteral `'annual'` quand le registre ne
+     * repondait pas — c'est-a-dire pour tout niveau sans cle declaree, dont
+     * `null` (classe sans niveau). Ce repli etait invisible et incontrolable :
+     * `decisionAverage()` prend un `string` non nullable, donc un `null` y
+     * devient `''` par coercition, `'' !== 'annual'`, et la decision se prenait
+     * en silence sur le semestre 2 — l'inverse de ce qui est livre.
+     *
+     * @param  array<string, mixed>  $settings
+     */
+    public static function councilAverageSource(?int $levelYear, array $settings): string
+    {
+        $cle = "bulletin_bts{$levelYear}_council_average_source";
+        $valeur = $settings[$cle] ?? self::defaultFor($cle);
+
+        // Un niveau hors BTS 1 / BTS 2 n'a pas de cle declaree, et une ligne
+        // vidée en base rend ''. Dans les deux cas on nomme le comportement
+        // plutot que de le laisser tomber du cote du semestre 2 par accident.
+        return is_string($valeur) && $valeur !== '' ? $valeur : 'annual';
     }
 
     public static function decisionAverage(string $source, ?float $semester2Average, ?float $annualAverage): ?float

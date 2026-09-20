@@ -5,14 +5,20 @@
       - Devoir (topType === 'homework') -> evaluation : Examen / Partiel (CC) / Rattrapage / Soutenance
     EXAMEN/PARTIEL/RATTRAPAGE/SOUTENANCE quittent la liste Cours -> ils sont des evaluations.
     Un seul <input name="type_seance"> ; bascule pilotee par l'evenement 'session-type-changed'.
-    TPE reste exclu du form (metadonnee ECUE — standards UEMOA Apogee/Cocktail).
+    TPE : carte seulement si tpe.mode ≠ non_planifiable.
 
     Sister partial : _form_type_seance_bts.blade.php
     Rule .claude/rules/type-seance-enum-extension.md
     Rule .claude/rules/blade-alpine-pitfalls.md (pas de {{ }} dans un object-literal Alpine)
 --}}
 @php
-    $currentType = old('type_seance', 'CM');
+    $rawCurrent = old('type_seance');
+    if ($rawCurrent === null && isset($seancesCour) && $seancesCour && $seancesCour->type_seance) {
+        $rawCurrent = $seancesCour->type_seance instanceof \App\Enums\TypeSeance
+            ? $seancesCour->type_seance->value
+            : (string) $seancesCour->type_seance;
+    }
+    $currentType = $rawCurrent ?: 'CM';
 
     // Cours : enseignement (3 tones monochrome bleu — rule premium-redesign)
     $teachingTypes = [
@@ -22,6 +28,10 @@
         'PROJET' => ['label' => 'Projet',            'desc' => 'Suivi de projet en presentiel',      'icon' => 'fa-diagram-project', 'tone' => 'accent'],
         'AUTRE'  => ['label' => 'Autre',             'desc' => 'Autre seance en presentiel',         'icon' => 'fa-ellipsis',        'tone' => 'muted'],
     ];
+    $tpePlanifiable = \App\Services\LMD\Tpe\TpePlanification::isPlanifiable();
+    if ($tpePlanifiable) {
+        $teachingTypes['TPE'] = ['label' => 'Travail Personnel Étudiant', 'desc' => 'TPE encadré sur site', 'icon' => 'fa-user-pen', 'tone' => 'muted'];
+    }
 
     // Devoir : evaluations UEMOA (genere une note)
     $evalTypes = [
@@ -35,7 +45,7 @@
 <div class="sce-type-seance"
      data-teach-default="CM"
      data-eval-default="EXAMEN"
-     data-teach-set="CM,TD,TP,PROJET,AUTRE"
+      data-teach-set="{{ $tpePlanifiable ? 'CM,TD,TP,PROJET,AUTRE,TPE' : 'CM,TD,TP,PROJET,AUTRE' }}"
      data-eval-set="EXAMEN,PARTIEL,RATTRAPAGE,SOUTENANCE"
      data-initial="{{ $currentType }}"
      x-data="{
@@ -102,16 +112,24 @@
         @endforeach
     </div>
 
-    {{-- Info TPE : retire du form, c'est une metadonnee de l'ECUE --}}
-    <div class="sce-tpe-info" x-show="topType === 'course'" x-cloak>
-        <i class="fas fa-info-circle"></i>
-        <div>
-            <strong>Travail Personnel Etudiant (TPE)</strong> non planifiable en emploi du temps.
-            C'est un volume theorique alloue par ECUE (configurable dans la
-            <a href="{{ route('esbtp.lmd.ue.index', array_filter(['parcours_id' => $emploiTemps->classe->parcours_id, 'niveau_id' => $emploiTemps->classe->niveau_etude_id])) }}">maquette pedagogique LMD</a>),
-            que l'etudiant gere lui-meme. Standard UEMOA — cf Apogee, Cocktail.
+    @if ($tpePlanifiable)
+        <div class="sce-tpe-info" x-show="topType === 'course'" x-cloak>
+            <i class="fas fa-info-circle"></i>
+            <div>
+                <strong>TPE sur site</strong> — créez une séance TPE ci-dessus. Ce n'est pas une heure enseignante payable.
+            </div>
         </div>
-    </div>
+    @else
+        <div class="sce-tpe-info" x-show="topType === 'course'" x-cloak>
+            <i class="fas fa-info-circle"></i>
+            <div>
+                <strong>Travail Personnel Etudiant (TPE)</strong> non planifiable en emploi du temps.
+                C'est un volume theorique alloue par ECUE (configurable dans la
+                <a href="{{ route('esbtp.lmd.ue.index', array_filter(['parcours_id' => $emploiTemps->classe->parcours_id, 'niveau_id' => $emploiTemps->classe->niveau_etude_id])) }}">maquette pedagogique LMD</a>),
+                que l'etudiant gere lui-meme.
+            </div>
+        </div>
+    @endif
 
     @error('type_seance')
         <div class="form-error">{{ $message }}</div>

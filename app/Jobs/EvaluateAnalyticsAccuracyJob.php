@@ -11,7 +11,7 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 
 /**
- * Job mensuel (1er du mois, 5h Africa/Abidjan) qui évalue rétrospectivement
+ * Job mensuel (1er du mois, 5h au fuseau de l'instance) qui évalue rétrospectivement
  * la précision des prédictions cash flow du mois écoulé. Met à jour
  * actual_value et accuracy_score dans analytics_predictions.
  *

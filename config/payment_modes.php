@@ -1,7 +1,12 @@
 <?php
 
 /**
- * Catalogue des modes de paiement supportés (Côte d'Ivoire 2026).
+ * Catalogue des modes de paiement supportés.
+ *
+ * Jusqu'en septembre 2026 ce catalogue était ivoirien ; `ucao-benin` est la
+ * première instance hors de Côte d'Ivoire, d'où Celtiis Cash. Les autres
+ * opérateurs béninois n'ont PAS besoin d'entrées à eux : MTN Benin encaisse
+ * sous MoMo et Moov Africa Benin sous Flooz, déjà couverts ci-dessous.
  *
  * Source de vérité pour le mapping `mode_paiement` (DB) → libellé FR + icône.
  *
@@ -69,6 +74,10 @@ return [
             'label' => 'Djamo',
             'icon' => 'fa-mobile-alt',
         ],
+        'celtiis_cash' => [
+            'label' => 'Celtiis Cash',
+            'icon' => 'fa-mobile-alt',
+        ],
         'autre' => [
             'label' => 'Autre',
             'icon' => 'fa-question-circle',
@@ -125,6 +134,11 @@ return [
         'wave_money' => 'wave',
 
         'djamo' => 'djamo',
+
+        // Bénin — SBIN SA. « celtiis » seul suffit pour les saisies libres.
+        'celtiis_cash' => 'celtiis_cash',
+        'celtiis' => 'celtiis_cash',
+        'celtiis_money' => 'celtiis_cash',
 
         // Catch-all
         'autre' => 'autre',

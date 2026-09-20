@@ -117,7 +117,9 @@
     transition: all .2s; border: none;
 }
 .ps-btn.ghost { background: rgba(255,255,255,.12); color: #fff; border: 1px solid rgba(255,255,255,.3); }
-.ps-btn.ghost:hover { background: rgba(255,255,255,.25); color: #fff; }
+    .ps-btn.ghost:hover { background: rgba(255,255,255,.25); color: #fff; }
+    .ps-btn.outline { background: rgba(4,83,203,.08); color: #0453cb; border: 1px solid rgba(4,83,203,.28); }
+    .ps-btn.outline:hover { background: rgba(4,83,203,.14); }
 .ps-btn.success { background: var(--k-success); color: #fff; }
 .ps-btn.success:hover { box-shadow: 0 4px 12px rgba(16,185,129,.4); }
 .ps-btn.danger { background: var(--k-danger); color: #fff; }
@@ -355,21 +357,17 @@
                     <i class="fas fa-edit"></i> Modifier
                 </a>
                 @endcan
-                @can('paiements.delete')
-                @can('paiements.manage'){{-- destroy() refuse (403) sans paiements.manage --}}
-                <form id="ps-form-delete-{{ $paiement->id }}" action="{{ route('esbtp.paiements.destroy', $paiement->id) }}" method="POST" style="margin:0">
-                    @csrf @method('DELETE')
-                    <button type="button"
-                            class="ps-btn danger"
-                            data-ii-confirm-form="ps-form-delete-{{ $paiement->id }}"
-                            data-ii-confirm-title="Supprimer le paiement"
-                            data-ii-confirm-message="Supprimer définitivement ce paiement ? Cette action est irréversible."
-                            data-ii-confirm-label="Supprimer"
-                            data-ii-confirm-danger="1">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </form>
+                @can('paiements.reventiler')
+                @if(! $paiement->isAvoir())
+                <a href="{{ route('esbtp.paiements.ventilation.edit', $paiement->id) }}" class="ps-btn ghost" title="Corriger l'imputation sans changer le montant ni le numéro de reçu">
+                    <i class="fas fa-sliders-h"></i> Réimputer sur d'autres frais
+                </a>
+                @endif
                 @endcan
+                @can('paiements.delete')
+                <button type="button" class="ps-btn danger" data-bs-toggle="modal" data-bs-target="#modalSupprimerPaiement" title="Supprimer ce versement">
+                    <i class="fas fa-trash"></i>
+                </button>
                 @endcan
 
                 @if($paiement->status === 'en_attente')
@@ -600,9 +598,9 @@
             </div>
             @if($psPeutReventiler)
                 <a href="{{ route('esbtp.paiements.ventilation.edit', $paiement->id) }}"
-                   class="ps-btn ghost"
+                   class="ps-btn outline"
                    title="Corriger l'imputation sans changer le montant ni le numéro de reçu">
-                    <i class="fas fa-sliders-h"></i> Corriger
+                    <i class="fas fa-sliders-h"></i> Réimputer sur d'autres frais
                 </a>
             @endif
         </div>
@@ -761,6 +759,61 @@
     </div>
 </div>
 @endif
+
+@can('paiements.delete')
+{{-- Suppression avec motif : le geste laisse une trace (qui, quand, pourquoi). --}}
+<div class="modal fade" id="modalSupprimerPaiement" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius:15px; border:none; box-shadow:0 10px 40px rgba(0,0,0,.2);">
+            <div class="modal-header" style="background:linear-gradient(135deg, #ef4444, #dc2626); color:#fff; border-radius:15px 15px 0 0; padding:1.25rem 1.5rem; border:none;">
+                <h5 class="modal-title fw-bold"><i class="fas fa-trash me-2"></i>Supprimer le versement</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="{{ route('esbtp.paiements.destroy', $paiement->id) }}" method="POST">
+                @csrf
+                @method('DELETE')
+                <div class="modal-body" style="padding:1.5rem;">
+                    <div style="background:#fef2f2; border:1.5px solid #fca5a5; border-radius:10px; padding:12px 16px; margin-bottom:16px;">
+                        <div style="display:flex; gap:10px; align-items:flex-start;">
+                            <i class="fas fa-exclamation-triangle" style="color:#ef4444; margin-top:2px;"></i>
+                            <div style="color:#991b1b; font-size:.88rem;">
+                                <strong>Le versement sera retiré des comptes de l'étudiant.</strong>
+                                Le reçu {{ $paiement->numero_recu }} ne sera plus valable. Votre nom, la date et le motif restent lisibles au journal d'audit.
+                            </div>
+                        </div>
+                    </div>
+                    <div style="display:flex; gap:16px; margin-bottom:16px; font-size:.88rem;">
+                        <div><strong>Montant :</strong> {{ number_format($paiement->montant, 0, ',', ' ') }} FCFA</div>
+                        <div><strong>Reçu :</strong> {{ $paiement->numero_recu }}</div>
+                    </div>
+                    <div x-data="{ count: 0 }">
+                        <label for="motif_suppression" class="form-label fw-semibold" style="font-size:.88rem;">
+                            Motif de la suppression <span class="text-danger">*</span>
+                            <span style="font-weight:400; color:#64748b; font-size:.78rem;">(min. 10 caractères)</span>
+                        </label>
+                        <textarea name="motif" id="motif_suppression" rows="4" class="form-control" required
+                                  minlength="10" maxlength="500"
+                                  placeholder="Ex : Encaissé par erreur, le paquet de rames a été déposé en nature."
+                                  x-on:input="count = $event.target.value.length"
+                                  style="border:2px solid #dee2e6; border-radius:10px; resize:none;">{{ old('motif') }}</textarea>
+                        <div style="display:flex; justify-content:flex-end; margin-top:6px; font-size:.74rem; color:#94a3b8;">
+                            <span x-text="count + ' / 500'" :style="count < 10 ? 'color:#dc2626;font-weight:600' : ''">0 / 500</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer" style="background:#f8f9fa; border-radius:0 0 15px 15px; padding:1rem 1.5rem; border:none;">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="border-radius:8px; font-weight:600;">
+                        <i class="fas fa-times me-1"></i>Annuler
+                    </button>
+                    <button type="submit" class="btn btn-danger" style="border-radius:8px; font-weight:600;">
+                        <i class="fas fa-trash me-1"></i>Supprimer le versement
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+@endcan
 
 @include('esbtp.paiements.partials.avoir-modal', ['paiement' => $paiement, 'modalId' => 'modalAvoir'])
 

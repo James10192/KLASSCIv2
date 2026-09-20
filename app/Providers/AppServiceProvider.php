@@ -9,6 +9,7 @@ use App\Domain\BtsTroncCommun\ClasseOuvertureResolver;
 use App\Domain\AcademicPilotage\Contracts\AcademicSystemMetricsProvider;
 use App\Domain\AcademicPilotage\Services\AcademicMetricsProviderResolver;
 use App\Domain\AcademicPilotage\Services\OpenAlertMetricService;
+use App\Domain\Notifications\PhoneNormalizer;
 use App\Helpers\SettingsHelper;
 use App\Models\ESBTPAttendance;
 use App\Models\ESBTPCandidature;
@@ -33,6 +34,7 @@ use App\Services\LMD\Tpe\AutoValidateStrategy;
 use App\Services\LMD\Tpe\TeacherValidateStrategy;
 use App\Services\LMD\Tpe\TpeValidationStrategy;
 use App\Services\SsoSecretValidator;
+use App\View\Composers\CouleursDesCourrielsParents;
 use App\View\Composers\MobileShellComposer;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Cache;
@@ -70,7 +72,22 @@ class AppServiceProvider extends ServiceProvider
         // l'export la demandent tous les deux dans la même requête.
         $this->app->scoped(CashFlowProjectionService::class);
         $this->app->scoped(AnalyticsScanCache::class);
+
+        // Une seule instance par requete : la generation groupee precharge les
+        // dispenses de toute la classe une fois, puis chaque bulletin lit en
+        // memoire. Deux instances distinctes rendraient ce prechargement
+        // inutile — et surtout, le service qui accorde une dispense ne saurait
+        // pas invalider celle que lit le bulletin.
+        // scoped() et non singleton() : un worker de file vit des heures, et
+        // forgetScopedInstances() borne le memo entre deux taches.
+        $this->app->scoped(\App\Domain\Dispenses\DispenseLookup::class);
         $this->app->scoped(OpenAlertMetricService::class);
+        // Le vocabulaire de la structure LMD est lu par des dizaines de libelles
+        // dans une meme page : une instance par requete.
+        $this->app->scoped(\App\Services\LMD\VocabulaireStructure::class);
+        // Bornes de la journee de cours, lues par des grilles qui bouclent heure
+        // par heure et par enseignant : une lecture des reglages par requete.
+        $this->app->scoped(\App\Services\Planning\PlageHoraireJournee::class);
 
         // Resolveurs du parcours BTS : une seule instance par requete, sinon
         // leur memoire ne sert a rien. Le compteur de cohorte balaie toutes les
@@ -102,6 +119,53 @@ class AppServiceProvider extends ServiceProvider
     }
 
     /**
+     * Branche la lecture des réglages téléphoniques de l'instance.
+     *
+     * `PhoneNormalizer` est du calcul pur — il s'exécute sans application, et
+     * son test aussi — donc il ne peut pas lire un réglage lui-même. On lui
+     * branche une fermeture, qu'il n'évalue qu'au premier numéro analysé : une
+     * commande qui ne touche pas au téléphone ne paie aucune lecture.
+     *
+     * Réglages absents : l'indicatif `225` et les préfixes ivoiriens, soit
+     * exactement ce que faisaient les constantes en dur. Les six instances
+     * ivoiriennes ne bougent pas.
+     */
+    private function brancherReglagesTelephone(): void
+    {
+        PhoneNormalizer::definirResolveurReglages(static function (string $cle): ?string {
+            try {
+                return SettingsHelper::get($cle, null);
+            } catch (\Throwable $e) {
+                // Base injoignable ou pas encore migrée (installation, test qui
+                // boote l'application sans schéma).
+                //
+                // Le repli n'est neutre QUE si l'instance a laissé l'indicatif
+                // par défaut. Sur une instance qui l'a changé — c'est-à-dire
+                // celle pour qui tout ceci existe — il réapposerait `+225` à un
+                // numéro qui n'est pas ivoirien, et l'écrirait sous l'index
+                // UNIQUE d'`esbtp_candidatures`. C'est une dégradation, donc
+                // elle se journalise.
+                //
+                // Une ligne par processus, pas par appel : sans mémoïsation
+                // dans le normaliseur (voir son commentaire), ce rattrapage se
+                // déclenche à chaque numéro analysé, et journaliser à chaque
+                // fois noierait le journal au lieu de le renseigner.
+                static $signale = false;
+
+                if (! $signale) {
+                    $signale = true;
+                    Log::warning('Réglages téléphoniques illisibles : indicatif par défaut appliqué.', [
+                        'cle' => $cle,
+                        'erreur' => $e->getMessage(),
+                    ]);
+                }
+
+                return null;
+            }
+        });
+    }
+
+    /**
      * Bootstrap any application services.
      */
     public function boot(): void
@@ -111,6 +175,8 @@ class AppServiceProvider extends ServiceProvider
 
         SsoSecretValidator::validate();
 
+        $this->brancherReglagesTelephone();
+
         $this->partagerCompteurDemandesReinscription();
 
         // Shell mobile : $mobileShellEnabled et $mobileProfile dans toutes les
@@ -118,56 +184,94 @@ class AppServiceProvider extends ServiceProvider
         // mobiles en ont tous besoin, et le resolver est memoise par requete.
         View::composer('*', MobileShellComposer::class);
 
+        // Couleurs des courriels aux parents. Elles étaient résolues dans le
+        // `@php` du gabarit, donc APRÈS l'évaluation des `@section` de ses
+        // enfants : l'avis de paiement validé échouait sur
+        // `Undefined variable $emailPrimaryColor`, dans un `try` muet.
+        View::composer('esbtp.emails.parents.*', CouleursDesCourrielsParents::class);
+
+        // Nom des rangs de la structure LMD, regle par etablissement (Domaine /
+        // Mention / Parcours, ou Composante / Departement / Specialite).
+        // @rang('mention') → « Mention » ; @rangs('mention') → « Mentions ».
+        \Illuminate\Support\Facades\Blade::directive('rang', fn (string $cle) =>
+            "<?php echo e(app(\\App\\Services\\LMD\\VocabulaireStructure::class)->rang({$cle})); ?>");
+        \Illuminate\Support\Facades\Blade::directive('rangs', fn (string $cle) =>
+            "<?php echo e(app(\\App\\Services\\LMD\\VocabulaireStructure::class)->rangs({$cle})); ?>");
+        \Illuminate\Support\Facades\Blade::directive('natureDe', fn (string $domaine) =>
+            "<?php echo e(app(\\App\\Services\\LMD\\VocabulaireStructure::class)->natureDe({$domaine})); ?>");
+
         // Observers
         ESBTPNote::observe(ESBTPNoteObserver::class);
-        // Un encaissement validé se réimpute sur des mois déjà clos (allocation
-        // FIFO) : les balayages analytiques mémorisés doivent être déréférencés.
-        // PAS d'invalidation a chaque paiement valide. Elle semblait prudente et
-        // elle vidait la fonction de son objet : sur une ecole guichet ouvert, la
-        // memoire aurait ete purgee en continu, et la page serait restee a 24 ou 34
-        // secondes PRECISEMENT pendant les heures d encaissement — c est-a-dire la
-        // fenetre ou ces 24 a 34 secondes ont ete mesurees.
-        //
-        // Ce n est pas grave, et c est la raison de fond : l ecart de recouvrement ne
-        // porte QUE sur des mois CLOS. Un encaissement du jour ne le deplace que par
-        // reallocation FIFO, lentement. La duree de memorisation, reglable par ecole,
-        // suffit — a condition d afficher la fraicheur, ce que l ecran fait.
-        $academicPilotageObserversEnabled = (bool) config('academic_pilotage.observers_enabled', true);
-        if (! $academicPilotageObserversEnabled && app()->environment('production')) {
-            Log::critical('Academic pilotage observers cannot be disabled in production.');
-            $academicPilotageObserversEnabled = true;
-        }
 
-        if ($academicPilotageObserversEnabled) {
-            ESBTPNote::observe(ESBTPNoteAcademicPilotageObserver::class);
-            ESBTPEvaluation::observe(ESBTPEvaluationAcademicPilotageObserver::class);
-            ESBTPAttendance::observe(ESBTPAttendanceAcademicPilotageObserver::class);
-            ESBTPLMDBulletin::observe(ESBTPLMDBulletinAcademicPilotageObserver::class);
-            ESBTPInscription::observe(ESBTPInscriptionAcademicPilotageObserver::class);
-            ESBTPPlanificationAcademique::observe(ESBTPPlanificationAcademicPilotageObserver::class);
-        }
+        $this->brancherLesObservateursDePilotage();
 
         // Use Bootstrap for pagination
         Paginator::useBootstrap();
         Paginator::defaultView('pagination::bootstrap-4');
 
-        // Force URLs to use the correct base path
+        $this->forcerLesUrlsDeBase();
+    }
+
+    /**
+     * Les observateurs du pilotage académique, et le réglage qui les coupe.
+     *
+     * Un encaissement validé se réimpute sur des mois déjà clos (allocation
+     * FIFO) : les balayages analytiques mémorisés doivent être déréférencés.
+     * PAS d'invalidation a chaque paiement valide. Elle semblait prudente et
+     * elle vidait la fonction de son objet : sur une ecole guichet ouvert, la
+     * memoire aurait ete purgee en continu, et la page serait restee a 24 ou 34
+     * secondes PRECISEMENT pendant les heures d encaissement — c est-a-dire la
+     * fenetre ou ces 24 a 34 secondes ont ete mesurees.
+     *
+     * Ce n est pas grave, et c est la raison de fond : l ecart de recouvrement ne
+     * porte QUE sur des mois CLOS. Un encaissement du jour ne le deplace que par
+     * reallocation FIFO, lentement. La duree de memorisation, reglable par ecole,
+     * suffit — a condition d afficher la fraicheur, ce que l ecran fait.
+     *
+     * Le réglage n'est PAS honoré en production : le couper y rendrait les
+     * indicateurs faux en silence. On le journalise en `critical` et on rebranche.
+     */
+    private function brancherLesObservateursDePilotage(): void
+    {
+        $actifs = (bool) config('academic_pilotage.observers_enabled', true);
+
+        if (! $actifs && app()->environment('production')) {
+            Log::critical('Academic pilotage observers cannot be disabled in production.');
+            $actifs = true;
+        }
+
+        if (! $actifs) {
+            return;
+        }
+
+        ESBTPNote::observe(ESBTPNoteAcademicPilotageObserver::class);
+        ESBTPEvaluation::observe(ESBTPEvaluationAcademicPilotageObserver::class);
+        ESBTPAttendance::observe(ESBTPAttendanceAcademicPilotageObserver::class);
+        ESBTPLMDBulletin::observe(ESBTPLMDBulletinAcademicPilotageObserver::class);
+        ESBTPInscription::observe(ESBTPInscriptionAcademicPilotageObserver::class);
+        ESBTPPlanificationAcademique::observe(ESBTPPlanificationAcademicPilotageObserver::class);
+    }
+
+    /**
+     * Le schéma et la racine des URLs générées.
+     *
+     * Hors local, tout est en HTTPS. En local, le sous-dossier `public` doit être
+     * réintroduit dans la racine quand le service est rendu par Apache/WAMP —
+     * mais PAS sous `artisan serve` (port 8000), qui sert déjà depuis `public`.
+     */
+    private function forcerLesUrlsDeBase(): void
+    {
         if (env('APP_ENV') !== 'local') {
             URL::forceScheme('https');
-        } else {
-            // Pour le développement local
-            $rootUrl = request()->getSchemeAndHttpHost();
 
-            // Vérifier si nous sommes sur le serveur de développement Laravel (port 8000)
-            $isArtisanServe = (request()->getPort() == 8000);
-
-            if (! $isArtisanServe) {
-                // Si nous sommes sur Apache/WAMP, forcer l'URL de base pour le sous-dossier
-                URL::forceRootUrl($rootUrl.'public');
-            }
-
-            URL::forceScheme('http');
+            return;
         }
+
+        if (request()->getPort() != 8000) {
+            URL::forceRootUrl(request()->getSchemeAndHttpHost().'public');
+        }
+
+        URL::forceScheme('http');
     }
 
     /**

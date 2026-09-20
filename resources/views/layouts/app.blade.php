@@ -1595,6 +1595,48 @@
         [class*="-card "]:has(.dropdown-menu.show) {
             transform: none !important;
         }
+        .pwd-expiry-banner {
+            background: linear-gradient(135deg, #0453cb, #5e91de);
+            color: #fff;
+            padding: .75rem 1.25rem;
+            border-radius: .5rem;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+        }
+        .pwd-expiry-banner-copy {
+            display: flex;
+            align-items: flex-start;
+            gap: .75rem;
+            min-width: 0;
+        }
+        .pwd-expiry-banner-copy i { font-size: 1.2rem; margin-top: .15rem; flex-shrink: 0; }
+        .pwd-expiry-banner-sub { font-size: .85rem; opacity: .85; }
+        .pwd-expiry-banner-btn {
+            background: #fff;
+            color: #0453cb;
+            padding: .5rem 1rem;
+            border-radius: .375rem;
+            font-weight: 600;
+            font-size: .85rem;
+            text-decoration: none;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+        @media (max-width: 768px) {
+            .pwd-expiry-banner {
+                flex-direction: column;
+                align-items: stretch;
+                padding: .85rem 1rem;
+            }
+            .pwd-expiry-banner-btn {
+                white-space: normal;
+                text-align: center;
+                width: 100%;
+            }
+        }
     </style>
     @yield('styles')
     @stack('styles')
@@ -1860,6 +1902,25 @@
                             </a>
                         </div>
 
+                        {{-- Séances de cours : la seule vue transversale (tous emplois du
+                             temps confondus) et le seul relevé des conflits DÉJÀ en base.
+                             Elle existait mais n'était référencée nulle part — on n'y
+                             arrivait qu'en tapant l'URL, ce qui explique qu'elle soit
+                             restée sans refonte pendant que le reste passait en premium.
+
+                             La garde interroge la ROUTE (`PorteDeRoute`, posé en Gate dans
+                             `AuthServiceProvider`) et non une copie de ses permissions :
+                             `seances-cours` n'en a pas en propre et hérite de celle de son
+                             groupe, que `timetables.view` ne couvre pas. --}}
+                        @can('porte:esbtp.seances-cours.index')
+                        <div class="menu-item">
+                            <a href="{{ route('esbtp.seances-cours.index') }}" class="menu-link {{ Request::routeIs('esbtp.seances-cours.*') ? 'active' : '' }}">
+                                <div class="menu-icon"><i class="fas fa-calendar-day"></i></div>
+                                <div class="menu-text">Séances de cours</div>
+                            </a>
+                        </div>
+                        @endcan
+
                         @can('matieres.view')
                         <!-- Matières -->
                         <div class="menu-item">
@@ -1870,13 +1931,20 @@
                         </div>
                         @endcan
 
+                        {{-- Même divergence que « Séances de cours » juste au-dessus, et
+                             plus retorse : cette page exige TROIS permissions — celle de
+                             son groupe de routes, la sienne, et celle que son contrôleur
+                             pose. Il faut les trois pour entrer. Raison de plus pour lire
+                             la route plutôt que d'en recopier un bout. --}}
                         <!-- Planning Général -->
+                        @can('porte:esbtp.planning-general.index')
                         <div class="menu-item">
                             <a href="{{ route('esbtp.planning-general.index') }}" class="menu-link {{ Request::routeIs('esbtp.planning-general.*') ? 'active' : '' }}">
                                 <div class="menu-icon"><i class="fas fa-calendar-check"></i></div>
                                 <div class="menu-text">Planning Général</div>
                             </a>
                         </div>
+                        @endcan
 
                     @endcan
                     @endcan
@@ -3294,17 +3362,15 @@
                         $expiresAt = $refDate ? $refDate->copy()->addMonths($expiryMonths) : now();
                         $daysLeft = (int) now()->diffInDays($expiresAt, false);
                     @endphp
-                    <div style="background: linear-gradient(135deg, #0453cb, #5e91de); color: white; padding: 0.75rem 1.25rem; border-radius: 0.5rem; margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem;">
-                        <div style="display: flex; align-items: center; gap: 0.75rem;">
-                            <i class="fas fa-clock" style="font-size: 1.2rem;"></i>
+                    <div class="pwd-expiry-banner">
+                        <div class="pwd-expiry-banner-copy">
+                            <i class="fas fa-clock" aria-hidden="true"></i>
                             <div>
                                 <strong>Votre mot de passe expire dans {{ $daysLeft }} jour{{ $daysLeft > 1 ? 's' : '' }}</strong>
-                                <div style="font-size: 0.85rem; opacity: 0.85;">Pour éviter d'être bloqué, changez-le maintenant depuis votre profil.</div>
+                                <div class="pwd-expiry-banner-sub">Pour éviter d'être bloqué, changez-le maintenant depuis votre profil.</div>
                             </div>
                         </div>
-                        <a href="{{ route('password.change.form') }}" style="background: white; color: #0453cb; padding: 0.4rem 1rem; border-radius: 0.375rem; font-weight: 600; font-size: 0.85rem; text-decoration: none; white-space: nowrap;">
-                            Changer maintenant
-                        </a>
+                        <a href="{{ route('password.change.form') }}" class="pwd-expiry-banner-btn">Changer maintenant</a>
                     </div>
                 @endif
             @endauth

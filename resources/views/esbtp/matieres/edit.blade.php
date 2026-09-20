@@ -121,6 +121,12 @@
                                         <p class="main-card-subtitle">Filières et niveaux d'étude</p>
                                     </div>
                                     <div class="main-card-body">
+                                        {{-- Témoin : ce formulaire porte bien les deux listes. Sans lui,
+                                             « aucune case cochée » arrive au serveur comme « champ absent »,
+                                             et le contrôleur ne peut pas distinguer un retrait volontaire
+                                             d'une mise à jour qui ne parle pas des liaisons. --}}
+                                        <input type="hidden" name="liaisons_presentes" value="1">
+
                                         <!-- Filières associées (multi-sélection) -->
                                         <div class="mb-3">
                                             <label class="form-label">
@@ -177,14 +183,38 @@
                                             @enderror
                                         </div>
 
-                                        <!-- Aperçu des combinaisons -->
+                                        {{-- La maquette REELLE, et le lien vers l'ecran qui la modifie.
+                                             Cet emplacement affichait le produit cartesien des deux listes
+                                             cochees — des combinaisons que la maquette ne porte pas — et
+                                             l'enregistrement les posait. Voir le commentaire de
+                                             `ESBTPMatiereController::poserLesCouplesDuFormulaire()`. --}}
                                         <div class="mb-3">
                                             <label class="form-label">
-                                                <i class="fas fa-eye me-1"></i>Aperçu des combinaisons
+                                                <i class="fas fa-diagram-project me-1"></i>Au programme de
                                             </label>
-                                            <div id="edit-combinations-preview" class="alert alert-info">
-                                                <i class="fas fa-info-circle me-2"></i>
-                                                Sélectionnez des filières et des niveaux pour voir les combinaisons possibles.
+                                            @if(empty($couplesDeLaMaquette))
+                                                <div class="alert alert-warning py-2 px-3 mb-2">
+                                                    <i class="fas fa-triangle-exclamation me-2"></i>
+                                                    Cette matière n'est au programme d'aucune filière × niveau : elle n'apparaîtra sur aucun bulletin.
+                                                </div>
+                                            @else
+                                                <div class="d-flex flex-wrap gap-2 mb-2">
+                                                    @foreach($couplesDeLaMaquette as $couple)
+                                                        <a class="badge bg-primary text-wrap p-2 text-decoration-none"
+                                                           href="{{ route('esbtp.matieres.classification', ['filiere_id' => $couple['filiere_id'], 'niveau_id' => $couple['niveau_id']]) }}"
+                                                           title="Ouvrir cette maquette">
+                                                            <i class="fas fa-link me-1"></i>{{ $couple['filiere'] }} ↔ {{ $couple['niveau'] }}
+                                                        </a>
+                                                    @endforeach
+                                                </div>
+                                            @endif
+                                            <div class="form-text">
+                                                Les deux listes ci-dessus décrivent les filières et les niveaux de la matière ; elles
+                                                ne décident pas de son programme. Ajouter ou retirer un couple précis se fait sur
+                                                <a href="{{ route('esbtp.matieres.classification', array_filter([
+                                                    'filiere_id' => $couplesDeLaMaquette[0]['filiere_id'] ?? null,
+                                                    'niveau_id' => $couplesDeLaMaquette[0]['niveau_id'] ?? null,
+                                                ])) }}">l'écran Maquette</a>, où il se voit.
                                             </div>
                                         </div>
 
@@ -336,70 +366,6 @@
 
         // Volume horaire géré dans le Planning Général
 
-        // ===== GESTION DE L'APERÇU DES COMBINAISONS =====
-        
-        // Fonction pour mettre à jour l'aperçu des combinaisons
-        function updateEditCombinationsPreview() {
-            const selectedFilieres = [];
-            const selectedNiveaux = [];
-            
-            $('.filiere-check:checked').each(function() {
-                const label = $(this).next('label').find('strong').text();
-                selectedFilieres.push({
-                    id: $(this).val(),
-                    name: label
-                });
-            });
-            
-            $('.niveau-check:checked').each(function() {
-                const label = $(this).next('label').find('strong').text();
-                selectedNiveaux.push({
-                    id: $(this).val(),
-                    name: label
-                });
-            });
-            
-            const previewDiv = $('#edit-combinations-preview');
-            
-            if (selectedFilieres.length === 0 || selectedNiveaux.length === 0) {
-                previewDiv.html(`
-                    <i class="fas fa-info-circle me-2"></i>
-                    Sélectionnez au moins une filière et un niveau pour voir les combinaisons possibles.
-                `).removeClass('alert-success').addClass('alert-info');
-                return;
-            }
-            
-            let combinationsHtml = `
-                <div class="d-flex align-items-center mb-3">
-                    <i class="fas fa-check-circle text-success me-2"></i>
-                    <strong>${selectedFilieres.length * selectedNiveaux.length} combinaison(s) sélectionnée(s)</strong>
-                </div>
-                <div class="row">
-            `;
-            
-            selectedFilieres.forEach(filiere => {
-                selectedNiveaux.forEach(niveau => {
-                    combinationsHtml += `
-                        <div class="col-md-4 mb-2">
-                            <div class="badge bg-primary text-wrap p-2">
-                                <i class="fas fa-link me-1"></i>
-                                ${filiere.name} ↔ ${niveau.name}
-                            </div>
-                        </div>
-                    `;
-                });
-            });
-            
-            combinationsHtml += '</div>';
-            
-            previewDiv.html(combinationsHtml).removeClass('alert-info').addClass('alert-success');
-        }
-
-        // Écouter les changements dans les checkboxes
-        $(document).on('change', '.filiere-check, .niveau-check', updateEditCombinationsPreview);
-        
-        // Mise à jour initiale
-        updateEditCombinationsPreview();
     });
 </script>
 @endsection

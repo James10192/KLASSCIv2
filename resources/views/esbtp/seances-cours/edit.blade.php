@@ -49,6 +49,69 @@
         background-color: var(--bs-primary);
         color: white;
     }
+    [x-cloak] { display: none !important; }
+    .sce-type-seance { margin-top: .25rem; }
+    .sce-type-radio-group { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: .75rem; }
+    .sce-type-radio {
+        position: relative;
+        display: flex; align-items: flex-start; gap: .65rem;
+        padding: .85rem 1rem;
+        background: #fff;
+        border: 2px solid #e2e8f0;
+        border-radius: 12px;
+        cursor: pointer;
+        text-align: left;
+        transition: all .15s;
+    }
+    .sce-type-radio:hover { border-color: rgba(4,83,203,.4); background: rgba(4,83,203,.02); }
+    .sce-type-radio.is-active {
+        border-color: #0453cb;
+        background: rgba(4,83,203,.04);
+        box-shadow: 0 4px 16px rgba(4,83,203,.08);
+    }
+    .sce-type-radio-icon {
+        width: 36px; height: 36px; border-radius: 9px;
+        display: flex; align-items: center; justify-content: center;
+        color: #fff; font-size: .85rem; flex-shrink: 0;
+    }
+    .sce-type-radio--primary .sce-type-radio-icon { background: linear-gradient(135deg, #033a8e, #0453cb); }
+    .sce-type-radio--accent  .sce-type-radio-icon { background: linear-gradient(135deg, #0453cb, #3b7ddb); }
+    .sce-type-radio--muted   .sce-type-radio-icon { background: linear-gradient(135deg, #3b7ddb, #5e91de); }
+    .sce-type-radio-body { flex: 1; min-width: 0; }
+    .sce-type-radio-label { font-family: 'Courier New', monospace; font-size: .72rem; font-weight: 700; color: #0453cb; background: rgba(4,83,203,.08); padding: .12rem .4rem; border-radius: 4px; display: inline-block; margin-bottom: .25rem; }
+    .sce-type-radio-name { font-size: .9rem; font-weight: 700; color: #1e293b; line-height: 1.2; }
+    .sce-type-radio-desc { font-size: .72rem; color: #64748b; margin-top: .2rem; }
+    .sce-type-radio-check { position: absolute; top: .6rem; right: .65rem; color: #0453cb; font-size: 1rem; }
+    .sce-tpe-info {
+        margin-top: 1rem;
+        display: flex; align-items: flex-start; gap: .65rem;
+        padding: .75rem 1rem;
+        background: rgba(4,83,203,.04);
+        border: 1px solid rgba(4,83,203,.18);
+        border-left: 3px solid #0453cb;
+        border-radius: 10px;
+        font-size: .82rem; color: #475569;
+    }
+    .sce-tpe-info i { color: #0453cb; font-size: 1rem; margin-top: .15rem; flex-shrink: 0; }
+    .sce-tpe-info strong { color: #0453cb; }
+    .sce-tpe-info a { color: #0453cb; font-weight: 600; text-decoration: underline; }
+    .sce-form-label { display: flex; align-items: center; gap: .55rem; flex-wrap: wrap; font-size: .82rem; font-weight: 600; color: #1e293b; margin-bottom: .5rem; }
+    .sce-form-label-chip {
+        display: inline-flex; align-items: center; gap: .3rem;
+        background: rgba(4,83,203,.08); color: #0453cb;
+        border: 1px solid rgba(4,83,203,.2);
+        padding: .15rem .5rem; border-radius: 5px;
+        font-size: .65rem; font-weight: 700; letter-spacing: .3px;
+    }
+    @media (max-width: 768px) {
+        .sce-type-radio-group { grid-template-columns: 1fr; }
+    }
+    #courseFields { overflow: visible; }
+    #courseFields .main-card-body { overflow: visible; }
+    .form-group .au-select,
+    .form-group .xx-au-full,
+    .form-group .scep-wrap { display: flex !important; width: 100%; }
+    .form-group .au-select-trigger { width: 100%; }
 </style>
 @endsection
 
@@ -57,6 +120,8 @@
     if (is_string($selectedRecurrenceDays)) {
         $selectedRecurrenceDays = explode(',', $selectedRecurrenceDays);
     }
+    $isClasseLmd = ($emploiTemps->classe->systeme_academique ?? '') === 'LMD'
+        || in_array($emploiTemps->classe->niveau->type ?? '', \App\Models\ESBTPNiveauEtude::CYCLES_LMD, true);
 @endphp
 
 @section('content')
@@ -184,14 +249,16 @@
                         <div class="form-grid">
                             <div class="form-group">
                                 <label for="jour" class="form-label">Jour <span class="text-danger">*</span></label>
-                                <select name="jour" id="jour" class="form-select @error('jour') error @enderror" required>
-                                    <option value="">Sélectionner un jour</option>
-                                    @foreach($joursSemaine as $value => $label)
-                                        <option value="{{ $value }}" {{ (string) old('jour', $seancesCour->jour) === (string) $value ? 'selected' : '' }}>
-                                            {{ $label }}
-                                        </option>
-                                    @endforeach
-                                </select>
+                                <x-au-select
+                                    class="xx-au-full"
+                                    name="jour"
+                                    id="jour"
+                                    icon="fa-calendar-day"
+                                    :options="$joursSemaine"
+                                    :value="old('jour', $seancesCour->jour)"
+                                    placeholder="Sélectionner un jour"
+                                    required
+                                />
                                 @error('jour')
                                     <div class="form-error">{{ $message }}</div>
                                 @enderror
@@ -255,6 +322,28 @@
                         <div class="main-card-subtitle">Configuration pédagogique de la séance</div>
                     </div>
                     <div class="main-card-body">
+                        <div class="form-group" style="margin-bottom: 1.5rem;"
+                             x-data="{ topType: document.getElementById('sessionType').value }"
+                             x-init="document.addEventListener('session-type-changed', e => topType = e.detail)"
+                             x-show="topType === 'course' || topType === 'homework'"
+                             x-cloak>
+                            <label class="sce-form-label">
+                                <span x-show="topType !== 'homework'">Sous-type pédagogique</span>
+                                <span x-show="topType === 'homework'" x-cloak>Type d'évaluation</span>
+                                <span class="text-danger">*</span>
+                                @if($isClasseLmd)
+                                    <span class="sce-form-label-chip"><i class="fas fa-university"></i>LMD — UEMOA</span>
+                                @else
+                                    <span class="sce-form-label-chip"><i class="fas fa-graduation-cap"></i>BTS</span>
+                                @endif
+                            </label>
+                            @if($isClasseLmd)
+                                @include('esbtp.seances-cours.partials._form_type_seance_lmd')
+                            @else
+                                @include('esbtp.seances-cours.partials._form_type_seance_bts')
+                            @endif
+                        </div>
+
                         @if(($planificationData['planifications_configurees'] ?? false))
                             <div class="context-card mb-4">
                                 <div class="context-header">
@@ -281,36 +370,22 @@
                                 </div>
                             </div>
 
-                            <div class="form-grid">
-                                <div class="form-group">
-                                    <label for="matiere_id" class="form-label">Matière <span class="text-danger">*</span></label>
-                                    <select name="matiere_id" id="matiere_id" class="form-select @error('matiere_id') error @enderror" onchange="updateTeachersForSubject()" required>
-                                        <option value="">Sélectionner une matière</option>
-                                        @foreach($matieres as $matiere)
-                                            <option value="{{ $matiere['matiere']->id }}"
-                                                    data-heures-restantes="{{ $matiere['heures_restantes'] }}"
-                                                    data-volume-total="{{ $matiere['volume_horaire_total'] }}"
-                                                    data-enseignants="{{ ($matiere['enseignants_selectables'] ?? collect())->pluck('id')->toJson() }}"
-                                                    {{ (string) old('matiere_id', $seancesCour->matiere_id) === (string) $matiere['matiere']->id ? 'selected' : '' }}>
-                                                {{ $matiere['matiere']->name }}
-                                                ({{ $matiere['heures_restantes'] }}h restantes / {{ $matiere['volume_horaire_total'] }}h)
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                    <div id="matiere-info" class="form-info" style="display: none;">
-                                        <i class="fas fa-clock"></i>
-                                        <span id="heures-restantes-text"></span>
-                                    </div>
-                                    @error('matiere_id')
-                                        <div class="form-error">{{ $message }}</div>
-                                    @enderror
-                                </div>
+                            @include('esbtp.seances-cours.partials._form_matiere')
 
-                                <div class="form-group" id="teacherFieldGroup">
+                            <div class="form-group" id="teacherFieldGroup">
                                     <label for="teacher_id" class="form-label">Enseignant assigné <span class="text-danger">*</span></label>
-                                    <select name="teacher_id" id="teacher_id" class="form-select @error('teacher_id') error @enderror" onchange="showTeacherAvailability()" required>
-                                        <option value="">Sélectionner d'abord une matière</option>
-                                    </select>
+                                    <x-au-select
+                                        class="xx-au-full"
+                                        name="teacher_id"
+                                        id="teacher_id"
+                                        icon="fa-user-tie"
+                                        :searchable="true"
+                                        :options="[]"
+                                        :value="old('teacher_id', $seancesCour->teacher_id)"
+                                        placeholder="Sélectionner d'abord une matière"
+                                        required
+                                        onchange="showTeacherAvailability()"
+                                    />
                                     <div id="teacher-info" class="form-info" style="display: none;">
                                         <i class="fas fa-check-circle"></i>
                                         <span id="teacher-assignment-text"></span>
@@ -330,7 +405,6 @@
                                         <div class="form-error">{{ $message }}</div>
                                     @enderror
                                 </div>
-                            </div>
 
                             <div id="teacher-availability" class="availability-section mt-4" style="display: none;">
                                 <div class="availability-header d-flex align-items-center gap-2 mb-3">
@@ -527,6 +601,7 @@
 </div>
 
 <div id="seance-data"
+     data-plage='@json(app(\App\Services\Planning\PlageHoraireJournee::class)->pourLeNavigateur())'
      data-default-colors='@json($defaultColors)'
      data-session-types='@json($sessionTypes)'
      data-teachers='@json($teachers->keyBy("id"))'
@@ -541,6 +616,13 @@
 <script>
 const currentTeacherId = "{{ old('teacher_id', $seancesCour->teacher_id) }}";
 const initialSessionType = "{{ old('type', $seancesCour->type) }}";
+// Plage horaire de la journee, reglee par l'etablissement (cours du soir
+// compris). Les matrices de disponibilite sont indexees par `heure - debut`.
+// Pose par le serveur dans #seance-data, sur cette meme page : pas de repli
+// recopie ici, qui divergerait du reglage sans prevenir.
+const PLAGE_HORAIRE = JSON.parse(document.getElementById('seance-data').dataset.plage);
+const PLAGE_DEBUT = PLAGE_HORAIRE.debut;
+const PLAGE_FIN = PLAGE_HORAIRE.fin;
 const seanceDataElement = document.getElementById('seance-data');
 const seanceData = seanceDataElement
     ? {
@@ -766,8 +848,8 @@ function updateSelectedTimeInGrid() {
         if (dayColumnIndex !== undefined) {
             // Parcourir chaque ligne d'heure pour surligner les cellules correspondantes
             for (let hour = startHour; hour < endHour; hour++) {
-                if (hour >= 8 && hour < 18) {
-                    const rowIndex = hour - 8; // 8h = row 0
+                if (hour >= PLAGE_DEBUT && hour < PLAGE_FIN) {
+                    const rowIndex = hour - PLAGE_DEBUT;
                     const cell = getAvailabilityCell(selectedDay, hour);
                     if (cell) {
                         cell.classList.add('selected-time');
@@ -886,7 +968,7 @@ function getAvailabilityCell(dayNumber, hour) {
         return null;
     }
 
-    const rowIndex = hour - 8;
+    const rowIndex = hour - PLAGE_DEBUT;
     const timeRows = document.querySelectorAll('.availability-time-row');
     if (!timeRows[rowIndex]) {
         return null;
@@ -1157,25 +1239,28 @@ function validateTeacherAvailability() {
     
     // Vérifier chaque heure du créneau
     const teacherDayAvailability = availabilityData[teacherId][dayKey];
+    const jourNoms = {1: 'lundi', 2: 'mardi', 3: 'mercredi', 4: 'jeudi', 5: 'vendredi', 6: 'samedi'};
     for (let hour = startHour; hour < endHour; hour++) {
-        const hourIndex = hour - 8; // 8h = index 0
-        if (hourIndex >= 0 && hourIndex < teacherDayAvailability.length) {
-            const status = teacherDayAvailability[hourIndex];
-            const jourNoms = {1: 'lundi', 2: 'mardi', 3: 'mercredi', 4: 'jeudi', 5: 'vendredi', 6: 'samedi'};
-            
-            if (status === 'unavailable') {
-                const errorMessage = `L'enseignant n'est pas disponible ${jourNoms[selectedDay]} à ${hour}:00.\n\nVeuillez ajuster les horaires ou choisir un autre enseignant.`;
-                markAvailabilityError(selectedDay, hour, errorMessage);
-                showFormError(errorMessage);
-                setAvailabilityErrorMessage(errorMessage);
-                return false;
-            } else if (status === 'occupied') {
-                const errorMessage = `L'enseignant a déjà une séance programmée ${jourNoms[selectedDay]} à ${hour}:00 dans un autre emploi du temps.\n\nVeuillez choisir un autre créneau.`;
-                markAvailabilityError(selectedDay, hour, errorMessage);
-                showFormError(errorMessage);
-                setAvailabilityErrorMessage(errorMessage);
-                return false;
-            }
+        const hourIndex = hour - PLAGE_DEBUT;
+        const cell = getAvailabilityCell(selectedDay, hour);
+        const status = cell?.dataset.status
+            ?? ((hourIndex >= 0 && hourIndex < (teacherDayAvailability.length || 0))
+                ? teacherDayAvailability[hourIndex]
+                : null);
+
+        if (status === 'unavailable') {
+            const errorMessage = `L'enseignant n'est pas disponible ${jourNoms[selectedDay]} à ${hour}:00.\n\nVeuillez ajuster les horaires ou choisir un autre enseignant.`;
+            markAvailabilityError(selectedDay, hour, errorMessage);
+            showFormError(errorMessage);
+            setAvailabilityErrorMessage(errorMessage);
+            return false;
+        }
+        if (status === 'occupied') {
+            const errorMessage = `L'enseignant a déjà une séance programmée ${jourNoms[selectedDay]} à ${hour}:00 dans un autre emploi du temps.\n\nVeuillez choisir un autre créneau.`;
+            markAvailabilityError(selectedDay, hour, errorMessage);
+            showFormError(errorMessage);
+            setAvailabilityErrorMessage(errorMessage);
+            return false;
         }
     }
     
@@ -1235,7 +1320,7 @@ function previewTeacherAvailability() {
     const jourNoms = {1: 'lundi', 2: 'mardi', 3: 'mercredi', 4: 'jeudi', 5: 'vendredi', 6: 'samedi'};
 
     for (let hour = startHour; hour < endHour; hour++) {
-        const hourIndex = hour - 8;
+        const hourIndex = hour - PLAGE_DEBUT;
         if (hourIndex >= 0 && hourIndex < teacherDayAvailability.length) {
             const status = teacherDayAvailability[hourIndex];
             if (status === 'unavailable') {
@@ -1353,11 +1438,13 @@ function updateTeachersForSubject() {
         if (teacherSelect.options.length <= 1) {
             teacherSelect.innerHTML = '<option value="">Aucun enseignant disponible pour cette matière</option>';
         }
+        teacherSelect.dispatchEvent(new Event('change', { bubbles: true }));
     } else {
         matiereInfo.style.display = 'none';
         teacherSelect.innerHTML = requiresTeacher
             ? '<option value="">Sélectionner d\'abord une matière</option>'
             : '<option value="">Aucun enseignant requis pour un devoir</option>';
+        teacherSelect.dispatchEvent(new Event('change', { bubbles: true }));
         if (teacherInfo) {
             teacherInfo.style.display = 'none';
         }
@@ -1409,8 +1496,8 @@ function showTeacherAvailability() {
             }
             gridHtml += '</div>';
             
-            // Créer les lignes pour chaque heure (8h-18h)
-            for (let hour = 8; hour < 18; hour++) {
+            // Une ligne par heure de la plage de l'etablissement
+            for (let hour = PLAGE_DEBUT; hour < PLAGE_FIN; hour++) {
                 gridHtml += '<div class="availability-time-row">';
                 gridHtml += `<div class="time-label">${hour}:00</div>`;
                 
@@ -1424,7 +1511,7 @@ function showTeacherAvailability() {
 
                     // Le format est: rawAvailability[dayKey][hourIndex] = 'available'/'preferred'/'unavailable'/'occupied'
                     if (rawAvailability[dayKey]) {
-                        const hourIndex = hour - 8; // 8h = index 0
+                        const hourIndex = hour - PLAGE_DEBUT;
                         if (hourIndex >= 0 && hourIndex < rawAvailability[dayKey].length) {
                             const status = rawAvailability[dayKey][hourIndex];
                             if (status === 'occupied') {

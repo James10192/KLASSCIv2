@@ -1404,7 +1404,11 @@ class ESBTPEvaluationController extends Controller
             // (pivot esbtp_matiere_filiere_niveau). 2 whereHas séparés donnaient un OR-logic
             // sur les combinaisons → matière liée à GTP-1A OU GBAT-2A apparaissait à tort
             // comme liée à GTP-2A.
+            // Les listings GLOBAUX de ce controleur ont ete gardes en juin 2026,
+            // pas ceux-ci : on les croyait proteges par leur portee. Ils ne le
+            // sont pas — une ECUE ayant une ligne dans ce pivot y remonte.
             $matieres = ESBTPMatiere::where('is_active', true)
+                ->btsOnly()
                 ->whereHas('liaisonsFilieresNiveaux', function ($q) use ($classe) {
                     $q->where('filiere_id', $classe->filiere_id)
                         ->where('niveau_etude_id', $classe->niveau_etude_id);
@@ -1495,6 +1499,7 @@ class ESBTPEvaluationController extends Controller
                 }
 
                 $matieres = ESBTPMatiere::where('is_active', true)
+                    ->btsOnly()
                     ->whereHas('liaisonsFilieresNiveaux', function ($query) use ($filiere, $niveau) {
                         $query->where('filiere_id', $filiere->id)
                             ->where('niveau_etude_id', $niveau->id);
@@ -1775,9 +1780,29 @@ class ESBTPEvaluationController extends Controller
             ], 422);
         }
 
-        // Matières applicables = pivot esbtp_matiere_filiere_niveau (combinaison stricte)
+        // Matières applicables. Attention, le commentaire d'origine annonçait ici
+        // le pivot canonique `esbtp_matiere_filiere_niveau` : c'est faux, ce sont
+        // les deux pivots PLATS, dont le produit invente des couples que la
+        // maquette ne porte pas.
+        //
+        // CETTE METHODE A UN APPELANT, contrairement a ce que cette ligne a
+        // affirme un temps : `student-coefficients-modal.blade.php`
+        // (`refreshCompletion()`) l'appelle a chaque changement de periode et
+        // en remplit la barre « Complet / Incomplet » du modal des
+        // coefficients. Une revue s'est appuyee sur cette phrase fausse pour
+        // recommander de SUPPRIMER la route — ce qui aurait casse la barre sur
+        // les huit instances. Le cout d'un commentaire faux n'est pas qu'il
+        // trompe : c'est qu'il est cru.
+        //
+        // On ne change donc pas la lecture des pivots ici — elle est affichee,
+        // et la corriger deplacerait un chiffre visible sans mesure prealable.
+        // C'est une dette nommee, pas une dette ignoree : le decompte peut
+        // surestimer le total sur une filiere dont les deux pivots plats se
+        // croisent. On ferme en revanche la porte aux ECUE, comme les deux
+        // methodes voisines du meme fichier.
         $matieresQuery = ESBTPMatiere::query()
             ->where('is_active', true)
+            ->btsOnly()
             ->whereHas('filieres', fn ($q) => $q->where('esbtp_filieres.id', $filiereId))
             ->whereHas('niveaux', fn ($q) => $q->where('esbtp_niveau_etudes.id', $niveauId));
 

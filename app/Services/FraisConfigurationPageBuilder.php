@@ -39,13 +39,13 @@ class FraisConfigurationPageBuilder
             ->get();
         $lmdNiveaux = ESBTPNiveauEtude::query()
             ->active()
-            ->whereIn('type', ['Licence', 'Master', 'Doctorat'])
+            ->whereIn('type', \App\Models\ESBTPNiveauEtude::CYCLES_LMD)
             ->orderBy('year')
             ->orderBy('name')
             ->get();
         $btsNiveaux = ESBTPNiveauEtude::query()
             ->active()
-            ->whereNotIn('type', ['Licence', 'Master', 'Doctorat'])
+            ->whereNotIn('type', \App\Models\ESBTPNiveauEtude::CYCLES_LMD)
             ->orderBy('year')
             ->orderBy('name')
             ->get();

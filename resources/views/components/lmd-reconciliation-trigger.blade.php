@@ -48,7 +48,7 @@
                 </div>
                 <div class="lrt-kpi">
                     <span class="lrt-kpi-v" x-text="data.kpis?.parcours_concerned ?? 0"></span>
-                    <span class="lrt-kpi-l">Parcours</span>
+                    <span class="lrt-kpi-l">@rang('parcours')</span>
                 </div>
             </div>
 

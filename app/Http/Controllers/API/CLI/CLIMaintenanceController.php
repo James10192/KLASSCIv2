@@ -3,11 +3,13 @@
 namespace App\Http\Controllers\API\CLI;
 
 use App\Http\Controllers\API\BaseApiController;
+use App\Domain\Academique\CoherenceSystemeAcademique;
 use App\Models\Setting;
 use App\Models\ESBTPEvaluation;
 use App\Models\ESBTPNote;
 use App\Models\ESBTPMatiere;
 use App\Models\ESBTPMatiereCoefficient;
+use App\Models\ESBTPResultat;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Artisan;
@@ -1241,6 +1243,12 @@ class CLIMaintenanceController extends BaseApiController
      * est coherente quand la nature de sa matiere suit le systeme de sa classe :
      * une classe BTS attend une matiere sans unite d'enseignement, une classe
      * LMD attend une ECUE. L'inverse trahit une fuite de selecteur.
+     *
+     * CE DIAGNOSTIC NE VOYAIT QU'UNE FAMILLE SUR DEUX, et il a ete pris pour
+     * l'inventaire complet. Une moyenne MANUELLE (`esbtp_resultats`) atteint la
+     * meme ligne de bulletin sans passer par aucune evaluation : elle etait
+     * invisible ici. Le bloc `moyennes_manuelles` de la reponse la couvre
+     * depuis septembre 2026.
      */
     public function evaluationSystemMismatch(Request $request): JsonResponse
     {
@@ -1252,20 +1260,7 @@ class CLIMaintenanceController extends BaseApiController
             ->join('esbtp_classes', 'esbtp_classes.id', '=', 'esbtp_evaluations.classe_id')
             ->join('esbtp_matieres', 'esbtp_matieres.id', '=', 'esbtp_evaluations.matiere_id')
             ->whereNull('esbtp_evaluations.deleted_at')
-            ->where(function ($q) {
-                // Classe BTS portant une ECUE.
-                $q->where(function ($bts) {
-                    $bts->where(function ($sys) {
-                        $sys->where('esbtp_classes.systeme_academique', '!=', 'LMD')
-                            ->orWhereNull('esbtp_classes.systeme_academique');
-                    })->whereNotNull('esbtp_matieres.unite_enseignement_id');
-                })
-                // Classe LMD portant une matiere BTS.
-                ->orWhere(function ($lmd) {
-                    $lmd->where('esbtp_classes.systeme_academique', 'LMD')
-                        ->whereNull('esbtp_matieres.unite_enseignement_id');
-                });
-            })
+            ->tap(fn ($q) => CoherenceSystemeAcademique::contraindreLIncoherence($q))
             ->orderBy('esbtp_evaluations.id')
             ->limit(500)
             ->get([
@@ -1304,15 +1299,78 @@ class CLIMaintenanceController extends BaseApiController
 
         $sansNote = array_filter($details, static fn (array $d): bool => $d['notes_saisies'] === 0);
 
+        $moyennesManuelles = $this->moyennesManuellesIncoherentes();
+        $total = count($details) + count($moyennesManuelles);
+
         return $this->successResponse([
             'total' => count($details),
             'sans_note' => count($sansNote),
             'avec_notes' => count($details) - count($sansNote),
             'tronque' => count($details) === 500,
             'details' => $details,
-        ], count($details) === 0
+            'moyennes_manuelles' => [
+                'total' => count($moyennesManuelles),
+                'tronque' => count($moyennesManuelles) === 500,
+                'details' => $moyennesManuelles,
+            ],
+            'total_toutes_familles' => $total,
+        ], $total === 0
             ? 'Aucune incoherence entre le systeme de la classe et la nature de la matiere.'
-            : count($details).' evaluation(s) incoherente(s).');
+            : count($details).' evaluation(s) et '.count($moyennesManuelles).' moyenne(s) manuelle(s) incoherente(s).');
+    }
+
+    /**
+     * Moyennes manuelles posees sur une matiere etrangere au systeme de la classe.
+     *
+     * LA FAMILLE QUE LE DIAGNOSTIC D'A COTE NE VOYAIT PAS.
+     * `ESBTPResultatController` ecrit dans `esbtp_resultats` depuis trois
+     * endroits, dont `bulkUpdateMoyennes` en AJAX, et sa `FormRequest` ne valide
+     * qu'un `exists:esbtp_matieres,id`. Ces lignes remontent au bulletin
+     * exactement comme une note, sans jamais passer par `esbtp_evaluations`.
+     *
+     * Un garde de coherence est pose sur `ESBTPResultat` depuis septembre 2026 :
+     * ce recensement sert donc a retrouver l'existant, pas a surveiller le flux.
+     * Les lignes rendues sont a arbitrer par l'ecole, jamais a effacer d'office —
+     * quelqu'un a saisi ces moyennes.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function moyennesManuellesIncoherentes(): array
+    {
+        return ESBTPResultat::query()
+            ->join('esbtp_classes', 'esbtp_classes.id', '=', 'esbtp_resultats.classe_id')
+            ->join('esbtp_matieres', 'esbtp_matieres.id', '=', 'esbtp_resultats.matiere_id')
+            ->whereNull('esbtp_resultats.deleted_at')
+            ->tap(fn ($q) => CoherenceSystemeAcademique::contraindreLIncoherence($q))
+            ->orderBy('esbtp_resultats.id')
+            ->limit(500)
+            ->get([
+                'esbtp_resultats.id as resultat_id',
+                'esbtp_resultats.etudiant_id',
+                'esbtp_resultats.periode',
+                'esbtp_resultats.moyenne',
+                'esbtp_classes.id as classe_id',
+                'esbtp_classes.name as classe',
+                'esbtp_classes.systeme_academique as systeme_classe',
+                'esbtp_matieres.id as matiere_id',
+                'esbtp_matieres.name as matiere',
+                'esbtp_matieres.code as code_matiere',
+                'esbtp_matieres.unite_enseignement_id',
+            ])
+            ->map(fn ($l) => [
+                'resultat_id' => (int) $l->resultat_id,
+                'etudiant_id' => (int) $l->etudiant_id,
+                'periode' => $l->periode,
+                'moyenne' => $l->moyenne,
+                'classe' => $l->classe,
+                'classe_id' => (int) $l->classe_id,
+                'systeme_classe' => $l->systeme_classe ?: 'BTS',
+                'matiere' => $l->matiere,
+                'matiere_id' => (int) $l->matiere_id,
+                'code_matiere' => $l->code_matiere,
+                'nature_matiere' => $l->unite_enseignement_id ? 'ECUE LMD' : 'matiere BTS',
+            ])
+            ->all();
     }
 /**
      * POST /api/cli/evaluations/{id}/matiere — rebascule une evaluation.
@@ -1344,10 +1402,13 @@ class CLIMaintenanceController extends BaseApiController
         }
 
         $cible = ESBTPMatiere::find($validated['matiere_id']);
-        $classeEstLmd = ($evaluation->classe?->systeme_academique ?? '') === 'LMD';
-        $cibleEstEcue = $cible->unite_enseignement_id !== null;
+        $classeEstLmd = CoherenceSystemeAcademique::classeEstLmd($evaluation->classe?->systeme_academique);
+        $cibleEstEcue = CoherenceSystemeAcademique::matiereEstEcue($cible->unite_enseignement_id);
 
-        if ($classeEstLmd !== $cibleEstEcue) {
+        if (! CoherenceSystemeAcademique::estCoherente(
+            $evaluation->classe?->systeme_academique,
+            $cible->unite_enseignement_id
+        )) {
             return $this->errorResponse(
                 'Refus : la matiere cible ne correspond pas au systeme de la classe. '
                 .'Classe '.($classeEstLmd ? 'LMD' : 'BTS').', matiere cible '

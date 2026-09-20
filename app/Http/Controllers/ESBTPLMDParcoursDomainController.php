@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\NatureComposante;
+use Illuminate\Validation\Rule;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPLMDDomaine;
 use App\Models\ESBTPUniteEnseignement;
@@ -46,6 +48,7 @@ class ESBTPLMDParcoursDomainController extends Controller
         $validated = $request->validate([
             'name'        => 'required|string|max:255',
             'code'        => 'required|string|max:50|unique:esbtp_lmd_domaines,code',
+            'nature'      => ['nullable', Rule::in(NatureComposante::values())],
             'description' => 'nullable|string|max:1000',
             'is_active'   => 'nullable|boolean',
         ]);
@@ -54,6 +57,7 @@ class ESBTPLMDParcoursDomainController extends Controller
             ESBTPLMDDomaine::create([
                 'name'        => $validated['name'],
                 'code'        => $validated['code'],
+                'nature'      => $validated['nature'] ?? null,
                 'description' => $validated['description'] ?? null,
                 'is_active'   => $validated['is_active'] ?? true,
                 'created_by'  => auth()->id(),
@@ -77,6 +81,7 @@ class ESBTPLMDParcoursDomainController extends Controller
         $validated = $request->validate([
             'name'        => 'required|string|max:255',
             'code'        => 'required|string|max:50|unique:esbtp_lmd_domaines,code,' . $domaine->id,
+            'nature'      => ['nullable', Rule::in(NatureComposante::values())],
             'description' => 'nullable|string|max:1000',
             'is_active'   => 'nullable|boolean',
         ]);
@@ -85,6 +90,7 @@ class ESBTPLMDParcoursDomainController extends Controller
             $domaine->update([
                 'name'        => $validated['name'],
                 'code'        => $validated['code'],
+                'nature'      => $validated['nature'] ?? null,
                 'description' => $validated['description'] ?? null,
                 'is_active'   => $validated['is_active'] ?? $domaine->is_active,
                 'updated_by'  => auth()->id(),

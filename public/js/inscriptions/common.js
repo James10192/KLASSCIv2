@@ -61,8 +61,29 @@
             const bsModal = bootstrap.Modal.getOrCreateInstance(modal);
             let decided = false;
 
-            const onConfirm = () => { decided = true; bsModal.hide(); resolve(true); };
-            const onHidden = () => { if (!decided) resolve(false); cleanup(); };
+            // LA PROMESSE SE RESOUT A `hidden`, PAS AU CLIC, ET C'EST LOAD-BEARING.
+            //
+            // Elle se resolvait au clic, pendant que la modale entamait son
+            // fondu de fermeture. Un appelant qui enchaine DEUX confirmations —
+            // c'est le cas du retrait de maquette quand la matiere porte des
+            // evaluations — rappelait alors `show()` sur LA MEME modale en
+            // pleine transition. Verifie dans le bundle reellement charge
+            // (bootstrap 5.3.0, `layouts/app.blade.php`) :
+            //
+            //   show(t){this._isShown||this._isTransitioning|| ...
+            //
+            // La seconde modale ne s'ouvrait donc pas, et le `hidden` de la
+            // premiere resolvait la seconde promesse a `false` : le retrait
+            // etait annule EN SILENCE. Exactement le defaut pour lequel ces
+            // confirmations ont quitte les boites natives du navigateur,
+            // reintroduit par une autre porte.
+            //
+            // `_hideModal()` pose `this._isTransitioning=!1` AVANT d'emettre
+            // `hidden.bs.modal` (meme bundle) : resoudre la promesse dans
+            // `onHidden` rend donc le chainage correct par construction, sans
+            // temporisation ni compteur.
+            const onConfirm = () => { decided = true; bsModal.hide(); };
+            const onHidden = () => { resolve(decided); cleanup(); };
             const cleanup = () => {
                 confirmBtn.removeEventListener('click', onConfirm);
                 modal.removeEventListener('hidden.bs.modal', onHidden);

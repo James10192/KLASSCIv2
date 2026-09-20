@@ -6,7 +6,6 @@ use App\Models\ESBTPFiliere;
 use App\Models\ESBTPLMDMention;
 use App\Models\ESBTPLMDParcours;
 use App\Models\ESBTPNiveauEtude;
-use App\Services\ClasseManagementService;
 use Closure;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
@@ -64,7 +63,7 @@ class StoreClasseRequest extends FormRequest
                 return;
             }
 
-            $isLmdNiveau = in_array($niveau->type, ClasseManagementService::LMD_TYPES, true);
+            $isLmdNiveau = $niveau->estUnCycleLmd();
             $filiereId = $this->input('filiere_id');
             $parcoursId = $this->input('parcours_id');
 
@@ -106,7 +105,7 @@ class StoreClasseRequest extends FormRequest
         if (!$niveau) {
             return false;
         }
-        return in_array($niveau->type, ClasseManagementService::LMD_TYPES, true);
+        return $niveau->estUnCycleLmd();
     }
 
     protected function failedValidation(Validator $validator)

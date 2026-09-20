@@ -322,10 +322,9 @@ fi
 
 ## 🔐 Sécurité
 
-- **Compte Service Technique** : Créé automatiquement avec mot de passe sécurisé
-  - Email: `technique@africandigitconsulting.com`
-  - MDP par défaut: `ADC2024Tech!SecurePass`
-  - ⚠️ **CHANGEZ CE MOT DE PASSE EN PRODUCTION !**
+- **Compte Service Technique** : créé automatiquement (`technique@africandigitconsulting.com`, secours `support@africandigitconsulting.com`)
+  - Mot de passe lu dans `SERVICE_TECHNIQUE_PASSWORD` / `SERVICE_TECHNIQUE_BACKUP_PASSWORD` du `.env` de l'instance ; à défaut, généré au hasard et affiché **une seule fois**, à la création du compte.
+  - Aucun mot de passe n'est plus écrit dans le dépôt. Ceux qui l'étaient restent dans l'historique git : un compte créé avant ce changement doit voir son mot de passe renouvelé.
 
 - **Permissions** : Système complet avec 210+ permissions et 7 rôles
 

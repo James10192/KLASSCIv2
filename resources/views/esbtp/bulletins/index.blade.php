@@ -573,6 +573,16 @@
         </div>
     @endif
 
+    {{-- ══ NOTES REÇUES ═══════════════════════════════════ --}}
+    {{-- Générer un bulletin avant que les notes soient là produit un document
+         faux : le signal se lit ici, avant le bouton. --}}
+    @include('esbtp.partials._couverture-notes', [
+        'classeId' => $classe_id ?? null,
+        'anneeId' => $annee_id ?? null,
+        'periode' => $periode_id ?: 'annuel',
+        'titre' => 'Notes reçues avant génération',
+    ])
+
     {{-- ══ FILTRES ════════════════════════════════════════ --}}
     <div class="bul-card">
         <form id="bul-filter-form" action="{{ route('esbtp.bulletins.index') }}" method="GET"

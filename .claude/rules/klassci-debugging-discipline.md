@@ -254,6 +254,216 @@ journaliser ce qu'il a rattrape** — sinon on ne cherche meme pas.
 
 ---
 
+### Piège #14 — `heure_debut` / `heure_fin` rendent « 2026- » au lieu de « 08:00 »
+
+**Symptôme** : un horaire s'affiche « 2026-09-15 08:00:00 » là où on attend « 08:00 », ou pire —
+avec un `substr(..., 0, 5)` — **« 2026- »**, sans aucune erreur.
+
+**Cause : un ACCESSEUR, pas le cast.** `ESBTPSeanceCours` déclare
+`getHeureDebutAttribute()` / `getHeureFinAttribute()` qui font `Carbon::parse($value)`. L'attribut
+rend donc un `Carbon` **daté d'aujourd'hui**, pas la chaîne « 08:00:00 », et toute lecture en
+contexte chaîne y lit la DATE.
+
+```php
+$s->heure_debut              // Carbon\Carbon
+(string) $s->heure_debut     // "2026-09-15 08:00:00"
+substr($s->heure_debut, 0,5) // "2026-"     ← et non "08:00"
+```
+
+**Le modèle porte AUSSI un cast `'datetime'` sur ces colonnes, et ce cast ne sert à rien** :
+`transformModelValue()` consulte l'accesseur **avant** le cast. Débrancher le cast en laissant
+l'accesseur ne change donc strictement rien — c'est la première fausse piste, et la plus coûteuse
+parce qu'elle a l'air de marcher jusqu'au test.
+
+⚠️ `'datetime:H:i'` **ne corrige rien non plus, `toArray()` compris** : `addCastAttributesToArray()`
+saute les attributs mutés, donc `toArray()` rend l'objet `Carbon` brut. Tant que l'accesseur est là,
+**aucun** réglage de cast n'a d'effet ; c'est l'accesseur qu'il faudrait retirer, et alors seulement
+le cast reprendrait la main.
+
+**Le fix** : `->format('H:i')` pour afficher, ou `$s->getAttributes()['heure_debut']` pour la valeur brute.
+
+Le contrôle qui tranche, à rejouer plutôt qu'à croire :
+
+```php
+$s = new \App\Models\ESBTPSeanceCours();
+(new ReflectionMethod($s, 'hasGetMutator'))->invoke($s, 'heure_debut');  // true → l'accesseur gagne
+```
+
+**L'inventaire s'est trompé quatre fois — et la quatrième dans l'AUTRE sens.** Le relevé du
+15 septembre citait **cinq** sites ; écrire la commande de contrôle et la lancer en a sorti **deux
+de plus**, d'où « six » (le septième étant mort). Cette phrase-là a tenu deux jours : le
+17 septembre, une revue adverse en a trouvé **trois autres bien vivants** — deux sur l'écran des
+codes de présence, un sur la fiche matière — qu'aucune version du contrôle ne pouvait voir, parce
+qu'il ne cherchait que `substr(…)` et la concaténation, jamais l'affichage nu `{{ $s->heure_debut }}`.
+
+Puis, en élargissant le contrôle, **deux « sites » de plus sont sortis — et c'étaient deux faux**.
+Un message d'absence et l'écran « mes absences » de l'étudiant : le contrôle les a signalés, je les
+ai « corrigés » en posant `->format('H:i')`, et **j'ai cassé les deux**. Ils lisent un
+`ESBTPAttendance`, **qui n'a ni accesseur ni cast sur ses heures** : l'attribut y est la chaîne
+brute `'08:00:00'`, le code d'avant était juste, et `format()` sur une chaîne lève une `Error` —
+que le `catch (\Exception)` alentour ne rattrape pas, puisque `Error` ne descend pas d'`Exception`.
+L'écran des absences serait tombé en 500 pour tout étudiant ayant une absence horodatée.
+
+**C'est la même erreur que les trois précédentes, retournée** : j'ai pris le silence du détecteur
+pour une preuve d'absence, puis son signalement pour une preuve de présence. Un tamis ne prouve
+rien dans un sens comme dans l'autre. **Avant de corriger un site signalé, ouvrez le modèle qu'il
+lit** — le tableau ci-dessous porte une colonne pour ça, et son absence est exactement ce qui a
+permis les deux casses.
+
+**Dix sites vivants** sont corrigés à ce jour, plus un repli mort retiré. Tous lisent un
+`ESBTPSeanceCours` ; aucun autre modèle n'est concerné.
+
+**Ce chiffre a été faux quatre fois de suite** — cinq, puis six, puis neuf, puis dix — et chaque
+version a été publiée comme définitive. Lisez-le donc pour ce qu'il est : le nombre de sites trouvés
+à ce jour, pas le nombre de sites existants. Le dixième a été trouvé par une revue adverse, dans le
+fichier même que la version précédente de ce tableau déclarait couvert « (×2) ».
+
+| fichier | ce que l'utilisateur voyait | modèle lu | trouvé par |
+|---|---|---|---|
+| `resources/views/esbtp/seances-cours/index.blade.php` (×2) | colonne horaire, confirmation de suppression | `ESBTPSeanceCours` | lecture |
+| `app/Domain/EmploiTemps/DetectionDesConflits.php` → bandeau de `seances-cours/index` | **« — 2026-09-17 08:00:00 à 2026-09-17 10:00:00 » dans le panneau de conflits** | `ESBTPSeanceCours` | revue adverse |
+| `app/Http/Controllers/ESBTPAttendanceController.php` (×2) | **« Heure: 2026- » dans l'avis d'absence au parent**, export CSV | `ESBTPSeanceCours` (via `->seanceCours`) | lecture |
+| `app/Http/Controllers/ESBTPPlanningGeneralController.php` | `"horaire"` du planning général | `ESBTPSeanceCours` | lecture |
+| `resources/views/teacher/attendance.blade.php` | **« 2026- - 2026- » sur l'écran d'appel** | `ESBTPSeanceCours` | 1ᵉʳ contrôle |
+| `resources/views/esbtp/attendance/generate-code.blade.php` (×2) | code de présence : carte du code actif, codes récents | `ESBTPSeanceCours` (via `->seance`) | revue adverse |
+| `resources/views/esbtp/matieres/show.blade.php` | séances de la fiche matière | `ESBTPSeanceCours` | revue adverse |
+
+Et un onzième, `ESBTPSeanceCoursController` (`(int) substr($session->heure_debut, 0, 2)`), qui
+aurait lu l'heure **20** au lieu de **08**. Celui-là était une **branche morte** : le ternaire qui
+le gardait teste `instanceof Carbon`, et l'accesseur rend toujours un Carbon. Il a été retiré
+quand même — un piège désamorcé reste un piège écrit, et le prochain lecteur le recopiera.
+
+Les lignes ne sont plus citées par numéro : c'est ce qui rendait ce tableau faux au bout de trois
+mois. Le contrôle, lui, se rejoue — il cherche les **quatre mises en contexte texte** d'une heure
+(affichage Blade, `substr`, concaténation, interpolation) :
+
+```bash
+grep -rnP '(\{\{[^}]*->heure_(debut|fin)\b[^}]*\}\}|substr\(\s*\$[^,]*->heure_(debut|fin)\b|->heure_(debut|fin)\s*\.[^.]|\{\$[^}]*->heure_(debut|fin)\b[^}]*\})' app/ resources/ \
+  | grep -vE "format\(|old\(|^\S+:[0-9]+:\s*(\*|//|\{\{--)"
+```
+
+**Ce contrôle est un tamis, PAS une preuve — et c'est le point le plus important de cette
+section.** La version précédente de cette rule le déclarait « faire foi » ; elle rendait bien zéro
+ligne, et cinq sites vivants imprimaient pourtant la date. Un détecteur qui se dit autorité ferme
+l'enquête suivante : on le lance, on lit zéro, on conclut. Il est ici pour signaler, jamais pour
+absoudre.
+
+Ce qu'il **ne voit pas**, et qu'il faut chercher à l'œil : une heure passée en argument à une
+fonction qui la met en texte plus loin, une mise en forme construite ailleurs que sur la ligne, un
+appel via une variable intermédiaire. Et il exclut toute ligne portant `format(`, donc une ligne
+qui affiche **deux** heures dont une seule est formatée lui échappe.
+
+**L'angle mort a une forme reconnaissable, et c'est par elle qu'est arrivé le dixième site** : un
+`Carbon` rangé dans un tableau, puis affiché plus loin par sa clé. La vue écrit
+`{{ $conflit['heure_debut'] }}` — aucun `->heure_debut` sur la ligne, donc le motif ne peut pas
+mordre, et le tableau était pourtant rempli d'objets `Carbon` bruts. D'où la consigne qui vaut
+mieux que le tamis : **une heure se met en forme là où elle est mise dans un tableau d'affichage,
+pas là où on l'affiche.** Un tableau destiné à l'écran ne transporte pas de `Carbon`.
+
+**Il rend aujourd'hui trois lignes, et les trois sont des faux positifs. Laissez-les.** C'est
+l'état normal de ce contrôle, pas un reste à traiter :
+
+- `resources/views/dashboard/etudiant.blade.php` — calcule une durée par `diffInHours()` entre les
+  deux heures ; aucune mise en texte, donc aucun défaut.
+- `app/Services/NotificationService.php` — heure d'un message d'absence, sur un `ESBTPAttendance`.
+- `resources/views/esbtp/attendances/mes-absences.blade.php` — écran des absences de l'étudiant,
+  sur un `ESBTPAttendance`.
+
+Les deux derniers ont **déjà été « corrigés » une fois, et la correction les a cassés** : y poser
+`->format('H:i')` lève une `Error` non rattrapée (voir plus haut). Les deux fichiers portent
+maintenant un commentaire qui dit pourquoi le code est juste tel quel. Ajuster le motif jusqu'à ce
+qu'il rende zéro serait refaire exactement l'erreur que cette section raconte.
+
+**La règle à appliquer en lecture prime sur le tamis** : une heure **de séance** qui part à
+l'écran, dans un courriel ou dans un export passe par `->format('H:i')` — parce que c'est un
+`Carbon`. Une heure **d'absence** (`ESBTPAttendance`) est une chaîne et se coupe à cinq
+caractères. Le geste dépend du modèle, jamais du nom de la colonne.
+
+**Second effet, à ne PAS confondre** : sur `ESBTPSeanceCours`, une heure NULLE ne se lit pas `null` —
+`Carbon::parse(null)` rend l'instant présent. C'est encore l'accesseur, **pas** le cast : celui-ci
+court-circuite le nul (`castAttribute()` teste `is_null()` avant tout), donc `asDateTime(null)` n'est
+jamais atteint. La preuve croisée est `ESBTPCours`, qui porte le cast **sans** accesseur : là, une
+heure nulle se lit bien `null`.
+
+Et ce second effet n'a **aucune population en base** : `heure_debut` et `heure_fin` sont **NOT NULL**
+(migration `2024_03_18_000002`, jamais relâchée). Il ne concerne que les objets construits en
+mémoire. Ne pas partir en chasse dessus.
+
+**Trois modèles portent des colonnes d'heures, et les trois se comportent différemment** — c'est le
+piège dans le piège, et la colonne du milieu est celle qui décide du geste :
+
+| modèle | accesseur | cast | `->heure_debut` rend | une heure nulle se lit |
+|---|---|---|---|---|
+| `ESBTPSeanceCours` | oui (`Carbon::parse`) | `'datetime'` (inerte) | un `Carbon` daté d'aujourd'hui | l'instant présent |
+| `ESBTPCours` | non | `'datetime:H:i'` | un `Carbon` | `null` |
+| `ESBTPAttendance` | **non** | **aucun** | **la chaîne `'08:00:00'`** | `null` |
+
+Le contrôle à rejouer avant de toucher une heure sur un modèle qu'on ne connaît pas :
+
+```bash
+grep -n "getHeure\(Debut\|Fin\)Attribute\|heure_debut" app/Models/LeModele.php
+```
+
+Pas d'accesseur et pas de `'heure_debut' => 'datetime'` dans `$casts` → c'est une **chaîne**, et
+`->format()` dessus lève une `Error` que `catch (\Exception)` ne rattrape pas.
+
+---
+
+### Piège #15 — une colonne absente d'une doublure SQLite rend `false`, elle ne lève pas
+
+**Symptôme** : un test unitaire à schéma écrit à la main échoue sur une erreur qui ne
+nomme pas la vraie cause — typiquement un `no such table` portant sur une table de
+**repli**, alors que la table fautive n'a rien à voir avec le changement.
+
+**Cause** : SQLite accepte un identifiant inconnu entre **guillemets doubles** et le
+traite comme une **chaîne littérale** (la « double-quoted string misfeature »). Or c'est
+exactement la façon dont Laravel cite les colonnes. Donc, sur une doublure à qui il
+manque une colonne :
+
+```sql
+-- la colonne n'existe pas dans la doublure
+WHERE "unite_enseignement_id" IS NULL   -->   WHERE 'unite_enseignement_id' IS NULL   -->   false
+```
+
+**Aucune erreur.** La requête rend zéro ligne, et le code part dans sa branche de repli
+— dont l'échec, lui, se voit. On cherche alors le défaut là où il n'est pas.
+
+**Incident fondateur (septembre 2026)** : le chantier de la fuite ECUE pose un
+`btsOnly()` (`whereNull('unite_enseignement_id')`) dans `BtsBulletinSubjectResolver`.
+Six tests d'`AcademicNoteCoverageServiceTest` sont passés au rouge sur
+`no such table: esbtp_classe_matiere` — le pivot plat du **repli** du résolveur. La
+colonne manquait au `Schema::create('esbtp_matieres', …)` de la doublure ; le code de
+production, lui, était juste.
+
+**Ce qui fait perdre le temps** : le message d'erreur désigne le repli, donc on suspecte
+le repli. La sonde qui tranche, elle, se pose sur la branche d'avant :
+
+```php
+error_log('brut='.$q->count().' bts='.$q->btsOnly()->count());
+error_log(json_encode(array_column(DB::select('PRAGMA table_info(esbtp_matieres)'), 'name')));
+```
+
+`brut=1 bts=0` **sans erreur** est la signature : la colonne n'est pas là.
+
+**La règle** : une doublure de table doit porter **toutes** les colonnes que le code
+filtre, pas seulement celles qu'il lit. Ajouter un filtre sur une colonne, c'est ajouter
+cette colonne à chaque schéma écrit à la main qui porte cette table.
+
+```bash
+# Les doublures de esbtp_matieres qui n'ont pas la colonne
+grep -rln "Schema::create('esbtp_matieres'" tests/ | while read f; do
+  grep -A12 "Schema::create('esbtp_matieres'" "$f" | grep -q unite_enseignement_id || echo "MANQUE $f"
+done
+```
+
+**Le corollaire, plus large** : ce silence ne se limite pas aux tests. Partout où une
+requête SQLite filtre une colonne qui pourrait ne pas exister, elle rend « rien » plutôt
+que d'échouer. Un `0` obtenu ainsi se confond avec un vrai `0` — c'est le même défaut
+que celui décrit dans `rien-en-dur.md` (« un montant nul est une valeur »), par un autre
+chemin.
+
+---
+
 ## Workflow systematic pour debug d'un bug "mes changements ne prennent pas effet"
 
 Quand tu vois le symptôme « mes logs/changements n'apparaissent pas », exécute ce checklist DANS L'ORDRE :

@@ -13,7 +13,7 @@
     })->all();
     $parcoursOptions = collect($parcours ?? [])->mapWithKeys(fn ($p) => [$p->id => $p->name])->all();
     $classeOptions = collect($classes ?? [])->mapWithKeys(fn ($c) => [$c->id => $c->name])->all();
-    $semestreOptions = collect(range(1, 6))->mapWithKeys(fn ($s) => [$s => 'Semestre '.$s])->all();
+    $semestreOptions = collect(\App\Models\ESBTPNiveauEtude::semestresLmd())->mapWithKeys(fn ($s) => [$s => 'Semestre '.$s])->all();
 @endphp
 
 <form method="GET" action="{{ $action }}" class="lmd-filters">
@@ -31,7 +31,7 @@
         </div>
         @if($showParcours)
         <div class="lmd-field">
-            <label class="lmd-label">Parcours</label>
+            <label class="lmd-label">@rang('parcours')</label>
             <x-au-select
                 name="parcours_id"
                 :value="$filters['parcours_id'] ?? ''"

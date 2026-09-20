@@ -32,6 +32,7 @@ class LMDImportService
     public function __construct(
         private ParcoursUeSyncService $parcoursUeSync,
         private CompositionUe $composition,
+        private RefusDeDeplacement $deplacement,
         ?LmdAcademicRuleProfile $rules = null,
     ) {
         $this->rules = $rules ?? new LmdAcademicRuleProfile();
@@ -65,6 +66,7 @@ class LMDImportService
 
             $stats = ['ues_attached' => 0, 'ues_updated' => 0, 'ecues_attached' => 0, 'ecues_updated' => 0, 'planifs_attached' => 0, 'planifs_updated' => 0];
             $linksByParcours = [];
+            $creditsPropres = [];
 
             foreach ($spec['ues'] ?? [] as $ueSpec) {
                 $niveauYear = (int) $ueSpec['niveau_year'];
@@ -75,6 +77,24 @@ class LMDImportService
 
                 [$ue, $ueCreated] = $this->upsertUE($ueSpec, $parcours, $filiere, $niveau, $userId);
                 $stats[$ueCreated ? 'ues_attached' : 'ues_updated']++;
+                // Une unite partagee garde le credit de sa fiche. Si cette maquette
+                // lui en donne un autre, il est a elle seule : sur le pivot.
+                $creditMaquette = (int) ($ueSpec['credit'] ?? 0);
+                if ((int) $ue->credit !== $creditMaquette) {
+                    // Le SEMESTRE fait partie de l'adresse, pas seulement l'unité.
+                    //
+                    // La clé d'unicité du pivot est (parcours, unité, semestre) :
+                    // une unité posée sur deux semestres d'un même parcours y a
+                    // deux lignes. Une liste indexée par la seule unité écrasait
+                    // la première entrée par la seconde à l'intérieur d'un même
+                    // import, et l'écriture sans `where('semestre')` reportait
+                    // ensuite le crédit trouvé sur les DEUX semestres.
+                    $creditsPropres[] = [
+                        'ue_id' => (int) $ue->id,
+                        'semestre' => (int) $ueSpec['semestre'],
+                        'credit' => $creditMaquette,
+                    ];
+                }
 
                 $linksByParcours[] = [
                     'id' => $ue->id,
@@ -96,6 +116,21 @@ class LMDImportService
             }
 
             $linkStats = $this->parcoursUeSync->sync($parcours, $linksByParcours, detachMissing: false);
+            // Le lien est pose : on y grave le credit propre a cette maquette. La
+            // synchronisation ne touche jamais `credit` (c est une decision de
+            // l ecole), c est donc a l import de le faire, pour ce parcours seul.
+            foreach ($creditsPropres as $propre) {
+                DB::table('esbtp_lmd_parcours_ue')
+                    ->where('parcours_id', $parcours->id)
+                    ->where('unite_enseignement_id', $propre['ue_id'])
+                    // Sans ce troisième critère, importer le S3 gravait son
+                    // crédit sur le S3 ET le S5 de la même unité, puis importer
+                    // le S5 les écrasait tous les deux à son tour. C'est
+                    // exactement l'arbitrage que la migration de septembre
+                    // refusait de forcer, et que l'import forçait en silence.
+                    ->where('semestre', $propre['semestre'])
+                    ->update(['credit' => $propre['credit'], 'updated_at' => now()]);
+            }
             $stats['ues_linked_to_parcours'] = $linkStats['attached'] + $linkStats['updated'] + $linkStats['unchanged'];
 
             // Une seule levee, apres avoir tout parcouru : l utilisateur voit TOUS
@@ -118,24 +153,69 @@ class LMDImportService
 
     private function upsertDomaine(array $data, ?int $userId): ESBTPLMDDomaine
     {
-        return ESBTPLMDDomaine::updateOrCreate(
-            ['code' => $data['code'] ?? Str::slug($data['name'])],
-            ['name' => $data['name'], 'description' => $data['description'] ?? null, 'created_by' => $userId, 'is_active' => true]
+        $valeurs = $this->deplacement->preserver(
+            ['name' => $data['name'], 'description' => $data['description'] ?? null, 'created_by' => $userId, 'is_active' => true],
+            $data,
+            'nature',
         );
+
+        return ESBTPLMDDomaine::updateOrCreate(['code' => $data['code'] ?? Str::slug($data['name'])], $valeurs);
     }
 
     private function upsertMention(array $data, ESBTPLMDDomaine $domaine, ?int $userId): ESBTPLMDMention
     {
+        $code = $data['code'] ?? Str::slug($data['name']);
+        $existante = ESBTPLMDMention::where('code', $code)->first();
+        if ($conflit = $this->deplacement->siAutreParent(
+            $existante,
+            'domaine_id',
+            (int) $domaine->id,
+            'MENTION',
+            (string) $code,
+            fn ($e) => sprintf(
+                "Le code « %s » désigne déjà la mention « %s » du domaine « %s ». L'importer sous « %s » l'y déplacerait avec ses parcours : donnez à cette mention un code propre.",
+                $code,
+                $e->name,
+                optional($e->domaine)->name ?? ('#'.$e->domaine_id),
+                $domaine->name
+            ),
+        )) {
+            $this->conflits[] = $conflit;
+
+            return $existante;
+        }
+
         return ESBTPLMDMention::updateOrCreate(
-            ['code' => $data['code'] ?? Str::slug($data['name'])],
+            ['code' => $code],
             ['name' => $data['name'], 'domaine_id' => $domaine->id, 'created_by' => $userId, 'is_active' => true]
         );
     }
 
     private function upsertParcours(array $data, ESBTPLMDMention $mention, ?ESBTPFiliere $filiere, ?int $userId): ESBTPLMDParcours
     {
+        $code = $data['code'] ?? Str::slug($data['name']);
+        $existant = ESBTPLMDParcours::where('code', $code)->first();
+        if ($conflit = $this->deplacement->siAutreParent(
+            $existant,
+            'mention_id',
+            (int) $mention->id,
+            'PARCOURS',
+            (string) $code,
+            fn ($e) => sprintf(
+                "Le code « %s » désigne déjà le parcours « %s » de la mention « %s ». L'importer sous « %s » l'y déplacerait avec sa maquette : donnez à ce parcours un code propre.",
+                $code,
+                $e->name,
+                optional($e->mention)->name ?? ('#'.$e->mention_id),
+                $mention->name
+            ),
+        )) {
+            $this->conflits[] = $conflit;
+
+            return $existant;
+        }
+
         return ESBTPLMDParcours::updateOrCreate(
-            ['code' => $data['code'] ?? Str::slug($data['name'])],
+            ['code' => $code],
             [
                 'name' => $data['name'],
                 'mention_id' => $mention->id,
@@ -160,9 +240,10 @@ class LMDImportService
     private function upsertNiveau(array $data): ESBTPNiveauEtude
     {
         // Match by (year + type) — multiple niveaux can share a year (BTS 1ère, Licence 1ère, etc.).
-        // Defaulting to 'Licence' since this service is LMD-only.
-        $type = $data['type'] ?? 'Licence';
+        // Sans type fourni, le cycle se deduit de l'annee continue (4 → Master).
+        // Le defaut « Licence » d'autrefois creait des « Licence 4 » pour un Master 1.
         $year = (int) $data['year'];
+        $type = $data['type'] ?? ESBTPNiveauEtude::cycleLmdPourAnnee($year) ?? 'Licence';
 
         // Generate a unique code per type×year for LMD niveaux, prefixed to avoid collision
         // with legacy niveau codes (BTS '1A', '2A', or legacy untyped 'L1', 'L2' etc.).
@@ -190,29 +271,20 @@ class LMDImportService
         $existing = $code ? ESBTPUniteEnseignement::where('code', $code)->first() : null;
         $created = $existing === null;
 
-        // Refuser plutot que d ecraser.
+        // Une unite deja tenue par un AUTRE parcours est partagee, pas ecrasee.
         //
         // Le code d une UE est unique dans toute la base : on la retrouvait donc par
         // son code, puis on reecrivait parcours_id, semestre, credit et niveau_id.
         // Importer la maquette d un second parcours REECRIVAIT celle du premier, en
-        // silence — le parcours importe en premier heritait du semestre et du credit
-        // de l autre.
-        //
-        // Le partage reel (code unique, UE partagee) demande des colonnes qui
-        // n existent pas encore. En attendant, on refuse. Voir issue #942.
+        // silence. L import a d abord refuse ; il sait maintenant partager : la
+        // fiche de l unite reste celle du premier parcours, le second n y touche
+        // pas. Ce qui lui est propre vit dans les pivots — son semestre et son
+        // credit dans `esbtp_lmd_parcours_ue`, ses elements dans `esbtp_ue_matiere`
+        // avec son `parcours_id` — et c est l appelant qui les y ecrit.
         if ($existing !== null
             && $existing->parcours_id !== null
             && (int) $existing->parcours_id !== (int) $parcours->id) {
-            $this->conflits[] = [
-                'type' => 'UE',
-                'code' => (string) $code,
-                'detail' => sprintf(
-                    "L'UE « %s » appartient déjà au parcours « %s ». L'importer pour « %s » écraserait sa maquette.",
-                    $existing->name,
-                    optional($existing->parcours)->name ?? ('#'.$existing->parcours_id),
-                    $parcours->name
-                ),
-            ];
+            return [$existing, false];
         }
 
         $payload = [
@@ -257,21 +329,22 @@ class LMDImportService
         // l'est — on ne la reecrit donc que si elle est libre ou deja la notre, et
         // le conflit ne se leve que pour un rattachement a une AUTRE unite, ce que
         // le pivot ne sait pas exprimer.
-        $appartientAilleurs = $existing !== null
-            && $existing->unite_enseignement_id !== null
-            && (int) $existing->unite_enseignement_id !== (int) $ue->id;
-
-        if ($appartientAilleurs) {
-            $this->conflits[] = [
-                'type' => 'ECUE',
-                'code' => (string) $code,
-                'detail' => sprintf(
-                    "L'ECUE « %s » appartient déjà à l'UE « %s ». Le rattacher à « %s » le retirerait de la première.",
-                    $existing->name,
-                    optional($existing->uniteEnseignement)->name ?? ('#'.$existing->unite_enseignement_id),
-                    $ue->name
-                ),
-            ];
+        $conflitEcue = $this->deplacement->siAutreParent(
+            $existing,
+            'unite_enseignement_id',
+            (int) $ue->id,
+            'ECUE',
+            (string) $code,
+            fn ($e) => sprintf(
+                "L'ECUE « %s » appartient déjà à l'UE « %s ». Le rattacher à « %s » le retirerait de la première.",
+                $e->name,
+                optional($e->uniteEnseignement)->name ?? ('#'.$e->unite_enseignement_id),
+                $ue->name
+            ),
+        );
+        $appartientAilleurs = $conflitEcue !== null;
+        if ($conflitEcue) {
+            $this->conflits[] = $conflitEcue;
         }
 
         // Note: filiere_id was dropped from esbtp_matieres in 2025-04 cleanup migration —

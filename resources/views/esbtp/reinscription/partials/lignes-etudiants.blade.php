@@ -102,7 +102,15 @@
         </div>
     </td>
     <td style="padding: 16px; text-align: center;">
-        @switch($analyse['decision'])
+        {{-- La categorie « Erreurs » ne porte pas de decision, mais un motif : ses
+             elements n'ont que « etudiant » et « error ». Lire $analyse['decision']
+             sans precaution y leve une exception et blanchit tout l'onglet. --}}
+        @if (isset($analyse['error']))
+            <span class="badge warning">
+                <i class="fas fa-exclamation-triangle"></i> {{ $analyse['error'] }}
+            </span>
+        @else
+        @switch($analyse['decision'] ?? '')
             @case('passage')
                 <span class="badge success">
                     <i class="fas fa-arrow-up"></i> Passage
@@ -119,6 +127,7 @@
                 </span>
                 @break
         @endswitch
+        @endif
     </td>
     <td style="padding: 16px; text-align: center;">
         <div style="display: flex; gap: 8px; justify-content: center;">
@@ -127,12 +136,7 @@
                style="padding: 8px; border-radius: 6px; min-width: 36px; display: flex; align-items: center; justify-content: center;">
                 <i class="fas fa-eye"></i>
             </a>
-            <button type="button" class="btn btn-success btn-sm" 
-                    onclick="validerReinscription({{ $analyse['etudiant']->id }}, '{{ $analyse['decision'] }}')" title="Valider réinscription"
-                    style="padding: 8px; border-radius: 6px; min-width: 36px; display: flex; align-items: center; justify-content: center;">
-                <i class="fas fa-check-double"></i>
-            </button>
-            <button type="button" class="btn btn-warning btn-sm" 
+            <button type="button" class="btn btn-warning btn-sm"
                     onclick="marquerAbandonModal({{ $analyse['etudiant']->id }})" title="Marquer comme abandon"
                     style="padding: 8px; border-radius: 6px; min-width: 36px; display: flex; align-items: center; justify-content: center;">
                 <i class="fas fa-user-times"></i>

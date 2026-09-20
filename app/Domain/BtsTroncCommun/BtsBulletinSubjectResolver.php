@@ -23,8 +23,28 @@ use Illuminate\Support\Collection;
  *
  * BTS uniquement — LMD intouché. Stateless, sans dépendance à BulletinService.
  *
+ * **Les ECUE LMD sont écartées, et ce filtre n'est pas décoratif.** Les deux
+ * écrans qui gèrent les matières BTS l'appliquent déjà — `prepareMatieresListing()`
+ * par un `whereNull('unite_enseignement_id')`, `lignesDuCombo()` par un `filter()`
+ * sur le même attribut. Ce résolveur, lui, ne filtrait que `is_active` : une ECUE
+ * qui obtient une ligne dans le pivot canonique BTS sortait donc **au bulletin**
+ * tout en restant **introuvable** depuis les écrans censés la gérer. Le cas mesuré
+ * sur esbtp-abidjan : « Alimentation en eau et QTE » (TPOH243), importée avec les
+ * maquettes Génie Civil, portait une ligne `(TRAVAUX_PUBLICS, 2A)` et s'imprimait
+ * sur les bulletins de Travaux Publics 2ᵉ année — sans qu'on puisse l'en retirer.
+ *
+ * Le filtre est sûr ici PAR CONSTRUCTION, et non par énumération de ses
+ * appelants : une classe LMD ne porte aucune ligne dans le pivot canonique BTS
+ * ni dans `esbtp_classe_matiere`, donc ce résolveur rend vide pour elle — ce qui
+ * est le bon résultat sur un écran BTS. (Une version antérieure de ce commentaire
+ * citait deux appelants ; le chantier en a ajouté trois, et une preuve par
+ * énumération cesse d'en être une dès qu'elle est incomplète.) Ne recopie PAS
+ * `btsOnly()` sur un lecteur au contexte mixte — les présences, par exemple,
+ * concernent légitimement des ECUE (cf. le garde-fou de la rule ci-dessous).
+ *
  * @see .claude/rules/klassci-classe-matieres.md
  * @see .claude/rules/lmd-bts-bulletin-separation.md
+ * @see .claude/rules/lmd-ecue-leak-bts-picker.md
  */
 class BtsBulletinSubjectResolver
 {
@@ -65,6 +85,7 @@ class BtsBulletinSubjectResolver
                 ->values();
 
             $matieres = ESBTPMatiere::whereIn('id', $matiereIds)
+                ->btsOnly()
                 ->where('is_active', true)
                 ->orderBy('name')
                 ->get();
@@ -75,7 +96,11 @@ class BtsBulletinSubjectResolver
         }
 
         // Fallback classes BTS historiques attachées directement via le pivot.
+        // `btsOnly()` ferait la meme chose, mais sans qualifier la colonne : dans
+        // cette jointure on les nomme toutes, comme `is_active` juste en dessous,
+        // qui existe des deux cotes du pivot et serait ambigue sans son prefixe.
         return $classe->matieres()
+            ->whereNull('esbtp_matieres.unite_enseignement_id')
             ->where('esbtp_matieres.is_active', true)
             ->orderBy('esbtp_matieres.name')
             ->get();

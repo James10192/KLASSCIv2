@@ -872,6 +872,7 @@
                 document.getElementById('creerPaiementInfo').textContent =
                     `Créer un paiement pour ${ins.etudiant.nom} ${ins.etudiant.prenoms}`;
                 document.getElementById('formCreerPaiement').action = resolveRoute(ROUTES.validerAvecPaiement, inscriptionId);
+                reinitialiserMontantPaiement();
                 bootstrap.Modal.getOrCreateInstance(document.getElementById('modalCreerPaiement')).show();
             })
             .catch((err) => {
@@ -879,6 +880,169 @@
                 showToast('Erreur lors du chargement.', 'error');
             });
     };
+
+    // ====================================================================
+    // Garde-fou du montant : ce qu'on encaisse ne peut pas dépasser ce qui
+    // reste dû sur la catégorie choisie.
+    //
+    // Le serveur refuse déjà le dépassement, mais l'interdire avant la
+    // saisie évite au caissier de remplir tout le formulaire pour se faire
+    // renvoyer. Même mécanique que la fiche d'inscription : on demande le
+    // reste dû, on pré-remplit avec, on le pose en `max`, et on annonce la
+    // borne au lieu de la laisser deviner.
+    // ====================================================================
+
+    const MSG_MONTANT = {
+        info: (titre, detail) => `
+            <div class="alert alert-info mb-0 py-2 px-3">
+                <i class="fas fa-info-circle me-1"></i><strong>${titre}</strong>
+                ${detail ? `<br><small class="text-muted">${detail}</small>` : ''}
+            </div>`,
+        erreur: (titre, detail) => `
+            <div class="alert alert-danger mb-0 py-2 px-3">
+                <i class="fas fa-times-circle me-1"></i><strong>${titre}</strong>
+                ${detail ? `<br><small>${detail}</small>` : ''}
+            </div>`,
+    };
+
+    const formaterFcfa = (montant) => Number(montant).toLocaleString('fr-FR') + ' FCFA';
+
+    function reinitialiserMontantPaiement() {
+        const montant = document.getElementById('creer_montant');
+        const message = document.getElementById('creer_montant_message');
+        const categorie = document.getElementById('creer_categorie');
+        if (categorie) categorie.value = '';
+        if (montant) {
+            montant.value = '';
+            montant.removeAttribute('max');
+            montant.setCustomValidity('');
+            montant.setAttribute('disabled', 'disabled');
+            montant.placeholder = "Choisissez d'abord une catégorie";
+        }
+        if (message) {
+            message.style.display = 'none';
+            message.innerHTML = '';
+        }
+    }
+
+    function bloquerMontant(message, titre, detail) {
+        const montant = document.getElementById('creer_montant');
+        if (montant) {
+            montant.value = '';
+            montant.removeAttribute('max');
+            montant.setCustomValidity('');
+            montant.setAttribute('disabled', 'disabled');
+        }
+        if (message) {
+            message.style.display = 'block';
+            message.innerHTML = MSG_MONTANT.erreur(titre, detail);
+        }
+    }
+
+    function chargerResteDu() {
+        const categorie = document.getElementById('creer_categorie');
+        const montant = document.getElementById('creer_montant');
+        const message = document.getElementById('creer_montant_message');
+        const inscriptionId = document.getElementById('creer_inscription_id')?.value;
+        if (!categorie || !montant) return;
+
+        if (!categorie.value || !inscriptionId) {
+            reinitialiserMontantPaiement();
+            return;
+        }
+
+        const url = resolveRoute(ROUTES.montantRestant, inscriptionId)
+            .replace(':category', String(categorie.value));
+
+        montant.setAttribute('disabled', 'disabled');
+        montant.placeholder = 'Vérification du reste à payer…';
+
+        fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest', Accept: 'application/json' } })
+            .then((r) => r.json().then((corps) => ({ ok: r.ok, corps })))
+            .then(({ corps }) => {
+                if (!corps.success || !corps.is_subscribed) {
+                    bloquerMontant(
+                        message,
+                        'Ce frais ne peut pas être encaissé ici',
+                        corps.message || "L'étudiant n'est pas souscrit à cette catégorie de frais."
+                    );
+                    return;
+                }
+
+                const reste = Number(corps.montant_restant) || 0;
+
+                if (reste <= 0) {
+                    bloquerMontant(
+                        message,
+                        'Ce frais est déjà soldé',
+                        `Total : ${formaterFcfa(corps.montant_total)} · Déjà payé : ${formaterFcfa(corps.montant_paye)}`
+                    );
+                    return;
+                }
+
+                montant.removeAttribute('disabled');
+                montant.placeholder = 'Ex: 50000';
+                montant.setAttribute('max', String(reste));
+                montant.value = reste;
+                montant.setCustomValidity('');
+
+                if (message) {
+                    message.style.display = 'block';
+                    message.innerHTML = MSG_MONTANT.info(
+                        `Montant maximum : ${formaterFcfa(reste)}`,
+                        `Total : ${formaterFcfa(corps.montant_total)} · Déjà payé : ${formaterFcfa(corps.montant_paye)}`
+                    );
+                }
+            })
+            .catch((err) => {
+                debugError('[inscriptions] chargerResteDu:', err);
+                bloquerMontant(
+                    message,
+                    'Reste à payer indisponible',
+                    'Impossible de vérifier le montant. Réessayez dans un instant.'
+                );
+            });
+    }
+
+    (function brancherGardeFouMontant() {
+        const categorie = document.getElementById('creer_categorie');
+        const montant = document.getElementById('creer_montant');
+        const formulaire = document.getElementById('formCreerPaiement');
+        if (!categorie || !montant) return;
+
+        categorie.addEventListener('change', chargerResteDu);
+
+        // Un champ desactive ne part pas dans le FormData et n'est pas
+        // soumis a `required` : sans ce garde, un frais solde partirait avec
+        // un montant vide. Attache avant le handler generique de soumission,
+        // qu'il court-circuite.
+        if (formulaire) {
+            formulaire.addEventListener('submit', function (e) {
+                if (montant.disabled) {
+                    e.preventDefault();
+                    e.stopImmediatePropagation();
+                    showToast(
+                        categorie.value
+                            ? "Ce frais ne peut pas être encaissé : voyez le message au-dessus du montant."
+                            : 'Choisissez une catégorie de frais.',
+                        'error'
+                    );
+                }
+            });
+        }
+
+        // Le `max` seul n'empêche pas la saisie : il n'agit qu'à la
+        // soumission, et sans message. On dit pourquoi, tout de suite.
+        montant.addEventListener('input', function () {
+            const plafond = Number(this.getAttribute('max'));
+            if (!plafond) return;
+            const saisi = parseFloat(this.value) || 0;
+            this.setCustomValidity(
+                saisi > plafond ? `Le montant ne peut pas dépasser ${formaterFcfa(plafond)}.` : ''
+            );
+            this.reportValidity();
+        });
+    })();
 
     // ====================================================================
     // Handlers génériques pour les 3 modals action rapide (submit AJAX)

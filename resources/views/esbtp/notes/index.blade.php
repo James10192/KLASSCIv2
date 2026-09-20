@@ -188,6 +188,17 @@
                     </div>
                 </div>
 
+                {{-- Ce qui reste à saisir sur cette classe. C'est ici que la
+                     personne peut agir : le signal doit être sous ses yeux, pas
+                     sur une autre page. La classe lui est annoncée par
+                     `couverture:contexte` quand elle est choisie. --}}
+                @include('esbtp.partials._couverture-notes', [
+                    'classeId' => null,
+                    'anneeId' => $anneeCouranteId ?? null,
+                    'periode' => 'annuel',
+                    'titre' => 'Reste à saisir',
+                ])
+
                 {{-- Intro callout --}}
                 <div class="nm-modal-intro">
                     <div class="nm-modal-intro-icon">
@@ -812,6 +823,16 @@ function selectClass(classId, className) {
     // Mettre à jour l'UI
     $('#selectedClassLabel').text(className);
     updateBlankPdfLink();
+
+    // Le bandeau de couverture suit la classe choisie. Il vit dans le modal et
+    // ne sait rien de cette page : le contexte lui est annoncé, pas imposé.
+    window.dispatchEvent(new CustomEvent('couverture:contexte', {
+        detail: {
+            classe_id: classId,
+            annee_universitaire_id: @json($anneeCouranteId ?? null),
+            periode: 'annuel',
+        },
+    }));
 
     // Réinitialiser la sélection de matière
     $('#matiereSelect').val('');
@@ -1544,6 +1565,10 @@ $('#saveAllNotesBtn').on('click', function() {
             }
 
             btn.html(`<i class="fas fa-check me-1"></i> ${response.saved} note(s) validée(s)`).prop('disabled', false);
+
+            // Ces notes viennent de changer le décompte : le bandeau se remet à
+            // jour, sinon il annoncerait encore ce qui manquait avant la saisie.
+            window.dispatchEvent(new CustomEvent('couverture:invalider'));
 
             // Highlight rows and recalculate averages
             notesPayload.forEach(function(entry) {

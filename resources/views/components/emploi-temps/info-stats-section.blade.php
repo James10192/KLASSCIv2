@@ -276,30 +276,22 @@
         'lunch' => 'fa-utensils',
     ];
 
-    // Detection LMD pour afficher la card "Types pedagogiques UEMOA"
-    $isLmd = optional($emploiTemps->classe)->systeme_academique === 'LMD';
+    $classeEdt = $emploiTemps->classe ?? null;
+    $isLmd = ($classeEdt?->systeme_academique ?? '') === 'LMD'
+        || in_array($classeEdt?->niveau?->type ?? '', \App\Models\ESBTPNiveauEtude::CYCLES_LMD, true);
     $countTypesSeance = [];
-    $typeSeanceLabels = [
-        'CM'     => 'Cours Magistral',
-        'TD'     => 'Travaux Dirigés',
-        'TP'     => 'Travaux Pratiques',
-        'PROJET' => 'Projet',
-        'TPE'    => 'Travail Personnel',
-        'EXAMEN' => 'Examen',
-        'AUTRE'  => 'Autre',
-    ];
-    $typeSeanceIcons = [
-        'CM'     => 'fa-chalkboard-user',
-        'TD'     => 'fa-pen-ruler',
-        'TP'     => 'fa-flask-vial',
-        'PROJET' => 'fa-diagram-project',
-        'TPE'    => 'fa-user-pen',
-        'EXAMEN' => 'fa-file-pen',
-        'AUTRE'  => 'fa-ellipsis',
-    ];
+    $typeSeanceLabels = [];
+    $typeSeanceIcons = [];
     if ($isLmd) {
-        foreach (array_keys($typeSeanceLabels) as $tk) {
-            $countTypesSeance[$tk] = $seances->where('type_seance', $tk)->count();
+        foreach (\App\Enums\TypeSeance::cases() as $case) {
+            if ($case === \App\Enums\TypeSeance::TPE) {
+                continue;
+            }
+            $typeSeanceLabels[$case->value] = $case->label();
+            $typeSeanceIcons[$case->value] = $case->badgeIcon();
+            $countTypesSeance[$case->value] = $seances->filter(
+                fn ($s) => \App\Enums\TypeSeance::codeOf($s->type_seance) === $case->value
+            )->count();
         }
     }
 

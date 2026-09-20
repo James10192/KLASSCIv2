@@ -557,4 +557,215 @@ class CLIComptabiliteController extends BaseApiController
             'pending_too_old_sample' => $pendingOld->all(),
         ], 'Reconciliation candidates');
     }
+
+    /**
+     * GET /api/cli/comptabilite/recus-en-double
+     *
+     * Deux recus portant le meme numero, c'est deux preuves de paiement
+     * indiscernables : en cas de contestation, rien ne dit laquelle est la
+     * bonne. `genererNumeroRecu()` verrouille desormais sa lecture du dernier
+     * numero, mais ce verrou ne protege pas la toute premiere emission d'une
+     * annee — il n'y a alors aucune ligne a verrouiller. Seul un index unique
+     * ferme cette fenetre.
+     *
+     * Cet endpoint repond a la question qui conditionne cette migration :
+     * la base contient-elle DEJA des doublons ? Si oui, l'index echoue a la
+     * pose, et il faut d'abord trancher quel recu garde son numero.
+     *
+     * Trois pieges, verifies ici plutot que supposes :
+     * - un index unique porte sur TOUTES les lignes, y compris celles que le
+     *   soft-delete a retirees de la vue. Un numero rendu a un paiement
+     *   supprime bloque la migration.
+     * - MySQL tolere plusieurs NULL sur une colonne unique, mais PAS
+     *   plusieurs chaines vides. Les deux cas se comptent separement.
+     * - le meme numero peut coexister sur deux annees universitaires ; c'est
+     *   un doublon quand meme, la colonne ne portant pas l'annee.
+     *
+     * Lecture seule. Aucune ecriture, aucune suggestion de suppression : le
+     * choix du recu qui garde son numero appartient a la comptabilite.
+     */
+    public function recusEnDouble(Request $request): JsonResponse
+    {
+        if (!$request->user()->tokenCan('cli:read')) {
+            return $this->errorResponse('Token missing cli:read ability', [], 403);
+        }
+
+        $groupes = DB::table('esbtp_paiements')
+            ->select('numero_recu', DB::raw('COUNT(*) as occurrences'), DB::raw('GROUP_CONCAT(id ORDER BY id) as ids'))
+            ->whereNotNull('numero_recu')
+            ->where('numero_recu', '!=', '')
+            ->groupBy('numero_recu')
+            ->havingRaw('COUNT(*) > 1')
+            ->orderByDesc('occurrences')
+            ->get();
+
+        // Les memes, en ignorant les lignes supprimees : l'ecart entre les deux
+        // dit combien de doublons ne viennent QUE du soft-delete.
+        $groupesVisibles = DB::table('esbtp_paiements')
+            ->select('numero_recu', DB::raw('COUNT(*) as occurrences'))
+            ->whereNull('deleted_at')
+            ->whereNotNull('numero_recu')
+            ->where('numero_recu', '!=', '')
+            ->groupBy('numero_recu')
+            ->havingRaw('COUNT(*) > 1')
+            ->get();
+
+        $vides = DB::table('esbtp_paiements')->where('numero_recu', '')->count();
+        $nuls = DB::table('esbtp_paiements')->whereNull('numero_recu')->count();
+        $total = DB::table('esbtp_paiements')->count();
+
+        $bloquants = $groupes->count() + ($vides > 1 ? 1 : 0);
+
+        // Une garantie qu'on ne peut pas constater n'en est pas une : on lit
+        // le schema plutot que de supposer que la migration est passee.
+        $contraintePosee = DB::table('information_schema.STATISTICS')
+            ->whereRaw('TABLE_SCHEMA = DATABASE()')
+            ->where('TABLE_NAME', 'esbtp_paiements')
+            ->where('INDEX_NAME', 'esbtp_paiements_recu_en_circulation_unique')
+            ->exists();
+
+        return $this->successResponse([
+            'contrainte_posee' => $contraintePosee,
+            'paiements_total' => $total,
+            'numeros_en_double' => $groupes->count(),
+            'lignes_concernees' => (int) $groupes->sum('occurrences'),
+            'dont_visibles_hors_supprimes' => $groupesVisibles->count(),
+            'numero_vide' => $vides,
+            'numero_nul' => $nuls,
+            'index_unique_posable' => $bloquants === 0,
+            'ce_qui_bloque' => $bloquants === 0
+                ? null
+                : trim(($groupes->count() > 0 ? $groupes->count() . ' numero(s) en double. ' : '')
+                    . ($vides > 1 ? $vides . ' paiements portent une chaine vide, que MySQL refuse en double (le NULL, lui, est tolere).' : '')),
+            'echantillon' => $groupes->take(25)->values()->all(),
+        ], 'Diagnostic des numeros de recu');
+    }
+
+    /**
+     * GET /api/cli/comptabilite/reliquats-comptes-en-double
+     *
+     * Un versement de reliquat porte `type_paiement = 'reliquat'` et
+     * l'inscription de DESTINATION : il transite par l'annee en cours, mais il
+     * eteint une dette de l'annee precedente. `netPaidForInscription()` le
+     * comptait comme un paiement de la scolarite courante — un etudiant reglant
+     * 250 000 d'arriere ressortait crediteur sur son annee, et
+     * `peutSeReinscrire()` lui ouvrait l'annee suivante alors qu'il devait
+     * encore la sienne.
+     *
+     * Le calcul est corrige. Cet endpoint repond a l'autre question, celle que
+     * le correctif ne traite pas : le defaut avait-il DEJA mordu, et sur qui ?
+     *
+     * Il ne suffit pas de compter les reliquats. Un reliquat n'a fausse un
+     * verdict que s'il a fait BASCULER l'inscription du cote « a jour » — le
+     * cas ou l'etudiant restait debiteur meme en le comptant, ou etait deja
+     * solde sans lui, n'a trompe personne. C'est cette bascule qui est
+     * comptee ici, inscription par inscription.
+     *
+     * Lecture seule.
+     */
+    public function reliquatsComptesEnDouble(Request $request): JsonResponse
+    {
+        if (!$request->user()->tokenCan('cli:read')) {
+            return $this->errorResponse('Token missing cli:read ability', [], 403);
+        }
+
+        $reliquats = DB::table('esbtp_paiements')
+            ->select('inscription_id', DB::raw('SUM(montant) as total'), DB::raw('COUNT(*) as nb'))
+            ->whereNull('deleted_at')
+            ->where('type_paiement', 'reliquat')
+            ->where('status', 'validé')
+            ->whereNotNull('inscription_id')
+            ->groupBy('inscription_id')
+            ->get();
+
+        if ($reliquats->isEmpty()) {
+            return $this->successResponse([
+                'versements_reliquat' => 0,
+                'montant_total' => 0.0,
+                'inscriptions_concernees' => 0,
+                'verdicts_fausses' => 0,
+                'detail' => [],
+            ], 'Aucun versement de reliquat : le defaut n a jamais pu mordre ici');
+        }
+
+        $detail = [];
+        $fausses = 0;
+
+        foreach ($reliquats as $ligne) {
+            $attendu = (float) DB::table('esbtp_frais_subscriptions')
+                ->where('inscription_id', $ligne->inscription_id)
+                ->where('is_active', true)
+                ->sum('amount');
+
+            $payeHorsReliquat = (float) DB::table('esbtp_paiements')
+                ->whereNull('deleted_at')
+                ->where('inscription_id', $ligne->inscription_id)
+                ->where('status', 'validé')
+                ->where(fn ($q) => $q->where('type_paiement', '!=', 'reliquat')->orWhereNull('type_paiement'))
+                ->sum('montant');
+
+            $payeAvecReliquat = $payeHorsReliquat + (float) $ligne->total;
+
+            // La bascule : credite a tort hier, debiteur en verite.
+            $verdictFausse = $attendu > 0
+                && $payeAvecReliquat >= $attendu
+                && $payeHorsReliquat < $attendu;
+
+            if ($verdictFausse) {
+                $fausses++;
+            }
+
+            $detail[] = [
+                'inscription_id' => (int) $ligne->inscription_id,
+                'versements_reliquat' => (int) $ligne->nb,
+                'montant_reliquat' => (float) $ligne->total,
+                'attendu' => $attendu,
+                'paye_hors_reliquat' => $payeHorsReliquat,
+                'reste_du_reel' => max(0.0, $attendu - $payeHorsReliquat),
+                'verdict_fausse' => $verdictFausse,
+            ];
+        }
+
+        usort($detail, fn ($a, $b) => ($b['verdict_fausse'] <=> $a['verdict_fausse'])
+            ?: ($b['reste_du_reel'] <=> $a['reste_du_reel']));
+
+        return $this->successResponse([
+            'versements_reliquat' => (int) $reliquats->sum('nb'),
+            'montant_total' => (float) $reliquats->sum('total'),
+            'inscriptions_concernees' => $reliquats->count(),
+            'verdicts_fausses' => $fausses,
+            'detail' => array_slice($detail, 0, 40),
+        ], 'Impact historique du reliquat compte comme paiement courant');
+    }
+
+    /**
+     * POST /api/cli/comptabilite/recus-en-double/renumeroter
+     *
+     * Simule par defaut (`dry_run=1`). La logique vit dans l'action dediee ;
+     * on ne fait ici que la declencher et rendre son compte-rendu.
+     */
+    public function renumeroterLesRecusEnDouble(
+        Request $request,
+        \App\Domain\Comptabilite\Receipts\Actions\RenumeroterLesRecusEnDouble $action
+    ): JsonResponse {
+        if (!$request->user()->tokenCan('cli:admin')) {
+            return $this->errorResponse('Token missing cli:admin ability', [], 403);
+        }
+
+        $simulation = $request->boolean('dry_run', true);
+        $resultat = $action->executer($simulation);
+
+        if ($resultat['refus'] !== []) {
+            return $this->errorResponse(
+                'Renumerotation refusee : un numero au moins porte plusieurs recus vivants. Rien n a ete ecrit.',
+                $resultat,
+                422
+            );
+        }
+
+        return $this->successResponse(
+            $resultat,
+            $simulation ? 'Simulation — rien n a ete ecrit' : 'Renumerotation effectuee'
+        );
+    }
 }

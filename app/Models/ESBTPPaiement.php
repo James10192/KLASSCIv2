@@ -52,6 +52,9 @@ class ESBTPPaiement extends Model implements Auditable
         // Correction d'imputation : la date vit sur le versement pour que le
         // recu puisse se declarer rectifie sans interroger le journal d'audit.
         'ventilation_rectifiee_le',
+        // Suppression : qui, et pourquoi. Écrits juste avant deleted_at.
+        'deleted_by',
+        'motif_suppression',
     ];
 
     /**
@@ -450,8 +453,21 @@ class ESBTPPaiement extends Model implements Auditable
             $query->valides();
         }
 
-        $encaisse = (float) (clone $query)->encaissements()->sum('montant');
-        $avoirs = (float) (clone $query)->avoires()->valides()->sum('montant');
+        // `horsReliquat()` ici aussi, et pas seulement dans la branche par
+        // categorie ci-dessus. Celle-ci passe par MontantsParFrais, qui l'applique
+        // (MontantsParFrais:100) ; celle-la construisait sa propre requete et
+        // l'oubliait. La MEME fonction rendait donc deux reponses differentes
+        // selon qu'on lui passait une categorie ou non.
+        //
+        // Un versement de reliquat porte `type_paiement = 'reliquat'` et
+        // `inscription_id` = l'inscription de DESTINATION : il transite par
+        // l'annee en cours, mais il eteint une dette de l'annee precedente. Le
+        // compter ici le faisait passer pour un paiement de la scolarite
+        // courante. Un etudiant reglant 250 000 d'arriere ressortait crediteur
+        // sur son annee, et `peutSeReinscrire()` — qui appelle cette branche —
+        // lui ouvrait l'annee suivante alors qu'il devait encore la sienne.
+        $encaisse = (float) (clone $query)->horsReliquat()->encaissements()->sum('montant');
+        $avoirs = (float) (clone $query)->horsReliquat()->avoires()->valides()->sum('montant');
 
         return max(0.0, $encaisse - $avoirs);
     }
@@ -748,8 +764,34 @@ class ESBTPPaiement extends Model implements Auditable
         $anneeCode = $anneeEnCours ? substr($anneeEnCours->code, 2, 2) : date('y');
 
         // Récupérer le dernier numéro de reçu pour ce préfixe et cette année
-        $lastRecu = self::where('numero_recu', 'like', "{$prefix}{$anneeCode}-%")
+        // `lockForUpdate` : sans lui, deux caisses qui encaissent en meme temps
+        // lisent le meme maximum et delivrent le MEME numero de recu a deux
+        // etudiants. Le risque cesse d etre theorique des qu il y a un guichet
+        // du jour et un guichet du soir. Les appelants ouvrent tous une
+        // transaction, le verrou tient donc jusqu a l insertion.
+        //
+        // Limite connue, assumee ici : tant qu aucune ligne n existe pour ce
+        // prefixe et cette annee, il n y a rien a verrouiller — la toute
+        // premiere emission d une annee garde une fenetre etroite. La fermer
+        // demande un index unique sur la colonne, qui ne porte aujourd hui
+        // qu un index simple.
+        //
+        // `withTrashed` n est pas un detail : le modele porte SoftDeletes, donc
+        // sans lui cette lecture ignore les paiements supprimes et REATTRIBUE
+        // leur numero. C etait la cause de tous les doublons releves en
+        // septembre 2026 — 28 sur Abidjan, 3 sur ISLG, 1 sur Yakro — dont
+        // chacun, sans exception, appariait un recu vivant a un recu supprime.
+        // Aucun doublon entre deux recus vivants nulle part : la comptabilite
+        // n a jamais delivre deux fois la meme preuve de paiement. Mais un
+        // numero rendu deux fois reste un numero rendu deux fois, et il suffit
+        // a faire echouer la pose de l index unique.
+        //
+        // Une sequence ne revient pas en arriere parce qu une ligne a ete
+        // retiree de la vue.
+        $lastRecu = self::withTrashed()
+                        ->where('numero_recu', 'like', "{$prefix}{$anneeCode}-%")
                         ->orderByRaw('CAST(SUBSTRING_INDEX(numero_recu, "-", -1) AS UNSIGNED) DESC')
+                        ->lockForUpdate()
                         ->first();
 
         $seq = 1;

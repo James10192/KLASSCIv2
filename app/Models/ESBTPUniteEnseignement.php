@@ -36,6 +36,38 @@ class ESBTPUniteEnseignement extends Model implements Auditable
     protected $table = 'esbtp_unites_enseignement';
 
     /**
+     * Crédit gravé par la maquette en cours de lecture, quand elle en grave un.
+     *
+     * Une unité partagée entre deux parcours garde UNE fiche — donc UN
+     * `credit` — mais chaque maquette peut lui donner le sien, sur la ligne de
+     * pivot `esbtp_lmd_parcours_ue` qui la relie à ce parcours et à ce
+     * semestre. C'est le chargeur des UE d'une classe qui pose cette valeur
+     * ici, parce que lui seul sait quelle maquette est lue.
+     *
+     * Propriété PHP déclarée, et non attribut Eloquent : un attribut inventé
+     * finirait dans un `save()` et chercherait une colonne qui n'existe pas.
+     * Ici, rien ne peut la persister.
+     *
+     * `null` signifie « cette maquette ne grave pas de crédit », et se
+     * distingue de `0`, qui est une décision de l'école — une unité qui ne
+     * rapporte aucun crédit dans ce parcours-là.
+     */
+    public ?int $creditDeLaMaquette = null;
+
+    /**
+     * Le crédit à utiliser pour CETTE lecture : celui de la maquette s'il est
+     * gravé, celui de la fiche sinon.
+     *
+     * Le `??` est ici légitime, à la différence de `$pivot->credit ?? $ue->credit`
+     * que l'audit interdit : la valeur est posée à `null` UNIQUEMENT quand le
+     * pivot n'en porte pas. Un pivot à `0` pose `0`, et `0 ?? x` vaut `0`.
+     */
+    public function creditEffectif(): int
+    {
+        return $this->creditDeLaMaquette ?? (int) $this->credit;
+    }
+
+    /**
      * Les attributs qui sont assignables en masse.
      *
      * @var array
@@ -60,6 +92,7 @@ class ESBTPUniteEnseignement extends Model implements Auditable
         'description',
         'credit',
         'semestre',
+        'ordre',            // repli d'affichage quand la classe n'a pas de parcours
         'type_ue',          // App\Enums\TypeUE — 7 catégories UEMOA
         'filiere_id',
         'niveau_id',

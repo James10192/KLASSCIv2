@@ -3051,9 +3051,10 @@ $(function() {
         });
         headerHtml += '</div>';
 
-        // Slots horaires (8h-18h) - cohérence avec les pages enseignants
+        // Plage horaire de l'etablissement, coherente avec les pages enseignants
+        const plageHoraire = @json(app(\App\Services\Planning\PlageHoraireJournee::class)->pourLeNavigateur());
         let slotsHtml = '';
-        for (let hour = 8; hour <= 18; hour++) {
+        for (let hour = plageHoraire.debut; hour < plageHoraire.fin; hour++) {
             slotsHtml += '<div class="calendar-time-slot">';
             slotsHtml += `<div class="time-label">${hour.toString().padStart(2, '0')}:00</div>`;
 

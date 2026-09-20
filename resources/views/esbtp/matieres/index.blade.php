@@ -40,7 +40,7 @@
                 @can('matieres.edit')
                 <a href="{{ route('esbtp.matieres.classification') }}" class="mi-btn--white">
                     <i class="fas fa-layer-group" aria-hidden="true"></i>
-                    Tronc commun / Spécialité
+                    Maquette du bulletin
                 </a>
                 @endcan
                 <a href="{{ route('esbtp.matieres.create') }}" class="mi-btn--white">

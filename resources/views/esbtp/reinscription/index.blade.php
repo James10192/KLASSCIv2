@@ -1357,39 +1357,6 @@ function loadMore(category, page) {
 }
 
 // Fonctions utilitaires pour les actions sur les étudiants
-function validerReinscription(etudiantId, decision) {
-    const observations = prompt(`Valider la réinscription avec décision: ${decision}\n\nObservations (optionnel):`);
-    
-    if (observations === null) return; // Annulé
-    
-    if (confirm(`Confirmer la validation de la réinscription ?\n\nDécision: ${decision}\nObservations: ${observations || 'Aucune'}`)) {
-        $.ajax({
-            url: `{{ url('esbtp/reinscription') }}/${etudiantId}/valider`,
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
-            },
-            data: JSON.stringify({
-                decision: decision,
-                observations: observations
-            }),
-            success: function(data) {
-                if (data.success) {
-                    alert(data.message);
-                    location.reload(); // Recharger la page pour voir les changements
-                } else {
-                    alert('Erreur: ' + data.message);
-                }
-            },
-            error: function(xhr, status, error) {
-                debugError('Erreur:', error);
-                alert('Erreur lors de la validation');
-            }
-        });
-    }
-}
-
 function marquerAbandonModal(etudiantId) {
     const typeAbandon = confirm('Type d\'abandon:\n\nOUI = Abandon année scolaire (n\'a pas soldé, ne vient plus)\nNON = Abandon école (année réussie mais quitte l\'établissement)') 
         ? 'annee_scolaire' : 'ecole';
