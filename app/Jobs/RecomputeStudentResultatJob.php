@@ -263,9 +263,6 @@ class RecomputeStudentResultatJob implements ShouldQueue
     }
 
     /**
-     * Normalise la période — accepte 1/2/semestre1/semestre2/annuel.
-     */
-    /**
      * Le coefficient que la maquette declare pour ce couple, et non `1`.
      *
      * CE `?? 1` COUTAIT PLUS CHER QU'IL N'EN AVAIT L'AIR, et ce n'etait pas
@@ -277,11 +274,18 @@ class RecomputeStudentResultatJob implements ShouldQueue
      * maquette declare, et le reenregistrait.
      *
      * CE QUE CE CHANGEMENT NE TOUCHE PAS. Le `??` court-circuite des qu'une
-     * ligne porte deja un coefficient : rien de ce qu'une ecole a saisi n'est
-     * reecrit. Seules changent les lignes NEUVES — celles qui recevaient un `1`
-     * que personne n'avait choisi. Une premiere version de ce chantier a
-     * reporte la correction en invoquant « elle change des valeurs deja
-     * enregistrees » ; c'etait faux, et le report ne protegeait rien.
+     * ligne existe : seules changent les lignes NEUVES. Une premiere version de
+     * ce chantier a reporte la correction en invoquant « elle change des valeurs
+     * deja enregistrees » ; c'etait faux, et le report ne protegeait rien.
+     *
+     * ET CE QU'IL NE REPARE PAS. `esbtp_resultats.coefficient` est
+     * `decimal(5,2) NOT NULL DEFAULT 1.00` : un `1,00` deja en base peut etre
+     * un choix de l'ecole, l'ancien `?? 1` de ce job, ou le defaut SQL — les
+     * trois sont INDISCERNABLES. Le parc installe garde donc ses valeurs,
+     * justes ou fausses, jusqu'a la regeneration d'un bulletin
+     * (`BulletinService::persistResultats()` les reecrit depuis la maquette)
+     * ou une saisie manuelle. Dire « rien de ce qu'une ecole a saisi n'est
+     * reecrit » serait donc flatteur : on ne sait pas ce qu'elle a saisi.
      *
      * LE REPLI EST LARGE A DESSEIN. `coefficientOrDefault()` ne rattrape que
      * `CoefficientMissingException` ; `getCoefficientForCombination()` peut
@@ -312,6 +316,9 @@ class RecomputeStudentResultatJob implements ShouldQueue
         }
     }
 
+    /**
+     * Normalise la période — accepte 1/2/semestre1/semestre2/annuel.
+     */
     private function normalizePeriode(string $periode): string
     {
         return match ($periode) {

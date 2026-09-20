@@ -217,13 +217,21 @@ a **trois** lectures — la canonique, le repli plat, et les matières qui porte
 **L'extraction est faite pour une des trois, et pas pour les deux autres.**
 `previewMoyennes()` délègue désormais à `App\Domain\Bulletins\MoyennesDeLApercu`,
 qui porte la préséance des quatre chemins **une seule fois** et y pose le prédicat
-une seule fois — 510 lignes de contrôleur ramenées à une centaine. C'est là qu'il
-faut poser tout nouveau filtre de cet écran, et nulle part ailleurs.
+une seule fois — **368 lignes de contrôleur ramenées à 85**. C'est là qu'il faut
+poser tout nouveau filtre de cet écran, et nulle part ailleurs.
+
+> **Ce gain a d'abord été annoncé « 510 → une centaine », et 510 n'a jamais
+> existé.** Le chiffre mesurait un état *intermédiaire de la branche elle-même*,
+> gonflé par les filtres qu'elle venait d'y poser, au lieu de mesurer la base.
+> C'est la forme flatteuse du défaut que cette rule passe son temps à décrire :
+> un compte qui avantage celui qui le publie est celui qu'on vérifie le moins.
 
 `updateMoyennes()` et `editResultatsClasse()`, eux, gardent leur `btsOnly()` par
-liste, et ce n'est pas un oubli : `updateMoyennes()` fait 219 lignes sur le chemin
-d'impression de huit instances, et la sortir dans la même branche ajouterait du
-risque au lieu d'en retirer. Ce qui protège réellement est **le garde à
+liste, et ce n'est pas un oubli : `updateMoyennes()` fait **242 lignes** (183
+avant ce chantier) sur le chemin d'impression de huit instances, et la sortir
+dans la même branche ajouterait du risque au lieu d'en retirer. Le chiffre annoncé
+ici a longtemps été 219 — faux **le jour même où il a été écrit**, et le report
+qu'il justifie se défend mieux avec le vrai. Ce qui protège réellement est **le garde à
 l'écriture**, qui refuse ; les listes ne font que ne plus proposer. Le déclencheur
 de leur extraction reste la **quatrième** liste, pas la prochaine revue.
 

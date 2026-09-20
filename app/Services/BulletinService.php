@@ -3555,9 +3555,18 @@ class BulletinService
         //    C'est le defaut que ce chantier passe son temps a corriger ailleurs.
         // 2. LE COEFFICIENT DE CETTE COLONNE EST HETEROGENE. Il vaut le vrai
         //    coefficient quand la ligne vient d'une generation de bulletin, et
-        //    1 quand elle vient de l'observateur de notes — donc la ponderation
-        //    aurait reflete QUEL ECRAN a touche la ligne en dernier, pas la
+        //    1 pour les lignes ECRITES AVANT SEPTEMBRE 2026, quand
+        //    `RecomputeStudentResultatJob` le posait en dur. Ce job lit
+        //    desormais la maquette, donc les lignes NEUVES sont justes — mais
+        //    le parc installe, lui, reste heterogene tant qu'un bulletin n'a
+        //    pas ete regenere. Ponderer refleterait donc encore QUEL ECRAN a
+        //    touche la ligne en dernier, et a quelle epoque, pas la
         //    configuration de l'ecole (`ESBTPMatiereCoefficient`).
+        //
+        //    CETTE RAISON A ETE RENDUE FAUSSE PAR LE COMMIT QUI L'A LAISSEE EN
+        //    PLACE : la branche qui a corrige le job n'a pas rouvert ce
+        //    commentaire. C'est le defaut que ce depot appelle « une phrase qui
+        //    decrit le comportement d'avant » — releve par une revue adverse.
         //
         // Ponderer les deux cotes est un chantier a part, pas ce correctif.
         //
