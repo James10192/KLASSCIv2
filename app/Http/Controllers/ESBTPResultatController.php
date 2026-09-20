@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Domain\Academique\CoherenceSystemeAcademique;
+use App\Domain\Bulletins\MoyennesDeLApercu;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use App\Exceptions\CoefficientMissingException;
 use App\Domain\BtsTroncCommun\BtsAnnualAggregationService;
@@ -60,6 +61,7 @@ class ESBTPResultatController extends Controller
     private $btsAnnualAggregationService;
     private $btsUiPresenter;
     private \App\Services\RankingService $rankingService;
+    private MoyennesDeLApercu $moyennesDeLApercu;
 
     public function __construct(
         \App\Services\ESBTP\ESBTPAbsenceService $absenceService,
@@ -68,7 +70,8 @@ class ESBTPResultatController extends Controller
         BtsCurrentResultSnapshotService $currentResultSnapshotService,
         BtsAnnualAggregationService $btsAnnualAggregationService,
         BtsUiPresenter $btsUiPresenter,
-        \App\Services\RankingService $rankingService
+        \App\Services\RankingService $rankingService,
+        MoyennesDeLApercu $moyennesDeLApercu
     )
     {
         $this->absenceService = $absenceService;
@@ -78,6 +81,7 @@ class ESBTPResultatController extends Controller
         $this->btsAnnualAggregationService = $btsAnnualAggregationService;
         $this->btsUiPresenter = $btsUiPresenter;
         $this->rankingService = $rankingService;
+        $this->moyennesDeLApercu = $moyennesDeLApercu;
     }
 
     public function resultats(ResultatsFilterRequest $request)
@@ -1085,7 +1089,7 @@ class ESBTPResultatController extends Controller
                 $moyenneSemestre2 = $moyenneAvecAssiduite;
             }
 
-            $notesByMatiere = $this->mapConsistencySubjectsToDetailNotes($bulletinConsistency['current_subjects'] ?? [], $notes);
+            $notesByMatiere = $this->moyennesDeLApercu->notesDetailleesDepuisLeSnapshot($bulletinConsistency['current_subjects'] ?? [], $notes);
             $detailUiState = $this->buildAnnualDetailUiState($periode, $moyenneSemestre1, $moyenneSemestre2, $moyenneAnnuelle);
         } elseif ($bulletinConsistency && ($detailUiState['state'] ?? null) === 'annual_incomplete') {
             $notesByMatiere = $this->overlayConsistencySubjectLabels(
@@ -1098,7 +1102,7 @@ class ESBTPResultatController extends Controller
             && ($detailUiState['state'] ?? null) === 'standard'
             && $notes->isNotEmpty()
         ) {
-            $mappedSubjects = $this->mapConsistencySubjectsToDetailNotes(
+            $mappedSubjects = $this->moyennesDeLApercu->notesDetailleesDepuisLeSnapshot(
                 $bulletinConsistency['current_subjects'] ?? [],
                 $notes
             );
@@ -2528,38 +2532,15 @@ class ESBTPResultatController extends Controller
             abort(403, 'Vous n\'avez pas les permissions nécessaires pour modifier les moyennes.');
         }
 
-        // Validation déjà faite par PreviewMoyennesRequest si besoin
+        $etudiantId = $request->etudiant_id;
+        $classeId = $request->classe_id;
+        $anneeUniversitaireId = $request->annee_universitaire_id;
+        $periode = $this->periodeDeLApercu($request->periode);
 
         try {
-            $etudiantId = $request->etudiant_id;
-            $classeId = $request->classe_id;
-            $periode = $request->periode;
-            $anneeUniversitaireId = $request->annee_universitaire_id;
-
-            // Si la période est vide, utiliser semestre1 comme valeur par défaut
-            if (empty($periode)) {
-                $periode = 'semestre1';
-            }
-
-            // Normaliser la période si nécessaire
-            if ($periode == '1') {
-                $periode = 'semestre1';
-                $periodePourBDD = 'semestre1';
-            } elseif ($periode == '2') {
-                $periode = 'semestre2';
-                $periodePourBDD = 'semestre2';
-            } elseif (in_array($periode, ['semestre1', 'semestre2', 'annuel'])) {
-                $periodePourBDD = $periode;
-            } else {
-                // Utiliser semestre1 comme valeur par défaut si la période n'est pas reconnue
-                $periode = 'semestre1';
-                $periodePourBDD = 'semestre1';
-            }
-
-            // Récupérer l'étudiant, la classe et l'année universitaire
-            $etudiant = \App\Models\ESBTPEtudiant::findOrFail($etudiantId);
-            $classe = \App\Models\ESBTPClasse::with('matieres')->findOrFail($classeId);
-            $anneeUniversitaire = \App\Models\ESBTPAnneeUniversitaire::findOrFail($anneeUniversitaireId);
+            $etudiant = ESBTPEtudiant::findOrFail($etudiantId);
+            $classe = ESBTPClasse::with('matieres')->findOrFail($classeId);
+            $anneeUniversitaire = ESBTPAnneeUniversitaire::findOrFail($anneeUniversitaireId);
 
             // CET ECRAN EST BTS, COMME LES QUATRE POINTS D'ENTREE FRERES de
             // `ESBTPBulletinController` (`store`, `genererClasseBulletins`,
@@ -2584,421 +2565,26 @@ class ESBTPResultatController extends Controller
                 'Cette classe est LMD. Utilisez /esbtp/lmd/bulletins pour ses releves.'
             );
 
-            // MODIFIÉ: Récupérer les notes de l'étudiant avec une requête plus flexible, similaire à resultatEtudiant
-            // Récupérer toutes les notes de l'étudiant d'abord
-            $notesQuery = \App\Models\ESBTPNote::where('etudiant_id', $etudiantId)
-                ->with(['evaluation.matiere', 'matiere']);
+            // QUATRE SOURCES, UNE PRESEANCE, ET ELLE EST ECRITE AILLEURS.
+            // Cet assemblage tenait ici sur 500 lignes et sa preseance ne se
+            // lisait que dans l'ordre de quatre boucles separees par des
+            // requetes. Voir `App\Domain\Bulletins\MoyennesDeLApercu`, dont
+            // l'en-tete porte le pourquoi de chaque chemin.
+            $apercu = $this->moyennesDeLApercu->assembler(
+                $etudiant,
+                $classe,
+                $anneeUniversitaire,
+                $periode
+            );
 
-            // Filtrer par période (semestre)
-            $notesQuery->where(function ($q) use ($periodePourBDD) {
-                $q->where('semestre', $periodePourBDD)
-                    ->orWhereHas('evaluation', function ($query) use ($periodePourBDD) {
-                        $query->where('periode', $periodePourBDD);
-                    });
-            });
-
-            // MODIFIÉ: Utilisation du scope byClasse pour filtrer les notes par classe
-            // Cela limite les notes aux évaluations de la classe spécifique demandée
-            $notesQuery->byClasse($classeId);
-
-            // MODIFIÉ: Filtrage par année universitaire pour inclure aussi l'année précédente
-            // Utiliser le scope byAnneeUniversitaireWithPrevious qui permet de récupérer les notes
-            // des évaluations de l'année courante (anneeUniversitaireId) ET de l'année précédente (anneeUniversitaireId-1)
-            $notesQuery->byAnneeUniversitaireWithPrevious($anneeUniversitaireId);
-
-            // Log pour le débogage - voir quelles notes sont récupérées
-            \Log::debug("Notes query for student {$etudiantId}, class {$classeId}, period {$periodePourBDD}, year {$anneeUniversitaireId}");
-
-            $notes = $notesQuery->get();
-
-            // Log des notes récupérées
-            foreach ($notes as $note) {
-                \Log::debug("Note ID: {$note->id}, Value: {$note->note}, Evaluation ID: {$note->evaluation_id}, Evaluation Year: {$note->evaluation->annee_universitaire_id}, Matiere ID: {$note->evaluation->matiere_id}");
-            }
-
-            // Si aucune note n'est trouvée, vérifier s'il existe des notes dans l'année précédente uniquement
-            if ($notes->isEmpty()) {
-                \Log::debug('No notes found for current criteria. Checking previous year explicitly.');
-                $prevYearId = $anneeUniversitaireId - 1;
-
-                $prevNotesQuery = \App\Models\ESBTPNote::query()
-                    ->where('etudiant_id', $etudiantId)
-                    ->withValidEvaluation()
-                    ->whereHas('evaluation', function ($query) use ($periodePourBDD, $classeId, $prevYearId) {
-                        $query->where('classe_id', $classeId);
-                        if ($periodePourBDD != 'annuel') {
-                            $query->where('periode', $periodePourBDD);
-                        }
-                        $query->where('annee_universitaire_id', $prevYearId);
-                    });
-
-                $prevNotes = $prevNotesQuery->get();
-
-                if ($prevNotes->isNotEmpty()) {
-                    \Log::debug("Found notes in previous year {$prevYearId}");
-                    $notes = $prevNotes;
-                }
-            }
-
-            // Organiser les notes par matière
-            $notesByMatiere = [];
-            foreach ($notes as $note) {
-                if (! $note->evaluation) {
-                    \Log::debug("Skipping note ID {$note->id} - no evaluation");
-
-                    continue;
-                }
-                $matiere = $note->evaluation->matiere;
-                if (! $matiere) {
-                    \Log::debug("Skipping note ID {$note->id} - no matiere for evaluation {$note->evaluation_id}");
-
-                    continue;
-                }
-
-                $matiereId = $matiere->id;
-                if (! isset($notesByMatiere[$matiereId])) {
-                    $notesByMatiere[$matiereId] = [
-                        'matiere' => $matiere,
-                        'notes' => [],
-                        'total_points' => 0,
-                        'total_coefficients' => 0,
-                        'moyenne' => 0,
-                    ];
-                }
-
-                $notesByMatiere[$matiereId]['notes'][] = $note;
-            }
-
-            // Récupérer les résultats existants pour cet étudiant (exclure les soft-deleted)
-            // Les soft-deleted doivent être définitivement supprimés avec forceDelete()
-            $resultats = \App\Models\ESBTPResultat::where('etudiant_id', $etudiantId)
-                ->where('classe_id', $classeId)
-                ->where('periode', $periodePourBDD)
-                ->where('annee_universitaire_id', $anneeUniversitaireId)
-                // `withTrashed()` : voir le chemin 1 ci-dessous — une matiere effacee
-                // en douceur desarmait le marquage « hors systeme ».
-                ->with(['matiere' => fn ($q) => $q->withTrashed()])
-                ->get();
-
-            // Préparer les données des résultats pour l'affichage et l'édition
-            $resultatsData = [];
-            foreach ($resultats as $resultat) {
-                // Vérifier si la relation matiere existe
-                if (! $resultat->matiere) {
-                    // Si la relation n'existe pas, essayer de récupérer la matière directement
-                    // `withTrashed()` : `ESBTPMatiere` est en `SoftDeletes`. Sans
-                    // lui, une matiere effacee en douceur faisait `continue` plus
-                    // bas — la ligne disparaissait de l'ecran, donc SA CROIX DE
-                    // SUPPRESSION avec elle, et le chemin du snapshot la recreait
-                    // ensuite sous « Matiere inconnue », sans son marquage, donc
-                    // modifiable et repostable. C'est precisement l'inextirpable
-                    // que cet ecran evite par ailleurs.
-                    $matiere = \App\Models\ESBTPMatiere::withTrashed()->find($resultat->matiere_id);
-
-                    // Si la matière n'existe toujours pas, ignorer ce résultat
-                    if (! $matiere) {
-                        continue;
-                    }
-                } else {
-                    $matiere = $resultat->matiere;
-                }
-
-                // LE PREMIER CHEMIN D'INGESTION, et celui qui a la PRESEANCE.
-                //
-                // Deux passes de revue ont compte « trois chemins » puis « deux »
-                // pour cet ecran : il y en a QUATRE, et c'est celui-ci qui gagne.
-                // Les lignes deja enregistrees sont posees ici, et le chemin
-                // « depuis les notes » ne comble ensuite que ce qui manque
-                // (`array_diff_key`). Le filtre pose sur lui ne pouvait donc
-                // JAMAIS voir une ECUE portant une ligne `esbtp_resultats`.
-                //
-                // ON NE LA CACHE PAS, ON LA MONTRE COMME INTRUSE. L'ecarter
-                // d'ici emporterait son bouton de suppression, et la rendrait
-                // inextirpable depuis l'ecran — exactement le defaut que le
-                // retrait de maquette corrige par ailleurs, et que
-                // `/esbtp/matieres/classification` a deja resolu ainsi : un bloc
-                // distinct, avec sa croix de retrait. Le sort de ces lignes est
-                // une decision d'ecole (`rien-en-dur.md`), pas du code.
-                $intruse = ! CoherenceSystemeAcademique::matiereRetenue($matiere, $classe, 'apercu moyennes/ligne enregistree');
-
-                $resultatsData[$resultat->matiere_id] = [
-                    'id' => $resultat->id,
-                    'matiere' => $matiere,
-                    'moyenne' => $resultat->moyenne,
-                    'intruse' => $intruse,
-                    // `coefficientOrDefault()` et non `getCoefficientForCombination()` :
-                    // une ECUE n'a pas de coefficient sur un couple BTS, son
-                    // coefficient vit dans la maquette LMD. L'appel nu levait, et
-                    // le `catch (\RuntimeException)` de fin de methode renvoyait
-                    // l'utilisateur vers « configurez les coefficients » — pour une
-                    // matiere dont configurer le coefficient ne reglerait rien.
-                    // L'ecran ne s'ouvrait donc PAS.
-                    'coefficient' => $this->bulletinService->coefficientOrDefault(
-                        $resultat->matiere_id,
-                        $classeId,
-                        $anneeUniversitaireId
-                    ),
-                    'rang' => $resultat->rang,
-                    'appreciation' => $resultat->appreciation ?: app(AppreciationScaleService::class)->labelFor(
-                        $resultat->moyenne === null ? null : (float) $resultat->moyenne,
-                        'bts',
-                        ''
-                    ),
-                ];
-            }
-
-            // Récupérer filière et niveau de la classe pour filtrer les matières
-            $classeFiliereIdForNotes = $classe->filiere_id;
-            $classeNiveauIdForNotes = $classe->niveau_etude_id;
-
-            // Si des moyennes calculées n'ont pas de résultat correspondant, les ajouter
-            // MAIS seulement si la matière correspond à la combinaison filière+niveau de la classe
-
-            // Preload toutes les matières manquantes en une seule requête (évite N×3 requêtes)
-            $missingMatiereIds = array_keys(array_diff_key($notesByMatiere, $resultatsData));
-            $missingMatieres = $missingMatiereIds
-                ? \App\Models\ESBTPMatiere::with(['filieres', 'niveaux'])->whereIn('id', $missingMatiereIds)->get()->keyBy('id')
-                : collect();
-
-            foreach ($notesByMatiere as $matiereId => $matiereData) {
-                if (! isset($resultatsData[$matiereId])) {
-                    $matiere = $missingMatieres->get($matiereId);
-
-                    if (! $matiere) {
-                        \Log::warning("Matiere with ID {$matiereId} not found when adding calculated averages - skipping");
-
-                        continue; // Ignorer cette entrée si la matière n'existe pas
-                    }
-
-                    // Vérifier que la matière correspond à la combinaison filière+niveau de la classe
-                    if (! $classeFiliereIdForNotes || ! $classeNiveauIdForNotes) {
-                        \Log::warning("Classe {$classeId} missing filiere_id or niveau_etude_id - skipping matiere {$matiereId}");
-
-                        continue;
-                    }
-
-                    // LE SECOND CHEMIN D'INGESTION DE CET ECRAN, et le plus
-                    // piegeux : cette boucle pose ses entrees AVANT celle qui
-                    // comble les trous plus bas, et celle-la n'AJOUTE que ce qui
-                    // manque. Filtrer la seconde seule ne retirait donc rien ici
-                    // — et ce qui passait par ici est precisement le
-                    // sous-ensemble qui PORTE DES NOTES, c'est-a-dire celui
-                    // qu'on enregistre.
-                    //
-                    // `matiereRetenue()` plutot qu'un `btsOnly()` muet : la
-                    // ligne est HERITEE (quelqu'un a saisi ces notes), donc on
-                    // l'ecarte en le disant. Un rattrapage silencieux ne se
-                    // cherche meme pas — piege #12 de
-                    // `klassci-debugging-discipline.md`.
-                    if (! CoherenceSystemeAcademique::matiereRetenue($matiere, $classe, 'apercu moyennes')) {
-                        continue;
-                    }
-
-                    $matchesFiliere = $matiere->filieres->pluck('id')->contains($classeFiliereIdForNotes);
-                    $matchesNiveau = $matiere->niveaux->pluck('id')->contains($classeNiveauIdForNotes);
-
-                    if (! $matchesFiliere || ! $matchesNiveau) {
-                        \Log::debug("Matiere {$matiereId} ({$matiere->name}) skipped - does not match classe filiere/niveau combination");
-
-                        continue; // Ignorer les matières qui ne correspondent pas à la combinaison
-                    }
-
-                    $resultatsData[$matiereId] = [
-                        'id' => null,
-                        'matiere' => $matiere, // Utiliser l'objet matière fraîchement récupéré
-                        'moyenne' => $matiereData['moyenne'],
-                        'coefficient' => $this->bulletinService->coefficientOrDefault(
-                            $matiereId,
-                            $classeId,
-                            $anneeUniversitaireId
-                        ),
-                        'rang' => null,
-                        'appreciation' => app(AppreciationScaleService::class)->labelFor(
-                            $matiereData['moyenne'] === null ? null : (float) $matiereData['moyenne'],
-                            'bts',
-                            ''
-                        ),
-                    ];
-                }
-            }
-
-            // Calculer la moyenne pour chaque matière
-            foreach ($notesByMatiere as $matiereId => &$matiereData) {
-                $totalPoints = 0;
-                $totalCoefficients = 0;
-
-                foreach ($matiereData['notes'] as $note) {
-                    if ($note->evaluation && $note->evaluation->bareme > 0) {
-                        $noteValue = is_numeric($note->note) ? floatval($note->note) : (is_numeric($note->valeur) ? floatval($note->valeur) : 0);
-                        $bareme = floatval($note->evaluation->bareme);
-                        $coefficient = $note->evaluation->coefficient ? floatval($note->evaluation->coefficient) : 1;
-
-                        $normalized = ($noteValue / $bareme) * 20;
-                        $totalPoints += $normalized * $coefficient;
-                        $totalCoefficients += $coefficient;
-                    }
-                }
-
-                $matiereData['total_points'] = $totalPoints;
-                $matiereData['total_coefficients'] = $totalCoefficients;
-                $matiereData['moyenne'] = $totalCoefficients > 0 ? $totalPoints / $totalCoefficients : 0;
-
-            }
-
-            // NOUVELLE LOGIQUE: Récupérer les matières basées sur la combinaison filière + niveau de la classe
-            // même si l'étudiant n'a aucune évaluation/note
-            $classeFiliereId = $classe->filiere_id;
-            $classeNiveauId = $classe->niveau_etude_id;
-
-            // Plus de blocage pour coefficients manquants - utiliser fallback = 1
-            //
-            // `btsOnly()` N'EST PAS UNE CEINTURE DE PLUS, c'est la source de cet
-            // ecran. Le croisement ci-dessous porte sur les deux pivots PLATS
-            // (`esbtp_matiere_filiere` + `esbtp_matiere_niveau`), que
-            // `LiaisonsDeMatiere::retirer()` ne nettoie volontairement pas : une
-            // ECUE retiree de la maquette garde ses lignes plates et ressortait
-            // donc ici. Elle etait alors POSTEE en creation, et le garde de
-            // `ESBTPResultat` levait au milieu de la boucle d'enregistrement —
-            // l'ecran devenait insauvegardable. Voir
-            // `.claude/rules/lmd-ecue-leak-bts-picker.md`, forme « PEUT fuiter ».
-            $toutesLesMatieres = \App\Models\ESBTPMatiere::with(['filieres:id,name,code', 'niveaux:id,name,code'])
-                ->where('is_active', true)
-                ->btsOnly()
-                ->orderBy('name')
-                ->get()
-                ->filter(function ($matiere) use ($classeFiliereId, $classeNiveauId) {
-                    if (! $classeFiliereId || ! $classeNiveauId) {
-                        return false;
-                    }
-
-                    return $matiere->filieres->pluck('id')->contains($classeFiliereId)
-                        && $matiere->niveaux->pluck('id')->contains($classeNiveauId);
-                })
-                ->values();
-
-            // Ajouter les matières de la classe qui n'ont pas encore de résultats
-            foreach ($toutesLesMatieres as $matiere) {
-                if (! isset($resultatsData[$matiere->id])) {
-                    // Vérifier si cette matière a des moyennes calculées depuis les évaluations
-                    $moyenneCalculee = isset($notesByMatiere[$matiere->id]) ? $notesByMatiere[$matiere->id]['moyenne'] : null;
-                    
-                    // TROIS DES QUATRE CHEMINS, et le quatrieme a la preseance
-                    // sur S1/S2 — la nuance compte, et l'avoir ecrite « une
-                    // seule politique » etait faux.
-                    //
-                    // Le chemin du snapshot prend son coefficient de
-                    // `BtsCurrentResultSnapshotService`, qui le calcule avec la
-                    // PERIODE et l'ELEVE (donc avec le repli Tronc Commun, que
-                    // cet ecran n'a pas). C'est une valeur plus riche, pas une
-                    // divergence a corriger — mais elle peut etre nulle, et ce
-                    // nul-la est repris plus bas au lieu d'etre blanchi en 1 par
-                    // le gabarit.
-                    //
-                    // Les trois chemins ci-dessous, eux, en avaient trois
-                    // differentes, et deux se contredisaient A L'ECRAN sur une
-                    // matiere BTS ordinaire dont le coefficient n'est pas
-                    // configure :
-                    // l'eleve sans ligne enregistree tombait sur un 302
-                    // « configurez les coefficients », le meme eleve avec une
-                    // ligne enregistree voyait l'ecran s'ouvrir avec 1. Meme
-                    // matiere, meme configuration manquante, deux issues.
-                    //
-                    // Ce `try/catch` repliait en SILENCE, ce qui est le defaut
-                    // que ce chantier passe son temps a corriger ailleurs.
-                    // `coefficientOrDefault()` replie sur 1 EN LE DISANT, et
-                    // laisse passer le « Classe invalide » que le `catch`
-                    // terminal de cette methode doit continuer de recevoir.
-                    $coefficientCalcule = $this->bulletinService->coefficientOrDefault(
-                        $matiere->id,
-                        $classe->id,
-                        $anneeUniversitaire->id
-                    );
-
-                    $resultatsData[$matiere->id] = [
-                        'id' => null, // Nouveau résultat à créer
-                        'matiere' => $matiere,
-                        'moyenne' => $moyenneCalculee, // null si pas d'évaluations
-                        'coefficient' => $coefficientCalcule,
-                        'rang' => null,
-                        'appreciation' => $moyenneCalculee === null
-                            ? null
-                            : app(AppreciationScaleService::class)->labelFor((float) $moyenneCalculee, 'bts', ''),
-                        'source' => $moyenneCalculee !== null ? 'calculee' : 'manuelle',
-                    ];
-                } else {
-                    // Marquer la source des résultats existants
-                    $moyenneCalculee = isset($notesByMatiere[$matiere->id]) ? $notesByMatiere[$matiere->id]['moyenne'] : null;
-                    $resultatsData[$matiere->id]['source'] = $moyenneCalculee !== null ? 'calculee' : 'manuelle';
-                }
-            }
-
-            // Trier les matières par nom pour un affichage cohérent
-            if (in_array($periodePourBDD, ['semestre1', 'semestre2'], true)) {
-                $snapshot = $this->currentResultSnapshotService->getSemesterSnapshot(
-                    $etudiantId,
-                    $classeId,
-                    $anneeUniversitaireId,
-                    $periodePourBDD
-                );
-
-                $notesByMatiere = $this->mapConsistencySubjectsToDetailNotes($snapshot['subjects'] ?? [], $notes);
-
-                foreach ($snapshot['subjects'] ?? [] as $subject) {
-                    $matiereId = $subject['matiere_id'] ?? null;
-                    if (! $matiereId) {
-                        continue;
-                    }
-
-                    $matiereModel = $resultatsData[$matiereId]['matiere']
-                        ?? $notesByMatiere[$matiereId]['matiere']
-                        ?? (object) ['id' => $matiereId, 'name' => $subject['matiere'] ?? 'Matière inconnue'];
-
-                    $resultatsData[$matiereId] = [
-                        'id' => $resultatsData[$matiereId]['id'] ?? ($subject['manual_resultat']['resultat_id'] ?? null),
-                        'matiere' => $matiereModel,
-                        // CE BLOC REECRASE, IL NE FUSIONNE PAS. Sans reconduire
-                        // `intruse`, il effacerait le marquage pose par le
-                        // premier chemin. Inoffensif aujourd'hui — le snapshot
-                        // filtre ses deux lectures, donc aucune ECUE n'y entre —
-                        // mais c'est la forme exacte du defaut que ce chantier a
-                        // paye trois fois : une seconde ecriture qui annule la
-                        // premiere.
-                        'intruse' => $resultatsData[$matiereId]['intruse'] ?? false,
-                        'moyenne' => $subject['moyenne'] ?? null,
-                        // Le snapshot peut rendre un coefficient nul (son
-                        // propre repli est muet). Le gabarit le blanchissait
-                        // alors en 1 sans une ligne de journal — le defaut que
-                        // ce chantier corrige partout ailleurs. On reprend donc
-                        // la valeur des chemins 1 a 3, qui vient de
-                        // `coefficientOrDefault()` et qui est, elle, journalisee.
-                        'coefficient' => $subject['coefficient']
-                            ?? ($resultatsData[$matiereId]['coefficient'] ?? null),
-                        'rang' => $resultatsData[$matiereId]['rang'] ?? null,
-                        'appreciation' => $resultatsData[$matiereId]['appreciation']
-                            ?? ($subject['manual_resultat']['appreciation'] ?? null)
-                            ?? app(AppreciationScaleService::class)->labelFor(
-                                ($subject['moyenne'] ?? null) === null ? null : (float) $subject['moyenne'],
-                                'bts',
-                                ''
-                            ),
-                        'source' => $subject['source'] ?? 'calculee',
-                    ];
-                }
-            }
-
-            uasort($resultatsData, function ($a, $b) {
-                return strcasecmp($a['matiere']->name, $b['matiere']->name);
-            });
-
-            // Afficher la vue de prévisualisation des moyennes
-            return view('esbtp.resultats.moyennes-preview', compact(
-                'etudiant',
-                'classe',
-                'periode',
-                'anneeUniversitaire',
-                'notesByMatiere',
-                'resultatsData'
-            ));
+            return view('esbtp.resultats.moyennes-preview', [
+                'etudiant' => $etudiant,
+                'classe' => $classe,
+                'periode' => $periode,
+                'anneeUniversitaire' => $anneeUniversitaire,
+                'notesByMatiere' => $apercu['notes_par_matiere'],
+                'resultatsData' => $apercu['lignes'],
+            ]);
         } catch (HttpExceptionInterface $exception) {
             // AVANT le `catch (\RuntimeException)`, et c'est tout l'objet de ce
             // bloc : `Symfony\…\HttpException` HERITE de `RuntimeException`.
@@ -3014,16 +2600,35 @@ class ESBTPResultatController extends Controller
             // `abort()` futur pose dans ce `try`, pas seulement pour celui-ci.
             throw $exception;
         } catch (\RuntimeException $exception) {
-            $periodeParam = isset($periode) ? str_replace('semestre', '', $periode) : '1';
             $redirectUrl = route('esbtp.resultats.etudiant', ['etudiant' => $etudiantId])
                 . '?classe_id=' . ($classeId ?? '')
                 . '&annee_universitaire_id=' . ($anneeUniversitaireId ?? '')
-                . '&periode=' . $periodeParam
+                . '&periode=' . str_replace('semestre', '', $periode)
                 . '&open_coeff_modal=1';
 
             return redirect($redirectUrl)
                 ->with('error', $exception->getMessage().' Configurez les coefficients avant de continuer.');
         }
+    }
+
+    /**
+     * La periode de l'apercu, ramenee aux trois seules valeurs que la base porte.
+     *
+     * Une cascade de six `if` faisait ce travail, en tenant DEUX variables
+     * (`$periode` et `$periodePourBDD`) dont les quatre branches finissaient
+     * toujours par poser la meme valeur. Le gabarit recevait la premiere, la
+     * requete la seconde : deux noms pour une valeur, donc une divergence qui
+     * n'attendait qu'une cinquieme branche.
+     */
+    private function periodeDeLApercu(mixed $periode): string
+    {
+        return match ((string) $periode) {
+            '2', 'semestre2' => 'semestre2',
+            'annuel' => 'annuel',
+            // `semestre1` par defaut : une periode vide ou inconnue ne doit pas
+            // ouvrir un ecran vide, elle doit ouvrir le premier semestre.
+            default => 'semestre1',
+        };
     }
 
     /**
@@ -3489,7 +3094,7 @@ class ESBTPResultatController extends Controller
             // coefficient brut du snapshot (0 quand la matiere n'est pas configuree), et cette
             // valeur correspond a la ponderation reellement utilisee pour la moyenne du semestre.
             // Forcer 1 ferait diverger l'annuel de l'onglet semestriel pour la meme donnee.
-            $mapped = $this->mapConsistencySubjectsToDetailNotes($subjects, $notes);
+            $mapped = $this->moyennesDeLApercu->notesDetailleesDepuisLeSnapshot($subjects, $notes);
 
             $blocks[] = [
                 'key' => $key,
@@ -3519,54 +3124,6 @@ class ESBTPResultatController extends Controller
 
             return $block;
         }, $blocks);
-    }
-
-    private function mapConsistencySubjectsToDetailNotes(array $subjects, Collection $notes): array
-    {
-        $mapped = [];
-
-        foreach ($subjects as $subject) {
-            $matiereId = $subject['matiere_id'] ?? null;
-            if (! $matiereId) {
-                continue;
-            }
-
-            $notesForSubject = $notes->filter(function ($note) use ($matiereId, $subject) {
-                $noteMatiereId = $note->matiere_id ?: $note->evaluation?->matiere?->id;
-                if ($noteMatiereId !== $matiereId) {
-                    return false;
-                }
-
-                $evaluationIds = collect($subject['evaluations'] ?? [])->pluck('evaluation_id')->filter()->all();
-                if (empty($evaluationIds)) {
-                    return true;
-                }
-
-                return in_array($note->evaluation_id, $evaluationIds, true);
-            })->values();
-
-            $matiereModel = $notesForSubject->first()?->matiere ?: $notesForSubject->first()?->evaluation?->matiere;
-            if (! $matiereModel) {
-                $matiereModel = (object) [
-                    'id' => $matiereId,
-                    'name' => $subject['matiere'] ?? 'Matière inconnue',
-                    'code' => null,
-                ];
-            }
-
-            $mapped[$matiereId] = [
-                'matiere' => $matiereModel,
-                'notes' => $notesForSubject->all(),
-                'calculations' => [],
-                'total_points' => 0,
-                'total_coefficients' => (float) ($subject['coefficient'] ?? 0),
-                'moyenne' => (float) ($subject['moyenne'] ?? 0),
-                'origin' => 'notes',
-                'source' => ($subject['source'] ?? 'calculee') === 'manuelle' ? 'manuelle' : 'calculee',
-            ];
-        }
-
-        return $mapped;
     }
 
     private function overlayConsistencySubjectLabels(array $notesByMatiere, array $subjects): array
