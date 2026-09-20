@@ -1913,9 +1913,6 @@ class ESBTPResultatController extends Controller
     }
 
     /**
-     * Récupère le coefficient d'une matière pour une combinaison filiere + niveau + année
-     */
-    /**
      * Récupérer le coefficient d'une matière pour une classe (AJAX)
      *
      * @param Request $request

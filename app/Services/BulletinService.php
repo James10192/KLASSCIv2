@@ -3555,12 +3555,13 @@ class BulletinService
         //    C'est le defaut que ce chantier passe son temps a corriger ailleurs.
         // 2. LE COEFFICIENT DE CETTE COLONNE EST HETEROGENE, ET CE N'EST PAS
         //    UNE QUESTION DE DATE MAIS D'ECRIVAIN. `esbtp_resultats` en a
-        //    cinq, et deux posent encore `1` :
+        //    cinq, et DEUX NE CONSULTENT JAMAIS LA MAQUETTE. Chaque ligne
+        //    porte l'expression reellement ecrite, pas un resume :
         //
-        //      - `BulletinService::persistResultats()` ............. maquette
-        //      - `RecomputeStudentResultatJob` .................... maquette
-        //      - `ESBTPResultatController::updateMoyennes()` (x2) . maquette
-        //      - `ESBTPResultatController::bulkUpdateMoyennes()` .. `?? 1`
+        //      - `BulletinService::persistResultats()` ...... `$resultat->coefficient ?? 1`
+        //      - `RecomputeStudentResultatJob` ............. `$existant?->coefficient ?? maquette`
+        //      - `ESBTPResultatController::updateMoyennes()` (x3) . maquette, `1` sur exception
+        //      - `ESBTPResultatController::bulkUpdateMoyennes()` .. `$payload['coefficient'] ?? 1`
         //      - `CLIBtsTroncCommunController::upsertResultat()` .. `1` en dur
         //
         //    Ponderer refleterait donc QUEL ECRAN a touche la ligne en dernier,
@@ -3568,7 +3569,28 @@ class BulletinService
         //
         //    La liste se rejoue, elle ne se croit pas :
         //
-        //      grep -rn "ESBTPResultat::\(create\|updateOrCreate\)" app/ --include="*.php"
+        //      grep -rnE "ESBTPResultat::(create|updateOrCreate|withTrashed)" app/ --include="*.php"
+        //
+        //    LE MOTIF PRECEDENT OMETTAIT `persistResultats()`, qui ecrit par un
+        //    appel chaine (`::withTrashed()->...->updateOrCreate()`). Il rendait
+        //    CINQ lignes face aux CINQ entrees de ce tableau : un lecteur les
+        //    appariait un a un et concluait que la liste etait verifiee, alors
+        //    que l'ecrivain le plus emprunte en production -- toute generation
+        //    de bulletin -- n'avait jamais ete touche par la commande. Le motif
+        //    ci-dessus rend SEPT lignes au total : les six appels statiques des
+        //    cinq ecrivains, plus `ESBTPResultatController::deleteMoyenne()`, qui
+        //    SUPPRIME et n'ecrit aucun coefficient -- faux positif assume, a
+        //    laisser.
+        //
+        //    ET CES SEPT NE COLLENT PAS AVEC LE `(x3)` CI-DESSUS, a dessein :
+        //    le motif voit les appels STATIQUES, pas les ecritures. Le troisieme
+        //    coefficient d'`updateMoyennes()` part d'un
+        //    `find($id)->update([... 'coefficient' ...])` sur un modele deja
+        //    hydrate, qu'aucun motif en `ESBTPResultat::` ne peut atteindre.
+        //    Trois nombres differents, tous mesures, qui doivent le rester :
+        //    SEPT lignes rendues, SIX appels statiques, SEPT ecritures de
+        //    coefficient dans `esbtp_resultats` (1 + 1 + 3 + 1 + 1). Les aligner
+        //    demanderait un motif qui ment.
         //
         //    DEUX REDACTIONS DE CE PARAGRAPHE ONT ETE FAUSSES. La premiere
         //    disait « 1 quand la ligne vient de l'observateur de notes » — vrai

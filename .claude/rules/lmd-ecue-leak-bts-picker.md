@@ -228,9 +228,17 @@ lignes vides comprises.
 compte() { git show "$1:app/Http/Controllers/ESBTPResultatController.php" \
   | awk -v m="$2" '$0 ~ "public function "m"\\(" {f=1} f{n++; c+=gsub(/{/,"{"); c-=gsub(/}/,"}"); if(c==0&&n>1){print n; exit}}'; }
 
-compte origin/presentation previewMoyennes   # 368      compte HEAD previewMoyennes  # 85
-compte origin/presentation updateMoyennes    # 183      compte HEAD updateMoyennes   # 242
+compte origin/presentation previewMoyennes   # 368
+compte HEAD               previewMoyennes   # 85
+compte origin/presentation updateMoyennes    # 183
+compte HEAD               updateMoyennes    # 242
 ```
+
+La mise en page precedente rangeait les deux appels `HEAD` **a droite, derriere
+le `#`** du commentaire de gauche. Copie-collee telle quelle, elle rendait `368`
+et `183`, jamais `85` ni `242` — une commande publiee sous la promesse « les
+comptes se rejouent » qui ne rejouait que la moitie des comptes. Quatre lignes,
+un appel par ligne : le commentaire ne peut plus avaler l'appel suivant.
 
 La convention n'est pas un détail : compter les lignes **non vides**
 d'`updateMoyennes()` à HEAD rend **219** — précisément le chiffre que cette
