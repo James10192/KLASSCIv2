@@ -504,14 +504,6 @@ class ESBTPEvaluation extends Model implements Auditable
     }
 
     /**
-     * Toutes les écritures d'une période, à passer à un `whereIn`.
-     *
-     * Le modèle porte la colonne `periode` : c'est ici que vit la
-     * connaissance de ses valeurs, et non recopiée chez chaque appelant.
-     *
-     * @return list<string>
-     */
-    /**
      * L'ecriture CANONIQUE d'une periode : celle sous laquelle
      * `esbtp_resultats.periode` est enregistree, et la seule a publier.
      *
@@ -531,6 +523,14 @@ class ESBTPEvaluation extends Model implements Auditable
         return $numero === null ? $periode : 'semestre'.$numero;
     }
 
+    /**
+     * Toutes les écritures d'une période, à passer à un `whereIn`.
+     *
+     * Le modèle porte la colonne `periode` : c'est ici que vit la
+     * connaissance de ses valeurs, et non recopiée chez chaque appelant.
+     *
+     * @return list<string>
+     */
     public static function aliasDePeriode(string $periode): array
     {
         return match (self::numeroDeSemestre($periode)) {

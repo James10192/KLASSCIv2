@@ -6,6 +6,8 @@ use App\Jobs\RecomputeStudentResultatJob;
 use App\Models\ESBTPEvaluation;
 use App\Models\ESBTPNote;
 use App\Models\ESBTPResultat;
+use App\Services\NoteCalculationService;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -172,7 +174,7 @@ final class RecalculApresDeplacement
 
     /**
      * @param  array{classe_id?:int|null, matiere_id?:int|null, periode?:string|null, annee_universitaire_id?:int|null}  $avant
-     *                                                                                                                          Coordonnees de l'evaluation AVANT le deplacement.
+     *                                                                                                                           Coordonnees de l'evaluation AVANT le deplacement.
      * @return array{recalculs_tentes:int, orphelins:array<int,array<string,mixed>>, echecs:int}
      */
     public static function pour(ESBTPEvaluation $evaluation, array $avant, ?int $declencheur = null): array
@@ -237,11 +239,24 @@ final class RecalculApresDeplacement
         foreach ($etudiantIds as $etudiantId) {
             // Nouvelle coordonnee : les notes viennent d'y arriver, donc la
             // ligne ne sera pas creee a partir de rien. Ce n'est PAS une
-            // garantie de valeur non nulle : si toutes les notes deplacees sont
-            // des absences, `studentMatiereAverage()` les ecarte et rend 0 —
-            // comme partout ailleurs dans le recalcul. Le piege qu'on evite ici
-            // est l'autre, celui du cote qu'on quitte : y rejouer le calcul sur
-            // ZERO note ecrirait un 0/20 sur une matiere que l'eleve n'a plus.
+            // Nouvelle coordonnee : on recalcule sans condition. Si toutes les
+            // notes deplacees sont des absences, le calcul rend 0 — comme
+            // partout ailleurs dans le depot, l'observateur de note compris.
+            //
+            // **Ce 0-la n'est PAS corrige ici, et c'est delibere.** « Un eleve
+            // qui n'a que des absences a-t-il 0, ou n'a-t-il pas de moyenne ? »
+            // est une question d'etablissement, pas une question de code
+            // (`rien-en-dur.md`). Y repondre changerait l'affichage sur les huit
+            // instances par le chemin principal — l'enregistrement d'une note —
+            // et cela se mesure sur des donnees reelles avant de se livrer.
+            // `studentMatiereAverageOrNull()` existe desormais pour le jour ou
+            // ce sera decide ; son declencheur est une demande d'ecole, pas une
+            // relecture de ce fichier.
+            //
+            // Le piege qu'on ferme ici est l'autre, celui du cote qu'on quitte :
+            // y rejouer le calcul sans rien a moyenner ecrirait un 0/20 sur une
+            // matiere que l'eleve n'a plus, et c'est NOTRE deplacement qui l'a
+            // videe.
             if (self::executerUneFois($etudiantId, $apres, $declencheur, $bilan, $memo)) {
                 $bilan['recalculs_tentes']++;
             }
@@ -251,7 +266,7 @@ final class RecalculApresDeplacement
                 continue;
             }
 
-            if (self::porteEncoreDesNotes($etudiantId, $avant)) {
+            if (self::porteEncoreUneMoyenne($etudiantId, $avant)) {
                 if (self::executerUneFois($etudiantId, $avant, $declencheur, $bilan, $memo)) {
                     $bilan['recalculs_tentes']++;
                 }
@@ -348,22 +363,31 @@ final class RecalculApresDeplacement
         }
     }
 
-    /** @param array<string,mixed> $coordonnee */
-    private static function porteEncoreDesNotes(int $etudiantId, array $coordonnee): bool
+    /**
+     * Reste-t-il, sur cette coordonnee, de quoi calculer une moyenne ?
+     *
+     * **Pas un `exists()`.** La question n'est pas « reste-t-il des lignes »
+     * mais « reste-t-il des lignes que le calcul COMPTE » — et le calcul ecarte
+     * les absences, les baremes nuls et les coefficients nuls. Un `exists()` nu
+     * repondait oui sur une matiere ou il ne restait qu'une absence : le
+     * recalcul partait, ne trouvait rien a moyenner, et ecrivait **0 sur 20**
+     * par-dessus une moyenne reelle — sans orphelin, sans journal, et compte
+     * comme un succes. Exactement le defaut que le reste de cette classe
+     * existe pour empecher, par la porte d'a cote.
+     *
+     * On pose donc la question a `NoteCalculationService` lui-meme, sur la
+     * requete que le job utilisera. Les exclusions ne sont recopiees nulle part.
+     *
+     * @param  array<string,mixed>  $coordonnee
+     */
+    private static function porteEncoreUneMoyenne(int $etudiantId, array $coordonnee): bool
     {
-        return ESBTPNote::query()
-            ->where('etudiant_id', $etudiantId)
-            ->whereHas('evaluation', function ($q) use ($coordonnee) {
-                $q->where('classe_id', $coordonnee['classe_id'])
-                    ->where('matiere_id', $coordonnee['matiere_id'])
-                    ->where('annee_universitaire_id', $coordonnee['annee_universitaire_id'])
-                    // Les deux ecritures : une evaluation restee a `'1'` porte
-                    // bien des notes, et ne pas les voir ferait declarer orphelin
-                    // un agregat qui ne l'est pas.
-                    ->whereIn('periode', ESBTPEvaluation::aliasDePeriode((string) $coordonnee['periode']))
-                    ->where('status', '!=', 'cancelled');
-            })
-            ->exists();
+        $notes = ESBTPNote::deLaCoordonnee($etudiantId, $coordonnee)
+            ->with('evaluation:id,bareme,coefficient,periode,classe_id,matiere_id,annee_universitaire_id,status')
+            ->get();
+
+        return app(NoteCalculationService::class)
+            ->studentMatiereAverageOrNull(ESBTPNote::enChargeUtilePourLeCalcul($notes)) !== null;
     }
 
     /**
@@ -421,7 +445,6 @@ final class RecalculApresDeplacement
 
         return true;
     }
-
 
     /**
      * Meme correction, pour les deux endpoints qui deplacent des evaluations
@@ -512,7 +535,7 @@ final class RecalculApresDeplacement
      * rendait un parametre que l'endpoint refuse en 422.
      *
      * @param  array<int, array{evaluation: ESBTPEvaluation, periode_avant: string}>  $deplacements
-     * @param  \Illuminate\Support\Collection<int|string, int>  $notesParEvaluation
+     * @param  Collection<int|string, int>  $notesParEvaluation
      * @return array<string, array<string, mixed>>
      */
     private static function grouperParPerimetre(array $deplacements, $notesParEvaluation): array
@@ -535,13 +558,11 @@ final class RecalculApresDeplacement
             }
 
             foreach ([$deplacement['periode_avant'], $evaluation->periode] as $brute) {
-                $numero = ESBTPEvaluation::numeroDeSemestre((string) $brute);
-
-                if ($numero === null) {
+                if (ESBTPEvaluation::numeroDeSemestre((string) $brute) === null) {
                     continue;
                 }
 
-                $canonique = 'semestre'.$numero;
+                $canonique = ESBTPEvaluation::periodeCanonique((string) $brute);
 
                 if (! in_array($canonique, $perimetres[$cle]['periodes'], true)) {
                     $perimetres[$cle]['periodes'][] = $canonique;

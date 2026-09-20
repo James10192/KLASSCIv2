@@ -60,7 +60,7 @@ nuance n'est pas rhétorique : deux commandes écrivent les mêmes colonnes
 dénormalisées sans déplacer d'évaluation, et sans recalcul —
 `evaluations:sync-notes` (qui réaligne `classe_id`, `matiere_id` et `semestre`
 d'un seul `update()`, et qui est l'outil recommandé plus bas pour le ménage) et
-`notes:sync-periodes`. Elles ne sont pas branchées à dessein : `sync-notes`
+`esbtp:sync-notes-periodes`. Elles ne sont pas branchées à dessein : `sync-notes`
 tourne sans bornes sur l'école entière, et y ajouter un recalcul synchrone par
 note est exactement ce que les deux plafonds cherchent à éviter.
 

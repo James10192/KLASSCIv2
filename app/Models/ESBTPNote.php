@@ -379,9 +379,86 @@ class ESBTPNote extends Model implements Auditable
     }
 
     /**
+     * Les notes d'un eleve sur une coordonnee (classe × matiere × annee ×
+     * periode), telles que le recalcul d'agregat les compte.
+     *
+     * **Une seule requete, parce qu'il y en avait deux.** Le job de recalcul
+     * chargeait les notes d'un cote, et le garde « reste-t-il des notes ? » du
+     * deplacement les comptait de l'autre avec un `exists()` presque identique.
+     * Presque : le garde ignorait les absences que le calcul, lui, ecarte. Une
+     * matiere ou il ne restait qu'une absence passait donc le garde, le calcul
+     * ne trouvait rien a moyenner, et **0 sur 20 ecrasait une moyenne reelle**,
+     * sans orphelin ni ligne de journal. Deux requetes qui repondent a la meme
+     * question finissent toujours par diverger.
+     *
+     * `whereIn` et non `where` sur la periode : `esbtp_evaluations.periode`
+     * porte `'1'` autant que `'semestre1'`.
+     *
+     * @param  array<string,mixed>  $coordonnee  classe_id, matiere_id, annee_universitaire_id, periode
+     */
+    public static function deLaCoordonnee(int $etudiantId, array $coordonnee): Builder
+    {
+        return static::query()
+            ->where('etudiant_id', $etudiantId)
+            ->whereHas('evaluation', function ($q) use ($coordonnee) {
+                $q->where('classe_id', $coordonnee['classe_id'])
+                    ->where('matiere_id', $coordonnee['matiere_id'])
+                    ->where('annee_universitaire_id', $coordonnee['annee_universitaire_id'])
+                    ->whereIn('periode', ESBTPEvaluation::aliasDePeriode((string) $coordonnee['periode']))
+                    ->where('status', '!=', 'cancelled');
+            });
+    }
+
+    /**
+     * Convertit une collection de notes en charge utile pour
+     * {@see \App\Services\NoteCalculationService::studentMatiereAverageOrNull()}.
+     *
+     * Le service prend des tableaux homogenes a dessein, pour rester decouple
+     * des accesseurs du modele : la conversion vit donc ici, du cote qui connait
+     * ces accesseurs, et pas recopiee chez chaque appelant.
+     *
+     * @param  \Illuminate\Support\Collection<int, static>  $notes
+     * @return array<int, array{note: float, bareme: float, coefficient: float, is_absent: bool}>
+     */
+    public static function enChargeUtilePourLeCalcul(\Illuminate\Support\Collection $notes): array
+    {
+        return $notes->map(function (self $note) {
+            $eval = $note->evaluation;
+
+            return [
+                'note' => (float) ($note->note ?? 0),
+                'bareme' => $eval ? (float) ($eval->bareme ?? 0) : 0.0,
+                'coefficient' => $eval ? (float) ($eval->coefficient ?? 0) : 0.0,
+                'is_absent' => (bool) $note->is_absent,
+            ];
+        })->all();
+    }
+
+    /**
      * La periode d'une evaluation, dans l'ecriture qu'attend
-     * `esbtp_notes.semestre`. Le hook `saving()` ci-dessus fait le meme calcul :
-     * c'est ici, et nulle part ailleurs, que cette conversion doit vivre.
+     * `esbtp_notes.semestre`. Le hook `saving()` ci-dessus fait le meme calcul.
+     *
+     * **« Et nulle part ailleurs » etait ecrit ici, et c'etait faux.** Ce
+     * docbloc l'a affirme comme un constat alors que personne ne l'avait
+     * mesure — exactement le defaut que `klassci-debugging-discipline.md`
+     * decrit a son piege #14. Le compte se rejoue :
+     *
+     * ```bash
+     * grep -rn "str_replace('semestre'" --include="*.php" app/ \
+     *   | grep -vE "^\S+:[0-9]+: *\*"
+     * ```
+     *
+     * Au 20 septembre 2026 il rend **six** lignes de code. Trois ne font pas
+     * cette conversion-la et doivent rester : `CLIBulletinDiagnosticController`
+     * construit les DEUX ecritures pour un `whereIn` (c'est
+     * `ESBTPEvaluation::aliasDePeriode()`, pas celle-ci), et
+     * `ESBTPResultatController` fabrique un parametre d'URL. Restent
+     * `NoteStudentCohortService` et `EtudiantDossierService`, qui font bien la
+     * meme chose et ne sont pas encore converties — leur declencheur est la
+     * prochaine touche de ces fichiers, pas une relecture de celui-ci.
+     *
+     * Ce compte est un releve, pas un inventaire : s'il rend autre chose que
+     * six, corrigez la phrase plutot que de la contourner.
      */
     public static function semestreDepuisLaPeriode(string $periode): int
     {

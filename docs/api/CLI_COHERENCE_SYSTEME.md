@@ -102,8 +102,11 @@ faire, est dans [CLI_RECALCUL_RESULTATS.md](CLI_RECALCUL_RESULTATS.md).
 ⚠️ **Et ce périmètre a été publié faux deux fois de suite.** La première version
 annonçait « les deux endroits qui déplacent une évaluation » ; la deuxième
 « quatre », en ajoutant les deux endpoints qui changent la *période* (`periode`
-étant une coordonnée de la même clé). Ils sont **cinq**. Les quatre premiers sont
-branchés ; le cinquième, `MergeDuplicateEcue` sous `force`, ne l'est pas, et
+étant une coordonnée de la même clé). **Cinq sont trouvés à ce jour** — et écrire
+« ils sont cinq » ici, en absolu, dans le paragraphe même qui raconte que ce
+compte a été publié faux deux fois, était la troisième version du défaut. Les
+quatre premiers sont branchés ; le cinquième, `MergeDuplicateEcue` sous `force`,
+ne l'est pas, et
 [CLI_RECALCUL_RESULTATS.md](CLI_RECALCUL_RESULTATS.md) dit lequel et pourquoi.
 Un « c'est corrigé » faux ferme l'enquête suivante ; c'est ce que coûte le plus
 cher, et c'est exactement ce qui s'est produit ici — deux fois.

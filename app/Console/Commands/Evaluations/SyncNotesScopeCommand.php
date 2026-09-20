@@ -47,7 +47,7 @@ class SyncNotesScopeCommand extends Command
 
         $query->chunkById(100, function ($evaluations) use (&$totalNotesFixed, &$evaluationsTouched, $dry) {
             foreach ($evaluations as $eval) {
-                $expectedSemestre = (int) str_replace('semestre', '', (string) $eval->periode);
+                $expectedSemestre = ESBTPNote::semestreDepuisLaPeriode((string) $eval->periode);
 
                 $staleCount = ESBTPNote::where('evaluation_id', $eval->id)
                     ->where(function ($q) use ($eval, $expectedSemestre) {

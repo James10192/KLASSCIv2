@@ -753,50 +753,9 @@ class ESBTPEvaluationController extends Controller
             }
             $evaluation->save();
 
-            // PROPAGATION aux notes filles : si classe/matiere/periode ont changé sur l'évaluation,
-            // synchroniser les colonnes dénormalisées des notes (esbtp_notes.classe_id,
-            // matiere_id, semestre). Sinon les vues qui groupent par note.matiere_id (résultats,
-            // bulletins) continuent d'afficher l'ancienne matière jusqu'au prochain save manuel.
-            $notesUpdates = [];
-            $recalcul = ['recalculs_tentes' => 0, 'orphelins' => [], 'echecs' => 0];
-            if ($evaluation->classe_id != $oldClasseId) {
-                $notesUpdates['classe_id'] = $evaluation->classe_id;
-            }
-            if ($evaluation->matiere_id != $oldMatiereId) {
-                $notesUpdates['matiere_id'] = $evaluation->matiere_id;
-            }
-            if ($evaluation->periode != $oldPeriode) {
-                // L'encodage de cette colonne vit sur le modele, avec le hook
-                // `saving()` qui le decide — pas recopie ici. C'etait la
-                // troisieme copie de la meme connaissance.
-                $notesUpdates['semestre'] = ESBTPNote::semestreDepuisLaPeriode((string) $evaluation->periode);
-            }
-            if (! empty($notesUpdates)) {
-                $affected = ESBTPNote::where('evaluation_id', $evaluation->id)->update($notesUpdates);
-                \Log::info('Notes propagées après modif évaluation', [
-                    'evaluation_id' => $evaluation->id,
-                    'changes' => $notesUpdates,
-                    'old' => [
-                        'classe_id' => $oldClasseId,
-                        'matiere_id' => $oldMatiereId,
-                        'periode' => $oldPeriode,
-                    ],
-                    'notes_affected' => $affected,
-                ]);
-
-                // Cet `update()` est un update de QUERY BUILDER : il n'émet
-                // aucun événement Eloquent, donc ESBTPNoteObserver ne tourne pas
-                // et aucun recalcul n'est déclenché. Sans l'appel qui suit,
-                // `esbtp_resultats` garde des DEUX côtés la moyenne d'avant — et
-                // cette moyenne périmée l'emporte sur les notes à l'affichage
-                // comme au bulletin (voir RecalculApresDeplacement).
-                $recalcul = RecalculApresDeplacement::pour($evaluation, [
-                    'classe_id' => $oldClasseId,
-                    'matiere_id' => $oldMatiereId,
-                    'periode' => $oldPeriode,
-                    'annee_universitaire_id' => $evaluation->annee_universitaire_id,
-                ], Auth::id());
-            }
+            $recalcul = $this->propagerLeDeplacementAuxNotes(
+                $evaluation, (int) $oldClasseId, (int) $oldMatiereId, (string) $oldPeriode
+            );
 
             // Garde-fou non bloquant TC/Spécialité (basé sur la classe cible).
             $tcWarning = $this->troncCommunSpecialiteWarning(
@@ -806,18 +765,12 @@ class ESBTPEvaluationController extends Controller
 
             $redirect = redirect()->route('esbtp.evaluations.show', $evaluation)
                 ->with('success', 'L\'évaluation a été mise à jour avec succès');
-            if ($tcWarning) {
-                $redirect->with('warning', $tcWarning);
-            }
+            // Un seul `with('warning', …)` : la cle s'ecrase, poser les deux
+            // messages l'un apres l'autre ferait disparaitre le premier.
+            $avertissement = $this->avertirDesOrphelins($recalcul, $tcWarning);
 
-            // Un agrégat que le déplacement a vidé de toutes ses notes n'est PAS
-            // recalculé — le remettre à zéro afficherait un 0/20 sur une matière
-            // que l'élève n'a plus. Il est signalé, et son sort reste à l'école.
-            if (! empty($recalcul['orphelins'])) {
-                $redirect->with('warning', trim(($tcWarning ? $tcWarning.' ' : '')
-                    .count($recalcul['orphelins']).' moyenne(s) enregistrée(s) sur l\'ancienne matière '
-                    .'n\'ont plus aucune note. Elles restent affichées : supprimez-les depuis '
-                    .'« Modifier les moyennes » si elles n\'ont plus lieu d\'être.'));
+            if ($avertissement !== null) {
+                $redirect->with('warning', $avertissement);
             }
 
             return $redirect;
@@ -826,6 +779,105 @@ class ESBTPEvaluationController extends Controller
                 ->with('error', 'Une erreur est survenue lors de la mise à jour de l\'évaluation: '.$e->getMessage())
                 ->withInput();
         }
+    }
+
+    /**
+     * Repercute un deplacement d'evaluation sur ses notes, puis rafraichit les
+     * moyennes enregistrees des DEUX cotes.
+     *
+     * Sorti de `update()`, qui depassait deja largement le seuil de 80 lignes
+     * avant ce chantier : y ajouter le recalcul l'aggravait.
+     *
+     * @return array{recalculs_tentes:int, orphelins:array<int,array<string,mixed>>, echecs:int}
+     */
+    private function propagerLeDeplacementAuxNotes(
+        ESBTPEvaluation $evaluation,
+        int $oldClasseId,
+        int $oldMatiereId,
+        string $oldPeriode
+    ): array {
+        $recalcul = ['recalculs_tentes' => 0, 'orphelins' => [], 'echecs' => 0];
+
+        // PROPAGATION aux notes filles : si classe/matiere/periode ont changé
+        // sur l'évaluation, synchroniser les colonnes dénormalisées des notes (esbtp_notes.classe_id,
+        // matiere_id, semestre). Sinon les vues qui groupent par note.matiere_id (résultats,
+        // bulletins) continuent d'afficher l'ancienne matière jusqu'au prochain save manuel.
+        $notesUpdates = [];
+        if ($evaluation->classe_id != $oldClasseId) {
+            $notesUpdates['classe_id'] = $evaluation->classe_id;
+        }
+        if ($evaluation->matiere_id != $oldMatiereId) {
+            $notesUpdates['matiere_id'] = $evaluation->matiere_id;
+        }
+        if ($evaluation->periode != $oldPeriode) {
+            // L'encodage de cette colonne vit sur le modele, avec le hook
+            // `saving()` qui le decide — pas recopie ici. Le compte des copies
+            // restantes se rejoue : voir `ESBTPNote::semestreDepuisLaPeriode()`,
+            // qui a longtemps affirme etre seule et ne l'etait pas.
+            $notesUpdates['semestre'] = ESBTPNote::semestreDepuisLaPeriode((string) $evaluation->periode);
+        }
+        if (! empty($notesUpdates)) {
+            $affected = ESBTPNote::where('evaluation_id', $evaluation->id)->update($notesUpdates);
+            \Log::info('Notes propagées après modif évaluation', [
+                'evaluation_id' => $evaluation->id,
+                'changes' => $notesUpdates,
+                'old' => [
+                    'classe_id' => $oldClasseId,
+                    'matiere_id' => $oldMatiereId,
+                    'periode' => $oldPeriode,
+                ],
+                'notes_affected' => $affected,
+            ]);
+
+            // Cet `update()` est un update de QUERY BUILDER : il n'émet
+            // aucun événement Eloquent, donc ESBTPNoteObserver ne tourne pas
+            // et aucun recalcul n'est déclenché. Sans l'appel qui suit,
+            // `esbtp_resultats` garde des DEUX côtés la moyenne d'avant — et
+            // cette moyenne périmée l'emporte sur les notes à l'affichage
+            // comme au bulletin (voir RecalculApresDeplacement).
+            $recalcul = RecalculApresDeplacement::pour($evaluation, [
+                'classe_id' => $oldClasseId,
+                'matiere_id' => $oldMatiereId,
+                'periode' => $oldPeriode,
+                'annee_universitaire_id' => $evaluation->annee_universitaire_id,
+            ], Auth::id());
+        }
+
+        return $recalcul;
+    }
+
+    /**
+     * Le bandeau qui suit un enregistrement : l'avertissement tronc commun, et
+     * celui des agregats que le deplacement a vides.
+     *
+     * Un agregat vide de toutes ses notes n'est PAS recalcule — le remettre a
+     * zero afficherait un 0/20 sur une matiere que l'eleve n'a plus. Il est
+     * signale, et son sort reste une decision d'ecole.
+     *
+     * Les deux messages sont fondus en UN : `with('warning', …)` ecrase la cle,
+     * donc les poser l'un apres l'autre ferait disparaitre le premier.
+     *
+     * **Pourquoi ce texte n'est PAS partage avec celui du CLI**
+     * (`CLIMaintenanceController::messageDeRebascule()`) : l'extraction de
+     * `motDeLaFin()` etait justifiee parce que ce message-la cite un PLAFOND,
+     * une constante qui derive des qu'on la change d'un cote. Celui-ci ne cite
+     * qu'un `count()`, qui ne peut pas deriver. Restent deux registres et deux
+     * suites a donner — « Modifier les moyennes » a l'ecran, rien a cliquer au
+     * terminal. Les fondre couterait un drapeau booleen sur la mise en forme,
+     * ce que les rules du projet refusent.
+     *
+     * @param  array<string,mixed>  $recalcul
+     */
+    private function avertirDesOrphelins(array $recalcul, ?string $tcWarning): ?string
+    {
+        if (empty($recalcul['orphelins'])) {
+            return $tcWarning;
+        }
+
+        return trim(($tcWarning ? $tcWarning.' ' : '')
+            .count($recalcul['orphelins']).' moyenne(s) enregistrée(s) sur l\'ancienne matière '
+            .'n\'ont plus aucune note. Elles restent affichées : supprimez-les depuis '
+            .'« Modifier les moyennes » si elles n\'ont plus lieu d\'être.');
     }
 
     /**

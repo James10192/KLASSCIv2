@@ -6,8 +6,8 @@ use App\Jobs\RecomputeStudentResultatJob;
 use App\Models\ESBTPEvaluation;
 use App\Models\ESBTPNote;
 use App\Models\ESBTPResultat;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Resout les couples (etudiant, matiere, classe, annee, periode) a recalculer
@@ -138,11 +138,19 @@ final class PerimetreDeRecalcul
      * formules qui derivent sont la famille de defauts que tout ce chantier
      * corrige. L'appelant borne le nombre de couples AVANT d'appeler.
      *
+     * `$apresChaqueCouple` sert a la barre de progression de la commande
+     * artisan : le service ne connait pas la console, l'appelant lui passe de
+     * quoi avancer.
+     *
      * @param  Collection<int, array<string,mixed>>  $couples
      * @return array{lignes:array<int,array<string,mixed>>, echecs:int}
      */
-    public function recalculer(Collection $couples, string $source, ?int $declencheur = null): array
-    {
+    public function recalculer(
+        Collection $couples,
+        string $source,
+        ?int $declencheur = null,
+        ?callable $apresChaqueCouple = null
+    ): array {
         $lignes = [];
         $echecs = 0;
 
@@ -167,6 +175,10 @@ final class PerimetreDeRecalcul
                     'error' => $e->getMessage(),
                 ]);
 
+                if ($apresChaqueCouple) {
+                    $apresChaqueCouple();
+                }
+
                 continue;
             }
 
@@ -180,6 +192,10 @@ final class PerimetreDeRecalcul
                 'moyenne_apres' => $apres,
                 'change' => $avant !== $apres,
             ];
+
+            if ($apresChaqueCouple) {
+                $apresChaqueCouple();
+            }
         }
 
         return ['lignes' => $lignes, 'echecs' => $echecs];

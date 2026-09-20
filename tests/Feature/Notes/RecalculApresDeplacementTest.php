@@ -93,6 +93,53 @@ class RecalculApresDeplacementTest extends TestCase
         $this->assertSame(10.0, (float) $orphelins[0]['moyenne']);
     }
 
+    /**
+     * **Le trou que le garde laissait ouvert.**
+     *
+     * `porteEncoreDesNotes()` faisait un `exists()` nu. Le calcul, lui, ecarte
+     * les absences. Une matiere ou il ne restait qu'une absence passait donc le
+     * garde, le recalcul partait, `studentMatiereAverageOrNull()` rendait
+     * `null` — et `studentMatiereAverage()` transformait ce `null` en **0.0**,
+     * ecrit par-dessus une moyenne reelle. Sans orphelin, sans journal, compte
+     * comme un succes : strictement pire que le cas que le garde protege.
+     *
+     * Retirez `porteEncoreUneMoyenne()` au profit d'un `exists()` : ce test
+     * tombe seul, sur 12,00 devenu 0,00.
+     *
+     * @test
+     */
+    public function une_matiere_ou_il_ne_reste_qu_une_absence_n_est_pas_remise_a_zero(): void
+    {
+        $this->monterLaClasse();
+        $depart = $this->matiereConfiguree();
+        $arrivee = $this->matiereConfiguree();
+        $etudiant = $this->etudiantInscrit();
+
+        $notee = $this->evaluationDe($depart);
+        $this->noter($etudiant, $notee, 12);
+
+        $absence = $this->evaluationDe($depart);
+        $this->noter($etudiant, $absence, 0);
+        // Par Eloquent, pas par query builder : l'observateur doit rejouer le
+        // calcul, sinon l'etat de depart mentirait (l'absence compterait comme
+        // un zero et la matiere vaudrait 6).
+        $ligne = \App\Models\ESBTPNote::where('evaluation_id', $absence->id)->firstOrFail();
+        $ligne->is_absent = true;
+        $ligne->save();
+
+        // L'absence ne compte pas : la matiere vaut la seule note presente.
+        $this->assertSame(12.0, $this->moyenne($etudiant->id, $depart->id));
+
+        $reponse = $this->deplacer($notee->id, $arrivee->id);
+
+        // Il RESTE une ligne dans `esbtp_notes` — mais rien a moyenner.
+        $this->assertSame(12.0, $this->moyenne($etudiant->id, $depart->id));
+
+        $orphelins = $reponse['agregats_orphelins'];
+        $this->assertCount(1, $orphelins);
+        $this->assertSame($depart->id, $orphelins[0]['matiere_id']);
+    }
+
     /** @test */
     public function une_matiere_qui_garde_des_notes_est_recalculee(): void
     {
