@@ -1516,8 +1516,11 @@ class DashboardController extends Controller
                 //
                 // LA CLASSE INTROUVABLE EST DITE UNE FOIS, HORS BOUCLE (voir
                 // plus haut). La matiere introuvable, elle, se dit ICI parce
-                // qu'elle varie d'une note a l'autre — et `matiereIntrouvableDeja`
-                // memoise pour ne pas rendre une ligne par note.
+                // qu'elle varie d'une note a l'autre — et c'est le memo interne
+                // de `CoherenceSystemeAcademique` qui evite une ligne par note,
+                // pas un memo local. Une version de ce commentaire nommait
+                // `matiereIntrouvableDeja`, qui n'existe nulle part : le memo
+                // local a ete retire quand le predicat a pris le sien.
                 if ($classeCible && $matiere
                     && ! CoherenceSystemeAcademique::matiereRetenue($matiere, $classeCible, 'accueil mobile/moyenne courante')) {
                     return null;

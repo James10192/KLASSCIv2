@@ -59,29 +59,26 @@ use Illuminate\Support\Facades\Log;
  *   coefficient de tronc commun tombait sur le repli a 1, avec son
  *   `Log::warning` pour seule trace ;
  * - et cette valeur n'est pas qu'affichee. Le formulaire la reporte dans
- *   `name="resultats[…][coefficient]"`, et `bulkUpdateMoyennes()` l'ECRIT dans
+ *   `name="resultats[…][coefficient]"`, et l'enregistrement l'ECRIT dans
  *   `esbtp_resultats.coefficient`. Un 1 de repli devenait donc un 1 enregistre.
  *
- * Les deux sont passes. MAIS LA PORTEE EST ETROITE, ET LA DIRE LARGE SERAIT LA
- * QUATRIEME AFFIRMATION CREUSE DE CE FICHIER. Sur un onglet de semestre, le
- * chemin 4 recouvre le coefficient des qu'il porte la matiere, et le sien ne
- * vient pas de `coefficient()` : `BtsCurrentResultSnapshotService` prefere
- * celui qui est STOCKE sur `esbtp_resultats`, et `RecomputeStudentResultatJob`
- * l'y ecrit a `1` EN DUR des la premiere note. Une matiere notee affiche donc
- * `1` sur l'onglet du semestre, quoi que la maquette declare — et `1` est
- * enregistre si on sauve.
+ * L'ECRIVAIN EST `ESBTPResultatController::updateMoyennes()`, et une version de
+ * ce commentaire nommait `bulkUpdateMoyennes()`. C'etait faux et jamais
+ * verifie : le formulaire de cet ecran poste vers `esbtp.bulletins.moyennes-update`
+ * (`routes/web.php`), tandis que `bulkUpdateMoyennes()` sert `classe-edit` avec
+ * une autre charge utile. Le mauvais nom avait de quoi couter cher — il
+ * envoyait corriger un ecrivain qui n'est pas sur ce chemin, et c'est
+ * exactement ce qui s'est passe : l'ecrivain reel est reste sur l'ancienne
+ * signature une passe de plus. Il prend desormais la periode et l'eleve, lui
+ * aussi.
  *
- * Le threading ci-dessus se voit donc la ou le chemin 4 ne passe pas : sur
- * `annuel`, et sur toute matiere que le snapshot ne porte pas (ni note, ni
- * ligne enregistree). Les deux tests `le snapshot recouvre la ligne posee par
- * les chemins precedents` et `une matiere sans note garde le coefficient de sa
- * periode` mesurent exactement cette frontiere.
- *
- * Le `1` en dur du job est un defaut distinct, sur le chemin d'ecriture de
- * CHAQUE note des huit instances : il change des valeurs deja enregistrees et
- * demande sa propre mesure. Declencheur : la premiere ecole qui signale un
- * coefficient a 1 sur un onglet de semestre alors que sa maquette en declare
- * un autre.
+ * ET LE CHEMIN 4 NE RECOUVRE PLUS PAR UN `1` ARBITRAIRE. Sur un onglet de
+ * semestre, le chemin 4 recouvre le coefficient des qu'il porte la matiere, et
+ * le sien vient de `esbtp_resultats` : `BtsCurrentResultSnapshotService`
+ * prefere la valeur stockee a la valeur configuree. Or
+ * `RecomputeStudentResultatJob` y ecrivait `1` EN DUR des la premiere note —
+ * un `1` que personne n'avait choisi. Le job lit maintenant la maquette pour
+ * les lignes NEUVES, sans jamais reecrire un coefficient deja saisi.
  *
  * UN FILTRE DE COHERENCE A L'INGESTION, pas a l'affichage. Chaque chemin passe
  * par `CoherenceSystemeAcademique`, et les deux conduites different a dessein :
@@ -627,7 +624,8 @@ final class MoyennesDeLApercu
      * classe. Sans eux, cet ecran lisait le coefficient du premier semestre sur
      * l'onglet du second, et n'atteignait jamais le repli Tronc Commun. Ne les
      * retirez pas pour « simplifier la signature » : la valeur rendue ici est
-     * ECRITE en base par `bulkUpdateMoyennes()`.
+     * ECRITE en base par `ESBTPResultatController::updateMoyennes()`, vers qui
+     * poste le formulaire de cet ecran.
      */
     private function coefficient(
         ESBTPMatiere $matiere,

@@ -308,6 +308,12 @@ class MoyennesDeLApercuTest extends TestCase
         // Le coefficient, lui, separe nettement les deux : sur un semestre,
         // c est celui que le snapshot porte ; sur `annuel`, celui de
         // `coefficient()`. Meme montage, deux periodes, deux valeurs.
+        //
+        // LES DEUX VALEURS ONT CHANGE QUAND LE JOB A ETE CORRIGE, et c est le
+        // signe que ce test mord. Le snapshot rendait `1` tant que
+        // `RecomputeStudentResultatJob` ecrivait `1` en dur sur la ligne neuve ;
+        // il lit desormais la maquette, donc `5` — le coefficient du SECOND
+        // semestre, celui de l onglet ouvert.
         $matiere = $this->matiereDeLaMaquette();
         $this->coefficientConfigure($matiere, 'semestre1', 2.0);
         $this->coefficientConfigure($matiere, 'semestre2', 5.0);
@@ -315,10 +321,10 @@ class MoyennesDeLApercuTest extends TestCase
 
         $surLeSemestre = $this->assembler('semestre2');
         $this->assertEqualsWithDelta(
-            1.0,
+            5.0,
             (float) $surLeSemestre['lignes'][$matiere->id]['coefficient'],
             0.001,
-            'Le chemin 4 n a pas recouvert : le snapshot ne passe pas sur un semestre.'
+            'Le chemin 4 n a pas recouvert, ou il a recouvert par un coefficient qui n est pas celui du semestre.'
         );
 
         $surLAnnee = $this->assembler('annuel');
@@ -330,27 +336,6 @@ class MoyennesDeLApercuTest extends TestCase
         );
     }
 
-    /**
-     * CE 1 N EST PAS LE COEFFICIENT CONFIGURE, ET C EST UN DEFAUT CONNU.
-     *
-     * Le test ci-dessus attend 1 la ou la maquette declare 5. Ce n est pas
-     * l attendu qu on voudrait, c est ce que le systeme fait, et le mesurer
-     * ici evite de le redecouvrir :
-     *
-     * - saisir une note declenche `RecomputeStudentResultatJob`, qui ecrit une
-     *   ligne `esbtp_resultats` avec `'coefficient' => …?? 1` EN DUR ;
-     * - `BtsCurrentResultSnapshotService` prefere ce coefficient stocke au
-     *   coefficient configure, ce qui est juste quand une personne l a saisi —
-     *   mais personne ne l a saisi, c est le job qui l a seme ;
-     * - et l ecran reporte cette valeur dans son formulaire, que
-     *   `bulkUpdateMoyennes()` ecrit en base.
-     *
-     * La correction est dans `RecomputeStudentResultatJob`, sur le chemin
-     * d ecriture de CHAQUE note des huit instances : elle change des valeurs
-     * deja enregistrees et demande sa propre mesure. Elle n est pas faite ici.
-     * Le declencheur : la premiere ecole qui signale un coefficient a 1 sur un
-     * onglet de semestre alors que sa maquette en declare un autre.
-     */
     public function test_une_matiere_sans_note_garde_le_coefficient_de_sa_periode(): void
     {
         // C est le cas ou le threading de `$periode` dans `coefficient()` se

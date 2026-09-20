@@ -2700,10 +2700,21 @@ class ESBTPResultatController extends Controller
                     // Si pas de coefficient dans le formulaire, essayer de récupérer depuis la matière
                     if ($coefficient === null) {
                         try {
+                            // LA PERIODE ET L'ELEVE, PARCE QUE C'EST ICI QU'ON ECRIT.
+                            // Sans eux, `getCoefficientForCombination()` normalise a
+                            // `semestre1` et n'atteint jamais le repli Tronc Commun :
+                            // enregistrer depuis l'onglet du SECOND semestre gravait le
+                            // coefficient du premier. L'apercu, lui, avait ete corrige ;
+                            // l'ecrivain de cet ecran etait reste en arriere — et le
+                            // commentaire d'alors nommait meme le mauvais ecrivain
+                            // (`bulkUpdateMoyennes()`, qui sert `classe-edit`, pas cet
+                            // ecran-ci : son formulaire poste vers `moyennes-update`).
                             $coefficient = $this->bulletinService->getCoefficientForCombination(
                                 $matiereId,
                                 $classeId,
-                                $anneeUniversitaireId
+                                $anneeUniversitaireId,
+                                $periodePourBDD,
+                                $etudiantId
                             );
                         } catch (\RuntimeException $exception) {
                             // Fallback: utiliser 1 comme valeur par défaut au lieu de bloquer
@@ -2769,10 +2780,14 @@ class ESBTPResultatController extends Controller
                         // Si pas de coefficient dans le formulaire, essayer de récupérer depuis la matière
                         if ($coefficient === null) {
                             try {
+                                // Meme raison qu'au-dessus : on ECRIT, donc la periode
+                                // et l'eleve ne sont pas facultatifs.
                                 $coefficient = $this->bulletinService->getCoefficientForCombination(
                                     $matiereId,
                                     $classeId,
-                                    $anneeUniversitaireId
+                                    $anneeUniversitaireId,
+                                    $periodePourBDD,
+                                    $etudiantId
                                 );
                             } catch (\RuntimeException $exception) {
                                 // Fallback: utiliser 1 comme valeur par défaut au lieu de bloquer

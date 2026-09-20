@@ -378,9 +378,19 @@ porte **une ligne par matière** ; la boucle faisait
 `$moyennes[$etudiantId] = $resultat->moyenne` sur chacune. La **dernière matière
 lue** devenait donc la « moyenne générale » de l'élève, sans pondération ni ordre.
 Mesuré en test : avec une matière BTS à 14 (coef 2) et une ECUE à 4 (coef 1)
-créée après, la bande KPI affichait **4,00**. Elle agrège désormais par élève,
-pondérée par le coefficient de la ligne. Le `rang` n'est plus relu du tout : c'est
-un rang **par matière**, et le prendre pour un rang de classe était le même défaut.
+créée après, la bande KPI affichait **4,00**. Elle agrège désormais par élève.
+
+**Et elle agrège À ÉGALITÉ, pas pondérée par le coefficient** — cette phrase a
+d'abord dit le contraire, et elle contredisait un test vert.
+`EcueLmdHorsDuBulletinNoteTest` verrouille la moyenne simple en le disant sur
+place : « La bande traite chaque matiere a egalite. Ponderee, elle rendrait 11,33
+la ou la colonne, elle, donne 13,00. » La pondération a été **retirée sciemment**
+(commit `019d716e`) : la bande et la colonne portent déjà sur deux populations
+différentes, et les pondérer n'aurait pas rapproché les deux chiffres. Ne la
+remettez pas sans rouvrir ce test.
+
+Le `rang` n'est plus relu du tout : c'est un rang **par matière**, et le prendre
+pour un rang de classe était le même défaut.
 
 **Le mode « Toutes les classes » rendait le filtre inerte.** Le commentaire de
 `calculateStudentStatsFixed()` affirmait « les deux appelants passent toujours la
@@ -464,7 +474,7 @@ moyenne les notes d'**une seule** évaluation, donc d'une seule matière ;
 cette méthode n'existe pas dans le dépôt.)
 
 **Le tamis, à rejouer plutôt qu'à croire** — il liste les fichiers qui lisent des
-lignes par matière *et* en tirent une moyenne. Il rend **34 fichiers**, dont la
+lignes par matière *et* en tirent une moyenne. Il rend **36 fichiers** au 20 septembre 2026 (34 une passe plus tôt : un compte publié comme mesure se remesure quand le diff bouge), dont la
 plupart sont hors sujet : c'est un point de départ pour la lecture, pas un
 verdict. Un fichier qu'il ne rend pas n'est pas pour autant innocent.
 

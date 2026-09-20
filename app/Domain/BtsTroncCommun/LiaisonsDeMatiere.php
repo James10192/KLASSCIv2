@@ -45,14 +45,22 @@ use Illuminate\Support\Facades\Log;
  * vraiment : les ecrans lisent le pivot canonique par
  * `BtsBulletinSubjectResolver`, pas le produit des deux listes.
  *
- * UNE exception comptait, et elle est fermee : le repli de
+ * UNE exception compte, ET ELLE EST OUVERTE : le repli de
  * `BulletinInlineConfigurationService::matieresPourConfiguration()` lit le
  * produit des deux pivots plats quand le couple n'a AUCUNE ligne canonique.
- * Vider entierement la maquette d'un couple declenchait donc ce repli, et les
- * matieres qu'on venait d'en retirer REAPPARAISSAIENT sur l'ecran qui decide
- * du contenu du bulletin. `retirer()` detache desormais du pivot plat ce
- * qu'aucun couple canonique ne reclame plus — voir son docblock pour la
- * condition exacte, qui est etroite a dessein.
+ * Vider entierement la maquette d'un couple declenche donc ce repli, et les
+ * matieres qu'on vient d'en retirer REAPPARAISSENT sur l'ecran qui decide du
+ * contenu du bulletin.
+ *
+ * CE PARAGRAPHE A ANNONCE LE CONTRAIRE, et c'est la raison de sa majuscule.
+ * Une version de `retirer()` detachait du pivot plat ce qu'aucun couple
+ * canonique ne reclamait plus ; elle a ete RETIREE, parce qu'elle decidait sur
+ * le canonique pendant que le repli lit le plat, et que rien n'ecrit le
+ * canonique depuis l'ecran des matieres. Son collateral etait mesurablement
+ * pire que le defaut vise. Le docblock de `retirer()` porte le detail, le
+ * declencheur, et la correction qui vaudrait (un `deleted_at` sur le pivot
+ * canonique). Une phrase d'en-tete qui absout ferme l'enquete suivante :
+ * celle-ci a survecu a la marche arriere pendant une passe entiere.
  *
  * Reconcilier l'existant reste un geste separe, explicite et simule d'abord.
  *

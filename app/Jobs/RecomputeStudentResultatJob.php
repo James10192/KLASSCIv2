@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Models\ESBTPBulletin;
 use App\Models\ESBTPNote;
 use App\Models\ESBTPResultat;
+use App\Services\BulletinService;
 use App\Services\NoteCalculationService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -140,7 +141,7 @@ class RecomputeStudentResultatJob implements ShouldQueue
                     ],
                     [
                         'moyenne' => $moyenneApres,
-                        'coefficient' => $resultatExistant?->coefficient ?? 1,
+                        'coefficient' => $resultatExistant?->coefficient ?? $this->coefficientDeLaMaquette($periode),
                         'appreciation' => $calc->getMention($moyenneApres),
                         'updated_by' => $this->triggeredBy,
                         'created_by' => $resultatExistant?->created_by ?? $this->triggeredBy,
@@ -264,6 +265,53 @@ class RecomputeStudentResultatJob implements ShouldQueue
     /**
      * Normalise la période — accepte 1/2/semestre1/semestre2/annuel.
      */
+    /**
+     * Le coefficient que la maquette declare pour ce couple, et non `1`.
+     *
+     * CE `?? 1` COUTAIT PLUS CHER QU'IL N'EN AVAIT L'AIR, et ce n'etait pas
+     * visible d'ici. La ligne qu'ecrit ce job est relue par
+     * `BtsCurrentResultSnapshotService`, qui PREFERE le coefficient stocke au
+     * coefficient configure — a juste titre quand une personne l'a saisi, mais
+     * personne ne l'avait saisi : ce job l'avait seme. L'ecran « Modifier les
+     * moyennes » affichait donc `1` sur un onglet de semestre quoi que la
+     * maquette declare, et le reenregistrait.
+     *
+     * CE QUE CE CHANGEMENT NE TOUCHE PAS. Le `??` court-circuite des qu'une
+     * ligne porte deja un coefficient : rien de ce qu'une ecole a saisi n'est
+     * reecrit. Seules changent les lignes NEUVES — celles qui recevaient un `1`
+     * que personne n'avait choisi. Une premiere version de ce chantier a
+     * reporte la correction en invoquant « elle change des valeurs deja
+     * enregistrees » ; c'etait faux, et le report ne protegeait rien.
+     *
+     * LE REPLI EST LARGE A DESSEIN. `coefficientOrDefault()` ne rattrape que
+     * `CoefficientMissingException` ; `getCoefficientForCombination()` peut
+     * aussi lever un `RuntimeException` nu (« Classe invalide ») pour une
+     * classe sans filiere ni niveau. Ici, une exception ferait echouer un job
+     * de file avec ses trois tentatives, pour une valeur dont `1` est un repli
+     * acceptable : on rattrape donc tout, et on le DIT.
+     */
+    private function coefficientDeLaMaquette(string $periode): float
+    {
+        try {
+            return app(BulletinService::class)->coefficientOrDefault(
+                $this->matiereId,
+                $this->classeId,
+                $this->anneeUniversitaireId,
+                $periode,
+                $this->etudiantId,
+            );
+        } catch (\Throwable $e) {
+            Log::warning('RecomputeStudentResultatJob : coefficient introuvable, repli sur 1.', [
+                'matiere_id' => $this->matiereId,
+                'classe_id' => $this->classeId,
+                'periode' => $periode,
+                'raison' => $e->getMessage(),
+            ]);
+
+            return 1.0;
+        }
+    }
+
     private function normalizePeriode(string $periode): string
     {
         return match ($periode) {

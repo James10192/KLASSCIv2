@@ -7,7 +7,7 @@ use App\Models\ESBTPClasse;
 use App\Models\ESBTPMatiere;
 use App\Services\BulletinInlineConfigurationService;
 use Illuminate\Support\Collection;
-use PHPUnit\Framework\TestCase;
+use Tests\TestCase;
 use ReflectionMethod;
 
 /**
