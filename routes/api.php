@@ -682,5 +682,13 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
         // la coherence, jamais ceux qui la rompent.
         Route::post('/evaluations/{id}/matiere', [App\Http\Controllers\API\CLI\CLIMaintenanceController::class, 'evaluationChangeMatiere'])
             ->name('evaluations.change-matiere');
+        // Rafraichit `esbtp_resultats` depuis les notes, sur un perimetre
+        // EXPLICITE. Le perimetre est obligatoire a dessein : un recalcul
+        // ecrase les moyennes enregistrees, y compris celles saisies a la main.
+        Route::post('/notes/recompute', [App\Http\Controllers\API\CLI\CLIMaintenanceController::class, 'notesRecompute'])
+            ->name('notes.recompute');
+        // Dit si un job dispatche a une chance d etre execute un jour.
+        Route::get('/diagnostics/queue', [App\Http\Controllers\API\CLI\CLIMaintenanceController::class, 'queueHealth'])
+            ->name('diagnostics.queue');
     });
 });

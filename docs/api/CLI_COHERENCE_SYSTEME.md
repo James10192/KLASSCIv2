@@ -86,6 +86,19 @@ même temps la copie dénormalisée `esbtp_notes.matiere_id` — sans quoi les n
 resteraient rattachées à l'ancienne matière et le bulletin continuerait de
 l'afficher.
 
+⚠️ **Cette description a été incomplète jusqu'en septembre 2026, et elle a coûté
+cher.** Déplacer les notes ne suffit pas : cet `update()` est un update de
+**query builder**, il n'émet aucun événement Eloquent, donc `ESBTPNoteObserver`
+ne tourne pas et aucun recalcul n'est déclenché. Les deux coordonnées — celle
+qu'on quitte comme celle qu'on rejoint — gardaient la moyenne d'avant dans
+`esbtp_resultats`, et **cette moyenne périmée l'emporte sur les notes**. Mesuré
+le 20 septembre 2026 sur `esbtp-abidjan` après un déplacement : élève 149,
+matière 14, l'agrégat disait 15, les cinq notes disent 15,6.
+
+La réponse porte désormais `agregats_recalcules`, `agregats_orphelins` et
+`recalculs_en_echec` ; le détail du recalcul, et ce qu'il refuse délibérément de
+faire, est dans [CLI_RECALCUL_RESULTATS.md](CLI_RECALCUL_RESULTATS.md).
+
 ```bash
 curl -s -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
   -d '{"matiere_id": 42, "dry_run": true}' \
@@ -131,6 +144,9 @@ nécessaire.
 
 ## Historique
 
+- **Septembre 2026** — le déplacement recalcule enfin les agrégats des deux
+  côtés. Il déplaçait les notes sans rien rafraîchir, et l'agrégat périmé gagne
+  sur les notes : le déplacement avait donc l'air fait et ne l'était qu'à moitié.
 - **Septembre 2026** — la réponse porte un second bloc `moyennes_manuelles` et un
   `total_toutes_familles`. La version antérieure ne relevait que les évaluations
   et a été prise pour l'inventaire complet. Un garde de cohérence est posé sur
@@ -146,3 +162,5 @@ nécessaire.
 - `.claude/rules/lmd-bts-bulletin-separation.md` — séparation stricte BTS / LMD
 - `app/Domain/Academique/CoherenceSystemeAcademique.php` — le prédicat, et les
   trois conduites qui en découlent
+- [CLI_RECALCUL_RESULTATS.md](CLI_RECALCUL_RESULTATS.md) — rafraîchir un agrégat
+  périmé, et savoir si un job dispatché tourne

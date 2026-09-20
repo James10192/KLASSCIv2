@@ -98,6 +98,14 @@ class SyncNotesScopeCommand extends Command
                     ->whereColumn('esbtp_matieres.id', 'esbtp_resultats.matiere_id')
                     ->whereNull('esbtp_matieres.deleted_at');
             });
+            // Meme perimetre que la categorie 2 : sans lui, le `delete()` qui
+            // suit balaie l'ecole entiere. La categorie 2 etait bornee, la 1 ne
+            // l'etait pas — et c'est celle qui supprime le plus largement,
+            // puisque « matiere introuvable » ne depend d'aucune option.
+            // `--matiere` s'y applique sans effet utile (la matiere visee
+            // n'existe justement plus), mais `--classe` et `--periode`, si.
+            $this->restreindreAuPerimetre($brokenMatiereQuery);
+
             $brokenCount = $brokenMatiereQuery->count();
             $this->line("  Found {$brokenCount} resultat(s) with broken matiere_id");
             if (! $dry && $brokenCount > 0) {

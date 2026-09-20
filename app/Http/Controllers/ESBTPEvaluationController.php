@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Domain\Notes\RecalculApresDeplacement;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPEtudiant;
@@ -757,6 +758,7 @@ class ESBTPEvaluationController extends Controller
             // matiere_id, semestre). Sinon les vues qui groupent par note.matiere_id (résultats,
             // bulletins) continuent d'afficher l'ancienne matière jusqu'au prochain save manuel.
             $notesUpdates = [];
+            $recalcul = ['recalcules' => 0, 'orphelins' => [], 'echecs' => 0];
             if ($evaluation->classe_id != $oldClasseId) {
                 $notesUpdates['classe_id'] = $evaluation->classe_id;
             }
@@ -779,6 +781,19 @@ class ESBTPEvaluationController extends Controller
                     ],
                     'notes_affected' => $affected,
                 ]);
+
+                // Cet `update()` est un update de QUERY BUILDER : il n'émet
+                // aucun événement Eloquent, donc ESBTPNoteObserver ne tourne pas
+                // et aucun recalcul n'est déclenché. Sans l'appel qui suit,
+                // `esbtp_resultats` garde des DEUX côtés la moyenne d'avant — et
+                // cette moyenne périmée l'emporte sur les notes à l'affichage
+                // comme au bulletin (voir RecalculApresDeplacement).
+                $recalcul = RecalculApresDeplacement::pour($evaluation, [
+                    'classe_id' => $oldClasseId,
+                    'matiere_id' => $oldMatiereId,
+                    'periode' => $oldPeriode,
+                    'annee_universitaire_id' => $evaluation->annee_universitaire_id,
+                ], Auth::id());
             }
 
             // Garde-fou non bloquant TC/Spécialité (basé sur la classe cible).
@@ -791,6 +806,16 @@ class ESBTPEvaluationController extends Controller
                 ->with('success', 'L\'évaluation a été mise à jour avec succès');
             if ($tcWarning) {
                 $redirect->with('warning', $tcWarning);
+            }
+
+            // Un agrégat que le déplacement a vidé de toutes ses notes n'est PAS
+            // recalculé — le remettre à zéro afficherait un 0/20 sur une matière
+            // que l'élève n'a plus. Il est signalé, et son sort reste à l'école.
+            if (! empty($recalcul['orphelins'])) {
+                $redirect->with('warning', trim(($tcWarning ? $tcWarning.' ' : '')
+                    .count($recalcul['orphelins']).' moyenne(s) enregistrée(s) sur l\'ancienne matière '
+                    .'n\'ont plus aucune note. Elles restent affichées : supprimez-les depuis '
+                    .'« Modifier les moyennes » si elles n\'ont plus lieu d\'être.'));
             }
 
             return $redirect;
