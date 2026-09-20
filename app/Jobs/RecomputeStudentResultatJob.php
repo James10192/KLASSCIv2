@@ -256,8 +256,18 @@ class RecomputeStudentResultatJob implements ShouldQueue
                 'updated_at' => now(),
             ]);
         } catch (\Throwable $e) {
+            // Ce rattrapage a longtemps ete muet sur l'essentiel : il taisait la
+            // `source`, qui est precisement ce qui faisait echouer l'INSERT quand
+            // la colonne etait une enumeration fermee. Resultat, 53 echecs dans
+            // une seule suite de tests sans que rien ne dise lesquels ni pourquoi.
+            // Un rattrapage qui degrade doit nommer ce qu'il a rattrape.
             Log::warning('RecomputeStudentResultatJob: audit log write failed', [
                 'error' => $e->getMessage(),
+                'source' => $this->source,
+                'etudiant_id' => $this->etudiantId,
+                'classe_id' => $this->classeId,
+                'matiere_id' => $this->matiereId,
+                'periode' => $periode,
             ]);
         }
     }

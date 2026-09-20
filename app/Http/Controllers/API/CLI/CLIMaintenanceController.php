@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\API\CLI;
 
 use App\Http\Controllers\API\BaseApiController;
-use App\Jobs\RecomputeStudentResultatJob;
 use App\Domain\Academique\CoherenceSystemeAcademique;
+use App\Domain\Notes\PerimetreDeRecalcul;
 use App\Domain\Notes\RecalculApresDeplacement;
 use App\Models\Setting;
 use App\Models\ESBTPEvaluation;
@@ -1413,34 +1413,15 @@ class CLIMaintenanceController extends BaseApiController
         }
 
         $cible = ESBTPMatiere::find($validated['matiere_id']);
-        $classeEstLmd = CoherenceSystemeAcademique::classeEstLmd($evaluation->classe?->systeme_academique);
-        $cibleEstEcue = CoherenceSystemeAcademique::matiereEstEcue($cible->unite_enseignement_id);
 
-        if (! CoherenceSystemeAcademique::estCoherente(
-            $evaluation->classe?->systeme_academique,
-            $cible->unite_enseignement_id
-        )) {
-            return $this->errorResponse(
-                'Refus : la matiere cible ne correspond pas au systeme de la classe. '
-                .'Classe '.($classeEstLmd ? 'LMD' : 'BTS').', matiere cible '
-                .($cibleEstEcue ? 'ECUE LMD' : 'BTS').'.',
-                [],
-                422
-            );
+        if ($refus = $this->refuserUneCibleIncoherente($evaluation, $cible)) {
+            return $refus;
         }
 
         $notes = ESBTPNote::where('evaluation_id', $evaluation->id)->count();
 
         if ((bool) ($validated['dry_run'] ?? false)) {
-            return $this->successResponse([
-                'dry_run' => true,
-                'evaluation_id' => $evaluation->id,
-                'titre' => $evaluation->titre,
-                'classe' => $evaluation->classe?->name,
-                'matiere_actuelle' => $evaluation->matiere?->name,
-                'matiere_cible' => $cible->name,
-                'notes_a_deplacer' => $notes,
-            ], 'Aucune ecriture : previsualisation seulement.');
+            return $this->apercuDeRebascule($evaluation, $cible, $notes);
         }
 
         $avant = ['matiere_id' => $evaluation->matiere_id, 'matiere' => $evaluation->matiere?->name];
@@ -1481,24 +1462,73 @@ class CLIMaintenanceController extends BaseApiController
             'ip' => $request->ip(),
         ]);
 
-        $message = "Evaluation #{$evaluation->id} rebasculee sur '{$cible->name}' ({$notes} note(s) suivie(s), "
-            ."{$recalcul['recalcules']} agregat(s) recalcule(s)).";
-
-        if ($recalcul['orphelins'] !== []) {
-            $message .= ' '.count($recalcul['orphelins']).' agregat(s) de l ancienne matiere n ont plus aucune note : '
-                .'ils sont laisses en place, leur sort est une decision d ecole.';
-        }
-
         return $this->successResponse([
             'evaluation_id' => $evaluation->id,
             'classe' => $evaluation->classe?->name,
             'matiere_avant' => $avant['matiere'],
             'matiere_apres' => $cible->name,
             'notes_deplacees' => $notes,
-            'agregats_recalcules' => $recalcul['recalcules'],
+            'recalculs_tentes' => $recalcul['recalculs_tentes'],
             'agregats_orphelins' => $recalcul['orphelins'],
             'recalculs_en_echec' => $recalcul['echecs'],
-        ], $message);
+        ], $this->messageDeRebascule($evaluation->id, $cible->name, $notes, $recalcul));
+    }
+
+    /** Previsualisation : aucune ecriture, ni sur l'evaluation ni sur les agregats. */
+    private function apercuDeRebascule(ESBTPEvaluation $evaluation, ESBTPMatiere $cible, int $notes): JsonResponse
+    {
+        return $this->successResponse([
+            'dry_run' => true,
+            'evaluation_id' => $evaluation->id,
+            'titre' => $evaluation->titre,
+            'classe' => $evaluation->classe?->name,
+            'matiere_actuelle' => $evaluation->matiere?->name,
+            'matiere_cible' => $cible->name,
+            'notes_a_deplacer' => $notes,
+        ], 'Aucune ecriture : previsualisation seulement.');
+    }
+
+    /**
+     * Refuse un mouvement qui ROMPRAIT la coherence au lieu de la retablir :
+     * une ECUE du LMD vers une classe BTS, ou l'inverse. Le garde vit dans
+     * {@see CoherenceSystemeAcademique}, partage avec les deux modeles qui
+     * refusent a l'ecriture.
+     */
+    private function refuserUneCibleIncoherente(ESBTPEvaluation $evaluation, ESBTPMatiere $cible): ?JsonResponse
+    {
+        if (CoherenceSystemeAcademique::estCoherente(
+            $evaluation->classe?->systeme_academique,
+            $cible->unite_enseignement_id
+        )) {
+            return null;
+        }
+
+        $classeEstLmd = CoherenceSystemeAcademique::classeEstLmd($evaluation->classe?->systeme_academique);
+        $cibleEstEcue = CoherenceSystemeAcademique::matiereEstEcue($cible->unite_enseignement_id);
+
+        return $this->errorResponse(
+            'Refus : la matiere cible ne correspond pas au systeme de la classe. '
+            .'Classe '.($classeEstLmd ? 'LMD' : 'BTS').', matiere cible '
+            .($cibleEstEcue ? 'ECUE LMD' : 'BTS').'.',
+            [],
+            422
+        );
+    }
+
+    /**
+     * @param  array{recalculs_tentes:int, orphelins:array<int,array<string,mixed>>, echecs:int}  $recalcul
+     */
+    private function messageDeRebascule(int $evaluationId, string $cible, int $notes, array $recalcul): string
+    {
+        $message = "Evaluation #{$evaluationId} rebasculee sur '{$cible}' ({$notes} note(s) suivie(s), "
+            ."{$recalcul['recalculs_tentes']} recalcul(s) lance(s)).";
+
+        if ($recalcul['orphelins'] !== []) {
+            $message .= ' '.count($recalcul['orphelins']).' agregat(s) de l ancienne matiere n ont plus aucune note : '
+                .'ils sont laisses en place, leur sort est une decision d ecole.';
+        }
+
+        return $message;
     }
 
     /**
@@ -1572,24 +1602,19 @@ class CLIMaintenanceController extends BaseApiController
      * commande artisan, elle, accepte de tourner sans aucun filtre et balaie
      * alors l'ecole entiere. Un recalcul ECRASE `esbtp_resultats.moyenne` :
      * lache sans bornes sur une instance Elite, il effacerait d'un coup toutes
-     * les moyennes saisies a la main par l'ecole, sans que rien ne le signale.
-     * D'ou le refus de tourner a l'aveugle ici.
+     * les moyennes saisies a la main par l'ecole. D'ou le refus de tourner a
+     * l'aveugle, et le plafond.
+     *
+     * La selection des couples est partagee avec la commande artisan
+     * ({@see PerimetreDeRecalcul}) : la premiere version la reimplementait, et
+     * cette copie avait deja perdu le filtre `etudiant_id` en chemin.
      *
      * ## Ce que `dry_run` montre, et ce qu'il ne montre pas
      *
-     * `dry_run` liste les couples (etudiant, matiere) qui seraient recalcules,
-     * avec leur moyenne enregistree et leur nombre de notes. Il ne PREDIT pas
-     * la valeur d'apres : la predire demanderait de reecrire la selection des
-     * notes a cote de celle du job, et deux formules qui derivent sont
-     * exactement le defaut que cette famille de bugs illustre. L'execution
-     * reelle, elle, rend `moyenne_avant` et `moyenne_apres` pour chaque couple
-     * — elle se verifie donc d'elle-meme.
-     *
-     * ## Synchrone
-     *
-     * Le job tourne sur place (`dispatchSync`), jamais sur la file : rien ne
-     * prouve qu'un worker tourne sur les instances mutualisees. D'ou le
-     * plafond, qui protege la requete plutot que la file.
+     * `dry_run` liste les couples vises avec leur moyenne enregistree. Il ne
+     * PREDIT pas la valeur d'apres : la predire demanderait de reecrire la
+     * selection des notes a cote de celle du job. L'execution reelle, elle,
+     * rend `moyenne_avant` et `moyenne_apres` par couple.
      *
      * Body: { classe_id, periode, annee_universitaire_id, matiere_id?,
      *         etudiant_id?, dry_run? }
@@ -1602,42 +1627,26 @@ class CLIMaintenanceController extends BaseApiController
 
         $validated = $request->validate([
             'classe_id' => 'required|integer|exists:esbtp_classes,id',
-            'periode' => 'required|string|in:semestre1,semestre2,annuel',
+            // `annuel` est volontairement absent : une evaluation ne porte
+            // jamais cette periode, donc le perimetre serait toujours vide et
+            // l'appel rendrait un succes rassurant sans rien avoir recalcule.
+            'periode' => 'required|string|in:semestre1,semestre2',
             'annee_universitaire_id' => 'required|integer|exists:esbtp_annee_universitaires,id',
             'matiere_id' => 'nullable|integer|exists:esbtp_matieres,id',
             'etudiant_id' => 'nullable|integer|exists:esbtp_etudiants,id',
             'dry_run' => 'nullable|boolean',
         ]);
 
-        $evaluations = ESBTPEvaluation::query()
-            ->where('status', '!=', 'cancelled')
-            ->where('classe_id', $validated['classe_id'])
-            ->where('periode', $validated['periode'])
-            ->where('annee_universitaire_id', $validated['annee_universitaire_id'])
-            ->whereNotNull('matiere_id')
-            ->when($validated['matiere_id'] ?? null, fn ($q, $m) => $q->where('matiere_id', $m))
-            ->pluck('matiere_id', 'id');
+        $perimetre = PerimetreDeRecalcul::depuis($validated);
+        $couples = $perimetre->couples();
 
-        if ($evaluations->isEmpty()) {
+        if ($couples->isEmpty()) {
             return $this->successResponse([
+                'perimetre' => $validated,
                 'couples' => [],
                 'total' => 0,
-            ], 'Aucune evaluation ne correspond a ce perimetre : rien a recalculer.');
+            ], 'Aucune note ne correspond a ce perimetre : rien a recalculer.');
         }
-
-        // Un couple = (etudiant, matiere). C'est l'unite du recalcul, et c'est
-        // aussi l'unite du plafond : deux evaluations d'une meme matiere pour un
-        // meme eleve ne comptent qu'une fois.
-        $couples = ESBTPNote::query()
-            ->whereIn('evaluation_id', $evaluations->keys())
-            ->whereNotNull('etudiant_id')
-            ->get(['etudiant_id', 'evaluation_id'])
-            ->map(fn ($note) => [
-                'etudiant_id' => (int) $note->etudiant_id,
-                'matiere_id' => (int) $evaluations[$note->evaluation_id],
-            ])
-            ->unique(fn ($c) => $c['etudiant_id'].':'.$c['matiere_id'])
-            ->values();
 
         if ($couples->count() > self::PLAFOND_RECOMPUTE) {
             return $this->errorResponse(
@@ -1648,151 +1657,36 @@ class CLIMaintenanceController extends BaseApiController
             );
         }
 
-        $lignes = [];
-        $echecs = 0;
-        $dry = (bool) ($validated['dry_run'] ?? false);
-
-        foreach ($couples as $couple) {
-            $avant = $this->moyenneEnregistree($couple, $validated);
-
-            if ($dry) {
-                $lignes[] = [
-                    'etudiant_id' => $couple['etudiant_id'],
-                    'matiere_id' => $couple['matiere_id'],
-                    'moyenne_enregistree' => $avant,
-                ];
-
-                continue;
-            }
-
-            try {
-                RecomputeStudentResultatJob::dispatchSync(
-                    etudiantId: $couple['etudiant_id'],
-                    classeId: (int) $validated['classe_id'],
-                    matiereId: $couple['matiere_id'],
-                    anneeUniversitaireId: (int) $validated['annee_universitaire_id'],
-                    periode: (string) $validated['periode'],
-                    source: 'cli',
-                    triggeredBy: $request->user()->id,
-                );
-            } catch (\Throwable $e) {
-                $echecs++;
-                Log::error('CLI: recalcul de resultat en echec', [
-                    'couple' => $couple,
-                    'perimetre' => $validated,
-                    'error' => $e->getMessage(),
-                ]);
-
-                continue;
-            }
-
-            $apres = $this->moyenneEnregistree($couple, $validated);
-
-            $lignes[] = [
-                'etudiant_id' => $couple['etudiant_id'],
-                'matiere_id' => $couple['matiere_id'],
-                'moyenne_avant' => $avant,
-                'moyenne_apres' => $apres,
-                'change' => $avant !== $apres,
-            ];
-        }
-
-        if ($dry) {
+        if ((bool) ($validated['dry_run'] ?? false)) {
             return $this->successResponse([
                 'dry_run' => true,
                 'perimetre' => $validated,
-                'couples' => $lignes,
-                'total' => count($lignes),
-            ], 'Aucune ecriture : '.count($lignes).' couple(s) seraient recalcules.');
+                'couples' => $couples->map(fn (array $c) => $c + [
+                    'moyenne_enregistree' => $perimetre->moyenneEnregistree($c),
+                ])->all(),
+                'total' => $couples->count(),
+            ], 'Aucune ecriture : '.$couples->count().' couple(s) seraient recalcules.');
         }
 
-        $modifies = collect($lignes)->where('change', true)->count();
+        $bilan = $perimetre->recalculer($couples, 'cli', $request->user()->id);
+        $modifies = collect($bilan['lignes'])->where('change', true)->count();
 
         Log::warning('CLI: recalcul de resultats execute', [
             'perimetre' => $validated,
-            'couples' => count($lignes),
+            'couples' => count($bilan['lignes']),
             'modifies' => $modifies,
-            'echecs' => $echecs,
+            'echecs' => $bilan['echecs'],
             'caller_user_id' => $request->user()->id,
             'ip' => $request->ip(),
         ]);
 
         return $this->successResponse([
             'perimetre' => $validated,
-            'couples' => $lignes,
-            'total' => count($lignes),
+            'couples' => $bilan['lignes'],
+            'total' => count($bilan['lignes']),
             'modifies' => $modifies,
-            'echecs' => $echecs,
-        ], count($lignes).' couple(s) recalcule(s), '.$modifies.' moyenne(s) modifiee(s), '.$echecs.' echec(s).');
-    }
-
-    /**
-     * @param  array{etudiant_id:int, matiere_id:int}  $couple
-     * @param  array<string,mixed>  $perimetre
-     */
-    private function moyenneEnregistree(array $couple, array $perimetre): ?float
-    {
-        $valeur = ESBTPResultat::query()
-            ->where('etudiant_id', $couple['etudiant_id'])
-            ->where('classe_id', $perimetre['classe_id'])
-            ->where('matiere_id', $couple['matiere_id'])
-            ->where('annee_universitaire_id', $perimetre['annee_universitaire_id'])
-            ->where('periode', $perimetre['periode'])
-            ->value('moyenne');
-
-        return $valeur === null ? null : (float) $valeur;
-    }
-
-    /**
-     * GET /api/cli/diagnostics/queue
-     *
-     * Dit si un job dispatche a une chance d'etre execute un jour.
-     *
-     * `config/queue.php` vaut `database` par defaut et `app/Console/Kernel.php`
-     * ne planifie aucun `queue:work` : sur une instance ou aucun worker ne
-     * tourne, tout ce qui est dispatche s'empile dans `jobs` sans jamais etre
-     * traite. C'est invisible — aucune erreur, aucune page cassee, juste des
-     * agregats qui ne se rafraichissent plus. `ESBTPNoteObserver` en depend a
-     * chaque saisie de note, donc la reponse de ce diagnostic decide si les
-     * moyennes d'une instance sont tenues a jour ou figees.
-     *
-     * Lecture seule.
-     */
-    public function queueHealth(Request $request): JsonResponse
-    {
-        if (! $request->user()->tokenCan('cli:read')) {
-            return $this->errorResponse('Token missing cli:read ability', [], 403);
-        }
-
-        $driver = config('queue.default');
-        $donnees = [
-            'driver' => $driver,
-            'synchrone' => $driver === 'sync',
-        ];
-
-        if ($driver === 'database') {
-            $table = config('queue.connections.database.table', 'jobs');
-
-            $enAttente = DB::table($table)->count();
-            $plusAncien = DB::table($table)->min('created_at');
-
-            $donnees['en_attente'] = $enAttente;
-            $donnees['plus_ancien_created_at'] = $plusAncien;
-            $donnees['plus_ancien_age_heures'] = $plusAncien
-                ? round((time() - (int) $plusAncien) / 3600, 1)
-                : null;
-            $donnees['echoues'] = DB::table('failed_jobs')->count();
-        }
-
-        $message = match (true) {
-            $driver === 'sync' => 'File en mode synchrone : tout job dispatche s execute sur place.',
-            ($donnees['en_attente'] ?? 0) === 0 => 'Aucun job en attente : soit un worker tourne, soit rien n a ete dispatche.',
-            ($donnees['plus_ancien_age_heures'] ?? 0) > 1 => 'Le plus ancien job attend depuis '
-                .$donnees['plus_ancien_age_heures'].' h : aucun worker ne traite la file. '
-                .'Les agregats de notes ne se rafraichissent plus.',
-            default => $donnees['en_attente'].' job(s) en attente, le plus ancien depuis moins d une heure.',
-        };
-
-        return $this->successResponse($donnees, $message);
+            'echecs' => $bilan['echecs'],
+        ], count($bilan['lignes']).' couple(s) recalcule(s), '.$modifies
+            .' moyenne(s) modifiee(s), '.$bilan['echecs'].' echec(s).');
     }
 }

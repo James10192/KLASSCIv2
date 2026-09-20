@@ -67,7 +67,7 @@ final class RecalculApresDeplacement
     /**
      * @param  array{classe_id?:int|null, matiere_id?:int|null, periode?:string|null, annee_universitaire_id?:int|null}  $avant
      *                                                                                                                          Coordonnees de l'evaluation AVANT le deplacement.
-     * @return array{recalcules:int, orphelins:array<int,array<string,mixed>>, echecs:int}
+     * @return array{recalculs_tentes:int, orphelins:array<int,array<string,mixed>>, echecs:int}
      */
     public static function pour(ESBTPEvaluation $evaluation, array $avant, ?int $declencheur = null): array
     {
@@ -78,7 +78,11 @@ final class RecalculApresDeplacement
             'annee_universitaire_id' => $evaluation->annee_universitaire_id,
         ];
 
-        $bilan = ['recalcules' => 0, 'orphelins' => [], 'echecs' => 0];
+        // `recalculs_tentes` et non « recalcules » : le job rend la main sans
+        // rien ecrire dans deux cas legitimes — aucune note et aucune ligne
+        // existante, ou refus du garde de coherence BTS/LMD, qu'il attrape sans
+        // relancer. Annoncer « N agregats recalcules » surestimait.
+        $bilan = ['recalculs_tentes' => 0, 'orphelins' => [], 'echecs' => 0];
 
         if (self::memeCoordonnee($avant, $apres)) {
             return $bilan;
@@ -96,10 +100,15 @@ final class RecalculApresDeplacement
         }
 
         foreach ($etudiantIds as $etudiantId) {
-            // Nouvelle coordonnee : les notes viennent d'y arriver, donc le
-            // calcul porte sur au moins une note et ne peut pas rendre un faux 0.
+            // Nouvelle coordonnee : les notes viennent d'y arriver, donc la
+            // ligne ne sera pas creee a partir de rien. Ce n'est PAS une
+            // garantie de valeur non nulle : si toutes les notes deplacees sont
+            // des absences, `studentMatiereAverage()` les ecarte et rend 0 —
+            // comme partout ailleurs dans le recalcul. Le piege qu'on evite ici
+            // est l'autre, celui du cote qu'on quitte : y rejouer le calcul sur
+            // ZERO note ecrirait un 0/20 sur une matiere que l'eleve n'a plus.
             if (self::executer($etudiantId, $apres, $declencheur, $bilan)) {
-                $bilan['recalcules']++;
+                $bilan['recalculs_tentes']++;
             }
 
             // Ancienne coordonnee : recalcul seulement s'il y reste des notes.
@@ -109,7 +118,7 @@ final class RecalculApresDeplacement
 
             if (self::porteEncoreDesNotes($etudiantId, $avant)) {
                 if (self::executer($etudiantId, $avant, $declencheur, $bilan)) {
-                    $bilan['recalcules']++;
+                    $bilan['recalculs_tentes']++;
                 }
 
                 continue;
@@ -135,7 +144,7 @@ final class RecalculApresDeplacement
 
     /**
      * @param  array<string,mixed>  $coordonnee
-     * @param  array{recalcules:int, orphelins:array<int,array<string,mixed>>, echecs:int}  $bilan
+     * @param  array{recalculs_tentes:int, orphelins:array<int,array<string,mixed>>, echecs:int}  $bilan
      */
     private static function executer(int $etudiantId, array $coordonnee, ?int $declencheur, array &$bilan): bool
     {
@@ -237,5 +246,71 @@ final class RecalculApresDeplacement
         }
 
         return true;
+    }
+
+    /**
+     * Plafond de notes traitees en un lot. Au-dela, le recalcul n'est PAS lance
+     * et le perimetre est rendu a l'appelant pour qu'il le rejoue par
+     * `POST /api/cli/notes/recompute`. Le job tourne sur place : un lot de 200
+     * evaluations sur une classe pleine ferait plusieurs milliers de requetes
+     * dans une seule requete HTTP, sur de l'hebergement mutualise.
+     */
+    public const PLAFOND_NOTES_PAR_LOT = 400;
+
+    /**
+     * Meme correction, pour les deux endpoints qui deplacent des evaluations
+     * d'une PERIODE a l'autre, en lot.
+     *
+     * `periode` est une coordonnee de la cle d'`esbtp_resultats` au meme titre
+     * que `matiere_id` : un changement de semestre laisse donc exactement le
+     * meme agregat perime des deux cotes. Ces deux chemins ont ete manques a la
+     * premiere passe — le correctif annoncait « les deux endroits » alors qu'il
+     * y en avait quatre.
+     *
+     * @param  array<int, array{evaluation: ESBTPEvaluation, periode_avant: string}>  $deplacements
+     * @return array{recalculs_tentes:int, orphelins:array<int,array<string,mixed>>, echecs:int, reporte:bool, notes:int}
+     */
+    public static function pourUnLotDePeriodes(array $deplacements, ?int $declencheur = null): array
+    {
+        $bilan = ['recalculs_tentes' => 0, 'orphelins' => [], 'echecs' => 0, 'reporte' => false, 'notes' => 0];
+
+        if ($deplacements === []) {
+            return $bilan;
+        }
+
+        $bilan['notes'] = ESBTPNote::whereIn(
+            'evaluation_id',
+            array_map(static fn (array $d) => $d['evaluation']->id, $deplacements)
+        )->count();
+
+        if ($bilan['notes'] > self::PLAFOND_NOTES_PAR_LOT) {
+            $bilan['reporte'] = true;
+
+            Log::warning('Deplacement en lot : recalcul reporte, lot trop grand', [
+                'notes' => $bilan['notes'],
+                'plafond' => self::PLAFOND_NOTES_PAR_LOT,
+                'evaluations' => array_map(static fn (array $d) => $d['evaluation']->id, $deplacements),
+                'remede' => 'POST /api/cli/notes/recompute sur la classe et les deux periodes concernees',
+            ]);
+
+            return $bilan;
+        }
+
+        foreach ($deplacements as $deplacement) {
+            $evaluation = $deplacement['evaluation'];
+
+            $partiel = self::pour($evaluation, [
+                'classe_id' => $evaluation->classe_id,
+                'matiere_id' => $evaluation->matiere_id,
+                'periode' => $deplacement['periode_avant'],
+                'annee_universitaire_id' => $evaluation->annee_universitaire_id,
+            ], $declencheur);
+
+            $bilan['recalculs_tentes'] += $partiel['recalculs_tentes'];
+            $bilan['echecs'] += $partiel['echecs'];
+            $bilan['orphelins'] = array_merge($bilan['orphelins'], $partiel['orphelins']);
+        }
+
+        return $bilan;
     }
 }

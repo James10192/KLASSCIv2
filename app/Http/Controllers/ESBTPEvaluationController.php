@@ -758,7 +758,7 @@ class ESBTPEvaluationController extends Controller
             // matiere_id, semestre). Sinon les vues qui groupent par note.matiere_id (résultats,
             // bulletins) continuent d'afficher l'ancienne matière jusqu'au prochain save manuel.
             $notesUpdates = [];
-            $recalcul = ['recalcules' => 0, 'orphelins' => [], 'echecs' => 0];
+            $recalcul = ['recalculs_tentes' => 0, 'orphelins' => [], 'echecs' => 0];
             if ($evaluation->classe_id != $oldClasseId) {
                 $notesUpdates['classe_id'] = $evaluation->classe_id;
             }

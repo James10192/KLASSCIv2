@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\API\CLI;
 
+use App\Domain\Notes\RecalculApresDeplacement;
 use App\Http\Controllers\API\BaseApiController;
 use App\Models\ESBTPEvaluation;
 use App\Models\ESBTPNote;
@@ -108,8 +109,9 @@ class CLIEvaluationDeplacementController extends BaseApiController
         }
 
         $traitees = [];
+        $deplacees = [];
 
-        DB::transaction(function () use ($aDeplacer, $cible, &$traitees) {
+        DB::transaction(function () use ($aDeplacer, $cible, &$traitees, &$deplacees) {
             foreach ($aDeplacer as $ligne) {
                 $evaluation = ESBTPEvaluation::find($ligne['evaluation_id']);
                 if (! $evaluation) {
@@ -128,12 +130,21 @@ class CLIEvaluationDeplacementController extends BaseApiController
                 $notes = ESBTPNote::where('evaluation_id', $evaluation->id)
                     ->update(['semestre' => $cible]);
 
+                $deplacees[] = ['evaluation' => $evaluation, 'periode_avant' => $avant];
+
                 $traitees[] = $ligne + [
                     'periode_avant' => $avant,
                     'notes_realignees' => $notes,
                 ];
             }
         });
+
+        // Cet `update()` est un update de QUERY BUILDER : aucun evenement
+        // Eloquent, donc aucun recalcul. `periode` etant une coordonnee de la
+        // cle d'`esbtp_resultats`, les deux semestres gardaient la moyenne
+        // d'avant — et l'agregat perime l'emporte sur les notes. Hors
+        // transaction a dessein : le deplacement reste acquis.
+        $recalcul = RecalculApresDeplacement::pourUnLotDePeriodes($deplacees, $request->user()->id);
 
         Log::warning('CLI: evaluations deplacees de semestre sur decision humaine', [
             'periode_cible' => $cible,
@@ -148,6 +159,14 @@ class CLIEvaluationDeplacementController extends BaseApiController
             'introuvables' => $introuvables,
             'total' => count($traitees),
             'notes_realignees' => array_sum(array_column($traitees, 'notes_realignees')),
-        ], count($traitees).' evaluation(s) deplacee(s) vers '.$cible.'.');
+            'recalculs_tentes' => $recalcul['recalculs_tentes'],
+            'agregats_orphelins' => $recalcul['orphelins'],
+            'recalculs_en_echec' => $recalcul['echecs'],
+            'recalcul_reporte' => $recalcul['reporte'],
+        ], count($traitees).' evaluation(s) deplacee(s) vers '.$cible.'.'
+            .($recalcul['reporte']
+                ? ' ATTENTION : lot trop grand ('.$recalcul['notes'].' notes), les moyennes n ont PAS ete'
+                    .' recalculees. Rejouez POST /api/cli/notes/recompute sur la classe et les deux periodes.'
+                : ' '.$recalcul['recalculs_tentes'].' recalcul(s) lance(s).'));
     }
 }

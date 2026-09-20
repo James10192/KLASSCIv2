@@ -95,9 +95,16 @@ qu'on quitte comme celle qu'on rejoint — gardaient la moyenne d'avant dans
 le 20 septembre 2026 sur `esbtp-abidjan` après un déplacement : élève 149,
 matière 14, l'agrégat disait 15, les cinq notes disent 15,6.
 
-La réponse porte désormais `agregats_recalcules`, `agregats_orphelins` et
+La réponse porte désormais `recalculs_tentes`, `agregats_orphelins` et
 `recalculs_en_echec` ; le détail du recalcul, et ce qu'il refuse délibérément de
 faire, est dans [CLI_RECALCUL_RESULTATS.md](CLI_RECALCUL_RESULTATS.md).
+
+⚠️ **Et la première version de ce correctif a elle-même publié un périmètre
+faux** : elle annonçait « les deux endroits qui déplacent une évaluation » alors
+qu'il y en a **quatre** — les deux endpoints qui changent la *période* laissaient
+le même agrégat périmé, `periode` étant une coordonnée de la même clé. Les quatre
+sont branchés depuis, et listés dans le document ci-dessus. Un « c'est corrigé »
+faux ferme l'enquête suivante ; c'est ce que coûte le plus cher.
 
 ```bash
 curl -s -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
@@ -144,9 +151,11 @@ nécessaire.
 
 ## Historique
 
-- **Septembre 2026** — le déplacement recalcule enfin les agrégats des deux
-  côtés. Il déplaçait les notes sans rien rafraîchir, et l'agrégat périmé gagne
-  sur les notes : le déplacement avait donc l'air fait et ne l'était qu'à moitié.
+- **Septembre 2026** — les **quatre** chemins qui déplacent une évaluation
+  recalculent enfin les agrégats des deux côtés. Ils déplaçaient les notes sans
+  rien rafraîchir, et l'agrégat périmé gagne sur les notes : le déplacement avait
+  donc l'air fait et ne l'était qu'à moitié. La première livraison n'en couvrait
+  que deux tout en publiant « les deux chemins sont corrigés ».
 - **Septembre 2026** — la réponse porte un second bloc `moyennes_manuelles` et un
   `total_toutes_familles`. La version antérieure ne relevait que les évaluations
   et a été prise pour l'inventaire complet. Un garde de cohérence est posé sur

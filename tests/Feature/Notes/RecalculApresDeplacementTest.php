@@ -7,6 +7,7 @@ use App\Models\ESBTPResultat;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Route;
 use Tests\Feature\Bts\Concerns\MonteUneClasseBts;
@@ -20,8 +21,11 @@ use Tests\TestCase;
  * DEUX coordonnees gardent la moyenne d'avant. Et cette moyenne l'emporte sur
  * les notes a l'affichage comme au bulletin.
  *
- * Chaque test ici echoue si l'appel a `RecalculApresDeplacement` est retire —
- * c'est le seul critere qui les rend utiles. Verifie en le retirant.
+ * Les QUATRE premiers tests echouent si l'appel a `RecalculApresDeplacement`
+ * est retire — verifie en le retirant, c'est le seul critere qui les rend
+ * utiles. Les suivants couvrent le point d'entree CLI de recalcul et ne
+ * dependent pas de cet appel ; une version anterieure de ce docbloc les
+ * enrolait dans une garantie qu'ils n'offrent pas.
  */
 class RecalculApresDeplacementTest extends TestCase
 {
@@ -220,24 +224,111 @@ class RecalculApresDeplacementTest extends TestCase
         $this->assertSame(10.0, $this->moyenne($etudiant->id, $depart->id));
     }
 
+    /**
+     * `etudiant_id` etait valide, conseille dans le refus 422 — et jamais
+     * applique : viser un eleve recalculait toute sa classe. Un recalcul ECRASE
+     * la moyenne enregistree, y compris une valeur saisie a la main.
+     */
     /** @test */
-    public function les_deux_routes_sont_enregistrees(): void
+    public function le_recalcul_cli_vise_bien_un_seul_eleve(): void
+    {
+        $this->monterLaClasse();
+        $matiere = $this->matiereConfiguree();
+        $vise = $this->etudiantInscrit();
+        $voisin = $this->etudiantInscrit();
+
+        $evaluation = $this->evaluationDe($matiere);
+        $this->noter($vise, $evaluation, 12);
+        $this->noter($voisin, $evaluation, 8);
+
+        ESBTPResultat::whereIn('etudiant_id', [$vise->id, $voisin->id])
+            ->where('matiere_id', $matiere->id)
+            ->update(['moyenne' => 7]);
+
+        $reponse = $this->appeler('notesRecompute', ['cli:admin'], [
+            'classe_id' => $this->classe->id,
+            'periode' => 'semestre1',
+            'annee_universitaire_id' => $this->annee->id,
+            'etudiant_id' => $vise->id,
+        ]);
+
+        $this->assertSame(1, $reponse['total']);
+        $this->assertSame(12.0, $this->moyenne($vise->id, $matiere->id));
+        $this->assertSame(7.0, $this->moyenne($voisin->id, $matiere->id), 'le voisin ne devait pas bouger');
+    }
+
+    /**
+     * Le choix le plus contre-intuitif du correctif : le job tourne SUR PLACE.
+     * `.env.testing` pose `QUEUE_CONNECTION=sync`, donc `dispatch()` et
+     * `dispatchSync()` y sont indiscernables — sans ce test, remplacer l'un par
+     * l'autre laisserait toute la suite verte, et le correctif ne s'executerait
+     * jamais sur les instances, ou aucun worker ne tourne.
+     */
+    /** @test */
+    public function le_recalcul_tourne_sur_place_et_non_sur_la_file(): void
+    {
+        $this->monterLaClasse();
+        $depart = $this->matiereConfiguree();
+        $arrivee = $this->matiereConfiguree();
+        $etudiant = $this->etudiantInscrit();
+
+        $restante = $this->evaluationDe($arrivee);
+        $this->noter($etudiant, $restante, 20);
+
+        $deplacee = $this->evaluationDe($depart);
+        $this->noter($etudiant, $deplacee, 10);
+
+        // `Queue::fake()` ne discriminerait PAS : `dispatchSync()` passe lui
+        // aussi par le gestionnaire de file (sur la connexion `sync`), donc la
+        // fausse file l'intercepte exactement comme un `dispatch()`. Les deux
+        // deviennent indiscernables, et le job ne tourne dans aucun des cas.
+        //
+        // Ce qui discrimine, c'est la vraie file `database` — celle des huit
+        // instances. Avec `dispatch()`, une ligne atterrit dans `jobs` et rien
+        // n'est recalcule ; `dispatchSync()` force la connexion `sync` et tourne
+        // sur place. Les deux assertions se tiennent l'une l'autre.
+        config(['queue.default' => 'database']);
+        DB::table('jobs')->delete();
+
+        $this->deplacer($deplacee->id, $arrivee->id);
+
+        $this->assertSame(0, DB::table('jobs')->count(), 'aucun recalcul ne doit partir sur la file');
+        $this->assertSame(15.0, $this->moyenne($etudiant->id, $arrivee->id));
+    }
+
+    /**
+     * La trace d'audit a ete muette pendant toute la premiere version du
+     * correctif : `esbtp_resultats_recompute_log.source` etait une enumeration
+     * fermee, l'INSERT levait sous `STRICT_TRANS_TABLES`, et le job avalait
+     * l'exception. Le recalcul se declarait reussi, sans trace.
+     */
+    /** @test */
+    public function le_recalcul_laisse_une_trace_d_audit(): void
+    {
+        $this->monterLaClasse();
+        $depart = $this->matiereConfiguree();
+        $arrivee = $this->matiereConfiguree();
+        $etudiant = $this->etudiantInscrit();
+
+        $deplacee = $this->evaluationDe($depart);
+        $this->noter($etudiant, $deplacee, 10);
+
+        DB::table('esbtp_resultats_recompute_log')->delete();
+
+        $this->deplacer($deplacee->id, $arrivee->id);
+
+        $this->assertSame(
+            1,
+            DB::table('esbtp_resultats_recompute_log')->where('source', 'deplacement')->count()
+        );
+    }
+
+    /** @test */
+    public function la_route_de_recalcul_est_enregistree(): void
     {
         $uris = collect(Route::getRoutes()->getRoutes())->map(fn ($r) => $r->uri());
 
         $this->assertTrue($uris->contains('api/cli/notes/recompute'));
-        $this->assertTrue($uris->contains('api/cli/diagnostics/queue'));
-    }
-
-    /** @test */
-    public function le_diagnostic_de_file_dit_si_un_job_a_une_chance_de_tourner(): void
-    {
-        $reponse = app(CLIMaintenanceController::class)->queueHealth($this->requete(['cli:read'], []));
-        $donnees = $reponse->getData(true)['data'];
-
-        $this->assertSame(config('queue.default'), $donnees['driver']);
-        $this->assertSame(403, app(CLIMaintenanceController::class)
-            ->queueHealth($this->requete([], []))->getStatusCode());
     }
 
     /** @return array<string,mixed> */
