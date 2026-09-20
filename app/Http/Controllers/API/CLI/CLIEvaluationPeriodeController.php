@@ -103,6 +103,8 @@ class CLIEvaluationPeriodeController extends BaseApiController
                     'evaluation_id' => $evaluation->id,
                     'titre' => $a['titre'],
                     'classe' => $a['classe'],
+                    'classe_id' => $a['classe_id'],
+                    'annee_universitaire_id' => $a['annee_universitaire_id'],
                     'matiere' => $a['matiere'],
                     'de' => $avant,
                     'vers' => $evaluation->periode,
@@ -131,11 +133,33 @@ class CLIEvaluationPeriodeController extends BaseApiController
             'agregats_orphelins' => $recalcul['orphelins'],
             'recalculs_en_echec' => $recalcul['echecs'],
             'recalcul_reporte' => $recalcul['reporte'],
-        ], count($traitees).' evaluation(s) deplacee(s).'
-            .($recalcul['reporte']
-                ? ' ATTENTION : lot trop grand ('.$recalcul['notes'].' notes), les moyennes n ont PAS ete'
-                    .' recalculees. Rejouez POST /api/cli/notes/recompute sur les classes concernees.'
-                : ' '.$recalcul['recalculs_tentes'].' recalcul(s) lance(s).'));
+            'perimetres_reportes' => $recalcul['perimetres_reportes'],
+        ], count($traitees).' evaluation(s) deplacee(s).'.self::motDeLaFin($recalcul));
+    }
+
+    /**
+     * Le plafond porte sur la classe : un meme appel peut donc avoir recalcule
+     * une partie des classes et reporte les autres. Cet endpoint-ci ne borne pas
+     * sa selection (`detecter()` rend tout ce qu'il trouve), donc le cas est la
+     * regle et non l'exception sur une grosse instance.
+     *
+     * @param  array<string,mixed>  $recalcul
+     */
+    private static function motDeLaFin(array $recalcul): string
+    {
+        $fait = ' '.$recalcul['recalculs_tentes'].' recalcul(s) lance(s).';
+
+        if (! $recalcul['reporte']) {
+            return $fait;
+        }
+
+        return $fait.' ATTENTION : '.count($recalcul['perimetres_reportes'])
+            .' classe(s) au-dela du plafond de '
+            .RecalculApresDeplacement::PLAFOND_NOTES_PAR_CLASSE
+            .' notes — leurs moyennes n ont PAS ete recalculees. Chaque ligne de'
+            .' `perimetres_reportes` porte les parametres a rejouer sur'
+            .' POST /api/cli/notes/recompute (classe_id, annee_universitaire_id,'
+            .' et une fois par periode listee).';
     }
 
     /**
@@ -170,6 +194,11 @@ class CLIEvaluationPeriodeController extends BaseApiController
                 'evaluation_id' => $evaluation->id,
                 'titre' => $evaluation->titre,
                 'classe' => $evaluation->classe->name ?? null,
+                // Les deux identifiants, et pas seulement le nom de la classe :
+                // le message de repli renvoie vers
+                // `POST /api/cli/notes/recompute`, qui les EXIGE tous les deux.
+                'classe_id' => (int) $evaluation->classe_id,
+                'annee_universitaire_id' => (int) $evaluation->annee_universitaire_id,
                 'matiere' => $evaluation->matiere->name ?? null,
                 'periode_actuelle' => $evaluation->periode,
                 'semestre_attendu' => $attendu,

@@ -3,6 +3,7 @@
 namespace Tests\Feature\Notes;
 
 use App\Http\Controllers\API\CLI\CLIMaintenanceController;
+use App\Http\Controllers\API\CLI\CLINotesRecomputeController;
 use App\Models\ESBTPResultat;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -21,11 +22,22 @@ use Tests\TestCase;
  * DEUX coordonnees gardent la moyenne d'avant. Et cette moyenne l'emporte sur
  * les notes a l'affichage comme au bulletin.
  *
- * Les QUATRE premiers tests echouent si l'appel a `RecalculApresDeplacement`
- * est retire — verifie en le retirant, c'est le seul critere qui les rend
- * utiles. Les suivants couvrent le point d'entree CLI de recalcul et ne
- * dependent pas de cet appel ; une version anterieure de ce docbloc les
- * enrolait dans une garantie qu'ils n'offrent pas.
+ * **SIX** tests tombent si l'appel a `RecalculApresDeplacement::pour()` est
+ * retire, mesure en le retirant : les trois premiers, « l ecran web recalcule
+ * lui aussi », « le recalcul tourne sur place » et « le recalcul laisse une
+ * trace d audit ». Les cinq autres couvrent le point d'entree CLI et ne
+ * dependent pas de cet appel.
+ *
+ * Le quatrieme, « la simulation ne recalcule rien », reste vert sans le
+ * correctif — et c'est juste : il verifie qu'on n'ecrit RIEN, ce qui est aussi
+ * vrai quand le recalcul n'existe pas. Il garde le `dry_run`, pas le recalcul.
+ *
+ * **Ce compte a ete faux deux fois de suite.** Il a d'abord dit « les neuf »,
+ * puis « les QUATRE premiers » — or ni le nombre ni l'ensemble n'etaient bons,
+ * et le message du commit qui a pose ce « quatre » disait six deux lignes plus
+ * loin. Un docbloc qui dit « verifie en le retirant » sans que le retrait ait
+ * ete refait est pire qu'un docbloc muet : il fait croire la verification
+ * faite. Rejouez-le avant de toucher ce chiffre.
  */
 class RecalculApresDeplacementTest extends TestCase
 {
@@ -132,13 +144,13 @@ class RecalculApresDeplacementTest extends TestCase
     {
         $this->monterLaClasse();
 
-        $refus = app(CLIMaintenanceController::class)->notesRecompute(
+        $refus = app(CLINotesRecomputeController::class)->notesRecompute(
             $this->requete([], [])
         );
         $this->assertSame(403, $refus->getStatusCode());
 
         $this->expectException(\Illuminate\Validation\ValidationException::class);
-        app(CLIMaintenanceController::class)->notesRecompute(
+        app(CLINotesRecomputeController::class)->notesRecompute(
             $this->requete(['cli:admin'], ['periode' => 'semestre1'])
         );
     }
@@ -346,7 +358,12 @@ class RecalculApresDeplacementTest extends TestCase
      */
     private function appeler(string $methode, array $droits, array $charge, ?int $id = null): array
     {
-        $controleur = app(CLIMaintenanceController::class);
+        // `notesRecompute` a son controleur a lui (`CLINotesRecomputeController`) :
+        // `CLIMaintenanceController` passait 1500 lignes, le grossir encore
+        // contredisait l'axe « no god code ».
+        $controleur = $methode === 'notesRecompute'
+            ? app(CLINotesRecomputeController::class)
+            : app(CLIMaintenanceController::class);
         $requete = $this->requete($droits, $charge);
 
         $reponse = $id === null

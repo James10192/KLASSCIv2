@@ -685,7 +685,7 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
         // Rafraichit `esbtp_resultats` depuis les notes, sur un perimetre
         // EXPLICITE. Le perimetre est obligatoire a dessein : un recalcul
         // ecrase les moyennes enregistrees, y compris celles saisies a la main.
-        Route::post('/notes/recompute', [App\Http\Controllers\API\CLI\CLIMaintenanceController::class, 'notesRecompute'])
+        Route::post('/notes/recompute', [App\Http\Controllers\API\CLI\CLINotesRecomputeController::class, 'notesRecompute'])
             ->name('notes.recompute');
     });
 });

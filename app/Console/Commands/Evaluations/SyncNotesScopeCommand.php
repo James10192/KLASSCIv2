@@ -102,8 +102,11 @@ class SyncNotesScopeCommand extends Command
             // suit balaie l'ecole entiere. La categorie 2 etait bornee, la 1 ne
             // l'etait pas — et c'est celle qui supprime le plus largement,
             // puisque « matiere introuvable » ne depend d'aucune option.
-            // `--matiere` s'y applique sans effet utile (la matiere visee
-            // n'existe justement plus), mais `--classe` et `--periode`, si.
+            // `--matiere` s'y applique aussi, et utilement : le filtre porte
+            // sur `esbtp_resultats.matiere_id`, qui garde l'identifiant d'une
+            // matiere mise de cote. On peut donc viser UNE matiere effacee
+            // precise. Un commentaire anterieur disait le contraire ; il fermait
+            // une porte ouverte.
             $this->restreindreAuPerimetre($brokenMatiereQuery);
 
             $brokenCount = $brokenMatiereQuery->count();

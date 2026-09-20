@@ -28,14 +28,24 @@ return new class extends Migration
         DB::statement("ALTER TABLE esbtp_resultats_recompute_log MODIFY source VARCHAR(30) NOT NULL DEFAULT 'observer'");
     }
 
+    /**
+     * Volontairement sans effet.
+     *
+     * Une premiere version ramenait a `'manual'` toute source hors de
+     * l'enumeration d'origine, pour que l'`ALTER` inverse passe. Elle **faisait
+     * mentir un journal d'audit** : la seule raison d'etre de cette table est de
+     * repondre a « quand cette moyenne a-t-elle change, et QUI l'a declenche ? »,
+     * et c'est la garantie meme qu'on invoque pour autoriser un endpoint a
+     * ecraser des moyennes saisies a la main. Ecrire « manual » sur un recalcul
+     * automatique, c'est attribuer a une personne un geste qu'elle n'a pas fait.
+     *
+     * Le retour arriere n'est donc pas possible sans perdre une donnee
+     * forensique. On ne le simule pas : on ne fait rien, et on le dit. Un
+     * `string(30)` qui reste large ne casse rien — l'enum d'origine n'etait pas
+     * une garantie metier, c'etait un piege qui echouait en silence.
+     */
     public function down(): void
     {
-        // Une source hors de l'enumeration d'origine empecherait le retour :
-        // on la ramene a 'manual', qui est la plus proche d'un geste pilote.
-        DB::table('esbtp_resultats_recompute_log')
-            ->whereNotIn('source', ['observer', 'command', 'manual'])
-            ->update(['source' => 'manual']);
-
-        DB::statement("ALTER TABLE esbtp_resultats_recompute_log MODIFY source ENUM('observer','command','manual') NOT NULL DEFAULT 'observer'");
+        // Rien. Voir le docbloc ci-dessus.
     }
 };

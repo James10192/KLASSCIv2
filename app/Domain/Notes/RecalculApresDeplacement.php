@@ -14,8 +14,9 @@ use Illuminate\Support\Facades\Log;
  *
  * ## Pourquoi cette classe existe
  *
- * Les deux endroits qui deplacent une evaluation propagent la colonne
- * denormalisee `esbtp_notes.matiere_id` par un `update()` de **query builder** :
+ * Les endroits qui deplacent une evaluation propagent la colonne denormalisee
+ * `esbtp_notes.matiere_id` (ou `.semestre`) par un `update()` de
+ * **query builder** :
  *
  *     ESBTPNote::where('evaluation_id', $id)->update(['matiere_id' => $cible->id]);
  *
@@ -58,6 +59,33 @@ use Illuminate\Support\Facades\Log;
  *
  * Le volume est borne par construction : les eleves notes sur **une** seule
  * evaluation, au plus deux coordonnees chacun.
+ *
+ * ## Combien de deplaceurs, et lesquels
+ *
+ * **Ce compte a ete faux deux fois, chaque fois publie comme definitif** : la
+ * premiere livraison annoncait « les deux endroits » (les deux qui changent la
+ * matiere), la deuxieme « quatre » (en ajoutant les deux qui changent la
+ * periode). Il y en a **cinq**, et le cinquieme n'est pas branche ici :
+ *
+ * | deplaceur | ce qu'il change | branche sur cette classe |
+ * |---|---|---|
+ * | `ESBTPEvaluationController::update()` | matiere, classe, periode | oui |
+ * | `CLIMaintenanceController::evaluationChangeMatiere()` | matiere | oui |
+ * | `CLIEvaluationDeplacementController::deplacer()` | periode, en lot | oui |
+ * | `CLIEvaluationPeriodeController::repair()` | periode, en lot | oui |
+ * | `MergeDuplicateEcue` (sous `force`) | matiere, en masse | **non** |
+ *
+ * Le cinquieme, `app/Domain/LMD/Actions/MergeDuplicateEcue.php`, reparente
+ * `esbtp_evaluations.matiere_id` ET `esbtp_notes.matiere_id` vers l'ECUE
+ * canonique, puis met l'absorbee de cote (soft-delete). Il ne recalcule rien.
+ * Il n'est pas corrige dans ce lot a dessein : c'est un autre domaine (la
+ * reconciliation LMD, dont les agregats sont `esbtp_lmd_resultat_ecue`), il est
+ * garde par un drapeau `force`, et sur une instance saine
+ * `ESBTPEvaluation::booted()` refuse deja qu'une ECUE soit evaluee dans une
+ * classe BTS — donc il ne devrait pas croiser `esbtp_resultats`. « Ne devrait
+ * pas » n'est pas « ne peut pas » : sur une instance portant des lignes
+ * heritees, il laisserait le meme agregat perime. C'est un chantier a lui, pas
+ * une ligne a glisser ici.
  */
 final class RecalculApresDeplacement
 {
@@ -249,13 +277,22 @@ final class RecalculApresDeplacement
     }
 
     /**
-     * Plafond de notes traitees en un lot. Au-dela, le recalcul n'est PAS lance
-     * et le perimetre est rendu a l'appelant pour qu'il le rejoue par
-     * `POST /api/cli/notes/recompute`. Le job tourne sur place : un lot de 200
-     * evaluations sur une classe pleine ferait plusieurs milliers de requetes
-     * dans une seule requete HTTP, sur de l'hebergement mutualise.
+     * Plafond de notes recalculees d'un coup, **par classe et par annee**.
+     * Au-dela, le recalcul de CE perimetre-la n'est pas lance : il est rendu a
+     * l'appelant, qui le rejoue par `POST /api/cli/notes/recompute`. Le job
+     * tourne sur place ; un lot de 200 evaluations sur une classe pleine ferait
+     * plusieurs milliers de requetes dans une seule requete HTTP, sur de
+     * l'hebergement mutualise.
+     *
+     * Le plafond porte sur la classe, PAS sur le lot, et la difference n'est pas
+     * cosmetique. Sur le lot, un appel touchant cinq classes dont une seule est
+     * lourde ne recalculait **aucune** des quatre autres. Pire :
+     * `CLIEvaluationPeriodeController::detecter()` ne borne pas sa selection —
+     * sur une instance a plus de 2000 inscriptions, le plafond de lot etait
+     * franchi a tous les coups, donc rien n'etait jamais recalcule et le
+     * correctif se reduisait a un message.
      */
-    public const PLAFOND_NOTES_PAR_LOT = 400;
+    public const PLAFOND_NOTES_PAR_CLASSE = 400;
 
     /**
      * Meme correction, pour les deux endpoints qui deplacent des evaluations
@@ -265,50 +302,117 @@ final class RecalculApresDeplacement
      * que `matiere_id` : un changement de semestre laisse donc exactement le
      * meme agregat perime des deux cotes. Ces deux chemins ont ete manques a la
      * premiere passe — le correctif annoncait « les deux endroits » alors qu'il
-     * y en avait quatre.
+     * y en a cinq (voir l'inventaire en tete de classe).
+     *
+     * `perimetres_reportes` est la partie qui compte pour l'operateur : chaque
+     * ligne porte exactement les parametres qu'attend
+     * `POST /api/cli/notes/recompute` — `classe_id`, `annee_universitaire_id` et
+     * les periodes a rejouer. Sans elle, le message disait quoi refaire sans
+     * donner de quoi le refaire.
      *
      * @param  array<int, array{evaluation: ESBTPEvaluation, periode_avant: string}>  $deplacements
-     * @return array{recalculs_tentes:int, orphelins:array<int,array<string,mixed>>, echecs:int, reporte:bool, notes:int}
+     * @return array{recalculs_tentes:int, orphelins:array<int,array<string,mixed>>, echecs:int, reporte:bool, notes:int, perimetres_reportes:array<int,array<string,mixed>>}
      */
     public static function pourUnLotDePeriodes(array $deplacements, ?int $declencheur = null): array
     {
-        $bilan = ['recalculs_tentes' => 0, 'orphelins' => [], 'echecs' => 0, 'reporte' => false, 'notes' => 0];
+        $bilan = [
+            'recalculs_tentes' => 0,
+            'orphelins' => [],
+            'echecs' => 0,
+            'reporte' => false,
+            'notes' => 0,
+            'perimetres_reportes' => [],
+        ];
 
         if ($deplacements === []) {
             return $bilan;
         }
 
-        $bilan['notes'] = ESBTPNote::whereIn(
+        // Une seule requete pour tout le lot, comme avant : le compte par
+        // evaluation est ensuite reparti par perimetre en memoire.
+        $notesParEvaluation = ESBTPNote::whereIn(
             'evaluation_id',
-            array_map(static fn (array $d) => $d['evaluation']->id, $deplacements)
-        )->count();
+            array_map(static fn (array $d) => (int) $d['evaluation']->id, $deplacements)
+        )
+            ->selectRaw('evaluation_id, COUNT(*) as total')
+            ->groupBy('evaluation_id')
+            ->pluck('total', 'evaluation_id');
 
-        if ($bilan['notes'] > self::PLAFOND_NOTES_PAR_LOT) {
-            $bilan['reporte'] = true;
+        $bilan['notes'] = (int) $notesParEvaluation->sum();
 
-            Log::warning('Deplacement en lot : recalcul reporte, lot trop grand', [
-                'notes' => $bilan['notes'],
-                'plafond' => self::PLAFOND_NOTES_PAR_LOT,
-                'evaluations' => array_map(static fn (array $d) => $d['evaluation']->id, $deplacements),
-                'remede' => 'POST /api/cli/notes/recompute sur la classe et les deux periodes concernees',
-            ]);
-
-            return $bilan;
-        }
+        // Le perimetre que sait rejouer `/api/cli/notes/recompute` est
+        // (classe, annee, periode). On groupe donc sur le couple classe+annee,
+        // et on retient les periodes touchees des DEUX cotes du deplacement.
+        $perimetres = [];
 
         foreach ($deplacements as $deplacement) {
             $evaluation = $deplacement['evaluation'];
+            $cle = ((int) $evaluation->classe_id).'|'.((int) $evaluation->annee_universitaire_id);
 
-            $partiel = self::pour($evaluation, [
-                'classe_id' => $evaluation->classe_id,
-                'matiere_id' => $evaluation->matiere_id,
-                'periode' => $deplacement['periode_avant'],
-                'annee_universitaire_id' => $evaluation->annee_universitaire_id,
-            ], $declencheur);
+            if (! isset($perimetres[$cle])) {
+                $perimetres[$cle] = [
+                    'classe_id' => (int) $evaluation->classe_id,
+                    'annee_universitaire_id' => (int) $evaluation->annee_universitaire_id,
+                    'periodes' => [],
+                    'notes' => 0,
+                    'deplacements' => [],
+                ];
+            }
 
-            $bilan['recalculs_tentes'] += $partiel['recalculs_tentes'];
-            $bilan['echecs'] += $partiel['echecs'];
-            $bilan['orphelins'] = array_merge($bilan['orphelins'], $partiel['orphelins']);
+            foreach ([$deplacement['periode_avant'], $evaluation->periode] as $periode) {
+                if ($periode !== null && $periode !== '' && ! in_array($periode, $perimetres[$cle]['periodes'], true)) {
+                    $perimetres[$cle]['periodes'][] = (string) $periode;
+                }
+            }
+
+            $perimetres[$cle]['notes'] += (int) ($notesParEvaluation[$evaluation->id] ?? 0);
+            $perimetres[$cle]['deplacements'][] = $deplacement;
+        }
+
+        foreach ($perimetres as $perimetre) {
+            if ($perimetre['notes'] > self::PLAFOND_NOTES_PAR_CLASSE) {
+                $bilan['reporte'] = true;
+                $bilan['perimetres_reportes'][] = [
+                    'classe_id' => $perimetre['classe_id'],
+                    'annee_universitaire_id' => $perimetre['annee_universitaire_id'],
+                    'periodes' => $perimetre['periodes'],
+                    'notes' => $perimetre['notes'],
+                    'evaluations' => array_map(
+                        static fn (array $d) => (int) $d['evaluation']->id,
+                        $perimetre['deplacements']
+                    ),
+                ];
+
+                Log::warning('Deplacement en lot : recalcul reporte pour une classe, perimetre trop grand', [
+                    'classe_id' => $perimetre['classe_id'],
+                    'annee_universitaire_id' => $perimetre['annee_universitaire_id'],
+                    'periodes' => $perimetre['periodes'],
+                    'notes' => $perimetre['notes'],
+                    'plafond' => self::PLAFOND_NOTES_PAR_CLASSE,
+                    'evaluations' => array_map(
+                        static fn (array $d) => (int) $d['evaluation']->id,
+                        $perimetre['deplacements']
+                    ),
+                    'remede' => 'POST /api/cli/notes/recompute avec classe_id, annee_universitaire_id et chaque periode',
+                ]);
+
+                continue;
+            }
+
+            foreach ($perimetre['deplacements'] as $deplacement) {
+                $evaluation = $deplacement['evaluation'];
+
+                $partiel = self::pour($evaluation, [
+                    'classe_id' => $evaluation->classe_id,
+                    'matiere_id' => $evaluation->matiere_id,
+                    'periode' => $deplacement['periode_avant'],
+                    'annee_universitaire_id' => $evaluation->annee_universitaire_id,
+                ], $declencheur);
+
+                $bilan['recalculs_tentes'] += $partiel['recalculs_tentes'];
+                $bilan['echecs'] += $partiel['echecs'];
+                $bilan['orphelins'] = array_merge($bilan['orphelins'], $partiel['orphelins']);
+            }
         }
 
         return $bilan;

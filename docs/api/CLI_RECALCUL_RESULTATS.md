@@ -8,7 +8,7 @@ périmètre explicite.
 | Base | `/api/cli` |
 | Authentification | Bearer Sanctum |
 | Ability | `cli:admin` |
-| Contrôleur | `App\Http\Controllers\API\CLI\CLIMaintenanceController` |
+| Contrôleur | `App\Http\Controllers\API\CLI\CLINotesRecomputeController` |
 | Sélection des couples | `App\Domain\Notes\PerimetreDeRecalcul` — partagée avec `notes:recompute` |
 | Calcul | `App\Jobs\RecomputeStudentResultatJob` — le même que l'observateur |
 
@@ -40,8 +40,11 @@ Un `update()` de **query builder** ne passe pas par Eloquent. `ESBTPNoteObserver
 ne tourne pas, `RecomputeStudentResultatJob` n'est jamais dispatché, et les deux
 coordonnées — celle qu'on quitte comme celle qu'on rejoint — restent figées.
 
-**Ils sont QUATRE, pas deux.** La première version de ce correctif n'en couvrait
-que deux et publiait pourtant « les deux chemins sont corrigés ». Les quatre :
+**Ils sont CINQ, et ce compte a été faux deux fois.** La première version de ce
+correctif en couvrait deux tout en publiant « les deux chemins sont corrigés » ;
+la deuxième en a annoncé quatre, et c'était encore incomplet. Publier un
+inventaire comme exhaustif ferme l'enquête suivante — c'est plus cher que le
+défaut lui-même.
 
 | chemin | ce qu'il déplace | recalcul |
 |---|---|---|
@@ -49,12 +52,36 @@ que deux et publiait pourtant « les deux chemins sont corrigés ». Les quatre 
 | `POST /api/cli/evaluations/{id}/matiere` | matière | à l'unité |
 | `POST /api/cli/evaluations/deplacer-periode` | période, jusqu'à 200 évaluations | en lot, plafonné |
 | `POST /api/cli/diagnostics/evaluations-periode/repair` | période, en masse | en lot, plafonné |
+| `MergeDuplicateEcue` (LMD, sous `force`) | matière, en masse | **aucun** |
+
+Le cinquième, `app/Domain/LMD/Actions/MergeDuplicateEcue.php`, est atteignable
+par `POST /esbtp/lmd/reconciliation/merge` avec `type=ecue&force=true`. Il
+reparente `esbtp_evaluations.matiere_id` **et** `esbtp_notes.matiere_id` vers
+l'ECUE canonique, puis met l'absorbée de côté — sans rien recalculer.
+
+**Il n'est volontairement pas corrigé ici**, et la raison n'est pas qu'il serait
+sans danger : c'est un autre domaine (la réconciliation LMD, dont les agrégats
+sont `esbtp_lmd_resultat_ecue`), il est gardé par un drapeau `force`, et sur une
+instance saine `ESBTPEvaluation::booted()` refuse déjà qu'une ECUE soit évaluée
+dans une classe BTS — donc il ne devrait pas croiser `esbtp_resultats`. « Ne
+devrait pas » n'est pas « ne peut pas » : sur une instance portant des lignes
+héritées (la « famille 2 » de `.claude/rules/lmd-ecue-leak-bts-picker.md`), il
+laisserait le même agrégat périmé. C'est un chantier à lui, pas une ligne à
+glisser dans celui-ci.
 
 `periode` est une coordonnée de la clé d'`esbtp_resultats` au même titre que
 `matiere_id` : un changement de semestre laisse exactement le même agrégat
 périmé. Pour les deux chemins en lot, `App\Domain\Notes\RecalculApresDeplacement`
-plafonne à **400 notes** par appel ; au-delà il ne recalcule pas, le dit dans sa
-réponse (`recalcul_reporte`), et renvoie vers l'endpoint ci-dessous.
+plafonne à **400 notes par classe et par année** ; au-delà il ne recalcule pas
+CE périmètre-là, le dit dans sa réponse (`recalcul_reporte`), et rend dans
+`perimetres_reportes` les paramètres exacts à rejouer sur l'endpoint ci-dessous.
+
+Le plafond porte sur la classe et non sur le lot, et la différence n'est pas
+cosmétique : sur le lot, un appel touchant cinq classes dont une seule est
+lourde ne recalculait **aucune** des quatre autres — et comme
+`evaluations-periode/repair` ne borne pas sa sélection, une instance à plus de
+2000 inscriptions franchissait le plafond à tous les coups. Le correctif s'y
+réduisait à un message.
 
 ### Ce que le recalcul après déplacement ne fait PAS, et pourquoi
 
@@ -87,8 +114,19 @@ partout ailleurs dans le recalcul.
 `notes:recompute` accepte de tourner sans aucun filtre et balaie alors l'école
 entière. Un recalcul **écrase** `esbtp_resultats.moyenne` : lâché sans bornes sur
 une instance Élite, il effacerait d'un coup toutes les moyennes saisies à la main
-par l'école. D'où le refus de tourner à l'aveugle, et le plafond de **600 couples
-(étudiant, matière)** par appel.
+par l'école. D'où le refus de tourner à l'aveugle, et le plafond de **500 couples
+(étudiant, matière)** par appel — une classe de 40 élèves sur 12 matières tient
+dessous ; au-delà, le périmètre se découpe par matière.
+
+Ce plafond valait 600, sans raison derrière le chiffre. Ce qui se compte, lui, se
+lit dans le code : chaque couple coûte une lecture, l'exécution du job sur place
+(ses requêtes, plus un `touch()` de bulletin) puis une seconde lecture — soit, à
+600, de l'ordre de 1200 lectures et 600 exécutions de job dans une seule requête
+HTTP. Qu'un tel appel dépasse le délai d'attente du serveur mutualisé est
+**probable mais non mesuré** : le chronométrage sur une instance Élite reste à
+faire. 500 et non 200, parce que le geste légitime de cet endpoint est le
+recalcul d'une classe entière — 40 élèves sur 12 matières, 480 couples — et qu'un
+plafond sous ce chiffre refuserait le cas normal.
 
 ⚠️ `annuel` n'est **pas** accepté, et c'est délibéré : une évaluation ne porte
 jamais cette période, donc le périmètre serait toujours vide et l'appel rendrait

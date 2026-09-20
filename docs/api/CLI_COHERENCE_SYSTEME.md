@@ -99,12 +99,14 @@ La réponse porte désormais `recalculs_tentes`, `agregats_orphelins` et
 `recalculs_en_echec` ; le détail du recalcul, et ce qu'il refuse délibérément de
 faire, est dans [CLI_RECALCUL_RESULTATS.md](CLI_RECALCUL_RESULTATS.md).
 
-⚠️ **Et la première version de ce correctif a elle-même publié un périmètre
-faux** : elle annonçait « les deux endroits qui déplacent une évaluation » alors
-qu'il y en a **quatre** — les deux endpoints qui changent la *période* laissaient
-le même agrégat périmé, `periode` étant une coordonnée de la même clé. Les quatre
-sont branchés depuis, et listés dans le document ci-dessus. Un « c'est corrigé »
-faux ferme l'enquête suivante ; c'est ce que coûte le plus cher.
+⚠️ **Et ce périmètre a été publié faux deux fois de suite.** La première version
+annonçait « les deux endroits qui déplacent une évaluation » ; la deuxième
+« quatre », en ajoutant les deux endpoints qui changent la *période* (`periode`
+étant une coordonnée de la même clé). Ils sont **cinq**. Les quatre premiers sont
+branchés ; le cinquième, `MergeDuplicateEcue` sous `force`, ne l'est pas, et
+[CLI_RECALCUL_RESULTATS.md](CLI_RECALCUL_RESULTATS.md) dit lequel et pourquoi.
+Un « c'est corrigé » faux ferme l'enquête suivante ; c'est ce que coûte le plus
+cher, et c'est exactement ce qui s'est produit ici — deux fois.
 
 ```bash
 curl -s -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
@@ -151,11 +153,13 @@ nécessaire.
 
 ## Historique
 
-- **Septembre 2026** — les **quatre** chemins qui déplacent une évaluation
+- **Septembre 2026** — **quatre des cinq** chemins qui déplacent une évaluation
   recalculent enfin les agrégats des deux côtés. Ils déplaçaient les notes sans
   rien rafraîchir, et l'agrégat périmé gagne sur les notes : le déplacement avait
   donc l'air fait et ne l'était qu'à moitié. La première livraison n'en couvrait
-  que deux tout en publiant « les deux chemins sont corrigés ».
+  que deux tout en publiant « les deux chemins sont corrigés » ; la deuxième en
+  annonçait quatre comme si c'était l'inventaire complet. Le cinquième,
+  `MergeDuplicateEcue` sous `force`, reste à traiter.
 - **Septembre 2026** — la réponse porte un second bloc `moyennes_manuelles` et un
   `total_toutes_familles`. La version antérieure ne relevait que les évaluations
   et a été prise pour l'inventaire complet. Un garde de cohérence est posé sur

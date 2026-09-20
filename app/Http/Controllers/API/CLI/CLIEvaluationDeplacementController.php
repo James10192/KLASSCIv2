@@ -77,6 +77,13 @@ class CLIEvaluationDeplacementController extends BaseApiController
                 'evaluation_id' => (int) $evaluation->id,
                 'titre' => $evaluation->titre,
                 'classe' => $evaluation->classe->name ?? null,
+                // Les deux identifiants, et pas seulement le nom de la classe :
+                // le message de repli renvoie vers
+                // `POST /api/cli/notes/recompute`, qui les EXIGE tous les deux.
+                // Les omettre donnait une consigne qu'on ne pouvait pas suivre
+                // avec la reponse sous les yeux.
+                'classe_id' => (int) $evaluation->classe_id,
+                'annee_universitaire_id' => (int) $evaluation->annee_universitaire_id,
                 'matiere' => $evaluation->matiere->name ?? null,
                 'date' => optional($evaluation->date_evaluation)->toDateString(),
                 'periode_actuelle' => $evaluation->periode,
@@ -163,10 +170,32 @@ class CLIEvaluationDeplacementController extends BaseApiController
             'agregats_orphelins' => $recalcul['orphelins'],
             'recalculs_en_echec' => $recalcul['echecs'],
             'recalcul_reporte' => $recalcul['reporte'],
+            'perimetres_reportes' => $recalcul['perimetres_reportes'],
         ], count($traitees).' evaluation(s) deplacee(s) vers '.$cible.'.'
-            .($recalcul['reporte']
-                ? ' ATTENTION : lot trop grand ('.$recalcul['notes'].' notes), les moyennes n ont PAS ete'
-                    .' recalculees. Rejouez POST /api/cli/notes/recompute sur la classe et les deux periodes.'
-                : ' '.$recalcul['recalculs_tentes'].' recalcul(s) lance(s).'));
+            .self::motDeLaFin($recalcul));
+    }
+
+    /**
+     * Le plafond porte sur la classe : un meme appel peut donc avoir recalcule
+     * une partie des classes et reporte les autres. Le dire d'un seul bloc
+     * (« les moyennes n ont PAS ete recalculees ») etait faux dans ce cas.
+     *
+     * @param  array<string,mixed>  $recalcul
+     */
+    private static function motDeLaFin(array $recalcul): string
+    {
+        $fait = ' '.$recalcul['recalculs_tentes'].' recalcul(s) lance(s).';
+
+        if (! $recalcul['reporte']) {
+            return $fait;
+        }
+
+        return $fait.' ATTENTION : '.count($recalcul['perimetres_reportes'])
+            .' classe(s) au-dela du plafond de '
+            .RecalculApresDeplacement::PLAFOND_NOTES_PAR_CLASSE
+            .' notes — leurs moyennes n ont PAS ete recalculees. Chaque ligne de'
+            .' `perimetres_reportes` porte les parametres a rejouer sur'
+            .' POST /api/cli/notes/recompute (classe_id, annee_universitaire_id,'
+            .' et une fois par periode listee).';
     }
 }
