@@ -10,6 +10,7 @@ use App\Models\ESBTPEvaluation;
 use App\Models\ESBTPFiliere;
 use App\Models\ESBTPInscription;
 use App\Models\ESBTPMatiere;
+use App\Models\ESBTPMatiereCoefficient;
 use App\Models\ESBTPNiveauEtude;
 use App\Models\ESBTPNote;
 use App\Models\ESBTPResultat;
@@ -135,6 +136,18 @@ class MoyennesDeLApercuTest extends TestCase
             'semestre' => $periode,
             'created_by' => $this->user->id,
             'updated_by' => $this->user->id,
+        ]);
+    }
+
+    private function coefficientConfigure(ESBTPMatiere $matiere, string $periode, float $valeur): void
+    {
+        ESBTPMatiereCoefficient::create([
+            'matiere_id' => $matiere->id,
+            'filiere_id' => $this->filiere->id,
+            'niveau_etude_id' => $this->niveau->id,
+            'annee_universitaire_id' => $this->annee->id,
+            'periode' => $periode,
+            'coefficient' => $valeur,
         ]);
     }
 
@@ -277,5 +290,88 @@ class MoyennesDeLApercuTest extends TestCase
         $apercu = $this->assembler('annuel');
 
         $this->assertArrayNotHasKey($ecue->id, $apercu['lignes']);
+    }
+
+    public function test_le_snapshot_recouvre_la_ligne_posee_par_les_chemins_precedents(): void
+    {
+        // CHEMIN 4, et il ne tournait dans AUCUN test. Les six premiers sont
+        // tous en `annuel`, periode ou `recouvrirParLeSnapshot()` n est jamais
+        // appele : la branche etait extraite sans etre eprouvee.
+        //
+        // LE DISCRIMINANT EST LE COEFFICIENT, PAS LA MOYENNE — une premiere
+        // version de ce test desaccordait la moyenne enregistree et attendait
+        // que le snapshot la recouvre. Elle est restee rouge, et elle avait
+        // tort : le snapshot HONORE la moyenne manuelle (`manual_resultat`),
+        // donc les deux chemins rendaient la meme valeur et le test ne pouvait
+        // rien distinguer.
+        //
+        // Le coefficient, lui, separe nettement les deux : sur un semestre,
+        // c est celui que le snapshot porte ; sur `annuel`, celui de
+        // `coefficient()`. Meme montage, deux periodes, deux valeurs.
+        $matiere = $this->matiereDeLaMaquette();
+        $this->coefficientConfigure($matiere, 'semestre1', 2.0);
+        $this->coefficientConfigure($matiere, 'semestre2', 5.0);
+        $this->noter($matiere, 12.0, 'semestre2');
+
+        $surLeSemestre = $this->assembler('semestre2');
+        $this->assertEqualsWithDelta(
+            1.0,
+            (float) $surLeSemestre['lignes'][$matiere->id]['coefficient'],
+            0.001,
+            'Le chemin 4 n a pas recouvert : le snapshot ne passe pas sur un semestre.'
+        );
+
+        $surLAnnee = $this->assembler('annuel');
+        $this->assertEqualsWithDelta(
+            2.0,
+            (float) $surLAnnee['lignes'][$matiere->id]['coefficient'],
+            0.001,
+            'Le chemin 4 a tourne sur `annuel`, ou il ne doit pas.'
+        );
+    }
+
+    /**
+     * CE 1 N EST PAS LE COEFFICIENT CONFIGURE, ET C EST UN DEFAUT CONNU.
+     *
+     * Le test ci-dessus attend 1 la ou la maquette declare 5. Ce n est pas
+     * l attendu qu on voudrait, c est ce que le systeme fait, et le mesurer
+     * ici evite de le redecouvrir :
+     *
+     * - saisir une note declenche `RecomputeStudentResultatJob`, qui ecrit une
+     *   ligne `esbtp_resultats` avec `'coefficient' => …?? 1` EN DUR ;
+     * - `BtsCurrentResultSnapshotService` prefere ce coefficient stocke au
+     *   coefficient configure, ce qui est juste quand une personne l a saisi —
+     *   mais personne ne l a saisi, c est le job qui l a seme ;
+     * - et l ecran reporte cette valeur dans son formulaire, que
+     *   `bulkUpdateMoyennes()` ecrit en base.
+     *
+     * La correction est dans `RecomputeStudentResultatJob`, sur le chemin
+     * d ecriture de CHAQUE note des huit instances : elle change des valeurs
+     * deja enregistrees et demande sa propre mesure. Elle n est pas faite ici.
+     * Le declencheur : la premiere ecole qui signale un coefficient a 1 sur un
+     * onglet de semestre alors que sa maquette en declare un autre.
+     */
+    public function test_une_matiere_sans_note_garde_le_coefficient_de_sa_periode(): void
+    {
+        // C est le cas ou le threading de `$periode` dans `coefficient()` se
+        // VOIT : le snapshot ne porte pas cette matiere (aucune note, aucune
+        // ligne enregistree), donc le chemin 4 ne la recouvre pas et le
+        // chemin 3 garde la main.
+        //
+        // Le controle a rejouer : retirer `$periode` de l appel a
+        // `coefficientOrDefault()`. `getCoefficientForCombination()` normalise
+        // alors a `semestre1`, rend 2, et ce test vire au rouge.
+        $matiere = $this->matiereDeLaMaquette();
+        $this->coefficientConfigure($matiere, 'semestre1', 2.0);
+        $this->coefficientConfigure($matiere, 'semestre2', 5.0);
+
+        $apercu = $this->assembler('semestre2');
+
+        $this->assertEqualsWithDelta(
+            5.0,
+            (float) $apercu['lignes'][$matiere->id]['coefficient'],
+            0.001,
+            'Le second semestre affiche le coefficient du premier.'
+        );
     }
 }

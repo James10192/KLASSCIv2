@@ -45,7 +45,7 @@ class ESBTPMatiereClassificationController extends Controller
     }
 
     /**
-     * Page d'affectation TC / Spécialité (pickers filière + niveau).
+     * Écran Maquette du bulletin (pickers filière + niveau).
      *
      * `filiere_id` et `niveau_id` en chaîne de requête présélectionnent le
      * couple, et la page le charge seule. C'est ce qui rend l'écran CITABLE :

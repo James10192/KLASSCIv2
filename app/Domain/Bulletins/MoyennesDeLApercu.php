@@ -46,10 +46,42 @@ use Illuminate\Support\Facades\Log;
  * BTS dont le coefficient n'est pas configure, l'eleve sans ligne enregistree
  * recevait un 302 « configurez les coefficients », le meme eleve avec une ligne
  * enregistree voyait l'ecran s'ouvrir avec 1. C'est `coefficient()` ci-dessous,
- * et rien d'autre. Le chemin 4 est la seule exception, documentee sur place :
- * sa valeur vient du snapshot, qui la calcule avec la periode et l'eleve (donc
- * avec le repli Tronc Commun que cet ecran n'a pas) — c'est une valeur plus
- * riche, pas une divergence, et elle replie sur la notre quand elle est nulle.
+ * et rien d'autre.
+ *
+ * ELLE PREND LA PERIODE ET L'ELEVE, ET UNE PREMIERE VERSION NE LES PRENAIT PAS.
+ * Le commentaire d'alors excusait l'ecart avec le chemin 4 : sa valeur venait
+ * du snapshot, « plus riche, pas une divergence ». C'etait faux sur trois
+ * points, et mesures :
+ *
+ * - sans periode, `getCoefficientForCombination()` normalise a `semestre1` —
+ *   l'onglet du SECOND semestre affichait donc le coefficient du premier ;
+ * - sans eleve, `resolveTroncCommunCoefficient()` n'est jamais atteint : un
+ *   coefficient de tronc commun tombait sur le repli a 1, avec son
+ *   `Log::warning` pour seule trace ;
+ * - et cette valeur n'est pas qu'affichee. Le formulaire la reporte dans
+ *   `name="resultats[…][coefficient]"`, et `bulkUpdateMoyennes()` l'ECRIT dans
+ *   `esbtp_resultats.coefficient`. Un 1 de repli devenait donc un 1 enregistre.
+ *
+ * Les deux sont passes. MAIS LA PORTEE EST ETROITE, ET LA DIRE LARGE SERAIT LA
+ * QUATRIEME AFFIRMATION CREUSE DE CE FICHIER. Sur un onglet de semestre, le
+ * chemin 4 recouvre le coefficient des qu'il porte la matiere, et le sien ne
+ * vient pas de `coefficient()` : `BtsCurrentResultSnapshotService` prefere
+ * celui qui est STOCKE sur `esbtp_resultats`, et `RecomputeStudentResultatJob`
+ * l'y ecrit a `1` EN DUR des la premiere note. Une matiere notee affiche donc
+ * `1` sur l'onglet du semestre, quoi que la maquette declare — et `1` est
+ * enregistre si on sauve.
+ *
+ * Le threading ci-dessus se voit donc la ou le chemin 4 ne passe pas : sur
+ * `annuel`, et sur toute matiere que le snapshot ne porte pas (ni note, ni
+ * ligne enregistree). Les deux tests `le snapshot recouvre la ligne posee par
+ * les chemins precedents` et `une matiere sans note garde le coefficient de sa
+ * periode` mesurent exactement cette frontiere.
+ *
+ * Le `1` en dur du job est un defaut distinct, sur le chemin d'ecriture de
+ * CHAQUE note des huit instances : il change des valeurs deja enregistrees et
+ * demande sa propre mesure. Declencheur : la premiere ecole qui signale un
+ * coefficient a 1 sur un onglet de semestre alors que sa maquette en declare
+ * un autre.
  *
  * UN FILTRE DE COHERENCE A L'INGESTION, pas a l'affichage. Chaque chemin passe
  * par `CoherenceSystemeAcademique`, et les deux conduites different a dessein :
@@ -106,8 +138,8 @@ final class MoyennesDeLApercu
         $parMatiere = $this->moyennesParMatiere($notes);
 
         $lignes = $this->depuisLesLignesEnregistrees($etudiant, $classe, $annee, $periode);
-        $lignes = $this->comblerDepuisLesNotes($lignes, $parMatiere, $classe, $annee);
-        $lignes = $this->comblerDepuisLaMaquette($lignes, $parMatiere, $classe, $annee);
+        $lignes = $this->comblerDepuisLesNotes($lignes, $parMatiere, $etudiant, $classe, $annee, $periode);
+        $lignes = $this->comblerDepuisLaMaquette($lignes, $parMatiere, $etudiant, $classe, $annee, $periode);
 
         if (in_array($periode, ['semestre1', 'semestre2'], true)) {
             $matieresDuSnapshot = $this->snapshots->getSemesterSnapshot(
@@ -170,7 +202,7 @@ final class MoyennesDeLApercu
                     $classe,
                     'apercu moyennes/ligne enregistree',
                 ),
-                'coefficient' => $this->coefficient($matiere, $classe, $annee),
+                'coefficient' => $this->coefficient($matiere, $etudiant, $classe, $annee, $periode),
                 'rang' => $resultat->rang,
                 'appreciation' => $resultat->appreciation
                     ?: $this->appreciation($resultat->moyenne),
@@ -190,8 +222,10 @@ final class MoyennesDeLApercu
     private function comblerDepuisLesNotes(
         array $lignes,
         array $parMatiere,
+        ESBTPEtudiant $etudiant,
         ESBTPClasse $classe,
         ESBTPAnneeUniversitaire $annee,
+        string $periode,
     ): array {
         $manquantes = array_keys(array_diff_key($parMatiere, $lignes));
 
@@ -231,6 +265,33 @@ final class MoyennesDeLApercu
             }
 
             if (! $this->matiereDeLaClasse($matiere, $classe)) {
+                // CE REJET-LA SE JOURNALISE, ET IL AVAIT PERDU SA TRACE.
+                //
+                // On est sur le chemin 2 : cette matiere PORTE DES NOTES de cet
+                // eleve, et elle disparait de l'ecran parce qu'elle n'est pas
+                // au programme du couple filiere x niveau de la classe. Une
+                // note saisie qui ne s'affiche nulle part est exactement le
+                // rattrapage muet que le piege #12 de
+                // `klassci-debugging-discipline.md` fait payer : on ne cherche
+                // meme pas, faute de savoir qu'il y a quelque chose a chercher.
+                //
+                // Le controleur d'origine le disait en `Log::debug`, que la
+                // production filtre (piege #4) — donc il ne le disait pas. En
+                // `warning`, et borne par le nombre de matieres notees de
+                // l'eleve, c'est-a-dire quelques dizaines au pire.
+                //
+                // Le rejet jumeau du chemin 3 (le filtre du catalogue) ne se
+                // journalise PAS, et c'est delibere : la-bas, ecarter est la
+                // selection normale — il rejetterait le catalogue entier a
+                // chaque appel.
+                Log::warning('Apercu des moyennes : matiere notee hors du programme de la classe, ecartee.', [
+                    'matiere_id' => (int) $matiereId,
+                    'matiere' => $matiere->name,
+                    'classe_id' => (int) $classe->id,
+                    'filiere_id' => $classe->filiere_id,
+                    'niveau_etude_id' => $classe->niveau_etude_id,
+                ]);
+
                 continue;
             }
 
@@ -241,7 +302,7 @@ final class MoyennesDeLApercu
                 'matiere' => $matiere,
                 'moyenne' => $moyenne,
                 'intruse' => false,
-                'coefficient' => $this->coefficient($matiere, $classe, $annee),
+                'coefficient' => $this->coefficient($matiere, $etudiant, $classe, $annee, $periode),
                 'rang' => null,
                 'appreciation' => $this->appreciation($moyenne),
             ]);
@@ -268,8 +329,10 @@ final class MoyennesDeLApercu
     private function comblerDepuisLaMaquette(
         array $lignes,
         array $parMatiere,
+        ESBTPEtudiant $etudiant,
         ESBTPClasse $classe,
         ESBTPAnneeUniversitaire $annee,
+        string $periode,
     ): array {
         if (! $classe->filiere_id || ! $classe->niveau_etude_id) {
             return $lignes;
@@ -300,7 +363,7 @@ final class MoyennesDeLApercu
                 'matiere' => $matiere,
                 'moyenne' => $moyenne,
                 'intruse' => false,
-                'coefficient' => $this->coefficient($matiere, $classe, $annee),
+                'coefficient' => $this->coefficient($matiere, $etudiant, $classe, $annee, $periode),
                 'rang' => null,
                 'appreciation' => $moyenne === null ? null : $this->appreciation($moyenne),
                 'source' => $source,
@@ -559,13 +622,26 @@ final class MoyennesDeLApercu
      * `catch (\RuntimeException)` renvoyait l'utilisateur vers « configurez les
      * coefficients » pour une matiere dont configurer le coefficient ne
      * reglerait rien : l'ecran ne s'ouvrait donc PAS.
+     *
+     * LA PERIODE ET L'ELEVE NE SONT PAS DECORATIFS — voir l'en-tete de la
+     * classe. Sans eux, cet ecran lisait le coefficient du premier semestre sur
+     * l'onglet du second, et n'atteignait jamais le repli Tronc Commun. Ne les
+     * retirez pas pour « simplifier la signature » : la valeur rendue ici est
+     * ECRITE en base par `bulkUpdateMoyennes()`.
      */
-    private function coefficient(ESBTPMatiere $matiere, ESBTPClasse $classe, ESBTPAnneeUniversitaire $annee): float
-    {
+    private function coefficient(
+        ESBTPMatiere $matiere,
+        ESBTPEtudiant $etudiant,
+        ESBTPClasse $classe,
+        ESBTPAnneeUniversitaire $annee,
+        string $periode,
+    ): float {
         return $this->bulletins->coefficientOrDefault(
             (int) $matiere->id,
             (int) $classe->id,
             (int) $annee->id,
+            $periode,
+            (int) $etudiant->id,
         );
     }
 

@@ -214,14 +214,18 @@ Le précédent à imiter était dans le dépôt : `BulletinInlineConfigurationSe
 a **trois** lectures — la canonique, le repli plat, et les matières qui portent une
 évaluation — et les trois portent `btsOnly()`.
 
-**Ce qui reste à faire, et son déclencheur.** Ces trois listes appellent une
-extraction : une action unique où poser le prédicat, au lieu d'un `btsOnly()` par
-liste. Elle n'est pas faite, et ce n'est pas un oubli — `updateMoyennes()` fait
-219 lignes sur le chemin d'impression de huit instances, et la sortir au seizième
-tour d'une branche qui porte déjà quatre chantiers ajouterait du risque au lieu
-d'en retirer. Ce qui protège réellement est **le garde à l'écriture**, qui refuse ;
-les listes ne font que ne plus proposer. Le déclencheur de l'extraction est donc
-la **quatrième** liste, pas la prochaine revue.
+**L'extraction est faite pour une des trois, et pas pour les deux autres.**
+`previewMoyennes()` délègue désormais à `App\Domain\Bulletins\MoyennesDeLApercu`,
+qui porte la préséance des quatre chemins **une seule fois** et y pose le prédicat
+une seule fois — 510 lignes de contrôleur ramenées à une centaine. C'est là qu'il
+faut poser tout nouveau filtre de cet écran, et nulle part ailleurs.
+
+`updateMoyennes()` et `editResultatsClasse()`, eux, gardent leur `btsOnly()` par
+liste, et ce n'est pas un oubli : `updateMoyennes()` fait 219 lignes sur le chemin
+d'impression de huit instances, et la sortir dans la même branche ajouterait du
+risque au lieu d'en retirer. Ce qui protège réellement est **le garde à
+l'écriture**, qui refuse ; les listes ne font que ne plus proposer. Le déclencheur
+de leur extraction reste la **quatrième** liste, pas la prochaine revue.
 
 **Le contrôle à faire en posant un garde d'écriture** : chercher tous les
 écrivains du modèle gardé, et pour chacun se demander (a) d'où vient ce qu'il
@@ -290,6 +294,13 @@ autre `foreach` est un second chemin, même s'il est 30 lignes plus bas.
 > défaut : tant que **tous** les écrans se trompaient d'accord, personne ne
 > voyait rien. C'est en corrigeant les douze autres qu'on fabriquait la
 > contradiction.
+>
+> **Ce treizième a été nommé ici et oublié du tableau pendant une passe entière**
+> — le défaut même que cette section raconte, commis dans le paragraphe qui le
+> raconte. Il y figure désormais. S'y ajoute `MoyennesDeLApercu::assembler()`,
+> qui n'est pas une quatorzième trouvaille mais l'**extraction** du calcul qui
+> vivait dans `previewMoyennes()` : le tableau nomme maintenant l'endroit où il
+> vit, pas le contrôleur qui l'appelle.
 
 Ce qui vaut pour les calculs vaut pour les **lectures** : le balayage
 `withTrashed()` — une lecture nue rend `null` sur une ligne effacée en douceur,
@@ -309,6 +320,8 @@ DÉCIDE du passage en année supérieure. Même leçon, même forme, même passe
 | `BulletinService::calculateStudentAverageForPeriode()`, branche `annuel` | **écrit** `esbtp_bulletins.moyenne_generale` via le backfill | notes **+** moyennes enregistrées qui écrasent | filtré (passe 12) — **mais sa requête reste non cadrée**, voir plus bas |
 | `BtsCurrentResultSnapshotService` | écart « Officiel / Courant », Bilan de la fiche étudiant | notes + moyennes enregistrées | filtré |
 | `ESBTPResultatController::resultatEtudiant()` | tableau « Résultats par matière », KPI Matières / Coefficients | notes + moyennes enregistrées | filtré |
+| `ESBTPNoteController::computeGeneralAverage()` | le panneau d'impact affiché pendant la saisie d'une note | notes de la classe cible | filtré (passe 16) |
+| `App\Domain\Bulletins\MoyennesDeLApercu::assembler()` | l'écran « Modifier les moyennes » (`previewMoyennes()`) | lignes enregistrées, notes, maquette, snapshot | filtré — **le seul endroit** où la préséance des quatre chemins est écrite |
 | `ESBTPBulletinController::buildBulletinPdf()` | rien — **écrasé** par la projection du service (voir plus bas) | notes | filtré par précaution |
 | `ReeinscriptionService::getNotesEtudiant()` | décision passage / rattrapage / redoublement, matières échouées | notes | filtré (passe 11) |
 | `EtudiantAcademicJourneyPresenter::resultats()` | moyenne du parcours, fiche étudiant | moyennes enregistrées | filtré (passe 11) |
