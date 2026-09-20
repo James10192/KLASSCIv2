@@ -280,12 +280,21 @@ class RecomputeStudentResultatJob implements ShouldQueue
      *
      * ET CE QU'IL NE REPARE PAS. `esbtp_resultats.coefficient` est
      * `decimal(5,2) NOT NULL DEFAULT 1.00` : un `1,00` deja en base peut etre
-     * un choix de l'ecole, l'ancien `?? 1` de ce job, ou le defaut SQL — les
-     * trois sont INDISCERNABLES. Le parc installe garde donc ses valeurs,
-     * justes ou fausses, jusqu'a la regeneration d'un bulletin
-     * (`BulletinService::persistResultats()` les reecrit depuis la maquette)
-     * ou une saisie manuelle. Dire « rien de ce qu'une ecole a saisi n'est
-     * reecrit » serait donc flatteur : on ne sait pas ce qu'elle a saisi.
+     * un choix de l'ecole, l'ancien `?? 1` de ce job, ou le defaut SQL, et
+     * rien ne les distingue de facon fiable. Dire « rien de ce qu'une ecole a
+     * saisi n'est reecrit » serait donc flatteur : on ne sait pas ce qu'elle a
+     * saisi. Le parc installe garde ses valeurs, justes ou fausses, jusqu'a la
+     * regeneration d'un bulletin (`BulletinService::persistResultats()` les
+     * reecrit depuis la maquette) ou une saisie manuelle.
+     *
+     * UN REPERE PARTIEL EXISTE QUAND MEME, et l'ignorer serait l'exces
+     * inverse : `esbtp_resultats_recompute_log`, ecrite par ce job DANS LA
+     * MEME TRANSACTION depuis mai 2026, dit quelles lignes il a touchees, avec
+     * leur `source` et leur `triggered_by`. Elle ne stocke PAS le coefficient
+     * et ne couvre pas l'anterieur a mai 2026 — elle ne tranche donc pas, mais
+     * elle reduit le champ. Une phrase qui declare inconnaissable ce dont le
+     * depot a l'outil partiel ferme l'enquete aussi surement qu'une phrase qui
+     * absout.
      *
      * LE REPLI EST LARGE A DESSEIN. `coefficientOrDefault()` ne rattrape que
      * `CoefficientMissingException` ; `getCoefficientForCombination()` peut

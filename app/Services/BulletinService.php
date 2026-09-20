@@ -3553,20 +3553,31 @@ class BulletinService
         //    coefficients 4/3/2/1 et des moyennes 8/12/14/18, le KPI annoncait
         //    11,40 sous une colonne dont la moyenne a la main donne 13,00.
         //    C'est le defaut que ce chantier passe son temps a corriger ailleurs.
-        // 2. LE COEFFICIENT DE CETTE COLONNE EST HETEROGENE. Il vaut le vrai
-        //    coefficient quand la ligne vient d'une generation de bulletin, et
-        //    1 pour les lignes ECRITES AVANT SEPTEMBRE 2026, quand
-        //    `RecomputeStudentResultatJob` le posait en dur. Ce job lit
-        //    desormais la maquette, donc les lignes NEUVES sont justes — mais
-        //    le parc installe, lui, reste heterogene tant qu'un bulletin n'a
-        //    pas ete regenere. Ponderer refleterait donc encore QUEL ECRAN a
-        //    touche la ligne en dernier, et a quelle epoque, pas la
-        //    configuration de l'ecole (`ESBTPMatiereCoefficient`).
+        // 2. LE COEFFICIENT DE CETTE COLONNE EST HETEROGENE, ET CE N'EST PAS
+        //    UNE QUESTION DE DATE MAIS D'ECRIVAIN. `esbtp_resultats` en a
+        //    cinq, et deux posent encore `1` :
         //
-        //    CETTE RAISON A ETE RENDUE FAUSSE PAR LE COMMIT QUI L'A LAISSEE EN
-        //    PLACE : la branche qui a corrige le job n'a pas rouvert ce
-        //    commentaire. C'est le defaut que ce depot appelle « une phrase qui
-        //    decrit le comportement d'avant » — releve par une revue adverse.
+        //      - `BulletinService::persistResultats()` ............. maquette
+        //      - `RecomputeStudentResultatJob` .................... maquette
+        //      - `ESBTPResultatController::updateMoyennes()` (x2) . maquette
+        //      - `ESBTPResultatController::bulkUpdateMoyennes()` .. `?? 1`
+        //      - `CLIBtsTroncCommunController::upsertResultat()` .. `1` en dur
+        //
+        //    Ponderer refleterait donc QUEL ECRAN a touche la ligne en dernier,
+        //    pas la configuration de l'ecole (`ESBTPMatiereCoefficient`).
+        //
+        //    La liste se rejoue, elle ne se croit pas :
+        //
+        //      grep -rn "ESBTPResultat::\(create\|updateOrCreate\)" app/ --include="*.php"
+        //
+        //    DEUX REDACTIONS DE CE PARAGRAPHE ONT ETE FAUSSES. La premiere
+        //    disait « 1 quand la ligne vient de l'observateur de notes » — vrai
+        //    jusqu'au jour ou ce job a appris a lire la maquette, et le commit
+        //    qui le lui a appris n'a pas rouvert ce commentaire. La seconde a
+        //    remplace ce defaut par une DATE (« avant septembre 2026 ») et a
+        //    conclu « les lignes NEUVES sont justes » : faux aussi, puisque
+        //    deux ecrivains posent toujours `1` aujourd'hui. Une enumeration
+        //    n'a pas de date de peremption ; une datation, si.
         //
         // Ponderer les deux cotes est un chantier a part, pas ce correctif.
         //

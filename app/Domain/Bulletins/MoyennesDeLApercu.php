@@ -21,7 +21,8 @@ use Illuminate\Support\Facades\Log;
  * Les lignes de l'apercu des moyennes : QUATRE sources, UNE preseance.
  *
  * POURQUOI CET OBJET EXISTE. Cet assemblage vivait dans
- * `ESBTPResultatController::previewMoyennes()`, sur 368 lignes, et sa preseance
+ * `ESBTPResultatController::previewMoyennes()`, sur 368 lignes (corps seul ;
+ * la commande qui recompte est dans `lmd-ecue-leak-bts-picker.md`), et sa preseance
  * n'etait ecrite nulle part : elle resultait de l'ORDRE de quatre boucles
  * separees par cent lignes de requetes. Deux revues successives ont compte
  * « trois chemins » puis « deux », et deux correctifs de fuite ECUE ont vise le

@@ -220,11 +220,36 @@ qui porte la préséance des quatre chemins **une seule fois** et y pose le pré
 une seule fois — **368 lignes de contrôleur ramenées à 85**. C'est là qu'il faut
 poser tout nouveau filtre de cet écran, et nulle part ailleurs.
 
-> **Ce gain a d'abord été annoncé « 510 → une centaine », et 510 n'a jamais
-> existé.** Le chiffre mesurait un état *intermédiaire de la branche elle-même*,
-> gonflé par les filtres qu'elle venait d'y poser, au lieu de mesurer la base.
-> C'est la forme flatteuse du défaut que cette rule passe son temps à décrire :
-> un compte qui avantage celui qui le publie est celui qu'on vérifie le moins.
+**Les comptes de cette section se rejouent, comme les tamis.** Convention :
+*corps seul, du `public function` à son accolade fermante* — docbloc exclu,
+lignes vides comprises.
+
+```bash
+compte() { git show "$1:app/Http/Controllers/ESBTPResultatController.php" \
+  | awk -v m="$2" '$0 ~ "public function "m"\\(" {f=1} f{n++; c+=gsub(/{/,"{"); c-=gsub(/}/,"}"); if(c==0&&n>1){print n; exit}}'; }
+
+compte origin/presentation previewMoyennes   # 368      compte HEAD previewMoyennes  # 85
+compte origin/presentation updateMoyennes    # 183      compte HEAD updateMoyennes   # 242
+```
+
+La convention n'est pas un détail : compter les lignes **non vides**
+d'`updateMoyennes()` à HEAD rend **219** — précisément le chiffre que cette
+section a longtemps publié à tort. Un lecteur qui remesure sans la convention
+retrouverait 219, croirait la rule périmée, et la « corrigerait » à l'envers.
+
+> **Ce gain a d'abord été annoncé « 510 → une centaine », et ce 510 mesurait
+> autre chose.** Il comptait `previewMoyennes()` **docbloc compris**, à un état
+> *intermédiaire de la branche elle-même*, gonflé par les filtres qu'elle venait
+> d'y poser — et son docbloc traînait alors deux blocs orphelins, depuis retirés.
+> Pas la base, donc, et pas la même convention. C'est la forme flatteuse du
+> défaut que cette rule passe son temps à décrire : un compte qui avantage celui
+> qui le publie est celui qu'on vérifie le moins.
+>
+> **Une première correction a écrit « 510 n'a jamais existé ». Faux aussi**, et
+> réfutable au chiffre près : à `86c67dcf`, du `/**` à l'accolade fermante, il
+> en fait exactement 510. Corriger un compte faux par un absolu faux, dans le
+> paragraphe qui fait la leçon sur les comptes — c'est pour ça que la commande
+> ci-dessous existe maintenant.
 
 `updateMoyennes()` et `editResultatsClasse()`, eux, gardent leur `btsOnly()` par
 liste, et ce n'est pas un oubli : `updateMoyennes()` fait **242 lignes** (183

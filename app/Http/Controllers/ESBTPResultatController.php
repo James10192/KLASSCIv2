@@ -2505,21 +2505,6 @@ class ESBTPResultatController extends Controller
     }
 
     /**
-     * Détermine la mention en fonction de la moyenne
-     *
-     * @param  float  $moyenne
-     * @return string
-     */
-    /**
-     * Calcule la moyenne générale d'un étudiant pour une classe, période et année universitaire données
-     *
-     * @param  int  $etudiant_id
-     * @param  int  $classe_id
-     * @param  string  $periode
-     * @param  int  $annee_universitaire_id
-     * @return float
-     */
-    /**
      * Prévisualise les moyennes d'un étudiant pour une classe, période et année universitaire données
      * Permet de modifier les moyennes avant génération du bulletin.
      *
