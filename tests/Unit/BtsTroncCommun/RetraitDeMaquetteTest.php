@@ -46,7 +46,6 @@ class LiaisonsQuiNotentLesRetraits extends LiaisonsDeMatiere
         return [
             'canonique' => 1,
             'places_semestre' => 2,
-            'pivots_plats' => ['filiere' => false, 'niveau' => true],
         ];
     }
 }
@@ -121,7 +120,6 @@ class RetraitDeMaquetteTest extends TestCase
         $this->assertSame([
             'canonique' => 0,
             'places_semestre' => 0,
-            'pivots_plats' => ['filiere' => false, 'niveau' => false],
         ], $resultat['lignes'][0]['retire']);
     }
 
@@ -138,7 +136,6 @@ class RetraitDeMaquetteTest extends TestCase
         $this->assertSame([
             'canonique' => 1,
             'places_semestre' => 2,
-            'pivots_plats' => ['filiere' => false, 'niveau' => true],
         ], $resultat['lignes'][0]['retire']);
     }
 
@@ -171,7 +168,6 @@ class RetraitDeMaquetteTest extends TestCase
             $this->assertArrayHasKey('retire', $ligne);
             $this->assertArrayHasKey('canonique', $ligne['retire']);
             $this->assertArrayHasKey('places_semestre', $ligne['retire']);
-            $this->assertArrayHasKey('pivots_plats', $ligne['retire']);
         }
     }
 

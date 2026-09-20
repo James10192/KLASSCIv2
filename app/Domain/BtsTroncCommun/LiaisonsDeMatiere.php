@@ -132,30 +132,49 @@ class LiaisonsDeMatiere
      * Detache une matiere d'un couple : la ligne canonique et ses places par
      * semestre.
      *
-     * NE TOUCHE AUX PIVOTS PLATS QUE QUAND PLUS RIEN NE S'EN SERT. Ils ne
-     * savent pas de quel couple vient une filiere : detacher « Batiment »
-     * parce qu'on quitte (Batiment, 2e annee) retirerait aussi la matiere de
-     * (Batiment, 1re annee), que personne n'a nomme. On ne detache donc une
-     * filiere que s'il ne reste AUCUNE ligne canonique (matiere, filiere), et
-     * un niveau que s'il n'en reste aucune (matiere, niveau).
+     * NE TOUCHE PAS AUX PIVOTS PLATS, ET C'EST UNE MARCHE ARRIERE ASSUMEE.
      *
-     * Ne rien detacher du tout etait un trou, et c'est ce chantier qui l'a
-     * creuse en donnant un geste de retrait a portee de clic.
+     * Une version de cette methode les detachait quand plus aucune ligne
+     * canonique ne les reclamait. L'intention etait juste — voir le defaut
+     * decrit plus bas — mais la condition regardait le MAUVAIS pivot : elle
+     * comptait sur le canonique, alors que le seul consommateur qu'elle
+     * protegeait lit le PRODUIT DES DEUX LISTES PLATES.
+     *
+     * Le collateral, mesure sur l'etat normal des donnees : une matiere en
+     * filieres {A, B} et niveaux {1} dont la maquette ne porte que (A,1). La
+     * classe (B,1) n'a aucune ligne canonique, donc elle lit le repli, donc
+     * elle voit cette matiere AUJOURD'HUI. Retirer la matiere de (A,1)
+     * detachait le niveau 1 — plus aucun couple canonique ne le reclamait — et
+     * la matiere DISPARAISSAIT du bulletin de (B,1), que personne n'avait
+     * touchee. Cet etat n'est pas un cas de bord : `ESBTPMatiereController`
+     * ecrit les deux listes plates et refuse deliberement d'ecrire la
+     * maquette, donc « plat plus large que canonique » est la regle.
+     *
+     * S'y ajoutait une perte seche : `esbtp_matiere_niveau` porte
+     * `coefficient` et `heures_cours`, que `poser()` ne reecrit pas. Un cycle
+     * retirer puis reposer les ramenait a leur defaut.
+     *
+     * LE DEFAUT QUI RESTE, ET SON DECLENCHEUR.
      * `BulletinInlineConfigurationService::matieresPourConfiguration()` retombe
-     * sur le PRODUIT des deux pivots plats des qu'un couple n'a plus aucune
-     * ligne canonique : vider entierement une maquette par la croix faisait
-     * donc REAPPARAITRE les matieres retirees sur l'ecran qui decide du
-     * contenu du bulletin. Apres un retrait explicite, « vide » est une
-     * DECISION, pas une absence de configuration — le repli n'a de sens que
-     * pour un couple que personne n'a jamais renseigne.
+     * sur le produit des deux listes plates des qu'un couple n'a PLUS AUCUNE
+     * ligne canonique. Vider entierement une maquette par la croix fait donc
+     * reapparaitre les matieres retirees sur l'ecran qui decide du contenu du
+     * bulletin. Apres un retrait explicite, « vide » est une DECISION, pas une
+     * absence de configuration — c'est le zero confondu avec l'absence de
+     * `rien-en-dur.md`.
      *
-     * CE QUI EST PERDU EST JOURNALISE. Les pivots plats portent une charge
-     * utile (`coefficient`, `heures_cours`) qui ne se retrouve nulle part
-     * ailleurs. La detacher en silence serait le piege #12 : on ne saurait
-     * meme pas qu'il faut chercher. Chaque detachement part donc au journal
-     * avec ce qu'il emporte.
+     * POURQUOI CE N'EST PAS CORRIGE ICI. Distinguer « vide » de « jamais
+     * renseigne » demande un etat que le depot n'a pas : cette methode
+     * supprime en dur la ligne canonique ET sa place par semestre, et
+     * `esbtp_matiere_filiere_niveau` ne porte pas de suppression en douceur.
+     * La correction juste est de poser cet etat (un `deleted_at` sur le pivot
+     * canonique, que le repli interrogerait par `withTrashed()`), et c'est un
+     * changement de schema sur une table partagee par huit instances : il
+     * demande sa propre mesure, pas d'etre glisse en fin de branche. Le
+     * declencheur est la premiere ecole qui vide une maquette et voit revenir
+     * ce qu'elle a retire.
      *
-     * @return array{canonique: int, places_semestre: int, pivots_plats: array{filiere: bool, niveau: bool}}
+     * @return array{canonique: int, places_semestre: int}
      */
     public function retirer(int $matiereId, int $filiereId, int $niveauId): array
     {
@@ -169,11 +188,7 @@ class LiaisonsDeMatiere
             if ($canonique === 0) {
                 // Rien n'etait rattache : rien a nettoyer, et surtout rien a
                 // ecrire avant de repondre « rien n'a ete fait ».
-                return [
-                    'canonique' => 0,
-                    'places_semestre' => 0,
-                    'pivots_plats' => ['filiere' => false, 'niveau' => false],
-                ];
+                return ['canonique' => 0, 'places_semestre' => 0];
             }
 
             // La place au bulletin d'un couple qui n'existe plus n'a plus de
@@ -184,90 +199,7 @@ class LiaisonsDeMatiere
                 ->where('niveau_etude_id', $niveauId)
                 ->delete();
 
-            $platsDetaches = $this->detacherLesPivotsPlatsDevenusInutiles(
-                $matiereId,
-                $filiereId,
-                $niveauId,
-            );
-
-            return [
-                'canonique' => (int) $canonique,
-                'places_semestre' => (int) $places,
-                'pivots_plats' => $platsDetaches,
-            ];
+            return ['canonique' => (int) $canonique, 'places_semestre' => (int) $places];
         });
-    }
-
-    /**
-     * Detache des pivots plats ce qu'aucun couple canonique ne reclame plus.
-     *
-     * Appelee APRES la suppression de la ligne canonique : ce qui reste en base
-     * a cet instant est exactement ce qui doit decider.
-     *
-     * @return array{filiere: bool, niveau: bool}
-     */
-    private function detacherLesPivotsPlatsDevenusInutiles(
-        int $matiereId,
-        int $filiereId,
-        int $niveauId
-    ): array {
-        $matiere = ESBTPMatiere::find($matiereId);
-
-        if (! $matiere) {
-            return ['filiere' => false, 'niveau' => false];
-        }
-
-        $resteCetteFiliere = ESBTPMatiereFilierNiveau::query()
-            ->where('matiere_id', $matiereId)
-            ->where('filiere_id', $filiereId)
-            ->exists();
-
-        $resteCeNiveau = ESBTPMatiereFilierNiveau::query()
-            ->where('matiere_id', $matiereId)
-            ->where('niveau_etude_id', $niveauId)
-            ->exists();
-
-        $detaches = ['filiere' => false, 'niveau' => false];
-
-        if (! $resteCetteFiliere) {
-            $this->journaliserLaChargeUtile($matiere, 'filieres', $filiereId, $matiereId);
-            $matiere->filieres()->detach($filiereId);
-            $detaches['filiere'] = true;
-        }
-
-        if (! $resteCeNiveau) {
-            $this->journaliserLaChargeUtile($matiere, 'niveaux', $niveauId, $matiereId);
-            $matiere->niveaux()->detach($niveauId);
-            $detaches['niveau'] = true;
-        }
-
-        return $detaches;
-    }
-
-    /**
-     * Dit au journal ce que le detachement emporte.
-     *
-     * `coefficient` et `heures_cours` vivent sur le pivot plat et nulle part
-     * ailleurs : les perdre sans trace rendrait la reconstitution impossible.
-     */
-    private function journaliserLaChargeUtile(
-        ESBTPMatiere $matiere,
-        string $relation,
-        int $cibleId,
-        int $matiereId
-    ): void {
-        // Colonne QUALIFIEE : `id` existe des deux cotes de la jointure de
-        // pivot, et MySQL refuse l'ambiguite (1052). Le meme piege est note
-        // dans `BtsBulletinSubjectResolver`, sur le meme genre de requete.
-        $lien = $matiere->{$relation}();
-        $ligne = $lien->where($lien->getRelated()->getTable() . '.id', $cibleId)->first();
-
-        Log::warning('Pivot plat detache : plus aucun couple canonique ne le reclame.', [
-            'matiere_id' => $matiereId,
-            'matiere' => $matiere->name,
-            'relation' => $relation,
-            'cible_id' => $cibleId,
-            'charge_utile' => $ligne ? $ligne->pivot->toArray() : null,
-        ]);
     }
 }

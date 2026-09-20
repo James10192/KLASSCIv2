@@ -204,25 +204,29 @@ Une matière absente de la maquette n'est pas une erreur : elle est comptée dan
   "data": { "ecrit": true, "absentes_de_la_maquette": 1,
     "lignes": [{ "matiere_id": 41, "matiere": "…", "dans_la_maquette": true,
       "evaluations_sur_ce_couple": 0,
-      "retire": { "canonique": 1, "places_semestre": 2,
-                  "pivots_plats": { "filiere": false, "niveau": true } } }] } }
+      "retire": { "canonique": 1, "places_semestre": 2 } }] } }
 ```
 
-`pivots_plats` dit ce que le retrait a **aussi** détaché des deux listes plates
-(`esbtp_matiere_filiere`, `esbtp_matiere_niveau`). Une filière n'y est détachée
-que s'il ne reste plus aucune ligne canonique `(matière, filière)`, un niveau que
-s'il n'en reste aucune `(matière, niveau)` — sinon on retirerait la matière d'un
-couple que personne n'a nommé.
+`retire` ne compte que ce que le retrait supprime : la ligne canonique du couple,
+et ses places par semestre. **Les deux listes plates (`esbtp_matiere_filiere`,
+`esbtp_matiere_niveau`) ne sont pas touchées**, et ce n'est pas un oubli — voir
+plus bas le défaut que cela laisse, et pourquoi le fermer demande autre chose.
 
-Sans ce détachement, vider entièrement la maquette d'un couple faisait
-**réapparaître** les matières retirées sur l'écran de configuration du bulletin :
-il retombe sur le produit des deux listes plates dès qu'un couple n'a plus aucune
-ligne canonique. Après un retrait explicite, « vide » est une décision, pas une
-absence de configuration.
+**Le défaut qui reste, et son déclencheur.** Vider *entièrement* la maquette d'un
+couple fait **réapparaître** ses matières sur l'écran de configuration du
+bulletin : celui-ci retombe sur le PRODUIT des deux listes plates dès qu'un couple
+n'a plus aucune ligne canonique, et ne sait pas distinguer « vidé » de « jamais
+renseigné ». Retirer une matière sur plusieurs ne déclenche rien.
 
-Le `coefficient` et les `heures_cours` portés par ces listes plates ne se
-retrouvent nulle part ailleurs : chaque détachement part au journal avec sa charge
-utile (`Pivot plat detache : plus aucun couple canonique ne le reclame.`).
+**Ne le fermez pas en détachant les listes plates** — cela a été livré une fois,
+puis retiré. Un détachement décide sur le pivot canonique, alors que
+`/esbtp/matieres` écrit ces deux listes **sans jamais écrire le canonique** :
+« plat plus large que canonique » est donc l'état normal, pas le signe d'une ligne
+devenue inutile. Le détachement faisait disparaître des matières d'autres classes,
+et supprimait en dur leur `coefficient` et leurs `heures_cours`, que rien ne porte
+ailleurs. La correction juste est de poser l'état manquant — un `deleted_at` sur
+le pivot canonique, que le repli interrogerait par `withTrashed()` — et c'est un
+changement de schéma sur une table partagée par huit instances.
 
 ## L'écran équivalent
 
@@ -241,12 +245,13 @@ semestres, et reprendre les semestres du planning général de l'année.
   aucune classe BTS. `« Filière introuvable »` ne désigne plus un nom qui, au
   contraire, répondait deux fois.
 
-- **Septembre 2026** — `POST /retirer` détache aussi des deux listes plates ce
-  qu'aucun couple canonique ne réclame plus, et le rend dans `pivots_plats`. Sans
-  cela, vider entièrement la maquette d'un couple faisait réapparaître les matières
-  retirées sur l'écran de configuration du bulletin, qui retombe sur le produit de
-  ces deux listes. Ce n'était pas une dette ancienne : c'est le geste de retrait,
-  ajouté ce mois-ci, qui rendait le trou atteignable d'un clic.
+- **Septembre 2026** — `POST /retirer` a détaché des deux listes plates ce
+  qu'aucun couple canonique ne réclamait plus, et le rendait dans `pivots_plats`.
+  **Retiré avant toute mise en service** : la condition décidait sur le pivot
+  canonique pendant que le repli lit le produit des listes plates, que l'écran des
+  matières écrit seul. Des matières disparaissaient d'autres classes, avec leur
+  `coefficient` et leurs `heures_cours`. La clé `pivots_plats` n'est plus rendue.
+  Le défaut visé reste ouvert, décrit plus haut avec son déclencheur.
 
 - **Septembre 2026** — la place au bulletin suit le semestre **du lot**, non la
   couverture de la matière. Le refus d'un semestre déjà écrit, ajouté quelques
