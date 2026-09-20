@@ -105,12 +105,28 @@ final class CoherenceSystemeAcademique
     /**
      * Memo des ecarts deja journalises, par processus.
      *
-     * Cle : "classeId:matiereId:provenance". Un bulletin porte une trentaine de
-     * notes par matiere ; sans ce memo, une seule ECUE remplirait le journal de
-     * trente lignes identiques et le rendrait illisible au moment ou il sert.
-     * Borne par le nombre de couples (classe, matiere) reellement incoherents,
-     * soit une poignee de lignes par instance — pas de fuite memoire a craindre
-     * dans un worker de file d'attente.
+     * Un bulletin porte une trentaine de notes par matiere ; sans ce memo, une
+     * seule ECUE remplirait le journal de trente lignes identiques et le
+     * rendrait illisible au moment ou il sert.
+     *
+     * LES DEUX METHODES LE PARTAGENT, MAIS PAS AVEC LA MEME CLE, et c'est ce
+     * qui borne l'ensemble :
+     *
+     * - `matiereRetenue()`   -> "classeId:matiereId:provenance"
+     * - `coherenceNonVerifiable()` -> "nv:provenance:" + la PORTEE que
+     *   l'appelant declare, jamais son contexte entier.
+     *
+     * La distinction n'est pas cosmetique. Une premiere version construisait la
+     * seconde cle sur tout le contexte, or quatre appelants y passent un
+     * identifiant de LIGNE (`resultat_id`, `note_id`) : la cle devenait unique
+     * a chaque tour, donc le memo ne dedupliquait rien et grossissait en
+     * O(lignes lues). Une colonne orpheline sur une classe de soixante rendait
+     * soixante `Log::warning` par generation — exactement le bruit que ce memo
+     * existe pour eviter — et rien ne purgeait la table dans un `queue:work`
+     * qui ne redemarre pas.
+     *
+     * Borne desormais par le nombre de portees reellement incoherentes, soit
+     * une poignee de lignes par instance.
      *
      * @var array<string, true>
      */
@@ -176,20 +192,51 @@ final class CoherenceSystemeAcademique
      * La lecon du chantier, ecrite en tete de cette classe, vaut ici aussi :
      * une seule phrase, un seul endroit, et les appelants la citent.
      *
-     * Le memo est celui de `matiereRetenue()`, volontairement : les deux cas
-     * surviennent dans les memes boucles, sur les memes lots, et se bornent
-     * donc de la meme facon. La cle est construite sur la provenance et le
-     * contexte, faute de couple (classe, matiere) — c'est precisement ce qui
-     * manque quand cette methode est appelee.
+     * DEUX ARGUMENTS, ET C'EST DELIBERE. `$contexte` est ce qui part au
+     * journal : il doit etre aussi precis que possible, identifiant de ligne
+     * compris, sinon l'operateur ne retrouve pas l'enregistrement fautif.
+     * `$portee` nomme les cles de ce contexte qui decident du dedoublonnage —
+     * c'est-a-dire la granularite a laquelle on accepte de le redire.
      *
-     * @param  array<string, scalar|null>  $contexte
+     * Les confondre est le defaut que cette signature corrige : construire la
+     * cle sur le contexte entier rendait le memo inoperant chez les quatre
+     * appelants qui passent un `resultat_id` ou un `note_id`, puisque chaque
+     * ligne fabriquait sa propre cle. Le journal se remplissait, et le memo
+     * avec — sans purge, dans un worker de file.
+     *
+     * Une cle de `$portee` absente du contexte ne leve pas — ce chemin sert
+     * pendant la generation d'un bulletin sur huit instances, et une faute de
+     * frappe ne doit pas casser l'impression. Elle ne compte pas non plus pour
+     * nulle : ce serait confondre sous une cle vide des contextes differents,
+     * donc SE TAIRE au lieu de devenir bavard. La portee incalculable retombe
+     * sur le contexte entier, c'est-a-dire sur l'absence de dedoublonnage. Le
+     * defaut penche du cote du bruit, jamais du silence.
+     *
+     * @param  array<string, scalar|null>  $contexte  ce qui part au journal
+     * @param  list<string>  $portee  les cles de `$contexte` qui dedupliquent
      */
-    public static function coherenceNonVerifiable(string $provenance, array $contexte): void
-    {
-        $cle = 'nv:' . $provenance . ':' . implode(',', array_map(
-            static fn ($v) => (string) $v,
-            $contexte,
-        ));
+    public static function coherenceNonVerifiable(
+        string $provenance,
+        array $contexte,
+        array $portee
+    ): void {
+        $manquantes = array_diff($portee, array_keys($contexte));
+
+        // PORTEE INCALCULABLE -> ON NE DEDUPLIQUE PAS. Une premiere version
+        // remplacait la cle manquante par une chaine vide : deux contextes
+        // differents obtenaient alors la MEME cle, et le journal se taisait au
+        // lieu de devenir bavard. C'est le mauvais sens — on perdait du signal
+        // sur une faute de frappe, sans rien qui le dise. Retomber sur le
+        // contexte entier rend le volume d'avant, donc visible.
+        $cle = $manquantes === []
+            ? 'nv:' . $provenance . ':' . implode(',', array_map(
+                static fn (string $nom) => $nom . '=' . (string) ($contexte[$nom] ?? ''),
+                $portee,
+            ))
+            : 'nv!' . $provenance . ':' . implode(',', array_map(
+                static fn ($v) => (string) $v,
+                $contexte,
+            ));
 
         if (isset(self::$ecartsJournalises[$cle])) {
             return;

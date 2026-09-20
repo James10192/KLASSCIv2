@@ -2461,7 +2461,7 @@ class BulletinService
                     'etudiant_id' => $etudiantId,
                     'classe_id' => $classeId,
                     'periode' => $periode,
-                ]);
+                ], portee: ['classe_id', 'periode']);
             } elseif (! CoherenceSystemeAcademique::matiereRetenue($note->evaluation->matiere, $classeDeReference, 'moyenne periode/note')) {
                 continue;
             }
@@ -2519,7 +2519,7 @@ class BulletinService
                     'resultat_id' => $resultat->id,
                     'etudiant_id' => $etudiantId,
                     'periode' => $periode,
-                ]);
+                ], portee: ['periode']);
             } elseif (! CoherenceSystemeAcademique::matiereRetenue($resultat->matiere, $classeDeReference, 'moyenne periode/moyenne enregistree')) {
                 continue;
             }
@@ -3594,7 +3594,7 @@ class BulletinService
                     'resultat_id' => $resultat->id,
                     'classe_id' => $resultat->classe_id,
                     'matiere_id' => $resultat->matiere_id,
-                ]);
+                ], portee: ['classe_id', 'matiere_id']);
             } elseif (! CoherenceSystemeAcademique::matiereRetenue($resultat->matiere, $classeDeLaLigne, 'kpi resultats/moyenne enregistree')) {
                 continue;
             }
@@ -3675,7 +3675,7 @@ class BulletinService
                 CoherenceSystemeAcademique::coherenceNonVerifiable('Statistiques/note sans classe resolvable', [
                     'note_id' => $note->id,
                     'classe_id_parametre' => $classeId,
-                ]);
+                ], portee: ['classe_id_parametre']);
             } elseif (! CoherenceSystemeAcademique::matiereRetenue($note->evaluation->matiere, $classeDeLaNote, 'stats resultats/note')) {
                 continue;
             }
@@ -3775,7 +3775,7 @@ class BulletinService
                         CoherenceSystemeAcademique::coherenceNonVerifiable('Statistiques/moyenne enregistree sans classe ou sans matiere resolvable', [
                             'resultat_id' => $resultat->id,
                             'classe_id' => $classeId,
-                        ]);
+                        ], portee: ['classe_id']);
                     } elseif (! CoherenceSystemeAcademique::matiereRetenue($resultat->matiere, $classeDuParametre, 'stats resultats/moyenne manuelle')) {
                         continue;
                     }

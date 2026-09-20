@@ -1475,7 +1475,7 @@ class DashboardController extends Controller
             CoherenceSystemeAcademique::coherenceNonVerifiable('moyenne accueil/classe introuvable', [
                 'etudiant_id' => $etudiantId,
                 'classe_id' => $classeId,
-            ]);
+            ], portee: ['etudiant_id', 'classe_id']);
         }
 
         $notes = ESBTPNote::query()
@@ -1507,7 +1507,7 @@ class DashboardController extends Controller
                     CoherenceSystemeAcademique::coherenceNonVerifiable('moyenne accueil/note sans matiere', [
                         'etudiant_id' => $etudiantId,
                         'classe_id' => $classeId,
-                    ]);
+                    ], portee: ['etudiant_id', 'classe_id']);
                 }
 
                 // Pas de classe ou pas de matiere : on ne peut pas juger, donc on

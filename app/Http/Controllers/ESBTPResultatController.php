@@ -2004,7 +2004,7 @@ class ESBTPResultatController extends Controller
         if (! $classeDuLot) {
             CoherenceSystemeAcademique::coherenceNonVerifiable('enregistrement groupe/classe introuvable', [
                 'classe_id' => $request->classe_id,
-            ]);
+            ], portee: ['classe_id']);
         }
 
         abort_unless(
