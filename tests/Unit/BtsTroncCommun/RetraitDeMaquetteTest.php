@@ -39,7 +39,15 @@ class LiaisonsQuiNotentLesRetraits extends LiaisonsDeMatiere
         $this->appels[] = [$matiereId, $filiereId, $niveauId];
         $this->niveauxDeTransaction[] = DB::transactionLevel();
 
-        return ['canonique' => 1, 'places_semestre' => 2];
+        // Meme forme que le vrai service : une doublure qui simplifie le
+        // contrat finit par cacher un defaut du contrat. Voir le piege #15 de
+        // klassci-debugging-discipline.md, ou une colonne absente d'une
+        // doublure a coute une demi-journee.
+        return [
+            'canonique' => 1,
+            'places_semestre' => 2,
+            'pivots_plats' => ['filiere' => false, 'niveau' => true],
+        ];
     }
 }
 
@@ -110,7 +118,11 @@ class RetraitDeMaquetteTest extends TestCase
 
         $this->assertSame([], $liaisons->appels, 'Aucune suppression ne doit partir.');
         $this->assertSame(0, $resultat['retirees']);
-        $this->assertSame(['canonique' => 0, 'places_semestre' => 0], $resultat['lignes'][0]['retire']);
+        $this->assertSame([
+            'canonique' => 0,
+            'places_semestre' => 0,
+            'pivots_plats' => ['filiere' => false, 'niveau' => false],
+        ], $resultat['lignes'][0]['retire']);
     }
 
     public function test_une_matiere_presente_est_retiree_sur_le_couple_demande(): void
@@ -123,7 +135,11 @@ class RetraitDeMaquetteTest extends TestCase
 
         $this->assertSame([[42, 7, 3]], $liaisons->appels);
         $this->assertSame(1, $resultat['retirees']);
-        $this->assertSame(['canonique' => 1, 'places_semestre' => 2], $resultat['lignes'][0]['retire']);
+        $this->assertSame([
+            'canonique' => 1,
+            'places_semestre' => 2,
+            'pivots_plats' => ['filiere' => false, 'niveau' => true],
+        ], $resultat['lignes'][0]['retire']);
     }
 
     public function test_le_compteur_ne_retient_que_les_matieres_reellement_retirees(): void
@@ -155,6 +171,7 @@ class RetraitDeMaquetteTest extends TestCase
             $this->assertArrayHasKey('retire', $ligne);
             $this->assertArrayHasKey('canonique', $ligne['retire']);
             $this->assertArrayHasKey('places_semestre', $ligne['retire']);
+            $this->assertArrayHasKey('pivots_plats', $ligne['retire']);
         }
     }
 

@@ -204,8 +204,25 @@ Une matière absente de la maquette n'est pas une erreur : elle est comptée dan
   "data": { "ecrit": true, "absentes_de_la_maquette": 1,
     "lignes": [{ "matiere_id": 41, "matiere": "…", "dans_la_maquette": true,
       "evaluations_sur_ce_couple": 0,
-      "retire": { "canonique": 1, "places_semestre": 2 } }] } }
+      "retire": { "canonique": 1, "places_semestre": 2,
+                  "pivots_plats": { "filiere": false, "niveau": true } } }] } }
 ```
+
+`pivots_plats` dit ce que le retrait a **aussi** détaché des deux listes plates
+(`esbtp_matiere_filiere`, `esbtp_matiere_niveau`). Une filière n'y est détachée
+que s'il ne reste plus aucune ligne canonique `(matière, filière)`, un niveau que
+s'il n'en reste aucune `(matière, niveau)` — sinon on retirerait la matière d'un
+couple que personne n'a nommé.
+
+Sans ce détachement, vider entièrement la maquette d'un couple faisait
+**réapparaître** les matières retirées sur l'écran de configuration du bulletin :
+il retombe sur le produit des deux listes plates dès qu'un couple n'a plus aucune
+ligne canonique. Après un retrait explicite, « vide » est une décision, pas une
+absence de configuration.
+
+Le `coefficient` et les `heures_cours` portés par ces listes plates ne se
+retrouvent nulle part ailleurs : chaque détachement part au journal avec sa charge
+utile (`Pivot plat detache : plus aucun couple canonique ne le reclame.`).
 
 ## L'écran équivalent
 
@@ -214,6 +231,13 @@ Tout ceci se fait aussi à la main sur `/esbtp/matieres/classification` (permiss
 semestres, et reprendre les semestres du planning général de l'année.
 
 ## Historique
+
+- **Septembre 2026** — `POST /retirer` détache aussi des deux listes plates ce
+  qu'aucun couple canonique ne réclame plus, et le rend dans `pivots_plats`. Sans
+  cela, vider entièrement la maquette d'un couple faisait réapparaître les matières
+  retirées sur l'écran de configuration du bulletin, qui retombe sur le produit de
+  ces deux listes. Ce n'était pas une dette ancienne : c'est le geste de retrait,
+  ajouté ce mois-ci, qui rendait le trou atteignable d'un clic.
 
 - **Septembre 2026** — la place au bulletin suit le semestre **du lot**, non la
   couverture de la matière. Le refus d'un semestre déjà écrit, ajouté quelques

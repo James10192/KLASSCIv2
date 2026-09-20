@@ -132,7 +132,11 @@ final class RetraitDeMaquette
 
         foreach ($lignes as $index => $ligne) {
             if (! $ligne['dans_la_maquette']) {
-                $lignes[$index]['retire'] = ['canonique' => 0, 'places_semestre' => 0];
+                $lignes[$index]['retire'] = [
+                    'canonique' => 0,
+                    'places_semestre' => 0,
+                    'pivots_plats' => ['filiere' => false, 'niveau' => false],
+                ];
 
                 continue;
             }
