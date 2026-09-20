@@ -227,17 +227,43 @@ class CLIBtsMaquetteController extends Controller
      */
     private function resoudreLeCouple(array $valide): array|JsonResponse
     {
+        // « Introuvable » et « ambigu » ne sont pas la meme chose, et les
+        // confondre envoyait chercher une filiere absente quand elle repondait
+        // au contraire DEUX fois. `name` n'est unique sur aucune des deux
+        // tables : seul `code` l'est.
         $filiere = $this->resolution->filiere($valide['filiere']);
-        if (! $filiere) {
-            return response()->json(['success' => false, 'message' => "Filiere introuvable : {$valide['filiere']}"], 404);
+        if ($filiere['statut'] !== 'ok') {
+            return $this->refusDeResolution('Filiere', $filiere);
         }
 
         $niveau = $this->resolution->niveau($valide['niveau']);
-        if (! $niveau) {
-            return response()->json(['success' => false, 'message' => "Niveau introuvable : {$valide['niveau']}"], 404);
+        if ($niveau['statut'] !== 'ok') {
+            return $this->refusDeResolution('Niveau', $niveau);
         }
 
-        return [$filiere, $niveau];
+        return [$filiere['filiere'], $niveau['niveau']];
+    }
+
+    /**
+     * Dit POURQUOI la resolution a echoue, et nomme les candidats s'il y en a.
+     *
+     * @param  array{statut: string, libelle: string, candidats?: array<int, array<string, mixed>>}  $resolue
+     */
+    private function refusDeResolution(string $quoi, array $resolue): JsonResponse
+    {
+        if ($resolue['statut'] === 'ambigu') {
+            return response()->json([
+                'success' => false,
+                'message' => "{$quoi} ambigue : « {$resolue['libelle']} » designe plusieurs lignes. "
+                    .'Donnez son code, qui lui est unique.',
+                'data' => ['candidats' => $resolue['candidats'] ?? []],
+            ], 422);
+        }
+
+        return response()->json([
+            'success' => false,
+            'message' => "{$quoi} introuvable : {$resolue['libelle']}",
+        ], 404);
     }
 
     /**

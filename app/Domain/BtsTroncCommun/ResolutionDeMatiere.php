@@ -38,23 +38,101 @@ use Illuminate\Support\Str;
  */
 final class ResolutionDeMatiere
 {
-    public function filiere(mixed $cle): ?ESBTPFiliere
+    /**
+     * La filiere designee par un identifiant, un code ou un nom.
+     *
+     * « ON NE DEVINE JAMAIS » vaut ici aussi, et ne valait pas. Deux versions
+     * de ces methodes prenaient le PREMIER resultat d'un `where('name', …)`,
+     * or `name` n'est unique ni sur `esbtp_filieres` ni sur
+     * `esbtp_niveau_etudes` — seul `code` l'est (migrations de mars 2024).
+     * Deux filieres homonymes faisaient donc charger une maquette contre
+     * l'une des deux, au hasard de l'ordre d'insertion, sans un mot.
+     *
+     * LES REFLETS LMD SONT ECARTES. `FiliereMiroirLmd` cree des filieres au
+     * nom et au code d'un parcours (cf. `classe-lmd-filiere-as-mention.md`) ;
+     * une maquette BTS chargee en nommant sa filiere pouvait tomber dessus et
+     * n'apparaitre sur aucune classe BTS. Silencieux des deux bouts.
+     *
+     * @return array{statut: 'ok'|'ambigu'|'introuvable', libelle: string, filiere?: ESBTPFiliere, candidats?: array<int, array{id: int, name: string, code: ?string}>}
+     */
+    public function filiere(mixed $cle): array
     {
         if (is_numeric($cle)) {
-            return ESBTPFiliere::find((int) $cle);
+            $trouvee = ESBTPFiliere::horsMiroirLmd()->find((int) $cle);
+
+            return $trouvee
+                ? ['statut' => 'ok', 'libelle' => (string) $cle, 'filiere' => $trouvee]
+                : ['statut' => 'introuvable', 'libelle' => (string) $cle];
         }
 
-        return ESBTPFiliere::where('code', $cle)->first()
-            ?? ESBTPFiliere::where('name', $cle)->first();
+        // Le code d'abord : c'est la seule cle unique des deux.
+        $parCode = ESBTPFiliere::horsMiroirLmd()->where('code', $cle)->first();
+
+        if ($parCode) {
+            return ['statut' => 'ok', 'libelle' => (string) $cle, 'filiere' => $parCode];
+        }
+
+        $parNom = ESBTPFiliere::horsMiroirLmd()->where('name', $cle)->get();
+
+        return $this->uneSeule($parNom, (string) $cle, 'filiere');
     }
 
-    public function niveau(mixed $cle): ?ESBTPNiveauEtude
+    /**
+     * Le niveau designe par un identifiant, un code ou un nom.
+     *
+     * Le code n'etait meme pas essaye, alors que c'est la cle unique.
+     *
+     * @return array{statut: 'ok'|'ambigu'|'introuvable', libelle: string, niveau?: ESBTPNiveauEtude, candidats?: array<int, array{id: int, name: string, code: ?string}>}
+     */
+    public function niveau(mixed $cle): array
     {
         if (is_numeric($cle)) {
-            return ESBTPNiveauEtude::find((int) $cle);
+            $trouve = ESBTPNiveauEtude::find((int) $cle);
+
+            return $trouve
+                ? ['statut' => 'ok', 'libelle' => (string) $cle, 'niveau' => $trouve]
+                : ['statut' => 'introuvable', 'libelle' => (string) $cle];
         }
 
-        return ESBTPNiveauEtude::where('name', $cle)->first();
+        $parCode = ESBTPNiveauEtude::where('code', $cle)->first();
+
+        if ($parCode) {
+            return ['statut' => 'ok', 'libelle' => (string) $cle, 'niveau' => $parCode];
+        }
+
+        return $this->uneSeule(
+            ESBTPNiveauEtude::where('name', $cle)->get(),
+            (string) $cle,
+            'niveau',
+        );
+    }
+
+    /**
+     * Un nom qui designe plusieurs lignes n'en designe aucune.
+     *
+     * Rendre les candidats plutot que `null` : l'appelant disait « introuvable »
+     * pour un nom qui, au contraire, repondait deux fois.
+     *
+     * @param  \Illuminate\Support\Collection<int, ESBTPFiliere|ESBTPNiveauEtude>  $candidats
+     * @return array{statut: 'ok'|'ambigu'|'introuvable', libelle: string, filiere?: ESBTPFiliere, niveau?: ESBTPNiveauEtude, candidats?: array<int, array{id: int, name: string, code: ?string}>}
+     */
+    private function uneSeule($candidats, string $libelle, string $quoi): array
+    {
+        if ($candidats->count() === 1) {
+            return ['statut' => 'ok', 'libelle' => $libelle, $quoi => $candidats->first()];
+        }
+
+        if ($candidats->isEmpty()) {
+            return ['statut' => 'introuvable', 'libelle' => $libelle];
+        }
+
+        return [
+            'statut' => 'ambigu',
+            'libelle' => $libelle,
+            'candidats' => $candidats
+                ->map(fn ($x) => ['id' => $x->id, 'name' => $x->name, 'code' => $x->code])
+                ->all(),
+        ];
     }
 
     /**

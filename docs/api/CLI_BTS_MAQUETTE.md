@@ -232,6 +232,15 @@ semestres, et reprendre les semestres du planning général de l'année.
 
 ## Historique
 
+- **Septembre 2026** — la filière et le niveau se résolvent d'abord par leur
+  **code**, qui est leur seule clé unique. Un **nom** qui désigne plusieurs
+  lignes rend désormais `422` avec la liste des candidats, au lieu de prendre
+  la première venue en silence ; et les filières **reflets** d'un parcours LMD
+  (cf. `classe-lmd-filiere-as-mention.md`) sont écartées, une maquette BTS
+  chargée en nommant sa filière pouvant tomber dessus et n'apparaître sur
+  aucune classe BTS. `« Filière introuvable »` ne désigne plus un nom qui, au
+  contraire, répondait deux fois.
+
 - **Septembre 2026** — `POST /retirer` détache aussi des deux listes plates ce
   qu'aucun couple canonique ne réclame plus, et le rend dans `pivots_plats`. Sans
   cela, vider entièrement la maquette d'un couple faisait réapparaître les matières
