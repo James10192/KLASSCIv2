@@ -96,15 +96,21 @@ final class ChargementDeMaquette
     ): void {
         DB::transaction(function () use ($lignes, $filiere, $niveau, $valider): void {
             foreach ($lignes as $ligne) {
-                // Cree la liaison si elle manque, et ajoute le couple aux
-                // pivots plats sans jamais en retirer.
+                // UN SEUL ECRIVAIN : `poser()` cree la liaison si elle manque,
+                // ajoute le couple aux pivots plats sans jamais en retirer, et
+                // REND la ligne. On la complete ensuite, au lieu de la reecrire.
                 //
-                // L'ORDRE COMPTE : c'est `poser()` qui porte le garde contre
-                // les ECUE LMD, et l'`updateOrCreate` ci-dessous ecrit le
-                // meme pivot sans garde. Deplacer cet appel APRES lui rouvrirait
-                // la porte. La resolution en amont ecarte deja les ECUE, donc
-                // ce chemin en a deux ; ne comptez pas sur une seule.
-                $this->liaisons->poser((int) $ligne['matiere_id'], (int) $filiere->id, (int) $niveau->id);
+                // Une version precedente refaisait ici un `updateOrCreate` sur
+                // les trois memes cles. Le garde contre les ECUE LMD ne tenait
+                // alors que par l'ORDRE des deux appels — le commentaire l'avouait
+                // — et cet `updateOrCreate` etait l'un des trois ecrivains du
+                // pivot canonique hors du goulot, recenses par la rule. Il n'en
+                // reste que deux.
+                $lien = $this->liaisons->poser(
+                    (int) $ligne['matiere_id'],
+                    (int) $filiere->id,
+                    (int) $niveau->id,
+                );
 
                 $attributs = [
                     'ordre_bulletin' => $ligne['place'],
@@ -114,14 +120,7 @@ final class ChargementDeMaquette
                     $attributs['semestre_renseigne'] = true;
                 }
 
-                ESBTPMatiereFilierNiveau::updateOrCreate(
-                    [
-                        'filiere_id' => $filiere->id,
-                        'niveau_etude_id' => $niveau->id,
-                        'matiere_id' => $ligne['matiere_id'],
-                    ],
-                    $attributs
-                );
+                $lien->fill($attributs)->save();
 
                 $this->poserLesPlacesParSemestre($filiere, $niveau, $ligne);
             }

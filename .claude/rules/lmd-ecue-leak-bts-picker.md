@@ -73,15 +73,21 @@ général). Filtrer en lecture demande à chaque futur écran de s'en souvenir.
 `Log::warning`. Les cinq appelants refusent déjà en amont avec un message pour
 l'utilisateur ; ce garde-ci sert au sixième, celui qui n'est pas encore écrit.
 
-**Ce n'est PAS le goulot unique, et cette rule l'a affirmé à tort.** Trois
+**Ce n'est PAS le goulot unique, et cette rule l'a affirmé à tort.** Des
 écrivains touchent le pivot canonique sans passer par lui — la phrase a été
-écrite sans être mesurée, exactement comme celle qu'elle remplaçait :
+écrite sans être mesurée, exactement comme celle qu'elle remplaçait. Ils
+étaient trois ; il en reste **deux** :
 
 | écrivain | garde |
 |---|---|
 | `app/Console/Commands/SyncMatiereFilireNiveau.php` (`insert()` brut) | **le sien**, ajouté en même temps que cette ligne |
-| `app/Domain/BtsTroncCommun/ChargementDeMaquette.php` (`updateOrCreate`) | par l'**ordre** : `poser()` lève d'abord. Fragile, commenté sur place |
 | `database/seeders/Demo/PromotionPrecedenteNotesDemoData.php` | aucun — données de démonstration |
+
+`ChargementDeMaquette` en était le troisième, et son garde ne tenait que par
+l'**ordre** de deux appels — le commentaire l'avouait sur place. Il n'écrit
+plus : `poser()` **rend** la ligne qu'il crée, donc le chargement la complète
+au lieu de la réécrire. Un écrivain hors goulot en moins, un piège
+d'ordonnancement en moins. C'est le geste à imiter pour les deux qui restent.
 
 La commande qui rejoue cette liste, au lieu de la croire :
 
@@ -91,15 +97,17 @@ grep -rn "esbtp_matiere_filiere_niveau\|ESBTPMatiereFilierNiveau" app/ database/
   | grep -vE "LiaisonsDeMatiere\.php|database/migrations/|^\S+:[0-9]+:\s*(\*|//)"
 ```
 
-Au 19 septembre 2026, il rend **exactement les trois lignes du tableau**.
+Au 20 septembre 2026, il rend **exactement les deux lignes du tableau**.
 
 Le motif cherche les **créateurs** : `update()` et `delete()` sur une ligne
 existante ne posent pas de nouvelle ligne et ne sont pas concernés. Il exclut
 aussi les lignes de commentaire — une première version les comptait, et rendait
 quatre lignes pour trois écrivains, ce qui rendait son propre seuil faux.
 
-Toute ligne rendue est un écrivain à garder. Si elle en rend plus de trois,
+Toute ligne rendue est un écrivain à garder. Si elle en rend plus de deux,
 l'inventaire ci-dessus est périmé — corrigez-le plutôt que de le contourner.
+Et si elle en rend moins, dites-le aussi : ce compte a déjà été faux dans les
+deux sens.
 
 Corollaire, et c'est le piège symétrique : **le RETRAIT doit rester ouvert.**
 `ResolutionDeMatiere::matierePourRetrait()` accepte une ECUE, et c'est délibéré.
