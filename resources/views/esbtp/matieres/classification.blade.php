@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Affectation Tronc Commun / Spécialité - KLASSCI')
+@section('title', 'Maquette du bulletin - KLASSCI')
 
 @php
     $filiereOptions = $filieres->mapWithKeys(fn ($f) => [$f->id => $f->name . ($f->is_tronc_commun ? ' (Tronc commun)' : '')])->all();
@@ -191,8 +191,18 @@
             <div class="mtc-hero-left">
                 <div class="mtc-hero-icon"><i class="fas fa-layer-group"></i></div>
                 <div>
-                    <h1>Affectation Tronc Commun / Spécialité</h1>
-                    <p>Marquez, par filière et niveau, les matières du tronc commun et celles de spécialité. Le bulletin de tronc commun n'affichera que les matières TC.</p>
+                    {{-- « Affectation Tronc Commun / Spécialité » était le nom
+                         d'origine, et il ne décrivait plus qu'UNE des quatre
+                         choses que fait cet écran : il porte aussi la
+                         composition de la maquette, le semestre de chaque
+                         matière et son rang au bulletin. Un titre faux par
+                         omission envoie chercher ailleurs ce qui est ici — la
+                         fiche d'une matière disait d'ailleurs déjà
+                         « l'écran Maquette ». L'adresse, elle, ne change pas :
+                         elle est citée dans le journal des versions et dans la
+                         requête SQL de `lmd-ecue-leak-bts-picker.md`. --}}
+                    <h1>Maquette du bulletin</h1>
+                    <p>Par filière et niveau : quelles matières composent le bulletin, à quel semestre, dans quel ordre, et lesquelles relèvent du tronc commun.</p>
                 </div>
             </div>
             <a href="{{ route('esbtp.matieres.index') }}" class="mtc-mini"><i class="fas fa-arrow-left"></i> Matières</a>

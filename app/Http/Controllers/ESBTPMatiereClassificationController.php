@@ -13,11 +13,26 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
- * Affectation Tronc Commun / Spécialité des matières, au grain (matière, filière, niveau).
+ * La maquette du bulletin, au grain (matière, filière, niveau). BTS uniquement.
  *
- * Permet à l'école de marquer, pour un combo (filière, niveau), quelles matières
- * sont du tronc commun et lesquelles sont de spécialité. Le bulletin de tronc commun
- * n'affiche alors que les matières TC (ou non classées). BTS uniquement, LMD intouché.
+ * Cet écran a porté longtemps le nom « Affectation Tronc Commun / Spécialité »,
+ * et ce nom ne décrivait plus qu'UNE de ses quatre fonctions. Il porte :
+ *
+ *   1. la COMPOSITION de la maquette — quelles matières, et le retrait de
+ *      celles qui n'y ont rien à faire (dont les éléments LMD intrus, seul
+ *      endroit d'où ils peuvent sortir) ;
+ *   2. le SEMESTRE de chaque matière (S1, S2, les deux), et sa validation, qui
+ *      est le geste qui ouvre la vanne vers le bulletin ;
+ *   3. le RANG au bulletin, y compris la reprise de l'ordre général ;
+ *   4. le marquage TRONC COMMUN / SPÉCIALITÉ — le nom d'origine.
+ *
+ * Un titre faux par omission envoie chercher ailleurs ce qui est ici. La fiche
+ * d'une matière disait d'ailleurs déjà « l'écran Maquette ».
+ *
+ * LE SEGMENT D'URL NE CHANGE PAS (`/esbtp/matieres/classification`), ni le nom
+ * de route : l'adresse est citée dans le journal des versions et dans la
+ * requête SQL de `lmd-ecue-leak-bts-picker.md`, qui rend les deux identifiants
+ * puis renvoie ici. Renommer l'adresse casserait ce chemin pour rien.
  *
  * @see \App\Domain\BtsTroncCommun\BtsBulletinSubjectResolver
  * @see .claude/rules/classe-lmd-filiere-as-mention.md

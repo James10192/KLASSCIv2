@@ -731,7 +731,10 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 ->middleware(['permission:classes.view']);
             // Routes pour les matiÃ¨res
             Route::name('matieres.')->prefix('matieres')->group(function () {
-                // Affectation Tronc Commun / Spécialité par (filière, niveau) — BTS.
+                // Maquette du bulletin par (filière, niveau) — BTS : composition,
+                // semestre, rang au bulletin, et marquage tronc commun / spécialité.
+                // Le segment d'URL reste `classification` : il est cité dans le
+                // journal des versions et dans `lmd-ecue-leak-bts-picker.md`.
                 // Déclarées AVANT les routes {matiere} pour éviter toute collision literal/param.
                 Route::get('/classification', [\App\Http\Controllers\ESBTPMatiereClassificationController::class, 'index'])
                     ->name('classification')
