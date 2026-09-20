@@ -30,7 +30,8 @@ use Illuminate\Support\Str;
  * `POST /retirer` repondait « ne designe pas une matiere unique » pour un
  * identifiant que l'endpoint voisin venait de rendre. Le retrait est le geste
  * CORRECTEUR : il ne peut pas contaminer une maquette, il ne peut que la
- * nettoyer. D'ou `$pourRetrait`.
+ * nettoyer. D'ou les DEUX methodes publiques : `matiere()` et
+ * `matierePourRetrait()`.
  *
  * @see .claude/rules/lmd-ecue-leak-bts-picker.md
  * @see .claude/rules/lmd-bts-matieres-single-source.md
@@ -57,19 +58,49 @@ final class ResolutionDeMatiere
     }
 
     /**
-     * @param  bool  $pourRetrait  true : accepte aussi une ECUE LMD, parce que
-     *                             le retrait est le seul geste qui peut enlever
-     *                             une ligne posee par erreur.
+     * Resolution STRICTE : une ECUE LMD n'est pas trouvee.
+     *
+     * C'est le geste du chargement, celui qui contamine.
+     *
      * @return array{statut: 'ok'|'ambigu'|'introuvable', libelle: string, matiere?: ESBTPMatiere, candidats?: array<int, array{id: int, name: string, code: ?string}>}
      */
-    public function matiere(mixed $entree, int $filiereId, int $niveauId, bool $pourRetrait = false): array
+    public function matiere(mixed $entree, int $filiereId, int $niveauId): array
+    {
+        return $this->resoudre($entree, $filiereId, $niveauId, accepteUneEcue: false);
+    }
+
+    /**
+     * Resolution OUVERTE : une ECUE LMD est trouvee, elle aussi.
+     *
+     * Le retrait est le SEUL geste qui peut enlever une ligne posee par erreur.
+     * Refuser des deux cotes rendrait la ligne inextirpable — c'est le defaut
+     * que ce chantier corrige, pas celui qu'il doit reproduire.
+     *
+     * DEUX METHODES PUBLIQUES PLUTOT QU'UN DRAPEAU, et c'est la consigne du
+     * depot : `lmd-bts-matieres-single-source.md` interdit nommement le
+     * parametre booleen sur ce genre d'API, et `MatiereTreeBuilder` l'a deja
+     * resolu ainsi (`buildForPlanning()` / `buildWithVolumeBudget()`). Le
+     * drapeau faisait basculer la garde centrale du chantier : un appelant qui
+     * l'oublie doit se voir, pas se deviner.
+     *
+     * @return array{statut: 'ok'|'ambigu'|'introuvable', libelle: string, matiere?: ESBTPMatiere, candidats?: array<int, array{id: int, name: string, code: ?string}>}
+     */
+    public function matierePourRetrait(mixed $entree, int $filiereId, int $niveauId): array
+    {
+        return $this->resoudre($entree, $filiereId, $niveauId, accepteUneEcue: true);
+    }
+
+    /**
+     * @return array{statut: 'ok'|'ambigu'|'introuvable', libelle: string, matiere?: ESBTPMatiere, candidats?: array<int, array{id: int, name: string, code: ?string}>}
+     */
+    private function resoudre(mixed $entree, int $filiereId, int $niveauId, bool $accepteUneEcue): array
     {
         $libelle = is_array($entree) ? (string) ($entree['nom'] ?? $entree['id'] ?? '') : (string) $entree;
 
         $id = is_array($entree) ? ($entree['id'] ?? null) : (is_numeric($entree) ? $entree : null);
         if ($id !== null) {
             $matiere = ESBTPMatiere::query()
-                ->unless($pourRetrait, fn ($q) => $q->whereNull('unite_enseignement_id'))
+                ->unless($accepteUneEcue, fn ($q) => $q->btsOnly())
                 ->find((int) $id);
 
             return $matiere
@@ -79,7 +110,7 @@ final class ResolutionDeMatiere
 
         $cible = $this->normaliser($libelle);
         $candidats = ESBTPMatiere::query()
-            ->unless($pourRetrait, fn ($q) => $q->whereNull('unite_enseignement_id'))
+            ->unless($accepteUneEcue, fn ($q) => $q->btsOnly())
             ->get(['id', 'name', 'code'])
             ->filter(fn ($m) => $this->normaliser($m->name) === $cible)
             ->values();

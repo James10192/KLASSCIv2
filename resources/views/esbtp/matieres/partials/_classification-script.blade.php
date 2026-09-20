@@ -2,8 +2,13 @@
 <script>
 function matiereClassification() {
     return {
-        filiereId: '',
-        niveauId: '',
+        // Presélection depuis la chaîne de requête, pour que l'écran soit
+        // citable : `?filiere_id=3&niveau_id=2` ouvre directement la maquette
+        // de ce couple. Le serveur a validé les deux, ce ne sont pas des
+        // valeurs libres. Cast en chaîne parce que les `<option value>` en
+        // sont, et qu'un entier ne s'y retrouverait pas sélectionné.
+        filiereId: @json((string) ($filiereChoisie ?? '')),
+        niveauId: @json((string) ($niveauChoisi ?? '')),
         loading: false,
         saving: false,
         loaded: false,
@@ -33,6 +38,12 @@ function matiereClassification() {
         init() {
             this.$watch('filiereId', () => this.tryLoad());
             this.$watch('niveauId', () => this.tryLoad());
+
+            // Les observateurs ne se déclenchent qu'au CHANGEMENT : une valeur
+            // posée à l'initialisation ne les réveille pas. Sans cet appel, le
+            // couple venu de la chaîne de requête s'affichait dans les deux
+            // listes sans que rien ne se charge.
+            this.tryLoad();
         },
 
         // Le composant au-select évalue son x-model dans son propre scope : on capte
@@ -333,7 +344,20 @@ function matiereClassification() {
          * avant de valider.
          */
         async retirerDeLaMaquette(m, malgreLesNotes = false) {
-            if (!malgreLesNotes && !confirm('Retirer « ' + m.name + ' » de cette maquette ?')) return;
+            // `iiConfirm` et non `confirm()` : ce parcours enchaine DEUX
+            // confirmations quand la matiere porte des evaluations — et c'est
+            // le cas courant, l'ECUE qui a motive cet ecran en portait 34.
+            // A partir du second dialogue natif, le navigateur propose
+            // « Empecher cette page de creer des boites de dialogue
+            // supplementaires » ; coche, le second `confirm()` rend `false` en
+            // SILENCE, et le retrait devient impossible — sur le seul ecran
+            // d'ou la ligne peut sortir.
+            if (!malgreLesNotes && !(await window.iiConfirm({
+                title: 'Retirer de la maquette',
+                message: 'Retirer « ' + m.name + ' » de cette maquette ?',
+                confirmLabel: 'Retirer',
+                danger: true,
+            }))) return;
 
             this.saving = true;
             try {
@@ -351,7 +375,12 @@ function matiereClassification() {
 
                 if (!res.ok && data.confirmation_requise) {
                     this.saving = false;
-                    if (confirm(data.message + '\n\nRetirer quand même ?')) {
+                    if (await window.iiConfirm({
+                        title: 'Cette matière porte des évaluations',
+                        message: data.message,
+                        confirmLabel: 'Retirer quand même',
+                        danger: true,
+                    })) {
                         await this.retirerDeLaMaquette(m, true);
                     }
                     return;
@@ -400,17 +429,22 @@ function matiereClassification() {
                   + 'des que les semestres du tronc commun parent seront valides eux aussi.'
                 : 'Valider les semestres applique la maquette au bulletin et au suivi des notes.';
 
-            const lignes = [
-                tete,
-                '',
-                `\u2022 ${s1} matiere(s) au semestre 1 seulement : elles sortiront du bulletin du semestre 2.`,
-                `\u2022 ${s2} matiere(s) au semestre 2 seulement : elles sortiront du bulletin du semestre 1.`,
-                `\u2022 ${deux} matiere(s) sans semestre : elles restent aux deux.`,
-                '',
-                'Continuer ?',
-            ];
+            // UNE PHRASE, PAS DES PUCES. `iiConfirm` rend son message en
+            // `textContent` : du HTML s'y afficherait tel quel, et un `\n` y
+            // serait avale faute de `white-space: pre-line`. Une liste a puces
+            // n'avait de toute facon rien a faire dans la boite native d'ou elle
+            // vient — elle y etait illisible et non stylable.
+            const message = tete
+                + ' ' + s1 + ' matière(s) au semestre 1 seulement sortiront du bulletin du semestre 2 ; '
+                + s2 + ' matière(s) au semestre 2 seulement sortiront du bulletin du semestre 1 ; '
+                + deux + ' matière(s) sans semestre restent aux deux.';
 
-            if (!window.confirm(lignes.join('\n'))) return;
+            if (!(await window.iiConfirm({
+                title: 'Valider les semestres',
+                message,
+                confirmLabel: 'Valider',
+                danger: true,
+            }))) return;
             await this.save(true);
         },
 

@@ -11,6 +11,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Log;
 
 final class AcademicNoteCoverageService
 {
@@ -563,6 +564,17 @@ final class AcademicNoteCoverageService
         try {
             $semestre = $this->periods->semesterNumber((string) $evaluation->periode);
         } catch (\InvalidArgumentException) {
+            // UN RATTRAPAGE QUI DEGRADE UN COMPTEUR AFFICHE SE JOURNALISE.
+            // Sans cette ligne, une periode inconnue elargissait la cohorte en
+            // silence : le taux de couverture baissait sans que rien n'explique
+            // pourquoi, et on ne cherchait meme pas. Le site jumeau, pour la
+            // MEME condition, journalise deja
+            // (`BtsClassCohortCounter::semesterNumber()`).
+            Log::warning('AcademicNoteCoverageService : période non reconnue, index complet par défaut.', [
+                'evaluation_id' => (int) $evaluation->id,
+                'periode' => (string) $evaluation->periode,
+            ]);
+
             return $index;
         }
 

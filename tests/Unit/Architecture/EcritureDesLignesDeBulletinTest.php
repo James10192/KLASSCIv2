@@ -23,14 +23,39 @@ use PHPUnit\Framework\TestCase;
  * Ce test n'a besoin d'aucune base : il lit le dépôt.
  *
  * SA PORTÉE EST LIMITÉE, ET C'EST ASSUMÉ. Il cherche cinq formes littérales
- * dans `app/` seulement. Lui échapperaient : une écriture relationnelle
+ * dans `app/` et `database/`. Lui échapperaient : une écriture relationnelle
  * (`->resultatsMatieres()->create(...)`), un `DB::table('esbtp_resultats_matieres')`,
- * un alias d'import, ou une écriture hors `app/` (commande, seeder, job). Aucune
- * n'existe aujourd'hui — vérifié — mais ce test est un garde-fou, pas une preuve
- * d'exhaustivité. Ne le lisez pas comme « il n'y a qu'une porte ».
+ * ou un alias d'import. Ce test est un garde-fou, pas une preuve d'exhaustivité.
+ * Ne le lisez pas comme « il n'y a qu'une porte ».
+ *
+ * UNE VERSION ANTÉRIEURE AFFIRMAIT ICI « Aucune n'existe aujourd'hui — vérifié ».
+ * C'était faux, et falsifiable en une commande :
+ *
+ *     grep -rn "ESBTPResultatMatiere::create(" database/
+ *     → database/seeders/old/ESBTPBulletinSeeder.php
+ *
+ * Ce fichier est versionné et non gitignoré. Le dégât pratique est nul — c'est un
+ * seeder mort, jamais joué —, mais le dégât de méthode ne l'est pas : un fichier
+ * dont la fonction est d'être cru ne peut pas affirmer sans avoir mesuré. C'est le
+ * défaut que ce chantier a corrigé partout ailleurs, reproduit dans son propre
+ * garde-fou. Le scan couvre donc `database/`, et la seule exemption est NOMMÉE
+ * ci-dessous plutôt que couverte par une phrase.
  */
 class EcritureDesLignesDeBulletinTest extends TestCase
 {
+    /**
+     * La seule écriture tolérée hors du modèle, et pourquoi.
+     *
+     * `database/seeders/old/` est un dossier de seeders retirés du service. Le
+     * corriger demanderait de rejouer un code que personne n'exécute ; le
+     * supprimer est une décision qui ne relève pas d'un correctif de bulletin.
+     * Il est donc exempté EXPLICITEMENT — pour qu'un lecteur voie l'exception au
+     * lieu de croire qu'il n'y en a pas.
+     */
+    // Compare sur le chemin RELATIF a la racine, et ancree a son debut : sur
+    // l'absolu, un `str_contains` aurait pu mordre un dossier homonyme du poste.
+    private const EXEMPTE = 'database/seeders/old/';
+
     /** Ce que personne ne doit écrire hors du modèle. */
     private const INTERDIT = [
         'new ESBTPResultatMatiere',
@@ -50,11 +75,15 @@ class EcritureDesLignesDeBulletinTest extends TestCase
                 continue;
             }
 
+            if (str_starts_with($this->cheminRelatif($fichier), self::EXEMPTE)) {
+                continue;
+            }
+
             $contenu = file_get_contents($fichier) ?: '';
 
             foreach (self::INTERDIT as $motif) {
                 if (str_contains($contenu, $motif)) {
-                    $coupables[] = substr($fichier, strpos($fichier, 'app/')) . ' → ' . $motif;
+                    $coupables[] = $this->cheminRelatif($fichier) . ' → ' . $motif;
                 }
             }
         }
@@ -85,17 +114,40 @@ class EcritureDesLignesDeBulletinTest extends TestCase
         );
     }
 
+    /**
+     * Chemin lisible dans le rapport d'echec.
+     *
+     * L'ancienne version coupait sur `'app/'` : sur un fichier de `database/`,
+     * `strpos` rendait `false`, `substr` repartait de zero et le rapport
+     * affichait le chemin absolu de la machine.
+     */
+    private function cheminRelatif(string $fichier): string
+    {
+        $racine = realpath(__DIR__ . '/../../../');
+
+        return $racine !== false && str_starts_with($fichier, $racine)
+            ? ltrim(substr($fichier, strlen($racine)), '/\\')
+            : $fichier;
+    }
+
     /** @return list<string> */
     private function fichiersPhpDeLApplication(): array
     {
-        $racine = realpath(__DIR__ . '/../../../app');
         $fichiers = [];
 
-        $iterateur = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($racine));
+        foreach (['app', 'database'] as $dossier) {
+            $racine = realpath(__DIR__ . '/../../../' . $dossier);
 
-        foreach ($iterateur as $entree) {
-            if ($entree->isFile() && $entree->getExtension() === 'php') {
-                $fichiers[] = $entree->getRealPath();
+            if ($racine === false) {
+                continue;
+            }
+
+            $iterateur = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($racine));
+
+            foreach ($iterateur as $entree) {
+                if ($entree->isFile() && $entree->getExtension() === 'php') {
+                    $fichiers[] = $entree->getRealPath();
+                }
             }
         }
 

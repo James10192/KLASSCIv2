@@ -31,9 +31,27 @@ class ESBTPMatiereClassificationController extends Controller
 
     /**
      * Page d'affectation TC / Spécialité (pickers filière + niveau).
+     *
+     * `filiere_id` et `niveau_id` en chaîne de requête présélectionnent le
+     * couple, et la page le charge seule. C'est ce qui rend l'écran CITABLE :
+     * la rule `lmd-ecue-leak-bts-picker.md` donne une requête SQL qui rend
+     * précisément ces deux identifiants puis renvoie ici — sans ce lien, il
+     * fallait repiocher les deux valeurs à la main dans deux listes, et la
+     * fiche d'une matière ne pouvait pas non plus pointer sa propre maquette.
+     *
+     * Les deux sont validés et non simplement recopiés : un identifiant
+     * inconnu ne doit pas se retrouver dans l'attribut Alpine.
      */
-    public function index()
+    public function index(Request $request)
     {
+        $validated = $request->validate([
+            'filiere_id' => 'nullable|integer|exists:esbtp_filieres,id',
+            'niveau_id' => 'nullable|integer|exists:esbtp_niveau_etudes,id',
+        ]);
+
+        $filiereChoisie = (string) ($validated['filiere_id'] ?? '');
+        $niveauChoisi = (string) ($validated['niveau_id'] ?? '');
+
         $filieres = ESBTPFiliere::where('is_active', true)
             ->orderBy('name')
             ->get(['id', 'name', 'code', 'is_tronc_commun', 'parent_id']);
@@ -44,7 +62,12 @@ class ESBTPMatiereClassificationController extends Controller
             ->orderBy('name')
             ->get(['id', 'name', 'code', 'type']);
 
-        return view('esbtp.matieres.classification', compact('filieres', 'niveaux'));
+        return view('esbtp.matieres.classification', compact(
+            'filieres',
+            'niveaux',
+            'filiereChoisie',
+            'niveauChoisi',
+        ));
     }
 
     /**

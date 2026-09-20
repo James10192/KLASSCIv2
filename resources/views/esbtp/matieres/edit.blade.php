@@ -183,14 +183,38 @@
                                             @enderror
                                         </div>
 
-                                        <!-- Aperçu des combinaisons -->
+                                        {{-- La maquette REELLE, et le lien vers l'ecran qui la modifie.
+                                             Cet emplacement affichait le produit cartesien des deux listes
+                                             cochees — des combinaisons que la maquette ne porte pas — et
+                                             l'enregistrement les posait. Voir le commentaire de
+                                             `ESBTPMatiereController::poserLesCouplesDuFormulaire()`. --}}
                                         <div class="mb-3">
                                             <label class="form-label">
-                                                <i class="fas fa-eye me-1"></i>Aperçu des combinaisons
+                                                <i class="fas fa-diagram-project me-1"></i>Au programme de
                                             </label>
-                                            <div id="edit-combinations-preview" class="alert alert-info">
-                                                <i class="fas fa-info-circle me-2"></i>
-                                                Sélectionnez des filières et des niveaux pour voir les combinaisons possibles.
+                                            @if(empty($couplesDeLaMaquette))
+                                                <div class="alert alert-warning py-2 px-3 mb-2">
+                                                    <i class="fas fa-triangle-exclamation me-2"></i>
+                                                    Cette matière n'est au programme d'aucune filière × niveau : elle n'apparaîtra sur aucun bulletin.
+                                                </div>
+                                            @else
+                                                <div class="d-flex flex-wrap gap-2 mb-2">
+                                                    @foreach($couplesDeLaMaquette as $couple)
+                                                        <a class="badge bg-primary text-wrap p-2 text-decoration-none"
+                                                           href="{{ route('esbtp.matieres.classification', ['filiere_id' => $couple['filiere_id'], 'niveau_id' => $couple['niveau_id']]) }}"
+                                                           title="Ouvrir cette maquette">
+                                                            <i class="fas fa-link me-1"></i>{{ $couple['filiere'] }} ↔ {{ $couple['niveau'] }}
+                                                        </a>
+                                                    @endforeach
+                                                </div>
+                                            @endif
+                                            <div class="form-text">
+                                                Les deux listes ci-dessus décrivent les filières et les niveaux de la matière ; elles
+                                                ne décident pas de son programme. Ajouter ou retirer un couple précis se fait sur
+                                                <a href="{{ route('esbtp.matieres.classification', array_filter([
+                                                    'filiere_id' => $couplesDeLaMaquette[0]['filiere_id'] ?? null,
+                                                    'niveau_id' => $couplesDeLaMaquette[0]['niveau_id'] ?? null,
+                                                ])) }}">l'écran Maquette</a>, où il se voit.
                                             </div>
                                         </div>
 
@@ -332,14 +356,7 @@
 @endsection
 
 @section('scripts')
-@php $_couplesExistants = $couplesExistants ?? []; @endphp
 <script>
-    // Couples deja dans la maquette. Sert a distinguer, dans l'apercu, ce qui
-    // existe de ce que l'enregistrement va creer : les cases sont precochees
-    // depuis les deux pivots plats, dont le produit invente des combinaisons
-    // que la maquette ne porte pas.
-    const couplesDejaEnMaquette = new Set(@json($_couplesExistants));
-
     $(document).ready(function() {
         // Initialisation de Select2
         $('.select2').select2({
@@ -349,91 +366,6 @@
 
         // Volume horaire géré dans le Planning Général
 
-        // ===== GESTION DE L'APERÇU DES COMBINAISONS =====
-        
-        // Fonction pour mettre à jour l'aperçu des combinaisons
-        function updateEditCombinationsPreview() {
-            const selectedFilieres = [];
-            const selectedNiveaux = [];
-            
-            $('.filiere-check:checked').each(function() {
-                const label = $(this).next('label').find('strong').text();
-                selectedFilieres.push({
-                    id: $(this).val(),
-                    name: label
-                });
-            });
-            
-            $('.niveau-check:checked').each(function() {
-                const label = $(this).next('label').find('strong').text();
-                selectedNiveaux.push({
-                    id: $(this).val(),
-                    name: label
-                });
-            });
-            
-            const previewDiv = $('#edit-combinations-preview');
-            
-            if (selectedFilieres.length === 0 || selectedNiveaux.length === 0) {
-                previewDiv.html(`
-                    <i class="fas fa-info-circle me-2"></i>
-                    Sélectionnez au moins une filière et un niveau pour voir les combinaisons possibles.
-                `).removeClass('alert-success').addClass('alert-info');
-                return;
-            }
-            
-            let aCreer = 0;
-            selectedFilieres.forEach(filiere => {
-                selectedNiveaux.forEach(niveau => {
-                    if (!couplesDejaEnMaquette.has(filiere.id + '-' + niveau.id)) { aCreer++; }
-                });
-            });
-
-            let combinationsHtml = `
-                <div class="d-flex align-items-center mb-3">
-                    <i class="fas fa-check-circle text-success me-2"></i>
-                    <strong>${selectedFilieres.length * selectedNiveaux.length} combinaison(s) sélectionnée(s)</strong>
-                </div>
-            `;
-
-            if (aCreer > 0) {
-                combinationsHtml += `
-                    <div class="alert alert-warning py-2 px-3 mb-3">
-                        <i class="fas fa-plus-circle me-1"></i>
-                        <strong>${aCreer}</strong> sera(ont) <strong>ajoutée(s)</strong> à la maquette
-                        si vous modifiez l'une des deux listes. Enregistrer sans y toucher n'ajoute rien.
-                        Décocher ne retire rien : le retrait d'une combinaison se fait sur l'écran Maquette.
-                    </div>
-                `;
-            }
-
-            combinationsHtml += '<div class="row">';
-
-            selectedFilieres.forEach(filiere => {
-                selectedNiveaux.forEach(niveau => {
-                    const existe = couplesDejaEnMaquette.has(filiere.id + '-' + niveau.id);
-                    combinationsHtml += `
-                        <div class="col-md-4 mb-2">
-                            <div class="badge ${existe ? 'bg-primary' : 'bg-warning text-dark'} text-wrap p-2">
-                                <i class="fas ${existe ? 'fa-link' : 'fa-plus'} me-1"></i>
-                                ${filiere.name} ↔ ${niveau.name}
-                                <small class="d-block fw-normal">${existe ? 'déjà en maquette' : 'à créer'}</small>
-                            </div>
-                        </div>
-                    `;
-                });
-            });
-            
-            combinationsHtml += '</div>';
-            
-            previewDiv.html(combinationsHtml).removeClass('alert-info').addClass('alert-success');
-        }
-
-        // Écouter les changements dans les checkboxes
-        $(document).on('change', '.filiere-check, .niveau-check', updateEditCombinationsPreview);
-        
-        // Mise à jour initiale
-        updateEditCombinationsPreview();
     });
 </script>
 @endsection

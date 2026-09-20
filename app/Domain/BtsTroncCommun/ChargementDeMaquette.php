@@ -180,6 +180,21 @@ final class ChargementDeMaquette
             'ordre_avant' => $existante?->ordre_bulletin,
             'semestre_avant' => $existante?->semestre,
             'semestre_apres' => $semestreVoulu,
+            // LES SEMESTRES QUE CE CHARGEMENT ORDONNE — et non ceux que la
+            // matiere couvre. La distinction porte tout le cas reel d'ESBTP
+            // Abidjan : « Mathematiques generales » est aux DEUX semestres en
+            // Geometre Topographe, 4e au premier et 1re au second. Sa
+            // couverture est donc « les deux » ; sa PLACE, elle, appartient au
+            // bulletin qu'on est en train d'ordonner.
+            //
+            // Les confondre rendait la place par semestre inatteignable : un
+            // chargement du S2 declarant « les deux » ecrivait le rang du S2
+            // dans le S1 aussi, et effacait celui qu'on venait d'y poser. Le
+            // test `une matiere des deux semestres garde une place par
+            // semestre` le prouve, et il etait rouge.
+            'semestres_ordonnes' => $semestreDuLot === null
+                ? SemestreDeMaquette::semestresCouverts($semestreVoulu)
+                : [$semestreDuLot],
             'semestre_libelle' => SemestreDeMaquette::libelle($semestreVoulu),
             'places_semestre_avant' => ESBTPMaquettePlaceSemestre::query()
                 ->where('filiere_id', $filiere->id)
@@ -197,6 +212,9 @@ final class ChargementDeMaquette
      * pas le meme rang. Le pivot, unique sur (matiere, filiere, niveau), ne
      * peut en retenir qu'une : charger le second semestre ecrasait le premier.
      *
+     * Elle ecrit les semestres que CE chargement ordonne (`semestres_ordonnes`),
+     * pas ceux que la matiere couvre. Voir le commentaire qui pose cette cle.
+     *
      * @param  array<string, mixed>  $ligne
      */
     private function poserLesPlacesParSemestre(
@@ -204,7 +222,7 @@ final class ChargementDeMaquette
         ESBTPNiveauEtude $niveau,
         array $ligne,
     ): void {
-        foreach (SemestreDeMaquette::semestresCouverts($ligne['semestre_apres']) as $semestre) {
+        foreach ($ligne['semestres_ordonnes'] ?? SemestreDeMaquette::semestresCouverts($ligne['semestre_apres']) as $semestre) {
             ESBTPMaquettePlaceSemestre::updateOrCreate(
                 [
                     'filiere_id' => $filiere->id,
