@@ -409,6 +409,61 @@ Pas d'accesseur et pas de `'heure_debut' => 'datetime'` dans `$casts` → c'est 
 
 ---
 
+### Piège #15 — une colonne absente d'une doublure SQLite rend `false`, elle ne lève pas
+
+**Symptôme** : un test unitaire à schéma écrit à la main échoue sur une erreur qui ne
+nomme pas la vraie cause — typiquement un `no such table` portant sur une table de
+**repli**, alors que la table fautive n'a rien à voir avec le changement.
+
+**Cause** : SQLite accepte un identifiant inconnu entre **guillemets doubles** et le
+traite comme une **chaîne littérale** (la « double-quoted string misfeature »). Or c'est
+exactement la façon dont Laravel cite les colonnes. Donc, sur une doublure à qui il
+manque une colonne :
+
+```sql
+-- la colonne n'existe pas dans la doublure
+WHERE "unite_enseignement_id" IS NULL   -->   WHERE 'unite_enseignement_id' IS NULL   -->   false
+```
+
+**Aucune erreur.** La requête rend zéro ligne, et le code part dans sa branche de repli
+— dont l'échec, lui, se voit. On cherche alors le défaut là où il n'est pas.
+
+**Incident fondateur (septembre 2026)** : le chantier de la fuite ECUE pose un
+`btsOnly()` (`whereNull('unite_enseignement_id')`) dans `BtsBulletinSubjectResolver`.
+Six tests d'`AcademicNoteCoverageServiceTest` sont passés au rouge sur
+`no such table: esbtp_classe_matiere` — le pivot plat du **repli** du résolveur. La
+colonne manquait au `Schema::create('esbtp_matieres', …)` de la doublure ; le code de
+production, lui, était juste.
+
+**Ce qui fait perdre le temps** : le message d'erreur désigne le repli, donc on suspecte
+le repli. La sonde qui tranche, elle, se pose sur la branche d'avant :
+
+```php
+error_log('brut='.$q->count().' bts='.$q->btsOnly()->count());
+error_log(json_encode(array_column(DB::select('PRAGMA table_info(esbtp_matieres)'), 'name')));
+```
+
+`brut=1 bts=0` **sans erreur** est la signature : la colonne n'est pas là.
+
+**La règle** : une doublure de table doit porter **toutes** les colonnes que le code
+filtre, pas seulement celles qu'il lit. Ajouter un filtre sur une colonne, c'est ajouter
+cette colonne à chaque schéma écrit à la main qui porte cette table.
+
+```bash
+# Les doublures de esbtp_matieres qui n'ont pas la colonne
+grep -rln "Schema::create('esbtp_matieres'" tests/ | while read f; do
+  grep -A12 "Schema::create('esbtp_matieres'" "$f" | grep -q unite_enseignement_id || echo "MANQUE $f"
+done
+```
+
+**Le corollaire, plus large** : ce silence ne se limite pas aux tests. Partout où une
+requête SQLite filtre une colonne qui pourrait ne pas exister, elle rend « rien » plutôt
+que d'échouer. Un `0` obtenu ainsi se confond avec un vrai `0` — c'est le même défaut
+que celui décrit dans `rien-en-dur.md` (« un montant nul est une valeur »), par un autre
+chemin.
+
+---
+
 ## Workflow systematic pour debug d'un bug "mes changements ne prennent pas effet"
 
 Quand tu vois le symptôme « mes logs/changements n'apparaissent pas », exécute ce checklist DANS L'ORDRE :
