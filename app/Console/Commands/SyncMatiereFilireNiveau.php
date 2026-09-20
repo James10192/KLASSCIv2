@@ -8,10 +8,14 @@ use Illuminate\Support\Facades\DB;
 /**
  * Reconstruit le pivot canonique depuis le produit des deux pivots plats.
  *
- * ATTENTION : cette commande ECRIT `esbtp_matiere_filiere_niveau` en `insert()`
- * brut, donc SANS passer par `LiaisonsDeMatiere::poser()` et sans son garde.
- * Elle est le contre-exemple de la phrase « poser() est le goulot unique »,
- * qui a ete ecrite et crue.
+ * ELLE SIMULE PAR DEFAUT depuis septembre 2026 : ecrire demande `--ecrire`.
+ * Ce qu'elle poserait n'est pas la maquette mais le PRODUIT de deux listes, et
+ * elle ne sait qu'ajouter — voir le commentaire de `handle()`.
+ *
+ * ATTENTION : quand on l'y autorise, elle ECRIT `esbtp_matiere_filiere_niveau`
+ * en `insert()` brut, donc SANS passer par `LiaisonsDeMatiere::poser()` et sans
+ * son garde. Elle est le contre-exemple de la phrase « poser() est le goulot
+ * unique », qui a ete ecrite et crue.
  *
  * Elle recree ce qu'un retrait vient d'enlever, et ce n'est pas theorique :
  * `LiaisonsDeMatiere::retirer()` ne touche VOLONTAIREMENT pas les pivots plats
@@ -25,13 +29,33 @@ use Illuminate\Support\Facades\DB;
  */
 class SyncMatiereFilireNiveau extends Command
 {
-    protected $signature = 'sync:matiere-filiere-niveau {--dry-run : Afficher sans insérer}';
+    protected $signature = 'sync:matiere-filiere-niveau
+        {--ecrire : Ecrire reellement — sans cette option, la commande simule}
+        {--dry-run : Conserve pour les scripts existants ; c\'est deja le defaut}';
 
-    protected $description = 'Synchronise esbtp_matiere_filiere_niveau depuis les pivots existantes (intersection filière×niveau par matière)';
+    protected $description = 'Simule (ou ecrit avec --ecrire) esbtp_matiere_filiere_niveau depuis le PRODUIT des deux pivots plats';
 
     public function handle()
     {
-        $dryRun = $this->option('dry-run');
+        // SIMULATION PAR DEFAUT, ET CE N'EST PAS UNE PRECAUTION DE PRINCIPE.
+        //
+        // Ce que cette commande ecrit n'est PAS la maquette : c'est le produit
+        // cartesien de deux listes independantes (les filieres d'une matiere x
+        // ses niveaux). Deux listes ne peuvent decrire qu'un rectangle plein,
+        // donc le produit SUR-DECLARE des qu'une matiere est enseignee en
+        // (filiere A, niveau 1) et (filiere B, niveau 2) : il fabrique aussi
+        // (A,2) et (B,1), que personne n'a demandes.
+        //
+        // Et elle ne fait qu'AJOUTER — un `insert()` conditionne a l'absence de
+        // la ligne, jamais de retrait. C'est un cliquet : chaque passage peut
+        // gonfler la maquette, aucun ne peut la degonfler. Combine au fait que
+        // `LiaisonsDeMatiere::retirer()` ne nettoie volontairement pas les
+        // pivots plats, un passage recree ce qu'un retrait vient d'enlever.
+        //
+        // Le contraire de ce que fait le reste du depot : `cleanup` LMD et
+        // `POST /bts/maquette/retirer` simulent par defaut. Cette commande
+        // ecrivait, elle, sans rien demander a personne.
+        $dryRun = ! $this->option('ecrire');
 
         $filieresByMatiere = DB::table('esbtp_matiere_filiere')->get()->groupBy('matiere_id');
         $niveauxByMatiere = DB::table('esbtp_matiere_niveau')->get()->groupBy('matiere_id');
@@ -89,6 +113,12 @@ class SyncMatiereFilireNiveau extends Command
 
         $action = $dryRun ? 'à insérer' : 'insérées';
         $this->info("Terminé : {$inserted} entrées {$action}, {$skipped} déjà existantes.");
+
+        if ($dryRun) {
+            $this->warn('SIMULATION — rien n\'a été écrit. Relancez avec --ecrire pour appliquer.');
+            $this->line('  Rappel : ces lignes viennent du PRODUIT de deux listes, pas de la maquette.');
+            $this->line('  Elles peuvent donc sur-déclarer, et cette commande n\'en retire jamais aucune.');
+        }
 
         // Un ecart qu'on ne dit pas ne se cherche pas. Le chiffre importe :
         // s'il est non nul, des elements LMD gardent des lignes dans les

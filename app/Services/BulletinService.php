@@ -3561,6 +3561,17 @@ class BulletinService
         //
         // Ponderer les deux cotes est un chantier a part, pas ce correctif.
         //
+        // CE QUI EST ALIGNE, ET CE QUI NE L'EST PAS. Aligner la ponderation ne
+        // rend PAS les deux chiffres egaux, et ce commentaire le laissait
+        // croire. Ils ne portent pas sur la meme POPULATION : la bande couvre
+        // tous les eleves du filtre, la colonne seulement ceux affiches a
+        // l'ecran (pagination comprise), et les deux ne lisent pas les memes
+        // enregistrements — la bande lit `esbtp_resultats`, la colonne repart
+        // des notes quand cette table est vide. Un ecart entre les deux reste
+        // donc normal. Ce qui est corrige, c'est qu'ils ne se contredisent plus
+        // pour une raison ARBITRAIRE (la derniere matiere lue, une ponderation
+        // qui depend de l'ecran ayant touche la ligne en dernier).
+        //
         // `rang` n'est PAS relu : c'est un rang PAR MATIERE, et le prendre pour
         // un rang de classe etait le meme defaut. Les rangs sont recalcules plus
         // bas a partir des moyennes corrigees.
