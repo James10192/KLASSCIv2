@@ -281,10 +281,6 @@ class ESBTPMatiereController extends Controller
             'coefficient' => 'nullable|numeric|min:0',
             'niveau_etude_id' => 'nullable|exists:esbtp_niveau_etudes,id',
             'filiere_id' => 'nullable|exists:esbtp_filieres,id',
-            'filieres' => 'nullable|array',
-            'filieres.*' => 'exists:esbtp_filieres,id',
-            'niveaux' => 'nullable|array',
-            'niveaux.*' => 'exists:esbtp_niveau_etudes,id',
             'liaisons' => 'nullable|array',
             'liaisons.*.filiere_id' => 'required_with:liaisons|exists:esbtp_filieres,id',
             'liaisons.*.niveau_id' => 'required_with:liaisons|exists:esbtp_niveau_etudes,id',
@@ -317,37 +313,24 @@ class ESBTPMatiereController extends Controller
         // Créer la nouvelle matière
         $matiere = ESBTPMatiere::create($validatedData);
 
-        // Gérer les liaisons multiple ou simples
-        $filiereIds = [];
-        $niveauIds = [];
-
-        // Priorité à la multi-sélection si elle existe
-        if ($request->has('filieres') && is_array($request->filieres)) {
-            $filiereIds = $request->filieres;
-        } elseif ($request->has('filiere_id') && $request->filiere_id) {
-            $filiereIds = [$request->filiere_id];
-        }
-
-        if ($request->has('niveaux') && is_array($request->niveaux)) {
-            $niveauIds = $request->niveaux;
-        } elseif ($request->has('niveau_etude_id') && $request->niveau_etude_id) {
-            $niveauIds = [$request->niveau_etude_id];
-        }
-
-        // Attacher les filières (mode legacy — cartésien)
-        if (! empty($filiereIds)) {
-            $matiere->filieres()->attach($filiereIds);
-        }
-
-        // Attacher les niveaux d'études (mode legacy — cartésien)
-        if (! empty($niveauIds)) {
-            $matiere->niveaux()->attach($niveauIds);
-        }
-
-        // Et dans la maquette, que les écrans et le bulletin lisent. Sans
-        // cela, une matière créée par les deux listes n'apparaissait nulle
-        // part — voir `poserLesCouplesDuFormulaire()`.
-        $this->poserLesCouplesDuFormulaire($matiere, $filiereIds, $niveauIds, $service);
+        // CE FORMULAIRE N'A QU'UN SEUL MODE, ET C'EST UNE CORRECTION.
+        //
+        // Il a porte une branche « deux listes independantes » — des filieres,
+        // des niveaux — dont le produit etait ecrit dans les deux pivots plats
+        // PUIS dans le pivot canonique. Le formulaire ne l'emet plus depuis
+        // qu'il se remplit couple par couple : son inventaire complet est
+        // `name`, `code`, `description`, `couleur`, `is_active`,
+        // `type_formation`, et les `liaisons[i][...]` injectes par son script.
+        //
+        // La branche etait donc morte, mais son cout n'etait pas le code mort :
+        // trois paragraphes la justifiaient en decrivant un ecran qui n'existe
+        // plus (« Apercu des combinaisons »), sur l'invariant central de ce
+        // chantier — qui a le droit d'ecrire `esbtp_matiere_filiere_niveau`.
+        // Le prochain lecteur en aurait conclu que cet ecran en est un
+        // ecrivain legitime, et serait alle chercher la contamination ailleurs.
+        //
+        // Les pivots plats restent tenus, mais par `LiaisonsDeMatiere::poser()`
+        // et en AJOUT seulement : c'est lui qui sait ce qu'il ecrit.
 
         // Mode liaisons précises (couples filière × niveau du formulaire de
         // création). Le rattachement, avec sa tenue des pivots plats, vit dans
@@ -526,9 +509,9 @@ class ESBTPMatiereController extends Controller
 
         // La maquette REELLE de cette matiere, telle que le bulletin la lit.
         //
-        // Cet ecran ne l'ecrit pas — voir `poserLesCouplesDuFormulaire()`. Il
-        // la MONTRE, et renvoie vers celui qui sait la modifier couple par
-        // couple. Auparavant il affichait a la place le produit cartesien des
+        // Cet ecran ne l'ecrit pas, et celui de creation non plus : la maquette
+        // ne s'ecrit que couple par couple. Il la MONTRE, et renvoie vers celui
+        // qui sait la modifier. Auparavant il affichait a la place le produit cartesien des
         // deux listes cochees, qui invente des combinaisons que la maquette ne
         // porte pas : l'ecran promettait donc un rattachement qu'il n'avait pas
         // les moyens de tenir, et l'enregistrement le posait pour de bon.
@@ -614,7 +597,8 @@ class ESBTPMatiereController extends Controller
         // `/esbtp/matieres/classification`, vers lequel la fiche pointe
         // maintenant, presélectionné sur les couples de cette matiere.
         //
-        // La creation, elle, garde l'ecriture : voir `store()`.
+        // La creation non plus n'ecrit la maquette : son formulaire poste des
+        // couples nommes (`liaisons[]`), jamais deux listes a croiser.
 
         // Rediriger avec un message de succès
         return redirect()->route('esbtp.matieres.index')
@@ -652,58 +636,6 @@ class ESBTPMatiereController extends Controller
         }
 
         return [$filiereIds, $niveauIds];
-    }
-
-    /**
-     * Écrit dans la maquette les combinaisons du formulaire de CRÉATION.
-     *
-     * Le formulaire demande deux listes indépendantes — des filières, des
-     * niveaux — et affiche sous elles un « Aperçu des combinaisons » qui en
-     * montre le produit. C'est donc bien ce produit qu'il promet d'enregistrer.
-     * Il ne l'écrivait pourtant que dans les deux pivots plats, jamais dans le
-     * pivot canonique. Tant que les écrans lisaient eux aussi le produit des
-     * pivots plats, cela ne se voyait pas ; depuis qu'ils lisent la maquette,
-     * cocher une filière affichait « enregistrée avec succès » sans que la
-     * matière apparaisse nulle part.
-     *
-     * RÉSERVÉ À `store()`, ET CE N'EST PAS UNE SYMÉTRIE OUBLIÉE. La première
-     * version l'appelait aussi depuis `update()`, et c'était une régression :
-     * là, les cases arrivent PRÉCOCHÉES depuis les deux pivots plats, dont le
-     * produit sur-rapporte. Une matière dont la maquette ne porte qu'un couple
-     * en gagnait trois au premier enregistrement venu — et rien ici ne sait
-     * retirer, puisque deux listes ne décrivent pas un ensemble de couples qui
-     * n'est pas un rectangle plein. Roue à cliquet sur la table que lit le
-     * bulletin.
-     *
-     * À la création, rien de tout cela : il n'y a pas de maquette antérieure à
-     * sur-rapporter, les deux listes sont ce que la personne vient de saisir,
-     * et sans cette écriture la matière créée n'apparaît nulle part. Le
-     * formulaire de création offre par ailleurs le mode `liaisons[]`, qui
-     * nomme des couples précis quand le rectangle plein ne convient pas.
-     *
-     * @param  list<int>|null  $filiereIds
-     * @param  list<int>|null  $niveauIds
-     * @return int  Nombre de couples posés
-     */
-    private function poserLesCouplesDuFormulaire(
-        ESBTPMatiere $matiere,
-        ?array $filiereIds,
-        ?array $niveauIds,
-        LiaisonsDeMatiere $service,
-    ): int {
-        if (empty($filiereIds) || empty($niveauIds)) {
-            return 0;
-        }
-
-        $poses = 0;
-        foreach (array_unique($filiereIds) as $filiereId) {
-            foreach (array_unique($niveauIds) as $niveauId) {
-                $service->poser((int) $matiere->id, (int) $filiereId, (int) $niveauId);
-                $poses++;
-            }
-        }
-
-        return $poses;
     }
 
     /**
