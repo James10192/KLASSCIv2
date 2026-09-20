@@ -245,7 +245,7 @@
                                                     <td>
                                                         <input type="text" class="form-control form-control-sm @error('resultats.' . $resultat->id . '.appreciation') is-invalid @enderror"
                                                                name="resultats[{{ $resultat->id }}][appreciation]"
-                                                               value="{{ old('resultats.' . $resultat->id . '.appreciation', $resultat->commentaire) }}"
+                                                               value="{{ old('resultats.' . $resultat->id . '.appreciation', $resultat->appreciation) }}"
                                                                maxlength="255">
                                                     </td>
                                                 </tr>

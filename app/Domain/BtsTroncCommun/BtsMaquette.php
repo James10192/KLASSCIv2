@@ -16,12 +16,13 @@ use Illuminate\Support\Collection;
  * cursus, pas une planification. Le planning general (`esbtp_planifications_
  * academiques`, qui est annuel) peut l'alimenter par un import explicite.
  *
- * ETAT D'AVANCEMENT — a lire avant de s'y fier. Cette classe repond a la
- * question « qu'est-ce qui est prevu, et a quel semestre ». Elle est pour
- * l'instant consommee par l'ecran de maquette (`isRenseignee`) ; la composition
- * du bulletin et le calcul de la couverture des notes s'y brancheront ensuite.
- * Tant que ce n'est pas fait, renseigner un semestre ne change ni le bulletin
- * ni la couverture — et le CHANGELOG le dit ainsi.
+ * CE QUI LA CONSOMME — c'est branche, contrairement a ce que ce bloc a
+ * longtemps annonce. Outre l'ecran de maquette (`isRenseignee`), la
+ * composition du bulletin passe par `BulletinSubjectRowsCompleter`, appele par
+ * `BulletinService` avec le semestre de la periode, et la couverture des notes
+ * par `ExpectedSubjectsResolver`. Renseigner un semestre CHANGE donc le
+ * bulletin — mais seulement une fois les semestres valides, l'etat ETAT_COMPLET
+ * ci-dessous etant ce qui ouvre la vanne.
  *
  * TROIS ETATS, ET NON DEUX. Un combo n'est « renseigne » que lorsque quelqu'un
  * a valide ses semestres : c'est la colonne `semestre_renseigne` qui le dit, pas
@@ -176,8 +177,13 @@ final class BtsMaquette
         foreach ($lignes as $ligne) {
             $matiereId = (int) $ligne->matiere_id;
             // Une ligne jamais validee vaut « les deux semestres » : une matiere
-            // ajoutee au combo apres la validation reste visible partout.
-            $semestre = $ligne->semestre_renseigne ? $ligne->semestre : null;
+            // ajoutee au combo apres la validation reste visible partout. La
+            // regle vit dans `SemestreDeMaquette`, et pas ici : elle avait ete
+            // reecrite trois fois, et la troisieme divergeait.
+            $semestre = SemestreDeMaquette::declarationEffective(
+                $ligne->semestre === null ? null : (int) $ligne->semestre,
+                (bool) $ligne->semestre_renseigne,
+            );
             $carte[$matiereId][] = $semestre === null ? null : (int) $semestre;
         }
 
@@ -194,7 +200,7 @@ final class BtsMaquette
         }
 
         foreach ($semestresDeclares as $declare) {
-            if ($declare === null || $declare === $semestre) {
+            if (SemestreDeMaquette::estPrevueAu($declare, $semestre)) {
                 return true;
             }
         }

@@ -451,9 +451,6 @@ class ESBTPClasseController extends Controller
             "parcours.mention.domaine",
         ]);
 
-        $classeFiliereId = $classe->filiere_id;
-        $classeNiveauId = $classe->niveau_etude_id;
-
         // Periode du toggle Suivi des heures (Semestre 1 / Semestre 2 / Année).
         // Lu en amont pour pouvoir filtrer $lmdVolumeBudget côté serveur — sinon les blocs
         // "Répartition par catégorie" et "Détail par UE" affichent l'année entière même
@@ -529,35 +526,77 @@ class ESBTPClasseController extends Controller
                 ->forClasse($lmdMatieres, $lmdVolumeBudget);
         }
 
-        $combinationMatieres = ESBTPMatiere::with([
+        // EXACTEMENT la liste du bulletin, par le meme resolveur.
+        //
+        // Ce listing croisait les deux pivots plats (`whereHas(filieres)` ET
+        // `whereHas(niveaux)`), dont le produit cartesien invente des couples
+        // absents de la maquette — ce que `diagnoseLiaisons` appelle des
+        // combinaisons fantomes. Lire la maquette du seul combo de la classe ne
+        // suffisait pas non plus : le bulletin fait l'union avec le tronc
+        // commun parent, ecarte les matieres classees « specialite » sur un
+        // combo de tronc commun, et retombe sur `esbtp_classe_matiere` pour les
+        // classes historiques. L'onglet Matieres montrait donc une troisieme
+        // liste, ni celle de la maquette ni celle du bulletin.
+        // Resolveur BTS : une classe LMD n'en tire rien (la vue lit ses UE par
+        // `MatiereTreeBuilder` bien avant d'arriver ici), et l'appeler quand
+        // meme coutait deux requetes dont le resultat partait a la poubelle.
+        // Une collection ELOQUENT, pas `collect()` : `loadMissing()` est appele
+        // juste en dessous et n'existe que sur celle-la.
+        $estBtsPourLOnglet = ! \App\Domain\Academique\CoherenceSystemeAcademique::classeEstLmd($classe->systeme_academique);
+
+        $combinationMatieres = $estBtsPourLOnglet
+            ? app(\App\Domain\BtsTroncCommun\BtsBulletinSubjectResolver::class)->subjectsForClasse($classe)
+            : new \Illuminate\Database\Eloquent\Collection();
+
+        // CE REPLI EXISTE POUR NE VIDER L'ONGLET DE PERSONNE.
+        //
+        // `subjectsForClasse()` lit deux sources : la maquette canonique, puis
+        // `esbtp_classe_matiere`. Une classe qui n'a NI l'une NI l'autre mais
+        // porte des lignes dans les deux pivots plats voyait jusqu'ici une liste,
+        // et n'aurait plus rien vu.
+        //
+        // MESURE (19 septembre 2026, lecture seule, classe par classe) :
+        // `esbtp-abidjan` 64 classes BTS sur 64, `esbtp-yakro` 50 sur 50 et
+        // `presentation` 8 sur 8 ne changent pas d'etat — celles qui affichent
+        // une liste la gardent, les trois qui n'affichent rien n'affichaient
+        // deja rien. Mais sur `rostan`, les 23 classes BTS ont
+        // `esbtp_classe_matiere` VIDE, et sa maquette canonique n'est pas
+        // lisible a distance. Plutot que de parier sur elle, on garde
+        // l'ancienne liste comme dernier recours.
+        //
+        // `btsOnly()` est ce qui compte ici : l'ancienne liste croisait les deux
+        // pivots PLATS, que `LiaisonsDeMatiere::retirer()` ne nettoie pas — c'est
+        // par la qu'une ECUE retiree de la maquette ressortait.
+        //
+        // CE N'EST PAS EXACTEMENT LA MEME LISTE QU'AVANT, et le dire serait faux :
+        // l'ancien code n'exigeait pas `niveau_etude_id`, donc une classe sans
+        // niveau voyait toutes les matieres actives de sa filiere. Ce repli exige
+        // les deux et rend vide sinon — c'est plus juste, pas identique.
+        if ($estBtsPourLOnglet && $combinationMatieres->isEmpty() && $classe->filiere_id && $classe->niveau_etude_id) {
+            $combinationMatieres = \App\Models\ESBTPMatiere::query()
+                ->btsOnly()
+                ->where('is_active', true)
+                ->whereHas('filieres', fn ($q) => $q->where('esbtp_filieres.id', $classe->filiere_id))
+                ->whereHas('niveaux', fn ($q) => $q->where('esbtp_niveau_etudes.id', $classe->niveau_etude_id))
+                ->orderBy('name')
+                ->get();
+        }
+
+        // La vue affiche filieres et niveaux de chaque matiere.
+        $combinationMatieres->loadMissing([
             "filieres:id,name,code",
             "niveaux:id,name,code",
-        ])
-            ->where("is_active", true)
-            ->when($classeFiliereId, function ($query) use ($classeFiliereId) {
-                $query->whereHas("filieres", function ($q) use (
-                    $classeFiliereId,
-                ) {
-                    $q->where("esbtp_filieres.id", $classeFiliereId);
-                });
-            })
-            ->when($classeNiveauId, function ($query) use ($classeNiveauId) {
-                $query->whereHas("niveaux", function ($q) use (
-                    $classeNiveauId,
-                ) {
-                    $q->where("esbtp_niveau_etudes.id", $classeNiveauId);
-                });
-            })
-            ->orderBy("name")
-            ->get()
-            ->map(function (ESBTPMatiere $matiere) {
-                $matiere->setAttribute(
-                    "classe_coefficient",
-                    $matiere->coefficient ??
-                        ($matiere->coefficient_default ?? 1),
-                );
-                return $matiere;
-            });
+        ]);
+
+        $combinationMatieres = $combinationMatieres->map(function (
+            ESBTPMatiere $matiere,
+        ) {
+            $matiere->setAttribute(
+                "classe_coefficient",
+                $matiere->coefficient ?? ($matiere->coefficient_default ?? 1),
+            );
+            return $matiere;
+        });
 
         $planningMatiere = $this->planningService->buildPlanningMatierePourClasse(
             $classe,
@@ -1017,12 +1056,29 @@ class ESBTPClasseController extends Controller
                 return $matiere;
             });
 
+        // Listing GLOBAL : sans garde, ce panneau propose les elements
+        // constitutifs LMD a cote des matieres BTS — et les cocher les ecrit
+        // dans `esbtp_classe_matiere`, que le resolveur du bulletin relit en
+        // repli. C'est le chemin le plus court entre « je coche » et « une
+        // matiere LMD s'imprime sur un bulletin BTS ».
+        //
+        // La garde ne vaut QUE pour les matieres a rattacher. Celles qui le
+        // sont deja restent affichees telles quelles : les filtrer ici rendrait
+        // une ECUE deja attachee impossible a detacher.
+        // Le filtre ne vaut que pour une classe BTS. Cet ecran n'a aucune garde
+        // sur `systeme_academique` : l'appliquer sans condition aurait fait
+        // disparaitre les ECUE du panneau d'une classe LMD, alors que le defaut
+        // qu'on ferme ici est strictement BTS. Une classe LMD garde donc
+        // exactement ce qu'elle voyait avant.
+        $estBts = strtoupper((string) ($classe->systeme_academique ?? 'BTS')) !== 'LMD';
+
         $availableMatieres = ESBTPMatiere::with([
             "filieres:id,name,code",
             "niveaux:id,name,code",
             "liaisonsFilieresNiveaux.filiere:id,name,code",
             "liaisonsFilieresNiveaux.niveauEtude:id,name,code",
         ])
+            ->when($estBts, fn ($q) => $q->btsOnly())
             ->where("is_active", true)
             ->orderBy("name")
             ->get()

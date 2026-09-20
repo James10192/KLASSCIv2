@@ -2,24 +2,48 @@
 <script>
 function matiereClassification() {
     return {
-        filiereId: '',
-        niveauId: '',
+        // Presélection depuis la chaîne de requête, pour que l'écran soit
+        // citable : `?filiere_id=3&niveau_id=2` ouvre directement la maquette
+        // de ce couple. Le serveur a validé les deux, ce ne sont pas des
+        // valeurs libres. Cast en chaîne parce que les `<option value>` en
+        // sont, et qu'un entier ne s'y retrouverait pas sélectionné.
+        filiereId: @json((string) ($filiereChoisie ?? '')),
+        niveauId: @json((string) ($niveauChoisi ?? '')),
         loading: false,
         saving: false,
         loaded: false,
         isTroncCommun: false,
+        // Cette filiere a-t-elle un tronc commun parent dont les semestres
+        // doivent AUSSI etre valides pour que la maquette s'applique ?
+        // Calcule par le serveur : lui seul connait `parent_id`.
+        dependDuTroncCommun: false,
         filiereName: '',
         matieres: [],
+        // ECUE LMD posees par erreur sur cette maquette BTS. Tenues a part des
+        // `matieres` : elles ne sont ni classables ni ordonnables, la seule
+        // action qui a du sens sur elles est le retrait.
+        intrusLmd: [],
         kpis: { total: 0, tronc_commun: 0, specialite: 0, non_classe: 0 },
         maquette: { renseignee: false, semestre_1: 0, semestre_2: 0 },
         planning: null,
         apercuOuvert: false,
         apercu: { lignes: [], hors_maquette: [], changements: 0, empreinte: null },
+        ajoutOuvert: false,
+        ajoutChargement: false,
+        ajoutRecherche: '',
+        ajoutDisponibles: [],
+        ajoutSelection: [],
         get hasSuggestions() { return this.matieres.some(m => m.suggested); },
 
         init() {
             this.$watch('filiereId', () => this.tryLoad());
             this.$watch('niveauId', () => this.tryLoad());
+
+            // Les observateurs ne se déclenchent qu'au CHANGEMENT : une valeur
+            // posée à l'initialisation ne les réveille pas. Sans cet appel, le
+            // couple venu de la chaîne de requête s'affichait dans les deux
+            // listes sans que rien ne se charge.
+            this.tryLoad();
         },
 
         // Le composant au-select évalue son x-model dans son propre scope : on capte
@@ -66,6 +90,7 @@ function matiereClassification() {
                 if (!res.ok) throw new Error('Chargement impossible.');
                 const data = await res.json();
                 this.isTroncCommun = !!data.is_tronc_commun;
+                this.dependDuTroncCommun = !!data.depend_du_tronc_commun;
                 this.filiereName = data.filiere || '';
                 this.matieres = (data.matieres || []).map(m => ({
                     ...m,
@@ -73,6 +98,7 @@ function matiereClassification() {
                     classification: m.classification ?? (m.suggested ?? null),
                 }));
                 this.maquette = data.maquette || { renseignee: false, semestre_1: 0, semestre_2: 0 };
+                this.intrusLmd = data.intrus_lmd || [];
                 this.planning = data.planning || null;
                 this.recomputeKpis();
                 this.loaded = true;
@@ -238,7 +264,189 @@ function matiereClassification() {
             });
         },
 
+        // --- Ajout à la maquette -----------------------------------------
+
+        async ouvrirAjout() {
+            this.ajoutOuvert = true;
+            this.ajoutRecherche = '';
+            this.ajoutSelection = [];
+            this.ajoutChargement = true;
+            try {
+                const url = "{{ route('esbtp.matieres.available-for-combination') }}"
+                    + "?filiere_id=" + encodeURIComponent(this.filiereId)
+                    + "&niveau_id=" + encodeURIComponent(this.niveauId);
+                const res = await fetch(url, { headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } });
+                const data = await res.json();
+                if (!res.ok || !data.success) throw new Error(data.message || 'Chargement impossible.');
+                this.ajoutDisponibles = data.matieres || [];
+            } catch (e) {
+                this.notify(e.message, 'error');
+                this.ajoutDisponibles = [];
+            } finally {
+                this.ajoutChargement = false;
+            }
+        },
+
+        fermerAjout() {
+            this.ajoutOuvert = false;
+            this.ajoutSelection = [];
+        },
+
+        /** Les matières proposées, filtrées par la recherche. */
+        ajoutFiltrees() {
+            const q = (this.ajoutRecherche || '').trim().toLowerCase();
+            if (!q) return this.ajoutDisponibles;
+            return this.ajoutDisponibles.filter(m =>
+                (m.name || '').toLowerCase().includes(q)
+                || (m.code || '').toLowerCase().includes(q)
+            );
+        },
+
+        basculerAjout(id) {
+            const i = this.ajoutSelection.indexOf(id);
+            if (i === -1) this.ajoutSelection.push(id);
+            else this.ajoutSelection.splice(i, 1);
+        },
+
+        async appliquerAjout() {
+            if (this.ajoutSelection.length === 0) return;
+            this.saving = true;
+            try {
+                const res = await fetch("{{ route('esbtp.matieres.add-to-combination') }}", {
+                    method: 'POST',
+                    headers: this.entetes(),
+                    body: JSON.stringify({
+                        matiere_ids: this.ajoutSelection,
+                        combinations: [{ filiere_id: this.filiereId, niveau_id: this.niveauId }],
+                    }),
+                });
+                const data = await res.json();
+                if (!res.ok || !data.success) throw new Error(data.message || 'Ajout impossible.');
+                this.notify(data.message, 'success');
+                this.fermerAjout();
+                await this.loadCombo();
+            } catch (e) {
+                this.notify(e.message, 'error');
+            } finally {
+                this.saving = false;
+            }
+        },
+
+        // --- Retrait de la maquette --------------------------------------
+
+        /**
+         * Retire une matière du combo courant.
+         *
+         * Le serveur refuse d'abord si la matière porte des évaluations ici, et
+         * renvoie combien : on redemande alors, une seule fois, avec le nombre
+         * sous les yeux. Une note retirée de la maquette reste en base mais
+         * n'apparaît plus au bulletin, et c'est ce qu'il faut avoir compris
+         * avant de valider.
+         */
+        async retirerDeLaMaquette(m, malgreLesNotes = false) {
+            // `iiConfirm` et non `confirm()` : ce parcours enchaine DEUX
+            // confirmations quand la matiere porte des evaluations — et c'est
+            // le cas courant, l'ECUE qui a motive cet ecran en portait 34.
+            // A partir du second dialogue natif, le navigateur propose
+            // « Empecher cette page de creer des boites de dialogue
+            // supplementaires » ; coche, le second `confirm()` rend `false` en
+            // SILENCE, et le retrait devient impossible — sur le seul ecran
+            // d'ou la ligne peut sortir.
+            if (!malgreLesNotes && !(await window.iiConfirm({
+                title: 'Retirer de la maquette',
+                message: 'Retirer « ' + m.name + ' » de cette maquette ?',
+                confirmLabel: 'Retirer',
+                danger: true,
+            }))) return;
+
+            this.saving = true;
+            try {
+                const res = await fetch("{{ route('esbtp.matieres.classification.retirer') }}", {
+                    method: 'POST',
+                    headers: this.entetes(),
+                    body: JSON.stringify({
+                        filiere_id: this.filiereId,
+                        niveau_id: this.niveauId,
+                        matiere_id: m.matiere_id,
+                        malgre_les_notes: malgreLesNotes,
+                    }),
+                });
+                const data = await res.json();
+
+                if (!res.ok && data.confirmation_requise) {
+                    this.saving = false;
+                    if (await window.iiConfirm({
+                        title: 'Cette matière porte des évaluations',
+                        message: data.message,
+                        confirmLabel: 'Retirer quand même',
+                        danger: true,
+                    })) {
+                        await this.retirerDeLaMaquette(m, true);
+                    }
+                    return;
+                }
+
+                if (!res.ok || !data.success) throw new Error(data.message || 'Retrait impossible.');
+
+                this.notify(data.message, 'success');
+                await this.loadCombo();
+            } catch (e) {
+                this.notify(e.message, 'error');
+            } finally {
+                this.saving = false;
+            }
+        },
+
         // --- Enregistrement ---------------------------------------------
+
+        /**
+         * Valider les semestres n'est pas un enregistrement de plus : c'est le
+         * geste qui OUVRE la vanne. Tant que le combo n'est pas validé, le
+         * bulletin et la couverture des notes ignorent la maquette ; une fois
+         * validé, ils la lisent. Une matière posée au semestre 1 sort donc du
+         * bulletin du semestre 2, et réciproquement.
+         *
+         * Le cas qui impose cette confirmation est mesuré, pas supposé : chez
+         * ESBTP Abidjan, dix matières de Bâtiment 2e année sont figées au
+         * semestre 2 par un chargement fautif. Valider sans le savoir les
+         * retirerait du bulletin du semestre 1 de toute la classe.
+         */
+        async validerLesSemestres() {
+            const s1 = this.matieres.filter(m => Number(m.semestre) === 1).length;
+            const s2 = this.matieres.filter(m => Number(m.semestre) === 2).length;
+            const deux = this.matieres.length - s1 - s2;
+
+            // `BtsMaquette::etatPourClasse()` exige que TOUS les combos de la
+            // classe soient renseignes. Le predicat vient du SERVEUR
+            // (`depend_du_tronc_commun`, derive de `troncCommunUnionFiliereIds`)
+            // et non de `is_tronc_commun` : une filiere normale sans parent
+            // tronc commun — la forme la plus courante — n'a qu'un combo et
+            // s'applique immediatement. S'y tromper faisait annoncer « rien ne
+            // s'appliquera » a l'instant ou tout s'applique, ce qui est pire
+            // encore que de ne rien annoncer.
+            const tete = this.dependDuTroncCommun
+                ? 'Valider les semestres appliquera la maquette au bulletin et au suivi des notes '
+                  + 'des que les semestres du tronc commun parent seront valides eux aussi.'
+                : 'Valider les semestres applique la maquette au bulletin et au suivi des notes.';
+
+            // UNE PHRASE, PAS DES PUCES. `iiConfirm` rend son message en
+            // `textContent` : du HTML s'y afficherait tel quel, et un `\n` y
+            // serait avale faute de `white-space: pre-line`. Une liste a puces
+            // n'avait de toute facon rien a faire dans la boite native d'ou elle
+            // vient — elle y etait illisible et non stylable.
+            const message = tete
+                + ' ' + s1 + ' matière(s) au semestre 1 seulement sortiront du bulletin du semestre 2 ; '
+                + s2 + ' matière(s) au semestre 2 seulement sortiront du bulletin du semestre 1 ; '
+                + deux + ' matière(s) sans semestre restent aux deux.';
+
+            if (!(await window.iiConfirm({
+                title: 'Valider les semestres',
+                message,
+                confirmLabel: 'Valider',
+                danger: true,
+            }))) return;
+            await this.save(true);
+        },
 
         /** `validerSemestres` marque le combo comme renseigné : c'est un geste explicite. */
         async save(validerSemestres = false) {

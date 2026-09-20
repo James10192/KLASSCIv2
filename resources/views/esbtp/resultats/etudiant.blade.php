@@ -27,6 +27,7 @@
         // niveaux) = OR-logique sur les combinaisons → IGC liée à GTP-1A + IGC liée
         // à GBAT-2A étaient considérées comme liée à GTP-2A à tort.
         $coeffMatieresLiees = \App\Models\ESBTPMatiere::where('is_active', true)
+            ->btsOnly()
             ->whereHas('liaisonsFilieresNiveaux', function ($q) use ($coeffFiliere, $coeffNiveau) {
                 $q->where('filiere_id', $coeffFiliere->id)
                   ->where('niveau_etude_id', $coeffNiveau->id);
@@ -36,7 +37,15 @@
 
         $idsLiees = $coeffMatieresLiees->pluck('id');
 
+        // `btsOnly()` ici AUSSI, et pas par symetrie : sans lui, le filtre pose
+        // au-dessus AGGRAVE l'ecran. Une ECUE LMD portant une evaluation sur
+        // cette classe etait auparavant dans `$idsLiees`, donc exclue de cette
+        // seconde liste. Filtrer la premiere l'en fait sortir : elle remonte
+        // alors dans le bloc « hors combinaison », ou l'ecran invite a lui
+        // poser un coefficient. Le garde n'aurait pas ferme la porte, il
+        // aurait deplace la matiere d'une piece a l'autre.
         $coeffMatieresEvals = \App\Models\ESBTPMatiere::where('is_active', true)
+            ->btsOnly()
             ->whereHas('evaluations', fn($q) => $q->where('classe_id', $classe->id))
             ->whereNotIn('id', $idsLiees)
             ->orderBy('name')

@@ -5,6 +5,7 @@ namespace App\Observers;
 use App\Jobs\RecomputeStudentResultatJob;
 use App\Models\ESBTPNote;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Déclenche un recalcul automatique du résultat de l'étudiant à chaque
@@ -84,6 +85,22 @@ class ESBTPNoteObserver
                 source: 'observer',
                 triggeredBy: auth()->id(),
             )->afterCommit();
+        } catch (ValidationException $e) {
+            // Le recalcul a bien demarre, puis REFUSE d'ecrire : la matiere de
+            // l'evaluation est etrangere au systeme academique de la classe
+            // (garde de `ESBTPResultat`). En file `sync`, le job tourne dans ce
+            // `try` et son refus remonte ici.
+            //
+            // Le journaliser comme « dispatch failed » enverrait chercher du
+            // cote de la file d'attente, ou il n'y a rien — c'est exactement le
+            // piege #12 de `klassci-debugging-discipline.md` : un rattrapage qui
+            // degrade doit dire CE QU'IL a rattrape, sinon on ne cherche meme pas.
+            Log::warning('ESBTPNoteObserver: recalcul refuse — matiere etrangere au systeme academique de la classe', [
+                'note_id' => $note->id,
+                'etudiant_id' => $note->etudiant_id,
+                'evaluation_id' => $note->evaluation_id,
+                'error' => $e->getMessage(),
+            ]);
         } catch (\Throwable $e) {
             // Ne JAMAIS bloquer le save() de la note pour un échec de dispatch.
             Log::warning('ESBTPNoteObserver: dispatch failed', [

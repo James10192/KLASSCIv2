@@ -772,11 +772,9 @@ class CLIBtsTroncCommunController extends BaseApiController
         $bulletin->user_id = $userId;
         $bulletin->save();
 
-        ESBTPResultatMatiere::updateOrCreate(
-            [
-                'bulletin_id' => $bulletin->id,
-                'matiere_id' => $matiere->id,
-            ],
+        ESBTPResultatMatiere::poserSurLeBulletin(
+            (int) $bulletin->id,
+            (int) $matiere->id,
             [
                 'moyenne' => $moyenne,
                 'coefficient' => $coefficient,

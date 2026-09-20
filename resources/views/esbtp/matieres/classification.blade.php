@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Affectation Tronc Commun / Spécialité - KLASSCI')
+@section('title', 'Maquette du bulletin - KLASSCI')
 
 @php
     $filiereOptions = $filieres->mapWithKeys(fn ($f) => [$f->id => $f->name . ($f->is_tronc_commun ? ' (Tronc commun)' : '')])->all();
@@ -58,6 +58,38 @@
     .mtc-suggest { font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .03em;
         color: #a5670a; background: rgba(245,158,11,.12); border: 1px solid rgba(245,158,11,.28);
         padding: .1rem .45rem; border-radius: 5px; }
+
+    /* Choix des matières à rattacher */
+    .mtc-ajout-recherche { width: 100%; padding: .55rem .8rem; border: 1px solid #d7e0ec; border-radius: 9px;
+        font-size: .86rem; color: #1e293b; margin-bottom: .75rem; }
+    .mtc-ajout-recherche:focus { outline: none; border-color: #0453cb; box-shadow: 0 0 0 3px rgba(4,83,203,.1); }
+    .mtc-ajout-ligne { display: flex; align-items: center; gap: .6rem; padding: .5rem .65rem; border-radius: 8px;
+        cursor: pointer; font-size: .88rem; color: #1e293b; }
+    .mtc-ajout-ligne:hover { background: rgba(4,83,203,.05); }
+    .mtc-ajout-ligne--prise { color: #94a3b8; cursor: not-allowed; }
+    .mtc-ajout-ligne--prise:hover { background: transparent; }
+    .mtc-ajout-prise { margin-left: auto; font-size: .7rem; color: #64748b; }
+
+    /* Intrus LMD : couleur semantique danger, parce que la ligne fausse un
+       bulletin deja imprime. Ce n'est pas de la decoration. */
+    .mtc-intrus { border: 1px solid rgba(220,38,38,.28); background: rgba(220,38,38,.05);
+        border-radius: 12px; padding: .9rem 1rem; margin-bottom: 1rem; }
+    .mtc-intrus-head { display: flex; align-items: flex-start; gap: .65rem; color: #b91c1c; }
+    .mtc-intrus-head i { margin-top: .15rem; }
+    .mtc-intrus-head strong { display: block; font-size: .9rem; }
+    .mtc-intrus-head small { display: block; color: #64748b; font-size: .78rem; margin-top: .2rem; }
+    .mtc-intrus-row { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap;
+        margin-top: .6rem; padding-top: .6rem; border-top: 1px solid rgba(220,38,38,.15); }
+    .mtc-intrus-row .mtc-row-name { flex: 1; min-width: 0; }
+
+    /* Retrait d'une matière de la maquette. Rouge assumé : l'action est
+       destructive, et c'est la convention universelle — la palette monochrome
+       ne vaut que pour le décor. */
+    .mtc-retirer { flex-shrink: 0; width: 30px; height: 30px; border-radius: 8px; border: 1px solid #e2e8f0;
+        background: #fff; color: #94a3b8; font-size: .78rem; cursor: pointer; transition: all .15s ease;
+        display: inline-flex; align-items: center; justify-content: center; }
+    .mtc-retirer:hover:not(:disabled) { border-color: rgba(220,38,38,.35); background: rgba(220,38,38,.06); color: #dc2626; }
+    .mtc-retirer:disabled { opacity: .45; cursor: not-allowed; }
 
     /* Toggle segmenté TC / Spé — état actif via :class, jamais :style inline */
     .mtc-seg { display: inline-flex; border: 1px solid #d7e0ec; border-radius: 9px; overflow: hidden; flex-shrink: 0; }
@@ -127,6 +159,28 @@
     .mtc-toast--success { background: #0d9f74; }
     .mtc-toast--error { background: #dc2626; }
     [x-cloak] { display: none !important; }
+    /* ===== Téléphone =====
+       MESURE, pas supposition : à 400 px de large, cet écran débordait de
+       56 px AVANT cette branche — le sélecteur de semestre (`mtc-seg`, 204 px
+       incompressible) ne rentre pas à côté du nom, du rang et des deux
+       segments. La croix de retrait ajoutée ici portait ce débordement à
+       102 px. Le bloc des éléments LMD, lui, ne déborde pas : sa ligne n'a
+       qu'un nom, un code et sa croix.
+
+       `premium-redesign.md` interdit le défilement horizontal. La ligne passe
+       donc sur deux niveaux sous 640 px : identité au-dessus, commandes en
+       dessous, la croix restant à portée du pouce, à droite.
+
+       `@@media` et non `@media` : Blade prend `@media` pour une directive et
+       avale la suite (voir `blade-pitfalls.md`, piège n°2). */
+    @@media (max-width: 640px) {
+        .mtc-row { flex-wrap: wrap; gap: .6rem; }
+        .mtc-row-main { flex: 1 1 100%; }
+        .mtc-row-actions, .mtc-seg, .mtc-rank { flex-wrap: wrap; }
+        .mtc-seg { flex: 1 1 auto; }
+        .mtc-seg-btn { flex: 1 1 auto; padding: .4rem .55rem; }
+        .mtc-rank-tag { min-width: 0; }
+    }
 </style>
 @endpush
 
@@ -137,8 +191,18 @@
             <div class="mtc-hero-left">
                 <div class="mtc-hero-icon"><i class="fas fa-layer-group"></i></div>
                 <div>
-                    <h1>Affectation Tronc Commun / Spécialité</h1>
-                    <p>Marquez, par filière et niveau, les matières du tronc commun et celles de spécialité. Le bulletin de tronc commun n'affichera que les matières TC.</p>
+                    {{-- « Affectation Tronc Commun / Spécialité » était le nom
+                         d'origine, et il ne décrivait plus qu'UNE des quatre
+                         choses que fait cet écran : il porte aussi la
+                         composition de la maquette, le semestre de chaque
+                         matière et son rang au bulletin. Un titre faux par
+                         omission envoie chercher ailleurs ce qui est ici — la
+                         fiche d'une matière disait d'ailleurs déjà
+                         « l'écran Maquette ». L'adresse, elle, ne change pas :
+                         elle est citée dans le journal des versions et dans la
+                         requête SQL de `lmd-ecue-leak-bts-picker.md`. --}}
+                    <h1>Maquette du bulletin</h1>
+                    <p>Par filière et niveau : quelles matières composent le bulletin, à quel semestre, dans quel ordre, et lesquelles relèvent du tronc commun.</p>
                 </div>
             </div>
             <a href="{{ route('esbtp.matieres.index') }}" class="mtc-mini"><i class="fas fa-arrow-left"></i> Matières</a>
@@ -156,11 +220,13 @@
             <div class="mtc-field">
                 <label>Filière</label>
                 <x-au-select name="filiere_id" icon="fa-sitemap" placeholder="Choisir une filière"
+                    :value="$filiereChoisie ?? ''"
                     :searchable="true" :options="$filiereOptions" />
             </div>
             <div class="mtc-field">
                 <label>Niveau d'étude</label>
                 <x-au-select name="niveau_id" icon="fa-graduation-cap" placeholder="Choisir un niveau"
+                    :value="$niveauChoisi ?? ''"
                     :searchable="$niveauSearchable" :options="$niveauOptions" />
             </div>
         </div>
@@ -183,6 +249,10 @@
                 <span>Filière de spécialité. La classification sert surtout à cadrer l'héritage tronc commun ; les matières de spécialité restent au bulletin de spécialité.</span>
             </div>
         </template>
+
+        {{-- Hors du `x-if` sur `matieres` : un combo dont la seule ligne est un
+             intrus LMD doit quand meme pouvoir s'en debarrasser. --}}
+        @include('esbtp.matieres.partials._classification-intrus-lmd')
 
         <template x-if="matieres.length > 0">
             <div>
@@ -232,5 +302,9 @@
 @endsection
 
 @push('scripts')
+{{-- common.js : fournit window.iiConfirm(). Cet ecran ne le chargeait pas et
+     utilisait donc les boites natives du navigateur — celui d'a cote, qui pose
+     la confirmation jumelle, le charge depuis toujours. --}}
+<script src="{{ asset('js/inscriptions/common.js') }}"></script>
 @include('esbtp.matieres.partials._classification-script')
 @endpush

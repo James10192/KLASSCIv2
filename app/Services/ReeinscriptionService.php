@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPRegleAcademique;
 use App\Models\ESBTPClasse;
+use App\Domain\Academique\CoherenceSystemeAcademique;
 use App\Models\ESBTPNote;
 use App\Models\ESBTPMatiere;
 use App\Models\ESBTPFraisSubscription;
@@ -45,7 +46,7 @@ class ReeinscriptionService
             $regle = $this->regleDeRepli($niveauNom, $filiereNom);
         }
 
-        $notes = $this->getNotesEtudiant($etudiantId, $anneeAcademique);
+        $notes = $this->getNotesEtudiant($etudiantId, $anneeAcademique, $classe);
         $moyenneGenerale = $this->calculerMoyenneGenerale($notes);
         $matieresEchouees = $this->getMatieresEchouees($notes, $regle->moyenne_passage);
         
@@ -104,7 +105,7 @@ class ReeinscriptionService
 
         $anneeDesResultats = $inscription->anneeUniversitaire->name ?? $anneeAcademique;
 
-        $notes = $this->getNotesEtudiant($etudiant->id, $anneeDesResultats);
+        $notes = $this->getNotesEtudiant($etudiant->id, $anneeDesResultats, $classe);
         $moyenneGenerale = $this->calculerMoyenneGenerale($notes);
         $matieresEchouees = $this->getMatieresEchouees($notes, $regle->moyenne_passage);
 
@@ -539,13 +540,41 @@ class ReeinscriptionService
         }
     }
 
-    private function getNotesEtudiant($etudiantId, $anneeAcademique)
+    private function getNotesEtudiant($etudiantId, $anneeAcademique, ESBTPClasse $classe)
     {
         // Récupérer les notes filtrées par année académique (utilise le champ STRING annee_universitaire)
-        return ESBTPNote::where('etudiant_id', $etudiantId)
+        $notes = ESBTPNote::where('etudiant_id', $etudiantId)
             ->where('annee_universitaire', $anneeAcademique)
-            ->with(['evaluation.matiere', 'matiere'])
+            // `withTrashed()` : `ESBTPMatiere` est en `SoftDeletes`. Sans lui, une
+            // matiere effacee depuis `/esbtp/matieres` rend `null`, le `! $matiere ||`
+            // ci-dessous court-circuite, et la note etrangere revient peser — sur une
+            // DECISION de passage, pas sur un affichage.
+            ->with([
+                'evaluation.matiere' => fn ($q) => $q->withTrashed(),
+                'matiere' => fn ($q) => $q->withTrashed(),
+            ])
             ->get();
+
+        // POURQUOI LE FILTRE EST ICI, ET NON DANS LES TROIS CONSOMMATEURS.
+        // Ces notes alimentent la moyenne (`calculerMoyenneGenerale()`), la
+        // liste des matieres echouees (`getMatieresEchouees()`) ET le tableau
+        // rendu a l'ecran ('notes' => $notes). Filtrer a la source les corrige
+        // ensemble ; filtrer chez chaque consommateur demanderait au quatrieme,
+        // celui qui n'existe pas encore, de s'en souvenir.
+        //
+        // L'ENJEU N'EST PAS UN AFFICHAGE. Une ECUE du LMD notee 4/20 dans une
+        // classe BTS tire la moyenne vers le bas et compte comme une matiere
+        // echouee : elle peut faire basculer un passage en redoublement, pour
+        // toute une promotion via la reinscription groupee.
+        return $notes->filter(function (ESBTPNote $note) use ($classe) {
+            $matiere = $note->matiere ?? $note->evaluation?->matiere;
+
+            return ! $matiere || CoherenceSystemeAcademique::matiereRetenue(
+                $matiere,
+                $classe,
+                'reinscription/note'
+            );
+        })->values();
     }
 
     private function calculerMoyenneGenerale($notes)

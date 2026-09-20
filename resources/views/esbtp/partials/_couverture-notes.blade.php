@@ -11,13 +11,19 @@
     quelqu'un qui ne peut rien y faire. Il ne s'affiche pas non plus tant
     qu'aucune classe n'est choisie.
 
+    LE DROIT SE LIT AU PLURIEL. La garde ne connaissait que `academic_health.view`,
+    que l'enseignant n'a pas : il a `academic_health.view_own`. Le bandeau était
+    donc invisible pour la seule personne qui saisit les notes — y compris dans
+    la fenêtre de saisie, où il avait pourtant été posé. Le périmètre reste tenu
+    par l'endpoint, qui refuse en 403 une classe hors de celui de l'acteur.
+
     @param int|null    $classeId   null si la page fait choisir la classe
     @param int|null    $anneeId
     @param string      $periode    semestre1 | semestre2 | annuel
     @param bool        $replie     détail plié par défaut (true)
     @param string|null $titre      surcharge du libellé
 --}}
-@can('academic_health.view')
+@canany(['academic_health.view', 'academic_health.view_own'])
 @php
     $_cvnClasseId = $classeId ?? null;
     $_cvnAnneeId = $anneeId ?? null;
@@ -91,6 +97,29 @@
                 </template>
             </div>
 
+            {{-- Le doublon probable, HORS du détail repliable : il ne dépend pas
+                 d'une note manquante. Deux dossiers entièrement notés pour la
+                 même personne ne font bouger aucun compteur et produisent
+                 pourtant deux bulletins — c'est le cas qu'on ne verrait jamais
+                 si ce bloc restait enfermé sous « Voir quoi relancer ». --}}
+            <template x-if="doublons().length > 0">
+                <div class="cvn-doublons">
+                    <template x-for="d in doublons()" :key="d.cle">
+                        <div class="cvn-doublon">
+                            <i class="fas fa-user-group"></i>
+                            <span>
+                                <strong x-text="d.sans"></strong> et
+                                <strong x-text="d.avec"></strong>
+                                portent presque le même nom dans cette classe.
+                                S'il s'agit de la même personne, une note peut avoir été
+                                saisie sur l'autre dossier — et un bulletin sera édité
+                                pour chacun des deux.
+                            </span>
+                        </div>
+                    </template>
+                </div>
+            </template>
+
             {{-- Le détail : quelles matières, et qui relancer --}}
             <div class="cvn-detail" x-show="!replie && prioritaires().length > 0" x-cloak x-transition.opacity>
                 <template x-for="m in prioritaires().slice(0, 6)" :key="`cvn-${m.id || m.name}`">
@@ -101,7 +130,11 @@
                         </div>
                         <div class="cvn-matiere-qui">
                             <template x-if="contact(m)">
-                                <span>
+                                {{-- Le nom venu du bulletin n'a pas de numéro : le téléphone
+                                     reste conditionnel, et la source se lit au survol. --}}
+                                <span :title="contact(m).source === 'bulletin'
+                                        ? 'Nom saisi dans « Éditer les professeurs » du bulletin'
+                                        : 'Enseignant principal au planning général'">
                                     <i class="fas fa-user"></i>
                                     <span x-text="contact(m).name"></span>
                                     <template x-if="contact(m).phone">
@@ -110,9 +143,14 @@
                                 </span>
                             </template>
                             <template x-if="!contact(m)">
-                                {{-- Deux enseignants différents au planning, ou aucun : on ne
-                                     désigne personne au hasard. --}}
-                                <span class="cvn-muet">Enseignant à confirmer</span>
+                                {{-- Ni le planning ni le bulletin ne répondent, ou ils se
+                                     contredisent : on ne désigne personne au hasard. Le
+                                     libellé nomme les deux endroits où aller le poser —
+                                     « à confirmer » laissait croire à une donnée saisie
+                                     mais douteuse, alors qu'il n'y en a aucune. --}}
+                                <span class="cvn-muet" title="Renseignez l'enseignant dans le planning général, ou dans « Éditer les professeurs ».">
+                                    Aucun enseignant au planning ni dans la configuration des bulletins
+                                </span>
                             </template>
                         </div>
                     </div>
@@ -156,6 +194,10 @@
 .cvn-matiere-qui { font-size: .76rem; color: #64748b; display: flex; align-items: center; gap: .4rem; }
 .cvn-matiere-qui a { color: #0453cb; text-decoration: none; }
 .cvn-muet { color: #94a3b8; font-size: .76rem; }
+.cvn-doublons { display: flex; flex-direction: column; gap: .35rem; margin-top: .6rem; }
+.cvn-doublon { display: flex; align-items: flex-start; gap: .5rem; font-size: .78rem; color: #b45309; background: rgba(245,158,11,.08); border: 1px solid rgba(245,158,11,.25); border-radius: 8px; padding: .45rem .6rem; }
+.cvn-doublon > i { margin-top: .15rem; flex-shrink: 0; }
+.cvn-doublon strong { color: #92400e; }
 @@media (max-width: 576px) {
     .cvn-jauge { width: 100%; }
     .cvn-matiere { flex-direction: column; align-items: flex-start; gap: .2rem; }
@@ -163,4 +205,4 @@
 </style>
 
 @include('esbtp.partials._couverture-notes-script')
-@endcan
+@endcanany

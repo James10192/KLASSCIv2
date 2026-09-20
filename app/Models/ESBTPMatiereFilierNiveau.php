@@ -98,10 +98,43 @@ class ESBTPMatiereFilierNiveau extends Model
             ->all();
     }
 
-    public static function activeMatiereCountForCombo($filiereId, $niveauId)
+    /**
+     * Les matieres BTS de ce couple — le jumeau de `btsMatiereCountForCombo`.
+     *
+     * Il existe parce qu'un ratio se calcule avec UN seul filtre. Poser la
+     * garde sur le seul denominateur laissait le numerateur compter une ECUE
+     * planifiee : le compte depassait le total, l'egalite « configuree ==
+     * total » ne pouvait plus etre vraie, et la carte du planning restait
+     * « Partiel » a jamais, sans aucune issue par l'interface.
+     *
+     * Les DEUX filtres doivent etre identiques, pas seulement celui sur les
+     * ECUE. Une premiere version n'alignait que `btsOnly()` et laissait
+     * `is_active` au seul denominateur : une matiere BTS planifiee puis
+     * DESACTIVEE reproduisait exactement la meme impasse, par l'autre axe.
+     * Si vous touchez l'un, touchez l'autre.
+     *
+     * `matiereIdsForCombo` reste sans filtre : il sert aussi des lecteurs au
+     * contexte mixte (l'assiduite), ou ecarter les ECUE casserait le LMD.
+     */
+    public static function btsMatiereIdsForCombo($filiereId, $niveauId)
     {
         return static::forCombo($filiereId, $niveauId)
-            ->whereHas('matiere', fn($q) => $q->where('is_active', true))
+            ->whereHas('matiere', fn ($q) => $q->where('is_active', true)->btsOnly())
+            ->pluck('matiere_id');
+    }
+
+    /**
+     * Combien de matieres BTS actives porte ce couple.
+     *
+     * Le nom dit « bts » parce que le compte l'est : une ECUE LMD ayant une
+     * ligne dans ce pivot gonflait le « Total matieres » du planning et faussait
+     * le denominateur du taux de configuration. Un compteur dont la portee ne
+     * se lit pas dans son nom rend un chiffre faux sans que personne ne cherche.
+     */
+    public static function btsMatiereCountForCombo($filiereId, $niveauId)
+    {
+        return static::forCombo($filiereId, $niveauId)
+            ->whereHas('matiere', fn($q) => $q->where('is_active', true)->btsOnly())
             ->count();
     }
 }

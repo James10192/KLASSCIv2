@@ -2,6 +2,7 @@
 
 namespace App\Services\ESBTP;
 
+use App\Domain\Academique\CoherenceSystemeAcademique;
 use App\Domain\BtsTroncCommun\BtsAnnualClassMapResolver;
 use App\Models\ESBTPNote;
 use App\Models\ESBTPResultat;
@@ -43,11 +44,43 @@ class BtsCurrentResultSnapshotService
         return $this->buildAnnualSnapshot($etudiantId, $classeId, $anneeUniversitaireId);
     }
 
+    /**
+     * Classes deja chargees, par identifiant.
+     *
+     * @var array<int, \App\Models\ESBTPClasse|null>
+     */
+    private array $classesChargees = [];
+
+    /**
+     * La classe du snapshot, chargee UNE fois par instance de service.
+     *
+     * `RankingService::classement()` et le tableau des resultats d'une classe
+     * appellent ce service DANS une boucle sur les eleves — un `find()` nu y
+     * ferait une requete par eleve, et deux par eleve sur un snapshot annuel
+     * (un par semestre). Sur une classe de 200, cela ajoutait 400 requetes a
+     * un ecran qui en fait deja beaucoup.
+     */
+    private function classe(int $classeId): ?ESBTPClasse
+    {
+        if (! array_key_exists($classeId, $this->classesChargees)) {
+            // `withTrashed()` : `ESBTPClasse` est en `SoftDeletes`. Un `find()` nu
+            // rend `null` sur une classe effacee en douceur, donc AUCUN filtrage
+            // de coherence — l'ecart « Officiel / Courant » redeviendrait aveugle
+            // exactement dans le cas que ce filtre protege.
+            $this->classesChargees[$classeId] = ESBTPClasse::withTrashed()->find($classeId);
+        }
+
+        return $this->classesChargees[$classeId];
+    }
+
     private function buildSemesterSnapshot(int $etudiantId, int $classeId, int $anneeUniversitaireId, string $periode): array
     {
         $notes = ESBTPNote::query()
             ->where('etudiant_id', $etudiantId)
-            ->with(['evaluation.matiere'])
+            // `withTrashed()` sur la matiere, pour la meme raison qu'au chemin
+            // des moyennes enregistrees : effacee en douceur, elle rendait le
+            // filtre aveugle au lieu de le rendre prudent.
+            ->with(['evaluation.matiere' => fn ($q) => $q->withTrashed()])
             ->whereHas('evaluation', function ($query) use ($anneeUniversitaireId, $classeId, $periode) {
                 // Aligné sur la génération réelle (buildDonneesBulletin) : mêmes
                 // aliases de période ET exclusion des évaluations annulées, sinon
@@ -64,16 +97,32 @@ class BtsCurrentResultSnapshotService
             ->where('classe_id', $classeId)
             ->where('annee_universitaire_id', $anneeUniversitaireId)
             ->where('periode', $periode)
-            ->with('matiere')
+            // `withTrashed()` : `ESBTPMatiere` est en `SoftDeletes`. Sans lui, une
+            // matiere effacee en douceur rendait `$resultat->matiere` nul, le
+            // `&&` du filtre court-circuitait, et la ligne incoherente rentrait
+            // dans le « Courant » — exactement ce que ce filtre protege.
+            ->with(['matiere' => fn ($q) => $q->withTrashed()])
             ->get();
 
         $subjects = [];
+
+        // Le snapshot doit voir EXACTEMENT ce que la generation reelle retient.
+        // Sans ce filtre, une ECUE evaluee dans une classe BTS fausserait la
+        // moyenne des deux cotes a la fois — donc l'ecart « Officiel / Courant »
+        // resterait nul et n'alerterait personne. Voir
+        // `CoherenceSystemeAcademique::matiereRetenue()`.
+        $classeDuSnapshot = $this->classe($classeId);
 
         foreach ($notes as $note) {
             $matiere = $note->evaluation?->matiere;
             $matiereId = $note->matiere_id ?: $matiere?->id;
 
             if (! $matiere || ! $matiereId) {
+                continue;
+            }
+
+            if ($classeDuSnapshot
+                && ! CoherenceSystemeAcademique::matiereRetenue($matiere, $classeDuSnapshot, 'snapshot/evaluation')) {
                 continue;
             }
 
@@ -118,6 +167,12 @@ class BtsCurrentResultSnapshotService
 
         foreach ($manualResultats as $resultat) {
             $matiereId = $resultat->matiere_id;
+
+            if ($classeDuSnapshot && $resultat->matiere
+                && ! CoherenceSystemeAcademique::matiereRetenue($resultat->matiere, $classeDuSnapshot, 'snapshot/moyenne manuelle')) {
+                continue;
+            }
+
             if (! isset($subjects[$matiereId])) {
                 $subjects[$matiereId] = [
                     'matiere_id' => $matiereId,
@@ -236,7 +291,7 @@ class BtsCurrentResultSnapshotService
             $anneeUniversitaireId,
             'semestre2'
         );
-        $classe = ESBTPClasse::with(['filiere', 'niveau', 'niveauEtude'])->find($classeId);
+        $classe = ESBTPClasse::withTrashed()->with(['filiere', 'niveau', 'niveauEtude'])->find($classeId);
         $weights = $this->bulletinService->getSemesterWeights($classe);
 
         $annualEffective = $this->bulletinService->calculateAnnualAverage(

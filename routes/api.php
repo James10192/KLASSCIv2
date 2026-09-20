@@ -648,6 +648,19 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
         Route::post('/bts/maquette', [App\Http\Controllers\API\CLI\CLIBtsMaquetteController::class, 'charger'])
             ->name('bts.maquette.charger');
 
+        // Relire la maquette d'un couple. Sans cette adresse, son contenu ne
+        // s'obtenait qu'en simulant un chargement, donc en connaissant deja la
+        // liste des matieres qu'on cherchait a decouvrir.
+        Route::get('/bts/maquette', [App\Http\Controllers\API\CLI\CLIBtsMaquetteController::class, 'lire'])
+            ->name('bts.maquette.lire');
+
+        // Retirer une matiere d'un couple. Le seul chemin existant passait par
+        // le modal des liaisons, qui supprime toutes les liaisons de la
+        // matiere puis les recree, et perd la place et le semestre des couples
+        // qu'on gardait.
+        Route::post('/bts/maquette/retirer', [App\Http\Controllers\API\CLI\CLIBtsMaquetteController::class, 'retirer'])
+            ->name('bts.maquette.retirer');
+
         // Diagnostic en lecture seule : evaluations dont la nature de la
         // matiere ne suit pas le systeme academique de la classe.
         Route::get('/diagnostics/evaluations-periode', [App\Http\Controllers\API\CLI\CLIEvaluationPeriodeController::class, 'index'])

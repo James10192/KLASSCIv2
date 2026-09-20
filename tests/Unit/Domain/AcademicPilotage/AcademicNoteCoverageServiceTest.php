@@ -251,11 +251,46 @@ class AcademicNoteCoverageServiceTest extends AcademicPilotageDatabaseTestCase
         });
         Schema::create('esbtp_matieres', function (Blueprint $table): void {
             $table->id();
+            // NULL = matiere BTS ; non-NULL = ECUE d'une unite d'enseignement LMD.
+            // La colonne n'est pas decorative ici, et son absence NE SE VOIT PAS.
+            // SQLite accepte un identifiant inconnu entre guillemets doubles et le
+            // traite comme une CHAINE : `"unite_enseignement_id" IS NULL` rend alors
+            // `false` pour toutes les lignes, sans lever la moindre erreur. Le scope
+            // `btsOnly()` rendait donc zero matiere, le resolveur de bulletin tombait
+            // dans son repli `esbtp_classe_matiere` — table absente de cette doublure —
+            // et six tests echouaient sur un « no such table » qui ne nommait pas la
+            // vraie cause. Toute doublure de `esbtp_matieres` doit porter cette colonne.
+            $table->unsignedBigInteger('unite_enseignement_id')->nullable();
             $table->string('name');
             $table->string('code')->nullable();
             $table->boolean('is_active')->default(true);
             $table->timestamps();
             $table->softDeletes();
+        });
+        // Second etage du lecteur canonique des professeurs : le reglage d'abord,
+        // cette colonne ensuite. Le bandeau de couverture y cherche un nom
+        // d'enseignant quand le planning general n'en porte pas.
+        Schema::create('esbtp_bulletins', function (Blueprint $table): void {
+            $table->id();
+            $table->unsignedBigInteger('classe_id')->nullable();
+            $table->unsignedBigInteger('annee_universitaire_id')->nullable();
+            $table->string('periode')->nullable();
+            $table->text('professeurs')->nullable();
+            $table->timestamp('archived_at')->nullable();
+            $table->timestamps();
+            $table->softDeletes();
+        });
+        // Lue par `BulletinSubjectOrder` : l'ordre des matieres au bulletin est un
+        // reglage d'instance. La couverture passe desormais par la maquette, qui
+        // prend sa liste chez lui — la doublure doit donc porter cette table.
+        Schema::create('settings', function (Blueprint $table): void {
+            $table->id();
+            $table->string('key')->unique();
+            $table->text('value')->nullable();
+            $table->string('type')->default('string');
+            $table->string('group')->default('general');
+            $table->boolean('is_active')->default(true);
+            $table->timestamps();
         });
         // La couverture BTS passe desormais par le resolver de tronc commun :
         // il lit la filiere pour savoir si elle herite d'une filiere mere.

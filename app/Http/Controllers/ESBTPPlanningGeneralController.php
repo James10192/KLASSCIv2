@@ -138,13 +138,14 @@ class ESBTPPlanningGeneralController extends Controller
                 $planifications = $planifications->with("matiere")->get();
 
                 // Pré-charger les matière IDs liées à cette combinaison (1 requête au lieu de N)
-                $linkedMatiereIds = \App\Models\ESBTPMatiereFilierNiveau::matiereIdsForCombo($filiere->id, $niveau->id);
+                // Meme filtre que le total calcule plus bas : c'est un ratio.
+                $linkedMatiereIds = \App\Models\ESBTPMatiereFilierNiveau::btsMatiereIdsForCombo($filiere->id, $niveau->id);
 
                 $planificationsValides = $planifications->filter(function ($planification) use ($linkedMatiereIds) {
                     return $planification->matiere && $linkedMatiereIds->contains($planification->matiere->id);
                 });
 
-                $matieresLieesALaCombinaisonCount = \App\Models\ESBTPMatiereFilierNiveau::activeMatiereCountForCombo($filiere->id, $niveau->id);
+                $matieresLieesALaCombinaisonCount = \App\Models\ESBTPMatiereFilierNiveau::btsMatiereCountForCombo($filiere->id, $niveau->id);
 
                 // Calculer les statistiques
                 $totalMatieres = $matieresLieesALaCombinaisonCount; // Toutes les matières liées à cette combinaison

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Domain\BtsTroncCommun\RetraitDeMaquette;
 use App\Models\ESBTPFiliere;
 use App\Models\ESBTPMatiere;
 use App\Models\ESBTPMatiereFilierNiveau;
@@ -12,11 +13,26 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
- * Affectation Tronc Commun / Spécialité des matières, au grain (matière, filière, niveau).
+ * La maquette du bulletin, au grain (matière, filière, niveau). BTS uniquement.
  *
- * Permet à l'école de marquer, pour un combo (filière, niveau), quelles matières
- * sont du tronc commun et lesquelles sont de spécialité. Le bulletin de tronc commun
- * n'affiche alors que les matières TC (ou non classées). BTS uniquement, LMD intouché.
+ * Cet écran a porté longtemps le nom « Affectation Tronc Commun / Spécialité »,
+ * et ce nom ne décrivait plus qu'UNE de ses quatre fonctions. Il porte :
+ *
+ *   1. la COMPOSITION de la maquette — quelles matières, et le retrait de
+ *      celles qui n'y ont rien à faire (dont les éléments LMD intrus, seul
+ *      endroit d'où ils peuvent sortir) ;
+ *   2. le SEMESTRE de chaque matière (S1, S2, les deux), et sa validation, qui
+ *      est le geste qui ouvre la vanne vers le bulletin ;
+ *   3. le RANG au bulletin, y compris la reprise de l'ordre général ;
+ *   4. le marquage TRONC COMMUN / SPÉCIALITÉ — le nom d'origine.
+ *
+ * Un titre faux par omission envoie chercher ailleurs ce qui est ici. La fiche
+ * d'une matière disait d'ailleurs déjà « l'écran Maquette ».
+ *
+ * LE SEGMENT D'URL NE CHANGE PAS (`/esbtp/matieres/classification`), ni le nom
+ * de route : l'adresse est citée dans le journal des versions et dans la
+ * requête SQL de `lmd-ecue-leak-bts-picker.md`, qui rend les deux identifiants
+ * puis renvoie ici. Renommer l'adresse casserait ce chemin pour rien.
  *
  * @see \App\Domain\BtsTroncCommun\BtsBulletinSubjectResolver
  * @see .claude/rules/classe-lmd-filiere-as-mention.md
@@ -29,10 +45,28 @@ class ESBTPMatiereClassificationController extends Controller
     }
 
     /**
-     * Page d'affectation TC / Spécialité (pickers filière + niveau).
+     * Écran Maquette du bulletin (pickers filière + niveau).
+     *
+     * `filiere_id` et `niveau_id` en chaîne de requête présélectionnent le
+     * couple, et la page le charge seule. C'est ce qui rend l'écran CITABLE :
+     * la rule `lmd-ecue-leak-bts-picker.md` donne une requête SQL qui rend
+     * précisément ces deux identifiants puis renvoie ici — sans ce lien, il
+     * fallait repiocher les deux valeurs à la main dans deux listes, et la
+     * fiche d'une matière ne pouvait pas non plus pointer sa propre maquette.
+     *
+     * Les deux sont validés et non simplement recopiés : un identifiant
+     * inconnu ne doit pas se retrouver dans l'attribut Alpine.
      */
-    public function index()
+    public function index(Request $request)
     {
+        $validated = $request->validate([
+            'filiere_id' => 'nullable|integer|exists:esbtp_filieres,id',
+            'niveau_id' => 'nullable|integer|exists:esbtp_niveau_etudes,id',
+        ]);
+
+        $filiereChoisie = (string) ($validated['filiere_id'] ?? '');
+        $niveauChoisi = (string) ($validated['niveau_id'] ?? '');
+
         $filieres = ESBTPFiliere::where('is_active', true)
             ->orderBy('name')
             ->get(['id', 'name', 'code', 'is_tronc_commun', 'parent_id']);
@@ -43,7 +77,12 @@ class ESBTPMatiereClassificationController extends Controller
             ->orderBy('name')
             ->get(['id', 'name', 'code', 'type']);
 
-        return view('esbtp.matieres.classification', compact('filieres', 'niveaux'));
+        return view('esbtp.matieres.classification', compact(
+            'filieres',
+            'niveaux',
+            'filiereChoisie',
+            'niveauChoisi',
+        ));
     }
 
     /**
@@ -62,6 +101,130 @@ class ESBTPMatiereClassificationController extends Controller
         $filiere = ESBTPFiliere::find($filiereId);
         $isTroncCommun = $filiere && $filiere->isTroncCommun();
 
+        $rows = $this->lignesDuCombo($filiereId, $niveauId, $filiere, $isTroncCommun);
+
+        // Le COUPLE est renseigne des qu'une de ses lignes a ete validee —
+        // c'est la regle du domaine (`BtsMaquette::isRenseignee`), et c'est
+        // elle qui decide si les semestres comptent. La poser ici, une fois,
+        // evite que le decompte affiche et l'etat annonce divergent.
+        $comboRenseigne = $rows->contains(fn ($ligne) => $ligne['semestre_renseigne']);
+
+        return response()->json([
+            'success' => true,
+            'is_tronc_commun' => $isTroncCommun,
+            // La maquette ne s'applique au bulletin que lorsque TOUS les
+            // combos de la classe sont valides (`BtsMaquette::etatPourClasse`).
+            // Pour une filiere de specialite rattachee a un tronc commun, ce
+            // sont deux combos : valider celui-ci seul ne declenche rien.
+            //
+            // Le predicat est `troncCommunUnionFiliereIds()`, PAS
+            // `is_tronc_commun` : une filiere normale SANS parent tronc commun
+            // — la forme la plus courante — n'a qu'un seul combo et s'applique
+            // donc immediatement. L'ecran a annonce le contraire, c'est-a-dire
+            // « rien ne s'appliquera » au moment precis ou tout s'applique.
+            'depend_du_tronc_commun' => $filiere
+                ? count($filiere->troncCommunUnionFiliereIds()) > 1
+                : false,
+            'filiere' => $filiere?->name,
+            'matieres' => $rows,
+            'maquette' => [
+                'renseignee' => $comboRenseigne,
+                // Meme regle que le domaine, et par la MEME methode : une
+                // ligne non validee vaut « les deux », donc tant qu'aucune ne
+                // l'est, ces deux nombres valent le total. Les compter
+                // autrement ferait dire a l'ecran « aucune matiere au semestre
+                // 2 » alors que le bulletin en portera dix-huit.
+                'semestre_1' => $rows->filter(fn ($l) => $this->prevueAu($l, 1))->count(),
+                'semestre_2' => $rows->filter(fn ($l) => $this->prevueAu($l, 2))->count(),
+            ],
+            // Les ECUE LMD posees par erreur sur cette maquette BTS. Elles ne
+            // sont PAS dans `matieres` : les y mettre fausserait les
+            // decomptes, l'ordre et l'enregistrement, qui sont tous des
+            // notions BTS. Mais ne les montrer nulle part est ce qui a rendu
+            // le defaut incorrigible — la ligne sortait sur le bulletin et
+            // aucun ecran ne permettait de l'enlever.
+            'intrus_lmd' => $this->intrusLmdDuCombo($filiereId, $niveauId),
+            'planning' => $this->apercuDuPlanning($filiereId, $niveauId, $request),
+            'kpis' => [
+                'total' => $rows->count(),
+                'tronc_commun' => $rows->where('classification', ESBTPMatiereFilierNiveau::TRONC_COMMUN)->count(),
+                'specialite' => $rows->where('classification', ESBTPMatiereFilierNiveau::SPECIALITE)->count(),
+                'non_classe' => $rows->whereNull('classification')->count(),
+            ],
+        ]);
+    }
+
+    /**
+     * Les lignes de pivot de ce couple, avant tout tri BTS / LMD.
+     *
+     * Une seule definition, parce que `lignesDuCombo()` et
+     * `intrusLmdDuCombo()` lisent la MEME chose avec le filtre inverse : les
+     * ecrire deux fois aurait suffi a ce qu'une condition ajoutee demain ne
+     * soit appliquee qu'a l'une des deux moities, et que des lignes
+     * disparaissent des DEUX listes sans que personne ne le voie.
+     *
+     * @return \Illuminate\Support\Collection<int, ESBTPMatiereFilierNiveau>
+     */
+    private function lignesBrutesDuCombo(int $filiereId, int $niveauId)
+    {
+        // Memoise : les deux listes que cette methode partitionne — les
+        // matieres BTS et les intrus LMD — l'appellent chacune une fois, sur
+        // le meme couple, dans la meme reponse. La definition etait bien
+        // unique, la REQUETE ne l'etait pas : deux fois la meme, a chaque
+        // ouverture de combo.
+        $cle = $filiereId.':'.$niveauId;
+
+        if (! isset($this->lignesDuComboMemoisees[$cle])) {
+            $this->lignesDuComboMemoisees[$cle] = ESBTPMatiereFilierNiveau::query()
+                ->where('filiere_id', $filiereId)
+                ->where('niveau_etude_id', $niveauId)
+                ->with('matiere:id,name,code,unite_enseignement_id,is_active,ordre_bulletin')
+                ->get();
+        }
+
+        return $this->lignesDuComboMemoisees[$cle];
+    }
+
+    /**
+     * Lignes deja lues, par couple « filiereId:niveauId ».
+     *
+     * @var array<string, \Illuminate\Support\Collection<int, ESBTPMatiereFilierNiveau>>
+     */
+    private array $lignesDuComboMemoisees = [];
+
+    /**
+     * Les ECUE LMD presentes dans la maquette BTS de ce couple.
+     *
+     * Normalement : aucune. Quand il y en a, c'est qu'un ecran BTS a pose la
+     * ligne sans garde — cas mesure sur esbtp-abidjan, ou `TPOH243`
+     * « Alimentation en eau et QTE » portait (TRAVAUX_PUBLICS, 2A) et sortait
+     * donc sur les bulletins de Travaux Publics 2e annee.
+     *
+     * On ne les rend ni classables ni ordonnables : la seule action qui a du
+     * sens sur elles est le retrait.
+     *
+     * @return \Illuminate\Support\Collection<int, array<string, mixed>>
+     */
+    private function intrusLmdDuCombo(int $filiereId, int $niveauId)
+    {
+        return $this->lignesBrutesDuCombo($filiereId, $niveauId)
+            ->filter(fn ($row) => $row->matiere && $row->matiere->unite_enseignement_id !== null)
+            ->map(fn ($row) => [
+                'matiere_id' => (int) $row->matiere_id,
+                'name' => $row->matiere->name,
+                'code' => $row->matiere->code,
+            ])
+            ->sortBy(fn ($l) => mb_strtolower((string) $l['name'], 'UTF-8'))
+            ->values();
+    }
+
+    /**
+     * Les matieres de ce combo, dans l'ordre ou le bulletin les sortira.
+     *
+     * @return \Illuminate\Support\Collection<int, array<string, mixed>>
+     */
+    private function lignesDuCombo(int $filiereId, int $niveauId, ?ESBTPFiliere $filiere, bool $isTroncCommun)
+    {
         // Suggestion : sur un combo TC, une matière aussi rattachée à une filière fille
         // (spécialité) du même niveau est probablement de spécialité mal rattachée.
         $specialiteSuggestionIds = [];
@@ -81,11 +244,7 @@ class ESBTPMatiereClassificationController extends Controller
         $rangsEffectifs = app(\App\Domain\BtsTroncCommun\BulletinSubjectOrder::class)
             ->rankMapForFiliereNiveau($filiereId, $niveauId, $filiere?->troncCommunUnionFiliereIds());
 
-        $rows = ESBTPMatiereFilierNiveau::query()
-            ->where('filiere_id', $filiereId)
-            ->where('niveau_etude_id', $niveauId)
-            ->with('matiere:id,name,code,unite_enseignement_id,is_active,ordre_bulletin')
-            ->get()
+        return $this->lignesBrutesDuCombo($filiereId, $niveauId)
             ->filter(fn ($row) => $row->matiere && $row->matiere->unite_enseignement_id === null) // BTS only
             ->map(function ($row) use ($specialiteSuggestionIds, $rangsEffectifs) {
                 $rangPropre = \App\Domain\BtsTroncCommun\BulletinSubjectOrder::rang($row->ordre_bulletin);
@@ -121,28 +280,6 @@ class ESBTPMatiereClassificationController extends Controller
                 mb_strtolower((string) $ligne['name'], 'UTF-8'),
             ])
             ->values();
-
-        return response()->json([
-            'success' => true,
-            'is_tronc_commun' => $isTroncCommun,
-            'filiere' => $filiere?->name,
-            'matieres' => $rows,
-            'maquette' => [
-                'renseignee' => $rows->contains(fn ($ligne) => $ligne['semestre_renseigne']),
-                // Meme regle que le domaine : une ligne non validee vaut « les
-                // deux semestres ». Les compter comme absentes ferait dire a
-                // l'ecran « aucune matiere au semestre 2 » alors que neuf y sont.
-                'semestre_1' => $rows->filter(fn ($l) => $this->prevueAu($l, 1))->count(),
-                'semestre_2' => $rows->filter(fn ($l) => $this->prevueAu($l, 2))->count(),
-            ],
-            'planning' => $this->apercuDuPlanning($filiereId, $niveauId, $request),
-            'kpis' => [
-                'total' => $rows->count(),
-                'tronc_commun' => $rows->where('classification', ESBTPMatiereFilierNiveau::TRONC_COMMUN)->count(),
-                'specialite' => $rows->where('classification', ESBTPMatiereFilierNiveau::SPECIALITE)->count(),
-                'non_classe' => $rows->whereNull('classification')->count(),
-            ],
-        ]);
     }
 
     /**
@@ -180,19 +317,114 @@ class ESBTPMatiereClassificationController extends Controller
     /**
      * Une matiere est-elle prevue a ce semestre ?
      *
-     * Non validee ou sans semestre : prevue aux deux. Meme regle que
-     * `BtsMaquette`, pour que le decompte affiche corresponde a ce que le
-     * bulletin fera.
+     * LIGNE PAR LIGNE, comme le domaine — et non par couple. Une version
+     * precedente remplacait `semestre_renseigne` par une garde sur le couple
+     * entier (« si aucune ligne n'est validee, tout vaut les deux »). Elle
+     * etait juste tant qu'AUCUNE ligne n'etait validee, et fausse des qu'une
+     * seule l'etait : les lignes non validees du meme couple etaient alors
+     * lues a leur semestre brut, donc retirees d'un semestre que le bulletin,
+     * lui, leur laissait. Le commentaire qui l'accompagnait affirmait « le
+     * domaine la pose par couple » — `BtsMaquette::semestresParMatiere()` la
+     * pose ligne par ligne, et c'est verifiable en trois lignes de lecture.
+     *
+     * C'est le cas mesure : `ChargementDeMaquette` pose un semestre sans
+     * valider, et la maquette d'ESBTP Abidjan en compte.
      *
      * @param  array<string, mixed>  $ligne
      */
     private function prevueAu(array $ligne, int $semestre): bool
     {
-        if (! $ligne['semestre_renseigne'] || $ligne['semestre'] === null) {
-            return true;
+        $declare = \App\Domain\BtsTroncCommun\SemestreDeMaquette::declarationEffective(
+            $ligne['semestre'] === null ? null : (int) $ligne['semestre'],
+            (bool) $ligne['semestre_renseigne'],
+        );
+
+        return \App\Domain\BtsTroncCommun\SemestreDeMaquette::estPrevueAu($declare, $semestre);
+    }
+
+    /**
+     * Retire une matière de la maquette d'un combo.
+     *
+     * Cet écran savait régler ce qui est déjà là — la place, le semestre, le
+     * statut — mais ni ajouter ni retirer : son enregistrement fait un
+     * `update`, jamais un `insert` ni un `delete`. Retirer une matière
+     * obligeait donc à quitter la maquette pour le modal des liaisons de la
+     * matière, qui supprimait au passage les réglages de ses autres combos.
+     *
+     * Refuse une matière qui porte des évaluations sur ce combo tant que
+     * l'utilisateur ne l'a pas confirmé : la note resterait en base sans plus
+     * apparaître nulle part.
+     */
+    public function retirer(Request $request, RetraitDeMaquette $retrait): JsonResponse
+    {
+        $valide = $request->validate([
+            'filiere_id' => ['required', 'integer', 'exists:esbtp_filieres,id'],
+            'niveau_id' => ['required', 'integer', 'exists:esbtp_niveau_etudes,id'],
+            'matiere_id' => ['required', 'integer', 'exists:esbtp_matieres,id'],
+            'malgre_les_notes' => ['sometimes', 'boolean'],
+        ]);
+
+        $filiere = ESBTPFiliere::find((int) $valide['filiere_id']);
+        $niveau = ESBTPNiveauEtude::find((int) $valide['niveau_id']);
+
+        if (! $filiere || ! $niveau) {
+            return response()->json(['success' => false, 'message' => 'Filière ou niveau introuvable.'], 404);
         }
 
-        return $ligne['semestre'] === $semestre;
+        // Le même constat que l'endpoint CLI, par le même code : il résout la
+        // matière, dit si elle est dans la maquette et compte ses évaluations
+        // sur ce couple. Cet écran en refaisait une copie, et les deux
+        // pouvaient répondre différemment de la même question.
+        $plan = $retrait->preparer($filiere, $niveau, [['id' => (int) $valide['matiere_id']]]);
+        $ligne = $plan['lignes'][0] ?? null;
+
+        if ($ligne === null) {
+            return response()->json(['success' => false, 'message' => 'Matière introuvable.'], 404);
+        }
+
+        // D'abord : est-elle seulement là ? Compter les évaluations avant de
+        // le savoir fait demander une confirmation pour un retrait qui n'aura
+        // rien à retirer — l'utilisateur confirme, et reçoit ensuite « elle
+        // n'est pas dans la maquette ».
+        if (! $ligne['dans_la_maquette']) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Cette matière n\'est pas dans la maquette de ce niveau.',
+            ], 422);
+        }
+
+        if ($ligne['evaluations_sur_ce_couple'] > 0 && ! $request->boolean('malgre_les_notes')) {
+            return response()->json([
+                'success' => false,
+                'evaluations' => $ligne['evaluations_sur_ce_couple'],
+                'confirmation_requise' => true,
+                'message' => $ligne['matiere'].' porte '.$ligne['evaluations_sur_ce_couple']
+                    .' évaluation(s) sur ce niveau. '
+                    .'Les retirer de la maquette les fera disparaître du bulletin.',
+            ], 422);
+        }
+
+        try {
+            $ecrit = $retrait->appliquer($filiere, $niveau, $plan['lignes']);
+
+            return response()->json([
+                'success' => true,
+                'message' => $ligne['matiere'].' a été retirée de la maquette.',
+                'retire' => $ecrit['lignes'][0]['retire'],
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Erreur retrait d\'une matière de la maquette', [
+                'filiere_id' => $filiere->id,
+                'niveau_id' => $niveau->id,
+                'matiere_id' => $valide['matiere_id'],
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors du retrait de la matière.',
+            ], 500);
+        }
     }
 
     /**

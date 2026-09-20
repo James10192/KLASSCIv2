@@ -731,7 +731,10 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 ->middleware(['permission:classes.view']);
             // Routes pour les matiÃ¨res
             Route::name('matieres.')->prefix('matieres')->group(function () {
-                // Affectation Tronc Commun / Spécialité par (filière, niveau) — BTS.
+                // Maquette du bulletin par (filière, niveau) — BTS : composition,
+                // semestre, rang au bulletin, et marquage tronc commun / spécialité.
+                // Le segment d'URL reste `classification` : il est cité dans le
+                // journal des versions et dans `lmd-ecue-leak-bts-picker.md`.
                 // Déclarées AVANT les routes {matiere} pour éviter toute collision literal/param.
                 Route::get('/classification', [\App\Http\Controllers\ESBTPMatiereClassificationController::class, 'index'])
                     ->name('classification')
@@ -742,6 +745,13 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 Route::post('/classification/save', [\App\Http\Controllers\ESBTPMatiereClassificationController::class, 'save'])
                     ->name('classification.save')
                     ->middleware(['permission:matieres.edit']);
+                // Retirer une matière de la maquette. L'enregistrement de cet
+                // écran ne fait que des `update` : sans cette route, retirer
+                // une matière obligeait à passer par le modal des liaisons,
+                // qui effaçait les réglages de ses autres combos.
+                Route::post('/classification/retirer', [\App\Http\Controllers\ESBTPMatiereClassificationController::class, 'retirer'])
+                    ->name('classification.retirer')
+                    ->middleware(['permission:matieres.edit', 'throttle:30,1']);
                 // Maquette : import depuis le planning général, ordre général, retour à l'ordre général.
                 // Également déclarées avant les routes {matiere}.
                 Route::post('/classification/import-planning', [\App\Http\Controllers\ESBTPMatiereMaquetteController::class, 'importPlanning'])

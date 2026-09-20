@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Domain\Academique\CoherenceSystemeAcademique;
 use App\Models\ESBTPBulletin;
 use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPInscription;
@@ -179,11 +180,29 @@ class EtudiantAcademicJourneyPresenter
         }
 
         return ESBTPResultat::query()
+            // `withTrashed()` sur LES DEUX : `ESBTPMatiere` et `ESBTPClasse` sont en
+            // `SoftDeletes`, et le filtre plus bas est en echec ouvert. Une classe
+            // archivee en fin d'annee — geste ordinaire — suffisait a le desarmer,
+            // alors que le snapshot affiche a cote, lui, est deja en `withTrashed()` :
+            // les deux moyennes de la meme page divergeaient a nouveau.
+            ->with([
+                'matiere' => fn ($q) => $q->withTrashed(),
+                'classe' => fn ($q) => $q->withTrashed(),
+            ])
             ->where('etudiant_id', $etudiant->id)
             ->whereIn('classe_id', $classeIds)
             ->whereIn('annee_universitaire_id', $anneeIds)
             ->whereNotNull('moyenne')
-            ->get();
+            ->get()
+            // Ce repli sert EXACTEMENT le cas d'avant-bulletin (`btsMetrics()`
+            // ne le lit que si aucun bulletin n'est calcule), soit le moment ou
+            // une ECUE mal rangee se voit le plus. Et il est rendu sur le MEME
+            // ecran que `$btsAnnualSnapshot`, deja filtre : sans ce filtre-ci,
+            // la meme page affichait deux moyennes differentes.
+            ->filter(fn (ESBTPResultat $resultat) => ! $resultat->matiere
+                || ! $resultat->classe
+                || CoherenceSystemeAcademique::matiereRetenue($resultat->matiere, $resultat->classe, 'parcours etudiant/moyenne enregistree'))
+            ->values();
     }
 
     private function btsMetrics(Collection $bulletins, Collection $resultats): array

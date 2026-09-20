@@ -2256,9 +2256,10 @@
                                 </select>
                             </label>
                             <label>Moyenne de décision
+                                @php $_sourceDecisionBts1 = \App\Helpers\SettingsHelper::get('bulletin_bts1_council_average_source', \App\Services\BtsBulletinPolicy::defaultFor('bulletin_bts1_council_average_source')); @endphp
                                 <select class="form-control form-control-modern" name="setting_bulletin_bts1_council_average_source">
-                                    <option value="semestre2" {{ \App\Helpers\SettingsHelper::get('bulletin_bts1_council_average_source', 'semestre2') === 'semestre2' ? 'selected' : '' }}>Semestre 2 avec assiduité</option>
-                                    <option value="annual" {{ \App\Helpers\SettingsHelper::get('bulletin_bts1_council_average_source', 'semestre2') === 'annual' ? 'selected' : '' }}>Annuelle avec assiduité</option>
+                                    <option value="annual" {{ $_sourceDecisionBts1 === 'annual' ? 'selected' : '' }}>Annuelle avec assiduité</option>
+                                    <option value="semestre2" {{ $_sourceDecisionBts1 === 'semestre2' ? 'selected' : '' }}>Semestre 2 avec assiduité</option>
                                 </select>
                             </label>
                             <label>Seuil

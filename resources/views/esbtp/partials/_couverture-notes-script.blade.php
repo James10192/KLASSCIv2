@@ -40,7 +40,13 @@ if (typeof window.couvertureNotes !== 'function') {
 
                 // Une note enregistrée ailleurs sur la page rend ce chiffre
                 // faux : le bandeau se remet à jour sans rechargement.
-                this._surInvalidation = () => this.charger();
+                //
+                // EN FORÇANT LE RECALCUL. Le serveur garde la couverture dix
+                // minutes ; redemander sans le dire rendait la même réponse
+                // périmée, et le bandeau continuait d'annoncer les notes qu'on
+                // venait justement de saisir. C'est le seul appel qui force :
+                // un simple changement de classe se contente du cache.
+                this._surInvalidation = () => this.charger(true);
                 window.addEventListener('couverture:invalider', this._surInvalidation);
 
                 if (this.pret()) { this.charger(); }
@@ -75,13 +81,14 @@ if (typeof window.couvertureNotes !== 'function') {
                 if (this.pret()) { this.charger(); }
             },
 
-            url() {
+            url(forcer) {
                 return this.modele.replace('__CLASSE__', String(this.classeId))
                     + '?annee_universitaire_id=' + encodeURIComponent(this.anneeId)
-                    + '&periode=' + encodeURIComponent(this.periode);
+                    + '&periode=' + encodeURIComponent(this.periode)
+                    + (forcer ? '&recalculer=1' : '');
             },
 
-            async charger() {
+            async charger(forcer) {
                 if (!this.pret()) { return; }
 
                 // Un choix rapide dans un sélecteur lance plusieurs requêtes :
@@ -93,7 +100,7 @@ if (typeof window.couvertureNotes !== 'function') {
                 this.erreur = '';
                 this.interdit = false;
                 try {
-                    var res = await fetch(this.url(), { headers: { 'Accept': 'application/json' } });
+                    var res = await fetch(this.url(forcer), { headers: { 'Accept': 'application/json' } });
                     if (jeton !== this._requete) { return; }
                     if (res.status === 403) { this.interdit = true; return; }
                     if (!res.ok) { throw new Error('Suivi des notes indisponible (' + res.status + ').'); }
@@ -136,6 +143,32 @@ if (typeof window.couvertureNotes !== 'function') {
                     default:
                         return (this.donnees && this.donnees.message) || "Suivi des notes indisponible.";
                 }
+            },
+
+            /*
+             * Les doublons probables de la classe : deux eleves dont les noms
+             * se ressemblent au point d'etre vraisemblablement la meme
+             * personne.
+             *
+             * C'est l'explication qui manquait : sur ESBTP Abidjan, la note
+             * annoncee manquante AVAIT bien ete saisie — sur l'homonyme. Sans
+             * ce rapprochement, le chiffre se lit comme une accusation et
+             * personne ne trouve la cause.
+             *
+             * Lu sur TOUTE la classe, et plus seulement sur ceux a qui il
+             * manque une note : deux dossiers entierement notes pour la meme
+             * personne ne font pas bouger le compteur et produisent pourtant
+             * deux bulletins.
+             */
+            doublons() {
+                var paires = (this.donnees && this.donnees.doublons_probables) || [];
+                return paires.map(function (p) {
+                    return {
+                        cle: p.a.id + '-' + p.b.id,
+                        sans: p.a.name + (p.a.matricule ? ' (' + p.a.matricule + ')' : ''),
+                        avec: p.b.name + (p.b.matricule ? ' (' + p.b.matricule + ')' : ''),
+                    };
+                });
             },
 
             ton() {

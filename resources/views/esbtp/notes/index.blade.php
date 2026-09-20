@@ -194,7 +194,7 @@
                      `couverture:contexte` quand elle est choisie. --}}
                 @include('esbtp.partials._couverture-notes', [
                     'classeId' => null,
-                    'anneeId' => optional($anneeAcademique ?? null)->id,
+                    'anneeId' => $anneeCouranteId ?? null,
                     'periode' => 'annuel',
                     'titre' => 'Reste à saisir',
                 ])
@@ -829,7 +829,7 @@ function selectClass(classId, className) {
     window.dispatchEvent(new CustomEvent('couverture:contexte', {
         detail: {
             classe_id: classId,
-            annee_universitaire_id: @json(optional($anneeAcademique ?? null)->id),
+            annee_universitaire_id: @json($anneeCouranteId ?? null),
             periode: 'annuel',
         },
     }));

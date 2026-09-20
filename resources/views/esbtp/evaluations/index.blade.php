@@ -125,7 +125,10 @@
              annoncer un semestre au hasard donnerait un chiffre faux. --}}
         @include('esbtp.partials._couverture-notes', [
             'classeId' => $filters['classe_id'] ?? null,
-            'anneeId' => optional($anneeAcademique ?? null)->id,
+            {{-- `$anneeAcademique` est une CHAINE (le libelle affiche). `optional()`
+                 dessus rend toujours null, donc le bandeau n'avait jamais d'annee et
+                 ne chargeait rien. Le modele, lui, est deja passe a la vue. --}}
+            'anneeId' => optional($anneeUniversitaire ?? null)->id,
             'periode' => 'annuel',
             'titre' => "Notes reçues sur l'année",
         ])
