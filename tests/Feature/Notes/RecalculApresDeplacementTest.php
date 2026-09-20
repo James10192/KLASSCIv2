@@ -362,6 +362,39 @@ class RecalculApresDeplacementTest extends TestCase
     }
 
     /** @test */
+    public function le_recalcul_reel_ne_met_pas_a_zero_une_periode_encodee_en_chiffre(): void
+    {
+        $this->monterLaClasse();
+        $matiere = $this->matiereConfiguree();
+        $etudiant = $this->etudiantInscrit();
+
+        $evaluation = $this->evaluationDe($matiere);
+        $this->noter($etudiant, $evaluation, 14);
+        $evaluation->update(['periode' => '1']);
+
+        $this->assertSame(14.0, $this->moyenne($etudiant->id, $matiere->id));
+
+        $this->appeler('notesRecompute', ['cli:admin'], [
+            'classe_id' => $this->classe->id,
+            'periode' => 'semestre1',
+            'annee_universitaire_id' => $this->annee->id,
+        ]);
+
+        // Le job normalisait `'1'` en `'semestre1'` pour ECRIRE, mais relisait
+        // les notes avec un `where('periode', 'semestre1')` nu : zero note
+        // trouvee, `studentMatiereAverage([])` rend 0.0, et comme la ligne
+        // d'agregat existe, la garde « aucune note ET aucune ligne » ne se
+        // declenchait pas. 14,00 devenait 0,00 — et la reponse annoncait
+        // « 0 moyenne modifiee », parce qu'elle relisait l'agregat avec la
+        // periode brute, la ou il vit en forme canonique.
+        $this->assertSame(
+            14.0,
+            $this->moyenne($etudiant->id, $matiere->id),
+            'la moyenne ne doit pas etre ecrasee par un calcul sur zero note'
+        );
+    }
+
+    /** @test */
     public function la_route_de_recalcul_est_enregistree(): void
     {
         $uris = collect(Route::getRoutes()->getRoutes())->map(fn ($r) => $r->uri());

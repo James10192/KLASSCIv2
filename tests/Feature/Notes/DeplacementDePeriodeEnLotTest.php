@@ -25,8 +25,19 @@ use Tests\TestCase;
  * a la premiere passe du correctif, puis corriges — mais sans une seule
  * assertion, ce qui revenait a annoncer un correctif sans le prouver.
  *
- * Les trois tests tombent si l'appel a `pourUnLotDePeriodes` est retire, ou si
- * le plafond redevient un plafond de LOT au lieu d'un plafond par classe.
+ * **CINQ des six tests** tombent si l'appel a `pourUnLotDePeriodes` est retire —
+ * mesure en le retirant, marqueur verifie avant et apres le run. Le sixieme,
+ * « le semestre des notes est ecrit en entier », reste vert : il garde
+ * l'ENCODAGE de `esbtp_notes.semestre`, pas le recalcul. Lui tombe si
+ * `ESBTPNote::realignerLeSemestre()` reecrit la chaine, et il n'est alors pas
+ * seul : `DeplacementPeriodeCliTest` tombe avec lui.
+ *
+ * **Ce docbloc a dit « trois » alors qu'il y en avait six**, parce qu'il datait
+ * d'avant l'ajout de trois tests et n'a pas suivi. C'est le defaut que ce
+ * chantier a lui-meme traite comme bloquant un tour plus tot : un compte faux
+ * ici ferme l'enquete suivante — le prochain qui ne verra que deux tests tomber
+ * croira qu'il en manque un, et cherchera au mauvais endroit. Rejouez le retrait
+ * avant de toucher ce chiffre.
  */
 class DeplacementDePeriodeEnLotTest extends TestCase
 {

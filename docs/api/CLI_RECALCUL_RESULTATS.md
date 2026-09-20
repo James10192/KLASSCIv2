@@ -154,6 +154,16 @@ faire. 500 et non 200, parce que le geste légitime de cet endpoint est le
 recalcul d'une classe entière — 40 élèves sur 12 matières, 480 couples — et qu'un
 plafond sous ce chiffre refuserait le cas normal.
 
+⚠️ **`periode` désigne un semestre, pas une écriture.** `esbtp_evaluations.periode`
+porte historiquement `'1'` et `'2'` autant que `'semestre1'` et `'semestre2'` ; le
+périmètre accepte `semestre1` / `semestre2` et retient **les deux écritures**
+(`ESBTPEvaluation::aliasDePeriode()`). Ça n'a pas toujours été le cas, et la
+correction a d'abord ouvert pire que ce qu'elle fermait : le périmètre voyait
+l'évaluation encodée `'1'`, mais le recalcul relisait ses notes sur la seule forme
+canonique, n'en trouvait aucune, et **écrivait un 0/20 par-dessus une moyenne
+réelle** — en annonçant « 0 moyenne modifiée ». Mesuré : 14,00 devenu 0,00. La
+conversion vit désormais en un seul endroit, sur le modèle.
+
 ⚠️ `annuel` n'est **pas** accepté, et c'est délibéré : une évaluation ne porte
 jamais cette période, donc le périmètre serait toujours vide et l'appel rendrait
 un succès rassurant sans avoir rien recalculé. Les lignes annuelles

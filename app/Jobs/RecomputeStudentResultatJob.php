@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\ESBTPBulletin;
+use App\Models\ESBTPEvaluation;
 use App\Models\ESBTPNote;
 use App\Models\ESBTPResultat;
 use App\Services\BulletinService;
@@ -86,7 +87,8 @@ class RecomputeStudentResultatJob implements ShouldQueue
     public function handle(NoteCalculationService $calc): void
     {
         try {
-            $periode = $this->normalizePeriode($this->periode);
+            // La forme sous laquelle l'agregat est ECRIT et relu.
+            $periode = ESBTPEvaluation::periodeCanonique($this->periode);
 
             // 1. Récupérer toutes les notes valides pour ce contexte
             $notes = ESBTPNote::query()
@@ -95,7 +97,15 @@ class RecomputeStudentResultatJob implements ShouldQueue
                     $q->where('classe_id', $this->classeId)
                         ->where('matiere_id', $this->matiereId)
                         ->where('annee_universitaire_id', $this->anneeUniversitaireId)
-                        ->where('periode', $periode)
+                        // `whereIn` et non `where` : `esbtp_evaluations.periode`
+                        // porte `'1'` autant que `'semestre1'`. Un `where` nu sur
+                        // la forme canonique ne trouvait AUCUNE note d'une
+                        // evaluation encodee en chiffre — et comme la ligne
+                        // d'agregat, elle, existe sous la forme canonique, la
+                        // garde « aucune note ET aucune ligne » ne se declenchait
+                        // pas : le calcul sur zero note rendait 0.0 et **ecrasait
+                        // une moyenne reelle**. Mesure : 14,00 devenait 0,00.
+                        ->whereIn('periode', ESBTPEvaluation::aliasDePeriode($periode))
                         ->where('status', '!=', 'cancelled');
                 })
                 ->with('evaluation:id,bareme,coefficient,periode,classe_id,matiere_id,annee_universitaire_id,status')
@@ -338,13 +348,4 @@ class RecomputeStudentResultatJob implements ShouldQueue
     /**
      * Normalise la période — accepte 1/2/semestre1/semestre2/annuel.
      */
-    private function normalizePeriode(string $periode): string
-    {
-        return match ($periode) {
-            '1' => 'semestre1',
-            '2' => 'semestre2',
-            '' => 'semestre1',
-            default => $periode,
-        };
-    }
 }

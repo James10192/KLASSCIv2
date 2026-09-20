@@ -57,7 +57,7 @@ class ESBTPNote extends Model implements Auditable
 
         static::saving(function ($note) {
             if ($note->evaluation) {
-                $note->semestre = (int) str_replace('semestre', '', $note->evaluation->periode);
+                $note->semestre = static::semestreDepuisLaPeriode((string) $note->evaluation->periode);
             }
         });
     }
@@ -375,7 +375,17 @@ class ESBTPNote extends Model implements Auditable
     public static function realignerLeSemestre(int $evaluationId, string $periodeCible): int
     {
         return static::where('evaluation_id', $evaluationId)
-            ->update(['semestre' => (int) str_replace('semestre', '', $periodeCible)]);
+            ->update(['semestre' => static::semestreDepuisLaPeriode($periodeCible)]);
+    }
+
+    /**
+     * La periode d'une evaluation, dans l'ecriture qu'attend
+     * `esbtp_notes.semestre`. Le hook `saving()` ci-dessus fait le meme calcul :
+     * c'est ici, et nulle part ailleurs, que cette conversion doit vivre.
+     */
+    public static function semestreDepuisLaPeriode(string $periode): int
+    {
+        return (int) str_replace('semestre', '', $periode);
     }
 
     /**

@@ -766,8 +766,10 @@ class ESBTPEvaluationController extends Controller
                 $notesUpdates['matiere_id'] = $evaluation->matiere_id;
             }
             if ($evaluation->periode != $oldPeriode) {
-                // semestre = entier (1 ou 2) extrait de 'semestre1'/'semestre2'
-                $notesUpdates['semestre'] = (int) str_replace('semestre', '', (string) $evaluation->periode);
+                // L'encodage de cette colonne vit sur le modele, avec le hook
+                // `saving()` qui le decide — pas recopie ici. C'etait la
+                // troisieme copie de la meme connaissance.
+                $notesUpdates['semestre'] = ESBTPNote::semestreDepuisLaPeriode((string) $evaluation->periode);
             }
             if (! empty($notesUpdates)) {
                 $affected = ESBTPNote::where('evaluation_id', $evaluation->id)->update($notesUpdates);

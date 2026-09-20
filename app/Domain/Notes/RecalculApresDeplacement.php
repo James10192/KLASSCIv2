@@ -357,7 +357,10 @@ final class RecalculApresDeplacement
                 $q->where('classe_id', $coordonnee['classe_id'])
                     ->where('matiere_id', $coordonnee['matiere_id'])
                     ->where('annee_universitaire_id', $coordonnee['annee_universitaire_id'])
-                    ->where('periode', $coordonnee['periode'])
+                    // Les deux ecritures : une evaluation restee a `'1'` porte
+                    // bien des notes, et ne pas les voir ferait declarer orphelin
+                    // un agregat qui ne l'est pas.
+                    ->whereIn('periode', ESBTPEvaluation::aliasDePeriode((string) $coordonnee['periode']))
                     ->where('status', '!=', 'cancelled');
             })
             ->exists();
@@ -374,7 +377,9 @@ final class RecalculApresDeplacement
             ->where('classe_id', $coordonnee['classe_id'])
             ->where('matiere_id', $coordonnee['matiere_id'])
             ->where('annee_universitaire_id', $coordonnee['annee_universitaire_id'])
-            ->where('periode', $coordonnee['periode'])
+            // L'agregat vit sous la forme canonique : le chercher avec la valeur
+            // brute le manquait, et un orphelin reel n'etait pas signale.
+            ->where('periode', ESBTPEvaluation::periodeCanonique((string) $coordonnee['periode']))
             ->first();
 
         if (! $ligne) {
@@ -432,7 +437,7 @@ final class RecalculApresDeplacement
      * sur `POST /api/cli/notes/recompute`.
      *
      * @param  array<int, array{evaluation: ESBTPEvaluation, periode_avant: string}>  $deplacements
-     * @return array{recalculs_tentes:int, orphelins:array<int,array<string,mixed>>, echecs:int, reporte:bool, notes:int, perimetres_reportes:array<int,array<string,mixed>>}
+     * @return array{recalculs_tentes:int, orphelins:array<int,array<string,mixed>>, echecs:int, reporte:bool, perimetres_reportes:array<int,array<string,mixed>>}
      */
     public static function pourUnLotDePeriodes(array $deplacements, ?int $declencheur = null): array
     {
@@ -441,7 +446,6 @@ final class RecalculApresDeplacement
             'orphelins' => [],
             'echecs' => 0,
             'reporte' => false,
-            'notes' => 0,
             'perimetres_reportes' => [],
         ];
 
@@ -458,8 +462,6 @@ final class RecalculApresDeplacement
             ->selectRaw('evaluation_id, COUNT(*) as total')
             ->groupBy('evaluation_id')
             ->pluck('total', 'evaluation_id');
-
-        $bilan['notes'] = (int) $notesParEvaluation->sum();
 
         $budget = self::PLAFOND_NOTES_PAR_APPEL;
         $memo = ['couples' => [], 'orphelins' => []];
@@ -612,7 +614,10 @@ final class RecalculApresDeplacement
             .self::PLAFOND_NOTES_PAR_APPEL.' notes par requete epuise. Chaque ligne de'
             .' `perimetres_reportes` porte les parametres a rejouer sur'
             .' POST /api/cli/notes/recompute (classe_id, annee_universitaire_id,'
-            .' et une fois par periode listee ; `matiere_ids` sert a decouper si'
-            .' le rattrapage bute a son tour sur son plafond de couples).';
+            .' et une fois par periode listee). PASSEZ `matiere_id`, une fois par'
+            .' entree de `matiere_ids` : sans lui le rattrapage recalcule TOUTES'
+            .' les matieres de la classe pour cette periode, et un recalcul'
+            .' ECRASE la moyenne enregistree — y compris celle qu une personne a'
+            .' saisie a la main sur une matiere qui n a pas bouge.';
     }
 }

@@ -108,7 +108,14 @@ final class PerimetreDeRecalcul
                     'classe_id' => (int) $evaluation->classe_id,
                     'matiere_id' => (int) $evaluation->matiere_id,
                     'annee_universitaire_id' => (int) $evaluation->annee_universitaire_id,
-                    'periode' => (string) $evaluation->periode,
+                    // La forme CANONIQUE, pas la valeur brute : c'est sous
+                    // celle-la que l'agregat est enregistre, donc c'est celle
+                    // qu'il faut pour le relire (`moyenneEnregistree()`) et pour
+                    // la rendre a l'appelant. Publier `'1'` faisait lire
+                    // l'agregat au mauvais endroit : avant/apres a `null`,
+                    // `change` a `false` — la reponse annoncait « 0 moyenne
+                    // modifiee » pendant qu'une moyenne etait ecrasee.
+                    'periode' => ESBTPEvaluation::periodeCanonique((string) $evaluation->periode),
                 ];
             })
             ->filter()
