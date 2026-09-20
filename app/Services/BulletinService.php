@@ -3555,13 +3555,18 @@ class BulletinService
         //    C'est le defaut que ce chantier passe son temps a corriger ailleurs.
         // 2. LE COEFFICIENT DE CETTE COLONNE EST HETEROGENE, ET CE N'EST PAS
         //    UNE QUESTION DE DATE MAIS D'ECRIVAIN. `esbtp_resultats` en a
-        //    cinq, et DEUX NE CONSULTENT JAMAIS LA MAQUETTE. Chaque ligne
-        //    porte l'expression reellement ecrite, pas un resume :
+        //    cinq, et DEUX NE CONSULTENT JAMAIS LA MAQUETTE. Chaque ligne dit
+        //    d'ou vient la valeur, avec les identifiants du code :
         //
         //      - `BulletinService::persistResultats()` ...... `$resultat->coefficient ?? 1`
-        //      - `RecomputeStudentResultatJob` ............. `$existant?->coefficient ?? maquette`
-        //      - `ESBTPResultatController::updateMoyennes()` (x3) . maquette, `1` sur exception
-        //      - `ESBTPResultatController::bulkUpdateMoyennes()` .. `$payload['coefficient'] ?? 1`
+        //        (le DTO est rempli en amont par `coefficientOrDefault()`)
+        //      - `RecomputeStudentResultatJob` ..... `$resultatExistant?->coefficient
+        //        ?? $this->coefficientDeLaMaquette($periode)`
+        //      - `ESBTPResultatController::updateMoyennes()` (x3) . le FORMULAIRE
+        //        d'abord (`$resultatData['coefficient']`, « priorite haute » le dit
+        //        sur place), la maquette a defaut, `1` sur exception -- et le 3e
+        //        site, branche « nouvelle matiere », ne consulte jamais la maquette
+        //      - `ESBTPResultatController::bulkUpdateMoyennes()` .. `$moyenneData['coefficient'] ?? 1`
         //      - `CLIBtsTroncCommunController::upsertResultat()` .. `1` en dur
         //
         //    Ponderer refleterait donc QUEL ECRAN a touche la ligne en dernier,

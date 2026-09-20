@@ -471,11 +471,6 @@ class ESBTPMatiereController extends Controller
     }
 
     /**
-     * Affiche le formulaire de modification d'une matière.
-     *
-     * @return \Illuminate\Http\Response
-     */
-    /**
      * Une ECUE LMD ne se modifie pas par les ecrans BTS.
      *
      * `prepareMatieresListing()` les ecarte de l'index, donc le lien n'est
@@ -497,6 +492,11 @@ class ESBTPMatiereController extends Controller
         );
     }
 
+    /**
+     * Affiche le formulaire de modification d'une matière.
+     *
+     * @return \Illuminate\Http\Response
+     */
     public function edit(ESBTPMatiere $matiere)
     {
         $this->refuserUneEcueLmd($matiere);
