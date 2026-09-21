@@ -358,7 +358,7 @@
         var annee = form.querySelector('[name="annee_universitaire_id"]');
         var periode = form.querySelector('[name="periode"]');
         var container = document.getElementById('rc-content');
-        var classe = container && container.dataset.classeId;
+        var classe = (container && container.dataset.classeId) || @json($classe->id);
         window.dispatchEvent(new CustomEvent('couverture:contexte', {
             detail: { classe_id: classe, annee_universitaire_id: annee && annee.value, periode: periode && periode.value || 'annuel' }
         }));
