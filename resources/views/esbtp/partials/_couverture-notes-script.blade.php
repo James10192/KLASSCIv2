@@ -185,7 +185,9 @@ if (typeof window.couvertureNotes !== 'function') {
                     case 'aucune_evaluation':
                         return "Aucune évaluation créée pour cette matière : créez-en une pour commencer la saisie.";
                     case 'incomplete':
-                        return s.missing_results + ' note(s) manquante(s) sur ' + s.expected_results + ' attendue(s).';
+                        return s.missing_results + ' saisie(s) manquante(s) sur ' +
+                            (s.evaluations_total || 0) + ' évaluation(s) de la maquette × ' +
+                            (s.students_expected || 0) + ' étudiant(s) actif(s).';
                     case 'complete':
                         return "Toutes les notes attendues sont reçues.";
                     default:
@@ -266,7 +268,7 @@ if (typeof window.couvertureNotes !== 'function') {
                     case 'non_evaluee': return 'Aucune évaluation';
                     case 'programmee': return 'Programmée le ' + (matiere.prochaine_evaluation_at || 'date à confirmer');
                     case 'partielle': return matiere.missing_count + ' note(s) manquante(s) sur ' + matiere.evaluations_count + ' évaluation(s)';
-                    case 'hors_maquette': return 'À vérifier dans la maquette';
+                    case 'hors_maquette': return 'Matière absente de la maquette';
                     default: return 'Complète';
                 }
             },
