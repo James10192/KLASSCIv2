@@ -33,6 +33,9 @@ if (typeof window.couvertureNotes !== 'function') {
             interdit: false,
             donnees: null,
             _requete: 0,
+            _canalSynchronisation: null,
+            _surSynchronisationOnglet: null,
+            _surStockageSynchronisation: null,
 
             init() {
                 this._surContexte = (ev) => this.appliquerContexte(ev.detail || {});
@@ -49,14 +52,43 @@ if (typeof window.couvertureNotes !== 'function') {
                 this._surInvalidation = () => this.charger(true);
                 window.addEventListener('couverture:invalider', this._surInvalidation);
 
+                // Une saisie peut être ouverte dans un nouvel onglet depuis ce
+                // bandeau. La validation y réussit, mais l'onglet d'origine ne
+                // reçoit pas les événements JavaScript de son voisin : ce canal
+                // et le repli localStorage lui transmettent seulement le contexte
+                // nécessaire au recalcul, jamais les notes ni les étudiants.
+                this._surSynchronisationOnglet = (detail) => {
+                    if (!detail || detail.type !== 'notes-updated') return;
+                    if (Number(detail.classe_id) !== Number(this.classeId)) return;
+                    if (Number(detail.annee_universitaire_id) !== Number(this.anneeId)) return;
+                    this.charger(true);
+                    if (typeof window.nmRefreshClasses === 'function') {
+                        window.nmRefreshClasses();
+                    }
+                };
+                if ('BroadcastChannel' in window) {
+                    this._canalSynchronisation = new BroadcastChannel('klassci-notes-sync');
+                    this._canalSynchronisation.onmessage = (event) => this._surSynchronisationOnglet(event.data);
+                }
+                this._surStockageSynchronisation = (event) => {
+                    if (event.key !== 'klassci-notes-sync' || !event.newValue) return;
+                    try { this._surSynchronisationOnglet(JSON.parse(event.newValue)); } catch (_error) {}
+                };
+                window.addEventListener('storage', this._surStockageSynchronisation);
+
                 if (this.pret()) { this.charger(); }
             },
 
             destroy() {
                 window.removeEventListener('couverture:contexte', this._surContexte);
                 window.removeEventListener('couverture:invalider', this._surInvalidation);
+                window.removeEventListener('storage', this._surStockageSynchronisation);
+                if (this._canalSynchronisation) this._canalSynchronisation.close();
                 this._surContexte = null;
                 this._surInvalidation = null;
+                this._surSynchronisationOnglet = null;
+                this._surStockageSynchronisation = null;
+                this._canalSynchronisation = null;
             },
 
             pret() {
