@@ -48,7 +48,7 @@ if (typeof window.couvertureNotes !== 'function') {
                     return;
                 }
 
-                window.location.assign(matiere.saisie_url);
+                window.open(matiere.saisie_url, '_blank', 'noopener');
             },
 
             init() {
