@@ -1070,6 +1070,11 @@ function buildNotesGrid() {
         },
         dataType: 'json',
         success: function(response) {
+            nmFinalSaveInFlight = false;
+            if (nmFinalSaveRetryTimer) {
+                clearTimeout(nmFinalSaveRetryTimer);
+                nmFinalSaveRetryTimer = null;
+            }
             if (!response.success) {
                 console.error('Erreur API:', response.message);
                 return;
@@ -1557,6 +1562,7 @@ $('#saveAllNotesBtn').on('click', function() {
         return;
     }
 
+    nmFinalSaveInFlight = true;
     btn.html('<i class="fas fa-spinner fa-spin me-1"></i> Enregistrement...').prop('disabled', true);
 
     // Collecter toutes les notes en un seul tableau
@@ -1645,6 +1651,19 @@ $('#saveAllNotesBtn').on('click', function() {
             }, 600);
         },
         error: function(xhr) {
+            if (xhr.status === 429) {
+                const retryAfter = Math.min(60, Math.max(2, Number(xhr.getResponseHeader('Retry-After')) || 5));
+                btn.html(`<i class="fas fa-clock me-1"></i> Nouvelle tentative dans ${retryAfter}s…`).prop('disabled', true);
+                nmShowToast('info', 'Le serveur espace les validations. Votre brouillon est conservé et sera renvoyé automatiquement.');
+                nmFinalSaveRetryTimer = setTimeout(function() {
+                    nmFinalSaveRetryTimer = null;
+                    nmFinalSaveInFlight = false;
+                    if (btn.is(':visible')) btn.trigger('click');
+                }, retryAfter * 1000);
+                return;
+            }
+
+            nmFinalSaveInFlight = false;
             if (nmHandleSessionExpired(xhr)) {
                 btn.html(`<i class="fas fa-user-clock me-1"></i> Session expirée`).prop('disabled', false);
                 setTimeout(() => { btn.html(originalText); }, 2500);
