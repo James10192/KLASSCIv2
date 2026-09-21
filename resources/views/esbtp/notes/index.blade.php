@@ -823,6 +823,15 @@ $(document).ready(function() {
         if (currentClassId && currentMatiereId) {
             buildNotesGrid();
         }
+        window.dispatchEvent(new CustomEvent('couverture:contexte', {
+            detail: { classe_id: currentClassId || null, annee_universitaire_id: @json($anneeCouranteId ?? null), periode: currentPeriodeFilter === 'semestre1' || currentPeriodeFilter === 'semestre2' ? currentPeriodeFilter : 'annuel' }
+        }));
+    });
+
+    window.addEventListener('couverture:periode-change', function(event) {
+        var periode = event.detail && event.detail.periode;
+        var cible = periode === 'semestre1' || periode === 'semestre2' ? periode : 'all';
+        if ($('#periodeFilter').val() !== cible) { $('#periodeFilter').val(cible).trigger('change'); }
     });
 
     // Scroll shadow detection on grid wrapper (scroll doesn't bubble — attach directly)
