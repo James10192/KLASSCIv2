@@ -296,8 +296,8 @@
                 {{-- Auto-save info --}}
                 <div class="nm-autosave-info">
                     <i class="fas fa-info-circle"></i>
-                    Les modifications sont sauvegardées en brouillon à chaque saisie.
-                    <span class="fw-semibold">Cliquez sur « Valider les notes » pour verrouiller la saisie finale.</span>
+                    Les modifications restent en brouillon local pendant la saisie.
+                    <span class="fw-semibold">Cliquez sur « Valider les notes » pour enregistrer, verrouiller et actualiser la saisie finale.</span>
                 </div>
             </div>
             <div class="modal-footer nm-modal-footer">
@@ -1231,62 +1231,27 @@ function saveNote(studentId, evaluationId, noteValue) {
         return;
     }
 
-    $.ajax({
-        url: '{{ route("esbtp.notes.save-ajax") }}',
-        method: 'POST',
-        dataType: 'json',
-        headers: {
-            'Accept': 'application/json',
-            'X-Requested-With': 'XMLHttpRequest'
-        },
-        data: {
-            _token: '{{ csrf_token() }}',
-            etudiant_id: studentId,
-            evaluation_id: evaluationId,
-            note: isAbsent ? 0 : noteValue,
-            is_absent: isAbsent ? 'on' : ''
-        },
-        success: function(response) {
-            if (!response.success) {
-                alert(response.message || 'Erreur lors de la sauvegarde de la note.');
-                return;
-            }
-            // 1. Mettre à jour le state JS et recalculer la moyenne AVANT
-            //    de dispatcher nm:note-saved : sinon le toast lit l'ancienne
-            //    valeur de .average-cell (la lecture est synchrone à l'event).
-            if (!notesData[studentId]) notesData[studentId] = {};
-            if (!noteMetaData[studentId]) noteMetaData[studentId] = {};
-            notesData[studentId][evaluationId] = isAbsent ? 0 : noteValue;
-            notesData[studentId][evaluationId + '_absent'] = isAbsent;
-            noteMetaData[studentId][evaluationId] = {
-                submission_status: response.submission_status || 'draft',
-                is_locked: !!response.is_locked
-            };
+    // Une saisie reste un brouillon local jusqu'à la validation finale.
+    // On évite ainsi une requête HTTP par cellule et les erreurs de limite.
+    if (!notesData[studentId]) notesData[studentId] = {};
+    if (!noteMetaData[studentId]) noteMetaData[studentId] = {};
+    notesData[studentId][evaluationId] = isAbsent ? 0 : noteValue;
+    notesData[studentId][evaluationId + '_absent'] = isAbsent;
+    noteMetaData[studentId][evaluationId] = {
+        submission_status: 'draft',
+        is_locked: false
+    };
 
-            calculateStudentAverage(studentId);
-            calculateClassAverages();
-
-            // 2. Une fois le DOM cohérent, déclencher le highlight + toast
-            //    + badge bulletin synchronisé.
-            triggerRowHighlight(studentId);
-            markBulletinSynced();
-        },
-        error: function(xhr) {
-            if (nmHandleSessionExpired(xhr)) return;
-            console.error('Erreur lors de la sauvegarde:', xhr.responseJSON || xhr);
-            const msg = (xhr.responseJSON && xhr.responseJSON.message)
-                ? xhr.responseJSON.message
-                : (xhr.responseJSON && xhr.responseJSON.errors)
-                    ? Object.values(xhr.responseJSON.errors).flat().join('\n')
-                    : 'Erreur lors de la sauvegarde de la note.';
-            alert(msg);
-        }
-    });
+    nmMarkDirty(studentId, evaluationId);
+    nmScheduleAutosave();
+    window.nmHasUnsavedChanges = true;
+    calculateStudentAverage(studentId);
+    calculateClassAverages();
 }
 
 /**
- * Badge "Bulletin synchronisé" — affiché dans le footer du modal après chaque
- * sauvegarde de note réussie. Le timestamp se rafraîchit toutes les 30s pour
+ * Badge "Bulletin synchronisé" — affiché dans le footer du modal après une
+ * validation finale réussie. Le timestamp se rafraîchit toutes les 30s pour
  * afficher "il y a Xs / Xmin" en français.
  */
 let nmLastSyncAt = null;
@@ -1345,42 +1310,13 @@ function toggleAbsence(studentId, evaluationId, isAbsent) {
 
     if (isAbsent) {
         input.val('0').prop('disabled', true);
-        saveNote(studentId, evaluationId, 0);
     } else {
         input.val('0').prop('disabled', false).focus();
-        // Sauvegarder la suppression de l'absence côté serveur (note reste à 0)
-        $.ajax({
-            url: '{{ route("esbtp.notes.save-ajax") }}',
-            method: 'POST',
-            dataType: 'json',
-            headers: {
-                'Accept': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest'
-            },
-            data: {
-                _token: '{{ csrf_token() }}',
-                etudiant_id: studentId,
-                evaluation_id: evaluationId,
-                note: 0,
-                is_absent: ''
-            },
-            success: function(response) {
-                if (response.success) {
-                    if (!notesData[studentId]) notesData[studentId] = {};
-                    if (!noteMetaData[studentId]) noteMetaData[studentId] = {};
-                    notesData[studentId][evaluationId] = 0;
-                    notesData[studentId][evaluationId + '_absent'] = false;
-                    noteMetaData[studentId][evaluationId] = {
-                        submission_status: response.submission_status || 'draft',
-                        is_locked: !!response.is_locked
-                    };
-                    calculateStudentAverage(studentId);
-                    calculateClassAverages();
-                    triggerRowHighlight(studentId);
-                }
-            }
-        });
     }
+
+    // L'absence suit le même cycle que la note : brouillon local, puis
+    // une seule requête pendant « Valider les notes ».
+    saveNote(studentId, evaluationId, input.val() || 0);
 }
 
 function calculateAllAverages() {
@@ -1590,7 +1526,26 @@ $('#saveAllNotesBtn').on('click', function() {
                 calculateStudentAverage(entry.etudiant_id);
             });
             calculateClassAverages();
-            setTimeout(() => { btn.html(originalText); }, 2500);
+            notesPayload.forEach(function(entry) {
+                nmMarkClean(entry.etudiant_id, entry.evaluation_id);
+            });
+            nmAutosaveDraft();
+            window.nmHasUnsavedChanges = false;
+            markBulletinSynced();
+
+            const sync = response.synchronization || {};
+            if (sync.performed) {
+                nmShowToast('success', `Validation terminée : ${sync.notes_synchronized || 0} note(s) synchronisée(s).`);
+            } else if (sync.reason === 'permission_missing') {
+                nmShowToast('info', 'Notes validées. La synchronisation nécessite le droit de modifier les notes.');
+            }
+
+            // Relire la source serveur : statuts verrouillés, moyennes et
+            // indicateurs affichés correspondent exactement à la validation.
+            setTimeout(() => {
+                btn.html(originalText);
+                loadEvaluationsAndNotes();
+            }, 600);
         },
         error: function(xhr) {
             if (nmHandleSessionExpired(xhr)) {
