@@ -1329,7 +1329,7 @@
 
 @push('scripts')
 <script>
-document.addEventListener('DOMContentLoaded', () => {
+function initializeEvaluations() {
     const filtersForm = document.getElementById('evaluations-filter-form');
     const resultsContainer = document.getElementById('evaluations-results');
     if (!filtersForm || !resultsContainer) {
@@ -1653,6 +1653,7 @@ document.addEventListener('DOMContentLoaded', () => {
         loadingMore = true;
         const formData = new FormData(filtersForm);
         formData.set('page', String(nextPage));
+        formData.set('mode', 'rows');
         const url = resultsContainer.dataset.refreshUrl + '?' + new URLSearchParams(formData).toString();
         const sentinel = resultsContainer.querySelector('#evaluations-infinite-sentinel');
         if (sentinel) sentinel.innerHTML = '<span><i class="fas fa-circle-notch fa-spin"></i> Chargement…</span>';
@@ -2105,6 +2106,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (window.getSelection().toString().length > 0) return;
         window.location.href = showUrl;
     });
-});
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeEvaluations, { once: true });
+} else {
+    initializeEvaluations();
+}
 </script>
 @endpush
