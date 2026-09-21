@@ -134,8 +134,10 @@ if (typeof window.couvertureNotes !== 'function') {
                         return "La maquette ne prévoit aucune matière à cette période.";
                     case 'cohorte_vide':
                         return "Aucun étudiant sur cette période : rien à saisir.";
+                    case 'evaluations_programmees':
+                        return (s.evaluations_programmees_total || 0) + " évaluation(s) programmée(s) : la saisie s'ouvrira à la date prévue.";
                     case 'aucune_evaluation':
-                        return "Aucune évaluation n'a encore été créée : la saisie n'a pas commencé.";
+                        return "Aucune évaluation créée pour cette matière : créez-en une pour commencer la saisie.";
                     case 'incomplete':
                         return s.missing_results + ' note(s) manquante(s) sur ' + s.expected_results + ' attendue(s).';
                     case 'complete':
@@ -176,6 +178,7 @@ if (typeof window.couvertureNotes !== 'function') {
                     case 'complete': return 'cvn--ok';
                     case 'incomplete': return 'cvn--alerte';
                     case 'aucune_evaluation': return 'cvn--alerte';
+                    case 'evaluations_programmees': return 'cvn--neutre';
                     default: return 'cvn--neutre';
                 }
             },
@@ -185,6 +188,7 @@ if (typeof window.couvertureNotes !== 'function') {
                     case 'complete': return 'fa-circle-check';
                     case 'incomplete': return 'fa-triangle-exclamation';
                     case 'aucune_evaluation': return 'fa-hourglass-start';
+                    case 'evaluations_programmees': return 'fa-calendar-days';
                     default: return 'fa-circle-info';
                 }
             },
@@ -207,15 +211,16 @@ if (typeof window.couvertureNotes !== 'function') {
             prioritaires() {
                 if (!this.donnees || !this.donnees.subjects) { return []; }
                 return this.donnees.subjects
-                    .filter(function (m) { return m.missing_count > 0 || m.statut === 'non_evaluee'; })
+                    .filter(function (m) { return m.missing_count > 0 || ['non_evaluee', 'programmee', 'hors_maquette'].includes(m.statut); })
                     .sort(function (a, b) { return (b.missing_count || 0) - (a.missing_count || 0); });
             },
 
             libelleStatut(matiere) {
                 switch (matiere.statut) {
                     case 'non_evaluee': return 'Aucune évaluation';
-                    case 'partielle': return matiere.missing_count + ' manquante(s)';
-                    case 'hors_maquette': return 'Hors référentiel';
+                    case 'programmee': return 'Programmée le ' + (matiere.prochaine_evaluation_at || 'date à confirmer');
+                    case 'partielle': return matiere.missing_count + ' note(s) manquante(s) sur ' + matiere.evaluations_count + ' évaluation(s)';
+                    case 'hors_maquette': return 'À vérifier dans la maquette';
                     default: return 'Complète';
                 }
             },
