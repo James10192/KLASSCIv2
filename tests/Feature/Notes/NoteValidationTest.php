@@ -196,7 +196,7 @@ class NoteValidationTest extends TestCase
     {
         $expectations = [
             'esbtp.notes.save-ajax' => 'throttle:30,1',
-            'esbtp.notes.save-ajax-bulk' => 'throttle:10,1',
+            'esbtp.notes.save-ajax-bulk' => 'throttle:30,1',
             'esbtp.notes.store-batch' => 'throttle:10,1',
         ];
 
