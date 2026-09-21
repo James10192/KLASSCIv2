@@ -859,6 +859,35 @@ $(document).ready(function() {
 });
 
 
+// Navigation interne depuis le suivi des notes : la matière est chargée dans
+// ce modal, sans changer de page ni ouvrir d'onglet.
+window.nmOpenCoverageSaisie = function(matiere) {
+    if (!matiere || !matiere.saisie_url || !currentClassId) return;
+
+    let destination;
+    try {
+        destination = new URL(matiere.saisie_url, window.location.origin);
+    } catch (_error) {
+        return;
+    }
+
+    const classeId = destination.searchParams.get('classe_id');
+    const matiereId = destination.searchParams.get('matiere_id');
+    const periode = destination.searchParams.get('periode');
+    if (!matiereId || (classeId && String(classeId) !== String(currentClassId))) return;
+
+    const $matiere = $('#matiereSelect');
+    if (!$matiere.find(`option[value="${matiereId}"]`).length) return;
+
+    const periodeCible = periode === 'semestre1' || periode === 'semestre2' ? periode : 'all';
+    $('#periodeFilter').val(periodeCible).trigger('change');
+    $matiere.val(matiereId).trigger('change');
+
+    // La grille remplace immédiatement le contenu et conserve le contexte de
+    // classe ; ce focus laisse visible que la navigation s'est bien faite.
+    $matiere.trigger('focus');
+};
+
 // Fonction pour sélectionner une classe
 function selectClass(classId, className) {
     if (currentClassId !== classId) {

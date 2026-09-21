@@ -150,9 +150,9 @@
                                 </span>
                             </template>
                             <template x-if="m.saisie_url && m.statut !== 'programmee'">
-                                <a class="cvn-action" :href="m.saisie_url" target="_blank" rel="noopener">
+                                <button type="button" class="cvn-action" @click="ouvrirSaisie(m)">
                                     <i class="fas fa-pen-to-square"></i> Ouvrir la saisie
-                                </a>
+                                </button>
                             </template>
                         </div>
                     </div>
