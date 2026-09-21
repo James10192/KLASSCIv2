@@ -49,6 +49,7 @@ final class AcademicNoteCoverageService
         $subjects = $attendu['subjects'];
         $students = $this->activeStudents($yearId, $classId, $period, $classe);
         $evaluations = $this->evaluations($yearId, $period, $classId);
+        $futureEvaluations = $this->futureEvaluations($yearId, $period, $classId);
         $entries = $this->resolvedEntries($evaluations->pluck('id'));
 
         $enseignants = $this->contacts->pourLaClasse($classe, $yearId, $attendu['semestre'], $subjects);
@@ -58,6 +59,7 @@ final class AcademicNoteCoverageService
             $subjects,
             $students,
             $evaluations,
+            $futureEvaluations,
             $entries,
             $attendu,
             $enseignants,
@@ -80,6 +82,7 @@ final class AcademicNoteCoverageService
         Collection $subjectRows,
         Collection $catalogSubjectRows,
         Collection $evaluations,
+        Collection $futureEvaluations,
         Collection $incompleteStudents,
         array $attendu,
     ): array {
@@ -88,11 +91,12 @@ final class AcademicNoteCoverageService
                 // entierement notee rendaient le meme « 0 resultat manquant » —
                 // et l'ecran annoncait « toutes les notes sont recues » sur une
                 // cohorte vide.
-                'state' => $this->etatGlobal($subjects, $studentIndex, $catalogSubjectRows, $attendu),
+                'state' => $this->etatGlobal($subjects, $studentIndex, $catalogSubjectRows, $attendu, $futureEvaluations),
                 'subjects_total' => $subjects->count(),
                 'subjects_evaluated' => $catalogSubjectRows->where('evaluations_count', '>', 0)->where('treated_count', '>', 0)->count(),
                 'orphan_subjects' => $subjectRows->where('is_orphan', true)->count(),
                 'evaluations_total' => $evaluations->count(),
+                'evaluations_programmees_total' => $futureEvaluations->count(),
                 'students_expected' => $studentIndex->count(),
                 // Le prevu ne compte QUE le referentiel. Y ajouter les matieres
                 // hors referentiel melangeait deux perimetres : le ratio
@@ -354,6 +358,32 @@ final class AcademicNoteCoverageService
             ->get();
     }
 
+    /**
+     * Évaluations déjà programmées, mais dont la saisie reste indisponible car
+     * leur date est future. Elles doivent être visibles dans le suivi pour ne
+     * jamais être confondues avec une matière sans évaluation.
+     */
+    private function futureEvaluations(int $yearId, string $period, int $classId): Collection
+    {
+        return ESBTPEvaluation::query()
+            ->where('classe_id', $classId)
+            ->where('annee_universitaire_id', $yearId)
+            ->when(
+                $this->periods->normalize($period) !== 'annuel',
+                fn ($query) => $query->whereIn('periode', $this->periods->databaseVariants($period)),
+            )
+            ->when(
+                Schema::hasColumn('esbtp_evaluations', 'status'),
+                fn ($query) => $query->where(function ($scope): void {
+                    $scope->whereNull('status')->orWhere('status', '!=', ESBTPEvaluation::STATUS_CANCELLED);
+                }),
+            )
+            ->whereDate('date_evaluation', '>', now())
+            ->with('matiere:id,name,code')
+            ->orderBy('date_evaluation')
+            ->get();
+    }
+
     private function resolvedEntries(Collection $evaluationIds): Collection
     {
         if ($evaluationIds->isEmpty() || ! Schema::hasTable('esbtp_grade_sheets') || ! Schema::hasTable('esbtp_grade_sheet_entries')) {
@@ -396,6 +426,7 @@ final class AcademicNoteCoverageService
         Collection $subjects,
         Collection $students,
         Collection $evaluations,
+        Collection $futureEvaluations,
         Collection $entries,
         array $attendu,
         array $enseignants = [],
@@ -414,9 +445,11 @@ final class AcademicNoteCoverageService
         );
 
         $evaluationsBySubject = $evaluations->groupBy(fn (ESBTPEvaluation $evaluation) => (int) $evaluation->matiere_id);
+        $futureBySubject = $futureEvaluations->groupBy(fn (ESBTPEvaluation $evaluation) => (int) $evaluation->matiere_id);
         $subjectRows = $subjects->map(fn (ESBTPMatiere $subject): array => $this->subjectRow(
             $subject,
             $evaluationsBySubject->get((int) $subject->id, collect()),
+            $futureBySubject->get((int) $subject->id, collect()),
             $indexPour,
             $entries,
             false,
@@ -426,7 +459,7 @@ final class AcademicNoteCoverageService
         $orphanRows = $evaluations
             ->filter(fn (ESBTPEvaluation $evaluation) => ! $subjects->contains('id', (int) $evaluation->matiere_id))
             ->groupBy(fn (ESBTPEvaluation $evaluation) => (int) $evaluation->matiere_id)
-            ->map(fn (Collection $items): array => $this->subjectRow($items->first()->matiere ?? null, $items, $indexPour, $entries, true, $enseignants))
+            ->map(fn (Collection $items): array => $this->subjectRow($items->first()->matiere ?? null, $items, collect(), $indexPour, $entries, true, $enseignants))
             ->values();
 
         $subjectRows = $subjectRows->concat($orphanRows)->values();
@@ -454,6 +487,7 @@ final class AcademicNoteCoverageService
                 $subjectRows,
                 $catalogSubjectRows,
                 $evaluations,
+                $futureEvaluations,
                 $incompleteStudents,
                 $attendu,
             ),
@@ -469,7 +503,7 @@ final class AcademicNoteCoverageService
      * @param  Collection<int, ESBTPMatiere>  $subjects
      * @param  array<string, mixed>  $attendu
      */
-    private function etatGlobal(Collection $subjects, Collection $studentIndex, Collection $catalogRows, array $attendu): string
+    private function etatGlobal(Collection $subjects, Collection $studentIndex, Collection $catalogRows, array $attendu, Collection $futureEvaluations): string
     {
         if ($subjects->isEmpty()) {
             return $attendu['maquette_renseignee'] ? 'aucune_matiere_ce_semestre' : 'referentiel_absent';
@@ -486,7 +520,7 @@ final class AcademicNoteCoverageService
         // Aucune matiere evaluee du tout : ce n'est pas « complet », c'est
         // « rien n'a commence ».
         if ($catalogRows->where('evaluations_count', '>', 0)->isEmpty()) {
-            return 'aucune_evaluation';
+            return $futureEvaluations->isNotEmpty() ? 'evaluations_programmees' : 'aucune_evaluation';
         }
 
         return 'complete';
@@ -495,7 +529,7 @@ final class AcademicNoteCoverageService
     /**
      * @param  array<int, array<string, mixed>>  $enseignants  matiere_id => contact
      */
-    private function subjectRow(?ESBTPMatiere $subject, Collection $evaluations, \Closure $indexPour, Collection $entries, bool $orphan = false, array $enseignants = []): array
+    private function subjectRow(?ESBTPMatiere $subject, Collection $evaluations, Collection $futureEvaluations, \Closure $indexPour, Collection $entries, bool $orphan = false, array $enseignants = []): array
     {
         $evaluationRows = $evaluations->map(fn (ESBTPEvaluation $evaluation): array => $this->evaluationRow($evaluation, $indexPour($evaluation), $entries))->values();
         $missingByStudent = [];
@@ -515,6 +549,7 @@ final class AcademicNoteCoverageService
         // matiere qui ne devrait pas etre la.
         $statut = match (true) {
             $orphan => 'hors_maquette',
+            $evaluationRows->isEmpty() && $futureEvaluations->isNotEmpty() => 'programmee',
             $evaluationRows->isEmpty() => 'non_evaluee',
             $manquants > 0 => 'partielle',
             default => 'complete',
@@ -531,6 +566,8 @@ final class AcademicNoteCoverageService
             // dependent — le planning n'entre pas dans le denominateur.
             'enseignant' => $subject ? ($enseignants[(int) $subject->id] ?? null) : null,
             'evaluations_count' => $evaluationRows->count(),
+            'evaluations_programmees_count' => $futureEvaluations->count(),
+            'prochaine_evaluation_at' => optional($futureEvaluations->first()?->date_evaluation)->toDateString(),
             'expected_count' => (int) $evaluationRows->sum('expected_count'),
             'treated_count' => (int) $evaluationRows->sum('treated_count'),
             'numeric_count' => (int) $evaluationRows->sum('numeric_count'),
