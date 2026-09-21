@@ -94,21 +94,21 @@
                     </div>
                 </template>
 
-                <template x-if="prioritaires().length > 0">
-                    <button type="button" class="cvn-lien" @click="basculer()">
-                        <span x-show="replie">Voir quoi relancer</span>
-                        <span x-show="!replie" x-cloak>Masquer</span>
+                <template x-if="matieresParCategorie('tout').length > 0">
+                    <button type="button" class="cvn-detail-toggle" @click="basculer()" :aria-expanded="(!replie).toString()">
+                        <i class="fas" :class="replie ? 'fa-chevron-down' : 'fa-chevron-up'"></i>
+                        <span x-text="replie ? 'Afficher le détail' : 'Masquer le détail'"></span>
                     </button>
                 </template>
             </div>
 
             <div class="cvn-filtres" aria-label="Filtrer les matières du suivi">
-                <button type="button" :class="{ 'is-active': filtre === 'tout' }" @click="filtre = 'tout'">Toutes <span x-text="matieresParCategorie('tout').length"></span></button>
-                <button type="button" :class="{ 'is-active': filtre === 'sans_note' }" @click="filtre = 'sans_note'">Évaluées sans note <span x-text="compteur('sans_note')"></span></button>
-                <button type="button" :class="{ 'is-active': filtre === 'partielle' }" @click="filtre = 'partielle'">Incomplètes <span x-text="compteur('partielle')"></span></button>
-                <button type="button" :class="{ 'is-active': filtre === 'sans_evaluation' }" @click="filtre = 'sans_evaluation'">Sans évaluation <span x-text="compteur('sans_evaluation')"></span></button>
-                <button type="button" :class="{ 'is-active': filtre === 'hors_maquette' }" @click="filtre = 'hors_maquette'">Hors maquette <span x-text="compteur('hors_maquette')"></span></button>
-                <button type="button" :class="{ 'is-active': filtre === 'complete' }" @click="filtre = 'complete'">Complètes <span x-text="compteur('complete')"></span></button>
+                <button type="button" :class="{ 'is-active': filtre === 'tout' }" @click="filtrer('tout')">Toutes <span x-text="matieresParCategorie('tout').length"></span></button>
+                <button type="button" :class="{ 'is-active': filtre === 'sans_note' }" @click="filtrer('sans_note')">Évaluées sans note <span x-text="compteur('sans_note')"></span></button>
+                <button type="button" :class="{ 'is-active': filtre === 'partielle' }" @click="filtrer('partielle')">Incomplètes <span x-text="compteur('partielle')"></span></button>
+                <button type="button" :class="{ 'is-active': filtre === 'sans_evaluation' }" @click="filtrer('sans_evaluation')">Sans évaluation <span x-text="compteur('sans_evaluation')"></span></button>
+                <button type="button" :class="{ 'is-active': filtre === 'hors_maquette' }" @click="filtrer('hors_maquette')">Hors maquette <span x-text="compteur('hors_maquette')"></span></button>
+                <button type="button" :class="{ 'is-active': filtre === 'complete' }" @click="filtrer('complete')">Complètes <span x-text="compteur('complete')"></span></button>
             </div>
 
             {{-- Le doublon probable, HORS du détail repliable : il ne dépend pas
@@ -211,6 +211,8 @@
 .cvn--ok .cvn-jauge-barre { background: #10b981; }
 .cvn--alerte .cvn-jauge-barre { background: #f59e0b; }
 .cvn-jauge strong { font-size: .8rem; font-weight: 700; color: #1e293b; }
+.cvn-detail-toggle { display: inline-flex; align-items: center; gap: .35rem; border: 0; background: transparent; color: #0453cb; font-size: .78rem; font-weight: 700; cursor: pointer; padding: .25rem; border-radius: 6px; }
+.cvn-detail-toggle:hover { background: rgba(4,83,203,.07); }
 .cvn-lien { background: none; border: none; padding: 0; color: #0453cb; font-size: .78rem; font-weight: 600; cursor: pointer; text-decoration: underline; }
 .cvn-detail { margin-top: .7rem; padding-top: .7rem; border-top: 1px solid rgba(15,23,42,.08); display: flex; flex-direction: column; gap: .45rem; }
 .cvn-detail-titre { color: #475569; font-size: .73rem; font-weight: 800; text-transform: uppercase; letter-spacing: .3px; }
