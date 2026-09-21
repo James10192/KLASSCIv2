@@ -38,9 +38,17 @@ if (typeof window.couvertureNotes !== 'function') {
             _surStockageSynchronisation: null,
 
             ouvrirSaisie(matiere) {
+                if (!matiere || !matiere.saisie_url) return;
+
+                // Dans notes.index, la matière est ouverte dans le modal déjà
+                // affiché. Les autres écrans n'ont pas ce modal : ils gardent
+                // alors le lien direct vers la saisie.
                 if (typeof window.nmOpenCoverageSaisie === 'function') {
                     window.nmOpenCoverageSaisie(matiere);
+                    return;
                 }
+
+                window.location.assign(matiere.saisie_url);
             },
 
             init() {
