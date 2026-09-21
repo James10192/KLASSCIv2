@@ -196,7 +196,7 @@ class NoteValidationTest extends TestCase
     {
         $expectations = [
             'esbtp.notes.save-ajax' => 'throttle:30,1',
-            'esbtp.notes.save-ajax-bulk' => 'throttle:10,1',
+            'esbtp.notes.save-ajax-bulk' => 'throttle:20,1',
             'esbtp.notes.store-batch' => 'throttle:10,1',
         ];
 
@@ -210,6 +210,15 @@ class NoteValidationTest extends TestCase
                 "Route {$routeName} should have middleware {$expectedMiddleware}"
             );
         }
+    }
+
+    /**
+     * La permission de synchronisation finale est disponible pour attribution
+     * aux utilisateurs qui valident les notes.
+     */
+    public function test_it_exposes_final_notes_synchronization_permission(): void
+    {
+        $this->assertArrayHasKey('notes.synchronize', config('permissions.permissions'));
     }
 
     /**
