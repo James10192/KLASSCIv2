@@ -302,7 +302,10 @@ if (typeof window.couvertureNotes !== 'function') {
 
             matieresParCategorie(categorie) {
                 var subjects = (this.donnees && this.donnees.subjects) || [];
-                return subjects.filter((matiere) => this.categorie(matiere) === categorie);
+                // « Toutes » est la vue globale, pas une catégorie métier.
+                return categorie === 'tout'
+                    ? subjects
+                    : subjects.filter((matiere) => this.categorie(matiere) === categorie);
             },
 
             compteur(categorie) {
