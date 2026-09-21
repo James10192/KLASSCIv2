@@ -795,7 +795,7 @@ class ESBTPNoteController extends Controller
                 'evaluations_synchronized' => 0,
                 'notes_synchronized' => 0,
             ];
-            if ($submitFinal && $errors === 0 && Auth::user()?->can('notes.synchronize')) {
+            if ($submitFinal && $errors === 0 && Auth::user()?->can('notes.edit')) {
                 $synchronization = $this->noteSubmissionSynchronizationService
                     ->synchronize(array_keys($authorizedEvaluationIds));
 
