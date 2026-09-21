@@ -23,6 +23,7 @@ use App\Services\FraisScopeResolver;
 use App\Services\LMD\EtudiantNotesLmdPresenter;
 use App\Services\NoteCalculationService;
 use App\Services\Notes\NoteStudentCohortService;
+use App\Services\Notes\NoteSubmissionSynchronizationService;
 use App\Services\NotesImportService;
 use App\Services\NotesWindowGuard;
 use App\Services\NotificationService;
@@ -39,11 +40,13 @@ class ESBTPNoteController extends Controller
     protected $notificationService;
     protected NoteStudentCohortService $noteStudentCohortService;
     protected NotesWindowGuard $notesWindowGuard;
+    protected NoteSubmissionSynchronizationService $noteSubmissionSynchronizationService;
 
     public function __construct(
         NotificationService $notificationService,
         NoteStudentCohortService $noteStudentCohortService,
-        NotesWindowGuard $notesWindowGuard
+        NotesWindowGuard $notesWindowGuard,
+        NoteSubmissionSynchronizationService $noteSubmissionSynchronizationService
     )
     {
         $this->middleware(['auth']);
@@ -51,6 +54,7 @@ class ESBTPNoteController extends Controller
         $this->notificationService = $notificationService;
         $this->noteStudentCohortService = $noteStudentCohortService;
         $this->notesWindowGuard = $notesWindowGuard;
+        $this->noteSubmissionSynchronizationService = $noteSubmissionSynchronizationService;
     }
 
     private function canManageEvaluationNotes(?User $user, ESBTPEvaluation $evaluation): bool
@@ -725,6 +729,7 @@ class ESBTPNoteController extends Controller
 
             $canEdit = Auth::user()->can('notes.edit');
             $pendingNotifications = [];
+            $authorizedEvaluationIds = [];
 
             foreach ($notes as $entry) {
                 $evaluation = $evaluations->get($entry['evaluation_id']);
@@ -738,7 +743,10 @@ class ESBTPNoteController extends Controller
                     continue;
                 }
 
+                // La synchronisation finale ne porte que sur les évaluations
+                // que cet utilisateur est réellement autorisé à gérer.
                 $evalKey = (int) $evaluation->id;
+                $authorizedEvaluationIds[$evalKey] = true;
                 if (! array_key_exists($evalKey, $allowedStudentIdsByEval)) {
                     $allowedStudentIdsByEval[$evalKey] = $this->noteStudentCohortService
                         ->allowedStudentIdsForEvaluation($evaluation)
@@ -778,6 +786,27 @@ class ESBTPNoteController extends Controller
                 $saved++;
             }
 
+            // Les brouillons ne sont jamais synchronisés. Après une validation
+            // complète, un utilisateur habilité peut remettre les colonnes
+            // dénormalisées en cohérence avec l'évaluation parente.
+            $synchronization = [
+                'performed' => false,
+                'reason' => $submitFinal ? ($errors === 0 ? 'permission_missing' : 'validation_errors') : 'draft',
+                'evaluations_synchronized' => 0,
+                'notes_synchronized' => 0,
+            ];
+            if ($submitFinal && $errors === 0 && Auth::user()?->can('notes.synchronize')) {
+                $synchronization = $this->noteSubmissionSynchronizationService
+                    ->synchronize(array_keys($authorizedEvaluationIds));
+
+                \Log::info('Notes final submission synchronized', [
+                    'user_id' => Auth::id(),
+                    'evaluation_ids' => array_keys($authorizedEvaluationIds),
+                    'evaluations_synchronized' => $synchronization['evaluations_synchronized'],
+                    'notes_synchronized' => $synchronization['notes_synchronized'],
+                ]);
+            }
+
             DB::commit();
 
             // Envoyer les notifications après le commit (évite rollback en cascade)
@@ -791,6 +820,7 @@ class ESBTPNoteController extends Controller
                 'errors'  => $errors,
                 'total'   => count($notes),
                 'submission_status' => $submitFinal ? ESBTPNote::SUBMISSION_SUBMITTED : ESBTPNote::SUBMISSION_DRAFT,
+                'synchronization' => $synchronization,
                 'message' => $errors === 0
                     ? ($submitFinal
                         ? "{$saved} note(s) validée(s) avec succès."
