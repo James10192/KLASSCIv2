@@ -32,6 +32,8 @@ if (typeof window.couvertureNotes !== 'function') {
             erreur: '',
             interdit: false,
             donnees: null,
+            filtre: 'tout',
+            _cache: {},
             _requete: 0,
             _canalSynchronisation: null,
             _surSynchronisationOnglet: null,
@@ -121,8 +123,12 @@ if (typeof window.couvertureNotes !== 'function') {
                 this.classeId = classe;
                 this.anneeId = annee;
                 this.periode = periode;
-                this.donnees = null;
                 this.erreur = '';
+
+                // On réaffiche aussitôt le dernier calcul connu pour ce contexte,
+                // puis on le rafraîchit en arrière-plan : aucun effet de clignotement.
+                var cache = this._cache[this.cleCache()];
+                this.donnees = cache ? cache.donnees : null;
 
                 if (this.pret()) { this.charger(); }
             },
@@ -134,12 +140,37 @@ if (typeof window.couvertureNotes !== 'function') {
                     + (forcer ? '&recalculer=1' : '');
             },
 
+            cleCache() {
+                return [this.classeId, this.anneeId, this.periode].join(':');
+            },
+
+            changerPeriode(periode) {
+                if (!['annuel', 'semestre1', 'semestre2'].includes(periode) || periode === this.periode) return;
+                this.periode = periode;
+                this.filtre = 'tout';
+                window.dispatchEvent(new CustomEvent('couverture:periode-change', { detail: { periode: periode } }));
+                this.erreur = '';
+                var cache = this._cache[this.cleCache()];
+                this.donnees = cache ? cache.donnees : null;
+                this.charger();
+            },
+
+            rafraichir() { return this.charger(true); },
+
             async charger(forcer) {
                 if (!this.pret()) { return; }
 
+                var cle = this.cleCache();
+                var cache = this._cache[cle];
+                // Les allers-retours S1/S2 restent instantanés pendant 20 s.
+                // Une validation finale force toujours un nouveau calcul.
+                if (!forcer && cache && (Date.now() - cache.at) < 20000) {
+                    this.donnees = cache.donnees;
+                    return;
+                }
+
                 // Un choix rapide dans un sélecteur lance plusieurs requêtes :
-                // seule la dernière demandée a le droit d'écrire le résultat,
-                // sinon une réponse lente écraserait la bonne.
+                // seule la dernière demandée a le droit d'écrire le résultat.
                 var jeton = ++this._requete;
 
                 this.chargement = true;
@@ -150,7 +181,9 @@ if (typeof window.couvertureNotes !== 'function') {
                     if (jeton !== this._requete) { return; }
                     if (res.status === 403) { this.interdit = true; return; }
                     if (!res.ok) { throw new Error('Suivi des notes indisponible (' + res.status + ').'); }
-                    this.donnees = await res.json();
+                    var donnees = await res.json();
+                    this._cache[cle] = { donnees: donnees, at: Date.now() };
+                    this.donnees = donnees;
                 } catch (err) {
                     if (jeton === this._requete) { this.erreur = err.message; }
                 } finally {
@@ -254,6 +287,48 @@ if (typeof window.couvertureNotes !== 'function') {
             },
 
             aUneBarre() { return this.pourcentage() !== null; },
+
+            categorie(matiere) {
+                if (matiere.is_orphan || matiere.statut === 'hors_maquette') return 'hors_maquette';
+                if (matiere.statut === 'programmee') return 'programmee';
+                if (matiere.statut === 'non_evaluee') return 'sans_evaluation';
+                if ((matiere.evaluations_count || 0) > 0 && (matiere.treated_count || 0) === 0) return 'sans_note';
+                if ((matiere.missing_count || 0) > 0) return 'partielle';
+                return 'complete';
+            },
+
+            matieresParCategorie(categorie) {
+                var subjects = (this.donnees && this.donnees.subjects) || [];
+                return subjects.filter((matiere) => this.categorie(matiere) === categorie);
+            },
+
+            compteur(categorie) {
+                return this.matieresParCategorie(categorie).length;
+            },
+
+            matieresAffichees() {
+                var subjects = (this.donnees && this.donnees.subjects) || [];
+                var filtre = this.filtre;
+                return subjects
+                    .filter((matiere) => filtre === 'tout' || this.categorie(matiere) === filtre)
+                    .sort((a, b) => {
+                        var ordre = { hors_maquette: 0, sans_evaluation: 1, sans_note: 2, partielle: 3, programmee: 4, complete: 5 };
+                        var pa = ordre[this.categorie(a)] ?? 9;
+                        var pb = ordre[this.categorie(b)] ?? 9;
+                        return pa - pb || (b.missing_count || 0) - (a.missing_count || 0) || String(a.name).localeCompare(String(b.name), 'fr');
+                    });
+            },
+
+            titreCategorie(categorie) {
+                return {
+                    sans_evaluation: 'Dans la maquette · sans évaluation',
+                    sans_note: 'Évaluation créée · aucune note saisie',
+                    partielle: 'Saisie à compléter',
+                    complete: 'Saisie complète',
+                    programmee: 'Évaluation programmée',
+                    hors_maquette: 'Hors maquette',
+                }[categorie] || categorie;
+            },
 
             /* Les matières à relancer, les plus en retard d'abord. */
             prioritaires() {

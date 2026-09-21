@@ -51,7 +51,7 @@
      x-cloak>
 
     {{-- Chargement : une ligne discrète, pas un bloc qui saute --}}
-    <template x-if="chargement">
+    <template x-if="chargement && !donnees">
         <div class="cvn-bloc cvn--neutre">
             <div class="cvn-ligne">
                 <i class="fas fa-circle-notch fa-spin"></i>
@@ -61,7 +61,7 @@
     </template>
 
     {{-- Échec : on le dit, sans bloquer la page --}}
-    <template x-if="!chargement && erreur">
+    <template x-if="!donnees && erreur">
         <div class="cvn-bloc cvn--neutre">
             <div class="cvn-ligne">
                 <i class="fas fa-plug-circle-xmark"></i>
@@ -71,13 +71,18 @@
         </div>
     </template>
 
-    <template x-if="!chargement && !erreur && donnees">
+    <template x-if="donnees">
         <div class="cvn-bloc" :class="ton()">
             <div class="cvn-ligne">
                 <i class="fas" :class="icone()"></i>
                 <div class="cvn-texte">
                     <strong>{{ $_cvnTitre }}</strong>
                     <span x-text="phrase()"></span>
+                </div>
+                <div class="cvn-periodes" role="tablist" aria-label="Période du suivi">
+                    <button type="button" :class="{ 'is-active': periode === 'annuel' }" @click="changerPeriode('annuel')">Année</button>
+                    <button type="button" :class="{ 'is-active': periode === 'semestre1' }" @click="changerPeriode('semestre1')">S1</button>
+                    <button type="button" :class="{ 'is-active': periode === 'semestre2' }" @click="changerPeriode('semestre2')">S2</button>
                 </div>
 
                 <template x-if="aUneBarre()">
@@ -95,6 +100,15 @@
                         <span x-show="!replie" x-cloak>Masquer</span>
                     </button>
                 </template>
+            </div>
+
+            <div class="cvn-filtres" aria-label="Filtrer les matières du suivi">
+                <button type="button" :class="{ 'is-active': filtre === 'tout' }" @click="filtre = 'tout'">Toutes <span x-text="matieresParCategorie('tout').length"></span></button>
+                <button type="button" :class="{ 'is-active': filtre === 'sans_note' }" @click="filtre = 'sans_note'">Évaluées sans note <span x-text="compteur('sans_note')"></span></button>
+                <button type="button" :class="{ 'is-active': filtre === 'partielle' }" @click="filtre = 'partielle'">Incomplètes <span x-text="compteur('partielle')"></span></button>
+                <button type="button" :class="{ 'is-active': filtre === 'sans_evaluation' }" @click="filtre = 'sans_evaluation'">Sans évaluation <span x-text="compteur('sans_evaluation')"></span></button>
+                <button type="button" :class="{ 'is-active': filtre === 'hors_maquette' }" @click="filtre = 'hors_maquette'">Hors maquette <span x-text="compteur('hors_maquette')"></span></button>
+                <button type="button" :class="{ 'is-active': filtre === 'complete' }" @click="filtre = 'complete'">Complètes <span x-text="compteur('complete')"></span></button>
             </div>
 
             {{-- Le doublon probable, HORS du détail repliable : il ne dépend pas
@@ -121,8 +135,9 @@
             </template>
 
             {{-- Le détail : quelles matières, et qui relancer --}}
-            <div class="cvn-detail" x-show="!replie && prioritaires().length > 0" x-cloak x-transition.opacity>
-                <template x-for="m in prioritaires().slice(0, 6)" :key="`cvn-${m.id || m.name}`">
+            <div class="cvn-detail" x-show="!replie && matieresAffichees().length > 0" x-cloak x-transition.opacity>
+                <div class="cvn-detail-titre" x-text="titreCategorie(filtre)"></div>
+                <template x-for="m in matieresAffichees().slice(0, 8)" :key="`cvn-${m.id || m.name}`">
                     <div class="cvn-matiere">
                         <div class="cvn-matiere-nom">
                             <span x-text="m.name"></span>
@@ -158,8 +173,8 @@
                     </div>
                 </template>
 
-                <template x-if="prioritaires().length > 6">
-                    <div class="cvn-muet" x-text="`et ${prioritaires().length - 6} autre(s) matière(s)`"></div>
+                <template x-if="matieresAffichees().length > 8">
+                    <div class="cvn-muet" x-text="`et ${matieresAffichees().length - 8} autre(s) matière(s)`"></div>
                 </template>
 
                 <template x-if="urlPilotage">
@@ -182,6 +197,14 @@
 .cvn--alerte .cvn-ligne > i { color: #b45309; }
 .cvn-texte { display: flex; flex-direction: column; min-width: 0; flex: 1; }
 .cvn-texte strong { font-size: .76rem; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; color: #64748b; }
+.cvn-periodes, .cvn-filtres { display: flex; align-items: center; gap: .35rem; flex-wrap: wrap; }
+.cvn-periodes { padding: .18rem; border: 1px solid #dbe5f2; background: #f8fafc; border-radius: 8px; }
+.cvn-periodes button, .cvn-filtres button { border: 1px solid #dbe5f2; border-radius: 999px; background: #fff; color: #475569; padding: .23rem .52rem; font-size: .7rem; font-weight: 700; cursor: pointer; }
+.cvn-periodes button { border: 0; border-radius: 6px; }
+.cvn-periodes button.is-active, .cvn-filtres button.is-active { background: #0453cb; border-color: #0453cb; color: #fff; }
+.cvn-filtres { margin-top: .65rem; padding-top: .6rem; border-top: 1px solid rgba(15,23,42,.08); }
+.cvn-filtres span { display: inline-flex; min-width: 1.15rem; justify-content: center; margin-left: .18rem; padding: 0 .2rem; border-radius: 999px; background: rgba(4,83,203,.09); color: #0453cb; }
+.cvn-filtres button.is-active span { background: rgba(255,255,255,.18); color: #fff; }
 .cvn-jauge { display: flex; align-items: center; gap: .5rem; min-width: 150px; }
 .cvn-jauge-piste { flex: 1; height: 6px; border-radius: 999px; background: #e2e8f0; overflow: hidden; }
 .cvn-jauge-barre { height: 100%; border-radius: 999px; background: #0453cb; transition: width .25s ease; }
@@ -190,6 +213,7 @@
 .cvn-jauge strong { font-size: .8rem; font-weight: 700; color: #1e293b; }
 .cvn-lien { background: none; border: none; padding: 0; color: #0453cb; font-size: .78rem; font-weight: 600; cursor: pointer; text-decoration: underline; }
 .cvn-detail { margin-top: .7rem; padding-top: .7rem; border-top: 1px solid rgba(15,23,42,.08); display: flex; flex-direction: column; gap: .45rem; }
+.cvn-detail-titre { color: #475569; font-size: .73rem; font-weight: 800; text-transform: uppercase; letter-spacing: .3px; }
 .cvn-matiere { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; font-size: .8rem; }
 .cvn-matiere-nom { display: flex; align-items: center; gap: .5rem; font-weight: 600; color: #1e293b; }
 .cvn-chip { font-size: .66rem; font-weight: 700; text-transform: uppercase; padding: .12rem .45rem; border-radius: 5px; background: rgba(4,83,203,.08); color: #0453cb; border: 1px solid rgba(4,83,203,.2); }

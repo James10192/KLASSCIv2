@@ -1570,6 +1570,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function fetchSummaryOnly() {
         const formData = new FormData(filtersForm);
+        window.dispatchEvent(new CustomEvent('couverture:contexte', {
+            detail: { classe_id: formData.get('classe_id'), annee_universitaire_id: formData.get('annee_universitaire_id'), periode: formData.get('periode') || 'annuel' }
+        });
         const params = new URLSearchParams(formData);
         const url = `${resultsContainer.dataset.refreshUrl}?${params.toString()}`;
         return fetch(url, {
