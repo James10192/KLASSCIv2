@@ -629,6 +629,31 @@ const nmAppreciationScale = @json(app(\App\Services\AppreciationScaleService::cl
 const blankPdfUrlTemplate = '{{ route("esbtp.notes.saisie-rapide-blank.pdf", ["classe" => ":classId"]) }}';
 const blankPdfPreviewUrlTemplate = '{{ route("esbtp.notes.saisie-rapide-blank.pdf-preview", ["classe" => ":classId"]) }}';
 
+// L'onglet de saisie prévient l'onglet d'origine après une validation finale.
+// La charge ne contient aucune note : seulement le contexte nécessaire pour
+// relire le suivi à jour depuis le serveur.
+function nmNotifyOtherTabsNotesUpdated() {
+    if (!currentClassId) return;
+    const detail = {
+        type: 'notes-updated',
+        classe_id: Number(currentClassId),
+        annee_universitaire_id: @json($anneeCouranteId ?? null),
+        at: Date.now(),
+    };
+
+    if ('BroadcastChannel' in window) {
+        const channel = new BroadcastChannel('klassci-notes-sync');
+        channel.postMessage(detail);
+        channel.close();
+    }
+
+    try {
+        localStorage.setItem('klassci-notes-sync', JSON.stringify(detail));
+    } catch (_error) {
+        // Le canal BroadcastChannel couvre les navigateurs qui bloquent le stockage.
+    }
+}
+
 function nmEscapeHtml(value) {
     return String(value ?? '').replace(/[&<>"']/g, function(char) {
         return {
@@ -1529,6 +1554,7 @@ $('#saveAllNotesBtn').on('click', function() {
             // Ces notes viennent de changer le décompte : le bandeau se remet à
             // jour, sinon il annoncerait encore ce qui manquait avant la saisie.
             window.dispatchEvent(new CustomEvent('couverture:invalider'));
+            nmNotifyOtherTabsNotesUpdated();
 
             // Highlight rows and recalculate averages
             notesPayload.forEach(function(entry) {
@@ -1651,6 +1677,7 @@ $(document).on('submit', '#evaluationCreateForm', function (e) {
             closeEvaluationModal();
             loadEvaluationsAndNotes();
             window.dispatchEvent(new CustomEvent('couverture:invalider'));
+            nmNotifyOtherTabsNotesUpdated();
             if (typeof window.nmRefreshClasses === 'function') {
                 window.nmRefreshClasses();
             }
