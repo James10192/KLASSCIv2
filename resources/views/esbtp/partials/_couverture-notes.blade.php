@@ -144,13 +144,15 @@
                             </template>
                             <template x-if="!contact(m)">
                                 {{-- Ni le planning ni le bulletin ne répondent, ou ils se
-                                     contredisent : on ne désigne personne au hasard. Le
-                                     libellé nomme les deux endroits où aller le poser —
-                                     « à confirmer » laissait croire à une donnée saisie
-                                     mais douteuse, alors qu'il n'y en a aucune. --}}
+                                     contredisent : on ne désigne personne au hasard. --}}
                                 <span class="cvn-muet" title="Renseignez l'enseignant dans le planning général, ou dans « Éditer les professeurs ».">
                                     Aucun enseignant au planning ni dans la configuration des bulletins
                                 </span>
+                            </template>
+                            <template x-if="m.saisie_url && m.statut !== 'programmee'">
+                                <a class="cvn-action" :href="m.saisie_url" target="_blank" rel="noopener">
+                                    <i class="fas fa-pen-to-square"></i> Ouvrir la saisie
+                                </a>
                             </template>
                         </div>
                     </div>
@@ -192,6 +194,7 @@
 .cvn-matiere-nom { display: flex; align-items: center; gap: .5rem; font-weight: 600; color: #1e293b; }
 .cvn-chip { font-size: .66rem; font-weight: 700; text-transform: uppercase; padding: .12rem .45rem; border-radius: 5px; background: rgba(4,83,203,.08); color: #0453cb; border: 1px solid rgba(4,83,203,.2); }
 .cvn-matiere-qui { font-size: .76rem; color: #64748b; display: flex; align-items: center; gap: .4rem; }
+.cvn-action { margin-left: auto; border: 1px solid rgba(4,83,203,.28); border-radius: 6px; padding: .25rem .45rem; color: #0453cb; background: #fff; text-decoration: none; font-size: .72rem; font-weight: 700; white-space: nowrap; }
 .cvn-matiere-qui a { color: #0453cb; text-decoration: none; }
 .cvn-muet { color: #94a3b8; font-size: .76rem; }
 .cvn-doublons { display: flex; flex-direction: column; gap: .35rem; margin-top: .6rem; }
