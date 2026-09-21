@@ -94,12 +94,10 @@
                     </div>
                 </template>
 
-                <template x-if="matieresParCategorie('tout').length > 0">
-                    <button type="button" class="cvn-detail-toggle" @click="basculer()" :aria-expanded="(!replie).toString()">
-                        <i class="fas" :class="replie ? 'fa-chevron-down' : 'fa-chevron-up'"></i>
-                        <span x-text="replie ? 'Afficher le détail' : 'Masquer le détail'"></span>
-                    </button>
-                </template>
+                <button type="button" class="cvn-detail-toggle" @click="basculer()" :aria-expanded="(!replie).toString()">
+                    <i class="fas" :class="replie ? 'fa-chevron-down' : 'fa-chevron-up'"></i>
+                    <span x-text="replie ? 'Afficher le détail' : 'Masquer le détail'"></span>
+                </button>
             </div>
 
             <div class="cvn-filtres" aria-label="Filtrer les matières du suivi">
@@ -211,7 +209,7 @@
 .cvn--ok .cvn-jauge-barre { background: #10b981; }
 .cvn--alerte .cvn-jauge-barre { background: #f59e0b; }
 .cvn-jauge strong { font-size: .8rem; font-weight: 700; color: #1e293b; }
-.cvn-detail-toggle { display: inline-flex; align-items: center; gap: .35rem; border: 0; background: transparent; color: #0453cb; font-size: .78rem; font-weight: 700; cursor: pointer; padding: .25rem; border-radius: 6px; }
+.cvn-detail-toggle { display: inline-flex; align-items: center; gap: .4rem; border: 1px solid rgba(4,83,203,.28); background: #fff; color: #0453cb; font-size: .78rem; font-weight: 800; cursor: pointer; padding: .38rem .62rem; border-radius: 8px; white-space: nowrap; box-shadow: 0 1px 2px rgba(15,23,42,.04); }
 .cvn-detail-toggle:hover { background: rgba(4,83,203,.07); }
 .cvn-lien { background: none; border: none; padding: 0; color: #0453cb; font-size: .78rem; font-weight: 600; cursor: pointer; text-decoration: underline; }
 .cvn-detail { margin-top: .7rem; padding-top: .7rem; border-top: 1px solid rgba(15,23,42,.08); display: flex; flex-direction: column; gap: .45rem; }
