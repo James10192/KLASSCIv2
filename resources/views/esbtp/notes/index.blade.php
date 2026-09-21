@@ -624,6 +624,8 @@ let cachedStudentsClassId = null;
 let cachedStudentsRequestKey = null;
 let currentLoadRequest = null;
 let evalParamsCache = {};
+let nmFinalSaveInFlight = false;
+let nmFinalSaveRetryTimer = null;
 const nmCanEditSubmittedNotes = @json(auth()->user()?->can('notes.edit') ?? false);
 const nmAppreciationScale = @json(app(\App\Services\AppreciationScaleService::class)->frontendScale('bts'));
 const blankPdfUrlTemplate = '{{ route("esbtp.notes.saisie-rapide-blank.pdf", ["classe" => ":classId"]) }}';
@@ -1526,14 +1528,27 @@ function triggerRowHighlight(studentId) {
 }
 
 $('#saveAllNotesBtn').on('click', function() {
+    if (nmFinalSaveInFlight) return;
+
     const btn = $(this);
     const originalText = btn.html();
 
-    // Collect only inputs with actual values (dirty notes)
+    // Seules les notes encore en brouillon ou modifiées localement partent.
+    // Ainsi une nouvelle validation ne renvoie jamais les notes déjà
+    // verrouillées, tout en permettant de finaliser un brouillon rouvert.
     const inputs = $('.note-input').filter(function() {
         if ($(this).hasClass('nm-note-locked')) return false;
-        const val = $(this).val();
-        return val !== '' && val !== null && val !== undefined;
+
+        const studentId = $(this).data('student-id');
+        const evalId = $(this).data('eval-id');
+        const value = $(this).val();
+        const isAbsent = $('#absent-' + studentId + '-' + evalId).is(':checked');
+        const hasValue = value !== '' && value !== null && value !== undefined;
+        const meta = noteMetaData[studentId]?.[evalId] || {};
+        const isDraft = meta.submission_status !== 'submitted';
+        const isDirty = window.nmDirtyNotes && window.nmDirtyNotes.has(nmDirtyKey(studentId, evalId));
+
+        return (hasValue || isAbsent) && (isDraft || isDirty);
     });
 
     if (inputs.length === 0) {
