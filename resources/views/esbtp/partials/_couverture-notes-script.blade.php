@@ -148,11 +148,14 @@ if (typeof window.couvertureNotes !== 'function') {
                 if (!['annuel', 'semestre1', 'semestre2'].includes(periode) || periode === this.periode) return;
                 this.periode = periode;
                 this.filtre = 'tout';
+                window.dispatchEvent(new CustomEvent('couverture:periode-change', { detail: { periode: periode } }));
                 this.erreur = '';
                 var cache = this._cache[this.cleCache()];
                 this.donnees = cache ? cache.donnees : null;
                 this.charger();
             },
+
+            rafraichir() { return this.charger(true); },
 
             async charger(forcer) {
                 if (!this.pret()) { return; }
