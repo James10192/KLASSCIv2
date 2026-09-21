@@ -76,7 +76,10 @@ if (typeof window.couvertureNotes !== 'function') {
                 this._surSynchronisationOnglet = (detail) => {
                     if (!detail || detail.type !== 'notes-updated') return;
                     if (Number(detail.classe_id) !== Number(this.classeId)) return;
-                    if (Number(detail.annee_universitaire_id) !== Number(this.anneeId)) return;
+                    // La saisie ouverte depuis une page de résultat transporte
+                    // toujours la classe, mais cette page peut avoir changé
+                    // d'année depuis son ouverture. Rafraîchir la même classe
+                    // reste sûr et évite un bandeau figé.
                     this.charger(true);
                     if (typeof window.nmRefreshClasses === 'function') {
                         window.nmRefreshClasses();
@@ -351,6 +354,13 @@ if (typeof window.couvertureNotes !== 'function') {
             contact(matiere) {
                 if (!matiere.enseignant || !matiere.enseignant.name) { return null; }
                 return matiere.enseignant;
+            },
+
+            filtrer(categorie) {
+                this.filtre = categorie;
+                // Un filtre est une intention de consulter ce groupe : l’ouvrir
+                // tout de suite évite le faux « rien ne se passe ».
+                this.replie = false;
             },
 
             basculer() { this.replie = !this.replie; },
