@@ -285,6 +285,48 @@ if (typeof window.couvertureNotes !== 'function') {
 
             aUneBarre() { return this.pourcentage() !== null; },
 
+            categorie(matiere) {
+                if (matiere.is_orphan || matiere.statut === 'hors_maquette') return 'hors_maquette';
+                if (matiere.statut === 'programmee') return 'programmee';
+                if (matiere.statut === 'non_evaluee') return 'sans_evaluation';
+                if ((matiere.evaluations_count || 0) > 0 && (matiere.treated_count || 0) === 0) return 'sans_note';
+                if ((matiere.missing_count || 0) > 0) return 'partielle';
+                return 'complete';
+            },
+
+            matieresParCategorie(categorie) {
+                var subjects = (this.donnees && this.donnees.subjects) || [];
+                return subjects.filter((matiere) => this.categorie(matiere) === categorie);
+            },
+
+            compteur(categorie) {
+                return this.matieresParCategorie(categorie).length;
+            },
+
+            matieresAffichees() {
+                var subjects = (this.donnees && this.donnees.subjects) || [];
+                var filtre = this.filtre;
+                return subjects
+                    .filter((matiere) => filtre === 'tout' || this.categorie(matiere) === filtre)
+                    .sort((a, b) => {
+                        var ordre = { hors_maquette: 0, sans_evaluation: 1, sans_note: 2, partielle: 3, programmee: 4, complete: 5 };
+                        var pa = ordre[this.categorie(a)] ?? 9;
+                        var pb = ordre[this.categorie(b)] ?? 9;
+                        return pa - pb || (b.missing_count || 0) - (a.missing_count || 0) || String(a.name).localeCompare(String(b.name), 'fr');
+                    });
+            },
+
+            titreCategorie(categorie) {
+                return {
+                    sans_evaluation: 'Dans la maquette · sans évaluation',
+                    sans_note: 'Évaluation créée · aucune note saisie',
+                    partielle: 'Saisie à compléter',
+                    complete: 'Saisie complète',
+                    programmee: 'Évaluation programmée',
+                    hors_maquette: 'Hors maquette',
+                }[categorie] || categorie;
+            },
+
             /* Les matières à relancer, les plus en retard d'abord. */
             prioritaires() {
                 if (!this.donnees || !this.donnees.subjects) { return []; }
