@@ -46,9 +46,12 @@
     </table>
 </div>
 
-{{-- Pagination --}}
-@if($evaluations->hasPages())
-<div class="ev-pagination">
-    {{ $evaluations->links() }}
+<div id="evaluations-infinite-sentinel" class="ev-infinite-sentinel"
+     data-next-page="{{ $evaluations->hasMorePages() ? $evaluations->currentPage() + 1 : '' }}"
+     data-has-more="{{ $evaluations->hasMorePages() ? '1' : '0' }}" aria-live="polite">
+    @if($evaluations->hasMorePages())
+        <span><i class="fas fa-circle-notch fa-spin"></i> Faites défiler pour charger la suite</span>
+    @else
+        <span>{{ $evaluations->total() ? 'Toutes les évaluations sont affichées.' : '' }}</span>
+    @endif
 </div>
-@endif
