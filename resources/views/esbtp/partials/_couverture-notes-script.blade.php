@@ -37,6 +37,12 @@ if (typeof window.couvertureNotes !== 'function') {
             _surSynchronisationOnglet: null,
             _surStockageSynchronisation: null,
 
+            ouvrirSaisie(matiere) {
+                if (typeof window.nmOpenCoverageSaisie === 'function') {
+                    window.nmOpenCoverageSaisie(matiere);
+                }
+            },
+
             init() {
                 this._surContexte = (ev) => this.appliquerContexte(ev.detail || {});
                 window.addEventListener('couverture:contexte', this._surContexte);
