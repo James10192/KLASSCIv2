@@ -634,6 +634,21 @@ const blankPdfPreviewUrlTemplate = '{{ route("esbtp.notes.saisie-rapide-blank.pd
 // L'onglet de saisie prévient l'onglet d'origine après une validation finale.
 // La charge ne contient aucune note : seulement le contexte nécessaire pour
 // relire le suivi à jour depuis le serveur.
+// Les champs peuvent se sauvegarder à l’unité ou en lot. Une seule
+// actualisation, légèrement différée, suffit après une rafale de modifications :
+ // le suivi actuel et les autres onglets lisent alors le total réellement enregistré.
+let nmCouvertureRefreshTimer = null;
+function nmActualiserCouvertureApresSauvegarde() {
+    if (!currentClassId) return;
+    clearTimeout(nmCouvertureRefreshTimer);
+    nmCouvertureRefreshTimer = setTimeout(function() {
+        window.dispatchEvent(new CustomEvent('couverture:invalider', {
+            detail: { classe_id: Number(currentClassId), annee_universitaire_id: @json($anneeCouranteId ?? null) }
+        }));
+        nmNotifyOtherTabsNotesUpdated();
+    }, 900);
+}
+
 function nmNotifyOtherTabsNotesUpdated() {
     if (!currentClassId) return;
     const detail = {
@@ -1612,8 +1627,7 @@ $('#saveAllNotesBtn').on('click', function() {
 
             // Ces notes viennent de changer le décompte : le bandeau se remet à
             // jour, sinon il annoncerait encore ce qui manquait avant la saisie.
-            window.dispatchEvent(new CustomEvent('couverture:invalider'));
-            nmNotifyOtherTabsNotesUpdated();
+            nmActualiserCouvertureApresSauvegarde();
 
             // Highlight rows and recalculate averages
             notesPayload.forEach(function(entry) {
@@ -2528,6 +2542,9 @@ $(document).ajaxSend(function(_event, _jqxhr, settings) {
 });
 $(document).ajaxSuccess(function(_event, _jqxhr, settings) {
     if (typeof settings.url === 'string' && /(save-ajax|save-ajax-bulk)/.test(settings.url)) {
+        // Fonctionne aussi lorsque « Valider » n'a plus de note dirty à envoyer :
+        // chaque sauvegarde réellement confirmée déclenche un seul recalcul groupé.
+        nmActualiserCouvertureApresSauvegarde();
         NM.pendingSaves = Math.max(0, NM.pendingSaves - 1);
         NM.consecutiveErrors = 0;
         if (NM.pendingSaves === 0 && navigator.onLine !== false) {
