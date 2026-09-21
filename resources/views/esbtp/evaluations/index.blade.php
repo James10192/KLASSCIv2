@@ -1587,7 +1587,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function annoncerContexteCouverture(formData) {
         window.dispatchEvent(new CustomEvent('couverture:contexte', {
-            detail: { classe_id: formData.get('classe_id') || null, annee_universitaire_id: {{ IlluminateSupportJs::from(optional($anneeUniversitaire ?? null)->id) }}, periode: 'annuel' }
+            detail: { classe_id: formData.get('classe_id') || null, annee_universitaire_id: @json(optional($anneeUniversitaire ?? null)->id), periode: 'annuel' }
         }));
     }
 
