@@ -32,6 +32,8 @@ if (typeof window.couvertureNotes !== 'function') {
             erreur: '',
             interdit: false,
             donnees: null,
+            filtre: 'tout',
+            _cache: {},
             _requete: 0,
             _canalSynchronisation: null,
             _surSynchronisationOnglet: null,
@@ -121,8 +123,12 @@ if (typeof window.couvertureNotes !== 'function') {
                 this.classeId = classe;
                 this.anneeId = annee;
                 this.periode = periode;
-                this.donnees = null;
                 this.erreur = '';
+
+                // On réaffiche aussitôt le dernier calcul connu pour ce contexte,
+                // puis on le rafraîchit en arrière-plan : aucun effet de clignotement.
+                var cache = this._cache[this.cleCache()];
+                this.donnees = cache ? cache.donnees : null;
 
                 if (this.pret()) { this.charger(); }
             },
@@ -134,12 +140,34 @@ if (typeof window.couvertureNotes !== 'function') {
                     + (forcer ? '&recalculer=1' : '');
             },
 
+            cleCache() {
+                return [this.classeId, this.anneeId, this.periode].join(':');
+            },
+
+            changerPeriode(periode) {
+                if (!['annuel', 'semestre1', 'semestre2'].includes(periode) || periode === this.periode) return;
+                this.periode = periode;
+                this.filtre = 'tout';
+                this.erreur = '';
+                var cache = this._cache[this.cleCache()];
+                this.donnees = cache ? cache.donnees : null;
+                this.charger();
+            },
+
             async charger(forcer) {
                 if (!this.pret()) { return; }
 
+                var cle = this.cleCache();
+                var cache = this._cache[cle];
+                // Les allers-retours S1/S2 restent instantanés pendant 20 s.
+                // Une validation finale force toujours un nouveau calcul.
+                if (!forcer && cache && (Date.now() - cache.at) < 20000) {
+                    this.donnees = cache.donnees;
+                    return;
+                }
+
                 // Un choix rapide dans un sélecteur lance plusieurs requêtes :
-                // seule la dernière demandée a le droit d'écrire le résultat,
-                // sinon une réponse lente écraserait la bonne.
+                // seule la dernière demandée a le droit d'écrire le résultat.
                 var jeton = ++this._requete;
 
                 this.chargement = true;
@@ -150,7 +178,9 @@ if (typeof window.couvertureNotes !== 'function') {
                     if (jeton !== this._requete) { return; }
                     if (res.status === 403) { this.interdit = true; return; }
                     if (!res.ok) { throw new Error('Suivi des notes indisponible (' + res.status + ').'); }
-                    this.donnees = await res.json();
+                    var donnees = await res.json();
+                    this._cache[cle] = { donnees: donnees, at: Date.now() };
+                    this.donnees = donnees;
                 } catch (err) {
                     if (jeton === this._requete) { this.erreur = err.message; }
                 } finally {
