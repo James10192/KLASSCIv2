@@ -740,23 +740,9 @@
 .ev-empty i { font-size: 2.5rem; color: #cbd5e1; margin-bottom: .75rem; }
 .ev-empty-text { font-size: .9rem; }
 
-/* Pagination */
-.ev-pagination {
-    padding: 1rem 0 0;
-    display: flex; justify-content: center;
-}
-.ev-pagination .pagination { margin-bottom: 0; }
-.ev-pagination .page-link {
-    border-radius: 8px;
-    margin: 0 .15rem;
-    border: 1px solid #e2e8f0;
-    color: #64748b;
-    font-size: .82rem;
-    padding: .4rem .75rem;
-}
-.ev-pagination .page-item.active .page-link {
-    background: #0453cb; border-color: #0453cb; color: #fff;
-}
+/* Chargement progressif */
+.ev-infinite-sentinel { display:flex; justify-content:center; align-items:center; min-height:54px; padding:.75rem; color:#64748b; font-size:.8rem; }
+.ev-infinite-sentinel i { color:#0453cb; margin-right:.4rem; }
 
 /* Responsive */
 @media (max-width: 768px) {
@@ -1358,6 +1344,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const perPageDefault = perPageInput ? perPageInput.value : '15';
     const FILTER_DEBOUNCE = 350;
     let filterTimer;
+    let infiniteObserver = null;
+    let nextPage = null;
+    let loadingMore = false;
     const selectedIds = new Set();
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
     const rowUrlTemplate = resultsContainer.dataset.rowUrlTemplate || '';
@@ -1596,8 +1585,15 @@ document.addEventListener('DOMContentLoaded', () => {
             });
     }
 
+    function annoncerContexteCouverture(formData) {
+        window.dispatchEvent(new CustomEvent('couverture:contexte', {
+            detail: { classe_id: formData.get('classe_id') || null, annee_universitaire_id: {{ IlluminateSupportJs::from(optional($anneeUniversitaire ?? null)->id) }}, periode: 'annuel' }
+        }));
+    }
+
     function submitFilterForm(pushHistory = true) {
         const formData = new FormData(filtersForm);
+        annoncerContexteCouverture(formData);
         const params = new URLSearchParams(formData);
         const url = `${resultsContainer.dataset.refreshUrl}?${params.toString()}`;
         const overlay = showResultsOverlay();
@@ -1624,6 +1620,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     history.pushState({}, '', data.url);
                 }
                 updateSummary(data.summary || {});
+                updateInfiniteScroll(data.pagination || {});
                 initRowInteractions();
             })
             .catch((error) => {
@@ -1632,6 +1629,46 @@ document.addEventListener('DOMContentLoaded', () => {
             .finally(() => {
                 overlay.remove();
             });
+    }
+
+    function updateInfiniteScroll(pagination = {}) {
+        nextPage = pagination.has_more ? Number(pagination.next_page) : null;
+        const sentinel = resultsContainer.querySelector('#evaluations-infinite-sentinel');
+        if (!sentinel) return;
+        sentinel.dataset.nextPage = nextPage || '';
+        sentinel.dataset.hasMore = nextPage ? '1' : '0';
+        sentinel.innerHTML = nextPage
+            ? '<span><i class="fas fa-circle-notch fa-spin"></i> Faites défiler pour charger la suite</span>'
+            : '<span>Toutes les évaluations sont affichées.</span>';
+        infiniteObserver?.disconnect();
+        if (!nextPage || !('IntersectionObserver' in window)) return;
+        infiniteObserver = new IntersectionObserver((entries) => {
+            if (entries.some(entry => entry.isIntersecting)) loadNextPage();
+        }, { rootMargin: '420px 0px' });
+        infiniteObserver.observe(sentinel);
+    }
+
+    function loadNextPage() {
+        if (loadingMore || !nextPage) return;
+        loadingMore = true;
+        const formData = new FormData(filtersForm);
+        formData.set('page', String(nextPage));
+        const url = resultsContainer.dataset.refreshUrl + '?' + new URLSearchParams(formData).toString();
+        const sentinel = resultsContainer.querySelector('#evaluations-infinite-sentinel');
+        if (sentinel) sentinel.innerHTML = '<span><i class="fas fa-circle-notch fa-spin"></i> Chargement…</span>';
+        fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } })
+            .then(response => { if (!response.ok) throw new Error('HTTP ' + response.status); return response.json(); })
+            .then(data => {
+                const tbody = resultsContainer.querySelector('tbody');
+                if (tbody && data.rows_html) tbody.insertAdjacentHTML('beforeend', data.rows_html);
+                updateInfiniteScroll(data.pagination || {});
+                initRowInteractions();
+            })
+            .catch(error => {
+                showToast(error.message || 'Impossible de charger la suite des évaluations', 'error');
+                if (sentinel) sentinel.innerHTML = '<span>Chargement impossible. Réessayez en faisant défiler.</span>';
+            })
+            .finally(() => { loadingMore = false; });
     }
 
     function handleRowSelection(event) {
@@ -1678,30 +1715,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 updateBulkBar();
             });
         }
-
-        resultsContainer.querySelectorAll('.pagination a').forEach((link) => {
-            link.addEventListener('click', (event) => {
-                event.preventDefault();
-                const href = link.getAttribute('href');
-                if (!href || href === '#') {
-                    return;
-                }
-                const url = new URL(href, window.location.origin);
-                filtersForm.querySelectorAll('input[name], select[name]').forEach((field) => {
-                    const name = field.getAttribute('name');
-                    if (!name) {
-                        return;
-                    }
-                    if (url.searchParams.has(name)) {
-                        field.value = url.searchParams.get(name);
-                    }
-                });
-                if (pageInput) {
-                    pageInput.value = url.searchParams.get('page') ?? '1';
-                }
-                submitFilterForm();
-            });
-        });
 
         resultsContainer.querySelectorAll('[data-evaluation-action]').forEach((button) => {
             button.addEventListener('click', (event) => {
@@ -1925,14 +1938,11 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    filtersForm.querySelectorAll('select[name], input[type="date"]').forEach((field) => {
-        field.addEventListener('change', () => {
-            if (pageInput) {
-                pageInput.value = '1';
-            }
-            clearTimeout(filterTimer);
-            filterTimer = setTimeout(() => submitFilterForm(), FILTER_DEBOUNCE);
-        });
+    filtersForm.addEventListener('change', (event) => {
+        if (!event.target.matches('select[name], input[type="date"]')) return;
+        if (pageInput) pageInput.value = '1';
+        clearTimeout(filterTimer);
+        filterTimer = setTimeout(() => submitFilterForm(), FILTER_DEBOUNCE);
     });
 
     if (clearFiltersBtn) {
@@ -1982,6 +1992,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     syncFiltersFromUrl();
     updateSummary(JSON.parse(resultsContainer.dataset.summary || '{}'));
+    updateInfiniteScroll({
+        has_more: resultsContainer.querySelector('#evaluations-infinite-sentinel')?.dataset.hasMore === '1',
+        next_page: resultsContainer.querySelector('#evaluations-infinite-sentinel')?.dataset.nextPage || null,
+    });
     initRowInteractions();
 
     const coeffModalElement = document.getElementById('coefficientsModal');

@@ -157,6 +157,12 @@ class ESBTPEvaluationController extends Controller
                     'evaluations' => $evaluations,
                 ])->render(),
                 'summary' => $summary,
+                'rows_html' => $evaluations->getCollection()->map(fn ($evaluation) => view('esbtp.evaluations.partials.evaluation-row', compact('evaluation'))->render())->implode(''),
+                'pagination' => [
+                    'current_page' => $evaluations->currentPage(),
+                    'next_page' => $evaluations->hasMorePages() ? $evaluations->currentPage() + 1 : null,
+                    'has_more' => $evaluations->hasMorePages(),
+                ],
                 'url' => $request->fullUrl(),
             ]);
         }
