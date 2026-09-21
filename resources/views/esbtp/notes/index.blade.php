@@ -701,6 +701,10 @@ $(document).ready(function() {
             });
     }
 
+    // Réutilisable après une validation : les cartes et leurs compteurs se
+    // rafraîchissent en AJAX, sans recharger la page.
+    window.nmRefreshClasses = fetchClasses;
+
     if (filtersForm) {
         filtersForm.addEventListener('submit', function(event) {
             event.preventDefault();
@@ -745,6 +749,26 @@ $(document).ready(function() {
         const classLabel = card.attr('data-class-label');
         selectClass(classId, classLabel);
     });
+
+    // Lien direct depuis le suivi : ouvre la classe, la matière et le semestre
+    // déjà concernés, sans obliger l'utilisateur à refaire la sélection.
+    const notesDeepLink = new URLSearchParams(window.location.search);
+    const deepClassId = notesDeepLink.get('classe_id');
+    const deepMatiereId = notesDeepLink.get('matiere_id');
+    const deepPeriode = notesDeepLink.get('periode');
+    if (deepClassId && deepMatiereId) {
+        const card = document.querySelector(`.nm-class-card[data-classe-id="${deepClassId}"], .class-card[data-classe-id="${deepClassId}"]`);
+        if (card) {
+            const classLabel = card.getAttribute('data-class-label') || card.getAttribute('data-class-name') || 'Classe sélectionnée';
+            setTimeout(function() {
+                selectClass(deepClassId, classLabel);
+                if (deepPeriode === 'semestre1' || deepPeriode === 'semestre2') {
+                    $('#periodeFilter').val(deepPeriode).trigger('change');
+                }
+                $('#matiereSelect').val(deepMatiereId).trigger('change');
+            }, 0);
+        }
+    }
 
     // Invalidate eval params cache when user changes bareme/coeff
     $(document).on('change', '.bareme-input, .coeff-input', function() {
@@ -1545,6 +1569,9 @@ $('#saveAllNotesBtn').on('click', function() {
             setTimeout(() => {
                 btn.html(originalText);
                 loadEvaluationsAndNotes();
+                if (typeof window.nmRefreshClasses === 'function') {
+                    window.nmRefreshClasses();
+                }
             }, 600);
         },
         error: function(xhr) {
@@ -1623,6 +1650,10 @@ $(document).on('submit', '#evaluationCreateForm', function (e) {
             showSuccessMessage('Évaluation créée avec succès !');
             closeEvaluationModal();
             loadEvaluationsAndNotes();
+            window.dispatchEvent(new CustomEvent('couverture:invalider'));
+            if (typeof window.nmRefreshClasses === 'function') {
+                window.nmRefreshClasses();
+            }
         },
         error: function (xhr) {
             evalResetSubmitBtn();
