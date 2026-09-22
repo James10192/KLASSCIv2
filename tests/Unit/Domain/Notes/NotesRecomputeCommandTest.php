@@ -58,4 +58,25 @@ class NotesRecomputeCommandTest extends TestCase
 
         $this->assertSame(13.0, (float) DB::table('esbtp_resultats')->where('etudiant_id', 100)->value('moyenne'));
     }
+
+    public function test_une_evaluation_en_periode_heritee_n_est_pas_remise_a_zero(): void
+    {
+        // '1' et 'semestre1' coexistent en base. Le job cherchait la seule
+        // forme normalisée : il ne trouvait aucune note, et face à la ligne
+        // existante il écrivait 0/20.
+        DB::table('esbtp_evaluations')->update(['periode' => '1']);
+
+        $this->artisan('notes:recompute', ['--classe' => 10])->assertSuccessful();
+
+        $this->assertSame(13.0, (float) DB::table('esbtp_resultats')->where('etudiant_id', 100)->value('moyenne'));
+    }
+
+    public function test_le_filtre_de_periode_retient_aussi_l_ecriture_heritee(): void
+    {
+        DB::table('esbtp_evaluations')->update(['periode' => '1']);
+
+        $this->artisan('notes:recompute', ['--classe' => 10, '--periode' => 'semestre1'])->assertSuccessful();
+
+        $this->assertSame(13.0, (float) DB::table('esbtp_resultats')->where('etudiant_id', 100)->value('moyenne'));
+    }
 }

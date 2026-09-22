@@ -56,7 +56,9 @@ class NotesRecompute extends Command
             $query->where('matiere_id', (int) $matiereId);
         }
         if ($periode = $this->option('periode')) {
-            $query->where('periode', $periode);
+            // '1' et 'semestre1' coexistent en base : filtrer sur une seule
+            // écriture oubliait la moitié des évaluations de la période.
+            $query->whereIn('periode', ESBTPEvaluation::aliasDePeriode((string) $periode));
         }
         if ($anneeId = $this->option('annee')) {
             $query->where('annee_universitaire_id', (int) $anneeId);

@@ -7,11 +7,13 @@ use App\Http\Controllers\API\CLI\CLIEvaluationDeplacementController;
 use App\Http\Controllers\API\CLI\CLIEvaluationPeriodeController;
 use App\Http\Controllers\API\CLI\CLIMaintenanceController;
 use App\Http\Controllers\ESBTPEvaluationController;
+use App\Jobs\RecomputeStudentResultatJob;
 use App\Models\ESBTPEvaluation;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
 /**
@@ -129,6 +131,23 @@ class DeplaceursDeNotesRecalculTest extends TestCase
         $this->assertSame(2, $reponse->getData(true)['data']['resultats']['recalcules']);
     }
 
+    public function test_une_evaluation_en_periode_heritee_rejoint_sa_matiere_sans_zero(): void
+    {
+        // '1' et 'semestre1' coexistent en base. Sans les alias, le recalcul ne
+        // trouvait pas la note arrivée et écrivait 0/20 sur la ligne existante.
+        $evaluation = $this->evaluation(self::MATIERE, '1');
+        $this->note($evaluation, 14);
+        $this->resultat(self::AUTRE_MATIERE, 'semestre1', 9);
+
+        $reponse = app(CLIMaintenanceController::class)->evaluationChangeMatiere(
+            $this->requeteCli(['matiere_id' => self::AUTRE_MATIERE, 'dry_run' => false]),
+            $evaluation,
+        );
+
+        $this->assertSame(200, $reponse->getStatusCode());
+        $this->assertSame(14.0, $this->moyenne(self::AUTRE_MATIERE, 'semestre1'));
+    }
+
     // ── CLIEvaluationDeplacementController::deplacer() ───────────────────
 
     public function test_le_deplacement_de_semestre_recalcule_les_deux_semestres(): void
@@ -211,6 +230,29 @@ class DeplaceursDeNotesRecalculTest extends TestCase
 
         $this->assertSame(0, $rapport['recalcules']);
         $this->assertSame(11.0, $this->moyenne(self::MATIERE, 'semestre2'));
+    }
+
+    public function test_sur_une_file_asynchrone_les_recalculs_attendent_le_commit(): void
+    {
+        // Tous les autres tests tournent sur la file `sync`, où Laravel 9
+        // ignore `afterCommit()`. En production la file peut être `database` :
+        // les jobs doivent alors partir APRÈS le commit, sur l'état déplacé.
+        Queue::fake();
+        [, $partante] = $this->deuxEvaluationsEtUneMoyenne();
+
+        app(CLIEvaluationDeplacementController::class)->deplacer(
+            $this->requeteCli(['evaluation_ids' => [$partante], 'periode' => 'semestre2', 'dry_run' => false])
+        );
+
+        Queue::assertPushed(RecomputeStudentResultatJob::class, 2);
+        foreach (['semestre1', 'semestre2'] as $periode) {
+            Queue::assertPushed(RecomputeStudentResultatJob::class, fn (RecomputeStudentResultatJob $job) => $job->periode === $periode
+                && $job->etudiantId === self::ETUDIANT
+                && $job->matiereId === self::MATIERE
+                && $job->source === 'manual'
+                && $job->triggeredBy === 1
+                && $job->afterCommit === true);
+        }
     }
 
     // ── outillage ─────────────────────────────────────────────────────────

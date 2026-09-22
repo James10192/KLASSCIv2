@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\ESBTPBulletin;
+use App\Models\ESBTPEvaluation;
 use App\Models\ESBTPNote;
 use App\Models\ESBTPResultat;
 use App\Services\BulletinService;
@@ -95,7 +96,12 @@ class RecomputeStudentResultatJob implements ShouldQueue
                     $q->where('classe_id', $this->classeId)
                         ->where('matiere_id', $this->matiereId)
                         ->where('annee_universitaire_id', $this->anneeUniversitaireId)
-                        ->where('periode', $periode)
+                        // Les périodes héritées '1' et '2' coexistent en base avec
+                        // 'semestre1' et 'semestre2'. Ne chercher que la forme
+                        // normalisée ne trouvait AUCUNE note sur une évaluation en
+                        // '1' — et face à une ligne existante, l'étape 5 écrivait
+                        // alors 0/20.
+                        ->whereIn('periode', ESBTPEvaluation::aliasDePeriode($periode))
                         ->where('status', '!=', 'cancelled');
                 })
                 ->with('evaluation:id,bareme,coefficient,periode,classe_id,matiere_id,annee_universitaire_id,status')

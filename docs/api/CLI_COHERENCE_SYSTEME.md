@@ -121,19 +121,22 @@ deux déplacements de semestre (`POST /api/cli/evaluations/deplacer-periode` et
 `POST /api/cli/diagnostics/evaluations-periode/repair`), qui rendent le même
 bloc `resultats`.
 
-⚠️ **Deux chemins restent sans recalcul**, et ne sont pas des déplacements par cet
-endpoint : **annuler** une évaluation (option 3 : ses notes sortent de la
-moyenne, la ligne enregistrée garde l'ancienne valeur), et les déplaceurs
-recensés « non » en tête de `RecalculApresDeplacement.php`. Après l'un d'eux :
+⚠️ **Des chemins restent sans recalcul**, et ne passent pas par cet endpoint :
+**annuler** une évaluation (option 3 : ses notes sortent de la moyenne, la ligne
+enregistrée garde l'ancienne valeur), changer son **barème** ou son
+**coefficient**, et les déplaceurs recensés « non » en tête de
+`RecalculApresDeplacement.php`. Après l'un d'eux :
 
 ```bash
 php artisan notes:recompute --classe=<id> --dry-run   # puis sans --dry-run
 ```
 
-`notes:recompute` part des évaluations non annulées : il ne touche que les
-coordonnées qui en portent encore une, donc il n'écrira jamais de zéro sur une
-coordonnée vidée. Une ligne dont toutes les évaluations ont été annulées ou
-déplacées reste donc en place, périmée — c'est à l'école de la trancher.
+`notes:recompute` part des évaluations non annulées : il ne recalcule que les
+coordonnées qui portent encore une note, et laisse en place, périmée, une ligne
+dont toutes les évaluations ont été annulées ou déplacées — c'est à l'école de la
+trancher. Les périodes héritées (`1`, `2`) sont lues comme `semestre1`,
+`semestre2` depuis septembre 2026 (ter) ; avant, le recalcul n'y trouvait aucune
+note et écrivait 0/20 sur la ligne existante.
 
 ## Le sort des notes trouvées n'est pas une décision de code
 
@@ -178,7 +181,9 @@ nécessaire.
   déplacements de semestre recalculent `esbtp_resultats` dans leur transaction.
   **Ajout non cassant** : la réponse gagne un bloc `resultats` (`recalcules`,
   `orphelins`). L'avertissement de la version (bis) est levé pour ces quatre
-  chemins ; il reste valable pour l'annulation d'une évaluation.
+  chemins ; il reste valable pour l'annulation d'une évaluation et pour un
+  changement de barème ou de coefficient. Le recalcul lit aussi les périodes
+  héritées `1` et `2`, où il écrivait 0/20.
 - **Septembre 2026 (bis)** — avertissement : ni cet endpoint ni le déplacement par
   l'écran ne recalculent `esbtp_resultats` ; la commande qui y remédie est donnée.
 - **Septembre 2026** — la réponse porte un second bloc `moyennes_manuelles` et un

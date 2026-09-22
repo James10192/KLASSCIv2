@@ -3,6 +3,7 @@
 namespace App\Domain\Notes;
 
 use App\Jobs\RecomputeStudentResultatJob;
+use App\Models\ESBTPEvaluation;
 use App\Models\ESBTPNote;
 use App\Models\ESBTPResultat;
 use Illuminate\Support\Facades\DB;
@@ -43,6 +44,20 @@ use Illuminate\Support\Facades\Log;
  * aurait lieu, sa trace disparaîtrait. Un déplacement est décidé par une
  * personne, `manual` est donc juste.
  *
+ * POURQUOI PAS UN OBSERVATEUR SUR `ESBTPEvaluation`. Tentant : tous les
+ * déplaceurs sauf la fusion enregistrent l'évaluation par Eloquent, et
+ * `getOriginal()` rend encore l'ancienne coordonnée dans l'événement
+ * `updated`. Mais un observateur décide évaluation par évaluation, au milieu
+ * de la transaction, alors que `deplacer()` et `repair()` déplacent un LOT.
+ * Deux évaluations d'un même élève quittent le semestre 1 : au passage de la
+ * première, il reste une note en S1, donc S1 est mis en file ; après la
+ * seconde, S1 est vide. Sur une file `database`, le job part après le commit,
+ * ne trouve aucune note face à une ligne existante, et écrit 0/20 — le piège
+ * que cette classe existe pour éviter. Sur la file `sync`, la ligne orpheline
+ * garde une moyenne intermédiaire au lieu de la sienne. La fusion, elle,
+ * passe par `DB::table` et n'émet aucun événement. D'où le relevé explicite,
+ * qui décide une seule fois, sur l'état final.
+ *
  * COMMENT BRANCHER UN DÉPLACEUR. Les déplaceurs bougent des évaluations
  * entières : {@see releverEvaluations()} AVANT les `update()`, puis
  * {@see apresEvaluations()} APRÈS, dans la même transaction. Le second relit
@@ -79,7 +94,11 @@ use Illuminate\Support\Facades\Log;
  *    de ce qu'il calcule ne bouge ;
  *  - `ESBTPEvaluationController::updateStatus()` ne déplace rien, mais
  *    ANNULER une évaluation retire ses notes de la moyenne sans la
- *    recalculer. Même symptôme, autre défaut, non traité ici.
+ *    recalculer. Même symptôme, autre défaut, non traité ici ;
+ *  - changer le BARÈME ou le COEFFICIENT d'une évaluation notée (écran
+ *    d'édition, `quickUpdate()`) change la moyenne sans la recalculer non
+ *    plus : le job lit les deux pour normaliser et pondérer. Même coordonnée
+ *    des deux côtés, donc sans piège du zéro — mais pas traité ici non plus.
  *
  * ```bash
  * grep -rnE "update\(\[?\s*'(matiere_id|classe_id|periode|semestre|annee_universitaire_id)'" app/ database/ --include="*.php"
@@ -283,7 +302,7 @@ final class RecalculApresDeplacement
                 ->where('classe_id', $c['classe_id'])
                 ->where('matiere_id', $c['matiere_id'])
                 ->where('annee_universitaire_id', $c['annee_universitaire_id'])
-                ->where('periode', $c['periode'])
+                ->whereIn('periode', ESBTPEvaluation::aliasDePeriode($c['periode']))
                 ->where('status', '!=', 'cancelled'))
             ->exists();
     }
