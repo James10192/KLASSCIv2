@@ -92,6 +92,24 @@ curl -s -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/
   "$BASE/api/cli/evaluations/4117/matiere"
 ```
 
+⚠️ **Cet endpoint ne recalcule pas `esbtp_resultats`.** Il déplace les notes par
+un `update()` qui ne réveille aucun observateur : la moyenne enregistrée de la
+matière rejointe reste celle d'avant, et comme elle l'emporte sur les notes, le
+bulletin la reprend. Même défaut pour le déplacement « par l'écran » de l'option 2
+ci-dessous. Après l'un ou l'autre, relancer le calcul sur la classe :
+
+```bash
+php artisan notes:recompute --classe=<id> --dry-run   # puis sans --dry-run
+```
+
+`notes:recompute` part des évaluations : il ne touche que les coordonnées qui en
+portent encore une, donc il n'écrira jamais de zéro sur la matière quittée. La
+ligne de celle-ci reste en place, périmée — c'est à l'école de la trancher.
+
+Seule la **fusion d'ECUE** (`/esbtp/lmd/reconciliation`, sous `force`) recalcule
+d'elle-même depuis septembre 2026 ; les autres déplaceurs sont recensés, avec
+leur état, en tête de `app/Domain/Notes/RecalculApresDeplacement.php`.
+
 ## Le sort des notes trouvées n'est pas une décision de code
 
 Ces notes ont été saisies par quelqu'un : elles sont mal rangées, pas
@@ -131,6 +149,8 @@ nécessaire.
 
 ## Historique
 
+- **Septembre 2026 (bis)** — avertissement : ni cet endpoint ni le déplacement par
+  l'écran ne recalculent `esbtp_resultats` ; la commande qui y remédie est donnée.
 - **Septembre 2026** — la réponse porte un second bloc `moyennes_manuelles` et un
   `total_toutes_familles`. La version antérieure ne relevait que les évaluations
   et a été prise pour l'inventaire complet. Un garde de cohérence est posé sur
