@@ -40,11 +40,9 @@ Un `update()` de **query builder** ne passe pas par Eloquent. `ESBTPNoteObserver
 ne tourne pas, `RecomputeStudentResultatJob` n'est jamais dispatché, et les deux
 coordonnées — celle qu'on quitte comme celle qu'on rejoint — restent figées.
 
-**Cinq sont trouvés à ce jour, et ce compte a été faux deux fois.** La première version de ce
-correctif en couvrait deux tout en publiant « les deux chemins sont corrigés » ;
-la deuxième en a annoncé quatre, et c'était encore incomplet. Publier un
-inventaire comme exhaustif ferme l'enquête suivante — c'est plus cher que le
-défaut lui-même.
+**Cinq sont trouvés à ce jour.** C'est un relevé, pas un inventaire garanti :
+tout nouveau chemin qui écrit `esbtp_notes` par un `update()` de query builder
+doit appeler `RecalculApresDeplacement` lui-même.
 
 | chemin | ce qu'il déplace | recalcul |
 |---|---|---|
@@ -191,12 +189,11 @@ plafond sous ce chiffre refuserait le cas normal.
 ⚠️ **`periode` désigne un semestre, pas une écriture.** `esbtp_evaluations.periode`
 porte historiquement `'1'` et `'2'` autant que `'semestre1'` et `'semestre2'` ; le
 périmètre accepte `semestre1` / `semestre2` et retient **les deux écritures**
-(`ESBTPEvaluation::aliasDePeriode()`). Ça n'a pas toujours été le cas, et la
-correction a d'abord ouvert pire que ce qu'elle fermait : le périmètre voyait
-l'évaluation encodée `'1'`, mais le recalcul relisait ses notes sur la seule forme
-canonique, n'en trouvait aucune, et **écrivait un 0/20 par-dessus une moyenne
-réelle** — en annonçant « 0 moyenne modifiée ». Mesuré : 14,00 devenu 0,00. La
-conversion vit désormais en un seul endroit, sur le modèle.
+(`ESBTPEvaluation::aliasDePeriode()`). Le job, lui, relisait les notes sur la
+seule forme canonique : pour une évaluation encodée `'1'`, il n'en trouvait
+aucune et **écrivait un 0/20 par-dessus une moyenne réelle**. Mesuré : 14,00
+devenu 0,00. La conversion vit désormais en un seul endroit, sur le modèle
+(`periodeCanonique()` pour écrire, `aliasDePeriode()` pour lire).
 
 ⚠️ `annuel` n'est **pas** accepté, et c'est délibéré : une évaluation ne porte
 jamais cette période, donc le périmètre serait toujours vide et l'appel rendrait
@@ -211,8 +208,9 @@ curl -s -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/
   "$BASE/api/cli/notes/recompute"
 ```
 
-`dry_run` liste les couples visés avec leur moyenne enregistrée. Il ne **prédit**
-pas la valeur d'après : la prédire demanderait de réécrire la sélection des notes
+`dry_run` liste les couples visés avec leur moyenne enregistrée et l'`issue` que
+le garde leur réservera (`recalcule`, `laissee`, `rien_a_ecrire`), comptées dans
+`issues` et dans le message. Il ne **prédit** pas la valeur d'après : la prédire demanderait de réécrire la sélection des notes
 à côté de celle du job, et deux formules qui divergent sont exactement le défaut
 que cette famille de bugs illustre.
 
@@ -222,15 +220,16 @@ elle se vérifie donc d'elle-même :
 ```jsonc
 {
   "success": true,
-  "message": "5 couple(s) recalcule(s), 1 moyenne(s) modifiee(s), 0 echec(s), 0 laissee(s) sans rien a moyenner.",
+  "message": "5 couple(s) recalcule(s), 1 moyenne(s) modifiee(s), 0 laissee(s) sans rien a moyenner, 0 sans rien a ecrire, 0 echec(s).",
   "data": {
     "perimetre": { "classe_id": 30, "matiere_id": 14, "periode": "semestre2",
                    "annee_universitaire_id": 4 },
     "couples": [
       { "etudiant_id": 149, "matiere_id": 14, "periode": "semestre2",
-        "moyenne_avant": 15, "moyenne_apres": 15.6, "change": true, "laissee": false }
+        "moyenne_avant": 15, "moyenne_apres": 15.6, "change": true, "laissee": false,
+        "issue": "recalcule" }
     ],
-    "total": 5, "modifies": 1, "echecs": 0,
+    "total": 5, "recalcules": 5, "modifies": 1, "rien_a_ecrire": 0, "echecs": 0,
     "laissees": []
   }
 }
@@ -263,12 +262,10 @@ Chaque recalcul écrit une ligne dans `esbtp_resultats_recompute_log`
 (moyenne avant, après, source, déclencheur). C'est ce qui rend l'écrasement
 réversible à la lecture.
 
-⚠️ **Cette garantie a été fausse pendant toute la première version du
-correctif.** La colonne `source` était un `enum('observer','command','manual')` ;
-les sources `deplacement` et `cli` la faisaient **lever** sous
+La colonne `source` accepte `deplacement` et `cli` : c'était un
+`enum('observer','command','manual')`, qui faisait **lever** ces deux valeurs sous
 `STRICT_TRANS_TABLES`, et `writeAuditLog()` avalait l'exception dans un `catch`
-muet. Mesuré : 53 « audit log write failed » dans une seule suite de tests, pour
-94 recalculs — zéro ligne écrite, aucune erreur visible. La colonne est passée en
+muet — aucune ligne écrite, aucune erreur visible. Elle est passée en
 `string(30)` (migration `elargir_source_du_journal_de_recalcul`), sur le
 précédent de `cash_counts.mode_paiement`, et le rattrapage nomme désormais ce
 qu'il rattrape.
@@ -286,12 +283,10 @@ qu'on fige.
 
 - **Septembre 2026** — création. Déclenchée par un agrégat laissé périmé après un
   déplacement d'évaluation fait par `POST /api/cli/evaluations/{id}/matiere`, qui
-  déplaçait bien les notes mais ne rafraîchissait rien.
-- **Septembre 2026, avant la première livraison** — la réponse gagne `laissees`
-  et chaque couple `laissee` : une moyenne sans rien à moyenner n'est plus remise
-  à zéro. `perimetres_reportes[].raison` perd `plafond_classe` au profit de
-  `perimetre_trop_lourd`. Aucun appelant en production : l'endpoint n'a pas
-  encore été livré.
+  déplaçait bien les notes mais ne rafraîchissait rien. Une moyenne sans rien à
+  moyenner est laissée (`laissees`), jamais remise à zéro ; un lot trop lourd
+  est reporté avec `perimetres_reportes[].raison`. La réponse compte par issue
+  (`recalcules`, `laissees`, `rien_a_ecrire`, `echecs`), jamais par ligne.
 
 ## Voir aussi
 

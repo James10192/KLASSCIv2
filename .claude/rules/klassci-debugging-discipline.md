@@ -143,8 +143,10 @@ Pour rafraîchir : `POST /api/cli/notes/recompute` ou `notes:recompute --classe 
 (`docs/api/CLI_RECALCUL_RESULTATS.md`). Pour retirer une moyenne qui n'a plus
 AUCUNE note : le pré-contrôle de la génération des bulletins la liste, avec une
 suppression douce et tracée (`ESBTPBulletinController::supprimerMoyennesSansNote()`)
-— préférez-le à `--clean-resultats`, qui supprime sans montrer. Une moyenne dont
-il ne reste que des absences n'est vue par aucun des deux.
+— préférez-le à `--clean-resultats`, qui supprime en dur et ne détaille ligne à
+ligne (`--liste`) que sa seconde catégorie ; `--dry` n'en donne que le compte.
+Une moyenne dont il ne reste que des absences n'est vue par aucun des deux :
+elle se reprend élève par élève depuis « Modifier les moyennes ».
 
 ---
 

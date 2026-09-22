@@ -106,8 +106,8 @@ class NotesRecomputeCommandTest extends TestCase
         // `--toute-l-ecole` demande confirmation ; repondre non n'ecrit rien.
         $this->artisan('notes:recompute', ['--toute-l-ecole' => true])
             ->expectsConfirmation(
-                'Recalculer 1 moyenne(s) sur toute l\'école ? Chacune sera réécrite depuis les notes, '
-                .'y compris celles saisies à la main.',
+                'Recalculer jusqu\'à 1 moyenne(s) sur toute l\'école ? Celles qui ont encore des notes '
+                .'seront réécrites depuis les notes, y compris celles saisies à la main.',
                 'no'
             )
             ->assertExitCode(1);

@@ -79,7 +79,7 @@ use Illuminate\Support\Facades\Log;
  * | deplaceur | ce qu'il change | branche sur cette classe |
  * |---|---|---|
  * | `ESBTPEvaluationController::update()` | matiere, classe, periode | oui |
- * | `CLIMaintenanceController::evaluationChangeMatiere()` | matiere | oui |
+ * | `CLIEvaluationMatiereController::evaluationChangeMatiere()` | matiere | oui |
  * | `CLIEvaluationDeplacementController::deplacer()` | periode, en lot | oui |
  * | `CLIEvaluationPeriodeController::repair()` | periode, en lot | oui |
  * | `MergeDuplicateEcue` (sous `force`) | matiere, en masse | **non** |

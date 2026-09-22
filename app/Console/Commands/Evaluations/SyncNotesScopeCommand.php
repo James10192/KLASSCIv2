@@ -99,14 +99,8 @@ class SyncNotesScopeCommand extends Command
                     ->whereNull('esbtp_matieres.deleted_at');
             });
             // Meme perimetre que la categorie 2 : sans lui, le `delete()` qui
-            // suit balaie l'ecole entiere. La categorie 2 etait bornee, la 1 ne
-            // l'etait pas — et c'est celle qui supprime le plus largement,
-            // puisque « matiere introuvable » ne depend d'aucune option.
-            // `--matiere` s'y applique aussi, et utilement : le filtre porte
-            // sur `esbtp_resultats.matiere_id`, qui garde l'identifiant d'une
-            // matiere mise de cote. On peut donc viser UNE matiere effacee
-            // precise. Un commentaire anterieur disait le contraire ; il fermait
-            // une porte ouverte.
+            // suit balaie l'ecole entiere. `--matiere` vise alors une matiere
+            // effacee precise (le filtre porte sur `esbtp_resultats.matiere_id`).
             $this->restreindreAuPerimetre($brokenMatiereQuery);
 
             $brokenCount = $brokenMatiereQuery->count();

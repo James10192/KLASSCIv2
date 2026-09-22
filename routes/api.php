@@ -680,7 +680,7 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
         // Reparation ciblee : deplacer une evaluation vers la matiere du bon
         // systeme academique. N'accepte que les mouvements qui retablissent
         // la coherence, jamais ceux qui la rompent.
-        Route::post('/evaluations/{id}/matiere', [App\Http\Controllers\API\CLI\CLIMaintenanceController::class, 'evaluationChangeMatiere'])
+        Route::post('/evaluations/{id}/matiere', [App\Http\Controllers\API\CLI\CLIEvaluationMatiereController::class, 'evaluationChangeMatiere'])
             ->name('evaluations.change-matiere');
         // Rafraichit `esbtp_resultats` depuis les notes, sur un perimetre
         // EXPLICITE. Le perimetre est obligatoire a dessein : un recalcul

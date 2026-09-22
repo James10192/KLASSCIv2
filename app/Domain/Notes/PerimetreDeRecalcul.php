@@ -137,11 +137,16 @@ final class PerimetreDeRecalcul
      * Recalcule chaque couple du perimetre, et rend pour chacun la moyenne
      * d'avant et celle d'apres.
      *
-     * Chaque couple passe par {@see self::recalculerUnCouple()}, le seul point
-     * du depot ou un recalcul HORS observateur est lance : la commande
-     * `notes:recompute`, l'endpoint `notes/recompute` et le recalcul apres
-     * deplacement y passent tous. Le garde contre le 0/20 ecrit « a partir de
-     * rien » n'existe donc qu'une fois.
+     * Chaque couple passe par {@see self::recalculerUnCouple()}. Le garde
+     * contre le 0/20 ecrit « a partir de rien » vit dans {@see self::diagnostic()},
+     * que lisent `recalculerUnCouple()` (commande synchrone, endpoint
+     * `notes/recompute`, recalcul apres deplacement) ET la mise en file de
+     * `notes:recompute --queue`, qui dispatche elle-meme. Tout nouveau
+     * dispatcheur de rattrapage doit le lire aussi : rien ne l'y oblige.
+     *
+     * Chaque ligne porte son `issue` (`recalcule`, `laissee`, `rien_a_ecrire`),
+     * et le bilan les compte a part : un couple laisse ou sans rien a ecrire
+     * n'a pas ete recalcule, et un message qui l'annoncerait mentirait.
      *
      * Les moyennes sont relues avant et apres plutot que predites : predire
      * demanderait de reecrire la formule a cote de celle du job. L'appelant
@@ -151,7 +156,7 @@ final class PerimetreDeRecalcul
      * artisan : le service ne connait pas la console.
      *
      * @param  Collection<int, array<string,mixed>>  $couples
-     * @return array{lignes:array<int,array<string,mixed>>, echecs:int, laissees:array<int,array<string,mixed>>}
+     * @return array{lignes:array<int,array<string,mixed>>, recalcules:int, rien_a_ecrire:int, echecs:int, laissees:array<int,array<string,mixed>>}
      */
     public function recalculer(
         Collection $couples,
@@ -161,14 +166,13 @@ final class PerimetreDeRecalcul
     ): array {
         $lignes = [];
         $laissees = [];
-        $echecs = 0;
+        $compte = [self::RECALCULE => 0, self::RIEN_A_ECRIRE => 0, self::ECHEC => 0, self::LAISSEE => 0];
 
         foreach ($couples as $couple) {
             $resultat = self::recalculerUnCouple($couple, $source, $declencheur);
+            $compte[$resultat['statut']]++;
 
-            if ($resultat['statut'] === self::ECHEC) {
-                $echecs++;
-            } else {
+            if ($resultat['statut'] !== self::ECHEC) {
                 $lignes[] = [
                     'etudiant_id' => $couple['etudiant_id'],
                     'matiere_id' => $couple['matiere_id'],
@@ -177,6 +181,7 @@ final class PerimetreDeRecalcul
                     'moyenne_apres' => $resultat['apres'],
                     'change' => $resultat['avant'] !== $resultat['apres'],
                     'laissee' => $resultat['statut'] === self::LAISSEE,
+                    'issue' => $resultat['statut'],
                 ];
             }
 
@@ -189,7 +194,13 @@ final class PerimetreDeRecalcul
             }
         }
 
-        return ['lignes' => $lignes, 'echecs' => $echecs, 'laissees' => $laissees];
+        return [
+            'lignes' => $lignes,
+            'recalcules' => $compte[self::RECALCULE],
+            'rien_a_ecrire' => $compte[self::RIEN_A_ECRIRE],
+            'echecs' => $compte[self::ECHEC],
+            'laissees' => $laissees,
+        ];
     }
 
     /**

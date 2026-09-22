@@ -6,6 +6,7 @@ use App\Domain\Notes\PerimetreDeRecalcul;
 use App\Http\Controllers\API\BaseApiController;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -59,12 +60,12 @@ class CLINotesRecomputeController extends BaseApiController
      *
      * ## Le perimetre est obligatoire, et c'est le point
      *
-     * `classe_id`, `periode` et `annee_universitaire_id` sont requis. La
-     * commande artisan, elle, accepte de tourner sans aucun filtre et balaie
-     * alors l'ecole entiere. Un recalcul ECRASE `esbtp_resultats.moyenne` :
-     * lache sans bornes sur une instance Elite, il effacerait d'un coup toutes
-     * les moyennes saisies a la main par l'ecole. D'ou le refus de tourner a
-     * l'aveugle, et le plafond.
+     * `classe_id`, `periode` et `annee_universitaire_id` sont requis, comme
+     * `--classe` et `--annee` le sont pour la commande artisan (qui n'accepte
+     * l'ecole entiere que sur `--toute-l-ecole` et confirmation). Un recalcul
+     * ECRASE `esbtp_resultats.moyenne` : lache sans bornes sur une instance
+     * Elite, il reecrirait d'un coup les moyennes saisies a la main par
+     * l'ecole. D'ou le refus de tourner a l'aveugle, et le plafond.
      *
      * La selection des couples est partagee avec la commande artisan
      * ({@see PerimetreDeRecalcul}) : la premiere version la reimplementait, et
@@ -119,19 +120,7 @@ class CLINotesRecomputeController extends BaseApiController
         }
 
         if ((bool) ($validated['dry_run'] ?? false)) {
-            return $this->successResponse([
-                'dry_run' => true,
-                'perimetre' => $validated,
-                // `issue` : ce que le garde fera de ce couple (`recalcule`,
-                // `laissee` s'il n'y reste rien a moyenner, `rien_a_ecrire`
-                // sans ligne ni note comptee) — lu par le meme diagnostic que
-                // l'execution, pas predit a cote.
-                'couples' => $couples->map(fn (array $c) => $c + [
-                    'moyenne_enregistree' => $perimetre->moyenneEnregistree($c),
-                    'issue' => PerimetreDeRecalcul::diagnostic($c)['statut'],
-                ])->all(),
-                'total' => $couples->count(),
-            ], 'Aucune ecriture : '.$couples->count().' couple(s) seraient recalcules.');
+            return $this->simulation($validated, $perimetre, $couples);
         }
 
         $bilan = $perimetre->recalculer($couples, 'cli', $request->user()->id);
@@ -142,6 +131,7 @@ class CLINotesRecomputeController extends BaseApiController
             'couples' => count($bilan['lignes']),
             'modifies' => $modifies,
             'echecs' => $bilan['echecs'],
+            'recalcules' => $bilan['recalcules'],
             'laissees' => count($bilan['laissees']),
             'caller_user_id' => $request->user()->id,
             'ip' => $request->ip(),
@@ -149,16 +139,48 @@ class CLINotesRecomputeController extends BaseApiController
 
         // `laissees` : les moyennes qu'il ne restait rien a moyenner pour
         // recalculer (aucune note, ou seulement des absences). Elles ne sont
-        // jamais remises a zero — voir PerimetreDeRecalcul::recalculerUnCouple().
+        // jamais remises a zero — voir PerimetreDeRecalcul::diagnostic().
+        // Le message compte par issue : un couple laisse ou sans rien a
+        // ecrire n'a PAS ete recalcule, et l'annoncer ainsi mentirait.
         return $this->successResponse([
             'perimetre' => $validated,
             'couples' => $bilan['lignes'],
             'total' => count($bilan['lignes']),
+            'recalcules' => $bilan['recalcules'],
             'modifies' => $modifies,
+            'rien_a_ecrire' => $bilan['rien_a_ecrire'],
             'echecs' => $bilan['echecs'],
             'laissees' => $bilan['laissees'],
-        ], count($bilan['lignes']).' couple(s) recalcule(s), '.$modifies
-            .' moyenne(s) modifiee(s), '.$bilan['echecs'].' echec(s), '
-            .count($bilan['laissees']).' laissee(s) sans rien a moyenner.');
+        ], $bilan['recalcules'].' couple(s) recalcule(s), '.$modifies
+            .' moyenne(s) modifiee(s), '.count($bilan['laissees']).' laissee(s) sans rien a moyenner, '
+            .$bilan['rien_a_ecrire'].' sans rien a ecrire, '.$bilan['echecs'].' echec(s).');
+    }
+
+    /**
+     * `dry_run` : chaque couple porte l'`issue` que le garde lui reservera,
+     * lue par le meme diagnostic que l'execution, pas predite a cote. Le
+     * message compte par issue : « N seraient recalcules » pour un perimetre
+     * ou rien ne sera ecrit serait le defaut meme que ce garde corrige.
+     *
+     * @param  array<string,mixed>  $validated
+     * @param  Collection<int, array<string,mixed>>  $couples
+     */
+    private function simulation(array $validated, PerimetreDeRecalcul $perimetre, Collection $couples): JsonResponse
+    {
+        $lignes = $couples->map(fn (array $c) => $c + [
+            'moyenne_enregistree' => $perimetre->moyenneEnregistree($c),
+            'issue' => PerimetreDeRecalcul::diagnostic($c)['statut'],
+        ]);
+        $issues = $lignes->countBy('issue');
+
+        return $this->successResponse([
+            'dry_run' => true,
+            'perimetre' => $validated,
+            'couples' => $lignes->all(),
+            'total' => $lignes->count(),
+            'issues' => $issues->all(),
+        ], 'Aucune ecriture : '.($issues[PerimetreDeRecalcul::RECALCULE] ?? 0).' couple(s) seraient recalcules, '
+            .($issues[PerimetreDeRecalcul::LAISSEE] ?? 0).' laisse(s) sans rien a moyenner, '
+            .($issues[PerimetreDeRecalcul::RIEN_A_ECRIRE] ?? 0).' sans rien a ecrire.');
     }
 }

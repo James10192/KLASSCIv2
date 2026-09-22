@@ -8,7 +8,7 @@ une ECUE du LMD évaluée dans une classe BTS, ou l'inverse.
 | Base | `/api/cli` |
 | Authentification | Bearer Sanctum |
 | Abilities | `cli:read` en lecture, `cli:admin` en écriture |
-| Contrôleur | `App\Http\Controllers\API\CLI\CLIMaintenanceController` |
+| Contrôleurs | `CLIMaintenanceController` (diagnostic), `CLIEvaluationMatiereController` (rebascule) — `App\Http\Controllers\API\CLI` |
 | Prédicat partagé | `App\Domain\Academique\CoherenceSystemeAcademique` |
 
 ## Ce qui rend ce diagnostic nécessaire
@@ -99,17 +99,12 @@ La réponse porte désormais `recalculs_tentes`, `agregats_orphelins` et
 `recalculs_en_echec` ; le détail du recalcul, et ce qu'il refuse délibérément de
 faire, est dans [CLI_RECALCUL_RESULTATS.md](CLI_RECALCUL_RESULTATS.md).
 
-⚠️ **Et ce périmètre a été publié faux deux fois de suite.** La première version
-annonçait « les deux endroits qui déplacent une évaluation » ; la deuxième
-« quatre », en ajoutant les deux endpoints qui changent la *période* (`periode`
-étant une coordonnée de la même clé). **Cinq sont trouvés à ce jour** — et écrire
-« ils sont cinq » ici, en absolu, dans le paragraphe même qui raconte que ce
-compte a été publié faux deux fois, était la troisième version du défaut. Les
-quatre premiers sont branchés ; le cinquième, `MergeDuplicateEcue` sous `force`,
-ne l'est pas, et
-[CLI_RECALCUL_RESULTATS.md](CLI_RECALCUL_RESULTATS.md) dit lequel et pourquoi.
-Un « c'est corrigé » faux ferme l'enquête suivante ; c'est ce que coûte le plus
-cher, et c'est exactement ce qui s'est produit ici — deux fois.
+**Cinq chemins déplacent une évaluation, à ce jour** — c'est un relevé, pas un
+inventaire garanti. Quatre sont branchés sur le recalcul ; le cinquième,
+`MergeDuplicateEcue` sous `force`, ne l'est pas, et
+[CLI_RECALCUL_RESULTATS.md](CLI_RECALCUL_RESULTATS.md) dit pourquoi. Un nouveau
+chemin qui écrit `esbtp_notes` par un `update()` de query builder doit appeler
+`RecalculApresDeplacement` : aucun observateur ne le fera à sa place.
 
 ```bash
 curl -s -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
@@ -156,13 +151,12 @@ nécessaire.
 
 ## Historique
 
-- **Septembre 2026** — **quatre des cinq** chemins qui déplacent une évaluation
-  recalculent enfin les agrégats des deux côtés. Ils déplaçaient les notes sans
-  rien rafraîchir, et l'agrégat périmé gagne sur les notes : le déplacement avait
-  donc l'air fait et ne l'était qu'à moitié. La première livraison n'en couvrait
-  que deux tout en publiant « les deux chemins sont corrigés » ; la deuxième en
-  annonçait quatre comme si c'était l'inventaire complet. Le cinquième,
-  `MergeDuplicateEcue` sous `force`, reste à traiter.
+- **Septembre 2026** — **quatre des cinq** chemins trouvés qui déplacent une
+  évaluation recalculent les agrégats des deux côtés. Ils déplaçaient les notes
+  sans rien rafraîchir, et l'agrégat périmé gagne sur les notes : le déplacement
+  avait l'air fait et ne l'était qu'à moitié. Le cinquième, `MergeDuplicateEcue`
+  sous `force`, reste à traiter. La rebascule de matière vit désormais dans
+  `CLIEvaluationMatiereController` ; la route et son nom sont inchangés.
 - **Septembre 2026** — la réponse porte un second bloc `moyennes_manuelles` et un
   `total_toutes_familles`. La version antérieure ne relevait que les évaluations
   et a été prise pour l'inventaire complet. Un garde de cohérence est posé sur

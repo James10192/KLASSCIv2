@@ -92,8 +92,8 @@ class NotesRecompute extends Command
         }
 
         if ($sansPerimetre && ! $this->option('dry-run') && ! $this->confirm(sprintf(
-            'Recalculer %d moyenne(s) sur toute l\'école ? Chacune sera réécrite depuis les notes, '
-            .'y compris celles saisies à la main.', $total
+            'Recalculer jusqu\'à %d moyenne(s) sur toute l\'école ? Celles qui ont encore des notes '
+            .'seront réécrites depuis les notes, y compris celles saisies à la main.', $total
         ))) {
             $this->warn('Abandon : rien n\'a été recalculé.');
 
@@ -150,12 +150,14 @@ class NotesRecompute extends Command
         }
 
         $modifies = collect($bilan['lignes'])->where('change', true)->count();
-        $verb = $useQueue ? 'dispatché(s)' : 'recalculé(s)';
 
-        $this->info(sprintf(
-            '%d résultat(s) %s, %d moyenne(s) modifiée(s), %d erreur(s).',
-            count($bilan['lignes']), $verb, $modifies, $bilan['echecs']
-        ));
+        // Compte par issue, jamais par ligne : un couple laissé ou sans rien
+        // à écrire n'a pas été recalculé, et l'annoncer ainsi mentirait.
+        $this->info($useQueue
+            ? sprintf('%d recalcul(s) posé(s) sur la file, %d sans rien à écrire, %d erreur(s).',
+                $bilan['recalcules'], $bilan['rien_a_ecrire'], $bilan['echecs'])
+            : sprintf('%d résultat(s) recalculé(s), %d moyenne(s) modifiée(s), %d sans rien à écrire, %d erreur(s).',
+                $bilan['recalcules'], $modifies, $bilan['rien_a_ecrire'], $bilan['echecs']));
 
         if (! empty($bilan['laissees'])) {
             $this->warn(sprintf(
@@ -183,7 +185,7 @@ class NotesRecompute extends Command
      * refusent.
      *
      * @param  Collection<int, array<string,mixed>>  $couples
-     * @return array{lignes:array<int,array<string,mixed>>, echecs:int, laissees:array<int,array<string,mixed>>}
+     * @return array{lignes:array<int,array<string,mixed>>, recalcules:int, rien_a_ecrire:int, echecs:int, laissees:array<int,array<string,mixed>>}
      */
     private function dispatcherSurLaFile(Collection $couples): array
     {
@@ -192,6 +194,7 @@ class NotesRecompute extends Command
         $lignes = [];
         $laissees = [];
         $echecs = 0;
+        $rienAEcrire = 0;
 
         foreach ($couples as $c) {
             try {
@@ -199,6 +202,10 @@ class NotesRecompute extends Command
 
                 if ($diagnostic['laissee'] !== null) {
                     $laissees[] = $diagnostic['laissee'];
+                }
+
+                if ($diagnostic['statut'] === PerimetreDeRecalcul::RIEN_A_ECRIRE) {
+                    $rienAEcrire++;
                 }
 
                 if ($diagnostic['statut'] !== PerimetreDeRecalcul::RECALCULE) {
@@ -224,6 +231,12 @@ class NotesRecompute extends Command
             }
         }
 
-        return ['lignes' => $lignes, 'echecs' => $echecs, 'laissees' => $laissees];
+        return [
+            'lignes' => $lignes,
+            'recalcules' => count($lignes),
+            'rien_a_ecrire' => $rienAEcrire,
+            'echecs' => $echecs,
+            'laissees' => $laissees,
+        ];
     }
 }

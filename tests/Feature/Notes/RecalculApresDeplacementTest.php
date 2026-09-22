@@ -3,7 +3,7 @@
 namespace Tests\Feature\Notes;
 
 use App\Domain\Notes\MoyennesLaissees;
-use App\Http\Controllers\API\CLI\CLIMaintenanceController;
+use App\Http\Controllers\API\CLI\CLIEvaluationMatiereController;
 use App\Http\Controllers\API\CLI\CLINotesRecomputeController;
 use App\Http\Controllers\ESBTPEvaluationController;
 use App\Models\ESBTPNote;
@@ -225,9 +225,15 @@ class RecalculApresDeplacementTest extends TestCase
 
         $simulation = $this->appeler('notesRecompute', ['cli:admin'], $perimetre + ['dry_run' => true]);
         $this->assertSame('rien_a_ecrire', $simulation['couples'][0]['issue']);
+        $this->assertSame(['rien_a_ecrire' => 1], $simulation['issues']);
 
-        $this->appeler('notesRecompute', ['cli:admin'], $perimetre);
+        // Rien n'a ete recalcule : le bilan ne doit pas dire le contraire. Il
+        // comptait chaque ligne non echouee comme « recalculee ».
+        $bilan = $this->appeler('notesRecompute', ['cli:admin'], $perimetre);
         $this->assertNull($this->moyenne($etudiant->id, $matiere->id));
+        $this->assertSame(0, $bilan['recalcules']);
+        $this->assertSame(1, $bilan['rien_a_ecrire']);
+        $this->assertSame('rien_a_ecrire', $bilan['couples'][0]['issue']);
 
         // La mise en file applique le meme garde : rien n'est pose.
         Queue::fake();
@@ -235,7 +241,8 @@ class RecalculApresDeplacementTest extends TestCase
             '--classe' => $this->classe->id,
             '--annee' => $this->annee->id,
             '--queue' => true,
-        ])->assertExitCode(0);
+        ])->expectsOutputToContain('0 recalcul(s) posé(s) sur la file, 1 sans rien à écrire')
+            ->assertExitCode(0);
         Queue::assertNothingPushed();
     }
 
@@ -659,12 +666,11 @@ class RecalculApresDeplacementTest extends TestCase
      */
     private function appeler(string $methode, array $droits, array $charge, ?int $id = null): array
     {
-        // `notesRecompute` a son controleur a lui (`CLINotesRecomputeController`) :
-        // `CLIMaintenanceController` passait 1500 lignes, le grossir encore
-        // contredisait l'axe « no god code ».
+        // Chaque action a son controleur : `CLIMaintenanceController` passait
+        // 1500 lignes, et le grossir encore contredisait l'axe « no god code ».
         $controleur = $methode === 'notesRecompute'
             ? app(CLINotesRecomputeController::class)
-            : app(CLIMaintenanceController::class);
+            : app(CLIEvaluationMatiereController::class);
         $requete = $this->requete($droits, $charge);
 
         $reponse = $id === null
