@@ -2336,7 +2336,12 @@ return [
             'reinscriptions.demandes.view', 'reinscriptions.demandes.process',
             'inscriptions.candidatures.view', 'inscriptions.candidatures.process',
             'inscriptions.rdv.view', 'inscriptions.rdv.manage', 'inscriptions.rdv.configure',
-            'paiements.view', 'frais.view',
+            // Pas de paiements.view (septembre 2026) : le coordinateur est un profil
+            // pédagogique, il ne lit pas ce qu'un étudiant a payé ou doit. Une école
+            // qui le veut coche la permission sur le rôle. Retirer la ligne d'ici ne
+            // touche que les nouvelles instances : fix_permissions préserve un rôle
+            // déjà garni.
+            'frais.view',
             // PR1 réconciliation — view + approve (séparation OHADA : approve ≠ comptable qui a ouvert)
             'comptabilite.reconciliation.view', 'comptabilite.reconciliation.approve',
             'cycles.view', 'cycles.edit',
