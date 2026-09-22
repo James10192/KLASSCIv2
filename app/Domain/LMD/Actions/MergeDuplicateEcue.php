@@ -107,7 +107,9 @@ class MergeDuplicateEcue
             //    Les coordonnées se relèvent AVANT : après, rien ne dit plus
             //    de quelle matière venait chaque évaluation.
             if ($force) {
-                $deplacements = $this->deplacementsDeNotes($canonicalId, $absorbedIds);
+                $releve = $this->recalcul->releverEvaluations(
+                    DB::table('esbtp_evaluations')->whereIn('matiere_id', $absorbedIds)->pluck('id')
+                );
 
                 DB::table('esbtp_evaluations')
                     ->whereIn('matiere_id', $absorbedIds)
@@ -116,8 +118,8 @@ class MergeDuplicateEcue
                     ->whereIn('matiere_id', $absorbedIds)
                     ->update(['matiere_id' => $canonicalId, 'updated_at' => now()]);
 
-                $recalcul = $this->recalcul->apres(
-                    $deplacements,
+                $recalcul = $this->recalcul->apresEvaluations(
+                    $releve,
                     'fusion ECUE '.implode(',', $absorbedIds).' -> '.$canonicalId,
                     optional(auth()->user())->id,
                 );
@@ -194,45 +196,6 @@ class MergeDuplicateEcue
                 ]);
             }
         }
-    }
-
-    /**
-     * Un élève × une coordonnée quittée, par évaluation portée par une ECUE absorbée.
-     *
-     * Même exclusions que le job (effacées, archivées) et mêmes refus que
-     * l'observateur : une évaluation sans classe, année ou période n'est pas
-     * recalculable, elle ne l'était pas non plus avant la fusion.
-     *
-     * @return list<array{etudiant_id:int, avant:array, apres:array}>
-     */
-    private function deplacementsDeNotes(int $canonicalId, array $absorbedIds): array
-    {
-        return DB::table('esbtp_notes as n')
-            ->join('esbtp_evaluations as e', 'e.id', '=', 'n.evaluation_id')
-            ->whereIn('e.matiere_id', $absorbedIds)
-            ->whereNull('n.deleted_at')
-            ->whereNull('n.archived_at')
-            ->whereNull('e.deleted_at')
-            ->whereNotNull('e.classe_id')
-            ->whereNotNull('e.annee_universitaire_id')
-            ->whereNotNull('e.periode')
-            ->distinct()
-            ->get(['n.etudiant_id', 'e.classe_id', 'e.matiere_id', 'e.annee_universitaire_id', 'e.periode'])
-            ->map(function ($r) use ($canonicalId) {
-                $avant = [
-                    'classe_id' => $r->classe_id,
-                    'matiere_id' => $r->matiere_id,
-                    'annee_universitaire_id' => $r->annee_universitaire_id,
-                    'periode' => $r->periode,
-                ];
-
-                return [
-                    'etudiant_id' => (int) $r->etudiant_id,
-                    'avant' => $avant,
-                    'apres' => ['matiere_id' => $canonicalId] + $avant,
-                ];
-            })
-            ->all();
     }
 
     /**

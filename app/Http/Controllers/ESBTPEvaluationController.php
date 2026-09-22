@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Domain\Notes\RecalculApresDeplacement;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPEtudiant;
@@ -18,6 +19,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -343,6 +345,26 @@ class ESBTPEvaluationController extends Controller
         });
 
         return view('esbtp.evaluations.create', compact('classes', 'matieres', 'matieresJson', 'matiere_id', 'classe_id', 'types', 'enseignants', 'anneeUniversitaire'));
+    }
+
+    /**
+     * Une moyenne enregistrée que le déplacement a laissée sans aucune note
+     * n'est pas recalculée (elle tomberait à 0/20) : elle reste en place. Le
+     * dire à la personne qui vient de déplacer, plutôt qu'au seul journal.
+     *
+     * @param  list<array{etudiant_id:int}>  $orphelins
+     */
+    private function messageMoyennesOrphelines(array $orphelins): ?string
+    {
+        if ($orphelins === []) {
+            return null;
+        }
+
+        $eleves = count(array_unique(array_column($orphelins, 'etudiant_id')));
+
+        return count($orphelins).' moyenne(s) enregistrée(s) sur l\'ancienne classe, matière ou période '
+            .'n\'ont plus aucune note ('.$eleves.' élève(s)). Elles n\'ont pas été recalculées ni supprimées : '
+            .'vérifiez-les dans les résultats avant de régénérer les bulletins.';
     }
 
     /**
@@ -771,36 +793,52 @@ class ESBTPEvaluationController extends Controller
                     ? $evaluation->determineAutomaticStatus(null, false)
                     : ESBTPEvaluation::STATUS_DRAFT;
             }
-            $evaluation->save();
 
-            // PROPAGATION aux notes filles : si classe/matiere/periode ont changé sur l'évaluation,
-            // synchroniser les colonnes dénormalisées des notes (esbtp_notes.classe_id,
-            // matiere_id, semestre). Sinon les vues qui groupent par note.matiere_id (résultats,
-            // bulletins) continuent d'afficher l'ancienne matière jusqu'au prochain save manuel.
-            $notesUpdates = [];
-            if ($evaluation->classe_id != $oldClasseId) {
-                $notesUpdates['classe_id'] = $evaluation->classe_id;
-            }
-            if ($evaluation->matiere_id != $oldMatiereId) {
-                $notesUpdates['matiere_id'] = $evaluation->matiere_id;
-            }
-            if ($evaluation->periode != $oldPeriode) {
-                // semestre = entier (1 ou 2) extrait de 'semestre1'/'semestre2'
-                $notesUpdates['semestre'] = (int) str_replace('semestre', '', (string) $evaluation->periode);
-            }
-            if (! empty($notesUpdates)) {
-                $affected = ESBTPNote::where('evaluation_id', $evaluation->id)->update($notesUpdates);
-                \Log::info('Notes propagées après modif évaluation', [
-                    'evaluation_id' => $evaluation->id,
-                    'changes' => $notesUpdates,
-                    'old' => [
-                        'classe_id' => $oldClasseId,
-                        'matiere_id' => $oldMatiereId,
-                        'periode' => $oldPeriode,
-                    ],
-                    'notes_affected' => $affected,
-                ]);
-            }
+            // Relevé AVANT l'enregistrement : c'est la seule trace de la
+            // coordonnée que les notes quittent. Rien à relever pour une
+            // simple retouche de titre, de date ou de barème.
+            $recalcul = app(RecalculApresDeplacement::class);
+            $releve = $evaluation->isDirty(['classe_id', 'matiere_id', 'periode'])
+                ? $recalcul->releverEvaluations([$evaluation->id])
+                : [];
+
+            $rapport = DB::transaction(function () use ($evaluation, $oldClasseId, $oldMatiereId, $oldPeriode, $recalcul, $releve) {
+                $evaluation->save();
+
+                // PROPAGATION aux notes filles : si classe/matiere/periode ont changé sur l'évaluation,
+                // synchroniser les colonnes dénormalisées des notes (esbtp_notes.classe_id,
+                // matiere_id, semestre). Sinon les vues qui groupent par note.matiere_id (résultats,
+                // bulletins) continuent d'afficher l'ancienne matière jusqu'au prochain save manuel.
+                $notesUpdates = [];
+                if ($evaluation->classe_id != $oldClasseId) {
+                    $notesUpdates['classe_id'] = $evaluation->classe_id;
+                }
+                if ($evaluation->matiere_id != $oldMatiereId) {
+                    $notesUpdates['matiere_id'] = $evaluation->matiere_id;
+                }
+                if ($evaluation->periode != $oldPeriode) {
+                    // semestre = entier (1 ou 2) extrait de 'semestre1'/'semestre2'
+                    $notesUpdates['semestre'] = (int) str_replace('semestre', '', (string) $evaluation->periode);
+                }
+                if (! empty($notesUpdates)) {
+                    $affected = ESBTPNote::where('evaluation_id', $evaluation->id)->update($notesUpdates);
+                    \Log::info('Notes propagées après modif évaluation', [
+                        'evaluation_id' => $evaluation->id,
+                        'changes' => $notesUpdates,
+                        'old' => [
+                            'classe_id' => $oldClasseId,
+                            'matiere_id' => $oldMatiereId,
+                            'periode' => $oldPeriode,
+                        ],
+                        'notes_affected' => $affected,
+                    ]);
+                }
+
+                // L'update() ci-dessus ne réveille pas l'observateur des notes :
+                // sans ce recalcul, les moyennes enregistrées de l'ancienne et de
+                // la nouvelle coordonnée gardaient leur valeur d'avant.
+                return $recalcul->apresEvaluations($releve, 'modification evaluation #'.$evaluation->id, Auth::id());
+            });
 
             // Garde-fou non bloquant TC/Spécialité (basé sur la classe cible).
             $tcWarning = $this->troncCommunSpecialiteWarning(
@@ -810,8 +848,9 @@ class ESBTPEvaluationController extends Controller
 
             $redirect = redirect()->route('esbtp.evaluations.show', $evaluation)
                 ->with('success', 'L\'évaluation a été mise à jour avec succès');
-            if ($tcWarning) {
-                $redirect->with('warning', $tcWarning);
+            $avertissements = array_filter([$tcWarning, $this->messageMoyennesOrphelines($rapport['orphelins'])]);
+            if ($avertissements !== []) {
+                $redirect->with('warning', implode(' ', $avertissements));
             }
 
             return $redirect;

@@ -5,6 +5,7 @@ namespace Tests\Unit\Domain\Notes;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use OwenIt\Auditing\Models\Audit;
 
 /**
  * Les tables que lisent et écrivent le recalcul des moyennes et la fusion
@@ -20,6 +21,11 @@ trait SchemaDesMoyennes
     protected function monterLeSchemaDesMoyennes(): void
     {
         config()->set('audit.enabled', false);
+        // L'observateur d'audit s'accroche au premier démarrage du modèle, et
+        // ce démarrage survit d'un test à l'autre : le réglage ci-dessus arrive
+        // trop tard pour un modèle déjà démarré. Seul l'interrupteur global
+        // tient à coup sûr (il n'y a pas de table `audits` ici).
+        Audit::$auditingGloballyDisabled = true;
         config()->set('queue.default', 'sync');
         config()->set('database.default', 'sqlite');
         config()->set('database.connections.sqlite', [
@@ -36,6 +42,7 @@ trait SchemaDesMoyennes
 
     protected function demonterLeSchemaDesMoyennes(): void
     {
+        Audit::$auditingGloballyDisabled = false;
         DB::disconnect('sqlite');
     }
 
@@ -55,12 +62,26 @@ trait SchemaDesMoyennes
         // garde de cohérence d'`ESBTPResultat` lit la classe dès qu'une ligne
         // de résultat est CRÉÉE, donc ces tables doivent exister, même vides.
         foreach (['esbtp_filieres', 'esbtp_niveau_etudes', 'esbtp_annee_universitaires'] as $table) {
-            Schema::create($table, function (Blueprint $t) {
+            Schema::create($table, function (Blueprint $t) use ($table) {
                 $t->id();
+                if ($table === 'esbtp_annee_universitaires') {
+                    // Lu par l'écran d'édition des évaluations.
+                    $t->boolean('is_current')->default(false);
+                }
                 $t->softDeletes();
                 $t->timestamps();
             });
         }
+        // Lu par le garde de période d'`ESBTPEvaluation` à chaque changement
+        // de semestre, et par la réparation `evaluations-periode`.
+        Schema::create('esbtp_classe_orientation_targets', function (Blueprint $t) {
+            $t->id();
+            $t->unsignedBigInteger('source_classe_id')->nullable();
+            $t->unsignedBigInteger('target_classe_id');
+            $t->unsignedTinyInteger('semestre_activation')->default(1);
+            $t->boolean('is_active')->default(true);
+            $t->timestamps();
+        });
         Schema::create('esbtp_matieres', function (Blueprint $t) {
             $t->id();
             $t->string('name');
@@ -73,6 +94,14 @@ trait SchemaDesMoyennes
         Schema::create('esbtp_evaluations', function (Blueprint $t) {
             $t->id();
             $t->string('titre');
+            // Écrites par l'écran d'édition (`ESBTPEvaluationController::update()`).
+            $t->text('description')->nullable();
+            $t->string('type')->nullable();
+            $t->dateTime('date_evaluation')->nullable();
+            $t->integer('duree_minutes')->nullable();
+            $t->boolean('is_published')->default(false);
+            $t->unsignedBigInteger('created_by')->nullable();
+            $t->unsignedBigInteger('updated_by')->nullable();
             $t->unsignedBigInteger('matiere_id')->nullable();
             $t->unsignedBigInteger('classe_id')->nullable();
             $t->unsignedBigInteger('annee_universitaire_id')->nullable();

@@ -92,23 +92,48 @@ curl -s -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/
   "$BASE/api/cli/evaluations/4117/matiere"
 ```
 
-⚠️ **Cet endpoint ne recalcule pas `esbtp_resultats`.** Il déplace les notes par
-un `update()` qui ne réveille aucun observateur : la moyenne enregistrée de la
-matière rejointe reste celle d'avant, et comme elle l'emporte sur les notes, le
-bulletin la reprend. Même défaut pour le déplacement « par l'écran » de l'option 2
-ci-dessous. Après l'un ou l'autre, relancer le calcul sur la classe :
+**Les moyennes enregistrées suivent, dans la même transaction.** Les notes se
+déplacent par un `update()` qui ne réveille aucun observateur ; depuis septembre
+2026 (ter), l'endpoint recalcule lui-même `esbtp_resultats` des deux côtés
+(`App\Domain\Notes\RecalculApresDeplacement`) :
+
+- la matière **rejointe** est toujours recalculée ;
+- la matière **quittée** l'est s'il y reste au moins une note ;
+- sinon sa ligne est laissée en place et **nommée** dans la réponse, jamais remise
+  à zéro — recalculer une ligne sans note y écrirait 0/20. La garder, la
+  supprimer ou la reporter est une décision d'école.
+
+La réponse porte un bloc `resultats` :
+
+```json
+"resultats": {
+  "recalcules": 2,
+  "orphelins": [
+    {"etudiant_id": 812, "classe_id": 14, "matiere_id": 97,
+     "annee_universitaire_id": 3, "periode": "semestre1", "moyenne": 11.5}
+  ]
+}
+```
+
+Le déplacement **par l'écran** (option 2 ci-dessous) recalcule de la même façon,
+et signale les orphelins dans le bandeau d'avertissement. Même chose pour les
+deux déplacements de semestre (`POST /api/cli/evaluations/deplacer-periode` et
+`POST /api/cli/diagnostics/evaluations-periode/repair`), qui rendent le même
+bloc `resultats`.
+
+⚠️ **Deux chemins restent sans recalcul**, et ne sont pas des déplacements par cet
+endpoint : **annuler** une évaluation (option 3 : ses notes sortent de la
+moyenne, la ligne enregistrée garde l'ancienne valeur), et les déplaceurs
+recensés « non » en tête de `RecalculApresDeplacement.php`. Après l'un d'eux :
 
 ```bash
 php artisan notes:recompute --classe=<id> --dry-run   # puis sans --dry-run
 ```
 
-`notes:recompute` part des évaluations : il ne touche que les coordonnées qui en
-portent encore une, donc il n'écrira jamais de zéro sur la matière quittée. La
-ligne de celle-ci reste en place, périmée — c'est à l'école de la trancher.
-
-Seule la **fusion d'ECUE** (`/esbtp/lmd/reconciliation`, sous `force`) recalcule
-d'elle-même depuis septembre 2026 ; les autres déplaceurs sont recensés, avec
-leur état, en tête de `app/Domain/Notes/RecalculApresDeplacement.php`.
+`notes:recompute` part des évaluations non annulées : il ne touche que les
+coordonnées qui en portent encore une, donc il n'écrira jamais de zéro sur une
+coordonnée vidée. Une ligne dont toutes les évaluations ont été annulées ou
+déplacées reste donc en place, périmée — c'est à l'école de la trancher.
 
 ## Le sort des notes trouvées n'est pas une décision de code
 
@@ -149,6 +174,11 @@ nécessaire.
 
 ## Historique
 
+- **Septembre 2026 (ter)** — cet endpoint, le déplacement par l'écran et les deux
+  déplacements de semestre recalculent `esbtp_resultats` dans leur transaction.
+  **Ajout non cassant** : la réponse gagne un bloc `resultats` (`recalcules`,
+  `orphelins`). L'avertissement de la version (bis) est levé pour ces quatre
+  chemins ; il reste valable pour l'annulation d'une évaluation.
 - **Septembre 2026 (bis)** — avertissement : ni cet endpoint ni le déplacement par
   l'écran ne recalculent `esbtp_resultats` ; la commande qui y remédie est donnée.
 - **Septembre 2026** — la réponse porte un second bloc `moyennes_manuelles` et un

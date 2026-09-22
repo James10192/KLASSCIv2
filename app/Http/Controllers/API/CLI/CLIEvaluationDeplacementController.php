@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\API\CLI;
 
+use App\Domain\Notes\RecalculApresDeplacement;
 use App\Http\Controllers\API\BaseApiController;
 use App\Models\ESBTPEvaluation;
 use App\Models\ESBTPNote;
@@ -22,6 +23,8 @@ use Illuminate\Support\Facades\Log;
  *
  * Cet endpoint ne devine donc rien : il deplace la liste d'evaluations qu'on
  * lui donne, apres qu'un humain l'a arretee. La simulation est le defaut.
+ * Les moyennes enregistrees des deux semestres suivent dans la meme
+ * transaction (RecalculApresDeplacement) ; la reponse en rend le compte.
  *
  * A distinguer de CLIEvaluationPeriodeController, qui detecte tout seul un
  * cas precis : les evaluations posees avant l'ouverture de leur classe de
@@ -109,7 +112,10 @@ class CLIEvaluationDeplacementController extends BaseApiController
 
         $traitees = [];
 
-        DB::transaction(function () use ($aDeplacer, $cible, &$traitees) {
+        $recalcul = DB::transaction(function () use ($aDeplacer, $cible, &$traitees, $request) {
+            $service = app(RecalculApresDeplacement::class);
+            $releve = $service->releverEvaluations(array_column($aDeplacer, 'evaluation_id'));
+
             foreach ($aDeplacer as $ligne) {
                 $evaluation = ESBTPEvaluation::find($ligne['evaluation_id']);
                 if (! $evaluation) {
@@ -133,12 +139,22 @@ class CLIEvaluationDeplacementController extends BaseApiController
                     'notes_realignees' => $notes,
                 ];
             }
+
+            // L'update() des notes ne reveille pas leur observateur : les
+            // moyennes des deux semestres suivent ici, ou jamais.
+            return $service->apresEvaluations(
+                $releve,
+                'deplacement de semestre vers '.$cible,
+                $request->user()->id,
+            );
         });
 
         Log::warning('CLI: evaluations deplacees de semestre sur decision humaine', [
             'periode_cible' => $cible,
             'nombre' => count($traitees),
             'evaluations' => array_column($traitees, 'evaluation_id'),
+            'resultats_recalcules' => $recalcul['recalcules'],
+            'resultats_orphelins' => count($recalcul['orphelins']),
         ]);
 
         return $this->successResponse([
@@ -148,6 +164,7 @@ class CLIEvaluationDeplacementController extends BaseApiController
             'introuvables' => $introuvables,
             'total' => count($traitees),
             'notes_realignees' => array_sum(array_column($traitees, 'notes_realignees')),
+            'resultats' => $recalcul,
         ], count($traitees).' evaluation(s) deplacee(s) vers '.$cible.'.');
     }
 }

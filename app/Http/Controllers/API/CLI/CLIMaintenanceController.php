@@ -4,6 +4,7 @@ namespace App\Http\Controllers\API\CLI;
 
 use App\Http\Controllers\API\BaseApiController;
 use App\Domain\Academique\CoherenceSystemeAcademique;
+use App\Domain\Notes\RecalculApresDeplacement;
 use App\Models\Setting;
 use App\Models\ESBTPEvaluation;
 use App\Models\ESBTPNote;
@@ -1383,6 +1384,11 @@ class CLIMaintenanceController extends BaseApiController
      * meme temps est obligatoire, sinon les notes restent rattachees a
      * l'ancienne matiere et le bulletin continue de l'afficher.
      *
+     * Les moyennes enregistrees suivent dans la meme transaction
+     * (RecalculApresDeplacement). La reponse porte `resultats` : les lignes
+     * recalculees, et les `orphelins` — moyennes restees sur l'ancienne
+     * matiere sans aucune note, laissees en place pour que l'ecole tranche.
+     *
      * Body: { matiere_id: int, dry_run?: bool }
      */
     public function evaluationChangeMatiere(Request $request, $id): JsonResponse
@@ -1434,7 +1440,10 @@ class CLIMaintenanceController extends BaseApiController
 
         $avant = ['matiere_id' => $evaluation->matiere_id, 'matiere' => $evaluation->matiere?->name];
 
-        DB::transaction(function () use ($evaluation, $cible) {
+        $recalcul = DB::transaction(function () use ($evaluation, $cible, $request) {
+            $service = app(RecalculApresDeplacement::class);
+            $releve = $service->releverEvaluations([$evaluation->id]);
+
             $evaluation->matiere_id = $cible->id;
             $evaluation->save();
 
@@ -1442,6 +1451,15 @@ class CLIMaintenanceController extends BaseApiController
             // resteraient rattachees a l'ancienne matiere.
             ESBTPNote::where('evaluation_id', $evaluation->id)
                 ->update(['matiere_id' => $cible->id]);
+
+            // Cet update() ne reveille pas l'observateur des notes : sans ce
+            // recalcul, les deux moyennes enregistrees gardaient leur valeur
+            // d'avant, et le bulletin les reprenait.
+            return $service->apresEvaluations(
+                $releve,
+                'rebascule evaluation #'.$evaluation->id.' -> matiere '.$cible->id,
+                $request->user()->id,
+            );
         });
 
         Log::warning('CLI: evaluation rebasculee', [
@@ -1450,6 +1468,8 @@ class CLIMaintenanceController extends BaseApiController
             'avant' => $avant,
             'apres' => ['matiere_id' => $cible->id, 'matiere' => $cible->name],
             'notes_deplacees' => $notes,
+            'resultats_recalcules' => $recalcul['recalcules'],
+            'resultats_orphelins' => count($recalcul['orphelins']),
             'caller_user_id' => $request->user()->id,
             'ip' => $request->ip(),
         ]);
@@ -1460,6 +1480,7 @@ class CLIMaintenanceController extends BaseApiController
             'matiere_avant' => $avant['matiere'],
             'matiere_apres' => $cible->name,
             'notes_deplacees' => $notes,
+            'resultats' => $recalcul,
         ], "Evaluation #{$evaluation->id} rebasculee sur '{$cible->name}' ({$notes} note(s) suivie(s)).");
     }
 

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\API\CLI;
 
 use App\Domain\BtsTroncCommun\ClasseOuvertureResolver;
+use App\Domain\Notes\RecalculApresDeplacement;
 use App\Http\Controllers\API\BaseApiController;
 use App\Models\ESBTPEvaluation;
 use App\Models\ESBTPNote;
@@ -49,8 +50,10 @@ class CLIEvaluationPeriodeController extends BaseApiController
     /**
      * POST /api/cli/diagnostics/evaluations-periode/repair
      *
-     * Deplace chaque evaluation vers le semestre d'ouverture de sa classe, et
-     * aligne la colonne denormalisee des notes. Simulation par defaut.
+     * Deplace chaque evaluation vers le semestre d'ouverture de sa classe,
+     * aligne la colonne denormalisee des notes, et recalcule les moyennes
+     * enregistrees des deux semestres (RecalculApresDeplacement). Simulation
+     * par defaut.
      */
     public function repair(Request $request): JsonResponse
     {
@@ -78,7 +81,10 @@ class CLIEvaluationPeriodeController extends BaseApiController
 
         $traitees = [];
 
-        DB::transaction(function () use ($anomalies, &$traitees) {
+        $recalcul = DB::transaction(function () use ($anomalies, &$traitees, $request) {
+            $service = app(RecalculApresDeplacement::class);
+            $releve = $service->releverEvaluations(array_column($anomalies, 'evaluation_id'));
+
             foreach ($anomalies as $a) {
                 $evaluation = ESBTPEvaluation::find($a['evaluation_id']);
                 if (! $evaluation) {
@@ -105,17 +111,28 @@ class CLIEvaluationPeriodeController extends BaseApiController
                     'notes_realignees' => $notes,
                 ];
             }
+
+            // L'update() des notes ne reveille pas leur observateur : les
+            // moyennes des deux semestres suivent ici, ou jamais.
+            return $service->apresEvaluations(
+                $releve,
+                'deplacement vers le semestre d ouverture de la classe',
+                $request->user()->id,
+            );
         });
 
         Log::warning('CLI: evaluations deplacees vers le semestre d ouverture de leur classe', [
             'nombre' => count($traitees),
             'evaluations' => array_column($traitees, 'evaluation_id'),
+            'resultats_recalcules' => $recalcul['recalcules'],
+            'resultats_orphelins' => count($recalcul['orphelins']),
         ]);
 
         return $this->successResponse([
             'dry_run' => false,
             'traitees' => $traitees,
             'total' => count($traitees),
+            'resultats' => $recalcul,
         ], count($traitees).' evaluation(s) deplacee(s).');
     }
 
