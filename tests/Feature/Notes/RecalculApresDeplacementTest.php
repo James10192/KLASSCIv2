@@ -4,6 +4,8 @@ namespace Tests\Feature\Notes;
 
 use App\Http\Controllers\API\CLI\CLIMaintenanceController;
 use App\Http\Controllers\API\CLI\CLINotesRecomputeController;
+use App\Http\Controllers\ESBTPEvaluationController;
+use App\Models\ESBTPNote;
 use App\Models\ESBTPResultat;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -11,6 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Validation\ValidationException;
 use Tests\Feature\Bts\Concerns\MonteUneClasseBts;
 use Tests\TestCase;
 
@@ -123,7 +126,7 @@ class RecalculApresDeplacementTest extends TestCase
         // Par Eloquent, pas par query builder : l'observateur doit rejouer le
         // calcul, sinon l'etat de depart mentirait (l'absence compterait comme
         // un zero et la matiere vaudrait 6).
-        $ligne = \App\Models\ESBTPNote::where('evaluation_id', $absence->id)->firstOrFail();
+        $ligne = ESBTPNote::where('evaluation_id', $absence->id)->firstOrFail();
         $ligne->is_absent = true;
         $ligne->save();
 
@@ -138,6 +141,55 @@ class RecalculApresDeplacementTest extends TestCase
         $orphelins = $reponse['agregats_orphelins'];
         $this->assertCount(1, $orphelins);
         $this->assertSame($depart->id, $orphelins[0]['matiere_id']);
+        $this->assertSame('notes_non_comptees', $orphelins[0]['reste']);
+    }
+
+    /**
+     * Le rattrapage que le deplacement conseille ne doit pas reecrire le 0/20
+     * que le deplacement vient de refuser. Le garde ne vivait que dans
+     * `RecalculApresDeplacement` : l'endpoint et la commande, eux, rejouaient
+     * le calcul sur la seule absence restante et ecrivaient 0,00.
+     *
+     * @test
+     */
+    public function le_rattrapage_ne_remet_pas_a_zero_ce_que_le_deplacement_a_laisse(): void
+    {
+        $this->monterLaClasse();
+        $depart = $this->matiereConfiguree();
+        $arrivee = $this->matiereConfiguree();
+        $etudiant = $this->etudiantInscrit();
+
+        $notee = $this->evaluationDe($depart);
+        $this->noter($etudiant, $notee, 12);
+
+        $absence = $this->evaluationDe($depart);
+        $this->noter($etudiant, $absence, 0);
+        $ligne = ESBTPNote::where('evaluation_id', $absence->id)->firstOrFail();
+        $ligne->is_absent = true;
+        $ligne->save();
+
+        $this->deplacer($notee->id, $arrivee->id);
+        $this->assertSame(12.0, $this->moyenne($etudiant->id, $depart->id));
+
+        $reponse = $this->appeler('notesRecompute', ['cli:admin'], [
+            'classe_id' => $this->classe->id,
+            'periode' => 'semestre1',
+            'annee_universitaire_id' => $this->annee->id,
+            'matiere_id' => $depart->id,
+        ]);
+
+        $this->assertSame(12.0, $this->moyenne($etudiant->id, $depart->id));
+        $this->assertCount(1, $reponse['laissees']);
+        $this->assertSame(0, $reponse['modifies']);
+
+        $this->artisan('notes:recompute', [
+            '--classe' => $this->classe->id,
+            '--periode' => 'semestre1',
+            '--annee' => $this->annee->id,
+            '--matiere' => $depart->id,
+        ])->assertExitCode(0);
+
+        $this->assertSame(12.0, $this->moyenne($etudiant->id, $depart->id));
     }
 
     /** @test */
@@ -196,7 +248,7 @@ class RecalculApresDeplacementTest extends TestCase
         );
         $this->assertSame(403, $refus->getStatusCode());
 
-        $this->expectException(\Illuminate\Validation\ValidationException::class);
+        $this->expectException(ValidationException::class);
         app(CLINotesRecomputeController::class)->notesRecompute(
             $this->requete(['cli:admin'], ['periode' => 'semestre1'])
         );
@@ -237,7 +289,6 @@ class RecalculApresDeplacementTest extends TestCase
         $this->assertSame(12.0, $this->moyenne($etudiant->id, $matiere->id));
     }
 
-
     /**
      * L'ecran web est l'autre chemin, et le plus emprunte. Il partage le meme
      * appel, mais il peut bouger TROIS dimensions d'un coup (classe, matiere,
@@ -262,7 +313,7 @@ class RecalculApresDeplacementTest extends TestCase
         Gate::before(fn () => true);
         $this->actingAs(User::factory()->create());
 
-        app(\App\Http\Controllers\ESBTPEvaluationController::class)->update(
+        app(ESBTPEvaluationController::class)->update(
             Request::create('/', 'PUT', [
                 'titre' => 'Devoir deplace',
                 'type' => 'devoir',
@@ -281,6 +332,67 @@ class RecalculApresDeplacementTest extends TestCase
         $this->assertSame($arrivee->id, $deplacee->fresh()->matiere_id);
         $this->assertSame(15.0, $this->moyenne($etudiant->id, $arrivee->id));
         $this->assertSame(10.0, $this->moyenne($etudiant->id, $depart->id));
+    }
+
+    /**
+     * Sur l'ecran, la classe et la matiere sont verrouillees des qu'il y a des
+     * notes : le cas courant est un changement de PERIODE. Le premier message
+     * parlait pourtant toujours de « l'ancienne matiere », et renvoyait vers un
+     * ecran ou chaque suppression est definitive, eleve par eleve.
+     *
+     * @test
+     */
+    public function l_ecran_nomme_ce_qui_a_bouge_et_mene_au_nettoyage_existant(): void
+    {
+        $this->monterLaClasse();
+        $matiere = $this->matiereConfiguree();
+        $etudiant = $this->etudiantInscrit();
+
+        $evaluation = $this->evaluationDe($matiere);
+        $this->noter($etudiant, $evaluation, 12);
+
+        Gate::before(fn () => true);
+        $this->actingAs(User::factory()->create());
+
+        app(ESBTPEvaluationController::class)->update(
+            Request::create('/', 'PUT', [
+                'titre' => 'Devoir change de semestre',
+                'type' => 'devoir',
+                'date_evaluation' => now()->toDateString(),
+                'heure_debut' => '08:00',
+                'heure_fin' => '10:00',
+                'classe_id' => $this->classe->id,
+                'matiere_id' => $matiere->id,
+                'bareme' => 20,
+                'coefficient' => 1,
+                'periode' => 'semestre2',
+            ]),
+            $evaluation
+        );
+
+        $laissees = session('moyennes_laissees');
+        $this->assertNotNull($laissees, 'le semestre quitte n a plus de note : sa moyenne doit etre signalee');
+        $this->assertSame('la période', $laissees['ce_qui_a_bouge']);
+        $this->assertSame(1, $laissees['sans_note']);
+        $this->assertSame(0, $laissees['absences_seulement']);
+        $this->assertSame([
+            'classe_id' => $this->classe->id,
+            'periode' => 'semestre1',
+            'annee_universitaire_id' => $this->annee->id,
+        ], array_intersect_key($laissees['nettoyages'][0], array_flip(['classe_id', 'periode', 'annee_universitaire_id'])));
+
+        // Et la page de l'evaluation le rend, lien compris. Rendue par son
+        // controleur plutot que par une requete HTTP : c'est la vue qui est
+        // testee ici, pas la pile de middlewares de l'instance.
+        $html = app(\App\Http\Controllers\ESBTPEvaluationController::class)
+            ->show($evaluation->fresh())
+            ->render();
+        $this->assertStringContainsString('Vous avez changé la période', $html);
+        $this->assertStringContainsString(e(route('esbtp.bulletins.select', [
+            'classe_id' => $this->classe->id,
+            'periode' => 'semestre1',
+            'annee_universitaire_id' => $this->annee->id,
+        ])), $html);
     }
 
     /**

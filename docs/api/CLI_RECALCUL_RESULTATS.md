@@ -40,7 +40,7 @@ Un `update()` de **query builder** ne passe pas par Eloquent. `ESBTPNoteObserver
 ne tourne pas, `RecomputeStudentResultatJob` n'est jamais dispatché, et les deux
 coordonnées — celle qu'on quitte comme celle qu'on rejoint — restent figées.
 
-**Ils sont CINQ, et ce compte a été faux deux fois.** La première version de ce
+**Cinq sont trouvés à ce jour, et ce compte a été faux deux fois.** La première version de ce
 correctif en couvrait deux tout en publiant « les deux chemins sont corrigés » ;
 la deuxième en a annoncé quatre, et c'était encore incomplet. Publier un
 inventaire comme exhaustif ferme l'enquête suivante — c'est plus cher que le
@@ -59,10 +59,9 @@ défaut lui-même.
 nuance n'est pas rhétorique : deux commandes écrivent les mêmes colonnes
 dénormalisées sans déplacer d'évaluation, et sans recalcul —
 `evaluations:sync-notes` (qui réaligne `classe_id`, `matiere_id` et `semestre`
-d'un seul `update()`, et qui est l'outil recommandé plus bas pour le ménage) et
-`esbtp:sync-notes-periodes`. Elles ne sont pas branchées à dessein : `sync-notes`
-tourne sans bornes sur l'école entière, et y ajouter un recalcul synchrone par
-note est exactement ce que les deux plafonds cherchent à éviter.
+d'un seul `update()`) et `esbtp:sync-notes-periodes`. Elles ne sont pas branchées
+à dessein : `sync-notes` tourne sans bornes sur l'école entière, et y ajouter un
+recalcul synchrone par note est exactement ce que le plafond cherche à éviter.
 
 Le cinquième, `app/Domain/LMD/Actions/MergeDuplicateEcue.php`, est atteignable
 par `POST /esbtp/lmd/reconciliation/merge` avec `type=ecue&force=true`. Il
@@ -83,53 +82,62 @@ glisser dans celui-ci.
 `matiere_id` : un changement de semestre laisse exactement le même agrégat
 périmé.
 
-### Deux bornes, et il faut les deux
+### Une borne, servie du plus léger au plus lourd
 
-`App\Domain\Notes\RecalculApresDeplacement` plafonne à **400 notes par classe et
-par année**, *et* à **400 notes par requête**, tous périmètres confondus.
+`App\Domain\Notes\RecalculApresDeplacement` recalcule au plus **400 notes par
+requête**, tous périmètres confondus, et sert les périmètres (classe, année) **du
+plus léger au plus lourd**.
 
-La borne globale valait 1200 ; elle a été abaissée sur **mesure**. Un recalcul
-coûte ~17 ms et 22 requêtes par élève en local, linéairement (40 élèves :
-0,67 s). Une note déplacée en déclenche un ou deux : à 1200, un appel prenait
-20 à 40 s **en local** — au-delà des 30 s où le binaire `klassci` abandonne, donc
-précisément le cas où `perimetres_reportes` n'arrive jamais. À 400 : 7 à 14 s.
+La borne valait 1200 ; elle a été abaissée sur **mesure**. Un recalcul coûte
+~17 ms et 22 requêtes par élève en local, linéairement (40 élèves : 0,67 s). Une
+note déplacée en déclenche un ou deux : à 1200, un appel prenait 20 à 40 s **en
+local** — au-delà des 30 s où le binaire `klassci` abandonne, donc précisément le
+cas où `perimetres_reportes` n'arrive jamais. À 400 : 7 à 14 s.
 
-La première seule ne suffisait pas — c'était le plafond par lot, et un appel
-touchant cinq classes dont une seule est lourde ne recalculait **aucune** des
-quatre autres. Mais **la seconde seule ne bornait plus rien** : le nombre de
-classes n'est limité nulle part (`deplacer` accepte 200 évaluations réparties
-sur autant de classes, `evaluations-periode/repair` n'a aucun `LIMIT`), donc
-vingt classes à 399 notes passaient toutes sous le plafond — huit mille notes
-recalculées sur place dans une seule requête HTTP.
-
-Et le mode d'échec était le plus mauvais des deux. Le recalcul est hors
+Elle est globale parce que le nombre de classes d'un lot n'est borné nulle part
+(`deplacer` accepte 200 évaluations réparties sur autant de classes,
+`evaluations-periode/repair` n'a aucun `LIMIT`). Et le recalcul est hors
 transaction à dessein : les évaluations sont **déjà enregistrées**. Si la requête
-meurt sur le délai d'attente, on garde des évaluations déplacées, des agrégats
-rafraîchis à moitié, et surtout `perimetres_reportes` — tout l'objet du
-mécanisme — **n'arrive jamais**, puisque la réponse n'arrive pas. Le plafond par
-lot, lui, refusait proprement et le disait.
+meurt sur le délai d'attente, `perimetres_reportes` — tout l'objet du mécanisme —
+**n'arrive jamais**, puisque la réponse n'arrive pas.
 
-Tout périmètre non traité part donc dans `perimetres_reportes` avec sa `raison`
-(`plafond_classe` ou `budget_de_la_requete_epuise`) et les paramètres exacts à
-rejouer : `classe_id`, `annee_universitaire_id`, les `periodes` sous leur forme
-canonique `semestreN`, et les `matiere_ids` pour découper si le rattrapage bute
-à son tour sur son propre plafond de couples.
+Le tri, lui, empêche une classe lourde placée en tête d'épuiser le budget et de
+faire reporter toutes les classes légères derrière elle. Un plafond **par classe**
+avait d'abord été posé pour cela ; égal à la borne globale, il ne servait plus à
+rien — le retirer ne faisait tomber aucun test — et il a été retiré.
 
-### Ce que le recalcul après déplacement ne fait PAS, et pourquoi
+Tout périmètre non traité part dans `perimetres_reportes` avec sa `raison`
+(`perimetre_trop_lourd` s'il dépasse à lui seul la borne,
+`budget_de_la_requete_epuise` sinon) et les paramètres exacts à rejouer :
+`classe_id`, `annee_universitaire_id`, les `periodes` sous leur forme canonique
+`semestreN`, et les `matiere_ids` pour découper si le rattrapage bute à son tour
+sur son propre plafond de couples.
 
-`NoteCalculationService::studentMatiereAverage([])` rend **0.0**, pas `null`.
-Rejouer le calcul sur une coordonnée que le déplacement a vidée de toutes ses
-notes n'effacerait donc pas la ligne : il y **écrirait un 0/20**, sur une matière
-que l'élève n'a plus. C'est strictement pire que la valeur périmée.
+### Ce qu'aucun recalcul hors saisie ne fait : écrire 0/20 à partir de rien
 
-L'ancienne coordonnée n'est donc recalculée que s'il y reste au moins une note.
-Sinon la ligne est **signalée, jamais touchée** — son sort est une décision
-d'école (`.claude/rules/rien-en-dur.md`, « le cas particulier du zéro »). Le
-ménage se fait sciemment, avec `evaluations:sync-notes --clean-resultats` borné.
+`NoteCalculationService` écarte les absences, les barèmes nuls et les
+coefficients nuls. Sur une coordonnée où il ne reste rien de tout cela — aucune
+note, ou seulement des absences —, le calcul rendrait **0/20** et l'écrirait
+par-dessus la moyenne enregistrée : une matière que l'élève n'a plus après un
+déplacement, ou une valeur saisie à la main lors d'un rattrapage.
 
-⚠️ Cela ne garantit pas une valeur non nulle du côté qu'on rejoint : si toutes
-les notes déplacées sont des absences, le calcul les écarte et rend 0, comme
-partout ailleurs dans le recalcul.
+La ligne est donc **laissée et signalée, jamais touchée** — son sort est une
+décision d'école (`.claude/rules/rien-en-dur.md`, « le cas particulier du zéro »).
+Ce garde vit en **un seul endroit**, `PerimetreDeRecalcul::recalculerUnCouple()`,
+par où passent le recalcul après déplacement, cet endpoint et `notes:recompute`.
+Il n'a d'abord existé que dans le recalcul après déplacement — et le rattrapage
+qu'il conseillait réécrivait le 0/20 qu'il venait de refuser.
+
+Chaque ligne laissée porte `reste` :
+
+| `reste` | ce qu'il reste sur la coordonnée | qui peut la retirer |
+|---|---|---|
+| `aucune_note` | rien | le pré-contrôle de la génération des bulletins la liste, avec suppression douce et tracée |
+| `notes_non_comptees` | des absences (ou des notes à barème ou coefficient nul) | ce pré-contrôle ne la voit pas : « Modifier les moyennes » de la classe |
+
+⚠️ **Le garde ne vaut pas pour l'observateur de note, et c'est délibéré** : quand
+un enseignant marque une note absente, c'est son geste qui fixe la moyenne. Un
+rattrapage, lui, n'a touché à aucune note — il n'invente pas de zéro.
 
 ## `POST /api/cli/notes/recompute`
 
@@ -142,11 +150,13 @@ partout ailleurs dans le recalcul.
 | `etudiant_id` | non | restreint davantage |
 | `dry_run` | non | défaut `false` |
 
-**Le périmètre est obligatoire, et c'est le point.** La commande artisan
-`notes:recompute` accepte de tourner sans aucun filtre et balaie alors l'école
-entière. Un recalcul **écrase** `esbtp_resultats.moyenne` : lâché sans bornes sur
-une instance Élite, il effacerait d'un coup toutes les moyennes saisies à la main
-par l'école. D'où le refus de tourner à l'aveugle, et le plafond de **500 couples
+**Le périmètre est obligatoire, et c'est le point.** Un recalcul **écrase**
+`esbtp_resultats.moyenne` : lâché sans bornes sur une instance Élite, il
+réécrirait d'un coup toutes les moyennes saisies à la main par l'école. La
+commande artisan `notes:recompute` obéit à la même règle : elle exige `--classe`
+et `--annee`, ou `--toute-l-ecole` suivi d'une confirmation qui annonce le
+nombre de moyennes touchées (hors terminal interactif, la confirmation vaut
+non). D'où le refus de tourner à l'aveugle, et le plafond de **500 couples
 (étudiant, matière)** par appel — une classe de 40 élèves sur 12 matières tient
 dessous ; au-delà, le périmètre se découpe par matière.
 
@@ -195,15 +205,16 @@ elle se vérifie donc d'elle-même :
 ```jsonc
 {
   "success": true,
-  "message": "5 couple(s) recalcule(s), 1 moyenne(s) modifiee(s), 0 echec(s).",
+  "message": "5 couple(s) recalcule(s), 1 moyenne(s) modifiee(s), 0 echec(s), 0 laissee(s) sans rien a moyenner.",
   "data": {
     "perimetre": { "classe_id": 30, "matiere_id": 14, "periode": "semestre2",
                    "annee_universitaire_id": 4 },
     "couples": [
       { "etudiant_id": 149, "matiere_id": 14, "periode": "semestre2",
-        "moyenne_avant": 15, "moyenne_apres": 15.6, "change": true }
+        "moyenne_avant": 15, "moyenne_apres": 15.6, "change": true, "laissee": false }
     ],
-    "total": 5, "modifies": 1, "echecs": 0
+    "total": 5, "modifies": 1, "echecs": 0,
+    "laissees": []
   }
 }
 ```
@@ -259,6 +270,11 @@ qu'on fige.
 - **Septembre 2026** — création. Déclenchée par un agrégat laissé périmé après un
   déplacement d'évaluation fait par `POST /api/cli/evaluations/{id}/matiere`, qui
   déplaçait bien les notes mais ne rafraîchissait rien.
+- **Septembre 2026, avant la première livraison** — la réponse gagne `laissees`
+  et chaque couple `laissee` : une moyenne sans rien à moyenner n'est plus remise
+  à zéro. `perimetres_reportes[].raison` perd `plafond_classe` au profit de
+  `perimetre_trop_lourd`. Aucun appelant en production : l'endpoint n'a pas
+  encore été livré.
 
 ## Voir aussi
 

@@ -135,17 +135,23 @@ class CLINotesRecomputeController extends BaseApiController
             'couples' => count($bilan['lignes']),
             'modifies' => $modifies,
             'echecs' => $bilan['echecs'],
+            'laissees' => count($bilan['laissees']),
             'caller_user_id' => $request->user()->id,
             'ip' => $request->ip(),
         ]);
 
+        // `laissees` : les moyennes qu'il ne restait rien a moyenner pour
+        // recalculer (aucune note, ou seulement des absences). Elles ne sont
+        // jamais remises a zero — voir PerimetreDeRecalcul::recalculerUnCouple().
         return $this->successResponse([
             'perimetre' => $validated,
             'couples' => $bilan['lignes'],
             'total' => count($bilan['lignes']),
             'modifies' => $modifies,
             'echecs' => $bilan['echecs'],
+            'laissees' => $bilan['laissees'],
         ], count($bilan['lignes']).' couple(s) recalcule(s), '.$modifies
-            .' moyenne(s) modifiee(s), '.$bilan['echecs'].' echec(s).');
+            .' moyenne(s) modifiee(s), '.$bilan['echecs'].' echec(s), '
+            .count($bilan['laissees']).' laissee(s) sans rien a moyenner.');
     }
 }

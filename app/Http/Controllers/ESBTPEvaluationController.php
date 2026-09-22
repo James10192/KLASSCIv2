@@ -765,12 +765,15 @@ class ESBTPEvaluationController extends Controller
 
             $redirect = redirect()->route('esbtp.evaluations.show', $evaluation)
                 ->with('success', 'L\'évaluation a été mise à jour avec succès');
-            // Un seul `with('warning', …)` : la cle s'ecrase, poser les deux
-            // messages l'un apres l'autre ferait disparaitre le premier.
-            $avertissement = $this->avertirDesOrphelins($recalcul, $tcWarning);
 
-            if ($avertissement !== null) {
-                $redirect->with('warning', $avertissement);
+            if ($tcWarning !== null) {
+                $redirect->with('warning', $tcWarning);
+            }
+
+            if ($recalcul['orphelins'] !== []) {
+                $redirect->with('moyennes_laissees', $this->moyennesLaissees(
+                    $recalcul['orphelins'], $evaluation, (int) $oldClasseId, (int) $oldMatiereId, (string) $oldPeriode
+                ));
             }
 
             return $redirect;
@@ -847,37 +850,62 @@ class ESBTPEvaluationController extends Controller
     }
 
     /**
-     * Le bandeau qui suit un enregistrement : l'avertissement tronc commun, et
-     * celui des agregats que le deplacement a vides.
+     * Ce que l'ecran de l'evaluation dit des moyennes que le deplacement a
+     * laissees sans rien a moyenner — rendu par `evaluations/show.blade.php`,
+     * pas par le bandeau global du layout, qui echappe tout et ne peut donc
+     * porter aucun lien.
      *
-     * Un agregat vide de toutes ses notes n'est PAS recalcule — le remettre a
-     * zero afficherait un 0/20 sur une matiere que l'eleve n'a plus. Il est
-     * signale, et son sort reste une decision d'ecole.
+     * Deux choses que le premier texte faisait mal :
      *
-     * Les deux messages sont fondus en UN : `with('warning', …)` ecrase la cle,
-     * donc les poser l'un apres l'autre ferait disparaitre le premier.
+     * - il parlait toujours de « l'ancienne matiere ». Or sur cet ecran la
+     *   classe et la matiere sont verrouillees des qu'il y a des notes (sauf
+     *   `evaluations.edit_locked`) : le cas courant est un changement de
+     *   PERIODE. Le texte nomme donc ce qui a vraiment bouge ;
+     * - il renvoyait vers « Modifier les moyennes », ou chaque suppression est
+     *   definitive et se fait eleve par eleve, alors qu'un nettoyage deja livre
+     *   les liste par matiere, au pre-controle de la generation des bulletins,
+     *   avec une suppression douce et tracee. Le lien y mene, pre-rempli.
      *
-     * **Pourquoi ce texte n'est PAS partage avec celui du CLI**
-     * (`CLIMaintenanceController::messageDeRebascule()`) : l'extraction de
-     * `motDeLaFin()` etait justifiee parce que ce message-la cite un PLAFOND,
-     * une constante qui derive des qu'on la change d'un cote. Celui-ci ne cite
-     * qu'un `count()`, qui ne peut pas deriver. Restent deux registres et deux
-     * suites a donner — « Modifier les moyennes » a l'ecran, rien a cliquer au
-     * terminal. Les fondre couterait un drapeau booleen sur la mise en forme,
-     * ce que les rules du projet refusent.
+     * Ce nettoyage ne voit que les moyennes SANS AUCUNE note. Celles dont il
+     * ne reste que des absences lui echappent : elles sont comptees a part, et
+     * le texte le dit plutot que de promettre un outil qui ne les trouvera pas.
      *
-     * @param  array<string,mixed>  $recalcul
+     * @param  array<int, array<string,mixed>>  $laissees
+     * @return array{total:int, sans_note:int, absences_seulement:int, ce_qui_a_bouge:string, nettoyages:array<int,array<string,mixed>>}
      */
-    private function avertirDesOrphelins(array $recalcul, ?string $tcWarning): ?string
+    private function moyennesLaissees(array $laissees, ESBTPEvaluation $evaluation, int $oldClasseId, int $oldMatiereId, string $oldPeriode): array
     {
-        if (empty($recalcul['orphelins'])) {
-            return $tcWarning;
-        }
+        $bouge = array_filter([
+            $evaluation->classe_id != $oldClasseId ? 'la classe' : null,
+            $evaluation->matiere_id != $oldMatiereId ? 'la matière' : null,
+            $evaluation->periode != $oldPeriode ? 'la période' : null,
+        ]);
 
-        return trim(($tcWarning ? $tcWarning.' ' : '')
-            .count($recalcul['orphelins']).' moyenne(s) enregistrée(s) sur l\'ancienne matière '
-            .'n\'ont plus aucune note. Elles restent affichées : supprimez-les depuis '
-            .'« Modifier les moyennes » si elles n\'ont plus lieu d\'être.');
+        $sansNote = array_filter($laissees, fn (array $l) => ($l['reste'] ?? null) === 'aucune_note');
+
+        $nettoyages = collect($sansNote)
+            ->map(fn (array $l) => [
+                'classe_id' => (int) $l['classe_id'],
+                'periode' => (string) $l['periode'],
+                'annee_universitaire_id' => (int) $l['annee_universitaire_id'],
+            ])
+            ->unique(fn (array $n) => implode('|', $n))
+            ->map(fn (array $n) => $n + [
+                'classe' => optional(ESBTPClasse::find($n['classe_id']))->name ?? '#'.$n['classe_id'],
+                'libelle_periode' => 'Semestre '.(ESBTPEvaluation::numeroDeSemestre($n['periode']) ?? '?'),
+            ])
+            ->values()
+            ->all();
+
+        return [
+            'total' => count($laissees),
+            'sans_note' => count($sansNote),
+            'absences_seulement' => count($laissees) - count($sansNote),
+            'ce_qui_a_bouge' => $bouge === []
+                ? 'l\'évaluation'
+                : (count($bouge) === 1 ? reset($bouge) : implode(', ', array_slice($bouge, 0, -1)).' et '.end($bouge)),
+            'nettoyages' => $nettoyages,
+        ];
     }
 
     /**

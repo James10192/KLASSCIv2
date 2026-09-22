@@ -131,6 +131,21 @@ git ls-files | grep -i controllername  # listing case-réel git-tracked
 2. Commande `php artisan evaluations:sync-notes [--evaluation=ID] [--clean-resultats]` pour réparer le legacy
 3. `--clean-resultats` détecte aussi les `esbtp_resultats` orphelins (broken matiere_id OU pas de notes correspondantes)
 
+**Ce que cette liste ne disait pas, et qui a coûté un chantier (septembre 2026)** :
+réaligner `esbtp_notes` ne rafraîchit PAS `esbtp_resultats`. Le `update()` de
+query builder n'émet aucun événement, l'observateur ne tourne pas, et la moyenne
+enregistrée d'avant **l'emporte sur les notes** à l'écran comme au bulletin.
+Les déplaceurs d'évaluation recalculent désormais les deux côtés
+(`App\Domain\Notes\RecalculApresDeplacement`) ; `sync-notes`, lui, réaligne
+toujours sans recalculer.
+
+Pour rafraîchir : `POST /api/cli/notes/recompute` ou `notes:recompute --classe --annee`
+(`docs/api/CLI_RECALCUL_RESULTATS.md`). Pour retirer une moyenne qui n'a plus
+AUCUNE note : le pré-contrôle de la génération des bulletins la liste, avec une
+suppression douce et tracée (`ESBTPBulletinController::supprimerMoyennesSansNote()`)
+— préférez-le à `--clean-resultats`, qui supprime sans montrer. Une moyenne dont
+il ne reste que des absences n'est vue par aucun des deux.
+
 ---
 
 ### Piège #8 — whereDoesntHave + global scopes + soft delete

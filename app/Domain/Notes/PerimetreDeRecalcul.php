@@ -6,6 +6,7 @@ use App\Jobs\RecomputeStudentResultatJob;
 use App\Models\ESBTPEvaluation;
 use App\Models\ESBTPNote;
 use App\Models\ESBTPResultat;
+use App\Services\NoteCalculationService;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 
@@ -36,6 +37,13 @@ use Illuminate\Support\Facades\Log;
  */
 final class PerimetreDeRecalcul
 {
+    /** Statuts rendus par {@see self::recalculerUnCouple()}. */
+    public const RECALCULE = 'recalcule';
+
+    public const LAISSEE = 'laissee';
+
+    public const ECHEC = 'echec';
+
     public function __construct(
         public readonly ?int $classeId = null,
         public readonly ?int $matiereId = null,
@@ -127,23 +135,21 @@ final class PerimetreDeRecalcul
      * Recalcule chaque couple du perimetre, et rend pour chacun la moyenne
      * d'avant et celle d'apres.
      *
-     * Le job tourne **sur place** (`dispatchSync`), jamais sur la file : rien
-     * ne prouve qu'un worker tourne sur les instances mutualisees —
-     * `config/queue.php` vaut `database` par defaut et `app/Console/Kernel.php`
-     * ne planifie aucun `queue:work`. Dispatcher aurait donne un correctif qui
-     * a l'air pose et ne s'execute jamais.
+     * Chaque couple passe par {@see self::recalculerUnCouple()}, le seul point
+     * du depot ou un recalcul HORS observateur est lance : la commande
+     * `notes:recompute`, l'endpoint `notes/recompute` et le recalcul apres
+     * deplacement y passent tous. Le garde contre le 0/20 ecrit « a partir de
+     * rien » n'existe donc qu'une fois.
      *
      * Les moyennes sont relues avant et apres plutot que predites : predire
-     * demanderait de reecrire la formule a cote de celle du job, et deux
-     * formules qui derivent sont la famille de defauts que tout ce chantier
-     * corrige. L'appelant borne le nombre de couples AVANT d'appeler.
+     * demanderait de reecrire la formule a cote de celle du job. L'appelant
+     * borne le nombre de couples AVANT d'appeler.
      *
      * `$apresChaqueCouple` sert a la barre de progression de la commande
-     * artisan : le service ne connait pas la console, l'appelant lui passe de
-     * quoi avancer.
+     * artisan : le service ne connait pas la console.
      *
      * @param  Collection<int, array<string,mixed>>  $couples
-     * @return array{lignes:array<int,array<string,mixed>>, echecs:int}
+     * @return array{lignes:array<int,array<string,mixed>>, echecs:int, laissees:array<int,array<string,mixed>>}
      */
     public function recalculer(
         Collection $couples,
@@ -152,53 +158,143 @@ final class PerimetreDeRecalcul
         ?callable $apresChaqueCouple = null
     ): array {
         $lignes = [];
+        $laissees = [];
         $echecs = 0;
 
         foreach ($couples as $couple) {
-            $avant = $this->moyenneEnregistree($couple);
+            $resultat = self::recalculerUnCouple($couple, $source, $declencheur);
 
-            try {
-                RecomputeStudentResultatJob::dispatchSync(
-                    etudiantId: $couple['etudiant_id'],
-                    classeId: $couple['classe_id'],
-                    matiereId: $couple['matiere_id'],
-                    anneeUniversitaireId: $couple['annee_universitaire_id'],
-                    periode: $couple['periode'],
-                    source: $source,
-                    triggeredBy: $declencheur,
-                );
-            } catch (\Throwable $e) {
+            if ($resultat['statut'] === self::ECHEC) {
                 $echecs++;
-                Log::error('Recalcul de resultat en echec', [
-                    'couple' => $couple,
-                    'source' => $source,
-                    'error' => $e->getMessage(),
-                ]);
-
-                if ($apresChaqueCouple) {
-                    $apresChaqueCouple();
-                }
-
-                continue;
+            } else {
+                $lignes[] = [
+                    'etudiant_id' => $couple['etudiant_id'],
+                    'matiere_id' => $couple['matiere_id'],
+                    'periode' => $couple['periode'],
+                    'moyenne_avant' => $resultat['avant'],
+                    'moyenne_apres' => $resultat['apres'],
+                    'change' => $resultat['avant'] !== $resultat['apres'],
+                    'laissee' => $resultat['statut'] === self::LAISSEE,
+                ];
             }
 
-            $apres = $this->moyenneEnregistree($couple);
-
-            $lignes[] = [
-                'etudiant_id' => $couple['etudiant_id'],
-                'matiere_id' => $couple['matiere_id'],
-                'periode' => $couple['periode'],
-                'moyenne_avant' => $avant,
-                'moyenne_apres' => $apres,
-                'change' => $avant !== $apres,
-            ];
+            if ($resultat['laissee'] !== null) {
+                $laissees[] = $resultat['laissee'];
+            }
 
             if ($apresChaqueCouple) {
                 $apresChaqueCouple();
             }
         }
 
-        return ['lignes' => $lignes, 'echecs' => $echecs];
+        return ['lignes' => $lignes, 'echecs' => $echecs, 'laissees' => $laissees];
+    }
+
+    /**
+     * Recalcule UN couple — sauf s'il n'y reste rien a moyenner alors qu'une
+     * moyenne est enregistree.
+     *
+     * ## Le piege du zero
+     *
+     * `NoteCalculationService` ecarte les absences, les baremes nuls et les
+     * coefficients nuls. Sur une coordonnee ou il ne reste rien de tout cela
+     * — aucune note, ou seulement des absences —, le job ecrirait **0 sur 20**
+     * par-dessus la moyenne enregistree. Apres un deplacement, c'est une
+     * moyenne que l'eleve n'a plus ; apres un recalcul en masse, c'est peut-etre
+     * une valeur saisie a la main. Dans les deux cas, 0 est strictement pire
+     * que la valeur d'avant.
+     *
+     * La ligne est donc **laissee et signalee**, jamais touchee. Son sort est
+     * une decision d'ecole (`.claude/rules/rien-en-dur.md`, « le cas
+     * particulier du zero »).
+     *
+     * **Ce garde ne vaut pas pour l'observateur de note**, et c'est delibere :
+     * quand un enseignant marque une note absente, c'est son geste qui fixe la
+     * moyenne, et l'observateur la recalcule comme il l'a toujours fait. Ici,
+     * personne n'a touche aux notes de ce couple : le recalcul est un
+     * rattrapage, et un rattrapage n'invente pas de zero.
+     *
+     * Le job tourne **sur place** (`dispatchSync`), jamais sur la file : rien
+     * ne prouve qu'un worker tourne sur les instances mutualisees.
+     *
+     * @param  array{etudiant_id:int, classe_id:int, matiere_id:int, annee_universitaire_id:int, periode:string}  $couple
+     * @return array{statut:string, avant:?float, apres:?float, laissee:?array<string,mixed>}
+     */
+    public static function recalculerUnCouple(array $couple, string $source, ?int $declencheur = null): array
+    {
+        $ligne = self::ligneEnregistree($couple);
+        $avant = $ligne?->moyenne === null ? null : (float) $ligne->moyenne;
+        $notes = self::notesComptables($couple);
+
+        if ($ligne !== null && $notes['moyenne'] === null) {
+            return [
+                'statut' => self::LAISSEE,
+                'avant' => $avant,
+                'apres' => $avant,
+                'laissee' => [
+                    'resultat_id' => (int) $ligne->id,
+                    'etudiant_id' => (int) $couple['etudiant_id'],
+                    'classe_id' => (int) $couple['classe_id'],
+                    'matiere_id' => (int) $couple['matiere_id'],
+                    'annee_universitaire_id' => (int) $couple['annee_universitaire_id'],
+                    'periode' => (string) $couple['periode'],
+                    'moyenne' => $avant,
+                    // Le nettoyage deja livre (pre-controle de la generation
+                    // des bulletins) ne voit que les lignes SANS AUCUNE note :
+                    // une ligne dont il ne reste que des absences lui echappe.
+                    // L'appelant doit pouvoir le dire.
+                    'reste' => $notes['lignes'] === 0 ? 'aucune_note' : 'notes_non_comptees',
+                ],
+            ];
+        }
+
+        try {
+            RecomputeStudentResultatJob::dispatchSync(
+                etudiantId: (int) $couple['etudiant_id'],
+                classeId: (int) $couple['classe_id'],
+                matiereId: (int) $couple['matiere_id'],
+                anneeUniversitaireId: (int) $couple['annee_universitaire_id'],
+                periode: (string) $couple['periode'],
+                source: $source,
+                triggeredBy: $declencheur,
+            );
+        } catch (\Throwable $e) {
+            Log::error('Recalcul de resultat en echec', [
+                'couple' => $couple,
+                'source' => $source,
+                'error' => $e->getMessage(),
+            ]);
+
+            return ['statut' => self::ECHEC, 'avant' => $avant, 'apres' => $avant, 'laissee' => null];
+        }
+
+        return [
+            'statut' => self::RECALCULE,
+            'avant' => $avant,
+            'apres' => self::moyenneEnregistree($couple),
+            'laissee' => null,
+        ];
+    }
+
+    /**
+     * Ce que le calcul COMPTERAIT sur ce couple, lu sur la requete meme du
+     * job et tranche par `NoteCalculationService` lui-meme : les exclusions
+     * (absence, bareme nul, coefficient nul) ne sont recopiees nulle part.
+     *
+     * @param  array<string,mixed>  $couple
+     * @return array{lignes:int, moyenne:?float}
+     */
+    private static function notesComptables(array $couple): array
+    {
+        $notes = ESBTPNote::deLaCoordonnee((int) $couple['etudiant_id'], $couple)
+            ->with('evaluation:id,bareme,coefficient,periode,classe_id,matiere_id,annee_universitaire_id,status')
+            ->get();
+
+        return [
+            'lignes' => $notes->count(),
+            'moyenne' => app(NoteCalculationService::class)
+                ->studentMatiereAverageOrNull(ESBTPNote::enChargeUtilePourLeCalcul($notes)),
+        ];
     }
 
     /**
@@ -207,16 +303,24 @@ final class PerimetreDeRecalcul
      *
      * @param  array<string,mixed>  $couple
      */
-    public function moyenneEnregistree(array $couple): ?float
+    public static function moyenneEnregistree(array $couple): ?float
     {
-        $valeur = ESBTPResultat::query()
+        $valeur = self::ligneEnregistree($couple)?->moyenne;
+
+        return $valeur === null ? null : (float) $valeur;
+    }
+
+    /** @param array<string,mixed> $couple */
+    private static function ligneEnregistree(array $couple): ?ESBTPResultat
+    {
+        return ESBTPResultat::query()
             ->where('etudiant_id', $couple['etudiant_id'])
             ->where('classe_id', $couple['classe_id'])
             ->where('matiere_id', $couple['matiere_id'])
             ->where('annee_universitaire_id', $couple['annee_universitaire_id'])
-            ->where('periode', $couple['periode'])
-            ->value('moyenne');
-
-        return $valeur === null ? null : (float) $valeur;
+            // L'agregat vit sous la forme canonique : le chercher avec la
+            // valeur brute (`'1'`) le manquait.
+            ->where('periode', ESBTPEvaluation::periodeCanonique((string) $couple['periode']))
+            ->first(['id', 'moyenne']);
     }
 }

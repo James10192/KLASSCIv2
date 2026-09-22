@@ -179,6 +179,47 @@
             </div>
         @endif
 
+        {{-- Moyennes que le deplacement a laissees sans rien a moyenner. Rendu
+             ici et non par le bandeau global du layout, qui echappe tout et ne
+             peut pas porter de lien. Voir ESBTPEvaluationController::moyennesLaissees(). --}}
+        @if(session('moyennes_laissees'))
+            @php $_laissees = session('moyennes_laissees'); @endphp
+            <div class="ev-alert ev-alert--warning" role="status">
+                <i class="fas fa-triangle-exclamation"></i>
+                <div class="ev-alert-body">
+                    <p class="ev-alert-text">
+                        Vous avez changé {{ $_laissees['ce_qui_a_bouge'] }}. {{ $_laissees['total'] }} moyenne(s)
+                        déjà enregistrée(s) n'ont plus rien à moyenner. Elles n'ont pas été remises à zéro :
+                        elles restent affichées, et continueront de compter au bulletin tant que vous ne les
+                        retirez pas.
+                    </p>
+                    @if($_laissees['sans_note'] > 0)
+                        @can('bulletins.generate')
+                            <div class="ev-alert-actions">
+                                @foreach($_laissees['nettoyages'] as $_nettoyage)
+                                    <a class="ev-alert-link" href="{{ route('esbtp.bulletins.select', [
+                                            'classe_id' => $_nettoyage['classe_id'],
+                                            'periode' => $_nettoyage['periode'],
+                                            'annee_universitaire_id' => $_nettoyage['annee_universitaire_id'],
+                                        ]) }}">
+                                        <i class="fas fa-broom"></i>
+                                        Vérifier {{ $_nettoyage['classe'] }}, {{ $_nettoyage['libelle_periode'] }}
+                                    </a>
+                                @endforeach
+                            </div>
+                        @endcan
+                    @endif
+                    @if($_laissees['absences_seulement'] > 0)
+                        <p class="ev-alert-text ev-alert-text--note">
+                            {{ $_laissees['absences_seulement'] }} d'entre elles ne portent plus que des absences :
+                            le nettoyage de la génération des bulletins ne les liste pas. Retirez-les depuis
+                            « Modifier les moyennes » de la classe si elles n'ont plus lieu d'être.
+                        </p>
+                    @endif
+                </div>
+            </div>
+        @endif
+
         <div class="ev-layout">
             {{-- Colonne principale --}}
             <div class="ev-main">
@@ -630,6 +671,20 @@
 .ev-alert--success i:first-child { color: #10b981; }
 .ev-alert--error { background: #fef2f2; color: #991b1b; border-left-color: #dc2626; }
 .ev-alert--error i:first-child { color: #dc2626; }
+.ev-alert--warning { background: #fffbeb; color: #78350f; border-left-color: #b45309; align-items: flex-start; }
+.ev-alert--warning i:first-child { color: #b45309; margin-top: .15rem; }
+.ev-alert-body { display: flex; flex-direction: column; gap: .5rem; }
+.ev-alert-text { margin: 0; line-height: 1.5; }
+.ev-alert-text--note { font-size: .85rem; }
+.ev-alert-actions { display: flex; flex-wrap: wrap; gap: .5rem; }
+.ev-alert-link {
+    display: inline-flex; align-items: center; gap: .4rem;
+    padding: .35rem .75rem; border-radius: 8px;
+    background: #fff; border: 1px solid rgba(4,83,203,.25);
+    color: #0453cb; font-size: .82rem; font-weight: 600; text-decoration: none;
+    transition: all .2s ease;
+}
+.ev-alert-link:hover { background: rgba(4,83,203,.06); color: #033a8e; }
 
 .ev-layout {
     display: grid;

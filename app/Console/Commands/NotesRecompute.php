@@ -6,15 +6,26 @@ use App\Domain\Notes\PerimetreDeRecalcul;
 use App\Jobs\RecomputeStudentResultatJob;
 use App\Observers\ESBTPNoteObserver;
 use Illuminate\Console\Command;
+use Illuminate\Support\Collection;
 
 /**
  * Recalcule en batch les résultats par matière depuis les notes courantes.
  *
  * Usages :
- *   php artisan notes:recompute                                  # tout, en sync
- *   php artisan notes:recompute --queue                          # via queue
- *   php artisan notes:recompute --classe=12 --periode=semestre1  # subset
- *   php artisan notes:recompute --dry-run                        # simulation
+ *   php artisan notes:recompute --classe=12 --annee=4                      # une classe
+ *   php artisan notes:recompute --classe=12 --annee=4 --periode=semestre1  # un semestre
+ *   php artisan notes:recompute --classe=12 --annee=4 --dry-run            # simulation
+ *   php artisan notes:recompute --toute-l-ecole                            # tout, apres confirmation
+ *
+ * ## Le perimetre est obligatoire
+ *
+ * Un recalcul ECRASE `esbtp_resultats.moyenne`, y compris une valeur saisie a
+ * la main. Tant que la commande etait cassee (elle levait sur chaque couple),
+ * la lancer sans filtre ne coutait rien ; reparee, elle recalculait l'ecole
+ * entiere sans rien demander. Elle exige donc `--classe` et `--annee`, comme
+ * `POST /api/cli/notes/recompute`, ou `--toute-l-ecole` suivi d'une
+ * confirmation qui annonce le nombre de moyennes touchees. Hors terminal
+ * interactif, la confirmation vaut non.
  *
  * NB : l'option --tenant existe pour cohérence CLI mais ce script
  * tourne dans le contexte d'une seule DB tenant (modèle SaaS multi-tenant
@@ -29,6 +40,7 @@ class NotesRecompute extends Command
         {--etudiant= : Restreindre à un étudiant (id)}
         {--periode= : Restreindre à une période (semestre1|semestre2|annuel)}
         {--annee= : Restreindre à une année universitaire (id)}
+        {--toute-l-ecole : Recalculer sans perimetre, apres confirmation}
         {--queue : Dispatcher les jobs sur la queue (sinon exécution sync)}
         {--dry-run : Liste ce qui serait recalculé sans le faire}';
 
@@ -38,6 +50,14 @@ class NotesRecompute extends Command
     {
         $this->info('Recalcul des résultats — KLASSCI');
         $this->line('Tenant: '.$this->option('tenant'));
+
+        $sansPerimetre = ! $this->option('classe') || ! $this->option('annee');
+
+        if ($sansPerimetre && ! $this->option('toute-l-ecole')) {
+            $this->error('Précisez --classe et --annee, ou --toute-l-ecole pour tout recalculer.');
+
+            return self::INVALID;
+        }
 
         // La selection des couples (etudiant × matiere × periode) est partagee
         // avec `POST /api/cli/notes/recompute` : les deux repondaient a la meme
@@ -60,6 +80,15 @@ class NotesRecompute extends Command
             $this->warn('Aucune note ne correspond aux filtres.');
 
             return self::SUCCESS;
+        }
+
+        if ($sansPerimetre && ! $this->option('dry-run') && ! $this->confirm(sprintf(
+            'Recalculer %d moyenne(s) sur toute l\'école ? Chacune sera réécrite depuis les notes, '
+            .'y compris celles saisies à la main.', $total
+        ))) {
+            $this->warn('Abandon : rien n\'a été recalculé.');
+
+            return self::FAILURE;
         }
 
         if ($this->option('dry-run')) {
@@ -119,6 +148,14 @@ class NotesRecompute extends Command
             count($bilan['lignes']), $verb, $modifies, $bilan['echecs']
         ));
 
+        if (! empty($bilan['laissees'])) {
+            $this->warn(sprintf(
+                '%d moyenne(s) laissée(s) telle(s) quelle(s) : plus rien à moyenner (aucune note, ou seulement des absences). '
+                .'Elles ne sont jamais remises à zéro ; leur sort est une décision de l\'école.',
+                count($bilan['laissees'])
+            ));
+        }
+
         return $bilan['echecs'] === 0 ? self::SUCCESS : self::FAILURE;
     }
 
@@ -130,10 +167,14 @@ class NotesRecompute extends Command
      * `queue:work`. Ce mode existe pour une instance qui en ferait tourner un ;
      * la commande le DIT plutot que de laisser croire au recalcul.
      *
-     * @param  \Illuminate\Support\Collection<int, array<string,mixed>>  $couples
-     * @return array{lignes:array<int,array<string,mixed>>, echecs:int}
+     * Le garde contre le 0/20 ({@see PerimetreDeRecalcul::recalculerUnCouple()})
+     * ne s'applique pas ici : c'est le job, plus tard, qui tranchera. Raison de
+     * plus pour ne pas conseiller ce mode.
+     *
+     * @param  Collection<int, array<string,mixed>>  $couples
+     * @return array{lignes:array<int,array<string,mixed>>, echecs:int, laissees:array<int,mixed>}
      */
-    private function dispatcherSurLaFile(\Illuminate\Support\Collection $couples): array
+    private function dispatcherSurLaFile(Collection $couples): array
     {
         $this->warn('--queue : les jobs sont posés sur la file. Rien n\'est recalculé tant qu\'un worker ne les consomme pas.');
 
@@ -161,6 +202,6 @@ class NotesRecompute extends Command
             }
         }
 
-        return ['lignes' => $lignes, 'echecs' => $echecs];
+        return ['lignes' => $lignes, 'echecs' => $echecs, 'laissees' => []];
     }
 }

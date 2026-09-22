@@ -2,11 +2,8 @@
 
 namespace App\Domain\Notes;
 
-use App\Jobs\RecomputeStudentResultatJob;
 use App\Models\ESBTPEvaluation;
 use App\Models\ESBTPNote;
-use App\Models\ESBTPResultat;
-use App\Services\NoteCalculationService;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 
@@ -37,18 +34,20 @@ use Illuminate\Support\Facades\Log;
  * matiere 14, semestre2 — l'agregat disait **15**, les cinq notes (10, 20, 10,
  * 18, 20) disent **15,6**. Le 18 etait en base, au bon endroit, et avale.
  *
- * ## Le piege du zero, et pourquoi l'ancienne coordonnee est traitee a part
+ * ## Le piege du zero
  *
- * `NoteCalculationService::studentMatiereAverage([])` rend **0.0**, pas `null`.
- * Rejouer le recalcul sur une coordonnee que le deplacement a videe de toutes
- * ses notes n'effacerait donc pas la ligne : il y **ecrirait un 0/20**, sur une
- * matiere que l'eleve n'a plus. C'est strictement pire que la valeur perimee.
+ * Une coordonnee que le deplacement a videe n'a plus rien a moyenner, et le
+ * job y ecrirait **0/20** sur une matiere que l'eleve n'a plus. Ce garde ne
+ * vit pas ici : il est dans {@see PerimetreDeRecalcul::recalculerUnCouple()},
+ * par ou passent aussi `notes:recompute` et l'endpoint de rattrapage. Il
+ * n'existait d'abord qu'ici — et le rattrapage que cette classe conseille
+ * reecrivait le 0/20 qu'elle venait de refuser.
  *
- * D'ou la regle : l'ancienne coordonnee n'est recalculee que s'il y reste au
- * moins une note. Sinon la ligne est **signalee, jamais touchee** — le sort
- * d'un agregat orphelin est une decision d'ecole, pas de code
- * (`.claude/rules/rien-en-dur.md`, « le cas particulier du zero »). Le menage
- * se fait sciemment, avec `evaluations:sync-notes --clean-resultats` borne.
+ * Une ligne ainsi laissee est **signalee, jamais touchee** : son sort est une
+ * decision d'ecole (`.claude/rules/rien-en-dur.md`, « le cas particulier du
+ * zero »). Le nettoyage deja livre la propose a la suppression depuis le
+ * pre-controle de la generation des bulletins — sauf quand il y reste des
+ * absences, cas qu'il ne voit pas (`reste = notes_non_comptees`).
  *
  * ## Synchrone, et pas sur la file
  *
@@ -115,7 +114,7 @@ use Illuminate\Support\Facades\Log;
  *
  * Aucun des deux n'est branche ici, a dessein : `sync-notes` tourne sans bornes
  * sur l'ecole entiere, et y ajouter un recalcul synchrone par note est
- * exactement ce que les deux plafonds de cette classe cherchent a eviter.
+ * exactement ce que le plafond de cette classe cherche a eviter.
  *
  * ## Pourquoi pas un observer sur `ESBTPEvaluation`
  *
@@ -139,48 +138,32 @@ final class RecalculApresDeplacement
     public const SOURCE = 'deplacement';
 
     /**
-     * Plafond de notes recalculees d'un coup, **par classe et par annee**.
-     *
-     * Le plafond porte sur la classe et non sur le lot : sur le lot, un appel
-     * touchant cinq classes dont une seule est lourde ne recalculait **aucune**
-     * des quatre autres.
-     */
-    public const PLAFOND_NOTES_PAR_CLASSE = 400;
-
-    /**
      * Borne GLOBALE de notes recalculees dans une requete, tous perimetres
      * confondus.
      *
-     * **Elle a manque, et son absence etait pire que le plafond trop strict
-     * qu'elle a remplace.** Le plafond par classe seul ne borne rien du tout :
-     * le nombre de classes n'est limite nulle part — `deplacer()` accepte 200
-     * evaluations reparties sur autant de classes, et `detecter()` n'a aucun
-     * `LIMIT`. Vingt classes a 399 notes passent chacune sous le plafond et font
-     * huit mille notes recalculees sur place, dans une seule requete HTTP.
+     * Le recalcul est hors transaction a dessein : les evaluations sont **deja
+     * enregistrees**. Si la requete meurt sur le delai d'attente, on garde des
+     * evaluations deplacees, des agregats rafraichis a moitie, et surtout
+     * `perimetres_reportes` — tout l'objet de ce mecanisme — n'arrive JAMAIS,
+     * puisque la reponse n'arrive pas. Le nombre de classes d'un lot n'etant
+     * borne nulle part, seule une borne sur le total tient.
      *
-     * Et le mode d'echec est le plus mauvais des deux. Le recalcul est hors
-     * transaction a dessein : les evaluations sont **deja enregistrees**. Si la
-     * requete meurt sur le delai d'attente, on garde des evaluations deplacees,
-     * des agregats rafraichis a moitie, aucune trace desquels — et surtout
-     * `perimetres_reportes`, qui est tout l'objet de ce mecanisme, n'arrive
-     * JAMAIS, puisque la reponse n'arrive pas. Le plafond par lot, lui, refusait
-     * proprement et le disait.
-     *
-     * Les deux bornes cohabitent donc : la classe legere est traitee tant que le
-     * budget global le permet, et tout ce qui reste bascule dans
-     * `perimetres_reportes` avec sa raison.
+     * **Les perimetres sont servis du plus leger au plus lourd.** Le budget se
+     * consomme dans l'ordre : servi dans l'ordre d'arrivee, une classe lourde
+     * placee en tete l'epuisait et faisait reporter toutes les classes legeres
+     * derriere elle. Un plafond PAR CLASSE avait d'abord ete pose pour cela ;
+     * egal a la borne globale, il ne servait plus a rien, et le retirer ne
+     * faisait tomber aucun test. Le tri, lui, garantit la propriete.
      *
      * **La valeur : mesuree, et abaissee de 1200 a 400.** Un recalcul coute
      * **22 requetes et ~17 ms par eleve**, lineairement (mesure locale, MariaDB
      * sur la meme machine : 10 eleves 0,17 s, 40 eleves 0,67 s). Une note
-     * deplacee declenche un ou deux recalculs selon que la coordonnee de depart
-     * garde des notes : 17 a 34 ms par note. A 1200, cela faisait **20 a 40 s
-     * en local** — au-dessus des 30 s au-dela desquelles le binaire `klassci`
-     * abandonne la requete (`feature-delivery-methodology.md`, phase 12). Le
-     * plafond echouait donc a son seul objet : que la reponse, et avec elle
-     * `perimetres_reportes`, arrive. A 400 : 7 a 14 s en local, soit une marge
-     * d'un facteur deux pour un hebergement plus lent — facteur qui, lui, n'est
-     * pas mesure sur LWS.
+     * deplacee declenche un ou deux recalculs : 17 a 34 ms par note. A 1200,
+     * cela faisait **20 a 40 s en local** — au-dessus des 30 s au-dela
+     * desquelles le binaire `klassci` abandonne la requete
+     * (`feature-delivery-methodology.md`, phase 12). A 400 : 7 a 14 s en
+     * local, soit une marge d'un facteur deux pour un hebergement plus lent —
+     * facteur qui, lui, n'est pas mesure sur LWS.
      */
     public const PLAFOND_NOTES_PAR_APPEL = 400;
 
@@ -248,49 +231,12 @@ final class RecalculApresDeplacement
             return $bilan;
         }
 
+        // Les deux cotes passent par le meme garde : l'arrivee peut elle aussi
+        // ne recevoir que des absences, et une ligne qu'elle porterait deja ne
+        // doit pas davantage y etre remise a zero.
         foreach ($etudiantIds as $etudiantId) {
-            // Nouvelle coordonnee : les notes viennent d'y arriver, donc la
-            // ligne ne sera pas creee a partir de rien. Ce n'est PAS une
-            // Nouvelle coordonnee : on recalcule sans condition. Si toutes les
-            // notes deplacees sont des absences, le calcul rend 0 — comme
-            // partout ailleurs dans le depot, l'observateur de note compris.
-            //
-            // **Ce 0-la n'est PAS corrige ici, et c'est delibere.** « Un eleve
-            // qui n'a que des absences a-t-il 0, ou n'a-t-il pas de moyenne ? »
-            // est une question d'etablissement, pas une question de code
-            // (`rien-en-dur.md`). Y repondre changerait l'affichage sur les huit
-            // instances par le chemin principal — l'enregistrement d'une note —
-            // et cela se mesure sur des donnees reelles avant de se livrer.
-            // `studentMatiereAverageOrNull()` existe desormais pour le jour ou
-            // ce sera decide ; son declencheur est une demande d'ecole, pas une
-            // relecture de ce fichier.
-            //
-            // Le piege qu'on ferme ici est l'autre, celui du cote qu'on quitte :
-            // y rejouer le calcul sans rien a moyenner ecrirait un 0/20 sur une
-            // matiere que l'eleve n'a plus, et c'est NOTRE deplacement qui l'a
-            // videe.
-            if (self::executerUneFois($etudiantId, $apres, $declencheur, $bilan, $memo)) {
-                $bilan['recalculs_tentes']++;
-            }
-
-            // Ancienne coordonnee : recalcul seulement s'il y reste des notes.
-            if (! self::coordonneeComplete($avant)) {
-                continue;
-            }
-
-            if (self::porteEncoreUneMoyenne($etudiantId, $avant)) {
-                if (self::executerUneFois($etudiantId, $avant, $declencheur, $bilan, $memo)) {
-                    $bilan['recalculs_tentes']++;
-                }
-
-                continue;
-            }
-
-            $orphelin = self::agregatOrphelin($etudiantId, $avant);
-
-            if ($orphelin !== null && ! isset($memo['orphelins'][$orphelin['resultat_id']])) {
-                $memo['orphelins'][$orphelin['resultat_id']] = true;
-                $bilan['orphelins'][] = $orphelin;
+            foreach ([$apres, $avant] as $coordonnee) {
+                self::executerUneFois($etudiantId, $coordonnee, $declencheur, $bilan, $memo);
             }
         }
 
@@ -300,7 +246,8 @@ final class RecalculApresDeplacement
                 'avant' => $avant,
                 'apres' => $apres,
                 'orphelins' => $bilan['orphelins'],
-                'remede' => 'evaluations:sync-notes --clean-resultats, borne sur la classe et la periode',
+                'remede' => 'pre-controle de la generation des bulletins (classe et periode d avant) ; '
+                    .'pour reste = notes_non_comptees, decision manuelle depuis « Modifier les moyennes »',
             ]);
         }
 
@@ -308,127 +255,55 @@ final class RecalculApresDeplacement
     }
 
     /**
-     * `executer()`, mais au plus une fois par couple (eleve, coordonnee) sur la
-     * duree du lot. Voir le docbloc de `pourAvecMemo()`.
+     * Recalcule un couple (eleve, coordonnee) au plus une fois sur la duree
+     * du lot, par {@see PerimetreDeRecalcul::recalculerUnCouple()}, et reporte
+     * son issue dans le bilan. Voir le docbloc de `pourAvecMemo()`.
+     *
+     * La cle du memo porte la periode CANONIQUE : `'1'` et `'semestre1'`
+     * designent la meme coordonnee, et la cle brute les recalculait deux fois.
+     *
+     * Un recalcul qui echoue ne defait pas le deplacement, qui reste acquis.
      *
      * @param  array<string,mixed>  $coordonnee
      * @param  array{recalculs_tentes:int, orphelins:array<int,array<string,mixed>>, echecs:int}  $bilan
      * @param  array{couples:array<string,true>, orphelins:array<int,true>}  $memo
      */
-    private static function executerUneFois(int $etudiantId, array $coordonnee, ?int $declencheur, array &$bilan, array &$memo): bool
+    private static function executerUneFois(int $etudiantId, array $coordonnee, ?int $declencheur, array &$bilan, array &$memo): void
     {
         if (! self::coordonneeComplete($coordonnee)) {
-            return false;
+            return;
         }
 
-        $cle = implode('|', [
-            $etudiantId,
-            $coordonnee['classe_id'],
-            $coordonnee['matiere_id'],
-            $coordonnee['annee_universitaire_id'],
-            $coordonnee['periode'],
-        ]);
+        $couple = [
+            'etudiant_id' => $etudiantId,
+            'classe_id' => (int) $coordonnee['classe_id'],
+            'matiere_id' => (int) $coordonnee['matiere_id'],
+            'annee_universitaire_id' => (int) $coordonnee['annee_universitaire_id'],
+            'periode' => ESBTPEvaluation::periodeCanonique((string) $coordonnee['periode']),
+        ];
+
+        $cle = implode('|', $couple);
 
         if (isset($memo['couples'][$cle])) {
-            return false;
+            return;
         }
 
         $memo['couples'][$cle] = true;
 
-        return self::executer($etudiantId, $coordonnee, $declencheur, $bilan);
-    }
+        $issue = PerimetreDeRecalcul::recalculerUnCouple($couple, self::SOURCE, $declencheur);
 
-    /**
-     * @param  array<string,mixed>  $coordonnee
-     * @param  array{recalculs_tentes:int, orphelins:array<int,array<string,mixed>>, echecs:int}  $bilan
-     */
-    private static function executer(int $etudiantId, array $coordonnee, ?int $declencheur, array &$bilan): bool
-    {
-        if (! self::coordonneeComplete($coordonnee)) {
-            return false;
-        }
-
-        try {
-            RecomputeStudentResultatJob::dispatchSync(
-                etudiantId: $etudiantId,
-                classeId: (int) $coordonnee['classe_id'],
-                matiereId: (int) $coordonnee['matiere_id'],
-                anneeUniversitaireId: (int) $coordonnee['annee_universitaire_id'],
-                periode: (string) $coordonnee['periode'],
-                source: self::SOURCE,
-                triggeredBy: $declencheur,
-            );
-
-            return true;
-        } catch (\Throwable $e) {
-            // Le deplacement, lui, a reussi et reste acquis : un recalcul qui
-            // echoue ne doit pas le defaire ni faire echouer la requete.
+        if ($issue['statut'] === PerimetreDeRecalcul::RECALCULE) {
+            $bilan['recalculs_tentes']++;
+        } elseif ($issue['statut'] === PerimetreDeRecalcul::ECHEC) {
             $bilan['echecs']++;
-
-            Log::error('Deplacement d evaluation : recalcul en echec', [
-                'etudiant_id' => $etudiantId,
-                'coordonnee' => $coordonnee,
-                'error' => $e->getMessage(),
-            ]);
-
-            return false;
-        }
-    }
-
-    /**
-     * Reste-t-il, sur cette coordonnee, de quoi calculer une moyenne ?
-     *
-     * **Pas un `exists()`.** La question n'est pas « reste-t-il des lignes »
-     * mais « reste-t-il des lignes que le calcul COMPTE » — et le calcul ecarte
-     * les absences, les baremes nuls et les coefficients nuls. Un `exists()` nu
-     * repondait oui sur une matiere ou il ne restait qu'une absence : le
-     * recalcul partait, ne trouvait rien a moyenner, et ecrivait **0 sur 20**
-     * par-dessus une moyenne reelle — sans orphelin, sans journal, et compte
-     * comme un succes. Exactement le defaut que le reste de cette classe
-     * existe pour empecher, par la porte d'a cote.
-     *
-     * On pose donc la question a `NoteCalculationService` lui-meme, sur la
-     * requete que le job utilisera. Les exclusions ne sont recopiees nulle part.
-     *
-     * @param  array<string,mixed>  $coordonnee
-     */
-    private static function porteEncoreUneMoyenne(int $etudiantId, array $coordonnee): bool
-    {
-        $notes = ESBTPNote::deLaCoordonnee($etudiantId, $coordonnee)
-            ->with('evaluation:id,bareme,coefficient,periode,classe_id,matiere_id,annee_universitaire_id,status')
-            ->get();
-
-        return app(NoteCalculationService::class)
-            ->studentMatiereAverageOrNull(ESBTPNote::enChargeUtilePourLeCalcul($notes)) !== null;
-    }
-
-    /**
-     * @param  array<string,mixed>  $coordonnee
-     * @return array<string,mixed>|null
-     */
-    private static function agregatOrphelin(int $etudiantId, array $coordonnee): ?array
-    {
-        $ligne = ESBTPResultat::query()
-            ->where('etudiant_id', $etudiantId)
-            ->where('classe_id', $coordonnee['classe_id'])
-            ->where('matiere_id', $coordonnee['matiere_id'])
-            ->where('annee_universitaire_id', $coordonnee['annee_universitaire_id'])
-            // L'agregat vit sous la forme canonique : le chercher avec la valeur
-            // brute le manquait, et un orphelin reel n'etait pas signale.
-            ->where('periode', ESBTPEvaluation::periodeCanonique((string) $coordonnee['periode']))
-            ->first();
-
-        if (! $ligne) {
-            return null;
         }
 
-        return [
-            'resultat_id' => (int) $ligne->id,
-            'etudiant_id' => $etudiantId,
-            'matiere_id' => (int) $coordonnee['matiere_id'],
-            'periode' => (string) $coordonnee['periode'],
-            'moyenne' => $ligne->moyenne !== null ? (float) $ligne->moyenne : null,
-        ];
+        $laissee = $issue['laissee'];
+
+        if ($laissee !== null && ! isset($memo['orphelins'][$laissee['resultat_id']])) {
+            $memo['orphelins'][$laissee['resultat_id']] = true;
+            $bilan['orphelins'][] = $laissee;
+        }
     }
 
     /** @param array<string,mixed> $coordonnee */
@@ -466,7 +341,7 @@ final class RecalculApresDeplacement
      * que `matiere_id` : un changement de semestre laisse donc exactement le
      * meme agregat perime des deux cotes.
      *
-     * Deux bornes, et il faut les deux — voir `PLAFOND_NOTES_PAR_CLASSE` et
+     * Une borne globale, servie du plus leger au plus lourd — voir
      * `PLAFOND_NOTES_PAR_APPEL`. Tout perimetre non traite part dans
      * `perimetres_reportes` avec sa raison et les parametres exacts a rejouer
      * sur `POST /api/cli/notes/recompute`.
@@ -501,15 +376,16 @@ final class RecalculApresDeplacement
         $budget = self::PLAFOND_NOTES_PAR_APPEL;
         $memo = ['couples' => [], 'orphelins' => []];
 
-        foreach (self::grouperParPerimetre($deplacements, $notesParEvaluation) as $perimetre) {
-            if ($perimetre['notes'] > self::PLAFOND_NOTES_PAR_CLASSE) {
-                self::reporterUnPerimetre($perimetre, 'plafond_classe', $bilan);
+        $perimetres = self::grouperParPerimetre($deplacements, $notesParEvaluation);
+        uasort($perimetres, static fn (array $a, array $b) => $a['notes'] <=> $b['notes']);
 
-                continue;
-            }
-
+        foreach ($perimetres as $perimetre) {
             if ($perimetre['notes'] > $budget) {
-                self::reporterUnPerimetre($perimetre, 'budget_de_la_requete_epuise', $bilan);
+                self::reporterUnPerimetre(
+                    $perimetre,
+                    $perimetre['notes'] > self::PLAFOND_NOTES_PAR_APPEL ? 'perimetre_trop_lourd' : 'budget_de_la_requete_epuise',
+                    $bilan
+                );
 
                 continue;
             }
@@ -617,7 +493,6 @@ final class RecalculApresDeplacement
         $bilan['perimetres_reportes'][] = $ligne;
 
         Log::warning('Deplacement en lot : recalcul reporte pour un perimetre', $ligne + [
-            'plafond_classe' => self::PLAFOND_NOTES_PAR_CLASSE,
             'plafond_appel' => self::PLAFOND_NOTES_PAR_APPEL,
             'remede' => 'POST /api/cli/notes/recompute avec classe_id, annee_universitaire_id et chaque periode',
         ]);
@@ -626,7 +501,7 @@ final class RecalculApresDeplacement
     /**
      * La phrase que les deux endpoints en lot ajoutent a leur message.
      *
-     * Elle vit ici, a cote des deux plafonds et de la forme de
+     * Elle vit ici, a cote du plafond et de la forme de
      * `perimetres_reportes` qu'elle decrit. Elle etait dupliquee mot pour mot
      * dans les deux controleurs : deux copies d'un message qui cite un plafond,
      * c'est le prochain compte faux en germe.
@@ -642,8 +517,7 @@ final class RecalculApresDeplacement
         }
 
         return $fait.' ATTENTION : '.count($recalcul['perimetres_reportes'])
-            .' perimetre(s) non recalcule(s) — plafond de '
-            .self::PLAFOND_NOTES_PAR_CLASSE.' notes par classe, ou budget de '
+            .' perimetre(s) non recalcule(s) — budget de '
             .self::PLAFOND_NOTES_PAR_APPEL.' notes par requete epuise. Chaque ligne de'
             .' `perimetres_reportes` porte les parametres a rejouer sur'
             .' POST /api/cli/notes/recompute (classe_id, annee_universitaire_id,'
@@ -651,6 +525,8 @@ final class RecalculApresDeplacement
             .' entree de `matiere_ids` : sans lui le rattrapage recalcule TOUTES'
             .' les matieres de la classe pour cette periode, et un recalcul'
             .' ECRASE la moyenne enregistree — y compris celle qu une personne a'
-            .' saisie a la main sur une matiere qui n a pas bouge.';
+            .' saisie a la main sur une matiere qui n a pas bouge. Une moyenne'
+            .' sans rien a moyenner, elle, n est jamais remise a zero : elle est'
+            .' rendue dans `laissees`.';
     }
 }

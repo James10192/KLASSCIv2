@@ -1514,8 +1514,9 @@ class CLIMaintenanceController extends BaseApiController
             ."{$recalcul['recalculs_tentes']} recalcul(s) lance(s)).";
 
         if ($recalcul['orphelins'] !== []) {
-            $message .= ' '.count($recalcul['orphelins']).' agregat(s) de l ancienne matiere n ont plus aucune note : '
-                .'ils sont laisses en place, leur sort est une decision d ecole.';
+            $message .= ' '.count($recalcul['orphelins']).' agregat(s) n ont plus rien a moyenner (aucune note, '
+                .'ou seulement des absences) : ils sont laisses en place, jamais remis a zero, '
+                .'et leur sort est une decision d ecole.';
         }
 
         return $message;

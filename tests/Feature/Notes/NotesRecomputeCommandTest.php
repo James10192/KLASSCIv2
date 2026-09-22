@@ -75,10 +75,43 @@ class NotesRecomputeCommandTest extends TestCase
 
         $code = $this->artisan('notes:recompute', [
             '--classe' => $this->classe->id,
+            '--annee' => $this->annee->id,
             '--dry-run' => true,
         ])->run();
 
         $this->assertSame(0, $code);
+        $this->assertSame(3.0, $this->moyenneEnregistree($etudiant->id, $matiere->id));
+    }
+
+    /**
+     * Reparee, la commande recalculait l'ecole entiere sans rien demander —
+     * et un recalcul ecrase aussi les moyennes saisies a la main.
+     *
+     * @test
+     */
+    public function sans_perimetre_la_commande_refuse_de_tourner(): void
+    {
+        $this->monterLaClasse();
+        $matiere = $this->matiereConfiguree();
+        $etudiant = $this->etudiantInscrit();
+
+        $this->noter($etudiant, $this->evaluationDe($matiere), 10);
+        ESBTPResultat::where('etudiant_id', $etudiant->id)
+            ->where('matiere_id', $matiere->id)
+            ->update(['moyenne' => 3.0]);
+
+        $this->artisan('notes:recompute')->assertExitCode(2);
+        $this->artisan('notes:recompute', ['--classe' => $this->classe->id])->assertExitCode(2);
+
+        // `--toute-l-ecole` demande confirmation ; repondre non n'ecrit rien.
+        $this->artisan('notes:recompute', ['--toute-l-ecole' => true])
+            ->expectsConfirmation(
+                'Recalculer 1 moyenne(s) sur toute l\'école ? Chacune sera réécrite depuis les notes, '
+                .'y compris celles saisies à la main.',
+                'no'
+            )
+            ->assertExitCode(1);
+
         $this->assertSame(3.0, $this->moyenneEnregistree($etudiant->id, $matiere->id));
     }
 

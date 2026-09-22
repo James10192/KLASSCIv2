@@ -95,7 +95,7 @@ class DeplacementDePeriodeEnLotTest extends TestCase
 
         $lourde = $this->evaluationDe($matiere);
         $lourde->update(['periode' => 'semestre2']);
-        $this->posterDesNotesEnMasse($lourde, $etudiant->id, RecalculApresDeplacement::PLAFOND_NOTES_PAR_CLASSE + 1);
+        $this->posterDesNotesEnMasse($lourde, $etudiant->id, RecalculApresDeplacement::PLAFOND_NOTES_PAR_APPEL + 1);
 
         $reponse = $this->deplacerVers([$lourde->id], 'semestre1');
 
@@ -108,6 +108,7 @@ class DeplacementDePeriodeEnLotTest extends TestCase
         // Et le perimetre reporte porte exactement ce qu'il faut rejouer.
         $this->assertCount(1, $reponse['perimetres_reportes']);
         $reporte = $reponse['perimetres_reportes'][0];
+        $this->assertSame('perimetre_trop_lourd', $reporte['raison']);
         $this->assertSame($this->classe->id, $reporte['classe_id']);
         $this->assertSame($this->annee->id, $reporte['annee_universitaire_id']);
         $this->assertSame(
@@ -118,19 +119,17 @@ class DeplacementDePeriodeEnLotTest extends TestCase
     }
 
     /** @test */
-    public function le_plafond_porte_sur_la_classe_et_non_sur_le_lot(): void
+    public function une_classe_lourde_placee_en_tete_ne_bloque_pas_les_classes_legeres(): void
     {
         $this->monterLaClasse();
         $matiere = $this->matiereConfiguree();
         $etudiant = $this->etudiantInscrit();
 
-        // Classe legere : une seule note, tres en dessous du plafond.
-        $legere = $this->evaluationDe($matiere);
-        $legere->update(['periode' => 'semestre2']);
-        $this->noter($etudiant, $legere, 12);
-        $this->assertSame(12.0, $this->moyenne($etudiant->id, $matiere->id, 'semestre2'));
-
-        // Classe lourde, dans le MEME lot : a elle seule au-dela du plafond.
+        // Classe lourde, creee EN PREMIER pour passer en tete du lot : elle
+        // pese exactement le budget de la requete. Servie dans l'ordre
+        // d'arrivee, elle l'epuisait a elle seule et la classe legere derriere
+        // elle etait reportee — le defaut qu'un plafond par classe avait
+        // d'abord tente de fermer, et qu'il ne fermait plus.
         $autreClasse = ESBTPClasse::factory()->create([
             'filiere_id' => $this->filiere->id,
             'niveau_etude_id' => $this->niveau->id,
@@ -146,19 +145,23 @@ class DeplacementDePeriodeEnLotTest extends TestCase
             'bareme' => 20,
             'coefficient' => 1,
         ]);
-        $this->posterDesNotesEnMasse($lourde, $etudiant->id, RecalculApresDeplacement::PLAFOND_NOTES_PAR_CLASSE + 1, $autreClasse->id);
+        $this->posterDesNotesEnMasse($lourde, $etudiant->id, RecalculApresDeplacement::PLAFOND_NOTES_PAR_APPEL, $autreClasse->id);
 
-        $reponse = $this->deplacerVers([$legere->id, $lourde->id], 'semestre1');
+        // Classe legere : une seule note.
+        $legere = $this->evaluationDe($matiere);
+        $legere->update(['periode' => 'semestre2']);
+        $this->noter($etudiant, $legere, 12);
+        $this->assertSame(12.0, $this->moyenne($etudiant->id, $matiere->id, 'semestre2'));
 
-        // Sur un plafond de LOT, ce lot-ci depassait et AUCUNE des deux classes
-        // n'etait recalculee. C'est ce que ce test interdit : la classe legere
-        // est traitee, seule la lourde est rendue a l'operateur.
+        $reponse = $this->deplacerVers([$lourde->id, $legere->id], 'semestre1');
+
         $this->assertSame(12.0, $this->moyenne($etudiant->id, $matiere->id, 'semestre1'));
         $this->assertGreaterThan(0, $reponse['recalculs_tentes']);
 
         $this->assertTrue($reponse['recalcul_reporte']);
         $this->assertCount(1, $reponse['perimetres_reportes']);
         $this->assertSame($autreClasse->id, $reponse['perimetres_reportes'][0]['classe_id']);
+        $this->assertSame('budget_de_la_requete_epuise', $reponse['perimetres_reportes'][0]['raison']);
     }
 
     /** @test */
@@ -168,10 +171,10 @@ class DeplacementDePeriodeEnLotTest extends TestCase
         $matiere = $this->matiereConfiguree();
         $etudiant = $this->etudiantInscrit();
 
-        // Quatre classes, chacune SOUS le plafond par classe, mais dont la somme
-        // depasse le budget de la requete. Sans borne globale, les quatre
-        // partaient en recalcul dans une seule requete HTTP.
-        $parClasse = RecalculApresDeplacement::PLAFOND_NOTES_PAR_CLASSE - 1;
+        // Plusieurs classes, chacune bien sous le budget, mais dont la somme le
+        // depasse. Sans borne globale, toutes partaient en recalcul dans une
+        // seule requete HTTP.
+        $parClasse = intdiv(RecalculApresDeplacement::PLAFOND_NOTES_PAR_APPEL, 3) + 1;
         $combien = (int) ceil(RecalculApresDeplacement::PLAFOND_NOTES_PAR_APPEL / $parClasse) + 1;
 
         $ids = [];
@@ -198,8 +201,8 @@ class DeplacementDePeriodeEnLotTest extends TestCase
 
         $this->assertTrue($reponse['recalcul_reporte']);
 
-        // Aucune classe ne depasse le plafond par classe : tout ce qui est
-        // reporte l'est donc par le budget de la requete.
+        // Aucune classe ne depasse a elle seule le budget : tout ce qui est
+        // reporte l'est donc parce que le budget de la requete est epuise.
         $raisons = array_column($reponse['perimetres_reportes'], 'raison');
         $this->assertNotEmpty($raisons);
         $this->assertSame(['budget_de_la_requete_epuise'], array_values(array_unique($raisons)));

@@ -448,8 +448,9 @@ class ESBTPNote extends Model implements Auditable
      *   | grep -vE "^\S+:[0-9]+: *\*"
      * ```
      *
-     * Au 20 septembre 2026 il rend **six** lignes de code. Trois ne font pas
-     * cette conversion-la et doivent rester : `CLIBulletinDiagnosticController`
+     * Au 22 septembre 2026 il rend **cinq** lignes de code (le « six » ecrit ici
+     * d'abord etait faux, et ne se rejouait pas). La premiere est cette methode.
+     * Deux ne font pas cette conversion-la et doivent rester : `CLIBulletinDiagnosticController`
      * construit les DEUX ecritures pour un `whereIn` (c'est
      * `ESBTPEvaluation::aliasDePeriode()`, pas celle-ci), et
      * `ESBTPResultatController` fabrique un parametre d'URL. Restent
@@ -458,7 +459,7 @@ class ESBTPNote extends Model implements Auditable
      * prochaine touche de ces fichiers, pas une relecture de celui-ci.
      *
      * Ce compte est un releve, pas un inventaire : s'il rend autre chose que
-     * six, corrigez la phrase plutot que de la contourner.
+     * cinq, corrigez la phrase plutot que de la contourner.
      */
     public static function semestreDepuisLaPeriode(string $periode): int
     {
