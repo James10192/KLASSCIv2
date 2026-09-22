@@ -79,4 +79,37 @@ class CLIRendezVousController extends BaseApiController
 
         return $this->successResponse($rapport, sprintf('%d convocations envoyées, %d restantes.', $rapport['envoyees'], $rapport['restantes']));
     }
+
+    /**
+     * Le bouton « Convoquer les non suivies » / « Relancer les echecs » de l'ecran.
+     * Remet en attente sans rien envoyer.
+     *
+     * `limite` borne CE geste, et c'est le seul endroit ou borner tient : une fois
+     * en attente, une convocation part au prochain passage de la tache planifiee
+     * (5 min), qu'on ait fini de verifier le premier courriel ou non. Remettre 1,
+     * verifier sa reception, puis remettre le reste.
+     */
+    public function remettreConvocations(Request $request, FileConvocationsRdv $file): JsonResponse
+    {
+        if (! $request->user()->tokenCan('cli:admin')) {
+            return $this->errorResponse('Token missing cli:admin ability', [], 403);
+        }
+
+        $quoi = $request->input('quoi');
+        if (! in_array($quoi, ['inconnues', 'echecs'], true)) {
+            return $this->errorResponse('Préciser quoi : « inconnues » (réservations d\'avant le suivi) ou « echecs ».', [], 422);
+        }
+
+        $limite = $request->input('limite');
+        if ($limite !== null && (filter_var($limite, FILTER_VALIDATE_INT) === false || (int) $limite < 1)) {
+            return $this->errorResponse('« limite » doit être un entier positif.', [], 422);
+        }
+
+        $remises = $file->remettreEnAttente($quoi, $limite === null ? null : (int) $limite);
+
+        return $this->successResponse(
+            ['remises' => $remises, 'a_envoyer' => $file->enAttente()],
+            sprintf('%d convocations remises en attente. Rien n\'est encore envoyé.', $remises)
+        );
+    }
 }

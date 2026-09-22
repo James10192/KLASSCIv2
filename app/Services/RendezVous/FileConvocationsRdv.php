@@ -113,8 +113,9 @@ class FileConvocationsRdv
      * remises en attente. C'est un geste de l'ecole, jamais automatique.
      *
      * @param  'inconnues'|'echecs'  $quoi
+     * @param  int|null  $limite  les plus anciennes seulement (verifier un premier envoi)
      */
-    public function remettreEnAttente(string $quoi): int
+    public function remettreEnAttente(string $quoi, ?int $limite = null): int
     {
         // Une reservation d'avant le suivi n'interesse que si elle tient encore
         // son creneau. Un echec, lui, peut etre un avis d'annulation a renvoyer.
@@ -123,10 +124,18 @@ class FileConvocationsRdv
             : ESBTPRdvReservation::query()->occupantes()->whereNull('convocation_statut');
 
         $n = 0;
-        $requete->with('creneau')->orderBy('id')->each(function (ESBTPRdvReservation $r) use (&$n) {
+        $planifier = function (ESBTPRdvReservation $r) use (&$n) {
             $this->mails->planifier($r, $r->convocation_action ?: 'confirme');
             $n++;
-        });
+        };
+
+        // Pagination par identifiant, pas par decalage : planifier() fait sortir chaque
+        // ligne du filtre, et une page 2 en `offset` sauterait autant de lignes que la
+        // page 1 en a traite. Un lot borne, lui, se lit d'un bloc.
+        $requete->with('creneau');
+        $limite === null
+            ? $requete->chunkById(200, fn ($lot) => $lot->each($planifier))
+            : $requete->orderBy('id')->limit($limite)->get()->each($planifier);
 
         return $n;
     }
