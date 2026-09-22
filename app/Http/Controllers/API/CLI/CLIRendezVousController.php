@@ -69,7 +69,8 @@ class CLIRendezVousController extends BaseApiController
             return $this->errorResponse('Token missing cli:admin ability', [], 403);
         }
 
-        $rapport = $file->envoyerUnPaquet(50, 25.0);
+        // `max` permet de verifier un premier envoi avant de lancer la suite.
+        $rapport = $file->envoyerUnPaquet(max(1, min(50, (int) $request->input('max', 50))), 25.0);
         if ($rapport['en_cours']) {
             return $this->errorResponse('Un autre envoi est en cours. Rappeler dans une minute.', $rapport, 409);
         }
@@ -78,5 +79,28 @@ class CLIRendezVousController extends BaseApiController
         }
 
         return $this->successResponse($rapport, sprintf('%d convocations envoyées, %d restantes.', $rapport['envoyees'], $rapport['restantes']));
+    }
+
+    /**
+     * Le bouton « Convoquer les non suivies » / « Relancer les echecs » de l'ecran.
+     * Remet en attente sans rien envoyer : l'envoi reste celui de envoyerConvocations().
+     */
+    public function remettreConvocations(Request $request, FileConvocationsRdv $file): JsonResponse
+    {
+        if (! $request->user()->tokenCan('cli:admin')) {
+            return $this->errorResponse('Token missing cli:admin ability', [], 403);
+        }
+
+        $quoi = $request->input('quoi');
+        if (! in_array($quoi, ['inconnues', 'echecs'], true)) {
+            return $this->errorResponse('Préciser quoi : « inconnues » (réservations d\'avant le suivi) ou « echecs ».', [], 422);
+        }
+
+        $remises = $file->remettreEnAttente($quoi);
+
+        return $this->successResponse(
+            ['remises' => $remises, 'a_envoyer' => $file->enAttente()],
+            sprintf('%d convocations remises en attente. Rien n\'est encore envoyé.', $remises)
+        );
     }
 }

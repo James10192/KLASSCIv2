@@ -554,6 +554,7 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
         Route::post('/rendez-vous/placer', [App\Http\Controllers\API\CLI\CLIRendezVousController::class, 'placer'])->name('rendez-vous.placer');
         Route::get('/rendez-vous/diagnostic', [App\Http\Controllers\API\CLI\CLIRendezVousController::class, 'diagnostic'])->name('rendez-vous.diagnostic');
         Route::post('/rendez-vous/convocations/envoyer', [App\Http\Controllers\API\CLI\CLIRendezVousController::class, 'envoyerConvocations'])->name('rendez-vous.convocations.envoyer');
+        Route::post('/rendez-vous/convocations/remettre', [App\Http\Controllers\API\CLI\CLIRendezVousController::class, 'remettreConvocations'])->name('rendez-vous.convocations.remettre');
         // L'ordre des categories est l'ordre dans lequel un versement solde les
         // frais. Le changer est une decision de l'ecole, pas du code.
         Route::post('/frais/retirer-configurations-inutiles', [App\Http\Controllers\API\CLI\CLIFraisController::class, 'retirerConfigurationsInutiles'])->name('frais.retirer-configurations-inutiles');
