@@ -71,9 +71,61 @@ final class PerimetreDeRecalcul
     }
 
     /**
+     * Les couples du perimetre : ceux que portent des notes, ET ceux que porte
+     * une moyenne deja enregistree.
+     *
+     * La seconde source n'est pas une redondance. Apres un deplacement, la
+     * moyenne perimee vit precisement sur une coordonnee qui n'a plus aucune
+     * evaluation : partir des seules notes ne la voyait jamais, et le
+     * rattrapage conseille repondait « rien a recalculer » en la laissant en
+     * place. Relue ici, elle passe par {@see self::diagnostic()}, qui la classe
+     * `laissee` — jamais remise a zero.
+     *
      * @return Collection<int, array{etudiant_id:int, classe_id:int, matiere_id:int, annee_universitaire_id:int, periode:string}>
      */
     public function couples(): Collection
+    {
+        return $this->couplesDesNotes()
+            ->concat($this->couplesDesMoyennesEnregistrees())
+            ->unique(fn ($couple) => implode('|', $couple))
+            ->values();
+    }
+
+    /**
+     * Les moyennes deja enregistrees dans le perimetre, hors lignes annuelles :
+     * aucune evaluation ne porte cette periode, elles ne relevent pas de ce
+     * recalcul.
+     *
+     * @return Collection<int, array<string,mixed>>
+     */
+    private function couplesDesMoyennesEnregistrees(): Collection
+    {
+        return ESBTPResultat::query()
+            ->whereNotNull('etudiant_id')
+            ->whereNotNull('classe_id')
+            ->whereNotNull('matiere_id')
+            ->whereNotNull('annee_universitaire_id')
+            ->when($this->classeId, fn ($q, $v) => $q->where('classe_id', $v))
+            ->when($this->matiereId, fn ($q, $v) => $q->where('matiere_id', $v))
+            ->when($this->etudiantId, fn ($q, $v) => $q->where('etudiant_id', $v))
+            ->when($this->periode, fn ($q, $v) => $q->whereIn('periode', ESBTPEvaluation::aliasDePeriode($v)))
+            ->when($this->anneeUniversitaireId, fn ($q, $v) => $q->where('annee_universitaire_id', $v))
+            ->where('periode', '!=', 'annuel')
+            ->get(['etudiant_id', 'classe_id', 'matiere_id', 'annee_universitaire_id', 'periode'])
+            ->map(fn (ESBTPResultat $r) => [
+                'etudiant_id' => (int) $r->etudiant_id,
+                'classe_id' => (int) $r->classe_id,
+                'matiere_id' => (int) $r->matiere_id,
+                'annee_universitaire_id' => (int) $r->annee_universitaire_id,
+                'periode' => ESBTPEvaluation::periodeCanonique((string) $r->periode),
+            ])
+            ->values();
+    }
+
+    /**
+     * @return Collection<int, array<string,mixed>>
+     */
+    private function couplesDesNotes(): Collection
     {
         $evaluations = ESBTPEvaluation::query()
             ->where('status', '!=', 'cancelled')
@@ -129,7 +181,6 @@ final class PerimetreDeRecalcul
                 ];
             })
             ->filter()
-            ->unique(fn ($couple) => implode('|', $couple))
             ->values();
     }
 

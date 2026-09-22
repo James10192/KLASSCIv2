@@ -247,6 +247,76 @@ class RecalculApresDeplacementTest extends TestCase
     }
 
     /**
+     * Le rattrapage conseille apres un recalcul reporte vise le cote QUITTE,
+     * ou il ne reste aucune evaluation. Partir des seules notes n'y trouvait
+     * rien, et l'endpoint repondait « rien a recalculer » en laissant la
+     * moyenne perimee compter sur les deux semestres.
+     *
+     * @test
+     */
+    public function le_rattrapage_voit_la_moyenne_du_cote_quitte(): void
+    {
+        $this->monterLaClasse();
+        $matiere = $this->matiereConfiguree();
+        $etudiant = $this->etudiantInscrit();
+        $evaluation = $this->evaluationDe($matiere);
+        $this->noter($etudiant, $evaluation, 18);
+        $this->assertSame(18.0, $this->moyenne($etudiant->id, $matiere->id));
+
+        // Deplacement sans recalcul : c'est l'etat que laisse un lot reporte.
+        DB::table('esbtp_evaluations')->where('id', $evaluation->id)->update(['periode' => 'semestre2']);
+        DB::table('esbtp_notes')->where('evaluation_id', $evaluation->id)->update(['semestre' => 2]);
+
+        $bilan = $this->appeler('notesRecompute', ['cli:admin'], [
+            'classe_id' => $this->classe->id,
+            'periode' => 'semestre1',
+            'annee_universitaire_id' => $this->annee->id,
+            'matiere_id' => $matiere->id,
+        ]);
+
+        $this->assertSame(1, $bilan['total']);
+        $this->assertSame(0, $bilan['recalcules']);
+        $this->assertCount(1, $bilan['laissees']);
+        $this->assertSame('aucune_note', $bilan['laissees'][0]['reste']);
+        // Laissee, jamais remise a zero.
+        $this->assertSame(18.0, $this->moyenne($etudiant->id, $matiere->id));
+    }
+
+    /**
+     * Un lien du bandeau qui mene a un 403 est pire qu'aucun lien : la
+     * directrice des etudes et le coordinateur n'ont pas `resultats.export`,
+     * que « Modifier les moyennes » exige en plus de la garde de sa route.
+     *
+     * @test
+     */
+    public function le_bandeau_ne_montre_que_les_ecrans_qui_s_ouvriront(): void
+    {
+        $this->assertSame(
+            ['verifier' => false, 'retirer' => false, 'reprendre' => false],
+            MoyennesLaissees::droits(null)
+        );
+
+        $sansDroit = User::factory()->create();
+        $this->assertSame(
+            ['verifier' => false, 'retirer' => false, 'reprendre' => false],
+            MoyennesLaissees::droits($sansDroit)
+        );
+
+        // Ouvre la route des deux ecrans, sans les droits propres a chacun.
+        Gate::before(fn ($u, string $droit) => $droit === 'admin.access' ? true : null);
+        $this->assertSame(
+            ['verifier' => true, 'retirer' => false, 'reprendre' => false],
+            MoyennesLaissees::droits($sansDroit->fresh())
+        );
+
+        Gate::before(fn () => true);
+        $this->assertSame(
+            ['verifier' => true, 'retirer' => true, 'reprendre' => true],
+            MoyennesLaissees::droits($sansDroit->fresh())
+        );
+    }
+
+    /**
      * Ce qui ne porte plus que des absences echappe au nettoyage des bulletins,
      * et « Modifier les moyennes » est un ecran PAR ELEVE : l'ecran doit donc
      * nommer l'eleve et la matiere, pas renvoyer a « la classe ».
@@ -260,7 +330,7 @@ class RecalculApresDeplacementTest extends TestCase
         $etudiant = $this->etudiantInscrit();
         $evaluation = $this->evaluationDe($matiere);
 
-        $vue = MoyennesLaissees::pourLEcran([[
+        $vue = MoyennesLaissees::pourLEcran(['echecs' => 0, 'orphelins' => [[
             'resultat_id' => 1,
             'etudiant_id' => $etudiant->id,
             'classe_id' => $this->classe->id,
@@ -269,7 +339,7 @@ class RecalculApresDeplacementTest extends TestCase
             'periode' => 'semestre1',
             'moyenne' => 12.0,
             'reste' => 'notes_non_comptees',
-        ]], $evaluation, [
+        ]]], $evaluation, [
             'classe_id' => $this->classe->id,
             'matiere_id' => $matiere->id,
             'periode' => 'semestre2',

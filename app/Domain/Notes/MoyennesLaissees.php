@@ -6,6 +6,8 @@ use App\Models\ESBTPClasse;
 use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPEvaluation;
 use App\Models\ESBTPMatiere;
+use App\Models\User;
+use Illuminate\Support\Facades\Route;
 
 /**
  * Ce que l'ecran d'une evaluation dit des moyennes qu'un deplacement a
@@ -32,12 +34,13 @@ use App\Models\ESBTPMatiere;
 final class MoyennesLaissees
 {
     /**
-     * @param  array<int, array<string,mixed>>  $laissees
+     * @param  array{orphelins:array<int, array<string,mixed>>, echecs:int}  $recalcul  le bilan de {@see RecalculApresDeplacement}
      * @param  array{classe_id:int, matiere_id:int, periode:string}  $avant
-     * @return array{total:int, ce_qui_a_bouge:string, nettoyages:array<int,array<string,mixed>>, eleves:array<int,array<string,mixed>>}
+     * @return array{total:int, echecs:int, ce_qui_a_bouge:string, nettoyages:array<int,array<string,mixed>>, eleves:array<int,array<string,mixed>>}
      */
-    public static function pourLEcran(array $laissees, ESBTPEvaluation $evaluation, array $avant): array
+    public static function pourLEcran(array $recalcul, ESBTPEvaluation $evaluation, array $avant): array
     {
+        $laissees = $recalcul['orphelins'];
         $classes = ESBTPClasse::whereIn('id', array_column($laissees, 'classe_id'))->pluck('name', 'id');
 
         $sansNote = array_filter($laissees, fn (array $l) => $l['reste'] === 'aucune_note');
@@ -45,6 +48,10 @@ final class MoyennesLaissees
 
         return [
             'total' => count($laissees),
+            // Un recalcul en echec laisse la moyenne d'avant en place. Le
+            // journal le dit ; l'ecran annoncait pourtant « mise a jour avec
+            // succes ». Qui a fait le geste doit le savoir.
+            'echecs' => (int) $recalcul['echecs'],
             'ce_qui_a_bouge' => self::ceQuiABouge($evaluation, $avant),
             'nettoyages' => collect($sansNote)
                 ->map(fn (array $l) => self::coordonnee($l))
@@ -111,8 +118,55 @@ final class MoyennesLaissees
         };
     }
 
+    /**
+     * Ce que la personne peut ouvrir depuis le bandeau. Un lien visible doit
+     * mener quelque part : chaque droit est celui que l'ecran cible verifie
+     * VRAIMENT — la garde de sa route (relue sur la route elle-meme, pas
+     * recopiee ici) plus celle du controleur ou du bouton.
+     *
+     * @return array{verifier:bool, retirer:bool, reprendre:bool}
+     */
+    public static function droits(?User $utilisateur): array
+    {
+        $verifier = self::routeOuverte('esbtp.bulletins.select', $utilisateur);
+
+        return [
+            'verifier' => $verifier,
+            // Le bouton de suppression du pre-controle est garde par
+            // `bulletins.delete` (bulletins/select.blade.php).
+            'retirer' => $verifier && $utilisateur->can('bulletins.delete'),
+            // `ESBTPResultatController::previewMoyennes()` exige en plus
+            // `resultats.export`.
+            'reprendre' => self::routeOuverte('esbtp.bulletins.moyennes-preview', $utilisateur)
+                && $utilisateur->can('resultats.export'),
+        ];
+    }
+
+    /** Les middlewares `permission:a|b` de la route nommee, rejoues pour cet utilisateur. */
+    private static function routeOuverte(string $nom, ?User $utilisateur): bool
+    {
+        $route = Route::getRoutes()->getByName($nom);
+
+        if (! $route || ! $utilisateur) {
+            return false;
+        }
+
+        foreach ($route->gatherMiddleware() as $middleware) {
+            if (is_string($middleware) && str_starts_with($middleware, 'permission:')) {
+                if (! $utilisateur->canAny(explode('|', substr($middleware, strlen('permission:'))))) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
     private static function libellePeriode(string $periode): string
     {
-        return 'Semestre '.(ESBTPEvaluation::numeroDeSemestre($periode) ?? '?');
+        $numero = ESBTPEvaluation::numeroDeSemestre($periode)
+            ?? (preg_match('/^semestre(\d+)$/', $periode, $m) ? (int) $m[1] : null);
+
+        return $numero !== null ? 'Semestre '.$numero : ucfirst($periode);
     }
 }

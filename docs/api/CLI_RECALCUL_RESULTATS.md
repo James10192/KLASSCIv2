@@ -115,6 +115,13 @@ Tout périmètre non traité part dans `perimetres_reportes` avec sa `raison`
 `semestreN`, et les `matiere_ids` pour découper si le rattrapage bute à son tour
 sur son propre plafond de couples.
 
+Le rattrapage retrouve bien le côté **quitté**, où il ne reste aucune
+évaluation : le périmètre d'un recalcul réunit les couples que portent des notes
+**et** ceux que porte une moyenne déjà enregistrée (hors lignes annuelles). Sans
+la seconde source, la moyenne périmée restait en place et l'appel répondait
+« rien à recalculer ». Elle est désormais rendue dans `laissees`, jamais remise
+à zéro.
+
 ### Ce qu'aucun recalcul de rattrapage ne fait : écrire 0/20 à partir de rien
 
 `NoteCalculationService` écarte les absences, les barèmes nuls et les

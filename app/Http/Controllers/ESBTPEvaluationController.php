@@ -770,8 +770,8 @@ class ESBTPEvaluationController extends Controller
                 $redirect->with('warning', $tcWarning);
             }
 
-            if ($recalcul['orphelins'] !== []) {
-                $redirect->with('moyennes_laissees', MoyennesLaissees::pourLEcran($recalcul['orphelins'], $evaluation, $avant));
+            if ($recalcul['orphelins'] !== [] || $recalcul['echecs'] > 0) {
+                $redirect->with('moyennes_laissees', MoyennesLaissees::pourLEcran($recalcul, $evaluation, $avant));
             }
 
             return $redirect;
