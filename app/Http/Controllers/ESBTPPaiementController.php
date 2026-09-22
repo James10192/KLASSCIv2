@@ -2459,7 +2459,8 @@ class ESBTPPaiementController extends Controller
                 'etudiant.user',
                 'fraisCategory',
                 'categorie',
-                'inscription'
+                'inscription',
+                'creator',
             ]);
 
             // Rendu de la partial ligne-paiement

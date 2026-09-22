@@ -40,6 +40,14 @@
         }));
     }
 
+    window.addEventListener('couverture:periode-change', function (event) {
+        var periode = event.detail && event.detail.periode;
+        var champPeriode = pont.periode ? document.querySelector(pont.periode) : null;
+        if (!champPeriode || !periode || champPeriode.value === periode) return;
+        champPeriode.value = periode;
+        champPeriode.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+
     function brancher() {
         [pont.classe, pont.periode].forEach(function (selecteur) {
             if (!selecteur) { return; }

@@ -59,6 +59,8 @@ class AcademicCoverageController extends Controller
         if ($anneeId === null) {
             $payload = $this->coverage->summarize(null, $periode, null, (int) $classe->id);
 
+            $payload = $this->ajouterLiensDeSaisie($payload);
+
             return response()->json($detailComplet ? $payload : $this->coverage->sansLesNotesNiLeursAuteurs($payload), 200);
         }
 
@@ -74,9 +76,49 @@ class AcademicCoverageController extends Controller
             fn () => $this->coverage->summarize($anneeId, $periode, null, (int) $classe->id)
         );
 
+        // Le lien est ajouté après le cache : il reste une aide de navigation,
+        // pas une donnée calculée qui modifierait la clé ou le périmètre.
+        $payload = $this->ajouterLiensDeSaisie($payload);
+
         // APRES le cache, jamais avant : la premiere lecture par un enseignant
         // servirait sinon une version amputee a tous les suivants.
         return response()->json($detailComplet ? $payload : $this->coverage->sansLesNotesNiLeursAuteurs($payload), 200);
+    }
+
+    /**
+     * Ajoute une destination directe pour achever la saisie d'une matière.
+     * Le navigateur reçoit le contexte classe + matière + période et ouvre la
+     * grille correspondante sans demander à l'utilisateur de refaire le chemin.
+     *
+     * @param array<string, mixed> $payload
+     * @return array<string, mixed>
+     */
+    private function ajouterLiensDeSaisie(array $payload): array
+    {
+        $classeId = (int) data_get($payload, 'classe.id', 0);
+        $periode = (string) data_get($payload, 'maquette.semestre', '');
+
+        if ($classeId <= 0 || ! isset($payload['subjects']) || ! is_array($payload['subjects'])) {
+            return $payload;
+        }
+
+        $periode = $periode === '2' ? 'semestre2' : 'semestre1';
+
+        $payload['subjects'] = array_map(function (array $matiere) use ($classeId, $periode): array {
+            if (empty($matiere['id'])) {
+                return $matiere;
+            }
+
+            $matiere['saisie_url'] = route('esbtp.notes.index', [
+                'classe_id' => $classeId,
+                'matiere_id' => (int) $matiere['id'],
+                'periode' => $periode,
+            ]);
+
+            return $matiere;
+        }, $payload['subjects']);
+
+        return $payload;
     }
 
     /**
