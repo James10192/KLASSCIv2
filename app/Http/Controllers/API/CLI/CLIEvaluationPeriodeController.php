@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\API\CLI;
 
 use App\Domain\BtsTroncCommun\ClasseOuvertureResolver;
+use App\Domain\Notes\RecalculApresDeplacement;
 use App\Http\Controllers\API\BaseApiController;
 use App\Models\ESBTPEvaluation;
 use App\Models\ESBTPNote;
@@ -78,7 +79,10 @@ class CLIEvaluationPeriodeController extends BaseApiController
 
         $traitees = [];
 
-        DB::transaction(function () use ($anomalies, &$traitees) {
+        $recalcul = DB::transaction(function () use ($anomalies, &$traitees, $request) {
+            $moyennes = app(RecalculApresDeplacement::class);
+            $releve = $moyennes->releverAvant(array_column($anomalies, 'evaluation_id'));
+
             foreach ($anomalies as $a) {
                 $evaluation = ESBTPEvaluation::find($a['evaluation_id']);
                 if (! $evaluation) {
@@ -105,6 +109,8 @@ class CLIEvaluationPeriodeController extends BaseApiController
                     'notes_realignees' => $notes,
                 ];
             }
+
+            return $moyennes->apresEnRetirantLesLignesVidees($releve, 'semestre d ouverture de la classe', $request->user()->id);
         });
 
         Log::warning('CLI: evaluations deplacees vers le semestre d ouverture de leur classe', [
@@ -116,7 +122,7 @@ class CLIEvaluationPeriodeController extends BaseApiController
             'dry_run' => false,
             'traitees' => $traitees,
             'total' => count($traitees),
-        ], count($traitees).' evaluation(s) deplacee(s).');
+        ] + $recalcul, count($traitees).' evaluation(s) deplacee(s).');
     }
 
     /**

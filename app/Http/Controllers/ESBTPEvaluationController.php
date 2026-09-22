@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Domain\Notes\Actions\DeplacerUneEvaluation;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPEtudiant;
@@ -750,11 +751,6 @@ class ESBTPEvaluationController extends Controller
                 $evaluation->duree_minutes = $calculatedDuration;
             }
 
-            // Capture des anciennes valeurs pour détecter changements (avant assignation)
-            $oldClasseId = $evaluation->getOriginal('classe_id');
-            $oldMatiereId = $evaluation->getOriginal('matiere_id');
-            $oldPeriode = $evaluation->getOriginal('periode');
-
             // Met à jour classe/matière si pas de notes OU si user a la permission de bypass
             if (! $hasNotes || $canBypassLock) {
                 $evaluation->classe_id = $request->classe_id;
@@ -771,36 +767,7 @@ class ESBTPEvaluationController extends Controller
                     ? $evaluation->determineAutomaticStatus(null, false)
                     : ESBTPEvaluation::STATUS_DRAFT;
             }
-            $evaluation->save();
-
-            // PROPAGATION aux notes filles : si classe/matiere/periode ont changé sur l'évaluation,
-            // synchroniser les colonnes dénormalisées des notes (esbtp_notes.classe_id,
-            // matiere_id, semestre). Sinon les vues qui groupent par note.matiere_id (résultats,
-            // bulletins) continuent d'afficher l'ancienne matière jusqu'au prochain save manuel.
-            $notesUpdates = [];
-            if ($evaluation->classe_id != $oldClasseId) {
-                $notesUpdates['classe_id'] = $evaluation->classe_id;
-            }
-            if ($evaluation->matiere_id != $oldMatiereId) {
-                $notesUpdates['matiere_id'] = $evaluation->matiere_id;
-            }
-            if ($evaluation->periode != $oldPeriode) {
-                // semestre = entier (1 ou 2) extrait de 'semestre1'/'semestre2'
-                $notesUpdates['semestre'] = (int) str_replace('semestre', '', (string) $evaluation->periode);
-            }
-            if (! empty($notesUpdates)) {
-                $affected = ESBTPNote::where('evaluation_id', $evaluation->id)->update($notesUpdates);
-                \Log::info('Notes propagées après modif évaluation', [
-                    'evaluation_id' => $evaluation->id,
-                    'changes' => $notesUpdates,
-                    'old' => [
-                        'classe_id' => $oldClasseId,
-                        'matiere_id' => $oldMatiereId,
-                        'periode' => $oldPeriode,
-                    ],
-                    'notes_affected' => $affected,
-                ]);
-            }
+            $moyennes = app(DeplacerUneEvaluation::class)->enregistrer($evaluation);
 
             // Garde-fou non bloquant TC/Spécialité (basé sur la classe cible).
             $tcWarning = $this->troncCommunSpecialiteWarning(
@@ -810,6 +777,7 @@ class ESBTPEvaluationController extends Controller
 
             $redirect = redirect()->route('esbtp.evaluations.show', $evaluation)
                 ->with('success', 'L\'évaluation a été mise à jour avec succès');
+            $tcWarning = trim($tcWarning.' '.$this->avertissementMoyennes($moyennes));
             if ($tcWarning) {
                 $redirect->with('warning', $tcWarning);
             }
@@ -820,6 +788,23 @@ class ESBTPEvaluationController extends Controller
                 ->with('error', 'Une erreur est survenue lors de la mise à jour de l\'évaluation: '.$e->getMessage())
                 ->withInput();
         }
+    }
+
+    /**
+     * Ce que l'enseignant doit savoir des moyennes enregistrées après le changement.
+     */
+    private function avertissementMoyennes(array $moyennes): string
+    {
+        $phrases = [];
+        if ($n = count($moyennes['lignes_retirees'])) {
+            $phrases[] = "{$n} moyenne(s) enregistrée(s) n'avaient plus aucune note après ce changement : elles ont été mises de côté "
+                .'(suppression réversible, tracée dans le journal d\'audit).';
+        }
+        if ($n = count($moyennes['lignes_sans_note'])) {
+            $phrases[] = "{$n} moyenne(s) enregistrée(s) sans note n'ont pas été modifiées : vérifiez-les dans « Modifier les moyennes ».";
+        }
+
+        return implode(' ', $phrases);
     }
 
     /**

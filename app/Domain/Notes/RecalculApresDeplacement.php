@@ -26,21 +26,29 @@ use Illuminate\Support\Facades\Log;
  * laquelle des quatre coordonnées il a changée, ni à construire la nouvelle.
  *
  * LE PIÈGE DU ZÉRO. `NoteCalculationService::studentMatiereAverage([])` rend
- * `0.0`, et le job n'y renonce que s'il ne trouve NI note NI ligne : face à une
- * ligne sans note, il écrit 0/20. Une coordonnée n'est donc recalculée que s'il
- * y a au moins une note — des DEUX côtés. La quittée peut avoir été vidée, la
- * rejointe peut n'en recevoir aucune (évaluation annulée). Sinon la ligne est
- * SIGNALÉE, jamais touchée : la garder, la retirer ou la corriger est une
- * décision d'établissement, et elle a pu être saisie à la main.
+ * `0.0`. Une coordonnée n'est donc recalculée que s'il y a au moins une note —
+ * des DEUX côtés : la quittée peut avoir été vidée, la rejointe peut n'en
+ * recevoir aucune (évaluation annulée). Le job porte la même garde depuis
+ * septembre 2026 ; celle-ci décide en plus de ce qu'on RAPPORTE.
  *
- * Une ligne laissée sur la coordonnée quittée porte encore la moyenne des notes
- * parties. Elle n'est sans danger que si elle est INCOHÉRENTE avec sa classe :
- * les lecteurs qui additionnent les lignes d'un élève l'écartent alors
- * (`CoherenceSystemeAcademique::resultatsRetenus()`, et la génération du
- * bulletin BTS). C'est pourquoi la rebascule CLI refuse tout déplacement entre
- * deux matières déjà cohérentes : la ligne qu'elle laisse l'est toujours.
- * Cohérente, la même ligne resterait lue et compterait ses notes deux fois —
- * c'est ce qui attend tout déplaceur de période ou de classe.
+ * UNE LIGNE SANS NOTE : DEUX CONDUITES, DEUX MÉTHODES.
+ *  - {@see apres()} la SIGNALE, jamais touchée. C'est la conduite de la
+ *    rebascule CLI, qui ne laisse que des lignes incohérentes avec leur
+ *    classe : tous les lecteurs filtrés les écartent déjà.
+ *  - {@see apresEnRetirantLesLignesVidees()} MET DE CÔTÉ (suppression réversible,
+ *    tracée par l'audit) une ligne que le déplacement a VIDÉE — une coordonnée
+ *    qui portait des notes juste avant et n'en porte plus. Sa moyenne portait
+ *    sur ces notes-là, saisie manuelle comprise ; cohérente, elle resterait lue
+ *    et les notes compteraient deux fois. Décision de l'établissement
+ *    (septembre 2026) pour les déplacements de période, de classe ou de matière
+ *    entre coordonnées cohérentes. Une ligne sans note du côté REJOINT n'a
+ *    rien perdu : elle est seulement signalée.
+ *
+ * Pourquoi la rebascule peut se contenter de signaler : une ligne laissée sur
+ * la coordonnée quittée n'est sans danger que si elle est INCOHÉRENTE avec sa
+ * classe (`CoherenceSystemeAcademique::resultatsRetenus()` et la génération du
+ * bulletin BTS l'écartent). La rebascule refuse donc tout déplacement entre
+ * deux matières déjà cohérentes.
  *
  * LA SOURCE D'AUDIT EST `manual`. `esbtp_resultats_recompute_log.source` est un
  * `ENUM('observer', 'command', 'manual')` : une autre valeur y ferait échouer
@@ -52,14 +60,11 @@ use Illuminate\Support\Facades\Log;
  *
  * | déplaceur                                             | coordonnée               | branché |
  * |-------------------------------------------------------|--------------------------|---------|
- * | `CLIMaintenanceController::evaluationChangeMatiere()` | matière                  | oui     |
- * | `ESBTPEvaluationController::update()`                 | classe, matière, période | non     |
- * | `CLIEvaluationDeplacementController::deplacer()`      | période                  | non     |
- * | `CLIEvaluationPeriodeController`                      | période                  | non     |
+ * | `CLIMaintenanceController::evaluationChangeMatiere()` | matière                  | signale |
+ * | `ESBTPEvaluationController::update()`                 | classe, matière, période | retire  |
+ * | `CLIEvaluationDeplacementController::deplacer()`      | période                  | retire  |
+ * | `CLIEvaluationPeriodeController::repair()`            | période                  | retire  |
  * | `MergeDuplicateEcue` (sous `force`)                   | matière                  | exclu   |
- *
- * Les trois « non » ont le défaut décrit ici et attendent leur propre revue :
- * l'un est l'écran d'édition des évaluations, sur huit instances.
  *
  * La fusion d'ECUE est EXCLUE, et ce n'est pas un oubli : elle ne déplace que
  * des ECUE, dont la moyenne se relit sur les notes (`LMDBulletinService`, par
@@ -84,9 +89,13 @@ final class RecalculApresDeplacement
      * Qui a une note sur ces évaluations, et à quelle coordonnée — AVANT le
      * déplacement : après, rien ne dit plus d'où venait chaque évaluation.
      *
-     * Mêmes exclusions que le job (notes effacées ou archivées, évaluations
-     * effacées). Une évaluation sans classe, année ou période n'est pas
-     * recalculable, elle ne l'était pas non plus avant.
+     * Mêmes exclusions que le job : notes effacées ou archivées, évaluations
+     * effacées ou ANNULÉES. Ce dernier point n'est pas cosmétique : les notes
+     * d'une évaluation annulée ne comptent nulle part, donc la déplacer ne vide
+     * rien — la relever ferait prendre pour « vidée » une coordonnée dont la
+     * ligne ne leur devait rien (une saisie manuelle, par exemple), et
+     * {@see apresEnRetirantLesLignesVidees()} la mettrait de côté. Une évaluation
+     * sans classe, année ou période n'est pas recalculable non plus.
      *
      * @param  list<int>  $evaluationIds
      * @return list<array{etudiant_id:int, evaluation_id:int, avant:array}>
@@ -99,6 +108,7 @@ final class RecalculApresDeplacement
             ->whereNull('n.deleted_at')
             ->whereNull('n.archived_at')
             ->whereNull('e.deleted_at')
+            ->where('e.status', '!=', 'cancelled')
             ->whereNotNull('e.classe_id')
             ->whereNotNull('e.matiere_id')
             ->whereNotNull('e.annee_universitaire_id')
@@ -129,31 +139,70 @@ final class RecalculApresDeplacement
      */
     public function apres(array $releve, string $motif, ?int $declenchePar = null): array
     {
+        return $this->traiter($releve, $motif, $declenchePar, false);
+    }
+
+    /**
+     * Comme {@see apres()}, mais une ligne que le déplacement a vidée est mise de
+     * côté au lieu d'être signalée. Voir l'en-tête pour le pourquoi.
+     *
+     * @return array{recalculs_lances:int, lignes_sans_note:list<array>, lignes_retirees:list<array>}
+     */
+    public function apresEnRetirantLesLignesVidees(array $releve, string $motif, ?int $declenchePar = null): array
+    {
+        return $this->traiter($releve, $motif, $declenchePar, true);
+    }
+
+    private function traiter(array $releve, string $motif, ?int $declenchePar, bool $retirerLesVidees): array
+    {
         $maintenant = DB::table('esbtp_evaluations')
             ->whereIn('id', array_unique(array_column($releve, 'evaluation_id')))
             ->get(['id', 'classe_id', 'matiere_id', 'annee_universitaire_id', 'periode'])
             ->keyBy('id');
 
+        // [étudiant, coordonnée, vidée ?] — « vidée » : elle portait les notes
+        // relevées avant le déplacement. Une coordonnée qui est à la fois quittée
+        // et rejointe (deux évaluations échangées) n'est pas vidée si des notes
+        // y restent : le test aDesNotes() tranche avant.
         $coordonnees = [];
         foreach ($releve as $r) {
+            $coordonnees[$this->cle($r['etudiant_id'], $r['avant'])] = [$r['etudiant_id'], $r['avant'], true];
+        }
+        foreach ($releve as $r) {
             $apres = $maintenant->get($r['evaluation_id']);
-            foreach (array_filter([$r['avant'], $apres ? $this->coordonnee((array) $apres) : null]) as $c) {
-                $coordonnees[$this->cle($r['etudiant_id'], $c)] = [$r['etudiant_id'], $c];
+            $c = $apres ? $this->coordonnee((array) $apres) : null;
+            if ($c) {
+                $coordonnees[$this->cle($r['etudiant_id'], $c)] ??= [$r['etudiant_id'], $c, false];
             }
         }
 
         $lances = 0;
         $sansNote = [];
+        $retirees = [];
 
-        foreach ($coordonnees as [$etudiantId, $c]) {
+        foreach ($coordonnees as [$etudiantId, $c, $videe]) {
             if ($this->aDesNotes($etudiantId, $c)) {
                 $this->lancer($etudiantId, $c, $declenchePar);
                 $lances++;
             } elseif ($ligne = $this->ligneDeResultat($etudiantId, $c)) {
-                $sansNote[] = ['etudiant_id' => $etudiantId] + $c + [
+                $trace = ['etudiant_id' => $etudiantId] + $c + [
                     'moyenne' => $ligne->moyenne !== null ? (float) $ligne->moyenne : null,
                 ];
+                if ($retirerLesVidees && $videe) {
+                    $ligne->delete();
+                    $retirees[] = $trace;
+                } else {
+                    $sansNote[] = $trace;
+                }
             }
+        }
+
+        if ($retirees !== []) {
+            Log::warning('Deplacement de notes : moyennes videes par le deplacement, mises de cote', [
+                'motif' => $motif,
+                'nombre' => count($retirees),
+                'lignes' => $retirees,
+            ]);
         }
 
         if ($sansNote !== []) {
@@ -164,7 +213,9 @@ final class RecalculApresDeplacement
             ]);
         }
 
-        return ['recalculs_lances' => $lances, 'lignes_sans_note' => $sansNote];
+        $rapport = ['recalculs_lances' => $lances, 'lignes_sans_note' => $sansNote];
+
+        return $retirerLesVidees ? $rapport + ['lignes_retirees' => $retirees] : $rapport;
     }
 
     /**

@@ -129,33 +129,54 @@ class RecalculApresDeplacementTest extends TestCase
         $this->assertSame(2.0, $this->moyenne(self::PHYSIQUE));
     }
 
-    public function test_la_coordonnee_rejointe_sans_note_n_est_pas_remise_a_zero(): void
+    public function test_deplacer_une_evaluation_annulee_ne_touche_a_aucune_moyenne(): void
     {
-        // Une évaluation ANNULÉE qu'on déplace : ses notes ne comptent nulle part,
-        // donc la matière rejointe n'en reçoit aucune. Sa ligne existante (saisie
-        // à la main, par exemple) ne doit pas tomber à 0.
+        // Ses notes ne comptent nulle part : la déplacer ne vide rien. Les deux
+        // lignes — saisies à la main, par exemple — ne doivent ni tomber à 0,
+        // ni être prises pour « vidées » et mises de côté.
         $annulee = $this->evaluation(self::MATHS, 'cancelled');
         $this->note($annulee, 12);
+        $this->resultat(self::MATHS, 11);
         $this->resultat(self::PHYSIQUE, 14);
 
-        $rapport = $this->deplacer($annulee, ['matiere_id' => self::PHYSIQUE]);
+        $rapport = $this->deplacer($annulee, ['matiere_id' => self::PHYSIQUE], retirer: true);
 
         $this->assertSame(0, $rapport['recalculs_lances']);
+        $this->assertSame([], $rapport['lignes_retirees']);
+        $this->assertSame(11.0, $this->moyenne(self::MATHS));
         $this->assertSame(14.0, $this->moyenne(self::PHYSIQUE));
-        $this->assertSame(self::PHYSIQUE, $rapport['lignes_sans_note'][0]['matiere_id']);
+    }
+
+    public function test_une_ligne_videe_par_un_deplacement_de_semestre_est_mise_de_cote(): void
+    {
+        // Semestre 1 → semestre 2, tout reste cohérent : laissée en place, la
+        // ligne du semestre 1 serait lue par le bulletin et le certificat, et
+        // la note compterait deux fois.
+        $evaluation = $this->evaluation(self::MATHS);
+        $this->note($evaluation, 14);
+        $this->resultat(self::MATHS, 14);
+
+        $rapport = $this->deplacer($evaluation, ['periode' => 'semestre2'], retirer: true);
+
+        $this->assertSame(1, $rapport['recalculs_lances']);
+        $this->assertCount(1, $rapport['lignes_retirees']);
+        $this->assertNotNull(DB::table('esbtp_resultats')->where('periode', 'semestre1')->value('deleted_at'));
+        $this->assertSame(14.0, (float) DB::table('esbtp_resultats')->where('periode', 'semestre2')->value('moyenne'));
     }
 
     // ── outillage ─────────────────────────────────────────────────────────
 
-    private function deplacer(int $evaluationId, array $changement): array
+    private function deplacer(int $evaluationId, array $changement, bool $retirer = false): array
     {
         $recalcul = app(RecalculApresDeplacement::class);
 
-        return DB::transaction(function () use ($recalcul, $evaluationId, $changement) {
+        return DB::transaction(function () use ($recalcul, $evaluationId, $changement, $retirer) {
             $releve = $recalcul->releverAvant([$evaluationId]);
             DB::table('esbtp_evaluations')->where('id', $evaluationId)->update($changement);
 
-            return $recalcul->apres($releve, 'test');
+            return $retirer
+                ? $recalcul->apresEnRetirantLesLignesVidees($releve, 'test')
+                : $recalcul->apres($releve, 'test');
         });
     }
 

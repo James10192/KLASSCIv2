@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\API\CLI;
 
+use App\Domain\Notes\RecalculApresDeplacement;
 use App\Http\Controllers\API\BaseApiController;
 use App\Models\ESBTPEvaluation;
 use App\Models\ESBTPNote;
@@ -109,7 +110,10 @@ class CLIEvaluationDeplacementController extends BaseApiController
 
         $traitees = [];
 
-        DB::transaction(function () use ($aDeplacer, $cible, &$traitees) {
+        $recalcul = DB::transaction(function () use ($aDeplacer, $cible, &$traitees, $request) {
+            $moyennes = app(RecalculApresDeplacement::class);
+            $releve = $moyennes->releverAvant(array_column($aDeplacer, 'evaluation_id'));
+
             foreach ($aDeplacer as $ligne) {
                 $evaluation = ESBTPEvaluation::find($ligne['evaluation_id']);
                 if (! $evaluation) {
@@ -133,6 +137,8 @@ class CLIEvaluationDeplacementController extends BaseApiController
                     'notes_realignees' => $notes,
                 ];
             }
+
+            return $moyennes->apresEnRetirantLesLignesVidees($releve, 'deplacement de semestre sur decision humaine', $request->user()->id);
         });
 
         Log::warning('CLI: evaluations deplacees de semestre sur decision humaine', [
@@ -148,6 +154,6 @@ class CLIEvaluationDeplacementController extends BaseApiController
             'introuvables' => $introuvables,
             'total' => count($traitees),
             'notes_realignees' => array_sum(array_column($traitees, 'notes_realignees')),
-        ], count($traitees).' evaluation(s) deplacee(s) vers '.$cible.'.');
+        ] + $recalcul, count($traitees).' evaluation(s) deplacee(s) vers '.$cible.'.');
     }
 }

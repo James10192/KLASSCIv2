@@ -197,6 +197,16 @@ trait SchemaDesMoyennes
             $t->softDeletes();
             $t->timestamps();
         });
+        // Ouvertures des classes de spécialité : lue par la garde de période
+        // d'`ESBTPEvaluation` et par la réparation CLI des périodes.
+        Schema::create('esbtp_classe_orientation_targets', function (Blueprint $t) {
+            $t->id();
+            $t->unsignedBigInteger('source_classe_id')->nullable();
+            $t->unsignedBigInteger('target_classe_id');
+            $t->unsignedTinyInteger('semestre_activation')->default(2);
+            $t->boolean('is_active')->default(true);
+            $t->timestamps();
+        });
         Schema::create('esbtp_etudiants', function (Blueprint $t) {
             $t->id();
             $t->string('nom')->nullable();

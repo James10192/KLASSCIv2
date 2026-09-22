@@ -103,19 +103,18 @@ porte deux clés de plus :
 | `recalculs_lances` | recalculs **programmés**. Sur une file asynchrone, ils ne sont pas encore faits quand la réponse revient. |
 | `lignes_sans_note` | moyennes enregistrées laissées sans aucune note (en général celle de la matière quittée). **Jamais remises à zéro** — recalculer une ligne vide y écrirait 0/20. À trancher par l'école. |
 
-⚠️ **Le déplacement « par l'écran » de l'option 2 ci-dessous, lui, ne recalcule
-pas.** Après l'avoir utilisé, relancer le calcul sur la classe depuis le terminal
-du serveur (terminal cPanel : il n'y a pas d'accès SSH, et cette commande n'a pas
-d'équivalent `/api/cli`) :
-
-```bash
-php artisan notes:recompute --classe=<id> --dry-run   # puis sans --dry-run
-```
-
-`notes:recompute` part des évaluations : il ne touche que les coordonnées qui en
-portent encore une, donc il n'écrira jamais de zéro sur la matière quittée. Les
-déplaceurs de notes et leur état sont recensés en tête de
+Le déplacement « par l'écran » de l'option 2 ci-dessous recalcule lui aussi
+(septembre 2026), et met de côté la moyenne de la matière quittée si le
+déplacement lui a retiré toutes ses notes : cohérente avec la classe, elle
+serait sinon lue par le bulletin et le certificat, et les notes compteraient
+deux fois. Les déplaceurs de notes et leur conduite sont recensés en tête de
 `app/Domain/Notes/RecalculApresDeplacement.php`.
+
+Pour une modification faite avant cette version, `php artisan notes:recompute
+--classe=<id>` (terminal cPanel : pas d'accès SSH, pas d'équivalent `/api/cli`)
+recalcule les matières qui portent des évaluations. Il ne touche jamais une
+ligne sans note : une ligne périmée sur la matière quittée se retire à la main,
+depuis « Modifier les moyennes ».
 
 ## Le sort des notes trouvées n'est pas une décision de code
 
