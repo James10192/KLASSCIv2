@@ -110,7 +110,8 @@ La réponse porte un bloc `resultats` :
   "recalcules": 2,
   "orphelins": [
     {"etudiant_id": 812, "classe_id": 14, "matiere_id": 97,
-     "annee_universitaire_id": 3, "periode": "semestre1", "moyenne": 11.5}
+     "annee_universitaire_id": 3, "periode": "semestre1", "moyenne": 11.5,
+     "etudiant": "KOUASSI Aya", "classe": "BTS GC 1"}
   ]
 }
 ```

@@ -50,6 +50,7 @@ class DeplaceursDeNotesRecalculTest extends TestCase
         $this->monterLeSchemaDesMoyennes();
 
         DB::table('esbtp_annee_universitaires')->insert(['id' => self::ANNEE, 'is_current' => 1]);
+        DB::table('esbtp_etudiants')->insert(['id' => self::ETUDIANT, 'nom' => 'KOUASSI', 'prenoms' => 'Aya']);
         DB::table('esbtp_classes')->insert([
             'id' => self::CLASSE, 'name' => 'BTS GC 1', 'systeme_academique' => 'BTS',
         ]);
@@ -177,6 +178,9 @@ class DeplaceursDeNotesRecalculTest extends TestCase
         $orphelins = $reponse->getData(true)['data']['resultats']['orphelins'];
         $this->assertCount(1, $orphelins);
         $this->assertSame('semestre1', $orphelins[0]['periode']);
+        // Lisible par la personne qui tranche, pas seulement par un script.
+        $this->assertSame('KOUASSI Aya', $orphelins[0]['etudiant']);
+        $this->assertSame('BTS GC 1', $orphelins[0]['classe']);
         $this->assertSame(12.0, $this->moyenne(self::MATIERE, 'semestre1'));
     }
 

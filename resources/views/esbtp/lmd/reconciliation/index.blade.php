@@ -338,10 +338,10 @@
                         <template x-if="orphelins(modal.done).length">
                             <div class="rec-warn">
                                 <div class="rec-done-title"><i class="fas fa-exclamation-triangle"></i><span x-text="orphelins(modal.done).length + ' moyenne(s) sans aucune note'"></span></div>
-                                Elles portaient sur l'élément absorbé. Elles n'ont été ni recalculées (elles tomberaient à 0/20) ni supprimées : à vérifier dans les résultats de l'élève.
+                                Elles portaient sur l'élément absorbé. Elles n'ont été ni recalculées (elles tomberaient à 0/20) ni supprimées : ouvrez les résultats de l'élève pour trancher.
                                 <ul class="rec-done-list">
                                     <template x-for="o in orphelins(modal.done)" :key="o.etudiant_id + '-' + o.classe_id + '-' + o.periode">
-                                        <li x-text="'Élève #' + o.etudiant_id + ' · classe #' + o.classe_id + ' · ' + o.periode + ' · moyenne ' + (o.moyenne === null ? '—' : o.moyenne)"></li>
+                                        <li><a :href="resultatsEleveUrl(o.etudiant_id)" target="_blank" rel="noopener" x-text="o.etudiant || ('Élève #' + o.etudiant_id)"></a> <span x-text="'· ' + (o.classe || ('classe #' + o.classe_id)) + ' · ' + periodeLisible(o.periode) + ' · moyenne ' + (o.moyenne === null ? '—' : o.moyenne)"></span></li>
                                     </template>
                                 </ul>
                             </div>
@@ -436,6 +436,7 @@ function recManager() {
         busy: false,
         modal: { open: false, type: null, typeLabel: '', group: null, canonical: null, report: null, force: false, done: null },
         bulletinUrlGabarit: @json(route('esbtp.lmd.bulletins.show', ['bulletin' => '__ID__'])),
+        resultatsEleveUrlGabarit: @json(route('esbtp.lmd.resultats.etudiant', ['etudiant' => '__ID__'])),
         toasts: [],
         _tid: 0,
 
@@ -577,6 +578,11 @@ function recManager() {
         conflitsLmd(r) { return ((r && r.lmd_resultats_ecues) || {}).conflits || []; },
         bulletinsARegenerer(r) { return ((r && r.lmd_resultats_ecues) || {}).bulletins_a_regenerer || []; },
         bulletinUrl(id) { return this.bulletinUrlGabarit.replace('__ID__', id); },
+        resultatsEleveUrl(id) { return this.resultatsEleveUrlGabarit.replace('__ID__', id); },
+        periodeLisible(p) {
+            const m = String(p || '').match(/^(?:semestre\s*)?(\d+)$/i);
+            return m ? 'Semestre ' + m[1] : (p || '');
+        },
 
         toast(type, message) {
             const id = ++this._tid;

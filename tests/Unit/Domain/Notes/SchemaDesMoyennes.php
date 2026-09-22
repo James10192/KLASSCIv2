@@ -82,6 +82,14 @@ trait SchemaDesMoyennes
             $t->boolean('is_active')->default(true);
             $t->timestamps();
         });
+        // Lue pour nommer les moyennes orphelines dans les comptes rendus.
+        Schema::create('esbtp_etudiants', function (Blueprint $t) {
+            $t->id();
+            $t->string('nom')->nullable();
+            $t->string('prenoms')->nullable();
+            $t->softDeletes();
+            $t->timestamps();
+        });
         Schema::create('esbtp_matieres', function (Blueprint $t) {
             $t->id();
             $t->string('name');

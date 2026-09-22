@@ -120,7 +120,7 @@ final class RecalculApresDeplacement
      *                                                                                                                                                                                                                                          Un élément par élève et par couple de coordonnées. Les doublons
      *                                                                                                                                                                                                                                          sont tolérés : chaque coordonnée n'est traitée qu'une fois.
      * @param  string  $motif  pour le journal, par exemple « fusion ECUE 12 → 7 »
-     * @return array{recalcules:int, orphelins:list<array{etudiant_id:int, classe_id:int, matiere_id:int, annee_universitaire_id:int, periode:string, moyenne:?float}>}
+     * @return array{recalcules:int, orphelins:list<array{etudiant_id:int, classe_id:int, matiere_id:int, annee_universitaire_id:int, periode:string, moyenne:?float, etudiant:?string, classe:?string}>}
      *
      * À appeler DANS la transaction du déplacement, APRÈS ses `update()` : la
      * recherche des notes restantes doit voir l'état déplacé.
@@ -183,6 +183,8 @@ final class RecalculApresDeplacement
         }
 
         if ($orphelins !== []) {
+            $orphelins = $this->nommer($orphelins);
+
             Log::warning('Deplacement de notes : moyennes laissees sans note, non recalculees', [
                 'motif' => $motif,
                 'nombre' => count($orphelins),
@@ -254,7 +256,7 @@ final class RecalculApresDeplacement
      * ignorée, et ne coûte aucun recalcul.
      *
      * @param  list<array{evaluation_id:int, etudiant_id:int, avant:array}>  $releve
-     * @return array{recalcules:int, orphelins:list<array{etudiant_id:int, classe_id:int, matiere_id:int, annee_universitaire_id:int, periode:string, moyenne:?float}>}
+     * @return array{recalcules:int, orphelins:list<array{etudiant_id:int, classe_id:int, matiere_id:int, annee_universitaire_id:int, periode:string, moyenne:?float, etudiant:?string, classe:?string}>}
      */
     public function apresEvaluations(array $releve, string $motif, ?int $declenchePar = null): array
     {
@@ -288,6 +290,35 @@ final class RecalculApresDeplacement
         }
 
         return $this->apres($deplacements, $motif, $declenchePar);
+    }
+
+    /**
+     * Une ligne orpheline est une décision à prendre par une personne : elle
+     * doit pouvoir la lire sans aller traduire des identifiants. Deux requêtes,
+     * seulement quand il y a des orphelins. `DB::table` : un élève ou une classe
+     * effacés en douceur gardent leur nom.
+     *
+     * @param  list<array{etudiant_id:int, classe_id:int}>  $orphelins
+     * @return list<array>
+     */
+    private function nommer(array $orphelins): array
+    {
+        $eleves = DB::table('esbtp_etudiants')
+            ->whereIn('id', array_unique(array_column($orphelins, 'etudiant_id')))
+            ->get(['id', 'nom', 'prenoms'])
+            ->keyBy('id');
+        $classes = DB::table('esbtp_classes')
+            ->whereIn('id', array_unique(array_column($orphelins, 'classe_id')))
+            ->pluck('name', 'id');
+
+        return array_map(function (array $o) use ($eleves, $classes) {
+            $eleve = $eleves->get($o['etudiant_id']);
+
+            return $o + [
+                'etudiant' => $eleve ? trim($eleve->nom.' '.$eleve->prenoms) : null,
+                'classe' => $classes->get($o['classe_id']),
+            ];
+        }, $orphelins);
     }
 
     /**
