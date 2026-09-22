@@ -5,6 +5,9 @@
 @push('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
 <link rel="stylesheet" href="{{ asset('css/notes-management.css') }}">
+<style>
+    .note-input.nm-note-refused { border-color: #dc2626 !important; background: rgba(220,38,38,.06) !important; }
+</style>
 @endpush
 
 @section('page_title', 'Gestion des Notes')
@@ -832,6 +835,7 @@ $(document).ready(function() {
     // Gestion de la sélection de matière
     $('#matiereSelect').on('change', function() {
         nmFlushAutosave();
+        nmCancelFinalSaveRetry();
         currentMatiereId  = $(this).val();
         currentMatiereName = $(this).find('option:selected').text().trim();
         if (currentClassId && currentMatiereId) {
@@ -841,6 +845,7 @@ $(document).ready(function() {
 
     $('#periodeFilter').on('change', function() {
         nmFlushAutosave();
+        nmCancelFinalSaveRetry();
         currentPeriodeFilter = $(this).val();
         if (currentClassId && currentMatiereId) {
             buildNotesGrid();
@@ -929,8 +934,8 @@ function selectClass(classId, className) {
         cachedStudentsClassId = null;
         cachedStudentsRequestKey = null;
         nmAbortGridRequests();
-        // Une nouvelle tentative programmée après un 429 visait la classe
-        // quittée : la rejouer enverrait les brouillons de la nouvelle.
+        // Une nouvelle tentative programmée après un 429 visait la grille
+        // quittée : la rejouer enverrait d'autres brouillons.
         nmCancelFinalSaveRetry();
     }
     currentClassId = classId;
@@ -1682,9 +1687,15 @@ $('#saveAllNotesBtn').on('click', function() {
                 // échouent : on relit sa vérité plutôt que de garder à l'écran
                 // des brouillons qui sont déjà validés en base.
                 btn.html(`<i class="fas fa-exclamation-triangle me-1"></i> ${response.errors} erreur(s)`).prop('disabled', false);
-                nmShowToast('error', `${response.saved || 0} note(s) validée(s), ${response.errors} refusée(s) : hors barème, hors classe ou non autorisée(s).`);
+                const raisons = [...new Set((response.refused || []).map(r => r.raison))].join(', ');
+                nmShowToast('error', `${response.saved || 0} note(s) validée(s), ${response.errors} refusée(s)${raisons ? ' : ' + raisons : ''}. Les notes refusées restent en rouge.`, 6000);
                 setTimeout(() => { btn.html(originalText); }, 2500);
-                loadEvaluationsAndNotes();
+                // Sans la liste des refus (serveur plus ancien), on ne sait
+                // pas lesquelles restaurer : on garde la grille telle quelle.
+                if (Array.isArray(response.refused)) {
+                    nmMemoriserRefus(notesPayload, response.refused);
+                    loadEvaluationsAndNotes();
+                }
                 return;
             }
 
@@ -1741,20 +1752,14 @@ $('#saveAllNotesBtn').on('click', function() {
         error: function(xhr) {
             if (xhr.status === 429) {
                 const retryAfter = Math.min(60, Math.max(2, Number(xhr.getResponseHeader('Retry-After')) || 5));
-                const retryClassId = currentClassId;
-                const retryMatiereId = currentMatiereId;
                 btn.html(`<i class="fas fa-clock me-1"></i> Nouvelle tentative dans ${retryAfter}s…`).prop('disabled', true);
                 nmShowToast('info', 'Le serveur espace les validations. Votre brouillon est conservé et sera renvoyé automatiquement.');
                 nmFinalSaveRetryTimer = setTimeout(function() {
                     nmFinalSaveRetryTimer = null;
                     nmFinalSaveInFlight = false;
-                    // On ne renvoie que la saisie qui a été refusée : si la
-                    // personne a changé de classe ou de matière entre-temps,
-                    // ce clic validerait d'autres brouillons à sa place.
-                    if (retryClassId !== currentClassId || retryMatiereId !== currentMatiereId) {
-                        btn.html(originalText).prop('disabled', false);
-                        return;
-                    }
+                    // Tout changement de classe, de matière ou de période annule
+                    // ce minuteur (nmCancelFinalSaveRetry) : s'il se déclenche,
+                    // la grille est toujours celle qui a été refusée.
                     if (btn.is(':visible')) btn.trigger('click');
                 }, retryAfter * 1000);
                 return;
@@ -2638,227 +2643,7 @@ $(document).ajaxError(function(_event, _jqxhr, settings) {
     }
 });
 
-// ── 3. localStorage autosave (anti-perte) ───────────────────────────────
-function nmDraftKey() {
-    if (!currentClassId || !currentMatiereId) return null;
-    // L'état, pas le <select> : pendant son événement « change », le select
-    // porte déjà la nouvelle période alors que la grille est encore l'ancienne.
-    const periode = currentPeriodeFilter || 'all';
-    return `nm_notes_draft_${currentClassId}_${currentMatiereId}_${periode}`;
-}
-function nmCollectDraftNotes() {
-    // Ne collecter QUE les notes dirty (modifiées + pas encore confirmées serveur).
-    // Sans ce filtre, l'autosave ré-écrit en localStorage TOUS les inputs visibles
-    // (y compris ceux dont la valeur vient juste d'être restaurée puis sauvée),
-    // ce qui ressuscite la bannière "Brouillon non sauvegardé" indéfiniment.
-    const out = {};
-    if (window.nmDirtyNotes.size === 0) return out;
-    window.nmDirtyNotes.forEach(function(key) {
-        const sep = key.indexOf('-');
-        if (sep < 0) return;
-        const sid = key.substring(0, sep);
-        const eid = key.substring(sep + 1);
-        const $i = $(`.note-input[data-student-id="${sid}"][data-eval-id="${eid}"]`);
-        if ($i.length === 0) return;
-        const val = $i.val();
-        const isAbsent = $(`#absent-${sid}-${eid}`).is(':checked');
-        if ((val !== '' && val !== null && val !== undefined) || isAbsent) {
-            if (!out[eid]) out[eid] = {};
-            out[eid][sid] = { note: isAbsent ? 0 : val, isAbsent: !!isAbsent };
-        }
-    });
-    return out;
-}
-function nmAutosaveDraft(expectedKey) {
-    const key = nmDraftKey();
-    if (!key) return;
-    // Programmée pour une classe/matière/période que l'on a quittée : la
-    // grille visible est déjà celle d'un autre contexte, et « aucune note
-    // modifiée » y effacerait le brouillon de ce nouveau contexte.
-    if (expectedKey && expectedKey !== key) return;
-    const notes = nmCollectDraftNotes();
-    if (Object.keys(notes).length === 0) {
-        // Aucune note dirty → purger le draft ET masquer la bannière si visible.
-        try { localStorage.removeItem(key); } catch (e) { /* quota */ }
-        nmHideDraftBanner();
-        return;
-    }
-    try {
-        localStorage.setItem(key, JSON.stringify({
-            savedAt: Date.now(),
-            notes: notes,
-            classLabel: currentClassname,
-            matiereLabel: currentMatiereName,
-        }));
-    } catch (e) {
-        // localStorage plein ou désactivé : silencieux
-        console.warn('NM autosave failed:', e);
-    }
-}
-function nmScheduleAutosave() {
-    if (NM.autosaveDebounceTimer) clearTimeout(NM.autosaveDebounceTimer);
-    const key = nmDraftKey();
-    NM.autosaveDebounceTimer = setTimeout(function () {
-        NM.autosaveDebounceTimer = null;
-        nmAutosaveDraft(key);
-    }, NM.autosaveDebounceMs);
-}
-// Écrit tout de suite le brouillon en attente, AVANT de quitter le contexte
-// courant : les dernières frappes ne sont pas perdues.
-function nmFlushAutosave() {
-    if (!NM.autosaveDebounceTimer) return;
-    clearTimeout(NM.autosaveDebounceTimer);
-    NM.autosaveDebounceTimer = null;
-    nmAutosaveDraft();
-}
-function nmPurgeOldDrafts() {
-    try {
-        const now = Date.now();
-        const keys = [];
-        for (let i = 0; i < localStorage.length; i++) {
-            const k = localStorage.key(i);
-            if (k && k.startsWith('nm_notes_draft_')) keys.push(k);
-        }
-        keys.forEach(k => {
-            try {
-                const obj = JSON.parse(localStorage.getItem(k) || '{}');
-                if (!obj.savedAt || (now - obj.savedAt) > NM.draftTtlMs) {
-                    localStorage.removeItem(k);
-                }
-            } catch (e) { localStorage.removeItem(k); }
-        });
-    } catch (e) { /* ignore */ }
-}
-function nmRelativeTime(timestamp) {
-    const diff = Math.max(0, Date.now() - timestamp);
-    const sec = Math.floor(diff / 1000);
-    if (sec < 60) return 'quelques secondes';
-    const min = Math.floor(sec / 60);
-    if (min < 60) return `${min} min`;
-    const h = Math.floor(min / 60);
-    if (h < 24) return `${h} h`;
-    const d = Math.floor(h / 24);
-    return `${d} j`;
-}
-function nmCheckDraftBanner() {
-    const key = nmDraftKey();
-    if (!key) return;
-    const banner = document.getElementById('nm-restore-banner');
-    if (!banner) return;
-    let raw;
-    try { raw = localStorage.getItem(key); } catch (e) { return; }
-    if (!raw) { banner.style.display = 'none'; return; }
-    let obj;
-    try { obj = JSON.parse(raw); } catch (e) { localStorage.removeItem(key); return; }
-    if (!obj || !obj.notes) { banner.style.display = 'none'; return; }
-
-    let count = 0;
-    Object.values(obj.notes).forEach(byStud => count += Object.keys(byStud).length);
-    if (count === 0) { banner.style.display = 'none'; return; }
-
-    document.getElementById('nm-restore-time').textContent = nmRelativeTime(obj.savedAt || Date.now());
-    document.getElementById('nm-restore-count').textContent = count;
-    banner.style.display = 'flex';
-}
-function nmHideDraftBanner() {
-    const banner = document.getElementById('nm-restore-banner');
-    if (banner) banner.style.display = 'none';
-}
-function nmRestoreFromDraft() {
-    const key = nmDraftKey();
-    if (!key) return;
-    let obj;
-    try { obj = JSON.parse(localStorage.getItem(key) || '{}'); } catch (e) { return; }
-    if (!obj || !obj.notes) return;
-
-    let restored = 0;
-    Object.entries(obj.notes).forEach(([eid, byStud]) => {
-        Object.entries(byStud).forEach(([sid, payload]) => {
-            const $input = $(`.note-input[data-student-id="${sid}"][data-eval-id="${eid}"]`);
-            if ($input.length === 0) return;
-
-            if (payload.isAbsent) {
-                const $checkbox = $(`#absent-${sid}-${eid}`);
-                $checkbox.prop('checked', true);
-                $input.val('0').prop('disabled', true);
-                if (typeof toggleAbsence === 'function') {
-                    // ne pas re-déclencher AJAX si déjà absent
-                }
-                saveNote(sid, eid, 0);  // persist serveur
-            } else {
-                $input.val(payload.note);
-                saveNote(sid, eid, payload.note);
-            }
-            restored++;
-        });
-    });
-    nmHideDraftBanner();
-    nmShowToast('success', `${restored} note(s) restaurée(s) depuis le brouillon local.`);
-    try { localStorage.removeItem(key); } catch (e) { /* ignore */ }
-}
-function nmDiscardDraft() {
-    const key = nmDraftKey();
-    if (!key) return;
-    try { localStorage.removeItem(key); } catch (e) { /* ignore */ }
-    nmHideDraftBanner();
-    nmShowToast('info', 'Brouillon local ignoré.');
-}
-
-$(document).on('click', '#nm-restore-btn', nmRestoreFromDraft);
-$(document).on('click', '#nm-restore-discard', nmDiscardDraft);
-
-// Hook autosave + dirty flag sur tous les inputs notes.
-// On marque la note dirty AVANT que saveNote()/AJAX soit appelé : l'autosave
-// suivant la persistera localement le temps que le serveur confirme.
-$(document).on('input change', '.note-input, .absence-checkbox', function() {
-    const $el = $(this);
-    let sid = $el.data('student-id');
-    let eid = $el.data('eval-id');
-    if (!sid || !eid) {
-        // Cas checkbox absence : on extrait depuis l'id (absent-${sid}-${eid})
-        const id = $el.attr('id') || '';
-        const m = id.match(/^absent-(\d+)-(\d+)$/);
-        if (m) { sid = m[1]; eid = m[2]; }
-    }
-    if (sid && eid) nmMarkDirty(sid, eid);
-    window.nmHasUnsavedChanges = true;
-    nmScheduleAutosave();
-});
-
-// Quand un save serveur réussit, la note est confirmée : la marquer "clean"
-// pour qu'elle ne soit plus collectée par l'autosave. Si plus aucune note
-// dirty → le prochain nmAutosaveDraft purgera le draft + cachera la bannière.
-$(document).ajaxSuccess(function(_event, _jqxhr, settings) {
-    if (typeof settings.url === 'string' && /(save-ajax|save-ajax-bulk)/.test(settings.url)) {
-        // Parser le payload pour récupérer les paires (etudiant_id, evaluation_id)
-        // à marquer comme clean. Le payload peut être :
-        //   - save-ajax : `etudiant_id=X&evaluation_id=Y` (1 paire)
-        //   - save-ajax-bulk : `notes[0][etudiant_id]=X&notes[0][evaluation_id]=Y&notes[1]...`
-        const data = settings.data || '';
-        if (typeof data === 'string' && data.length) {
-            const params = new URLSearchParams(data);
-            // Cas simple
-            const sid = params.get('etudiant_id');
-            const eid = params.get('evaluation_id');
-            if (sid && eid) nmMarkClean(sid, eid);
-            // Cas bulk : reconstituer les paires via notes[i][etudiant_id] / notes[i][evaluation_id]
-            const bulkSids = {}, bulkEids = {};
-            for (const [key, val] of params.entries()) {
-                let m = key.match(/^notes\[(\d+)\]\[etudiant_id\]$/);
-                if (m) { bulkSids[m[1]] = val; continue; }
-                m = key.match(/^notes\[(\d+)\]\[evaluation_id\]$/);
-                if (m) { bulkEids[m[1]] = val; continue; }
-            }
-            Object.keys(bulkSids).forEach(function(idx) {
-                if (bulkEids[idx]) nmMarkClean(bulkSids[idx], bulkEids[idx]);
-            });
-        }
-        if (NM.pendingSaves === 0 && window.nmDirtyNotes.size === 0) {
-            window.nmHasUnsavedChanges = false;
-        }
-        nmScheduleAutosave();
-    }
-});
+@include('esbtp.notes.partials._brouillon-local')
 
 // ── 4. Network indicator dispatcher (compat events custom externes) ────
 window.addEventListener('nm:save-pending', () => nmSetNetworkState('syncing'));

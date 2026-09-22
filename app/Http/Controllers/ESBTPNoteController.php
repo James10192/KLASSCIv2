@@ -709,6 +709,17 @@ class ESBTPNoteController extends Controller
     {
         $errors = 0;
         $saved  = 0;
+        // Les paires refusées, avec leur raison : l'écran les garde en
+        // brouillon au lieu de les écraser par la relecture du serveur.
+        $refused = [];
+        $refuser = function (array $entry, string $raison) use (&$errors, &$refused): void {
+            $errors++;
+            $refused[] = [
+                'etudiant_id' => (int) ($entry['etudiant_id'] ?? 0),
+                'evaluation_id' => (int) ($entry['evaluation_id'] ?? 0),
+                'raison' => $raison,
+            ];
+        };
         $notes = $request->input('notes', []);
         $submitFinal = $request->boolean('submit_final');
 
@@ -734,12 +745,12 @@ class ESBTPNoteController extends Controller
             foreach ($notes as $entry) {
                 $evaluation = $evaluations->get($entry['evaluation_id']);
                 if (! $evaluation || ! $evaluation->is_published) {
-                    $errors++;
+                    $refuser($entry, 'évaluation introuvable ou non publiée');
                     continue;
                 }
 
                 if (! $this->canManageEvaluationNotes(Auth::user(), $evaluation)) {
-                    $errors++;
+                    $refuser($entry, 'non autorisé sur cette évaluation');
                     continue;
                 }
 
@@ -754,7 +765,7 @@ class ESBTPNoteController extends Controller
                 }
 
                 if (! in_array((int) $entry['etudiant_id'], $allowedStudentIdsByEval[$evalKey], true)) {
-                    $errors++;
+                    $refuser($entry, 'étudiant hors de la classe');
                     continue;
                 }
 
@@ -765,7 +776,7 @@ class ESBTPNoteController extends Controller
                 if (! $isAbsent && $rawNote !== null && $rawNote !== '') {
                     $bareme = (float) $evaluation->bareme;
                     if ($bareme <= 0 || (float) $rawNote > $bareme) {
-                        $errors++;
+                        $refuser($entry, 'note hors barème');
                         continue;
                     }
                 }
@@ -774,7 +785,7 @@ class ESBTPNoteController extends Controller
                 $note = $existingNotes->get($key);
 
                 if ($note && $note->isSubmitted() && ! $canEdit) {
-                    $errors++;
+                    $refuser($entry, 'note déjà validée');
                     continue;
                 }
 
@@ -818,6 +829,7 @@ class ESBTPNoteController extends Controller
                 'success' => $errors === 0,
                 'saved'   => $saved,
                 'errors'  => $errors,
+                'refused' => $refused,
                 'total'   => count($notes),
                 'submission_status' => $submitFinal ? ESBTPNote::SUBMISSION_SUBMITTED : ESBTPNote::SUBMISSION_DRAFT,
                 'synchronization' => $synchronization,
