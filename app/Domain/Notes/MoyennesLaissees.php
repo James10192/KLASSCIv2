@@ -151,7 +151,10 @@ final class MoyennesLaissees
             return false;
         }
 
-        foreach ($route->gatherMiddleware() as $middleware) {
+        // `middleware()` et non `gatherMiddleware()` : ce dernier instancie le
+        // controleur pour lire ses middlewares propres, a chaque affichage du
+        // bandeau. Les gardes lues ici sont posees sur la route.
+        foreach ($route->middleware() as $middleware) {
             if (is_string($middleware) && str_starts_with($middleware, 'permission:')) {
                 if (! $utilisateur->canAny(explode('|', substr($middleware, strlen('permission:'))))) {
                     return false;

@@ -241,7 +241,8 @@
                                 depuis « Modifier les moyennes ».
                             @else
                                 Il ne reste que des absences : ce contrôle ne les voit pas. Signalez-les à une personne
-                                habilitée à modifier les moyennes : {{ collect($_laissees['eleves'])->pluck('libelle')->implode(' ; ') }}.
+                                habilitée à modifier les moyennes :
+                                {{ collect($_laissees['eleves'])->take(5)->pluck('libelle')->implode(' ; ') }}@if(count($_laissees['eleves']) > 5), et {{ count($_laissees['eleves']) - 5 }} autre(s)@endif.
                             @endif
                         </p>
                         @if($_droits['reprendre'])
