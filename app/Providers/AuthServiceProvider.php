@@ -38,6 +38,8 @@ class AuthServiceProvider extends ServiceProvider
     public const PERMISSIONS_FINANCES_ETUDIANTS = [
         'paiements.view',
         'paiements.create',
+        'paiements.create.mobile_money',
+        'paiements.validate',
         'comptabilite.access',
         'comptabilite.dashboard.view',
         'comptabilite.paiements.view',
@@ -97,9 +99,10 @@ class AuthServiceProvider extends ServiceProvider
         // etudiant alors que /esbtp/paiements lui repondait 403.
         //
         // La liste reprend les permissions qu'une ecole coche pour un profil
-        // financier. `paiements.create` en fait partie : on n'encaisse pas sans
-        // voir ce qui reste du. `frais.view` n'en fait pas partie : il ouvre le
-        // bareme, pas la situation d'un etudiant.
+        // financier. Encaisser (`paiements.create`, et sa variante mobile
+        // money) et valider un paiement en font partie : on ne fait ni l'un ni
+        // l'autre sans voir le montant et ce qui reste du. `frais.view` n'en
+        // fait pas partie : il ouvre le bareme, pas la situation d'un etudiant.
         Gate::define(
             'finances.etudiants.voir',
             static fn ($utilisateur) => $utilisateur->hasAnyPermission(self::PERMISSIONS_FINANCES_ETUDIANTS)

@@ -32,18 +32,9 @@ class ESBTPStudentInscriptionRepairController extends Controller
             isset($validated['target_classe_id']) ? (int) $validated['target_classe_id'] : null,
         );
 
-        // Le nombre de versements aide a choisir quelle inscription garder ;
-        // les montants restent derriere la porte financiere.
-        if (! $request->user()->can('finances.etudiants.voir')) {
-            foreach ($diagnostic['inscriptions'] ?? [] as $i => $profil) {
-                $diagnostic['inscriptions'][$i]['payments']['total'] = null;
-                $diagnostic['inscriptions'][$i]['payments']['valid_total'] = null;
-            }
-        }
-
         return response()->json([
             'success' => true,
-            'data' => $diagnostic,
+            'data' => $this->montantsSelonLecteur($request, $diagnostic),
         ]);
     }
 
@@ -62,7 +53,35 @@ class ESBTPStudentInscriptionRepairController extends Controller
 
         $result = $service->repair($etudiant, $validated, $request->user()?->id);
 
+        if (isset($result['diagnostic'])) {
+            $result['diagnostic'] = $this->montantsSelonLecteur($request, $result['diagnostic']);
+        }
+
         return response()->json($result, $result['success'] ? 200 : 422);
+    }
+
+    /**
+     * Le nombre de versements aide a choisir quelle inscription garder ; les
+     * montants restent derriere la porte financiere. Ils vivent a deux
+     * endroits de chaque profil — `payments` et `score`, qui les recopie
+     * pour departager les doublons.
+     */
+    private function montantsSelonLecteur(Request $request, array $diagnostic): array
+    {
+        if ($request->user()?->can('finances.etudiants.voir')) {
+            return $diagnostic;
+        }
+
+        foreach ($diagnostic['inscriptions'] ?? [] as $i => $profil) {
+            foreach (['payments', 'score'] as $bloc) {
+                if (isset($profil[$bloc]) && is_array($profil[$bloc])) {
+                    $diagnostic['inscriptions'][$i][$bloc]['total'] = null;
+                    $diagnostic['inscriptions'][$i][$bloc]['valid_total'] = null;
+                }
+            }
+        }
+
+        return $diagnostic;
     }
 
     private function authorizeDiagnostic(Request $request): void

@@ -302,10 +302,10 @@
                                         </div>
                                     </div>
                                     <div style="display:flex; flex-direction:column; gap:6px;">
-                                        <div x-show="analyseData?.solde_status !== 'solde' && analyseData?.solde_restant !== null" style="display:none;">
+                                        <div x-show="analyseData?.solde_status !== 'solde'" style="display:none;">
                                             <div class="pi-analyse-pill" style="background:rgba(220,38,38,.08);">
                                                 <i class="fas fa-coins" style="color:#dc2626;"></i>
-                                                <strong style="color:#b91c1c;" x-text="'Relicat : ' + formatFCFA(analyseData?.solde_restant || 0)"></strong>
+                                                <strong style="color:#b91c1c;" x-text="analyseData?.solde_restant !== null ? 'Relicat : ' + formatFCFA(analyseData?.solde_restant || 0) : 'Reliquat à régler'"></strong>
                                             </div>
                                         </div>
                                         <div class="pi-analyse-pill">

@@ -153,7 +153,18 @@
                 </div>
             </div>
 
-            <!-- Situation Financière -->
+            {{-- Hors du bloc financier : la carte de réinscription plus bas les lit
+                 aussi, y compris pour qui n'a pas la porte financière. --}}
+            @php
+                $etudiant = $analyse['etudiant'];
+                $montantAttendu = $etudiant->montant_attendu ?? 0;
+                $montantPaye = $etudiant->montant_paye ?? 0;
+                $soldeRestant = $etudiant->solde_restant ?? 0;
+                $peutReinscrire = $etudiant->peut_reinscrire ?? false;
+                $pourcentsage_paye = $montantAttendu > 0 ? ($montantPaye / $montantAttendu) * 100 : 0;
+            @endphp
+
+            {{-- Situation financière --}}
             @if($voirFinances)
             <div class="card-moderne">
                 <div class="main-card-header">
@@ -163,14 +174,6 @@
                     </div>
                 </div>
                 <div class="p-lg">
-                    @php
-                        $etudiant = $analyse['etudiant'];
-                        $montantAttendu = $etudiant->montant_attendu ?? 0;
-                        $montantPaye = $etudiant->montant_paye ?? 0;
-                        $soldeRestant = $etudiant->solde_restant ?? 0;
-                        $peutReinscrire = $etudiant->peut_reinscrire ?? false;
-                        $pourcentsage_paye = $montantAttendu > 0 ? ($montantPaye / $montantAttendu) * 100 : 0;
-                    @endphp
 
                     <!-- KPI Financiers -->
                     <div class="kpi-grid mb-lg">
