@@ -555,6 +555,8 @@
             });
         }
 
+        srAnnounceCoverage();
+
         // Coefficient modal auto-open
         var coeffContext = {{ $coeffContext ? 'true' : 'false' }};
         var urlCoeff = new URLSearchParams(window.location.search).get('open_coeff_modal') === '1';
@@ -668,6 +670,17 @@
         }
 
         new bootstrap.Modal(modalEl).show();
+    }
+
+    function srAnnounceCoverage() {
+        var form = document.getElementById('sr-filter-form');
+        if (!form) return;
+        var classe = form.querySelector('[name="classe_id"]');
+        var annee = form.querySelector('[name="annee_universitaire_id"]');
+        var periode = document.getElementById('sr-periode-input');
+        window.dispatchEvent(new CustomEvent('couverture:contexte', {
+            detail: { classe_id: classe && classe.value, annee_universitaire_id: annee && annee.value, periode: periode && periode.value || 'annuel' }
+        }));
     }
 
     // ═══ AJAX content swap ═══

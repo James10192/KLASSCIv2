@@ -1564,7 +1564,9 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 ->middleware('throttle:30,1')
                 ->name('notes.save-ajax');
             Route::post('notes/save-ajax-bulk', [ESBTPNoteController::class, 'saveNotesAjaxBulk'])
-                ->middleware('throttle:10,1')
+                // Une validation finale est déjà sérialisée dans l'écran. 30/min
+                // absorbe les reprises réseau sans rouvrir la porte aux rafales.
+                ->middleware('throttle:30,1')
                 ->name('notes.save-ajax-bulk');
 
             // PR #7 â€” Excel import/export bidirectionnel + preview impact bulletin

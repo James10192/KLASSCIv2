@@ -38,7 +38,7 @@
                     @if($showCreatorColumn)
                         <th class="d-none d-lg-table-cell">Encaissé par</th>
                     @endif
-                    <th>Statut</th>
+                    <th class="pi-th-status">Statut</th>
                     <th class="pi-th-actions">Actions</th>
                 </tr>
             </thead>

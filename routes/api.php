@@ -443,6 +443,8 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
     Route::get('/annee', [App\Http\Controllers\API\CLI\CLIAcademicController::class, 'annee'])->name('annee');
     Route::get('/evaluations/coverage', [App\Http\Controllers\API\CLI\CLIEvaluationCoverageController::class, 'index'])
         ->name('evaluations.coverage');
+    Route::get('/diagnostics/evaluations-dates', [App\Http\Controllers\API\CLI\CLIEvaluationDateCoherenceController::class, 'index'])
+        ->name('diagnostics.evaluations-dates');
 
     // Read endpoints — Users
     Route::get('/users', [App\Http\Controllers\API\CLI\CLIUserController::class, 'users'])->name('users');
@@ -561,6 +563,8 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
         Route::post('/pull', [App\Http\Controllers\API\CLI\CLIMaintenanceController::class, 'pull'])->name('pull');
         Route::post('/seed-demo', [App\Http\Controllers\API\CLI\CLIMaintenanceController::class, 'seedDemo'])->name('seed-demo');
         Route::post('/evaluations/sync-notes', [App\Http\Controllers\API\CLI\CLIMaintenanceController::class, 'evaluationsSyncNotes'])->name('evaluations.sync-notes');
+        Route::post('/evaluations/corriger-dates', [App\Http\Controllers\API\CLI\CLIEvaluationDateCoherenceController::class, 'corriger'])
+            ->name('evaluations.corriger-dates');
         // Deplacement de semestre decide par l'ecole, pas devine par le code :
         // la liste d'evaluations voyage dans la requete. Simulation par defaut.
         Route::post('/evaluations/deplacer-periode', [App\Http\Controllers\API\CLI\CLIEvaluationDeplacementController::class, 'deplacer'])
