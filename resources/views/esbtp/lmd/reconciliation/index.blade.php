@@ -110,6 +110,7 @@
     .rec-result-link:hover { border-color: #0453cb; box-shadow: 0 4px 14px rgba(4,83,203,.08); color: #0453cb; }
     .rec-result-link i { color: #0453cb; }
     .rec-result-link--inerte, .rec-result-link--inerte:hover { cursor: default; border-color: #e2e8f0; box-shadow: none; color: #1e293b; }
+    .rec-result-link > span:not(.rec-result-meta) { flex: 1 1 0; min-width: 0; }
     .rec-result-meta { color: #64748b; font-size: .76rem; margin-left: auto; text-align: right; }
     .rec-result-conflit { display: block; color: #b45309; font-size: .74rem; }
     .rec-modal-foot { padding: 1rem 1.4rem; border-top: 1px solid #eef2f7; display: flex; justify-content: flex-end; gap: .6rem; flex-wrap: wrap; }
@@ -130,6 +131,9 @@
         .rec-hero { padding: 1.5rem 1.25rem; }
         .rec-field { min-width: 100%; }
         .rec-toasts { left: 1rem; right: 1rem; }
+        /* La classe passe sous le nom : en colonne, elle s'empilait mot par mot. */
+        .rec-result-link { flex-wrap: wrap; }
+        .rec-result-meta { flex-basis: 100%; margin-left: 1.6rem; text-align: left; }
     }
 </style>
 @endpush
