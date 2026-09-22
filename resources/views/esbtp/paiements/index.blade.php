@@ -760,10 +760,189 @@
     }
 
     /* ═══════════════════════════════════════════════
+       Lignes de paiement — lecture rapide et actions sûres
+       Les hooks AJAX restent volontairement inchangés.
+       ═══════════════════════════════════════════════ */
+    .pi-table tbody .pi-payment-row {
+        background: #fff;
+        border-bottom: 1px solid #e8eef7;
+        transition: background-color .18s ease, box-shadow .18s ease, transform .18s ease;
+    }
+    .pi-table tbody .pi-payment-row:hover {
+        background: linear-gradient(90deg, rgba(4,83,203,.045), rgba(255,255,255,.98) 42%);
+        box-shadow: inset 3px 0 0 #2f73dd;
+    }
+    .pi-table tbody .pi-payment-row > td {
+        padding-top: .95rem;
+        padding-bottom: .95rem;
+    }
+    .pi-cell-selection { width: 44px; text-align: center; }
+    .pi-cell-selection .form-check-input {
+        width: 1.05rem; height: 1.05rem; margin: 0;
+        border-color: #b9c8df; cursor: pointer;
+    }
+    .pi-receipt { display: flex; flex-direction: column; gap: .18rem; min-width: 94px; }
+    .pi-receipt-label {
+        color: #94a3b8; font-size: .62rem; font-weight: 800;
+        letter-spacing: .08em; line-height: 1; text-transform: uppercase;
+    }
+    .pi-receipt-number { color: #124da6; font-size: .82rem; letter-spacing: .015em; }
+    .pi-student { display: flex; align-items: center; min-width: 205px; gap: .68rem; }
+    .pi-student-avatar {
+        flex: 0 0 auto; width: 38px; height: 38px;
+        margin: 0 !important; border: 2px solid #e9f1ff;
+        background: linear-gradient(135deg, #075ad9, #0b77b9) !important;
+        box-shadow: 0 4px 10px rgba(4,83,203,.16);
+        font-size: .7rem; letter-spacing: .035em;
+    }
+    .pi-student-details { min-width: 0; display: grid; gap: .2rem; }
+    .pi-student-name {
+        color: #172033; font-weight: 750; line-height: 1.15; text-decoration: none;
+        transition: color .16s ease;
+    }
+    .pi-student-name:hover { color: #0453cb; text-decoration: underline; text-underline-offset: 3px; }
+    .pi-student-meta { color: #78869a; font-size: .72rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .pi-student-meta i { color: #8ba8d2; margin-right: .35rem; font-size: .67rem; }
+    .pi-cell-category { min-width: 145px; }
+    .pi-category-chip {
+        display: inline-flex; align-items: center; gap: .38rem; max-width: 100%;
+        padding: .34rem .54rem; border: 1px solid transparent; border-radius: 7px;
+        color: #34415a; background: #f1f5f9; font-size: .74rem; font-weight: 700; line-height: 1.1;
+    }
+    .pi-category-chip i { font-size: .7rem; opacity: .82; }
+    .pi-category-chip--primary { background: #e8f0ff; color: #124da6; border-color: #d5e4ff; }
+    .pi-category-chip--success { background: #e9f8f0; color: #18754b; border-color: #d1f0df; }
+    .pi-category-chip--warning { background: #fff6df; color: #966300; border-color: #f7e7bb; }
+    .pi-category-chip--danger { background: #fff0f1; color: #b53442; border-color: #ffd8dd; }
+    .pi-category-chip--info { background: #e7f7fb; color: #08718f; border-color: #c9ebf3; }
+    .pi-category-chip--secondary { background: #f1f4f8; color: #64748b; border-color: #e1e8f0; }
+    .pi-category-type { display: block; color: #9aa8b9; margin-top: .28rem; font-size: .65rem; text-transform: capitalize; }
+    .pi-date { display: inline-flex; align-items: center; gap: .38rem; color: #46566d; font-size: .8rem; font-weight: 650; white-space: nowrap; }
+    .pi-date i { color: #70a0d8; font-size: .76rem; }
+    .pi-cell-amount { min-width: 138px; }
+    .pi-amount { color: #087b4d; font-size: .93rem; letter-spacing: -.01em; white-space: nowrap; }
+    .pi-amount span { color: #6f829a; font-size: .65rem; font-weight: 750; letter-spacing: .03em; }
+    .pi-amount--credit { color: #075ac6; }
+    .pi-mode {
+        display: inline-flex; align-items: center; gap: .36rem; padding: .32rem .5rem;
+        color: #176e89; background: #edf9fc; border: 1px solid #d2eff5; border-radius: 6px;
+        font-size: .73rem; font-weight: 700; white-space: nowrap;
+    }
+    .pi-mode i { font-size: .68rem; }
+    .pi-creator { display: inline-flex; align-items: center; gap: .35rem; max-width: 140px; color: #627188; font-size: .77rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .pi-creator i { color: #91a3ba; font-size: .83rem; }
+    .pi-status {
+        display: inline-flex; align-items: center; gap: .38rem; padding: .36rem .58rem;
+        border-radius: 999px; font-size: .71rem; font-weight: 800; white-space: nowrap;
+        letter-spacing: .01em;
+    }
+    .pi-status i { font-size: .43rem; }
+    .pi-status--success { color: #087645; background: #e7f8ee; border: 1px solid #c9eed9; }
+    .pi-status--warning { color: #956500; background: #fff6df; border: 1px solid #f5e4b8; }
+    .pi-status--danger { color: #b52f40; background: #fff0f1; border: 1px solid #ffd8dd; }
+    .pi-status--secondary { color: #63748c; background: #f1f4f8; border: 1px solid #e2e8f0; }
+    .pi-cell-actions { min-width: 122px; }
+    .paiement-actions-wrapper { justify-content: flex-end; }
+    .paiement-actions-buttons { gap: .24rem; padding: .22rem; background: #f7faff; border: 1px solid #e4ecf7; border-radius: 8px; }
+    .paiement-actions-buttons .btn {
+        width: 29px; height: 29px; padding: 0; border-radius: 6px !important;
+        display: inline-flex; align-items: center; justify-content: center; border-color: transparent;
+        transition: transform .16s ease, background-color .16s ease, color .16s ease;
+    }
+    .paiement-actions-buttons .btn:hover { transform: translateY(-1px); }
+    .paiement-actions-buttons .btn-outline-info { color: #087c9c; background: #eaf9fd; }
+    .paiement-actions-buttons .btn-outline-success { color: #08784b; background: #e8f8ef; }
+    .paiement-actions-buttons .btn-outline-danger { color: #bd3344; background: #fff0f2; }
+    .paiement-actions-buttons .btn-outline-warning { color: #9b6700; background: #fff7e5; }
+    .paiement-actions-buttons .btn-outline-primary { color: #1455af; background: #eaf1ff; }
+    .paiement-actions-buttons .btn-outline-secondary { color: #596b83; background: #f0f4f8; }
+    /* Alignement structurel : mêmes colonnes quel que soit le statut. */
+    .pi-table .pi-th-status,
+    .pi-table .pi-cell-status {
+        width: 128px;
+        min-width: 128px;
+    }
+    .pi-table .pi-th-actions,
+    .pi-table .pi-cell-actions {
+        min-width: 138px;
+    }
+
+    /* Le bouton PDF garde toujours l'icône et le chevron visibles. */
+    .paiement-actions-buttons .pdf-dropdown .dropdown-toggle {
+        width: auto;
+        min-width: 58px;
+        padding: 0 .48rem;
+        gap: .34rem;
+    }
+    .paiement-actions-buttons .pdf-dropdown .dropdown-toggle::after {
+        margin-left: .14rem;
+        vertical-align: .08em;
+    }
+
+    /* Les contrôles premium remplissent réellement leur colonne. */
+    #paiements-filter-form .pi-field { min-width: 0; }
+    #paiements-filter-form .pi-field .au-select,
+    #paiements-filter-form .pi-field .au-select-trigger {
+        width: 100%;
+    }
+    #paiements-filter-form .pi-field .au-select-trigger {
+        min-height: 41px;
+        justify-content: flex-start;
+    }
+
+    /* Une grille stable : recherche à gauche, filtres égaux, action clairement à droite. */
+    .pi-filters {
+        padding: 1.05rem 1.15rem 1.15rem;
+    }
+    .pi-filters-row {
+        grid-template-columns: minmax(220px, 1.7fr) repeat(4, minmax(145px, 1fr)) minmax(128px, auto);
+        gap: .8rem;
+        align-items: end;
+    }
+    .pi-filter-submit {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: .35rem;
+        min-width: 128px;
+        height: 41px;
+        padding: .55rem 1rem;
+    }
+    .pi-filter-submit i { margin-right: 0; }
+
+    @@media (max-width: 992px) {
+        .pi-student { min-width: 180px; }
+        .pi-table tbody .pi-payment-row > td { padding-top: .78rem; padding-bottom: .78rem; }
+        .pi-cell-actions { min-width: 108px; }
+    }
+    @@media (prefers-reduced-motion: reduce) {
+        .pi-table tbody .pi-payment-row,
+        .paiement-actions-buttons .btn { transition: none; }
+    }
+
+    /* ═══════════════════════════════════════════════
        Cleanup legacy : neutralise styles globaux qui
        saignent dans la table (card-moderne etc.)
        ═══════════════════════════════════════════════ */
     .pi-table-card .table-responsive { overflow: visible; }
+
+    /* Statut et actions : mêmes repères avant/après validation AJAX. */
+    .pi-table .pi-th-status, .pi-table .pi-cell-status { width: 128px; min-width: 128px; max-width: 128px; }
+    .pi-table .pi-th-actions, .pi-table .pi-cell-actions { width: 240px; min-width: 240px; max-width: 240px; }
+    .pi-table .pi-cell-status .pi-status { min-width: 96px; justify-content: center; white-space: nowrap; }
+    .pi-table .pi-cell-actions .paiement-actions-wrapper { min-width: 218px; }
+
+    /* Le modal de correction doit aussi être stylé lorsqu'une ligne vient d'être rafraîchie par AJAX. */
+    .mr-content { border:none; border-radius:16px; overflow:hidden; box-shadow:0 20px 60px rgba(15,23,42,.22); }
+    .mr-head { display:flex; align-items:center; gap:.8rem; padding:1.05rem 1.3rem; background:linear-gradient(135deg,#0a3d8f,#0453cb 60%,#3b7ddb); color:#fff; }
+    .mr-head-ic { width:38px; height:38px; border-radius:11px; background:rgba(255,255,255,.15); border:1px solid rgba(255,255,255,.2); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+    .mr-head-t { font-weight:700; font-size:1rem; line-height:1.2; } .mr-head-s { font-size:.76rem; color:rgba(255,255,255,.72); margin-top:.1rem; }
+    .mr-body { padding:1.1rem 1.3rem; } .mr-note { background:#f8fafc; border:1px solid #e2e8f0; border-left:3px solid #0453cb; border-radius:9px; padding:.6rem .8rem; font-size:.8rem; color:#475569; line-height:1.45; margin-bottom:1rem; }
+    .mr-lbl { font-size:.72rem; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:#64748b; margin:.85rem 0 .35rem; } .mr-req { color:#b45309; letter-spacing:0; text-transform:none; font-weight:600; } .mr-actuel { font-weight:700; font-size:.95rem; color:#0f172a; }
+    .mr-input { width:100%; border:1px solid #e2e8f0; border-radius:9px; padding:.5rem .7rem; font-size:.9rem; color:#1e293b; background:#fff; } .mr-input:focus { outline:none; border-color:#0453cb; box-shadow:0 0 0 3px rgba(4,83,203,.1); } .mr-area { resize:vertical; min-height:74px; font-size:.85rem; }
+    .mr-hint { font-size:.72rem; color:#b45309; margin-top:.25rem; } .mr-hint--ok { color:#065f46; }
+    .mr-confirm { display:flex; gap:.8rem; background:#eff6ff; border:1px solid #bfdbfe; border-radius:12px; padding:.9rem 1rem; } .mr-confirm-ic { width:34px; height:34px; border-radius:10px; background:#0453cb; color:#fff; display:flex; align-items:center; justify-content:center; flex-shrink:0; } .mr-confirm-t { font-weight:700; color:#1e3a8a; margin-bottom:.35rem; } .mr-confirm-p { font-size:.85rem; color:#1e40af; margin:0 0 .4rem; line-height:1.45; } .mr-confirm-motif { margin-top:.5rem; border-top:1px solid #bfdbfe; padding-top:.5rem; } .mr-confirm-motif span { display:block; font-size:.7rem; text-transform:uppercase; letter-spacing:.06em; color:#1e3a8a; } .mr-confirm-motif em { font-size:.84rem; color:#1e40af; }
+    .mr-foot { display:flex; justify-content:flex-end; gap:.6rem; padding:.85rem 1.3rem; border-top:1px solid #e2e8f0; background:#f8fafc; } .mr-btn { border:none; border-radius:9px; padding:.5rem 1rem; font-size:.85rem; font-weight:600; cursor:pointer; } .mr-btn--ghost { background:#fff; border:1px solid #e2e8f0; color:#475569; } .mr-btn--primary { background:#0453cb; color:#fff; } .mr-btn--primary:hover:not(:disabled) { background:#033a8e; } .mr-btn--primary:disabled { opacity:.5; cursor:not-allowed; }
 </style>
 @endsection
 
@@ -2496,6 +2675,48 @@ $(document).ready(function() {
 });
 </script>
 
+<script>
+(function () {
+    'use strict';
+    function notify(message, type) {
+        if (typeof window.showToast === 'function') { window.showToast(message, type || 'success'); return; }
+        console[type === 'error' ? 'error' : 'info'](message);
+    }
+    function refreshRow(paiementId) {
+        if (typeof window.refreshPaiementLigne === 'function') { window.refreshPaiementLigne(paiementId, 'validate'); return; }
+        fetch('/esbtp/paiements/' + paiementId + '/refresh-ligne', { headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } })
+        .then(function (response) { return response.ok ? response.json() : Promise.reject(response); })
+        .then(function (data) {
+            var current = document.querySelector('tr[data-paiement-id="' + paiementId + '"]');
+            if (!data.success || !data.html || !current) { throw new Error(data.message || 'Rafraîchissement impossible'); }
+            var template = document.createElement('template'); template.innerHTML = data.html.trim();
+            var fresh = template.content.querySelector('tr[data-paiement-id="' + paiementId + '"]') || template.content.querySelector('tr[data-paiement-id]');
+            if (!fresh) { throw new Error('Ligne de paiement introuvable'); }
+            current.replaceWith(fresh); fresh.classList.add('paiement-row-flash');
+            window.setTimeout(function () { fresh.classList.remove('paiement-row-flash'); }, 1200);
+        })
+        .catch(function () { notify('Le paiement a été validé, mais sa ligne doit être rafraîchie.', 'warning'); });
+    }
+    document.addEventListener('click', function (event) {
+        var button = event.target.closest('.valider-paiement-btn');
+        if (!button || button.dataset.validationFallbackBusy === '1') { return; }
+        event.preventDefault(); event.stopImmediatePropagation();
+        var paiementId = button.getAttribute('data-paiement-id'); var actionUrl = button.getAttribute('data-action-url');
+        if (!paiementId || !actionUrl || !window.confirm('Valider ce paiement ? Le montant sera comptabilisé immédiatement.')) { return; }
+        button.dataset.validationFallbackBusy = '1'; button.disabled = true; button.setAttribute('aria-busy', 'true');
+        fetch(actionUrl, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': '{{ csrf_token() }}' } })
+        .then(function (response) { return response.ok ? response.json() : Promise.reject(response); })
+        .then(function (data) {
+            if (!data.success) { throw new Error(data.message || 'Validation impossible'); }
+            refreshRow(paiementId); notify(data.message || 'Paiement validé avec succès.', 'success');
+        })
+        .catch(function (error) {
+            button.disabled = false; button.removeAttribute('aria-busy'); button.dataset.validationFallbackBusy = '';
+            notify(error && error.message ? error.message : 'Erreur lors de la validation.', 'error');
+        });
+    }, true);
+})();
+</script>
 @endpush
 
 <!-- Modal pour les instructions de changement d'année -->

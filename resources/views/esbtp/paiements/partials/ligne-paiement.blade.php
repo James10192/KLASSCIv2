@@ -1,34 +1,37 @@
 {{-- Partial réutilisable pour une ligne de paiement dans le tableau --}}
-<tr data-paiement-id="{{ $paiement->id }}">
-    <td>
+<tr data-paiement-id="{{ $paiement->id }}" class="pi-payment-row pi-payment-row--{{ $paiement->status }}">
+    <td class="pi-cell-selection">
         @if($paiement->status == 'en_attente' && auth()->user()->can('paiements.validate'))
             <input type="checkbox" class="form-check-input paiement-checkbox"
                    value="{{ $paiement->id }}"
                    data-status="{{ $paiement->status }}">
         @endif
     </td>
-    <td>
-        <strong class="color-primary">{{ $paiement->numero_recu }}</strong>
+    <td class="pi-cell-receipt">
+        <div class="pi-receipt">
+            <span class="pi-receipt-label">Reçu</span>
+            <strong class="pi-receipt-number">{{ $paiement->numero_recu }}</strong>
+        </div>
         @if($paiement->isAvoir())
             <div class="small" style="color:#0453cb;font-weight:700;">{{ $paiement->avoir_kind === 'refund' ? 'Remboursement' : 'Avoir crédit' }}</div>
         @endif
     </td>
-    <td>
-        <div class="d-flex align-items-center">
-            <div class="avatar-circle bg-primary me-2">
+    <td class="pi-cell-student">
+        <div class="pi-student">
+            <div class="avatar-circle pi-student-avatar">
                 {{ substr($paiement->etudiant->user->name ?? $paiement->etudiant->nom_complet, 0, 2) }}
             </div>
-            <div>
-                <a href="{{ route('esbtp.inscriptions.situation-financiere.preview', $paiement->inscription_id) }}" class="text-decoration-none">
-                    <strong>{{ $paiement->etudiant->user->name ?? $paiement->etudiant->nom_complet }}</strong>
+            <div class="pi-student-details">
+                <a href="{{ route('esbtp.inscriptions.situation-financiere.preview', $paiement->inscription_id) }}" class="pi-student-name">
+                    {{ $paiement->etudiant->user->name ?? $paiement->etudiant->nom_complet }}
                 </a>
-                <div class="text-muted small">
-                    {{ $paiement->etudiant->matricule ?? 'Matricule n/a' }}
+                <div class="pi-student-meta">
+                    <i class="fas fa-id-card"></i>{{ $paiement->etudiant->matricule ?? 'Matricule n/a' }}
                 </div>
             </div>
         </div>
     </td>
-    <td class="d-none d-md-table-cell">
+    <td class="d-none d-md-table-cell pi-cell-category">
         @php
             // Une seule lecture de la ventilation, partagee avec le PDF,
             // l'Excel et le recu : le repli vers la categorie du guichet vit
@@ -63,20 +66,25 @@
         @endphp
 
         @if($categoryInfo)
-            <div class="badge bg-{{ $color }} d-flex align-items-center" style="max-width: 150px;"
+            <div class="pi-category-chip pi-category-chip--{{ $color }}" style="max-width: 170px;"
                  @if(!empty($categoryInfo['detail'])) title="{{ $categoryInfo['detail'] }}" @endif>
                 <i class="{{ $icon }} me-1"></i>
                 <span class="text-truncate">{{ $categoryInfo['name'] }}</span>
             </div>
-            <small class="text-muted d-block">{{ ucfirst($categoryInfo['type']) }}</small>
+            <small class="pi-category-type">{{ ucfirst($categoryInfo['type']) }}</small>
         @else
-            <span class="badge bg-secondary">
-                <i class="fas fa-question me-1"></i>Non définie
+            <span class="pi-category-chip pi-category-chip--secondary">
+                <i class="fas fa-question"></i>Non définie
             </span>
         @endif
     </td>
-    <td>{{ $paiement->date_paiement->format('d/m/Y') }}</td>
-    <td>
+    <td class="pi-cell-date">
+        <div class="pi-date">
+            <i class="far fa-calendar-alt"></i>
+            <span>{{ $paiement->date_paiement->format('d/m/Y') }}</span>
+        </div>
+    </td>
+    <td class="pi-cell-amount">
         @php
             // Filtre par frais actif : la ligne doit dire ce que CE frais a
             // recu, pas le versement entier. Sur un versement de 255 000 F
@@ -89,9 +97,9 @@
             $montantAffiche = $partFrais ?? $paiement->montant;
         @endphp
         @if($paiement->isAvoir())
-            <strong style="color:#0453cb;">− {{ number_format($montantAffiche, 0, ',', ' ') }} FCFA</strong>
+            <strong class="pi-amount pi-amount--credit">− {{ number_format($montantAffiche, 0, ',', ' ') }} <span>FCFA</span></strong>
         @else
-            <strong class="color-success">{{ number_format($montantAffiche, 0, ',', ' ') }} FCFA</strong>
+            <strong class="pi-amount">{{ number_format($montantAffiche, 0, ',', ' ') }} <span>FCFA</span></strong>
         @endif
         @if($partFrais !== null && (float) $partFrais !== (float) $paiement->montant)
             <small class="text-muted d-block" style="font-size:.7rem;"
@@ -100,22 +108,25 @@
             </small>
         @endif
     </td>
-    <td class="d-none d-md-table-cell">
-        <span class="badge bg-info">{{ $paiement->mode_paiement }}</span>
+    <td class="d-none d-md-table-cell pi-cell-mode">
+        <span class="pi-mode"><i class="fas fa-wallet"></i>{{ $paiement->mode_paiement }}</span>
     </td>
-    @if($showCreatorColumn ?? false)
+    {{-- Meme regle que l'en-tete de table.blade.php. Le repli ne doit pas etre
+         `false` : refresh-ligne rend cette ligne seule apres une validation, et
+         une cellule manquante decalait toute la ligne sous l'en-tete. --}}
+    @if($showCreatorColumn ?? (auth()->user()?->can('paiements.view') ?? false))
         {{-- Lot 13 — Encaisseur (visible uniquement pour les users avec paiements.view) --}}
-        <td class="d-none d-lg-table-cell">
+        <td class="d-none d-lg-table-cell pi-cell-creator">
             @if($paiement->creator)
-                <span class="text-truncate" title="{{ $paiement->creator->name }}">
-                    <i class="fas fa-user-circle text-muted me-1"></i>{{ $paiement->creator->name }}
+                <span class="pi-creator" title="{{ $paiement->creator->name }}">
+                    <i class="fas fa-user-circle"></i>{{ $paiement->creator->name }}
                 </span>
             @else
                 <span class="text-muted fst-italic">—</span>
             @endif
         </td>
     @endif
-    <td>
+    <td class="pi-cell-status">
         @php
             $statusColors = [
                 'validé' => 'success',
@@ -124,11 +135,11 @@
             ];
             $statusColor = $statusColors[$paiement->status] ?? 'secondary';
         @endphp
-        <span class="badge bg-{{ $statusColor }}">
-            {{ $paiement->status_formatte }}
+        <span class="pi-status pi-status--{{ $statusColor }}">
+            <i class="fas fa-circle"></i>{{ $paiement->status_formatte }}
         </span>
     </td>
-    <td>
+    <td class="pi-cell-actions">
         <div class="paiement-actions-wrapper" data-paiement-actions="{{ $paiement->id }}">
             <div class="btn-group btn-group-sm paiement-actions-buttons">
                 <a href="{{ route('esbtp.paiements.show', $paiement->id) }}"

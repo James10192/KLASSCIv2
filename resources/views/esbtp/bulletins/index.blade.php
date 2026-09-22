@@ -807,6 +807,13 @@ function bulIndex() {
                 this.allIds = data.ids || [];
                 this.currentPage = page;
                 this.updateKpis(data.stats);
+                const formContext = document.getElementById('bul-filter-form');
+                if (formContext) {
+                    const context = new FormData(formContext);
+                    window.dispatchEvent(new CustomEvent('couverture:contexte', {
+                        detail: { classe_id: context.get('classe_id'), annee_universitaire_id: context.get('annee_universitaire_id'), periode: context.get('periode') || 'annuel' }
+                    }));
+                }
                 if (push) {
                     const cleanUrl = this.baseUrl + '?' + params.toString();
                     window.history.pushState({}, '', cleanUrl);
