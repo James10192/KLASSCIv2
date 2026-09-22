@@ -521,8 +521,11 @@ body.m-sheet-open { overflow: hidden; }
    par côté sur un 390px, le contenu n'occupait que 79 % de la largeur. Ici un
    seul conteneur porte la gouttière (--m-gut : 16px, 12px sous 360px) et
    aucun intermédiaire n'ajoute la sienne ; les cartes prennent toute la
-   largeur utile. Les pages sans profil (superAdmin sans profil forcé,
-   secrétaire) ne portent pas .has-m-shell : rien ne change pour elles.
+   largeur utile. .has-m-shell n'est posé que si le shell est actif sur
+   l'instance ET qu'un profil mobile est résolu (MobileProfileResolver :
+   permissions, puis roles.mobile_profile). Le superAdmin a toujours un profil
+   — le profil forcé, sinon comptable — donc le shell. Sans profil (par défaut
+   secrétaire, coordinateur, directeur des études), rien ne change.
 
    Navbar : .nextadmin-navbar (70px, 5 boutons) devient une app bar de 56px —
    menu à gauche (#sidebar-toggle, son JS d'ouverture du tiroir est conservé),

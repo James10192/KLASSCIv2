@@ -71,6 +71,8 @@ class DeplacementPeriodeCliTest extends TestCase
         $etudiant = $this->etudiantInscrit();
         $this->noter($etudiant, $evaluation, 12);
 
+        // On sème la valeur FAUTIVE a dessein : c'est ce que les deux endpoints
+        // ecrivaient, et ce que ce test verrouillait.
         ESBTPNote::where('evaluation_id', $evaluation->id)->update(['semestre' => 'semestre2']);
 
         $reponse = app(CLIEvaluationDeplacementController::class)->deplacer(
@@ -86,9 +88,26 @@ class DeplacementPeriodeCliTest extends TestCase
         $this->assertFalse($donnees['dry_run']);
         $this->assertSame(1, $donnees['total']);
         $this->assertSame('semestre1', $evaluation->fresh()->periode);
+
+        // **Ce test affirmait `'semestre1'`, et il defendait le defaut.**
+        //
+        // `esbtp_notes.semestre` est un `varchar`, mais l'encodage canonique est
+        // l'ENTIER : le hook `saving()` d'`ESBTPNote` fait
+        // `(int) str_replace('semestre', '', …)` et a le dernier mot sur chaque
+        // chemin Eloquent. Seul un `update()` de query builder le contourne.
+        //
+        // En MySQL `'semestre1' = 1` vaut **0**. La categorie 2 d'
+        // `evaluations:sync-notes --clean-resultats` joint sur
+        // `esbtp_notes.semestre = 1`, ne retrouvait donc pas la note, et
+        // **supprimait** l'agregat. L'assertion d'avant scellait ce chemin.
         $this->assertSame(
-            'semestre1',
-            ESBTPNote::where('evaluation_id', $evaluation->id)->value('semestre')
+            1,
+            (int) ESBTPNote::where('evaluation_id', $evaluation->id)->value('semestre')
+        );
+        $this->assertSame(
+            1,
+            ESBTPNote::where('evaluation_id', $evaluation->id)->where('semestre', 1)->count(),
+            'la note doit etre retrouvee par le predicat exact de --clean-resultats'
         );
     }
 

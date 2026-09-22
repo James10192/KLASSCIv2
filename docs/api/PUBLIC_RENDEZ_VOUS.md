@@ -36,6 +36,7 @@ Les 201 de candidature et de réinscription emportent `reference_publique` et `i
 
 ## Historique
 
+- 2026-09-22 — contrat inchangé. La convocation n'est plus perdue en silence : son état (`en_attente`, `envoyee`, `echec`, `sans_email`) est consigné sur la réservation, et les échecs passagers sont renvoyés par la tâche planifiée `inscriptions:envoyer-convocations-rdv`. `POST /api/cli/rendez-vous/placer` ne fait plus partir les courriels lui-même — voir [CLI_RENDEZ_VOUS.md](CLI_RENDEZ_VOUS.md).
 - 2026-09-09 — **breaking** : `rendez_vous` retiré du 201. Placement post-commit, lecture via `/consulter`. Convocation HTML via MailPulse, plus de PDF joint.
 - 2026-09-08 — le 201 attribue un créneau et envoie la convocation.
 - 2026-09-08 — `rdv_ouvert` retiré du 201 (le canal se lit ailleurs). Référence émise au dépôt.
