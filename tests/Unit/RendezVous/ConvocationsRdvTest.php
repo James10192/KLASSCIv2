@@ -267,6 +267,16 @@ class ConvocationsRdvTest extends TestCase
         $this->assertNull($annulee->fresh()->convocation_statut);
     }
 
+    public function test_remettre_ne_saute_aucune_ligne_au_dela_d_une_page(): void
+    {
+        foreach (range(1, 450) as $i) {
+            $this->reservation(['convocation_statut' => null, 'email' => "f{$i}@exemple.ci"]);
+        }
+
+        $this->assertSame(450, app(FileConvocationsRdv::class)->remettreEnAttente('inconnues'));
+        $this->assertSame(0, ESBTPRdvReservation::query()->whereNull('convocation_statut')->count());
+    }
+
     private function reservation(array $attributs = []): ESBTPRdvReservation
     {
         return ESBTPRdvReservation::create(array_merge([

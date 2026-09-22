@@ -69,8 +69,7 @@ class CLIRendezVousController extends BaseApiController
             return $this->errorResponse('Token missing cli:admin ability', [], 403);
         }
 
-        // `max` permet de verifier un premier envoi avant de lancer la suite.
-        $rapport = $file->envoyerUnPaquet(max(1, min(50, (int) $request->input('max', 50))), 25.0);
+        $rapport = $file->envoyerUnPaquet(50, 25.0);
         if ($rapport['en_cours']) {
             return $this->errorResponse('Un autre envoi est en cours. Rappeler dans une minute.', $rapport, 409);
         }
@@ -83,7 +82,12 @@ class CLIRendezVousController extends BaseApiController
 
     /**
      * Le bouton « Convoquer les non suivies » / « Relancer les echecs » de l'ecran.
-     * Remet en attente sans rien envoyer : l'envoi reste celui de envoyerConvocations().
+     * Remet en attente sans rien envoyer.
+     *
+     * `limite` borne CE geste, et c'est le seul endroit ou borner tient : une fois
+     * en attente, une convocation part au prochain passage de la tache planifiee
+     * (5 min), qu'on ait fini de verifier le premier courriel ou non. Remettre 1,
+     * verifier sa reception, puis remettre le reste.
      */
     public function remettreConvocations(Request $request, FileConvocationsRdv $file): JsonResponse
     {
@@ -96,7 +100,12 @@ class CLIRendezVousController extends BaseApiController
             return $this->errorResponse('Préciser quoi : « inconnues » (réservations d\'avant le suivi) ou « echecs ».', [], 422);
         }
 
-        $remises = $file->remettreEnAttente($quoi);
+        $limite = $request->input('limite');
+        if ($limite !== null && (filter_var($limite, FILTER_VALIDATE_INT) === false || (int) $limite < 1)) {
+            return $this->errorResponse('« limite » doit être un entier positif.', [], 422);
+        }
+
+        $remises = $file->remettreEnAttente($quoi, $limite === null ? null : (int) $limite);
 
         return $this->successResponse(
             ['remises' => $remises, 'a_envoyer' => $file->enAttente()],

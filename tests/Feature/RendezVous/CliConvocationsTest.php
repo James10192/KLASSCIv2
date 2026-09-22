@@ -8,8 +8,6 @@ use App\Models\ESBTPCandidature;
 use App\Models\ESBTPRdvCreneau;
 use App\Models\ESBTPRdvReservation;
 use App\Models\User;
-use App\Services\MailPulse\MailPulseResult;
-use App\Services\RendezVous\CourrielConvocationRdv;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Mockery;
@@ -67,18 +65,25 @@ class CliConvocationsTest extends TestCase
         $this->postJson('/api/cli/rendez-vous/convocations/remettre', [])->assertStatus(422);
     }
 
-    public function test_envoyer_respecte_max_pour_verifier_un_premier_courriel(): void
+    public function test_remettre_avec_limite_ne_libere_qu_un_premier_courriel(): void
     {
-        $courriel = Mockery::mock(CourrielConvocationRdv::class);
-        $courriel->shouldReceive('expedier')->once()->andReturn(new MailPulseResult(true, 'queued', 202, null, 'mp-1', dispatchState: 'accepted'));
-        $this->app->instance(CourrielConvocationRdv::class, $courriel);
-        $this->reservation(StatutConvocationRdv::EnAttente);
-        $this->reservation(StatutConvocationRdv::EnAttente);
+        $premiere = $this->reservation(null);
+        $seconde = $this->reservation(null);
 
-        $this->postJson('/api/cli/rendez-vous/convocations/envoyer', ['max' => 1])
+        $this->postJson('/api/cli/rendez-vous/convocations/remettre', ['quoi' => 'inconnues', 'limite' => 1])
             ->assertOk()
-            ->assertJsonPath('data.envoyees', 1)
-            ->assertJsonPath('data.restantes', 1);
+            ->assertJsonPath('data.remises', 1)
+            ->assertJsonPath('data.a_envoyer', 1);
+
+        // La seconde reste hors de la file : la tache planifiee ne peut pas l'envoyer.
+        $this->assertSame(StatutConvocationRdv::EnAttente, $premiere->fresh()->convocation_statut);
+        $this->assertNull($seconde->fresh()->convocation_statut);
+    }
+
+    public function test_une_limite_invalide_est_refusee(): void
+    {
+        $this->postJson('/api/cli/rendez-vous/convocations/remettre', ['quoi' => 'inconnues', 'limite' => 'abc'])->assertStatus(422);
+        $this->postJson('/api/cli/rendez-vous/convocations/remettre', ['quoi' => 'inconnues', 'limite' => 0])->assertStatus(422);
     }
 
     private function reservation(?StatutConvocationRdv $etat, string $statut = 'confirmee'): ESBTPRdvReservation
