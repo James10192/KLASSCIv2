@@ -51,7 +51,7 @@
                     <textarea id="sp-description" class="sp-textarea" rows="5" maxlength="{{ $_spLimites['description_max'] }}"
                               placeholder="Par exemple : « Je clique sur Valider les notes et rien ne se passe. »"></textarea>
                     <div class="sp-aide-saisie"><span data-sp-compteur>0</span> / {{ $_spLimites['description_max'] }}</div>
-                    <div class="sp-erreur" data-sp-erreur hidden></div>
+                    <div class="sp-erreur" data-sp-erreur role="alert" hidden></div>
                     <div class="sp-actions">
                         <button type="button" class="sp-btn sp-btn--primaire" data-sp-aller="recap">Continuer <i class="fas fa-arrow-right"></i></button>
                     </div>
@@ -60,7 +60,7 @@
                 {{-- Etape 2 : voici ce que nous transmettons --}}
                 <section class="sp-etape" data-sp-etape="recap" hidden>
                     <button type="button" class="sp-retour" data-sp-aller="saisie"><i class="fas fa-arrow-left"></i> Modifier</button>
-                    <p class="sp-question">Voici ce que nous allons transmettre.</p>
+                    <p class="sp-question" tabindex="-1" data-sp-focus>Voici ce que nous allons transmettre.</p>
                     <dl class="sp-recap">
                         <dt>Type</dt><dd data-sp-recap-categorie></dd>
                         <dt>Votre message</dt><dd class="sp-recap-texte" data-sp-recap-description></dd>
@@ -68,7 +68,7 @@
                     </dl>
                     <p class="sp-note"><i class="fas fa-shield-halved"></i>
                         Nous joignons automatiquement la page, votre navigateur et un code de suivi technique. Aucun contenu de la page n'est transmis.</p>
-                    <div class="sp-erreur" data-sp-erreur hidden></div>
+                    <div class="sp-erreur" data-sp-erreur role="alert" hidden></div>
                     <div class="sp-actions">
                         <button type="button" class="sp-btn sp-btn--primaire" data-sp-envoyer>
                             <span data-sp-envoyer-libelle>Envoyer</span>
@@ -79,7 +79,7 @@
                 {{-- Etape 3 : c est recu --}}
                 <section class="sp-etape sp-fin" data-sp-etape="fin" hidden>
                     <div class="sp-fin-icon"><i class="fas fa-check"></i></div>
-                    <p class="sp-question" data-sp-fin-titre>Demande reçue</p>
+                    <p class="sp-question" tabindex="-1" data-sp-focus data-sp-fin-titre>Demande reçue</p>
                     <p class="sp-fin-texte" data-sp-fin-texte></p>
                     <div class="sp-actions sp-actions--centre">
                         <a class="sp-btn sp-btn--secondaire" data-sp-suivi hidden>Suivre ma demande</a>
@@ -93,6 +93,9 @@
 
 <style>
     .sp-modal .modal-content { border: 0; border-radius: 18px; overflow: hidden; box-shadow: 0 24px 60px rgba(15,23,42,.18); }
+    /* La barre basse du shell mobile (z 1080) passe au-dessus du fond Bootstrap (1050) et
+       cachait le bas de la fenetre : on la renvoie sous le fond tant que la fenetre est ouverte. */
+    body:has(#sp-modal.show) .m-bottomnav, body:has(#sp-modal.show) .m-fab { z-index: 1040; }
     .sp-head { display: flex; align-items: flex-start; gap: .9rem; padding: 1.25rem 1.5rem; color: #fff;
         background: linear-gradient(135deg, #0a3d8f 0%, #0453cb 45%, #3b7ddb 100%); }
     .sp-head-icon { width: 44px; height: 44px; border-radius: 12px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;

@@ -34,7 +34,8 @@ class SoumettreDemande
             'reporter' => [
                 'external_id' => $user->getKey(),
                 'name' => $user->name,
-                'email' => $user->email,
+                // Un courriel mal forme ferait refuser la demande pour toujours.
+                'email' => filter_var($user->email, FILTER_VALIDATE_EMAIL) ?: null,
                 'roles' => $user->getRoleNames()->values()->all(),
             ],
             'context' => $contexte ?: null,
@@ -43,10 +44,12 @@ class SoumettreDemande
         try {
             return $this->master->creerTicket($charge, $cle, $requestId);
         } catch (MasterSupportIndisponible $e) {
-            SupportOutbox::firstOrCreate(
-                ['idempotency_key' => $cle],
-                ['user_id' => $user->getKey(), 'payload' => $charge, 'request_id' => $requestId],
-            );
+            // Meme cle, texte corrige entre deux essais : c'est la derniere version
+            // qui doit partir, pas la premiere. Une ligne deja transmise ne bouge plus.
+            $ligne = SupportOutbox::firstOrNew(['idempotency_key' => $cle]);
+            if ($ligne->sent_at === null) {
+                $ligne->fill(['user_id' => $user->getKey(), 'payload' => $charge, 'request_id' => $requestId])->save();
+            }
 
             return ['en_attente' => true];
         }

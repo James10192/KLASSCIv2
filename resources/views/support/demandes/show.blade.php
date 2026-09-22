@@ -50,7 +50,7 @@
         <p class="sd-texte">{{ $demande['description'] }}</p>
         <div class="sd-meta">
             {{ $demande['categorie']['libelle'] ?? '' }}
-            · envoyé le {{ \Carbon\Carbon::parse($demande['cree_le'])->translatedFormat('d M Y à H:i') }}
+            · envoyé le {{ \App\Domain\Support\Services\DateDuMaster::afficher($demande['cree_le'] ?? null, 'd M Y à H:i') }}
             @if(!empty($demande['rapporteur']['nom'])) · par {{ $demande['rapporteur']['nom'] }} @endif
         </div>
     </div>
@@ -63,7 +63,7 @@
             <div class="sd-fil">
                 @foreach($demande['messages'] as $m)
                     <div class="sd-msg {{ $m['auteur'] === 'SUPPORT' ? 'sd-msg--support' : 'sd-msg--ecole' }}">
-                        <div class="sd-msg-auteur"><strong>{{ $m['nom'] }}</strong> · {{ \Carbon\Carbon::parse($m['le'])->translatedFormat('d M Y à H:i') }}</div>
+                        <div class="sd-msg-auteur"><strong>{{ $m['nom'] }}</strong> · {{ \App\Domain\Support\Services\DateDuMaster::afficher($m['le'] ?? null, 'd M Y à H:i') }}</div>
                         <p>{{ $m['corps'] }}</p>
                     </div>
                 @endforeach

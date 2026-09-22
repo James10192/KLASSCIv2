@@ -84,13 +84,24 @@
             var zone = $('#sp-description');
             zone.value = etat.description;
             compter();
-            setTimeout(function () { (etat.categorie ? zone : racine.querySelector('.sp-pastille')).focus(); }, 50);
         }
         if (nom === 'recap') {
             $('[data-sp-recap-categorie]').textContent = (categorie(etat.categorie) || {}).libelle || '';
             $('[data-sp-recap-description]').textContent = etat.description;
             $('[data-sp-recap-page]').textContent = window.location.pathname;
         }
+        /* Le bouton clique vient d'etre masque : sans ceci, le focus tombe sur la page.
+           A l'ouverture, la fenetre est encore invisible, shown.bs.modal s'en charge. */
+        if (racine.classList.contains('show')) { focaliserEtape(); }
+    }
+
+    function focaliserEtape() {
+        var etape = racine.querySelector('[data-sp-etape]:not([hidden])');
+        if (!etape) { return; }
+        var cible = etape.getAttribute('data-sp-etape') === 'saisie'
+            ? (etat.categorie ? $('#sp-description') : etape.querySelector('.sp-pastille'))
+            : etape.querySelector('[data-sp-focus]');
+        if (cible) { cible.focus(); }
     }
 
     function erreur(message) {
@@ -127,6 +138,7 @@
             bouton.addEventListener('click', function () {
                 etat.categorie = c.code;
                 marquerCategorie();
+                racine.querySelectorAll('[data-sp-erreur]').forEach(function (e) { e.hidden = true; });
                 ecrireBrouillon();
             });
             conteneur.appendChild(bouton);
@@ -262,6 +274,13 @@
     purgerAutresComptes();
     construireChoix();
 
+    /* Un brouillon ne survit pas a la deconnexion : sur un poste partage, le compte
+       suivant ne doit pas le lire. Le formulaire de bureau part par submit(), sans
+       evenement submit : c'est le clic qu'on ecoute. */
+    document.addEventListener('click', function (ev) {
+        if (ev.target.closest('form[action$="/logout"]')) { effacerBrouillon(); }
+    }, true);
+
     $('#sp-description').addEventListener('input', function () {
         etat.description = this.value;
         compter();
@@ -283,6 +302,14 @@
         });
     });
     $('[data-sp-envoyer]').addEventListener('click', envoyer);
+
+    /* Tant qu'on signale, aucune autre fenetre ne s'ouvre par-dessus (« Nouveautes »
+       s'affiche au chargement, parfois apres un lien ?signaler=1). */
+    document.addEventListener('show.bs.modal', function (ev) {
+        if (ev.target !== racine && racine.classList.contains('show')) { ev.preventDefault(); }
+    });
+
+    racine.addEventListener('shown.bs.modal', focaliserEtape);
 
     /* Le focus revient a ce qui a ouvert la fenetre. */
     racine.addEventListener('hidden.bs.modal', function () {

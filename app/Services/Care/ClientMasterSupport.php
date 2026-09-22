@@ -2,6 +2,7 @@
 
 namespace App\Services\Care;
 
+use App\Domain\Support\Exceptions\IdentifiantInstanceRefuse;
 use App\Domain\Support\Exceptions\MasterSupportIndisponible;
 use App\Domain\Support\Exceptions\MasterSupportRefus;
 use GuzzleHttp\Exception\TransferException;
@@ -184,7 +185,7 @@ class ClientMasterSupport
                 'statut' => $reponse->status(),
                 'code' => $reponse->json('error'),
             ]);
-            throw new MasterSupportIndisponible("Identifiant de l'instance refusé par le Master ({$reponse->status()}).");
+            throw new IdentifiantInstanceRefuse("Identifiant de l'instance refusé par le Master ({$reponse->status()}).");
         }
 
         Log::warning('KLASSCI Care : requête refusée par le Master', [

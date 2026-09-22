@@ -15,8 +15,9 @@ use App\Services\Care\ClientMasterSupport;
  *    l'expose, il se pose en base ou par le CLI.
  * Sans MASTER_SUPPORT_TOKEN, rien ne s'affiche et le Master n'est pas appele.
  *
- * Lie en scoped() : le layout le consulte a plusieurs endroits d'une meme page,
- * la reponse n'est calculee qu'une fois par requete.
+ * Lie en scoped() : le layout le consulte a plusieurs endroits d'une meme page.
+ * L'interrupteur local est lu une fois par requete ; les fonctionnalites du
+ * Master viennent du cache de ClientMasterSupport, relu a chaque appel.
  */
 class DisponibiliteSupport
 {

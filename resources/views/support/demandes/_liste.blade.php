@@ -17,7 +17,7 @@
                     <span class="sd-titre">{{ $d['titre'] }}</span>
                     <span class="sd-meta">
                         {{ $d['categorie']['libelle'] ?? '' }}
-                        · {{ \Carbon\Carbon::parse($d['cree_le'])->translatedFormat('d M Y, H:i') }}
+                        · {{ \App\Domain\Support\Services\DateDuMaster::afficher($d['cree_le'] ?? null) }}
                         @if($portee === 'school' && !empty($d['rapporteur']['nom']))
                             · {{ $d['rapporteur']['nom'] }}
                         @endif

@@ -2,7 +2,7 @@
     // La couleur porte un sens : l'orange attend l'ecole, le vert est regle, le gris est clos.
     $_sdTon = match ($statut['code'] ?? '') {
         'ACTION_REQUISE' => 'attention',
-        'CORRECTION_DEPLOYEE', 'RESOLU' => 'succes',
+        'RESOLU' => 'succes',
         'FERME' => 'neutre',
         default => 'info',
     };

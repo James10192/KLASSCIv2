@@ -18,7 +18,6 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <meta name="request-id" content="{{ request()->attributes->get('request_id') }}">
     <meta name="app-debug" content="{{ config('app.debug') ? '1' : '0' }}">
     <meta name="navbar-mark-all-read-url" content="{{ url('/navbar/notifications/mark-all-read') }}">
 
@@ -3486,7 +3485,10 @@
             document.addEventListener('DOMContentLoaded', function() {
                 // Shell mobile : sous 768px, les rappels non bloquants ne s'ouvrent pas seuls
                 // (chaque auto-open ci-dessous est garde par cette valeur).
-                const mAutoModalDeferred = window.matchMedia('(max-width:991.98px)').matches;
+                // Differees aussi quand la page s'ouvre pour signaler un probleme (?signaler=1) :
+                // la fenetre du support ne doit pas se retrouver sous une annonce.
+                const mAutoModalDeferred = window.matchMedia('(max-width:991.98px)').matches
+                    || new URLSearchParams(window.location.search).get('signaler') === '1';
 
                 const anneeModal = document.getElementById('anneeCouranteExpiredModal');
                 if (anneeModal) {

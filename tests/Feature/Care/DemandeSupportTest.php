@@ -113,6 +113,33 @@ class DemandeSupportTest extends TestCase
     }
 
     /** @test */
+    public function un_identifiant_d_instance_refuse_ne_consomme_pas_d_essai(): void
+    {
+        $ligne = SupportOutbox::create(['idempotency_key' => self::CLE, 'payload' => ['report' => []]]);
+        Http::fake(['master.test/*' => Http::response(['error' => 'invalid_credential'], 401)]);
+
+        $this->artisan('support:vider-boite-envoi')->assertSuccessful();
+
+        $this->assertSame(0, (int) $ligne->fresh()->attempts, "la faute est celle de l'instance, pas de la demande");
+        $this->assertNull($ligne->fresh()->abandoned_at);
+    }
+
+    /** @test */
+    public function un_texte_corrige_pendant_la_panne_remplace_celui_qui_attendait(): void
+    {
+        $this->master(Http::response([], 503));
+        $user = $this->utilisateur();
+
+        $this->actingAs($user)->postJson(route('support.demandes.store'), $this->soumission())->assertStatus(202);
+        Cache::forget('care:master:indisponible');
+        $this->actingAs($user)->postJson(route('support.demandes.store'), $this->soumission(['description' => 'Texte corrigé : le bouton Valider reste gris.']))
+            ->assertStatus(202);
+
+        $this->assertSame(1, SupportOutbox::count());
+        $this->assertSame('Texte corrigé : le bouton Valider reste gris.', SupportOutbox::firstOrFail()->payload['report']['description']);
+    }
+
+    /** @test */
     public function la_boite_d_envoi_n_avance_pas_l_abandon_quand_le_coupe_circuit_est_ouvert(): void
     {
         $ligne = SupportOutbox::create(['idempotency_key' => self::CLE, 'payload' => ['report' => []]]);

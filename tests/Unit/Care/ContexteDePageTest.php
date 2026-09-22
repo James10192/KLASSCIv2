@@ -62,6 +62,15 @@ class ContexteDePageTest extends TestCase
     }
 
     /** @test */
+    public function un_identifiant_nul_ne_part_pas_le_master_le_refuserait_pour_toujours(): void
+    {
+        $c = $this->assainir(['entity' => ['type' => 'jury', 'id' => '0'], 'class_id' => '0']);
+
+        $this->assertArrayNotHasKey('entity', $c);
+        $this->assertArrayNotHasKey('class_id', $c);
+    }
+
+    /** @test */
     public function il_ecarte_une_route_inexistante_et_un_type_inconnu(): void
     {
         $c = $this->assainir([

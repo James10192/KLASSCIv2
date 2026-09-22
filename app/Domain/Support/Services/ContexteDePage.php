@@ -34,6 +34,12 @@ final class ContexteDePage
         ]);
     }
 
+    /** Un identifiant de base : entier strictement positif, comme l'exige le Master. */
+    private static function identifiant(mixed $valeur): ?int
+    {
+        return ctype_digit((string) $valeur) && (int) $valeur > 0 ? (int) $valeur : null;
+    }
+
     /** Ce que le navigateur renvoie, ramene a ce qui se verifie. */
     public static function assainir(array $brut, Request $request): array
     {
@@ -42,8 +48,8 @@ final class ContexteDePage
 
         $entite = null;
         $types = array_values(config('support.entites_de_route', []));
-        if (in_array($brut['entity']['type'] ?? null, $types, true) && ctype_digit((string) ($brut['entity']['id'] ?? ''))) {
-            $entite = ['type' => $brut['entity']['type'], 'id' => (int) $brut['entity']['id']];
+        if (in_array($brut['entity']['type'] ?? null, $types, true) && self::identifiant($brut['entity']['id'] ?? null) !== null) {
+            $entite = ['type' => $brut['entity']['type'], 'id' => self::identifiant($brut['entity']['id'])];
         }
 
         $annee = ESBTPAnneeUniversitaire::getCurrent();
@@ -55,7 +61,7 @@ final class ContexteDePage
             'module' => ModuleDeRoute::pour($nom),
             'entity' => $entite,
             'academic_year_id' => $annee?->getKey(),
-            'class_id' => ctype_digit((string) ($brut['class_id'] ?? '')) ? (int) $brut['class_id'] : null,
+            'class_id' => self::identifiant($brut['class_id'] ?? null),
             'browser' => array_filter($navigateur['browser']) ?: null,
             'os' => $navigateur['os'],
             'device' => $navigateur['device'],

@@ -102,10 +102,10 @@
 
     <div class="sd-card">
         @if($peutVoirEcole)
-            <div class="sd-onglets" role="tablist">
-                <a href="{{ route('support.demandes.index') }}" class="sd-onglet {{ $portee === 'mine' ? 'sd-onglet--actif' : '' }}" data-sd-lien data-sd-portee="mine" role="tab">Mes demandes</a>
-                <a href="{{ route('support.demandes.index', ['portee' => 'ecole']) }}" class="sd-onglet {{ $portee === 'school' ? 'sd-onglet--actif' : '' }}" data-sd-lien data-sd-portee="school" role="tab">Tout l'établissement</a>
-            </div>
+            <nav class="sd-onglets" aria-label="Portée des demandes">
+                <a href="{{ route('support.demandes.index') }}" class="sd-onglet {{ $portee === 'mine' ? 'sd-onglet--actif' : '' }}" data-sd-lien data-sd-portee="mine" @if($portee === 'mine') aria-current="page" @endif>Mes demandes</a>
+                <a href="{{ route('support.demandes.index', ['portee' => 'ecole']) }}" class="sd-onglet {{ $portee === 'school' ? 'sd-onglet--actif' : '' }}" data-sd-lien data-sd-portee="school" @if($portee === 'school') aria-current="page" @endif>Tout l'établissement</a>
+            </nav>
         @endif
         @include('support.demandes._liste')
     </div>
@@ -125,7 +125,9 @@
             .then(function (d) {
                 liste.outerHTML = d.liste;
                 document.querySelectorAll('.sd-onglet').forEach(function (o) {
-                    o.classList.toggle('sd-onglet--actif', o.getAttribute('data-sd-portee') === d.portee);
+                    var actif = o.getAttribute('data-sd-portee') === d.portee;
+                    o.classList.toggle('sd-onglet--actif', actif);
+                    if (actif) { o.setAttribute('aria-current', 'page'); } else { o.removeAttribute('aria-current'); }
                 });
                 if (pousser) { history.pushState({ sd: true }, '', url); }
             })

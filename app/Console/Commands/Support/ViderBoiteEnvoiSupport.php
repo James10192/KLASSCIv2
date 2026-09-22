@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands\Support;
 
+use App\Domain\Support\Exceptions\IdentifiantInstanceRefuse;
 use App\Domain\Support\Exceptions\MasterSupportIndisponible;
 use App\Domain\Support\Exceptions\MasterSupportRefus;
 use App\Domain\Support\Models\SupportOutbox;
@@ -38,6 +39,9 @@ class ViderBoiteEnvoiSupport extends Command
                 $reponse = $master->creerTicket($ligne->payload, $ligne->idempotency_key, $ligne->request_id);
                 $ligne->forceFill(['sent_at' => now(), 'reference' => $reponse['reference'] ?? null, 'last_error' => null])->save();
                 $envoyes++;
+            } catch (IdentifiantInstanceRefuse $e) {
+                // La faute est celle de l'instance : la ligne garde tous ses essais.
+                break;
             } catch (MasterSupportIndisponible $e) {
                 $ligne->reporter($e->getMessage());
                 break;
