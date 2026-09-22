@@ -32,7 +32,26 @@ if (typeof window.couvertureNotes !== 'function') {
             erreur: '',
             interdit: false,
             donnees: null,
+            filtre: 'tout',
+            _cache: {},
             _requete: 0,
+            _canalSynchronisation: null,
+            _surSynchronisationOnglet: null,
+            _surStockageSynchronisation: null,
+
+            ouvrirSaisie(matiere) {
+                if (!matiere || !matiere.saisie_url) return;
+
+                // Dans notes.index, la matière est ouverte dans le modal déjà
+                // affiché. Les autres écrans n'ont pas ce modal : ils gardent
+                // alors le lien direct vers la saisie.
+                if (typeof window.nmOpenCoverageSaisie === 'function') {
+                    window.nmOpenCoverageSaisie(matiere);
+                    return;
+                }
+
+                window.open(matiere.saisie_url, '_blank', 'noopener');
+            },
 
             init() {
                 this._surContexte = (ev) => this.appliquerContexte(ev.detail || {});
@@ -49,14 +68,46 @@ if (typeof window.couvertureNotes !== 'function') {
                 this._surInvalidation = () => this.charger(true);
                 window.addEventListener('couverture:invalider', this._surInvalidation);
 
+                // Une saisie peut être ouverte dans un nouvel onglet depuis ce
+                // bandeau. La validation y réussit, mais l'onglet d'origine ne
+                // reçoit pas les événements JavaScript de son voisin : ce canal
+                // et le repli localStorage lui transmettent seulement le contexte
+                // nécessaire au recalcul, jamais les notes ni les étudiants.
+                this._surSynchronisationOnglet = (detail) => {
+                    if (!detail || detail.type !== 'notes-updated') return;
+                    if (Number(detail.classe_id) !== Number(this.classeId)) return;
+                    // La saisie ouverte depuis une page de résultat transporte
+                    // toujours la classe, mais cette page peut avoir changé
+                    // d'année depuis son ouverture. Rafraîchir la même classe
+                    // reste sûr et évite un bandeau figé.
+                    this.charger(true);
+                    if (typeof window.nmRefreshClasses === 'function') {
+                        window.nmRefreshClasses();
+                    }
+                };
+                if ('BroadcastChannel' in window) {
+                    this._canalSynchronisation = new BroadcastChannel('klassci-notes-sync');
+                    this._canalSynchronisation.onmessage = (event) => this._surSynchronisationOnglet(event.data);
+                }
+                this._surStockageSynchronisation = (event) => {
+                    if (event.key !== 'klassci-notes-sync' || !event.newValue) return;
+                    try { this._surSynchronisationOnglet(JSON.parse(event.newValue)); } catch (_error) {}
+                };
+                window.addEventListener('storage', this._surStockageSynchronisation);
+
                 if (this.pret()) { this.charger(); }
             },
 
             destroy() {
                 window.removeEventListener('couverture:contexte', this._surContexte);
                 window.removeEventListener('couverture:invalider', this._surInvalidation);
+                window.removeEventListener('storage', this._surStockageSynchronisation);
+                if (this._canalSynchronisation) this._canalSynchronisation.close();
                 this._surContexte = null;
                 this._surInvalidation = null;
+                this._surSynchronisationOnglet = null;
+                this._surStockageSynchronisation = null;
+                this._canalSynchronisation = null;
             },
 
             pret() {
@@ -75,8 +126,12 @@ if (typeof window.couvertureNotes !== 'function') {
                 this.classeId = classe;
                 this.anneeId = annee;
                 this.periode = periode;
-                this.donnees = null;
                 this.erreur = '';
+
+                // On réaffiche aussitôt le dernier calcul connu pour ce contexte,
+                // puis on le rafraîchit en arrière-plan : aucun effet de clignotement.
+                var cache = this._cache[this.cleCache()];
+                this.donnees = cache ? cache.donnees : null;
 
                 if (this.pret()) { this.charger(); }
             },
@@ -88,12 +143,37 @@ if (typeof window.couvertureNotes !== 'function') {
                     + (forcer ? '&recalculer=1' : '');
             },
 
+            cleCache() {
+                return [this.classeId, this.anneeId, this.periode].join(':');
+            },
+
+            changerPeriode(periode) {
+                if (!['annuel', 'semestre1', 'semestre2'].includes(periode) || periode === this.periode) return;
+                this.periode = periode;
+                this.filtre = 'tout';
+                window.dispatchEvent(new CustomEvent('couverture:periode-change', { detail: { periode: periode } }));
+                this.erreur = '';
+                var cache = this._cache[this.cleCache()];
+                this.donnees = cache ? cache.donnees : null;
+                this.charger();
+            },
+
+            rafraichir() { return this.charger(true); },
+
             async charger(forcer) {
                 if (!this.pret()) { return; }
 
+                var cle = this.cleCache();
+                var cache = this._cache[cle];
+                // Les allers-retours S1/S2 restent instantanés pendant 20 s.
+                // Une validation finale force toujours un nouveau calcul.
+                if (!forcer && cache && (Date.now() - cache.at) < 20000) {
+                    this.donnees = cache.donnees;
+                    return;
+                }
+
                 // Un choix rapide dans un sélecteur lance plusieurs requêtes :
-                // seule la dernière demandée a le droit d'écrire le résultat,
-                // sinon une réponse lente écraserait la bonne.
+                // seule la dernière demandée a le droit d'écrire le résultat.
                 var jeton = ++this._requete;
 
                 this.chargement = true;
@@ -104,7 +184,9 @@ if (typeof window.couvertureNotes !== 'function') {
                     if (jeton !== this._requete) { return; }
                     if (res.status === 403) { this.interdit = true; return; }
                     if (!res.ok) { throw new Error('Suivi des notes indisponible (' + res.status + ').'); }
-                    this.donnees = await res.json();
+                    var donnees = await res.json();
+                    this._cache[cle] = { donnees: donnees, at: Date.now() };
+                    this.donnees = donnees;
                 } catch (err) {
                     if (jeton === this._requete) { this.erreur = err.message; }
                 } finally {
@@ -134,10 +216,14 @@ if (typeof window.couvertureNotes !== 'function') {
                         return "La maquette ne prévoit aucune matière à cette période.";
                     case 'cohorte_vide':
                         return "Aucun étudiant sur cette période : rien à saisir.";
+                    case 'evaluations_programmees':
+                        return (s.evaluations_programmees_total || 0) + " évaluation(s) programmée(s) : la saisie s'ouvrira à la date prévue.";
                     case 'aucune_evaluation':
-                        return "Aucune évaluation n'a encore été créée : la saisie n'a pas commencé.";
+                        return "Aucune évaluation créée pour cette matière : créez-en une pour commencer la saisie.";
                     case 'incomplete':
-                        return s.missing_results + ' note(s) manquante(s) sur ' + s.expected_results + ' attendue(s).';
+                        return s.missing_results + ' saisie(s) manquante(s) sur ' +
+                            (s.evaluations_total || 0) + ' évaluation(s) de la maquette × ' +
+                            (s.students_expected || 0) + ' étudiant(s) actif(s).';
                     case 'complete':
                         return "Toutes les notes attendues sont reçues.";
                     default:
@@ -176,6 +262,7 @@ if (typeof window.couvertureNotes !== 'function') {
                     case 'complete': return 'cvn--ok';
                     case 'incomplete': return 'cvn--alerte';
                     case 'aucune_evaluation': return 'cvn--alerte';
+                    case 'evaluations_programmees': return 'cvn--neutre';
                     default: return 'cvn--neutre';
                 }
             },
@@ -185,6 +272,7 @@ if (typeof window.couvertureNotes !== 'function') {
                     case 'complete': return 'fa-circle-check';
                     case 'incomplete': return 'fa-triangle-exclamation';
                     case 'aucune_evaluation': return 'fa-hourglass-start';
+                    case 'evaluations_programmees': return 'fa-calendar-days';
                     default: return 'fa-circle-info';
                 }
             },
@@ -203,19 +291,65 @@ if (typeof window.couvertureNotes !== 'function') {
 
             aUneBarre() { return this.pourcentage() !== null; },
 
+            categorie(matiere) {
+                if (matiere.is_orphan || matiere.statut === 'hors_maquette') return 'hors_maquette';
+                if (matiere.statut === 'programmee') return 'programmee';
+                if (matiere.statut === 'non_evaluee') return 'sans_evaluation';
+                if ((matiere.evaluations_count || 0) > 0 && (matiere.treated_count || 0) === 0) return 'sans_note';
+                if ((matiere.missing_count || 0) > 0) return 'partielle';
+                return 'complete';
+            },
+
+            matieresParCategorie(categorie) {
+                var subjects = (this.donnees && this.donnees.subjects) || [];
+                // « Toutes » est la vue globale, pas une catégorie métier.
+                return categorie === 'tout'
+                    ? subjects
+                    : subjects.filter((matiere) => this.categorie(matiere) === categorie);
+            },
+
+            compteur(categorie) {
+                return this.matieresParCategorie(categorie).length;
+            },
+
+            matieresAffichees() {
+                var subjects = (this.donnees && this.donnees.subjects) || [];
+                var filtre = this.filtre;
+                return subjects
+                    .filter((matiere) => filtre === 'tout' || this.categorie(matiere) === filtre)
+                    .sort((a, b) => {
+                        var ordre = { hors_maquette: 0, sans_evaluation: 1, sans_note: 2, partielle: 3, programmee: 4, complete: 5 };
+                        var pa = ordre[this.categorie(a)] ?? 9;
+                        var pb = ordre[this.categorie(b)] ?? 9;
+                        return pa - pb || (b.missing_count || 0) - (a.missing_count || 0) || String(a.name).localeCompare(String(b.name), 'fr');
+                    });
+            },
+
+            titreCategorie(categorie) {
+                return {
+                    sans_evaluation: 'Dans la maquette · sans évaluation',
+                    sans_note: 'Évaluation créée · aucune note saisie',
+                    partielle: 'Saisie à compléter',
+                    complete: 'Saisie complète',
+                    programmee: 'Évaluation programmée',
+                    hors_maquette: 'Hors maquette',
+                }[categorie] || categorie;
+            },
+
             /* Les matières à relancer, les plus en retard d'abord. */
             prioritaires() {
                 if (!this.donnees || !this.donnees.subjects) { return []; }
                 return this.donnees.subjects
-                    .filter(function (m) { return m.missing_count > 0 || m.statut === 'non_evaluee'; })
+                    .filter(function (m) { return m.missing_count > 0 || ['non_evaluee', 'programmee', 'hors_maquette'].includes(m.statut); })
                     .sort(function (a, b) { return (b.missing_count || 0) - (a.missing_count || 0); });
             },
 
             libelleStatut(matiere) {
                 switch (matiere.statut) {
                     case 'non_evaluee': return 'Aucune évaluation';
-                    case 'partielle': return matiere.missing_count + ' manquante(s)';
-                    case 'hors_maquette': return 'Hors référentiel';
+                    case 'programmee': return 'Programmée le ' + (matiere.prochaine_evaluation_at || 'date à confirmer');
+                    case 'partielle': return matiere.missing_count + ' note(s) manquante(s) sur ' + matiere.evaluations_count + ' évaluation(s)';
+                    case 'hors_maquette': return 'Matière absente de la maquette';
                     default: return 'Complète';
                 }
             },
@@ -223,6 +357,13 @@ if (typeof window.couvertureNotes !== 'function') {
             contact(matiere) {
                 if (!matiere.enseignant || !matiere.enseignant.name) { return null; }
                 return matiere.enseignant;
+            },
+
+            filtrer(categorie) {
+                this.filtre = categorie;
+                // Un filtre est une intention de consulter ce groupe : l’ouvrir
+                // tout de suite évite le faux « rien ne se passe ».
+                this.replie = false;
             },
 
             basculer() { this.replie = !this.replie; },

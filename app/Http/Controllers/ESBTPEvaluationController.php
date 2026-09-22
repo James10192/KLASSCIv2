@@ -152,6 +152,21 @@ class ESBTPEvaluationController extends Controller
                 ->get();
         }
 
+        if ($request->ajax() && $request->input('mode') === 'rows') {
+            return response()->json([
+                'success' => true,
+                'rows_html' => $evaluations->getCollection()
+                    ->map(fn ($evaluation) => view('esbtp.evaluations.partials.evaluation-row', compact('evaluation'))->render())
+                    ->implode(''),
+                'pagination' => [
+                    'current_page' => $evaluations->currentPage(),
+                    'next_page' => $evaluations->hasMorePages() ? $evaluations->currentPage() + 1 : null,
+                    'has_more' => $evaluations->hasMorePages(),
+                    'total' => $evaluations->total(),
+                ],
+            ]);
+        }
+
         if ($request->ajax()) {
             return response()->json([
                 'success' => true,
@@ -159,6 +174,12 @@ class ESBTPEvaluationController extends Controller
                     'evaluations' => $evaluations,
                 ])->render(),
                 'summary' => $summary,
+                'rows_html' => $evaluations->getCollection()->map(fn ($evaluation) => view('esbtp.evaluations.partials.evaluation-row', compact('evaluation'))->render())->implode(''),
+                'pagination' => [
+                    'current_page' => $evaluations->currentPage(),
+                    'next_page' => $evaluations->hasMorePages() ? $evaluations->currentPage() + 1 : null,
+                    'has_more' => $evaluations->hasMorePages(),
+                ],
                 'url' => $request->fullUrl(),
             ]);
         }

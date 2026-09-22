@@ -392,6 +392,14 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             Route::post('/rendez-vous/placer', [\App\Http\Controllers\ESBTP\ESBTPRendezVousController::class, 'placer'])
                 ->middleware(['permission:inscriptions.rdv.manage', 'throttle:5,1'])
                 ->name('placer');
+            // Appele en boucle par l'ecran, un paquet borne a la fois : le debit
+            // tient compte de cette boucle (15 par paquet, 60 paquets/min).
+            Route::post('/rendez-vous/convocations/envoyer', [\App\Http\Controllers\ESBTP\ESBTPRendezVousController::class, 'envoyerConvocations'])
+                ->middleware(['permission:inscriptions.rdv.manage', 'throttle:60,1'])
+                ->name('convocations.envoyer');
+            Route::post('/rendez-vous/convocations/remettre', [\App\Http\Controllers\ESBTP\ESBTPRendezVousController::class, 'remettreConvocations'])
+                ->middleware(['permission:inscriptions.rdv.manage', 'throttle:10,1'])
+                ->name('convocations.remettre');
             Route::post('/rendez-vous/{creneau}/ouvrir', [\App\Http\Controllers\ESBTP\ESBTPRendezVousController::class, 'ouvrir'])
                 ->middleware(['permission:inscriptions.rdv.manage', 'throttle:60,1'])
                 ->name('ouvrir');
@@ -1564,7 +1572,9 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 ->middleware('throttle:30,1')
                 ->name('notes.save-ajax');
             Route::post('notes/save-ajax-bulk', [ESBTPNoteController::class, 'saveNotesAjaxBulk'])
-                ->middleware('throttle:10,1')
+                // Une validation finale est déjà sérialisée dans l'écran. 30/min
+                // absorbe les reprises réseau sans rouvrir la porte aux rafales.
+                ->middleware('throttle:30,1')
                 ->name('notes.save-ajax-bulk');
 
             // PR #7 â€” Excel import/export bidirectionnel + preview impact bulletin
