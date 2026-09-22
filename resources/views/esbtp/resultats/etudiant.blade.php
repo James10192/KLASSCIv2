@@ -464,6 +464,38 @@
         </div>
     </div>
 </div>
+
+{{-- Motif de régénération d'un bulletin incomplet. Le serveur l'exige dès que
+     des notes attendues manquent ; sans ce champ, Régénérer échouait toujours
+     sur une classe incomplète. --}}
+<div class="modal fade srb-modal-wrapper" id="srIncompleteReasonModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" style="max-width:560px;">
+        <div class="modal-content srb-modal">
+            <div class="srb-modal-hero">
+                <div class="srb-modal-hero-icon"><i class="fas fa-pen-to-square"></i></div>
+                <div class="srb-modal-hero-body">
+                    <div class="srb-modal-hero-title">Bulletin incomplet</div>
+                    <div class="srb-modal-hero-sub">Des notes attendues manquent encore sur cette période.</div>
+                </div>
+                <button type="button" class="srb-modal-close" data-bs-dismiss="modal" aria-label="Fermer">
+                    <i class="fas fa-xmark"></i>
+                </button>
+            </div>
+            <div class="srb-modal-body">
+                <label for="srIncompleteReasonInput" class="form-label fw-semibold">Motif de la régénération</label>
+                <textarea id="srIncompleteReasonInput" class="form-control" rows="3" maxlength="1000"
+                          placeholder="Ex. : notes de TP attendues après le conseil de classe"></textarea>
+                <div class="form-text"><span id="srIncompleteReasonCount">0</span> / 8 caractères minimum. Ce motif est conservé dans le journal.</div>
+            </div>
+            <div class="srb-modal-footer">
+                <button type="button" class="srb-action srb-action--ghost" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" id="srIncompleteReasonConfirm" class="srb-action srb-action--warning" disabled>
+                    <i class="fas fa-rotate-right"></i> Régénérer quand même
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 @endsection
 
 @push('scripts')
@@ -514,7 +546,10 @@
         // Auto-filter on select change (AJAX)
         document.querySelectorAll('.sr-auto-filter').forEach(function(el) {
             el.addEventListener('change', function() {
-                srSubmitFilter();
+                // Différé : l'écouteur qui recale l'année sur la classe choisie
+                // est posé après celui-ci ; sans ce délai la requête partait
+                // avec l'année de l'ancienne classe.
+                setTimeout(srSubmitFilter, 0);
             });
         });
 
@@ -684,18 +719,30 @@
     }
 
     // ═══ AJAX content swap ═══
-    function srFetchAndSwap(url) {
+    // Seule la DERNIÈRE demande s'affiche : deux clics rapides (S1 puis S2)
+    // laissaient gagner la réponse arrivée en dernier, pas le dernier clic.
+    var srSwapSeq = 0;
+    var srSwapController = null;
+
+    function srFetchAndSwap(url, options) {
+        var pushHistory = !options || options.push !== false;
+        var seq = ++srSwapSeq;
+        if (srSwapController) srSwapController.abort();
+        srSwapController = typeof AbortController === 'function' ? new AbortController() : null;
+
         var overlay = document.getElementById('sr-loading');
         if (overlay) overlay.classList.add('active');
 
         fetch(url, {
-            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            signal: srSwapController ? srSwapController.signal : undefined
         })
         .then(function(res) {
             if (!res.ok) throw new Error('HTTP ' + res.status);
             return res.text();
         })
         .then(function(html) {
+            if (seq !== srSwapSeq) return;
             var parser = new DOMParser();
             var doc = parser.parseFromString(html, 'text/html');
             var fresh = doc.getElementById('etudiant-resultats-content');
@@ -708,8 +755,9 @@
                 target.dataset.routeBase = fresh.dataset.routeBase || target.dataset.routeBase;
             }
 
-            // Update URL without reload
-            history.pushState(null, '', url);
+            // Update URL without reload. Au retour arrière, l'URL est déjà la
+            // bonne : l'empiler à nouveau effaçait l'historique « suivant ».
+            if (pushHistory) history.pushState(null, '', url);
 
             // Re-initialize everything
             initStudentResults();
@@ -718,6 +766,7 @@
             if (overlay) overlay.classList.remove('active');
         })
         .catch(function(err) {
+            if (seq !== srSwapSeq || (err && err.name === 'AbortError')) return;
             console.error('AJAX error:', err);
             if (overlay) overlay.classList.remove('active');
             // Fallback: navigate normally
@@ -857,7 +906,51 @@
         new bootstrap.Modal(document.getElementById('srBulletinWarningModal')).show();
     }
 
+    var srRegenerateInFlight = false;
+
+    function srSetRegenerateBusy(busy) {
+        document.querySelectorAll('[data-regenerate-bulletin="1"], #srbDetailsRegenerateBtn, #srWarningRegenerateBtn')
+            .forEach(function(button) {
+                button.disabled = busy;
+                button.setAttribute('aria-busy', busy ? 'true' : 'false');
+                button.style.opacity = busy ? '0.6' : '';
+                button.style.pointerEvents = busy ? 'none' : '';
+            });
+    }
+
+    // Demande le motif exigé pour un bulletin incomplet, puis rappelle `onReason`.
+    function srAskIncompleteReason(onReason) {
+        var modalEl = document.getElementById('srIncompleteReasonModal');
+        var input = document.getElementById('srIncompleteReasonInput');
+        var counter = document.getElementById('srIncompleteReasonCount');
+        var confirmBtn = document.getElementById('srIncompleteReasonConfirm');
+        if (!modalEl || !input || !confirmBtn) return;
+
+        input.value = '';
+        var refresh = function() {
+            var length = input.value.trim().length;
+            if (counter) counter.textContent = length;
+            confirmBtn.disabled = length < 8;
+        };
+        input.oninput = refresh;
+        refresh();
+
+        confirmBtn.onclick = function() {
+            var reason = input.value.trim();
+            if (reason.length < 8) return;
+            bootstrap.Modal.getOrCreateInstance(modalEl).hide();
+            onReason(reason);
+        };
+
+        bootstrap.Modal.getOrCreateInstance(modalEl).show();
+        setTimeout(function() { input.focus(); }, 300);
+    }
+
     function srRegenerateBulletin(payload, onSuccess) {
+        // Un second clic pendant le calcul lançait une seconde régénération
+        // complète (rangs de la classe compris), avec un second toast.
+        if (srRegenerateInFlight) return;
+
         var container = document.getElementById('etudiant-resultats-content');
         var regenerateUrl = container ? container.dataset.regenerateUrl : null;
         var csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
@@ -868,6 +961,9 @@
             }
             return;
         }
+
+        srRegenerateInFlight = true;
+        srSetRegenerateBusy(true);
 
         fetch(regenerateUrl, {
             method: 'POST',
@@ -886,7 +982,13 @@
         })
         .then(function(result) {
             if (!result.ok || !result.data.ok) {
-                // Affiche l'erreur via toast premium AVANT de redirect/throw
+                if (result.data.error === 'academic_pilotage.incomplete_bulletin_reason_required' && !payload.incomplete_reason) {
+                    srAskIncompleteReason(function(reason) {
+                        srRegenerateBulletin(Object.assign({}, payload, { incomplete_reason: reason }), onSuccess);
+                    });
+                    return;
+                }
+
                 var errMsg = result.data.message
                     || (result.data.errors && Object.values(result.data.errors).flat().join(' · '))
                     || ('Erreur HTTP ' + result.status);
@@ -897,9 +999,8 @@
                 }
                 if (result.data.redirect_url) {
                     setTimeout(function() { window.location.href = result.data.redirect_url; }, 1500);
-                    return;
                 }
-                throw new Error(errMsg);
+                return;
             }
 
             if (typeof window.klassciToast === 'function') {
@@ -911,6 +1012,13 @@
         })
         .catch(function(error) {
             console.error('Erreur régénération bulletin:', error);
+            if (typeof window.klassciToast === 'function') {
+                window.klassciToast('error', 'La régénération n’a pas abouti. Vérifiez votre connexion puis réessayez.');
+            }
+        })
+        .finally(function() {
+            srRegenerateInFlight = false;
+            srSetRegenerateBusy(false);
         });
     }
 
@@ -927,7 +1035,7 @@
 
     // ═══ Handle browser back/forward ═══
     window.addEventListener('popstate', function() {
-        srFetchAndSwap(window.location.href);
+        srFetchAndSwap(window.location.href, { push: false });
     });
 
     // ═══ Initial setup ═══
