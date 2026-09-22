@@ -31,12 +31,14 @@
                 modal.id = 'ii-common-confirm-modal';
                 modal.className = 'modal fade';
                 modal.tabIndex = -1;
+                modal.setAttribute('aria-labelledby', 'ii-common-confirm-title');
+                modal.setAttribute('aria-hidden', 'true');
                 modal.innerHTML = `
                     <div class="modal-dialog modal-dialog-centered modal-sm">
                         <div class="modal-content" style="border:none; border-radius:14px; overflow:hidden;">
                             <div class="modal-header" style="background:linear-gradient(135deg,#0453cb 0%,#3b7ddb 100%); color:#fff; border:none; padding:16px 20px;">
-                                <h5 class="modal-title" style="font-size:1rem; font-weight:700;" data-role="title"></h5>
-                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                <h5 class="modal-title" id="ii-common-confirm-title" style="font-size:1rem; font-weight:700;" data-role="title"></h5>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fermer"></button>
                             </div>
                             <div class="modal-body" style="padding:20px; font-size:.9rem; color:#334155;" data-role="message"></div>
                             <div class="modal-footer" style="border:none; padding:14px 20px;">
@@ -82,14 +84,24 @@
             // `hidden.bs.modal` (meme bundle) : resoudre la promesse dans
             // `onHidden` rend donc le chainage correct par construction, sans
             // temporisation ni compteur.
+            //
+            // LE BOUTON N'EST ARME QU'A `shown`, POUR LA MEME RAISON. Pendant le
+            // fondu d'ouverture, `hide()` ne fait rien (meme garde
+            // `_isTransitioning`). Arme des l'appel, un clic sur Confirmer a cet
+            // instant posait `decided = true` sans fermer, consommait l'ecouteur
+            // `once`, et la sortie suivante — Annuler, la croix, Echap — resolvait
+            // alors a `true` : « Annuler » validait. Arme a `shown`, ce clic-la
+            // est simplement ignore.
             const onConfirm = () => { decided = true; bsModal.hide(); };
+            const onShown = () => confirmBtn.addEventListener('click', onConfirm, { once: true });
             const onHidden = () => { resolve(decided); cleanup(); };
             const cleanup = () => {
                 confirmBtn.removeEventListener('click', onConfirm);
+                modal.removeEventListener('shown.bs.modal', onShown);
                 modal.removeEventListener('hidden.bs.modal', onHidden);
             };
 
-            confirmBtn.addEventListener('click', onConfirm, { once: true });
+            modal.addEventListener('shown.bs.modal', onShown, { once: true });
             modal.addEventListener('hidden.bs.modal', onHidden, { once: true });
             bsModal.show();
         });
