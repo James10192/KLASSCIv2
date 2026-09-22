@@ -313,7 +313,7 @@
             <h3>L'état d'une convocation</h3>
             <ul class="rdv-aide-etats">
                 <li><span class="rdv-badge rdv-badge--succes">Convocation envoyée</span> MailPulse l'a acceptée ; l'heure est affichée.</li>
-                <li><span class="rdv-badge rdv-badge--attente">En attente d'envoi</span> elle partira au prochain envoi (automatique toutes les 5 minutes, ou bouton « Envoyer »).</li>
+                <li><span class="rdv-badge rdv-badge--attente">En attente d'envoi</span> elle partira au prochain envoi : par la tâche planifiée si elle est active sur votre établissement, ou avec le bouton « Envoyer ».</li>
                 <li><span class="rdv-badge rdv-badge--echec">Envoi échoué</span> la raison est écrite sous le badge. « Relancer les échecs » les renvoie.</li>
                 <li><span class="rdv-badge rdv-badge--neutre">Sans e-mail</span> aucune adresse valide : prévenez la famille autrement.</li>
                 <li><span class="rdv-badge rdv-badge--neutre">Sans objet</span> le créneau était passé au moment de l'envoi.</li>
@@ -666,10 +666,15 @@
     }
 
     const aide = document.getElementById('rdv-aide');
-    function fermerAide() { aide.classList.remove('is-ouverte'); }
+    let retourAide = null;
+    function fermerAide() {
+        aide.classList.remove('is-ouverte');
+        if (retourAide && document.contains(retourAide)) retourAide.focus();
+        retourAide = null;
+    }
     document.addEventListener('click', (ev) => {
         if (ev.target.closest('[data-page-tour-open]')) { ev.preventDefault(); return demarrer(); }
-        if (ev.target.closest('[data-page-help-open]')) { ev.preventDefault(); aide.classList.add('is-ouverte'); aide.querySelector('[data-rdv-aide-fermer]').focus(); return; }
+        if (ev.target.closest('[data-page-help-open]')) { ev.preventDefault(); retourAide = document.activeElement; aide.classList.add('is-ouverte'); aide.querySelector('[data-rdv-aide-fermer]').focus(); return; }
         if (ev.target === aide || ev.target.closest('[data-rdv-aide-fermer]')) fermerAide();
     });
     document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape' && aide.classList.contains('is-ouverte')) fermerAide(); });

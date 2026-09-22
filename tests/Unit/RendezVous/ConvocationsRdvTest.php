@@ -10,7 +10,6 @@ use App\Services\RendezVous\CourrielConvocationRdv;
 use App\Services\RendezVous\FileConvocationsRdv;
 use App\Services\RendezVous\MessagerieRdv;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -243,12 +242,14 @@ class ConvocationsRdvTest extends TestCase
 
     public function test_planifier_n_envoie_rien(): void
     {
-        Bus::fake();
+        $courriel = Mockery::mock(CourrielConvocationRdv::class);
+        $courriel->shouldNotReceive('expedier');
+        $this->app->instance(CourrielConvocationRdv::class, $courriel);
         $r = $this->reservation(['convocation_statut' => null]);
 
         app(MessagerieRdv::class)->planifier($r, 'confirme');
+        $this->app->terminate();
 
-        Bus::assertNothingDispatched();
         $this->assertSame(StatutConvocationRdv::EnAttente, $r->fresh()->convocation_statut);
     }
 

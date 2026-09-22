@@ -34,7 +34,8 @@ class FileConvocationsRdv
     /**
      * Apres une reservation du portail : pose la convocation, puis tente de
      * l'envoyer apres la reponse, pour ne pas faire attendre la famille. Si un
-     * paquet tient deja le verrou, elle reste en attente et partira avec lui.
+     * paquet tient deja le verrou, elle reste en attente : ce paquet a deja choisi
+     * ses lignes, elle partira avec le suivant (ecran ou tache planifiee).
      */
     public function confirmer(ESBTPRdvReservation $reservation, string $action = 'confirme'): void
     {

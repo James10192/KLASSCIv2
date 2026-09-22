@@ -98,7 +98,7 @@ class ESBTPRendezVousController extends Controller
         return response()->json($r + [
             'a_envoyer' => $file->enAttente(),
             'message' => sprintf(
-                '%d dossiers placés. %d sans e-mail, %d sans créneau libre, %d déjà convoqués.',
+                '%d dossiers placés. %d sans e-mail, %d sans créneau libre, %d déjà traités.',
                 $r['places'], $r['sans_email'], $r['sans_creneau'], $r['deja']
             ),
         ]);
