@@ -41,7 +41,7 @@
     .sd-vide { text-align: center; padding: 2.5rem 1rem; color: #64748b; }
     .sd-vide i { font-size: 1.8rem; color: #94a3b8; margin-bottom: .6rem; }
     .sd-vide strong { color: #1e293b; }
-    .sd-attente { margin-bottom: 1rem; padding: .85rem 1rem; border-radius: 12px; background: rgba(245,158,11,.08); border: 1px solid rgba(245,158,11,.25); color: #92400e; font-size: .84rem; }
+    .sd-attente { list-style: none; margin-bottom: 1rem; padding: .85rem 1rem; border-radius: 12px; background: rgba(245,158,11,.08); border: 1px solid rgba(245,158,11,.25); color: #92400e; font-size: .84rem; }
     .sd-pagination { display: flex; gap: .3rem; justify-content: center; padding: .75rem; }
     .sd-page { min-width: 32px; text-align: center; padding: .3rem .5rem; border-radius: 8px; font-size: .82rem; color: #475569; text-decoration: none; border: 1px solid #e2e8f0; }
     .sd-page--active { background: #0453cb; color: #fff; border-color: #0453cb; }
@@ -72,16 +72,32 @@
         </div>
         <div class="sd-kpis">
             <div class="sd-kpi"><div class="sd-kpi-value">{{ $indisponible ? '—' : ($meta['total'] ?? 0) }}</div><div class="sd-kpi-label">{{ $portee === 'school' ? "Demandes de l'établissement" : 'Mes demandes' }}</div></div>
-            <div class="sd-kpi"><div class="sd-kpi-value">{{ $enAttente->count() }}</div><div class="sd-kpi-label">En attente d'envoi</div></div>
+            <div class="sd-kpi"><div class="sd-kpi-value">{{ $boiteEnvoi->whereNull('sent_at')->whereNull('abandoned_at')->count() }}</div><div class="sd-kpi-label">En attente d'envoi</div></div>
         </div>
     </div>
 
-    @if($enAttente->isNotEmpty())
-        <div class="sd-attente">
-            <i class="fas fa-cloud-arrow-up me-1"></i>
-            {{ $enAttente->count() }} {{ $enAttente->count() > 1 ? 'demandes sont enregistrées' : 'demande est enregistrée' }}
-            et {{ $enAttente->count() > 1 ? 'seront transmises' : 'sera transmise' }} au support dès que la connexion sera rétablie.
-        </div>
+    @if($boiteEnvoi->isNotEmpty())
+        <ul class="sd-attente">
+            @foreach($boiteEnvoi as $ligne)
+                <li>
+                    @if($ligne->abandoned_at)
+                        <i class="fas fa-circle-exclamation me-1"></i>
+                        <strong>Non transmise</strong> — « {{ $ligne->extrait() }} ».
+                        Écrivez-nous à <a href="mailto:{{ config('app.support_email') }}">{{ config('app.support_email') }}</a>.
+                    @elseif($ligne->sent_at)
+                        <i class="fas fa-check me-1"></i>
+                        <strong>Transmise</strong>
+                        @if($ligne->reference)
+                            sous la référence <a href="{{ route('support.demandes.show', $ligne->reference) }}">{{ $ligne->reference }}</a>
+                        @endif
+                        — « {{ $ligne->extrait() }} ».
+                    @else
+                        <i class="fas fa-cloud-arrow-up me-1"></i>
+                        <strong>En attente d'envoi</strong> — « {{ $ligne->extrait() }} ». Elle partira dès que la connexion sera rétablie.
+                    @endif
+                </li>
+            @endforeach
+        </ul>
     @endif
 
     <div class="sd-card">

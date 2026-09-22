@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\Route;
  *    depuis elle, un type d'element connu, des identifiants entiers.
  *
  * Jamais de HTML, de valeur de champ, de chaine de requete, de cookie ni
- * d'en-tete.
+ * d'en-tete — ni le titre de la page, qui porte souvent un nom d'eleve.
  */
 final class ContexteDePage
 {
@@ -53,7 +53,6 @@ final class ContexteDePage
             'route_name' => $nom,
             'url_path' => $chemin !== false && $chemin !== null ? mb_substr($chemin, 0, 255) : null,
             'module' => ModuleDeRoute::pour($nom),
-            'page_title' => self::texte($brut['page_title'] ?? null, 160),
             'entity' => $entite,
             'academic_year_id' => $annee?->getKey(),
             'class_id' => ctype_digit((string) ($brut['class_id'] ?? '')) ? (int) $brut['class_id'] : null,

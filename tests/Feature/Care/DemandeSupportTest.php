@@ -113,6 +113,41 @@ class DemandeSupportTest extends TestCase
     }
 
     /** @test */
+    public function la_boite_d_envoi_n_avance_pas_l_abandon_quand_le_coupe_circuit_est_ouvert(): void
+    {
+        $ligne = SupportOutbox::create(['idempotency_key' => self::CLE, 'payload' => ['report' => []]]);
+        Cache::put('care:master:indisponible', 'http_503', 60);
+        Http::fake();
+
+        $this->artisan('support:vider-boite-envoi')->assertSuccessful();
+
+        $this->assertSame(0, (int) $ligne->fresh()->attempts);
+        Http::assertNothingSent();
+    }
+
+    /** @test */
+    public function un_texte_modifie_depuis_un_envoi_recu_demande_une_cle_neuve(): void
+    {
+        $this->master(Http::response(['error' => 'idempotency_key_reused', 'message' => 'Autre contenu.'], 422));
+
+        $this->actingAs($this->utilisateur())->postJson(route('support.demandes.store'), $this->soumission())
+            ->assertStatus(409)->assertJsonPath('erreur', 'cle_perimee');
+    }
+
+    /** @test */
+    public function la_page_montre_ce_qui_n_a_jamais_ete_transmis(): void
+    {
+        $this->master(Http::response(['data' => [], 'meta' => ['page' => 1, 'pages' => 1, 'total' => 0]]));
+        $user = $this->utilisateur();
+        SupportOutbox::create(['user_id' => $user->id, 'idempotency_key' => self::CLE,
+            'payload' => ['report' => ['description' => 'Le relevé de notes est vide.']]])
+            ->forceFill(['abandoned_at' => now()])->save();
+
+        $this->actingAs($user)->get(route('support.demandes.index'))
+            ->assertOk()->assertSee('Non transmise')->assertSee('Le relevé de notes est vide.');
+    }
+
+    /** @test */
     public function ferme_tant_que_le_master_ne_l_a_pas_ouvert_a_l_ecole(): void
     {
         $this->master(Http::response([], 201), ['support_widget' => false, 'support_customer_portal' => false]);

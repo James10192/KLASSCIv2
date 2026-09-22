@@ -4,6 +4,7 @@ namespace App\Services\Care;
 
 use App\Domain\Support\Exceptions\MasterSupportIndisponible;
 use App\Domain\Support\Exceptions\MasterSupportRefus;
+use GuzzleHttp\Exception\TransferException;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
@@ -26,15 +27,17 @@ use Illuminate\Support\Facades\Log;
  *
  * Un refus (4xx) et une indisponibilite (reseau, 5xx) sont deux exceptions
  * distinctes : la premiere ne se reessaie pas, la seconde part dans la boite
- * d'envoi.
+ * d'envoi. Un 401 ou un 403 est une indisponibilite, pas un refus : c'est
+ * l'identifiant de l'instance qui est en cause (revoque, mal pose), pas la
+ * demande, et elle doit attendre qu'on le corrige plutot qu'etre perdue.
  */
 class ClientMasterSupport
 {
     private const CLE_COUPE_CIRCUIT = 'care:master:indisponible';
 
-    private const CLE_FONCTIONNALITES = 'care:master:fonctionnalites';
+    private const CLE_BOOTSTRAP = 'care:master:bootstrap';
 
-    private const CLE_FONCTIONNALITES_CONNUES = 'care:master:fonctionnalites:derniere';
+    private const CLE_BOOTSTRAP_CONNU = 'care:master:bootstrap:dernier';
 
     public function estConfigure(): bool
     {
@@ -44,27 +47,72 @@ class ClientMasterSupport
     /**
      * Les fonctionnalites KLASSCI Care ouvertes a cette instance.
      *
-     * Lu au rendu des pages : ne leve jamais. Master injoignable → derniere
-     * reponse connue, sinon tout ferme.
-     *
      * @return array<string, bool>
      */
     public function fonctionnalites(): array
+    {
+        return (array) ($this->bootstrap()['fonctionnalites'] ?? []);
+    }
+
+    /**
+     * Les limites de saisie, telles que le Master les valide. Une seule source :
+     * si le Master releve le minimum, le formulaire le suit sans deploiement.
+     *
+     * @return array{description_min: int, description_max: int}
+     */
+    public function limites(): array
+    {
+        $l = (array) ($this->bootstrap()['limites'] ?? []) + (array) config('support.limites_par_defaut');
+
+        return ['description_min' => (int) $l['description_min'], 'description_max' => (int) $l['description_max']];
+    }
+
+    public function coupeCircuitOuvert(): bool
+    {
+        return Cache::has(self::CLE_COUPE_CIRCUIT);
+    }
+
+    /**
+     * Lu au rendu des pages : ne leve jamais. Master injoignable → derniere
+     * reponse connue, sinon tout ferme.
+     *
+     * Un seul processus rafraichit a l'expiration : les autres, sans attendre
+     * le verrou, servent la derniere reponse connue. Sans ce verrou, chaque
+     * requete arrivant pendant l'appel au Master l'appellerait aussi.
+     */
+    private function bootstrap(): array
     {
         if (! $this->estConfigure()) {
             return [];
         }
 
-        return Cache::remember(self::CLE_FONCTIONNALITES, (int) config('support.delais.fonctionnalites_secondes', 300), function () {
-            try {
-                $f = (array) ($this->requete('GET', 'bootstrap')['fonctionnalites'] ?? []);
-                Cache::forever(self::CLE_FONCTIONNALITES_CONNUES, $f);
+        $frais = Cache::get(self::CLE_BOOTSTRAP);
+        if ($frais !== null) {
+            return (array) $frais;
+        }
 
-                return $f;
-            } catch (MasterSupportIndisponible|MasterSupportRefus) {
-                return (array) Cache::get(self::CLE_FONCTIONNALITES_CONNUES, []);
-            }
-        });
+        $connu = (array) Cache::get(self::CLE_BOOTSTRAP_CONNU, []);
+        $verrou = Cache::lock(self::CLE_BOOTSTRAP.':verrou', 10);
+        if (! $verrou->get()) {
+            return $connu;
+        }
+
+        try {
+            $reponse = $this->requete('GET', 'bootstrap');
+            $bootstrap = [
+                'fonctionnalites' => (array) ($reponse['fonctionnalites'] ?? []),
+                'limites' => (array) ($reponse['limites'] ?? []),
+            ];
+            Cache::forever(self::CLE_BOOTSTRAP_CONNU, $bootstrap);
+        } catch (MasterSupportIndisponible|MasterSupportRefus) {
+            $bootstrap = $connu;
+        } finally {
+            $verrou->release();
+        }
+
+        Cache::put(self::CLE_BOOTSTRAP, $bootstrap, (int) config('support.delais.fonctionnalites_secondes', 300));
+
+        return $bootstrap;
     }
 
     public function fonctionnaliteActive(string $cle): bool
@@ -109,8 +157,10 @@ class ClientMasterSupport
         try {
             $reponse = $this->client($entetes + array_filter(['X-Request-ID' => $requestId]))
                 ->send($methode, $url, $methode === 'GET' ? ['query' => $donnees] : ['json' => $donnees]);
-        } catch (ConnectionException $e) {
-            $this->couper('connexion', $e->getMessage());
+        } catch (ConnectionException|TransferException $e) {
+            // TransferException : redirections en boucle, reponse tronquee… tout ce
+            // que Guzzle leve hors connexion. Le Master est a joindre plus tard.
+            $this->couper('transport', $e->getMessage());
             throw new MasterSupportIndisponible('Master injoignable.', 0, $e);
         }
 
@@ -126,6 +176,15 @@ class ClientMasterSupport
         if ($reponse->serverError() || $reponse->status() === 429) {
             $this->couper('http_'.$reponse->status());
             throw new MasterSupportIndisponible("Le Master a répondu {$reponse->status()}.");
+        }
+
+        if (in_array($reponse->status(), [401, 403], true)) {
+            $this->couper('identifiant_refuse');
+            Log::error('KLASSCI Care : le Master refuse l\'identifiant de l\'instance (MASTER_SUPPORT_TOKEN)', [
+                'statut' => $reponse->status(),
+                'code' => $reponse->json('error'),
+            ]);
+            throw new MasterSupportIndisponible("Identifiant de l'instance refusé par le Master ({$reponse->status()}).");
         }
 
         Log::warning('KLASSCI Care : requête refusée par le Master', [

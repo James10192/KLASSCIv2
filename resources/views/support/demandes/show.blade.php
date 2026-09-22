@@ -30,7 +30,7 @@
 @endpush
 
 @section('content')
-<a href="{{ route('support.demandes.index') }}" class="sd-retour"><i class="fas fa-arrow-left me-1"></i> Toutes mes demandes</a>
+<a href="{{ route('support.demandes.index', request('portee') === 'ecole' ? ['portee' => 'ecole'] : []) }}" class="sd-retour"><i class="fas fa-arrow-left me-1"></i> Toutes mes demandes</a>
 
 @if($indisponible)
     <div class="sd-card mt-3">

@@ -26,7 +26,9 @@ class ViderBoiteEnvoiSupport extends Command
 
     public function handle(ClientMasterSupport $master): int
     {
-        if (! $master->estConfigure()) {
+        // Coupe-circuit ouvert : aucun appel ne partirait, et compter un essai
+        // pour rien avancerait l'abandon des lignes sans que le Master soit essaye.
+        if (! $master->estConfigure() || $master->coupeCircuitOuvert()) {
             return self::SUCCESS;
         }
 

@@ -1,10 +1,18 @@
 /*
  * KLASSCI Care — fenetre « Aide / Signaler » (components/support/lanceur).
  *
- * Trois etapes : que se passe-t-il → racontez → voici ce que nous transmettons.
+ * Deux etapes : que se passe-t-il et racontez → voici ce que nous transmettons.
+ *
  * Le brouillon survit a une fermeture ou a un rechargement (localStorage), avec
  * sa cle d'idempotence : un double clic, ou un renvoi apres coupure, retrouve la
- * meme demande au Master au lieu d'en creer une seconde.
+ * meme demande au Master. Le Master ne compare que le texte, la categorie et
+ * l'auteur : un contexte recapte entre deux envois ne fait pas echouer le renvoi.
+ * Si le texte a change depuis un envoi que le Master a recu, il repond 409 ; on
+ * tire alors une cle neuve et on renvoie une fois.
+ *
+ * Le brouillon est range sous l'identifiant de l'utilisateur, et ceux des autres
+ * comptes sont effaces au chargement : sur un poste partage, la personne
+ * suivante ne voit ni le texte ni la cle de la precedente.
  *
  * Isole par construction : toute erreur ici reste ici. Si ce fichier ne se
  * charge pas, les boutons « Signaler » deviennent un lien courriel.
@@ -13,27 +21,40 @@
     'use strict';
 
     var CONFIG = window.KLASSCI_SUPPORT;
-    var CLE_BROUILLON = 'klassci.support.brouillon';
     if (!CONFIG || !window.bootstrap) { return; }
 
     var racine = document.getElementById('sp-modal');
     if (!racine) { return; }
 
-    var modal = bootstrap.Modal.getOrCreateInstance(racine);
-    var etat = { categorie: null, description: '', cle: null, codeSuivi: null, envoi: false };
+    var PREFIXE = 'klassci.support.brouillon.';
+    var CLE_BROUILLON = PREFIXE + CONFIG.utilisateur;
+    var MIN = CONFIG.limites.description_min;
 
+    var modal = bootstrap.Modal.getOrCreateInstance(racine);
+    var etat = { categorie: null, description: '', cle: null, codeSuivi: null, envoi: false, declencheur: null };
+
+    function stockage(action) {
+        try { return action(window.localStorage); } catch (e) { return null; } /* navigation privee : pas de brouillon */
+    }
     function lireBrouillon() {
-        try { return JSON.parse(window.localStorage.getItem(CLE_BROUILLON) || 'null'); } catch (e) { return null; }
+        return stockage(function (s) { return JSON.parse(s.getItem(CLE_BROUILLON) || 'null'); });
     }
     function ecrireBrouillon() {
-        try {
-            window.localStorage.setItem(CLE_BROUILLON, JSON.stringify({
-                categorie: etat.categorie, description: etat.description, cle: etat.cle
-            }));
-        } catch (e) { /* navigation privee : le brouillon ne survit pas, rien d'autre ne change */ }
+        stockage(function (s) {
+            s.setItem(CLE_BROUILLON, JSON.stringify({ categorie: etat.categorie, description: etat.description, cle: etat.cle }));
+        });
     }
     function effacerBrouillon() {
-        try { window.localStorage.removeItem(CLE_BROUILLON); } catch (e) { /* idem */ }
+        stockage(function (s) { s.removeItem(CLE_BROUILLON); });
+    }
+    function purgerAutresComptes() {
+        stockage(function (s) {
+            for (var i = s.length - 1; i >= 0; i--) {
+                var cle = s.key(i);
+                if (cle && cle.indexOf(PREFIXE) === 0 && cle !== CLE_BROUILLON) { s.removeItem(cle); }
+            }
+            s.removeItem('klassci.support.brouillon'); /* ancien nom, sans utilisateur */
+        });
     }
 
     function nouvelleCle() {
@@ -58,21 +79,17 @@
         racine.querySelectorAll('[data-sp-etape]').forEach(function (s) { s.hidden = s.getAttribute('data-sp-etape') !== nom; });
         racine.querySelectorAll('[data-sp-erreur]').forEach(function (e) { e.hidden = true; });
 
-        if (nom === 'description') {
-            $('[data-sp-categorie-libelle]').textContent = (categorie(etat.categorie) || {}).libelle || '';
+        if (nom === 'saisie') {
+            marquerCategorie();
             var zone = $('#sp-description');
             zone.value = etat.description;
             compter();
-            setTimeout(function () { zone.focus(); }, 50);
+            setTimeout(function () { (etat.categorie ? zone : racine.querySelector('.sp-pastille')).focus(); }, 50);
         }
         if (nom === 'recap') {
             $('[data-sp-recap-categorie]').textContent = (categorie(etat.categorie) || {}).libelle || '';
             $('[data-sp-recap-description]').textContent = etat.description;
-            $('[data-sp-recap-page]').textContent = document.title || window.location.pathname;
-        }
-        if (nom === 'choix') {
-            var premier = racine.querySelector('.sp-carte');
-            if (premier) { setTimeout(function () { premier.focus(); }, 50); }
+            $('[data-sp-recap-page]').textContent = window.location.pathname;
         }
     }
 
@@ -87,15 +104,21 @@
         $('[data-sp-compteur]').textContent = String(($('#sp-description').value || '').length);
     }
 
+    function marquerCategorie() {
+        racine.querySelectorAll('.sp-pastille').forEach(function (b) {
+            b.setAttribute('aria-pressed', b.getAttribute('data-code') === etat.categorie ? 'true' : 'false');
+        });
+    }
+
     function construireChoix() {
         var conteneur = $('[data-sp-choix]');
         conteneur.innerHTML = '';
         CONFIG.categories.forEach(function (c) {
             var bouton = document.createElement('button');
             bouton.type = 'button';
-            bouton.className = 'sp-carte';
-            bouton.setAttribute('role', 'radio');
-            bouton.setAttribute('aria-checked', 'false');
+            bouton.className = 'sp-pastille';
+            bouton.setAttribute('data-code', c.code);
+            bouton.setAttribute('aria-pressed', 'false');
             var icone = document.createElement('i');
             icone.className = 'fas ' + c.icone;
             icone.setAttribute('aria-hidden', 'true');
@@ -103,8 +126,8 @@
             bouton.appendChild(document.createTextNode(c.libelle));
             bouton.addEventListener('click', function () {
                 etat.categorie = c.code;
+                marquerCategorie();
                 ecrireBrouillon();
-                aller('description');
             });
             conteneur.appendChild(bouton);
         });
@@ -117,7 +140,6 @@
         var ctx = {
             route_name: page.route_name || null,
             url_path: window.location.pathname,
-            page_title: document.title,
             entity: page.entity || null,
             viewport: window.innerWidth + 'x' + window.innerHeight,
             locale: navigator.language || null,
@@ -141,15 +163,9 @@
         return ctx;
     }
 
-    function envoyer() {
-        if (etat.envoi) { return; }
-        etat.envoi = true;
-        var bouton = $('[data-sp-envoyer]');
-        bouton.disabled = true;
-        $('[data-sp-envoyer-libelle]').textContent = 'Envoi…';
-
+    function poster() {
         var jeton = document.querySelector('meta[name="csrf-token"]');
-        fetch(CONFIG.url, {
+        return fetch(CONFIG.url, {
             method: 'POST',
             credentials: 'same-origin',
             headers: {
@@ -161,6 +177,22 @@
             body: JSON.stringify({ categorie: etat.categorie, description: etat.description, cle: etat.cle, contexte: contexte() })
         }).then(function (reponse) {
             return reponse.json().catch(function () { return {}; }).then(function (corps) { return { statut: reponse.status, corps: corps }; });
+        });
+    }
+
+    function envoyer() {
+        if (etat.envoi) { return; }
+        etat.envoi = true;
+        var bouton = $('[data-sp-envoyer]');
+        bouton.disabled = true;
+        $('[data-sp-envoyer-libelle]').textContent = 'Envoi…';
+
+        poster().then(function (r) {
+            if (r.statut !== 409) { return r; }
+            /* Le texte a change depuis un envoi recu : cle neuve, un seul nouvel essai. */
+            etat.cle = nouvelleCle();
+            ecrireBrouillon();
+            return poster();
         }).then(function (r) {
             if (r.statut === 201 || r.statut === 202) {
                 effacerBrouillon();
@@ -210,17 +242,24 @@
         etat.cle = null;
     }
 
-    function ouvrir(codeSuivi) {
+    function ouvrir(codeSuivi, declencheur) {
+        /* Une autre fenetre ouverte (« Nouveautes »…) : on la ferme plutot que d'empiler. */
+        document.querySelectorAll('.modal.show').forEach(function (m) {
+            if (m !== racine) { bootstrap.Modal.getOrCreateInstance(m).hide(); }
+        });
+
         var brouillon = lireBrouillon();
         etat.categorie = brouillon && brouillon.categorie ? brouillon.categorie : null;
         etat.description = brouillon && brouillon.description ? brouillon.description : '';
         etat.cle = brouillon && brouillon.cle ? brouillon.cle : nouvelleCle();
         etat.codeSuivi = codeSuivi || null;
+        etat.declencheur = declencheur || document.activeElement;
         ecrireBrouillon();
-        aller(etat.categorie ? 'description' : 'choix');
+        aller('saisie');
         modal.show();
     }
 
+    purgerAutresComptes();
     construireChoix();
 
     $('#sp-description').addEventListener('input', function () {
@@ -232,8 +271,12 @@
     racine.querySelectorAll('[data-sp-aller]').forEach(function (b) {
         b.addEventListener('click', function () {
             var cible = b.getAttribute('data-sp-aller');
-            if (cible === 'recap' && etat.description.trim().length < 10) {
-                erreur('Décrivez ce qui s\'est passé en quelques mots (10 caractères au moins).');
+            if (cible === 'recap' && !etat.categorie) {
+                erreur('Choisissez ce qui correspond le mieux.');
+                return;
+            }
+            if (cible === 'recap' && etat.description.trim().length < MIN) {
+                erreur('Décrivez ce qui s\'est passé en quelques mots (' + MIN + ' caractères au moins).');
                 return;
             }
             aller(cible);
@@ -241,11 +284,19 @@
     });
     $('[data-sp-envoyer]').addEventListener('click', envoyer);
 
+    /* Le focus revient a ce qui a ouvert la fenetre. */
+    racine.addEventListener('hidden.bs.modal', function () {
+        if (etat.declencheur && typeof etat.declencheur.focus === 'function' && document.contains(etat.declencheur)) {
+            etat.declencheur.focus();
+        }
+        etat.declencheur = null;
+    });
+
     document.addEventListener('click', function (ev) {
         var declencheur = ev.target.closest('[data-support-ouvrir]');
         if (!declencheur) { return; }
         ev.preventDefault();
-        ouvrir(declencheur.getAttribute('data-support-code'));
+        ouvrir(declencheur.getAttribute('data-support-code'), declencheur);
     });
 
     /* Lien direct : ?signaler=1 (page d'erreur, courriel, guide). */

@@ -8,7 +8,7 @@
 
     Le contexte de la page est calcule ICI, cote serveur, a partir de la route
     servie ; le navigateur n'y ajoute que ce qu'il est seul a connaitre (taille
-    d'ecran, fuseau, titre). Le serveur le re-verifie a la soumission.
+    d'ecran, fuseau). Le serveur le re-verifie a la soumission.
 --}}
 @auth
 @php
@@ -24,6 +24,10 @@
         'requestId' => request()->attributes->get('request_id'),
         'categories' => collect(config('support.categories'))->map(fn ($c, $code) => ['code' => $code] + $c)->values(),
         'supportEmail' => config('app.support_email'),
+        'limites' => $_spLimites = app(\App\Services\Care\ClientMasterSupport::class)->limites(),
+        // Le brouillon est range sous l'utilisateur : sur un poste partage, le
+        // suivant ne retrouve ni le texte ni la cle du precedent.
+        'utilisateur' => auth()->id(),
     ];
 @endphp
 <div class="modal fade sp-modal" id="sp-modal" tabindex="-1" aria-labelledby="sp-modal-titre" aria-hidden="true" data-bs-backdrop="static">
@@ -39,28 +43,23 @@
             </div>
 
             <div class="sp-body">
-                {{-- Etape 1 : que se passe-t-il ? --}}
-                <section class="sp-etape" data-sp-etape="choix">
-                    <p class="sp-question">Que se passe-t-il ?</p>
-                    <div class="sp-choix" role="radiogroup" aria-label="Type de demande" data-sp-choix></div>
-                </section>
-
-                {{-- Etape 2 : racontez --}}
-                <section class="sp-etape" data-sp-etape="description" hidden>
-                    <button type="button" class="sp-retour" data-sp-aller="choix"><i class="fas fa-arrow-left"></i> <span data-sp-categorie-libelle></span></button>
-                    <label class="sp-question" for="sp-description">Expliquez simplement ce qui s'est passé.</label>
-                    <textarea id="sp-description" class="sp-textarea" rows="6" maxlength="5000"
+                {{-- Etape 1 : que se passe-t-il, et racontez --}}
+                <section class="sp-etape" data-sp-etape="saisie">
+                    <p class="sp-question" id="sp-choix-titre">Que se passe-t-il ?</p>
+                    <div class="sp-choix" role="group" aria-labelledby="sp-choix-titre" data-sp-choix></div>
+                    <label class="sp-question sp-question--suite" for="sp-description">Expliquez simplement ce qui s'est passé.</label>
+                    <textarea id="sp-description" class="sp-textarea" rows="5" maxlength="{{ $_spLimites['description_max'] }}"
                               placeholder="Par exemple : « Je clique sur Valider les notes et rien ne se passe. »"></textarea>
-                    <div class="sp-aide-saisie"><span data-sp-compteur>0</span> / 5000</div>
+                    <div class="sp-aide-saisie"><span data-sp-compteur>0</span> / {{ $_spLimites['description_max'] }}</div>
                     <div class="sp-erreur" data-sp-erreur hidden></div>
                     <div class="sp-actions">
                         <button type="button" class="sp-btn sp-btn--primaire" data-sp-aller="recap">Continuer <i class="fas fa-arrow-right"></i></button>
                     </div>
                 </section>
 
-                {{-- Etape 3 : voici ce que nous avons compris --}}
+                {{-- Etape 2 : voici ce que nous transmettons --}}
                 <section class="sp-etape" data-sp-etape="recap" hidden>
-                    <button type="button" class="sp-retour" data-sp-aller="description"><i class="fas fa-arrow-left"></i> Modifier</button>
+                    <button type="button" class="sp-retour" data-sp-aller="saisie"><i class="fas fa-arrow-left"></i> Modifier</button>
                     <p class="sp-question">Voici ce que nous allons transmettre.</p>
                     <dl class="sp-recap">
                         <dt>Type</dt><dd data-sp-recap-categorie></dd>
@@ -77,7 +76,7 @@
                     </div>
                 </section>
 
-                {{-- Etape 4 : c'est recu --}}
+                {{-- Etape 3 : c est recu --}}
                 <section class="sp-etape sp-fin" data-sp-etape="fin" hidden>
                     <div class="sp-fin-icon"><i class="fas fa-check"></i></div>
                     <p class="sp-question" data-sp-fin-titre>Demande reçue</p>
@@ -104,13 +103,15 @@
     .sp-fermer:hover { background: rgba(255,255,255,.24); }
     .sp-body { padding: 1.25rem 1.5rem 1.5rem; }
     .sp-question { font-weight: 700; color: #1e293b; font-size: .98rem; margin: 0 0 .85rem; display: block; }
-    .sp-choix { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .6rem; }
-    .sp-carte { display: flex; align-items: center; gap: .7rem; text-align: left; width: 100%; padding: .8rem .9rem;
-        border: 1px solid #e2e8f0; border-radius: 12px; background: #fff; color: #1e293b; font-size: .86rem; font-weight: 600;
-        transition: border-color .15s ease, box-shadow .15s ease, background .15s ease; }
-    .sp-carte i { width: 32px; height: 32px; border-radius: 9px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-        background: rgba(4,83,203,.08); color: #0453cb; }
-    .sp-carte:hover, .sp-carte:focus-visible { border-color: #0453cb; box-shadow: 0 4px 14px rgba(4,83,203,.12); outline: none; }
+    .sp-question--suite { margin-top: 1.1rem; }
+    .sp-choix { display: flex; flex-wrap: wrap; gap: .45rem; }
+    .sp-pastille { display: inline-flex; align-items: center; gap: .45rem; padding: .45rem .8rem; border: 1px solid #e2e8f0;
+        border-radius: 999px; background: #fff; color: #1e293b; font-size: .82rem; font-weight: 600;
+        transition: border-color .15s ease, background .15s ease, color .15s ease; }
+    .sp-pastille i { color: #0453cb; }
+    .sp-pastille:hover, .sp-pastille:focus-visible { border-color: #0453cb; outline: none; box-shadow: 0 0 0 3px rgba(4,83,203,.12); }
+    .sp-pastille[aria-pressed="true"] { background: #0453cb; border-color: #0453cb; color: #fff; }
+    .sp-pastille[aria-pressed="true"] i { color: #fff; }
     .sp-retour { background: none; border: 0; color: #0453cb; font-size: .82rem; font-weight: 600; padding: 0; margin-bottom: .75rem; }
     .sp-textarea { width: 100%; border: 1px solid #cbd5e1; border-radius: 12px; padding: .75rem .9rem; font-size: .92rem; resize: vertical; min-height: 130px; }
     .sp-textarea:focus { outline: none; border-color: #0453cb; box-shadow: 0 0 0 3px rgba(4,83,203,.12); }
@@ -136,7 +137,6 @@
     .sp-fin-texte { color: #475569; font-size: .88rem; }
     .sp-fin-texte strong { font-family: 'Courier New', monospace; color: #0453cb; }
     @media (max-width: 576px) {
-        .sp-choix { grid-template-columns: 1fr; }
         .sp-recap { grid-template-columns: 1fr; }
         .sp-body { padding: 1rem; }
     }

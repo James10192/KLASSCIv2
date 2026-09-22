@@ -30,7 +30,6 @@ class SoumettreDemande
     public function executer(User $user, string $categorie, string $description, array $contexte, string $cle, ?string $requestId): array
     {
         $charge = [
-            'api_version' => 1,
             'report' => ['category' => $categorie, 'description' => trim($description)],
             'reporter' => [
                 'external_id' => $user->getKey(),

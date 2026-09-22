@@ -110,8 +110,29 @@ class ClientMasterSupportTest extends TestCase
         Http::assertSentCount(1);
 
         // Le cache expire, le Master tombe : la derniere reponse connue tient.
-        Cache::forget('care:master:fonctionnalites');
+        Cache::forget('care:master:bootstrap');
         $this->assertTrue($client->fonctionnaliteActive('support_widget'));
         $this->assertFalse($client->fonctionnaliteActive('support_customer_portal'));
+    }
+
+    /** @test */
+    public function les_limites_de_saisie_viennent_du_master(): void
+    {
+        Http::fake(['*' => Http::response(['fonctionnalites' => [], 'limites' => ['description_min' => 25, 'description_max' => 3000]])]);
+
+        $this->assertSame(['description_min' => 25, 'description_max' => 3000], app(ClientMasterSupport::class)->limites());
+    }
+
+    /** @test */
+    public function un_identifiant_refuse_est_une_indisponibilite_pas_un_refus(): void
+    {
+        Http::fake(['*' => Http::response(['error' => 'unauthenticated'], 401)]);
+
+        $this->expectException(MasterSupportIndisponible::class);
+        try {
+            app(ClientMasterSupport::class)->creerTicket(['report' => []], 'cle');
+        } finally {
+            $this->assertTrue(app(ClientMasterSupport::class)->coupeCircuitOuvert());
+        }
     }
 }

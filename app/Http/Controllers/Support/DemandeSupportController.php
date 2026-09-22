@@ -45,6 +45,12 @@ class DemandeSupportController extends Controller
                 $request->attributes->get('request_id'),
             );
         } catch (MasterSupportRefus $e) {
+            if ($e->codeErreur === 'idempotency_key_reused') {
+                // Le brouillon a change depuis un envoi que le Master a bien recu :
+                // le navigateur tire une cle neuve et renvoie. Pas une faute a montrer.
+                return response()->json(['erreur' => 'cle_perimee'], 409);
+            }
+
             // Un refus ici est un defaut d'integration, pas une faute de l'utilisateur :
             // on le journalise et on lui propose le courriel plutot que de lui montrer un code.
             Log::error('KLASSCI Care : signalement refusé par le Master', ['statut' => $e->statut, 'code' => $e->codeErreur, 'erreurs' => $e->erreurs]);
@@ -93,7 +99,7 @@ class DemandeSupportController extends Controller
         }
 
         return view('support.demandes.index', $donnees + [
-            'enAttente' => SupportOutbox::enAttente()->where('user_id', $request->user()->getKey())->latest()->get(),
+            'boiteEnvoi' => SupportOutbox::aMontrer()->where('user_id', $request->user()->getKey())->latest()->get(),
             'peutVoirEcole' => $request->user()->can('support.tickets.view_school'),
             'signalementOuvert' => $this->disponibilite->signalement(),
         ]);

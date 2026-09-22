@@ -38,6 +38,13 @@ return [
         'AUTRE' => ['libelle' => 'Autre', 'icone' => 'fa-ellipsis'],
     ],
 
+    // Limites de saisie tant que le Master n'a jamais repondu. Des qu'il
+    // repond, les siennes font foi (ClientMasterSupport::limites()).
+    'limites_par_defaut' => [
+        'description_min' => 10,
+        'description_max' => 5000,
+    ],
+
     'boite_envoi' => [
         'tentatives_max' => 20,
     ],
