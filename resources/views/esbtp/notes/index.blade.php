@@ -623,6 +623,11 @@ let cachedStudents = null;
 let cachedStudentsClassId = null;
 let cachedStudentsRequestKey = null;
 let currentLoadRequest = null;
+// La liste des élèves se charge APRÈS les évaluations. Sans annulation ni
+// numéro de requête, la réponse tardive d'une classe quittée s'affichait sous
+// le libellé de la classe suivante, et le cache l'enregistrait à son nom.
+let currentStudentsRequest = null;
+let nmStudentsRequestSeq = 0;
 let evalParamsCache = {};
 let nmFinalSaveInFlight = false;
 let nmFinalSaveRetryTimer = null;
@@ -826,6 +831,7 @@ $(document).ready(function() {
 
     // Gestion de la sélection de matière
     $('#matiereSelect').on('change', function() {
+        nmFlushAutosave();
         currentMatiereId  = $(this).val();
         currentMatiereName = $(this).find('option:selected').text().trim();
         if (currentClassId && currentMatiereId) {
@@ -834,6 +840,7 @@ $(document).ready(function() {
     });
 
     $('#periodeFilter').on('change', function() {
+        nmFlushAutosave();
         currentPeriodeFilter = $(this).val();
         if (currentClassId && currentMatiereId) {
             buildNotesGrid();
@@ -916,10 +923,15 @@ window.nmOpenCoverageSaisie = function(matiere) {
 
 // Fonction pour sélectionner une classe
 function selectClass(classId, className) {
+    nmFlushAutosave();
     if (currentClassId !== classId) {
         cachedStudents = null;
         cachedStudentsClassId = null;
         cachedStudentsRequestKey = null;
+        nmAbortGridRequests();
+        // Une nouvelle tentative programmée après un 429 visait la classe
+        // quittée : la rejouer enverrait les brouillons de la nouvelle.
+        nmCancelFinalSaveRetry();
     }
     currentClassId = classId;
     currentClassname = className;
@@ -956,6 +968,36 @@ function selectClass(classId, className) {
     $('#classSelectionModal').modal('show');
 }
 
+function nmAbortGridRequests() {
+    nmStudentsRequestSeq++;
+    [currentLoadRequest, currentStudentsRequest].forEach(function (req) {
+        if (req && req.readyState !== 4) req.abort();
+    });
+    currentLoadRequest = null;
+    currentStudentsRequest = null;
+}
+
+function nmCancelFinalSaveRetry() {
+    if (!nmFinalSaveRetryTimer) return;
+    clearTimeout(nmFinalSaveRetryTimer);
+    nmFinalSaveRetryTimer = null;
+    nmFinalSaveInFlight = false;
+    $('#saveAllNotesBtn')
+        .prop('disabled', false)
+        .html('<i class="fas fa-check-circle me-1"></i>Valider les notes');
+}
+
+function nmShowGridError(message) {
+    $('#studentsRows').html(`
+        <tr>
+            <td colspan="10" class="text-center text-danger py-5">
+                <i class="fas fa-exclamation-circle fa-2x mb-3 d-block"></i>
+                ${nmEscapeHtml(message)}
+            </td>
+        </tr>
+    `);
+}
+
 function updateBlankPdfLink() {
     const downloadBtn = document.getElementById('exportBlankPdfBtn');
     const previewBtn = document.getElementById('previewBlankPdfBtn');
@@ -986,9 +1028,7 @@ function loadEvaluationsAndNotes() {
     if (!currentClassId || !currentMatiereId) return;
 
     // Abort any in-flight request to prevent stale data
-    if (currentLoadRequest && currentLoadRequest.readyState !== 4) {
-        currentLoadRequest.abort();
-    }
+    nmAbortGridRequests();
 
     $('#studentsRows').html(`
         <tr>
@@ -1086,21 +1126,27 @@ function buildNotesGrid() {
         return;
     }
 
-    $.ajax({
-        url: '{{ route("esbtp.notes.classes.students", ["classe" => ":classId"]) }}'.replace(':classId', currentClassId),
+    const requestedClassId = currentClassId;
+    const requestSeq = ++nmStudentsRequestSeq;
+    if (currentStudentsRequest && currentStudentsRequest.readyState !== 4) {
+        currentStudentsRequest.abort();
+    }
+
+    currentStudentsRequest = $.ajax({
+        url: '{{ route("esbtp.notes.classes.students", ["classe" => ":classId"]) }}'.replace(':classId', requestedClassId),
         method: 'GET',
         data: {
             semesters: requestedSemesters
         },
         dataType: 'json',
         success: function(response) {
-            nmFinalSaveInFlight = false;
-            if (nmFinalSaveRetryTimer) {
-                clearTimeout(nmFinalSaveRetryTimer);
-                nmFinalSaveRetryTimer = null;
-            }
+            // Une réponse doublée par une requête plus récente, ou arrivée
+            // après un changement de classe, ne doit rien afficher.
+            if (requestSeq !== nmStudentsRequestSeq || requestedClassId !== currentClassId) return;
+
             if (!response.success) {
                 console.error('Erreur API:', response.message);
+                nmShowGridError(response.message || 'Impossible de charger la liste des étudiants.');
                 return;
             }
 
@@ -1109,12 +1155,21 @@ function buildNotesGrid() {
                 const nameB = ((b.nom || '') + ' ' + (b.prenoms || '')).toLowerCase();
                 return nameA.localeCompare(nameB, 'fr');
             });
-            cachedStudentsClassId = currentClassId;
+            cachedStudentsClassId = requestedClassId;
             cachedStudentsRequestKey = studentsRequestKey;
             renderNotesGrid(cachedStudents, sortedEvaluations);
         },
         error: function(xhr) {
+            if (xhr.statusText === 'abort') return;
+            if (requestSeq !== nmStudentsRequestSeq || requestedClassId !== currentClassId) return;
+            if (nmHandleSessionExpired(xhr)) {
+                nmShowGridError('Session expirée. Actualisez la page puis reconnectez-vous.');
+                return;
+            }
             console.error('Erreur lors du chargement des étudiants:', xhr);
+            nmShowGridError(xhr.status === 429
+                ? 'Trop de demandes en peu de temps. Patientez quelques secondes puis rechoisissez la matière.'
+                : 'Erreur lors du chargement des étudiants.');
         }
     });
 }
@@ -1617,9 +1672,19 @@ $('#saveAllNotesBtn').on('click', function() {
             notes: notesPayload
         },
         success: function(response) {
+            // Le verrou se lève ici, à chaque issue. Il n'était relâché que
+            // par le rechargement de la liste des élèves : servie depuis le
+            // cache, elle ne passait jamais par là et le bouton restait muet.
+            nmFinalSaveInFlight = false;
+
             if (!response.success) {
+                // Le serveur valide les lignes correctes même quand d'autres
+                // échouent : on relit sa vérité plutôt que de garder à l'écran
+                // des brouillons qui sont déjà validés en base.
                 btn.html(`<i class="fas fa-exclamation-triangle me-1"></i> ${response.errors} erreur(s)`).prop('disabled', false);
+                nmShowToast('error', `${response.saved || 0} note(s) validée(s), ${response.errors} refusée(s) : hors barème, hors classe ou non autorisée(s).`);
                 setTimeout(() => { btn.html(originalText); }, 2500);
+                loadEvaluationsAndNotes();
                 return;
             }
 
@@ -1676,11 +1741,20 @@ $('#saveAllNotesBtn').on('click', function() {
         error: function(xhr) {
             if (xhr.status === 429) {
                 const retryAfter = Math.min(60, Math.max(2, Number(xhr.getResponseHeader('Retry-After')) || 5));
+                const retryClassId = currentClassId;
+                const retryMatiereId = currentMatiereId;
                 btn.html(`<i class="fas fa-clock me-1"></i> Nouvelle tentative dans ${retryAfter}s…`).prop('disabled', true);
                 nmShowToast('info', 'Le serveur espace les validations. Votre brouillon est conservé et sera renvoyé automatiquement.');
                 nmFinalSaveRetryTimer = setTimeout(function() {
                     nmFinalSaveRetryTimer = null;
                     nmFinalSaveInFlight = false;
+                    // On ne renvoie que la saisie qui a été refusée : si la
+                    // personne a changé de classe ou de matière entre-temps,
+                    // ce clic validerait d'autres brouillons à sa place.
+                    if (retryClassId !== currentClassId || retryMatiereId !== currentMatiereId) {
+                        btn.html(originalText).prop('disabled', false);
+                        return;
+                    }
                     if (btn.is(':visible')) btn.trigger('click');
                 }, retryAfter * 1000);
                 return;
@@ -2567,7 +2641,9 @@ $(document).ajaxError(function(_event, _jqxhr, settings) {
 // ── 3. localStorage autosave (anti-perte) ───────────────────────────────
 function nmDraftKey() {
     if (!currentClassId || !currentMatiereId) return null;
-    const periode = $('#periodeFilter').val() || 'all';
+    // L'état, pas le <select> : pendant son événement « change », le select
+    // porte déjà la nouvelle période alors que la grille est encore l'ancienne.
+    const periode = currentPeriodeFilter || 'all';
     return `nm_notes_draft_${currentClassId}_${currentMatiereId}_${periode}`;
 }
 function nmCollectDraftNotes() {
@@ -2593,9 +2669,13 @@ function nmCollectDraftNotes() {
     });
     return out;
 }
-function nmAutosaveDraft() {
+function nmAutosaveDraft(expectedKey) {
     const key = nmDraftKey();
     if (!key) return;
+    // Programmée pour une classe/matière/période que l'on a quittée : la
+    // grille visible est déjà celle d'un autre contexte, et « aucune note
+    // modifiée » y effacerait le brouillon de ce nouveau contexte.
+    if (expectedKey && expectedKey !== key) return;
     const notes = nmCollectDraftNotes();
     if (Object.keys(notes).length === 0) {
         // Aucune note dirty → purger le draft ET masquer la bannière si visible.
@@ -2617,7 +2697,19 @@ function nmAutosaveDraft() {
 }
 function nmScheduleAutosave() {
     if (NM.autosaveDebounceTimer) clearTimeout(NM.autosaveDebounceTimer);
-    NM.autosaveDebounceTimer = setTimeout(nmAutosaveDraft, NM.autosaveDebounceMs);
+    const key = nmDraftKey();
+    NM.autosaveDebounceTimer = setTimeout(function () {
+        NM.autosaveDebounceTimer = null;
+        nmAutosaveDraft(key);
+    }, NM.autosaveDebounceMs);
+}
+// Écrit tout de suite le brouillon en attente, AVANT de quitter le contexte
+// courant : les dernières frappes ne sont pas perdues.
+function nmFlushAutosave() {
+    if (!NM.autosaveDebounceTimer) return;
+    clearTimeout(NM.autosaveDebounceTimer);
+    NM.autosaveDebounceTimer = null;
+    nmAutosaveDraft();
 }
 function nmPurgeOldDrafts() {
     try {
