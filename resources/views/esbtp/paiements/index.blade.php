@@ -2657,6 +2657,48 @@ $(document).ready(function() {
 });
 </script>
 
+<script>
+(function () {
+    'use strict';
+    function notify(message, type) {
+        if (typeof window.showToast === 'function') { window.showToast(message, type || 'success'); return; }
+        console[type === 'error' ? 'error' : 'info'](message);
+    }
+    function refreshRow(paiementId) {
+        if (typeof window.refreshPaiementLigne === 'function') { window.refreshPaiementLigne(paiementId, 'validate'); return; }
+        fetch('/esbtp/paiements/' + paiementId + '/refresh-ligne', { headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } })
+        .then(function (response) { return response.ok ? response.json() : Promise.reject(response); })
+        .then(function (data) {
+            var current = document.querySelector('tr[data-paiement-id="' + paiementId + '"]');
+            if (!data.success || !data.html || !current) { throw new Error(data.message || 'Rafraîchissement impossible'); }
+            var template = document.createElement('template'); template.innerHTML = data.html.trim();
+            var fresh = template.content.querySelector('tr[data-paiement-id="' + paiementId + '"]') || template.content.querySelector('tr[data-paiement-id]');
+            if (!fresh) { throw new Error('Ligne de paiement introuvable'); }
+            current.replaceWith(fresh); fresh.classList.add('paiement-row-flash');
+            window.setTimeout(function () { fresh.classList.remove('paiement-row-flash'); }, 1200);
+        })
+        .catch(function () { notify('Le paiement a été validé, mais sa ligne doit être rafraîchie.', 'warning'); });
+    }
+    document.addEventListener('click', function (event) {
+        var button = event.target.closest('.valider-paiement-btn');
+        if (!button || button.dataset.validationFallbackBusy === '1') { return; }
+        event.preventDefault(); event.stopImmediatePropagation();
+        var paiementId = button.getAttribute('data-paiement-id'); var actionUrl = button.getAttribute('data-action-url');
+        if (!paiementId || !actionUrl || !window.confirm('Valider ce paiement ? Le montant sera comptabilisé immédiatement.')) { return; }
+        button.dataset.validationFallbackBusy = '1'; button.disabled = true; button.setAttribute('aria-busy', 'true');
+        fetch(actionUrl, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': '{{ csrf_token() }}' } })
+        .then(function (response) { return response.ok ? response.json() : Promise.reject(response); })
+        .then(function (data) {
+            if (!data.success) { throw new Error(data.message || 'Validation impossible'); }
+            refreshRow(paiementId); notify(data.message || 'Paiement validé avec succès.', 'success');
+        })
+        .catch(function (error) {
+            button.disabled = false; button.removeAttribute('aria-busy'); button.dataset.validationFallbackBusy = '';
+            notify(error && error.message ? error.message : 'Erreur lors de la validation.', 'error');
+        });
+    }, true);
+})();
+</script>
 @endpush
 
 <!-- Modal pour les instructions de changement d'année -->
