@@ -12,17 +12,32 @@ use Illuminate\Support\Facades\Log;
  *
  * Runs after the response is sent (dispatch::afterResponse) so the HTTP call —
  * up to 5s if master is slow — never adds latency to the user-facing request.
- * If MASTER_API_URL / MASTER_API_TOKEN / TENANT_CODE is missing, the call is skipped.
+ *
+ * Configuration lue exclusivement via config() : services.master.api_url,
+ * services.master.api_token, app.tenant_code. Aucun env() ici — il rend null
+ * une fois `config:cache` lancé en production. Si l'une manque, l'appel est
+ * sauté et un avertissement est journalisé une fois par processus : un saut
+ * muet laissait le cache du portail groupe périmé sans que personne le sache.
  */
 class GroupCacheInvalidator
 {
+    private static bool $configurationManquanteSignalee = false;
+
     public function invalidate(string $trigger = 'unknown'): void
     {
-        $masterUrl = config('services.master.url') ?: env('MASTER_API_URL');
-        $tenantToken = config('services.master.token') ?: env('MASTER_API_TOKEN');
-        $tenantCode = config('app.tenant_code') ?: env('TENANT_CODE');
+        $masterUrl = config('services.master.api_url');
+        $tenantToken = config('services.master.api_token');
+        $tenantCode = config('app.tenant_code');
 
-        if (! $masterUrl || ! $tenantToken || ! $tenantCode) {
+        $manquants = array_keys(array_filter([
+            'services.master.api_url (MASTER_API_URL)' => ! $masterUrl,
+            'services.master.api_token (MASTER_API_TOKEN)' => ! $tenantToken,
+            'app.tenant_code (TENANT_CODE)' => ! $tenantCode,
+        ]));
+
+        if ($manquants !== []) {
+            $this->signalerConfigurationManquante($manquants, $trigger);
+
             return;
         }
 
@@ -39,5 +54,18 @@ class GroupCacheInvalidator
                 Log::warning("GroupCacheInvalidator failed (after response): {$e->getMessage()}");
             }
         })->afterResponse();
+    }
+
+    private function signalerConfigurationManquante(array $manquants, string $trigger): void
+    {
+        if (self::$configurationManquanteSignalee) {
+            return;
+        }
+        self::$configurationManquanteSignalee = true;
+
+        Log::warning('GroupCacheInvalidator : invalidation du cache groupe ignorée, configuration master absente.', [
+            'manquants' => $manquants,
+            'trigger' => $trigger,
+        ]);
     }
 }
