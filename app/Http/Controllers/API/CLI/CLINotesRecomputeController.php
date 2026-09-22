@@ -32,12 +32,12 @@ class CLINotesRecomputeController extends BaseApiController
      * `touch()` de bulletin) puis une seconde lecture. A 600, cela fait de
      * l'ordre de 1200 lectures et 600 executions de job dans UNE requete HTTP.
      *
-     * Ce qui suit n'est PAS mesure, et se lit comme tel : sur l'hebergement
-     * mutualise LWS, il est douteux qu'un tel appel aille au bout avant le delai
-     * d'attente du serveur — auquel cas l'operateur recoit une coupure plutot
-     * qu'un refus lisible, et le plafond n'est pas ce qui l'arrete. Le controle
-     * a faire un jour est un chronometrage sur une instance Elite ; il n'a pas
-     * ete fait.
+     * **Mesure depuis (septembre 2026)** : un couple coute ~17 ms et 22 requetes
+     * en local, lineairement — 40 couples en 0,67 s. A 500, un appel prend donc
+     * de l'ordre de 9 s en local, sous les 30 s au-dela desquelles le binaire
+     * `klassci` abandonne. Ce qui reste NON mesure, et se lit comme tel : le
+     * facteur de ralentissement de l'hebergement mutualise LWS. Le controle a
+     * faire est un chronometrage sur une instance Elite.
      *
      * 500 et non 200 : le cas legitime que cet endpoint sert est le recalcul
      * d'une classe entiere, soit 40 eleves sur 12 matieres — 480 couples.

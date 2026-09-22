@@ -169,8 +169,20 @@ final class RecalculApresDeplacement
      * Les deux bornes cohabitent donc : la classe legere est traitee tant que le
      * budget global le permet, et tout ce qui reste bascule dans
      * `perimetres_reportes` avec sa raison.
+     *
+     * **La valeur : mesuree, et abaissee de 1200 a 400.** Un recalcul coute
+     * **22 requetes et ~17 ms par eleve**, lineairement (mesure locale, MariaDB
+     * sur la meme machine : 10 eleves 0,17 s, 40 eleves 0,67 s). Une note
+     * deplacee declenche un ou deux recalculs selon que la coordonnee de depart
+     * garde des notes : 17 a 34 ms par note. A 1200, cela faisait **20 a 40 s
+     * en local** — au-dessus des 30 s au-dela desquelles le binaire `klassci`
+     * abandonne la requete (`feature-delivery-methodology.md`, phase 12). Le
+     * plafond echouait donc a son seul objet : que la reponse, et avec elle
+     * `perimetres_reportes`, arrive. A 400 : 7 a 14 s en local, soit une marge
+     * d'un facteur deux pour un hebergement plus lent — facteur qui, lui, n'est
+     * pas mesure sur LWS.
      */
-    public const PLAFOND_NOTES_PAR_APPEL = 1200;
+    public const PLAFOND_NOTES_PAR_APPEL = 400;
 
     /**
      * @param  array{classe_id?:int|null, matiere_id?:int|null, periode?:string|null, annee_universitaire_id?:int|null}  $avant

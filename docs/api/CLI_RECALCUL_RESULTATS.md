@@ -86,7 +86,13 @@ périmé.
 ### Deux bornes, et il faut les deux
 
 `App\Domain\Notes\RecalculApresDeplacement` plafonne à **400 notes par classe et
-par année**, *et* à **1200 notes par requête**, tous périmètres confondus.
+par année**, *et* à **400 notes par requête**, tous périmètres confondus.
+
+La borne globale valait 1200 ; elle a été abaissée sur **mesure**. Un recalcul
+coûte ~17 ms et 22 requêtes par élève en local, linéairement (40 élèves :
+0,67 s). Une note déplacée en déclenche un ou deux : à 1200, un appel prenait
+20 à 40 s **en local** — au-delà des 30 s où le binaire `klassci` abandonne, donc
+précisément le cas où `perimetres_reportes` n'arrive jamais. À 400 : 7 à 14 s.
 
 La première seule ne suffisait pas — c'était le plafond par lot, et un appel
 touchant cinq classes dont une seule est lourde ne recalculait **aucune** des
@@ -148,8 +154,9 @@ Ce plafond valait 600, sans raison derrière le chiffre. Ce qui se compte, lui, 
 lit dans le code : chaque couple coûte une lecture, l'exécution du job sur place
 (ses requêtes, plus un `touch()` de bulletin) puis une seconde lecture — soit, à
 600, de l'ordre de 1200 lectures et 600 exécutions de job dans une seule requête
-HTTP. Qu'un tel appel dépasse le délai d'attente du serveur mutualisé est
-**probable mais non mesuré** : le chronométrage sur une instance Élite reste à
+HTTP. Mesuré depuis : ~17 ms par couple en local, soit ~9 s à 500 — sous les
+30 s du binaire `klassci`. Ce qui reste **non mesuré** est le facteur de
+l'hébergement mutualisé : le chronométrage sur une instance Élite reste à
 faire. 500 et non 200, parce que le geste légitime de cet endpoint est le
 recalcul d'une classe entière — 40 élèves sur 12 matières, 480 couples — et qu'un
 plafond sous ce chiffre refuserait le cas normal.
