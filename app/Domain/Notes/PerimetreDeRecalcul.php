@@ -33,7 +33,8 @@ use Illuminate\Support\Facades\Log;
  *
  * Les coordonnees viennent de l'EVALUATION, jamais des colonnes denormalisees
  * de `esbtp_notes` : ce sont ces colonnes-la qui peuvent etre en retard, et
- * c'est tout le sujet de {@see RecalculApresDeplacement}.
+ * c'est tout le sujet de {@see RecalculApresDeplacement}. S'y ajoutent les
+ * moyennes deja enregistrees du perimetre : voir {@see self::couples()}.
  */
 final class PerimetreDeRecalcul
 {
