@@ -220,8 +220,8 @@
                                     <div class="brm-stat">
                                         <div class="brm-stat-label">Solde</div>
                                         <div class="brm-stat-value brm-stat-value--small"
-                                             :class="r.solde_restant <= 0 ? 'brm-stat-value--ok' : 'brm-stat-value--warn'"
-                                             x-text="r.solde_restant !== null ? (r.solde_restant <= 0 ? 'Soldé ✓' : Math.round(r.solde_restant).toLocaleString('fr-FR') + ' FCFA') : '—'"></div>
+                                             :class="(r.solde_restant !== null ? r.solde_restant <= 0 : r.peut_reinscrire) ? 'brm-stat-value--ok' : 'brm-stat-value--warn'"
+                                             x-text="r.solde_restant !== null ? (r.solde_restant <= 0 ? 'Soldé ✓' : Math.round(r.solde_restant).toLocaleString('fr-FR') + ' FCFA') : (r.peut_reinscrire ? 'Soldé ✓' : 'À régler')"></div>
                                     </div>
                                 </div>
 

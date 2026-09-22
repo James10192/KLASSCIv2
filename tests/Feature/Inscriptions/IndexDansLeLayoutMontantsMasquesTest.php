@@ -35,7 +35,7 @@ class IndexDansLeLayoutMontantsMasquesTest extends TestCase
             \App\Http\Middleware\PaywallMiddleware::class,
         ]);
 
-        foreach (['inscriptions.view', 'identity.enrollment_officer', 'admin.access'] as $permission) {
+        foreach (['inscriptions.view', 'identity.enrollment_officer', 'admin.access', 'paiements.view'] as $permission) {
             Permission::findOrCreate($permission, 'web');
         }
         Cache::flush();
@@ -59,7 +59,7 @@ class IndexDansLeLayoutMontantsMasquesTest extends TestCase
     public function test_la_liste_reste_dans_le_layout_quand_les_montants_sont_visibles(): void
     {
         $admin = User::factory()->create();
-        $admin->givePermissionTo(['inscriptions.view', 'admin.access']);
+        $admin->givePermissionTo(['inscriptions.view', 'admin.access', 'paiements.view']);
 
         $html = $this->actingAs($admin)->get(route('esbtp.inscriptions.index'))->assertOk()->getContent();
 

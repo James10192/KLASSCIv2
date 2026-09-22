@@ -32,6 +32,15 @@ class ESBTPStudentInscriptionRepairController extends Controller
             isset($validated['target_classe_id']) ? (int) $validated['target_classe_id'] : null,
         );
 
+        // Le nombre de versements aide a choisir quelle inscription garder ;
+        // les montants restent derriere la porte financiere.
+        if (! $request->user()->can('finances.etudiants.voir')) {
+            foreach ($diagnostic['inscriptions'] ?? [] as $i => $profil) {
+                $diagnostic['inscriptions'][$i]['payments']['total'] = null;
+                $diagnostic['inscriptions'][$i]['payments']['valid_total'] = null;
+            }
+        }
+
         return response()->json([
             'success' => true,
             'data' => $diagnostic,
