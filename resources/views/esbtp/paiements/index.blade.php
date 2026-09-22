@@ -856,6 +856,60 @@
     .paiement-actions-buttons .btn-outline-warning { color: #9b6700; background: #fff7e5; }
     .paiement-actions-buttons .btn-outline-primary { color: #1455af; background: #eaf1ff; }
     .paiement-actions-buttons .btn-outline-secondary { color: #596b83; background: #f0f4f8; }
+    /* Alignement structurel : mêmes colonnes quel que soit le statut. */
+    .pi-table .pi-th-status,
+    .pi-table .pi-cell-status {
+        width: 128px;
+        min-width: 128px;
+    }
+    .pi-table .pi-th-actions,
+    .pi-table .pi-cell-actions {
+        min-width: 138px;
+    }
+
+    /* Le bouton PDF garde toujours l'icône et le chevron visibles. */
+    .paiement-actions-buttons .pdf-dropdown .dropdown-toggle {
+        width: auto;
+        min-width: 58px;
+        padding: 0 .48rem;
+        gap: .34rem;
+    }
+    .paiement-actions-buttons .pdf-dropdown .dropdown-toggle::after {
+        margin-left: .14rem;
+        vertical-align: .08em;
+    }
+
+    /* Les contrôles premium remplissent réellement leur colonne. */
+    #paiements-filter-form .pi-field { min-width: 0; }
+    #paiements-filter-form .pi-field .au-select,
+    #paiements-filter-form .pi-field .au-select-trigger {
+        width: 100%;
+    }
+    #paiements-filter-form .pi-field .au-select-trigger {
+        min-height: 41px;
+        justify-content: flex-start;
+    }
+
+    /* Une grille stable : recherche à gauche, filtres égaux, action clairement à droite. */
+    .pi-filters {
+        padding: 1.05rem 1.15rem 1.15rem;
+    }
+    .pi-filters-row {
+        grid-template-columns: minmax(220px, 1.7fr) repeat(4, minmax(145px, 1fr)) minmax(128px, auto);
+        gap: .8rem;
+        align-items: end;
+    }
+    .pi-filter-submit {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: .35rem;
+        min-width: 128px;
+        height: 41px;
+        padding: .55rem 1rem;
+    }
+    .pi-filter-submit i { margin-right: 0; }
+
     @@media (max-width: 992px) {
         .pi-student { min-width: 180px; }
         .pi-table tbody .pi-payment-row > td { padding-top: .78rem; padding-bottom: .78rem; }
