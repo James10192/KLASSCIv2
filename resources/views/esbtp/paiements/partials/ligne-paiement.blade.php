@@ -111,7 +111,10 @@
     <td class="d-none d-md-table-cell pi-cell-mode">
         <span class="pi-mode"><i class="fas fa-wallet"></i>{{ $paiement->mode_paiement }}</span>
     </td>
-    @if($showCreatorColumn ?? false)
+    {{-- Meme regle que l'en-tete de table.blade.php. Le repli ne doit pas etre
+         `false` : refresh-ligne rend cette ligne seule apres une validation, et
+         une cellule manquante decalait toute la ligne sous l'en-tete. --}}
+    @if($showCreatorColumn ?? (auth()->user()?->can('paiements.view') ?? false))
         {{-- Lot 13 — Encaisseur (visible uniquement pour les users avec paiements.view) --}}
         <td class="d-none d-lg-table-cell pi-cell-creator">
             @if($paiement->creator)
