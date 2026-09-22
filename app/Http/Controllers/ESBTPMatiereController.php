@@ -968,12 +968,12 @@ class ESBTPMatiereController extends Controller
                 'liaisons.*.niveau_id'  => 'required|exists:esbtp_niveau_etudes,id',
             ]);
 
-            $bilan = $service->appliquerLEnsembleVoulu($matiere, $validated['liaisons']);
+            $voulues = $service->appliquerLEnsembleVoulu($matiere, $validated['liaisons']);
 
             return response()->json([
                 'success' => true,
-                'message' => $bilan['voulues'] > 0
-                    ? "Liaisons mises à jour avec succès ! {$bilan['voulues']} combinaison(s) configurée(s)."
+                'message' => $voulues > 0
+                    ? "Liaisons mises à jour avec succès ! {$voulues} combinaison(s) configurée(s)."
                     : 'Liaisons mises à jour avec succès ! Toutes les liaisons ont été supprimées.',
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {

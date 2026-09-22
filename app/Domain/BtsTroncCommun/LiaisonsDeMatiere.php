@@ -222,7 +222,8 @@ class LiaisonsDeMatiere
      * regler la neuvieme remettait les huit autres a zero, sans un mot.
      *
      * LA LISTE VIDE EST UNE INSTRUCTION : elle retire tout. C'est « tout
-     * retirer » sur `/esbtp/matieres/{id}`, que l'ecran fait confirmer. La cle
+     * retirer » dans la modale de configuration de `/esbtp/matieres`, qui le
+     * fait confirmer. La cle
      * ABSENTE, elle, est une requete malformee — mais seul l'appelant voit la
      * requete : c'est a lui de la refuser avant d'arriver ici.
      *
@@ -234,10 +235,12 @@ class LiaisonsDeMatiere
      *
      * Tout ou rien : une ECUE refusee par `poser()` annule aussi les retraits.
      *
+     * Rend le nombre de couples distincts voulus : c'est ce que l'ecran
+     * annonce, zero compris (« toutes les liaisons ont ete supprimees »).
+     *
      * @param  array<int, array{filiere_id: int|string, niveau_id: int|string}>  $voulues
-     * @return array{voulues: int, posees: int, retirees: int}
      */
-    public function appliquerLEnsembleVoulu(ESBTPMatiere $matiere, array $voulues): array
+    public function appliquerLEnsembleVoulu(ESBTPMatiere $matiere, array $voulues): int
     {
         return DB::transaction(function () use ($matiere, $voulues) {
             $matiereId = (int) $matiere->id;
@@ -251,11 +254,7 @@ class LiaisonsDeMatiere
                 $this->poser($matiereId, $filiereId, $niveauId);
             }
 
-            return [
-                'voulues' => $plan['voulues'],
-                'posees' => count($plan['a_poser']),
-                'retirees' => count($plan['a_retirer']),
-            ];
+            return $plan['voulues'];
         });
     }
 

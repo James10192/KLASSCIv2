@@ -40,8 +40,11 @@ class LiaisonsDeMatiereTest extends TestCase
     }
 
     /**
-     * Le formulaire envoie des chaines ; la base rend des entiers. Les deux
-     * doivent designer le meme couple, sinon il serait retire puis repose.
+     * Rien ne garantit des entiers : l'endpoint recoit du JSON ecrit cote
+     * client, et un envoi de formulaire classique donnerait des chaines. Or
+     * `LiaisonsDeMatiere` est en `strict_types`, et `poser()` / `retirer()`
+     * attendent des `int` : sans le cast, un `'1'` arrivant dans `a_poser`
+     * leverait un `TypeError`, donc un 500. D'ou `[[1, 1]]` et non `[['1', '1']]`.
      */
     public function test_un_couple_demande_deux_fois_ne_compte_qu_une_fois(): void
     {
