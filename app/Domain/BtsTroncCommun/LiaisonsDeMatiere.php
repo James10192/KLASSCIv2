@@ -210,4 +210,108 @@ class LiaisonsDeMatiere
             return ['canonique' => (int) $canonique, 'places_semestre' => (int) $places];
         });
     }
+
+    /**
+     * Rend la maquette d'une matiere egale a l'ensemble de couples voulu :
+     * retire ce qui n'y est plus, pose ce qui manque, ne touche pas au reste.
+     *
+     * Un DIFF, et non un « supprime tout puis recree ». L'ancien code effacait
+     * les lignes existantes avant de les reinserer nues : toute combinaison
+     * conservee y perdait sa place au bulletin, son semestre et son statut
+     * tronc commun / specialite. Sur une matiere qui couvre huit combinaisons,
+     * regler la neuvieme remettait les huit autres a zero, sans un mot.
+     *
+     * LA LISTE VIDE EST UNE INSTRUCTION : elle retire tout. C'est « tout
+     * retirer » sur `/esbtp/matieres/{id}`, que l'ecran fait confirmer. La cle
+     * ABSENTE, elle, est une requete malformee — mais seul l'appelant voit la
+     * requete : c'est a lui de la refuser avant d'arriver ici.
+     *
+     * Le parametre est type `array`, et c'est ce type qui fait office de garde.
+     * Une chaine qui arriverait jusqu'ici leve un `TypeError`, quel que soit
+     * `error_reporting`. Avant, seule la conversion des avertissements en
+     * exceptions empechait un `foreach` sur une chaine de lire « aucun couple
+     * voulu » — c'est-a-dire de tout retirer.
+     *
+     * Tout ou rien : une ECUE refusee par `poser()` annule aussi les retraits.
+     *
+     * @param  array<int, array{filiere_id: int|string, niveau_id: int|string}>  $voulues
+     * @return array{voulues: int, posees: int, retirees: int}
+     */
+    public function appliquerLEnsembleVoulu(ESBTPMatiere $matiere, array $voulues): array
+    {
+        return DB::transaction(function () use ($matiere, $voulues) {
+            $matiereId = (int) $matiere->id;
+            $plan = $this->planifier($this->couplesActuels($matiereId), $voulues);
+
+            foreach ($plan['a_retirer'] as [$filiereId, $niveauId]) {
+                $this->retirer($matiereId, $filiereId, $niveauId);
+            }
+
+            foreach ($plan['a_poser'] as [$filiereId, $niveauId]) {
+                $this->poser($matiereId, $filiereId, $niveauId);
+            }
+
+            return [
+                'voulues' => $plan['voulues'],
+                'posees' => count($plan['a_poser']),
+                'retirees' => count($plan['a_retirer']),
+            ];
+        });
+    }
+
+    /**
+     * Le diff seul, sans base : ce qu'il faut retirer et poser pour passer de
+     * `$actuelles` a `$voulues`. Un couple demande deux fois compte une fois.
+     *
+     * PAR DIFFERENCE DES DEUX COTES, et ce n'est pas une optimisation. Reposer
+     * un couple deja en place est sans effet sur une matiere BTS — mais
+     * `poser()` refuse les ECUE, donc cela levait sur un couple qu'on ne
+     * demandait meme pas d'ajouter. Retirer un couple d'une ECUE qui en portait
+     * deux repassait par le second, levait, et annulait tout : la ligne
+     * redevenait « visible, et retirable par rien ».
+     *
+     * @param  array<int, array{filiere_id: int|string, niveau_id: int|string}>  $actuelles
+     * @param  array<int, array{filiere_id: int|string, niveau_id: int|string}>  $voulues
+     * @return array{voulues: int, a_poser: list<array{0: int, 1: int}>, a_retirer: list<array{0: int, 1: int}>}
+     */
+    public function planifier(array $actuelles, array $voulues): array
+    {
+        $actuel = self::parCouple($actuelles);
+        $voulu = self::parCouple($voulues);
+
+        return [
+            'voulues' => count($voulu),
+            'a_poser' => array_values(array_diff_key($voulu, $actuel)),
+            'a_retirer' => array_values(array_diff_key($actuel, $voulu)),
+        ];
+    }
+
+    /**
+     * @param  array<int, array{filiere_id: int|string, niveau_id: int|string}>  $couples
+     * @return array<string, array{0: int, 1: int}>
+     */
+    private static function parCouple(array $couples): array
+    {
+        $indexe = [];
+        foreach ($couples as $couple) {
+            $filiereId = (int) $couple['filiere_id'];
+            $niveauId = (int) $couple['niveau_id'];
+            $indexe["{$filiereId}|{$niveauId}"] = [$filiereId, $niveauId];
+        }
+
+        return $indexe;
+    }
+
+    /** @return array<int, array{filiere_id: int, niveau_id: int}> */
+    private function couplesActuels(int $matiereId): array
+    {
+        return ESBTPMatiereFilierNiveau::query()
+            ->where('matiere_id', $matiereId)
+            ->get(['filiere_id', 'niveau_etude_id'])
+            ->map(fn ($ligne) => [
+                'filiere_id' => (int) $ligne->filiere_id,
+                'niveau_id' => (int) $ligne->niveau_etude_id,
+            ])
+            ->all();
+    }
 }
