@@ -118,13 +118,32 @@ class RecomputeStudentResultatJob implements ShouldQueue
                 ? (float) $resultatExistant->moyenne
                 : null;
 
-            // 4. Si aucune note valide ET aucun résultat existant : no-op
-            if ($notes->isEmpty() && ! $resultatExistant) {
-                Log::info('RecomputeStudentResultatJob: no notes & no existing resultat, skipping', [
+            // 4. Aucune note valide : on n'ecrit RIEN.
+            //
+            // `studentMatiereAverage([])` rend 0.0, pas null. Ce test ne
+            // renoncait autrefois que s'il n'y avait NI note NI ligne : une
+            // ligne dont les notes etaient parties recevait donc 0/20 — il
+            // suffisait de supprimer la derniere note d'un eleve dans une
+            // matiere (observateur, `deleted`). Un zero que rien ne distingue
+            // d'une vraie note, et que le bulletin BTS lit en priorite.
+            //
+            // La ligne existante n'est pas touchee non plus : elle a pu etre
+            // saisie a la main, et rien ne distingue une moyenne manuelle d'une
+            // moyenne derivee. Elle reste, perimee, et on le DIT — meme regle
+            // que `RecalculApresDeplacement` : signalee, jamais touchee.
+            if ($notes->isEmpty()) {
+                $contexte = [
                     'etudiant_id' => $this->etudiantId,
+                    'classe_id' => $this->classeId,
                     'matiere_id' => $this->matiereId,
                     'periode' => $periode,
-                ]);
+                    'moyenne_conservee' => $moyenneAvant,
+                    'source' => $this->source,
+                ];
+
+                $resultatExistant
+                    ? Log::warning('RecomputeStudentResultatJob: plus aucune note, moyenne enregistree laissee en place', $contexte)
+                    : Log::info('RecomputeStudentResultatJob: no notes & no existing resultat, skipping', $contexte);
 
                 return;
             }
