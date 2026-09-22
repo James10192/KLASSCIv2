@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Domain\Notes\MoyennesLaissees;
+use App\Domain\Notes\RecalculApresDeplacement;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPEtudiant;
@@ -773,34 +775,8 @@ class ESBTPEvaluationController extends Controller
             }
             $evaluation->save();
 
-            // PROPAGATION aux notes filles : si classe/matiere/periode ont changé sur l'évaluation,
-            // synchroniser les colonnes dénormalisées des notes (esbtp_notes.classe_id,
-            // matiere_id, semestre). Sinon les vues qui groupent par note.matiere_id (résultats,
-            // bulletins) continuent d'afficher l'ancienne matière jusqu'au prochain save manuel.
-            $notesUpdates = [];
-            if ($evaluation->classe_id != $oldClasseId) {
-                $notesUpdates['classe_id'] = $evaluation->classe_id;
-            }
-            if ($evaluation->matiere_id != $oldMatiereId) {
-                $notesUpdates['matiere_id'] = $evaluation->matiere_id;
-            }
-            if ($evaluation->periode != $oldPeriode) {
-                // semestre = entier (1 ou 2) extrait de 'semestre1'/'semestre2'
-                $notesUpdates['semestre'] = (int) str_replace('semestre', '', (string) $evaluation->periode);
-            }
-            if (! empty($notesUpdates)) {
-                $affected = ESBTPNote::where('evaluation_id', $evaluation->id)->update($notesUpdates);
-                \Log::info('Notes propagées après modif évaluation', [
-                    'evaluation_id' => $evaluation->id,
-                    'changes' => $notesUpdates,
-                    'old' => [
-                        'classe_id' => $oldClasseId,
-                        'matiere_id' => $oldMatiereId,
-                        'periode' => $oldPeriode,
-                    ],
-                    'notes_affected' => $affected,
-                ]);
-            }
+            $avant = ['classe_id' => (int) $oldClasseId, 'matiere_id' => (int) $oldMatiereId, 'periode' => (string) $oldPeriode];
+            $recalcul = RecalculApresDeplacement::apresEnregistrement($evaluation, $avant, Auth::id());
 
             // Garde-fou non bloquant TC/Spécialité (basé sur la classe cible).
             $tcWarning = $this->troncCommunSpecialiteWarning(
@@ -810,8 +786,13 @@ class ESBTPEvaluationController extends Controller
 
             $redirect = redirect()->route('esbtp.evaluations.show', $evaluation)
                 ->with('success', 'L\'évaluation a été mise à jour avec succès');
-            if ($tcWarning) {
+
+            if ($tcWarning !== null) {
                 $redirect->with('warning', $tcWarning);
+            }
+
+            if ($recalcul['orphelins'] !== [] || $recalcul['echecs'] > 0) {
+                $redirect->with('moyennes_laissees', MoyennesLaissees::pourLEcran($recalcul, $evaluation, $avant));
             }
 
             return $redirect;

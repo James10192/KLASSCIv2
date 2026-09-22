@@ -504,6 +504,26 @@ class ESBTPEvaluation extends Model implements Auditable
     }
 
     /**
+     * L'ecriture CANONIQUE d'une periode : celle sous laquelle
+     * `esbtp_resultats.periode` est enregistree, et la seule a publier.
+     *
+     * Pendant `aliasDePeriode()` sert a LIRE (il faut accepter les deux
+     * ecritures), celle-ci sert a ECRIRE et a rendre une periode a l'exterieur.
+     * Les confondre coute cher : `RecomputeStudentResultatJob` portait une copie
+     * privee a sens unique de cette connaissance, qui savait aller de `'1'` vers
+     * `'semestre1'` mais relisait ensuite les notes avec un `where` nu — donc
+     * zero note, une moyenne calculee a 0.0, et **un 0/20 ecrit par-dessus une
+     * moyenne reelle**. Une periode inconnue est rendue telle quelle : on ne
+     * devine pas.
+     */
+    public static function periodeCanonique(string $periode): string
+    {
+        $numero = self::numeroDeSemestre($periode);
+
+        return $numero === null ? $periode : 'semestre'.$numero;
+    }
+
+    /**
      * Toutes les écritures d'une période, à passer à un `whereIn`.
      *
      * Le modèle porte la colonne `periode` : c'est ici que vit la
