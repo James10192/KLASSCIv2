@@ -31,9 +31,10 @@ use RuntimeException;
  * `esbtp_notes.matiere_id`, que la fusion déplace), et aucun écran LMD ne lit
  * `esbtp_resultats`. Le seul lecteur trouvé — le repli sans bulletin de
  * `ESBTPEtudiantController::attachMoyenneCalculee()`, qui additionne toutes les
- * lignes cohérentes d'un élève — une ECUE l'est dans sa classe LMD — compte chaque note une fois tant que les deux lignes
- * gardent leur moyenne d'origine ; recalculer l'élément conservé en laissant la
- * ligne de l'absorbé les compterait deux fois. Le recalcul des déplaceurs qui
+ * lignes cohérentes d'un élève, et une ECUE l'est dans sa classe LMD — compte
+ * chaque note une fois tant que les deux lignes gardent leur moyenne d'origine ;
+ * recalculer l'élément conservé en laissant la ligne de l'absorbé les compterait
+ * deux fois. Le recalcul des déplaceurs qui
  * en ont besoin vit dans {@see RecalculApresDeplacement}.
  *
  * L'AGRÉGAT LMD NE SE RECALCULE PAS, IL SE REPORTE. `esbtp_lmd_resultats_ecues`

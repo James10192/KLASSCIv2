@@ -1419,6 +1419,16 @@ class CLIMaintenanceController extends BaseApiController
             );
         }
 
+        // Le contrat publie : RETABLIR la coherence, jamais deplacer entre deux
+        // matieres deja coherentes. La ligne de moyenne quittee n'est pas
+        // touchee (elle a pu etre saisie a la main) ; incoherente, tous les
+        // lecteurs l'ecartent — coherente, elle compterait ses notes deux fois.
+        $source = ESBTPMatiere::withTrashed()->find($evaluation->matiere_id);
+        if ($source && CoherenceSystemeAcademique::estCoherente($evaluation->classe?->systeme_academique, $source->unite_enseignement_id)) {
+            return $this->errorResponse('Refus : cette evaluation est deja rangee dans une matiere de son systeme. '
+                .'Cet endpoint ne sert qu a retablir la coherence ; changez la matiere depuis l ecran de l evaluation.', [], 422);
+        }
+
         $notes = ESBTPNote::where('evaluation_id', $evaluation->id)->count();
 
         if ((bool) ($validated['dry_run'] ?? false)) {

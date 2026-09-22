@@ -97,6 +97,22 @@ class RecalculApresDeplacementTest extends TestCase
         $this->assertSame(10.0, (float) $inscription->moyenne_generale_calculee);
     }
 
+    public function test_la_rebascule_cli_refuse_un_deplacement_entre_deux_matieres_coherentes(): void
+    {
+        // Maths → Physique dans une classe BTS : la ligne Maths, laissée sans
+        // note mais cohérente, serait gardée par tous les lecteurs — et les
+        // notes compteraient deux fois. L'endpoint ne sert qu'à RÉTABLIR la
+        // cohérence ; il refuse, sans rien écrire.
+        $evaluation = $this->evaluation(self::MATHS);
+        $this->note($evaluation, 4);
+
+        $reponse = app(CLIMaintenanceController::class)->evaluationChangeMatiere($this->requeteCli(['matiere_id' => self::PHYSIQUE]), $evaluation);
+
+        $this->assertSame(422, $reponse->getStatusCode());
+        $this->assertSame(self::MATHS, (int) DB::table('esbtp_evaluations')->where('id', $evaluation)->value('matiere_id'));
+        $this->assertSame(self::MATHS, (int) DB::table('esbtp_notes')->where('evaluation_id', $evaluation)->value('matiere_id'));
+    }
+
     public function test_la_coordonnee_quittee_est_recalculee_s_il_y_reste_une_note(): void
     {
         $restante = $this->evaluation(self::MATHS);

@@ -109,6 +109,7 @@
     .rec-result-link { display: flex; align-items: center; gap: .6rem; padding: .55rem .7rem; border: 1px solid #e2e8f0; border-radius: 9px; margin-bottom: .4rem; font-size: .84rem; color: #1e293b; text-decoration: none; transition: border-color .2s ease, box-shadow .2s ease; }
     .rec-result-link:hover { border-color: #0453cb; box-shadow: 0 4px 14px rgba(4,83,203,.08); color: #0453cb; }
     .rec-result-link i { color: #0453cb; }
+    .rec-result-link--inerte, .rec-result-link--inerte:hover { cursor: default; border-color: #e2e8f0; box-shadow: none; color: #1e293b; }
     .rec-result-meta { color: #64748b; font-size: .76rem; margin-left: auto; text-align: right; }
     .rec-result-conflit { display: block; color: #b45309; font-size: .74rem; }
     .rec-modal-foot { padding: 1rem 1.4rem; border-top: 1px solid #eef2f7; display: flex; justify-content: flex-end; gap: .6rem; flex-wrap: wrap; }
@@ -370,7 +371,7 @@
                                     <span x-show="!peutVoirBulletins">Transmettez cette liste à la personne qui génère les bulletins LMD.</span>
                                 </p>
                                 <template x-for="b in modal.done.bulletins_a_regenerer" :key="b.id">
-                                    <a class="rec-result-link" :href="peutVoirBulletins ? lienBulletin(b) : null" target="_blank" rel="noopener">
+                                    <a class="rec-result-link" :class="peutVoirBulletins ? '' : 'rec-result-link--inerte'" :href="peutVoirBulletins ? lienBulletin(b) : null" target="_blank" rel="noopener">
                                         <i class="fas fa-file-alt"></i>
                                         <span>
                                             <span x-text="b.etudiant || ('Bulletin #' + b.id)"></span>

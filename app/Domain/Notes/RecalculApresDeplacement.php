@@ -33,13 +33,14 @@ use Illuminate\Support\Facades\Log;
  * SIGNALÉE, jamais touchée : la garder, la retirer ou la corriger est une
  * décision d'établissement, et elle a pu être saisie à la main.
  *
- * Une ligne laissée sur la matière quittée porte encore la moyenne des notes
- * parties. Sur la rebascule d'une ECUE vers une matière BTS, elle est
- * incohérente avec sa classe : les lecteurs qui additionnent toutes les lignes
- * d'un élève l'écartent par `CoherenceSystemeAcademique::resultatsRetenus()`,
- * sans quoi ils compteraient ces notes deux fois. Un déplaceur qui laisserait
- * une ligne COHÉRENTE sans note (période, classe) n'a pas cette protection :
- * c'est à vérifier en le branchant.
+ * Une ligne laissée sur la coordonnée quittée porte encore la moyenne des notes
+ * parties. Elle n'est sans danger que si elle est INCOHÉRENTE avec sa classe :
+ * les lecteurs qui additionnent les lignes d'un élève l'écartent alors
+ * (`CoherenceSystemeAcademique::resultatsRetenus()`, et la génération du
+ * bulletin BTS). C'est pourquoi la rebascule CLI refuse tout déplacement entre
+ * deux matières déjà cohérentes : la ligne qu'elle laisse l'est toujours.
+ * Cohérente, la même ligne resterait lue et compterait ses notes deux fois —
+ * c'est ce qui attend tout déplaceur de période ou de classe.
  *
  * LA SOURCE D'AUDIT EST `manual`. `esbtp_resultats_recompute_log.source` est un
  * `ENUM('observer', 'command', 'manual')` : une autre valeur y ferait échouer

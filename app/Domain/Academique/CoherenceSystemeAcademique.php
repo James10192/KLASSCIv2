@@ -135,7 +135,8 @@ final class CoherenceSystemeAcademique
     private static array $ecartsJournalises = [];
 
     /**
-     * Les moyennes enregistrées qu'un calcul BTS a le droit d'additionner.
+     * Les moyennes enregistrées qu'un calcul qui additionne toutes celles d'un
+     * élève a le droit de retenir — pour un élève BTS comme LMD.
      *
      * Une ligne d'`esbtp_resultats` dont la matière est étrangère au système de
      * sa classe est écartée, et journalisée par {@see matiereRetenue()}. Deux

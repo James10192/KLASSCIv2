@@ -157,7 +157,9 @@ nécessaire.
 ## Historique
 
 - **Septembre 2026 (bis)** — la rebascule recalcule `esbtp_resultats` ; la réponse
-  porte `recalculs_lances` et `lignes_sans_note`. Ajout non cassant.
+  porte `recalculs_lances` et `lignes_sans_note`. **Changement de comportement** :
+  un déplacement entre deux matières déjà cohérentes avec la classe, autrefois
+  accepté malgré la règle écrite plus haut, est désormais refusé en 422.
 - **Septembre 2026** — la réponse porte un second bloc `moyennes_manuelles` et un
   `total_toutes_familles`. La version antérieure ne relevait que les évaluations
   et a été prise pour l'inventaire complet. Un garde de cohérence est posé sur
