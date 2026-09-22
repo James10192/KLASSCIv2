@@ -2459,12 +2459,18 @@ class ESBTPPaiementController extends Controller
                 'etudiant.user',
                 'fraisCategory',
                 'categorie',
-                'inscription'
+                'inscription',
+                'creator',
             ]);
 
-            // Rendu de la partial ligne-paiement
+            // La ligne AJAX doit garder exactement la même structure que le
+            // tableau initial. Sinon « Encaissé par » disparaît après une
+            // validation, et décale Statut / Actions vers la gauche.
+            $showCreatorColumn = auth()->user()?->can('paiements.view') ?? false;
+
             $html = view('esbtp.paiements.partials.ligne-paiement', [
-                'paiement' => $paiement
+                'paiement' => $paiement,
+                'showCreatorColumn' => $showCreatorColumn,
             ])->render();
 
             \Log::info('Ligne paiement rafraîchie avec succès', [
