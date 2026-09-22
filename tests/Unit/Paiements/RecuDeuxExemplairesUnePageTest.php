@@ -29,6 +29,9 @@ class RecuDeuxExemplairesUnePageTest extends TestCase
         $valeurs['school_address'] = 'Abidjan';
         $valeurs['school_phone'] = '01020304';
         $valeurs['school_email'] = 'contact@example.com';
+        // Lu par le composer du shell mobile au rendu de la vue : sans lui,
+        // le test interroge la base, absente du job « Tests unitaires (sans base) ».
+        $valeurs['ui.mobile_shell.enabled'] = false;
         foreach ($valeurs as $cle => $valeur) {
             Cache::put('setting_'.$cle, $valeur, 600);
         }
