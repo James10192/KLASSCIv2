@@ -760,6 +760,113 @@
     }
 
     /* ═══════════════════════════════════════════════
+       Lignes de paiement — lecture rapide et actions sûres
+       Les hooks AJAX restent volontairement inchangés.
+       ═══════════════════════════════════════════════ */
+    .pi-table tbody .pi-payment-row {
+        background: #fff;
+        border-bottom: 1px solid #e8eef7;
+        transition: background-color .18s ease, box-shadow .18s ease, transform .18s ease;
+    }
+    .pi-table tbody .pi-payment-row:hover {
+        background: linear-gradient(90deg, rgba(4,83,203,.045), rgba(255,255,255,.98) 42%);
+        box-shadow: inset 3px 0 0 #2f73dd;
+    }
+    .pi-table tbody .pi-payment-row > td {
+        padding-top: .95rem;
+        padding-bottom: .95rem;
+    }
+    .pi-cell-selection { width: 44px; text-align: center; }
+    .pi-cell-selection .form-check-input {
+        width: 1.05rem; height: 1.05rem; margin: 0;
+        border-color: #b9c8df; cursor: pointer;
+    }
+    .pi-receipt { display: flex; flex-direction: column; gap: .18rem; min-width: 94px; }
+    .pi-receipt-label {
+        color: #94a3b8; font-size: .62rem; font-weight: 800;
+        letter-spacing: .08em; line-height: 1; text-transform: uppercase;
+    }
+    .pi-receipt-number { color: #124da6; font-size: .82rem; letter-spacing: .015em; }
+    .pi-student { display: flex; align-items: center; min-width: 205px; gap: .68rem; }
+    .pi-student-avatar {
+        flex: 0 0 auto; width: 38px; height: 38px;
+        margin: 0 !important; border: 2px solid #e9f1ff;
+        background: linear-gradient(135deg, #075ad9, #0b77b9) !important;
+        box-shadow: 0 4px 10px rgba(4,83,203,.16);
+        font-size: .7rem; letter-spacing: .035em;
+    }
+    .pi-student-details { min-width: 0; display: grid; gap: .2rem; }
+    .pi-student-name {
+        color: #172033; font-weight: 750; line-height: 1.15; text-decoration: none;
+        transition: color .16s ease;
+    }
+    .pi-student-name:hover { color: #0453cb; text-decoration: underline; text-underline-offset: 3px; }
+    .pi-student-meta { color: #78869a; font-size: .72rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .pi-student-meta i { color: #8ba8d2; margin-right: .35rem; font-size: .67rem; }
+    .pi-cell-category { min-width: 145px; }
+    .pi-category-chip {
+        display: inline-flex; align-items: center; gap: .38rem; max-width: 100%;
+        padding: .34rem .54rem; border: 1px solid transparent; border-radius: 7px;
+        color: #34415a; background: #f1f5f9; font-size: .74rem; font-weight: 700; line-height: 1.1;
+    }
+    .pi-category-chip i { font-size: .7rem; opacity: .82; }
+    .pi-category-chip--primary { background: #e8f0ff; color: #124da6; border-color: #d5e4ff; }
+    .pi-category-chip--success { background: #e9f8f0; color: #18754b; border-color: #d1f0df; }
+    .pi-category-chip--warning { background: #fff6df; color: #966300; border-color: #f7e7bb; }
+    .pi-category-chip--danger { background: #fff0f1; color: #b53442; border-color: #ffd8dd; }
+    .pi-category-chip--info { background: #e7f7fb; color: #08718f; border-color: #c9ebf3; }
+    .pi-category-chip--secondary { background: #f1f4f8; color: #64748b; border-color: #e1e8f0; }
+    .pi-category-type { display: block; color: #9aa8b9; margin-top: .28rem; font-size: .65rem; text-transform: capitalize; }
+    .pi-date { display: inline-flex; align-items: center; gap: .38rem; color: #46566d; font-size: .8rem; font-weight: 650; white-space: nowrap; }
+    .pi-date i { color: #70a0d8; font-size: .76rem; }
+    .pi-cell-amount { min-width: 138px; }
+    .pi-amount { color: #087b4d; font-size: .93rem; letter-spacing: -.01em; white-space: nowrap; }
+    .pi-amount span { color: #6f829a; font-size: .65rem; font-weight: 750; letter-spacing: .03em; }
+    .pi-amount--credit { color: #075ac6; }
+    .pi-mode {
+        display: inline-flex; align-items: center; gap: .36rem; padding: .32rem .5rem;
+        color: #176e89; background: #edf9fc; border: 1px solid #d2eff5; border-radius: 6px;
+        font-size: .73rem; font-weight: 700; white-space: nowrap;
+    }
+    .pi-mode i { font-size: .68rem; }
+    .pi-creator { display: inline-flex; align-items: center; gap: .35rem; max-width: 140px; color: #627188; font-size: .77rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .pi-creator i { color: #91a3ba; font-size: .83rem; }
+    .pi-status {
+        display: inline-flex; align-items: center; gap: .38rem; padding: .36rem .58rem;
+        border-radius: 999px; font-size: .71rem; font-weight: 800; white-space: nowrap;
+        letter-spacing: .01em;
+    }
+    .pi-status i { font-size: .43rem; }
+    .pi-status--success { color: #087645; background: #e7f8ee; border: 1px solid #c9eed9; }
+    .pi-status--warning { color: #956500; background: #fff6df; border: 1px solid #f5e4b8; }
+    .pi-status--danger { color: #b52f40; background: #fff0f1; border: 1px solid #ffd8dd; }
+    .pi-status--secondary { color: #63748c; background: #f1f4f8; border: 1px solid #e2e8f0; }
+    .pi-cell-actions { min-width: 122px; }
+    .paiement-actions-wrapper { justify-content: flex-end; }
+    .paiement-actions-buttons { gap: .24rem; padding: .22rem; background: #f7faff; border: 1px solid #e4ecf7; border-radius: 8px; }
+    .paiement-actions-buttons .btn {
+        width: 29px; height: 29px; padding: 0; border-radius: 6px !important;
+        display: inline-flex; align-items: center; justify-content: center; border-color: transparent;
+        transition: transform .16s ease, background-color .16s ease, color .16s ease;
+    }
+    .paiement-actions-buttons .btn:hover { transform: translateY(-1px); }
+    .paiement-actions-buttons .btn-outline-info { color: #087c9c; background: #eaf9fd; }
+    .paiement-actions-buttons .btn-outline-success { color: #08784b; background: #e8f8ef; }
+    .paiement-actions-buttons .btn-outline-danger { color: #bd3344; background: #fff0f2; }
+    .paiement-actions-buttons .btn-outline-warning { color: #9b6700; background: #fff7e5; }
+    .paiement-actions-buttons .btn-outline-primary { color: #1455af; background: #eaf1ff; }
+    .paiement-actions-buttons .btn-outline-secondary { color: #596b83; background: #f0f4f8; }
+    @@media (max-width: 992px) {
+        .pi-student { min-width: 180px; }
+        .pi-table tbody .pi-payment-row > td { padding-top: .78rem; padding-bottom: .78rem; }
+        .pi-cell-actions { min-width: 108px; }
+    }
+    @@media (prefers-reduced-motion: reduce) {
+        .pi-table tbody .pi-payment-row,
+        .paiement-actions-buttons .btn { transition: none; }
+    }
+
+    /* ═══════════════════════════════════════════════
        Cleanup legacy : neutralise styles globaux qui
        saignent dans la table (card-moderne etc.)
        ═══════════════════════════════════════════════ */
