@@ -47,7 +47,7 @@ class SyncNotesScopeCommand extends Command
 
         $query->chunkById(100, function ($evaluations) use (&$totalNotesFixed, &$evaluationsTouched, $dry) {
             foreach ($evaluations as $eval) {
-                $expectedSemestre = (int) str_replace('semestre', '', (string) $eval->periode);
+                $expectedSemestre = ESBTPNote::semestreDepuisLaPeriode((string) $eval->periode);
 
                 $staleCount = ESBTPNote::where('evaluation_id', $eval->id)
                     ->where(function ($q) use ($eval, $expectedSemestre) {
@@ -98,6 +98,11 @@ class SyncNotesScopeCommand extends Command
                     ->whereColumn('esbtp_matieres.id', 'esbtp_resultats.matiere_id')
                     ->whereNull('esbtp_matieres.deleted_at');
             });
+            // Meme perimetre que la categorie 2 : sans lui, le `delete()` qui
+            // suit balaie l'ecole entiere. `--matiere` vise alors une matiere
+            // effacee precise (le filtre porte sur `esbtp_resultats.matiere_id`).
+            $this->restreindreAuPerimetre($brokenMatiereQuery);
+
             $brokenCount = $brokenMatiereQuery->count();
             $this->line("  Found {$brokenCount} resultat(s) with broken matiere_id");
             if (! $dry && $brokenCount > 0) {

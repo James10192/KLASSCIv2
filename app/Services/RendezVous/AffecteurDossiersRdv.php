@@ -17,21 +17,17 @@ class AffecteurDossiersRdv
     ) {
     }
 
-    public function placerUn(PorteurDeRendezVous $porteur): bool
+    private function placerUn(PorteurDeRendezVous $porteur): bool
     {
-        if (! $this->reglages->enabled()) {
-            return false;
-        }
-
         if (! $this->emailValide($porteur)) {
             return false;
         }
 
         $existante = $this->reservateur->reservationActive($porteur);
         if ($existante !== null) {
-            if (! $porteur->dejaInviteRdv()) {
-                $this->convoquer($porteur, $existante);
-            }
+            // N'arrive ici qu'une reservation d'avant le suivi, jamais convoquee
+            // (voir dejaTraitee()) : c'est la seule qu'il faut encore poser.
+            $this->convoquer($porteur, $existante);
 
             return true;
         }
@@ -52,11 +48,34 @@ class AffecteurDossiersRdv
     }
 
     /**
-     * @return array{places: int, sans_email: int, sans_creneau: int, deja: int}
+     * Place les dossiers en attente et POSE leur convocation en attente d'envoi.
+     *
+     * Rien n'est envoye ici. Avant, chaque placement programmait son envoi dans
+     * `terminating`, et un lot de plusieurs centaines tournait dans un seul
+     * processus PHP — tue en route, sans trace. L'envoi passe desormais par
+     * FileConvocationsRdv, par paquets.
+     *
+     * `refus` dit pourquoi rien n'a ete tente. Avant, un canal ferme etait compte
+     * « sans creneau » pour chaque dossier : l'ecole cherchait des creneaux qui
+     * existaient.
+     *
+     * @return array{places: int, sans_email: int, sans_creneau: int, deja: int, refus: ?string}
      */
     public function placer(): array
     {
-        $rapport = ['places' => 0, 'sans_email' => 0, 'sans_creneau' => 0, 'deja' => 0];
+        $rapport = ['places' => 0, 'sans_email' => 0, 'sans_creneau' => 0, 'deja' => 0, 'refus' => null];
+
+        if (! $this->reglages->enabled()) {
+            $rapport['refus'] = 'La prise de rendez-vous est fermée. Ouvrez-la dans les réglages avant de placer les dossiers.';
+
+            return $rapport;
+        }
+
+        if ($this->catalogue->placesLibres() === []) {
+            $rapport['refus'] = 'Aucune place libre sur les créneaux à venir. Générez ou ouvrez des créneaux d\'abord.';
+
+            return $rapport;
+        }
 
         $this->chaquePorteur(function (PorteurDeRendezVous $porteur) use (&$rapport) {
             if (! $this->emailValide($porteur)) {
@@ -66,7 +85,7 @@ class AffecteurDossiersRdv
             }
 
             $existante = $this->reservateur->reservationActive($porteur);
-            if ($existante !== null && $porteur->dejaInviteRdv()) {
+            if ($existante !== null && $this->dejaTraitee($porteur, $existante)) {
                 $rapport['deja']++;
 
                 return;
@@ -84,10 +103,22 @@ class AffecteurDossiersRdv
         return $rapport;
     }
 
+    /**
+     * La reservation dit elle-meme ou en est sa convocation. `rdv_invite_at`, pose
+     * seulement apres un envoi REUSSI, ne suffisait pas : une convocation en
+     * attente ou en echec etait reprise a chaque clic, remise a zero de ses
+     * tentatives et de son motif, et recomptee « placee ». Il ne sert plus que
+     * pour les reservations d'avant le suivi, dont l'etat est inconnu.
+     */
+    private function dejaTraitee(PorteurDeRendezVous $porteur, ESBTPRdvReservation $reservation): bool
+    {
+        return $reservation->convocation_statut !== null || $porteur->dejaInviteRdv();
+    }
+
     private function convoquer(PorteurDeRendezVous $porteur, ESBTPRdvReservation $reservation): void
     {
         $porteur->assurerReferencePublique();
-        $this->mails->confirmer($reservation, 'confirme');
+        $this->mails->planifier($reservation, 'confirme');
     }
 
     private function emailValide(PorteurDeRendezVous $porteur): bool
