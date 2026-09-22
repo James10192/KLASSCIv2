@@ -1,0 +1,232 @@
+<?php
+
+namespace Tests\Feature\Care;
+
+use App\Domain\Support\Models\SupportOutbox;
+use App\Http\Middleware\CheckInstalled;
+use App\Http\Middleware\EnsureInstalled;
+use App\Http\Middleware\PaywallMiddleware;
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\Request;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
+use Spatie\Permission\Models\Permission;
+use Tests\TestCase;
+
+/**
+ * Signaler depuis l'ecole, puis suivre : le parcours cote instance, Master simule.
+ */
+class DemandeSupportTest extends TestCase
+{
+    use RefreshDatabase;
+
+    private const CLE = '3f2b8c1e-5d4a-4f6b-9a7c-1e2d3c4b5a69';
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->withoutMiddleware([EnsureInstalled::class, CheckInstalled::class, PaywallMiddleware::class]);
+        Cache::flush();
+        config()->set('services.master.api_url', 'https://master.test/api');
+        config()->set('services.master.support_token', 'kc_abcdefghijkl_'.str_repeat('A', 40));
+    }
+
+    private function utilisateur(): User
+    {
+        return User::factory()->create(['username' => 'u_'.Str::lower(Str::random(8)), 'name' => 'Awa Koné']);
+    }
+
+    /** Le Master, simule : fonctionnalites ouvertes, puis la reponse voulue sur les demandes. */
+    private function master($tickets, array $fonctionnalites = ['support_widget' => true, 'support_customer_portal' => true]): void
+    {
+        Http::fake([
+            'master.test/api/v1/support/bootstrap' => Http::response(['fonctionnalites' => $fonctionnalites]),
+            'master.test/api/v1/support/tickets*' => $tickets,
+        ]);
+    }
+
+    private function soumission(array $surcharge = []): array
+    {
+        return $surcharge + [
+            'categorie' => 'PROBLEME',
+            'description' => 'Le bouton Valider les notes ne répond plus.',
+            'cle' => self::CLE,
+            'contexte' => ['route_name' => 'support.demandes.index', 'url_path' => '/esbtp/notes?x=1', 'viewport' => '390x844'],
+        ];
+    }
+
+    /** @test */
+    public function le_rapporteur_est_l_utilisateur_connecte_jamais_le_navigateur(): void
+    {
+        $this->master(Http::response(['reference' => 'KC-2026-000042', 'statut' => ['code' => 'RECU', 'libelle' => 'Reçue']], 201));
+        $user = $this->utilisateur();
+
+        $this->actingAs($user)
+            ->postJson(route('support.demandes.store'), $this->soumission(['reporter' => ['external_id' => 1]]))
+            ->assertCreated()
+            ->assertJsonPath('reference', 'KC-2026-000042')
+            ->assertJsonPath('suivi_url', route('support.demandes.show', 'KC-2026-000042'));
+
+        Http::assertSent(function (Request $req) use ($user) {
+            return str_ends_with($req->url(), '/v1/support/tickets')
+                && $req['reporter']['external_id'] === $user->id
+                && $req['reporter']['name'] === 'Awa Koné'
+                && $req['context']['url_path'] === '/esbtp/notes'
+                && $req->hasHeader('Idempotency-Key', self::CLE)
+                && $req->hasHeader('X-Request-ID');
+        });
+    }
+
+    /** @test */
+    public function master_injoignable_la_demande_attend_puis_part_avec_la_meme_cle(): void
+    {
+        $this->master(Http::sequence()->push([], 503)->push(['reference' => 'KC-2026-000043'], 201));
+        $user = $this->utilisateur();
+
+        $this->actingAs($user)->postJson(route('support.demandes.store'), $this->soumission())
+            ->assertStatus(202)->assertJsonPath('en_attente', true);
+
+        $ligne = SupportOutbox::firstOrFail();
+        $this->assertSame(self::CLE, $ligne->idempotency_key);
+        $this->assertSame($user->id, $ligne->user_id);
+
+        // Le Master revient, le coupe-circuit retombe.
+        Cache::forget('care:master:indisponible');
+        $this->artisan('support:vider-boite-envoi')->assertSuccessful();
+
+        $this->assertNotNull($ligne->fresh()->sent_at);
+        $this->assertSame('KC-2026-000043', $ligne->fresh()->reference);
+        Http::assertSent(fn (Request $req) => $req->hasHeader('Idempotency-Key', self::CLE));
+    }
+
+    /** @test */
+    public function un_refus_du_master_abandonne_la_ligne_au_lieu_de_reessayer_sans_fin(): void
+    {
+        SupportOutbox::create(['idempotency_key' => self::CLE, 'payload' => ['report' => []]]);
+        Http::fake(['master.test/*' => Http::response(['error' => 'validation_failed', 'message' => 'Non.'], 422)]);
+
+        $this->artisan('support:vider-boite-envoi')->assertSuccessful();
+
+        $this->assertNotNull(SupportOutbox::firstOrFail()->abandoned_at);
+    }
+
+    /** @test */
+    public function ferme_tant_que_le_master_ne_l_a_pas_ouvert_a_l_ecole(): void
+    {
+        $this->master(Http::response([], 201), ['support_widget' => false, 'support_customer_portal' => false]);
+
+        $this->actingAs($this->utilisateur())->postJson(route('support.demandes.store'), $this->soumission())->assertNotFound();
+        $this->actingAs($this->utilisateur())->get(route('support.demandes.index'))->assertNotFound();
+    }
+
+    /** @test */
+    public function l_interrupteur_local_coupe_tout(): void
+    {
+        $this->master(Http::response([], 201));
+        \App\Helpers\SettingsHelper::setOrCreate('support.widget.enabled', '0', 'support', 'boolean');
+        Cache::flush();
+
+        $this->actingAs($this->utilisateur())->postJson(route('support.demandes.store'), $this->soumission())->assertNotFound();
+    }
+
+    /** @test */
+    public function la_soumission_est_validee(): void
+    {
+        $this->master(Http::response([], 201));
+
+        $this->actingAs($this->utilisateur())
+            ->postJson(route('support.demandes.store'), $this->soumission(['description' => 'court', 'cle' => 'pas-une-uuid']))
+            ->assertStatus(422)->assertJsonValidationErrors(['description', 'cle']);
+        Http::assertNotSent(fn (Request $req) => str_contains($req->url(), '/tickets'));
+    }
+
+    /** @test */
+    public function il_faut_etre_connecte(): void
+    {
+        $this->postJson(route('support.demandes.store'), $this->soumission())->assertUnauthorized();
+    }
+
+    /** @test */
+    public function la_portee_ecole_exige_la_permission(): void
+    {
+        $this->master(Http::response(['data' => [], 'meta' => ['page' => 1, 'pages' => 1, 'total' => 0]]));
+        $user = $this->utilisateur();
+
+        $this->actingAs($user)->get(route('support.demandes.index', ['portee' => 'ecole']))->assertOk();
+        Http::assertSent(fn (Request $req) => str_contains($req->url(), 'scope=mine'));
+
+        $user->givePermissionTo(Permission::firstOrCreate(['name' => 'support.tickets.view_school', 'guard_name' => 'web']));
+        $this->actingAs($user->fresh())->getJson(route('support.demandes.index', ['portee' => 'ecole']), ['X-Requested-With' => 'XMLHttpRequest'])
+            ->assertOk()->assertJsonPath('portee', 'school');
+        Http::assertSent(fn (Request $req) => str_contains($req->url(), 'scope=school'));
+    }
+
+    /** @test */
+    public function la_page_de_suivi_affiche_la_demande_du_master(): void
+    {
+        $this->master(Http::response([
+            'reference' => 'KC-2026-000042', 'titre' => 'Le bouton Valider ne répond plus',
+            'description' => 'Le bouton Valider les notes ne répond plus.',
+            'categorie' => ['code' => 'PROBLEME', 'libelle' => 'Quelque chose ne fonctionne pas'],
+            'statut' => ['code' => 'ACTION_REQUISE', 'libelle' => 'Action requise de votre part'],
+            'rapporteur' => ['id' => 1, 'nom' => 'Awa Koné'],
+            'cree_le' => now()->toIso8601String(), 'mis_a_jour_le' => now()->toIso8601String(),
+            'derniere_reponse' => null,
+            'messages' => [['auteur' => 'SUPPORT', 'nom' => 'Support KLASSCI', 'corps' => 'Pouvez-vous préciser la classe ?', 'le' => now()->toIso8601String()]],
+        ]));
+
+        $this->actingAs($this->utilisateur())->get(route('support.demandes.show', 'KC-2026-000042'))
+            ->assertOk()
+            ->assertSee('Action requise de votre part')
+            ->assertSee('Pouvez-vous préciser la classe ?');
+    }
+
+    /** @test */
+    public function une_reference_mal_formee_ne_part_pas_au_master(): void
+    {
+        $this->master(Http::response([], 200));
+
+        $this->actingAs($this->utilisateur())->get('/support/demandes/..%2Fbootstrap')->assertNotFound();
+        Http::assertNotSent(fn (Request $req) => str_contains($req->url(), '/tickets/'));
+    }
+
+    /** @test */
+    public function la_fenetre_est_rendue_sans_jamais_exposer_l_identifiant_du_master(): void
+    {
+        $this->master(Http::response([], 201));
+        $this->actingAs($this->utilisateur());
+
+        $html = \Illuminate\Support\Facades\Blade::render('<x-support.lanceur />');
+
+        $this->assertStringContainsString('id="sp-modal"', $html);
+        $this->assertStringContainsString('window.KLASSCI_SUPPORT', $html);
+        $this->assertStringNotContainsString('kc_abcdefghijkl', $html);
+        $this->assertStringNotContainsString('master.test', $html);
+    }
+
+    /** @test */
+    public function la_fenetre_n_est_pas_rendue_sans_identifiant_du_master(): void
+    {
+        config()->set('services.master.support_token', null);
+        Http::fake();
+        $this->actingAs($this->utilisateur());
+
+        $this->assertStringNotContainsString('sp-modal', \Illuminate\Support\Facades\Blade::render('<x-support.lanceur />'));
+        Http::assertNothingSent();
+    }
+
+    /** @test */
+    public function chaque_reponse_porte_un_code_de_suivi(): void
+    {
+        $this->master(Http::response(['data' => [], 'meta' => ['page' => 1, 'pages' => 1, 'total' => 0]]));
+
+        $r = $this->actingAs($this->utilisateur())->get(route('support.demandes.index'));
+        $this->assertMatchesRegularExpression('/^[0-9A-HJKMNP-TV-Z]{26}$/', (string) $r->headers->get('X-Request-ID'));
+
+        $repris = $this->actingAs($this->utilisateur())
+            ->get(route('support.demandes.index'), ['X-Request-ID' => '01J8ZQ4Y5K3M2N1P0QRSTVWXYZ']);
+        $this->assertSame('01J8ZQ4Y5K3M2N1P0QRSTVWXYZ', $repris->headers->get('X-Request-ID'));
+    }
+}

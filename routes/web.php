@@ -3095,6 +3095,18 @@ Route::prefix('external-grading')->name('external-grading.')->group(function () 
 });
 
 // Routes Chatbot IA - Accessible Ã  tous les utilisateurs authentifiÃ©s
+// KLASSCI Care — signaler un probleme et suivre ses demandes. Les demandes
+// vivent au Master ; ces routes ne sont qu'un relais serveur (le navigateur
+// ne voit jamais l'identifiant du Master).
+Route::middleware(['auth'])->prefix('support')->name('support.')->group(function () {
+    Route::post('demandes', [\App\Http\Controllers\Support\DemandeSupportController::class, 'store'])
+        ->middleware('throttle:10,1')->name('demandes.store');
+    Route::get('demandes', [\App\Http\Controllers\Support\DemandeSupportController::class, 'index'])
+        ->middleware('throttle:60,1')->name('demandes.index');
+    Route::get('demandes/{reference}', [\App\Http\Controllers\Support\DemandeSupportController::class, 'show'])
+        ->middleware('throttle:60,1')->name('demandes.show');
+});
+
 Route::middleware(['auth', 'throttle:60,1'])->prefix('chatbot')->name('chatbot.')->group(function () {
     Route::post('/message', [App\Http\Controllers\ChatbotController::class, 'sendMessage'])->name('message');
     Route::post('/message/stream', [App\Http\Controllers\ChatbotController::class, 'sendMessageStream'])->name('message.stream');

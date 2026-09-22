@@ -18,6 +18,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="request-id" content="{{ request()->attributes->get('request_id') }}">
     <meta name="app-debug" content="{{ config('app.debug') ? '1' : '0' }}">
     <meta name="navbar-mark-all-read-url" content="{{ url('/navbar/notifications/mark-all-read') }}">
 
@@ -2912,6 +2913,26 @@
                                             </a>
                                         @endrole
                             </li>
+                            @php
+                                $_spNav = app(\App\Domain\Support\Services\DisponibiliteSupport::class);
+                                $_spNavSignaler = $_spNav->signalement();
+                                $_spNavSuivi = $_spNav->suivi();
+                            @endphp
+                            @if($_spNavSignaler)
+                            <li>
+                                {{-- Le lien courriel ne sert que si le script du support ne s'est pas charge. --}}
+                                <a class="dropdown-item" href="mailto:{{ config('app.support_email') }}" data-support-ouvrir>
+                                    <i class="fas fa-life-ring me-2"></i> Aide / Signaler un problème
+                                </a>
+                            </li>
+                            @endif
+                            @if($_spNavSuivi)
+                            <li>
+                                <a class="dropdown-item" href="{{ route('support.demandes.index') }}">
+                                    <i class="fas fa-inbox me-2"></i> Mes demandes de support
+                                </a>
+                            </li>
+                            @endif
                             <li>
                                 {{-- Une securite qu'on ne trouve pas n'est activee par personne. --}}
                                 <a class="dropdown-item" href="{{ route('securite.double-auth.reglages') }}">
@@ -3431,6 +3452,9 @@
     <div class="m-chatbot-host">
         @include('components.chatbot.widget')
     </div>
+
+    {{-- KLASSCI Care : fenetre « Aide / Signaler », ouverte depuis le menu du compte. --}}
+    <x-support.lanceur />
 
     <!-- Debug Helper - Doit être chargé en PREMIER -->
     <script>
@@ -4644,6 +4668,13 @@
                 @endif
                 @if(Route::has('securite.double-auth.reglages'))
                     <a href="{{ route('securite.double-auth.reglages') }}"><x-m.icon name="lock" />Double authentification<span class="ch"><x-m.icon name="chr" /></span></a>
+                @endif
+                @php $_spMobile = app(\App\Domain\Support\Services\DisponibiliteSupport::class); @endphp
+                @if($_spMobile->signalement())
+                    <a href="mailto:{{ config('app.support_email') }}" data-support-ouvrir><x-m.icon name="msg" />Aide / Signaler un problème<span class="ch"><x-m.icon name="chr" /></span></a>
+                @endif
+                @if($_spMobile->suivi())
+                    <a href="{{ route('support.demandes.index') }}"><x-m.icon name="msg" />Mes demandes de support<span class="ch"><x-m.icon name="chr" /></span></a>
                 @endif
                 @if($mobileProfile === 'etudiant')
                     @if(Route::has('esbtp.preferences.index'))
