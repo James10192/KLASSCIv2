@@ -338,10 +338,10 @@
                         <template x-if="orphelins(modal.done).length">
                             <div class="rec-warn">
                                 <div class="rec-done-title"><i class="fas fa-exclamation-triangle"></i><span x-text="orphelins(modal.done).length + ' moyenne(s) sans aucune note'"></span></div>
-                                Elles portaient sur l'élément absorbé. Elles n'ont été ni recalculées (elles tomberaient à 0/20) ni supprimées : ouvrez les résultats de l'élève pour trancher.
+                                Elles restent enregistrées sur l'élément absorbé, sans aucune note : ni recalculées (elles tomberaient à 0/20), ni supprimées. Vérifiez les résultats de l'élève ; leur suppression se demande au support technique.
                                 <ul class="rec-done-list">
                                     <template x-for="o in orphelins(modal.done)" :key="o.etudiant_id + '-' + o.classe_id + '-' + o.periode">
-                                        <li><a :href="resultatsEleveUrl(o.etudiant_id)" target="_blank" rel="noopener" x-text="o.etudiant || ('Élève #' + o.etudiant_id)"></a> <span x-text="'· ' + (o.classe || ('classe #' + o.classe_id)) + ' · ' + periodeLisible(o.periode) + ' · moyenne ' + (o.moyenne === null ? '—' : o.moyenne)"></span></li>
+                                        <li><a :href="resultatsEleveUrl(o.etudiant_id, o.annee_universitaire_id)" target="_blank" rel="noopener" x-text="o.etudiant || ('Élève #' + o.etudiant_id)"></a> <span x-text="'· ' + (o.classe || ('classe #' + o.classe_id)) + ' · ' + periodeLisible(o.periode) + ' · moyenne ' + (o.moyenne === null ? '—' : o.moyenne)"></span></li>
                                     </template>
                                 </ul>
                             </div>
@@ -578,7 +578,10 @@ function recManager() {
         conflitsLmd(r) { return ((r && r.lmd_resultats_ecues) || {}).conflits || []; },
         bulletinsARegenerer(r) { return ((r && r.lmd_resultats_ecues) || {}).bulletins_a_regenerer || []; },
         bulletinUrl(id) { return this.bulletinUrlGabarit.replace('__ID__', id); },
-        resultatsEleveUrl(id) { return this.resultatsEleveUrlGabarit.replace('__ID__', id); },
+        // L'année de la ligne, sinon la page retombe sur l'année courante.
+        resultatsEleveUrl(id, anneeId) {
+            return this.resultatsEleveUrlGabarit.replace('__ID__', id) + (anneeId ? '?annee_universitaire_id=' + encodeURIComponent(anneeId) : '');
+        },
         periodeLisible(p) {
             const m = String(p || '').match(/^(?:semestre\s*)?(\d+)$/i);
             return m ? 'Semestre ' + m[1] : (p || '');
