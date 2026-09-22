@@ -1662,9 +1662,14 @@ $('#saveAllNotesBtn').on('click', function() {
         });
     });
 
+    // Le contexte de départ : si l'on change de classe, de matière ou de
+    // période avant la réponse, celle-ci ne touche plus à la grille affichée.
+    const draftKey = nmDraftKey();
+
     // Envoyer une seule requête bulk au lieu d'une par étudiant
     $.ajax({
         url: '{{ route("esbtp.notes.save-ajax-bulk") }}',
+        nmDraftKey: draftKey,
         method: 'POST',
         dataType: 'json',
         headers: {
@@ -1681,6 +1686,12 @@ $('#saveAllNotesBtn').on('click', function() {
             // par le rechargement de la liste des élèves : servie depuis le
             // cache, elle ne passait jamais par là et le bouton restait muet.
             nmFinalSaveInFlight = false;
+
+            if (nmDraftKey() !== draftKey) {
+                btn.html(originalText).prop('disabled', false);
+                nmShowToast(response.success ? 'success' : 'error', response.message || 'Validation terminée pour la grille précédente.', 6000);
+                return;
+            }
 
             if (!response.success) {
                 // Le serveur valide les lignes correctes même quand d'autres
@@ -1728,7 +1739,7 @@ $('#saveAllNotesBtn').on('click', function() {
             notesPayload.forEach(function(entry) {
                 nmMarkClean(entry.etudiant_id, entry.evaluation_id);
             });
-            nmAutosaveDraft();
+            nmAutosaveDraft(draftKey);
             window.nmHasUnsavedChanges = false;
             markBulletinSynced();
 

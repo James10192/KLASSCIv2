@@ -229,7 +229,11 @@ $(document).ajaxSuccess(function(_event, _jqxhr, settings) {
         if (NM.pendingSaves === 0 && window.nmDirtyNotes.size === 0) {
             window.nmHasUnsavedChanges = false;
         }
-        nmScheduleAutosave();
+        // Validation partie d'une grille que l'on a quittée depuis : écrire
+        // maintenant effacerait le brouillon de la grille affichée.
+        if (settings.nmDraftKey === undefined || settings.nmDraftKey === nmDraftKey()) {
+            nmScheduleAutosave();
+        }
     }
 });
 
@@ -245,12 +249,12 @@ function nmMemoriserRefus(notesPayload, refused) {
         const saisie = saisies[nmDirtyKey(r.etudiant_id, r.evaluation_id)] || {};
         return { sid: String(r.etudiant_id), eid: String(r.evaluation_id), note: saisie.note, absent: saisie.is_absent === 'on', raison: r.raison };
     });
-    window.nmRefusEnAttente = liste.length ? { classId: currentClassId, liste: liste } : null;
+    window.nmRefusEnAttente = liste.length ? { key: nmDraftKey(), liste: liste } : null;
 }
 window.addEventListener('nm:grid-rendered', function() {
     const attente = window.nmRefusEnAttente;
     window.nmRefusEnAttente = null;
-    if (!attente || attente.classId !== currentClassId) return;
+    if (!attente || attente.key !== nmDraftKey()) return;
     attente.liste.forEach(function(r) {
         const $input = $(`.note-input[data-student-id="${r.sid}"][data-eval-id="${r.eid}"]`);
         if (!$input.length) return;
