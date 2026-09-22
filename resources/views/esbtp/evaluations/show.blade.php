@@ -181,9 +181,14 @@
 
         {{-- Moyennes que le deplacement a laissees sans rien a moyenner. Rendu
              ici et non par le bandeau global du layout, qui echappe tout et ne
-             peut pas porter de lien. Voir ESBTPEvaluationController::moyennesLaissees(). --}}
+             peut pas porter de lien. Voir App\Domain\Notes\MoyennesLaissees. --}}
         @if(session('moyennes_laissees'))
-            @php $_laissees = session('moyennes_laissees'); @endphp
+            @php
+                $_laissees = session('moyennes_laissees');
+                // Les deux ecrans cibles sont gardes par ces permissions-la
+                // (routes/web.php) : un lien visible doit mener quelque part.
+                $_peutNettoyer = auth()->user()?->canAny(['admin.access', 'identity.direct_studies', 'identity.registrar', 'identity.registrar_clerk']);
+            @endphp
             <div class="ev-alert ev-alert--warning" role="status">
                 <i class="fas fa-triangle-exclamation"></i>
                 <div class="ev-alert-body">
@@ -193,8 +198,11 @@
                         elles restent affichées, et continueront de compter au bulletin tant que vous ne les
                         retirez pas.
                     </p>
-                    @if($_laissees['sans_note'] > 0)
-                        @can('bulletins.generate')
+                    @if(! empty($_laissees['nettoyages']))
+                        <p class="ev-alert-text ev-alert-text--note">
+                            Sans aucune note : le contrôle de la génération des bulletins les liste, et propose de les retirer.
+                        </p>
+                        @if($_peutNettoyer)
                             <div class="ev-alert-actions">
                                 @foreach($_laissees['nettoyages'] as $_nettoyage)
                                     <a class="ev-alert-link" href="{{ route('esbtp.bulletins.select', [
@@ -203,18 +211,32 @@
                                             'annee_universitaire_id' => $_nettoyage['annee_universitaire_id'],
                                         ]) }}">
                                         <i class="fas fa-broom"></i>
-                                        Vérifier {{ $_nettoyage['classe'] }}, {{ $_nettoyage['libelle_periode'] }}
+                                        Vérifier {{ $_nettoyage['libelle'] }}
                                     </a>
                                 @endforeach
                             </div>
-                        @endcan
+                        @endif
                     @endif
-                    @if($_laissees['absences_seulement'] > 0)
+                    @if(! empty($_laissees['eleves']))
                         <p class="ev-alert-text ev-alert-text--note">
-                            {{ $_laissees['absences_seulement'] }} d'entre elles ne portent plus que des absences :
-                            le nettoyage de la génération des bulletins ne les liste pas. Retirez-les depuis
-                            « Modifier les moyennes » de la classe si elles n'ont plus lieu d'être.
+                            Il ne reste que des absences : ce contrôle ne les voit pas. Reprenez-les élève par élève
+                            depuis « Modifier les moyennes ».
                         </p>
+                        @if($_peutNettoyer)
+                            <div class="ev-alert-actions">
+                                @foreach($_laissees['eleves'] as $_eleve)
+                                    <a class="ev-alert-link" href="{{ route('esbtp.bulletins.moyennes-preview', [
+                                            'etudiant_id' => $_eleve['etudiant_id'],
+                                            'classe_id' => $_eleve['classe_id'],
+                                            'periode' => $_eleve['periode'],
+                                            'annee_universitaire_id' => $_eleve['annee_universitaire_id'],
+                                        ]) }}">
+                                        <i class="fas fa-user-pen"></i>
+                                        {{ $_eleve['libelle'] }}
+                                    </a>
+                                @endforeach
+                            </div>
+                        @endif
                     @endif
                 </div>
             </div>

@@ -164,6 +164,11 @@ final class RecalculApresDeplacement
      * (`feature-delivery-methodology.md`, phase 12). A 400 : 7 a 14 s en
      * local, soit une marge d'un facteur deux pour un hebergement plus lent —
      * facteur qui, lui, n'est pas mesure sur LWS.
+     *
+     * **Remesure apres l'ajout du garde** (diagnostic avant chaque recalcul) :
+     * **11 requetes et ~8-9 ms par couple recalcule** (10 puis 50 couples,
+     * meme machine). Un eleve deplace compte jusqu'a deux couples, d'ou les 22
+     * requetes ci-dessus : le garde n'a pas deplace la borne.
      */
     public const PLAFOND_NOTES_PAR_APPEL = 400;
 
@@ -177,6 +182,54 @@ final class RecalculApresDeplacement
         $memo = ['couples' => [], 'orphelins' => []];
 
         return self::pourAvecMemo($evaluation, $avant, $declencheur, $memo);
+    }
+
+    /**
+     * Le deplacement fait depuis l'ecran des evaluations : repercute sur les
+     * notes les colonnes denormalisees qui ont change (`classe_id`,
+     * `matiere_id`, `semestre`), puis rafraichit les moyennes des deux cotes.
+     *
+     * Sorti de `ESBTPEvaluationController`, qui depassait deja 2000 lignes :
+     * c'est une regle du domaine des notes, pas de l'ecran.
+     *
+     * La repercussion est un `update()` de QUERY BUILDER : il n'emet aucun
+     * evenement, l'observateur ne tourne pas — d'ou l'appel a `pour()` qui
+     * suit, sans lequel la moyenne d'avant l'emporterait sur les notes.
+     *
+     * @param  array{classe_id:int, matiere_id:int, periode:string}  $avant
+     * @return array{recalculs_tentes:int, orphelins:array<int,array<string,mixed>>, echecs:int}
+     */
+    public static function apresEnregistrement(ESBTPEvaluation $evaluation, array $avant, ?int $declencheur = null): array
+    {
+        $colonnes = [];
+
+        if ($evaluation->classe_id != $avant['classe_id']) {
+            $colonnes['classe_id'] = $evaluation->classe_id;
+        }
+        if ($evaluation->matiere_id != $avant['matiere_id']) {
+            $colonnes['matiere_id'] = $evaluation->matiere_id;
+        }
+        if ($evaluation->periode != $avant['periode']) {
+            // L'encodage vit sur le modele (voir le hook `saving()`), pas ici.
+            $colonnes['semestre'] = ESBTPNote::semestreDepuisLaPeriode((string) $evaluation->periode);
+        }
+
+        if ($colonnes === []) {
+            return ['recalculs_tentes' => 0, 'orphelins' => [], 'echecs' => 0];
+        }
+
+        $touchees = ESBTPNote::where('evaluation_id', $evaluation->id)->update($colonnes);
+
+        Log::info('Notes propagées après modif évaluation', [
+            'evaluation_id' => $evaluation->id,
+            'changes' => $colonnes,
+            'old' => $avant,
+            'notes_affected' => $touchees,
+        ]);
+
+        return self::pour($evaluation, $avant + [
+            'annee_universitaire_id' => $evaluation->annee_universitaire_id,
+        ], $declencheur);
     }
 
     /**
@@ -241,13 +294,13 @@ final class RecalculApresDeplacement
         }
 
         if ($bilan['orphelins'] !== []) {
-            Log::warning('Deplacement d evaluation : agregats desormais sans note, laisses en place', [
+            Log::warning('Deplacement d evaluation : moyennes sans rien a moyenner, laissees en place', [
                 'evaluation_id' => $evaluation->id,
                 'avant' => $avant,
                 'apres' => $apres,
                 'orphelins' => $bilan['orphelins'],
-                'remede' => 'pre-controle de la generation des bulletins (classe et periode d avant) ; '
-                    .'pour reste = notes_non_comptees, decision manuelle depuis « Modifier les moyennes »',
+                'remede' => 'chaque entree porte sa classe et sa periode (depart OU arrivee) : pre-controle de la '
+                    .'generation des bulletins pour reste = aucune_note, « Modifier les moyennes » de l eleve sinon',
             ]);
         }
 

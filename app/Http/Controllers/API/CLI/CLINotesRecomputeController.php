@@ -32,9 +32,11 @@ class CLINotesRecomputeController extends BaseApiController
      * `touch()` de bulletin) puis une seconde lecture. A 600, cela fait de
      * l'ordre de 1200 lectures et 600 executions de job dans UNE requete HTTP.
      *
-     * **Mesure depuis (septembre 2026)** : un couple coute ~17 ms et 22 requetes
-     * en local, lineairement — 40 couples en 0,67 s. A 500, un appel prend donc
-     * de l'ordre de 9 s en local, sous les 30 s au-dela desquelles le binaire
+     * **Mesure depuis (septembre 2026)**, et remesure apres l'ajout du garde
+     * contre le 0/20 : un couple coute **11 requetes et ~8-9 ms** en local,
+     * lineairement (50 couples en 0,45 s). La premiere mesure annoncait ~17 ms
+     * et 22 requetes « par couple » : elle comptait un ELEVE deplace, soit deux
+     * couples. A 500, un appel prend donc de l'ordre de 5 s en local, sous les 30 s au-dela desquelles le binaire
      * `klassci` abandonne. Ce qui reste NON mesure, et se lit comme tel : le
      * facteur de ralentissement de l'hebergement mutualise LWS. Le controle a
      * faire est un chronometrage sur une instance Elite.
@@ -120,8 +122,13 @@ class CLINotesRecomputeController extends BaseApiController
             return $this->successResponse([
                 'dry_run' => true,
                 'perimetre' => $validated,
+                // `issue` : ce que le garde fera de ce couple (`recalcule`,
+                // `laissee` s'il n'y reste rien a moyenner, `rien_a_ecrire`
+                // sans ligne ni note comptee) — lu par le meme diagnostic que
+                // l'execution, pas predit a cote.
                 'couples' => $couples->map(fn (array $c) => $c + [
                     'moyenne_enregistree' => $perimetre->moyenneEnregistree($c),
+                    'issue' => PerimetreDeRecalcul::diagnostic($c)['statut'],
                 ])->all(),
                 'total' => $couples->count(),
             ], 'Aucune ecriture : '.$couples->count().' couple(s) seraient recalcules.');

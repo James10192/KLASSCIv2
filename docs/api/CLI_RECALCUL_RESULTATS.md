@@ -94,6 +94,10 @@ note déplacée en déclenche un ou deux : à 1200, un appel prenait 20 à 40 s 
 local** — au-delà des 30 s où le binaire `klassci` abandonne, donc précisément le
 cas où `perimetres_reportes` n'arrive jamais. À 400 : 7 à 14 s.
 
+Remesuré après l'ajout du garde contre le 0/20 : **11 requêtes et ~8-9 ms par
+couple recalculé** (10 puis 50 couples). Un élève déplacé compte jusqu'à deux
+couples — d'où les 22 requêtes par élève — et le garde n'a pas déplacé la borne.
+
 Elle est globale parce que le nombre de classes d'un lot n'est borné nulle part
 (`deplacer` accepte 200 évaluations réparties sur autant de classes,
 `evaluations-periode/repair` n'a aucun `LIMIT`). Et le recalcul est hors
@@ -113,7 +117,7 @@ Tout périmètre non traité part dans `perimetres_reportes` avec sa `raison`
 `semestreN`, et les `matiere_ids` pour découper si le rattrapage bute à son tour
 sur son propre plafond de couples.
 
-### Ce qu'aucun recalcul hors saisie ne fait : écrire 0/20 à partir de rien
+### Ce qu'aucun recalcul de rattrapage ne fait : écrire 0/20 à partir de rien
 
 `NoteCalculationService` écarte les absences, les barèmes nuls et les
 coefficients nuls. Sur une coordonnée où il ne reste rien de tout cela — aucune
@@ -123,17 +127,30 @@ déplacement, ou une valeur saisie à la main lors d'un rattrapage.
 
 La ligne est donc **laissée et signalée, jamais touchée** — son sort est une
 décision d'école (`.claude/rules/rien-en-dur.md`, « le cas particulier du zéro »).
-Ce garde vit en **un seul endroit**, `PerimetreDeRecalcul::recalculerUnCouple()`,
-par où passent le recalcul après déplacement, cet endpoint et `notes:recompute`.
+Et s'il n'y a **pas** de ligne, rien n'est **créé** : le job aurait sinon écrit une
+ligne à 0/20 depuis de simples absences, que la préséance de la ligne enregistrée
+aurait ensuite imposée à l'écran et au bulletin.
+
+Le garde vit en **un seul endroit**, `PerimetreDeRecalcul::diagnostic()`. Tous
+les chemins de rattrapage le lisent :
+
+| chemin | comment |
+|---|---|
+| recalcul après déplacement (écran et CLI) | `recalculerUnCouple()` |
+| `POST /api/cli/notes/recompute` | `recalculerUnCouple()` ; `dry_run` rend l'`issue` de chaque couple |
+| `notes:recompute` | `recalculerUnCouple()` |
+| `notes:recompute --queue` | le diagnostic **au moment de la mise en file** : un couple sans rien à moyenner n'est pas posé |
+
 Il n'a d'abord existé que dans le recalcul après déplacement — et le rattrapage
-qu'il conseillait réécrivait le 0/20 qu'il venait de refuser.
+qu'il conseillait réécrivait le 0/20 qu'il venait de refuser. `--queue`, ensuite,
+l'a ignoré une passe de plus.
 
 Chaque ligne laissée porte `reste` :
 
 | `reste` | ce qu'il reste sur la coordonnée | qui peut la retirer |
 |---|---|---|
 | `aucune_note` | rien | le pré-contrôle de la génération des bulletins la liste, avec suppression douce et tracée |
-| `notes_non_comptees` | des absences (ou des notes à barème ou coefficient nul) | ce pré-contrôle ne la voit pas : « Modifier les moyennes » de la classe |
+| `notes_non_comptees` | des absences (ou des notes à barème ou coefficient nul) | ce pré-contrôle ne la voit pas : « Modifier les moyennes » de l'élève (l'écran est par élève) |
 
 ⚠️ **Le garde ne vaut pas pour l'observateur de note, et c'est délibéré** : quand
 un enseignant marque une note absente, c'est son geste qui fixe la moyenne. Un
@@ -164,7 +181,7 @@ Ce plafond valait 600, sans raison derrière le chiffre. Ce qui se compte, lui, 
 lit dans le code : chaque couple coûte une lecture, l'exécution du job sur place
 (ses requêtes, plus un `touch()` de bulletin) puis une seconde lecture — soit, à
 600, de l'ordre de 1200 lectures et 600 exécutions de job dans une seule requête
-HTTP. Mesuré depuis : ~17 ms par couple en local, soit ~9 s à 500 — sous les
+HTTP. Mesuré depuis : ~8-9 ms et 11 requêtes par couple en local, soit ~5 s à 500 — sous les
 30 s du binaire `klassci`. Ce qui reste **non mesuré** est le facteur de
 l'hébergement mutualisé : le chronométrage sur une instance Élite reste à
 faire. 500 et non 200, parce que le geste légitime de cet endpoint est le

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Domain\Notes\MoyennesLaissees;
 use App\Domain\Notes\RecalculApresDeplacement;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPClasse;
@@ -753,9 +754,8 @@ class ESBTPEvaluationController extends Controller
             }
             $evaluation->save();
 
-            $recalcul = $this->propagerLeDeplacementAuxNotes(
-                $evaluation, (int) $oldClasseId, (int) $oldMatiereId, (string) $oldPeriode
-            );
+            $avant = ['classe_id' => (int) $oldClasseId, 'matiere_id' => (int) $oldMatiereId, 'periode' => (string) $oldPeriode];
+            $recalcul = RecalculApresDeplacement::apresEnregistrement($evaluation, $avant, Auth::id());
 
             // Garde-fou non bloquant TC/Spécialité (basé sur la classe cible).
             $tcWarning = $this->troncCommunSpecialiteWarning(
@@ -771,9 +771,7 @@ class ESBTPEvaluationController extends Controller
             }
 
             if ($recalcul['orphelins'] !== []) {
-                $redirect->with('moyennes_laissees', $this->moyennesLaissees(
-                    $recalcul['orphelins'], $evaluation, (int) $oldClasseId, (int) $oldMatiereId, (string) $oldPeriode
-                ));
+                $redirect->with('moyennes_laissees', MoyennesLaissees::pourLEcran($recalcul['orphelins'], $evaluation, $avant));
             }
 
             return $redirect;
@@ -782,130 +780,6 @@ class ESBTPEvaluationController extends Controller
                 ->with('error', 'Une erreur est survenue lors de la mise à jour de l\'évaluation: '.$e->getMessage())
                 ->withInput();
         }
-    }
-
-    /**
-     * Repercute un deplacement d'evaluation sur ses notes, puis rafraichit les
-     * moyennes enregistrees des DEUX cotes.
-     *
-     * Sorti de `update()`, qui depassait deja largement le seuil de 80 lignes
-     * avant ce chantier : y ajouter le recalcul l'aggravait.
-     *
-     * @return array{recalculs_tentes:int, orphelins:array<int,array<string,mixed>>, echecs:int}
-     */
-    private function propagerLeDeplacementAuxNotes(
-        ESBTPEvaluation $evaluation,
-        int $oldClasseId,
-        int $oldMatiereId,
-        string $oldPeriode
-    ): array {
-        $recalcul = ['recalculs_tentes' => 0, 'orphelins' => [], 'echecs' => 0];
-
-        // PROPAGATION aux notes filles : si classe/matiere/periode ont changé
-        // sur l'évaluation, synchroniser les colonnes dénormalisées des notes (esbtp_notes.classe_id,
-        // matiere_id, semestre). Sinon les vues qui groupent par note.matiere_id (résultats,
-        // bulletins) continuent d'afficher l'ancienne matière jusqu'au prochain save manuel.
-        $notesUpdates = [];
-        if ($evaluation->classe_id != $oldClasseId) {
-            $notesUpdates['classe_id'] = $evaluation->classe_id;
-        }
-        if ($evaluation->matiere_id != $oldMatiereId) {
-            $notesUpdates['matiere_id'] = $evaluation->matiere_id;
-        }
-        if ($evaluation->periode != $oldPeriode) {
-            // L'encodage de cette colonne vit sur le modele, avec le hook
-            // `saving()` qui le decide — pas recopie ici. Le compte des copies
-            // restantes se rejoue : voir `ESBTPNote::semestreDepuisLaPeriode()`,
-            // qui a longtemps affirme etre seule et ne l'etait pas.
-            $notesUpdates['semestre'] = ESBTPNote::semestreDepuisLaPeriode((string) $evaluation->periode);
-        }
-        if (! empty($notesUpdates)) {
-            $affected = ESBTPNote::where('evaluation_id', $evaluation->id)->update($notesUpdates);
-            \Log::info('Notes propagées après modif évaluation', [
-                'evaluation_id' => $evaluation->id,
-                'changes' => $notesUpdates,
-                'old' => [
-                    'classe_id' => $oldClasseId,
-                    'matiere_id' => $oldMatiereId,
-                    'periode' => $oldPeriode,
-                ],
-                'notes_affected' => $affected,
-            ]);
-
-            // Cet `update()` est un update de QUERY BUILDER : il n'émet
-            // aucun événement Eloquent, donc ESBTPNoteObserver ne tourne pas
-            // et aucun recalcul n'est déclenché. Sans l'appel qui suit,
-            // `esbtp_resultats` garde des DEUX côtés la moyenne d'avant — et
-            // cette moyenne périmée l'emporte sur les notes à l'affichage
-            // comme au bulletin (voir RecalculApresDeplacement).
-            $recalcul = RecalculApresDeplacement::pour($evaluation, [
-                'classe_id' => $oldClasseId,
-                'matiere_id' => $oldMatiereId,
-                'periode' => $oldPeriode,
-                'annee_universitaire_id' => $evaluation->annee_universitaire_id,
-            ], Auth::id());
-        }
-
-        return $recalcul;
-    }
-
-    /**
-     * Ce que l'ecran de l'evaluation dit des moyennes que le deplacement a
-     * laissees sans rien a moyenner — rendu par `evaluations/show.blade.php`,
-     * pas par le bandeau global du layout, qui echappe tout et ne peut donc
-     * porter aucun lien.
-     *
-     * Deux choses que le premier texte faisait mal :
-     *
-     * - il parlait toujours de « l'ancienne matiere ». Or sur cet ecran la
-     *   classe et la matiere sont verrouillees des qu'il y a des notes (sauf
-     *   `evaluations.edit_locked`) : le cas courant est un changement de
-     *   PERIODE. Le texte nomme donc ce qui a vraiment bouge ;
-     * - il renvoyait vers « Modifier les moyennes », ou chaque suppression est
-     *   definitive et se fait eleve par eleve, alors qu'un nettoyage deja livre
-     *   les liste par matiere, au pre-controle de la generation des bulletins,
-     *   avec une suppression douce et tracee. Le lien y mene, pre-rempli.
-     *
-     * Ce nettoyage ne voit que les moyennes SANS AUCUNE note. Celles dont il
-     * ne reste que des absences lui echappent : elles sont comptees a part, et
-     * le texte le dit plutot que de promettre un outil qui ne les trouvera pas.
-     *
-     * @param  array<int, array<string,mixed>>  $laissees
-     * @return array{total:int, sans_note:int, absences_seulement:int, ce_qui_a_bouge:string, nettoyages:array<int,array<string,mixed>>}
-     */
-    private function moyennesLaissees(array $laissees, ESBTPEvaluation $evaluation, int $oldClasseId, int $oldMatiereId, string $oldPeriode): array
-    {
-        $bouge = array_filter([
-            $evaluation->classe_id != $oldClasseId ? 'la classe' : null,
-            $evaluation->matiere_id != $oldMatiereId ? 'la matière' : null,
-            $evaluation->periode != $oldPeriode ? 'la période' : null,
-        ]);
-
-        $sansNote = array_filter($laissees, fn (array $l) => ($l['reste'] ?? null) === 'aucune_note');
-
-        $nettoyages = collect($sansNote)
-            ->map(fn (array $l) => [
-                'classe_id' => (int) $l['classe_id'],
-                'periode' => (string) $l['periode'],
-                'annee_universitaire_id' => (int) $l['annee_universitaire_id'],
-            ])
-            ->unique(fn (array $n) => implode('|', $n))
-            ->map(fn (array $n) => $n + [
-                'classe' => optional(ESBTPClasse::find($n['classe_id']))->name ?? '#'.$n['classe_id'],
-                'libelle_periode' => 'Semestre '.(ESBTPEvaluation::numeroDeSemestre($n['periode']) ?? '?'),
-            ])
-            ->values()
-            ->all();
-
-        return [
-            'total' => count($laissees),
-            'sans_note' => count($sansNote),
-            'absences_seulement' => count($laissees) - count($sansNote),
-            'ce_qui_a_bouge' => $bouge === []
-                ? 'l\'évaluation'
-                : (count($bouge) === 1 ? reset($bouge) : implode(', ', array_slice($bouge, 0, -1)).' et '.end($bouge)),
-            'nettoyages' => $nettoyages,
-        ];
     }
 
     /**

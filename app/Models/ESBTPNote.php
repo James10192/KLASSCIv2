@@ -359,7 +359,7 @@ class ESBTPNote extends Model implements Auditable
      *
      * **L'encodage de cette colonne vit ici, avec le hook qui le decide.** Elle
      * est un `varchar`, mais tout le depot y ecrit l'ENTIER : `booted()::saving`
-     * fait `(int) str_replace('semestre', '', …)` et a le dernier mot sur chaque
+     * passe par `semestreDepuisLaPeriode()` et a le dernier mot sur chaque
      * chemin Eloquent — y compris `synchronizerPeriode()` juste en dessous, qui
      * pose pourtant la chaine avant d'appeler `save()`.
      *

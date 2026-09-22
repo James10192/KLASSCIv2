@@ -38,7 +38,7 @@ class NotesRecompute extends Command
         {--classe= : Restreindre à une classe (id)}
         {--matiere= : Restreindre à une matière (id)}
         {--etudiant= : Restreindre à un étudiant (id)}
-        {--periode= : Restreindre à une période (semestre1|semestre2|annuel)}
+        {--periode= : Restreindre à une période (semestre1|semestre2)}
         {--annee= : Restreindre à une année universitaire (id)}
         {--toute-l-ecole : Recalculer sans perimetre, apres confirmation}
         {--queue : Dispatcher les jobs sur la queue (sinon exécution sync)}
@@ -52,6 +52,15 @@ class NotesRecompute extends Command
         $this->line('Tenant: '.$this->option('tenant'));
 
         $sansPerimetre = ! $this->option('classe') || ! $this->option('annee');
+
+        // `annuel` n'est porte par aucune evaluation : le perimetre serait
+        // toujours vide, et la commande annoncerait un succes sans rien avoir
+        // recalcule. L'endpoint le refuse deja ; la commande s'aligne.
+        if ($this->option('periode') && ! in_array($this->option('periode'), ['semestre1', 'semestre2'], true)) {
+            $this->error('--periode accepte semestre1 ou semestre2.');
+
+            return self::INVALID;
+        }
 
         if ($sansPerimetre && ! $this->option('toute-l-ecole')) {
             $this->error('Précisez --classe et --annee, ou --toute-l-ecole pour tout recalculer.');
@@ -167,22 +176,35 @@ class NotesRecompute extends Command
      * `queue:work`. Ce mode existe pour une instance qui en ferait tourner un ;
      * la commande le DIT plutot que de laisser croire au recalcul.
      *
-     * Le garde contre le 0/20 ({@see PerimetreDeRecalcul::recalculerUnCouple()})
-     * ne s'applique pas ici : c'est le job, plus tard, qui tranchera. Raison de
-     * plus pour ne pas conseiller ce mode.
+     * Le garde contre le 0/20 s'applique ici aussi, par le meme diagnostic
+     * ({@see PerimetreDeRecalcul::diagnostic()}), au moment de la mise en
+     * file : un couple sans rien a moyenner n'est pas pose. Ce mode l'ignorait
+     * d'abord, et un worker aurait reecrit le 0/20 que les autres chemins
+     * refusent.
      *
      * @param  Collection<int, array<string,mixed>>  $couples
-     * @return array{lignes:array<int,array<string,mixed>>, echecs:int, laissees:array<int,mixed>}
+     * @return array{lignes:array<int,array<string,mixed>>, echecs:int, laissees:array<int,array<string,mixed>>}
      */
     private function dispatcherSurLaFile(Collection $couples): array
     {
         $this->warn('--queue : les jobs sont posés sur la file. Rien n\'est recalculé tant qu\'un worker ne les consomme pas.');
 
         $lignes = [];
+        $laissees = [];
         $echecs = 0;
 
         foreach ($couples as $c) {
             try {
+                $diagnostic = PerimetreDeRecalcul::diagnostic($c);
+
+                if ($diagnostic['laissee'] !== null) {
+                    $laissees[] = $diagnostic['laissee'];
+                }
+
+                if ($diagnostic['statut'] !== PerimetreDeRecalcul::RECALCULE) {
+                    continue;
+                }
+
                 RecomputeStudentResultatJob::dispatch(
                     etudiantId: $c['etudiant_id'],
                     classeId: $c['classe_id'],
@@ -202,6 +224,6 @@ class NotesRecompute extends Command
             }
         }
 
-        return ['lignes' => $lignes, 'echecs' => $echecs, 'laissees' => []];
+        return ['lignes' => $lignes, 'echecs' => $echecs, 'laissees' => $laissees];
     }
 }

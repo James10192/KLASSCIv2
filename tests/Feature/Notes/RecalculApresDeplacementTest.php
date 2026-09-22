@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Notes;
 
+use App\Domain\Notes\MoyennesLaissees;
 use App\Http\Controllers\API\CLI\CLIMaintenanceController;
 use App\Http\Controllers\API\CLI\CLINotesRecomputeController;
 use App\Http\Controllers\ESBTPEvaluationController;
@@ -12,6 +13,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Validation\ValidationException;
 use Tests\Feature\Bts\Concerns\MonteUneClasseBts;
@@ -106,8 +108,8 @@ class RecalculApresDeplacementTest extends TestCase
      * ecrit par-dessus une moyenne reelle. Sans orphelin, sans journal, compte
      * comme un succes : strictement pire que le cas que le garde protege.
      *
-     * Retirez `porteEncoreUneMoyenne()` au profit d'un `exists()` : ce test
-     * tombe seul, sur 12,00 devenu 0,00.
+     * Neutralisez le garde de `PerimetreDeRecalcul::diagnostic()` (la branche
+     * « rien a moyenner ») : ce test tombe, sur 12,00 devenu 0,00.
      *
      * @test
      */
@@ -190,6 +192,87 @@ class RecalculApresDeplacementTest extends TestCase
         ])->assertExitCode(0);
 
         $this->assertSame(12.0, $this->moyenne($etudiant->id, $depart->id));
+    }
+
+    /**
+     * Rien a moyenner ET aucune ligne : le job CREAIT une ligne a 0/20 depuis
+     * de simples absences, que la preseance de la ligne enregistree imposait
+     * ensuite. Un rattrapage n'invente pas de zero, pas plus en creant qu'en
+     * ecrasant.
+     *
+     * @test
+     */
+    public function le_rattrapage_ne_cree_pas_de_zero_depuis_des_absences(): void
+    {
+        $this->monterLaClasse();
+        $matiere = $this->matiereConfiguree();
+        $etudiant = $this->etudiantInscrit();
+
+        $absence = $this->evaluationDe($matiere);
+        $this->noter($etudiant, $absence, 0);
+        $ligne = ESBTPNote::where('evaluation_id', $absence->id)->firstOrFail();
+        $ligne->is_absent = true;
+        $ligne->save();
+        ESBTPResultat::where('etudiant_id', $etudiant->id)->where('matiere_id', $matiere->id)->forceDelete();
+        $this->assertNull($this->moyenne($etudiant->id, $matiere->id));
+
+        $perimetre = [
+            'classe_id' => $this->classe->id,
+            'periode' => 'semestre1',
+            'annee_universitaire_id' => $this->annee->id,
+            'matiere_id' => $matiere->id,
+        ];
+
+        $simulation = $this->appeler('notesRecompute', ['cli:admin'], $perimetre + ['dry_run' => true]);
+        $this->assertSame('rien_a_ecrire', $simulation['couples'][0]['issue']);
+
+        $this->appeler('notesRecompute', ['cli:admin'], $perimetre);
+        $this->assertNull($this->moyenne($etudiant->id, $matiere->id));
+
+        // La mise en file applique le meme garde : rien n'est pose.
+        Queue::fake();
+        $this->artisan('notes:recompute', [
+            '--classe' => $this->classe->id,
+            '--annee' => $this->annee->id,
+            '--queue' => true,
+        ])->assertExitCode(0);
+        Queue::assertNothingPushed();
+    }
+
+    /**
+     * Ce qui ne porte plus que des absences echappe au nettoyage des bulletins,
+     * et « Modifier les moyennes » est un ecran PAR ELEVE : l'ecran doit donc
+     * nommer l'eleve et la matiere, pas renvoyer a « la classe ».
+     *
+     * @test
+     */
+    public function l_ecran_nomme_l_eleve_quand_il_ne_reste_que_des_absences(): void
+    {
+        $this->monterLaClasse();
+        $matiere = $this->matiereConfiguree();
+        $etudiant = $this->etudiantInscrit();
+        $evaluation = $this->evaluationDe($matiere);
+
+        $vue = MoyennesLaissees::pourLEcran([[
+            'resultat_id' => 1,
+            'etudiant_id' => $etudiant->id,
+            'classe_id' => $this->classe->id,
+            'matiere_id' => $matiere->id,
+            'annee_universitaire_id' => $this->annee->id,
+            'periode' => 'semestre1',
+            'moyenne' => 12.0,
+            'reste' => 'notes_non_comptees',
+        ]], $evaluation, [
+            'classe_id' => $this->classe->id,
+            'matiere_id' => $matiere->id,
+            'periode' => 'semestre2',
+        ]);
+
+        $this->assertSame([], $vue['nettoyages']);
+        $this->assertCount(1, $vue['eleves']);
+        $this->assertSame($etudiant->id, $vue['eleves'][0]['etudiant_id']);
+        $this->assertStringContainsString($etudiant->nom, $vue['eleves'][0]['libelle']);
+        $this->assertStringContainsString($matiere->name, $vue['eleves'][0]['libelle']);
     }
 
     /** @test */
@@ -373,8 +456,8 @@ class RecalculApresDeplacementTest extends TestCase
         $laissees = session('moyennes_laissees');
         $this->assertNotNull($laissees, 'le semestre quitte n a plus de note : sa moyenne doit etre signalee');
         $this->assertSame('la période', $laissees['ce_qui_a_bouge']);
-        $this->assertSame(1, $laissees['sans_note']);
-        $this->assertSame(0, $laissees['absences_seulement']);
+        $this->assertSame(1, $laissees['total']);
+        $this->assertSame([], $laissees['eleves']);
         $this->assertSame([
             'classe_id' => $this->classe->id,
             'periode' => 'semestre1',
@@ -384,7 +467,7 @@ class RecalculApresDeplacementTest extends TestCase
         // Et la page de l'evaluation le rend, lien compris. Rendue par son
         // controleur plutot que par une requete HTTP : c'est la vue qui est
         // testee ici, pas la pile de middlewares de l'instance.
-        $html = app(\App\Http\Controllers\ESBTPEvaluationController::class)
+        $html = app(ESBTPEvaluationController::class)
             ->show($evaluation->fresh())
             ->render();
         $this->assertStringContainsString('Vous avez changé la période', $html);

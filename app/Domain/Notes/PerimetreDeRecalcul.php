@@ -44,6 +44,8 @@ final class PerimetreDeRecalcul
 
     public const ECHEC = 'echec';
 
+    public const RIEN_A_ECRIRE = 'rien_a_ecrire';
+
     public function __construct(
         public readonly ?int $classeId = null,
         public readonly ?int $matiereId = null,
@@ -206,7 +208,8 @@ final class PerimetreDeRecalcul
      *
      * La ligne est donc **laissee et signalee**, jamais touchee. Son sort est
      * une decision d'ecole (`.claude/rules/rien-en-dur.md`, « le cas
-     * particulier du zero »).
+     * particulier du zero »). Et quand il n'y a pas de ligne, rien n'est
+     * cree : voir {@see self::diagnostic()}.
      *
      * **Ce garde ne vaut pas pour l'observateur de note**, et c'est delibere :
      * quand un enseignant marque une note absente, c'est son geste qui fixe la
@@ -222,33 +225,16 @@ final class PerimetreDeRecalcul
      */
     public static function recalculerUnCouple(array $couple, string $source, ?int $declencheur = null): array
     {
-        $ligne = self::ligneEnregistree($couple);
-        $avant = $ligne?->moyenne === null ? null : (float) $ligne->moyenne;
-        $notes = self::notesComptables($couple);
-
-        if ($ligne !== null && $notes['moyenne'] === null) {
-            return [
-                'statut' => self::LAISSEE,
-                'avant' => $avant,
-                'apres' => $avant,
-                'laissee' => [
-                    'resultat_id' => (int) $ligne->id,
-                    'etudiant_id' => (int) $couple['etudiant_id'],
-                    'classe_id' => (int) $couple['classe_id'],
-                    'matiere_id' => (int) $couple['matiere_id'],
-                    'annee_universitaire_id' => (int) $couple['annee_universitaire_id'],
-                    'periode' => (string) $couple['periode'],
-                    'moyenne' => $avant,
-                    // Le nettoyage deja livre (pre-controle de la generation
-                    // des bulletins) ne voit que les lignes SANS AUCUNE note :
-                    // une ligne dont il ne reste que des absences lui echappe.
-                    // L'appelant doit pouvoir le dire.
-                    'reste' => $notes['lignes'] === 0 ? 'aucune_note' : 'notes_non_comptees',
-                ],
-            ];
-        }
+        $avant = null;
 
         try {
+            $diagnostic = self::diagnostic($couple);
+            $avant = $diagnostic['avant'];
+
+            if ($diagnostic['statut'] !== self::RECALCULE) {
+                return $diagnostic + ['apres' => $avant];
+            }
+
             RecomputeStudentResultatJob::dispatchSync(
                 etudiantId: (int) $couple['etudiant_id'],
                 classeId: (int) $couple['classe_id'],
@@ -259,6 +245,9 @@ final class PerimetreDeRecalcul
                 triggeredBy: $declencheur,
             );
         } catch (\Throwable $e) {
+            // Les lectures du diagnostic sont DANS le `try` : une erreur de
+            // base sur un couple ne doit pas interrompre tout un lot — ni,
+            // pour le deplacement en lot, emporter `perimetres_reportes`.
             Log::error('Recalcul de resultat en echec', [
                 'couple' => $couple,
                 'source' => $source,
@@ -273,6 +262,52 @@ final class PerimetreDeRecalcul
             'avant' => $avant,
             'apres' => self::moyenneEnregistree($couple),
             'laissee' => null,
+        ];
+    }
+
+    /**
+     * Ce que `recalculerUnCouple()` FERAIT, sans rien ecrire : la meme
+     * decision, pour la simulation (`dry_run`) et pour la mise en file
+     * (`notes:recompute --queue`), qui doivent appliquer le garde elles aussi.
+     *
+     * Rien a moyenner et aucune ligne : `RIEN_A_ECRIRE`. Le job, lui, aurait
+     * CREE une ligne a 0/20 depuis de simples absences — un zero invente, que
+     * la preseance de la ligne enregistree aurait ensuite impose a l'ecran et
+     * au bulletin.
+     *
+     * @param  array<string,mixed>  $couple
+     * @return array{statut:string, avant:?float, laissee:?array<string,mixed>}
+     */
+    public static function diagnostic(array $couple): array
+    {
+        $ligne = self::ligneEnregistree($couple);
+        $avant = $ligne?->moyenne === null ? null : (float) $ligne->moyenne;
+        $notes = self::notesComptables($couple);
+
+        if ($notes['moyenne'] !== null) {
+            return ['statut' => self::RECALCULE, 'avant' => $avant, 'laissee' => null];
+        }
+
+        if ($ligne === null) {
+            return ['statut' => self::RIEN_A_ECRIRE, 'avant' => null, 'laissee' => null];
+        }
+
+        return [
+            'statut' => self::LAISSEE,
+            'avant' => $avant,
+            'laissee' => [
+                'resultat_id' => (int) $ligne->id,
+                'etudiant_id' => (int) $couple['etudiant_id'],
+                'classe_id' => (int) $couple['classe_id'],
+                'matiere_id' => (int) $couple['matiere_id'],
+                'annee_universitaire_id' => (int) $couple['annee_universitaire_id'],
+                'periode' => ESBTPEvaluation::periodeCanonique((string) $couple['periode']),
+                'moyenne' => $avant,
+                // Le nettoyage deja livre (pre-controle de la generation des
+                // bulletins) ne voit que les lignes SANS AUCUNE note : une
+                // ligne dont il ne reste que des absences lui echappe.
+                'reste' => $notes['lignes'] === 0 ? 'aucune_note' : 'notes_non_comptees',
+            ],
         ];
     }
 
