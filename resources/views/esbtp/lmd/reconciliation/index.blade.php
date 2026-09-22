@@ -100,6 +100,14 @@
     .rec-impact-row strong { color: #0453cb; }
     .rec-warn { background: rgba(245,158,11,.1); border: 1px solid rgba(245,158,11,.28); color: #b45309; border-radius: 9px; padding: .7rem .9rem; font-size: .82rem; margin-top: .9rem; }
     .rec-block { background: rgba(220,38,38,.08); border: 1px solid rgba(220,38,38,.28); color: #b91c1c; border-radius: 9px; padding: .7rem .9rem; font-size: .82rem; margin-top: .9rem; }
+    .rec-result { margin-top: 1rem; }
+    .rec-result-title { font-size: .8rem; font-weight: 700; color: #0f172a; margin: 0 0 .5rem; }
+    .rec-result-hint { font-size: .78rem; color: #64748b; margin: 0 0 .6rem; }
+    .rec-result-link { display: flex; align-items: center; gap: .6rem; padding: .55rem .7rem; border: 1px solid #e2e8f0; border-radius: 9px; margin-bottom: .4rem; font-size: .84rem; color: #1e293b; text-decoration: none; transition: border-color .2s ease, box-shadow .2s ease; }
+    .rec-result-link:hover { border-color: #0453cb; box-shadow: 0 4px 14px rgba(4,83,203,.08); color: #0453cb; }
+    .rec-result-link i { color: #0453cb; }
+    .rec-result-meta { color: #64748b; font-size: .76rem; margin-left: auto; text-align: right; }
+    .rec-result-conflit { display: block; color: #b45309; font-size: .74rem; }
     .rec-modal-foot { padding: 1rem 1.4rem; border-top: 1px solid #eef2f7; display: flex; justify-content: flex-end; gap: .6rem; flex-wrap: wrap; }
 
     /* Tabs */
@@ -308,12 +316,12 @@
             <div class="rec-modal-head">
                 <i class="fas fa-object-group"></i>
                 <div>
-                    <p class="rec-card-title">Aperçu de la fusion</p>
+                    <p class="rec-card-title" x-text="modal.done ? 'Fusion effectuée' : 'Aperçu de la fusion'"></p>
                     <p class="rec-card-sub" x-text="modal.typeLabel"></p>
                 </div>
             </div>
             <div class="rec-modal-body">
-                <template x-if="modal.report && modal.report.blocked">
+                <template x-if="modal.report && modal.report.blocked && !modal.done">
                     <div class="rec-block">
                         <i class="fas fa-ban"></i> <span x-text="modal.report.reason"></span>
                         <div style="margin-top:.4rem;font-size:.78rem;">
@@ -324,7 +332,7 @@
                     </div>
                 </template>
 
-                <template x-if="modal.report && !modal.report.blocked">
+                <template x-if="modal.report && modal.report.repointed && !modal.done">
                     <div>
                         <div class="rec-impact-row"><span>Entité canonique conservée</span><strong x-text="'#' + modal.report.canonical_id"></strong></div>
                         <div class="rec-impact-row"><span>Entités absorbées (soft-delete)</span><strong x-text="modal.report.soft_deleted_count"></strong></div>
@@ -339,26 +347,51 @@
                                 </template>
                             </div>
                         </template>
-                        <template x-if="modal.report.blocking && (modal.report.blocking.evaluations || modal.report.blocking.notes || modal.report.blocking.resultats_ue)">
+                        <template x-if="!modal.report.blocked && modal.report.blocking && (modal.report.blocking.evaluations || modal.report.blocking.notes || modal.report.blocking.resultats_ue)">
                             <div class="rec-warn">
                                 <i class="fas fa-flask"></i> Données pédagogiques liées : <span x-text="blockingSummary(modal.report.blocking)"></span>. Confirmez explicitement pour les repointer.
                             </div>
                         </template>
                     </div>
                 </template>
+
+                {{-- Compte rendu : ce qui reste à faire après la fusion --}}
+                <template x-if="modal.done">
+                    <div>
+                        <div class="rec-impact-row"><span>Lignes de bulletin LMD reportées, avec leur note de rattrapage</span><strong x-text="modal.done.repointes"></strong></div>
+                        <template x-if="modal.done.bulletins_a_regenerer.length">
+                            <div class="rec-result">
+                                <p class="rec-result-title">Bulletins LMD à régénérer</p>
+                                <p class="rec-result-hint">Ils affichent encore la moyenne d'avant la fusion. Chaque lien ouvre la liste des bulletins filtrée sur l'élève.</p>
+                                <template x-for="b in modal.done.bulletins_a_regenerer" :key="b.id">
+                                    <a class="rec-result-link" :href="lienBulletin(b)" target="_blank" rel="noopener">
+                                        <i class="fas fa-file-alt"></i>
+                                        <span>
+                                            <span x-text="b.etudiant || ('Bulletin #' + b.id)"></span>
+                                            <template x-if="conflitDe(b)">
+                                                <span class="rec-result-conflit">Deux lignes pour cet élément sur ce bulletin : celle de l'élément absorbé est restée en place, à trancher avant de régénérer.</span>
+                                            </template>
+                                        </span>
+                                        <span class="rec-result-meta" x-text="(b.classe || '') + ' · S' + b.semestre"></span>
+                                    </a>
+                                </template>
+                            </div>
+                        </template>
+                    </div>
+                </template>
             </div>
             <div class="rec-modal-foot">
-                <button class="rec-btn rec-btn--ghost" @click="closeModal()">Annuler</button>
-                <template x-if="modal.report && modal.report.blocked">
+                <button class="rec-btn rec-btn--ghost" @click="closeModal()" x-text="modal.done ? 'Fermer' : 'Annuler'"></button>
+                <template x-if="modal.report && modal.report.blocked && !modal.done">
                     <label class="rec-check"><input type="checkbox" x-model="modal.force"> Forcer (repointe évaluations / notes / résultats)</label>
                 </template>
-                <button class="rec-btn rec-btn--danger" @click="confirmMerge()" :disabled="mergeDisabled">
+                <button class="rec-btn rec-btn--danger" @click="confirmMerge()" :disabled="mergeDisabled" x-show="!modal.done">
                     <i class="fas fa-object-group" x-show="!busy"></i>
                     <i class="fas fa-spinner fa-spin" x-show="busy" x-cloak></i>
                     Fusionner
                 </button>
             </div>
-            <p class="rec-disabled-hint" x-show="mergeDisabled && mergeDisabledReason" x-cloak x-text="mergeDisabledReason"></p>
+            <p class="rec-disabled-hint" x-show="!modal.done && mergeDisabled && mergeDisabledReason" x-cloak x-text="mergeDisabledReason"></p>
         </div>
     </div>
 
@@ -385,7 +418,7 @@ function recManager() {
         tab: 'ue',
         loading: false,
         busy: false,
-        modal: { open: false, type: null, typeLabel: '', group: null, canonical: null, report: null, force: false },
+        modal: { open: false, type: null, typeLabel: '', group: null, canonical: null, report: null, force: false, done: null },
         toasts: [],
         _tid: 0,
 
@@ -400,8 +433,19 @@ function recManager() {
                 ecue_fk: 'ECUE (FK directe)',
                 planifications: 'planifications',
                 matiere_filiere_links: 'matière ↔ filière',
+                lmd_resultats_ecues: 'lignes de bulletin LMD',
             };
             return map[key] || key;
+        },
+
+        lienBulletin(b) {
+            const q = new URLSearchParams({ classe_id: b.classe_id, annee_universitaire_id: b.annee_universitaire_id, semestre: b.semestre });
+            if (b.matricule) q.set('search', b.matricule);
+            return '{{ route('esbtp.lmd.bulletins.index') }}?' + q.toString();
+        },
+
+        conflitDe(b) {
+            return (this.modal.done && this.modal.done.conflits || []).find(c => c.bulletin_id === b.id) || null;
         },
 
         blockingSummary(b) {
@@ -458,7 +502,7 @@ function recManager() {
             this.modal = {
                 open: true, type, group, canonical: canonicalId,
                 typeLabel: (type === 'ue' ? 'Unité d\'enseignement' : 'ECUE') + ' — ' + this.prettyName(group.normalized_name),
-                report: null, force: false,
+                report: null, force: false, done: null,
             };
             try {
                 const report = await this.callMerge(type, canonicalId, absorbed, true, false);
@@ -480,7 +524,13 @@ function recManager() {
                 const report = await this.callMerge(this.modal.type, this.modal.canonical, absorbed, false, this.modal.force);
                 if (report && report.committed) {
                     this.toast('success', 'Fusion effectuée : ' + report.soft_deleted_count + ' entité(s) absorbée(s).');
-                    this.closeModal();
+                    const lmd = report.lmd_resultats_ecues;
+                    // La fenêtre reste ouverte tant qu'il reste quelque chose à faire.
+                    if (lmd && (lmd.bulletins_a_regenerer || []).length) {
+                        this.modal.done = lmd;
+                    } else {
+                        this.closeModal();
+                    }
                     await this.detect();
                 } else if (report && report.blocked) {
                     this.modal.report = report;
@@ -512,7 +562,7 @@ function recManager() {
             return data;
         },
 
-        closeModal() { this.modal.open = false; this.modal.group = null; this.modal.report = null; this.modal.force = false; },
+        closeModal() { this.modal.open = false; this.modal.group = null; this.modal.report = null; this.modal.force = false; this.modal.done = null; },
 
         toast(type, message) {
             const id = ++this._tid;

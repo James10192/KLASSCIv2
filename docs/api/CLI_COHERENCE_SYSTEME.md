@@ -92,6 +92,31 @@ curl -s -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/
   "$BASE/api/cli/evaluations/4117/matiere"
 ```
 
+**La moyenne enregistrée suit** (septembre 2026). Les notes changent de matière
+par un `update()` qui ne réveille aucun observateur ; l'endpoint recalcule donc
+lui-même `esbtp_resultats` pour chaque élève concerné — sans quoi le bulletin BTS,
+qui donne la priorité à la moyenne enregistrée, garderait l'ancienne. La réponse
+porte deux clés de plus :
+
+| clé | sens |
+|---|---|
+| `recalculs_lances` | recalculs **programmés**. Sur une file asynchrone, ils ne sont pas encore faits quand la réponse revient. |
+| `lignes_sans_note` | moyennes enregistrées laissées sans aucune note (en général celle de la matière quittée). **Jamais remises à zéro** — recalculer une ligne vide y écrirait 0/20. À trancher par l'école. |
+
+⚠️ **Le déplacement « par l'écran » de l'option 2 ci-dessous, lui, ne recalcule
+pas.** Après l'avoir utilisé, relancer le calcul sur la classe depuis le terminal
+du serveur (terminal cPanel : il n'y a pas d'accès SSH, et cette commande n'a pas
+d'équivalent `/api/cli`) :
+
+```bash
+php artisan notes:recompute --classe=<id> --dry-run   # puis sans --dry-run
+```
+
+`notes:recompute` part des évaluations : il ne touche que les coordonnées qui en
+portent encore une, donc il n'écrira jamais de zéro sur la matière quittée. Les
+déplaceurs de notes et leur état sont recensés en tête de
+`app/Domain/Notes/RecalculApresDeplacement.php`.
+
 ## Le sort des notes trouvées n'est pas une décision de code
 
 Ces notes ont été saisies par quelqu'un : elles sont mal rangées, pas
@@ -131,6 +156,8 @@ nécessaire.
 
 ## Historique
 
+- **Septembre 2026 (bis)** — la rebascule recalcule `esbtp_resultats` ; la réponse
+  porte `recalculs_lances` et `lignes_sans_note`. Ajout non cassant.
 - **Septembre 2026** — la réponse porte un second bloc `moyennes_manuelles` et un
   `total_toutes_familles`. La version antérieure ne relevait que les évaluations
   et a été prise pour l'inventaire complet. Un garde de cohérence est posé sur

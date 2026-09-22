@@ -4,6 +4,7 @@ namespace App\Http\Controllers\API\CLI;
 
 use App\Http\Controllers\API\BaseApiController;
 use App\Domain\Academique\CoherenceSystemeAcademique;
+use App\Domain\Notes\RecalculApresDeplacement;
 use App\Models\Setting;
 use App\Models\ESBTPEvaluation;
 use App\Models\ESBTPNote;
@@ -1434,7 +1435,8 @@ class CLIMaintenanceController extends BaseApiController
 
         $avant = ['matiere_id' => $evaluation->matiere_id, 'matiere' => $evaluation->matiere?->name];
 
-        DB::transaction(function () use ($evaluation, $cible) {
+        $recalcul = DB::transaction(function () use ($evaluation, $cible, $request) {
+            $releve = app(RecalculApresDeplacement::class)->releverAvant([$evaluation->id]);
             $evaluation->matiere_id = $cible->id;
             $evaluation->save();
 
@@ -1442,6 +1444,8 @@ class CLIMaintenanceController extends BaseApiController
             // resteraient rattachees a l'ancienne matiere.
             ESBTPNote::where('evaluation_id', $evaluation->id)
                 ->update(['matiere_id' => $cible->id]);
+
+            return app(RecalculApresDeplacement::class)->apres($releve, "rebascule evaluation {$evaluation->id}", $request->user()->id);
         });
 
         Log::warning('CLI: evaluation rebasculee', [
@@ -1460,7 +1464,7 @@ class CLIMaintenanceController extends BaseApiController
             'matiere_avant' => $avant['matiere'],
             'matiere_apres' => $cible->name,
             'notes_deplacees' => $notes,
-        ], "Evaluation #{$evaluation->id} rebasculee sur '{$cible->name}' ({$notes} note(s) suivie(s)).");
+        ] + $recalcul, "Evaluation #{$evaluation->id} rebasculee sur '{$cible->name}' ({$notes} note(s) suivie(s)).");
     }
 
     /**
