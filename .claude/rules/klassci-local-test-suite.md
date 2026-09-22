@@ -65,6 +65,47 @@ Ne grep PAS `FAILURES`/`ERRORS` (PHPUnit) — Pest ne les émet pas → faux né
 
 Warning bénin Windows : `TTY mode is not supported on Windows platform.` → ignorer.
 
+## 3 bis. Deux courses sur `klassci_testing` ne se ralentissent pas : elles se bloquent
+
+**Incident (septembre 2026).** Une course de la suite complète a rendu 366 échecs,
+dont **189 `Lock wait timeout exceeded`**. Une course de comparaison lancée sur la
+base, dans un worktree, s'est arrêtée net au bout d'une classe. Cause : deux
+`php artisan test` visaient la même base, et `RefreshDatabase` ouvre une
+transaction par test.
+
+**Le `pkill` ne suffit pas.** Le processus tué, sa transaction restait ouverte :
+`INNODB_TRX` montrait une transaction à l'état `RUNNING` depuis **deux heures**,
+sans plus aucun processus de test vivant, et tout le reste l'attendait.
+
+Le contrôle qui tranche, à faire AVANT de lancer une course :
+
+```bash
+pgrep -fa "php artisan test"      # doit ne rien rendre
+mysql -u root -N -e "SELECT trx_mysql_thread_id, trx_started, trx_state FROM information_schema.INNODB_TRX"
+# une ligne rendue sans course en cours = transaction orpheline :
+# mysql -u root -e "KILL <trx_mysql_thread_id>"
+```
+
+**Comparer deux courses : par NOMS de tests, jamais par totaux.** Les échecs de
+verrou sont du bruit qui varie d'une course à l'autre. Mesure de ce jour : 109
+écarts apparents entre base et HEAD, **tous** sur verrou ; rejoués sur une base
+vidée, les 12 échecs restants étaient déjà rouges sur la base. Zéro régression —
+ce que les totaux (257 contre 365) ne montraient pas.
+
+**`php artisan test a.php b.php c.php` ne lance que `a.php`.** PHPUnit ne prend
+qu'un chemin en argument positionnel ; les autres sont ignorés en silence, et la
+course rend un total plausible. Pour une liste de classes : `--filter` avec une
+alternance des noms. **Vérifier au nombre de classes vues**, pas au total :
+
+```bash
+sed 's/\x1b\[[0-9;]*m//g' course.log | grep -cE "^ *(PASS|FAIL) "
+```
+
+**Et appeler « régression complète » ce qui l'est.** La suite compte **471
+classes et ~3000 tests**. Une course de 163 classes a été publiée comme
+« régression complète » et a servi à autoriser une fusion. Le compte de classes
+vues fait partie du résultat, au même titre que le nombre d'échecs.
+
 ## 4. Piège fondateur : migration seed avec `created_by => 1` casse RefreshDatabase sur DB vide
 
 **Symptôme** : sur `klassci_testing` fraîche, `migrate:fresh` plante avec
