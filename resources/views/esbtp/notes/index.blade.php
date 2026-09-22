@@ -296,8 +296,8 @@
                 {{-- Auto-save info --}}
                 <div class="nm-autosave-info">
                     <i class="fas fa-info-circle"></i>
-                    Les modifications sont sauvegardées en brouillon à chaque saisie.
-                    <span class="fw-semibold">Cliquez sur « Valider les notes » pour verrouiller la saisie finale.</span>
+                    Les modifications restent en brouillon local pendant la saisie.
+                    <span class="fw-semibold">Cliquez sur « Valider les notes » pour enregistrer, verrouiller et actualiser la saisie finale.</span>
                 </div>
             </div>
             <div class="modal-footer nm-modal-footer">
@@ -624,10 +624,52 @@ let cachedStudentsClassId = null;
 let cachedStudentsRequestKey = null;
 let currentLoadRequest = null;
 let evalParamsCache = {};
+let nmFinalSaveInFlight = false;
+let nmFinalSaveRetryTimer = null;
 const nmCanEditSubmittedNotes = @json(auth()->user()?->can('notes.edit') ?? false);
 const nmAppreciationScale = @json(app(\App\Services\AppreciationScaleService::class)->frontendScale('bts'));
 const blankPdfUrlTemplate = '{{ route("esbtp.notes.saisie-rapide-blank.pdf", ["classe" => ":classId"]) }}';
 const blankPdfPreviewUrlTemplate = '{{ route("esbtp.notes.saisie-rapide-blank.pdf-preview", ["classe" => ":classId"]) }}';
+
+// L'onglet de saisie prévient l'onglet d'origine après une validation finale.
+// La charge ne contient aucune note : seulement le contexte nécessaire pour
+// relire le suivi à jour depuis le serveur.
+// Les champs peuvent se sauvegarder à l’unité ou en lot. Une seule
+// actualisation, légèrement différée, suffit après une rafale de modifications :
+ // le suivi actuel et les autres onglets lisent alors le total réellement enregistré.
+let nmCouvertureRefreshTimer = null;
+function nmActualiserCouvertureApresSauvegarde() {
+    if (!currentClassId) return;
+    clearTimeout(nmCouvertureRefreshTimer);
+    nmCouvertureRefreshTimer = setTimeout(function() {
+        window.dispatchEvent(new CustomEvent('couverture:invalider', {
+            detail: { classe_id: Number(currentClassId), annee_universitaire_id: @json($anneeCouranteId ?? null) }
+        }));
+        nmNotifyOtherTabsNotesUpdated();
+    }, 900);
+}
+
+function nmNotifyOtherTabsNotesUpdated() {
+    if (!currentClassId) return;
+    const detail = {
+        type: 'notes-updated',
+        classe_id: Number(currentClassId),
+        annee_universitaire_id: @json($anneeCouranteId ?? null),
+        at: Date.now(),
+    };
+
+    if ('BroadcastChannel' in window) {
+        const channel = new BroadcastChannel('klassci-notes-sync');
+        channel.postMessage(detail);
+        channel.close();
+    }
+
+    try {
+        localStorage.setItem('klassci-notes-sync', JSON.stringify(detail));
+    } catch (_error) {
+        // Le canal BroadcastChannel couvre les navigateurs qui bloquent le stockage.
+    }
+}
 
 function nmEscapeHtml(value) {
     return String(value ?? '').replace(/[&<>"']/g, function(char) {
@@ -701,6 +743,10 @@ $(document).ready(function() {
             });
     }
 
+    // Réutilisable après une validation : les cartes et leurs compteurs se
+    // rafraîchissent en AJAX, sans recharger la page.
+    window.nmRefreshClasses = fetchClasses;
+
     if (filtersForm) {
         filtersForm.addEventListener('submit', function(event) {
             event.preventDefault();
@@ -746,6 +792,26 @@ $(document).ready(function() {
         selectClass(classId, classLabel);
     });
 
+    // Lien direct depuis le suivi : ouvre la classe, la matière et le semestre
+    // déjà concernés, sans obliger l'utilisateur à refaire la sélection.
+    const notesDeepLink = new URLSearchParams(window.location.search);
+    const deepClassId = notesDeepLink.get('classe_id');
+    const deepMatiereId = notesDeepLink.get('matiere_id');
+    const deepPeriode = notesDeepLink.get('periode');
+    if (deepClassId && deepMatiereId) {
+        const card = document.querySelector(`.nm-class-card[data-classe-id="${deepClassId}"], .class-card[data-classe-id="${deepClassId}"]`);
+        if (card) {
+            const classLabel = card.getAttribute('data-class-label') || card.getAttribute('data-class-name') || 'Classe sélectionnée';
+            setTimeout(function() {
+                selectClass(deepClassId, classLabel);
+                if (deepPeriode === 'semestre1' || deepPeriode === 'semestre2') {
+                    $('#periodeFilter').val(deepPeriode).trigger('change');
+                }
+                $('#matiereSelect').val(deepMatiereId).trigger('change');
+            }, 0);
+        }
+    }
+
     // Invalidate eval params cache when user changes bareme/coeff
     $(document).on('change', '.bareme-input, .coeff-input', function() {
         const evalId = $(this).data('eval-id');
@@ -772,6 +838,15 @@ $(document).ready(function() {
         if (currentClassId && currentMatiereId) {
             buildNotesGrid();
         }
+        window.dispatchEvent(new CustomEvent('couverture:contexte', {
+            detail: { classe_id: currentClassId || null, annee_universitaire_id: @json($anneeCouranteId ?? null), periode: currentPeriodeFilter === 'semestre1' || currentPeriodeFilter === 'semestre2' ? currentPeriodeFilter : 'annuel' }
+        }));
+    });
+
+    window.addEventListener('couverture:periode-change', function(event) {
+        var periode = event.detail && event.detail.periode;
+        var cible = periode === 'semestre1' || periode === 'semestre2' ? periode : 'all';
+        if ($('#periodeFilter').val() !== cible) { $('#periodeFilter').val(cible).trigger('change'); }
     });
 
     // Scroll shadow detection on grid wrapper (scroll doesn't bubble — attach directly)
@@ -809,6 +884,35 @@ $(document).ready(function() {
     });
 });
 
+
+// Navigation interne depuis le suivi des notes : la matière est chargée dans
+// ce modal, sans changer de page ni ouvrir d'onglet.
+window.nmOpenCoverageSaisie = function(matiere) {
+    if (!matiere || !matiere.saisie_url || !currentClassId) return;
+
+    let destination;
+    try {
+        destination = new URL(matiere.saisie_url, window.location.origin);
+    } catch (_error) {
+        return;
+    }
+
+    const classeId = destination.searchParams.get('classe_id');
+    const matiereId = destination.searchParams.get('matiere_id');
+    const periode = destination.searchParams.get('periode');
+    if (!matiereId || (classeId && String(classeId) !== String(currentClassId))) return;
+
+    const $matiere = $('#matiereSelect');
+    if (!$matiere.find(`option[value="${matiereId}"]`).length) return;
+
+    const periodeCible = periode === 'semestre1' || periode === 'semestre2' ? periode : 'all';
+    $('#periodeFilter').val(periodeCible).trigger('change');
+    $matiere.val(matiereId).trigger('change');
+
+    // La grille remplace immédiatement le contenu et conserve le contexte de
+    // classe ; ce focus laisse visible que la navigation s'est bien faite.
+    $matiere.trigger('focus');
+};
 
 // Fonction pour sélectionner une classe
 function selectClass(classId, className) {
@@ -990,6 +1094,11 @@ function buildNotesGrid() {
         },
         dataType: 'json',
         success: function(response) {
+            nmFinalSaveInFlight = false;
+            if (nmFinalSaveRetryTimer) {
+                clearTimeout(nmFinalSaveRetryTimer);
+                nmFinalSaveRetryTimer = null;
+            }
             if (!response.success) {
                 console.error('Erreur API:', response.message);
                 return;
@@ -1231,62 +1340,27 @@ function saveNote(studentId, evaluationId, noteValue) {
         return;
     }
 
-    $.ajax({
-        url: '{{ route("esbtp.notes.save-ajax") }}',
-        method: 'POST',
-        dataType: 'json',
-        headers: {
-            'Accept': 'application/json',
-            'X-Requested-With': 'XMLHttpRequest'
-        },
-        data: {
-            _token: '{{ csrf_token() }}',
-            etudiant_id: studentId,
-            evaluation_id: evaluationId,
-            note: isAbsent ? 0 : noteValue,
-            is_absent: isAbsent ? 'on' : ''
-        },
-        success: function(response) {
-            if (!response.success) {
-                alert(response.message || 'Erreur lors de la sauvegarde de la note.');
-                return;
-            }
-            // 1. Mettre à jour le state JS et recalculer la moyenne AVANT
-            //    de dispatcher nm:note-saved : sinon le toast lit l'ancienne
-            //    valeur de .average-cell (la lecture est synchrone à l'event).
-            if (!notesData[studentId]) notesData[studentId] = {};
-            if (!noteMetaData[studentId]) noteMetaData[studentId] = {};
-            notesData[studentId][evaluationId] = isAbsent ? 0 : noteValue;
-            notesData[studentId][evaluationId + '_absent'] = isAbsent;
-            noteMetaData[studentId][evaluationId] = {
-                submission_status: response.submission_status || 'draft',
-                is_locked: !!response.is_locked
-            };
+    // Une saisie reste un brouillon local jusqu'à la validation finale.
+    // On évite ainsi une requête HTTP par cellule et les erreurs de limite.
+    if (!notesData[studentId]) notesData[studentId] = {};
+    if (!noteMetaData[studentId]) noteMetaData[studentId] = {};
+    notesData[studentId][evaluationId] = isAbsent ? 0 : noteValue;
+    notesData[studentId][evaluationId + '_absent'] = isAbsent;
+    noteMetaData[studentId][evaluationId] = {
+        submission_status: 'draft',
+        is_locked: false
+    };
 
-            calculateStudentAverage(studentId);
-            calculateClassAverages();
-
-            // 2. Une fois le DOM cohérent, déclencher le highlight + toast
-            //    + badge bulletin synchronisé.
-            triggerRowHighlight(studentId);
-            markBulletinSynced();
-        },
-        error: function(xhr) {
-            if (nmHandleSessionExpired(xhr)) return;
-            console.error('Erreur lors de la sauvegarde:', xhr.responseJSON || xhr);
-            const msg = (xhr.responseJSON && xhr.responseJSON.message)
-                ? xhr.responseJSON.message
-                : (xhr.responseJSON && xhr.responseJSON.errors)
-                    ? Object.values(xhr.responseJSON.errors).flat().join('\n')
-                    : 'Erreur lors de la sauvegarde de la note.';
-            alert(msg);
-        }
-    });
+    nmMarkDirty(studentId, evaluationId);
+    nmScheduleAutosave();
+    window.nmHasUnsavedChanges = true;
+    calculateStudentAverage(studentId);
+    calculateClassAverages();
 }
 
 /**
- * Badge "Bulletin synchronisé" — affiché dans le footer du modal après chaque
- * sauvegarde de note réussie. Le timestamp se rafraîchit toutes les 30s pour
+ * Badge "Bulletin synchronisé" — affiché dans le footer du modal après une
+ * validation finale réussie. Le timestamp se rafraîchit toutes les 30s pour
  * afficher "il y a Xs / Xmin" en français.
  */
 let nmLastSyncAt = null;
@@ -1345,42 +1419,13 @@ function toggleAbsence(studentId, evaluationId, isAbsent) {
 
     if (isAbsent) {
         input.val('0').prop('disabled', true);
-        saveNote(studentId, evaluationId, 0);
     } else {
         input.val('0').prop('disabled', false).focus();
-        // Sauvegarder la suppression de l'absence côté serveur (note reste à 0)
-        $.ajax({
-            url: '{{ route("esbtp.notes.save-ajax") }}',
-            method: 'POST',
-            dataType: 'json',
-            headers: {
-                'Accept': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest'
-            },
-            data: {
-                _token: '{{ csrf_token() }}',
-                etudiant_id: studentId,
-                evaluation_id: evaluationId,
-                note: 0,
-                is_absent: ''
-            },
-            success: function(response) {
-                if (response.success) {
-                    if (!notesData[studentId]) notesData[studentId] = {};
-                    if (!noteMetaData[studentId]) noteMetaData[studentId] = {};
-                    notesData[studentId][evaluationId] = 0;
-                    notesData[studentId][evaluationId + '_absent'] = false;
-                    noteMetaData[studentId][evaluationId] = {
-                        submission_status: response.submission_status || 'draft',
-                        is_locked: !!response.is_locked
-                    };
-                    calculateStudentAverage(studentId);
-                    calculateClassAverages();
-                    triggerRowHighlight(studentId);
-                }
-            }
-        });
     }
+
+    // L'absence suit le même cycle que la note : brouillon local, puis
+    // une seule requête pendant « Valider les notes ».
+    saveNote(studentId, evaluationId, input.val() || 0);
 }
 
 function calculateAllAverages() {
@@ -1512,14 +1557,27 @@ function triggerRowHighlight(studentId) {
 }
 
 $('#saveAllNotesBtn').on('click', function() {
+    if (nmFinalSaveInFlight) return;
+
     const btn = $(this);
     const originalText = btn.html();
 
-    // Collect only inputs with actual values (dirty notes)
+    // Seules les notes encore en brouillon ou modifiées localement partent.
+    // Ainsi une nouvelle validation ne renvoie jamais les notes déjà
+    // verrouillées, tout en permettant de finaliser un brouillon rouvert.
     const inputs = $('.note-input').filter(function() {
         if ($(this).hasClass('nm-note-locked')) return false;
-        const val = $(this).val();
-        return val !== '' && val !== null && val !== undefined;
+
+        const studentId = $(this).data('student-id');
+        const evalId = $(this).data('eval-id');
+        const value = $(this).val();
+        const isAbsent = $('#absent-' + studentId + '-' + evalId).is(':checked');
+        const hasValue = value !== '' && value !== null && value !== undefined;
+        const meta = noteMetaData[studentId]?.[evalId] || {};
+        const isDraft = meta.submission_status !== 'submitted';
+        const isDirty = window.nmDirtyNotes && window.nmDirtyNotes.has(nmDirtyKey(studentId, evalId));
+
+        return (hasValue || isAbsent) && (isDraft || isDirty);
     });
 
     if (inputs.length === 0) {
@@ -1528,6 +1586,7 @@ $('#saveAllNotesBtn').on('click', function() {
         return;
     }
 
+    nmFinalSaveInFlight = true;
     btn.html('<i class="fas fa-spinner fa-spin me-1"></i> Enregistrement...').prop('disabled', true);
 
     // Collecter toutes les notes en un seul tableau
@@ -1568,7 +1627,7 @@ $('#saveAllNotesBtn').on('click', function() {
 
             // Ces notes viennent de changer le décompte : le bandeau se remet à
             // jour, sinon il annoncerait encore ce qui manquait avant la saisie.
-            window.dispatchEvent(new CustomEvent('couverture:invalider'));
+            nmActualiserCouvertureApresSauvegarde();
 
             // Highlight rows and recalculate averages
             notesPayload.forEach(function(entry) {
@@ -1590,9 +1649,44 @@ $('#saveAllNotesBtn').on('click', function() {
                 calculateStudentAverage(entry.etudiant_id);
             });
             calculateClassAverages();
-            setTimeout(() => { btn.html(originalText); }, 2500);
+            notesPayload.forEach(function(entry) {
+                nmMarkClean(entry.etudiant_id, entry.evaluation_id);
+            });
+            nmAutosaveDraft();
+            window.nmHasUnsavedChanges = false;
+            markBulletinSynced();
+
+            const sync = response.synchronization || {};
+            if (sync.performed) {
+                nmShowToast('success', `Validation terminée : ${sync.notes_synchronized || 0} note(s) synchronisée(s).`);
+            } else if (sync.reason === 'permission_missing') {
+                nmShowToast('info', 'Notes validées. La synchronisation nécessite le droit de modifier les notes.');
+            }
+
+            // Relire la source serveur : statuts verrouillés, moyennes et
+            // indicateurs affichés correspondent exactement à la validation.
+            setTimeout(() => {
+                btn.html(originalText);
+                loadEvaluationsAndNotes();
+                if (typeof window.nmRefreshClasses === 'function') {
+                    window.nmRefreshClasses();
+                }
+            }, 600);
         },
         error: function(xhr) {
+            if (xhr.status === 429) {
+                const retryAfter = Math.min(60, Math.max(2, Number(xhr.getResponseHeader('Retry-After')) || 5));
+                btn.html(`<i class="fas fa-clock me-1"></i> Nouvelle tentative dans ${retryAfter}s…`).prop('disabled', true);
+                nmShowToast('info', 'Le serveur espace les validations. Votre brouillon est conservé et sera renvoyé automatiquement.');
+                nmFinalSaveRetryTimer = setTimeout(function() {
+                    nmFinalSaveRetryTimer = null;
+                    nmFinalSaveInFlight = false;
+                    if (btn.is(':visible')) btn.trigger('click');
+                }, retryAfter * 1000);
+                return;
+            }
+
+            nmFinalSaveInFlight = false;
             if (nmHandleSessionExpired(xhr)) {
                 btn.html(`<i class="fas fa-user-clock me-1"></i> Session expirée`).prop('disabled', false);
                 setTimeout(() => { btn.html(originalText); }, 2500);
@@ -1668,6 +1762,11 @@ $(document).on('submit', '#evaluationCreateForm', function (e) {
             showSuccessMessage('Évaluation créée avec succès !');
             closeEvaluationModal();
             loadEvaluationsAndNotes();
+            window.dispatchEvent(new CustomEvent('couverture:invalider'));
+            nmNotifyOtherTabsNotesUpdated();
+            if (typeof window.nmRefreshClasses === 'function') {
+                window.nmRefreshClasses();
+            }
         },
         error: function (xhr) {
             evalResetSubmitBtn();
@@ -2443,6 +2542,9 @@ $(document).ajaxSend(function(_event, _jqxhr, settings) {
 });
 $(document).ajaxSuccess(function(_event, _jqxhr, settings) {
     if (typeof settings.url === 'string' && /(save-ajax|save-ajax-bulk)/.test(settings.url)) {
+        // Fonctionne aussi lorsque « Valider » n'a plus de note dirty à envoyer :
+        // chaque sauvegarde réellement confirmée déclenche un seul recalcul groupé.
+        nmActualiserCouvertureApresSauvegarde();
         NM.pendingSaves = Math.max(0, NM.pendingSaves - 1);
         NM.consecutiveErrors = 0;
         if (NM.pendingSaves === 0 && navigator.onLine !== false) {
