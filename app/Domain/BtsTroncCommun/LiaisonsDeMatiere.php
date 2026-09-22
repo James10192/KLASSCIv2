@@ -223,9 +223,9 @@ class LiaisonsDeMatiere
      *
      * LA LISTE VIDE EST UNE INSTRUCTION : elle retire tout. C'est « tout
      * retirer » dans la modale de configuration de `/esbtp/matieres`, qui le
-     * fait confirmer. La cle
-     * ABSENTE, elle, est une requete malformee — mais seul l'appelant voit la
-     * requete : c'est a lui de la refuser avant d'arriver ici.
+     * fait confirmer. La cle ABSENTE, elle, est une requete malformee — mais
+     * seul l'appelant voit la requete : c'est a lui de la refuser avant
+     * d'arriver ici.
      *
      * Le parametre est type `array`, et c'est ce type qui fait office de garde.
      * Une chaine qui arriverait jusqu'ici leve un `TypeError`, quel que soit
