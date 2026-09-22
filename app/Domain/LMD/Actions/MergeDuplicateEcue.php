@@ -31,7 +31,7 @@ use RuntimeException;
  * `esbtp_notes.matiere_id`, que la fusion déplace), et aucun écran LMD ne lit
  * `esbtp_resultats`. Le seul lecteur trouvé — le repli sans bulletin de
  * `ESBTPEtudiantController::attachMoyenneCalculee()`, qui additionne toutes les
- * lignes d'un élève — compte chaque note une fois tant que les deux lignes
+ * lignes cohérentes d'un élève — une ECUE l'est dans sa classe LMD — compte chaque note une fois tant que les deux lignes
  * gardent leur moyenne d'origine ; recalculer l'élément conservé en laissant la
  * ligne de l'absorbé les compterait deux fois. Le recalcul des déplaceurs qui
  * en ont besoin vit dans {@see RecalculApresDeplacement}.
@@ -271,6 +271,7 @@ class MergeDuplicateEcue
             ->leftJoin('esbtp_etudiants as e', 'e.id', '=', 'b.etudiant_id')
             ->leftJoin('esbtp_classes as c', 'c.id', '=', 'b.classe_id')
             ->whereIn('b.id', $bulletinIds)
+            ->whereNull('b.deleted_at')
             ->orderBy('c.name')->orderBy('e.nom')
             ->get(['b.id', 'b.classe_id', 'b.annee_universitaire_id', 'b.semestre', 'e.nom', 'e.prenoms', 'e.matricule', 'c.name as classe'])
             ->map(fn ($b) => [

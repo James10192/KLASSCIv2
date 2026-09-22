@@ -5,6 +5,9 @@
 @php
     $recMentionOptions = $mentions->mapWithKeys(fn ($m) => [$m->id => trim(($m->code ? $m->code . ' — ' : '') . $m->name)])->all();
     $recParcoursOptions = $parcours->mapWithKeys(fn ($p) => [$p->id => trim(($p->code ? $p->code . ' — ' : '') . $p->name)])->all();
+    // Le lien vers un bulletin mène à une route sous lmd.bulletins.view, que la
+    // réconciliation n'exige pas : sans elle, la liste reste lisible, pas cliquable.
+    $recPeutVoirBulletins = (bool) optional(auth()->user())->can('lmd.bulletins.view');
 @endphp
 
 @push('styles')
@@ -362,9 +365,12 @@
                         <template x-if="modal.done.bulletins_a_regenerer.length">
                             <div class="rec-result">
                                 <p class="rec-result-title">Bulletins LMD à régénérer</p>
-                                <p class="rec-result-hint">Ils affichent encore la moyenne d'avant la fusion. Chaque lien ouvre la liste des bulletins filtrée sur l'élève.</p>
+                                <p class="rec-result-hint">Ils affichent encore la moyenne d'avant la fusion.
+                                    <span x-show="peutVoirBulletins">Chaque lien ouvre la liste des bulletins filtrée sur l'élève.</span>
+                                    <span x-show="!peutVoirBulletins">Transmettez cette liste à la personne qui génère les bulletins LMD.</span>
+                                </p>
                                 <template x-for="b in modal.done.bulletins_a_regenerer" :key="b.id">
-                                    <a class="rec-result-link" :href="lienBulletin(b)" target="_blank" rel="noopener">
+                                    <a class="rec-result-link" :href="peutVoirBulletins ? lienBulletin(b) : null" target="_blank" rel="noopener">
                                         <i class="fas fa-file-alt"></i>
                                         <span>
                                             <span x-text="b.etudiant || ('Bulletin #' + b.id)"></span>
@@ -419,6 +425,7 @@ function recManager() {
         loading: false,
         busy: false,
         modal: { open: false, type: null, typeLabel: '', group: null, canonical: null, report: null, force: false, done: null },
+        peutVoirBulletins: @json($recPeutVoirBulletins),
         toasts: [],
         _tid: 0,
 

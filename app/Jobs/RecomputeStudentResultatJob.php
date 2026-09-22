@@ -86,7 +86,7 @@ class RecomputeStudentResultatJob implements ShouldQueue
     public function handle(NoteCalculationService $calc): void
     {
         try {
-            $periode = $this->normalizePeriode($this->periode);
+            $periode = self::periodeNormalisee($this->periode);
 
             // 1. Récupérer toutes les notes valides pour ce contexte
             $notes = ESBTPNote::query()
@@ -326,15 +326,8 @@ class RecomputeStudentResultatJob implements ShouldQueue
     }
 
     /**
-     * Normalise la période — accepte 1/2/semestre1/semestre2/annuel.
-     */
-    private function normalizePeriode(string $periode): string
-    {
-        return self::periodeNormalisee($periode);
-    }
-
-    /**
-     * La période telle que ce job l'écrit dans `esbtp_resultats`.
+     * Normalise la période — accepte 1/2/semestre1/semestre2/annuel — telle que
+     * ce job l'écrit dans `esbtp_resultats`.
      *
      * Publique parce que {@see \App\Domain\Notes\RecalculApresDeplacement}
      * doit retrouver une ligne à la MÊME coordonnée que celle que ce job écrit :

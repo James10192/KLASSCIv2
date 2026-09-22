@@ -136,6 +136,11 @@ trait SchemaDesMoyennes
             $t->unsignedBigInteger('classe_id');
             $t->unsignedBigInteger('annee_universitaire_id');
             $t->string('periode');
+            // Le certificat de scolarité filtre sur `moyenne_generale > 0` avant
+            // de retomber sur `esbtp_resultats` : sans la colonne, ce filtre
+            // rendrait `false` en silence et le test passerait pour rien.
+            $t->decimal('moyenne_generale', 5, 2)->nullable();
+            $t->decimal('note_assiduite', 5, 2)->nullable();
             $t->timestamp('archived_at')->nullable();
             $t->softDeletes();
             $t->timestamps();
@@ -171,6 +176,16 @@ trait SchemaDesMoyennes
             $t->string('ip_address', 45)->nullable();
             $t->string('user_agent', 1023)->nullable();
             $t->string('tags')->nullable();
+            $t->timestamps();
+        });
+        // Lue par `SettingsHelper::get()` ; vide, chaque réglage prend son défaut.
+        Schema::create('settings', function (Blueprint $t) {
+            $t->id();
+            $t->string('key');
+            $t->text('value')->nullable();
+            $t->string('type')->nullable();
+            $t->string('group')->nullable();
+            $t->boolean('is_active')->default(true);
             $t->timestamps();
         });
         Schema::create('esbtp_etudiants', function (Blueprint $t) {

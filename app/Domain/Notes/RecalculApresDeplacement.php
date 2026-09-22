@@ -33,12 +33,13 @@ use Illuminate\Support\Facades\Log;
  * SIGNALÉE, jamais touchée : la garder, la retirer ou la corriger est une
  * décision d'établissement, et elle a pu être saisie à la main.
  *
- * Signaler n'est pas neutre, et il faut le savoir en lisant le rapport : une
- * ligne laissée sur la matière quittée porte encore la moyenne des notes
- * parties. Un lecteur qui additionne toutes les lignes d'un élève — le repli de
- * `ESBTPEtudiantController::attachMoyenneCalculee()`, sans bulletin — compte
- * alors ces notes deux fois. Les lecteurs du bulletin BTS, eux, l'écartent dès
- * qu'elle est incohérente avec la classe (`CoherenceSystemeAcademique`).
+ * Une ligne laissée sur la matière quittée porte encore la moyenne des notes
+ * parties. Sur la rebascule d'une ECUE vers une matière BTS, elle est
+ * incohérente avec sa classe : les lecteurs qui additionnent toutes les lignes
+ * d'un élève l'écartent par `CoherenceSystemeAcademique::resultatsRetenus()`,
+ * sans quoi ils compteraient ces notes deux fois. Un déplaceur qui laisserait
+ * une ligne COHÉRENTE sans note (période, classe) n'a pas cette protection :
+ * c'est à vérifier en le branchant.
  *
  * LA SOURCE D'AUDIT EST `manual`. `esbtp_resultats_recompute_log.source` est un
  * `ENUM('observer', 'command', 'manual')` : une autre valeur y ferait échouer
@@ -62,9 +63,10 @@ use Illuminate\Support\Facades\Log;
  * La fusion d'ECUE est EXCLUE, et ce n'est pas un oubli : elle ne déplace que
  * des ECUE, dont la moyenne se relit sur les notes (`LMDBulletinService`, par
  * `esbtp_notes.matiere_id`, que la fusion déplace déjà). Aucun écran LMD ne lit
- * `esbtp_resultats`, et le seul lecteur trouvé — le repli ci-dessus — compterait
- * deux fois les notes absorbées si l'on recalculait l'élément conservé en
- * laissant la ligne de l'absorbé. Voir `MergeDuplicateEcue`.
+ * `esbtp_resultats`, et le repli sans bulletin du certificat de scolarité
+ * compterait deux fois les notes absorbées si l'on recalculait l'élément
+ * conservé en laissant la ligne de l'absorbé — une ECUE est cohérente dans sa
+ * classe LMD, le filtre ne l'écarte pas. Voir `MergeDuplicateEcue`.
  *
  * ```bash
  * grep -rnE "update\(\[?\s*'(matiere_id|classe_id|periode|semestre)'" app/ database/ --include="*.php"

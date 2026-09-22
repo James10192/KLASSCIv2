@@ -4,6 +4,7 @@ namespace Tests\Unit\Domain\Notes;
 
 use App\Domain\Notes\RecalculApresDeplacement;
 use App\Http\Controllers\API\CLI\CLIMaintenanceController;
+use App\Http\Controllers\ESBTPEtudiantController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
@@ -70,6 +71,30 @@ class RecalculApresDeplacementTest extends TestCase
         $this->assertSame(self::ECUE, $data['lignes_sans_note'][0]['matiere_id']);
         // La trace existe, sous une source que l'ENUM MySQL accepte.
         $this->assertDatabaseHas('esbtp_resultats_recompute_log', ['matiere_id' => self::MATHS, 'source' => 'manual']);
+    }
+
+    public function test_apres_la_rebascule_le_certificat_ne_compte_pas_deux_fois_les_notes_deplacees(): void
+    {
+        // Même situation : Maths 16, ECUE 4 rebasculée vers Maths. La ligne de
+        // l'ECUE reste à 4 (ses notes sont parties, la remettre à zéro serait
+        // pire) ; le certificat de scolarité, faute de bulletin, fait la moyenne
+        // des lignes enregistrées. Il doit l'écarter : (10 + 4) / 2 = 7 serait
+        // faux, 10 est juste.
+        $this->note($this->evaluation(self::MATHS), 16);
+        $mal = $this->evaluation(self::ECUE);
+        $this->note($mal, 4);
+        $this->resultat(self::MATHS, 16);
+        $this->resultat(self::ECUE, 4);
+
+        app(CLIMaintenanceController::class)->evaluationChangeMatiere($this->requeteCli(['matiere_id' => self::MATHS]), $mal);
+
+        $inscription = (object) ['anneeUniversitaire' => (object) ['id' => 1]];
+        $controleur = app(ESBTPEtudiantController::class);
+        $methode = new \ReflectionMethod($controleur, 'attachMoyenneCalculee');
+        $methode->setAccessible(true);
+        $methode->invoke($controleur, collect([$inscription]), self::ETUDIANT);
+
+        $this->assertSame(10.0, (float) $inscription->moyenne_generale_calculee);
     }
 
     public function test_la_coordonnee_quittee_est_recalculee_s_il_y_reste_une_note(): void

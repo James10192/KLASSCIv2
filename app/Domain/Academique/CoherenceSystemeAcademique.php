@@ -7,6 +7,8 @@ namespace App\Domain\Academique;
 use Illuminate\Database\Eloquent\Builder;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPMatiere;
+use App\Models\ESBTPResultat;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -131,6 +133,38 @@ final class CoherenceSystemeAcademique
      * @var array<string, true>
      */
     private static array $ecartsJournalises = [];
+
+    /**
+     * Les moyennes enregistrées qu'un calcul BTS a le droit d'additionner.
+     *
+     * Une ligne d'`esbtp_resultats` dont la matière est étrangère au système de
+     * sa classe est écartée, et journalisée par {@see matiereRetenue()}. Deux
+     * lecteurs font la moyenne de TOUTES les lignes d'un élève faute de
+     * bulletin — le parcours étudiant et le certificat de scolarité — et ils
+     * doivent écarter les mêmes : une copie du filtre dans chacun divergerait.
+     *
+     * Le cas qui l'a rendu nécessaire : une rebascule CLI déplace une évaluation
+     * d'une ECUE vers une matière BTS, recalcule la matière rejointe et laisse
+     * la ligne de l'ECUE en place (ses notes sont parties, et la remettre à
+     * zéro serait pire). Additionnée telle quelle, elle faisait compter deux
+     * fois les notes déplacées : 7 au lieu de 10 sur le certificat.
+     *
+     * `withTrashed()` sur les deux relations : un filtre qui échoue en ouvert
+     * se désarmerait sur une classe archivée ou une matière mise de côté.
+     *
+     * @param  EloquentCollection<int, ESBTPResultat>  $resultats
+     */
+    public static function resultatsRetenus(EloquentCollection $resultats, string $provenance): EloquentCollection
+    {
+        $resultats->loadMissing([
+            'matiere' => fn ($q) => $q->withTrashed(),
+            'classe' => fn ($q) => $q->withTrashed(),
+        ]);
+
+        return $resultats
+            ->filter(fn ($r) => ! $r->matiere || ! $r->classe || self::matiereRetenue($r->matiere, $r->classe, $provenance))
+            ->values();
+    }
 
     /**
      * La matiere a-t-elle sa place dans cette classe ? Sinon, le dire au journal.
