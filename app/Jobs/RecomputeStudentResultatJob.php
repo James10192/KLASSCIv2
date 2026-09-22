@@ -330,6 +330,19 @@ class RecomputeStudentResultatJob implements ShouldQueue
      */
     private function normalizePeriode(string $periode): string
     {
+        return self::periodeNormalisee($periode);
+    }
+
+    /**
+     * La période telle que ce job l'écrit dans `esbtp_resultats`.
+     *
+     * Publique parce que {@see \App\Domain\Notes\RecalculApresDeplacement}
+     * doit retrouver une ligne à la MÊME coordonnée que celle que ce job écrit :
+     * une seconde copie de cette table de correspondance divergerait au premier
+     * ajout d'une période.
+     */
+    public static function periodeNormalisee(string $periode): string
+    {
         return match ($periode) {
             '1' => 'semestre1',
             '2' => 'semestre2',

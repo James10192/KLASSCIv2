@@ -2,6 +2,7 @@
 
 namespace App\Domain\LMD\Actions;
 
+use App\Domain\Notes\RecalculApresDeplacement;
 use App\Models\ESBTPMatiere;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -21,9 +22,26 @@ use RuntimeException;
  * (esbtp_evaluations) ou des notes (esbtp_notes) sans flag `force`. Tout en
  * transaction, idempotent, avec log d'audit. `dry_run` (défaut true) retourne un
  * aperçu d'impact SANS commit.
+ *
+ * SOUS `force`, LES NOTES CHANGENT DE MATIÈRE PAR UN `update()` DE QUERY
+ * BUILDER, qui ne réveille aucun observateur. Sans la suite, les deux lignes
+ * d'`esbtp_resultats` concernées gardaient la moyenne d'avant — et comme la
+ * moyenne enregistrée l'emporte sur les notes, le bulletin la reprenait. Le
+ * recalcul, et le piège du zéro qu'il doit éviter, vivent dans
+ * {@see RecalculApresDeplacement}.
+ *
+ * L'AGRÉGAT LMD NE SE RECALCULE PAS, IL SE REPORTE. `esbtp_lmd_resultats_ecues`
+ * est une ligne de bulletin LMD généré, pas un agrégat vivant : sa moyenne se
+ * reconstruit à la régénération du bulletin. Mais elle porte aussi
+ * `note_rattrapage`, qu'aucune note ne permet de reconstruire. La régénération
+ * cherche la ligne par (bulletin, matière) : laissée sur l'ECUE absorbée, cette
+ * note de seconde session ne serait plus jamais retrouvée. La fusion la reporte
+ * donc sur la canonique, et nomme les bulletins à régénérer.
  */
 class MergeDuplicateEcue
 {
+    public function __construct(private RecalculApresDeplacement $recalcul) {}
+
     /**
      * @param  int    $canonicalId  ECUE qui survit
      * @param  int[]  $absorbedIds  ECUE absorbés (soft-deleted)
@@ -72,7 +90,10 @@ class MergeDuplicateEcue
             return array_merge(['success' => true, 'dry_run' => true, 'committed' => false], $impact);
         }
 
-        DB::transaction(function () use ($canonicalId, $absorbed, $absorbedIds, $force) {
+        $recalcul = ['recalcules' => 0, 'orphelins' => []];
+        $lmd = ['repointes' => 0, 'conflits' => [], 'bulletins_a_regenerer' => []];
+
+        DB::transaction(function () use ($canonicalId, $absorbed, $absorbedIds, $force, &$recalcul, &$lmd) {
             // 1. Pivot esbtp_ue_matiere : repointer matiere_id absorbé → canonique
             //    (en évitant les collisions sur unique(ue_id, matiere_id)).
             $this->repointUeMatierePivot($canonicalId, $absorbedIds);
@@ -82,15 +103,28 @@ class MergeDuplicateEcue
                 ->whereIn('matiere_id', $absorbedIds)
                 ->update(['matiere_id' => $canonicalId, 'updated_at' => now()]);
 
-            // 3. Évaluations / Notes (seulement si force) : matiere_id → canonique
+            // 3. Évaluations / Notes (seulement si force) : matiere_id → canonique.
+            //    Les coordonnées se relèvent AVANT : après, rien ne dit plus
+            //    de quelle matière venait chaque évaluation.
             if ($force) {
+                $deplacements = $this->deplacementsDeNotes($canonicalId, $absorbedIds);
+
                 DB::table('esbtp_evaluations')
                     ->whereIn('matiere_id', $absorbedIds)
                     ->update(['matiere_id' => $canonicalId, 'updated_at' => now()]);
                 DB::table('esbtp_notes')
                     ->whereIn('matiere_id', $absorbedIds)
                     ->update(['matiere_id' => $canonicalId, 'updated_at' => now()]);
+
+                $recalcul = $this->recalcul->apres(
+                    $deplacements,
+                    'fusion ECUE '.implode(',', $absorbedIds).' -> '.$canonicalId,
+                    optional(auth()->user())->id,
+                );
             }
+
+            // 3 bis. Lignes de bulletin LMD : reportées, jamais recalculées ici.
+            $lmd = $this->repointLmdResultatsEcues($canonicalId, $absorbedIds);
 
             // 4. Pivot esbtp_matiere_filiere : repointer en évitant doublons.
             $this->repointMatiereFilierePivot($canonicalId, $absorbedIds);
@@ -104,11 +138,20 @@ class MergeDuplicateEcue
                 'canonical_id' => $canonicalId,
                 'absorbed_ids' => $absorbedIds,
                 'forced' => $force,
+                'resultats_recalcules' => $recalcul['recalcules'],
+                'resultats_orphelins' => count($recalcul['orphelins']),
+                'lmd_bulletins_a_regenerer' => $lmd['bulletins_a_regenerer'],
                 'by' => optional(auth()->user())->id,
             ]);
         });
 
-        return array_merge(['success' => true, 'dry_run' => false, 'committed' => true], $impact);
+        return array_merge(['success' => true, 'dry_run' => false, 'committed' => true], $impact, [
+            'resultats' => [
+                'recalcules' => $recalcul['recalcules'],
+                'orphelins' => $recalcul['orphelins'],
+            ],
+            'lmd_resultats_ecues' => $lmd,
+        ]);
     }
 
     /**
@@ -153,6 +196,109 @@ class MergeDuplicateEcue
         }
     }
 
+    /**
+     * Un élève × une coordonnée quittée, par évaluation portée par une ECUE absorbée.
+     *
+     * Même exclusions que le job (effacées, archivées) et mêmes refus que
+     * l'observateur : une évaluation sans classe, année ou période n'est pas
+     * recalculable, elle ne l'était pas non plus avant la fusion.
+     *
+     * @return list<array{etudiant_id:int, avant:array, apres:array}>
+     */
+    private function deplacementsDeNotes(int $canonicalId, array $absorbedIds): array
+    {
+        return DB::table('esbtp_notes as n')
+            ->join('esbtp_evaluations as e', 'e.id', '=', 'n.evaluation_id')
+            ->whereIn('e.matiere_id', $absorbedIds)
+            ->whereNull('n.deleted_at')
+            ->whereNull('n.archived_at')
+            ->whereNull('e.deleted_at')
+            ->whereNotNull('e.classe_id')
+            ->whereNotNull('e.annee_universitaire_id')
+            ->whereNotNull('e.periode')
+            ->distinct()
+            ->get(['n.etudiant_id', 'e.classe_id', 'e.matiere_id', 'e.annee_universitaire_id', 'e.periode'])
+            ->map(function ($r) use ($canonicalId) {
+                $avant = [
+                    'classe_id' => $r->classe_id,
+                    'matiere_id' => $r->matiere_id,
+                    'annee_universitaire_id' => $r->annee_universitaire_id,
+                    'periode' => $r->periode,
+                ];
+
+                return [
+                    'etudiant_id' => (int) $r->etudiant_id,
+                    'avant' => $avant,
+                    'apres' => ['matiere_id' => $canonicalId] + $avant,
+                ];
+            })
+            ->all();
+    }
+
+    /**
+     * Reporte les lignes de bulletin LMD de l'ECUE absorbée sur la canonique.
+     *
+     * Même geste que pour les pivots, sauf en cas de collision : une seconde
+     * ligne pour la même matière sur le même bulletin n'est PAS un doublon
+     * qu'on peut effacer. Elle porte sa propre moyenne, et peut-être sa propre
+     * note de rattrapage ; laquelle garder est une décision d'établissement.
+     * Elle reste donc en place, et elle est nommée.
+     *
+     * `DB::table` et non le modèle : la contrainte unique (bulletin, matière)
+     * compte aussi les lignes effacées en douceur, le test d'existence doit
+     * donc les voir.
+     *
+     * @return array{repointes:int, conflits:list<array{id:int, bulletin_id:int, etudiant_id:int, matiere_id:int, moyenne:?float}>, bulletins_a_regenerer:list<int>}
+     */
+    private function repointLmdResultatsEcues(int $canonicalId, array $absorbedIds): array
+    {
+        $rows = DB::table('esbtp_lmd_resultats_ecues')
+            ->whereIn('matiere_id', $absorbedIds)
+            ->orderBy('id')
+            ->get(['id', 'bulletin_id', 'etudiant_id', 'matiere_id', 'moyenne']);
+
+        $repointes = 0;
+        $conflits = [];
+
+        foreach ($rows as $row) {
+            $occupe = DB::table('esbtp_lmd_resultats_ecues')
+                ->where('bulletin_id', $row->bulletin_id)
+                ->where('matiere_id', $canonicalId)
+                ->exists();
+
+            if ($occupe) {
+                $conflits[] = [
+                    'id' => (int) $row->id,
+                    'bulletin_id' => (int) $row->bulletin_id,
+                    'etudiant_id' => (int) $row->etudiant_id,
+                    'matiere_id' => (int) $row->matiere_id,
+                    'moyenne' => $row->moyenne !== null ? (float) $row->moyenne : null,
+                ];
+
+                continue;
+            }
+
+            DB::table('esbtp_lmd_resultats_ecues')->where('id', $row->id)->update([
+                'matiere_id' => $canonicalId,
+                'updated_at' => now(),
+            ]);
+            $repointes++;
+        }
+
+        if ($conflits !== []) {
+            Log::warning('[LMD reconciliation] Lignes de bulletin LMD laissees sur l ECUE absorbee (collision)', [
+                'canonical_id' => $canonicalId,
+                'conflits' => $conflits,
+            ]);
+        }
+
+        return [
+            'repointes' => $repointes,
+            'conflits' => $conflits,
+            'bulletins_a_regenerer' => $rows->pluck('bulletin_id')->map(fn ($id) => (int) $id)->unique()->values()->all(),
+        ];
+    }
+
     private function repointMatiereFilierePivot(int $canonicalId, array $absorbedIds): void
     {
         $rows = DB::table('esbtp_matiere_filiere')
@@ -195,6 +341,7 @@ class MergeDuplicateEcue
                 'ue_matiere_links' => DB::table('esbtp_ue_matiere')->whereIn('matiere_id', $absorbedIds)->count(),
                 'planifications' => DB::table('esbtp_planifications_academiques')->whereIn('matiere_id', $absorbedIds)->count(),
                 'matiere_filiere_links' => DB::table('esbtp_matiere_filiere')->whereIn('matiere_id', $absorbedIds)->count(),
+                'lmd_resultats_ecues' => DB::table('esbtp_lmd_resultats_ecues')->whereIn('matiere_id', $absorbedIds)->count(),
             ],
             'soft_deleted_count' => count($absorbedIds),
         ];
@@ -209,7 +356,7 @@ class MergeDuplicateEcue
             'message' => $message,
             'canonical_id' => $canonicalId,
             'absorbed_ids' => [],
-            'repointed' => ['ue_matiere_links' => 0, 'planifications' => 0, 'matiere_filiere_links' => 0],
+            'repointed' => ['ue_matiere_links' => 0, 'planifications' => 0, 'matiere_filiere_links' => 0, 'lmd_resultats_ecues' => 0],
             'soft_deleted_count' => 0,
             'blocking' => ['evaluations' => 0, 'notes' => 0],
         ];

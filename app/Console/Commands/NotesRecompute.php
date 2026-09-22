@@ -6,6 +6,7 @@ use App\Jobs\RecomputeStudentResultatJob;
 use App\Models\ESBTPEvaluation;
 use App\Models\ESBTPNote;
 use App\Observers\ESBTPNoteObserver;
+use App\Services\NoteCalculationService;
 use Illuminate\Console\Command;
 
 /**
@@ -157,7 +158,7 @@ class NotesRecompute extends Command
                             periode: $c['periode'],
                             source: 'command',
                             triggeredBy: $userId,
-                        ))->handle();
+                        ))->handle(app(NoteCalculationService::class));
                     }
                     $dispatched++;
                 } catch (\Throwable $e) {
