@@ -2,7 +2,11 @@
 
 namespace App\Http;
 
+use App\Http\Middleware\ThrottleRequestsParRoute;
+use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Foundation\Http\Kernel as HttpKernel;
+use Illuminate\Routing\Middleware\ThrottleRequests;
+use Illuminate\Routing\Router;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -84,7 +88,7 @@ class Kernel extends HttpKernel
         'guest' => \App\Http\Middleware\RedirectIfAuthenticated::class,
         'password.confirm' => \Illuminate\Auth\Middleware\RequirePassword::class,
         'signed' => \Illuminate\Routing\Middleware\ValidateSignature::class,
-        'throttle' => \Illuminate\Routing\Middleware\ThrottleRequests::class,
+        'throttle' => \App\Http\Middleware\ThrottleRequestsParRoute::class,
         'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
         'installed' => \App\Http\Middleware\EnsureInstalled::class,
         'install.lock' => \App\Http\Middleware\BlockInstallIfReady::class,
@@ -102,6 +106,25 @@ class Kernel extends HttpKernel
         'abilities' => \Laravel\Sanctum\Http\Middleware\CheckAbilities::class,
         'ability' => \Laravel\Sanctum\Http\Middleware\CheckForAnyAbility::class,
     ];
+
+    /**
+     * `throttle` pointe vers une sous-classe (un compteur par route). Or la
+     * priorité des intergiciels de Laravel 9 ne reconnaît que la classe exacte
+     * et ses interfaces, pas ses parents : sans cette insertion, la limitation
+     * perdrait sa place APRÈS l'authentification et compterait par adresse IP.
+     */
+    public function __construct(Application $app, Router $router)
+    {
+        $position = array_search(ThrottleRequests::class, $this->middlewarePriority, true);
+        array_splice(
+            $this->middlewarePriority,
+            $position === false ? count($this->middlewarePriority) : $position + 1,
+            0,
+            [ThrottleRequestsParRoute::class]
+        );
+
+        parent::__construct($app, $router);
+    }
 
     // Note : aucune méthode boot() ici. Laravel n'invoque PAS boot() sur le Kernel
     // HTTP — seuls les ServiceProvider l'invoquent. Les rate limiters sont déclarés
