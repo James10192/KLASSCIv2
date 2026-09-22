@@ -21,6 +21,7 @@ class TableauRendezVous
     public function __construct(
         private readonly EtatChaineRdv $etat,
         private readonly RendezVousReglages $reglages,
+        private readonly CatalogueCreneaux $catalogue,
     ) {
     }
 
@@ -69,27 +70,24 @@ class TableauRendezVous
         ];
     }
 
-    /** @return array{reservations: int, libres: int, creneaux: int} */
+    /**
+     * Les places libres viennent du catalogue, le meme que lit le portail et le
+     * placement : un second calcul ici ignorait l'annee cible, la fenetre et les
+     * heures passees, et le bandeau annoncait des places que le bouton refusait.
+     *
+     * @return array{reservations: int, libres: int, creneaux: int}
+     */
     private function kpis(): array
     {
-        $aujourdhui = Carbon::today()->toDateString();
-
-        $reservations = ESBTPRdvReservation::query()
-            ->occupantes()
-            ->where('statut', StatutReservationRdv::Confirmee->value)
-            ->whereHas('creneau', fn ($q) => $q->whereDate('date', '>=', $aujourdhui))
-            ->count();
-
-        $aVenir = ESBTPRdvCreneau::query()
-            ->where('ouvert', true)
-            ->whereDate('date', '>=', $aujourdhui)
-            ->withCount(['reservations as prises' => fn ($q) => $q->occupantes()])
-            ->get(['id', 'capacite']);
+        $libres = $this->catalogue->placesLibres();
 
         return [
-            'reservations' => $reservations,
-            'libres' => (int) $aVenir->sum(fn ($c) => max(0, $c->capacite - $c->prises)),
-            'creneaux' => $aVenir->count(),
+            'reservations' => ESBTPRdvReservation::query()
+                ->where('statut', StatutReservationRdv::Confirmee->value)
+                ->whereHas('creneau', fn ($q) => $q->whereDate('date', '>=', Carbon::today()->toDateString()))
+                ->count(),
+            'libres' => array_sum($libres),
+            'creneaux' => count($libres),
         ];
     }
 

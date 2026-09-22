@@ -70,6 +70,9 @@ class CLIRendezVousController extends BaseApiController
         }
 
         $rapport = $file->envoyerUnPaquet(50, 25.0);
+        if ($rapport['en_cours']) {
+            return $this->errorResponse('Un autre envoi est en cours. Rappeler dans une minute.', $rapport, 409);
+        }
         if ($rapport['bloque'] !== null) {
             return $this->errorResponse($rapport['bloque'], $rapport, 503);
         }

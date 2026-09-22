@@ -5,7 +5,8 @@
 @push('styles')
 <style>
 /* ===== Rendez-vous d'inscription — namespace rdv-* ===== */
-.rdv-page { --rdv-primary: #0453cb; --rdv-primary-d: #033a8e; --rdv-accent: #3b7ddb; --rdv-dark: #0f172a; --rdv-text: #1e293b; --rdv-muted: #64748b; --rdv-line: #e2e8f0; --rdv-surface: #f8fafc; --rdv-succes: #10b981; --rdv-attente: #f59e0b; --rdv-echec: #dc2626; color: var(--rdv-text); }
+/* La carte du guide vit sous <body>, hors de .rdv-page : elle porte donc aussi les variables. */
+.rdv-page, .rdv-tour-carte { --rdv-primary: #0453cb; --rdv-primary-d: #033a8e; --rdv-accent: #3b7ddb; --rdv-dark: #0f172a; --rdv-text: #1e293b; --rdv-muted: #64748b; --rdv-line: #e2e8f0; --rdv-surface: #f8fafc; --rdv-succes: #10b981; --rdv-attente: #f59e0b; --rdv-echec: #dc2626; color: var(--rdv-text); }
 
 /* Hero (modele planning-header) — sans overflow ni transform : rien n'y doit etre coupe */
 .rdv-hero { background: linear-gradient(135deg, #0a3d8f 0%, #0453cb 40%, #3b7ddb 100%); border-radius: 18px; padding: 2rem 2.5rem 1.5rem; color: #fff; margin-bottom: 1.25rem; box-shadow: 0 8px 30px rgba(4,83,203,.18); }
@@ -200,14 +201,35 @@
 .rdv-modale-boite p { color: var(--rdv-muted); font-size: .88rem; margin: 0 0 1.25rem; }
 .rdv-modale-pied { display: flex; justify-content: flex-end; gap: .5rem; flex-wrap: wrap; }
 
+/* Aide */
+.rdv-aide { max-width: 640px; max-height: calc(100vh - 2rem); overflow-y: auto; }
+.rdv-aide h3 { font-size: .8rem; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--rdv-muted); margin: 1.1rem 0 .5rem; }
+.rdv-aide ol, .rdv-aide ul { margin: 0; padding-left: 1.1rem; font-size: .86rem; color: var(--rdv-text); display: flex; flex-direction: column; gap: .4rem; }
+.rdv-aide p { color: var(--rdv-text); margin-bottom: 1rem; }
+.rdv-aide-etats { list-style: none; padding-left: 0 !important; }
+.rdv-aide-etats .rdv-badge { margin-right: .4rem; }
+
+/* Guide pas a pas */
+.rdv-tour-spot { position: fixed; z-index: 99992; border-radius: 12px; box-shadow: 0 0 0 4px rgba(4,83,203,.55), 0 0 0 9999px rgba(15,23,42,.55); pointer-events: none; transition: all .25s ease; }
+.rdv-tour-carte { position: fixed; z-index: 99993; width: 390px; max-width: calc(100vw - 2rem); background: #fff; border-radius: 14px; padding: 1.1rem 1.2rem; box-shadow: 0 20px 50px rgba(15,23,42,.35); }
+.rdv-tour-carte h3 { font-size: .98rem; font-weight: 700; color: var(--rdv-dark); margin: 0 0 .35rem; }
+.rdv-tour-carte p { font-size: .84rem; color: var(--rdv-muted); margin: 0 0 1rem; }
+.rdv-tour-pied { display: flex; align-items: center; gap: .4rem; flex-wrap: wrap; }
+.rdv-tour-pas { font-size: .75rem; color: var(--rdv-muted); margin-right: auto; font-variant-numeric: tabular-nums; }
+.rdv-tour-demo { position: relative; outline: 2px dashed rgba(4,83,203,.4); outline-offset: 3px; }
+.rdv-tour-demo-etiquette { position: absolute; top: -.7rem; right: .75rem; background: var(--rdv-primary); color: #fff; font-size: .66rem; font-weight: 700; padding: .1rem .5rem; border-radius: 999px; text-transform: uppercase; letter-spacing: .4px; }
+
 @media (max-width: 992px) {
     .rdv-grille--4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 576px) {
+    .rdv-tour-carte { left: 1rem !important; right: 1rem; bottom: 1rem; top: auto !important; width: auto; }
     .rdv-hero { padding: 1.25rem 1.1rem 1.1rem; border-radius: 14px; }
     .rdv-hero h1 { font-size: 1.2rem; }
     .rdv-hero-icon { width: 44px; height: 44px; font-size: 1.1rem; }
-    .rdv-hero-actions, .rdv-hero-actions .rdv-btn { width: 100%; }
+    .rdv-hero-actions { display: grid; grid-template-columns: 1fr 1fr; width: 100%; }
+    .rdv-hero-actions .rdv-btn { width: 100%; }
+    .rdv-hero-actions [data-rdv-action], .rdv-hero-actions [data-rdv-ouvrir-reglages] { grid-column: span 2; }
     .rdv-hero-actions .rdv-btn { justify-content: center; }
     .rdv-kpi { flex: 1 1 calc(50% - .75rem); padding: .75rem; }
     .rdv-kpi-icon { display: none; }
@@ -244,6 +266,8 @@
                 </div>
             </div>
             <div class="rdv-hero-actions">
+                <button type="button" class="rdv-btn rdv-btn--glass" data-page-tour-open><i class="fas fa-route"></i>Guide</button>
+                <button type="button" class="rdv-btn rdv-btn--glass" data-page-help-open><i class="fas fa-circle-question"></i>Aide</button>
                 @if($peutConfigurer)
                     <button type="button" class="rdv-btn rdv-btn--glass" data-rdv-ouvrir-reglages><i class="fas fa-sliders"></i>Réglages</button>
                 @endif
@@ -274,6 +298,34 @@
     @endif
 
     <div id="rdv-tableau" class="rdv-tableau">@include('esbtp.rendez-vous.partials._tableau')</div>
+
+    <div class="rdv-modale" id="rdv-aide" role="dialog" aria-modal="true" aria-labelledby="rdv-aide-titre">
+        <div class="rdv-modale-boite rdv-aide">
+            <h2 id="rdv-aide-titre"><span class="rdv-section-icon"><i class="fas fa-book-open"></i></span>Comment fonctionnent les rendez-vous</h2>
+            <h3>Le chemin d'une famille</h3>
+            <ol>
+                <li><strong>Réglages</strong> — jours, horaires du guichet, durée et nombre de familles par créneau.</li>
+                <li><strong>Générer les créneaux</strong> — les créneaux se créent pour toute la période. Les créneaux déjà réservés ne sont jamais touchés.</li>
+                <li><strong>Ouvrir la prise de rendez-vous</strong> — sans elle, le site klassci.com répond « pas ouverte », même si des créneaux existent.</li>
+                <li><strong>La famille réserve</strong> sur le site, ou vous la placez avec « Placer et convoquer ».</li>
+                <li><strong>La convocation part par e-mail</strong>, avec un lien vers son PDF.</li>
+            </ol>
+            <h3>L'état d'une convocation</h3>
+            <ul class="rdv-aide-etats">
+                <li><span class="rdv-badge rdv-badge--succes">Convocation envoyée</span> MailPulse l'a acceptée ; l'heure est affichée.</li>
+                <li><span class="rdv-badge rdv-badge--attente">En attente d'envoi</span> elle partira au prochain envoi (automatique toutes les 5 minutes, ou bouton « Envoyer »).</li>
+                <li><span class="rdv-badge rdv-badge--echec">Envoi échoué</span> la raison est écrite sous le badge. « Relancer les échecs » les renvoie.</li>
+                <li><span class="rdv-badge rdv-badge--neutre">Sans e-mail</span> aucune adresse valide : prévenez la famille autrement.</li>
+                <li><span class="rdv-badge rdv-badge--neutre">Sans objet</span> le créneau était passé au moment de l'envoi.</li>
+                <li><span class="rdv-badge rdv-badge--inconnu">Non suivie</span> réservation d'avant le suivi des envois : on ne sait pas si le courriel est parti.</li>
+            </ul>
+            <h3>Fermer un créneau</h3>
+            <p>L'interrupteur retire le créneau du site. Les familles qui l'ont déjà réservé gardent leur rendez-vous.</p>
+            <div class="rdv-modale-pied">
+                <button type="button" class="rdv-btn rdv-btn--primary" data-rdv-aide-fermer>J'ai compris</button>
+            </div>
+        </div>
+    </div>
 
     <div class="rdv-modale" id="rdv-modale" role="dialog" aria-modal="true" aria-labelledby="rdv-modale-titre">
         <div class="rdv-modale-boite">
@@ -357,6 +409,7 @@
     const modale = document.getElementById('rdv-modale');
     function confirmer(texte) {
         return new Promise((resoudre) => {
+            const retour = document.activeElement;
             modale.querySelector('[data-rdv-modale-texte]').textContent = texte;
             modale.classList.add('is-ouverte');
             const oui = modale.querySelector('[data-rdv-modale="oui"]');
@@ -365,6 +418,7 @@
                 modale.classList.remove('is-ouverte');
                 modale.removeEventListener('click', surClic);
                 document.removeEventListener('keydown', surTouche);
+                if (retour && typeof retour.focus === 'function' && document.contains(retour)) retour.focus();
                 resoudre(reponse);
             }
             function surClic(ev) {
@@ -400,6 +454,14 @@
         try {
             for (;;) {
                 const r = await envoyerPost(page.dataset.urlEnvoyer);
+                if (r.en_cours) {
+                    // Un autre envoi (tache planifiee, autre onglet) tient le verrou :
+                    // on attend qu'il libere plutot que de doubler les courriels.
+                    titre.textContent = 'Un autre envoi est en cours, reprise dans un instant…';
+                    await new Promise((ok) => setTimeout(ok, 4000));
+                    titre.textContent = 'Envoi des convocations…';
+                    continue;
+                }
                 envoyees += r.envoyees; echecs += r.echecs;
                 if (total === null) total = envoyees + echecs + r.restantes;
                 const faites = envoyees + echecs;
@@ -487,6 +549,130 @@
     });
 
     if (window.location.hash === '#reglages') ouvrirReglages();
+})();
+</script>
+<script>
+/* Guide pas a pas et aide de l'ecran des rendez-vous (rule interactive-guides). */
+(function () {
+    if (window.__rdvGuideInit) return;
+    window.__rdvGuideInit = true;
+
+    const ETAPES = [
+        { sel: '.rdv-kpis', titre: 'Le point du jour', texte: 'Rendez-vous à venir, convocations parties et à traiter, places encore libres : tout ce qui compte en un coup d\'œil.' },
+        { sel: '#rdv-chaine', titre: 'L\'état de la chaîne', texte: 'Si une famille ne peut pas réserver ou ne reçoit rien, la raison est ici, avec le lien pour la régler.' },
+        { sel: '#reglages', titre: 'Les réglages', texte: 'Jours, horaires, durée et nombre de familles par créneau. N\'oubliez pas d\'ouvrir la prise de rendez-vous aux familles.' },
+        { sel: '.rdv-hero [data-rdv-action="generer"]', titre: 'Générer les créneaux', texte: 'Crée les créneaux de toute la période. Un créneau déjà réservé n\'est jamais modifié.' },
+        { sel: '.rdv-slot', titre: 'Un créneau', texte: 'La jauge montre les places prises. L\'interrupteur retire le créneau du site sans annuler les réservations.' },
+        { sel: '.rdv-resas', titre: 'Les familles attendues', texte: 'Dépliez pour voir qui vient, et si sa convocation est partie — ou pourquoi elle a échoué.', ouvrir: true },
+        { sel: '.rdv-hero [data-rdv-action="placer"]', titre: 'Placer et convoquer', texte: 'Place les dossiers en attente sur les premiers créneaux libres, puis envoie leurs convocations, avec une barre de progression.' },
+        { sel: '.rdv-semaine', titre: 'Changer de semaine', texte: 'Les flèches parcourent le planning sans recharger la page. « Aujourd\'hui » revient à la semaine en cours.' },
+    ];
+
+    let pas = 0, etapes = [], spot = null, carte = null;
+
+    function visible(el) {
+        if (!el) return false;
+        const r = el.getBoundingClientRect();
+        return r.width > 0 && r.height > 0 && getComputedStyle(el).visibility !== 'hidden';
+    }
+
+    // Semaine vide : un creneau d'exemple, marque comme tel, jamais envoye au serveur.
+    function injecterDemo() {
+        if (document.querySelector('#rdv-tableau .rdv-slot')) return;
+        const cible = document.querySelector('#rdv-tableau .rdv-semaine');
+        if (!cible) return;
+        const demo = document.createElement('section');
+        demo.className = 'rdv-card rdv-jour rdv-tour-demo';
+        demo.setAttribute('data-tour-demo', '');
+        demo.innerHTML = '<span class="rdv-tour-demo-etiquette">Exemple du guide</span>'
+            + '<header class="rdv-jour-tete"><h3>Lundi (exemple)</h3><span class="rdv-jour-resume">1 créneau · <strong>2</strong> / 4 places prises</span></header>'
+            + '<div class="rdv-slots"><div class="rdv-slot rdv-slot--ouvert"><div class="rdv-slot-ligne">'
+            + '<span class="rdv-heure">08:00 – 08:30</span><span class="rdv-jauge"><span style="width:50%"></span></span>'
+            + '<span class="rdv-slot-compte"><strong>2</strong> / 4</span><span class="rdv-etat rdv-etat--ouvert">Ouvert</span>'
+            + '<span class="rdv-switch" aria-hidden="true" style="background:#0453cb"><span class="rdv-switch-rond" style="left:21px"></span></span></div>'
+            + '<details class="rdv-resas" open><summary><i class="fas fa-chevron-right"></i>2 familles attendues</summary><ul>'
+            + '<li class="rdv-resa"><div class="rdv-resa-qui"><strong>Famille exemple A</strong><span>+225 07 00 00 00 00</span></div><div class="rdv-resa-conv"><span class="rdv-badge rdv-badge--succes">Convocation envoyée</span></div></li>'
+            + '<li class="rdv-resa"><div class="rdv-resa-qui"><strong>Famille exemple B</strong><span>+225 05 00 00 00 00</span></div><div class="rdv-resa-conv"><span class="rdv-badge rdv-badge--echec">Envoi échoué</span><small class="rdv-resa-erreur">Adresse refusée</small></div></li>'
+            + '</ul></details></div></div>';
+        cible.insertAdjacentElement('afterend', demo);
+    }
+
+    function nettoyer() {
+        spot?.remove(); carte?.remove(); spot = carte = null;
+        document.querySelectorAll('[data-tour-demo]').forEach((d) => d.remove());
+        document.removeEventListener('keydown', surTouche);
+        window.removeEventListener('resize', placer);
+        window.removeEventListener('scroll', placer, true);
+    }
+
+    function surTouche(ev) { if (ev.key === 'Escape') nettoyer(); }
+
+    function placer() {
+        const etape = etapes[pas];
+        if (!etape || !spot) return;
+        const r = etape.el.getBoundingClientRect();
+        Object.assign(spot.style, { top: (r.top - 6) + 'px', left: (r.left - 6) + 'px', width: (r.width + 12) + 'px', height: (r.height + 12) + 'px' });
+        if (window.innerWidth <= 576) return;
+        const h = carte.offsetHeight, w = carte.offsetWidth;
+        let top = r.bottom + 14;
+        if (top + h > window.innerHeight - 12) top = Math.max(12, r.top - h - 14);
+        const left = Math.min(Math.max(12, r.left), window.innerWidth - w - 12);
+        Object.assign(carte.style, { top: top + 'px', left: left + 'px' });
+    }
+
+    function montrer(i) {
+        pas = i;
+        const etape = etapes[pas];
+        if (etape.ouvrir && etape.el.tagName === 'DETAILS') etape.el.open = true;
+        etape.el.scrollIntoView({ block: 'center', behavior: 'instant' });
+        carte.querySelector('h3').textContent = etape.titre;
+        carte.querySelector('p').textContent = etape.texte;
+        carte.querySelector('.rdv-tour-pas').textContent = (pas + 1) + ' / ' + etapes.length;
+        carte.querySelector('[data-tour="retour"]').disabled = pas === 0;
+        carte.querySelector('[data-tour="suivant"]').innerHTML = pas === etapes.length - 1 ? '<i class="fas fa-check"></i>Terminer' : 'Suivant<i class="fas fa-arrow-right"></i>';
+        placer();
+        carte.querySelector('[data-tour="suivant"]').focus();
+    }
+
+    function demarrer() {
+        nettoyer();
+        const reglages = document.getElementById('reglages');
+        if (reglages) reglages.open = false;
+        injecterDemo();
+        etapes = ETAPES.map((e) => Object.assign({}, e, { el: document.querySelector(e.sel) })).filter((e) => visible(e.el));
+        if (!etapes.length) return;
+        spot = document.createElement('div');
+        spot.className = 'rdv-tour-spot';
+        carte = document.createElement('div');
+        carte.className = 'rdv-tour-carte';
+        carte.setAttribute('role', 'dialog');
+        carte.setAttribute('aria-live', 'polite');
+        carte.innerHTML = '<h3></h3><p></p><div class="rdv-tour-pied"><span class="rdv-tour-pas"></span>'
+            + '<button type="button" class="rdv-btn rdv-btn--ghost rdv-btn--sm" data-tour="quitter">Quitter</button>'
+            + '<button type="button" class="rdv-btn rdv-btn--ghost rdv-btn--sm" data-tour="retour"><i class="fas fa-arrow-left"></i>Retour</button>'
+            + '<button type="button" class="rdv-btn rdv-btn--primary rdv-btn--sm" data-tour="suivant"></button></div>';
+        document.body.append(spot, carte);
+        carte.addEventListener('click', (ev) => {
+            const b = ev.target.closest('[data-tour]');
+            if (!b) return;
+            if (b.dataset.tour === 'quitter') return nettoyer();
+            if (b.dataset.tour === 'retour' && pas > 0) return montrer(pas - 1);
+            if (b.dataset.tour === 'suivant') return pas < etapes.length - 1 ? montrer(pas + 1) : nettoyer();
+        });
+        document.addEventListener('keydown', surTouche);
+        window.addEventListener('resize', placer);
+        window.addEventListener('scroll', placer, true);
+        montrer(0);
+    }
+
+    const aide = document.getElementById('rdv-aide');
+    function fermerAide() { aide.classList.remove('is-ouverte'); }
+    document.addEventListener('click', (ev) => {
+        if (ev.target.closest('[data-page-tour-open]')) { ev.preventDefault(); return demarrer(); }
+        if (ev.target.closest('[data-page-help-open]')) { ev.preventDefault(); aide.classList.add('is-ouverte'); aide.querySelector('[data-rdv-aide-fermer]').focus(); return; }
+        if (ev.target === aide || ev.target.closest('[data-rdv-aide-fermer]')) fermerAide();
+    });
+    document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape' && aide.classList.contains('is-ouverte')) fermerAide(); });
 })();
 </script>
 @endpush

@@ -1,7 +1,7 @@
 {{-- KPIs du hero. Rendu aussi seul, par index(?fragment=1), apres chaque action. --}}
 @php
     $_conv = $convocations;
-    $_suivies = $_conv['envoyee'] + $_conv['en_attente'] + $_conv['echec'] + $_conv['sans_email'];
+    $_suivies = $_conv['envoyee'] + $_conv['en_attente'] + $_conv['echec'] + $_conv['sans_email'] + $_conv['sans_objet'];
     $_aTraiter = $_conv['en_attente'] + $_conv['echec'];
 @endphp
 <div class="rdv-kpis">
@@ -36,7 +36,7 @@
         <div class="rdv-kpi-icon"><i class="fas fa-door-open"></i></div>
         <div>
             <div class="rdv-kpi-value">{{ number_format($kpis['libres'], 0, ',', ' ') }}</div>
-            <div class="rdv-kpi-label">Places libres sur {{ $kpis['creneaux'] }} créneaux ouverts</div>
+            <div class="rdv-kpi-label">Places libres, sur {{ $kpis['creneaux'] }} créneaux</div>
         </div>
     </div>
     <div class="rdv-kpi">

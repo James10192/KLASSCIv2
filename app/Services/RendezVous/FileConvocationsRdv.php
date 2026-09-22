@@ -4,68 +4,111 @@ namespace App\Services\RendezVous;
 
 use App\Enums\StatutConvocationRdv;
 use App\Models\ESBTPRdvReservation;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 
 /**
- * Les convocations en attente, envoyees par paquets bornes dans le temps.
+ * La seule porte par laquelle une convocation part.
  *
- * C'est ce qui remplace le lot envoye dans `terminating` : la-bas, des centaines
- * d'envois tournaient a la suite dans un seul processus PHP, tue par sa limite
- * d'execution bien avant la fin, et le premier refus arretait tous les suivants.
- * Ici chaque appel s'arrete de lui-meme avant la limite, rend ce qui reste, et
- * l'appelant — l'ecran, la tache planifiee — rappelle.
+ * Quatre appelants la sollicitent — le portail public apres une reservation,
+ * la boucle de l'ecran, la tache planifiee, l'API CLI — et parfois en meme
+ * temps : une relance de plusieurs centaines de convocations depuis l'ecran
+ * dure des minutes et croise forcement la tache planifiee. Une reservation
+ * reste « en attente » pendant tout l'appel a MailPulse ; sans verrou, deux
+ * appelants l'enverraient chacun. D'ou un verrou unique, et des paquets bornes
+ * dans le temps : l'ancien lot, envoye d'un bloc dans `terminating`, mourait
+ * avec le processus PHP et s'arretait au premier refus.
+ *
+ * Le verrou tient le temps d'un paquet (budget + un envoi lent, 2 x 20 s).
  */
 class FileConvocationsRdv
 {
+    private const VERROU = 'rdv-convocations-envoi';
+
+    private const DUREE_VERROU_SECONDES = 150;
+
     public function __construct(private readonly MessagerieRdv $mails)
     {
     }
 
     /**
-     * @return array{envoyees: int, echecs: int, restantes: int, bloque: ?string}
-     *         `bloque` : la raison qui a arrete le paquet (MailPulse desactive,
-     *         injoignable...). Rappeler ne servira a rien tant qu'elle tient.
+     * Apres une reservation du portail : pose la convocation, puis tente de
+     * l'envoyer apres la reponse, pour ne pas faire attendre la famille. Si un
+     * paquet tient deja le verrou, elle reste en attente et partira avec lui.
      */
-    public function envoyerUnPaquet(int $maximum = 15, float $budgetSecondes = 20.0): array
+    public function confirmer(ESBTPRdvReservation $reservation, string $action = 'confirme'): void
     {
-        $debut = microtime(true);
-        $envoyees = 0;
-        $echecs = 0;
-        $bloque = null;
+        $this->mails->planifier($reservation, $action);
 
-        $paquet = ESBTPRdvReservation::query()
-            ->with('creneau')
-            ->where('convocation_statut', StatutConvocationRdv::EnAttente->value)
-            ->orderBy('id')
-            ->limit($maximum)
-            ->get();
-
-        foreach ($paquet as $reservation) {
-            if (microtime(true) - $debut >= $budgetSecondes) {
-                break;
-            }
-
-            $bloque = $this->mails->envoyer($reservation);
-            if ($bloque !== null) {
-                break;
-            }
-
-            match ($reservation->convocation_statut) {
-                StatutConvocationRdv::Envoyee => $envoyees++,
-                StatutConvocationRdv::Echec, StatutConvocationRdv::SansEmail => $echecs++,
-                default => null,
-            };
+        if ($reservation->convocation_statut === StatutConvocationRdv::EnAttente) {
+            $id = $reservation->id;
+            app()->terminating(fn () => $this->envoyerCelle($id));
         }
-
-        return [
-            'envoyees' => $envoyees,
-            'echecs' => $echecs,
-            'restantes' => $this->enAttente(),
-            'bloque' => $bloque,
-        ];
     }
 
     /**
-     * Les reservations anterieures au suivi (etat inconnu), plus celles en echec,
+     * Ne leve jamais : il tourne dans `terminating`, dont la boucle n'a pas de
+     * `try` — une exception y couperait les rappels suivants.
+     */
+    public function envoyerCelle(int $reservationId): void
+    {
+        try {
+            $this->sousVerrou(function () use ($reservationId) {
+                $reservation = ESBTPRdvReservation::query()->with('creneau')->find($reservationId);
+                if ($reservation?->convocation_statut === StatutConvocationRdv::EnAttente) {
+                    $this->mails->envoyer($reservation);
+                }
+            });
+        } catch (\Throwable $e) {
+            Log::warning('Convocation rdv : envoi unitaire interrompu', ['reservation_id' => $reservationId, 'erreur' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * @return array{envoyees: int, echecs: int, restantes: int, bloque: ?string, en_cours: bool}
+     *         `bloque` : la raison qui a arrete le paquet (MailPulse desactive,
+     *         injoignable...). `en_cours` : un autre envoi tient le verrou —
+     *         rien n'a ete tente, rappeler un peu plus tard.
+     */
+    public function envoyerUnPaquet(int $maximum = 15, float $budgetSecondes = 20.0): array
+    {
+        $rapport = ['envoyees' => 0, 'echecs' => 0, 'restantes' => 0, 'bloque' => null, 'en_cours' => false];
+
+        $tenu = $this->sousVerrou(function () use (&$rapport, $maximum, $budgetSecondes) {
+            $debut = microtime(true);
+            $paquet = ESBTPRdvReservation::query()
+                ->with('creneau')
+                ->where('convocation_statut', StatutConvocationRdv::EnAttente->value)
+                ->orderBy('id')
+                ->limit($maximum)
+                ->get();
+
+            foreach ($paquet as $reservation) {
+                if (microtime(true) - $debut >= $budgetSecondes) {
+                    break;
+                }
+
+                $rapport['bloque'] = $this->mails->envoyer($reservation);
+                if ($rapport['bloque'] !== null) {
+                    break;
+                }
+
+                match ($reservation->convocation_statut) {
+                    StatutConvocationRdv::Envoyee => $rapport['envoyees']++,
+                    StatutConvocationRdv::Echec, StatutConvocationRdv::SansEmail, StatutConvocationRdv::SansObjet => $rapport['echecs']++,
+                    default => null,
+                };
+            }
+        });
+
+        $rapport['en_cours'] = ! $tenu;
+        $rapport['restantes'] = $this->enAttente();
+
+        return $rapport;
+    }
+
+    /**
+     * Les reservations anterieures au suivi (etat inconnu), ou celles en echec,
      * remises en attente. C'est un geste de l'ecole, jamais automatique.
      *
      * @param  'inconnues'|'echecs'  $quoi
@@ -92,5 +135,22 @@ class FileConvocationsRdv
         return ESBTPRdvReservation::query()
             ->where('convocation_statut', StatutConvocationRdv::EnAttente->value)
             ->count();
+    }
+
+    /** @return bool faux si un autre envoi tenait deja le verrou */
+    private function sousVerrou(callable $travail): bool
+    {
+        $verrou = Cache::lock(self::VERROU, self::DUREE_VERROU_SECONDES);
+        if (! $verrou->get()) {
+            return false;
+        }
+
+        try {
+            $travail();
+        } finally {
+            $verrou->release();
+        }
+
+        return true;
     }
 }

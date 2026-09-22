@@ -18,6 +18,9 @@
             <div class="rdv-conv rdv-conv--attente"><span>{{ $_conv['en_attente'] }}</span>en attente</div>
             <div class="rdv-conv rdv-conv--echec"><span>{{ $_conv['echec'] }}</span>en échec</div>
             <div class="rdv-conv rdv-conv--neutre"><span>{{ $_conv['sans_email'] }}</span>sans e-mail</div>
+            @if($_conv['sans_objet'] > 0)
+                <div class="rdv-conv rdv-conv--neutre" title="Le créneau était passé au moment de l'envoi"><span>{{ $_conv['sans_objet'] }}</span>sans objet</div>
+            @endif
             @if($_conv['inconnu'] > 0)
                 <div class="rdv-conv rdv-conv--inconnu"><span>{{ $_conv['inconnu'] }}</span>non suivies</div>
             @endif
@@ -43,7 +46,7 @@
                 @endif
             </div>
             @if($_conv['inconnu'] > 0)
-                <p class="rdv-note"><i class="fas fa-circle-info"></i>« Non suivies » : réservations créées avant le 22 septembre 2026, quand l'envoi n'était pas encore tracé. Rien ne leur est envoyé sans votre accord.</p>
+                <p class="rdv-note"><i class="fas fa-circle-info"></i>« Non suivies » : réservations créées avant l'activation du suivi des envois sur votre établissement. Rien ne leur est envoyé sans votre accord.</p>
             @endif
         @endif
     </section>

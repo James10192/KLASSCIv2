@@ -3,7 +3,6 @@
 namespace App\Services\RendezVous;
 
 use App\Enums\StatutConvocationRdv;
-use App\Jobs\EnvoyerConvocationRdvJob;
 use App\Models\ESBTPRdvReservation;
 use App\Services\MailPulse\MailPulseResult;
 use Carbon\Carbon;
@@ -33,21 +32,9 @@ class MessagerieRdv
     }
 
     /**
-     * Une convocation UNIQUE, tentee apres la reponse pour ne pas faire attendre
-     * la famille. `afterResponse()` n'est pas la file d'attente : il execute le
-     * job en synchrone dans le meme processus. C'est acceptable pour un envoi,
-     * jamais pour un lot — voir AffecteurDossiersRdv, qui passe par planifier().
+     * Pose la convocation en attente, sans rien envoyer. L'envoi n'a qu'une
+     * porte, FileConvocationsRdv, qui tient le verrou.
      */
-    public function confirmer(ESBTPRdvReservation $reservation, string $action = 'confirme'): void
-    {
-        $this->planifier($reservation, $action);
-
-        if ($reservation->convocation_statut === StatutConvocationRdv::EnAttente) {
-            EnvoyerConvocationRdvJob::dispatch($reservation->id)->afterResponse();
-        }
-    }
-
-    /** Pose la convocation en attente, sans rien envoyer. */
     public function planifier(ESBTPRdvReservation $reservation, string $action = 'confirme'): void
     {
         $reservation->forceFill([
@@ -81,7 +68,7 @@ class MessagerieRdv
         }
 
         if ($action !== 'annule' && $this->creneauPasse($reservation)) {
-            $this->consigner($reservation, StatutConvocationRdv::Echec, 'Le créneau est passé : convocation sans objet.');
+            $this->consigner($reservation, StatutConvocationRdv::SansObjet, 'Le créneau est passé avant l\'envoi.');
 
             return null;
         }

@@ -3,7 +3,6 @@
 namespace Tests\Unit\RendezVous;
 
 use App\Enums\StatutConvocationRdv;
-use App\Jobs\EnvoyerConvocationRdvJob;
 use App\Models\ESBTPRdvCreneau;
 use App\Models\ESBTPRdvReservation;
 use App\Services\MailPulse\MailPulseResult;
@@ -12,6 +11,7 @@ use App\Services\RendezVous\FileConvocationsRdv;
 use App\Services\RendezVous\MessagerieRdv;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Mockery;
@@ -146,7 +146,7 @@ class ConvocationsRdvTest extends TestCase
         $this->courriel(fn () => throw new \RuntimeException('vue introuvable'));
         $r = $this->reservation();
 
-        (new EnvoyerConvocationRdvJob($r->id))->handle(app(MessagerieRdv::class));
+        app(FileConvocationsRdv::class)->envoyerCelle($r->id);
 
         $r->refresh();
         $this->assertSame(1, $r->convocation_tentatives);
@@ -205,7 +205,40 @@ class ConvocationsRdvTest extends TestCase
         $mails->envoyer($enRetard);
 
         $this->assertSame(StatutConvocationRdv::SansEmail, $sansEmail->fresh()->convocation_statut);
-        $this->assertSame(StatutConvocationRdv::Echec, $enRetard->fresh()->convocation_statut);
+        $this->assertSame(StatutConvocationRdv::SansObjet, $enRetard->fresh()->convocation_statut);
+    }
+
+    public function test_un_envoi_en_cours_empeche_un_second_de_doubler_les_courriels(): void
+    {
+        $courriel = Mockery::mock(CourrielConvocationRdv::class);
+        $courriel->shouldNotReceive('expedier');
+        $this->app->instance(CourrielConvocationRdv::class, $courriel);
+        $r = $this->reservation();
+
+        // Un autre envoi (tache planifiee, second onglet) tient le verrou.
+        $verrou = Cache::lock('rdv-convocations-envoi', 60);
+        $this->assertTrue($verrou->get());
+
+        $file = app(FileConvocationsRdv::class);
+        $rapport = $file->envoyerUnPaquet();
+        $file->envoyerCelle($r->id);
+        $verrou->release();
+
+        $this->assertTrue($rapport['en_cours']);
+        $this->assertSame(1, $rapport['restantes']);
+        $this->assertSame(StatutConvocationRdv::EnAttente, $r->fresh()->convocation_statut);
+    }
+
+    public function test_la_reservation_du_portail_part_apres_la_reponse_par_la_meme_porte(): void
+    {
+        $this->courriel(fn () => new MailPulseResult(true, 'queued', 202, null, 'mp-1', dispatchState: 'accepted'));
+        $r = $this->reservation(['convocation_statut' => null]);
+
+        app(FileConvocationsRdv::class)->confirmer($r, 'confirme');
+        $this->assertSame(StatutConvocationRdv::EnAttente, $r->fresh()->convocation_statut, 'Rien ne part avant la reponse.');
+
+        $this->app->terminate();
+        $this->assertSame(StatutConvocationRdv::Envoyee, $r->fresh()->convocation_statut);
     }
 
     public function test_planifier_n_envoie_rien(): void

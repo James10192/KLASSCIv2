@@ -44,7 +44,8 @@ Les convocations sont **posées en attente**, pas envoyées. L'envoi passe par
 
 ## `POST /rendez-vous/convocations/envoyer`
 
-- 200 : `{ envoyees, echecs, restantes, bloque: null }`. Rappeler tant que `restantes > 0`.
+- 200 : `{ envoyees, echecs, restantes, bloque: null, en_cours: false }`. Rappeler tant que `restantes > 0`.
+- 409 : un autre envoi (tâche planifiée, écran) tient le verrou ; rien n'a été tenté. Rappeler dans une minute.
 - 503 : `bloque` porte la raison qui arrêterait aussi les suivantes (MailPulse
   désactivé, clé absente, service injoignable). Rappeler ne sert à rien tant
   qu'elle tient.

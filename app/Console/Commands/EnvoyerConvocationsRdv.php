@@ -16,6 +16,11 @@ class EnvoyerConvocationsRdv extends Command
     public function handle(FileConvocationsRdv $file): int
     {
         $rapport = $file->envoyerUnPaquet(max(1, (int) $this->option('max')), max(1.0, (float) $this->option('budget')));
+        if ($rapport['en_cours']) {
+            $this->info('Un autre envoi est en cours : rien tenté. '.$rapport['restantes'].' en attente.');
+
+            return self::SUCCESS;
+        }
 
         $this->info(sprintf(
             'Envoyées : %d · échecs : %d · encore en attente : %d',

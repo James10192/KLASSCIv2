@@ -17,6 +17,9 @@ enum StatutConvocationRdv: string
     case Echec = 'echec';
     case SansEmail = 'sans_email';
 
+    /** Le creneau est passe avant l'envoi : ni a relancer, ni a traiter. */
+    case SansObjet = 'sans_objet';
+
     public function label(): string
     {
         return match ($this) {
@@ -24,6 +27,7 @@ enum StatutConvocationRdv: string
             self::Envoyee => 'Convocation envoyée',
             self::Echec => 'Envoi échoué',
             self::SansEmail => 'Sans e-mail',
+            self::SansObjet => 'Sans objet (créneau passé)',
         };
     }
 
@@ -34,7 +38,7 @@ enum StatutConvocationRdv: string
             self::Envoyee => 'succes',
             self::EnAttente => 'attente',
             self::Echec => 'echec',
-            self::SansEmail => 'neutre',
+            self::SansEmail, self::SansObjet => 'neutre',
         };
     }
 

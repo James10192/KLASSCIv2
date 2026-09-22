@@ -82,17 +82,42 @@ décision, pas un défaut, et elle n'est pas prise ici.
 ## 5. Ce que la correction change
 
 - L'état de chaque convocation vit **sur la réservation** : en attente, envoyée
-  (avec l'identifiant MailPulse et l'heure), échec (avec la raison), sans e-mail.
-- Plus d'envoi dans `terminating` en lot. Le placement pose « en attente » ; l'envoi
+  (avec l'identifiant MailPulse et l'heure), échec (avec la raison), sans e-mail,
+  sans objet (créneau passé avant l'envoi).
+- **Une seule porte d'envoi**, `FileConvocationsRdv`, derrière un verrou unique
+  (`Cache::lock`, pris en charge par le cache fichier de l'hébergement). Le portail,
+  l'écran, la tâche planifiée et l'API CLI passent tous par elle : deux envois
+  simultanés ne peuvent plus doubler un courriel. `EnvoyerConvocationRdvJob` est
+  supprimé — marqué `ShouldQueue`, il n'était jamais mis en file.
+- Plus d'envoi en lot dans `terminating`. Le placement pose « en attente » ; l'envoi
   se fait par paquets bornés dans le temps, depuis l'écran (barre de progression) et
   par une tâche planifiée. Une erreur n'arrête plus les suivantes.
+- « Déjà convoqué » se lit sur la réservation, plus sur `rdv_invite_at` : un second
+  « Placer et convoquer » ne remet plus à zéro les tentatives ni le motif d'échec.
 - MailPulse désactivé ou sans clé : l'envoi s'arrête et **le dit** à l'écran.
 - L'écran montre l'état de la chaîne, les réservations de chaque créneau et leur
   convocation.
 - `php artisan inscriptions:diagnostiquer-rdv` et `GET /api/cli/rendez-vous/diagnostic`
   rendent la même mesure pour une instance.
 
-## 6. Ce qui reste à mesurer sur esbtp-abidjan
+## 6. Hypothèses non vérifiées
+
+**Le planificateur tourne-t-il sur les instances ?** La relance automatique des
+convocations en attente (échec passager, envoi du portail qui a trouvé le verrou
+pris) repose sur `schedule:run`. Le seul crontab documenté pour un serveur d'école
+est un exemple générique (`docs/deployment/installation/README.md`). **Le crontab
+réel des instances LWS n'est attesté nulle part** et n'a pas pu être vérifié d'ici.
+S'il ne tourne pas, rien n'est perdu : les convocations restent « en attente », le
+bandeau les compte et le bouton « Envoyer » les fait partir — mais personne ne les
+relance sans ce geste. À vérifier dans le cPanel de chaque instance (Tâches cron).
+
+**MailPulse est-il coupé par la base ?** L'écran des réglages crée
+`mailpulse_enabled` à `0` s'il n'existe pas (`ESBTPSettingsController`), et la ligne
+en base prime sur `MAILPULSE_ENABLED` du `.env`. Une école qui a ouvert ses réglages
+sans cocher MailPulse a donc les envois coupés — constaté en local, pas mesuré sur
+les instances. Le diagnostic le dit en une ligne : `GET /api/cli/rendez-vous/diagnostic`.
+
+## 7. Ce qui reste à mesurer sur esbtp-abidjan
 
 Les réservations créées avant ce suivi n'ont pas d'état de convocation. Une
 convocation réussie posait `rdv_invite_at` sur la candidature, donc :

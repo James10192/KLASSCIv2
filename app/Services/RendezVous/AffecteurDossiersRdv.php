@@ -25,9 +25,9 @@ class AffecteurDossiersRdv
 
         $existante = $this->reservateur->reservationActive($porteur);
         if ($existante !== null) {
-            if (! $porteur->dejaInviteRdv()) {
-                $this->convoquer($porteur, $existante);
-            }
+            // N'arrive ici qu'une reservation d'avant le suivi, jamais convoquee
+            // (voir dejaTraitee()) : c'est la seule qu'il faut encore poser.
+            $this->convoquer($porteur, $existante);
 
             return true;
         }
@@ -85,7 +85,7 @@ class AffecteurDossiersRdv
             }
 
             $existante = $this->reservateur->reservationActive($porteur);
-            if ($existante !== null && $porteur->dejaInviteRdv()) {
+            if ($existante !== null && $this->dejaTraitee($porteur, $existante)) {
                 $rapport['deja']++;
 
                 return;
@@ -101,6 +101,18 @@ class AffecteurDossiersRdv
         });
 
         return $rapport;
+    }
+
+    /**
+     * La reservation dit elle-meme ou en est sa convocation. `rdv_invite_at`, pose
+     * seulement apres un envoi REUSSI, ne suffisait pas : une convocation en
+     * attente ou en echec etait reprise a chaque clic, remise a zero de ses
+     * tentatives et de son motif, et recomptee « placee ». Il ne sert plus que
+     * pour les reservations d'avant le suivi, dont l'etat est inconnu.
+     */
+    private function dejaTraitee(PorteurDeRendezVous $porteur, ESBTPRdvReservation $reservation): bool
+    {
+        return $reservation->convocation_statut !== null || $porteur->dejaInviteRdv();
     }
 
     private function convoquer(PorteurDeRendezVous $porteur, ESBTPRdvReservation $reservation): void
