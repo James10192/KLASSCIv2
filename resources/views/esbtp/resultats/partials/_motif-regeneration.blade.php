@@ -66,8 +66,17 @@
             onReason(reason);
         };
 
-        bootstrap.Modal.getOrCreateInstance(modalEl).show();
-        setTimeout(function() { input.focus(); }, 300);
+        var afficher = function() {
+            bootstrap.Modal.getOrCreateInstance(modalEl).show();
+            setTimeout(function() { input.focus(); }, 300);
+        };
+        // Bootstrap ne gère qu'une fenêtre à la fois : ouverte par-dessus
+        // « Détails », sa fermeture rendait le défilement à la page alors que
+        // « Détails » restait affichée. On ferme d'abord celle qui est ouverte.
+        var ouverte = document.querySelector('.modal.show:not(#srIncompleteReasonModal)');
+        if (!ouverte) { afficher(); return; }
+        ouverte.addEventListener('hidden.bs.modal', afficher, { once: true });
+        bootstrap.Modal.getOrCreateInstance(ouverte).hide();
     };
 })();
 </script>

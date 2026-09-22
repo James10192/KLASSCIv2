@@ -23,7 +23,10 @@ class BtsBulkBulletinGenerationContractTest extends TestCase
         $this->assertStringContainsString('response()->json($result->toArray(), $result->statusCode())', $controller);
         $this->assertStringContainsString('preflightClasseBulletins', $controller);
         $this->assertStringContainsString("'recalculer'             => 'sometimes|boolean'", $request);
-        $this->assertStringContainsString("'incomplete_reason'      => 'nullable|string|min:8|max:1000'", $request);
+        $this->assertStringContainsString("REGLE_MOTIF_INCOMPLET = 'nullable|string|min:8|max:1000'", $request);
+        $this->assertStringContainsString("'incomplete_reason'      => self::REGLE_MOTIF_INCOMPLET", $request);
+        // La régénération d'un seul élève passe par la même règle.
+        $this->assertStringContainsString("'incomplete_reason' => GenerateClasseBulletinsRequest::REGLE_MOTIF_INCOMPLET", $controller);
         $this->assertStringContainsString("name('esbtp.bulletins.generer-classe.preflight')", $routes);
         $this->assertStringContainsString("'created' => \$this->created", $resultDto);
         $this->assertStringContainsString("'blocking_errors' => \$this->blockingErrors", $resultDto);
