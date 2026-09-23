@@ -180,11 +180,21 @@ class AccueilRdv
      */
     public function reprogrammer(ESBTPRdvReservation $reservation, int $creneauId, ?int $agentId = null, ?int $creneauVu = null): ?string
     {
-        // Journal et convocation dans la transaction du deplacement : une famille
-        // deplacee sans trace perdrait sa non-venue, et une convocation non
-        // replanifiee resterait « prevenue » pour l'ancienne date.
+        return $this->deplacer($reservation, $creneauId, $agentId, $creneauVu,
+            fn (ESBTPRdvReservation $r) => $this->convocations->confirmer($r, 'deplace'));
+    }
+
+    /**
+     * Journal et convocation dans la transaction du deplacement : une famille
+     * deplacee sans trace perdrait sa non-venue, et une convocation non
+     * replanifiee resterait « prevenue » pour l'ancienne date.
+     *
+     * @param  callable(ESBTPRdvReservation): void  $convoquer
+     */
+    private function deplacer(ESBTPRdvReservation $reservation, int $creneauId, ?int $agentId, ?int $creneauVu, callable $convoquer): ?string
+    {
         $resultat = $this->reservateur->replacerAuGuichet($reservation, $creneauId, $creneauVu,
-            function (ESBTPRdvReservation $deplacee, int $quitteId) use ($agentId) {
+            function (ESBTPRdvReservation $deplacee, int $quitteId) use ($agentId, $convoquer) {
                 $quitte = ESBTPRdvCreneau::find($quitteId);
                 ESBTPRdvReprogrammation::create([
                     'reservation_id' => $deplacee->id,
@@ -193,7 +203,7 @@ class AccueilRdv
                     'non_venue' => $quitte !== null && $this->creneauTermine($quitte),
                     'par' => $agentId,
                 ]);
-                $this->convocations->confirmer($deplacee, 'deplace');
+                $convoquer($deplacee);
             });
 
         return $resultat['ok'] ? null : match ($resultat['code']) {
@@ -210,14 +220,15 @@ class AccueilRdv
      * Toutes les non-venues d'un jour, chacune sur le premier creneau libre qui
      * reste. S'arrete quand il n'y a plus de place. Seulement celles de l'annee
      * des creneaux : un jour d'une campagne passee ne reconvoque personne. Une
-     * famille deplacee entre-temps par un autre poste est sautee.
+     * famille deplacee entre-temps par un autre poste est sautee. Les
+     * convocations sont posees, puis un seul paquet borne part apres la reponse.
      *
      * @return array{faites: int, sans_place: int}
      */
     public function reprogrammerNonVenues(Carbon $jour, int $agentId): array
     {
         $rapport = ['faites' => 0, 'sans_place' => 0];
-        $nonVenues = $this->nonVenuesDuJour($jour);
+        $nonVenues = $this->journee($jour)['aReprogrammer'];
 
         foreach ($nonVenues as $i => $reservation) {
             $creneauId = array_key_first(array_filter($this->catalogue->placesLibres(), fn ($libre) => $libre > 0));
@@ -225,22 +236,18 @@ class AccueilRdv
                 $rapport['sans_place'] = $nonVenues->count() - $i;
                 break;
             }
-            if ($this->reprogrammer($reservation, (int) $creneauId, $agentId, (int) $reservation->creneau_id) === null) {
+            $refus = $this->deplacer($reservation, (int) $creneauId, $agentId, (int) $reservation->creneau_id,
+                fn (ESBTPRdvReservation $r) => $this->convocations->poser($r, 'deplace'));
+            if ($refus === null) {
                 $rapport['faites']++;
             }
         }
 
-        return $rapport;
-    }
+        if ($rapport['faites'] > 0) {
+            $this->convocations->envoyerUnPaquetApres();
+        }
 
-    /**
-     * Les non-venues d'un jour que la reprogrammation en masse peut deplacer.
-     *
-     * @return Collection<int, ESBTPRdvReservation>
-     */
-    public function nonVenuesDuJour(Carbon $jour): Collection
-    {
-        return $this->journee($jour)['aReprogrammer'];
+        return $rapport;
     }
 
     /**

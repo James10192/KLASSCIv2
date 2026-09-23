@@ -264,6 +264,22 @@ class AccueilDuJourTest extends TestCase
         $this->assertSame(1, $seule->reservations()->count());
     }
 
+    public function test_la_reprogrammation_en_masse_pose_les_convocations_et_n_envoie_qu_un_paquet(): void
+    {
+        $this->configurerCreneaux();
+        $fini = $this->creneau('08:00', '08:30');
+        $this->reservation($fini, ['nom' => 'UN']);
+        $this->reservation($fini, ['nom' => 'DEUX']);
+        $this->creneau('08:00', '08:30', 1);
+        $file = $this->spy(\App\Services\RendezVous\FileConvocationsRdv::class);
+
+        $this->assertSame(['faites' => 2, 'sans_place' => 0], $this->accueil()->reprogrammerNonVenues(Carbon::today(), $this->agent->id));
+
+        $file->shouldHaveReceived('poser')->twice();
+        $file->shouldHaveReceived('envoyerUnPaquetApres')->once();
+        $file->shouldNotHaveReceived('confirmer');
+    }
+
     public function test_un_jour_passe_oublie_est_signale(): void
     {
         $this->configurerCreneaux();

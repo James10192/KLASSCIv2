@@ -81,7 +81,7 @@ class ESBTPRendezVousAccueilController extends Controller
         return response()->json(['message' => match (true) {
             $r['faites'] === 0 && $r['sans_place'] === 0 => 'Aucune famille non venue à reprogrammer ce jour.',
             $r['sans_place'] > 0 => sprintf('%d famille(s) reprogrammée(s). %d restent faute de créneau libre : générez ou ouvrez des créneaux.', $r['faites'], $r['sans_place']),
-            default => sprintf('%d famille(s) reprogrammée(s) sur les prochains créneaux libres. Leurs convocations partent.', $r['faites']),
+            default => sprintf('%d famille(s) reprogrammée(s) sur les prochains créneaux libres. Leurs convocations partent par paquets ; celles sans e-mail rejoignent la liste des familles à prévenir.', $r['faites']),
         }] + $r, $r['sans_place'] > 0 && $r['faites'] === 0 ? 422 : 200);
     }
 
