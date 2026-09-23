@@ -12,6 +12,10 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ## Septembre 2026
 
+### Ajouts
+
+- **KLASSCI Care s'active à distance, sans passer par le serveur** — l'identifiant qui relie une instance au support (`MASTER_SUPPORT_TOKEN`) se pose désormais par le CLI (`klassci env <instance> MASTER_SUPPORT_TOKEN --value=…`), comme le code d'instance ou le secret du portail de réinscription. Le jeton est contrôlé à la forme exacte qu'émet adminKlassci, 56 caractères : un jeton tronqué au copier-coller est refusé tout de suite au lieu d'échouer plus tard, en silence, à la première demande d'aide. Il n'est jamais relu, seule son empreinte l'est.
+
 ### Correctifs
 
 - **Une absence ne compte plus comme un 0 dans la moyenne d'une matière** — la génération officielle du bulletin écartait déjà une note d'absence ; six autres calculs la comptaient pour 0 : le calcul « Courant » (écart Officiel / Courant, bilan de la fiche élève), la fiche Résultats (`/esbtp/resultats/etudiant/{id}`), le tableau de `/esbtp/resultats`, le calcul de repli de la moyenne annuelle, la reprise des notes dans « Modifier les moyennes » et le panneau d'impact affiché pendant la saisie. Mesuré : 14 et une absence dans une matière de coefficient 2, 8 dans une matière de coefficient 1 donnaient 7,33 sur la fiche pour 12,00 au bulletin. Ils suivent désormais la même règle. **Reste à aligner** : la décision de réinscription, qui fait encore une moyenne brute des notes. Un bulletin déjà généré ne bouge pas. En revanche, trois valeurs lues sur le calcul « Courant » peuvent remonter pour les élèves concernés : la moyenne d'un semestre dont le bulletin n'a pas encore de moyenne (y compris quand elle est reprise sur le bulletin du semestre 2, avec la moyenne annuelle, le rang et la décision du conseil), et ce que l'outil de remplissage des moyennes de bulletin vides écrit, pour les semestres comme pour l'année.
