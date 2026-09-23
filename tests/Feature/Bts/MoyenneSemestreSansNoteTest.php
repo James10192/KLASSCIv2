@@ -63,8 +63,17 @@ class MoyenneSemestreSansNoteTest extends TestCase
         $this->noter($etudiant, $this->evaluationDuSemestre2($this->matiere), 0);
 
         $reponse = $this->resultats($etudiant->id, 'semestre2');
+        $courant = $reponse->viewData('bulletinConsistency');
 
-        $this->assertNotNull($reponse->viewData('moyenneSemestre2'), 'Une note de 0 est une valeur, pas une absence.');
+        // Valeurs exactes : un simple « non nul » passait deja avant le correctif
+        // (0,13 d'assiduite), et ne verrait pas un `?:` qui avalerait le zero.
+        $this->assertSame(0.0, (float) $courant['current_recomputed_raw_total'], 'La moyenne brute d une note de 0 est 0, pas une absence.');
+        $this->assertEqualsWithDelta(
+            (float) $courant['current_recomputed_raw_total'] + (float) $courant['current_recomputed_note_assiduite'],
+            $reponse->viewData('moyenneSemestre2'),
+            0.001,
+            'L onglet affiche la moyenne brute plus l assiduite, comme le bandeau « Courant ».'
+        );
     }
 
     private ESBTPMatiere $matiere;

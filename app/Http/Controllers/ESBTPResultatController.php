@@ -1040,10 +1040,10 @@ class ESBTPResultatController extends Controller
             ? $this->currentResultSnapshotService->getAnnualSnapshot($etudiant->id, $classe->id, $annee_universitaire_id)
             : null;
 
-        // Moyennes semestrielles incluant l'assiduité. Pour la période AFFICHÉE, le snapshot fait
-        // foi : son `null` veut dire « aucune note », et le repli rendait alors la moyenne courante
-        // (0 faute de note, plus l'assiduité) — un semestre vide affichait 0,13. L'autre semestre
-        // garde le repli, qui lit le bulletin officiel.
+        // Moyennes semestrielles incluant l'assiduité. Période AFFICHÉE : le snapshot fait foi, son
+        // `null` = « aucune note » (le repli rendait la moyenne courante : un semestre vide affichait
+        // 0,13). L'autre semestre garde le repli : bulletin officiel s'il existe, lu sur $classe_id
+        // (la classe affichée), sinon rien. Choix conservateur, à trancher si on veut l'aligner.
         $moyenneDuSemestre = fn (string $semestre) => $annualSnapshot && $semestre === $periode
             ? ($annualSnapshot['semester_snapshots'][$semestre]['effective_total'] ?? null)
             : ($annualSnapshot['semester_snapshots'][$semestre]['effective_total'] ?? $this->bulletinService->getAlignedBulletinAverageForPeriode($id, $classe_id ?? 0, $annee_universitaire_id ?? 0, $semestre, $periode, $moyenneAvecAssiduite, $noteAssiduite));
