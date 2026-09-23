@@ -335,6 +335,7 @@ body.m-sheet-open { overflow: hidden; }
 
     .m-actionbar { position: fixed; left: 0; right: 0; bottom: calc(var(--m-nav-h) + var(--m-safe-b)); padding: 10px 16px 12px; background: linear-gradient(to top, rgba(244,246,251,1) 70%, rgba(244,246,251,0)); display: grid; gap: 8px; z-index: 1079; }
     .m-actionbar.row { grid-template-columns: 1fr 1fr; }
+.m-actionbar.row .m-btn { font-size: 14px; padding: 0 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     body.has-m-shell:has(.m-actionbar) { padding-bottom: calc(var(--m-nav-h) + 78px + var(--m-safe-b)); }
 
     .m-seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; background: #e9edf5; border-radius: 12px; padding: 3px; gap: 2px; }
