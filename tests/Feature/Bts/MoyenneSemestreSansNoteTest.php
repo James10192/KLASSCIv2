@@ -25,10 +25,11 @@ use Tests\TestCase;
  * seule la periode affichee etait touchee, et la moyenne annuelle avec elle.
  *
  * Le troisieme cas protege l'erreur inverse : une vraie note de 0 est une valeur.
- * Les trois derniers verrouillent la suppression du repli : un semestre qui n'a
- * plus que son bulletin officiel ne change pas de reponse selon l'onglet ouvert,
- * un eleve sans classe ni note n'herite pas d'un 0 invente, et, sans classe, une
- * note d'une autre annee ne fait plus tomber la page.
+ * Suppression du repli : un semestre qui n'a plus que son bulletin officiel ne
+ * change pas de reponse selon l'onglet ouvert, un eleve sans classe ni note
+ * n'herite pas d'un 0 invente, et, sans classe, une note d'une autre annee ne
+ * fait plus tomber la page. Enfin, des absences seules ecartees par le reglage ne
+ * font pas une moyenne de 0.
  */
 class MoyenneSemestreSansNoteTest extends TestCase
 {
@@ -49,7 +50,7 @@ class MoyenneSemestreSansNoteTest extends TestCase
         $reponse = $this->resultats($etudiant->id, 'semestre2');
 
         $this->assertNotNull($reponse->viewData('moyenneSemestre1'), 'Temoin : le semestre 1 porte une note.');
-        $this->assertNull($reponse->viewData('moyenneSemestre2'), 'Sans note, le semestre 2 n a pas de moyenne (avant : 0,00).');
+        $this->assertNull($reponse->viewData('moyenneSemestre2'), 'Sans note, le semestre 2 n a pas de moyenne (avant : 0,13, assiduite comprise).');
         $this->assertNull($reponse->viewData('moyenneAnnuelle'), 'Sans semestre 2, pas de moyenne annuelle (avant : calculee avec un faux 0).');
     }
 
@@ -162,6 +163,7 @@ class MoyenneSemestreSansNoteTest extends TestCase
             'Temoin : le calcul « Courant » ne rend rien, il ne prend donc pas le relais.'
         );
         $this->assertNull($reponse->viewData('moyenneGenerale'), 'Reglage desactive : aucune moyenne (avant : 0,00).');
+        $this->assertNull($reponse->viewData('moyenneAvecAssiduite'), 'Le pied du tableau lit celle-ci en premier : pas de bonus sur une moyenne absente.');
     }
 
     private ESBTPMatiere $matiere;
