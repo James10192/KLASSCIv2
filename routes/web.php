@@ -3016,6 +3016,9 @@ Route::middleware(['auth', 'permission:admin.access|identity.direct_studies|iden
         Route::get('/api/classes/{classe}/students', [\App\Http\Controllers\ESBTPClasseController::class, 'students'])
             ->middleware('throttle:60,1')
             ->name('classes.students');
+        Route::get('/api/classes/{classe}/matieres', \App\Http\Controllers\Notes\MatieresDeLaClasseController::class)
+            ->middleware('throttle:60,1')
+            ->name('classes.matieres');
     });
 
     // Routes pour les annonces - REMOVED (dÃ©jÃ  dÃ©finies ligne 617 dans le groupe esbtp)

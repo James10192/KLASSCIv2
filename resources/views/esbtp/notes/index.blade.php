@@ -223,6 +223,7 @@
                                 <option value="{{ $matiere->id }}">{{ $matiere->name ?? $matiere->nom ?? 'Matière sans nom' }}</option>
                             @endforeach
                         </select>
+                        <small id="nmMatiereAide" class="text-muted" style="display:none;"></small>
                     </div>
                     <div class="nm-modal-control">
                         <label for="periodeFilter">Période</label>
@@ -815,7 +816,9 @@ $(document).ready(function() {
                 if (deepPeriode === 'semestre1' || deepPeriode === 'semestre2') {
                     $('#periodeFilter').val(deepPeriode).trigger('change');
                 }
-                $('#matiereSelect').val(deepMatiereId).trigger('change');
+                nmMatieresPret.always(function() {
+                    $('#matiereSelect').val(deepMatiereId).trigger('change');
+                });
             }, 0);
         }
     }
@@ -914,16 +917,19 @@ window.nmOpenCoverageSaisie = function(matiere) {
     const periode = destination.searchParams.get('periode');
     if (!matiereId || (classeId && String(classeId) !== String(currentClassId))) return;
 
-    const $matiere = $('#matiereSelect');
-    if (!$matiere.find(`option[value="${matiereId}"]`).length) return;
+    // La liste des matières de la classe peut être encore en chargement.
+    nmMatieresPret.always(function() {
+        const $matiere = $('#matiereSelect');
+        if (!$matiere.find(`option[value="${matiereId}"]`).length) return;
 
-    const periodeCible = periode === 'semestre1' || periode === 'semestre2' ? periode : 'all';
-    $('#periodeFilter').val(periodeCible).trigger('change');
-    $matiere.val(matiereId).trigger('change');
+        const periodeCible = periode === 'semestre1' || periode === 'semestre2' ? periode : 'all';
+        $('#periodeFilter').val(periodeCible).trigger('change');
+        $matiere.val(matiereId).trigger('change');
 
-    // La grille remplace immédiatement le contenu et conserve le contexte de
-    // classe ; ce focus laisse visible que la navigation s'est bien faite.
-    $matiere.trigger('focus');
+        // La grille remplace immédiatement le contenu et conserve le contexte de
+        // classe ; ce focus laisse visible que la navigation s'est bien faite.
+        $matiere.trigger('focus');
+    });
 };
 
 // Fonction pour sélectionner une classe
@@ -955,9 +961,10 @@ function selectClass(classId, className) {
         },
     }));
 
-    // Réinitialiser la sélection de matière
+    // Réinitialiser la sélection de matière, puis réduire la liste à la classe
     $('#matiereSelect').val('');
     currentMatiereId = null;
+    nmChargerMatieres(classId);
 
     // Vider le tableau
     $('#studentsRows').html(`
@@ -2656,6 +2663,7 @@ $(document).ajaxError(function(_event, _jqxhr, settings) {
 });
 
 @include('esbtp.notes.partials._brouillon-local')
+@include('esbtp.notes.partials._matieres-classe')
 
 // ── 4. Network indicator dispatcher (compat events custom externes) ────
 window.addEventListener('nm:save-pending', () => nmSetNetworkState('syncing'));
