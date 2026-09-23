@@ -9,6 +9,7 @@ use App\Domain\Support\Models\SupportOutbox;
 use App\Domain\Support\Services\ContexteDePage;
 use App\Domain\Support\Services\DisponibiliteSupport;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Support\RepondreDemandeRequest;
 use App\Http\Requests\Support\SoumettreDemandeRequest;
 use App\Services\Care\ClientMasterSupport;
 use Illuminate\Http\JsonResponse;
@@ -118,7 +119,65 @@ class DemandeSupportController extends Controller
 
         abort_if($demande === null, 404);
 
-        return view('support.demandes.show', ['demande' => $demande, 'reference' => $reference, 'indisponible' => false]);
+        return view('support.demandes.show', [
+            'demande' => $demande,
+            'reference' => $reference,
+            'indisponible' => false,
+            'peutRepondre' => $this->peutRepondre($demande),
+            'limites' => $this->master->limites(),
+        ]);
+    }
+
+    /**
+     * La reponse de l'ecole. Pas de boite d'envoi ici : si le Master ne
+     * repond pas, le texte reste dans le formulaire et l'utilisateur le
+     * renvoie, avec la meme cle, sans risque de doublon.
+     */
+    public function repondre(RepondreDemandeRequest $request, string $reference): JsonResponse
+    {
+        abort_unless($this->disponibilite->suivi(), 404);
+        abort_unless(preg_match('/^KC-\d{4}-\d{6,}$/', $reference) === 1, 404);
+
+        try {
+            $demande = $this->master->repondre(
+                $reference,
+                $request->user()->getKey(),
+                $this->portee($request, defaut: 'school'),
+                $request->validated('corps'),
+                $request->user()->name,
+                $request->validated('cle'),
+            );
+        } catch (MasterSupportIndisponible) {
+            return response()->json(['message' => "Le support est momentanément injoignable. Votre réponse est conservée ici : renvoyez-la dans un instant."], 503);
+        } catch (MasterSupportRefus $e) {
+            // 404 et non 403 au Master : une reference hors de portee n'existe pas.
+            abort_if($e->statut === 404, 404);
+
+            return match ($e->codeErreur) {
+                'idempotency_key_reused' => response()->json(['erreur' => 'cle_perimee'], 409),
+                'ticket_closed' => response()->json(['message' => 'Cette demande est fermée : ouvrez-en une nouvelle si le problème revient.'], 409),
+                default => $this->refusInattendu($e),
+            };
+        }
+
+        return response()->json([
+            'fil' => view('support.demandes._fil', ['messages' => $demande['messages'] ?? []])->render(),
+            'statut' => view('support.demandes._statut', ['statut' => $demande['statut'] ?? []])->render(),
+            'peut_repondre' => $this->peutRepondre($demande),
+        ]);
+    }
+
+    private function peutRepondre(array $demande): bool
+    {
+        return ($demande['statut']['code'] ?? null) !== 'FERME'
+            && in_array('support:update', $this->master->portees(), true);
+    }
+
+    private function refusInattendu(MasterSupportRefus $e): JsonResponse
+    {
+        Log::error('KLASSCI Care : réponse refusée par le Master', ['statut' => $e->statut, 'code' => $e->codeErreur, 'erreurs' => $e->erreurs]);
+
+        return response()->json(['message' => "Votre réponse n'a pas pu être transmise. Écrivez-nous à ".config('app.support_email').'.'], 422);
     }
 
     /**

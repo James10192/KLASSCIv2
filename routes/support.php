@@ -15,4 +15,6 @@ Route::middleware(['auth'])->prefix('support')->name('support.')->group(function
         ->middleware('throttle:60,1')->name('demandes.index');
     Route::get('demandes/{reference}', [DemandeSupportController::class, 'show'])
         ->middleware('throttle:60,1')->name('demandes.show');
+    Route::post('demandes/{reference}/messages', [DemandeSupportController::class, 'repondre'])
+        ->middleware('throttle:20,1')->name('demandes.repondre');
 });

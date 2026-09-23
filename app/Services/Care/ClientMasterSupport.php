@@ -31,6 +31,8 @@ use Illuminate\Support\Facades\Log;
  * d'envoi. Un 401 ou un 403 est une indisponibilite, pas un refus : c'est
  * l'identifiant de l'instance qui est en cause (revoque, mal pose), pas la
  * demande, et elle doit attendre qu'on le corrige plutot qu'etre perdue.
+ * Seule exception : un 403 `insufficient_scope`, ou l'identifiant est valide
+ * mais ne couvre pas cette action — un refus, sans coupe-circuit.
  */
 class ClientMasterSupport
 {
@@ -59,13 +61,29 @@ class ClientMasterSupport
      * Les limites de saisie, telles que le Master les valide. Une seule source :
      * si le Master releve le minimum, le formulaire le suit sans deploiement.
      *
-     * @return array{description_min: int, description_max: int}
+     * @return array{description_min: int, description_max: int, reponse_min: int}
      */
     public function limites(): array
     {
         $l = (array) ($this->bootstrap()['limites'] ?? []) + (array) config('support.limites_par_defaut');
 
-        return ['description_min' => (int) $l['description_min'], 'description_max' => (int) $l['description_max']];
+        return [
+            'description_min' => (int) $l['description_min'],
+            'description_max' => (int) $l['description_max'],
+            'reponse_min' => (int) $l['reponse_min'],
+        ];
+    }
+
+    /**
+     * Ce que l'identifiant de l'instance a le droit de faire. Un identifiant
+     * emis avant la tranche 2 n'a pas `support:update` : l'ecran le sait et ne
+     * propose pas de repondre, plutot que d'essuyer un refus a l'envoi.
+     *
+     * @return list<string>
+     */
+    public function portees(): array
+    {
+        return array_values((array) ($this->bootstrap()['portees'] ?? []));
     }
 
     public function coupeCircuitOuvert(): bool
@@ -103,6 +121,7 @@ class ClientMasterSupport
             $bootstrap = [
                 'fonctionnalites' => (array) ($reponse['fonctionnalites'] ?? []),
                 'limites' => (array) ($reponse['limites'] ?? []),
+                'portees' => (array) ($reponse['portees'] ?? []),
             ];
             Cache::forever(self::CLE_BOOTSTRAP_CONNU, $bootstrap);
         } catch (MasterSupportIndisponible|MasterSupportRefus) {
@@ -143,6 +162,21 @@ class ClientMasterSupport
         }
     }
 
+    /**
+     * Une reponse de l'ecole dans la conversation. La cle d'idempotence vient
+     * du navigateur : un double clic ou un renvoi apres coupure ne publie
+     * pas deux fois le meme message.
+     */
+    public function repondre(string $reference, int $rapporteurId, string $portee, string $corps, ?string $nom, string $cle): array
+    {
+        return $this->requete(
+            'POST',
+            'tickets/'.rawurlencode($reference).'/messages?'.http_build_query(['reporter' => $rapporteurId, 'scope' => $portee]),
+            ['body' => $corps, 'author_name' => $nom],
+            ['Idempotency-Key' => $cle],
+        );
+    }
+
     private function requete(string $methode, string $chemin, array $donnees = [], array $entetes = [], ?string $requestId = null): array
     {
         if (! $this->estConfigure()) {
@@ -177,6 +211,14 @@ class ClientMasterSupport
         if ($reponse->serverError() || $reponse->status() === 429) {
             $this->couper('http_'.$reponse->status());
             throw new MasterSupportIndisponible("Le Master a répondu {$reponse->status()}.");
+        }
+
+        // Une portee manquante n'est pas un identifiant revoque : l'instance
+        // reste joignable pour tout le reste, donc pas de coupe-circuit.
+        if ($reponse->status() === 403 && $reponse->json('error') === 'insufficient_scope') {
+            Log::warning('KLASSCI Care : portée absente de l\'identifiant de l\'instance', ['message' => $reponse->json('message')]);
+
+            throw new MasterSupportRefus(403, 'insufficient_scope', (string) ($reponse->json('message') ?? 'Portée insuffisante.'));
         }
 
         if (in_array($reponse->status(), [401, 403], true)) {

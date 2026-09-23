@@ -26,6 +26,15 @@
     .sd-statut--attention { background: rgba(245,158,11,.12); color: #b45309; }
     .sd-statut--succes { background: rgba(16,185,129,.12); color: #047857; }
     .sd-statut--neutre { background: #f1f5f9; color: #64748b; }
+    .sd-reponse { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #f1f5f9; }
+    .sd-reponse-label { display: block; font-size: .8rem; font-weight: 600; color: #475569; margin-bottom: .4rem; }
+    .sd-reponse textarea { width: 100%; border: 1px solid #cbd5e1; border-radius: 10px; padding: .7rem .85rem; font-size: .9rem; color: #1e293b; resize: vertical; }
+    .sd-reponse textarea:focus { outline: none; border-color: #0453cb; box-shadow: 0 0 0 3px rgba(4,83,203,.12); }
+    .sd-erreur { margin-top: .5rem; font-size: .82rem; color: #b91c1c; }
+    .sd-reponse-actions { display: flex; justify-content: flex-end; margin-top: .6rem; }
+    .sd-envoyer { background: #0453cb; color: #fff; border: none; border-radius: 10px; padding: .55rem 1.1rem; font-size: .84rem; font-weight: 600; cursor: pointer; }
+    .sd-envoyer:hover { background: #033a8e; }
+    .sd-envoyer:disabled { opacity: .6; cursor: wait; }
 </style>
 @endpush
 
@@ -42,7 +51,7 @@
             <span class="sd-ref">{{ $demande['reference'] }}</span>
             <h1>{{ $demande['titre'] }}</h1>
         </div>
-        @include('support.demandes._statut', ['statut' => $demande['statut']])
+        <div id="sd-statut" aria-live="polite">@include('support.demandes._statut', ['statut' => $demande['statut']])</div>
     </div>
 
     <div class="sd-card">
@@ -57,18 +66,82 @@
 
     <div class="sd-card">
         <h2>Échanges</h2>
-        @if(empty($demande['messages']))
-            <p class="sd-vide">Le support n'a pas encore répondu. Vous serez prévenu ici dès que ce sera le cas.</p>
-        @else
-            <div class="sd-fil">
-                @foreach($demande['messages'] as $m)
-                    <div class="sd-msg {{ $m['auteur'] === 'SUPPORT' ? 'sd-msg--support' : 'sd-msg--ecole' }}">
-                        <div class="sd-msg-auteur"><strong>{{ $m['nom'] }}</strong> · {{ \App\Domain\Support\Services\DateDuMaster::afficher($m['le'] ?? null, 'd M Y à H:i') }}</div>
-                        <p>{{ $m['corps'] }}</p>
-                    </div>
-                @endforeach
-            </div>
+        <div id="sd-fil">@include('support.demandes._fil', ['messages' => $demande['messages'] ?? []])</div>
+
+        @if($peutRepondre)
+            <form id="sd-reponse" class="sd-reponse" action="{{ route('support.demandes.repondre', $demande['reference']) }}" method="POST" novalidate>
+                @csrf
+                <label for="sd-reponse-corps" class="sd-reponse-label">Votre réponse</label>
+                <textarea id="sd-reponse-corps" name="corps" rows="3" maxlength="{{ $limites['description_max'] }}" required
+                    placeholder="Répondez au support, ou précisez ce qui se passe."></textarea>
+                <div class="sd-erreur" role="alert" hidden></div>
+                <div class="sd-reponse-actions">
+                    <button type="submit" class="sd-envoyer">
+                        <span data-sd-libelle><i class="fas fa-paper-plane me-1"></i> Envoyer</span>
+                        <span data-sd-envoi hidden>Envoi…</span>
+                    </button>
+                </div>
+            </form>
         @endif
     </div>
 @endif
 @endsection
+
+@push('scripts')
+<script>
+(function () {
+    var form = document.getElementById('sd-reponse');
+    if (!form) { return; }
+    var champ = form.querySelector('textarea');
+    var erreur = form.querySelector('.sd-erreur');
+    var bouton = form.querySelector('button[type="submit"]');
+    function nouvelleCle() {
+        return window.crypto && crypto.randomUUID ? crypto.randomUUID()
+            : 'xxxxxxxx-xxxx-4xxx-8xxx-xxxxxxxxxxxx'.replace(/x/g, function () { return (Math.random() * 16 | 0).toString(16); });
+    }
+    /* Une cle par brouillon : renvoyer apres une coupure ne publie pas deux fois. */
+    var cle = nouvelleCle();
+    champ.addEventListener('input', function () { cle = nouvelleCle(); erreur.hidden = true; });
+
+    function montrer(message) { erreur.textContent = message; erreur.hidden = false; }
+    function occupe(oui) {
+        bouton.disabled = oui;
+        bouton.querySelector('[data-sd-libelle]').hidden = oui;
+        bouton.querySelector('[data-sd-envoi]').hidden = !oui;
+    }
+    function envoyer(dejaRetente) {
+        return fetch(form.action, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-TOKEN': form.querySelector('input[name="_token"]').value },
+            body: JSON.stringify({ corps: champ.value, cle: cle })
+        }).then(function (r) {
+            return r.json().catch(function () { return {}; }).then(function (d) {
+                if (r.status === 409 && d.erreur === 'cle_perimee' && !dejaRetente) { cle = nouvelleCle(); return envoyer(true); }
+                if (!r.ok) {
+                    var premier = d.errors ? Object.values(d.errors)[0] : null;
+                    throw new Error((premier && premier[0]) || d.message || "Votre réponse n'a pas pu être envoyée.");
+                }
+                return d;
+            });
+        });
+    }
+    form.addEventListener('submit', function (ev) {
+        ev.preventDefault();
+        if (champ.value.trim() === '') { montrer('Écrivez votre réponse.'); champ.focus(); return; }
+        occupe(true);
+        envoyer(false).then(function (d) {
+            document.getElementById('sd-fil').innerHTML = d.fil;
+            document.getElementById('sd-statut').innerHTML = d.statut;
+            champ.value = '';
+            cle = nouvelleCle();
+            if (!d.peut_repondre) { form.remove(); }
+        }).catch(function (e) {
+            montrer(e.message);
+            champ.focus();
+        }).finally(function () { if (document.body.contains(form)) { occupe(false); } });
+    });
+})();
+</script>
+@endpush

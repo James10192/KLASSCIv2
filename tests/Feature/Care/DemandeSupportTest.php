@@ -39,10 +39,10 @@ class DemandeSupportTest extends TestCase
     }
 
     /** Le Master, simule : fonctionnalites ouvertes, puis la reponse voulue sur les demandes. */
-    private function master($tickets, array $fonctionnalites = ['support_widget' => true, 'support_customer_portal' => true]): void
+    private function master($tickets, array $fonctionnalites = ['support_widget' => true, 'support_customer_portal' => true], array $portees = ['support:create', 'support:read', 'support:update']): void
     {
         Http::fake([
-            'master.test/api/v1/support/bootstrap' => Http::response(['fonctionnalites' => $fonctionnalites]),
+            'master.test/api/v1/support/bootstrap' => Http::response(['fonctionnalites' => $fonctionnalites, 'portees' => $portees]),
             'master.test/api/v1/support/tickets*' => $tickets,
         ]);
     }
@@ -290,5 +290,102 @@ class DemandeSupportTest extends TestCase
         $repris = $this->actingAs($this->utilisateur())
             ->get(route('support.demandes.index'), ['X-Request-ID' => '01J8ZQ4Y5K3M2N1P0QRSTVWXYZ']);
         $this->assertSame('01J8ZQ4Y5K3M2N1P0QRSTVWXYZ', $repris->headers->get('X-Request-ID'));
+    }
+
+    private function detail(string $statut = 'ACTION_REQUISE', array $messages = []): array
+    {
+        return [
+            'reference' => 'KC-2026-000042', 'titre' => 'Le bouton Valider ne répond plus',
+            'description' => 'Le bouton Valider les notes ne répond plus.',
+            'categorie' => ['code' => 'PROBLEME', 'libelle' => 'Quelque chose ne fonctionne pas'],
+            'statut' => ['code' => $statut, 'libelle' => $statut],
+            'rapporteur' => ['id' => 1, 'nom' => 'Awa Koné'],
+            'cree_le' => now()->toIso8601String(), 'mis_a_jour_le' => now()->toIso8601String(),
+            'derniere_reponse' => null,
+            'messages' => $messages,
+        ];
+    }
+
+    /** @test */
+    public function la_page_propose_de_repondre_seulement_si_l_identifiant_le_permet_et_la_demande_est_ouverte(): void
+    {
+        $user = $this->utilisateur();
+
+        $this->master(Http::response($this->detail()));
+        $this->actingAs($user)->get(route('support.demandes.show', 'KC-2026-000042'))->assertSee('id="sd-reponse"', false);
+
+        // Http::fake empile ses reponses : on repart d'un client neuf pour chaque cas.
+        Cache::flush();
+        Http::swap(new \Illuminate\Http\Client\Factory());
+        $this->master(Http::response($this->detail()), portees: ['support:create', 'support:read']);
+        $this->actingAs($user)->get(route('support.demandes.show', 'KC-2026-000042'))->assertDontSee('id="sd-reponse"', false);
+
+        Cache::flush();
+        Http::swap(new \Illuminate\Http\Client\Factory());
+        $this->master(Http::response($this->detail('FERME')));
+        $this->actingAs($user)->get(route('support.demandes.show', 'KC-2026-000042'))->assertDontSee('id="sd-reponse"', false);
+    }
+
+    /** @test */
+    public function la_reponse_part_au_master_au_nom_de_l_utilisateur_connecte_avec_la_cle_du_brouillon(): void
+    {
+        $user = $this->utilisateur();
+        $this->master(Http::response($this->detail('EN_ANALYSE', [
+            ['auteur' => 'ECOLE', 'nom' => 'Awa Koné', 'corps' => 'La classe 2A BTS.', 'le' => now()->toIso8601String()],
+        ]), 201));
+
+        $this->actingAs($user)->postJson(route('support.demandes.repondre', 'KC-2026-000042'), ['corps' => 'La classe 2A BTS.', 'cle' => self::CLE])
+            ->assertOk()
+            ->assertJsonPath('peut_repondre', true)
+            ->assertSee('La classe 2A BTS.', false);
+
+        Http::assertSent(function (Request $req) use ($user) {
+            return $req->method() === 'POST'
+                && str_contains($req->url(), '/tickets/KC-2026-000042/messages')
+                && str_contains($req->url(), 'reporter='.$user->getKey())
+                && $req->header('Idempotency-Key') === [self::CLE]
+                && $req['author_name'] === 'Awa Koné'
+                && $req['body'] === 'La classe 2A BTS.';
+        });
+    }
+
+    /** @test */
+    public function une_demande_fermee_refuse_la_reponse_avec_un_message_lisible(): void
+    {
+        $this->master(Http::response(['error' => 'ticket_closed', 'message' => 'Fermée.'], 409));
+
+        $this->actingAs($this->utilisateur())->postJson(route('support.demandes.repondre', 'KC-2026-000042'), ['corps' => 'Toujours là ?', 'cle' => self::CLE])
+            ->assertStatus(409)
+            ->assertJsonPath('message', 'Cette demande est fermée : ouvrez-en une nouvelle si le problème revient.');
+    }
+
+    /** @test */
+    public function master_injoignable_la_reponse_reste_dans_le_formulaire(): void
+    {
+        $this->master(Http::response([], 503));
+
+        $this->actingAs($this->utilisateur())->postJson(route('support.demandes.repondre', 'KC-2026-000042'), ['corps' => 'Toujours là ?', 'cle' => self::CLE])
+            ->assertStatus(503);
+    }
+
+    /** @test */
+    public function une_portee_absente_est_un_refus_et_n_ouvre_pas_le_coupe_circuit(): void
+    {
+        $this->master(Http::response(['error' => 'insufficient_scope', 'message' => 'Portée requise : support:update.'], 403));
+
+        $this->actingAs($this->utilisateur())->postJson(route('support.demandes.repondre', 'KC-2026-000042'), ['corps' => 'Toujours là ?', 'cle' => self::CLE])
+            ->assertStatus(422);
+
+        $this->assertFalse(app(\App\Services\Care\ClientMasterSupport::class)->coupeCircuitOuvert());
+    }
+
+    /** @test */
+    public function une_reponse_vide_ou_sans_cle_ne_part_pas(): void
+    {
+        $this->master(Http::response([], 200));
+
+        $this->actingAs($this->utilisateur())->postJson(route('support.demandes.repondre', 'KC-2026-000042'), ['corps' => '', 'cle' => 'x'])
+            ->assertStatus(422)->assertJsonValidationErrors(['corps', 'cle']);
+        Http::assertNotSent(fn (Request $req) => str_contains($req->url(), '/messages'));
     }
 }

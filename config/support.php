@@ -43,6 +43,7 @@ return [
     'limites_par_defaut' => [
         'description_min' => 10,
         'description_max' => 5000,
+        'reponse_min' => 2,
     ],
 
     'boite_envoi' => [

@@ -4,11 +4,11 @@
 > `docs/support/KLASSCI_CARE_BLUEPRINT.md`. Le Master est la source de vérité des demandes de
 > support ; cette page ne résume que ce qui touche ce dépôt.
 >
-> **État au 22 septembre 2026 : tranche 1 livrée** sur la branche
+> **État au 23 septembre 2026 : tranche 1 livrée, tranche 2 en cours** (réponse de l'école livrée) sur la branche
 > `claude/klassci-care-support-platform-1x9wwy`, non fusionnée. La section « Livré » décrit le
 > code en place ; la section « Prévu » ce qui n'existe pas encore.
 
-## Livré (tranche 1)
+## Livré
 
 - **Le point d'entrée « Aide / Signaler un problème »** : le menu du compte (bureau), la feuille
   « plus » du shell mobile, la page 500 et la page « Mes demandes ». Les deux entrées de menu
@@ -49,12 +49,20 @@
   (`DateDuMaster`). La portée « Tout l'établissement » demande la permission
   `support.tickets.view_school`, attribuée à aucun rôle par défaut : l'école la donne à qui
   elle veut.
+- **La réponse de l'école** (tranche 2, `POST /support/demandes/{référence}/messages`) :
+  - relayée au Master avec une clé d'idempotence tirée par le navigateur par brouillon ;
+  - proposée seulement si l'identifiant porte `support:update` (lu dans le bootstrap) et que
+    la demande n'est pas fermée ;
+  - **pas de boîte d'envoi** : Master injoignable, la réponse reste dans le champ (503) et
+    l'utilisateur la renvoie avec la même clé ;
+  - un 403 `insufficient_scope` est un refus, pas une indisponibilité : il n'ouvre pas le
+    coupe-circuit.
 - **L'interrupteur d'exploitation** `support.widget.enabled` : coupe tout sans attendre le
   Master. Aucun écran ne l'expose ; il se pose par `PUT /api/cli/settings/{key}`.
 
 ## Prévu (tranches suivantes)
 
-- Réponse de l'école dans une conversation, et pièces jointes.
+- Pièces jointes.
 - Capture d'écran : masquage des champs avant l'aperçu, annotation, envoi seulement si
   l'utilisateur le confirme.
 - Télémétrie d'erreurs : empreinte calculée dans `Handler::register()->reportable()`, agrégats

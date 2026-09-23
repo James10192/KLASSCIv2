@@ -120,7 +120,7 @@ class ClientMasterSupportTest extends TestCase
     {
         Http::fake(['*' => Http::response(['fonctionnalites' => [], 'limites' => ['description_min' => 25, 'description_max' => 3000]])]);
 
-        $this->assertSame(['description_min' => 25, 'description_max' => 3000], app(ClientMasterSupport::class)->limites());
+        $this->assertSame(['description_min' => 25, 'description_max' => 3000, 'reponse_min' => 2], app(ClientMasterSupport::class)->limites());
     }
 
     /** @test */
