@@ -31,7 +31,8 @@ final class SuppressionDEvaluation
     }
 
     /**
-     * Une séance, et son devoir s'il y en a un : l'un ne part pas sans l'autre.
+     * Une séance, et son devoir de séance s'il y en a un : l'un ne part pas
+     * sans l'autre.
      *
      * @return array{avertissement: ?string, liens: array<int, array{libelle:string, url:string}>}
      */
@@ -54,15 +55,24 @@ final class SuppressionDEvaluation
     }
 
     /**
-     * Supprimer une séance emporte son devoir. Un devoir que l'écran de
-     * l'évaluation refuserait de supprimer — déjà en cours ou terminé — ne part
-     * avec sa séance que pour qui a « Modifier une évaluation verrouillée ».
+     * La seule règle de suppression d'une évaluation, pour tous les écrans :
+     * brouillon, planifiée ou annulée. Une évaluation en cours ou terminée
+     * s'annule d'abord ({@see ChangementDeStatut}, qui recalcule), puis se
+     * supprime. Aucune permission n'y déroge : la liste des évaluations n'en
+     * a jamais admis, et une seconde porte par l'emploi du temps en aurait
+     * fait deux règles.
      */
-    public static function laSeancePeutPartir(ESBTPSeanceCours $seance, ?User $auteur): bool
+    public static function peutPartir(ESBTPEvaluation $evaluation): bool
+    {
+        return $evaluation->isDeletable();
+    }
+
+    /** Supprimer une séance emporte son devoir : la même règle s'applique. */
+    public static function laSeancePeutPartir(ESBTPSeanceCours $seance): bool
     {
         $devoir = self::devoirDe($seance);
 
-        return $devoir === null || $devoir->isDeletable() || (bool) $auteur?->can('evaluations.edit_locked');
+        return $devoir === null || self::peutPartir($devoir);
     }
 
     private static function devoirDe(ESBTPSeanceCours $seance): ?ESBTPEvaluation

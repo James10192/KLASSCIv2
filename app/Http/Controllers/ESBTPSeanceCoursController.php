@@ -665,7 +665,7 @@ class ESBTPSeanceCoursController extends Controller
                     $successMessage .= ' Les évaluations correspondantes ont été créées automatiquement.';
                 }
                 if ($periodesDeduites) {
-                    $successMessage .= ' L\'emploi du temps ne porte pas de semestre : la période des devoirs a été déduite du mois, vérifiez-la sur chaque devoir.';
+                    $successMessage .= ' L\'emploi du temps ne porte pas de semestre : la période des évaluations créées a été déduite du mois, vérifiez-la sur chacune.';
                 }
 
                 if ($expectsJson) {
@@ -1169,11 +1169,11 @@ class ESBTPSeanceCoursController extends Controller
     {
         try {
             $emploiTempsId = $seancesCour->emploi_temps_id;
-            if (! SuppressionDEvaluation::laSeancePeutPartir($seancesCour, Auth::user())) {
-                $refus = 'Le devoir de cette séance est déjà en cours ou terminé : le supprimer avec la séance demande la permission « Modifier une évaluation verrouillée ».';
+            if (! SuppressionDEvaluation::laSeancePeutPartir($seancesCour)) {
+                $refus = 'Le devoir de cette séance est déjà en cours ou terminé : annulez-le d\'abord depuis la liste des évaluations, puis supprimez la séance.';
 
                 return request()->expectsJson()
-                    ? response()->json(['success' => false, 'message' => $refus], 403)
+                    ? response()->json(['success' => false, 'message' => $refus], 422)
                     : back()->with('error', $refus);
             }
             $suite = SuppressionDEvaluation::supprimerLaSeance($seancesCour, Auth::user());

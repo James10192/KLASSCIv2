@@ -75,8 +75,10 @@ vivante. La liste des évaluations affiche l'avertissement et ses liens
 (`warning`, `warning_links` de sa réponse JSON) ; la suppression d'une séance de
 devoir, qui passe par un formulaire, le rend en message sur l'emploi du temps.
 Une évaluation déjà annulée ne comptait plus : la supprimer ne recalcule rien.
-Un devoir déjà en cours ou terminé ne part avec sa séance que pour qui a
-`evaluations.edit_locked`.
+Une seule règle de suppression pour tous les écrans
+(`SuppressionDEvaluation::peutPartir()`) : brouillon, planifiée ou annulée.
+Un devoir en cours ou terminé s'annule d'abord ; sa séance ne l'emporte plus
+autrement. L'édition en masse de l'emploi du temps affiche l'avertissement.
 
 La séance de devoir ne reporte sur le devoir qu'**une coordonnée : sa matière,
 si elle a changé**. La période du devoir n'est pas réalignée quand le jour de la

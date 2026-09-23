@@ -224,13 +224,15 @@ class EntreesEtSortiesDeMoyenneTest extends TestCase
         $this->assertSame(['periode' => 'semestre2', 'deduite_du_mois' => true], $this->periodeDuDevoir());
     }
 
-    public function test_supprimer_une_seance_dont_le_devoir_est_termine_demande_la_permission(): void
+    public function test_supprimer_une_seance_dont_le_devoir_est_termine_est_refuse_meme_avec_permission(): void
     {
+        // Même règle que la liste des évaluations, sans dérogation : on annule
+        // d'abord le devoir, puis on supprime la séance.
         [, $devoir] = $this->deuxEvaluationsEtUneMoyenne();
 
-        $reponse = $this->supprimerLaSeanceDeDevoir($devoir, autorise: false);
+        $reponse = $this->supprimerLaSeanceDeDevoir($devoir, autorise: true);
 
-        $this->assertStringContainsString('Modifier une évaluation verrouillée', (string) $reponse->getSession()->get('error'));
+        $this->assertStringContainsString('annulez-le d\'abord', (string) $reponse->getSession()->get('error'));
         $this->assertNull(DB::table('esbtp_seance_cours')->where('id', 500)->value('deleted_at'));
         $this->assertNull(DB::table('esbtp_evaluations')->where('id', $devoir)->value('deleted_at'));
         $this->assertSame(10.0, $this->moyenne(self::MATIERE, 'semestre1'));
@@ -265,6 +267,16 @@ class EntreesEtSortiesDeMoyenneTest extends TestCase
         $this->assertCount(1, $reponse['warning_links']);
     }
 
+    public function test_supprimer_depuis_la_liste_une_evaluation_terminee_est_refuse(): void
+    {
+        [, $terminee] = $this->deuxEvaluationsEtUneMoyenne();
+
+        $reponse = $this->supprimerDepuisLaListe($terminee);
+
+        $this->assertSame(422, $reponse->getStatusCode());
+        $this->assertNull(DB::table('esbtp_evaluations')->where('id', $terminee)->value('deleted_at'));
+    }
+
     public function test_supprimer_une_evaluation_deja_annulee_ne_recalcule_rien(): void
     {
         [, $annulee] = $this->deuxEvaluationsEtUneMoyenne();
@@ -278,6 +290,7 @@ class EntreesEtSortiesDeMoyenneTest extends TestCase
     public function test_supprimer_la_seance_de_devoir_recalcule_et_supprime_les_deux(): void
     {
         [, $devoir] = $this->deuxEvaluationsEtUneMoyenne();
+        DB::table('esbtp_evaluations')->where('id', $devoir)->update(['status' => 'scheduled']);
 
         $reponse = $this->supprimerLaSeanceDeDevoir($devoir);
 
