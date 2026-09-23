@@ -31,12 +31,14 @@
                 modal.id = 'ii-common-confirm-modal';
                 modal.className = 'modal fade';
                 modal.tabIndex = -1;
+                modal.setAttribute('aria-labelledby', 'ii-common-confirm-title');
+                modal.setAttribute('aria-hidden', 'true');
                 modal.innerHTML = `
                     <div class="modal-dialog modal-dialog-centered modal-sm">
                         <div class="modal-content" style="border:none; border-radius:14px; overflow:hidden;">
                             <div class="modal-header" style="background:linear-gradient(135deg,#0453cb 0%,#3b7ddb 100%); color:#fff; border:none; padding:16px 20px;">
-                                <h5 class="modal-title" style="font-size:1rem; font-weight:700;" data-role="title"></h5>
-                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                <h5 class="modal-title" id="ii-common-confirm-title" style="font-size:1rem; font-weight:700;" data-role="title"></h5>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fermer"></button>
                             </div>
                             <div class="modal-body" style="padding:20px; font-size:.9rem; color:#334155;" data-role="message"></div>
                             <div class="modal-footer" style="border:none; padding:14px 20px;">
@@ -82,14 +84,39 @@
             // `hidden.bs.modal` (meme bundle) : resoudre la promesse dans
             // `onHidden` rend donc le chainage correct par construction, sans
             // temporisation ni compteur.
-            const onConfirm = () => { decided = true; bsModal.hide(); };
+            //
+            // LA DECISION APPARTIENT AU GESTE QUI FERME VRAIMENT. Pendant les
+            // deux fondus, `hide()` ne fait rien (meme garde `_isTransitioning`).
+            // Une decision posee au clic, que la modale se ferme ou non, puis
+            // lue a `hidden`, ouvrait deux fenetres a la meme issue : on annule,
+            // l'action part quand meme.
+            //  - a l'ouverture : clic « Confirmer » sans effet, ecouteur `once`
+            //    consomme, puis Annuler / croix / Echap → `true` ;
+            //  - a la fermeture : Annuler / croix / Echap / fond, puis clic
+            //    « Confirmer » dans les ~150 ms du fondu → `true`.
+            // N'armer le bouton qu'a `shown` fermait la premiere, pas la seconde :
+            // le bouton reste arme pendant le fondu de sortie.
+            //
+            // Bootstrap 5.3.0 emet `hide.bs.modal` DE FACON SYNCHRONE dans
+            // `hide()`, et seulement si la fermeture a lieu :
+            //
+            //   hide(){this._isShown&&!this._isTransitioning&&(P.trigger(this._element,"hide.bs.modal")...
+            //
+            // La decision se lit donc la, en sachant si ce `hide()` vient du
+            // bouton. Un clic sans effet ne decide rien et peut se retenter : pas
+            // de `once` sur le bouton, c'est `cleanup()` qui le detache.
+            let viaConfirm = false;
+            const onConfirm = () => { viaConfirm = true; bsModal.hide(); viaConfirm = false; };
+            const onHide = () => { decided = viaConfirm; };
             const onHidden = () => { resolve(decided); cleanup(); };
             const cleanup = () => {
                 confirmBtn.removeEventListener('click', onConfirm);
+                modal.removeEventListener('hide.bs.modal', onHide);
                 modal.removeEventListener('hidden.bs.modal', onHidden);
             };
 
-            confirmBtn.addEventListener('click', onConfirm, { once: true });
+            confirmBtn.addEventListener('click', onConfirm);
+            modal.addEventListener('hide.bs.modal', onHide);
             modal.addEventListener('hidden.bs.modal', onHidden, { once: true });
             bsModal.show();
         });

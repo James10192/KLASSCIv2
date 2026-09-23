@@ -552,6 +552,9 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
         Route::post('/inscriptions/normaliser-type', [App\Http\Controllers\API\CLI\CLIInscriptionTypeController::class, 'normaliser'])->name('inscriptions.normaliser-type');
         Route::post('/rendez-vous/generer', [App\Http\Controllers\API\CLI\CLIRendezVousController::class, 'generer'])->name('rendez-vous.generer');
         Route::post('/rendez-vous/placer', [App\Http\Controllers\API\CLI\CLIRendezVousController::class, 'placer'])->name('rendez-vous.placer');
+        Route::get('/rendez-vous/diagnostic', [App\Http\Controllers\API\CLI\CLIRendezVousController::class, 'diagnostic'])->name('rendez-vous.diagnostic');
+        Route::post('/rendez-vous/convocations/envoyer', [App\Http\Controllers\API\CLI\CLIRendezVousController::class, 'envoyerConvocations'])->name('rendez-vous.convocations.envoyer');
+        Route::post('/rendez-vous/convocations/remettre', [App\Http\Controllers\API\CLI\CLIRendezVousController::class, 'remettreConvocations'])->name('rendez-vous.convocations.remettre');
         // L'ordre des categories est l'ordre dans lequel un versement solde les
         // frais. Le changer est une decision de l'ecole, pas du code.
         Route::post('/frais/retirer-configurations-inutiles', [App\Http\Controllers\API\CLI\CLIFraisController::class, 'retirerConfigurationsInutiles'])->name('frais.retirer-configurations-inutiles');
@@ -690,7 +693,12 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
         // Reparation ciblee : deplacer une evaluation vers la matiere du bon
         // systeme academique. N'accepte que les mouvements qui retablissent
         // la coherence, jamais ceux qui la rompent.
-        Route::post('/evaluations/{id}/matiere', [App\Http\Controllers\API\CLI\CLIMaintenanceController::class, 'evaluationChangeMatiere'])
+        Route::post('/evaluations/{id}/matiere', [App\Http\Controllers\API\CLI\CLIEvaluationMatiereController::class, 'evaluationChangeMatiere'])
             ->name('evaluations.change-matiere');
+        // Rafraichit `esbtp_resultats` depuis les notes, sur un perimetre
+        // EXPLICITE. Le perimetre est obligatoire a dessein : un recalcul
+        // ecrase les moyennes enregistrees, y compris celles saisies a la main.
+        Route::post('/notes/recompute', [App\Http\Controllers\API\CLI\CLINotesRecomputeController::class, 'notesRecompute'])
+            ->name('notes.recompute');
     });
 });
