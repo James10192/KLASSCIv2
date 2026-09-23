@@ -64,6 +64,7 @@ class CleEnvAutoriseeTest extends TestCase
             ['usat_bouake', 'le tiret bas appartient aux noms de base, pas aux codes'],
             ['usat bouake', "un espace n'est pas un code"],
             [str_repeat('a', 33), 'au-dela de 32 caracteres'],
+            ["usat\n", 'retour a la ligne final'],
             ['', 'vide'],
         ];
     }
@@ -109,6 +110,7 @@ class CleEnvAutoriseeTest extends TestCase
         return [
             ["kc_{$cle}_".substr($secret, 0, 39), 'secret tronque au copier-coller'],
             ["kc_{$cle}_{$secret} ", 'espace final colle avec le jeton'],
+            ["kc_{$cle}_{$secret}\n", 'retour a la ligne final : sans /D, le $ de la regex le laissait passer'],
             ["MASTER_SUPPORT_TOKEN=kc_{$cle}_{$secret}", 'la ligne entiere collee a la place de la valeur'],
             ['kc_'.strtoupper($cle)."_{$secret}", 'le key_id est en minuscules'],
             [str_repeat('x', 55), "un jeton d'une autre forme"],

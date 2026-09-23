@@ -23,8 +23,8 @@ Rend, pour chaque clé gérable : `cle`, `definie`, `empreinte`, `longueur_min`,
 ## `POST /api/cli/env`
 
 Corps : `{"cle": "…", "valeur": "…"}`. Écrit la clé, purge le cache de configuration
-(l'échec de cette purge est une erreur : une valeur écrite mais sans effet est
-refusée plutôt que déclarée posée), et journalise l'empreinte.
+(si cette purge échoue, la clé reste écrite mais l'appel répond en erreur : une
+valeur sans effet n'est jamais annoncée comme posée), et journalise l'empreinte.
 
 | Code | Cause |
 |---|---|
@@ -36,7 +36,9 @@ refusée plutôt que déclarée posée), et journalise l'empreinte.
 
 1. Sur adminKlassci : `php artisan care:identifiant <code>` — le jeton ne s'affiche qu'une fois.
 2. Depuis le poste : `klassci env <code> MASTER_SUPPORT_TOKEN --value=kc_…`
-3. Le bouton « Aide / Signaler un problème » apparaît au chargement suivant.
+3. Le bouton « Aide / Signaler un problème » apparaît au chargement suivant, à condition
+   que `MASTER_API_URL` soit aussi renseigné sur l'instance (il l'est dès que le paywall
+   interroge le Master).
 
 Ne pas utiliser `--generate` pour cette clé : un jeton inventé n'est connu d'aucun
 Master, et le format le refuse de toute façon.
