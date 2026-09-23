@@ -1,0 +1,51 @@
+{
+  "version": 1,
+  "corrections_connues": {
+    "gmai.com": "gmail.com",
+    "gmial.com": "gmail.com",
+    "gamil.com": "gmail.com",
+    "gmal.com": "gmail.com",
+    "gmail.co": "gmail.com",
+    "gmail.con": "gmail.com",
+    "gmail.cm": "gmail.com",
+    "gmail.fr": "gmail.com",
+    "gemail.com": "gmail.com",
+    "gmel.com": "gmail.com",
+    "gnail.com": "gmail.com",
+    "yaho.com": "yahoo.com",
+    "yahooo.com": "yahoo.com",
+    "yahoo.co": "yahoo.com",
+    "yahoo.con": "yahoo.com",
+    "yaoo.fr": "yahoo.fr",
+    "yahoo.frr": "yahoo.fr",
+    "outlok.fr": "outlook.fr",
+    "outlok.com": "outlook.com",
+    "outloo.com": "outlook.com",
+    "outlook.con": "outlook.com",
+    "hotmial.com": "hotmail.com",
+    "hotmal.com": "hotmail.com",
+    "hotmail.con": "hotmail.com",
+    "hotmail.co": "hotmail.com",
+    "live.fe": "live.fr",
+    "icloud.co": "icloud.com"
+  },
+  "corrections_tld": {
+    "con": "com",
+    "fe": "fr",
+    "frr": "fr"
+  },
+  "domaines_reference": [
+    "gmail.com",
+    "yahoo.com",
+    "yahoo.fr",
+    "outlook.com",
+    "outlook.fr",
+    "hotmail.com",
+    "hotmail.fr",
+    "live.fr",
+    "icloud.com"
+  ],
+  "noms_reels_voisins": ["ymail", "mail", "email", "gmx"],
+  "domaines_factices": ["esbtp.edu.ci", "example.com", "example.org", "test.com"],
+  "distance_maximale": 2
+}

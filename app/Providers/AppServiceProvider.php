@@ -104,6 +104,7 @@ class AppServiceProvider extends ServiceProvider
         // leur cote le meme triplet : une seule instance par requete suffit.
         $this->app->scoped(BtsAnnualClassMapResolver::class);
         $this->app->bind(AcademicSystemMetricsProvider::class, AcademicMetricsProviderResolver::class);
+        $this->app->bind(\App\Services\Emails\ResolveurDns::class, \App\Services\Emails\ResolveurDnsSysteme::class);
 
         // TPE — Strategy de validation pilotée par Setting tenant.
         // Setting `tpe.validation.enabled` = false (defaut) → AutoValidateStrategy (Option 2)

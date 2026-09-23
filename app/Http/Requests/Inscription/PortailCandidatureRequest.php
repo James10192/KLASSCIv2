@@ -118,7 +118,7 @@ class PortailCandidatureRequest extends FormRequest
                     ));
                 },
             ],
-            'email' => ['nullable', 'email:rfc', 'max:100'],
+            'email' => ['nullable', 'email:rfc', 'max:100', new \App\Rules\EmailJoignable],
             'ville' => ['nullable', 'string', 'max:100'],
             'commune' => ['nullable', 'string', 'max:100'],
 

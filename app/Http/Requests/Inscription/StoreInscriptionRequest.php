@@ -26,7 +26,7 @@ class StoreInscriptionRequest extends FormRequest
             'date_naissance' => 'required|date',
             'lieu_naissance' => 'nullable|string|max:100',
             'telephone' => 'required|string|max:20',
-            'email_personnel' => 'nullable|email|max:100',
+            'email_personnel' => ['nullable', 'email', 'max:100', new \App\Rules\EmailJoignable],
             'ville' => 'nullable|string|max:100',
             'commune' => 'nullable|string|max:100',
             'photo' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
@@ -60,6 +60,7 @@ class StoreInscriptionRequest extends FormRequest
                     $rules["parents.$index.telephone"] = 'required|string|max:20';
                     $rules["parents.$index.relation"] = 'required|string';
                 }
+                $rules["parents.$index.email"] = ['nullable', 'email', 'max:255', new \App\Rules\EmailJoignable];
             } elseif (isset($parent['type']) && $parent['type'] === 'existant') {
                 $rules["parents.$index.parent_id"] = 'required|exists:esbtp_parents,id';
                 $rules["parents.$index.relation"] = 'required|string';
