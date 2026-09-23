@@ -32,6 +32,18 @@ Même logique que l'écran `/esbtp/acces-temporaires` : les deux passent par
 - un bénéficiaire qui la détient déjà par son rôle ;
 - un accès actif à la même permission qui couvre déjà la période.
 
+## Ce qui reste accordable, et pourquoi
+
+`students.*` et `inscriptions.*` restent accordables : leurs chemins de création de
+compte écrivent le rôle `etudiant` en dur. Un bénéficiaire peut donc créer un compte
+étudiant, ou réinitialiser le mot de passe d'un étudiant, et garder cet accès de
+niveau étudiant après l'échéance — jamais un accès du personnel.
+
+`AccesTemporairesNonAccordablesTest` vérifie le reste : il relève chaque route
+d'écriture d'un contrôleur qui pose un rôle, une permission ou un mot de passe, et
+échoue si l'une de ses gardes est accordable (en supposant que le bénéficiaire
+détient déjà les autres).
+
 ## Ce qui est couvert
 
 Tout ce qui passe par `can()`, `@can` et le middleware `permission:`. La porte

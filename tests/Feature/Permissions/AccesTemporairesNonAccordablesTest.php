@@ -3,45 +3,77 @@
 namespace Tests\Feature\Permissions;
 
 use App\Domain\Permissions\AccesTemporaires;
+use App\Services\PermissionRegistry;
+use Illuminate\Routing\Route as RouteDefinition;
 use Illuminate\Support\Facades\Route;
 use Tests\TestCase;
 
 /**
  * Un acces temporaire ne doit rien ouvrir qui survive a son echeance. Le cas qui
- * le casse : une permission qui laisse creer un compte ou poser un role — le
- * beneficiaire se donne un acces permanent pendant ses deux jours.
+ * le casse : une permission qui laisse creer un compte, poser un role ou fixer le
+ * mot de passe de quelqu'un — le beneficiaire se donne un acces permanent
+ * pendant ses deux jours.
  *
- * Une liste ecrite a la main s'est deja revelee incomplete (les comptes de
- * scolarite, de direction, de caisse restaient ouverts). Ce test ne recopie donc
- * pas la liste : il la DEDUIT du code. Il cherche tout controleur qui pose un
- * role ou une permission, releve les permissions qui gardent ses methodes
- * d'ecriture (middleware de route, authorize(), can()), et exige qu'aucune ne
- * soit accordable pour un temps.
+ * Une liste ecrite a la main s'est deja revelee incomplete. Ce test ne la
+ * recopie donc pas : il la DEDUIT du code. Pour chaque route d'ecriture d'un
+ * controleur qui pose un role, une permission ou un mot de passe, il releve ses
+ * gardes, et echoue si un acces temporaire suffit a toutes les franchir.
+ *
+ * On suppose que le beneficiaire detient deja, de facon permanente, toutes les
+ * AUTRES gardes de la route : une responsable scolarite porte `identity.registrar`,
+ * qui ouvre le groupe des routes de creation de comptes. Une garde qu'il detient
+ * ne l'arrete pas. La route n'est donc sure que si AUCUNE de ses gardes n'est
+ * accordable, ou si elle est reservee a superAdmin / serviceTechnique (qui ont
+ * deja tout). Une politique fondee sur les roles (UserManagementPolicy) n'est pas
+ * comptee : elle restreint les cibles, elle ne remplace pas la permission.
+ * (Une premiere version tenait pour sure une route dont un groupe n'avait aucun
+ * membre accordable : elle laissait passer precisement la creation d'un compte
+ * de direction par une responsable scolarite.)
  */
 class AccesTemporairesNonAccordablesTest extends TestCase
 {
     /**
-     * Controleurs qui creent des comptes de niveau etudiant seulement. Le compte
-     * est une donnee metier (une inscription), pas un acces pour le
-     * beneficiaire : les laisser accordables est un choix, pas un oubli.
+     * Controleurs qui ne creent que des comptes etudiants (role `etudiant` ecrit
+     * en dur). Le compte est une donnee metier, pas un acces du personnel pour le
+     * beneficiaire : les laisser accordables est un choix documente.
      */
     private const COMPTES_ETUDIANTS = [
         \App\Http\Controllers\ESBTPEtudiantController::class,
     ];
 
-    public function test_aucune_permission_qui_pose_un_role_n_est_accordable(): void
+    private const MOTIF_ECRITURE_SENSIBLE = '/assignRole\(|syncRoles\(|givePermissionTo\(|syncPermissions\(|Hash::make\(|->password\s*=/';
+
+    public function test_aucune_ecriture_sensible_ne_s_ouvre_par_un_acces_temporaire(): void
     {
-        $service = app(AccesTemporaires::class);
         $fautives = [];
 
-        foreach ($this->gardesDesEcrituresQuiPosentUnRole() as $permission => $source) {
-            if ($service->estAccordable($permission)) {
-                $fautives[] = "{$permission} ({$source})";
+        foreach (Route::getRoutes() as $route) {
+            $cible = $this->cible($route);
+            if ($cible === null) {
+                continue;
             }
+            [$classe, $methode] = $cible;
+
+            $groupes = $this->groupesDeGardes($route, $classe, $methode);
+            $accordables = $this->permissionsAccordables($groupes);
+            if ($accordables === [] || $this->uneGardeResiste($route, $groupes)) {
+                continue;
+            }
+            $fautives[] = class_basename($classe)."@{$methode} (".implode(', ', $accordables).')';
         }
 
-        $this->assertSame([], array_values(array_unique($fautives)),
-            "Ces permissions permettent de poser un role ou de creer un compte du personnel, et restent accordables pour un temps limite.");
+        $this->assertSame([], $fautives,
+            'Ces ecritures posent un role, une permission ou un mot de passe et s\'ouvrent par un acces temporaire.');
+    }
+
+    public function test_un_alias_legacy_se_juge_sous_son_nom_canonique(): void
+    {
+        $registre = app(PermissionRegistry::class);
+        $service = app(AccesTemporaires::class);
+
+        foreach ($registre->aliasMap() as $alias => $canonique) {
+            $this->assertSame($service->estAccordable($canonique), $service->estAccordable($alias), $alias);
+        }
     }
 
     public function test_restaurer_une_sauvegarde_ne_s_accorde_pas(): void
@@ -52,7 +84,7 @@ class AccesTemporairesNonAccordablesTest extends TestCase
     public function test_dans_une_famille_de_comptes_seule_la_consultation_s_accorde(): void
     {
         $service = app(AccesTemporaires::class);
-        $registre = app(\App\Services\PermissionRegistry::class)->all()->keys();
+        $registre = app(PermissionRegistry::class)->all()->keys();
 
         foreach (AccesTemporaires::FAMILLES_DE_COMPTES as $famille) {
             foreach ($registre->filter(fn ($n) => str_starts_with($n, $famille.'.')) as $nom) {
@@ -61,49 +93,67 @@ class AccesTemporairesNonAccordablesTest extends TestCase
         }
     }
 
-    /** @return array<string, string> permission => controleur@methode */
-    private function gardesDesEcrituresQuiPosentUnRole(): array
+    /** @return array{0: class-string, 1: string}|null */
+    private function cible(RouteDefinition $route): ?array
     {
-        $gardes = [];
-
-        foreach (Route::getRoutes() as $route) {
-            $action = $route->getAction('uses');
-            if (! is_string($action) || ! str_contains($action, '@')) {
-                continue;
-            }
-            [$classe, $methode] = explode('@', $action, 2);
-            if (in_array($classe, self::COMPTES_ETUDIANTS, true) || ! $this->posteUnRole($classe)) {
-                continue;
-            }
-            // Creer et modifier posent un role ; supprimer un compte n'ouvre
-            // aucun acces qui survivrait a l'echeance.
-            if (array_intersect($route->methods(), ['POST', 'PUT', 'PATCH']) === [] || $methode === 'destroy') {
-                continue;
-            }
-
-            foreach ($route->gatherMiddleware() as $middleware) {
-                if (is_string($middleware) && str_starts_with($middleware, 'permission:')) {
-                    foreach (explode('|', substr($middleware, strlen('permission:'))) as $nom) {
-                        $gardes[$nom] = class_basename($classe)."@{$methode}";
-                    }
-                }
-            }
-            foreach ($this->abilitesDansLaMethode($classe, $methode) as $nom) {
-                $gardes[$nom] = class_basename($classe)."@{$methode}";
-            }
+        $action = $route->getAction('uses');
+        if (! is_string($action) || ! str_contains($action, '@')) {
+            return null;
         }
-
-        return $gardes;
-    }
-
-    private function posteUnRole(string $classe): bool
-    {
-        if (! class_exists($classe) || str_contains($classe, '\\API\\CLI\\') || str_ends_with($classe, 'InstallController')) {
-            return false;
+        [$classe, $methode] = explode('@', $action, 2);
+        if (array_intersect($route->methods(), ['POST', 'PUT', 'PATCH']) === [] || $methode === 'destroy') {
+            return null;
+        }
+        if (in_array($classe, self::COMPTES_ETUDIANTS, true) || ! class_exists($classe)
+            || str_contains($classe, '\\API\\CLI\\') || str_ends_with($classe, 'InstallController')) {
+            return null;
         }
         $source = file_get_contents((new \ReflectionClass($classe))->getFileName());
 
-        return (bool) preg_match('/assignRole\(|syncRoles\(|givePermissionTo\(|syncPermissions\(/', $source);
+        return preg_match(self::MOTIF_ECRITURE_SENSIBLE, $source) ? [$classe, $methode] : null;
+    }
+
+    /** @return array<int, array<int, string>> une liste par garde ; chaque garde s'ouvre avec l'un de ses membres */
+    private function groupesDeGardes(RouteDefinition $route, string $classe, string $methode): array
+    {
+        $groupes = [];
+        foreach ($route->gatherMiddleware() as $middleware) {
+            if (is_string($middleware) && str_starts_with($middleware, 'permission:')) {
+                $groupes[] = explode('|', substr($middleware, strlen('permission:')));
+            }
+        }
+        foreach ($this->abilitesDansLaMethode($classe, $methode) as $nom) {
+            $groupes[] = [$nom];
+        }
+
+        return $groupes;
+    }
+
+    /** @param array<int, array<int, string>> $groupes */
+    private function permissionsAccordables(array $groupes): array
+    {
+        $service = app(AccesTemporaires::class);
+
+        return array_values(array_unique(array_filter(
+            array_merge([], ...$groupes),
+            fn (string $nom) => $service->estAccordable($nom)
+        )));
+    }
+
+    /** @param array<int, array<int, string>> $groupes */
+    private function uneGardeResiste(RouteDefinition $route, array $groupes): bool
+    {
+        foreach ($route->gatherMiddleware() as $middleware) {
+            if (! is_string($middleware) || ! str_starts_with($middleware, 'role:')) {
+                continue;
+            }
+            $roles = explode('|', substr($middleware, strlen('role:')));
+            if (array_diff($roles, ['superAdmin', 'serviceTechnique']) === []) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /** @return array<int, string> */
@@ -115,16 +165,9 @@ class AccesTemporairesNonAccordablesTest extends TestCase
         $reflexion = new \ReflectionMethod($classe, $methode);
         $corps = implode('', array_slice(file($reflexion->getFileName()), $reflexion->getStartLine() - 1,
             $reflexion->getEndLine() - $reflexion->getStartLine() + 1));
+        preg_match_all("/(?:authorize|can|hasPermissionTo)\\(\\s*'([a-z_ ]+\\.?[a-z_.]*)'/", $corps, $m);
 
-        // Une methode doublee par UserManagementPolicy (authorize('update'…),
-        // canManage) ne s'ouvre qu'aux roles de l'acteur — la matrice « qui
-        // gere qui » — qu'un acces temporaire ne change pas. Ses permissions
-        // ne suffisent donc pas a poser quoi que ce soit.
-        if (preg_match("/authorize\\(\\s*'(update|assignRole|delete)'|canManage\\(/", $corps)) {
-            return [];
-        }
-        preg_match_all("/(?:authorize|can|hasPermissionTo)\\(\\s*'([a-z_]+\\.[a-z_.]+)'/", $corps, $m);
-
-        return $m[1];
+        // Les abilities de politique (update, delete, assignRole…) ne sont pas des permissions.
+        return array_values(array_filter($m[1], fn (string $nom) => str_contains($nom, '.') || str_contains($nom, '_') || str_contains($nom, ' ')));
     }
 }

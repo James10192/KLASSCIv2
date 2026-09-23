@@ -146,6 +146,9 @@ class AccesTemporaires
 
     public function estAccordable(string $permission): bool
     {
+        // Un alias legacy (`create_coordinateurs`) se juge sous son nom canonique,
+        // comme accorder() l'enregistrerait.
+        $permission = $this->registry->canonicalize($permission);
         if (in_array($permission, self::NON_ACCORDABLES, true)) {
             return false;
         }
