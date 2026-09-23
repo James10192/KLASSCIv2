@@ -41,13 +41,13 @@ Aucune erreur JavaScript relevée pendant les deux parcours.
 
 ## 2. Moyennes enregistrées et collision — rejoué le 23 septembre 2026
 
-Même application locale, code de `presentation` après la fusion de #1122. Jeu de
+Même application locale, code de `presentation` après la fusion de #1122 et de #1145. Jeu de
 données ajouté : KOUASSI a une moyenne sur les deux éléments (collision), TRAORÉ
 seulement sur l'élément absorbé.
 
 | capture | ce qu'elle montre |
 |---|---|
-| ![](assets/deplacements-notes-2026-09/10-apercu-avec-moyennes-enregistrees.png) | L'aperçu compte les moyennes enregistrées reportées avec « Forcer ». |
+| ![](assets/deplacements-notes-2026-09/10-apercu-avec-moyennes-enregistrees.png) | L'aperçu annonce ce que la fusion reportera vraiment (#1145) : 1 ligne de bulletin LMD et 1 moyenne enregistrée, la ligne en collision n'étant pas comptée. Le compte rendu (capture suivante) confirme les mêmes chiffres. |
 | ![](assets/deplacements-notes-2026-09/11-fusion-effectuee-collision.png) | Après la fusion : la moyenne de TRAORÉ est reportée, celle de KOUASSI est en collision, avec le bouton qui la règle. |
 | ![](assets/deplacements-notes-2026-09/12-fusion-effectuee-collision-400px.png) | Le même compte rendu à 400 px. |
 | ![](assets/deplacements-notes-2026-09/13-fermer-demande-confirmation.png) | Échap et le clic à côté laissent la fenêtre ouverte ; « Fermer » demande confirmation et dit ce qui restera. |
