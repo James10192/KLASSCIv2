@@ -71,20 +71,26 @@ recalcule aussi, depuis septembre 2026 (écran d'édition et édition rapide).
 La **suppression** d'une évaluation notée recalcule aussi, depuis septembre 2026
 (`App\Domain\Notes\SuppressionDEvaluation`) : la suppression est douce, les
 notes restent en base, mais le recalcul ne lit plus que celles d'une évaluation
-vivante. Les deux écrans qui suppriment — la liste des évaluations et la
-suppression d'une séance de devoir — portent `warning` et `warning_links` dans
-leur réponse JSON. Une évaluation déjà annulée ne comptait plus : la supprimer
-ne recalcule rien.
+vivante. La liste des évaluations affiche l'avertissement et ses liens
+(`warning`, `warning_links` de sa réponse JSON) ; la suppression d'une séance de
+devoir, qui passe par un formulaire, le rend en message sur l'emploi du temps.
+Une évaluation déjà annulée ne comptait plus : la supprimer ne recalcule rien.
+Un devoir déjà en cours ou terminé ne part avec sa séance que pour qui a
+`evaluations.edit_locked`.
 
 La séance de devoir ne reporte sur le devoir qu'**une coordonnée : sa matière,
 si elle a changé**. La période du devoir n'est pas réalignée quand le jour de la
 séance change — la date ne bouge qu'à l'intérieur de la semaine de l'emploi du
 temps (`ESBTPEmploiTemps::dateDuJour()`), et réaligner défaisait une période
-corrigée à la main. À la création, la période est celle du semestre de l'emploi
-du temps ; le mois ne sert qu'en dernier recours, si ce semestre est illisible,
-et c'est journalisé. Changer la matière d'une séance dont le devoir a des notes
-exige `evaluations.edit_locked`, comme sur l'écran de l'évaluation. Retoucher la salle, le titre
-ou le jour ne touche donc aucune moyenne. La séance et son devoir
+corrigée à la main. Retoucher la salle, le titre ou le jour ne touche donc aucune
+moyenne. Changer la matière d'une séance dont le devoir a des notes exige
+`evaluations.edit_locked`, comme sur l'écran de l'évaluation.
+
+À la création, la période du devoir est celle du semestre de l'emploi du temps
+(`AlignementDuDevoir::creerLeDevoir()`) ; le mois ne sert que pour un emploi du
+temps « Année complète », qui n'en porte pas, et le message de création le dit.
+
+La séance et son devoir
 s'enregistrent **ensemble** : un échec d'écriture refuse toute la modification.
 Le recalcul part après, hors transaction : un recalcul en échec ne défait rien
 (comme ailleurs), il est compté et affiché dans le bandeau.

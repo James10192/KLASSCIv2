@@ -12,7 +12,6 @@ use App\Services\LMD\Tpe\TpePlanification;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPEmploiTemps;
-use App\Models\ESBTPEvaluation;
 use App\Models\ESBTPSeanceCours;
 use App\Models\ESBTPTeacher;
 use Carbon\Carbon;
@@ -641,58 +640,13 @@ class ESBTPSeanceCoursController extends Controller
                     ? ($typeSeanceEnumForEval?->isEvaluation() ?? false)
                     : ($request->type === 'homework');
 
+                $periodesDeduites = false;
                 if ($shouldGenerateEvaluation) {
                     $createdEvaluations = [];
                     foreach ($createdSessions as $sessionId) {
-                        $seance = ESBTPSeanceCours::with('matiere')->find($sessionId);
-
-                        // Calculer la durée en minutes
-                        $heureDebut = Carbon::parse($seance->heure_debut);
-                        $heureFin = Carbon::parse($seance->heure_fin);
-                        $dureeMinutes = $heureFin->diffInMinutes($heureDebut);
-
-                        $periode = $this->periodeDuDevoir($seance);
-
-                        $evaluationStartAt = AlignementDuDevoir::combiner($seance->date_seance, $seance->heure_debut);
-                        $evaluationEndAt = AlignementDuDevoir::combiner($seance->date_seance, $seance->heure_fin);
-                        if ($evaluationEndAt->lessThanOrEqualTo($evaluationStartAt)) {
-                            $evaluationEndAt = $evaluationEndAt->addDay();
-                        }
-                        $dureeMinutes = $evaluationEndAt->diffInMinutes($evaluationStartAt);
-
-                        $evaluationData = [
-                            'titre' => $seance->homework_description ?: 'Devoir - '.($seance->matiere->name ?? 'Matière'),
-                            'description' => $seance->homework_description,
-                            'matiere_id' => $seance->matiere_id,
-                            'classe_id' => $seance->classe_id,
-                            'type' => 'devoir',
-                            'date_evaluation' => $evaluationStartAt,
-                            'coefficient' => 1.0,
-                            'bareme' => 20.00,
-                            'duree_minutes' => $dureeMinutes,
-                            'periode' => $periode,
-                            'annee_universitaire_id' => $seance->annee_universitaire_id,
-                            'status' => 'draft',
-                            'is_published' => false,
-                            'notes_published' => false,
-                            'created_by' => Auth::id(),
-                            'enseignant_id' => $seance->type === ESBTPSeanceCours::TYPE_HOMEWORK ? null : $seance->teacher_id,
-                        ];
-
-                        $evaluation = ESBTPEvaluation::create($evaluationData);
-                        $createdEvaluations[] = $evaluation->id;
-
-                        if ($seance) {
-                            $seance->homework_evaluation_id = $evaluation->id;
-                            $seance->save();
-                        }
-
-                        \Log::info('Évaluation créée automatiquement', [
-                            'evaluation_id' => $evaluation->id,
-                            'seance_id' => $sessionId,
-                            'date_evaluation' => $evaluationStartAt->toDateTimeString(),
-                            'titre' => $evaluation->titre,
-                        ]);
+                        $devoir = AlignementDuDevoir::creerLeDevoir(ESBTPSeanceCours::with('matiere')->find($sessionId), Auth::id());
+                        $createdEvaluations[] = $devoir['evaluation']->id;
+                        $periodesDeduites = $periodesDeduites || $devoir['deduite_du_mois'];
                     }
 
                     \Log::info('Évaluations automatiques créées pour séances homework', [
@@ -709,6 +663,9 @@ class ESBTPSeanceCoursController extends Controller
                 $successMessage = 'Séance(s) ajoutée(s) avec succès.';
                 if ($request->type === 'homework') {
                     $successMessage .= ' Les évaluations correspondantes ont été créées automatiquement.';
+                }
+                if ($periodesDeduites) {
+                    $successMessage .= ' L\'emploi du temps ne porte pas de semestre : la période des devoirs a été déduite du mois, vérifiez-la sur chaque devoir.';
                 }
 
                 if ($expectsJson) {
@@ -1169,7 +1126,7 @@ class ESBTPSeanceCoursController extends Controller
 
             // Changer la matière d'une séance de devoir déplace ses notes, comme
             // sur l'écran de l'évaluation : la même permission y est exigée.
-            if ($this->deplaceUnDevoirNote($seancesCour, $validated) && ! Auth::user()?->can('evaluations.edit_locked')) {
+            if (AlignementDuDevoir::deplaceUnDevoirNote($seancesCour, $validated) && ! Auth::user()?->can('evaluations.edit_locked')) {
                 throw ValidationException::withMessages(['matiere_id' => 'Impossible de changer la matière : le devoir de cette séance a déjà des notes. Il faut la permission « Modifier une évaluation verrouillée », comme sur l\'écran de l\'évaluation.']);
             }
 
@@ -1205,40 +1162,6 @@ class ESBTPSeanceCoursController extends Controller
         }
     }
 
-    /** @param array<string,mixed> $validated */
-    private function deplaceUnDevoirNote(ESBTPSeanceCours $seance, array $validated): bool
-    {
-        return $seance->type === ESBTPSeanceCours::TYPE_HOMEWORK
-            && array_key_exists('matiere_id', $validated)
-            && (int) $validated['matiere_id'] !== (int) $seance->matiere_id
-            && $seance->homeworkEvaluation?->notes()->exists();
-    }
-
-    /**
-     * La période du devoir d'une séance : le semestre de son emploi du temps,
-     * que l'école a choisi. Le mois de la séance ne sert qu'en dernier recours,
-     * quand ce semestre est illisible — et c'est journalisé, parce que la
-     * frontière du mois (janvier-juin = semestre 2) est une supposition.
-     */
-    private function periodeDuDevoir(ESBTPSeanceCours $seance): string
-    {
-        $periode = $seance->emploiTemps?->periodeDEvaluation();
-
-        if ($periode !== null) {
-            return $periode;
-        }
-
-        $parLeMois = Carbon::parse($seance->date_seance)->month <= 6 ? 'semestre2' : 'semestre1';
-        Log::warning('Devoir cree : semestre de l emploi du temps illisible, periode deduite du mois', [
-            'seance_id' => $seance->id,
-            'emploi_temps_id' => $seance->emploi_temps_id,
-            'semestre_emploi_du_temps' => $seance->emploiTemps?->semestre,
-            'periode' => $parLeMois,
-        ]);
-
-        return $parLeMois;
-    }
-
     /**
      * Supprimer une séance de cours.
      */
@@ -1246,14 +1169,14 @@ class ESBTPSeanceCoursController extends Controller
     {
         try {
             $emploiTempsId = $seancesCour->emploi_temps_id;
-            $suite = ['avertissement' => null, 'liens' => []];
-            if ($seancesCour->type === ESBTPSeanceCours::TYPE_HOMEWORK && $seancesCour->homeworkEvaluation) {
-                // Le devoir et sa séance partent ensemble ; les moyennes qu'il
-                // portait sont recalculées après.
-                $suite = SuppressionDEvaluation::supprimer($seancesCour->homeworkEvaluation, Auth::user(), fn () => $seancesCour->delete());
-            } else {
-                $seancesCour->delete();
+            if (! SuppressionDEvaluation::laSeancePeutPartir($seancesCour, Auth::user())) {
+                $refus = 'Le devoir de cette séance est déjà en cours ou terminé : le supprimer avec la séance demande la permission « Modifier une évaluation verrouillée ».';
+
+                return request()->expectsJson()
+                    ? response()->json(['success' => false, 'message' => $refus], 403)
+                    : back()->with('error', $refus);
             }
+            $suite = SuppressionDEvaluation::supprimerLaSeance($seancesCour, Auth::user());
 
             if (request()->expectsJson()) {
                 return response()->json([

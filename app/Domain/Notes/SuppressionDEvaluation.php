@@ -3,6 +3,7 @@
 namespace App\Domain\Notes;
 
 use App\Models\ESBTPEvaluation;
+use App\Models\ESBTPSeanceCours;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
@@ -16,26 +17,62 @@ use Illuminate\Support\Facades\DB;
  * (la liste des évaluations, et la suppression d'une séance de devoir)
  * passent par ici.
  *
- * Le recalcul part après la suppression, hors de sa transaction : un
+ * Le recalcul part après la suppression, hors de toute transaction : un
  * recalcul en échec ne la défait pas, il est compté et dit.
  */
 final class SuppressionDEvaluation
 {
+    /** @return array{avertissement: ?string, liens: array<int, array{libelle:string, url:string}>} */
+    public static function supprimer(ESBTPEvaluation $evaluation, ?User $auteur): array
+    {
+        $evaluation->delete();
+
+        return self::recalculerApres($evaluation, $auteur);
+    }
+
     /**
-     * @param  (\Closure(): void)|null  $avecElle  ce qui doit disparaître dans la même transaction
-     *                                          (la séance d'un devoir) : l'un ne part pas sans l'autre
+     * Une séance, et son devoir s'il y en a un : l'un ne part pas sans l'autre.
+     *
      * @return array{avertissement: ?string, liens: array<int, array{libelle:string, url:string}>}
      */
-    public static function supprimer(ESBTPEvaluation $evaluation, ?User $auteur, ?\Closure $avecElle = null): array
+    public static function supprimerLaSeance(ESBTPSeanceCours $seance, ?User $auteur): array
     {
-        DB::transaction(function () use ($evaluation, $avecElle) {
-            $evaluation->delete();
+        $devoir = self::devoirDe($seance);
 
-            if ($avecElle !== null) {
-                $avecElle();
-            }
+        if ($devoir === null) {
+            $seance->delete();
+
+            return ['avertissement' => null, 'liens' => []];
+        }
+
+        DB::transaction(function () use ($seance, $devoir) {
+            $devoir->delete();
+            $seance->delete();
         });
 
+        return self::recalculerApres($devoir, $auteur);
+    }
+
+    /**
+     * Supprimer une séance emporte son devoir. Un devoir que l'écran de
+     * l'évaluation refuserait de supprimer — déjà en cours ou terminé — ne part
+     * avec sa séance que pour qui a « Modifier une évaluation verrouillée ».
+     */
+    public static function laSeancePeutPartir(ESBTPSeanceCours $seance, ?User $auteur): bool
+    {
+        $devoir = self::devoirDe($seance);
+
+        return $devoir === null || $devoir->isDeletable() || (bool) $auteur?->can('evaluations.edit_locked');
+    }
+
+    private static function devoirDe(ESBTPSeanceCours $seance): ?ESBTPEvaluation
+    {
+        return $seance->type === ESBTPSeanceCours::TYPE_HOMEWORK ? $seance->homeworkEvaluation : null;
+    }
+
+    /** @return array{avertissement: ?string, liens: array<int, array{libelle:string, url:string}>} */
+    private static function recalculerApres(ESBTPEvaluation $evaluation, ?User $auteur): array
+    {
         $recalcul = RecalculApresDeplacement::apresSuppression($evaluation, $auteur?->id);
 
         return [

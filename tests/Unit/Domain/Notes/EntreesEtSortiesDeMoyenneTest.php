@@ -2,6 +2,7 @@
 
 namespace Tests\Unit\Domain\Notes;
 
+use App\Domain\EmploiTemps\AlignementDuDevoir;
 use App\Http\Controllers\ESBTPEvaluationController;
 use App\Http\Controllers\ESBTPSeanceCoursController;
 use App\Models\ESBTPEvaluation;
@@ -194,21 +195,45 @@ class EntreesEtSortiesDeMoyenneTest extends TestCase
         $this->monterLaSeanceDeDevoir($devoir, 'Semestre 1');
         DB::table('esbtp_seance_cours')->where('id', 500)->update(['date_seance' => '2027-02-08']);
 
-        $this->assertSame('semestre1', $this->periodeDuDevoir());
+        $this->assertSame(['periode' => 'semestre1', 'deduite_du_mois' => false], $this->periodeDuDevoir());
     }
 
-    public function test_un_semestre_illisible_retombe_sur_le_mois_et_le_journalise(): void
+    public function test_creer_le_devoir_d_une_seance_le_lui_rattache(): void
     {
-        $devoir = $this->evaluation(self::MATIERE, 'semestre1');
-        $this->monterLaSeanceDeDevoir($devoir, 'Annuel');
-        DB::table('esbtp_seance_cours')->where('id', 500)->update(['date_seance' => '2027-02-08']);
-        $journal = [];
-        Event::listen(MessageLogged::class, function (MessageLogged $e) use (&$journal) {
-            $journal[] = $e->level.' '.$e->message;
-        });
+        $this->monterLaSeanceDeDevoir(0, 'Semestre 2');
+        DB::table('esbtp_seance_cours')->where('id', 500)->update(['homework_evaluation_id' => null, 'homework_description' => 'Devoir surveillé']);
 
-        $this->assertSame('semestre2', $this->periodeDuDevoir());
-        $this->assertNotEmpty(array_filter($journal, fn ($m) => str_starts_with($m, 'warning') && str_contains($m, 'illisible')));
+        $cree = AlignementDuDevoir::creerLeDevoir(ESBTPSeanceCours::findOrFail(500), 7);
+
+        $devoir = DB::table('esbtp_evaluations')->where('id', $cree['evaluation']->id)->first();
+        $this->assertSame('semestre2', $devoir->periode);
+        $this->assertSame('Devoir surveillé', $devoir->titre);
+        $this->assertSame(120, (int) $devoir->duree_minutes);
+        $this->assertSame('draft', $devoir->status);
+        $this->assertSame($devoir->id, (int) DB::table('esbtp_seance_cours')->where('id', 500)->value('homework_evaluation_id'));
+    }
+
+    public function test_un_emploi_du_temps_annee_complete_retombe_sur_le_mois_et_le_dit(): void
+    {
+        // « Année complète » est une valeur que le formulaire de l'emploi du
+        // temps propose : elle ne porte pas de semestre.
+        $devoir = $this->evaluation(self::MATIERE, 'semestre1');
+        $this->monterLaSeanceDeDevoir($devoir, 'Année complète');
+        DB::table('esbtp_seance_cours')->where('id', 500)->update(['date_seance' => '2027-02-08']);
+
+        $this->assertSame(['periode' => 'semestre2', 'deduite_du_mois' => true], $this->periodeDuDevoir());
+    }
+
+    public function test_supprimer_une_seance_dont_le_devoir_est_termine_demande_la_permission(): void
+    {
+        [, $devoir] = $this->deuxEvaluationsEtUneMoyenne();
+
+        $reponse = $this->supprimerLaSeanceDeDevoir($devoir, autorise: false);
+
+        $this->assertStringContainsString('Modifier une évaluation verrouillée', (string) $reponse->getSession()->get('error'));
+        $this->assertNull(DB::table('esbtp_seance_cours')->where('id', 500)->value('deleted_at'));
+        $this->assertNull(DB::table('esbtp_evaluations')->where('id', $devoir)->value('deleted_at'));
+        $this->assertSame(10.0, $this->moyenne(self::MATIERE, 'semestre1'));
     }
 
     // ── Suppression : ESBTPEvaluationController::destroy(), ESBTPSeanceCoursController::destroy() ─
@@ -564,20 +589,17 @@ class EntreesEtSortiesDeMoyenneTest extends TestCase
         ]);
     }
 
-    /** La période que `store()` donnerait au devoir de la séance 500. */
-    private function periodeDuDevoir(): string
+    /** La période que la création donnerait au devoir de la séance 500. */
+    private function periodeDuDevoir(): array
     {
-        $methode = new \ReflectionMethod(ESBTPSeanceCoursController::class, 'periodeDuDevoir');
-        $methode->setAccessible(true);
-
-        return $methode->invoke(app(ESBTPSeanceCoursController::class), ESBTPSeanceCours::findOrFail(500));
+        return AlignementDuDevoir::periodeALaCreation(ESBTPSeanceCours::findOrFail(500));
     }
 
     /** La suppression d'une séance de devoir, par l'écran. */
-    private function supprimerLaSeanceDeDevoir(int $evaluationId)
+    private function supprimerLaSeanceDeDevoir(int $evaluationId, bool $autorise = true)
     {
         $this->monterLaSeanceDeDevoir($evaluationId);
-        $this->actingAs($this->utilisateur(autorise: true));
+        $this->actingAs($this->utilisateur(autorise: $autorise));
         $requete = Request::create('/esbtp/seances-cours/500', 'DELETE');
         $requete->setLaravelSession(app('session.store'));
         app()->instance('request', $requete);
