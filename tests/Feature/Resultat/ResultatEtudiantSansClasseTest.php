@@ -66,26 +66,25 @@ class ResultatEtudiantSansClasseTest extends TestCase
         $this->assertNull($reponse->viewData('classe'), 'Temoin : la page doit bien etre ouverte sans classe.');
 
         $matieres = $reponse->viewData('notesByMatiere');
-
-        // La matiere porte un coefficient 2 dans la classe ; sans classe, il
-        // est introuvable. La page le signale au lieu de le deviner.
         $this->assertArrayHasKey($notee->id, $matieres, 'Temoin : la matiere notee doit etre listee.');
-        $this->assertEquals(1, $matieres[$notee->id]['matiere_coefficient']);
-        $this->assertTrue($matieres[$notee->id]['matiere_coefficient_missing'] ?? false);
-
-        // La moyenne saisie garde le coefficient qu'elle porte elle-meme.
         $this->assertArrayHasKey($saisie->id, $matieres, 'Temoin : la moyenne enregistree doit etre listee.');
-        $this->assertEquals(3, $matieres[$saisie->id]['matiere_coefficient']);
 
-        // Aucune moyenne de semestre : elle reposerait sur des coefficients
-        // devines, et se lirait comme l'officielle.
+        // Aucune moyenne : elle reposerait sur des coefficients devines (1 au
+        // lieu de 2) et se lirait comme l'officielle, verdict compris.
+        $this->assertNull($reponse->viewData('moyenneGenerale'));
+        $this->assertNull($reponse->viewData('moyenneAvecAssiduite'));
         $this->assertNull($reponse->viewData('moyenneSemestre1'));
         $this->assertNull($reponse->viewData('moyenneSemestre2'));
+        $this->assertNull($reponse->viewData('detailUiState')['display_average']);
+        $reponse->assertDontSee('ADMIS');
+        $reponse->assertDontSee('AJOURNÉ');
 
-        // Le repli se dit au journal : sinon personne ne cherche.
-        $this->assertNotEmpty(array_filter($journal, fn (MessageLogged $e) => $e->level === 'warning'
-            && str_contains($e->message, 'coefficient introuvable')
-            && ($e->context['matiere_id'] ?? null) === $notee->id), 'Le repli doit etre journalise.');
+        // Le repli se dit au journal, une fois, par sa vraie cause.
+        $sansClasse = array_filter($journal, fn (MessageLogged $e) => $e->level === 'warning'
+            && str_contains($e->message, 'fiche ouverte sans classe'));
+        $this->assertCount(1, $sansClasse, 'La fiche sans classe doit etre journalisee une fois.');
+        $this->assertEmpty(array_filter($journal, fn (MessageLogged $e) => str_contains($e->message, 'coefficient introuvable')),
+            'Sans classe, ce n est pas un coefficient manquant : pas un avertissement par matiere.');
     }
 
     private function unSuperAdmin(): User

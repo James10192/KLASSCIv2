@@ -815,9 +815,8 @@ class ESBTPResultatController extends Controller
             // Le filtre est pose a l'INGESTION, pas dans la branche : il couvre
             // ainsi les trois branches et tout futur lecteur de ce tableau.
             //
-            // `$classe` est nullable ici (`:664`, `find()` sur un id optionnel).
-            // Sans classe on ne PEUT pas savoir de quel systeme releve la note :
-            // on n'ecarte rien plutot que d'ecarter au hasard.
+            // Sans classe (nullable), impossible de savoir de quel systeme releve
+            // la note : on n'ecarte rien plutot que d'ecarter au hasard.
             if ($classe && ! CoherenceSystemeAcademique::matiereRetenue($matiere, $classe, 'resultats etudiant/note')) {
                 continue;
             }
@@ -885,10 +884,8 @@ class ESBTPResultatController extends Controller
         $countValidMatieres = 0;
 
         foreach ($notesByMatiere as $matiere_id => &$matiereData) {
-            // Coefficient introuvable : lisible au coefficient 1, et le drapeau le dit.
-            $coefficient = $this->coefficientOfficielOuNull((int) $matiere_id, $classe, $annee_universitaire_id);
-            $matiereData['matiere_coefficient'] = $coefficient ?: 1;
-            $matiereData['matiere_coefficient_missing'] = $coefficient === null;
+            // Coefficient introuvable : la page reste lisible au coefficient 1.
+            $matiereData['matiere_coefficient'] = $this->coefficientOfficielOuNull((int) $matiere_id, $classe, $annee_universitaire_id) ?: 1;
 
             if ($matiereData['total_coefficients'] > 0) {
                 $matiereData['moyenne'] = $matiereData['total_points'] / $matiereData['total_coefficients'];
@@ -937,8 +934,7 @@ class ESBTPResultatController extends Controller
 
             // Si la matière n'existe pas encore dans notesByMatiere, la créer
             if (! isset($notesByMatiere[$matiere_id])) {
-                $matiereCoefOfficiel = $this->coefficientOfficielOuNull((int) $matiere_id, $classe, $annee_universitaire_id)
-                    ?: ($resultat->coefficient ?: 1);
+                $matiereCoefOfficiel = $this->coefficientOfficielOuNull((int) $matiere_id, $classe, $annee_universitaire_id) ?: ($resultat->coefficient ?: 1);
 
                 $notesByMatiere[$matiere_id] = [
                     'matiere' => $resultat->matiere,
@@ -1021,8 +1017,7 @@ class ESBTPResultatController extends Controller
             ? $this->currentResultSnapshotService->getAnnualSnapshot($etudiant->id, $classe->id, $annee_universitaire_id)
             : null;
 
-        // Moyennes semestrielles incluant l'assiduité (via bulletin ou fallback). Sans
-        // classe, aucune : une moyenne au coefficient 1 se lirait comme l'officielle.
+        // Moyennes semestrielles incluant l'assiduité (via bulletin ou fallback) ; aucune sans classe.
         $moyenneSemestre1 = $annualSnapshot['semester_snapshots']['semestre1']['effective_total'] ?? ($classe ? $this->bulletinService->getAlignedBulletinAverageForPeriode(
             $id, $classe->id, $annee_universitaire_id ?? 0,
             'semestre1', $periode, $moyenneAvecAssiduite, $noteAssiduite
@@ -1037,6 +1032,13 @@ class ESBTPResultatController extends Controller
         $detailUiState = $this->buildAnnualDetailUiState($periode, $moyenneSemestre1, $moyenneSemestre2, $moyenneAnnuelle);
         $bulletinWorkflowPeriode = $detailUiState['bulletin_workflow_periode'];
         $bulletinWorkflowPeriodeLabel = $detailUiState['bulletin_workflow_periode_label'];
+        if (! $classe) {
+            // Sans coefficient officiel, jauge et pied de tableau afficheraient une moyenne au coefficient 1, verdict compris.
+            \Log::warning('Resultats etudiant : fiche ouverte sans classe, aucune moyenne affichee', ['etudiant_id' => $etudiant->id, 'annee_universitaire_id' => $annee_universitaire_id]);
+            $moyenneGenerale = $moyenneAvecAssiduite = null;
+            $detailUiState['state'] = 'annual_unresolved';
+            $detailUiState['display_average'] = null;
+        }
         $bulletinConsistency = $classe
             ? $this->bulletinConsistencyService->getSnapshot(
                 $etudiant->id,
@@ -1151,14 +1153,13 @@ class ESBTPResultatController extends Controller
     }
 
     /**
-     * Coefficient officiel de la matiere dans la classe, ou null — journalise.
-     * Null aussi SANS classe (inscription supprimee, lien du chatbot) : le
-     * service refuse alors la « Classe invalide » au lieu d'une erreur 500.
+     * Coefficient officiel de la matiere dans la classe, ou null. Sans classe
+     * (inscription supprimee, lien du chatbot), rien a lire : la page le journalise une fois.
      */
     private function coefficientOfficielOuNull(int $matiereId, ?ESBTPClasse $classe, $anneeId): ?float
     {
         try {
-            return $this->bulletinService->getCoefficientForCombination($matiereId, (int) $classe?->id, (int) $anneeId);
+            return $classe ? $this->bulletinService->getCoefficientForCombination($matiereId, (int) $classe->id, (int) $anneeId) : null;
         } catch (\RuntimeException $e) {
             \Log::warning('Resultats etudiant : coefficient introuvable, repli applique', ['matiere_id' => $matiereId, 'classe_id' => $classe?->id, 'raison' => $e->getMessage()]);
 
