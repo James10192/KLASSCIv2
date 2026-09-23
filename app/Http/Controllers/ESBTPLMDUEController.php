@@ -490,6 +490,38 @@ class ESBTPLMDUEController extends Controller
     }
 
     /**
+     * `esbtp_matieres.code` est unique en base, matières supprimées comprises :
+     * sans ce contrôle, un code déjà pris remontait en erreur serveur, sans
+     * dire à qui il appartient (USAT, septembre 2026 : « Génétique animale »
+     * saisie avec le code de « Génétique végétale »).
+     */
+    private function refuserCodeDejaPris(string $code, ?int $saufId = null): void
+    {
+        $existante = ESBTPMatiere::withTrashed()
+            ->where('code', $code)
+            ->when($saufId, fn ($q) => $q->where('id', '!=', $saufId))
+            ->first(['id', 'name', 'code', 'deleted_at']);
+
+        if (! $existante) {
+            return;
+        }
+
+        $message = $existante->trashed()
+            ? sprintf(
+                'Le code « %s » appartient à une matière supprimée (« %s »). Choisissez un autre code.',
+                $existante->code,
+                $existante->name
+            )
+            : sprintf(
+                'Le code « %s » est déjà celui de la matière « %s ». Choisissez un autre code, ou utilisez l\'onglet « Lier un existant » s\'il s\'agit bien de la même matière.',
+                $existante->code,
+                $existante->name
+            );
+
+        throw ValidationException::withMessages(['code' => $message]);
+    }
+
+    /**
      * Matérialise dans le pivot les éléments constitutifs qu'une UE ne tient que
      * par la clé étrangère `esbtp_matieres.unite_enseignement_id`.
      *
@@ -654,6 +686,8 @@ class ESBTPLMDUEController extends Controller
             // sortirait une matière BTS de tous les sélecteurs BTS.
             $this->refuserAbsorptionMatiereBts($matiere);
         } else {
+            $this->refuserCodeDejaPris($validated['code']);
+
             // Créer une nouvelle matière
             $matiere = ESBTPMatiere::create([
                 'name'                  => $validated['name'],
@@ -712,6 +746,10 @@ class ESBTPLMDUEController extends Controller
             'ordre_bulletin'  => 'nullable|integer|min:0',
             'parcours_id'     => 'nullable|integer',
         ]);
+
+        if (isset($validated['code'])) {
+            $this->refuserCodeDejaPris($validated['code'], (int) $ecue->id);
+        }
 
         $portee = $this->composition->porteeValide($ue, $validated['parcours_id'] ?? null);
 

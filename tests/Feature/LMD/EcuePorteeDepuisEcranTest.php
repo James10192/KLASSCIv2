@@ -245,6 +245,48 @@ class EcuePorteeDepuisEcranTest extends TestCase
             ->count();
     }
 
+    public function test_un_code_deja_pris_est_refuse_avec_le_nom_de_son_titulaire(): void
+    {
+        // USAT, septembre 2026 : ce cas remontait en erreur serveur (index unique).
+        $this->actingAs($this->acteur)
+            ->postJson(route('esbtp.lmd.ue.ecue.store', $this->ue), [
+                'name' => 'Autre element',
+                'code' => 'ECUE-TIR',
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('code');
+
+        $this->assertSame(1, ESBTPMatiere::where('code', 'ECUE-TIR')->count());
+
+        // Une matiere supprimee garde son code dans l'index unique.
+        ESBTPMatiere::where('code', 'ECUE-TIR')->firstOrFail()->delete();
+
+        $this->actingAs($this->acteur)
+            ->postJson(route('esbtp.lmd.ue.ecue.store', $this->ue), [
+                'name' => 'Autre element',
+                'code' => 'ECUE-TIR',
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('code');
+    }
+
+    public function test_modifier_un_ecue_vers_un_code_deja_pris_est_refuse(): void
+    {
+        $this->actingAs($this->acteur)
+            ->putJson(route('esbtp.lmd.ue.ecue.update', [$this->ue, $this->ecueBu]), [
+                'code' => 'ECUE-TIR',
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('code');
+
+        // Garder son propre code reste permis.
+        $this->actingAs($this->acteur)
+            ->putJson(route('esbtp.lmd.ue.ecue.update', [$this->ue, $this->ecueBu]), [
+                'code' => 'ECUE-BU',
+            ])
+            ->assertOk();
+    }
+
     private function maquette(string $codeParcours, string $nomParcours, string $codeUe, string $codeEcue): array
     {
         return [
