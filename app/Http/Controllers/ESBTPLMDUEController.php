@@ -494,31 +494,45 @@ class ESBTPLMDUEController extends Controller
      * sans ce contrôle, un code déjà pris remontait en erreur serveur, sans
      * dire à qui il appartient (USAT, septembre 2026 : « Génétique animale »
      * saisie avec le code de « Génétique végétale »).
+     *
+     * Une matière ACTIVE garde son code : on refuse, en la nommant. Une
+     * matière SUPPRIMÉE ne devrait plus rien bloquer : on lui retire le code
+     * (suffixé de son id, donc toujours retrouvable dans l'audit et en base)
+     * et on rend un message qui dit ce qui a été fait. À appeler dans la même
+     * transaction que l'écriture qui réutilise le code.
+     *
+     * @return string|null Le message à joindre à la réponse si un code a été libéré.
      */
-    private function refuserCodeDejaPris(string $code, ?int $saufId = null): void
+    private function libererCodeOuRefuser(string $code, ?int $saufId = null): ?string
     {
         $existante = ESBTPMatiere::withTrashed()
             ->where('code', $code)
             ->when($saufId, fn ($q) => $q->where('id', '!=', $saufId))
-            ->first(['id', 'name', 'code', 'deleted_at']);
+            ->first();
 
         if (! $existante) {
-            return;
+            return null;
         }
 
-        $message = $existante->trashed()
-            ? sprintf(
-                'Le code « %s » appartient à une matière supprimée (« %s »). Choisissez un autre code.',
-                $existante->code,
-                $existante->name
-            )
-            : sprintf(
+        if (! $existante->trashed()) {
+            throw ValidationException::withMessages(['code' => sprintf(
                 'Le code « %s » est déjà celui de la matière « %s ». Choisissez un autre code, ou utilisez l\'onglet « Lier un existant » s\'il s\'agit bien de la même matière.',
                 $existante->code,
                 $existante->name
-            );
+            )]);
+        }
 
-        throw ValidationException::withMessages(['code' => $message]);
+        $codeArchive = $code . '~suppr-' . $existante->id;
+        $existante->code = $codeArchive;
+        $existante->save();
+
+        return sprintf(
+            'Le code « %s » était encore réservé par « %s », supprimée le %s. Il a été libéré : l\'ancienne matière reste archivée sous « %s ».',
+            $code,
+            $existante->name,
+            $existante->deleted_at->format('d/m/Y'),
+            $codeArchive
+        );
     }
 
     /**
@@ -677,6 +691,8 @@ class ESBTPLMDUEController extends Controller
             return $error;
         }
 
+        $codeLibere = null;
+
         if (!empty($validated['matiere_id'])) {
             $matiere = ESBTPMatiere::findOrFail($validated['matiere_id']);
 
@@ -686,20 +702,23 @@ class ESBTPLMDUEController extends Controller
             // sortirait une matière BTS de tous les sélecteurs BTS.
             $this->refuserAbsorptionMatiereBts($matiere);
         } else {
-            $this->refuserCodeDejaPris($validated['code']);
+            // Créer une nouvelle matière. Libérer le code d'une matière
+            // supprimée et créer se font ensemble, ou pas du tout.
+            [$matiere, $codeLibere] = DB::transaction(function () use ($validated, $ue, $creditEcue, $coeffEcue, $ordreBulletin) {
+                $codeLibere = $this->libererCodeOuRefuser($validated['code']);
 
-            // Créer une nouvelle matière
-            $matiere = ESBTPMatiere::create([
-                'name'                  => $validated['name'],
-                'code'                  => $validated['code'],
-                'unite_enseignement_id' => $ue->id, // FK direct (rétro-compat)
-                'credit_ecue'           => $creditEcue,
-                'coefficient_ecue'      => $coeffEcue,
-                'ordre_bulletin'        => $ordreBulletin,
-                'is_active'             => true,
-                'created_by'            => auth()->id(),
-                'updated_by'            => auth()->id(),
-            ]);
+                return [ESBTPMatiere::create([
+                    'name'                  => $validated['name'],
+                    'code'                  => $validated['code'],
+                    'unite_enseignement_id' => $ue->id, // FK direct (rétro-compat)
+                    'credit_ecue'           => $creditEcue,
+                    'coefficient_ecue'      => $coeffEcue,
+                    'ordre_bulletin'        => $ordreBulletin,
+                    'is_active'             => true,
+                    'created_by'            => auth()->id(),
+                    'updated_by'            => auth()->id(),
+                ]), $codeLibere];
+            });
         }
 
         // Clé étrangère (rétro-compat) : on ne l'écrit que si elle est libre ou
@@ -726,11 +745,14 @@ class ESBTPLMDUEController extends Controller
         ], $portee);
 
         if ($request->ajax() || $request->wantsJson()) {
-            return response()->json(['success' => true, 'message' => 'ECUE ajouté avec succès.']);
+            return response()->json([
+                'success' => true,
+                'message' => trim('ECUE ajouté avec succès. ' . ($codeLibere ?? '')),
+            ]);
         }
 
         return redirect()->route('esbtp.lmd.ue.index')
-            ->with('success', 'ECUE ajouté avec succès à l\'UE.');
+            ->with('success', trim('ECUE ajouté avec succès à l\'UE. ' . ($codeLibere ?? '')));
     }
 
     /**
@@ -747,10 +769,6 @@ class ESBTPLMDUEController extends Controller
             'parcours_id'     => 'nullable|integer',
         ]);
 
-        if (isset($validated['code'])) {
-            $this->refuserCodeDejaPris($validated['code'], (int) $ecue->id);
-        }
-
         $portee = $this->composition->porteeValide($ue, $validated['parcours_id'] ?? null);
 
         // Vérifier que la somme des crédits ECUE ne dépasse pas le crédit de l'UE,
@@ -759,15 +777,24 @@ class ESBTPLMDUEController extends Controller
             return $error;
         }
 
-        // Mettre à jour la matière en un seul UPDATE (nom, code, coeff, credit, ordre)
-        $ecue->update([
-            'name' => $validated['name'] ?? $ecue->name,
-            'code' => $validated['code'] ?? $ecue->code,
-            'coefficient_ecue' => $validated['coefficient_ecue'] ?? $ecue->coefficient_ecue,
-            'credit_ecue' => $validated['credit_ecue'] ?? $ecue->credit_ecue,
-            'ordre_bulletin' => $validated['ordre_bulletin'] ?? $ecue->ordre_bulletin,
-            'updated_by' => auth()->id(),
-        ]);
+        // Mettre à jour la matière en un seul UPDATE (nom, code, coeff, credit, ordre).
+        // Libérer le code d'une matière supprimée et l'écrire ici se font ensemble.
+        $codeLibere = DB::transaction(function () use ($validated, $ecue) {
+            $codeLibere = isset($validated['code'])
+                ? $this->libererCodeOuRefuser($validated['code'], (int) $ecue->id)
+                : null;
+
+            $ecue->update([
+                'name' => $validated['name'] ?? $ecue->name,
+                'code' => $validated['code'] ?? $ecue->code,
+                'coefficient_ecue' => $validated['coefficient_ecue'] ?? $ecue->coefficient_ecue,
+                'credit_ecue' => $validated['credit_ecue'] ?? $ecue->credit_ecue,
+                'ordre_bulletin' => $validated['ordre_bulletin'] ?? $ecue->ordre_bulletin,
+                'updated_by' => auth()->id(),
+            ]);
+
+            return $codeLibere;
+        });
 
         // Mettre à jour le pivot de CETTE maquette. Sans la portée, modifier le
         // coefficient commun réécrivait la ligne qu'un parcours avait surchargée,
@@ -779,11 +806,14 @@ class ESBTPLMDUEController extends Controller
         ], $portee);
 
         if ($request->ajax() || $request->wantsJson()) {
-            return response()->json(['success' => true, 'message' => 'ECUE mis à jour.']);
+            return response()->json([
+                'success' => true,
+                'message' => trim('ECUE mis à jour. ' . ($codeLibere ?? '')),
+            ]);
         }
 
         return redirect()->route('esbtp.lmd.ue.index')
-            ->with('success', 'ECUE mis à jour avec succès.');
+            ->with('success', trim('ECUE mis à jour avec succès. ' . ($codeLibere ?? '')));
     }
 
     /**

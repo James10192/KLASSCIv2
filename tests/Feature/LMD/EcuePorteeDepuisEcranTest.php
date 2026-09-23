@@ -258,16 +258,29 @@ class EcuePorteeDepuisEcranTest extends TestCase
 
         $this->assertSame(1, ESBTPMatiere::where('code', 'ECUE-TIR')->count());
 
-        // Une matiere supprimee garde son code dans l'index unique.
-        ESBTPMatiere::where('code', 'ECUE-TIR')->firstOrFail()->delete();
+    }
 
-        $this->actingAs($this->acteur)
+    public function test_le_code_d_une_matiere_supprimee_est_libere_et_la_creation_aboutit(): void
+    {
+        // Une matiere supprimee garde son code dans l'index unique : sans
+        // liberation, le code resterait bloque par une ligne que personne ne voit.
+        $ancienne = ESBTPMatiere::where('code', 'ECUE-TIR')->firstOrFail();
+        $ancienne->delete();
+
+        $message = $this->actingAs($this->acteur)
             ->postJson(route('esbtp.lmd.ue.ecue.store', $this->ue), [
                 'name' => 'Autre element',
                 'code' => 'ECUE-TIR',
             ])
-            ->assertStatus(422)
-            ->assertJsonValidationErrors('code');
+            ->assertOk()
+            ->json('message');
+
+        // La reponse dit ce qui a ete fait, et ou retrouver l'ancienne matiere.
+        $this->assertStringContainsString('libéré', $message);
+        $this->assertStringContainsString('ECUE-TIR~suppr-'.$ancienne->id, $message);
+
+        $this->assertSame('ECUE-TIR~suppr-'.$ancienne->id, ESBTPMatiere::withTrashed()->find($ancienne->id)->code);
+        $this->assertSame('Autre element', ESBTPMatiere::where('code', 'ECUE-TIR')->firstOrFail()->name);
     }
 
     public function test_modifier_un_ecue_vers_un_code_deja_pris_est_refuse(): void
