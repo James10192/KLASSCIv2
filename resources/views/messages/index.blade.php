@@ -610,12 +610,24 @@
                                                             <div class="acard-meta">
                                                                 <span class="acard-meta-label">Année</span>
                                                                 <span class="acard-meta-value" x-text="m.payload?.snapshot?.annee || '—'"></span>
-                                                                <span class="acard-meta-label">Total dû</span>
-                                                                <span class="acard-meta-value" x-text="formatXof(m.payload?.snapshot?.montant_total)"></span>
-                                                                <span class="acard-meta-label">Payé</span>
-                                                                <span class="acard-meta-value" x-text="formatXof(m.payload?.snapshot?.montant_paye)"></span>
-                                                                <span class="acard-meta-label">Solde</span>
-                                                                <span class="acard-meta-value" x-text="formatXof(m.payload?.snapshot?.solde_restant)"></span>
+                                                                <template x-if="m.payload?.snapshot?.montant_total != null">
+                                                                    <span class="acard-meta-label">Total dû</span>
+                                                                </template>
+                                                                <template x-if="m.payload?.snapshot?.montant_total != null">
+                                                                    <span class="acard-meta-value" x-text="formatXof(m.payload.snapshot.montant_total)"></span>
+                                                                </template>
+                                                                <template x-if="m.payload?.snapshot?.montant_paye != null">
+                                                                    <span class="acard-meta-label">Payé</span>
+                                                                </template>
+                                                                <template x-if="m.payload?.snapshot?.montant_paye != null">
+                                                                    <span class="acard-meta-value" x-text="formatXof(m.payload.snapshot.montant_paye)"></span>
+                                                                </template>
+                                                                <template x-if="m.payload?.snapshot?.solde_restant != null">
+                                                                    <span class="acard-meta-label">Solde</span>
+                                                                </template>
+                                                                <template x-if="m.payload?.snapshot?.solde_restant != null">
+                                                                    <span class="acard-meta-value" x-text="formatXof(m.payload.snapshot.solde_restant)"></span>
+                                                                </template>
                                                             </div>
                                                         </div>
                                                     </template>
@@ -633,8 +645,12 @@
                                                                 </template>
                                                             </div>
                                                             <div class="acard-meta">
-                                                                <span class="acard-meta-label">Montant</span>
-                                                                <span class="acard-meta-value" x-text="formatXof(m.payload?.snapshot?.montant)"></span>
+                                                                <template x-if="m.payload?.snapshot?.montant != null">
+                                                                    <span class="acard-meta-label">Montant</span>
+                                                                </template>
+                                                                <template x-if="m.payload?.snapshot?.montant != null">
+                                                                    <span class="acard-meta-value" x-text="formatXof(m.payload.snapshot.montant)"></span>
+                                                                </template>
                                                                 <template x-if="m.payload?.snapshot?.reference">
                                                                     <span class="acard-meta-label">Référence</span>
                                                                 </template>

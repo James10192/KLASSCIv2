@@ -2317,7 +2317,9 @@ class ESBTPInscriptionController extends Controller
                 'moyenne_generale' => $analysis['moyenne_generale'] ?? null,
                 'matieres_echouees' => count($analysis['matieres_echouees'] ?? []),
                 'classe_actuelle' => $inscriptionActive->classe?->name ?? '—',
-                'solde_restant' => $soldeRestant,
+                // Le statut decide de la suite (soldé ou non) ; le montant
+                // reste derriere la porte financiere.
+                'solde_restant' => $request->user()->can('finances.etudiants.voir') ? $soldeRestant : null,
                 'solde_status' => $soldeRestant <= 0 ? 'solde' : 'impaye',
                 'classes_proposees' => collect($classesProposees)->map(fn($c) => [
                     'id' => $c->id ?? $c['id'] ?? null,

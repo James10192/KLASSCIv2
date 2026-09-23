@@ -635,6 +635,10 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
         // qu'a la creation, corriger imposait un acces web superAdmin.
         Route::get('/user/{id}/permissions', [App\Http\Controllers\API\CLI\CLIUserPermissionController::class, 'index'])->name('user.permissions.index');
         Route::post('/user/{id}/permissions', [App\Http\Controllers\API\CLI\CLIUserPermissionController::class, 'update'])->name('user.permissions.update');
+        // Acces temporaires : une permission ouverte jusqu'a une date (docs/api/CLI_ACCES_TEMPORAIRES.md).
+        Route::get('/user/{id}/acces-temporaires', [App\Http\Controllers\API\CLI\CLIAccesTemporairesController::class, 'index'])->name('user.acces-temporaires.index');
+        Route::post('/user/{id}/acces-temporaires', [App\Http\Controllers\API\CLI\CLIAccesTemporairesController::class, 'store'])->name('user.acces-temporaires.store');
+        Route::post('/acces-temporaires/{grant}/retirer', [App\Http\Controllers\API\CLI\CLIAccesTemporairesController::class, 'retirer'])->name('acces-temporaires.retirer');
         Route::post('/user/{id}/role', [App\Http\Controllers\API\CLI\CLIUserController::class, 'userSetRole'])->name('user.set-role');
 
         // Filieres — ouverture d'un nouveau tenant sans passer par l'interface.
