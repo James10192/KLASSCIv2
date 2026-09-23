@@ -139,6 +139,16 @@ Les déplaceurs d'évaluation recalculent désormais les deux côtés
 (`App\Domain\Notes\RecalculApresDeplacement`) ; `sync-notes`, lui, réaligne
 toujours sans recalculer.
 
+**Même défaut sans rien déplacer : le barème et le coefficient.** Ils vivent sur
+l'évaluation, pas sur la note — les modifier n'enregistre aucune note, donc
+l'observateur ne tourne pas, et la moyenne calculée sur l'ancienne pondération
+garde la main. Les deux écrans qui les modifient (`update()` et `quickUpdate()`
+de `ESBTPEvaluationController`) passent désormais par
+`RecalculApresDeplacement::apresChangementDePonderation()`. Tout nouvel écran qui
+écrit ces deux colonnes sur une évaluation notée doit faire de même. Reste
+ouvert : **annuler** une évaluation (`status = cancelled`) ne recalcule rien non
+plus, alors que le calcul l'exclut.
+
 Pour rafraîchir : `POST /api/cli/notes/recompute` ou `notes:recompute --classe --annee`
 (`docs/api/CLI_RECALCUL_RESULTATS.md`). Pour retirer une moyenne qui n'a plus
 AUCUNE note : le pré-contrôle de la génération des bulletins la liste, avec une

@@ -62,15 +62,12 @@ que sur l'évaluation annulée est laissée et nommée, jamais remise à zéro �
 le champ `warning` de la réponse JSON, affiché dans la liste jusqu'à ce qu'on le
 ferme.
 
-**Restent sans recalcul, trouvés à ce jour** — des écritures qui changent une
-moyenne sans déplacer ni exclure une note :
-- la **suppression** d'une évaluation encore brouillon ou planifiée qui porte
-  déjà des notes ;
-- le changement de **barème** ou de **coefficient** d'une évaluation notée
-  (écran d'édition, édition rapide) : les deux entrent dans le calcul.
+Le changement de **barème** ou de **coefficient** d'une évaluation notée
+recalcule aussi, depuis septembre 2026 (écran d'édition et édition rapide).
 
-Après l'un d'eux, rejouez `POST /api/cli/notes/recompute` sur la classe et la
-période.
+**Reste sans recalcul, trouvé à ce jour** : la **suppression** d'une évaluation
+encore brouillon ou planifiée qui porte déjà des notes. Après une suppression,
+rejouez `POST /api/cli/notes/recompute` sur la classe et la période.
 
 La séance de devoir ne reporte sur le devoir que ce qu'elle a **réellement
 changé** : sa matière, et le semestre de son emploi du temps quand sa date
