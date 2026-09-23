@@ -2790,10 +2790,12 @@ class ESBTPResultatController extends Controller
                         // Créer une nouvelle matière
                         $nomMatiere = $nouvelleMatiereData['nom_nouvelle'];
                         $coefficient = $nouvelleMatiereData['coefficient'];
+                        $codeNouveau = mb_strtoupper(mb_substr($nomMatiere, 0, 3, 'UTF-8'), 'UTF-8').'_'.time();
+                        app(\App\Services\LMD\CodeDeMatiere::class)->libererSiArchive($codeNouveau);
                         $matiere = \App\Models\ESBTPMatiere::firstOrCreate(
                             ['name' => $nomMatiere],
                             [
-                                'code' => strtoupper(substr($nomMatiere, 0, 3)).'_'.time(),
+                                'code' => $codeNouveau,
                                 'description' => 'Matière ajoutée manuellement via le bulletin',
                                 'coefficient' => $coefficient,
                                 'type_formation' => 'generale',

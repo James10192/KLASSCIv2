@@ -363,7 +363,7 @@ class ESBTPLMDUEController extends Controller
     ): void {
         $idsConserves = [];
 
-        foreach ($ecues as $ligne) {
+        foreach ($ecues as $index => $ligne) {
             $code = isset($ligne['code']) && $ligne['code'] !== '' ? $ligne['code'] : null;
             $credit = isset($ligne['credit_ecue']) && $ligne['credit_ecue'] !== '' ? (int) $ligne['credit_ecue'] : null;
             $coefficient = isset($ligne['coefficient_ecue']) && $ligne['coefficient_ecue'] !== '' ? (float) $ligne['coefficient_ecue'] : null;
@@ -423,7 +423,9 @@ class ESBTPLMDUEController extends Controller
                 }
             }
             $matiere->updated_by = auth()->id();
-            $matiere->save();
+            // Deux enregistrements simultanes du meme code nouveau : le second
+            // recoit un refus nomme sur sa ligne, pas une erreur serveur.
+            $this->codes->sousUnicite("ecues.{$index}.code", $code, fn () => $matiere->save());
 
             // Par le service, jamais par `syncWithoutDetaching` : celui-ci retrouve
             // la ligne par le seul `matiere_id` et reecrirait une composition
@@ -655,54 +657,61 @@ class ESBTPLMDUEController extends Controller
             return $error;
         }
 
-        $codeLibere = null;
+        // La matière, sa clé étrangère et sa ligne de pivot s'écrivent ensemble :
+        // un échec au pivot ne doit pas laisser un code libéré et une matière
+        // créée mais rattachée à rien.
+        $codeLibere = DB::transaction(function () use ($validated, $ue, $portee, $coeffEcue, $creditEcue, $ordreBulletin) {
+            $codeLibere = null;
 
-        if (!empty($validated['matiere_id'])) {
-            $matiere = ESBTPMatiere::findOrFail($validated['matiere_id']);
+            if (!empty($validated['matiere_id'])) {
+                $matiere = ESBTPMatiere::findOrFail($validated['matiere_id']);
 
-            // Cette route valide en ligne, elle ne passe pas par
-            // UniteEnseignementRequest : la garde anti-absorption BTS doit être
-            // rejouée ici, sinon un clic dans « Lier une matière existante »
-            // sortirait une matière BTS de tous les sélecteurs BTS.
-            $this->refuserAbsorptionMatiereBts($matiere);
-        } else {
-            // Refus nommé si le code est pris, libération s'il n'est tenu que
-            // par une matière supprimée : CodeDeMatiere tranche, ici comme ailleurs.
-            [$matiere, $codeLibere] = $this->codes->ecrire($validated['code'], null, $ue, $portee, fn () => ESBTPMatiere::create([
-                'name'                  => $validated['name'],
-                'code'                  => $validated['code'],
-                'unite_enseignement_id' => $ue->id, // FK direct (rétro-compat)
-                'credit_ecue'           => $creditEcue,
-                'coefficient_ecue'      => $coeffEcue,
-                'ordre_bulletin'        => $ordreBulletin,
-                'is_active'             => true,
-                'created_by'            => auth()->id(),
-                'updated_by'            => auth()->id(),
-            ]));
-        }
+                // Cette route valide en ligne, elle ne passe pas par
+                // UniteEnseignementRequest : la garde anti-absorption BTS doit être
+                // rejouée ici, sinon un clic dans « Lier une matière existante »
+                // sortirait une matière BTS de tous les sélecteurs BTS.
+                $this->refuserAbsorptionMatiereBts($matiere);
+            } else {
+                // Refus nommé si le code est pris, libération s'il n'est tenu que
+                // par une matière supprimée : CodeDeMatiere tranche, ici comme ailleurs.
+                [$matiere, $codeLibere] = $this->codes->ecrire($validated['code'], null, $ue, $portee, fn () => ESBTPMatiere::create([
+                    'name'                  => $validated['name'],
+                    'code'                  => $validated['code'],
+                    'unite_enseignement_id' => $ue->id, // FK direct (rétro-compat)
+                    'credit_ecue'           => $creditEcue,
+                    'coefficient_ecue'      => $coeffEcue,
+                    'ordre_bulletin'        => $ordreBulletin,
+                    'is_active'             => true,
+                    'created_by'            => auth()->id(),
+                    'updated_by'            => auth()->id(),
+                ]));
+            }
 
-        // Clé étrangère (rétro-compat) : on ne l'écrit que si elle est libre ou
-        // déjà la nôtre. La reprendre à l'unité voisine qui ne tient ses
-        // éléments que par elle la dépouillerait, en silence — même règle que
-        // synchroniserEcues(). Le partage passe par le pivot, écrit juste après.
-        $proprietaireId = $matiere->unite_enseignement_id;
-        $appartientAUneAutreUe = $proprietaireId !== null
-            && (int) $proprietaireId !== (int) $ue->id;
+            // Clé étrangère (rétro-compat) : on ne l'écrit que si elle est libre ou
+            // déjà la nôtre. La reprendre à l'unité voisine qui ne tient ses
+            // éléments que par elle la dépouillerait, en silence — même règle que
+            // synchroniserEcues(). Le partage passe par le pivot, écrit juste après.
+            $proprietaireId = $matiere->unite_enseignement_id;
+            $appartientAUneAutreUe = $proprietaireId !== null
+                && (int) $proprietaireId !== (int) $ue->id;
 
-        if ($appartientAUneAutreUe) {
-            $this->materialiserPivotDepuisCleEtrangere((int) $proprietaireId);
-        } elseif ($proprietaireId === null) {
-            $matiere->update(['unite_enseignement_id' => $ue->id, 'updated_by' => auth()->id()]);
-        }
+            if ($appartientAUneAutreUe) {
+                $this->materialiserPivotDepuisCleEtrangere((int) $proprietaireId);
+            } elseif ($proprietaireId === null) {
+                $matiere->update(['unite_enseignement_id' => $ue->id, 'updated_by' => auth()->id()]);
+            }
 
-        // Écrire dans le pivot, pour LA maquette visée. `syncWithoutDetaching`
-        // se cale sur le seul `matiere_id` : poser un élément commun sur une
-        // unité qui en a déjà une version réservée réécrirait cette réservation.
-        $this->composition->poser($ue, (int) $matiere->id, [
-            'coefficient_ecue' => $coeffEcue,
-            'credit_ecue' => $creditEcue,
-            'ordre_bulletin' => $ordreBulletin,
-        ], $portee);
+            // Écrire dans le pivot, pour LA maquette visée. `syncWithoutDetaching`
+            // se cale sur le seul `matiere_id` : poser un élément commun sur une
+            // unité qui en a déjà une version réservée réécrirait cette réservation.
+            $this->composition->poser($ue, (int) $matiere->id, [
+                'coefficient_ecue' => $coeffEcue,
+                'credit_ecue' => $creditEcue,
+                'ordre_bulletin' => $ordreBulletin,
+            ], $portee);
+
+            return $codeLibere;
+        });
 
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json([
@@ -746,21 +755,25 @@ class ESBTPLMDUEController extends Controller
             'ordre_bulletin' => $validated['ordre_bulletin'] ?? $ecue->ordre_bulletin,
             'updated_by' => auth()->id(),
         ]);
-        $codeLibere = null;
-        if (isset($validated['code']) && $validated['code'] !== $ecue->code) {
-            [, $codeLibere] = $this->codes->ecrire($validated['code'], (int) $ecue->id, $ue, $portee, $maj);
-        } else {
-            $maj();
-        }
+        $codeLibere = DB::transaction(function () use ($validated, $ue, $ecue, $portee, $maj) {
+            $codeLibere = null;
+            if (isset($validated['code']) && $validated['code'] !== $ecue->code) {
+                [, $codeLibere] = $this->codes->ecrire($validated['code'], (int) $ecue->id, $ue, $portee, $maj);
+            } else {
+                $maj();
+            }
 
-        // Mettre à jour le pivot de CETTE maquette. Sans la portée, modifier le
-        // coefficient commun réécrivait la ligne qu'un parcours avait surchargée,
-        // et sa maquette changeait sans que personne l'ait demandé.
-        $this->composition->poser($ue, (int) $ecue->id, [
-            'coefficient_ecue' => $validated['coefficient_ecue'] ?? null,
-            'credit_ecue' => $validated['credit_ecue'] ?? null,
-            'ordre_bulletin' => $validated['ordre_bulletin'] ?? 0,
-        ], $portee);
+            // Mettre à jour le pivot de CETTE maquette. Sans la portée, modifier le
+            // coefficient commun réécrivait la ligne qu'un parcours avait surchargée,
+            // et sa maquette changeait sans que personne l'ait demandé.
+            $this->composition->poser($ue, (int) $ecue->id, [
+                'coefficient_ecue' => $validated['coefficient_ecue'] ?? null,
+                'credit_ecue' => $validated['credit_ecue'] ?? null,
+                'ordre_bulletin' => $validated['ordre_bulletin'] ?? 0,
+            ], $portee);
+
+            return $codeLibere;
+        });
 
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json([

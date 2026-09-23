@@ -9,16 +9,18 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
- * La reponse des ecrans LMD et de l'import de maquette a « ce code de matiere
- * est-il libre ? ». L'ecran BTS des matieres (ESBTPMatiereController) repond
- * encore par sa propre regle `unique`, sans liberation : c'est un ecart connu.
+ * La seule reponse du depot a « ce code de matiere est-il libre ? ».
  *
  * `esbtp_matieres.code` porte un index unique qui compte AUSSI les matieres
  * supprimees en douceur. Tant que chaque ecran repondait a sa facon, la meme
- * saisie donnait trois resultats : le modal ECUE levait une erreur serveur
- * (USAT, septembre 2026), le formulaire d'UE ressuscitait la matiere supprimee
- * sous le nouveau nom — historique compris —, et l'import CLI levait lui aussi
- * une erreur serveur.
+ * saisie donnait des resultats differents : le modal ECUE levait une erreur
+ * serveur (USAT, septembre 2026), le formulaire d'UE ressuscitait la matiere
+ * supprimee sous le nouveau nom — historique compris —, l'import CLI et
+ * l'ecran BTS des matieres levaient une erreur serveur, ce dernier jusque sur
+ * un code qu'il avait lui-meme genere.
+ *
+ * Qui ecrit un code de matiere passe par ici : `libererSiArchive()` avant
+ * l'ecriture, `sousUnicite()` autour d'elle.
  *
  * La regle, desormais une seule :
  * - une matiere ACTIVE garde son code. Qui veut la reutiliser la lie ; la
@@ -33,6 +35,9 @@ use Illuminate\Validation\ValidationException;
 class CodeDeMatiere
 {
     public const SUFFIXE_ARCHIVE = '~suppr-';
+
+    /** Nom Laravel de l'index (migration `create_esbtp_matieres_table`). */
+    private const INDEX_UNIQUE = 'esbtp_matieres_code_unique';
 
     /**
      * Libere le code s'il n'est tenu que par une matiere supprimee.
@@ -92,23 +97,58 @@ class CodeDeMatiere
         int $portee,
         callable $ecrire
     ): array {
-        try {
-            return DB::transaction(function () use ($code, $saufId, $ue, $portee, $ecrire) {
-                $this->refuserSiActive($code, $saufId, $ue, $portee);
-                $message = $this->libererSiArchive($code, $saufId);
+        return $this->sousUnicite('code', $code, fn () => DB::transaction(function () use ($code, $saufId, $ue, $portee, $ecrire) {
+            $this->refuserSiActive($code, $saufId, $ue, $portee);
+            $message = $this->libererSiArchive($code, $saufId);
 
-                return [$ecrire(), $message];
-            });
+            return [$ecrire(), $message];
+        }), $ue, $portee);
+    }
+
+    /**
+     * Execute l'ecriture ; si l'index unique du code refuse, rend un refus nomme
+     * sur le champ `$cle` au lieu d'une erreur serveur.
+     *
+     * Le cas vise est la course : deux saisies simultanees du meme code, dont
+     * aucune n'a vu l'autre avant d'ecrire. Le titulaire est relu pour etre
+     * nomme ; s'il reste invisible (la transaction englobante voit un instantane
+     * anterieur), le message le dit sans le nommer.
+     *
+     * @template T
+     * @param  callable(): T  $ecrire
+     * @return T
+     */
+    public function sousUnicite(
+        string $cle,
+        ?string $code,
+        callable $ecrire,
+        ?ESBTPUniteEnseignement $ue = null,
+        int $portee = 0
+    ): mixed {
+        try {
+            return $ecrire();
         } catch (QueryException $e) {
             // `UniqueConstraintViolationException` n'existe qu'a partir de
             // Laravel 10 ; ce depot accepte encore 9.x.
-            if ((int) ($e->errorInfo[1] ?? 0) !== 1062) {
+            if ($code === null || (int) ($e->errorInfo[1] ?? 0) !== 1062
+                || ! str_contains((string) ($e->errorInfo[2] ?? ''), self::INDEX_UNIQUE)) {
                 throw $e;
             }
 
-            $this->refuserSiActive($code, $saufId, $ue, $portee);
+            $titulaire = ESBTPMatiere::where('code', $code)->first();
 
-            throw $e;
+            throw ValidationException::withMessages([$cle => match (true) {
+                $titulaire !== null && $ue !== null => $this->pourquoi($titulaire, $ue, $portee),
+                $titulaire !== null => sprintf(
+                    'Le code « %s » est déjà celui de la matière « %s ». Choisissez un autre code.',
+                    $titulaire->code,
+                    $titulaire->name
+                ),
+                default => sprintf(
+                    'Le code « %s » vient d\'être pris par une autre saisie. Choisissez un autre code, ou réessayez.',
+                    $code
+                ),
+            }]);
         }
     }
 
