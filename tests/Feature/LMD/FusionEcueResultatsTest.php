@@ -3,6 +3,9 @@
 namespace Tests\Feature\LMD;
 
 use App\Domain\LMD\Actions\MergeDuplicateEcue;
+use App\Http\Middleware\CheckInstalled;
+use App\Http\Middleware\EnsureInstalled;
+use App\Http\Middleware\PaywallMiddleware;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPEtudiant;
@@ -10,25 +13,27 @@ use App\Models\ESBTPFiliere;
 use App\Models\ESBTPMatiere;
 use App\Models\ESBTPNiveauEtude;
 use App\Models\ESBTPUniteEnseignement;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Spatie\Permission\Models\Permission;
 use Tests\TestCase;
 
 /**
- * Une fusion d'ECUE sous `force` déplace les notes de l'ECUE absorbée vers la
- * canonique par un `update()` de query builder, qui ne réveille aucun
- * observateur. Ces tests verrouillent ce qui doit suivre :
+ * Ce que la fusion d'ECUE sous `force` fait — et ne fait délibérément pas —
+ * aux résultats enregistrés.
  *
- *  - la moyenne enregistrée de la canonique est recalculée ;
- *  - celle de l'absorbée, restée sans note, n'est PAS remise à 0/20 : elle
- *    est laissée et nommée dans le compte rendu ;
- *  - les lignes de bulletin LMD sont reportées avec leur note de rattrapage,
- *    et une collision sur un même bulletin reste en place, nommée.
+ *  - Les lignes de bulletin LMD (`esbtp_lmd_resultats_ecues`) sont REPORTÉES
+ *    sur la canonique avec leur note de rattrapage, qu'aucune note ne
+ *    reconstruit ; une collision sur un même bulletin reste en place, nommée.
+ *  - `esbtp_resultats` n'est PAS recalculé : aucun écran LMD ne lit ces lignes,
+ *    et le repli du certificat de scolarité, qui les moyenne toutes, compterait
+ *    l'ECUE deux fois si la fusion en créait une pour la canonique.
  *
- * Base réelle (MySQL / MariaDB) : le recalcul passe par
- * `PerimetreDeRecalcul`, qui lit les notes par les mêmes requêtes que le job.
+ * Base réelle (MySQL / MariaDB) : MySQL revérifie les clés étrangères des
+ * lignes de bulletin à chaque mise à jour.
  */
-class FusionEcueRecalculTest extends TestCase
+class FusionEcueResultatsTest extends TestCase
 {
     use RefreshDatabase;
 
@@ -66,43 +71,24 @@ class FusionEcueRecalculTest extends TestCase
         $this->etudiant = ESBTPEtudiant::factory()->create(['nom' => 'KOUASSI', 'prenoms' => 'Aya']);
     }
 
-    public function test_une_fusion_forcee_recalcule_la_moyenne_de_la_canonique(): void
+    public function test_la_fusion_ne_cree_aucune_moyenne_enregistree(): void
     {
-        // État d'avant, tel que l'observateur l'a laissé : 16 sur la canonique,
-        // 4 sur la doublure, chacune avec sa ligne de résultat.
-        $this->noter($this->evaluation($this->canonique), 16);
-        $this->noter($this->evaluation($this->absorbee), 4);
-        $this->resultat($this->canonique, 16);
-        $this->resultat($this->absorbee, 4);
+        // L'élève n'a de note que sur la doublure : 8, avec sa ligne de résultat.
+        // Recalculer créerait une ligne à 8 pour la canonique À CÔTÉ de celle de
+        // l'absorbée, laissée faute de note — et le certificat de scolarité, qui
+        // moyenne toutes les lignes de l'année, compterait l'ECUE deux fois.
+        $this->noter($this->evaluation($this->absorbee), 8);
+        $this->resultat($this->absorbee, 8);
 
         $rapport = $this->fusionner();
 
         $this->assertTrue($rapport['committed']);
-        // Même coefficient, même barème : la canonique porte désormais 16 et 4.
-        $this->assertSame(10.0, $this->moyenne($this->canonique));
-        $this->assertGreaterThan(0, $rapport['resultats']['recalculs_tentes']);
-        $this->assertFalse($rapport['resultats']['reporte']);
-    }
-
-    public function test_la_moyenne_videe_est_laissee_et_nommee_jamais_remise_a_zero(): void
-    {
-        $this->noter($this->evaluation($this->canonique), 16);
-        $this->noter($this->evaluation($this->absorbee), 4);
-        $this->resultat($this->canonique, 16);
-        $this->resultat($this->absorbee, 4);
-
-        $rapport = $this->fusionner();
-
-        // Recalculer ici écrirait 0,00 : la ligne n'a plus de note.
-        $this->assertSame(4.0, $this->moyenne($this->absorbee));
-
-        $orphelins = $rapport['resultats']['orphelins'];
-        $this->assertCount(1, $orphelins);
-        $this->assertSame($this->absorbee->id, $orphelins[0]['matiere_id']);
-        $this->assertSame(4.0, $orphelins[0]['moyenne']);
-        // Lisible par la personne qui tranche, à l'écran de réconciliation.
-        $this->assertSame('KOUASSI Aya', $orphelins[0]['etudiant']);
-        $this->assertSame('L2 GC A', $orphelins[0]['classe']);
+        $this->assertArrayNotHasKey('resultats', $rapport);
+        $this->assertSame(1, DB::table('esbtp_resultats')->where('etudiant_id', $this->etudiant->id)->count());
+        $this->assertSame(8.0, $this->moyenne($this->absorbee));
+        $this->assertNull($this->moyenne($this->canonique));
+        // Les notes, elles, ont bien suivi.
+        $this->assertSame(1, DB::table('esbtp_notes')->where('matiere_id', $this->canonique->id)->count());
     }
 
     public function test_la_fusion_reporte_les_lignes_de_bulletin_lmd_et_leur_rattrapage(): void
@@ -138,6 +124,49 @@ class FusionEcueRecalculTest extends TestCase
         $this->assertSame(0, $rapport['lmd_resultats_ecues']['repointes']);
         $this->assertCount(1, $rapport['lmd_resultats_ecues']['conflits']);
         $this->assertSame(2, $rapport['lmd_resultats_ecues']['conflits'][0]['id']);
+    }
+
+    public function test_l_apercu_ne_compte_qu_une_ligne_par_bulletin(): void
+    {
+        // Deux ECUE absorbées sur le même bulletin, sans la canonique : la
+        // première est reportée, la seconde entre alors en collision avec elle.
+        $seconde = ESBTPMatiere::create([
+            'name' => 'RDM', 'code' => 'GCRDM', 'unite_enseignement_id' => $this->absorbee->unite_enseignement_id,
+            'niveau_etude_id' => $this->absorbee->niveau_etude_id, 'is_active' => true,
+        ]);
+        $this->ligneLmd(1, 50, $this->absorbee, 8, 12);
+        $this->ligneLmd(2, 50, $seconde, 9, null);
+
+        $absorbees = [$this->absorbee->id, $seconde->id];
+        $apercu = app(MergeDuplicateEcue::class)->execute($this->canonique->id, $absorbees, ['dry_run' => true, 'force' => true]);
+        $rapport = app(MergeDuplicateEcue::class)->execute($this->canonique->id, $absorbees, ['dry_run' => false, 'force' => true]);
+
+        $this->assertSame(1, $apercu['repointed']['lmd_resultats_ecues']);
+        $this->assertSame(1, $rapport['lmd_resultats_ecues']['repointes']);
+        $this->assertCount(1, $rapport['lmd_resultats_ecues']['conflits']);
+    }
+
+    public function test_le_lien_vers_un_bulletin_n_est_donne_qu_a_qui_peut_l_ouvrir(): void
+    {
+        $this->withoutMiddleware([
+            CheckInstalled::class,
+            EnsureInstalled::class,
+            PaywallMiddleware::class,
+        ]);
+        $droits = ['admin.access', 'module.lmd.access', 'lmd.reconciliation.manage'];
+        foreach ([...$droits, 'lmd.bulletins.view'] as $p) {
+            Permission::findOrCreate($p, 'web');
+        }
+
+        $sansBulletins = User::factory()->create();
+        $sansBulletins->givePermissionTo($droits);
+        $this->actingAs($sansBulletins)->get(route('esbtp.lmd.reconciliation.index'))
+            ->assertOk()->assertSee('bulletinUrlGabarit: null', false);
+
+        $avecBulletins = User::factory()->create();
+        $avecBulletins->givePermissionTo([...$droits, 'lmd.bulletins.view']);
+        $this->actingAs($avecBulletins)->get(route('esbtp.lmd.reconciliation.index'))
+            ->assertOk()->assertDontSee('bulletinUrlGabarit: null', false);
     }
 
     // ── outillage ─────────────────────────────────────────────────────────

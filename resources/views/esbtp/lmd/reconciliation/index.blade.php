@@ -5,6 +5,10 @@
 @php
     $recMentionOptions = $mentions->mapWithKeys(fn ($m) => [$m->id => trim(($m->code ? $m->code . ' — ' : '') . $m->name)])->all();
     $recParcoursOptions = $parcours->mapWithKeys(fn ($p) => [$p->id => trim(($p->code ? $p->code . ' — ' : '') . $p->name)])->all();
+    // Le compte rendu de fusion ne fait un lien vers un bulletin que pour qui peut l'ouvrir.
+    $gabaritBulletinLmd = auth()->user()?->can('lmd.bulletins.view')
+        ? route('esbtp.lmd.bulletins.show', ['bulletin' => '__ID__'])
+        : null;
 @endphp
 
 @push('styles')
@@ -333,34 +337,13 @@
                 <template x-if="modal.done">
                     <div>
                         <div class="rec-impact-row"><span>Entités absorbées</span><strong x-text="modal.done.soft_deleted_count"></strong></div>
-                        <div class="rec-impact-row"><span>Moyennes recalculées</span><strong x-text="(modal.done.resultats || {}).recalculs_tentes || 0"></strong></div>
-
-                        <template x-if="recalculIncomplet(modal.done)">
-                            <div class="rec-warn">
-                                <div class="rec-done-title"><i class="fas fa-hourglass-half"></i><span>Recalcul des moyennes incomplet</span></div>
-                                <span x-text="messageRecalculIncomplet(modal.done)"></span>
-                            </div>
-                        </template>
-
-                        <template x-if="orphelins(modal.done).length">
-                            <div class="rec-warn">
-                                <div class="rec-done-title"><i class="fas fa-exclamation-triangle"></i><span x-text="orphelins(modal.done).length + ' moyenne(s) sans plus rien à moyenner'"></span></div>
-                                Elles restent enregistrées sur l'élément absorbé, où il ne reste aucune note, ou seulement des absences : ni recalculées (elles tomberaient à 0/20), ni supprimées. Vérifiez les résultats de l'élève ; leur suppression se demande au support technique.
-                                <ul class="rec-done-list">
-                                    <template x-for="o in orphelins(modal.done)" :key="o.etudiant_id + '-' + o.classe_id + '-' + o.periode">
-                                        <li><a :href="resultatsEleveUrl(o.etudiant_id, o.annee_universitaire_id)" target="_blank" rel="noopener" x-text="o.etudiant || ('Élève #' + o.etudiant_id)"></a> <span x-text="'· ' + (o.classe || ('classe #' + o.classe_id)) + ' · ' + periodeLisible(o.periode) + ' · moyenne ' + (o.moyenne === null ? '—' : o.moyenne)"></span></li>
-                                    </template>
-                                </ul>
-                            </div>
-                        </template>
-
                         <template x-if="conflitsLmd(modal.done).length">
                             <div class="rec-warn">
                                 <div class="rec-done-title"><i class="fas fa-code-branch"></i><span x-text="conflitsLmd(modal.done).length + ' ligne(s) de bulletin LMD restées en place'"></span></div>
                                 Le bulletin portait déjà l'élément conservé : deux moyennes pour la même matière. Laquelle garder est une décision de l'école.
                                 <ul class="rec-done-list">
                                     <template x-for="c in conflitsLmd(modal.done)" :key="c.id">
-                                        <li><a :href="bulletinUrl(c.bulletin_id)" target="_blank" rel="noopener" x-text="'Bulletin #' + c.bulletin_id"></a> <span x-text="'· élève #' + c.etudiant_id + ' · moyenne ' + (c.moyenne === null ? '—' : c.moyenne)"></span></li>
+                                        <li><a x-show="bulletinUrlGabarit" :href="bulletinUrl(c.bulletin_id)" target="_blank" rel="noopener" x-text="'Bulletin #' + c.bulletin_id"></a><span x-show="!bulletinUrlGabarit" x-text="'Bulletin #' + c.bulletin_id"></span> <span x-text="'· élève #' + c.etudiant_id + ' · moyenne ' + (c.moyenne === null ? '—' : c.moyenne)"></span></li>
                                     </template>
                                 </ul>
                             </div>
@@ -372,7 +355,7 @@
                                 Leurs lignes ont été reportées sur l'élément conservé, note de rattrapage comprise. Régénérez-les pour que le document suive.
                                 <ul class="rec-done-list">
                                     <template x-for="id in bulletinsARegenerer(modal.done)" :key="id">
-                                        <li><a :href="bulletinUrl(id)" target="_blank" rel="noopener" x-text="'Bulletin #' + id"></a></li>
+                                        <li><a x-show="bulletinUrlGabarit" :href="bulletinUrl(id)" target="_blank" rel="noopener" x-text="'Bulletin #' + id"></a><span x-show="!bulletinUrlGabarit" x-text="'Bulletin #' + id"></span></li>
                                     </template>
                                 </ul>
                             </div>
@@ -442,8 +425,8 @@ function recManager() {
         loading: false,
         busy: false,
         modal: { open: false, type: null, typeLabel: '', group: null, canonical: null, report: null, force: false, done: null },
-        bulletinUrlGabarit: @json(route('esbtp.lmd.bulletins.show', ['bulletin' => '__ID__'])),
-        resultatsEleveUrlGabarit: @json(route('esbtp.lmd.resultats.etudiant', ['etudiant' => '__ID__'])),
+        // Nul pour qui ne peut pas ouvrir un bulletin : le numéro s'affiche sans lien plutôt que de mener à un 403.
+        bulletinUrlGabarit: @json($gabaritBulletinLmd),
         toasts: [],
         _tid: 0,
 
@@ -539,10 +522,10 @@ function recManager() {
                 const report = await this.callMerge(this.modal.type, this.modal.canonical, absorbed, false, this.modal.force);
                 if (report && report.committed) {
                     this.toast('success', 'Fusion effectuée : ' + report.soft_deleted_count + ' entité(s) absorbée(s).');
-                    // Ce qui reste à trancher (moyennes orphelines, collisions,
-                    // bulletins à régénérer) reste affiché : fermer la fenêtre
-                    // l'aurait relégué au seul journal serveur.
-                    if (this.orphelins(report).length || this.conflitsLmd(report).length || this.bulletinsARegenerer(report).length || this.recalculIncomplet(report)) {
+                    // Ce qui reste à trancher (collisions, bulletins à
+                    // régénérer) reste affiché : fermer la fenêtre l'aurait
+                    // relégué au seul journal serveur.
+                    if (this.conflitsLmd(report).length || this.bulletinsARegenerer(report).length) {
                         this.modal.report = null;
                         this.modal.done = report;
                     } else {
@@ -581,34 +564,10 @@ function recManager() {
 
         closeModal() { this.modal.open = false; this.modal.group = null; this.modal.report = null; this.modal.force = false; this.modal.done = null; },
 
-        orphelins(r) { return ((r && r.resultats) || {}).orphelins || []; },
-        recalculIncomplet(r) {
-            const res = (r && r.resultats) || {};
-            return !!res.reporte || (res.echecs || 0) > 0;
-        },
-        messageRecalculIncomplet(r) {
-            const res = (r && r.resultats) || {};
-            const parts = [];
-            if (res.reporte) {
-                parts.push((res.perimetres_reportes || []).length + ' classe(s) non recalculée(s) : trop de notes pour une seule requête.');
-            }
-            if ((res.echecs || 0) > 0) {
-                parts.push(res.echecs + ' moyenne(s) en échec de recalcul.');
-            }
-            parts.push('La fusion est bien enregistrée ; le support technique doit relancer le recalcul des moyennes de ces classes.');
-            return parts.join(' ');
-        },
         conflitsLmd(r) { return ((r && r.lmd_resultats_ecues) || {}).conflits || []; },
         bulletinsARegenerer(r) { return ((r && r.lmd_resultats_ecues) || {}).bulletins_a_regenerer || []; },
-        bulletinUrl(id) { return this.bulletinUrlGabarit.replace('__ID__', id); },
+        bulletinUrl(id) { return this.bulletinUrlGabarit ? this.bulletinUrlGabarit.replace('__ID__', id) : null; },
         // L'année de la ligne, sinon la page retombe sur l'année courante.
-        resultatsEleveUrl(id, anneeId) {
-            return this.resultatsEleveUrlGabarit.replace('__ID__', id) + (anneeId ? '?annee_universitaire_id=' + encodeURIComponent(anneeId) : '');
-        },
-        periodeLisible(p) {
-            const m = String(p || '').match(/^(?:semestre\s*)?(\d+)$/i);
-            return m ? 'Semestre ' + m[1] : (p || '');
-        },
 
         toast(type, message) {
             const id = ++this._tid;

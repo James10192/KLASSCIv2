@@ -50,7 +50,7 @@ doit appeler `RecalculApresDeplacement` lui-même.
 | `POST /api/cli/evaluations/{id}/matiere` | matière | à l'unité |
 | `POST /api/cli/evaluations/deplacer-periode` | période, jusqu'à 200 évaluations | en lot, plafonné |
 | `POST /api/cli/diagnostics/evaluations-periode/repair` | période, en masse | en lot, plafonné |
-| `MergeDuplicateEcue` (LMD, sous `force`) | matière, en masse | en lot, plafonné, après le commit |
+| `MergeDuplicateEcue` (LMD, sous `force`) | matière, en masse | **aucun** |
 
 ⚠️ **Ce tableau compte les endroits qui changent les coordonnées d'une
 ÉVALUATION, et il liste ceux trouvés à ce jour — pas ceux qui existent.** La
@@ -64,27 +64,29 @@ recalcul synchrone par note est exactement ce que le plafond cherche à éviter.
 Le cinquième, `app/Domain/LMD/Actions/MergeDuplicateEcue.php`, est atteignable
 par `POST /esbtp/lmd/reconciliation/merge` avec `type=ecue&force=true`. Il
 reparente `esbtp_evaluations.matiere_id` **et** `esbtp_notes.matiere_id` vers
-l'ECUE canonique, puis met l'absorbée de côté.
+l'ECUE canonique, puis met l'absorbée de côté — sans rien recalculer.
 
-Il a d'abord été laissé de côté, au motif qu'il « ne devrait pas croiser
-`esbtp_resultats` ». C'était inexact : l'observateur des notes écrit
-`esbtp_resultats` quel que soit le système de la classe, donc une classe LMD en
-porte une ligne par ECUE notée. Depuis septembre 2026, la fusion relève la
-coordonnée d'avant dans sa transaction, puis recalcule après le commit par
-`RecalculApresDeplacement::pourUnLot()` — même plafond, même garde contre le
-0/20 que les deux endpoints en lot. La réponse de la fusion porte le même bloc
-`resultats` (`recalculs_tentes`, `orphelins` nommés par élève et classe,
-`echecs`, `reporte`, `perimetres_reportes`), et l'écran de réconciliation
-l'affiche.
+**Il n'est volontairement pas branché, et la raison a été mesurée.** Une
+première justification disait qu'il « ne devrait pas croiser `esbtp_resultats` » :
+c'est inexact, l'observateur des notes écrit `esbtp_resultats` quel que soit le
+système de la classe, donc une classe LMD en porte une ligne par ECUE notée. Mais
+aucun écran LMD ne lit ces lignes : les métriques LMD viennent des bulletins LMD,
+et tous les appelants de `BtsCurrentResultSnapshotService` écartent les classes
+LMD. Leur seul lecteur non filtré est le repli du certificat de scolarité
+(`ESBTPEtudiantController::attachMoyenneCalculee()`), qui moyenne **toutes** les
+lignes de l'année quand l'inscription n'a pas de bulletin BTS. Recalculer après
+la fusion y créerait la ligne de l'ECUE canonique à côté de celle de l'absorbée,
+laissée faute de note : l'ECUE compterait deux fois dans la moyenne imprimée. Ne
+pas recalculer laisse le certificat tel qu'il était avant la fusion.
 
-⚠️ **Ce que ce recalcul rapporte n'est pas établi.** Les métriques LMD de la
-fiche élève viennent des bulletins LMD ; mais `RankingService` s'annonce
-« BTS + LMD » et s'appuie sur `BtsCurrentResultSnapshotService`, qui donne la
-préséance à `esbtp_resultats`. L'apport certain de la fusion est ailleurs : elle
-**reporte** les lignes de bulletin LMD (`esbtp_lmd_resultats_ecues`) sur la
-canonique avec leur note de rattrapage, qu'aucune note ne permet de reconstruire,
-et nomme les bulletins à régénérer ; une ligne qui entrerait en collision sur un
-même bulletin reste en place et est nommée.
+Ce que la fusion doit faire suivre, elle le fait elle-même : depuis septembre
+2026, elle **reporte** les lignes de bulletin LMD (`esbtp_lmd_resultats_ecues`)
+sur l'ECUE canonique, avec leur note de rattrapage, qu'aucune note ne permet de
+reconstruire ; une ligne qui entrerait en collision sur un même bulletin reste en
+place et est nommée, et les bulletins à régénérer sont listés.
+
+Reste un défaut distinct, non traité ici : le certificat lit `esbtp_resultats`
+pour une inscription LMD au lieu des bulletins LMD.
 
 `periode` est une coordonnée de la clé d'`esbtp_resultats` au même titre que
 `matiere_id` : un changement de semestre laisse exactement le même agrégat
@@ -298,12 +300,12 @@ qu'on fige.
 
 ## Historique
 
-- **Septembre 2026 (bis)** — la fusion d'ECUE en double (`MergeDuplicateEcue`
-  sous `force`) passe à son tour par `RecalculApresDeplacement`, via un nouveau
-  `pourUnLot()` qui prend la coordonnée d'avant complète ; `pourUnLotDePeriodes()`
-  n'en est plus qu'une traduction, sans changement de comportement. Un
-  rattrapage reporté par la fusion se rejoue sur l'endpoint de ce document,
-  comme pour les deux endpoints en lot. Aucun changement de contrat.
+- **Septembre 2026 (bis)** — la raison pour laquelle la fusion d'ECUE
+  (`MergeDuplicateEcue` sous `force`) ne recalcule pas est corrigée et mesurée :
+  aucun écran LMD ne lit `esbtp_resultats`, et le seul lecteur non filtré, le
+  certificat de scolarité, compterait l'ECUE deux fois. La fusion reporte
+  désormais les lignes de bulletin LMD avec leur note de rattrapage. Aucun
+  changement de contrat pour l'endpoint de ce document.
 - **Septembre 2026** — création. Déclenchée par un agrégat laissé périmé après un
   déplacement d'évaluation fait par `POST /api/cli/evaluations/{id}/matiere`, qui
   déplaçait bien les notes mais ne rafraîchissait rien. Une moyenne sans rien à

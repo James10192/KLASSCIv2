@@ -100,10 +100,9 @@ La réponse porte désormais `recalculs_tentes`, `agregats_orphelins` et
 faire, est dans [CLI_RECALCUL_RESULTATS.md](CLI_RECALCUL_RESULTATS.md).
 
 **Cinq chemins déplacent une évaluation, à ce jour** — c'est un relevé, pas un
-inventaire garanti. Les cinq sont branchés sur le recalcul, y compris
-`MergeDuplicateEcue` sous `force` depuis septembre 2026 ;
-[CLI_RECALCUL_RESULTATS.md](CLI_RECALCUL_RESULTATS.md) dit ce que ce dernier
-rapporte, et ce qui n'est pas établi. Un nouveau
+inventaire garanti. Quatre sont branchés sur le recalcul ; le cinquième,
+`MergeDuplicateEcue` sous `force`, ne l'est pas, et
+[CLI_RECALCUL_RESULTATS.md](CLI_RECALCUL_RESULTATS.md) dit pourquoi. Un nouveau
 chemin qui écrit `esbtp_notes` par un `update()` de query builder doit appeler
 `RecalculApresDeplacement` : aucun observateur ne le fera à sa place.
 
@@ -152,16 +151,12 @@ nécessaire.
 
 ## Historique
 
-- **Septembre 2026 (bis)** — le cinquième chemin, la fusion d'ECUE en double
-  (`MergeDuplicateEcue` sous `force`), recalcule à son tour, par
-  `RecalculApresDeplacement::pourUnLot()`, et reporte les lignes de bulletin LMD
-  avec leur note de rattrapage. Pas de changement de contrat pour les endpoints
-  CLI de ce document.
 - **Septembre 2026** — **quatre des cinq** chemins trouvés qui déplacent une
   évaluation recalculent les agrégats des deux côtés. Ils déplaçaient les notes
   sans rien rafraîchir, et l'agrégat périmé gagne sur les notes : le déplacement
   avait l'air fait et ne l'était qu'à moitié. Le cinquième, `MergeDuplicateEcue`
-  sous `force`, reste à traiter. La rebascule de matière vit désormais dans
+  sous `force`, n'est volontairement pas branché (raison mesurée dans
+  [CLI_RECALCUL_RESULTATS.md](CLI_RECALCUL_RESULTATS.md)). La rebascule de matière vit désormais dans
   `CLIEvaluationMatiereController` ; la route et son nom sont inchangés.
 - **Septembre 2026** — la réponse porte un second bloc `moyennes_manuelles` et un
   `total_toutes_familles`. La version antérieure ne relevait que les évaluations
