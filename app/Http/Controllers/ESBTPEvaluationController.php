@@ -756,6 +756,8 @@ class ESBTPEvaluationController extends Controller
             $oldClasseId = $evaluation->getOriginal('classe_id');
             $oldMatiereId = $evaluation->getOriginal('matiere_id');
             $oldPeriode = $evaluation->getOriginal('periode');
+            $oldBareme = $evaluation->getOriginal('bareme');
+            $oldCoefficient = $evaluation->getOriginal('coefficient');
 
             // Met à jour classe/matière si pas de notes OU si user a la permission de bypass
             if (! $hasNotes || $canBypassLock) {
@@ -775,7 +777,13 @@ class ESBTPEvaluationController extends Controller
             }
             $evaluation->save();
 
-            $avant = ['classe_id' => (int) $oldClasseId, 'matiere_id' => (int) $oldMatiereId, 'periode' => (string) $oldPeriode];
+            $avant = [
+                'classe_id' => (int) $oldClasseId,
+                'matiere_id' => (int) $oldMatiereId,
+                'periode' => (string) $oldPeriode,
+                'bareme' => $oldBareme,
+                'coefficient' => $oldCoefficient,
+            ];
             $recalcul = RecalculApresDeplacement::apresEnregistrement($evaluation, $avant, Auth::id());
 
             // Garde-fou non bloquant TC/Spécialité (basé sur la classe cible).
@@ -826,6 +834,8 @@ class ESBTPEvaluationController extends Controller
         ]);
 
         try {
+            $avant = ['bareme' => $evaluation->bareme, 'coefficient' => $evaluation->coefficient];
+
             $evaluation->fill([
                 'titre' => trim($validated['titre']),
                 'bareme' => (float) $validated['bareme'],
@@ -833,6 +843,10 @@ class ESBTPEvaluationController extends Controller
                 'updated_by' => Auth::id(),
             ]);
             $evaluation->save();
+
+            // Sans ce recalcul, la moyenne enregistree d'avant garde la main
+            // sur l'ancien bareme ou l'ancien coefficient.
+            $recalcul = RecalculApresDeplacement::apresChangementDePonderation($evaluation, $avant, Auth::id());
 
             return response()->json([
                 'success' => true,
@@ -842,7 +856,10 @@ class ESBTPEvaluationController extends Controller
                     'bareme' => (float) $evaluation->bareme,
                     'coefficient' => (float) $evaluation->coefficient,
                 ],
-                'message' => 'Évaluation mise à jour.',
+                'moyennes_non_recalculees' => $recalcul['echecs'],
+                'message' => $recalcul['echecs'] > 0
+                    ? 'Évaluation mise à jour, mais '.$recalcul['echecs'].' moyenne(s) n\'ont pas pu être recalculées.'
+                    : 'Évaluation mise à jour.',
             ]);
         } catch (\Throwable $e) {
             \Log::error('quickUpdate evaluation failed', [

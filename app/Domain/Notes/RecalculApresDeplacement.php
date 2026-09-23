@@ -137,6 +137,9 @@ final class RecalculApresDeplacement
     /** Valeur ecrite dans `esbtp_resultats_recompute_log.source`. */
     public const SOURCE = 'deplacement';
 
+    /** Meme colonne, quand seul le bareme ou le coefficient a change. */
+    public const SOURCE_PONDERATION = 'ponderation';
+
     /**
      * Borne GLOBALE de notes recalculees dans une requete, tous perimetres
      * confondus.
@@ -196,7 +199,16 @@ final class RecalculApresDeplacement
      * evenement, l'observateur ne tourne pas — d'ou l'appel a `pour()` qui
      * suit, sans lequel la moyenne d'avant l'emporterait sur les notes.
      *
-     * @param  array{classe_id:int, matiere_id:int, periode:string}  $avant
+     * **Sans deplacement, le bareme ou le coefficient peuvent quand meme avoir
+     * change** — et la moyenne enregistree est tout aussi perimee : le job lit
+     * les deux sur l'evaluation (`(note / bareme) * 20`, ponderee par le
+     * coefficient), mais rien ne le relancait, puisque le bareme ne vit pas
+     * sur la note et qu'aucune note n'est enregistree. Voir
+     * {@see self::apresChangementDePonderation()}. Si la coordonnee a AUSSI
+     * bouge, le recalcul du deplacement lit deja le nouveau bareme a l'arrivee,
+     * et le depart ne compte plus cette evaluation : rien a ajouter.
+     *
+     * @param  array{classe_id:int, matiere_id:int, periode:string, bareme?:float, coefficient?:float}  $avant
      * @return array{recalculs_tentes:int, orphelins:array<int,array<string,mixed>>, echecs:int}
      */
     public static function apresEnregistrement(ESBTPEvaluation $evaluation, array $avant, ?int $declencheur = null): array
@@ -215,7 +227,7 @@ final class RecalculApresDeplacement
         }
 
         if ($colonnes === []) {
-            return ['recalculs_tentes' => 0, 'orphelins' => [], 'echecs' => 0];
+            return self::apresChangementDePonderation($evaluation, $avant, $declencheur);
         }
 
         $touchees = ESBTPNote::where('evaluation_id', $evaluation->id)->update($colonnes);
@@ -230,6 +242,83 @@ final class RecalculApresDeplacement
         return self::pour($evaluation, $avant + [
             'annee_universitaire_id' => $evaluation->annee_universitaire_id,
         ], $declencheur);
+    }
+
+    /**
+     * Le bareme ou le coefficient d'une evaluation a change, sa coordonnee non :
+     * les moyennes de ses eleves, sur sa coordonnee actuelle, sont recalculees.
+     *
+     * **La comparaison est numerique, pas celle d'Eloquent.** `ESBTPEvaluation`
+     * ne caste ni l'un ni l'autre : `wasChanged()` compare `'20'` saisi et
+     * `'20.00'` lu en base comme deux chaines, et declencherait un recalcul a
+     * chaque enregistrement. D'ou les anciennes valeurs passees par l'appelant,
+     * lues AVANT la sauvegarde. Absentes, rien n'est recalcule — un appelant qui
+     * ne les fournit pas n'a pas change la ponderation.
+     *
+     * **Pas d'orphelins dans le bilan.** Changer un bareme ne retire aucune
+     * note : une moyenne qui n'avait plus rien a moyenner l'etait deja avant, et
+     * le bandeau « vous avez change l'evaluation, N moyennes n'ont plus rien a
+     * moyenner » en ferait porter la faute a ce geste. Seuls les echecs
+     * remontent : un recalcul rate laisse la moyenne d'avant, et qui a change le
+     * bareme doit le savoir.
+     *
+     * Le volume est celui d'un deplacement, en moitie : les eleves notes sur une
+     * seule evaluation, une coordonnee chacun.
+     *
+     * @param  array{bareme?:float|int|string|null, coefficient?:float|int|string|null}  $avant
+     * @return array{recalculs_tentes:int, orphelins:array<int,array<string,mixed>>, echecs:int}
+     */
+    public static function apresChangementDePonderation(ESBTPEvaluation $evaluation, array $avant, ?int $declencheur = null): array
+    {
+        $bilan = ['recalculs_tentes' => 0, 'orphelins' => [], 'echecs' => 0];
+
+        if (! self::ponderationAChange($evaluation, $avant)) {
+            return $bilan;
+        }
+
+        $ici = [
+            'classe_id' => $evaluation->classe_id,
+            'matiere_id' => $evaluation->matiere_id,
+            'periode' => $evaluation->periode,
+            'annee_universitaire_id' => $evaluation->annee_universitaire_id,
+        ];
+        $memo = ['couples' => [], 'orphelins' => []];
+
+        foreach (self::elevesNotes($evaluation) as $etudiantId) {
+            self::executerUneFois($etudiantId, $ici, $declencheur, $bilan, $memo, self::SOURCE_PONDERATION);
+        }
+
+        $bilan['orphelins'] = [];
+
+        return $bilan;
+    }
+
+    /** @param array{bareme?:float|int|string|null, coefficient?:float|int|string|null} $avant */
+    private static function ponderationAChange(ESBTPEvaluation $evaluation, array $avant): bool
+    {
+        foreach (['bareme', 'coefficient'] as $cle) {
+            if (! array_key_exists($cle, $avant) || $avant[$cle] === null) {
+                continue;
+            }
+            // Au centieme : c'est la precision des deux colonnes en base.
+            if (round((float) $avant[$cle], 2) !== round((float) $evaluation->{$cle}, 2)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /** @return array<int,int> */
+    private static function elevesNotes(ESBTPEvaluation $evaluation): array
+    {
+        return ESBTPNote::where('evaluation_id', $evaluation->id)
+            ->distinct()
+            ->pluck('etudiant_id')
+            ->filter()
+            ->map(fn ($id) => (int) $id)
+            ->values()
+            ->all();
     }
 
     /**
@@ -273,12 +362,7 @@ final class RecalculApresDeplacement
             return $bilan;
         }
 
-        $etudiantIds = ESBTPNote::where('evaluation_id', $evaluation->id)
-            ->distinct()
-            ->pluck('etudiant_id')
-            ->filter()
-            ->map(fn ($id) => (int) $id)
-            ->all();
+        $etudiantIds = self::elevesNotes($evaluation);
 
         if ($etudiantIds === []) {
             return $bilan;
@@ -321,7 +405,7 @@ final class RecalculApresDeplacement
      * @param  array{recalculs_tentes:int, orphelins:array<int,array<string,mixed>>, echecs:int}  $bilan
      * @param  array{couples:array<string,true>, orphelins:array<int,true>}  $memo
      */
-    private static function executerUneFois(int $etudiantId, array $coordonnee, ?int $declencheur, array &$bilan, array &$memo): void
+    private static function executerUneFois(int $etudiantId, array $coordonnee, ?int $declencheur, array &$bilan, array &$memo, string $source = self::SOURCE): void
     {
         if (! self::coordonneeComplete($coordonnee)) {
             return;
@@ -343,7 +427,7 @@ final class RecalculApresDeplacement
 
         $memo['couples'][$cle] = true;
 
-        $issue = PerimetreDeRecalcul::recalculerUnCouple($couple, self::SOURCE, $declencheur);
+        $issue = PerimetreDeRecalcul::recalculerUnCouple($couple, $source, $declencheur);
 
         if ($issue['statut'] === PerimetreDeRecalcul::RECALCULE) {
             $bilan['recalculs_tentes']++;
