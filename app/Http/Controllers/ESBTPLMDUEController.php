@@ -401,7 +401,7 @@ class ESBTPLMDUEController extends Controller
             // ecrivons plus bas resterait sa seule protection, et les valeurs que
             // nous posons sur la matiere deviendraient les siennes.
             if ($appartientAUneAutreUe) {
-                $this->materialiserPivotDepuisCleEtrangere((int) $proprietaireId);
+                $this->composition->materialiserDepuisCleEtrangere((int) $proprietaireId);
             }
 
             $matiere = $matiere ?: new ESBTPMatiere();
@@ -424,8 +424,6 @@ class ESBTPLMDUEController extends Controller
                 }
             }
             $matiere->updated_by = auth()->id();
-            // Deux enregistrements simultanes du meme code nouveau : le second
-            // recoit un refus nomme sur sa ligne, pas une erreur serveur.
             $this->codes->sousUnicite("ecues.{$index}.code", $code, fn () => $matiere->save());
 
             // Par le service, jamais par `syncWithoutDetaching` : celui-ci retrouve
@@ -468,29 +466,6 @@ class ESBTPLMDUEController extends Controller
         // et des notes. Même comportement que le retrait d'un ECUE isolé.
         $this->composition->retirer($ue, $aDetacher->all(), $parcoursId);
         $this->composition->libererCleEtrangere($ue, $aDetacher->all());
-    }
-
-    /**
-     * Matérialise dans le pivot les éléments constitutifs qu'une UE ne tient que
-     * par la clé étrangère `esbtp_matieres.unite_enseignement_id`.
-     *
-     * C'est l'état des maquettes importées : l'import ne renseigne que la clé
-     * étrangère. Avant de partager un de ces éléments avec une autre UE, on fige
-     * pour l'unité propriétaire le coefficient, le crédit et l'ordre que la
-     * matière portait — sans quoi les valeurs que la seconde UE écrira sur la
-     * matière deviendraient aussi les siennes. On recopie exactement ce que la
-     * lecture affichait déjà : l'écran ne change pas.
-     *
-     * (`getEcuesEffectifs()` retourne désormais l'union du pivot et de la clé
-     * étrangère : cette matérialisation ne masque plus rien.)
-     */
-    private function materialiserPivotDepuisCleEtrangere(int $uniteEnseignementId): void
-    {
-        // Le service porte la garde : elle doit tester la composition COMMUNE et
-        // non l'existence de n'importe quelle ligne, sinon un seul élément
-        // réservé rendrait cette matérialisation impossible — et laisserait
-        // l'unité exposée au dépouillement qu'elle prévient.
-        $this->composition->materialiserDepuisCleEtrangere($uniteEnseignementId);
     }
 
     /**
