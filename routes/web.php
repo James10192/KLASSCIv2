@@ -452,8 +452,13 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             Route::delete('frais/options/{option}/assignments', [\App\Http\Controllers\ESBTPFraisController::class, 'clearOptionAssignments'])->name('frais.options.assignments.clear');
 
             // Routes API pour les relances automatiques
-            Route::get('frais/{category}/overdue-students', [\App\Http\Controllers\ESBTPFraisController::class, 'getStudentsWithOverduePayments'])->name('frais.overdue-students');
-            Route::post('frais/{category}/schedule-reminders', [\App\Http\Controllers\ESBTPFraisController::class, 'scheduleAutomaticReminders'])->name('frais.schedule-reminders');
+            // Liste des debiteurs et relances : ce groupe ne demande qu'admin.access.
+            Route::get('frais/{category}/overdue-students', [\App\Http\Controllers\ESBTPFraisController::class, 'getStudentsWithOverduePayments'])
+                ->middleware('can:finances.etudiants.voir')
+                ->name('frais.overdue-students');
+            Route::post('frais/{category}/schedule-reminders', [\App\Http\Controllers\ESBTPFraisController::class, 'scheduleAutomaticReminders'])
+                ->middleware('permission:comptabilite.relances.send')
+                ->name('frais.schedule-reminders');
 
             // Routes pour les souscriptions aux frais optionnels â€” gates inscriptions.edit (touche billing)
             Route::middleware('permission:inscriptions.edit')->group(function () {
@@ -910,7 +915,9 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 Route::get('/', fn () => view('esbtp.trash.index'))->name('index');
                 Route::get('/etudiants', [\App\Http\Controllers\ESBTPEtudiantTrashController::class, 'index'])->name('etudiants');
                 Route::get('/inscriptions', [\App\Http\Controllers\ESBTPInscriptionTrashController::class, 'index'])->name('inscriptions');
-                Route::get('/paiements', [\App\Http\Controllers\ESBTPPaiementTrashController::class, 'index'])->name('paiements');
+                Route::get('/paiements', [\App\Http\Controllers\ESBTPPaiementTrashController::class, 'index'])
+                    ->middleware('can:finances.etudiants.voir')
+                    ->name('paiements');
                 Route::post('/etudiants/{id}/restore', [\App\Http\Controllers\ESBTPEtudiantTrashController::class, 'restore'])->name('etudiants.restore');
                 Route::delete('/etudiants/{id}/force', [\App\Http\Controllers\ESBTPEtudiantTrashController::class, 'forceDelete'])->name('etudiants.force');
                 Route::post('/etudiants/{id}/force-delete-cascade', [\App\Http\Controllers\ESBTPEtudiantTrashController::class, 'forceDeleteCascade'])
@@ -922,7 +929,9 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 Route::get('/inscriptions/{id}/dependencies', [\App\Http\Controllers\ESBTPInscriptionTrashController::class, 'dependencies'])->name('inscriptions.dependencies');
                 Route::post('/paiements/{id}/restore', [\App\Http\Controllers\ESBTPPaiementTrashController::class, 'restore'])->name('paiements.restore');
                 Route::delete('/paiements/{id}/force', [\App\Http\Controllers\ESBTPPaiementTrashController::class, 'forceDelete'])->name('paiements.force');
-                Route::get('/paiements/{id}/dependencies', [\App\Http\Controllers\ESBTPPaiementTrashController::class, 'dependencies'])->name('paiements.dependencies');
+                Route::get('/paiements/{id}/dependencies', [\App\Http\Controllers\ESBTPPaiementTrashController::class, 'dependencies'])
+                    ->middleware('can:finances.etudiants.voir')
+                    ->name('paiements.dependencies');
             });
             Route::get('resultats/classes', [ESBTPResultatController::class, 'resultatsClasses'])
                 ->name('resultats.classes')
@@ -2030,7 +2039,10 @@ Route::prefix('esbtp/api')->name('esbtp.api.')->middleware(['auth', 'permission:
 });
 
 Route::prefix('esbtp/api')->name('esbtp.api.')->middleware(['auth', 'permission:admin.access|paiements.view|comptabilite.access|module.caisse.access'])->group(function () {
-    Route::get('etudiants/soldes', [ESBTPEtudiantController::class, 'getSoldesForApi'])->name('etudiants.soldes');
+    // Soldes par etudiant : la porte financiere, pas admin.access (que porte aussi l'enseignant).
+    Route::get('etudiants/soldes', [ESBTPEtudiantController::class, 'getSoldesForApi'])
+        ->middleware('can:finances.etudiants.voir')
+        ->name('etudiants.soldes');
     Route::get('frais/categories', [\App\Http\Controllers\ESBTPFraisController::class, 'getCategoriesForApi'])->name('frais.categories');
 });
 
@@ -2925,6 +2937,18 @@ Route::middleware(['auth', 'permission:performance.view_all', 'paywall'])->prefi
             ->name('recalculate');
         Route::get('/{user}', [\App\Http\Controllers\ESBTPPersonnelPerformanceController::class, 'show'])->name('show');
     });
+});
+
+// Acces temporaires : une permission ouverte a une personne jusqu'a une date.
+// Les deux gardes, comme l'entree de menu, rangee sous Personnel : sans
+// personnel.manage, la page existerait sans lien pour y aller.
+Route::middleware(['auth', 'permission:personnel.manage', 'permission:permissions.temporaires.manage', 'paywall'])->prefix('esbtp')->name('esbtp.')->group(function () {
+    Route::get('/acces-temporaires', [\App\Http\Controllers\AccesTemporairesController::class, 'index'])->name('acces-temporaires.index');
+    Route::get('/acces-temporaires/data', [\App\Http\Controllers\AccesTemporairesController::class, 'data'])->name('acces-temporaires.data');
+    Route::post('/acces-temporaires', [\App\Http\Controllers\AccesTemporairesController::class, 'store'])
+        ->middleware('throttle:30,1')->name('acces-temporaires.store');
+    Route::delete('/acces-temporaires/{grant}', [\App\Http\Controllers\AccesTemporairesController::class, 'destroy'])
+        ->middleware('throttle:30,1')->name('acces-temporaires.destroy');
 });
 
 Route::middleware(['auth', 'permission:personnel.manage', 'paywall'])->prefix('esbtp')->name('esbtp.')->group(function () {

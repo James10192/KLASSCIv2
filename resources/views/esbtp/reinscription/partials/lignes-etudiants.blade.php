@@ -73,6 +73,7 @@
         @endphp
         
         <div style="display: flex; flex-direction: column; align-items: center; gap: 4px;">
+            @if($voirFinances ?? false)
             <div style="font-weight: 600; color: #1f2937;">{{ number_format($montantAttendu, 0, ',', ' ') }} FCFA</div>
             <small style="color: #64748b;">Attendu</small>
             
@@ -89,7 +90,8 @@
                 <div style="font-weight: 600; color: #059669;">Soldé</div>
                 <small style="color: #64748b;">✓</small>
             @endif
-            
+            @endif
+
             @if($peutReinscrire)
                 <span class="badge success" style="margin-top: 4px;">
                     <i class="fas fa-check-circle"></i> Éligible

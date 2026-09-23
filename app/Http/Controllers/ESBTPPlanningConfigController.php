@@ -136,6 +136,9 @@ class ESBTPPlanningConfigController extends Controller
             $html .= "</div>";
         }
 
+        // Le bouton ouvre la création rapide, qui exige « Créer un enseignant ».
+        $peutCreerEnseignant = (bool) auth()->user()?->can('teachers.create');
+
         foreach ($matieres as $matiere) {
             $planificationExistante = $planificationsExistantes->get(
                 $matiere->id,
@@ -248,12 +251,14 @@ class ESBTPPlanningConfigController extends Controller
                 '<div class="d-flex justify-content-between align-items-center mb-2">';
             $html .=
                 '<label class="config-label mb-0"><i class="fas fa-users"></i>Professeur(s) assigné(s)</label>';
-            $html .=
-                '<button type="button" class="btn btn-sm btn-outline-primary create-teacher-btn" data-matiere-id="' .
-                $matiere->id .
-                '" data-bs-toggle="modal" data-bs-target="#teacherCreateModal">' .
-                '<i class="fas fa-user-plus me-1"></i>Créer enseignant' .
-                "</button>";
+            if ($peutCreerEnseignant) {
+                $html .=
+                    '<button type="button" class="btn btn-sm btn-outline-primary create-teacher-btn" data-matiere-id="' .
+                    $matiere->id .
+                    '" data-bs-toggle="modal" data-bs-target="#teacherCreateModal">' .
+                    '<i class="fas fa-user-plus me-1"></i>Créer enseignant' .
+                    "</button>";
+            }
             $html .= "</div>";
 
             // Récupérer les professeurs déjà assignés à cette matière
