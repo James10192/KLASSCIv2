@@ -162,6 +162,12 @@ return [
             'icon' => 'fa-users-cog',
             'aliases' => ['manage-users', 'manage_users'],
         ],
+        'permissions.temporaires.manage' => [
+            'label' => 'Accorder des accès temporaires (une permission pour une durée limitée)',
+            'description' => 'Ouvre /esbtp/acces-temporaires : donner à une personne une permission précise jusqu\'à une date, puis la retirer. On ne peut accorder que ce qu\'on détient soi-même. Se combine avec « Gérer le personnel », sous lequel l\'écran est rangé.',
+            'group' => 'Administration',
+            'icon' => 'fa-hourglass-half',
+        ],
         'system.manage' => [
             'label' => 'Gérer la configuration système',
             'group' => 'Administration',
@@ -2342,7 +2348,12 @@ return [
             'reinscriptions.demandes.view', 'reinscriptions.demandes.process',
             'inscriptions.candidatures.view', 'inscriptions.candidatures.process',
             'inscriptions.rdv.view', 'inscriptions.rdv.accueil', 'inscriptions.rdv.manage', 'inscriptions.rdv.configure',
-            'paiements.view', 'frais.view',
+            // Pas de paiements.view (septembre 2026) : le coordinateur est un profil
+            // pédagogique, il ne lit pas ce qu'un étudiant a payé ou doit. Une école
+            // qui le veut coche la permission sur le rôle. Retirer la ligne d'ici ne
+            // touche que les nouvelles instances : fix_permissions préserve un rôle
+            // déjà garni.
+            'frais.view',
             // PR1 réconciliation — view + approve (séparation OHADA : approve ≠ comptable qui a ouvert)
             'comptabilite.reconciliation.view', 'comptabilite.reconciliation.approve',
             'cycles.view', 'cycles.edit',

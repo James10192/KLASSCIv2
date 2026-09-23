@@ -696,8 +696,9 @@ function ueManager() {
         showToast(msg, type = 'success') {
             this.toast = { show: true, message: msg, type };
             // Trois secondes suffisent pour « UE supprimee ». Pas pour un refus
-            // qui nomme les maquettes ou l'unite figure encore.
-            setTimeout(() => this.toast.show = false, type === 'error' ? 10000 : 3000);
+            // qui nomme les maquettes ou l'unite figure encore, ni pour un succes
+            // qui explique ce qu'il a fait en plus (un code libere, par exemple).
+            setTimeout(() => this.toast.show = false, (type === 'error' || msg.length > 80) ? 10000 : 3000);
         },
 
         // ── Create UE ──
