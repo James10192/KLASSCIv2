@@ -26,6 +26,12 @@ class ESBTPCandidature extends Model implements Auditable, PorteurDeRendezVous
     use HasFactory;
     use \OwenIt\Auditing\Auditable;
 
+    /** Inscrite ou refusee : le dossier n'attend plus la famille au guichet. Acceptee n'en fait pas partie. */
+    public static function statutsDossierClos(): array
+    {
+        return [self::STATUT_CONVERTIE, self::STATUT_REJETEE];
+    }
+
     protected $table = 'esbtp_candidatures';
 
     /**

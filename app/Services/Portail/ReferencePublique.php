@@ -40,9 +40,14 @@ class ReferencePublique
         return $brut === '' ? '' : implode('-', str_split($brut, 4));
     }
 
+    /**
+     * Majuscules AVANT le filtre : filtrer d'abord sur [A-Z0-9] retirait les
+     * minuscules, et une reference tapee « ab12-cd34-ef56 » devenait « 123456 »,
+     * introuvable pour la famille.
+     */
     public function normaliser(string $reference): string
     {
-        return strtoupper(preg_replace('/[^A-Z0-9]/', '', $reference) ?? '');
+        return preg_replace('/[^A-Z0-9]/', '', strtoupper($reference)) ?? '';
     }
 
     public static function tirer(): string
