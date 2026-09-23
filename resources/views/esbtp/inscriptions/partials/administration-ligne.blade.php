@@ -57,12 +57,16 @@
             <span class="ii-paiement-chip ii-paiement-chip--paye">
                 <i class="fas fa-check"></i> Payé
             </span>
-            <div class="ii-student-meta">{{ number_format($paymentAmount, 0, ',', ' ') }} F</div>
+            @can('finances.etudiants.voir')
+                <div class="ii-student-meta">{{ number_format($paymentAmount, 0, ',', ' ') }} F</div>
+            @endcan
         @elseif($pendingPayment)
             <span class="ii-paiement-chip ii-paiement-chip--attente">
                 <i class="fas fa-clock"></i> En attente
             </span>
-            <div class="ii-student-meta">{{ number_format($paymentAmount, 0, ',', ' ') }} F</div>
+            @can('finances.etudiants.voir')
+                <div class="ii-student-meta">{{ number_format($paymentAmount, 0, ',', ' ') }} F</div>
+            @endcan
         @else
             <span class="ii-paiement-chip ii-paiement-chip--aucun">
                 <i class="fas fa-times"></i> Aucun
@@ -84,7 +88,7 @@
                     $isClassePleine = str_contains($raison, 'Classe pleine') || str_contains($raison, 'classe pleine');
                     $isSansPaiement = str_contains($raison, 'Aucun paiement') || str_contains($raison, 'sans paiement');
                 @endphp
-                @if($isPaiementNonValide)
+                @if($isPaiementNonValide && auth()->user()->can('paiements.validate'))
                     <button type="button" class="ii-btn ii-btn--outline" style="font-size:.72rem; padding:.3rem .6rem;"
                             onclick="ouvrirModalValiderPaiement({{ $inscription->id }})">
                         <i class="fas fa-check-circle"></i> Valider paiement
@@ -94,7 +98,7 @@
                             onclick="ouvrirModalChangerClasse({{ $inscription->id }})">
                         <i class="fas fa-exchange-alt"></i> Changer classe
                     </button>
-                @elseif($isSansPaiement)
+                @elseif($isSansPaiement && auth()->user()->can('paiements.create'))
                     <button type="button" class="ii-btn ii-btn--outline" style="font-size:.72rem; padding:.3rem .6rem;"
                             onclick="openPaymentModal({{ $inscription->id }}, { autoValidate: true })">
                         <i class="fas fa-wallet"></i> Créer paiement
@@ -112,13 +116,13 @@
                         <i class="fas fa-check-double"></i>
                     </button>
                 @endif
-                @if($pendingPayment)
+                @if($pendingPayment && auth()->user()->can('paiements.validate'))
                     <button class="ii-action-btn ii-action-btn--primary"
                             onclick="ouvrirModalValiderPaiement({{ $inscription->id }})"
                             title="Valider le paiement">
                         <i class="fas fa-check-circle"></i>
                     </button>
-                @elseif(!$hasPayment)
+                @elseif(!$hasPayment && auth()->user()->can('paiements.create'))
                     <button class="ii-action-btn ii-action-btn--primary"
                             onclick="openPaymentModal({{ $inscription->id }})"
                             title="Associer un paiement">

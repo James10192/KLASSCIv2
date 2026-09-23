@@ -100,7 +100,7 @@
                         <td>
                             @if($totalPaye > 0)
                                 <span class="ii-paiement-chip ii-paiement-chip--paye">
-                                    <i class="fas fa-check"></i> {{ number_format($totalPaye, 0, ',', ' ') }} F
+                                    <i class="fas fa-check"></i> @can('finances.etudiants.voir'){{ number_format($totalPaye, 0, ',', ' ') }} F @else Payé @endcan
                                 </span>
                             @else
                                 <span class="ii-paiement-chip ii-paiement-chip--aucun">

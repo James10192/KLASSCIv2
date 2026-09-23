@@ -280,6 +280,11 @@ final class PerimetreDeRecalcul
      * personne n'a touche aux notes de ce couple : le recalcul est un
      * rattrapage, et un rattrapage n'invente pas de zero.
      *
+     * Une seule exception cote observateur, et elle est dans le job : quand la
+     * DERNIERE note est supprimee, il ne reste rien du tout, et le job n'ecrit
+     * rien (`RecomputeStudentResultatJob`, etape 4). La ligne, alors sans aucune
+     * note, est de celles que le pre-controle des bulletins liste.
+     *
      * Le job tourne **sur place** (`dispatchSync`), jamais sur la file : rien
      * ne prouve qu'un worker tourne sur les instances mutualisees.
      *

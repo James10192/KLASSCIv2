@@ -153,7 +153,19 @@
                 </div>
             </div>
 
-            <!-- Situation Financière -->
+            {{-- Hors du bloc financier : la carte de réinscription plus bas les lit
+                 aussi, y compris pour qui n'a pas la porte financière. --}}
+            @php
+                $etudiant = $analyse['etudiant'];
+                $montantAttendu = $etudiant->montant_attendu ?? 0;
+                $montantPaye = $etudiant->montant_paye ?? 0;
+                $soldeRestant = $etudiant->solde_restant ?? 0;
+                $peutReinscrire = $etudiant->peut_reinscrire ?? false;
+                $pourcentsage_paye = $montantAttendu > 0 ? ($montantPaye / $montantAttendu) * 100 : 0;
+            @endphp
+
+            {{-- Situation financière --}}
+            @if($voirFinances)
             <div class="card-moderne">
                 <div class="main-card-header">
                     <div class="main-card-title">
@@ -162,14 +174,6 @@
                     </div>
                 </div>
                 <div class="p-lg">
-                    @php
-                        $etudiant = $analyse['etudiant'];
-                        $montantAttendu = $etudiant->montant_attendu ?? 0;
-                        $montantPaye = $etudiant->montant_paye ?? 0;
-                        $soldeRestant = $etudiant->solde_restant ?? 0;
-                        $peutReinscrire = $etudiant->peut_reinscrire ?? false;
-                        $pourcentsage_paye = $montantAttendu > 0 ? ($montantPaye / $montantAttendu) * 100 : 0;
-                    @endphp
 
                     <!-- KPI Financiers -->
                     <div class="kpi-grid mb-lg">
@@ -312,6 +316,7 @@
                     </div>
                 </div>
             </div>
+            @endif
 
             <!-- Analyse Académique -->
             <div class="card-moderne">
@@ -591,7 +596,11 @@
                                         </div>
                                     @else
                                         <div class="fw-semibold text-warning">
-                                            {{ number_format($reliquatRestant, 0, ',', ' ') }} FCFA à régulariser
+                                            @if($voirFinances)
+                                                {{ number_format($reliquatRestant, 0, ',', ' ') }} FCFA à régulariser
+                                            @else
+                                                Reliquat à régulariser
+                                            @endif
                                         </div>
                                     @endif
                                 </div>
@@ -630,7 +639,7 @@
                                 <li>Choix du statut d'affectation</li>
                                 <li>Configuration des frais applicables</li>
                                 @if(isset($etudiant->reliquat_possible) && $etudiant->reliquat_possible)
-                                    <li class="text-warning"><strong>Gestion du reliquat de {{ number_format($etudiant->reliquat_montant, 0, ',', ' ') }} FCFA</strong></li>
+                                    <li class="text-warning"><strong>Gestion du reliquat{{ $voirFinances ? ' de ' . number_format($etudiant->reliquat_montant, 0, ',', ' ') . ' FCFA' : '' }}</strong></li>
                                 @endif
                             </ul>
                         </div>
@@ -648,7 +657,9 @@
                         <div class="alert alert-warning text-start">
                             <h6><i class="fas fa-exclamation-triangle me-2"></i>Actions requises :</h6>
                             <ul class="mb-0">
-                                <li><strong>Montant restant à payer :</strong> {{ number_format($soldeRestant, 0, ',', ' ') }} FCFA</li>
+                                @if($voirFinances)
+                                    <li><strong>Montant restant à payer :</strong> {{ number_format($soldeRestant, 0, ',', ' ') }} FCFA</li>
+                                @endif
                                 <li>Procéder au paiement du solde restant</li>
                                 <li>Ou demander à un superadministrateur d'autoriser le report en reliquat</li>
                             </ul>
