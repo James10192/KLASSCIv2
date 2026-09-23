@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\ESBTPRdvCreneau;
 use App\Models\Setting;
 use App\Services\RendezVous\AffecteurDossiersRdv;
+use App\Services\RendezVous\FamillesAPrevenirRdv;
 use App\Services\RendezVous\FileConvocationsRdv;
 use App\Services\RendezVous\GenerateurCreneaux;
 use App\Services\RendezVous\RendezVousReglages;
@@ -32,6 +33,7 @@ class ESBTPRendezVousController extends Controller
             'peutGerer' => $request->user()?->can('inscriptions.rdv.manage') ?? false,
             'peutConfigurer' => $request->user()?->can('inscriptions.rdv.configure') ?? false,
             'rdv' => $this->reglages,
+            'aPrevenir' => app(FamillesAPrevenirRdv::class)->compter(),
         ];
 
         if ($request->boolean('fragment')) {
@@ -50,6 +52,12 @@ class ESBTPRendezVousController extends Controller
     {
         $brut = $request->all();
         $auteur = auth()->id();
+
+        // Une tolerance illisible retomberait en silence sur 15 minutes.
+        $grace = $brut[RendezVousReglages::GRACE] ?? $brut[str_replace('.', '_', RendezVousReglages::GRACE)] ?? null;
+        if (is_string($grace) && trim($grace) !== '' && ! ctype_digit(trim($grace))) {
+            return response()->json(['message' => 'La tolérance de retard doit être un nombre entier de minutes.'], 422);
+        }
 
         $jours = $brut['inscriptions_rdv_jours_ouverts'] ?? [];
         Setting::set(RendezVousReglages::JOURS, is_array($jours) ? implode(',', array_map('strval', $jours)) : '', $auteur);
@@ -97,10 +105,9 @@ class ESBTPRendezVousController extends Controller
 
         return response()->json($r + [
             'a_envoyer' => $file->enAttente(),
-            'message' => sprintf(
-                '%d dossiers placés. %d sans e-mail, %d sans créneau libre, %d déjà traités.',
-                $r['places'], $r['sans_email'], $r['sans_creneau'], $r['deja']
-            ),
+            'message' => sprintf('%d dossiers placés.', $r['places'])
+                .AffecteurDossiersRdv::mentionAPrevenir($r['a_prevenir'])
+                .sprintf(' %d sans créneau libre, %d déjà traités.', $r['sans_creneau'], $r['deja']),
         ]);
     }
 

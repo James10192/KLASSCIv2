@@ -20,6 +20,14 @@ enum StatutConvocationRdv: string
     /** Le creneau est passe avant l'envoi : ni a relancer, ni a traiter. */
     case SansObjet = 'sans_objet';
 
+    /**
+     * Aucun courriel n'a pu partir, et un agent a prevenu la famille par
+     * telephone (prevenue_par, heure dans convocation_envoyee_at). Une
+     * reprogrammation replanifie la convocation et efface cet etat : la
+     * nouvelle date est a annoncer a son tour.
+     */
+    case Telephone = 'telephone';
+
     public function label(): string
     {
         return match ($this) {
@@ -28,6 +36,7 @@ enum StatutConvocationRdv: string
             self::Echec => 'Envoi échoué',
             self::SansEmail => 'Sans e-mail',
             self::SansObjet => 'Sans objet (créneau passé)',
+            self::Telephone => 'Prévenue par téléphone',
         };
     }
 
@@ -35,7 +44,7 @@ enum StatutConvocationRdv: string
     public function ton(): string
     {
         return match ($this) {
-            self::Envoyee => 'succes',
+            self::Envoyee, self::Telephone => 'succes',
             self::EnAttente => 'attente',
             self::Echec => 'echec',
             self::SansEmail, self::SansObjet => 'neutre',

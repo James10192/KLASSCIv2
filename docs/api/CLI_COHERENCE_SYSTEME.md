@@ -99,10 +99,11 @@ La réponse porte désormais `recalculs_tentes`, `agregats_orphelins` et
 `recalculs_en_echec` ; le détail du recalcul, et ce qu'il refuse délibérément de
 faire, est dans [CLI_RECALCUL_RESULTATS.md](CLI_RECALCUL_RESULTATS.md).
 
-**Cinq chemins déplacent une évaluation, à ce jour** — c'est un relevé, pas un
-inventaire garanti. Quatre sont branchés sur le recalcul ; le cinquième,
+**Sept chemins déplacent une évaluation, à ce jour** — c'est un relevé, pas un
+inventaire garanti. Six sont branchés sur le recalcul ; le septième,
 `MergeDuplicateEcue` sous `force`, ne l'est pas, et
-[CLI_RECALCUL_RESULTATS.md](CLI_RECALCUL_RESULTATS.md) dit pourquoi. Un nouveau
+[CLI_RECALCUL_RESULTATS.md](CLI_RECALCUL_RESULTATS.md) dit pourquoi — ainsi que
+l'annulation, qui ne déplace rien mais recalcule aussi. Un nouveau
 chemin qui écrit `esbtp_notes` par un `update()` de query builder doit appeler
 `RecalculApresDeplacement` : aucun observateur ne le fera à sa place.
 
@@ -128,7 +129,9 @@ d'arbitrer. **Ne les effacez jamais d'office** — c'est une politique d'école
    classe et matière redeviennent du même côté. L'endpoint ci-dessus ne change
    que la matière : ce déplacement se fait par l'écran.
 3. **Annuler l'évaluation** (`status = cancelled`) — exclue du bulletin **par le
-   chemin de génération**, les notes restent en base et tracées.
+   chemin de génération**, les notes restent en base et tracées. La moyenne
+   enregistrée est recalculée sans elles ; si elles étaient les seules, elle est
+   laissée telle quelle et nommée, jamais remise à zéro.
 
    ⚠️ **Ce n'est pas vrai de tous les chemins.** La moyenne **annuelle** de
    secours (`BulletinService::calculateStudentAverageForPeriode()`, branche
@@ -151,6 +154,9 @@ nécessaire.
 
 ## Historique
 
+- **Septembre 2026 (bis)** — la séance de devoir et `esbtp:check-evaluations-annees`
+  rejoignent les chemins branchés ; l'annulation d'une évaluation recalcule aussi.
+  Détail dans [CLI_RECALCUL_RESULTATS.md](CLI_RECALCUL_RESULTATS.md).
 - **Septembre 2026** — **quatre des cinq** chemins trouvés qui déplacent une
   évaluation recalculent les agrégats des deux côtés. Ils déplaçaient les notes
   sans rien rafraîchir, et l'agrégat périmé gagne sur les notes : le déplacement

@@ -80,6 +80,16 @@
             </div>
         </fieldset>
 
+        <fieldset>
+            <legend>Accueil au guichet</legend>
+            <div class="rdv-grille rdv-grille--4">
+                <label class="rdv-champ">
+                    <span>« En retard » au-delà de</span>
+                    <span class="rdv-suffixe"><input type="number" min="0" name="{{ $rdv::GRACE }}" value="{{ $rdv->graceMinutes() }}"><em>min</em></span>
+                </label>
+            </div>
+        </fieldset>
+
         <label class="rdv-bascule">
             <input type="checkbox" name="{{ $rdv::ENABLED }}" value="1" @checked($_ouvert)>
             <span class="rdv-bascule-piste" aria-hidden="true"><span></span></span>

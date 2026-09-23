@@ -392,6 +392,25 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             Route::post('/rendez-vous/placer', [\App\Http\Controllers\ESBTP\ESBTPRendezVousController::class, 'placer'])
                 ->middleware(['permission:inscriptions.rdv.manage', 'throttle:5,1'])
                 ->name('placer');
+            // Accueil du jour au guichet : liste a cocher, absences deduites, reprogrammation, appels notes.
+            Route::prefix('/rendez-vous/accueil')->middleware('permission:inscriptions.rdv.accueil')->name('accueil.')->group(function () {
+                $c = \App\Http\Controllers\ESBTP\ESBTPRendezVousAccueilController::class;
+                Route::get('/', [$c, 'index'])->name('index');
+                Route::get('/creneaux', [$c, 'creneaux'])->middleware('throttle:60,1')->name('creneaux');
+                Route::post('/non-venues/reprogrammer', [$c, 'reprogrammerNonVenues'])->middleware('throttle:10,1')->name('non-venues');
+                Route::post('/{reservation}/recu', [$c, 'recu'])->middleware('throttle:120,1')->name('recu');
+                Route::post('/{reservation}/annuler', [$c, 'annuler'])->middleware('throttle:120,1')->name('annuler');
+                Route::post('/{reservation}/reprogrammer', [$c, 'reprogrammer'])->middleware('throttle:30,1')->name('reprogrammer');
+                Route::post('/{reservation}/prevenue', [$c, 'prevenue'])->middleware('throttle:120,1')->name('prevenue');
+                Route::post('/{reservation}/prevenue/annuler', [$c, 'annulerPrevenue'])->middleware('throttle:60,1')->name('prevenue.annuler');
+            });
+            // Liste d'appel des familles qu'aucun courriel n'a prevenues.
+            Route::prefix('/rendez-vous/familles-a-prevenir')->middleware('permission:inscriptions.rdv.view')->name('familles.')->group(function () {
+                $c = \App\Http\Controllers\ESBTP\ESBTPRendezVousExportController::class;
+                Route::get('/apercu', [$c, 'apercu'])->middleware('throttle:60,1')->name('apercu');
+                Route::get('/pdf', [$c, 'pdf'])->middleware('throttle:10,1')->name('pdf');
+                Route::get('/excel', [$c, 'excel'])->middleware('throttle:10,1')->name('excel');
+            });
             // Appele en boucle par l'ecran, un paquet borne a la fois : le debit
             // tient compte de cette boucle (15 par paquet, 60 paquets/min).
             Route::post('/rendez-vous/convocations/envoyer', [\App\Http\Controllers\ESBTP\ESBTPRendezVousController::class, 'envoyerConvocations'])

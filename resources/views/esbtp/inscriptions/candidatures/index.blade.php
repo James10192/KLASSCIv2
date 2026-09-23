@@ -26,6 +26,9 @@
         display: flex; align-items: center; gap: .75rem; text-decoration: none;
     }
     .cd-kpi--actif { background: rgba(255,255,255,.22); border-color: rgba(255,255,255,.4); }
+    .cd-filtre-ref { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; background: rgba(4,83,203,.06); border: 1px solid rgba(4,83,203,.18); color: #1e3a6e; border-radius: 12px; padding: .7rem 1rem; margin-bottom: 1rem; font-size: .86rem; }
+    .cd-filtre-ref i { color: #0453cb; }
+    .cd-filtre-ref a { margin-left: auto; font-weight: 600; color: #0453cb; }
     .cd-kpi-value { font-size: 1.35rem; font-weight: 700; color: #fff; }
     .cd-kpi-label { font-size: .72rem; color: rgba(255,255,255,.65); margin-top: .15rem; }
 
@@ -130,6 +133,14 @@
     @endif
     @if(session('error'))
         <div class="alert alert-danger">{{ session('error') }}</div>
+    @endif
+
+    @if(($referenceActive ?? '') !== '')
+        <div class="cd-filtre-ref">
+            <i class="fas fa-filter"></i>
+            <span>Dossier de référence <strong>{{ $referenceActive }}</strong></span>
+            <a href="{{ route('esbtp.candidatures.index') }}">Voir toutes les candidatures</a>
+        </div>
     @endif
 
     <div class="cd-card">

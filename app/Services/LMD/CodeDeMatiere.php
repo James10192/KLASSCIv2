@@ -9,16 +9,20 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
- * La reponse des ecrans LMD et de l'import de maquette a « ce code de matiere
- * est-il libre ? ». L'ecran BTS des matieres (ESBTPMatiereController) repond
- * encore par sa propre regle `unique`, sans liberation : c'est un ecart connu.
+ * La seule reponse du depot a « ce code de matiere est-il libre ? ».
  *
  * `esbtp_matieres.code` porte un index unique qui compte AUSSI les matieres
  * supprimees en douceur. Tant que chaque ecran repondait a sa facon, la meme
- * saisie donnait trois resultats : le modal ECUE levait une erreur serveur
- * (USAT, septembre 2026), le formulaire d'UE ressuscitait la matiere supprimee
- * sous le nouveau nom — historique compris —, et l'import CLI levait lui aussi
- * une erreur serveur.
+ * saisie donnait des resultats differents : le modal ECUE levait une erreur
+ * serveur (USAT, septembre 2026), le formulaire d'UE ressuscitait la matiere
+ * supprimee sous le nouveau nom — historique compris —, l'import CLI et
+ * l'ecran BTS des matieres levaient une erreur serveur, ce dernier jusque sur
+ * un code qu'il avait lui-meme genere.
+ *
+ * Qui ecrit un code de matiere passe par ici : `ecrire()` pour les ecrans
+ * LMD, `ecrireEnLiberant()` pour l'ecran BTS, et `libererSiArchive()` suivi de
+ * `sousUnicite()` pour les ecritures qui tiennent deja leur transaction
+ * (formulaire d'UE, import de maquette, CLI tronc commun).
  *
  * La regle, desormais une seule :
  * - une matiere ACTIVE garde son code. Qui veut la reutiliser la lie ; la
@@ -33,6 +37,9 @@ use Illuminate\Validation\ValidationException;
 class CodeDeMatiere
 {
     public const SUFFIXE_ARCHIVE = '~suppr-';
+
+    /** Nom Laravel de l'index (migration `create_esbtp_matieres_table`). */
+    private const INDEX_UNIQUE = 'esbtp_matieres_code_unique';
 
     /**
      * Libere le code s'il n'est tenu que par une matiere supprimee.
@@ -75,6 +82,25 @@ class CodeDeMatiere
     }
 
     /**
+     * Code genere depuis le nom (trois premieres lettres de chaque mot), suffixe
+     * d'un rang s'il est pris. Les matieres supprimees comptent : l'index unique
+     * les compte aussi, et les ignorer faisait lever la creation en erreur serveur.
+     */
+    public function genererDepuisLeNom(string $nom): string
+    {
+        $base = implode('', array_map(
+            fn ($mot) => mb_substr($mot, 0, 3, 'UTF-8'),
+            preg_split('/\s+/', mb_strtoupper(trim($nom), 'UTF-8'))
+        ));
+        $code = $base;
+        for ($rang = 1; ESBTPMatiere::withTrashed()->where('code', $code)->exists(); $rang++) {
+            $code = $base . $rang;
+        }
+
+        return $code;
+    }
+
+    /**
      * Ecrit une matiere portant ce code, ou refuse en disant pourquoi.
      *
      * Refuse si une matiere active tient deja le code ; libere le code d'une
@@ -92,23 +118,90 @@ class CodeDeMatiere
         int $portee,
         callable $ecrire
     ): array {
-        try {
-            return DB::transaction(function () use ($code, $saufId, $ue, $portee, $ecrire) {
-                $this->refuserSiActive($code, $saufId, $ue, $portee);
-                $message = $this->libererSiArchive($code, $saufId);
+        return $this->enTransaction('code', $code, $saufId, function () use ($code, $saufId, $ue, $portee, $ecrire) {
+            $this->refuserSiActive($code, $saufId, $ue, $portee);
 
-                return [$ecrire(), $message];
-            });
+            return $ecrire();
+        }, $ue, $portee);
+    }
+
+    /**
+     * Comme `ecrire()`, pour un ecran qui a deja refuse le code d'une matiere
+     * active par sa propre validation (l'ecran BTS des matieres, et sa regle
+     * `unique` limitee aux lignes non supprimees).
+     *
+     * @param  callable(): mixed  $ecrire
+     * @return array{0: mixed, 1: string|null} Le resultat d'$ecrire, et le message de liberation.
+     */
+    public function ecrireEnLiberant(string $cle, ?string $code, ?int $saufId, callable $ecrire): array
+    {
+        return $this->enTransaction($cle, $code, $saufId, $ecrire);
+    }
+
+    /**
+     * La liberation et l'ecriture dans une transaction : si l'ecriture echoue,
+     * l'ancienne matiere retrouve son code.
+     */
+    private function enTransaction(
+        string $cle,
+        ?string $code,
+        ?int $saufId,
+        callable $ecrire,
+        ?ESBTPUniteEnseignement $ue = null,
+        int $portee = 0
+    ): array {
+        return $this->sousUnicite($cle, $code, fn () => DB::transaction(function () use ($code, $saufId, $ecrire) {
+            $message = $this->libererSiArchive($code, $saufId);
+
+            return [$ecrire(), $message];
+        }), $ue, $portee);
+    }
+
+    /**
+     * Execute l'ecriture ; si l'index unique du code refuse, rend un refus nomme
+     * sur le champ `$cle` au lieu d'une erreur serveur.
+     *
+     * Le cas vise est la course : deux saisies simultanees du meme code, dont
+     * aucune n'a vu l'autre avant d'ecrire. Le titulaire est relu pour etre
+     * nomme, par une lecture verrouillante : dans une transaction englobante,
+     * une lecture simple verrait l'instantane d'avant la course et ne le
+     * trouverait pas.
+     *
+     * @template T
+     * @param  callable(): T  $ecrire
+     * @return T
+     */
+    public function sousUnicite(
+        string $cle,
+        ?string $code,
+        callable $ecrire,
+        ?ESBTPUniteEnseignement $ue = null,
+        int $portee = 0
+    ): mixed {
+        try {
+            return $ecrire();
         } catch (QueryException $e) {
             // `UniqueConstraintViolationException` n'existe qu'a partir de
             // Laravel 10 ; ce depot accepte encore 9.x.
-            if ((int) ($e->errorInfo[1] ?? 0) !== 1062) {
+            if ($code === null || (int) ($e->errorInfo[1] ?? 0) !== 1062
+                || ! str_contains((string) ($e->errorInfo[2] ?? ''), self::INDEX_UNIQUE)) {
                 throw $e;
             }
 
-            $this->refuserSiActive($code, $saufId, $ue, $portee);
+            $titulaire = ESBTPMatiere::where('code', $code)->lockForUpdate()->first();
 
-            throw $e;
+            throw ValidationException::withMessages([$cle => match (true) {
+                $titulaire !== null && $ue !== null => $this->pourquoi($titulaire, $ue, $portee),
+                $titulaire !== null => sprintf(
+                    'Le code « %s » est déjà celui de la matière « %s ». Choisissez un autre code.',
+                    $titulaire->code,
+                    $titulaire->name
+                ),
+                default => sprintf(
+                    'Le code « %s » vient d\'être pris par une autre saisie. Choisissez un autre code, ou réessayez.',
+                    $code
+                ),
+            }]);
         }
     }
 
