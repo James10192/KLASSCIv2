@@ -162,6 +162,12 @@ return [
             'icon' => 'fa-users-cog',
             'aliases' => ['manage-users', 'manage_users'],
         ],
+        'permissions.temporaires.manage' => [
+            'label' => 'Accorder des accès temporaires (une permission pour une durée limitée)',
+            'description' => 'Ouvre /esbtp/acces-temporaires : donner à une personne une permission précise jusqu\'à une date, puis la retirer. On ne peut accorder que ce qu\'on détient soi-même.',
+            'group' => 'Administration',
+            'icon' => 'fa-hourglass-half',
+        ],
         'system.manage' => [
             'label' => 'Gérer la configuration système',
             'group' => 'Administration',

@@ -86,7 +86,13 @@ class AuthServiceProvider extends ServiceProvider
                 return $result === true ? true : null;
             }
 
-            return app(\App\Services\ScolariteClerkCapabilities::class)->grants($user, $ability) ?: null;
+            if (app(\App\Services\ScolariteClerkCapabilities::class)->grants($user, $ability)) {
+                return true;
+            }
+
+            // Une permission ouverte pour un temps limite (/esbtp/acces-temporaires).
+            // Elle tombe d'elle-meme a son echeance : c'est la date qui le decide.
+            return app(\App\Domain\Permissions\AccesTemporaires::class)->detient($user, $ability) ?: null;
         });
 
         // Peut-on montrer a cet utilisateur ce qu'un etudiant a paye, ce qu'il
@@ -106,6 +112,8 @@ class AuthServiceProvider extends ServiceProvider
         Gate::define(
             'finances.etudiants.voir',
             static fn ($utilisateur) => $utilisateur->hasAnyPermission(self::PERMISSIONS_FINANCES_ETUDIANTS)
+                || app(\App\Domain\Permissions\AccesTemporaires::class)
+                    ->detientUneDe($utilisateur, self::PERMISSIONS_FINANCES_ETUDIANTS)
         );
 
         // Peut-on EMMENER cet utilisateur au formulaire d'inscription, ou lui

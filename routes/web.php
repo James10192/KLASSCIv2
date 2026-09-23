@@ -2931,6 +2931,16 @@ Route::middleware(['auth', 'permission:performance.view_all', 'paywall'])->prefi
     });
 });
 
+// Acces temporaires : une permission ouverte a une personne jusqu'a une date.
+Route::middleware(['auth', 'permission:permissions.temporaires.manage', 'paywall'])->prefix('esbtp')->name('esbtp.')->group(function () {
+    Route::get('/acces-temporaires', [\App\Http\Controllers\AccesTemporairesController::class, 'index'])->name('acces-temporaires.index');
+    Route::get('/acces-temporaires/data', [\App\Http\Controllers\AccesTemporairesController::class, 'data'])->name('acces-temporaires.data');
+    Route::post('/acces-temporaires', [\App\Http\Controllers\AccesTemporairesController::class, 'store'])
+        ->middleware('throttle:30,1')->name('acces-temporaires.store');
+    Route::delete('/acces-temporaires/{grant}', [\App\Http\Controllers\AccesTemporairesController::class, 'destroy'])
+        ->middleware('throttle:30,1')->name('acces-temporaires.destroy');
+});
+
 Route::middleware(['auth', 'permission:personnel.manage', 'paywall'])->prefix('esbtp')->name('esbtp.')->group(function () {
     Route::get('/personnel/unified', [\App\Http\Controllers\ESBTPPersonnelUnifiedController::class, 'index'])->name('personnel.unified.index');
     Route::get('/personnel/unified/data', [\App\Http\Controllers\ESBTPPersonnelUnifiedController::class, 'getData'])->name('personnel.unified.data');
