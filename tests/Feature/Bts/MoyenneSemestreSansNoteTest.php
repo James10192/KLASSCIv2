@@ -11,6 +11,7 @@ use Illuminate\Testing\TestResponse;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\Feature\Bts\Concerns\MonteUneClasseBts;
+use Tests\Feature\Bts\Concerns\SeedsConfiguredBulletin;
 use Tests\TestCase;
 
 /**
@@ -24,11 +25,15 @@ use Tests\TestCase;
  * seule la periode affichee etait touchee, et la moyenne annuelle avec elle.
  *
  * Le troisieme cas protege l'erreur inverse : une vraie note de 0 est une valeur.
+ * Les deux derniers couvrent le repli : un semestre qui n'a plus que son bulletin
+ * officiel ne change pas de reponse selon l'onglet ouvert, et un eleve sans classe
+ * ni note n'herite pas d'un 0 invente.
  */
 class MoyenneSemestreSansNoteTest extends TestCase
 {
     use RefreshDatabase;
     use MonteUneClasseBts;
+    use SeedsConfiguredBulletin;
 
     protected function setUp(): void
     {
@@ -76,6 +81,39 @@ class MoyenneSemestreSansNoteTest extends TestCase
         );
     }
 
+    /**
+     * Un semestre qui n'existe plus que par son bulletin officiel (notes
+     * deplacees ou annulees) : l'onglet doit dire la meme chose quel que soit
+     * l'onglet ouvert. Avant, vide ouvert sur S2, 12,00 ouvert sur S1.
+     */
+    public function test_la_moyenne_d_un_semestre_ne_depend_pas_de_l_onglet_ouvert(): void
+    {
+        $etudiant = $this->eleveNoteAuSeulSemestre1();
+        $bulletin = $this->seedConfiguredBulletin(
+            $etudiant->id, $this->classe->id, $this->annee->id, 'semestre2', [$this->matiere->id], []
+        );
+        $bulletin->forceFill(['moyenne_generale' => 12])->save();
+
+        foreach (['semestre1', 'semestre2', 'annuel'] as $ouvert) {
+            $this->assertNull(
+                $this->resultats($etudiant->id, $ouvert)->viewData('moyenneSemestre2'),
+                "Ouvert sur {$ouvert} : sans note vivante, le semestre 2 n'a pas de moyenne d'onglet."
+            );
+        }
+    }
+
+    /** Sans inscription, pas de classe ni de snapshot : le repli ne doit pas inventer un 0. */
+    public function test_sans_classe_un_eleve_sans_note_n_a_pas_de_moyenne(): void
+    {
+        $this->monterLaClasse();
+        $etudiant = \App\Models\ESBTPEtudiant::factory()->create();
+
+        $reponse = $this->resultats($etudiant->id, 'semestre1', avecClasse: false);
+
+        $this->assertNull($reponse->viewData('moyenneSemestre1'), 'Sans note, pas de moyenne (avant : 0,00).');
+        $this->assertNull($reponse->viewData('moyenneAvecAssiduite'));
+    }
+
     private ESBTPMatiere $matiere;
 
     private function eleveNoteAuSeulSemestre1(): \App\Models\ESBTPEtudiant
@@ -101,19 +139,19 @@ class MoyenneSemestreSansNoteTest extends TestCase
         ]);
     }
 
-    private function resultats(int $etudiantId, string $periode): TestResponse
+    private function resultats(int $etudiantId, string $periode, bool $avecClasse = true): TestResponse
     {
         Role::findOrCreate('superAdmin', 'web');
         app(PermissionRegistrar::class)->forgetCachedPermissions();
         $admin = User::withoutEvents(fn () => User::factory()->create());
         $admin->assignRole('superAdmin');
 
-        $reponse = $this->actingAs($admin)->get(route('esbtp.resultats.etudiant', [
+        $reponse = $this->actingAs($admin)->get(route('esbtp.resultats.etudiant', array_filter([
             'etudiant' => $etudiantId,
-            'classe_id' => $this->classe->id,
+            'classe_id' => $avecClasse ? $this->classe->id : null,
             'annee_universitaire_id' => $this->annee->id,
             'periode' => $periode,
-        ]));
+        ])));
         $reponse->assertOk();
 
         return $reponse;

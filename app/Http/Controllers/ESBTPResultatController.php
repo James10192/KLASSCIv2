@@ -1008,7 +1008,9 @@ class ESBTPResultatController extends Controller
                 $sommeCoefs += $matCoef;
             }
         }
-        $moyenneGenerale = $sommeCoefs > 0 ? $sommePoints / $sommeCoefs : 0;
+        // Aucune matiere = aucune note : `null`, pas 0. Le filtre `> 0` ci-dessus ecarte les
+        // moyennes nulles de la somme ; une seule matiere a 0 doit donc rester 0, d'ou le test sur la liste.
+        $moyenneGenerale = empty($notesByMatiere) ? null : ($sommeCoefs > 0 ? $sommePoints / $sommeCoefs : 0);
 
         \Log::info('Student Result Calculations', [
             'student_id' => $id,
@@ -1032,7 +1034,7 @@ class ESBTPResultatController extends Controller
                 $periode ?: 'annuel'
             );
             $noteAssiduite = $this->bulletinService->resolveAttendanceNote($absences['justifiees'] ?? 0, $absences['non_justifiees'] ?? 0);
-            $moyenneAvecAssiduite = $moyenneGenerale + $noteAssiduite;
+            $moyenneAvecAssiduite = $moyenneGenerale === null ? null : $moyenneGenerale + $noteAssiduite;
         }
 
         $semesterWeights = $this->bulletinService->getSemesterWeights($classe);
@@ -1040,13 +1042,14 @@ class ESBTPResultatController extends Controller
             ? $this->currentResultSnapshotService->getAnnualSnapshot($etudiant->id, $classe->id, $annee_universitaire_id)
             : null;
 
-        // Moyennes semestrielles incluant l'assiduité. Période AFFICHÉE : le snapshot fait foi, son
-        // `null` = « aucune note » (le repli rendait la moyenne courante : un semestre vide affichait
-        // 0,13). L'autre semestre garde le repli : bulletin officiel s'il existe, lu sur $classe_id
-        // (la classe affichée), sinon rien. Choix conservateur, à trancher si on veut l'aligner.
-        $moyenneDuSemestre = fn (string $semestre) => $annualSnapshot && $semestre === $periode
+        // Moyennes semestrielles incluant l'assiduité. Dès qu'une classe donne un snapshot vivant, il
+        // fait foi pour LES DEUX semestres : son `null` veut dire « aucune note ». Le repli, lui, rendait
+        // la moyenne courante (0 faute de note) sur l'onglet ouvert et un bulletin officiel périmé, lu
+        // sur la classe affichée, sur l'autre : la même page donnait deux réponses. La moyenne officielle
+        // reste lisible dans le bandeau « Officiel ». Sans classe, pas de snapshot : repli inchangé.
+        $moyenneDuSemestre = fn (string $semestre) => $annualSnapshot
             ? ($annualSnapshot['semester_snapshots'][$semestre]['effective_total'] ?? null)
-            : ($annualSnapshot['semester_snapshots'][$semestre]['effective_total'] ?? $this->bulletinService->getAlignedBulletinAverageForPeriode($id, $classe_id ?? 0, $annee_universitaire_id ?? 0, $semestre, $periode, $moyenneAvecAssiduite, $noteAssiduite));
+            : $this->bulletinService->getAlignedBulletinAverageForPeriode($id, $classe_id ?? 0, $annee_universitaire_id ?? 0, $semestre, $periode, $moyenneAvecAssiduite, $noteAssiduite);
         $moyenneSemestre1 = $moyenneDuSemestre('semestre1');
         $moyenneSemestre2 = $moyenneDuSemestre('semestre2');
         $moyenneAnnuelle = ($annualSnapshot['state'] ?? null) === 'annual_complete'

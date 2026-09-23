@@ -240,7 +240,7 @@ class BulletinService
         int $anneeUniversitaireId,
         string $periode,
         string $currentPeriode,
-        float $currentAverage,
+        ?float $currentAverage,
         ?float $currentNoteAssiduite = null
     ): ?float {
         if ($periode === $currentPeriode) {
