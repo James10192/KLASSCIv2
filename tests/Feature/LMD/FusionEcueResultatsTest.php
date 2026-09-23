@@ -124,6 +124,8 @@ class FusionEcueResultatsTest extends TestCase
         $this->assertSame(0, $rapport['lmd_resultats_ecues']['repointes']);
         $this->assertCount(1, $rapport['lmd_resultats_ecues']['conflits']);
         $this->assertSame(2, $rapport['lmd_resultats_ecues']['conflits'][0]['id']);
+        // Rien n'a bougé sur ce bulletin : il n'est pas à régénérer.
+        $this->assertSame([], $rapport['lmd_resultats_ecues']['bulletins_a_regenerer']);
     }
 
     public function test_l_apercu_ne_compte_qu_une_ligne_par_bulletin(): void
@@ -144,6 +146,8 @@ class FusionEcueResultatsTest extends TestCase
         $this->assertSame(1, $apercu['repointed']['lmd_resultats_ecues']);
         $this->assertSame(1, $rapport['lmd_resultats_ecues']['repointes']);
         $this->assertCount(1, $rapport['lmd_resultats_ecues']['conflits']);
+        // Une ligne a bougé sur ce bulletin, même si une autre y est restée.
+        $this->assertSame([50], $rapport['lmd_resultats_ecues']['bulletins_a_regenerer']);
     }
 
     public function test_le_lien_vers_un_bulletin_n_est_donne_qu_a_qui_peut_l_ouvrir(): void

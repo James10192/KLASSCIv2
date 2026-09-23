@@ -567,7 +567,6 @@ function recManager() {
         conflitsLmd(r) { return ((r && r.lmd_resultats_ecues) || {}).conflits || []; },
         bulletinsARegenerer(r) { return ((r && r.lmd_resultats_ecues) || {}).bulletins_a_regenerer || []; },
         bulletinUrl(id) { return this.bulletinUrlGabarit ? this.bulletinUrlGabarit.replace('__ID__', id) : null; },
-        // L'année de la ligne, sinon la page retombe sur l'année courante.
 
         toast(type, message) {
             const id = ++this._tid;

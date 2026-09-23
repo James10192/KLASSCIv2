@@ -216,6 +216,7 @@ class MergeDuplicateEcue
 
         $repointes = 0;
         $conflits = [];
+        $aRegenerer = [];
 
         foreach ($rows as $row) {
             $occupe = DB::table('esbtp_lmd_resultats_ecues')
@@ -240,6 +241,7 @@ class MergeDuplicateEcue
                 'updated_at' => now(),
             ]);
             $repointes++;
+            $aRegenerer[(int) $row->bulletin_id] = true;
         }
 
         if ($conflits !== []) {
@@ -252,7 +254,9 @@ class MergeDuplicateEcue
         return [
             'repointes' => $repointes,
             'conflits' => $conflits,
-            'bulletins_a_regenerer' => $rows->pluck('bulletin_id')->map(fn ($id) => (int) $id)->unique()->values()->all(),
+            // Seuls les bulletins dont une ligne a bougé : ceux en collision
+            // n'ont rien de changé, et figurent déjà dans `conflits`.
+            'bulletins_a_regenerer' => array_keys($aRegenerer),
         ];
     }
 
