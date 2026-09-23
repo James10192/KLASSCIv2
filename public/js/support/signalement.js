@@ -361,7 +361,7 @@
                 return;
             }
             if (etat.capture) { URL.revokeObjectURL(etat.capture.url); }
-            etat.capture = { blob: blob, url: URL.createObjectURL(blob), cle: nouvelleCle(), operations: editeur.operations.length };
+            etat.capture = { blob: blob, url: URL.createObjectURL(blob), cle: nouvelleCle(), operations: editeur.operations.slice() };
             aller('recap');
         }).catch(function () {
             erreur('La capture n\'a pas pu être préparée. Réessayez, ou choisissez une image.');
@@ -481,6 +481,7 @@
         $('[data-sp-zoom]').addEventListener('click', function () {
             var reelle = $('[data-sp-toile]').classList.toggle('sp-toile-cadre--reelle');
             this.setAttribute('aria-pressed', reelle ? 'true' : 'false');
+            if (editeur) { editeur.lireATailleReelle(reelle); }
         });
         racine.querySelectorAll('[data-sp-outil]').forEach(function (b) {
             b.addEventListener('click', function () { choisirOutil(b.getAttribute('data-sp-outil')); });

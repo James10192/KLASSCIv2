@@ -209,10 +209,11 @@
     .sp-outil[aria-pressed="true"] { background: #0453cb; border-color: #0453cb; color: #fff; }
     .sp-outil:disabled { opacity: .5; }
     .sp-outil--droite { margin-left: auto; }
-    .sp-toile-cadre--reelle { overflow: auto; max-height: 60vh; }
-    .sp-toile-cadre--reelle .sp-toile { max-width: none; max-height: none; }
     .sp-toile-cadre { position: relative; border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden; background: #f8fafc; }
     .sp-toile { display: block; width: auto; height: auto; max-width: 100%; max-height: 55vh; margin: 0 auto; touch-action: none; cursor: crosshair; }
+    /* Taille reelle : le cadre defile. Au doigt, glisser fait defiler, on ne dessine plus. */
+    .sp-toile-cadre.sp-toile-cadre--reelle { overflow: auto; max-height: 60vh; overscroll-behavior: contain; }
+    .sp-toile-cadre.sp-toile-cadre--reelle .sp-toile { max-width: none; max-height: none; margin: 0; touch-action: pan-x pan-y; }
     .sp-toile-texte { position: absolute; transform: translateY(-50%); min-width: 180px; padding: .3rem .5rem; font-size: .85rem;
         border: 1px solid #0453cb; border-radius: 6px; box-shadow: 0 4px 14px rgba(15,23,42,.15); }
     .sp-fin-capture { font-size: .84rem; color: #475569; }

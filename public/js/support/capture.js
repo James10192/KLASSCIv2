@@ -10,7 +10,8 @@
  *   - la valeur de chaque champ de saisie (input, textarea, select, zone
  *     editable) est effacee et le champ couvert d'un aplat ;
  *   - tout element marque `data-support-masque`, et la valeur qu'affichent les
- *     selecteurs premium et Select2, sont couverts de la meme facon ;
+ *     selecteurs premium et Select2, sont couverts de la meme facon. Un nouveau
+ *     selecteur pose `data-support-valeur` sur l'element qui affiche la valeur ;
  *   - la fenetre de signalement et ce qui porte `data-support-exclure` sont omis.
  * Un champ qui doit rester lisible le dit : `data-support-visible`.
  * La page affichee n'est jamais modifiee.
@@ -34,7 +35,8 @@
      * (x-au-select, x-au-user-picker, x-au-mention-picker et leurs clones) et Select2
      * montrent la valeur choisie dans un <span>, le <select> reel etant cache.
      */
-    var VALEURS_AFFICHEES = '.au-select-value, [class*="-trigger-selected"], .select2-selection__rendered, output';
+    var VALEURS_AFFICHEES = '[data-support-valeur], .au-select-value, [class*="-trigger-selected"], '
+        + '.searchable-select-trigger-text, .select2-selection__rendered, output';
 
     function estAMasquer(el) {
         if (el.closest('[data-support-visible]')) { return false; }
@@ -160,6 +162,8 @@
         var self = this;
         this.toile.addEventListener('pointerdown', function (ev) {
             if (self.saisie) { return; }
+            /* En taille reelle, le doigt fait defiler l'image : seule la souris ou le stylet dessine. */
+            if (self.lecture && ev.pointerType === 'touch') { return; }
             var p = self.point(ev);
             if (self.outil === 'texte') { self.demanderTexte(p, ev); return; }
             self.toile.setPointerCapture(ev.pointerId);
@@ -216,10 +220,12 @@
             if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); clore(false); }
         });
         champ.addEventListener('blur', function () { clore(true); });
-        setTimeout(function () { champ.focus(); }, 0);
+        setTimeout(function () { champ.focus({ preventScroll: true }); }, 0);
     };
 
     Editeur.prototype.choisir = function (outil) { this.outil = outil; };
+
+    Editeur.prototype.lireATailleReelle = function (oui) { this.lecture = oui; };
 
     Editeur.prototype.annuler = function () {
         this.operations.pop();
@@ -228,8 +234,8 @@
     };
 
     /* Revient a un etat deja valide : ce qui a ete trace depuis ne partira pas, donc ne reste pas affiche. */
-    Editeur.prototype.revenirA = function (nombre) {
-        this.operations.length = Math.min(this.operations.length, nombre);
+    Editeur.prototype.revenirA = function (operations) {
+        this.operations = operations.slice();
         this.dessiner();
         this.signaler();
     };
