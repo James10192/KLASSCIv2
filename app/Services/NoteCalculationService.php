@@ -21,6 +21,9 @@ namespace App\Services;
  *  4. Garde-fou : barème <= 0 ou coefficient <= 0 = entrée ignorée silencieusement.
  *  5. Arrondi systématique à 2 décimales sur le résultat final.
  *  6. Aucune entrée valide => retourne 0.0 (jamais d'exception, jamais de division par zéro).
+ *     Exception : `studentMatiereAverageOrNull()` rend `null`, et
+ *     `moyenneSansNoteComptable()` rend la valeur du réglage d'établissement
+ *     (0.0 ou `null`) — la seule méthode qui lise la base.
  *
  * Service stateless (aucun champ de classe), donc safe en singleton via DI Laravel.
  *
@@ -32,6 +35,30 @@ class NoteCalculationService
      * Seuil de validation par défaut (CAMES) pour qu'une note acquière des crédits.
      */
     public const DEFAULT_VALIDATION_THRESHOLD = 10.0;
+
+    /**
+     * Reglage d'etablissement : une matiere dont l'eleve n'a que des absences
+     * compte-t-elle 0 dans la moyenne generale ? « 1 » (defaut, comportement
+     * historique du bulletin officiel) : oui, 0/20. « 0 » : elle n'a pas de
+     * moyenne et sort du calcul, comme une matiere jamais notee.
+     */
+    public const REGLAGE_ABSENCES_SEULES_COMPTENT_ZERO = 'bulletin_absences_seules_comptent_zero';
+
+    /**
+     * La moyenne d'une matiere qui porte des notes, mais aucune comptable
+     * (absences seulement). Le SEUL endroit qui lit le reglage : generation
+     * officielle, calcul « Courant », fiche Resultats, tableau de
+     * `/esbtp/resultats`, repli annuel, reprise des notes de « Modifier les
+     * moyennes », panneau d'impact de la saisie, recalcul automatique et
+     * rattrapage passent tous par ici. La decision de reinscription
+     * (`ReeinscriptionService`), elle, n'y passe pas encore.
+     */
+    public function moyenneSansNoteComptable(): ?float
+    {
+        return \App\Helpers\SettingsHelper::get(self::REGLAGE_ABSENCES_SEULES_COMPTENT_ZERO, '1') === '1'
+            ? 0.0
+            : null;
+    }
 
     /**
      * Calcule la moyenne d'un étudiant pour une matière à partir de ses notes

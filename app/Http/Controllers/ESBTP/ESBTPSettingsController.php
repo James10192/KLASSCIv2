@@ -483,6 +483,7 @@ class ESBTPSettingsController extends Controller
                 'certificat_show_classe', 'certificat_show_niveau', 'certificat_show_filiere',
                 'bulletin_conduite_enabled', 'bulletin_show_absences_par_matiere',
                 'attendance_manual_hours_global_enabled',
+                \App\Services\NoteCalculationService::REGLAGE_ABSENCES_SEULES_COMPTENT_ZERO,
                 // Bascules a cle pointee : les constantes, jamais les chaines.
                 // Une faute de frappe passerait les tests et remettrait la
                 // bascule a zero en silence — c'est l'incident de la PR #591.
