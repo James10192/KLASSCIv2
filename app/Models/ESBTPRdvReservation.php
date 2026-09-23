@@ -30,6 +30,10 @@ class ESBTPRdvReservation extends Model
         'convocation_envoyee_at',
         'convocation_erreur',
         'convocation_message_id',
+        'accueilli_at',
+        'accueilli_par',
+        'absences',
+        'dernier_creneau_manque_id',
     ];
 
     protected $casts = [
@@ -39,11 +43,23 @@ class ESBTPRdvReservation extends Model
         'convocation_statut' => StatutConvocationRdv::class,
         'convocation_tentatives' => 'integer',
         'convocation_envoyee_at' => 'datetime',
+        'accueilli_at' => 'datetime',
+        'absences' => 'integer',
     ];
 
     public function creneau(): BelongsTo
     {
         return $this->belongsTo(ESBTPRdvCreneau::class, 'creneau_id');
+    }
+
+    public function accueilliPar(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'accueilli_par');
+    }
+
+    public function dernierCreneauManque(): BelongsTo
+    {
+        return $this->belongsTo(ESBTPRdvCreneau::class, 'dernier_creneau_manque_id');
     }
 
     public function candidature(): BelongsTo

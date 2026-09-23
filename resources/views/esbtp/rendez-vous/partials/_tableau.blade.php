@@ -25,6 +25,14 @@
                 <div class="rdv-conv rdv-conv--inconnu"><span>{{ $_conv['inconnu'] }}</span>non suivies</div>
             @endif
         </div>
+        @if($aPrevenir > 0)
+            <div class="rdv-a-prevenir">
+                <i class="fas fa-phone-volume"></i>
+                <p><strong>{{ $aPrevenir }} famille{{ $aPrevenir > 1 ? 's' : '' }} à prévenir par téléphone</strong> — rendez-vous à venir sans convocation reçue par e-mail (pas d'adresse, envoi refusé, ou réservation d'avant le suivi).</p>
+                <a class="rdv-btn rdv-btn--ghost rdv-btn--sm" href="{{ route('esbtp.rendez-vous.familles.apercu') }}" target="_blank" rel="noopener"><i class="fas fa-file-pdf"></i>Liste d'appel</a>
+                <a class="rdv-btn rdv-btn--ghost rdv-btn--sm" href="{{ route('esbtp.rendez-vous.familles.excel') }}"><i class="fas fa-file-excel"></i>Excel</a>
+            </div>
+        @endif
         @if($peutGerer)
             <div class="rdv-conv-actions">
                 @if($_conv['en_attente'] > 0)

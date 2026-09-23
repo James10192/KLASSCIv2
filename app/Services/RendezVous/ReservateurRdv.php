@@ -126,6 +126,50 @@ class ReservateurRdv
     }
 
     /**
+     * Deplacement decide au guichet, typiquement pour reprogrammer une absence.
+     *
+     * Ni reference ni date de naissance a verifier, ni delai public : c'est le
+     * secretariat qui agit, dossier en main. Mais le meme verrou par porteur, le
+     * meme verrou sur le creneau et le meme refus d'un creneau complet ou deja
+     * commence que pour une famille — deux guichets ne peuvent pas remplir la
+     * onzieme place d'un creneau de dix.
+     *
+     * La reservation redevient « confirmee » : une absence reprogrammee est de
+     * nouveau un rendez-vous attendu. L'absence reste comptee sur la reservation
+     * (AccueilRdv), pas dans le statut.
+     *
+     * @return array{ok: true, reservation: ESBTPRdvReservation}|array{ok: false, code: string}
+     */
+    public function replacerAuGuichet(ESBTPRdvReservation $reservation, int $creneauId): array
+    {
+        $porteur = $reservation->porteur();
+        if ($porteur === null) {
+            return ['ok' => false, 'code' => 'introuvable'];
+        }
+
+        return $this->sousVerrou($porteur, function () use ($reservation, $creneauId) {
+            $actuelle = ESBTPRdvReservation::query()->occupantes()->whereKey($reservation->id)->lockForUpdate()->first();
+            if ($actuelle === null) {
+                return ['ok' => false, 'code' => 'introuvable'];
+            }
+
+            $cible = $this->verrouillerCreneau($creneauId, (int) $actuelle->creneau_id, false);
+            if (! $cible instanceof ESBTPRdvCreneau) {
+                return ['ok' => false, 'code' => $cible['code']];
+            }
+
+            $actuelle->update([
+                'creneau_id' => $cible->id,
+                'statut' => StatutReservationRdv::Confirmee,
+                'accueilli_at' => null,
+                'accueilli_par' => null,
+            ]);
+
+            return ['ok' => true, 'reservation' => $actuelle->fresh()->load('creneau')];
+        });
+    }
+
+    /**
      * @return array{ok: true, reservation?: ESBTPRdvReservation}|array{ok: false, code: string}
      */
     public function annuler(string $reference, string $dateNaissance): array

@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\ESBTPRdvCreneau;
 use App\Models\Setting;
 use App\Services\RendezVous\AffecteurDossiersRdv;
+use App\Services\RendezVous\FamillesAPrevenirRdv;
 use App\Services\RendezVous\FileConvocationsRdv;
 use App\Services\RendezVous\GenerateurCreneaux;
 use App\Services\RendezVous\RendezVousReglages;
@@ -32,6 +33,7 @@ class ESBTPRendezVousController extends Controller
             'peutGerer' => $request->user()?->can('inscriptions.rdv.manage') ?? false,
             'peutConfigurer' => $request->user()?->can('inscriptions.rdv.configure') ?? false,
             'rdv' => $this->reglages,
+            'aPrevenir' => app(FamillesAPrevenirRdv::class)->compter(),
         ];
 
         if ($request->boolean('fragment')) {
