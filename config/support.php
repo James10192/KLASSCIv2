@@ -17,6 +17,8 @@ return [
     'delais' => [
         'connexion' => 2,
         'reponse' => 5,
+        // Envoi ou relais d'une piece jointe (jusqu'a 5 Mo).
+        'transfert' => 20,
         // Apres un echec, on ne rappelle pas le Master pendant ce temps.
         'coupe_circuit_secondes' => 60,
         // Fonctionnalites ouvertes a l'instance, relues toutes les 5 minutes.
@@ -44,6 +46,8 @@ return [
         'description_min' => 10,
         'description_max' => 5000,
         'reponse_min' => 2,
+        'piece_octets_max' => 5 * 1024 * 1024,
+        'pieces_max' => 10,
     ],
 
     'boite_envoi' => [

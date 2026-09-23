@@ -72,6 +72,8 @@ class ClientMasterSupport
             'description_min' => (int) $l['description_min'],
             'description_max' => (int) $l['description_max'],
             'reponse_min' => (int) $l['reponse_min'],
+            'piece_octets_max' => (int) $l['piece_octets_max'],
+            'pieces_max' => (int) $l['pieces_max'],
         ];
     }
 
@@ -178,7 +180,66 @@ class ClientMasterSupport
         );
     }
 
+    /**
+     * Une piece jointe de l'ecole. Le fichier part tel que recu : c'est le
+     * Master qui l'assainit, une seule fois, au meme endroit pour toutes les
+     * instances. Meme cle d'idempotence par fichier que pour une reponse.
+     */
+    public function joindre(string $reference, int $rapporteurId, string $contenu, string $nomFichier, ?string $nom, string $cle): array
+    {
+        $chemin = 'tickets/'.rawurlencode($reference).'/attachments?'.http_build_query(['reporter' => $rapporteurId, 'scope' => 'mine']);
+
+        return $this->interpreter($this->appeler(
+            fn (PendingRequest $client, string $url) => $client->timeout((int) config('support.delais.transfert', 20))
+                ->attach('fichier', $contenu, $nomFichier)
+                ->post($url, array_filter(['author_name' => $nom])),
+            $chemin,
+            ['Idempotency-Key' => $cle],
+        ));
+    }
+
+    /**
+     * Le contenu d'une piece, pour que l'instance le relaie : le navigateur ne
+     * parle jamais au Master. Rend null si la piece est hors de portee.
+     *
+     * @return array{contenu: string, type: string}|null
+     */
+    public function piece(string $reference, int $rapporteurId, string $portee, int $id): ?array
+    {
+        $chemin = 'tickets/'.rawurlencode($reference).'/attachments/'.$id.'?'.http_build_query(['reporter' => $rapporteurId, 'scope' => $portee]);
+        $reponse = $this->appeler(
+            fn (PendingRequest $client, string $url) => $client->timeout((int) config('support.delais.transfert', 20))->accept('*/*')->get($url),
+            $chemin,
+        );
+
+        if ($reponse->successful()) {
+            return ['contenu' => $reponse->body(), 'type' => (string) $reponse->header('Content-Type')];
+        }
+
+        try {
+            $this->interpreter($reponse);
+        } catch (MasterSupportRefus $e) {
+            if ($e->statut === 404) {
+                return null;
+            }
+            throw $e;
+        }
+
+        return null;
+    }
+
     private function requete(string $methode, string $chemin, array $donnees = [], array $entetes = [], ?string $requestId = null): array
+    {
+        return $this->interpreter($this->appeler(
+            fn (PendingRequest $client, string $url) => $client->send($methode, $url, $methode === 'GET' ? ['query' => $donnees] : ['json' => $donnees]),
+            $chemin,
+            $entetes,
+            $requestId,
+        ));
+    }
+
+    /** Les gardes communes a tout appel : configuration, coupe-circuit, transport. */
+    private function appeler(callable $appel, string $chemin, array $entetes = [], ?string $requestId = null): Response
     {
         if (! $this->estConfigure()) {
             throw new MasterSupportIndisponible('KLASSCI Care n\'est pas configuré sur cette instance (MASTER_SUPPORT_TOKEN).');
@@ -191,16 +252,13 @@ class ClientMasterSupport
         $requestId ??= request()?->attributes->get('request_id');
 
         try {
-            $reponse = $this->client($entetes + array_filter(['X-Request-ID' => $requestId]))
-                ->send($methode, $url, $methode === 'GET' ? ['query' => $donnees] : ['json' => $donnees]);
+            return $appel($this->client($entetes + array_filter(['X-Request-ID' => $requestId])), $url);
         } catch (ConnectionException|TransferException $e) {
             // TransferException : redirections en boucle, reponse tronquee… tout ce
             // que Guzzle leve hors connexion. Le Master est a joindre plus tard.
             $this->couper('transport', $e->getMessage());
             throw new MasterSupportIndisponible('Master injoignable.', 0, $e);
         }
-
-        return $this->interpreter($reponse);
     }
 
     private function interpreter(Response $reponse): array

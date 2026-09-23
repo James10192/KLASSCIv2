@@ -118,9 +118,13 @@ class ClientMasterSupportTest extends TestCase
     /** @test */
     public function les_limites_de_saisie_viennent_du_master(): void
     {
-        Http::fake(['*' => Http::response(['fonctionnalites' => [], 'limites' => ['description_min' => 25, 'description_max' => 3000]])]);
+        Http::fake(['*' => Http::response(['fonctionnalites' => [], 'limites' => ['description_min' => 25, 'description_max' => 3000, 'pieces_max' => 4]])]);
 
-        $this->assertSame(['description_min' => 25, 'description_max' => 3000, 'reponse_min' => 2], app(ClientMasterSupport::class)->limites());
+        // Ce que le Master ne donne pas retombe sur les valeurs locales.
+        $this->assertSame([
+            'description_min' => 25, 'description_max' => 3000, 'reponse_min' => 2,
+            'piece_octets_max' => 5 * 1024 * 1024, 'pieces_max' => 4,
+        ], app(ClientMasterSupport::class)->limites());
     }
 
     /** @test */

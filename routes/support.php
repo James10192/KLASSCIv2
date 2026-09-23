@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Support\DemandeSupportController;
+use App\Http\Controllers\Support\PieceJointeDemandeController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -17,4 +18,8 @@ Route::middleware(['auth'])->prefix('support')->name('support.')->group(function
         ->middleware('throttle:60,1')->name('demandes.show');
     Route::post('demandes/{reference}/messages', [DemandeSupportController::class, 'repondre'])
         ->middleware('throttle:20,1')->name('demandes.repondre');
+    Route::post('demandes/{reference}/pieces', [PieceJointeDemandeController::class, 'store'])
+        ->middleware('throttle:20,1')->name('demandes.pieces.store');
+    Route::get('demandes/{reference}/pieces/{piece}', [PieceJointeDemandeController::class, 'show'])
+        ->whereNumber('piece')->middleware('throttle:60,1')->name('demandes.pieces.show');
 });

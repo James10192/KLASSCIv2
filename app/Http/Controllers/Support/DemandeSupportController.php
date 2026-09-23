@@ -10,6 +10,7 @@ use App\Domain\Support\Models\SupportOutbox;
 use App\Domain\Support\Services\ContexteDePage;
 use App\Domain\Support\Services\DisponibiliteSupport;
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Support\Concerns\PorteeDeLecture;
 use App\Http\Requests\Support\RepondreDemandeRequest;
 use App\Http\Requests\Support\SoumettreDemandeRequest;
 use App\Services\Care\ClientMasterSupport;
@@ -27,6 +28,8 @@ use Illuminate\Support\Facades\Log;
  */
 class DemandeSupportController extends Controller
 {
+    use PorteeDeLecture;
+
     public function __construct(
         private readonly DisponibiliteSupport $disponibilite,
         private readonly ClientMasterSupport $master,
@@ -204,16 +207,5 @@ class DemandeSupportController extends Controller
         Log::error('KLASSCI Care : réponse refusée par le Master', ['statut' => $e->statut, 'code' => $e->codeErreur, 'erreurs' => $e->erreurs]);
 
         return response()->json(['message' => "Votre réponse n'a pas pu être transmise. Écrivez-nous à ".config('app.support_email').'.'], 422);
-    }
-
-    /**
-     * `school` seulement avec la permission ; tout autre cas retombe sur `mine`.
-     * Le Master borne deja a l'instance, cette permission borne a la personne.
-     */
-    private function portee(Request $request, string $defaut = 'mine'): string
-    {
-        $voulue = $request->query('portee', $defaut === 'school' ? 'ecole' : 'moi');
-
-        return $voulue === 'ecole' && $request->user()->can('support.tickets.view_school') ? 'school' : 'mine';
     }
 }

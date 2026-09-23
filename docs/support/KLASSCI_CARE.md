@@ -4,7 +4,7 @@
 > `docs/support/KLASSCI_CARE_BLUEPRINT.md`. Le Master est la source de vérité des demandes de
 > support ; cette page ne résume que ce qui touche ce dépôt.
 >
-> **État au 23 septembre 2026 : tranche 1 livrée, tranche 2 en cours** (réponse de l'école livrée) sur la branche
+> **État au 23 septembre 2026 : tranche 1 livrée, tranche 2 en cours** (réponse de l'école et pièces jointes livrées) sur la branche
 > `claude/klassci-care-support-platform-1x9wwy`, non fusionnée. La section « Livré » décrit le
 > code en place ; la section « Prévu » ce qui n'existe pas encore.
 
@@ -63,12 +63,21 @@
     de l'API répond. Il reste une faute de l'instance, pas de la demande : un signalement
     part dans la boîte d'envoi et y attend l'identifiant élargi sans user ses essais ; une
     réponse retire le formulaire.
+- **Les pièces jointes** (tranche 2) : `POST /support/demandes/{référence}/pieces` et
+  `GET /support/demandes/{référence}/pieces/{id}` (`PieceJointeDemandeController`) :
+  - le fichier est relayé tel quel au Master, qui l'assainit (type lu sur le contenu, images
+    ré-encodées, PDF à contenu actif refusé) ; l'instance ne fait qu'un premier tri
+    (`mimes`, taille) pour un message clair ;
+  - envoi réservé à l'auteur de la demande, en portée `mine`, une clé d'idempotence par
+    fichier choisi ; taille et plafond par demande lus dans le bootstrap du Master ;
+  - la lecture suit la portée de lecture et passe par l'instance : le navigateur ne parle
+    jamais au Master. La réponse porte `nosniff` et une CSP `sandbox` ; seuls PNG, JPEG,
+    WebP s'affichent, un PDF se télécharge, tout autre type part en `octet-stream`.
 - **L'interrupteur d'exploitation** `support.widget.enabled` : coupe tout sans attendre le
   Master. Aucun écran ne l'expose ; il se pose par `PUT /api/cli/settings/{key}`.
 
 ## Prévu (tranches suivantes)
 
-- Pièces jointes.
 - Capture d'écran : masquage des champs avant l'aperçu, annotation, envoi seulement si
   l'utilisateur le confirme.
 - Télémétrie d'erreurs : empreinte calculée dans `Handler::register()->reportable()`, agrégats

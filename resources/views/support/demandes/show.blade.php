@@ -36,6 +36,19 @@
     .sd-envoyer { background: #0453cb; color: #fff; border: none; border-radius: 10px; padding: .55rem 1.1rem; font-size: .84rem; font-weight: 600; cursor: pointer; }
     .sd-envoyer:hover { background: #033a8e; }
     .sd-envoyer:disabled { opacity: .6; cursor: wait; }
+    .sd-pieces { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .5rem; }
+    .sd-pieces li { display: flex; align-items: baseline; gap: .5rem; flex-wrap: wrap; font-size: .9rem; }
+    .sd-pieces i { color: #0453cb; }
+    .sd-pieces a { color: #0453cb; font-weight: 600; text-decoration: none; word-break: break-all; }
+    .sd-pieces a:hover { text-decoration: underline; }
+    .sd-pieces-meta { font-size: .76rem; color: #64748b; }
+    .sd-joindre { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #f1f5f9; }
+    .sd-joindre-bouton { display: inline-flex; align-items: center; gap: .45rem; border: 1px dashed #93b4e6; color: #0453cb; background: rgba(4,83,203,.04);
+        border-radius: 10px; padding: .55rem 1rem; font-size: .84rem; font-weight: 600; cursor: pointer; }
+    .sd-joindre-bouton:hover { background: rgba(4,83,203,.08); }
+    .sd-joindre input[type=file] { position: absolute; width: 1px; height: 1px; opacity: 0; }
+    .sd-joindre input[type=file]:focus-visible + .sd-joindre-bouton { outline: 2px solid #0453cb; outline-offset: 2px; }
+    .sd-joindre-aide { display: block; font-size: .76rem; color: #64748b; margin-top: .4rem; }
 </style>
 @endpush
 
@@ -82,6 +95,25 @@
                         <span data-sd-envoi hidden>Envoi…</span>
                     </button>
                 </div>
+            </form>
+        @endif
+    </div>
+
+    <div class="sd-card">
+        <h2>Pièces jointes</h2>
+        <div id="sd-pieces">@include('support.demandes._pieces', ['demande' => $demande])</div>
+
+        @if($peutRepondre && count($demande['pieces_jointes'] ?? []) < $limites['pieces_max'])
+            <form id="sd-joindre" class="sd-joindre" action="{{ route('support.demandes.pieces.store', $demande['reference']) }}" method="POST" enctype="multipart/form-data" novalidate>
+                @csrf
+                <input type="file" id="sd-joindre-fichier" name="fichier" accept="image/png,image/jpeg,image/webp,application/pdf">
+                <label for="sd-joindre-fichier" class="sd-joindre-bouton">
+                    <i class="fas fa-paperclip" aria-hidden="true"></i>
+                    <span data-sd-libelle>Joindre une capture ou un PDF</span>
+                    <span data-sd-envoi hidden>Envoi…</span>
+                </label>
+                <span class="sd-joindre-aide">PNG, JPEG, WebP ou PDF, {{ intdiv($limites['piece_octets_max'], 1024 * 1024) }} Mo au plus. Les informations cachées d'une photo (lieu, appareil) sont retirées.</span>
+                <div class="sd-erreur" role="alert" hidden></div>
             </form>
         @endif
     </div>
@@ -155,6 +187,43 @@
             montrer(e.message);
             champ.focus();
         }).finally(function () { if (form.contains(bouton)) { occupe(false); } });
+    });
+})();
+(function () {
+    var form = document.getElementById('sd-joindre');
+    if (!form) { return; }
+    var champ = form.querySelector('input[type=file]');
+    var erreur = form.querySelector('.sd-erreur');
+    var libelle = form.querySelector('[data-sd-libelle]');
+    var envoi = form.querySelector('[data-sd-envoi]');
+    function nouvelleCle() {
+        return window.crypto && crypto.randomUUID ? crypto.randomUUID()
+            : 'xxxxxxxx-xxxx-4xxx-8xxx-xxxxxxxxxxxx'.replace(/x/g, function () { return (Math.random() * 16 | 0).toString(16); });
+    }
+    function occupe(oui) { champ.disabled = oui; libelle.hidden = oui; envoi.hidden = !oui; }
+    champ.addEventListener('change', function () {
+        if (!champ.files.length) { return; }
+        erreur.hidden = true;
+        var donnees = new FormData();
+        donnees.append('fichier', champ.files[0]);
+        /* Une cle par fichier choisi : un double envoi du meme choix ne cree qu'une piece. */
+        donnees.append('cle', nouvelleCle());
+        occupe(true);
+        fetch(form.action, {
+            method: 'POST', credentials: 'same-origin', body: donnees,
+            headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': form.querySelector('input[name="_token"]').value }
+        }).then(function (r) {
+            return r.json().catch(function () { return {}; }).then(function (d) {
+                if (!r.ok) {
+                    var premier = d.errors ? Object.values(d.errors)[0] : null;
+                    throw new Error((premier && premier[0]) || d.message || "Le fichier n'a pas pu être envoyé.");
+                }
+                document.getElementById('sd-pieces').innerHTML = d.pieces;
+                document.getElementById('sd-statut').innerHTML = d.statut;
+            });
+        }).catch(function (e) {
+            erreur.textContent = e.message; erreur.hidden = false;
+        }).finally(function () { champ.value = ''; occupe(false); });
     });
 })();
 </script>
