@@ -720,6 +720,13 @@ class ESBTPEvaluationController extends Controller
                     ->withInput();
             }
 
+            $baremeMinimal = $evaluation->baremeMinimal();
+            if ($this->baremeDescendSousUneNote($evaluation, (float) $request->bareme, $baremeMinimal)) {
+                return redirect()->back()
+                    ->with('error', $this->messageBaremeSousUneNote($baremeMinimal))
+                    ->withInput();
+            }
+
             $startAt = Carbon::createFromFormat('Y-m-d H:i', $request->date_evaluation.' '.$request->heure_debut);
             $endAt = Carbon::createFromFormat('Y-m-d H:i', $request->date_evaluation.' '.$request->heure_fin);
             if ($endAt->lessThanOrEqualTo($startAt)) {
@@ -756,6 +763,8 @@ class ESBTPEvaluationController extends Controller
             $oldClasseId = $evaluation->getOriginal('classe_id');
             $oldMatiereId = $evaluation->getOriginal('matiere_id');
             $oldPeriode = $evaluation->getOriginal('periode');
+            $oldBareme = $evaluation->getOriginal('bareme');
+            $oldCoefficient = $evaluation->getOriginal('coefficient');
 
             // Met à jour classe/matière si pas de notes OU si user a la permission de bypass
             if (! $hasNotes || $canBypassLock) {
@@ -775,7 +784,13 @@ class ESBTPEvaluationController extends Controller
             }
             $evaluation->save();
 
-            $avant = ['classe_id' => (int) $oldClasseId, 'matiere_id' => (int) $oldMatiereId, 'periode' => (string) $oldPeriode];
+            $avant = [
+                'classe_id' => (int) $oldClasseId,
+                'matiere_id' => (int) $oldMatiereId,
+                'periode' => (string) $oldPeriode,
+                'bareme' => $oldBareme,
+                'coefficient' => $oldCoefficient,
+            ];
             $recalcul = RecalculApresDeplacement::apresEnregistrement($evaluation, $avant, Auth::id());
 
             // Garde-fou non bloquant TC/Spécialité (basé sur la classe cible).
@@ -804,6 +819,26 @@ class ESBTPEvaluationController extends Controller
     }
 
     /**
+     * Refuse seulement un barème qui BAISSE sous une note saisie. Une
+     * évaluation déjà dans cet état (le code d'avant le permettait) doit rester
+     * modifiable — titre, date, période — sans qu'on touche à son barème.
+     */
+    private function baremeDescendSousUneNote(ESBTPEvaluation $evaluation, float $nouveau, ?float $baremeMinimal): bool
+    {
+        return $baremeMinimal !== null
+            && $nouveau < $baremeMinimal
+            && $nouveau < (float) $evaluation->getOriginal('bareme');
+    }
+
+    private function messageBaremeSousUneNote(float $baremeMinimal): string
+    {
+        $note = rtrim(rtrim(number_format($baremeMinimal, 2, ',', ''), '0'), ',');
+
+        return "Le barème ne peut pas descendre sous {$note} : une note déjà saisie vaut {$note}. "
+            .'Corrigez d\'abord cette note, ou gardez un barème au moins égal.';
+    }
+
+    /**
      * Quick edit (titre + barème + coefficient seulement).
      * Utilisé par le modal de saisie de notes (PR #4 — édition rapide depuis l'en-tête de colonne).
      *
@@ -825,7 +860,15 @@ class ESBTPEvaluationController extends Controller
             'coefficient.max' => 'Le coefficient ne peut pas dépasser 10.',
         ]);
 
+        // Avant le `try` : son rattrapage large ferait de ce refus une erreur 500.
+        $baremeMinimal = $evaluation->baremeMinimal();
+        if ($this->baremeDescendSousUneNote($evaluation, (float) $validated['bareme'], $baremeMinimal)) {
+            throw ValidationException::withMessages(['bareme' => $this->messageBaremeSousUneNote($baremeMinimal)]);
+        }
+
         try {
+            $avant = ['bareme' => $evaluation->bareme, 'coefficient' => $evaluation->coefficient];
+
             $evaluation->fill([
                 'titre' => trim($validated['titre']),
                 'bareme' => (float) $validated['bareme'],
@@ -833,6 +876,15 @@ class ESBTPEvaluationController extends Controller
                 'updated_by' => Auth::id(),
             ]);
             $evaluation->save();
+
+            // Sans ce recalcul, la moyenne enregistree d'avant garde la main
+            // sur l'ancien bareme ou l'ancien coefficient.
+            $recalcul = RecalculApresDeplacement::apresChangementDePonderation($evaluation, $avant, Auth::id());
+
+            // Relu : le coefficient n'a qu'une decimale en base (1,25 devient
+            // 1,3). La grille recalcule avec ce qu'on lui renvoie ; lui renvoyer
+            // la saisie brute la ferait diverger de la moyenne enregistree.
+            $evaluation->refresh();
 
             return response()->json([
                 'success' => true,
@@ -842,7 +894,11 @@ class ESBTPEvaluationController extends Controller
                     'bareme' => (float) $evaluation->bareme,
                     'coefficient' => (float) $evaluation->coefficient,
                 ],
-                'message' => 'Évaluation mise à jour.',
+                'moyennes_non_recalculees' => $recalcul['echecs'],
+                // Sans nombre : une interruption ne dit pas combien d'élèves restaient.
+                'message' => $recalcul['echecs'] > 0
+                    ? 'Évaluation mise à jour, mais des moyennes n\'ont pas pu être recalculées. Relancez le recalcul de la classe.'
+                    : 'Évaluation mise à jour.',
             ]);
         } catch (\Throwable $e) {
             \Log::error('quickUpdate evaluation failed', [
