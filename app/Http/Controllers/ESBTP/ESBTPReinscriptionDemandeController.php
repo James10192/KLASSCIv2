@@ -42,9 +42,14 @@ class ESBTPReinscriptionDemandeController extends Controller
             $statut = '';
         }
 
+        // Un dossier precis, depuis l'accueil du jour : la liste pagine par 25
+        // sans recherche, la famille y serait a une page quelconque.
+        $reference = app(\App\Services\Portail\ReferencePublique::class)->normaliser($request->string('reference')->toString());
+
         $demandes = ESBTPReinscriptionDemande::query()
             ->with(['etudiant:id,nom,prenoms,matricule', 'anneeUniversitaire:id,name', 'classeSouhaitee:id,name', 'traitePar:id,name'])
             ->when($statut !== '', fn ($q) => $q->where('statut', $statut))
+            ->when($reference !== '', fn ($q) => $q->where('reference_publique', $reference))
             ->orderByRaw("FIELD(statut, 'en_attente') DESC")
             ->latest('created_at')
             ->paginate(25)
@@ -59,6 +64,7 @@ class ESBTPReinscriptionDemandeController extends Controller
             'demandes' => $demandes,
             'compteurs' => $compteurs,
             'statutActif' => $statut,
+            'referenceActive' => $reference === '' ? '' : app(\App\Services\Portail\ReferencePublique::class)->formater($reference),
             'classes' => ESBTPClasse::where('is_active', true)->orderBy('name')->get(['id', 'name']),
         ]);
     }
