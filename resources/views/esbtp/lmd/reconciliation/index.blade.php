@@ -320,8 +320,8 @@
     </template>
 
     {{-- Modal aperçu d'impact (dry-run) --}}
-    <div class="rec-modal-overlay" x-show="modal.open" x-cloak @keydown.escape.window="closeModal()" style="display:none;">
-        <div class="rec-modal" @click.outside="closeModal()">
+    <div class="rec-modal-overlay" x-show="modal.open" x-cloak @keydown.escape.window="fermerSansPerdre()" style="display:none;">
+        <div class="rec-modal" @click.outside="fermerSansPerdre()">
             <div class="rec-modal-head">
                 <i class="fas fa-object-group"></i>
                 <div>
@@ -414,7 +414,7 @@
                 </template>
             </div>
             <div class="rec-modal-foot">
-                <button class="rec-btn rec-btn--ghost" @click="closeModal()" x-text="modal.done ? 'Fermer' : 'Annuler'"></button>
+                <button class="rec-btn rec-btn--ghost" @click="demanderFermeture()" x-text="modal.done ? (modal.fermetureDemandee && collisionsEnSuspens() ? 'Fermer quand même' : 'Fermer') : 'Annuler'"></button>
                 <template x-if="modal.report && modal.report.blocked && !modal.done">
                     <label class="rec-check"><input type="checkbox" x-model="modal.force"> Forcer (reporte aussi évaluations, notes et moyennes enregistrées)</label>
                 </template>
@@ -425,6 +425,7 @@
                 </button>
             </div>
             <p class="rec-disabled-hint" x-show="!modal.done && mergeDisabled && mergeDisabledReason" x-cloak x-text="mergeDisabledReason"></p>
+            <p class="rec-disabled-hint" x-show="modal.fermetureDemandee && collisionsEnSuspens()" x-cloak>Des moyennes restent en collision. Une fois cette fenêtre fermée, aucun écran ne permettra plus de les régler : le certificat de scolarité comptera les deux.</p>
         </div>
     </div>
 
@@ -451,7 +452,7 @@ function recManager() {
         tab: 'ue',
         loading: false,
         busy: false,
-        modal: { open: false, type: null, typeLabel: '', group: null, canonical: null, report: null, force: false, done: null },
+        modal: { open: false, type: null, typeLabel: '', group: null, canonical: null, report: null, force: false, done: null, fermetureDemandee: false },
         peutVoirBulletins: @json($recPeutVoirBulletins),
         toasts: [],
         _tid: 0,
@@ -537,7 +538,7 @@ function recManager() {
             this.modal = {
                 open: true, type, group, canonical: canonicalId,
                 typeLabel: (type === 'ue' ? 'Unité d\'enseignement' : 'ECUE') + ' — ' + this.prettyName(group.normalized_name),
-                report: null, force: false, done: null,
+                report: null, force: false, done: null, fermetureDemandee: false,
             };
             try {
                 const report = await this.callMerge(type, canonicalId, absorbed, true, false);
@@ -629,7 +630,26 @@ function recManager() {
             }
         },
 
-        closeModal() { this.modal.open = false; this.modal.group = null; this.modal.report = null; this.modal.force = false; this.modal.done = null; },
+        collisionsEnSuspens() {
+            return !!(this.modal.done && this.modal.done.moyennes && this.modal.done.moyennes.conflits.length);
+        },
+
+        // Échap et clic à côté ne ferment pas une fenêtre qui porte encore des
+        // collisions : c'est le seul endroit d'où elles se règlent.
+        fermerSansPerdre() {
+            if (!this.collisionsEnSuspens()) this.closeModal();
+        },
+
+        // « Fermer » demande confirmation dans ce cas : un second clic ferme.
+        demanderFermeture() {
+            if (this.collisionsEnSuspens() && !this.modal.fermetureDemandee) {
+                this.modal.fermetureDemandee = true;
+                return;
+            }
+            this.closeModal();
+        },
+
+        closeModal() { this.modal.open = false; this.modal.group = null; this.modal.report = null; this.modal.force = false; this.modal.done = null; this.modal.fermetureDemandee = false; },
 
         toast(type, message) {
             const id = ++this._tid;

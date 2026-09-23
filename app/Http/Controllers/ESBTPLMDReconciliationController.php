@@ -114,10 +114,15 @@ class ESBTPLMDReconciliationController extends Controller
 
         // Seules les collisions que CETTE fusion a produites pourront être
         // réglées par retirerMoyennesEnCollision() : la liste reste côté serveur.
+        // Cumulée : une seconde fusion vers la même canonique ne rend pas
+        // irrecevables les collisions de la première.
         $conflits = array_column($report['moyennes_enregistrees']['conflits'] ?? [], 'id');
         if ($conflits !== []) {
-            $request->session()->put(self::cleDesConflits((int) $validated['canonical_id']), [
-                'ids' => $conflits,
+            $cle = self::cleDesConflits((int) $validated['canonical_id']);
+            $garde = $request->session()->get($cle);
+            $anciens = ($garde['expire'] ?? 0) >= now()->getTimestamp() ? ($garde['ids'] ?? []) : [];
+            $request->session()->put($cle, [
+                'ids' => array_values(array_unique(array_merge($anciens, $conflits))),
                 'expire' => now()->addHours(2)->getTimestamp(),
             ]);
         }
