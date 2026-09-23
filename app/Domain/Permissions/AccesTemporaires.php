@@ -7,6 +7,7 @@ use App\Models\TemporaryPermissionGrant;
 use App\Models\User;
 use App\Services\PermissionRegistry;
 use Carbon\CarbonInterface;
+use Illuminate\Support\Carbon;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Log;
 use Spatie\Permission\Exceptions\PermissionDoesNotExist;
@@ -19,21 +20,39 @@ use Spatie\Permission\Exceptions\PermissionDoesNotExist;
  * c'est la date qui decide, pas un traitement qui pourrait ne pas tourner.
  *
  * Ce que cela couvre : tout ce qui passe par `can()`, `@can` et le middleware
- * `permission:` (Spatie v5 appelle `can()`). Ce que cela ne couvre PAS : les
- * lectures directes `hasPermissionTo()` / `hasAnyPermission()`. D'ou la liste
- * des permissions qu'on refuse d'accorder ici — elles sont lues de cette facon,
- * un acces temporaire y serait accorde sans jamais servir.
+ * `permission:` (Spatie v5 appelle `can()`). Ce que cela ne couvre PAS :
+ *  - les lectures directes `hasPermissionTo()` / `hasAnyPermission()` ;
+ *  - une ability posee par `Gate::define` qui repond `false` : le Gate::after ne
+ *    renverse qu'un resultat nul (`$result ??= $afterResult`).
+ *
+ * D'ou deux familles de permissions qu'on refuse d'accorder ici :
+ *  - celles lues de cette facon (identity.*, admin.access) : l'acces ne
+ *    servirait jamais ;
+ *  - celles qui modifient les comptes, les roles, les reglages ou l'abonnement :
+ *    le beneficiaire pourrait s'en servir pour se donner un acces qui survit a
+ *    l'echeance — la promesse de ce service ne tiendrait plus.
  */
 class AccesTemporaires
 {
     /** Prefixes et noms qu'on n'ouvre jamais pour un temps limite. */
-    public const NON_ACCORDABLES_PREFIXES = ['identity.'];
+    public const NON_ACCORDABLES_PREFIXES = [
+        'identity.',   // lues par hasAnyPermission
+        'system.',     // configuration et acces de secours
+        'paywall.',    // abonnement de l'instance
+        'module.',     // couche abonnement : un module non souscrit ne s'ouvre pas ainsi
+        'coordinateurs.', // creation de comptes de coordination
+    ];
 
     public const NON_ACCORDABLES = [
         '*',
         'admin.access',
-        'module.technical_support.access',
+        'admin.system.security',
+        'security.users.monitor',
         'permissions.temporaires.manage',
+        'users.manage',        // comptes et roles
+        'personnel.manage',    // ouvre les roles personnalises
+        'settings.edit',       // reglages de l'instance, dont la duree maximale ici
+        'settings.pdf.manage',
     ];
 
     /** Duree maximale par defaut, en jours, si l'ecole n'en a pas fixe. */
@@ -41,6 +60,9 @@ class AccesTemporaires
 
     /** @var array<int, array<int, string>> permissions actives par utilisateur, pour la requete en cours */
     private array $memo = [];
+
+    /** Une trace par processus suffit : le defaut dure jusqu'a la migration. */
+    private static bool $tableAbsenteSignalee = false;
 
     public function __construct(private readonly PermissionRegistry $registry)
     {
@@ -84,8 +106,11 @@ class AccesTemporaires
         } catch (QueryException $e) {
             // Instance mise a jour avant sa migration : la table n'existe pas
             // encore. Personne n'a donc d'acces temporaire — on le dit au journal
-            // une fois par requete, sans faire tomber chaque verification d'acces.
-            Log::warning('Acces temporaires illisibles, table absente ?', ['erreur' => $e->getMessage()]);
+            // une fois par processus, sans faire tomber chaque verification d'acces.
+            if (! self::$tableAbsenteSignalee) {
+                self::$tableAbsenteSignalee = true;
+                Log::warning('Acces temporaires illisibles, table absente ?', ['erreur' => $e->getMessage()]);
+            }
             $noms = [];
         }
 
@@ -124,6 +149,12 @@ class AccesTemporaires
         User $auteur,
     ): TemporaryPermissionGrant {
         $permission = $this->registry->canonicalize($permission);
+        // Les heures s'ecrivent dans le fuseau de l'application : une date
+        // portant son propre decalage serait sinon enregistree telle quelle,
+        // une heure a cote sur une instance a UTC.
+        $fuseau = config('app.timezone');
+        $debut = Carbon::instance($debut)->setTimezone($fuseau);
+        $fin = Carbon::instance($fin)->setTimezone($fuseau);
 
         if (! $this->estAccordable($permission)) {
             throw new AccesTemporaireRefuse("La permission « {$permission} » ne peut pas être accordée pour un temps limité.");
@@ -141,6 +172,10 @@ class AccesTemporaires
         // il survivrait a sa propre echeance chez le beneficiaire.
         if (! $auteur->hasRole('superAdmin') && ! $this->detientDeFaconPermanente($auteur, $permission)) {
             throw new AccesTemporaireRefuse('Vous ne pouvez pas accorder une permission que vous ne détenez pas.');
+        }
+        // Le compte etudiant est partage avec les parents : on n'y ouvre rien.
+        if ($beneficiaire->hasRole('etudiant') || $this->detientDeFaconPermanente($beneficiaire, 'identity.student')) {
+            throw new AccesTemporaireRefuse('Les accès temporaires sont réservés au personnel, pas aux comptes étudiants.');
         }
         if ($this->detientDeFaconPermanente($beneficiaire, $permission)) {
             throw new AccesTemporaireRefuse("{$beneficiaire->name} détient déjà cette permission par son rôle.");

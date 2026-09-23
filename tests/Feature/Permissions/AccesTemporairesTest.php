@@ -34,7 +34,7 @@ class AccesTemporairesTest extends TestCase
             \App\Http\Middleware\PaywallMiddleware::class,
         ]);
 
-        foreach (['notes.edit', 'paiements.view', 'identity.coordinate', 'permissions.temporaires.manage'] as $p) {
+        foreach (['notes.edit', 'paiements.view', 'identity.coordinate', 'identity.student', 'permissions.temporaires.manage', 'personnel.manage', 'users.manage'] as $p) {
             Permission::findOrCreate($p, 'web');
         }
         Role::findOrCreate('superAdmin', 'web');
@@ -169,5 +169,56 @@ class AccesTemporairesTest extends TestCase
             ->get(route('esbtp.acces-temporaires.index'))
             ->assertOk()
             ->assertSee('Accès temporaires');
+    }
+
+    public function test_ce_qui_modifie_comptes_roles_ou_reglages_ne_s_accorde_pas(): void
+    {
+        $service = $this->service();
+        foreach (['personnel.manage', 'users.manage', 'settings.edit', 'system.manage', 'module.lmd.access', 'paywall.manage'] as $permission) {
+            $this->assertFalse($service->estAccordable($permission), $permission);
+        }
+        $this->assertTrue($service->estAccordable('notes.edit'));
+    }
+
+    public function test_un_compte_etudiant_ne_recoit_rien(): void
+    {
+        $etudiant = User::factory()->create();
+        $etudiant->givePermissionTo('identity.student');
+
+        $this->expectException(AccesTemporaireRefuse::class);
+        $this->service()->accorder($etudiant, 'paiements.view', now(), now()->addDay(), 'Essai sur un compte parent', $this->admin);
+    }
+
+    public function test_une_date_avec_decalage_est_enregistree_dans_le_fuseau_de_l_application(): void
+    {
+        config(['app.timezone' => 'UTC']);
+        $fin = Carbon::parse(now('UTC')->addDays(2)->format('Y-m-d').'T10:00:00+01:00');
+
+        $grant = $this->service()->accorder(User::factory()->create(), 'notes.edit', now(), $fin, 'Correction des notes S2', $this->admin);
+
+        $this->assertSame('09:00', $grant->fresh()->expires_at->format('H:i'));
+    }
+
+    public function test_deux_acces_qui_se_chevauchent_sont_refuses(): void
+    {
+        $coord = User::factory()->create();
+        $this->service()->accorder($coord, 'notes.edit', now(), now()->addDays(3), 'Correction des notes S2', $this->admin);
+
+        $this->expectException(AccesTemporaireRefuse::class);
+        $this->service()->accorder($coord, 'notes.edit', now()->addDay(), now()->addDays(5), 'Deuxieme demande en double', $this->admin);
+    }
+
+    public function test_la_duree_maximale_est_tenue(): void
+    {
+        $this->expectException(AccesTemporaireRefuse::class);
+        $this->service()->accorder(User::factory()->create(), 'notes.edit', now(), now()->addDays(AccesTemporaires::DUREE_MAX_JOURS_DEFAUT + 1), 'Beaucoup trop long', $this->admin);
+    }
+
+    public function test_sans_gerer_le_personnel_l_ecran_reste_ferme(): void
+    {
+        $user = User::factory()->create();
+        $user->givePermissionTo('permissions.temporaires.manage');
+
+        $this->actingAs($user->fresh())->get(route('esbtp.acces-temporaires.index'))->assertForbidden();
     }
 }

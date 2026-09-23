@@ -227,6 +227,8 @@ if (typeof window.accesTemporaires !== 'function') {
             envoi: false,
             retraitEnCours: null,
             feedback: null,
+            _minuteur: null,
+            _rafraichir: null,
             presets: [
                 { jours: 1, label: '1 jour' },
                 { jours: 2, label: '2 jours' },
@@ -241,6 +243,27 @@ if (typeof window.accesTemporaires !== 'function') {
                 const max = config.dureeMaxJours || 90;
                 this.presets = this.presets.filter(p => p.jours <= max);
                 this.choisirDuree(2);
+                // Un acces arrive a echeance doit quitter « En cours » sans rechargement.
+                this._rafraichir = () => { if (!document.hidden) this.recharger(); };
+                this._minuteur = setInterval(this._rafraichir, 60000);
+                document.addEventListener('visibilitychange', this._rafraichir);
+            },
+
+            destroy() {
+                clearInterval(this._minuteur);
+                document.removeEventListener('visibilitychange', this._rafraichir);
+            },
+
+            async recharger() {
+                try {
+                    const res = await fetch(this.urls.data, { headers: { 'Accept': 'application/json' } });
+                    if (res.ok) {
+                        const data = await res.json();
+                        this.acces = data.acces || this.acces;
+                    }
+                } catch (e) {
+                    // Hors ligne un instant : la liste affichee reste, le prochain tour la remettra a jour.
+                }
             },
 
             choisirDuree(jours) {
