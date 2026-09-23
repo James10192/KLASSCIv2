@@ -46,6 +46,18 @@ class QuickStoreEnseignantRequest extends FormRequest
     }
 
     /**
+     * Le refus arrive en AJAX : le texte par défaut de Laravel est en anglais,
+     * et l'écran l'afficherait tel quel.
+     */
+    protected function failedAuthorization()
+    {
+        throw new HttpResponseException(response()->json([
+            'success' => false,
+            'message' => "Vous n'avez pas le droit « Créer un enseignant ». Demandez-le à l'administrateur de l'établissement.",
+        ], 403));
+    }
+
+    /**
      * QuickStore est appelé via AJAX — retourner une erreur JSON 422 plutôt qu'une redirection.
      */
     protected function failedValidation(Validator $validator)

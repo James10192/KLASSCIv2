@@ -58,7 +58,8 @@ class CreationEnseignantPermissionTest extends TestCase
 
         $this->actingAs($user)->postJson(route('esbtp.enseignants.quick-create'), [
             'name' => 'Enseignant Fantome', 'specialization' => 'Maths',
-        ])->assertForbidden();
+        ])->assertForbidden()
+            ->assertJsonPath('message', fn ($m) => str_contains($m, 'Créer un enseignant'));
 
         $this->actingAs($user)->post(route('esbtp.enseignants.store'), [
             'name' => 'Enseignant Fantome', 'specialization' => 'Maths',
