@@ -1,7 +1,8 @@
 {{-- KPIs du hero. Rendu aussi seul, par index(?fragment=1), apres chaque action. --}}
 @php
     $_conv = $convocations;
-    $_suivies = $_conv['envoyee'] + $_conv['en_attente'] + $_conv['echec'] + $_conv['sans_email'] + $_conv['sans_objet'];
+    $_suivies = $_conv['envoyee'] + $_conv['telephone'] + $_conv['en_attente'] + $_conv['echec'] + $_conv['sans_email'] + $_conv['sans_objet'];
+    $_prevenues = $_conv['envoyee'] + $_conv['telephone'];
     $_aTraiter = $_conv['en_attente'] + $_conv['echec'];
 @endphp
 <div class="rdv-kpis">
@@ -15,8 +16,8 @@
     <div class="rdv-kpi">
         <div class="rdv-kpi-icon"><i class="fas fa-paper-plane"></i></div>
         <div>
-            <div class="rdv-kpi-value">{{ number_format($_conv['envoyee'], 0, ',', ' ') }}<span class="rdv-kpi-sur"> / {{ number_format($_suivies, 0, ',', ' ') }}</span></div>
-            <div class="rdv-kpi-label">Convocations envoyées</div>
+            <div class="rdv-kpi-value">{{ number_format($_prevenues, 0, ',', ' ') }}<span class="rdv-kpi-sur"> / {{ number_format($_suivies, 0, ',', ' ') }}</span></div>
+            <div class="rdv-kpi-label">Familles prévenues{{ $_conv['telephone'] > 0 ? ', dont '.$_conv['telephone'].' par téléphone' : '' }}</div>
         </div>
     </div>
     <div class="rdv-kpi {{ $_aTraiter > 0 ? 'rdv-kpi--alerte' : '' }}">
