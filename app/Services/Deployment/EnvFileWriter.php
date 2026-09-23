@@ -33,7 +33,7 @@ class EnvFileWriter
     private const SAUVEGARDES_CONSERVEES = 5;
 
     /** Doit rester identique a la regle de validation de CLIEnvController. */
-    private const ALPHABET_VALEUR = '/^[A-Za-z0-9_\-.:\/+=~]+$/';
+    private const ALPHABET_VALEUR = '/^[A-Za-z0-9_\-.:\/+=~]+$/D';
 
     public function __construct(
         private readonly string $chemin,
