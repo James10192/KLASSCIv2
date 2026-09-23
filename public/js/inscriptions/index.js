@@ -8,6 +8,7 @@
  * Dépendances globales :
  *   - window.KLASSCI_INSCRIPTIONS_ROUTES (injectée en inline script dans la vue)
  *   - window.KLASSCI_CSRF_TOKEN
+ *   - window.iiConfirm (public/js/inscriptions/common.js, charge avant ce fichier)
  *   - bootstrap (via bundle Bootstrap 5)
  *   - debugLog/debugWarn/debugError (public/js/debug-helper.js)
  */
@@ -24,57 +25,6 @@
     // ====================================================================
     // Helpers
     // ====================================================================
-
-    /**
-     * Modal de confirmation premium (remplace window.confirm bloquant).
-     * Retourne une Promise<boolean>.
-     *
-     * @param {string|object} options - Message simple OU objet {title, message, okLabel, okClass, icon}
-     */
-    function iiConfirm(options) {
-        return new Promise((resolve) => {
-            const modalEl = document.getElementById('ii-modal-confirm');
-            if (!modalEl) {
-                resolve(window.confirm(typeof options === 'string' ? options : options.message));
-                return;
-            }
-
-            const cfg = typeof options === 'string' ? { message: options } : options;
-            const titleEl = modalEl.querySelector('#ii-confirm-title');
-            const bodyEl = modalEl.querySelector('#ii-confirm-body');
-            const iconEl = modalEl.querySelector('#ii-confirm-icon');
-            const okBtn = modalEl.querySelector('#ii-confirm-ok');
-
-            if (titleEl) titleEl.textContent = cfg.title || 'Confirmation';
-            if (bodyEl) bodyEl.innerHTML = cfg.message || 'Êtes-vous sûr ?';
-            if (iconEl) {
-                iconEl.className = 'me-2 fas ' + (cfg.icon || 'fa-circle-question');
-            }
-            okBtn.textContent = cfg.okLabel || 'Confirmer';
-            okBtn.className = 'btn ' + (cfg.okClass || 'btn-primary');
-
-            const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
-            let resolved = false;
-
-            const onOk = () => {
-                if (resolved) return;
-                resolved = true;
-                modal.hide();
-                resolve(true);
-            };
-            const onHide = () => {
-                if (resolved) return;
-                resolved = true;
-                resolve(false);
-            };
-
-            okBtn.addEventListener('click', onOk, { once: true });
-            modalEl.addEventListener('hide.bs.modal', onHide, { once: true });
-
-            modal.show();
-        });
-    }
-    window.iiConfirm = iiConfirm;
 
     function showToast(message, type = 'success') {
         if (!message) return;
@@ -213,7 +163,6 @@
             }
         });
     }
-    window.updateKpisFromStats = updateKpisFromStats;
 
     function fetchResults(url, options = {}) {
         if (!url) return Promise.resolve();
@@ -524,12 +473,11 @@
             showToast('Veuillez sélectionner au moins une inscription.', 'warning');
             return;
         }
-        const ok = await iiConfirm({
+        // Une phrase, pas de HTML : `iiConfirm` rend son message en `textContent`.
+        const ok = await window.iiConfirm({
             title: 'Valider la sélection',
-            message: `<p>Valider <strong>${ids.length} inscription(s)</strong> ?</p><ul class="mb-0" style="padding-left:1.1rem;line-height:1.6;font-size:.85rem;"><li>Valide les inscriptions avec paiement validé</li><li>Auto-valide les paiements en attente si nécessaire</li><li>Envoie les notifications aux étudiants</li></ul>`,
-            okLabel: 'Valider',
-            okClass: 'btn-primary',
-            icon: 'fa-check-double',
+            message: `Valider ${ids.length} inscription(s) ? Seules celles qui ont un paiement validé le seront, et leurs étudiants seront notifiés. Celles sans paiement ou dont le paiement est encore en attente seront ignorées.`,
+            confirmLabel: 'Valider',
         });
         if (!ok) return;
 
@@ -1109,12 +1057,10 @@
         e.preventDefault();
         const id = btn.dataset.id;
         if (!id) return;
-        const ok = await iiConfirm({
+        const ok = await window.iiConfirm({
             title: 'Valider l\'inscription',
             message: 'Confirmer la validation de cette inscription ?',
-            okLabel: 'Valider',
-            okClass: 'btn-primary',
-            icon: 'fa-check-circle',
+            confirmLabel: 'Valider',
         });
         if (!ok) return;
         const form = document.getElementById(`valider-form-${id}`);

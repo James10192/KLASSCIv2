@@ -181,6 +181,13 @@ class ESBTPResultat extends Model implements Auditable
                 ->join('esbtp_evaluations as e', 'e.id', '=', 'n.evaluation_id')
                 ->whereColumn('n.etudiant_id', 'esbtp_resultats.etudiant_id')
                 ->whereColumn('n.matiere_id', 'esbtp_resultats.matiere_id')
+                // Une note effacee (ou archivee) ne porte plus la moyenne : le
+                // SQL brut de cette sous-requete ne voit pas les gardes des
+                // modeles, et sans ces trois lignes la suppression de la
+                // DERNIERE note laissait la ligne hors de cette liste.
+                ->whereNull('n.deleted_at')
+                ->whereNull('n.archived_at')
+                ->whereNull('e.deleted_at')
                 ->where('e.classe_id', $classeId)
                 ->where('e.annee_universitaire_id', $anneeUniversitaireId)
                 ->where('e.status', '!=', 'cancelled')
