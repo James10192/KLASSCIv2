@@ -137,21 +137,31 @@ class ReservateurRdv
      * Une famille deja reçue ne se deplace pas. L'absence n'est pas dans le
      * statut : AccueilRdv la deduit, et journalise le deplacement.
      *
+     * `$creneauVu` est le creneau que l'agent avait sous les yeux : s'il a change
+     * sous le verrou, un autre poste a deja deplace la famille, et on refuse
+     * plutot que de la deplacer deux fois. `$suite` s'execute dans la meme
+     * transaction que le deplacement (journal, convocation) : l'un ne peut pas
+     * etre ecrit sans l'autre.
+     *
+     * @param  (callable(ESBTPRdvReservation, int): void)|null  $suite  recoit la reservation deplacee et le creneau quitte
      * @return array{ok: true, reservation: ESBTPRdvReservation, creneau_quitte_id: int}|array{ok: false, code: string}
      */
-    public function replacerAuGuichet(ESBTPRdvReservation $reservation, int $creneauId): array
+    public function replacerAuGuichet(ESBTPRdvReservation $reservation, int $creneauId, ?int $creneauVu = null, ?callable $suite = null): array
     {
         $porteur = $reservation->porteur();
         if ($porteur === null) {
             return ['ok' => false, 'code' => 'introuvable'];
         }
 
-        return $this->sousVerrou($porteur, function () use ($reservation, $creneauId) {
+        return $this->sousVerrou($porteur, function () use ($reservation, $creneauId, $creneauVu, $suite) {
             $actuelle = ESBTPRdvReservation::query()->occupantes()->whereKey($reservation->id)->lockForUpdate()->first();
             if ($actuelle === null) {
                 return ['ok' => false, 'code' => 'introuvable'];
             }
 
+            if ($creneauVu !== null && (int) $actuelle->creneau_id !== $creneauVu) {
+                return ['ok' => false, 'code' => 'deplacee'];
+            }
             if ($actuelle->statut === StatutReservationRdv::Honoree) {
                 return ['ok' => false, 'code' => 'recue'];
             }
@@ -163,8 +173,12 @@ class ReservateurRdv
 
             $quitte = (int) $actuelle->creneau_id;
             $actuelle->update(['creneau_id' => $cible->id, 'statut' => StatutReservationRdv::Confirmee]);
+            $deplacee = $actuelle->fresh()->load('creneau');
+            if ($suite !== null) {
+                $suite($deplacee, $quitte);
+            }
 
-            return ['ok' => true, 'reservation' => $actuelle->fresh()->load('creneau'), 'creneau_quitte_id' => $quitte];
+            return ['ok' => true, 'reservation' => $deplacee, 'creneau_quitte_id' => $quitte];
         });
     }
 

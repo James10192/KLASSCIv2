@@ -7,7 +7,6 @@ use App\Models\ESBTPCandidature;
 use App\Models\ESBTPRdvCreneau;
 use App\Models\ESBTPRdvReprogrammation;
 use App\Models\ESBTPRdvReservation;
-use App\Models\ESBTPReinscriptionDemande;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -22,10 +21,11 @@ use Illuminate\Support\Facades\DB;
  * absentes restaient « confirmees » sur un creneau passe, et plus aucun ecran
  * ne les montrait. Deduite, elle ne peut pas etre oubliee.
  *
- * Le dossier compte : une famille jamais cochee dont le dossier a avance est
- * venue, ou a ete traitee autrement. La dire absente ferait reprogrammer des
- * familles deja inscrites — c'est le cas de toutes les reservations d'avant
- * cet ecran, que personne ne cochait.
+ * Le dossier compte : une famille jamais cochee dont le dossier est CLOS
+ * (inscrite ou refusee) est « dossier traite », pas absente — c'est le cas des
+ * reservations d'avant cet ecran, que personne ne cochait. Une candidature
+ * seulement acceptee n'est pas close : l'inscription se fait au guichet, donc
+ * une famille acceptee qui ne vient pas est bien une non-venue.
  */
 class AccueilRdv
 {
@@ -36,6 +36,9 @@ class AccueilRdv
     public const TRAITEE = 'traite';
 
     public const ATTENDUE = 'attendu';
+
+    /** Les statuts de dossier (candidature comme demande) qui n'attendent plus la famille. */
+    private const DOSSIER_CLOS = [ESBTPCandidature::STATUT_CONVERTIE, ESBTPCandidature::STATUT_REJETEE];
 
     public function __construct(
         private readonly RendezVousReglages $reglages,
@@ -60,14 +63,24 @@ class AccueilRdv
             ->get()
             ->filter(fn (ESBTPRdvCreneau $c) => $c->reservations->isNotEmpty())
             ->values();
+        // Le creneau est deja en main : sans ce lien, etat() et enRetard()
+        // relanceraient une requete par famille.
+        $creneaux->each(fn (ESBTPRdvCreneau $c) => $c->reservations->each->setRelation('creneau', $c));
 
         $reprogrammees = $this->reprogrammeesDepuis($jour);
         $toutes = $creneaux->flatMap->reservations;
+        // Celles que la reprogrammation en masse peut deplacer : l'annee des
+        // creneaux seulement, un jour d'une campagne passee ne reconvoque personne.
+        $annee = $this->catalogue->anneeDesCreneaux()?->id;
+        $aReprogrammer = $toutes->filter(fn (ESBTPRdvReservation $r) => $annee !== null
+            && (int) $r->creneau->annee_universitaire_id === (int) $annee
+            && $this->etat($r) === self::NON_VENUE)->values();
         $parEtat = $toutes->countBy(fn (ESBTPRdvReservation $r) => $this->etat($r));
 
         return [
             'creneaux' => $creneaux,
             'reprogrammees' => $reprogrammees,
+            'aReprogrammer' => $aReprogrammer,
             'enSouffrance' => $this->joursEnSouffrance($jour),
             'compteurs' => [
                 'attendus' => $toutes->count(),
@@ -90,7 +103,7 @@ class AccueilRdv
             return self::ATTENDUE;
         }
 
-        return $this->dossierEnAttente($r) ? self::NON_VENUE : self::TRAITEE;
+        return $this->dossierOuvert($r) ? self::NON_VENUE : self::TRAITEE;
     }
 
     /** Attendue, creneau commence depuis plus que la tolerance reglee, pas encore reçue. */
@@ -165,45 +178,46 @@ class AccueilRdv
      *
      * @return string|null le refus, ou null si c'est fait
      */
-    public function reprogrammer(ESBTPRdvReservation $reservation, int $creneauId, ?int $agentId = null): ?string
+    public function reprogrammer(ESBTPRdvReservation $reservation, int $creneauId, ?int $agentId = null, ?int $creneauVu = null): ?string
     {
-        $resultat = $this->reservateur->replacerAuGuichet($reservation, $creneauId);
-        if (! $resultat['ok']) {
-            return match ($resultat['code']) {
-                'complet' => 'Ce créneau vient d\'être rempli. Choisissez-en un autre.',
-                'trop_tot' => 'Ce créneau a déjà commencé.',
-                'ferme' => 'Ce créneau est fermé.',
-                'recue' => 'Cette famille a déjà été reçue : il n\'y a rien à reprogrammer.',
-                default => 'Ce rendez-vous n\'existe plus.',
-            };
-        }
+        // Journal et convocation dans la transaction du deplacement : une famille
+        // deplacee sans trace perdrait sa non-venue, et une convocation non
+        // replanifiee resterait « prevenue » pour l'ancienne date.
+        $resultat = $this->reservateur->replacerAuGuichet($reservation, $creneauId, $creneauVu,
+            function (ESBTPRdvReservation $deplacee, int $quitteId) use ($agentId) {
+                $quitte = ESBTPRdvCreneau::find($quitteId);
+                ESBTPRdvReprogrammation::create([
+                    'reservation_id' => $deplacee->id,
+                    'creneau_quitte_id' => $quitteId,
+                    'creneau_nouveau_id' => $deplacee->creneau_id,
+                    'non_venue' => $quitte !== null && $this->creneauTermine($quitte),
+                    'par' => $agentId,
+                ]);
+                $this->convocations->confirmer($deplacee, 'deplace');
+            });
 
-        $quitte = ESBTPRdvCreneau::find($resultat['creneau_quitte_id']);
-        ESBTPRdvReprogrammation::create([
-            'reservation_id' => $resultat['reservation']->id,
-            'creneau_quitte_id' => $resultat['creneau_quitte_id'],
-            'creneau_nouveau_id' => $resultat['reservation']->creneau_id,
-            'non_venue' => $quitte !== null && $this->creneauTermine($quitte),
-            'par' => $agentId,
-        ]);
-
-        $this->convocations->confirmer($resultat['reservation'], 'deplace');
-
-        return null;
+        return $resultat['ok'] ? null : match ($resultat['code']) {
+            'complet' => 'Ce créneau vient d\'être rempli. Choisissez-en un autre.',
+            'trop_tot' => 'Ce créneau a déjà commencé.',
+            'ferme' => 'Ce créneau est fermé.',
+            'recue' => 'Cette famille a déjà été reçue : il n\'y a rien à reprogrammer.',
+            'deplacee' => 'Ce rendez-vous vient d\'être déplacé par un autre poste. La liste est rechargée.',
+            default => 'Ce rendez-vous n\'existe plus.',
+        };
     }
 
     /**
      * Toutes les non-venues d'un jour, chacune sur le premier creneau libre qui
-     * reste. S'arrete quand il n'y a plus de place.
+     * reste. S'arrete quand il n'y a plus de place. Seulement celles de l'annee
+     * des creneaux : un jour d'une campagne passee ne reconvoque personne. Une
+     * famille deplacee entre-temps par un autre poste est sautee.
      *
      * @return array{faites: int, sans_place: int}
      */
     public function reprogrammerNonVenues(Carbon $jour, int $agentId): array
     {
         $rapport = ['faites' => 0, 'sans_place' => 0];
-        $nonVenues = $this->journee($jour)['creneaux']->flatMap->reservations
-            ->filter(fn (ESBTPRdvReservation $r) => $this->etat($r) === self::NON_VENUE)
-            ->values();
+        $nonVenues = $this->nonVenuesDuJour($jour);
 
         foreach ($nonVenues as $i => $reservation) {
             $creneauId = array_key_first(array_filter($this->catalogue->placesLibres(), fn ($libre) => $libre > 0));
@@ -211,12 +225,22 @@ class AccueilRdv
                 $rapport['sans_place'] = $nonVenues->count() - $i;
                 break;
             }
-            if ($this->reprogrammer($reservation, (int) $creneauId, $agentId) === null) {
+            if ($this->reprogrammer($reservation, (int) $creneauId, $agentId, (int) $reservation->creneau_id) === null) {
                 $rapport['faites']++;
             }
         }
 
         return $rapport;
+    }
+
+    /**
+     * Les non-venues d'un jour que la reprogrammation en masse peut deplacer.
+     *
+     * @return Collection<int, ESBTPRdvReservation>
+     */
+    public function nonVenuesDuJour(Carbon $jour): Collection
+    {
+        return $this->journee($jour)['aReprogrammer'];
     }
 
     /**
@@ -240,17 +264,19 @@ class AccueilRdv
             ->map(fn ($l) => (object) ['jour' => Carbon::parse($l->jour)->toDateString(), 'n' => (int) $l->n]);
     }
 
+    /** Bornees a l'annee des creneaux, comme le placement : les abandons d'une campagne passee n'y reviennent pas. */
     private function nonVenuesPassees(Carbon $maintenant): Builder
     {
         return ESBTPRdvReservation::query()
             ->join('esbtp_rdv_creneaux as c', 'c.id', '=', 'esbtp_rdv_reservations.creneau_id')
+            ->where('c.annee_universitaire_id', $this->catalogue->anneeDesCreneaux()?->id ?? 0)
             ->where('esbtp_rdv_reservations.statut', StatutReservationRdv::Confirmee->value)
             ->where(fn (Builder $q) => $q->whereDate('c.date', '<', $maintenant->toDateString())
                 ->orWhere(fn (Builder $j) => $j->whereDate('c.date', $maintenant->toDateString())
                     ->where('c.heure_fin', '<=', $maintenant->format('H:i:s'))))
             ->where(fn (Builder $q) => $q
-                ->whereHas('candidature', fn ($c) => $c->where('statut', ESBTPCandidature::STATUT_EN_ATTENTE))
-                ->orWhereHas('demande', fn ($d) => $d->where('statut', ESBTPReinscriptionDemande::STATUT_EN_ATTENTE)));
+                ->whereHas('candidature', fn ($c) => $c->whereNotIn('statut', self::DOSSIER_CLOS))
+                ->orWhereHas('demande', fn ($d) => $d->whereNotIn('statut', self::DOSSIER_CLOS)));
     }
 
     /**
@@ -276,13 +302,11 @@ class AccueilRdv
             ->values();
     }
 
-    private function dossierEnAttente(ESBTPRdvReservation $r): bool
+    private function dossierOuvert(ESBTPRdvReservation $r): bool
     {
         $porteur = $r->candidature ?? $r->demande;
 
-        return $porteur !== null && $porteur->statut === ($r->candidature
-            ? ESBTPCandidature::STATUT_EN_ATTENTE
-            : ESBTPReinscriptionDemande::STATUT_EN_ATTENTE);
+        return $porteur !== null && ! in_array($porteur->statut, self::DOSSIER_CLOS, true);
     }
 
     /**

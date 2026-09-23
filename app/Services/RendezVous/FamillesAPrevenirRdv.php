@@ -23,10 +23,8 @@ class FamillesAPrevenirRdv
     /** Les etats qui laissent une famille sans nouvelle de son rendez-vous. NULL : avant le suivi. */
     private const A_PREVENIR = [StatutConvocationRdv::SansEmail, StatutConvocationRdv::Echec];
 
-    public function __construct(
-        private readonly ContactsFamilleRdv $contacts,
-        private readonly MessagerieRdv $messagerie,
-    ) {
+    public function __construct(private readonly ContactsFamilleRdv $contacts)
+    {
     }
 
     /** @return string|null le refus, ou null si c'est note */
@@ -53,15 +51,23 @@ class FamillesAPrevenirRdv
     }
 
     /**
-     * Annule un « prevenue » pose par erreur : la convocation est replanifiee
-     * (en attente d'envoi si l'adresse est valide, sans e-mail sinon).
+     * Annule un « prevenue » pose par erreur : la famille revient dans la liste
+     * d'appel. Rien ne part tout seul — repasser par la file d'envoi relancerait
+     * un courriel que l'ecole n'a pas demande ; avec une adresse, c'est
+     * « Relancer les echecs » qui decide.
      */
     public function annulerPrevenue(ESBTPRdvReservation $reservation): ?string
     {
         if ($reservation->convocation_statut !== StatutConvocationRdv::Telephone) {
             return 'Cette famille n\'est pas notée prévenue par téléphone.';
         }
-        $this->messagerie->planifier($reservation, $reservation->convocation_action ?: 'confirme');
+        $avecAdresse = filter_var(trim((string) $reservation->email), FILTER_VALIDATE_EMAIL) !== false;
+        $reservation->forceFill([
+            'convocation_statut' => $avecAdresse ? StatutConvocationRdv::Echec : StatutConvocationRdv::SansEmail,
+            'convocation_erreur' => $avecAdresse ? 'Appel annulé : convocation à relancer ou famille à rappeler.' : null,
+            'convocation_envoyee_at' => null,
+            'prevenue_par' => null,
+        ])->save();
 
         return null;
     }

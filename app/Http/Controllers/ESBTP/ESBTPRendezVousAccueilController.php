@@ -64,15 +64,19 @@ class ESBTPRendezVousAccueilController extends Controller
             return response()->json(['message' => 'Choisissez un créneau.'], 422);
         }
 
+        // `creneau_vu` : le creneau que l'ecran affichait, distinct du creneau cible.
+        $vu = filter_var($request->input('creneau_vu'), FILTER_VALIDATE_INT);
+
         return $this->repondre(
-            $this->accueil->reprogrammer($reservation, $creneauId, (int) $request->user()->id),
+            $this->accueil->reprogrammer($reservation, $creneauId, (int) $request->user()->id, $vu === false ? null : $vu),
             'Rendez-vous reprogrammé. La nouvelle convocation part par e-mail si la famille en a un ; sinon, elle rejoint la liste des familles à prévenir.'
         );
     }
 
     public function reprogrammerNonVenues(Request $request): JsonResponse
     {
-        $r = $this->accueil->reprogrammerNonVenues($this->jour($request->input('jour')), (int) $request->user()->id);
+        $jour = $this->jour($request->input('jour'));
+        $r = $this->accueil->reprogrammerNonVenues($jour, (int) $request->user()->id);
 
         return response()->json(['message' => match (true) {
             $r['faites'] === 0 && $r['sans_place'] === 0 => 'Aucune famille non venue à reprogrammer ce jour.',

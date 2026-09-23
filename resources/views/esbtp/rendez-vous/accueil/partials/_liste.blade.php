@@ -4,7 +4,10 @@
     $_aVenir = $jour->isFuture() && ! $jour->isToday();
     $_Tel = \App\Enums\StatutConvocationRdv::Telephone;
     $_aPrevenir = [null, \App\Enums\StatutConvocationRdv::SansEmail, \App\Enums\StatutConvocationRdv::Echec];
-    $_libelleEtat = ['recu' => 'Reçue', 'non_venue' => 'Non venue', 'traite' => 'Dossier traité', 'attendu' => 'À recevoir'];
+    $_voitCandidatures = auth()->user()?->can('inscriptions.candidatures.view') ?? false;
+    $_voitDemandes = auth()->user()?->can('reinscriptions.demandes.view') ?? false;
+    $_nonVenuesMasse = $aReprogrammer;
+    $_recidives = $_nonVenuesMasse->where('absences', '>', 0)->count();
 @endphp
 
 @if($enSouffrance->isNotEmpty())
@@ -35,7 +38,7 @@
     @if($_aVenir)
         <p class="rac-info"><i class="fas fa-circle-info"></i>Journée à venir : la liste se coche le jour même. Vous pouvez déjà prévenir par téléphone les familles sans convocation, ou reprogrammer un rendez-vous.</p>
     @endif
-    @if($compteurs['non_venues'] > 0)
+    @if($_nonVenuesMasse->isNotEmpty())
         <section class="rdv-card rac-nonvenues">
             <div class="rdv-section-head" style="margin:0">
                 <span class="rdv-section-icon"><i class="fas fa-user-clock"></i></span>
@@ -45,7 +48,7 @@
                 </div>
             </div>
             <button type="button" class="rdv-btn rdv-btn--primary" data-rac-non-venues
-                    data-confirm="Les {{ $compteurs['non_venues'] }} familles non venues seront placées sur les prochains créneaux libres, et leur nouvelle convocation partira par e-mail. Celles sans adresse rejoindront la liste des familles à prévenir.">
+                    data-confirm="Les {{ $_nonVenuesMasse->count() }} familles non venues seront placées sur les prochains créneaux libres, et leur nouvelle convocation partira par e-mail. Celles sans adresse rejoindront la liste des familles à prévenir.{{ $_recidives > 0 ? ' Attention : '.$_recidives.' d\'entre elles ont déjà manqué un rendez-vous — pensez à les appeler, ou à clore leur dossier.' : '' }}">
                 <i class="fas fa-calendar-plus"></i>Reprogrammer les non-venues
             </button>
         </section>
@@ -124,6 +127,10 @@
                         <div class="rac-actions">
                             @if($_sansNouvelle)
                                 <button type="button" class="rdv-btn rdv-btn--ghost rdv-btn--sm" data-rac-action="{{ $_url('prevenue') }}" title="Vous l'avez appelée : elle sort de la liste des familles à prévenir"><i class="fas fa-phone-volume"></i>Prévenue</button>
+                            @endif
+                            @if($_etat === 'non_venue' && ($resa->candidature ? $_voitCandidatures : $_voitDemandes))
+                                <a class="rdv-btn rdv-btn--ghost rdv-btn--sm" title="Clore le dossier d'une famille qui ne viendra pas"
+                                   href="{{ $resa->candidature ? route('esbtp.candidatures.index', ['statut' => $resa->candidature->statut]) : route('esbtp.reinscription-demandes.index', ['statut' => $resa->demande?->statut]) }}"><i class="fas fa-folder-open"></i>Dossier</a>
                             @endif
                             @if(in_array($_etat, ['attendu', 'non_venue'], true))
                                 <button type="button" class="rdv-btn {{ $_etat === 'non_venue' ? 'rdv-btn--primary' : 'rdv-btn--ghost' }} rdv-btn--sm"

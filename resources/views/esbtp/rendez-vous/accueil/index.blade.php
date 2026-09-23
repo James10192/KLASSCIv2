@@ -363,7 +363,7 @@ span.rac-coche--non-venue { color: #b91c1c; background: rgba(220,38,38,.06); cur
     const formReprog = reprog.querySelector('[data-rac-reprog-form]');
     const choix = reprog.querySelector('[data-rac-choix]');
     const valider = reprog.querySelector('[data-rac-reprog-valider]');
-    let urlReprog = null, retourReprog = null;
+    let urlReprog = null, retourReprog = null, creneauVu = null;
 
     function fermerReprog() {
         reprog.classList.remove('is-ouverte');
@@ -385,6 +385,7 @@ span.rac-coche--non-venue { color: #b91c1c; background: rgba(220,38,38,.06); cur
     async function ouvrirReprog(bouton) {
         urlReprog = bouton.dataset.racReprogrammer;
         retourReprog = bouton;
+        creneauVu = bouton.closest('[data-creneau]')?.dataset.creneau || null;
         reprog.querySelector('[data-rac-reprog-nom]').textContent = bouton.dataset.racNom || '';
         choix.innerHTML = '<li class="rac-choix-vide">Chargement des créneaux…</li>';
         valider.disabled = true;
@@ -428,14 +429,15 @@ span.rac-coche--non-venue { color: #b91c1c; background: rgba(220,38,38,.06); cur
         if (!coche || !urlReprog) return;
         valider.disabled = true;
         try {
-            const r = await poster(urlReprog, { creneau_id: Number(coche.value) });
+            const r = await poster(urlReprog, { creneau_id: Number(coche.value), creneau_vu: creneauVu ? Number(creneauVu) : null });
             fermerReprog();
             notifier('success', r.message);
             await rafraichir();
         } catch (e) {
             notifier('error', e.message);
             valider.disabled = false;
-            if (/rempli|commencé|fermé/.test(e.message)) ouvrirReprog(retourReprog);
+            if (/déplacé/.test(e.message)) { fermerReprog(); rafraichir(); }
+            else if (/rempli|commencé|fermé/.test(e.message)) ouvrirReprog(retourReprog);
         }
     });
 
