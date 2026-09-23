@@ -49,6 +49,17 @@ class CleEnvAutorisee
             'secrete' => false,
             'description' => "Code de l'instance. Il designe les quotas que le paywall lit chez adminKlassci et l'identite servie au site public : une instance qui porte le code d'une autre lit les limites de celle-la. A verifier avec « php artisan tenant:verifier-identite ».",
         ],
+        'MASTER_SUPPORT_TOKEN' => [
+            // kc_ + key_id (12) + _ + secret (40) : la forme exacte que le
+            // Master emet (TenantApiCredential::emettre) et qu'il accepte
+            // (TenantApiCredential::decouper). Un jeton tronque au copier-coller
+            // echouerait plus tard, en silence, a la premiere demande d'aide.
+            'longueur_min' => 56,
+            'format' => '/^kc_[a-z0-9]{12}_[A-Za-z0-9]{40}$/',
+            'format_lisible' => 'kc_, 12 minuscules ou chiffres, _, puis 40 lettres ou chiffres',
+            'secrete' => true,
+            'description' => "Identifiant KLASSCI Care de l'instance, emis par « php artisan care:identifiant <code> » sur adminKlassci. Sans lui, le bouton « Aide / Signaler un probleme » n'apparait pas.",
+        ],
     ];
 
     /** @return list<string> */

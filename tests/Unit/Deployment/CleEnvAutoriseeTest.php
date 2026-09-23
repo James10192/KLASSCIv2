@@ -19,6 +19,7 @@ class CleEnvAutoriseeTest extends TestCase
     {
         $this->assertTrue(CleEnvAutorisee::estAutorisee('TENANT_CODE'));
         $this->assertTrue(CleEnvAutorisee::estAutorisee('REINSCRIPTION_PORTAL_SECRET'));
+        $this->assertTrue(CleEnvAutorisee::estAutorisee('MASTER_SUPPORT_TOKEN'));
 
         // Les cles qui donneraient le controle de l'instance.
         foreach (['DB_HOST', 'APP_KEY', 'APP_DEBUG', 'MAIL_HOST'] as $interdite) {
@@ -80,6 +81,38 @@ class CleEnvAutoriseeTest extends TestCase
     {
         $this->assertTrue(CleEnvAutorisee::estSecrete('REINSCRIPTION_PORTAL_SECRET'));
         $this->assertFalse(CleEnvAutorisee::estSecrete('TENANT_CODE'));
+        $this->assertTrue(CleEnvAutorisee::estSecrete('MASTER_SUPPORT_TOKEN'));
+    }
+
+    public function test_un_jeton_care_emis_par_le_master_est_accepte(): void
+    {
+        $jeton = 'kc_'.str_repeat('a1', 6).'_'.str_repeat('Ab3', 13).'Z';
+
+        $this->assertSame(56, strlen($jeton));
+        $this->assertGreaterThanOrEqual(CleEnvAutorisee::longueurMinimale('MASTER_SUPPORT_TOKEN'), strlen($jeton));
+        $this->assertTrue(CleEnvAutorisee::respecteFormat('MASTER_SUPPORT_TOKEN', $jeton));
+    }
+
+    /**
+     * @dataProvider jetonsCareInvalides
+     */
+    public function test_un_jeton_care_mal_forme_est_refuse(string $jeton, string $pourquoi): void
+    {
+        $this->assertFalse(CleEnvAutorisee::respecteFormat('MASTER_SUPPORT_TOKEN', $jeton), $pourquoi);
+    }
+
+    public static function jetonsCareInvalides(): array
+    {
+        $cle = str_repeat('a1', 6);
+        $secret = str_repeat('Ab3', 13).'Z';
+
+        return [
+            ["kc_{$cle}_".substr($secret, 0, 39), 'secret tronque au copier-coller'],
+            ["kc_{$cle}_{$secret} ", 'espace final colle avec le jeton'],
+            ["MASTER_SUPPORT_TOKEN=kc_{$cle}_{$secret}", 'la ligne entiere collee a la place de la valeur'],
+            ['kc_'.strtoupper($cle)."_{$secret}", 'le key_id est en minuscules'],
+            [str_repeat('x', 55), "un jeton d'une autre forme"],
+        ];
     }
 
     /**
