@@ -81,10 +81,14 @@ class AppServiceProvider extends ServiceProvider
         // scoped() et non singleton() : un worker de file vit des heures, et
         // forgetScopedInstances() borne le memo entre deux taches.
         $this->app->scoped(\App\Domain\Dispenses\DispenseLookup::class);
+        // Acces temporaires : lus a chaque can(), memorises le temps d'une requete.
+        $this->app->scoped(\App\Domain\Permissions\AccesTemporaires::class);
         $this->app->scoped(OpenAlertMetricService::class);
         // Le vocabulaire de la structure LMD est lu par des dizaines de libelles
         // dans une meme page : une instance par requete.
         $this->app->scoped(\App\Services\LMD\VocabulaireStructure::class);
+        // KLASSCI Care : le layout le consulte a plusieurs endroits d'une meme page.
+        $this->app->scoped(\App\Domain\Support\Services\DisponibiliteSupport::class);
         // Bornes de la journee de cours, lues par des grilles qui bouclent heure
         // par heure et par enseignant : une lecture des reglages par requete.
         $this->app->scoped(\App\Services\Planning\PlageHoraireJournee::class);

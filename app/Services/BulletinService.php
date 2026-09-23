@@ -450,7 +450,8 @@ class BulletinService
         // BUG FIX : on normalise CHAQUE note par son barème avant pondération.
         // Avant : note brute (15/30 + 10/20)/2 = 12.5 au lieu de (10 + 10)/2 = 10.
         foreach ($resultatsParMatiere as $matiereId => $resultat) {
-            $resultat->moyenne = $this->computeMoyenneFromNotesData($resultat->notes);
+            $resultat->moyenne = $this->computeMoyenneFromNotesData($resultat->notes)
+                ?? app(NoteCalculationService::class)->moyenneSansNoteComptable();
             $resultat->appreciation = $this->getAppreciation($resultat->moyenne);
         }
 
@@ -1494,9 +1495,14 @@ class BulletinService
      *
      * Pure function : aucun accès DB, aucun side-effect → testable unitairement.
      *
+     * `null` quand AUCUNE note n'est comptable (tableau vide, absences seulement,
+     * barèmes nuls). La valeur à donner alors à la matière est un réglage
+     * d'établissement : l'appelant la demande à
+     * `NoteCalculationService::moyenneSansNoteComptable()`, pas cette fonction.
+     *
      * @param array<int, array{note: float|int|string, coefficient: float|int, bareme?: float|int|null, is_absent?: bool}> $notes
      */
-    public function computeMoyenneFromNotesData(array $notes): float
+    public function computeMoyenneFromNotesData(array $notes): ?float
     {
         $totalPoints = 0.0;
         $totalCoeffs = 0.0;
@@ -1520,7 +1526,7 @@ class BulletinService
         }
 
         if ($totalCoeffs <= 0) {
-            return 0.0;
+            return null;
         }
 
         return round($totalPoints / $totalCoeffs, 2);
@@ -2475,8 +2481,19 @@ class BulletinService
                 $notesByMatiere[$matiereId] = [
                     'total_points' => 0,
                     'total_coefficients' => 0,
-                    'moyenne' => 0,
+                    // `null` = aucune note exploitable (bareme nul), distinct d'une
+                    // moyenne de 0 : la somme plus bas compte la seconde seulement.
+                    'moyenne' => null,
                 ];
+            }
+
+            // Une absence ne compte pas dans la moyenne de la matiere, comme dans
+            // `computeMoyenneFromNotesData()` ; elle tranche seulement le cas
+            // « absences seulement » plus bas.
+            if ($note->is_absent) {
+                $notesByMatiere[$matiereId]['absences'] = ($notesByMatiere[$matiereId]['absences'] ?? 0) + 1;
+
+                continue;
             }
 
             if ($note->evaluation->bareme > 0) {
@@ -2493,8 +2510,16 @@ class BulletinService
         foreach ($notesByMatiere as $matiereId => &$matiereData) {
             if ($matiereData['total_coefficients'] > 0) {
                 $matiereData['moyenne'] = $matiereData['total_points'] / $matiereData['total_coefficients'];
+            } elseif (($matiereData['absences'] ?? 0) > 0) {
+                // Absences seulement : 0 ou « pas de moyenne », selon le reglage.
+                $matiereData['moyenne'] = app(NoteCalculationService::class)->moyenneSansNoteComptable();
             }
         }
+        // Sans cet `unset`, la boucle de somme plus bas, qui reutilise
+        // `$matiereData`, ecrivait a travers la reference restee sur la DERNIERE
+        // matiere : celle-ci prenait la moyenne de l'avant-derniere. Mesure :
+        // 14 (coef 2) et 0 (coef 1) rendaient 14,00, le 0 devenu 14.
+        unset($matiereData);
 
         $resultats = ESBTPResultat::where('etudiant_id', $etudiantId)
             ->when($classeId, function ($query) use ($classeId) {
@@ -2529,7 +2554,7 @@ class BulletinService
                 $notesByMatiere[$matiereId] = [
                     'total_points' => 0,
                     'total_coefficients' => 0,
-                    'moyenne' => 0,
+                    'moyenne' => null,
                 ];
             }
 
@@ -2541,7 +2566,11 @@ class BulletinService
         $sommeCoefs = 0;
 
         foreach ($notesByMatiere as $matiereId => $matiereData) {
-            if ($matiereData['moyenne'] > 0) {
+            // Une moyenne de 0 compte : seule l'absence de moyenne est ecartee.
+            // Le filtre `> 0` d'avant ecrivait 14,00 au lieu de 9,33 dans
+            // `esbtp_bulletins.moyenne_generale` pour 14 (coef 2) et 0 (coef 1),
+            // et rendait `null` pour un eleve dont toutes les matieres valent 0.
+            if ($matiereData['moyenne'] !== null) {
                 // $periodePourBDD appartient a calculateMoyennesForStudent : ici
                 // il n existe pas, et PHP levait « Undefined variable » des
                 // qu une matiere avait une moyenne positive. La page de
@@ -3766,6 +3795,15 @@ class BulletinService
                 ];
             }
 
+            // Une absence ne compte pas dans la moyenne de la matiere, comme a la
+            // fiche Resultats et a la generation officielle ; elle tranche
+            // seulement le cas « absences seulement » plus bas.
+            if ($note->is_absent) {
+                $notesByStudentMatiere[$etudiantId][$matiere_id]['absences'] = ($notesByStudentMatiere[$etudiantId][$matiere_id]['absences'] ?? 0) + 1;
+
+                continue;
+            }
+
             // Calculate weighted note using EXACT same logic as resultatEtudiant
             if ($note->evaluation->bareme > 0) {
                 $noteValue = is_numeric($note->note) ? floatval($note->note) : (is_numeric($note->valeur) ? floatval($note->valeur) : 0);
@@ -3864,6 +3902,12 @@ class BulletinService
                     $matiereData['moyenne'] = $matiereData['total_points'] / $matiereData['total_coefficients'];
                     // For overall average, treat each matière equally (same as resultatEtudiant)
                     $moyenneGenerale += $matiereData['moyenne'];
+                    $countValidMatieres++;
+                } elseif (($matiereData['absences'] ?? 0) > 0
+                    && ($sansNote = app(NoteCalculationService::class)->moyenneSansNoteComptable()) !== null) {
+                    // Absences seulement : 0 par defaut, ecartee si l'etablissement le choisit.
+                    $matiereData['moyenne'] = $sansNote;
+                    $moyenneGenerale += $sansNote;
                     $countValidMatieres++;
                 }
             }

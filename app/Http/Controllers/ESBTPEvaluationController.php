@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Domain\Notes\ChangementDeStatut;
 use App\Domain\Notes\MoyennesLaissees;
 use App\Domain\Notes\RecalculApresDeplacement;
+use App\Domain\Notes\SuppressionDEvaluation;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPEtudiant;
@@ -245,16 +247,12 @@ class ESBTPEvaluationController extends Controller
             );
         }
 
-        $evaluation->status = ESBTPEvaluation::STATUS_CANCELLED;
-        $evaluation->is_published = false;
-        $evaluation->updated_by = Auth::id();
-        $evaluation->save();
-
         return $this->evaluationActionResponse(
             $request,
             $evaluation,
             'Évaluation annulée avec succès.',
-            'cancel'
+            'cancel',
+            suite: ChangementDeStatut::annuler($evaluation, Auth::user())
         );
     }
 
@@ -263,36 +261,32 @@ class ESBTPEvaluationController extends Controller
      */
     public function restore(Request $request, ESBTPEvaluation $evaluation)
     {
-        $publish = $request->boolean('publish', true);
-
-        $evaluation->is_published = $publish;
-        $evaluation->status = $evaluation->determineAutomaticStatus(null, false);
-        $evaluation->updated_by = Auth::id();
-        $evaluation->save();
-
         return $this->evaluationActionResponse(
             $request,
             $evaluation,
             'Évaluation réactivée avec succès.',
-            'restore'
+            'restore',
+            suite: ChangementDeStatut::reactiver($evaluation, $request->boolean('publish', true), Auth::user())
         );
     }
 
     /**
      * Génère une réponse adaptée (JSON ou redirect) après une action sur l'évaluation.
      */
-    protected function evaluationActionResponse(Request $request, ESBTPEvaluation $evaluation, string $message, string $action = 'update', int $status = 200)
+    protected function evaluationActionResponse(Request $request, ESBTPEvaluation $evaluation, string $message, string $action = 'update', int $status = 200, array $suite = [])
     {
         if ($request->wantsJson()) {
             return response()->json([
                 'success' => true,
                 'message' => $message,
+                'warning' => $suite['avertissement'] ?? null,
+                'warning_links' => $suite['liens'] ?? [],
                 'action' => $action,
                 'evaluation_id' => $evaluation->id,
             ], $status);
         }
 
-        return redirect()->route('esbtp.evaluations.index')->with('success', $message);
+        return redirect()->route('esbtp.evaluations.index')->with('success', $message)->with('warning', $suite['avertissement'] ?? null);
     }
 
     /**
@@ -720,6 +714,13 @@ class ESBTPEvaluationController extends Controller
                     ->withInput();
             }
 
+            $baremeMinimal = $evaluation->baremeMinimal();
+            if ($this->baremeDescendSousUneNote($evaluation, (float) $request->bareme, $baremeMinimal)) {
+                return redirect()->back()
+                    ->with('error', $this->messageBaremeSousUneNote($baremeMinimal))
+                    ->withInput();
+            }
+
             $startAt = Carbon::createFromFormat('Y-m-d H:i', $request->date_evaluation.' '.$request->heure_debut);
             $endAt = Carbon::createFromFormat('Y-m-d H:i', $request->date_evaluation.' '.$request->heure_fin);
             if ($endAt->lessThanOrEqualTo($startAt)) {
@@ -756,6 +757,8 @@ class ESBTPEvaluationController extends Controller
             $oldClasseId = $evaluation->getOriginal('classe_id');
             $oldMatiereId = $evaluation->getOriginal('matiere_id');
             $oldPeriode = $evaluation->getOriginal('periode');
+            $oldBareme = $evaluation->getOriginal('bareme');
+            $oldCoefficient = $evaluation->getOriginal('coefficient');
 
             // Met à jour classe/matière si pas de notes OU si user a la permission de bypass
             if (! $hasNotes || $canBypassLock) {
@@ -775,7 +778,13 @@ class ESBTPEvaluationController extends Controller
             }
             $evaluation->save();
 
-            $avant = ['classe_id' => (int) $oldClasseId, 'matiere_id' => (int) $oldMatiereId, 'periode' => (string) $oldPeriode];
+            $avant = [
+                'classe_id' => (int) $oldClasseId,
+                'matiere_id' => (int) $oldMatiereId,
+                'periode' => (string) $oldPeriode,
+                'bareme' => $oldBareme,
+                'coefficient' => $oldCoefficient,
+            ];
             $recalcul = RecalculApresDeplacement::apresEnregistrement($evaluation, $avant, Auth::id());
 
             // Garde-fou non bloquant TC/Spécialité (basé sur la classe cible).
@@ -804,6 +813,26 @@ class ESBTPEvaluationController extends Controller
     }
 
     /**
+     * Refuse seulement un barème qui BAISSE sous une note saisie. Une
+     * évaluation déjà dans cet état (le code d'avant le permettait) doit rester
+     * modifiable — titre, date, période — sans qu'on touche à son barème.
+     */
+    private function baremeDescendSousUneNote(ESBTPEvaluation $evaluation, float $nouveau, ?float $baremeMinimal): bool
+    {
+        return $baremeMinimal !== null
+            && $nouveau < $baremeMinimal
+            && $nouveau < (float) $evaluation->getOriginal('bareme');
+    }
+
+    private function messageBaremeSousUneNote(float $baremeMinimal): string
+    {
+        $note = rtrim(rtrim(number_format($baremeMinimal, 2, ',', ''), '0'), ',');
+
+        return "Le barème ne peut pas descendre sous {$note} : une note déjà saisie vaut {$note}. "
+            .'Corrigez d\'abord cette note, ou gardez un barème au moins égal.';
+    }
+
+    /**
      * Quick edit (titre + barème + coefficient seulement).
      * Utilisé par le modal de saisie de notes (PR #4 — édition rapide depuis l'en-tête de colonne).
      *
@@ -825,7 +854,15 @@ class ESBTPEvaluationController extends Controller
             'coefficient.max' => 'Le coefficient ne peut pas dépasser 10.',
         ]);
 
+        // Avant le `try` : son rattrapage large ferait de ce refus une erreur 500.
+        $baremeMinimal = $evaluation->baremeMinimal();
+        if ($this->baremeDescendSousUneNote($evaluation, (float) $validated['bareme'], $baremeMinimal)) {
+            throw ValidationException::withMessages(['bareme' => $this->messageBaremeSousUneNote($baremeMinimal)]);
+        }
+
         try {
+            $avant = ['bareme' => $evaluation->bareme, 'coefficient' => $evaluation->coefficient];
+
             $evaluation->fill([
                 'titre' => trim($validated['titre']),
                 'bareme' => (float) $validated['bareme'],
@@ -833,6 +870,15 @@ class ESBTPEvaluationController extends Controller
                 'updated_by' => Auth::id(),
             ]);
             $evaluation->save();
+
+            // Sans ce recalcul, la moyenne enregistree d'avant garde la main
+            // sur l'ancien bareme ou l'ancien coefficient.
+            $recalcul = RecalculApresDeplacement::apresChangementDePonderation($evaluation, $avant, Auth::id());
+
+            // Relu : le coefficient n'a qu'une decimale en base (1,25 devient
+            // 1,3). La grille recalcule avec ce qu'on lui renvoie ; lui renvoyer
+            // la saisie brute la ferait diverger de la moyenne enregistree.
+            $evaluation->refresh();
 
             return response()->json([
                 'success' => true,
@@ -842,7 +888,11 @@ class ESBTPEvaluationController extends Controller
                     'bareme' => (float) $evaluation->bareme,
                     'coefficient' => (float) $evaluation->coefficient,
                 ],
-                'message' => 'Évaluation mise à jour.',
+                'moyennes_non_recalculees' => $recalcul['echecs'],
+                // Sans nombre : une interruption ne dit pas combien d'élèves restaient.
+                'message' => $recalcul['echecs'] > 0
+                    ? 'Évaluation mise à jour, mais des moyennes n\'ont pas pu être recalculées. Relancez le recalcul de la classe.'
+                    : 'Évaluation mise à jour.',
             ]);
         } catch (\Throwable $e) {
             \Log::error('quickUpdate evaluation failed', [
@@ -880,7 +930,7 @@ class ESBTPEvaluationController extends Controller
             }
 
             $evaluationId = $evaluation->id;
-            $evaluation->delete();
+            $suite = SuppressionDEvaluation::supprimer($evaluation, Auth::user());
 
             if ($request->wantsJson()) {
                 return response()->json([
@@ -888,10 +938,14 @@ class ESBTPEvaluationController extends Controller
                     'deleted' => true,
                     'evaluation_id' => $evaluationId,
                     'message' => 'Évaluation supprimée avec succès.',
+                    'warning' => $suite['avertissement'],
+                    'warning_links' => $suite['liens'],
                 ]);
             }
 
-            return redirect()->route('esbtp.evaluations.index')->with('success', 'Évaluation supprimée avec succès.');
+            return redirect()->route('esbtp.evaluations.index')
+                ->with('success', 'Évaluation supprimée avec succès.')
+                ->with('warning', $suite['avertissement']);
         } catch (\Exception $e) {
             if ($request->wantsJson()) {
                 return response()->json([
@@ -1044,14 +1098,6 @@ class ESBTPEvaluationController extends Controller
 
     public function updateStatus(Request $request, ESBTPEvaluation $evaluation)
     {
-        \Log::critical('🚨 UPDATE STATUS CALLED - Request received!', [
-            'request_method' => $request->method(),
-            'request_all' => $request->all(),
-            'evaluation_id' => $evaluation->id,
-            'url' => $request->fullUrl(),
-            'user_id' => auth()->id(),
-        ]);
-
         try {
             $validated = $request->validate([
                 'status' => 'required|in:'.implode(',', [
@@ -1063,31 +1109,20 @@ class ESBTPEvaluationController extends Controller
                 ]),
             ]);
 
-            $evaluation->update($validated);
-
-            // Logique automatique de publication
-            if ($validated['status'] === 'scheduled' && ! $evaluation->is_published) {
-                $evaluation->update(['is_published' => true]);
-                \Log::info('Évaluation automatiquement publiée lors de la planification', [
-                    'evaluation_id' => $evaluation->id,
-                ]);
-            } elseif ($validated['status'] === 'cancelled') {
-                $evaluation->update(['is_published' => false]);
-                \Log::info('Évaluation automatiquement dépubliée lors de l\'annulation', [
-                    'evaluation_id' => $evaluation->id,
-                ]);
-            }
+            $suite = ChangementDeStatut::poser($evaluation, $validated['status'], Auth::user());
 
             \Log::info('Statut mis à jour avec succès', [
                 'evaluation_id' => $evaluation->id,
                 'new_status' => $validated['status'],
-                'is_published' => $evaluation->fresh()->is_published,
+                'is_published' => $evaluation->is_published,
             ]);
 
             if ($request->wantsJson()) {
                 return response()->json([
                     'success' => true,
                     'message' => 'Statut mis à jour avec succès',
+                    'warning' => $suite['avertissement'],
+                    'warning_links' => $suite['liens'],
                     'evaluation' => $evaluation,
                 ]);
             }
@@ -1103,11 +1138,11 @@ class ESBTPEvaluationController extends Controller
             $statusLabel = $statusLabels[$validated['status']] ?? $validated['status'];
             $message = "Statut de l'évaluation \"{$evaluation->titre}\" mis à jour : {$statusLabel}";
 
-            if ($validated['status'] === 'scheduled' && $evaluation->fresh()->is_published) {
+            if ($validated['status'] === 'scheduled' && $evaluation->is_published) {
                 $message .= ' (automatiquement publiée pour les étudiants)';
             }
 
-            return redirect()->back()->with('success', $message);
+            return redirect()->back()->with('success', $message)->with('warning', $suite['avertissement']);
         } catch (\Exception $e) {
             \Log::error('Erreur lors de la mise à jour du statut', [
                 'evaluation_id' => $evaluation->id,

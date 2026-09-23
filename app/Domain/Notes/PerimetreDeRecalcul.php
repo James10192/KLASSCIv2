@@ -280,6 +280,11 @@ final class PerimetreDeRecalcul
      * personne n'a touche aux notes de ce couple : le recalcul est un
      * rattrapage, et un rattrapage n'invente pas de zero.
      *
+     * Une seule exception cote observateur, et elle est dans le job : quand la
+     * DERNIERE note est supprimee, il ne reste rien du tout, et le job n'ecrit
+     * rien (`RecomputeStudentResultatJob`, etape 4). La ligne, alors sans aucune
+     * note, est de celles que le pre-controle des bulletins liste.
+     *
      * Le job tourne **sur place** (`dispatchSync`), jamais sur la file : rien
      * ne prouve qu'un worker tourne sur les instances mutualisees.
      *
@@ -353,6 +358,21 @@ final class PerimetreDeRecalcul
 
         if ($ligne === null) {
             return ['statut' => self::RIEN_A_ECRIRE, 'avant' => null, 'laissee' => null];
+        }
+
+        // Des notes, aucune comptable (absences seulement), une ligne a ZERO, et
+        // l'etablissement a choisi d'ecarter ces matieres : ce zero est celui
+        // que le recalcul avait ecrit, le reglage dit maintenant qu'il n'a plus
+        // lieu d'etre. Le job retire la ligne. Sans ceci, desactiver le reglage
+        // ne valait que pour les saisies suivantes.
+        //
+        // UNIQUEMENT un zero. Une autre valeur (un 11 saisi dans « Modifier les
+        // moyennes » apres un oral de rattrapage) reste LAISSEE a un humain,
+        // comme avant : un rattrapage ne decide pas a la place de l'ecole.
+        if ($notes['lignes'] > 0
+            && $avant !== null && abs($avant) < 0.005
+            && app(NoteCalculationService::class)->moyenneSansNoteComptable() === null) {
+            return ['statut' => self::RECALCULE, 'avant' => $avant, 'laissee' => null];
         }
 
         return [

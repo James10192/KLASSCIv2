@@ -126,6 +126,63 @@ class ReservateurRdv
     }
 
     /**
+     * Deplacement decide au guichet, typiquement pour reprogrammer une absence.
+     *
+     * Ni reference ni date de naissance a verifier, ni delai public : c'est le
+     * secretariat qui agit, dossier en main. Mais le meme verrou par porteur, le
+     * meme verrou sur le creneau et le meme refus d'un creneau complet ou deja
+     * commence que pour une famille — deux guichets ne peuvent pas remplir la
+     * onzieme place d'un creneau de dix.
+     *
+     * Une famille deja reçue ne se deplace pas. L'absence n'est pas dans le
+     * statut : AccueilRdv la deduit, et journalise le deplacement.
+     *
+     * `$creneauVu` est le creneau que l'agent avait sous les yeux : s'il a change
+     * sous le verrou, un autre poste a deja deplace la famille, et on refuse
+     * plutot que de la deplacer deux fois. `$suite` s'execute dans la meme
+     * transaction que le deplacement (journal, convocation) : l'un ne peut pas
+     * etre ecrit sans l'autre.
+     *
+     * @param  (callable(ESBTPRdvReservation, int): void)|null  $suite  recoit la reservation deplacee et le creneau quitte
+     * @return array{ok: true, reservation: ESBTPRdvReservation, creneau_quitte_id: int}|array{ok: false, code: string}
+     */
+    public function replacerAuGuichet(ESBTPRdvReservation $reservation, int $creneauId, ?int $creneauVu = null, ?callable $suite = null): array
+    {
+        $porteur = $reservation->porteur();
+        if ($porteur === null) {
+            return ['ok' => false, 'code' => 'introuvable'];
+        }
+
+        return $this->sousVerrou($porteur, function () use ($reservation, $creneauId, $creneauVu, $suite) {
+            $actuelle = ESBTPRdvReservation::query()->occupantes()->whereKey($reservation->id)->lockForUpdate()->first();
+            if ($actuelle === null) {
+                return ['ok' => false, 'code' => 'introuvable'];
+            }
+
+            if ($creneauVu !== null && (int) $actuelle->creneau_id !== $creneauVu) {
+                return ['ok' => false, 'code' => 'deplacee'];
+            }
+            if ($actuelle->statut === StatutReservationRdv::Honoree) {
+                return ['ok' => false, 'code' => 'recue'];
+            }
+
+            $cible = $this->verrouillerCreneau($creneauId, (int) $actuelle->creneau_id, false);
+            if (! $cible instanceof ESBTPRdvCreneau) {
+                return ['ok' => false, 'code' => $cible['code']];
+            }
+
+            $quitte = (int) $actuelle->creneau_id;
+            $actuelle->update(['creneau_id' => $cible->id, 'statut' => StatutReservationRdv::Confirmee]);
+            $deplacee = $actuelle->fresh()->load('creneau');
+            if ($suite !== null) {
+                $suite($deplacee, $quitte);
+            }
+
+            return ['ok' => true, 'reservation' => $deplacee, 'creneau_quitte_id' => $quitte];
+        });
+    }
+
+    /**
      * @return array{ok: true, reservation?: ESBTPRdvReservation}|array{ok: false, code: string}
      */
     public function annuler(string $reference, string $dateNaissance): array
@@ -203,7 +260,7 @@ class ReservateurRdv
             return false;
         }
 
-        $debut = $this->debutDuCreneau($creneau);
+        $debut = $creneau->debut();
         $heures = (int) $this->reglages->valeur(RendezVousReglages::DELAI_MODIF, '12');
 
         return Carbon::now()->addHours(max(0, $heures))->lt($debut);
@@ -265,7 +322,7 @@ class ReservateurRdv
             return ['ok' => false, 'code' => 'ferme', 'creneaux' => $this->catalogue->publier()];
         }
 
-        if ($this->dejaCommence($creneau) || ($delaiPublic && $this->tropTot($creneau))) {
+        if ($creneau->aCommence() || ($delaiPublic && $this->tropTot($creneau))) {
             return ['ok' => false, 'code' => 'trop_tot', 'creneaux' => $this->catalogue->publier()];
         }
 
@@ -294,17 +351,7 @@ class ReservateurRdv
     {
         $heures = (int) $this->reglages->valeur(RendezVousReglages::DELAI_MIN, '12');
 
-        return Carbon::now()->addHours(max(0, $heures))->gt($this->debutDuCreneau($creneau));
-    }
-
-    private function dejaCommence(ESBTPRdvCreneau $creneau): bool
-    {
-        return Carbon::now()->gte($this->debutDuCreneau($creneau));
-    }
-
-    private function debutDuCreneau(ESBTPRdvCreneau $creneau): Carbon
-    {
-        return Carbon::parse($creneau->date->toDateString().' '.$creneau->heureDebutHi().':00');
+        return Carbon::now()->addHours(max(0, $heures))->gt($creneau->debut());
     }
 
     private function dateIso(string $valeur): ?string

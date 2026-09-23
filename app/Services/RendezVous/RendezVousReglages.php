@@ -34,6 +34,9 @@ class RendezVousReglages
 
     public const DELAI_MODIF = 'inscriptions.rdv.delai_modif_heures';
 
+    /** Minutes apres le debut d'un creneau au-dela desquelles une famille attendue est « en retard ». */
+    public const GRACE = 'inscriptions.rdv.grace_no_show_minutes';
+
     /** @return list<string> */
     public static function clesTexte(): array
     {
@@ -49,6 +52,7 @@ class RendezVousReglages
             self::CAPACITE,
             self::DELAI_MIN,
             self::DELAI_MODIF,
+            self::GRACE,
         ];
     }
 
@@ -263,6 +267,13 @@ class RendezVousReglages
         [$h, $m] = array_map('intval', explode(':', $heure));
 
         return ($h * 60) + $m;
+    }
+
+    public function graceMinutes(): int
+    {
+        $valeur = $this->valeur(self::GRACE, '15');
+
+        return ctype_digit($valeur) ? (int) $valeur : 15;
     }
 
     public function valeur(string $cle, string $defaut = ''): string

@@ -24,10 +24,12 @@ use Illuminate\Support\Facades\Log;
  * Déclenché automatiquement par {@see \App\Observers\ESBTPNoteObserver}
  * (saved/deleted) et manuellement via `php artisan notes:recompute`.
  *
- * Le calcul est délégué à {@see NoteCalculationService::studentMatiereAverage()}
+ * Le calcul est délégué à {@see NoteCalculationService::studentMatiereAverageOrNull()}
  * pour garantir l'unicité de la formule (même calcul que UI premier-ordre,
  * preview impact bulletin, et bulletins finaux). Voir le service pour les
  * garanties algorithmiques (inclusion notes 0, exclusion absents, etc.).
+ * Une matière sans note comptable (absences seulement) prend la valeur du
+ * réglage {@see NoteCalculationService::moyenneSansNoteComptable()}.
  *
  * NB : on ne passe PAS par {@see \App\Services\BulletinService::genererDonneesBulletin()}
  * car cette méthode exige une configuration bulletin préexistante (matières
@@ -52,7 +54,7 @@ class RecomputeStudentResultatJob implements ShouldQueue
     public int $timeout = 60;
 
     /**
-     * @param  string  $source  observer | command | manual
+     * @param  string  $source  observer | command | manual | cli | deplacement | ponderation
      * @param  int|null  $triggeredBy  user_id à l'origine du recalcul (peut être null en queue async)
      */
     public function __construct(
@@ -105,7 +107,10 @@ class RecomputeStudentResultatJob implements ShouldQueue
 
             // 2. Calculer la moyenne pondérée normalisée /20 via le service unifié
             //    (même formule que l'UI temps réel et BulletinService — anti-divergence).
-            $moyenneApres = $calc->studentMatiereAverage(ESBTPNote::enChargeUtilePourLeCalcul($notes));
+            //    Aucune note comptable (absences seulement) : la valeur que
+            //    l'etablissement a choisie — 0 par defaut, `null` s'il les ecarte.
+            $moyenneApres = $calc->studentMatiereAverageOrNull(ESBTPNote::enChargeUtilePourLeCalcul($notes))
+                ?? $calc->moyenneSansNoteComptable();
 
             // 3. Récupérer la moyenne actuelle (avant) pour audit
             $resultatExistant = ESBTPResultat::query()
@@ -120,12 +125,57 @@ class RecomputeStudentResultatJob implements ShouldQueue
                 ? (float) $resultatExistant->moyenne
                 : null;
 
-            // 4. Si aucune note valide ET aucun résultat existant : no-op
-            if ($notes->isEmpty() && ! $resultatExistant) {
-                Log::info('RecomputeStudentResultatJob: no notes & no existing resultat, skipping', [
+            // 4. Plus AUCUNE note sur la coordonnee : on n'ecrit rien. C'est ici
+            //    qu'arrive la suppression de la DERNIERE note, par l'observateur,
+            //    qui ne traverse pas le garde de `PerimetreDeRecalcul`. Il n'y a
+            //    plus rien a moyenner : ecrire 0/20 inventerait une note que le
+            //    bulletin imposerait par la preseance de la ligne enregistree.
+            //    La ligne reste ; sans aucune note, le pre-controle de la
+            //    generation des bulletins la liste a la suppression.
+            //
+            //    Il reste des notes, mais toutes absentes : le recalcul se fait,
+            //    et la moyenne tombe a 0 — par defaut. C'est la decision ecrite de
+            //    `PerimetreDeRecalcul::recalculerUnCouple()` : le geste de
+            //    l'enseignant fixe la moyenne. Ce garde-ci ne la contredit pas.
+            //    Un etablissement qui ecarte les absences seules le dit par
+            //    reglage : voir l'etape 4 bis.
+            if ($notes->isEmpty()) {
+                $contexte = [
                     'etudiant_id' => $this->etudiantId,
+                    'classe_id' => $this->classeId,
                     'matiere_id' => $this->matiereId,
                     'periode' => $periode,
+                    'source' => $this->source,
+                ];
+
+                $resultatExistant
+                    ? Log::warning('RecomputeStudentResultatJob: plus aucune note, moyenne enregistree laissee en place', $contexte + ['moyenne_conservee' => $moyenneAvant])
+                    : Log::info('RecomputeStudentResultatJob: aucune note, aucune ligne, rien ecrit', $contexte);
+
+                return;
+            }
+
+            // 4 bis. Absences seulement, et l'etablissement les ecarte : la
+            //    matiere n'a PAS de moyenne. Une ligne restee en place l'emporterait
+            //    sur les notes (preseance de la ligne enregistree) avec une valeur
+            //    que plus rien ne justifie — un 12 d'avant l'absence, par exemple.
+            //    Elle est retiree en douceur (`SoftDeletes`, auditee par OwenIt),
+            //    jamais laissee ni remise a 0.
+            if ($moyenneApres === null) {
+                if ($resultatExistant) {
+                    DB::transaction(function () use ($resultatExistant, $periode) {
+                        $resultatExistant->delete();
+                        $this->touchBulletinIfExists($periode);
+                    });
+                }
+
+                Log::warning('RecomputeStudentResultatJob: absences seulement, ecartees par reglage — aucune moyenne', [
+                    'etudiant_id' => $this->etudiantId,
+                    'classe_id' => $this->classeId,
+                    'matiere_id' => $this->matiereId,
+                    'periode' => $periode,
+                    'moyenne_retiree' => $moyenneAvant,
+                    'source' => $this->source,
                 ]);
 
                 return;

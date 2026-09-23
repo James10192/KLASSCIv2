@@ -40,29 +40,121 @@ final class MoyennesLaissees
      */
     public static function pourLEcran(array $recalcul, ESBTPEvaluation $evaluation, array $avant): array
     {
-        $laissees = $recalcul['orphelins'];
+        return [
+            'total' => count($recalcul['orphelins']),
+            // Un recalcul en echec laisse la moyenne d'avant en place. Le
+            // journal le dit ; l'ecran annoncait pourtant « mise a jour avec
+            // succes ». Qui a fait le geste doit le savoir.
+            'echecs' => (int) $recalcul['echecs'],
+            'ce_qui_a_bouge' => self::ceQuiABouge($evaluation, $avant),
+        ] + self::aReprendre($recalcul['orphelins']);
+    }
+
+    /**
+     * Les liens des remèdes, prêts à suivre, pour un écran qui ne rend pas la
+     * fiche de l'évaluation : la liste des évaluations les affiche sous la
+     * phrase d'{@see enUnePhrase()}. Mêmes cibles et mêmes droits que la fiche :
+     * un lien n'est rendu qu'à qui peut ouvrir l'écran visé.
+     *
+     * @param  array{orphelins:array<int, array<string,mixed>>}  $recalcul
+     * @return array<int, array{libelle:string, url:string}>
+     */
+    public static function liens(array $recalcul, ?User $utilisateur): array
+    {
+        if ($recalcul['orphelins'] === []) {
+            return [];
+        }
+
+        $droits = self::droits($utilisateur);
+        $aReprendre = self::aReprendre($recalcul['orphelins']);
+        $libelle = fn (array $e, string $prefixe = '') => ['libelle' => $prefixe.$e['libelle'], 'url' => $e['url']];
+
+        return array_merge(
+            $droits['verifier'] ? array_map(fn (array $n) => $libelle($n, 'Vérifier '), $aReprendre['nettoyages']) : [],
+            $droits['reprendre'] ? array_map($libelle, $aReprendre['eleves']) : [],
+        );
+    }
+
+    /**
+     * Les deux remèdes, selon ce qui reste : plus aucune note (le pré-contrôle
+     * des bulletins, par classe et période) ou des absences seulement (« Modifier
+     * les moyennes », par élève). Chacun porte son `url` : la fiche de
+     * l'évaluation et la liste lisent le même lien, construit ici seulement.
+     *
+     * @param  array<int, array<string,mixed>>  $laissees
+     * @return array{nettoyages:array<int,array<string,mixed>>, eleves:array<int,array<string,mixed>>}
+     */
+    private static function aReprendre(array $laissees): array
+    {
         $classes = ESBTPClasse::whereIn('id', array_column($laissees, 'classe_id'))->pluck('name', 'id');
 
         $sansNote = array_filter($laissees, fn (array $l) => $l['reste'] === 'aucune_note');
         $absences = array_filter($laissees, fn (array $l) => $l['reste'] !== 'aucune_note');
 
         return [
-            'total' => count($laissees),
-            // Un recalcul en echec laisse la moyenne d'avant en place. Le
-            // journal le dit ; l'ecran annoncait pourtant « mise a jour avec
-            // succes ». Qui a fait le geste doit le savoir.
-            'echecs' => (int) $recalcul['echecs'],
-            'ce_qui_a_bouge' => self::ceQuiABouge($evaluation, $avant),
             'nettoyages' => collect($sansNote)
                 ->map(fn (array $l) => self::coordonnee($l))
                 ->unique(fn (array $c) => implode('|', $c))
                 ->map(fn (array $c) => $c + [
                     'libelle' => ($classes[$c['classe_id']] ?? '#'.$c['classe_id']).', '.self::libellePeriode($c['periode']),
+                    'url' => route('esbtp.bulletins.select', $c),
                 ])
                 ->values()
                 ->all(),
             'eleves' => self::elevesAReprendre($absences, $classes->all()),
         ];
+    }
+
+    /**
+     * La même information, en une phrase, pour les écrans qui ne sont pas la
+     * fiche de l'évaluation : la liste des évaluations (réponse JSON d'une
+     * annulation) et l'emploi du temps (modification d'une séance de devoir).
+     * La phrase ne porte pas de lien : le bandeau global de l'emploi du temps
+     * échappe tout. La liste des évaluations ajoute ceux de {@see liens()}.
+     *
+     * @param  array{orphelins:array<int, array<string,mixed>>, echecs:int}  $recalcul
+     * @param  string  $pourquoi  ce qui a vidé ces moyennes, en fin de proposition :
+     *                            « ne reposaient que sur cette évaluation »
+     */
+    public static function enUnePhrase(array $recalcul, string $pourquoi): ?string
+    {
+        $phrases = [];
+
+        if ($recalcul['orphelins'] !== []) {
+            $eleves = count(array_unique(array_column($recalcul['orphelins'], 'etudiant_id')));
+            $phrases[] = count($recalcul['orphelins']).' moyenne(s) enregistrée(s) '.$pourquoi.' ('.$eleves.' élève(s)) : '
+                .'ni recalculées ni supprimées, vérifiez-les dans les résultats avant de régénérer les bulletins.';
+        }
+
+        if ($recalcul['echecs'] > 0) {
+            $phrases[] = $recalcul['echecs'].' recalcul(s) en échec : ces moyennes gardent leur valeur d\'avant.';
+        }
+
+        return $phrases === [] ? null : implode(' ', $phrases);
+    }
+
+    /**
+     * La phrase d'{@see enUnePhrase()} après une annulation ou une
+     * réactivation : ce qui a laissé la moyenne dépend du sens du geste.
+     *
+     * @param  array{orphelins:array<int, array<string,mixed>>, echecs:int}  $recalcul
+     */
+    public static function apresChangementDeStatut(array $recalcul, ESBTPEvaluation $evaluation): ?string
+    {
+        return self::enUnePhrase($recalcul, $evaluation->status === ESBTPEvaluation::STATUS_CANCELLED
+            ? 'ne reposaient que sur cette évaluation, désormais annulée'
+            : 'n\'ont, même avec cette évaluation réactivée, que des absences à moyenner');
+    }
+
+    /**
+     * La phrase d'{@see enUnePhrase()} après la suppression d'une évaluation
+     * notée.
+     *
+     * @param  array{orphelins:array<int, array<string,mixed>>, echecs:int}  $recalcul
+     */
+    public static function apresSuppression(array $recalcul): ?string
+    {
+        return self::enUnePhrase($recalcul, 'ne reposaient que sur l\'évaluation supprimée');
     }
 
     /**
@@ -86,6 +178,7 @@ final class MoyennesLaissees
             'libelle' => trim(($etudiants[$l['etudiant_id']]->nom ?? '').' '.($etudiants[$l['etudiant_id']]->prenoms ?? ''))
                 .' — '.($matieres[$l['matiere_id']] ?? '#'.$l['matiere_id'])
                 .' ('.($classes[$l['classe_id']] ?? '#'.$l['classe_id']).', '.self::libellePeriode($l['periode']).')',
+            'url' => route('esbtp.bulletins.moyennes-preview', ['etudiant_id' => (int) $l['etudiant_id']] + self::coordonnee($l)),
         ], $absences));
     }
 

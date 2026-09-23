@@ -2,110 +2,229 @@
 
 namespace App\Console\Commands;
 
-use Illuminate\Console\Command;
-use App\Models\ESBTPEvaluation;
-use App\Models\ESBTPClasse;
+use App\Domain\Notes\MoyennesLaissees;
+use App\Domain\Notes\RecalculApresDeplacement;
 use App\Models\ESBTPAnneeUniversitaire;
+use App\Models\ESBTPEvaluation;
+use App\Models\ESBTPInscription;
+use Illuminate\Console\Command;
+use Illuminate\Support\Facades\DB;
 
+/**
+ * Donne une année universitaire aux évaluations qui n'en ont pas.
+ *
+ * D'OÙ VIENT L'ANNÉE. Pas de `esbtp_classes.annee_universitaire_id` : une
+ * classe n'appartient à aucune année (`classes-universelles-pas-annee.md`),
+ * cette colonne est un reliquat. Dans l'ordre :
+ *  1. les INSCRIPTIONS des élèves notés sur l'évaluation, dans sa classe —
+ *     l'année que TOUS partagent. Un redoublant inscrit deux ans dans la même
+ *     classe ne rend donc pas la réponse ambiguë, ses camarades la tranchent ;
+ *  2. la DATE de l'évaluation, si elle tombe dans une seule année ;
+ *  3. `--annee=`, si l'opérateur l'a donnée.
+ * Sinon l'évaluation est laissée sans année et NOMMÉE. L'ancienne version
+ * posait l'année courante : une supposition qui faisait entrer des notes d'une
+ * autre année dans les moyennes de celle-ci, sans que personne le sache.
+ *
+ * LES MOYENNES. Tant qu'une évaluation n'a pas d'année, ses notes n'entrent
+ * dans aucune moyenne ENREGISTRÉE (`esbtp_resultats`) — la moyenne annuelle
+ * de secours de `BulletinService::calculateStudentAverageForPeriode()` ne
+ * filtre pas l'année, elle. Lui en donner une les y fait entrer : la ligne
+ * d'`esbtp_resultats` de la coordonnée rejointe est recalculée, par le même
+ * garde contre le zéro que tout déplacement, une fois pour tout le lot
+ * ({@see RecalculApresDeplacement::pourPlusieurs()}) : plusieurs évaluations
+ * d'une même coordonnée ne la recalculent qu'une fois, et ne nomment qu'une
+ * fois la même moyenne laissée. La coordonnée d'avant, sans année, est
+ * incomplète et sautée : il n'y a donc pas de moyenne vidée.
+ */
 class CheckEvaluationsAnnees extends Command
 {
-    /**
-     * The name and signature of the console command.
-     *
-     * @var string
-     */
-    protected $signature = 'esbtp:check-evaluations-annees {--fix : Fix evaluations without academic years}';
+    protected $signature = 'esbtp:check-evaluations-annees
+        {--fix : Attribuer les années sans demander confirmation}
+        {--annee= : Id de l\'année à poser quand ni les inscriptions ni la date ne tranchent}';
 
-    /**
-     * The console command description.
-     *
-     * @var string
-     */
-    protected $description = 'Check and update evaluations without academic years';
+    protected $description = 'Donne une année universitaire aux évaluations qui n\'en ont pas, et recalcule les moyennes qu\'elles rejoignent';
 
-    /**
-     * Create a new command instance.
-     *
-     * @return void
-     */
-    public function __construct()
+    public function handle(): int
     {
-        parent::__construct();
-    }
+        $evaluations = ESBTPEvaluation::whereNull('annee_universitaire_id')->get();
+        $this->info("{$evaluations->count()} évaluation(s) sans année universitaire.");
 
-    /**
-     * Execute the console command.
-     */
-    public function handle()
-    {
-        $this->info('Checking evaluations without academic years...');
-
-        // Get all evaluations without academic years
-        $evaluationsSansAnnee = ESBTPEvaluation::whereNull('annee_universitaire_id')->get();
-        $count = $evaluationsSansAnnee->count();
-
-        $this->info("Found {$count} evaluations without academic years.");
-
-        if ($count === 0) {
+        if ($evaluations->isEmpty()) {
             return Command::SUCCESS;
         }
 
-        $shouldFix = $this->option('fix');
-        if (!$shouldFix && !$this->confirm('Do you want to update these evaluations with appropriate academic years?')) {
-            return Command::SUCCESS;
-        }
+        $parDefaut = $this->option('annee');
+        if ($parDefaut !== null && ! ESBTPAnneeUniversitaire::whereKey($parDefaut)->exists()) {
+            $this->error("Année universitaire #{$parDefaut} introuvable.");
 
-        // Get current academic year
-        $anneeActuelle = ESBTPAnneeUniversitaire::where('is_current', true)->first();
-        if (!$anneeActuelle) {
-            $this->error('No current academic year defined. Cannot proceed.');
             return Command::FAILURE;
         }
 
-        $updatedFromClasse = 0;
-        $updatedDefault = 0;
-        $failed = 0;
+        if (! $this->option('fix') && ! $this->confirm('Attribuer une année à ces évaluations ?')) {
+            return Command::SUCCESS;
+        }
 
-        $bar = $this->output->createProgressBar($count);
-        $bar->start();
+        $attribution = $this->attribuerLesAnnees($evaluations, $parDefaut !== null ? (int) $parDefaut : null);
 
-        foreach ($evaluationsSansAnnee as $eval) {
-            try {
-                if ($eval->classe_id) {
-                    $classe = ESBTPClasse::find($eval->classe_id);
-                    if ($classe && $classe->annee_universitaire_id) {
-                        $eval->annee_universitaire_id = $classe->annee_universitaire_id;
-                        $eval->save();
-                        $updatedFromClasse++;
-                    } else {
-                        $eval->annee_universitaire_id = $anneeActuelle->id;
-                        $eval->save();
-                        $updatedDefault++;
-                    }
-                } else {
-                    $eval->annee_universitaire_id = $anneeActuelle->id;
-                    $eval->save();
-                    $updatedDefault++;
-                }
-            } catch (\Exception $e) {
-                $this->error("Failed to update evaluation ID {$eval->id}: {$e->getMessage()}");
-                $failed++;
+        // Les années sont DÉJÀ enregistrées : un recalcul interrompu ne les
+        // défait pas. Il se dit à part des échecs d'écriture, avec les
+        // commandes à relancer — relancer celle-ci ne retrouverait plus ces
+        // évaluations, qui ont désormais une année. Le compte rendu suit
+        // quand même.
+        try {
+            $bilan = RecalculApresDeplacement::pourPlusieurs($attribution['datees']);
+        } catch (\Throwable $e) {
+            $bilan = null;
+            $this->error("Recalcul des moyennes interrompu, les années restent posées : {$e->getMessage()}");
+            foreach ($this->perimetresARelancer($attribution['datees']) as $commande) {
+                $this->line('  '.$commande);
             }
-
-            $bar->advance();
         }
 
-        $bar->finish();
-        $this->newLine(2);
+        $this->rendreCompte($attribution, $bilan);
 
-        // Summary
-        $this->info("Updated {$updatedFromClasse} evaluations using class academic year");
-        $this->info("Updated {$updatedDefault} evaluations using current academic year");
+        $echoue = $bilan === null || $bilan['echecs'] > 0 || $attribution['echecs'] > 0;
 
-        if ($failed > 0) {
-            $this->warn("Failed to update {$failed} evaluations");
+        return $echoue ? Command::FAILURE : Command::SUCCESS;
+    }
+
+    /**
+     * Une commande `notes:recompute` par couple (classe, année) touché.
+     *
+     * @param  array<int, array{evaluation: ESBTPEvaluation}>  $datees
+     * @return array<int, string>
+     */
+    private function perimetresARelancer(array $datees): array
+    {
+        return collect($datees)
+            ->map(fn (array $d) => 'php artisan notes:recompute --classe='.$d['evaluation']->classe_id
+                .' --annee='.$d['evaluation']->annee_universitaire_id)
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Pose l'année de chaque évaluation qui en trouve une. Une évaluation en
+     * échec d'écriture reste sans année et est comptée.
+     *
+     * @param  iterable<ESBTPEvaluation>  $evaluations
+     * @return array{par_source: array<string,int>, non_resolues: array<int,int>, echecs: int, datees: array<int, array{evaluation: ESBTPEvaluation, avant: array<string,mixed>}>}
+     */
+    private function attribuerLesAnnees(iterable $evaluations, ?int $parDefaut): array
+    {
+        $resultat = [
+            'par_source' => ['inscriptions' => 0, 'date' => 0, 'option --annee' => 0],
+            'non_resolues' => [],
+            'echecs' => 0,
+            'datees' => [],
+        ];
+
+        foreach ($evaluations as $evaluation) {
+            try {
+                [$anneeId, $source] = $this->anneeDe($evaluation, $parDefaut);
+
+                if ($anneeId === null) {
+                    $resultat['non_resolues'][] = $evaluation->id;
+
+                    continue;
+                }
+
+                $avant = [
+                    'classe_id' => $evaluation->classe_id,
+                    'matiere_id' => $evaluation->matiere_id,
+                    'periode' => $evaluation->periode,
+                    'annee_universitaire_id' => null,
+                ];
+                $evaluation->annee_universitaire_id = $anneeId;
+                $evaluation->save();
+                $resultat['par_source'][$source]++;
+                $resultat['datees'][] = ['evaluation' => $evaluation, 'avant' => $avant];
+            } catch (\Exception $e) {
+                $this->error("Évaluation #{$evaluation->id} : {$e->getMessage()}");
+                $resultat['echecs']++;
+            }
         }
 
-        return Command::SUCCESS;
+        return $resultat;
+    }
+
+    /**
+     * @param  array{par_source: array<string,int>, non_resolues: array<int,int>, echecs: int}  $attribution
+     * @param  array{recalculs_tentes:int, orphelins:array<int,array<string,mixed>>, echecs:int}|null  $bilan  null : recalcul interrompu
+     */
+    private function rendreCompte(array $attribution, ?array $bilan): void
+    {
+        foreach ($attribution['par_source'] as $source => $nombre) {
+            $this->info("{$nombre} année(s) tirée(s) de : {$source}");
+        }
+
+        if ($bilan !== null) {
+            $this->info("{$bilan['recalculs_tentes']} recalcul(s) de moyenne lancé(s).");
+
+            $avertissement = MoyennesLaissees::enUnePhrase($bilan, 'n\'ont, même avec ces notes, que des absences à moyenner');
+            if ($avertissement !== null) {
+                $this->warn($avertissement);
+                foreach ($bilan['orphelins'] as $o) {
+                    $this->line("  élève #{$o['etudiant_id']}, classe #{$o['classe_id']}, matière #{$o['matiere_id']}, {$o['periode']} : {$o['moyenne']}");
+                }
+            }
+        }
+
+        if ($attribution['non_resolues'] !== []) {
+            $this->warn(count($attribution['non_resolues']).' évaluation(s) laissée(s) sans année — ni les inscriptions ni la date ne tranchent : #'
+                .implode(', #', $attribution['non_resolues']).'. Relancez avec --annee=ID pour les attribuer.');
+        }
+        if ($attribution['echecs'] > 0) {
+            $this->warn("{$attribution['echecs']} évaluation(s) en échec, laissée(s) sans année.");
+        }
+    }
+
+    /**
+     * @return array{0:?int, 1:?string} [année, source]
+     */
+    private function anneeDe(ESBTPEvaluation $evaluation, ?int $parDefaut): array
+    {
+        if ($evaluation->classe_id) {
+            // Les mêmes notes que celles que le recalcul lira : ni effacées ni archivées.
+            $eleves = DB::table('esbtp_notes')
+                ->where('evaluation_id', $evaluation->id)
+                ->whereNull('deleted_at')
+                ->whereNull('archived_at')
+                ->distinct()
+                ->count('etudiant_id');
+
+            if ($eleves > 0) {
+                $communes = DB::table('esbtp_notes as n')
+                    ->join('esbtp_inscriptions as i', 'i.etudiant_id', '=', 'n.etudiant_id')
+                    ->where('n.evaluation_id', $evaluation->id)
+                    ->whereNull('n.deleted_at')
+                    ->whereNull('n.archived_at')
+                    ->where('i.classe_id', $evaluation->classe_id)
+                    ->whereNull('i.deleted_at')
+                    // Une inscription annulée ne dit pas l'année.
+                    ->where(fn ($q) => $q->whereNull('i.status')->orWhereNotIn('i.status', ESBTPInscription::STATUTS_ANNULES))
+                    ->groupBy('i.annee_universitaire_id')
+                    ->havingRaw('COUNT(DISTINCT n.etudiant_id) = ?', [$eleves])
+                    ->pluck('i.annee_universitaire_id');
+
+                if ($communes->count() === 1) {
+                    return [(int) $communes->first(), 'inscriptions'];
+                }
+            }
+        }
+
+        if ($evaluation->date_evaluation) {
+            $jour = $evaluation->date_evaluation->toDateString();
+            $annees = ESBTPAnneeUniversitaire::whereDate('start_date', '<=', $jour)
+                ->whereDate('end_date', '>=', $jour)
+                ->pluck('id');
+
+            if ($annees->count() === 1) {
+                return [(int) $annees->first(), 'date'];
+            }
+        }
+
+        return $parDefaut !== null ? [$parDefaut, 'option --annee'] : [null, null];
     }
 }

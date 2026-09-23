@@ -58,7 +58,7 @@
     <!-- Custom CSS -->
     <link href="{{ asset('css/nextadmin.css') }}" rel="stylesheet">
     <link href="{{ asset('css/navbar-enhancements.css') }}" rel="stylesheet">
-    <link href="{{ asset('css/sidebar-fixes.css') }}" rel="stylesheet">
+    <link href="{{ asset('css/sidebar-fixes.css') }}?v={{ @filemtime(public_path('css/sidebar-fixes.css')) ?: '1' }}" rel="stylesheet">
     <!-- Dashboard Moderne CSS - Design System ACASI 2025 -->
     <link href="{{ asset('css/dashboard-moderne.css') }}" rel="stylesheet">
     <!-- Modal Z-Index Fix - Doit être chargé après les autres CSS -->
@@ -1745,123 +1745,7 @@
                     @endif
                     @endcan
 
-                    <!-- Students Section -->
-                    @can('module.etudiants.access')
-                    @if(!auth()->user()->can('module.caisse.access') || auth()->user()->canAny(['module.comptabilite.access', 'identity.school_manager', 'identity.direct_studies', 'identity.registrar', 'identity.registrar_clerk', 'identity.enrollment_officer', 'identity.communicate']) || auth()->user()->hasRole(['superAdmin', 'admin', 'serviceTechnique']))
-                    {{-- `inscriptions.candidatures.view` fait partie de la liste : sans elle,
-                         l'agent d'un role taille sur mesure — candidatures seules, ce que le
-                         produit encourage — ne voyait pas la categorie qui contient sa seule
-                         entree, et arrivait sur la corbeille sans que rien ne l'y situe. --}}
-                    @if(auth()->user()->canAny(['students.view', 'inscriptions.view', 'inscriptions.create', 'reinscriptions.demandes.view', 'inscriptions.candidatures.view', 'inscriptions.rdv.view']))
-                        <div class="menu-category">Étudiants</div>
-
-                        <!-- Student Management -->
-                        <div class="menu-accordion">
-                            <button class="menu-accordion-btn {{ Request::routeIs('esbtp.etudiants.*') || Request::routeIs('esbtp.inscriptions.*') || Request::routeIs('esbtp.reinscription.*') || Request::routeIs('esbtp.reinscription-demandes.*') || Request::routeIs('esbtp.candidatures.*') || Request::routeIs('esbtp.pieces-dossier.*') || Request::routeIs('esbtp.rendez-vous.*') ? 'active' : '' }}">
-                                <div class="menu-icon"><i class="fas fa-user-graduate"></i></div>
-                                <div class="menu-text">Étudiants</div>
-                                <div class="menu-arrow"><i class="fas fa-chevron-down"></i></div>
-                            </button>
-                            <div class="menu-accordion-content {{ Request::routeIs('esbtp.etudiants.*') || Request::routeIs('esbtp.inscriptions.*') || Request::routeIs('esbtp.reinscription.*') || Request::routeIs('esbtp.reinscription-demandes.*') || Request::routeIs('esbtp.candidatures.*') || Request::routeIs('esbtp.pieces-dossier.*') || Request::routeIs('esbtp.rendez-vous.*') ? 'show' : '' }}">
-                                @can('students.view')
-                                <a href="{{ route('esbtp.etudiants.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.etudiants.*') ? 'active' : '' }}">
-                                    <div class="menu-icon"><i class="fas fa-list"></i></div>
-                                    <div class="menu-text">Liste des Étudiants</div>
-                                </a>
-                                @endcan
-                                @can('inscriptions.view')
-                                <a href="{{ route('esbtp.inscriptions.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.inscriptions.index') ? 'active' : '' }}">
-                                    <div class="menu-icon"><i class="fas fa-clipboard-list"></i></div>
-                                    <div class="menu-text">Inscriptions</div>
-                                </a>
-                                @endcan
-                                @can('inscriptions.rdv.view')
-                                <a href="{{ route('esbtp.rendez-vous.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.rendez-vous.*') ? 'active' : '' }}">
-                                    <div class="menu-icon"><i class="fas fa-calendar-check"></i></div>
-                                    <div class="menu-text">Rendez-vous d'inscription</div>
-                                </a>
-                                @endcan
-                                @can('inscriptions.create')
-                                <a href="{{ route('esbtp.inscriptions.create') }}" class="menu-sublink {{ Request::routeIs('esbtp.inscriptions.create') ? 'active' : '' }}">
-                                    <div class="menu-icon"><i class="fas fa-user-plus"></i></div>
-                                    <div class="menu-text">Nouvelle Inscription</div>
-                                </a>
-                                @endcan
-                                @can('inscriptions.view')
-                                <a href="{{ route('esbtp.reinscription.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.reinscription.*') ? 'active' : '' }}">
-                                    <div class="menu-icon"><i class="fas fa-redo"></i></div>
-                                    <div class="menu-text">Réinscriptions</div>
-                                </a>
-                                <a href="{{ route('esbtp.inscriptions.sous-reserve') }}" class="menu-sublink {{ Request::routeIs('esbtp.inscriptions.sous-reserve') ? 'active' : '' }}">
-                                    <div class="menu-icon"><i class="fas fa-clipboard-check"></i></div>
-                                    <div class="menu-text">Sous réserve</div>
-                                </a>
-                                @endcan
-                                {{-- Voisin de « Sous réserve » sans s'y confondre : une réserve porte
-                                     sur un document pas encore délivré, une pièce à fournir sur un
-                                     document qui existe et que l'école attend. --}}
-                                @can('pieces_dossier.view')
-                                <a href="{{ route('esbtp.pieces-dossier.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.pieces-dossier.index') ? 'active' : '' }}">
-                                    <div class="menu-icon"><i class="fas fa-list-check"></i></div>
-                                    <div class="menu-text">Pièces à fournir</div>
-                                </a>
-                                {{-- Le catalogue dit ce que l'ecole reclame ; le suivi dit qui
-                                     ne l'a pas encore rendu. Deux ecrans, parce que ce sont deux
-                                     moments : configurer une fois, rappeler tous les jours. --}}
-                                <a href="{{ route('esbtp.pieces-dossier.suivi') }}" class="menu-sublink {{ Request::routeIs('esbtp.pieces-dossier.suivi') ? 'active' : '' }}">
-                                    <div class="menu-icon"><i class="fas fa-clipboard-check"></i></div>
-                                    <div class="menu-text">Suivi des dossiers</div>
-                                </a>
-                                @endcan
-                                {{-- Hors du bloc `inscriptions.view`, et `reinscriptions.demandes.view`
-                                     ouvre aussi la section Etudiants plus haut, pour qu'un role
-                                     d'accueil ne portant que cette permission voie le lien.
-                                     Deux conditions de section subsistent, plus larges que la route :
-                                     `module.etudiants.access`, et la garde caisse juste au-dessus. Un
-                                     role porteur de `module.caisse.access` sans identite scolarite
-                                     atteint donc la page sans voir l'entree de menu. --}}
-                                @can('reinscriptions.demandes.view')
-                                <a href="{{ route('esbtp.reinscription-demandes.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.reinscription-demandes.*') ? 'active' : '' }}">
-                                    <div class="menu-icon"><i class="fas fa-inbox"></i></div>
-                                    <div class="menu-text">
-                                        Demandes en ligne
-                                        @if(($reinscriptionDemandesEnAttente ?? 0) > 0)
-                                            <span class="badge bg-warning text-dark" style="margin-left:.35rem;">{{ $reinscriptionDemandesEnAttente }}</span>
-                                        @endif
-                                    </div>
-                                </a>
-                                @endcan
-                                {{-- Candidatures des NOUVEAUX etudiants. Entree distincte des demandes
-                                     de reinscription : ce ne sont pas les memes dossiers, et la
-                                     scolarite ne les traite pas au meme moment de la rentree. --}}
-                                @can('inscriptions.candidatures.view')
-                                <a href="{{ route('esbtp.candidatures.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.candidatures.*') ? 'active' : '' }}">
-                                    <div class="menu-icon"><i class="fas fa-address-card"></i></div>
-                                    <div class="menu-text">
-                                        Candidatures en ligne
-                                        @if(($candidaturesEnAttente ?? 0) > 0)
-                                            <span class="badge bg-warning text-dark" style="margin-left:.35rem;">{{ $candidaturesEnAttente }}</span>
-                                        @endif
-                                    </div>
-                                </a>
-                                @endcan
-                                @can('students.accessibility.view')
-                                <a href="{{ route('esbtp.accessibility.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.accessibility.*') ? 'active' : '' }}">
-                                    <div class="menu-icon"><i class="fas fa-universal-access"></i></div>
-                                    <div class="menu-text">Accessibilité</div>
-                                </a>
-                                @endcan
-                                @can('trash.view')
-                                <a href="{{ route('esbtp.trash.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.trash.*') ? 'active' : '' }}">
-                                    <div class="menu-icon"><i class="fas fa-trash-restore"></i></div>
-                                    <div class="menu-text">Corbeille</div>
-                                </a>
-                                @endcan
-                            </div>
-                        </div>
-                    @endif
-                    @endif
-                    @endcan
+                    @include('layouts.partials.sidebar._etudiants')
 
                     <!-- Personnel (non-superAdmin — superAdmin has accordion in Administration) -->
                     @can('personnel.manage')
@@ -2133,11 +2017,17 @@
                                 <div class="menu-text">Personnel</div>
                                 <div class="menu-arrow"><i class="fas fa-chevron-down"></i></div>
                             </button>
-                            <div class="menu-accordion-content {{ Request::routeIs('esbtp.staff.*') || Request::routeIs('esbtp.roles.*') || Request::routeIs('esbtp.personnel.unified.*') ? 'show' : '' }}">
+                            <div class="menu-accordion-content {{ Request::routeIs('esbtp.staff.*') || Request::routeIs('esbtp.roles.*') || Request::routeIs('esbtp.personnel.unified.*') || Request::routeIs('esbtp.acces-temporaires.*') ? 'show' : '' }}">
                                 <a href="{{ route('esbtp.personnel.unified.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.personnel.unified.*') ? 'active' : '' }}">
                                     <span class="menu-dot"></span>
                                     <span>Gestion du personnel</span>
                                 </a>
+                                @can('permissions.temporaires.manage')
+                                <a href="{{ route('esbtp.acces-temporaires.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.acces-temporaires.*') ? 'active' : '' }}">
+                                    <span class="menu-dot"></span>
+                                    <span>Accès temporaires</span>
+                                </a>
+                                @endcan
                             </div>
                         </div>
 
@@ -2912,6 +2802,7 @@
                                             </a>
                                         @endrole
                             </li>
+                            <x-support.entrees-menu variante="bureau" />
                             <li>
                                 {{-- Une securite qu'on ne trouve pas n'est activee par personne. --}}
                                 <a class="dropdown-item" href="{{ route('securite.double-auth.reglages') }}">
@@ -3432,6 +3323,9 @@
         @include('components.chatbot.widget')
     </div>
 
+    {{-- KLASSCI Care : fenetre « Aide / Signaler », ouverte depuis le menu du compte. --}}
+    <x-support.lanceur />
+
     <!-- Debug Helper - Doit être chargé en PREMIER -->
     <script>
         // Variable globale pour activer/désactiver les logs debug
@@ -3481,7 +3375,10 @@
             document.addEventListener('DOMContentLoaded', function() {
                 // Shell mobile : sous 768px, les rappels non bloquants ne s'ouvrent pas seuls
                 // (chaque auto-open ci-dessous est garde par cette valeur).
-                const mAutoModalDeferred = window.matchMedia('(max-width:991.98px)').matches;
+                // Differees aussi quand la page s'ouvre pour signaler un probleme (?signaler=1) :
+                // la fenetre du support ne doit pas se retrouver sous une annonce.
+                const mAutoModalDeferred = window.matchMedia('(max-width:991.98px)').matches
+                    || new URLSearchParams(window.location.search).get('signaler') === '1';
 
                 const anneeModal = document.getElementById('anneeCouranteExpiredModal');
                 if (anneeModal) {
@@ -4645,6 +4542,7 @@
                 @if(Route::has('securite.double-auth.reglages'))
                     <a href="{{ route('securite.double-auth.reglages') }}"><x-m.icon name="lock" />Double authentification<span class="ch"><x-m.icon name="chr" /></span></a>
                 @endif
+                <x-support.entrees-menu variante="mobile" />
                 @if($mobileProfile === 'etudiant')
                     @if(Route::has('esbtp.preferences.index'))
                         <a href="{{ route('esbtp.preferences.index') }}"><x-m.icon name="settings" />Préférences<span class="ch"><x-m.icon name="chr" /></span></a>

@@ -147,6 +147,21 @@ class ESBTPEvaluation extends Model implements Auditable
     }
 
     /**
+     * Le plus petit bareme que cette evaluation peut prendre sans qu'une note
+     * deja saisie le depasse — `null` tant qu'aucune note n'est saisie.
+     *
+     * La saisie refuse une note au-dessus du bareme ; sans ce plancher, baisser
+     * le bareme ensuite contournait l'invariant, et le recalcul enregistrait
+     * une moyenne au-dessus de 20 (18 sur un bareme ramene a 10 : 36).
+     */
+    public function baremeMinimal(): ?float
+    {
+        $max = $this->notes()->where('is_absent', false)->max('note');
+
+        return $max === null ? null : (float) $max;
+    }
+
+    /**
      * Relation avec l'utilisateur qui a créé l'évaluation.
      *
      * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
@@ -279,6 +294,14 @@ class ESBTPEvaluation extends Model implements Auditable
         return $hasNotes;
     }
 
+    /**
+     * La seule règle de suppression d'une évaluation, pour tous les écrans —
+     * la liste, la suppression d'une séance de devoir, et le bouton qui
+     * s'affiche ou non : brouillon, planifiée ou annulée. Une évaluation en
+     * cours ou terminée s'annule d'abord ({@see \App\Domain\Notes\ChangementDeStatut},
+     * qui recalcule), puis se supprime. Aucune permission n'y déroge : une
+     * seconde porte par l'emploi du temps en aurait fait deux règles.
+     */
     public function isDeletable()
     {
         return in_array($this->status, [self::STATUS_DRAFT, self::STATUS_SCHEDULED, self::STATUS_CANCELLED]);

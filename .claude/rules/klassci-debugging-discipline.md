@@ -139,6 +139,32 @@ Les déplaceurs d'évaluation recalculent désormais les deux côtés
 (`App\Domain\Notes\RecalculApresDeplacement`) ; `sync-notes`, lui, réaligne
 toujours sans recalculer.
 
+**Même défaut sans rien déplacer : le barème et le coefficient.** Ils vivent sur
+l'évaluation, pas sur la note — les modifier n'enregistre aucune note, donc
+l'observateur ne tourne pas, et la moyenne calculée sur l'ancienne pondération
+garde la main. Les deux écrans qui les modifient (`update()` et `quickUpdate()`
+de `ESBTPEvaluationController`) passent désormais par
+`RecalculApresDeplacement::apresChangementDePonderation()`. Tout nouvel écran qui
+écrit ces deux colonnes sur une évaluation notée doit faire de même.
+
+**Même défaut, encore : le statut.** Annuler une évaluation (`status = cancelled`)
+la retire du calcul, la réactiver l'y remet — sans qu'aucune note ne soit
+enregistrée. `cancel()`, `restore()` et `updateStatus()` passent désormais par
+`App\Domain\Notes\ChangementDeStatut`, qui pose le statut et la publication puis
+appelle `RecalculApresDeplacement::apresChangementDeStatut()`. Tout nouvel écran
+qui change un statut passe par elle. Attention au piège de
+chemin (#1) : c'est `cancel()` / `restore()` que la liste des évaluations appelle,
+pas `updateStatus()`, qu'aucun écran n'utilise.
+
+**Même défaut, toujours : la suppression.** Une évaluation supprimée l'est en
+douceur ; ses notes restent en base, mais le recalcul ne lit que celles d'une
+évaluation vivante (`ESBTPNote::deLaCoordonnee()` passe par `whereHas`, qui écarte
+les évaluations effacées). Les deux écrans qui suppriment — la liste des
+évaluations et la suppression d'une séance de devoir — passent par
+`App\Domain\Notes\SuppressionDEvaluation`. La suppression en cascade d'un emploi
+du temps, elle, supprime ses séances mais pas leurs devoirs : aucune moyenne ne
+bouge, rien à recalculer.
+
 Pour rafraîchir : `POST /api/cli/notes/recompute` ou `notes:recompute --classe --annee`
 (`docs/api/CLI_RECALCUL_RESULTATS.md`). Pour retirer une moyenne qui n'a plus
 AUCUNE note : le pré-contrôle de la génération des bulletins la liste, avec une

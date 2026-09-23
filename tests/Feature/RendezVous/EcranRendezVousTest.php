@@ -46,6 +46,18 @@ class EcranRendezVousTest extends TestCase
         $this->assertStringContainsString('Prise de rendez-vous fermée', $reponse->json('chaine'));
     }
 
+    public function test_une_tolerance_de_retard_illisible_est_refusee(): void
+    {
+        $this->actingAs($this->gestionnaire)
+            ->postJson(route('esbtp.rendez-vous.reglages'), ['inscriptions_rdv_grace_no_show_minutes' => 'quinze'])
+            ->assertStatus(422)->assertJsonFragment(['message' => 'La tolérance de retard doit être un nombre entier de minutes.']);
+
+        $this->actingAs($this->gestionnaire)
+            ->postJson(route('esbtp.rendez-vous.reglages'), ['inscriptions_rdv_grace_no_show_minutes' => '20'])
+            ->assertOk();
+        $this->assertSame(20, app(\App\Services\RendezVous\RendezVousReglages::class)->graceMinutes());
+    }
+
     public function test_la_page_complete_s_affiche(): void
     {
         $this->actingAs($this->gestionnaire)

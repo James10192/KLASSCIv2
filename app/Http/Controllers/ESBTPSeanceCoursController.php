@@ -2,15 +2,16 @@
 
 namespace App\Http\Controllers;
 
+use App\Domain\EmploiTemps\AlignementDuDevoir;
 use App\Domain\EmploiTemps\ConflitsDUnCreneau;
 use App\Domain\EmploiTemps\DetectionDesConflits;
 use App\Domain\EmploiTemps\JourDeLaSemaine;
+use App\Domain\Notes\SuppressionDEvaluation;
 use App\Enums\TypeSeance;
 use App\Services\LMD\Tpe\TpePlanification;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPEmploiTemps;
-use App\Models\ESBTPEvaluation;
 use App\Models\ESBTPSeanceCours;
 use App\Models\ESBTPTeacher;
 use Carbon\Carbon;
@@ -639,63 +640,13 @@ class ESBTPSeanceCoursController extends Controller
                     ? ($typeSeanceEnumForEval?->isEvaluation() ?? false)
                     : ($request->type === 'homework');
 
+                $periodesDeduites = false;
                 if ($shouldGenerateEvaluation) {
                     $createdEvaluations = [];
                     foreach ($createdSessions as $sessionId) {
-                        $seance = ESBTPSeanceCours::with('matiere')->find($sessionId);
-
-                        // Calculer la durée en minutes
-                        $heureDebut = Carbon::parse($seance->heure_debut);
-                        $heureFin = Carbon::parse($seance->heure_fin);
-                        $dureeMinutes = $heureFin->diffInMinutes($heureDebut);
-
-                        // Déterminer la période selon la date
-                        $periode = 'semestre1'; // Par défaut
-                        $dateSeance = Carbon::parse($seance->date_seance);
-                        if ($dateSeance->month >= 1 && $dateSeance->month <= 6) {
-                            $periode = 'semestre2';
-                        }
-
-                        $evaluationStartAt = $this->combineDateAndTime($seance->date_seance, $seance->heure_debut);
-                        $evaluationEndAt = $this->combineDateAndTime($seance->date_seance, $seance->heure_fin);
-                        if ($evaluationEndAt->lessThanOrEqualTo($evaluationStartAt)) {
-                            $evaluationEndAt = $evaluationEndAt->addDay();
-                        }
-                        $dureeMinutes = $evaluationEndAt->diffInMinutes($evaluationStartAt);
-
-                        $evaluationData = [
-                            'titre' => $seance->homework_description ?: 'Devoir - '.($seance->matiere->name ?? 'Matière'),
-                            'description' => $seance->homework_description,
-                            'matiere_id' => $seance->matiere_id,
-                            'classe_id' => $seance->classe_id,
-                            'type' => 'devoir',
-                            'date_evaluation' => $evaluationStartAt,
-                            'coefficient' => 1.0,
-                            'bareme' => 20.00,
-                            'duree_minutes' => $dureeMinutes,
-                            'periode' => $periode,
-                            'annee_universitaire_id' => $seance->annee_universitaire_id,
-                            'status' => 'draft',
-                            'is_published' => false,
-                            'notes_published' => false,
-                            'created_by' => Auth::id(),
-                            'enseignant_id' => $seance->type === ESBTPSeanceCours::TYPE_HOMEWORK ? null : $seance->teacher_id,
-                        ];
-
-                        $evaluation = ESBTPEvaluation::create($evaluationData);
-                        $createdEvaluations[] = $evaluation->id;
-
-                        if ($seance) {
-                            $seance->homework_evaluation_id = $evaluation->id;
-                            $seance->save();
-                        }
-
-                        \Log::info('Évaluation créée automatiquement', [
-                            'evaluation_id' => $evaluation->id,
-                            'seance_id' => $sessionId,
-                            'date_evaluation' => $evaluationStartAt->toDateTimeString(),
-                            'titre' => $evaluation->titre,
-                        ]);
+                        $devoir = AlignementDuDevoir::creerLeDevoir(ESBTPSeanceCours::with('matiere')->find($sessionId), Auth::id());
+                        $createdEvaluations[] = $devoir['evaluation']->id;
+                        $periodesDeduites = $periodesDeduites || $devoir['deduite_du_mois'];
                     }
 
                     \Log::info('Évaluations automatiques créées pour séances homework', [
@@ -712,6 +663,9 @@ class ESBTPSeanceCoursController extends Controller
                 $successMessage = 'Séance(s) ajoutée(s) avec succès.';
                 if ($request->type === 'homework') {
                     $successMessage .= ' Les évaluations correspondantes ont été créées automatiquement.';
+                }
+                if ($periodesDeduites) {
+                    $successMessage .= ' L\'emploi du temps ne porte pas de semestre : la période des évaluations créées a été déduite du mois, vérifiez-la sur chacune.';
                 }
 
                 if ($expectsJson) {
@@ -1170,16 +1124,29 @@ class ESBTPSeanceCoursController extends Controller
                 throw ValidationException::withMessages(['conflicts' => $conflits]);
             }
 
-            // Update the session
-            $seancesCour->update($validated);
-
-            if ($seancesCour->type === ESBTPSeanceCours::TYPE_HOMEWORK) {
-                $this->syncHomeworkEvaluation($seancesCour);
+            // Changer la matière d'une séance de devoir déplace ses notes, comme
+            // sur l'écran de l'évaluation : la même permission y est exigée.
+            if (AlignementDuDevoir::deplaceUnDevoirNote($seancesCour, $validated) && ! Auth::user()?->can('evaluations.edit_locked')) {
+                throw ValidationException::withMessages(['matiere_id' => 'Impossible de changer la matière : le devoir de cette séance a déjà des notes. Il faut la permission « Modifier une évaluation verrouillée », comme sur l\'écran de l\'évaluation.']);
             }
+
+            // La séance et son devoir s'écrivent ensemble ou pas du tout ; les
+            // moyennes suivent après le commit (voir AlignementDuDevoir).
+            $devoir = app(AlignementDuDevoir::class);
+            $alignement = DB::transaction(function () use ($seancesCour, $validated, $devoir) {
+                $avant = $seancesCour->getOriginal();
+                $seancesCour->update($validated);
+
+                return $seancesCour->type === ESBTPSeanceCours::TYPE_HOMEWORK
+                    ? $devoir->aligner($seancesCour, $avant)
+                    : null;
+            });
+            $avertissement = $devoir->recalculer($alignement);
 
             return redirect()
                 ->route('esbtp.emploi-temps.show', $seancesCour->emploi_temps_id)
-                ->with('success', 'Séance mise à jour avec succès.');
+                ->with('success', 'Séance mise à jour avec succès.')
+                ->with('warning', $avertissement);
         } catch (ValidationException $e) {
             // À relancer AVANT le filet large, qui la convertissait en « une
             // erreur est survenue » : l'utilisateur perdait le détail. Cela vaut
@@ -1195,127 +1162,6 @@ class ESBTPSeanceCoursController extends Controller
         }
     }
 
-    private function syncHomeworkEvaluation(ESBTPSeanceCours $seance): void
-    {
-        try {
-            $seance->loadMissing(['matiere', 'classe', 'homeworkEvaluation']);
-            $evaluation = $seance->homeworkEvaluation;
-
-            if (! $evaluation && $seance->homework_evaluation_id) {
-                $evaluation = ESBTPEvaluation::find($seance->homework_evaluation_id);
-            }
-
-            if (! $evaluation) {
-                $potentialDate = $seance->date_seance
-                    ? Carbon::parse($seance->date_seance)
-                    : now();
-
-                $evaluation = ESBTPEvaluation::where('type', 'devoir')
-                    ->where('classe_id', $seance->classe_id)
-                    ->where('matiere_id', $seance->matiere_id)
-                    ->whereDate('date_evaluation', $potentialDate->toDateString())
-                    ->orderByDesc('created_at')
-                    ->first();
-
-                if ($evaluation) {
-                    $seance->homework_evaluation_id = $evaluation->id;
-                    $seance->save();
-                }
-            }
-
-            if (! $evaluation) {
-                Log::warning('Aucune évaluation associée trouvée pour le devoir', [
-                    'seance_id' => $seance->id,
-                    'classe_id' => $seance->classe_id,
-                    'matiere_id' => $seance->matiere_id,
-                ]);
-
-                return;
-            }
-
-            [$startAt, $endAt] = $this->getHomeworkDateTimes($seance, $evaluation);
-
-            $dureeMinutes = max(1, $endAt->diffInMinutes($startAt));
-            $periode = $this->determineEvaluationPeriod($startAt);
-
-            $evaluation->fill([
-                'titre' => $seance->homework_description ?: 'Devoir - '.($seance->matiere->name ?? 'Matière'),
-                'description' => $seance->homework_description,
-                'matiere_id' => $seance->matiere_id,
-                'classe_id' => $seance->classe_id,
-                'type' => 'devoir',
-                'date_evaluation' => $startAt,
-                'coefficient' => $evaluation->coefficient ?? 1.0,
-                'bareme' => $evaluation->bareme ?? 20.0,
-                'duree_minutes' => $dureeMinutes,
-                'periode' => $periode,
-                'annee_universitaire_id' => $seance->annee_universitaire_id,
-                'enseignant_id' => null,
-                'updated_by' => Auth::id(),
-            ]);
-
-            $evaluation->save();
-        } catch (\Exception $e) {
-            Log::error('Erreur lors de la synchronisation de l\'évaluation associée au devoir', [
-                'seance_id' => $seance->id ?? null,
-                'error' => $e->getMessage(),
-                'trace' => config('app.debug') ? $e->getTraceAsString() : null,
-            ]);
-        }
-    }
-
-    private function getHomeworkDateTimes(ESBTPSeanceCours $seance, ESBTPEvaluation $evaluation): array
-    {
-        $baseDate = $seance->date_seance
-            ? ($seance->date_seance instanceof Carbon ? $seance->date_seance->copy() : Carbon::parse($seance->date_seance))
-            : ($evaluation->date_evaluation ? $evaluation->date_evaluation->copy() : now());
-
-        if ($seance->heure_debut) {
-            $startAt = $this->combineDateAndTime($baseDate, $seance->heure_debut);
-        } elseif ($evaluation->date_evaluation) {
-            $startAt = $evaluation->date_evaluation->copy();
-        } else {
-            $startAt = $this->combineDateAndTime($baseDate, '08:00:00');
-        }
-
-        if ($seance->heure_fin) {
-            $endAt = $this->combineDateAndTime($baseDate, $seance->heure_fin);
-        } elseif ($evaluation->date_evaluation && $evaluation->duree_minutes) {
-            $endAt = $evaluation->date_evaluation->copy()->addMinutes($evaluation->duree_minutes);
-        } else {
-            $endAt = $startAt->copy()->addHour();
-        }
-
-        if ($endAt->lessThanOrEqualTo($startAt)) {
-            $endAt = $startAt->copy()->addHour();
-        }
-
-        return [$startAt, $endAt];
-    }
-
-    private function combineDateAndTime($date, $time): Carbon
-    {
-        $dateCarbon = $date instanceof Carbon ? $date->copy() : Carbon::parse($date);
-
-        if (! $time) {
-            return $dateCarbon;
-        }
-
-        if ($time instanceof Carbon) {
-            return $dateCarbon->setTime($time->hour, $time->minute, $time->second);
-        }
-
-        $timeCarbon = Carbon::parse($time);
-
-        return $dateCarbon->setTime($timeCarbon->hour, $timeCarbon->minute, $timeCarbon->second);
-    }
-
-    private function determineEvaluationPeriod(Carbon $date): string
-    {
-        // Conserver la logique originale : Janvier-Juin = semestre 2, sinon semestre 1
-        return ($date->month >= 1 && $date->month <= 6) ? 'semestre2' : 'semestre1';
-    }
-
     /**
      * Supprimer une séance de cours.
      */
@@ -1323,22 +1169,29 @@ class ESBTPSeanceCoursController extends Controller
     {
         try {
             $emploiTempsId = $seancesCour->emploi_temps_id;
-            if ($seancesCour->type === ESBTPSeanceCours::TYPE_HOMEWORK && $seancesCour->homeworkEvaluation) {
-                $seancesCour->homeworkEvaluation->delete();
+            if ($devoir = SuppressionDEvaluation::devoirQuiRetient($seancesCour)) {
+                $refus = SuppressionDEvaluation::refusDeLaSeance($devoir);
+
+                return request()->expectsJson()
+                    ? response()->json(['success' => false, 'message' => $refus], 422)
+                    : back()->with('error', $refus);
             }
-            $seancesCour->delete();
+            $suite = SuppressionDEvaluation::supprimerLaSeance($seancesCour, Auth::user());
 
             if (request()->expectsJson()) {
                 return response()->json([
                     'success' => true,
                     'emploi_temps_id' => $emploiTempsId,
                     'message' => 'Séance supprimée avec succès.',
+                    'warning' => $suite['avertissement'],
+                    'warning_links' => $suite['liens'],
                 ]);
             }
 
             return redirect()
                 ->route('esbtp.emploi-temps.show', $emploiTempsId)
-                ->with('success', 'Séance supprimée avec succès.');
+                ->with('success', 'Séance supprimée avec succès.')
+                ->with('warning', $suite['avertissement']);
         } catch (\Exception $e) {
             Log::error('Error in SeanceCoursController@destroy: '.$e->getMessage());
 

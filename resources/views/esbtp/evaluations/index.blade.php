@@ -117,6 +117,8 @@
             </div>
         @endif
 
+        @include('esbtp.evaluations.partials._avertissements')
+
         {{-- ═══════════════════════ NOTES REÇUES ═══════════════════════ --}}
         {{-- Une évaluation créée sans notes saisies est exactement ce que le
              suivi compte comme manquant : le dire ici évite d'en créer une de
@@ -1379,12 +1381,12 @@ function initializeEvaluations() {
     function showToast(message, type = 'success') {
         if (window.toastr && typeof window.toastr[type] === 'function') {
             window.toastr[type](message);
+        } else if (typeof window.klassciToast === 'function') {
+            const texte = document.createElement('div');
+            texte.textContent = message;
+            window.klassciToast(type, texte.innerHTML);
         } else {
-            if (type === 'error') {
-                console.error('[Evaluations]', message);
-            } else {
-                console.log('[Evaluations]', message);
-            }
+            console[type === 'error' ? 'error' : 'log']('[Evaluations]', message);
         }
     }
 
@@ -1772,6 +1774,7 @@ function initializeEvaluations() {
                 if (data.message) {
                     showToast(data.message, 'success');
                 }
+                if (data.warning) window.evAfficherAvertissement(data.warning, data.warning_links);
                 if (data.deleted || action === 'delete') {
                     selectedIds.delete(Number(evaluationId));
                     if (refreshRow) {

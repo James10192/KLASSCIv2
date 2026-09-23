@@ -162,6 +162,12 @@ return [
             'icon' => 'fa-users-cog',
             'aliases' => ['manage-users', 'manage_users'],
         ],
+        'permissions.temporaires.manage' => [
+            'label' => 'Accorder des accès temporaires (une permission pour une durée limitée)',
+            'description' => 'Ouvre /esbtp/acces-temporaires : donner à une personne une permission précise jusqu\'à une date, puis la retirer. On ne peut accorder que ce qu\'on détient soi-même. Se combine avec « Gérer le personnel », sous lequel l\'écran est rangé.',
+            'group' => 'Administration',
+            'icon' => 'fa-hourglass-half',
+        ],
         'system.manage' => [
             'label' => 'Gérer la configuration système',
             'group' => 'Administration',
@@ -403,6 +409,12 @@ return [
             'label' => 'Configurer les rendez-vous d\'inscription',
             'group' => 'Inscriptions',
             'icon' => 'fa-sliders-h',
+        ],
+        'inscriptions.rdv.accueil' => [
+            'label' => 'Accueillir les familles au guichet (reçue, prévenue, reprogrammer)',
+            'description' => 'Tenir la liste du jour : cocher une famille reçue, noter un appel, et reprogrammer un rendez-vous manqué sur un autre créneau. Les absences se constatent seules à la fin du créneau.',
+            'group' => 'Inscriptions',
+            'icon' => 'fa-clipboard-check',
         ],
         'inscriptions.manage' => [
             'label' => 'Gérer toutes les inscriptions (action globale)',
@@ -2047,6 +2059,12 @@ return [
             'group' => 'Modules',
             'icon' => 'fa-comments',
         ],
+        'support.tickets.view_school' => [
+            'label' => "Suivre toutes les demandes de support de l'établissement",
+            'description' => "Sans elle, chacun ne voit que les demandes qu'il a lui-même signalées.",
+            'group' => 'Support',
+            'icon' => 'fa-life-ring',
+        ],
         'module.technical_support.access' => [
             'label' => 'Module : Support technique',
             'group' => 'Modules',
@@ -2200,7 +2218,7 @@ return [
             'inscriptions.fiche.print', 'inscriptions.in_kind.mark',
             'reinscriptions.demandes.view', 'reinscriptions.demandes.process',
             'inscriptions.candidatures.view', 'inscriptions.candidatures.process',
-            'inscriptions.rdv.view', 'inscriptions.rdv.manage', 'inscriptions.rdv.configure',
+            'inscriptions.rdv.view', 'inscriptions.rdv.accueil', 'inscriptions.rdv.manage', 'inscriptions.rdv.configure',
             'inscriptions.cancel', 'inscriptions.manage', 'inscriptions.specialisation.manage',
             // Sous-lot C+ : corbeille (restore tout, force_delete réservé superAdmin via Gate::before)
             'trash.view', 'students.restore', 'inscriptions.restore', 'paiements.restore',
@@ -2335,8 +2353,13 @@ return [
             'inscriptions.in_kind.mark',
             'reinscriptions.demandes.view', 'reinscriptions.demandes.process',
             'inscriptions.candidatures.view', 'inscriptions.candidatures.process',
-            'inscriptions.rdv.view', 'inscriptions.rdv.manage', 'inscriptions.rdv.configure',
-            'paiements.view', 'frais.view',
+            'inscriptions.rdv.view', 'inscriptions.rdv.accueil', 'inscriptions.rdv.manage', 'inscriptions.rdv.configure',
+            // Pas de paiements.view (septembre 2026) : le coordinateur est un profil
+            // pédagogique, il ne lit pas ce qu'un étudiant a payé ou doit. Une école
+            // qui le veut coche la permission sur le rôle. Retirer la ligne d'ici ne
+            // touche que les nouvelles instances : fix_permissions préserve un rôle
+            // déjà garni.
+            'frais.view',
             // PR1 réconciliation — view + approve (séparation OHADA : approve ≠ comptable qui a ouvert)
             'comptabilite.reconciliation.view', 'comptabilite.reconciliation.approve',
             'cycles.view', 'cycles.edit',
@@ -2466,7 +2489,7 @@ return [
             'inscriptions.fiche.print', 'inscriptions.in_kind.mark',
             'reinscriptions.demandes.view', 'reinscriptions.demandes.process',
             'inscriptions.candidatures.view', 'inscriptions.candidatures.process',
-            'inscriptions.rdv.view', 'inscriptions.rdv.manage', 'inscriptions.rdv.configure',
+            'inscriptions.rdv.view', 'inscriptions.rdv.accueil', 'inscriptions.rdv.manage', 'inscriptions.rdv.configure',
             'inscriptions.cancel', 'inscriptions.manage', 'inscriptions.specialisation.manage',
             'cycles.view',
             'classes.view',
@@ -2529,7 +2552,7 @@ return [
             // conversion cree une inscription et genere des frais, elle
             // appartient a qui detient deja inscriptions.create.
             'reinscriptions.demandes.view',
-            'inscriptions.rdv.view',
+            'inscriptions.rdv.view', 'inscriptions.rdv.accueil',
             'classes.view',
             'filieres.view', 'niveaux.view',
             'matieres.view',
@@ -2572,7 +2595,7 @@ return [
             'inscriptions.fiche.print', 'inscriptions.in_kind.mark',
             'reinscriptions.demandes.view', 'reinscriptions.demandes.process',
             'inscriptions.candidatures.view', 'inscriptions.candidatures.process',
-            'inscriptions.rdv.view', 'inscriptions.rdv.manage',
+            'inscriptions.rdv.view', 'inscriptions.rdv.accueil', 'inscriptions.rdv.manage',
             'classes.view',
             'filieres.view', 'niveaux.view',
             // Lecture seule : au guichet on applique le catalogue, on ne
