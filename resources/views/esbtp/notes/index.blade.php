@@ -4,7 +4,7 @@
 
 @push('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
-<link rel="stylesheet" href="{{ asset('css/notes-management.css') }}">
+<link rel="stylesheet" href="{{ asset('css/notes-management.css') }}?v={{ @filemtime(public_path('css/notes-management.css')) ?: '1' }}">
 <style>
     .note-input.nm-note-refused { border-color: #dc2626 !important; background: rgba(220,38,38,.06) !important; }
 </style>
@@ -234,7 +234,7 @@
                         </select>
                     </div>
                     @can('evaluations.create')
-                    <div style="flex-shrink: 0;">
+                    <div class="nm-modal-create" style="flex-shrink: 0;">
                         <label>&nbsp;</label>
                         <button type="button" class="nm-create-eval-btn" onclick="createEvaluation()" id="createEvaluationBtn">
                             <i class="fas fa-plus"></i>Créer évaluation
