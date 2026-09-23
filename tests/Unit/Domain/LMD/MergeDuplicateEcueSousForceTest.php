@@ -310,6 +310,40 @@ class MergeDuplicateEcueSousForceTest extends TestCase
         $this->assertSame($rapport['moyennes_enregistrees']['repointees'], $apercu['repointed']['moyennes_enregistrees']);
     }
 
+    public function test_deux_moyennes_absorbees_sur_la_meme_coordonnee_ne_comptent_qu_une_fois(): void
+    {
+        // Même coordonnée, écrite « 1 » d'un côté et « semestre1 » de l'autre.
+        DB::table('esbtp_matieres')->insert([
+            'id' => self::SECONDE_ABSORBEE, 'name' => 'RDM', 'code' => 'GCRDM', 'unite_enseignement_id' => 5, 'is_active' => 1,
+        ]);
+        $this->resultat(self::ABSORBEE, 6, '1');
+        $this->resultat(self::SECONDE_ABSORBEE, 9, 'semestre1');
+
+        $absorbees = [self::ABSORBEE, self::SECONDE_ABSORBEE];
+        $apercu = $this->apercu($absorbees);
+        $rapport = app(MergeDuplicateEcue::class)->execute(self::CANONIQUE, $absorbees, ['dry_run' => false, 'force' => true]);
+
+        $this->assertSame(1, $apercu['repointed']['moyennes_enregistrees']);
+        $this->assertSame(1, $rapport['moyennes_enregistrees']['repointees']);
+        $this->assertCount(1, $rapport['moyennes_enregistrees']['conflits']);
+    }
+
+    public function test_sans_forcer_l_apercu_n_annonce_aucune_moyenne_reportee(): void
+    {
+        // Une moyenne sans note ni évaluation : rien ne bloque, la fusion part
+        // sans « Forcer », et elle ne reporte alors aucune moyenne.
+        $this->resultat(self::ABSORBEE, 6);
+
+        $options = ['force' => false];
+        $apercu = app(MergeDuplicateEcue::class)->execute(self::CANONIQUE, [self::ABSORBEE], $options + ['dry_run' => true]);
+        $rapport = app(MergeDuplicateEcue::class)->execute(self::CANONIQUE, [self::ABSORBEE], $options + ['dry_run' => false]);
+
+        $this->assertArrayNotHasKey('blocked', $apercu);
+        $this->assertSame(0, $apercu['repointed']['moyennes_enregistrees']);
+        $this->assertSame($rapport['moyennes_enregistrees']['repointees'], $apercu['repointed']['moyennes_enregistrees']);
+        $this->assertSame(6.0, $this->moyenne(self::ABSORBEE));
+    }
+
     // ── outillage ─────────────────────────────────────────────────────────
 
     private function apercu(array $absorbees): array

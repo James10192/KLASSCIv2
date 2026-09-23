@@ -85,12 +85,17 @@ class MergeDuplicateEcue
             throw new RuntimeException('Une ou plusieurs ECUE à absorber sont introuvables.');
         }
 
-        $impact = $this->computeImpact($canonicalId, $absorbedIds);
-        $impact['blocking'] = $this->blockingDependencies($absorbedIds);
+        $blocking = $this->blockingDependencies($absorbedIds);
+        $bloquee = ($blocking['evaluations'] > 0 || $blocking['notes'] > 0) && ! $force;
+
+        // Les moyennes ne partent que sous `force`. Bloquée, l'aperçu montre ce
+        // que ferait « Forcer » ; sinon, ce que fera la fusion telle quelle.
+        $impact = $this->computeImpact($canonicalId, $absorbedIds, $force || $bloquee);
+        $impact['blocking'] = $blocking;
 
         // ── Garde-fou : évaluations / notes ──
         // L'impact accompagne le refus : c'est sur lui que se décide « Forcer ».
-        if (($impact['blocking']['evaluations'] > 0 || $impact['blocking']['notes'] > 0) && ! $force) {
+        if ($bloquee) {
             return array_merge($impact, [
                 'success' => false,
                 'dry_run' => $dryRun,
@@ -419,7 +424,7 @@ class MergeDuplicateEcue
         ];
     }
 
-    private function computeImpact(int $canonicalId, array $absorbedIds): array
+    private function computeImpact(int $canonicalId, array $absorbedIds, bool $avecMoyennes): array
     {
         return [
             'canonical_id' => $canonicalId,
@@ -429,15 +434,15 @@ class MergeDuplicateEcue
                 'planifications' => DB::table('esbtp_planifications_academiques')->whereIn('matiere_id', $absorbedIds)->count(),
                 'matiere_filiere_links' => DB::table('esbtp_matiere_filiere')->whereIn('matiere_id', $absorbedIds)->count(),
                 'lmd_resultats_ecues' => $this->compterLesReports(
-                    DB::table('esbtp_lmd_resultats_ecues')->whereIn('matiere_id', $absorbedIds)->orderBy('id')->get(['bulletin_id']),
+                    DB::table('esbtp_lmd_resultats_ecues')->whereIn('matiere_id', $absorbedIds)->get(['bulletin_id']),
                     fn ($row) => (string) $row->bulletin_id,
                     fn ($row) => self::ligneLmdDeLaCanonique($canonicalId, $row)->exists(),
                 ),
                 // Reportées seulement avec `force`, comme les notes.
-                'moyennes_enregistrees' => $this->compterLesReports(
+                'moyennes_enregistrees' => ! $avecMoyennes ? 0 : $this->compterLesReports(
                     DB::table('esbtp_resultats')->whereIn('matiere_id', $absorbedIds)->whereNull('deleted_at')->whereNull('archived_at')
-                        ->orderBy('id')->get(['etudiant_id', 'classe_id', 'annee_universitaire_id', 'periode']),
-                    fn ($row) => implode('|', [$row->etudiant_id, $row->classe_id, $row->annee_universitaire_id, ESBTPEvaluation::aliasDePeriode((string) $row->periode)[0]]),
+                        ->get(['etudiant_id', 'classe_id', 'annee_universitaire_id', 'periode']),
+                    fn ($row) => implode('|', [$row->etudiant_id, $row->classe_id, $row->annee_universitaire_id, ESBTPEvaluation::periodeCanonique((string) $row->periode)]),
                     fn ($row) => self::ligneDeLaCanonique($canonicalId, $row)->exists(),
                 ),
             ],
@@ -449,11 +454,12 @@ class MergeDuplicateEcue
      * Ce que la fusion reportera vraiment, et rien de plus : « Forcer » se
      * coche sur ce chiffre.
      *
-     * Une ligne n'est pas reportée quand la canonique a déjà la sienne à cette
-     * coordonnée (le critère même de la fusion), ni quand une autre absorbée
-     * vient d'y être reportée avant elle — la fusion la trouve alors occupée.
+     * Une coordonnée n'est reportée qu'une fois, et seulement si la canonique
+     * n'y a pas déjà sa ligne (le critère même de la fusion) : quand deux
+     * absorbées s'y croisent, la fusion trouve la seconde occupée par la
+     * première. Le compte ne dépend donc pas de l'ordre des lignes.
      *
-     * @param  iterable<object>  $rows  lignes des absorbées, dans l'ordre où la fusion les traite
+     * @param  iterable<object>  $rows  lignes des absorbées
      */
     private function compterLesReports(iterable $rows, callable $coordonnee, callable $occupeeParLaCanonique): int
     {
