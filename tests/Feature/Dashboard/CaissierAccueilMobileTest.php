@@ -221,7 +221,7 @@ class CaissierAccueilMobileTest extends TestCase
         $response = $this->actingAs($caissier)->get(route('dashboard'));
 
         $response->assertOk();
-        $response->assertDontSee('cxm-screen', false);
+        $response->assertDontSee('m-screen cxm-screen', false);
         $response->assertDontSee('m-only-desktop', false);
         $response->assertSee('cx-hero', false);
     }

@@ -268,7 +268,8 @@
             @endif
             @can('paiements.create')
                 <a href="{{ route('esbtp.paiements.create') }}" class="m-btn p">
-                    <x-m.icon name="plus" />Nouvel encaissement
+                    {{-- Deux boutons côte à côte : 170 px chacun, le libellé long passait sur deux lignes. --}}
+                    <x-m.icon name="plus" />{{ $mPeutAnnulerMien ? 'Encaisser' : 'Nouvel encaissement' }}
                 </a>
             @endcan
         </x-m.actionbar>
