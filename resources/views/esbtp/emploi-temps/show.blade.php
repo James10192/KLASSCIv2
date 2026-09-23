@@ -884,28 +884,19 @@
                 </div>
             </div>
         @endif
-        {{-- Le layout affiche déjà tout avertissement : ce bloc n'existe que
-             pour le bouton de suppression forcée, sinon le texte sortait deux fois. --}}
-        @if (session('warning') && session('show_force_delete'))
-            <div class="alert alert-warning alert-dismissible fade show" role="alert">
-                <h5><i class="fas fa-exclamation-triangle me-2"></i>Attention</h5>
-                <p>{{ session('warning') }}</p>
-                @if (session('show_force_delete'))
-                    <hr>
-                    <div class="d-flex justify-content-end">
-                        @if(auth()->user()->can('admin.access') && auth()->user()->can('timetables.delete'))
-                        <form action="{{ route('esbtp.emploi-temps.destroy', ['emploi_temp' => $emploiTemps->id]) }}" method="POST">
-                            @csrf
-                            @method('DELETE')
-                            <input type="hidden" name="force_delete" value="1">
-                            <button type="submit" class="btn btn-danger">
-                                <i class="fas fa-trash me-1"></i>Confirmer la suppression forcée
-                            </button>
-                        </form>
-                        @endif
-                    </div>
-                @endif
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        {{-- Le layout affiche déjà le texte de tout avertissement : ce bloc ne
+             porte que le bouton de suppression forcée, sans répéter le texte. --}}
+        @if (session('show_force_delete') && auth()->user()->can('admin.access') && auth()->user()->can('timetables.delete'))
+            <div class="alert alert-warning d-flex justify-content-between align-items-center flex-wrap gap-2" role="alert">
+                <span><i class="fas fa-exclamation-triangle me-2"></i>Supprimer l'emploi du temps avec ses séances</span>
+                <form action="{{ route('esbtp.emploi-temps.destroy', ['emploi_temp' => $emploiTemps->id]) }}" method="POST">
+                    @csrf
+                    @method('DELETE')
+                    <input type="hidden" name="force_delete" value="1">
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-trash me-1"></i>Confirmer la suppression forcée
+                    </button>
+                </form>
             </div>
         @endif
 

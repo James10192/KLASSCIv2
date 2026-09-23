@@ -6,6 +6,7 @@ use App\Domain\Notes\MoyennesLaissees;
 use App\Domain\Notes\RecalculApresDeplacement;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPEvaluation;
+use App\Models\ESBTPInscription;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
@@ -28,10 +29,12 @@ use Illuminate\Support\Facades\DB;
  * dans aucune moyenne ENREGISTRÉE (`esbtp_resultats`) — la moyenne annuelle
  * de secours de `BulletinService::calculateStudentAverageForPeriode()` ne
  * filtre pas l'année, elle. Lui en donner une les y fait entrer : la ligne
- * d'`esbtp_resultats` de la coordonnée rejointe est recalculée
- * ({@see RecalculApresDeplacement::pour()}), par le même garde contre le zéro
- * que tout déplacement. La coordonnée d'avant, sans année, est incomplète :
- * `pour()` la saute, il n'y a donc pas de moyenne vidée.
+ * d'`esbtp_resultats` de la coordonnée rejointe est recalculée, par le même
+ * garde contre le zéro que tout déplacement, une fois pour tout le lot
+ * ({@see RecalculApresDeplacement::pourPlusieurs()}) : plusieurs évaluations
+ * d'une même coordonnée ne la recalculent qu'une fois, et ne nomment qu'une
+ * fois la même moyenne laissée. La coordonnée d'avant, sans année, est
+ * incomplète et sautée : il n'y a donc pas de moyenne vidée.
  */
 class CheckEvaluationsAnnees extends Command
 {
@@ -64,7 +67,7 @@ class CheckEvaluationsAnnees extends Command
         $parSource = ['inscriptions' => 0, 'date' => 0, 'option --annee' => 0];
         $nonResolues = [];
         $echecs = 0;
-        $bilan = ['recalculs_tentes' => 0, 'orphelins' => [], 'echecs' => 0];
+        $datees = [];
 
         foreach ($evaluations as $evaluation) {
             try {
@@ -85,11 +88,7 @@ class CheckEvaluationsAnnees extends Command
                 $evaluation->annee_universitaire_id = $anneeId;
                 $evaluation->save();
                 $parSource[$source]++;
-
-                $partiel = RecalculApresDeplacement::pour($evaluation, $avant);
-                $bilan['recalculs_tentes'] += $partiel['recalculs_tentes'];
-                $bilan['echecs'] += $partiel['echecs'];
-                array_push($bilan['orphelins'], ...$partiel['orphelins']);
+                $datees[] = ['evaluation' => $evaluation, 'avant' => $avant];
             } catch (\Exception $e) {
                 $this->error("Évaluation #{$evaluation->id} : {$e->getMessage()}");
                 $echecs++;
@@ -98,6 +97,17 @@ class CheckEvaluationsAnnees extends Command
 
         foreach ($parSource as $source => $nombre) {
             $this->info("{$nombre} année(s) tirée(s) de : {$source}");
+        }
+
+        // Les années sont DÉJÀ enregistrées : un recalcul interrompu ne les
+        // défait pas, il se dit à part des échecs d'écriture.
+        try {
+            $bilan = RecalculApresDeplacement::pourPlusieurs($datees);
+        } catch (\Throwable $e) {
+            $this->error("Recalcul des moyennes interrompu, les années restent posées : {$e->getMessage()}");
+            $this->warn('Relancez `notes:recompute` sur les classes concernées.');
+
+            return Command::FAILURE;
         }
         $this->info("{$bilan['recalculs_tentes']} recalcul(s) de moyenne lancé(s).");
 
@@ -141,8 +151,8 @@ class CheckEvaluationsAnnees extends Command
                     ->whereNull('n.archived_at')
                     ->where('i.classe_id', $evaluation->classe_id)
                     ->whereNull('i.deleted_at')
-                    // Une inscription annulée ne dit pas l'année ; le dépôt en connaît trois graphies.
-                    ->where(fn ($q) => $q->whereNull('i.status')->orWhereNotIn('i.status', ['annulée', 'annulee', 'cancelled']))
+                    // Une inscription annulée ne dit pas l'année.
+                    ->where(fn ($q) => $q->whereNull('i.status')->orWhereNotIn('i.status', ESBTPInscription::STATUTS_ANNULES))
                     ->groupBy('i.annee_universitaire_id')
                     ->havingRaw('COUNT(DISTINCT n.etudiant_id) = ?', [$eleves])
                     ->pluck('i.annee_universitaire_id');

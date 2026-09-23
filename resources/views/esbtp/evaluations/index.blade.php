@@ -479,6 +479,8 @@
 .ev-flash--warning { background: rgba(245,158,11,.08); border-color: rgba(245,158,11,.35); color: #92400e; }
 .ev-flash i:first-child { font-size: 1.1rem; flex-shrink: 0; }
 .ev-flash span { flex: 1; }
+.ev-flash-liens { display: flex; flex-wrap: wrap; gap: .35rem .9rem; margin-top: .4rem; }
+.ev-flash-liens a { color: #0453cb; font-weight: 600; text-decoration: underline; }
 .ev-flash-close {
     background: none; border: none; color: inherit; opacity: .6;
     width: 28px; height: 28px; border-radius: 6px; cursor: pointer;
@@ -1383,7 +1385,9 @@ function initializeEvaluations() {
 
     // Un avertissement qui dit « vérifiez avant de régénérer les bulletins »
     // ne peut pas s'effacer tout seul : il reste affiché jusqu'à fermeture.
-    function afficherAvertissement(message) {
+    // Les liens (pré-contrôle des bulletins, « Modifier les moyennes ») ne
+    // sont envoyés qu'à qui peut ouvrir l'écran visé.
+    function afficherAvertissement(message, liens = []) {
         const zone = document.getElementById('evaluations-avertissements');
         if (!zone) {
             console.warn('[Evaluations]', message);
@@ -1396,6 +1400,17 @@ function initializeEvaluations() {
         icone.className = 'fas fa-exclamation-triangle';
         const texte = document.createElement('span');
         texte.textContent = message;
+        if (Array.isArray(liens) && liens.length) {
+            const actions = document.createElement('span');
+            actions.className = 'ev-flash-liens';
+            liens.forEach((lien) => {
+                const a = document.createElement('a');
+                a.href = lien.url;
+                a.textContent = lien.libelle;
+                actions.appendChild(a);
+            });
+            texte.appendChild(actions);
+        }
         const fermer = document.createElement('button');
         fermer.type = 'button';
         fermer.className = 'ev-flash-close';
@@ -1804,7 +1819,7 @@ function initializeEvaluations() {
                     showToast(data.message, 'success');
                 }
                 if (data.warning) {
-                    afficherAvertissement(data.warning);
+                    afficherAvertissement(data.warning, data.warning_links);
                 }
                 if (data.deleted || action === 'delete') {
                     selectedIds.delete(Number(evaluationId));

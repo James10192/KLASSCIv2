@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Domain\Notes\ChangementDeStatut;
 use App\Domain\Notes\MoyennesLaissees;
 use App\Domain\Notes\RecalculApresDeplacement;
 use App\Models\ESBTPAnneeUniversitaire;
@@ -245,18 +246,12 @@ class ESBTPEvaluationController extends Controller
             );
         }
 
-        $statutAvant = $evaluation->status;
-        $evaluation->status = ESBTPEvaluation::STATUS_CANCELLED;
-        $evaluation->is_published = false;
-        $evaluation->updated_by = Auth::id();
-        $evaluation->save();
-
         return $this->evaluationActionResponse(
             $request,
             $evaluation,
             'Évaluation annulée avec succès.',
             'cancel',
-            avertissement: $this->recalculerApresStatut($evaluation, $statutAvant)
+            suite: ChangementDeStatut::annuler($evaluation, Auth::user())
         );
     }
 
@@ -265,55 +260,32 @@ class ESBTPEvaluationController extends Controller
      */
     public function restore(Request $request, ESBTPEvaluation $evaluation)
     {
-        $publish = $request->boolean('publish', true);
-
-        $statutAvant = $evaluation->status;
-        $evaluation->is_published = $publish;
-        $evaluation->status = $evaluation->determineAutomaticStatus(null, false);
-        $evaluation->updated_by = Auth::id();
-        $evaluation->save();
-
         return $this->evaluationActionResponse(
             $request,
             $evaluation,
             'Évaluation réactivée avec succès.',
             'restore',
-            avertissement: $this->recalculerApresStatut($evaluation, $statutAvant)
-        );
-    }
-
-    /**
-     * Annuler une évaluation retire ses notes des moyennes, la réactiver les y
-     * remet ; ni l'un ni l'autre ne passe par l'observateur des notes. Sans ce
-     * recalcul, la moyenne enregistrée gardait les notes d'une évaluation
-     * annulée — et, enregistrée, elle l'emporte sur les notes.
-     *
-     * @return string|null ce qui n'a pas pu être recalculé, à montrer
-     */
-    private function recalculerApresStatut(ESBTPEvaluation $evaluation, ?string $statutAvant): ?string
-    {
-        return MoyennesLaissees::apresChangementDeStatut(
-            RecalculApresDeplacement::apresChangementDeStatut($evaluation, $statutAvant, Auth::id()),
-            $evaluation
+            suite: ChangementDeStatut::reactiver($evaluation, $request->boolean('publish', true), Auth::user())
         );
     }
 
     /**
      * Génère une réponse adaptée (JSON ou redirect) après une action sur l'évaluation.
      */
-    protected function evaluationActionResponse(Request $request, ESBTPEvaluation $evaluation, string $message, string $action = 'update', int $status = 200, ?string $avertissement = null)
+    protected function evaluationActionResponse(Request $request, ESBTPEvaluation $evaluation, string $message, string $action = 'update', int $status = 200, array $suite = [])
     {
         if ($request->wantsJson()) {
             return response()->json([
                 'success' => true,
                 'message' => $message,
-                'warning' => $avertissement,
+                'warning' => $suite['avertissement'] ?? null,
+                'warning_links' => $suite['liens'] ?? [],
                 'action' => $action,
                 'evaluation_id' => $evaluation->id,
             ], $status);
         }
 
-        return redirect()->route('esbtp.evaluations.index')->with('success', $message)->with('warning', $avertissement);
+        return redirect()->route('esbtp.evaluations.index')->with('success', $message)->with('warning', $suite['avertissement'] ?? null);
     }
 
     /**
@@ -1140,22 +1112,20 @@ class ESBTPEvaluationController extends Controller
                 ]),
             ]);
 
-            $statutAvant = $evaluation->status;
-            $evaluation->update($validated);
-            $this->publierSelonLeStatut($evaluation);
-            $avertissement = $this->recalculerApresStatut($evaluation, $statutAvant);
+            $suite = ChangementDeStatut::poser($evaluation, $validated['status'], Auth::user());
 
             \Log::info('Statut mis à jour avec succès', [
                 'evaluation_id' => $evaluation->id,
                 'new_status' => $validated['status'],
-                'is_published' => $evaluation->fresh()->is_published,
+                'is_published' => $evaluation->is_published,
             ]);
 
             if ($request->wantsJson()) {
                 return response()->json([
                     'success' => true,
                     'message' => 'Statut mis à jour avec succès',
-                    'warning' => $avertissement,
+                    'warning' => $suite['avertissement'],
+                    'warning_links' => $suite['liens'],
                     'evaluation' => $evaluation,
                 ]);
             }
@@ -1171,11 +1141,11 @@ class ESBTPEvaluationController extends Controller
             $statusLabel = $statusLabels[$validated['status']] ?? $validated['status'];
             $message = "Statut de l'évaluation \"{$evaluation->titre}\" mis à jour : {$statusLabel}";
 
-            if ($validated['status'] === 'scheduled' && $evaluation->fresh()->is_published) {
+            if ($validated['status'] === 'scheduled' && $evaluation->is_published) {
                 $message .= ' (automatiquement publiée pour les étudiants)';
             }
 
-            return redirect()->back()->with('success', $message)->with('warning', $avertissement);
+            return redirect()->back()->with('success', $message)->with('warning', $suite['avertissement']);
         } catch (\Exception $e) {
             \Log::error('Erreur lors de la mise à jour du statut', [
                 'evaluation_id' => $evaluation->id,
@@ -1191,24 +1161,6 @@ class ESBTPEvaluationController extends Controller
             }
 
             return redirect()->back()->with('error', 'Erreur lors de la mise à jour du statut');
-        }
-    }
-
-    /**
-     * Planifier publie l'évaluation, l'annuler la dépublie.
-     */
-    private function publierSelonLeStatut(ESBTPEvaluation $evaluation): void
-    {
-        if ($evaluation->status === ESBTPEvaluation::STATUS_SCHEDULED && ! $evaluation->is_published) {
-            $evaluation->update(['is_published' => true]);
-            \Log::info('Évaluation automatiquement publiée lors de la planification', [
-                'evaluation_id' => $evaluation->id,
-            ]);
-        } elseif ($evaluation->status === ESBTPEvaluation::STATUS_CANCELLED) {
-            $evaluation->update(['is_published' => false]);
-            \Log::info('Évaluation automatiquement dépubliée lors de l\'annulation', [
-                'evaluation_id' => $evaluation->id,
-            ]);
         }
     }
 

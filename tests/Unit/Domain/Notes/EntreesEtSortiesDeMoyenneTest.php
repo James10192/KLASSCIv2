@@ -6,6 +6,7 @@ use App\Http\Controllers\ESBTPEvaluationController;
 use App\Http\Controllers\ESBTPSeanceCoursController;
 use App\Models\ESBTPEvaluation;
 use App\Models\ESBTPSeanceCours;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Log\Events\MessageLogged;
 use Illuminate\Support\Facades\Artisan;
@@ -101,16 +102,22 @@ class EntreesEtSortiesDeMoyenneTest extends TestCase
         $this->assertDatabaseCount('esbtp_resultats_recompute_log', 0);
     }
 
-    public function test_changer_la_date_de_la_seance_prend_le_semestre_de_l_emploi_du_temps(): void
+    public function test_changer_le_jour_de_la_seance_ne_defait_pas_une_periode_corrigee(): void
     {
-        // Le 6 octobre : le mois dirait « semestre 1 ». L'emploi du temps dit 2.
+        // Le devoir a été reporté au semestre 2 à la main ; l'emploi du temps,
+        // lui, dit « Semestre 1 ». Passer la séance du lundi au mardi ne doit
+        // pas ramener le devoir au semestre 1 : la date d'une séance se déduit
+        // de son emploi du temps, elle ne dit rien d'un autre semestre.
         [, $devoir] = $this->deuxEvaluationsEtUneMoyenne();
+        DB::table('esbtp_evaluations')->where('id', $devoir)->update(['periode' => 'semestre2']);
+        DB::table('esbtp_resultats')->update(['moyenne' => 18]);
+        $this->resultat(self::MATIERE, 'semestre2', 2);
 
-        $this->modifierLaSeanceDeDevoir($devoir, self::MATIERE, jour: 2, semestreDeLEmploiDuTemps: 'Semestre 2');
+        $this->modifierLaSeanceDeDevoir($devoir, self::MATIERE, jour: 2);
 
+        $this->assertSame('2026-10-06', substr((string) DB::table('esbtp_evaluations')->where('id', $devoir)->value('date_evaluation'), 0, 10));
         $this->assertSame('semestre2', DB::table('esbtp_evaluations')->where('id', $devoir)->value('periode'));
-        $this->assertSame(18.0, $this->moyenne(self::MATIERE, 'semestre1'));
-        $this->assertSame(2.0, $this->moyenne(self::MATIERE, 'semestre2'));
+        $this->assertDatabaseCount('esbtp_resultats_recompute_log', 0);
     }
 
     public function test_deplacer_la_seance_de_devoir_signale_la_moyenne_videe(): void
@@ -177,6 +184,34 @@ class EntreesEtSortiesDeMoyenneTest extends TestCase
         // Recalculer écrirait 0,00 : plus aucune note ne compte.
         $this->assertSame(12.0, $this->moyenne(self::MATIERE, 'semestre1'));
         $this->assertStringContainsString('désormais annulée', (string) $reponse->getData(true)['warning']);
+    }
+
+    public function test_l_avertissement_de_la_liste_mene_au_pre_controle_de_la_classe(): void
+    {
+        $seule = $this->evaluation(self::MATIERE, 'semestre1');
+        $this->note($seule, 12);
+        $this->resultat(self::MATIERE, 'semestre1', 12);
+        $this->actingAs($this->utilisateur(autorise: true));
+
+        $liens = $this->actionDeLaListe('cancel', $seule)->getData(true)['warning_links'];
+
+        $this->assertCount(1, $liens);
+        $this->assertStringStartsWith(route('esbtp.bulletins.select'), $liens[0]['url']);
+        $this->assertStringContainsString('classe_id='.self::CLASSE, $liens[0]['url']);
+        $this->assertStringContainsString('BTS GC 1', $liens[0]['libelle']);
+    }
+
+    public function test_sans_droit_sur_le_pre_controle_aucun_lien_n_est_rendu(): void
+    {
+        $seule = $this->evaluation(self::MATIERE, 'semestre1');
+        $this->note($seule, 12);
+        $this->resultat(self::MATIERE, 'semestre1', 12);
+        $this->actingAs($this->utilisateur(autorise: false));
+
+        $reponse = $this->actionDeLaListe('cancel', $seule)->getData(true);
+
+        $this->assertSame([], $reponse['warning_links']);
+        $this->assertStringContainsString('désormais annulée', (string) $reponse['warning']);
     }
 
     public function test_une_moyenne_laissee_par_une_annulation_est_journalisee(): void
@@ -264,6 +299,25 @@ class EntreesEtSortiesDeMoyenneTest extends TestCase
         $this->assertSame(16.0, $this->moyenne(self::MATIERE, 'semestre1'));
     }
 
+    public function test_deux_evaluations_d_une_meme_moyenne_ne_la_recalculent_qu_une_fois(): void
+    {
+        $premiere = $this->evaluation(self::MATIERE, 'semestre1');
+        $seconde = $this->evaluation(self::MATIERE, 'semestre1');
+        DB::table('esbtp_evaluations')->whereIn('id', [$premiere, $seconde])->update(['annee_universitaire_id' => null]);
+        $this->note($premiere, 18);
+        $this->note($seconde, 14);
+        $this->resultat(self::MATIERE, 'semestre1', 18);
+        DB::table('esbtp_inscriptions')->insert([
+            'etudiant_id' => self::ETUDIANT, 'classe_id' => self::CLASSE, 'annee_universitaire_id' => self::ANNEE,
+        ]);
+
+        Artisan::call('esbtp:check-evaluations-annees', ['--fix' => true]);
+
+        $this->assertSame(16.0, $this->moyenne(self::MATIERE, 'semestre1'));
+        $this->assertStringContainsString('1 recalcul(s) de moyenne lancé(s)', Artisan::output());
+        $this->assertDatabaseCount('esbtp_resultats_recompute_log', 1);
+    }
+
     public function test_sans_inscription_l_annee_vient_de_la_date_et_sinon_rien_n_est_devine(): void
     {
         DB::table('esbtp_annee_universitaires')->where('id', self::ANNEE)
@@ -301,7 +355,7 @@ class EntreesEtSortiesDeMoyenneTest extends TestCase
      * Par l'écran : `update()` enregistre la séance puis aligne son devoir,
      * dans une même transaction — c'est ce qu'on prouve.
      */
-    private function modifierLaSeanceDeDevoir(int $evaluationId, int $matiereId, int $jour = 1, string $semestreDeLEmploiDuTemps = 'Semestre 1')
+    private function modifierLaSeanceDeDevoir(int $evaluationId, int $matiereId, int $jour = 1)
     {
         Schema::create('esbtp_emploi_temps', function ($t) {
             $t->id();
@@ -339,7 +393,7 @@ class EntreesEtSortiesDeMoyenneTest extends TestCase
         // Un lundi : le jour 1 tombe le 5 octobre, donc au semestre 1.
         DB::table('esbtp_emploi_temps')->insert([
             'id' => 50, 'classe_id' => self::CLASSE, 'annee_universitaire_id' => self::ANNEE,
-            'date_debut' => '2026-10-05', 'is_active' => 1, 'semestre' => $semestreDeLEmploiDuTemps,
+            'date_debut' => '2026-10-05', 'is_active' => 1, 'semestre' => 'Semestre 1',
         ]);
         DB::table('esbtp_seance_cours')->insert([
             'id' => 500, 'emploi_temps_id' => 50, 'classe_id' => self::CLASSE, 'matiere_id' => self::MATIERE,
@@ -374,6 +428,32 @@ class EntreesEtSortiesDeMoyenneTest extends TestCase
         $requete->headers->set('Accept', 'application/json');
 
         return app(ESBTPEvaluationController::class)->updateStatus($requete, ESBTPEvaluation::findOrFail($evaluationId));
+    }
+
+    /**
+     * Un utilisateur qui répond lui-même à `can()` : le garde de Spatie, qui
+     * passe avant tout `Gate::before()` du test, lit une table de
+     * permissions que ce schéma ne porte pas.
+     */
+    private function utilisateur(bool $autorise): User
+    {
+        $utilisateur = new class extends User
+        {
+            public bool $autorise = true;
+
+            public function can($abilities, $arguments = [])
+            {
+                return $this->autorise;
+            }
+
+            public function canAny($abilities, $arguments = [])
+            {
+                return $this->autorise;
+            }
+        };
+        $utilisateur->autorise = $autorise;
+
+        return $utilisateur->forceFill(['id' => 7, 'name' => 'Scolarité']);
     }
 
     private function evaluation(int $matiereId, string $periode, string $status = 'completed'): int

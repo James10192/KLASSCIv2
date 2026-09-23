@@ -13,21 +13,21 @@ use Illuminate\Support\Facades\Log;
 /**
  * Aligne l'évaluation « devoir » liée à une séance sur cette séance.
  *
- * N'EST ALIGNÉ QUE CE QUE LA SÉANCE A CHANGÉ. Une coordonnée du devoir —
- * classe, matière, période, année — déplace ses notes et les moyennes des
- * deux côtés. Réécrire toutes les coordonnées à chaque enregistrement de la
- * séance défaisait donc en silence une correction faite sur l'écran de
- * l'évaluation (une période remise à la main, par exemple), dès qu'on
- * retouchait la salle ou le titre de la séance. On compare la séance avant et
- * après, et seule une coordonnée qui a réellement bougé est reportée :
- *  - matière : celle de la séance, si elle a changé. La classe et l'année
- *    suivent la même règle, mais l'écran de la séance ne sait changer ni
- *    l'une ni l'autre (`reglesDeModification()`) : ces deux branches sont
- *    une défense, qu'aucun appelant actuel n'emprunte ;
- *  - période : si la DATE de la séance a changé, le semestre de son emploi du
- *    temps. Pas le mois : la frontière entre semestres appartient à l'école
- *    (`rien-en-dur.md`), et l'emploi du temps la porte. Un semestre illisible
- *    laisse la période telle quelle — on ne devine pas.
+ * UNE SEULE COORDONNÉE SUIT LA SÉANCE : LA MATIÈRE, ET SEULEMENT SI ELLE A
+ * CHANGÉ. Une coordonnée du devoir — classe, matière, période, année — déplace
+ * ses notes et les moyennes des deux côtés. Les réécrire toutes à chaque
+ * enregistrement de la séance défaisait en silence une correction faite sur
+ * l'écran de l'évaluation (une période remise à la main, par exemple), dès
+ * qu'on retouchait la salle ou le titre de la séance. Les autres restent
+ * celles du devoir :
+ *  - la classe et l'emploi du temps ne se changent pas depuis l'écran de la
+ *    séance (`reglesDeModification()`) ;
+ *  - la PÉRIODE n'est pas réalignée quand le jour change. La date d'une séance
+ *    se déduit de son emploi du temps (`ESBTPEmploiTemps::dateDuJour()`), qui
+ *    ne change pas : réaligner la période sur ce changement réimposait la même
+ *    valeur, et défaisait la correction manuelle à chaque changement de jour.
+ *    La période est posée à la création du devoir (`store()`, qui la déduit
+ *    encore du mois — règle héritée, hors de ce chantier).
  * Titre, description, date et durée, qui ne déplacent aucune moyenne, suivent
  * toujours.
  *
@@ -72,7 +72,9 @@ final class AlignementDuDevoir
             'enseignant_id' => null,
             'updated_by' => Auth::id(),
         ]);
-        $evaluation->fill($this->coordonneesQuiOntBouge($seance, $seanceAvant));
+        if ($seance->matiere_id != ($seanceAvant['matiere_id'] ?? null)) {
+            $evaluation->matiere_id = $seance->matiere_id;
+        }
 
         $avant = [
             'classe_id' => (int) $evaluation->getOriginal('classe_id'),
@@ -104,43 +106,6 @@ final class AlignementDuDevoir
             RecalculApresDeplacement::pour($alignement['evaluation'], $alignement['avant'], Auth::id()),
             'n\'ont plus rien à moyenner depuis le déplacement du devoir'
         );
-    }
-
-    /**
-     * @param  array<string, mixed>  $avant
-     * @return array<string, mixed>
-     */
-    private function coordonneesQuiOntBouge(ESBTPSeanceCours $seance, array $avant): array
-    {
-        $coordonnees = [];
-
-        foreach (['matiere_id', 'classe_id', 'annee_universitaire_id'] as $colonne) {
-            if ($seance->{$colonne} != ($avant[$colonne] ?? null)) {
-                $coordonnees[$colonne] = $seance->{$colonne};
-            }
-        }
-
-        if ($this->jour($seance->date_seance) !== $this->jour($avant['date_seance'] ?? null)) {
-            $periode = $this->periodeDeLEmploiDuTemps($seance);
-            if ($periode !== null) {
-                $coordonnees['periode'] = $periode;
-            }
-        }
-
-        return $coordonnees;
-    }
-
-    /** `Semestre 1`, `1`, `semestre1` : l'écriture de l'emploi du temps est libre. */
-    private function periodeDeLEmploiDuTemps(ESBTPSeanceCours $seance): ?string
-    {
-        $semestre = (string) ($seance->emploiTemps?->semestre ?? '');
-
-        return preg_match('/^\D*([12])\D*$/', $semestre, $m) ? 'semestre'.$m[1] : null;
-    }
-
-    private function jour(mixed $date): ?string
-    {
-        return $date ? Carbon::parse($date)->toDateString() : null;
     }
 
     /**

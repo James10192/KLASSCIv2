@@ -50,7 +50,7 @@ doit appeler `RecalculApresDeplacement` lui-même.
 | `POST /api/cli/evaluations/{id}/matiere` | matière | à l'unité |
 | `POST /api/cli/evaluations/deplacer-periode` | période, jusqu'à 200 évaluations | en lot, plafonné |
 | `POST /api/cli/diagnostics/evaluations-periode/repair` | période, en masse | en lot, plafonné |
-| modification d'une séance de devoir (emploi du temps) | matière du devoir lié ; sa période quand la date change | à l'unité |
+| modification d'une séance de devoir (emploi du temps) | matière du devoir lié, si elle a changé | à l'unité |
 | `esbtp:check-evaluations-annees` | année, depuis nulle — arrivée seule | à l'unité |
 | `MergeDuplicateEcue` (LMD, sous `force`) | matière, en masse | **aucun, à dessein** — reporte les lignes de bulletin LMD |
 
@@ -60,7 +60,10 @@ moyenne, et recalculent elles aussi, par le même garde : **annuler** une
 notes de la moyenne, la **réactiver** les y remet. Une moyenne qui ne reposait
 que sur l'évaluation annulée est laissée et nommée, jamais remise à zéro — dans
 le champ `warning` de la réponse JSON, affiché dans la liste jusqu'à ce qu'on le
-ferme.
+ferme, avec `warning_links` : les liens `{libelle, url}` vers le pré-contrôle
+des bulletins de la classe (plus aucune note) ou vers « Modifier les moyennes »
+de l'élève (des absences seulement), rendus à qui peut ouvrir ces écrans. Tout
+changement de statut passe par `App\Domain\Notes\ChangementDeStatut`.
 
 Le changement de **barème** ou de **coefficient** d'une évaluation notée
 recalcule aussi, depuis septembre 2026 (écran d'édition et édition rapide).
@@ -69,10 +72,11 @@ recalcule aussi, depuis septembre 2026 (écran d'édition et édition rapide).
 encore brouillon ou planifiée qui porte déjà des notes. Après une suppression,
 rejouez `POST /api/cli/notes/recompute` sur la classe et la période.
 
-La séance de devoir ne reporte sur le devoir que ce qu'elle a **réellement
-changé** : sa matière, et le semestre de son emploi du temps quand sa date
-change (un semestre illisible laisse la période telle quelle). Retoucher la
-salle ou le titre ne touche donc aucune moyenne. La séance et son devoir
+La séance de devoir ne reporte sur le devoir qu'**une coordonnée : sa matière,
+si elle a changé**. La période du devoir n'est pas réalignée quand le jour de la
+séance change — la date se déduit de l'emploi du temps, qui ne change pas, et
+réaligner défaisait une période corrigée à la main. Retoucher la salle, le titre
+ou le jour ne touche donc aucune moyenne. La séance et son devoir
 s'enregistrent **ensemble** : un échec d'écriture refuse toute la modification.
 Le recalcul part après, hors transaction : un recalcul en échec ne défait rien
 (comme ailleurs), il est compté et affiché dans le bandeau.
@@ -348,7 +352,7 @@ qu'on fige.
   évaluation recalculent à leur tour. **Changement de comportement** de la
   commande : plus d'année courante posée par défaut, ni d'année lue sur la
   classe. **Ajout non cassant** : la réponse JSON des actions Annuler /
-  Réactiver et de la route de statut porte `warning`.
+  Réactiver et de la route de statut porte `warning` et `warning_links`.
 - **Septembre 2026 (bis)** — le cinquième chemin, `MergeDuplicateEcue`, est
   tranché : pas de recalcul, à dessein ; report des moyennes enregistrées (sous
   `force`) et des lignes de bulletin LMD, liste des bulletins à régénérer.

@@ -40,19 +40,81 @@ final class MoyennesLaissees
      */
     public static function pourLEcran(array $recalcul, ESBTPEvaluation $evaluation, array $avant): array
     {
-        $laissees = $recalcul['orphelins'];
+        return [
+            'total' => count($recalcul['orphelins']),
+            // Un recalcul en echec laisse la moyenne d'avant en place. Le
+            // journal le dit ; l'ecran annoncait pourtant « mise a jour avec
+            // succes ». Qui a fait le geste doit le savoir.
+            'echecs' => (int) $recalcul['echecs'],
+            'ce_qui_a_bouge' => self::ceQuiABouge($evaluation, $avant),
+        ] + self::aReprendre($recalcul['orphelins']);
+    }
+
+    /**
+     * Les liens des remèdes, prêts à suivre, pour un écran qui ne rend pas la
+     * fiche de l'évaluation : la liste des évaluations les affiche sous la
+     * phrase d'{@see enUnePhrase()}. Mêmes cibles et mêmes droits que la fiche :
+     * un lien n'est rendu qu'à qui peut ouvrir l'écran visé.
+     *
+     * @param  array{orphelins:array<int, array<string,mixed>>}  $recalcul
+     * @return array<int, array{libelle:string, url:string}>
+     */
+    public static function liens(array $recalcul, ?User $utilisateur): array
+    {
+        if ($recalcul['orphelins'] === []) {
+            return [];
+        }
+
+        $droits = self::droits($utilisateur);
+        $aReprendre = self::aReprendre($recalcul['orphelins']);
+        $liens = [];
+
+        if ($droits['verifier']) {
+            foreach ($aReprendre['nettoyages'] as $n) {
+                $liens[] = [
+                    'libelle' => 'Vérifier '.$n['libelle'],
+                    'url' => route('esbtp.bulletins.select', [
+                        'classe_id' => $n['classe_id'],
+                        'periode' => $n['periode'],
+                        'annee_universitaire_id' => $n['annee_universitaire_id'],
+                    ]),
+                ];
+            }
+        }
+
+        if ($droits['reprendre']) {
+            foreach ($aReprendre['eleves'] as $e) {
+                $liens[] = [
+                    'libelle' => $e['libelle'],
+                    'url' => route('esbtp.bulletins.moyennes-preview', [
+                        'etudiant_id' => $e['etudiant_id'],
+                        'classe_id' => $e['classe_id'],
+                        'periode' => $e['periode'],
+                        'annee_universitaire_id' => $e['annee_universitaire_id'],
+                    ]),
+                ];
+            }
+        }
+
+        return $liens;
+    }
+
+    /**
+     * Les deux remèdes, selon ce qui reste : plus aucune note (le pré-contrôle
+     * des bulletins, par classe et période) ou des absences seulement (« Modifier
+     * les moyennes », par élève).
+     *
+     * @param  array<int, array<string,mixed>>  $laissees
+     * @return array{nettoyages:array<int,array<string,mixed>>, eleves:array<int,array<string,mixed>>}
+     */
+    private static function aReprendre(array $laissees): array
+    {
         $classes = ESBTPClasse::whereIn('id', array_column($laissees, 'classe_id'))->pluck('name', 'id');
 
         $sansNote = array_filter($laissees, fn (array $l) => $l['reste'] === 'aucune_note');
         $absences = array_filter($laissees, fn (array $l) => $l['reste'] !== 'aucune_note');
 
         return [
-            'total' => count($laissees),
-            // Un recalcul en echec laisse la moyenne d'avant en place. Le
-            // journal le dit ; l'ecran annoncait pourtant « mise a jour avec
-            // succes ». Qui a fait le geste doit le savoir.
-            'echecs' => (int) $recalcul['echecs'],
-            'ce_qui_a_bouge' => self::ceQuiABouge($evaluation, $avant),
             'nettoyages' => collect($sansNote)
                 ->map(fn (array $l) => self::coordonnee($l))
                 ->unique(fn (array $c) => implode('|', $c))
@@ -69,7 +131,8 @@ final class MoyennesLaissees
      * La même information, en une phrase, pour les écrans qui ne sont pas la
      * fiche de l'évaluation : la liste des évaluations (réponse JSON d'une
      * annulation) et l'emploi du temps (modification d'une séance de devoir).
-     * Le bandeau global qui l'affiche échappe tout : pas de lien ici.
+     * La phrase ne porte pas de lien : le bandeau global de l'emploi du temps
+     * échappe tout. La liste des évaluations ajoute ceux de {@see liens()}.
      *
      * @param  array{orphelins:array<int, array<string,mixed>>, echecs:int}  $recalcul
      * @param  string  $pourquoi  ce qui a vidé ces moyennes, en fin de proposition :

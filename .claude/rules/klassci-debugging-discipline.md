@@ -150,7 +150,9 @@ de `ESBTPEvaluationController`) passent désormais par
 **Même défaut, encore : le statut.** Annuler une évaluation (`status = cancelled`)
 la retire du calcul, la réactiver l'y remet — sans qu'aucune note ne soit
 enregistrée. `cancel()`, `restore()` et `updateStatus()` passent désormais par
-`RecalculApresDeplacement::apresChangementDeStatut()`. Attention au piège de
+`App\Domain\Notes\ChangementDeStatut`, qui pose le statut et la publication puis
+appelle `RecalculApresDeplacement::apresChangementDeStatut()`. Tout nouvel écran
+qui change un statut passe par elle. Attention au piège de
 chemin (#1) : c'est `cancel()` / `restore()` que la liste des évaluations appelle,
 pas `updateStatus()`, qu'aucun écran n'utilise. Reste sans recalcul, trouvé à ce
 jour : la **suppression** d'une évaluation déjà notée.
