@@ -350,7 +350,9 @@ class ESBTPReinscriptionController extends Controller
                 }
             }
 
-            return view('esbtp.reinscription.show', compact('analyse', 'classesProposees', 'anneeAcademique', 'validatedReinscription', 'existingReinscription'));
+            $voirFinances = auth()->user()->can('finances.etudiants.voir');
+
+            return view('esbtp.reinscription.show', compact('analyse', 'classesProposees', 'anneeAcademique', 'validatedReinscription', 'existingReinscription', 'voirFinances'));
         } catch (\Exception $e) {
             return back()->withErrors(['error' => 'Erreur lors de l\'analyse: ' . $e->getMessage()]);
         }
@@ -705,17 +707,21 @@ class ESBTPReinscriptionController extends Controller
                 return $etudiant;
             });
             
+            $voirFinances = auth()->user()->can('finances.etudiants.voir');
+
             // CORRECTION: Utiliser different partial selon page 1 ou pages suivantes  
             if ((int)$page === 1) {
                 // Première page : tableau complet avec header
                 $html = view('esbtp.reinscription.partials.liste-etudiants', [
                     'etudiants' => $etudiantsAvecSoldes,
+                    'voirFinances' => $voirFinances,
                     'type' => $category === 'passages' ? 'passage' : ($category === 'rattrapages' ? 'rattrapage' : 'redoublement')
                 ])->render();
             } else {
                 // Pages suivantes : seulement les lignes TR
                 $html = view('esbtp.reinscription.partials.lignes-etudiants', [
                     'etudiants' => $etudiantsAvecSoldes,
+                    'voirFinances' => $voirFinances,
                     'type' => $category === 'passages' ? 'passage' : ($category === 'rattrapages' ? 'rattrapage' : 'redoublement')
                 ])->render();
             }
@@ -1037,7 +1043,8 @@ class ESBTPReinscriptionController extends Controller
             });
         }
         
-        if ($request->filled('statut_paiement')) {
+        // Trier par situation financiere revele qui doit : meme porte que les montants.
+        if ($request->filled('statut_paiement') && $request->user()->can('finances.etudiants.voir')) {
             $etudiants = $etudiants->filter(function($item) use ($request) {
                 $etudiant = is_array($item) && isset($item['etudiant']) ? $item['etudiant'] : $item;
                 
@@ -1381,6 +1388,16 @@ class ESBTPReinscriptionController extends Controller
             'etudiants_ids.*' => 'integer|exists:esbtp_etudiants,id',
         ]);
         $preview = $bulkService->preview($request->input('etudiants_ids'));
+
+        // Le blocage « solde non regle » reste visible : il decide de l'action.
+        // Le montant, lui, ne part pas vers qui n'a pas la porte financiere.
+        if (! $request->user()->can('finances.etudiants.voir')) {
+            $preview['rows'] = array_map(
+                static fn (array $row) => array_merge($row, ['solde_restant' => null]),
+                $preview['rows'] ?? []
+            );
+        }
+
         return response()->json([
             'success' => true,
             'data' => $preview,

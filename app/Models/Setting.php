@@ -97,14 +97,56 @@ class Setting extends Model
             });
         } catch (\Exception $e) {
             // Fallback sans cache en cas d'erreur
-            $setting = static::where('key', $key)->where('is_active', true)->first();
+            try {
+                $setting = static::where('key', $key)->where('is_active', true)->first();
+            } catch (\Exception $echecBase) {
+                // La base elle-meme ne repond pas : la relire une seconde fois
+                // relevait la meme exception, que plus rien ne rattrapait. Ce
+                // repli rend la valeur par defaut, et le dit : un defaut
+                // servi en silence ressemble exactement a un reglage lu.
+                static::journaliserRepliSurDefaut($key, $echecBase);
+
+                return $default;
+            }
 
             if (!$setting) {
-            return $default;
+                return $default;
             }
 
             return static::castValue($setting->value, $setting->type);
         }
+    }
+
+    /**
+     * Derniere journalisation par cle, en horodatage. Une panne de base touche
+     * des centaines de lectures par page : sans plafond, le journal noierait la
+     * cause.
+     *
+     * C'est une memoire de PROCESSUS. Sous PHP-FPM ou LiteSpeed, elle meurt
+     * avec la requete : le plafond y vaut une ligne par cle et par requete, pas
+     * par minute. Il ne vaut une ligne par cle et par minute que dans un
+     * processus qui dure — worker de file, commande longue. C'est pour lui que
+     * la memoire porte une echeance : sans elle, un worker vivant des heures
+     * tairait toute panne suivante sur une cle deja signalee.
+     */
+    private static array $replisJournalises = [];
+
+    private const INTERVALLE_JOURNAL_SECONDES = 60;
+
+    private static function journaliserRepliSurDefaut(string $key, \Throwable $e): void
+    {
+        $maintenant = now()->getTimestamp();
+        $dernier = static::$replisJournalises[$key] ?? null;
+        if ($dernier !== null && $maintenant - $dernier < self::INTERVALLE_JOURNAL_SECONDES) {
+            return;
+        }
+        static::$replisJournalises[$key] = $maintenant;
+
+        Log::warning('Reglage illisible en base : valeur par defaut servie.', [
+            'key' => $key,
+            'exception' => get_class($e),
+            'message' => $e->getMessage(),
+        ]);
     }
 
     /**

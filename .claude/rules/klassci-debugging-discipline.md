@@ -131,6 +131,33 @@ git ls-files | grep -i controllername  # listing case-réel git-tracked
 2. Commande `php artisan evaluations:sync-notes [--evaluation=ID] [--clean-resultats]` pour réparer le legacy
 3. `--clean-resultats` détecte aussi les `esbtp_resultats` orphelins (broken matiere_id OU pas de notes correspondantes)
 
+**Ce que cette liste ne disait pas, et qui a coûté un chantier (septembre 2026)** :
+réaligner `esbtp_notes` ne rafraîchit PAS `esbtp_resultats`. Le `update()` de
+query builder n'émet aucun événement, l'observateur ne tourne pas, et la moyenne
+enregistrée d'avant **l'emporte sur les notes** à l'écran comme au bulletin.
+Les déplaceurs d'évaluation recalculent désormais les deux côtés
+(`App\Domain\Notes\RecalculApresDeplacement`) ; `sync-notes`, lui, réaligne
+toujours sans recalculer.
+
+**Même défaut sans rien déplacer : le barème et le coefficient.** Ils vivent sur
+l'évaluation, pas sur la note — les modifier n'enregistre aucune note, donc
+l'observateur ne tourne pas, et la moyenne calculée sur l'ancienne pondération
+garde la main. Les deux écrans qui les modifient (`update()` et `quickUpdate()`
+de `ESBTPEvaluationController`) passent désormais par
+`RecalculApresDeplacement::apresChangementDePonderation()`. Tout nouvel écran qui
+écrit ces deux colonnes sur une évaluation notée doit faire de même. Reste
+ouvert : **annuler** une évaluation (`status = cancelled`) ne recalcule rien non
+plus, alors que le calcul l'exclut.
+
+Pour rafraîchir : `POST /api/cli/notes/recompute` ou `notes:recompute --classe --annee`
+(`docs/api/CLI_RECALCUL_RESULTATS.md`). Pour retirer une moyenne qui n'a plus
+AUCUNE note : le pré-contrôle de la génération des bulletins la liste, avec une
+suppression douce et tracée (`ESBTPBulletinController::supprimerMoyennesSansNote()`)
+— préférez-le à `--clean-resultats`, qui supprime en dur et ne détaille ligne à
+ligne (`--liste`) que sa seconde catégorie ; `--dry` n'en donne que le compte.
+Une moyenne dont il ne reste que des absences n'est vue par aucun des deux :
+elle se reprend élève par élève depuis « Modifier les moyennes ».
+
 ---
 
 ### Piège #8 — whereDoesntHave + global scopes + soft delete

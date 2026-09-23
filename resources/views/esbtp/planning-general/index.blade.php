@@ -2196,6 +2196,7 @@
 </div>
 
 <!-- Modal de création rapide d'enseignant (configuration volumes horaires) -->
+@can('teachers.create')
 <div class="modal fade" id="teacherCreateModal" tabindex="-1" aria-labelledby="teacherCreateModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content">
@@ -2271,6 +2272,7 @@
         </div>
     </div>
 </div>
+@endcan
         </div>{{-- #pg-tab-content --}}
     </div>
 </div>
@@ -2422,6 +2424,9 @@ $(function() {
                     Object.values(error.errors).forEach(list => {
                         list.forEach(item => messages.push(`<li>${item}</li>`));
                     });
+                }
+                if (messages.length === 0 && error && error.message) {
+                    messages.push(`<li>${error.message}</li>`);
                 }
                 if (messages.length === 0) {
                     messages.push("<li>Impossible de créer l'enseignant. Vérifiez les champs.</li>");

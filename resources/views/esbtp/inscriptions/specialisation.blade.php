@@ -384,10 +384,12 @@
 
                 @if($totalPaye > 0)
                     <div class="spc-paid-block">
+                        @can('finances.etudiants.voir')
                         <div class="spc-paid-amount">
                             <div class="spc-paid-label">Total payé en TC</div>
                             <div class="spc-paid-value">{{ number_format($totalPaye, 0, ',', ' ') }} FCFA</div>
                         </div>
+                        @endcan
                         <div class="spc-info-banner" style="margin-top:.7rem;">
                             <i class="fas fa-info-circle"></i>
                             <div>

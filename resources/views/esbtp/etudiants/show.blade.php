@@ -2521,6 +2521,7 @@
                 <div class="hero-kpi-lbl">Absences</div>
             </div>
         </div>
+        @if($voirFinances)
         <div class="hero-kpi">
             <i class="fas fa-coins hero-kpi-icon"></i>
             <div>
@@ -2528,6 +2529,7 @@
                 <div class="hero-kpi-lbl">Payé (FCFA)</div>
             </div>
         </div>
+        @endif
     </div>
 </div>{{-- /hero --}}
 
@@ -2546,9 +2548,11 @@
         <button class="fiche-tab" data-tab="presences"  role="tab">
             <i class="fas fa-calendar-check"></i> Présences
         </button>
+        @if($voirFinances)
         <button class="fiche-tab" data-tab="finances"   role="tab">
             <i class="fas fa-wallet"></i> Finances
         </button>
+        @endif
         <button class="fiche-tab" data-tab="profil"     role="tab">
             <i class="fas fa-user-circle"></i> Profil
         </button>
@@ -2898,6 +2902,7 @@
         @endif
 
         {{-- Paiements --}}
+        @if($voirFinances)
         @php
             $kpiPaiTotalSafe = $kpiPaiTotal ?? 0;
             $totalDu2 = $kpiPaiTotalSafe + ($kpiPaiDu ?? 0);
@@ -2921,6 +2926,7 @@
                 <div class="kpi-lbl">Paiements réglés</div>
             </div>
         </div>
+        @endif
     </div>
 
     {{-- Quick info --}}
@@ -5098,6 +5104,10 @@
 </div>{{-- /tab-presences --}}
 
 {{-- ─── TAB: FINANCES ──────────────────────────────────────────── --}}
+{{-- Ni rendu ni calcule sans la porte : un onglet masque en CSS laisserait
+     les montants dans le HTML. La modale d'encaissement depend de
+     $finInscRef, pose ici, et disparait avec lui. --}}
+@if($voirFinances)
 <div class="tab-panel" id="tab-finances">
     @php
         /* ── Inscription de l'année courante (priorité absolue) ── */
@@ -5755,6 +5765,7 @@
     @endif
 
 </div>{{-- /tab-finances --}}
+@endif
 
 {{-- ─── TAB: PROFIL ─────────────────────────────────────────────── --}}
 <div class="tab-panel" id="tab-profil">
