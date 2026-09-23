@@ -50,7 +50,7 @@ doit appeler `RecalculApresDeplacement` lui-même.
 | `POST /api/cli/evaluations/{id}/matiere` | matière | à l'unité |
 | `POST /api/cli/evaluations/deplacer-periode` | période, jusqu'à 200 évaluations | en lot, plafonné |
 | `POST /api/cli/diagnostics/evaluations-periode/repair` | période, en masse | en lot, plafonné |
-| modification d'une séance de devoir (emploi du temps) | classe, matière, période, année du devoir lié | à l'unité |
+| modification d'une séance de devoir (emploi du temps) | matière du devoir lié ; sa période quand la date change | à l'unité |
 | `esbtp:check-evaluations-annees` | année, depuis nulle — arrivée seule | à l'unité |
 | `MergeDuplicateEcue` (LMD, sous `force`) | matière, en masse | **aucun** |
 
@@ -73,7 +73,7 @@ Après l'un d'eux, rejouez `POST /api/cli/notes/recompute` sur la classe et la
 période.
 
 La séance de devoir ne reporte sur le devoir que ce qu'elle a **réellement
-changé** : matière, classe, et le semestre de son emploi du temps quand sa date
+changé** : sa matière, et le semestre de son emploi du temps quand sa date
 change (un semestre illisible laisse la période telle quelle). Retoucher la
 salle ou le titre ne touche donc aucune moyenne. La séance et son devoir
 s'enregistrent **ensemble** : un échec d'écriture refuse toute la modification.

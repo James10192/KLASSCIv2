@@ -20,7 +20,10 @@ use Illuminate\Support\Facades\Log;
  * l'évaluation (une période remise à la main, par exemple), dès qu'on
  * retouchait la salle ou le titre de la séance. On compare la séance avant et
  * après, et seule une coordonnée qui a réellement bougé est reportée :
- *  - matière, classe, année : celles de la séance, si elles ont changé ;
+ *  - matière : celle de la séance, si elle a changé. La classe et l'année
+ *    suivent la même règle, mais l'écran de la séance ne sait changer ni
+ *    l'une ni l'autre (`reglesDeModification()`) : ces deux branches sont
+ *    une défense, qu'aucun appelant actuel n'emprunte ;
  *  - période : si la DATE de la séance a changé, le semestre de son emploi du
  *    temps. Pas le mois : la frontière entre semestres appartient à l'école
  *    (`rien-en-dur.md`), et l'emploi du temps la porte. Un semestre illisible

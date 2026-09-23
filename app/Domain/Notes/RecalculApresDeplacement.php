@@ -84,7 +84,7 @@ use Illuminate\Support\Facades\Log;
  * | `CLIEvaluationMatiereController::evaluationChangeMatiere()` | matiere | oui |
  * | `CLIEvaluationDeplacementController::deplacer()` | periode, en lot | oui |
  * | `CLIEvaluationPeriodeController::repair()` | periode, en lot | oui |
- * | `AlignementDuDevoir` (seance de devoir modifiee) | matiere, classe, periode, annee | oui |
+ * | `AlignementDuDevoir` (seance de devoir modifiee) | matiere ; periode quand la date change | oui |
  * | `CheckEvaluationsAnnees` (`esbtp:check-evaluations-annees`) | annee, depuis nulle : arrivee seule | oui |
  * | `MergeDuplicateEcue` (sous `force`) | matiere, en masse | **non** |
  *
