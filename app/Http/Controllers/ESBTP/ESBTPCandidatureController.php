@@ -61,9 +61,14 @@ class ESBTPCandidatureController extends Controller
             ESBTPCandidature::STATUT_CONVERTIE,
         ];
 
+        // Un dossier precis, depuis l'accueil du jour : la liste pagine par 25
+        // sans recherche, la famille y serait a une page quelconque.
+        $reference = app(\App\Services\Portail\ReferencePublique::class)->normaliser($request->string('reference')->toString());
+
         $candidatures = ESBTPCandidature::query()
             ->with(['anneeUniversitaire:id,name', 'filiere:id,name', 'niveau:id,name', 'traitePar:id,name'])
             ->when(in_array($statut, $statutsConnus, true), fn ($q) => $q->where('statut', $statut))
+            ->when($reference !== '', fn ($q) => $q->where('reference_publique', $reference))
             ->orderByRaw("FIELD(statut, 'en_attente') DESC")
             ->latest('created_at')
             ->paginate(25)
@@ -76,6 +81,7 @@ class ESBTPCandidatureController extends Controller
                 ->groupBy('statut')
                 ->pluck('total', 'statut'),
             'statutActif' => in_array($statut, $statutsConnus, true) ? $statut : '',
+            'referenceActive' => $reference === '' ? '' : app(\App\Services\Portail\ReferencePublique::class)->formater($reference),
         ]);
     }
 

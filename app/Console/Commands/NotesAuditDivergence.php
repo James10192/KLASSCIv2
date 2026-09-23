@@ -108,15 +108,20 @@ class NotesAuditDivergence extends Command
                     ];
                 })->all();
 
-                $recalculee = $bulletinService->computeMoyenneFromNotesData($notesData);
+                $recalculee = $bulletinService->computeMoyenneFromNotesData($notesData)
+                    ?? app(\App\Services\NoteCalculationService::class)->moyenneSansNoteComptable();
                 $persistee = (float) $resultat->moyenne;
-                $ecart = round(abs($recalculee - $persistee), 2);
+                // `null` : absences seulement, et l'etablissement les ecarte. La
+                // ligne enregistree n'a alors plus de moyenne a porter : c'est
+                // une divergence, pas un ecart de zero.
+                $ecart = $recalculee === null ? null : round(abs($recalculee - $persistee), 2);
+                $significatif = $ecart === null || $ecart > self::SIGNIFICANT_GAP;
 
-                if ($ecart > 0) {
-                    if ($ecart > $maxGap) {
+                if ($ecart === null || $ecart > 0) {
+                    if ($ecart !== null && $ecart > $maxGap) {
                         $maxGap = $ecart;
                     }
-                    if ($ecart > self::SIGNIFICANT_GAP) {
+                    if ($significatif) {
                         $significantGaps++;
                     }
 
@@ -127,9 +132,9 @@ class NotesAuditDivergence extends Command
                         'matiere' => $resultat->matiere->name ?? '?',
                         'periode' => $resultat->periode,
                         'persistee' => number_format($persistee, 2),
-                        'recalculee' => number_format($recalculee, 2),
-                        'ecart' => number_format($ecart, 2),
-                        '_significant' => $ecart > self::SIGNIFICANT_GAP,
+                        'recalculee' => $recalculee === null ? '—' : number_format($recalculee, 2),
+                        'ecart' => $ecart === null ? 'sans moyenne' : number_format($ecart, 2),
+                        '_significant' => $significatif,
                     ];
                 }
             }

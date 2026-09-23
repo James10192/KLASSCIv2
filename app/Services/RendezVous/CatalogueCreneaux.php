@@ -43,8 +43,7 @@ class CatalogueCreneaux
         $restantes = [];
         foreach ($this->creneauxOuverts() as $creneau) {
             $libre = (int) $creneau->capacite - (int) ($creneau->prises ?? 0);
-            $debut = Carbon::parse($creneau->date->toDateString().' '.$creneau->heureDebutHi().':00');
-            if ($libre > 0 && Carbon::now()->lt($debut)) {
+            if ($libre > 0 && ! $creneau->aCommence()) {
                 $restantes[(int) $creneau->id] = $libre;
             }
         }

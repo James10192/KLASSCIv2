@@ -4,6 +4,7 @@ namespace Tests\Unit\Services;
 
 use App\Domain\BtsTroncCommun\BtsBulletinSubjectResolver;
 use App\Domain\BtsTroncCommun\BulletinSubjectOrder;
+use App\Domain\BtsTroncCommun\BulletinSubjectRowsCompleter;
 use App\Domain\BtsTroncCommun\ClasseOuvertureResolver;
 use App\Domain\BtsTroncCommun\BtsAnnualClassMapResolver;
 use App\Domain\BtsTroncCommun\BtsBulletinCohortResolver;
@@ -40,7 +41,11 @@ class BulletinServiceCalculTest extends TestCase
             new BtsBulletinCohortResolver(new BtsAnnualClassMapResolver(new BtsPhaseResolver(), new ClasseOuvertureResolver())),
             new \App\Domain\BtsTroncCommun\BtsClassCohortCounter(new BtsPhaseResolver()),
             new ClasseOuvertureResolver(),
-            new BulletinSubjectOrder(new BtsBulletinSubjectResolver())
+            new BulletinSubjectOrder(new BtsBulletinSubjectResolver()),
+            // Septieme argument du constructeur, absent d'ici depuis son ajout :
+            // toute la classe tombait avant son premier test. `final`, donc hors
+            // de portee de Mockery ; les calculs testes ne l'appellent jamais.
+            (new \ReflectionClass(BulletinSubjectRowsCompleter::class))->newInstanceWithoutConstructor()
         );
     }
 
@@ -105,11 +110,17 @@ class BulletinServiceCalculTest extends TestCase
     }
 
     /**
-     * Aucune note → 0 (pas d'exception, pas de division par 0).
+     * Rien de comptable : `null`, pas 0. La valeur a donner a la matiere est un
+     * reglage d'etablissement, que l'appelant demande a
+     * `NoteCalculationService::moyenneSansNoteComptable()`. Ce test tourne sans
+     * application Laravel : il prouve que la fonction reste pure.
      */
-    public function test_it_handles_empty_notes_returns_zero(): void
+    public function test_it_handles_empty_notes_returns_null(): void
     {
-        $this->assertSame(0.0, $this->service->computeMoyenneFromNotesData([]));
+        $this->assertNull($this->service->computeMoyenneFromNotesData([]));
+        $this->assertNull($this->service->computeMoyenneFromNotesData([
+            ['note' => 0, 'coefficient' => 1, 'bareme' => 20, 'is_absent' => true],
+        ]));
     }
 
     /**

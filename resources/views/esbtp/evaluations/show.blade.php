@@ -222,11 +222,7 @@
                         @if($_droits['verifier'])
                             <div class="ev-alert-actions">
                                 @foreach($_laissees['nettoyages'] as $_nettoyage)
-                                    <a class="ev-alert-link" href="{{ route('esbtp.bulletins.select', [
-                                            'classe_id' => $_nettoyage['classe_id'],
-                                            'periode' => $_nettoyage['periode'],
-                                            'annee_universitaire_id' => $_nettoyage['annee_universitaire_id'],
-                                        ]) }}">
+                                    <a class="ev-alert-link" href="{{ $_nettoyage['url'] }}">
                                         <i class="fas fa-broom"></i>
                                         Vérifier {{ $_nettoyage['libelle'] }}
                                     </a>
@@ -248,12 +244,7 @@
                         @if($_droits['reprendre'])
                             <div class="ev-alert-actions">
                                 @foreach($_laissees['eleves'] as $_eleve)
-                                    <a class="ev-alert-link" href="{{ route('esbtp.bulletins.moyennes-preview', [
-                                            'etudiant_id' => $_eleve['etudiant_id'],
-                                            'classe_id' => $_eleve['classe_id'],
-                                            'periode' => $_eleve['periode'],
-                                            'annee_universitaire_id' => $_eleve['annee_universitaire_id'],
-                                        ]) }}">
+                                    <a class="ev-alert-link" href="{{ $_eleve['url'] }}">
                                         <i class="fas fa-user-pen"></i>
                                         {{ $_eleve['libelle'] }}
                                     </a>

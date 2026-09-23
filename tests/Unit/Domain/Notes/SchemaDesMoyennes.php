@@ -55,12 +55,30 @@ trait SchemaDesMoyennes
         // garde de cohérence d'`ESBTPResultat` lit la classe dès qu'une ligne
         // de résultat est CRÉÉE, donc ces tables doivent exister, même vides.
         foreach (['esbtp_filieres', 'esbtp_niveau_etudes', 'esbtp_annee_universitaires'] as $table) {
-            Schema::create($table, function (Blueprint $t) {
+            Schema::create($table, function (Blueprint $t) use ($table) {
                 $t->id();
+                if ($table === 'esbtp_annee_universitaires') {
+                    // Lu par l'écran d'édition des évaluations.
+                    $t->boolean('is_current')->default(false);
+                    // Filtrées par `esbtp:check-evaluations-annees` pour dater une évaluation.
+                    $t->date('start_date')->nullable();
+                    $t->date('end_date')->nullable();
+                }
                 $t->softDeletes();
                 $t->timestamps();
             });
         }
+        // Source de l'année d'une évaluation qui n'en a pas
+        // (`esbtp:check-evaluations-annees`) : une classe n'en porte aucune.
+        Schema::create('esbtp_inscriptions', function (Blueprint $t) {
+            $t->id();
+            $t->unsignedBigInteger('etudiant_id');
+            $t->unsignedBigInteger('classe_id')->nullable();
+            $t->unsignedBigInteger('annee_universitaire_id');
+            $t->string('status')->default('active');
+            $t->softDeletes();
+            $t->timestamps();
+        });
         Schema::create('esbtp_matieres', function (Blueprint $t) {
             $t->id();
             $t->string('name');
@@ -80,6 +98,16 @@ trait SchemaDesMoyennes
             $t->string('status')->default('draft');
             $t->decimal('bareme', 5, 2)->default(20);
             $t->decimal('coefficient', 5, 2)->default(1);
+            // Écrites par l'écran d'édition (`ESBTPEvaluationController::update()`).
+            $t->text('description')->nullable();
+            $t->string('type')->nullable();
+            $t->dateTime('date_evaluation')->nullable();
+            $t->integer('duree_minutes')->nullable();
+            $t->boolean('is_published')->default(false);
+            $t->unsignedBigInteger('created_by')->nullable();
+            $t->unsignedBigInteger('updated_by')->nullable();
+            // Remis à nul par la synchronisation du devoir d'une séance.
+            $t->unsignedBigInteger('enseignant_id')->nullable();
             $t->softDeletes();
             $t->timestamps();
         });
@@ -124,8 +152,10 @@ trait SchemaDesMoyennes
             $t->unsignedBigInteger('annee_universitaire_id');
             $t->decimal('moyenne_avant', 5, 2)->nullable();
             $t->decimal('moyenne_apres', 5, 2);
-            // Même ENUM que la migration : c'est lui qui refuserait une source inconnue.
-            $t->enum('source', ['observer', 'command', 'manual']);
+            // `string(30)` depuis `elargir_source_du_journal_de_recalcul` : les
+            // sources `deplacement`, `ponderation` et `statut` n'entrent pas
+            // dans l'ancien ENUM.
+            $t->string('source', 30);
             $t->unsignedBigInteger('triggered_by')->nullable();
             $t->timestamp('recomputed_at')->nullable();
             $t->timestamps();

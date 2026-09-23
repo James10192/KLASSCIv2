@@ -177,6 +177,9 @@ class ESBTPInscription extends Model implements Auditable
     // Constants for affectation status
     const DEFAULT_AFFECTATION_STATUS = 'affecté';
 
+    /** Les graphies d'une inscription annulée que le dépôt connaît. */
+    public const STATUTS_ANNULES = ['cancelled', 'annulée', 'annulee'];
+
     public const STATUT_ETABLISSEMENT_NOUVEAU = 'nouveau';
 
     public const STATUT_ETABLISSEMENT_ANCIEN = 'ancien';
