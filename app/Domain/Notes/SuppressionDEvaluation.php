@@ -71,7 +71,7 @@ final class SuppressionDEvaluation
     {
         $date = $devoir->date_evaluation ? ' du '.$devoir->date_evaluation->format('d/m/Y') : '';
 
-        return 'Le devoir « '.$devoir->titre.' »'.$date.' est '.mb_strtolower($devoir->status_label, 'UTF-8')
+        return 'Le devoir « '.($devoir->titre ?: 'sans titre').' »'.$date.' est '.mb_strtolower($devoir->status_label, 'UTF-8')
             .' : annulez-le d\'abord depuis la liste des évaluations, puis supprimez la séance.';
     }
 

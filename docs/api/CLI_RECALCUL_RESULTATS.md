@@ -369,7 +369,7 @@ qu'on fige.
   `warning_links` dans la réponse JSON de la suppression.
   **Changement de comportement** : supprimer une séance dont le devoir est en
   cours ou terminé est désormais refusé (422 en JSON, message d'erreur sinon —
-  il nommait le devoir) là où la séance et son devoir partaient avant ; on annule
+  qui nomme le devoir) là où la séance et son devoir partaient avant ; on annule
   le devoir d'abord. Changer la matière d'une séance de devoir noté exige
   `evaluations.edit_locked` (422 sinon). Le devoir créé avec une séance prend le
   semestre de l'emploi du temps, plus le mois.
