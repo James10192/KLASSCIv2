@@ -147,6 +147,21 @@ class ESBTPEvaluation extends Model implements Auditable
     }
 
     /**
+     * Le plus petit bareme que cette evaluation peut prendre sans qu'une note
+     * deja saisie le depasse — `null` tant qu'aucune note n'est saisie.
+     *
+     * La saisie refuse une note au-dessus du bareme ; sans ce plancher, baisser
+     * le bareme ensuite contournait l'invariant, et le recalcul enregistrait
+     * une moyenne au-dessus de 20 (18 sur un bareme ramene a 10 : 36).
+     */
+    public function baremeMinimal(): ?float
+    {
+        $max = $this->notes()->where('is_absent', false)->max('note');
+
+        return $max === null ? null : (float) $max;
+    }
+
+    /**
      * Relation avec l'utilisateur qui a créé l'évaluation.
      *
      * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
@@ -501,6 +516,26 @@ class ESBTPEvaluation extends Model implements Auditable
             'semestre2', '2' => 2,
             default => null,
         };
+    }
+
+    /**
+     * L'ecriture CANONIQUE d'une periode : celle sous laquelle
+     * `esbtp_resultats.periode` est enregistree, et la seule a publier.
+     *
+     * Pendant `aliasDePeriode()` sert a LIRE (il faut accepter les deux
+     * ecritures), celle-ci sert a ECRIRE et a rendre une periode a l'exterieur.
+     * Les confondre coute cher : `RecomputeStudentResultatJob` portait une copie
+     * privee a sens unique de cette connaissance, qui savait aller de `'1'` vers
+     * `'semestre1'` mais relisait ensuite les notes avec un `where` nu — donc
+     * zero note, une moyenne calculee a 0.0, et **un 0/20 ecrit par-dessus une
+     * moyenne reelle**. Une periode inconnue est rendue telle quelle : on ne
+     * devine pas.
+     */
+    public static function periodeCanonique(string $periode): string
+    {
+        $numero = self::numeroDeSemestre($periode);
+
+        return $numero === null ? $periode : 'semestre'.$numero;
     }
 
     /**

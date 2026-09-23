@@ -8,6 +8,7 @@ Préfixe `/api/cli`, authentification Sanctum (`Authorization: Bearer <jeton>`).
 | POST | `/rendez-vous/placer` | `cli:admin` | Place les dossiers en attente, pose leur convocation en attente |
 | GET | `/rendez-vous/diagnostic` | `cli:read` | État de chaque maillon, comptes de convocations |
 | POST | `/rendez-vous/convocations/envoyer` | `cli:admin` | Envoie un paquet de convocations en attente (50 au plus, 25 s) |
+| POST | `/rendez-vous/convocations/remettre` | `cli:admin` | Remet en attente `quoi: inconnues` (réservations d'avant le suivi) ou `quoi: echecs`, `limite` facultative, sans rien envoyer |
 
 ## `GET /rendez-vous/diagnostic`
 
@@ -50,7 +51,23 @@ Les convocations sont **posées en attente**, pas envoyées. L'envoi passe par
   désactivé, clé absente, service injoignable). Rappeler ne sert à rien tant
   qu'elle tient.
 
+## `POST /rendez-vous/convocations/remettre`
+
+Corps : `{ "quoi": "inconnues" }` ou `{ "quoi": "echecs" }`, et `"limite": N`
+facultative (entier ≥ 1, les plus anciennes d'abord). Même geste que les boutons
+de l'écran. Rend `{ remises, a_envoyer }` ; 422 si `quoi` ou `limite` est invalide.
+
+**N'envoie rien, mais met dans la file** : une convocation en attente part au
+prochain passage de la tâche planifiée (5 min), vérifiée ou non. Pour contrôler
+un premier courriel, c'est donc **ici** qu'on borne :
+
+1. `remettre { "quoi": "inconnues", "limite": 1 }`
+2. `envoyer` (ou attendre la tâche planifiée) ; vérifier la réception
+3. `remettre { "quoi": "inconnues" }` pour le reste, puis `envoyer` jusqu'à `restantes: 0`
+
 ## Historique
+
+- 2026-09-23 — ajout de `convocations/remettre` (avec `limite`). Non cassant.
 
 - 2026-09-22 — création de `diagnostic` et `convocations/envoyer`. **Breaking** :
   `placer` ne déclenche plus l'envoi des courriels, et répond 422 quand le canal est

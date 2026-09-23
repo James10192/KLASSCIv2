@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Domain\LMD\Actions\MergeDuplicateEcue;
 use App\Domain\LMD\Actions\MergeDuplicateUe;
+use App\Domain\LMD\Actions\RetirerMoyennesEnCollision;
 use App\Models\ESBTPLMDMention;
 use App\Models\ESBTPLMDParcours;
 use App\Services\LMD\DuplicateReconciliationService;
@@ -111,6 +112,63 @@ class ESBTPLMDReconciliationController extends Controller
             ? $mergeUe->execute((int) $validated['canonical_id'], $validated['absorbed_ids'], $options)
             : $mergeEcue->execute((int) $validated['canonical_id'], $validated['absorbed_ids'], $options);
 
+        // Seules les collisions que CETTE fusion a produites pourront être
+        // réglées par retirerMoyennesEnCollision() : la liste reste côté serveur.
+        // Cumulée : une seconde fusion vers la même canonique ne rend pas
+        // irrecevables les collisions de la première.
+        $conflits = array_column($report['moyennes_enregistrees']['conflits'] ?? [], 'id');
+        if ($conflits !== []) {
+            $cle = self::cleDesConflits((int) $validated['canonical_id']);
+            $garde = $request->session()->get($cle);
+            $anciens = ($garde['expire'] ?? 0) >= now()->getTimestamp() ? ($garde['ids'] ?? []) : [];
+            $request->session()->put($cle, [
+                'ids' => array_values(array_unique(array_merge($anciens, $conflits))),
+                'expire' => now()->addHours(2)->getTimestamp(),
+            ]);
+        }
+
         return response()->json($report, ($report['success'] ?? false) ? 200 : 422);
+    }
+
+    /**
+     * Règle les moyennes enregistrées qu'une fusion d'ECUE a laissées en
+     * collision : voir {@see RetirerMoyennesEnCollision}.
+     */
+    public function retirerMoyennesEnCollision(Request $request, RetirerMoyennesEnCollision $action): JsonResponse
+    {
+        $this->authorize('lmd.reconciliation.manage');
+
+        $validated = $request->validate([
+            'canonical_id' => ['required', 'integer'],
+            'resultat_ids' => ['required', 'array', 'min:1', 'max:500'],
+            'resultat_ids.*' => ['integer'],
+        ]);
+
+        $cle = self::cleDesConflits((int) $validated['canonical_id']);
+        $garde = $request->session()->get($cle);
+        $autorises = ($garde['expire'] ?? 0) >= now()->getTimestamp() ? ($garde['ids'] ?? []) : [];
+
+        $rapport = $action->execute((int) $validated['canonical_id'], $validated['resultat_ids'], $autorises, optional($request->user())->id);
+
+        // Une ligne réglée ne l'est qu'une fois ; les refusées restent réglables.
+        $restantes = array_values(array_diff($autorises, $this->reglees($validated['resultat_ids'], $rapport)));
+        $restantes === []
+            ? $request->session()->forget($cle)
+            : $request->session()->put($cle, ['ids' => $restantes] + $garde);
+
+        return response()->json(['success' => $rapport['retirees'] > 0] + $rapport, $rapport['retirees'] > 0 ? 200 : 422);
+    }
+
+    private static function cleDesConflits(int $canonicalId): string
+    {
+        return 'lmd.fusion_ecue.conflits.'.$canonicalId;
+    }
+
+    /** @return list<int> */
+    private function reglees(array $demandees, array $rapport): array
+    {
+        $refusees = array_column($rapport['refusees'], 'id');
+
+        return array_values(array_diff(array_map('intval', $demandees), $refusees));
     }
 }

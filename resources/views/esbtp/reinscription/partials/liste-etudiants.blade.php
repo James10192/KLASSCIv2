@@ -18,7 +18,7 @@
                 </th>
                 @endif
                 <th style="padding: 16px !important; font-weight: 600 !important; text-transform: uppercase !important; letter-spacing: 0.5px !important; border: none !important; text-align: center !important;">
-                    <i class="fas fa-euro-sign"></i> Solde
+                    <i class="fas fa-euro-sign"></i> {{ ($voirFinances ?? false) ? 'Solde' : 'Éligibilité' }}
                 </th>
                 <th style="padding: 16px !important; font-weight: 600 !important; text-transform: uppercase !important; letter-spacing: 0.5px !important; border: none !important; text-align: center !important;">
                     <i class="fas fa-flag"></i> Décision
@@ -104,6 +104,7 @@
                     @endphp
                     
                     <div style="display: flex; flex-direction: column; align-items: center; gap: 4px;">
+                        @if($voirFinances ?? false)
                         <div style="font-weight: 600; color: #1f2937;">{{ number_format($montantAttendu, 0, ',', ' ') }} FCFA</div>
                         <small style="color: #64748b;">Attendu</small>
                         
@@ -125,7 +126,8 @@
                             <i class="fas fa-check-circle"></i> Soldé
                         </span>
                         @endif
-                        
+                        @endif
+
                         @if($peutReinscrire)
                             <span class="badge success" style="font-size: 12px;">
                                 <i class="fas fa-check-circle"></i> Éligible
