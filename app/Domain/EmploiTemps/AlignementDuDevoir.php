@@ -11,7 +11,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 
 /**
- * Aligne l'évaluation « devoir » liée à une séance sur cette séance.
+ * L'évaluation « devoir » d'une séance : sa création avec la séance
+ * ({@see creerLeDevoir()}), et son alignement quand la séance change.
  *
  * UNE SEULE COORDONNÉE SUIT LA SÉANCE : LA MATIÈRE, ET SEULEMENT SI ELLE A
  * CHANGÉ. Une coordonnée du devoir — classe, matière, période, année — déplace
@@ -26,9 +27,9 @@ use Illuminate\Support\Facades\Log;
  *    ne bouge qu'à l'intérieur de la semaine de son emploi du temps
  *    (`ESBTPEmploiTemps::dateDuJour()`) : ce changement ne dit rien d'un autre
  *    semestre, et réaligner défaisait la correction manuelle faite sur
- *    l'écran de l'évaluation. La période est posée à la création du devoir
- *    (`store()`, qui la déduit encore du mois — règle héritée, qui devrait lire
- *    le semestre de l'emploi du temps ; hors de ce chantier).
+ *    l'écran de l'évaluation. La période est posée à la création du devoir,
+ *    sur le semestre de l'emploi du temps
+ *    (`ESBTPEmploiTemps::periodeDEvaluation()`).
  * Titre, description, date et durée, qui ne déplacent aucune moyenne, suivent
  * toujours.
  *
@@ -107,6 +108,98 @@ final class AlignementDuDevoir
             RecalculApresDeplacement::pour($alignement['evaluation'], $alignement['avant'], Auth::id()),
             'n\'ont plus rien à moyenner depuis le déplacement du devoir'
         );
+    }
+
+    /**
+     * Crée le devoir d'une séance qui vient d'être créée, et le lui rattache.
+     * Brouillon, non publié, barème 20 et coefficient 1 : l'enseignant les
+     * ajuste sur l'écran de l'évaluation.
+     *
+     * @return array{evaluation: ESBTPEvaluation, deduite_du_mois: bool}
+     */
+    public static function creerLeDevoir(ESBTPSeanceCours $seance, ?int $auteur): array
+    {
+        $debut = self::combiner($seance->date_seance, $seance->heure_debut);
+        $fin = self::combiner($seance->date_seance, $seance->heure_fin);
+        if ($fin->lessThanOrEqualTo($debut)) {
+            $fin = $fin->addDay();
+        }
+        $periode = self::periodeALaCreation($seance);
+
+        $evaluation = ESBTPEvaluation::create([
+            'titre' => $seance->homework_description ?: 'Devoir - '.($seance->matiere->name ?? 'Matière'),
+            'description' => $seance->homework_description,
+            'matiere_id' => $seance->matiere_id,
+            'classe_id' => $seance->classe_id,
+            'type' => 'devoir',
+            'date_evaluation' => $debut,
+            'coefficient' => 1.0,
+            'bareme' => 20.00,
+            'duree_minutes' => $fin->diffInMinutes($debut),
+            'periode' => $periode['periode'],
+            'annee_universitaire_id' => $seance->annee_universitaire_id,
+            'status' => 'draft',
+            'is_published' => false,
+            'notes_published' => false,
+            'created_by' => $auteur,
+            // Un devoir de séance n'a pas d'enseignant évaluateur désigné ;
+            // une séance LMD d'évaluation, si.
+            'enseignant_id' => $seance->type === ESBTPSeanceCours::TYPE_HOMEWORK ? null : $seance->teacher_id,
+        ]);
+
+        $seance->homework_evaluation_id = $evaluation->id;
+        $seance->save();
+
+        Log::info('Évaluation créée automatiquement', [
+            'evaluation_id' => $evaluation->id,
+            'seance_id' => $seance->id,
+            'date_evaluation' => $debut->toDateTimeString(),
+            'periode' => $periode['periode'],
+            'periode_deduite_du_mois' => $periode['deduite_du_mois'],
+        ]);
+
+        return ['evaluation' => $evaluation, 'deduite_du_mois' => $periode['deduite_du_mois']];
+    }
+
+    /**
+     * La période d'un devoir à sa création : le semestre de l'emploi du temps,
+     * que l'école a choisi.
+     *
+     * Un emploi du temps « Année complète » (une valeur que son formulaire
+     * propose) ne porte pas de semestre : le mois de la séance tranche alors,
+     * janvier à juin donnant le semestre 2. C'est une supposition — la
+     * frontière appartient à l'école — et `deduite_du_mois` le dit à qui crée
+     * le devoir, pour qu'il la vérifie.
+     *
+     * @return array{periode: string, deduite_du_mois: bool}
+     */
+    public static function periodeALaCreation(ESBTPSeanceCours $seance): array
+    {
+        $periode = $seance->emploiTemps?->periodeDEvaluation();
+
+        if ($periode !== null) {
+            return ['periode' => $periode, 'deduite_du_mois' => false];
+        }
+
+        return [
+            'periode' => Carbon::parse($seance->date_seance)->month <= 6 ? 'semestre2' : 'semestre1',
+            'deduite_du_mois' => true,
+        ];
+    }
+
+    /**
+     * Cette modification de la séance changerait-elle la matière d'un devoir
+     * déjà noté ? C'est un déplacement de notes, que l'écran de l'évaluation
+     * réserve à « Modifier une évaluation verrouillée ».
+     *
+     * @param  array<string, mixed>  $modifications
+     */
+    public static function deplaceUnDevoirNote(ESBTPSeanceCours $seance, array $modifications): bool
+    {
+        return $seance->type === ESBTPSeanceCours::TYPE_HOMEWORK
+            && array_key_exists('matiere_id', $modifications)
+            && (int) $modifications['matiere_id'] !== (int) $seance->matiere_id
+            && $seance->homeworkEvaluation?->notes()->exists();
     }
 
     /**

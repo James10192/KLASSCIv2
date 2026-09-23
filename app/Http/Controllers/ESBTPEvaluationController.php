@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Domain\Notes\ChangementDeStatut;
 use App\Domain\Notes\MoyennesLaissees;
 use App\Domain\Notes\RecalculApresDeplacement;
+use App\Domain\Notes\SuppressionDEvaluation;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPEtudiant;
@@ -929,7 +930,7 @@ class ESBTPEvaluationController extends Controller
             }
 
             $evaluationId = $evaluation->id;
-            $evaluation->delete();
+            $suite = SuppressionDEvaluation::supprimer($evaluation, Auth::user());
 
             if ($request->wantsJson()) {
                 return response()->json([
@@ -937,10 +938,14 @@ class ESBTPEvaluationController extends Controller
                     'deleted' => true,
                     'evaluation_id' => $evaluationId,
                     'message' => 'Évaluation supprimée avec succès.',
+                    'warning' => $suite['avertissement'],
+                    'warning_links' => $suite['liens'],
                 ]);
             }
 
-            return redirect()->route('esbtp.evaluations.index')->with('success', 'Évaluation supprimée avec succès.');
+            return redirect()->route('esbtp.evaluations.index')
+                ->with('success', 'Évaluation supprimée avec succès.')
+                ->with('warning', $suite['avertissement']);
         } catch (\Exception $e) {
             if ($request->wantsJson()) {
                 return response()->json([
@@ -1093,14 +1098,6 @@ class ESBTPEvaluationController extends Controller
 
     public function updateStatus(Request $request, ESBTPEvaluation $evaluation)
     {
-        \Log::critical('🚨 UPDATE STATUS CALLED - Request received!', [
-            'request_method' => $request->method(),
-            'request_all' => $request->all(),
-            'evaluation_id' => $evaluation->id,
-            'url' => $request->fullUrl(),
-            'user_id' => auth()->id(),
-        ]);
-
         try {
             $validated = $request->validate([
                 'status' => 'required|in:'.implode(',', [

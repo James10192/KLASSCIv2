@@ -34,6 +34,8 @@ class MergeDuplicateEcueSousForceTest extends TestCase
 
     private const ABSORBEE = 12;
 
+    private const SECONDE_ABSORBEE = 13;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -255,7 +257,99 @@ class MergeDuplicateEcueSousForceTest extends TestCase
         $this->assertDatabaseHas('esbtp_lmd_resultats_ecues', ['id' => 1, 'matiere_id' => self::ABSORBEE]);
     }
 
+    public function test_l_apercu_ne_compte_pas_une_ligne_lmd_qui_restera_en_collision(): void
+    {
+        // « Forcer » se coche sur ce chiffre : il doit annoncer ce que la fusion fera.
+        DB::table('esbtp_lmd_resultats_ecues')->insert([
+            ['id' => 1, 'bulletin_id' => 50, 'resultat_ue_id' => 1, 'etudiant_id' => self::ETUDIANT,
+                'matiere_id' => self::CANONIQUE, 'moyenne' => 15, 'note_rattrapage' => null],
+            ['id' => 2, 'bulletin_id' => 50, 'resultat_ue_id' => 1, 'etudiant_id' => self::ETUDIANT,
+                'matiere_id' => self::ABSORBEE, 'moyenne' => 6, 'note_rattrapage' => 11],
+        ]);
+
+        $apercu = $this->apercu([self::ABSORBEE]);
+        $rapport = $this->fusionner();
+
+        $this->assertSame(0, $apercu['repointed']['lmd_resultats_ecues']);
+        $this->assertSame($rapport['lmd_resultats_ecues']['repointes'], $apercu['repointed']['lmd_resultats_ecues']);
+    }
+
+    public function test_l_apercu_compte_une_ligne_lmd_par_bulletin_quand_deux_absorbees_s_y_croisent(): void
+    {
+        // La première est reportée, la seconde entre alors en collision avec elle.
+        DB::table('esbtp_matieres')->insert([
+            'id' => self::SECONDE_ABSORBEE, 'name' => 'RDM', 'code' => 'GCRDM', 'unite_enseignement_id' => 5, 'is_active' => 1,
+        ]);
+        DB::table('esbtp_lmd_resultats_ecues')->insert([
+            ['id' => 1, 'bulletin_id' => 50, 'resultat_ue_id' => 1, 'etudiant_id' => self::ETUDIANT,
+                'matiere_id' => self::ABSORBEE, 'moyenne' => 8, 'note_rattrapage' => 12],
+            ['id' => 2, 'bulletin_id' => 50, 'resultat_ue_id' => 1, 'etudiant_id' => self::ETUDIANT,
+                'matiere_id' => self::SECONDE_ABSORBEE, 'moyenne' => 9, 'note_rattrapage' => null],
+        ]);
+
+        $absorbees = [self::ABSORBEE, self::SECONDE_ABSORBEE];
+        $apercu = $this->apercu($absorbees);
+        $rapport = app(MergeDuplicateEcue::class)->execute(self::CANONIQUE, $absorbees, ['dry_run' => false, 'force' => true]);
+
+        $this->assertSame(1, $apercu['repointed']['lmd_resultats_ecues']);
+        $this->assertSame(1, $rapport['lmd_resultats_ecues']['repointes']);
+        $this->assertCount(1, $rapport['lmd_resultats_ecues']['conflits']);
+    }
+
+    public function test_l_apercu_ne_compte_pas_une_moyenne_qui_restera_en_collision(): void
+    {
+        // La période s'écrit « 1 » d'un côté, « semestre1 » de l'autre : c'est la
+        // même coordonnée, et la fusion la traite comme une collision.
+        $this->resultat(self::CANONIQUE, 14, '1');
+        $this->resultat(self::ABSORBEE, 6, 'semestre1');
+
+        $apercu = $this->apercu([self::ABSORBEE]);
+        $rapport = $this->fusionner();
+
+        $this->assertSame(0, $apercu['repointed']['moyennes_enregistrees']);
+        $this->assertSame($rapport['moyennes_enregistrees']['repointees'], $apercu['repointed']['moyennes_enregistrees']);
+    }
+
+    public function test_deux_moyennes_absorbees_sur_la_meme_coordonnee_ne_comptent_qu_une_fois(): void
+    {
+        // Même coordonnée, écrite « 1 » d'un côté et « semestre1 » de l'autre.
+        DB::table('esbtp_matieres')->insert([
+            'id' => self::SECONDE_ABSORBEE, 'name' => 'RDM', 'code' => 'GCRDM', 'unite_enseignement_id' => 5, 'is_active' => 1,
+        ]);
+        $this->resultat(self::ABSORBEE, 6, '1');
+        $this->resultat(self::SECONDE_ABSORBEE, 9, 'semestre1');
+
+        $absorbees = [self::ABSORBEE, self::SECONDE_ABSORBEE];
+        $apercu = $this->apercu($absorbees);
+        $rapport = app(MergeDuplicateEcue::class)->execute(self::CANONIQUE, $absorbees, ['dry_run' => false, 'force' => true]);
+
+        $this->assertSame(1, $apercu['repointed']['moyennes_enregistrees']);
+        $this->assertSame(1, $rapport['moyennes_enregistrees']['repointees']);
+        $this->assertCount(1, $rapport['moyennes_enregistrees']['conflits']);
+    }
+
+    public function test_sans_forcer_l_apercu_n_annonce_aucune_moyenne_reportee(): void
+    {
+        // Une moyenne sans note ni évaluation : rien ne bloque, la fusion part
+        // sans « Forcer », et elle ne reporte alors aucune moyenne.
+        $this->resultat(self::ABSORBEE, 6);
+
+        $options = ['force' => false];
+        $apercu = app(MergeDuplicateEcue::class)->execute(self::CANONIQUE, [self::ABSORBEE], $options + ['dry_run' => true]);
+        $rapport = app(MergeDuplicateEcue::class)->execute(self::CANONIQUE, [self::ABSORBEE], $options + ['dry_run' => false]);
+
+        $this->assertArrayNotHasKey('blocked', $apercu);
+        $this->assertSame(0, $apercu['repointed']['moyennes_enregistrees']);
+        $this->assertSame($rapport['moyennes_enregistrees']['repointees'], $apercu['repointed']['moyennes_enregistrees']);
+        $this->assertSame(6.0, $this->moyenne(self::ABSORBEE));
+    }
+
     // ── outillage ─────────────────────────────────────────────────────────
+
+    private function apercu(array $absorbees): array
+    {
+        return app(MergeDuplicateEcue::class)->execute(self::CANONIQUE, $absorbees, ['dry_run' => true, 'force' => true]);
+    }
 
     private function fusionner(): array
     {

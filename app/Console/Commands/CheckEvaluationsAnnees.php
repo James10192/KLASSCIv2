@@ -67,19 +67,41 @@ class CheckEvaluationsAnnees extends Command
         $attribution = $this->attribuerLesAnnees($evaluations, $parDefaut !== null ? (int) $parDefaut : null);
 
         // Les années sont DÉJÀ enregistrées : un recalcul interrompu ne les
-        // défait pas, il se dit à part des échecs d'écriture — et après le
-        // compte rendu, qui porte la liste des évaluations à relancer.
+        // défait pas. Il se dit à part des échecs d'écriture, avec les
+        // commandes à relancer — relancer celle-ci ne retrouverait plus ces
+        // évaluations, qui ont désormais une année. Le compte rendu suit
+        // quand même.
         try {
             $bilan = RecalculApresDeplacement::pourPlusieurs($attribution['datees']);
         } catch (\Throwable $e) {
             $bilan = null;
             $this->error("Recalcul des moyennes interrompu, les années restent posées : {$e->getMessage()}");
-            $this->warn('Relancez `notes:recompute` sur les classes concernées.');
+            foreach ($this->perimetresARelancer($attribution['datees']) as $commande) {
+                $this->line('  '.$commande);
+            }
         }
 
         $this->rendreCompte($attribution, $bilan);
 
-        return $bilan === null || $attribution['echecs'] > 0 ? Command::FAILURE : Command::SUCCESS;
+        $echoue = $bilan === null || $bilan['echecs'] > 0 || $attribution['echecs'] > 0;
+
+        return $echoue ? Command::FAILURE : Command::SUCCESS;
+    }
+
+    /**
+     * Une commande `notes:recompute` par couple (classe, année) touché.
+     *
+     * @param  array<int, array{evaluation: ESBTPEvaluation}>  $datees
+     * @return array<int, string>
+     */
+    private function perimetresARelancer(array $datees): array
+    {
+        return collect($datees)
+            ->map(fn (array $d) => 'php artisan notes:recompute --classe='.$d['evaluation']->classe_id
+                .' --annee='.$d['evaluation']->annee_universitaire_id)
+            ->unique()
+            ->values()
+            ->all();
     }
 
     /**

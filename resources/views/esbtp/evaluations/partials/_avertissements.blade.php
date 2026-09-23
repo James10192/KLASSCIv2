@@ -1,12 +1,15 @@
 {{-- Les avertissements d'une action faite sans recharger la page (annulation,
-     réactivation d'une évaluation) : une moyenne laissée sans rien à moyenner,
+     réactivation ou suppression d'une évaluation) : une moyenne laissée sans rien à moyenner,
      un recalcul en échec. Ils disent « vérifiez avant de régénérer les
      bulletins » : ils ne s'effacent pas seuls, ils restent jusqu'à ce qu'on
      les ferme. Le texte et les libellés portent des noms d'élèves : ils sont
      posés en texte, jamais en HTML. Les liens (pré-contrôle des bulletins,
      « Modifier les moyennes ») ne sont envoyés qu'à qui peut ouvrir l'écran
-     visé (MoyennesLaissees::liens()). --}}
+     visé (MoyennesLaissees::liens()).
+     Le toast partagé est chargé ici aussi : toastr ne l'est nulle part, et
+     sans lui le « supprimée avec succès » de la liste n'allait qu'à la console. --}}
 <div id="evaluations-avertissements"></div>
+@include('partials._klassci_toast')
 
 <style>
 .ev-flash--warning { background: rgba(245,158,11,.08); border-color: rgba(245,158,11,.35); color: #92400e; }
