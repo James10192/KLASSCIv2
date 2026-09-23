@@ -6,13 +6,18 @@ use App\Enums\StatutConvocationRdv;
 use App\Enums\StatutVerificationContact;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPCandidature;
+use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPRdvCreneau;
 use App\Models\ESBTPRdvReservation;
+use App\Models\ESBTPReinscriptionDemande;
 use App\Models\ESBTPVerificationContact;
 use App\Models\User;
+use App\Services\Inscription\PortailCandidatureService;
 use App\Services\Verification\ConfirmationContactEcole;
 use App\Services\Verification\DemarrageVerification;
+use App\Services\Verification\ExpediteurVerification;
 use App\Services\Verification\RenvoiVerification;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
@@ -110,6 +115,74 @@ class VerificationConcurrenceTest extends TestCase
         app(ConfirmationContactEcole::class)->confirmer($candidature->fresh(), $candidature->fresh()->empreinteContact(), User::factory()->create()->id);
 
         $this->assertSame('valide@gmail.com', $retenue->fresh()->email);
+    }
+
+    public function test_une_adresse_joignable_du_dossier_remplace_celle_de_la_reservation(): void
+    {
+        $candidature = $this->candidature('dossier@gmail.com', StatutVerificationContact::Expiree);
+        $retenue = $this->reservation($candidature, 'ancienne@gmail.com', StatutConvocationRdv::SansEmail);
+
+        app(ConfirmationContactEcole::class)->confirmer($candidature->fresh(), $candidature->fresh()->empreinteContact(), User::factory()->create()->id);
+
+        $this->assertSame('dossier@gmail.com', $retenue->fresh()->email);
+    }
+
+    public function test_une_ligne_reprise_par_un_nouveau_contact_n_a_plus_aucun_secret_de_l_ancien(): void
+    {
+        Http::fake([
+            self::URL_MESSAGES => Http::response($this->accepte('m1'), 202),
+            'mailpulse.test/api/v1/verifications' => Http::response(['error' => 'whatsapp_indisponible'], 409),
+        ]);
+        $candidature = $this->candidature('awa@gmail.com');
+        app(DemarrageVerification::class)->apresDepot($candidature);
+        $this->assertNotNull(ESBTPVerificationContact::query()->sole()->code_hash);
+
+        // Nouveau contact (plus d'adresse : WhatsApp), dont l'envoi echoue.
+        $candidature->fresh()->forceFill(['email' => null])->saveQuietly();
+        app(DemarrageVerification::class)->apresDepot($candidature->fresh());
+
+        $ligne = ESBTPVerificationContact::query()->sole();
+        $this->assertSame('+2250701020304', $ligne->destination);
+        foreach (['code_hash', 'jeton_hash', 'code_expire_at', 'jeton_expire_at', 'mailpulse_message_id', 'mailpulse_verification_id'] as $champ) {
+            $this->assertNull($ligne->getAttribute($champ), $champ);
+        }
+    }
+
+    public function test_modifier_le_contact_de_l_etudiant_invalide_la_confirmation(): void
+    {
+        foreach ([['email_personnel' => 'ama@gmail.com'], ['telephone' => '+2250701020305']] as $modification) {
+            $etudiant = ESBTPEtudiant::factory()->create(['email' => null, 'email_personnel' => null, 'telephone' => '+2250701020304']);
+            $demande = ESBTPReinscriptionDemande::create([
+                'etudiant_id' => $etudiant->id, 'annee_universitaire_id' => ESBTPAnneeUniversitaire::factory()->create()->id,
+                'statut' => ESBTPReinscriptionDemande::STATUT_EN_ATTENTE, 'consentement_at' => now(),
+                'verification_contact' => StatutVerificationContact::Expiree->value,
+            ]);
+            $empreinteAffichee = $demande->fresh()->empreinteContact();
+
+            $etudiant->forceFill($modification)->saveQuietly();
+
+            [$resultat] = app(ConfirmationContactEcole::class)->confirmer($demande->fresh(), $empreinteAffichee, User::factory()->create()->id);
+            $this->assertSame(ConfirmationContactEcole::MODIFIE_ENTRE_TEMPS, $resultat, (string) array_key_first($modification));
+        }
+    }
+
+    public function test_un_meme_numero_ecrit_autrement_n_est_pas_un_changement_de_contact(): void
+    {
+        $this->assertTrue(PortailCandidatureService::memeContact('Awa@Gmail.com ', '0701020304', 'awa@gmail.com', '+2250701020304'));
+        $this->assertFalse(PortailCandidatureService::memeContact('awa@gmail.com', '0701020304', 'awa@gmail.com', '+2250701020305'));
+        $this->assertFalse(PortailCandidatureService::memeContact('awa@gmail.com', '0701020304', 'autre@gmail.com', '0701020304'));
+    }
+
+    public function test_deux_envois_identiques_dans_la_meme_seconde_reussissent(): void
+    {
+        Http::fake([self::URL_MESSAGES => Http::response($this->accepte('m1'), 202)]);
+        Carbon::setTestNow('2026-09-23 10:00:00');
+        $verification = app(DemarrageVerification::class)->apresDepot($this->candidature('awa@gmail.com'));
+        $ligne = ESBTPVerificationContact::query()->where('demande_id', $verification->demandeId)->sole();
+
+        $this->assertTrue(app(ExpediteurVerification::class)->expedier($ligne)->ok);
+        $this->assertTrue(app(ExpediteurVerification::class)->expedier($ligne->fresh())->ok);
+        Carbon::setTestNow();
     }
 
     private function candidature(?string $email, ?StatutVerificationContact $statut = null, string $telephone = '+2250701020304'): ESBTPCandidature

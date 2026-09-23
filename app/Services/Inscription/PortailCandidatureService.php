@@ -259,10 +259,12 @@ class PortailCandidatureService
             // dans la liste blanche pour cette raison precise.
             // Constate AVANT l'ecriture : assurerReferencePublique() sauve
             // ensuite la ligne, et wasChanged() ne dirait plus rien de l'adresse.
-            $candidature->contactModifieAuDepot = mb_strtolower(trim((string) $candidature->email)) !== mb_strtolower(trim((string) ($valeurs['email'] ?? '')))
-                || (array_key_exists('telephone', $valeurs)
-                    && (\App\Domain\Notifications\PhoneNormalizer::toE164($candidature->telephone) ?? trim((string) $candidature->telephone))
-                        !== (\App\Domain\Notifications\PhoneNormalizer::toE164($valeurs['telephone']) ?? trim((string) $valeurs['telephone'])));
+            $candidature->contactModifieAuDepot = ! self::memeContact(
+                $candidature->email,
+                $candidature->telephone,
+                $valeurs['email'] ?? null,
+                array_key_exists('telephone', $valeurs) ? $valeurs['telephone'] : $candidature->telephone,
+            );
 
             $candidature->update($valeurs + [
                 'statut' => ESBTPCandidature::STATUT_EN_ATTENTE,
@@ -415,5 +417,17 @@ class PortailCandidatureService
             $valeurs['prenoms'] ?? '',
             $valeurs['date_naissance'] ?? '',
         );
+    }
+
+    /**
+     * Deux contacts designent-ils la meme famille ? Adresse sans casse ni
+     * espaces, telephone compare en E.164 (`0701020304` = `+2250701020304`).
+     */
+    public static function memeContact(?string $emailA, ?string $telA, ?string $emailB, ?string $telB): bool
+    {
+        $tel = fn (?string $t) => \App\Domain\Notifications\PhoneNormalizer::toE164($t) ?? trim((string) $t);
+
+        return mb_strtolower(trim((string) $emailA)) === mb_strtolower(trim((string) $emailB))
+            && $tel($telA) === $tel($telB);
     }
 }

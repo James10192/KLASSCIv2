@@ -7,6 +7,7 @@ use App\Models\ESBTPVerificationContact;
 use App\Services\MailPulse\MailPulseVerifications;
 use App\Services\MailPulse\ResultatVerificationDistante;
 use App\Services\MailPulse\RefusMailPulse;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -116,15 +117,27 @@ class ExpediteurVerification
      */
     private function ecrire(ESBTPVerificationContact $verification, array $champs): bool
     {
-        $ligne = fn () => ESBTPVerificationContact::query()
-            ->whereKey($verification->getKey())
-            ->where('canal', $verification->canal->value)
-            ->where('destination', $verification->destination);
+        // Verrou, puis ecriture seulement si la ligne a ete TROUVEE : le nombre de
+        // lignes que MySQL rend a l'update compte les lignes modifiees, et une
+        // ecriture identique dans la meme seconde rendrait 0 a tort.
+        $ecrit = DB::transaction(function () use ($verification, $champs) {
+            $trouvee = ESBTPVerificationContact::query()
+                ->whereKey($verification->getKey())
+                ->where('canal', $verification->canal->value)
+                ->where('destination', $verification->destination)
+                ->lockForUpdate()
+                ->first();
 
-        // MySQL compte les lignes MODIFIEES, pas les lignes trouvees : une
-        // ecriture identique dans la meme seconde rend 0. On ne conclut au
-        // changement de contact que si la ligne ne correspond vraiment plus.
-        if ($ligne()->update($champs + ['updated_at' => now()]) === 0 && ! $ligne()->exists()) {
+            if ($trouvee === null) {
+                return false;
+            }
+
+            ESBTPVerificationContact::query()->whereKey($trouvee->getKey())->update($champs + ['updated_at' => now()]);
+
+            return true;
+        });
+
+        if (! $ecrit) {
             return false;
         }
 

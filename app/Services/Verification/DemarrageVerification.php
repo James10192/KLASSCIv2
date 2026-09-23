@@ -171,6 +171,8 @@ class DemarrageVerification
                 'code_expire_at' => null,
                 'jeton_expire_at' => null,
                 'mailpulse_message_id' => null,
+                'dernier_envoi_at' => null,
+                'dernier_echec' => null,
                 'masque_la_demande' => $masquer,
                 'masquee_at' => $masquer ? $ligne->masquee_at : null,
             ])->save();
