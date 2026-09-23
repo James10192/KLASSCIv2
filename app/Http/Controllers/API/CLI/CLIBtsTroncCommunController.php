@@ -610,8 +610,12 @@ class CLIBtsTroncCommunController extends BaseApiController
 
     private function upsertSampleMatiere(int $inscriptionId, string $suffix, string $name, ESBTPClasse $classe, int $userId): ESBTPMatiere
     {
+        $code = "BTSTC-{$inscriptionId}-{$suffix}";
+        // Un echantillon supprime puis re-seme garderait son code dans l'index
+        // unique : `firstOrCreate` ne le voit pas et l'insertion leverait.
+        app(\App\Services\LMD\CodeDeMatiere::class)->libererSiArchive($code);
         $matiere = ESBTPMatiere::firstOrCreate(
-            ['code' => "BTSTC-{$inscriptionId}-{$suffix}"],
+            ['code' => $code],
             [
                 'name' => $name,
                 'coefficient' => 1,
