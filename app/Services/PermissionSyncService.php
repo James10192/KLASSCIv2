@@ -190,6 +190,7 @@ class PermissionSyncService
             'inscriptions.rdv.view',
             'inscriptions.rdv.manage',
             'inscriptions.rdv.configure',
+            'inscriptions.rdv.accueil',
             'documents.view',
             'documents.approve',
             'documents.print',

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\StatutReservationRdv;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -59,5 +60,20 @@ class ESBTPRdvCreneau extends Model
     public function heureFinHi(): string
     {
         return substr((string) ($this->attributes['heure_fin'] ?? ''), 0, 5);
+    }
+
+    public function debut(): Carbon
+    {
+        return Carbon::parse($this->date->toDateString().' '.$this->heureDebutHi().':00');
+    }
+
+    public function aCommence(): bool
+    {
+        return Carbon::now()->gte($this->debut());
+    }
+
+    public function estTermine(): bool
+    {
+        return Carbon::now()->gte(Carbon::parse($this->date->toDateString().' '.$this->heureFinHi().':00'));
     }
 }

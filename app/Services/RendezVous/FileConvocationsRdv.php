@@ -48,6 +48,32 @@ class FileConvocationsRdv
     }
 
     /**
+     * Pose la convocation sans rien envoyer : pour un lot, ou chaque famille
+     * programmerait sinon son propre envoi dans le meme processus, apres la
+     * reponse (le schema que placer() a abandonne). Le lot appelle ensuite
+     * envoyerUnPaquetApres(), une seule fois.
+     */
+    public function poser(ESBTPRdvReservation $reservation, string $action): void
+    {
+        $this->mails->planifier($reservation, $action);
+    }
+
+    /**
+     * Un seul paquet borne apres la reponse, sous le verrou d'envoi. Le reste
+     * part avec la tache planifiee ou le bouton « Envoyer » du planning.
+     */
+    public function envoyerUnPaquetApres(): void
+    {
+        app()->terminating(function () {
+            try {
+                $this->envoyerUnPaquet();
+            } catch (\Throwable $e) {
+                Log::warning('Convocation rdv : paquet apres reponse interrompu', ['erreur' => $e->getMessage()]);
+            }
+        });
+    }
+
+    /**
      * Ne leve jamais : il tourne dans `terminating`, dont la boucle n'a pas de
      * `try` — une exception y couperait les rappels suivants.
      */

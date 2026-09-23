@@ -14,6 +14,7 @@ use App\Models\ESBTPResultat;
 use App\Services\AppreciationScaleService;
 use App\Services\BulletinService;
 use App\Services\ESBTP\BtsCurrentResultSnapshotService;
+use App\Services\NoteCalculationService;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 
@@ -474,7 +475,9 @@ final class MoyennesDeLApercu
                 'calculations' => [],
                 'total_points' => 0,
                 'total_coefficients' => (float) ($matiereDuSnapshot['coefficient'] ?? 0),
-                'moyenne' => (float) ($matiereDuSnapshot['moyenne'] ?? 0),
+                // `null` garde son sens (aucune note comptable) : le tableau
+                // affiche alors « — », pas un 0,00 que personne n'a obtenu.
+                'moyenne' => isset($matiereDuSnapshot['moyenne']) ? (float) $matiereDuSnapshot['moyenne'] : null,
                 'origin' => 'notes',
                 'source' => ($matiereDuSnapshot['source'] ?? 'calculee') === 'manuelle' ? 'manuelle' : 'calculee',
             ];
@@ -564,8 +567,16 @@ final class MoyennesDeLApercu
         foreach ($parMatiere as $matiereId => $donnees) {
             $points = 0.0;
             $coefficients = 0.0;
+            $absences = 0;
 
             foreach ($donnees['notes'] as $note) {
+                // Une absence ne compte pas dans la moyenne, comme au bulletin.
+                if ($note->is_absent) {
+                    $absences++;
+
+                    continue;
+                }
+
                 $bareme = (float) ($note->evaluation->bareme ?? 0);
 
                 if ($bareme <= 0) {
@@ -583,7 +594,12 @@ final class MoyennesDeLApercu
 
             $parMatiere[$matiereId]['total_points'] = $points;
             $parMatiere[$matiereId]['total_coefficients'] = $coefficients;
-            $parMatiere[$matiereId]['moyenne'] = $coefficients > 0 ? $points / $coefficients : 0;
+            $parMatiere[$matiereId]['moyenne'] = match (true) {
+                $coefficients > 0 => $points / $coefficients,
+                // Absences seulement : la valeur du reglage d'etablissement.
+                $absences > 0 => app(NoteCalculationService::class)->moyenneSansNoteComptable(),
+                default => 0,
+            };
         }
 
         return $parMatiere;

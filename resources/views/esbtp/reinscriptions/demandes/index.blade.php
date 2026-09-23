@@ -5,6 +5,9 @@
 @push('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
 <style>
+    .rd-filtre-ref { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; background: rgba(4,83,203,.06); border: 1px solid rgba(4,83,203,.18); color: #1e3a6e; border-radius: 12px; padding: .7rem 1rem; margin-bottom: 1rem; font-size: .86rem; }
+    .rd-filtre-ref i { color: #0453cb; }
+    .rd-filtre-ref a { margin-left: auto; font-weight: 600; color: #0453cb; }
     .rd-hero {
         background: linear-gradient(135deg, #0a3d8f 0%, #0453cb 40%, #3b7ddb 100%);
         border-radius: 18px;
@@ -141,6 +144,14 @@
         @endif
         @if(session('error'))
             <div class="alert alert-danger">{{ session('error') }}</div>
+        @endif
+
+        @if(($referenceActive ?? '') !== '')
+            <div class="rd-filtre-ref">
+                <i class="fas fa-filter"></i>
+                <span>Demande de référence <strong>{{ $referenceActive }}</strong></span>
+                <a href="{{ route('esbtp.reinscription-demandes.index') }}">Voir toutes les demandes</a>
+            </div>
         @endif
 
         <div class="rd-card">

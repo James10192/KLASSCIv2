@@ -21,4 +21,15 @@ interface PorteurDeRendezVous
     public function dejaInviteRdv(): bool;
 
     public function marquerInviteRdv(): void;
+
+    /**
+     * Les statuts d'un dossier qui n'attend plus la famille (inscrite, refusee).
+     * Chaque porteur declare les siens : une candidature et une demande de
+     * reinscription n'ont pas la meme machine d'etats.
+     *
+     * @return list<string>
+     */
+    public static function statutsDossierClos(): array;
+
+    public function dossierClos(): bool;
 }
