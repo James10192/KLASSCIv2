@@ -46,6 +46,7 @@
     "icloud.com"
   ],
   "noms_reels_voisins": ["ymail", "mail", "email", "gmx"],
-  "domaines_factices": ["esbtp.edu.ci", "example.com", "example.org", "test.com"],
+  "domaines_factices": ["esbtp.edu.ci", "esbtp.edu", "demo.klassci.local", "example.com", "example.org", "example.net", "test.com"],
+  "extensions_reservees": ["local", "test", "invalid", "example", "localhost"],
   "distance_maximale": 2
 }

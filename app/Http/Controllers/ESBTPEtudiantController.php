@@ -259,7 +259,7 @@ class ESBTPEtudiantController extends Controller
             'genre' => 'required|in:M,F',
             'date_naissance' => 'nullable|date',
             'telephone' => 'required|string|max:20',
-            'email_personnel' => ['required', 'email', 'max:255', new \App\Rules\EmailJoignable],
+            ...\App\Http\Requests\Etudiants\ReglesEmailsEtudiant::creation(),
             'ville' => 'nullable|string|max:255',
             'commune' => 'nullable|string|max:255',
             'photo' => 'nullable|image|max:2048',
@@ -278,7 +278,6 @@ class ESBTPEtudiantController extends Controller
             'parents.*.relation' => 'required_without:parents.*.parent_id|string|max:50|nullable',
             'parents.*.telephone' => 'required_without:parents.*.parent_id|string|max:20|nullable',
             'parents.*.parent_id' => 'nullable|exists:esbtp_parents,id',
-            'parents.*.email' => ['nullable', 'email', 'max:255', new \App\Rules\EmailJoignable],
         ]);
 
         if ($validator->fails()) {
@@ -623,16 +622,10 @@ class ESBTPEtudiantController extends Controller
             'avec_photo' => $request->hasFile('photo'),
         ]);
 
-        // Adresses deja en base : renvoyees telles quelles par le formulaire,
-        // elles ne doivent pas bloquer la modification d'un autre champ.
-        $adressesEnregistrees = $etudiant->parents()->pluck('esbtp_parents.email')->push($etudiant->email_personnel, $etudiant->email)->all();
-
         // Validation des données - Exclus les champs non modifiables
         $validator = Validator::make($request->all(), [
             'telephone' => 'nullable|string|max:20',
-            'email_personnel' => ['nullable', 'email', 'max:255', new \App\Rules\EmailJoignable($adressesEnregistrees)],
-            'parents.*.email' => ['nullable', 'email', 'max:255', new \App\Rules\EmailJoignable($adressesEnregistrees)],
-            'new_parent.email' => ['nullable', 'email', 'max:255', new \App\Rules\EmailJoignable],
+            ...\App\Http\Requests\Etudiants\ReglesEmailsEtudiant::edition($etudiant),
             'photo' => 'nullable|image|max:2048',
             'statut' => 'required|in:actif,inactif,diplômé,abandon,exclu',
             'ville' => 'nullable|string|max:255',
@@ -1958,7 +1951,7 @@ class ESBTPEtudiantController extends Controller
             'genre' => 'required|in:M,F',
             'date_naissance' => 'nullable|date',
             'telephone' => 'required|string|max:20',
-            'email_personnel' => ['required', 'email', 'max:255', new \App\Rules\EmailJoignable],
+            ...\App\Http\Requests\Etudiants\ReglesEmailsEtudiant::creation(),
             'ville' => 'nullable|string|max:255',
             'commune' => 'nullable|string|max:255',
             'photo' => 'nullable|image|max:2048',
@@ -1973,7 +1966,6 @@ class ESBTPEtudiantController extends Controller
             'parents.*.relation' => 'required_without:parents.*.parent_id|string|max:50|nullable',
             'parents.*.telephone' => 'required_without:parents.*.parent_id|string|max:20|nullable',
             'parents.*.parent_id' => 'nullable|exists:esbtp_parents,id',
-            'parents.*.email' => ['nullable', 'email', 'max:255', new \App\Rules\EmailJoignable],
         ]);
 
         if ($validator->fails()) {

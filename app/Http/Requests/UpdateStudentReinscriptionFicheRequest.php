@@ -73,6 +73,6 @@ class UpdateStudentReinscriptionFicheRequest extends FormRequest
             return [];
         }
 
-        return $etudiant->parents()->pluck('esbtp_parents.email')->push($etudiant->email_personnel, $etudiant->email)->all();
+        return \App\Http\Requests\Etudiants\ReglesEmailsEtudiant::adressesEnregistrees($etudiant);
     }
 }

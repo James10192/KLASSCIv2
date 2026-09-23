@@ -23,7 +23,7 @@ class DiagnosticEmailsInstance
 
     public function __construct(
         private readonly InventaireAdresses $inventaire,
-        private readonly ClassementDomaines $classement,
+        private readonly DiagnosticEmail $classement,
         private readonly ConvocationsRemises $convocations,
         private readonly FamillesAPrevenirRdv $familles,
     ) {}
@@ -55,7 +55,7 @@ class DiagnosticEmailsInstance
         $suspects = [];
 
         foreach ($this->inventaire->domaines() as $ligne) {
-            $analyse = $this->classement->classer($ligne['domaine']);
+            $analyse = $this->classement->classerDomaine($ligne['domaine']);
             $type = $analyse->etat->typeSuspect();
 
             match ($analyse->etat) {
@@ -89,7 +89,7 @@ class DiagnosticEmailsInstance
     {
         $exemples = [];
         foreach ($this->inventaire->domaines() as $ligne) {
-            $type = $this->classement->classer($ligne['domaine'])->etat->typeSuspect();
+            $type = $this->classement->classerDomaine($ligne['domaine'])->etat->typeSuspect();
             if ($type === null) {
                 continue;
             }

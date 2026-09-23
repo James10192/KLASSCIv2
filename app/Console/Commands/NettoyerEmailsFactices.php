@@ -7,13 +7,16 @@ use Illuminate\Console\Command;
 
 /**
  * Lecture seule par defaut. `--execute` remet a NULL les adresses FACTICES
- * (domaines fabriques par KLASSCI, qui n'existent pas), apres sauvegarde.
- * Les fautes de frappe ne sont que rapportees, avec leur suggestion.
+ * (domaines fabriques par KLASSCI, qui n'existent pas) des etudiants, parents,
+ * candidatures et reservations, apres sauvegarde. Les comptes utilisateurs ne
+ * sont touches qu'avec `--inclure-comptes`. Les fautes de frappe ne sont que
+ * rapportees, avec leur suggestion.
  */
 class NettoyerEmailsFactices extends Command
 {
     protected $signature = 'emails:nettoyer-factices
         {--execute : ecrit reellement (sinon simple rapport)}
+        {--inclure-comptes : vide aussi les adresses factices des comptes utilisateurs}
         {--sans-mx : ne pas interroger le DNS}';
 
     protected $description = 'Liste les adresses e-mail factices et fautives ; avec --execute, vide les factices apres sauvegarde.';
@@ -31,13 +34,19 @@ class NettoyerEmailsFactices extends Command
             );
         }
 
+        $comptes = $nettoyage->comptesParRole();
+        if ($comptes !== []) {
+            $this->line('Comptes utilisateurs à adresse factice, par rôle (vidés seulement avec --inclure-comptes) :');
+            $this->table(['Rôle', 'Comptes'], array_map(fn ($role, $n) => [$role, $n], array_keys($comptes), $comptes));
+        }
+
         if (! $this->option('execute')) {
             $this->comment('Simulation : rien n\'a été modifié. Relancer avec --execute pour vider les adresses factices.');
 
             return self::SUCCESS;
         }
 
-        $resultat = $nettoyage->executer();
+        $resultat = $nettoyage->executer((bool) $this->option('inclure-comptes'));
         if ($resultat['modifiees'] === 0) {
             $this->info('Aucune adresse factice à vider.');
 

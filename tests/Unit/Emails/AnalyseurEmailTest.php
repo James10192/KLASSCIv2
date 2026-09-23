@@ -17,8 +17,11 @@ use Tests\TestCase;
  */
 class AnalyseurEmailTest extends TestCase
 {
-    /** Empreinte publiee par klassci-landing (scripts/verifier-email.mjs), commit c9b3930. */
-    private const EMPREINTE_LANDING = '3c28ba33a7e1128c1890df821460348f1abf08180822ce4cac5e51b085357eff';
+    /**
+     * Empreinte du fichier partage avec klassci-landing (scripts/verifier-email.mjs),
+     * apres ajout des domaines fabriques par KLASSCI et des extensions reservees.
+     */
+    private const EMPREINTE_LANDING = '021ecd8807b450edfa1ab7aa5ce331b79d30157e17c6a2d06a790770ea110439';
 
     private function analyser(string $email)
     {

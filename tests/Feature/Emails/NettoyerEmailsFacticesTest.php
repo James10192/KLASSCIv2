@@ -36,11 +36,23 @@ class NettoyerEmailsFacticesTest extends TestCase
         $this->assertSame([], Storage::disk('local')->allFiles('backups'));
     }
 
+    public function test_sans_inclure_comptes_les_comptes_utilisateurs_ne_sont_que_listes(): void
+    {
+        [$user, $etudiant] = $this->donnees();
+
+        $this->artisan('emails:nettoyer-factices', ['--sans-mx' => true, '--execute' => true])
+            ->expectsOutputToContain('par rôle')
+            ->assertSuccessful();
+
+        $this->assertSame('awa.kone@esbtp.edu', $user->fresh()->email, 'Un compte peut se connecter par cette adresse.');
+        $this->assertNull($etudiant->fresh()->email);
+    }
+
     public function test_execute_vide_les_factices_et_garde_les_fautes(): void
     {
         [$user, $etudiant, $faute] = $this->donnees();
 
-        $this->artisan('emails:nettoyer-factices', ['--sans-mx' => true, '--execute' => true])->assertSuccessful();
+        $this->artisan('emails:nettoyer-factices', ['--sans-mx' => true, '--execute' => true, '--inclure-comptes' => true])->assertSuccessful();
 
         $this->assertNull($user->fresh()->email);
         $this->assertNull($etudiant->fresh()->email);

@@ -40,12 +40,16 @@ class DomainesSuspects
         return $this->liste('noms_reels_voisins');
     }
 
-    /** @return list<string> Les factices partages, plus ceux que KLASSCI a fabriques. */
+    /** @return list<string> */
     public function domainesFactices(): array
     {
-        $internes = config('emails_joignables.domaines_factices_internes', []);
+        return $this->liste('domaines_factices');
+    }
 
-        return array_values(array_unique(array_merge($this->liste('domaines_factices'), is_array($internes) ? $internes : [])));
+    /** @return list<string> Extensions reservees (RFC 2606 / 6761) : jamais de courrier derriere. */
+    public function extensionsReservees(): array
+    {
+        return $this->liste('extensions_reservees');
     }
 
     public function distanceMaximale(): int

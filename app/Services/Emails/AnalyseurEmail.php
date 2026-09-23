@@ -63,7 +63,7 @@ class AnalyseurEmail
 
         $extension = substr((string) strrchr('.'.$domaine, '.'), 1);
 
-        return in_array($extension, (array) config('emails_joignables.extensions_factices', []), true);
+        return in_array($extension, $this->listes->extensionsReservees(), true);
     }
 
     /** @return array{0: string, 1: bool}|null le domaine corrige, et si la correction est certaine */
