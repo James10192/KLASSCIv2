@@ -88,6 +88,8 @@ class ESBTPEnseignantController extends Controller
      */
     public function create()
     {
+        $this->authorize('teachers.create');
+
         return view(
             "esbtp.enseignants.create",
             [

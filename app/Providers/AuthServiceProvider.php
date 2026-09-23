@@ -32,6 +32,20 @@ use Illuminate\Support\Facades\Gate;
 class AuthServiceProvider extends ServiceProvider
 {
     /**
+     * Les permissions qui ouvrent la situation financiere d'un etudiant.
+     * Lues par la porte `finances.etudiants.voir`, et nulle part ailleurs.
+     */
+    public const PERMISSIONS_FINANCES_ETUDIANTS = [
+        'paiements.view',
+        'paiements.create',
+        'paiements.create.mobile_money',
+        'paiements.validate',
+        'comptabilite.access',
+        'comptabilite.dashboard.view',
+        'comptabilite.paiements.view',
+    ];
+
+    /**
      * The policy mappings for the application.
      *
      * @var array<class-string, class-string>
@@ -72,8 +86,35 @@ class AuthServiceProvider extends ServiceProvider
                 return $result === true ? true : null;
             }
 
-            return app(\App\Services\ScolariteClerkCapabilities::class)->grants($user, $ability) ?: null;
+            if (app(\App\Services\ScolariteClerkCapabilities::class)->grants($user, $ability)) {
+                return true;
+            }
+
+            // Une permission ouverte pour un temps limite (/esbtp/acces-temporaires).
+            // Elle tombe d'elle-meme a son echeance : c'est la date qui le decide.
+            return app(\App\Domain\Permissions\AccesTemporaires::class)->detient($user, $ability) ?: null;
         });
+
+        // Peut-on montrer a cet utilisateur ce qu'un etudiant a paye, ce qu'il
+        // doit, ou le detail de ses versements ?
+        //
+        // Une seule porte pour toute l'application : fiche etudiant, listes,
+        // reinscription, exports. Avant elle, chaque ecran decidait seul, et la
+        // plupart ne decidaient rien — un directeur des etudes, sans aucune
+        // permission financiere, lisait les soldes de toute l'ecole sur la fiche
+        // etudiant alors que /esbtp/paiements lui repondait 403.
+        //
+        // La liste reprend les permissions qu'une ecole coche pour un profil
+        // financier. Encaisser (`paiements.create`, et sa variante mobile
+        // money) et valider un paiement en font partie : on ne fait ni l'un ni
+        // l'autre sans voir le montant et ce qui reste du. `frais.view` n'en
+        // fait pas partie : il ouvre le bareme, pas la situation d'un etudiant.
+        Gate::define(
+            'finances.etudiants.voir',
+            static fn ($utilisateur) => $utilisateur->hasAnyPermission(self::PERMISSIONS_FINANCES_ETUDIANTS)
+                || app(\App\Domain\Permissions\AccesTemporaires::class)
+                    ->detientUneDe($utilisateur, self::PERMISSIONS_FINANCES_ETUDIANTS)
+        );
 
         // Peut-on EMMENER cet utilisateur au formulaire d'inscription, ou lui
         // en montrer le lien ?

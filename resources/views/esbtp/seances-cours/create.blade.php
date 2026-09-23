@@ -659,9 +659,11 @@
                                             </div>
                                         </div>
                                         <div class="d-flex gap-2 mt-2 flex-wrap">
+                                            @can('teachers.create')
                                             <button type="button" class="btn btn-outline-primary btn-sm" id="openTeacherModalBtn">
                                                 <i class="fas fa-user-plus me-1"></i>Créer un enseignant
                                             </button>
+                                            @endcan
                                             <button type="button" class="btn btn-outline-secondary btn-sm" id="openManageTeachersBtn">
                                                 <i class="fas fa-cogs me-1"></i>Gérer les enseignants
                                             </button>

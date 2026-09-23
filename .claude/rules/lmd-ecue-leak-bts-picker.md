@@ -368,6 +368,7 @@ DÉCIDE du passage en année supérieure. Même leçon, même forme, même passe
 | `EtudiantAcademicJourneyPresenter::resultats()` | moyenne du parcours, fiche étudiant | moyennes enregistrées | filtré (passe 11) |
 | `EtudiantDossierService::getNotesParSemestre()` | rien — `$dossier` n'est cité dans aucune vue | notes | filtré par précaution |
 | `DashboardController::moyenneCourante()` | la moyenne de **l'accueil mobile** de l'élève | snapshot, **repli sur notes brutes** si aucun bulletin n'est configuré | filtré (passe 15) |
+| `ESBTPEtudiantController::attachMoyenneCalculee()` | la moyenne imprimée sur le **certificat de scolarité** | bulletins, **repli sur toutes les moyennes enregistrées** de l'année si aucun bulletin | filtré (septembre 2026), par `CoherenceSystemeAcademique::resultatsRetenus()`, partagé avec le parcours étudiant |
 
 > **Ne désignez jamais ces calculs par leur rang.** La passe 12 a inséré deux
 > lignes au milieu de ce tableau, et trois renvois de la prose (« le sixième »,
