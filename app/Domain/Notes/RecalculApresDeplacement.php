@@ -72,9 +72,9 @@ use Illuminate\Support\Facades\Log;
  * evaluation.
  *
  * Alors disons ce que le tableau compte : **les endroits qui changent les
- * coordonnees d'une EVALUATION**. Ils sont cinq, le cinquieme n'est pas branche
- * ici, et la liste est celle des sites **trouves a ce jour** — pas celle des
- * sites existants (`klassci-debugging-discipline.md`, piege #14) :
+ * coordonnees d'une EVALUATION**. Ils sont cinq, tous branches ici, et la
+ * liste est celle des sites **trouves a ce jour** — pas celle des sites
+ * existants (`klassci-debugging-discipline.md`, piege #14) :
  *
  * | deplaceur | ce qu'il change | branche sur cette classe |
  * |---|---|---|
@@ -82,19 +82,26 @@ use Illuminate\Support\Facades\Log;
  * | `CLIEvaluationMatiereController::evaluationChangeMatiere()` | matiere | oui |
  * | `CLIEvaluationDeplacementController::deplacer()` | periode, en lot | oui |
  * | `CLIEvaluationPeriodeController::repair()` | periode, en lot | oui |
- * | `MergeDuplicateEcue` (sous `force`) | matiere, en masse | **non** |
+ * | `MergeDuplicateEcue` (sous `force`) | matiere, en masse | oui, par `pourUnLot()` |
  *
  * Le cinquieme, `app/Domain/LMD/Actions/MergeDuplicateEcue.php`, reparente
  * `esbtp_evaluations.matiere_id` ET `esbtp_notes.matiere_id` vers l'ECUE
- * canonique, puis met l'absorbee de cote (soft-delete). Il ne recalcule rien.
- * Il n'est pas corrige dans ce lot a dessein : c'est un autre domaine (la
- * reconciliation LMD, dont les agregats sont `esbtp_lmd_resultat_ecue`), il est
- * garde par un drapeau `force`, et sur une instance saine
- * `ESBTPEvaluation::booted()` refuse deja qu'une ECUE soit evaluee dans une
- * classe BTS — donc il ne devrait pas croiser `esbtp_resultats`. « Ne devrait
- * pas » n'est pas « ne peut pas » : sur une instance portant des lignes
- * heritees, il laisserait le meme agregat perime. C'est un chantier a lui, pas
- * une ligne a glisser ici.
+ * canonique d'un seul `update()` de query builder. Il a d'abord ete laisse
+ * de cote, au motif que les agregats LMD vivent dans `esbtp_lmd_resultat_ecue`
+ * et qu'une fusion « ne devrait pas croiser `esbtp_resultats` ». C'etait
+ * inexact : l'observateur des notes ecrit `esbtp_resultats` quel que soit le
+ * systeme de la classe, donc une classe LMD en porte bien, une ligne par ECUE
+ * notee. Il releve la coordonnee d'avant dans sa transaction, puis passe par
+ * {@see self::pourUnLot()} apres le commit, comme les deux endpoints en lot.
+ *
+ * Ce que ce recalcul RAPPORTE reellement depend des lecteurs de ces lignes
+ * pour une classe LMD, et cela n'est pas etabli : les metriques LMD de la
+ * fiche eleve viennent des bulletins LMD, mais `RankingService` s'annonce
+ * « BTS + LMD » et s'appuie sur `BtsCurrentResultSnapshotService`, qui donne
+ * la preseance a `esbtp_resultats`. Le recalcul est garde parce qu'il coute
+ * peu et ne peut pas ecrire de zero ; son apport certain, lui, est ailleurs —
+ * le report des lignes de bulletin LMD et de leur note de rattrapage, que
+ * `MergeDuplicateEcue` fait lui-meme.
  *
  * ## Les VOISINS : ils ecrivent les memes colonnes sans deplacer d'evaluation
  *
@@ -404,6 +411,36 @@ final class RecalculApresDeplacement
      */
     public static function pourUnLotDePeriodes(array $deplacements, ?int $declencheur = null): array
     {
+        return self::pourUnLot(array_map(static fn (array $d) => [
+            'evaluation' => $d['evaluation'],
+            'avant' => [
+                'classe_id' => $d['evaluation']->classe_id,
+                'matiere_id' => $d['evaluation']->matiere_id,
+                'periode' => $d['periode_avant'],
+                'annee_universitaire_id' => $d['evaluation']->annee_universitaire_id,
+            ],
+        ], $deplacements), $declencheur);
+    }
+
+    /**
+     * Le lot GÉNÉRAL : chaque déplacement porte la coordonnée complète
+     * d'avant, quelle que soit celle qui a changé.
+     *
+     * `pourUnLotDePeriodes()` n'en est qu'une traduction : elle ne sait décrire
+     * qu'un changement de période. La fusion d'ECUE (`MergeDuplicateEcue`,
+     * sous `force`) change la MATIÈRE d'un lot d'évaluations d'un seul
+     * `update()` de query builder, et a besoin du même budget, du même mémo et
+     * du même compte rendu — pas d'une seconde boucle qui divergerait.
+     *
+     * Même contrat que le reste de la classe : à appeler APRÈS l'enregistrement
+     * et HORS transaction, les évaluations portant déjà leur nouvelle
+     * coordonnée.
+     *
+     * @param  array<int, array{evaluation: ESBTPEvaluation, avant: array{classe_id:int|null, matiere_id:int|null, periode:string|null, annee_universitaire_id:int|null}}>  $deplacements
+     * @return array{recalculs_tentes:int, orphelins:array<int,array<string,mixed>>, echecs:int, reporte:bool, perimetres_reportes:array<int,array<string,mixed>>}
+     */
+    public static function pourUnLot(array $deplacements, ?int $declencheur = null): array
+    {
         $bilan = [
             'recalculs_tentes' => 0,
             'orphelins' => [],
@@ -446,14 +483,7 @@ final class RecalculApresDeplacement
             $budget -= $perimetre['notes'];
 
             foreach ($perimetre['deplacements'] as $deplacement) {
-                $evaluation = $deplacement['evaluation'];
-
-                $partiel = self::pourAvecMemo($evaluation, [
-                    'classe_id' => $evaluation->classe_id,
-                    'matiere_id' => $evaluation->matiere_id,
-                    'periode' => $deplacement['periode_avant'],
-                    'annee_universitaire_id' => $evaluation->annee_universitaire_id,
-                ], $declencheur, $memo);
+                $partiel = self::pourAvecMemo($deplacement['evaluation'], $deplacement['avant'], $declencheur, $memo);
 
                 $bilan['recalculs_tentes'] += $partiel['recalculs_tentes'];
                 $bilan['echecs'] += $partiel['echecs'];
@@ -475,7 +505,11 @@ final class RecalculApresDeplacement
      * rattrapage valide `in:semestre1,semestre2`. Publier la valeur brute
      * rendait un parametre que l'endpoint refuse en 422.
      *
-     * @param  array<int, array{evaluation: ESBTPEvaluation, periode_avant: string}>  $deplacements
+     * Les matières sont rendues des DEUX côtés, comme les périodes : sur une
+     * fusion d'ECUE, la matière quittée est celle dont la ligne peut rester
+     * orpheline, et le rattrapage doit pouvoir la viser.
+     *
+     * @param  array<int, array{evaluation: ESBTPEvaluation, avant: array<string,mixed>}>  $deplacements
      * @param  Collection<int|string, int>  $notesParEvaluation
      * @return array<string, array<string, mixed>>
      */
@@ -498,7 +532,7 @@ final class RecalculApresDeplacement
                 ];
             }
 
-            foreach ([$deplacement['periode_avant'], $evaluation->periode] as $brute) {
+            foreach ([$deplacement['avant']['periode'] ?? null, $evaluation->periode] as $brute) {
                 if (ESBTPEvaluation::numeroDeSemestre((string) $brute) === null) {
                     continue;
                 }
@@ -510,8 +544,10 @@ final class RecalculApresDeplacement
                 }
             }
 
-            if ($evaluation->matiere_id && ! in_array((int) $evaluation->matiere_id, $perimetres[$cle]['matiere_ids'], true)) {
-                $perimetres[$cle]['matiere_ids'][] = (int) $evaluation->matiere_id;
+            foreach ([$deplacement['avant']['matiere_id'] ?? null, $evaluation->matiere_id] as $matiereId) {
+                if ($matiereId && ! in_array((int) $matiereId, $perimetres[$cle]['matiere_ids'], true)) {
+                    $perimetres[$cle]['matiere_ids'][] = (int) $matiereId;
+                }
             }
 
             $perimetres[$cle]['notes'] += (int) ($notesParEvaluation[$evaluation->id] ?? 0);

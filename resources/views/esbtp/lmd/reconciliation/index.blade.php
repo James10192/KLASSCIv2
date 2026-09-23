@@ -100,6 +100,11 @@
     .rec-impact-row strong { color: #0453cb; }
     .rec-warn { background: rgba(245,158,11,.1); border: 1px solid rgba(245,158,11,.28); color: #b45309; border-radius: 9px; padding: .7rem .9rem; font-size: .82rem; margin-top: .9rem; }
     .rec-block { background: rgba(220,38,38,.08); border: 1px solid rgba(220,38,38,.28); color: #b91c1c; border-radius: 9px; padding: .7rem .9rem; font-size: .82rem; margin-top: .9rem; }
+    .rec-done { background: rgba(4,83,203,.05); border: 1px solid rgba(4,83,203,.18); border-radius: 9px; padding: .75rem .9rem; font-size: .82rem; color: #1e293b; margin-top: .9rem; }
+    .rec-done-title { font-weight: 700; color: #0453cb; margin-bottom: .35rem; display: flex; align-items: center; gap: .45rem; }
+    .rec-done-list { margin: .35rem 0 0; padding-left: 1.1rem; color: #475569; }
+    .rec-done-list li { padding: .12rem 0; }
+    .rec-done-list a { color: #0453cb; font-weight: 600; }
     .rec-modal-foot { padding: 1rem 1.4rem; border-top: 1px solid #eef2f7; display: flex; justify-content: flex-end; gap: .6rem; flex-wrap: wrap; }
 
     /* Tabs */
@@ -324,6 +329,57 @@
                     </div>
                 </template>
 
+                {{-- Compte rendu d'une fusion effectuée : ce qui reste à trancher par l'école. --}}
+                <template x-if="modal.done">
+                    <div>
+                        <div class="rec-impact-row"><span>Entités absorbées</span><strong x-text="modal.done.soft_deleted_count"></strong></div>
+                        <div class="rec-impact-row"><span>Moyennes recalculées</span><strong x-text="(modal.done.resultats || {}).recalculs_tentes || 0"></strong></div>
+
+                        <template x-if="recalculIncomplet(modal.done)">
+                            <div class="rec-warn">
+                                <div class="rec-done-title"><i class="fas fa-hourglass-half"></i><span>Recalcul des moyennes incomplet</span></div>
+                                <span x-text="messageRecalculIncomplet(modal.done)"></span>
+                            </div>
+                        </template>
+
+                        <template x-if="orphelins(modal.done).length">
+                            <div class="rec-warn">
+                                <div class="rec-done-title"><i class="fas fa-exclamation-triangle"></i><span x-text="orphelins(modal.done).length + ' moyenne(s) sans plus rien à moyenner'"></span></div>
+                                Elles restent enregistrées sur l'élément absorbé, où il ne reste aucune note, ou seulement des absences : ni recalculées (elles tomberaient à 0/20), ni supprimées. Vérifiez les résultats de l'élève ; leur suppression se demande au support technique.
+                                <ul class="rec-done-list">
+                                    <template x-for="o in orphelins(modal.done)" :key="o.etudiant_id + '-' + o.classe_id + '-' + o.periode">
+                                        <li><a :href="resultatsEleveUrl(o.etudiant_id, o.annee_universitaire_id)" target="_blank" rel="noopener" x-text="o.etudiant || ('Élève #' + o.etudiant_id)"></a> <span x-text="'· ' + (o.classe || ('classe #' + o.classe_id)) + ' · ' + periodeLisible(o.periode) + ' · moyenne ' + (o.moyenne === null ? '—' : o.moyenne)"></span></li>
+                                    </template>
+                                </ul>
+                            </div>
+                        </template>
+
+                        <template x-if="conflitsLmd(modal.done).length">
+                            <div class="rec-warn">
+                                <div class="rec-done-title"><i class="fas fa-code-branch"></i><span x-text="conflitsLmd(modal.done).length + ' ligne(s) de bulletin LMD restées en place'"></span></div>
+                                Le bulletin portait déjà l'élément conservé : deux moyennes pour la même matière. Laquelle garder est une décision de l'école.
+                                <ul class="rec-done-list">
+                                    <template x-for="c in conflitsLmd(modal.done)" :key="c.id">
+                                        <li><a :href="bulletinUrl(c.bulletin_id)" target="_blank" rel="noopener" x-text="'Bulletin #' + c.bulletin_id"></a> <span x-text="'· élève #' + c.etudiant_id + ' · moyenne ' + (c.moyenne === null ? '—' : c.moyenne)"></span></li>
+                                    </template>
+                                </ul>
+                            </div>
+                        </template>
+
+                        <template x-if="bulletinsARegenerer(modal.done).length">
+                            <div class="rec-done">
+                                <div class="rec-done-title"><i class="fas fa-sync-alt"></i><span x-text="bulletinsARegenerer(modal.done).length + ' bulletin(s) LMD à régénérer'"></span></div>
+                                Leurs lignes ont été reportées sur l'élément conservé, note de rattrapage comprise. Régénérez-les pour que le document suive.
+                                <ul class="rec-done-list">
+                                    <template x-for="id in bulletinsARegenerer(modal.done)" :key="id">
+                                        <li><a :href="bulletinUrl(id)" target="_blank" rel="noopener" x-text="'Bulletin #' + id"></a></li>
+                                    </template>
+                                </ul>
+                            </div>
+                        </template>
+                    </div>
+                </template>
+
                 <template x-if="modal.report && !modal.report.blocked">
                     <div>
                         <div class="rec-impact-row"><span>Entité canonique conservée</span><strong x-text="'#' + modal.report.canonical_id"></strong></div>
@@ -348,17 +404,17 @@
                 </template>
             </div>
             <div class="rec-modal-foot">
-                <button class="rec-btn rec-btn--ghost" @click="closeModal()">Annuler</button>
+                <button class="rec-btn rec-btn--ghost" @click="closeModal()" x-text="modal.done ? 'Fermer' : 'Annuler'"></button>
                 <template x-if="modal.report && modal.report.blocked">
                     <label class="rec-check"><input type="checkbox" x-model="modal.force"> Forcer (repointe évaluations / notes / résultats)</label>
                 </template>
-                <button class="rec-btn rec-btn--danger" @click="confirmMerge()" :disabled="mergeDisabled">
+                <button class="rec-btn rec-btn--danger" @click="confirmMerge()" :disabled="mergeDisabled" x-show="!modal.done">
                     <i class="fas fa-object-group" x-show="!busy"></i>
                     <i class="fas fa-spinner fa-spin" x-show="busy" x-cloak></i>
                     Fusionner
                 </button>
             </div>
-            <p class="rec-disabled-hint" x-show="mergeDisabled && mergeDisabledReason" x-cloak x-text="mergeDisabledReason"></p>
+            <p class="rec-disabled-hint" x-show="!modal.done && mergeDisabled && mergeDisabledReason" x-cloak x-text="mergeDisabledReason"></p>
         </div>
     </div>
 
@@ -385,7 +441,9 @@ function recManager() {
         tab: 'ue',
         loading: false,
         busy: false,
-        modal: { open: false, type: null, typeLabel: '', group: null, canonical: null, report: null, force: false },
+        modal: { open: false, type: null, typeLabel: '', group: null, canonical: null, report: null, force: false, done: null },
+        bulletinUrlGabarit: @json(route('esbtp.lmd.bulletins.show', ['bulletin' => '__ID__'])),
+        resultatsEleveUrlGabarit: @json(route('esbtp.lmd.resultats.etudiant', ['etudiant' => '__ID__'])),
         toasts: [],
         _tid: 0,
 
@@ -400,6 +458,7 @@ function recManager() {
                 ecue_fk: 'ECUE (FK directe)',
                 planifications: 'planifications',
                 matiere_filiere_links: 'matière ↔ filière',
+                lmd_resultats_ecues: 'lignes de bulletin LMD',
             };
             return map[key] || key;
         },
@@ -458,7 +517,7 @@ function recManager() {
             this.modal = {
                 open: true, type, group, canonical: canonicalId,
                 typeLabel: (type === 'ue' ? 'Unité d\'enseignement' : 'ECUE') + ' — ' + this.prettyName(group.normalized_name),
-                report: null, force: false,
+                report: null, force: false, done: null,
             };
             try {
                 const report = await this.callMerge(type, canonicalId, absorbed, true, false);
@@ -480,7 +539,15 @@ function recManager() {
                 const report = await this.callMerge(this.modal.type, this.modal.canonical, absorbed, false, this.modal.force);
                 if (report && report.committed) {
                     this.toast('success', 'Fusion effectuée : ' + report.soft_deleted_count + ' entité(s) absorbée(s).');
-                    this.closeModal();
+                    // Ce qui reste à trancher (moyennes orphelines, collisions,
+                    // bulletins à régénérer) reste affiché : fermer la fenêtre
+                    // l'aurait relégué au seul journal serveur.
+                    if (this.orphelins(report).length || this.conflitsLmd(report).length || this.bulletinsARegenerer(report).length || this.recalculIncomplet(report)) {
+                        this.modal.report = null;
+                        this.modal.done = report;
+                    } else {
+                        this.closeModal();
+                    }
                     await this.detect();
                 } else if (report && report.blocked) {
                     this.modal.report = report;
@@ -512,7 +579,36 @@ function recManager() {
             return data;
         },
 
-        closeModal() { this.modal.open = false; this.modal.group = null; this.modal.report = null; this.modal.force = false; },
+        closeModal() { this.modal.open = false; this.modal.group = null; this.modal.report = null; this.modal.force = false; this.modal.done = null; },
+
+        orphelins(r) { return ((r && r.resultats) || {}).orphelins || []; },
+        recalculIncomplet(r) {
+            const res = (r && r.resultats) || {};
+            return !!res.reporte || (res.echecs || 0) > 0;
+        },
+        messageRecalculIncomplet(r) {
+            const res = (r && r.resultats) || {};
+            const parts = [];
+            if (res.reporte) {
+                parts.push((res.perimetres_reportes || []).length + ' classe(s) non recalculée(s) : trop de notes pour une seule requête.');
+            }
+            if ((res.echecs || 0) > 0) {
+                parts.push(res.echecs + ' moyenne(s) en échec de recalcul.');
+            }
+            parts.push('La fusion est bien enregistrée ; le support technique doit relancer le recalcul des moyennes de ces classes.');
+            return parts.join(' ');
+        },
+        conflitsLmd(r) { return ((r && r.lmd_resultats_ecues) || {}).conflits || []; },
+        bulletinsARegenerer(r) { return ((r && r.lmd_resultats_ecues) || {}).bulletins_a_regenerer || []; },
+        bulletinUrl(id) { return this.bulletinUrlGabarit.replace('__ID__', id); },
+        // L'année de la ligne, sinon la page retombe sur l'année courante.
+        resultatsEleveUrl(id, anneeId) {
+            return this.resultatsEleveUrlGabarit.replace('__ID__', id) + (anneeId ? '?annee_universitaire_id=' + encodeURIComponent(anneeId) : '');
+        },
+        periodeLisible(p) {
+            const m = String(p || '').match(/^(?:semestre\s*)?(\d+)$/i);
+            return m ? 'Semestre ' + m[1] : (p || '');
+        },
 
         toast(type, message) {
             const id = ++this._tid;
