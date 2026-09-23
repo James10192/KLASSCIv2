@@ -9,7 +9,9 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
- * La seule reponse du depot a « ce code de matiere est-il libre ? ».
+ * La reponse des ecrans LMD et de l'import de maquette a « ce code de matiere
+ * est-il libre ? ». L'ecran BTS des matieres (ESBTPMatiereController) repond
+ * encore par sa propre regle `unique`, sans liberation : c'est un ecart connu.
  *
  * `esbtp_matieres.code` porte un index unique qui compte AUSSI les matieres
  * supprimees en douceur. Tant que chaque ecran repondait a sa facon, la meme
@@ -55,6 +57,9 @@ class CodeDeMatiere
             return null;
         }
 
+        // Le code stocke, pas le code saisi : sous une collation insensible a la
+        // casse, `abc` retrouve `ABC`, et l'archive doit garder la graphie d'origine.
+        $code = $archivee->code;
         $codeArchive = $code . self::SUFFIXE_ARCHIVE . $archivee->id;
         $archivee->code = $codeArchive;
         $archivee->save();
@@ -136,6 +141,16 @@ class CodeDeMatiere
             );
         }
 
+        // Une matiere desactivee n'est listee nulle part, pas meme dans son unite
+        // (getEcuesEffectifs l'ecarte) : la dire « deja dans l'unite » serait faux.
+        if (! $titulaire->is_active) {
+            return sprintf(
+                'Le code « %s » est déjà celui de la matière désactivée « %s ». Choisissez un autre code, ou réactivez-la.',
+                $titulaire->code,
+                $titulaire->name
+            );
+        }
+
         // Sans aucune ligne de pivot, une unite lit ses elements par la cle
         // etrangere : l'element en fait alors deja partie, toutes maquettes.
         $dejaDansLUnite = (clone $pivot)
@@ -147,14 +162,6 @@ class CodeDeMatiere
         if ($dejaDansLUnite) {
             return sprintf(
                 'Le code « %s » est déjà celui de « %s », qui fait déjà partie de cette unité.',
-                $titulaire->code,
-                $titulaire->name
-            );
-        }
-
-        if (! $titulaire->is_active) {
-            return sprintf(
-                'Le code « %s » est déjà celui de la matière désactivée « %s ». Choisissez un autre code, ou réactivez-la.',
                 $titulaire->code,
                 $titulaire->name
             );

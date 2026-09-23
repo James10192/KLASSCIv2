@@ -332,6 +332,56 @@ class EcuePorteeDepuisEcranTest extends TestCase
         $this->assertStringNotContainsString('Lier un existant', $erreur);
     }
 
+    public function test_le_formulaire_d_ue_libere_le_code_au_lieu_de_ressusciter_la_matiere(): void
+    {
+        // Avant : le formulaire restaurait la matiere supprimee sous le nom saisi,
+        // notes et historique compris.
+        $ancienne = ESBTPMatiere::where('code', 'ECUE-TIR')->firstOrFail();
+        $ancienne->delete();
+
+        $message = $this->actingAs($this->acteur)
+            ->putJson(route('esbtp.lmd.ue.update', $this->ue), [
+                'name' => $this->ue->name,
+                'type_ue' => 'fondamentale',
+                'ecues' => [
+                    ['name' => 'Matiere ECUE-BU', 'code' => 'ECUE-BU'],
+                    ['name' => 'Nouvel element', 'code' => 'ECUE-TIR'],
+                ],
+            ])
+            ->assertOk()
+            ->json('message');
+
+        $this->assertStringContainsString('libéré', $message);
+
+        $archivee = ESBTPMatiere::withTrashed()->find($ancienne->id);
+        $this->assertTrue($archivee->trashed());
+        $this->assertSame('ECUE-TIR~suppr-'.$ancienne->id, $archivee->code);
+
+        $nouvelle = ESBTPMatiere::where('code', 'ECUE-TIR')->firstOrFail();
+        $this->assertNotSame($ancienne->id, $nouvelle->id);
+        $this->assertSame('Nouvel element', $nouvelle->name);
+    }
+
+    public function test_un_formulaire_d_ue_refuse_ne_libere_aucun_code(): void
+    {
+        $ancienne = ESBTPMatiere::where('code', 'ECUE-TIR')->firstOrFail();
+        $ancienne->delete();
+        ESBTPMatiere::create(['name' => 'Topographie BTS', 'code' => 'TOPO-BTS', 'is_active' => true]);
+
+        $this->actingAs($this->acteur)
+            ->putJson(route('esbtp.lmd.ue.update', $this->ue), [
+                'name' => $this->ue->name,
+                'type_ue' => 'fondamentale',
+                'ecues' => [
+                    ['name' => 'Nouvel element', 'code' => 'ECUE-TIR'],
+                    ['name' => 'Topographie', 'code' => 'TOPO-BTS'],
+                ],
+            ])
+            ->assertStatus(422);
+
+        $this->assertSame('ECUE-TIR', ESBTPMatiere::withTrashed()->find($ancienne->id)->code);
+    }
+
     public function test_l_import_libere_le_code_d_une_matiere_supprimee(): void
     {
         // Avant : l'import levait sur l'index unique, maquette entiere annulee.
