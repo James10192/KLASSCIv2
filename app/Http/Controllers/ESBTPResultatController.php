@@ -1005,7 +1005,8 @@ class ESBTPResultatController extends Controller
                 $sommeCoefs += $matCoef;
             }
         }
-        $moyenneGenerale = $sommeCoefs > 0 ? $sommePoints / $sommeCoefs : 0;
+        // Rien de compte = aucune note : `null`, pas 0. Les zeros comptant desormais, la somme suffit.
+        $moyenneGenerale = $sommeCoefs > 0 ? $sommePoints / $sommeCoefs : null;
 
         \Log::info('Student Result Calculations', [
             'student_id' => $id,
@@ -1029,7 +1030,7 @@ class ESBTPResultatController extends Controller
                 $periode ?: 'annuel'
             );
             $noteAssiduite = $this->bulletinService->resolveAttendanceNote($absences['justifiees'] ?? 0, $absences['non_justifiees'] ?? 0);
-            $moyenneAvecAssiduite = $moyenneGenerale + $noteAssiduite;
+            $moyenneAvecAssiduite = $moyenneGenerale === null ? null : $moyenneGenerale + $noteAssiduite;
         }
 
         $semesterWeights = $this->bulletinService->getSemesterWeights($classe);
@@ -1037,15 +1038,13 @@ class ESBTPResultatController extends Controller
             ? $this->currentResultSnapshotService->getAnnualSnapshot($etudiant->id, $classe->id, $annee_universitaire_id)
             : null;
 
-        // Moyennes semestrielles incluant l'assiduité (via bulletin ou fallback) ; aucune sans classe.
-        $moyenneSemestre1 = $annualSnapshot['semester_snapshots']['semestre1']['effective_total'] ?? ($classe ? $this->bulletinService->getAlignedBulletinAverageForPeriode(
-            $id, $classe->id, $annee_universitaire_id ?? 0,
-            'semestre1', $periode, $moyenneAvecAssiduite, $noteAssiduite
-        ) : null);
-        $moyenneSemestre2 = $annualSnapshot['semester_snapshots']['semestre2']['effective_total'] ?? ($classe ? $this->bulletinService->getAlignedBulletinAverageForPeriode(
-            $id, $classe->id, $annee_universitaire_id ?? 0,
-            'semestre2', $periode, $moyenneAvecAssiduite, $noteAssiduite
-        ) : null);
+        // Moyennes semestrielles incluant l'assiduité : le snapshot vivant fait foi, son `null` veut dire
+        // « aucune note ». Pas de repli. Il rendait la moyenne courante (0 faute de note) sur l'onglet ouvert,
+        // un bulletin officiel périmé sur l'autre, et sans classe il lisait les notes de toutes les années
+        // jusqu'à lever « Classe invalide ». Le bulletin officiel d'un semestre reste lisible dans le bandeau
+        // « Officiel » de l'onglet de CE semestre ; la moyenne annuelle exige des notes sur les deux.
+        $moyenneSemestre1 = $annualSnapshot['semester_snapshots']['semestre1']['effective_total'] ?? null;
+        $moyenneSemestre2 = $annualSnapshot['semester_snapshots']['semestre2']['effective_total'] ?? null;
         $moyenneAnnuelle = ($annualSnapshot['state'] ?? null) === 'annual_complete'
             ? ($annualSnapshot['effective_total'] ?? null)
             : $this->bulletinService->calculateAnnualAverage($moyenneSemestre1, $moyenneSemestre2, $semesterWeights);
@@ -1086,12 +1085,6 @@ class ESBTPResultatController extends Controller
             $moyenneGenerale = $bulletinConsistency['current_recomputed_raw_total'] ?? $moyenneGenerale;
             $noteAssiduite = $bulletinConsistency['current_recomputed_note_assiduite'] ?? $noteAssiduite;
             $moyenneAvecAssiduite = $bulletinConsistency['current_recomputed_effective_total'] ?? $moyenneAvecAssiduite;
-
-            if ($periode === 'semestre1') {
-                $moyenneSemestre1 = $moyenneAvecAssiduite;
-            } else {
-                $moyenneSemestre2 = $moyenneAvecAssiduite;
-            }
 
             $notesByMatiere = $this->moyennesDeLApercu->notesDetailleesDepuisLeSnapshot($bulletinConsistency['current_subjects'] ?? [], $notes);
             $detailUiState = $this->buildAnnualDetailUiState($periode, $moyenneSemestre1, $moyenneSemestre2, $moyenneAnnuelle);
