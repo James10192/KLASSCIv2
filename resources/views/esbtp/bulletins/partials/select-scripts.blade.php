@@ -328,7 +328,9 @@ window.busCard = function (cfg) {
                 annee_universitaire_id: depuisUrl('annee_universitaire_id')
                     || @json($anneeActuelle?->id ? (string) $anneeActuelle->id : ''),
                 etudiant_id: '',
-                semestre: '',
+                // La carte « Consulter » attend « 1 » ou « 2 » : même demande,
+                // autre codage. Sans ceci, elle seule restait vide.
+                semestre: ({ semestre1: '1', semestre2: '2' })[depuisUrl('periode')] || '',
                 periode: depuisUrl('periode'),
                 recalculer: false,
                 incomplete_reason: '',
