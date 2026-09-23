@@ -308,7 +308,20 @@ final class RecalculApresDeplacement
         }
 
         $memo = ['couples' => [], 'orphelins' => []];
-        $bilan = self::recalculerPourLesEleves($evaluation, [self::coordonneeDe($evaluation)], $declencheur, $memo, self::SOURCE_STATUT);
+
+        // Le statut est DEJA enregistre : une exception qui remonterait ferait
+        // dire a l'ecran « erreur » pour une annulation acquise. Elle compte
+        // comme un echec, que l'ecran annonce — comme pour la ponderation.
+        try {
+            $bilan = self::recalculerPourLesEleves($evaluation, [self::coordonneeDe($evaluation)], $declencheur, $memo, self::SOURCE_STATUT);
+        } catch (\Throwable $e) {
+            Log::error('Recalcul apres changement de statut interrompu', [
+                'evaluation_id' => $evaluation->id,
+                'erreur' => $e->getMessage(),
+            ]);
+
+            return ['recalculs_tentes' => 0, 'orphelins' => [], 'echecs' => 1];
+        }
 
         if ($bilan['orphelins'] !== []) {
             Log::warning('Changement de statut d evaluation : moyennes sans rien a moyenner, laissees en place', [

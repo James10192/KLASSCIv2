@@ -196,6 +196,19 @@ class EntreesEtSortiesDeMoyenneTest extends TestCase
         $this->assertCount(1, array_filter($journal, fn ($m) => str_contains($m, 'Changement de statut')));
     }
 
+    public function test_un_recalcul_interrompu_n_annonce_pas_d_erreur_pour_une_annulation_acquise(): void
+    {
+        [, $annulee] = $this->deuxEvaluationsEtUneMoyenne();
+        // La lecture des élèves notés lève : l'annulation, elle, est déjà écrite.
+        Schema::drop('esbtp_notes');
+
+        $reponse = $this->actionDeLaListe('cancel', $annulee);
+
+        $this->assertTrue($reponse->getData(true)['success']);
+        $this->assertStringContainsString('en échec', (string) $reponse->getData(true)['warning']);
+        $this->assertSame('cancelled', DB::table('esbtp_evaluations')->where('id', $annulee)->value('status'));
+    }
+
     public function test_reactiver_une_evaluation_remet_ses_notes_dans_la_moyenne(): void
     {
         $restante = $this->evaluation(self::MATIERE, 'semestre1');
