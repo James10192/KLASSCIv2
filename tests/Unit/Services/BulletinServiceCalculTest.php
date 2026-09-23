@@ -110,9 +110,6 @@ class BulletinServiceCalculTest extends TestCase
     }
 
     /**
-     * Aucune note → 0 (pas d'exception, pas de division par 0).
-     */
-    /**
      * Rien de comptable : `null`, pas 0. La valeur a donner a la matiere est un
      * reglage d'etablissement, que l'appelant demande a
      * `NoteCalculationService::moyenneSansNoteComptable()`. Ce test tourne sans
