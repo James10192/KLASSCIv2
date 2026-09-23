@@ -28,7 +28,8 @@ use Tests\TestCase;
  * Mesure en retirant, pas deduit : neutraliser `apresChangementDePonderation()`
  * fait tomber les trois premiers tests ; comparer les valeurs en chaines au lieu
  * de nombres fait tomber le quatrieme ; neutraliser `baremeMinimal()` fait tomber
- * les deux refus ; retirer le `refresh()` de `quickUpdate()` fait tomber le
+ * les deux refus ; retirer la condition « le bareme baisse » fait tomber le
+ * test de l'evaluation deja sous sa note ; retirer le `refresh()` de `quickUpdate()` fait tomber le
  * test du coefficient renvoye ; rattraper moins large que `\Throwable` fait
  * tomber le test de la panne. Le test « deplacer et reponderer » garde un
  * comportement deja juste (le recalcul du deplacement lit le nouveau
@@ -167,6 +168,24 @@ class RecalculApresChangementDePonderationTest extends TestCase
         $this->assertStringContainsString('barème', (string) $reponse->getSession()->get('error'));
         $this->assertSame(20.0, (float) $ponderee->fresh()->bareme);
         $this->assertSame(15.0, $this->moyenne($etudiant->id, $matiere->id));
+    }
+
+    /**
+     * Le code d'avant laissait baisser le bareme sous une note : ces
+     * evaluations existent. Le plancher ne refuse qu'une BAISSE ; sans cela,
+     * on ne pourrait plus en corriger ni le titre ni la date.
+     *
+     * @test
+     */
+    public function une_evaluation_deja_sous_sa_note_reste_modifiable(): void
+    {
+        [, , $ponderee] = $this->deuxNotes();
+        DB::table('esbtp_evaluations')->where('id', $ponderee->id)->update(['bareme' => 5]);
+
+        $reponse = $this->editionRapide($ponderee->fresh(), bareme: 5, coefficient: 1);
+
+        $this->assertTrue($reponse['success']);
+        $this->assertSame(5.0, (float) $ponderee->fresh()->bareme);
     }
 
     /**

@@ -721,7 +721,7 @@ class ESBTPEvaluationController extends Controller
             }
 
             $baremeMinimal = $evaluation->baremeMinimal();
-            if ($baremeMinimal !== null && (float) $request->bareme < $baremeMinimal) {
+            if ($this->baremeDescendSousUneNote($evaluation, (float) $request->bareme, $baremeMinimal)) {
                 return redirect()->back()
                     ->with('error', $this->messageBaremeSousUneNote($baremeMinimal))
                     ->withInput();
@@ -818,6 +818,18 @@ class ESBTPEvaluationController extends Controller
         }
     }
 
+    /**
+     * Refuse seulement un barème qui BAISSE sous une note saisie. Une
+     * évaluation déjà dans cet état (le code d'avant le permettait) doit rester
+     * modifiable — titre, date, période — sans qu'on touche à son barème.
+     */
+    private function baremeDescendSousUneNote(ESBTPEvaluation $evaluation, float $nouveau, ?float $baremeMinimal): bool
+    {
+        return $baremeMinimal !== null
+            && $nouveau < $baremeMinimal
+            && $nouveau < (float) $evaluation->getOriginal('bareme');
+    }
+
     private function messageBaremeSousUneNote(float $baremeMinimal): string
     {
         $note = rtrim(rtrim(number_format($baremeMinimal, 2, ',', ''), '0'), ',');
@@ -850,7 +862,7 @@ class ESBTPEvaluationController extends Controller
 
         // Avant le `try` : son rattrapage large ferait de ce refus une erreur 500.
         $baremeMinimal = $evaluation->baremeMinimal();
-        if ($baremeMinimal !== null && (float) $validated['bareme'] < $baremeMinimal) {
+        if ($this->baremeDescendSousUneNote($evaluation, (float) $validated['bareme'], $baremeMinimal)) {
             throw ValidationException::withMessages(['bareme' => $this->messageBaremeSousUneNote($baremeMinimal)]);
         }
 
@@ -883,8 +895,9 @@ class ESBTPEvaluationController extends Controller
                     'coefficient' => (float) $evaluation->coefficient,
                 ],
                 'moyennes_non_recalculees' => $recalcul['echecs'],
+                // Sans nombre : une interruption ne dit pas combien d'élèves restaient.
                 'message' => $recalcul['echecs'] > 0
-                    ? 'Évaluation mise à jour, mais '.$recalcul['echecs'].' moyenne(s) n\'ont pas pu être recalculées.'
+                    ? 'Évaluation mise à jour, mais des moyennes n\'ont pas pu être recalculées. Relancez le recalcul de la classe.'
                     : 'Évaluation mise à jour.',
             ]);
         } catch (\Throwable $e) {
