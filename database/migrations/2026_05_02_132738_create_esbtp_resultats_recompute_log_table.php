@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\Schema;
  * `string(30)` (migration `elargir_source_du_journal_de_recalcul`, septembre
  * 2026). Une valeur hors liste faisait LEVER l'INSERT, et le job avalait
  * l'exception — la trace disparaissait sans que rien ne le dise. Les sources
- * ajoutées depuis : `cli`, `deplacement`.
+ * ajoutées depuis : `cli`, `deplacement`, `ponderation`.
  *
  * Permet de répondre à « quand cette moyenne a-t-elle changé et qui l'a déclenché ? »
  * sans devoir parcourir l'audit `audits` global (volumineux).
