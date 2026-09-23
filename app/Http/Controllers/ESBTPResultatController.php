@@ -1042,16 +1042,13 @@ class ESBTPResultatController extends Controller
             ? $this->currentResultSnapshotService->getAnnualSnapshot($etudiant->id, $classe->id, $annee_universitaire_id)
             : null;
 
-        // Moyennes semestrielles incluant l'assiduité. Dès qu'une classe donne un snapshot vivant, il
-        // fait foi pour LES DEUX semestres : son `null` veut dire « aucune note ». Le repli, lui, rendait
-        // la moyenne courante (0 faute de note) sur l'onglet ouvert et un bulletin officiel périmé, lu
-        // sur la classe affichée, sur l'autre : la même page donnait deux réponses. La moyenne officielle
-        // reste lisible dans le bandeau « Officiel ». Sans classe, pas de snapshot : repli inchangé.
-        $moyenneDuSemestre = fn (string $semestre) => $annualSnapshot
-            ? ($annualSnapshot['semester_snapshots'][$semestre]['effective_total'] ?? null)
-            : $this->bulletinService->getAlignedBulletinAverageForPeriode($id, $classe_id ?? 0, $annee_universitaire_id ?? 0, $semestre, $periode, $moyenneAvecAssiduite, $noteAssiduite);
-        $moyenneSemestre1 = $moyenneDuSemestre('semestre1');
-        $moyenneSemestre2 = $moyenneDuSemestre('semestre2');
+        // Moyennes semestrielles incluant l'assiduité : le snapshot vivant fait foi, son `null` veut dire
+        // « aucune note ». Pas de repli. Il rendait la moyenne courante (0 faute de note) sur l'onglet ouvert,
+        // un bulletin officiel périmé sur l'autre, et sans classe il lisait les notes de toutes les années
+        // jusqu'à lever « Classe invalide ». Le bulletin officiel d'un semestre reste lisible dans le bandeau
+        // « Officiel » de l'onglet de CE semestre ; la moyenne annuelle exige des notes sur les deux.
+        $moyenneSemestre1 = $annualSnapshot['semester_snapshots']['semestre1']['effective_total'] ?? null;
+        $moyenneSemestre2 = $annualSnapshot['semester_snapshots']['semestre2']['effective_total'] ?? null;
         $moyenneAnnuelle = ($annualSnapshot['state'] ?? null) === 'annual_complete'
             ? ($annualSnapshot['effective_total'] ?? null)
             : $this->bulletinService->calculateAnnualAverage($moyenneSemestre1, $moyenneSemestre2, $semesterWeights);

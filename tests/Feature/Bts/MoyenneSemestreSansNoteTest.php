@@ -114,6 +114,24 @@ class MoyenneSemestreSansNoteTest extends TestCase
         $this->assertNull($reponse->viewData('moyenneAvecAssiduite'));
     }
 
+    /**
+     * Reproduit par la revue : sans classe, le repli lisait les notes de l'eleve
+     * TOUTES ANNEES confondues, puis levait « Classe invalide pour le calcul du
+     * coefficient » sur la classe 0. La page redirigeait (302) sans s'afficher.
+     * Cas reel : un eleve pas encore reinscrit a la rentree, ouvert sans classe.
+     */
+    public function test_sans_classe_une_note_d_une_autre_annee_ne_fait_pas_tomber_la_page(): void
+    {
+        $etudiant = $this->eleveNoteAuSeulSemestre1();
+        $this->noter($etudiant, $this->evaluationDuSemestre2($this->matiere), 14);
+        $anneeSansInscription = \App\Models\ESBTPAnneeUniversitaire::factory()->create();
+
+        $reponse = $this->resultats($etudiant->id, 'semestre1', avecClasse: false, annee: $anneeSansInscription->id);
+
+        $this->assertNull($reponse->viewData('moyenneSemestre1'));
+        $this->assertNull($reponse->viewData('moyenneSemestre2'), 'Les notes d une autre annee ne font pas une moyenne de cette annee.');
+    }
+
     private ESBTPMatiere $matiere;
 
     private function eleveNoteAuSeulSemestre1(): \App\Models\ESBTPEtudiant
@@ -139,7 +157,7 @@ class MoyenneSemestreSansNoteTest extends TestCase
         ]);
     }
 
-    private function resultats(int $etudiantId, string $periode, bool $avecClasse = true): TestResponse
+    private function resultats(int $etudiantId, string $periode, bool $avecClasse = true, ?int $annee = null): TestResponse
     {
         Role::findOrCreate('superAdmin', 'web');
         app(PermissionRegistrar::class)->forgetCachedPermissions();
@@ -149,7 +167,7 @@ class MoyenneSemestreSansNoteTest extends TestCase
         $reponse = $this->actingAs($admin)->get(route('esbtp.resultats.etudiant', array_filter([
             'etudiant' => $etudiantId,
             'classe_id' => $avecClasse ? $this->classe->id : null,
-            'annee_universitaire_id' => $this->annee->id,
+            'annee_universitaire_id' => $annee ?? $this->annee->id,
             'periode' => $periode,
         ])));
         $reponse->assertOk();
