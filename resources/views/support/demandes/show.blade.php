@@ -151,16 +151,17 @@
     }
     /* Plus rien a envoyer d'ici, mais le texte reste : l'utilisateur peut le copier. */
     function fermer(message) {
-        if (!form.contains(bouton)) { return; }
+        if (!form.contains(bouton)) { return false; }
         var avis = document.createElement('p');
         avis.className = 'sd-reponse-close';
         avis.textContent = message;
         form.insertBefore(avis, form.firstChild);
         champ.readOnly = true;
         bouton.remove();
+        return true;
     }
     /* L'envoi d'une piece peut apprendre, le premier, que la demande est fermee. */
-    document.addEventListener('sd:demande-fermee', function (ev) { fermer(ev.detail); });
+    document.addEventListener('sd:demande-fermee', function (ev) { ev.detail.affiche = fermer(ev.detail.message) || ev.detail.affiche; });
     function occupe(oui) {
         bouton.disabled = oui;
         bouton.querySelector('[data-sd-libelle]').hidden = oui;
@@ -261,9 +262,12 @@
                 if (d.peut_joindre === false) { form.remove(); }
             });
         }).catch(function (e) {
+            var fermee = { message: e.message, affiche: false };
             if ((e.donnees || {}).peut_repondre === false) {
-                document.dispatchEvent(new CustomEvent('sd:demande-fermee', { detail: e.message }));
+                document.dispatchEvent(new CustomEvent('sd:demande-fermee', { detail: fermee }));
             }
+            /* Le formulaire de reponse porte deja l'avis : ne pas l'ecrire deux fois. */
+            if (fermee.affiche) { form.remove(); return; }
             if ((e.donnees || {}).peut_joindre === false) {
                 var avis = document.createElement('p');
                 avis.className = 'sd-reponse-close';
