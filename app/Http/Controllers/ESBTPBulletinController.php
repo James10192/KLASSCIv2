@@ -2068,6 +2068,7 @@ class ESBTPBulletinController extends Controller
             // 'annuel' ajouté : le bouton 'Régénérer le bulletin' sur la page result
             // detail peut être déclenché en mode annuel (S1+S2 combinés)
             'periode' => 'required|string|in:1,2,semestre1,semestre2,annuel',
+            'incomplete_reason' => GenerateClasseBulletinsRequest::REGLE_MOTIF_INCOMPLET,
         ]);
 
         try {
