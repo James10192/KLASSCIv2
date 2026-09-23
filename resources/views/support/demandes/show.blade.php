@@ -32,7 +32,7 @@
     .sd-reponse textarea:focus { outline: none; border-color: #0453cb; box-shadow: 0 0 0 3px rgba(4,83,203,.12); }
     .sd-erreur { margin-top: .5rem; font-size: .82rem; color: #b91c1c; }
     .sd-reponse-actions { display: flex; justify-content: flex-end; margin-top: .6rem; }
-    .sd-reponse-close { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #f1f5f9; font-size: .88rem; color: #64748b; }
+    .sd-reponse-close { margin: 0 0 .6rem; font-size: .88rem; color: #64748b; }
     .sd-envoyer { background: #0453cb; color: #fff; border: none; border-radius: 10px; padding: .55rem 1.1rem; font-size: .84rem; font-weight: 600; cursor: pointer; }
     .sd-envoyer:hover { background: #033a8e; }
     .sd-envoyer:disabled { opacity: .6; cursor: wait; }
@@ -143,16 +143,18 @@
             var d = e.donnees || {};
             if (d.statut) { document.getElementById('sd-statut').innerHTML = d.statut; }
             if (d.peut_repondre === false) {
-                /* Plus rien a envoyer d'ici : le message remplace le formulaire. */
+                /* Plus rien a envoyer d'ici, mais le texte reste : l'utilisateur peut le copier. */
                 var avis = document.createElement('p');
                 avis.className = 'sd-reponse-close';
                 avis.textContent = e.message;
-                form.replaceWith(avis);
+                form.insertBefore(avis, form.firstChild);
+                champ.readOnly = true;
+                bouton.remove();
                 return;
             }
             montrer(e.message);
             champ.focus();
-        }).finally(function () { if (document.body.contains(form)) { occupe(false); } });
+        }).finally(function () { if (form.contains(bouton)) { occupe(false); } });
     });
 })();
 </script>

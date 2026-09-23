@@ -357,7 +357,23 @@ class DemandeSupportTest extends TestCase
     }
 
     /** @test */
-    public function une_demande_fermee_refuse_la_reponse_avec_un_message_lisible(): void
+    public function une_demande_fermee_refuse_la_reponse_et_rend_le_statut_a_jour(): void
+    {
+        $user = $this->utilisateur();
+        Http::fake([
+            'master.test/api/v1/support/bootstrap' => Http::response(['fonctionnalites' => ['support_widget' => true, 'support_customer_portal' => true], 'portees' => ['support:create', 'support:read', 'support:update']]),
+            'master.test/api/v1/support/tickets/*/messages*' => Http::response(['error' => 'ticket_closed', 'message' => 'Fermée.'], 409),
+            'master.test/api/v1/support/tickets/*' => Http::response($this->detail('FERME', rapporteurId: $user->id)),
+        ]);
+
+        $this->actingAs($user)->postJson(route('support.demandes.repondre', 'KC-2026-000042'), ['corps' => 'Toujours là ?', 'cle' => self::CLE])
+            ->assertStatus(409)
+            ->assertJsonPath('peut_repondre', false)
+            ->assertJsonPath('statut', fn ($statut) => is_string($statut) && str_contains($statut, 'FERME'));
+    }
+
+    /** @test */
+    public function une_demande_fermee_sans_relecture_possible_refuse_tout_de_meme_la_reponse(): void
     {
         $this->master(Http::response(['error' => 'ticket_closed', 'message' => 'Fermée.'], 409));
 
