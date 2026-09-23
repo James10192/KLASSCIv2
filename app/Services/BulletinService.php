@@ -1494,9 +1494,13 @@ class BulletinService
      *
      * Pure function : aucun accès DB, aucun side-effect → testable unitairement.
      *
+     * Aucune note comptable (absences seulement) : la valeur que l'etablissement
+     * a choisie, 0 par defaut ou `null` (voir
+     * `NoteCalculationService::moyenneSansNoteComptable()`).
+     *
      * @param array<int, array{note: float|int|string, coefficient: float|int, bareme?: float|int|null, is_absent?: bool}> $notes
      */
-    public function computeMoyenneFromNotesData(array $notes): float
+    public function computeMoyenneFromNotesData(array $notes): ?float
     {
         $totalPoints = 0.0;
         $totalCoeffs = 0.0;
@@ -1520,7 +1524,7 @@ class BulletinService
         }
 
         if ($totalCoeffs <= 0) {
-            return 0.0;
+            return app(NoteCalculationService::class)->moyenneSansNoteComptable();
         }
 
         return round($totalPoints / $totalCoeffs, 2);
@@ -2481,6 +2485,15 @@ class BulletinService
                 ];
             }
 
+            // Une absence ne compte pas dans la moyenne de la matiere, comme dans
+            // `computeMoyenneFromNotesData()` ; elle tranche seulement le cas
+            // « absences seulement » plus bas.
+            if ($note->is_absent) {
+                $notesByMatiere[$matiereId]['absences'] = ($notesByMatiere[$matiereId]['absences'] ?? 0) + 1;
+
+                continue;
+            }
+
             if ($note->evaluation->bareme > 0) {
                 $noteValue = is_numeric($note->note) ? floatval($note->note) : (is_numeric($note->valeur) ? floatval($note->valeur) : 0);
                 $bareme = $note->evaluation->bareme > 0 ? floatval($note->evaluation->bareme) : 20;
@@ -2495,6 +2508,9 @@ class BulletinService
         foreach ($notesByMatiere as $matiereId => &$matiereData) {
             if ($matiereData['total_coefficients'] > 0) {
                 $matiereData['moyenne'] = $matiereData['total_points'] / $matiereData['total_coefficients'];
+            } elseif (($matiereData['absences'] ?? 0) > 0) {
+                // Absences seulement : 0 ou « pas de moyenne », selon le reglage.
+                $matiereData['moyenne'] = app(NoteCalculationService::class)->moyenneSansNoteComptable();
             }
         }
         // Sans cet `unset`, la boucle de somme plus bas, qui reutilise

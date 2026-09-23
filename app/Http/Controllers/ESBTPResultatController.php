@@ -840,6 +840,18 @@ class ESBTPResultatController extends Controller
             // CORRECTION AMÉLIORÉE: Vérification supplémentaire pour s'assurer que nous traitons la bonne note
             \Log::debug("Note {$note->id} VALUE CHECK: note field = {$note->note}, valeur field = {$note->valeur}");
 
+            // Une absence ne compte pas dans la moyenne de la matiere, comme a
+            // la generation officielle (`computeMoyenneFromNotesData()`). Elle
+            // restait comptee pour 0 ici : 14 et une absence rendaient 7, la ou
+            // le bulletin imprime 14. Gardee pour l'affichage, et comptee pour
+            // trancher le cas « absences seulement » plus bas.
+            if ($note->is_absent) {
+                $notesByMatiere[$matiere_id]['notes'][] = $note;
+                $notesByMatiere[$matiere_id]['absences'] = ($notesByMatiere[$matiere_id]['absences'] ?? 0) + 1;
+
+                continue;
+            }
+
             // Only use notes with evaluations that have a valid bareme
             if ($note->evaluation->bareme > 0) {
                 // CORRECTION AMÉLIORÉE: Accès direct aux valeurs numériques pour éviter tout problème de
@@ -896,6 +908,9 @@ class ESBTPResultatController extends Controller
                 // You might want to adjust this to use matière coefficients
                 $moyenneGenerale += $matiereData['moyenne'];
                 $countValidMatieres++;
+            } elseif (($matiereData['absences'] ?? 0) > 0) {
+                // Absences seulement : 0 ou « pas de moyenne », selon le reglage.
+                $matiereData['moyenne'] = app(\App\Services\NoteCalculationService::class)->moyenneSansNoteComptable();
             }
         }
 

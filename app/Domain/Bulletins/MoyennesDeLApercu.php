@@ -474,7 +474,9 @@ final class MoyennesDeLApercu
                 'calculations' => [],
                 'total_points' => 0,
                 'total_coefficients' => (float) ($matiereDuSnapshot['coefficient'] ?? 0),
-                'moyenne' => (float) ($matiereDuSnapshot['moyenne'] ?? 0),
+                // `null` garde son sens (aucune note comptable) : le tableau
+                // affiche alors « — », pas un 0,00 que personne n'a obtenu.
+                'moyenne' => isset($matiereDuSnapshot['moyenne']) ? (float) $matiereDuSnapshot['moyenne'] : null,
                 'origin' => 'notes',
                 'source' => ($matiereDuSnapshot['source'] ?? 'calculee') === 'manuelle' ? 'manuelle' : 'calculee',
             ];

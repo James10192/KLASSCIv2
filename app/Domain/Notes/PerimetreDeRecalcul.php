@@ -360,6 +360,15 @@ final class PerimetreDeRecalcul
             return ['statut' => self::RIEN_A_ECRIRE, 'avant' => null, 'laissee' => null];
         }
 
+        // Des notes, aucune comptable (absences seulement), et l'etablissement
+        // a choisi de les ecarter : la decision est prise, ce n'est plus a un
+        // humain de trancher. Le job retire la ligne. Sans ceci, desactiver le
+        // reglage ne valait que pour les saisies suivantes : les zeros deja
+        // enregistres l'emportaient toujours sur les notes.
+        if ($notes['lignes'] > 0 && app(NoteCalculationService::class)->moyenneSansNoteComptable() === null) {
+            return ['statut' => self::RECALCULE, 'avant' => $avant, 'laissee' => null];
+        }
+
         return [
             'statut' => self::LAISSEE,
             'avant' => $avant,

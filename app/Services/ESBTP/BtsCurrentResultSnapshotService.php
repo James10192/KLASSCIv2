@@ -151,18 +151,24 @@ class BtsCurrentResultSnapshotService
                 'bareme' => $bareme,
                 'coefficient' => $evaluationCoefficient,
                 'normalized_on_20' => $value !== null && $bareme > 0 ? round(($value / $bareme) * 20, 2) : null,
+                // Transmis au calcul : sans lui, une absence y comptait pour 0
+                // la ou la generation officielle l'ecarte.
+                'is_absent' => (bool) $note->is_absent,
             ];
         }
 
         foreach ($subjects as $matiereId => $subject) {
-            $subjects[$matiereId]['moyenne'] = round($this->bulletinService->computeMoyenneFromNotesData(array_map(
+            // `null` : absences seulement, et l'etablissement les ecarte.
+            $moyenne = $this->bulletinService->computeMoyenneFromNotesData(array_map(
                 fn (array $evaluation) => [
                     'note' => $evaluation['note'],
                     'coefficient' => $evaluation['coefficient'],
                     'bareme' => $evaluation['bareme'],
+                    'is_absent' => $evaluation['is_absent'],
                 ],
                 $subject['evaluations']
-            )), 2);
+            ));
+            $subjects[$matiereId]['moyenne'] = $moyenne === null ? null : round($moyenne, 2);
         }
 
         foreach ($manualResultats as $resultat) {

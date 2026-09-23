@@ -34,6 +34,27 @@ class NoteCalculationService
     public const DEFAULT_VALIDATION_THRESHOLD = 10.0;
 
     /**
+     * Reglage d'etablissement : une matiere dont l'eleve n'a que des absences
+     * compte-t-elle 0 dans la moyenne generale ? « 1 » (defaut, comportement
+     * historique du bulletin officiel) : oui, 0/20. « 0 » : elle n'a pas de
+     * moyenne et sort du calcul, comme une matiere jamais notee.
+     */
+    public const REGLAGE_ABSENCES_SEULES_COMPTENT_ZERO = 'bulletin_absences_seules_comptent_zero';
+
+    /**
+     * La moyenne d'une matiere qui porte des notes, mais aucune comptable
+     * (absences seulement). Le SEUL endroit qui lit le reglage : generation
+     * officielle, calcul « Courant », fiche Resultats, repli annuel et recalcul
+     * automatique passent tous par ici.
+     */
+    public function moyenneSansNoteComptable(): ?float
+    {
+        return \App\Helpers\SettingsHelper::get(self::REGLAGE_ABSENCES_SEULES_COMPTENT_ZERO, '1') === '1'
+            ? 0.0
+            : null;
+    }
+
+    /**
      * Calcule la moyenne d'un étudiant pour une matière à partir de ses notes
      * d'évaluations (déjà filtrées sur la matière concernée).
      *
