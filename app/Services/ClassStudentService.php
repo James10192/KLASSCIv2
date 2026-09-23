@@ -136,6 +136,7 @@ class ClassStudentService
                     ->where('etudiant_id', $etudiantId)
                     ->rattacheesALaClasse($classe->id)
                     ->whereNotNull('archived_at')
+                    ->sansJumelleVivante()
                     ->update(['archived_at' => null]);
 
                 $restoredResultats = ESBTPResultat::withoutGlobalScope('not_archived')

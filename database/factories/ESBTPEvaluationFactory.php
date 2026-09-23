@@ -21,8 +21,10 @@ class ESBTPEvaluationFactory extends Factory
             'bareme' => 20,
             'periode' => $this->faker->randomElement(['semestre1', 'semestre2']),
             'annee_universitaire_id' => ESBTPAnneeUniversitaire::factory(),
-            'created_by' => 1,
-            'updated_by' => 1,
+            // Premier utilisateur existant, nul sur une base vide : un 1 en dur viole
+            // la clé étrangère vers users dès qu'aucun compte n'a été créé.
+            'created_by' => fn () => \App\Models\User::query()->min('id'),
+            'updated_by' => fn () => \App\Models\User::query()->min('id'),
             'created_at' => now(),
             'updated_at' => now()
         ];

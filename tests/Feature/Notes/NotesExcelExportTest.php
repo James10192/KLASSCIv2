@@ -26,6 +26,11 @@ class NotesExcelExportTest extends TestCase
     {
         parent::setUp();
 
+        // Le garde « installed » renvoie tout vers /install tant qu'aucun
+        // superAdmin n'existe : sans lui, chaque requête répond 302.
+        Role::findOrCreate('superAdmin', 'web');
+        User::factory()->create()->assignRole('superAdmin');
+
         // Permissions
         Permission::findOrCreate('notes.view', 'web');
         Permission::findOrCreate('module.notes_evaluations.access', 'web');
@@ -58,6 +63,9 @@ class NotesExcelExportTest extends TestCase
             'bareme' => 20,
             'coefficient' => 1,
             'titre' => 'Devoir 1',
+            // L'export ordonne les colonnes par date : sans date fixée, la
+            // fabrique en tire une au hasard et l'ordre des en-têtes varie.
+            'date_evaluation' => '2026-10-01',
         ]);
 
         $eval2 = ESBTPEvaluation::factory()->create([
@@ -69,6 +77,7 @@ class NotesExcelExportTest extends TestCase
             'bareme' => 30,
             'coefficient' => 2,
             'titre' => 'Examen 1',
+            'date_evaluation' => '2026-11-01',
         ]);
 
         return compact('annee', 'classe', 'matiere', 'eval1', 'eval2');
@@ -118,6 +127,8 @@ class NotesExcelExportTest extends TestCase
         ]));
 
         $response->assertOk();
+        // Le nom porte un horodatage : on le reconnaît par motif.
+        Excel::matchByRegex();
         Excel::assertDownloaded('/^notes_/');
     }
 
@@ -179,7 +190,7 @@ class NotesExcelExportTest extends TestCase
                 'matiere' => $ctx['matiere']->id,
                 'periode' => 'semestre1',
             ]));
-            $this->assertContains($r->status(), [200, 429], "Iteration {$i}: status was {$r->status()}");
+            $this->assertContains($r->getStatusCode(), [200, 429], "Iteration {$i}: status was {$r->getStatusCode()}");
         }
 
         // 11ème devrait être 429
@@ -189,6 +200,6 @@ class NotesExcelExportTest extends TestCase
             'periode' => 'semestre1',
         ]));
 
-        $this->assertSame(429, $r11->status(), 'La 11ème requête devrait être throttle 429.');
+        $this->assertSame(429, $r11->getStatusCode(), 'La 11ème requête devrait être throttle 429.');
     }
 }

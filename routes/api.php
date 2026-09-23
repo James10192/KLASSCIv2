@@ -688,6 +688,12 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
             ->name('diagnostics.settings-duplicates');
         Route::get('/diagnostics/evaluation-system-mismatch', [App\Http\Controllers\API\CLI\CLIMaintenanceController::class, 'evaluationSystemMismatch'])
             ->name('diagnostics.evaluation-system-mismatch');
+        // Unicité des notes : la migration ne la pose pas tant que des notes
+        // sont en double. Lister, trancher, puis poser — sans SSH.
+        Route::get('/diagnostics/notes-doublons', [App\Http\Controllers\API\CLI\CLINotesUniciteController::class, 'index'])
+            ->name('diagnostics.notes-doublons');
+        Route::post('/notes/unicite', [App\Http\Controllers\API\CLI\CLINotesUniciteController::class, 'poser'])
+            ->name('notes.unicite');
         // Reparation ciblee : deplacer une evaluation vers la matiere du bon
         // systeme academique. N'accepte que les mouvements qui retablissent
         // la coherence, jamais ceux qui la rompent.

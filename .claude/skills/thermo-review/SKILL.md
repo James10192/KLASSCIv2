@@ -1,6 +1,6 @@
 ---
 name: thermo-review
-description: Revue adverse avec verdict bloquant sur un diff KLASSCI. Cherche d'abord le coup de judo — la reformulation qui supprime des branches entières au lieu de les ranger. Puis quinze axes en quatre familles : ce que le code fait de faux (code jamais lu, seconde source de vérité, valeur en dur, repli silencieux, état à moitié écrit), ce qu'il coûte à lire (fichier qui enfle, branche greffée, emballage vide), ce que le produit vaut (pertinence sourcée, design premium prouvé par capture, répartition du travail à la source, fluidité — liens profonds, modales, aucun rechargement), et ce qui passe sans être relu (commentaire, message de commit, mémoire). Obligatoire avant toute fusion et tout déploiement ; sur une branche de travail, le commit n'attend pas le verdict, mais la fusion ne part pas sans lui (rule pre-merge-checklist, commandement 0). Use before committing, merging or deploying any change.
+description: Revue adverse avec verdict bloquant sur un diff KLASSCI. Cherche d'abord le coup de judo — la reformulation qui supprime des branches entières au lieu de les ranger. Puis quinze axes en quatre familles : ce que le code fait de faux (code jamais lu, seconde source de vérité, valeur en dur, repli silencieux, état à moitié écrit), ce qu'il coûte à lire (fichier qui enfle, branche greffée, emballage vide), ce que le produit vaut (pertinence sourcée, design premium prouvé par capture, répartition du travail à la source, fluidité — liens profonds, modales, aucun rechargement), et ce qui passe sans être relu (commentaire, message de commit, mémoire). Obligatoire avant toute fusion et tout déploiement ; sur une branche de travail, le commit n'attend pas le verdict, mais la fusion ne part pas sans lui ; la capture d'écran, elle, se prend sur presentation après la fusion et conditionne la propagation vers les écoles (rule pre-merge-checklist, commandement 0). Use before committing, merging or deploying any change.
 ---
 
 # Revue thermo-nucléaire
@@ -20,7 +20,7 @@ Trois revues coexistent dans ce dépôt. Elles ne font pas le même travail, et 
 |---|---|---|
 | `/code-review` | **Est-ce que ça marche ?** Bugs, sécurité, tests, performance | Liste de constats |
 | Audit 4 axes (`pre-commit-quality-gate`) | **Est-ce que ça casse autre chose ?** Régressions, multi-instance, SOLID | Liste de risques |
-| **Thermo-nucléaire** | **Fallait-il l'écrire — et fallait-il le faire ainsi ?** | **Verdict `PASS` / `BLOCK`** |
+| **Thermo-nucléaire** | **Fallait-il l'écrire — et fallait-il le faire ainsi ?** | **Verdict `PASS` / `PASS — capture en attente` / `BLOCK`** |
 
 La thermo **ne remplace pas** l'audit 4 axes, elle s'y ajoute. L'audit cherche les régressions ; la thermo cherche ce qu'on aurait pu supprimer.
 
@@ -76,6 +76,14 @@ que la revue tourne, et **le verdict s'applique dans un commit de suite, avant l
 fusion**. Ce qui reste interdit : fusionner ou déployer sans `PASS`, et laisser un
 `BLOCK` sans correction.
 
+**La capture d'écran ne bloque pas la fusion dans `presentation`.** Elle ne se prend
+que sur un tenant déployé, et `presentation` est ce tenant-là : l'exiger avant d'y
+fusionner rendait la fusion impossible. Quand **le seul** manque est une preuve
+visuelle (axes 10 et 12), le verdict est `PASS — capture en attente` : fusion et
+déploiement sur presentation autorisés, **propagation vers les écoles interdite**
+tant que la capture n'est pas jointe. Voir le commandement 0 de
+`.claude/rules/pre-merge-checklist.md`.
+
 ```bash
 git diff origin/presentation...HEAD --stat     # la plage à donner au sous-agent
 git diff origin/presentation...HEAD            # le diff lui-même
@@ -124,7 +132,7 @@ Agent(
 > - **la mémoire projet et les rules** — une question déjà tranchée ne se retranche pas ; une décision déjà écrite se cite.
 > - **l'agent `critique-transversale`** si le diff touche un parcours utilisateur entier et que tu veux un second angle.
 >
-> Tu ne peux pas exécuter l'application. Pour les axes 10 et 12, **exige la preuve plutôt que de la produire** : dis précisément quelle capture d'écran ou quelle exécution `/klassci-test-e2e` manque, et sur quel écran.
+> Tu ne peux pas exécuter l'application. Pour les axes 10 et 12, **exige la preuve plutôt que de la produire** : dis précisément quelle capture d'écran ou quelle exécution `/klassci-test-e2e` manque, et sur quel écran. Si c'est **le seul** manque, rends `PASS — capture en attente` plutôt que `BLOCK` : la capture se prend sur presentation après la fusion, et conditionne la propagation vers les écoles, pas la fusion.
 >
 > **Contraintes :**
 > - `fichier:ligne` obligatoire pour chaque constat. Si tu n'as pas lu, ne l'affirme pas.
@@ -133,7 +141,7 @@ Agent(
 > - Tu as le droit de conclure « cette partie est juste, n'y touchez pas ».
 > - Lecture seule. N'écris ni ne modifie aucun fichier.
 >
-> **Rends un verdict `PASS` ou `BLOCK`**, puis les constats classés, chacun avec sa correction proposée.
+> **Rends un verdict `PASS`, `PASS — capture en attente` ou `BLOCK`**, puis les constats classés, chacun avec sa correction proposée.
 
 ### Si le sous-agent est indisponible
 
@@ -327,7 +335,7 @@ Corollaire : une recherche qui n'aboutit pas se dit. « Je n'ai pas pu vérifier
 
 Une page n'est pas premium parce qu'on l'affirme. Elle l'est quand on la voit.
 
-**La preuve exigée est une capture d'écran réelle du parcours livré**, prise sur un tenant, jamais une maquette redessinée — c'est la règle d'or de `/klassci-user-tutorial`, et elle vaut ici : *une capture réelle mal cadrée vaut mieux qu'une belle maquette fausse*. Pour un parcours qui traverse données et écrans, la preuve est une exécution `/klassci-test-e2e` sur le tenant, avec le chemin réel qui plantait.
+**La preuve exigée est une capture d'écran réelle du parcours livré**, prise sur un tenant — en pratique presentation, après la fusion et avant toute propagation vers une école — jamais une maquette redessinée — c'est la règle d'or de `/klassci-user-tutorial`, et elle vaut ici : *une capture réelle mal cadrée vaut mieux qu'une belle maquette fausse*. Pour un parcours qui traverse données et écrans, la preuve est une exécution `/klassci-test-e2e` sur le tenant, avec le chemin réel qui plantait.
 
 Grille, tirée de `premium-redesign.md` et `premium-selects.md` :
 
@@ -530,7 +538,7 @@ Quelques formulations qui portent :
 ## Le verdict
 
 ```
-VERDICT : PASS | BLOCK
+VERDICT : PASS | PASS — capture en attente | BLOCK
 Plage    : origin/presentation...HEAD  (N fichiers, +X / -Y)
 
 BLOQUANTS  (n)
@@ -583,7 +591,7 @@ Ne rends pas `PASS` au motif que le comportement semble correct. La barre est :
 - aucune logique posée dans la mauvaise couche ;
 - aucun état à moitié écrit là où une structure atomique était évidente ;
 - aucune affirmation extérieure sans source ni marquage ;
-- aucun écran affirmé premium sans capture réelle ;
+- aucun écran affirmé premium sans capture réelle — au plus tard avant la propagation vers les écoles ;
 - aucun commentaire, message de commit ou mémoire qui dise quelque chose de faux.
 
 **Bloquants présumés** — à corriger, sauf justification explicite de l'auteur :
