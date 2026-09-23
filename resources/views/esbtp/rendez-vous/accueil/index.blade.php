@@ -457,7 +457,8 @@ span.rac-coche--non-venue { color: #b91c1c; background: rgba(220,38,38,.06); cur
         } catch (e) {
             notifier('error', e.message);
             bouton.disabled = false;
-            if (e.code === 'deplacee' || e.code === 'annulee') rafraichir();
+            // La ligne affichee ne correspond plus a la base : on la recharge.
+            if (['deplacee', 'annulee', 'plus_a_prevenir', 'non_annulable'].includes(e.code)) rafraichir();
         }
     }
 

@@ -21,15 +21,15 @@ use OwenIt\Auditing\Contracts\Auditable;
 class ESBTPReinscriptionDemande extends Model implements Auditable, PorteurDeRendezVous
 {
     use Concerns\EstPorteurDeRendezVous;
+    use Concerns\HasReferencePublique;
+    use HasFactory;
+    use \OwenIt\Auditing\Auditable;
 
     /** Convertie en inscription ou refusee : le dossier n'attend plus la famille au guichet. */
     public static function statutsDossierClos(): array
     {
         return [self::STATUT_CONVERTIE, self::STATUT_REJETEE];
     }
-    use Concerns\HasReferencePublique;
-    use HasFactory;
-    use \OwenIt\Auditing\Auditable;
 
     protected $table = 'esbtp_reinscription_demandes';
 

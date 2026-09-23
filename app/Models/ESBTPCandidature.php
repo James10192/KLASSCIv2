@@ -22,15 +22,15 @@ use OwenIt\Auditing\Contracts\Auditable;
 class ESBTPCandidature extends Model implements Auditable, PorteurDeRendezVous
 {
     use Concerns\EstPorteurDeRendezVous;
+    use Concerns\HasReferencePublique;
+    use HasFactory;
+    use \OwenIt\Auditing\Auditable;
 
     /** Inscrite ou refusee : le dossier n'attend plus la famille au guichet. Acceptee n'en fait pas partie. */
     public static function statutsDossierClos(): array
     {
         return [self::STATUT_CONVERTIE, self::STATUT_REJETEE];
     }
-    use Concerns\HasReferencePublique;
-    use HasFactory;
-    use \OwenIt\Auditing\Auditable;
 
     protected $table = 'esbtp_candidatures';
 

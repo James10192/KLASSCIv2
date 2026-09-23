@@ -53,6 +53,12 @@ class ESBTPRendezVousController extends Controller
         $brut = $request->all();
         $auteur = auth()->id();
 
+        // Une tolerance illisible retomberait en silence sur 15 minutes.
+        $grace = $brut[RendezVousReglages::GRACE] ?? $brut[str_replace('.', '_', RendezVousReglages::GRACE)] ?? null;
+        if (is_string($grace) && trim($grace) !== '' && ! ctype_digit(trim($grace))) {
+            return response()->json(['message' => 'La tolérance de retard doit être un nombre entier de minutes.'], 422);
+        }
+
         $jours = $brut['inscriptions_rdv_jours_ouverts'] ?? [];
         Setting::set(RendezVousReglages::JOURS, is_array($jours) ? implode(',', array_map('strval', $jours)) : '', $auteur);
 

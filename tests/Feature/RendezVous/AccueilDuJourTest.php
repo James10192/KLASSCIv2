@@ -383,6 +383,18 @@ class AccueilDuJourTest extends TestCase
         $this->assertSame(1, $familles->compter());
     }
 
+    public function test_les_refus_d_appel_rendent_un_code(): void
+    {
+        $recue = $this->reservation($this->creneau('08:00', '08:30', 1));
+        $this->actingAs($this->agent)->postJson(route('esbtp.rendez-vous.accueil.prevenue', $recue))
+            ->assertStatus(422)->assertJsonFragment(['code' => 'plus_a_prevenir']);
+
+        $commence = $this->reservation($this->creneau('09:00', '09:30'), ['convocation_statut' => 'telephone']);
+        $this->actingAs($this->agent)->postJson(route('esbtp.rendez-vous.accueil.prevenue.annuler', $commence))
+            ->assertStatus(422)->assertJsonFragment(['code' => 'non_annulable']);
+        $this->assertSame(StatutConvocationRdv::Telephone, $commence->fresh()->convocation_statut);
+    }
+
     public function test_une_famille_deja_convoquee_ne_se_marque_pas_prevenue(): void
     {
         $r = $this->reservation($this->creneau('08:00', '08:30', 1));

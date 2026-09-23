@@ -91,12 +91,12 @@ class ESBTPRendezVousAccueilController extends Controller
 
     public function prevenue(Request $request, ESBTPRdvReservation $reservation, FamillesAPrevenirRdv $familles): JsonResponse
     {
-        return $this->repondre($familles->marquerPrevenue($reservation, (int) $request->user()->id), 'Famille notée prévenue par téléphone.');
+        return $this->repondreCode($familles->marquerPrevenue($reservation, (int) $request->user()->id), 'Famille notée prévenue par téléphone.', FamillesAPrevenirRdv::message(...));
     }
 
     public function annulerPrevenue(ESBTPRdvReservation $reservation, FamillesAPrevenirRdv $familles): JsonResponse
     {
-        return $this->repondre($familles->annulerPrevenue($reservation), 'Annulé : la famille revient dans la liste à prévenir.');
+        return $this->repondreCode($familles->annulerPrevenue($reservation), 'Annulé : la famille revient dans la liste à prévenir.', FamillesAPrevenirRdv::message(...));
     }
 
     /**
@@ -116,18 +116,15 @@ class ESBTPRendezVousAccueilController extends Controller
         return PortailReinscriptionService::interpreterDateIso(is_string($valeur) ? $valeur : '')?->startOfDay() ?? Carbon::today();
     }
 
-    /** Les refus d'AccueilRdv sont des codes : l'ecran branche sur `code`, pas sur le texte. */
-    private function repondreCode(?string $code, string $succes): JsonResponse
+    /**
+     * Les refus sont des codes : l'ecran branche sur `code`, pas sur le texte.
+     *
+     * @param  (callable(string): string)|null  $message  traduit le code ; AccueilRdv::message par defaut
+     */
+    private function repondreCode(?string $code, string $succes, ?callable $message = null): JsonResponse
     {
         return $code === null
             ? response()->json(['message' => $succes])
-            : response()->json(['message' => AccueilRdv::message($code), 'code' => $code], 422);
-    }
-
-    private function repondre(?string $refus, string $succes): JsonResponse
-    {
-        return $refus === null
-            ? response()->json(['message' => $succes])
-            : response()->json(['message' => $refus], 422);
+            : response()->json(['message' => ($message ?? AccueilRdv::message(...))($code), 'code' => $code], 422);
     }
 }

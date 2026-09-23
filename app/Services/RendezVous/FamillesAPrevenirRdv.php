@@ -29,8 +29,18 @@ class FamillesAPrevenirRdv
     /** Les etats qui laissent une famille sans nouvelle de son rendez-vous. NULL : avant le suivi. */
     private const A_PREVENIR = [StatutConvocationRdv::SansEmail, StatutConvocationRdv::Echec];
 
+    private const MESSAGES = [
+        'plus_a_prevenir' => 'Cette famille n\'est plus à prévenir : convocation déjà reçue, rendez-vous commencé ou dossier clos.',
+        'non_annulable' => 'Cet appel ne peut plus être annulé.',
+    ];
+
     public function __construct(private readonly ContactsFamilleRdv $contacts)
     {
+    }
+
+    public static function message(string $code): string
+    {
+        return self::MESSAGES[$code] ?? 'Ce rendez-vous n\'existe plus.';
     }
 
     /** Cette famille est-elle a appeler ? Meme regle que la liste d'appel. */
@@ -49,13 +59,13 @@ class FamillesAPrevenirRdv
             && $r->creneau !== null && ! $r->creneau->aCommence();
     }
 
-    /** @return string|null le refus, ou null si c'est note */
+    /** @return string|null le code du refus, ou null si c'est note */
     public function marquerPrevenue(ESBTPRdvReservation $reservation, int $agentId): ?string
     {
         return DB::transaction(function () use ($reservation, $agentId) {
             $r = ESBTPRdvReservation::query()->whereKey($reservation->id)->lockForUpdate()->first();
             if ($r === null || ! $this->concerne($r)) {
-                return 'Cette famille n\'est plus à prévenir : convocation déjà reçue, rendez-vous commencé ou dossier clos.';
+                return 'plus_a_prevenir';
             }
 
             $r->forceFill([
@@ -77,18 +87,21 @@ class FamillesAPrevenirRdv
      */
     public function annulerPrevenue(ESBTPRdvReservation $reservation): ?string
     {
-        if (! $this->annulable($reservation)) {
-            return 'Cet appel ne peut plus être annulé.';
-        }
-        $avecAdresse = filter_var(trim((string) $reservation->email), FILTER_VALIDATE_EMAIL) !== false;
-        $reservation->forceFill([
-            'convocation_statut' => $avecAdresse ? StatutConvocationRdv::Echec : StatutConvocationRdv::SansEmail,
-            'convocation_erreur' => $avecAdresse ? 'Appel annulé : convocation à relancer ou famille à rappeler.' : null,
-            'convocation_envoyee_at' => null,
-            'prevenue_par' => null,
-        ])->save();
+        return DB::transaction(function () use ($reservation) {
+            $r = ESBTPRdvReservation::query()->whereKey($reservation->id)->lockForUpdate()->first();
+            if ($r === null || ! $this->annulable($r)) {
+                return 'non_annulable';
+            }
+            $avecAdresse = filter_var(trim((string) $r->email), FILTER_VALIDATE_EMAIL) !== false;
+            $r->forceFill([
+                'convocation_statut' => $avecAdresse ? StatutConvocationRdv::Echec : StatutConvocationRdv::SansEmail,
+                'convocation_erreur' => $avecAdresse ? 'Appel annulé : convocation à relancer ou famille à rappeler.' : null,
+                'convocation_envoyee_at' => null,
+                'prevenue_par' => null,
+            ])->save();
 
-        return null;
+            return null;
+        });
     }
 
     public function compter(): int

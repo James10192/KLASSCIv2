@@ -5,7 +5,6 @@ namespace App\Services\RendezVous;
 use App\Enums\StatutConvocationRdv;
 use App\Models\ESBTPRdvReservation;
 use App\Services\MailPulse\MailPulseResult;
-use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 
 class MessagerieRdv
@@ -160,7 +159,7 @@ class MessagerieRdv
             return false;
         }
 
-        return Carbon::parse($creneau->date->toDateString().' '.$creneau->heureDebutHi().':00')->isPast();
+        return $creneau->debut()->isPast();
     }
 
     /**

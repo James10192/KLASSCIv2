@@ -295,6 +295,8 @@
                 if (action === 'placer' && r.a_envoyer > 0) envoyerConvocations();
             } catch (e) {
                 notifier('error', e.message);
+                // Un refus code (famille plus a prevenir, appel non annulable) : la ligne affichee est perimee.
+                if (e.donnees && e.donnees.code) rafraichir();
             }
         });
     });

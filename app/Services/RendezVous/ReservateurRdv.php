@@ -260,7 +260,7 @@ class ReservateurRdv
             return false;
         }
 
-        $debut = $this->debutDuCreneau($creneau);
+        $debut = $creneau->debut();
         $heures = (int) $this->reglages->valeur(RendezVousReglages::DELAI_MODIF, '12');
 
         return Carbon::now()->addHours(max(0, $heures))->lt($debut);
@@ -322,7 +322,7 @@ class ReservateurRdv
             return ['ok' => false, 'code' => 'ferme', 'creneaux' => $this->catalogue->publier()];
         }
 
-        if ($this->dejaCommence($creneau) || ($delaiPublic && $this->tropTot($creneau))) {
+        if ($creneau->aCommence() || ($delaiPublic && $this->tropTot($creneau))) {
             return ['ok' => false, 'code' => 'trop_tot', 'creneaux' => $this->catalogue->publier()];
         }
 
@@ -351,18 +351,9 @@ class ReservateurRdv
     {
         $heures = (int) $this->reglages->valeur(RendezVousReglages::DELAI_MIN, '12');
 
-        return Carbon::now()->addHours(max(0, $heures))->gt($this->debutDuCreneau($creneau));
+        return Carbon::now()->addHours(max(0, $heures))->gt($creneau->debut());
     }
 
-    private function dejaCommence(ESBTPRdvCreneau $creneau): bool
-    {
-        return Carbon::now()->gte($this->debutDuCreneau($creneau));
-    }
-
-    private function debutDuCreneau(ESBTPRdvCreneau $creneau): Carbon
-    {
-        return Carbon::parse($creneau->date->toDateString().' '.$creneau->heureDebutHi().':00');
-    }
 
     private function dateIso(string $valeur): ?string
     {
