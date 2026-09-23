@@ -23,11 +23,12 @@ use Illuminate\Support\Facades\Log;
  *  - la classe et l'emploi du temps ne se changent pas depuis l'écran de la
  *    séance (`reglesDeModification()`) ;
  *  - la PÉRIODE n'est pas réalignée quand le jour change. La date d'une séance
- *    se déduit de son emploi du temps (`ESBTPEmploiTemps::dateDuJour()`), qui
- *    ne change pas : réaligner la période sur ce changement réimposait la même
- *    valeur, et défaisait la correction manuelle à chaque changement de jour.
- *    La période est posée à la création du devoir (`store()`, qui la déduit
- *    encore du mois — règle héritée, hors de ce chantier).
+ *    ne bouge qu'à l'intérieur de la semaine de son emploi du temps
+ *    (`ESBTPEmploiTemps::dateDuJour()`) : ce changement ne dit rien d'un autre
+ *    semestre, et réaligner défaisait la correction manuelle faite sur
+ *    l'écran de l'évaluation. La période est posée à la création du devoir
+ *    (`store()`, qui la déduit encore du mois — règle héritée, qui devrait lire
+ *    le semestre de l'emploi du temps ; hors de ce chantier).
  * Titre, description, date et durée, qui ne déplacent aucune moyenne, suivent
  * toujours.
  *

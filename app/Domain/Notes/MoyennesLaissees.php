@@ -67,42 +67,19 @@ final class MoyennesLaissees
 
         $droits = self::droits($utilisateur);
         $aReprendre = self::aReprendre($recalcul['orphelins']);
-        $liens = [];
+        $libelle = fn (array $e, string $prefixe = '') => ['libelle' => $prefixe.$e['libelle'], 'url' => $e['url']];
 
-        if ($droits['verifier']) {
-            foreach ($aReprendre['nettoyages'] as $n) {
-                $liens[] = [
-                    'libelle' => 'Vérifier '.$n['libelle'],
-                    'url' => route('esbtp.bulletins.select', [
-                        'classe_id' => $n['classe_id'],
-                        'periode' => $n['periode'],
-                        'annee_universitaire_id' => $n['annee_universitaire_id'],
-                    ]),
-                ];
-            }
-        }
-
-        if ($droits['reprendre']) {
-            foreach ($aReprendre['eleves'] as $e) {
-                $liens[] = [
-                    'libelle' => $e['libelle'],
-                    'url' => route('esbtp.bulletins.moyennes-preview', [
-                        'etudiant_id' => $e['etudiant_id'],
-                        'classe_id' => $e['classe_id'],
-                        'periode' => $e['periode'],
-                        'annee_universitaire_id' => $e['annee_universitaire_id'],
-                    ]),
-                ];
-            }
-        }
-
-        return $liens;
+        return array_merge(
+            $droits['verifier'] ? array_map(fn (array $n) => $libelle($n, 'Vérifier '), $aReprendre['nettoyages']) : [],
+            $droits['reprendre'] ? array_map($libelle, $aReprendre['eleves']) : [],
+        );
     }
 
     /**
      * Les deux remèdes, selon ce qui reste : plus aucune note (le pré-contrôle
      * des bulletins, par classe et période) ou des absences seulement (« Modifier
-     * les moyennes », par élève).
+     * les moyennes », par élève). Chacun porte son `url` : la fiche de
+     * l'évaluation et la liste lisent le même lien, construit ici seulement.
      *
      * @param  array<int, array<string,mixed>>  $laissees
      * @return array{nettoyages:array<int,array<string,mixed>>, eleves:array<int,array<string,mixed>>}
@@ -120,6 +97,7 @@ final class MoyennesLaissees
                 ->unique(fn (array $c) => implode('|', $c))
                 ->map(fn (array $c) => $c + [
                     'libelle' => ($classes[$c['classe_id']] ?? '#'.$c['classe_id']).', '.self::libellePeriode($c['periode']),
+                    'url' => route('esbtp.bulletins.select', $c),
                 ])
                 ->values()
                 ->all(),
@@ -189,6 +167,7 @@ final class MoyennesLaissees
             'libelle' => trim(($etudiants[$l['etudiant_id']]->nom ?? '').' '.($etudiants[$l['etudiant_id']]->prenoms ?? ''))
                 .' — '.($matieres[$l['matiere_id']] ?? '#'.$l['matiere_id'])
                 .' ('.($classes[$l['classe_id']] ?? '#'.$l['classe_id']).', '.self::libellePeriode($l['periode']).')',
+            'url' => route('esbtp.bulletins.moyennes-preview', ['etudiant_id' => (int) $l['etudiant_id']] + self::coordonnee($l)),
         ], $absences));
     }
 

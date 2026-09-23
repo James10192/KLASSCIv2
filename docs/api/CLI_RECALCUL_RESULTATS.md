@@ -51,7 +51,7 @@ doit appeler `RecalculApresDeplacement` lui-même.
 | `POST /api/cli/evaluations/deplacer-periode` | période, jusqu'à 200 évaluations | en lot, plafonné |
 | `POST /api/cli/diagnostics/evaluations-periode/repair` | période, en masse | en lot, plafonné |
 | modification d'une séance de devoir (emploi du temps) | matière du devoir lié, si elle a changé | à l'unité |
-| `esbtp:check-evaluations-annees` | année, depuis nulle — arrivée seule | à l'unité |
+| `esbtp:check-evaluations-annees` | année, depuis nulle — arrivée seule | en lot, sous un mémo, sans plafond (console) |
 | `MergeDuplicateEcue` (LMD, sous `force`) | matière, en masse | **aucun, à dessein** — reporte les lignes de bulletin LMD |
 
 Trois écritures ne déplacent rien mais font **entrer ou sortir** des notes d'une

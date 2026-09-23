@@ -64,17 +64,46 @@ class CheckEvaluationsAnnees extends Command
             return Command::SUCCESS;
         }
 
-        $parSource = ['inscriptions' => 0, 'date' => 0, 'option --annee' => 0];
-        $nonResolues = [];
-        $echecs = 0;
-        $datees = [];
+        $attribution = $this->attribuerLesAnnees($evaluations, $parDefaut !== null ? (int) $parDefaut : null);
+
+        // Les années sont DÉJÀ enregistrées : un recalcul interrompu ne les
+        // défait pas, il se dit à part des échecs d'écriture — et après le
+        // compte rendu, qui porte la liste des évaluations à relancer.
+        try {
+            $bilan = RecalculApresDeplacement::pourPlusieurs($attribution['datees']);
+        } catch (\Throwable $e) {
+            $bilan = null;
+            $this->error("Recalcul des moyennes interrompu, les années restent posées : {$e->getMessage()}");
+            $this->warn('Relancez `notes:recompute` sur les classes concernées.');
+        }
+
+        $this->rendreCompte($attribution, $bilan);
+
+        return $bilan === null || $attribution['echecs'] > 0 ? Command::FAILURE : Command::SUCCESS;
+    }
+
+    /**
+     * Pose l'année de chaque évaluation qui en trouve une. Une évaluation en
+     * échec d'écriture reste sans année et est comptée.
+     *
+     * @param  iterable<ESBTPEvaluation>  $evaluations
+     * @return array{par_source: array<string,int>, non_resolues: array<int,int>, echecs: int, datees: array<int, array{evaluation: ESBTPEvaluation, avant: array<string,mixed>}>}
+     */
+    private function attribuerLesAnnees(iterable $evaluations, ?int $parDefaut): array
+    {
+        $resultat = [
+            'par_source' => ['inscriptions' => 0, 'date' => 0, 'option --annee' => 0],
+            'non_resolues' => [],
+            'echecs' => 0,
+            'datees' => [],
+        ];
 
         foreach ($evaluations as $evaluation) {
             try {
-                [$anneeId, $source] = $this->anneeDe($evaluation, $parDefaut !== null ? (int) $parDefaut : null);
+                [$anneeId, $source] = $this->anneeDe($evaluation, $parDefaut);
 
                 if ($anneeId === null) {
-                    $nonResolues[] = $evaluation->id;
+                    $resultat['non_resolues'][] = $evaluation->id;
 
                     continue;
                 }
@@ -87,46 +116,46 @@ class CheckEvaluationsAnnees extends Command
                 ];
                 $evaluation->annee_universitaire_id = $anneeId;
                 $evaluation->save();
-                $parSource[$source]++;
-                $datees[] = ['evaluation' => $evaluation, 'avant' => $avant];
+                $resultat['par_source'][$source]++;
+                $resultat['datees'][] = ['evaluation' => $evaluation, 'avant' => $avant];
             } catch (\Exception $e) {
                 $this->error("Évaluation #{$evaluation->id} : {$e->getMessage()}");
-                $echecs++;
+                $resultat['echecs']++;
             }
         }
 
-        foreach ($parSource as $source => $nombre) {
+        return $resultat;
+    }
+
+    /**
+     * @param  array{par_source: array<string,int>, non_resolues: array<int,int>, echecs: int}  $attribution
+     * @param  array{recalculs_tentes:int, orphelins:array<int,array<string,mixed>>, echecs:int}|null  $bilan  null : recalcul interrompu
+     */
+    private function rendreCompte(array $attribution, ?array $bilan): void
+    {
+        foreach ($attribution['par_source'] as $source => $nombre) {
             $this->info("{$nombre} année(s) tirée(s) de : {$source}");
         }
 
-        // Les années sont DÉJÀ enregistrées : un recalcul interrompu ne les
-        // défait pas, il se dit à part des échecs d'écriture.
-        try {
-            $bilan = RecalculApresDeplacement::pourPlusieurs($datees);
-        } catch (\Throwable $e) {
-            $this->error("Recalcul des moyennes interrompu, les années restent posées : {$e->getMessage()}");
-            $this->warn('Relancez `notes:recompute` sur les classes concernées.');
+        if ($bilan !== null) {
+            $this->info("{$bilan['recalculs_tentes']} recalcul(s) de moyenne lancé(s).");
 
-            return Command::FAILURE;
-        }
-        $this->info("{$bilan['recalculs_tentes']} recalcul(s) de moyenne lancé(s).");
-
-        $avertissement = MoyennesLaissees::enUnePhrase($bilan, 'n\'ont, même avec ces notes, que des absences à moyenner');
-        if ($avertissement !== null) {
-            $this->warn($avertissement);
-            foreach ($bilan['orphelins'] as $o) {
-                $this->line("  élève #{$o['etudiant_id']}, classe #{$o['classe_id']}, matière #{$o['matiere_id']}, {$o['periode']} : {$o['moyenne']}");
+            $avertissement = MoyennesLaissees::enUnePhrase($bilan, 'n\'ont, même avec ces notes, que des absences à moyenner');
+            if ($avertissement !== null) {
+                $this->warn($avertissement);
+                foreach ($bilan['orphelins'] as $o) {
+                    $this->line("  élève #{$o['etudiant_id']}, classe #{$o['classe_id']}, matière #{$o['matiere_id']}, {$o['periode']} : {$o['moyenne']}");
+                }
             }
         }
-        if ($nonResolues !== []) {
-            $this->warn(count($nonResolues).' évaluation(s) laissée(s) sans année — ni les inscriptions ni la date ne tranchent : #'
-                .implode(', #', $nonResolues).'. Relancez avec --annee=ID pour les attribuer.');
-        }
-        if ($echecs > 0) {
-            $this->warn("{$echecs} évaluation(s) en échec, laissée(s) sans année.");
-        }
 
-        return $echecs > 0 ? Command::FAILURE : Command::SUCCESS;
+        if ($attribution['non_resolues'] !== []) {
+            $this->warn(count($attribution['non_resolues']).' évaluation(s) laissée(s) sans année — ni les inscriptions ni la date ne tranchent : #'
+                .implode(', #', $attribution['non_resolues']).'. Relancez avec --annee=ID pour les attribuer.');
+        }
+        if ($attribution['echecs'] > 0) {
+            $this->warn("{$attribution['echecs']} évaluation(s) en échec, laissée(s) sans année.");
+        }
     }
 
     /**

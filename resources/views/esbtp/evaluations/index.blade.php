@@ -117,9 +117,7 @@
             </div>
         @endif
 
-        {{-- Les avertissements d'une action faite sans recharger la page
-             (annulation, réactivation) : ils restent jusqu'à ce qu'on les ferme. --}}
-        <div id="evaluations-avertissements"></div>
+        @include('esbtp.evaluations.partials._avertissements')
 
         {{-- ═══════════════════════ NOTES REÇUES ═══════════════════════ --}}
         {{-- Une évaluation créée sans notes saisies est exactement ce que le
@@ -476,11 +474,8 @@
 }
 .ev-flash--success { background: rgba(16,185,129,.08); border-color: rgba(16,185,129,.3); color: #047857; }
 .ev-flash--danger  { background: rgba(220,38,38,.08); border-color: rgba(220,38,38,.3); color: #b91c1c; }
-.ev-flash--warning { background: rgba(245,158,11,.08); border-color: rgba(245,158,11,.35); color: #92400e; }
 .ev-flash i:first-child { font-size: 1.1rem; flex-shrink: 0; }
 .ev-flash span { flex: 1; }
-.ev-flash-liens { display: flex; flex-wrap: wrap; gap: .35rem .9rem; margin-top: .4rem; }
-.ev-flash-liens a { color: #0453cb; font-weight: 600; text-decoration: underline; }
 .ev-flash-close {
     background: none; border: none; color: inherit; opacity: .6;
     width: 28px; height: 28px; border-radius: 6px; cursor: pointer;
@@ -1383,45 +1378,6 @@ function initializeEvaluations() {
         yearModalInstance.show();
     };
 
-    // Un avertissement qui dit « vérifiez avant de régénérer les bulletins »
-    // ne peut pas s'effacer tout seul : il reste affiché jusqu'à fermeture.
-    // Les liens (pré-contrôle des bulletins, « Modifier les moyennes ») ne
-    // sont envoyés qu'à qui peut ouvrir l'écran visé.
-    function afficherAvertissement(message, liens = []) {
-        const zone = document.getElementById('evaluations-avertissements');
-        if (!zone) {
-            console.warn('[Evaluations]', message);
-            return;
-        }
-        const bloc = document.createElement('div');
-        bloc.className = 'ev-flash ev-flash--warning';
-        bloc.setAttribute('role', 'alert');
-        const icone = document.createElement('i');
-        icone.className = 'fas fa-exclamation-triangle';
-        const texte = document.createElement('span');
-        texte.textContent = message;
-        if (Array.isArray(liens) && liens.length) {
-            const actions = document.createElement('span');
-            actions.className = 'ev-flash-liens';
-            liens.forEach((lien) => {
-                const a = document.createElement('a');
-                a.href = lien.url;
-                a.textContent = lien.libelle;
-                actions.appendChild(a);
-            });
-            texte.appendChild(actions);
-        }
-        const fermer = document.createElement('button');
-        fermer.type = 'button';
-        fermer.className = 'ev-flash-close';
-        fermer.setAttribute('aria-label', 'Fermer');
-        fermer.innerHTML = '<i class="fas fa-times"></i>';
-        fermer.addEventListener('click', () => bloc.remove());
-        bloc.append(icone, texte, fermer);
-        zone.appendChild(bloc);
-        bloc.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-    }
-
     function showToast(message, type = 'success') {
         if (window.toastr && typeof window.toastr[type] === 'function') {
             window.toastr[type](message);
@@ -1818,9 +1774,7 @@ function initializeEvaluations() {
                 if (data.message) {
                     showToast(data.message, 'success');
                 }
-                if (data.warning) {
-                    afficherAvertissement(data.warning, data.warning_links);
-                }
+                if (data.warning) window.evAfficherAvertissement(data.warning, data.warning_links);
                 if (data.deleted || action === 'delete') {
                     selectedIds.delete(Number(evaluationId));
                     if (refreshRow) {
