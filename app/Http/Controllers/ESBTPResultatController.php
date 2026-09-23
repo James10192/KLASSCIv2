@@ -2808,7 +2808,7 @@ class ESBTPResultatController extends Controller
                         $matiere = \App\Models\ESBTPMatiere::firstOrCreate(
                             ['name' => $nomMatiere],
                             [
-                                'code' => strtoupper(substr($nomMatiere, 0, 3)).'_'.time(),
+                                'code' => mb_strtoupper(mb_substr($nomMatiere, 0, 3, 'UTF-8'), 'UTF-8').'_'.uniqid(), // time() collisionnait
                                 'description' => 'Matière ajoutée manuellement via le bulletin',
                                 'coefficient' => $coefficient,
                                 'type_formation' => 'generale',
