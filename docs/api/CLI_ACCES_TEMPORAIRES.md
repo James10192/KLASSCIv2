@@ -14,12 +14,17 @@ Même logique que l'écran `/esbtp/acces-temporaires` : les deux passent par
   - `identity.*` et `admin.access`, lues par `hasAnyPermission()`, qui ne voit pas les
     accès temporaires ;
   - ce qui modifie les comptes, les rôles, les réglages ou l'abonnement (`users.manage`,
-    `personnel.manage`, `settings.edit`, `settings.pdf.manage`, `coordinateurs.*`,
-    `system.*`, `paywall.*`, `module.*`, `admin.system.security`,
-    `security.users.monitor`, `permissions.temporaires.manage`) : le bénéficiaire
+    `personnel.manage`, `settings.edit`, `settings.pdf.manage`, `system.*`, `paywall.*`,
+    `module.*`, `admin.system.security`, `security.users.monitor`,
+    `security.backup.restore`, `permissions.temporaires.manage`) : le bénéficiaire
     pourrait s'en servir pour se donner un accès qui survivrait à l'échéance ;
+  - dans les familles de comptes du personnel (`directeurs_etudes`,
+    `responsables_scolarite`, `services_scolarite`, `agents_inscription`,
+    `secretaires`, `comptables`, `caissiers`, `coordinateurs`, `teachers`), tout
+    sauf `.view` ;
 - un bénéficiaire étudiant (compte partagé avec les parents) ;
 - une fin passée, ou antérieure au début ;
+- un début à plus de la durée maximale d'aujourd'hui ;
 - une durée au-delà de `permissions.temporaires.duree_max_jours` (90 jours par défaut,
   pas encore exposé dans l'écran des réglages) ;
 - un auteur qui ne détient pas lui-même la permission de façon permanente

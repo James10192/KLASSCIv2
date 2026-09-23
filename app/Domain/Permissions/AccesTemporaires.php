@@ -40,7 +40,24 @@ class AccesTemporaires
         'system.',     // configuration et acces de secours
         'paywall.',    // abonnement de l'instance
         'module.',     // couche abonnement : un module non souscrit ne s'ouvre pas ainsi
-        'coordinateurs.', // creation de comptes de coordination
+    ];
+
+    /**
+     * Familles de comptes du personnel. Tout ce qui y cree, modifie ou supprime
+     * un compte pose un role qui resterait apres l'echeance ; seule la
+     * consultation (`.view`) s'accorde. Liste tenue a jour par
+     * AccesTemporairesNonAccordablesTest, qui la deduit des controleurs.
+     */
+    public const FAMILLES_DE_COMPTES = [
+        'directeurs_etudes',
+        'responsables_scolarite',
+        'services_scolarite',
+        'agents_inscription',
+        'secretaires',
+        'comptables',
+        'caissiers',
+        'coordinateurs',
+        'teachers',
     ];
 
     public const NON_ACCORDABLES = [
@@ -53,6 +70,7 @@ class AccesTemporaires
         'personnel.manage',    // ouvre les roles personnalises
         'settings.edit',       // reglages de l'instance, dont la duree maximale ici
         'settings.pdf.manage',
+        'security.backup.restore', // reecrit aussi les tables des roles et permissions
     ];
 
     /** Duree maximale par defaut, en jours, si l'ecole n'en a pas fixe. */
@@ -136,6 +154,10 @@ class AccesTemporaires
                 return false;
             }
         }
+        [$famille] = explode('.', $permission, 2);
+        if (in_array($famille, self::FAMILLES_DE_COMPTES, true) && $permission !== $famille.'.view') {
+            return false;
+        }
 
         return $this->registry->permissionMeta($permission) !== null;
     }
@@ -165,6 +187,11 @@ class AccesTemporaires
         $max = $this->dureeMaxJours();
         if ($debut->diffInMinutes($fin) > $max * 24 * 60) {
             throw new AccesTemporaireRefuse("Un accès temporaire ne dépasse pas {$max} jours sur cette instance.");
+        }
+        // Le droit de l'auteur ne se verifie qu'aujourd'hui : un acces programme
+        // loin dans le futur s'ouvrirait meme s'il l'avait perdu entre-temps.
+        if ($debut->gt(now()->addDays($max))) {
+            throw new AccesTemporaireRefuse("Un accès temporaire commence dans les {$max} prochains jours.");
         }
         // On ne donne pas ce qu'on n'a pas : sans cette garde, un acces
         // temporaire servirait a s'elever soi-meme par personne interposee.

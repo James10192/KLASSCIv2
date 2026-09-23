@@ -214,6 +214,14 @@ class AccesTemporairesTest extends TestCase
         $this->service()->accorder(User::factory()->create(), 'notes.edit', now(), now()->addDays(AccesTemporaires::DUREE_MAX_JOURS_DEFAUT + 1), 'Beaucoup trop long', $this->admin);
     }
 
+    public function test_un_acces_ne_se_programme_pas_au_dela_de_la_duree_maximale(): void
+    {
+        $debut = now()->addDays(AccesTemporaires::DUREE_MAX_JOURS_DEFAUT + 5);
+
+        $this->expectException(AccesTemporaireRefuse::class);
+        $this->service()->accorder(User::factory()->create(), 'notes.edit', $debut, $debut->copy()->addDay(), 'Programme bien trop loin', $this->admin);
+    }
+
     public function test_sans_gerer_le_personnel_l_ecran_reste_ferme(): void
     {
         $user = User::factory()->create();
