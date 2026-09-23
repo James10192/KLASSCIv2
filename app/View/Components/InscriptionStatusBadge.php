@@ -46,7 +46,7 @@ class InscriptionStatusBadge extends Component
         $status = (string) ($inscription->status ?? '');
         $workflow = (string) ($inscription->workflow_step ?? '');
 
-        if (in_array($status, ['cancelled', 'annulée', 'annulee'], true)) {
+        if (in_array($status, ESBTPInscription::STATUTS_ANNULES, true)) {
             return ['annulee', 'Annulée', 'fa-times-circle', 'Inscription annulée'];
         }
 
