@@ -25,9 +25,10 @@ use Tests\TestCase;
  * seule la periode affichee etait touchee, et la moyenne annuelle avec elle.
  *
  * Le troisieme cas protege l'erreur inverse : une vraie note de 0 est une valeur.
- * Les deux derniers couvrent le repli : un semestre qui n'a plus que son bulletin
- * officiel ne change pas de reponse selon l'onglet ouvert, et un eleve sans classe
- * ni note n'herite pas d'un 0 invente.
+ * Les trois derniers verrouillent la suppression du repli : un semestre qui n'a
+ * plus que son bulletin officiel ne change pas de reponse selon l'onglet ouvert,
+ * un eleve sans classe ni note n'herite pas d'un 0 invente, et, sans classe, une
+ * note d'une autre annee ne fait plus tomber la page.
  */
 class MoyenneSemestreSansNoteTest extends TestCase
 {
@@ -102,7 +103,7 @@ class MoyenneSemestreSansNoteTest extends TestCase
         }
     }
 
-    /** Sans inscription, pas de classe ni de snapshot : le repli ne doit pas inventer un 0. */
+    /** Sans inscription, pas de classe ni de snapshot : la page ne doit pas inventer un 0. */
     public function test_sans_classe_un_eleve_sans_note_n_a_pas_de_moyenne(): void
     {
         $this->monterLaClasse();
