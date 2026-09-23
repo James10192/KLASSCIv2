@@ -720,6 +720,13 @@ class ESBTPEvaluationController extends Controller
                     ->withInput();
             }
 
+            $baremeMinimal = $evaluation->baremeMinimal();
+            if ($baremeMinimal !== null && (float) $request->bareme < $baremeMinimal) {
+                return redirect()->back()
+                    ->with('error', $this->messageBaremeSousUneNote($baremeMinimal))
+                    ->withInput();
+            }
+
             $startAt = Carbon::createFromFormat('Y-m-d H:i', $request->date_evaluation.' '.$request->heure_debut);
             $endAt = Carbon::createFromFormat('Y-m-d H:i', $request->date_evaluation.' '.$request->heure_fin);
             if ($endAt->lessThanOrEqualTo($startAt)) {
@@ -811,6 +818,14 @@ class ESBTPEvaluationController extends Controller
         }
     }
 
+    private function messageBaremeSousUneNote(float $baremeMinimal): string
+    {
+        $note = rtrim(rtrim(number_format($baremeMinimal, 2, ',', ''), '0'), ',');
+
+        return "Le barème ne peut pas descendre sous {$note} : une note déjà saisie vaut {$note}. "
+            .'Corrigez d\'abord cette note, ou gardez un barème au moins égal.';
+    }
+
     /**
      * Quick edit (titre + barème + coefficient seulement).
      * Utilisé par le modal de saisie de notes (PR #4 — édition rapide depuis l'en-tête de colonne).
@@ -833,6 +848,12 @@ class ESBTPEvaluationController extends Controller
             'coefficient.max' => 'Le coefficient ne peut pas dépasser 10.',
         ]);
 
+        // Avant le `try` : son rattrapage large ferait de ce refus une erreur 500.
+        $baremeMinimal = $evaluation->baremeMinimal();
+        if ($baremeMinimal !== null && (float) $validated['bareme'] < $baremeMinimal) {
+            throw ValidationException::withMessages(['bareme' => $this->messageBaremeSousUneNote($baremeMinimal)]);
+        }
+
         try {
             $avant = ['bareme' => $evaluation->bareme, 'coefficient' => $evaluation->coefficient];
 
@@ -847,6 +868,11 @@ class ESBTPEvaluationController extends Controller
             // Sans ce recalcul, la moyenne enregistree d'avant garde la main
             // sur l'ancien bareme ou l'ancien coefficient.
             $recalcul = RecalculApresDeplacement::apresChangementDePonderation($evaluation, $avant, Auth::id());
+
+            // Relu : le coefficient n'a qu'une decimale en base (1,25 devient
+            // 1,3). La grille recalcule avec ce qu'on lui renvoie ; lui renvoyer
+            // la saisie brute la ferait diverger de la moyenne enregistree.
+            $evaluation->refresh();
 
             return response()->json([
                 'success' => true,

@@ -300,7 +300,8 @@ final class RecalculApresDeplacement
             if (! array_key_exists($cle, $avant) || $avant[$cle] === null) {
                 continue;
             }
-            // Au centieme : c'est la precision des deux colonnes en base.
+            // Au centieme : la precision du bareme en base (`decimal(5,2)`) ;
+            // le coefficient n'en a qu'une (`decimal(3,1)`), le centieme la couvre.
             if (round((float) $avant[$cle], 2) !== round((float) $evaluation->{$cle}, 2)) {
                 return true;
             }
