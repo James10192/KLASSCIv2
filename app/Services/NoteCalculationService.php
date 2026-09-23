@@ -44,6 +44,32 @@ class NoteCalculationService
      */
     public function studentMatiereAverage(array $notes): float
     {
+        return $this->studentMatiereAverageOrNull($notes) ?? 0.0;
+    }
+
+    /**
+     * La MEME formule, mais qui distingue « moyenne de zero » de « rien a
+     * moyenner ».
+     *
+     * `studentMatiereAverage()` rend `0.0` dans les deux cas, et cette
+     * confusion a deja coute deux defauts a ce chantier : un recalcul qui ne
+     * trouve aucune note exploitable ecrit alors **0 sur 20 par-dessus une
+     * moyenne reelle**, en se declarant reussi.
+     *
+     * Les exclusions (absence, bareme nul, coefficient nul) vivent ICI et nulle
+     * part ailleurs. Un appelant qui veut savoir « y a-t-il quelque chose a
+     * moyenner ? » pose la question a cette methode — il ne la redevine pas
+     * avec un `exists()` a cote, qui ne connaitrait pas les exclusions et
+     * repondrait oui sur une matiere ou il ne reste qu'une absence.
+     *
+     * `studentMatiereAverage()` reste le point d'entree par defaut : le
+     * comportement des appelants existants ne change pas d'une virgule.
+     *
+     * @param  array<int, array{note?: float|int|string|null, bareme?: float|int|string|null, coefficient?: float|int|string|null, is_absent?: bool}>  $notes
+     * @return float|null Moyenne sur 20, ou `null` si aucune note n'est exploitable.
+     */
+    public function studentMatiereAverageOrNull(array $notes): ?float
+    {
         $totalPoints = 0.0;
         $totalCoeffs = 0.0;
 
@@ -70,7 +96,7 @@ class NoteCalculationService
 
         return $totalCoeffs > 0
             ? round($totalPoints / $totalCoeffs, 2)
-            : 0.0;
+            : null;
     }
 
     /**

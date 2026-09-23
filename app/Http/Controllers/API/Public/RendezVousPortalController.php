@@ -8,7 +8,7 @@ use App\Http\Requests\RendezVous\PortailRdvRequest;
 use App\Http\Requests\RendezVous\PortailRdvRetrouverRequest;
 use App\Models\ESBTPRdvReservation;
 use App\Services\RendezVous\CatalogueCreneaux;
-use App\Services\RendezVous\MessagerieRdv;
+use App\Services\RendezVous\FileConvocationsRdv;
 use App\Services\Portail\ReferencePublique;
 use App\Services\RendezVous\ReservateurRdv;
 use Illuminate\Http\JsonResponse;
@@ -20,7 +20,7 @@ class RendezVousPortalController extends Controller
         private readonly CatalogueCreneaux $catalogue,
         private readonly ReservateurRdv $reservateur,
         private readonly ReferencePublique $references,
-        private readonly MessagerieRdv $mails,
+        private readonly FileConvocationsRdv $convocations,
     ) {
     }
 
@@ -141,7 +141,7 @@ class RendezVousPortalController extends Controller
         }
 
         if (isset($resultat['reservation'])) {
-            $this->mails->confirmer($resultat['reservation'], $action);
+            $this->convocations->confirmer($resultat['reservation'], $action);
         }
 
         $corps = ['enregistre' => true];

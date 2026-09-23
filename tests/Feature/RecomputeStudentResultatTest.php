@@ -47,9 +47,15 @@ class RecomputeStudentResultatTest extends TestCase
             'is_current' => true,
         ]);
 
+        // `filiere_id`, `niveau_etude_id` et `annee_universitaire_id` sont NOT
+        // NULL : sans eux, les huit tests de ce fichier tombaient dans setUp()
+        // depuis longtemps, et le seul test direct du job ne testait rien.
         $this->classe = ESBTPClasse::create([
             'name' => 'BTS1 Test',
             'code' => 'BTS1T',
+            'filiere_id' => \App\Models\ESBTPFiliere::factory()->create()->id,
+            'niveau_etude_id' => \App\Models\ESBTPNiveauEtude::factory()->create()->id,
+            'annee_universitaire_id' => $this->annee->id,
             'places_totales' => 30,
             'places_occupees' => 0,
             'is_active' => true,

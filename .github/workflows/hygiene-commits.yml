@@ -255,6 +255,7 @@ jobs:
           for chemin in \
             tests/Unit/Services/Frais \
             tests/Unit/Paiements \
+            tests/Unit/Models/SettingRepliSurDefautTest.php \
             tests/Unit/Services/FraisAudienceTest.php \
             tests/Unit/Services/ExtensionsDeRoleTest.php \
             tests/Unit/Exploitation \
