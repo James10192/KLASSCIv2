@@ -117,6 +117,7 @@
                         <button type="button" class="sp-outil" data-sp-annuler disabled><i class="fas fa-rotate-left" aria-hidden="true"></i>Annuler</button>
                     </div>
                     <div class="sp-toile-cadre" data-sp-toile></div>
+                    <p class="sp-toile-aide">Taille réelle : glissez pour parcourir l'image. Pour annoter au doigt, revenez à l'image entière.</p>
                     <div class="sp-erreur" data-sp-erreur role="alert" hidden></div>
                     <div class="sp-actions">
                         <button type="button" class="sp-btn sp-btn--secondaire" data-sp-capture-abandon>Ne pas joindre</button>
@@ -214,6 +215,8 @@
     /* Taille reelle : le cadre defile. Au doigt, glisser fait defiler, on ne dessine plus. */
     .sp-toile-cadre.sp-toile-cadre--reelle { overflow: auto; max-height: 60vh; overscroll-behavior: contain; }
     .sp-toile-cadre.sp-toile-cadre--reelle .sp-toile { max-width: none; max-height: none; margin: 0; touch-action: pan-x pan-y; }
+    .sp-toile-aide { display: none; margin: .4rem 0 0; font-size: .78rem; color: #64748b; }
+    @media (pointer: coarse) { .sp-toile-cadre--reelle + .sp-toile-aide { display: block; } }
     .sp-toile-texte { position: absolute; transform: translateY(-50%); min-width: 180px; padding: .3rem .5rem; font-size: .85rem;
         border: 1px solid #0453cb; border-radius: 6px; box-shadow: 0 4px 14px rgba(15,23,42,.15); }
     .sp-fin-capture { font-size: .84rem; color: #475569; }
