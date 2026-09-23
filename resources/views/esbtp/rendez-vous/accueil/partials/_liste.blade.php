@@ -2,9 +2,27 @@
 @php
     $_contacts = app(\App\Services\RendezVous\ContactsFamilleRdv::class);
     $_aVenir = $jour->isFuture() && ! $jour->isToday();
-    $_Honoree = \App\Enums\StatutReservationRdv::Honoree;
-    $_Manquee = \App\Enums\StatutReservationRdv::Manquee;
+    $_Tel = \App\Enums\StatutConvocationRdv::Telephone;
+    $_aPrevenir = [null, \App\Enums\StatutConvocationRdv::SansEmail, \App\Enums\StatutConvocationRdv::Echec];
+    $_libelleEtat = ['recu' => 'Reçue', 'non_venue' => 'Non venue', 'traite' => 'Dossier traité', 'attendu' => 'À recevoir'];
 @endphp
+
+@if($enSouffrance->isNotEmpty())
+    <div class="rac-alerte" role="status">
+        <i class="fas fa-triangle-exclamation"></i>
+        <div>
+            <strong>Des familles non venues attendent encore d'être reprogrammées</strong>
+            <div class="rac-alerte-jours">
+                @foreach($enSouffrance->take(6) as $_j)
+                    <a href="{{ route('esbtp.rendez-vous.accueil.index', ['jour' => $_j->jour]) }}" data-rac-jour="{{ $_j->jour }}">
+                        {{ ucfirst(\Carbon\Carbon::parse($_j->jour)->translatedFormat('l j F')) }} · {{ $_j->n }}
+                    </a>
+                @endforeach
+                @if($enSouffrance->count() > 6)<span>et {{ $enSouffrance->count() - 6 }} autre(s) jour(s)</span>@endif
+            </div>
+        </div>
+    </div>
+@endif
 
 @if($creneaux->isEmpty() && $reprogrammees->isEmpty())
     <div class="rdv-card rdv-vide">
@@ -15,50 +33,65 @@
     </div>
 @else
     @if($_aVenir)
-        <p class="rac-info"><i class="fas fa-circle-info"></i>Journée à venir : la liste se coche le jour même. Vous pouvez déjà reprogrammer un rendez-vous.</p>
+        <p class="rac-info"><i class="fas fa-circle-info"></i>Journée à venir : la liste se coche le jour même. Vous pouvez déjà prévenir par téléphone les familles sans convocation, ou reprogrammer un rendez-vous.</p>
+    @endif
+    @if($compteurs['non_venues'] > 0)
+        <section class="rdv-card rac-nonvenues">
+            <div class="rdv-section-head" style="margin:0">
+                <span class="rdv-section-icon"><i class="fas fa-user-clock"></i></span>
+                <div>
+                    <h2>{{ $compteurs['non_venues'] }} famille{{ $compteurs['non_venues'] > 1 ? 's' : '' }} non venue{{ $compteurs['non_venues'] > 1 ? 's' : '' }}</h2>
+                    <p>Leur créneau est terminé sans qu'elles aient été reçues. Une famille arrivée en retard se coche encore.</p>
+                </div>
+            </div>
+            <button type="button" class="rdv-btn rdv-btn--primary" data-rac-non-venues
+                    data-confirm="Les {{ $compteurs['non_venues'] }} familles non venues seront placées sur les prochains créneaux libres, et leur nouvelle convocation partira par e-mail. Celles sans adresse rejoindront la liste des familles à prévenir.">
+                <i class="fas fa-calendar-plus"></i>Reprogrammer les non-venues
+            </button>
+        </section>
     @endif
     @foreach($creneaux as $creneau)
         @php
-            $_debut = \Carbon\Carbon::parse($creneau->date->toDateString().' '.$creneau->heureDebutHi().':00');
             $_termine = $accueil->creneauTermine($creneau);
-            $_commence = now()->gte($_debut);
+            $_commence = $accueil->aCommence($creneau);
             $_etatCreneau = $_termine ? 'termine' : ($_commence ? 'en-cours' : 'a-venir');
             $_resas = $creneau->reservations;
-            $_recus = $_resas->where('statut', $_Honoree)->count();
+            $_recus = $_resas->where('statut', \App\Enums\StatutReservationRdv::Honoree)->count();
         @endphp
         <section class="rdv-card rac-creneau rac-creneau--{{ $_etatCreneau }}" data-rac-creneau>
             <header class="rac-creneau-tete">
                 <h3><span class="rdv-heure">{{ $creneau->heureDebutHi() }} – {{ $creneau->heureFinHi() }}</span>
                     <span class="rac-puce rac-puce--{{ $_etatCreneau }}">{{ ['termine' => 'Terminé', 'en-cours' => 'En cours', 'a-venir' => 'À venir'][$_etatCreneau] }}</span>
                 </h3>
-                <span class="rac-creneau-compte"><strong>{{ $_recus }}</strong> / {{ $_resas->count() }} reçues</span>
+                <span class="rac-creneau-compte"><strong>{{ $_recus }}</strong> / {{ $_resas->count() }} reçue{{ $_resas->count() > 1 ? 's' : '' }}</span>
             </header>
             <ul class="rac-lignes">
                 @foreach($_resas as $resa)
                     @php
-                        $_etat = $resa->statut === $_Honoree ? 'recu' : ($resa->statut === $_Manquee ? 'absent' : 'attendu');
+                        $_etat = $accueil->etat($resa);
                         $_ref = $_contacts->reference($resa);
                         $_second = $_contacts->second($resa);
                         $_tel = \App\Domain\Notifications\PhoneFormatter::toReadable($resa->telephone) ?? $resa->telephone;
                         $_retard = $accueil->enRetard($resa);
                         $_cherche = mb_strtolower($resa->nomComplet().' '.$resa->telephone.' '.str_replace('-', '', $_ref).' '.$_ref.' '.($_second['telephone'] ?? ''), 'UTF-8');
                         $_url = fn (string $action) => route('esbtp.rendez-vous.accueil.'.$action, $resa);
+                        $_sansNouvelle = ! $_commence && in_array($resa->convocation_statut, $_aPrevenir, true);
                     @endphp
-                    <li class="rac-ligne rac-ligne--{{ $_etat }}" data-statut="{{ $_etat }}" data-cherche="{{ $_cherche }}">
+                    <li class="rac-ligne rac-ligne--{{ $_etat }}" data-statut="{{ $_etat }}" data-cherche="{{ $_cherche }}" data-creneau="{{ $creneau->id }}">
                         @if($_etat === 'recu')
                             <button type="button" class="rac-coche is-cochee" data-rac-action="{{ $_url('annuler') }}" aria-label="Annuler : {{ $resa->nomComplet() }} n'est pas encore reçue" title="Reçue — cliquer pour annuler"><i class="fas fa-check"></i></button>
-                        @elseif($_etat === 'attendu' && ! $_aVenir)
-                            <button type="button" class="rac-coche" data-rac-action="{{ $_url('recu') }}" aria-label="Marquer {{ $resa->nomComplet() }} reçue" title="Marquer reçue"><i class="fas fa-check"></i></button>
+                        @elseif(! $_aVenir)
+                            <button type="button" class="rac-coche {{ $_etat === 'non_venue' ? 'rac-coche--non-venue' : '' }}" data-rac-action="{{ $_url('recu') }}" aria-label="Marquer {{ $resa->nomComplet() }} reçue" title="Marquer reçue"><i class="fas fa-check"></i></button>
                         @else
-                            <span class="rac-coche rac-coche--{{ $_etat }}" aria-hidden="true"><i class="fas {{ $_etat === 'absent' ? 'fa-xmark' : 'fa-clock' }}"></i></span>
+                            <span class="rac-coche rac-coche--attendu" aria-hidden="true"><i class="fas fa-clock"></i></span>
                         @endif
 
                         <div class="rac-qui">
                             <div class="rac-nom">
                                 <strong>{{ $resa->nomComplet() }}</strong>
                                 @if($_retard)<span class="rac-puce rac-puce--retard">En retard</span>@endif
-                                @if($resa->absences > 0 && $_etat !== 'absent')
-                                    <span class="rac-puce rac-puce--reprog" title="Absent le {{ $resa->dernierCreneauManque?->date?->translatedFormat('j F') }}">Reprogrammé · {{ $resa->absences }} absence{{ $resa->absences > 1 ? 's' : '' }}</span>
+                                @if($resa->absences > 0)
+                                    <span class="rac-puce rac-puce--reprog">Reprogrammée · {{ $resa->absences }} absence{{ $resa->absences > 1 ? 's' : '' }}</span>
                                 @endif
                             </div>
                             <div class="rac-contacts">
@@ -74,22 +107,26 @@
                             @if($_etat === 'recu')
                                 <span class="rdv-badge rdv-badge--succes">Reçue{{ $resa->accueilli_at ? ' à '.$resa->accueilli_at->format('H:i') : '' }}</span>
                                 @if($resa->accueilliPar)<small>par {{ $resa->accueilliPar->name }}</small>@endif
-                            @elseif($_etat === 'absent')
-                                <span class="rdv-badge rdv-badge--echec">Absente</span>
+                            @elseif($_etat === 'non_venue')
+                                <span class="rdv-badge rdv-badge--echec">Non venue</span>
+                            @elseif($_etat === 'traite')
+                                <span class="rdv-badge rdv-badge--neutre" title="Jamais cochée, mais son dossier a avancé">Dossier traité</span>
                             @else
                                 <span class="rdv-badge {{ $_retard ? 'rdv-badge--attente' : 'rdv-badge--inconnu' }}">À recevoir</span>
+                                @if($resa->convocation_statut === $_Tel)
+                                    <small>prévenue par tél.{{ $resa->prevenuePar ? ' ('.$resa->prevenuePar->name.')' : '' }}</small>
+                                @elseif($_sansNouvelle)
+                                    <small class="rac-sans-nouvelle">aucune convocation reçue</small>
+                                @endif
                             @endif
                         </div>
 
                         <div class="rac-actions">
-                            @if($_etat === 'attendu' && $_commence)
-                                <button type="button" class="rdv-btn rdv-btn--ghost rdv-btn--sm" data-rac-action="{{ $_url('absent') }}"><i class="fas fa-user-xmark"></i>Absente</button>
+                            @if($_sansNouvelle)
+                                <button type="button" class="rdv-btn rdv-btn--ghost rdv-btn--sm" data-rac-action="{{ $_url('prevenue') }}" title="Vous l'avez appelée : elle sort de la liste des familles à prévenir"><i class="fas fa-phone-volume"></i>Prévenue</button>
                             @endif
-                            @if($_etat === 'absent')
-                                <button type="button" class="rdv-btn rdv-btn--ghost rdv-btn--sm" data-rac-action="{{ $_url('annuler') }}" title="Elle est finalement venue ou c'était une erreur"><i class="fas fa-rotate-left"></i>Annuler</button>
-                            @endif
-                            @if($_etat !== 'recu')
-                                <button type="button" class="rdv-btn {{ $_etat === 'absent' ? 'rdv-btn--primary' : 'rdv-btn--ghost' }} rdv-btn--sm"
+                            @if(in_array($_etat, ['attendu', 'non_venue'], true))
+                                <button type="button" class="rdv-btn {{ $_etat === 'non_venue' ? 'rdv-btn--primary' : 'rdv-btn--ghost' }} rdv-btn--sm"
                                         data-rac-reprogrammer="{{ $_url('reprogrammer') }}" data-rac-nom="{{ $resa->nomComplet() }}"><i class="fas fa-calendar-plus"></i>Reprogrammer</button>
                             @endif
                         </div>
@@ -98,10 +135,11 @@
             </ul>
         </section>
     @endforeach
+
     @if($reprogrammees->isNotEmpty())
         <section class="rdv-card rac-creneau rac-reprogrammees" data-rac-creneau>
             <header class="rac-creneau-tete">
-                <h3><i class="fas fa-calendar-plus"></i>Absentes ce jour, déjà reprogrammées</h3>
+                <h3><i class="fas fa-calendar-plus"></i>Non venues ce jour, déjà reprogrammées</h3>
                 <span class="rac-creneau-compte"><strong>{{ $reprogrammees->count() }}</strong> famille{{ $reprogrammees->count() > 1 ? 's' : '' }}</span>
             </header>
             <ul class="rac-lignes">
@@ -111,8 +149,8 @@
                         $_tel = \App\Domain\Notifications\PhoneFormatter::toReadable($resa->telephone) ?? $resa->telephone;
                         $_cherche = mb_strtolower($resa->nomComplet().' '.$resa->telephone.' '.str_replace('-', '', $_ref).' '.$_ref, 'UTF-8');
                     @endphp
-                    <li class="rac-ligne rac-ligne--reprog" data-statut="absent" data-cherche="{{ $_cherche }}">
-                        <span class="rac-coche rac-coche--absent" aria-hidden="true"><i class="fas fa-xmark"></i></span>
+                    <li class="rac-ligne rac-ligne--reprog" data-statut="non_venue" data-cherche="{{ $_cherche }}">
+                        <span class="rac-coche rac-coche--non-venue" aria-hidden="true"><i class="fas fa-share"></i></span>
                         <div class="rac-qui">
                             <div class="rac-nom"><strong>{{ $resa->nomComplet() }}</strong></div>
                             <div class="rac-contacts">

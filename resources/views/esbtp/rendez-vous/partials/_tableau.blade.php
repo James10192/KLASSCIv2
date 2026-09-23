@@ -1,6 +1,8 @@
 {{-- Convocations, puis la semaine. Rendu aussi seul par index(?fragment=1). --}}
 @php
     $_conv = $convocations;
+    $_peutPrevenir = auth()->user()?->can('inscriptions.rdv.accueil') ?? false;
+    $_aPrevenirEtats = [null, \App\Enums\StatutConvocationRdv::SansEmail, \App\Enums\StatutConvocationRdv::Echec];
 @endphp
 
 {{-- 1. Les convocations : ce qui est parti, ce qui attend, ce qui a echoue --}}
@@ -18,6 +20,9 @@
             <div class="rdv-conv rdv-conv--attente"><span>{{ $_conv['en_attente'] }}</span>en attente</div>
             <div class="rdv-conv rdv-conv--echec"><span>{{ $_conv['echec'] }}</span>en échec</div>
             <div class="rdv-conv rdv-conv--neutre"><span>{{ $_conv['sans_email'] }}</span>sans e-mail</div>
+            @if($_conv['telephone'] > 0)
+                <div class="rdv-conv rdv-conv--succes"><span>{{ $_conv['telephone'] }}</span>prévenues par téléphone</div>
+            @endif
             @if($_conv['sans_objet'] > 0)
                 <div class="rdv-conv rdv-conv--neutre" title="Le créneau était passé au moment de l'envoi"><span>{{ $_conv['sans_objet'] }}</span>sans objet</div>
             @endif
@@ -117,6 +122,7 @@
                             $_complet = $_prises >= $creneau->capacite;
                             $_etat = ! $creneau->ouvert ? 'ferme' : ($_complet ? 'complet' : 'ouvert');
                             $_libelles = ['ferme' => 'Fermé', 'complet' => 'Complet', 'ouvert' => 'Ouvert'];
+                            $_commence = now()->gte(\Carbon\Carbon::parse($creneau->date->toDateString().' '.$creneau->heureDebutHi().':00'));
                         @endphp
                         <div class="rdv-slot rdv-slot--{{ $_etat }}">
                             <div class="rdv-slot-ligne">
@@ -152,11 +158,19 @@
                                                         <span class="rdv-badge rdv-badge--{{ $_c->ton() }}">{{ $_c->label() }}</span>
                                                         @if($_c === \App\Enums\StatutConvocationRdv::Envoyee && $resa->convocation_envoyee_at)
                                                             <small>le {{ $resa->convocation_envoyee_at->translatedFormat('j M à H:i') }}</small>
+                                                        @elseif($_c === \App\Enums\StatutConvocationRdv::Telephone)
+                                                            <small>{{ $resa->prevenuePar ? 'par '.$resa->prevenuePar->name.' ' : '' }}{{ $resa->convocation_envoyee_at ? 'le '.$resa->convocation_envoyee_at->translatedFormat('j M à H:i') : '' }}</small>
+                                                            @if($_peutPrevenir && ! $_commence)
+                                                                <button type="button" class="rdv-lien" data-rdv-basculer="{{ route('esbtp.rendez-vous.accueil.prevenue.annuler', $resa) }}">Annuler</button>
+                                                            @endif
                                                         @elseif($resa->convocation_erreur)
                                                             <small class="rdv-resa-erreur">{{ $resa->convocation_erreur }}</small>
                                                         @endif
                                                     @else
                                                         <span class="rdv-badge rdv-badge--inconnu" title="Réservation antérieure au suivi des envois">Non suivie</span>
+                                                    @endif
+                                                    @if($_peutPrevenir && ! $_commence && in_array($_c, $_aPrevenirEtats, true))
+                                                        <button type="button" class="rdv-btn rdv-btn--ghost rdv-btn--sm" data-rdv-basculer="{{ route('esbtp.rendez-vous.accueil.prevenue', $resa) }}" title="Vous l'avez appelée : elle sort de la liste des familles à prévenir"><i class="fas fa-phone-volume"></i>Prévenue</button>
                                                     @endif
                                                 </div>
                                             </li>

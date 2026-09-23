@@ -134,11 +134,10 @@ class ReservateurRdv
      * commence que pour une famille — deux guichets ne peuvent pas remplir la
      * onzieme place d'un creneau de dix.
      *
-     * La reservation redevient « confirmee » : une absence reprogrammee est de
-     * nouveau un rendez-vous attendu. L'absence reste comptee sur la reservation
-     * (AccueilRdv), pas dans le statut.
+     * Une famille deja reçue ne se deplace pas. L'absence n'est pas dans le
+     * statut : AccueilRdv la deduit, et journalise le deplacement.
      *
-     * @return array{ok: true, reservation: ESBTPRdvReservation}|array{ok: false, code: string}
+     * @return array{ok: true, reservation: ESBTPRdvReservation, creneau_quitte_id: int}|array{ok: false, code: string}
      */
     public function replacerAuGuichet(ESBTPRdvReservation $reservation, int $creneauId): array
     {
@@ -153,19 +152,19 @@ class ReservateurRdv
                 return ['ok' => false, 'code' => 'introuvable'];
             }
 
+            if ($actuelle->statut === StatutReservationRdv::Honoree) {
+                return ['ok' => false, 'code' => 'recue'];
+            }
+
             $cible = $this->verrouillerCreneau($creneauId, (int) $actuelle->creneau_id, false);
             if (! $cible instanceof ESBTPRdvCreneau) {
                 return ['ok' => false, 'code' => $cible['code']];
             }
 
-            $actuelle->update([
-                'creneau_id' => $cible->id,
-                'statut' => StatutReservationRdv::Confirmee,
-                'accueilli_at' => null,
-                'accueilli_par' => null,
-            ]);
+            $quitte = (int) $actuelle->creneau_id;
+            $actuelle->update(['creneau_id' => $cible->id, 'statut' => StatutReservationRdv::Confirmee]);
 
-            return ['ok' => true, 'reservation' => $actuelle->fresh()->load('creneau')];
+            return ['ok' => true, 'reservation' => $actuelle->fresh()->load('creneau'), 'creneau_quitte_id' => $quitte];
         });
     }
 

@@ -18,8 +18,8 @@ class ContactsFamilleRdv
     public static function chargements(): array
     {
         return [
-            'candidature:id,reference_publique,tuteur_nom,tuteur_telephone,tuteur_lien',
-            'demande:id,etudiant_id,reference_publique',
+            'candidature:id,statut,reference_publique,tuteur_nom,tuteur_telephone,tuteur_lien',
+            'demande:id,statut,etudiant_id,reference_publique',
             'demande.etudiant:id',
             'demande.etudiant.parents:esbtp_parents.id,nom,prenoms,telephone',
         ];

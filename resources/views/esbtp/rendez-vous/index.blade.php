@@ -352,8 +352,8 @@ window.__rdvGuideAvant = function () {
         + '<span class="rdv-slot-compte"><strong>2</strong> / 4</span><span class="rdv-etat rdv-etat--ouvert">Ouvert</span>'
         + '<span class="rdv-switch" aria-hidden="true" style="background:#0453cb"><span class="rdv-switch-rond" style="left:21px"></span></span></div>'
         + '<details class="rdv-resas" open><summary><i class="fas fa-chevron-right"></i>2 familles attendues</summary><ul>'
-        + '<li class="rdv-resa"><div class="rdv-resa-qui"><strong>Famille exemple A</strong><span>+225 07 00 00 00 00</span></div><div class="rdv-resa-conv"><span class="rdv-badge rdv-badge--succes">Convocation envoyée</span></div></li>'
-        + '<li class="rdv-resa"><div class="rdv-resa-qui"><strong>Famille exemple B</strong><span>+225 05 00 00 00 00</span></div><div class="rdv-resa-conv"><span class="rdv-badge rdv-badge--echec">Envoi échoué</span><small class="rdv-resa-erreur">Adresse refusée</small></div></li>'
+        + '<li class="rdv-resa"><div class="rdv-resa-qui"><strong>Famille exemple A</strong><span>07 00 00 00 00</span></div><div class="rdv-resa-conv"><span class="rdv-badge rdv-badge--succes">Convocation envoyée</span></div></li>'
+        + '<li class="rdv-resa"><div class="rdv-resa-qui"><strong>Famille exemple B</strong><span>05 00 00 00 00</span></div><div class="rdv-resa-conv"><span class="rdv-badge rdv-badge--echec">Envoi échoué</span><small class="rdv-resa-erreur">Adresse refusée</small></div></li>'
         + '</ul></details></div></div>';
     cible.insertAdjacentElement('afterend', demo);
 };

@@ -7,6 +7,7 @@ use App\Enums\StatutReservationRdv;
 use App\Models\ESBTPRdvReservation;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Les familles qu'aucun courriel n'a prevenues de leur rendez-vous a venir :
@@ -14,12 +15,55 @@ use Illuminate\Database\Eloquent\Builder;
  *
  * Une convocation « en attente » n'y figure pas : elle partira au prochain
  * envoi. Un creneau deja commence non plus : il n'y a plus personne a prevenir,
- * c'est l'accueil du jour qui prend le relais.
+ * c'est l'accueil du jour qui prend le relais. Une famille prevenue par
+ * telephone en sort : la liste raccourcit au fil des appels.
  */
 class FamillesAPrevenirRdv
 {
-    public function __construct(private readonly ContactsFamilleRdv $contacts)
+    /** Les etats qui laissent une famille sans nouvelle de son rendez-vous. NULL : avant le suivi. */
+    private const A_PREVENIR = [StatutConvocationRdv::SansEmail, StatutConvocationRdv::Echec];
+
+    public function __construct(
+        private readonly ContactsFamilleRdv $contacts,
+        private readonly MessagerieRdv $messagerie,
+    ) {
+    }
+
+    /** @return string|null le refus, ou null si c'est note */
+    public function marquerPrevenue(ESBTPRdvReservation $reservation, int $agentId): ?string
     {
+        return DB::transaction(function () use ($reservation, $agentId) {
+            $r = ESBTPRdvReservation::query()->whereKey($reservation->id)->lockForUpdate()->first();
+            if ($r === null || $r->statut !== StatutReservationRdv::Confirmee) {
+                return 'Ce rendez-vous n\'est plus attendu.';
+            }
+            if ($r->convocation_statut !== null && ! in_array($r->convocation_statut, self::A_PREVENIR, true)) {
+                return 'Cette famille a déjà reçu sa convocation, ou elle est en cours d\'envoi.';
+            }
+
+            $r->forceFill([
+                'convocation_statut' => StatutConvocationRdv::Telephone,
+                'convocation_envoyee_at' => now(),
+                'convocation_erreur' => null,
+                'prevenue_par' => $agentId,
+            ])->save();
+
+            return null;
+        });
+    }
+
+    /**
+     * Annule un « prevenue » pose par erreur : la convocation est replanifiee
+     * (en attente d'envoi si l'adresse est valide, sans e-mail sinon).
+     */
+    public function annulerPrevenue(ESBTPRdvReservation $reservation): ?string
+    {
+        if ($reservation->convocation_statut !== StatutConvocationRdv::Telephone) {
+            return 'Cette famille n\'est pas notée prévenue par téléphone.';
+        }
+        $this->messagerie->planifier($reservation, $reservation->convocation_action ?: 'confirme');
+
+        return null;
     }
 
     public function compter(): int
@@ -71,7 +115,7 @@ class FamillesAPrevenirRdv
             ->join('esbtp_rdv_creneaux as c', 'c.id', '=', 'esbtp_rdv_reservations.creneau_id')
             ->where('esbtp_rdv_reservations.statut', StatutReservationRdv::Confirmee->value)
             ->where(function (Builder $q) {
-                $q->whereIn('esbtp_rdv_reservations.convocation_statut', [StatutConvocationRdv::SansEmail->value, StatutConvocationRdv::Echec->value])
+                $q->whereIn('esbtp_rdv_reservations.convocation_statut', array_column(self::A_PREVENIR, 'value'))
                     ->orWhereNull('esbtp_rdv_reservations.convocation_statut');
             })
             ->where(function (Builder $q) use ($maintenant) {

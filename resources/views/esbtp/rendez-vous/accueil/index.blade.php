@@ -51,13 +51,16 @@
 .rac-ligne:hover { background: #fafcff; }
 .rac-ligne.is-surlignee { background: rgba(4,83,203,.06); }
 .rac-ligne--recu .rac-nom strong { color: var(--rdv-muted); text-decoration: line-through; text-decoration-color: rgba(100,116,139,.5); }
-.rac-ligne--absent { background: rgba(220,38,38,.025); }
+.rac-ligne--non_venue { background: rgba(220,38,38,.025); }
+.rac-ligne--traite .rac-nom strong { color: var(--rdv-muted); }
 
 .rac-coche { width: 38px; height: 38px; border-radius: 50%; border: 2px solid #c7d4e5; background: #fff; color: transparent; display: inline-flex; align-items: center; justify-content: center; font-size: .9rem; cursor: pointer; transition: all .2s ease; flex-shrink: 0; padding: 0; }
 button.rac-coche:hover { border-color: var(--rdv-succes); color: var(--rdv-succes); background: rgba(16,185,129,.06); }
 .rac-coche.is-cochee { background: var(--rdv-succes); border-color: var(--rdv-succes); color: #fff; }
 button.rac-coche.is-cochee:hover { background: #fff; color: var(--rdv-succes); }
-.rac-coche--absent { border-color: rgba(220,38,38,.35); color: #b91c1c; background: rgba(220,38,38,.06); cursor: default; }
+.rac-coche--non-venue { border-color: rgba(220,38,38,.35); }
+span.rac-coche--non-venue { color: #b91c1c; background: rgba(220,38,38,.06); cursor: default; }
+.rac-sans-nouvelle { color: #b45309 !important; }
 .rac-coche--attendu { border-style: dashed; color: #94a3b8; cursor: default; }
 .rac-coche[disabled] { opacity: .5; cursor: wait; }
 
@@ -76,9 +79,13 @@ button.rac-coche.is-cochee:hover { background: #fff; color: var(--rdv-succes); }
 .rac-aucun i { margin-right: .4rem; }
 #rac-liste.is-chargement { opacity: .55; pointer-events: none; transition: opacity .2s ease; }
 
-.rac-cloture { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
-.rac-cloture .rdv-section-head { flex: 1 1 420px; }
-.rac-cloture p { margin: .15rem 0 0; font-size: .82rem; color: var(--rdv-muted); }
+.rac-nonvenues { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; border-color: rgba(220,38,38,.25); }
+.rac-nonvenues .rdv-section-head { flex: 1 1 420px; }
+.rac-alerte { display: flex; gap: .75rem; align-items: flex-start; background: rgba(245,158,11,.08); border: 1px solid rgba(245,158,11,.3); color: #7c4a03; border-radius: 12px; padding: .85rem 1rem; margin-bottom: 1rem; font-size: .84rem; }
+.rac-alerte > i { color: #d97706; margin-top: .15rem; }
+.rac-alerte-jours { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .45rem; }
+.rac-alerte-jours a { background: #fff; border: 1px solid rgba(245,158,11,.35); border-radius: 999px; padding: .2rem .65rem; color: #7c4a03; font-weight: 600; text-decoration: none; }
+.rac-alerte-jours a:hover { border-color: #d97706; }
 .rac-reprogrammees .rac-creneau-tete h3 { color: var(--rdv-dark); }
 .rac-reprogrammees .rac-creneau-tete h3 i { color: var(--rdv-primary); }
 .rac-ligne--reprog .rac-nom strong { color: var(--rdv-muted); }
@@ -123,7 +130,7 @@ button.rac-coche.is-cochee:hover { background: #fff; color: var(--rdv-succes); }
 <div class="container-fluid rdv-page rac-page" data-rac-page
      data-url-index="{{ route('esbtp.rendez-vous.accueil.index') }}"
      data-url-creneaux="{{ route('esbtp.rendez-vous.accueil.creneaux') }}"
-     data-url-cloturer="{{ route('esbtp.rendez-vous.accueil.cloturer') }}"
+     data-url-non-venues="{{ route('esbtp.rendez-vous.accueil.non-venues') }}"
      data-jour="{{ $jour->toDateString() }}">
 
     <div class="rdv-hero">
@@ -165,22 +172,12 @@ button.rac-coche.is-cochee:hover { background: #fff; color: var(--rdv-succes); }
             <button type="button" class="rac-filtre is-actif" data-rac-filtre="tous" aria-pressed="true">Toutes</button>
             <button type="button" class="rac-filtre" data-rac-filtre="attendu" aria-pressed="false">À recevoir</button>
             <button type="button" class="rac-filtre" data-rac-filtre="recu" aria-pressed="false">Reçues</button>
-            <button type="button" class="rac-filtre" data-rac-filtre="absent" aria-pressed="false">Absentes</button>
+            <button type="button" class="rac-filtre" data-rac-filtre="non_venue" aria-pressed="false">Non venues</button>
         </div>
     </div>
 
     <div id="rac-liste" aria-live="polite">@include('esbtp.rendez-vous.accueil.partials._liste')</div>
 
-    <section class="rdv-card rac-cloture" data-rac-bloc-cloture @if($jour->isFuture() && ! $_estAujourdhui) hidden @endif>
-        <div class="rdv-section-head" style="margin:0">
-            <span class="rdv-section-icon"><i class="fas fa-flag-checkered"></i></span>
-            <div>
-                <h2>Fin de journée</h2>
-                <p>Les familles encore attendues sur un créneau terminé passent « absentes ». Vous les reprogrammez ensuite une à une.</p>
-            </div>
-        </div>
-        <button type="button" class="rdv-btn rdv-btn--primary" data-rac-cloturer><i class="fas fa-flag-checkered"></i>Clôturer la journée</button>
-    </section>
 
     <div class="rdv-modale" id="rac-reprog" role="dialog" aria-modal="true" aria-labelledby="rac-reprog-titre">
         <form class="rdv-modale-boite rac-reprog" data-rac-reprog-form>
@@ -214,18 +211,15 @@ button.rac-coche.is-cochee:hover { background: #fff; color: var(--rdv-succes); }
                 <li><strong>Une erreur de clic</strong> : recliquez sur le rond vert, la famille redevient attendue.</li>
                 <li><strong>« En retard »</strong> apparaît quand le créneau a commencé depuis plus que la tolérance réglée (15 minutes par défaut).</li>
             </ol>
-            <h3>En fin de journée</h3>
+            <h3>Les familles qui ne viennent pas</h3>
             <ol>
-                <li><strong>Clôturer la journée</strong> marque absentes les familles encore attendues sur un créneau terminé. Rien n'est marqué d'office : c'est vous qui clôturez.</li>
-                <li><strong>Reprogrammer</strong> propose les prochains créneaux libres. La famille redevient attendue ce jour-là, et son absence reste comptée : la liste affiche « Reprogrammé · 1 absence ».</li>
+                <li><strong>Rien à clôturer</strong> : quand un créneau se termine sans elle, la famille passe « non venue » d'elle-même. Arrivée en retard, elle se coche encore.</li>
+                <li><strong>Reprogrammer</strong> une famille, ou toutes les non-venues d'un coup sur les prochains créneaux libres. La nouvelle convocation part par e-mail ; sans adresse, la famille rejoint la liste des familles à prévenir.</li>
+                <li><strong>Aucun jour oublié</strong> : un bandeau signale les autres jours où des non-venues attendent encore, et le jour d'origine garde la liste des familles reprogrammées.</li>
+                <li><strong>Dossier traité</strong> : une famille jamais cochée dont le dossier a avancé n'est pas comptée absente.</li>
             </ol>
-            <h3>Les états</h3>
-            <ul class="rdv-aide-etats">
-                <li><span class="rdv-badge rdv-badge--inconnu">À recevoir</span> attendue, pas encore arrivée.</li>
-                <li><span class="rdv-badge rdv-badge--attente">À recevoir</span> en retard sur son créneau.</li>
-                <li><span class="rdv-badge rdv-badge--succes">Reçue</span> avec l'heure et l'agent qui l'a reçue.</li>
-                <li><span class="rdv-badge rdv-badge--echec">Absente</span> à reprogrammer.</li>
-            </ul>
+            <h3>Les familles sans convocation</h3>
+            <p>Une famille sans e-mail, ou dont l'envoi a échoué, porte la mention « aucune convocation reçue ». Après l'avoir appelée, cliquez « Prévenue » : elle sort de la liste d'appel.</p>
             <div class="rdv-modale-pied">
                 <button type="button" class="rdv-btn rdv-btn--primary" data-rdv-aide-fermer>J'ai compris</button>
             </div>
@@ -331,7 +325,6 @@ button.rac-coche.is-cochee:hover { background: #fff; color: var(--rdv-succes); }
         nav[0].dataset.racJour = isoDecale(iso, -1);
         nav[1].dataset.racJour = isoDecale(iso, 1);
         page.querySelector('[data-rac-aujourdhui]').hidden = iso === aujourdhui;
-        page.querySelector('[data-rac-bloc-cloture]').hidden = iso > aujourdhui;
         const planning = page.querySelector('[data-rac-planning]');
         if (planning) {
             const u = new URL(planning.href);
@@ -449,8 +442,9 @@ button.rac-coche.is-cochee:hover { background: #fff; color: var(--rdv-succes); }
     // --- Actions de la liste ---
     async function agir(bouton, url) {
         bouton.disabled = true;
+        const ligne = bouton.closest('[data-creneau]');
         try {
-            const r = await poster(url);
+            const r = await poster(url, ligne ? { creneau_id: Number(ligne.dataset.creneau) } : {});
             notifier('success', r.message);
             await rafraichir();
             champ.focus();
@@ -458,11 +452,12 @@ button.rac-coche.is-cochee:hover { background: #fff; color: var(--rdv-succes); }
         } catch (e) {
             notifier('error', e.message);
             bouton.disabled = false;
+            if (/déplacé/.test(e.message)) rafraichir();
         }
     }
 
     document.addEventListener('click', async function (ev) {
-        const el = ev.target.closest('[data-rac-action], [data-rac-reprogrammer], [data-rac-jour], [data-rac-filtre], [data-rac-cloturer]');
+        const el = ev.target.closest('[data-rac-action], [data-rac-reprogrammer], [data-rac-jour], [data-rac-filtre], [data-rac-non-venues]');
         if (!el || !page.contains(el)) return;
         ev.preventDefault();
 
@@ -478,22 +473,15 @@ button.rac-coche.is-cochee:hover { background: #fff; color: var(--rdv-succes); }
             });
             return appliquerFiltres();
         }
-        if (el.hasAttribute('data-rac-cloturer')) {
-            if (!(await confirmer('Les familles encore attendues sur un créneau terminé seront marquées absentes. Les créneaux en cours ne sont pas touchés.'))) return;
+        if (el.hasAttribute('data-rac-non-venues')) {
+            if (!(await confirmer(el.dataset.confirm))) return;
             el.disabled = true;
             try {
-                const r = await poster(page.dataset.urlCloturer, { jour: page.dataset.jour });
-                notifier('success', r.message);
-                filtre = 'absent';
-                page.querySelectorAll('[data-rac-filtre]').forEach((b) => {
-                    const actif = b.dataset.racFiltre === 'absent';
-                    b.classList.toggle('is-actif', actif);
-                    b.setAttribute('aria-pressed', actif ? 'true' : 'false');
-                });
+                const r = await poster(page.dataset.urlNonVenues, { jour: page.dataset.jour });
+                notifier(r.sans_place > 0 ? 'warning' : 'success', r.message);
                 await rafraichir();
             } catch (e) {
                 notifier('error', e.message);
-            } finally {
                 el.disabled = false;
             }
         }
@@ -527,10 +515,11 @@ button.rac-coche.is-cochee:hover { background: #fff; color: var(--rdv-succes); }
 window.__rdvGuideEtapes = [
     { sel: '#rac-kpis', titre: 'Le point de la journée', texte: 'Familles attendues, reçues, encore à recevoir et absentes. La barre montre l\'avancement.' },
     { sel: '.rac-recherche', titre: 'Retrouver une famille', texte: 'Tapez un nom, un téléphone ou une référence. S\'il ne reste qu\'une famille, Entrée la marque reçue.' },
-    { sel: '.rac-filtres', titre: 'Filtrer la liste', texte: '« À recevoir » pour voir qui manque encore, « Absentes » pour reprogrammer en fin de journée.' },
+    { sel: '.rac-filtres', titre: 'Filtrer la liste', texte: '« À recevoir » pour voir qui manque encore, « Non venues » pour les familles dont le créneau est passé sans elles.' },
     { sel: '#rac-liste .rac-coche', titre: 'Cocher à l\'arrivée', texte: 'Un clic marque la famille reçue, avec l\'heure et votre nom. Un second clic annule.' },
-    { sel: '#rac-liste .rac-actions', titre: 'Absente ou à déplacer', texte: '« Absente » une fois le créneau commencé ; « Reprogrammer » propose les prochains créneaux libres et renvoie la convocation.' },
-    { sel: '[data-rac-cloturer]', titre: 'Clôturer la journée', texte: 'Marque absentes les familles qui ne sont pas venues. Elles restent listées pour être reprogrammées.' },
+    { sel: '#rac-liste .rac-actions', titre: 'Prévenir ou déplacer', texte: '« Prévenue » quand vous avez appelé une famille sans convocation ; « Reprogrammer » propose les prochains créneaux libres et renvoie la convocation.' },
+    { sel: '[data-rac-non-venues]', titre: 'Les non-venues', texte: 'Un créneau terminé sans la famille la fait passer « non venue », sans clic. Un bouton les reprogramme toutes sur les prochains créneaux libres.' },
+    { sel: '.rac-alerte', titre: 'Aucun jour oublié', texte: 'Si des familles non venues d\'un autre jour attendent encore, ce bandeau vous y mène.' },
     { sel: '.rac-jour-nav', titre: 'Changer de jour', texte: 'Préparez demain ou revenez sur hier sans recharger la page.' },
 ];
 
@@ -545,9 +534,9 @@ window.__rdvGuideAvant = function () {
     demo.innerHTML = '<span class="rdv-tour-demo-etiquette">Exemple du guide</span>'
         + '<header class="rac-creneau-tete"><h3><span class="rdv-heure">08:00 – 08:30</span><span class="rac-puce rac-puce--en-cours">En cours</span></h3><span class="rac-creneau-compte"><strong>0</strong> / 1 reçue</span></header>'
         + '<ul class="rac-lignes"><li class="rac-ligne"><span class="rac-coche" aria-hidden="true"><i class="fas fa-check"></i></span>'
-        + '<div class="rac-qui"><div class="rac-nom"><strong>Famille exemple</strong></div><div class="rac-contacts"><span class="rac-ref">C-EXEMPLE</span><span><i class="fas fa-phone"></i> +225 07 00 00 00 00</span></div></div>'
+        + '<div class="rac-qui"><div class="rac-nom"><strong>Famille exemple</strong></div><div class="rac-contacts"><span class="rac-ref">C-EXEMPLE</span><span><i class="fas fa-phone"></i> 07 00 00 00 00</span></div></div>'
         + '<div class="rac-statut"><span class="rdv-badge rdv-badge--inconnu">À recevoir</span></div>'
-        + '<div class="rac-actions"><span class="rdv-btn rdv-btn--ghost rdv-btn--sm"><i class="fas fa-user-xmark"></i>Absente</span><span class="rdv-btn rdv-btn--ghost rdv-btn--sm"><i class="fas fa-calendar-plus"></i>Reprogrammer</span></div></li></ul>';
+        + '<div class="rac-actions"><span class="rdv-btn rdv-btn--ghost rdv-btn--sm"><i class="fas fa-phone-volume"></i>Prévenue</span><span class="rdv-btn rdv-btn--ghost rdv-btn--sm"><i class="fas fa-calendar-plus"></i>Reprogrammer</span></div></li></ul>';
     cible.prepend(demo);
 };
 </script>

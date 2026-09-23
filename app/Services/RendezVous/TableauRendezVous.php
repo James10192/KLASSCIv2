@@ -35,7 +35,7 @@ class TableauRendezVous
         $creneaux = ESBTPRdvCreneau::query()
             ->whereDate('date', '>=', $debut->toDateString())
             ->whereDate('date', '<=', $fin->toDateString())
-            ->with(['reservations' => fn ($q) => $q->occupantes()->orderBy('nom')])
+            ->with(['reservations' => fn ($q) => $q->occupantes()->with('prevenuePar:id,name')->orderBy('nom')])
             ->orderBy('date')
             ->orderBy('heure_debut')
             ->get()

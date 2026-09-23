@@ -397,11 +397,12 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 $c = \App\Http\Controllers\ESBTP\ESBTPRendezVousAccueilController::class;
                 Route::get('/', [$c, 'index'])->name('index');
                 Route::get('/creneaux', [$c, 'creneaux'])->middleware('throttle:60,1')->name('creneaux');
-                Route::post('/cloturer', [$c, 'cloturer'])->middleware('throttle:20,1')->name('cloturer');
+                Route::post('/non-venues/reprogrammer', [$c, 'reprogrammerNonVenues'])->middleware('throttle:10,1')->name('non-venues');
                 Route::post('/{reservation}/recu', [$c, 'recu'])->middleware('throttle:120,1')->name('recu');
-                Route::post('/{reservation}/absent', [$c, 'absent'])->middleware('throttle:120,1')->name('absent');
                 Route::post('/{reservation}/annuler', [$c, 'annuler'])->middleware('throttle:120,1')->name('annuler');
                 Route::post('/{reservation}/reprogrammer', [$c, 'reprogrammer'])->middleware('throttle:30,1')->name('reprogrammer');
+                Route::post('/{reservation}/prevenue', [$c, 'prevenue'])->middleware('throttle:120,1')->name('prevenue');
+                Route::post('/{reservation}/prevenue/annuler', [$c, 'annulerPrevenue'])->middleware('throttle:60,1')->name('prevenue.annuler');
             });
             // Liste d'appel des familles qu'aucun courriel n'a prevenues.
             Route::prefix('/rendez-vous/familles-a-prevenir')->middleware('permission:inscriptions.rdv.view')->name('familles.')->group(function () {

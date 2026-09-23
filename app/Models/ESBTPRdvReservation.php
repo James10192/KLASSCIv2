@@ -8,6 +8,7 @@ use App\Enums\StatutReservationRdv;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class ESBTPRdvReservation extends Model
 {
@@ -32,8 +33,7 @@ class ESBTPRdvReservation extends Model
         'convocation_message_id',
         'accueilli_at',
         'accueilli_par',
-        'absences',
-        'dernier_creneau_manque_id',
+        'prevenue_par',
     ];
 
     protected $casts = [
@@ -44,7 +44,6 @@ class ESBTPRdvReservation extends Model
         'convocation_tentatives' => 'integer',
         'convocation_envoyee_at' => 'datetime',
         'accueilli_at' => 'datetime',
-        'absences' => 'integer',
     ];
 
     public function creneau(): BelongsTo
@@ -57,9 +56,14 @@ class ESBTPRdvReservation extends Model
         return $this->belongsTo(User::class, 'accueilli_par');
     }
 
-    public function dernierCreneauManque(): BelongsTo
+    public function prevenuePar(): BelongsTo
     {
-        return $this->belongsTo(ESBTPRdvCreneau::class, 'dernier_creneau_manque_id');
+        return $this->belongsTo(User::class, 'prevenue_par');
+    }
+
+    public function reprogrammations(): HasMany
+    {
+        return $this->hasMany(ESBTPRdvReprogrammation::class, 'reservation_id');
     }
 
     public function candidature(): BelongsTo

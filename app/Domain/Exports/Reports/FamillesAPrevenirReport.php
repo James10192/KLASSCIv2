@@ -57,9 +57,10 @@ class FamillesAPrevenirReport extends ExportableReport
     }
 
     /**
-     * La liste change a chaque appel passe et a chaque reprogrammation, sans
-     * qu'aucun filtre ne bouge : la cle de cache porte donc le contenu, sinon
-     * le PDF servirait pendant cinq minutes des familles deja prevenues.
+     * La liste change sans qu'aucun filtre ne bouge — une famille notee
+     * prevenue par telephone en sort, une reprogrammation en fait entrer une :
+     * la cle de cache porte donc le contenu, sinon le PDF servirait pendant
+     * cinq minutes une liste perimee.
      */
     public function cacheKey(): string
     {

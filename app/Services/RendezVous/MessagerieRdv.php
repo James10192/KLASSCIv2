@@ -46,6 +46,7 @@ class MessagerieRdv
             'convocation_envoyee_at' => null,
             'convocation_erreur' => null,
             'convocation_message_id' => null,
+            'prevenue_par' => null,
         ])->save();
     }
 

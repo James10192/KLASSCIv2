@@ -6,6 +6,7 @@ use App\Enums\StatutConvocationRdv;
 use App\Enums\StatutReservationRdv;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPRdvCreneau;
+use App\Models\ESBTPRdvReprogrammation;
 use App\Models\ESBTPRdvReservation;
 use App\Models\User;
 use App\Services\RendezVous\AccueilRdv;
@@ -81,77 +82,102 @@ class AccueilDuJourTest extends TestCase
         $this->assertSame(StatutReservationRdv::Confirmee, $r->fresh()->statut);
     }
 
-    public function test_absente_seulement_une_fois_le_creneau_commence_et_l_absence_est_comptee(): void
+    public function test_l_absence_se_deduit_sans_clic_et_le_dossier_avance_n_est_pas_absent(): void
     {
-        $aVenir = $this->reservation($this->creneau('11:00', '11:30'));
-        $this->assertNotNull($this->accueil()->marquerAbsent($aVenir, $this->agent->id));
-        $this->assertSame(StatutReservationRdv::Confirmee, $aVenir->fresh()->statut);
+        $fini = $this->creneau('08:00', '08:30');
+        $nonVenue = $this->reservation($fini);
+        $traitee = $this->reservation($fini, ['nom' => 'INSCRITE'], 'convertie');
+        $enCours = $this->reservation($this->creneau('09:00', '09:30'));
 
-        $creneau = $this->creneau('08:00', '08:30');
-        $r = $this->reservation($creneau);
-        $this->assertNull($this->accueil()->marquerAbsent($r, $this->agent->id));
+        $this->assertSame(AccueilRdv::NON_VENUE, $this->accueil()->etat($nonVenue->fresh()));
+        $this->assertSame(AccueilRdv::TRAITEE, $this->accueil()->etat($traitee->fresh()), 'Un dossier qui a avancé n\'est pas une absence.');
+        $this->assertSame(AccueilRdv::ATTENDUE, $this->accueil()->etat($enCours->fresh()));
 
-        $r->refresh();
-        $this->assertSame(StatutReservationRdv::Manquee, $r->statut);
-        $this->assertSame(1, $r->absences);
-        $this->assertSame($creneau->id, (int) $r->dernier_creneau_manque_id);
+        $compteurs = $this->accueil()->journee(Carbon::today())['compteurs'];
+        $this->assertSame([1, 1, 1], [$compteurs['non_venues'], $compteurs['traitees'], $compteurs['a_recevoir']]);
     }
 
-    public function test_annuler_une_absence_rend_la_famille_attendue_et_decompte_l_absence(): void
+    public function test_une_famille_arrivee_apres_son_creneau_se_coche_encore(): void
     {
         $r = $this->reservation($this->creneau('08:00', '08:30'));
-        $this->accueil()->marquerAbsent($r, $this->agent->id);
 
-        $this->assertNull($this->accueil()->annulerMarque($r));
+        $this->assertNull($this->accueil()->marquerRecu($r, $this->agent->id));
+        $this->assertSame(AccueilRdv::RECUE, $this->accueil()->etat($r->fresh()));
+    }
+
+    public function test_decocher_rend_la_famille_attendue(): void
+    {
+        $r = $this->reservation($this->creneau('09:00', '09:30'));
+        $this->accueil()->marquerRecu($r, $this->agent->id);
+
+        $this->assertNull($this->accueil()->annulerRecu($r->fresh()));
 
         $r->refresh();
         $this->assertSame(StatutReservationRdv::Confirmee, $r->statut);
-        $this->assertSame(0, $r->absences);
-        $this->assertNull($r->dernier_creneau_manque_id);
         $this->assertNull($r->accueilli_at);
+        $this->assertNull($r->accueilli_par);
     }
 
-    public function test_cloturer_ne_touche_que_les_familles_attendues_des_creneaux_termines(): void
+    public function test_cocher_une_famille_deplacee_par_un_autre_poste_est_refuse(): void
     {
-        $fini = $this->creneau('08:00', '08:30');
-        $absente = $this->reservation($fini);
-        $recue = $this->reservation($fini, ['nom' => 'VENUE']);
-        $this->accueil()->marquerRecu($recue, $this->agent->id);
-        $enCours = $this->reservation($this->creneau('09:00', '09:30'));
+        $r = $this->reservation($this->creneau('09:00', '09:30'));
+        $vu = $r->creneau_id;
+        $this->accueil()->reprogrammer($r, $this->creneau('11:00', '11:30')->id, $this->agent->id);
 
-        $this->assertSame(1, $this->accueil()->cloturer(Carbon::today(), $this->agent->id));
-
-        $this->assertSame(StatutReservationRdv::Manquee, $absente->fresh()->statut);
-        $this->assertSame(StatutReservationRdv::Honoree, $recue->fresh()->statut);
-        $this->assertSame(StatutReservationRdv::Confirmee, $enCours->fresh()->statut, 'Un créneau en cours ne se clôture pas.');
+        $this->actingAs($this->agent)
+            ->postJson(route('esbtp.rendez-vous.accueil.recu', $r), ['creneau_id' => $vu])
+            ->assertStatus(422)->assertJsonFragment(['message' => 'Ce rendez-vous vient d\'être déplacé par un autre poste. La liste est rechargée.']);
+        $this->assertSame(StatutReservationRdv::Confirmee, $r->fresh()->statut);
     }
 
-    public function test_reprogrammer_deplace_renvoie_la_convocation_et_garde_la_trace_de_l_absence(): void
+    public function test_sous_verrou_une_instance_perimee_ne_coche_pas_le_nouveau_creneau(): void
+    {
+        $perimee = $this->reservation($this->creneau('09:00', '09:30'));
+        $this->accueil()->reprogrammer(ESBTPRdvReservation::find($perimee->id), $this->creneau('11:00', '11:30')->id, $this->agent->id);
+
+        $this->assertSame('Ce rendez-vous vient d\'être déplacé par un autre poste. La liste est rechargée.', $this->accueil()->marquerRecu($perimee, $this->agent->id));
+        $this->assertSame(StatutReservationRdv::Confirmee, $perimee->fresh()->statut);
+    }
+
+    public function test_reprogrammer_une_non_venue_la_journalise_et_renvoie_la_convocation(): void
     {
         $manque = $this->creneau('08:00', '08:30');
         $r = $this->reservation($manque);
-        $this->accueil()->marquerAbsent($r, $this->agent->id);
         $demain = $this->creneau('08:00', '08:30', 1);
 
-        $this->assertNull($this->accueil()->reprogrammer($r->fresh(), $demain->id));
+        $this->assertNull($this->accueil()->reprogrammer($r, $demain->id, $this->agent->id));
 
         $r->refresh();
         $this->assertSame($demain->id, (int) $r->creneau_id);
-        $this->assertSame(StatutReservationRdv::Confirmee, $r->statut);
-        $this->assertSame(1, $r->absences, 'L\'absence reste comptée après reprogrammation.');
         $this->assertSame(StatutConvocationRdv::EnAttente, $r->convocation_statut);
         $this->assertSame('deplace', $r->convocation_action);
+        $journal = ESBTPRdvReprogrammation::where('reservation_id', $r->id)->sole();
+        $this->assertTrue($journal->non_venue);
+        $this->assertSame($manque->id, (int) $journal->creneau_quitte_id);
+        $this->assertSame($this->agent->id, (int) $journal->par);
 
         $journee = $this->accueil()->journee(Carbon::today());
         $this->assertSame([$r->id], $journee['reprogrammees']->pluck('id')->all(), 'Le jour de l\'absence garde la trace de la famille.');
-        $this->assertSame(1, $journee['compteurs']['reprogrammees']);
+    }
+
+    public function test_une_seconde_absence_n_efface_pas_la_trace_du_premier_jour(): void
+    {
+        $r = $this->reservation($this->creneau('08:00', '08:30'));
+        $demain = $this->creneau('08:00', '08:30', 1);
+        $this->accueil()->reprogrammer($r, $demain->id, $this->agent->id);
+
+        Carbon::setTestNow('2026-10-06 09:00:00');
+        $this->accueil()->reprogrammer($r->fresh(), $this->creneau('08:00', '08:30', 2)->id, $this->agent->id);
+
+        $this->assertSame([$r->id], $this->accueil()->journee(Carbon::parse('2026-10-05'))['reprogrammees']->pluck('id')->all());
+        $this->assertSame([$r->id], $this->accueil()->journee(Carbon::parse('2026-10-06'))['reprogrammees']->pluck('id')->all());
+        $this->assertSame(2, $r->reprogrammations()->where('non_venue', true)->count());
     }
 
     public function test_reprogrammee_plus_tard_le_meme_jour_n_apparait_qu_une_fois(): void
     {
         $r = $this->reservation($this->creneau('08:00', '08:30'));
-        $this->accueil()->marquerAbsent($r, $this->agent->id);
-        $this->accueil()->reprogrammer($r->fresh(), $this->creneau('11:00', '11:30')->id);
+        $this->accueil()->reprogrammer($r, $this->creneau('11:00', '11:30')->id, $this->agent->id);
 
         $journee = $this->accueil()->journee(Carbon::today());
 
@@ -159,7 +185,7 @@ class AccueilDuJourTest extends TestCase
         $this->assertSame([$r->id], $journee['creneaux']->flatMap->reservations->pluck('id')->all());
     }
 
-    public function test_reprogrammer_sur_un_creneau_plein_est_refuse_sans_rien_changer(): void
+    public function test_reprogrammer_sur_un_creneau_plein_ou_une_famille_recue_est_refuse(): void
     {
         $r = $this->reservation($this->creneau('08:00', '08:30'));
         $plein = $this->creneau('09:00', '09:30', 1, 1);
@@ -167,6 +193,37 @@ class AccueilDuJourTest extends TestCase
 
         $this->assertSame('Ce créneau vient d\'être rempli. Choisissez-en un autre.', $this->accueil()->reprogrammer($r, $plein->id));
         $this->assertSame((int) $r->creneau_id, (int) $r->fresh()->creneau_id);
+
+        $this->accueil()->marquerRecu($r, $this->agent->id);
+        $this->assertSame('Cette famille a déjà été reçue : il n\'y a rien à reprogrammer.', $this->accueil()->reprogrammer($r->fresh(), $this->creneau('10:00', '10:30', 1)->id));
+        $this->assertSame(0, ESBTPRdvReprogrammation::count());
+    }
+
+    public function test_reprogrammer_les_non_venues_s_arrete_quand_il_n_y_a_plus_de_place(): void
+    {
+        $this->configurerCreneaux();
+        $fini = $this->creneau('08:00', '08:30');
+        $this->reservation($fini, ['nom' => 'UN']);
+        $this->reservation($fini, ['nom' => 'DEUX']);
+        $this->reservation($fini, ['nom' => 'RECUE', 'statut' => 'honoree']);
+        $seule = $this->creneau('08:00', '08:30', 1, 1);
+
+        $rapport = $this->accueil()->reprogrammerNonVenues(Carbon::today(), $this->agent->id);
+
+        $this->assertSame(['faites' => 1, 'sans_place' => 1], $rapport);
+        $this->assertSame(1, $seule->reservations()->count());
+    }
+
+    public function test_un_jour_passe_oublie_est_signale(): void
+    {
+        $avantHier = $this->creneau('08:00', '08:30', -2);
+        $this->reservation($avantHier);
+        $this->reservation($avantHier, ['nom' => 'VENUE', 'statut' => 'honoree']);
+        $this->reservation($this->creneau('08:00', '08:30', -3), ['nom' => 'INSCRITE'], 'convertie');
+
+        $jours = $this->accueil()->joursEnSouffrance(Carbon::today());
+
+        $this->assertSame([['jour' => Carbon::today()->subDays(2)->toDateString(), 'n' => 1]], $jours->map(fn ($j) => (array) $j)->all());
     }
 
     public function test_en_retard_au_dela_de_la_tolerance(): void
@@ -194,6 +251,32 @@ class AccueilDuJourTest extends TestCase
         $this->assertSame(['CETAPRESMIDI', 'ANCIENNE', 'ECHEC', 'SANSMAIL'], array_column($lignes, 'nom'));
         $this->assertSame('Envoi refusé : Adresse refusée', $lignes[2]['motif']);
         $this->assertSame('+2250505050505', $lignes[3]['contact2_telephone'], 'Le tuteur de la candidature est le second contact.');
+    }
+
+    public function test_une_famille_prevenue_par_telephone_sort_de_la_liste_et_y_revient_si_on_annule(): void
+    {
+        $r = $this->reservation($this->creneau('08:00', '08:30', 1), ['nom' => 'SANSMAIL', 'email' => null, 'convocation_statut' => 'sans_email']);
+        $familles = app(FamillesAPrevenirRdv::class);
+
+        $this->actingAs($this->agent)->postJson(route('esbtp.rendez-vous.accueil.prevenue', $r))->assertOk();
+
+        $r->refresh();
+        $this->assertSame(StatutConvocationRdv::Telephone, $r->convocation_statut);
+        $this->assertSame($this->agent->id, (int) $r->prevenue_par);
+        $this->assertSame(0, $familles->compter());
+
+        $this->actingAs($this->agent)->postJson(route('esbtp.rendez-vous.accueil.prevenue.annuler', $r))->assertOk();
+        $this->assertSame(StatutConvocationRdv::SansEmail, $r->fresh()->convocation_statut);
+        $this->assertNull($r->fresh()->prevenue_par);
+        $this->assertSame(1, $familles->compter());
+    }
+
+    public function test_une_famille_deja_convoquee_ne_se_marque_pas_prevenue(): void
+    {
+        $r = $this->reservation($this->creneau('08:00', '08:30', 1));
+
+        $this->assertNotNull(app(FamillesAPrevenirRdv::class)->marquerPrevenue($r, $this->agent->id));
+        $this->assertSame(StatutConvocationRdv::Envoyee, $r->fresh()->convocation_statut);
     }
 
     public function test_l_ecran_repond_en_json_et_coche_sans_rechargement(): void
@@ -230,6 +313,19 @@ class AccueilDuJourTest extends TestCase
         $this->actingAs($this->agent)->get(route('esbtp.rendez-vous.familles.excel'))->assertOk();
     }
 
+    /** CatalogueCreneaux ne propose des places que si les reglages sont complets. */
+    private function configurerCreneaux(): void
+    {
+        $this->mock(\App\Services\RendezVous\CatalogueCreneaux::class, function ($m) {
+            $m->shouldReceive('placesLibres')->andReturnUsing(fn () => ESBTPRdvCreneau::query()
+                ->where('ouvert', true)->whereDate('date', '>', Carbon::today())
+                ->withCount(['reservations as prises' => fn ($q) => $q->occupantes()])
+                ->orderBy('date')->orderBy('heure_debut')->get()
+                ->mapWithKeys(fn ($c) => [$c->id => $c->capacite - $c->prises])
+                ->filter(fn ($libre) => $libre > 0)->all());
+        });
+    }
+
     private function accueil(): AccueilRdv
     {
         return app(AccueilRdv::class);
@@ -245,14 +341,14 @@ class AccueilDuJourTest extends TestCase
         ]);
     }
 
-    private function reservation(ESBTPRdvCreneau $creneau, array $attributs = []): ESBTPRdvReservation
+    private function reservation(ESBTPRdvCreneau $creneau, array $attributs = [], string $dossier = 'en_attente'): ESBTPRdvReservation
     {
         $nom = $attributs['nom'] ?? 'KOUASSI';
         $telephone = '+22507'.sprintf('%08d', ++$this->numero);
         $candidature = DB::table('esbtp_candidatures')->insertGetId([
             'nom' => $nom, 'prenoms' => 'Ama', 'date_naissance' => '2007-03-12',
             'telephone' => $telephone, 'email' => 'famille'.$this->numero.'@exemple.ci',
-            'annee_universitaire_id' => $this->annee, 'consentement_at' => now(), 'statut' => 'en_attente',
+            'annee_universitaire_id' => $this->annee, 'consentement_at' => now(), 'statut' => $dossier,
             'tuteur_nom' => 'Kouassi Paul', 'tuteur_telephone' => '+2250505050505', 'tuteur_lien' => 'Père',
             'created_at' => now(), 'updated_at' => now(),
         ]);
