@@ -354,7 +354,6 @@ class ReservateurRdv
         return Carbon::now()->addHours(max(0, $heures))->gt($creneau->debut());
     }
 
-
     private function dateIso(string $valeur): ?string
     {
         $date = \App\Services\Reinscription\PortailReinscriptionService::interpreterDateIso(trim($valeur));
