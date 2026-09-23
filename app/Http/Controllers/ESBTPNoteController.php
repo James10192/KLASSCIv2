@@ -25,6 +25,7 @@ use App\Services\NoteCalculationService;
 use App\Services\Notes\MotifDeRefusDeNote;
 use App\Services\Notes\NoteStudentCohortService;
 use App\Services\Notes\NoteSubmissionSynchronizationService;
+use App\Services\Notes\UniciteDesNotes;
 use App\Services\NotesImportService;
 use App\Services\NotesWindowGuard;
 use App\Services\NotificationService;
@@ -810,9 +811,15 @@ class ESBTPNoteController extends Controller
         try {
             return $this->processNoteEntry($evaluation, $note, $entry, $submitFinal);
         } catch (QueryException $e) {
-            if (($e->errorInfo[1] ?? null) !== 1062) {
+            // Seul le doublon de notre index d'unicité est une saisie
+            // concurrente ; toute autre violation reste une vraie erreur.
+            if (($e->errorInfo[1] ?? null) !== 1062 || ! str_contains($e->getMessage(), UniciteDesNotes::INDEX)) {
                 throw $e;
             }
+            \Log::warning('Note en double refusée : saisie concurrente', [
+                'evaluation_id' => $evaluation->id,
+                'etudiant_id' => $entry['etudiant_id'] ?? null,
+            ]);
 
             return null;
         }

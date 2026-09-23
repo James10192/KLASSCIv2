@@ -356,7 +356,8 @@ class ESBTPNote extends Model implements Auditable
     /**
      * Notes archivées qu'on peut rendre vivantes sans heurter l'unicité : une
      * seule note vivante par élève et par évaluation (voir UniciteDesNotes).
-     * Une note archivée dont la jumelle est déjà vivante reste archivée.
+     * Une note archivée dont la jumelle est déjà vivante reste archivée ; entre
+     * jumelles toutes archivées, seule la plus récente revient.
      *
      * La table dérivée groupée n'est pas là par goût : MySQL refuse qu'un
      * UPDATE relise sa propre table (erreur 1093), sauf à travers une table
@@ -374,6 +375,12 @@ class ESBTPNote extends Model implements Auditable
             ) AS vivantes
             WHERE vivantes.etudiant_id = {$table}.etudiant_id
               AND vivantes.evaluation_id = {$table}.evaluation_id
+        ) AND {$table}.id IN (
+            SELECT id FROM (
+                SELECT MAX(id) AS id FROM {$table}
+                WHERE deleted_at IS NULL AND archived_at IS NOT NULL
+                GROUP BY etudiant_id, evaluation_id
+            ) AS plus_recentes
         )");
     }
 

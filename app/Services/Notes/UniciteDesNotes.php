@@ -30,8 +30,9 @@ class UniciteDesNotes
     }
 
     /**
-     * Les notes archivées comptent : deux jumelles archivées, désarchivées
-     * ensemble au retour de l'élève dans sa classe, heurteraient l'index.
+     * Seules les notes vivantes comptent : ce sont elles que l'index contraint.
+     * Des jumelles archivées ne le heurtent pas, et au retour de l'élève
+     * ESBTPNote::scopeSansJumelleVivante() n'en rend qu'une vivante.
      *
      * @return Collection<int, object{etudiant_id: int, evaluation_id: int, nombre: int, note_ids: string}>
      */
@@ -40,7 +41,7 @@ class UniciteDesNotes
         return collect(DB::select("
             SELECT etudiant_id, evaluation_id, COUNT(*) AS nombre, GROUP_CONCAT(id ORDER BY id) AS note_ids
             FROM esbtp_notes
-            WHERE deleted_at IS NULL
+            WHERE {$this->conditionVivante()}
             GROUP BY etudiant_id, evaluation_id
             HAVING COUNT(*) > 1
         "));

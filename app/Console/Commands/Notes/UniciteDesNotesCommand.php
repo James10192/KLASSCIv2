@@ -21,7 +21,7 @@ class UniciteDesNotesCommand extends Command
 
         $doublons = $unicite->doublons();
         if ($doublons->isNotEmpty()) {
-            $this->warn("{$doublons->count()} paire(s) élève × évaluation portent plusieurs notes non effacées (vivantes ou archivées). Aucune n'est supprimée d'office : gardez la bonne, effacez les autres, puis relancez.");
+            $this->warn("{$doublons->count()} paire(s) élève × évaluation portent plusieurs notes en vigueur (ni effacées ni archivées). Aucune n'est supprimée d'office : gardez la bonne, effacez les autres, puis relancez.");
             $this->table(['Élève', 'Évaluation', 'Notes', 'Identifiants'], $doublons->map(fn ($d) => [
                 $d->etudiant_id, $d->evaluation_id, $d->nombre, $d->note_ids,
             ])->all());

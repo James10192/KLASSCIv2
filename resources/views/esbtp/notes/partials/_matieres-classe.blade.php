@@ -6,10 +6,14 @@
 // n'est pas arrivée, le catalogue reste en place : rien n'est bloqué.
 let nmMatieresSeq = 0;
 let nmMatieresPret = $.Deferred().resolve().promise();
+// Catalogue d'origine, gardé pour y revenir si une liste échoue : sans lui, un
+// échec laisserait affichées les matières de la classe précédente.
+let nmMatieresCatalogue = null;
 function nmChargerMatieres(classId) {
     const seq = ++nmMatieresSeq;
     const $select = $('#matiereSelect');
     const $aide = $('#nmMatiereAide');
+    if (nmMatieresCatalogue === null) nmMatieresCatalogue = $select.html();
     $select.prop('disabled', true);
     nmMatieresPret = $.ajax({
         url: '{{ route("esbtp.notes.classes.matieres", ["classe" => ":classId"]) }}'.replace(':classId', classId),
@@ -29,6 +33,7 @@ function nmChargerMatieres(classId) {
             : '').toggle(reponse.source === 'catalogue');
     }, function(xhr) {
         if (seq !== nmMatieresSeq || xhr.statusText === 'abort') return;
+        $select.html(nmMatieresCatalogue);
         $aide.text('Liste des matières de la classe indisponible : toutes les matières restent proposées.').show();
     }).always(function() {
         if (seq === nmMatieresSeq) $select.prop('disabled', false);

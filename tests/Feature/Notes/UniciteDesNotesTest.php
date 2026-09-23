@@ -3,10 +3,13 @@
 namespace Tests\Feature\Notes;
 
 use App\Models\ESBTPNote;
+use App\Models\User;
 use App\Services\Notes\UniciteDesNotes;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Laravel\Sanctum\Sanctum;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
@@ -34,6 +37,8 @@ class UniciteDesNotesTest extends TestCase
     protected function tearDown(): void
     {
         DB::table('esbtp_notes')->delete();
+        DB::table('model_has_roles')->delete();
+        DB::table('users')->delete();
         app(UniciteDesNotes::class)->poser();
         Schema::enableForeignKeyConstraints();
         parent::tearDown();
@@ -85,18 +90,79 @@ class UniciteDesNotesTest extends TestCase
         $this->assertNull(DB::table('esbtp_notes')->where('id', $archiveeSeule)->value('archived_at'));
     }
 
-    public function test_des_doublons_existants_suspendent_l_index_sans_rien_effacer(): void
+    public function test_desarchiver_deux_jumelles_archivees_n_en_rend_qu_une(): void
     {
-        $unicite = app(UniciteDesNotes::class);
-        // État réel après migration : MySQL a retiré l'index qu'il avait créé
-        // pour la clé étrangère d'etudiant_id, que le nôtre sert désormais.
-        // Clés actives, le retirer sans le remplacer échouerait (1553).
+        // Deux jumelles archivées sans note vivante : cela arrive quand la
+        // jumelle restée vivante est archivée à son tour. Les rendre vivantes
+        // toutes deux heurterait l'unicité (1062) et bloquerait le retour de
+        // l'élève dans sa classe.
+        $ancienne = $this->note(['archived_at' => now()]);
+        $recente = $this->note(['note' => 14, 'archived_at' => now()]);
+
+        $restaurees = ESBTPNote::withoutGlobalScope('not_archived')
+            ->where('etudiant_id', 1)
+            ->whereNotNull('archived_at')
+            ->sansJumelleVivante()
+            ->update(['archived_at' => null]);
+
+        $this->assertSame(1, $restaurees);
+        $this->assertNull(DB::table('esbtp_notes')->where('id', $recente)->value('archived_at'));
+        $this->assertNotNull(DB::table('esbtp_notes')->where('id', $ancienne)->value('archived_at'));
+    }
+
+    public function test_des_jumelles_archivees_ne_bloquent_pas_l_unicite(): void
+    {
+        $this->note(['archived_at' => now()]);
+        $this->note(['note' => 14, 'archived_at' => now()]);
+
+        $this->assertTrue(app(UniciteDesNotes::class)->doublons()->isEmpty());
+    }
+
+    public function test_la_cli_liste_les_doublons_puis_pose_l_unicite_une_fois_tranches(): void
+    {
+        $this->retirerLIndex();
+        $premier = $this->note();
+        $second = $this->note(['note' => 14]);
+        // Le garde d'installation renvoie tout vers /install sans superAdmin.
+        Role::findOrCreate('superAdmin', 'web');
+        User::factory()->create()->assignRole('superAdmin');
+
+        Sanctum::actingAs(User::factory()->create(), ['cli:read']);
+        $this->getJson(route('api.cli.diagnostics.notes-doublons'))
+            ->assertOk()
+            ->assertJsonPath('data.index_pose', false)
+            ->assertJsonPath('data.doublons.0.note_ids', [$premier, $second]);
+        $this->postJson(route('api.cli.notes.unicite'))->assertForbidden();
+
+        Sanctum::actingAs(User::factory()->create(), ['cli:admin']);
+        $this->postJson(route('api.cli.notes.unicite'))->assertStatus(409);
+        $this->assertSame(2, DB::table('esbtp_notes')->whereNull('deleted_at')->count());
+
+        DB::table('esbtp_notes')->where('id', $second)->update(['deleted_at' => now()]);
+        $this->postJson(route('api.cli.notes.unicite'))
+            ->assertOk()
+            ->assertJsonPath('data.index_pose', true);
+    }
+
+    /**
+     * État réel après migration : MySQL a retiré l'index qu'il avait créé pour
+     * la clé étrangère d'etudiant_id, que le nôtre sert désormais. Clés
+     * actives, le retirer sans le remplacer échouerait (1553).
+     */
+    private function retirerLIndex(): void
+    {
         if (collect(DB::select("SHOW INDEX FROM esbtp_notes WHERE Key_name = 'esbtp_notes_etudiant_id_foreign'"))->isNotEmpty()) {
             DB::statement('ALTER TABLE esbtp_notes DROP INDEX esbtp_notes_etudiant_id_foreign');
         }
         Schema::enableForeignKeyConstraints();
-        $unicite->retirer();
+        app(UniciteDesNotes::class)->retirer();
         Schema::disableForeignKeyConstraints();
+    }
+
+    public function test_des_doublons_existants_suspendent_l_index_sans_rien_effacer(): void
+    {
+        $unicite = app(UniciteDesNotes::class);
+        $this->retirerLIndex();
         $premier = $this->note();
         $second = $this->note(['note' => 14]);
 
