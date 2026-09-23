@@ -1859,6 +1859,13 @@
                                 </span>
                                 <div class="pu-actions">
                                     <a href="{{ route('esbtp.directeurs-etudes.show', $directeur) }}" class="pu-action-btn" title="Voir"><i class="fas fa-eye"></i></a>
+                                    @can('permissions.temporaires.manage')
+                                    @if($directeur->id && $directeur->id !== auth()->id() && auth()->user()->can('personnel.manage'))
+                                    <a href="{{ route('esbtp.acces-temporaires.index', ['user_id' => $directeur->id]) }}" class="pu-action-btn" title="Accès temporaire">
+                                        <i class="fas fa-hourglass-half"></i>
+                                    </a>
+                                    @endif
+                                    @endcan
                                     @if($personnelAccess['directeurs_etudes']['edit'] ?? false)
                                     <a href="{{ route('esbtp.directeurs-etudes.edit', $directeur) }}" class="pu-action-btn pu-act-edit" title="Modifier"><i class="fas fa-pen"></i></a>
                                     @if($directeur->id !== auth()->id())
@@ -1945,6 +1952,13 @@
                                     <a href="{{ route('esbtp.coordinateurs.show', $coordinateur) }}" class="pu-action-btn" title="Voir">
                                         <i class="fas fa-eye"></i>
                                     </a>
+                                    @can('permissions.temporaires.manage')
+                                    @if($coordinateur->id && $coordinateur->id !== auth()->id() && auth()->user()->can('personnel.manage'))
+                                    <a href="{{ route('esbtp.acces-temporaires.index', ['user_id' => $coordinateur->id]) }}" class="pu-action-btn" title="Accès temporaire">
+                                        <i class="fas fa-hourglass-half"></i>
+                                    </a>
+                                    @endif
+                                    @endcan
                                     @if($personnelAccess['coordinateurs']['edit'] ?? false)
                                     <a href="{{ route('esbtp.coordinateurs.edit', $coordinateur) }}" class="pu-action-btn pu-act-edit" title="Modifier">
                                         <i class="fas fa-pen"></i>
@@ -2055,6 +2069,13 @@
                                     <a href="{{ route('esbtp.enseignants.show', $teacher) }}" class="pu-action-btn" title="Voir">
                                         <i class="fas fa-eye"></i>
                                     </a>
+                                    @can('permissions.temporaires.manage')
+                                    @if($teacher->user_id && $teacher->user_id !== auth()->id() && auth()->user()->can('personnel.manage'))
+                                    <a href="{{ route('esbtp.acces-temporaires.index', ['user_id' => $teacher->user_id]) }}" class="pu-action-btn" title="Accès temporaire">
+                                        <i class="fas fa-hourglass-half"></i>
+                                    </a>
+                                    @endif
+                                    @endcan
                                     @if($personnelAccess['enseignants']['edit'] ?? false)
                                     <a href="{{ route('esbtp.enseignants.edit', $teacher) }}" class="pu-action-btn pu-act-edit" title="Modifier">
                                         <i class="fas fa-pen"></i>
@@ -2143,6 +2164,13 @@
                                     <a href="{{ route('esbtp.secretaires.show', $secretaire) }}" class="pu-action-btn" title="Voir">
                                         <i class="fas fa-eye"></i>
                                     </a>
+                                    @can('permissions.temporaires.manage')
+                                    @if($secretaire->id && $secretaire->id !== auth()->id() && auth()->user()->can('personnel.manage'))
+                                    <a href="{{ route('esbtp.acces-temporaires.index', ['user_id' => $secretaire->id]) }}" class="pu-action-btn" title="Accès temporaire">
+                                        <i class="fas fa-hourglass-half"></i>
+                                    </a>
+                                    @endif
+                                    @endcan
                                     @if($personnelAccess['secretaires']['edit'] ?? false)
                                     <a href="{{ route('esbtp.secretaires.edit', $secretaire) }}" class="pu-action-btn pu-act-edit" title="Modifier">
                                         <i class="fas fa-pen"></i>
@@ -2207,6 +2235,13 @@
                                 </span>
                                 <div class="pu-actions">
                                     <a href="{{ route('esbtp.responsables-scolarite.show', $responsable) }}" class="pu-action-btn" title="Voir"><i class="fas fa-eye"></i></a>
+                                    @can('permissions.temporaires.manage')
+                                    @if($responsable->id && $responsable->id !== auth()->id() && auth()->user()->can('personnel.manage'))
+                                    <a href="{{ route('esbtp.acces-temporaires.index', ['user_id' => $responsable->id]) }}" class="pu-action-btn" title="Accès temporaire">
+                                        <i class="fas fa-hourglass-half"></i>
+                                    </a>
+                                    @endif
+                                    @endcan
                                     @if($personnelAccess['responsables_scolarite']['edit'] ?? false)
                                     <a href="{{ route('esbtp.responsables-scolarite.edit', $responsable) }}" class="pu-action-btn pu-act-edit" title="Modifier"><i class="fas fa-pen"></i></a>
                                     @if($responsable->id !== auth()->id())
@@ -2268,6 +2303,13 @@
                                 </span>
                                 <div class="pu-actions">
                                     <a href="{{ route('esbtp.services-scolarite.show', $service) }}" class="pu-action-btn" title="Voir"><i class="fas fa-eye"></i></a>
+                                    @can('permissions.temporaires.manage')
+                                    @if($service->id && $service->id !== auth()->id() && auth()->user()->can('personnel.manage'))
+                                    <a href="{{ route('esbtp.acces-temporaires.index', ['user_id' => $service->id]) }}" class="pu-action-btn" title="Accès temporaire">
+                                        <i class="fas fa-hourglass-half"></i>
+                                    </a>
+                                    @endif
+                                    @endcan
                                     @if($personnelAccess['services_scolarite']['edit'] ?? false)
                                     <a href="{{ route('esbtp.services-scolarite.edit', $service) }}" class="pu-action-btn pu-act-edit" title="Modifier"><i class="fas fa-pen"></i></a>
                                     @if($service->id !== auth()->id())
@@ -2329,6 +2371,13 @@
                                 </span>
                                 <div class="pu-actions">
                                     <a href="{{ route('esbtp.agents-inscription.show', $agent) }}" class="pu-action-btn" title="Voir"><i class="fas fa-eye"></i></a>
+                                    @can('permissions.temporaires.manage')
+                                    @if($agent->id && $agent->id !== auth()->id() && auth()->user()->can('personnel.manage'))
+                                    <a href="{{ route('esbtp.acces-temporaires.index', ['user_id' => $agent->id]) }}" class="pu-action-btn" title="Accès temporaire">
+                                        <i class="fas fa-hourglass-half"></i>
+                                    </a>
+                                    @endif
+                                    @endcan
                                     @if($personnelAccess['agents_inscription']['edit'] ?? false)
                                     <a href="{{ route('esbtp.agents-inscription.edit', $agent) }}" class="pu-action-btn pu-act-edit" title="Modifier"><i class="fas fa-pen"></i></a>
                                     @if($agent->id !== auth()->id())
@@ -2415,6 +2464,13 @@
                                     <a href="{{ route('esbtp.comptables.show', $comptable) }}" class="pu-action-btn" title="Voir">
                                         <i class="fas fa-eye"></i>
                                     </a>
+                                    @can('permissions.temporaires.manage')
+                                    @if($comptable->id && $comptable->id !== auth()->id() && auth()->user()->can('personnel.manage'))
+                                    <a href="{{ route('esbtp.acces-temporaires.index', ['user_id' => $comptable->id]) }}" class="pu-action-btn" title="Accès temporaire">
+                                        <i class="fas fa-hourglass-half"></i>
+                                    </a>
+                                    @endif
+                                    @endcan
                                     @if($personnelAccess['comptables']['edit'] ?? false)
                                     @if($comptable->id !== auth()->id())
                                     <button type="button"
@@ -2497,6 +2553,13 @@
                                     <a href="{{ route('esbtp.caissiers.show', $caissier) }}" class="pu-action-btn" title="Voir">
                                         <i class="fas fa-eye"></i>
                                     </a>
+                                    @can('permissions.temporaires.manage')
+                                    @if($caissier->id && $caissier->id !== auth()->id() && auth()->user()->can('personnel.manage'))
+                                    <a href="{{ route('esbtp.acces-temporaires.index', ['user_id' => $caissier->id]) }}" class="pu-action-btn" title="Accès temporaire">
+                                        <i class="fas fa-hourglass-half"></i>
+                                    </a>
+                                    @endif
+                                    @endcan
                                     @if($personnelAccess['caissiers']['edit'] ?? false)
                                     <a href="{{ route('esbtp.caissiers.edit', $caissier) }}" class="pu-action-btn pu-act-edit" title="Modifier">
                                         <i class="fas fa-pen"></i>

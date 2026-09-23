@@ -171,6 +171,22 @@ class AccesTemporairesTest extends TestCase
             ->assertSee('Accès temporaires');
     }
 
+    public function test_ouvert_depuis_une_fiche_l_ecran_choisit_deja_la_personne(): void
+    {
+        $cible = User::factory()->create();
+
+        $this->actingAs($this->admin)
+            ->get(route('esbtp.acces-temporaires.index', ['user_id' => $cible->id]))
+            ->assertOk()
+            ->assertSee('data-current="'.$cible->id.'"', false);
+
+        // Un identifiant hors de la liste (ici un compte inexistant) n'est pas repris.
+        $this->actingAs($this->admin)
+            ->get(route('esbtp.acces-temporaires.index', ['user_id' => 999999]))
+            ->assertOk()
+            ->assertSee('data-current=""', false);
+    }
+
     public function test_ce_qui_modifie_comptes_roles_ou_reglages_ne_s_accorde_pas(): void
     {
         $service = $this->service();
