@@ -52,6 +52,23 @@ verdict s'applique dans un commit de suite, avant toute fusion**. Ce qui reste
 interdit et n'a jamais changé : fusionner ou déployer sans verdict `PASS`, et
 laisser un `BLOCK` sans correction.
 
+**`presentation` est l'étape de capture, pas la production.** Les captures d'écran
+réelles (axes 10 et 12 de la revue) ne peuvent se prendre que sur un tenant, et le
+seul tenant où l'on déploie une branche non propagée est `presentation`. Exiger la
+capture *avant* la fusion dans `presentation` était donc une boucle : pas de
+capture sans déploiement, pas de déploiement sans fusion, pas de fusion sans
+capture. La règle est désormais :
+
+| étape | ce qui est exigé |
+|---|---|
+| fusion dans `presentation` + déploiement sur presentation | `PASS`, ou `PASS — capture en attente` |
+| propagation vers une école (`git push origin presentation:<tenant>`) | la capture réelle prise sur presentation, **toujours** |
+
+`PASS — capture en attente` n'est pas un `PASS` au rabais : il ne s'accorde que si
+**le seul** manque est une preuve visuelle que seul un tenant peut produire. Tout
+autre constat bloquant reste un `BLOCK`. Et si la capture révèle un défaut, il se
+corrige sur `presentation` **avant** toute propagation.
+
 Cette revue s'ajoute à l'audit 4 axes (`pre-commit-quality-gate.md`), elle ne le remplace
 pas : l'audit 4 axes cherche les régressions, la revue thermo-nucléaire cherche
 la complexité qu'on aurait pu supprimer.
@@ -84,7 +101,7 @@ Un Service qui implémente `Cache::remember()` → test avec `Cache::shouldRecei
 
 ### 5. Visual-check obligatoire pour les vues touchées
 
-Toute PR qui modifie une vue Blade DOIT inclure une capture d'écran OU une exécution `/visual-check <route>` qui prouve :
+Toute vue Blade modifiée DOIT être prouvée par une capture d'écran réelle OU une exécution `/visual-check <route>` — prise sur presentation après fusion et déploiement, **avant** propagation vers les écoles (voir le commandement 0) — qui prouve :
 - La page rend sans erreur 500
 - Les badges/filtres/listings affichent les valeurs attendues
 - Le design respecte rules `premium-redesign` + `premium-selects` (monochrome bleu, pas de purple/multicolore)

@@ -2385,3 +2385,63 @@
     .nm-network-badge { font-size: 0.68rem; padding: 0.2rem 0.5rem 0.2rem 0.45rem; }
     .nm-toast-stack { left: 1rem; right: 1rem; max-width: none; }
 }
+
+/* ══════════════════════════════════════════════════════════
+   Fenêtre de saisie sur téléphone (≤ 576px)
+   Chaque bloc prend toute la largeur ; le corps défile, et la
+   grille garde une hauteur utile au lieu d'être écrasée par ce
+   qui la précède.
+   ══════════════════════════════════════════════════════════ */
+@media (max-width: 576px) {
+    #classSelectionModal.nm-notes-modal .modal-content {
+        height: 100dvh !important;
+        max-height: 100dvh !important;
+    }
+    .nm-modal-header { padding: .7rem .85rem; gap: .5rem; flex-wrap: nowrap; }
+    .nm-modal-header .modal-title {
+        font-size: .92rem;
+        line-height: 1.25;
+        display: block;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .nm-modal-header .modal-title > i { margin-right: .35rem !important; }
+    /* Sur un écran étroit, seul le point de couleur dit l'état : le libellé
+       reste disponible au survol et pour les lecteurs d'écran. */
+    .nm-network-badge { padding: .35rem; }
+    .nm-network-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
+    .nm-modal-header .btn-close { width: 2rem; height: 2rem; padding: .5rem; }
+
+    #classSelectionModal.nm-notes-modal .modal-body {
+        overflow-y: auto !important;
+        overscroll-behavior: contain;
+        -webkit-overflow-scrolling: touch;
+        padding: .75rem !important;
+    }
+    /* Le rappel « Saisie intelligente » répète ce que l'écran montre déjà. */
+    .nm-modal-intro { display: none; }
+
+    .nm-modal-controls { flex-direction: column; align-items: stretch; gap: .65rem; }
+    .nm-modal-control { min-width: 0; flex: none !important; width: 100%; }
+    .nm-modal-control select { min-height: 44px; font-size: 16px; padding: .55rem .75rem; }
+    .nm-modal-create > label { display: none; }
+    .nm-create-eval-btn { width: 100%; min-height: 44px; justify-content: center; font-size: .9rem; }
+
+    .nm-grid-wrapper { flex: none; min-height: 55vh; }
+
+    /* Deux colonnes : l'enregistrement pleine largeur, les deux PDF côte à
+       côte. « Fermer » double la croix de l'en-tête, qui reste à portée. */
+    .nm-modal-footer {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr;
+        gap: .5rem;
+        padding: .6rem .75rem calc(.6rem + env(safe-area-inset-bottom));
+    }
+    .nm-modal-footer > * { width: auto !important; margin: 0 !important; }
+    .nm-modal-footer #nm-sync-badge,
+    .nm-modal-footer #saveAllNotesBtn { grid-column: 1 / -1; }
+    .nm-modal-footer #saveAllNotesBtn { order: -1; }
+    .nm-modal-footer .btn { min-height: 42px; display: inline-flex; align-items: center; justify-content: center; padding: .4rem .5rem; font-size: .8rem; white-space: nowrap; }
+    .nm-modal-footer .btn[data-bs-dismiss="modal"] { display: none !important; }
+}

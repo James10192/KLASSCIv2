@@ -13,6 +13,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Tests\Feature\Bts\Concerns\MonteUneClasseBts;
 use Tests\TestCase;
 
@@ -268,8 +269,12 @@ class DeplacementDePeriodeEnLotTest extends TestCase
      * Des notes posees par `insert()`, donc sans observer et sans recalcul : ce
      * qu'on veut ici est un VOLUME, pas un jeu de donnees realiste. Le plafond
      * compte des lignes d'`esbtp_notes` — c'est exactement ce que la requete
-     * de production voit, et la table ne porte aucune unicite
-     * (evaluation, etudiant) qui l'interdirait.
+     * de production voit.
+     *
+     * Une note par eleve, pas N notes du meme : la base garantit depuis
+     * septembre 2026 une seule note vivante par (eleve, evaluation). Les eleves
+     * au-dela du premier sont des identifiants sans fiche, d'ou les cles
+     * etrangeres suspendues le temps de l'insertion.
      */
     private function posterDesNotesEnMasse(ESBTPEvaluation $evaluation, int $etudiantId, int $combien, ?int $classeId = null): void
     {
@@ -277,7 +282,7 @@ class DeplacementDePeriodeEnLotTest extends TestCase
         for ($i = 0; $i < $combien; $i++) {
             $lignes[] = [
                 'evaluation_id' => $evaluation->id,
-                'etudiant_id' => $etudiantId,
+                'etudiant_id' => $i === 0 ? $etudiantId : 900000 + $evaluation->id * 1000 + $i,
                 'matiere_id' => $evaluation->matiere_id,
                 'classe_id' => $classeId ?? $this->classe->id,
                 'note' => 10,
@@ -287,9 +292,11 @@ class DeplacementDePeriodeEnLotTest extends TestCase
             ];
         }
 
+        Schema::disableForeignKeyConstraints();
         foreach (array_chunk($lignes, 200) as $paquet) {
             ESBTPNote::insert($paquet);
         }
+        Schema::enableForeignKeyConstraints();
     }
 
     /**

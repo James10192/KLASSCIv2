@@ -78,6 +78,18 @@ class AuthServiceProvider extends ServiceProvider
                 return null;
             }
 
+            // Une capacité qui décrit un ÉTAT et non un droit ne se contourne
+            // pas. « Annuler ma saisie » veut dire : c'est moi qui l'ai saisi,
+            // il est encore en attente, et il y a moins de N minutes. Le
+            // passe-droit du superAdmin rendait ces trois faits vrais pour tout
+            // paiement — validé, ancien, saisi par un autre — et la suppression
+            // partait sans motif, par-dessus les verrous de période. Le DROIT
+            // (`paiements.cancel_own`), lui, reste couvert : la politique
+            // l'interroge par `can()`, qui repasse ici.
+            if (in_array($ability, ESBTPPaiementPolicy::CAPACITES_D_ETAT, true)) {
+                return null;
+            }
+
             return $user && $user->hasRole('superAdmin') ? true : null;
         });
 

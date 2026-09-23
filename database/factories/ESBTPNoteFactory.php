@@ -19,8 +19,10 @@ class ESBTPNoteFactory extends Factory
             'note' => $note = $this->faker->randomFloat(2, 0, 20), // colonne lue par l'app
             'valeur' => $note,
             'commentaire' => $this->faker->optional()->sentence, // 'observation' n'est ni fillable ni une colonne
-            'created_by' => 1,
-            'updated_by' => 1,
+            // Premier utilisateur existant, nul sur une base vide : un 1 en dur viole
+            // la clé étrangère vers users dès qu'aucun compte n'a été créé.
+            'created_by' => fn () => \App\Models\User::query()->min('id'),
+            'updated_by' => fn () => \App\Models\User::query()->min('id'),
             'created_at' => now(),
             'updated_at' => now()
         ];

@@ -1304,6 +1304,7 @@ class ESBTPInscriptionService
             ->where('etudiant_id', $etudiantId)
             ->rattacheesALaClasse($nouvelleClasseId)
             ->whereNotNull('archived_at')
+            ->sansJumelleVivante()
             ->update(['archived_at' => null]);
         ESBTPResultat::withoutGlobalScope('not_archived')
             ->where('etudiant_id', $etudiantId)
