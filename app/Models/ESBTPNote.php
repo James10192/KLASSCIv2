@@ -357,7 +357,10 @@ class ESBTPNote extends Model implements Auditable
      * Notes archivées qu'on peut rendre vivantes sans heurter l'unicité : une
      * seule note vivante par élève et par évaluation (voir UniciteDesNotes).
      * Une note archivée dont la jumelle est déjà vivante reste archivée ; entre
-     * jumelles toutes archivées, seule la plus récente revient.
+     * jumelles toutes archivées, seule la plus récente revient. Cas limite
+     * assumé : si l'appelant filtre par classe et que la plus récente n'y est
+     * plus rattachée, aucune des deux ne revient — rien n'est perdu, la note
+     * reste archivée et se restaure à la main.
      *
      * La table dérivée groupée n'est pas là par goût : MySQL refuse qu'un
      * UPDATE relise sa propre table (erreur 1093), sauf à travers une table

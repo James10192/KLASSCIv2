@@ -51,7 +51,10 @@ class CLINotesUniciteController extends BaseApiController
             );
         }
 
-        $this->unicite->poser();
+        // Un doublon a pu apparaître entre la lecture et la pose.
+        if (! $this->unicite->poser()) {
+            return $this->errorResponse('Unicité non posée : relancez le diagnostic.', $this->etat(), 409);
+        }
 
         return $this->successResponse($this->etat(), 'Unicité en place : une seule note vivante par élève et par évaluation.');
     }
