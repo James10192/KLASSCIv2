@@ -25,6 +25,12 @@ class ESBTPReinscriptionDemande extends Model implements Auditable, PorteurDeRen
     use HasFactory;
     use \OwenIt\Auditing\Auditable;
 
+    /** Convertie en inscription ou refusee : le dossier n'attend plus la famille au guichet. */
+    public static function statutsDossierClos(): array
+    {
+        return [self::STATUT_CONVERTIE, self::STATUT_REJETEE];
+    }
+
     protected $table = 'esbtp_reinscription_demandes';
 
     public const STATUT_EN_ATTENTE = 'en_attente';

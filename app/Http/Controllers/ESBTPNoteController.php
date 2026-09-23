@@ -1820,19 +1820,18 @@ class ESBTPNoteController extends Controller
             ];
         }
 
-        // Aucune note exploitable (toutes vides ou absentes) → null pour distinguer "vide" de "0".
-        $hasUsableNote = false;
-        foreach ($payload as $row) {
-            if (empty($row['is_absent']) && $row['bareme'] > 0 && $row['coefficient'] > 0) {
-                $hasUsableNote = true;
-                break;
-            }
-        }
-        if (! $hasUsableNote) {
-            return null;
+        // Aucune note comptable : `null` distingue « vide » de « 0 ». Des
+        // absences seulement : la valeur du reglage d'etablissement, comme au
+        // bulletin — sans quoi ce panneau contredisait le bulletin en mode
+        // par defaut, en ecartant une matiere que le bulletin compte a 0.
+        $moyenne = $calc->studentMatiereAverageOrNull($payload);
+        if ($moyenne !== null) {
+            return $moyenne;
         }
 
-        return $calc->studentMatiereAverage($payload);
+        $aDesAbsences = collect($payload)->contains(fn ($row) => ! empty($row['is_absent']));
+
+        return $aDesAbsences ? $calc->moyenneSansNoteComptable() : null;
     }
 
     /**

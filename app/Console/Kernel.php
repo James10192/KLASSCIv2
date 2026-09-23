@@ -165,6 +165,17 @@ class Kernel extends ConsoleKernel
             ->name('mailpulse-reconcile-parent-notifications')
             ->description('Rejoue les notifications parents MailPulse en attente de reconciliation');
 
+        // Convocations de rendez-vous en attente. Remplace l'envoi en lot dans
+        // `terminating`, qui mourait avec le processus. N'envoie que l'etat
+        // « en attente » : les reservations d'avant le suivi attendent un geste
+        // de l'ecole.
+        $schedule->command('inscriptions:envoyer-convocations-rdv --max=50 --budget=45')
+            ->everyFiveMinutes()
+            ->withoutOverlapping()
+            ->onOneServer()
+            ->name('rdv-convocations-en-attente')
+            ->description('Envoie les convocations de rendez-vous en attente');
+
         $schedule->command('mailpulse:reconcile-parent-link-codes --limit=50')
             ->everyMinute()
             ->withoutOverlapping()

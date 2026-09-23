@@ -1202,7 +1202,7 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                             <i class="fas fa-cog"></i>
                             <span class="d-none d-md-inline">Administration</span>
                         </a>
-                        @if(auth()->user()->can('inscriptions.validate') && $inscription->status === 'en_attente' && !$inscription->paiement_validation_id)
+                        @if(auth()->user()->can('inscriptions.validate') && auth()->user()->can('paiements.create') && $inscription->status === 'en_attente' && !$inscription->paiement_validation_id)
                             <button class="is-hero-btn primary" data-bs-toggle="modal" data-bs-target="#paymentModal" onclick="preparePaymentModal({{ $inscription->id }})">
                                 <i class="fas fa-credit-card"></i>
                                 <span class="d-none d-lg-inline">Valider avec paiement</span>
@@ -1699,7 +1699,7 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                                                 <span class="is-badge {{ strtolower($reinscriptionData['decision']) === 'passage' ? 'success' : (strtolower($reinscriptionData['decision']) === 'redoublement' ? 'danger' : 'warning') }}">{{ $reinscriptionData['decision_label'] ?? $reinscriptionData['decision'] }}</span>
                                             @endif
                                             @if(!$reinscriptionData['reliquat_gere'])
-                                                <span class="is-badge warning ms-1"><i class="fas fa-exclamation-triangle"></i> {{ number_format($reinscriptionData['reliquat_montant'], 0, ',', ' ') }} F</span>
+                                                <span class="is-badge warning ms-1"><i class="fas fa-exclamation-triangle"></i> @if($canViewFinancials ?? false){{ number_format($reinscriptionData['reliquat_montant'], 0, ',', ' ') }} F @else Reliquat à régulariser @endif</span>
                                             @endif
                                         @else
                                             {{ $inscription->observations ?: 'Aucune' }}
@@ -1724,7 +1724,7 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                             </div>
                             @endif
 
-                            @if($canViewFinancials ?? true)
+                            @if($canViewFinancials ?? false)
                             @php
                                 $totalAttendu = collect($feeCategoriesWithRules)->where('is_configured', true)->sum('montant_attendu');
                                 $totalPaye = collect($feeCategoriesWithRules)->sum('total_paye');
@@ -1849,7 +1849,7 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                                           :ouvrir-au-chargement="session('demander_photo', false)" />
                     @endcan
 
-                    @if($canViewFinancials ?? true)
+                    @if($canViewFinancials ?? false)
                     <!-- Situation financière détaillée -->
                     <div class="is-card">
                         <div class="is-card-body">
@@ -2759,7 +2759,7 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                     @endif {{-- canViewFinancials: Situation Financière Détaillée --}}
 
                     <!-- Frais optionnels disponibles -->
-                    @if(($canViewFinancials ?? true) && isset($availableOptionalCategories) && $availableOptionalCategories->count() > 0)
+                    @if(($canViewFinancials ?? false) && isset($availableOptionalCategories) && $availableOptionalCategories->count() > 0)
                     <div class="is-card">
                         <div class="is-card-body">
                             <div class="is-section-header">
@@ -2820,7 +2820,7 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                     </div>
                     @endif
 
-                    @if($canViewFinancials ?? true)
+                    @if($canViewFinancials ?? false)
                     <!-- Paiements liés à l'inscription -->
                     <div class="is-card">
                         <div class="is-card-body">
@@ -3147,7 +3147,7 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                     @endif {{-- canViewFinancials: Paiements liés --}}
 
                     {{-- Section Reliquats --}}
-                    @if(($canViewFinancials ?? true) && (isset($reliquatsEntrants) && $reliquatsEntrants->count() > 0 || isset($reliquatsSortants) && $reliquatsSortants->count() > 0))
+                    @if(($canViewFinancials ?? false) && (isset($reliquatsEntrants) && $reliquatsEntrants->count() > 0 || isset($reliquatsSortants) && $reliquatsSortants->count() > 0))
                         <div class="is-card" style="margin-top:16px;">
                             <div class="is-card-body">
                                 <div class="is-section-header">

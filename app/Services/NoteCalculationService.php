@@ -21,6 +21,9 @@ namespace App\Services;
  *  4. Garde-fou : barème <= 0 ou coefficient <= 0 = entrée ignorée silencieusement.
  *  5. Arrondi systématique à 2 décimales sur le résultat final.
  *  6. Aucune entrée valide => retourne 0.0 (jamais d'exception, jamais de division par zéro).
+ *     Exception : `studentMatiereAverageOrNull()` rend `null`, et
+ *     `moyenneSansNoteComptable()` rend la valeur du réglage d'établissement
+ *     (0.0 ou `null`) — la seule méthode qui lise la base.
  *
  * Service stateless (aucun champ de classe), donc safe en singleton via DI Laravel.
  *
@@ -34,6 +37,30 @@ class NoteCalculationService
     public const DEFAULT_VALIDATION_THRESHOLD = 10.0;
 
     /**
+     * Reglage d'etablissement : une matiere dont l'eleve n'a que des absences
+     * compte-t-elle 0 dans la moyenne generale ? « 1 » (defaut, comportement
+     * historique du bulletin officiel) : oui, 0/20. « 0 » : elle n'a pas de
+     * moyenne et sort du calcul, comme une matiere jamais notee.
+     */
+    public const REGLAGE_ABSENCES_SEULES_COMPTENT_ZERO = 'bulletin_absences_seules_comptent_zero';
+
+    /**
+     * La moyenne d'une matiere qui porte des notes, mais aucune comptable
+     * (absences seulement). Le SEUL endroit qui lit le reglage : generation
+     * officielle, calcul « Courant », fiche Resultats, tableau de
+     * `/esbtp/resultats`, repli annuel, reprise des notes de « Modifier les
+     * moyennes », panneau d'impact de la saisie, recalcul automatique et
+     * rattrapage passent tous par ici. La decision de reinscription
+     * (`ReeinscriptionService`), elle, n'y passe pas encore.
+     */
+    public function moyenneSansNoteComptable(): ?float
+    {
+        return \App\Helpers\SettingsHelper::get(self::REGLAGE_ABSENCES_SEULES_COMPTENT_ZERO, '1') === '1'
+            ? 0.0
+            : null;
+    }
+
+    /**
      * Calcule la moyenne d'un étudiant pour une matière à partir de ses notes
      * d'évaluations (déjà filtrées sur la matière concernée).
      *
@@ -43,6 +70,32 @@ class NoteCalculationService
      * @return float Moyenne sur 20 (arrondie à 2 décimales). 0.0 si aucune note exploitable.
      */
     public function studentMatiereAverage(array $notes): float
+    {
+        return $this->studentMatiereAverageOrNull($notes) ?? 0.0;
+    }
+
+    /**
+     * La MEME formule, mais qui distingue « moyenne de zero » de « rien a
+     * moyenner ».
+     *
+     * `studentMatiereAverage()` rend `0.0` dans les deux cas, et cette
+     * confusion a deja coute deux defauts a ce chantier : un recalcul qui ne
+     * trouve aucune note exploitable ecrit alors **0 sur 20 par-dessus une
+     * moyenne reelle**, en se declarant reussi.
+     *
+     * Les exclusions (absence, bareme nul, coefficient nul) vivent ICI et nulle
+     * part ailleurs. Un appelant qui veut savoir « y a-t-il quelque chose a
+     * moyenner ? » pose la question a cette methode — il ne la redevine pas
+     * avec un `exists()` a cote, qui ne connaitrait pas les exclusions et
+     * repondrait oui sur une matiere ou il ne reste qu'une absence.
+     *
+     * `studentMatiereAverage()` reste le point d'entree par defaut : le
+     * comportement des appelants existants ne change pas d'une virgule.
+     *
+     * @param  array<int, array{note?: float|int|string|null, bareme?: float|int|string|null, coefficient?: float|int|string|null, is_absent?: bool}>  $notes
+     * @return float|null Moyenne sur 20, ou `null` si aucune note n'est exploitable.
+     */
+    public function studentMatiereAverageOrNull(array $notes): ?float
     {
         $totalPoints = 0.0;
         $totalCoeffs = 0.0;
@@ -70,7 +123,7 @@ class NoteCalculationService
 
         return $totalCoeffs > 0
             ? round($totalPoints / $totalCoeffs, 2)
-            : 0.0;
+            : null;
     }
 
     /**

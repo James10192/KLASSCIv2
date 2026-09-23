@@ -255,6 +255,7 @@ jobs:
           for chemin in \
             tests/Unit/Services/Frais \
             tests/Unit/Paiements \
+            tests/Unit/Models/SettingRepliSurDefautTest.php \
             tests/Unit/Services/FraisAudienceTest.php \
             tests/Unit/Services/ExtensionsDeRoleTest.php \
             tests/Unit/Exploitation \
@@ -262,7 +263,8 @@ jobs:
             tests/Unit/Deployment \
             tests/Unit/Routes \
             tests/Unit/Comptabilite \
-            tests/Unit/Photos
+            tests/Unit/Photos \
+            tests/Unit/Services/Master
           do
             echo "::group::$chemin"
             php vendor/bin/phpunit "$chemin" --no-coverage || echec=1

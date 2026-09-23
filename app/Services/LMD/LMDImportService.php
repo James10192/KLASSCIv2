@@ -33,6 +33,7 @@ class LMDImportService
         private ParcoursUeSyncService $parcoursUeSync,
         private CompositionUe $composition,
         private RefusDeDeplacement $deplacement,
+        private CodeDeMatiere $codes,
         ?LmdAcademicRuleProfile $rules = null,
     ) {
         $this->rules = $rules ?? new LmdAcademicRuleProfile();
@@ -317,6 +318,10 @@ class LMDImportService
         int $parcoursId = CompositionUe::COMMUN
     ): array {
         $code = $data['code'] ?? null;
+        // Un code tenu par une matiere supprimee faisait echouer l'insertion sur
+        // l'index unique. On le libere ici ; la transaction de l'import annule
+        // le renommage si la suite echoue.
+        $this->codes->libererSiArchive($code);
         $existing = $code ? ESBTPMatiere::where('code', $code)->first() : null;
         $created = $existing === null;
 
@@ -370,7 +375,8 @@ class LMDImportService
         // LMD-specific columns added in 2026-03 migration; not in $fillable, set directly.
         $matiere->credit_ecue = (int) ($data['credit_ecue'] ?? 1);
         $matiere->coefficient_ecue = (float) ($data['credit_ecue'] ?? 1);
-        $matiere->save();
+        // Un import concurrent du meme code nouveau : refus nomme, maquette annulee.
+        $this->codes->sousUnicite('code', $code, fn () => $matiere->save());
 
         if ($filiere) {
             $this->linkMatiereFiliere($matiere->id, $filiere->id);

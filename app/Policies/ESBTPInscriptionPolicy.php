@@ -46,15 +46,11 @@ class ESBTPInscriptionPolicy
 
     /**
      * Vérifie si l'utilisateur peut voir les données financières de l'inscription.
-     * Seuls les rôles financiers (comptable, caissier, secrétaire) y ont accès.
+     * Délègue à la porte unique `finances.etudiants.voir`.
      */
     public function viewFinancials(User $user, ESBTPInscription $inscription)
     {
-        return $user->hasAnyPermission([
-            'paiements.view',
-            'comptabilite.access',
-            'comptabilite.dashboard.view',
-        ]);
+        return $user->can('finances.etudiants.voir');
     }
 
     public function create(User $user)

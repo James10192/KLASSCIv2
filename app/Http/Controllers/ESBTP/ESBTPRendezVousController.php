@@ -7,153 +7,134 @@ use App\Http\Controllers\Controller;
 use App\Models\ESBTPRdvCreneau;
 use App\Models\Setting;
 use App\Services\RendezVous\AffecteurDossiersRdv;
+use App\Services\RendezVous\FamillesAPrevenirRdv;
+use App\Services\RendezVous\FileConvocationsRdv;
 use App\Services\RendezVous\GenerateurCreneaux;
 use App\Services\RendezVous\RendezVousReglages;
-use App\Services\Reinscription\PortailReinscriptionService;
-use Carbon\Carbon;
-use Illuminate\Http\RedirectResponse;
+use App\Services\RendezVous\TableauRendezVous;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
+/**
+ * Ecran des rendez-vous d'inscription. Toutes les actions repondent en JSON :
+ * l'ecran se met a jour sans rechargement, en redemandant ses fragments a index().
+ */
 class ESBTPRendezVousController extends Controller
 {
     public function __construct(
         private readonly RendezVousReglages $reglages,
-        private readonly GenerateurCreneaux $generateur,
-        private readonly AffecteurDossiersRdv $affecteur,
+        private readonly TableauRendezVous $tableau,
     ) {
     }
 
     public function index(Request $request)
     {
-        $debutBrut = is_string($request->query('debut')) ? $request->query('debut') : '';
-        $jour = PortailReinscriptionService::interpreterDateIso($debutBrut) ?? Carbon::today();
-        $debut = $jour->copy()->startOfWeek(Carbon::MONDAY);
-        $fin = $debut->copy()->addDays(6);
+        $donnees = $this->tableau->pourSemaine(is_string($request->query('debut')) ? $request->query('debut') : null) + [
+            'peutGerer' => $request->user()?->can('inscriptions.rdv.manage') ?? false,
+            'peutConfigurer' => $request->user()?->can('inscriptions.rdv.configure') ?? false,
+            'rdv' => $this->reglages,
+            'aPrevenir' => app(FamillesAPrevenirRdv::class)->compter(),
+        ];
 
-        $creneaux = ESBTPRdvCreneau::query()
-            ->whereDate('date', '>=', $debut->toDateString())
-            ->whereDate('date', '<=', $fin->toDateString())
-            ->orderBy('date')
-            ->orderBy('heure_debut')
-            ->get()
-            ->groupBy(fn (ESBTPRdvCreneau $c) => $c->date->toDateString());
-
-        $jours = [];
-        $curseur = $debut->copy();
-        while ($curseur->lte($fin)) {
-            $cle = $curseur->toDateString();
-            $jours[] = [
-                'date' => $cle,
-                'libelle' => $curseur->translatedFormat('l j F'),
-                'creneaux' => $creneaux->get($cle, collect()),
-            ];
-            $curseur->addDay();
+        if ($request->boolean('fragment')) {
+            return response()->json([
+                'kpis' => view('esbtp.rendez-vous.partials._kpis', $donnees)->render(),
+                'chaine' => view('esbtp.rendez-vous.partials._chaine', $donnees)->render(),
+                'tableau' => view('esbtp.rendez-vous.partials._tableau', $donnees)->render(),
+                'reglages' => view('esbtp.rendez-vous.partials._reglages_resume', $donnees)->render(),
+            ]);
         }
 
-        return view('esbtp.rendez-vous.index', [
-            'debut' => $debut,
-            'fin' => $fin,
-            'semainePrecedente' => $debut->copy()->subWeek()->toDateString(),
-            'semaineSuivante' => $debut->copy()->addWeek()->toDateString(),
-            'jours' => $jours,
-            'debit' => $this->reglages->debitJournalier(),
-            'peutGerer' => auth()->user()?->can('inscriptions.rdv.manage') ?? false,
-            'peutConfigurer' => auth()->user()?->can('inscriptions.rdv.configure') ?? false,
-            'rdv' => $this->reglages,
-            'rdvJours' => [1 => 'Lun', 2 => 'Mar', 3 => 'Mer', 4 => 'Jeu', 5 => 'Ven', 6 => 'Sam', 7 => 'Dim'],
-            'rdvJoursChoisis' => array_map('strval', array_filter(preg_split(
-                '/[,\s]+/',
-                $this->reglages->valeur(RendezVousReglages::JOURS, '1,2,3,4,5')
-            ) ?: [])),
-        ]);
+        return view('esbtp.rendez-vous.index', $donnees);
     }
 
-    public function enregistrerReglages(Request $request): RedirectResponse
+    public function enregistrerReglages(Request $request): JsonResponse
     {
         $brut = $request->all();
         $auteur = auth()->id();
 
+        // Une tolerance illisible retomberait en silence sur 15 minutes.
+        $grace = $brut[RendezVousReglages::GRACE] ?? $brut[str_replace('.', '_', RendezVousReglages::GRACE)] ?? null;
+        if (is_string($grace) && trim($grace) !== '' && ! ctype_digit(trim($grace))) {
+            return response()->json(['message' => 'La tolérance de retard doit être un nombre entier de minutes.'], 422);
+        }
+
         $jours = $brut['inscriptions_rdv_jours_ouverts'] ?? [];
-        Setting::set(
-            RendezVousReglages::JOURS,
-            is_array($jours) ? implode(',', array_map('strval', $jours)) : '',
-            $auteur
-        );
+        Setting::set(RendezVousReglages::JOURS, is_array($jours) ? implode(',', array_map('strval', $jours)) : '', $auteur);
 
+        // PHP change les points des noms de champs en soulignes : on lit les deux.
         foreach (RendezVousReglages::clesTexte() as $cle) {
-            if ($cle === RendezVousReglages::JOURS) {
-                continue;
-            }
-
             $cleFormulaire = str_replace('.', '_', $cle);
-            if (! array_key_exists($cle, $brut) && ! array_key_exists($cleFormulaire, $brut)) {
+            if ($cle === RendezVousReglages::JOURS || (! array_key_exists($cle, $brut) && ! array_key_exists($cleFormulaire, $brut))) {
                 continue;
             }
-
             $soumis = $brut[$cle] ?? $brut[$cleFormulaire] ?? '';
             Setting::set($cle, is_string($soumis) ? trim($soumis) : '', $auteur);
         }
 
         foreach (RendezVousReglages::clesBascules() as $cle) {
-            $cleFormulaire = str_replace('.', '_', $cle);
-            $allume = filter_var($brut[$cle] ?? $brut[$cleFormulaire] ?? false, FILTER_VALIDATE_BOOLEAN);
+            $allume = filter_var($brut[$cle] ?? $brut[str_replace('.', '_', $cle)] ?? false, FILTER_VALIDATE_BOOLEAN);
             Setting::set($cle, $allume ? '1' : '0', $auteur);
         }
 
         Setting::clearCache();
 
-        return redirect()
-            ->route('esbtp.rendez-vous.index')
-            ->with('success', 'Réglages enregistrés. Vous pouvez générer les créneaux.');
+        return response()->json(['message' => 'Réglages enregistrés.']);
     }
 
-    public function generer(): RedirectResponse
+    public function generer(GenerateurCreneaux $generateur): JsonResponse
     {
         try {
-            $rapport = $this->generateur->generer();
+            $r = $generateur->generer();
         } catch (ReglagesRdvIncomplets $e) {
-            return redirect()
-                ->route('esbtp.rendez-vous.index')
-                ->with('error', $e->getMessage());
+            return response()->json(['message' => $e->getMessage()], 422);
         }
 
-        return redirect()
-            ->route('esbtp.rendez-vous.index')
-            ->with('success', sprintf(
-                'Créneaux générés : %d créés, %d mis à jour, %d fermés, %d conservés (occupés).',
-                $rapport->crees,
-                $rapport->misAJour,
-                $rapport->fermes,
-                $rapport->conservesOccupes
-            ));
+        return response()->json(['message' => sprintf(
+            'Créneaux générés : %d créés, %d mis à jour, %d fermés, %d conservés car déjà réservés.',
+            $r->crees, $r->misAJour, $r->fermes, $r->conservesOccupes
+        )]);
     }
 
-    public function placer(): RedirectResponse
+    public function placer(AffecteurDossiersRdv $affecteur, FileConvocationsRdv $file): JsonResponse
     {
-        $rapport = $this->affecteur->placer();
+        $r = $affecteur->placer();
+        if ($r['refus'] !== null) {
+            return response()->json(['message' => $r['refus']], 422);
+        }
 
-        return redirect()
-            ->route('esbtp.rendez-vous.index')
-            ->with('success', sprintf(
-                '%d dossiers placés et convoqués par mail. %d sans email, %d sans créneau, %d déjà réservés.',
-                $rapport['places'],
-                $rapport['sans_email'],
-                $rapport['sans_creneau'],
-                $rapport['deja']
-            ));
+        return response()->json($r + [
+            'a_envoyer' => $file->enAttente(),
+            'message' => sprintf('%d dossiers placés.', $r['places'])
+                .AffecteurDossiersRdv::mentionAPrevenir($r['a_prevenir'])
+                .sprintf(' %d sans créneau libre, %d déjà traités.', $r['sans_creneau'], $r['deja']),
+        ]);
     }
 
-    public function ouvrir(ESBTPRdvCreneau $creneau): RedirectResponse
+    public function envoyerConvocations(FileConvocationsRdv $file): JsonResponse
+    {
+        // Un paquet court : l'ecran rappelle tant qu'il en reste, et affiche la progression.
+        return response()->json($file->envoyerUnPaquet(15, 20.0));
+    }
+
+    public function remettreConvocations(Request $request, FileConvocationsRdv $file): JsonResponse
+    {
+        $quoi = $request->input('quoi') === 'echecs' ? 'echecs' : 'inconnues';
+
+        return response()->json(['remises' => $file->remettreEnAttente($quoi), 'a_envoyer' => $file->enAttente()]);
+    }
+
+    public function ouvrir(ESBTPRdvCreneau $creneau): JsonResponse
     {
         $creneau->update(['ouvert' => true]);
 
-        return back()->with('success', 'Créneau ouvert.');
+        return response()->json(['message' => 'Créneau ouvert aux familles.']);
     }
 
-    public function fermer(ESBTPRdvCreneau $creneau): RedirectResponse
+    public function fermer(ESBTPRdvCreneau $creneau): JsonResponse
     {
         $creneau->update(['ouvert' => false]);
 
-        return back()->with('success', 'Créneau fermé.');
+        return response()->json(['message' => 'Créneau fermé : les familles ne le voient plus. Les réservations existantes sont conservées.']);
     }
 }

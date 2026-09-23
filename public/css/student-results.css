@@ -1692,6 +1692,8 @@
 
 .sr-accordion-dot--success { background: var(--sr-success); box-shadow: 0 0 8px var(--sr-success-glow); }
 .sr-accordion-dot--danger { background: var(--sr-danger); box-shadow: 0 0 8px var(--sr-danger-glow); }
+/* Aucune note exploitable : ni reussite ni echec, donc aucune couleur semantique. */
+.sr-accordion-dot--vide { background: var(--sr-muted-light); }
 
 .sr-accordion-subject {
     font-weight: 700;
@@ -1718,6 +1720,11 @@
 .sr-accordion-avg--danger {
     background: var(--sr-danger-light);
     color: #991b1b;
+}
+
+.sr-accordion-avg--vide {
+    background: #f1f5f9;
+    color: var(--sr-muted);
 }
 
 .sr-accordion-chevron {
@@ -2453,6 +2460,33 @@
         flex-direction: row;
         text-align: left;
         gap: 0.75rem;
+    }
+
+    /* Onglets de periode : trois onglets fixes, toujours les memes. Sur
+       telephone ils ne tiennent pas sur une ligne (icone + libelle + moyenne) ;
+       on les range en trois colonnes egales, libelle au-dessus de la moyenne,
+       plutot que de les faire defiler : aucun choix cache hors de l'ecran. */
+    .sr-period-tabs {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        align-items: stretch;
+        gap: 0.5rem;
+    }
+
+    .sr-period-tab {
+        flex-direction: column;
+        justify-content: center;
+        gap: 0.25rem;
+        padding: 0.5rem 0.25rem;
+        border-radius: 14px;
+        white-space: normal;
+        text-align: center;
+        line-height: 1.2;
+    }
+
+    /* Decorative : le libelle dit deja la periode, et la place manque. */
+    .sr-period-tab i {
+        display: none;
     }
 }
 

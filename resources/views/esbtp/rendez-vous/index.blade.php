@@ -3,226 +3,362 @@
 @section('title', 'Rendez-vous d\'inscription - KLASSCI')
 
 @push('styles')
-<style>
-.rdv-hero {
-    background: linear-gradient(135deg, #0a3d8f 0%, #0453cb 40%, #3b7ddb 100%);
-    border-radius: 18px;
-    padding: 2rem 2.5rem 1.5rem;
-    color: #fff;
-    margin-bottom: 1.25rem;
-    box-shadow: 0 8px 30px rgba(4,83,203,.18);
-}
-.rdv-hero-top { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 1rem; }
-.rdv-hero h1 { font-size: 1.45rem; font-weight: 700; color: #fff; margin: 0; }
-.rdv-hero p { color: rgba(255,255,255,.7); font-size: .88rem; margin: .35rem 0 0; }
-.rdv-kpis { display: flex; gap: .75rem; margin-top: 1.5rem; flex-wrap: wrap; }
-.rdv-kpi {
-    flex: 1; min-width: 150px;
-    background: rgba(255,255,255,.1);
-    border: 1px solid rgba(255,255,255,.15);
-    border-radius: 12px; padding: .9rem 1rem;
-}
-.rdv-kpi-value { font-size: 1.35rem; font-weight: 700; color: #fff; }
-.rdv-kpi-label { font-size: .72rem; color: rgba(255,255,255,.65); margin-top: .15rem; }
-.rdv-btn {
-    display: inline-flex; align-items: center; gap: .45rem;
-    border-radius: 10px; padding: .5rem 1rem;
-    font-size: .82rem; font-weight: 600; cursor: pointer;
-    border: 1px solid transparent; text-decoration: none;
-}
-.rdv-btn--white { background: #fff; color: #0453cb; }
-.rdv-btn--glass { background: rgba(255,255,255,.15); color: #fff; border-color: rgba(255,255,255,.2); }
-.rdv-card {
-    background: #fff; border: 1px solid #e2e8f0; border-radius: 14px;
-    padding: 1.25rem 1.5rem; margin-bottom: 1rem;
-}
-.rdv-jour-titre { font-size: .95rem; font-weight: 700; color: #1e293b; margin-bottom: .75rem; }
-.rdv-slot {
-    display: flex; align-items: center; justify-content: space-between; gap: .75rem;
-    padding: .7rem .85rem; border: 1px solid #e2e8f0; border-radius: 10px;
-}
-.rdv-slot + .rdv-slot { margin-top: .45rem; }
-.rdv-slot--ferme { background: #f8fafc; color: #64748b; }
-.rdv-heure { font-variant-numeric: tabular-nums; font-weight: 600; color: #1e293b; }
-.rdv-badge { font-size: .72rem; font-weight: 600; padding: .15rem .5rem; border-radius: 999px; }
-.rdv-badge--ouvert { background: #d1fae5; color: #065f46; }
-.rdv-badge--ferme { background: #e2e8f0; color: #475569; }
-.rdv-nav { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; margin-bottom: 1rem; }
-.rdv-empty { text-align: center; padding: 2rem 1rem; color: #64748b; }
-</style>
+@include('esbtp.rendez-vous.partials._styles')
 @endpush
 
 @section('content')
-<div class="container-fluid">
+<div class="container-fluid rdv-page" data-rdv-page
+     data-url-index="{{ route('esbtp.rendez-vous.index') }}"
+     data-url-generer="{{ route('esbtp.rendez-vous.generer') }}"
+     data-url-placer="{{ route('esbtp.rendez-vous.placer') }}"
+     data-url-envoyer="{{ route('esbtp.rendez-vous.convocations.envoyer') }}"
+     data-url-remettre="{{ route('esbtp.rendez-vous.convocations.remettre') }}"
+     data-debut="{{ $debut->toDateString() }}">
+
     <div class="rdv-hero">
         <div class="rdv-hero-top">
-            <div>
-                <h1>Rendez-vous d'inscription</h1>
-                <p>Planning des créneaux au guichet. La réservation par les familles arrive ensuite.</p>
+            <div class="rdv-hero-left">
+                <div class="rdv-hero-icon"><i class="fas fa-calendar-check"></i></div>
+                <div>
+                    <h1>Rendez-vous d'inscription</h1>
+                    <p>Qui vient au guichet, quand, et si sa convocation est bien partie.</p>
+                </div>
             </div>
-            <div style="display:flex;gap:.6rem;flex-wrap:wrap;">
+            <div class="rdv-hero-actions">
+                @can('inscriptions.rdv.accueil')
+                    <a class="rdv-btn rdv-btn--glass" href="{{ route('esbtp.rendez-vous.accueil.index') }}"><i class="fas fa-clipboard-check"></i>Accueil du jour</a>
+                @endcan
+                <button type="button" class="rdv-btn rdv-btn--glass" data-page-tour-open><i class="fas fa-route"></i>Guide</button>
+                <button type="button" class="rdv-btn rdv-btn--glass" data-page-help-open><i class="fas fa-circle-question"></i>Aide</button>
                 @if($peutConfigurer)
-                <a class="rdv-btn rdv-btn--glass" href="#reglages">Réglages des horaires</a>
+                    <button type="button" class="rdv-btn rdv-btn--glass" data-rdv-ouvrir-reglages><i class="fas fa-sliders"></i>Réglages</button>
                 @endif
+                <x-export-modal
+                    button-class="rdv-btn rdv-btn--glass"
+                    label="Familles à prévenir"
+                    :preview-url="route('esbtp.rendez-vous.familles.apercu')"
+                    :pdf-url="route('esbtp.rendez-vous.familles.pdf')"
+                    :excel-url="route('esbtp.rendez-vous.familles.excel')" />
                 @if($peutGerer)
-                <form method="POST" action="{{ route('esbtp.rendez-vous.generer') }}">
-                    @csrf
-                    <button type="submit" class="rdv-btn rdv-btn--white">
-                        <i class="fas fa-calendar-plus"></i> Générer les créneaux
+                    <button type="button" class="rdv-btn rdv-btn--glass" data-rdv-action="generer"><i class="fas fa-calendar-plus"></i>Générer les créneaux</button>
+                    <button type="button" class="rdv-btn rdv-btn--white" data-rdv-action="placer"
+                            data-confirm="Les candidatures et demandes en attente vont être placées sur les premiers créneaux libres, puis leur convocation partira par e-mail. Celles sans adresse seront placées aussi et rejoindront la liste des familles à prévenir par téléphone.">
+                        <i class="fas fa-envelope-open-text"></i>Placer et convoquer
                     </button>
-                </form>
-                <form method="POST" action="{{ route('esbtp.rendez-vous.placer') }}"
-                      onsubmit="return confirm('Placer les candidatures et demandes en attente sur les créneaux libres, puis envoyer la convocation par e-mail ?');">
-                    @csrf
-                    <button type="submit" class="rdv-btn rdv-btn--white">
-                        <i class="fas fa-envelope-open-text"></i> Placer et convoquer
-                    </button>
-                </form>
                 @endif
             </div>
         </div>
-        <div class="rdv-kpis">
-            <div class="rdv-kpi">
-                <div class="rdv-kpi-value">
-                    @if($debit)
-                        {{ $debit['personnes_par_jour'] }}
-                    @else
-                        —
-                    @endif
-                </div>
-                <div class="rdv-kpi-label">
-                    @if($debit)
-                        {{ $debit['duree'] }} min × {{ $debit['capacite'] }} places × {{ $debit['creneaux_par_jour'] }} créneaux = {{ $debit['personnes_par_jour'] }} personnes / jour
-                    @else
-                        Remplissez les réglages ci-dessous, puis générez les créneaux
-                    @endif
-                </div>
-            </div>
-        </div>
+        <div id="rdv-kpis">@include('esbtp.rendez-vous.partials._kpis')</div>
     </div>
+
+    <section class="rdv-card rdv-envoi" id="rdv-envoi" aria-live="polite">
+        <div class="rdv-envoi-tete">
+            <strong><i class="fas fa-paper-plane"></i> <span data-rdv-envoi-titre>Envoi des convocations…</span></strong>
+            <span data-rdv-envoi-compte></span>
+        </div>
+        <div class="rdv-envoi-barre"><span data-rdv-envoi-barre></span></div>
+    </section>
+
+    <div id="rdv-chaine">@include('esbtp.rendez-vous.partials._chaine')</div>
 
     @if($peutConfigurer)
-    <div class="rdv-card" id="reglages">
-        <div class="rdv-jour-titre">Réglages des créneaux</div>
-        <p style="color:#64748b;font-size:.88rem;margin:0 0 1rem;">Jours, horaires et nombre de familles par créneau. Enregistrez, puis cliquez sur « Générer les créneaux ».</p>
-        <form method="POST" action="{{ route('esbtp.rendez-vous.reglages') }}">
-            @csrf
-            <div class="row g-2">
-                <div class="col-md-3">
-                    <label class="form-label" for="rdv-ouv">Premier jour des rendez-vous</label>
-                    <input type="date" class="form-control" id="rdv-ouv" name="{{ $rdv::OUVERTURE }}"
-                           value="{{ $rdv->valeur($rdv::OUVERTURE) }}">
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label" for="rdv-fer">Dernier jour</label>
-                    <input type="date" class="form-control" id="rdv-fer" name="{{ $rdv::FERMETURE }}"
-                           value="{{ $rdv->valeur($rdv::FERMETURE) }}">
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label" for="rdv-hd">Ouverture du guichet</label>
-                    <input type="time" class="form-control" id="rdv-hd" name="{{ $rdv::HEURE_DEBUT }}"
-                           value="{{ $rdv->valeur($rdv::HEURE_DEBUT) }}">
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label" for="rdv-hf">Fermeture</label>
-                    <input type="time" class="form-control" id="rdv-hf" name="{{ $rdv::HEURE_FIN }}"
-                           value="{{ $rdv->valeur($rdv::HEURE_FIN) }}">
-                </div>
-                <div class="col-12" style="margin-top:.5rem;">
-                    <span class="form-label d-block">Jours ouverts</span>
-                    @foreach($rdvJours as $_n => $_lib)
-                        <label style="margin-right:.85rem;">
-                            <input type="checkbox" name="inscriptions_rdv_jours_ouverts[]" value="{{ $_n }}"
-                                   {{ in_array((string) $_n, $rdvJoursChoisis, true) ? 'checked' : '' }}>
-                            {{ $_lib }}
-                        </label>
-                    @endforeach
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label" for="rdv-dur">Durée (min)</label>
-                    <input type="number" min="5" class="form-control" id="rdv-dur" name="{{ $rdv::DUREE }}"
-                           value="{{ $rdv->valeur($rdv::DUREE, '30') }}">
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label" for="rdv-cap">Places / créneau</label>
-                    <input type="number" min="1" class="form-control" id="rdv-cap" name="{{ $rdv::CAPACITE }}"
-                           value="{{ $rdv->valeur($rdv::CAPACITE, '10') }}">
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label" for="rdv-pd">Pause début</label>
-                    <input type="time" class="form-control" id="rdv-pd" name="{{ $rdv::PAUSE_DEBUT }}"
-                           value="{{ $rdv->valeur($rdv::PAUSE_DEBUT) }}">
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label" for="rdv-pf">Pause fin</label>
-                    <input type="time" class="form-control" id="rdv-pf" name="{{ $rdv::PAUSE_FIN }}"
-                           value="{{ $rdv->valeur($rdv::PAUSE_FIN) }}">
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label" for="rdv-min">Délai min (h)</label>
-                    <input type="number" min="0" class="form-control" id="rdv-min" name="{{ $rdv::DELAI_MIN }}"
-                           value="{{ $rdv->valeur($rdv::DELAI_MIN, '12') }}">
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label" for="rdv-mod">Modif. jusqu'à (h)</label>
-                    <input type="number" min="0" class="form-control" id="rdv-mod" name="{{ $rdv::DELAI_MODIF }}"
-                           value="{{ $rdv->valeur($rdv::DELAI_MODIF, '12') }}">
-                </div>
-                <div class="col-12" style="margin-top:.6rem;">
-                    <label>
-                        <input type="checkbox" name="{{ $rdv::ENABLED }}" value="1"
-                               {{ $rdv->valeur($rdv::ENABLED, '0') === '1' ? 'checked' : '' }}>
-                        Ouvrir la prise de rendez-vous aux familles
-                    </label>
-                </div>
-                <div class="col-12" style="margin-top:.75rem;">
-                    <button type="submit" class="rdv-btn rdv-btn--white" style="background:#0453cb;color:#fff;">
-                        Enregistrer les réglages
-                    </button>
-                </div>
-            </div>
-        </form>
-    </div>
+        @include('esbtp.rendez-vous.partials._reglages')
     @endif
 
-    <div class="rdv-nav">
-        <a class="rdv-btn rdv-btn--glass" style="background:#fff;color:#0453cb;border-color:#e2e8f0;"
-           href="{{ route('esbtp.rendez-vous.index', ['debut' => $semainePrecedente]) }}">Semaine précédente</a>
-        <strong>{{ $debut->translatedFormat('j F') }} — {{ $fin->translatedFormat('j F Y') }}</strong>
-        <a class="rdv-btn rdv-btn--glass" style="background:#fff;color:#0453cb;border-color:#e2e8f0;"
-           href="{{ route('esbtp.rendez-vous.index', ['debut' => $semaineSuivante]) }}">Semaine suivante</a>
+    <div id="rdv-tableau" class="rdv-tableau">@include('esbtp.rendez-vous.partials._tableau')</div>
+
+    <div class="rdv-modale" id="rdv-aide" role="dialog" aria-modal="true" aria-labelledby="rdv-aide-titre">
+        <div class="rdv-modale-boite rdv-aide">
+            <h2 id="rdv-aide-titre"><span class="rdv-section-icon"><i class="fas fa-book-open"></i></span>Comment fonctionnent les rendez-vous</h2>
+            <h3>Le chemin d'une famille</h3>
+            <ol>
+                <li><strong>Réglages</strong> — jours, horaires du guichet, durée et nombre de familles par créneau.</li>
+                <li><strong>Générer les créneaux</strong> — les créneaux se créent pour toute la période. Les créneaux déjà réservés ne sont jamais touchés.</li>
+                <li><strong>Ouvrir la prise de rendez-vous</strong> — sans elle, le site klassci.com répond « pas ouverte », même si des créneaux existent.</li>
+                <li><strong>La famille réserve</strong> sur le site, ou vous la placez avec « Placer et convoquer ».</li>
+                <li><strong>La convocation part par e-mail</strong>, avec un lien vers son PDF.</li>
+            </ol>
+            <h3>L'état d'une convocation</h3>
+            <ul class="rdv-aide-etats">
+                <li><span class="rdv-badge rdv-badge--succes">Convocation envoyée</span> MailPulse l'a acceptée ; l'heure est affichée.</li>
+                <li><span class="rdv-badge rdv-badge--attente">En attente d'envoi</span> elle partira au prochain envoi : par la tâche planifiée si elle est active sur votre établissement, ou avec le bouton « Envoyer ».</li>
+                <li><span class="rdv-badge rdv-badge--echec">Envoi échoué</span> la raison est écrite sous le badge. « Relancer les échecs » les renvoie.</li>
+                <li><span class="rdv-badge rdv-badge--neutre">Sans e-mail</span> aucune adresse valide : prévenez la famille autrement.</li>
+                <li><span class="rdv-badge rdv-badge--neutre">Sans objet</span> le créneau était passé au moment de l'envoi.</li>
+                <li><span class="rdv-badge rdv-badge--inconnu">Non suivie</span> réservation d'avant le suivi des envois : on ne sait pas si le courriel est parti.</li>
+            </ul>
+            <h3>Fermer un créneau</h3>
+            <p>L'interrupteur retire le créneau du site. Les familles qui l'ont déjà réservé gardent leur rendez-vous.</p>
+            <div class="rdv-modale-pied">
+                <button type="button" class="rdv-btn rdv-btn--primary" data-rdv-aide-fermer>J'ai compris</button>
+            </div>
+        </div>
     </div>
 
-    @foreach($jours as $jour)
-        <div class="rdv-card">
-            <div class="rdv-jour-titre">{{ $jour['libelle'] }}</div>
-            @forelse($jour['creneaux'] as $creneau)
-                <div class="rdv-slot {{ $creneau->ouvert ? '' : 'rdv-slot--ferme' }}">
-                    <div>
-                        <span class="rdv-heure">{{ $creneau->heureDebutHi() }} – {{ $creneau->heureFinHi() }}</span>
-                        <span class="rdv-badge {{ $creneau->ouvert ? 'rdv-badge--ouvert' : 'rdv-badge--ferme' }}">
-                            {{ $creneau->ouvert ? 'Ouvert' : 'Fermé' }}
-                        </span>
-                        <span style="font-size:.8rem;color:#64748b;margin-left:.4rem;">{{ $creneau->capacite }} places</span>
-                    </div>
-                    @if($peutGerer)
-                        @if($creneau->ouvert)
-                            <form method="POST" action="{{ route('esbtp.rendez-vous.fermer', $creneau) }}">
-                                @csrf
-                                <button type="submit" class="rdv-btn" style="background:#fff;color:#475569;border-color:#e2e8f0;">Fermer</button>
-                            </form>
-                        @else
-                            <form method="POST" action="{{ route('esbtp.rendez-vous.ouvrir', $creneau) }}">
-                                @csrf
-                                <button type="submit" class="rdv-btn rdv-btn--white">Ouvrir</button>
-                            </form>
-                        @endif
-                    @endif
-                </div>
-            @empty
-                <div class="rdv-empty">Aucun créneau ce jour.</div>
-            @endforelse
+    <div class="rdv-modale" id="rdv-modale" role="dialog" aria-modal="true" aria-labelledby="rdv-modale-titre">
+        <div class="rdv-modale-boite">
+            <h2 id="rdv-modale-titre"><span class="rdv-section-icon"><i class="fas fa-circle-question"></i></span>Confirmer</h2>
+            <p data-rdv-modale-texte></p>
+            <div class="rdv-modale-pied">
+                <button type="button" class="rdv-btn rdv-btn--ghost" data-rdv-modale="non">Annuler</button>
+                <button type="button" class="rdv-btn rdv-btn--primary" data-rdv-modale="oui">Confirmer</button>
+            </div>
         </div>
-    @endforeach
+    </div>
 </div>
+
+@include('partials._klassci_toast')
 @endsection
+
+@push('scripts')
+<script>
+(function () {
+    if (window.__rdvPageInit) return;
+    window.__rdvPageInit = true;
+
+    const page = document.querySelector('[data-rdv-page]');
+    if (!page) return;
+    // La page a ses propres toasts : le relais du shell mobile les doublerait.
+    document.body.setAttribute('data-m-toast', 'off');
+    const jeton = document.querySelector('meta[name="csrf-token"]')?.content || '';
+    // Semaine affichee au chargement : l'URL sans ?debut y revient au retour arriere.
+    const debutInitial = page.dataset.debut;
+
+    function notifier(type, message) {
+        const div = document.createElement('div');
+        div.textContent = message;
+        window.dispatchEvent(new CustomEvent('toast', { detail: { type: type, message: div.innerHTML } }));
+    }
+
+    async function envoyerPost(url, corps) {
+        const reponse = await fetch(url, {
+            method: 'POST',
+            headers: Object.assign(
+                { 'X-CSRF-TOKEN': jeton, 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                corps instanceof FormData ? {} : { 'Content-Type': 'application/json' }
+            ),
+            body: corps instanceof FormData ? corps : JSON.stringify(corps || {}),
+        });
+        const donnees = await reponse.json().catch(() => ({}));
+        if (!reponse.ok) {
+            const erreur = new Error(donnees.message || (reponse.status === 429 ? 'Trop de demandes, patientez une minute.' : 'Action impossible (erreur ' + reponse.status + ').'));
+            erreur.donnees = donnees;
+            erreur.statut = reponse.status;
+            throw erreur;
+        }
+        return donnees;
+    }
+
+    async function rafraichir(debut, historique) {
+        const tableau = document.getElementById('rdv-tableau');
+        const cible = debut || page.dataset.debut;
+        tableau.classList.add('is-chargement');
+        try {
+            const url = new URL(page.dataset.urlIndex, window.location.origin);
+            url.searchParams.set('debut', cible);
+            url.searchParams.set('fragment', '1');
+            const reponse = await fetch(url, { headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } });
+            if (!reponse.ok) throw new Error('Impossible de recharger le planning (erreur ' + reponse.status + ').');
+            const d = await reponse.json();
+            tableau.innerHTML = d.tableau;
+            document.getElementById('rdv-kpis').innerHTML = d.kpis;
+            document.getElementById('rdv-chaine').innerHTML = d.chaine;
+            const resume = document.getElementById('rdv-reglages-resume');
+            if (resume && d.reglages) resume.innerHTML = d.reglages;
+            page.dataset.debut = cible;
+            if (historique) {
+                const visible = new URL(window.location.href);
+                visible.searchParams.set('debut', cible);
+                window.history.pushState({ debut: cible }, '', visible);
+            }
+        } catch (e) {
+            notifier('error', e.message);
+        } finally {
+            tableau.classList.remove('is-chargement');
+        }
+    }
+
+    const modale = document.getElementById('rdv-modale');
+    function confirmer(texte) {
+        return new Promise((resoudre) => {
+            const retour = document.activeElement;
+            modale.querySelector('[data-rdv-modale-texte]').textContent = texte;
+            modale.classList.add('is-ouverte');
+            const oui = modale.querySelector('[data-rdv-modale="oui"]');
+            oui.focus();
+            function fermer(reponse) {
+                modale.classList.remove('is-ouverte');
+                modale.removeEventListener('click', surClic);
+                document.removeEventListener('keydown', surTouche);
+                if (retour && typeof retour.focus === 'function' && document.contains(retour)) retour.focus();
+                resoudre(reponse);
+            }
+            function surClic(ev) {
+                if (ev.target === modale) return fermer(false);
+                const choix = ev.target.closest('[data-rdv-modale]');
+                if (choix) fermer(choix.dataset.rdvModale === 'oui');
+            }
+            function surTouche(ev) { if (ev.key === 'Escape') fermer(false); }
+            modale.addEventListener('click', surClic);
+            document.addEventListener('keydown', surTouche);
+        });
+    }
+
+    async function occuper(bouton, travail) {
+        if (bouton) bouton.disabled = true;
+        try { return await travail(); } finally { if (bouton) bouton.disabled = false; }
+    }
+
+    // Envoi par paquets : chaque appel s'arrete de lui-meme avant la limite de
+    // temps du serveur. On rappelle tant qu'il en reste, et on s'arrete net sur
+    // un refus de configuration, que l'on affiche tel quel.
+    let envoiEnCours = false;
+    async function envoyerConvocations() {
+        if (envoiEnCours) return;
+        envoiEnCours = true;
+        const bloc = document.getElementById('rdv-envoi');
+        const titre = bloc.querySelector('[data-rdv-envoi-titre]');
+        const compte = bloc.querySelector('[data-rdv-envoi-compte]');
+        const barre = bloc.querySelector('[data-rdv-envoi-barre]');
+        let envoyees = 0, echecs = 0, total = null;
+        bloc.classList.add('is-actif');
+        titre.textContent = 'Envoi des convocations…';
+        try {
+            for (;;) {
+                const r = await envoyerPost(page.dataset.urlEnvoyer);
+                if (r.en_cours) {
+                    // Un autre envoi (tache planifiee, autre onglet) tient le verrou :
+                    // on attend qu'il libere plutot que de doubler les courriels.
+                    titre.textContent = 'Un autre envoi est en cours, reprise dans un instant…';
+                    await new Promise((ok) => setTimeout(ok, 4000));
+                    titre.textContent = 'Envoi des convocations…';
+                    continue;
+                }
+                envoyees += r.envoyees; echecs += r.echecs;
+                if (total === null) total = envoyees + echecs + r.restantes;
+                const faites = envoyees + echecs;
+                barre.style.width = (total > 0 ? Math.round(100 * faites / total) : 100) + '%';
+                compte.textContent = faites + ' / ' + total + ' traitées';
+                if (r.bloque) {
+                    notifier('error', 'Envoi interrompu : ' + r.bloque);
+                    break;
+                }
+                if (r.restantes === 0 || r.envoyees + r.echecs === 0) {
+                    notifier(echecs > 0 ? 'warning' : 'success', envoyees + ' convocation(s) envoyée(s)' + (echecs > 0 ? ', ' + echecs + ' refusée(s) — le motif est affiché sur chaque réservation.' : '.'));
+                    break;
+                }
+            }
+        } catch (e) {
+            notifier('error', e.message);
+        } finally {
+            envoiEnCours = false;
+            titre.textContent = 'Envoi terminé';
+            setTimeout(() => bloc.classList.remove('is-actif'), 2500);
+            rafraichir();
+        }
+    }
+
+    function ouvrirReglages() {
+        const reglages = document.getElementById('reglages');
+        if (!reglages) return;
+        reglages.open = true;
+        reglages.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    document.addEventListener('click', async function (ev) {
+        const el = ev.target.closest('[data-rdv-ouvrir-reglages], [data-rdv-action], [data-rdv-semaine], [data-rdv-basculer], [data-rdv-envoyer], [data-rdv-remettre]');
+        if (!el || !page.contains(el)) return;
+        ev.preventDefault();
+
+        if (el.hasAttribute('data-rdv-ouvrir-reglages')) return ouvrirReglages();
+        if (el.dataset.rdvSemaine) return rafraichir(el.dataset.rdvSemaine, true);
+        if (el.hasAttribute('data-rdv-envoyer')) return envoyerConvocations();
+        if (el.dataset.confirm && !(await confirmer(el.dataset.confirm))) return;
+
+        await occuper(el, async () => {
+            try {
+                if (el.dataset.rdvBasculer) {
+                    const r = await envoyerPost(el.dataset.rdvBasculer);
+                    notifier('success', r.message);
+                    return rafraichir();
+                }
+                if (el.dataset.rdvRemettre) {
+                    const r = await envoyerPost(page.dataset.urlRemettre, { quoi: el.dataset.rdvRemettre });
+                    await rafraichir();
+                    if (r.a_envoyer > 0) envoyerConvocations();
+                    return;
+                }
+                const action = el.dataset.rdvAction;
+                const r = await envoyerPost(action === 'placer' ? page.dataset.urlPlacer : page.dataset.urlGenerer);
+                notifier('success', r.message);
+                await rafraichir();
+                if (action === 'placer' && r.a_envoyer > 0) envoyerConvocations();
+            } catch (e) {
+                notifier('error', e.message);
+                // Un refus code (famille plus a prevenir, appel non annulable) : la ligne affichee est perimee.
+                if (e.donnees && e.donnees.code) rafraichir();
+            }
+        });
+    });
+
+    document.addEventListener('submit', async function (ev) {
+        const formulaire = ev.target.closest('[data-rdv-reglages]');
+        if (!formulaire) return;
+        ev.preventDefault();
+        const bouton = formulaire.querySelector('[type="submit"]');
+        await occuper(bouton, async () => {
+            try {
+                const r = await envoyerPost(formulaire.action, new FormData(formulaire));
+                notifier('success', r.message);
+                await rafraichir();
+            } catch (e) {
+                notifier('error', e.message);
+            }
+        });
+    });
+
+    window.addEventListener('popstate', function () {
+        const debut = new URL(window.location.href).searchParams.get('debut');
+        rafraichir(debut || debutInitial, false);
+    });
+
+    if (window.location.hash === '#reglages') ouvrirReglages();
+})();
+</script>
+<script>
+window.__rdvGuideEtapes = [
+    { sel: '.rdv-kpis', titre: 'Le point du jour', texte: 'Rendez-vous à venir, convocations parties et à traiter, places encore libres : tout ce qui compte en un coup d\'œil.' },
+    { sel: '#rdv-chaine', titre: 'L\'état de la chaîne', texte: 'Si une famille ne peut pas réserver ou ne reçoit rien, la raison est ici, avec le lien pour la régler.' },
+    { sel: '#reglages', titre: 'Les réglages', texte: 'Jours, horaires, durée et nombre de familles par créneau. N\'oubliez pas d\'ouvrir la prise de rendez-vous aux familles.' },
+    { sel: '.rdv-hero [data-rdv-action="generer"]', titre: 'Générer les créneaux', texte: 'Crée les créneaux de toute la période. Un créneau déjà réservé n\'est jamais modifié.' },
+    { sel: '.rdv-slot', titre: 'Un créneau', texte: 'La jauge montre les places prises. L\'interrupteur retire le créneau du site sans annuler les réservations.' },
+    { sel: '.rdv-resas', titre: 'Les familles attendues', texte: 'Dépliez pour voir qui vient, et si sa convocation est partie — ou pourquoi elle a échoué.', ouvrir: true },
+    { sel: '.rdv-hero [data-rdv-action="placer"]', titre: 'Placer et convoquer', texte: 'Place les dossiers en attente sur les premiers créneaux libres, puis envoie leurs convocations, avec une barre de progression.' },
+    { sel: '.rdv-semaine', titre: 'Changer de semaine', texte: 'Les flèches parcourent le planning sans recharger la page. « Aujourd\'hui » revient à la semaine en cours.' },
+];
+
+// Semaine vide : un creneau d'exemple, marque comme tel, jamais envoye au serveur.
+window.__rdvGuideAvant = function () {
+    const reglages = document.getElementById('reglages');
+    if (reglages) reglages.open = false;
+    if (document.querySelector('#rdv-tableau .rdv-slot')) return;
+    const cible = document.querySelector('#rdv-tableau .rdv-semaine');
+    if (!cible) return;
+    const demo = document.createElement('section');
+    demo.className = 'rdv-card rdv-jour rdv-tour-demo';
+    demo.setAttribute('data-tour-demo', '');
+    demo.innerHTML = '<span class="rdv-tour-demo-etiquette">Exemple du guide</span>'
+        + '<header class="rdv-jour-tete"><h3>Lundi (exemple)</h3><span class="rdv-jour-resume">1 créneau · <strong>2</strong> / 4 places prises</span></header>'
+        + '<div class="rdv-slots"><div class="rdv-slot rdv-slot--ouvert"><div class="rdv-slot-ligne">'
+        + '<span class="rdv-heure">08:00 – 08:30</span><span class="rdv-jauge"><span style="width:50%"></span></span>'
+        + '<span class="rdv-slot-compte"><strong>2</strong> / 4</span><span class="rdv-etat rdv-etat--ouvert">Ouvert</span>'
+        + '<span class="rdv-switch" aria-hidden="true" style="background:#0453cb"><span class="rdv-switch-rond" style="left:21px"></span></span></div>'
+        + '<details class="rdv-resas" open><summary><i class="fas fa-chevron-right"></i>2 familles attendues</summary><ul>'
+        + '<li class="rdv-resa"><div class="rdv-resa-qui"><strong>Famille exemple A</strong><span>07 00 00 00 00</span></div><div class="rdv-resa-conv"><span class="rdv-badge rdv-badge--succes">Convocation envoyée</span></div></li>'
+        + '<li class="rdv-resa"><div class="rdv-resa-qui"><strong>Famille exemple B</strong><span>05 00 00 00 00</span></div><div class="rdv-resa-conv"><span class="rdv-badge rdv-badge--echec">Envoi échoué</span><small class="rdv-resa-erreur">Adresse refusée</small></div></li>'
+        + '</ul></details></div></div>';
+    cible.insertAdjacentElement('afterend', demo);
+};
+</script>
+@include('esbtp.rendez-vous.partials._guide')
+@endpush

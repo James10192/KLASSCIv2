@@ -18,4 +18,9 @@ trait EstPorteurDeRendezVous
     {
         $this->forceFill(['rdv_invite_at' => now()])->save();
     }
+
+    public function dossierClos(): bool
+    {
+        return in_array($this->statut, static::statutsDossierClos(), true);
+    }
 }

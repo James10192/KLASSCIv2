@@ -8,7 +8,7 @@ une ECUE du LMD évaluée dans une classe BTS, ou l'inverse.
 | Base | `/api/cli` |
 | Authentification | Bearer Sanctum |
 | Abilities | `cli:read` en lecture, `cli:admin` en écriture |
-| Contrôleur | `App\Http\Controllers\API\CLI\CLIMaintenanceController` |
+| Contrôleurs | `CLIMaintenanceController` (diagnostic), `CLIEvaluationMatiereController` (rebascule) — `App\Http\Controllers\API\CLI` |
 | Prédicat partagé | `App\Domain\Academique\CoherenceSystemeAcademique` |
 
 ## Ce qui rend ce diagnostic nécessaire
@@ -86,6 +86,27 @@ même temps la copie dénormalisée `esbtp_notes.matiere_id` — sans quoi les n
 resteraient rattachées à l'ancienne matière et le bulletin continuerait de
 l'afficher.
 
+⚠️ **Cette description a été incomplète jusqu'en septembre 2026, et elle a coûté
+cher.** Déplacer les notes ne suffit pas : cet `update()` est un update de
+**query builder**, il n'émet aucun événement Eloquent, donc `ESBTPNoteObserver`
+ne tourne pas et aucun recalcul n'est déclenché. Les deux coordonnées — celle
+qu'on quitte comme celle qu'on rejoint — gardaient la moyenne d'avant dans
+`esbtp_resultats`, et **cette moyenne périmée l'emporte sur les notes**. Mesuré
+le 20 septembre 2026 sur `esbtp-abidjan` après un déplacement : élève 149,
+matière 14, l'agrégat disait 15, les cinq notes disent 15,6.
+
+La réponse porte désormais `recalculs_tentes`, `agregats_orphelins` et
+`recalculs_en_echec` ; le détail du recalcul, et ce qu'il refuse délibérément de
+faire, est dans [CLI_RECALCUL_RESULTATS.md](CLI_RECALCUL_RESULTATS.md).
+
+**Sept chemins déplacent une évaluation, à ce jour** — c'est un relevé, pas un
+inventaire garanti. Six sont branchés sur le recalcul ; le septième,
+`MergeDuplicateEcue` sous `force`, ne l'est pas, et
+[CLI_RECALCUL_RESULTATS.md](CLI_RECALCUL_RESULTATS.md) dit pourquoi — ainsi que
+l'annulation, qui ne déplace rien mais recalcule aussi. Un nouveau
+chemin qui écrit `esbtp_notes` par un `update()` de query builder doit appeler
+`RecalculApresDeplacement` : aucun observateur ne le fera à sa place.
+
 ```bash
 curl -s -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
   -d '{"matiere_id": 42, "dry_run": true}' \
@@ -108,7 +129,9 @@ d'arbitrer. **Ne les effacez jamais d'office** — c'est une politique d'école
    classe et matière redeviennent du même côté. L'endpoint ci-dessus ne change
    que la matière : ce déplacement se fait par l'écran.
 3. **Annuler l'évaluation** (`status = cancelled`) — exclue du bulletin **par le
-   chemin de génération**, les notes restent en base et tracées.
+   chemin de génération**, les notes restent en base et tracées. La moyenne
+   enregistrée est recalculée sans elles ; si elles étaient les seules, elle est
+   laissée telle quelle et nommée, jamais remise à zéro.
 
    ⚠️ **Ce n'est pas vrai de tous les chemins.** La moyenne **annuelle** de
    secours (`BulletinService::calculateStudentAverageForPeriode()`, branche
@@ -131,6 +154,15 @@ nécessaire.
 
 ## Historique
 
+- **Septembre 2026 (bis)** — la séance de devoir et `esbtp:check-evaluations-annees`
+  rejoignent les chemins branchés ; l'annulation d'une évaluation recalcule aussi.
+  Détail dans [CLI_RECALCUL_RESULTATS.md](CLI_RECALCUL_RESULTATS.md).
+- **Septembre 2026** — **quatre des cinq** chemins trouvés qui déplacent une
+  évaluation recalculent les agrégats des deux côtés. Ils déplaçaient les notes
+  sans rien rafraîchir, et l'agrégat périmé gagne sur les notes : le déplacement
+  avait l'air fait et ne l'était qu'à moitié. Le cinquième, `MergeDuplicateEcue`
+  sous `force`, ne recalcule pas, à dessein : voir son en-tête. La rebascule de
+  matière vit désormais dans `CLIEvaluationMatiereController` ; la route et son nom sont inchangés.
 - **Septembre 2026** — la réponse porte un second bloc `moyennes_manuelles` et un
   `total_toutes_familles`. La version antérieure ne relevait que les évaluations
   et a été prise pour l'inventaire complet. Un garde de cohérence est posé sur
@@ -146,3 +178,5 @@ nécessaire.
 - `.claude/rules/lmd-bts-bulletin-separation.md` — séparation stricte BTS / LMD
 - `app/Domain/Academique/CoherenceSystemeAcademique.php` — le prédicat, et les
   trois conduites qui en découlent
+- [CLI_RECALCUL_RESULTATS.md](CLI_RECALCUL_RESULTATS.md) — rafraîchir un agrégat
+  périmé, et savoir si un job dispatché tourne
