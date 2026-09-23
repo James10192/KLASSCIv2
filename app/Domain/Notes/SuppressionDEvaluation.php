@@ -71,8 +71,10 @@ final class SuppressionDEvaluation
     {
         $date = $devoir->date_evaluation ? ' du '.$devoir->date_evaluation->format('d/m/Y') : '';
 
-        return 'Le devoir « '.($devoir->titre ?: 'sans titre').' »'.$date.' est '.mb_strtolower($devoir->status_label, 'UTF-8')
-            .' : annulez-le d\'abord depuis la liste des évaluations, puis supprimez la séance.';
+        // Le libellé de statut est celui d'une évaluation, au féminin : on le
+        // cite (« Terminée ») plutôt que de l'accorder avec « devoir ».
+        return 'Le devoir « '.($devoir->titre ?: 'sans titre').' »'.$date.' a le statut « '.$devoir->status_label
+            .' » : annulez-le d\'abord depuis la liste des évaluations, puis supprimez la séance.';
     }
 
     private static function devoirDe(ESBTPSeanceCours $seance): ?ESBTPEvaluation
