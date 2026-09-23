@@ -877,3 +877,9 @@ body.m-sheet-open { overflow: hidden; }
     .ce-overlay .ce-actions .ce-btn-secondary { min-height: 46px; }
 }
 @keyframes stu-sheet-up { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+/* Une fenêtre modale ouverte occupe l'écran : la barre du bas (z-index 1080)
+   passait au-dessus des modales Bootstrap (1055) et recouvrait leurs boutons. */
+body.modal-open .m-bottomnav,
+body.modal-open .m-fab,
+body.modal-open .m-actionbar { display: none !important; }
