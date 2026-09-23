@@ -464,6 +464,8 @@
         </div>
     </div>
 </div>
+
+@include('esbtp.resultats.partials._motif-regeneration')
 @endsection
 
 @push('scripts')
@@ -511,13 +513,6 @@
             }, 100);
         });
 
-        // Auto-filter on select change (AJAX)
-        document.querySelectorAll('.sr-auto-filter').forEach(function(el) {
-            el.addEventListener('change', function() {
-                srSubmitFilter();
-            });
-        });
-
         // ═══ Auto-sync année quand on change la classe ═══
         // Map { classe_id: [annee_id, ...] } injectée via data-inscription-map.
         // Si la classe sélectionnée n'est pas inscrite dans l'année courante,
@@ -545,6 +540,15 @@
                 }
             });
         })();
+
+        // Auto-filter on select change (AJAX). Posé APRÈS le recalage de
+        // l'année ci-dessus : sinon la requête partait avec l'année de
+        // l'ancienne classe.
+        document.querySelectorAll('.sr-auto-filter').forEach(function(el) {
+            el.addEventListener('change', function() {
+                srSubmitFilter();
+            });
+        });
 
         // Filter form submit via AJAX
         var form = document.getElementById('sr-filter-form');
@@ -684,18 +688,30 @@
     }
 
     // ═══ AJAX content swap ═══
-    function srFetchAndSwap(url) {
+    // Seule la DERNIÈRE demande s'affiche : deux clics rapides (S1 puis S2)
+    // laissaient gagner la réponse arrivée en dernier, pas le dernier clic.
+    var srSwapSeq = 0;
+    var srSwapController = null;
+
+    function srFetchAndSwap(url, options) {
+        var pushHistory = !options || options.push !== false;
+        var seq = ++srSwapSeq;
+        if (srSwapController) srSwapController.abort();
+        srSwapController = typeof AbortController === 'function' ? new AbortController() : null;
+
         var overlay = document.getElementById('sr-loading');
         if (overlay) overlay.classList.add('active');
 
         fetch(url, {
-            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            signal: srSwapController ? srSwapController.signal : undefined
         })
         .then(function(res) {
             if (!res.ok) throw new Error('HTTP ' + res.status);
             return res.text();
         })
         .then(function(html) {
+            if (seq !== srSwapSeq) return;
             var parser = new DOMParser();
             var doc = parser.parseFromString(html, 'text/html');
             var fresh = doc.getElementById('etudiant-resultats-content');
@@ -708,8 +724,9 @@
                 target.dataset.routeBase = fresh.dataset.routeBase || target.dataset.routeBase;
             }
 
-            // Update URL without reload
-            history.pushState(null, '', url);
+            // Update URL without reload. Au retour arrière, l'URL est déjà la
+            // bonne : l'empiler à nouveau effaçait l'historique « suivant ».
+            if (pushHistory) history.pushState(null, '', url);
 
             // Re-initialize everything
             initStudentResults();
@@ -718,6 +735,7 @@
             if (overlay) overlay.classList.remove('active');
         })
         .catch(function(err) {
+            if (seq !== srSwapSeq || (err && err.name === 'AbortError')) return;
             console.error('AJAX error:', err);
             if (overlay) overlay.classList.remove('active');
             // Fallback: navigate normally
@@ -857,7 +875,13 @@
         new bootstrap.Modal(document.getElementById('srBulletinWarningModal')).show();
     }
 
+    var srRegenerateInFlight = false;
+
     function srRegenerateBulletin(payload, onSuccess) {
+        // Un second clic pendant le calcul lançait une seconde régénération
+        // complète (rangs de la classe compris), avec un second toast.
+        if (srRegenerateInFlight) return;
+
         var container = document.getElementById('etudiant-resultats-content');
         var regenerateUrl = container ? container.dataset.regenerateUrl : null;
         var csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
@@ -868,6 +892,9 @@
             }
             return;
         }
+
+        srRegenerateInFlight = true;
+        window.srSetRegenerateBusy(true);
 
         fetch(regenerateUrl, {
             method: 'POST',
@@ -886,7 +913,13 @@
         })
         .then(function(result) {
             if (!result.ok || !result.data.ok) {
-                // Affiche l'erreur via toast premium AVANT de redirect/throw
+                if (result.data.error === 'academic_pilotage.incomplete_bulletin_reason_required' && !payload.incomplete_reason) {
+                    window.srAskIncompleteReason(function(reason) {
+                        srRegenerateBulletin(Object.assign({}, payload, { incomplete_reason: reason }), onSuccess);
+                    });
+                    return;
+                }
+
                 var errMsg = result.data.message
                     || (result.data.errors && Object.values(result.data.errors).flat().join(' · '))
                     || ('Erreur HTTP ' + result.status);
@@ -897,9 +930,8 @@
                 }
                 if (result.data.redirect_url) {
                     setTimeout(function() { window.location.href = result.data.redirect_url; }, 1500);
-                    return;
                 }
-                throw new Error(errMsg);
+                return;
             }
 
             if (typeof window.klassciToast === 'function') {
@@ -911,6 +943,13 @@
         })
         .catch(function(error) {
             console.error('Erreur régénération bulletin:', error);
+            if (typeof window.klassciToast === 'function') {
+                window.klassciToast('error', 'La régénération n’a pas abouti. Réessayez ; si le problème persiste, prévenez le support.');
+            }
+        })
+        .finally(function() {
+            srRegenerateInFlight = false;
+            window.srSetRegenerateBusy(false);
         });
     }
 
@@ -927,7 +966,7 @@
 
     // ═══ Handle browser back/forward ═══
     window.addEventListener('popstate', function() {
-        srFetchAndSwap(window.location.href);
+        srFetchAndSwap(window.location.href, { push: false });
     });
 
     // ═══ Initial setup ═══
