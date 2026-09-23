@@ -52,7 +52,7 @@ class RecomputeStudentResultatJob implements ShouldQueue
     public int $timeout = 60;
 
     /**
-     * @param  string  $source  observer | command | manual
+     * @param  string  $source  observer | command | manual | cli | deplacement | ponderation
      * @param  int|null  $triggeredBy  user_id à l'origine du recalcul (peut être null en queue async)
      */
     public function __construct(
