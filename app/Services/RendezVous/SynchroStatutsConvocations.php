@@ -25,12 +25,17 @@ class SynchroStatutsConvocations
 {
     public const FENETRE_JOURS = 30;
 
+    /** Statuts MailPulse : remis a la famille. */
     private const DELIVRES = ['delivered', 'read'];
 
-    private const ECHOUES = ['failed', 'cancelled', 'template_required', 'bounced', 'suppressed', 'complained'];
+    /** Statuts MailPulse : definitivement non remis. Le detail (rebond, plainte) est dans error_code. */
+    private const ECHOUES = ['failed', 'cancelled', 'template_required'];
 
-    /** Refus locaux qui frapperont toutes les lectures suivantes : on arrete le lot. */
-    private const BLOQUANTS = [MailPulseApi::DESACTIVE, MailPulseApi::CLE_ABSENTE, 'auth_failed'];
+    /**
+     * Statuts MailPulse definitifs qui ne disent rien de la remise : le message
+     * a ete fusionne avec un autre. Notes, et plus jamais relus.
+     */
+    public const NEUTRES_DEFINITIFS = ['reconciled', 'duplicate_confirmed'];
 
     public function __construct(private readonly MailPulseStatutsMessages $statuts) {}
 
@@ -43,6 +48,7 @@ class SynchroStatutsConvocations
             ->where('convocation_statut', StatutConvocationRdv::Envoyee->value)
             ->whereNotNull('convocation_message_id')
             ->whereNull('convocation_delivree_at')
+            ->where(fn ($q) => $q->whereNull('convocation_code_distant')->orWhereNotIn('convocation_code_distant', self::NEUTRES_DEFINITIFS))
             ->where('convocation_envoyee_at', '>=', now()->subDays(self::FENETRE_JOURS))
             ->orderByRaw('convocation_synchro_at IS NOT NULL, convocation_synchro_at')
             ->limit($maximum)
@@ -52,7 +58,9 @@ class SynchroStatutsConvocations
             $etat = $this->statuts->lire((string) $reservation->convocation_message_id);
 
             if (is_string($etat)) {
-                if (in_array($etat, self::BLOQUANTS, true)) {
+                // Configuration ou service indisponible : les lectures suivantes
+                // echoueraient pareil. On arrete le lot sans rien dater.
+                if (in_array($etat, MessagerieRdv::REFUS_DE_CONFIGURATION, true) || in_array($etat, MessagerieRdv::REFUS_PASSAGERS, true)) {
                     $rapport['bloque'] = $etat;
                     break;
                 }
@@ -78,7 +86,8 @@ class SynchroStatutsConvocations
      */
     private function appliquer(ESBTPRdvReservation $reservation, array $etat): string
     {
-        $code = $etat['error_code'] ?: $etat['status'];
+        // Un statut neutre definitif est note tel quel : c'est lui qui l'exclut des relectures.
+        $code = in_array($etat['status'], self::NEUTRES_DEFINITIFS, true) ? $etat['status'] : ($etat['error_code'] ?: $etat['status']);
         $champs = ['convocation_synchro_at' => now(), 'convocation_code_distant' => mb_substr($code, 0, 60)];
 
         if (in_array($etat['status'], self::DELIVRES, true)) {

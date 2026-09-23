@@ -92,6 +92,32 @@ class SynchroConvocationsTest extends TestCase
         $this->assertNull($reservation->fresh()->convocation_erreur);
     }
 
+    public function test_une_panne_passagere_arrete_le_lot_sans_rien_dater(): void
+    {
+        Http::fake(['mailpulse.test/api/v1/messages/*' => Http::response(['error' => 'busy'], 503)]);
+        $premiere = $this->reservation('msg_a');
+        $seconde = $this->reservation('msg_b');
+
+        $this->artisan('inscriptions:synchroniser-convocations-rdv')->assertFailed();
+
+        Http::assertSentCount(1);
+        $this->assertNull($premiere->fresh()->convocation_synchro_at);
+        $this->assertNull($seconde->fresh()->convocation_synchro_at);
+    }
+
+    public function test_un_message_reconcilie_est_note_et_plus_jamais_relu(): void
+    {
+        Http::fake(['mailpulse.test/api/v1/messages/*' => Http::response(['message' => ['id' => 'msg_r', 'status' => 'reconciled', 'error_code' => null, 'delivered_at' => null]])]);
+        $reservation = $this->reservation('msg_r');
+
+        $this->artisan('inscriptions:synchroniser-convocations-rdv')->assertSuccessful();
+        $this->artisan('inscriptions:synchroniser-convocations-rdv')->assertSuccessful();
+
+        Http::assertSentCount(1);
+        $this->assertSame('reconciled', $reservation->fresh()->convocation_code_distant);
+        $this->assertSame(StatutConvocationRdv::Envoyee, $reservation->fresh()->convocation_statut);
+    }
+
     public function test_mailpulse_sans_cle_arrete_le_lot_sans_rien_toucher(): void
     {
         config(['services.mailpulse.api_key' => '']);

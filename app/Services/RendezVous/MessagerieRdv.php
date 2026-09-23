@@ -17,12 +17,12 @@ class MessagerieRdv
      * toutes les convocations suivantes a l'identique. Ils ne consomment pas de
      * tentative, et arretent un lot au lieu de le parcourir pour rien.
      */
-    private const REFUS_DE_CONFIGURATION = [
+    public const REFUS_DE_CONFIGURATION = [
         'disabled', 'missing_api_key', 'auth_failed',
         'endpoint_not_found', 'endpoint_not_supported', 'invalid_dispatch_contract',
     ];
 
-    private const REFUS_PASSAGERS = [
+    public const REFUS_PASSAGERS = [
         'connection_failed', 'request_timeout', 'rate_limited', 'provider_unavailable',
     ];
 
