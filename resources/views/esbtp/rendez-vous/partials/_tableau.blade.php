@@ -2,7 +2,7 @@
 @php
     $_conv = $convocations;
     $_peutPrevenir = auth()->user()?->can('inscriptions.rdv.accueil') ?? false;
-    $_aPrevenirEtats = [null, \App\Enums\StatutConvocationRdv::SansEmail, \App\Enums\StatutConvocationRdv::Echec];
+    $_familles = app(\App\Services\RendezVous\FamillesAPrevenirRdv::class);
 @endphp
 
 {{-- 1. Les convocations : ce qui est parti, ce qui attend, ce qui a echoue --}}
@@ -122,7 +122,6 @@
                             $_complet = $_prises >= $creneau->capacite;
                             $_etat = ! $creneau->ouvert ? 'ferme' : ($_complet ? 'complet' : 'ouvert');
                             $_libelles = ['ferme' => 'Fermé', 'complet' => 'Complet', 'ouvert' => 'Ouvert'];
-                            $_commence = now()->gte(\Carbon\Carbon::parse($creneau->date->toDateString().' '.$creneau->heureDebutHi().':00'));
                         @endphp
                         <div class="rdv-slot rdv-slot--{{ $_etat }}">
                             <div class="rdv-slot-ligne">
@@ -160,7 +159,7 @@
                                                             <small>le {{ $resa->convocation_envoyee_at->translatedFormat('j M à H:i') }}</small>
                                                         @elseif($_c === \App\Enums\StatutConvocationRdv::Telephone)
                                                             <small>{{ $resa->prevenuePar ? 'par '.$resa->prevenuePar->name.' ' : '' }}{{ $resa->convocation_envoyee_at ? 'le '.$resa->convocation_envoyee_at->translatedFormat('j M à H:i') : '' }}</small>
-                                                            @if($_peutPrevenir && ! $_commence)
+                                                            @if($_peutPrevenir && $_familles->annulable($resa))
                                                                 <button type="button" class="rdv-lien" data-rdv-basculer="{{ route('esbtp.rendez-vous.accueil.prevenue.annuler', $resa) }}">Annuler</button>
                                                             @endif
                                                         @elseif($resa->convocation_erreur)
@@ -169,7 +168,7 @@
                                                     @else
                                                         <span class="rdv-badge rdv-badge--inconnu" title="Réservation antérieure au suivi des envois">Non suivie</span>
                                                     @endif
-                                                    @if($_peutPrevenir && ! $_commence && in_array($_c, $_aPrevenirEtats, true))
+                                                    @if($_peutPrevenir && $_familles->concerne($resa))
                                                         <button type="button" class="rdv-btn rdv-btn--ghost rdv-btn--sm" data-rdv-basculer="{{ route('esbtp.rendez-vous.accueil.prevenue', $resa) }}" title="Vous l'avez appelée : elle sort de la liste des familles à prévenir"><i class="fas fa-phone-volume"></i>Prévenue</button>
                                                     @endif
                                                 </div>

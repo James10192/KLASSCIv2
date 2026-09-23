@@ -15,8 +15,14 @@ use Illuminate\Support\Facades\DB;
  *
  * Une convocation « en attente » n'y figure pas : elle partira au prochain
  * envoi. Un creneau deja commence non plus : il n'y a plus personne a prevenir,
- * c'est l'accueil du jour qui prend le relais. Une famille prevenue par
- * telephone en sort : la liste raccourcit au fil des appels.
+ * c'est l'accueil du jour qui prend le relais. Un dossier clos (inscrit ou
+ * refuse) non plus : on n'appelle pas un candidat refuse pour lui rappeler son
+ * rendez-vous. Une famille prevenue par telephone en sort : la liste raccourcit
+ * au fil des appels.
+ *
+ * concerne() et requete() disent la meme chose, l'une pour une ligne en main,
+ * l'autre en SQL : l'ecran, le verrou et la liste d'appel ne peuvent pas
+ * diverger.
  */
 class FamillesAPrevenirRdv
 {
@@ -27,16 +33,29 @@ class FamillesAPrevenirRdv
     {
     }
 
+    /** Cette famille est-elle a appeler ? Meme regle que la liste d'appel. */
+    public function concerne(ESBTPRdvReservation $r): bool
+    {
+        return $r->statut === StatutReservationRdv::Confirmee
+            && ($r->convocation_statut === null || in_array($r->convocation_statut, self::A_PREVENIR, true))
+            && $r->creneau !== null && ! $r->creneau->aCommence()
+            && $r->dossierOuvert();
+    }
+
+    /** Un appel note peut s'annuler tant que le rendez-vous n'a pas commence. */
+    public function annulable(ESBTPRdvReservation $r): bool
+    {
+        return $r->convocation_statut === StatutConvocationRdv::Telephone
+            && $r->creneau !== null && ! $r->creneau->aCommence();
+    }
+
     /** @return string|null le refus, ou null si c'est note */
     public function marquerPrevenue(ESBTPRdvReservation $reservation, int $agentId): ?string
     {
         return DB::transaction(function () use ($reservation, $agentId) {
             $r = ESBTPRdvReservation::query()->whereKey($reservation->id)->lockForUpdate()->first();
-            if ($r === null || $r->statut !== StatutReservationRdv::Confirmee) {
-                return 'Ce rendez-vous n\'est plus attendu.';
-            }
-            if ($r->convocation_statut !== null && ! in_array($r->convocation_statut, self::A_PREVENIR, true)) {
-                return 'Cette famille a déjà reçu sa convocation, ou elle est en cours d\'envoi.';
+            if ($r === null || ! $this->concerne($r)) {
+                return 'Cette famille n\'est plus à prévenir : convocation déjà reçue, rendez-vous commencé ou dossier clos.';
             }
 
             $r->forceFill([
@@ -58,8 +77,8 @@ class FamillesAPrevenirRdv
      */
     public function annulerPrevenue(ESBTPRdvReservation $reservation): ?string
     {
-        if ($reservation->convocation_statut !== StatutConvocationRdv::Telephone) {
-            return 'Cette famille n\'est pas notée prévenue par téléphone.';
+        if (! $this->annulable($reservation)) {
+            return 'Cet appel ne peut plus être annulé.';
         }
         $avecAdresse = filter_var(trim((string) $reservation->email), FILTER_VALIDATE_EMAIL) !== false;
         $reservation->forceFill([
@@ -120,6 +139,7 @@ class FamillesAPrevenirRdv
             ->select('esbtp_rdv_reservations.*')
             ->join('esbtp_rdv_creneaux as c', 'c.id', '=', 'esbtp_rdv_reservations.creneau_id')
             ->where('esbtp_rdv_reservations.statut', StatutReservationRdv::Confirmee->value)
+            ->dossierOuvert()
             ->where(function (Builder $q) {
                 $q->whereIn('esbtp_rdv_reservations.convocation_statut', array_column(self::A_PREVENIR, 'value'))
                     ->orWhereNull('esbtp_rdv_reservations.convocation_statut');

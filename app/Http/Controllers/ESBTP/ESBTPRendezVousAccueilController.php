@@ -38,7 +38,7 @@ class ESBTPRendezVousAccueilController extends Controller
 
     public function recu(Request $request, ESBTPRdvReservation $reservation): JsonResponse
     {
-        return $this->repondre(
+        return $this->repondreCode(
             $this->deplacee($request, $reservation) ?? $this->accueil->marquerRecu($reservation, (int) $request->user()->id),
             'Famille reçue.'
         );
@@ -46,7 +46,7 @@ class ESBTPRendezVousAccueilController extends Controller
 
     public function annuler(Request $request, ESBTPRdvReservation $reservation): JsonResponse
     {
-        return $this->repondre(
+        return $this->repondreCode(
             $this->deplacee($request, $reservation) ?? $this->accueil->annulerRecu($reservation),
             'Coche annulée : la famille est de nouveau attendue.'
         );
@@ -67,7 +67,7 @@ class ESBTPRendezVousAccueilController extends Controller
         // `creneau_vu` : le creneau que l'ecran affichait, distinct du creneau cible.
         $vu = filter_var($request->input('creneau_vu'), FILTER_VALIDATE_INT);
 
-        return $this->repondre(
+        return $this->repondreCode(
             $this->accueil->reprogrammer($reservation, $creneauId, (int) $request->user()->id, $vu === false ? null : $vu),
             'Rendez-vous reprogrammé. La nouvelle convocation part par e-mail si la famille en a un ; sinon, elle rejoint la liste des familles à prévenir.'
         );
@@ -78,11 +78,15 @@ class ESBTPRendezVousAccueilController extends Controller
         $jour = $this->jour($request->input('jour'));
         $r = $this->accueil->reprogrammerNonVenues($jour, (int) $request->user()->id);
 
-        return response()->json(['message' => match (true) {
-            $r['faites'] === 0 && $r['sans_place'] === 0 => 'Aucune famille non venue à reprogrammer ce jour.',
-            $r['sans_place'] > 0 => sprintf('%d famille(s) reprogrammée(s). %d restent faute de créneau libre : générez ou ouvrez des créneaux.', $r['faites'], $r['sans_place']),
-            default => sprintf('%d famille(s) reprogrammée(s) sur les prochains créneaux libres. Leurs convocations partent par paquets ; celles sans e-mail rejoignent la liste des familles à prévenir.', $r['faites']),
-        }] + $r, $r['sans_place'] > 0 && $r['faites'] === 0 ? 422 : 200);
+        $message = $r['faites'] + $r['sans_place'] + $r['refusees'] === 0
+            ? 'Aucune famille non venue à reprogrammer ce jour.'
+            : implode(' ', array_filter([
+                sprintf('%d famille(s) reprogrammée(s) : leurs convocations partent par paquets, celles sans e-mail rejoignent la liste des familles à prévenir.', $r['faites']),
+                $r['sans_place'] > 0 ? sprintf('%d restent faute de créneau libre : générez ou ouvrez des créneaux.', $r['sans_place']) : null,
+                $r['refusees'] > 0 ? sprintf('%d déplacée(s) entre-temps par un autre poste ou arrivée(s) sur un créneau rempli : la liste est rechargée.', $r['refusees']) : null,
+            ]));
+
+        return response()->json(['message' => $message] + $r, $r['faites'] === 0 && $r['sans_place'] + $r['refusees'] > 0 ? 422 : 200);
     }
 
     public function prevenue(Request $request, ESBTPRdvReservation $reservation, FamillesAPrevenirRdv $familles): JsonResponse
@@ -104,14 +108,20 @@ class ESBTPRendezVousAccueilController extends Controller
     {
         $vu = filter_var($request->input('creneau_id'), FILTER_VALIDATE_INT);
 
-        return $vu !== false && $vu !== null && $vu !== (int) $reservation->creneau_id
-            ? 'Ce rendez-vous vient d\'être déplacé par un autre poste. La liste est rechargée.'
-            : null;
+        return $vu !== false && $vu !== null && $vu !== (int) $reservation->creneau_id ? 'deplacee' : null;
     }
 
     private function jour(mixed $valeur): Carbon
     {
         return PortailReinscriptionService::interpreterDateIso(is_string($valeur) ? $valeur : '')?->startOfDay() ?? Carbon::today();
+    }
+
+    /** Les refus d'AccueilRdv sont des codes : l'ecran branche sur `code`, pas sur le texte. */
+    private function repondreCode(?string $code, string $succes): JsonResponse
+    {
+        return $code === null
+            ? response()->json(['message' => $succes])
+            : response()->json(['message' => AccueilRdv::message($code), 'code' => $code], 422);
     }
 
     private function repondre(?string $refus, string $succes): JsonResponse

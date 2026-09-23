@@ -392,7 +392,7 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             Route::post('/rendez-vous/placer', [\App\Http\Controllers\ESBTP\ESBTPRendezVousController::class, 'placer'])
                 ->middleware(['permission:inscriptions.rdv.manage', 'throttle:5,1'])
                 ->name('placer');
-            // Accueil du jour au guichet : liste a cocher, fin de journee, reprogrammation.
+            // Accueil du jour au guichet : liste a cocher, absences deduites, reprogrammation, appels notes.
             Route::prefix('/rendez-vous/accueil')->middleware('permission:inscriptions.rdv.accueil')->name('accueil.')->group(function () {
                 $c = \App\Http\Controllers\ESBTP\ESBTPRendezVousAccueilController::class;
                 Route::get('/', [$c, 'index'])->name('index');

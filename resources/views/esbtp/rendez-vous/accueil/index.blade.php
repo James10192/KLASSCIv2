@@ -255,7 +255,10 @@ span.rac-coche--non-venue { color: #b91c1c; background: rgba(220,38,38,.06); cur
         const reponse = await fetch(url, Object.assign({ headers: { 'X-CSRF-TOKEN': jeton, 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'Content-Type': 'application/json' } }, options || {}));
         const donnees = await reponse.json().catch(() => ({}));
         if (!reponse.ok) {
-            throw new Error(donnees.message || (reponse.status === 429 ? 'Trop de demandes, patientez une minute.' : 'Action impossible (erreur ' + reponse.status + ').'));
+            const erreur = new Error(donnees.message || (reponse.status === 429 ? 'Trop de demandes, patientez une minute.' : 'Action impossible (erreur ' + reponse.status + ').'));
+            // Le serveur rend un code stable ; on branche dessus, jamais sur le texte.
+            erreur.code = donnees.code || null;
+            throw erreur;
         }
         return donnees;
     }
@@ -436,8 +439,8 @@ span.rac-coche--non-venue { color: #b91c1c; background: rgba(220,38,38,.06); cur
         } catch (e) {
             notifier('error', e.message);
             valider.disabled = false;
-            if (/déplacé/.test(e.message)) { fermerReprog(); rafraichir(); }
-            else if (/rempli|commencé|fermé/.test(e.message)) ouvrirReprog(retourReprog);
+            if (e.code === 'deplacee' || e.code === 'recue') { fermerReprog(); rafraichir(); }
+            else if (['complet', 'trop_tot', 'ferme'].includes(e.code)) ouvrirReprog(retourReprog);
         }
     });
 
@@ -454,7 +457,7 @@ span.rac-coche--non-venue { color: #b91c1c; background: rgba(220,38,38,.06); cur
         } catch (e) {
             notifier('error', e.message);
             bouton.disabled = false;
-            if (/déplacé/.test(e.message)) rafraichir();
+            if (e.code === 'deplacee' || e.code === 'annulee') rafraichir();
         }
     }
 
@@ -480,11 +483,12 @@ span.rac-coche--non-venue { color: #b91c1c; background: rgba(220,38,38,.06); cur
             el.disabled = true;
             try {
                 const r = await poster(page.dataset.urlNonVenues, { jour: page.dataset.jour });
-                notifier(r.sans_place > 0 ? 'warning' : 'success', r.message);
+                notifier(r.sans_place + r.refusees > 0 ? 'warning' : 'success', r.message);
                 await rafraichir();
             } catch (e) {
                 notifier('error', e.message);
                 el.disabled = false;
+                rafraichir();
             }
         }
     });

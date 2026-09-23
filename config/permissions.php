@@ -405,8 +405,8 @@ return [
             'icon' => 'fa-sliders-h',
         ],
         'inscriptions.rdv.accueil' => [
-            'label' => 'Accueillir les familles au guichet (présent, absent, reprogrammer)',
-            'description' => 'Tenir la liste du jour : marquer une famille reçue ou absente, et reprogrammer un rendez-vous manqué sur un autre créneau.',
+            'label' => 'Accueillir les familles au guichet (reçue, prévenue, reprogrammer)',
+            'description' => 'Tenir la liste du jour : cocher une famille reçue, noter un appel, et reprogrammer un rendez-vous manqué sur un autre créneau. Les absences se constatent seules à la fin du créneau.',
             'group' => 'Inscriptions',
             'icon' => 'fa-clipboard-check',
         ],

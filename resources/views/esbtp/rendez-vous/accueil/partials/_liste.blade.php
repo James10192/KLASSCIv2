@@ -3,7 +3,7 @@
     $_contacts = app(\App\Services\RendezVous\ContactsFamilleRdv::class);
     $_aVenir = $jour->isFuture() && ! $jour->isToday();
     $_Tel = \App\Enums\StatutConvocationRdv::Telephone;
-    $_aPrevenir = [null, \App\Enums\StatutConvocationRdv::SansEmail, \App\Enums\StatutConvocationRdv::Echec];
+    $_familles = app(\App\Services\RendezVous\FamillesAPrevenirRdv::class);
     $_voitCandidatures = auth()->user()?->can('inscriptions.candidatures.view') ?? false;
     $_voitDemandes = auth()->user()?->can('reinscriptions.demandes.view') ?? false;
     $_nonVenuesMasse = $aReprogrammer;
@@ -43,7 +43,7 @@
             <div class="rdv-section-head" style="margin:0">
                 <span class="rdv-section-icon"><i class="fas fa-user-clock"></i></span>
                 <div>
-                    <h2>{{ $compteurs['non_venues'] }} famille{{ $compteurs['non_venues'] > 1 ? 's' : '' }} non venue{{ $compteurs['non_venues'] > 1 ? 's' : '' }}</h2>
+                    <h2>{{ $_nonVenuesMasse->count() }} famille{{ $_nonVenuesMasse->count() > 1 ? 's' : '' }} non venue{{ $_nonVenuesMasse->count() > 1 ? 's' : '' }}</h2>
                     <p>Leur créneau est terminé sans qu'elles aient été reçues. Une famille arrivée en retard se coche encore.</p>
                 </div>
             </div>
@@ -55,8 +55,8 @@
     @endif
     @foreach($creneaux as $creneau)
         @php
-            $_termine = $accueil->creneauTermine($creneau);
-            $_commence = $accueil->aCommence($creneau);
+            $_termine = $creneau->estTermine();
+            $_commence = $creneau->aCommence();
             $_etatCreneau = $_termine ? 'termine' : ($_commence ? 'en-cours' : 'a-venir');
             $_resas = $creneau->reservations;
             $_recus = $_resas->where('statut', \App\Enums\StatutReservationRdv::Honoree)->count();
@@ -78,7 +78,7 @@
                         $_retard = $accueil->enRetard($resa);
                         $_cherche = mb_strtolower($resa->nomComplet().' '.$resa->telephone.' '.str_replace('-', '', $_ref).' '.$_ref.' '.($_second['telephone'] ?? ''), 'UTF-8');
                         $_url = fn (string $action) => route('esbtp.rendez-vous.accueil.'.$action, $resa);
-                        $_sansNouvelle = ! $_commence && in_array($resa->convocation_statut, $_aPrevenir, true);
+                        $_sansNouvelle = $_familles->concerne($resa);
                     @endphp
                     <li class="rac-ligne rac-ligne--{{ $_etat }}" data-statut="{{ $_etat }}" data-cherche="{{ $_cherche }}" data-creneau="{{ $creneau->id }}">
                         @if($_etat === 'recu')
@@ -128,9 +128,9 @@
                             @if($_sansNouvelle)
                                 <button type="button" class="rdv-btn rdv-btn--ghost rdv-btn--sm" data-rac-action="{{ $_url('prevenue') }}" title="Vous l'avez appelée : elle sort de la liste des familles à prévenir"><i class="fas fa-phone-volume"></i>Prévenue</button>
                             @endif
-                            @if($_etat === 'non_venue' && ($resa->candidature ? $_voitCandidatures : $_voitDemandes))
-                                <a class="rdv-btn rdv-btn--ghost rdv-btn--sm" title="Clore le dossier d'une famille qui ne viendra pas"
-                                   href="{{ $resa->candidature ? route('esbtp.candidatures.index', ['statut' => $resa->candidature->statut]) : route('esbtp.reinscription-demandes.index', ['statut' => $resa->demande?->statut]) }}"><i class="fas fa-folder-open"></i>Dossier</a>
+                            @if($_etat === 'non_venue' && $_ref !== '' && ($resa->candidature ? $_voitCandidatures : $_voitDemandes))
+                                <a class="rdv-btn rdv-btn--ghost rdv-btn--sm" title="Ouvrir le dossier de cette famille, par exemple pour le clore"
+                                   href="{{ $resa->candidature ? route('esbtp.candidatures.index', ['reference' => $_ref]) : route('esbtp.reinscription-demandes.index', ['reference' => $_ref]) }}"><i class="fas fa-folder-open"></i>Dossier</a>
                             @endif
                             @if(in_array($_etat, ['attendu', 'non_venue'], true))
                                 <button type="button" class="rdv-btn {{ $_etat === 'non_venue' ? 'rdv-btn--primary' : 'rdv-btn--ghost' }} rdv-btn--sm"

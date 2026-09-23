@@ -85,6 +85,25 @@ class ESBTPRdvReservation extends Model
         return $porteur instanceof PorteurDeRendezVous ? $porteur : null;
     }
 
+    /**
+     * Le dossier attend encore la famille. Rejeter ou inscrire un dossier ne
+     * libere pas sa reservation : sans ce filtre, un candidat refuse resterait
+     * attendu au guichet et dans la liste d'appel.
+     */
+    public function scopeDossierOuvert(Builder $query): Builder
+    {
+        return $query->where(fn (Builder $q) => $q
+            ->whereHas('candidature', fn ($c) => $c->whereNotIn('statut', ESBTPCandidature::statutsDossierClos()))
+            ->orWhereHas('demande', fn ($d) => $d->whereNotIn('statut', ESBTPReinscriptionDemande::statutsDossierClos())));
+    }
+
+    public function dossierOuvert(): bool
+    {
+        $porteur = $this->porteur();
+
+        return $porteur !== null && ! $porteur->dossierClos();
+    }
+
     public function scopeOccupantes(Builder $query): Builder
     {
         return $query->whereIn('statut', StatutReservationRdv::valeursOccupantes());
