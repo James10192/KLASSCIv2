@@ -182,13 +182,18 @@ class BtsBulkBulletinGenerationContractTest extends TestCase
         $settingsView = file_get_contents(resource_path('views/esbtp/settings/index.blade.php'));
 
         $this->assertStringContainsString('private function persistOfficialSubjectRows(ESBTPBulletin $bulletin, array $resultatsParMatiere): void', $service);
-        $this->assertStringContainsString('ESBTPResultatMatiere::updateOrCreate(', $service);
+        // L'ecriture de la ligne vit sur le modele depuis qu'une matiere retiree
+        // puis remise doit etre restauree plutot que dupliquee.
+        $this->assertStringContainsString('ESBTPResultatMatiere::poserSurLeBulletin(', $service);
+        $this->assertStringContainsString('static::withTrashed()->updateOrCreate(', file_get_contents(app_path('Models/ESBTPResultatMatiere.php')));
         $this->assertStringContainsString('$this->persistOfficialSubjectRows($bulletin, $resultatsParMatiere);', $service);
         $this->assertStringContainsString("name=\"bulletin_save_display\"", $configurationView);
         $this->assertStringContainsString("name=\"settings_save_display\"", $settingsView);
         $this->assertStringContainsString("\$request->boolean('bulletin_save_display')", $controller);
         $this->assertStringContainsString("\$request->boolean('settings_save_display')", $settingsController);
-        $this->assertStringContainsString('if (! $treatMissingCheckboxesAsOff && ! $request->exists($formKey))', $settingsController);
+        // Une case absente vaut « off » seulement si son formulaire a ete soumis ;
+        // un champ texte absent n'est jamais vide.
+        $this->assertStringContainsString('if (! $estSoumis && ! ($estBascule && $treatMissingCheckboxesAsOff))', $settingsController);
     }
 
     public function test_official_pdf_gives_canonical_bulletin_data_priority_over_renderer_defaults(): void
@@ -224,7 +229,16 @@ class BtsBulkBulletinGenerationContractTest extends TestCase
         $abidjan = file_get_contents(resource_path('views/esbtp/bulletins/pdf-configurable-abidjan.blade.php'));
 
         $this->assertStringContainsString("{{ \$decisionConseil ?? \$councilDecision['text'] ?? \$bulletin->decision_conseil ?? '' }}", $yakro);
-        $this->assertStringContainsString("{{ \$decisionConseil ?? \$councilDecision['text'] ?? \$bulletin->decision_conseil ?? '' }}", $abidjan);
+        // Le gabarit Abidjan lit le conseil dans son pied de page, depuis
+        // `$councilDecision['text']` — que le service et le controleur
+        // construisent a partir de `$decisionConseil`, lequel retombe sur
+        // `$bulletin->decision_conseil`.
+        $piedAbidjan = file_get_contents(resource_path('views/esbtp/bulletins/partials/abidjan-results-footer.blade.php'));
+        $this->assertStringContainsString("@include('esbtp.bulletins.partials.abidjan-results-footer')", $abidjan);
+        $this->assertStringContainsString("\$councilText = (string) (\$councilDecision['text'] ?? '');", $piedAbidjan);
+        $this->assertStringContainsString('{{ $councilText }}', $piedAbidjan);
+        $this->assertStringContainsString("'text' => (string) (\$decisionConseil ?? ''),", file_get_contents(app_path('Services/BulletinService.php')));
+        $this->assertStringContainsString("'text' => (string) (\$decisionConseil ?? ''),", file_get_contents(app_path('Http/Controllers/ESBTPBulletinController.php')));
         $this->assertStringNotContainsString('decision_conseil = $automaticCouncilDecision', $bulletinService = file_get_contents(app_path('Services/BulletinService.php')));
     }
 
@@ -289,7 +303,9 @@ class BtsBulkBulletinGenerationContractTest extends TestCase
         $this->assertStringNotContainsString('MatiÃ', $abidjan);
         $this->assertStringContainsString('color: #ffffff;', $abidjan);
         $this->assertStringContainsString('background: {{ $pdfPrimary }};', $abidjan);
-        $this->assertStringContainsString('color: #ffffff !important;', $theme);
+        // En-tetes : texte calcule pour rester lisible sur une banniere claire,
+        // plus un blanc fixe.
+        $this->assertStringContainsString('color: {{ $pdfOnPrimary }} !important;', $theme);
     }
 
     public function test_config_modal_has_cross_semester_copy_and_save_scope(): void

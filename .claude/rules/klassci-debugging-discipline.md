@@ -154,8 +154,16 @@ enregistrée. `cancel()`, `restore()` et `updateStatus()` passent désormais par
 appelle `RecalculApresDeplacement::apresChangementDeStatut()`. Tout nouvel écran
 qui change un statut passe par elle. Attention au piège de
 chemin (#1) : c'est `cancel()` / `restore()` que la liste des évaluations appelle,
-pas `updateStatus()`, qu'aucun écran n'utilise. Reste sans recalcul, trouvé à ce
-jour : la **suppression** d'une évaluation déjà notée.
+pas `updateStatus()`, qu'aucun écran n'utilise.
+
+**Même défaut, toujours : la suppression.** Une évaluation supprimée l'est en
+douceur ; ses notes restent en base, mais le recalcul ne lit que celles d'une
+évaluation vivante (`ESBTPNote::deLaCoordonnee()` passe par `whereHas`, qui écarte
+les évaluations effacées). Les deux écrans qui suppriment — la liste des
+évaluations et la suppression d'une séance de devoir — passent par
+`App\Domain\Notes\SuppressionDEvaluation`. La suppression en cascade d'un emploi
+du temps, elle, supprime ses séances mais pas leurs devoirs : aucune moyenne ne
+bouge, rien à recalculer.
 
 Pour rafraîchir : `POST /api/cli/notes/recompute` ou `notes:recompute --classe --annee`
 (`docs/api/CLI_RECALCUL_RESULTATS.md`). Pour retirer une moyenne qui n'a plus

@@ -27,7 +27,7 @@ class AccesTemporairesController extends Controller
     ) {
     }
 
-    public function index()
+    public function index(Request $request)
     {
         $personnel = User::query()
             ->select('id', 'name', 'email', 'username')
@@ -36,8 +36,13 @@ class AccesTemporairesController extends Controller
             ->orderBy('name')
             ->get();
 
+        // Depuis la fiche d'une personne (liste du personnel), l'écran s'ouvre
+        // avec elle déjà choisie. Un identifiant hors de la liste est ignoré.
+        $choisi = (int) $request->query('user_id');
+
         return view('esbtp.acces-temporaires.index', [
             'personnel' => $personnel,
+            'personneChoisie' => $personnel->contains('id', $choisi) ? $choisi : null,
             'permissions' => $this->permissionsAccordables(),
             'dureeMaxJours' => $this->acces->dureeMaxJours(),
             'acces' => $this->liste(),

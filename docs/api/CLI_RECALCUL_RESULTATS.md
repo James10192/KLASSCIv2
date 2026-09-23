@@ -68,15 +68,31 @@ changement de statut passe par `App\Domain\Notes\ChangementDeStatut`.
 Le changement de **barème** ou de **coefficient** d'une évaluation notée
 recalcule aussi, depuis septembre 2026 (écran d'édition et édition rapide).
 
-**Reste sans recalcul, trouvé à ce jour** : la **suppression** d'une évaluation
-encore brouillon ou planifiée qui porte déjà des notes. Après une suppression,
-rejouez `POST /api/cli/notes/recompute` sur la classe et la période.
+La **suppression** d'une évaluation notée recalcule aussi, depuis septembre 2026
+(`App\Domain\Notes\SuppressionDEvaluation`) : la suppression est douce, les
+notes restent en base, mais le recalcul ne lit plus que celles d'une évaluation
+vivante. La liste des évaluations affiche l'avertissement et ses liens
+(`warning`, `warning_links` de sa réponse JSON) ; la suppression d'une séance de
+devoir, qui passe par un formulaire, le rend en message sur l'emploi du temps.
+Une évaluation déjà annulée ne comptait plus : la supprimer ne recalcule rien.
+Une seule règle de suppression pour tous les écrans
+(`ESBTPEvaluation::isDeletable()`) : brouillon, planifiée ou annulée.
+Un devoir en cours ou terminé s'annule d'abord ; sa séance ne l'emporte plus
+autrement, et le refus nomme le devoir. L'édition en masse de l'emploi du temps affiche l'avertissement.
 
 La séance de devoir ne reporte sur le devoir qu'**une coordonnée : sa matière,
 si elle a changé**. La période du devoir n'est pas réalignée quand le jour de la
-séance change — la date se déduit de l'emploi du temps, qui ne change pas, et
-réaligner défaisait une période corrigée à la main. Retoucher la salle, le titre
-ou le jour ne touche donc aucune moyenne. La séance et son devoir
+séance change — la date ne bouge qu'à l'intérieur de la semaine de l'emploi du
+temps (`ESBTPEmploiTemps::dateDuJour()`), et réaligner défaisait une période
+corrigée à la main. Retoucher la salle, le titre ou le jour ne touche donc aucune
+moyenne. Changer la matière d'une séance dont le devoir a des notes exige
+`evaluations.edit_locked`, comme sur l'écran de l'évaluation.
+
+À la création, la période du devoir est celle du semestre de l'emploi du temps
+(`AlignementDuDevoir::creerLeDevoir()`) ; le mois ne sert que pour un emploi du
+temps « Année complète », qui n'en porte pas, et le message de création le dit.
+
+La séance et son devoir
 s'enregistrent **ensemble** : un échec d'écriture refuse toute la modification.
 Le recalcul part après, hors transaction : un recalcul en échec ne défait rien
 (comme ailleurs), il est compté et affiché dans le bandeau.
@@ -347,6 +363,17 @@ qu'on fige.
 
 ## Historique
 
+- **Septembre 2026 (quater)** — la suppression d'une évaluation notée recalcule
+  (liste des évaluations, suppression d'une séance de devoir) ; source
+  `suppression` au journal de recalcul. **Ajout non cassant** : `warning` et
+  `warning_links` dans la réponse JSON de la suppression.
+  **Changement de comportement** : supprimer une séance dont le devoir est en
+  cours ou terminé est désormais refusé (422 en JSON, message d'erreur sinon —
+  qui nomme le devoir) là où la séance et son devoir partaient avant ; on annule
+  le devoir d'abord. Changer la matière d'une séance de devoir noté exige
+  `evaluations.edit_locked` (422 sinon). Le devoir créé avec une séance prend le
+  semestre de l'emploi du temps, plus le mois.
+  `esbtp:check-evaluations-annees` sort en échec quand un recalcul échoue.
 - **Septembre 2026 (ter)** — la modification d'une séance de devoir,
   `esbtp:check-evaluations-annees`, et l'annulation / la réactivation d'une
   évaluation recalculent à leur tour. **Changement de comportement** de la
