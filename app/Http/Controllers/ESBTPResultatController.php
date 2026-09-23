@@ -829,7 +829,9 @@ class ESBTPResultatController extends Controller
                     'calculations' => [], // Add storage for calculations
                     'total_points' => 0,
                     'total_coefficients' => 0,
-                    'moyenne' => 0,
+                    // `null` = aucune note exploitable, distinct d'une moyenne de 0 :
+                    // la moyenne generale plus bas compte la seconde, pas la premiere.
+                    'moyenne' => null,
                     'origin' => in_array($matiere_id, $classeMatieresIds, true) ? 'classe' : 'notes',
                 ];
                 \Log::debug("Initialized new entry in notesByMatiere for matiere {$matiere->name} (ID: {$matiere->id})");
@@ -943,7 +945,7 @@ class ESBTPResultatController extends Controller
                     'total_points' => 0,
                     'total_coefficients' => $resultat->coefficient,
                     'matiere_coefficient' => $matiereCoefOfficiel,
-                    'moyenne' => 0,
+                    'moyenne' => null,
                 ];
             }
 
@@ -980,7 +982,10 @@ class ESBTPResultatController extends Controller
         $sommeCoefs = 0;
         foreach ($notesByMatiere as $matiere_id => $matiereData) {
             $matCoef = $matiereData['matiere_coefficient'] ?? $matiereData['total_coefficients'] ?? 1;
-            if ($matiereData['moyenne'] > 0 && $matCoef > 0) {
+            // Une moyenne de 0 est une moyenne : elle compte. Seule l'absence de
+            // moyenne (`null`) est ecartee. Le filtre `> 0` d'avant faisait passer
+            // 14 (coef 2) et 0 (coef 1) pour 14,00 au lieu de 9,33.
+            if ($matiereData['moyenne'] !== null && $matCoef > 0) {
                 $sommePoints += $matiereData['moyenne'] * $matCoef;
                 $sommeCoefs += $matCoef;
             }
