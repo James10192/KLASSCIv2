@@ -12,6 +12,8 @@
 .ev-flash--warning { background: rgba(245,158,11,.08); border-color: rgba(245,158,11,.35); color: #92400e; }
 .ev-flash-liens { display: flex; flex-wrap: wrap; gap: .35rem .9rem; margin-top: .4rem; }
 .ev-flash-liens a { color: #0453cb; font-weight: 600; text-decoration: underline; }
+/* Sur mobile, la barre d'onglets fixe couvre le bas de l'écran : le défilement s'arrête au-dessus. */
+#evaluations-avertissements .ev-flash { scroll-margin: 1rem 0 6rem; }
 </style>
 
 <script>
