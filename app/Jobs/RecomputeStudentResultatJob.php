@@ -120,13 +120,30 @@ class RecomputeStudentResultatJob implements ShouldQueue
                 ? (float) $resultatExistant->moyenne
                 : null;
 
-            // 4. Si aucune note valide ET aucun résultat existant : no-op
-            if ($notes->isEmpty() && ! $resultatExistant) {
-                Log::info('RecomputeStudentResultatJob: no notes & no existing resultat, skipping', [
+            // 4. Plus AUCUNE note sur la coordonnee : on n'ecrit rien. C'est ici
+            //    qu'arrive la suppression de la DERNIERE note, par l'observateur,
+            //    qui ne traverse pas le garde de `PerimetreDeRecalcul`. Il n'y a
+            //    plus rien a moyenner : ecrire 0/20 inventerait une note que le
+            //    bulletin imposerait par la preseance de la ligne enregistree.
+            //    La ligne reste ; sans aucune note, le pre-controle de la
+            //    generation des bulletins la liste a la suppression.
+            //
+            //    Il reste des notes, mais toutes absentes : le recalcul se fait,
+            //    et la moyenne tombe a 0. C'est la decision ecrite de
+            //    `PerimetreDeRecalcul::recalculerUnCouple()` : le geste de
+            //    l'enseignant fixe la moyenne. Ce garde-ci ne la contredit pas.
+            if ($notes->isEmpty()) {
+                $contexte = [
                     'etudiant_id' => $this->etudiantId,
+                    'classe_id' => $this->classeId,
                     'matiere_id' => $this->matiereId,
                     'periode' => $periode,
-                ]);
+                    'source' => $this->source,
+                ];
+
+                $resultatExistant
+                    ? Log::warning('RecomputeStudentResultatJob: plus aucune note, moyenne enregistree laissee en place', $contexte + ['moyenne_conservee' => $moyenneAvant])
+                    : Log::info('RecomputeStudentResultatJob: aucune note, aucune ligne, rien ecrit', $contexte);
 
                 return;
             }

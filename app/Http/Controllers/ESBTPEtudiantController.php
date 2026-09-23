@@ -1643,10 +1643,15 @@ class ESBTPEtudiantController extends Controller
 
             // 2. Fallback : résultats bruts avec pondération S1/S2
             if ($mg === null && $anneeId) {
-                $resultats = \App\Models\ESBTPResultat::where('etudiant_id', $etudiantId)
-                    ->where('annee_universitaire_id', $anneeId)
-                    ->whereNotNull('moyenne')
-                    ->get();
+                // Sans ce filtre, une ligne laissee sur une matiere etrangere a
+                // sa classe (rebascule CLI) comptait ses notes deux fois.
+                $resultats = \App\Domain\Academique\CoherenceSystemeAcademique::resultatsRetenus(
+                    \App\Models\ESBTPResultat::where('etudiant_id', $etudiantId)
+                        ->where('annee_universitaire_id', $anneeId)
+                        ->whereNotNull('moyenne')
+                        ->get(),
+                    'certificat/moyenne enregistree'
+                );
 
                 if ($resultats->count()) {
                     $mS1 = $calcSem($resultats, 'semestre1');
