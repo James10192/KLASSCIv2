@@ -62,7 +62,8 @@
     .rec-btn--danger { background: #dc2626; color: #fff; }
     .rec-btn--danger:hover:not(:disabled) { background: #b91c1c; }
     .rec-btn:disabled { opacity: .6; cursor: not-allowed; }
-    .rec-disabled-hint { margin: .5rem 1.25rem 0; font-size: .76rem; color: #b45309; text-align: right; }
+    .rec-disabled-hint { margin: .5rem 1.25rem 1rem; font-size: .76rem; color: #b45309; text-align: right; }
+    .rec-foot-hint { flex-basis: 100%; margin: 0; font-size: .78rem; color: #b45309; text-align: right; }
 
     /* Group card */
     .rec-group { border: 1px solid #e2e8f0; border-radius: 12px; margin-bottom: 1rem; overflow: hidden; }
@@ -414,6 +415,8 @@
                 </template>
             </div>
             <div class="rec-modal-foot">
+                {{-- Dans la barre des boutons, juste au-dessus de celui qu'on vient de cliquer : placé après elle, il tombait sous le bord de la fenêtre. --}}
+                <p class="rec-foot-hint" x-show="modal.fermetureDemandee && collisionsEnSuspens()" x-cloak>Des moyennes restent en collision. Une fois cette fenêtre fermée, aucun écran ne permettra plus de les régler : le certificat de scolarité comptera les deux.</p>
                 <button class="rec-btn rec-btn--ghost" @click="demanderFermeture()" x-text="modal.done ? (modal.fermetureDemandee && collisionsEnSuspens() ? 'Fermer quand même' : 'Fermer') : 'Annuler'"></button>
                 <template x-if="modal.report && modal.report.blocked && !modal.done">
                     <label class="rec-check"><input type="checkbox" x-model="modal.force"> Forcer (reporte aussi évaluations, notes et moyennes enregistrées)</label>
@@ -425,7 +428,6 @@
                 </button>
             </div>
             <p class="rec-disabled-hint" x-show="!modal.done && mergeDisabled && mergeDisabledReason" x-cloak x-text="mergeDisabledReason"></p>
-            <p class="rec-disabled-hint" x-show="modal.fermetureDemandee && collisionsEnSuspens()" x-cloak>Des moyennes restent en collision. Une fois cette fenêtre fermée, aucun écran ne permettra plus de les régler : le certificat de scolarité comptera les deux.</p>
         </div>
     </div>
 
