@@ -1003,25 +1003,6 @@ tr[data-inscription-id] > td { transition: background .15s ease; }
 
 {{-- MODALS GLOBAUX (data-id dynamique) --}}
 
-{{-- Modal générique de confirmation (Valider + autres actions) --}}
-<div class="modal fade" id="ii-modal-confirm" tabindex="-1" aria-labelledby="iiModalConfirmLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header ii-modal-header">
-                <h5 class="modal-title" id="iiModalConfirmLabel">
-                    <i class="fas fa-circle-question me-2" id="ii-confirm-icon"></i><span id="ii-confirm-title">Confirmation</span>
-                </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fermer"></button>
-            </div>
-            <div class="modal-body" id="ii-confirm-body">Êtes-vous sûr ?</div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                <button type="button" class="btn btn-primary" id="ii-confirm-ok">Confirmer</button>
-            </div>
-        </div>
-    </div>
-</div>
-
 {{-- Modal Bulk Annuler (selection) --}}
 <div class="modal fade" id="ii-modal-bulk-annuler" tabindex="-1" aria-labelledby="iiBulkAnnulerLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
@@ -1322,5 +1303,8 @@ tr[data-inscription-id] > td { transition: background .15s ease; }
     window.KLASSCI_CSRF_TOKEN = "{{ csrf_token() }}";
 </script>
 <script src="{{ asset('js/frais/regenerer-modal.js') }}" defer></script>
+{{-- common.js fournit window.iiConfirm ; index.js ne le redefinit plus.
+     Les deux en defer : l'ordre du document garantit common.js d'abord. --}}
+<script src="{{ asset('js/inscriptions/common.js') }}" defer></script>
 <script src="{{ asset('js/inscriptions/index.js') }}" defer></script>
 @endpush

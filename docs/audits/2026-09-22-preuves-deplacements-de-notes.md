@@ -1,4 +1,4 @@
-# Preuves d'exécution — déplacements de notes et moyennes enregistrées
+# Preuves d'exécution — fusion d'ECUE en doublon
 
 **Branche** `claude/eloquent-wright-q09r8f` · **22 septembre 2026**
 
@@ -12,7 +12,7 @@ les vraies.
 
 Elles **ne** viennent **pas** d'un tenant de production : les données sont un
 jeu de démonstration fabriqué pour l'occasion (deux ECUE en doublon, deux élèves
-LMD, une évaluation BTS posée sur une ECUE). La moyenne à 0,00 visible sur la
+LMD). La moyenne à 0,00 visible sur la
 capture 6 est celle d'un bulletin de démonstration jamais généré. Une validation
 sur `presentation` reste à faire après déploiement.
 
@@ -39,34 +39,15 @@ sur `presentation` reste à faire après déploiement.
 
 Aucune erreur JavaScript relevée pendant les deux parcours.
 
-## 2. Rebascule CLI — `POST /api/cli/evaluations/{id}/matiere`
+## Ce qui n'est plus prouvé ici
 
-Jeton Sanctum `cli:admin`, requêtes HTTP réelles. Classe BTS « 2BTS GBAT E » ;
-l'élève a 16 en Mathématiques et 4 sur un contrôle posé par erreur sur une ECUE.
-
-| étape | réponse | `esbtp_resultats` ensuite |
-|---|---|---|
-| avant | — | Mathématiques 16,00 · ECUE 4,00 |
-| simulation | `dry_run: true`, `notes_a_deplacer: 1` | inchangé |
-| écriture | `recalculs_lances: 1`, `lignes_sans_note: [ECUE, 4]` | Mathématiques **10,00** · ECUE 4,00 (laissée, incohérente, écartée par les lecteurs) |
-| Mathématiques → Physique | **refus** : « cette evaluation est deja rangee dans une matiere de son systeme » | inchangé |
-
-## 3. Écran de modification d'une évaluation — changement de semestre
-
-Parcours réel dans le formulaire (sélecteur premium de période, bouton
-« Enregistrer les modifications »), sur la moyenne de Mathématiques :
-
-| étape | semestre 1 | semestre 2 |
-|---|---|---|
-| avant | 10,00 | — |
-| le devoir à 16 passe au semestre 2 | **4,00** — recalculée, le 4 y reste | **16,00** |
-| le contrôle à 4 passe au semestre 2 | 4,00, **mise de côté** — plus aucune note | **10,00** |
-
-![](assets/deplacements-notes-2026-09/09-ecran-evaluation-moyenne-mise-de-cote.png)
-
-Le message affiché après le second enregistrement : « 1 moyenne(s)
-enregistrée(s) n'avaient plus aucune note après ce changement : elles ont été
-mises de côté (suppression réversible, tracée dans le journal d'audit). »
+Deux sections suivaient : la rebascule CLI (`POST /api/cli/evaluations/{id}/matiere`)
+et le changement de semestre depuis l'écran d'une évaluation. Elles prouvaient une
+implémentation de cette branche que #1132, fusionné entre-temps dans
+`presentation`, a remplacée par la sienne (recalcul synchrone, moyennes laissées
+et signalées au lieu d'être mises de côté). Elles ont été retirées plutôt que
+laissées décrire un code qui n'existe plus. Les tests de #1132 couvrent ces
+chemins ; ils n'ont pas été rejoués ici dans un navigateur.
 
 ## Rejouer
 

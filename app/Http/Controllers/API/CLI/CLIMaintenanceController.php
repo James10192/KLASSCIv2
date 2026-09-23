@@ -4,7 +4,6 @@ namespace App\Http\Controllers\API\CLI;
 
 use App\Http\Controllers\API\BaseApiController;
 use App\Domain\Academique\CoherenceSystemeAcademique;
-use App\Domain\Notes\RecalculApresDeplacement;
 use App\Models\Setting;
 use App\Models\ESBTPEvaluation;
 use App\Models\ESBTPNote;
@@ -1372,109 +1371,6 @@ class CLIMaintenanceController extends BaseApiController
                 'nature_matiere' => $l->unite_enseignement_id ? 'ECUE LMD' : 'matiere BTS',
             ])
             ->all();
-    }
-/**
-     * POST /api/cli/evaluations/{id}/matiere — rebascule une evaluation.
-     *
-     * Sert a reparer une fuite de selecteur : une evaluation posee sur une
-     * matiere du mauvais systeme academique. Le mouvement n'est autorise que
-     * s'il RETABLIT la coherence, jamais s'il la rompt.
-     *
-     * esbtp_notes porte une copie denormalisee de matiere_id : la deplacer en
-     * meme temps est obligatoire, sinon les notes restent rattachees a
-     * l'ancienne matiere et le bulletin continue de l'afficher.
-     *
-     * Body: { matiere_id: int, dry_run?: bool }
-     */
-    public function evaluationChangeMatiere(Request $request, $id): JsonResponse
-    {
-        if (! $request->user()->tokenCan('cli:admin')) {
-            return $this->errorResponse('Token missing cli:admin ability', [], 403);
-        }
-
-        $validated = $request->validate([
-            'matiere_id' => 'required|integer|exists:esbtp_matieres,id',
-            'dry_run' => 'nullable|boolean',
-        ]);
-
-        $evaluation = ESBTPEvaluation::with(['classe', 'matiere'])->find($id);
-        if (! $evaluation) {
-            return $this->errorResponse("Evaluation #{$id} not found", [], 404);
-        }
-
-        $cible = ESBTPMatiere::find($validated['matiere_id']);
-        $classeEstLmd = CoherenceSystemeAcademique::classeEstLmd($evaluation->classe?->systeme_academique);
-        $cibleEstEcue = CoherenceSystemeAcademique::matiereEstEcue($cible->unite_enseignement_id);
-
-        if (! CoherenceSystemeAcademique::estCoherente(
-            $evaluation->classe?->systeme_academique,
-            $cible->unite_enseignement_id
-        )) {
-            return $this->errorResponse(
-                'Refus : la matiere cible ne correspond pas au systeme de la classe. '
-                .'Classe '.($classeEstLmd ? 'LMD' : 'BTS').', matiere cible '
-                .($cibleEstEcue ? 'ECUE LMD' : 'BTS').'.',
-                [],
-                422
-            );
-        }
-
-        // Le contrat publie : RETABLIR la coherence, jamais deplacer entre deux
-        // matieres deja coherentes. La ligne de moyenne quittee n'est pas
-        // touchee (elle a pu etre saisie a la main) ; incoherente, tous les
-        // lecteurs l'ecartent — coherente, elle compterait ses notes deux fois.
-        $source = ESBTPMatiere::withTrashed()->find($evaluation->matiere_id);
-        if ($source && CoherenceSystemeAcademique::estCoherente($evaluation->classe?->systeme_academique, $source->unite_enseignement_id)) {
-            return $this->errorResponse('Refus : cette evaluation est deja rangee dans une matiere de son systeme. '
-                .'Cet endpoint ne sert qu a retablir la coherence ; changez la matiere depuis l ecran de l evaluation.', [], 422);
-        }
-
-        $notes = ESBTPNote::where('evaluation_id', $evaluation->id)->count();
-
-        if ((bool) ($validated['dry_run'] ?? false)) {
-            return $this->successResponse([
-                'dry_run' => true,
-                'evaluation_id' => $evaluation->id,
-                'titre' => $evaluation->titre,
-                'classe' => $evaluation->classe?->name,
-                'matiere_actuelle' => $evaluation->matiere?->name,
-                'matiere_cible' => $cible->name,
-                'notes_a_deplacer' => $notes,
-            ], 'Aucune ecriture : previsualisation seulement.');
-        }
-
-        $avant = ['matiere_id' => $evaluation->matiere_id, 'matiere' => $evaluation->matiere?->name];
-
-        $recalcul = DB::transaction(function () use ($evaluation, $cible, $request) {
-            $releve = app(RecalculApresDeplacement::class)->releverAvant([$evaluation->id]);
-            $evaluation->matiere_id = $cible->id;
-            $evaluation->save();
-
-            // Colonne denormalisee : sans cette mise a jour, les notes
-            // resteraient rattachees a l'ancienne matiere.
-            ESBTPNote::where('evaluation_id', $evaluation->id)
-                ->update(['matiere_id' => $cible->id]);
-
-            return app(RecalculApresDeplacement::class)->apres($releve, "rebascule evaluation {$evaluation->id}", $request->user()->id);
-        });
-
-        Log::warning('CLI: evaluation rebasculee', [
-            'evaluation_id' => $evaluation->id,
-            'classe' => $evaluation->classe?->name,
-            'avant' => $avant,
-            'apres' => ['matiere_id' => $cible->id, 'matiere' => $cible->name],
-            'notes_deplacees' => $notes,
-            'caller_user_id' => $request->user()->id,
-            'ip' => $request->ip(),
-        ]);
-
-        return $this->successResponse([
-            'evaluation_id' => $evaluation->id,
-            'classe' => $evaluation->classe?->name,
-            'matiere_avant' => $avant['matiere'],
-            'matiere_apres' => $cible->name,
-            'notes_deplacees' => $notes,
-        ] + $recalcul, "Evaluation #{$evaluation->id} rebasculee sur '{$cible->name}' ({$notes} note(s) suivie(s)).");
     }
 
     /**

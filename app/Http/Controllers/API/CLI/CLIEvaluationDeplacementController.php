@@ -56,6 +56,60 @@ class CLIEvaluationDeplacementController extends BaseApiController
         $cible = $valide['periode'];
         $ids = array_values(array_unique(array_map('intval', $valide['evaluation_ids'])));
 
+        [$aDeplacer, $deja, $introuvables] = $this->apercuDuLot($ids, $cible);
+
+        if ($simulation) {
+            return $this->successResponse([
+                'dry_run' => true,
+                'a_deplacer' => $aDeplacer,
+                'deja_sur_la_cible' => $deja,
+                'introuvables' => $introuvables,
+                'total_a_deplacer' => count($aDeplacer),
+                'notes_concernees' => array_sum(array_column($aDeplacer, 'nb_notes')),
+            ], 'Simulation : rien n a ete ecrit. Relancer avec dry_run=false pour appliquer.');
+        }
+
+        [$traitees, $deplacees] = $this->appliquerLeLot($aDeplacer, $cible);
+
+        // Cet `update()` est un update de QUERY BUILDER : aucun evenement
+        // Eloquent, donc aucun recalcul. `periode` etant une coordonnee de la
+        // cle d'`esbtp_resultats`, les deux semestres gardaient la moyenne
+        // d'avant — et l'agregat perime l'emporte sur les notes. Hors
+        // transaction a dessein : le deplacement reste acquis.
+        $recalcul = RecalculApresDeplacement::pourUnLotDePeriodes($deplacees, $request->user()->id);
+
+        Log::warning('CLI: evaluations deplacees de semestre sur decision humaine', [
+            'periode_cible' => $cible,
+            'nombre' => count($traitees),
+            'evaluations' => array_column($traitees, 'evaluation_id'),
+        ]);
+
+        return $this->successResponse([
+            'dry_run' => false,
+            'traitees' => $traitees,
+            'deja_sur_la_cible' => $deja,
+            'introuvables' => $introuvables,
+            'total' => count($traitees),
+            'notes_realignees' => array_sum(array_column($traitees, 'notes_realignees')),
+            'recalculs_tentes' => $recalcul['recalculs_tentes'],
+            'agregats_orphelins' => $recalcul['orphelins'],
+            'recalculs_en_echec' => $recalcul['echecs'],
+            'recalcul_reporte' => $recalcul['reporte'],
+            'perimetres_reportes' => $recalcul['perimetres_reportes'],
+        ], count($traitees).' evaluation(s) deplacee(s) vers '.$cible.'.'
+            .RecalculApresDeplacement::motDeLaFin($recalcul));
+    }
+
+    /**
+     * Ce que le lot ferait : les evaluations a deplacer, celles deja sur la
+     * cible, celles qu'on n'a pas trouvees. Sert a la simulation comme a
+     * l'execution, pour que les deux disent la meme chose.
+     *
+     * @param  array<int,int>  $ids
+     * @return array{0:array<int,array<string,mixed>>, 1:array<int,array<string,mixed>>, 2:array<int,int>}
+     */
+    private function apercuDuLot(array $ids, string $cible): array
+    {
         $evaluations = ESBTPEvaluation::query()
             ->whereIn('id', $ids)
             ->with(['classe:id,name', 'matiere:id,name'])
@@ -77,6 +131,15 @@ class CLIEvaluationDeplacementController extends BaseApiController
                 'evaluation_id' => (int) $evaluation->id,
                 'titre' => $evaluation->titre,
                 'classe' => $evaluation->classe->name ?? null,
+                // Les identifiants, et pas seulement les noms : le message de
+                // repli renvoie vers `POST /api/cli/notes/recompute`, qui EXIGE
+                // classe_id et annee_universitaire_id, et dont le refus de
+                // perimetre trop large conseille « Ajoutez matiere_id ». Les
+                // omettre donnait des consignes qu'on ne pouvait pas suivre avec
+                // la reponse sous les yeux.
+                'classe_id' => (int) $evaluation->classe_id,
+                'annee_universitaire_id' => (int) $evaluation->annee_universitaire_id,
+                'matiere_id' => $evaluation->matiere_id !== null ? (int) $evaluation->matiere_id : null,
                 'matiere' => $evaluation->matiere->name ?? null,
                 'date' => optional($evaluation->date_evaluation)->toDateString(),
                 'periode_actuelle' => $evaluation->periode,
@@ -97,23 +160,23 @@ class CLIEvaluationDeplacementController extends BaseApiController
             $aDeplacer[] = $ligne;
         }
 
-        if ($simulation) {
-            return $this->successResponse([
-                'dry_run' => true,
-                'a_deplacer' => $aDeplacer,
-                'deja_sur_la_cible' => $deja,
-                'introuvables' => $introuvables,
-                'total_a_deplacer' => count($aDeplacer),
-                'notes_concernees' => array_sum(array_column($aDeplacer, 'nb_notes')),
-            ], 'Simulation : rien n a ete ecrit. Relancer avec dry_run=false pour appliquer.');
-        }
+        return [$aDeplacer, $deja, $introuvables];
+    }
 
+    /**
+     * L'ecriture, et rien d'autre : la transaction courte qui deplace, realigne
+     * les notes, et rend de quoi recalculer ensuite. Le recalcul reste DEHORS —
+     * il tourne sur place et ne doit pas tenir la transaction ouverte.
+     *
+     * @param  array<int,array<string,mixed>>  $aDeplacer
+     * @return array{0:array<int,array<string,mixed>>, 1:array<int,array{evaluation:ESBTPEvaluation, periode_avant:string}>}
+     */
+    private function appliquerLeLot(array $aDeplacer, string $cible): array
+    {
         $traitees = [];
+        $deplacees = [];
 
-        $recalcul = DB::transaction(function () use ($aDeplacer, $cible, &$traitees, $request) {
-            $moyennes = app(RecalculApresDeplacement::class);
-            $releve = $moyennes->releverAvant(array_column($aDeplacer, 'evaluation_id'));
-
+        DB::transaction(function () use ($aDeplacer, $cible, &$traitees, &$deplacees) {
             foreach ($aDeplacer as $ligne) {
                 $evaluation = ESBTPEvaluation::find($ligne['evaluation_id']);
                 if (! $evaluation) {
@@ -124,36 +187,21 @@ class CLIEvaluationDeplacementController extends BaseApiController
                 $evaluation->periode = $cible;
                 $evaluation->save();
 
-                // esbtp_notes porte une copie denormalisee du semestre. Les
-                // lectures la joignent en OU avec evaluation.periode, donc un
-                // oubli ici ne casse pas le bulletin — mais il laisse deux
-                // versions de la verite dans la base, et le prochain qui lira
-                // la colonne seule aura faux.
-                $notes = ESBTPNote::where('evaluation_id', $evaluation->id)
-                    ->update(['semestre' => $cible]);
+                // L'encodage de cette colonne vit sur le modele, avec le hook
+                // qui le decide : y ecrire la chaine plutot que l'entier ouvrait
+                // un chemin de SUPPRESSION d'agregat. Voir
+                // ESBTPNote::realignerLeSemestre().
+                $notes = ESBTPNote::realignerLeSemestre($evaluation->id, $evaluation->periode);
+
+                $deplacees[] = ['evaluation' => $evaluation, 'periode_avant' => $avant];
 
                 $traitees[] = $ligne + [
                     'periode_avant' => $avant,
                     'notes_realignees' => $notes,
                 ];
             }
-
-            return $moyennes->apresEnRetirantLesLignesVidees($releve, 'deplacement de semestre sur decision humaine', $request->user()->id);
         });
 
-        Log::warning('CLI: evaluations deplacees de semestre sur decision humaine', [
-            'periode_cible' => $cible,
-            'nombre' => count($traitees),
-            'evaluations' => array_column($traitees, 'evaluation_id'),
-        ]);
-
-        return $this->successResponse([
-            'dry_run' => false,
-            'traitees' => $traitees,
-            'deja_sur_la_cible' => $deja,
-            'introuvables' => $introuvables,
-            'total' => count($traitees),
-            'notes_realignees' => array_sum(array_column($traitees, 'notes_realignees')),
-        ] + $recalcul, count($traitees).' evaluation(s) deplacee(s) vers '.$cible.'.');
+        return [$traitees, $deplacees];
     }
 }

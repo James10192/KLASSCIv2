@@ -8,9 +8,10 @@ use Tests\TestCase;
 
 /**
  * Supprimer la dernière note d'un élève dans une matière réveille
- * l'observateur, qui relance le recalcul. Il ne reste aucune note :
- * `studentMatiereAverage([])` rend 0.0, et le job l'écrivait — 0/20 au
- * bulletin pour une matière où l'élève n'a simplement plus de note.
+ * l'observateur, qui relance le recalcul. Il ne reste aucune note — ou des
+ * absences seulement — et le job écrivait 0/20 : au bulletin, pour une matière
+ * où l'élève n'a simplement plus de note. Le garde du déplacement
+ * (`PerimetreDeRecalcul::recalculerUnCouple()`) ne voit pas ce chemin-là.
  */
 class SuppressionDeLaDerniereNoteTest extends TestCase
 {
@@ -35,6 +36,27 @@ class SuppressionDeLaDerniereNoteTest extends TestCase
 
     public function test_supprimer_la_derniere_note_n_ecrit_pas_zero(): void
     {
+        $noteId = $this->uneNoteAQuatorze();
+
+        ESBTPNote::findOrFail($noteId)->delete();
+
+        // La ligne reste, sans être remise à zéro — et sans trace de recalcul.
+        $this->assertSame(14.0, (float) DB::table('esbtp_resultats')->where('matiere_id', 5)->value('moyenne'));
+        $this->assertDatabaseCount('esbtp_resultats_recompute_log', 0);
+    }
+
+    public function test_passer_la_derniere_note_en_absence_n_ecrit_pas_zero(): void
+    {
+        $note = ESBTPNote::findOrFail($this->uneNoteAQuatorze());
+        $note->is_absent = true;
+        $note->save();
+
+        $this->assertSame(14.0, (float) DB::table('esbtp_resultats')->where('matiere_id', 5)->value('moyenne'));
+        $this->assertDatabaseCount('esbtp_resultats_recompute_log', 0);
+    }
+
+    private function uneNoteAQuatorze(): int
+    {
         $evaluationId = DB::table('esbtp_evaluations')->insertGetId([
             'titre' => 'Devoir', 'matiere_id' => 5, 'classe_id' => 10, 'annee_universitaire_id' => 1,
             'periode' => 'semestre1', 'status' => 'completed', 'bareme' => 20, 'coefficient' => 1,
@@ -48,10 +70,6 @@ class SuppressionDeLaDerniereNoteTest extends TestCase
             'periode' => 'semestre1', 'moyenne' => 14, 'coefficient' => 1,
         ]);
 
-        ESBTPNote::findOrFail($noteId)->delete();
-
-        // La ligne reste, sans être remise à zéro — et sans trace de recalcul.
-        $this->assertSame(14.0, (float) DB::table('esbtp_resultats')->where('matiere_id', 5)->value('moyenne'));
-        $this->assertDatabaseCount('esbtp_resultats_recompute_log', 0);
+        return $noteId;
     }
 }

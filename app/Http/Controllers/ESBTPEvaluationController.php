@@ -2,7 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Domain\Notes\Actions\DeplacerUneEvaluation;
+use App\Domain\Notes\MoyennesLaissees;
+use App\Domain\Notes\RecalculApresDeplacement;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPEtudiant;
@@ -751,6 +752,11 @@ class ESBTPEvaluationController extends Controller
                 $evaluation->duree_minutes = $calculatedDuration;
             }
 
+            // Capture des anciennes valeurs pour détecter changements (avant assignation)
+            $oldClasseId = $evaluation->getOriginal('classe_id');
+            $oldMatiereId = $evaluation->getOriginal('matiere_id');
+            $oldPeriode = $evaluation->getOriginal('periode');
+
             // Met à jour classe/matière si pas de notes OU si user a la permission de bypass
             if (! $hasNotes || $canBypassLock) {
                 $evaluation->classe_id = $request->classe_id;
@@ -767,7 +773,10 @@ class ESBTPEvaluationController extends Controller
                     ? $evaluation->determineAutomaticStatus(null, false)
                     : ESBTPEvaluation::STATUS_DRAFT;
             }
-            $moyennes = app(DeplacerUneEvaluation::class)->enregistrer($evaluation);
+            $evaluation->save();
+
+            $avant = ['classe_id' => (int) $oldClasseId, 'matiere_id' => (int) $oldMatiereId, 'periode' => (string) $oldPeriode];
+            $recalcul = RecalculApresDeplacement::apresEnregistrement($evaluation, $avant, Auth::id());
 
             // Garde-fou non bloquant TC/Spécialité (basé sur la classe cible).
             $tcWarning = $this->troncCommunSpecialiteWarning(
@@ -777,9 +786,13 @@ class ESBTPEvaluationController extends Controller
 
             $redirect = redirect()->route('esbtp.evaluations.show', $evaluation)
                 ->with('success', 'L\'évaluation a été mise à jour avec succès');
-            $tcWarning = trim($tcWarning.' '.$this->avertissementMoyennes($moyennes));
-            if ($tcWarning) {
+
+            if ($tcWarning !== null) {
                 $redirect->with('warning', $tcWarning);
+            }
+
+            if ($recalcul['orphelins'] !== [] || $recalcul['echecs'] > 0) {
+                $redirect->with('moyennes_laissees', MoyennesLaissees::pourLEcran($recalcul, $evaluation, $avant));
             }
 
             return $redirect;
@@ -788,23 +801,6 @@ class ESBTPEvaluationController extends Controller
                 ->with('error', 'Une erreur est survenue lors de la mise à jour de l\'évaluation: '.$e->getMessage())
                 ->withInput();
         }
-    }
-
-    /**
-     * Ce que l'enseignant doit savoir des moyennes enregistrées après le changement.
-     */
-    private function avertissementMoyennes(array $moyennes): string
-    {
-        $phrases = [];
-        if ($n = count($moyennes['lignes_retirees'])) {
-            $phrases[] = "{$n} moyenne(s) enregistrée(s) n'avaient plus aucune note après ce changement : elles ont été mises de côté "
-                .'(suppression réversible, tracée dans le journal d\'audit).';
-        }
-        if ($n = count($moyennes['lignes_sans_note'])) {
-            $phrases[] = "{$n} moyenne(s) enregistrée(s) sans note n'ont pas été modifiées : vérifiez-les dans « Modifier les moyennes ».";
-        }
-
-        return implode(' ', $phrases);
     }
 
     /**

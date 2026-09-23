@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\ESBTPBulletin;
+use App\Models\ESBTPEvaluation;
 use App\Models\ESBTPNote;
 use App\Models\ESBTPResultat;
 use App\Services\BulletinService;
@@ -86,24 +87,27 @@ class RecomputeStudentResultatJob implements ShouldQueue
     public function handle(NoteCalculationService $calc): void
     {
         try {
-            $periode = self::periodeNormalisee($this->periode);
+            // La forme sous laquelle l'agregat est ECRIT et relu.
+            $periode = ESBTPEvaluation::periodeCanonique($this->periode);
 
-            // 1. Récupérer toutes les notes valides pour ce contexte
-            $notes = ESBTPNote::query()
-                ->where('etudiant_id', $this->etudiantId)
-                ->whereHas('evaluation', function ($q) use ($periode) {
-                    $q->where('classe_id', $this->classeId)
-                        ->where('matiere_id', $this->matiereId)
-                        ->where('annee_universitaire_id', $this->anneeUniversitaireId)
-                        ->where('periode', $periode)
-                        ->where('status', '!=', 'cancelled');
-                })
+            // 1. Les notes que le calcul comptera, par la requete PARTAGEE avec le
+            //    garde du deplacement. Elles etaient chargees ici et recomptees
+            //    ailleurs par un `exists()` qui ignorait les absences : voir
+            //    `ESBTPNote::deLaCoordonnee()`.
+            $notes = ESBTPNote::deLaCoordonnee($this->etudiantId, [
+                'classe_id' => $this->classeId,
+                'matiere_id' => $this->matiereId,
+                'annee_universitaire_id' => $this->anneeUniversitaireId,
+                'periode' => $periode,
+            ])
                 ->with('evaluation:id,bareme,coefficient,periode,classe_id,matiere_id,annee_universitaire_id,status')
                 ->get();
 
             // 2. Calculer la moyenne pondérée normalisée /20 via le service unifié
             //    (même formule que l'UI temps réel et BulletinService — anti-divergence).
-            $moyenneApres = $calc->studentMatiereAverage($this->shapeNotesForService($notes));
+            //    `null` quand rien n'est exploitable (aucune note, ou des absences
+            //    seulement) : voir l'etape 4.
+            $moyenneApres = $calc->studentMatiereAverageOrNull(ESBTPNote::enChargeUtilePourLeCalcul($notes));
 
             // 3. Récupérer la moyenne actuelle (avant) pour audit
             $resultatExistant = ESBTPResultat::query()
@@ -118,32 +122,27 @@ class RecomputeStudentResultatJob implements ShouldQueue
                 ? (float) $resultatExistant->moyenne
                 : null;
 
-            // 4. Aucune note valide : on n'ecrit RIEN.
-            //
-            // `studentMatiereAverage([])` rend 0.0, pas null. Ce test ne
-            // renoncait autrefois que s'il n'y avait NI note NI ligne : une
-            // ligne dont les notes etaient parties recevait donc 0/20 — il
-            // suffisait de supprimer la derniere note d'un eleve dans une
-            // matiere (observateur, `deleted`). Un zero que rien ne distingue
-            // d'une vraie note, et que le bulletin BTS lit en priorite.
-            //
-            // La ligne existante n'est pas touchee non plus : elle a pu etre
-            // saisie a la main, et rien ne distingue une moyenne manuelle d'une
-            // moyenne derivee. Elle reste, perimee, et on le DIT — meme regle
-            // que `RecalculApresDeplacement` : signalee, jamais touchee.
-            if ($notes->isEmpty()) {
+            // 4. Rien a moyenner : on n'ecrit RIEN, ni creation ni mise a jour.
+            //    Le deplacement et `notes:recompute` passent par le garde de
+            //    `PerimetreDeRecalcul::recalculerUnCouple()`, qui ne dispatche pas
+            //    dans ce cas. L'observateur, lui, dispatche directement : c'est
+            //    ici que la suppression (ou le passage en absence) de la
+            //    DERNIERE note d'une matiere arrive. Ecrire 0/20 par-dessus la
+            //    moyenne existante l'aurait imposee au bulletin par la preseance
+            //    de la ligne enregistree. La ligne est laissee et journalisee :
+            //    son sort est une decision d'ecole (`rien-en-dur.md`).
+            if ($moyenneApres === null) {
                 $contexte = [
                     'etudiant_id' => $this->etudiantId,
                     'classe_id' => $this->classeId,
                     'matiere_id' => $this->matiereId,
                     'periode' => $periode,
-                    'moyenne_conservee' => $moyenneAvant,
                     'source' => $this->source,
                 ];
 
                 $resultatExistant
-                    ? Log::warning('RecomputeStudentResultatJob: plus aucune note, moyenne enregistree laissee en place', $contexte)
-                    : Log::info('RecomputeStudentResultatJob: no notes & no existing resultat, skipping', $contexte);
+                    ? Log::warning('RecomputeStudentResultatJob: plus rien a moyenner, moyenne enregistree laissee en place', $contexte + ['moyenne_conservee' => $moyenneAvant])
+                    : Log::info('RecomputeStudentResultatJob: rien a moyenner, aucune ligne, rien ecrit', $contexte);
 
                 return;
             }
@@ -211,29 +210,6 @@ class RecomputeStudentResultatJob implements ShouldQueue
         }
     }
 
-    /**
-     * Convertit la collection Eloquent en payload attendu par
-     * {@see NoteCalculationService::studentMatiereAverage()}.
-     *
-     * Le service prend des arrays homogènes (note/bareme/coefficient/is_absent)
-     * — on isole la conversion pour que le job reste découplé des accesseurs
-     * du modèle.
-     *
-     * @return array<int, array{note: float, bareme: float, coefficient: float, is_absent: bool}>
-     */
-    private function shapeNotesForService(\Illuminate\Support\Collection $notes): array
-    {
-        return $notes->map(function (ESBTPNote $note) {
-            $eval = $note->evaluation;
-
-            return [
-                'note' => (float) ($note->note ?? 0),
-                'bareme' => $eval ? (float) ($eval->bareme ?? 0) : 0.0,
-                'coefficient' => $eval ? (float) ($eval->coefficient ?? 0) : 0.0,
-                'is_absent' => (bool) $note->is_absent,
-            ];
-        })->all();
-    }
 
     /**
      * Touche updated_at du bulletin associé (s'il existe) pour signaler
@@ -275,8 +251,18 @@ class RecomputeStudentResultatJob implements ShouldQueue
                 'updated_at' => now(),
             ]);
         } catch (\Throwable $e) {
+            // Ce rattrapage a longtemps ete muet sur l'essentiel : il taisait la
+            // `source`, qui est precisement ce qui faisait echouer l'INSERT quand
+            // la colonne etait une enumeration fermee. Resultat, 53 echecs dans
+            // une seule suite de tests sans que rien ne dise lesquels ni pourquoi.
+            // Un rattrapage qui degrade doit nommer ce qu'il a rattrape.
             Log::warning('RecomputeStudentResultatJob: audit log write failed', [
                 'error' => $e->getMessage(),
+                'source' => $this->source,
+                'etudiant_id' => $this->etudiantId,
+                'classe_id' => $this->classeId,
+                'matiere_id' => $this->matiereId,
+                'periode' => $periode,
             ]);
         }
     }
@@ -342,24 +328,5 @@ class RecomputeStudentResultatJob implements ShouldQueue
 
             return 1.0;
         }
-    }
-
-    /**
-     * Normalise la période — accepte 1/2/semestre1/semestre2/annuel — telle que
-     * ce job l'écrit dans `esbtp_resultats`.
-     *
-     * Publique parce que {@see \App\Domain\Notes\RecalculApresDeplacement}
-     * doit retrouver une ligne à la MÊME coordonnée que celle que ce job écrit :
-     * une seconde copie de cette table de correspondance divergerait au premier
-     * ajout d'une période.
-     */
-    public static function periodeNormalisee(string $periode): string
-    {
-        return match ($periode) {
-            '1' => 'semestre1',
-            '2' => 'semestre2',
-            '' => 'semestre1',
-            default => $periode,
-        };
     }
 }

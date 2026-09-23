@@ -2,281 +2,584 @@
 
 namespace App\Domain\Notes;
 
-use App\Jobs\RecomputeStudentResultatJob;
+use App\Models\ESBTPEvaluation;
 use App\Models\ESBTPNote;
-use App\Models\ESBTPResultat;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 
 /**
- * Rafraîchit `esbtp_resultats` après un déplacement de notes.
+ * Recalcule les agregats d'`esbtp_resultats` apres qu'une evaluation a change
+ * de classe, de matiere ou de periode.
  *
- * POURQUOI CETTE CLASSE EXISTE. Un déplaceur change une coordonnée d'évaluation
- * — classe, matière, année ou période — par un `update()` de query builder.
- * Ce `update()` n'émet aucun événement Eloquent : `ESBTPNoteObserver::saved()`
- * ne tourne pas, `RecomputeStudentResultatJob` n'est jamais lancé, et les
- * lignes d'`esbtp_resultats` gardent la moyenne d'avant. Or le bulletin BTS
- * donne la préséance à la moyenne enregistrée sur les notes
- * (`BtsCurrentResultSnapshotService`, `MoyennesDeLApercu`) : l'écart ne produit
- * ni erreur ni page cassée, seulement un chiffre faux, persisté.
+ * ## Pourquoi cette classe existe
  *
- * DEUX TEMPS, POUR QUE LE DÉPLACEUR N'AIT RIEN À SAVOIR. {@see releverAvant()}
- * avant les `update()`, {@see apres()} après. La seconde relit elle-même les
- * coordonnées actuelles des évaluations relevées : le déplaceur n'a pas à dire
- * laquelle des quatre coordonnées il a changée, ni à construire la nouvelle.
+ * Les endroits qui deplacent une evaluation propagent la colonne denormalisee
+ * `esbtp_notes.matiere_id` (ou `.semestre`) par un `update()` de
+ * **query builder** :
  *
- * LE PIÈGE DU ZÉRO. `NoteCalculationService::studentMatiereAverage([])` rend
- * `0.0`. Une coordonnée n'est donc recalculée que s'il y a au moins une note —
- * des DEUX côtés : la quittée peut avoir été vidée, la rejointe peut n'en
- * recevoir aucune (évaluation annulée). Le job porte la même garde depuis
- * septembre 2026 ; celle-ci décide en plus de ce qu'on RAPPORTE.
+ *     ESBTPNote::where('evaluation_id', $id)->update(['matiere_id' => $cible->id]);
  *
- * UNE LIGNE SANS NOTE : DEUX CONDUITES, DEUX MÉTHODES.
- *  - {@see apres()} la SIGNALE, jamais touchée. C'est la conduite de la
- *    rebascule CLI, qui ne laisse que des lignes incohérentes avec leur
- *    classe : tous les lecteurs filtrés les écartent déjà.
- *  - {@see apresEnRetirantLesLignesVidees()} MET DE CÔTÉ (suppression réversible,
- *    tracée par l'audit) une ligne que le déplacement a VIDÉE — une coordonnée
- *    qui portait des notes juste avant et n'en porte plus. Sa moyenne portait
- *    sur ces notes-là, saisie manuelle comprise ; cohérente, elle resterait lue
- *    et les notes compteraient deux fois. Décision de l'établissement
- *    (septembre 2026) pour les déplacements de période, de classe ou de matière
- *    entre coordonnées cohérentes. Une ligne sans note du côté REJOINT n'a
- *    rien perdu : elle est seulement signalée.
+ * Un `update()` de query builder **n'emet aucun evenement Eloquent**. Donc
+ * `ESBTPNoteObserver::saved()` ne tourne pas, `RecomputeStudentResultatJob`
+ * n'est jamais dispatche, et les deux coordonnees restent figees sur leur
+ * ancienne valeur : l'ancienne matiere garde une moyenne qu'aucune note ne
+ * justifie plus, la nouvelle garde une moyenne qui ignore les notes arrivees.
  *
- * Pourquoi la rebascule peut se contenter de signaler : une ligne laissée sur
- * la coordonnée quittée n'est sans danger que si elle est INCOHÉRENTE avec sa
- * classe (`CoherenceSystemeAcademique::resultatsRetenus()` et la génération du
- * bulletin BTS l'écartent). La rebascule refuse donc tout déplacement entre
- * deux matières déjà cohérentes.
+ * Ce n'est pas un defaut d'affichage. `BtsCurrentResultSnapshotService` et
+ * `MoyennesDeLApercu` donnent la **preseance a la ligne enregistree** : quand
+ * `esbtp_resultats` porte une valeur, elle ecrase celle calculee depuis les
+ * notes. L'agregat perime gagne donc sur les notes, en silence.
  *
- * LA SOURCE D'AUDIT EST `manual`. `esbtp_resultats_recompute_log.source` est un
- * `ENUM('observer', 'command', 'manual')` : une autre valeur y ferait échouer
- * l'insertion, et `writeAuditLog()` avale l'échec. Le recalcul aurait lieu, sa
- * trace disparaîtrait.
+ * Mesure du 2026-09-20 sur esbtp-abidjan, apres un deplacement : eleve 149,
+ * matiere 14, semestre2 — l'agregat disait **15**, les cinq notes (10, 20, 10,
+ * 18, 20) disent **15,6**. Le 18 etait en base, au bon endroit, et avale.
  *
- * LES DÉPLACEURS CONNUS (septembre 2026) — relevé, pas inventaire. Ce décompte
- * a déjà été publié faux deux fois ; la commande qui le rejoue est plus bas.
+ * ## Le piege du zero
  *
- * | déplaceur                                             | coordonnée               | branché |
- * |-------------------------------------------------------|--------------------------|---------|
- * | `CLIMaintenanceController::evaluationChangeMatiere()` | matière                  | signale |
- * | `ESBTPEvaluationController::update()`                 | classe, matière, période | retire  |
- * | `CLIEvaluationDeplacementController::deplacer()`      | période                  | retire  |
- * | `CLIEvaluationPeriodeController::repair()`            | période                  | retire  |
- * | `MergeDuplicateEcue` (sous `force`)                   | matière                  | exclu   |
+ * Une coordonnee que le deplacement a videe n'a plus rien a moyenner, et le
+ * job y ecrirait **0/20** sur une matiere que l'eleve n'a plus. Ce garde ne
+ * vit pas ici : il est dans {@see PerimetreDeRecalcul::recalculerUnCouple()},
+ * par ou passent aussi `notes:recompute` et l'endpoint de rattrapage. Il
+ * n'existait d'abord qu'ici — et le rattrapage que cette classe conseille
+ * reecrivait le 0/20 qu'elle venait de refuser.
  *
- * La fusion d'ECUE est EXCLUE, et ce n'est pas un oubli : elle ne déplace que
- * des ECUE, dont la moyenne se relit sur les notes (`LMDBulletinService`, par
- * `esbtp_notes.matiere_id`, que la fusion déplace déjà). Aucun écran LMD ne lit
- * `esbtp_resultats`, et le repli sans bulletin du certificat de scolarité
- * compterait deux fois les notes absorbées si l'on recalculait l'élément
- * conservé en laissant la ligne de l'absorbé — une ECUE est cohérente dans sa
- * classe LMD, le filtre ne l'écarte pas. Voir `MergeDuplicateEcue`.
+ * Une ligne ainsi laissee est **signalee, jamais touchee** : son sort est une
+ * decision d'ecole (`.claude/rules/rien-en-dur.md`, « le cas particulier du
+ * zero »). Le nettoyage deja livre la propose a la suppression depuis le
+ * pre-controle de la generation des bulletins — sauf quand il y reste des
+ * absences, cas qu'il ne voit pas (`reste = notes_non_comptees`).
  *
- * ```bash
- * grep -rnE "update\(\[?\s*'(matiere_id|classe_id|periode|semestre)'" app/ database/ --include="*.php"
- * grep -rn "ESBTPNote::where('evaluation_id'" app/ --include="*.php"
- * ```
+ * ## Synchrone, et pas sur la file
  *
- * Le premier motif ne voit pas un `update($variable)` (c'est ainsi que
- * `ESBTPEvaluationController::update()` lui échappe) : relisez les résultats du
- * second, pas seulement ceux du premier.
+ * Le job est execute **sur place** (`dispatchSync`), pas dispatche. Deux
+ * raisons : l'operateur qui vient de deplacer une evaluation doit voir l'ecran
+ * juste tout de suite, et surtout rien ne prouve qu'un worker tourne sur les
+ * instances mutualisees — `config/queue.php` vaut `database` par defaut et
+ * `app/Console/Kernel.php` ne planifie aucun `queue:work`. Dispatcher aurait
+ * donne un correctif qui a l'air pose et ne s'execute jamais.
+ *
+ * Le volume est borne par construction : les eleves notes sur **une** seule
+ * evaluation, au plus deux coordonnees chacun.
+ *
+ * ## Combien de deplaceurs, et lesquels — TROUVES A CE JOUR
+ *
+ * **Ce compte a ete faux trois fois, chaque fois publie comme definitif** : la
+ * premiere livraison annoncait « les deux endroits » (les deux qui changent la
+ * matiere), la deuxieme « quatre » (en ajoutant les deux qui changent la
+ * periode), la troisieme « cinq » — et « cinq » ne satisfaisait pas la
+ * definition que ce docbloc venait d'ecrire, laquelle parle de tout `update()`
+ * de query builder sur ces colonnes, pas seulement de ceux qui deplacent une
+ * evaluation.
+ *
+ * Alors disons ce que le tableau compte : **les endroits qui changent les
+ * coordonnees d'une EVALUATION**. Ils sont cinq, le cinquieme n'est pas branche
+ * ici (a dessein, voir plus bas), et la liste est celle des sites **trouves a
+ * ce jour** — pas celle des sites existants (`klassci-debugging-discipline.md`,
+ * piege #14) :
+ *
+ * | deplaceur | ce qu'il change | branche sur cette classe |
+ * |---|---|---|
+ * | `ESBTPEvaluationController::update()` | matiere, classe, periode | oui |
+ * | `CLIEvaluationMatiereController::evaluationChangeMatiere()` | matiere | oui |
+ * | `CLIEvaluationDeplacementController::deplacer()` | periode, en lot | oui |
+ * | `CLIEvaluationPeriodeController::repair()` | periode, en lot | oui |
+ * | `MergeDuplicateEcue` (sous `force`) | matiere, en masse | **non, a dessein** |
+ *
+ * Le cinquieme, `app/Domain/LMD/Actions/MergeDuplicateEcue.php`, reparente
+ * `esbtp_evaluations.matiere_id` ET `esbtp_notes.matiere_id` vers l'ECUE
+ * canonique, puis met l'absorbee de cote (soft-delete). Il ne recalcule pas
+ * `esbtp_resultats`, **a dessein** — son en-tete dit pourquoi : la moyenne
+ * d'une ECUE se relit sur les notes, et recalculer la canonique en laissant la
+ * ligne de l'absorbee compterait deux fois les notes absorbees au seul lecteur
+ * trouve (le repli du certificat de scolarite). Ce qu'il fait a la place :
+ * reporter les lignes de bulletin LMD (`esbtp_lmd_resultats_ecues`), dont la
+ * note de rattrapage ne se reconstruit depuis aucune note, et nommer les
+ * bulletins a regenerer.
+ *
+ * ## Les VOISINS : ils ecrivent les memes colonnes sans deplacer d'evaluation
+ *
+ * Ils ne sont pas dans le tableau — ils ne bougent aucune evaluation — mais ils
+ * repondent a la definition d'en tete, et les ignorer ferait mentir ce docbloc :
+ *
+ * - `app/Console/Commands/Evaluations/SyncNotesScopeCommand.php` : `update()` de
+ *   query builder sur `classe_id`, `matiere_id` ET `semestre` a la fois, sans
+ *   aucun recalcul. Il **realigne** les notes sur leur evaluation apres coup —
+ *   et c'est l'outil que ce docbloc recommande plus haut pour le menage. Un
+ *   operateur qui le lance pour rattraper un deplacement ancien remet
+ *   `esbtp_notes` d'aplomb et laisse `esbtp_resultats` perime : le defaut meme
+ *   de ce chantier, par la porte du remede.
+ * - `app/Console/Commands/SynchronizeNotesPeriodes.php` : passe par `save()`,
+ *   donc par l'observer — mais celui-ci `dispatch()` sur la FILE, dont rien ne
+ *   prouve qu'un ouvrier la consomme (voir plus bas).
+ *
+ * Aucun des deux n'est branche ici, a dessein : `sync-notes` tourne sans bornes
+ * sur l'ecole entiere, et y ajouter un recalcul synchrone par note est
+ * exactement ce que le plafond de cette classe cherche a eviter.
+ *
+ * ## Pourquoi pas un observer sur `ESBTPEvaluation`
+ *
+ * C'est la premiere question que pose un lecteur, et le depot s'est justement
+ * ecrit la lecon inverse dans `lmd-ecue-leak-bts-picker.md` : « le garde est a
+ * l'ECRITURE, pas en lecture », apres quatre passes de filtres semes chez les
+ * lecteurs. Un `updated()` sur les quatre coordonnees couvrirait les chemins
+ * Eloquent sans un seul appel a se rappeler.
+ *
+ * Trois raisons de ne pas l'avoir fait, et elles tiennent aux deux endpoints en
+ * lot : ils ont besoin d'un plafond et d'un compte-rendu **agreges**, qu'un hook
+ * ligne a ligne ne peut pas rendre ; leurs `save()` sont DANS une transaction
+ * alors que le recalcul est volontairement hors transaction ; et le cinquieme
+ * deplaceur passe par `DB::table()` brut, qu'aucun observer n'attrape. Un
+ * observer reste souhaitable pour les chemins Eloquent — il n'est simplement
+ * pas suffisant, et ce n'est pas le geste de ce lot.
  */
 final class RecalculApresDeplacement
 {
+    /** Valeur ecrite dans `esbtp_resultats_recompute_log.source`. */
+    public const SOURCE = 'deplacement';
+
     /**
-     * Qui a une note sur ces évaluations, et à quelle coordonnée — AVANT le
-     * déplacement : après, rien ne dit plus d'où venait chaque évaluation.
+     * Borne GLOBALE de notes recalculees dans une requete, tous perimetres
+     * confondus.
      *
-     * Mêmes exclusions que le job : notes effacées ou archivées, évaluations
-     * effacées ou ANNULÉES. Ce dernier point n'est pas cosmétique : les notes
-     * d'une évaluation annulée ne comptent nulle part, donc la déplacer ne vide
-     * rien — la relever ferait prendre pour « vidée » une coordonnée dont la
-     * ligne ne leur devait rien (une saisie manuelle, par exemple), et
-     * {@see apresEnRetirantLesLignesVidees()} la mettrait de côté. Une évaluation
-     * sans classe, année ou période n'est pas recalculable non plus.
+     * Le recalcul est hors transaction a dessein : les evaluations sont **deja
+     * enregistrees**. Si la requete meurt sur le delai d'attente, on garde des
+     * evaluations deplacees, des agregats rafraichis a moitie, et surtout
+     * `perimetres_reportes` — tout l'objet de ce mecanisme — n'arrive JAMAIS,
+     * puisque la reponse n'arrive pas. Le nombre de classes d'un lot n'etant
+     * borne nulle part, seule une borne sur le total tient.
      *
-     * @param  list<int>  $evaluationIds
-     * @return list<array{etudiant_id:int, evaluation_id:int, avant:array}>
+     * **Les perimetres sont servis du plus leger au plus lourd.** Le budget se
+     * consomme dans l'ordre : servi dans l'ordre d'arrivee, une classe lourde
+     * placee en tete l'epuisait et faisait reporter toutes les classes legeres
+     * derriere elle. Un plafond PAR CLASSE avait d'abord ete pose pour cela ;
+     * egal a la borne globale, il ne servait plus a rien, et le retirer ne
+     * faisait tomber aucun test. Le tri, lui, garantit la propriete.
+     *
+     * **La valeur : mesuree, et abaissee de 1200 a 400.** Un recalcul coute
+     * **22 requetes et ~17 ms par eleve**, lineairement (mesure locale, MariaDB
+     * sur la meme machine : 10 eleves 0,17 s, 40 eleves 0,67 s). Une note
+     * deplacee declenche un ou deux recalculs : 17 a 34 ms par note. A 1200,
+     * cela faisait **20 a 40 s en local** — au-dessus des 30 s au-dela
+     * desquelles le binaire `klassci` abandonne la requete
+     * (`feature-delivery-methodology.md`, phase 12). A 400 : 7 a 14 s en
+     * local, soit une marge d'un facteur deux pour un hebergement plus lent —
+     * facteur qui, lui, n'est pas mesure sur LWS.
+     *
+     * **Remesure apres l'ajout du garde** (diagnostic avant chaque recalcul) :
+     * **11 requetes et ~8-9 ms par couple recalcule** (10 puis 50 couples,
+     * meme machine). Un eleve deplace compte jusqu'a deux couples, d'ou les 22
+     * requetes ci-dessus : le garde n'a pas deplace la borne.
      */
-    public function releverAvant(array $evaluationIds): array
+    public const PLAFOND_NOTES_PAR_APPEL = 400;
+
+    /**
+     * @param  array{classe_id?:int|null, matiere_id?:int|null, periode?:string|null, annee_universitaire_id?:int|null}  $avant
+     *                                                                                                                           Coordonnees de l'evaluation AVANT le deplacement.
+     * @return array{recalculs_tentes:int, orphelins:array<int,array<string,mixed>>, echecs:int}
+     */
+    public static function pour(ESBTPEvaluation $evaluation, array $avant, ?int $declencheur = null): array
     {
-        return DB::table('esbtp_notes as n')
-            ->join('esbtp_evaluations as e', 'e.id', '=', 'n.evaluation_id')
-            ->whereIn('e.id', $evaluationIds)
-            ->whereNull('n.deleted_at')
-            ->whereNull('n.archived_at')
-            ->whereNull('e.deleted_at')
-            ->where('e.status', '!=', 'cancelled')
-            ->whereNotNull('e.classe_id')
-            ->whereNotNull('e.matiere_id')
-            ->whereNotNull('e.annee_universitaire_id')
-            ->whereNotNull('e.periode')
-            ->distinct()
-            ->get(['n.etudiant_id', 'e.id as evaluation_id', 'e.classe_id', 'e.matiere_id', 'e.annee_universitaire_id', 'e.periode'])
-            ->map(fn ($r) => [
-                'etudiant_id' => (int) $r->etudiant_id,
-                'evaluation_id' => (int) $r->evaluation_id,
-                'avant' => $this->coordonnee((array) $r),
-            ])
-            ->all();
+        $memo = ['couples' => [], 'orphelins' => []];
+
+        return self::pourAvecMemo($evaluation, $avant, $declencheur, $memo);
     }
 
     /**
-     * À appeler DANS la transaction du déplacement, APRÈS ses `update()`.
+     * Le deplacement fait depuis l'ecran des evaluations : repercute sur les
+     * notes les colonnes denormalisees qui ont change (`classe_id`,
+     * `matiere_id`, `semestre`), puis rafraichit les moyennes des deux cotes.
      *
-     * Sur une file asynchrone, les jobs attendent le commit (`afterCommit()`) :
-     * `recalculs_lances` compte alors des recalculs PROGRAMMÉS, pas faits. Sur la
-     * file `sync`, Laravel 9 ignore `afterCommit()` : le job tourne tout de
-     * suite, dans la transaction, et une panne du recalcul annule le déplacement
-     * entier. Le refus attendu — matière étrangère au système de la classe — est
-     * rattrapé par le job lui-même et n'annule rien.
+     * Sorti de `ESBTPEvaluationController`, qui depassait deja 2000 lignes :
+     * c'est une regle du domaine des notes, pas de l'ecran.
      *
-     * @param  list<array{etudiant_id:int, evaluation_id:int, avant:array}>  $releve  rendu par releverAvant()
-     * @param  string  $motif  pour le journal, par exemple « rebascule évaluation 4117 »
-     * @return array{recalculs_lances:int, lignes_sans_note:list<array>}
+     * La repercussion est un `update()` de QUERY BUILDER : il n'emet aucun
+     * evenement, l'observateur ne tourne pas — d'ou l'appel a `pour()` qui
+     * suit, sans lequel la moyenne d'avant l'emporterait sur les notes.
+     *
+     * @param  array{classe_id:int, matiere_id:int, periode:string}  $avant
+     * @return array{recalculs_tentes:int, orphelins:array<int,array<string,mixed>>, echecs:int}
      */
-    public function apres(array $releve, string $motif, ?int $declenchePar = null): array
+    public static function apresEnregistrement(ESBTPEvaluation $evaluation, array $avant, ?int $declencheur = null): array
     {
-        return $this->traiter($releve, $motif, $declenchePar, false);
-    }
+        $colonnes = [];
 
-    /**
-     * Comme {@see apres()}, mais une ligne que le déplacement a vidée est mise de
-     * côté au lieu d'être signalée. Voir l'en-tête pour le pourquoi.
-     *
-     * @return array{recalculs_lances:int, lignes_sans_note:list<array>, lignes_retirees:list<array>}
-     */
-    public function apresEnRetirantLesLignesVidees(array $releve, string $motif, ?int $declenchePar = null): array
-    {
-        return $this->traiter($releve, $motif, $declenchePar, true);
-    }
-
-    private function traiter(array $releve, string $motif, ?int $declenchePar, bool $retirerLesVidees): array
-    {
-        $maintenant = DB::table('esbtp_evaluations')
-            ->whereIn('id', array_unique(array_column($releve, 'evaluation_id')))
-            ->get(['id', 'classe_id', 'matiere_id', 'annee_universitaire_id', 'periode'])
-            ->keyBy('id');
-
-        // [étudiant, coordonnée, vidée ?] — « vidée » : elle portait les notes
-        // relevées avant le déplacement. Une coordonnée qui est à la fois quittée
-        // et rejointe (deux évaluations échangées) n'est pas vidée si des notes
-        // y restent : le test aDesNotes() tranche avant.
-        $coordonnees = [];
-        foreach ($releve as $r) {
-            $coordonnees[$this->cle($r['etudiant_id'], $r['avant'])] = [$r['etudiant_id'], $r['avant'], true];
+        if ($evaluation->classe_id != $avant['classe_id']) {
+            $colonnes['classe_id'] = $evaluation->classe_id;
         }
-        foreach ($releve as $r) {
-            $apres = $maintenant->get($r['evaluation_id']);
-            $c = $apres ? $this->coordonnee((array) $apres) : null;
-            if ($c) {
-                $coordonnees[$this->cle($r['etudiant_id'], $c)] ??= [$r['etudiant_id'], $c, false];
+        if ($evaluation->matiere_id != $avant['matiere_id']) {
+            $colonnes['matiere_id'] = $evaluation->matiere_id;
+        }
+        if ($evaluation->periode != $avant['periode']) {
+            // L'encodage vit sur le modele (voir le hook `saving()`), pas ici.
+            $colonnes['semestre'] = ESBTPNote::semestreDepuisLaPeriode((string) $evaluation->periode);
+        }
+
+        if ($colonnes === []) {
+            return ['recalculs_tentes' => 0, 'orphelins' => [], 'echecs' => 0];
+        }
+
+        $touchees = ESBTPNote::where('evaluation_id', $evaluation->id)->update($colonnes);
+
+        Log::info('Notes propagées après modif évaluation', [
+            'evaluation_id' => $evaluation->id,
+            'changes' => $colonnes,
+            'old' => $avant,
+            'notes_affected' => $touchees,
+        ]);
+
+        return self::pour($evaluation, $avant + [
+            'annee_universitaire_id' => $evaluation->annee_universitaire_id,
+        ], $declencheur);
+    }
+
+    /**
+     * Le memo evite de refaire deux fois le meme travail dans un lot.
+     *
+     * `pourUnLotDePeriodes()` appelle `pour()` **par evaluation**. Deux
+     * evaluations de la meme coordonnee deplacees ensemble produisaient donc
+     * deux fois le meme recalcul, et surtout signalaient DEUX FOIS la meme ligne
+     * d'`esbtp_resultats` comme orpheline. Mesure : `agregats_orphelins` rendait
+     * deux entrees de `resultat_id` identique pour une seule ligne en base, et
+     * `recalculs_tentes` valait 2 pour un unique couple (eleve, coordonnee).
+     *
+     * Les deux comptent. Le doublon d'orphelins fait sur-compter a l'operateur
+     * ce qu'il a a trancher — dans un chantier dont la these est qu'un compte
+     * faux ferme l'enquete suivante. Et le recalcul redondant consomme le budget
+     * global pour rien.
+     *
+     * Le memo porte sur le couple (eleve, coordonnee) et sur `resultat_id`, pas
+     * sur l'evaluation : deux evaluations de la meme coordonnee peuvent noter
+     * des eleves differents, et chacun doit etre traite.
+     *
+     * @param  array{couples:array<string,true>, orphelins:array<int,true>}  $memo
+     * @return array{recalculs_tentes:int, orphelins:array<int,array<string,mixed>>, echecs:int}
+     */
+    private static function pourAvecMemo(ESBTPEvaluation $evaluation, array $avant, ?int $declencheur, array &$memo): array
+    {
+        $apres = [
+            'classe_id' => $evaluation->classe_id,
+            'matiere_id' => $evaluation->matiere_id,
+            'periode' => $evaluation->periode,
+            'annee_universitaire_id' => $evaluation->annee_universitaire_id,
+        ];
+
+        // `recalculs_tentes` et non « recalcules » : le job rend la main sans
+        // rien ecrire dans deux cas legitimes — aucune note et aucune ligne
+        // existante, ou refus du garde de coherence BTS/LMD, qu'il attrape sans
+        // relancer. Annoncer « N agregats recalcules » surestimait.
+        $bilan = ['recalculs_tentes' => 0, 'orphelins' => [], 'echecs' => 0];
+
+        if (self::memeCoordonnee($avant, $apres)) {
+            return $bilan;
+        }
+
+        $etudiantIds = ESBTPNote::where('evaluation_id', $evaluation->id)
+            ->distinct()
+            ->pluck('etudiant_id')
+            ->filter()
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        if ($etudiantIds === []) {
+            return $bilan;
+        }
+
+        // Les deux cotes passent par le meme garde : l'arrivee peut elle aussi
+        // ne recevoir que des absences, et une ligne qu'elle porterait deja ne
+        // doit pas davantage y etre remise a zero.
+        foreach ($etudiantIds as $etudiantId) {
+            foreach ([$apres, $avant] as $coordonnee) {
+                self::executerUneFois($etudiantId, $coordonnee, $declencheur, $bilan, $memo);
             }
         }
 
-        $lances = 0;
-        $sansNote = [];
-        $retirees = [];
+        if ($bilan['orphelins'] !== []) {
+            Log::warning('Deplacement d evaluation : moyennes sans rien a moyenner, laissees en place', [
+                'evaluation_id' => $evaluation->id,
+                'avant' => $avant,
+                'apres' => $apres,
+                'orphelins' => $bilan['orphelins'],
+                'remede' => 'chaque entree porte sa classe et sa periode (depart OU arrivee) : pre-controle de la '
+                    .'generation des bulletins pour reste = aucune_note, « Modifier les moyennes » de l eleve sinon',
+            ]);
+        }
 
-        foreach ($coordonnees as [$etudiantId, $c, $videe]) {
-            if ($this->aDesNotes($etudiantId, $c)) {
-                $this->lancer($etudiantId, $c, $declenchePar);
-                $lances++;
-            } elseif ($ligne = $this->ligneDeResultat($etudiantId, $c)) {
-                $trace = ['etudiant_id' => $etudiantId] + $c + [
-                    'moyenne' => $ligne->moyenne !== null ? (float) $ligne->moyenne : null,
+        return $bilan;
+    }
+
+    /**
+     * Recalcule un couple (eleve, coordonnee) au plus une fois sur la duree
+     * du lot, par {@see PerimetreDeRecalcul::recalculerUnCouple()}, et reporte
+     * son issue dans le bilan. Voir le docbloc de `pourAvecMemo()`.
+     *
+     * La cle du memo porte la periode CANONIQUE : `'1'` et `'semestre1'`
+     * designent la meme coordonnee, et la cle brute les recalculait deux fois.
+     *
+     * Un recalcul qui echoue ne defait pas le deplacement, qui reste acquis.
+     *
+     * @param  array<string,mixed>  $coordonnee
+     * @param  array{recalculs_tentes:int, orphelins:array<int,array<string,mixed>>, echecs:int}  $bilan
+     * @param  array{couples:array<string,true>, orphelins:array<int,true>}  $memo
+     */
+    private static function executerUneFois(int $etudiantId, array $coordonnee, ?int $declencheur, array &$bilan, array &$memo): void
+    {
+        if (! self::coordonneeComplete($coordonnee)) {
+            return;
+        }
+
+        $couple = [
+            'etudiant_id' => $etudiantId,
+            'classe_id' => (int) $coordonnee['classe_id'],
+            'matiere_id' => (int) $coordonnee['matiere_id'],
+            'annee_universitaire_id' => (int) $coordonnee['annee_universitaire_id'],
+            'periode' => ESBTPEvaluation::periodeCanonique((string) $coordonnee['periode']),
+        ];
+
+        $cle = implode('|', $couple);
+
+        if (isset($memo['couples'][$cle])) {
+            return;
+        }
+
+        $memo['couples'][$cle] = true;
+
+        $issue = PerimetreDeRecalcul::recalculerUnCouple($couple, self::SOURCE, $declencheur);
+
+        if ($issue['statut'] === PerimetreDeRecalcul::RECALCULE) {
+            $bilan['recalculs_tentes']++;
+        } elseif ($issue['statut'] === PerimetreDeRecalcul::ECHEC) {
+            $bilan['echecs']++;
+        }
+
+        $laissee = $issue['laissee'];
+
+        if ($laissee !== null && ! isset($memo['orphelins'][$laissee['resultat_id']])) {
+            $memo['orphelins'][$laissee['resultat_id']] = true;
+            $bilan['orphelins'][] = $laissee;
+        }
+    }
+
+    /** @param array<string,mixed> $coordonnee */
+    private static function coordonneeComplete(array $coordonnee): bool
+    {
+        foreach (['classe_id', 'matiere_id', 'annee_universitaire_id', 'periode'] as $cle) {
+            if (empty($coordonnee[$cle])) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * @param  array<string,mixed>  $avant
+     * @param  array<string,mixed>  $apres
+     */
+    private static function memeCoordonnee(array $avant, array $apres): bool
+    {
+        foreach (['classe_id', 'matiere_id', 'annee_universitaire_id', 'periode'] as $cle) {
+            if (($avant[$cle] ?? null) != ($apres[$cle] ?? null)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Meme correction, pour les deux endpoints qui deplacent des evaluations
+     * d'une PERIODE a l'autre, en lot.
+     *
+     * `periode` est une coordonnee de la cle d'`esbtp_resultats` au meme titre
+     * que `matiere_id` : un changement de semestre laisse donc exactement le
+     * meme agregat perime des deux cotes.
+     *
+     * Une borne globale, servie du plus leger au plus lourd — voir
+     * `PLAFOND_NOTES_PAR_APPEL`. Tout perimetre non traite part dans
+     * `perimetres_reportes` avec sa raison et les parametres exacts a rejouer
+     * sur `POST /api/cli/notes/recompute`.
+     *
+     * @param  array<int, array{evaluation: ESBTPEvaluation, periode_avant: string}>  $deplacements
+     * @return array{recalculs_tentes:int, orphelins:array<int,array<string,mixed>>, echecs:int, reporte:bool, perimetres_reportes:array<int,array<string,mixed>>}
+     */
+    public static function pourUnLotDePeriodes(array $deplacements, ?int $declencheur = null): array
+    {
+        $bilan = [
+            'recalculs_tentes' => 0,
+            'orphelins' => [],
+            'echecs' => 0,
+            'reporte' => false,
+            'perimetres_reportes' => [],
+        ];
+
+        if ($deplacements === []) {
+            return $bilan;
+        }
+
+        // Une seule requete pour tout le lot : le compte par evaluation est
+        // ensuite reparti par perimetre en memoire.
+        $notesParEvaluation = ESBTPNote::whereIn(
+            'evaluation_id',
+            array_map(static fn (array $d) => (int) $d['evaluation']->id, $deplacements)
+        )
+            ->selectRaw('evaluation_id, COUNT(*) as total')
+            ->groupBy('evaluation_id')
+            ->pluck('total', 'evaluation_id');
+
+        $budget = self::PLAFOND_NOTES_PAR_APPEL;
+        $memo = ['couples' => [], 'orphelins' => []];
+
+        $perimetres = self::grouperParPerimetre($deplacements, $notesParEvaluation);
+        uasort($perimetres, static fn (array $a, array $b) => $a['notes'] <=> $b['notes']);
+
+        foreach ($perimetres as $perimetre) {
+            if ($perimetre['notes'] > $budget) {
+                self::reporterUnPerimetre(
+                    $perimetre,
+                    $perimetre['notes'] > self::PLAFOND_NOTES_PAR_APPEL ? 'perimetre_trop_lourd' : 'budget_de_la_requete_epuise',
+                    $bilan
+                );
+
+                continue;
+            }
+
+            $budget -= $perimetre['notes'];
+
+            foreach ($perimetre['deplacements'] as $deplacement) {
+                $evaluation = $deplacement['evaluation'];
+
+                $partiel = self::pourAvecMemo($evaluation, [
+                    'classe_id' => $evaluation->classe_id,
+                    'matiere_id' => $evaluation->matiere_id,
+                    'periode' => $deplacement['periode_avant'],
+                    'annee_universitaire_id' => $evaluation->annee_universitaire_id,
+                ], $declencheur, $memo);
+
+                $bilan['recalculs_tentes'] += $partiel['recalculs_tentes'];
+                $bilan['echecs'] += $partiel['echecs'];
+                $bilan['orphelins'] = array_merge($bilan['orphelins'], $partiel['orphelins']);
+            }
+        }
+
+        return $bilan;
+    }
+
+    /**
+     * Regroupe les deplacements sur ce que sait rejouer
+     * `POST /api/cli/notes/recompute` : (classe, annee), avec les periodes
+     * touchees des DEUX cotes et les matieres concernees.
+     *
+     * Les periodes sont rendues sous leur forme canonique `semestreN`, pas sous
+     * la valeur brute d'avant : `esbtp_evaluations.periode` accepte aussi `'1'`
+     * et `'2'` (voir `ESBTPEvaluation::aliasDePeriode()`), et l'endpoint de
+     * rattrapage valide `in:semestre1,semestre2`. Publier la valeur brute
+     * rendait un parametre que l'endpoint refuse en 422.
+     *
+     * @param  array<int, array{evaluation: ESBTPEvaluation, periode_avant: string}>  $deplacements
+     * @param  Collection<int|string, int>  $notesParEvaluation
+     * @return array<string, array<string, mixed>>
+     */
+    private static function grouperParPerimetre(array $deplacements, $notesParEvaluation): array
+    {
+        $perimetres = [];
+
+        foreach ($deplacements as $deplacement) {
+            $evaluation = $deplacement['evaluation'];
+            $cle = ((int) $evaluation->classe_id).'|'.((int) $evaluation->annee_universitaire_id);
+
+            if (! isset($perimetres[$cle])) {
+                $perimetres[$cle] = [
+                    'classe_id' => (int) $evaluation->classe_id,
+                    'annee_universitaire_id' => (int) $evaluation->annee_universitaire_id,
+                    'periodes' => [],
+                    'matiere_ids' => [],
+                    'notes' => 0,
+                    'deplacements' => [],
                 ];
-                if ($retirerLesVidees && $videe) {
-                    $ligne->delete();
-                    $retirees[] = $trace;
-                } else {
-                    $sansNote[] = $trace;
+            }
+
+            foreach ([$deplacement['periode_avant'], $evaluation->periode] as $brute) {
+                if (ESBTPEvaluation::numeroDeSemestre((string) $brute) === null) {
+                    continue;
+                }
+
+                $canonique = ESBTPEvaluation::periodeCanonique((string) $brute);
+
+                if (! in_array($canonique, $perimetres[$cle]['periodes'], true)) {
+                    $perimetres[$cle]['periodes'][] = $canonique;
                 }
             }
+
+            if ($evaluation->matiere_id && ! in_array((int) $evaluation->matiere_id, $perimetres[$cle]['matiere_ids'], true)) {
+                $perimetres[$cle]['matiere_ids'][] = (int) $evaluation->matiere_id;
+            }
+
+            $perimetres[$cle]['notes'] += (int) ($notesParEvaluation[$evaluation->id] ?? 0);
+            $perimetres[$cle]['deplacements'][] = $deplacement;
         }
 
-        if ($retirees !== []) {
-            Log::warning('Deplacement de notes : moyennes videes par le deplacement, mises de cote', [
-                'motif' => $motif,
-                'nombre' => count($retirees),
-                'lignes' => $retirees,
-            ]);
-        }
-
-        if ($sansNote !== []) {
-            Log::warning('Deplacement de notes : moyennes laissees sans note, non recalculees', [
-                'motif' => $motif,
-                'nombre' => count($sansNote),
-                'lignes' => $sansNote,
-            ]);
-        }
-
-        $rapport = ['recalculs_lances' => $lances, 'lignes_sans_note' => $sansNote];
-
-        return $retirerLesVidees ? $rapport + ['lignes_retirees' => $retirees] : $rapport;
+        return $perimetres;
     }
 
     /**
-     * Même filtre que le job : c'est ce qu'il lirait, donc c'est ce qui décide
-     * s'il écrirait une moyenne ou un zéro.
+     * @param  array<string, mixed>  $perimetre
+     * @param  array<string, mixed>  $bilan
      */
-    private function aDesNotes(int $etudiantId, array $c): bool
+    private static function reporterUnPerimetre(array $perimetre, string $raison, array &$bilan): void
     {
-        return ESBTPNote::query()
-            ->where('etudiant_id', $etudiantId)
-            ->whereHas('evaluation', fn ($q) => $q
-                ->where('classe_id', $c['classe_id'])
-                ->where('matiere_id', $c['matiere_id'])
-                ->where('annee_universitaire_id', $c['annee_universitaire_id'])
-                ->where('periode', $c['periode'])
-                ->where('status', '!=', 'cancelled'))
-            ->exists();
-    }
+        $evaluations = array_map(
+            static fn (array $d) => (int) $d['evaluation']->id,
+            $perimetre['deplacements']
+        );
 
-    private function lancer(int $etudiantId, array $c, ?int $declenchePar): void
-    {
-        RecomputeStudentResultatJob::dispatch(
-            etudiantId: $etudiantId,
-            classeId: $c['classe_id'],
-            matiereId: $c['matiere_id'],
-            anneeUniversitaireId: $c['annee_universitaire_id'],
-            periode: $c['periode'],
-            source: 'manual',
-            triggeredBy: $declenchePar,
-        )->afterCommit();
-    }
-
-    private function ligneDeResultat(int $etudiantId, array $c): ?ESBTPResultat
-    {
-        return ESBTPResultat::query()
-            ->where('etudiant_id', $etudiantId)
-            ->where('classe_id', $c['classe_id'])
-            ->where('matiere_id', $c['matiere_id'])
-            ->where('annee_universitaire_id', $c['annee_universitaire_id'])
-            ->where('periode', $c['periode'])
-            ->first();
-    }
-
-    /**
-     * La période passe par la table de correspondance du job : c'est la ligne
-     * qu'IL écrit qu'il faut retrouver.
-     *
-     * @return array{classe_id:int, matiere_id:int, annee_universitaire_id:int, periode:string}
-     */
-    private function coordonnee(array $c): array
-    {
-        return [
-            'classe_id' => (int) $c['classe_id'],
-            'matiere_id' => (int) $c['matiere_id'],
-            'annee_universitaire_id' => (int) $c['annee_universitaire_id'],
-            'periode' => RecomputeStudentResultatJob::periodeNormalisee((string) $c['periode']),
+        $ligne = [
+            'classe_id' => $perimetre['classe_id'],
+            'annee_universitaire_id' => $perimetre['annee_universitaire_id'],
+            'periodes' => $perimetre['periodes'],
+            'matiere_ids' => $perimetre['matiere_ids'],
+            'notes' => $perimetre['notes'],
+            'raison' => $raison,
+            'evaluations' => $evaluations,
         ];
+
+        $bilan['reporte'] = true;
+        $bilan['perimetres_reportes'][] = $ligne;
+
+        Log::warning('Deplacement en lot : recalcul reporte pour un perimetre', $ligne + [
+            'plafond_appel' => self::PLAFOND_NOTES_PAR_APPEL,
+            'remede' => 'POST /api/cli/notes/recompute avec classe_id, annee_universitaire_id et chaque periode',
+        ]);
     }
 
-    private function cle(int $etudiantId, array $c): string
+    /**
+     * La phrase que les deux endpoints en lot ajoutent a leur message.
+     *
+     * Elle vit ici, a cote du plafond et de la forme de
+     * `perimetres_reportes` qu'elle decrit. Elle etait dupliquee mot pour mot
+     * dans les deux controleurs : deux copies d'un message qui cite un plafond,
+     * c'est le prochain compte faux en germe.
+     *
+     * @param  array<string, mixed>  $recalcul
+     */
+    public static function motDeLaFin(array $recalcul): string
     {
-        return implode(':', [$etudiantId, $c['classe_id'], $c['matiere_id'], $c['annee_universitaire_id'], $c['periode']]);
+        $fait = ' '.$recalcul['recalculs_tentes'].' recalcul(s) lance(s).';
+
+        if (! $recalcul['reporte']) {
+            return $fait;
+        }
+
+        return $fait.' ATTENTION : '.count($recalcul['perimetres_reportes'])
+            .' perimetre(s) non recalcule(s) — budget de '
+            .self::PLAFOND_NOTES_PAR_APPEL.' notes par requete epuise. Chaque ligne de'
+            .' `perimetres_reportes` porte les parametres a rejouer sur'
+            .' POST /api/cli/notes/recompute (classe_id, annee_universitaire_id,'
+            .' et une fois par periode listee). PASSEZ `matiere_id`, une fois par'
+            .' entree de `matiere_ids` : sans lui le rattrapage recalcule TOUTES'
+            .' les matieres de la classe pour cette periode, et un recalcul'
+            .' ECRASE la moyenne enregistree — y compris celle qu une personne a'
+            .' saisie a la main sur une matiere qui n a pas bouge. Une moyenne'
+            .' sans rien a moyenner, elle, n est jamais remise a zero : elle est'
+            .' rendue dans `laissees`.';
     }
 }

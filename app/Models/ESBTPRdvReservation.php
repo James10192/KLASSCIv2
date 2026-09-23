@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Contracts\PorteurDeRendezVous;
+use App\Enums\StatutConvocationRdv;
 use App\Enums\StatutReservationRdv;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -23,12 +24,21 @@ class ESBTPRdvReservation extends Model
         'date_naissance',
         'email',
         'libere_at',
+        'convocation_statut',
+        'convocation_action',
+        'convocation_tentatives',
+        'convocation_envoyee_at',
+        'convocation_erreur',
+        'convocation_message_id',
     ];
 
     protected $casts = [
         'statut' => StatutReservationRdv::class,
         'date_naissance' => 'date',
         'libere_at' => 'datetime',
+        'convocation_statut' => StatutConvocationRdv::class,
+        'convocation_tentatives' => 'integer',
+        'convocation_envoyee_at' => 'datetime',
     ];
 
     public function creneau(): BelongsTo
