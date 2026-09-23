@@ -67,6 +67,11 @@ git checkout presentation
 
 Quand l'utilisateur veut « mettre à jour la prod {tenant} avec les dernières features » ou « push presentation sur les autres tenants » :
 
+**Avant toute propagation** : les écrans modifiés depuis la dernière propagation
+doivent avoir leur capture réelle prise sur presentation. Une fusion faite en
+`PASS — capture en attente` ne part vers aucune école sans elle (commandement 0 de
+`pre-merge-checklist.md`).
+
 ### ✅ Option A — push direct cross-branch (PREFERRED, le plus simple)
 
 **Une seule commande par tenant**, depuis le repo local sans changer de branche :
