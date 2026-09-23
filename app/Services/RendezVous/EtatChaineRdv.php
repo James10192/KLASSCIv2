@@ -88,6 +88,9 @@ class EtatChaineRdv
             $resultat[$statut->value] = (int) ($comptes[$statut->value] ?? 0);
         }
         $resultat['inconnu'] = ESBTPRdvReservation::query()->occupantes()->whereNull('convocation_statut')->count();
+        // « Envoyee » veut dire « acceptee par MailPulse ». La remise, elle, n'est
+        // connue qu'apres synchronisation (inscriptions:synchroniser-convocations-rdv).
+        $resultat['delivrees'] = ESBTPRdvReservation::query()->whereNotNull('convocation_delivree_at')->count();
 
         return $resultat;
     }

@@ -45,6 +45,9 @@ class MessagerieRdv
             'convocation_envoyee_at' => null,
             'convocation_erreur' => null,
             'convocation_message_id' => null,
+            'convocation_delivree_at' => null,
+            'convocation_synchro_at' => null,
+            'convocation_code_distant' => null,
             'prevenue_par' => null,
         ])->save();
     }
@@ -147,9 +150,10 @@ class MessagerieRdv
 
     private function emailValide(ESBTPRdvReservation $reservation): bool
     {
-        $email = trim((string) ($reservation->email ?? ''));
-
-        return $email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL) !== false;
+        // Une adresse fabriquee (`@esbtp.edu.ci`) ou une faute connue
+        // (`gmail.con`) rebondirait : la famille est « sans e-mail », donc a
+        // appeler, plutot que convoquee dans le vide.
+        return app(\App\Services\Emails\AnalyseurEmail::class)->analyser($reservation->email)->joignable();
     }
 
     private function creneauPasse(ESBTPRdvReservation $reservation): bool
