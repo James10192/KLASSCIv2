@@ -4,7 +4,10 @@
 
 @push('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
-<link rel="stylesheet" href="{{ asset('css/notes-management.css') }}">
+<link rel="stylesheet" href="{{ asset('css/notes-management.css') }}?v={{ @filemtime(public_path('css/notes-management.css')) ?: '1' }}">
+<style>
+    .note-input.nm-note-refused { border-color: #dc2626 !important; background: rgba(220,38,38,.06) !important; }
+</style>
 @endpush
 
 @section('page_title', 'Gestion des Notes')
@@ -220,6 +223,7 @@
                                 <option value="{{ $matiere->id }}">{{ $matiere->name ?? $matiere->nom ?? 'Matière sans nom' }}</option>
                             @endforeach
                         </select>
+                        <small id="nmMatiereAide" class="text-muted" style="display:none;"></small>
                     </div>
                     <div class="nm-modal-control">
                         <label for="periodeFilter">Période</label>
@@ -230,7 +234,7 @@
                         </select>
                     </div>
                     @can('evaluations.create')
-                    <div style="flex-shrink: 0;">
+                    <div class="nm-modal-create" style="flex-shrink: 0;">
                         <label>&nbsp;</label>
                         <button type="button" class="nm-create-eval-btn" onclick="createEvaluation()" id="createEvaluationBtn">
                             <i class="fas fa-plus"></i>Créer évaluation
@@ -623,6 +627,11 @@ let cachedStudents = null;
 let cachedStudentsClassId = null;
 let cachedStudentsRequestKey = null;
 let currentLoadRequest = null;
+// La liste des élèves se charge APRÈS les évaluations. Sans annulation ni
+// numéro de requête, la réponse tardive d'une classe quittée s'affichait sous
+// le libellé de la classe suivante, et le cache l'enregistrait à son nom.
+let currentStudentsRequest = null;
+let nmStudentsRequestSeq = 0;
 let evalParamsCache = {};
 let nmFinalSaveInFlight = false;
 let nmFinalSaveRetryTimer = null;
@@ -807,7 +816,9 @@ $(document).ready(function() {
                 if (deepPeriode === 'semestre1' || deepPeriode === 'semestre2') {
                     $('#periodeFilter').val(deepPeriode).trigger('change');
                 }
-                $('#matiereSelect').val(deepMatiereId).trigger('change');
+                nmMatieresPret.always(function() {
+                    $('#matiereSelect').val(deepMatiereId).trigger('change');
+                });
             }, 0);
         }
     }
@@ -826,6 +837,8 @@ $(document).ready(function() {
 
     // Gestion de la sélection de matière
     $('#matiereSelect').on('change', function() {
+        nmFlushAutosave();
+        nmCancelFinalSaveRetry();
         currentMatiereId  = $(this).val();
         currentMatiereName = $(this).find('option:selected').text().trim();
         if (currentClassId && currentMatiereId) {
@@ -834,6 +847,8 @@ $(document).ready(function() {
     });
 
     $('#periodeFilter').on('change', function() {
+        nmFlushAutosave();
+        nmCancelFinalSaveRetry();
         currentPeriodeFilter = $(this).val();
         if (currentClassId && currentMatiereId) {
             buildNotesGrid();
@@ -902,24 +917,32 @@ window.nmOpenCoverageSaisie = function(matiere) {
     const periode = destination.searchParams.get('periode');
     if (!matiereId || (classeId && String(classeId) !== String(currentClassId))) return;
 
-    const $matiere = $('#matiereSelect');
-    if (!$matiere.find(`option[value="${matiereId}"]`).length) return;
+    // La liste des matières de la classe peut être encore en chargement.
+    nmMatieresPret.always(function() {
+        const $matiere = $('#matiereSelect');
+        if (!$matiere.find(`option[value="${matiereId}"]`).length) return;
 
-    const periodeCible = periode === 'semestre1' || periode === 'semestre2' ? periode : 'all';
-    $('#periodeFilter').val(periodeCible).trigger('change');
-    $matiere.val(matiereId).trigger('change');
+        const periodeCible = periode === 'semestre1' || periode === 'semestre2' ? periode : 'all';
+        $('#periodeFilter').val(periodeCible).trigger('change');
+        $matiere.val(matiereId).trigger('change');
 
-    // La grille remplace immédiatement le contenu et conserve le contexte de
-    // classe ; ce focus laisse visible que la navigation s'est bien faite.
-    $matiere.trigger('focus');
+        // La grille remplace immédiatement le contenu et conserve le contexte de
+        // classe ; ce focus laisse visible que la navigation s'est bien faite.
+        $matiere.trigger('focus');
+    });
 };
 
 // Fonction pour sélectionner une classe
 function selectClass(classId, className) {
+    nmFlushAutosave();
     if (currentClassId !== classId) {
         cachedStudents = null;
         cachedStudentsClassId = null;
         cachedStudentsRequestKey = null;
+        nmAbortGridRequests();
+        // Une nouvelle tentative programmée après un 429 visait la grille
+        // quittée : la rejouer enverrait d'autres brouillons.
+        nmCancelFinalSaveRetry();
     }
     currentClassId = classId;
     currentClassname = className;
@@ -938,9 +961,10 @@ function selectClass(classId, className) {
         },
     }));
 
-    // Réinitialiser la sélection de matière
+    // Réinitialiser la sélection de matière, puis réduire la liste à la classe
     $('#matiereSelect').val('');
     currentMatiereId = null;
+    nmChargerMatieres(classId);
 
     // Vider le tableau
     $('#studentsRows').html(`
@@ -954,6 +978,36 @@ function selectClass(classId, className) {
 
     // Montrer le modal
     $('#classSelectionModal').modal('show');
+}
+
+function nmAbortGridRequests() {
+    nmStudentsRequestSeq++;
+    [currentLoadRequest, currentStudentsRequest].forEach(function (req) {
+        if (req && req.readyState !== 4) req.abort();
+    });
+    currentLoadRequest = null;
+    currentStudentsRequest = null;
+}
+
+function nmCancelFinalSaveRetry() {
+    if (!nmFinalSaveRetryTimer) return;
+    clearTimeout(nmFinalSaveRetryTimer);
+    nmFinalSaveRetryTimer = null;
+    nmFinalSaveInFlight = false;
+    $('#saveAllNotesBtn')
+        .prop('disabled', false)
+        .html('<i class="fas fa-check-circle me-1"></i>Valider les notes');
+}
+
+function nmShowGridError(message) {
+    $('#studentsRows').html(`
+        <tr>
+            <td colspan="10" class="text-center text-danger py-5">
+                <i class="fas fa-exclamation-circle fa-2x mb-3 d-block"></i>
+                ${nmEscapeHtml(message)}
+            </td>
+        </tr>
+    `);
 }
 
 function updateBlankPdfLink() {
@@ -986,9 +1040,7 @@ function loadEvaluationsAndNotes() {
     if (!currentClassId || !currentMatiereId) return;
 
     // Abort any in-flight request to prevent stale data
-    if (currentLoadRequest && currentLoadRequest.readyState !== 4) {
-        currentLoadRequest.abort();
-    }
+    nmAbortGridRequests();
 
     $('#studentsRows').html(`
         <tr>
@@ -1086,21 +1138,27 @@ function buildNotesGrid() {
         return;
     }
 
-    $.ajax({
-        url: '{{ route("esbtp.notes.classes.students", ["classe" => ":classId"]) }}'.replace(':classId', currentClassId),
+    const requestedClassId = currentClassId;
+    const requestSeq = ++nmStudentsRequestSeq;
+    if (currentStudentsRequest && currentStudentsRequest.readyState !== 4) {
+        currentStudentsRequest.abort();
+    }
+
+    currentStudentsRequest = $.ajax({
+        url: '{{ route("esbtp.notes.classes.students", ["classe" => ":classId"]) }}'.replace(':classId', requestedClassId),
         method: 'GET',
         data: {
             semesters: requestedSemesters
         },
         dataType: 'json',
         success: function(response) {
-            nmFinalSaveInFlight = false;
-            if (nmFinalSaveRetryTimer) {
-                clearTimeout(nmFinalSaveRetryTimer);
-                nmFinalSaveRetryTimer = null;
-            }
+            // Une réponse doublée par une requête plus récente, ou arrivée
+            // après un changement de classe, ne doit rien afficher.
+            if (requestSeq !== nmStudentsRequestSeq || requestedClassId !== currentClassId) return;
+
             if (!response.success) {
                 console.error('Erreur API:', response.message);
+                nmShowGridError(response.message || 'Impossible de charger la liste des étudiants.');
                 return;
             }
 
@@ -1109,12 +1167,21 @@ function buildNotesGrid() {
                 const nameB = ((b.nom || '') + ' ' + (b.prenoms || '')).toLowerCase();
                 return nameA.localeCompare(nameB, 'fr');
             });
-            cachedStudentsClassId = currentClassId;
+            cachedStudentsClassId = requestedClassId;
             cachedStudentsRequestKey = studentsRequestKey;
             renderNotesGrid(cachedStudents, sortedEvaluations);
         },
         error: function(xhr) {
+            if (xhr.statusText === 'abort') return;
+            if (requestSeq !== nmStudentsRequestSeq || requestedClassId !== currentClassId) return;
+            if (nmHandleSessionExpired(xhr)) {
+                nmShowGridError('Session expirée. Actualisez la page puis reconnectez-vous.');
+                return;
+            }
             console.error('Erreur lors du chargement des étudiants:', xhr);
+            nmShowGridError(xhr.status === 429
+                ? 'Trop de demandes en peu de temps. Patientez quelques secondes puis rechoisissez la matière.'
+                : 'Erreur lors du chargement des étudiants.');
         }
     });
 }
@@ -1602,9 +1669,14 @@ $('#saveAllNotesBtn').on('click', function() {
         });
     });
 
+    // Le contexte de départ : si l'on change de classe, de matière ou de
+    // période avant la réponse, celle-ci ne touche plus à la grille affichée.
+    const draftKey = nmDraftKey();
+
     // Envoyer une seule requête bulk au lieu d'une par étudiant
     $.ajax({
         url: '{{ route("esbtp.notes.save-ajax-bulk") }}',
+        nmDraftKey: draftKey,
         method: 'POST',
         dataType: 'json',
         headers: {
@@ -1617,9 +1689,32 @@ $('#saveAllNotesBtn').on('click', function() {
             notes: notesPayload
         },
         success: function(response) {
+            // Le verrou se lève ici, à chaque issue. Il n'était relâché que
+            // par le rechargement de la liste des élèves : servie depuis le
+            // cache, elle ne passait jamais par là et le bouton restait muet.
+            nmFinalSaveInFlight = false;
+
+            if (nmDraftKey() !== draftKey) {
+                nmRetirerDuBrouillon(draftKey, notesPayload, response.refused);
+                btn.html(originalText).prop('disabled', false);
+                nmShowToast(response.success ? 'success' : 'error', response.message || 'Validation terminée pour la grille précédente.', 6000);
+                return;
+            }
+
             if (!response.success) {
+                // Le serveur valide les lignes correctes même quand d'autres
+                // échouent : on relit sa vérité plutôt que de garder à l'écran
+                // des brouillons qui sont déjà validés en base.
                 btn.html(`<i class="fas fa-exclamation-triangle me-1"></i> ${response.errors} erreur(s)`).prop('disabled', false);
+                const raisons = [...new Set((response.refused || []).map(r => r.raison))].join(', ');
+                nmShowToast('error', `${response.saved || 0} note(s) validée(s), ${response.errors} refusée(s)${raisons ? ' : ' + raisons : ''}. Les notes refusées restent en rouge.`, 6000);
                 setTimeout(() => { btn.html(originalText); }, 2500);
+                // Sans la liste des refus (serveur plus ancien), on ne sait
+                // pas lesquelles restaurer : on garde la grille telle quelle.
+                if (Array.isArray(response.refused)) {
+                    nmMemoriserRefus(notesPayload, response.refused);
+                    loadEvaluationsAndNotes();
+                }
                 return;
             }
 
@@ -1652,7 +1747,7 @@ $('#saveAllNotesBtn').on('click', function() {
             notesPayload.forEach(function(entry) {
                 nmMarkClean(entry.etudiant_id, entry.evaluation_id);
             });
-            nmAutosaveDraft();
+            nmAutosaveDraft(draftKey);
             window.nmHasUnsavedChanges = false;
             markBulletinSynced();
 
@@ -1681,6 +1776,9 @@ $('#saveAllNotesBtn').on('click', function() {
                 nmFinalSaveRetryTimer = setTimeout(function() {
                     nmFinalSaveRetryTimer = null;
                     nmFinalSaveInFlight = false;
+                    // Tout changement de classe, de matière ou de période annule
+                    // ce minuteur (nmCancelFinalSaveRetry) : s'il se déclenche,
+                    // la grille est toujours celle qui a été refusée.
                     if (btn.is(':visible')) btn.trigger('click');
                 }, retryAfter * 1000);
                 return;
@@ -2564,209 +2662,8 @@ $(document).ajaxError(function(_event, _jqxhr, settings) {
     }
 });
 
-// ── 3. localStorage autosave (anti-perte) ───────────────────────────────
-function nmDraftKey() {
-    if (!currentClassId || !currentMatiereId) return null;
-    const periode = $('#periodeFilter').val() || 'all';
-    return `nm_notes_draft_${currentClassId}_${currentMatiereId}_${periode}`;
-}
-function nmCollectDraftNotes() {
-    // Ne collecter QUE les notes dirty (modifiées + pas encore confirmées serveur).
-    // Sans ce filtre, l'autosave ré-écrit en localStorage TOUS les inputs visibles
-    // (y compris ceux dont la valeur vient juste d'être restaurée puis sauvée),
-    // ce qui ressuscite la bannière "Brouillon non sauvegardé" indéfiniment.
-    const out = {};
-    if (window.nmDirtyNotes.size === 0) return out;
-    window.nmDirtyNotes.forEach(function(key) {
-        const sep = key.indexOf('-');
-        if (sep < 0) return;
-        const sid = key.substring(0, sep);
-        const eid = key.substring(sep + 1);
-        const $i = $(`.note-input[data-student-id="${sid}"][data-eval-id="${eid}"]`);
-        if ($i.length === 0) return;
-        const val = $i.val();
-        const isAbsent = $(`#absent-${sid}-${eid}`).is(':checked');
-        if ((val !== '' && val !== null && val !== undefined) || isAbsent) {
-            if (!out[eid]) out[eid] = {};
-            out[eid][sid] = { note: isAbsent ? 0 : val, isAbsent: !!isAbsent };
-        }
-    });
-    return out;
-}
-function nmAutosaveDraft() {
-    const key = nmDraftKey();
-    if (!key) return;
-    const notes = nmCollectDraftNotes();
-    if (Object.keys(notes).length === 0) {
-        // Aucune note dirty → purger le draft ET masquer la bannière si visible.
-        try { localStorage.removeItem(key); } catch (e) { /* quota */ }
-        nmHideDraftBanner();
-        return;
-    }
-    try {
-        localStorage.setItem(key, JSON.stringify({
-            savedAt: Date.now(),
-            notes: notes,
-            classLabel: currentClassname,
-            matiereLabel: currentMatiereName,
-        }));
-    } catch (e) {
-        // localStorage plein ou désactivé : silencieux
-        console.warn('NM autosave failed:', e);
-    }
-}
-function nmScheduleAutosave() {
-    if (NM.autosaveDebounceTimer) clearTimeout(NM.autosaveDebounceTimer);
-    NM.autosaveDebounceTimer = setTimeout(nmAutosaveDraft, NM.autosaveDebounceMs);
-}
-function nmPurgeOldDrafts() {
-    try {
-        const now = Date.now();
-        const keys = [];
-        for (let i = 0; i < localStorage.length; i++) {
-            const k = localStorage.key(i);
-            if (k && k.startsWith('nm_notes_draft_')) keys.push(k);
-        }
-        keys.forEach(k => {
-            try {
-                const obj = JSON.parse(localStorage.getItem(k) || '{}');
-                if (!obj.savedAt || (now - obj.savedAt) > NM.draftTtlMs) {
-                    localStorage.removeItem(k);
-                }
-            } catch (e) { localStorage.removeItem(k); }
-        });
-    } catch (e) { /* ignore */ }
-}
-function nmRelativeTime(timestamp) {
-    const diff = Math.max(0, Date.now() - timestamp);
-    const sec = Math.floor(diff / 1000);
-    if (sec < 60) return 'quelques secondes';
-    const min = Math.floor(sec / 60);
-    if (min < 60) return `${min} min`;
-    const h = Math.floor(min / 60);
-    if (h < 24) return `${h} h`;
-    const d = Math.floor(h / 24);
-    return `${d} j`;
-}
-function nmCheckDraftBanner() {
-    const key = nmDraftKey();
-    if (!key) return;
-    const banner = document.getElementById('nm-restore-banner');
-    if (!banner) return;
-    let raw;
-    try { raw = localStorage.getItem(key); } catch (e) { return; }
-    if (!raw) { banner.style.display = 'none'; return; }
-    let obj;
-    try { obj = JSON.parse(raw); } catch (e) { localStorage.removeItem(key); return; }
-    if (!obj || !obj.notes) { banner.style.display = 'none'; return; }
-
-    let count = 0;
-    Object.values(obj.notes).forEach(byStud => count += Object.keys(byStud).length);
-    if (count === 0) { banner.style.display = 'none'; return; }
-
-    document.getElementById('nm-restore-time').textContent = nmRelativeTime(obj.savedAt || Date.now());
-    document.getElementById('nm-restore-count').textContent = count;
-    banner.style.display = 'flex';
-}
-function nmHideDraftBanner() {
-    const banner = document.getElementById('nm-restore-banner');
-    if (banner) banner.style.display = 'none';
-}
-function nmRestoreFromDraft() {
-    const key = nmDraftKey();
-    if (!key) return;
-    let obj;
-    try { obj = JSON.parse(localStorage.getItem(key) || '{}'); } catch (e) { return; }
-    if (!obj || !obj.notes) return;
-
-    let restored = 0;
-    Object.entries(obj.notes).forEach(([eid, byStud]) => {
-        Object.entries(byStud).forEach(([sid, payload]) => {
-            const $input = $(`.note-input[data-student-id="${sid}"][data-eval-id="${eid}"]`);
-            if ($input.length === 0) return;
-
-            if (payload.isAbsent) {
-                const $checkbox = $(`#absent-${sid}-${eid}`);
-                $checkbox.prop('checked', true);
-                $input.val('0').prop('disabled', true);
-                if (typeof toggleAbsence === 'function') {
-                    // ne pas re-déclencher AJAX si déjà absent
-                }
-                saveNote(sid, eid, 0);  // persist serveur
-            } else {
-                $input.val(payload.note);
-                saveNote(sid, eid, payload.note);
-            }
-            restored++;
-        });
-    });
-    nmHideDraftBanner();
-    nmShowToast('success', `${restored} note(s) restaurée(s) depuis le brouillon local.`);
-    try { localStorage.removeItem(key); } catch (e) { /* ignore */ }
-}
-function nmDiscardDraft() {
-    const key = nmDraftKey();
-    if (!key) return;
-    try { localStorage.removeItem(key); } catch (e) { /* ignore */ }
-    nmHideDraftBanner();
-    nmShowToast('info', 'Brouillon local ignoré.');
-}
-
-$(document).on('click', '#nm-restore-btn', nmRestoreFromDraft);
-$(document).on('click', '#nm-restore-discard', nmDiscardDraft);
-
-// Hook autosave + dirty flag sur tous les inputs notes.
-// On marque la note dirty AVANT que saveNote()/AJAX soit appelé : l'autosave
-// suivant la persistera localement le temps que le serveur confirme.
-$(document).on('input change', '.note-input, .absence-checkbox', function() {
-    const $el = $(this);
-    let sid = $el.data('student-id');
-    let eid = $el.data('eval-id');
-    if (!sid || !eid) {
-        // Cas checkbox absence : on extrait depuis l'id (absent-${sid}-${eid})
-        const id = $el.attr('id') || '';
-        const m = id.match(/^absent-(\d+)-(\d+)$/);
-        if (m) { sid = m[1]; eid = m[2]; }
-    }
-    if (sid && eid) nmMarkDirty(sid, eid);
-    window.nmHasUnsavedChanges = true;
-    nmScheduleAutosave();
-});
-
-// Quand un save serveur réussit, la note est confirmée : la marquer "clean"
-// pour qu'elle ne soit plus collectée par l'autosave. Si plus aucune note
-// dirty → le prochain nmAutosaveDraft purgera le draft + cachera la bannière.
-$(document).ajaxSuccess(function(_event, _jqxhr, settings) {
-    if (typeof settings.url === 'string' && /(save-ajax|save-ajax-bulk)/.test(settings.url)) {
-        // Parser le payload pour récupérer les paires (etudiant_id, evaluation_id)
-        // à marquer comme clean. Le payload peut être :
-        //   - save-ajax : `etudiant_id=X&evaluation_id=Y` (1 paire)
-        //   - save-ajax-bulk : `notes[0][etudiant_id]=X&notes[0][evaluation_id]=Y&notes[1]...`
-        const data = settings.data || '';
-        if (typeof data === 'string' && data.length) {
-            const params = new URLSearchParams(data);
-            // Cas simple
-            const sid = params.get('etudiant_id');
-            const eid = params.get('evaluation_id');
-            if (sid && eid) nmMarkClean(sid, eid);
-            // Cas bulk : reconstituer les paires via notes[i][etudiant_id] / notes[i][evaluation_id]
-            const bulkSids = {}, bulkEids = {};
-            for (const [key, val] of params.entries()) {
-                let m = key.match(/^notes\[(\d+)\]\[etudiant_id\]$/);
-                if (m) { bulkSids[m[1]] = val; continue; }
-                m = key.match(/^notes\[(\d+)\]\[evaluation_id\]$/);
-                if (m) { bulkEids[m[1]] = val; continue; }
-            }
-            Object.keys(bulkSids).forEach(function(idx) {
-                if (bulkEids[idx]) nmMarkClean(bulkSids[idx], bulkEids[idx]);
-            });
-        }
-        if (NM.pendingSaves === 0 && window.nmDirtyNotes.size === 0) {
-            window.nmHasUnsavedChanges = false;
-        }
-        nmScheduleAutosave();
-    }
-});
+@include('esbtp.notes.partials._brouillon-local')
+@include('esbtp.notes.partials._matieres-classe')
 
 // ── 4. Network indicator dispatcher (compat events custom externes) ────
 window.addEventListener('nm:save-pending', () => nmSetNetworkState('syncing'));

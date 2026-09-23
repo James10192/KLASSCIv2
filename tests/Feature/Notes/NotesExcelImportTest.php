@@ -17,6 +17,7 @@ use Maatwebsite\Excel\Facades\Excel;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx as XlsxWriter;
 use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 class NotesExcelImportTest extends TestCase
@@ -26,6 +27,11 @@ class NotesExcelImportTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        // Le garde « installed » renvoie tout vers /install tant qu'aucun
+        // superAdmin n'existe : sans lui, chaque requête répond 302.
+        Role::findOrCreate('superAdmin', 'web');
+        User::factory()->create()->assignRole('superAdmin');
 
         Permission::findOrCreate('notes.view', 'web');
         Permission::findOrCreate('notes.create', 'web');

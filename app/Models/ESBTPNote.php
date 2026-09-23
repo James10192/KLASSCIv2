@@ -354,6 +354,40 @@ class ESBTPNote extends Model implements Auditable
     }
 
     /**
+     * Notes archivées qu'on peut rendre vivantes sans heurter l'unicité : une
+     * seule note vivante par élève et par évaluation (voir UniciteDesNotes).
+     * Une note archivée dont la jumelle est déjà vivante reste archivée ; entre
+     * jumelles toutes archivées, seule la plus récente revient. Cas limite
+     * assumé : si l'appelant filtre par classe et que la plus récente n'y est
+     * plus rattachée, aucune des deux ne revient — rien n'est perdu, la note
+     * reste archivée et se restaure à la main.
+     *
+     * La table dérivée groupée n'est pas là par goût : MySQL refuse qu'un
+     * UPDATE relise sa propre table (erreur 1093), sauf à travers une table
+     * dérivée qu'il ne peut pas fusionner — le GROUP BY l'en empêche.
+     */
+    public function scopeSansJumelleVivante($query)
+    {
+        $table = $this->getTable();
+
+        return $query->whereRaw("NOT EXISTS (
+            SELECT 1 FROM (
+                SELECT etudiant_id, evaluation_id FROM {$table}
+                WHERE deleted_at IS NULL AND archived_at IS NULL
+                GROUP BY etudiant_id, evaluation_id
+            ) AS vivantes
+            WHERE vivantes.etudiant_id = {$table}.etudiant_id
+              AND vivantes.evaluation_id = {$table}.evaluation_id
+        ) AND {$table}.id IN (
+            SELECT id FROM (
+                SELECT MAX(id) AS id FROM {$table}
+                WHERE deleted_at IS NULL AND archived_at IS NOT NULL
+                GROUP BY etudiant_id, evaluation_id
+            ) AS plus_recentes
+        )");
+    }
+
+    /**
      * Realigne `esbtp_notes.semestre` sur la periode d'une evaluation, pour
      * toutes ses notes, et rend le nombre de lignes touchees.
      *
