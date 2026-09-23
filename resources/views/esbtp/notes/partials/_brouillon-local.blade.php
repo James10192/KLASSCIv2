@@ -58,6 +58,25 @@ function nmAutosaveDraft(expectedKey) {
         console.warn('NM autosave failed:', e);
     }
 }
+// La grille a été quittée avant la réponse de sa validation : son brouillon,
+// écrit au départ, garde des notes que le serveur vient d'accepter. On les
+// retire, sinon le retour sur cette grille proposerait de les restaurer.
+// Sans liste des refus, on ne sait pas lesquelles sont passées : on ne touche à rien.
+function nmRetirerDuBrouillon(key, notesPayload, refused) {
+    if (!key || !Array.isArray(refused)) return;
+    try {
+        const brouillon = JSON.parse(localStorage.getItem(key) || 'null');
+        if (!brouillon || !brouillon.notes) return;
+        const refusees = new Set(refused.map(function(r) { return nmDirtyKey(r.etudiant_id, r.evaluation_id); }));
+        notesPayload.forEach(function(e) {
+            if (refusees.has(nmDirtyKey(e.etudiant_id, e.evaluation_id))) return;
+            const parEval = brouillon.notes[e.evaluation_id];
+            if (parEval) { delete parEval[e.etudiant_id]; if (!Object.keys(parEval).length) delete brouillon.notes[e.evaluation_id]; }
+        });
+        if (Object.keys(brouillon.notes).length) localStorage.setItem(key, JSON.stringify(brouillon));
+        else localStorage.removeItem(key);
+    } catch (e) { /* stockage indisponible : rien à nettoyer */ }
+}
 function nmScheduleAutosave() {
     if (NM.autosaveDebounceTimer) clearTimeout(NM.autosaveDebounceTimer);
     const key = nmDraftKey();

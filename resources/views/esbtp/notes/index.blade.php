@@ -1688,6 +1688,7 @@ $('#saveAllNotesBtn').on('click', function() {
             nmFinalSaveInFlight = false;
 
             if (nmDraftKey() !== draftKey) {
+                nmRetirerDuBrouillon(draftKey, notesPayload, response.refused);
                 btn.html(originalText).prop('disabled', false);
                 nmShowToast(response.success ? 'success' : 'error', response.message || 'Validation terminée pour la grille précédente.', 6000);
                 return;
