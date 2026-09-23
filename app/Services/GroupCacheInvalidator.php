@@ -2,6 +2,9 @@
 
 namespace App\Services;
 
+use App\Support\CodeInstance;
+use Illuminate\Http\Client\RequestException;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -15,32 +18,44 @@ use Illuminate\Support\Facades\Log;
  *
  * Configuration lue exclusivement via config() : services.master.api_url,
  * services.master.api_token, app.tenant_code. Aucun env() ici — il rend null
- * une fois `config:cache` lancé en production. Si l'une manque, l'appel est
- * sauté et un avertissement est journalisé une fois par processus : un saut
- * muet laissait le cache du portail groupe périmé sans que personne le sache.
+ * une fois `config:cache` lancé en production. Le code d'établissement passe
+ * par CodeInstance, qui traite la valeur de repli « default » comme une absence.
+ *
+ * Deux échecs sont journalisés au lieu de passer en silence :
+ *  - configuration absente : l'appel est sauté, avertissement au plus une fois
+ *    par jour et par instance (Cache::add, partagé entre processus) ;
+ *  - réponse du master en erreur (401 jeton, 404 code…) : avertissement à
+ *    chaque échec, avec le statut HTTP.
  */
 class GroupCacheInvalidator
 {
-    private static bool $configurationManquanteSignalee = false;
+    private const CLE_AVERTISSEMENT = 'group_cache_invalidator.configuration_manquante';
 
     public function invalidate(string $trigger = 'unknown'): void
     {
         $masterUrl = config('services.master.api_url');
         $tenantToken = config('services.master.api_token');
-        $tenantCode = config('app.tenant_code');
 
         $manquants = array_keys(array_filter([
             'services.master.api_url (MASTER_API_URL)' => ! $masterUrl,
             'services.master.api_token (MASTER_API_TOKEN)' => ! $tenantToken,
-            'app.tenant_code (TENANT_CODE)' => ! $tenantCode,
+            'app.tenant_code (TENANT_CODE)' => CodeInstance::resoudre() === null,
         ]));
 
         if ($manquants !== []) {
-            $this->signalerConfigurationManquante($manquants, $trigger);
+            if (Cache::add(self::CLE_AVERTISSEMENT, true, now()->addDay())) {
+                Log::warning('GroupCacheInvalidator : invalidation du cache groupe ignorée, configuration master absente.', [
+                    'manquants' => $manquants,
+                    'trigger' => $trigger,
+                ]);
+            }
 
             return;
         }
 
+        // Le master connaît le code en minuscules (esbtp-yakro) : CodeInstance le
+        // met en majuscules pour les pièces officielles, il ne sert donc qu'au contrôle.
+        $tenantCode = strtolower(trim((string) config('app.tenant_code')));
         $url = rtrim($masterUrl, '/') . "/tenants/{$tenantCode}/cache/invalidate";
 
         dispatch(function () use ($url, $tenantToken, $trigger) {
@@ -49,23 +64,15 @@ class GroupCacheInvalidator
                     ->connectTimeout(2)
                     ->timeout(3)
                     ->acceptJson()
-                    ->post($url, ['trigger' => $trigger]);
+                    ->post($url, ['trigger' => $trigger])
+                    ->throw();
             } catch (\Exception $e) {
-                Log::warning("GroupCacheInvalidator failed (after response): {$e->getMessage()}");
+                Log::warning("GroupCacheInvalidator failed (after response): {$e->getMessage()}", [
+                    'url' => $url,
+                    'status' => $e instanceof RequestException ? $e->response->status() : null,
+                    'trigger' => $trigger,
+                ]);
             }
         })->afterResponse();
-    }
-
-    private function signalerConfigurationManquante(array $manquants, string $trigger): void
-    {
-        if (self::$configurationManquanteSignalee) {
-            return;
-        }
-        self::$configurationManquanteSignalee = true;
-
-        Log::warning('GroupCacheInvalidator : invalidation du cache groupe ignorée, configuration master absente.', [
-            'manquants' => $manquants,
-            'trigger' => $trigger,
-        ]);
     }
 }
