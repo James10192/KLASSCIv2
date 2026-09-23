@@ -16,7 +16,7 @@ class RenvoiVerification
 {
     public function __construct(private readonly ExpediteurVerification $expediteur) {}
 
-    /** @return int|null le delai d'attente en secondes si le debit est depasse, sinon null */
+    /** @return int|null le delai d attente en secondes (debit local ou de MailPulse), sinon null */
     public function renvoyer(string $demandeId, ?string $canal): ?int
     {
         $empreinte = hash('sha256', $demandeId);
@@ -33,10 +33,13 @@ class RenvoiVerification
         RateLimiter::hit($heure, 3600);
 
         $verification = ESBTPVerificationContact::query()->where('demande_id', $demandeId)->first();
-        if ($verification !== null && ! $verification->estVerifiee() && ($canal === null || $canal === $verification->canal->value)) {
-            $this->expediteur->expedier($verification);
+        if ($verification === null || $verification->estVerifiee() || ($canal !== null && $canal !== $verification->canal->value)) {
+            return null;
         }
 
-        return null;
+        // MailPulse limite aussi (par numero) : son delai est rendu tel quel au site.
+        $envoi = $this->expediteur->expedier($verification);
+
+        return $envoi->code === 'rate_limited' ? max(1, $envoi->retryAfter ?? 60) : null;
     }
 }

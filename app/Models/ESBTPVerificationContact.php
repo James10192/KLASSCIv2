@@ -20,7 +20,7 @@ class ESBTPVerificationContact extends Model
         'demande_id', 'verifiable_type', 'verifiable_id', 'canal', 'destination',
         'code_hash', 'jeton_hash', 'code_expire_at', 'jeton_expire_at', 'tentatives', 'tentatives_total',
         'mailpulse_verification_id', 'mailpulse_message_id', 'dernier_echec',
-        'dernier_envoi_at', 'verifie_at', 'masque_la_demande',
+        'dernier_envoi_at', 'verifie_at', 'masquee_at', 'masque_la_demande',
     ];
 
     protected $hidden = ['code_hash', 'jeton_hash', 'destination'];
@@ -31,6 +31,7 @@ class ESBTPVerificationContact extends Model
         'jeton_expire_at' => 'datetime',
         'dernier_envoi_at' => 'datetime',
         'verifie_at' => 'datetime',
+        'masquee_at' => 'datetime',
         'tentatives' => 'integer',
         'tentatives_total' => 'integer',
         'masque_la_demande' => 'boolean',

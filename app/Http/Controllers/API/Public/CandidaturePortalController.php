@@ -115,7 +115,7 @@ class CandidaturePortalController extends Controller
 
         return response()->json(array_merge([
             'enregistre' => true,
-            'message' => $verification === null
+            'message' => $verification === null || ! $verification->masquee
                 ? 'Votre candidature a bien été transmise à l\'établissement.'
                 : 'Confirmez votre contact pour que votre candidature soit transmise à l\'établissement.',
             'inscriptions_physiques' => $this->publication->inscriptionsPhysiques(),

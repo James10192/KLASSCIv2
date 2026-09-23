@@ -195,7 +195,7 @@
                                         };
                                     @endphp
                                     <span class="rd-badge rd-badge--{{ $ton }}">{{ $demande->libelleStatut() }}</span>
-                                    @include('esbtp.partials._badge-verification-contact', ['statutVerification' => $demande->verification_contact])
+                                    @include('esbtp.partials._badge-verification-contact', ['statutVerification' => $demande->verification_contact, 'routeConfirmer' => auth()->user()?->can('reinscriptions.demandes.process') ? route('esbtp.reinscription-demandes.confirmer-contact', $demande) : null])
                                     @if($demande->traitePar)
                                         <div style="font-size:.72rem;color:#64748b;margin-top:.2rem;">
                                             par {{ $demande->traitePar->name }}

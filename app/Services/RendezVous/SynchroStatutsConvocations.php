@@ -4,7 +4,7 @@ namespace App\Services\RendezVous;
 
 use App\Enums\StatutConvocationRdv;
 use App\Models\ESBTPRdvReservation;
-use App\Services\MailPulse\MailPulseApi;
+use App\Services\MailPulse\RefusMailPulse;
 use App\Services\MailPulse\MailPulseStatutsMessages;
 use Illuminate\Support\Facades\Log;
 
@@ -60,7 +60,7 @@ class SynchroStatutsConvocations
             if (is_string($etat)) {
                 // Configuration ou service indisponible : les lectures suivantes
                 // echoueraient pareil. On arrete le lot sans rien dater.
-                if (in_array($etat, MessagerieRdv::REFUS_DE_CONFIGURATION, true) || in_array($etat, MessagerieRdv::REFUS_PASSAGERS, true)) {
+                if (RefusMailPulse::bloquant($etat)) {
                     $rapport['bloque'] = $etat;
                     break;
                 }

@@ -14,6 +14,8 @@ return [
 
     'code_expire_minutes' => 30,
     'lien_expire_heures' => 48,
+    // Duree de vie d'un code WhatsApp : celle que MailPulse applique.
+    'code_whatsapp_expire_minutes' => 10,
     'tentatives_max' => 5,
     // Plafond cumule par demande, renvois compris : trois codes pleinement essayes.
     'tentatives_max_total' => 15,

@@ -97,6 +97,7 @@
                                     <span class="rac-puce rac-puce--reprog">Reprogrammée · {{ $resa->absences }} absence{{ $resa->absences > 1 ? 's' : '' }}</span>
                                 @endif
                             </div>
+                            @include('esbtp.partials._badge-verification-contact', ['statutVerification' => $resa->porteur()?->verification_contact])
                             <div class="rac-contacts">
                                 @if($_ref !== '')<span class="rac-ref">{{ $_ref }}</span>@endif
                                 <a href="tel:{{ preg_replace('/[^\d+]/', '', (string) $resa->telephone) }}"><i class="fas fa-phone"></i>{{ $_tel }}</a>

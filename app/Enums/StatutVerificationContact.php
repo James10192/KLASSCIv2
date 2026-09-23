@@ -30,10 +30,29 @@ enum StatutVerificationContact: string
      */
     case Expiree = 'verification_expiree';
 
+    /**
+     * Demande visible dont un redepot a change l'adresse ou le numero : un code
+     * est parti, la demande reste visible, et l'ecole sait que le contact
+     * affiche n'est pas encore prouve.
+     */
+    case AReconfirmer = 'contact_a_reconfirmer';
+
     /** @return list<string> */
     public static function valeursMasquees(): array
     {
         return [self::EmailNonVerifie->value, self::TelephoneNonVerifie->value];
+    }
+
+    /**
+     * Visibles, mais sans contact prouve : ni placement automatique en
+     * rendez-vous, ni convocation par courriel, tant que l'ecole n'a pas
+     * confirme le contact elle-meme (« Confirmer le contact »).
+     *
+     * @return list<string>
+     */
+    public static function valeursAConfirmer(): array
+    {
+        return [self::Expiree->value, self::Impossible->value, self::AReconfirmer->value];
     }
 
     /** Le badge a afficher a l'ecole sur une demande visible, ou null. */
@@ -42,6 +61,7 @@ enum StatutVerificationContact: string
         return match ($valeur) {
             self::Expiree->value => 'Contact non confirmé',
             self::Impossible->value => 'Contact non vérifiable',
+            self::AReconfirmer->value => 'Contact à reconfirmer',
             default => null,
         };
     }

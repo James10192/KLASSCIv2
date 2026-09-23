@@ -35,8 +35,7 @@ class FinalisationVerification
         }
 
         $date = [$verification->canal === CanalVerification::Email ? 'email_verifie_at' : 'telephone_verifie_at' => $maintenant];
-        $rendreVisible = $verification->masque_la_demande || $demande->contactNonVerifie()
-            || $demande->verification_contact === StatutVerificationContact::Expiree->value;
+        $rendreVisible = $verification->masque_la_demande || $demande->contactNonVerifie() || $demande->contactAConfirmer();
         $demande->poserVerificationContact($rendreVisible ? StatutVerificationContact::Verifie : null, $date);
 
         Log::info('Verification de contact aboutie', [

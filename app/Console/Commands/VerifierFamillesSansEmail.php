@@ -8,6 +8,7 @@ use App\Models\ESBTPReinscriptionDemande;
 use App\Models\ESBTPVerificationContact;
 use App\Services\Verification\ContactDeVerification;
 use App\Services\Verification\DemarrageVerification;
+use App\Services\MailPulse\RefusMailPulse;
 use App\Services\Verification\MasqueContact;
 use Illuminate\Console\Command;
 use Illuminate\Database\Eloquent\Model;
@@ -22,15 +23,17 @@ use Illuminate\Database\Eloquent\Model;
  */
 class VerifierFamillesSansEmail extends Command
 {
+    private const LIMITE_MAX = 20;
+
     protected $signature = 'inscriptions:verifier-familles-sans-email
         {--execute : envoie reellement les codes WhatsApp}
-        {--limite=0 : nombre maximal de familles (0 = toutes)}';
+        {--limite=20 : nombre maximal de familles par passage (20 au plus, pour rester sous le debit WhatsApp de MailPulse)}';
 
     protected $description = 'Liste les familles en attente sans e-mail joignable qui recevraient une verification WhatsApp ; --execute l\'envoie.';
 
     public function handle(ContactDeVerification $contacts, DemarrageVerification $demarrage): int
     {
-        $limite = max(0, (int) $this->option('limite'));
+        $limite = min(self::LIMITE_MAX, max(1, (int) $this->option('limite')));
         $cibles = [];
 
         foreach ([ESBTPCandidature::class, ESBTPReinscriptionDemande::class] as $modele) {
@@ -48,9 +51,7 @@ class VerifierFamillesSansEmail extends Command
                 });
         }
 
-        if ($limite > 0) {
-            $cibles = array_slice($cibles, 0, $limite);
-        }
+        $cibles = array_slice($cibles, 0, $limite);
 
         $this->table(['Type', 'Id', 'WhatsApp'], array_map(fn ($c) => [$c[0]->typeDemandePublique(), $c[0]->getKey(), MasqueContact::telephone($c[1])], $cibles));
         $this->info(count($cibles).' famille(s) recevrai(en)t un code WhatsApp.');
@@ -63,7 +64,16 @@ class VerifierFamillesSansEmail extends Command
 
         $envoyes = 0;
         foreach ($cibles as [$demande]) {
-            $envoyes += $demarrage->demarrer($demande, false) !== null ? 1 : 0;
+            if ($demarrage->demarrer($demande, false) !== null && $demarrage->dernierRefus === null) {
+                $envoyes++;
+
+                continue;
+            }
+            // Debit ou configuration : les suivants echoueraient pareil. On s'arrete.
+            if (in_array($demarrage->dernierRefus, ['rate_limited', 'trop_de_demandes'], true) || RefusMailPulse::bloquant($demarrage->dernierRefus)) {
+                $this->warn('Arrêt : '.$demarrage->dernierRefus.'. Relancer plus tard.');
+                break;
+            }
         }
         $this->info($envoyes.' code(s) envoyé(s).');
 

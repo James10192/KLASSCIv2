@@ -276,7 +276,7 @@
                                         $_b = $_libelles[$c->statut] ?? ['attente', $c->statut];
                                     @endphp
                                     <span class="cd-badge cd-badge--{{ $_b[0] }}">{{ $_b[1] }}</span>
-                                    @include('esbtp.partials._badge-verification-contact', ['statutVerification' => $c->verification_contact])
+                                    @include('esbtp.partials._badge-verification-contact', ['statutVerification' => $c->verification_contact, 'routeConfirmer' => auth()->user()?->can('inscriptions.candidatures.process') ? route('esbtp.candidatures.confirmer-contact', $c) : null])
                                     @if($c->motif_rejet)
                                         <div class="cd-contact" style="margin-top:.25rem;">{{ $c->motif_rejet }}</div>
                                     @endif

@@ -180,11 +180,15 @@ class VerificationContactTest extends TestCase
         $ancienne = $this->candidature('awa.kone@gmail.com')->fresh();
         $this->assertNull($ancienne->verification_contact);
 
+        // Ce que constate rouvrir() avant d'ecrire (voir le test par deposer() plus bas).
+        $ancienne->contactModifieAuDepot = true;
         $ancienne->update(['email' => 'awa.nouvelle@gmail.com']);
-        app(DemarrageVerification::class)->apresDepot($ancienne);
+        $reponse = app(DemarrageVerification::class)->apresDepot($ancienne);
 
         $this->assertSame(1, ESBTPCandidature::query()->count());
-        $this->assertNull($ancienne->fresh()->verification_contact);
+        $this->assertSame(StatutVerificationContact::AReconfirmer->value, $ancienne->fresh()->verification_contact);
+        $this->assertNotNull($reponse, 'La famille recoit de quoi saisir le code.');
+        $this->assertFalse($reponse->masquee);
         $this->assertFalse(ESBTPVerificationContact::query()->sole()->masque_la_demande, 'Le code part, mais sans masquer.');
     }
 
@@ -194,6 +198,7 @@ class VerificationContactTest extends TestCase
         $enAttente = $this->candidature('awa.kone@gmail.com')->fresh();
 
         // Ce que fait rouvrir() : l'identite et l'adresse du formulaire remplacent celles en base.
+        $enAttente->contactModifieAuDepot = true;
         $enAttente->update(['nom' => 'INTRUS', 'prenoms' => 'Jean', 'email' => 'intrus@gmail.com']);
         app(DemarrageVerification::class)->apresDepot($enAttente);
 
@@ -208,12 +213,13 @@ class VerificationContactTest extends TestCase
         $this->verifier(['demande_id' => $verification->demandeId, 'code' => $this->codeEnvoye()])->assertOk();
 
         $rouverte = $candidature->fresh();
+        $rouverte->contactModifieAuDepot = true;
         $rouverte->update(['email' => 'awa.nouvelle@gmail.com']);
         app(DemarrageVerification::class)->apresDepot($rouverte);
 
         $this->assertSame(1, ESBTPCandidature::query()->count());
         $this->assertNull($candidature->fresh()->email_verifie_at, 'La nouvelle adresse n\'est pas prouvee.');
-        $this->assertSame(StatutVerificationContact::Verifie->value, $candidature->fresh()->verification_contact);
+        $this->assertSame(StatutVerificationContact::AReconfirmer->value, $candidature->fresh()->verification_contact);
     }
 
     public function test_un_lien_deja_utilise_repare_une_demande_restee_masquee(): void

@@ -69,9 +69,15 @@ class ControleVerification
 
         $distant = $this->whatsapp->controler((string) $apercu->mailpulse_verification_id, $code);
 
-        return $this->sousVerrou($apercu->id, function (ESBTPVerificationContact $v) use ($distant, $code) {
+        return $this->sousVerrou($apercu->id, function (ESBTPVerificationContact $v) use ($apercu, $distant, $code) {
             if ($v->estVerifiee()) {
                 return $this->reussiteAvecCode($v, $code);
+            }
+            // Un nouveau code (autre canal, autre numero, autre verification
+            // MailPulse) est parti pendant l'appel : ce verdict ne vaut plus.
+            if ($v->canal !== $apercu->canal || $v->destination !== $apercu->destination
+                || $v->mailpulse_verification_id !== $apercu->mailpulse_verification_id) {
+                return ResultatControle::refus(self::EXPIRE);
             }
             if ($distant->ok) {
                 return $this->finalisation->valider($v, $code);
@@ -120,6 +126,11 @@ class ControleVerification
 
     private function echouer(ESBTPVerificationContact $v, string $motif): ResultatControle
     {
+        // Un code expire n'est pas un essai : il ne compte pas dans les plafonds.
+        if ($motif === self::EXPIRE) {
+            return ResultatControle::refus(self::EXPIRE);
+        }
+
         $v->forceFill(['tentatives' => $v->tentatives + 1, 'tentatives_total' => $v->tentatives_total + 1])->save();
 
         return ResultatControle::refus($motif === self::CODE_INVALIDE && $this->blocage($v) === self::TROP_DE_TENTATIVES ? self::TROP_DE_TENTATIVES : $motif);

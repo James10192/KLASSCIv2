@@ -36,7 +36,7 @@ class TableauRendezVous
             ->whereDate('date', '>=', $debut->toDateString())
             ->whereDate('date', '<=', $fin->toDateString())
             ->with(['reservations' => fn ($q) => $q->occupantes()
-                ->with(['prevenuePar:id,name', 'candidature:id,statut', 'demande:id,statut'])->orderBy('nom')])
+                ->with(['prevenuePar:id,name', 'candidature:id,statut,verification_contact', 'demande:id,statut,verification_contact'])->orderBy('nom')])
             ->orderBy('date')
             ->orderBy('heure_debut')
             ->get()

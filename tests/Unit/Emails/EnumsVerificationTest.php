@@ -31,6 +31,8 @@ class EnumsVerificationTest extends TestCase
         $this->assertSame(['email_non_verifie', 'telephone_non_verifie'], StatutVerificationContact::valeursMasquees());
         $this->assertSame('Contact non confirmé', StatutVerificationContact::badge('verification_expiree'));
         $this->assertSame('Contact non vérifiable', StatutVerificationContact::badge('verification_impossible'));
+        $this->assertSame('Contact à reconfirmer', StatutVerificationContact::badge('contact_a_reconfirmer'));
+        $this->assertSame(['verification_expiree', 'verification_impossible', 'contact_a_reconfirmer'], StatutVerificationContact::valeursAConfirmer());
         $this->assertNull(StatutVerificationContact::badge('verifie'));
         $this->assertNull(StatutVerificationContact::badge(null));
     }

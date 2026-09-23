@@ -25,6 +25,12 @@ trait AttendVerificationContact
 {
     public const PORTEE_VERIFICATION = 'contact_verifie';
 
+    /**
+     * Pose par le depot quand un redepot a change l'adresse ou le numero.
+     * Propriete PHP declaree, pas un attribut : elle n'est jamais ecrite en base.
+     */
+    public bool $contactModifieAuDepot = false;
+
     public static function bootAttendVerificationContact(): void
     {
         static::addGlobalScope(self::PORTEE_VERIFICATION, function (Builder $query) {
@@ -44,6 +50,20 @@ trait AttendVerificationContact
     public function contactNonVerifie(): bool
     {
         return in_array($this->verification_contact, StatutVerificationContact::valeursMasquees(), true);
+    }
+
+    /** Visible, mais contact jamais prouve : pas de convocation ni de placement automatique. */
+    public function contactAConfirmer(): bool
+    {
+        return in_array($this->verification_contact, StatutVerificationContact::valeursAConfirmer(), true);
+    }
+
+    /** @param  Builder<static>  $query */
+    public function scopeContactUtilisable(Builder $query): Builder
+    {
+        $colonne = $this->qualifyColumn('verification_contact');
+
+        return $query->where(fn (Builder $q) => $q->whereNull($colonne)->orWhereNotIn($colonne, StatutVerificationContact::valeursAConfirmer()));
     }
 
     /**

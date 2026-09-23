@@ -17,7 +17,7 @@
     <tr>
         <td style="padding:20px 16px;color:#1f2937;">
             <p>Bonjour,</p>
-            <p>Votre demande a bien été reçue. Pour qu'elle soit transmise à l'établissement, confirmez que cette adresse est la vôtre.</p>
+            <p>Votre demande a bien été reçue. Confirmez que cette adresse est la vôtre : l'établissement pourra ainsi vous convoquer par e-mail.</p>
             <p style="margin:8px 0 4px;">Votre code :</p>
             <p style="font-size:28px;font-weight:bold;letter-spacing:6px;color:{{ $primaire }};margin:0 0 16px;">{{ $code }}</p>
             <p style="margin:20px 0;">
@@ -25,7 +25,7 @@
                     Confirmer mon adresse
                 </a>
             </p>
-            <p style="font-size:13px;color:#64748b;">Le code est valable {{ $minutes }} minutes, le lien {{ $heures }} heures. Si vous n'êtes pas à l'origine de cette demande, ignorez ce message : rien ne sera transmis.</p>
+            <p style="font-size:13px;color:#64748b;">Le code est valable {{ $minutes }} minutes, le lien {{ $heures }} heures. Sans confirmation, l'établissement recevra quand même votre demande, avec la mention « contact non confirmé », et vous appellera avant de vous convoquer. Si vous n'êtes pas à l'origine de cette demande, ignorez ce message ou signalez-le à l'établissement.</p>
         </td>
     </tr>
 </table>

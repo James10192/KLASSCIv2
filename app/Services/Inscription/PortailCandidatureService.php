@@ -257,6 +257,10 @@ class PortailCandidatureService
             // jour passe par le MODELE, donc le journal d'audit garde la trace
             // du retour en arriere — et de l'identite, qui figure desormais
             // dans la liste blanche pour cette raison precise.
+            // Constate AVANT l'ecriture : assurerReferencePublique() sauve
+            // ensuite la ligne, et wasChanged() ne dirait plus rien de l'adresse.
+            $candidature->contactModifieAuDepot = mb_strtolower(trim((string) $candidature->email)) !== mb_strtolower(trim((string) ($valeurs['email'] ?? '')));
+
             $candidature->update($valeurs + [
                 'statut' => ESBTPCandidature::STATUT_EN_ATTENTE,
                 'motif_rejet' => null,

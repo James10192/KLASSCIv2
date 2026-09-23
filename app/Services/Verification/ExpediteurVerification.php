@@ -6,7 +6,7 @@ use App\Enums\CanalVerification;
 use App\Models\ESBTPVerificationContact;
 use App\Services\MailPulse\MailPulseVerifications;
 use App\Services\MailPulse\ResultatVerificationDistante;
-use App\Services\RendezVous\MessagerieRdv;
+use App\Services\MailPulse\RefusMailPulse;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -66,7 +66,7 @@ class ExpediteurVerification
             return ResultatVerificationDistante::ok('sent', (string) $envoi->id);
         }
 
-        return in_array($envoi->status, MessagerieRdv::REFUS_DE_CONFIGURATION, true)
+        return in_array($envoi->status, RefusMailPulse::CONFIGURATION, true)
             ? ResultatVerificationDistante::echec('verification_indisponible', $envoi->httpStatus)
             : ResultatVerificationDistante::echec($envoi->errorCode ?: $envoi->status, $envoi->httpStatus);
     }
@@ -78,7 +78,7 @@ class ExpediteurVerification
         $verification->forceFill([
             'mailpulse_verification_id' => $resultat->ok ? mb_substr((string) $resultat->id, 0, 100) : $verification->mailpulse_verification_id,
             'tentatives' => $resultat->ok ? 0 : $verification->tentatives,
-            'code_expire_at' => $resultat->ok ? now()->addMinutes((int) config('verification_contact.code_expire_minutes', 30)) : $verification->code_expire_at,
+            'code_expire_at' => $resultat->ok ? now()->addMinutes((int) config('verification_contact.code_whatsapp_expire_minutes', 10)) : $verification->code_expire_at,
         ])->save();
 
         return $resultat;

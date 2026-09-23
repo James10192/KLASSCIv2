@@ -62,8 +62,14 @@ class MailPulseVerifications
             return ResultatVerificationDistante::echec('auth_failed', $reponse->status());
         }
 
-        $code = $reponse->json('error');
         $retry = $reponse->json('retry_after');
+
+        // Toute limite de debit (`trop_de_demandes` compris) se traite pareil : attendre.
+        if ($reponse->status() === 429) {
+            return ResultatVerificationDistante::echec('rate_limited', 429, is_numeric($retry) ? (int) $retry : null);
+        }
+
+        $code = $reponse->json('error');
 
         return ResultatVerificationDistante::echec(
             is_string($code) && $code !== '' ? $code : match ($reponse->status()) {

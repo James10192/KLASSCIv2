@@ -18,6 +18,10 @@ use Illuminate\Support\Facades\Log;
  */
 class VerificateurMx
 {
+    private const INCONNU = 'inconnu';
+
+    private const DUREE_INCONNU_SECONDES = 300;
+
     public function __construct(private readonly ResolveurDns $dns) {}
 
     public function recoitDuCourrier(string $domaine): ?bool
@@ -36,11 +40,16 @@ class VerificateurMx
         if (is_bool($cache)) {
             return $cache;
         }
-
-        $verdict = $this->resoudre($domaine);
-        if ($verdict !== null) {
-            Cache::put($cle, $verdict, (int) config('emails_joignables.mx.cache_secondes', 86400));
+        if ($cache === self::INCONNU) {
+            return null;
         }
+
+        // Un echec DNS se memorise aussi, mais peu de temps : sans cela, un
+        // resolveur en panne ferait attendre chaque soumission de formulaire.
+        $verdict = $this->resoudre($domaine);
+        $verdict === null
+            ? Cache::put($cle, self::INCONNU, self::DUREE_INCONNU_SECONDES)
+            : Cache::put($cle, $verdict, (int) config('emails_joignables.mx.cache_secondes', 86400));
 
         return $verdict;
     }

@@ -151,6 +151,8 @@ class AffecteurDossiersRdv
 
         ESBTPCandidature::query()
             ->where('statut', ESBTPCandidature::STATUT_EN_ATTENTE)
+            // Contact jamais prouve : l'ecole confirme d'abord (« Confirmer le contact »).
+            ->contactUtilisable()
             ->where('annee_universitaire_id', $anneeId)
             ->where(function ($q) {
                 $q->whereDoesntHave('reservations', fn ($r) => $r->occupantes())
@@ -161,6 +163,7 @@ class AffecteurDossiersRdv
 
         ESBTPReinscriptionDemande::query()
             ->where('statut', ESBTPReinscriptionDemande::STATUT_EN_ATTENTE)
+            ->contactUtilisable()
             ->where('annee_universitaire_id', $anneeId)
             ->where(function ($q) {
                 $q->whereDoesntHave('reservations', fn ($r) => $r->occupantes())

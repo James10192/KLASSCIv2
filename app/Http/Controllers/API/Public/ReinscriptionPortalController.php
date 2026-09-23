@@ -96,7 +96,7 @@ class ReinscriptionPortalController extends Controller
 
         return response()->json(array_merge([
             'enregistre' => true,
-            'message' => $verification === null
+            'message' => $verification === null || ! $verification->masquee
                 ? 'Votre demande a bien été transmise à votre établissement.'
                 : 'Confirmez votre contact pour que votre demande soit transmise à votre établissement.',
             'inscriptions_physiques' => app(PortailCandidaturePublication::class)->inscriptionsPhysiques(),

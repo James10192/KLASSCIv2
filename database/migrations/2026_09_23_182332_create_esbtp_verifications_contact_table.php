@@ -35,6 +35,9 @@ return new class extends Migration
             $table->string('dernier_echec', 60)->nullable();
             $table->timestamp('dernier_envoi_at')->nullable();
             $table->timestamp('verifie_at')->nullable();
+            // Debut du masquage de la demande : l'expiration a 48 h part d'ici,
+            // pas de la creation d'une ligne qu'un nouveau contact reutilise.
+            $table->timestamp('masquee_at')->nullable();
             $table->boolean('masque_la_demande')->default(true);
             $table->timestamps();
 
