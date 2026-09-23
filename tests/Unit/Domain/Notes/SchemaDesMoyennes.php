@@ -104,6 +104,8 @@ trait SchemaDesMoyennes
             $t->dateTime('date_evaluation')->nullable();
             $t->integer('duree_minutes')->nullable();
             $t->boolean('is_published')->default(false);
+            // Écrite par la création d'un devoir de séance.
+            $t->boolean('notes_published')->default(false);
             $t->unsignedBigInteger('created_by')->nullable();
             $t->unsignedBigInteger('updated_by')->nullable();
             // Remis à nul par la synchronisation du devoir d'une séance.
