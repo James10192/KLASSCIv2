@@ -9,7 +9,8 @@
  * COPIE du document, dans laquelle, avant le rendu :
  *   - la valeur de chaque champ de saisie (input, textarea, select, zone
  *     editable) est effacee et le champ couvert d'un aplat ;
- *   - tout element marque `data-support-masque` est couvert de la meme facon ;
+ *   - tout element marque `data-support-masque`, et la valeur qu'affichent les
+ *     selecteurs premium et Select2, sont couverts de la meme facon ;
  *   - la fenetre de signalement et ce qui porte `data-support-exclure` sont omis.
  * Un champ qui doit rester lisible le dit : `data-support-visible`.
  * La page affichee n'est jamais modifiee.
@@ -28,32 +29,48 @@
     var TRAIT = '#dc2626';
     var TYPES_NON_SAISIS = ['button', 'submit', 'reset', 'checkbox', 'radio', 'hidden', 'range', 'color', 'image', 'file'];
 
+    /*
+     * Ce qui affiche une valeur saisie sans etre un champ : les selecteurs premium
+     * (x-au-select, x-au-user-picker, x-au-mention-picker et leurs clones) et Select2
+     * montrent la valeur choisie dans un <span>, le <select> reel etant cache.
+     */
+    var VALEURS_AFFICHEES = '.au-select-value, [class*="-trigger-selected"], .select2-selection__rendered, output';
+
     function estAMasquer(el) {
         if (el.closest('[data-support-visible]')) { return false; }
-        if (el.matches('[data-support-masque]')) { return true; }
+        if (el.matches('[data-support-masque], ' + VALEURS_AFFICHEES)) { return true; }
         if (el.isContentEditable) { return true; }
         if (el.tagName === 'TEXTAREA' || el.tagName === 'SELECT') { return true; }
         return el.tagName === 'INPUT' && TYPES_NON_SAISIS.indexOf((el.getAttribute('type') || 'text').toLowerCase()) === -1;
     }
 
+    /*
+     * Coupe d'abord transitions et animations : des feuilles de l'application posent
+     * `transition: ... !important`, et le changement serait alors ANIME. html2canvas
+     * lit la valeur de depart, et le texte partait en clair sur une vraie page.
+     */
+    function forcer(el, propriete, valeur) {
+        el.style.setProperty('transition', 'none', 'important');
+        el.style.setProperty('animation', 'none', 'important');
+        el.style.setProperty(propriete, valeur, 'important');
+    }
+
     /* Travaille sur la copie que html2canvas vient de fabriquer : jamais sur la page. */
     function masquerLaCopie(copie) {
-        var style = copie.createElement('style');
-        style.textContent = '[data-sp-masque]{background:' + APLAT + ' !important;color:transparent !important;'
-            + 'text-shadow:none !important;border-color:' + APLAT + ' !important;background-image:none !important}'
-            + '[data-sp-masque] *{visibility:hidden !important}'
-            + '[data-sp-masque]::placeholder{color:transparent !important}';
-        copie.head.appendChild(style);
-
-        copie.querySelectorAll('input, textarea, select, [contenteditable], [data-support-masque]').forEach(function (el) {
+        copie.querySelectorAll('input, textarea, select, [contenteditable], [data-support-masque], ' + VALEURS_AFFICHEES).forEach(function (el) {
             if (!estAMasquer(el)) { return; }
-            el.setAttribute('data-sp-masque', '');
             if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
                 el.value = '';
                 el.removeAttribute('placeholder');
             } else if (el.tagName === 'SELECT') {
                 el.innerHTML = '<option></option>';
             }
+            forcer(el, 'background', APLAT);
+            forcer(el, 'border-color', APLAT);
+            forcer(el, 'color', 'transparent');
+            forcer(el, 'text-shadow', 'none');
+            // Les enfants gardent leur place (la mise en page ne bouge pas) mais ne se peignent plus.
+            el.querySelectorAll('*').forEach(function (enfant) { forcer(enfant, 'visibility', 'hidden'); });
         });
     }
 
@@ -171,15 +188,16 @@
 
     Editeur.prototype.demanderTexte = function (p, ev) {
         var self = this;
-        var r = this.toile.getBoundingClientRect();
+        /* Place par rapport au cadre, defilement compris : la toile y est centree et peut deborder. */
+        var r = this.conteneur.getBoundingClientRect();
         var champ = document.createElement('input');
         champ.type = 'text';
         champ.maxLength = 80;
         champ.className = 'sp-toile-texte';
         champ.placeholder = 'Votre texte, puis Entrée';
         champ.setAttribute('aria-label', 'Texte à ajouter sur la capture');
-        champ.style.left = (ev.clientX - r.left) + 'px';
-        champ.style.top = (ev.clientY - r.top) + 'px';
+        champ.style.left = (ev.clientX - r.left + this.conteneur.scrollLeft) + 'px';
+        champ.style.top = (ev.clientY - r.top + this.conteneur.scrollTop) + 'px';
         this.conteneur.appendChild(champ);
         this.saisie = champ;
         var clore = function (garder) {
@@ -205,6 +223,13 @@
 
     Editeur.prototype.annuler = function () {
         this.operations.pop();
+        this.dessiner();
+        this.signaler();
+    };
+
+    /* Revient a un etat deja valide : ce qui a ete trace depuis ne partira pas, donc ne reste pas affiche. */
+    Editeur.prototype.revenirA = function (nombre) {
+        this.operations.length = Math.min(this.operations.length, nombre);
         this.dessiner();
         this.signaler();
     };

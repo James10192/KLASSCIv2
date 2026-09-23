@@ -263,10 +263,19 @@
         etat.description = '';
         etat.cle = null;
         etat.capture = null;
-        editeur = null;
+        oublierEditeur();
     }
 
     /* ------------------------------------------------ Capture d'ecran (facultative) */
+
+    /* La toile garde l'image de la page : elle ne reste pas dans la fenetre une fois inutile. */
+    function oublierEditeur() {
+        editeur = null;
+        var cadre = $('[data-sp-toile]');
+        if (cadre) { cadre.innerHTML = ''; cadre.classList.remove('sp-toile-cadre--reelle'); }
+        var zoom = $('[data-sp-zoom]');
+        if (zoom) { zoom.setAttribute('aria-pressed', 'false'); }
+    }
 
     var scripts = {};
     function charger(url) {
@@ -348,11 +357,11 @@
         bouton.disabled = true;
         editeur.exporter().then(function (blob) {
             if (blob.size > CONFIG.limites.piece_octets_max) {
-                erreur('La capture est trop lourde. Masquez moins de zones ou choisissez une image plus petite.');
+                erreur('La capture est trop lourde. Choisissez une image plus petite.');
                 return;
             }
             if (etat.capture) { URL.revokeObjectURL(etat.capture.url); }
-            etat.capture = { blob: blob, url: URL.createObjectURL(blob), cle: nouvelleCle() };
+            etat.capture = { blob: blob, url: URL.createObjectURL(blob), cle: nouvelleCle(), operations: editeur.operations.length };
             aller('recap');
         }).catch(function () {
             erreur('La capture n\'a pas pu être préparée. Réessayez, ou choisissez une image.');
@@ -362,7 +371,7 @@
     function retirerCapture() {
         if (etat.capture) { URL.revokeObjectURL(etat.capture.url); }
         etat.capture = null;
-        editeur = null;
+        oublierEditeur();
         afficherCapture();
     }
 
@@ -373,7 +382,9 @@
         avis.hidden = false;
         avis.textContent = '';
         if (!reference) {
-            avis.textContent = 'La capture n\'a pas pu être jointe : la demande attend d\'être transmise. Vous pourrez l\'ajouter depuis son suivi.';
+            /* Sans reference, rien a quoi la joindre, et l'image ne survit pas a la fenetre. */
+            URL.revokeObjectURL(capture.url);
+            avis.textContent = 'La capture n\'a pas pu être jointe : la demande attend d\'être transmise. Une fois transmise, vous pourrez joindre une image depuis son suivi.';
             return;
         }
         avis.textContent = 'Envoi de la capture…';
@@ -394,8 +405,11 @@
             avis.textContent = 'Capture jointe à la demande.';
             URL.revokeObjectURL(capture.url);
         }).catch(function (e) {
-            avis.textContent = 'La capture n\'a pas pu être jointe' + (e.message ? ' : ' + e.message : '.') + ' ';
-            if (e.statut === 422 || e.statut === 403 || e.statut === 409) { return; }
+            var message = 'La capture n\'a pas pu être jointe' + (e.message ? ' : ' + e.message : '.');
+            avis.textContent = message + ' ';
+            /* La fenetre a pu etre fermee entre-temps : l'avis y serait cache. */
+            if (typeof window.mToast === 'function') { window.mToast(message, 'error'); }
+            if (e.statut === 422 || e.statut === 403 || e.statut === 409) { URL.revokeObjectURL(capture.url); return; }
             var encore = document.createElement('button');
             encore.type = 'button';
             encore.className = 'sp-lien';
@@ -463,6 +477,11 @@
         $('[data-sp-capture-modifier]').addEventListener('click', function () {
             if (editeur) { aller('capture'); }
         });
+        /* A la taille de l'ecran, un texte de 14 px devient illisible : on ne juge pas ce qu'on ne lit pas. */
+        $('[data-sp-zoom]').addEventListener('click', function () {
+            var reelle = $('[data-sp-toile]').classList.toggle('sp-toile-cadre--reelle');
+            this.setAttribute('aria-pressed', reelle ? 'true' : 'false');
+        });
         racine.querySelectorAll('[data-sp-outil]').forEach(function (b) {
             b.addEventListener('click', function () { choisirOutil(b.getAttribute('data-sp-outil')); });
         });
@@ -472,8 +491,9 @@
         });
         racine.querySelectorAll('[data-sp-capture-abandon]').forEach(function (b) {
             b.addEventListener('click', function () {
-                /* « Ne pas joindre » n'efface pas une capture deja validee : on revient la ou on etait. */
-                if (!etat.capture) { editeur = null; }
+                /* « Ne pas joindre » n'efface pas une capture deja validee : on revient a
+                   elle, sans ce qui a ete trace depuis et qui ne partira pas. */
+                if (!etat.capture) { oublierEditeur(); } else if (editeur) { editeur.revenirA(etat.capture.operations); }
                 aller('recap');
             });
         });

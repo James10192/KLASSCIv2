@@ -99,15 +99,22 @@
   - `public/js/support/capture.js` et le moteur `html2canvas` 1.4.1 (MIT, servi depuis
     `public/vendor`, jamais d'un CDN) ne se chargent qu'au premier clic ;
   - le rendu se fait sur une **copie** du document : la valeur de chaque champ de saisie est
-    effacée et couverte, comme tout élément marqué `data-support-masque` ; la fenêtre et ce
-    qui porte `data-support-exclure` sont omis ; `data-support-visible` garde un champ
-    lisible. La page affichée n'est jamais modifiée ;
+    effacée et couverte, comme la valeur qu'affichent les sélecteurs premium et Select2, les
+    zones éditables, `<output>` et tout élément marqué `data-support-masque` ; la fenêtre et
+    ce qui porte `data-support-exclure` sont omis ; `data-support-visible` garde un champ
+    lisible. La page affichée n'est jamais modifiée. Le masquage passe par des styles en
+    ligne qui coupent d'abord transitions et animations : des feuilles de l'application
+    posent `transition … !important`, et html2canvas aurait lu la couleur de départ ;
+  - « Taille réelle » affiche l'image à sa résolution d'export : c'est là qu'on juge ce
+    qui reste lisible ;
   - l'utilisateur vérifie l'image et peut l'annoter (cadre, flèche, masquer, texte) avant
     « Joindre ». Masquer **pixelise** la zone dans l'image exportée (WebP, JPEG à défaut,
     1600 px au plus) : ce n'est pas un calque qu'on retire ;
   - l'image ne vit qu'en mémoire, jamais dans le brouillon. Elle part **après** la création,
-    par la route des pièces jointes, avec sa propre clé d'idempotence ; une demande gardée
-    en boîte d'envoi n'a pas de référence, et l'écran de fin le dit au lieu de la perdre.
+    par la route des pièces jointes, avec sa propre clé d'idempotence. Un échec s'annonce
+    aussi par une notification, visible même si la fenêtre a été fermée. Une demande gardée
+    en boîte d'envoi n'a pas encore de référence : la capture n'est pas jointe, l'écran de fin
+    le dit, et une image se joindra depuis le suivi une fois la demande transmise.
 - **L'interrupteur d'exploitation** `support.widget.enabled` : coupe tout sans attendre le
   Master. Aucun écran ne l'expose ; il se pose par `PUT /api/cli/settings/{key}`.
 

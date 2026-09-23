@@ -107,13 +107,14 @@
                 <section class="sp-etape" data-sp-etape="capture" hidden>
                     <p class="sp-question" tabindex="-1" data-sp-focus>Vérifiez la capture avant de la joindre.</p>
                     <p class="sp-note sp-note--haut"><i class="fas fa-eye-slash"></i>
-                        Les champs de saisie sont déjà masqués. Masquez ce qui reste de sensible : un nom, un montant, une photo.</p>
+                        Les champs de saisie et les valeurs des listes sont déjà masqués. Vérifiez en « Taille réelle », puis masquez ce qui reste de sensible : un nom, un montant, une photo.</p>
                     <div class="sp-outils" role="toolbar" aria-label="Outils d'annotation">
                         <button type="button" class="sp-outil" data-sp-outil="cadre" aria-pressed="true"><i class="far fa-square" aria-hidden="true"></i>Cadre</button>
                         <button type="button" class="sp-outil" data-sp-outil="fleche" aria-pressed="false"><i class="fas fa-arrow-right-long" aria-hidden="true"></i>Flèche</button>
                         <button type="button" class="sp-outil" data-sp-outil="masquer" aria-pressed="false"><i class="fas fa-eye-slash" aria-hidden="true"></i>Masquer</button>
                         <button type="button" class="sp-outil" data-sp-outil="texte" aria-pressed="false"><i class="fas fa-font" aria-hidden="true"></i>Texte</button>
-                        <button type="button" class="sp-outil sp-outil--annuler" data-sp-annuler disabled><i class="fas fa-rotate-left" aria-hidden="true"></i>Annuler</button>
+                        <button type="button" class="sp-outil sp-outil--droite" data-sp-zoom aria-pressed="false"><i class="fas fa-magnifying-glass-plus" aria-hidden="true"></i>Taille réelle</button>
+                        <button type="button" class="sp-outil" data-sp-annuler disabled><i class="fas fa-rotate-left" aria-hidden="true"></i>Annuler</button>
                     </div>
                     <div class="sp-toile-cadre" data-sp-toile></div>
                     <div class="sp-erreur" data-sp-erreur role="alert" hidden></div>
@@ -207,7 +208,9 @@
         background: #fff; color: #1e293b; font-size: .78rem; font-weight: 600; }
     .sp-outil[aria-pressed="true"] { background: #0453cb; border-color: #0453cb; color: #fff; }
     .sp-outil:disabled { opacity: .5; }
-    .sp-outil--annuler { margin-left: auto; }
+    .sp-outil--droite { margin-left: auto; }
+    .sp-toile-cadre--reelle { overflow: auto; max-height: 60vh; }
+    .sp-toile-cadre--reelle .sp-toile { max-width: none; max-height: none; }
     .sp-toile-cadre { position: relative; border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden; background: #f8fafc; }
     .sp-toile { display: block; width: auto; height: auto; max-width: 100%; max-height: 55vh; margin: 0 auto; touch-action: none; cursor: crosshair; }
     .sp-toile-texte { position: absolute; transform: translateY(-50%); min-width: 180px; padding: .3rem .5rem; font-size: .85rem;
