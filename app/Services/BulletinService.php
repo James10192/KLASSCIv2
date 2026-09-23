@@ -2497,6 +2497,11 @@ class BulletinService
                 $matiereData['moyenne'] = $matiereData['total_points'] / $matiereData['total_coefficients'];
             }
         }
+        // Sans cet `unset`, la boucle de somme plus bas, qui reutilise
+        // `$matiereData`, ecrivait a travers la reference restee sur la DERNIERE
+        // matiere : celle-ci prenait la moyenne de l'avant-derniere. Mesure :
+        // 14 (coef 2) et 0 (coef 1) rendaient 14,00, le 0 devenu 14.
+        unset($matiereData);
 
         $resultats = ESBTPResultat::where('etudiant_id', $etudiantId)
             ->when($classeId, function ($query) use ($classeId) {

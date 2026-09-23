@@ -28,9 +28,11 @@
         $scopeClasse = $srBlock['classe_name'] ?? null;
         $resolvedAverage = $srBlock['average'] ?? null;
         $hasResolvedAverage = $resolvedAverage !== null;
+        // Le total dit le denominateur de la moyenne affichee dessous : une matiere
+        // sans moyenne (`null`, ligne « — ») n'y entre pas, donc pas ici non plus.
         $blockCoefficients = array_sum(array_map(
             fn ($m) => $m['matiere_coefficient'] ?? $m['total_coefficients'] ?? 0,
-            $blockSubjects
+            array_filter($blockSubjects, fn ($m) => ($m['moyenne'] ?? null) !== null)
         ));
         // Libelles pre-calcules : pas de directive Blade collee a du texte accentue.
         // Le semestre va dans le TITRE (deux h3 identiques sinon) et la puce porte la classe.

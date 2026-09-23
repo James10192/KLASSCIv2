@@ -126,6 +126,39 @@ class MoyenneZeroCompteeTest extends TestCase
     }
 
     /**
+     * Le second defaut de cette branche, independant du zero : une reference
+     * laissee par un `foreach (… as &$matiereData)` sans `unset`. La boucle de
+     * somme ecrivait a travers elle, et la DERNIERE matiere prenait la moyenne
+     * de l'avant-derniere. Aucun zero ici : 14 (coef 2) et 8 (coef 1) donnent
+     * 12,00 ; avec la reference pendante, 8 devenait 14 et la moyenne 14,00.
+     */
+    public function test_la_moyenne_annuelle_de_repli_ne_recopie_pas_l_avant_derniere_matiere(): void
+    {
+        $this->monterLaClasse();
+        $coefDeux = $this->matiereConfiguree();
+        $coefUn = $this->matiereDeCoefficientUn();
+
+        $etudiant = $this->etudiantInscrit();
+        $this->noter($etudiant, $this->evaluationDe($coefDeux), 14);
+        $this->noter($etudiant, $this->evaluationDe($coefUn), 8);
+
+        $moyenne = app(BulletinService::class)->calculateStudentAverageForPeriode(
+            $etudiant->id,
+            $this->classe->id,
+            $this->annee->id,
+            'annuel'
+        );
+
+        $this->assertNotNull($moyenne, 'Temoin : sans moyenne, le test ne prouve rien.');
+        $this->assertEqualsWithDelta(
+            12.0,
+            (float) $moyenne,
+            0.01,
+            '(14 x 2 + 8 x 1) / 3 = 12,00 — avec la reference pendante : 14,00.'
+        );
+    }
+
+    /**
      * Le bord qui distingue « moyenne 0 » de « pas de moyenne » : un eleve dont
      * la seule matiere vaut 0 a une moyenne de 0. Le filtre `> 0` rendait
      * `null` — le backfill classait alors le bulletin « non remplissable ».
