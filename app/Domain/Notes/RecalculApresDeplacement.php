@@ -72,9 +72,11 @@ use Illuminate\Support\Facades\Log;
  * evaluation.
  *
  * Alors disons ce que le tableau compte : **les endroits qui changent les
- * coordonnees d'une EVALUATION**. Ils sont cinq, le cinquieme n'est pas branche
- * ici, et la liste est celle des sites **trouves a ce jour** — pas celle des
- * sites existants (`klassci-debugging-discipline.md`, piege #14) :
+ * coordonnees d'une EVALUATION**. Ils sont sept, `MergeDuplicateEcue` n'est pas
+ * branche ici, et la liste est celle des sites **trouves a ce jour** — pas celle
+ * des sites existants (`klassci-debugging-discipline.md`, piege #14). Les deux
+ * derniers de la liste ont ete trouves APRES que ce docbloc a dit « cinq » :
+ * le devoir d'une seance, et l'annee donnee a une evaluation qui n'en avait pas.
  *
  * | deplaceur | ce qu'il change | branche sur cette classe |
  * |---|---|---|
@@ -82,7 +84,18 @@ use Illuminate\Support\Facades\Log;
  * | `CLIEvaluationMatiereController::evaluationChangeMatiere()` | matiere | oui |
  * | `CLIEvaluationDeplacementController::deplacer()` | periode, en lot | oui |
  * | `CLIEvaluationPeriodeController::repair()` | periode, en lot | oui |
+ * | `AlignementDuDevoir` (seance de devoir modifiee) | matiere, classe, periode, annee | oui |
+ * | `CheckEvaluationsAnnees` (`esbtp:check-evaluations-annees`) | annee, depuis nulle : arrivee seule | oui |
  * | `MergeDuplicateEcue` (sous `force`) | matiere, en masse | **non** |
+ *
+ * Et trois ecritures qui ne DEPLACENT rien mais font entrer ou sortir des
+ * notes d'une moyenne — l'annulation les retire, la reactivation les remet :
+ * `ESBTPEvaluationController::cancel()`, `restore()` (les boutons de la liste)
+ * et `updateStatus()` (route sans ecran). Branchees par
+ * {@see apresChangementDeStatut()}, puisque `pour()` compare deux coordonnees
+ * et n'en voit ici qu'une. **Non branchee** : la SUPPRESSION d'une evaluation
+ * encore brouillon ou planifiee qui porte deja des notes
+ * (`ESBTPEvaluationController::destroy()`, `ESBTPSeanceCoursController::destroy()`).
  *
  * Le cinquieme, `app/Domain/LMD/Actions/MergeDuplicateEcue.php`, reparente
  * `esbtp_evaluations.matiere_id` ET `esbtp_notes.matiere_id` vers l'ECUE
@@ -196,7 +209,13 @@ final class RecalculApresDeplacement
      * evenement, l'observateur ne tourne pas — d'ou l'appel a `pour()` qui
      * suit, sans lequel la moyenne d'avant l'emporterait sur les notes.
      *
-     * @param  array{classe_id:int, matiere_id:int, periode:string}  $avant
+     * `$avant` peut porter l'année d'avant : le devoir d'une séance en change
+     * (`AlignementDuDevoir`). Sans elle, l'année est réputée inchangée. Un
+     * changement d'année seule ne touche aucune colonne des notes — l'année
+     * n'y est pas copiée — mais déplace bien la moyenne : le recalcul part
+     * quand même.
+     *
+     * @param  array{classe_id:int, matiere_id:int, periode:string, annee_universitaire_id?:int|null}  $avant
      * @return array{recalculs_tentes:int, orphelins:array<int,array<string,mixed>>, echecs:int}
      */
     public static function apresEnregistrement(ESBTPEvaluation $evaluation, array $avant, ?int $declencheur = null): array
@@ -214,22 +233,50 @@ final class RecalculApresDeplacement
             $colonnes['semestre'] = ESBTPNote::semestreDepuisLaPeriode((string) $evaluation->periode);
         }
 
-        if ($colonnes === []) {
-            return ['recalculs_tentes' => 0, 'orphelins' => [], 'echecs' => 0];
+        if ($colonnes !== []) {
+            $touchees = ESBTPNote::where('evaluation_id', $evaluation->id)->update($colonnes);
+
+            Log::info('Notes propagées après modif évaluation', [
+                'evaluation_id' => $evaluation->id,
+                'changes' => $colonnes,
+                'old' => $avant,
+                'notes_affected' => $touchees,
+            ]);
         }
 
-        $touchees = ESBTPNote::where('evaluation_id', $evaluation->id)->update($colonnes);
-
-        Log::info('Notes propagées après modif évaluation', [
-            'evaluation_id' => $evaluation->id,
-            'changes' => $colonnes,
-            'old' => $avant,
-            'notes_affected' => $touchees,
-        ]);
-
+        // Rien n'a bougé : `pour()` le voit et rend un bilan vide.
         return self::pour($evaluation, $avant + [
             'annee_universitaire_id' => $evaluation->annee_universitaire_id,
         ], $declencheur);
+    }
+
+    /**
+     * Annuler une évaluation retire ses notes de toute moyenne (le calcul
+     * écarte `cancelled`), la réactiver les y remet. Rien ne bouge, et
+     * pourtant la moyenne enregistrée change : `pour()`, qui compare deux
+     * coordonnées, n'y voit rien — d'où cette seconde entrée.
+     *
+     * La coordonnée de l'évaluation est recalculée pour chaque élève noté,
+     * par le même garde : une moyenne qui ne reposait que sur l'évaluation
+     * annulée n'a plus rien à moyenner, elle est laissée et signalée, jamais
+     * remise à zéro.
+     *
+     * Un changement de statut qui ne franchit pas l'annulation (brouillon →
+     * planifiée, par exemple) ne coûte rien.
+     *
+     * @return array{recalculs_tentes:int, orphelins:array<int,array<string,mixed>>, echecs:int}
+     */
+    public static function apresChangementDeStatut(ESBTPEvaluation $evaluation, ?string $statutAvant, ?int $declencheur = null): array
+    {
+        $annulee = ESBTPEvaluation::STATUS_CANCELLED;
+
+        if (($statutAvant === $annulee) === ($evaluation->status === $annulee)) {
+            return ['recalculs_tentes' => 0, 'orphelins' => [], 'echecs' => 0];
+        }
+
+        $memo = ['couples' => [], 'orphelins' => []];
+
+        return self::recalculerPourLesEleves($evaluation, [self::coordonneeDe($evaluation)], $declencheur, $memo);
     }
 
     /**
@@ -256,42 +303,16 @@ final class RecalculApresDeplacement
      */
     private static function pourAvecMemo(ESBTPEvaluation $evaluation, array $avant, ?int $declencheur, array &$memo): array
     {
-        $apres = [
-            'classe_id' => $evaluation->classe_id,
-            'matiere_id' => $evaluation->matiere_id,
-            'periode' => $evaluation->periode,
-            'annee_universitaire_id' => $evaluation->annee_universitaire_id,
-        ];
-
-        // `recalculs_tentes` et non « recalcules » : le job rend la main sans
-        // rien ecrire dans deux cas legitimes — aucune note et aucune ligne
-        // existante, ou refus du garde de coherence BTS/LMD, qu'il attrape sans
-        // relancer. Annoncer « N agregats recalcules » surestimait.
-        $bilan = ['recalculs_tentes' => 0, 'orphelins' => [], 'echecs' => 0];
+        $apres = self::coordonneeDe($evaluation);
 
         if (self::memeCoordonnee($avant, $apres)) {
-            return $bilan;
-        }
-
-        $etudiantIds = ESBTPNote::where('evaluation_id', $evaluation->id)
-            ->distinct()
-            ->pluck('etudiant_id')
-            ->filter()
-            ->map(fn ($id) => (int) $id)
-            ->all();
-
-        if ($etudiantIds === []) {
-            return $bilan;
+            return ['recalculs_tentes' => 0, 'orphelins' => [], 'echecs' => 0];
         }
 
         // Les deux cotes passent par le meme garde : l'arrivee peut elle aussi
         // ne recevoir que des absences, et une ligne qu'elle porterait deja ne
         // doit pas davantage y etre remise a zero.
-        foreach ($etudiantIds as $etudiantId) {
-            foreach ([$apres, $avant] as $coordonnee) {
-                self::executerUneFois($etudiantId, $coordonnee, $declencheur, $bilan, $memo);
-            }
-        }
+        $bilan = self::recalculerPourLesEleves($evaluation, [$apres, $avant], $declencheur, $memo);
 
         if ($bilan['orphelins'] !== []) {
             Log::warning('Deplacement d evaluation : moyennes sans rien a moyenner, laissees en place', [
@@ -302,6 +323,50 @@ final class RecalculApresDeplacement
                 'remede' => 'chaque entree porte sa classe et sa periode (depart OU arrivee) : pre-controle de la '
                     .'generation des bulletins pour reste = aucune_note, « Modifier les moyennes » de l eleve sinon',
             ]);
+        }
+
+        return $bilan;
+    }
+
+    /** @return array{classe_id:mixed, matiere_id:mixed, periode:mixed, annee_universitaire_id:mixed} */
+    private static function coordonneeDe(ESBTPEvaluation $evaluation): array
+    {
+        return [
+            'classe_id' => $evaluation->classe_id,
+            'matiere_id' => $evaluation->matiere_id,
+            'periode' => $evaluation->periode,
+            'annee_universitaire_id' => $evaluation->annee_universitaire_id,
+        ];
+    }
+
+    /**
+     * Chaque élève noté sur l'évaluation, sur chacune des coordonnées données.
+     * Une coordonnée incomplète (une année encore nulle, par exemple) est
+     * sautée par {@see executerUneFois()} : elle ne porte aucune moyenne.
+     *
+     * @param  array<int, array<string,mixed>>  $coordonnees
+     * @param  array{couples:array<string,true>, orphelins:array<int,true>}  $memo
+     * @return array{recalculs_tentes:int, orphelins:array<int,array<string,mixed>>, echecs:int}
+     */
+    private static function recalculerPourLesEleves(ESBTPEvaluation $evaluation, array $coordonnees, ?int $declencheur, array &$memo): array
+    {
+        // `recalculs_tentes` et non « recalcules » : le job rend la main sans
+        // rien ecrire dans deux cas legitimes — aucune note et aucune ligne
+        // existante, ou refus du garde de coherence BTS/LMD, qu'il attrape sans
+        // relancer. Annoncer « N agregats recalcules » surestimait.
+        $bilan = ['recalculs_tentes' => 0, 'orphelins' => [], 'echecs' => 0];
+
+        $etudiantIds = ESBTPNote::where('evaluation_id', $evaluation->id)
+            ->distinct()
+            ->pluck('etudiant_id')
+            ->filter()
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        foreach ($etudiantIds as $etudiantId) {
+            foreach ($coordonnees as $coordonnee) {
+                self::executerUneFois($etudiantId, $coordonnee, $declencheur, $bilan, $memo);
+            }
         }
 
         return $bilan;

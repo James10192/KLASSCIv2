@@ -40,7 +40,7 @@ Un `update()` de **query builder** ne passe pas par Eloquent. `ESBTPNoteObserver
 ne tourne pas, `RecomputeStudentResultatJob` n'est jamais dispatché, et les deux
 coordonnées — celle qu'on quitte comme celle qu'on rejoint — restent figées.
 
-**Cinq sont trouvés à ce jour.** C'est un relevé, pas un inventaire garanti :
+**Sept sont trouvés à ce jour.** C'est un relevé, pas un inventaire garanti :
 tout nouveau chemin qui écrit `esbtp_notes` par un `update()` de query builder
 doit appeler `RecalculApresDeplacement` lui-même.
 
@@ -50,7 +50,29 @@ doit appeler `RecalculApresDeplacement` lui-même.
 | `POST /api/cli/evaluations/{id}/matiere` | matière | à l'unité |
 | `POST /api/cli/evaluations/deplacer-periode` | période, jusqu'à 200 évaluations | en lot, plafonné |
 | `POST /api/cli/diagnostics/evaluations-periode/repair` | période, en masse | en lot, plafonné |
+| modification d'une séance de devoir (emploi du temps) | classe, matière, période, année du devoir lié | à l'unité |
+| `esbtp:check-evaluations-annees` | année, depuis nulle — arrivée seule | à l'unité |
 | `MergeDuplicateEcue` (LMD, sous `force`) | matière, en masse | **aucun** |
+
+Trois écritures ne déplacent rien mais font **entrer ou sortir** des notes d'une
+moyenne, et recalculent elles aussi, par le même garde : **annuler** une
+évaluation (bouton « Annuler » de la liste, ou la route de statut) retire ses
+notes de la moyenne, la **réactiver** les y remet. Une moyenne qui ne reposait
+que sur l'évaluation annulée est laissée et nommée, jamais remise à zéro — dans
+le champ `warning` de la réponse JSON. **Reste sans recalcul** : la
+**suppression** d'une évaluation encore brouillon ou planifiée qui porte déjà
+des notes ; après une telle suppression, rejouez `POST /api/cli/notes/recompute`
+sur la classe et la période.
+
+La séance de devoir et son devoir s'enregistrent **ensemble** : un échec
+d'écriture refuse toute la modification. Un recalcul en échec, lui, ne défait
+rien (comme ailleurs) : il est compté et affiché dans le bandeau.
+
+`esbtp:check-evaluations-annees` tire l'année des inscriptions des élèves notés
+dans la classe de l'évaluation (celle qu'ils partagent tous), sinon de sa date,
+sinon de `--annee=ID`. Elle ne lit plus `esbtp_classes.annee_universitaire_id`
+et **ne pose plus l'année courante par défaut** : une évaluation qu'elle ne sait
+pas dater reste sans année, et elle la nomme.
 
 ⚠️ **Ce tableau compte les endroits qui changent les coordonnées d'une
 ÉVALUATION, et il liste ceux trouvés à ce jour — pas ceux qui existent.** La
@@ -288,6 +310,12 @@ qu'on fige.
 
 ## Historique
 
+- **Septembre 2026 (bis)** — la modification d'une séance de devoir,
+  `esbtp:check-evaluations-annees`, et l'annulation / la réactivation d'une
+  évaluation recalculent à leur tour. **Changement de comportement** de la
+  commande : plus d'année courante posée par défaut, ni d'année lue sur la
+  classe. **Ajout non cassant** : la réponse JSON des actions Annuler /
+  Réactiver et de la route de statut porte `warning`.
 - **Septembre 2026** — création. Déclenchée par un agrégat laissé périmé après un
   déplacement d'évaluation fait par `POST /api/cli/evaluations/{id}/matiere`, qui
   déplaçait bien les notes mais ne rafraîchissait rien. Une moyenne sans rien à

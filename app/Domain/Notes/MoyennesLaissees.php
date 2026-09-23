@@ -66,6 +66,33 @@ final class MoyennesLaissees
     }
 
     /**
+     * La même information, en une phrase, pour les écrans qui ne sont pas la
+     * fiche de l'évaluation : la liste des évaluations (réponse JSON d'une
+     * annulation) et l'emploi du temps (modification d'une séance de devoir).
+     * Le bandeau global qui l'affiche échappe tout : pas de lien ici.
+     *
+     * @param  array{orphelins:array<int, array<string,mixed>>, echecs:int}  $recalcul
+     * @param  string  $pourquoi  ce qui a vidé ces moyennes, en fin de proposition :
+     *                            « ne reposaient que sur cette évaluation »
+     */
+    public static function enUnePhrase(array $recalcul, string $pourquoi): ?string
+    {
+        $phrases = [];
+
+        if ($recalcul['orphelins'] !== []) {
+            $eleves = count(array_unique(array_column($recalcul['orphelins'], 'etudiant_id')));
+            $phrases[] = count($recalcul['orphelins']).' moyenne(s) enregistrée(s) '.$pourquoi.' ('.$eleves.' élève(s)) : '
+                .'ni recalculées ni supprimées, vérifiez-les dans les résultats avant de régénérer les bulletins.';
+        }
+
+        if ($recalcul['echecs'] > 0) {
+            $phrases[] = $recalcul['echecs'].' recalcul(s) en échec : ces moyennes gardent leur valeur d\'avant.';
+        }
+
+        return $phrases === [] ? null : implode(' ', $phrases);
+    }
+
+    /**
      * @param  array<int, array<string,mixed>>  $absences
      * @param  array<int,string>  $classes
      * @return array<int, array<string,mixed>>

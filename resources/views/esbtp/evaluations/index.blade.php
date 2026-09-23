@@ -1772,6 +1772,9 @@ function initializeEvaluations() {
                 if (data.message) {
                     showToast(data.message, 'success');
                 }
+                if (data.warning) {
+                    showToast(data.warning, 'warning');
+                }
                 if (data.deleted || action === 'delete') {
                     selectedIds.delete(Number(evaluationId));
                     if (refreshRow) {
