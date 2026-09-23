@@ -12,14 +12,12 @@ use App\Domain\AcademicPilotage\Services\OpenAlertMetricService;
 use App\Domain\Notifications\PhoneNormalizer;
 use App\Helpers\SettingsHelper;
 use App\Models\ESBTPAttendance;
-use App\Models\ESBTPCandidature;
 use App\Models\ESBTPEvaluation;
 use App\Models\ESBTPInscription;
 use App\Models\ESBTPLMDBulletin;
 use App\Models\ESBTPNote;
 use App\Models\ESBTPPaiement;
 use App\Models\ESBTPPlanificationAcademique;
-use App\Models\ESBTPReinscriptionDemande;
 use App\Observers\ESBTPAttendanceAcademicPilotageObserver;
 use App\Observers\ESBTPEvaluationAcademicPilotageObserver;
 use App\Observers\ESBTPInscriptionAcademicPilotageObserver;
@@ -37,7 +35,6 @@ use App\Services\SsoSecretValidator;
 use App\View\Composers\CouleursDesCourrielsParents;
 use App\View\Composers\MobileShellComposer;
 use Illuminate\Pagination\Paginator;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\URL;
@@ -295,13 +292,7 @@ class AppServiceProvider extends ServiceProvider
             $enAttente = 0;
 
             if (auth()->check() && auth()->user()->can('reinscriptions.demandes.view')) {
-                $enAttente = Cache::remember(ESBTPReinscriptionDemande::CLE_CACHE_EN_ATTENTE, 60, function (): int {
-                    if (! Schema::hasTable('esbtp_reinscription_demandes')) {
-                        return 0;
-                    }
-
-                    return ESBTPReinscriptionDemande::enAttente()->count();
-                });
+                $enAttente = app(\App\Support\CompteursDemandesPortail::class)->reinscriptions();
             }
 
             $view->with('reinscriptionDemandesEnAttente', $enAttente);
@@ -324,12 +315,6 @@ class AppServiceProvider extends ServiceProvider
             return 0;
         }
 
-        return Cache::remember(ESBTPCandidature::CLE_CACHE_EN_ATTENTE, 60, function (): int {
-            if (! Schema::hasTable('esbtp_candidatures')) {
-                return 0;
-            }
-
-            return ESBTPCandidature::enAttente()->count();
-        });
+        return app(\App\Support\CompteursDemandesPortail::class)->candidatures();
     }
 }
